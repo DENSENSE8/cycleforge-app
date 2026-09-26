@@ -1,10 +1,10 @@
 /** Detect item-level OOS tables/columns so assign does not 500 before migrate. */
 
-export type ShortageSchemaClient = {
+type ShortageSchemaClient = {
   query: (sql: string, values?: unknown[]) => Promise<{ rows: Array<Record<string, unknown>> }>;
 };
 
-export type ShortageSchemaFlags = {
+type ShortageSchemaFlags = {
   tables: boolean;
   oosZohoColumn: boolean;
 };
@@ -35,6 +35,6 @@ export async function readShortageSchema(client: ShortageSchemaClient): Promise<
   return flags;
 }
 
-export function invalidateShortageSchemaCache(): void {
+function invalidateShortageSchemaCache(): void {
   cache = null;
 }

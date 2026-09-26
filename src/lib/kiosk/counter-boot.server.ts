@@ -12,7 +12,7 @@ import { resolveKioskOrgForRequest } from '@/lib/kiosk/kiosk-request-org.server'
 import { getOrganization } from '@/lib/tenancy/organizations';
 import { getKioskDefaultCommand, getKioskLineReasons } from '@/lib/tenancy/settings';
 
-export interface CounterBoot {
+interface CounterBoot {
   defaultCommand: KioskCommandId;
   lineReasons: KioskLineReasons;
   /**

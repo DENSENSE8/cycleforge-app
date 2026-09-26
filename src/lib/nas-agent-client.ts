@@ -19,12 +19,12 @@ export function nasAgentToken(): string {
 }
 
 /** True when upstream requests should carry admin-configured filesystem roots. */
-export function usesNasAgentUpstream(base: string): boolean {
+function usesNasAgentUpstream(base: string): boolean {
   const b = base.replace(/\/+$/, '');
   return /\/_agent(?:\/|$)/.test(b) || /\/file\/(?:receiving|shipping|claims)(?:\/|$)/.test(b);
 }
 
-export function nasRootHeader(root: string | undefined | null): Record<string, string> {
+function nasRootHeader(root: string | undefined | null): Record<string, string> {
   const r = (root || '').trim().replace(/\/+$/, '');
   return r ? { 'x-nas-root': r } : {};
 }
@@ -34,7 +34,7 @@ export function nasOrgHeader(orgId: OrgId | undefined | null): Record<string, st
   return id ? { 'x-nas-org-id': id } : {};
 }
 
-export function getNasStorageRoots(settings: OrgSettings): Record<NasStorageTargetKey, string> {
+function getNasStorageRoots(settings: OrgSettings): Record<NasStorageTargetKey, string> {
   return {
     receiving: getNasStorageTarget(settings, 'receiving').root,
     shipping: getNasStorageTarget(settings, 'shipping').root,

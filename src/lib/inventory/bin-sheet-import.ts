@@ -30,7 +30,7 @@ export interface BinSheetOverrides {
   rows: Record<string, BinSheetRowOverride>;
 }
 
-export type BinSheetTarget = { kind: 'real'; sku: string } | { kind: 'temp'; key: string };
+type BinSheetTarget = { kind: 'real'; sku: string } | { kind: 'temp'; key: string };
 
 export interface BinSheetLine {
   location: string;

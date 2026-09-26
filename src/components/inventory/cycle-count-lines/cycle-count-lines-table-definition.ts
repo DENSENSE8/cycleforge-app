@@ -25,7 +25,7 @@ export const CYCLECOUNTLINES_GRID_CAPABILITIES: GridSurfaceCapabilities = {
 };
 
 /** Build the descriptor from a RESOLVED column list (post-visibility), so `contentMinWidthRem` and the TanStack defs follow the tracks that… */
-export function makeCycleCountLinesGridDescriptor(
+function makeCycleCountLinesGridDescriptor(
   columns: readonly CycleCountLinesGridColumn[],
 ): GridSurfaceDescriptor<CycleCountLineRow, CycleCountLinesGridColumn> {
   return makeGridSurfaceDescriptor<CycleCountLineRow, CycleCountLinesGridColumn>(
@@ -44,7 +44,7 @@ export function makeCycleCountLinesGridDescriptor(
  * Validated at module load: a definition that violates a structural law throws
  * here rather than painting a broken grid.
  */
-export const CYCLECOUNTLINES_TABLE_DEFINITION = parseTableDefinition({
+const CYCLECOUNTLINES_TABLE_DEFINITION = parseTableDefinition({
   id: 'inventory.cycle-count-lines',
   tableId: 'cycle-count-lines',
   entityFamily: 'cycle-count-lines',

@@ -4,7 +4,7 @@ import { useState, useCallback } from 'react';
  * Lightweight auth state hook — replace the internals with your auth provider.
  * Reads from localStorage by default for session persistence.
  */
-export function useAuthToken(): {
+function useAuthToken(): {
   token: string | null;
   setToken: (token: string | null) => void;
   clearToken: () => void;
@@ -38,7 +38,7 @@ export function useAuthToken(): {
  * Checks if the current user has all of the given permissions.
  * Pass a permissions array from your session/JWT claims.
  */
-export function usePermissions(userPermissions: string[]): {
+function usePermissions(userPermissions: string[]): {
   hasPermission: (permission: string) => boolean;
   hasAllPermissions: (permissions: string[]) => boolean;
   hasAnyPermission: (permissions: string[]) => boolean;

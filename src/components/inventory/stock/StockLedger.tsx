@@ -52,7 +52,7 @@ const CREATE_KEY = 'new-temp-sku';
 /** A burst of counts (a gun session) costs one loader re-read. */
 const LIVE_REFRESH_DEBOUNCE_MS = 400;
 
-export interface StockLedgerProps {
+interface StockLedgerProps {
   /** Pairs after `?q=` and `?room=`, in walking order. */
   rows: LocationStockTableRow[];
   /** Rooms across the `?q=` matches, before the room filter. */

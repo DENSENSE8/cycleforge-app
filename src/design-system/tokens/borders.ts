@@ -12,4 +12,4 @@ export const borderStyles = {
   dotted: 'dotted',
 } as const;
 
-export type BorderWidths = typeof borderWidths;
+type BorderWidths = typeof borderWidths;

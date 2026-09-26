@@ -11,7 +11,7 @@ import { useAdminHoldsSpreadsheet } from '@/components/inventory/holds-grid/useA
 import type { CompoundRowAction } from '@/components/tables/compound/compound-row-model';
 import type { HeldUnitRow } from '@/lib/inventory/held-unit-row';
 
-export interface HeldUnitsTableProps {
+interface HeldUnitsTableProps {
   rows: HeldUnitRow[];
   /** The page's `releaseAction`. */
   releaseAction: (formData: FormData) => void | Promise<void>;

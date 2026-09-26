@@ -15,7 +15,7 @@ import {
 import { navIconStrokeClass } from '@/components/icons/nav-weight';
 import type { DeskPageTab } from '@/design-system/components/DeskPageChrome';
 
-export interface DeskPageChromeTabs {
+interface DeskPageChromeTabs {
   /** The desk's page title — the nav entry's own `label`, so the header and the spine row say the same word by construction. */
   title: string;
   /**

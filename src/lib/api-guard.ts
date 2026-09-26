@@ -27,7 +27,7 @@ function getClientIp(headers: Headers): string {
   return headers.get('x-real-ip') || 'unknown';
 }
 
-export interface RateLimitOptions {
+interface RateLimitOptions {
   headers: Headers;
   routeKey: string;
   limit: number;
@@ -36,7 +36,7 @@ export interface RateLimitOptions {
   scope?: string | number | null;
 }
 
-export interface RateLimitResult {
+interface RateLimitResult {
   ok: boolean;
   retryAfterSec?: number;
 }
@@ -52,7 +52,7 @@ function buildKey(opts: RateLimitOptions): string {
  * with existing callsites. Migrate to checkRateLimitAsync when convenient —
  * the async variant is the only one safe across Vercel/serverless instances.
  */
-export function checkRateLimit(opts: RateLimitOptions): RateLimitResult {
+function checkRateLimit(opts: RateLimitOptions): RateLimitResult {
   const now = Date.now();
   const key = buildKey(opts);
 

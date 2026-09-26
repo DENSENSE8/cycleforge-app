@@ -29,7 +29,7 @@ export const AUTHSESSIONS_GRID_CAPABILITIES: GridSurfaceCapabilities = {
   dayBands: false,
 };
 
-export function makeAuthSessionsGridDescriptor(
+function makeAuthSessionsGridDescriptor(
   columns: readonly AuthSessionsGridColumn[],
 ): GridSurfaceDescriptor<AuthSessionTableRow, AuthSessionsGridColumn> {
   return makeGridSurfaceDescriptor<AuthSessionTableRow, AuthSessionsGridColumn>(
@@ -44,7 +44,7 @@ export function makeAuthSessionsGridDescriptor(
   );
 }
 
-export const AUTHSESSIONS_TABLE_DEFINITION = parseTableDefinition({
+const AUTHSESSIONS_TABLE_DEFINITION = parseTableDefinition({
   id: 'settings.auth-sessions',
   tableId: 'auth-sessions',
   entityFamily: 'auth-sessions',

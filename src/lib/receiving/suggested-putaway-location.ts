@@ -31,7 +31,7 @@ export interface PutawaySuggestion {
 /** How many prior stages of the same SKU the ranking reads. */
 export const SKU_HISTORY_SAMPLE = 10;
 
-export interface SkuHistoryRow {
+interface SkuHistoryRow {
   locationId: number;
 }
 

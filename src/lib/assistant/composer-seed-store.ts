@@ -6,7 +6,7 @@
  * Mirrors composer-focus-store: bump a seq, dock applies draft (+ optional send).
  */
 
-export interface ComposerSeedPayload {
+interface ComposerSeedPayload {
   text: string;
   /** When true, dock submits immediately after seeding (identifier / retrieval). */
   autoSend: boolean;

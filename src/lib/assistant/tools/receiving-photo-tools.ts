@@ -6,7 +6,7 @@ import { listReceivingPhotos } from '@/lib/photos/queries/receiving-list';
 import type { AssistantToolDef, AssistantToolDeps } from './types';
 import type { OrgId } from '@/lib/tenancy/constants';
 
-export interface ReceivingLineForOrderDeps {
+interface ReceivingLineForOrderDeps {
   /** Org-scoped read (RLS GUC set) — never a raw pool query. */
   query: (
     orgId: OrgId,
@@ -68,7 +68,7 @@ export const resolveReceivingLineForOrderTool: AssistantToolDef<
   },
 };
 
-export interface ReceivingLinePhotosDeps {
+interface ReceivingLinePhotosDeps {
   list: typeof listReceivingPhotos;
 }
 const defaultLinePhotosDeps: ReceivingLinePhotosDeps = { list: listReceivingPhotos };

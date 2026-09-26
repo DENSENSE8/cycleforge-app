@@ -16,7 +16,7 @@ import { countInFlightEntries } from './photo-upload-in-flight';
 
 /** Module-singleton store for in-flight receiving photo uploads. */
 
-export type UploadState = 'queued' | 'uploading' | 'done' | 'failed';
+type UploadState = 'queued' | 'uploading' | 'done' | 'failed';
 
 export interface PhotoScope {
   receivingId: number;
@@ -38,7 +38,7 @@ export interface PhotoScope {
   photosListScope?: 'po' | 'all';
 }
 
-export interface UploadEntry {
+interface UploadEntry {
   id: string;
   scope: PhotoScope;
   previewUrl: string;
@@ -70,7 +70,7 @@ interface PersistedEntry {
 }
 
 // ─── State + subscribers ──────────────────────────────────────────────────── Fired once per photo the moment it's committed (GCS upload…
-export interface UploadNotice {
+interface UploadNotice {
   receivingId: number;
   receivingLineId: number | null;
   photoId: number;

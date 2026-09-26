@@ -5,7 +5,7 @@ import { SearchField, type SearchFieldProps, type SearchFieldTone } from '@/desi
 import { useKeyboard } from '@/hooks/useKeyboard';
 import { useIsMobile } from '@/hooks/_ui';
 
-export interface SearchBarProps {
+interface SearchBarProps {
   value: string;
   onChange: (value: string) => void;
   onSearch?: (value: string) => void;

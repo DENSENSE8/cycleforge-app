@@ -66,7 +66,7 @@ export function initPostHog(): void {
 }
 
 /** Capture a product/feature-adoption event. No-op when the key is missing. */
-export function captureEvent(name: string, props?: Record<string, unknown>): void {
+function captureEvent(name: string, props?: Record<string, unknown>): void {
     if (!isEnabled()) return;
     void getClient().then((ph) => {
         try {
@@ -81,7 +81,7 @@ export function captureEvent(name: string, props?: Record<string, unknown>): voi
  * Associate the current session with an org (multi-tenant group analytics).
  * No-op when the key is missing.
  */
-export function identifyOrg(orgId: string, traits?: Record<string, unknown>): void {
+function identifyOrg(orgId: string, traits?: Record<string, unknown>): void {
     if (!isEnabled() || !orgId) return;
     void getClient().then((ph) => {
         try {
@@ -101,7 +101,7 @@ export function identifyOrg(orgId: string, traits?: Record<string, unknown>): vo
  * Fire a `feature_used` event at most once per browser session per feature.
  * Provided for later wiring; not currently mounted on any hot page.
  */
-export function useCaptureFeatureUse(feature: string): void {
+function useCaptureFeatureUse(feature: string): void {
     const firedRef = useRef(false);
     useEffect(() => {
         if (!feature || firedRef.current) return;

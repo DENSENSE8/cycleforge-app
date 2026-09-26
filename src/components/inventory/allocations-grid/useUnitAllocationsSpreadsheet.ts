@@ -23,7 +23,7 @@ import {
 } from './unit-allocations-table-definition';
 import { useUnitAllocationsTableLayout } from './useUnitAllocationsTableLayout';
 
-export interface UseUnitAllocationsSpreadsheetOptions {
+interface UseUnitAllocationsSpreadsheetOptions {
   /** The feed. Already ordered by the API; a header click re-orders it. */
   rows: readonly UnitAllocationTableRow[];
   loading?: boolean;

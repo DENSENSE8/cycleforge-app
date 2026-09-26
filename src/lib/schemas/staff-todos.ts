@@ -1,7 +1,7 @@
 import { z } from 'zod';
 
 /** Request schemas for /api/staff-todos (the header goal chip's checklists). */
-export const StaffTodoStation = z.enum(['TECH', 'PACK', 'UNBOX', 'SALES', 'FBA']);
+const StaffTodoStation = z.enum(['TECH', 'PACK', 'UNBOX', 'SALES', 'FBA']);
 
 /**
  * Read-side station selector: a real station, or `ALL` for the every-station

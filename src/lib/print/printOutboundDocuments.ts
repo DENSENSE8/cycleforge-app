@@ -16,7 +16,7 @@ function docPageHtml(doc: PrintableOutboundDocument): string {
   return `<div class="doc-page">${body}</div>`;
 }
 
-export function buildOutboundDocumentsPrintHtml(docs: PrintableOutboundDocument[]): string {
+function buildOutboundDocumentsPrintHtml(docs: PrintableOutboundDocument[]): string {
   const pages = docs.map(docPageHtml).join('\n');
   return `<!doctype html><html><head><meta charset="utf-8"/><title>Print documents</title>
 <style>

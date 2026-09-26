@@ -11,7 +11,7 @@ import { NO_OPEN_LOSS_EXCEPTION_PREDICATE } from '@/lib/receiving/exception-code
 
 /** Feed window — deliberately WIDER than {@link EBAY_CLAIM_WINDOW_DAYS}. */
 export const DELIVERED_NOT_UNBOXED_WINDOW_DAYS = 45;
-export const DELIVERED_NOT_UNBOXED_CAP = 100;
+const DELIVERED_NOT_UNBOXED_CAP = 100;
 
 /** eBay Money Back Guarantee: */
 export const EBAY_CLAIM_WINDOW_DAYS = 30;
@@ -27,7 +27,7 @@ export function ebayClaimByDateSql(daysParam: string): string {
 }
 
 /** Shared not-unboxed guard (aliases `rl`, `r`). */
-export const NOT_UNBOXED_PREDICATE = `COALESCE(rl.quantity_received, 0) = 0
+const NOT_UNBOXED_PREDICATE = `COALESCE(rl.quantity_received, 0) = 0
            AND (r.id IS NULL OR NOT EXISTS (
              SELECT 1 FROM receiving_unbox ru_nu
               WHERE ru_nu.receiving_id = r.id

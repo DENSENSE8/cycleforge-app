@@ -13,7 +13,7 @@ const QRCode = dynamic(() => import('react-qr-code'), {
   loading: () => <div className="h-[180px] w-[180px] animate-pulse rounded-2xl bg-surface-sunken" />,
 });
 
-export interface QrAuthSuccessData {
+interface QrAuthSuccessData {
   staffId?: number | null;
   staffName?: string | null;
   role?: string | null;

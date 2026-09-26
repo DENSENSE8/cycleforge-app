@@ -3,7 +3,7 @@
 import { tenantQuery } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';
 
-export interface BenchmarkRow {
+interface BenchmarkRow {
   linkage_type: string;
   subject_kind: string;
   subject_ref: string | null;
@@ -12,7 +12,7 @@ export interface BenchmarkRow {
   organization_id: string | null;
 }
 
-export interface BenchmarkActuals {
+interface BenchmarkActuals {
   rangeDays: number;
   /** TEST_FAIL / (TEST_FAIL + TEST_PASS), percent 0–100; null when no tests in range. */
   testFailPct: number | null;
@@ -23,7 +23,7 @@ export interface BenchmarkActuals {
   returnedCount: number;
 }
 
-export interface BenchmarkComparison {
+interface BenchmarkComparison {
   actuals: BenchmarkActuals;
   benchmarks: BenchmarkRow[];
 }

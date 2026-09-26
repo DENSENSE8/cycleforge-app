@@ -5,7 +5,7 @@ import type { OrgId } from '@/lib/tenancy/constants';
 
 // ─── Campaign creation ──────────────────────────────────────────────────────
 
-export interface CreateCampaignInput {
+interface CreateCampaignInput {
   name: string;
   /** Auto-approve threshold. 0.05 = 5%. Range 0..1 (validated). */
   varianceTol: number;
@@ -14,7 +14,7 @@ export interface CreateCampaignInput {
   organizationId: OrgId;
 }
 
-export interface CreateCampaignResult {
+interface CreateCampaignResult {
   campaignId: number;
   lineCount: number;
 }
@@ -60,14 +60,14 @@ export async function createCampaign(input: CreateCampaignInput): Promise<Create
 
 // ─── Submit a count ─────────────────────────────────────────────────────────
 
-export interface SubmitCountInput {
+interface SubmitCountInput {
   lineId: number;
   countedQty: number;
   countedByStaffId: number | null;
   organizationId: OrgId;
 }
 
-export interface SubmitCountResult {
+interface SubmitCountResult {
   lineId: number;
   expectedQty: number;
   countedQty: number;
@@ -131,13 +131,13 @@ export async function submitCount(input: SubmitCountInput): Promise<SubmitCountR
 
 // ─── Approve a line (writes ledger + bin_contents) ──────────────────────────
 
-export interface ApproveLineInput {
+interface ApproveLineInput {
   lineId: number;
   approvedByStaffId: number | null;
   organizationId: OrgId;
 }
 
-export interface ApproveLineResult {
+interface ApproveLineResult {
   lineId: number;
   variance: number;
   ledgerId: number | null;
@@ -236,13 +236,13 @@ export async function rejectLine(input: { lineId: number; approvedByStaffId: num
 
 // ─── Close campaign (auto-approves remaining 'counted' lines) ───────────────
 
-export interface CloseCampaignInput {
+interface CloseCampaignInput {
   campaignId: number;
   approvedByStaffId: number | null;
   organizationId: OrgId;
 }
 
-export interface CloseCampaignResult {
+interface CloseCampaignResult {
   campaignId: number;
   autoApproved: number;
   pendingReviewSkipped: number;

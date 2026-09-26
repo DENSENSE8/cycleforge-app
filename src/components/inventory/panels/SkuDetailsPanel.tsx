@@ -3,7 +3,7 @@
 import { BySkuView } from '@/components/inventory/BySkuView';
 import { InventoryDetailPanelShell } from './InventoryDetailPanelShell';
 
-export interface SkuDetailsPanelProps {
+interface SkuDetailsPanelProps {
     sku: string;
     onClose?: () => void;
 }

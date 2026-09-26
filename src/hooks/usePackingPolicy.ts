@@ -3,7 +3,7 @@
 import { useQuery } from '@tanstack/react-query';
 import type { PackingEnforcement } from '@/lib/tenancy/settings';
 
-export interface PackingPolicy {
+interface PackingPolicy {
   enforcement: PackingEnforcement;
 }
 

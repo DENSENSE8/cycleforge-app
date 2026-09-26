@@ -509,7 +509,7 @@ export async function updateShipmentError(
 
 // ─── Carrier webhook subscription state ──────────────────────────────────────
 
-export interface PendingSubscriptionRow {
+interface PendingSubscriptionRow {
   id: number;
   trackingNumberNormalized: string;
 }
@@ -519,7 +519,7 @@ export interface PendingSubscriptionRow {
  * never attempted (NULL), queued (PENDING), or previously FAILED. Backed by the
  * partial index from 2026-06-02_carrier_webhook_subscription.sql.
  */
-export async function getShipmentsPendingSubscription(
+async function getShipmentsPendingSubscription(
   carrier: CarrierCode,
   limit: number,
   orgId?: OrgId,
@@ -555,7 +555,7 @@ export async function getShipmentsPendingSubscription(
  * covered. `jobId` is null for synchronous carriers (UPS) or when FedEx
  * completed synchronously; status is then COMPLETED.
  */
-export async function markSubscriptionResult(
+async function markSubscriptionResult(
   carrier: CarrierCode,
   trackingNumbers: string[],
   status: 'SUBMITTED' | 'COMPLETED' | 'FAILED',
@@ -587,7 +587,7 @@ export async function markSubscriptionResult(
 }
 
 /** Active shipments whose subscription COMPLETED but is older than `ttlDays` — i.e. */
-export async function getShipmentsForSubscriptionRenewal(
+async function getShipmentsForSubscriptionRenewal(
   carrier: CarrierCode,
   ttlDays: number,
   limit: number,
@@ -623,7 +623,7 @@ export async function getShipmentsForSubscriptionRenewal(
 }
 
 /** Distinct jobIds still awaiting reconciliation (status SUBMITTED). FedEx-only. */
-export async function getSubmittedSubscriptionJobIds(
+async function getSubmittedSubscriptionJobIds(
   carrier: CarrierCode,
   limit: number,
   orgId?: OrgId,
@@ -651,7 +651,7 @@ export async function getSubmittedSubscriptionJobIds(
 }
 
 /** Flip every shipment carrying `jobId` to the reconciled terminal status. */
-export async function markSubscriptionJobStatus(
+async function markSubscriptionJobStatus(
   carrier: CarrierCode,
   jobId: string,
   status: 'COMPLETED' | 'FAILED',

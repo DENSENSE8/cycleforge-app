@@ -1,7 +1,7 @@
 import type { Pool } from 'pg';
 import type { OrgId } from '@/lib/tenancy/constants';
 
-export type ApiIdempotencyHit = {
+type ApiIdempotencyHit = {
   status_code: number;
   response_body: Record<string, unknown>;
 };
@@ -87,7 +87,7 @@ type ClaimParams = {
   staffId: number | null;
 };
 
-export type IdempotencyClaimResult<B> = {
+type IdempotencyClaimResult<B> = {
   status: number;
   body: B;
   /** true when returned from a previously-finalized response (replay). */
@@ -170,7 +170,7 @@ export async function releaseIdempotencyClaim(
   }
 }
 
-export type ClaimOutcome<B> =
+type ClaimOutcome<B> =
   /** A finalized response already exists — return it, do NOT run the work. */
   | { outcome: 'replay'; status: number; body: B }
   /** A concurrent duplicate holds an in-flight claim — caller should 409. */

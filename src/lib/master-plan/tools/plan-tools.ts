@@ -38,7 +38,7 @@ export interface PlanToolsDeps {
   onMutated?: (ctx: PlanToolsCtx, mdx: string) => void;
 }
 
-export const MUTATE_MASTER_PLAN_INPUT = z.object({
+const MUTATE_MASTER_PLAN_INPUT = z.object({
   action: z.literal('set_ticket_status'),
   ticketId: z.string().min(1).max(80).describe('The ticket id, e.g. "ALP-3.4" or "P1-TRACE-02"'),
   status: z.enum(TICKET_STATUSES).describe('New status — ONLY pending | in-progress | deployed'),

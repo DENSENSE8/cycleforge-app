@@ -1,13 +1,13 @@
 /** Pure types, constants, and helpers for the header goal chip. No React. */
 
-export type StationKey = 'TECH' | 'PACK' | 'UNBOX' | 'SALES' | 'FBA';
-export type GoalMode = 'scans' | 'recurring' | 'todo';
+type StationKey = 'TECH' | 'PACK' | 'UNBOX' | 'SALES' | 'FBA';
+type GoalMode = 'scans' | 'recurring' | 'todo';
 /** UI row shape consumed by TaskList (server rows map onto this). */
 export type Todo = { id: string; text: string; done: boolean };
 /** Legacy v1 localStorage shape — read only by the one-time import. */
-export type LegacyRecurringState = { intervalMs: number; anchor: number; items: Todo[] };
+type LegacyRecurringState = { intervalMs: number; anchor: number; items: Todo[] };
 
-export type StationGoal = {
+type StationGoal = {
   station: StationKey;
   isPrimary: boolean;
   target: number;
@@ -15,11 +15,11 @@ export type StationGoal = {
 };
 
 /** The panel shell for the header's pace-and-next button. */
-export const GOAL_PANEL_SHELL_CLASS =
+const GOAL_PANEL_SHELL_CLASS =
   'w-[290px] origin-top-right overflow-hidden rounded-none border border-border-soft bg-surface-card shadow-[0_12px_40px_rgba(20,30,55,0.16)]';
 
-export const STATIONS: StationKey[] = ['TECH', 'PACK', 'UNBOX', 'SALES', 'FBA'];
-export const STATION_LABEL: Record<StationKey, string> = {
+const STATIONS: StationKey[] = ['TECH', 'PACK', 'UNBOX', 'SALES', 'FBA'];
+const STATION_LABEL: Record<StationKey, string> = {
   TECH: 'Tech',
   PACK: 'Packing',
   UNBOX: 'Unboxing',
@@ -28,16 +28,16 @@ export const STATION_LABEL: Record<StationKey, string> = {
 };
 
 const HOUR_MS = 60 * 60_000;
-export const RECUR_INTERVALS = [
+const RECUR_INTERVALS = [
   { label: '1h', ms: HOUR_MS },
   { label: '2h', ms: 2 * HOUR_MS },
   { label: '4h', ms: 4 * HOUR_MS },
   { label: '8h', ms: 8 * HOUR_MS },
   { label: 'Daily', ms: 24 * HOUR_MS },
 ] as const;
-export const DEFAULT_INTERVAL_MS = 4 * HOUR_MS;
+const DEFAULT_INTERVAL_MS = 4 * HOUR_MS;
 
-export const TONES = [
+const TONES = [
   { min: 100, ring: '#059669', chip: 'bg-emerald-50 text-emerald-700 ring-emerald-500/20', label: 'Hit goal' },
   { min: 85, ring: '#059669', chip: 'bg-emerald-50 text-emerald-700 ring-emerald-500/20', label: 'On track' },
   { min: 60, ring: '#D97706', chip: 'bg-amber-50 text-amber-700 ring-amber-500/20', label: 'Close' },
@@ -62,13 +62,13 @@ export function toneFor(percent: number, progressValue?: number) {
   return TONES.find((t) => percent >= t.min) ?? TONES[TONES.length - 1];
 }
 
-export function asStation(v: string | null | undefined): StationKey | null {
+function asStation(v: string | null | undefined): StationKey | null {
   const up = String(v ?? '').toUpperCase();
   return (STATIONS as string[]).includes(up) ? (up as StationKey) : null;
 }
 
 /** Accept whatever the mode key holds (incl. the legacy 'checklist' value). */
-export function asMode(v: string | null | undefined): GoalMode {
+function asMode(v: string | null | undefined): GoalMode {
   if (v === 'recurring' || v === 'todo' || v === 'scans') return v;
   if (v === 'checklist') return 'todo'; // legacy v1 single-checklist → general to-do
   return 'scans';
@@ -76,7 +76,7 @@ export function asMode(v: string | null | undefined): GoalMode {
 
 /* ── localStorage helpers (browser-only; v1 persistence) ───────────────────── */
 
-export function readLS<T>(key: string, fallback: T): T {
+function readLS<T>(key: string, fallback: T): T {
   if (typeof window === 'undefined') return fallback;
   try {
     const raw = window.localStorage.getItem(key);
@@ -85,7 +85,7 @@ export function readLS<T>(key: string, fallback: T): T {
     return fallback;
   }
 }
-export function writeLS<T>(key: string, value: T): void {
+function writeLS<T>(key: string, value: T): void {
   if (typeof window === 'undefined') return;
   try {
     window.localStorage.setItem(key, JSON.stringify(value));
@@ -93,7 +93,7 @@ export function writeLS<T>(key: string, value: T): void {
     /* quota / private mode — non-fatal */
   }
 }
-export function removeLS(key: string): void {
+function removeLS(key: string): void {
   if (typeof window === 'undefined') return;
   try {
     window.localStorage.removeItem(key);
@@ -102,8 +102,8 @@ export function removeLS(key: string): void {
   }
 }
 
-export const activeKey = (staffId: number) => `cf.hgoal.active.${staffId}`;
-export const modeKey = (staffId: number, st: StationKey) => `cf.hgoal.mode.${staffId}.${st}`;
+const activeKey = (staffId: number) => `cf.hgoal.active.${staffId}`;
+const modeKey = (staffId: number, st: StationKey) => `cf.hgoal.mode.${staffId}.${st}`;
 // Legacy v1 list keys — only read (then removed) by the one-time server import.
-export const todoKey = (staffId: number, st: StationKey) => `cf.hgoal.todo.${staffId}.${st}`;
-export const recurKey = (staffId: number, st: StationKey) => `cf.hgoal.recurring.${staffId}.${st}`;
+const todoKey = (staffId: number, st: StationKey) => `cf.hgoal.todo.${staffId}.${st}`;
+const recurKey = (staffId: number, st: StationKey) => `cf.hgoal.recurring.${staffId}.${st}`;

@@ -9,7 +9,7 @@
 import { useCallback } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 
-export type BinFilterStatus = 'all' | 'empty' | 'low' | 'over' | 'stale';
+type BinFilterStatus = 'all' | 'empty' | 'low' | 'over' | 'stale';
 
 /**
  * Hook for URL-bound bin filter params. Reads ?status=, ?room=, ?q= and

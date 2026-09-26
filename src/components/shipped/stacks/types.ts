@@ -14,7 +14,7 @@ export type ShippedActiveInput =
   | 'notes'
   | 'assign';
 
-export interface DetailsStackDurationData {
+interface DetailsStackDurationData {
   boxingDuration?: string;
   testingDuration?: string;
 }

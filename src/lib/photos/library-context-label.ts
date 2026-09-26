@@ -6,7 +6,7 @@ import {
 import { claimsTicketLabel } from '@/lib/photos/display-names';
 import { photoStageLabel } from '@/lib/photos/stages';
 
-export const PHOTO_LIBRARY_DEFAULT_SUBTITLE =
+const PHOTO_LIBRARY_DEFAULT_SUBTITLE =
   'Browse receiving, packing, and unit photos';
 
 /**
@@ -52,7 +52,7 @@ export function resolvePhotoLibraryFolderLeafLabel(input: {
 }
 
 /** The title for the un-narrowed archive. */
-export const ALL_PHOTOS_CONTEXT_TITLE = 'All photos';
+const ALL_PHOTOS_CONTEXT_TITLE = 'All photos';
 
 export function describePhotoLibraryContext(filters: PhotoLibraryFilterState): {
   title: string;

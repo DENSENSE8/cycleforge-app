@@ -157,7 +157,7 @@ export function StaffFilterButton({
 }
 
 /** The staff facet as MENU ROWS, for hosting inside the find field's one {@link FilterMenu} — no trigger, no glyph, no popover of its own. */
-export function StaffFilterRows({
+function StaffFilterRows({
   allLabel = 'All staff',
   allToken,
   groupLabel = 'Staff',

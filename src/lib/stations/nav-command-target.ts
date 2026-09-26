@@ -8,13 +8,13 @@ import {
 } from '@/lib/sidebar-navigation';
 import type { NavCommandDef } from './nav-command-codes';
 
-export interface NavCommandTarget {
+interface NavCommandTarget {
   pathname: string;
   /** No leading `?`. Empty string when the destination carries no params. */
   search: string;
 }
 
-export interface NavCommandOrigin {
+interface NavCommandOrigin {
   pathname: string;
   params: URLSearchParams;
 }

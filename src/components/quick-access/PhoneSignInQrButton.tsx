@@ -64,7 +64,7 @@ export function PhoneSignInQrDialog({
 }
 
 /** Header phone icon + the scan overlay above. */
-export function PhoneSignInQrButton({
+function PhoneSignInQrButton({
   className,
   iconClassName = TOP_CHROME_ICON_GLYPH,
   size,

@@ -44,7 +44,7 @@ export function buildRepairIntakeReceiptProps(
 }
 
 /** The DEVICE facts a paperwork sheet states, per unit on the counter. */
-export interface RepairReceiptDevice {
+interface RepairReceiptDevice {
   title: string;
   serialNumber: string;
   price: string;

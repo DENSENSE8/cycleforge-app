@@ -5,7 +5,7 @@ import { fbaPaths } from '@/lib/fba/api-paths';
 import { FBA_TRACKING_PATCH, FBA_PRINT_QUEUE_REFRESH } from '@/lib/fba/events';
 
 /** @deprecated Use FBA_TRACKING_PATCH from events.ts */
-export const FBA_TRACKING_PATCH_EVENT = FBA_TRACKING_PATCH;
+const FBA_TRACKING_PATCH_EVENT = FBA_TRACKING_PATCH;
 
 export function normalizeFbaId(raw: string): string {
   return raw.trim().toUpperCase().replace(/\s+/g, '');
@@ -15,7 +15,7 @@ export function normalizeUps(raw: string): string {
   return raw.trim().toUpperCase().replace(/\s+/g, '');
 }
 
-export function dispatchFbaTrackingPatch(detail: { planId: number; shipmentId?: number; amazon?: string; ups?: string }) {
+function dispatchFbaTrackingPatch(detail: { planId: number; shipmentId?: number; amazon?: string; ups?: string }) {
   if (typeof window === 'undefined') return;
   window.dispatchEvent(
     new CustomEvent(FBA_TRACKING_PATCH_EVENT, {

@@ -1,8 +1,8 @@
 // Single source of truth for the inbound receiving / testing lifecycle.
 
-export type WorkflowPhase = 'INBOUND' | 'RECEIVING' | 'TESTING' | 'TERMINAL';
+type WorkflowPhase = 'INBOUND' | 'RECEIVING' | 'TESTING' | 'TERMINAL';
 
-export interface WorkflowStageMeta {
+interface WorkflowStageMeta {
   /** Canonical enum key. */
   status: string;
   /**
@@ -83,7 +83,7 @@ export const WORKFLOW_STAGES: Record<string, WorkflowStageMeta> = {
 };
 
 /** Fallback for unknown / legacy NULL statuses. */
-export const UNKNOWN_STAGE: WorkflowStageMeta = {
+const UNKNOWN_STAGE: WorkflowStageMeta = {
   status: 'UNKNOWN', order: -1, phase: 'INBOUND', label: 'Unknown',
   dot: 'bg-border-emphasis', badge: 'bg-surface-sunken text-text-muted',
   description: 'No workflow status recorded.',
@@ -111,7 +111,7 @@ export function workflowStageLabel(status: string | null | undefined): string {
 }
 
 /** True when `a` is a strictly later lifecycle stage than `b`. */
-export function isLaterStage(
+function isLaterStage(
   a: string | null | undefined,
   b: string | null | undefined,
 ): boolean {

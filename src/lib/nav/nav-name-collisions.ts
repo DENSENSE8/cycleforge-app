@@ -13,7 +13,7 @@ import {
   spineSectionIdForPage,
 } from '@/lib/sidebar-navigation';
 
-export interface NavNameCollision {
+interface NavNameCollision {
   /** Which painted relationship produced the clash. */
   where:
     | 'lane → row'

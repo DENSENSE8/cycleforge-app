@@ -8,7 +8,7 @@ import { isEditableKeyTarget } from '@/lib/keyboard/is-editable-key-target';
 import { hasOpenOverlay } from '@/lib/overlay-stack/store';
 import { closeShortcutOverview } from '@/lib/keyboard/shortcut-overview';
 
-export type SelectionStatusHotkeyAction = {
+type SelectionStatusHotkeyAction = {
   key: string;
   /** Single letter, case-insensitive. Omit to skip bind + reveal. */
   hotkey?: string;
@@ -240,7 +240,7 @@ export function useSelectionStatusBarHotkeys(
 }
 
 /** @deprecated Use {@link useSelectionStatusBarHotkeys}. */
-export function useSelectionActionHotkeys(
+function useSelectionActionHotkeys(
   actions: readonly SelectionStatusHotkeyAction[],
   enabled = true,
 ): void {

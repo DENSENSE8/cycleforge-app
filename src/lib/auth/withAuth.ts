@@ -18,7 +18,7 @@ import type { AuthContext, AnonymousAuthContext } from './auth-context';
 export type { AuthContext, AnonymousAuthContext } from './auth-context';
 
 /** Audit-floor config. */
-export interface WithAuthAuditOpts {
+interface WithAuthAuditOpts {
   source: string;
   action: string;
   entityType: string;
@@ -31,7 +31,7 @@ export interface WithAuthAuditOpts {
   extra?: (args: { body: unknown; response: unknown }) => Record<string, unknown>;
 }
 
-export interface WithAuthOpts {
+interface WithAuthOpts {
   permission?: PermissionString;
   stepUp?: boolean;
   /** Allow unauthenticated calls (for /api/auth/signin itself, /api/health, webhook routes with their own signature gate, etc). */

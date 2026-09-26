@@ -5,9 +5,9 @@ import type { TechRecord } from '@/hooks/useTechLogs';
 import type { PackerRecord } from '@/hooks/usePackerLogs';
 
 /** Key under which the original domain record rides along on the mapped row. */
-export const STATION_SOURCE_RECORD_KEY = '__stationSourceRecord';
+const STATION_SOURCE_RECORD_KEY = '__stationSourceRecord';
 /** Key carrying which station produced the row (`tech` | `packer`). */
-export const STATION_SOURCE_KIND_KEY = '__stationSourceKind';
+const STATION_SOURCE_KIND_KEY = '__stationSourceKind';
 
 export type StationSourceKind = 'tech' | 'packer';
 

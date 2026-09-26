@@ -25,7 +25,7 @@ export const UNIT_ALLOCATIONS_GRID_CAPABILITIES: GridSurfaceCapabilities = {
 };
 
 /** Build the descriptor from a RESOLVED column list (post-visibility), so `contentMinWidthRem` and the TanStack defs follow the tracks that… */
-export function makeUnitAllocationsGridDescriptor(
+function makeUnitAllocationsGridDescriptor(
   columns: readonly UnitAllocationsGridColumn[],
 ): GridSurfaceDescriptor<UnitAllocationTableRow, UnitAllocationsGridColumn> {
   return makeGridSurfaceDescriptor<UnitAllocationTableRow, UnitAllocationsGridColumn>(

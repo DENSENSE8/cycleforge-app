@@ -25,7 +25,7 @@ export const radius = {
   full: '9999px',
 } as const;
 
-export type Radius = typeof radius;
+type Radius = typeof radius;
 
 /** Interaction/containment role → corner. */
 export type CornerRole =
@@ -87,7 +87,7 @@ export function cornerClass(role: CornerRole): string {
 }
 
 /** The ONE soft corner on an ops surface: */
-export const COMPOSER_SHELL_CORNER = 'rounded-2xl';
+const COMPOSER_SHELL_CORNER = 'rounded-2xl';
 
 /** Concentric inner corner: */
 export function nestedCorner(outer: CornerRole, padStep: number): CornerRole {

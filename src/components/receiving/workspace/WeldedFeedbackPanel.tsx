@@ -25,7 +25,7 @@ import {
 } from './inline-action-feedback-tone';
 
 /** How long each derived step holds before the ticker advances. */
-export const PHASE_STEP_MS = 2_200;
+const PHASE_STEP_MS = 2_200;
 
 /** Cycle a list of step strings, returning the one to paint. */
 function useCyclingStep(steps: string[], active: boolean): string {

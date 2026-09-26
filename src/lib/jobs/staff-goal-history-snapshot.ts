@@ -1,7 +1,7 @@
 import { snapshotStaffGoalHistoryForDate } from '@/lib/neon/staff-goals-queries';
 import { listSweepOrgIds } from '@/lib/cron/for-each-org';
 
-export interface StaffGoalHistorySnapshotPayload {
+interface StaffGoalHistorySnapshotPayload {
   loggedDate?: string;
 }
 

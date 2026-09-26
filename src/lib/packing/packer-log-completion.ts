@@ -5,7 +5,7 @@ export type PackerLogCompletionState = (typeof PACKER_LOG_COMPLETION_STATES)[num
 
 export const PACKER_LOG_CAPTURING = 'CAPTURING' as const;
 export const PACKER_LOG_COMPLETED = 'COMPLETED' as const;
-export const PACKER_LOG_CANCELLED = 'CANCELLED' as const;
+const PACKER_LOG_CANCELLED = 'CANCELLED' as const;
 
 export function isPackerLogCompletionState(value: unknown): value is PackerLogCompletionState {
   return typeof value === 'string' && (PACKER_LOG_COMPLETION_STATES as readonly string[]).includes(value);

@@ -15,9 +15,9 @@ export function daysUntilClaimDeadline(claimByDate: string, todayKey: string): n
   return Math.round((toUtcMs(claimByDate) - toUtcMs(todayKey)) / 86_400_000);
 }
 
-export type ClaimUrgency = 'expired' | 'due' | 'upcoming';
+type ClaimUrgency = 'expired' | 'due' | 'upcoming';
 
-export interface ClaimCountdownFace {
+interface ClaimCountdownFace {
   urgency: ClaimUrgency;
   daysRemaining: number;
   /** Compact cell text — `EXPIRED` / `3d`. Never a sentence; this sits in a grid row. */

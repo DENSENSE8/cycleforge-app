@@ -10,7 +10,7 @@ import { resolveAdminBulkAllocateRowActions } from '@/components/inventory/bulk-
 import type { CompoundRowAction } from '@/components/tables/compound/compound-row-model';
 import type { AllocationCandidateRow } from '@/lib/inventory/allocation-candidate-row';
 
-export interface AllocationCandidatesTableProps {
+interface AllocationCandidatesTableProps {
   rows: readonly AllocationCandidateRow[];
   /**
    * The page's per-row server action. Gated `orders.view` and followed by

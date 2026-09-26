@@ -8,7 +8,7 @@ import {
   type StationDepthName,
 } from '@/design-system/themes/station-depths';
 
-export const STATION_DEPTH_STORAGE_KEY = 'ds-station-depth';
+const STATION_DEPTH_STORAGE_KEY = 'ds-station-depth';
 
 export function applyStationDepth(depth: string | null | undefined): void {
   if (typeof document === 'undefined') return;

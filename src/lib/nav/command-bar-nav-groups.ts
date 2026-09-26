@@ -17,7 +17,7 @@ import {
   type SpineSectionId,
 } from '@/lib/sidebar-navigation';
 
-export type CommandBarNavBandId = SpineSectionId | 'pin' | 'footer';
+type CommandBarNavBandId = SpineSectionId | 'pin' | 'footer';
 
 type CommandBarNavPageRow = {
   type: 'page';
@@ -34,9 +34,9 @@ type CommandBarNavSubgroupRow = {
   icon: SidebarIconComponent;
 };
 
-export type CommandBarNavRow = CommandBarNavPageRow | CommandBarNavSubgroupRow;
+type CommandBarNavRow = CommandBarNavPageRow | CommandBarNavSubgroupRow;
 
-export type CommandBarNavGroup = {
+type CommandBarNavGroup = {
   id: CommandBarNavBandId;
   label: string;
   /** Section glyph for heading tint; null for pin / footer. */

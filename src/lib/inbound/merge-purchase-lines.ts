@@ -16,7 +16,7 @@ export interface EbayCandidate {
 }
 
 /** The signals that identify a Zoho PO for matching. */
-export interface ZohoPoSignals {
+interface ZohoPoSignals {
   zohoPurchaseOrderId: string;
   poNumber?: string | null;
   tracking?: string | null; // Zoho PO reference# carries tracking (this repo's inbound contract)
@@ -24,7 +24,7 @@ export interface ZohoPoSignals {
   notes?: string | null;
 }
 
-export type MergeMatchReason = 'tracking' | 'order_number';
+type MergeMatchReason = 'tracking' | 'order_number';
 
 /** eBay order ids are long; guard the order#-substring path against short collisions. */
 const MIN_ORDER_NUMBER_MATCH_LEN = 8;
@@ -63,7 +63,7 @@ const defaultDeps: MergeDeps = {
   recordEquivalence,
 };
 
-export interface MergeResult {
+interface MergeResult {
   zohoPurchaseOrderId: string;
   candidatesConsidered: number;
   matched: number;

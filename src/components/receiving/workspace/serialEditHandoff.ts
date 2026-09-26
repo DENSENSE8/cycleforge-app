@@ -1,5 +1,5 @@
 /** Cross-remount handoff for "Edit serial from a non-active accordion row". */
-export interface PendingSerialEdit {
+interface PendingSerialEdit {
   id?: number;
   serial_number: string;
   condition_grade?: string | null;

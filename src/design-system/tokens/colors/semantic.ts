@@ -127,4 +127,4 @@ export const semanticColors = {
   },
 } as const;
 
-export type SemanticColors = typeof semanticColors;
+type SemanticColors = typeof semanticColors;

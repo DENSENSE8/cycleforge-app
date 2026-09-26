@@ -62,7 +62,7 @@ interface CompoundCellColumn {
   slotStageLabels?: Readonly<{ done: string; pending: string }>;
 }
 
-export interface CompoundGridCellParams<C extends CompoundCellColumn> {
+interface CompoundGridCellParams<C extends CompoundCellColumn> {
   col: C;
   /** The MOUNTED model — sticky offsets derive from it, never from a constant. */
   columns: readonly C[];

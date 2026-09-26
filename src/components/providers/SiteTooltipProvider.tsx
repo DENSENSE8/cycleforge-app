@@ -42,7 +42,7 @@ type SiteTooltipSession = {
 };
 
 /** One request to show the bubble on an anchor. */
-export type SiteTooltipActivateArgs = {
+type SiteTooltipActivateArgs = {
   anchorId: string;
   value: string;
   getRect: () => DOMRect | null;
@@ -55,7 +55,7 @@ export type SiteTooltipActivateArgs = {
   force?: boolean;
 };
 
-export type SiteTooltipContextValue = {
+type SiteTooltipContextValue = {
   activate: (args: SiteTooltipActivateArgs) => void;
   scheduleClose: (anchorId: string) => void;
   closeNow: (anchorId: string) => void;

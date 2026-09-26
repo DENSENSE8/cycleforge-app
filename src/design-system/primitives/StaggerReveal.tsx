@@ -63,7 +63,7 @@ export const staggerRevealRiseItem: Variants = {
 const CONTAINER_TAGS = { ul: motion.ul, ol: motion.ol, div: motion.div } as const;
 const ITEM_TAGS = { li: motion.li, div: motion.div } as const;
 
-export interface StaggerRevealProps {
+interface StaggerRevealProps {
   children: ReactNode;
   /** Seconds between each child. */
   step?: number;
@@ -75,7 +75,7 @@ export interface StaggerRevealProps {
 }
 
 /** Cascade container. Pair its children with {@link StaggerRevealItem}. */
-export function StaggerReveal({ children, step, className, as = 'ul', replayKey }: StaggerRevealProps) {
+function StaggerReveal({ children, step, className, as = 'ul', replayKey }: StaggerRevealProps) {
   const Tag = CONTAINER_TAGS[as];
   return (
     <Tag
@@ -90,7 +90,7 @@ export function StaggerReveal({ children, step, className, as = 'ul', replayKey 
   );
 }
 
-export interface StaggerRevealItemProps {
+interface StaggerRevealItemProps {
   children: ReactNode;
   className?: string;
   /** Item element — defaults to `li`. */
@@ -98,7 +98,7 @@ export interface StaggerRevealItemProps {
 }
 
 /** A single cascading row — inherits the parent {@link StaggerReveal}'s timeline. */
-export function StaggerRevealItem({ children, className, as = 'li' }: StaggerRevealItemProps) {
+function StaggerRevealItem({ children, className, as = 'li' }: StaggerRevealItemProps) {
   const Tag = ITEM_TAGS[as];
   return (
     <Tag variants={staggerRevealRiseItem} className={className}>

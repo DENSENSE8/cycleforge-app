@@ -18,7 +18,7 @@ export type {
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
-export interface CreateLocationPayload {
+interface CreateLocationPayload {
   name: string;
   room?: string | null;
   description?: string | null;
@@ -31,7 +31,7 @@ export interface CreateLocationPayload {
   parentId?: number | null;
 }
 
-export interface BulkBinRangePayload {
+interface BulkBinRangePayload {
   room: string;
   rowLabel: string;
   colStart: number;
@@ -194,7 +194,7 @@ async function postReorderRooms(order: string[]): Promise<{ updated: number }> {
 
 // ─── Hook ───────────────────────────────────────────────────────────────────
 
-export interface UseLocationsResult {
+interface UseLocationsResult {
   locations: LocationRecord[];
   /** Room-level locations only (no row/col). */
   rooms: LocationRecord[];

@@ -17,7 +17,7 @@ import {
   Wrench,
 } from '@/components/Icons';
 
-export type AdminSection =
+type AdminSection =
   | 'overview'
   | 'goals' | 'staff_schedule' | 'connections' | 'fba'
   | 'reason_codes' | 'locations' | 'repair_issues' | 'favorites'
@@ -26,9 +26,9 @@ export type AdminSection =
   | 'station_photos'
   | 'logs' | 'system_sync';
 
-export type AdminGroup = 'Performance' | 'Operations' | 'Data & catalogs' | 'System';
+type AdminGroup = 'Performance' | 'Operations' | 'Data & catalogs' | 'System';
 
-export interface AdminSectionOption {
+interface AdminSectionOption {
   value: AdminSection;
   label: string;
   description: string;
@@ -64,7 +64,7 @@ export const ADMIN_SECTION_OPTIONS: AdminSectionOption[] = [
 ];
 
 /** Legacy section slugs kept for redirects from bookmarks and deep links. */
-export const ADMIN_SECTION_ALIASES: Record<string, AdminSection | 'settings'> = {
+const ADMIN_SECTION_ALIASES: Record<string, AdminSection | 'settings'> = {
   staff: 'staff_schedule',
   integrations: 'settings',
   access: 'settings',

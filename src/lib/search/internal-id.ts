@@ -8,7 +8,7 @@ import {
 } from '@/lib/barcode-routing';
 import { formatSearchSel } from '@/lib/search/search-selection';
 
-export interface InternalIdKeys {
+interface InternalIdKeys {
   receivingIds: number[];
   receivingLineIds: number[];
   shipmentIds: number[];

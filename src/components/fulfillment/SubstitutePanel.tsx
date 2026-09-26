@@ -13,13 +13,13 @@ import { focusRing } from '@/design-system/tokens/focus-ring';
 
 /** Scan-anchored substitution action for the testing / packing card. */
 
-export interface SubstitutePayload {
+interface SubstitutePayload {
   substituteSerial: string;
   reasonCode: string;
   note: string;
 }
 
-export interface SubstitutePanelProps {
+interface SubstitutePanelProps {
   orderLabel: string;
   /** What was ordered / originally allocated. */
   original: { sku: string | null; condition?: string | null; serial?: string | null };

@@ -11,9 +11,9 @@ import type { EntityThread } from './types';
 
 // NOTE: the helpdesk / support-ticket / zendesk-links modules are server-only, so they are lazily imported *inside* the default dep impls…
 
-export type EscalateMode = 'internal' | 'zendesk';
+type EscalateMode = 'internal' | 'zendesk';
 
-export interface EscalateThreadInput {
+interface EscalateThreadInput {
   orgId: OrgId;
   threadId: number;
   mode: EscalateMode;
@@ -52,7 +52,7 @@ export interface EscalateThreadDeps {
   }) => ReturnType<typeof attachSupportTicket>;
 }
 
-export const defaultEscalateDeps: EscalateThreadDeps = {
+const defaultEscalateDeps: EscalateThreadDeps = {
   loadThread: (orgId, threadId) => getThread(orgId, threadId),
   createInternalTicket: async ({ orgId, entityType, entityId, subject, staffId }) => {
     const { upsertSupportTicket } = await import('@/lib/support/tickets');
@@ -107,7 +107,7 @@ export const defaultEscalateDeps: EscalateThreadDeps = {
   attach: (args) => attachSupportTicket(args),
 };
 
-export type EscalateThreadResult =
+type EscalateThreadResult =
   | { ok: true; thread: EntityThread; supportTicketId: number; created: boolean; idempotent: boolean }
   | { ok: false; status: 400 | 404 | 409; error: string };
 
@@ -174,7 +174,7 @@ export async function escalateThreadToTicket(
 }
 
 /** Reverse lookup: the entity thread linked to a support ticket, if any. */
-export async function resolveThreadForTicket(
+async function resolveThreadForTicket(
   orgId: OrgId,
   supportTicketId: number,
   deps: Pick<ThreadsDeps, 'runQuery'> = { runQuery: (o, fn) => withTenantConnection(o, (c) => fn(c)) },

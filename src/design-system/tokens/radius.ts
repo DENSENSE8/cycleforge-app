@@ -25,7 +25,7 @@ export const radius = {
   full: '9999px',
 } as const;
 
-export type Radius = typeof radius;
+type Radius = typeof radius;
 
 /** Interaction/containment role → corner. */
 export type CornerRole =
@@ -107,7 +107,7 @@ export const SEGMENTED_CONTROL_CORNER = 'rounded-lg';
 export const SEGMENTED_CONTROL_FACE_CORNER = 'rounded-md';
 
 
-/** MasterNav destination rows and the open-spine labelled Search face. */
+/** Nav-map destination rows (mobile nav drawer). */
 export const SPINE_ROW_CORNER = 'rounded';
 
 /** Floating menu / dropdown / popover panel — the 8px control rung the scale already names for "soft menus / dropdown chrome". */
@@ -130,7 +130,7 @@ export const DATA_TABLE_TOOLBAR_CORNER = 'rounded-lg';
 export const TRIAGE_PANEL_INNER_CORNER = 'rounded-none';
 
 /** ── The mobile family (operator 2026-09-15) ────────────────────────────────── */
-export const MOBILE_CARD_CORNER = 'rounded-2xl';
+const MOBILE_CARD_CORNER = 'rounded-2xl';
 /** A row inside a {@link MOBILE_CARD_CORNER} card — concentric one rung in. */
 export const MOBILE_ROW_CORNER = 'rounded-xl';
 /** Controls on a phone surface — fields, chips, segmented faces. */

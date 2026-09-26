@@ -18,7 +18,7 @@ function claimErrorText(data: unknown, fallback: string): string {
   return fallback;
 }
 
-export interface ComposerTicketClaim {
+interface ComposerTicketClaim {
   /** True when the composer's Ticket tab is a CLAIM (no linked ticket yet). */
   isClaim: boolean;
   /** Template subject — displayed above the draft, not edited in the dock. */

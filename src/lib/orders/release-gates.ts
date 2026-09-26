@@ -5,10 +5,10 @@
  */
 
 /** Gate ids, in the order they are presented to the operator. */
-export const RELEASE_GATE_IDS = ['G1', 'G2', 'G3', 'G4'] as const;
+const RELEASE_GATE_IDS = ['G1', 'G2', 'G3', 'G4'] as const;
 export type ReleaseGateId = (typeof RELEASE_GATE_IDS)[number];
 
-export const RELEASE_GATE_LABEL: Record<ReleaseGateId, string> = {
+const RELEASE_GATE_LABEL: Record<ReleaseGateId, string> = {
   G1: 'Identity triangle',
   G2: 'Documents',
   G3: 'Shipping label',
@@ -129,7 +129,7 @@ export function evaluateReleaseGates(facts: ReleaseGateFacts): EvaluatedReleaseG
 }
 
 /** Wire/DB state. NULL reads as released — see the migration's header. */
-export type OrderReleaseState = 'caged' | 'released';
+type OrderReleaseState = 'caged' | 'released';
 
 /**
  * Is this order in the live working set?

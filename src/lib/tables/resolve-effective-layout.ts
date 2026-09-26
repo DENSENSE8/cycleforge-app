@@ -16,7 +16,7 @@ import {
 import { ensureLineMoneySubtitle } from '@/lib/tables/slot-table-line-money';
 import { ensureLineQtySubtitle } from '@/lib/tables/slot-table-line-qty';
 
-export interface ResolveEffectiveLayoutArgs {
+interface ResolveEffectiveLayoutArgs {
   /** Code-owned default for this tableId. Must be catalog-valid. */
   productDefault: SlotLayout;
   /** `organizations.settings.tableLayouts[tableId]`, already shape-read. */

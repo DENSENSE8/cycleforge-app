@@ -74,7 +74,7 @@ export type PermissionAction =
   | 'cycle_count.approve';
 
 export const ALL_PERMISSIONS: ReadonlySet<PermissionString> = REGISTRY_ALL_PERMISSIONS;
-export const STEP_UP_PERMISSIONS: ReadonlySet<PermissionString> = REGISTRY_STEP_UP_PERMISSIONS;
+const STEP_UP_PERMISSIONS: ReadonlySet<PermissionString> = REGISTRY_STEP_UP_PERMISSIONS;
 export const PERMISSION_CATEGORIES = REGISTRY_PERMISSION_CATEGORIES;
 
 export function requiresStepUp(perm: PermissionString): boolean {

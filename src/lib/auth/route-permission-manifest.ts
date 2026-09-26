@@ -5,7 +5,7 @@
 
 import manifestJson from '../../../docs/security/route-permissions.json';
 
-export interface ManifestRoute {
+interface ManifestRoute {
   path: string;
   methods: string[];
   gate: string;
@@ -77,6 +77,6 @@ export function manifestSummary(): Manifest['summary'] {
   return manifest.summary;
 }
 
-export function manifestGeneratedAt(): string {
+function manifestGeneratedAt(): string {
   return manifest.generatedAt;
 }

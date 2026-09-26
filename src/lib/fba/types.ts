@@ -45,12 +45,12 @@ export interface ShipmentCardItem {
 
 /* ── Tracking ────────────────────────────────────────────────────── */
 
-export interface TrackingAllocation {
+interface TrackingAllocation {
   shipment_item_id: number;
   qty: number;
 }
 
-export interface TrackingRow {
+interface TrackingRow {
   link_id: number;
   tracking_number_raw: string;
   carrier: string;

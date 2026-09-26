@@ -1,6 +1,6 @@
 // Single source of truth for unit repair-history OUTCOME tones.
 
-export type RepairOutcome = 'completed' | 'in_progress' | 'pending' | 'failed' | 'scrapped';
+type RepairOutcome = 'completed' | 'in_progress' | 'pending' | 'failed' | 'scrapped';
 
 const TONES: Record<RepairOutcome, string> = {
   completed: 'bg-emerald-50 text-emerald-700',

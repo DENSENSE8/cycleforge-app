@@ -6,14 +6,14 @@ import type { OrgId } from '@/lib/tenancy/constants';
 
 /** Per-serial repair history (unit_repairs) + the failure modes each repair resolves (repair_failure_resolutions). */
 
-export interface RepairPart {
+interface RepairPart {
   sku?: string;
   qty?: number;
   cost_cents?: number;
   note?: string;
 }
 
-export interface UnitRepairRow {
+interface UnitRepairRow {
   id: number;
   serial_unit_id: number;
   status: string;

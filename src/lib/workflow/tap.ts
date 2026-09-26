@@ -49,7 +49,7 @@ export interface WorkflowTapArgs {
 }
 
 /** Why a tap did not land as an engine step. */
-export type WorkflowTapDropReason =
+type WorkflowTapDropReason =
   /** Unit has no workflow row and this event can't enroll it (non-receiving event, or receiving with no org). */
   | 'unenrolled'
   /** unit_received with an org, but the org has no active workflow / entry node. */

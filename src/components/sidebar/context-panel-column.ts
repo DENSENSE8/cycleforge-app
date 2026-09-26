@@ -37,13 +37,13 @@ export const CONTEXT_PANEL_COLLAPSE = {
  * @deprecated Floating-island gutters retired 2026-08-03 (flush planes).
  * @deprecated Floating-island gutters retired 2026-08-03 (flush planes). Kept
  */
-export const CONTEXT_PANEL_OUTER_MARGIN = 'm-2';
+const CONTEXT_PANEL_OUTER_MARGIN = 'm-2';
 
 /**
  * @deprecated See {@link CONTEXT_PANEL_OUTER_MARGIN}. Unbox flush push columns
  * no longer use vertical outer gutters.
  */
-export const CONTEXT_PANEL_OUTER_MARGIN_Y = 'my-2';
+const CONTEXT_PANEL_OUTER_MARGIN_Y = 'my-2';
 
 /** Parked expand strip when the context panel is collapsed. */
 export const CONTEXT_PANEL_COLLAPSE_STRIP_CLASS = cn(

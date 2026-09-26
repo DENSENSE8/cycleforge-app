@@ -4,7 +4,7 @@ import { parseGs1DigitalLink } from '@/lib/gs1/parser';
 import { parseGs1AiPayload } from '@/lib/scan-resolver';
 import { splitSerials } from './serial-list';
 
-export type SerialRead =
+type SerialRead =
   /** A serial to write. `from` says how it was found (a label prefix or GS1 AI stripped). */
   | { kind: 'serial'; serial: string; from: 'plain' | 'labelled' | 'gs1' }
   /** A link that carries a serial — in a query param or as GS1 Digital Link AI 21. */
@@ -16,12 +16,12 @@ export type SerialRead =
 export type SerialRejectReason = 'empty' | 'too-short' | 'too-long' | 'not-a-serial';
 
 /** The shortest string worth writing as a serial. */
-export const SERIAL_MIN_LENGTH = 3;
+const SERIAL_MIN_LENGTH = 3;
 /**
  * The longest read taken as a serial. Real serials run 8–20 characters; the
  * line field allows 120, but a 65+ character read is a sentence or a payload.
  */
-export const SERIAL_MAX_LENGTH = 64;
+const SERIAL_MAX_LENGTH = 64;
 
 /** Query params a manufacturer's QR puts its serial in, in the order we trust them. */
 const SERIAL_PARAMS = ['sn', 'serial', 'serialnumber', 'serial_number', 'serialno', 'serial_no', 's'] as const;

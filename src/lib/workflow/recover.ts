@@ -4,14 +4,14 @@ import { withTenantTransaction } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';
 import { emitWorkflowEvent } from './events';
 
-export interface RecoverItemArgs {
+interface RecoverItemArgs {
   orgId: OrgId;
   serialUnitId: number;
   actorStaffId?: number | null;
   notes?: string | null;
 }
 
-export type RecoverItemResult =
+type RecoverItemResult =
   | {
       ok: true;
       serialUnitId: number;

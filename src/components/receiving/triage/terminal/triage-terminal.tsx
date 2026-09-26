@@ -3,7 +3,7 @@
 import { Check, PackageCheck } from '@/components/Icons';
 import type { TerminalActionVm } from '@/lib/station-terminal';
 
-export interface TriageTerminalInput {
+interface TriageTerminalInput {
   triageSaved: boolean;
   savingTriage: boolean;
   onSaveForUnbox: () => void | Promise<void>;

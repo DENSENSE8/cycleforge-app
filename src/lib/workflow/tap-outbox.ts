@@ -18,7 +18,7 @@ export interface TapOutboxDeps {
   markFailed(id: number, reason: string): Promise<void>;
 }
 
-export async function recordTapIntent(input: TapIntentInput): Promise<number | null> {
+async function recordTapIntent(input: TapIntentInput): Promise<number | null> {
   const r = await pool.query<{ id: string }>(
     `INSERT INTO workflow_tap_outbox (
        organization_id, serial_unit_id, event_type, payload, status
@@ -31,7 +31,7 @@ export async function recordTapIntent(input: TapIntentInput): Promise<number | n
   return row ? Number(row.id) : null;
 }
 
-export async function markTapIntentLanded(id: number): Promise<void> {
+async function markTapIntentLanded(id: number): Promise<void> {
   await pool.query(
     `UPDATE workflow_tap_outbox
         SET status = 'LANDED', updated_at = now()

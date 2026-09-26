@@ -1,8 +1,8 @@
 /** scan-history-route — maps a phone scan's `routed_to` (a /m/* mobile path) to the equivalent DESKTOP page, plus a human label. */
 
-export type ScanHandleType = 'receiving' | 'receiving-line' | 'serial-unit';
+type ScanHandleType = 'receiving' | 'receiving-line' | 'serial-unit';
 
-export interface ScanHandleRoute {
+interface ScanHandleRoute {
   type: ScanHandleType;
   /** Numeric id extracted from the mobile route. */
   id: string;
@@ -42,7 +42,7 @@ const HANDLE_PATTERNS: Array<{
  * SQL LIKE prefixes for the receiving handle routes — used by the history
  * endpoint to filter `mobile_scan_events.routed_to` to receiving scans only.
  */
-export const RECEIVING_ROUTE_PREFIXES = ['/m/r/%', '/m/l/%', '/m/u/%'] as const;
+const RECEIVING_ROUTE_PREFIXES = ['/m/r/%', '/m/l/%', '/m/u/%'] as const;
 
 /** Returns the desktop mapping for a receiving handle route, or null. */
 export function mapScanToDesktopRoute(routedTo: string | null | undefined): ScanHandleRoute | null {

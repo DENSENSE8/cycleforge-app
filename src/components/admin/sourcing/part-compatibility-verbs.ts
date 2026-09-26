@@ -3,7 +3,7 @@
 import type { CompoundRowAction } from '@/components/tables/compound/compound-row-model';
 import type { PartCompatibilityEdgeRow } from '@/lib/sourcing/part-compatibility-row';
 
-export interface PartCompatibilityVerbHandlers {
+interface PartCompatibilityVerbHandlers {
   onRemove: (row: PartCompatibilityEdgeRow) => void;
 }
 

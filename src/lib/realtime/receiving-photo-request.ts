@@ -5,7 +5,7 @@ import { safeRandomUUID } from '@/lib/safe-uuid';
 import { effectiveReceivingPhotoStage } from '@/lib/receiving/photo-scope';
 import type { ReceivingPhotoStage } from '@/lib/receiving/photo-intent';
 
-export interface ReceivingPhotoRequestClient {
+interface ReceivingPhotoRequestClient {
   channels: {
     get: (name: string) => {
       publish: (event: string, data: Record<string, unknown>) => Promise<void>;

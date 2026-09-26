@@ -3,7 +3,7 @@
 import { ByBinView } from '@/components/inventory/ByBinView';
 import { InventoryDetailPanelShell } from './InventoryDetailPanelShell';
 
-export interface BinDetailsPanelProps {
+interface BinDetailsPanelProps {
     barcode: string;
     onClose?: () => void;
 }

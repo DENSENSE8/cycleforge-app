@@ -8,10 +8,10 @@ import { readOrgFeatureFlag } from '../feature-flags';
 import { DOGFOOD_ORG_ID, type OrgId } from '../tenancy/constants';
 
 /** Env var that flips Studio entitlement enforcement from dormant → live. */
-export const STUDIO_ENFORCEMENT_ENV = 'STUDIO_ENTITLEMENT_ENFORCED';
+const STUDIO_ENFORCEMENT_ENV = 'STUDIO_ENTITLEMENT_ENFORCED';
 
 /** Per-org override flag name in `organization_feature_flags`. */
-export const STUDIO_ORG_FLAG = 'studio';
+const STUDIO_ORG_FLAG = 'studio';
 
 /** The dogfood / internal org that runs the live deployment. */
 export { DOGFOOD_ORG_ID };
@@ -20,7 +20,7 @@ export { DOGFOOD_ORG_ID };
  * True only when `STUDIO_ENTITLEMENT_ENFORCED` is explicitly truthy. Default
  * OFF — when off, the entire gate is a pass-through.
  */
-export function studioEntitlementEnforced(): boolean {
+function studioEntitlementEnforced(): boolean {
   const v = (process.env[STUDIO_ENFORCEMENT_ENV] ?? '').toLowerCase().trim();
   return v === '1' || v === 'true' || v === 'on' || v === 'yes';
 }

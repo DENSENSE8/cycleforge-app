@@ -4,7 +4,7 @@ import { tenantQuery } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';
 import { MUTATION_KINDS, type MutationTrustClass } from '@/lib/surfaces/registry';
 
-export interface MutationKindStat {
+interface MutationKindStat {
   mutationKind: string;
   /** Registry trust class, or 'unknown' for a kind no longer in the registry. */
   trust: MutationTrustClass | 'unknown';

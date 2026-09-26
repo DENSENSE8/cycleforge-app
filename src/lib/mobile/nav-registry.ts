@@ -15,7 +15,7 @@ import type { SidebarIconComponent } from '@/lib/sidebar-navigation';
  * A row INSIDE a group.
  * point** — operator ruling 2026-09-14, *"icon at the parent level only"*. The
  */
-export type MobileNavChild = {
+type MobileNavChild = {
   kind: 'leaf';
   id: string;
   label: string;
@@ -25,12 +25,12 @@ export type MobileNavChild = {
 };
 
 /** An L0 row — a parent in its own right, so it wears a glyph. */
-export type MobileNavLeaf = MobileNavChild & {
+type MobileNavLeaf = MobileNavChild & {
   icon: SidebarIconComponent;
 };
 
 /** A LANE. Always a parent, so the glyph is required. */
-export type MobileNavGroup = {
+type MobileNavGroup = {
   kind: 'group';
   id: string;
   label: string;
@@ -40,7 +40,7 @@ export type MobileNavGroup = {
   children: readonly MobileNavChild[];
 };
 
-export type MobileNavItem = MobileNavLeaf | MobileNavGroup;
+type MobileNavItem = MobileNavLeaf | MobileNavGroup;
 
 // Lane faces come from `@/lib/nav/lanes` — the SAME registry the desk spine groups by.
 const OUTBOUND = domainLane('fulfillment');

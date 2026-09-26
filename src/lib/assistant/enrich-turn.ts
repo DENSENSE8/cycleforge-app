@@ -9,7 +9,7 @@ import {
 } from '@/lib/ai/ops-assistant';
 import type { OrgId } from '@/lib/tenancy/constants';
 
-export type EnrichTurnResult =
+type EnrichTurnResult =
   | { kind: 'local_ops'; resolution: LocalAiResolution }
   | { kind: 'enriched'; userMessage: string; intents: string[] };
 
@@ -61,6 +61,6 @@ export function formatLocalOpsReply(resolution: LocalAiResolution): string {
 }
 
 /** Optional structured block for persistence / debugging. */
-export function formatLocalOpsContext(resolution: LocalAiResolution): string {
+function formatLocalOpsContext(resolution: LocalAiResolution): string {
   return formatAnalysisForPrompt(resolution.analysis);
 }

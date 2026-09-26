@@ -5,7 +5,7 @@ import { recordAudit, AUDIT_ACTION, AUDIT_ENTITY } from '@/lib/audit-logs';
 import { publishOpsPlanUpdated } from '@/lib/realtime/publish';
 import type { AuthContext } from '@/lib/auth/auth-context';
 
-export const OPS_PLANS_AUDIT_SOURCE = 'ops-plans-api';
+const OPS_PLANS_AUDIT_SOURCE = 'ops-plans-api';
 
 export function mapOpsPlanError(err: unknown): { status: number; error: string } {
   const message = err instanceof Error ? err.message : String(err);

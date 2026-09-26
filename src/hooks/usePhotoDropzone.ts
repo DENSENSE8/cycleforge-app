@@ -11,7 +11,7 @@ import {
 } from 'react';
 
 /** Generic image dropzone — drag-drop, click-to-pick, OR **paste**. */
-export interface UsePhotoDropzone {
+interface UsePhotoDropzone {
   isDragging: boolean;
   rootProps: {
     onDragEnter: (e: DragEvent) => void;

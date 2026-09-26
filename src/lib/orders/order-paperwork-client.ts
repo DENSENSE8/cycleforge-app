@@ -42,8 +42,8 @@ export interface OrderManualsResponse {
   manuals: OrderManual[];
 }
 
-export const orderDocumentsKey = (orderId: number) => ['order-documents', orderId] as const;
-export const orderManualsKey = (orderId: number) => ['order-manuals', orderId] as const;
+const orderDocumentsKey = (orderId: number) => ['order-documents', orderId] as const;
+const orderManualsKey = (orderId: number) => ['order-manuals', orderId] as const;
 export const orderLabelSummaryKey = (orderId: number) => ['order-label-summary', orderId] as const;
 
 async function readJson<T>(res: Response, fallback: string): Promise<T> {

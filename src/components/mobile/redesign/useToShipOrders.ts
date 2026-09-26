@@ -14,7 +14,7 @@ import type { WorkOrderRow } from '@/components/work-orders/types';
 import type { ShippedOrder } from '@/types/orders';
 
 /** Phone list ceiling — the desk paginates; this is one scroll of the queue. */
-export const MOBILE_TO_SHIP_LIST_LIMIT = 150;
+const MOBILE_TO_SHIP_LIST_LIMIT = 150;
 
 export type MobileToShipFeed = 'unshipped' | 'pending';
 

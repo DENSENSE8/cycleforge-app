@@ -37,7 +37,7 @@ export function parseUnitId(
 }
 
 /** Human-readable breakdown of a printed unit id, for UI display (e.g. */
-export function describeUnitId(
+function describeUnitId(
   unitId: string,
 ):
   | { baseSku: string; week: number; year: number; seq: number; display: string }

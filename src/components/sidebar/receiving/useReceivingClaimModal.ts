@@ -8,7 +8,7 @@ import { toast } from '@/lib/toast';
 import { refreshDomains } from '@/lib/refresh/bus';
 import { REFRESH_BUNDLES } from '@/lib/refresh/domains';
 
-export interface ReceivingClaimModalController {
+interface ReceivingClaimModalController {
   /** The row whose claim modal is open, or null when closed. */
   claimRow: ReceivingLineRow | null;
   /** Open the claim modal for a row. */

@@ -145,7 +145,7 @@ function toRecord(row: Row): LabelPurchaseRecord {
   };
 }
 
-export const defaultLedgerDeps: LabelPurchaseLedgerDeps = {
+const defaultLedgerDeps: LabelPurchaseLedgerDeps = {
   claim: async ({ orgId, orderId, clientEventId, rateId, labelFormat, staffId, purpose, orderRef, shipTo }) => {
     const res = await tenantQuery<{ id: string }>(
       orgId,
@@ -195,7 +195,7 @@ export const defaultLedgerDeps: LabelPurchaseLedgerDeps = {
   },
 };
 
-export async function findLabelPurchase(
+async function findLabelPurchase(
   orgId: OrgId,
   clientEventId: string,
 ): Promise<LabelPurchaseRecord | null> {

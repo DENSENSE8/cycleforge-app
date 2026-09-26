@@ -42,7 +42,7 @@ export interface KioskVisitDetail {
   provenance: VisitRepairProvenance[];
 }
 
-export interface KioskVisitListResult {
+interface KioskVisitListResult {
   visits: KioskVisitRow[];
   nextCursor: string | null;
   /** The strict search found nothing; these rows are near-name matches. */
@@ -57,7 +57,7 @@ export interface KioskVisitEditInput {
 }
 
 /** Errors the face SHOWS. Anything else is "could not …" — never a raw body. */
-export class KioskHistoryError extends Error {
+class KioskHistoryError extends Error {
   readonly code: string;
   readonly status: number;
   constructor(code: string, status: number, message: string) {

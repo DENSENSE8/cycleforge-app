@@ -16,7 +16,7 @@ const LINK_JOINS = `
 const CLAIM_EVIDENCE_ROLE: PhotoLinkRole = 'claim_evidence';
 const INSURANCE_SHARE_ROLE: PhotoLinkRole = 'insurance_share';
 
-export interface ReceivingPhotoListRow {
+interface ReceivingPhotoListRow {
   id: number;
   entityType: string;
   entityId: number;

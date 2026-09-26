@@ -80,7 +80,7 @@ export const PHOTO_STORAGE_PROVIDERS = [
 
 export type PhotoStorageProvider = (typeof PHOTO_STORAGE_PROVIDERS)[number];
 
-export interface PhotoRecord {
+interface PhotoRecord {
   id: number;
   organizationId: string;
   photoType: string | null;
@@ -90,7 +90,7 @@ export interface PhotoRecord {
   createdAt: string;
 }
 
-export interface PhotoListItem extends PhotoRecord {
+interface PhotoListItem extends PhotoRecord {
   /** Resolved display URL — content route or legacy normalized URL. */
   displayUrl: string;
   thumbUrl: string;

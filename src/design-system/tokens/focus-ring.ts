@@ -1,7 +1,7 @@
 /** Focus-ring recipes — the single source of truth for keyboard/pointer focus affordance (focus-ring axis of the display-convergence campaign). */
 
-export type FocusArchetype = 'field' | 'control' | 'wrapper' | 'cell' | 'halo' | 'grouped';
-export type FocusTone = 'accent' | 'danger' | 'warning' | 'success' | 'neutral';
+type FocusArchetype = 'field' | 'control' | 'wrapper' | 'cell' | 'halo' | 'grouped';
+type FocusTone = 'accent' | 'danger' | 'warning' | 'success' | 'neutral';
 
 const FIELD_BASE = 'outline-none focus:ring-2';
 const FIELD: Record<FocusTone, string> = {

@@ -21,7 +21,7 @@ export function readMigratedItem(
   }
 }
 
-export function writeStorageItem(storage: Storage, newKey: string, value: string): void {
+function writeStorageItem(storage: Storage, newKey: string, value: string): void {
   try {
     storage.setItem(newKey, value);
   } catch {
@@ -29,7 +29,7 @@ export function writeStorageItem(storage: Storage, newKey: string, value: string
   }
 }
 
-export function removeMigratedItem(
+function removeMigratedItem(
   storage: Storage,
   newKey: string,
   legacyKey: string,

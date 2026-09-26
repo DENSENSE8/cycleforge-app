@@ -4,9 +4,9 @@ import {
   readZohoPoLastModified,
 } from '@/lib/receiving/zoho-po-stamp';
 
-export type PoHeaderNotesZohoSkip = 'no_zoho_link' | 'po_not_editable' | 'stale';
+type PoHeaderNotesZohoSkip = 'no_zoho_link' | 'po_not_editable' | 'stale';
 
-export interface SyncPoHeaderNotesResult {
+interface SyncPoHeaderNotesResult {
   ok: boolean;
   skipped?: PoHeaderNotesZohoSkip;
   patched?: boolean;

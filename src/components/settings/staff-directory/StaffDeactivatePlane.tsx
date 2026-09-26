@@ -6,7 +6,7 @@ import { Button } from '@/design-system/primitives/Button';
 import { DeskStageOverlay } from '@/design-system/components/DeskStageOverlay';
 import type { StaffDirectoryRow } from '@/lib/staff/staff-directory-row';
 
-export interface StaffDeactivatePlaneProps {
+interface StaffDeactivatePlaneProps {
   row: StaffDirectoryRow | null;
   busy?: boolean;
   onClose: () => void;

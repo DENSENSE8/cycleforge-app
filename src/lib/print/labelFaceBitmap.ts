@@ -14,7 +14,7 @@ import {
   type LabelFaceModel,
 } from '@/lib/print/labelFace';
 
-export type PrintLabelRawSource = {
+type PrintLabelRawSource = {
   face?: LabelFaceModel;
   name?: string;
   hri?: string;

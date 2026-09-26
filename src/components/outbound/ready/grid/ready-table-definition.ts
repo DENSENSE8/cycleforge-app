@@ -6,7 +6,7 @@ import { READY_SHEET_COLUMNS, type ReadyGridColumn } from './ready-grid-layout';
 import { parseTableDefinition } from '@/lib/tables/table-definition';
 import { READY_GRID_CAPABILITIES, makeReadyGridDescriptor } from './ready-grid-descriptor';
 
-export const READY_TABLE_DEFINITION = parseTableDefinition({
+const READY_TABLE_DEFINITION = parseTableDefinition({
   id: 'outbound.ready',
   tableId: 'ready',
   entityFamily: 'ready',

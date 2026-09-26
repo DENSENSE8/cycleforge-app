@@ -81,7 +81,7 @@ export type UpdateTaskMediaLinkResult =
   | { ok: false; reason: TaskMediaLinkRefusal };
 
 /** Caption rule: trimmed, and blank means none. Length is the route schema's gate. */
-export function normalizeMediaLinkTitle(raw: string | null | undefined): string | null {
+function normalizeMediaLinkTitle(raw: string | null | undefined): string | null {
   const title = raw?.trim() ?? '';
   return title === '' ? null : title;
 }
@@ -191,7 +191,7 @@ export async function deleteTaskMediaLink(
 // ── row mapping ─────────────────────────────────────────────────────────────
 
 /** The columns `task-media-links-db.ts` selects. Kept here so the mapper is testable. */
-export interface TaskMediaLinkSqlRow {
+interface TaskMediaLinkSqlRow {
   id: unknown;
   assignment_id: unknown;
   kind: unknown;

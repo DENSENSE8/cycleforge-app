@@ -13,7 +13,7 @@ import {
 export type ArrivalScanStatus = 'arrived' | 'known' | 'refused' | 'err';
 
 /** What each outcome says, and how loud. */
-export const ARRIVAL_TAPE_LABEL: StationTapeLabel<ArrivalScanStatus> = {
+const ARRIVAL_TAPE_LABEL: StationTapeLabel<ArrivalScanStatus> = {
   arrived: { verb: 'Arrived', tone: 'ok' },
   known: { verb: 'Already arrived', tone: 'warn' },
   refused: { verb: 'Not an arrival', tone: 'bad' },
@@ -52,7 +52,7 @@ const trimmed = (value: unknown): string | null => {
 };
 
 /** The INTAKE class a carton's server facts name — the arrival-triage answer to "is it a return? */
-export function arrivalIntakeClass(
+function arrivalIntakeClass(
   row: Pick<ReceivingLineRow, 'carton_intake_type' | 'zendesk_ticket' | 'zoho_purchaseorder_id'>,
 ): IntakeClass | null {
   const type = trimmed(row.carton_intake_type)?.toUpperCase() ?? null;

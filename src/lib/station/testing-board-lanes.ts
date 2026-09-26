@@ -6,7 +6,7 @@ import type { LabelTone } from '@/lib/labels/types';
 export type TestingHistoryLane = 'PASS' | 'FAIL' | 'RETEST';
 export type TestingLaneIconKey = 'check' | 'alert' | 'repeat';
 
-export interface TestingLaneDescriptor {
+interface TestingLaneDescriptor {
   id: TestingHistoryLane;
   iconKey: TestingLaneIconKey;
   iconClass: string;
@@ -18,7 +18,7 @@ export const TESTING_HISTORY_BOARD_LANES: readonly TestingLaneDescriptor[] = [
   { id: 'RETEST', iconKey: 'repeat', iconClass: 'text-amber-500' },
 ];
 
-export interface TestingLaneMeta {
+interface TestingLaneMeta {
   label: string;
   description: string;
   tone: LabelTone;
@@ -31,7 +31,7 @@ export const TESTING_HISTORY_STATE_META: Record<TestingHistoryLane, TestingLaneM
   RETEST: { label: 'Re-test', description: 'Needs re-test / still pending.', tone: 'amber', dot: TONE_CLASSES.amber.dot },
 };
 
-export interface TestingLaneInput {
+interface TestingLaneInput {
   qa_status?: string | null;
   needs_test?: boolean | null;
 }

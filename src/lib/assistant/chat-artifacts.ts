@@ -1,9 +1,9 @@
 import type { AiStructuredAnswer } from '@/lib/ai/types';
 import { exportFilename, serializeRows } from '@/lib/tables/export/serialize';
 
-export type AssistantArtifactCell = string | number | boolean | null;
+type AssistantArtifactCell = string | number | boolean | null;
 
-export interface AssistantTableArtifact {
+interface AssistantTableArtifact {
   id: string;
   title: string;
   columns: string[];

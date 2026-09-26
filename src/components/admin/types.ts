@@ -29,7 +29,7 @@ export interface StaffAvailabilityRule {
   deletedAt: string | null;
 }
 
-export interface Order {
+interface Order {
   id: number;
   ship_by_date: string | null;
   order_id: string;

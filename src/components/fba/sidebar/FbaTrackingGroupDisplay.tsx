@@ -9,7 +9,7 @@ import { TrackingChip, getLast8 } from '@/components/ui/CopyChip';
 import type { StationTheme } from '@/utils/staff-colors';
 import type { ShipmentCardItem, TrackingBundle } from '@/lib/fba/types';
 
-export interface FbaTrackingGroupDisplayProps {
+interface FbaTrackingGroupDisplayProps {
   bundle: TrackingBundle;
   items: ShipmentCardItem[];
   stationTheme: StationTheme;

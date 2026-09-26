@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 
-export interface DeferredQtyInputProps {
+interface DeferredQtyInputProps {
   /** Committed value. The input shows this when unfocused and reverts to it on invalid blur. */
   value: number;
   /** Called only when user commits a valid value that differs from the current one. */

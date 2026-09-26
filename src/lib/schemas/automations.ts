@@ -12,15 +12,15 @@ export const LISTING_AUTOMATION_TRIGGER_KEYS = [
  * subscribe here. Listing upserts must not include this key or TEST would fire
  * on every dock scan via selectActionsForTrigger's listing branch.
  */
-export const IDENTIFICATION_AUTOMATION_TRIGGER_KEYS = ['identification.completed'] as const;
+const IDENTIFICATION_AUTOMATION_TRIGGER_KEYS = ['identification.completed'] as const;
 
 export const AUTOMATION_TRIGGER_KEYS = [
   ...LISTING_AUTOMATION_TRIGGER_KEYS,
   ...IDENTIFICATION_AUTOMATION_TRIGGER_KEYS,
 ] as const;
 
-export type ListingAutomationTriggerKey = (typeof LISTING_AUTOMATION_TRIGGER_KEYS)[number];
-export type IdentificationAutomationTriggerKey =
+type ListingAutomationTriggerKey = (typeof LISTING_AUTOMATION_TRIGGER_KEYS)[number];
+type IdentificationAutomationTriggerKey =
   (typeof IDENTIFICATION_AUTOMATION_TRIGGER_KEYS)[number];
 export type AutomationTriggerKey = (typeof AUTOMATION_TRIGGER_KEYS)[number];
 
@@ -41,7 +41,7 @@ export const AutomationAssignAction = z
     path: ['backup_staff_id'],
   });
 
-export const AutomationRuleWhen = z
+const AutomationRuleWhen = z
   .object({
     item_number: z.string().trim().min(1).max(120).optional(),
     sku_catalog_id: z.union([z.number().int().positive(), z.string().regex(/^\d+$/)]).optional(),
@@ -117,7 +117,7 @@ export const ListingAssignBody = z
     }
   });
 
-export const ListingAssignPreviewQuery = z.object({
+const ListingAssignPreviewQuery = z.object({
   orderIds: z.string().min(1).max(4000),
 });
 

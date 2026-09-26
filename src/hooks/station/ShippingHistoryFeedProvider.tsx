@@ -15,7 +15,7 @@ import { STAFF_FILTER_PARAM, useStaffFilter } from '@/hooks/useStaffFilter';
 import { dedupeTechRecords, getTechRecordRowKey } from '@/lib/station/dedupe-tech-records';
 import type { TechRecord } from '@/hooks/useTechLogs';
 
-export interface ShippingHistoryFeedContextValue {
+interface ShippingHistoryFeedContextValue {
   /** Resolved staff scope — session tech by default, `all` when `?staff=all`. */
   staffId: TechLogsScope;
   weekOffset: number;
@@ -32,7 +32,7 @@ export interface ShippingHistoryFeedContextValue {
 
 const ShippingHistoryFeedContext = createContext<ShippingHistoryFeedContextValue | null>(null);
 
-export interface ShippingHistoryFeedProviderProps {
+interface ShippingHistoryFeedProviderProps {
   /** Signed-in tech id — default staff scope when `?staff=` is absent. */
   techId: string;
   children: ReactNode;

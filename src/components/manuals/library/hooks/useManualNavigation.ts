@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { useOptimisticUrlParam } from '@/hooks/useOptimisticUrlParam';
 import type { ManualRow } from '../manuals-tree';
 
-export interface UseManualNavigation {
+interface UseManualNavigation {
   /** Currently selected file id (from `?id=`), or null. */
   selectedId: number | null;
   currentPath: string[];

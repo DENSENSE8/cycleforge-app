@@ -78,7 +78,7 @@ export interface PackerRecord {
   verification_outcome?: string | null;
 }
 
-export interface UsePackerLogsOptions {
+interface UsePackerLogsOptions {
   weekOffset?: number;
   weekRange?: { startStr: string; endStr: string };
   /** The bench find box, already debounced by `SearchField` (320ms) — this hook adds no second debounce, it just spends the text on the fetch… */

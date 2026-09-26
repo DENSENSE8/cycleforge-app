@@ -3,7 +3,7 @@
 import { z } from 'zod';
 import { ShipFromSchema } from '@/lib/tenancy/settings';
 
-export type ShipFromValue = z.infer<typeof ShipFromSchema>;
+type ShipFromValue = z.infer<typeof ShipFromSchema>;
 
 /** Where the operator is sent to fix a missing origin. */
 export const SHIP_FROM_SETTINGS_PATH = '/settings/organization#ship-from';
@@ -15,7 +15,7 @@ const REQUIRED: ReadonlyArray<[keyof ShipFromValue, string]> = [
   ['postalCode', 'ZIP / postal code'],
 ];
 
-export type ParseShipFromResult =
+type ParseShipFromResult =
   | { ok: true; value: ShipFromValue; empty: boolean }
   | { ok: false; error: string };
 

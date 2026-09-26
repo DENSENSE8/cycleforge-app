@@ -36,7 +36,7 @@ export function FbaCatalogSidebarFallback() {
  * before the admin dissolution): catalog search plus the add-row /
  * upload-CSV / clear-search actions and a link to the FBA station.
  */
-export function FbaCatalogSidebar() {
+function FbaCatalogSidebar() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const searchValue = searchParams.get('search') || '';

@@ -19,10 +19,10 @@ const POLL_MS = 1500;
 export const repairScanHubHref = (token: string) => `/m/repair-scan?t=${encodeURIComponent(token)}`;
 export const repairScanInfoHref = (token: string) => `/m/repair-scan/info?t=${encodeURIComponent(token)}`;
 
-export type SerialWriteResult = 'saved' | 'ended' | 'failed';
+type SerialWriteResult = 'saved' | 'ended' | 'failed';
 
 /** What a write did, and the unit's whole serial list it wrote. */
-export interface SerialWrite {
+interface SerialWrite {
   status: SerialWriteResult;
   serialNumber: string;
 }

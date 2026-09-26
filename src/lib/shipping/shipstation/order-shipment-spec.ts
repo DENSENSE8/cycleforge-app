@@ -36,7 +36,7 @@ function numericColumn(value: string | number | null): number | null {
   return Number.isFinite(n) && n > 0 ? n : null;
 }
 
-export interface OrderShipmentSpecInput {
+interface OrderShipmentSpecInput {
   orderId: number;
   weightOzOverride?: number | null;
   dimensions?: Parcel['dimensions'];
@@ -44,7 +44,7 @@ export interface OrderShipmentSpecInput {
   purpose?: LabelPurpose;
 }
 
-export interface OrderShipmentSpec {
+interface OrderShipmentSpec {
   spec: ShipmentSpec;
   /** The BUYER's address, whatever direction the parcel travels. */
   buyerAddress: ShipAddress;

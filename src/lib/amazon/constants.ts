@@ -24,7 +24,7 @@ export const SELLERCENTRAL_HOSTS: Record<AmazonRegion, string> = {
 };
 
 /** Common marketplace IDs keyed by country (extend as needed). */
-export const MARKETPLACE_IDS = {
+const MARKETPLACE_IDS = {
   US: 'ATVPDKIKX0DER',
   CA: 'A2EUQ1WTGCTBG2',
   MX: 'A1AM78C64UM0Y8',

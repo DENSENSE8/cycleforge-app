@@ -1,7 +1,7 @@
 /** App surface SoT — chrome / canvas / page-wash backgrounds. */
 
 export const WASH_NAMES = ['mint', 'cool', 'slate', 'dawn', 'flat'] as const;
-export type WashName = (typeof WASH_NAMES)[number];
+type WashName = (typeof WASH_NAMES)[number];
 
 export const DEFAULT_WASH: WashName = 'mint';
 
@@ -101,7 +101,7 @@ export function resolveWash(name: string | null | undefined): WashName {
   return DEFAULT_WASH;
 }
 
-export function applyAppWash(name: WashName | string | null | undefined = DEFAULT_WASH): WashName {
+function applyAppWash(name: WashName | string | null | undefined = DEFAULT_WASH): WashName {
   const wash = resolveWash(name);
   if (typeof document === 'undefined') return wash;
   document.documentElement.setAttribute('data-app-wash', wash);

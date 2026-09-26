@@ -6,7 +6,7 @@ const trimmed = z.string().trim();
 
 /** Component kind — drives the row tag in the packer checklist. Free text is
  *  accepted (max 40) so a tenant can coin its own, but these are the defaults. */
-export const KIT_PART_TYPES = [
+const KIT_PART_TYPES = [
   'PART',
   'ACCESSORY',
   'CABLE',
@@ -15,7 +15,7 @@ export const KIT_PART_TYPES = [
   'MANUAL',
   'PACKAGING',
 ] as const;
-export type KitPartType = (typeof KIT_PART_TYPES)[number];
+type KitPartType = (typeof KIT_PART_TYPES)[number];
 
 /** Fields shared by create + update (all optional on both — create defaults
  *  them server-side, update treats absent as "leave unchanged"). */
@@ -47,14 +47,14 @@ export const KitPartCreateBody = z.object({
   ...sharedFields,
   idempotencyKey: trimmed.max(120).optional(),
 });
-export type KitPartCreateInput = z.infer<typeof KitPartCreateBody>;
+type KitPartCreateInput = z.infer<typeof KitPartCreateBody>;
 
 export const KitPartUpdateBody = z.object({
   partId: z.coerce.number().int().positive(),
   componentName: trimmed.min(1).max(200).optional(),
   ...sharedFields,
 });
-export type KitPartUpdateInput = z.infer<typeof KitPartUpdateBody>;
+type KitPartUpdateInput = z.infer<typeof KitPartUpdateBody>;
 
 export const KitPartDeleteBody = z.object({
   partId: z.coerce.number().int().positive(),

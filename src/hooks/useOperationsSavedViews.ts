@@ -10,7 +10,7 @@ import type { JourneyUrlFilters } from '@/components/sidebar/operations/useOpera
  * the URL-state hook), so the Monitor "filters live in the URL" invariant holds.
  */
 
-export interface OperationsSavedView {
+interface OperationsSavedView {
   id: number;
   name: string;
   filters: Partial<JourneyUrlFilters>;

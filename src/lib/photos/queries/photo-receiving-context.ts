@@ -2,7 +2,7 @@ import { tenantQuery } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';
 
 /** Viewer-only provenance detail for one photo, resolved from its RECEIVING / RECEIVING_LINE link: */
-export interface PhotoReceivingContext {
+interface PhotoReceivingContext {
   cartonId: number | null;
   /** Raw carton/line claim ref, e.g. "#9518" (line-level wins over carton). */
   claim: string | null;

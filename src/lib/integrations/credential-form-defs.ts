@@ -19,7 +19,7 @@ export interface CredentialFieldDef {
   section?: string;
 }
 
-export interface CredentialFormDef {
+interface CredentialFormDef {
   provider: IntegrationProvider;
   title: string;
   description: string;
@@ -171,7 +171,7 @@ const ANTHROPIC_FORM: CredentialFormDef = {
   ],
 };
 
-export const CREDENTIAL_FORM_DEFS: Partial<Record<IntegrationProvider, CredentialFormDef>> = {
+const CREDENTIAL_FORM_DEFS: Partial<Record<IntegrationProvider, CredentialFormDef>> = {
   zendesk: ZENDESK_FORM,
   ecwid: ECWID_FORM,
   shipstation: SHIPSTATION_FORM,

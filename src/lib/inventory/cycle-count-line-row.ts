@@ -1,7 +1,7 @@
 /** The cycle-count LINE row — the wire shape `/inventory/cycle-counts/[id]` hands its client table island, and the row the… */
 
 /** The five-way closed vocabulary of `cycle_count_lines.status`. */
-export const CYCLE_COUNT_LINE_STATUSES = [
+const CYCLE_COUNT_LINE_STATUSES = [
   'pending',
   'counted',
   'pending_review',
@@ -9,7 +9,7 @@ export const CYCLE_COUNT_LINE_STATUSES = [
   'rejected',
 ] as const;
 
-export type CycleCountLineStatus = (typeof CYCLE_COUNT_LINE_STATUSES)[number];
+type CycleCountLineStatus = (typeof CYCLE_COUNT_LINE_STATUSES)[number];
 
 export interface CycleCountLineRow {
   id: number;

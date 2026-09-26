@@ -4,14 +4,14 @@ import { useMemo } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import type { PriorPhoto } from '@/components/mobile/station/MobilePackerSpamCamera';
 
-export interface PackerPhotoRow {
+interface PackerPhotoRow {
   id: number;
   photoUrl: string;
   /** photos.photo_type — pack_slip / pack_box when guided Review captured. */
   photoType?: string | null;
 }
 
-export function packerPhotosQueryKey(packerLogId: number) {
+function packerPhotosQueryKey(packerLogId: number) {
   return ['packer-photos', packerLogId, 'capture-prior'] as const;
 }
 

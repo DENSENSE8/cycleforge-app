@@ -63,7 +63,7 @@ export function toDetailRecord(record: PackerRecord): ShippedOrder {
 }
 
 /** Map a search-result `ShippedOrder` back into the `PackerRecord` row shape the table renders. */
-export function toSearchResultRecord(record: ShippedOrder): PackerRecord {
+function toSearchResultRecord(record: ShippedOrder): PackerRecord {
   return {
     id: Number(record.id),
     created_at: record.pack_activity_at || record.packed_at || record.created_at || null,

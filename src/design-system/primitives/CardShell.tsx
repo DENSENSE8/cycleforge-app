@@ -62,7 +62,7 @@ const TONE_SELECTED: Record<CardTone, { bg: string; accent: string; ring: string
   gray:    { bg: 'bg-surface-canvas',        accent: 'before:bg-border-emphasis',    ring: 'ring-border-default' },
 };
 
-export const CardShell = forwardRef<HTMLDivElement, CardShellProps>(function CardShell({
+const CardShell = forwardRef<HTMLDivElement, CardShellProps>(function CardShell({
   children,
   isExpanded = false,
   isSelected = false,

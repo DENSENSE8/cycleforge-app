@@ -16,7 +16,7 @@ export class LabelIngestionServiceError extends Error {
   constructor(readonly code: 'INVALID_PDF' | 'PAYLOAD_TOO_LARGE' | 'CLIENT_EVENT_PAYLOAD_MISMATCH' | 'INGESTION_NOT_FOUND' | 'INGESTION_NOT_ACTIONABLE' | 'INGESTION_PROCESSING_FAILED', message: string) { super(message); this.name = 'LabelIngestionServiceError'; }
 }
 
-export interface LabelObjectStore {
+interface LabelObjectStore {
   put(input: { organizationId: OrgId; objectKey: string; bytes: Buffer }): Promise<void>;
   get(input: { organizationId: OrgId; objectKey: string }): Promise<Buffer>;
 }
@@ -26,7 +26,7 @@ const productionObjectStore: LabelObjectStore = {
   async get({ objectKey }) { return gcsAdapter.getObjectBytes({ bucket: defaultGcsBucket(), objectKey }); },
 };
 
-export interface LabelIngestionDependencies {
+interface LabelIngestionDependencies {
   transaction<T>(organizationId: OrgId, fn: (client: Queryable) => Promise<T>): Promise<T>;
   query<T extends Record<string, unknown>>(organizationId: OrgId, text: string, values?: unknown[]): Promise<{ rows: T[] }>;
   store: LabelObjectStore;
@@ -175,7 +175,7 @@ export async function recordShipStationLabelIngestion(input: ShipStationLabelIng
 }
 
 /** The ledger rows already recorded for these ShipStation shipments. */
-export async function listShipStationIngestions(organizationId: OrgId, shipmentIds: readonly number[], overrides: Partial<LabelIngestionDependencies> = {}): Promise<PublicLabelIngestion[]> {
+async function listShipStationIngestions(organizationId: OrgId, shipmentIds: readonly number[], overrides: Partial<LabelIngestionDependencies> = {}): Promise<PublicLabelIngestion[]> {
   if (shipmentIds.length === 0) return [];
   const deps = { ...dependencies, ...overrides };
   const result = await deps.query<LedgerRow>(organizationId, `SELECT ${ledgerColumns} FROM label_ingestions WHERE organization_id=$1 AND shipstation_shipment_id = ANY($2::bigint[]) ORDER BY id ASC`, [organizationId, [...shipmentIds]]);
@@ -184,7 +184,7 @@ export async function listShipStationIngestions(organizationId: OrgId, shipmentI
 
 /** Promote a QUARANTINED ShipStation row whose order now resolves (e.g. the
  *  order landed after the first run). Null when the row moved on meanwhile. */
-export async function resolveQuarantinedShipStationIngestion(organizationId: OrgId, ingestion: Pick<PublicLabelIngestion, 'id' | 'rowVersion'>, evidence: ParsedLabelEvidence, exactOrder: ExactOrderIdentity, overrides: Partial<LabelIngestionDependencies> = {}): Promise<PublicLabelIngestion | null> {
+async function resolveQuarantinedShipStationIngestion(organizationId: OrgId, ingestion: Pick<PublicLabelIngestion, 'id' | 'rowVersion'>, evidence: ParsedLabelEvidence, exactOrder: ExactOrderIdentity, overrides: Partial<LabelIngestionDependencies> = {}): Promise<PublicLabelIngestion | null> {
   const deps = { ...dependencies, ...overrides };
   const current = await deps.query<LedgerRow>(organizationId, `SELECT ${ledgerColumns} FROM label_ingestions WHERE organization_id=$1 AND id=$2`, [organizationId, ingestion.id]);
   const row = current.rows[0];

@@ -12,7 +12,7 @@ import { FbaSelectedLineRow } from '@/components/fba/sidebar/FbaSelectedLineRow'
 import { PrintTableCheckbox } from '@/components/fba/table/Checkbox';
 import type { FbaSelectedLineRowProps } from '@/components/fba/sidebar/FbaSelectedLineRow';
 
-export interface FbaDraggableLineRowProps extends FbaSelectedLineRowProps {
+interface FbaDraggableLineRowProps extends FbaSelectedLineRowProps {
   dragId: string;
   dragData: { itemId: number; sourceContainer: string };
   /** When true, the checkbox acts as a multi-select toggle (blue). */

@@ -5,7 +5,7 @@
 import { SlicedActionDock, type SlicedActionDockProps } from '../primitives/SlicedActionDock';
 import { useDeskHeaderFace } from './DeskActionSlot';
 
-export type DeskHeaderSplitActionProps = Omit<
+type DeskHeaderSplitActionProps = Omit<
   SlicedActionDockProps,
   'embedded' | 'embeddedChrome' | 'docked' | 'edge' | 'align' | 'maxWidth' | 'fullWidth'
 >;

@@ -11,7 +11,7 @@ export function subtitleReorderShouldArm(dx: number, dy: number): boolean {
   return Math.hypot(dx, dy) >= SUBTITLE_REORDER_THRESHOLD_PX;
 }
 
-export function subtitlePartKeyFromPoint(x: number, y: number): string | null {
+function subtitlePartKeyFromPoint(x: number, y: number): string | null {
   if (typeof document === 'undefined') return null;
   const node = document.elementFromPoint(x, y);
   if (!(node instanceof Element)) return null;
@@ -68,7 +68,7 @@ function endRowSelectBlock() {
 }
 
 /** True while a subtitle-band drag is in flight (and briefly after). */
-export function isSubtitleReorderBlockingRowSelect(): boolean {
+function isSubtitleReorderBlockingRowSelect(): boolean {
   return rowSelectBlock > 0;
 }
 

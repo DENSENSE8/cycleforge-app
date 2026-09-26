@@ -21,7 +21,7 @@ export function outboundModeFromPath(pathname: string | null | undefined): Outbo
 
 export type OutboundSort = 'priority' | 'newest';
 
-export const OUTBOUND_SORT_OPTIONS: { id: OutboundSort; label: string }[] = [
+const OUTBOUND_SORT_OPTIONS: { id: OutboundSort; label: string }[] = [
   { id: 'priority', label: 'Priority (due soon)' },
   { id: 'newest', label: 'Newest first' },
 ];

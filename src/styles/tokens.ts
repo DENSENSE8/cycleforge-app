@@ -7,7 +7,7 @@ import { fontWeights } from '@/design-system/tokens/typography/weights';
 
 type TokenValue = string;
 
-export const designTokens = {
+const designTokens = {
   colors: {
     brandPrimary: semanticColors.gradient.primary,
     brandLight: baseColors.blue[50],
@@ -53,7 +53,7 @@ export const designTokens = {
   // readers and its values disagreed with the rendered Tailwind scale.
 } as const;
 
-export const designTokenCssVariables: Record<string, TokenValue> = {
+const designTokenCssVariables: Record<string, TokenValue> = {
   ...designSystemCssVariables,
   '--color-brand-primary': designTokens.colors.brandPrimary,
   '--color-brand-light': designTokens.colors.brandLight,

@@ -57,7 +57,7 @@ export function setScanStance(next: StationScanStance): void {
   emit();
 }
 
-export function toggleScanStance(): StationScanStance {
+function toggleScanStance(): StationScanStance {
   const next: StationScanStance = stance === 'scan' ? 'preview' : 'scan';
   setScanStance(next);
   return next;

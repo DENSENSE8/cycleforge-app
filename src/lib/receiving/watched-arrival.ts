@@ -8,7 +8,7 @@ import { NOTIFIABLE_EVENTS } from '@/lib/notifications/event-vocabulary';
 import { markReceivingPriority } from '@/lib/receiving/mark-priority';
 
 /** What the door learned about a carton somebody was waiting for. */
-export interface WatchedArrival {
+interface WatchedArrival {
   /** At least one staffer had a live watch on this number or this carton. */
   watched: boolean;
   /** How many staffers were waiting — the toast says "2 people are waiting". */
@@ -21,7 +21,7 @@ export interface WatchedArrival {
 }
 
 /** The answer for every scan that is not a watched door arrival. */
-export const NOT_WATCHED: WatchedArrival = {
+const NOT_WATCHED: WatchedArrival = {
   watched: false,
   watcherCount: 0,
   promotedUrgent: false,

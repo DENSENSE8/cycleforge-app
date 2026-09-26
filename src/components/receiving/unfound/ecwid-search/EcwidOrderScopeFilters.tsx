@@ -23,7 +23,7 @@ const SCOPE_OPTIONS: Array<{
 ];
 
 /** Field-density scope filter for the Store search bar trailing slot. */
-export function EcwidOrderScopeFilters({ c }: { c: EcwidProductSearchController }) {
+function EcwidOrderScopeFilters({ c }: { c: EcwidProductSearchController }) {
   const [open, setOpen] = useState(false);
   if (c.popoverMode !== 'repair_service') return null;
 

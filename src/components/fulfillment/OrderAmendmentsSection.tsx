@@ -4,7 +4,7 @@ import { TimelineSection } from '@/components/ui/TimelineSection';
 import { amendmentsToTimeline, type AmendmentTimelineRow } from '@/lib/timeline';
 
 /** The order's substitutions, rendered through the shared EventTimeline (via TimelineSection — header + skeleton + empty for free). */
-export interface OrderAmendmentsSectionProps {
+interface OrderAmendmentsSectionProps {
   rows: AmendmentTimelineRow[];
   loading?: boolean;
   title?: string;

@@ -7,4 +7,4 @@ export const STATION_CAMERA_PANEL_HEIGHT_CLASS = 'h-[46svh] min-h-[19rem]';
 export const STATION_CAMERA_HEADER_HEIGHT_CLASS = 'h-9';
 
 /** How tall a station's non-camera bottom sheet stands — the location-bind surface, which takes the camera panel's slot while it is up. */
-export const STATION_SHEET_HEIGHT_CLASS = STATION_CAMERA_PANEL_HEIGHT_CLASS;
+const STATION_SHEET_HEIGHT_CLASS = STATION_CAMERA_PANEL_HEIGHT_CLASS;

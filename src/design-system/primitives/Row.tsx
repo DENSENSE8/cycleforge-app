@@ -5,7 +5,7 @@ import { cn } from '@/utils/_cn';
 
 // ─── Row ─────────────────────────────────────────────────────────────────────
 
-export type RowGap = 'default' | 'tight';
+type RowGap = 'default' | 'tight';
 
 const GAP: Record<RowGap, string> = {
   /** gap-2 — the default inline grouping. */
@@ -14,12 +14,12 @@ const GAP: Record<RowGap, string> = {
   tight: 'row-tight',
 };
 
-export interface RowProps extends HTMLAttributes<HTMLDivElement> {
+interface RowProps extends HTMLAttributes<HTMLDivElement> {
   /** Horizontal gap intent. Default `default`. */
   gap?: RowGap;
 }
 
-export const Row = forwardRef<HTMLDivElement, RowProps>(function Row(
+const Row = forwardRef<HTMLDivElement, RowProps>(function Row(
   { gap = 'default', className, ...rest },
   ref,
 ) {

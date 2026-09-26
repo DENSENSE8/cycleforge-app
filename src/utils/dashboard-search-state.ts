@@ -5,7 +5,7 @@ import type { ShippedDetailsContext } from '@/utils/events';
 
 /** To-ship desk view. */
 export type DashboardOrderView = 'unshipped' | 'tested' | 'packed' | 'shipped';
-export type DashboardCacheEntry = readonly [unknown, unknown];
+type DashboardCacheEntry = readonly [unknown, unknown];
 
 /** Band-1 / Band-3 triage facets on the in-warehouse desk. */
 export type ToShipTriageFacet =
@@ -32,7 +32,7 @@ export interface DashboardSelectionSnapshot {
   savedAt: number;
 }
 
-export interface DashboardAssignmentUpdateDetail {
+interface DashboardAssignmentUpdateDetail {
   orderIds?: unknown[];
   testerId?: number | null;
   packerId?: number | null;
@@ -87,7 +87,7 @@ export function getDashboardPendingLayoutFromSearch(
 }
 
 /** Display labels — legacy tab names kept for saved-view copy / tests. */
-export const DASHBOARD_ORDER_VIEW_LABEL: Record<DashboardOrderView, string> = {
+const DASHBOARD_ORDER_VIEW_LABEL: Record<DashboardOrderView, string> = {
   unshipped: 'To ship',
   tested: 'Tested',
   packed: 'Packed',
@@ -95,7 +95,7 @@ export const DASHBOARD_ORDER_VIEW_LABEL: Record<DashboardOrderView, string> = {
 };
 
 /** The in-warehouse desk is always the To-ship surface. */
-export function isPrePackOrderView(view: DashboardOrderView): boolean {
+function isPrePackOrderView(view: DashboardOrderView): boolean {
   return view === 'unshipped' || view === 'tested' || view === 'packed';
 }
 
@@ -168,7 +168,7 @@ export function applyToShipTriageFacet(
 }
 
 /** After marking out of stock, land on the Pending stage — BLOCKED belongs there with unlabeled / untested work, not on Tested. */
-export function applyToShipStageAfterOutOfStock(params: URLSearchParams): boolean {
+function applyToShipStageAfterOutOfStock(params: URLSearchParams): boolean {
   const stage = String(params.get('stage') || '').trim().toLowerCase();
   const ustatus = String(params.get('ustatus') || '').trim().toUpperCase();
   let changed = false;

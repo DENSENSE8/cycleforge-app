@@ -30,6 +30,6 @@ export const ProvisionalMergeBody = z.object({
   staffId: z.number().int().positive().optional(),
 });
 
-export type ProvisionalCreateInput = z.infer<typeof ProvisionalCreateBody>;
-export type ProvisionalMergeInput = z.infer<typeof ProvisionalMergeBody>;
-export type ProvisionalUpdateInput = z.infer<typeof ProvisionalUpdateBody>;
+type ProvisionalCreateInput = z.infer<typeof ProvisionalCreateBody>;
+type ProvisionalMergeInput = z.infer<typeof ProvisionalMergeBody>;
+type ProvisionalUpdateInput = z.infer<typeof ProvisionalUpdateBody>;

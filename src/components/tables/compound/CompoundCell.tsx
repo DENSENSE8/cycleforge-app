@@ -10,9 +10,9 @@ import { cn } from '@/utils/_cn';
  * (checkbox over fold chevron) must paint this same grid so the check sits
  * on the order-id line and the chevron sits on "2 boxes".
  */
-export const COMPOUND_TWO_LINE_CLASS = 'grid h-full grid-rows-2 gap-0';
+const COMPOUND_TWO_LINE_CLASS = 'grid h-full grid-rows-2 gap-0';
 
-export interface CompoundCellProps {
+interface CompoundCellProps {
   /** Top line — the identifying fact. */
   primary: ReactNode;
   /** Bottom line — the qualifier. Absent content still holds its track. */

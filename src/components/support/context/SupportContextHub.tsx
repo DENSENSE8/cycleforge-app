@@ -15,9 +15,9 @@ import { SupportContextCustomer } from './SupportContextCustomer';
 import { SupportContextTeam } from './SupportContextTeam';
 import { SupportContextActivity } from './SupportContextActivity';
 
-export type SupportContextHubVariant = 'workbench' | 'station' | 'rollup';
+type SupportContextHubVariant = 'workbench' | 'station' | 'rollup';
 
-export interface SupportContextHubProps {
+interface SupportContextHubProps {
   anchor: SupportContextAnchor;
   /** workbench = Support console; station = Unbox; rollup = packing compact card */
   variant?: SupportContextHubVariant;

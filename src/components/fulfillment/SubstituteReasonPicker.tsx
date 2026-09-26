@@ -5,7 +5,7 @@ import { SUBSTITUTION_REASONS, type SubstitutionReason } from '@/lib/fulfillment
 
 /** Reason picker for a fulfillment substitution. */
 
-export interface SubstituteReasonPickerProps {
+interface SubstituteReasonPickerProps {
   value: string | null;
   onChange: (code: string) => void;
   reasons?: readonly SubstitutionReason[];

@@ -7,7 +7,7 @@ import { CompoundRow, type CompoundRowProps } from './CompoundRow';
 import { applyCompoundRowPlaneGutterClick } from './compound-row-plane';
 import type { TableRowPlane } from '@/components/tables/table-surface-binding';
 
-export interface CompoundPlaneRowProps<Row, C extends { key: string; width: string }>
+interface CompoundPlaneRowProps<Row, C extends { key: string; width: string }>
   extends CompoundRowProps<C> {
   /** The row this plane acts on. */
   row: Row;

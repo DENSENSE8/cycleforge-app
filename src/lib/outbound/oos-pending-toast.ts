@@ -5,7 +5,7 @@ import { SHIPPING_SHORTAGE_PATH } from '@/lib/shipping/orders-desk';
 
 export const OOS_PENDING_TOAST_DURATION_MS = 6000;
 
-export type OosPendingToastArgs = {
+type OosPendingToastArgs = {
   count: number;
   /** Short SKU when a single-line identity exists. */
   sku?: string | null;

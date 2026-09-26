@@ -10,14 +10,14 @@ const ECWID_BASE_URL = 'https://app.ecwid.com/api/v3';
 const DEFAULT_LIMIT = 12;
 const MAX_QUERY_LENGTH = 160;
 const REQUEST_TIMEOUT_MS = 8_000;
-export interface OutboundIntakeSuggestion {
+interface OutboundIntakeSuggestion {
   id: string;
   label: string;
   draft: Partial<CanonicalOrderIntake>;
   unavailableReason?: string;
 }
 
-export interface OutboundIntakeSuggestions {
+interface OutboundIntakeSuggestions {
   connected: boolean;
   suggestions: OutboundIntakeSuggestion[];
 }

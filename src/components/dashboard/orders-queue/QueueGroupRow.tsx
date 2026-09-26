@@ -21,7 +21,7 @@ import type { OrdersQueueMode, QueueRowRecord } from '@/lib/dashboard/orders-que
 import { lineMoneySubtitlePart } from '@/lib/tables/slot-table-line-money';
 import { formatCurrency } from '@/utils/_number';
 
-export interface QueueGroupRowProps {
+interface QueueGroupRowProps {
   /** One order's lines (singleton or multi-product). */
   group: RowGroup<ShippedOrder>;
   /** Zebra-stripe index of this group's first leaf. Children continue locally. */

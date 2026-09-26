@@ -130,7 +130,7 @@ export interface OrderLabelLinkDeps {
 
 // ─── Link ────────────────────────────────────────────────────────────────────
 
-export type LinkOrderLabelResult =
+type LinkOrderLabelResult =
   | { ok: true; rowId: number; idempotent: boolean; purpose: LabelPurpose; label: ResolvedLabel; orderRef: string | null; resolvedIngestionId: number | null; trackingShipmentId: number | null }
   | { ok: false; status: 400 | 404 | 409; code: string; error: string };
 
@@ -198,7 +198,7 @@ export async function linkOrderLabel(
 
 // ─── Unlink ──────────────────────────────────────────────────────────────────
 
-export type UnlinkOrderLabelResult =
+type UnlinkOrderLabelResult =
   | { ok: true; idempotent: boolean; row: UnlinkRow; reopenedIngestionId: number | null }
   | { ok: false; status: 404 | 409; code: string; error: string };
 
@@ -375,7 +375,7 @@ async function resolveLabelFromSources(orgId: OrgId, shipmentId: number): Promis
   };
 }
 
-export const defaultOrderLabelLinkDeps: OrderLabelLinkDeps = {
+const defaultOrderLabelLinkDeps: OrderLabelLinkDeps = {
   readOrderRef: async (orgId, orderId) => {
     const res = await tenantQuery<{ order_id: string | null }>(
       orgId,
@@ -814,7 +814,7 @@ async function readLabelForTicket(
 
 // ─── Support tickets ─────────────────────────────────────────────────────────
 
-export type LabelTicketResult =
+type LabelTicketResult =
   | { ok: true; ticketId: number; shipmentId: number; added: boolean; orderAnchored: boolean; purpose: LabelPurpose; trackingNumber: string }
   | { ok: false; status: 400 | 404 | 409; code: string; error: string };
 

@@ -31,7 +31,7 @@ export type KitComposition = {
   components: KitCompositionComponent[];
 };
 
-export type CatalogChildInput = {
+type CatalogChildInput = {
   relationship_id: number;
   qty: number;
   sku_id: number;
@@ -40,7 +40,7 @@ export type CatalogChildInput = {
   image_url?: string | null;
 };
 
-export type KitPartInput = {
+type KitPartInput = {
   id: number;
   component_name: string;
   component_type?: string;

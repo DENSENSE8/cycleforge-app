@@ -25,7 +25,7 @@ export async function loadQaCapability(
  * 404 for customer orgs (do not advertise the console).
  * 403 when the sandbox org's staff lacks the permission.
  */
-export function qaCapabilityResponse(cap: QaCapability): NextResponse | null {
+function qaCapabilityResponse(cap: QaCapability): NextResponse | null {
   if (cap.allowed) return null;
   if (cap.reason === 'not_sandbox' || cap.reason === 'org_not_found') {
     return NextResponse.json({ success: false, error: 'NOT_FOUND' }, { status: 404 });
@@ -36,7 +36,7 @@ export function qaCapabilityResponse(cap: QaCapability): NextResponse | null {
   );
 }
 
-export async function assertQaCapability(
+async function assertQaCapability(
   orgId: OrgId,
   permissions: ReadonlySet<string>,
   required: QaToolPermission,

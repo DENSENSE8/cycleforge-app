@@ -1,6 +1,6 @@
 // Single source of truth for system sync-run status tones.
 
-export type SyncRunStatus = 'success' | 'failed' | 'running';
+type SyncRunStatus = 'success' | 'failed' | 'running';
 
 const TONES: Record<SyncRunStatus, string> = {
   success: 'bg-emerald-50 text-emerald-700',

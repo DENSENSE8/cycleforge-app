@@ -1,8 +1,8 @@
 /** Operations catalog — the reference content behind the Operations sidebar. */
 
-export type OpsCategory = 'flow' | 'station' | 'identifier';
+type OpsCategory = 'flow' | 'station' | 'identifier';
 
-export interface OpsStation {
+interface OpsStation {
   key: string;
   label: string;
   color: string;
@@ -15,7 +15,7 @@ export interface OpsStation {
   states: string[];
 }
 
-export interface OpsIdentifier {
+interface OpsIdentifier {
   key: string;
   label: string;
   example: string;
@@ -28,7 +28,7 @@ export interface OpsIdentifier {
   relatedTo: string[];
 }
 
-export interface OpsFlowStep {
+interface OpsFlowStep {
   /** Display label exactly as the real UI shows it (e.g. "Combined"). */
   stage: string;
   /** The real status key / enum value backing it (e.g. LABEL_ASSIGNED), if any. */
@@ -43,7 +43,7 @@ export interface OpsFlowStep {
   by?: string;
 }
 
-export interface OpsFlow {
+interface OpsFlow {
   key: string;
   label: string;
   color: string;
@@ -128,7 +128,7 @@ export const STATIONS: OpsStation[] = [
 
 // ─── Identifiers (the information that travels) ───────────────
 
-export const IDENTIFIERS: OpsIdentifier[] = [
+const IDENTIFIERS: OpsIdentifier[] = [
   {
     key: 'serial',
     label: 'Serial number',
@@ -306,7 +306,7 @@ export const IDENTIFIERS: OpsIdentifier[] = [
 
 // ─── Flows ───────────────────────────────────────────────────
 
-export const FLOWS: OpsFlow[] = [
+const FLOWS: OpsFlow[] = [
   {
     key: 'receiving',
     group: 'Sourcing & intake',
@@ -519,7 +519,7 @@ export const FLOWS: OpsFlow[] = [
 
 // ─── Lookup + board-highlight helpers ────────────────────────
 
-export function findCatalogItem(
+function findCatalogItem(
   key: string | null,
 ): { category: OpsCategory; item: OpsFlow | OpsStation | OpsIdentifier } | null {
   if (!key) return null;
@@ -536,7 +536,7 @@ export function findCatalogItem(
  * The set of board node ids to spotlight for a selected catalog key, or null
  * when nothing is selected (board shows everything at full strength).
  */
-export function highlightStatesFor(key: string | null): Set<string> | null {
+function highlightStatesFor(key: string | null): Set<string> | null {
   const found = findCatalogItem(key);
   if (!found) return null;
 

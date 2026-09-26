@@ -13,7 +13,7 @@ import {
 } from '@/lib/orders/order-shortage-identity';
 import { readShortageSchema } from '@/lib/orders/shortage-schema';
 
-export type ShortageWriteClient = Pick<PoolClient, 'query'>;
+type ShortageWriteClient = Pick<PoolClient, 'query'>;
 
 export async function upsertOrderLineShortage(
   client: ShortageWriteClient,

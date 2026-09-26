@@ -11,13 +11,13 @@ export const shadows = {
   glassOverlay: '0 16px 44px rgba(15, 23, 42, 0.04)',
 } as const;
 
-export type Shadows = typeof shadows;
+type Shadows = typeof shadows;
 
 /** Industry elevation roles — temporary / floating UI sits higher. */
 export type ElevationRole = 'flat' | 'raised' | 'overlay';
 
 /** Intensity under `raised` only — Station column accent without inventing extra roles: */
-export type RaisedIntensity = 'soft' | 'default';
+type RaisedIntensity = 'soft' | 'default';
 
 /** Role → `shadow-elev-*` utility (tailwind.config.mjs `theme.extend.boxShadow`, values in globals.css `--ds-elev-*`). */
 export const ELEVATION_CLASS = {

@@ -12,9 +12,9 @@ import { buildStateMeta } from '@/lib/labels/resolve';
 
 /** The post‑dock outbound stage vocabulary. Canonical definition in `order-lifecycle.ts`. */
 export type OutboundState = OutboundStage;
-export type OutboundStateInput = OutboundSignals;
+type OutboundStateInput = OutboundSignals;
 
-export interface OutboundStateMeta {
+interface OutboundStateMeta {
   label: string;
   /** One-line plain-English meaning — surfaced as the hover tooltip on dots + legend chips. */
   description: string;

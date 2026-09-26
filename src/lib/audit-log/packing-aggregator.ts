@@ -34,7 +34,7 @@ const OUTBOUND_EVENT_TYPES = [
   'SHIPPED',
 ] as const;
 
-export interface PackingTrackingSummary {
+interface PackingTrackingSummary {
   tracking: string;
   packer_log_id: number;
   pack_date_time: string | null;
@@ -44,7 +44,7 @@ export interface PackingTrackingSummary {
   event_count: number;
 }
 
-export interface PackingEvent {
+interface PackingEvent {
   id: string;
   occurred_at: string;
   source: 'packer_log' | 'station_activity_log' | 'audit_log' | 'photo' | 'inventory_event';
@@ -58,7 +58,7 @@ export interface PackingEvent {
   detail: Record<string, unknown>;
 }
 
-export interface PackingTrackingDetail {
+interface PackingTrackingDetail {
   tracking: string;
   packer_logs: Array<{
     id: number;

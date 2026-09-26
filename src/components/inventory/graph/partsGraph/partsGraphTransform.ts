@@ -10,7 +10,7 @@ export type PartsNodeMeta =
   | { kind: 'base'; base: PartsBase }
   | { kind: 'part'; part: PartsLogicalPart; base: PartsBase };
 
-export interface PartsElementsResult {
+interface PartsElementsResult {
   elements: ElementDefinition[];
   metaById: Record<number, PartsNodeMeta>;
 }

@@ -8,7 +8,7 @@
 
 import type { DetailStackKind } from './registry';
 
-export interface ActiveDetailStack {
+interface ActiveDetailStack {
   kind: DetailStackKind;
   id: string;
 }

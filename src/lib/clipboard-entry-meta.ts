@@ -3,7 +3,7 @@ import { sellerClaimClipboardLabel } from '@/lib/receiving-claim-seller-copy';
 import type { ClipboardEntry } from '@/lib/clipboard-history';
 
 /** Human labels for {@link ClipboardEntry.kind} — mirrors CopyChip tone semantics. */
-export const CLIPBOARD_KIND_LABELS: Record<string, string> = {
+const CLIPBOARD_KIND_LABELS: Record<string, string> = {
   id: 'Order ID',
   tracking: 'Tracking',
   serial: 'Serial',
@@ -33,7 +33,7 @@ function isRedundantDisplay(value: string, display: string, kind?: string): bool
  * Secondary linkage captured at copy time — platform name, seller msg id label,
  * ticket ref, etc. Omits chip last-8 previews that duplicate the full value.
  */
-export function clipboardEntryLinkage(entry: ClipboardEntry): string | null {
+function clipboardEntryLinkage(entry: ClipboardEntry): string | null {
   if (typeof entry.sellerMessageId === 'number' && entry.sellerMessageId > 0) {
     return sellerClaimClipboardLabel(entry.sellerMessageId);
   }
@@ -43,7 +43,7 @@ export function clipboardEntryLinkage(entry: ClipboardEntry): string | null {
 }
 
 /** Eyebrow meta for a clipboard row — time first, then type/linkage tags. */
-export interface ClipboardEntryMeta {
+interface ClipboardEntryMeta {
   time: string;
   tags: string[];
 }

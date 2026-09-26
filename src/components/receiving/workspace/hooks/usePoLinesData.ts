@@ -47,7 +47,7 @@ interface Args {
   placeholderActiveRow?: ReceivingLineRow;
 }
 
-export interface PoLinesData {
+interface PoLinesData {
   /** The `['receiving-siblings', receivingId]` key — shared with the item-desc editor's optimistic cache write. */
   queryKey: ReturnType<typeof receivingSiblingsQueryKey>;
   /** Every sibling line of this carton, in original API order (unfiltered). */

@@ -5,7 +5,7 @@ import * as schema from './schema';
 import { withTenantConnection } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';
 
-export type TenantDrizzle = NeonDatabase<typeof schema>;
+type TenantDrizzle = NeonDatabase<typeof schema>;
 
 export async function withTenantDrizzle<T>(
   orgId: OrgId,

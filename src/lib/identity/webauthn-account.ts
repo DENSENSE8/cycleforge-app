@@ -43,7 +43,7 @@ function mapRow(row: Record<string, unknown>): AccountPasskeyRow {
   };
 }
 
-export async function listAccountPasskeys(accountId: string): Promise<AccountPasskeyRow[]> {
+async function listAccountPasskeys(accountId: string): Promise<AccountPasskeyRow[]> {
   const r = await pool.query(
     `SELECT id, account_id, credential_id, public_key, sign_count, transports, aaguid::text, label
        FROM webauthn_credentials
@@ -54,7 +54,7 @@ export async function listAccountPasskeys(accountId: string): Promise<AccountPas
   return r.rows.map(mapRow);
 }
 
-export async function findAccountPasskeyByCredentialId(credentialId: string): Promise<AccountPasskeyRow | null> {
+async function findAccountPasskeyByCredentialId(credentialId: string): Promise<AccountPasskeyRow | null> {
   const r = await pool.query(
     `SELECT id, account_id, credential_id, public_key, sign_count, transports, aaguid::text, label
        FROM webauthn_credentials
@@ -65,7 +65,7 @@ export async function findAccountPasskeyByCredentialId(credentialId: string): Pr
   return r.rows[0] ? mapRow(r.rows[0]) : null;
 }
 
-export interface AccountPasskeyMeta {
+interface AccountPasskeyMeta {
   id: string;
   label: string | null;
   createdAt: string;

@@ -26,7 +26,7 @@ export function linkifyOrderRefs(markdown: string): string {
     .join('\n');
 }
 
-export interface AiDestination {
+interface AiDestination {
   label: string;
   href: string;
 }

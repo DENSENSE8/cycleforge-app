@@ -5,9 +5,9 @@
 
 import pool from '@/lib/db';
 
-export type AuthAuditResult = 'ok' | 'denied' | 'error';
+type AuthAuditResult = 'ok' | 'denied' | 'error';
 
-export interface AuditOpts {
+interface AuditOpts {
   staffId?: number | null;
   event: string;
   result: AuthAuditResult;

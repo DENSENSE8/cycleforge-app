@@ -58,7 +58,7 @@ export function serialAbsentReasonLabel(code: string | null | undefined): string
 }
 
 /** Operator hint for a code (built-ins only; custom org codes have none). */
-export function serialAbsentReasonHint(code: string | null | undefined): string | undefined {
+function serialAbsentReasonHint(code: string | null | undefined): string | undefined {
   return code ? BY_CODE.get(code)?.hint : undefined;
 }
 
@@ -85,6 +85,6 @@ export function mergeSerialAbsentReasons(
 }
 
 /** Server-side guard: a waiver reason must be a non-empty code string. */
-export function isValidSerialAbsentReason(code: string | null | undefined): code is string {
+function isValidSerialAbsentReason(code: string | null | undefined): code is string {
   return typeof code === 'string' && code.trim().length > 0;
 }

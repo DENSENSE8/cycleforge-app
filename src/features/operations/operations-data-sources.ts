@@ -1,7 +1,7 @@
 import type { DataSourceInfo } from '@/features/operations/components/DataSourcePopover';
 
 /** Mirrors `src/app/api/dashboard/operations/route.ts` primary summary queries */
-export const OPERATIONS_PRIMARY_KPI_SOURCES = {
+const OPERATIONS_PRIMARY_KPI_SOURCES = {
   dailyVelocity: {
     headline: 'Daily velocity (floor-wide)',
     bullets: [

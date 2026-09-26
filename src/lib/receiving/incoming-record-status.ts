@@ -4,7 +4,7 @@ import type { ReceivingLineRow } from './receiving-line-row';
 import type { ReceivingStatusAlert, ReceivingStatusStep } from './receiving-status-strip';
 
 /** The details read's shipment fields the strip needs (`DetailsResponse['shipment']`). */
-export interface IncomingRecordShipment {
+interface IncomingRecordShipment {
   tracking_number: string | null;
   carrier: string | null;
   latest_status_category: string | null;

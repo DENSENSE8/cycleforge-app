@@ -14,7 +14,7 @@ import {
 } from '../facts/narrow';
 import { writeLineFact } from '../facts/store';
 
-export interface LineFactsBundle {
+interface LineFactsBundle {
   zoho?: ZohoFactsInput;
   testing?: TestingFactsInput;
   returns?: ReturnFactsInput;

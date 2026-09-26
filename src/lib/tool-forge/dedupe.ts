@@ -5,7 +5,7 @@ import { embedText } from '@/lib/ai/embed';
 import type { OrgId } from '@/lib/tenancy/constants';
 import type { DedupeOutcome, ToolMatch } from './triage';
 
-export interface ToolDedupeDeps {
+interface ToolDedupeDeps {
   /** Injectable so the unit tests run with no env, no network and no DB. */
   embed: (texts: string[]) => Promise<number[][]>;
   query: (

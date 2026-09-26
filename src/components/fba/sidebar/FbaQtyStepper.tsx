@@ -3,7 +3,7 @@
 import { Minus, Plus } from '@/components/Icons';
 import { DeferredQtyInput, IconButton } from '@/design-system/primitives';
 
-export interface FbaQtyStepperProps {
+interface FbaQtyStepperProps {
   value: number;
   onChange: (next: number) => void;
   /** FNSKU for accessible labels (optional). */

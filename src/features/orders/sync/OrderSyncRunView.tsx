@@ -22,7 +22,7 @@ import {
 import type { SyncRunDetail } from '@/lib/orders-sync/run-detail';
 import { OrderSyncRunDetailSheet } from './OrderSyncRunDetailSheet';
 
-export interface OrderSyncRunViewProps {
+interface OrderSyncRunViewProps {
   run: SyncRunState;
   /** Wall clock the hook already owns, so the timer does not tick twice. */
   elapsedMs: number;

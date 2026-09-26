@@ -15,7 +15,7 @@ export { buildMasterPlanOutline } from './outline';
 
 const BRIDGE_STATION = 'ADMIN';
 
-export type OpsTaskStatus = 'open' | 'in_progress' | 'done' | 'canceled';
+type OpsTaskStatus = 'open' | 'in_progress' | 'done' | 'canceled';
 
 export function ticketToTaskStatus(status: TicketStatus | null): OpsTaskStatus {
   switch (status) {
@@ -30,7 +30,7 @@ export function ticketToTaskStatus(status: TicketStatus | null): OpsTaskStatus {
   }
 }
 
-export interface BridgeSyncResult {
+interface BridgeSyncResult {
   planId: string;
   createdPlan: boolean;
   upsertedTasks: number;
@@ -44,7 +44,7 @@ export interface BridgeDeps {
   publish: (payload: { organizationId: string; planId: string; event: 'plan_updated'; source: string }) => Promise<void>;
 }
 
-export const defaultBridgeDeps: BridgeDeps = {
+const defaultBridgeDeps: BridgeDeps = {
   runTx: (orgId, fn) => withTenantTransaction(orgId, fn),
   publish: (payload) => publishOpsPlanUpdated(payload),
 };

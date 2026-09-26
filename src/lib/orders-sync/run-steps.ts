@@ -79,7 +79,7 @@ const PHASE_STEP: Partial<Record<SyncPhase, SyncRunStepId>> = {
   scanning_exceptions: 'exceptions',
 };
 
-export type SyncRunLaneStatus = 'idle' | 'running' | 'done' | 'error' | 'skipped';
+type SyncRunLaneStatus = 'idle' | 'running' | 'done' | 'error' | 'skipped';
 
 interface LaneState {
   status: SyncRunLaneStatus;
@@ -279,7 +279,7 @@ export interface SyncRunOutcomeLine {
   message: string;
 }
 
-export interface SyncRunProgress {
+interface SyncRunProgress {
   /** Finished (or failed) required steps — PG6's numerator. */
   completed: number;
   /** Required steps only; a skipped lane's steps are not on the board. */

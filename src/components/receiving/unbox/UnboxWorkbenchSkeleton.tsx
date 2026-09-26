@@ -25,7 +25,7 @@ export function UnboxTableCardSkeleton() {
 }
 
 /** Full browse workbench skeleton — route `/unbox` loading shell. */
-export function UnboxWorkbenchSkeleton() {
+function UnboxWorkbenchSkeleton() {
   return (
     <div
       className="relative flex h-full min-h-0 w-full flex-col"

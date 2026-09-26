@@ -7,7 +7,7 @@ export interface ShippingSyncDuePayload {
   carriers?: unknown;
 }
 
-export interface ShippingSyncDueJobResult {
+interface ShippingSyncDueJobResult {
   ok: boolean;
   synced: number;
   terminal: number;

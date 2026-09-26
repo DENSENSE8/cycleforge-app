@@ -5,7 +5,7 @@ import type { OrgId } from '@/lib/tenancy/constants';
 import { withTenantTransaction } from '@/lib/tenancy/db';
 import { recordInventoryEvent, type RecordInventoryEventInput } from './events';
 
-export interface MarkUnitListedArgs {
+interface MarkUnitListedArgs {
   /** serial_units.id */
   unitId: number;
   /** Tenant — scopes the unit lock + listing UPSERT + stamps the event. */
@@ -22,7 +22,7 @@ export interface MarkUnitListedArgs {
   notes?: string | null;
 }
 
-export type MarkUnitListedResult =
+type MarkUnitListedResult =
   | {
       ok: true;
       status: 200;

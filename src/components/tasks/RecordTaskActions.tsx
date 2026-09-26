@@ -14,12 +14,12 @@ import { cn } from '@/utils/_cn';
 import { useThrowTask } from '@/hooks/useThrowTask';
 import type { ThrowTarget } from '@/lib/tasks/throw-targets';
 
-export type RecordTaskKind = 'mine' | 'staff';
+type RecordTaskKind = 'mine' | 'staff';
 
 const TASK_TITLE: Record<RecordTaskKind, string> = { mine: 'Add task', staff: 'Send to staff as task' };
 
 /** The record a task is thrown at — `label` names it in the composer (`Order 113-…`, `PO 15-…`). */
-export type RecordTaskTarget = Pick<ThrowTarget, 'entityType' | 'entityId' | 'label'>;
+type RecordTaskTarget = Pick<ThrowTarget, 'entityType' | 'entityId' | 'label'>;
 
 /** "Add task" · "Send to staff as task" as strip verbs; each morphs into the composer. */
 export function buildRecordTaskVerbs(target: RecordTaskTarget): RecordActionVerb[] {
@@ -31,7 +31,7 @@ export function buildRecordTaskVerbs(target: RecordTaskTarget): RecordActionVerb
   }));
 }
 
-export function RecordTaskActions({ target }: { target: RecordTaskTarget }) {
+function RecordTaskActions({ target }: { target: RecordTaskTarget }) {
   const [kind, setKind] = useState<RecordTaskKind | null>(null);
   return (
     <>
@@ -63,7 +63,7 @@ export function RecordTaskActions({ target }: { target: RecordTaskTarget }) {
   );
 }
 
-export function RecordTaskForm({
+function RecordTaskForm({
   kind,
   target,
   onDone,

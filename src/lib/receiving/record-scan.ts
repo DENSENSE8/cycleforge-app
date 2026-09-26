@@ -9,12 +9,12 @@ import { promoteWatchedArrival } from '@/lib/receiving/watched-arrival';
 import type { OrgId } from '@/lib/tenancy/constants';
 import type { UnboxScanKind } from '@/lib/receiving/unbox-scan-kind';
 
-export type ReceivingScanSource = 'zoho_po' | 'unmatched';
+type ReceivingScanSource = 'zoho_po' | 'unmatched';
 
 /** Operator surface that issued the scan — drives independent triage vs unbox stamps. */
 export type ReceivingIntakeSurface = 'triage' | 'unbox';
 
-export interface RecordReceivingScanOptions {
+interface RecordReceivingScanOptions {
   /** Default `triage` — only triage (door) scans stamp received_at/received_by. */
   intakeSurface?: ReceivingIntakeSurface;
   /** Default `work`. */

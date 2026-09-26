@@ -14,7 +14,7 @@ import { ZOHO_RECEIVED_LIKE_STATUSES } from '@/lib/receiving/zoho-received-statu
  */
 export { ZOHO_RECEIVED_LIKE_STATUSES };
 
-export interface ZohoReceivedReconcileResult {
+interface ZohoReceivedReconcileResult {
   /** receiving_line rows marked received. */
   updated: number;
 }

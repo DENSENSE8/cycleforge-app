@@ -4,7 +4,7 @@ import { cornerClass } from '@/design-system/tokens/radius';
 import { elevationClass } from '@/design-system/tokens/shadows';
 
 /** Desk stage ceiling (px). */
-export const DESK_STAGE_MAX_PX = 1152;
+const DESK_STAGE_MAX_PX = 1152;
 
 /**
  * Default stage: centered, capped at {@link DESK_STAGE_MAX_PX}. The grid inside
@@ -14,7 +14,7 @@ export const DESK_STAGE_MAX_PX = 1152;
 export const DESK_STAGE_FIXED_CLASS = 'mx-auto w-full max-w-6xl';
 
 /** Fixed measure for the ONE record column a desk walk opens over the stage — the To-ship Labels walk's order form (parcel · ShipStation… */
-export const DESK_RECORD_MEASURE_PX = 736;
+const DESK_RECORD_MEASURE_PX = 736;
 
 /** Tailwind twin of {@link DESK_RECORD_MEASURE_PX} (46rem). */
 export const DESK_RECORD_MEASURE_CLASS = 'w-[46rem]';
@@ -64,11 +64,11 @@ export const DESK_TAB_ROW_CLASS = 'h-9 border-b border-border-hairline';
  * Shared tab-list geometry for every desk page. The list remains a normal
  * left-to-right row; fixed-width triggers own their label alignment.
  */
-export const DESK_TAB_LIST_CLASS =
+const DESK_TAB_LIST_CLASS =
   'flex min-w-0 flex-1 items-stretch gap-1';
 
 /** Shared fixed-width desk-tab face with a centered label. */
-export const DESK_TAB_TRIGGER_CLASS =
+const DESK_TAB_TRIGGER_CLASS =
   'ds-raw-button inline-flex shrink-0 items-center justify-center gap-1 px-3 text-center text-role-caption';
 
 /**
@@ -92,13 +92,13 @@ export const DESK_TABLE_SURFACE_CLASS =
  * The **lead column** — the Ask pane's share of every desk row.
  * not (operator 2026-09-04).
  */
-export const DESK_LEAD_PANE_WIDTH_CLASS = 'w-[360px] shrink-0';
+const DESK_LEAD_PANE_WIDTH_CLASS = 'w-[360px] shrink-0';
 
 /**
  * The lead column INSIDE the shared card:
  * above it (operator 2026-09-04).
  */
-export const DESK_LEAD_PANE_BODY_CLASS =
+const DESK_LEAD_PANE_BODY_CLASS =
   'flex min-h-0 flex-col px-4 pt-4 border-r border-border-hairline';
 
 /** The page **ground** the card sits on — WHITE (operator ruling 2026-08-31). */
@@ -107,30 +107,30 @@ export const DESK_STAGE_GROUND_CLASS = 'bg-surface-card';
 /* ── FIND stage — the third surface (operator ruling 2026-09-13) ────────────── */
 
 /** Ground the FIND card floats on — a real step below card white. */
-export const FIND_STAGE_GROUND_CLASS = 'bg-surface-canvas';
+const FIND_STAGE_GROUND_CLASS = 'bg-surface-canvas';
 
 /**
  * Breathing room around the FIND card. Wider than the desk's `pb-4` floor
  * because this card is detached on all four sides, not welded at the top.
  */
-export const FIND_STAGE_GUTTER_CLASS = 'px-4 pb-4 pt-3';
+const FIND_STAGE_GUTTER_CLASS = 'px-4 pb-4 pt-3';
 
 /* ── FIND on a PHONE — the card dissolves (operator law 2026-09-13) ────────── */
 
 /** Ground the flush phone plane paints — card white, no canvas step. */
-export const FIND_STAGE_PHONE_GROUND_CLASS = 'bg-surface-card';
+const FIND_STAGE_PHONE_GROUND_CLASS = 'bg-surface-card';
 
 /** Phone measure: the viewport IS the measure, so there is no cap to center. */
-export const FIND_STAGE_PHONE_MEASURE_CLASS = 'w-full';
+const FIND_STAGE_PHONE_MEASURE_CLASS = 'w-full';
 
 /** Phone gutter: none. Every px belongs to the row. */
-export const FIND_STAGE_PHONE_GUTTER_CLASS = '';
+const FIND_STAGE_PHONE_GUTTER_CLASS = '';
 
 /** Which FIND measure a mount is painting at. */
 export type FindStageDensity = 'compact' | 'comfortable';
 
 /** The five classes that make one FIND stage. */
-export interface FindStageClasses {
+interface FindStageClasses {
   /** Page ground under the plane. */
   ground: string;
   /** Measure + centering of the plane. */

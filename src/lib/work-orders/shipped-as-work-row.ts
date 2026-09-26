@@ -70,6 +70,6 @@ export function shippedOrderAsWorkRow(row: ShippedOrder): WorkOrderRow {
   };
 }
 
-export function shippedOrdersAsWorkRows(rows: readonly ShippedOrder[]): WorkOrderRow[] {
+function shippedOrdersAsWorkRows(rows: readonly ShippedOrder[]): WorkOrderRow[] {
   return rows.map(shippedOrderAsWorkRow);
 }

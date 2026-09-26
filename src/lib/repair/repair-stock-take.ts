@@ -3,7 +3,7 @@
 /** One installed part per `replaced` entry. */
 export const REPAIR_STOCK_TAKE_QTY = 1;
 
-export type BinTakePlan =
+type BinTakePlan =
   | { ok: true; after: number }
   | { ok: false; available: number; message: string };
 

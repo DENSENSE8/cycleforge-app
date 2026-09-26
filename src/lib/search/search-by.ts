@@ -38,7 +38,7 @@ export const SEARCH_BY_METHOD_LABEL: Readonly<Record<SearchByScope, string>> = {
   ticket: 'Ticket',
 };
 
-export const SEARCH_BY_METHOD_HINT: Readonly<Record<SearchByScope, string>> = {
+const SEARCH_BY_METHOD_HINT: Readonly<Record<SearchByScope, string>> = {
   internal: 'Shipment, carton R-id, unit, QR',
   order: 'Marketplace order #',
   tracking: 'Carrier tracking',

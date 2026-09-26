@@ -2,7 +2,7 @@
 
 import type { ReactNode } from 'react';
 
-export interface StickyHeaderProps {
+interface StickyHeaderProps {
   children: ReactNode;
   position?: 'top' | 'bottom';
   frosted?: boolean;
@@ -18,7 +18,7 @@ const positionClass: Record<'top' | 'bottom', string> = {
  * Sticky positioning primitive with optional frosted-glass backdrop.
  * Use for table date group headers, sidebar filter bars, panel headers.
  */
-export function StickyHeader({
+function StickyHeader({
   children,
   position = 'top',
   frosted = false,

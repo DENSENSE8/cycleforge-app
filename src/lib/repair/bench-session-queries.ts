@@ -53,7 +53,7 @@ export async function listBenchSessions(
   });
 }
 
-export type BenchSessionWriteResult =
+type BenchSessionWriteResult =
   | { ok: true; session: RepairBenchSessionRecord; changed: boolean; serverNow: string }
   | { ok: false; status: 404 | 409; error: string };
 

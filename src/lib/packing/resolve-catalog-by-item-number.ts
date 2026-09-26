@@ -8,7 +8,7 @@ import {
   resolveSkuCatalogByPlatformId,
 } from '@/lib/neon/sku-catalog-queries';
 
-export interface CatalogByItemNumberCandidate {
+interface CatalogByItemNumberCandidate {
   catalogId: number;
   sku: string;
   productTitle: string;
@@ -19,7 +19,7 @@ export interface CatalogByItemNumberCandidate {
   matchVia: 'platform_item_id' | 'sku' | 'direct_id';
 }
 
-export type ResolveCatalogByItemNumberResult =
+type ResolveCatalogByItemNumberResult =
   | {
       status: 'resolved';
       itemNumber: string;
@@ -77,7 +77,7 @@ async function enrichCandidate(
 /**
  * Find every distinct catalog row linked to this item number (or exact SKU).
  */
-export async function listCatalogsForItemNumber(
+async function listCatalogsForItemNumber(
   orgId: OrgId,
   itemNumber: string,
 ): Promise<CatalogByItemNumberCandidate[]> {

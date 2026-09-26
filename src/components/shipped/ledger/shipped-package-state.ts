@@ -16,7 +16,7 @@ const STAGE_FACE: Readonly<Record<OutboundState, Pick<RecordStateFace, 'code' | 
 };
 
 /** Open unmatched pack scan — no order line claims this box yet. */
-export const UNMATCHED_SCAN_FACE: RecordStateFace = {
+const UNMATCHED_SCAN_FACE: RecordStateFace = {
   id: 'UNMATCHED',
   code: 'UNM',
   label: 'Unmatched scan',

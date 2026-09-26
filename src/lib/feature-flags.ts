@@ -57,7 +57,7 @@ export async function readOrgFeatureFlag(orgId: OrgId, flag: string): Promise<bo
   return readOrgFlag(orgId, flag);
 }
 
-export function invalidateFeatureFlagCache(orgId?: OrgId, flag?: string): void {
+function invalidateFeatureFlagCache(orgId?: OrgId, flag?: string): void {
   if (!orgId) {
     flagCache.clear();
     return;
@@ -93,7 +93,7 @@ export async function enableOrgFeatureFlag(orgId: OrgId, flag: string): Promise<
 // ─── Sync env-only variants ────────────────────────────────────────────────
 
 /** Mobile receiving pipeline rewrite (/m/receiving). */
-export function isMobileReceivingPipelineV2(): boolean {
+function isMobileReceivingPipelineV2(): boolean {
   return readBoolEnv('MOBILE_RECEIVING_PIPELINE_V2');
 }
 
@@ -193,7 +193,7 @@ export function isFulfillmentSubstitution(): boolean {
 }
 
 /** Dual-write owner↔tracking linkage into the unified `shipment_links` table. */
-export function isShipmentLinksDualWrite(): boolean {
+function isShipmentLinksDualWrite(): boolean {
   return readBoolEnv('RECEIVING_SHIPMENT_LINKS_DUAL_WRITE', true);
 }
 
@@ -241,7 +241,7 @@ export async function isHomeInbox(orgId: OrgId): Promise<boolean> {
 }
 
 /** Watch-a-view — queue-threshold alerts + scheduled digests (docs/todo/view-threshold-alerts-and-digests-IMPLEMENTATION-PLAN.md). */
-export async function isViewMonitors(orgId: OrgId): Promise<boolean> {
+async function isViewMonitors(orgId: OrgId): Promise<boolean> {
   return resolveForOrg(orgId, 'view_monitors', 'VIEW_MONITORS');
 }
 

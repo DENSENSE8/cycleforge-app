@@ -10,7 +10,7 @@ import {
   type RepairCustomerCreate,
 } from '@/lib/schemas/customers';
 
-export interface CustomerRecord {
+interface CustomerRecord {
   id: number;
   customer_name: string | null;
   display_name: string | null;
@@ -23,7 +23,7 @@ export interface CustomerRecord {
   entity_id: number | null;
 }
 
-export interface CustomerLookupRecord {
+interface CustomerLookupRecord {
   id: number;
   name: string;
   phone: string | null;
@@ -70,7 +70,7 @@ export async function resolveProviderCustomerId(
 /**
  * Find a customer by phone number.
  */
-export async function findCustomerByPhone(phone: string, orgId?: OrgId): Promise<CustomerRecord | null> {
+async function findCustomerByPhone(phone: string, orgId?: OrgId): Promise<CustomerRecord | null> {
   if (orgId) {
     const result = await tenantQuery<CustomerRecord>(
       orgId,
@@ -97,7 +97,7 @@ export async function findCustomerByPhone(phone: string, orgId?: OrgId): Promise
 /**
  * Find a customer by name (customer_name or display_name).
  */
-export async function findCustomerByName(name: string, orgId?: OrgId): Promise<CustomerRecord | null> {
+async function findCustomerByName(name: string, orgId?: OrgId): Promise<CustomerRecord | null> {
   if (orgId) {
     const result = await tenantQuery<CustomerRecord>(
       orgId,
@@ -216,7 +216,7 @@ export async function linkCustomerToRepair(customerId: number, repairId: number,
   );
 }
 
-export type CustomerContactUpdateResult =
+type CustomerContactUpdateResult =
   | {
       ok: true;
       before: CustomerContactColumns;
@@ -451,7 +451,7 @@ export async function searchRepairCustomers(query: string, limit = 20, orgId?: O
   }));
 }
 
-export interface CustomerSearchResult {
+interface CustomerSearchResult {
   id: number;
   name: string;
   phone: string | null;

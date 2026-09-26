@@ -11,7 +11,7 @@ import {
 import { buildRouteUrl } from '@/lib/routing/route-params';
 import { routeParamsFor } from '@/lib/routing/registry';
 
-export interface SupportModeState {
+interface SupportModeState {
   /** Active mode parsed from `?mode=` (defaults to `tickets`). */
   mode: SupportMode;
   /** Swap `?mode=`, clearing mode-scoped params; `tickets` drops the param. */

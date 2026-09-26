@@ -6,9 +6,9 @@ import { useScanFeedback } from '@/lib/scan-feedback/useScanFeedback';
 
 /** Data layer behind the "Order #" search lane in {@link UnfoundMatchStrip}. */
 
-export type CompareStatus = 'idle' | 'loading' | 'found' | 'not-found' | 'error';
+type CompareStatus = 'idle' | 'loading' | 'found' | 'not-found' | 'error';
 
-export interface CompareState {
+interface CompareState {
   status: CompareStatus;
   /** Short human message for the inline notice (null while idle/loading/found). */
   message: string | null;

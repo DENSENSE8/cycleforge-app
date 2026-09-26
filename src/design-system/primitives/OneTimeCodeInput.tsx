@@ -20,7 +20,7 @@ export function uppercaseAlphanumeric(raw: string): string {
 }
 
 /** The code after an edit plus the box that should now hold the caret. */
-export interface CodeEdit {
+interface CodeEdit {
   value: string;
   focusIndex: number;
 }
@@ -53,7 +53,7 @@ export function backspaceCode(code: string, index: number): CodeEdit {
   return { value: code.slice(0, index - 1) + code.slice(index), focusIndex: index - 1 };
 }
 
-export interface OneTimeCodeInputProps {
+interface OneTimeCodeInputProps {
   /** Current code — shorter than `length` while it is being typed. */
   value: string;
   /** Receives the normalized code after every edit (already `transform`ed). */

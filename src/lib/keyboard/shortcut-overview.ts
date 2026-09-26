@@ -4,12 +4,12 @@
  * for on-button letter overlays instead.
  */
 
-export type ShortcutOverviewRow = {
+type ShortcutOverviewRow = {
   keys: string[];
   label: string;
 };
 
-export type ShortcutOverviewGroup = {
+type ShortcutOverviewGroup = {
   id: string;
   title: string;
   rows: readonly ShortcutOverviewRow[];
@@ -55,7 +55,7 @@ export function getServerShortcutOverviewOpen(): boolean {
   return SERVER_OVERVIEW_OPEN;
 }
 
-export function setShortcutOverviewOpen(next: boolean): void {
+function setShortcutOverviewOpen(next: boolean): void {
   if (overviewOpen === next) return;
   overviewOpen = next;
   emitOverview();

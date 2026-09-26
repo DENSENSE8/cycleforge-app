@@ -82,7 +82,7 @@ function snapshotStatus(): StaffPrintStatus {
   };
 }
 
-export function useStaffPrintBridgeHost() {
+function useStaffPrintBridgeHost() {
   const { user } = useAuth();
   const { getClient } = useAblyClient();
   const orgId = user?.organizationId;

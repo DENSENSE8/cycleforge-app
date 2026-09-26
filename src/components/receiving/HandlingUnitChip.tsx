@@ -5,7 +5,7 @@ import { Package } from '@/components/Icons';
 import { handlingUnitHandle } from '@/lib/barcode-routing';
 
 /** The LPN (handling-unit) chip — "Box H-123 · 4 units". */
-export interface HandlingUnitChipProps {
+interface HandlingUnitChipProps {
   handlingUnitId?: number | null;
   code?: string | null;
   unitCount?: number | null;

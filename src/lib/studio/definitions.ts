@@ -14,7 +14,7 @@ type TxClient = Pick<PoolClient, 'query'>;
 
 // ─── Draft copy ──────────────────────────────────────────────────────────────
 
-export interface CopyDefinitionToDraftArgs {
+interface CopyDefinitionToDraftArgs {
   client: TxClient;
   orgId: OrgId;
   /** workflow_definitions.created_by for the new draft. */
@@ -23,7 +23,7 @@ export interface CopyDefinitionToDraftArgs {
   sourceId?: number;
 }
 
-export type CopyDefinitionToDraftResult =
+type CopyDefinitionToDraftResult =
   | { status: 404; body: { ok: false; error: string } }
   | {
       status: 200;
@@ -126,13 +126,13 @@ export async function copyDefinitionToDraft(
 
 // ─── Publish flip ────────────────────────────────────────────────────────────
 
-export interface PublishDefinitionArgs {
+interface PublishDefinitionArgs {
   client: TxClient;
   orgId: OrgId;
   definitionId: number;
 }
 
-export type PublishDefinitionResult =
+type PublishDefinitionResult =
   | { status: 404; body: { ok: false; error: string } }
   | { status: 200; body: { ok: true; alreadyActive: true; id: number } }
   | { status: 422; body: { ok: false; error: 'PUBLISH_BLOCKED'; diagnostics: Diagnostic[] } }

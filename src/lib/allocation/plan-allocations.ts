@@ -43,7 +43,7 @@ export interface AllocationShortfall {
   detail: string;
 }
 
-export interface AllocationPlan {
+interface AllocationPlan {
   allocations: Array<{ orderId: number; serialUnitId: number }>;
   shortfalls: AllocationShortfall[];
 }

@@ -49,7 +49,7 @@ export interface TechRecord {
   has_sku_serial_source?: boolean | null;
 }
 
-export interface UseTechLogsOptions {
+interface UseTechLogsOptions {
   weekOffset?: number;
   weekRange?: { startStr: string; endStr: string };
   /** Maximum rows returned; rolling rails use 25 while the week table keeps its larger window. */

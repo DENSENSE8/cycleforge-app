@@ -11,7 +11,7 @@ import { normalizeTrackingCanonical } from '@/lib/tracking-format';
 import { FBA_OPEN_QUICK_ADD_FNSKU, FBA_FNSKU_SAVED } from '@/lib/fba/events';
 
 /** @deprecated Use FBA_OPEN_QUICK_ADD_FNSKU from events.ts */
-export const FBA_OPEN_QUICK_ADD_FNSKU_EVENT = FBA_OPEN_QUICK_ADD_FNSKU;
+const FBA_OPEN_QUICK_ADD_FNSKU_EVENT = FBA_OPEN_QUICK_ADD_FNSKU;
 /** @deprecated Use FBA_FNSKU_SAVED from events.ts */
 export const FBA_FNSKU_SAVED_EVENT = FBA_FNSKU_SAVED;
 

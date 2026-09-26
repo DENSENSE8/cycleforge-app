@@ -12,7 +12,7 @@ import type { CycleCountLineRow } from '@/lib/inventory/cycle-count-line-row';
 
 type LineAction = (formData: FormData) => Promise<void>;
 
-export interface CycleCountLinesTableProps {
+interface CycleCountLinesTableProps {
   rows: readonly CycleCountLineRow[];
   /** `submitCountAction` — takes `campaignId`, `lineId`, `countedQty`. */
   submitCount: LineAction;

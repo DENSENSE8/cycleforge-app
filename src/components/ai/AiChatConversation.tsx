@@ -78,7 +78,7 @@ function CopyButton({ text }: { text: string }) {
   );
 }
 
-export interface AiChatConversationProps {
+interface AiChatConversationProps {
   /** 'panel' = narrow sidebar dock; 'full' = comfortable centered page column */
   variant?: 'panel' | 'full';
   chat: ReturnType<typeof useAiChat>;

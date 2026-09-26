@@ -10,20 +10,20 @@ import {
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
-export interface StaffScheduleRow {
+interface StaffScheduleRow {
   staff_id: number;
   day_of_week: number;
   is_scheduled: boolean;
   schedule_date?: string;
 }
 
-export interface StaffScheduleResponse {
+interface StaffScheduleResponse {
   timezone: string;
   today_day_of_week: number;
   schedules: StaffScheduleRow[];
 }
 
-export interface StaffWeekScheduleRow {
+interface StaffWeekScheduleRow {
   staffId: number;
   name: string;
   role: string;
@@ -37,12 +37,12 @@ export interface StaffWeekScheduleRow {
   effectiveIsScheduled: boolean;
 }
 
-export interface StaffWeekScheduleResponse {
+interface StaffWeekScheduleResponse {
   weekStartDate: string;
   rows: StaffWeekScheduleRow[];
 }
 
-export interface StaffAvailabilityRulesResponse {
+interface StaffAvailabilityRulesResponse {
   rules: StaffAvailabilityRule[];
 }
 
@@ -54,8 +54,8 @@ export interface WeekdayRuleBucket {
 
 export type ScheduleMap = Record<number, Record<string, boolean>>;
 export type PendingScheduleMap = Record<string, { staffId: number; dayOfWeek: StaffDayOfWeek; scheduleDate: string; previous: boolean; next: boolean; timerId: ReturnType<typeof setTimeout> }>;
-export type WeekdayRuleMap = Record<number, Partial<Record<StaffDayOfWeek, WeekdayRuleBucket>>>;
-export type WeekScheduleDetailMap = Record<number, Record<string, StaffWeekScheduleRow>>;
+type WeekdayRuleMap = Record<number, Partial<Record<StaffDayOfWeek, WeekdayRuleBucket>>>;
+type WeekScheduleDetailMap = Record<number, Record<string, StaffWeekScheduleRow>>;
 
 export interface StaffScheduleUpdatePayload {
   staffId: number;
@@ -101,7 +101,7 @@ function getPrimaryWeekdayRule(rules: StaffAvailabilityRule[]): StaffAvailabilit
   return sorted[0] || null;
 }
 
-export function buildWeekdayRuleMap(rules: StaffAvailabilityRule[]): WeekdayRuleMap {
+function buildWeekdayRuleMap(rules: StaffAvailabilityRule[]): WeekdayRuleMap {
   const grouped: Record<number, Partial<Record<StaffDayOfWeek, StaffAvailabilityRule[]>>> = {};
   for (const rule of rules) {
     if (rule.ruleType !== 'weekday_allowed' || rule.dayOfWeek == null) continue;
@@ -127,7 +127,7 @@ export function buildWeekdayRuleMap(rules: StaffAvailabilityRule[]): WeekdayRule
   return result;
 }
 
-export function buildWeekScheduleDetailMap(rows: StaffWeekScheduleRow[]): WeekScheduleDetailMap {
+function buildWeekScheduleDetailMap(rows: StaffWeekScheduleRow[]): WeekScheduleDetailMap {
   const map: WeekScheduleDetailMap = {};
   for (const row of rows) {
     if (!map[row.staffId]) map[row.staffId] = {};

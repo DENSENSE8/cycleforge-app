@@ -60,7 +60,7 @@ async function getJwks(force = false): Promise<Jwk[]> {
   return keys;
 }
 
-export type SignatureVerdict = 'valid' | 'invalid' | 'unsigned';
+type SignatureVerdict = 'valid' | 'invalid' | 'unsigned';
 
 /**
  * Verify a ShipStation RSA-SHA256 webhook signature over `timestamp.rawBody`.
@@ -101,7 +101,7 @@ export async function verifyShipStationSignature(
 // ─── Track event → normalized tracking update ───────────────────────────────
 
 /** ShipStation/ShipEngine status_code → our NormalizedShipmentStatus. */
-export function normalizeShipStationStatus(code: string | null | undefined): NormalizedShipmentStatus {
+function normalizeShipStationStatus(code: string | null | undefined): NormalizedShipmentStatus {
   switch ((code ?? '').toUpperCase()) {
     case 'AC':
       return 'ACCEPTED';

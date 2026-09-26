@@ -31,7 +31,7 @@ export class InvitationError extends Error {
   }
 }
 
-export interface CreateInvitationInput {
+interface CreateInvitationInput {
   orgId: OrgId;
   email: string;
   /** Role key for the new member; defaults to 'viewer' when omitted. */
@@ -70,7 +70,7 @@ export async function createInvitation(
   return { id: r.rows[0]!.id, token, roleKey: canonical };
 }
 
-export interface PendingInvitation {
+interface PendingInvitation {
   id: string;
   email: string;
   roleKey: string | null;
@@ -104,7 +104,7 @@ export async function revokeInvitation(orgId: OrgId, id: string): Promise<boolea
   return (r.rowCount ?? 0) > 0;
 }
 
-export type InvitationPreview =
+type InvitationPreview =
   | { status: 'valid'; orgId: string; orgName: string; email: string; roleKey: string | null; expiresAt: string }
   | { status: 'expired' | 'accepted' | 'not_found' };
 
@@ -135,7 +135,7 @@ export async function previewInvitation(token: string): Promise<InvitationPrevie
   };
 }
 
-export interface AcceptResult {
+interface AcceptResult {
   accountId: string;
   staffId: number;
   orgId: string;

@@ -245,14 +245,14 @@ export const PHOTO_SOURCE_SCOPE_LABELS: Record<PhotoLibrarySourceScope, string> 
 };
 
 /** Outbound's document sub-filter vocabulary. */
-export const OUTBOUND_DOCUMENT_TYPE_LABELS: Record<OutboundDocumentTypeFilter | 'pack_photos', string> = {
+const OUTBOUND_DOCUMENT_TYPE_LABELS: Record<OutboundDocumentTypeFilter | 'pack_photos', string> = {
   all: 'All documents',
   shipping_label: 'Shipping labels',
   packing_slip: 'Packing slips',
   pack_photos: 'Pack photos',
 };
 
-export const PHOTO_ENTITY_TYPE_LABELS: Record<string, string> = {
+const PHOTO_ENTITY_TYPE_LABELS: Record<string, string> = {
   RECEIVING: 'Receiving',
   RECEIVING_LINE: 'Receiving line',
   PACKER_LOG: 'Packer',
@@ -287,7 +287,7 @@ export function entityTypeForSourceScope(scope: PhotoLibrarySourceScope): string
   }
 }
 
-export function isOutboundLibraryScope(scope: PhotoLibrarySourceScope | undefined): boolean {
+function isOutboundLibraryScope(scope: PhotoLibrarySourceScope | undefined): boolean {
   return scope === 'outbound';
 }
 
@@ -562,7 +562,7 @@ export function clearStructuredPhotoFilters(
 }
 
 /** Deep link to the pack photos captured for ONE outbound shipment. */
-export function packPhotosLibraryHref(tracking: string): string {
+function packPhotosLibraryHref(tracking: string): string {
   const params = new URLSearchParams({
     sourceScope: 'outbound',
     outboundMedia: 'pack_photos',

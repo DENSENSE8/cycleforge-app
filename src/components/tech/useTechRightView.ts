@@ -6,7 +6,7 @@ import { useSearchParams } from 'next/navigation';
 
 export type TechRightViewMode = 'receiving' | 'testing' | 'history';
 
-export interface TechRightView {
+interface TechRightView {
   rightViewMode: TechRightViewMode;
   isTestingMode: boolean;
 }

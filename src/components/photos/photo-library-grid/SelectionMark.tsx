@@ -8,7 +8,7 @@ import { cn } from '@/utils/_cn';
  * Shared inset for the tile hover check and the entity-band select-all —
  * keep them on one vertical line (Google Photos alignment).
  */
-export const PHOTO_SELECTION_MARK_INSET_X = 'left-2' as const;
+const PHOTO_SELECTION_MARK_INSET_X = 'left-2' as const;
 /** Left pad on {@link PhotoEntityGroupHeader} — matches {@link PHOTO_SELECTION_MARK_INSET_X}. */
 export const PHOTO_ENTITY_GROUP_HEADER_PL = 'pl-2' as const;
 

@@ -5,7 +5,7 @@ import { withTenantTransaction } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';
 import { transitionReceivingLine } from '@/lib/receiving/state-machine';
 
-export interface TrackingMatchReconcileResult {
+interface TrackingMatchReconcileResult {
   ok: boolean;
   /** rows linked to an existing STN by exact normalized match. Retired → 0. */
   linkedExact: number;

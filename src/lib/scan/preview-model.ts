@@ -33,7 +33,7 @@ const NEXT_PROCESS: Record<ScanCard, string> = {
 };
 
 /** What a scan would do, said in words. Never rendered by this module. */
-export interface ScanPreview {
+interface ScanPreview {
   /** The raw bytes, echoed so the operator can eye-match the label. */
   raw: string;
   /** The class of the label, in the operator's words. */

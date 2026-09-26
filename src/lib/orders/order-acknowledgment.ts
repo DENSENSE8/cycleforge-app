@@ -20,7 +20,7 @@ const defaultDeps: OrderAcknowledgmentDeps = {
   readLiveLabel: readLiveOrderLabel,
 };
 
-export interface OrderAcknowledgment {
+interface OrderAcknowledgment {
   orderId: number;
   acknowledgedAt: string | null;
   acknowledgedBy: number | null;
@@ -31,14 +31,14 @@ export interface OrderAcknowledgment {
  * Why an order cannot be acknowledged yet, in funnel order: it must be
  * identified (paired to the SKU catalog) and carry one live label.
  */
-export type AcknowledgmentMissing = 'pairing' | 'label';
+type AcknowledgmentMissing = 'pairing' | 'label';
 
-export type AcknowledgeResult =
+type AcknowledgeResult =
   | { ok: true; before: OrderAcknowledgment; after: OrderAcknowledgment }
   | { ok: false; reason: 'not_found' }
   | { ok: false; reason: 'not_ready'; missing: AcknowledgmentMissing[] };
 
-export type UnacknowledgeResult =
+type UnacknowledgeResult =
   | { ok: true; before: OrderAcknowledgment; after: OrderAcknowledgment }
   | { ok: false; reason: 'not_found' };
 

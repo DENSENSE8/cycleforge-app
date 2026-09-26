@@ -63,7 +63,7 @@ function blankLedger(order: ShippedFulfillmentOrder): FulfillmentLedgerRecord {
 }
 
 /** Postgres-backed ledger (the `zoho_fulfillment_sync` table). */
-export class PgFulfillmentLedger implements FulfillmentLedgerStore {
+class PgFulfillmentLedger implements FulfillmentLedgerStore {
   async get(referenceNumber: string): Promise<FulfillmentLedgerRecord | null> {
     const res = await pool.query(
       `SELECT reference_number, channel, zoho_salesorder_id, zoho_package_id,

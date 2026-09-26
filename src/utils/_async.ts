@@ -1,7 +1,7 @@
 /**
  * Pauses execution for `ms` milliseconds.
  */
-export const sleep = (ms: number): Promise<void> =>
+const sleep = (ms: number): Promise<void> =>
   new Promise((res) => setTimeout(res, ms));
 
 /**
@@ -42,7 +42,7 @@ export async function safeAwait<T>(
 /**
  * Debounces an async function, cancelling in-flight calls when a new one arrives.
  */
-export function debounceAsync<T extends (...args: unknown[]) => Promise<unknown>>(
+function debounceAsync<T extends (...args: unknown[]) => Promise<unknown>>(
   fn: T,
   delay = 300,
 ): (...args: Parameters<T>) => Promise<ReturnType<T>> {
@@ -58,7 +58,7 @@ export function debounceAsync<T extends (...args: unknown[]) => Promise<unknown>
  * Runs an array of async tasks with a concurrency limit.
  * @example await withConcurrency(ids, id => fetchUser(id), 5)
  */
-export async function withConcurrency<T, R>(
+async function withConcurrency<T, R>(
   items: T[],
   fn: (item: T) => Promise<R>,
   concurrency = 5,
@@ -75,7 +75,7 @@ export async function withConcurrency<T, R>(
 /**
  * Wraps a function with a timeout. Throws if it doesn't resolve within `ms`.
  */
-export function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
+function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
   const timeout = new Promise<never>((_, reject) =>
     setTimeout(() => reject(new Error(`Timeout after ${ms}ms`)), ms),
   );

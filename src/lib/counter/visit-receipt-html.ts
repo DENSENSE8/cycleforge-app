@@ -141,7 +141,7 @@ function customerHtml(receipt: VisitReceipt): string {
 
 // ── Entry point ──────────────────────────────────────────────────────────────
 
-export interface RenderVisitReceiptOptions {
+interface RenderVisitReceiptOptions {
   /** Fires `window.print()` on load — the `?print=1` path. Plain GET renders without it. */
   autoPrint?: boolean;
   /** Callers: GET /api/kiosk/visit/[id]/receipt. User: "give internal staff as an internal record" */

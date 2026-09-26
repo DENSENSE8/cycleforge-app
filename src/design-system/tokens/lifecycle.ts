@@ -12,7 +12,7 @@ export function lifecycleRecordState(state: LifecycleState): RecordStateFace {
   return { id: state, ...LIFECYCLE[state] };
 }
 
-export interface StateToneClasses {
+interface StateToneClasses {
   /** Ink as text. */
   text: string;
   /** Solid dot / bar / swatch fill. */

@@ -15,7 +15,7 @@ import {
   type VisibilityState,
 } from '@tanstack/react-table';
 
-export interface UseGridSurfaceOptions<Row> {
+interface UseGridSurfaceOptions<Row> {
   /** Row data (house fetch/mutation waist owns it; TanStack never fetches). */
   data: Row[];
   /** Mode column set — TanStack `ColumnDef`s (stable per mode). */
@@ -35,7 +35,7 @@ export interface UseGridSurfaceOptions<Row> {
   onColumnOrderChange?: OnChangeFn<ColumnOrderState>;
 }
 
-export interface GridSurface<Row> {
+interface GridSurface<Row> {
   /** The TanStack table instance (state chokepoint — `getColumn`, `setColumnOrder`…). */
   table: Table<Row>;
   /**

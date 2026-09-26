@@ -4,7 +4,7 @@ import { detectStationScanType, type StationScanType } from '@/lib/station-scan-
 import { getSurface, type SurfaceKey } from '@/lib/stations/surface-keys';
 
 /** What the operator most likely means by this scan, on this surface. */
-export type UnboxScanIntent =
+type UnboxScanIntent =
   | 'open_carton' // TRACKING → resolve + open (Unbox) / classify + route (Triage)
   | 'add_serial' // a product serial to add to the active carton
   | 'fnsku' // an FBA FNSKU
@@ -22,7 +22,7 @@ export type UnboxScanIntent =
   /** One of OUR printed handles that is not a unit serial — carton, line, LPN, kit manifest, ticket, shelf address. */
   | 'open_handle';
 
-export interface UnboxScanContext {
+interface UnboxScanContext {
   /** The surface the scan was issued from (must be a scan surface for overrides). */
   surface: SurfaceKey;
   /**
@@ -38,7 +38,7 @@ export interface UnboxScanContext {
   knownCarrier?: boolean;
 }
 
-export interface UnboxScanResult {
+interface UnboxScanResult {
   type: StationScanType;
   intent: UnboxScanIntent;
   /** True when surface context overrode the base string classification. */

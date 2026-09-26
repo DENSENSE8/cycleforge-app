@@ -139,7 +139,7 @@ export function spineParentDrillId(_section: SpineSectionId | null): string | nu
   return null;
 }
 
-export interface SpineSlotsMigration {
+interface SpineSlotsMigration {
   slots: string[];
   stamp: { spineSlots: string[]; spineSlotsVersion: number } | null;
 }
@@ -197,7 +197,7 @@ export function resolveSpineSlotPages<T extends { id: string }>(
   return out;
 }
 
-export type SpineMapEntry<T extends { id: string; kind?: string }> =
+type SpineMapEntry<T extends { id: string; kind?: string }> =
   | { kind: 'stations'; id: typeof SPINE_STATIONS_SLOT_ID }
   | { kind: 'lane'; id: SpineSectionId }
   | { kind: 'page'; id: string; page: T };

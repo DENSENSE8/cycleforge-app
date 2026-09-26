@@ -13,7 +13,7 @@ export interface CatalogEntry {
   label: string;
 }
 
-export interface ResolvedCatalogEntry extends CatalogEntry {
+interface ResolvedCatalogEntry extends CatalogEntry {
   enabled: boolean;
   sortOrder: number;
   /** True when this org has recorded a decision; false = product default. */

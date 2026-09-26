@@ -1,7 +1,7 @@
 import { createFbaLog } from '@/lib/fba/createFbaLog';
 import type { OrgId } from '@/lib/tenancy/constants';
 
-export type AllocationPayload = { shipmentItemId: number; quantity: number };
+type AllocationPayload = { shipmentItemId: number; quantity: number };
 
 export function normalizeAllocations(raw: unknown): AllocationPayload[] {
   if (!Array.isArray(raw)) return [];

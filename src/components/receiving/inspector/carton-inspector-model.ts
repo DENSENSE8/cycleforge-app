@@ -170,7 +170,7 @@ export interface CartonInspectorPayload {
 }
 
 /** A displayable fact, with the presentation kind it must be resolved through. */
-export type CartonFactKind =
+type CartonFactKind =
   | 'text'
   | 'condition'
   | 'platform'
@@ -182,7 +182,7 @@ export type CartonFactKind =
   | 'instant'
   | 'source';
 
-export interface CartonFact {
+interface CartonFact {
   key: string;
   label: string;
   /** The RAW stored value — the view resolves it per `kind`. */
@@ -370,7 +370,7 @@ export function cartonFlags(
 }
 
 /** Header identity for the carton read chrome — raw parts only. */
-export interface CartonHeaderIdentity {
+interface CartonHeaderIdentity {
   cartonId: number;
   /** Raw `source_platform` token — view resolves the display label. */
   platform: string | null;
@@ -514,12 +514,12 @@ export function cartonContentsSummary(totals: CartonInspectorTotals | undefined 
 }
 
 /** Exception codes that outrank lifecycle "done" on the read surface. */
-export type CartonExceptionKey =
+type CartonExceptionKey =
   | 'unfound'
   | 'no_lines'
   | 'qa_pending';
 
-export interface CartonException {
+interface CartonException {
   key: CartonExceptionKey;
   label: string;
   /** Short next-action hint for the findings rail. */
@@ -567,9 +567,9 @@ export function cartonExceptions(
 }
 
 /** Operator-facing disposition — the answer the header leads with. */
-export type CartonDispositionState = 'complete' | 'unmatched' | 'needs_action' | 'in_progress';
+type CartonDispositionState = 'complete' | 'unmatched' | 'needs_action' | 'in_progress';
 
-export interface CartonDisposition {
+interface CartonDisposition {
   state: CartonDispositionState;
   label: string;
   tone: 'success' | 'warning' | 'danger' | 'info' | 'neutral';

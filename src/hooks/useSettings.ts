@@ -12,14 +12,14 @@ interface PageSettingsResponse {
   items: ResolvedSetting[];
 }
 
-export interface SetSettingArgs {
+interface SetSettingArgs {
   key: string;
   value: SettingValue;
   /** 'staff' = personal override (default for staff-scope + personalizable); 'org' = the org default. */
   target?: 'org' | 'staff';
 }
 
-export type SettingsMutationError = Error & { feature?: string; status?: number };
+type SettingsMutationError = Error & { feature?: string; status?: number };
 
 /** Read + write the Settings Registry values for one page. */
 export function usePageSettings(page: SettingPage) {

@@ -122,7 +122,7 @@ let defaultCommand: KioskCommandId = KIOSK_FALLBACK_COMMAND;
 let lineReasons: KioskLineReasons = DEFAULT_LINE_REASONS;
 
 /** How a persisted cart ENDED, told to `useKioskCartSync` so the row follows: */
-export interface KioskCartEnding {
+interface KioskCartEnding {
   id: number;
   how: 'done' | 'cleared';
 }

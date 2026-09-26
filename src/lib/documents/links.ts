@@ -27,7 +27,7 @@ function mapLinkRow(row: RawLinkRow): DocumentEntityLinkRow {
   };
 }
 
-export interface CreateDocumentEntityLinkInput {
+interface CreateDocumentEntityLinkInput {
   documentId: number;
   entityType: DocumentEntityType;
   entityId: number;
@@ -56,7 +56,7 @@ export async function createDocumentEntityLink(
 }
 
 /** All links for one document (ORDER / SHIPMENT / SKU / SERIAL_UNIT). */
-export async function listLinksForDocument(
+async function listLinksForDocument(
   orgId: OrgId,
   documentId: number,
   client?: Client,
@@ -76,7 +76,7 @@ export async function listLinksForDocument(
 }
 
 /** Document ids linked to one entity (ORDER / SHIPMENT / SKU / SERIAL_UNIT), newest first. */
-export async function listDocumentIdsForEntity(
+async function listDocumentIdsForEntity(
   orgId: OrgId,
   entityType: DocumentEntityType,
   entityId: number,

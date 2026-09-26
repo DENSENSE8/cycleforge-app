@@ -2,14 +2,14 @@
 
 import pool from '@/lib/db';
 
-export type ReviewDecision = 'approve' | 'reject';
+type ReviewDecision = 'approve' | 'reject';
 
-export interface ReviewTemplateArgs {
+interface ReviewTemplateArgs {
   templateId: number;
   decision: ReviewDecision;
 }
 
-export interface ReviewTemplateResult {
+interface ReviewTemplateResult {
   status: 200 | 404 | 409 | 500;
   reviewed: boolean;
   templateId: number;

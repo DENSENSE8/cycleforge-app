@@ -7,7 +7,7 @@ export interface AccountMembershipRow {
   staff_id: number;
 }
 
-export type AccountSigninTarget<T extends AccountMembershipRow> =
+type AccountSigninTarget<T extends AccountMembershipRow> =
   | { kind: 'no_workspace' }
   | { kind: 'not_member'; organizationId: string }
   | { kind: 'needs_choice'; memberships: readonly T[] }

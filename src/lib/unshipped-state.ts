@@ -48,7 +48,7 @@ export function fulfillmentCountsFromCombos(
 
 /** What a To-ship LANE tab counts. `pending` is the Pending tab, which shows
  *  BLOCKED rows too (the grid only hides `TESTED`), so it is PENDING + BLOCKED. */
-export interface FulfillmentLaneTotals {
+interface FulfillmentLaneTotals {
   pending: number;
   tested: number;
   blocked: number;
@@ -90,7 +90,7 @@ interface UnshippedStateMeta {
 export const UNSHIPPED_STATE_META = buildStateMeta('unshipped') as Record<UnshippedState, UnshippedStateMeta>;
 
 /** Legend meta for Dashboard · Unshipped only (PENDING / TESTED / BLOCKED). */
-export const FULFILLMENT_STATE_META: Record<FulfillmentState, UnshippedStateMeta> = {
+const FULFILLMENT_STATE_META: Record<FulfillmentState, UnshippedStateMeta> = {
   PENDING: UNSHIPPED_STATE_META.PENDING,
   TESTED: UNSHIPPED_STATE_META.TESTED,
   BLOCKED: UNSHIPPED_STATE_META.BLOCKED,

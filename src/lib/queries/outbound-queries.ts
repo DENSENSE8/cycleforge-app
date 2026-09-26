@@ -7,14 +7,14 @@ import {
   fetchOutboundOrderRowById,
 } from '@/lib/outbound/outbound-table-data';
 
-export type OutboundLabelsSort = 'priority' | 'newest';
+type OutboundLabelsSort = 'priority' | 'newest';
 
-export interface OutboundLabelsQueryParams {
+interface OutboundLabelsQueryParams {
   searchQuery?: string;
   sort?: OutboundLabelsSort;
 }
 
-export interface OutboundStagedQueryParams {
+interface OutboundStagedQueryParams {
   searchQuery?: string;
 }
 
@@ -30,7 +30,7 @@ export function awaitingLabelsQuery({
   });
 }
 
-export function stagedOrdersQuery({ searchQuery = '' }: OutboundStagedQueryParams = {}) {
+function stagedOrdersQuery({ searchQuery = '' }: OutboundStagedQueryParams = {}) {
   return queryOptions({
     queryKey: ['outbound', 'staged', { searchQuery }],
     queryFn: () => fetchStagedOrdersData({ searchQuery }),
@@ -39,7 +39,7 @@ export function stagedOrdersQuery({ searchQuery = '' }: OutboundStagedQueryParam
   });
 }
 
-export function outboundOrderByIdQuery(orderId: number) {
+function outboundOrderByIdQuery(orderId: number) {
   return queryOptions({
     queryKey: ['outbound', 'order', orderId],
     queryFn: () => fetchOutboundOrderRowById(orderId),

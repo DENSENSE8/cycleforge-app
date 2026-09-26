@@ -25,7 +25,7 @@ export const ADMIN_BULK_ALLOCATE_GRID_CAPABILITIES: GridSurfaceCapabilities = {
 };
 
 /** Build the descriptor from a RESOLVED column list (post-visibility), so `contentMinWidthRem` and the TanStack defs follow the tracks that… */
-export function makeAdminBulkAllocateGridDescriptor(
+function makeAdminBulkAllocateGridDescriptor(
   columns: readonly AdminBulkAllocateGridColumn[],
 ): GridSurfaceDescriptor<AllocationCandidateRow, AdminBulkAllocateGridColumn> {
   return makeGridSurfaceDescriptor<AllocationCandidateRow, AdminBulkAllocateGridColumn>(
@@ -44,7 +44,7 @@ export function makeAdminBulkAllocateGridDescriptor(
  * Validated at module load: a definition that violates a structural law throws
  * here rather than painting a broken grid.
  */
-export const ADMIN_BULK_ALLOCATE_TABLE_DEFINITION = parseTableDefinition({
+const ADMIN_BULK_ALLOCATE_TABLE_DEFINITION = parseTableDefinition({
   id: 'admin-bulk-allocate.candidates',
   tableId: 'admin-bulk-allocate',
   entityFamily: 'admin-bulk-allocate',

@@ -31,7 +31,7 @@ import type { PlatformTypeRule } from '@/lib/receiving/platform-type-rules';
 import { receivingLabelTypeDisplay } from '@/lib/receiving/receiving-type-display';
 
 /** A picker option resolved from the catalog (or the built-in fallback). */
-export interface CatalogOption {
+interface CatalogOption {
   value: string;
   label: string;
   /** Present only for DB-backed (custom-editable) rows. */

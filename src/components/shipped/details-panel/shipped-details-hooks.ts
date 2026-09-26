@@ -124,7 +124,7 @@ export function useShippedDetailState(initialShipped: ShippedOrder, onUpdate: ()
   };
 }
 
-export interface UseShippedPanelViewStateOptions {
+interface UseShippedPanelViewStateOptions {
   initialShipped: ShippedOrder;
   /** The opening leaf section, resolved by the caller from the contextual SoT (`resolveOrderInspectorContext(...).defaultTab` in… */
   defaultSection?: ShippedActiveSection;

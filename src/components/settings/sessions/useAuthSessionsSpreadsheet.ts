@@ -24,7 +24,7 @@ import {
 } from './auth-sessions-table-definition';
 import { useAuthSessionsTableLayout } from './useAuthSessionsTableLayout';
 
-export interface UseAuthSessionsSpreadsheetOptions {
+interface UseAuthSessionsSpreadsheetOptions {
   rows: readonly AuthSessionTableRow[];
   loading?: boolean;
   emptyMessage?: string;

@@ -145,7 +145,7 @@ export function receivingLabelPoCornerDisplay(payload: ReceivingLabelPayload): s
  * ({@link encodePrintMatrix}). Every carton print path (face preview, HTML,
  * raw TSPL/ZPL) reads this, so none of them can encode a different string.
  */
-export function receivingLabelMatrix(payload: ReceivingLabelPayload): PrintMatrix {
+function receivingLabelMatrix(payload: ReceivingLabelPayload): PrintMatrix {
   return encodePrintMatrix({
     kind: 'carton',
     orgSlug: payload.orgSlug,

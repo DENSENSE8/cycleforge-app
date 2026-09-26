@@ -14,7 +14,7 @@ const DEFAULT_TTL_SECONDS = Number(process.env.PHOTOS_SHARE_LINK_TTL_SECONDS || 
 /** Hard cap on links per request — keeps a single sign() fan-out bounded. */
 const MAX_PHOTOS_PER_REQUEST = 200;
 
-export interface PhotoShareLink {
+interface PhotoShareLink {
   photoId: number;
   /** Human-friendly, de-duplicated download name (e.g. `PO-12345-01.jpg`). */
   filename: string;
@@ -26,7 +26,7 @@ export interface PhotoShareLink {
   expiresAt: string | null;
 }
 
-export interface GeneratePhotoShareLinksResult {
+interface GeneratePhotoShareLinksResult {
   links: PhotoShareLink[];
   /** The uniform expiry applied to signed links, for display ("expires in 24h"). */
   expiresAt: string | null;
@@ -47,7 +47,7 @@ interface PhotoStorageMetaRow {
   objectKey: string | null;
 }
 
-export interface GeneratePhotoShareLinksInput {
+interface GeneratePhotoShareLinksInput {
   organizationId: string;
   photoIds: number[];
   /** Override the link lifetime (seconds); clamped to GCS' 7-day max. */
@@ -56,7 +56,7 @@ export interface GeneratePhotoShareLinksInput {
   appOrigin: string;
 }
 
-export interface ShareLinksDeps {
+interface ShareLinksDeps {
   /** Fetch id + storage metadata for the requested photos, org-scoped. */
   loadPhotoStorageMeta(
     organizationId: string,

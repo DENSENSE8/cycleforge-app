@@ -12,7 +12,7 @@ import type { useStaffScheduleData } from '@/hooks/admin/useStaffScheduleData';
 
 type StaffList = ReturnType<typeof useStaffScheduleData>['staff'];
 
-export interface StaffScheduleFilters {
+interface StaffScheduleFilters {
   /** The single selected staffer (`?staffId=`), or null when none is picked. */
   selectedStaffId: number | null;
   filteredStaff: StaffList;

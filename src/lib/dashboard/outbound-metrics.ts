@@ -108,7 +108,7 @@ export interface ComputedMetric {
 /** Pinned left queue cluster on the unshipped strip — fixed display order. */
 const OUTBOUND_QUEUE_ZONE_IDS = ['pending', 'mustShip', 'urgent', 'blocked'] as const;
 
-export interface OutboundMetricDef {
+interface OutboundMetricDef {
   id: string;
   label: string;
   modes: OutboundMode[];
@@ -419,7 +419,7 @@ export function resolveOutboundMetrics(ctx: OutboundMetricCtx): ComputedMetric[]
 }
 
 /** The attention view over the resolved metrics — the shape the redesigned OutboundKpiStrip renders. */
-export interface OutboundAttention {
+interface OutboundAttention {
   queue: ComputedMetric[];
   attention: ComputedMetric[];
   trend: ComputedMetric[];

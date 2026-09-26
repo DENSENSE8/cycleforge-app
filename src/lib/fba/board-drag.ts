@@ -10,7 +10,7 @@ export type FbaBoardDragRowSnapshot = Pick<
 >;
 
 /** Minimal row payload — reconstruct full rows at drop targets if needed via refetch or ID validation. */
-export interface FbaBoardDragPayloadV1 {
+interface FbaBoardDragPayloadV1 {
   v: 1;
   /** Per-line qty when dragging from combine-review steppers (optional; falls back to board actual/expected qty). */
   items: (FbaBoardDragRowSnapshot & { qty?: number })[];

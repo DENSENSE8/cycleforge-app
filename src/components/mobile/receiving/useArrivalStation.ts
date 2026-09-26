@@ -51,7 +51,7 @@ function firstLineTitle(data: LookupPoData): string | null {
   return null;
 }
 
-export interface ArrivalStationOptions {
+interface ArrivalStationOptions {
   /** Called once per settled scan, in arrival order. */
   onSettled?: (settled: SettledArrival) => void;
 }

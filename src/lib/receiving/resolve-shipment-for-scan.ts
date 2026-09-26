@@ -4,9 +4,9 @@ import type { OrgId } from '@/lib/tenancy/constants';
 import { trackingDigits } from './digit-prefix-near-miss';
 
 /** How the shipment was resolved — exact, last-8, digit-prefix near-miss, or none. */
-export type ScanMatchKind = 'exact' | 'last8' | 'digit_prefix' | 'none';
+type ScanMatchKind = 'exact' | 'last8' | 'digit_prefix' | 'none';
 
-export interface ShipmentScanResolution {
+interface ShipmentScanResolution {
   /** STN id of the matched physical package, or null when nothing matched. */
   shipmentId: number | null;
   /** Linked receiving carton id (newest), or null when no carton is linked yet. */

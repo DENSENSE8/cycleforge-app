@@ -17,9 +17,9 @@ import { upsertOrderAssignment } from '@/lib/work-assignments/upsert-order-assig
 import { applyListingAssignment } from '@/lib/automations/apply-listing-assignment';
 import { listStaffOutOnDate } from '@/lib/staff/staff-out-today';
 
-export type ListingAssignMode = 'save_and_assign' | 'apply_existing';
+type ListingAssignMode = 'save_and_assign' | 'apply_existing';
 
-export type ListingAssignInput = {
+type ListingAssignInput = {
   organizationId: OrgId;
   orderIds: number[];
   mode: ListingAssignMode;
@@ -52,9 +52,9 @@ export type ListingRuleSummary = {
 };
 
 /** One rule key: normalized item # + normalized SKU (null = item-#-only wildcard). */
-export type ListingSkuPair = { itemNumber: string; sku: string | null };
+type ListingSkuPair = { itemNumber: string; sku: string | null };
 
-export type ListingAssignResult = {
+type ListingAssignResult = {
   mode: ListingAssignMode;
   orderResults: ListingAssignOrderResult[];
   rulesUpserted: number;

@@ -146,7 +146,7 @@ interface OpenAiChatResponse {
   usage?: { prompt_tokens?: number; completion_tokens?: number };
 }
 
-export type ExtractPoIntakeInput = {
+type ExtractPoIntakeInput = {
   /** Pasted / typed order text. */
   text?: string | null;
   /** data:image/...;base64,... or https URL the model can fetch. */
@@ -155,7 +155,7 @@ export type ExtractPoIntakeInput = {
   imageDataUrls?: string[] | null;
 };
 
-export type ExtractPoIntakeResult = {
+type ExtractPoIntakeResult = {
   draft: PoIntakeDraft;
   model: string;
   usage: { input_tokens: number; output_tokens: number };

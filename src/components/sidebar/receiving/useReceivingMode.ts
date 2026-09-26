@@ -31,7 +31,7 @@ import {
 /** Unbox sub-view from `?unboxview=`. */
 type UnboxView = UnboxWorkspaceTab;
 
-export interface ReceivingModeState {
+interface ReceivingModeState {
   /** Active sidebar mode parsed from `?mode=` (defaults to `receive`). */
   mode: ReceivingMode;
   /** Unbox sub-view from `?unboxview=` (defaults to `recent`). */

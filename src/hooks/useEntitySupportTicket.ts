@@ -5,7 +5,7 @@ import { useQuery } from '@tanstack/react-query';
 // server-only tenancy/db (Neon driver) into this client bundle.
 import { normalizeReceivingTicketEntityRefs } from '@/lib/support/ticket-refs';
 
-export interface EntitySupportTicket {
+interface EntitySupportTicket {
   id: number;
   label: string;
   provider: string;

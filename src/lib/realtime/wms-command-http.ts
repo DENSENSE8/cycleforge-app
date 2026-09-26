@@ -12,7 +12,7 @@ export type WmsCommandHttpIdentity = {
   can(permission: 'bin.adjust'): boolean;
 };
 
-export type WmsCommandHttpResult =
+type WmsCommandHttpResult =
   | { status: 200; body: WmsExecutionCommandReceipt }
   | { status: 400 | 403 | 422; body: { error: string } };
 

@@ -5,7 +5,7 @@ import { recordDocumentPrintJob, type DocumentPrintJobType } from './document-pr
 import { resolvePrintBundle } from './print-bundle';
 
 /** Upper bound on one request — a bulk run past this is split by the client. */
-export const PAPERWORK_PACKET_MAX_ORDERS = 100;
+const PAPERWORK_PACKET_MAX_ORDERS = 100;
 
 export interface PaperworkPacketItem {
   kind: 'outbound' | 'manual';

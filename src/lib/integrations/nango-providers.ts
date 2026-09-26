@@ -3,7 +3,7 @@
 import type { IntegrationProvider } from './credentials';
 
 /** app provider key → Nango provider config key. */
-export const NANGO_BACKED_PROVIDERS: Partial<Record<IntegrationProvider, string>> = {
+const NANGO_BACKED_PROVIDERS: Partial<Record<IntegrationProvider, string>> = {
   // Pilot: Square's OAuth connect flow was the one real gap. Note the Nango
   // catalog key is "squareup", not "square".
   square: 'squareup',

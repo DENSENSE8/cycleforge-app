@@ -34,7 +34,7 @@ export interface DeskPageTab {
   icon?: ReactNode;
 }
 
-export interface DeskPageChromeProps {
+interface DeskPageChromeProps {
   /** Page title, top-left. */
   title: string;
   /**

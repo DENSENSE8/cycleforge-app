@@ -27,7 +27,7 @@ export interface AsListedLabelPayload {
 }
 
 /** As-Listed matrix via the encode SoT ({@link encodePrintMatrix}). */
-export function asListedLabelMatrix(payload: AsListedLabelPayload): PrintMatrix {
+function asListedLabelMatrix(payload: AsListedLabelPayload): PrintMatrix {
   return encodePrintMatrix({
     kind: 'as_listed',
     orgSlug: payload.orgSlug,

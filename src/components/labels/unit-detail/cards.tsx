@@ -34,11 +34,11 @@ import type {
 
 // ─── Shared formatting helpers ───────────────────────────────────────────────
 
-export function prettyLabel(t: string): string {
+function prettyLabel(t: string): string {
   return t.replace(/_/g, ' ').toLowerCase().replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
-export function StatusPill({ status }: { status: string | null }) {
+function StatusPill({ status }: { status: string | null }) {
   const v = (status || 'UNKNOWN').toUpperCase();
   return (
     <span
@@ -49,7 +49,7 @@ export function StatusPill({ status }: { status: string | null }) {
   );
 }
 
-export function ConditionPill({ grade }: { grade: string | null }) {
+function ConditionPill({ grade }: { grade: string | null }) {
   if (!grade) return null;
   return (
     <span

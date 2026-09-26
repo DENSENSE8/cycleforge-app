@@ -32,7 +32,7 @@ export function isSalesOrderDerivedCarton(carton: {
 }
 
 /** A receiving line's source lane. */
-export type LineSource = 'po' | 'unmatched';
+type LineSource = 'po' | 'unmatched';
 
 /** Classify a line's source lane (drives which controller layer, not the surface). */
 export function classifyLineSource(row: RowSlice): LineSource {

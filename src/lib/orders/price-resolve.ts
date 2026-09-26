@@ -11,7 +11,7 @@ export interface PriceFacts {
   orderPlatform: string | null;            // orders.account_source
 }
 
-export interface ResolvedPrice {
+interface ResolvedPrice {
   cents: number | null;
   currency: string;                        // defaults 'USD' when unknown
   source: PriceSource;

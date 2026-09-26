@@ -7,8 +7,8 @@ import { useCallback } from 'react';
 import type { CatalogLinkChoreRow } from '@/features/review/catalog-link/types';
 import type { ImportExceptionRow } from '@/features/review/catalog-link/import-exception-types';
 
-export const CATALOG_LINK_QUERY_KEY = ['review-catalog-link'] as const;
-export const IMPORT_EXCEPTION_QUERY_KEY = ['review-import-exceptions'] as const;
+const CATALOG_LINK_QUERY_KEY = ['review-catalog-link'] as const;
+const IMPORT_EXCEPTION_QUERY_KEY = ['review-import-exceptions'] as const;
 
 async function fetchQueue<T>(url: string): Promise<{ items: T[]; total: number }> {
   const res = await fetch(url, { cache: 'no-store', credentials: 'same-origin' });

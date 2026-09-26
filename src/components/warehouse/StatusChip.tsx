@@ -4,7 +4,7 @@ import type { ReactNode } from 'react';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { GridStatusCellValue } from '@/components/ui/grid-cells';
 
-export type BinStatus = 'empty' | 'low' | 'over' | 'stale' | 'ok';
+type BinStatus = 'empty' | 'low' | 'over' | 'stale' | 'ok';
 
 interface Props {
   status: BinStatus;
@@ -43,7 +43,7 @@ const TONE: Record<
   },
 };
 
-export function StatusChip({ status, compact }: Props) {
+function StatusChip({ status, compact }: Props) {
   const tone = TONE[status];
   if (compact) {
     return (

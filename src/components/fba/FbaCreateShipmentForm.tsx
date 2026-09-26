@@ -33,7 +33,7 @@ interface StaffMember {
   role: string;
 }
 
-export interface FbaCreateShipmentFormProps {
+interface FbaCreateShipmentFormProps {
   staff: StaffMember[];
   form: FbaCreateShipmentFormState;
   setForm: Dispatch<SetStateAction<FbaCreateShipmentFormState>>;

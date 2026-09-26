@@ -1,6 +1,6 @@
-export type NasPhotosPanel = "address" | "workflows" | "stations" | "platform";
+type NasPhotosPanel = "address" | "workflows" | "stations" | "platform";
 
-export const NAS_PHOTOS_PANELS: ReadonlyArray<{
+const NAS_PHOTOS_PANELS: ReadonlyArray<{
   id: NasPhotosPanel;
   label: string;
   description: string;

@@ -26,7 +26,7 @@ import { readStoredSlotLayout, type SlotLayout } from '@/lib/tables/slot-layout-
 import { toast } from '@/lib/toast';
 
 /** One opted-in family's identity — everything the shared logic cannot know. */
-export interface SlotTableLayoutConfig {
+interface SlotTableLayoutConfig {
   /** The `PRODUCT_TABLES` / `tableLayouts` key ('orders', 'pickup', …). */
   tableId: string;
   catalog: FieldCatalog;

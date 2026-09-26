@@ -35,7 +35,7 @@ function zoneLetter(z: string): string | null {
   return /^[A-Z]$/.test(c) ? c : null;
 }
 
-export type ExpandPrintRunInput = {
+type ExpandPrintRunInput = {
   zone: string;
   aisle: number;
   /** Required when varying level or position. */
@@ -150,7 +150,7 @@ export function expandPartsDrawersPrintRun(opts: {
   }));
 }
 
-export type ExpandOddEvenBayLevelsInput = {
+type ExpandOddEvenBayLevelsInput = {
   zone: string;
   aisle: number;
   bayFrom: number;
@@ -222,7 +222,7 @@ export function expandOddEvenBayLevelsPrintRun(
   }));
 }
 
-export type ExpandRaggedBayLevelsInput = {
+type ExpandRaggedBayLevelsInput = {
   zone: string;
   aisle: number;
   bays: readonly BayLevelRange[];

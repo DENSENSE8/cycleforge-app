@@ -9,7 +9,7 @@ function escapeHtml(value: string): string {
     .replace(/"/g, '&quot;');
 }
 
-export interface SheetPrintInput {
+interface SheetPrintInput {
   title: string;
   columns: readonly string[];
   rows: readonly (readonly string[])[];
@@ -74,7 +74,7 @@ export function buildSheetPrintDocument({
 }
 
 /** Render the document into a hidden iframe and open the print dialog. */
-export function printSheet(input: SheetPrintInput): void {
+function printSheet(input: SheetPrintInput): void {
   if (typeof document === 'undefined') return;
   const frame = document.createElement('iframe');
   frame.setAttribute('aria-hidden', 'true');

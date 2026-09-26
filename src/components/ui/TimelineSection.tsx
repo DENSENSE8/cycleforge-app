@@ -7,7 +7,7 @@ import type { PhotoGalleryInput } from '@/components/shipped/photo-gallery/photo
 import { sectionLabel, microBadge } from '@/design-system/tokens/typography/presets';
 
 /** The drop-in activity-timeline block for any detail panel: */
-export interface TimelineSectionProps {
+interface TimelineSectionProps {
   items: TimelineItem[];
   title?: string;
   /** Optional right-aligned slot in the header (a count, a filter, …). */

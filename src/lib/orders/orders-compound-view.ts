@@ -52,14 +52,14 @@ export function ordersStateTone(stateLabel: string | null | undefined): Compound
  * wear LIFECYCLE's colour (packed purple, shipped green) while the tone above
  * stays the grid's no-colour vocabulary.
  */
-export function ordersStateLifecycle(stateLabel: string | null | undefined): LifecycleState | undefined {
+function ordersStateLifecycle(stateLabel: string | null | undefined): LifecycleState | undefined {
   const s = String(stateLabel || '').toUpperCase();
   if (s.includes('PACKED')) return 'packed';
   if (s.includes('SHIPPED')) return 'shipped';
   return undefined;
 }
 
-export interface OrdersCompoundParts {
+interface OrdersCompoundParts {
   /**
    * Lane label already resolved by `resolveRowStatus` for this queueMode.
    * `null` when the queue has no per-row status (every row would read the
@@ -157,7 +157,7 @@ function ordersShipByRaw(
 }
 
 /** Civil-day delay facts the compound STATUS line paints. */
-export function ordersShipByDelay(
+function ordersShipByDelay(
   record: Pick<ShippedOrder, 'deadline_at' | 'ship_by_date'>,
   delayDays: number | null,
   todayKey: string,
@@ -191,7 +191,7 @@ function civilDaysBetween(fromKey: string, toKey: string | null): number | null 
 }
 
 /** DATES column, top — WHEN THE ORDER WAS PLACED, with the import stamp as the honest fallback. */
-export function ordersOrderedAt(
+function ordersOrderedAt(
   record: Pick<ShippedOrder, 'created_at' | 'order_date'>,
 ): NonNullable<CompoundRowView['orderedAt']> | null {
   const placedRaw = nonSentinelTimestamp(record.order_date);

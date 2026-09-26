@@ -9,7 +9,7 @@ import type { PlanFileEntry } from './task-documents-shared';
 import { TASK_DOCUMENT_TITLE_MAX } from './task-documents-shared';
 
 /** A plan larger than this is not read at all (refused as `invalid_path`). */
-export const PLAN_FILE_MAX_BYTES = 1_048_576;
+const PLAN_FILE_MAX_BYTES = 1_048_576;
 /** Longest repo-relative path the gate accepts. */
 const PLAN_PATH_MAX = 500;
 /** A title is the first `# ` heading within this many lines, else the file name. */

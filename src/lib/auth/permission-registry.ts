@@ -16,7 +16,7 @@ export const PERMISSION_CATEGORY_DEFS = [
   { id: 'developer',    label: 'Developer / QA' },
 ] as const;
 
-export type PermissionCategoryId = (typeof PERMISSION_CATEGORY_DEFS)[number]['id'];
+type PermissionCategoryId = (typeof PERMISSION_CATEGORY_DEFS)[number]['id'];
 
 // ─── The single registry ────────────────────────────────────────────────────
 

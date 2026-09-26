@@ -2,7 +2,7 @@
 
 import type { UserIssueStatus, UserIssueType } from '@/lib/user-issues/issues';
 
-export interface IssueToneClasses {
+interface IssueToneClasses {
   /** Solid status-dot fill. */
   dot: string;
   /** Chip: bg + text + ring (house 3-layer chip). */
@@ -41,6 +41,6 @@ export const USER_ISSUE_TYPE_LABEL: Record<UserIssueType, string> = {
 export const USER_ISSUE_TYPE_CHIP =
   'bg-surface-canvas text-text-muted ring-border-soft';
 
-export function userIssueStatusTone(status: UserIssueStatus): IssueToneClasses {
+function userIssueStatusTone(status: UserIssueStatus): IssueToneClasses {
   return USER_ISSUE_STATUS_TONE[status];
 }

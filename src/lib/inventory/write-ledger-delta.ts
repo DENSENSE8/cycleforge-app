@@ -1,9 +1,9 @@
 import type { PoolClient } from 'pg';
 import type { OrgId } from '@/lib/tenancy/constants';
 
-export type LedgerDimension = 'WAREHOUSE' | 'BOXED';
+type LedgerDimension = 'WAREHOUSE' | 'BOXED';
 
-export interface WriteLedgerDeltaInput {
+interface WriteLedgerDeltaInput {
   orgId: OrgId;
   sku: string;
   delta: number;

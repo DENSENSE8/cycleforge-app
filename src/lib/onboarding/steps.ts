@@ -33,7 +33,7 @@ export const EMPTY_ONBOARDING_STATS: OnboardingStats = {
   complianceAnsweredAt: null,
 };
 
-export type OnboardingStepId =
+type OnboardingStepId =
   | 'workflow'
   | 'connect'
   | 'order'
@@ -42,7 +42,7 @@ export type OnboardingStepId =
   | 'invite'
   | 'compliance';
 
-export interface OnboardingStep {
+interface OnboardingStep {
   id: OnboardingStepId;
   label: string;
   /** One-line teaching subtitle shown while the step is pending. */

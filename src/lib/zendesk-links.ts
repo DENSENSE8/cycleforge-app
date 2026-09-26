@@ -7,12 +7,12 @@ import { photoContentUrl } from '@/lib/photos/display-url';
 import { listPhotosForEntity } from '@/lib/photos/service';
 import type { PhotoEntityType } from '@/lib/photos/types';
 
-export interface TicketEntityRef {
+interface TicketEntityRef {
   type: string;
   id: number;
 }
 
-export interface ResolvedTicketEntity extends TicketEntityRef {
+interface ResolvedTicketEntity extends TicketEntityRef {
   source: 'ticket_links' | 'external_id' | 'unfound_overlay';
 }
 
@@ -118,7 +118,7 @@ export async function linkTicket(args: {
 }
 
 /** Link a ticket to a shipment (STN id) AS ITS PRIMARY ANCHOR, so cartons anchored to that tracking number resolve the ticket via… */
-export async function linkTicketToShipment(args: {
+async function linkTicketToShipment(args: {
   orgId: string;
   zendeskTicketId: number;
   shipmentId: number;
@@ -244,7 +244,7 @@ export async function getTicketEntity(
   return null;
 }
 
-export interface EntityPhoto {
+interface EntityPhoto {
   id: number;
   url: string;
   caption: string | null;

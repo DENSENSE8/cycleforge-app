@@ -103,7 +103,7 @@ export const NOTE_TAG_BTN = `${NOTE_OVERLAY_ICON_BTN} text-orange-500 transition
 
 export const NOTE_DOWNLOAD_INSERT_BTN = `${NOTE_OVERLAY_ICON_BTN} text-blue-600 transition hover:bg-blue-100/60 hover:text-blue-700 hover:shadow-sm hover:ring-1 hover:ring-blue-200/80`;
 
-export const NOTE_SAVE_BTN = `${NOTE_OVERLAY_ICON_BTN} text-text-faint transition hover:bg-emerald-100/60 hover:text-emerald-600 hover:shadow-sm hover:ring-1 hover:ring-emerald-200/80`;
+const NOTE_SAVE_BTN = `${NOTE_OVERLAY_ICON_BTN} text-text-faint transition hover:bg-emerald-100/60 hover:text-emerald-600 hover:shadow-sm hover:ring-1 hover:ring-emerald-200/80`;
 
 export const NOTE_STAFF_STAMP_BTN = `${NOTE_OVERLAY_ICON_BTN} text-violet-600 transition hover:bg-violet-100/60 hover:text-violet-700 hover:shadow-sm hover:ring-1 hover:ring-violet-200/80`;
 

@@ -6,17 +6,17 @@ export function selectionEventName(scope: string): string {
 }
 
 /** Header/page → table: 'all' selects every row, 'none' clears the selection. */
-export function selectionToggleAllEventName(scope: string): string {
+function selectionToggleAllEventName(scope: string): string {
   return `selection-toggle-all:${scope}`;
 }
 
 /** Table → page: publish the count of currently-selectable (visible) rows, so
  *  the action bar can render a select-all ring / "N of M" affordance. */
-export function selectionTotalEventName(scope: string): string {
+function selectionTotalEventName(scope: string): string {
   return `selection-total:${scope}`;
 }
 
-export type SelectionToggleAll = 'all' | 'none';
+type SelectionToggleAll = 'all' | 'none';
 
 /** Table → page: publish the current selection for `scope`. */
 export function emitSelection<T>(scope: string, rows: T[]): void {

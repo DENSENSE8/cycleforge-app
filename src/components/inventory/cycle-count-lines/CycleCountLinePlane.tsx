@@ -12,7 +12,7 @@ import {
   type CycleCountLineRow,
 } from '@/lib/inventory/cycle-count-line-row';
 
-export interface CycleCountLinePlaneProps {
+interface CycleCountLinePlaneProps {
   row: CycleCountLineRow | null;
   busy?: boolean;
   onClose: () => void;

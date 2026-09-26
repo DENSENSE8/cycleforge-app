@@ -33,7 +33,7 @@ import type { FieldDisplayType } from '@/lib/tables/field-catalog/types';
 import { focusRing } from '@/design-system/tokens/focus-ring';
 import { cn } from '@/utils/_cn';
 
-export interface SlotTableGroupColumn {
+interface SlotTableGroupColumn {
   key: string;
   width: string;
   frozen?: boolean;
@@ -60,7 +60,7 @@ export interface SlotTableGroupIdentity {
   platformLabel?: string | null;
 }
 
-export interface SlotTableGroupParentRowProps {
+interface SlotTableGroupParentRowProps {
   identity: SlotTableGroupIdentity | null;
   /** Distinct carriers — one ring dot each. */
   carriers: readonly CarrierBrandMeta[];

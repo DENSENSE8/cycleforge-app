@@ -10,7 +10,7 @@ import { Layers } from '@/components/Icons';
 import type { SectionTab } from '@/design-system/components';
 import { STATION_LOOK_DISPLAY_ID } from './display-index';
 
-export const LOOK_DISPLAY_TAB_STUB: SectionTab = {
+const LOOK_DISPLAY_TAB_STUB: SectionTab = {
   id: STATION_LOOK_DISPLAY_ID,
   label: 'Look',
   icon: Layers,

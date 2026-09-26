@@ -8,7 +8,7 @@ type SummaryCell = DashboardData['summary'][DashboardCategory];
 type ActivityEvent = DashboardData['activityFeed'][number];
 
 /** Realtime `kpi_update` message payload. */
-export interface KpiUpdateMessage {
+interface KpiUpdateMessage {
   category: DashboardCategory;
   update: SummaryCell;
 }

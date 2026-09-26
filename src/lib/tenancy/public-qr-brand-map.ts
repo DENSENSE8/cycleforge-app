@@ -5,7 +5,7 @@
 
 import { getPublicLandingUrl, type OrgSettings } from '@/lib/tenancy/settings';
 
-export const PUBLIC_QR_BRAND_FALLBACK_NAME = 'Cycle Forge';
+const PUBLIC_QR_BRAND_FALLBACK_NAME = 'Cycle Forge';
 
 export type PublicQrBrand = {
   brandName: string;

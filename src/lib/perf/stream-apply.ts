@@ -6,7 +6,7 @@ export const STREAM_APPLY_BATCH_SIZE = 16;
 /** ~half a 16ms frame — leave the rest for input + paint. */
 export const STREAM_APPLY_TIME_BUDGET_MS = 8;
 
-export interface ApplyStreamBudgetOptions<T> {
+interface ApplyStreamBudgetOptions<T> {
   apply: (batch: T[]) => void;
   isControl?: (event: T) => boolean;
   batchSize?: number;

@@ -7,7 +7,7 @@ export const EBAY_SELLER_REFURBISHED_CONDITION_ID = '2500';
 
 const EBAY_TITLE_MAX = 80;
 
-export interface EbayRefurbDraft {
+interface EbayRefurbDraft {
   /** Suggested SKU (serial-based when available). */
   sku: string | null;
   title: string;

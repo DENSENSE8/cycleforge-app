@@ -10,9 +10,9 @@ const MAX_LIMIT = 100;
 const DEFAULT_LIMIT = 24;
 
 /** The segment-free half of the search options — the route supplies `segment`. */
-export type ParsedCatalogOptions = Omit<KioskCatalogSearchOptions, 'segment'>;
+type ParsedCatalogOptions = Omit<KioskCatalogSearchOptions, 'segment'>;
 
-export type ParsedCatalogQuery =
+type ParsedCatalogQuery =
   | { ok: true; options: ParsedCatalogOptions }
   | { ok: false; error: string };
 
@@ -29,7 +29,7 @@ export interface KioskCatalogWireProduct {
   availability: CatalogAvailability;
 }
 
-export interface KioskCatalogWireResponse {
+interface KioskCatalogWireResponse {
   success: true;
   products: KioskCatalogWireProduct[];
   total: number;

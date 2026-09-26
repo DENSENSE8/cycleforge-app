@@ -12,7 +12,7 @@ function isFbaPackerRecord(record: PackerRecord): boolean {
   );
 }
 
-export interface GroupedPackerRecords {
+interface GroupedPackerRecords {
   [dateKey: string]: PackerRecord[];
 }
 

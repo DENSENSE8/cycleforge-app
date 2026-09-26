@@ -1,11 +1,11 @@
 /** What the ONE search box matches — engine law for every PRODUCT_TABLES peer. */
 /** The minimum column shape this law reads — every family's model satisfies it. */
-export interface SlotTableSearchColumn {
+interface SlotTableSearchColumn {
   key: string;
   fieldId?: string;
 }
 
-export interface SlotTableSearchVocabularySource<C extends SlotTableSearchColumn> {
+interface SlotTableSearchVocabularySource<C extends SlotTableSearchColumn> {
   /** The MOUNTED columns. Bound tracks carry `fieldId`; chrome tracks do not. */
   columns: readonly C[];
   /**

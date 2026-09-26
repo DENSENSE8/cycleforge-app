@@ -15,7 +15,7 @@ import { getDaysLateNullable, toPSTDateKey } from '@/utils/date';
  */
 export type MobileRecordRow = WorkOrderRow;
 
-export interface MobileRecordFacts {
+interface MobileRecordFacts {
   state: LifecycleState;
   next: { label: string; tip?: string; blocked?: boolean };
   orderLabel: string;

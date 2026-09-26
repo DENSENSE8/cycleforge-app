@@ -124,7 +124,7 @@ const STRIP_OWNED_CATALOG_KEYS: Record<string, true> = {
 };
 
 /** The open record's own controls, when the strip is armed for it. */
-export interface OrderOpenRecordControls {
+interface OrderOpenRecordControls {
   /** The open order is in the bulk check-set. */
   checked: boolean;
   onToggleSelect?: (record: ShippedOrder, event: { shiftKey: boolean }) => void;
@@ -132,7 +132,7 @@ export interface OrderOpenRecordControls {
   onOpenLabels?: (record: ShippedOrder) => void;
 }
 
-export interface OrderActionVerbsOptions {
+interface OrderActionVerbsOptions {
   /** The lead order (the open record, or the first checked row). */
   record: ShippedOrder;
   /** The orders the verbs act on — the check-set, or `[record]`. */
@@ -149,7 +149,7 @@ export interface OrderActionVerbsOptions {
 }
 
 /** Every order verb for the strip, mode-aware, over `rows`. */
-export function useOrderActionVerbs({
+function useOrderActionVerbs({
   record,
   rows,
   stateRows,
@@ -853,7 +853,7 @@ export function OrdersRowPlane({ row, ...plane }: TableRowPlaneProps<ShippedOrde
 }
 
 /** The check-set strip (CYC-82): the order verbs over the checked rows. */
-export function MorphingRowActionMenu({
+function MorphingRowActionMenu({
   record,
   open,
   onClose,

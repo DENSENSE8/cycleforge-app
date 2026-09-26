@@ -25,7 +25,7 @@ export interface AppearanceSettings {
   pageWash: WashName;
 }
 
-export const DEFAULT_APPEARANCE: AppearanceSettings = {
+const DEFAULT_APPEARANCE: AppearanceSettings = {
   density: 'cozy',
   fontScale: 1.0,
   pageWash: DEFAULT_WASH,

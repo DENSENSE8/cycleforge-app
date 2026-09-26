@@ -52,7 +52,7 @@ export function daysLateOn(todayKey: string, deadlineAt: string | null | undefin
 }
 
 /** Who picks / packs a queue row — display faces plus the assign ids. */
-export interface QueueRowStaff {
+interface QueueRowStaff {
   testerDisplay: string;
   packerDisplay: string;
   testerId: number | null;
@@ -84,7 +84,7 @@ export function queueRowStaff(
   };
 }
 
-export interface UseOrdersQueueFeedOptions {
+interface UseOrdersQueueFeedOptions {
   records: ShippedOrder[];
   searchValue: string;
   /** See `UseOrdersSpreadsheetOptions.searchAnsweredBy`. */
@@ -118,7 +118,7 @@ export interface OrdersQueueCommits {
   handleCommitTracking: (record: ShippedOrder, tracking: string) => void;
 }
 
-export interface OrdersQueueSortMenu {
+interface OrdersQueueSortMenu {
   options: readonly DataTableSortOption[];
   active: QueueDisplaySort;
   hot: boolean;
@@ -126,7 +126,7 @@ export interface OrdersQueueSortMenu {
   activeFace: Pick<DataTableSortOption, 'label' | 'shortLabel' | 'identity'>;
 }
 
-export interface OrdersQueueFeed extends OrdersQueueCommits {
+interface OrdersQueueFeed extends OrdersQueueCommits {
   /** Warehouse civil today (`YYYY-MM-DD`), resolved once per render. */
   todayKey: string;
   getStaffName: (id: number) => string;
@@ -286,7 +286,7 @@ export function useOrdersQueueFeed({
 }
 
 /** The outbound inline-edit commits — condition, ship-by, pick / pack assign, the under-title facts, platform, SKU bin, tracking — each… */
-export function useOrdersQueueCommits(): OrdersQueueCommits {
+function useOrdersQueueCommits(): OrdersQueueCommits {
   // ONE mutation hook for the whole table (not one per row): every in-place
   // edit commits through the same `useOrderAssignment` waist — a scalar field
   // PATCH with the optimistic row update and rollback that hook already owns.

@@ -27,7 +27,7 @@ export interface StaffAuthPolicySubmit {
   requiresSensitiveStepUp: boolean;
 }
 
-export interface StaffAuthPolicyPlaneProps {
+interface StaffAuthPolicyPlaneProps {
   row: StaffDirectoryRow | null;
   busy?: boolean;
   onClose: () => void;

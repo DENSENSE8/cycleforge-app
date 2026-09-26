@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { fetchManuals } from '../manuals-library-api';
 import type { ManualRow } from '../manuals-tree';
 
-export interface UseManualsData {
+interface UseManualsData {
   manuals: ManualRow[];
   setManuals: React.Dispatch<React.SetStateAction<ManualRow[]>>;
   loading: boolean;

@@ -46,7 +46,7 @@ export const tableCell = 'text-sm font-semibold text-text-default' as const;
 /** Micro badges (e.g. 8px uppercase labels, subtitle accents) */
 export const microBadge = 'text-role-micro uppercase' as const;
 
-export const typographyPresets = {
+const typographyPresets = {
   sectionLabel,
   fieldLabel,
   dataValue,
@@ -61,4 +61,4 @@ export const typographyPresets = {
   microBadge,
 } as const;
 
-export type TypographyPresets = typeof typographyPresets;
+type TypographyPresets = typeof typographyPresets;

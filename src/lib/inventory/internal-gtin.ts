@@ -13,7 +13,7 @@ const INTERNAL_GTIN_PREFIX = '02';
  * (everything before the check digit). Multipliers alternate 3,1 from
  * the rightmost body digit leftward.
  */
-export function gs1CheckDigit(body13: string): string {
+function gs1CheckDigit(body13: string): string {
   if (body13.length !== 13 || !/^\d{13}$/.test(body13)) {
     throw new Error(`gs1CheckDigit: body must be exactly 13 digits, got "${body13}"`);
   }
@@ -40,7 +40,7 @@ export function generateInternalGtin(skuCatalogId: number): string {
 }
 
 /** Sanity check for GTIN-14 strings. */
-export function isValidGtin14(gtin: string): boolean {
+function isValidGtin14(gtin: string): boolean {
   if (!/^\d{14}$/.test(gtin)) return false;
   return gs1CheckDigit(gtin.slice(0, 13)) === gtin[13];
 }

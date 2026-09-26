@@ -8,7 +8,7 @@ import { withTenantTransaction } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';
 import type { StaffFunctionalRoleKey } from '@/lib/schemas/staff-functional-roles';
 
-export type SetStaffFunctionalRoleResult =
+type SetStaffFunctionalRoleResult =
   | { status: 'not_found' }
   | { status: 'ok'; staffId: number; roles: StaffFunctionalRoleKey[]; changed: boolean };
 

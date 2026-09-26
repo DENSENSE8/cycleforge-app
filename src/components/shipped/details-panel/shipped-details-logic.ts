@@ -6,7 +6,7 @@ import { toPSTDateKey } from '@/utils/date';
 import { resolveFulfillmentLane, hasLeftWarehouse } from '@/lib/order-lifecycle';
 
 /** Has this order shipped (left the warehouse)? */
-export function isOrderShipped(shipped: ShippedOrder): boolean {
+function isOrderShipped(shipped: ShippedOrder): boolean {
   if (shipped.is_shipped === true || shipped.is_delivered === true) return true;
   return hasLeftWarehouse({
     shipConfirmedAt: shipped.ship_confirmed_at ?? null,
@@ -50,7 +50,7 @@ export function buildAssignmentRow(shipped: ShippedOrder): WorkOrderRow {
 
 type StatusTone = 'emerald' | 'red' | 'yellow';
 
-export interface ShippedHeaderMeta {
+interface ShippedHeaderMeta {
   outOfStockValue: string;
   hasOutOfStock: boolean;
   testedById: number | null;
@@ -69,7 +69,7 @@ export function isExceptionShippedRow(shipped: ShippedOrder): boolean {
   return (shipped as { row_source?: string }).row_source === 'exception' || rowId < 0;
 }
 
-export type ShippedRowEditTarget =
+type ShippedRowEditTarget =
   | { kind: 'order'; orderId: number }
   | { kind: 'exception'; exceptionId: number };
 
@@ -171,7 +171,7 @@ function hasOrderStamp(value: string | null | undefined): boolean {
 }
 
 /** The stamp itself when real, else null — for feeding display rows. */
-export function orderStampOrNull(value: string | null | undefined): string | null {
+function orderStampOrNull(value: string | null | undefined): string | null {
   return hasOrderStamp(value) ? String(value) : null;
 }
 

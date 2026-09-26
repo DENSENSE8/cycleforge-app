@@ -59,7 +59,7 @@ import { PACK_PLACED_PARAM, PACK_STATION_PARAM } from '@/lib/packing/pack-statio
 import { OutboundOrdersLedger } from '@/components/outbound/orders/OutboundOrdersLedger';
 
 /** Pre-pack fulfillment queue — Dashboard Pending / Tested tabs (and pack/shipping stations that embed the same table without a lane scope). */
-export interface UnshippedTableProps extends DashboardSearchSectionProps {
+interface UnshippedTableProps extends DashboardSearchSectionProps {
   packedBy?: number;
   testedBy?: number;
   /** Pencil multi-select: rows render checkboxes; chrome owns the Select toggle. */

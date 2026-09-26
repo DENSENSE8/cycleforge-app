@@ -13,7 +13,7 @@ export function apiErrorCode(payload: unknown): string | null {
   return typeof code === 'string' && code ? code : null;
 }
 
-export interface StaffAuthPolicyFailure {
+interface StaffAuthPolicyFailure {
   /** `warning` is recoverable-by-the-operator; `error` is not. */
   tone: 'warning' | 'error';
   message: string;

@@ -20,7 +20,7 @@ export type AssignWorkAction = {
 /** Who actually takes an action today, and whether the backup stood in. */
 export type ResolvedAssignee = { staffId: number; via: 'primary' | 'backup' };
 
-export type AutomationAction = AssignWorkAction;
+type AutomationAction = AssignWorkAction;
 
 export type ListingAutomationFacts = {
   item_number?: string | null;

@@ -95,7 +95,7 @@ interface SyncCounts {
   upsertedObjectCount: number;
 }
 
-export interface EcwidSquareSyncResult {
+interface EcwidSquareSyncResult {
   success: boolean;
   dryRun: boolean;
   batchSizeUsed: number;

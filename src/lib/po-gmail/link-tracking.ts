@@ -3,7 +3,7 @@
 import pool from '@/lib/db';
 import { registerShipmentPermissive } from '@/lib/shipping/sync-shipment';
 
-export interface LinkTrackingArgs {
+interface LinkTrackingArgs {
   /** Zoho internal PO id — the join key shared by mirror + receiving. */
   zoho_purchaseorder_id: string;
   /** Raw tracking candidates pulled from the email body. */
@@ -14,7 +14,7 @@ export interface LinkTrackingArgs {
   organizationId: string;
 }
 
-export interface LinkTrackingResult {
+interface LinkTrackingResult {
   /** Receiving rows that already had a shipment_id — left untouched. */
   alreadyLinked: number;
   /** Successfully created+stamped shipment_id during this run. */

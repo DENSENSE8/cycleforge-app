@@ -14,15 +14,15 @@ export const BUILD_REQUEST_STATUSES = [
   'deployed',
   'failed',
 ] as const;
-export type BuildRequestStatus = (typeof BUILD_REQUEST_STATUSES)[number];
+type BuildRequestStatus = (typeof BUILD_REQUEST_STATUSES)[number];
 
 /** tool_registry.status — matches tool_registry_status_chk. */
 export const TOOL_REGISTRY_STATUSES = ['active', 'deprecated', 'retired'] as const;
 export type ToolRegistryStatus = (typeof TOOL_REGISTRY_STATUSES)[number];
 
 /** approval_reviews.decision — matches approval_reviews_decision_chk. */
-export const APPROVAL_DECISIONS = ['approved', 'denied'] as const;
-export type ApprovalDecision = (typeof APPROVAL_DECISIONS)[number];
+const APPROVAL_DECISIONS = ['approved', 'denied'] as const;
+type ApprovalDecision = (typeof APPROVAL_DECISIONS)[number];
 
 /** approval_reviews.reason_code — matches approval_reviews_reason_code_chk. */
 export const APPROVAL_REASON_CODES = [

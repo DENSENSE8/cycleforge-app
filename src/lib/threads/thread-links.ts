@@ -58,7 +58,7 @@ export async function listThreadLinks(
 
 // ─── linkThreadEntity ────────────────────────────────────────────────────────
 
-export interface LinkThreadEntityInput {
+interface LinkThreadEntityInput {
   orgId: OrgId;
   threadId: number;
   entityType: ThreadLinkEntityType;
@@ -67,7 +67,7 @@ export interface LinkThreadEntityInput {
   createdBy?: number | null;
 }
 
-export type LinkThreadEntityResult =
+type LinkThreadEntityResult =
   | { ok: true; link: ThreadLink; created: boolean }
   | { ok: false; status: 400 | 404; error: string };
 
@@ -130,7 +130,7 @@ export async function linkThreadEntity(
 
 // ─── unlinkThreadEntity ──────────────────────────────────────────────────────
 
-export type UnlinkThreadEntityResult =
+type UnlinkThreadEntityResult =
   | { ok: true; idempotent: boolean }
   | { ok: false; status: 404; error: string };
 

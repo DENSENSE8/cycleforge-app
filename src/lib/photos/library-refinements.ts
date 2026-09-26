@@ -7,13 +7,13 @@ import {
   type PhotoLibraryFilterState,
 } from './library-filter-state';
 
-export interface PhotoLibraryRefinementActions {
+interface PhotoLibraryRefinementActions {
   patch: (next: Partial<PhotoLibraryFilterState>) => void;
   setDatePreset: (preset: PhotoLibraryDatePreset) => void;
   clearStructured: () => void;
 }
 
-export interface PhotoLibraryRefinementContext {
+interface PhotoLibraryRefinementContext {
   staffNameForId?: (id: string) => string | null | undefined;
 }
 
@@ -80,7 +80,7 @@ export function buildPhotoLibraryRefinements(
   return out;
 }
 
-export function photoLibraryStructuredFilterCount(filters: PhotoLibraryFilterState): number {
+function photoLibraryStructuredFilterCount(filters: PhotoLibraryFilterState): number {
   return countActivePhotoLibraryFilters(filters);
 }
 

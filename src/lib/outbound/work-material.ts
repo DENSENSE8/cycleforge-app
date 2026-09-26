@@ -77,7 +77,7 @@ export const OUTBOUND_MATERIAL_JSON_SQL = `jsonb_build_object(
     'orderSet', COALESCE(material_order_set.members, '')
   )`;
 
-export const outboundMaterialSchema = z.object({
+const outboundMaterialSchema = z.object({
   orderId: z.string().regex(/^[1-9][0-9]*$/),
   stage: z.enum(OUTBOUND_WAREHOUSE_STAGES),
   labelState: z.enum(OUTBOUND_LABEL_STATES),
@@ -92,15 +92,15 @@ export const outboundMaterialSchema = z.object({
   /** Every `orders` row in the logical set, ordered by id. */
   orderSet: z.string(),
 }).strict();
-export type OutboundMaterial = z.infer<typeof outboundMaterialSchema>;
+type OutboundMaterial = z.infer<typeof outboundMaterialSchema>;
 
 /** The digest. The field order is written out rather than derived from object key order, because key order is not a contract; and the… */
 // v2: the material set widened from the selected row to the logical order set
 // (2026-09-20). The prefix is what stops a v1 digest from being mistaken for a
 // v2 one, which would silently re-introduce the sibling blind spot.
-export const OUTBOUND_FINGERPRINT_VERSION = 'outbound-work/v2';
+const OUTBOUND_FINGERPRINT_VERSION = 'outbound-work/v2';
 
-export function outboundFingerprint(material: OutboundMaterial): string {
+function outboundFingerprint(material: OutboundMaterial): string {
   const canonical = JSON.stringify([
     material.orderId,
     material.stage,
@@ -124,7 +124,7 @@ export function fingerprintFromRow(raw: unknown): { material: OutboundMaterial; 
 }
 
 /** The executor's read: */
-export const OUTBOUND_MATERIAL_ONE_SQL = `
+const OUTBOUND_MATERIAL_ONE_SQL = `
   SELECT ${OUTBOUND_MATERIAL_JSON_SQL} AS material
     FROM orders o
     ${OUTBOUND_MATERIAL_JOINS_SQL}

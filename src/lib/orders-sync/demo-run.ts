@@ -5,7 +5,7 @@
 import type { SyncRunLane, SyncRunOutcomeLine } from './run-steps';
 import type { SyncStreamEvent, TransferOrderDetail, TransferTabState } from './types';
 
-export interface DemoRunBeat {
+interface DemoRunBeat {
   /** Milliseconds after the previous beat. */
   after: number;
   lane: SyncRunLane;

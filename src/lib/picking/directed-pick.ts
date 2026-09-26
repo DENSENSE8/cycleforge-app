@@ -154,7 +154,7 @@ export function groupDirectedPickLines(orderId: number, rows: readonly DirectedP
  * read by a gun (`C0415100`) and the same bin typed from its face
  * (`c-04-15-1-00`) must compare equal.
  */
-export function normalizeScanCode(raw: string): string {
+function normalizeScanCode(raw: string): string {
   return String(raw ?? '').trim().toUpperCase().replace(/[^A-Z0-9]/g, '');
 }
 

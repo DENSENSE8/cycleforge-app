@@ -13,14 +13,14 @@ import { cursorClickTarget } from '@/design-system/motion';
 import { cn } from '@/utils/_cn';
 import { computeWeekRange, dateKeyToLocalDate } from '@/utils/date';
 
-export const DATE_RANGE_PICKER_VARIANTS = {
+const DATE_RANGE_PICKER_VARIANTS = {
   range:
     'filter date range from-to period: presets + month grid + Clear/Apply; idle face includes the year; X clears',
   compact:
     'ship-by due date single day in a cell: month grid only; click commits; no year; no X; face paints MMM d or -- unless the surface supplies faceLabel (slot-table ship-by paints its AGE); replace native input type=date',
 } as const;
 
-export type DateRangePickerVariant = keyof typeof DATE_RANGE_PICKER_VARIANTS;
+type DateRangePickerVariant = keyof typeof DATE_RANGE_PICKER_VARIANTS;
 
 type SharedFieldProps = {
   disabled?: boolean;
@@ -29,7 +29,7 @@ type SharedFieldProps = {
   className?: string;
 };
 
-export type DateRangePickerRangeProps = SharedFieldProps & {
+type DateRangePickerRangeProps = SharedFieldProps & {
   variant?: 'range';
   value: DateRange | undefined;
   onChange: (next: DateRange | undefined) => void;
@@ -38,7 +38,7 @@ export type DateRangePickerRangeProps = SharedFieldProps & {
   autoOpen?: boolean;
 };
 
-export type DateRangePickerCompactProps = SharedFieldProps & {
+type DateRangePickerCompactProps = SharedFieldProps & {
   variant: 'compact';
   /** Civil day on the trigger. `undefined` still paints `--` — never a blank. */
   value: Date | undefined;
@@ -63,7 +63,7 @@ export type DateRangePickerCompactProps = SharedFieldProps & {
   clickCursor?: boolean;
 };
 
-export type DateRangePickerFieldProps = DateRangePickerRangeProps | DateRangePickerCompactProps;
+type DateRangePickerFieldProps = DateRangePickerRangeProps | DateRangePickerCompactProps;
 
 const DEFAULT_PRESETS: ReadonlyArray<{ label: string; range: () => DateRange }> = [
   {

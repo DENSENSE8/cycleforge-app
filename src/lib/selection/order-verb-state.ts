@@ -34,7 +34,7 @@ export function hasLeftBuilding(row: OutboundVerbRow): boolean {
 }
 
 /** Packed into a carton (the pack scan landed). */
-export function isPacked(row: OutboundVerbRow): boolean {
+function isPacked(row: OutboundVerbRow): boolean {
   return Boolean(row.packed_at);
 }
 

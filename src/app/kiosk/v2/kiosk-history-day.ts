@@ -52,7 +52,7 @@ export function kioskHistoryDayAge(dayKey: string, todayKey?: string): string {
   return unitsAgo(Math.floor(days / DAYS_PER_YEAR), 'year');
 }
 
-export interface KioskHistoryDayBand<TRow> {
+interface KioskHistoryDayBand<TRow> {
   dayKey: string;
   label: string;
   /** `6 days ago` — empty when the label is already relative. */

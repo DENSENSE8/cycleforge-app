@@ -8,7 +8,7 @@ import type { OrgId } from '@/lib/tenancy/constants';
 import { resolveOrgByWebhookToken } from './zoho-webhook-credentials';
 import type { NormalizedZohoEvent } from './types';
 
-export type ResolveOrgResult =
+type ResolveOrgResult =
   | {
       ok: true;
       orgId: OrgId;

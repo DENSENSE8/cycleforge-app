@@ -8,10 +8,10 @@ import type { LabelLinkCandidate } from '@/lib/shipping/order-label-links';
 import type { PriceBreakdown } from '@/lib/orders/order-price-breakdown';
 import { orderLabelSummaryKey } from '@/lib/orders/order-paperwork-client';
 
-export const labelCandidatesKey = (orderId: number, q: string) => ['order-label-candidates', orderId, q] as const;
+const labelCandidatesKey = (orderId: number, q: string) => ['order-label-candidates', orderId, q] as const;
 export const orderPriceBreakdownKey = (orderId: number) => ['order-price-breakdown', orderId] as const;
 
-export type OrderPriceBreakdownResponse = PriceBreakdown & { orderId: number; shipstationOrderNumber: string | null };
+type OrderPriceBreakdownResponse = PriceBreakdown & { orderId: number; shipstationOrderNumber: string | null };
 
 async function readJson<T>(res: Response, fallback: string): Promise<T> {
   const body = (await res.json().catch(() => ({}))) as T & { error?: string };

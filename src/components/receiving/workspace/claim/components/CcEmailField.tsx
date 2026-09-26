@@ -7,7 +7,7 @@ import { IconButton } from '@/design-system/primitives';
 /** Loose email shape — good enough to gate a CC chip; Zendesk validates for real. */
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-export function isValidCcEmail(value: string): boolean {
+function isValidCcEmail(value: string): boolean {
   return EMAIL_RE.test(value.trim());
 }
 

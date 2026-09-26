@@ -8,7 +8,7 @@ import type { OrgId } from '@/lib/tenancy/constants';
 
 const MICROCENTS_PER_CENT = 1_000_000;
 
-export interface AiMeterReportResult {
+interface AiMeterReportResult {
   configured: boolean;
   rowsProcessed: number;
   orgsReported: number;

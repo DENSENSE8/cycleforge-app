@@ -19,7 +19,7 @@ export function useKioskPaneDock(): HTMLElement | null {
   return useContext(KioskPaneDockContext);
 }
 
-export interface KioskPaneProgress {
+interface KioskPaneProgress {
   /** COMPLETED units, never the index of the step in view (PG6). */
   current: number;
   /** Total units — also the segment count. */

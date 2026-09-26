@@ -4,7 +4,7 @@ import { APP_SIDEBAR_NAV } from '@/lib/sidebar-navigation';
 import type { DetailEnvelope } from './staff-access-shared';
 
 /** Where a page's *effective* on/off state comes from, for the badge column: */
-export type PermissionSource = 'role' | 'granted' | 'revoked' | 'role-denies';
+type PermissionSource = 'role' | 'granted' | 'revoked' | 'role-denies';
 
 export function classifyPermissionSource(
   inRole: boolean,

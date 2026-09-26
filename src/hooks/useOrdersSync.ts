@@ -25,7 +25,7 @@ import {
 import { buildSyncRunDetail } from '@/lib/orders-sync/run-detail';
 
 /** The "Import Latest Orders" sync orchestration — ShipStation, the org's ONE order import, through the connection-driven sync API (`POST… */
-export interface OrdersSyncStatus {
+interface OrdersSyncStatus {
   type: 'success' | 'error';
   message: string;
   details?: {

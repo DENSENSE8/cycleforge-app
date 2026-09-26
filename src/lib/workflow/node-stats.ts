@@ -4,7 +4,7 @@ import { sql } from 'drizzle-orm';
 import { db } from '@/lib/drizzle/db';
 import type { OrgId } from '@/lib/tenancy/constants';
 
-export interface NodeStatsSnapshotResult {
+interface NodeStatsSnapshotResult {
   success: boolean;
   /** WIP rows written/updated for today (item_workflow_state snapshot). */
   rowsWritten: number;

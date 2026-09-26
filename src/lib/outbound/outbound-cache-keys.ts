@@ -1,7 +1,7 @@
 import type { QueryClient } from '@tanstack/react-query';
 
 /** Dashboard + packer caches touched by dock scan-out / undo. */
-export const SCAN_OUT_INVALIDATION_KEYS = [
+const SCAN_OUT_INVALIDATION_KEYS = [
   ['dashboard-table', 'shipped'],
   ['dashboard-table', 'unshipped'],
   ['dashboard-table', 'pending'],

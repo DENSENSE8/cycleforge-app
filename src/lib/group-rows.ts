@@ -105,7 +105,7 @@ export function flattenVisibleRenderOrder<T>(
 // ─── Group aggregates ────────────────────────────────────────────────────────
 
 /** A group's rolled-up numbers — what a WMS group header has to say. */
-export interface RowGroupTotals {
+interface RowGroupTotals {
   /** Rows in the group. Always present; never a measure the caller names. */
   count: number;
   /** Caller-named sums, in declaration order. */
@@ -113,7 +113,7 @@ export interface RowGroupTotals {
 }
 
 /** One named measure: how to read a number off a row. */
-export type RowGroupMeasure<T> = (row: T) => number;
+type RowGroupMeasure<T> = (row: T) => number;
 
 /**
  * Roll a group up. Non-finite reads contribute NOTHING rather than poisoning

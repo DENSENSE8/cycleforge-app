@@ -10,7 +10,7 @@ export interface FactsDeps {
 
 const defaultDeps: FactsDeps = { query: tenantQuery };
 
-export interface LineFactRow {
+interface LineFactRow {
   id: number;
   fact_kind: string;
   payload: Record<string, unknown>;

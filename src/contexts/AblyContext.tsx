@@ -20,7 +20,7 @@ const AblyContext = createContext<AblyContextValue>({
  * All data hooks share this single connection via useAblyChannel(), which prevents
  * the per-hook client pattern from exhausting Ably concurrent-connection limits.
  */
-export interface AblyProviderProps {
+interface AblyProviderProps {
   children: ReactNode;
   /** Token endpoint. */
   authUrl?: string;

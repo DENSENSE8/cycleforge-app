@@ -12,7 +12,7 @@ import { ASSISTANT_HIGHLIGHT_EVENT } from '@/lib/app-events';
 
 export { ASSISTANT_HIGHLIGHT_EVENT };
 
-export interface AssistantMessage {
+interface AssistantMessage {
   id: string;
   role: 'user' | 'assistant';
   content: string;
@@ -20,7 +20,7 @@ export interface AssistantMessage {
   error?: boolean;
 }
 
-export interface AssistantChatState {
+interface AssistantChatState {
   sessionId: string;
   messages: AssistantMessage[];
   status: 'idle' | 'streaming';

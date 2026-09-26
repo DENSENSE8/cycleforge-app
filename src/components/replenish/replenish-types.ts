@@ -28,7 +28,7 @@ export interface NeedToOrderRow {
   updated_at: string;
 }
 
-export interface ReceivingLineRow {
+interface ReceivingLineRow {
   id: number;
   receiving_id: number | null;
   zoho_item_id: string;
@@ -99,7 +99,7 @@ export function statusPillClass(status: string) {
   }
 }
 
-export function workflowStatusColor(status: string) {
+function workflowStatusColor(status: string) {
   switch (status) {
     case 'DONE': return 'bg-emerald-100 text-emerald-700 border-emerald-200';
     case 'PASSED': return 'bg-green-100 text-green-700 border-green-200';

@@ -4,14 +4,14 @@ import { withTenantTransaction } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';
 import type { VoicemailStatus } from './types';
 
-export interface FollowupUpdate {
+interface FollowupUpdate {
   status?: VoicemailStatus;
   snoozeUntil?: string | null;
   assignedStaffId?: number | null;
   note?: string | null;
 }
 
-export interface UpdateFollowupResult {
+interface UpdateFollowupResult {
   ok: boolean;
   notFound?: boolean;
   status?: VoicemailStatus;
@@ -84,7 +84,7 @@ export async function updateFollowup(
   });
 }
 
-export interface LinkVoicemailResult {
+interface LinkVoicemailResult {
   ok: boolean;
   notFound?: boolean;
   linkedTicketId: number | null;

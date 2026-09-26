@@ -75,7 +75,7 @@ export const PACKED_EXPORT_COLUMNS = [
   'Platform',
 ] as const;
 
-export interface PackedExportWindow {
+interface PackedExportWindow {
   dateFrom?: string | null;
   dateTo?: string | null;
 }

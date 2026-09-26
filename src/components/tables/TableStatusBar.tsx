@@ -23,7 +23,7 @@ export interface DataTableTab {
 }
 
 /** {@link TableTabs}' own props. */
-export interface DataTableTabStrip {
+interface DataTableTabStrip {
   tabs: readonly DataTableTab[];
   /** `undefined` = the unfiltered list. There is no `all` tab. */
   activeTab?: string;
@@ -42,7 +42,7 @@ export interface TableStatusSelectionAction {
   hotkey?: string;
 }
 
-export interface TableStatusBarProps {
+interface TableStatusBarProps {
   tabs?: readonly DataTableTab[];
   activeTab?: string;
   onTabChange?: (id: string) => void;

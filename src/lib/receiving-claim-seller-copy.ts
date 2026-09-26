@@ -3,14 +3,14 @@
 import { copyToClipboard } from '@/utils/_dom';
 
 /** Clipboard-history tone for seller claim messages (header popover dot color). */
-export const SELLER_CLAIM_CLIPBOARD_KIND = 'seller_claim';
+const SELLER_CLAIM_CLIPBOARD_KIND = 'seller_claim';
 
 export function sellerClaimClipboardLabel(messageId: number): string {
   return `Seller msg #${messageId}`;
 }
 
 /** Copy seller-facing claim text to the system clipboard AND the header clipboard history (GlobalHeader → clipboard icon). */
-export async function copySellerClaimMessage(opts: {
+async function copySellerClaimMessage(opts: {
   text: string;
   messageId?: number | null;
 }): Promise<boolean> {
@@ -30,7 +30,7 @@ export async function copySellerClaimMessage(opts: {
 }
 
 /** Upsert draft so copy/send can reference receiving_claim_seller_messages.id. */
-export async function persistSellerClaimMessageDraft(opts: {
+async function persistSellerClaimMessageDraft(opts: {
   receivingId: number;
   lineId?: number | null;
   sellerMessage: string;

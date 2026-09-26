@@ -23,7 +23,7 @@ import {
 } from './admin-returns-table-definition';
 import { useAdminReturnsTableLayout } from './useAdminReturnsTableLayout';
 
-export interface UseAdminReturnsSpreadsheetOptions {
+interface UseAdminReturnsSpreadsheetOptions {
   /** The feed. Already ordered by the server; a header click re-orders it. */
   rows: readonly RecentReturnRow[];
   loading?: boolean;

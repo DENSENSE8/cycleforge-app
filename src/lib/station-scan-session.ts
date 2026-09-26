@@ -1,8 +1,8 @@
 import type { Pool } from 'pg';
 
-export type StationScanSessionKind = 'ORDER' | 'EXCEPTION' | 'FNSKU' | 'REPAIR';
+type StationScanSessionKind = 'ORDER' | 'EXCEPTION' | 'FNSKU' | 'REPAIR';
 
-export type CreateStationScanSessionParams = {
+type CreateStationScanSessionParams = {
   staffId: number;
   sessionKind: StationScanSessionKind;
   shipmentId?: number | null;
@@ -14,7 +14,7 @@ export type CreateStationScanSessionParams = {
   fnsku?: string | null;
 };
 
-export type StationScanSessionRow = {
+type StationScanSessionRow = {
   id: string;
   staff_id: number;
   session_kind: string;

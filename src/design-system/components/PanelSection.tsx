@@ -2,7 +2,7 @@
 
 import type { ReactNode } from 'react';
 
-export interface PanelSectionProps {
+interface PanelSectionProps {
   /** Section title (e.g. “Shipping Information”, “Pipeline”). */
   title?: ReactNode;
   /** Right side of the title row (e.g. Copy all button). */
@@ -17,7 +17,7 @@ export interface PanelSectionProps {
  * Groups stacked `DetailsPanelRow` blocks with the standard panel heading rhythm
  * (see shipped details + FBA sidebar).
  */
-export function PanelSection({ title, headerRight, children, className = '', bodyClassName = '' }: PanelSectionProps) {
+function PanelSection({ title, headerRight, children, className = '', bodyClassName = '' }: PanelSectionProps) {
   const showHeader = title != null || headerRight != null;
 
   return (

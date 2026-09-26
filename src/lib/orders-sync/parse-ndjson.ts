@@ -5,7 +5,7 @@
  * so a single malformed line never poisons the rest of the stream.
  */
 
-export interface NdjsonConsumeResult<T> {
+interface NdjsonConsumeResult<T> {
   events: T[];
   rest: string;
   malformed: string[];

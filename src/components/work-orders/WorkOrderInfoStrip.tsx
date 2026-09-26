@@ -63,7 +63,7 @@ export function WorkOrderInfoChips({ row }: { row: WorkOrderRow }) {
   }
 }
 
-export function WorkOrderInfoStrip({
+function WorkOrderInfoStrip({
   row,
   className = 'mt-1 flex min-w-0 max-w-full items-center justify-between gap-2',
 }: {

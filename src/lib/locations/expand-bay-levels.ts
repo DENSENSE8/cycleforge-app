@@ -34,7 +34,7 @@ export function bayHandName(letter: string, level: number): string {
   return `${String(letter).trim().toUpperCase().charAt(0) || 'X'}${Math.floor(level)}`;
 }
 
-export type ExpandedBayLevel = {
+type ExpandedBayLevel = {
   segments: LocationSegments;
   /** Floor name (`A1`, `B48`) — the QR still carries the 5-segment code. */
   hand: string;

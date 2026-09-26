@@ -4,7 +4,7 @@ import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { LIFECYCLE_CLASSES } from '@/design-system/tokens/lifecycle';
 
 /** Single source of truth for FBA status display. */
-export type FbaStatus =
+type FbaStatus =
   | 'PLANNED'
   | 'TESTED'
   | 'PACKED'
@@ -67,7 +67,7 @@ const FALLBACK: StatusToken = {
   icon_tone: 'text-text-faint',
 };
 
-export interface FbaStatusBadgeProps {
+interface FbaStatusBadgeProps {
   status: FbaStatus | string;
   /** `xs` matches legacy dashboard badge sizing; `sm` suits card headers. */
   size?: 'xs' | 'sm';

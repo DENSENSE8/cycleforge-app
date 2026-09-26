@@ -4,7 +4,7 @@ import { Pool, PoolClient } from 'pg';
 
 type DbClient = Pool | PoolClient;
 
-export interface UpsertReceivingAssignmentParams {
+interface UpsertReceivingAssignmentParams {
   db: DbClient;
   /** Phase 3b: tenant scope for the INSERT branch. */
   organizationId: string;

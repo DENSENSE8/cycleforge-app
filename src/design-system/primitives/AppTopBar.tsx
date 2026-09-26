@@ -5,7 +5,7 @@ import { Menu } from '@/components/Icons';
 import { cn } from '@/utils/_cn';
 import { sidebarHeaderBandClass } from '@/components/layout/header-shell';
 
-export interface AppTopBarProps {
+interface AppTopBarProps {
   title: string;
   onOpenDrawer: () => void;
   trailing?: ReactNode;
@@ -13,7 +13,7 @@ export interface AppTopBarProps {
 }
 
 /** Global mobile top app bar — [☰] [title (centered)] [trailing slot]. */
-export function AppTopBar({ title, onOpenDrawer, trailing, className }: AppTopBarProps) {
+function AppTopBar({ title, onOpenDrawer, trailing, className }: AppTopBarProps) {
   return (
     <header
       className={cn(

@@ -2,7 +2,7 @@
 
 import { SCAN_SESSION_TYPES, type SessionKind } from './types';
 
-export interface SystemPurposeSeed {
+interface SystemPurposeSeed {
   readonly key: string;
   readonly label: string;
   readonly defaultKind: SessionKind;

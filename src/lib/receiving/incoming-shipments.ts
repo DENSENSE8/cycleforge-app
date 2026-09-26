@@ -9,7 +9,7 @@ import { tenantQuery } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';
 import { isIncomingUniversal } from '@/lib/feature-flags';
 
-export interface IncomingShipmentRef {
+interface IncomingShipmentRef {
   id: number;
   carrier: string;
 }

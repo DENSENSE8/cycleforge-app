@@ -11,7 +11,7 @@ import { buildKioskSalesIntakeBodyFromInput } from '@/lib/counter/kiosk-intake-p
 import type { CounterTransactionResult } from '@/lib/counter/counter-transaction-types';
 
 /** The visit facts the submit reads — a structural slice of the session root. */
-export interface KioskVisitSubmitSession {
+interface KioskVisitSubmitSession {
   lines: readonly KioskCartLine[];
   customerPhone: string;
   customerName: string;
@@ -20,7 +20,7 @@ export interface KioskVisitSubmitSession {
   ticketChoice: KioskTicketChoice | null;
 }
 
-export interface KioskVisitSubmitOptions {
+interface KioskVisitSubmitOptions {
   /** Same string across every retry of ONE submit. See module doc. */
   idempotencyKey: string;
   takePayment: boolean;

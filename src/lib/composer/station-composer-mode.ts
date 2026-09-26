@@ -11,7 +11,7 @@ export const STATION_COMPOSER_MODE_DEFAULT: StationComposerMode = 'unbox';
 
 export const STATION_COMPOSER_MODE_PARAM = 'composerMode';
 
-export const STATION_COMPOSER_MODE_SESSION_KEY = 'cf.stationComposerMode';
+const STATION_COMPOSER_MODE_SESSION_KEY = 'cf.stationComposerMode';
 
 /**
  * The toggle chord, as an operator reads it.
@@ -19,7 +19,7 @@ export const STATION_COMPOSER_MODE_SESSION_KEY = 'cf.stationComposerMode';
  */
 export const STATION_COMPOSER_CYCLE_CHORD = 'Shift + Tab';
 
-export type StationComposerModeCatalogEntry = {
+type StationComposerModeCatalogEntry = {
   id: StationComposerMode;
   label: string;
   /** One-line destination — I4, named in words. */
@@ -48,7 +48,7 @@ function canonicalizeStationComposerMode(raw: string): StationComposerMode | nul
   return null;
 }
 
-export function isStationComposerMode(value: string): value is StationComposerMode {
+function isStationComposerMode(value: string): value is StationComposerMode {
   return (STATION_COMPOSER_MODES as readonly string[]).includes(value);
 }
 
@@ -120,7 +120,7 @@ export function stationComposerModeAriaLabel(
   return 'Unbox item note';
 }
 
-export type StationComposerModeKeyHit = { kind: 'cycle' };
+type StationComposerModeKeyHit = { kind: 'cycle' };
 
 /** Classify a station keydown. */
 export function classifyStationComposerModeKey(

@@ -9,7 +9,7 @@ import { normalizeQuery } from '@/lib/search/query-expansion';
  *  to each other, so the column exists to keep them apart in any report. */
 export type SearchSurface = 'palette' | 'search-page';
 
-export interface SearchQueryLogEntry {
+interface SearchQueryLogEntry {
   orgId: OrgId;
   /** NULL when the session carries no staff row; the aggregate survives it. */
   staffId: number | null;
@@ -78,7 +78,7 @@ export async function recordSearchQuery(
   }
 }
 
-export interface SearchOpenedEntry {
+interface SearchOpenedEntry {
   orgId: OrgId;
   staffId: number | null;
   /** The query that produced the row, so the open lands on the right log line. */
@@ -118,7 +118,7 @@ export async function markSearchResultOpened(
   }
 }
 
-export interface ZeroResultRow {
+interface ZeroResultRow {
   normalizedQuery: string;
   misses: number;
   distinctStaff: number;

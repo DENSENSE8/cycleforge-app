@@ -11,7 +11,7 @@ export type KioskServiceId = KioskCommandServiceId | KioskStaffServiceId;
 
 type KioskServiceIcon = (props: { className?: string }) => JSX.Element;
 
-export interface KioskServiceTile {
+interface KioskServiceTile {
   id: KioskServiceId;
   /** `command` swaps the work surface; `staff` opens a tool over it. */
   kind: 'command' | 'staff';
@@ -80,7 +80,7 @@ export const KIOSK_SERVICES: ReadonlyArray<KioskServiceTile> = [
 ];
 
 /** The live tiles that swap the work surface — staff tools excluded. */
-export function liveKioskCommandServices(): KioskServiceTile[] {
+function liveKioskCommandServices(): KioskServiceTile[] {
   return KIOSK_SERVICES.filter((s) => s.status === 'live' && s.kind === 'command');
 }
 

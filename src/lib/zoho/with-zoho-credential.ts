@@ -6,7 +6,7 @@ import type { OrgId } from '@/lib/tenancy/constants';
 import { withZohoOrg } from './tenant-context';
 
 /** Operations the Zoho integration may perform (subset of the zoho allowlist). */
-export type ZohoOperation =
+type ZohoOperation =
   | 'purchaseorders.read'
   | 'purchaseorders.write'
   | 'purchasereceives.read'

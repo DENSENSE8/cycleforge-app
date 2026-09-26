@@ -141,7 +141,7 @@ export async function patchEbayUserAccessToken(opts: {
   });
 }
 
-export interface EbayAccount {
+interface EbayAccount {
   id: number;
   accountName: string;
   ebayUserId: string | null;
@@ -195,7 +195,7 @@ async function hydrateAccount(orgId: OrgId, row: EbayAccountMetaRow): Promise<Eb
 }
 
 /** Load a single eBay account (tokens from vault) for an org, or null. */
-export async function getEbayAccount(orgId: OrgId, accountName: string): Promise<EbayAccount | null> {
+async function getEbayAccount(orgId: OrgId, accountName: string): Promise<EbayAccount | null> {
   const r = await tenantQuery(
     orgId,
     `SELECT ${META_COLUMNS}

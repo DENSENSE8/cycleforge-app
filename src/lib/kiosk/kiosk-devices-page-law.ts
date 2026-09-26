@@ -5,7 +5,7 @@ export const KIOSK_DEVICES_VIEW_PARAM = 'view';
 
 export type KioskDevicesPageView = 'devices' | 'history';
 
-export const KIOSK_DEVICES_PAGE_VIEWS = ['devices', 'history'] as const;
+const KIOSK_DEVICES_PAGE_VIEWS = ['devices', 'history'] as const;
 
 export function parseKioskDevicesPageView(raw: string | null | undefined): KioskDevicesPageView {
   return raw === 'history' ? 'history' : 'devices';

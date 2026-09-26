@@ -5,7 +5,7 @@ import { getActiveNasBaseUrl, getNasStorageTarget } from '@/lib/tenancy/settings
 import type { OrgId } from '@/lib/tenancy/constants';
 import { getStaffStations } from '@/lib/neon/staff-stations-queries';
 
-export interface NasConfigForOperator {
+interface NasConfigForOperator {
   /** Active NAS base URL (no trailing slash); '' when nothing is configured. */
   baseUrl: string;
   /** Folder the picker/capture should open/write into; '' = NAS root. */

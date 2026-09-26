@@ -5,7 +5,7 @@ import { invalidateOrgCache, setOrgPlan } from '../tenancy/organizations';
 import type { OrgId, PlatformPlan } from '../tenancy/constants';
 import { planFromPriceId } from './plans';
 
-export interface SubscriptionRow {
+interface SubscriptionRow {
   organizationId: OrgId;
   stripeSubscriptionId: string;
   stripeCustomerId: string;
@@ -68,7 +68,7 @@ export async function getSubscription(orgId: OrgId): Promise<SubscriptionRow | n
  * Upsert from a Stripe subscription payload. Called from the webhook
  * handler on customer.subscription.{created,updated,deleted}.
  */
-export interface UpsertSubscriptionInput {
+interface UpsertSubscriptionInput {
   organizationId: OrgId;
   stripeSubscriptionId: string;
   stripeCustomerId: string;

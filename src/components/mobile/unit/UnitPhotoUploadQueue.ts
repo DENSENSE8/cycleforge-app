@@ -10,9 +10,9 @@ import { UNIT_PACKING_PHOTO_TYPE, UNIT_TESTING_PHOTO_TYPE } from '@/lib/photos/t
 
 /** Module-singleton store for in-flight SERIAL_UNIT testing-scan photo uploads — the exact mirror of the receiving `photoUploadQueue`, in a… */
 
-export type UploadState = 'queued' | 'uploading' | 'done' | 'failed';
+type UploadState = 'queued' | 'uploading' | 'done' | 'failed';
 
-export interface UnitPhotoScope {
+interface UnitPhotoScope {
   /** Canonical serial_units.id — the upload entityId. */
   serialUnitId: number;
   /** Resolvable unit key (serial / minted unit_uid) — files the GCS object path. */
@@ -32,7 +32,7 @@ export interface UnitPhotoScope {
   capturedAtMs?: number | null;
 }
 
-export interface UnitUploadEntry {
+interface UnitUploadEntry {
   id: string;
   scope: UnitPhotoScope;
   previewUrl: string;
@@ -61,7 +61,7 @@ interface PersistedEntry {
 }
 
 // ─── State + subscribers ──────────────────────────────────────────────────── Fired once per photo the moment it commits (GCS upload + DB…
-export interface UnitUploadNotice {
+interface UnitUploadNotice {
   serialUnitId: number;
   photoId: number;
   photoUrl: string;

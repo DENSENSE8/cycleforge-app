@@ -14,7 +14,7 @@ export interface SkuCatalogRecordSource {
   category?: string | null;
 }
 
-export function skuCatalogToItemRecords(catalog: SkuCatalogRecordSource): ItemRecord[] {
+function skuCatalogToItemRecords(catalog: SkuCatalogRecordSource): ItemRecord[] {
   const sku = String(catalog.sku ?? '').trim();
   const title = String(catalog.product_title ?? '').trim() || sku || `SKU ${catalog.id}`;
 

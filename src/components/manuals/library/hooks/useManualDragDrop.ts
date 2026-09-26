@@ -5,7 +5,7 @@ import { toast } from '@/lib/toast';
 import { dispatchManualsUpdated } from '../../ManualCrudModals';
 import { bulkMoveManuals, uploadManualFile } from '../manuals-library-api';
 
-export interface UseManualDragDrop {
+interface UseManualDragDrop {
   /** Move dragged manual rows into a folder (internal drag). */
   dropManualIdsOnFolder: (ids: number[], folderPath: string) => Promise<void>;
   /** Upload OS-dropped PDFs into a folder (one request per file). */

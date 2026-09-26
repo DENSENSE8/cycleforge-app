@@ -3,7 +3,7 @@
 /** Longest label that rides. */
 export const CURSOR_LABEL_MAX_CHARS = 72;
 
-export type CursorLabel = {
+type CursorLabel = {
   /** Owner token — a leave only clears the label it published (nested triggers). */
   owner: string;
   text: string;

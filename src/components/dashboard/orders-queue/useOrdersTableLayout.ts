@@ -13,12 +13,12 @@ import {
   type SlotTableLayout,
 } from '@/components/tables/useSlotTableLayout';
 
-export const ORDERS_ORG_LAYOUT_QUERY_KEY = ['table-layouts', ORDERS_TABLE_LAYOUT_ID] as const;
+const ORDERS_ORG_LAYOUT_QUERY_KEY = ['table-layouts', ORDERS_TABLE_LAYOUT_ID] as const;
 
 /** Kept name — the orders mount's Fields-picker bag (structurally shared). */
-export type OrdersFieldsMenu = SlotTableFieldsMenu;
+type OrdersFieldsMenu = SlotTableFieldsMenu;
 
-export type OrdersTableLayout = SlotTableLayout;
+type OrdersTableLayout = SlotTableLayout;
 
 export function useOrdersTableLayout(): OrdersTableLayout {
   return useSlotTableLayout({

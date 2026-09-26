@@ -3,7 +3,7 @@
 import { tenantQuery } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';
 
-export interface TerminalDeviceResolution {
+interface TerminalDeviceResolution {
   deviceId: string;
   source: 'lane' | 'env';
 }

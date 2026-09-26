@@ -20,7 +20,7 @@ import { PRIMARY_CHROME_ROW_FACE } from '@/components/layout/header-shell';
 import { cn } from '@/utils/_cn';
 
 /** `StationListTable<TRecord>` — day-banded station/history list shell. */
-export interface StationListTableProps<TRecord> {
+interface StationListTableProps<TRecord> {
   loading: boolean;
   isRefreshing?: boolean;
 

@@ -21,7 +21,7 @@ import { UNIT_ALLOCATIONS_GRID_CAPABILITIES } from '@/components/inventory/alloc
 import { SKU_ALLOCATIONS_TABLE_BINDING } from './sku-allocations-table-definition';
 import { useSkuAllocationsTableLayout } from './useSkuAllocationsTableLayout';
 
-export interface UseSkuAllocationsSpreadsheetOptions {
+interface UseSkuAllocationsSpreadsheetOptions {
   /** The open holds on this SKU's units. Already ordered; a header click re-orders it. */
   rows: readonly UnitAllocationTableRow[];
   loading?: boolean;

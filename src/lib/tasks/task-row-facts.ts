@@ -14,7 +14,7 @@ export function taskRecordLabel(row: Pick<TaskDeskRow, 'entityType' | 'entityId'
   return taskDeskRecordLabel(row);
 }
 
-export interface TaskDeadlineFact {
+interface TaskDeadlineFact {
   /** The words on the row. */
   text: string;
   /** Past its instant — the row marks it, the list does not re-sort for it. */

@@ -55,7 +55,7 @@ const defaultDeps: RefreshSweepDeps = {
   now: () => new Date(),
 };
 
-export interface RefreshAttempt {
+interface RefreshAttempt {
   orgId: OrgId;
   provider: string;
   scope: string | null;
@@ -65,7 +65,7 @@ export interface RefreshAttempt {
   error?: string;
 }
 
-export interface RefreshSweepResult {
+interface RefreshSweepResult {
   scanned: number;
   refreshed: number;
   skipped: number;

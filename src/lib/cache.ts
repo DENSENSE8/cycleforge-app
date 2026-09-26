@@ -67,7 +67,7 @@ export function cacheGet<T>(domain: string, id: string | number): T | undefined 
 /**
  * Returns whether a valid (non-expired) entry exists for the given domain + id.
  */
-export function cacheHas(domain: string, id: string | number): boolean {
+function cacheHas(domain: string, id: string | number): boolean {
   return cacheGet(domain, id) !== undefined;
 }
 
@@ -89,7 +89,7 @@ export function cacheInvalidate(domain: string, id: string | number): void {
  * Invalidates ALL entries under a domain and emits a wildcard window event.
  * Use after bulk mutations (e.g. batch delete, import).
  */
-export function cacheInvalidateDomain(domain: string): void {
+function cacheInvalidateDomain(domain: string): void {
   const prefix = `${domain}:`;
   for (const key of Object.keys(store)) {
     if (key.startsWith(prefix)) delete store[key];
@@ -104,14 +104,14 @@ export function cacheInvalidateDomain(domain: string): void {
 /**
  * Clears the entire cache store. Useful for logout / session reset.
  */
-export function cacheClear(): void {
+function cacheClear(): void {
   for (const key of Object.keys(store)) delete store[key];
 }
 
 /**
  * Returns all non-expired entries for a domain as a Record<id, value>.
  */
-export function cacheGetDomain<T>(domain: string): Record<string, T> {
+function cacheGetDomain<T>(domain: string): Record<string, T> {
   const prefix = `${domain}:`;
   const result: Record<string, T> = {};
   for (const [key, entry] of Object.entries(store)) {

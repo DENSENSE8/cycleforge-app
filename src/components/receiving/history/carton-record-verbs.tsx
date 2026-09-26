@@ -30,13 +30,13 @@ import type { CartonRecord } from './use-carton-record';
 
 const ICON_CLASS = 'h-3.5 w-3.5';
 
-export interface CartonVerbHandlers {
+interface CartonVerbHandlers {
   openInUnbox: (pairing?: boolean) => void;
   deleteCarton: () => Promise<void>;
 }
 
 /** The carton's strip verbs, lead verb first. Pure over the record + handlers. */
-export function buildCartonVerbs(record: CartonRecord, handlers: CartonVerbHandlers): RecordActionVerb[] {
+function buildCartonVerbs(record: CartonRecord, handlers: CartonVerbHandlers): RecordActionVerb[] {
   const { itemLines, lines, unfound, readiness, receivingId, recordLabel, poNumber } = record;
   const printable = itemLines.some((line) => (line.sku || '').trim());
   const onBench = readiness?.cta === 'continue_unbox' || readiness?.cta === 'match_po';

@@ -19,7 +19,7 @@ export type ThemeName =
  * functional tone families (status pills, solid fills). Values are plain CSS
  * colors (hex / rgba).
  */
-export const THEME_VAR_KEYS = [
+const THEME_VAR_KEYS = [
   // Neutral chrome
   'text-primary',
   'text-secondary',
@@ -77,7 +77,7 @@ export const THEME_VAR_KEYS = [
   'fill-fulfillment',
 ] as const;
 
-export type ThemeVarKey = (typeof THEME_VAR_KEYS)[number];
+type ThemeVarKey = (typeof THEME_VAR_KEYS)[number];
 
 /** Full variable coverage is enforced by the Record type — no partial themes. */
 export type ThemeVars = Record<ThemeVarKey, string>;
@@ -118,7 +118,7 @@ export interface ThemePalette {
 
 // ── Staff accents (the `theme-<name>` classes) ───────────────────────────── One entry per staff accent, with a light and a dark-scheme…
 
-export const ACCENT_NAMES = [
+const ACCENT_NAMES = [
   'green',
   'blue',
   'purple',
@@ -129,9 +129,9 @@ export const ACCENT_NAMES = [
   'pink',
 ] as const;
 
-export type AccentName = (typeof ACCENT_NAMES)[number];
+type AccentName = (typeof ACCENT_NAMES)[number];
 
-export const STAFF_ACCENTS: Record<AccentName, { light: AccentVars; dark: AccentVars }> = {
+const STAFF_ACCENTS: Record<AccentName, { light: AccentVars; dark: AccentVars }> = {
   green: {
     light: { bg: '#059669', hover: '#047857', light: '#ecfdf5', border: '#d1fae5', text: '#059669', shadow: 'rgba(5, 150, 105, 0.1)' },
     dark: { bg: '#10b981', hover: '#34d399', light: 'rgba(16, 185, 129, 0.15)', border: 'rgba(16, 185, 129, 0.3)', text: '#34d399', shadow: 'rgba(16, 185, 129, 0.05)' },
@@ -230,7 +230,7 @@ function accentDeclarations(accent: AccentVars, indent = '  '): string[] {
 }
 
 /** The full generated theme stylesheet, injected once by app/layout.tsx as `<style id="app-theme-palettes">`. */
-export function themeRegistryCssText(): string {
+function themeRegistryCssText(): string {
   const blocks: string[] = [];
 
   // Light (default) — plain :root, kept below html[data-theme] specificity so

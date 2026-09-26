@@ -6,7 +6,7 @@ import { cornerClass } from '@/design-system/tokens/radius';
 import { elevationClass } from '@/design-system/tokens/shadows';
 import { cn } from '@/utils/_cn';
 
-export type OutOfStockHoverCardProps = {
+type OutOfStockHoverCardProps = {
   thumbUrl?: string | null;
   sku?: string | null;
   title: string;

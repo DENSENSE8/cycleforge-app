@@ -1,6 +1,6 @@
 // Single source of truth for RMA (return authorization) status tones.
 
-export type RmaStatus =
+type RmaStatus =
   | 'AUTHORIZED'
   | 'RECEIVED'
   | 'DISPOSITIONED'

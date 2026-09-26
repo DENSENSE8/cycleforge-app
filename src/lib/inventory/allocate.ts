@@ -11,9 +11,9 @@ import { transition } from '@/lib/inventory/state-machine';
 import { allocateShortageUnits } from '@/lib/orders/shortage-inbound';
 
 const VALID_GRADES = ['BRAND_NEW', 'LIKE_NEW', 'REFURBISHED', 'USED_A', 'USED_B', 'USED_C', 'PARTS'] as const;
-export type ConditionGrade = (typeof VALID_GRADES)[number];
+type ConditionGrade = (typeof VALID_GRADES)[number];
 
-export interface AllocateOrderInput {
+interface AllocateOrderInput {
   orderId: number;
   /** Override orders.quantity. Falls back to that value (or 1) when omitted. */
   quantity?: number;
@@ -24,7 +24,7 @@ export interface AllocateOrderInput {
   actorStaffId: number | null;
 }
 
-export interface AllocateOrderSuccess {
+interface AllocateOrderSuccess {
   ok: true;
   orderId: number;
   sku: string;
@@ -34,7 +34,7 @@ export interface AllocateOrderSuccess {
   units: Array<{ unitId: number; allocationId: number; eventId: number | null }>;
 }
 
-export interface AllocateOrderFailure {
+interface AllocateOrderFailure {
   ok: false;
   status: 400 | 404 | 409;
   error: string;
@@ -42,7 +42,7 @@ export interface AllocateOrderFailure {
   allocated?: number;
 }
 
-export type AllocateOrderResult = AllocateOrderSuccess | AllocateOrderFailure;
+type AllocateOrderResult = AllocateOrderSuccess | AllocateOrderFailure;
 
 export function isValidConditionGrade(value: string): value is ConditionGrade {
   return (VALID_GRADES as readonly string[]).includes(value);

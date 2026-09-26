@@ -7,7 +7,7 @@ import { STATION_HISTORY_GRID_CAPABILITIES } from '@/components/station/station-
 import type { BoardPrefsKey } from '@/lib/neon/staff-preferences-queries';
 
 /** `StationPipelineBoard<T, LaneId>` — the Pipeline (board) layout for the station history tables (station-table-unification-plan §Phase 4). */
-export interface StationPipelineBoardProps<T, LaneId extends string> {
+interface StationPipelineBoardProps<T, LaneId extends string> {
   prefsKey: BoardPrefsKey;
   lanes: SwimlaneLaneDef<LaneId>[];
   bucket: (row: T) => LaneId;

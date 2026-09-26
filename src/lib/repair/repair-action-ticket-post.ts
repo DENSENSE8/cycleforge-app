@@ -14,7 +14,7 @@ import { readRepairTicketLink } from '@/lib/repair/ticket-link';
 import { tenantQuery } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';
 
-export type TicketPostOutcome =
+type TicketPostOutcome =
   | { status: 'posted'; ticketId: number; commentId: number | null }
   | { status: 'failed'; ticketId: number | null; error: string }
   | { status: 'skipped'; reason: 'not-found' | 'not-linked' | 'posted' | 'in-flight' };

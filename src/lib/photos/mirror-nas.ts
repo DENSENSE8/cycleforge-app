@@ -40,7 +40,7 @@ async function putToNasAgent(opts: {
 }
 
 /** Copy a GCS-primary photo to NAS cold storage (second photo_storage row). */
-export async function mirrorPhotoToNas(input: {
+async function mirrorPhotoToNas(input: {
   photoId: number;
   organizationId: string;
 }): Promise<{ nasPath: string }> {

@@ -6,7 +6,7 @@ import type { PoIntakeDraft, PoIntakeMissingField } from '@/lib/inbound/po-intak
 import { orderNumberLabel, usePlatformChoices, usePriorityChoices } from './composer-choices';
 import { ComposerField, ComposerInput, ComposerSection, ComposerSelect } from './receiving-order-composer-parts';
 
-export interface PurchaseOrderFieldsProps {
+interface PurchaseOrderFieldsProps {
   draft: PoIntakeDraft;
   missing: readonly PoIntakeMissingField[];
   onChange: (patch: Partial<PoIntakeDraft>) => void;

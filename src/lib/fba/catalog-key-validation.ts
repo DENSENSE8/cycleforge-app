@@ -15,11 +15,11 @@ export class InvalidFbaCatalogKeyError extends Error {
 }
 
 /** True when {@link normalizedCleanKey} matches Amazon X00/B0 barcode shape after canonical normalization. */
-export function isValidAmazonCatalogKey(normalizedCleanKey: string): boolean {
+function isValidAmazonCatalogKey(normalizedCleanKey: string): boolean {
   return looksLikeFnsku(normalizedCleanKey);
 }
 
-export function assertValidAmazonCatalogKeyForInsert(normalizedCleanKey: string): void {
+function assertValidAmazonCatalogKeyForInsert(normalizedCleanKey: string): void {
   if (!looksLikeFnsku(normalizedCleanKey)) {
     throw new InvalidFbaCatalogKeyError(normalizedCleanKey);
   }

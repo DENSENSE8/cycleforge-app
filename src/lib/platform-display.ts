@@ -31,7 +31,7 @@ export function normalizeShortLabelInput(raw: string | null | undefined): string
 }
 
 /** A platform's own dense face: org `short_label` → built-in compact → null. */
-export function platformShortLabelOverride(
+function platformShortLabelOverride(
   row: Pick<PlatformRow, 'slug' | 'short_label'>,
 ): string | null {
   return row.short_label?.trim() || builtinPlatformShortLabel(row.slug);
@@ -176,7 +176,7 @@ export function isPlatformDefaultAccount(
   return slug === lower(platform.slug) || slug === `${lower(platform.slug)}-main`;
 }
 
-export interface OrderPlatformChoice {
+interface OrderPlatformChoice {
   /** What `orders.account_source` gets: the platform slug or the account slug. */
   value: string;
   label: string;

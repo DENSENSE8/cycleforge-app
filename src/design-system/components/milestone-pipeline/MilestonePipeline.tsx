@@ -67,7 +67,7 @@ function ScanTrail({ scans }: { scans: MilestoneScan[] }) {
 }
 
 /** A record's progress across stations — one left-to-right run, one anatomy. */
-export function MilestonePipeline({
+function MilestonePipeline({
   milestones,
   ariaLabel,
   className,

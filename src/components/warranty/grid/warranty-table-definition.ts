@@ -6,7 +6,7 @@ import { WARRANTY_SHEET_COLUMNS, type WarrantyGridColumn } from './warranty-grid
 import { parseTableDefinition } from '@/lib/tables/table-definition';
 import { WARRANTY_GRID_CAPABILITIES, makeWarrantyGridDescriptor } from './warranty-grid-descriptor';
 
-export const WARRANTY_TABLE_DEFINITION = parseTableDefinition({
+const WARRANTY_TABLE_DEFINITION = parseTableDefinition({
   id: 'support.warranty',
   tableId: 'warranty',
   entityFamily: 'warranty',

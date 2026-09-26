@@ -9,7 +9,7 @@ import { ChevronDown, ExternalLink } from '@/components/Icons';
 const COLLAPSE_DRAG_THRESHOLD = 80;
 const MIN_OPEN_HEIGHT = 160;
 
-export interface ListingResizePanelProps {
+interface ListingResizePanelProps {
   url: string;
   /**
    * @deprecated Embeds are not supported in the browser app. Kept optional for

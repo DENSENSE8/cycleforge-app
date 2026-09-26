@@ -3,7 +3,7 @@
 import { zIndex } from '@/design-system/tokens/z-index';
 import { cn } from '@/utils/_cn';
 
-export const IDLE_OVERLAY_HELPER = 'src/design-system/motion/idle-overlay.ts' as const;
+const IDLE_OVERLAY_HELPER = 'src/design-system/motion/idle-overlay.ts' as const;
 
 export function idleBrowseLayerProps(
   overlayOpen: boolean,

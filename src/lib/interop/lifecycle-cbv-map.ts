@@ -6,7 +6,7 @@ import { WORKFLOW_STAGES } from '@/lib/receiving/workflow-stages';
 import type { CbvBizStep, CbvDisposition, EpcisEventType } from './epcis-vocabulary';
 
 /** A resolved CBV reading of one Cycle Forge state or event. */
-export type CbvMapping =
+type CbvMapping =
   | {
       mapped: true;
       bizStep: CbvBizStep;
@@ -29,7 +29,7 @@ const step = (
 ): CbvMapping => ({ mapped: true, bizStep, disposition, note });
 
 /** `inventory_events.event_type` → CBV. */
-export const EVENT_TYPE_TO_CBV: Record<InventoryEventType, CbvMapping> = {
+const EVENT_TYPE_TO_CBV: Record<InventoryEventType, CbvMapping> = {
   RECEIVED: step('receiving', 'in_progress'),
   TEST_START: step('inspecting', 'in_progress'),
   TEST_PASS: step('inspecting', 'conformant'),
@@ -79,7 +79,7 @@ export const EVENT_TYPE_TO_CBV: Record<InventoryEventType, CbvMapping> = {
 };
 
 /** `serial_units.current_status` → CBV. */
-export const SERIAL_STATE_TO_CBV: Record<SerialState, CbvMapping> = {
+const SERIAL_STATE_TO_CBV: Record<SerialState, CbvMapping> = {
   UNKNOWN: unmappable(
     'The absence of a known state, not a state. Nothing has been observed to report.',
   ),
@@ -111,7 +111,7 @@ export const SERIAL_STATE_TO_CBV: Record<SerialState, CbvMapping> = {
 };
 
 /** `WORKFLOW_STAGES` key → CBV — the inbound receiving/testing lifecycle. */
-export const WORKFLOW_STAGE_TO_CBV: Record<string, CbvMapping> = {
+const WORKFLOW_STAGE_TO_CBV: Record<string, CbvMapping> = {
   EXPECTED: unmappable(
     'A vendor has issued the goods but nothing has been observed at the dock. EPCIS reports what happened; an expectation has not happened.',
   ),
@@ -138,7 +138,7 @@ export const WORKFLOW_STAGE_TO_CBV: Record<string, CbvMapping> = {
 };
 
 /** Every `WORKFLOW_STAGES` key, for the guard's two-way comparison. */
-export const WORKFLOW_STAGE_KEYS = Object.keys(WORKFLOW_STAGES);
+const WORKFLOW_STAGE_KEYS = Object.keys(WORKFLOW_STAGES);
 
 /** Which EPCIS event type a Cycle Forge event becomes. */
 export function epcisEventTypeForInventoryEvent(): EpcisEventType {
@@ -161,7 +161,7 @@ export function cbvForEventType(
 }
 
 /** Convenience: the CBV reading for a serial state, or `null` when unmappable. */
-export function cbvForSerialState(
+function cbvForSerialState(
   state: SerialState | string | null | undefined,
 ): Extract<CbvMapping, { mapped: true }> | null {
   if (!state) return null;

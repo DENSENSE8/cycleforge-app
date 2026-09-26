@@ -58,7 +58,7 @@ function emit(level: Level, base: Bindings, args: unknown[]): void {
   else console.log(json);
 }
 
-export interface Logger {
+interface Logger {
   debug: (...args: unknown[]) => void;
   info:  (...args: unknown[]) => void;
   warn:  (...args: unknown[]) => void;

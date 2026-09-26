@@ -50,7 +50,7 @@ type Client = FeedWriteClient & DraftGraphClient;
 type Payload = Record<string, unknown>;
 type Inverse = { kind: string; payload: Payload } | null;
 
-export interface ApplyAgentMutationInput {
+interface ApplyAgentMutationInput {
   organizationId: OrgId;
   mutationKind: string;
   payload: Payload;
@@ -58,7 +58,7 @@ export interface ApplyAgentMutationInput {
   aiChatSessionId?: string | null;
 }
 
-export type ApplyAgentMutationResult =
+type ApplyAgentMutationResult =
   | { ok: true; status: 'applied' | 'proposed'; mutationId: number; trust: MutationTrustClass; targetRef: string | null }
   | { ok: false; status: 400 | 404 | 409; error: string };
 
@@ -341,7 +341,7 @@ export async function applyAgentMutation(
 
 // ─── revert ──────────────────────────────────────────────────────────────────
 
-export interface RevertAgentMutationResult {
+interface RevertAgentMutationResult {
   ok: boolean;
   /** 403 = the actor may not revert this KIND (see MutationKindDef.permission). */
   status: 200 | 400 | 403 | 404 | 409;

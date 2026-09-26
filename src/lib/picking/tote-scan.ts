@@ -6,7 +6,7 @@ import type { OrgId } from '@/lib/tenancy/constants';
 import type { Queryable } from '@/lib/neon/serial-units-queries';
 
 /** A decoded tote reference: the house plate id, or an external tote barcode. */
-export type ToteRef = { id: number } | { code: string };
+type ToteRef = { id: number } | { code: string };
 
 const HU_REDIRECT_RE = /^\/m\/h\/(\d+)$/;
 
@@ -23,7 +23,7 @@ export function parseToteScan(raw: string): ToteRef | null {
   return { code: value };
 }
 
-export interface ToteBindState {
+interface ToteBindState {
   code: string;
   status: string;
   pairedOrderId: number | null;
@@ -43,7 +43,7 @@ export function toteBindRefusal(
   return null;
 }
 
-export interface ResolvedToteScan {
+interface ResolvedToteScan {
   toteId: number;
   code: string;
   status: string;

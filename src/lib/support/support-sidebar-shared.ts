@@ -17,7 +17,7 @@ import { shippingOrdersHref } from '@/lib/shipping/orders-desk';
 
 // ── Sidebar mode switcher ───────────────────────────────────────────────────
 
-export type SupportMode =
+type SupportMode =
   | 'tickets'
   | 'voicemail'
   | 'calls'
@@ -27,10 +27,10 @@ export type SupportMode =
 
 /** - tickets → recent dock in sidebar + full queue workbench in the right pane (Orders/Unbox recipe); `?ticket=` opens Station focus. */
 
-export const DEFAULT_SUPPORT_MODE: SupportMode = 'tickets';
+const DEFAULT_SUPPORT_MODE: SupportMode = 'tickets';
 
 /** Live Support modes — includes default `tickets` (usually omitted from the URL). */
-export const SUPPORT_MODES = [
+const SUPPORT_MODES = [
   'tickets',
   'voicemail',
   'calls',
@@ -102,11 +102,11 @@ export function dashboardOrderHref(orderPk: number): string {
 // ── Tickets mode — Zendesk status filter (workbench chrome tabs) ─────────────
 
 /** Workbench status tabs for Support · Tickets (mirrors Orders `ustatus`). */
-export type TicketStatusFilter = 'open' | 'pending' | 'hold' | 'solved' | 'all';
+type TicketStatusFilter = 'open' | 'pending' | 'hold' | 'solved' | 'all';
 
 export const DEFAULT_TICKET_STATUS: TicketStatusFilter = 'open';
 
-export const TICKET_STATUS_ITEMS: HorizontalSliderItem[] = [
+const TICKET_STATUS_ITEMS: HorizontalSliderItem[] = [
   { id: 'open', label: 'Open', icon: Inbox },
   { id: 'pending', label: 'Pending', icon: Clock },
   { id: 'hold', label: 'Hold', icon: Lock },
@@ -123,30 +123,30 @@ export function parseTicketStatus(raw: string | null | undefined): TicketStatusF
 
 // ── Voicemail mode — follow-up status filter ────────────────────────────────
 
-export type VoicemailStatusFilter = 'open' | 'snoozed' | 'done' | 'all';
+type VoicemailStatusFilter = 'open' | 'snoozed' | 'done' | 'all';
 
-export const VOICEMAIL_STATUS_ITEMS: HorizontalSliderItem[] = [
+const VOICEMAIL_STATUS_ITEMS: HorizontalSliderItem[] = [
   { id: 'open', label: 'Open', icon: Bell },
   { id: 'snoozed', label: 'Snoozed', icon: Clock },
   { id: 'done', label: 'Done', icon: Check },
   { id: 'all', label: 'All', icon: Layers },
 ];
 
-export function parseVoicemailStatus(raw: string | null | undefined): VoicemailStatusFilter {
+function parseVoicemailStatus(raw: string | null | undefined): VoicemailStatusFilter {
   return raw === 'snoozed' || raw === 'done' || raw === 'all' ? raw : 'open';
 }
 
 // ── Calls mode — direction filter ───────────────────────────────────────────
 
-export type CallDirectionFilter = 'all' | 'inbound' | 'outbound' | 'missed';
+type CallDirectionFilter = 'all' | 'inbound' | 'outbound' | 'missed';
 
-export const CALL_DIRECTION_ITEMS: HorizontalSliderItem[] = [
+const CALL_DIRECTION_ITEMS: HorizontalSliderItem[] = [
   { id: 'all', label: 'All', icon: Phone },
   { id: 'inbound', label: 'In', icon: PhoneIncoming },
   { id: 'outbound', label: 'Out', icon: PhoneOutgoing },
   { id: 'missed', label: 'Missed', icon: PhoneMissed },
 ];
 
-export function parseCallDirection(raw: string | null | undefined): CallDirectionFilter {
+function parseCallDirection(raw: string | null | undefined): CallDirectionFilter {
   return raw === 'inbound' || raw === 'outbound' || raw === 'missed' ? raw : 'all';
 }

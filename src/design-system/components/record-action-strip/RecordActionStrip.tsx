@@ -37,7 +37,7 @@ export interface RecordActionVerb {
   display?: (done: () => void) => ReactNode;
 }
 
-export interface RecordActionStripProps {
+interface RecordActionStripProps {
   verbs: readonly RecordActionVerb[];
   /** Accessible name of the toolbar (`Order 113-0586702 actions`). */
   label: string;

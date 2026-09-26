@@ -1,12 +1,12 @@
 /** Neon Control Plane client for ephemeral VERIFY branches (ALP-4.2). */
 
-export const NEON_API_BASE = 'https://console.neon.tech/api/v2';
+const NEON_API_BASE = 'https://console.neon.tech/api/v2';
 
 /** Every verify branch is named `verify/<runUid>` so sweeps can find them. */
 export const VERIFY_BRANCH_PREFIX = 'verify/';
 
 /** Default TTL for failed-run branches before the sweeper deletes them. */
-export const VERIFY_BRANCH_TTL_MINUTES = 12 * 60;
+const VERIFY_BRANCH_TTL_MINUTES = 12 * 60;
 
 export interface NeonBranchDeps {
   fetchFn: (url: string, init?: RequestInit) => Promise<Response>;
@@ -14,7 +14,7 @@ export interface NeonBranchDeps {
   now: () => number;
 }
 
-export const defaultNeonBranchDeps: NeonBranchDeps = {
+const defaultNeonBranchDeps: NeonBranchDeps = {
   fetchFn: (url, init) => fetch(url, init),
   env: process.env,
   now: () => Date.now(),
@@ -84,7 +84,7 @@ export function assertNotProductionUrl(candidateUrl: string, deps: NeonBranchDep
   }
 }
 
-export interface VerifyBranch {
+interface VerifyBranch {
   branchId: string;
   name: string;
   connectionUri: string;

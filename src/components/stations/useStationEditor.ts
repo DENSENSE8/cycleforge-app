@@ -24,14 +24,14 @@ function newInstanceId(): string {
   return `blk_${Math.random().toString(36).slice(2, 8)}`;
 }
 
-export interface StationEditorPersistence {
+interface StationEditorPersistence {
   /** Persist the draft; resolves the saved draft row id (null on failure). */
   onSaveDraft: (config: StationConfig) => Promise<number | null>;
   /** Activate a saved draft id; resolves true on success. */
   onPublish: (draftId: number) => Promise<boolean>;
 }
 
-export interface UseStationEditorArgs extends StationEditorPersistence {
+interface UseStationEditorArgs extends StationEditorPersistence {
   slot: SlotId;
   /** Build the working copy when edit mode opens (latest draft ?? active ?? empty). */
   getBaseConfig: () => StationConfig;
@@ -39,7 +39,7 @@ export interface UseStationEditorArgs extends StationEditorPersistence {
   onPublished?: () => void;
 }
 
-export interface StationEditorApi {
+interface StationEditorApi {
   editing: boolean;
   dirty: boolean;
   saving: boolean;

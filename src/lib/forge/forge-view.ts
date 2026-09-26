@@ -4,10 +4,10 @@
  * Forge (Plans Live) primary pane. `live` is the bookmark/alias for
  * agent-primary (`/forge?view=live` from the Plans spine pin).
  */
-export type ForgeView = 'agent' | 'doc';
+type ForgeView = 'agent' | 'doc';
 
 /** Wire tokens `?view=` may carry on `/forge`. */
-export const FORGE_VIEW_WIRE = ['live', 'agent', 'doc'] as const;
+const FORGE_VIEW_WIRE = ['live', 'agent', 'doc'] as const;
 
 export function parseForgeView(raw: string | null | undefined): ForgeView {
   return raw === 'doc' ? 'doc' : 'agent';
@@ -19,7 +19,7 @@ export function forgeViewParam(view: ForgeView): 'live' | 'doc' {
 }
 
 /** Wire tokens for Forge `?view=` hygiene (includes alias `live`). */
-export function parseForgeViewWire(raw: string): string | null {
+function parseForgeViewWire(raw: string): string | null {
   const v = raw.trim().toLowerCase();
   return (FORGE_VIEW_WIRE as readonly string[]).includes(v) ? v : null;
 }

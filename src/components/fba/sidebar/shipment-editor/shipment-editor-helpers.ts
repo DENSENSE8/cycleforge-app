@@ -3,7 +3,7 @@ import type { StationTheme } from '@/utils/staff-colors';
 import type { ActiveShipment, ShipmentCardItem } from '@/lib/fba/types';
 
 export const UNALLOCATED_ID = 'editor-unallocated';
-export const UNDO_STORAGE_KEY = 'fba-editor-undo';
+const UNDO_STORAGE_KEY = 'fba-editor-undo';
 export const UNDO_EXPIRY_MS = 5 * 60 * 1000;
 
 export interface FbaShipmentEditorFormProps {
@@ -96,7 +96,7 @@ export function parseBundleIndex(droppableId: string): number | null {
 }
 
 /** Find which container an item lives in. */
-export function findItemContainer(
+function findItemContainer(
   bundles: TrackingBundleDraft[],
   unallocatedItems: ShipmentCardItem[],
   itemId: number,

@@ -22,7 +22,7 @@ import {
 import { KIOSKDEVICES_TABLE_BINDING } from './kiosk-devices-table-definition';
 import { useKioskDevicesTableLayout } from './useKioskDevicesTableLayout';
 
-export interface UseKioskDevicesSpreadsheetOptions {
+interface UseKioskDevicesSpreadsheetOptions {
   rows: readonly KioskDeviceTableRow[];
   loading?: boolean;
   emptyMessage?: string;

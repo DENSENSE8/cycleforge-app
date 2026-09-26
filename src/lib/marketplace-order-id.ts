@@ -12,12 +12,12 @@ import {
 const UNICODE_DASHES = /[\u2010-\u2015\u2212]/g;
 
 /** Amazon SP-API AmazonOrderId — official 3-7-7 (e.g. `111-1234567-1234567`). */
-export const AMAZON_ORDER_ID_RE = /^\d{3}-\d{7}-\d{7}$/;
+const AMAZON_ORDER_ID_RE = /^\d{3}-\d{7}-\d{7}$/;
 
 /** eBay Seller Hub / receipt order number — 2-5-5 (e.g. `03-15100-78272`). */
-export const EBAY_ORDER_ID_RE = /^\d{2}-\d{5}-\d{5}$/;
+const EBAY_ORDER_ID_RE = /^\d{2}-\d{5}-\d{5}$/;
 
-export type MarketplaceOrderPlatform = 'ebay' | 'amazon';
+type MarketplaceOrderPlatform = 'ebay' | 'amazon';
 
 export function normalizeMarketplaceOrderId(raw: string | null | undefined): string {
   return String(raw ?? '')

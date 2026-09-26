@@ -25,7 +25,7 @@ export const UNIT_TSN_LINKS_GRID_CAPABILITIES: GridSurfaceCapabilities = {
 };
 
 /** Build the descriptor from a RESOLVED column list (post-visibility), so `contentMinWidthRem` and the TanStack defs follow the tracks that… */
-export function makeUnitTsnLinksGridDescriptor(
+function makeUnitTsnLinksGridDescriptor(
   columns: readonly UnitTsnLinksGridColumn[],
 ): GridSurfaceDescriptor<UnitTsnLinkTableRow, UnitTsnLinksGridColumn> {
   return makeGridSurfaceDescriptor<UnitTsnLinkTableRow, UnitTsnLinksGridColumn>(

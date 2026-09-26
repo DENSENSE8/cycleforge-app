@@ -23,7 +23,7 @@ export interface LabelPrintFeedItem {
 }
 
 /** Recently-printed label feed, backed by `station_activity_logs` rows written by POST /api/post-multi-sn. */
-export function useLabelPrintFeed(limit = 50) {
+function useLabelPrintFeed(limit = 50) {
   return useQuery<LabelPrintFeedItem[]>({
     queryKey: ['labels.recent', limit],
     queryFn: async () => {

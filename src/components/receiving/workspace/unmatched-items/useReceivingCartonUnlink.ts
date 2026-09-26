@@ -9,7 +9,7 @@ import { invalidateReceivingFeeds } from '@/lib/queries/receiving-queries';
 import { refreshDomains } from '@/lib/refresh/bus';
 import { REFRESH_BUNDLES } from '@/lib/refresh/domains';
 
-export interface ReceivingCartonUnlinkOptions {
+interface ReceivingCartonUnlinkOptions {
   receivingId: number;
   /** Workspace row id — may be negative for lineless carton stubs. */
   lineId?: number;

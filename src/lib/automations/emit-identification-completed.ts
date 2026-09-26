@@ -18,7 +18,7 @@ type ApplyListingAssignmentResult = {
   error?: string;
 };
 
-export type EmitIdentificationCompletedArgs = {
+type EmitIdentificationCompletedArgs = {
   organizationId: string;
   result: IdentificationResult;
   actorStaffId?: number | null;
@@ -48,7 +48,7 @@ async function defaultDeps(): Promise<EmitIdentificationCompletedDeps> {
   };
 }
 
-export type EmitIdentificationCompletedStatus = 'emitted' | 'skipped';
+type EmitIdentificationCompletedStatus = 'emitted' | 'skipped';
 
 export async function emitIdentificationCompleted(
   args: EmitIdentificationCompletedArgs,

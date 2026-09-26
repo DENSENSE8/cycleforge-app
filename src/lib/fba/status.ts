@@ -6,7 +6,7 @@
 import { LIFECYCLE_CLASSES } from '@/design-system/tokens/lifecycle';
 
 /** Board sort order — lowest sorts first. Side states sit after the path. */
-export const FBA_STATUS_ORDER: Record<string, number> = {
+const FBA_STATUS_ORDER: Record<string, number> = {
   PACKED: 0, // combiner's queue surfaces first
   TESTED: 1,
   PLANNED: 2,
@@ -38,7 +38,7 @@ const FBA_STATUS_PILL: Record<string, string> = {
 };
 
 /** Pill classes for an FBA status (case-insensitive); safe for unknowns. */
-export function fbaStatusPillClass(status: string): string {
+function fbaStatusPillClass(status: string): string {
   return FBA_STATUS_PILL[status.toUpperCase()] ?? 'bg-surface-sunken text-text-muted';
 }
 

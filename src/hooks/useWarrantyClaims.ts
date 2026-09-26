@@ -9,9 +9,9 @@ import { fetchWarrantyClaim } from '@/lib/warranty/client';
 import { isWarrantyClaimStatus, type WarrantyClaimStatus } from '@/lib/warranty/types';
 
 /** Look-ahead window (days) for the "30 days out" expiry filter (matches the 30-day term). */
-export const WARRANTY_EXPIRING_SOON_DAYS = 30;
+const WARRANTY_EXPIRING_SOON_DAYS = 30;
 
-export interface WarrantyUrlState {
+interface WarrantyUrlState {
   status: WarrantyClaimStatus | null;
   expiringSoon: boolean;
   openClaimId: number | null;
@@ -107,7 +107,7 @@ export function useWarrantyUrlState(): WarrantyUrlState {
   return { status, expiringSoon, openClaimId, setStatus, setExpiringSoon, openClaim };
 }
 
-export interface UseWarrantyClaimsParams {
+interface UseWarrantyClaimsParams {
   status?: WarrantyClaimStatus | null;
   search?: string;
   expiringSoon?: boolean;
@@ -130,7 +130,7 @@ export function useWarrantyClaims(params: UseWarrantyClaimsParams = {}) {
 }
 
 /** Minimum query length before the coverage lookup fires (avoids noise on 1–2 chars). */
-export const WARRANTY_COVERAGE_MIN_CHARS = 3;
+const WARRANTY_COVERAGE_MIN_CHARS = 3;
 
 /**
  * Read-only warranty-coverage lookup for the active search/scan value. Only runs

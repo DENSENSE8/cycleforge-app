@@ -6,9 +6,9 @@ import { getCurrentPSTDateKey, toPSTDateKey } from '@/utils/date';
 export type DeadlineBand = 'overdue' | 'today' | 'upcoming' | 'none';
 
 /** Render order: most urgent first — must-ship-today never below the fold. */
-export const DEADLINE_BAND_ORDER: readonly DeadlineBand[] = ['overdue', 'today', 'upcoming', 'none'];
+const DEADLINE_BAND_ORDER: readonly DeadlineBand[] = ['overdue', 'today', 'upcoming', 'none'];
 
-export const DEADLINE_BAND_LABEL: Record<DeadlineBand, string> = {
+const DEADLINE_BAND_LABEL: Record<DeadlineBand, string> = {
   overdue: 'Overdue',
   today: 'Must ship today',
   upcoming: 'Upcoming',
@@ -38,7 +38,7 @@ export function filterAssignedToStaff(rows: WorkOrderRow[], staffId: number): Wo
 }
 
 /** Inside a band: priority asc → deadline asc (missing last) → entityId asc. */
-export function compareWithinBand(a: WorkOrderRow, b: WorkOrderRow): number {
+function compareWithinBand(a: WorkOrderRow, b: WorkOrderRow): number {
   if (a.priority !== b.priority) return a.priority - b.priority;
   const deadlineA = a.deadlineAt ? new Date(a.deadlineAt).getTime() : Number.MAX_SAFE_INTEGER;
   const deadlineB = b.deadlineAt ? new Date(b.deadlineAt).getTime() : Number.MAX_SAFE_INTEGER;

@@ -22,7 +22,7 @@ export interface CustomImageType {
   isSystem: boolean;
 }
 
-export type ImageType = BuiltInImageType | CustomImageType;
+type ImageType = BuiltInImageType | CustomImageType;
 
 /** The five built-in types (SoT for the sidebar's fixed rows). */
 export const BUILTIN_IMAGE_TYPES: BuiltInImageType[] = [

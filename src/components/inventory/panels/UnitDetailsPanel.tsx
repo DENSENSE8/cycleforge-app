@@ -13,7 +13,7 @@ import { cn } from '@/utils/_cn';
 
 
 
-export interface UnitDetailsPanelProps {
+interface UnitDetailsPanelProps {
     /** Either a numeric serial_units.id or a serial_number string. */
     ref: string;
     onClose?: () => void;

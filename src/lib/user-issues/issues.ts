@@ -10,11 +10,11 @@ export const USER_ISSUE_STATUSES: readonly UserIssueStatus[] = [
   'deployed',
 ];
 
-export function isUserIssueType(value: unknown): value is UserIssueType {
+function isUserIssueType(value: unknown): value is UserIssueType {
   return typeof value === 'string' && (USER_ISSUE_TYPES as readonly string[]).includes(value);
 }
 
-export function isUserIssueStatus(value: unknown): value is UserIssueStatus {
+function isUserIssueStatus(value: unknown): value is UserIssueStatus {
   return typeof value === 'string' && (USER_ISSUE_STATUSES as readonly string[]).includes(value);
 }
 
@@ -46,7 +46,7 @@ export interface ReportedIssue {
   updatedAt: string;
 }
 
-export interface ListReportedIssuesFilters {
+interface ListReportedIssuesFilters {
   status?: UserIssueStatus | null;
   type?: UserIssueType | null;
   reporterId?: number | null;
@@ -56,7 +56,7 @@ export interface ListReportedIssuesFilters {
   limit?: number;
 }
 
-export interface ListReportedIssuesResult {
+interface ListReportedIssuesResult {
   issues: ReportedIssue[];
   nextCursor: { createdAt: string; id: number } | null;
 }
@@ -189,7 +189,7 @@ export async function getReportedIssue(
   return row ? mapIssue(row) : null;
 }
 
-export interface CreateIssueInput {
+interface CreateIssueInput {
   reporterStaffId: number | null;
   issueType: UserIssueType;
   title: string;
@@ -198,7 +198,7 @@ export interface CreateIssueInput {
   clientEventId?: string | null;
 }
 
-export interface CreatedIssue {
+interface CreatedIssue {
   id: number;
   /** True when clientEventId matched an existing row (retry replay). */
   idempotent: boolean;
@@ -255,13 +255,13 @@ export async function attachGithubIssue(
   );
 }
 
-export interface ResolveIssueInput {
+interface ResolveIssueInput {
   issueId?: number;
   githubIssueNumber?: number;
   resolutionCommit?: string | null;
 }
 
-export type ResolveIssueResult =
+type ResolveIssueResult =
   | { ok: true; issueId: number; reporterStaffId: number | null; title: string; idempotent: boolean }
   | { ok: false; error: 'not_found' | 'bad_input' };
 
@@ -279,13 +279,13 @@ export function canTransitionIssueStatus(from: UserIssueStatus, to: UserIssueSta
   return ALLOWED_STATUS_TRANSITIONS.has(`${from}→${to}`);
 }
 
-export interface UpdateReportedIssueInput {
+interface UpdateReportedIssueInput {
   title?: string;
   description?: string;
   issueType?: UserIssueType;
 }
 
-export type UpdateReportedIssueResult =
+type UpdateReportedIssueResult =
   | { ok: true; issue: ReportedIssue }
   | { ok: false; error: 'not_found' | 'bad_input' };
 
@@ -332,7 +332,7 @@ export async function updateReportedIssue(
   return { ok: true, issue };
 }
 
-export type SetIssueStatusResult =
+type SetIssueStatusResult =
   | { ok: true; issue: ReportedIssue; from: UserIssueStatus; to: UserIssueStatus }
   | { ok: false; error: 'not_found' | 'conflict' | 'invalid_transition' | 'bad_input' };
 
@@ -457,7 +457,7 @@ export async function resolveReportedIssue(
   return { ok: false, error: 'not_found' };
 }
 
-export type SoftDeleteReportedIssueResult =
+type SoftDeleteReportedIssueResult =
   | { ok: true; idempotent: boolean }
   | { ok: false; error: 'not_found' | 'bad_input' };
 

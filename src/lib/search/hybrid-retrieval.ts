@@ -55,7 +55,7 @@ export interface HybridSearchDeps {
   ): Promise<DocHitRow[]>;
 }
 
-export interface HybridSearchOpts {
+interface HybridSearchOpts {
   /** HARD filter — only these entity types are searched (tool-call scoping). */
   entityTypes?: SearchEntityType[];
   /**

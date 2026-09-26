@@ -3,7 +3,7 @@
 import type { CompoundRowAction } from '@/components/tables/compound/compound-row-model';
 import type { StaffDirectoryRow } from '@/lib/staff/staff-directory-row';
 
-export interface StaffDirectoryVerbHandlers {
+interface StaffDirectoryVerbHandlers {
   /** Opens the sign-in-policy plane for this teammate. */
   onEditAuthPolicy: (row: StaffDirectoryRow) => void;
   /** Opens the deactivate confirm plane for this teammate. */

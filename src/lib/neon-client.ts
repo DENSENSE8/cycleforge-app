@@ -23,7 +23,7 @@ const idleTimeoutMillis = readPositiveInt(process.env.PG_IDLE_TIMEOUT_MS, 30000)
 
 // ─── Pooled client (transactions + high-frequency queries) ────────────────────
 
-export const pool = new Pool({
+const pool = new Pool({
   connectionString: DATABASE_URL ?? 'postgres://localhost:5432/postgres',
   ssl: DATABASE_URL ? { rejectUnauthorized: false } : false,
   connectionTimeoutMillis,
@@ -112,7 +112,7 @@ export async function queryOne<T extends QueryResultRow = QueryResultRow>(
 /**
  * Returns the count from a `SELECT COUNT(*)` query as a number.
  */
-export async function queryCount(
+async function queryCount(
   strings: TemplateStringsArray,
   ...values: unknown[]
 ): Promise<number> {

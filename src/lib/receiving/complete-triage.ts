@@ -4,13 +4,13 @@ import { withTenantTransaction } from '@/lib/tenancy/db';
 import { emitEntitySignalSafe } from '@/lib/surfaces/record-entity-signal';
 import { upsertReceivingTriage } from '@/lib/receiving/streets/carton-street-write';
 
-export interface CompleteTriageInput {
+interface CompleteTriageInput {
   receivingId: number;
   staffId: number;
   clientEventId?: string | null;
 }
 
-export interface CompleteTriageResult {
+interface CompleteTriageResult {
   ok: boolean;
   status: number;
   error?: string;

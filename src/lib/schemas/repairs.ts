@@ -7,8 +7,8 @@ import { z } from 'zod';
 
 const trimmed = z.string().trim();
 
-export const REPAIR_OPEN_STATUSES = ['pending', 'in_progress'] as const;
-export const REPAIR_ALL_STATUSES = ['pending', 'in_progress', 'completed', 'failed', 'scrapped'] as const;
+const REPAIR_OPEN_STATUSES = ['pending', 'in_progress'] as const;
+const REPAIR_ALL_STATUSES = ['pending', 'in_progress', 'completed', 'failed', 'scrapped'] as const;
 
 const RepairPart = z.object({
   sku: trimmed.max(80).optional(),
@@ -25,7 +25,7 @@ export const RepairCreateBody = z.object({
   repairServiceId: z.coerce.number().int().positive().nullish(),
   clientEventId: trimmed.max(120).optional(),
 });
-export type RepairCreateInput = z.infer<typeof RepairCreateBody>;
+type RepairCreateInput = z.infer<typeof RepairCreateBody>;
 
 export const RepairUpdateBody = z.object({
   status: z.enum(REPAIR_ALL_STATUSES).optional(),
@@ -35,4 +35,4 @@ export const RepairUpdateBody = z.object({
   costCents: z.number().int().nonnegative().nullish(),
   clientEventId: trimmed.max(120).optional(),
 });
-export type RepairUpdateInput = z.infer<typeof RepairUpdateBody>;
+type RepairUpdateInput = z.infer<typeof RepairUpdateBody>;

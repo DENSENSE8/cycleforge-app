@@ -17,7 +17,7 @@ interface PackBenchLabelSource {
 }
 
 /** Bench chip tone — **bg + text only**, no ring. */
-export const PACK_BENCH_CHIP_TONE = 'bg-blue-50 text-blue-700';
+const PACK_BENCH_CHIP_TONE = 'bg-blue-50 text-blue-700';
 
 /**
  * Short bench label for a dense chip / KPI tile.

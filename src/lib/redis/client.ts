@@ -1,5 +1,5 @@
 /** Consolidated Upstash Redis REST client (Phase 0.1 of the Redis caching plan). */
-export type RedisCommand = (string | number)[];
+type RedisCommand = (string | number)[];
 
 /** Resolve Upstash REST credentials from EITHER naming convention. */
 export function resolveRedisRestCreds(

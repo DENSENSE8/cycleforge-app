@@ -54,7 +54,7 @@ export async function getEcwidPackingSlipIngestState(
  * Backfill-safe enqueue: every missing ECWID slip gets exactly one durable job.
  * Existing available documents are projected as available without a provider call.
  */
-export async function enqueueMissingEcwidPackingSlips(
+async function enqueueMissingEcwidPackingSlips(
   orgId: OrgId,
   limit = 250,
 ): Promise<number> {
@@ -179,13 +179,13 @@ async function failJob(orgId: OrgId, job: JobRow, message: string): Promise<void
   );
 }
 
-export interface EcwidPackingSlipDrainSummary {
+interface EcwidPackingSlipDrainSummary {
   attempted: number;
   available: number;
   failed: number;
 }
 
-export async function drainEcwidPackingSlipJobs(
+async function drainEcwidPackingSlipJobs(
   orgId: OrgId,
   limit = 25,
 ): Promise<EcwidPackingSlipDrainSummary> {
@@ -218,7 +218,7 @@ export async function drainEcwidPackingSlipJobs(
   return summary;
 }
 
-export async function runEcwidPackingSlipLifecycle(
+async function runEcwidPackingSlipLifecycle(
   orgId: OrgId,
   options: { enqueueLimit?: number; drainLimit?: number } = {},
 ): Promise<EcwidPackingSlipDrainSummary & { enqueued: number }> {

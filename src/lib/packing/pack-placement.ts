@@ -63,7 +63,7 @@ export class PackPlacementError extends Error {
 }
 
 /** Open unshipped / pre-pack membership — mirrors queue-counts scope. */
-export function prepackMembershipSql(orderAlias = 'o'): string {
+function prepackMembershipSql(orderAlias = 'o'): string {
   return `
     ${orderAlias}.organization_id = $1
     AND ${orderAlias}.shipment_id IS NOT NULL

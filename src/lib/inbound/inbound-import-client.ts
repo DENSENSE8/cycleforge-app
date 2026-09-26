@@ -4,7 +4,7 @@
  * support ticket server-side; the ticket outcome rides back on the result.
  */
 
-export interface InboundImportResult {
+interface InboundImportResult {
   created: boolean;
   /** Present on returns: whether the linked support ticket was filed. */
   ticket: { success: boolean; error: string | null; draftBody: string | null } | null;

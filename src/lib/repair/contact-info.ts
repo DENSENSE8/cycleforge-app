@@ -1,13 +1,13 @@
 /** The ONE rule for reading a repair's buyer. */
 
-export interface RepairContact {
+interface RepairContact {
   name: string | null;
   phone: string | null;
   email: string | null;
 }
 
 /** Row shape this reads — structural, so both `RSRecord` and the kiosk row fit. */
-export interface RepairContactSource {
+interface RepairContactSource {
   contact_info?: string | null;
   customer_name?: string | null;
   customer_phone?: string | null;

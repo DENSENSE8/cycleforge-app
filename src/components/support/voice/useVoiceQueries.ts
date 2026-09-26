@@ -21,7 +21,7 @@ import type {
 } from './voice-presentation';
 
 /** Thrown when the voice endpoints aren't wired yet (404/501). */
-export const VOICE_NOT_CONFIGURED = 'VOICE_NOT_CONFIGURED' as const;
+const VOICE_NOT_CONFIGURED = 'VOICE_NOT_CONFIGURED' as const;
 
 export function isNotConfigured(error: unknown): boolean {
   return error instanceof Error && error.message === VOICE_NOT_CONFIGURED;
@@ -40,7 +40,7 @@ async function getJson<T>(url: string): Promise<T> {
   return (await res.json()) as T;
 }
 
-export interface VoicemailListParams {
+interface VoicemailListParams {
   status: VoicemailStatusFilter;
   query: string;
   assignee?: string | null;
@@ -75,7 +75,7 @@ export function useVoicemailDetail(id: number | null): UseQueryResult<VoicemailD
   });
 }
 
-export interface CallEventsParams {
+interface CallEventsParams {
   direction: CallDirectionFilter;
   query: string;
 }
@@ -116,7 +116,7 @@ async function patchJson<T>(url: string, body: unknown): Promise<T> {
   return (await res.json()) as T;
 }
 
-export interface FollowupUpdate {
+interface FollowupUpdate {
   status?: VoicemailStatus;
   /** ISO timestamp to snooze until (status → 'snoozed'). */
   snoozeUntil?: string | null;

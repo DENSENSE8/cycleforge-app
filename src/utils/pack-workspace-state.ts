@@ -3,9 +3,9 @@
 export type PackWorkspaceTab = 'queue' | 'history';
 
 /** Pack scan sub-mode on `/pack` (`?packMode=`). Standard = omit. */
-export type PackScanMode = 'standard' | 'fragile' | 'multi';
+type PackScanMode = 'standard' | 'fragile' | 'multi';
 
-export const PACK_SCAN_MODES = [
+const PACK_SCAN_MODES = [
   'standard',
   'fragile',
   'multi',
@@ -13,7 +13,7 @@ export const PACK_SCAN_MODES = [
 
 const PACK_WORKSPACE_TAB_PARAM = 'packview';
 
-export const PACK_WORKSPACE_TAB_LABEL: Record<PackWorkspaceTab, string> = {
+const PACK_WORKSPACE_TAB_LABEL: Record<PackWorkspaceTab, string> = {
   queue: 'Queue',
   history: 'History',
 };

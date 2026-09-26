@@ -11,7 +11,7 @@ const MAX_ORDERS_PER_REQUEST = 100;
 const PAGE_RENDER_WIDTH_PX = 1275;
 const JPEG_QUALITY = 0.9;
 
-export interface PaperworkPrintOutcome {
+interface PaperworkPrintOutcome {
   /** Orders that contributed at least one printed page. */
   ordersPrinted: number;
   pages: number;
@@ -95,7 +95,7 @@ async function renderItem(item: PaperworkPacketItem): Promise<string[]> {
 }
 
 /** The print document: one full-bleed page per rendered page, then print. */
-export function buildPaperworkPrintHtml(pages: readonly string[]): string {
+function buildPaperworkPrintHtml(pages: readonly string[]): string {
   const body = pages.map((src) => `<div class="page"><img src="${src}" alt="" /></div>`).join('\n');
   return `<!doctype html><html><head><meta charset="utf-8"/><title>Print paperwork</title>
 <style>

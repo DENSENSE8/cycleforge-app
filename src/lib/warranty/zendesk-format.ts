@@ -12,7 +12,7 @@ export interface WarrantyZendeskComment {
   createdAt: string;
 }
 
-export interface WarrantyTicketTemplate {
+interface WarrantyTicketTemplate {
   subject: string;
   description: string;
 }

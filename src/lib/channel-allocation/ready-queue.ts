@@ -13,7 +13,7 @@ import type {
   ReadyAllocationState,
 } from './types';
 
-export interface ReadyQueueQuery {
+interface ReadyQueueQuery {
   /** Cap rows after scoring (default 200). */
   limit?: number;
   /** Optional disposition filter. */

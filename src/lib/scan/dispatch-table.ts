@@ -44,7 +44,7 @@ export const QC_SCAN_SESSION: ArmedScanSession = {
   title: 'Quality control',
 };
 
-export interface ScanDispatchInput {
+interface ScanDispatchInput {
   /** A raw scan (routed here) or an already-decoded route. */
   scan: string | ScanRoute;
   state?: ScanObjectState;

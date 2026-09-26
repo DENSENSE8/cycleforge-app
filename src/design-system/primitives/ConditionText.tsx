@@ -2,7 +2,7 @@
 
 import { conditionTextColor } from '@/lib/conditions';
 
-export interface ConditionTextProps {
+interface ConditionTextProps {
   condition: string | null | undefined;
   quantity?: number;
   productTitle?: string;
@@ -10,13 +10,13 @@ export interface ConditionTextProps {
 }
 
 /** Tailwind text color class for an item condition (new→yellow-500, parts→orange-900 brown, else→black). */
-export const getConditionColor = conditionTextColor;
+const getConditionColor = conditionTextColor;
 
 /**
  * Formats a raw condition string for display.
  * Strips underscores, handles empty / "FBA SCAN" → honest-absence dash.
  */
-export function formatConditionLabel(value: string | null | undefined): string {
+function formatConditionLabel(value: string | null | undefined): string {
   const raw = String(value || '').trim();
   const normalized = raw.toUpperCase().replace(/\s+/g, ' ');
   if (!raw || normalized === 'FBA SCAN') return '—';
@@ -24,7 +24,7 @@ export function formatConditionLabel(value: string | null | undefined): string {
 }
 
 /** Inline condition + qty + title display. */
-export function ConditionText({
+function ConditionText({
   condition,
   quantity = 1,
   productTitle = '',

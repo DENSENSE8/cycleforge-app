@@ -16,14 +16,14 @@ interface LocationOptionRow {
   col_label: string | null;
 }
 
-export interface LocationPickerOption {
+interface LocationPickerOption {
   /** The BARCODE — what both write endpoints take as their path segment. */
   value: string;
   label: string;
   meta?: string;
 }
 
-export const LOCATION_PICKER_QUERY_KEY = ['stock-pair-locations'] as const;
+const LOCATION_PICKER_QUERY_KEY = ['stock-pair-locations'] as const;
 
 export function useLocationPickerOptions(): {
   options: readonly LocationPickerOption[];

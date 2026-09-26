@@ -9,7 +9,7 @@ import { mergeReasonLabel, visibleReasonBase } from '@/lib/repair/sku-reasons';
 
 const ENDPOINT = '/api/kiosk/repair/issues';
 
-export interface KioskSkuReasons {
+interface KioskSkuReasons {
   /** Labels to render as pills — global reasons plus this SKU's own. */
   labels: string[];
   /** True while a reason is being persisted. */

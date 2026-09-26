@@ -13,7 +13,7 @@ import { zIndex, type ZIndexToken } from '@/design-system/tokens/z-index';
 
 // ─── Layer ───────────────────────────────────────────────────────────────────
 
-export interface LayerProps extends HTMLAttributes<HTMLDivElement> {
+interface LayerProps extends HTMLAttributes<HTMLDivElement> {
   /** Stacking band token from the scale (e.g. 'modal', 'panelPopover', 'toast'). */
   level: ZIndexToken;
   /** Render through a portal to <body>. */
@@ -29,7 +29,7 @@ export interface LayerProps extends HTMLAttributes<HTMLDivElement> {
  * Resolve a scale token to its numeric z-index — for inline styles, framer
  * `animate`, canvas, or any non-className context.
  */
-export function useZIndex(level: ZIndexToken, offset = 0): number {
+function useZIndex(level: ZIndexToken, offset = 0): number {
   return zIndex[level] + offset;
 }
 

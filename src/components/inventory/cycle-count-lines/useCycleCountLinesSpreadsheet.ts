@@ -24,7 +24,7 @@ import {
 } from './cycle-count-lines-table-definition';
 import { useCycleCountLinesTableLayout } from './useCycleCountLinesTableLayout';
 
-export interface UseCycleCountLinesSpreadsheetOptions {
+interface UseCycleCountLinesSpreadsheetOptions {
   rows: readonly CycleCountLineRow[];
   loading?: boolean;
   emptyMessage?: string;

@@ -2,14 +2,14 @@
 
 /** Shared helpers for the dashboard Sourcing hub (Queue / Scout / Watchlist). */
 
-export type SourcingMode =
+type SourcingMode =
   | 'queue' | 'scout' | 'watchlist' | 'searches' | 'suppliers' | 'analytics'
   // Sourcing master data (admin dissolution): the model catalog + its
   // compatibility edges live on the desk that consumes them.
   | 'models' | 'compatibility';
 
 /** Live + legacy wire tokens `?mode=` may carry on `/sourcing`. */
-export const SOURCING_MODE_WIRE = [
+const SOURCING_MODE_WIRE = [
   'queue',
   'scout',
   'watchlist',
@@ -46,7 +46,7 @@ export function parseSourcingModeWire(raw: string): string | null {
 }
 
 /** Analytics mode ranges (?range= — ephemeral URL filter, Monitor archetype). */
-export type SourcingAnalyticsRangeKey = '30d' | '90d' | '1y';
+type SourcingAnalyticsRangeKey = '30d' | '90d' | '1y';
 export const SOURCING_ANALYTICS_RANGES: { id: SourcingAnalyticsRangeKey; label: string }[] = [
   { id: '30d', label: '30 days' },
   { id: '90d', label: '90 days' },

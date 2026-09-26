@@ -7,7 +7,7 @@ export const DELIVERY_ESTIMATE_DAYS = 4;
 
 export type WarrantyClockBasis = 'DELIVERED' | 'PACKED_PLUS_ESTIMATE';
 
-export interface WarrantyClockInput {
+interface WarrantyClockInput {
   /** Carrier DELIVERED timestamp (from shipping_tracking_numbers) — authoritative. */
   deliveredAt?: Date | string | null;
   /** Packed/scanned timestamp — fallback anchor when delivered is unknown. */
@@ -18,7 +18,7 @@ export interface WarrantyClockInput {
   estimateDays?: number | null;
 }
 
-export interface WarrantyClockResult {
+interface WarrantyClockResult {
   /** When the warranty period begins, or null when neither anchor is known. */
   startsAt: Date | null;
   /** When the warranty period ends, or null when undeterminable. */
@@ -95,7 +95,7 @@ export function isExpired(
   return exp ? exp.getTime() <= now.getTime() : false;
 }
 
-export interface ClockRecomputeDecision {
+interface ClockRecomputeDecision {
   /** Whether the stored clock should be written. */
   changed: boolean;
   /** True when the basis moved from provisional (or unknown) to DELIVERED. */

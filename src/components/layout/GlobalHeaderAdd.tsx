@@ -10,7 +10,7 @@ import {
   HEADER_ICON_WRAP,
   TOP_CHROME_ICON_FACE,
 } from './header-shell';
-export const SHIPPING_LABEL_ORDER_SEARCH_HREF = '/search?entry=label';
+const SHIPPING_LABEL_ORDER_SEARCH_HREF = '/search?entry=label';
 
 export function GlobalHeaderAdd() {
   const router = useRouter();

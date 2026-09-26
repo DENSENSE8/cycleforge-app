@@ -3,7 +3,7 @@
 import { useQuery } from '@tanstack/react-query';
 
 /** One member unit of a box, as returned by GET /api/handling-units/[id]. */
-export interface HandlingUnitMemberView {
+interface HandlingUnitMemberView {
   id: number;
   serial_number: string;
   unit_uid: string | null;
@@ -16,7 +16,7 @@ export interface HandlingUnitMemberView {
 }
 
 /** Box detail payload (the `handling_unit` field of the GET response). */
-export interface HandlingUnitDetailView {
+interface HandlingUnitDetailView {
   id: number;
   code: string;
   status: string;
@@ -32,7 +32,7 @@ interface BoxResponse {
   handling_unit: HandlingUnitDetailView;
 }
 
-export function handlingUnitDetailQueryKey(idOrCode: string | number) {
+function handlingUnitDetailQueryKey(idOrCode: string | number) {
   return ['handling-unit.detail', String(idOrCode)] as const;
 }
 

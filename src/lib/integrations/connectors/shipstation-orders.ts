@@ -13,7 +13,7 @@ import { planOrderRowBackfill, type BackfillPolicy, type BackfillRow } from '@/l
 // ─── Store → platform ────────────────────────────────────────────────────────
 
 /** Platform key of ShipStation's Manual Orders store (marketplace 'ShipStation'). */
-export const MANUAL_ORDERS_PLATFORM = 'manual';
+const MANUAL_ORDERS_PLATFORM = 'manual';
 
 export type StoreAttribution =
   | {
@@ -115,7 +115,7 @@ export function attributeStore(
 
 /** ShipStation orders sharing one order number (split shipments share the
  *  number and the order key), in first-seen order. */
-export function groupByOrderNumber(orders: readonly ShipStationV1Order[]): Map<string, ShipStationV1Order[]> {
+function groupByOrderNumber(orders: readonly ShipStationV1Order[]): Map<string, ShipStationV1Order[]> {
   const out = new Map<string, ShipStationV1Order[]>();
   for (const order of orders) {
     const number = String(order.orderNumber ?? '').trim();
@@ -250,8 +250,8 @@ export interface ExistingOrderRow extends BackfillRow {
   id: number;
 }
 
-export type QuarantineReason = 'shipstation_unknown_store' | 'shipstation_ambiguous_match';
-export type SkipReason = 'cancelled' | 'awaiting_payment' | 'ignored_exception' | 'unchanged';
+type QuarantineReason = 'shipstation_unknown_store' | 'shipstation_ambiguous_match';
+type SkipReason = 'cancelled' | 'awaiting_payment' | 'ignored_exception' | 'unchanged';
 export type MatchKind = 'inserted' | 'same' | 'adopted' | 'claimed';
 
 export type OrderPlan =
@@ -295,7 +295,7 @@ export function bump(counts: ReconcileCounts, key: string, by = 1) {
   counts.reasons[key] = (counts.reasons[key] ?? 0) + by;
 }
 
-export interface PlanInputs {
+interface PlanInputs {
   attributions: ReadonlyMap<number, StoreAttribution>;
   /** Every org row carrying each order number, any account_source. */
   rowsByNumber: ReadonlyMap<string, readonly ExistingOrderRow[]>;

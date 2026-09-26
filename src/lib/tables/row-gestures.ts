@@ -1,9 +1,9 @@
 /** The row model's gesture table — as DATA, so the code and the docs cannot disagree about what a row does. */
 
 /** The precedence layer a binding belongs to — see `table-key-layer.ts`. */
-export type RowGestureLayer = 'table' | 'form';
+type RowGestureLayer = 'table' | 'form';
 
-export interface RowGesture {
+interface RowGesture {
   /** Stable identity — what {@link useRowGestures} switches on. */
   id: RowGestureId;
   /** What the operator understands it to do. One clause, present tense. */
@@ -25,7 +25,7 @@ export interface RowGesture {
   note?: string;
 }
 
-export type RowGestureId =
+type RowGestureId =
   | 'cursor-next'
   | 'cursor-prev'
   | 'cursor-first'

@@ -15,7 +15,7 @@ export interface DetailDoor {
 }
 
 /** What a slice's summary hook says about its door (`useRepairPhotosRow`, …). */
-export interface DetailDoorSummary {
+interface DetailDoorSummary {
   meta: ReactNode;
   /** `false` keeps the door visible but inert; `meta` says why. Default `true`. */
   enabled?: boolean;

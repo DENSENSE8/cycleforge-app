@@ -13,13 +13,13 @@ type Queryable = Pick<PoolClient, 'query'>;
 /** `created_at` (timestamptz) as a UTC ISO-8601 instant — parseable on every client. */
 const CREATED_AT_ISO = `to_char(created_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"') AS created_at`;
 
-export interface PackerLogWriteRow {
+interface PackerLogWriteRow {
   id: number;
   createdAt: string;
   completionState: PackerLogCompletionState;
 }
 
-export interface CreatePackerLogInput {
+interface CreatePackerLogInput {
   organizationId: OrgId;
   shipmentId?: number | null;
   scanRef?: string | null;
@@ -125,7 +125,7 @@ export async function createPackerLog(
   return normalizeRow(row);
 }
 
-export interface StartPackerLogCaptureInput {
+interface StartPackerLogCaptureInput {
   organizationId: OrgId;
   shipmentId: number;
   scanRef: string;
@@ -164,7 +164,7 @@ export async function startPackerLogCapture(
   return normalizeRow(row);
 }
 
-export interface MutatePackerLogInput {
+interface MutatePackerLogInput {
   organizationId: OrgId;
   packerLogId: number;
   packedBy: number;

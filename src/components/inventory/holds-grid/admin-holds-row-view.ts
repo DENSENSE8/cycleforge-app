@@ -29,7 +29,7 @@ export function holdClockFace(iso: string | null | undefined): string | null {
 }
 
 /** The full instant, for the two hovers — the precision `toLocaleString()` had. */
-export function holdStampTip(iso: string | null | undefined): string | null {
+function holdStampTip(iso: string | null | undefined): string | null {
   const d = parseInstant(iso);
   return d ? format(d, 'MMM d, yyyy · h:mm:ss a') : null;
 }

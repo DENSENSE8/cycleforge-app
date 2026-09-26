@@ -14,7 +14,7 @@ import {
 } from '@/lib/automations/apply-listing-assignment';
 import { normalizeItemNumber } from '@/lib/automations/listing-match';
 
-export type PassAllocateResult = {
+type PassAllocateResult = {
   matched: boolean;
   orderId: number | null;
   allocationId: number | null;
@@ -25,7 +25,7 @@ export type PassAllocateResult = {
 /**
  * Resolve marketplace item numbers that map to this unit's catalog / SKU.
  */
-export async function resolveUnitItemNumbers(
+async function resolveUnitItemNumbers(
   organizationId: OrgId,
   serialUnitId: number,
 ): Promise<string[]> {
@@ -57,7 +57,7 @@ export async function resolveUnitItemNumbers(
  * Oldest unfilled pending to-ship order whose item_number matches (normalized).
  * Pending = not packed (order-grain) and not carrier-accepted/in-transit/delivered.
  */
-export async function findPendingOrderByItemNumbers(
+async function findPendingOrderByItemNumbers(
   organizationId: OrgId,
   itemNumbers: string[],
 ): Promise<{ id: number; item_number: string | null } | null> {

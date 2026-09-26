@@ -8,7 +8,7 @@ interface DetailGridProps {
   className?: string;
 }
 
-export function DetailGrid({ children, className = '' }: DetailGridProps) {
+function DetailGrid({ children, className = '' }: DetailGridProps) {
   const { isMobile } = useUIModeOptional();
   return (
     <div

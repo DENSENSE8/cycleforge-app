@@ -3,7 +3,7 @@
 import type { CompoundRowAction } from '@/components/tables/compound/compound-row-model';
 import type { HeldUnitRow } from '@/lib/inventory/held-unit-row';
 
-export interface AdminHoldsVerbHandlers {
+interface AdminHoldsVerbHandlers {
   /** Opens the release plane for this unit. The plane owns the write. */
   onRelease: (row: HeldUnitRow) => void;
 }

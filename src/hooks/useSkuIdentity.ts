@@ -5,7 +5,7 @@ import type { SkuPlatformMapping } from '@/components/inventory/SkuIdentity';
 
 /** useSkuIdentity — fetches `{canonicalSku, productTitle, platforms}` for a raw SKU value (which may be the internal SKU or a marketplace… */
 
-export interface SkuIdentityResolution {
+interface SkuIdentityResolution {
   resolved: boolean;
   canonicalSku: string | null;
   productTitle: string | null;

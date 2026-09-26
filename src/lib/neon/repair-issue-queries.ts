@@ -1,7 +1,7 @@
 import { tenantQuery } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';
 
-export interface RepairIssueTemplate {
+interface RepairIssueTemplate {
   id: number;
   favorite_sku_id: number | null;
   label: string;

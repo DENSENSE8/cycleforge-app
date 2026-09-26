@@ -9,11 +9,11 @@ const RESTORABLE_STATUSES = new Set([
   'GRADED', 'ALLOCATED', 'PICKED', 'PACKED', 'LABELED', 'STAGED',
 ]);
 
-export function isRestorableStatus(status: string): boolean {
+function isRestorableStatus(status: string): boolean {
   return RESTORABLE_STATUSES.has(status);
 }
 
-export interface HoldUnitInput {
+interface HoldUnitInput {
   serialUnitId: number;
   reason: string;
   clientEventId?: string | null;
@@ -22,7 +22,7 @@ export interface HoldUnitInput {
   organizationId: OrgId;
 }
 
-export interface HoldUnitSuccess {
+interface HoldUnitSuccess {
   ok: true;
   serialUnitId: number;
   prevStatus: string;
@@ -31,13 +31,13 @@ export interface HoldUnitSuccess {
   inventoryEventId: number | null;
 }
 
-export interface HoldUnitFailure {
+interface HoldUnitFailure {
   ok: false;
   status: 400 | 404 | 409;
   error: string;
 }
 
-export type HoldUnitResult = HoldUnitSuccess | HoldUnitFailure;
+type HoldUnitResult = HoldUnitSuccess | HoldUnitFailure;
 
 export async function holdUnit(input: HoldUnitInput): Promise<HoldUnitResult> {
   if (!input.reason || !input.reason.trim()) {
@@ -88,7 +88,7 @@ export async function holdUnit(input: HoldUnitInput): Promise<HoldUnitResult> {
   });
 }
 
-export interface ReleaseUnitInput {
+interface ReleaseUnitInput {
   serialUnitId: number;
   reason?: string | null;
   forceStatus?: string | null;
@@ -98,7 +98,7 @@ export interface ReleaseUnitInput {
   organizationId: OrgId;
 }
 
-export interface ReleaseUnitSuccess {
+interface ReleaseUnitSuccess {
   ok: true;
   serialUnitId: number;
   prevStatus: 'ON_HOLD';
@@ -107,14 +107,14 @@ export interface ReleaseUnitSuccess {
   inventoryEventId: number | null;
 }
 
-export interface ReleaseUnitFailure {
+interface ReleaseUnitFailure {
   ok: false;
   status: 400 | 404 | 409;
   error: string;
   currentStatus?: string;
 }
 
-export type ReleaseUnitResult = ReleaseUnitSuccess | ReleaseUnitFailure;
+type ReleaseUnitResult = ReleaseUnitSuccess | ReleaseUnitFailure;
 
 export async function releaseUnit(input: ReleaseUnitInput): Promise<ReleaseUnitResult> {
   const forceStatus = input.forceStatus ? input.forceStatus.trim().toUpperCase() : null;

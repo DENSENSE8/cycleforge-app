@@ -5,14 +5,14 @@ import { cn } from '@/utils/_cn';
 
 // ─── Toolbar ─────────────────────────────────────────────────────────────────
 
-export type ToolbarTone = 'surface' | 'transparent';
+type ToolbarTone = 'surface' | 'transparent';
 
 const TONE: Record<ToolbarTone, string> = {
   surface: 'bg-surface-card border-b border-border-soft',
   transparent: 'bg-transparent',
 };
 
-export interface ToolbarProps extends Omit<HTMLAttributes<HTMLDivElement>, 'children'> {
+interface ToolbarProps extends Omit<HTMLAttributes<HTMLDivElement>, 'children'> {
   /** Leading slot — typically a title or back affordance. */
   start?: ReactNode;
   /** Centered slot — typically a search field or segmented control. */
@@ -48,6 +48,6 @@ export const Toolbar = forwardRef<HTMLDivElement, ToolbarProps>(function Toolbar
 });
 
 /** Visual divider between toolbar clusters. */
-export function ToolbarSeparator({ className }: { className?: string }) {
+function ToolbarSeparator({ className }: { className?: string }) {
   return <span className={cn('h-5 w-px bg-border-soft', className)} aria-hidden="true" />;
 }

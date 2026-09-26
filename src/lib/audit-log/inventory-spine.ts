@@ -30,7 +30,7 @@ export interface InventoryEventRecord {
   payload: Record<string, unknown>;
 }
 
-export interface ReadInventorySpineOpts {
+interface ReadInventorySpineOpts {
   /** receiving_lines.id values. */
   lineIds?: number[];
   /** serial_units.id values. */

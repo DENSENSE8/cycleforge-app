@@ -29,7 +29,7 @@ interface ArchiveReceivingClaimPhotosArgs {
   logTag?: string;
 }
 
-export interface ArchiveReceivingClaimPhotosResult {
+interface ArchiveReceivingClaimPhotosResult {
   copied: number;
   total: number;
   folder: string | null;
@@ -289,7 +289,7 @@ export function nasArchiveFolderName(ticketId: number | string): string {
  * a copy that already landed — the worst case is the carton still reads as
  * pending and a second sync is an idempotent re-copy.
  */
-export async function stampReceivingNasArchive(
+async function stampReceivingNasArchive(
   args: StampReceivingNasArchiveArgs,
 ): Promise<void> {
   await tenantQuery(

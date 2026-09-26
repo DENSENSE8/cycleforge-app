@@ -34,7 +34,7 @@ export function formatSlotTableCount(shown: number, total?: number): string {
   return `${shown.toLocaleString()} of ${total.toLocaleString()}`;
 }
 
-export type SlotTablePage<T> = {
+type SlotTablePage<T> = {
   order: [string, RowGroup<T>[]][];
   pageIndex: number;
   pageCount: number;

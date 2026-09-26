@@ -5,7 +5,7 @@ import { PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
 import type { DragStartEvent, DragEndEvent } from '@dnd-kit/core';
 import type { PanelAllocations, BucketAllocation } from '@/lib/fba/types';
 
-export interface SplitState {
+interface SplitState {
   itemId: number;
   fnsku: string;
   sourceContainer: string;

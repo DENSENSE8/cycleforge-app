@@ -17,7 +17,7 @@ export function paramEnum<const T extends readonly [string, ...string[]]>(
 }
 
 /** Trim + UPPERCASE, then match one of `values` (server-state vocabularies). */
-export function paramEnumUpper<const T extends readonly [string, ...string[]]>(
+function paramEnumUpper<const T extends readonly [string, ...string[]]>(
   values: T,
 ): z.ZodType<T[number]> {
   return z
@@ -82,7 +82,7 @@ export const paramPresence: ParamSchema = z
   .transform(() => '');
 
 /** Ambient params — owned by this registry rather than by a route, because they are the same question on every surface that asks it (which… */
-export const AMBIENT_PARAMS = {
+const AMBIENT_PARAMS = {
   /** Canonical staff filter (`useStaffFilter`). */
   staff: paramPositiveInt,
   /** Legacy receiving-only spelling of `staff`; still read, never written. */
@@ -112,7 +112,7 @@ export type AmbientParamKey = keyof typeof AMBIENT_PARAMS;
  * param-ownership guard fails on any OTHER duplicate. **This list only shrinks**
  * — same ratchet discipline as the DS guards in `npm run verify`.
  */
-export const SHARED_OWNED_KEYS: Readonly<Record<string, string>> = {
+const SHARED_OWNED_KEYS: Readonly<Record<string, string>> = {
   sort: 'Server ORDER BY vocabulary — a different value set per surface (Incoming zoho_newest… vs History unboxed_newest…). One key, one question, per-route values.',
   dir: 'Direction for `sort`; shares its owner set. Stripping one without the other left a dangling direction (the 2026-06 bug).',
   rh_q: 'Receiving search box — Incoming and History mount the same search chrome over their own feed.',
@@ -181,7 +181,7 @@ export function defineRouteParams<const S extends RouteParamsSpec>(spec: S): S {
 }
 
 /** Every key this route may hold, owned or carried. */
-export function declaredKeys(spec: RouteParamsSpec): string[] {
+function declaredKeys(spec: RouteParamsSpec): string[] {
   return [...Object.keys(spec.owns), ...(spec.carries ?? [])];
 }
 

@@ -97,7 +97,7 @@ export function OwnerStep({
 }
 
 /** The FALLBACK link row: */
-export function LinkFields({
+function LinkFields({
   draft,
   onChange,
 }: {

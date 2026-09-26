@@ -11,7 +11,7 @@ import { compoundRowEstimateFor } from './compound/compound-columns';
 import type { TableSurfaceBinding } from './table-surface-binding';
 
 /** `NonlinearTableHost` — mount a Workbench spreadsheet from a **table definition** instead of from a page-local wiring block. */
-export interface NonlinearTableHostProps<Row, K extends string, C extends LedgerGridColumnModel> {
+interface NonlinearTableHostProps<Row, K extends string, C extends LedgerGridColumnModel> {
   /** Definition + typed columns + descriptor factory for this family. */
   binding: TableSurfaceBinding<Row, C>;
 

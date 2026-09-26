@@ -30,7 +30,7 @@ interface FbaItemRow {
  * identity object. A rail must never stringify the latter into `[object Object]`:
  * the FNSKU is the honest scan identity when there is no usable human title.
  */
-export function fbaRailScanIdentifier(value: unknown): string | null {
+function fbaRailScanIdentifier(value: unknown): string | null {
   if (typeof value !== 'string') return null;
   const normalized = value.trim();
   return normalized && !/^\[object object\]$/i.test(normalized) ? normalized : null;

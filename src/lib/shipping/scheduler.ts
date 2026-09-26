@@ -1,7 +1,7 @@
 import { getDueShipments } from './repository';
 import { syncShipment } from './sync-shipment';
 
-export interface SchedulerResult {
+interface SchedulerResult {
   synced: number;
   terminal: number;
   errors: number;
@@ -49,7 +49,7 @@ export async function syncShipmentsByIds(
 }
 
 /** A shipment to re-poll, carrying the pre-sync context the UI displays. */
-export interface ShipmentSyncRow {
+interface ShipmentSyncRow {
   id: number;
   carrier: string;
   tracking?: string | null;
@@ -57,7 +57,7 @@ export interface ShipmentSyncRow {
 }
 
 /** Per-shipment outcome handed to {@link syncShipmentsByIdsStreaming}'s callback. */
-export interface ShipmentSyncOutcome {
+interface ShipmentSyncOutcome {
   shipmentId: number;
   carrier: string;
   tracking: string | null;

@@ -3,7 +3,7 @@
 /** Catalog entry ids — subset of Unbox workspace tabs (`incoming`). */
 export type UnboxExtraTabId = 'incoming';
 
-export interface UnboxExtraTabDef {
+interface UnboxExtraTabDef {
   id: UnboxExtraTabId;
   label: string;
   /** One-line caption in the Plus popover. */

@@ -4,7 +4,7 @@ import { cornerClass } from '@/design-system/tokens/radius';
 import { cn } from '@/utils/_cn';
 
 /** Pulse-skeleton card placeholder — flush ops chrome (no soft pill cards). */
-export function SkeletonCard({ className = '' }: { className?: string }) {
+function SkeletonCard({ className = '' }: { className?: string }) {
   return (
     <div
       className={cn(

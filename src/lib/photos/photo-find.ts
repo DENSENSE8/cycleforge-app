@@ -12,7 +12,7 @@ import type {
 
 type Fact = string | number | null | undefined;
 
-export interface PhotoFindOptions {
+interface PhotoFindOptions {
   /** Scope the row paints under — drives ticket-vs-PO naming. */
   scope?: PhotoLibrarySourceScope;
   /** Field the finder-kind menu has pinned. `all` searches every painted fact. */
@@ -66,7 +66,7 @@ function allFacts(photo: LibraryPhoto, scope: PhotoLibrarySourceScope): Fact[] {
 }
 
 /** Lowercased newline-joined haystack for one row under one field scope. */
-export function photoSearchHaystack(
+function photoSearchHaystack(
   photo: LibraryPhoto,
   options: PhotoFindOptions = {},
 ): string {

@@ -27,7 +27,7 @@ import {
 } from '@/lib/print/staff-print-bridge';
 import { readRememberedPrintStationId, rememberPrintStationId } from '@/lib/print/print-station';
 
-export type StaffPrintPatch = Omit<StaffPrintOptionsPatch, 'type' | 'targetStationId'>;
+type StaffPrintPatch = Omit<StaffPrintOptionsPatch, 'type' | 'targetStationId'>;
 
 function pickStorage(): Storage | null {
   try {

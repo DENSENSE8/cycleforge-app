@@ -41,13 +41,13 @@ export interface DesignatedStaff {
 }
 
 /** `{ staffId, tag }` — the tag is carried so the caller can audit WHICH one won. */
-export interface DesignatedMatch {
+interface DesignatedMatch {
   staffId: number;
   tag: string;
 }
 
 /** What a ticket's tag set says about who should own it. */
-export type DesignatedVerdict =
+type DesignatedVerdict =
   | { kind: 'none' }
   | { kind: 'ambiguous'; tags: string[] }
   | { kind: 'matched'; staffId: number; tag: string };

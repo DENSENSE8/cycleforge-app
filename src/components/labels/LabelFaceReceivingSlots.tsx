@@ -20,7 +20,7 @@ type SlotMenu = 'platformType' | 'date' | 'condition' | 'corner' | null;
 const MENU_ITEM =
   'ds-raw-button flex w-full items-center gap-2 px-2.5 py-1.5 text-left text-role-caption font-semibold transition-colors hover:bg-surface-hover';
 
-export type LabelFaceReceivingSlotValues = {
+type LabelFaceReceivingSlotValues = {
   platform: string;
   receivingType: string;
   date: string;
@@ -28,7 +28,7 @@ export type LabelFaceReceivingSlotValues = {
   cornerMode: LabelCornerMode;
 };
 
-export type LabelFaceReceivingSlotActions = {
+type LabelFaceReceivingSlotActions = {
   onPlatformChange: (next: { label: string; slug: string | null }) => void;
   onTypeChange: (slug: string) => void;
   onDateChange: (date: string) => void;

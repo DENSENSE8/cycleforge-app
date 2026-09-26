@@ -7,5 +7,5 @@ import * as schema from './schema';
 const connectionString =
   process.env.DATABASE_URL || 'postgresql://user:pass@localhost:5432/postgres';
 
-export const client = neon(connectionString);
+const client = neon(connectionString);
 export const db = drizzle(client, { schema });

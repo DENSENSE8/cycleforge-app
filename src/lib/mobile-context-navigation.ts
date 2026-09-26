@@ -18,7 +18,7 @@ import {
 } from '@/utils/dashboard-search-state';
 import { PRODUCT_NAME } from '@/lib/branding/constants';
 
-export interface MobileContextOption {
+interface MobileContextOption {
   id: string;
   label: string;
   description?: string;
@@ -51,7 +51,7 @@ export function getMobileAppTitle(
   return nav?.label || PRODUCT_NAME;
 }
 
-export interface MobileContextRowConfig {
+interface MobileContextRowConfig {
   /** Label for the active subsection (row 2 center). */
   activeLabel: string;
   options: MobileContextOption[];
@@ -100,7 +100,7 @@ const SETTINGS_REQUIRES: Partial<Record<SettingsSection, string>> = {
   audit: 'admin.view_logs',
 };
 
-export function getMobileContextRowConfig(
+function getMobileContextRowConfig(
   routeKey: SidebarRouteKey,
   searchParams: ReadonlyURLSearchParams,
   navigate: (href: string) => void,

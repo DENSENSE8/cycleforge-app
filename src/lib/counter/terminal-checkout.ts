@@ -4,7 +4,7 @@ import { squareFetchForOrg } from '@/lib/square/server';
 import { formatSquareErrors } from '@/lib/square/client';
 import type { OrgId } from '@/lib/tenancy/constants';
 
-export interface TerminalCheckoutRequest {
+interface TerminalCheckoutRequest {
   deviceId: string;
   /** The staged Square order this checkout collects for. */
   orderId: string;
@@ -28,7 +28,7 @@ export function buildTerminalCheckoutBody(req: TerminalCheckoutRequest): Record<
   };
 }
 
-export type TerminalCheckoutResult =
+type TerminalCheckoutResult =
   | { ok: true; checkoutId: string }
   | { ok: false; error: string };
 

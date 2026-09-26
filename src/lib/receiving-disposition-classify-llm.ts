@@ -7,7 +7,7 @@ const TOOL_NAME = 'report_disposition';
 
 // Matches disposition_enum in the DB (2026-03-05_receiving_qa_and_zoho_fields).
 const DISPOSITIONS = ['ACCEPT', 'HOLD', 'RTV', 'SCRAP', 'REWORK'] as const;
-export type DispositionCode = (typeof DISPOSITIONS)[number];
+type DispositionCode = (typeof DISPOSITIONS)[number];
 
 const SYSTEM_PROMPT = [
   'You decide what to do with a received unit after inspection (its disposition).',
@@ -26,13 +26,13 @@ const SYSTEM_PROMPT = [
   `Call the \`${TOOL_NAME}\` tool exactly once and stop. Do not reply with prose.`,
 ].join('\n');
 
-export interface DispositionInput {
+interface DispositionInput {
   qaStatus?: string | null;
   conditionGrade?: string | null;
   notes?: string | null;
 }
 
-export interface DispositionSuggestion {
+interface DispositionSuggestion {
   dispositionCode: DispositionCode;
   confidence: 'high' | 'medium' | 'low';
   model: string;

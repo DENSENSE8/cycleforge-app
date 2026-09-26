@@ -23,7 +23,7 @@ export const DAILY_COMPOUND_COLUMNS: readonly SlotTableColumn[] = slotTableColum
 );
 
 /** Daily is a CHECKLIST — on BOTH halves — and the capability bag says so: */
-export const DAILY_GRID_CAPABILITIES: GridSurfaceCapabilities = {
+const DAILY_GRID_CAPABILITIES: GridSurfaceCapabilities = {
   rowTriageFlags: false,
   multiSelect: false,
   inCellEdit: false,
@@ -32,7 +32,7 @@ export const DAILY_GRID_CAPABILITIES: GridSurfaceCapabilities = {
 };
 
 /** Build the descriptor from a RESOLVED column list (post-visibility), so a header's sortability is answered against the tracks actually… */
-export function makeDailyGridDescriptor(
+function makeDailyGridDescriptor(
   columns: readonly SlotTableColumn[],
 ): GridSurfaceDescriptor<DailyAgendaRow, SlotTableColumn> {
   return makeGridSurfaceDescriptor<DailyAgendaRow, SlotTableColumn>(
@@ -51,7 +51,7 @@ export function makeDailyGridDescriptor(
  * Validated at module load: a definition that violates a structural law throws
  * here rather than painting a broken grid.
  */
-export const DAILY_TABLE_DEFINITION = parseTableDefinition({
+const DAILY_TABLE_DEFINITION = parseTableDefinition({
   id: 'home.daily',
   tableId: 'daily',
   entityFamily: 'daily',

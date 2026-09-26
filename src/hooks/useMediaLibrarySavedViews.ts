@@ -17,7 +17,7 @@ export interface MediaViewPayload {
   view: PhotoLibraryViewMode;
 }
 
-export interface MediaSavedView {
+interface MediaSavedView {
   id: number;
   name: string;
   filters: MediaViewPayload | Record<string, unknown>;

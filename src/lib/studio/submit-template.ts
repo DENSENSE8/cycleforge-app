@@ -8,7 +8,7 @@ import type { OrgId } from '@/lib/tenancy/constants';
 import type { TemplateGraph } from './templates';
 import { buildTemplatePackage, type TemplatePackageV1 } from './template-package';
 
-export interface SubmitTemplateArgs {
+interface SubmitTemplateArgs {
   orgId: OrgId;
   /** The org's own workflow_definitions.id to serialize + submit. */
   definitionId: number;
@@ -16,7 +16,7 @@ export interface SubmitTemplateArgs {
   metadata?: { name?: string; description?: string | null; category?: string | null };
 }
 
-export interface SubmitTemplateResult {
+interface SubmitTemplateResult {
   status: 200 | 404 | 500;
   submitted: boolean;
   templateId: number | null;

@@ -21,7 +21,7 @@ import { cornerClass, DROPDOWN_ITEM_CORNER } from '@/design-system/tokens/radius
 import { focusRing } from '@/design-system/tokens/focus-ring';
 import { cn } from '@/utils/_cn';
 
-export const ASSIGNEE_COMBOBOX_LIST_CLASS = 'relative max-h-56 min-h-56 overflow-y-auto py-1';
+const ASSIGNEE_COMBOBOX_LIST_CLASS = 'relative max-h-56 min-h-56 overflow-y-auto py-1';
 
 export type AssigneeComboboxFace = {
   id: string;
@@ -38,7 +38,7 @@ export type AssigneeComboboxRow = {
   faces?: readonly AssigneeComboboxFace[];
 };
 
-export type AssigneeComboboxPanelProps = {
+type AssigneeComboboxPanelProps = {
   query: string;
   onQueryChange: (value: string) => void;
   rows: readonly AssigneeComboboxRow[];
@@ -228,7 +228,7 @@ export function AssigneeComboboxPanel({
   );
 }
 
-export type AssigneeComboboxProps = AssigneeComboboxPanelProps & {
+type AssigneeComboboxProps = AssigneeComboboxPanelProps & {
   open: boolean;
   onClose: () => void;
   anchorRef: RefObject<HTMLElement | null>;

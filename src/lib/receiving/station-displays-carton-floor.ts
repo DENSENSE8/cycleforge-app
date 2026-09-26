@@ -40,7 +40,7 @@ export function stationDisplaysFloorMoreItems(input: {
  * Carton Macro header peers. Edit and `⋯` always paint; Refresh and Print are
  * per-station slots. Delete is not a peer — it lives inside `⋯`.
  */
-export type CartonFloorPeer = 'sync' | 'print' | 'edit' | 'more';
+type CartonFloorPeer = 'sync' | 'print' | 'edit' | 'more';
 
 export type CartonDeleteIdentity = {
   receivingId: number;
@@ -87,7 +87,7 @@ export function cartonFloorPeerOrder(input: {
   return peers;
 }
 
-export type CartonInventoryRefreshFeedback =
+type CartonInventoryRefreshFeedback =
   | { kind: 'success'; title: string; description?: string }
   | { kind: 'warning'; title: string; description?: string }
   | { kind: 'error'; title: string; description?: string };

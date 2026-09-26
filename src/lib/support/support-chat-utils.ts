@@ -11,7 +11,7 @@ export function requesterFrom(ticket: ZendeskTicket): { name: string | null; ema
   return { name: from?.name ?? null, email: from?.address ?? null };
 }
 
-export function requesterLabel(ticket: ZendeskTicket): string {
+function requesterLabel(ticket: ZendeskTicket): string {
   const r = requesterFrom(ticket);
   return r.name || r.email || 'Requester';
 }
@@ -27,7 +27,7 @@ export function initials(name: string): string {
   );
 }
 
-export interface ResolvedAuthor {
+interface ResolvedAuthor {
   /** Best display name (agent/user name, or the email, or the requester label). */
   name: string;
   /** The author's email when known (from the agent/user roster) — never an id. */
@@ -93,10 +93,10 @@ export function resolveAuthor(
  * floating composer resizes. One card of slack — tighter and a half-scrolled
  * pixel breaks the dock; looser and it yanks a reader who moved up on purpose.
  */
-export const STREAM_AT_END_SLACK_PX = 96;
+const STREAM_AT_END_SLACK_PX = 96;
 
 /** Is the conversation port parked at the newest message? */
-export function isConversationAtEnd(
+function isConversationAtEnd(
   port: Pick<HTMLElement, 'scrollHeight' | 'scrollTop' | 'clientHeight'>,
   slackPx: number = STREAM_AT_END_SLACK_PX,
 ): boolean {

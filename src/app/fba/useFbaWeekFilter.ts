@@ -12,7 +12,7 @@ import type { FbaBoardItem } from '@/lib/fba/types';
 import type { FbaMode } from '@/lib/fba/fba-modes';
 import { getWeekRange, isItemInWeek } from './fba-page-helpers';
 
-export interface FbaWeekFilter {
+interface FbaWeekFilter {
   weekRange: { startStr: string; endStr: string };
   weekOffset: number;
   setWeekOffset: React.Dispatch<React.SetStateAction<number>>;

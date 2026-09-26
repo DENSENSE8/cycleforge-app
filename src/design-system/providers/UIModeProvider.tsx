@@ -12,9 +12,9 @@ import { useDeviceMode } from '@/hooks/_ui';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
-export type UIMode = 'desktop' | 'mobile';
+type UIMode = 'desktop' | 'mobile';
 
-export interface UIModeContextValue {
+interface UIModeContextValue {
   /** Resolved display mode — the single source of truth for layout branching. */
   mode: UIMode;
   /** True when mode === 'mobile'. Convenience for ternaries. */

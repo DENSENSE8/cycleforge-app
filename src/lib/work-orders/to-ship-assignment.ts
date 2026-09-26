@@ -7,7 +7,7 @@ import {
 } from '@/lib/conditions';
 import { resolveOutboundWorkflowFacts } from '@/lib/shipping/outbound-workflow-facts';
 
-export type MobileOrderView =
+type MobileOrderView =
   | 'all'
   | 'must-go-today'
   | 'urgent'

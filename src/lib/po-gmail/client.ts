@@ -46,7 +46,7 @@ export function assertDogfoodMailbox(orgId: string): void {
  * Soft, non-throwing companion to {@link assertDogfoodMailbox}.
  * so security is unchanged — this predicate just lets callers degrade gracefully
  */
-export function isPoGmailAvailableForOrg(orgId: string): boolean {
+function isPoGmailAvailableForOrg(orgId: string): boolean {
   return orgId === DOGFOOD_ORG_ID;
 }
 
@@ -199,7 +199,7 @@ async function refreshAccessToken(refreshToken: string): Promise<{ accessToken: 
   };
 }
 
-export async function getAccessToken(orgId: string = DOGFOOD_ORG_ID): Promise<string> {
+async function getAccessToken(orgId: string = DOGFOOD_ORG_ID): Promise<string> {
   assertDogfoodMailbox(orgId);
 
   // Vault-preferred: when an organization_integrations row exists, it is the
@@ -237,7 +237,7 @@ export async function poGmailFetch(
   return fetch(url, { ...init, headers });
 }
 
-export async function getConnectedEmail(orgId: string = DOGFOOD_ORG_ID): Promise<string | null> {
+async function getConnectedEmail(orgId: string = DOGFOOD_ORG_ID): Promise<string | null> {
   // Non-USAV tenants must not learn anything about USAV's mailbox — return
   // empty rather than throwing so connection-status reads degrade quietly.
   if (orgId !== DOGFOOD_ORG_ID) return null;

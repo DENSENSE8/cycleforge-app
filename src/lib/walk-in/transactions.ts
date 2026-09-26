@@ -167,7 +167,7 @@ export function countTransactions(
   return counts;
 }
 
-export interface TransactionRollup {
+interface TransactionRollup {
   /** Transactions in the current view. */
   count: number;
   /** Gross dollars across the current view. */

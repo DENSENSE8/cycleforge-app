@@ -20,7 +20,7 @@ const STOCK_CTE = `
       AND sc.organization_id = $1
   )`;
 
-export interface SourcingScanResult {
+interface SourcingScanResult {
   opened: { eol_discontinued: number; low_stock: number; demand_no_stock: number };
   resolved: number;
   orgs_swept: number;

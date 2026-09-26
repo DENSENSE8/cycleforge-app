@@ -47,7 +47,7 @@ export function useLocalStorage<T>(
  * Syncs React state to sessionStorage.
  * Same API as useLocalStorage but scoped to the browser session.
  */
-export function useSessionStorage<T>(
+function useSessionStorage<T>(
   key: string,
   init: T,
 ): [T, (val: T | ((prev: T) => T)) => void, () => void] {

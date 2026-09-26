@@ -16,7 +16,7 @@ export type ResolverKind =
   | 'sku'           // matched AI 01 (no serial)
   | 'fallback';     // authed caller but nothing recognised
 
-export interface ResolverResult {
+interface ResolverResult {
   kind: ResolverKind;
   /** Absolute (for public) or relative (for internal) URL to 302 to. */
   redirect: string;

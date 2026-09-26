@@ -22,7 +22,7 @@ export function SkeletonBase({ className = '', width, height, circle }: Skeleton
   );
 }
 
-export function SkeletonRow() {
+function SkeletonRow() {
   return (
     <motion.div
       {...framerPresence.tableRow}
@@ -43,7 +43,7 @@ export function SkeletonRow() {
 }
 
 /** Mirrors the Linear-variant `OrderCard` row used in the /tech Up Next list. */
-export function SkeletonOrderCard() {
+function SkeletonOrderCard() {
   return (
     <motion.div
       {...framerPresence.upNextRow}

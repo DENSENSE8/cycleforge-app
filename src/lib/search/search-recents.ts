@@ -28,14 +28,14 @@ export interface SearchRecentEntry {
   topHit?: SearchRecentTopHit;
 }
 
-export const SEARCH_RECENTS_STORAGE_KEY = 'cf_search_recents_v1';
-export const LEGACY_SEARCH_RECENTS_STORAGE_KEY = 'usav_search_recents_v1';
+const SEARCH_RECENTS_STORAGE_KEY = 'cf_search_recents_v1';
+const LEGACY_SEARCH_RECENTS_STORAGE_KEY = 'usav_search_recents_v1';
 export const SEARCH_RECENTS_MIGRATED_KEY = 'cf_search_recents_migrated_v1';
-export const LEGACY_SEARCH_RECENTS_MIGRATED_KEY = 'usav_search_recents_migrated_v1';
+const LEGACY_SEARCH_RECENTS_MIGRATED_KEY = 'usav_search_recents_migrated_v1';
 /** Hard cap on stored entries (D3 / plan Q2 default). */
 export const SEARCH_RECENTS_MAX = 100;
 /** Broadcast on every mutation so `useSearchRecents` can re-read in-tab. */
-export const SEARCH_RECENTS_EVENT = 'cf-search-recents-changed';
+const SEARCH_RECENTS_EVENT = 'cf-search-recents-changed';
 
 /** Legacy buckets seeded once into the unified store (non-destructive). */
 const LEGACY_QUERY_BUCKETS: Array<{ key: string; scope: string }> = [
@@ -280,7 +280,7 @@ export function formatRelativeTime(iso: string, now: number = Date.now()): strin
   return `${Math.floor(d / 365)}y`;
 }
 
-export interface RecentsDayGroup {
+interface RecentsDayGroup {
   label: string;
   entries: SearchRecentEntry[];
 }

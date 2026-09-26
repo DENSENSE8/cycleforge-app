@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState, useSyncExternalStore } from 'react';
 
-export const RECENT_IMPORT_WINDOW_MS = 5 * 60 * 1_000;
+const RECENT_IMPORT_WINDOW_MS = 5 * 60 * 1_000;
 
 let snapshot: ReadonlyMap<number, number> = new Map();
 const listeners = new Set<() => void>();
@@ -39,7 +39,7 @@ export function markRecentlyImportedOrders(orderIds: readonly number[], imported
   notify();
 }
 
-export function formatRecentImportAge(importedAt: number, now = Date.now()): string {
+function formatRecentImportAge(importedAt: number, now = Date.now()): string {
   const elapsedSeconds = Math.max(0, Math.floor((now - importedAt) / 1_000));
   if (elapsedSeconds < 60) return `New · ${elapsedSeconds}s`;
   return `New · ${Math.floor(elapsedSeconds / 60)}m`;

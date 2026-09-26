@@ -6,7 +6,7 @@ import type { TaskLink, TaskLinkCreateBody, TaskLinkFace, TaskLinkKind } from '.
 import type { TaskEntityType } from './task-vocabulary';
 
 /** `work_assignment_links.entity_type`, per wire kind. */
-export const TASK_LINK_ENTITY_TYPE = {
+const TASK_LINK_ENTITY_TYPE = {
   order: 'ORDER',
   tracking: 'TRACKING',
   ticket: 'SUPPORT_TICKET',
@@ -19,9 +19,9 @@ const KIND_BY_ENTITY_TYPE = Object.fromEntries(
 ) as Record<string, TaskLinkKind>;
 
 /** Shortest value a carrier number can be; anything shorter is a typo, not a parcel. */
-export const TASK_LINK_TRACKING_MIN = 8;
+const TASK_LINK_TRACKING_MIN = 8;
 /** `work_assignment_links_label_len` — the CHECK's upper bound. */
-export const TASK_LINK_LABEL_MAX = 200;
+const TASK_LINK_LABEL_MAX = 200;
 
 export type TaskLinkRefusal =
   | 'task_not_found'
@@ -207,7 +207,7 @@ export async function deleteTaskLink(
 // ── row mapping ─────────────────────────────────────────────────────────────
 
 /** The columns `task-links-db.ts` selects. Kept here so the mapper is testable. */
-export interface TaskLinkSqlRow {
+interface TaskLinkSqlRow {
   id: unknown;
   assignment_id: unknown;
   entity_type: unknown;

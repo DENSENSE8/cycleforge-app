@@ -17,16 +17,16 @@ import type {
  * Floor below which we don't bother surfacing a candidate. Operators told us
  * "show me everything that's plausible"; <40 has been pure noise in practice.
  */
-export const PAIRING_DISPLAY_FLOOR = 40;
+const PAIRING_DISPLAY_FLOOR = 40;
 
 /**
  * Pre-selection threshold in the Product Hub. ≥80 = one-keypress accept.
  * No auto-pair anywhere — even score 100 still requires human Save.
  */
-export const PAIRING_PRESELECT_THRESHOLD = 80;
+const PAIRING_PRESELECT_THRESHOLD = 80;
 
 /** Platforms the suggestion engine will rank against. */
-export const SUPPORTED_PLATFORMS = [
+const SUPPORTED_PLATFORMS = [
   'amazon',
   'fba',
   'ebay',
@@ -38,7 +38,7 @@ export const SUPPORTED_PLATFORMS = [
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
-export interface PairingCandidate {
+interface PairingCandidate {
   platformIdRowId: number;
   platform: string;
   platformSku: string | null;
@@ -52,7 +52,7 @@ export interface PairingCandidate {
   orderCount: number;
 }
 
-export interface ConfirmedPairing {
+interface ConfirmedPairing {
   platformIdRowId: number;
   platform: string;
   platformSku: string | null;
@@ -66,7 +66,7 @@ export interface ConfirmedPairing {
   pairedAt: string | null;
 }
 
-export interface PairingSnapshot {
+interface PairingSnapshot {
   skuCatalogId: number;
   canonicalSku: string;
   canonicalTitle: string | null;
@@ -294,7 +294,7 @@ export interface BatchPairInput {
   unpair?: Array<{ platformIdRowId: number; reason?: string }>;
 }
 
-export interface BatchPairResult {
+interface BatchPairResult {
   pairsCreated: number;
   pairsUnchanged: number;
   rejections: number;

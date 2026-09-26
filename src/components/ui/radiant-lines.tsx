@@ -3,7 +3,7 @@
 import { useEffect, useRef, type RefObject } from "react"
 import { cn } from "@/utils/_cn"
 
-export type RadiantLinesOptions = {
+type RadiantLinesOptions = {
   /** Star / streak colors */
   colors?: string[]
   /** How many stars. Default 420 */
@@ -21,12 +21,12 @@ export type RadiantLinesOptions = {
   container?: HTMLElement | null
 }
 
-export type RadiantLinesInstance = {
+type RadiantLinesInstance = {
   setOptions: (options: Partial<RadiantLinesOptions>) => void
   destroy: () => void
 }
 
-export const DEFAULT_COLORS = [
+const DEFAULT_COLORS = [
   "#FF6B4A",
   "#2DD4BF",
   "#FBBF24",
@@ -78,7 +78,7 @@ function createStars(count: number, colors: string[]): Star[] {
 }
 
 /** Hyperspace starfield — colored streaks radiate from the center. */
-export function createRadiantLines(
+function createRadiantLines(
   canvas: HTMLCanvasElement,
   initial: RadiantLinesOptions = {}
 ): RadiantLinesInstance | null {
@@ -304,7 +304,7 @@ export function createRadiantLines(
   }
 }
 
-export type RadiantLinesProps = Omit<RadiantLinesOptions, "container"> & {
+type RadiantLinesProps = Omit<RadiantLinesOptions, "container"> & {
   className?: string
   /**
    * Scroll container. Omit to use the window.

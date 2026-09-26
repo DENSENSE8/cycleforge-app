@@ -1,6 +1,6 @@
 // Single source of truth for repair-service (RS) status tones.
 
-export type RepairStatusHue = 'warning' | 'info' | 'success' | 'danger' | 'neutral';
+type RepairStatusHue = 'warning' | 'info' | 'success' | 'danger' | 'neutral';
 
 const HUE_BADGE: Record<RepairStatusHue, string> = {
   warning: 'bg-amber-100 text-amber-800 border-amber-200',

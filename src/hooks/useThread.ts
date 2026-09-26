@@ -8,7 +8,7 @@ import type { EntityThread, ThreadMessage, ThreadMessageVisibility } from '@/lib
 
 /** TanStack Query hook behind the ThreadPanel — resolve/create the entity's conversation thread and post messages with the house optimistic… */
 
-export const threadKeys = {
+const threadKeys = {
   thread: (entityType: string, entityId: number) => ['entity-thread', entityType, entityId] as const,
   messages: (threadId: number) => ['entity-thread-messages', threadId] as const,
   connections: (threadId: number) => ['entity-thread-connections', threadId] as const,

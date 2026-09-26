@@ -7,7 +7,7 @@ const DEFAULT_BASE_URL = process.env.SHIPSTATION_V1_BASE_URL ?? 'https://ssapi.s
 const REQUEST_TIMEOUT_MS = 20_000;
 const MAX_RETRIES = 3;
 
-export class ShipStationV1Error extends Error {
+class ShipStationV1Error extends Error {
   constructor(readonly httpStatus: number, message: string) {
     super(message);
     this.name = 'ShipStationV1Error';

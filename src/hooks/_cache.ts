@@ -25,7 +25,7 @@ interface UseCacheReturn<T> {
 }
 
 /** Fetches and caches data by domain + ID. */
-export function useCache<T>({
+function useCache<T>({
   domain,
   id,
   fetcher,

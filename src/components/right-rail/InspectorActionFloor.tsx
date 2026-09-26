@@ -167,7 +167,7 @@ type FloorOverflowItem = {
  * that already has its own icon). Disabled when empty; never hidden, so the row
  * geometry stays stable across record states.
  */
-export function FloorOverflowButton({
+function FloorOverflowButton({
   items,
   label = 'More actions',
   'data-testid': testId = 'inspector-floor-more',

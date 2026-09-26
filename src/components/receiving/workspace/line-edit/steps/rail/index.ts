@@ -7,7 +7,7 @@ import type { UnboxSideTab } from '../../unbox-side-tabs';
  * reference. Dogfood-tunable (which reference each step wants is a bench call,
  * not frozen) — but every capture step is either here or in the either-or twin.
  */
-export const UNBOX_STEP_RAIL_LEAF: Partial<Record<string, UnboxSideTab>> = {
+const UNBOX_STEP_RAIL_LEAF: Partial<Record<string, UnboxSideTab>> = {
   // Found/Return door + packing walk: KNOW is listing links (what you are
   // receiving) — not the Photos gallery. Catalog-only / item photo steps still
   // reference Photos (and item_photos opens Compare via LineEditPanel).
@@ -29,7 +29,7 @@ export const UNBOX_STEP_RAIL_LEAF: Partial<Record<string, UnboxSideTab>> = {
  * with a reason so the either-or cannot quietly grow a gap. Same discipline as
  * `UNBOX_STEPS_WITHOUT_DOCK_ACTION`.
  */
-export const UNBOX_STEPS_WITHOUT_RAIL_LEAF: Readonly<Record<string, string>> = {
+const UNBOX_STEPS_WITHOUT_RAIL_LEAF: Readonly<Record<string, string>> = {
   classify:
     'urgency · platform · type are InlinePillPicker menus on the carton identity ' +
     'bar, one row above the work plane — the Displays Classify leaf was a second ' +

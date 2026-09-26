@@ -6,7 +6,7 @@ import { CATALOG_SHEET_COLUMNS, type CatalogGridColumn } from '@/lib/products/ca
 import { parseTableDefinition } from '@/lib/tables/table-definition';
 import { CATALOG_GRID_CAPABILITIES, makeCatalogGridDescriptor } from './catalog-grid-descriptor';
 
-export const CATALOG_TABLE_DEFINITION = parseTableDefinition({
+const CATALOG_TABLE_DEFINITION = parseTableDefinition({
   id: 'products.catalog',
   tableId: 'catalog',
   entityFamily: 'catalog',

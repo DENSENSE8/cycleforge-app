@@ -8,12 +8,12 @@ import { connectorsWithCapability } from '@/lib/integrations/connectors/registry
 import type { IntegrationProvider } from '@/lib/integrations/credentials';
 
 /** Provider keys whose connector exposes a capability (behavior SoT). */
-export function capabilityProviderKeys(cap: Capability): IntegrationProvider[] {
+function capabilityProviderKeys(cap: Capability): IntegrationProvider[] {
   return connectorsWithCapability(cap).map((c) => c.provider);
 }
 
 /** Active connections whose connector exposes `cap`, in catalog order. */
-export async function getConnectedProviders(
+async function getConnectedProviders(
   orgId: OrgId,
   cap: Capability,
 ): Promise<ConnectionStatus[]> {
@@ -25,7 +25,7 @@ export async function getConnectedProviders(
  * True when some connector with `cap` is usable for this org — vault-connected,
  * or (dogfood only, transitional) resolvable via the env-credential bridge.
  */
-export async function isCapabilityConnected(orgId: OrgId, cap: Capability): Promise<boolean> {
+async function isCapabilityConnected(orgId: OrgId, cap: Capability): Promise<boolean> {
   const connected = await getConnectedProviders(orgId, cap);
   if (connected.length > 0) return true;
   if (orgId !== DOGFOOD_ORG_ID) return false;

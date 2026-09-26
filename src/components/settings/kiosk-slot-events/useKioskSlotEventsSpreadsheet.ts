@@ -21,7 +21,7 @@ import {
 import { KIOSKSLOTEVENTS_TABLE_BINDING } from './kiosk-slot-events-table-definition';
 import { useKioskSlotEventsTableLayout } from './useKioskSlotEventsTableLayout';
 
-export interface UseKioskSlotEventsSpreadsheetOptions {
+interface UseKioskSlotEventsSpreadsheetOptions {
   events: readonly KioskSlotEventTableRow[];
   loading?: boolean;
   emptyMessage?: string;

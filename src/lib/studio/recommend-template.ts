@@ -1,6 +1,6 @@
 /** recommend-template — rank EXISTING catalog templates against a shop's intake description (Template Platform Phase 5, the "recommend a… */
 
-export interface IntakeProfile {
+interface IntakeProfile {
   /** Free-text description of how the shop runs ops (the onboarding intake). */
   text: string;
   /** Optional declared vertical/category (e.g. 'electronics'). */
@@ -16,18 +16,18 @@ export interface TemplateCandidate {
   nodeTypes: string[];
 }
 
-export interface TemplateRecommendation {
+interface TemplateRecommendation {
   slug: string;
   /** 0..1 relevance score (deterministic core; a reranker may overwrite). */
   score: number;
   reason: string;
 }
 
-export interface RecommendTemplateResult {
+interface RecommendTemplateResult {
   recommendations: TemplateRecommendation[];
 }
 
-export interface RecommendDeps {
+interface RecommendDeps {
   /**
    * Optional AI re-rank over the deterministic shortlist. MUST return only slugs
    * drawn from the shortlist it was given; the core filters its output back to

@@ -4,7 +4,7 @@ import { createContext, useCallback, useContext, useMemo, useRef, useState, type
 import type { PrintSelectionPayload } from '@/components/fba/table/types';
 import { getPlanId, getPrimaryTrackingNumber } from '@/components/fba/table/utils';
 
-export interface FbaPlanTrackingDraft {
+interface FbaPlanTrackingDraft {
   amazon: string;
   ups: string;
 }

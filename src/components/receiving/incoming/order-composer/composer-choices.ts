@@ -7,7 +7,7 @@ import { rankInboundPlatformOptions } from '@/lib/inbound/inbound-platform-optio
 
 export const PRIORITY_AUTO = 'auto';
 
-export type ComposerChoice = { value: string; label: string };
+type ComposerChoice = { value: string; label: string };
 
 /** Org platform catalog, inbound-intake order. */
 export function usePlatformChoices(): ComposerChoice[] {

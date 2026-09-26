@@ -15,7 +15,7 @@ export function useDashboardScrollParent(): RefObject<HTMLElement | null> {
   return ctx;
 }
 
-export interface DashboardScrollShellProps {
+interface DashboardScrollShellProps {
   children: ReactNode;
   className?: string;
   /** Pinned chrome docked ABOVE the scroll body — the single always-visible top bar (lifecycle tabs + filters). */

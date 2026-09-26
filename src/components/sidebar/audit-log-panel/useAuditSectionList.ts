@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 
 /** Shared filter params (day/start/end/staffId) serialized for a section fetch. */
-export function useSharedFilterQS(): string {
+function useSharedFilterQS(): string {
   const sp = useSearchParams();
   return useMemo(() => {
     const next = new URLSearchParams();

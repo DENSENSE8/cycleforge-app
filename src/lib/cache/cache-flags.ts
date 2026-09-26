@@ -28,6 +28,6 @@ export function isNamespaceCacheEnabled(namespace: string): boolean {
 }
 
 /** Test-only: reset the memoized allowlist after mutating process.env. */
-export function __resetCacheFlagsForTest(): void {
+function __resetCacheFlagsForTest(): void {
   nsAllowlist = undefined;
 }

@@ -9,7 +9,7 @@ interface DetailCellProps {
   className?: string;
 }
 
-export function DetailCell({ label, children, className = '' }: DetailCellProps) {
+function DetailCell({ label, children, className = '' }: DetailCellProps) {
   const { isMobile } = useUIModeOptional();
   return (
     <div className={`rounded-xl bg-surface-canvas ${isMobile ? 'px-3 py-2.5' : 'px-3 py-2'} ${className}`}>

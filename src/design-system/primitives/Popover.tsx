@@ -12,7 +12,7 @@ import type { ZIndexToken } from '../tokens/z-index';
 
 // ─── Popover ─────────────────────────────────────────────────────────────────
 
-export interface PopoverProps
+interface PopoverProps
   extends Omit<
     ComponentPropsWithoutRef<typeof motion.div>,
     'children' | 'className' | 'initial' | 'animate' | 'exit' | 'transition'

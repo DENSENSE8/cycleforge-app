@@ -49,7 +49,7 @@ function runCounters(summary: unknown): Array<{ key: string; value: number }> {
     .map(([key, value]) => ({ key: key.replace(/[_.]/g, ' '), value }));
 }
 
-export interface AutomationRowProps {
+interface AutomationRowProps {
   automation: AutomationDef;
   /** Live cron status for this row's job. Undefined for event automations. */
   status?: CronJobStatus;
@@ -62,7 +62,7 @@ export interface AutomationRowProps {
   onRunNow?: () => void;
 }
 
-export function AutomationRow({
+function AutomationRow({
   automation,
   status,
   statusPending = false,
@@ -179,7 +179,7 @@ export function AutomationRow({
   );
 }
 
-export interface AutomationsListProps {
+interface AutomationsListProps {
   automations: readonly AutomationDef[];
   /** Live cron status keyed by job key. */
   statusByJob: Record<string, CronJobStatus>;
@@ -230,7 +230,7 @@ export function AutomationsList({
   );
 }
 
-export interface AutomationsViewProps {
+interface AutomationsViewProps {
   /** Viewer holds `admin.view` — the permission that may trigger a cron job. */
   canRunNow: boolean;
 }

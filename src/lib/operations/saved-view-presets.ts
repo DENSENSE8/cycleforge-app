@@ -1,7 +1,7 @@
 import type { JourneyUrlFilters } from '@/components/sidebar/operations/useOperationsTimelineUrlState';
 
 /** Code-defined SYSTEM saved-views — the former `/audit-log` sections re-expressed as Operations History browse presets (plan §3.3 + §4.1… */
-export interface SystemSavedView {
+interface SystemSavedView {
   /** Stable id, applied via `?view=sys:<id>`. */
   id: string;
   /** Sidebar label. */

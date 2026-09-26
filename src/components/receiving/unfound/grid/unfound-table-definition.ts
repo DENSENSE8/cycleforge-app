@@ -6,7 +6,7 @@ import { UNFOUND_SHEET_COLUMNS, type UnfoundGridColumn } from './unfound-grid-la
 import { parseTableDefinition } from '@/lib/tables/table-definition';
 import { UNFOUND_GRID_CAPABILITIES, makeUnfoundGridDescriptor } from './unfound-grid-descriptor';
 
-export const UNFOUND_TABLE_DEFINITION = parseTableDefinition({
+const UNFOUND_TABLE_DEFINITION = parseTableDefinition({
   id: 'receiving.unfound',
   tableId: 'unfound',
   entityFamily: 'unfound',

@@ -77,6 +77,6 @@ export async function assertPermission(
 }
 
 /** Internal sanity check: verifies a PermissionString value is registered. */
-export function isKnownPermissionString(s: string): s is PermissionString {
+function isKnownPermissionString(s: string): s is PermissionString {
   return ALL_PERMISSIONS.has(s as PermissionString);
 }

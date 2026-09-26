@@ -31,9 +31,9 @@ export interface ZendeskHttpAuth {
   apiToken: string;
 }
 
-export type ZendeskHttpMethod = 'GET' | 'POST' | 'PUT' | 'DELETE';
+type ZendeskHttpMethod = 'GET' | 'POST' | 'PUT' | 'DELETE';
 
-export interface ZendeskHttpRequestInit {
+interface ZendeskHttpRequestInit {
   body?: unknown;
   headers?: Record<string, string>;
   /** Raw bytes for uploads — bypasses JSON serialization. */
@@ -84,7 +84,7 @@ export function parseRetryAfter(retryAfter: string | null): number | null {
   return null;
 }
 
-export function zendeskOrgKey(orgId?: OrgId): string {
+function zendeskOrgKey(orgId?: OrgId): string {
   return orgId ?? '__env__';
 }
 

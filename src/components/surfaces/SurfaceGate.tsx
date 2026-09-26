@@ -23,7 +23,7 @@ interface SurfaceResolveResp {
   render?: 'legacy' | 'composed';
 }
 
-export function surfaceResolveQuery(surfaceKey: SurfaceKey) {
+function surfaceResolveQuery(surfaceKey: SurfaceKey) {
   return {
     queryKey: ['surface-resolve', surfaceKey] as const,
     queryFn: async (): Promise<SurfaceResolveResp> => {

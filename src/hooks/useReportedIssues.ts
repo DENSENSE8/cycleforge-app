@@ -18,7 +18,7 @@ import {
   type ReportedIssuesKpis,
 } from '@/lib/user-issues/kpi';
 
-export interface ReportedIssuesListFilters {
+interface ReportedIssuesListFilters {
   status?: UserIssueStatus | null;
   type?: UserIssueType | null;
   reporterId?: number | null;
@@ -26,12 +26,12 @@ export interface ReportedIssuesListFilters {
   limit?: number;
 }
 
-export interface ReportedIssuesListResult {
+interface ReportedIssuesListResult {
   issues: ReportedIssue[];
   nextCursor: string | null;
 }
 
-export interface PatchReportedIssueInput {
+interface PatchReportedIssueInput {
   title?: string;
   description?: string;
   issueType?: UserIssueType;

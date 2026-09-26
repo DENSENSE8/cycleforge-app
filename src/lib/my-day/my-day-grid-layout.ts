@@ -14,7 +14,7 @@ import type { ColumnType, TableId } from '@/lib/tables/table-columns';
 import type { GridSortDir } from '@/design-system/components/grid/grid-sort-dir';
 
 /** Today's per-staff column-prefs bucket + Fields-menu vocabulary key. */
-export const MY_DAY_TABLE_ID: TableId = 'my-day';
+const MY_DAY_TABLE_ID: TableId = 'my-day';
 
 export type MyDayGridColumnKey =
   | 'select'
@@ -98,14 +98,14 @@ export function isMyDayColumnSortable(
 }
 
 /** CSS grid template — one `var(--cf-col-<key>, <width>)` track per column. */
-export function myDayGridTemplate(
+function myDayGridTemplate(
   columns: readonly MyDayGridColumn[] = MY_DAY_SHEET_COLUMNS,
 ): string {
   return gridTemplate(columns);
 }
 
 /** Sticky offset for a frozen cell, derived from the MOUNTED model. */
-export function myDayGridFrozenLeft(
+function myDayGridFrozenLeft(
   columns: readonly MyDayGridColumn[],
   key: MyDayGridColumnKey,
 ): string {

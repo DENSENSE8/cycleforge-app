@@ -23,7 +23,7 @@ export function shouldPulseLiveValue(
   return previous !== next;
 }
 
-export interface LiveValueChangeRefs {
+interface LiveValueChangeRefs {
   /** The chip itself — carries the double-pulse scale. */
   chipRef: RefObject<HTMLSpanElement>;
   /** Absolute inset-0 ring overlay — carries the flash. Never scaled (a halo

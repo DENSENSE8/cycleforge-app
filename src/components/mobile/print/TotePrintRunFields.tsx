@@ -21,7 +21,7 @@ const MODE_TABS = [
   { id: 'reprint', label: 'Reprint' },
 ] as const;
 
-export function ToteCountSlider({
+function ToteCountSlider({
   count,
   onCount,
   disabled,

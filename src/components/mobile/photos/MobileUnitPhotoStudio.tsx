@@ -17,7 +17,7 @@ import { useAblyClient } from '@/contexts/AblyContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { safeChannelName, getPhoneBridgeChannelName } from '@/lib/realtime/channels';
 
-export interface MobileUnitPhotoStudioProps {
+interface MobileUnitPhotoStudioProps {
   serialUnitId: number;
   /** Resolvable unit key (serial / minted unit_uid) — files the object path. */
   unitKey?: string | null;

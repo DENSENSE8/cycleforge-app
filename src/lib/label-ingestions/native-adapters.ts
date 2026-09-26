@@ -1,23 +1,23 @@
 import { safeRandomUUID } from '@/lib/safe-uuid';
 import type { BrowserFixtureSession } from './browser-fixture-authority';
 
-export interface LabelSourceCapabilities { folderWatch: boolean; filePicker: boolean; secureEnrollment: boolean; }
-export interface LabelObservation { observationId: string; ingestionId: number; state: string; }
-export interface LabelSourceSelection { accepted: boolean; ingestionId?: number; replayed?: boolean; }
-export type Unsubscribe = () => void;
+interface LabelSourceCapabilities { folderWatch: boolean; filePicker: boolean; secureEnrollment: boolean; }
+interface LabelObservation { observationId: string; ingestionId: number; state: string; }
+interface LabelSourceSelection { accepted: boolean; ingestionId?: number; replayed?: boolean; }
+type Unsubscribe = () => void;
 
-export interface NativeLabelSource {
+interface NativeLabelSource {
   capabilities(): Promise<LabelSourceCapabilities>;
   chooseSource(): Promise<LabelSourceSelection>;
   observe(onObservation: (event: LabelObservation) => void): Promise<Unsubscribe>;
   retry(observationId: string): Promise<void>;
 }
 
-export interface PrintCapabilities { printerList: boolean; silentPrint: boolean; browserSimulation: boolean; }
-export interface PrinterDescriptor { id: string; displayName: string; }
-export interface ServerMintedPrintRequest { ticket: string; documentId: number; printerId: string; copies: number; idempotencyKey: string; }
-export interface PrintReceipt { requestId: string; state: 'QUEUED' | 'COMPLETED'; simulated: boolean; }
-export interface NativePrintService { capabilities(): Promise<PrintCapabilities>; listPrinters(): Promise<PrinterDescriptor[]>; print(request: ServerMintedPrintRequest): Promise<PrintReceipt>; }
+interface PrintCapabilities { printerList: boolean; silentPrint: boolean; browserSimulation: boolean; }
+interface PrinterDescriptor { id: string; displayName: string; }
+interface ServerMintedPrintRequest { ticket: string; documentId: number; printerId: string; copies: number; idempotencyKey: string; }
+interface PrintReceipt { requestId: string; state: 'QUEUED' | 'COMPLETED'; simulated: boolean; }
+interface NativePrintService { capabilities(): Promise<PrintCapabilities>; listPrinters(): Promise<PrinterDescriptor[]>; print(request: ServerMintedPrintRequest): Promise<PrintReceipt>; }
 
 interface BrowserFetchResponse { ok: boolean; status: number; json(): Promise<{ data?: { id?: number }; replayed?: boolean; error?: { message?: string } }>; }
 type BrowserFetch = (input: string, init: RequestInit) => Promise<BrowserFetchResponse>;

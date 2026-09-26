@@ -70,7 +70,7 @@ export function resolveSignInQrPayload(raw: string, origin: string): string | nu
   return null;
 }
 
-export function SignInQrScanDialog({
+function SignInQrScanDialog({
   open,
   onOpenChange,
 }: {
@@ -239,7 +239,7 @@ export function SignInQrScanDialog({
 }
 
 /** Full-width chooser CTA — opens {@link SignInQrScanDialog}. */
-export function SignInWithQrCodeButton({
+function SignInWithQrCodeButton({
   disabled,
   onClick,
 }: {

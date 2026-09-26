@@ -1,6 +1,6 @@
 'use client';
 
-export type SaveState = 'idle' | 'saving' | 'saved' | 'error';
+type SaveState = 'idle' | 'saving' | 'saved' | 'error';
 
 interface InlineSaveIndicatorProps {
   state: SaveState;
@@ -11,7 +11,7 @@ interface InlineSaveIndicatorProps {
   className?: string;
 }
 
-export function InlineSaveIndicator({
+function InlineSaveIndicator({
   state,
   errorLabel = 'Save failed',
   idleLabel = null,

@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import { OPS_PLAN_STATIONS, OPS_PLAN_STATUSES, OPS_PLAN_TASK_LINK_TYPES, OPS_PLAN_TASK_STATUSES } from '@/lib/ops-plans/constants';
 
-export const OpsPlanStation = z.enum(OPS_PLAN_STATIONS);
+const OpsPlanStation = z.enum(OPS_PLAN_STATIONS);
 
 export const CreatePlanBody = z.object({
   title: z.string().trim().min(1).max(200),

@@ -7,13 +7,13 @@ import { STATION_COMMAND_CODES, parseStationCommand } from './station-command-co
 /** The `CMD-` namespace shape the DB also enforces. */
 export const ALIAS_CODE_RE = /^CMD-[A-Z0-9][A-Z0-9-]*$/;
 
-export interface AliasInput {
+interface AliasInput {
   code: string;
   targetCode: string;
   label: string;
 }
 
-export type AliasValidation =
+type AliasValidation =
   | { ok: true; value: { code: string; targetCode: string; label: string } }
   | { ok: false; error: string };
 

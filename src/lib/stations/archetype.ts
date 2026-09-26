@@ -4,7 +4,7 @@ export const ARCHETYPE_IDS = ['station', 'workbench', 'monitor', 'canvas'] as co
 export type ArchetypeId = (typeof ARCHETYPE_IDS)[number];
 
 /** The per-region signals the discriminator runs Q1→Q4 over. */
-export interface RegionSignals {
+interface RegionSignals {
   /** Q1 — does this region react to a scanner / keyboard-wedge / camera? */
   inputModel?: 'scanner' | 'pointer' | 'stream';
   /** Q2 — the operator's job. */

@@ -5,7 +5,7 @@ import { cn } from '@/utils/_cn';
 
 // ─── Inset ───────────────────────────────────────────────────────────────────
 
-export type InsetSpace = 'card' | 'field' | 'cozy' | 'chip';
+type InsetSpace = 'card' | 'field' | 'cozy' | 'chip';
 
 const SPACE: Record<InsetSpace, string> = {
   /** p-4 — card bodies. */
@@ -18,7 +18,7 @@ const SPACE: Record<InsetSpace, string> = {
   chip: 'inset-chip',
 };
 
-export interface InsetProps extends HTMLAttributes<HTMLDivElement> {
+interface InsetProps extends HTMLAttributes<HTMLDivElement> {
   /** Padding intent. Default `card`. */
   space?: InsetSpace;
 }

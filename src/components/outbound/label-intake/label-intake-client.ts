@@ -51,7 +51,7 @@ export interface IntakeLookup {
   unpairedCount: number;
 }
 
-export interface IntakeRates {
+interface IntakeRates {
   rates: ShippingRateOption[];
   invalidRates: Array<{ carrierCode?: string | null; serviceCode?: string | null; message: string }>;
 }

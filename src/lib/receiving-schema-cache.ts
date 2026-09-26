@@ -57,7 +57,7 @@ export async function getReceivingLineColumns(): Promise<Set<string>> {
 
 // Bust both caches (used when callers detect a schema drift, e.g. a column
 // they depend on is missing). Next call re-probes information_schema.
-export function bustReceivingSchemaCache(reason: string): void {
+function bustReceivingSchemaCache(reason: string): void {
   console.warn('[receiving-schema-cache] bust', { reason });
   _receivingColumns = null;
   _receivingDateColumn = null;

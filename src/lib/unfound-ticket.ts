@@ -8,7 +8,7 @@ export const ALLOWED_UNFOUND_KINDS = new Set([
   'station_exception',
 ]);
 
-export interface UnfoundQueueRow {
+interface UnfoundQueueRow {
   kind: string;
   source_id: string;
   product_title: string | null;

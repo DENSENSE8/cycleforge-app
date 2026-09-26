@@ -10,9 +10,9 @@ import { ListingUrlChip, SerialChip } from '@/components/ui/CopyChip';
 import { ReturnOutboundEvidenceStrip } from '@/components/receiving/workspace/ReturnOutboundEvidenceStrip';
 import { getExternalUrlByItemNumber } from '@/utils/external-item-url';
 
-export type SerialMatchState = 'idle' | 'searching' | 'found' | 'not-found';
+type SerialMatchState = 'idle' | 'searching' | 'found' | 'not-found';
 
-export interface SerialMatchUnit {
+interface SerialMatchUnit {
   /**
    * `serial_units.id` when a v2 row exists. Null for TSN-only synthesized
    * matches (no unit-timeline photo spine until a real row exists).

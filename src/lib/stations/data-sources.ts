@@ -4,7 +4,7 @@ import type { DataSourceDefinition, DataSourceMeta, SourceRow, FieldDef, FilterD
 
 const registry = new Map<string, DataSourceDefinition>();
 
-export function registerDataSource(def: DataSourceDefinition): void {
+function registerDataSource(def: DataSourceDefinition): void {
   if (registry.has(def.id)) {
     throw new Error(`Station data source already registered: ${def.id}`);
   }
@@ -24,7 +24,7 @@ export function listDataSourceMeta(): DataSourceMeta[] {
 }
 
 /** Test-only. */
-export function __clearDataSourceRegistry(): void {
+function __clearDataSourceRegistry(): void {
   registry.clear();
 }
 

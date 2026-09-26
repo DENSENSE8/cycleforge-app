@@ -153,7 +153,7 @@ export const Folder = ({ className = "w-6 h-6" }: { className?: string }) => (
 // these here — Icons.tsx is the nav-icon SoT (see icon-system-and-duplicate-glyphs).
 
 /** Zendesk brand mark — fixed fills; exception to the currentColor stroke convention. */
-export const ZendeskMark = ({ className = "w-6 h-6" }: { className?: string }) => (
+const ZendeskMark = ({ className = "w-6 h-6" }: { className?: string }) => (
     <svg className={className} viewBox="0 0 24 24" aria-hidden>
         <g transform="translate(-1, 2.35) scale(1.1)">
             <rect

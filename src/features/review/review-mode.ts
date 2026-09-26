@@ -3,7 +3,7 @@
 export type ReviewMode = 'packer' | 'pairing' | 'catalog-link';
 
 /** Live Review modes — includes default `packer` (usually omitted from the URL). */
-export const REVIEW_MODES = [
+const REVIEW_MODES = [
   'packer',
   'pairing',
   'catalog-link',

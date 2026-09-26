@@ -8,7 +8,7 @@ import { Button, type ButtonSize, type ButtonVariant } from '@/design-system/pri
 import { Plus } from '@/components/Icons';
 import { jsonFetch } from './sourcing-shared';
 
-export interface SourceThisButtonProps {
+interface SourceThisButtonProps {
   skuId?: number | null;
   /** Free-text scour target when there's no catalog SKU (new/different product). */
   searchQuery?: string | null;

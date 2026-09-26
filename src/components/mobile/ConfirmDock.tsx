@@ -4,7 +4,7 @@
 
 import { Button } from '@/design-system/primitives';
 
-export type ConfirmDockTone = 'primary' | 'success' | 'warning' | 'neutral';
+type ConfirmDockTone = 'primary' | 'success' | 'warning' | 'neutral';
 
 interface ConfirmDockProps {
   /** Primary action label, e.g. "Confirm Pick". */

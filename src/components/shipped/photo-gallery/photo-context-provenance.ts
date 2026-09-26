@@ -4,7 +4,7 @@ import type { PhotoMeta } from './photo-gallery-utils';
 
 export type PhotoWorkflowKind = 'unboxing' | 'packing' | 'claims' | 'unknown';
 
-export interface PhotoWorkflowDescriptor {
+interface PhotoWorkflowDescriptor {
   kind: PhotoWorkflowKind;
   label: string;
   /** Tailwind classes for the workflow badge. */
@@ -39,7 +39,7 @@ export function unboxingPoLabel(poRef: string): string {
   return photoLibraryPoLeafLabel(poRef, 'unboxing');
 }
 
-export interface LinkedEntityDisplay {
+interface LinkedEntityDisplay {
   /** Bold headline when a PO / order / ticket is known. */
   primary: string | null;
   /** Secondary line (e.g. ticket # under the subject). */
@@ -114,7 +114,7 @@ export function resolveLinkedEntityDisplay(
   return { primary: null, secondary: null, ...missingEntityCopy(workflow) };
 }
 
-export interface ProvenanceNavLink {
+interface ProvenanceNavLink {
   href: string;
   label: string;
 }

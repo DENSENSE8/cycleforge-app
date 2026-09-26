@@ -4,7 +4,7 @@ import React from 'react';
 import { motion } from '@/design-system/motion';
 import { AnimatedStat } from '@/design-system/components/AnimatedStat';
 
-export type StatCategory = 'all' | 'tested' | 'repair' | 'outOfStock' | 'pendingLate' | 'fba';
+type StatCategory = 'all' | 'tested' | 'repair' | 'outOfStock' | 'pendingLate' | 'fba';
 
 interface StatCardProps {
   category: StatCategory;
@@ -59,7 +59,7 @@ const CATEGORY_STYLES: Record<StatCategory, {
  * StatCard - A modern 2026 design system component for displaying key performance indicators.
  * Grounded in the Cycle Forge design system with semantic category coloring.
  */
-export function StatCard({ 
+function StatCard({ 
   category, 
   label, 
   value, 

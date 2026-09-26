@@ -10,7 +10,7 @@ import type { StoreLinkRow } from '@/lib/catalog/integration-store-links';
 import type { ShipStationV1Store } from '@/lib/shipping/shipstation/orders-v1';
 
 /** One bindable workflow-graph node (from /api/catalog/workflow-nodes). */
-export interface WorkflowNodeOption {
+interface WorkflowNodeOption {
   id: string;
   type: string;
   label: string;

@@ -9,7 +9,7 @@ const RACK_KEY = 'rackPrinter.state.v1';
 const LABEL_EVENT = 'labelPrinter:state-changed';
 const RACK_EVENT = 'rackPrinter:state-changed';
 
-export interface LabelPrinterState {
+interface LabelPrinterState {
   room?: string;
   aisle?: number;
   bay?: number;
@@ -17,7 +17,7 @@ export interface LabelPrinterState {
   position?: number;
 }
 
-export interface RackPrinterState {
+interface RackPrinterState {
   room?: string;
   aisle?: number;
   bay?: number;
@@ -119,7 +119,7 @@ export function useLabelPrinterStore(): LabelPrinterState {
   );
 }
 
-export const setLabelPrinterState = labelStore.setState;
+const setLabelPrinterState = labelStore.setState;
 export const patchLabelPrinterState = labelStore.patch;
 export const resetLabelPrinterState = labelStore.reset;
 
@@ -135,6 +135,6 @@ export function useRackPrinterStore(): RackPrinterState {
   );
 }
 
-export const setRackPrinterState = rackStore.setState;
+const setRackPrinterState = rackStore.setState;
 export const patchRackPrinterState = rackStore.patch;
 export const resetRackPrinterState = rackStore.reset;

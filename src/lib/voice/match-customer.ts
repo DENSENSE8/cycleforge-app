@@ -5,7 +5,7 @@ import type { OrgId } from '@/lib/tenancy/constants';
 import type { MatchedCustomer } from './types';
 import { lastDigits } from './normalize-phone';
 
-export interface MatchCustomerArgs {
+interface MatchCustomerArgs {
   orgId: OrgId;
   /** Normalized E.164 (preferred) … */
   e164: string | null;

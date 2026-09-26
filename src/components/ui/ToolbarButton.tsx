@@ -5,7 +5,7 @@ import { focusRing } from '@/design-system/tokens/focus-ring';
 import { cn } from '@/utils/_cn';
 
 /** ToolbarButton — the single visual method for a Linear-style **view toolbar**. */
-export interface ToolbarButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
+interface ToolbarButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   /** Solid-blue "selected / on" fill. */
   active?: boolean;
   /** Square icon-only control (width locks to the height). Omit for a labeled pill. */

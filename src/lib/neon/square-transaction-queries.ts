@@ -6,7 +6,7 @@ import type { OrgId } from '@/lib/tenancy/constants';
  * The table carries `organization_id NOT NULL`, FORCE row-level security, and
  */
 
-export interface SquareTransactionRecord {
+interface SquareTransactionRecord {
   id: string;
   square_order_id: string;
   square_payment_id: string | null;

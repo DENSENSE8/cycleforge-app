@@ -13,7 +13,7 @@ export type IntakeClassification =
   | 'UNKNOWN';
 
 /** The carton-level columns a classification maps onto (`receiving` table). */
-export interface IntakeColumns {
+interface IntakeColumns {
   /** Per-line on `receiving_lines`; carried as a hint for added items. */
   receiving_type: 'PO' | 'RETURN' | 'TRADE_IN' | 'PICKUP' | null;
   is_return: boolean;

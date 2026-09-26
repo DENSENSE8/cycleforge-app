@@ -1,6 +1,6 @@
 import type { RecordStateFace } from './industrial-record';
 
-export type ReplenishmentRecordState =
+type ReplenishmentRecordState =
   | 'detected'
   | 'pending_review'
   | 'planned_for_po'

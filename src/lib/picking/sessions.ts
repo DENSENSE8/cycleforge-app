@@ -11,7 +11,7 @@ import { resolveSkuIdentityTitle } from '@/lib/sku/sku-identity-law';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
-export interface PickTaskPlatform {
+interface PickTaskPlatform {
   platform: string;
   platformSku: string | null;
   platformItemId: string | null;
@@ -44,17 +44,17 @@ export interface PickOrderTasks {
   tasks: PickTaskRow[];
 }
 
-export type StartSessionInput = {
+type StartSessionInput = {
   orderId: number;
   pickerStaffId: number;
   deviceId?: string | null;
 };
 
-export type StartSessionResult =
+type StartSessionResult =
   | { ok: true; sessionId: number; reopen: boolean }
   | { ok: false; status: 404 | 409; error: string };
 
-export type ConfirmPickInput = {
+type ConfirmPickInput = {
   sessionId: number;
   allocationId: number;
   actorStaffId: number;
@@ -79,7 +79,7 @@ export type ShortPickReason =
   | 'INSUFFICIENT_STOCK'
   | 'OTHER';
 
-export type RecordShortPickInput = {
+type RecordShortPickInput = {
   sessionId: number;
   allocationId: number;
   pickedQty: number;

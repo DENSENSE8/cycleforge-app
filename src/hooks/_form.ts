@@ -42,7 +42,7 @@ interface UseAutoSaveFormReturn<T> {
 }
 
 /** Auto-saves form state to localStorage on every change (synchronous) and debounces an async DB write. */
-export function useAutoSaveForm<T extends Record<string, unknown>>({
+function useAutoSaveForm<T extends Record<string, unknown>>({
   storageKey,
   initialValues,
   onSave,
@@ -154,7 +154,7 @@ export function useAutoSaveForm<T extends Record<string, unknown>>({
 // ─── useUnsavedWarning ────────────────────────────────────────────────────────
 
 /** Shows a native browser "unsaved changes" dialog when the user tries to close/navigate away from a page with a dirty form. */
-export function useUnsavedWarning(isDirty: boolean): void {
+function useUnsavedWarning(isDirty: boolean): void {
   useEffect(() => {
     if (!isDirty) return;
 

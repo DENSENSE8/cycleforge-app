@@ -26,7 +26,7 @@ const searchInput = z.object({
     ),
 });
 
-export const searchToolRegistryTool: AssistantToolDef<typeof searchInput, unknown> = {
+const searchToolRegistryTool: AssistantToolDef<typeof searchInput, unknown> = {
   name: 'search_tool_registry',
   description:
     'Check whether a requested capability already exists in this organization\'s tool registry. ' +
@@ -87,7 +87,7 @@ const decisionInput = z.object({
     .describe('Reference only. A duplicate denial is recorded by the gate, not through this tool.'),
 });
 
-export const submitApprovalDecisionTool: AssistantToolDef<typeof decisionInput, unknown> = {
+const submitApprovalDecisionTool: AssistantToolDef<typeof decisionInput, unknown> = {
   name: 'submit_approval_decision',
   description:
     'Record a triage decision on a build request that the deterministic duplicate gate did not already ' +
@@ -136,7 +136,7 @@ const sandboxInput = z.object({
     .describe('Files only. Commands are fixed by the validator and cannot be supplied here.'),
 });
 
-export const executeBuildSandboxTool: AssistantToolDef<typeof sandboxInput, unknown> = {
+const executeBuildSandboxTool: AssistantToolDef<typeof sandboxInput, unknown> = {
   name: 'execute_build_sandbox',
   description:
     'Type-check a generated code payload in a disposable VM. Supply files only — the validation commands ' +
@@ -170,7 +170,7 @@ const commitInput = z.object({
   file_changes: z.array(z.object({ path: z.string().min(1), contents: z.string() })).min(1).max(MAX_PAYLOAD_FILES),
 });
 
-export const commitToGitTool: AssistantToolDef<typeof commitInput, unknown> = {
+const commitToGitTool: AssistantToolDef<typeof commitInput, unknown> = {
   name: 'commit_to_git',
   description:
     'Hand a validated change to human code review by filing a labelled GitHub issue, which the existing ' +

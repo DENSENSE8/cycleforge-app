@@ -7,7 +7,7 @@ import {
 } from '@/lib/orders/csv-order-import';
 import type { OrgId } from '@/lib/tenancy/constants';
 
-export interface ColumnMappingSuggestion {
+interface ColumnMappingSuggestion {
   field: CsvOrderCanonicalKey;
   /** A header that EXISTS in the uploaded file (verified before returning). */
   header: string;
@@ -16,7 +16,7 @@ export interface ColumnMappingSuggestion {
   reason: string;
 }
 
-export interface ColumnMappingProposal {
+interface ColumnMappingProposal {
   suggestions: ColumnMappingSuggestion[];
   /** Fields still unmapped after the proposal — stated, never implied. */
   stillUnmapped: CsvOrderCanonicalKey[];
@@ -71,7 +71,7 @@ function claimedHeaders(mapping: Record<string, string>): Set<string> {
   return new Set(Object.values(mapping));
 }
 
-export interface ProposeColumnMappingInput {
+interface ProposeColumnMappingInput {
   headers: string[];
   /** A few rows of values, to disambiguate headers that names alone cannot. */
   sampleRows: Record<string, string>[];

@@ -17,7 +17,7 @@ export const RIGHT_RAIL_PRIORITY = {
   detail: 100,
 } as const;
 
-export interface RightRailPanel {
+interface RightRailPanel {
   /** Stable identity of this occupant, e.g. `assistant`, `detail:shipment:123`.
    *  Doubles as the `AnimatePresence` key, so it must change only when the slot
    *  content genuinely swaps to a different entity. */

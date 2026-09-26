@@ -8,7 +8,7 @@ import type { MarketplaceDocumentAdapter, MarketplaceFetchOutcome } from './type
  * Used for Amazon and Walmart until dedicated marketplace APIs are wired.
  * Ecwid uses `ecwid-documents.ts` (live invoice-pdf).
  */
-export function createGeneratedPlatformAdapter(
+function createGeneratedPlatformAdapter(
   platform: string,
   canFetch: (order: OutboundOrderContext) => boolean,
 ): MarketplaceDocumentAdapter {

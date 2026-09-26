@@ -39,7 +39,7 @@ export function planTaskToInboxItem(task: TaskRow, nowMs = Date.now()): InboxIte
   };
 }
 
-export function workOrderToInboxItem(row: WorkOrderRow, nowMs = Date.now()): InboxItem {
+function workOrderToInboxItem(row: WorkOrderRow, nowMs = Date.now()): InboxItem {
   const assigneeStaffId = row.techId ?? row.packerId;
   const assigneeName = row.techName ?? row.packerName;
   const rank = workOrderUrgencyScore(row, nowMs);

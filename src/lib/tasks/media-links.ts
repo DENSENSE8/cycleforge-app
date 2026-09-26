@@ -23,7 +23,7 @@ export interface ParsedMediaLink {
   thumbnailUrl: string | null;
 }
 
-export type MediaLinkParse = { ok: true; link: ParsedMediaLink } | { ok: false; reason: 'invalid_url' | 'unsupported_link' };
+type MediaLinkParse = { ok: true; link: ParsedMediaLink } | { ok: false; reason: 'invalid_url' | 'unsupported_link' };
 
 const YOUTUBE_ID = /^[\w-]{11}$/;
 const IMAGE_PATH = /\.(jpe?g|png|webp|gif|avif)$/i;

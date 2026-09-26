@@ -5,7 +5,7 @@ import { Package, AlertTriangle, Play } from '@/components/Icons';
 import { Button } from '@/design-system/primitives';
 import { EmptyState } from '@/design-system/primitives/EmptyState';
 
-export type EmptyStateType = 'ready' | 'no-work' | 'observer';
+type EmptyStateType = 'ready' | 'no-work' | 'observer';
 
 interface ContextualEmptyStateProps {
   state: EmptyStateType;

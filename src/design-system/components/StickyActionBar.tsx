@@ -8,7 +8,7 @@ import { cn } from '@/utils/_cn';
 
 export type StickyActionTone = 'blue' | 'emerald' | 'orange' | 'violet' | 'red' | 'gray';
 
-export type StickyActionDensity = 'comfortable' | 'compact';
+type StickyActionDensity = 'comfortable' | 'compact';
 
 export interface StickyActionMenuItem {
   label: string;

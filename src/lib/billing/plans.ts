@@ -94,7 +94,7 @@ const ENTERPRISE_FEATURES: Entitlements['features'] = {
   prioritySupport: true,
 };
 
-export const ENTITLEMENTS: Record<PlatformPlan, Entitlements> = {
+const ENTITLEMENTS: Record<PlatformPlan, Entitlements> = {
   trial: {
     maxStaff: 5,
     maxMonthlyOrders: 100,

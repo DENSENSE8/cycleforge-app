@@ -44,7 +44,7 @@ export interface TaskDeskTx {
 export const TASK_DESK_DEFAULT_LIMIT = 200;
 export const TASK_DESK_MAX_LIMIT = 500;
 
-export interface ListTaskDeskOptions {
+interface ListTaskDeskOptions {
   /** Defaults to `open` — the working list IS the unfiltered default. */
   lane?: TaskDeskLane;
   /** Already resolved: `assignee=me` becomes `ctx.staffId` at the route. */

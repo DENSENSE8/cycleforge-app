@@ -40,7 +40,7 @@ export interface SignedUrlInput {
   ttlSeconds: number;
 }
 
-export interface StorageProviderConfig {
+interface StorageProviderConfig {
   provider: PhotoStorageProvider;
   bucket?: string;
   prefix?: string;

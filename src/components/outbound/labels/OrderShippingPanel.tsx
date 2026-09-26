@@ -40,7 +40,7 @@ function parsePositive(raw: string): number | null {
 
 const numToText = (v: number | null | undefined) => (v == null ? '' : String(v));
 
-export interface OrderShippingPanelProps {
+interface OrderShippingPanelProps {
   orderId: number;
   /** Human order number for rate-shop copy + NAS filenames. */
   orderRef: string;

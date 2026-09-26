@@ -2,7 +2,7 @@ import pool from '../db';
 import { tenantQuery, withTenantTransaction } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';
 
-export interface PartCompatibilityRow {
+interface PartCompatibilityRow {
   id: number;
   bose_model_id: number;
   sku_id: number;
@@ -17,7 +17,7 @@ export interface PartCompatibilityRow {
 }
 
 /** Joined shape for list views (adds the human labels both endpoints carry). */
-export interface PartCompatibilityJoinedRow extends PartCompatibilityRow {
+interface PartCompatibilityJoinedRow extends PartCompatibilityRow {
   model_number: string;
   model_name: string;
   sku: string;

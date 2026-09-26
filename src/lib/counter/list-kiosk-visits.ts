@@ -49,7 +49,7 @@ export interface KioskVisitRow {
   kind: 'repair' | 'retail' | 'mixed' | 'empty';
 }
 
-export interface KioskVisitPage {
+interface KioskVisitPage {
   rows: KioskVisitRow[];
   /** Opaque; pass back as `cursor` for the next page. Null = end of history. */
   nextCursor: string | null;
@@ -65,7 +65,7 @@ export interface KioskVisitPage {
 
 /** Hard ceiling on one page — a tablet rail never needs more, and this is the DoS floor. */
 export const KIOSK_VISIT_PAGE_MAX = 50;
-export const KIOSK_VISIT_PAGE_DEFAULT = 25;
+const KIOSK_VISIT_PAGE_DEFAULT = 25;
 
 /** Which rows the rail is showing. */
 export type KioskVisitKindFilter = 'all' | 'sales' | 'repair';
@@ -74,7 +74,7 @@ export function parseKioskVisitKind(raw: unknown): KioskVisitKindFilter {
   return raw === 'sales' || raw === 'repair' ? raw : 'all';
 }
 
-export interface KioskVisitListOptions {
+interface KioskVisitListOptions {
   limit?: number;
   cursor?: string | null;
   /** Phone / ticket # / last-4 / visit id / customer name / product. */
@@ -84,7 +84,7 @@ export interface KioskVisitListOptions {
 
 // ── Search parsing (pure — unit tested without a DB) ─────────────────────────
 
-export interface KioskVisitSearch {
+interface KioskVisitSearch {
   /** Digits the operator typed, capped at 10. Empty when they typed no digits. */
   digits: string;
   /** Ticket text, upper-cased and stripped of a leading `#`. */
@@ -130,7 +130,7 @@ export function relaxableNameTerm(search: KioskVisitSearch | null): string | nul
 
 // ── Cursor (pure) ────────────────────────────────────────────────────────────
 
-export interface KioskVisitCursor {
+interface KioskVisitCursor {
   createdAt: string;
   source: KioskHistorySource;
   id: number;

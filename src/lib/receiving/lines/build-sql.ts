@@ -76,19 +76,19 @@ const STAGING_UNSTAGED_PREDICATE_SQL =
   `(rt.staging_location_id IS NULL OR NULLIF(BTRIM(COALESCE(rt.priority_lane, '')), '') IS NULL)`;
 
 /** One executable statement: SQL text + positional params. */
-export interface BuiltSql {
+interface BuiltSql {
   sql: string;
   params: unknown[];
 }
 
 /** A paged feed: the row query + its sibling COUNT query. */
-export interface BuiltListSql {
+interface BuiltListSql {
   list: BuiltSql;
   count: BuiltSql;
 }
 
 /** A serial (aliased `alias`) whose CURRENT receiving line — its most recent inventory_events touch, falling back to the frozen origin — is… */
-export function currentLineIsMatchSql(alias: string): string {
+function currentLineIsMatchSql(alias: string): string {
   // Phase 3: the frozen-origin fallback is the RECEIVING_LINE provenance edge
   // (correlated subquery, since this composes into a dynamic WHERE string).
   return `COALESCE(
@@ -451,7 +451,7 @@ export function buildReceivingLinesByReceivingIdSql(
 }
 
 /** Inputs the paginated-list builder needs beyond the parsed query. */
-export interface ReceivingLinesListSqlInput {
+interface ReceivingLinesListSqlInput {
   query: ReceivingLinesQuery;
   orgId: string;
   /** `Number(ctx?.staffId)` — raw; may be NaN. Drives view=viewed. */
@@ -467,7 +467,7 @@ export interface ReceivingLinesListSqlInput {
 }
 
 /** `view=scanned` membership — door-scanned and physically in, but NOT yet unboxed: */
-export function scannedViewPredicateSql(unboxOpenedPredicate: string): string {
+function scannedViewPredicateSql(unboxOpenedPredicate: string): string {
   return `(rt.door_received_at IS NOT NULL
           OR EXISTS (SELECT 1 FROM receiving_scans rs_scanned WHERE rs_scanned.receiving_id = r.id))
          AND ru.unboxed_at IS NULL

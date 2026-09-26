@@ -111,7 +111,7 @@ function copyViaExecCommand(text: string): boolean {
   }
 }
 
-export interface DashboardBulkSelection {
+interface DashboardBulkSelection {
   /** True on the surfaces that support selection (Unshipped / Packed / Shipped). */
   selectionEnabled: boolean;
   /** Always true when selectionEnabled — left-gutter checkboxes stay live. */

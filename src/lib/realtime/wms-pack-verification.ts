@@ -5,7 +5,7 @@ import { recordPackVerificationEvent } from '@/lib/packing/pack-verification';
 import type { PackVerificationOutcome } from '@/lib/packing/pack-verification-outcomes';
 import type { OrgId } from '@/lib/tenancy/constants';
 
-export type WmsPackVerificationInput = {
+type WmsPackVerificationInput = {
   commandId: string;
   organizationId: string;
   staffId: number;

@@ -11,7 +11,7 @@ export const shadows = {
   glassOverlay: '0 16px 44px rgba(15, 23, 42, 0.04)',
 } as const;
 
-export type Shadows = typeof shadows;
+type Shadows = typeof shadows;
 
 /** Industry elevation roles — temporary / floating UI sits higher. */
 export type ElevationRole = 'flat' | 'raised' | 'overlay';
@@ -48,7 +48,7 @@ export function elevationClass(
 }
 
 /** Hover lift — literal `hover:` variants of the raised rung. */
-export const ELEVATION_HOVER_CLASS = {
+const ELEVATION_HOVER_CLASS = {
   soft: 'hover:shadow-elev-soft',
   raised: 'hover:shadow-elev-raised',
 } as const;

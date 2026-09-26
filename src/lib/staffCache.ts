@@ -136,7 +136,7 @@ export async function saveStaffFunctionalRole(
 }
 
 /** Call this when staff data changes (e.g. after a PUT/POST to /api/staff). */
-export function invalidateStaffCache(): void {
+function invalidateStaffCache(): void {
   _data = null;
   _promise = null;
   _presentData = null;

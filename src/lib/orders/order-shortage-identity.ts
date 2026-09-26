@@ -13,7 +13,7 @@ export type OrderShortageIdentity = {
   itemId: string | null;
 };
 
-export type OrderShortageIdentityPayload = {
+type OrderShortageIdentityPayload = {
   oosKind?: OrderShortageKind | null;
   oosSku?: string | null;
   oosSkuCatalogId?: number | null;

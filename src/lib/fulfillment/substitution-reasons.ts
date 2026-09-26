@@ -20,7 +20,7 @@ export const SUBSTITUTION_REASONS = [
   { code: 'OTHER', label: 'Other', tone: 'muted', hint: 'Anything else — explain in the note.' },
 ] as const satisfies readonly SubstitutionReason[];
 
-export type SubstitutionReasonCode = (typeof SUBSTITUTION_REASONS)[number]['code'];
+type SubstitutionReasonCode = (typeof SUBSTITUTION_REASONS)[number]['code'];
 
 const BY_CODE = new Map<string, SubstitutionReason>(SUBSTITUTION_REASONS.map((r) => [r.code, r]));
 

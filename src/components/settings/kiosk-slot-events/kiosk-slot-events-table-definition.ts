@@ -12,7 +12,7 @@ import {
   makeKioskSlotEventsGridDescriptor,
 } from './kiosk-slot-events-grid-descriptor';
 
-export const KIOSKSLOTEVENTS_TABLE_DEFINITION = parseTableDefinition({
+const KIOSKSLOTEVENTS_TABLE_DEFINITION = parseTableDefinition({
   id: 'settings.kiosk-slot-events',
   tableId: 'kiosk-slot-events',
   entityFamily: 'kiosk-slot-events',

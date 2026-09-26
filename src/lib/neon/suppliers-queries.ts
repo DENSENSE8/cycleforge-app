@@ -57,7 +57,7 @@ export async function getSupplierList(params: {
   return { items: result.rows, total: countResult.rows[0]?.total || 0 };
 }
 
-export interface SupplierWithStatsRow extends SupplierRow {
+interface SupplierWithStatsRow extends SupplierRow {
   candidate_count: number;
   acquisition_count: number;
   spend_cents: number;

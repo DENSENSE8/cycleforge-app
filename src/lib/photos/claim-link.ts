@@ -9,7 +9,7 @@ import { linkPhoto } from './service';
 import type { PhotoEntityType } from './types';
 
 /** Parse a "#9518"-style Zendesk ticket ref into a positive numeric id, or null. */
-export function parseZendeskTicketId(raw: string | null | undefined): number | null {
+function parseZendeskTicketId(raw: string | null | undefined): number | null {
   if (!raw) return null;
   const digits = String(raw).replace(/^#/, '').trim();
   if (!/^\d+$/.test(digits)) return null;

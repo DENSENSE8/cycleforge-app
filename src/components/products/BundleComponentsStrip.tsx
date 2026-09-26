@@ -16,7 +16,7 @@ type CompositionResponse = {
   source?: 'sku_relationships' | 'sku_kit_parts' | 'none';
 };
 
-export type BundleComponentsStripProps = {
+type BundleComponentsStripProps = {
   catalogId: number;
   /** Catalog SKU string for Inventory Graph deep-link (`?sku=`). */
   sku: string;

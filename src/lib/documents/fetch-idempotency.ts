@@ -2,7 +2,7 @@
 
 import { createHash } from 'node:crypto';
 
-export interface SourceHashInput {
+interface SourceHashInput {
   platform: string;
   orderRef: string;
   documentType: string;

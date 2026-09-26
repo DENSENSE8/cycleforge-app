@@ -292,11 +292,11 @@ export function routeScan(raw: string): ScanRoute | null {
 }
 
 /** Back-compat shim for callers that only need the type. */
-export function detectScanType(raw: string): ScanType {
+function detectScanType(raw: string): ScanType {
   return routeScan(raw)?.type ?? 'sku';
 }
 
-export interface BinPairingLookup {
+interface BinPairingLookup {
   (binCode: string): string | null | undefined;
 }
 
@@ -372,7 +372,7 @@ export const QR_BASE_URL = (
 ).replace(/\/$/, '');
 
 /** Public domain encoded in the *unit-level* GS1 Digital Link QR (the QR on a serialized product label). */
-export const PUBLIC_UNIT_QR_BASE_URL = (
+const PUBLIC_UNIT_QR_BASE_URL = (
   process.env.NEXT_PUBLIC_LABEL_QR_BASE_URL ?? 'https://usavshop.com'
 ).replace(/\/$/, '');
 
@@ -487,7 +487,7 @@ export function rackCode(r: RackSegments): string {
 }
 
 /** A printed location code (flat form) identifies a rack — not an individual bin — when the position segment is 00. */
-export function isRackCode(flat: string): boolean {
+function isRackCode(flat: string): boolean {
   const m = /^([A-Z])(\d{2})(\d{2})(\d{1,2})(\d{2})$/i.exec(flat.trim());
   if (!m) return false;
   return parseInt(m[5], 10) === 0;

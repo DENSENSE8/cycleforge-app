@@ -6,7 +6,7 @@ import { DOGFOOD_ORG_ID, type OrgId } from '../tenancy/constants';
 import type { EntitlementFeature } from './feature-gate';
 
 /** Env var that flips Growth+ plan-feature enforcement from dormant → live. */
-export const PLAN_FEATURE_ENFORCEMENT_ENV = 'PLAN_FEATURE_ENFORCED';
+const PLAN_FEATURE_ENFORCEMENT_ENV = 'PLAN_FEATURE_ENFORCED';
 
 /**
  * The dogfood / internal org that runs the live deployment — exempt from

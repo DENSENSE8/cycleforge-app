@@ -73,7 +73,7 @@ interface Dot {
   stop: PastelStop;
 }
 
-export interface UniversalLoaderProps {
+interface UniversalLoaderProps {
   /** While true the field covers the plane; false fades it out, then unmounts. */
   isLoading: boolean;
   /**

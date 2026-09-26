@@ -7,7 +7,7 @@
 export type ForgeView = 'agent' | 'doc';
 
 /** Wire tokens `?view=` may carry on `/forge`. */
-export const FORGE_VIEW_WIRE = ['live', 'agent', 'doc'] as const;
+const FORGE_VIEW_WIRE = ['live', 'agent', 'doc'] as const;
 
 export function parseForgeView(raw: string | null | undefined): ForgeView {
   return raw === 'doc' ? 'doc' : 'agent';

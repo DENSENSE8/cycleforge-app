@@ -28,7 +28,7 @@ const TechTable = dynamic(
   { loading: TableFallback },
 );
 
-export interface ShippingWorkspaceViewProps {
+interface ShippingWorkspaceViewProps {
   /** Signed-in tech id — used as History fallback when staff filter is set to Me via URL. */
   techId: string;
 }

@@ -70,7 +70,7 @@ export function invalidateTechCounts(queryClient: QueryClient): void {
 export function patchPackerLogCache(queryClient: QueryClient, rowId: number, patch: Partial<StationRow>): void {
   patchRowByPrefix(queryClient, PACKER_LIST_KEY, rowId, patch);
 }
-export function removePackerLogFromCache(queryClient: QueryClient, rowId: number): void {
+function removePackerLogFromCache(queryClient: QueryClient, rowId: number): void {
   removeRowByPrefix(queryClient, PACKER_LIST_KEY, rowId);
 }
 export function prependPackerLogCache(queryClient: QueryClient, record: StationRow): void {
@@ -87,7 +87,7 @@ export function patchReceivingLineCache(queryClient: QueryClient, lineId: number
 export function removeReceivingLineFromCache(queryClient: QueryClient, lineId: number): void {
   removeRowByPrefix(queryClient, RECEIVING_LIST_KEY, lineId);
 }
-export function invalidateReceivingCounts(queryClient: QueryClient): void {
+function invalidateReceivingCounts(queryClient: QueryClient): void {
   queryClient.invalidateQueries({ queryKey: RECEIVING_COUNTS_KEY });
 }
 

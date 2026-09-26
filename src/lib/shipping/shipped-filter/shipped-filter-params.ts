@@ -23,13 +23,13 @@ export function readShippedExceptionsFilter(searchParams: ParamReader): boolean 
   return raw === '1' || raw === 'true';
 }
 
-export function readShippedTypeFilter(searchParams: ParamReader): ShippedTypeFilter {
+function readShippedTypeFilter(searchParams: ParamReader): ShippedTypeFilter {
   const raw = String(searchParams.get('shippedFilter') || '').toLowerCase();
   if (raw === 'orders' || raw === 'sku' || raw === 'fba') return raw;
   return 'all';
 }
 
-export function parseStaffId(raw: string | null): number | null {
+function parseStaffId(raw: string | null): number | null {
   const n = Number(raw);
   return Number.isFinite(n) && n > 0 ? n : null;
 }
@@ -49,7 +49,7 @@ export function toISODate(d: Date | undefined): string | null {
 }
 
 /** Intentional "no date window" — Clear on the week chip; blocks current-week seed. */
-export const SHIPPED_ALL_DATES_PARAM = 'allDates';
+const SHIPPED_ALL_DATES_PARAM = 'allDates';
 
 export function readShippedAllDates(searchParams: ParamReader): boolean {
   const raw = String(searchParams.get(SHIPPED_ALL_DATES_PARAM) || '').toLowerCase();

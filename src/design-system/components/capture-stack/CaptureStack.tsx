@@ -10,14 +10,14 @@ import {
 
 type FeedId = string | number;
 
-export interface CaptureStackRowContext {
+interface CaptureStackRowContext {
   variant: 'collapsed' | 'expanded';
   fresh: boolean;
   index: number;
   isLast: boolean;
 }
 
-export interface CaptureStackProps<T> {
+interface CaptureStackProps<T> {
   rows: T[];
   isLoading?: boolean;
   scrollRef?: React.RefObject<HTMLDivElement>;

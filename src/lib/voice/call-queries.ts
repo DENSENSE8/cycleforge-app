@@ -8,7 +8,7 @@ import { toIso, type CallDirection, type CallEventDTO } from './types';
 
 export type CallDirectionFilter = 'all' | CallDirection;
 
-export interface ListCallEventsParams {
+interface ListCallEventsParams {
   direction: CallDirectionFilter;
   query?: string | null;
   limit?: number;

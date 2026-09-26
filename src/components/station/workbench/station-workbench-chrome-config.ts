@@ -3,7 +3,7 @@
 /** Displays-push tier status (scan-station Displays SoT — `docs/todo/scan-station-displays-sot-PROMPT.md`). */
 
 /** Station right-pane adopter directories (relative to `src/`). */
-export const STATION_FAMILY_ROOTS = [
+const STATION_FAMILY_ROOTS = [
   'components/receiving',
   'components/tech',
   'components/packer',
@@ -17,34 +17,34 @@ export const STATION_FAMILY_ROOTS = [
 
 // ── Guard A — column width ratchet ────────────────────────────────────────────
 /** Same-line (or line-above) marker for a genuine non-column `max-w-3xl` use. */
-export const MAX_W_3XL_ESCAPE = 'ds-station-max-w-exempt';
+const MAX_W_3XL_ESCAPE = 'ds-station-max-w-exempt';
 /** Zero since the Shipping host fold (2026-07-28): */
-export const MAX_W_3XL_BASELINE = 0;
+const MAX_W_3XL_BASELINE = 0;
 
 // ── Guard B — ambient wash single home ────────────────────────────────────────
 /** 3-blob wash fingerprint. After extraction it lives only in StationAmbientWash. */
-export const AMBIENT_WASH_FINGERPRINT = 'bg-blue-400/[0.08]';
+const AMBIENT_WASH_FINGERPRINT = 'bg-blue-400/[0.08]';
 /** Exactly 1 non-comment occurrence: `StationAmbientWash.tsx` (the SoT). */
-export const AMBIENT_WASH_BASELINE = 1;
+const AMBIENT_WASH_BASELINE = 1;
 
 // ── Guard C — panel-root hand-roll ────────────────────────────────────────────
 /**
  * Exact panel-root className the SoT `StationPanelRoot` owns. The plane went
  * white on 2026-08-30 (operator ruling) — see `StationPanelRoot`'s docblock.
  */
-export const PANEL_ROOT_FINGERPRINT = 'relative flex h-full min-h-0 flex-col bg-surface-canvas';
+const PANEL_ROOT_FINGERPRINT = 'relative flex h-full min-h-0 flex-col bg-surface-canvas';
 /**
  * Remaining station-family hand-rolls: none (Labels · Pack · Review compose
  * `StationPanelRoot`). Shrink-only — never raise.
  */
-export const PANEL_ROOT_BASELINE = 0;
+const PANEL_ROOT_BASELINE = 0;
 
 // ── Guard D — StationWorkbench adoption (positive assertion) ───────────────────
 /**
  * Tier A/B right-pane panels that MUST compose `StationWorkbench` (or
  * `StationPanelRoot`). Paths relative to `src/`.
  */
-export const STATION_WORKBENCH_REQUIRED = [
+const STATION_WORKBENCH_REQUIRED = [
   'components/receiving/workspace/LineEditPanel.tsx',
   'components/receiving/triage/TriagePanel.tsx',
   'components/tech/TestingPanel.tsx',
@@ -55,7 +55,7 @@ export const STATION_WORKBENCH_REQUIRED = [
 ] as const;
 
 /** Identity adapters that compose `CartonContextCard`. */
-export const STATION_CARTON_IDENTITY_ADAPTERS = [
+const STATION_CARTON_IDENTITY_ADAPTERS = [
   'components/receiving/workspace/line-edit/LineCartonContextSection.tsx',
   'components/tech/testing-panel/TestingCartonHeader.tsx',
   'components/tech/shipping/ShippingEntityContextHeader.tsx',
@@ -64,25 +64,25 @@ export const STATION_CARTON_IDENTITY_ADAPTERS = [
   'components/station/order/OrderStationIdentity.tsx',
 ] as const;
 /** Documented adoption gaps (port follow-ups) — station chrome but not yet on `StationWorkbench`. */
-export const STATION_WORKBENCH_ADOPTION_EXEMPT = [
+const STATION_WORKBENCH_ADOPTION_EXEMPT = [
   'components/repair/RepairIntakeForm.tsx',
 ] as const;
 
 /** Surfaces that sit in the **Scan Stations** spine section but are deliberately NOT Station column-shell members — declared, not drifting… */
-export const NON_STATION_COLUMN_SURFACES = [
+const NON_STATION_COLUMN_SURFACES = [
   'components/repair/RepairIntakeForm.tsx',
 ] as const;
 
 // ── Guard E — terminal path ───────────────────────────────────────────────────
 /** Files that mount `<StationTerminalDock` with a HAND-BUILT `TerminalActionVm` (not `useStationTerminalAction` + `STATION_TERMINAL_REGISTRY`). */
-export const TERMINAL_HAND_VM_ALLOWLIST = [
+const TERMINAL_HAND_VM_ALLOWLIST = [
   'features/review/packer/PackerReviewMode.tsx',
   'components/support/service-workspace/SupportTicketFocus.tsx',
 ] as const;
 
 // ── Documented identity fork (rules-only, see station-workbench.md) ───────────
 /** Condensed-identity forks that do NOT compose `CartonContextCard`. */
-export const IDENTITY_FORK_ALLOWLIST = [] as const;
+const IDENTITY_FORK_ALLOWLIST = [] as const;
 
 // ── Guard G — terminal modes without header chrome ────────────────────────────
 /**
@@ -98,10 +98,10 @@ export const TERMINAL_MODES_WITHOUT_HEADER_CHROME = ['shipping', 'repair', 'pick
  * `mx-auto` use inside a scan-station panel (icon centering, empty-state glyph,
  * etc.). Never use this to keep a centered content column — that is debt.
  */
-export const STATION_EDGE_MEASURE_ESCAPE = 'ds-station-edge-measure-exempt';
+const STATION_EDGE_MEASURE_ESCAPE = 'ds-station-edge-measure-exempt';
 
 /** Scan-station right panes watched by the edge-to-edge middle-measure ratchet (`station-edge-measure.guard.test.ts`). */
-export const SCAN_STATION_EDGE_MEASURE_PANELS = [
+const SCAN_STATION_EDGE_MEASURE_PANELS = [
   'components/receiving/workspace/LineEditPanel.tsx',
   'components/receiving/triage/TriagePanel.tsx',
   'components/tech/TestingPanel.tsx',
@@ -111,7 +111,7 @@ export const SCAN_STATION_EDGE_MEASURE_PANELS = [
 ] as const;
 
 /** Panels in {@link SCAN_STATION_EDGE_MEASURE_PANELS} that do **not** yet compose `STATION_WORKBENCH_COLUMN`. */
-export const SCAN_STATION_EDGE_MEASURE_MISSING_BASELINE = 4;
+const SCAN_STATION_EDGE_MEASURE_MISSING_BASELINE = 4;
 
 /** Remaining local `max-w-[720px]` hits in {@link SCAN_STATION_EDGE_MEASURE_PANELS} that are not yet migrated (e.g. */
-export const SCAN_STATION_LOCAL_720_MAX_BASELINE = 0;
+const SCAN_STATION_LOCAL_720_MAX_BASELINE = 0;

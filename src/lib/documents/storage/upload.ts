@@ -5,7 +5,7 @@ import type { OutboundDocumentType } from '@/lib/documents/types';
 import type { OrgId } from '@/lib/tenancy/constants';
 import { getOrganization } from '@/lib/tenancy/organizations';
 
-export interface UploadOutboundDocumentInput {
+interface UploadOutboundDocumentInput {
   organizationId: OrgId;
   documentId: number;
   documentType: OutboundDocumentType;
@@ -17,7 +17,7 @@ export interface UploadOutboundDocumentInput {
   extension?: string;
 }
 
-export interface UploadOutboundDocumentResult {
+interface UploadOutboundDocumentResult {
   bucket: string;
   objectKey: string;
   sha256Hex: string;

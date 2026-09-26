@@ -25,7 +25,7 @@ export const SKU_ALLOCATIONS_COMPOUND_COLUMNS: readonly UnitAllocationsGridColum
   unitAllocationsCompoundColumnsFor(SKU_ALLOCATIONS_PRODUCT_LAYOUT);
 
 /** Build the descriptor from a RESOLVED column list (post-visibility), so `contentMinWidthRem` and the TanStack defs follow the tracks that… */
-export function makeSkuAllocationsGridDescriptor(
+function makeSkuAllocationsGridDescriptor(
   columns: readonly UnitAllocationsGridColumn[],
 ): GridSurfaceDescriptor<UnitAllocationTableRow, UnitAllocationsGridColumn> {
   return makeGridSurfaceDescriptor<UnitAllocationTableRow, UnitAllocationsGridColumn>(

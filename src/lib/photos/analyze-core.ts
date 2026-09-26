@@ -5,7 +5,7 @@ import type { PhotoAnalyzeProvider } from './analyze-provider';
 import type { LocalVisionConfig } from './local-vision-client';
 
 /** Deterministic, model-free metadata from PO context — the universal fallback. */
-export function analyzeFromCatalog(input: {
+function analyzeFromCatalog(input: {
   poRef: string | null;
   photoType: string | null;
 }): PhotoAnalysisMetadata {

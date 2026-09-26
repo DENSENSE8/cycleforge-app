@@ -6,7 +6,7 @@ import { Button } from '@/design-system/primitives/Button';
 import { DeskStageOverlay } from '@/design-system/components/DeskStageOverlay';
 import type { AuthSessionTableRow } from '@/lib/auth/auth-session-row';
 
-export interface AuthSessionRevokePlaneProps {
+interface AuthSessionRevokePlaneProps {
   row: AuthSessionTableRow | null;
   busy?: boolean;
   onClose: () => void;

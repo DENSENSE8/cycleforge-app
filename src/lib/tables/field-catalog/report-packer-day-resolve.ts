@@ -17,7 +17,7 @@ export function packBasisLabel(source: PackingReportRow['tierSource']): string {
 }
 
 /** `packTier` → title case. Unknown values pass through rather than vanish. */
-export function packTierLabel(tier: string): string {
+function packTierLabel(tier: string): string {
   const t = String(tier || '').toUpperCase();
   if (t === 'SMALL') return 'Small';
   if (t === 'MEDIUM') return 'Medium';

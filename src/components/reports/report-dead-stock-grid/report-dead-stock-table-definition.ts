@@ -24,7 +24,7 @@ export const REPORT_DEAD_STOCK_GRID_CAPABILITIES: GridSurfaceCapabilities = {
   dayBands: false,
 };
 
-export function makeReportDeadStockGridDescriptor(
+function makeReportDeadStockGridDescriptor(
   columns: readonly ReportDeadStockGridColumn[],
 ): GridSurfaceDescriptor<DeadStockReportRow, ReportDeadStockGridColumn> {
   return makeGridSurfaceDescriptor<DeadStockReportRow, ReportDeadStockGridColumn>(
@@ -39,7 +39,7 @@ export function makeReportDeadStockGridDescriptor(
   );
 }
 
-export const REPORT_DEAD_STOCK_TABLE_DEFINITION = parseTableDefinition({
+const REPORT_DEAD_STOCK_TABLE_DEFINITION = parseTableDefinition({
   id: 'reports.dead-stock',
   tableId: 'report-dead-stock',
   entityFamily: 'report-dead-stock',

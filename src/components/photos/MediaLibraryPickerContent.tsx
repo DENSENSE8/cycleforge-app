@@ -39,7 +39,7 @@ import { resolvePhotoLibraryFolderLeafLabel } from '@/lib/photos/library-context
 import { getCurrentPSTDateKey } from '@/utils/date';
 import { cn } from '@/utils/_cn';
 
-export type MediaLibraryPickerTab = 'browse' | 'ticket' | 'carton';
+type MediaLibraryPickerTab = 'browse' | 'ticket' | 'carton';
 
 type IconCmp = typeof Package;
 
@@ -64,7 +64,7 @@ interface MediaTypeSelection {
   label: string;
 }
 
-export interface MediaLibraryPickerContentProps {
+interface MediaLibraryPickerContentProps {
   /** When set, enables the “This ticket” tab. */
   ticketId?: number;
   /** When set, enables the “Current carton” tab (receivingId scope). */

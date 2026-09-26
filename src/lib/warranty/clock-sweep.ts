@@ -9,17 +9,17 @@ import type { WarrantyClockBasis } from './clock';
 const RECOMPUTE_LIMIT = 300;
 const EXPIRE_LIMIT = 500;
 
-export interface RecomputeResult {
+interface RecomputeResult {
   scanned: number;
   recomputed: number;
   flippedToDelivered: number;
 }
 
-export interface ExpireResult {
+interface ExpireResult {
   expired: number;
 }
 
-export interface ClockMaintenanceResult {
+interface ClockMaintenanceResult {
   skipped?: boolean;
   recompute?: RecomputeResult;
   expire?: ExpireResult;
@@ -39,7 +39,7 @@ interface CandidateRow {
  * pulls every candidate's fresh delivered/packed date (joined through the order);
  * the changed claims are written in one bulk UPDATE + one bulk event INSERT.
  */
-export async function recomputeProvisionalClocks(limit = RECOMPUTE_LIMIT): Promise<RecomputeResult> {
+async function recomputeProvisionalClocks(limit = RECOMPUTE_LIMIT): Promise<RecomputeResult> {
   let rows: CandidateRow[] = [];
   try {
     const res = await pool.query<CandidateRow>(
@@ -166,7 +166,7 @@ export async function recomputeProvisionalClocks(limit = RECOMPUTE_LIMIT): Promi
  * Move un-adjudicated lapsed claims to EXPIRED. Uses SKIP LOCKED so a concurrent
  * sweep can't double-process; one bulk UPDATE + one bulk event INSERT.
  */
-export async function expireLapsedClaims(limit = EXPIRE_LIMIT): Promise<ExpireResult> {
+async function expireLapsedClaims(limit = EXPIRE_LIMIT): Promise<ExpireResult> {
   const client = await pool.connect();
   let expiredClaims: Array<{
     organizationId: string;

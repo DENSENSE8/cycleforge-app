@@ -5,7 +5,7 @@ export const VDPL_COOKIE = '__vdpl';
 /** One warehouse shift. Dashboard max-age must be ≥ this. */
 export const VDPL_MAX_AGE_SEC = 12 * 60 * 60;
 
-export type SkewPinDecision =
+type SkewPinDecision =
   | { pin: false }
   | { pin: true; deploymentId: string };
 

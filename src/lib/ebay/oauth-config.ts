@@ -78,7 +78,7 @@ export function ebayBuyerScopes(): string[] {
 }
 
 /** Role-aware scope list — buyer vs seller consent/refresh must use its OWN set. */
-export function ebayScopesForRole(role: EbayAccountRole): string[] {
+function ebayScopesForRole(role: EbayAccountRole): string[] {
   return role === 'buyer' ? ebayBuyerScopes() : ebayScopes();
 }
 
@@ -88,7 +88,7 @@ export function ebayScopeString(): string {
 }
 
 /** Space-separated BUYER scope string (URL-encode at the call site). */
-export function ebayBuyerScopeString(): string {
+function ebayBuyerScopeString(): string {
   return ebayBuyerScopes().join(' ');
 }
 

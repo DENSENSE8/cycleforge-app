@@ -134,9 +134,9 @@ export const SOURCE_PREFIX: Record<JourneySource, string> = {
   ticket: 'ticket',
 };
 
-export const DEFAULT_LIMIT = 60;
+const DEFAULT_LIMIT = 60;
 export const MAX_LIMIT = 200;
-export const BROWSE_WINDOW_MS = 30 * 24 * 60 * 60 * 1000; // 30d
+const BROWSE_WINDOW_MS = 30 * 24 * 60 * 60 * 1000; // 30d
 export const ENTITY_WINDOW_MS = 365 * 24 * 60 * 60 * 1000; // 365d
 
 // ─────────────────────────────────────────────────────────────────────────────

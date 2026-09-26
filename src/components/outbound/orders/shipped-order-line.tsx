@@ -23,7 +23,7 @@ async function fetchOrderLine(id: number): Promise<OrderLineBag> {
  * ledger's strip ({@link ShippedOrderActionStrip}). `null`: the package has no
  * order line (an unmatched scan) — nothing is fetched.
  */
-export function useShippedOrderLine(lineId: number | null) {
+function useShippedOrderLine(lineId: number | null) {
   const query = useQuery({
     queryKey: ['orders', 'shipped-record', lineId],
     queryFn: () => fetchOrderLine(lineId as number),

@@ -9,7 +9,7 @@ interface SchemaProp {
   options?: Array<{ value?: unknown } | unknown>;
 }
 
-export interface ConfigValidationResult {
+interface ConfigValidationResult {
   ok: boolean;
   errors: string[];
 }

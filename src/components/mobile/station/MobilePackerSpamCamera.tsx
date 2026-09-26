@@ -51,7 +51,7 @@ type GallerySlide =
 
 const GATE_DIM = 160;
 
-export interface MobilePackerSpamCameraProps {
+interface MobilePackerSpamCameraProps {
   /**
    * Called when the operator leaves the camera with photos — via the checkmark
    * OR the X close. Parent owns the blobs after this and is responsible for

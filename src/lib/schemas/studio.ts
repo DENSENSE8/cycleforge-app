@@ -36,7 +36,7 @@ export const StudioGraphEdgeSchema = z.object({
  * engine node. Text is length-bounded (a note, not a document); position is in
  * the same React Flow coordinate space as nodes; color is an optional tone key.
  */
-export const StudioAnnotationSchema = z.object({
+const StudioAnnotationSchema = z.object({
   id: CanvasIdSchema,
   text: z.string().max(2000),
   x: z.number().finite(),
@@ -48,26 +48,26 @@ export const StudioDraftCreateBody = z.object({
   /** Definition to copy from; omitted = the org's active definition. */
   sourceId: z.number().int().positive().optional(),
 });
-export type StudioDraftCreateInput = z.infer<typeof StudioDraftCreateBody>;
+type StudioDraftCreateInput = z.infer<typeof StudioDraftCreateBody>;
 
 /** Body for POST /api/studio/templates/[id]/import (Phase E4). */
 export const StudioTemplateImportBody = z.object({
   name: z.string().trim().min(1).max(120).optional(),
 });
-export type StudioTemplateImportInput = z.infer<typeof StudioTemplateImportBody>;
+type StudioTemplateImportInput = z.infer<typeof StudioTemplateImportBody>;
 
 /** Body for POST /api/onboarding/template (Template Platform Phase 1). */
 export const OnboardingTemplateChooseBody = z.object({
   templateId: z.number().int().positive(),
 });
-export type OnboardingTemplateChooseInput = z.infer<typeof OnboardingTemplateChooseBody>;
+type OnboardingTemplateChooseInput = z.infer<typeof OnboardingTemplateChooseBody>;
 
 /** Body for POST /api/onboarding/recommend (Template Platform Phase 5). */
 export const OnboardingRecommendBody = z.object({
   text: z.string().trim().min(1).max(4000),
   category: z.string().max(64).nullable().optional(),
 });
-export type OnboardingRecommendInput = z.infer<typeof OnboardingRecommendBody>;
+type OnboardingRecommendInput = z.infer<typeof OnboardingRecommendBody>;
 
 /** Body for POST /api/studio/definitions/[id]/submit (Template Platform Phase 4). */
 export const StudioTemplateSubmitBody = z.object({
@@ -75,7 +75,7 @@ export const StudioTemplateSubmitBody = z.object({
   description: z.string().max(2000).nullable().optional(),
   category: z.string().max(64).nullable().optional(),
 });
-export type StudioTemplateSubmitInput = z.infer<typeof StudioTemplateSubmitBody>;
+type StudioTemplateSubmitInput = z.infer<typeof StudioTemplateSubmitBody>;
 
 /**
  * Body for POST /api/studio/catalog/submissions/[id]/review (Phase 4 curation).
@@ -86,7 +86,7 @@ export const StudioTemplateReviewBody = z.object({
   decision: z.enum(['approve', 'reject']),
   note: z.string().max(2000).optional(),
 });
-export type StudioTemplateReviewInput = z.infer<typeof StudioTemplateReviewBody>;
+type StudioTemplateReviewInput = z.infer<typeof StudioTemplateReviewBody>;
 
 export const StudioGraphSaveBody = z
   .object({
@@ -126,4 +126,4 @@ export const StudioGraphSaveBody = z
       }
     });
   });
-export type StudioGraphSaveInput = z.infer<typeof StudioGraphSaveBody>;
+type StudioGraphSaveInput = z.infer<typeof StudioGraphSaveBody>;

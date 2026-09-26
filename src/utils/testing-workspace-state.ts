@@ -13,7 +13,7 @@ export type TestingWorkspaceTab =
 const TESTING_WORKSPACE_TAB_PARAM = 'testTab';
 
 /** Band-1 order — Urgent · Returns · Pending · All · History. */
-export const TESTING_WORKSPACE_TABS: readonly TestingWorkspaceTab[] = [
+const TESTING_WORKSPACE_TABS: readonly TestingWorkspaceTab[] = [
   'urgent',
   'returns',
   'pending',
@@ -21,7 +21,7 @@ export const TESTING_WORKSPACE_TABS: readonly TestingWorkspaceTab[] = [
   'history',
 ] as const;
 
-export const TESTING_WORKSPACE_TAB_LABEL: Record<TestingWorkspaceTab, string> = {
+const TESTING_WORKSPACE_TAB_LABEL: Record<TestingWorkspaceTab, string> = {
   urgent: 'Urgent',
   returns: 'Returns',
   pending: 'Pending',

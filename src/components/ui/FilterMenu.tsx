@@ -12,7 +12,7 @@ import { cornerClass, DROPDOWN_ITEM_CORNER, DROPDOWN_SHELL_CORNER } from '@/desi
 import { focusRing } from '@/design-system/tokens/focus-ring';
 import { cn } from '@/utils/_cn';
 
-export interface FilterMenuProps {
+interface FilterMenuProps {
   open: boolean;
   onOpenChange: (next: boolean) => void;
   /** An active refinement — lights the trigger and keeps it lit while closed. */

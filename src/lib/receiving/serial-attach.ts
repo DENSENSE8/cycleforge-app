@@ -72,7 +72,7 @@ async function loadLine(
   return r.rows[0] ?? null;
 }
 
-export interface AttachSerialInput {
+interface AttachSerialInput {
   receiving_line_id: number;
   serial_number: string;
   condition_grade?: string | null;
@@ -82,7 +82,7 @@ export interface AttachSerialInput {
   scan_token?: string | null;
 }
 
-export interface AttachSerialResult {
+interface AttachSerialResult {
   line_id: number;
   serial_unit: SerialUnitRow;
   is_new: boolean;
@@ -248,7 +248,7 @@ export async function attachSerialToLine(
     });
 }
 
-export interface DetachSerialInput {
+interface DetachSerialInput {
   receiving_line_id: number;
   serial_unit_id?: number | null;
   serial_number?: string | null;
@@ -256,7 +256,7 @@ export interface DetachSerialInput {
   station?: InventoryEventStation;
 }
 
-export interface DetachSerialResult {
+interface DetachSerialResult {
   removed: boolean;
   removed_serial_unit_id: number | null;
   removed_serial_number: string | null;

@@ -6,7 +6,7 @@ import {
   INBOUND_SHIPMENT_PREDICATE,
 } from '@/lib/receiving/delivered-unscanned';
 
-export interface ReconcileDeliveredResult {
+interface ReconcileDeliveredResult {
   ok: boolean;
   /** STN rows flipped to delivered (or had delivered_at filled) from the log. */
   deliveredReconciled: number;

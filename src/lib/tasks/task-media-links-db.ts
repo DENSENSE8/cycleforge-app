@@ -52,7 +52,7 @@ async function readLinks(orgId: OrgId, taskId: number, linkId: number | null): P
 }
 
 /** The deps seam bound to one org. */
-export function taskMediaLinksDbDeps(orgId: OrgId): TaskMediaLinksDeps {
+function taskMediaLinksDbDeps(orgId: OrgId): TaskMediaLinksDeps {
   return {
     taskExists: async (taskId) => (await findTaskAnchor(orgId, taskId)) !== null,
 

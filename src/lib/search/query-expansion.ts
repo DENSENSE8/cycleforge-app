@@ -38,7 +38,7 @@ export function tokenizeQuery(normalized: string): string[] {
 }
 
 /** Curated vernacular → the words the index actually holds. */
-export const SEARCH_SYNONYMS: Readonly<Record<string, readonly string[]>> = {
+const SEARCH_SYNONYMS: Readonly<Record<string, readonly string[]>> = {
   // Returns / reverse logistics
   rma: ['return'],
   returns: ['return'],
@@ -95,7 +95,7 @@ function synonymsFor(token: string): readonly string[] | undefined {
     : undefined;
 }
 
-export interface ExpandedQuery {
+interface ExpandedQuery {
   /** The folded form — the `search_query_log` grouping key. */
   normalized: string;
   /** Matchable tokens, stopwords included (callers decide what to drop). */

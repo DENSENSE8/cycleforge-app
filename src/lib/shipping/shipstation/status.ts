@@ -104,4 +104,4 @@ const defaultDeps: ShipStationStatusDeps = {
 const defaultChecker = createShipStationStatusChecker(defaultDeps);
 
 export const checkShipStationStatus = defaultChecker.check;
-export const invalidateShipStationStatus = defaultChecker.invalidate;
+const invalidateShipStationStatus = defaultChecker.invalidate;

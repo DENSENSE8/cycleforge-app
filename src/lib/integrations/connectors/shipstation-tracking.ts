@@ -6,7 +6,7 @@ import { normalizeTrackingNumber } from '@/lib/tracking-format';
 import { matchAggregatorOrderRows, type PlatformOf } from '@/lib/orders/order-source-match';
 
 /** The tracking one order should carry as its primary. */
-export interface ShipmentTrackingPlan {
+interface ShipmentTrackingPlan {
   orderNumber: string;
   shipmentId: number;
   /** The ShipStation order the label belongs to (pairs via the order refs). */
@@ -17,7 +17,7 @@ export interface ShipmentTrackingPlan {
   carrier: string | null;
 }
 
-export interface ShipmentTrackingPlanSummary {
+interface ShipmentTrackingPlanSummary {
   /** One per order number, sorted by order number. */
   plans: ShipmentTrackingPlan[];
   /** Voided labels dropped. */
@@ -98,9 +98,9 @@ export interface ShipStationTrackingDeps {
   onError?(orderNumber: string, error: unknown): void;
 }
 
-export type TrackingAttachStatus = 'attached' | 'already_current' | 'unmatched' | 'ambiguous' | 'failed';
+type TrackingAttachStatus = 'attached' | 'already_current' | 'unmatched' | 'ambiguous' | 'failed';
 
-export interface ShipStationTrackingResult {
+interface ShipStationTrackingResult {
   /** Orders whose primary tracking was set/replaced (would be, in a dry run). */
   attached: number;
   /** Orders already carrying this tracking — no write. */

@@ -4,7 +4,7 @@ import { createHmac, timingSafeEqual } from 'node:crypto';
 
 type VerifyOk = { ok: true };
 type VerifyFail = { ok: false; reason: string };
-export type VerifyResult = VerifyOk | VerifyFail;
+type VerifyResult = VerifyOk | VerifyFail;
 
 const FALLBACK_HEADERS = [
   'x-zoho-webhook-signature',
@@ -37,7 +37,7 @@ function decodeSignature(raw: string, encoding: 'hex' | 'base64'): Buffer | null
   }
 }
 
-export interface VerifyOptions {
+interface VerifyOptions {
   /** Per-tenant signing secret loaded from the integration vault. */
   secret: string;
 }

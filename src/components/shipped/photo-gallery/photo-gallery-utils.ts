@@ -27,7 +27,7 @@ export interface PhotoMeta {
 }
 
 /** Minimal meta for receiving/unbox captures — lights up the viewer info panel. */
-export function unboxingPhotoMeta(fields: {
+function unboxingPhotoMeta(fields: {
   poRef?: string | null;
   caption?: string | null;
   createdAt?: string | null;
@@ -49,7 +49,7 @@ export function unboxingPhotoMeta(fields: {
 }
 
 /** A receiving/carton photo row (as returned by `/api/receiving-photos`). */
-export interface ReceivingPhotoRowLike {
+interface ReceivingPhotoRowLike {
   id: number;
   photoUrl: string;
   /**

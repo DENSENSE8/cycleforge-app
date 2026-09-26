@@ -9,7 +9,7 @@ import { useAblyChannel } from '@/hooks/useAblyChannel';
 import { getInboxChannelName, safeChannelName } from '@/lib/realtime/channels';
 
 /** Locked copy — do not edit (master plan §0, resolution toast). */
-export const ISSUE_RESOLVED_TOAST_COPY =
+const ISSUE_RESOLVED_TOAST_COPY =
   'The bug you reported has been fixed! Refresh the page to load the latest version.';
 
 export function UserIssueResolvedToaster() {

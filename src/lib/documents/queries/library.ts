@@ -5,7 +5,7 @@ import { documentContentUrl } from '@/lib/documents/display-url';
 import type { OutboundDocumentType } from '@/lib/documents/types';
 import type { PhotoFinderKind } from '@/lib/photos/library-filter-state';
 
-export interface OutboundLibraryFilters {
+interface OutboundLibraryFilters {
   organizationId: string;
   cursor?: number | null;
   limit?: number;
@@ -28,7 +28,7 @@ export interface OutboundLibraryFilters {
   staffId?: number | null;
 }
 
-export interface OutboundLibraryItem {
+interface OutboundLibraryItem {
   id: number;
   kind: 'document';
   documentType: OutboundDocumentType;

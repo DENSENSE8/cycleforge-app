@@ -8,14 +8,14 @@ import { createDemandAlert, type CreateDemandAlertInput } from '@/lib/neon/sourc
 
 // ─── Row + result shapes ─────────────────────────────────────────────────────
 
-export type DemandCollectorKind =
+type DemandCollectorKind =
   | 'missing_part'
   | 'repair_part'
   | 'warranty_part'
   | 'pending_sku'
   | 'fba_replenish';
 
-export interface DemandRow {
+interface DemandRow {
   collector: DemandCollectorKind;
   skuId: number | null;
   alertType: string;
@@ -28,7 +28,7 @@ export interface DemandRow {
   searchQuery: string | null;
 }
 
-export interface SourcingDemandCollectorsResult {
+interface SourcingDemandCollectorsResult {
   opened: Record<DemandCollectorKind, number>;
   /** Idempotent no-ops — a live alert already covered the demand. */
   existing: number;

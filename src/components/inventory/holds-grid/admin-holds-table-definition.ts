@@ -25,7 +25,7 @@ export const ADMINHOLDS_GRID_CAPABILITIES: GridSurfaceCapabilities = {
 };
 
 /** Build the descriptor from a RESOLVED column list (post-visibility), so the TanStack defs follow the tracks that actually render. */
-export function makeAdminHoldsGridDescriptor(
+function makeAdminHoldsGridDescriptor(
   columns: readonly AdminHoldsGridColumn[],
 ): GridSurfaceDescriptor<HeldUnitRow, AdminHoldsGridColumn> {
   return makeGridSurfaceDescriptor<HeldUnitRow, AdminHoldsGridColumn>(
@@ -44,7 +44,7 @@ export function makeAdminHoldsGridDescriptor(
  * Validated at module load: a definition that violates a structural law throws
  * here rather than painting a broken grid.
  */
-export const ADMINHOLDS_TABLE_DEFINITION = parseTableDefinition({
+const ADMINHOLDS_TABLE_DEFINITION = parseTableDefinition({
   id: 'admin-holds.held',
   tableId: 'admin-holds',
   entityFamily: 'admin-holds',

@@ -11,7 +11,7 @@ export function setGlobalSearchPending(next: boolean): void {
   for (const listener of listeners) listener(pending);
 }
 
-export function subscribeGlobalSearchPending(listener: Listener): () => void {
+function subscribeGlobalSearchPending(listener: Listener): () => void {
   listeners.add(listener);
   listener(pending);
   return () => {

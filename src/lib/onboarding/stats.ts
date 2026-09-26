@@ -7,7 +7,7 @@ import { getComplianceAnswers, parseOrgSettings } from '@/lib/tenancy/settings';
 import { EMPTY_ONBOARDING_STATS, type OnboardingStats } from './steps';
 
 /** Injectable deps so unit tests run DB-free (backend-patterns.md). */
-export interface OnboardingStatsDeps {
+interface OnboardingStatsDeps {
   withTenant: <T>(orgId: OrgId, fn: (client: Pick<PoolClient, 'query'>) => Promise<T>) => Promise<T>;
 }
 

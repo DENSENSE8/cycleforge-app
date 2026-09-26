@@ -15,7 +15,7 @@ import { MAX_SUBTITLE_SLOTS, type SlotLayout } from '@/lib/tables/slot-layout-co
 export const LINE_MONEY_LOCKED_REASON = 'Price stays under the item title' as const;
 
 /** Empty price face — currency mark, not a generic dash. */
-export const EMPTY_MONEY_FACE = '$-' as const;
+const EMPTY_MONEY_FACE = '$-' as const;
 
 const LINE_MONEY_WIDTH_CH = 8;
 

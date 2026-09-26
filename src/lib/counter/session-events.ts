@@ -40,7 +40,7 @@ export const COUNTER_PAYMENT_STATES = [
 /** Card-present state (SQ2). */
 export type CounterPaymentState = (typeof COUNTER_PAYMENT_STATES)[number];
 
-export function isCounterPaymentState(value: string): value is CounterPaymentState {
+function isCounterPaymentState(value: string): value is CounterPaymentState {
   return (COUNTER_PAYMENT_STATES as readonly string[]).includes(value);
 }
 

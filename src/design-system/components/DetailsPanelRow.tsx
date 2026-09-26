@@ -2,7 +2,7 @@
 
 import { PanelRow, type PanelRowProps } from '../primitives';
 
-export interface DetailsPanelRowProps extends Omit<PanelRowProps, 'interactive'> {}
+interface DetailsPanelRowProps extends Omit<PanelRowProps, 'interactive'> {}
 
 /**
  * Ledger row for sidebars and details panels: uppercase label row, optional accessory + actions, then value body.

@@ -4,7 +4,7 @@ import type { NodeDefinition, NodeContext, NodeResult, RunRecord } from './contr
 
 export const ERROR_OUTPUT = 'error';
 
-export interface RunOutcome {
+interface RunOutcome {
   result: NodeResult;
   run: RunRecord;
 }

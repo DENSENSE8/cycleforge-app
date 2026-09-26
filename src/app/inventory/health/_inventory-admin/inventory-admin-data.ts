@@ -47,7 +47,7 @@ export interface RecentEventRow {
   actor_name: string | null;
 }
 
-export interface GtinCoverageRow {
+interface GtinCoverageRow {
   total: number;
   with_gtin: number;
   without_gtin: number;
@@ -222,7 +222,7 @@ async function loadRecentEvents(): Promise<RecentEventRow[]> {
   }
 }
 
-export interface InventoryAdminData {
+interface InventoryAdminData {
   flags: FlagRow[];
   schema: SchemaRow[];
   backfill: BackfillRow | null;

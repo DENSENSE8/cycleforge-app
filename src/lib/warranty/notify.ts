@@ -4,7 +4,7 @@ import pool from '@/lib/db';
 import { publishWarrantyClaimNotification } from '@/lib/realtime/publish';
 import type { WarrantyClaimDetail } from './types';
 
-export type WarrantyNotifyEvent =
+type WarrantyNotifyEvent =
   | 'submitted'
   | 'approved'
   | 'denied'

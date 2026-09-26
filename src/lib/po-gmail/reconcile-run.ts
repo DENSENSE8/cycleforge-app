@@ -15,10 +15,10 @@ import { linkTrackingToPo } from '@/lib/po-gmail/link-tracking';
 
 export const DEFAULT_LIMIT = 25;
 // Cap on the per-call scan window.
-export const MAX_LIMIT = 200;
+const MAX_LIMIT = 200;
 const BODY_PREVIEW_CHARS = 800;
 
-export interface ReconcileItem {
+interface ReconcileItem {
   id: string;
   threadId: string;
   subject: string;
@@ -40,7 +40,7 @@ export interface ReconcileItem {
   delivered: boolean;
 }
 
-export interface ReconcilePersisted {
+interface ReconcilePersisted {
   upserted: number;
   resolved: number;
   delivery_signals: number;
@@ -51,7 +51,7 @@ export interface ReconcilePersisted {
   tracking_rejected: number;
 }
 
-export interface ReconcileRunResult {
+interface ReconcileRunResult {
   query: string;
   limit: number;
   counts: { missing: number; in_zoho: number; received: number; no_match: number };
@@ -60,7 +60,7 @@ export interface ReconcileRunResult {
   items: ReconcileItem[];
 }
 
-export interface ReconcileRunOpts {
+interface ReconcileRunOpts {
   /** Per-call scan window. Clamped to [1, MAX_LIMIT]. */
   limit?: number;
   /** Gmail search query. Defaults to unread. */

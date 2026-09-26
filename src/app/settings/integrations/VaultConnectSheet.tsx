@@ -20,7 +20,7 @@ import type { ConfiguredFieldHint } from '@/lib/integrations/credential-payload'
 import { CredentialField } from './CredentialField';
 import { FIELD_INPUT_CLS } from './form-styles';
 
-export interface VaultConnectSheetProps {
+interface VaultConnectSheetProps {
   provider: string;
   providerLabel: string;
   onClose: () => void;

@@ -7,7 +7,7 @@
 
 import { createContext, useContext, useMemo, type ReactNode } from 'react';
 
-export interface DeskStageValue {
+interface DeskStageValue {
   fullscreen: boolean;
   toggleFullscreen: () => void;
 }

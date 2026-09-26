@@ -24,7 +24,7 @@ import {
 } from './admin-holds-table-definition';
 import { useAdminHoldsTableLayout } from './useAdminHoldsTableLayout';
 
-export interface UseAdminHoldsSpreadsheetOptions {
+interface UseAdminHoldsSpreadsheetOptions {
   /** The feed. Already ordered by the server; a header click re-orders it. */
   rows: readonly HeldUnitRow[];
   loading?: boolean;

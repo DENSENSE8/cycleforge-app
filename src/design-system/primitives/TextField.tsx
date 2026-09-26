@@ -29,7 +29,7 @@ const flushFieldClass = {
   focusLabel: 'peer-focus:text-text-default',
 };
 
-export interface TextFieldProps
+interface TextFieldProps
   extends Omit<InputHTMLAttributes<HTMLInputElement>, 'value' | 'onChange' | 'size'> {
   /** Floating label. */
   label: string;

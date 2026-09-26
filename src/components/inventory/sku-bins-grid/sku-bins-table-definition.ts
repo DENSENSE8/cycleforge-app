@@ -32,7 +32,7 @@ export const SKU_BINS_GRID_CAPABILITIES: GridSurfaceCapabilities = {
 };
 
 /** Build the descriptor from a RESOLVED column list (post-visibility), so `contentMinWidthRem` and the TanStack defs follow the tracks that… */
-export function makeSkuBinsGridDescriptor(
+function makeSkuBinsGridDescriptor(
   columns: readonly SlotTableColumn[],
 ): GridSurfaceDescriptor<SkuBinTableRow, SlotTableColumn> {
   return makeGridSurfaceDescriptor<SkuBinTableRow, SlotTableColumn>(
@@ -51,7 +51,7 @@ export function makeSkuBinsGridDescriptor(
  * Validated at module load: a definition that violates a structural law throws
  * here rather than painting a broken grid.
  */
-export const SKU_BINS_TABLE_DEFINITION = parseTableDefinition({
+const SKU_BINS_TABLE_DEFINITION = parseTableDefinition({
   id: 'sku-bins.sku',
   tableId: 'sku-bins',
   entityFamily: 'sku-bins',

@@ -1,7 +1,7 @@
 /** ONE BRANCH PER ENVIRONMENT — the check, as a pure function. */
 
 /** Every env var that names a Postgres host for this app or its tooling. */
-export const BRANCH_ENV_VARS = [
+const BRANCH_ENV_VARS = [
   'DATABASE_URL',
   'DATABASE_URL_UNPOOLED',
   'TENANT_APP_DATABASE_URL',

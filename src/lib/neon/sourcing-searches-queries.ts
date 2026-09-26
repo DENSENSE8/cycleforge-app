@@ -4,7 +4,7 @@ import type { OrgId } from '@/lib/tenancy/constants';
 
 /** Standing (saved) sourcing searches — the scour watcher's work-list. */
 
-export interface SourcingSearchRow {
+interface SourcingSearchRow {
   id: number;
   sku_id: number | null;
   sourcing_alert_id: number | null;
@@ -22,7 +22,7 @@ export interface SourcingSearchRow {
   updated_at: string;
 }
 
-export interface SourcingSearchListRow extends SourcingSearchRow {
+interface SourcingSearchListRow extends SourcingSearchRow {
   sku: string | null;
   product_title: string | null;
 }
@@ -69,7 +69,7 @@ export async function getSourcingSearchById(id: number, orgId?: OrgId): Promise<
   return result.rows[0] ?? null;
 }
 
-export interface CreateSourcingSearchInput {
+interface CreateSourcingSearchInput {
   query: string;
   label?: string | null;
   skuId?: number | null;

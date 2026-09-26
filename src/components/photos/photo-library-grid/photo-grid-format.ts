@@ -12,9 +12,9 @@ import {
 } from '@/lib/photos/display-names';
 
 /** @deprecated Use {@link UNLINKED_PHOTO_GROUP_KEY} from display-names. */
-export const UNLINKED_TICKET_KEY = UNLINKED_PHOTO_GROUP_KEY;
+const UNLINKED_TICKET_KEY = UNLINKED_PHOTO_GROUP_KEY;
 
-export interface TicketGroup {
+interface TicketGroup {
   key: string;
   /** Display label for the ticket header (the ticket number, or "Unlinked"). */
   label: string;

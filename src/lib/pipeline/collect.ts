@@ -37,7 +37,7 @@ export async function collectTrainingPair(input: TrainingPairInput): Promise<num
 // ─── Git Commit Collector ────────────────────────────────────
 
 /** Extract a training pair from a git commit. */
-export async function collectFromCommit(data: {
+async function collectFromCommit(data: {
   message: string;
   diff: string;
   files: string[];
@@ -73,7 +73,7 @@ export async function collectFromCommit(data: {
  * Collect a training pair from an interactive AI chat session.
  * Called when a user accepts or rates an AI response in the USAV chat UI.
  */
-export async function collectFromChat(data: {
+async function collectFromChat(data: {
   userMessage: string;
   assistantResponse: string;
   accepted: boolean;

@@ -5,7 +5,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import type { RSRecord } from '@/lib/neon/repair-service-queries';
 import { applyRepairInfoDraft, repairInfoPlan, type RepairInfoDraft } from '@/lib/repair/repair-info-edit';
 
-export type RepairInfoSaveResult = { error: string | null; saved: string[] };
+type RepairInfoSaveResult = { error: string | null; saved: string[] };
 
 /** The one information write: */
 export function useRepairInfoSave(

@@ -5,7 +5,7 @@ import type { ReceiveIntent } from './line-edit/hooks/useReceiveAction';
 /** Past this, "still working" is itself a fact worth showing. */
 export const SLOW_RECEIVE_MS = 6_000;
 
-export type ReceivePhaseInput = {
+type ReceivePhaseInput = {
   intent: ReceiveIntent;
   /** Wall-clock ms since the POST left. */
   elapsedMs: number;

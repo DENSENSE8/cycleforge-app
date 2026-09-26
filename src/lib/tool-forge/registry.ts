@@ -6,7 +6,7 @@ import type { OrgId } from '@/lib/tenancy/constants';
 import type { PoolClient } from 'pg';
 import type { ToolRegistryStatus } from './constants';
 
-export interface RegisterToolInput {
+interface RegisterToolInput {
   toolKey: string;
   name: string;
   /** What the tool DOES — this is the match text, so write it for a reader. */
@@ -16,7 +16,7 @@ export interface RegisterToolInput {
   createdByStaffId?: number | null;
 }
 
-export interface ToolRegistryDeps {
+interface ToolRegistryDeps {
   embed: (texts: string[]) => Promise<number[][]>;
   tx: <T>(orgId: OrgId, fn: (client: PoolClient) => Promise<T>) => Promise<T>;
 }
@@ -26,7 +26,7 @@ const defaultDeps: ToolRegistryDeps = {
   tx: withTenantTransaction,
 };
 
-export interface RegisterToolResult {
+interface RegisterToolResult {
   id: number;
   embedded: boolean;
   /** Why the embedding is missing, when it is. */

@@ -9,7 +9,7 @@ import {
 } from '@/lib/keyboard/wedge-scan-machine';
 
 /** React mount adapter for the HID wedge listener SoT ({@link attachWedgeKeyListener} / {@link createWedgeKeyListener}). */
-export interface UseWedgeScannerOptions {
+interface UseWedgeScannerOptions {
   /** Called when a complete scan buffer is committed (after a main-thread yield). */
   onScan: (value: string) => void;
   /** Inter-key gap that classifies fast-typed input as a scan. Default 50ms. */

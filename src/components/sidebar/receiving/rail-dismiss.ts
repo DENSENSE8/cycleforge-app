@@ -15,7 +15,7 @@ export const RAIL_ENTRY_RESTORED_EVENT = 'receiving-entry-restored';
 export const RAIL_LINE_RESTORED_EVENT = 'receiving-line-restored';
 
 /** What a dismiss actually removed, so an Undo can un-suppress exactly the same ids. */
-export interface RailDismissEcho {
+interface RailDismissEcho {
   /** Carton ids echoed on `receiving-entry-deleted`. */
   cartonIds: number[];
   /** Line ids echoed on `receiving-line-deleted`. */

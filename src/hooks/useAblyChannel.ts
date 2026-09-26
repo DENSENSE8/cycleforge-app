@@ -4,7 +4,7 @@ import { useEffect, useRef } from 'react';
 import { useAblyClient } from '@/contexts/AblyContext';
 import { createFrameCoalescer } from '@/lib/perf/coalesce-frame';
 
-export interface UseAblyChannelOptions {
+interface UseAblyChannelOptions {
   /** `frame` collapses a burst of messages into one handler call per animation frame (last-wins). */
   coalesce?: 'none' | 'frame';
 }

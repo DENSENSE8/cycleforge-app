@@ -31,7 +31,7 @@ export function receivingStateTone(status: string | null | undefined): CompoundS
   return 'neutral';
 }
 
-export interface ReceivingCompoundParts {
+interface ReceivingCompoundParts {
   /** Resolved display title (the caller already owns catalog-vs-vendor choice). */
   title: string;
   /** Resolved stage name for this surface's vocabulary (fine vs coarse). */

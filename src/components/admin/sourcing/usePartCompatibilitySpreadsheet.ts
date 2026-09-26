@@ -24,7 +24,7 @@ import {
 } from './part-compatibility-table-definition';
 import { usePartCompatibilityTableLayout } from './usePartCompatibilityTableLayout';
 
-export interface UsePartCompatibilitySpreadsheetOptions {
+interface UsePartCompatibilitySpreadsheetOptions {
   rows: readonly PartCompatibilityEdgeRow[];
   loading?: boolean;
   emptyMessage?: string;

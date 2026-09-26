@@ -7,16 +7,16 @@ export function isEmptyDisplayValue(value: string | null | undefined): boolean {
 }
 
 /** Empty-state label for missing marketplace item # in station / up-next cards. */
-export function missingItemNumberLabel(
+function missingItemNumberLabel(
   _orderId: string,
   _accountSource: string | null | undefined,
 ): string {
   return '—';
 }
 
-export type StationOrderVariant = 'order' | 'fba' | 'repair';
+type StationOrderVariant = 'order' | 'fba' | 'repair';
 
-export function missingItemNumberLabelForStation(
+function missingItemNumberLabelForStation(
   _orderId: string,
   _variant: StationOrderVariant,
   _accountSource?: string | null,

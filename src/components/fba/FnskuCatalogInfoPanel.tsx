@@ -16,7 +16,7 @@ export interface FnskuCatalogMeta {
   asin: string;
 }
 
-export interface FnskuCatalogInfoPanelProps {
+interface FnskuCatalogInfoPanelProps {
   fnsku: string;
   productTitle?: string | null;
   condition?: string | null;

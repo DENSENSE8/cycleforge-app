@@ -58,7 +58,7 @@ export async function loadRepairAction(orgId: OrgId, id: number): Promise<Repair
   return res.rows[0] ?? null;
 }
 
-export type CreateRepairActionResult =
+type CreateRepairActionResult =
   | { ok: true; action: RepairActionRecord }
   | { ok: false; status: 400 | 404 | 409; error: string };
 

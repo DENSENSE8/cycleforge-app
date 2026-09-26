@@ -55,7 +55,7 @@ function num(value: unknown, fallback = 1): number {
   return Number.isFinite(n) && n > 0 ? n : fallback;
 }
 
-export interface ShipmentTracking {
+interface ShipmentTracking {
   trackingNumber: string | null;
   carrierCode: string | null;
 }
@@ -158,7 +158,7 @@ export function mapTradingOrdersToBuyerLines(orders: unknown): BuyerPurchaseLine
   return out;
 }
 
-export interface ParsedGetOrdersResponse {
+interface ParsedGetOrdersResponse {
   ack: string | null;
   hasMoreOrders: boolean;
   pageNumber: number;
@@ -491,7 +491,7 @@ export async function fetchBuyerPurchaseOrders(
  * Enrich a known purchase-order id via Buy Order API getPurchaseOrder.
  * Requires buy.order.readonly on the buyer token.
  */
-export async function fetchBuyerPurchaseOrderById(
+async function fetchBuyerPurchaseOrderById(
   orgId: OrgId,
   account: BuyerAccountRef,
   purchaseOrderId: string,

@@ -25,7 +25,7 @@ import { DateRangePickerPill } from '@/components/ui/DateRangeHeader';
 import { formatWeekRangeCompact, toPSTDateKey } from '@/utils/date';
 
 /** `StationHistoryTable<T>` — the Tech / Packer bench history desk. */
-export interface StationHistoryTableProps<T> {
+interface StationHistoryTableProps<T> {
   loading: boolean;
   weekRange: WeekRange;
   weekOffset: number;

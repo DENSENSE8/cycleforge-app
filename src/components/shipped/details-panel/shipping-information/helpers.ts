@@ -5,7 +5,7 @@ import { getStaffName } from '@/utils/staff';
 import { parseSerialRows } from '../serial-helpers';
 import type { EditableShippingFields, FlatTrackingRow, TrackingRow } from './types';
 
-export function normalizeTrackingRows(raw: unknown): TrackingRow[] {
+function normalizeTrackingRows(raw: unknown): TrackingRow[] {
   if (!Array.isArray(raw)) return [];
   const out: TrackingRow[] = [];
   for (const row of raw) {
@@ -27,7 +27,7 @@ export function normalizeTrackingRows(raw: unknown): TrackingRow[] {
  * Build a single flat list of ALL tracking numbers for this order.
  * No primary vs secondary distinction — just Tracking 1, 2, 3, etc.
  */
-export function buildAllTrackingRows(
+function buildAllTrackingRows(
   shipped: ShippedOrder,
   editableShippingFields?: EditableShippingFields,
 ): FlatTrackingRow[] {
@@ -65,7 +65,7 @@ export function buildAllTrackingRows(
   return out;
 }
 
-export function serialNumberRowsFromShipped(shipped: ShippedOrder): string[] {
+function serialNumberRowsFromShipped(shipped: ShippedOrder): string[] {
   return parseSerialRows(shipped.serial_number)
     .map((row) => row.trim())
     .filter(Boolean);
@@ -91,7 +91,7 @@ export function findDuplicateTrackingInDraft(
   return null;
 }
 
-export interface ShippingDisplayMeta {
+interface ShippingDisplayMeta {
   daysLate: number;
   /** Packed timestamp source (pack-activity preferred over packed_at), or null. */
   packedAtSource: string | null;

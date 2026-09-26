@@ -15,7 +15,7 @@ function resolve<T>(slot: PerRecord<T> | undefined, record: T | null): ReactNode
 }
 
 /** The mobile detail bar's slots. `meta` / `right` may read the live record. */
-export interface DetailRecordBar<T> {
+interface DetailRecordBar<T> {
   title: string;
   mono?: boolean;
   subtitle?: ReactNode;
@@ -28,7 +28,7 @@ export interface DetailRecordBar<T> {
 }
 
 /** The three honest non-record states every entity screen shares. */
-export interface DetailRecordState {
+interface DetailRecordState {
   loading: boolean;
   /** A failed read — rose face, with Retry when `onRetry` is given. */
   error?: string | null;

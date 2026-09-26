@@ -7,7 +7,7 @@ import type { LabelTone } from '@/lib/labels/types';
 export type TechHistoryLane = 'TODAY' | 'THIS_WEEK' | 'FBA';
 export type TechLaneIconKey = 'clock' | 'calendar' | 'package';
 
-export interface TechLaneDescriptor {
+interface TechLaneDescriptor {
   id: TechHistoryLane;
   iconKey: TechLaneIconKey;
   iconClass: string;
@@ -20,7 +20,7 @@ export const TECH_HISTORY_BOARD_LANES: readonly TechLaneDescriptor[] = [
   { id: 'FBA', iconKey: 'package', iconClass: 'text-orange-500' },
 ];
 
-export interface TechLaneMeta {
+interface TechLaneMeta {
   label: string;
   description: string;
   tone: LabelTone;
@@ -34,7 +34,7 @@ export const TECH_HISTORY_STATE_META: Record<TechHistoryLane, TechLaneMeta> = {
 };
 
 /** Minimal structural input — the fields the bucket reads (decoupled from TechRecord). */
-export interface TechLaneInput {
+interface TechLaneInput {
   created_at?: string | null;
   account_source?: string | null;
   source_kind?: string | null;

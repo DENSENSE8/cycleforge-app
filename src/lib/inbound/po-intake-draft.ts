@@ -2,7 +2,7 @@
 
 export type PoIntakeConfidence = 'high' | 'medium' | 'low';
 
-export type PoIntakeFieldConfidence = {
+type PoIntakeFieldConfidence = {
   value: string;
   confidence: PoIntakeConfidence;
 };
@@ -37,7 +37,7 @@ export type PoIntakeMissingField =
   | 'tracking_number'
   | 'empty_lines';
 
-export const EMPTY_PO_INTAKE_LINE = (): PoIntakeLineDraft => ({
+const EMPTY_PO_INTAKE_LINE = (): PoIntakeLineDraft => ({
   sku: '',
   itemName: '',
   quantity: '',
@@ -171,7 +171,7 @@ export function applyPoIntakeReply(
   return next;
 }
 
-export type PoIntakeImportBody = {
+type PoIntakeImportBody = {
   kind: 'purchase';
   source_type: string;
   source_platform: string | null;

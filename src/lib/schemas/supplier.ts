@@ -56,5 +56,5 @@ export const SupplierUpdateBody = z
     message: 'At least one field must be provided',
   });
 
-export type SupplierCreateInput = z.infer<typeof SupplierCreateBody>;
-export type SupplierUpdateInput = z.infer<typeof SupplierUpdateBody>;
+type SupplierCreateInput = z.infer<typeof SupplierCreateBody>;
+type SupplierUpdateInput = z.infer<typeof SupplierUpdateBody>;

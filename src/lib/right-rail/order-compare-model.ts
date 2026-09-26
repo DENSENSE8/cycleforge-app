@@ -7,7 +7,7 @@ import { toPSTDateKey } from '@/utils/date';
  * (mono for `id`, `tabular-nums` for `qty` / `date`, …); the model uses it only
  * to pick the comparison rule.
  */
-export type CompareFactKind = 'id' | 'text' | 'condition' | 'platform' | 'date' | 'qty';
+type CompareFactKind = 'id' | 'text' | 'condition' | 'platform' | 'date' | 'qty';
 
 /** The row fields the compare pane reads. */
 export interface OrderCompareRow {
@@ -27,7 +27,7 @@ export interface OrderCompareRow {
   deadline_at?: string | null;
 }
 
-export interface OrderCompareFact {
+interface OrderCompareFact {
   key: string;
   label: string;
   kind: CompareFactKind;

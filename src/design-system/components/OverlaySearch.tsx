@@ -3,7 +3,7 @@
 import { useRef, type ReactNode } from 'react';
 import { motion, AnimatePresence } from '@/design-system/motion';
 
-export interface OverlaySearchProps {
+interface OverlaySearchProps {
   /** Whether the search input is visible */
   isOpen: boolean;
   /** Toggle callback */
@@ -24,7 +24,7 @@ export interface OverlaySearchProps {
 }
 
 /** Animated toggle between a trigger element and a search input. */
-export function OverlaySearch({
+function OverlaySearch({
   isOpen,
   onToggle,
   trigger,

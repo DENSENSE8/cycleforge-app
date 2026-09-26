@@ -1,7 +1,7 @@
 /** Part-SKU grammar — the single source of truth for classifying a Zoho `items` SKU as a "part" and decomposing its suffix tokens. */
 
 /** Canonical color codes → labels. GR and GY both mean Gray. */
-export const PART_COLORS = {
+const PART_COLORS = {
   BK: 'Black',
   WH: 'White',
   GR: 'Gray',
@@ -9,15 +9,15 @@ export const PART_COLORS = {
 } as const;
 
 /** Canonical condition codes → labels. */
-export const PART_CONDITIONS = {
+const PART_CONDITIONS = {
   N: 'New',
   U: 'Used',
 } as const;
 
-export type PartColorCode = keyof typeof PART_COLORS;
-export type PartConditionCode = keyof typeof PART_CONDITIONS;
+type PartColorCode = keyof typeof PART_COLORS;
+type PartConditionCode = keyof typeof PART_CONDITIONS;
 
-export interface ParsedPartSku {
+interface ParsedPartSku {
   /** The trimmed input, as given. */
   raw: string;
   /** True when the SKU carries the `-P` part flag. */

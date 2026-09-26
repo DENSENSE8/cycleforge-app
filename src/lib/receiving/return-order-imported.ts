@@ -4,14 +4,14 @@
  * third toast wording, no second item_name mapping.
  */
 
-export type ReturnOrderImported = {
+type ReturnOrderImported = {
   orderId: string;
   productTitle?: string | null;
   sku?: string | null;
   platform?: string | null;
 };
 
-export type ReturnOrderLineFill = {
+type ReturnOrderLineFill = {
   receiving_type: 'RETURN';
   source_order_id: string;
   zoho_purchaseorder_number: string;

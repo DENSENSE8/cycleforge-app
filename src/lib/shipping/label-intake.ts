@@ -15,9 +15,9 @@ import type { LabelCreationType, LabelLedgerStatus, LabelPurpose } from '@/lib/s
 import type { Parcel, RateQuoteResult, ShipAddress, ShipmentSpec } from '@/lib/shipping/shipstation/types';
 
 /** The purposes the intake buys — outbound labels belong to the To-ship run. */
-export type IntakePurpose = Extract<LabelPurpose, 'return' | 'replacement'>;
+type IntakePurpose = Extract<LabelPurpose, 'return' | 'replacement'>;
 
-export interface LabelIntakeOrder {
+interface LabelIntakeOrder {
   id: number;
   orderRef: string;
   title: string | null;
@@ -27,14 +27,14 @@ export interface LabelIntakeOrder {
   customerName: string | null;
 }
 
-export interface LabelIntakeParcel {
+interface LabelIntakeParcel {
   weightOz: number | null;
   lengthIn: number | null;
   widthIn: number | null;
   heightIn: number | null;
 }
 
-export interface LabelIntakeLabel {
+interface LabelIntakeLabel {
   id: number;
   purpose: LabelPurpose;
   status: LabelLedgerStatus;
@@ -51,7 +51,7 @@ export interface LabelIntakeLabel {
   printable: boolean;
 }
 
-export interface LabelIntakeLookup {
+interface LabelIntakeLookup {
   ref: string;
   order: LabelIntakeOrder | null;
   shipTo: ShipAddress | null;
@@ -94,7 +94,7 @@ function round1(n: number): number {
 }
 
 /** The engine parcel → the intake's ounces / inches vocabulary. */
-export function intakeParcelFrom(parcel: Parcel): LabelIntakeParcel {
+function intakeParcelFrom(parcel: Parcel): LabelIntakeParcel {
   const toIn = parcel.dimensions?.unit === 'centimeter' ? 1 / 2.54 : 1;
   return {
     weightOz: round1(parcel.weight.value * OUNCES[parcel.weight.unit]),
@@ -214,7 +214,7 @@ export async function lookupLabelIntake(orgId: OrgId, rawRef: string): Promise<L
 }
 
 /** The customer ↔ warehouse shipment for a reference-only label. */
-export async function referenceShipmentSpec(
+async function referenceShipmentSpec(
   orgId: OrgId,
   input: { purpose: IntakePurpose; customer: ShipAddress; parcel: Parcel },
 ): Promise<ShipmentSpec> {
@@ -236,7 +236,7 @@ export async function rateReferenceLabel(
   return v2.getRates(spec);
 }
 
-export interface ReferencePurchaseInput {
+interface ReferencePurchaseInput {
   ref: string;
   purpose: IntakePurpose;
   rateId: string;

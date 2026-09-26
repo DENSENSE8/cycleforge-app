@@ -194,7 +194,7 @@ export async function resolveOrgAnthropicBrain(
 }
 
 /** Cheap capability check for hot paths (skip the semantic arm entirely). */
-export async function isOrgAiConfigured(
+async function isOrgAiConfigured(
   orgId: OrgId,
   capability: AiCapability,
   deps: OrgAiDeps = defaultDeps,

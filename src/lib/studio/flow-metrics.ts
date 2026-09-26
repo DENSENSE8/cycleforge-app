@@ -80,7 +80,7 @@ export interface StudioFlowResponse {
 
 const FAIL_PORTS = new Set(['fail', 'error']);
 
-export interface AssembleFlowInput {
+interface AssembleFlowInput {
   nodes: FlowNodeRef[];
   edges: FlowEdgeRef[];
   dwellByType: DwellByType[];

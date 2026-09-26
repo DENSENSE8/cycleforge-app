@@ -67,7 +67,7 @@ export function optimisticallyRemoveOrderRows(
   };
 }
 
-export function optimisticallyRemoveOrderRow(
+function optimisticallyRemoveOrderRow(
   queryClient: QueryClient,
   orderId: number,
 ): () => void {

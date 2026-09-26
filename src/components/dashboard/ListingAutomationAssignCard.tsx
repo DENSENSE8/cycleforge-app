@@ -8,7 +8,7 @@ import { Button } from '@/design-system/primitives';
 import { StaffButtonGrid, type StaffOption } from '@/components/shipping/StaffButtonGrid';
 
 /** One rule key; sku null = item-#-only rule covering every SKU on that listing. */
-export type ListingAutomationListing = {
+type ListingAutomationListing = {
   itemNumber: string;
   sku: string | null;
   orderCount: number;
@@ -24,7 +24,7 @@ type PreviewState =
     }
   | { status: 'error'; message: string };
 
-export interface ListingAutomationAssignCardProps {
+interface ListingAutomationAssignCardProps {
   orderIds: number[];
   technicianOptions: StaffOption[];
   packerOptions: StaffOption[];

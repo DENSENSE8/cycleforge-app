@@ -23,7 +23,7 @@ import {
 } from '@/lib/shipping/order-inspector-topics';
 import { cn } from '@/utils/_cn';
 
-export interface ShippedDetailsBodyProps {
+interface ShippedDetailsBodyProps {
   context: NonNullable<'dashboard' | 'queue' | 'fulfillment' | 'labels' | 'staged' | 'shipped' | 'station' | 'packer' | 'packed'>;
   /** The ONE descriptor this body reads for plane availability — documents mode, record CTAs, dispatch extras, delete, editor dock. */
   inspectorContext: OrderInspectorContext;

@@ -52,7 +52,7 @@ export interface OrderLabelSummaryDeps {
   readLabels(orgId: OrgId, orderId: number): Promise<OrderLabelEntry[]>;
 }
 
-export function deriveOrderLabelStatus(facts: {
+function deriveOrderLabelStatus(facts: {
   purchaseStatus: LabelPurchaseStatus | null;
   labelLinked: boolean;
   labelBoughtDocument: boolean;
@@ -64,7 +64,7 @@ export function deriveOrderLabelStatus(facts: {
   return 'none';
 }
 
-export function summaryFromRow(row: OrderLabelRow, labels: OrderLabelEntry[] = []): OrderLabelSummary {
+function summaryFromRow(row: OrderLabelRow, labels: OrderLabelEntry[] = []): OrderLabelSummary {
   const purchase: OrderLabelPurchase | null = row.purchase_status
     ? {
         status: row.purchase_status,
@@ -134,7 +134,7 @@ const ORDER_LABEL_SQL = `
   LIMIT 1
 `;
 
-export const defaultOrderLabelSummaryDeps: OrderLabelSummaryDeps = {
+const defaultOrderLabelSummaryDeps: OrderLabelSummaryDeps = {
   readRow: async (orgId, orderId) => {
     const res = await tenantQuery<OrderLabelRow>(orgId, ORDER_LABEL_SQL, [orderId, orgId]);
     return res.rows[0] ?? null;

@@ -5,7 +5,7 @@ import { ChevronLeft, ChevronRight } from '@/components/Icons';
 import { cn } from '@/utils/_cn';
 
 /** Tailwind-styled wrapper around react-day-picker (v10) — the single calendar primitive for the app, in every selection mode. */
-export type CalendarProps = DayPickerProps & { className?: string };
+type CalendarProps = DayPickerProps & { className?: string };
 
 export function Calendar({ className, classNames, components, ...props }: CalendarProps) {
   return (

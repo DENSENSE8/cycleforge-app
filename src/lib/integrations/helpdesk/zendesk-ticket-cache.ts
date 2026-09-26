@@ -5,7 +5,7 @@
 import { getOrSet, invalidateCacheTags } from '@/lib/cache/upstash-cache';
 import type { OrgId } from '@/lib/tenancy/constants';
 
-export const ZENDESK_CACHE_NS = 'zendesk';
+const ZENDESK_CACHE_NS = 'zendesk';
 
 /** Bundle payload TTL — stale-while-revalidate window for ticket detail. */
 const ZENDESK_BUNDLE_TTL_SEC = 90;
@@ -21,7 +21,7 @@ export async function invalidateZendeskTicketCache(orgId: OrgId, ticketId: numbe
   await invalidateCacheTags(orgId, zendeskTicketCacheTags(ticketId));
 }
 
-export function zendeskBundleCacheKey(ticketId: number): string {
+function zendeskBundleCacheKey(ticketId: number): string {
   return `bundle:${ticketId}`;
 }
 

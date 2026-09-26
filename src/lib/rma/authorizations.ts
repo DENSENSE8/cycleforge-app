@@ -57,7 +57,7 @@ export interface RmaAuthorizationRow {
   notes: string | null;
 }
 
-export interface CreateAuthorizationInput {
+interface CreateAuthorizationInput {
   direction: RmaDirection;
   orderId?: number | null;
   customerId?: number | null;
@@ -67,7 +67,7 @@ export interface CreateAuthorizationInput {
   notes?: string | null;
 }
 
-export type CreateAuthorizationResult =
+type CreateAuthorizationResult =
   | { ok: true; rma: RmaAuthorizationRow }
   | { ok: false; status: 409 | 500; error: string };
 
@@ -172,7 +172,7 @@ export async function createAuthorization(
 
 // ─── Lifecycle ───────────────────────────────────────────────────────────────
 
-export type MarkReceivedResult =
+type MarkReceivedResult =
   | { ok: true }
   | { ok: false; status: 404 | 409; error: string };
 
@@ -203,7 +203,7 @@ export async function markReceived(
   return { ok: true };
 }
 
-export interface RecordDispositionInput {
+interface RecordDispositionInput {
   rmaId: number | null;
   serialUnitId: number | null;
   dispositionCode: DispositionCode;
@@ -213,7 +213,7 @@ export interface RecordDispositionInput {
   organizationId: OrgId;
 }
 
-export type RecordDispositionResult =
+type RecordDispositionResult =
   | {
       ok: true;
       dispositionId: number;
@@ -520,7 +520,7 @@ function dispositionToPort(
   return null;
 }
 
-export type CloseAuthorizationResult = { ok: true } | { ok: false; status: 404 | 409; error: string };
+type CloseAuthorizationResult = { ok: true } | { ok: false; status: 404 | 409; error: string };
 
 export async function closeAuthorization(
   input: { rmaId: number },
@@ -584,7 +584,7 @@ export async function listOpen(
   return rows.map((r) => mapRow(r as never));
 }
 
-export interface DispositionBacklogRow {
+interface DispositionBacklogRow {
   serialUnitId: number;
   serialNumber: string;
   sku: string | null;
@@ -647,14 +647,14 @@ export async function findById(
 
 // ─── Record-level update / cancel ─────────────────────────────────────────────
 
-export interface UpdateAuthorizationInput {
+interface UpdateAuthorizationInput {
   rmaId: number;
   expectedCarrier?: string | null;
   expiresAt?: string | null;
   notes?: string | null;
 }
 
-export type UpdateAuthorizationResult =
+type UpdateAuthorizationResult =
   | { ok: true; rma: RmaAuthorizationRow }
   | { ok: false; status: 404; error: string };
 
@@ -685,7 +685,7 @@ export async function updateAuthorization(
   return { ok: true, rma: mapRow(rows[0] as never) };
 }
 
-export type CancelAuthorizationResult =
+type CancelAuthorizationResult =
   | { ok: true; rma: RmaAuthorizationRow }
   | { ok: false; status: 404 | 409; error: string };
 

@@ -39,13 +39,13 @@ export function setReceivingHistoryUrlParams(
   return next;
 }
 
-export interface ReceivingHistoryFieldConfig {
+interface ReceivingHistoryFieldConfig {
   id: ReceivingHistorySearchField;
   label: string;
   placeholder: string;
 }
 
-export const RECEIVING_HISTORY_SEARCH_FIELDS: ReceivingHistoryFieldConfig[] = [
+const RECEIVING_HISTORY_SEARCH_FIELDS: ReceivingHistoryFieldConfig[] = [
   {
     id: 'all',
     label: 'All',
@@ -125,7 +125,7 @@ export function parseReceivingHistorySearchScopeWire(raw: string): string | null
   return null;
 }
 
-export function getReceivingHistoryPlaceholder(field: ReceivingHistorySearchField): string {
+function getReceivingHistoryPlaceholder(field: ReceivingHistorySearchField): string {
   return FIELD_MAP[field]?.placeholder ?? FIELD_MAP.all.placeholder;
 }
 

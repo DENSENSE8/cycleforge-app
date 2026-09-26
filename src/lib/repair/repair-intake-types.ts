@@ -11,7 +11,7 @@ export const CONTACT_FIELDS: readonly ContactFieldKey[] = [
 
 export type RepairIntakeStepKey = 'product' | 'issue' | 'contact' | 'review';
 
-export const REPAIR_INTAKE_STEPS: ReadonlyArray<{
+const REPAIR_INTAKE_STEPS: ReadonlyArray<{
   key: RepairIntakeStepKey;
   label: string;
   /** Compact chrome-row label — fits the single-row intake header. */

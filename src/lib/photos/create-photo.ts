@@ -3,7 +3,7 @@ import { photoContentUrl } from './display-url';
 import type { PhotoAspect } from './photo-aspects';
 import type { PhotoEntityType, PhotoLinkRole } from './types';
 
-export interface InsertPhotoCatalogInput {
+interface InsertPhotoCatalogInput {
   organizationId: string;
   staffId: number | null;
   photoType?: string | null;

@@ -18,7 +18,7 @@ export type {
 export { CLAIM_TYPE_LABEL } from '@/lib/receiving-claim-type';
 export { buildClaimSubject, type ClaimSubjectParts } from '@/lib/zendesk-claim-subject';
 
-export const CLAIM_SEVERITY_LABEL: Record<ClaimSeverity, string> = {
+const CLAIM_SEVERITY_LABEL: Record<ClaimSeverity, string> = {
   low: 'Low',
   medium: 'Medium',
   high: 'High',
@@ -36,7 +36,7 @@ function formatUnboxedAt(value: string | Date | null | undefined): string | null
   });
 }
 
-export interface ClaimTemplateInput {
+interface ClaimTemplateInput {
   receivingId: number;
   lineId?: number | null;
   claimType: ClaimType;
@@ -47,7 +47,7 @@ export interface ClaimTemplateInput {
   listingUrl?: string;
 }
 
-export interface ClaimTemplateResult {
+interface ClaimTemplateResult {
   subject: string;
   description: string;
   /**

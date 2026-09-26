@@ -5,7 +5,7 @@ import type { SubstitutionPolicy } from '@/lib/tech/substitution-eligibility';
 
 /** Org fulfillment-substitution policy for the station surfaces — GET /api/fulfillment/substitution-policy (flag + enforcement + allowed… */
 
-export const substitutionPolicyKey = ['substitution-policy'] as const;
+const substitutionPolicyKey = ['substitution-policy'] as const;
 
 const DISABLED_POLICY: SubstitutionPolicy = {
   enabled: false,

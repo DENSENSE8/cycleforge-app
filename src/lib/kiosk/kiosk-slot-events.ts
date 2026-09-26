@@ -7,7 +7,7 @@ import type {
   KioskSlotHardwareSnapshot,
 } from '@/lib/kiosk/kiosk-slot-event-row';
 
-export interface InsertKioskSlotEventInput {
+interface InsertKioskSlotEventInput {
   kioskDeviceId: number;
   slotKey: string;
   fromState: string;
@@ -74,7 +74,7 @@ export async function listKioskSlotEvents(
 }
 
 /** Runtime emit waist — lane transitions call this; never a Revoke path. */
-export async function insertKioskSlotEvent(
+async function insertKioskSlotEvent(
   orgId: OrgId,
   input: InsertKioskSlotEventInput,
 ): Promise<KioskSlotEventTableRow> {

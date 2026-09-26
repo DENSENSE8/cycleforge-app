@@ -6,7 +6,7 @@ import { BINS_SHEET_COLUMNS, type BinsGridColumn } from './bins-grid-layout';
 import { parseTableDefinition } from '@/lib/tables/table-definition';
 import { BINS_GRID_CAPABILITIES, makeBinsGridDescriptor } from './bins-grid-descriptor';
 
-export const BINS_TABLE_DEFINITION = parseTableDefinition({
+const BINS_TABLE_DEFINITION = parseTableDefinition({
   id: 'warehouse.bins',
   tableId: 'bins',
   entityFamily: 'bins',

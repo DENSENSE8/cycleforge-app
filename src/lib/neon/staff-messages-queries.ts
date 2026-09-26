@@ -4,7 +4,7 @@ import { tenantQuery, withTenantTransaction } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';
 import type { StaffMessageKind } from '@/lib/schemas/staff-messages';
 
-export interface StaffMessageRow {
+interface StaffMessageRow {
   id: number;
   senderId: number;
   senderName: string;
@@ -104,7 +104,7 @@ export async function createStaffMessage(args: {
 }
 
 /** One message, scoped to its recipient (the only person allowed to read it). */
-export async function getStaffMessage(
+async function getStaffMessage(
   organizationId: OrgId,
   recipientId: number,
   id: number,

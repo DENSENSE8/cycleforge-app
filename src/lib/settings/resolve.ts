@@ -12,7 +12,7 @@ import type {
 
 type Features = Entitlements['features'];
 
-export interface ResolveContext {
+interface ResolveContext {
   orgSettings: Record<string, unknown>;
   staffPrefs: Record<string, unknown>;
   features: Features;
@@ -86,6 +86,6 @@ export function resolveSetting(def: SettingDef, ctx: ResolveContext): ResolvedSe
   return { key: def.key, value, orgValue: orgResolved, source, locked: false, lockedOptions };
 }
 
-export function resolvePageSettings(page: SettingPage, ctx: ResolveContext): ResolvedSetting[] {
+function resolvePageSettings(page: SettingPage, ctx: ResolveContext): ResolvedSetting[] {
   return settingsForPage(page).map((def) => resolveSetting(def, ctx));
 }

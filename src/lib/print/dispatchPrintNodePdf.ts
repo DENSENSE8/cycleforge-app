@@ -3,7 +3,7 @@
  * contentType pdf_base64 — separate from ZPL /api/print/dispatch label classes.
  */
 
-export interface OutboundPrintNodeResult {
+interface OutboundPrintNodeResult {
   ok: boolean;
   dispatched: boolean;
   jobId?: number;

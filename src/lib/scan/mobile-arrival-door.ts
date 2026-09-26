@@ -16,7 +16,7 @@ export function trackingSeenFromPreview(matched: boolean | undefined | null): bo
   return matched === true;
 }
 
-export interface DoorScanPlan {
+interface DoorScanPlan {
   card: ScanCard;
   title: string | null;
   destination: string;
@@ -38,7 +38,7 @@ export function planDoorScan(raw: string, trackingSeen: boolean): DoorScanPlan {
 }
 
 /** What the ARRIVAL STATION can do with a scan, decided from the bytes alone. */
-export type ArrivalScanIntent =
+type ArrivalScanIntent =
   | { kind: 'tracking'; value: string; carrier: string }
   | { kind: 'carton'; value: string; receivingId: number }
   | { kind: 'refused'; value: string; reason: string };

@@ -55,7 +55,7 @@ export function readyHitTitle(hit: AllocationHit): string {
  * Product cell paints (SKU · serial · FNSKU · ASIN). This is the `ready.unit`
  * identity fact; the trail is how the structural title track renders it.
  */
-export function readyUnitHandle(hit: AllocationHit): string {
+function readyUnitHandle(hit: AllocationHit): string {
   return str(hit.sku) ?? str(hit.serialNumber) ?? str(hit.fnsku) ?? str(hit.asin) ?? `id ${hit.entityId}`;
 }
 

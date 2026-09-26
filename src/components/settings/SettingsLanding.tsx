@@ -30,7 +30,7 @@ const SETTINGS_CARD_CHROME = cn(
 
 /** One card-link idiom for settings-family surfaces (landing cards, supplier
  * rows): soft border, card fill, hover lift. */
-export const SETTINGS_CARD_LINK_CLASS = cn(
+const SETTINGS_CARD_LINK_CLASS = cn(
   SETTINGS_CARD_CHROME,
   'border-border-soft bg-surface-card hover:border-border-accent hover:bg-surface-hover',
 );

@@ -12,7 +12,7 @@ interface PendingShot {
 }
 
 /** The one video in flight (the picker hands over one file at a time). */
-export interface PendingVideo {
+interface PendingVideo {
   file: File;
   state: 'uploading' | 'failed';
   /** 0–1 of the bytes storage has accepted. */

@@ -30,7 +30,7 @@ import {
 
 const MAX_ITEMS = 20;
 /** Time window during which Undo is offered for reversible items */
-export const ACTIVITY_INBOX_UNDO_MS = 60_000;
+const ACTIVITY_INBOX_UNDO_MS = 60_000;
 
 export type ActivityInboxItemKind =
   | 'repair_status'

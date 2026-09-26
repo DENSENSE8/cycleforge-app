@@ -3,7 +3,7 @@ import { z } from 'zod';
 /** Tenant job ids — not house `scan_out` / `pick`. */
 export const IDENTIFICATION_JOB_ID_RE = /^[a-z][a-z0-9_]{1,62}$/;
 
-export const IdentificationGrammarPattern = z.discriminatedUnion('kind', [
+const IdentificationGrammarPattern = z.discriminatedUnion('kind', [
   z
     .object({
       kind: z.literal('prefix'),
@@ -42,7 +42,7 @@ export const IdentificationClassifyHit = z
 
 export type IdentificationClassifyHit = z.infer<typeof IdentificationClassifyHit>;
 
-export const IdentificationAuthorBrief = z
+const IdentificationAuthorBrief = z
   .object({
     brief: z.string().trim().min(8).max(2000),
   })

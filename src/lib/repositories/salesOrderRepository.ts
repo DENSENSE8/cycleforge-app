@@ -4,7 +4,7 @@ import { entityNotes, salesOrders } from '@/lib/drizzle/schema';
 import type { OrgId } from '@/lib/tenancy/constants';
 import { and, eq } from 'drizzle-orm';
 
-export interface InsertSalesOrder {
+interface InsertSalesOrder {
   organizationId: string;
   zohoSoId?: string | null;
   salesorderNumber?: string | null;
@@ -30,13 +30,13 @@ export interface InsertSalesOrder {
   assignedTo?: number | null;
 }
 
-export interface SalesOrderRepository {
+interface SalesOrderRepository {
   findByReference(referenceNumber: string): Promise<typeof salesOrders.$inferSelect | null>;
   create(input: InsertSalesOrder): Promise<typeof salesOrders.$inferSelect>;
   markZohoError(orgId: OrgId, referenceNumber: string, errorMessage: string): Promise<void>;
 }
 
-export class DrizzleSalesOrderRepository implements SalesOrderRepository {
+class DrizzleSalesOrderRepository implements SalesOrderRepository {
   async findByReference(referenceNumber: string) {
     const rows = await db.select().from(salesOrders).where(eq(salesOrders.referenceNumber, referenceNumber)).limit(1);
     return rows[0] ?? null;

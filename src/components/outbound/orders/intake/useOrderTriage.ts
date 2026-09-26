@@ -91,14 +91,14 @@ export async function pairCatalogByItemNumber(
   }
 }
 
-export interface OrderParcelDraft {
+interface OrderParcelDraft {
   weightOz: number | null;
   lengthIn: number | null;
   widthIn: number | null;
   heightIn: number | null;
 }
 
-export interface OrderTriage {
+interface OrderTriage {
   /** The order under triage, with live gates. `null` before one exists. */
   record: CagedOrderRecord | null;
   loading: boolean;

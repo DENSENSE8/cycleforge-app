@@ -6,7 +6,7 @@ import type { QcResultInput } from '@/lib/schemas/qc-checks';
 import { unitQcMeta, type UnitQcStep } from '@/lib/qc/unit-qc';
 
 /** A checklist request the server refused; `status` lets 403 read as "no permission". */
-export class UnitChecklistError extends Error {
+class UnitChecklistError extends Error {
   constructor(
     message: string,
     readonly status: number,

@@ -26,7 +26,7 @@ import {
 import { listStaffOutOnDate } from '@/lib/staff/staff-out-today';
 
 /** Loads the staff among `staffIds` who are out today. Test seam. */
-export type ListStaffOut = (
+type ListStaffOut = (
   organizationId: OrgId,
   staffIds: number[],
   client: QueryClient,
@@ -35,7 +35,7 @@ export type ListStaffOut = (
 const defaultListStaffOut: ListStaffOut = (organizationId, staffIds, client) =>
   listStaffOutOnDate(organizationId, staffIds, { client });
 
-export type ApplyListingAssignmentInput = {
+type ApplyListingAssignmentInput = {
   organizationId: OrgId;
   orderId: number;
   triggerKey: AutomationTriggerKey;
@@ -50,12 +50,12 @@ export type ApplyListingAssignmentInput = {
 };
 
 /** An applied action plus who took it: the primary, or the backup standing in. */
-export type AppliedAssignWorkAction = AssignWorkAction & {
+type AppliedAssignWorkAction = AssignWorkAction & {
   assigned_staff_id: number;
   via: ResolvedAssignee['via'];
 };
 
-export type ApplyListingAssignmentResult = {
+type ApplyListingAssignmentResult = {
   status: 'applied' | 'skipped' | 'failed';
   ruleId: number | null;
   actionsApplied: AppliedAssignWorkAction[];
@@ -86,7 +86,7 @@ function mapRule(row: RuleDbRow): AutomationRuleRow {
   };
 }
 
-export async function loadEnabledListingRules(
+async function loadEnabledListingRules(
   organizationId: OrgId,
   client?: QueryClient,
 ): Promise<AutomationRuleRow[]> {

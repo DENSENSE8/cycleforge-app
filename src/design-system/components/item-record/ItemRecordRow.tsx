@@ -26,7 +26,7 @@ import type { ItemRecord } from './item-record-types';
 const SERIAL_PREVIEW_CAP = 2;
 
 /** Per-row disclosure for {@link ItemRecordRow}'s `body`. */
-export interface ItemRecordDisclosure {
+interface ItemRecordDisclosure {
   expanded: boolean;
   onToggle: () => void;
   /** Accessible name / tooltip. Defaults to Show|Hide + the row title. */
@@ -34,7 +34,7 @@ export interface ItemRecordDisclosure {
 }
 
 /** An affordance on a meta cell: */
-export interface ItemRecordCellAction {
+interface ItemRecordCellAction {
   /** Tooltip + accessible name. */
   label: string;
   onClick: () => void;

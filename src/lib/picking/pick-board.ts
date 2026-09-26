@@ -9,7 +9,7 @@ import type { DirectedPickLocation, PickBoardRow, PickBoardScope } from './direc
 import { resolvePickOwnership, toStaffRefs, type PickOwnership } from './pick-ownership';
 
 /** How long another picker's open session holds its order. */
-export const HOLD_MINUTES = 60;
+const HOLD_MINUTES = 60;
 
 /** Ship-by inside this window paints the line as a rush. */
 const RUSH_HOURS = 24;
@@ -32,7 +32,7 @@ interface CandidateDbRow {
   skus: string[] | null;
 }
 
-export interface PickCandidate {
+interface PickCandidate {
   orderId: number;
   orderLabel: string | null;
   accountSource: string | null;

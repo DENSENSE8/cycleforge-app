@@ -8,13 +8,13 @@ import { queueOrFetch } from '@/lib/offline/write-queue';
 import { safeRandomUUID } from '@/lib/safe-uuid';
 
 /** How long after the last tap the burst commits. */
-export const BIN_QTY_COMMIT_IDLE_MS = 1200;
+const BIN_QTY_COMMIT_IDLE_MS = 1200;
 
 /** Reason codes for the quick path when the caller names none: */
 const QUICK_PUT_REASON = 'BIN_ADD';
 const QUICK_TAKE_REASON = 'BIN_PULL';
 
-export interface BinQtyCommitted {
+interface BinQtyCommitted {
   sku: string;
   /** Signed delta that was applied. */
   delta: number;
@@ -24,14 +24,14 @@ export interface BinQtyCommitted {
   queued: boolean;
 }
 
-export interface BinQtyFailed {
+interface BinQtyFailed {
   sku: string;
   /** Signed delta that did NOT land — the caller reverts by this much. */
   delta: number;
   message: string;
 }
 
-export interface BinQtyCommit {
+interface BinQtyCommit {
   /** Uncommitted signed delta per SKU. Paint `qty + pending` as the live value. */
   pending: Readonly<Record<string, number>>;
   /**

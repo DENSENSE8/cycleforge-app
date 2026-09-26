@@ -9,7 +9,7 @@ import { cn } from '@/utils/_cn';
  * mono code (BRIEF §4 triage — "what it is + state code" leads the row). The
  * is shown, the full word is spoken (BRIEF §8). Same face as the `/m/scan`
  */
-export function StateCode({ code, label, tone }: { code: string; label: string; tone: StateName | null }) {
+function StateCode({ code, label, tone }: { code: string; label: string; tone: StateName | null }) {
   return (
     <span
       className={cn(
@@ -30,7 +30,7 @@ export function LifecycleStateCode({ state }: { state: LifecycleState }) {
 }
 
 /** An `INTAKE` class's code — neutral ink: what a thing is carries no alarm. */
-export function IntakeStateCode({ intake }: { intake: IntakeClass }) {
+function IntakeStateCode({ intake }: { intake: IntakeClass }) {
   const spec = INTAKE[intake];
   return <StateCode code={spec.code} label={spec.label} tone={null} />;
 }

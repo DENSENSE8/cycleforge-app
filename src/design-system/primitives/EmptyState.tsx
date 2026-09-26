@@ -4,7 +4,7 @@ import type { ReactNode } from 'react';
 import { cn } from '@/utils/_cn';
 
 /** The house "there is nothing here" face. */
-export type EmptyStateTone = 'neutral' | 'danger';
+type EmptyStateTone = 'neutral' | 'danger';
 
 interface EmptyStateProps {
   icon?: ReactNode;

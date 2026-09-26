@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { parsePhotos, photosFingerprint, type PhotoGalleryInput, type PhotoItem } from './photo-gallery-utils';
 
-export interface UsePhotoItems {
+interface UsePhotoItems {
   photoItems: PhotoItem[];
   setPhotoItems: React.Dispatch<React.SetStateAction<PhotoItem[]>>;
   /** Clear the fingerprint so the next render re-inits from `photos`. */

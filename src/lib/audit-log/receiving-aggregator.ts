@@ -6,7 +6,7 @@ import { tenantQuery } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';
 import { readInventorySpine } from './inventory-spine';
 
-export interface AuditEvent {
+interface AuditEvent {
   /** Stable synthetic id: `${source}:${id}` so React keys stay unique. */
   id: string;
   occurred_at: string;
@@ -31,7 +31,7 @@ export interface AuditEvent {
   detail: Record<string, unknown>;
 }
 
-export interface AuditPOSummary {
+interface AuditPOSummary {
   po_id: string;
   po_number: string | null;
   vendor_name: string | null;
@@ -44,7 +44,7 @@ export interface AuditPOSummary {
   last_actor_name: string | null;
 }
 
-export interface AuditCarton {
+interface AuditCarton {
   id: number;
   tracking_number: string | null;
   carrier: string | null;
@@ -69,7 +69,7 @@ export interface AuditCarton {
   photos: AuditPhoto[];
 }
 
-export interface AuditPhoto {
+interface AuditPhoto {
   id: number;
   url: string;
   photo_type: string | null;
@@ -78,7 +78,7 @@ export interface AuditPhoto {
   taken_by_name: string | null;
 }
 
-export interface AuditSerial {
+interface AuditSerial {
   id: number;
   serial_number: string;
   current_status: string | null;
@@ -88,7 +88,7 @@ export interface AuditSerial {
   received_by_name: string | null;
 }
 
-export interface AuditLine {
+interface AuditLine {
   id: number;
   receiving_id: number | null;
   sku: string | null;
@@ -113,7 +113,7 @@ export interface AuditLine {
   serials: AuditSerial[];
 }
 
-export interface AuditPODetail {
+interface AuditPODetail {
   po: {
     po_id: string;
     po_number: string | null;
@@ -231,7 +231,7 @@ interface SerialRow {
 
 // ── Public reads ───────────────────────────────────────────────────────────
 
-export interface ListPOsOpts {
+interface ListPOsOpts {
   limit?: number;
   offset?: number;
   search?: string | null;

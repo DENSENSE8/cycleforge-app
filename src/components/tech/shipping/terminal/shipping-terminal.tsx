@@ -13,7 +13,7 @@ import type { TerminalActionVm } from '@/lib/station-terminal';
 /** Dock track width — matches STATION_WORKBENCH_COLUMN (720), like unbox-terminal. */
 const SHIPPING_DOCK_MAX = 'max-w-[720px]';
 
-export interface ShippingTerminalContext {
+interface ShippingTerminalContext {
   /** Preview Start handler. */
   onStart: () => void;
   /** Open / toggle the Out of Stock editor. */

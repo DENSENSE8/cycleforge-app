@@ -1,7 +1,7 @@
 import type { PoolClient } from 'pg';
 import type { PhotoEntityType, PhotoLinkRole } from './types';
 
-export interface CreateLinkInput {
+interface CreateLinkInput {
   photoId: number;
   organizationId: string;
   entityType: PhotoEntityType;
@@ -28,7 +28,7 @@ export async function createPhotoEntityLink(
   );
 }
 
-export async function listLinksForPhoto(
+async function listLinksForPhoto(
   client: PoolClient,
   photoId: number,
   organizationId: string,

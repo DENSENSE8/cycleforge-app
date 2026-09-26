@@ -4,7 +4,7 @@ import { getSidebarRouteKey } from '@/lib/sidebar-navigation';
  * Human-readable sidebar titles keyed by the canonical route key
  * (see {@link getSidebarRouteKey}). Pure data — no React.
  */
-export const SIDEBAR_TITLES: Record<string, string> = {
+const SIDEBAR_TITLES: Record<string, string> = {
   dashboard: 'Dashboard',
   search: 'Search',
   operations: 'Operations',

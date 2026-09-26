@@ -6,11 +6,11 @@ const GITHUB_API = 'https://api.github.com';
 const GITHUB_REPO = 'DENSENSE8/cycleforge-app';
 
 /** The one org whose requests may be mirrored into the shared repo. */
-export function forgeOrgId(env: NodeJS.ProcessEnv = process.env): string {
+function forgeOrgId(env: NodeJS.ProcessEnv = process.env): string {
   return (env.FORGE_ORG_ID ?? '00000000-0000-0000-0000-000000000001').toLowerCase();
 }
 
-export interface HandoffInput {
+interface HandoffInput {
   buildRequestId: number;
   branchName: string;
   targetScope: string;
@@ -18,11 +18,11 @@ export interface HandoffInput {
   files: ReadonlyArray<{ path: string; contents: string }>;
 }
 
-export type HandoffResult =
+type HandoffResult =
   | { ok: true; externalRef: string; mode: 'issue' }
   | { ok: false; error: string };
 
-export interface HandoffDeps {
+interface HandoffDeps {
   fetchImpl: typeof fetch;
   token: string | undefined;
   orgIdForRepo: string;

@@ -3,11 +3,11 @@
 import type { HeatLevel } from './live-heat';
 
 /** Flow² WIP at/above this tips a node from active → warm. */
-export const WARM_WIP = 5;
+const WARM_WIP = 5;
 /** Fail fraction at/above this is hot on its own. */
-export const HOT_FAIL_RATE = 0.25;
+const HOT_FAIL_RATE = 0.25;
 
-export interface FlowHeatInput {
+interface FlowHeatInput {
   /** Latest snapshot queue depth sitting at the node. */
   currentWip: number;
   /** Fraction of runs that took a fail/error port (null when no runs). */
@@ -18,7 +18,7 @@ export interface FlowHeatInput {
   isBottleneck: boolean;
 }
 
-export interface FlowHeat {
+interface FlowHeat {
   level: HeatLevel;
   /** Human-readable why-it's-hot, for the node tooltip. */
   reasons: string[];

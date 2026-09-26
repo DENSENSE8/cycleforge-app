@@ -1,5 +1,5 @@
-export type ShippedTypeFilterPreference = 'all' | 'orders' | 'sku' | 'fba';
-export type ShippedSearchFieldPreference =
+type ShippedTypeFilterPreference = 'all' | 'orders' | 'sku' | 'fba';
+type ShippedSearchFieldPreference =
   | 'all'
   | 'order_id'
   | 'tracking'
@@ -48,7 +48,7 @@ export function writeShippedSearchFieldPreference(value: ShippedSearchFieldPrefe
   window.localStorage.setItem(PREF_SHIPPED_SEARCH_FIELD, value);
 }
 
-export function readShippedWeekOffsetPreference(): number | null {
+function readShippedWeekOffsetPreference(): number | null {
   if (!canUseStorage()) return null;
   const raw = String(window.localStorage.getItem(PREF_SHIPPED_WEEK_OFFSET) || '').trim();
   if (!raw) return null;
@@ -57,7 +57,7 @@ export function readShippedWeekOffsetPreference(): number | null {
   return n;
 }
 
-export function writeShippedWeekOffsetPreference(value: number): void {
+function writeShippedWeekOffsetPreference(value: number): void {
   if (!canUseStorage()) return;
   const normalized = Math.max(0, Number(value) || 0);
   window.localStorage.setItem(PREF_SHIPPED_WEEK_OFFSET, String(normalized));

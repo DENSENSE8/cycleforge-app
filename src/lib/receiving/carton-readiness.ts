@@ -26,7 +26,7 @@ export type CartonReadiness = {
   linesComplete?: number;
 };
 
-export type ReceivingMatchLine = {
+type ReceivingMatchLine = {
   quantity_expected?: number | null;
   quantity_received?: number | null;
   workflow_status?: string | null;

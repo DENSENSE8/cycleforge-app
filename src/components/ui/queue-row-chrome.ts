@@ -43,7 +43,7 @@ export const NAV_ROW = {
 } as const;
 
 /** Interactive chrome + state fill for one LedgerGrid **leaf row**. */
-export function ledgerRowStateClass(
+function ledgerRowStateClass(
   selected: boolean,
   flagClass?: string | null,
   linked = false,

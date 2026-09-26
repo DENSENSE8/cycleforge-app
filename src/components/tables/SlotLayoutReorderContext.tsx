@@ -4,7 +4,7 @@
 
 import { createContext, useContext, type ReactNode } from 'react';
 
-export type SlotLayoutReorderFn = (dragFieldId: string, dropFieldId: string) => void;
+type SlotLayoutReorderFn = (dragFieldId: string, dropFieldId: string) => void;
 
 const SlotLayoutReorderContext = createContext<SlotLayoutReorderFn | null>(null);
 

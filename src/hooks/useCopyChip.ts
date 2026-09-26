@@ -9,7 +9,7 @@ import { normalizeCopyText } from '@/lib/copy-chip-format';
 import { recordCopy } from '@/lib/clipboard-history';
 import { writeClipboardText } from '@/lib/clipboard';
 
-export interface ChipTooltipAnchor {
+interface ChipTooltipAnchor {
   /** Attach to the chip's outer wrapper — the tooltip positions off this rect. */
   chipRef: MutableRefObject<HTMLDivElement | null>;
   /** False when no `SiteTooltipProvider` is mounted (fall back to a `title` attr). */
@@ -72,7 +72,7 @@ export function useChipTooltip({
   };
 }
 
-export interface CopyChipBehavior extends ChipTooltipAnchor {
+interface CopyChipBehavior extends ChipTooltipAnchor {
   /** Trimmed copy payload; `''` when the value is an empty-display sentinel. */
   normalizedValue: string;
   /**

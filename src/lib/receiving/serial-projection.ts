@@ -128,7 +128,7 @@ export interface RefreshProjectionDeps {
 }
 
 /** Upsert one line's projection onto receiving_line_testing. */
-export async function writeLineSerialProjection(
+async function writeLineSerialProjection(
   orgId: OrgId,
   lineId: number,
   projection: SerialProjectionEntry[],

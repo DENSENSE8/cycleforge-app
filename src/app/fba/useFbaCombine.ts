@@ -7,7 +7,7 @@ import { FBA_COMBINE_STARTED } from '@/lib/fba/events';
 import { useFbaBoardSelection } from '@/components/fba/hooks/useFbaBoardSelection';
 import type { FbaMode } from '@/lib/fba/fba-modes';
 
-export interface FbaCombine {
+interface FbaCombine {
   boardSelection: ReturnType<typeof useFbaBoardSelection>;
   combineOpen: boolean;
   setCombineOpen: React.Dispatch<React.SetStateAction<boolean>>;

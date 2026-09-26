@@ -34,7 +34,7 @@ export const COMPLETE_CARTON_IDLE: CompleteCartonOutcome = {
 export const COMPLETE_CARTON_GENERIC_BLOCKER =
   'This carton still needs photos before it can be received.';
 
-export interface CompleteCartonRequest {
+interface CompleteCartonRequest {
   receiving_id: number;
   receive_intent: 'zoho_receive' | 'local_receive';
   station: 'MOBILE';

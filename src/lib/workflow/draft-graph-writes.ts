@@ -11,7 +11,7 @@ export interface DraftGraphClient {
 
 export type DraftGraphInverse = { kind: string; payload: Record<string, unknown> } | null;
 
-export interface DraftGraphResult {
+interface DraftGraphResult {
   ok: boolean;
   error?: string;
   status?: 400 | 404 | 409 | 422;

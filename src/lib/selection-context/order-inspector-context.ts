@@ -4,7 +4,7 @@ import type { ShippedActiveSection } from '@/components/shipped/stacks/types';
 import type { DashboardOrderView } from '@/utils/dashboard-search-state';
 
 /** Every context the shared order inspector is mounted under. */
-export type OrderInspectorPanelContext =
+type OrderInspectorPanelContext =
   | 'dashboard'
   | 'queue'
   | 'fulfillment'
@@ -44,7 +44,7 @@ export interface OrderInspectorContext {
   openOnIndex: boolean;
 }
 
-export interface ResolveOrderInspectorContextInput {
+interface ResolveOrderInspectorContextInput {
   panelContext: OrderInspectorPanelContext;
   /**
    * Present when the inspector is mounted over a dashboard lane. Packed

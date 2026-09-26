@@ -8,7 +8,7 @@ import {
 } from '@/components/support/link/useTicketSearch';
 import { kioskFetchHealed } from '@/lib/kiosk/kiosk-self-heal';
 
-export type UseKioskTicketSearch = UseTicketSearch;
+type UseKioskTicketSearch = UseTicketSearch;
 
 export function useKioskTicketSearch({ enabled }: { enabled: boolean }): UseKioskTicketSearch {
   return useTicketSearch({

@@ -3,7 +3,7 @@ import { resolveOrgAiConfig } from '@/lib/ai/org-provider';
 import type { OrgId } from '@/lib/tenancy/constants';
 import type { NormalizedCandidate } from '@/lib/sourcing/normalize';
 
-export interface SourcingResearchCandidate {
+interface SourcingResearchCandidate {
   externalId: string | null;
   title: string;
   fitScore: number;
@@ -13,7 +13,7 @@ export interface SourcingResearchCandidate {
   nextAction: 'save' | 'compare' | 'skip';
 }
 
-export interface SourcingResearchResult {
+interface SourcingResearchResult {
   summary: string;
   recommendedQuery: string;
   rankedCandidates: SourcingResearchCandidate[];

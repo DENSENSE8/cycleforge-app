@@ -15,7 +15,7 @@ import type { OrgId } from '@/lib/tenancy/constants';
 
 export type PackerLogsTrackingFilter = 'all' | 'orders' | 'sku' | 'fba';
 
-export interface FetchPackerLogRowsOptions {
+interface FetchPackerLogRowsOptions {
   /**
    * Tenant scope (REQUIRED). Every row is filtered by `sal.organization_id`
    * and the org id is part of the cache key — without it this loader returned
@@ -40,7 +40,7 @@ export interface FetchPackerLogRowsOptions {
   spineOnly?: boolean;
 }
 
-export interface FetchPackerLogRowsResult {
+interface FetchPackerLogRowsResult {
   rows: any[];
   cacheTTL: number;
   cacheHit: boolean;

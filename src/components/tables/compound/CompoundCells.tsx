@@ -1030,7 +1030,7 @@ export function CompoundState({
 }
 
 /** Lifecycle STEP column — the media-object row every dense person-tool uses: */
-export function CompoundStageStep({
+function CompoundStageStep({
   labels,
   Icon,
   facts,
@@ -1344,7 +1344,7 @@ export function CompoundActions({
 }
 
 /** Column 5 — the record affordance. */
-export function CompoundOpen({ onOpen }: { onOpen?: () => void }) {
+function CompoundOpen({ onOpen }: { onOpen?: () => void }) {
   if (!onOpen) return null;
   return (
     <button

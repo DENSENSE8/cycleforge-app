@@ -27,7 +27,7 @@ import type { PendingPlan } from '@/components/fba/sidebar/fba-sidebar-shared';
 import { useRefreshSignal } from '@/lib/refresh/bus';
 
 /** Patch shape for the FBA workspace URL search params (under `/shipping/fba`). */
-export interface FbaParamPatch {
+interface FbaParamPatch {
   q?: string;
   r?: string;
   mode?: FbaMode;
@@ -127,7 +127,7 @@ export function useFbaStationIdentity() {
   return { orgId, staffId, staffName, stationTheme };
 }
 
-export interface UseFbaPlanDataOptions {
+interface UseFbaPlanDataOptions {
   activeMode: FbaMode;
   refreshToken: number;
   orgId?: string;

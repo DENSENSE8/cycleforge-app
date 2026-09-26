@@ -8,7 +8,7 @@ import { upsertEbaySupplier, type SupplierRow } from './suppliers-queries';
 
 // ─── Interfaces ──────────────────────────────────────────────────────────────
 
-export interface SourcingAlertRow {
+interface SourcingAlertRow {
   id: number;
   sku_id: number | null;
   bose_model_id: number | null;
@@ -29,7 +29,7 @@ export interface SourcingAlertRow {
   search_query: string | null;
 }
 
-export interface SourcingAlertListRow extends SourcingAlertRow {
+interface SourcingAlertListRow extends SourcingAlertRow {
   sku: string | null;
   product_title: string | null;
   lifecycle_status: string | null;
@@ -38,7 +38,7 @@ export interface SourcingAlertListRow extends SourcingAlertRow {
   model_name: string | null;
 }
 
-export interface SourcingCandidateRow {
+interface SourcingCandidateRow {
   id: number;
   sku_id: number | null;
   bose_model_id: number | null;
@@ -281,7 +281,7 @@ export async function getSourcingCandidateById(id: number, orgId?: OrgId): Promi
   return result.rows[0] ?? null;
 }
 
-export interface SaveCandidateInput {
+interface SaveCandidateInput {
   source?: string;
   externalId?: string | null;
   title: string;
@@ -431,7 +431,7 @@ export async function updateCandidate(
 
 // ─── Acquisitions / import (candidate → receiving → ledger) ─────────────────
 
-export interface PartAcquisitionRow {
+interface PartAcquisitionRow {
   id: number;
   sourcing_candidate_id: number | null;
   supplier_id: number | null;
@@ -446,7 +446,7 @@ export interface PartAcquisitionRow {
   received_at: string | null;
 }
 
-export interface ImportCandidateResult {
+interface ImportCandidateResult {
   receivingId: number;
   acquisition: PartAcquisitionRow;
   supplier: SupplierRow | null;
@@ -587,13 +587,13 @@ const ANALYTICS_RANGE_INTERVAL: Record<SourcingAnalyticsRange, string> = {
   '1y': '365 days',
 };
 
-export interface SourcingSpendBucket {
+interface SourcingSpendBucket {
   bucket: string;            // ISO week start
   acquisitions: number;
   spend_cents: number;
 }
 
-export interface SourcingSkuCostRow {
+interface SourcingSkuCostRow {
   sku_id: number;
   sku: string | null;
   product_title: string | null;
@@ -604,7 +604,7 @@ export interface SourcingSkuCostRow {
   spend_cents: number;
 }
 
-export interface SourcingAnalytics {
+interface SourcingAnalytics {
   range: SourcingAnalyticsRange;
   spendByWeek: SourcingSpendBucket[];
   acquisitions: {

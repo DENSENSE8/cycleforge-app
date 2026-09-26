@@ -4,19 +4,19 @@ import { itemLocationStock, items, zohoLocations } from '@/lib/drizzle/schema';
 import { and, asc, eq, inArray, sql } from 'drizzle-orm';
 import { syncSkuCatalogFromItems } from '@/lib/neon/sku-catalog-queries';
 
-export interface PaginationParams {
+interface PaginationParams {
   limit?: number;
   offset?: number;
 }
 
-export interface PaginatedResult<T> {
+interface PaginatedResult<T> {
   rows: T[];
   total: number;
   limit: number;
   offset: number;
 }
 
-export interface InsertItem {
+interface InsertItem {
   organizationId: string;
   zohoItemId: string;
   zohoItemGroupId?: string | null;
@@ -46,7 +46,7 @@ export interface InsertItem {
   syncedAt?: Date;
 }
 
-export interface UpsertLocationInput {
+interface UpsertLocationInput {
   organizationId: string;
   zohoLocationId: string;
   name: string;
@@ -54,7 +54,7 @@ export interface UpsertLocationInput {
   address?: Record<string, unknown>;
 }
 
-export interface UpsertItemLocationStockInput {
+interface UpsertItemLocationStockInput {
   organizationId: string;
   itemId: string;
   locationId: string;
@@ -63,7 +63,7 @@ export interface UpsertItemLocationStockInput {
   syncedAt?: Date;
 }
 
-export interface ItemRepository {
+interface ItemRepository {
   findById(id: string): Promise<typeof items.$inferSelect | null>;
   findByZohoId(zohoId: string): Promise<typeof items.$inferSelect | null>;
   findBySku(sku: string): Promise<typeof items.$inferSelect | null>;
@@ -77,7 +77,7 @@ export interface ItemRepository {
   upsertItemLocationStock(rows: UpsertItemLocationStockInput[]): Promise<void>;
 }
 
-export class DrizzleItemRepository implements ItemRepository {
+class DrizzleItemRepository implements ItemRepository {
   async findById(id: string) {
     const rows = await db.select().from(items).where(eq(items.id, id)).limit(1);
     return rows[0] ?? null;

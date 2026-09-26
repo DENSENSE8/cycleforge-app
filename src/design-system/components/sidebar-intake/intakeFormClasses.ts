@@ -1,6 +1,6 @@
 /** Shared intake chrome — shell close / subtitle / submit CTAs. */
 
-export const SIDEBAR_INTAKE_LABEL_CLASS =
+const SIDEBAR_INTAKE_LABEL_CLASS =
   'block text-role-micro uppercase tracking-widest text-text-muted';
 
 export const SIDEBAR_INTAKE_CLOSE_BUTTON_CLASS =
@@ -14,11 +14,11 @@ const SIDEBAR_INTAKE_SUBMIT_BUTTON_TONE_CLASS = {
 const SIDEBAR_INTAKE_SUBMIT_BUTTON_BASE_CLASS =
   'w-full px-4 py-3 disabled:bg-surface-strong text-white rounded-xl transition-all text-xs font-semibold uppercase tracking-wide disabled:cursor-not-allowed shadow-lg';
 
-export function getSidebarIntakeSubmitButtonClass(tone: keyof typeof SIDEBAR_INTAKE_SUBMIT_BUTTON_TONE_CLASS = 'green'): string {
+function getSidebarIntakeSubmitButtonClass(tone: keyof typeof SIDEBAR_INTAKE_SUBMIT_BUTTON_TONE_CLASS = 'green'): string {
   return `${SIDEBAR_INTAKE_SUBMIT_BUTTON_BASE_CLASS} ${SIDEBAR_INTAKE_SUBMIT_BUTTON_TONE_CLASS[tone]}`;
 }
 
-export const SIDEBAR_INTAKE_SUBMIT_BUTTON_CLASS = getSidebarIntakeSubmitButtonClass('green');
+const SIDEBAR_INTAKE_SUBMIT_BUTTON_CLASS = getSidebarIntakeSubmitButtonClass('green');
 
 export const SIDEBAR_INTAKE_SUBTITLE_ACCENT: Record<
   'green' | 'violet' | 'blue' | 'purple' | 'yellow' | 'black' | 'red' | 'lightblue' | 'pink',

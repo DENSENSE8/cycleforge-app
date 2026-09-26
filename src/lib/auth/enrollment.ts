@@ -34,7 +34,7 @@ function newToken(): string {
   return randomBytes(24).toString('base64url');
 }
 
-export interface CreateEnrollmentOpts {
+interface CreateEnrollmentOpts {
   staffId: number;
   createdBy?: number | null;
   ttlHours?: number;

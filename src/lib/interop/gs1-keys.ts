@@ -6,7 +6,7 @@
  * Deliberately not the full GS1 key list — a key with no corresponding
  * Cycle Forge fact is a field someone will fill in with a guess.
  */
-export const GS1_KEY_TYPES = [
+const GS1_KEY_TYPES = [
   /** Global Trade Item Number — the product model. `sku_catalog.gtin`. */
   'GTIN',
   /** GTIN + serial — THIS individual unit of this product. */
@@ -21,10 +21,10 @@ export const GS1_KEY_TYPES = [
   'GIAI',
 ] as const;
 
-export type Gs1KeyType = (typeof GS1_KEY_TYPES)[number];
+type Gs1KeyType = (typeof GS1_KEY_TYPES)[number];
 
 /** GS1 Application Identifiers, for the keys that have one. */
-export const GS1_APPLICATION_IDENTIFIERS = {
+const GS1_APPLICATION_IDENTIFIERS = {
   GTIN: '01',
   SSCC: '00',
   GLN: '414',
@@ -33,10 +33,10 @@ export const GS1_APPLICATION_IDENTIFIERS = {
 } as const satisfies Partial<Record<Gs1KeyType, string>>;
 
 /** AI `(21)` — the serial half of an SGTIN. */
-export const GS1_AI_SERIAL = '21';
+const GS1_AI_SERIAL = '21';
 
 /** Prefixes GS1 itself uses in documentation, sandboxes and conformance samples. */
-export const PLACEHOLDER_GS1_PREFIXES = ['0614141', '9521141', '9526000'] as const;
+const PLACEHOLDER_GS1_PREFIXES = ['0614141', '9521141', '9526000'] as const;
 
 /** True when the digits are a known GS1 example prefix rather than a licensed one. */
 export function isPlaceholderGs1Prefix(prefix: string): boolean {
@@ -48,7 +48,7 @@ export function isPlaceholderGs1Prefix(prefix: string): boolean {
 }
 
 /** True when a GTIN sits on a placeholder company prefix. */
-export function isPlaceholderGtin(gtin: string): boolean {
+function isPlaceholderGtin(gtin: string): boolean {
   const digits = gtin.replace(/\D/g, '');
   if (!digits) return true;
   if (isPlaceholderGs1Prefix(digits)) return true;
@@ -211,7 +211,7 @@ export function gs1CheckDigit(payload: string): number {
 }
 
 /** True when a GS1 numeric key's trailing check digit is self-consistent. */
-export function hasValidGs1CheckDigit(key: string): boolean {
+function hasValidGs1CheckDigit(key: string): boolean {
   const digits = key.replace(/\D/g, '');
   if (digits.length < 2) return false;
   const body = digits.slice(0, -1);
@@ -228,7 +228,7 @@ export function isLicensedGln(gln: string | null | undefined): boolean {
 }
 
 /** True when the tenant configured a real GLN we may put in `bizLocation`. */
-export function hasGln(
+function hasGln(
   identity: Gs1OrgIdentity,
 ): identity is Gs1OrgIdentity & { gln: string } {
   return isLicensedGln(identity.gln);
@@ -288,7 +288,7 @@ export function resolveGs1Requirement(
 }
 
 /** An identifier as it will appear in a projection. */
-export interface InteropIdentifier {
+interface InteropIdentifier {
   scheme: 'gs1' | 'internal';
   /** The GS1 key type when `scheme === 'gs1'`. */
   keyType?: Gs1KeyType;
@@ -299,7 +299,7 @@ export interface InteropIdentifier {
 }
 
 /** URI namespace for Cycle Forge's internal handles. */
-export const INTERNAL_URN_NAMESPACE = 'urn:cycleforge';
+const INTERNAL_URN_NAMESPACE = 'urn:cycleforge';
 
 export type InternalEntityKind =
   | 'carton'

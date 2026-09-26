@@ -9,7 +9,7 @@ import { tenantQuery } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';
 import type { AuditLogFilters } from './filters';
 
-export interface StaffEvent {
+interface StaffEvent {
   id: string;
   occurred_at: string;
   station: 'receiving' | 'packing' | 'tech' | 'other';
@@ -21,7 +21,7 @@ export interface StaffEvent {
   detail: Record<string, unknown>;
 }
 
-export interface StaffDetail {
+interface StaffDetail {
   staff: {
     id: number;
     name: string | null;

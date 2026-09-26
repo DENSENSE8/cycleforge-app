@@ -5,7 +5,7 @@ import type { PhotoAnalysisSettings } from '@/lib/tenancy/settings';
 /** The canonical provider vocabulary. `gcp-vision` = Google Cloud Vision (cloud). */
 export type PhotoAnalyzeProvider = 'hermes' | 'gcp-vision' | 'local-vision' | 'catalog';
 
-export const PHOTO_ANALYZE_PROVIDERS: readonly PhotoAnalyzeProvider[] = [
+const PHOTO_ANALYZE_PROVIDERS: readonly PhotoAnalyzeProvider[] = [
   'local-vision',
   'hermes',
   'gcp-vision',

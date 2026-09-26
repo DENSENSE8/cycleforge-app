@@ -6,4 +6,4 @@ export const fontFamilies = {
   mono: "var(--font-ibm-plex-mono), 'IBM Plex Mono', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace",
 } as const;
 
-export type FontFamilies = typeof fontFamilies;
+type FontFamilies = typeof fontFamilies;

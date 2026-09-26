@@ -5,7 +5,7 @@ import { normalizeIdentifier } from '@/lib/product-manuals';
 export type PaperworkSource = 'order' | 'item_number' | 'sku';
 
 /** Most specific first. */
-export const PAPERWORK_SOURCE_PRECEDENCE: readonly PaperworkSource[] = ['order', 'item_number', 'sku'];
+const PAPERWORK_SOURCE_PRECEDENCE: readonly PaperworkSource[] = ['order', 'item_number', 'sku'];
 
 /** Where a paperwork row is pinned today. */
 export interface PaperworkPairing {

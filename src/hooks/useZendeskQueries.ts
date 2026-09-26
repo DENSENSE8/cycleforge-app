@@ -31,7 +31,7 @@ export interface TicketListParams {
   sortOrder?: 'asc' | 'desc';
 }
 
-export interface TicketListResult {
+interface TicketListResult {
   mode: 'list' | 'search';
   subdomain: string;
   tickets: ZendeskTicket[];
@@ -41,7 +41,7 @@ export interface TicketListResult {
 }
 
 /** Patch shape accepted by PATCH /api/zendesk/tickets/[id] for the editors we expose. */
-export interface TicketPatch {
+interface TicketPatch {
   status?: ZendeskTicket['status'];
   priority?: ZendeskTicket['priority'];
   assignee_id?: number | null;
@@ -63,7 +63,7 @@ export const zendeskKeys = {
 };
 
 /** Detail reads stay warm 90s — matches server bundle cache TTL. */
-export const ZENDESK_DETAIL_STALE_MS = 90_000;
+const ZENDESK_DETAIL_STALE_MS = 90_000;
 
 function zendeskShouldRetry(count: number, err: HttpError): boolean {
   if (err.status === 503 || err.status === 429) return false;
@@ -111,7 +111,7 @@ function statusClause(s: StatusFilter): string | null {
  * Build the ZQL `query` param from the free-text box + status chip. Returns null
  * when neither is set → the route stays in plain list mode (newest first).
  */
-export function buildTicketQuery(text: string, status: StatusFilter): string | null {
+function buildTicketQuery(text: string, status: StatusFilter): string | null {
   const clauses: string[] = [];
   const sc = statusClause(status);
   if (sc) clauses.push(sc);
@@ -142,7 +142,7 @@ export function useZendeskTickets(params: TicketListParams) {
   });
 }
 
-export interface ZendeskTicketBundle {
+interface ZendeskTicketBundle {
   ticket: ZendeskTicket;
   comments: ZendeskComment[];
   commentsCount: number;
@@ -154,7 +154,7 @@ export interface ZendeskTicketBundle {
 }
 
 /** Hydrate per-slice caches so thread/header reuse bundle data without refetch. */
-export function seedZendeskTicketCaches(qc: QueryClient, id: number, bundle: ZendeskTicketBundle) {
+function seedZendeskTicketCaches(qc: QueryClient, id: number, bundle: ZendeskTicketBundle) {
   qc.setQueryData(zendeskKeys.ticket(id), bundle.ticket);
   qc.setQueryData(zendeskKeys.comments(id), {
     comments: bundle.comments,
@@ -211,14 +211,14 @@ export function useTicketComments(id: number | null) {
   });
 }
 
-export interface TicketPhoto {
+interface TicketPhoto {
   id: number;
   url: string;
   caption?: string | null;
   [key: string]: unknown;
 }
 
-export function useTicketPhotos(id: number | null) {
+function useTicketPhotos(id: number | null) {
   return useQuery<{ entity: unknown; photos: TicketPhoto[] }, HttpError>({
     queryKey: zendeskKeys.photos(id ?? 0),
     queryFn: () => getJson<{ entity: unknown; photos: TicketPhoto[] }>(`/api/zendesk/tickets/${id}/photos`),
@@ -281,7 +281,7 @@ export function useZendeskUsers(ids: number[]) {
   });
 }
 
-export interface TicketAssignment {
+interface TicketAssignment {
   ticketId: number;
   assignedStaffId: number;
   assignedStaffName: string;

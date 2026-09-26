@@ -9,7 +9,7 @@ const NAV_MATCH_TIERS = [
   'exact',
 ] as const;
 
-export type NavMatchTier = (typeof NAV_MATCH_TIERS)[number];
+type NavMatchTier = (typeof NAV_MATCH_TIERS)[number];
 
 /** Tier → base score. Gaps are wide enough that no bonus can cross a tier. */
 const TIER_SCORE: Record<NavMatchTier, number> = {
@@ -24,9 +24,9 @@ const TIER_SCORE: Record<NavMatchTier, number> = {
 const KEYWORD_PENALTY = 2_100;
 
 /** A highlightable span in the matched text, as `[start, end)`. */
-export type NavMatchRange = readonly [number, number];
+type NavMatchRange = readonly [number, number];
 
-export interface NavMatch {
+interface NavMatch {
   tier: NavMatchTier;
   score: number;
   /**

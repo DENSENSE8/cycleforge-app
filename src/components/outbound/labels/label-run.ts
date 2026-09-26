@@ -3,7 +3,7 @@
  * (operator ruling R-FLOW-6, 2026-09-01).
  */
 
-export interface LabelRunState {
+interface LabelRunState {
   /** Selected order ids in display (top-to-bottom) order, fixed at start. */
   readonly queue: readonly number[];
   /** The id whose row carries the active-work highlight + expansion band. */

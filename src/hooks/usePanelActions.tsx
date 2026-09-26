@@ -9,9 +9,9 @@ import {
 
 /* ── Types ─────────────────────────────────────────────────────────── */
 
-export type PanelEntityType = 'order' | 'work_order' | 'fba_item' | 'repair' | 'walk_in_sale';
+type PanelEntityType = 'order' | 'work_order' | 'fba_item' | 'repair' | 'walk_in_sale';
 
-export interface PanelAction {
+interface PanelAction {
   key: string;
   label: string;
   icon: ReactNode;
@@ -19,7 +19,7 @@ export interface PanelAction {
   onAction: () => void;
 }
 
-export interface PanelActionContext {
+interface PanelActionContext {
   entityType: PanelEntityType;
   entityId: number | string;
   orderId?: string | null;

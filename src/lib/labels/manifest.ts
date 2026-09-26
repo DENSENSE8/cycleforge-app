@@ -5,10 +5,10 @@ import { shortSku, isoWeekParts, formatUnitId } from '@/lib/inventory/unit-id-fo
 
 /** label_manifests domain lib — the "one label, many serials" preboxed-kit layer (serial↔label pairing plan §5.2). */
 
-export type ManifestType = 'PREBOX' | 'KIT' | 'MASTER_CARTON';
-export type ManifestStatus = 'OPEN' | 'SEALED' | 'DISSOLVED';
+type ManifestType = 'PREBOX' | 'KIT' | 'MASTER_CARTON';
+type ManifestStatus = 'OPEN' | 'SEALED' | 'DISSOLVED';
 
-export interface ManifestRow {
+interface ManifestRow {
   id: number;
   manifest_uid: string;
   manifest_type: ManifestType;
@@ -23,7 +23,7 @@ export interface ManifestRow {
   updated_at: string;
 }
 
-export interface ManifestItemView {
+interface ManifestItemView {
   serial_unit_id: number;
   serial_number: string;
   unit_uid: string | null;
@@ -34,11 +34,11 @@ export interface ManifestItemView {
   ordinal: number;
 }
 
-export interface ManifestDetail extends ManifestRow {
+interface ManifestDetail extends ManifestRow {
   items: ManifestItemView[];
 }
 
-export interface CreateManifestInput {
+interface CreateManifestInput {
   manifestType?: ManifestType;
   sku?: string | null;
   skuCatalogId?: number | null;
@@ -171,7 +171,7 @@ export async function createManifest(
   });
 }
 
-export async function getManifestDetail(
+async function getManifestDetail(
   manifestId: number,
   orgId: OrgId,
 ): Promise<ManifestDetail | null> {

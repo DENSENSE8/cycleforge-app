@@ -7,7 +7,7 @@
 import type { OrderLinkage } from '@/lib/order-linkage';
 import type { TimelineItem } from '@/lib/timeline/types';
 
-export type WhatHappenedFact = {
+type WhatHappenedFact = {
   id: string;
   label: string;
   /** Canonical sentence inserted into the draft (and Zendesk body on send). */

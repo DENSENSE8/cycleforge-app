@@ -1,7 +1,7 @@
 export type SearchField = 'ecwid_sku' | 'zoho_sku' | 'title';
 
 /** Pick the right search field for the SKU catalog based on the shape of the query. */
-export function detectSkuCatalogSearchField(query: string): SearchField {
+function detectSkuCatalogSearchField(query: string): SearchField {
   const trimmed = query.trim();
   if (!trimmed) return 'ecwid_sku';
   if (/\s/.test(trimmed)) return 'title';

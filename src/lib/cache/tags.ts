@@ -40,7 +40,7 @@ export const CACHE_TAGS = {
   poByRef: 'po-by-ref',
 } as const;
 
-export type CacheTag = (typeof CACHE_TAGS)[keyof typeof CACHE_TAGS];
+type CacheTag = (typeof CACHE_TAGS)[keyof typeof CACHE_TAGS];
 
 /**
  * Cache namespaces (the `ns` argument). Kept alongside the tags so the
@@ -87,7 +87,7 @@ export const CACHE_NS = {
   ecwidRepairCatalog: 'ecwid-repair-catalog',
 } as const;
 
-export type CacheNamespace = (typeof CACHE_NS)[keyof typeof CACHE_NS];
+type CacheNamespace = (typeof CACHE_NS)[keyof typeof CACHE_NS];
 
 /** TTL policy by volatility class (seconds). */
 export const CACHE_TTL = {

@@ -9,7 +9,7 @@
 import { useCallback, useState } from 'react';
 import type { FbaBoardItem } from '@/lib/fba/types';
 
-export interface FbaDetailPanel {
+interface FbaDetailPanel {
   detailItem: FbaBoardItem | null;
   setDetailItem: React.Dispatch<React.SetStateAction<FbaBoardItem | null>>;
   handleDetailNavigate: (direction: 'up' | 'down') => void;

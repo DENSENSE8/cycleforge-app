@@ -5,7 +5,7 @@ import { unitStatusToVerdict } from '@/components/receiving/workspace/TestingSta
 import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
 import type { TestingController } from './testing-panel-types';
 
-export interface TestingPrimaryAction {
+interface TestingPrimaryAction {
   primaryDisabled: boolean;
   primaryLabel: string;
   primaryTitle: string;

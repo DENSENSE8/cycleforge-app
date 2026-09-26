@@ -21,7 +21,7 @@ interface UseRailEditModeArgs {
   triageView: string;
 }
 
-export interface RailEditModeState {
+interface RailEditModeState {
   railEditMode: boolean;
   railSelectedIds: ReadonlySet<number>;
   railSelectedIdList: number[];

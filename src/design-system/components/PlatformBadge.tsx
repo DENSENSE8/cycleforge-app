@@ -9,7 +9,7 @@ interface PlatformBadgeProps {
 }
 
 /** Renders the platform label (Amazon, eBay, ECWID, FBA, etc.) with the correct color. */
-export function PlatformBadge({ orderId, accountSource, showBorder = false, className = '' }: PlatformBadgeProps) {
+function PlatformBadge({ orderId, accountSource, showBorder = false, className = '' }: PlatformBadgeProps) {
   const label = getOrderPlatformLabel(orderId, accountSource);
   if (!label) return null;
 

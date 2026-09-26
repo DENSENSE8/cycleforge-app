@@ -4,7 +4,7 @@ import { resolveSkuCatalogId } from '@/lib/neon/sku-catalog-queries';
 import { tenantQuery } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';
 
-export interface LabelMatch {
+interface LabelMatch {
   /** Canonical model the OCR produced, echoed back. */
   model: string;
   zoho_item_id: string | null;
@@ -104,7 +104,7 @@ async function queryByCode(code: string, orgId?: OrgId): Promise<ItemRow[]> {
  * (with the model echoed) when nothing matches — the caller can then offer
  * "create new catalog entry" via resolveOrCreateSkuCatalogId.
  */
-export async function resolveModelToCatalog(model: string, orgId?: OrgId): Promise<LabelMatch> {
+async function resolveModelToCatalog(model: string, orgId?: OrgId): Promise<LabelMatch> {
   const empty: LabelMatch = {
     model, zoho_item_id: null, sku: null, item_name: null,
     sku_catalog_id: null, product_title: null, image_url: null, resolved: false, via: null,

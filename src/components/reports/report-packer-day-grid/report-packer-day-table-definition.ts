@@ -24,7 +24,7 @@ export const REPORT_PACKER_DAY_GRID_CAPABILITIES: GridSurfaceCapabilities = {
   dayBands: false,
 };
 
-export function makeReportPackerDayGridDescriptor(
+function makeReportPackerDayGridDescriptor(
   columns: readonly ReportPackerDayGridColumn[],
 ): GridSurfaceDescriptor<PackingReportRow, ReportPackerDayGridColumn> {
   return makeGridSurfaceDescriptor<PackingReportRow, ReportPackerDayGridColumn>(
@@ -39,7 +39,7 @@ export function makeReportPackerDayGridDescriptor(
   );
 }
 
-export const REPORT_PACKER_DAY_TABLE_DEFINITION = parseTableDefinition({
+const REPORT_PACKER_DAY_TABLE_DEFINITION = parseTableDefinition({
   id: 'reports.packer-day',
   tableId: 'report-packer-day',
   entityFamily: 'report-packer-day',

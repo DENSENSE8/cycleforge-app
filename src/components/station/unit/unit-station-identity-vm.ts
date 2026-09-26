@@ -17,14 +17,14 @@ export interface UnitIdentityInput {
 }
 
 /** Exactly the shape `CartonContextCard.lifecycle` expects. */
-export interface UnitLifecycleFace {
+interface UnitLifecycleFace {
   dotClass: string;
   pillClass: string;
   label: string;
   tip?: string | null;
 }
 
-export interface UnitStationIdentityVM {
+interface UnitStationIdentityVM {
   /** Lead identity text — the serial, else the minted uid, else a dash. */
   leadDisplay: string;
   /** True when `leadDisplay` came from `unit_uid` rather than a real serial. */

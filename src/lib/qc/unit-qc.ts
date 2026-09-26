@@ -20,7 +20,7 @@ export interface UnitQcStep {
   notes: string | null;
 }
 
-export interface UnitQcSummary {
+interface UnitQcSummary {
   passed: number;
   failed: number;
   /** No verdict yet — never recorded, or recorded as a reading without one. */

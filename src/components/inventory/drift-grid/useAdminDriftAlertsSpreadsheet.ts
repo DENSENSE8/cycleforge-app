@@ -23,7 +23,7 @@ import {
 } from './admin-drift-alerts-table-definition';
 import { useAdminDriftAlertsTableLayout } from './useAdminDriftAlertsTableLayout';
 
-export interface UseAdminDriftAlertsSpreadsheetOptions {
+interface UseAdminDriftAlertsSpreadsheetOptions {
   /** The feed — newest first off the server. A header click re-orders it. */
   rows: readonly DriftAlertRow[];
   loading?: boolean;

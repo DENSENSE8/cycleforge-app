@@ -7,7 +7,7 @@ import { SEGMENTED_CONTROL_FACE_CORNER } from '@/design-system/tokens/radius';
 import { elevationClass } from '@/design-system/tokens/shadows';
 import { cn } from '@/utils/_cn';
 
-export type KeyboardKeySize = 'sm' | 'md';
+type KeyboardKeySize = 'sm' | 'md';
 
 const SIZE_CLASS: Record<KeyboardKeySize, string> = {
   /** Selection CTA overlay — square face inside the Button. */
@@ -20,7 +20,7 @@ const SIZE_CLASS: Record<KeyboardKeySize, string> = {
  * Shared face classes — import this (or {@link KeyboardKey}) instead of
  * hand-rolling another gray/black kbd.
  */
-export const KEYBOARD_KEY_FACE_CLASS = cn(
+const KEYBOARD_KEY_FACE_CLASS = cn(
   'inline-flex shrink-0 items-center justify-center',
   'border border-border-soft bg-surface-sunken',
   'ring-1 ring-inset ring-border-hairline',
@@ -29,7 +29,7 @@ export const KEYBOARD_KEY_FACE_CLASS = cn(
   elevationClass('raised', 'soft'),
 );
 
-export type KeyboardKeyProps = {
+type KeyboardKeyProps = {
   children: ReactNode;
   size?: KeyboardKeySize;
   className?: string;

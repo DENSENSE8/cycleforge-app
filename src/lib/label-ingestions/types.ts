@@ -15,7 +15,7 @@ export const LABEL_INGESTION_STATES = [
 
 export type LabelIngestionState = (typeof LABEL_INGESTION_STATES)[number];
 
-export const LABEL_INGESTION_SOURCES = [
+const LABEL_INGESTION_SOURCES = [
   'WATCHED_FOLDER',
   'BROWSER_FIXTURE',
   'MANUAL_UPLOAD',
@@ -23,7 +23,7 @@ export const LABEL_INGESTION_SOURCES = [
   'SHIPSTATION_API',
 ] as const;
 
-export type LabelIngestionSource = (typeof LABEL_INGESTION_SOURCES)[number];
+type LabelIngestionSource = (typeof LABEL_INGESTION_SOURCES)[number];
 
 /** V1 deliberately has no fuzzy/AI/address match discriminator. */
 export const LABEL_MATCH_METHODS = [
@@ -70,7 +70,7 @@ export interface ExactOrderIdentity {
   cycleforgeReference: string | null;
 }
 
-export interface StagedLabelObject {
+interface StagedLabelObject {
   storageProvider: string;
   objectKey: string;
   mimeType: 'application/pdf';
@@ -91,7 +91,7 @@ export interface ParsedLabelEvidence {
   multiPackageEvidence: boolean;
 }
 
-export interface LabelIngestionRecord {
+interface LabelIngestionRecord {
   id: number;
   organizationId: string;
   deviceId: number | null;

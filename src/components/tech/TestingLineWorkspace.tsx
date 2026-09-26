@@ -22,7 +22,7 @@ import { zIndex } from '@/design-system/tokens/z-index';
 
 /** Persisted last-open line — written on select for future session UX / e2e;
  *  not restored on cold load so Testing mode lands on the history browse. */
-export const LAST_TESTING_LINE_KEY = 'cf:testing:last-line-id';
+const LAST_TESTING_LINE_KEY = 'cf:testing:last-line-id';
 
 interface Props {
   staffId: string;

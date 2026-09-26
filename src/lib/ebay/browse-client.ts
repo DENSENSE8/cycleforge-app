@@ -74,7 +74,7 @@ export interface BrowseItemSummary {
   [k: string]: unknown;
 }
 
-export interface BrowseSearchParams {
+interface BrowseSearchParams {
   q: string;
   conditions?: BrowseCondition[];
   maxPriceCents?: number | null;
@@ -83,7 +83,7 @@ export interface BrowseSearchParams {
   orgId?: OrgId;
 }
 
-export interface BrowseSearchResult {
+interface BrowseSearchResult {
   items: BrowseItemSummary[];
   total: number;
   href: string;
@@ -158,7 +158,7 @@ interface BrowseImage {
 }
 
 /** The image-bearing slice of `get_item_by_legacy_id` / `get_items_by_item_group`. */
-export interface BrowseItemImages {
+interface BrowseItemImages {
   image?: BrowseImage;
   additionalImages?: BrowseImage[];
   items?: Array<{ image?: BrowseImage; additionalImages?: BrowseImage[] }>;

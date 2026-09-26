@@ -6,7 +6,7 @@ import {
   type AllocationCandidateRow,
 } from '@/lib/inventory/allocation-candidate-row';
 
-export interface AdminBulkAllocateVerbHandlers {
+interface AdminBulkAllocateVerbHandlers {
   /** Runs the per-row server action. Supplied by the mount, never by the catalog. */
   onAllocate: (row: AllocationCandidateRow) => void;
   /** True while this row's allocation is in flight. */

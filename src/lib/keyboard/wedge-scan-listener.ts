@@ -23,7 +23,7 @@ export interface WedgeKeyEvent {
   preventDefault: () => void;
 }
 
-export interface CreateWedgeKeyListenerOptions {
+interface CreateWedgeKeyListenerOptions {
   onScan: (value: string) => void;
   maxInterKeyMs?: number;
   idleFlushMs?: number;
@@ -35,7 +35,7 @@ export interface CreateWedgeKeyListenerOptions {
   cancelIdle?: (id: number) => void;
 }
 
-export interface WedgeKeyListener {
+interface WedgeKeyListener {
   onKeyDown: (event: WedgeKeyEvent) => void;
   dispose: () => void;
   pendingCount: () => number;

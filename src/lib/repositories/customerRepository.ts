@@ -2,7 +2,7 @@ import { db } from '@/lib/drizzle/db';
 import { customers } from '@/lib/drizzle/schema';
 import { eq } from 'drizzle-orm';
 
-export interface UpsertCustomerInput {
+interface UpsertCustomerInput {
   organizationId: string;
   zohoContactId?: string | null;
   orderId?: string | null;
@@ -29,13 +29,13 @@ export interface UpsertCustomerInput {
   syncedAt?: Date | null;
 }
 
-export interface CustomerRepository {
+interface CustomerRepository {
   findById(id: number): Promise<typeof customers.$inferSelect | null>;
   findByEmail(email: string): Promise<typeof customers.$inferSelect | null>;
   upsert(input: UpsertCustomerInput): Promise<typeof customers.$inferSelect>;
 }
 
-export class DrizzleCustomerRepository implements CustomerRepository {
+class DrizzleCustomerRepository implements CustomerRepository {
   async findById(id: number) {
     const rows = await db.select().from(customers).where(eq(customers.id, id)).limit(1);
     return rows[0] ?? null;

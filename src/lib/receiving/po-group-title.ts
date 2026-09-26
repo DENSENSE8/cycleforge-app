@@ -15,7 +15,7 @@ export const UNFOUND_PO_SENTINEL = 'Unfound PO';
 /** Operator face for {@link UNFOUND_PO_SENTINEL}. */
 export const UNFOUND_PO_DISPLAY = 'Unfound order';
 
-export interface ReceivingPoIdentityParts {
+interface ReceivingPoIdentityParts {
   poValue: string;
   idPrefix: 'PO' | 'Order';
   platformLabel: string;
@@ -23,7 +23,7 @@ export interface ReceivingPoIdentityParts {
 }
 
 /** Stamped by rail fetchers before render — drives adaptive title mode. */
-export interface RailTitleContext {
+interface RailTitleContext {
   line_count: number;
   distinct_sku_count: number;
 }
@@ -109,7 +109,7 @@ export function isReceivingPoGroupTitleRow(row: ReceivingLineRow): boolean {
 }
 
 /** Minimal fields used by {@link receivingPoGroupKey} / {@link filterLinesByPoGroup}. */
-export type PoGroupKeySource = {
+type PoGroupKeySource = {
   id: number;
   zoho_purchaseorder_number?: string | null;
   zoho_purchaseorder_id?: string | null;
@@ -150,7 +150,7 @@ function lineProductKey(row: ReceivingLineRow): string {
 }
 
 /** Count lines + distinct product keys in a group. */
-export function countLinesAndSkus(rows: ReadonlyArray<ReceivingLineRow>): RailTitleContext {
+function countLinesAndSkus(rows: ReadonlyArray<ReceivingLineRow>): RailTitleContext {
   const keys = new Set(rows.map(lineProductKey));
   return {
     line_count: rows.length,
@@ -232,7 +232,7 @@ export function receivingWorkspaceLineTitle(
 }
 
 /** True when adaptive mode should show PO summary instead of product title. */
-export function shouldUsePoGroupRailTitle(row: ReceivingLineRow): boolean {
+function shouldUsePoGroupRailTitle(row: ReceivingLineRow): boolean {
   const ctx = row.rail_title_context;
   if (!ctx) return false;
   return (

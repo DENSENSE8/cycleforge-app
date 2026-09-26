@@ -71,7 +71,7 @@ export type PairingAuditAction =
 
 export type PairingAuditActorKind = 'user' | 'system';
 
-export interface SkuKitPartRow {
+interface SkuKitPartRow {
   id: number;
   sku_catalog_id: number;
   component_name: string;
@@ -474,7 +474,7 @@ interface ListingTitleMatch {
 }
 
 /** Resolve a sheet row's Item Number from an EXACT listing title. */
-export async function batchResolveListingsByTitle(
+async function batchResolveListingsByTitle(
   inputs: Array<{ title: string; platform: string }>,
   orgId: OrgId,
 ): Promise<Map<string, ListingTitleMatch>> {
@@ -556,7 +556,7 @@ export async function batchResolveListingsByTitle(
 }
 
 /** Stable lookup key for {@link batchResolveListingsByTitle} results. */
-export function listingTitleMatchKey(title: string, platform: string): string {
+function listingTitleMatchKey(title: string, platform: string): string {
   return `${platform.trim().toLowerCase()} ${title.trim().toLowerCase()}`;
 }
 

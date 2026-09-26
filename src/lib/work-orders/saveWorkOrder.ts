@@ -2,7 +2,7 @@
 
 import type { EntityType, WorkStatus } from '@/components/work-orders/types';
 
-export interface SaveWorkOrderParams {
+interface SaveWorkOrderParams {
   entityType: EntityType;
   entityId: number;
   assignedTechId: number | null;

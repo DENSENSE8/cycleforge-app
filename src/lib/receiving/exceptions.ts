@@ -4,7 +4,7 @@ import { tenantQuery } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';
 import { emitEntitySignalSafe } from '@/lib/surfaces/record-entity-signal';
 
-export interface ReceivingExceptionRow {
+interface ReceivingExceptionRow {
   id: number;
   receiving_line_id: number;
   receiving_id: number | null;
@@ -17,7 +17,7 @@ export interface ReceivingExceptionRow {
   created_at: string;
 }
 
-export interface RecordReceivingExceptionInput {
+interface RecordReceivingExceptionInput {
   receivingLineId: number;
   receivingId?: number | null;
   exceptionCode: string;

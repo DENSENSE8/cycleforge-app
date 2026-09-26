@@ -6,7 +6,7 @@
 import type { DailyCheckReport, DailyCheckStaffRow } from './types';
 
 /** One task on one staffer's day. */
-export interface StaffDayTask {
+interface StaffDayTask {
   itemId: number;
   title: string;
   /**
@@ -26,7 +26,7 @@ export interface StaffDayTask {
 }
 
 /** One staffer's whole day, ready to render. */
-export interface StaffDay {
+interface StaffDay {
   /** Warehouse civil day, `YYYY-MM-DD`. */
   dateKey: string;
   staffId: number;

@@ -108,7 +108,7 @@ export async function getDocumentPrintJobByEventId(
   return res.rows[0] ?? null;
 }
 
-export async function listDocumentPrintJobsForOrder(
+async function listDocumentPrintJobsForOrder(
   orderId: number,
   orgId: OrgId,
   limit = 20,

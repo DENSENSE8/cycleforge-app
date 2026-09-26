@@ -1,14 +1,14 @@
 /** Shared types + constants for the Daily ("/") surface. */
 
-export type HomeMode = 'daily';
+type HomeMode = 'daily';
 
 /** `daily` is the landing view — the only view. */
-export const DEFAULT_HOME_MODE: HomeMode = 'daily';
+const DEFAULT_HOME_MODE: HomeMode = 'daily';
 
 /** Live Home modes. */
-export const HOME_MODES = ['daily'] as const satisfies readonly HomeMode[];
+const HOME_MODES = ['daily'] as const satisfies readonly HomeMode[];
 
-export function parseHomeMode(_raw: string | null | undefined): HomeMode {
+function parseHomeMode(_raw: string | null | undefined): HomeMode {
   return DEFAULT_HOME_MODE;
 }
 

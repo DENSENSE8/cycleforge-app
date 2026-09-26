@@ -26,12 +26,12 @@ export interface MobileOrderSubmissionInput {
   existingOrderId?: number;
 }
 
-export interface MobileOrderSubmissionResult {
+interface MobileOrderSubmissionResult {
   orderId: number;
   orderNumber: string;
 }
 
-export function validateMobileOrderInput(input: MobileOrderSubmissionInput): void {
+function validateMobileOrderInput(input: MobileOrderSubmissionInput): void {
   const { draft } = input;
   if (!input.clientEventId.trim()) throw new MobileOrderSubmissionError('A submission key is required.', null, 'validation');
   if (!draft.orderNumber.trim()) throw new MobileOrderSubmissionError('Order number is required.', null, 'validation');

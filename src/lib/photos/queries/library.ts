@@ -12,7 +12,7 @@ import { isPhotoLibraryStage } from '../library-filter-state';
 import { mapPhotoRow } from './list-for-entity';
 import { dayLabel, weekRange, weekRangeLabel } from '@/lib/photos/date-hierarchy';
 
-export interface LibraryFilters {
+interface LibraryFilters {
   organizationId: OrgId;
   cursor?: number | null;
   limit?: number;
@@ -59,7 +59,7 @@ export interface LibraryFilters {
   poFinderKind?: PoFinderKind | null;
 }
 
-export type PoFinderKind =
+type PoFinderKind =
   | 'order'
   | 'tracking'
   | 'serial'

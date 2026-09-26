@@ -8,8 +8,8 @@ import type { PickOrderTasks } from '@/lib/picking/sessions';
 
 /** Client data layer for fulfillment substitution. */
 
-export const orderAmendmentsKey = (orderId: number) => ['order-amendments', orderId] as const;
-export const orderPickTasksKey = (orderId: number) => ['order-pick-tasks', orderId] as const;
+const orderAmendmentsKey = (orderId: number) => ['order-amendments', orderId] as const;
+const orderPickTasksKey = (orderId: number) => ['order-pick-tasks', orderId] as const;
 
 export function useOrderPickTasks(orderId: number | null | undefined) {
   return useQuery({
@@ -37,7 +37,7 @@ export function useOrderAmendments(orderId: number | null | undefined) {
   });
 }
 
-export interface SubstituteVars {
+interface SubstituteVars {
   orderId: number;
   originalAllocationId: number;
   /** One of substituteSerial / substituteUnitId. */
@@ -81,13 +81,13 @@ export function useSubstituteUnit() {
   });
 }
 
-export interface DecideVars {
+interface DecideVars {
   amendmentId: number;
   orderId: number;
   decision: 'approve' | 'reject';
 }
 
-export function useDecideAmendment() {
+function useDecideAmendment() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (vars: DecideVars) => {

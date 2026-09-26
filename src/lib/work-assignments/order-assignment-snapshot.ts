@@ -9,7 +9,7 @@ const WA_ORDER_BY = `
     id DESC
 `;
 
-export type OrderAssignmentSnapshot = {
+type OrderAssignmentSnapshot = {
   testerId: number | null;
   packerId: number | null;
   deadlineAt: string | null;

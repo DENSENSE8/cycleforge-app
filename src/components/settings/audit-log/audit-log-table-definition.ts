@@ -29,7 +29,7 @@ export const AUDITLOG_GRID_CAPABILITIES: GridSurfaceCapabilities = {
   dayBands: false,
 };
 
-export function makeAuditLogGridDescriptor(
+function makeAuditLogGridDescriptor(
   columns: readonly AuditLogGridColumn[],
 ): GridSurfaceDescriptor<AuditLogRow, AuditLogGridColumn> {
   return makeGridSurfaceDescriptor<AuditLogRow, AuditLogGridColumn>(
@@ -44,7 +44,7 @@ export function makeAuditLogGridDescriptor(
   );
 }
 
-export const AUDITLOG_TABLE_DEFINITION = parseTableDefinition({
+const AUDITLOG_TABLE_DEFINITION = parseTableDefinition({
   id: 'settings.audit-log',
   tableId: 'audit-log',
   entityFamily: 'audit-log',

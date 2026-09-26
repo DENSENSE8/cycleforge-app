@@ -5,7 +5,7 @@
 import type { SignatureStrokeGroup } from '@/lib/repair/signature-geometry';
 
 /** Normalize unknown jsonb into stroke groups. Anything else renders nothing. */
-export function parseSignatureStrokes(raw: unknown): SignatureStrokeGroup[] {
+function parseSignatureStrokes(raw: unknown): SignatureStrokeGroup[] {
   if (!Array.isArray(raw)) return [];
   const groups: SignatureStrokeGroup[] = [];
   for (const group of raw) {

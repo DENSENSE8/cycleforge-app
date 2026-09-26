@@ -1,6 +1,6 @@
 // Single source of truth for QC failure-severity tones.
 
-export type QualitySeverity = 'critical' | 'major' | 'minor';
+type QualitySeverity = 'critical' | 'major' | 'minor';
 
 const TONES: Record<QualitySeverity, string> = {
   critical: 'bg-rose-50 text-rose-700 border-rose-200',

@@ -9,9 +9,9 @@ import { workOrderHref } from './my-day-href';
 export type MyDayLane = 'do_next' | 'assigned' | 'attention';
 
 /** Sidebar scope — the lanes plus the unfiltered view. */
-export type MyDayLaneFilter = MyDayLane | 'all';
+type MyDayLaneFilter = MyDayLane | 'all';
 
-export const MY_DAY_LANE_FILTERS: readonly MyDayLaneFilter[] = [
+const MY_DAY_LANE_FILTERS: readonly MyDayLaneFilter[] = [
   'all',
   'do_next',
   'assigned',
@@ -45,7 +45,7 @@ const LANE_SHORT_LABEL: Record<MyDayLane, string> = {
   attention: 'Attention',
 };
 
-export function myDayLaneLabel(lane: MyDayLaneFilter): string {
+function myDayLaneLabel(lane: MyDayLaneFilter): string {
   return LANE_LABEL[lane];
 }
 
@@ -66,20 +66,20 @@ const LANE_TAB_COLOR: Record<MyDayLaneFilter, 'gray' | 'emerald' | 'blue' | 'ora
   attention: 'orange',
 };
 
-export function myDayLaneTabColor(lane: MyDayLaneFilter) {
+function myDayLaneTabColor(lane: MyDayLaneFilter) {
   return LANE_TAB_COLOR[lane];
 }
 
-export function myDayLaneChipClass(lane: MyDayLane): string {
+function myDayLaneChipClass(lane: MyDayLane): string {
   return LANE_CHIP[lane];
 }
 
-export function myDayLaneDot(lane: MyDayLane): string {
+function myDayLaneDot(lane: MyDayLane): string {
   return LANE_DOT[lane];
 }
 
 /** `?scope=` → a lane, or `all` for anything this surface does not own. */
-export function parseMyDayLane(raw: string | null | undefined): MyDayLaneFilter {
+function parseMyDayLane(raw: string | null | undefined): MyDayLaneFilter {
   const v = (raw || '').trim().toLowerCase();
   return (MY_DAY_LANE_FILTERS as readonly string[]).includes(v)
     ? (v as MyDayLaneFilter)
@@ -160,7 +160,7 @@ export function myDayTasksFromFeed(feed: MyDayFeed | undefined | null): MyDayTas
   return tasks;
 }
 
-export function filterMyDayTasks(tasks: readonly MyDayTask[], lane: MyDayLaneFilter): MyDayTask[] {
+function filterMyDayTasks(tasks: readonly MyDayTask[], lane: MyDayLaneFilter): MyDayTask[] {
   return lane === 'all' ? [...tasks] : tasks.filter((t) => t.lane === lane);
 }
 
@@ -175,9 +175,9 @@ export function searchMyDayTasks(tasks: readonly MyDayTask[], query: string): My
 }
 
 /** Which side of today a task's deadline falls on — the ONE axis Today's KPI band measures. */
-export type MyDayDueHorizon = 'overdue' | 'due_today' | 'upcoming';
+type MyDayDueHorizon = 'overdue' | 'due_today' | 'upcoming';
 
-export const MY_DAY_DUE_HORIZONS: readonly MyDayDueHorizon[] = [
+const MY_DAY_DUE_HORIZONS: readonly MyDayDueHorizon[] = [
   'overdue',
   'due_today',
   'upcoming',
@@ -200,16 +200,16 @@ const DUE_HORIZON_SHORT_LABEL: Record<MyDayDueHorizon, string> = {
   upcoming: 'Upcoming',
 };
 
-export function myDayDueHorizonLabel(horizon: MyDayDueHorizon): string {
+function myDayDueHorizonLabel(horizon: MyDayDueHorizon): string {
   return DUE_HORIZON_LABEL[horizon];
 }
 
-export function myDayDueHorizonShortLabel(horizon: MyDayDueHorizon): string {
+function myDayDueHorizonShortLabel(horizon: MyDayDueHorizon): string {
   return DUE_HORIZON_SHORT_LABEL[horizon];
 }
 
 /** `?filter=` → a horizon, or null for anything this surface does not own. */
-export function parseMyDayDueHorizon(raw: string | null | undefined): MyDayDueHorizon | null {
+function parseMyDayDueHorizon(raw: string | null | undefined): MyDayDueHorizon | null {
   const v = (raw || '').trim().toLowerCase();
   return (MY_DAY_DUE_HORIZONS as readonly string[]).includes(v) ? (v as MyDayDueHorizon) : null;
 }
@@ -250,7 +250,7 @@ export function myDayDueHorizonCounts(
 }
 
 /** Per-lane counts for the sidebar picker (`all` = the whole set). */
-export function myDayLaneCounts(
+function myDayLaneCounts(
   tasks: readonly MyDayTask[],
 ): Record<MyDayLaneFilter, number> {
   return {

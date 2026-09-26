@@ -2,18 +2,18 @@
 
 import { aiRequestHeaders } from '@/lib/ai/provider';
 
-export interface ProbeTarget {
+interface ProbeTarget {
   baseURL: string;
   apiKey?: string;
   headers?: Record<string, string>;
 }
 
-export type ProbeResult =
+type ProbeResult =
   | { ok: true; models: string[]; note?: string }
   | { ok: false; reason: string };
 
 /** Bounded so a save cannot hang on a black-holed address. */
-export const PROBE_TIMEOUT_MS = 8_000;
+const PROBE_TIMEOUT_MS = 8_000;
 
 export async function probeAiEndpoint(
   target: ProbeTarget,

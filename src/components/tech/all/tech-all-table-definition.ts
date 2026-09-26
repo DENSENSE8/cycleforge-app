@@ -6,7 +6,7 @@ import { TECH_ALL_SHEET_COLUMNS, type TechAllGridColumn } from '@/lib/tech/tech-
 import { parseTableDefinition } from '@/lib/tables/table-definition';
 import { TECH_ALL_GRID_CAPABILITIES, makeTechAllGridDescriptor } from './tech-all-grid-descriptor';
 
-export const TECH_ALL_TABLE_DEFINITION = parseTableDefinition({
+const TECH_ALL_TABLE_DEFINITION = parseTableDefinition({
   id: 'tech.all',
   tableId: 'tech-all',
   entityFamily: 'tech-all',

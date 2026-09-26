@@ -6,7 +6,7 @@ import { cornerClass } from '@/design-system/tokens/radius';
 import { cn } from '@/utils/_cn';
 import type { KitFace } from '@/lib/orders/order-kit-composition';
 
-export type KitCompositionHoverCardProps = {
+type KitCompositionHoverCardProps = {
   face: KitFace;
 };
 

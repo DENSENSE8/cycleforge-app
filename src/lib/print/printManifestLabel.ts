@@ -9,7 +9,7 @@ const MANIFEST_INFO_CSS = `
   .mf-sku{font-size:11px;font-weight:700;color:#374151;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
   .mf-kicker{font-size:10px;font-weight:800;letter-spacing:1px;text-transform:uppercase;color:#7c3aed}`;
 
-export interface ManifestLabelPayload {
+interface ManifestLabelPayload {
   /** manifest_uid — the KIT-{SKU}-{YYWW}-{SEQ6} identity, shown + encoded. */
   manifestUid: string;
   /** Child unit count, e.g. 3 → "3 units". */

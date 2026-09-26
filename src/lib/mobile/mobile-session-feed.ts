@@ -2,9 +2,9 @@
 
 export const MOBILE_SESSION_STORAGE_KEY = 'cf.mobile.current-session.v1';
 export const MOBILE_SESSION_EVENT = 'mobile-session-entry';
-export const MOBILE_SESSION_LIMIT = 40;
+const MOBILE_SESSION_LIMIT = 40;
 
-export const MOBILE_SESSION_JOBS = ['pick', 'pack', 'unbox', 'display', 'scan'] as const;
+const MOBILE_SESSION_JOBS = ['pick', 'pack', 'unbox', 'display', 'scan'] as const;
 export type MobileSessionJob = (typeof MOBILE_SESSION_JOBS)[number] | (string & {});
 
 export type MobileSessionState = 'done' | 'blocked' | 'exception' | 'miss' | 'error';
@@ -21,7 +21,7 @@ export interface MobileSessionEntry {
   dedupeKey: string | null;
 }
 
-export const MOBILE_SESSION_JOB_LABELS: Record<string, string> = {
+const MOBILE_SESSION_JOB_LABELS: Record<string, string> = {
   pick: 'Picker',
   pack: 'Packer',
   unbox: 'Unbox',

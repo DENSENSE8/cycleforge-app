@@ -18,7 +18,7 @@ async function safeFetch<T>(label: string, fn: () => Promise<T[]>): Promise<T[]>
   }
 }
 
-export type FetchAllQueuesOpts = {
+type FetchAllQueuesOpts = {
   /** When true, always merge receiving/repair/FBA/stock queues (My Day + mine). */
   unified?: boolean;
 };

@@ -2,7 +2,7 @@
 import pool from '@/lib/db';
 import { getDeliveredUnscannedCount } from '@/lib/receiving/delivered-unscanned';
 
-export interface CarrierThroughput {
+interface CarrierThroughput {
   carrier: 'UPS' | 'USPS' | 'FEDEX';
   active: number;          // non-terminal shipments we still poll
   inTransitOrOfd: number;  // live, moving
@@ -11,7 +11,7 @@ export interface CarrierThroughput {
   errorStuck: number;      // consecutive_error_count >= 5, non-terminal
 }
 
-export interface ShippingTrackingMetrics {
+interface ShippingTrackingMetrics {
   deliveredUnscanned: number;
   blockedTotal: number;
   uspsBlocked: number;
@@ -24,7 +24,7 @@ export interface ShippingTrackingMetrics {
   perCarrier: CarrierThroughput[];
 }
 
-export interface MetricAlert {
+interface MetricAlert {
   level: 'warn' | 'error';
   code: string;
   message: string;

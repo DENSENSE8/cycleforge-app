@@ -13,7 +13,7 @@ import {
 } from '@/design-system/primitives/DropdownMenu';
 import { cn } from '@/utils/_cn';
 
-export interface TaskRowMenuProps {
+interface TaskRowMenuProps {
   /** Row label, so the trigger's accessible name names WHICH task. */
   label: string;
   done: boolean;

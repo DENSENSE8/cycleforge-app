@@ -7,7 +7,7 @@ import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
  * The panel renders from this — never from raw row fields — so the display stays
  * dumb and the derivation rules live in one place (`toTriagePackage`).
  */
-export interface TriagePackage {
+interface TriagePackage {
   lineId: number;
   receivingId: number | null;
   tracking: string | null;

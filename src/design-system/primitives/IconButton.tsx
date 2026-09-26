@@ -39,7 +39,7 @@ const toneClassName: Record<IconButtonTone, string> = {
   glass: 'text-white hover:bg-glass/20',
 };
 
-export interface IconButtonProps
+interface IconButtonProps
   extends Omit<ButtonHTMLAttributes<HTMLButtonElement>, 'children' | 'onClick' | 'title'> {
   icon: ReactNode;
   onClick?: (event: MouseEvent<HTMLButtonElement>) => void;

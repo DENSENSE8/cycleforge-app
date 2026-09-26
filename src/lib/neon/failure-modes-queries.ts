@@ -4,7 +4,7 @@ import type { OrgId } from '@/lib/tenancy/constants';
 
 /** Failure-mode taxonomy (failure_modes) + per-unit failure tags (unit_failure_tags). */
 
-export interface FailureModeRow {
+interface FailureModeRow {
   id: number;
   code: string;
   label: string;
@@ -18,7 +18,7 @@ export interface FailureModeRow {
   created_at: string;
 }
 
-export interface UnitFailureTagRow {
+interface UnitFailureTagRow {
   id: number;
   serial_unit_id: number;
   failure_mode_id: number;

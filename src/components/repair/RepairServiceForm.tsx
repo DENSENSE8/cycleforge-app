@@ -8,7 +8,7 @@ import { REPAIR_PICKUP_DATE_PLACEHOLDER } from '@/lib/repair/repair-paper-html'
 import { REPAIR_PRINT_SIGNATURE_BAND } from '@/lib/repair/signature-geometry'
 import { useOrgLetterhead } from '@/hooks/useOrgLetterhead'
 
-export type RepairServiceFormProps = RepairReceiptProps & {
+type RepairServiceFormProps = RepairReceiptProps & {
   /** `compact` — review-step SCALE: column width, smaller type. */
   density?: 'full' | 'compact';
   /** Which parts of the document render. */

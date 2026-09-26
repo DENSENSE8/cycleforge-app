@@ -5,9 +5,9 @@ import type { ShipStationStatus } from '@/lib/shipping/shipstation/status';
 
 /** This org's ShipStation key health — GET /api/integrations/shipstation/health. */
 
-export const shipStationStatusKey = ['shipstation-status'] as const;
+const shipStationStatusKey = ['shipstation-status'] as const;
 
-export interface ShipStationHealth extends ShipStationStatus {
+interface ShipStationHealth extends ShipStationStatus {
   ok: boolean;
   /** Which key is not active, when `ok` is false. */
   error?: string;

@@ -31,7 +31,7 @@ export function composeDeclinedReason(
   return choice ?? (note || null);
 }
 
-export type PickupSignoffOutcome =
+type PickupSignoffOutcome =
   | { ok: true; input: RepairPickupInput }
   | { ok: false; reason: string };
 

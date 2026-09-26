@@ -8,7 +8,7 @@ export const fontWeights = {
   semibold: 600,
 } as const;
 
-export type FontWeights = typeof fontWeights;
+type FontWeights = typeof fontWeights;
 
 /** The hard ceiling. Nothing in the UI may resolve above this. */
-export const MAX_FONT_WEIGHT = 600;
+const MAX_FONT_WEIGHT = 600;

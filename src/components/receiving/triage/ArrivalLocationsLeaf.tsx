@@ -22,7 +22,7 @@ function lineSubjectId(lineId: number): SubjectId {
 }
 
 /** `line:42` → 42; anything else (including `carton`) → null. */
-export function parseLineSubject(subject: SubjectId): number | null {
+function parseLineSubject(subject: SubjectId): number | null {
   if (!subject.startsWith('line:')) return null;
   const id = Number(subject.slice('line:'.length));
   return Number.isFinite(id) && id > 0 ? id : null;

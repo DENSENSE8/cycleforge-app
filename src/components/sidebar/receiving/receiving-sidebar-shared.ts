@@ -13,7 +13,7 @@ import type { ClaimType } from '@/lib/receiving-claim-type';
 export type ReceivingMode = 'incoming' | 'triage' | 'receive' | 'history' | 'pickup' | 'repair';
 
 // Sidebar order:
-export const RECEIVING_MODE_ITEMS: HorizontalSliderItem[] = [
+const RECEIVING_MODE_ITEMS: HorizontalSliderItem[] = [
   { id: 'incoming', label: 'Inbound',      icon: RECEIVING_NAV_ICONS.incoming },
   { id: 'triage',   label: 'Arrival',    icon: RECEIVING_NAV_ICONS.triage },
   { id: 'receive',  label: 'Unbox',        icon: RECEIVING_NAV_ICONS.receive },
@@ -138,7 +138,7 @@ export const RECEIVING_TYPE_OPTS = RECEIVING_TYPES.map((t) => ({
 }));
 
 // Pill options + printed-label map both derive from the platform SoT so a platform never reads two ways across surfaces.
-export const SOURCE_PLATFORM_OPTS: Array<{ value: string; label: string }> = [
+const SOURCE_PLATFORM_OPTS: Array<{ value: string; label: string }> = [
   { value: '', label: 'Unknown' },
   ...SOURCE_PLATFORMS.map((p) => ({ value: p.value, label: p.label })),
 ];

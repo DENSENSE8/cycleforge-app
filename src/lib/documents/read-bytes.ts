@@ -6,7 +6,7 @@ import type { OutboundDocumentData } from '@/lib/documents/types';
 import { getStorageAdapter } from '@/lib/photos/storage/registry';
 import { normalizePhotoDisplayUrl } from '@/lib/nas-photo-url';
 
-export interface DocumentBytesResult {
+interface DocumentBytesResult {
   bytes: Buffer;
   contentType: string;
   filename: string;

@@ -7,7 +7,7 @@ import { tenantQuery } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';
 
 /** Resolve the sku_catalog row a receiving line maps to. */
-export interface LineCatalogResolution {
+interface LineCatalogResolution {
   lineId: number;
   sku: string | null;
   itemNumber: string | null;

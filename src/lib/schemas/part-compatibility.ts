@@ -48,5 +48,5 @@ export const PartCompatibilityUpdateBody = z
     message: 'At least one field must be provided',
   });
 
-export type PartCompatibilityCreateInput = z.infer<typeof PartCompatibilityCreateBody>;
-export type PartCompatibilityUpdateInput = z.infer<typeof PartCompatibilityUpdateBody>;
+type PartCompatibilityCreateInput = z.infer<typeof PartCompatibilityCreateBody>;
+type PartCompatibilityUpdateInput = z.infer<typeof PartCompatibilityUpdateBody>;

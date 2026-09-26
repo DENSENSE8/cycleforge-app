@@ -11,7 +11,7 @@ export function parseLabelsView(raw: string | null): LabelsSubView {
   return 'print';
 }
 
-export const LABELS_PRODUCTS_TAB_LABEL: Record<LabelsSubView, string> = {
+const LABELS_PRODUCTS_TAB_LABEL: Record<LabelsSubView, string> = {
   print: 'Products',
   recent: 'Recent',
   history: 'History',

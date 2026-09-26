@@ -40,7 +40,7 @@ interface AttachedBox {
   is_delivered: boolean | null;
 }
 
-export interface AttachTrackingPresetPo {
+interface AttachTrackingPresetPo {
   poId: string;
   poNumber: string | null;
 }

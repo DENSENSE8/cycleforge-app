@@ -2,9 +2,9 @@
 import type { LabelIngestionState, LabelQuarantineReasonCode } from './types';
 
 export type LedgerTone = 'danger' | 'warning' | 'info' | 'fulfillment' | 'success';
-export type LedgerAction = 'apply' | 'retry';
+type LedgerAction = 'apply' | 'retry';
 
-export interface LedgerStatus {
+interface LedgerStatus {
   /** Written state — the meaning. */
   label: string;
   tone: LedgerTone;

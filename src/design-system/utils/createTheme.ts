@@ -15,7 +15,7 @@ function flattenTheme(source: ThemeSource, prefix = ''): Record<string, string> 
   }, {});
 }
 
-export function createTheme(theme: ThemeSource) {
+function createTheme(theme: ThemeSource) {
   return {
     raw: theme,
     values: flattenTheme(theme),

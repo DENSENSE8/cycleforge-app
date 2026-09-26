@@ -47,7 +47,7 @@ function randomTag(): string {
   }
 }
 
-export interface AblyYjsProviderOptions {
+interface AblyYjsProviderOptions {
   /** Stable identity for echo suppression; defaults to a random UUID. */
   clientTag?: string;
   /** Subscribe-only mode for staff whose Ably capability has no `publish` (plan viewers). */

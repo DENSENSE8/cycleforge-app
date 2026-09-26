@@ -2,7 +2,7 @@ import pool from '@/lib/db';
 import type { OrgId } from '@/lib/tenancy/constants';
 
 /** Spine-first deferred fields for the shipped table. */
-export interface PackerLogHydration {
+interface PackerLogHydration {
   ship_by_date: string | null;
   deadline_at: string | null;
   tester_id: number | null;

@@ -12,7 +12,7 @@ import {
   makeInventoryEventsGridDescriptor,
 } from './inventory-events-grid-descriptor';
 
-export const INVENTORY_EVENTS_TABLE_DEFINITION = parseTableDefinition({
+const INVENTORY_EVENTS_TABLE_DEFINITION = parseTableDefinition({
   id: 'inventory.events',
   tableId: 'inventory-events',
   entityFamily: 'inventory-events',

@@ -6,7 +6,7 @@ import { Check } from '@/components/Icons';
 import type { LinearStepState } from './derive-receiving-step-states';
 
 export type { LinearStepState };
-export type LinearStep = { key: string; label: string };
+type LinearStep = { key: string; label: string };
 
 export { deriveReceivingStepStates } from './derive-receiving-step-states';
 

@@ -3,7 +3,7 @@
 import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
 import { isReturnIntake } from './triage-intake-kind';
 
-export type TriageFocusTarget =
+type TriageFocusTarget =
   | 'classify'
   | 'stage'
   | 'pair'

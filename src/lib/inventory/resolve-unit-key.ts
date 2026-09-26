@@ -4,7 +4,7 @@ import { tenantQuery } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';
 import { unwrapScannedSerial } from '@/lib/barcode-routing';
 
-export interface ResolvedUnitKey {
+interface ResolvedUnitKey {
   id: number;
   serialNumber: string | null;
   currentStatus: string;

@@ -27,7 +27,7 @@ const TRACKING_PANEL_VARIANTS = {
 
 const PRINT_SIDEBAR_READY_EVENT = 'fba-print-sidebar-ready';
 
-export interface FbaWorkspaceScanFieldProps {
+interface FbaWorkspaceScanFieldProps {
   staffName: string;
   staffId?: number | string | null;
   scanEnabled?: boolean;

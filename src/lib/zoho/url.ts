@@ -1,6 +1,6 @@
 /** Pure Zoho Inventory URL + data-center helpers. */
 
-export interface ZohoUrlConfig {
+interface ZohoUrlConfig {
   /** The TENANT'S Zoho Inventory organization_id (goes in the query string). */
   orgId: string;
   /** Accounts data-center domain, e.g. 'accounts.zoho.eu'. Defaults to .com. */

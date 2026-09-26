@@ -23,7 +23,7 @@ import {
 } from './unit-tsn-links-table-definition';
 import { useUnitTsnLinksTableLayout } from './useUnitTsnLinksTableLayout';
 
-export interface UseUnitTsnLinksSpreadsheetOptions {
+interface UseUnitTsnLinksSpreadsheetOptions {
   /** The feed. Already ordered by the API; a header click re-orders it. */
   rows: readonly UnitTsnLinkTableRow[];
   loading?: boolean;

@@ -5,7 +5,7 @@ import type { OrgId } from '@/lib/tenancy/constants';
 import { isSignalKind, isSurfaceEntityType } from '@/lib/surfaces/registry';
 import type { EntitySignalTimelineRow } from '@/lib/timeline';
 
-export interface EntitySignalFilter {
+interface EntitySignalFilter {
   limit?: number;
   /** Trailing window in days (occurred_at >= NOW() - N days). Omit = no window. */
   sinceDays?: number | null;

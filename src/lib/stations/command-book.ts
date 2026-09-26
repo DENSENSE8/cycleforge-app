@@ -23,7 +23,7 @@ export interface CommandBookEntry {
   sortOrder: number;
 }
 
-export interface CommandBookSection {
+interface CommandBookSection {
   family: CommandFamily;
   title: string;
   /** What this whole family does — the section's standfirst in the book. */

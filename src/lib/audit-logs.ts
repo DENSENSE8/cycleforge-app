@@ -5,7 +5,7 @@ type Queryable = {
   query: (text: string, params?: any[]) => Promise<{ rows: any[] }>;
 };
 
-export interface CreateAuditLogParams {
+interface CreateAuditLogParams {
   actorStaffId?: number | null;
   actorRole?: string | null;
   /** Tenant owner of this audit row. Nullable: system/no-actor rows stay NULL. */
@@ -694,7 +694,7 @@ export type AuditAction = (typeof AUDIT_ACTION)[keyof typeof AUDIT_ACTION];
  * Reason codes — required on operations that break expected state (qty
  * adjust, scrap, override, cancel, manual receive reverse).
  */
-export const AUDIT_REASON_REQUIRED: ReadonlySet<string> = new Set([
+const AUDIT_REASON_REQUIRED: ReadonlySet<string> = new Set([
   AUDIT_ACTION.SKU_STOCK_ADJUST,
   AUDIT_ACTION.PO_RECEIVE_REVERSE,
   AUDIT_ACTION.BIN_DELETE,

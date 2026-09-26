@@ -17,7 +17,7 @@ function envStr(key: string, fallback: string): string {
 export const REPO_PATH = envStr('PIPELINE_REPO_PATH', process.cwd());
 
 /** Directory for exported LoRA adapters (shared between Mac + Jetson). */
-export const ADAPTER_DIR = envStr(
+const ADAPTER_DIR = envStr(
   'PIPELINE_ADAPTER_DIR',
   '/Users/icecube/models/adapters',
 );
@@ -76,19 +76,19 @@ export const RUN_BUILD_CHECK = process.env.PIPELINE_RUN_BUILD === 'true';
 // ─── Training (Jetson) ──────────────────────────────────────
 
 /** Minimum rated samples before the Jetson triggers a training run. */
-export const MIN_TRAINING_SAMPLES = envInt('PIPELINE_MIN_SAMPLES', 20);
+const MIN_TRAINING_SAMPLES = envInt('PIPELINE_MIN_SAMPLES', 20);
 
 /** Base model for QLoRA fine-tuning (must fit in Jetson 8GB). */
-export const TRAINING_BASE_MODEL = envStr(
+const TRAINING_BASE_MODEL = envStr(
   'PIPELINE_BASE_MODEL',
   'Qwen/Qwen2.5-Coder-3B',
 );
 
 /** Minimum sample rating to include in training data. */
-export const TRAINING_RATING_THRESHOLD = envInt('PIPELINE_RATING_THRESHOLD', 2);
+const TRAINING_RATING_THRESHOLD = envInt('PIPELINE_RATING_THRESHOLD', 2);
 
 /** Identifier for the Jetson device (logged in training_runs). */
-export const JETSON_DEVICE_ID = envStr('JETSON_DEVICE_ID', 'jetson-orin-nano');
+const JETSON_DEVICE_ID = envStr('JETSON_DEVICE_ID', 'jetson-orin-nano');
 
 // ─── Scoring ─────────────────────────────────────────────────
 

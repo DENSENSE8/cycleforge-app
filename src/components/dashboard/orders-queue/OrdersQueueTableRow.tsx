@@ -88,7 +88,7 @@ import { useOrderAssignment } from '@/hooks/useOrderAssignment';
 import { toast } from '@/lib/toast';
 import { cn } from '@/utils/_cn';
 
-export interface OrdersQueueTableRowProps {
+interface OrdersQueueTableRowProps {
   record: QueueRowRecord;
   isSelected: boolean;
   /** Multi-select on — lead checkbox toggles; click selects instead of opening. */

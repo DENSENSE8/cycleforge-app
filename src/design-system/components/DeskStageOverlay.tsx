@@ -18,9 +18,9 @@ export function isRecordEscTextEntry(target: EventTarget | null): boolean {
   return isEditableKeyTarget(target) && !(target instanceof HTMLButtonElement);
 }
 
-export type DeskStageOverlayFill = 'inset' | 'stage';
+type DeskStageOverlayFill = 'inset' | 'stage';
 
-export interface DeskStageOverlayProps {
+interface DeskStageOverlayProps {
   /** When false, renders nothing — table ground plane only. */
   open: boolean;
   onClose: () => void;
@@ -169,7 +169,7 @@ export function DeskStageOverlay({
   );
 }
 
-export interface DeskStageRecordHeaderProps {
+interface DeskStageRecordHeaderProps {
   title: ReactNode;
   subtitle?: ReactNode;
   indexLabel?: ReactNode;

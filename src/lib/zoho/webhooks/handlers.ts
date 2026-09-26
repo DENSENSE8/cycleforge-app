@@ -11,7 +11,7 @@ import type { FactsDeps } from '@/lib/receiving/facts/store';
 import { formatPSTTimestamp } from '@/utils/date';
 import type { NormalizedZohoEvent } from './types';
 
-export interface HandlerResult {
+interface HandlerResult {
   /** Short label for logs / debugging. */
   action: string;
   /** Extra context (counts, ids) — included verbatim in the response body. */

@@ -5,7 +5,7 @@ import { PRIMARY_KPI_CARDS } from './operations-kpi-config';
 import type { DashboardData } from '@/features/operations/types';
 import type { KpiKind } from './KpiDetailsModal';
 
-export interface PrimaryKpiGridProps {
+interface PrimaryKpiGridProps {
   summary?: DashboardData['summary'];
   onOpen: (kind: KpiKind) => void;
   /** The kind whose details modal is open (lights the tile). */

@@ -122,7 +122,7 @@ export function refineSearchHits(
 }
 
 /** Per-entity hit tallies for the browse toolbar's scope cluster. */
-export interface SearchEntityCounts {
+interface SearchEntityCounts {
   /** Hits matching the non-entity facets — the "All" pill's count. */
   total: number;
   byType: Record<SearchHitEntityType, number>;

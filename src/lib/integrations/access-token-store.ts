@@ -8,7 +8,7 @@ import type { IntegrationProvider } from './credentials';
 export const ACCESS_TOKEN_SKEW_MS = 5 * 60 * 1000;
 
 /** A usable access token plus the epoch-ms instant it stops being usable. */
-export interface SharedAccessToken {
+interface SharedAccessToken {
   token: string;
   expiresAt: number;
 }
@@ -27,7 +27,7 @@ interface TokenRow {
  * The shared token when it still has more than `skewMs` of life. Null when
  * absent, expiring, or undecryptable (a key rotation must not wedge minting).
  */
-export async function readSharedAccessToken(
+async function readSharedAccessToken(
   orgId: OrgId,
   provider: IntegrationProvider,
   scope: string | null = null,
@@ -63,7 +63,7 @@ export async function readSharedAccessToken(
 }
 
 /** Persist a freshly minted token so every other instance reuses it. */
-export async function writeSharedAccessToken(
+async function writeSharedAccessToken(
   orgId: OrgId,
   provider: IntegrationProvider,
   token: string,
@@ -111,12 +111,12 @@ export async function clearSharedAccessToken(
 
 /** Result of {@link getSharedAccessToken}: the token, its expiry, and whether
  *  THIS call was the one that paid for an upstream mint. */
-export interface SharedAccessTokenResult extends SharedAccessToken {
+interface SharedAccessTokenResult extends SharedAccessToken {
   minted: boolean;
 }
 
 /** What a provider's mint callback must hand back. */
-export interface MintedAccessToken {
+interface MintedAccessToken {
   token: string;
   expiresInSec: number;
 }
@@ -135,7 +135,7 @@ const WAIT_POLL_MS = 250;
 const inFlight = new Map<string, Promise<SharedAccessTokenResult>>();
 
 /** Claim the right to mint. */
-export async function claimMint(
+async function claimMint(
   orgId: OrgId,
   provider: IntegrationProvider,
   scope: string | null,
@@ -160,7 +160,7 @@ export async function claimMint(
   }
 }
 
-export async function releaseMintClaim(
+async function releaseMintClaim(
   orgId: OrgId,
   provider: IntegrationProvider,
   scope: string | null,

@@ -1,7 +1,7 @@
 /** "Watch a tracking number", client side — the ONE implementation of the three verbs, so the desk row and the phone face cannot drift. */
 
 /** One standing watch, as `GET /api/my-day/watch` reports it. */
-export interface TrackingWatchRow {
+interface TrackingWatchRow {
   /** The carton this watch resolved to, or `null` while it is pre-arrival. */
   receivingId: number | null;
   tracking: string | null;
@@ -11,7 +11,7 @@ export interface TrackingWatchRow {
 }
 
 /** What starting a watch tells the operator. */
-export interface TrackingWatchStarted {
+interface TrackingWatchStarted {
   /** Canonical tracking, as the server extracted it from what was typed. */
   tracking: string;
   /** The watch is waiting on an arrival rather than following a carton. */
@@ -21,7 +21,7 @@ export interface TrackingWatchStarted {
   receivingId: number | null;
 }
 
-export interface TrackingWatchStopped {
+interface TrackingWatchStopped {
   tracking: string;
   /** False when there was nothing left to stop (already stopped elsewhere). */
   stopped: boolean;
@@ -93,7 +93,7 @@ export async function startTrackingWatch(value: string): Promise<TrackingWatchSt
  * subscription) because "stop watching this number" is one act to an operator,
  * even at the moment the carton lands and the watch is briefly held by both.
  */
-export async function stopTrackingWatch(value: string): Promise<TrackingWatchStopped> {
+async function stopTrackingWatch(value: string): Promise<TrackingWatchStopped> {
   const body = await requestWatch(
     { ...POST_JSON, body: JSON.stringify({ kind: 'tracking', value, desired: 'muted' }) },
     'Could not stop watching that tracking number.',
@@ -105,7 +105,7 @@ export async function stopTrackingWatch(value: string): Promise<TrackingWatchSto
 }
 
 /** The staffer's standing tracking watches. Tickets are a different rail. */
-export async function listTrackingWatches(): Promise<TrackingWatchRow[]> {
+async function listTrackingWatches(): Promise<TrackingWatchRow[]> {
   const body = await requestWatch({ method: 'GET' }, 'Could not load your watched tracking numbers.');
   const rows = Array.isArray(body.tracking) ? body.tracking : [];
   return rows.map((raw) => {

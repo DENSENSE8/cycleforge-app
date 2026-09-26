@@ -21,7 +21,7 @@ export interface CronJobStatus {
   lastRun: CronRunSummary | null;
 }
 
-export interface CronRunsSummaryResp {
+interface CronRunsSummaryResp {
   ok: boolean;
   health: 'ok' | 'stale' | 'failed';
   counts: { total: number; failed: number; stale: number };
@@ -40,7 +40,7 @@ export interface CronRunRow {
   error: string | null;
 }
 
-export interface CronRunsListResp {
+interface CronRunsListResp {
   ok: boolean;
   runs: CronRunRow[];
   limit: number;

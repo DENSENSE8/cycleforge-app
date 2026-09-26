@@ -2,7 +2,7 @@ import { z } from 'zod';
 import { ParcelSchema, ShipAddressSchema } from '@/lib/shipping/shipstation/rate-request';
 
 /** The intake buys the problem-order labels; outbound belongs to To-ship. */
-export const IntakePurposeSchema = z.enum(['return', 'replacement']);
+const IntakePurposeSchema = z.enum(['return', 'replacement']);
 
 /** A typed order number — the reference a label is recorded under. */
 export const IntakeRefSchema = z.string().trim().min(2).max(64);

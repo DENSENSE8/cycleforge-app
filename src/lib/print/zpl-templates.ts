@@ -4,7 +4,7 @@ function esc(input: string | number | null | undefined): string {
   return String(input ?? '').replace(/[\^~]/g, ' ');
 }
 
-export interface CartonLabelInput {
+interface CartonLabelInput {
   qrPayload: string;
   platform: string;
   typeLabel: string;
@@ -36,7 +36,7 @@ export function buildCartonZpl(input: CartonLabelInput): string {
     .join('\n');
 }
 
-export interface ProductLabelInput {
+interface ProductLabelInput {
   sku: string;
   qrPayload: string;
   title?: string | null;
@@ -65,7 +65,7 @@ export function buildProductZpl(input: ProductLabelInput): string {
 }
 
 /** Per-unit Tier-3 label. */
-export interface UnitLabelInput {
+interface UnitLabelInput {
   /** GS1 Digital Link URL (or fallback internal URL) encoded in the QR. */
   qrPayload: string;
   /** The human-readable unit serial. Appears under the title. */
@@ -101,7 +101,7 @@ export function buildUnitZpl(input: UnitLabelInput): string {
     .join('\n');
 }
 
-export interface BinLabelInput {
+interface BinLabelInput {
   qrPayload: string;
   barcode: string;
   room: string;

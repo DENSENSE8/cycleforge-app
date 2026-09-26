@@ -15,7 +15,7 @@ export type {
  * connection (mirrors ZohoNotConnectedError in src/lib/zoho/core.ts) so
  * callers surface a connect prompt instead of a generic 500.
  */
-export class InventoryNotConnectedError extends Error {
+class InventoryNotConnectedError extends Error {
   constructor(public readonly orgId: OrgId) {
     super(
       `No inventory integration connected for org ${orgId}. ` +

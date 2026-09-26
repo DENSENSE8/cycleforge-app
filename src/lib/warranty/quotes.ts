@@ -89,7 +89,7 @@ export async function listQuotes(claimId: number, orgId?: OrgId): Promise<Warran
   return rows.map(mapQuote);
 }
 
-export type CreateQuoteResult =
+type CreateQuoteResult =
   | { ok: true; quote: WarrantyQuoteRow }
   | { ok: false; status: 404 | 400 | 500; error: string };
 
@@ -219,7 +219,7 @@ const QUOTE_TRANSITIONS: Record<string, { from: WarrantyQuoteStatus[]; setTimest
   EXPIRED: { from: ['DRAFT', 'SENT'] },
 };
 
-export type QuoteStatusResult =
+type QuoteStatusResult =
   | { ok: true; quote: WarrantyQuoteRow; repairServiceId?: number }
   | { ok: false; status: 404 | 409 | 400 | 500; error: string };
 

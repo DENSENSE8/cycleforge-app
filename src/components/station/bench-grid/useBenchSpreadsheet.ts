@@ -55,7 +55,7 @@ const BENCH_REGISTRATION = {
   },
 } as const;
 
-export interface UseBenchSpreadsheetOptions {
+interface UseBenchSpreadsheetOptions {
   family: BenchFamily;
   /** The caller's own `use*TableLayout()` result — one prefs read per desk. */
   layout: SlotTableLayout;

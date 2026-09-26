@@ -27,7 +27,7 @@ export async function resolveShipStationCreds(orgId: OrgId): Promise<ShipStation
   return getIntegrationCredentials<ShipStationCredentials>(orgId, 'shipstation');
 }
 
-export async function isShipStationConnected(orgId: OrgId): Promise<boolean> {
+async function isShipStationConnected(orgId: OrgId): Promise<boolean> {
   const creds = await resolveShipStationCreds(orgId);
   return Boolean(creds?.apiKey);
 }

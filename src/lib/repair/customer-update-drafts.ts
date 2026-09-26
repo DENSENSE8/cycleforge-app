@@ -1,6 +1,6 @@
 /** Editable customer-update prefills for the mobile repair workbench. */
 
-export interface CustomerUpdateDraftContext {
+interface CustomerUpdateDraftContext {
   firstName: string;
   device: string;
   rsCode: string;

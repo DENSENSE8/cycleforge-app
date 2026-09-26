@@ -1,7 +1,7 @@
 /** Ticket CC (audience) rules — ONE set, shared by the Support console chat composer and the Unbox station Ticket composer. */
 
 /** Deliberately permissive: Zendesk is the authority on deliverability. */
-export const COMPOSER_CC_EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const COMPOSER_CC_EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 /** Trim, and drop the separator an operator types between two addresses. */
 export function normalizeComposerCc(raw: string): string {

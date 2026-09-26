@@ -14,7 +14,7 @@ import type {
 } from './types';
 import type { WarrantyClockBasis } from './clock';
 
-export interface ListClaimsInput {
+interface ListClaimsInput {
   status?: WarrantyClaimStatus | null;
   search?: string | null;
   /** When set, only claims whose expiry is within N days from now (incl. overdue). */

@@ -46,7 +46,7 @@ export interface JourneyEvent {
   raw: unknown;
 }
 
-export interface MergedJourney {
+interface MergedJourney {
   items: TimelineItem[];
   /** item.id → its resolved grouping keys (object-collision-free via namespaced id). */
   groupOf: Map<string, JourneyGroupKeys>;

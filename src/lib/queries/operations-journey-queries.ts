@@ -57,7 +57,7 @@ function appendFilters(p: URLSearchParams, f: JourneyUrlFilters): void {
   if (f.q) p.set('q', f.q);
 }
 
-export function buildFocusedQueryString(f: JourneyUrlFilters): string {
+function buildFocusedQueryString(f: JourneyUrlFilters): string {
   const p = new URLSearchParams();
   p.set('dim', f.dim);
   const entity = entityValueFor(f).trim();
@@ -67,7 +67,7 @@ export function buildFocusedQueryString(f: JourneyUrlFilters): string {
 }
 
 /** Browse query string — the same narrowing filters as focused, but with NO entity value (that's what makes the route serve… */
-export function buildBrowseQueryString(f: JourneyUrlFilters, cursor: string | null): string {
+function buildBrowseQueryString(f: JourneyUrlFilters, cursor: string | null): string {
   const p = new URLSearchParams();
   appendFilters(p, f);
   if (cursor) p.set('cursor', cursor);

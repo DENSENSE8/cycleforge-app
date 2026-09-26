@@ -13,7 +13,7 @@ import {
 /** Photo stage ids that attach to the parent carton, not a single unit. */
 const CARTON_PHOTO_STAGE_IDS = new Set(['unit-photos-arrival', 'unit-photos-unbox_carton']);
 
-export type SerialJourneyBucket = {
+type SerialJourneyBucket = {
   serial: string;
   events: JourneyEvent[];
   /**

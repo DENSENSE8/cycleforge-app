@@ -74,7 +74,7 @@ function bindOf(parts: FindBind): FindBind | undefined {
   return { sku, serial, tracking };
 }
 
-export function qtyLedgerEvent(
+function qtyLedgerEvent(
   id: string,
   at: string | null | undefined,
   qty: FindQtyLedger,
@@ -295,7 +295,7 @@ export function findEventsFromOrderAudit(rows: readonly OrderAuditRow[]): FindEv
   return events;
 }
 
-export function findEventsFromCarrier(rows: readonly CarrierEvent[], tracking?: string | null): FindEvent[] {
+function findEventsFromCarrier(rows: readonly CarrierEvent[], tracking?: string | null): FindEvent[] {
   const children: FindEvent[] = [];
   for (const row of rows) {
     const at = isoAt(row.event_occurred_at);
@@ -326,7 +326,7 @@ export function findEventsFromCarrier(rows: readonly CarrierEvent[], tracking?: 
   ];
 }
 
-export function findEventsFromUnitTimelinePhotos(rows: readonly UnitTimelinePhotoRow[]): FindEvent[] {
+function findEventsFromUnitTimelinePhotos(rows: readonly UnitTimelinePhotoRow[]): FindEvent[] {
   const bySource = new Map<UnitTimelinePhotoRowSource, UnitTimelinePhotoRow[]>();
   for (const row of rows) {
     const list = bySource.get(row.source);
@@ -406,7 +406,7 @@ export function findEventsFromReceivingPhotos(rows: readonly ReceivingPhotoRow[]
   return events;
 }
 
-export function findEventsFromCartonEvents(rows: readonly CartonInspectorEvent[]): FindEvent[] {
+function findEventsFromCartonEvents(rows: readonly CartonInspectorEvent[]): FindEvent[] {
   const events: FindEvent[] = [];
   for (const row of rows) {
     const at = isoAt(row.occurred_at);

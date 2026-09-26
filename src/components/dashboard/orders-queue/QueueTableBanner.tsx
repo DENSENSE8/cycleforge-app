@@ -4,7 +4,7 @@ import { sectionLabel, fieldLabel } from '@/design-system';
 import { Loader2 } from '@/components/Icons';
 import { mainStickyHeaderClass, mainStickyHeaderRowClass, mainStickyHeaderCompactRowClass } from '@/components/layout/header-shell';
 
-export interface QueueTableBannerProps {
+interface QueueTableBannerProps {
   title: string;
   subtitle?: string;
   /** Single-line 40px banner row (title + subtitle on one line). */

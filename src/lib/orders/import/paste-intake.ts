@@ -21,7 +21,7 @@ export interface ExtractedOrderRow {
 }
 
 /** The canonical fields a capture can carry, in staging-column order. */
-export const EXTRACTED_ORDER_FIELDS = [
+const EXTRACTED_ORDER_FIELDS = [
   'order_number',
   'platform',
   'item_title',
@@ -53,7 +53,7 @@ const FIELD_VALUE: Record<
 };
 
 /** Staging headers for a capture draft — the canonical labels, verbatim. */
-export function extractedOrderHeaders(): string[] {
+function extractedOrderHeaders(): string[] {
   return EXTRACTED_ORDER_FIELDS.map((key) => FIELD_LABEL[key]);
 }
 
@@ -77,7 +77,7 @@ export function stagingRowsFromExtractedOrders(orders: readonly ExtractedOrderRo
   return { headers, rows };
 }
 
-export type ClassifiedPaste =
+type ClassifiedPaste =
   | { kind: 'csv'; headers: string[]; rows: Record<string, string>[] }
   | { kind: 'prose' };
 

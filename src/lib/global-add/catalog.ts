@@ -18,7 +18,7 @@ export type GlobalAddIncomingLeaf =
   | 'import-returns';
 
 export const GLOBAL_ADD_INTENT_EVENT = 'cycleforge:global-add' as const;
-export const GLOBAL_ADD_INTENT_KEY = 'cf:global-add-intent';
+const GLOBAL_ADD_INTENT_KEY = 'cf:global-add-intent';
 
 export type GlobalAddIntent =
   | { kind: 'incoming-add'; leaf: GlobalAddIncomingLeaf }
@@ -29,7 +29,7 @@ export type GlobalAddIntent =
   | { kind: 'fba-quick-add-fnsku' }
   | { kind: 'locations-new' };
 
-export type GlobalAddItemId =
+type GlobalAddItemId =
   | 'orders-manual'
   | 'orders-csv'
   | 'orders-sync'
@@ -49,7 +49,7 @@ export type GlobalAddItemId =
   | 'location-new'
   | 'room-new';
 
-export type GlobalAddGroupId =
+type GlobalAddGroupId =
   | 'outbound'
   | 'inbound'
   | 'catalog'
@@ -57,7 +57,7 @@ export type GlobalAddGroupId =
   | 'sales'
   | 'inventory';
 
-export type GlobalAddItem = {
+type GlobalAddItem = {
   id: GlobalAddItemId;
   label: string;
   subtitle: string;
@@ -67,13 +67,13 @@ export type GlobalAddItem = {
   intent?: GlobalAddIntent;
 };
 
-export type GlobalAddGroup = {
+type GlobalAddGroup = {
   id: GlobalAddGroupId;
   label: string;
   items: readonly GlobalAddItem[];
 };
 
-export const GLOBAL_ADD_GROUPS: readonly GlobalAddGroup[] = [
+const GLOBAL_ADD_GROUPS: readonly GlobalAddGroup[] = [
   {
     id: 'outbound',
     label: 'Outbound',
@@ -234,7 +234,7 @@ export const GLOBAL_ADD_GROUPS: readonly GlobalAddGroup[] = [
   },
 ] as const;
 
-export function parkGlobalAddIntent(intent: GlobalAddIntent): void {
+function parkGlobalAddIntent(intent: GlobalAddIntent): void {
   try {
     sessionStorage.setItem(GLOBAL_ADD_INTENT_KEY, JSON.stringify(intent));
   } catch {
@@ -256,7 +256,7 @@ export function consumeGlobalAddIntent(): GlobalAddIntent | null {
   }
 }
 
-export function peekGlobalAddIntent(): GlobalAddIntent | null {
+function peekGlobalAddIntent(): GlobalAddIntent | null {
   try {
     const raw = sessionStorage.getItem(GLOBAL_ADD_INTENT_KEY);
     if (!raw) return null;

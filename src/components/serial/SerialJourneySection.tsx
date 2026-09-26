@@ -25,7 +25,7 @@ import {
 /** Compact density = collapsed per-stage thumbs, not full galleries. */
 const COMPACT_PHOTO_MEDIA_LIMIT = 4;
 
-export interface SerialJourneySectionProps {
+interface SerialJourneySectionProps {
   /** The serial number to render the journey for. Empty ⇒ a quiet "no serial" state. */
   serialNumber: string;
   /**

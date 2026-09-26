@@ -10,7 +10,7 @@ import { KIOSK_COMMAND_IDS, type KioskCommandId } from '@/lib/kiosk/commands';
 import type { KioskTicketChoice } from '@/lib/kiosk/repair-ticket-choice';
 
 /** A counter visit, not a warehouse order — past this a row is a bug, not a basket. */
-export const KIOSK_CART_MAX_LINES = 100;
+const KIOSK_CART_MAX_LINES = 100;
 
 export interface KioskCartSnapshot {
   lines: KioskCartLine[];

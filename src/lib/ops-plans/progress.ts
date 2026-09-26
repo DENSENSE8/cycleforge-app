@@ -1,7 +1,7 @@
 import type { PlanProgress } from './types';
 import type { OpsPlanTaskStatus } from './constants';
 
-export interface TaskProgressInput {
+interface TaskProgressInput {
   status: OpsPlanTaskStatus | string;
   station: string;
 }

@@ -8,7 +8,7 @@ export type WorkType = 'TEST' | 'PACK' | 'REPAIR' | 'QA' | 'RECEIVE' | 'STOCK_RE
 export type EntityType = 'ORDER' | 'REPAIR' | 'FBA_SHIPMENT' | 'RECEIVING' | 'SKU_STOCK';
 export type AssignmentStatus = 'OPEN' | 'ASSIGNED' | 'IN_PROGRESS' | 'DONE' | 'CANCELED';
 
-export interface WorkAssignment {
+interface WorkAssignment {
   id: number;
   entity_type: EntityType;
   entity_id: number;
@@ -22,7 +22,7 @@ export interface WorkAssignment {
   updated_at: string | null;
 }
 
-export interface CreateAssignmentParams {
+interface CreateAssignmentParams {
   /** Phase 3b: tenant scope required for the INSERT. */
   organizationId: string;
   entityType: EntityType;
@@ -35,7 +35,7 @@ export interface CreateAssignmentParams {
   deadlineAt?: string | null;
 }
 
-export interface UpdateAssignmentParams {
+interface UpdateAssignmentParams {
   status?: AssignmentStatus;
   assignedTechId?: number | null;
   assignedPackerId?: number | null;
@@ -48,7 +48,7 @@ export interface UpdateAssignmentParams {
 /**
  * Get all work assignments with optional filters (org-scoped).
  */
-export async function getAssignments(
+async function getAssignments(
   filters: {
     entityType?: EntityType;
     entityId?: number;
@@ -85,7 +85,7 @@ export async function getAssignments(
   return result.rows;
 }
 
-export interface WorkAssignmentWithStaff extends WorkAssignment {
+interface WorkAssignmentWithStaff extends WorkAssignment {
   assigned_tech_name: string | null;
   assigned_packer_name: string | null;
 }
@@ -178,7 +178,7 @@ export async function getActiveAssignment(
 /**
  * Get the next unassigned entity ID of a given type/work type (org-scoped).
  */
-export async function getNextUnassignedEntityId(
+async function getNextUnassignedEntityId(
   entityType: EntityType,
   workType: WorkType,
   orgId: OrgId,
@@ -229,7 +229,7 @@ export async function createAssignment(params: CreateAssignmentParams): Promise<
 /**
  * Upsert a work assignment (insert or update on conflict).
  */
-export async function upsertAssignment(params: CreateAssignmentParams): Promise<WorkAssignment> {
+async function upsertAssignment(params: CreateAssignmentParams): Promise<WorkAssignment> {
   const result = await tenantQuery<WorkAssignment>(
     params.organizationId,
     `INSERT INTO work_assignments
@@ -311,7 +311,7 @@ export async function deleteAssignment(id: number, orgId: OrgId): Promise<boolea
 /**
  * Delete all assignments for an entity (org-scoped).
  */
-export async function deleteAssignmentsForEntity(
+async function deleteAssignmentsForEntity(
   entityType: EntityType,
   entityId: number,
   orgId: OrgId,

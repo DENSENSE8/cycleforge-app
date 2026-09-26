@@ -17,7 +17,7 @@ import {
 } from '@/lib/inventory/events';
 import { transition } from '@/lib/inventory/state-machine';
 
-export interface UnitEventLedger {
+interface UnitEventLedger {
   /** Signed quantity delta; 0 is ignored (no ledger row written). */
   delta: number;
   reason: string;
@@ -28,7 +28,7 @@ export interface UnitEventLedger {
   notes?: string | null;
 }
 
-export interface RecordUnitEventInput {
+interface RecordUnitEventInput {
   // ── tenant ──
   /** Owning tenant — required so the org-scoped serial_units upsert can stamp it. */
   organizationId: OrgId;
@@ -66,7 +66,7 @@ export interface RecordUnitEventInput {
   ledger?: UnitEventLedger | null;
 }
 
-export interface RecordUnitEventResult {
+interface RecordUnitEventResult {
   unit: SerialUnitRow;
   isNew: boolean;
   priorStatus: SerialStatus | null;

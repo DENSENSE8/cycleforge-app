@@ -3,9 +3,9 @@ import type { OrgId } from '@/lib/tenancy/constants';
 
 /** label_print_jobs writers/readers — the immutable per-print ledger (serial↔label pairing plan §5.1). */
 
-export type LabelJobType = 'UNIT' | 'MANIFEST' | 'HANDLING_UNIT' | 'REPRINT' | 'LOCATION';
+type LabelJobType = 'UNIT' | 'MANIFEST' | 'HANDLING_UNIT' | 'REPRINT' | 'LOCATION';
 
-export interface LabelPrintJobInput {
+interface LabelPrintJobInput {
   jobType: LabelJobType;
   serialUnitId?: number | null;
   manifestId?: number | null;
@@ -25,7 +25,7 @@ export interface LabelPrintJobInput {
   clientEventId?: string | null;
 }
 
-export interface LabelPrintJobRow {
+interface LabelPrintJobRow {
   id: number;
   job_type: string;
   serial_unit_id: number | null;

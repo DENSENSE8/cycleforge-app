@@ -56,7 +56,7 @@ export interface BackfillPolicy {
   sourceWrite: 'fill' | 'rekey' | 'keep';
 }
 
-export interface BackfillPlan {
+interface BackfillPlan {
   /** Column writes (camelCase `orders` fields); empty = nothing to update. */
   values: Record<string, unknown>;
   /** The row's primary shipment after the write (existing wins). */

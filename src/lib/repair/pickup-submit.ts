@@ -18,7 +18,7 @@ export interface RepairPickupInput {
 }
 
 /** Success body of `POST /api/repair-service/pickup`. */
-export interface RepairPickupResult {
+interface RepairPickupResult {
   success: true;
   repairId: number;
   ticketNumber: string | null;

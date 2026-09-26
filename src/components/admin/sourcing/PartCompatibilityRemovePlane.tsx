@@ -10,7 +10,7 @@ import {
   type PartCompatibilityEdgeRow,
 } from '@/lib/sourcing/part-compatibility-row';
 
-export interface PartCompatibilityRemovePlaneProps {
+interface PartCompatibilityRemovePlaneProps {
   row: PartCompatibilityEdgeRow | null;
   busy?: boolean;
   onClose: () => void;

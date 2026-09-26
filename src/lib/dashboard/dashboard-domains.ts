@@ -19,7 +19,7 @@ export const DASHBOARD_INBOUND_MODE = 'inbound';
 const DASHBOARD_SALES_MODES = ['sales', 'pickup', 'repairs'] as const;
 
 /** Wire tokens `?mode=` may carry on `/dashboard` (route-param hygiene). */
-export const DASHBOARD_MODE_WIRE = [
+const DASHBOARD_MODE_WIRE = [
   'outbound',
   'inbound',
   'receiving',

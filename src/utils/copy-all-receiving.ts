@@ -1,7 +1,7 @@
 import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
 import { formatDateTimePST } from '@/utils/date';
 
-export type ReceivingCopyScratch = {
+type ReceivingCopyScratch = {
   zendesk: string;
   listing: string;
   extraTrackings: string[];

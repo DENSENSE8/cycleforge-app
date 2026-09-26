@@ -1,4 +1,4 @@
-export interface PairableItemRef {
+interface PairableItemRef {
   item_id: number;
   shipment_id: number | null | undefined;
 }
@@ -16,4 +16,4 @@ export function getUniquePlanIds(items: PairableItemRef[]): number[] {
 }
 
 /** @deprecated Use `getUniquePlanIds` instead. */
-export const getUniqueSelectedShipmentIds = getUniquePlanIds;
+const getUniqueSelectedShipmentIds = getUniquePlanIds;

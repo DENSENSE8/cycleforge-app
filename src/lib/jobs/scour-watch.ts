@@ -6,7 +6,7 @@ import type { OrgId } from '@/lib/tenancy/constants';
 
 /** Scour watcher — the active half of standing searches (Sourcing Hub §4.3). */
 
-export interface ScourWatchResult {
+interface ScourWatchResult {
   checked: number;
   withHits: number;
   candidatesSaved: number;

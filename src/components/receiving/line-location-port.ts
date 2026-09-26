@@ -11,9 +11,9 @@ import type { PutawaySuggestion } from '@/lib/receiving/suggested-putaway-locati
 import { useUnboxLinePlacement } from './workspace/line-edit/useUnboxLinePlacement';
 
 /** React Query key for the shelf catalog every station Locations leaf browses. */
-export const STATION_LOCATION_CATALOG_KEY = qk.locations.list();
+const STATION_LOCATION_CATALOG_KEY = qk.locations.list();
 
-export function receivingLineSuggestionQueryKey(lineId: number | null | undefined) {
+function receivingLineSuggestionQueryKey(lineId: number | null | undefined) {
   return ['receiving', 'suggested-putaway-location', lineId ?? null] as const;
 }
 

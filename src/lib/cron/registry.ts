@@ -4,7 +4,7 @@ const MIN = 60_000;
 const HOUR = 60 * MIN;
 const DAY = 24 * HOUR;
 
-export type CronCategory =
+type CronCategory =
   | 'Receiving'
   | 'Shipping'
   | 'Zoho'
@@ -13,7 +13,7 @@ export type CronCategory =
   | 'Integrations'
   | 'System';
 
-export interface CronJobDef {
+interface CronJobDef {
   /** Stable key passed to withCronRun() and stored in cron_runs.job. */
   job: string;
   label: string;
@@ -113,7 +113,7 @@ export const CRON_JOB_TRIGGER_PATH: Record<string, string> = {
 
 export type JobHealth = 'ok' | 'stale' | 'failed' | 'running' | 'never';
 
-export interface LatestRun {
+interface LatestRun {
   status: 'running' | 'success' | 'failed';
   finishedAt: string | null;
 }

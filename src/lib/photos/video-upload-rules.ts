@@ -39,17 +39,17 @@ export function normalizeMime(raw: string | null | undefined): string {
   return (raw ?? '').split(';')[0].trim().toLowerCase();
 }
 
-export function isVideoMime(mime: string): mime is VideoMime {
+function isVideoMime(mime: string): mime is VideoMime {
   return Object.prototype.hasOwnProperty.call(VIDEO_MIME_EXTENSIONS, mime);
 }
 
-export interface VideoUploadClaim {
+interface VideoUploadClaim {
   contentType: string | null | undefined;
   sizeBytes: number;
   fileName?: string | null;
 }
 
-export type VideoUploadVerdict =
+type VideoUploadVerdict =
   | { ok: true; contentType: VideoMime; extension: string }
   | { ok: false; error: string };
 
@@ -86,7 +86,7 @@ export function validateVideoUpload(claim: VideoUploadClaim, maxBytes: number): 
   return { ok: true, contentType, extension: VIDEO_MIME_EXTENSIONS[contentType] };
 }
 
-export type StoredVideoVerdict = { ok: true; sizeBytes: number } | { ok: false; error: string };
+type StoredVideoVerdict = { ok: true; sizeBytes: number } | { ok: false; error: string };
 
 /**
  * Finalize check against what GCS actually stored (object metadata), not what

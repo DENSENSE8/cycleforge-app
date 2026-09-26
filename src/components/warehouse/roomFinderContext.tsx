@@ -11,7 +11,7 @@ interface RoomFinderContextValue {
 
 const RoomFinderContext = createContext<RoomFinderContextValue | null>(null);
 
-export function RoomFinderProvider({ children }: { children: ReactNode }) {
+function RoomFinderProvider({ children }: { children: ReactNode }) {
   const [query, setQuery] = useState('');
   const value = useMemo(() => ({ query, setQuery }), [query]);
   return (

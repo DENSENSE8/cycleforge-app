@@ -104,7 +104,7 @@ export function getStatusDotBg(
 // ─── Shared row-display contract (desktop ⇄ mobile) ────────────────────────── One source of truth for the receiving ROW display…
 
 /** Per-surface display flags for a receiving row. */
-export interface ReceivingRowDisplay {
+interface ReceivingRowDisplay {
   /** History/recent surface: "received" is implied, so the workflow status
    *  icon is suppressed (desktop history mode + the mobile recent/receiving feed). */
   isHistory?: boolean;

@@ -21,7 +21,7 @@ const MOUTH_SELECTOR = '[data-testid="station-composer-host"]';
 /** Pages of one list, at most — the route's cap. */
 const MAX_CAPTURE_IMAGES = 6;
 
-export type PasteScope = 'mouth' | 'desk' | 'other';
+type PasteScope = 'mouth' | 'desk' | 'other';
 
 function isEditable(el: Element): boolean {
   if (el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement) return true;
@@ -30,7 +30,7 @@ function isEditable(el: Element): boolean {
 }
 
 /** Where did the paste land? Exported for the unit test; pure DOM. */
-export function pasteScopeFor(target: EventTarget | null): PasteScope {
+function pasteScopeFor(target: EventTarget | null): PasteScope {
   if (!(target instanceof Element)) return 'desk';
   if (target.closest(MOUTH_SELECTOR)) return 'mouth';
   if (isEditable(target)) return 'other';
@@ -87,7 +87,7 @@ async function postCapture(files: File[]): Promise<ExtractedOrderRow[]> {
   }));
 }
 
-export interface OrderPasteIntakeState {
+interface OrderPasteIntakeState {
   /** A capture is being read by the model. */
   extracting: boolean;
 }

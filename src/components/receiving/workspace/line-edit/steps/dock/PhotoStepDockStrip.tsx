@@ -10,13 +10,13 @@ import { cornerClass } from '@/design-system/tokens/radius';
 import { cn } from '@/utils/_cn';
 
 /** Shared face for each third — never content-sized chips in air. */
-export const PHOTO_STEP_SEGMENT =
+const PHOTO_STEP_SEGMENT =
   'ds-raw-button inline-flex h-11 min-w-0 flex-1 items-center justify-center px-3 text-role-caption font-semibold transition-colors disabled:cursor-not-allowed disabled:text-text-faint';
 
 /** Send-to-phone third — same blue face as carton Photos chrome ({@link STATION_CONTEXT_PHOTO_FLUSH_CLASS}): */
-export const PHOTO_STEP_PHONE_FACE = `border ${STATION_CONTEXT_PHOTO_TONE} disabled:border-border-hairline disabled:bg-surface-sunken disabled:text-text-faint`;
+const PHOTO_STEP_PHONE_FACE = `border ${STATION_CONTEXT_PHOTO_TONE} disabled:border-border-hairline disabled:bg-surface-sunken disabled:text-text-faint`;
 
-export type PhotoStepSegmentProps = {
+type PhotoStepSegmentProps = {
   onClick: () => void;
   disabled?: boolean;
   ariaLabel: string;
@@ -134,7 +134,7 @@ export function PhotoStepDockStrip({
  * Procedure keys that mount {@link PhotoStepDockStrip} as the Band 1 **right**
  * segment beside the always-left procedure waist (`UnboxDockScanEntry`).
  */
-export const UNBOX_PHOTO_STRIP_KEYS = new Set([
+const UNBOX_PHOTO_STRIP_KEYS = new Set([
   'arrival_label_photo',
   'arrival_box_photo',
   'shipping_label_photo',

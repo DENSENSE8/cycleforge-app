@@ -32,10 +32,10 @@ export function shippedOutToDenseRailVM(order: Order): RailRowVM {
   };
 }
 
-export function getShippedOutStatusDot(): string {
+function getShippedOutStatusDot(): string {
   return 'bg-emerald-500';
 }
 
-export function getShippedOutStatusDotLabel(): string {
+function getShippedOutStatusDotLabel(): string {
   return 'Shipped';
 }

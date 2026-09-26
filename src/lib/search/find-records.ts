@@ -8,12 +8,12 @@ import { relaxationLadder } from '@/lib/search/query-relaxation';
 import type { SearchByScope } from '@/lib/search/search-by';
 import type { OrgId } from '@/lib/tenancy/constants';
 
-export interface FindRecordsOptions {
+interface FindRecordsOptions {
   limit: number;
   axis?: SearchByScope;
 }
 
-export interface FindRecordsResult {
+interface FindRecordsResult {
   rows: GlobalSearchResult[];
   /**
    * The query that actually produced `rows`. Differs from the input only when

@@ -12,7 +12,7 @@ import {
 
 /** Gather inputs for, compute, and cache a unit's quality score (unit_quality_scores). */
 
-export interface UnitQualityRow {
+interface UnitQualityRow {
   serial_unit_id: number;
   quality_score: number;
   risk_level: string;
@@ -23,7 +23,7 @@ export interface UnitQualityRow {
 }
 
 /** Open failures shaped for grade-advice (label + cap), reused by the grade route. */
-export interface OpenFailureForAdvice {
+interface OpenFailureForAdvice {
   label: string;
   severity: FailureSeverity;
   capsGradeAt: ConditionGrade | null;
@@ -184,7 +184,7 @@ export async function recomputeUnitQualitySafe(
   }
 }
 
-export async function getUnitQuality(
+async function getUnitQuality(
   serialUnitId: number,
   orgId?: OrgId,
 ): Promise<UnitQualityRow | null> {

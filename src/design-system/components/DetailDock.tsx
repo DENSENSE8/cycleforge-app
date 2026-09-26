@@ -15,14 +15,14 @@ export interface DetailDockVerb<Id extends string = string> {
 }
 
 /** State 2 — a batch is selected: the dismiss cell replaces nothing but leads the bar. */
-export interface DetailDockSelection {
+interface DetailDockSelection {
   count: number;
   /** Clears the selection; the dock returns to its idle verbs. */
   onClear: () => void;
 }
 
 /** A second tap on the bar inside this window is a nervous double-tap, not a verb. */
-export const DETAIL_DOCK_LOCK_MS = 500;
+const DETAIL_DOCK_LOCK_MS = 500;
 
 /** The phone's ONE bottom execution bar (the exoskeleton dock, operator 2026-09-24; the industrial terminal block, 2026-09-25): */
 export function DetailDock<Id extends string>({

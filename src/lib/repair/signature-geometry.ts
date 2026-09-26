@@ -31,7 +31,7 @@ export const SIGNATURE_EXPORT_CROP = {
   maxAspect: 6,
 } as const;
 
-export interface SignatureBox {
+interface SignatureBox {
   x: number;
   y: number;
   width: number;
@@ -43,7 +43,7 @@ export interface SignatureStrokeGroup {
   points: readonly { x: number; y: number }[];
 }
 
-export interface SignatureCanvasSize {
+interface SignatureCanvasSize {
   /** CSS width of the canvas — NOT `canvas.width`, which carries the DPR. */
   width: number;
   /** CSS height of the canvas. */

@@ -93,7 +93,7 @@ export async function readPhotoBytesById(
 }
 
 /** @deprecated Prefer readPhotoBytesById — kept for claim code during migration. */
-export async function readPhotoBytes(rawUrl: string): Promise<PhotoBytes | null> {
+async function readPhotoBytes(rawUrl: string): Promise<PhotoBytes | null> {
   return readLegacyPhotoBytes(rawUrl);
 }
 

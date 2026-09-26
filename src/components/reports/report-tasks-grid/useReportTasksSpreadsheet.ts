@@ -24,7 +24,7 @@ import {
   REPORT_TASKS_TABLE_BINDING,
 } from './report-tasks-table-definition';
 
-export interface UseReportTasksSpreadsheetOptions {
+interface UseReportTasksSpreadsheetOptions {
   /** One page of finished tasks, already in desk order; a header click re-orders it. */
   rows: readonly TaskDeskRow[];
   loading?: boolean;

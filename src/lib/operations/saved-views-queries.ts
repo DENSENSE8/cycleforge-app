@@ -12,7 +12,7 @@ import {
 
 /** Operations ▸ History saved views — thin wrappers over the polymorphic `saved_views` table with `surface = 'operations'`. */
 
-export type OperationsSavedView = SavedViewRow;
+type OperationsSavedView = SavedViewRow;
 
 const SURFACE = 'operations' as const;
 

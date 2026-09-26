@@ -1,6 +1,6 @@
 // Single source of truth for warranty repair-QUOTE status tones.
 
-export type WarrantyQuoteStatus = 'DRAFT' | 'SENT' | 'ACCEPTED' | 'DECLINED' | 'EXPIRED';
+type WarrantyQuoteStatus = 'DRAFT' | 'SENT' | 'ACCEPTED' | 'DECLINED' | 'EXPIRED';
 
 const TONES: Record<WarrantyQuoteStatus, string> = {
   DRAFT: 'bg-surface-sunken text-text-muted',

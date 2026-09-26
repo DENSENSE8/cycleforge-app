@@ -18,14 +18,14 @@ import { ingestPurchase } from './ingest-purchase';
 import { getSyncCursor } from '@/lib/sync-cursors';
 import { assertRegisteredInboundSource } from './source-registry';
 
-export interface SyncOneInboundInput {
+interface SyncOneInboundInput {
   sourceType: string;
   sourceOrderId: string;
   /** Buyer account label when known (narrows the account sweep). */
   accountLabel?: string | null;
 }
 
-export interface SyncOneInboundMarketplaceResult {
+interface SyncOneInboundMarketplaceResult {
   ingested: number;
   created: number;
   linesFetched: number;
@@ -33,13 +33,13 @@ export interface SyncOneInboundMarketplaceResult {
   errors: string[];
 }
 
-export interface SyncOneInboundShipmentResult {
+interface SyncOneInboundShipmentResult {
   polled: boolean;
   status?: string | null;
   error?: string | null;
 }
 
-export interface SyncOneInboundResult {
+interface SyncOneInboundResult {
   ok: boolean;
   sourceType: string;
   sourceOrderId: string;

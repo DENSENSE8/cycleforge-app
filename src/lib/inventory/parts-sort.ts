@@ -72,7 +72,7 @@ interface PartsBin {
 let cachedPartsBin: PartsBin | null | undefined;
 
 /** Resolve the Parts bin location, or null if it isn't seeded / configured. */
-export async function resolvePartsBin(): Promise<PartsBin | null> {
+async function resolvePartsBin(): Promise<PartsBin | null> {
   if (cachedPartsBin !== undefined) return cachedPartsBin;
   const barcode = (process.env.PARTS_BIN_BARCODE || DEFAULT_PARTS_BIN_BARCODE).trim();
   try {
@@ -88,7 +88,7 @@ export async function resolvePartsBin(): Promise<PartsBin | null> {
   return cachedPartsBin;
 }
 
-export interface SortSerialToPartsInput {
+interface SortSerialToPartsInput {
   serialUnitId: number;
   staffId?: number | null;
   station?: InventoryEventStation;
@@ -97,7 +97,7 @@ export interface SortSerialToPartsInput {
   client?: Pick<PoolClient, 'query'>;
 }
 
-export type SortSerialToPartsResult =
+type SortSerialToPartsResult =
   | { sorted: true; bin: PartsBin }
   | { sorted: false; reason: 'disabled' | 'no_parts_bin' | 'not_found' | 'committed' | 'already_there' | 'blocked' };
 

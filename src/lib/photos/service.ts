@@ -38,7 +38,7 @@ const THUMB_MAX_PX = Number(process.env.PHOTOS_THUMB_MAX_PX || 256);
 
 const ALLOWED_MIME = new Set(['image/jpeg', 'image/png', 'image/webp']);
 
-export interface LinkPhotoInput {
+interface LinkPhotoInput {
   organizationId: string;
   photoId: number;
   entityType: PhotoEntityType;
@@ -46,7 +46,7 @@ export interface LinkPhotoInput {
   linkRole: PhotoLinkRole;
 }
 
-export interface AttachLegacyPhotoInput {
+interface AttachLegacyPhotoInput {
   organizationId: string;
   staffId: number | null;
   entityType: PhotoEntityType;

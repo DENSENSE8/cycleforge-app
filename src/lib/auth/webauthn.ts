@@ -56,7 +56,7 @@ interface PasskeyRow {
   device_label: string | null;
 }
 
-export async function listPasskeysForStaff(staffId: number): Promise<PasskeyRow[]> {
+async function listPasskeysForStaff(staffId: number): Promise<PasskeyRow[]> {
   const r = await pool.query(
     `SELECT id, staff_id,
             encode(credential_id, 'base64')  AS credential_id,
@@ -70,7 +70,7 @@ export async function listPasskeysForStaff(staffId: number): Promise<PasskeyRow[
   return r.rows as PasskeyRow[];
 }
 
-export async function findPasskeyByCredentialId(credentialId: string): Promise<PasskeyRow | null> {
+async function findPasskeyByCredentialId(credentialId: string): Promise<PasskeyRow | null> {
   // credentialId from browser is base64url. We stored as bytea via base64.
   const stdBase64 = credentialId.replace(/-/g, '+').replace(/_/g, '/');
   const r = await pool.query(

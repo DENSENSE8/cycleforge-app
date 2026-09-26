@@ -20,7 +20,7 @@ interface SkuIdentityProps {
   className?: string;
 }
 
-export function SkuIdentity({
+function SkuIdentity({
   canonicalSku,
   productTitle,
   platforms,

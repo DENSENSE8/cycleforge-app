@@ -4,7 +4,7 @@
  */
 
 /** `"<pageId>:<childId>"` — the same key `nav-destinations` uses for a child row. */
-export type ParkedTabKey = `${string}:${string}`;
+type ParkedTabKey = `${string}:${string}`;
 
 /**
  * Parked tab doors, with the reason each one is owed.

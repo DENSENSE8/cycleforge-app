@@ -7,7 +7,7 @@ import type { ScanDispatch } from '@/lib/scan/dispatch-table';
 /** The kernel armed for QC — where the runner's "Next unit" returns. */
 export const QC_SCAN_HREF = '/m/scan?work=qc';
 
-export type ScanIdentifyLand =
+type ScanIdentifyLand =
   | { kind: 'intake' }
   | { kind: 'identify'; href: string }
   | { kind: 'settle' };

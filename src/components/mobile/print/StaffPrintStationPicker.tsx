@@ -7,7 +7,7 @@ import { isStaffPrintStationLive, roleReady } from '@/lib/print/staff-print-brid
 import type { StaffPrintRole, StaffPrintStation } from '@/lib/print/staff-print-bridge';
 import { cn } from '@/utils/_cn';
 
-export type PrintStationState = 'Ready' | 'Offline' | 'Not set up';
+type PrintStationState = 'Ready' | 'Offline' | 'Not set up';
 
 /** One word for a station, for the printer the job needs (any printer when no role). */
 export function printStationState(station: StaffPrintStation, role: StaffPrintRole | null, now: number): PrintStationState {

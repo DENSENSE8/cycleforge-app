@@ -16,7 +16,7 @@ import { inferMarketplaceFromOrderId } from '@/lib/marketplace-order-id';
  * Registered in `src/lib/inbound/source-registry.ts` and in every polymorphic
  * CHECK — this is not a new discriminator.
  */
-export const PENDING_IDENTIFIER_SOURCE = 'manual';
+const PENDING_IDENTIFIER_SOURCE = 'manual';
 
 /**
  * Comparison key for an external identifier: uppercase alphanumerics only, so
@@ -27,7 +27,7 @@ export function normalizeIdentifierKey(raw: string | null | undefined): string {
   return String(raw ?? '').toUpperCase().replace(/[^A-Z0-9]/g, '');
 }
 
-export interface LinkCartonIdentifierInput {
+interface LinkCartonIdentifierInput {
   receivingId: number;
   /** The line to carry the purchase-identity link. Optional: carton-only link. */
   lineId?: number | null;
@@ -35,9 +35,9 @@ export interface LinkCartonIdentifierInput {
   identifier: string;
 }
 
-export type LinkCartonIdentifierOutcome = 'linked' | 'pending';
+type LinkCartonIdentifierOutcome = 'linked' | 'pending';
 
-export interface LinkCartonIdentifierResult {
+interface LinkCartonIdentifierResult {
   ok: boolean;
   /** HTTP status the route maps straight through. */
   status: number;

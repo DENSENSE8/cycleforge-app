@@ -20,7 +20,7 @@ import type {
   ShipmentRecord,
 } from './shipment-record-types';
 
-export const RESOLVE_SHIPMENT_EXCEPTION_ROUTE = 'shipments.resolve-exception';
+const RESOLVE_SHIPMENT_EXCEPTION_ROUTE = 'shipments.resolve-exception';
 
 export interface ResolveTarget {
   tracking: string;
@@ -69,7 +69,7 @@ export interface ResolveShipmentExceptionDeps {
   getRecord: (orgId: OrgId, shipmentId: number) => Promise<ShipmentRecord | null>;
 }
 
-export type ResolveShipmentExceptionOutcome =
+type ResolveShipmentExceptionOutcome =
   | { status: 404 | 409; error: string }
   | {
       status: 200;
@@ -78,7 +78,7 @@ export type ResolveShipmentExceptionOutcome =
       applied: ResolveApplied | null;
     };
 
-export interface ResolveShipmentExceptionArgs {
+interface ResolveShipmentExceptionArgs {
   orgId: OrgId;
   staffId: number | null;
   shipmentId: number;
@@ -167,7 +167,7 @@ function toId(value: number | string | null): number | null {
 }
 
 /** The link write, inside the caller's tenant transaction (GUC already set). */
-export async function linkOrderInTx(client: TxClient, orgId: OrgId, input: LinkOrderInput): Promise<ApplyResult> {
+async function linkOrderInTx(client: TxClient, orgId: OrgId, input: LinkOrderInput): Promise<ApplyResult> {
   const ex = (
     await client.query<LockedException>(
       `SELECT id, status, shipment_id, notes FROM orders_exceptions
@@ -286,7 +286,7 @@ export async function linkOrderInTx(client: TxClient, orgId: OrgId, input: LinkO
 }
 
 /** The close write, inside the caller's tenant transaction (GUC already set). */
-export async function closeExceptionInTx(client: TxClient, orgId: OrgId, input: CloseInput): Promise<ApplyResult> {
+async function closeExceptionInTx(client: TxClient, orgId: OrgId, input: CloseInput): Promise<ApplyResult> {
   const ex = (
     await client.query<LockedException>(
       `SELECT id, status, shipment_id, notes FROM orders_exceptions

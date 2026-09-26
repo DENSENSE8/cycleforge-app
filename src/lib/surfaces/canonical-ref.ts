@@ -3,7 +3,7 @@
 const SEGMENT_RE = /^[a-z][a-z0-9_]*$/;
 const ID_RE = /^[A-Za-z0-9._-]+$/;
 
-export interface CanonicalRef {
+interface CanonicalRef {
   table: string;
   /** Axis qualifier (e.g. 'feed_key'); null for the plain entity form. */
   axis: string | null;

@@ -11,7 +11,7 @@ export type LabelIngestionDto = PublicLabelIngestion;
 export const LABEL_INGESTIONS_QUERY_KEY = ['v1', 'label-ingestions'] as const;
 const ENDPOINT = '/api/v1/label-ingestions';
 
-export class LabelIngestionHttpError extends Error {
+class LabelIngestionHttpError extends Error {
   constructor(readonly status: number, message: string) {
     super(message);
     this.name = 'LabelIngestionHttpError';

@@ -14,7 +14,7 @@ import {
   WORKSPACE_NESTED_FIELD_PAD,
 } from '@/design-system/components';
 
-export type PlacementLocationFace = {
+type PlacementLocationFace = {
   name: string;
   room?: string | null;
   barcode?: string | null;

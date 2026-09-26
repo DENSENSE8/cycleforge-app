@@ -20,7 +20,7 @@ export function formatCartCents(cents: number): string {
 }
 
 /** One identifier, NAMED — a bare `670156893` chip is a number nobody can place. */
-export interface CartLineId {
+interface CartLineId {
   label: string;
   value: string;
 }
@@ -59,7 +59,7 @@ export function cartLineIdentifiers(
 }
 
 /** The qualifier under the title — what makes THIS line different. */
-export function cartLineDetail(line: KioskCartLine): string | null {
+function cartLineDetail(line: KioskCartLine): string | null {
   const p = line.payload;
   if (isRepairPayload(p)) {
     const reasons = (p.repairReasons ?? []).filter(Boolean);
@@ -78,7 +78,7 @@ export function cartLineDetail(line: KioskCartLine): string | null {
  * A void is a soft delete by design — "a line the customer already saw is
  * evidence, not a delete" — so the line stays and has to say why it is struck.
  */
-export function cartLineState(
+function cartLineState(
   line: KioskCartLine,
   voided: boolean,
 ): { label: string; voided: boolean } {
@@ -95,7 +95,7 @@ export function cartLineState(
 }
 
 /** What one press of the card's `−` / `+` does. */
-export type CartQuantityStep =
+type CartQuantityStep =
   | { kind: 'set'; quantity: number }
   /** `−` at 1: ask before the line goes (Square's qty 0 → Remove). */
   | { kind: 'confirm-remove' };
@@ -107,7 +107,7 @@ export function stepCartQuantity(current: number, delta: 1 | -1): CartQuantitySt
   return { kind: 'set', quantity: Math.min(KIOSK_LINE_MAX_QUANTITY, next) };
 }
 
-export interface CartCardView {
+interface CartCardView {
   id: string;
   title: string;
   /** Reasons / model / grade — the line's qualifier, or null. */

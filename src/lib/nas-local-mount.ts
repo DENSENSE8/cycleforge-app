@@ -5,7 +5,7 @@ import { dirname, extname, join, resolve, sep } from 'node:path';
 
 const DEFAULT_ROOT = '/Volumes/USAV Media/Puchasing photos/2026';
 
-export const NAS_LOCAL_IMAGE_RE = /\.(jpe?g|png|webp|gif)$/i;
+const NAS_LOCAL_IMAGE_RE = /\.(jpe?g|png|webp|gif)$/i;
 
 const MIME: Record<string, string> = {
   '.jpg': 'image/jpeg',
@@ -15,12 +15,12 @@ const MIME: Record<string, string> = {
   '.gif': 'image/gif',
 };
 
-export function nasLocalMountRoot(): string {
+function nasLocalMountRoot(): string {
   return resolve(/* turbopackIgnore: true */ process.env.NAS_DEV_ROOT || DEFAULT_ROOT);
 }
 
 /** True when `next dev` (or NAS_DEV_ROOT in prod) may read/write the SMB mount. */
-export function isNasLocalMountEnabled(): boolean {
+function isNasLocalMountEnabled(): boolean {
   return Boolean(process.env.NAS_DEV_ROOT) || process.env.NODE_ENV !== 'production';
 }
 
@@ -34,7 +34,7 @@ function isHidden(name: string): boolean {
   return name.startsWith('.') || name === '#recycle' || name.toLowerCase() === 'thumbs.db';
 }
 
-export function resolveNasLocalTarget(segments: string[]): string | null {
+function resolveNasLocalTarget(segments: string[]): string | null {
   const decoded = segments.map((s) => decodeURIComponent(s));
   if (decoded.some((seg) => seg === '..' || /^([a-z]+:)?\/\//i.test(seg))) return null;
   const target = resolve(nasLocalMountRoot(), decoded.join('/'));

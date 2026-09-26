@@ -45,7 +45,7 @@ export interface SlotFieldOption {
   canMoveDown?: boolean;
 }
 
-export type ToggleBindingResult =
+type ToggleBindingResult =
   | { ok: true; layout: SlotLayout }
   | { ok: false; reason: string };
 

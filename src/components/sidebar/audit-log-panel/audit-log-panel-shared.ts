@@ -2,7 +2,7 @@ import { ClipboardList, Package, FileText, Search, User, Activity } from '@/comp
 
 // ─── Section nav ───────────────────────────────────────────────────────────
 
-export interface AuditSection {
+interface AuditSection {
   id: string;
   label: string;
   href: string;
@@ -22,7 +22,7 @@ export const AUDIT_SECTIONS: AuditSection[] = [
 // Params that are owned by individual section selections — stripped on
 // section switch. The shared filter strip's params (day/start/end/staffId)
 // persist across sections by design.
-export const SECTION_OWNED_PARAMS = ['po', 'tracking', 'session', 'sku', 'serial'] as const;
+const SECTION_OWNED_PARAMS = ['po', 'tracking', 'session', 'sku', 'serial'] as const;
 
 // ─── PO list types ─────────────────────────────────────────────────────────
 

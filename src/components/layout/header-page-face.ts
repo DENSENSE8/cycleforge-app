@@ -11,13 +11,13 @@ import {
   type SidebarPageNav,
 } from '@/lib/sidebar-navigation';
 
-export type HeaderMenuRow = {
+type HeaderMenuRow = {
   id: string;
   label: string;
   icon: SidebarIconComponent;
 };
 
-export type HeaderPageFace = {
+type HeaderPageFace = {
   id: string;
   label: string;
   icon: SidebarIconComponent;

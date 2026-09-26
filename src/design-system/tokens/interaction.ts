@@ -12,7 +12,7 @@ export const TAP_MIN_H_CLASS = 'min-h-11';
  * Pointer hygiene every tappable surface needs, whatever it looks like: no
  * double-tap-zoom wait, and no competing browser tap flash.
  */
-export const TAP_POINTER_CLASS =
+const TAP_POINTER_CLASS =
   'touch-manipulation [-webkit-tap-highlight-color:transparent]';
 
 /**
@@ -20,7 +20,7 @@ export const TAP_POINTER_CLASS =
  * `active` is listed after `hover` deliberately: a mouse that is hovering AND
  * pressing must read as pressed.
  */
-export const TAP_TONE_CLASS =
+const TAP_TONE_CLASS =
   'transition-[background-color] duration-150 ease-out motion-reduce:transition-none hover:bg-surface-hover active:bg-surface-sunken';
 
 /**

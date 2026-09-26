@@ -12,7 +12,7 @@ import { ebayScopeStringForRole, normalizeEbayRole } from '@/lib/ebay/oauth-conf
 import { logger } from '@/lib/observability/logger';
 import type { OrgId } from '@/lib/tenancy/constants';
 
-export interface EbayRefreshTokensJobResult {
+interface EbayRefreshTokensJobResult {
   success: boolean;
   refreshed: number;
   total?: number;

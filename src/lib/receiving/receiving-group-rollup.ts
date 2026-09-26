@@ -9,7 +9,7 @@ import { receivingStateTone } from '@/lib/receiving/receiving-compound-view';
 
 const TONE_RANK: Record<CompoundStateTone, number> = { done: 1, neutral: 2, alert: 3 };
 
-export interface StatusWordRollup {
+interface StatusWordRollup {
   /** Band pill label — "2 RECEIVED" or "1 RECEIVED · 1 UNBOXED" (top 2 words). */
   label: string;
   /** Worst child tone — an exception anywhere paints the alert tone. */
@@ -45,7 +45,7 @@ export function statusWordRollup(
   return { label, tone: worst, tip: segments.join(' · ') };
 }
 
-export interface ReceivingGroupRollup extends StatusWordRollup {
+interface ReceivingGroupRollup extends StatusWordRollup {
   /** Sum of the children's quantity_received. */
   qtyReceived: number;
   /** Sum of the children's quantity_expected. */

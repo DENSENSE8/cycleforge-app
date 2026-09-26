@@ -11,7 +11,7 @@ import type { StationTheme } from '@/utils/staff-colors';
 import { useFbaActiveShipments } from './active-shipments/useFbaActiveShipments';
 import { ActiveShipmentCard } from './active-shipments/ActiveShipmentCard';
 
-export type FbaShipmentRailScope = 'all' | 'active' | 'shipped';
+type FbaShipmentRailScope = 'all' | 'active' | 'shipped';
 
 export function FbaActiveShipments({
   stationTheme = 'green',

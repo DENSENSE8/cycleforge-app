@@ -1,14 +1,14 @@
 /** rAF coalescer — collapse a burst of Ably messages into one apply per frame. */
 
-export type FrameCoalesceMode = 'last' | 'all';
+type FrameCoalesceMode = 'last' | 'all';
 
-export interface FrameCoalescer<T> {
+interface FrameCoalescer<T> {
   push: (item: T) => void;
   dispose: () => void;
   pendingCount: () => number;
 }
 
-export interface CreateFrameCoalescerOptions<T> {
+interface CreateFrameCoalescerOptions<T> {
   flush: (batch: T[]) => void;
   mode?: FrameCoalesceMode;
   raf?: (cb: FrameRequestCallback) => number;

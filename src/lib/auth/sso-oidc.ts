@@ -15,7 +15,7 @@ export interface OidcProviderRow {
   autoProvision: boolean;
 }
 
-export interface DiscoveryDoc {
+interface DiscoveryDoc {
   authorization_endpoint: string;
   token_endpoint: string;
   userinfo_endpoint?: string;
@@ -25,7 +25,7 @@ export interface DiscoveryDoc {
 const discoveryCache = new Map<string, { doc: DiscoveryDoc; expiresAt: number }>();
 const DISCOVERY_TTL_MS = 5 * 60 * 1000;
 
-export async function discover(issuer: string): Promise<DiscoveryDoc> {
+async function discover(issuer: string): Promise<DiscoveryDoc> {
   const trimmed = issuer.replace(/\/+$/, '');
   const cached = discoveryCache.get(trimmed);
   if (cached && cached.expiresAt > Date.now()) return cached.doc;
@@ -87,7 +87,7 @@ export function buildAuthorizeUrl(args: {
   return url.toString();
 }
 
-export interface TokenResponse {
+interface TokenResponse {
   access_token: string;
   id_token?: string;
   token_type: string;

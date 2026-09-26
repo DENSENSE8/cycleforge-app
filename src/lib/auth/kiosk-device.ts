@@ -15,10 +15,10 @@ import type { KioskHardwareStatus } from '@/lib/kiosk/kiosk-device-row';
 export const KIOSK_COOKIE_NAME = 'cf_kiosk';
 
 /** Durable per-CLIENT id cookie (dogfood auto-bind only). */
-export const KIOSK_CLIENT_COOKIE_NAME = 'cf_kiosk_client';
+const KIOSK_CLIENT_COOKIE_NAME = 'cf_kiosk_client';
 
 /** `cf_kiosk` / `cf_kiosk_client` lifetime — a counter tablet is paired once and left alone. */
-export const KIOSK_COOKIE_MAX_AGE_SECONDS = 60 * 60 * 24 * 365;
+const KIOSK_COOKIE_MAX_AGE_SECONDS = 60 * 60 * 24 * 365;
 
 /** Default pairing-code lifetime — long enough to stage an MDM tablet without racing. */
 export const DEFAULT_ENROLL_TTL_MINUTES = 7 * 24 * 60;
@@ -91,7 +91,7 @@ export function readKioskClientId(req: NextRequest): string | null {
 }
 
 /** What a response is pinning — either half may be omitted. */
-export interface KioskBindingCookies {
+interface KioskBindingCookies {
   /** Raw device token, when this response issued one. */
   token?: string;
   /** Durable client id, when this response minted or refreshed it. */

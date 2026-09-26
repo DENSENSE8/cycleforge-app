@@ -1,14 +1,14 @@
 /** Payload shape for `receiving_photo.reassign`. */
 
-export type ReassignTargetType = 'RECEIVING' | 'RECEIVING_LINE';
+type ReassignTargetType = 'RECEIVING' | 'RECEIVING_LINE';
 
-export interface ReassignMove {
+interface ReassignMove {
   photoId: number;
   targetEntityType: ReassignTargetType;
   targetEntityId: number;
 }
 
-export type NormalizeResult =
+type NormalizeResult =
   | { ok: true; moves: ReassignMove[] }
   | { ok: false; error: string };
 

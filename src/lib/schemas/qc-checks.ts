@@ -5,12 +5,12 @@ import { z } from 'zod';
 const trimmed = z.string().trim();
 
 /** How a step's answer is captured. `null`/absent = legacy pass/fail boolean. */
-export const QC_VALUE_KINDS = ['BOOLEAN', 'PERCENT', 'NUMBER', 'ENUM', 'TEXT'] as const;
-export type QcValueKind = (typeof QC_VALUE_KINDS)[number];
+const QC_VALUE_KINDS = ['BOOLEAN', 'PERCENT', 'NUMBER', 'ENUM', 'TEXT'] as const;
+type QcValueKind = (typeof QC_VALUE_KINDS)[number];
 
 /** Authoring lifecycle. Drafts are hidden from execution views until published. */
-export const QC_STATUS = ['draft', 'published'] as const;
-export type QcStatus = (typeof QC_STATUS)[number];
+const QC_STATUS = ['draft', 'published'] as const;
+type QcStatus = (typeof QC_STATUS)[number];
 
 const valueKind = z.enum(QC_VALUE_KINDS);
 const status = z.enum(QC_STATUS);
@@ -53,7 +53,7 @@ export const QcCheckCreateBody = z
     idempotencyKey: trimmed.max(120).optional(),
   })
   .superRefine(refineValueConfig);
-export type QcCheckCreateInput = z.infer<typeof QcCheckCreateBody>;
+type QcCheckCreateInput = z.infer<typeof QcCheckCreateBody>;
 
 export const QcCheckUpdateBody = z
   .object({
@@ -65,7 +65,7 @@ export const QcCheckUpdateBody = z
     ...valueConfig,
   })
   .superRefine(refineValueConfig);
-export type QcCheckUpdateInput = z.infer<typeof QcCheckUpdateBody>;
+type QcCheckUpdateInput = z.infer<typeof QcCheckUpdateBody>;
 
 export const QcCheckDeleteBody = z.object({
   checkId: z.coerce.number().int().positive(),

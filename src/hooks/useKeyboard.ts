@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
-export interface KeyboardState {
+interface KeyboardState {
   /** True when the mobile virtual keyboard is visible. Always false on desktop. */
   isKeyboardOpen: boolean;
   /** Estimated height of the keyboard in CSS pixels (0 when closed). */

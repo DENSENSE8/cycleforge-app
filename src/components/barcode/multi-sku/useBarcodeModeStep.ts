@@ -3,7 +3,7 @@
 import { useBarcodeMode } from '@/hooks/useBarcodeMode';
 import type { BarcodeMode } from '@/components/barcode/ModeSelector';
 
-export interface UseBarcodeModeStep {
+interface UseBarcodeModeStep {
   mode: BarcodeMode;
   /** Switch mode (URL-driven) — writes `?mode=`. */
   handleModeChange: (next: BarcodeMode) => void;

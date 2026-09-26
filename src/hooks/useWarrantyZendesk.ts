@@ -10,7 +10,7 @@ import { safeRandomUUID } from '@/lib/safe-uuid';
  * the conversation's source of truth, we only persist the id mapping).
  */
 
-export interface WarrantyTicketInfo {
+interface WarrantyTicketInfo {
   id: number;
   subject: string | null;
   status: string;
@@ -19,7 +19,7 @@ export interface WarrantyTicketInfo {
 }
 
 /** A linkable Zendesk ticket returned by the candidate search (recent/search/#id). */
-export interface WarrantyTicketCandidate {
+interface WarrantyTicketCandidate {
   id: number;
   subject: string | null;
   description: string | null;

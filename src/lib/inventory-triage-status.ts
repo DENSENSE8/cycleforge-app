@@ -1,6 +1,6 @@
 // Single source of truth for tracking-exception (inventory triage) status tones.
 
-export type TriageExceptionStatus = 'open' | 'resolved' | 'discarded';
+type TriageExceptionStatus = 'open' | 'resolved' | 'discarded';
 
 interface TriageStatusTone {
   label: string;
@@ -37,11 +37,11 @@ export function triageStatusBadgeClass(status: string): string {
 }
 
 /** Chip classes (with ring) for a triage status; safe for unknown values. */
-export function triageStatusChipClass(status: string): string {
+function triageStatusChipClass(status: string): string {
   return TRIAGE_STATUS_TONES[status as TriageExceptionStatus]?.chip ?? FALLBACK_CHIP;
 }
 
 /** Human label for a triage status; falls back to the raw code. */
-export function triageStatusLabel(status: string): string {
+function triageStatusLabel(status: string): string {
   return TRIAGE_STATUS_TONES[status as TriageExceptionStatus]?.label ?? status;
 }

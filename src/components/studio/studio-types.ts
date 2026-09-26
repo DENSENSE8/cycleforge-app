@@ -102,7 +102,7 @@ export type StudioZoom = 0 | 1 | 2;
 // Server-resolved against the stations registries, so the client renders
 // labels/icons/endpoints without importing the registry.
 
-export interface StudioStationBlockView {
+interface StudioStationBlockView {
   id: string;
   block: string;
   blockLabel: string;

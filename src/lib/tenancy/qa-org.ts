@@ -216,7 +216,7 @@ export const QA_FIXTURE_TRACKING_PENDING_SECOND = '9400100000000000000205';
 export const QA_FIXTURE_TRACKING_PENDING_THIRD = '9400100000000000000229';
 export const QA_FIXTURE_TRACKING_PACKED = '9400100000000000000212';
 
-export interface QaStationStaffSeed {
+interface QaStationStaffSeed {
   name: string;
   role: string;
   homePath: string;
@@ -252,7 +252,7 @@ export const QA_FIXTURE_PHOTOS = {
 } as const;
 
 /** Total seeded photos — the count a "N photos in view" assertion can rely on. */
-export const QA_FIXTURE_PHOTO_COUNT =
+const QA_FIXTURE_PHOTO_COUNT =
   QA_FIXTURE_PHOTOS.carton.length + QA_FIXTURE_PHOTOS.line.length;
 
 /** Triage decision fixtures (Foundation 0 item 4, HANDOFF-cross-client-outbound- foundation.md) — one deterministic record per decision the… */

@@ -3,7 +3,7 @@
 export const SHIPPING_SHIPPED_PATH = '/shipping/shipped';
 
 /** The keys a legacy shipped URL is allowed to carry onto the desk. */
-export const SHIPPED_DESK_CARRIED_PARAMS = [
+const SHIPPED_DESK_CARRIED_PARAMS = [
   'search',
   'shippedFilter',
   'shippedSearchField',
@@ -40,7 +40,7 @@ export function buildShippedDeskSearch(params: ParamsLike): URLSearchParams {
   return next;
 }
 
-export interface ShippedDeskHrefOptions {
+interface ShippedDeskHrefOptions {
   /** Find text — order number, tracking, SKU. */
   search?: string | null;
   /** Weeks back from the current one. 0 (this week) is the default paint. */

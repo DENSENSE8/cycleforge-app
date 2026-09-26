@@ -1,6 +1,6 @@
 // Single source of truth for unit quality risk-level tones.
 
-export type QualityRiskLevel = 'low' | 'medium' | 'high';
+type QualityRiskLevel = 'low' | 'medium' | 'high';
 
 const TONES: Record<QualityRiskLevel, string> = {
   low: 'bg-emerald-50 text-emerald-700 ring-emerald-200',

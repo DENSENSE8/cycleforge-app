@@ -25,12 +25,12 @@ import {
 } from './record-ledger-geometry';
 
 /** One band: its facts, and what it shows in the shared right lane. */
-export interface RecordBandSlots {
+interface RecordBandSlots {
   main: ReactNode;
   right?: ReactNode;
 }
 
-export interface IndustrialRecordProps {
+interface IndustrialRecordProps {
   state: RecordStateFace;
   open: boolean;
   /** Accessible name of the open target — the record read as one sentence. */

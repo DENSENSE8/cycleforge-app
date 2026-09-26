@@ -218,7 +218,7 @@ export async function deleteTaskDocument(
 // ── row mapping ─────────────────────────────────────────────────────────────
 
 /** The columns `task-documents-db.ts` selects. Kept here so the mapper is testable. */
-export interface TaskDocumentSqlRow {
+interface TaskDocumentSqlRow {
   id: unknown;
   assignment_id: unknown;
   source: unknown;

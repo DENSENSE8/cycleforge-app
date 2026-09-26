@@ -14,7 +14,7 @@ import type { FbaBoardItem } from '@/lib/fba/types';
 import { useFbaBoardSelection } from '@/components/fba/hooks/useFbaBoardSelection';
 import { normalizeTrackingCanonical } from '@/lib/tracking-format';
 
-export interface FnskuSelectResult {
+interface FnskuSelectResult {
   fnsku: string;
   found: boolean;
   count: number;

@@ -13,10 +13,10 @@ import {
   toPSTDateKey,
 } from '@/utils/date';
 
-export const PACKED_DATE_FROM_PARAM = 'dateFrom';
-export const PACKED_DATE_TO_PARAM = 'dateTo';
+const PACKED_DATE_FROM_PARAM = 'dateFrom';
+const PACKED_DATE_TO_PARAM = 'dateTo';
 /** Intentional "no date window" — dismiss / Clear; blocks current-week seed. */
-export const PACKED_ALL_DATES_PARAM = 'allDates';
+const PACKED_ALL_DATES_PARAM = 'allDates';
 
 export function parsePackedDateKey(raw: string | null | undefined): string | null {
   const value = String(raw || '').trim();
@@ -50,7 +50,7 @@ export function packedShouldSeedCurrentWeek(args: {
   return !args.allDates && !args.dateFrom && !args.dateTo;
 }
 
-export function packedAtMatchesRange(
+function packedAtMatchesRange(
   packedAt: string | Date | null | undefined,
   fromKey: string | null,
   toKey: string | null,
@@ -135,7 +135,7 @@ export function packedFiltersHotLabel(args: {
 }
 
 /** Row facts the Packed KPI / export count from — one package = one shipment (else the order). */
-export interface PackedCountRow {
+interface PackedCountRow {
   id: number;
   shipment_id?: number | string | null;
   packed_by?: number | null;
@@ -144,37 +144,37 @@ export interface PackedCountRow {
   packer_name?: string | null;
 }
 
-export function packedPackageKey(row: PackedCountRow): string {
+function packedPackageKey(row: PackedCountRow): string {
   const ship = row.shipment_id == null ? '' : String(row.shipment_id).trim();
   return ship ? `s:${ship}` : `o:${row.id}`;
 }
 
-export function packedStaffId(row: PackedCountRow): number | null {
+function packedStaffId(row: PackedCountRow): number | null {
   const id = row.packed_by ?? row.packer_id ?? null;
   return id != null && id > 0 ? id : null;
 }
 
-export function packedStaffName(row: PackedCountRow): string {
+function packedStaffName(row: PackedCountRow): string {
   const named = String(row.packed_by_name || row.packer_name || '').trim();
   if (named) return named;
   const id = packedStaffId(row);
   return id != null ? `#${id}` : 'Unassigned';
 }
 
-export interface PackedStaffPackageCount {
+interface PackedStaffPackageCount {
   staffId: number | null;
   name: string;
   packages: number;
 }
 
-export interface PackedFilterSummary {
+interface PackedFilterSummary {
   packages: number;
   orders: number;
   byStaff: PackedStaffPackageCount[];
 }
 
 /** Package counts for the filtered Packed sheet — drives Band 2. */
-export function summarizePackedFilter(rows: readonly PackedCountRow[]): PackedFilterSummary {
+function summarizePackedFilter(rows: readonly PackedCountRow[]): PackedFilterSummary {
   const allPackages = new Set<string>();
   const byStaff = new Map<string, { staffId: number | null; name: string; packages: Set<string> }>();
   for (const row of rows) {

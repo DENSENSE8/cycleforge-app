@@ -7,7 +7,7 @@ import type { OrgId } from '@/lib/tenancy/constants';
 export const VALID_STATIONS = ['TECH', 'PACK', 'UNBOX', 'SALES', 'FBA'] as const;
 export type StationKey = (typeof VALID_STATIONS)[number];
 
-export function isStation(v: unknown): v is StationKey {
+function isStation(v: unknown): v is StationKey {
   return typeof v === 'string' && (VALID_STATIONS as readonly string[]).includes(v.toUpperCase());
 }
 export function asStation(v: unknown): StationKey | null {
@@ -16,7 +16,7 @@ export function asStation(v: unknown): StationKey | null {
 
 const SCAN_ACTIVITY_TYPES = ['TRACKING_SCANNED', 'FNSKU_SCANNED', 'PACK_SCAN', 'PACK_COMPLETED', 'FBA_READY'];
 
-export interface StaffStationRow {
+interface StaffStationRow {
   station: StationKey;
   is_primary: boolean;
 }
@@ -86,7 +86,7 @@ async function deriveDefaultStation(staffId: number, orgId?: OrgId): Promise<Sta
   return (r.rows[0]?.station as StationKey) ?? 'TECH';
 }
 
-export interface MyStationGoal {
+interface MyStationGoal {
   station: StationKey;
   is_primary: boolean;
   daily_goal: number;

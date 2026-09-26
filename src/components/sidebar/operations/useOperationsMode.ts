@@ -11,7 +11,7 @@ import {
 import { buildRouteUrl } from '@/lib/routing/route-params';
 import { routeParamsFor } from '@/lib/routing/registry';
 
-export interface OperationsModeState {
+interface OperationsModeState {
   /** Active mode parsed from `?mode=` (defaults to `live`). */
   mode: OperationsMode;
   /** Swap `?mode=`, clearing mode-scoped params; `live` drops the param. */

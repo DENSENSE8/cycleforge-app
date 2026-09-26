@@ -48,7 +48,7 @@ export interface CallEventItem {
 
 // ── Tone registry ────────────────────────────────────────────────────────────
 
-export interface ToneClasses {
+interface ToneClasses {
   /** Solid dot fill. */
   dot: string;
   /** Chip: bg + text + ring (the house 3-layer chip). */
@@ -71,13 +71,13 @@ export const VOICEMAIL_STATUS_LABEL: Record<VoicemailStatus, string> = {
   no_action: 'No action',
 };
 
-export const CALL_DIRECTION_TONE: Record<CallDirection, ToneClasses> = {
+const CALL_DIRECTION_TONE: Record<CallDirection, ToneClasses> = {
   inbound: { dot: 'bg-blue-500', chip: 'bg-blue-50 text-blue-700 ring-blue-200', fg: 'text-blue-600' },
   outbound: { dot: 'bg-border-emphasis', chip: 'bg-surface-sunken text-text-muted ring-border-soft', fg: 'text-text-soft' },
   missed: { dot: 'bg-rose-500', chip: 'bg-rose-50 text-rose-700 ring-rose-200', fg: 'text-rose-600' },
 };
 
-export const CALL_DIRECTION_LABEL: Record<CallDirection, string> = {
+const CALL_DIRECTION_LABEL: Record<CallDirection, string> = {
   inbound: 'Inbound',
   outbound: 'Outbound',
   missed: 'Missed',

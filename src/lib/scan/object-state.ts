@@ -18,7 +18,7 @@ export interface ScanObjectStateDeps {
   getHandlingUnitStatus(id: number): Promise<HandlingUnitStatus | null>;
 }
 
-export interface ScanObjectStateResult {
+interface ScanObjectStateResult {
   type: ScanType;
   state: ScanObjectState;
   /** False when the object itself is unknown (no row, or a foreign plate). */

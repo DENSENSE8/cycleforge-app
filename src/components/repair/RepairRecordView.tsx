@@ -124,7 +124,7 @@ function RepairHistory({ repair }: { repair: RSRecord }) {
   );
 }
 
-export interface RepairRecordViewProps {
+interface RepairRecordViewProps {
   repair: RSRecord;
   /** Refetch the queue after a write. */
   onUpdate: () => void;

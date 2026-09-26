@@ -3,13 +3,13 @@
 import type { ReactNode } from 'react';
 
 /** Numeric / identifier typographic language for details-panel ledgers. */
-export type LedgerValueVariant = 'text' | 'number' | 'id';
+type LedgerValueVariant = 'text' | 'number' | 'id';
 
 /** Hierarchy tier. */
-export type LedgerValueTier = 'primary' | 'default' | 'meta';
+type LedgerValueTier = 'primary' | 'default' | 'meta';
 
 /** Status/emphasis color — semantic tokens only, never a raw Tailwind shade. */
-export type LedgerValueTone =
+type LedgerValueTone =
   | 'default'
   | 'muted'
   | 'soft'

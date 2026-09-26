@@ -7,7 +7,7 @@ import pool from '@/lib/db';
 
 const DEFAULT_STEPUP_MS = 5 * 60 * 1000;
 
-export type StepUpMethod = 'pin' | 'passkey' | 'phone';
+type StepUpMethod = 'pin' | 'passkey' | 'phone';
 
 export async function grantStepUp(
   sid: string,
@@ -37,7 +37,7 @@ export async function hasStepUp(sid: string, scope: string): Promise<boolean> {
   return Number(row?.count || 0) > 0;
 }
 
-export async function clearStepUp(sid: string, scope?: string): Promise<void> {
+async function clearStepUp(sid: string, scope?: string): Promise<void> {
   if (scope) {
     await pool.query(`DELETE FROM staff_stepups WHERE sid = $1 AND scope = $2`, [sid, scope]);
   } else {

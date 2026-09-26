@@ -40,7 +40,7 @@ interface PublicKeyCacheEntry {
 }
 const publicKeyCache = new Map<string, PublicKeyCacheEntry>();
 
-export interface MarketplaceDeletionConfig {
+interface MarketplaceDeletionConfig {
   verificationToken: string;
   endpointUrl: string;
   environment: EbayEnvironment;
@@ -83,7 +83,7 @@ export function isValidVerificationToken(token: string): boolean {
   return /^[A-Za-z0-9_-]{32,80}$/.test(token);
 }
 
-export interface EbaySignatureHeader {
+interface EbaySignatureHeader {
   alg?: string;
   kid: string;
   signature: string;
@@ -253,7 +253,7 @@ export function extractDeletionSubjects(
   return { userId, username, notificationId };
 }
 
-export interface PurgedEbayAccount {
+interface PurgedEbayAccount {
   organizationId: OrgId;
   accountId: number;
   accountName: string;

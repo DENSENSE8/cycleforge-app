@@ -2,14 +2,14 @@
 
 import { yieldToInput, type YieldToInputDeps } from '@/lib/perf/yield-to-input';
 
-export interface ScanCommitQueue {
+interface ScanCommitQueue {
   enqueue: (value: string) => void;
   pendingCount: () => number;
   /** Test / shutdown — drain whatever is queued. */
   flush: () => Promise<void>;
 }
 
-export interface ScanCommitQueueOptions {
+interface ScanCommitQueueOptions {
   onScan: (value: string) => void;
   yieldToInput?: (deps?: YieldToInputDeps) => Promise<void>;
 }

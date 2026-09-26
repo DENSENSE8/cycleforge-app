@@ -24,7 +24,7 @@ interface UseReceivingGroupingArgs {
   skipWeekFilter: boolean;
 }
 
-export interface ReceivingGrouping {
+interface ReceivingGrouping {
   groupedRecords: Record<string, ReceivingPoGroup[]>;
   filteredGroupedRecords: Record<string, ReceivingPoGroup[]>;
   orderedVisibleRows: ReceivingLineRow[];

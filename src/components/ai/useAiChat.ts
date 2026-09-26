@@ -28,7 +28,7 @@ export interface ChatMessage {
   doneAt?: number;
 }
 
-export type ChatStatus = 'idle' | 'streaming';
+type ChatStatus = 'idle' | 'streaming';
 
 let counter = 0;
 function nextId(): string {

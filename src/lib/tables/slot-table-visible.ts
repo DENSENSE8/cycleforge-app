@@ -12,7 +12,7 @@ export function publishSlotTableVisibleIds(
   byScope.set(scope, ids);
 }
 
-export function slotTableVisibleIds(scope: string): readonly SlotTableRowId[] | null {
+function slotTableVisibleIds(scope: string): readonly SlotTableRowId[] | null {
   return byScope.get(scope) ?? null;
 }
 

@@ -134,7 +134,7 @@ export const CONVERSATION_CLOCK = cn(
 );
 
 /** @deprecated Use {@link CONVERSATION_CLOCK}. */
-export const CONVERSATION_AGE = CONVERSATION_CLOCK;
+const CONVERSATION_AGE = CONVERSATION_CLOCK;
 
 export const CONVERSATION_INTERNAL_CHIP =
   'inline-flex shrink-0 items-center rounded px-1 py-px font-sans text-role-caption font-medium text-amber-700/80 bg-amber-100/50';

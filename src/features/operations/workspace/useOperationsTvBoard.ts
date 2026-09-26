@@ -9,12 +9,12 @@ import { useAblyChannel } from '@/hooks/useAblyChannel';
 import { getOpsPlansChannelName, safeChannelName } from '@/lib/realtime/channels';
 import type { TvBoard } from '@/lib/ops-plans/tv-board';
 
-export const OPS_TV_BOARD_KEY = ['operations', 'tv-board'] as const;
+const OPS_TV_BOARD_KEY = ['operations', 'tv-board'] as const;
 
 /** Civil-day-rollover safety net (5 min). Realtime does the real-time work. */
 const TV_BOARD_REFETCH_MS = 5 * 60_000;
 
-export interface TvBoardState {
+interface TvBoardState {
   /** false only when the org lacks the `ops_tv_board` flag (route 404). */
   enabled: boolean;
   board: TvBoard | null;

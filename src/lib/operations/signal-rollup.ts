@@ -3,7 +3,7 @@
 import { sql, type SQL } from 'drizzle-orm';
 import { db } from '@/lib/drizzle/db';
 
-export interface SignalRollupResult {
+interface SignalRollupResult {
   success: boolean;
   /** insight_links rows written/updated (one per (org, signal_kind) with signals in window). */
   rowsWritten: number;

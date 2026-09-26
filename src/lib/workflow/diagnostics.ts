@@ -48,7 +48,7 @@ export interface NodeStationSummary {
 }
 
 /** Integration binding a node may declare in its `workflow_nodes.config` JSON (studio-integrations-master-plan P1 §3.1 — no migration; seed… */
-export interface NodeIntegrationConfig {
+interface NodeIntegrationConfig {
   /** IntegrationProvider key the step depends on (e.g. 'ebay'). */
   requiredIntegration?: string;
   /** Connector capability the step needs (e.g. 'orders'). Reserved for a later rule. */
@@ -115,7 +115,7 @@ function requiredIntegrationOf(node: DiagnosticsGraphNode): string | null {
  * provider but the org has no CONNECTED row for it. Quiet when no connections
  * summary is supplied (client-side, or the server fetch degraded).
  */
-export function ruleIntegrationDisconnected(input: DiagnosticsInput): Diagnostic[] {
+function ruleIntegrationDisconnected(input: DiagnosticsInput): Diagnostic[] {
   const { connections } = input;
   if (!connections) return [];
   const labelOf = input.labelOf ?? ((n: DiagnosticsGraphNode) => n.type);
@@ -139,7 +139,7 @@ export function ruleIntegrationDisconnected(input: DiagnosticsInput): Diagnostic
 }
 
 /** integration-sync-stale (warning): */
-export function ruleIntegrationSyncStale(input: DiagnosticsInput): Diagnostic[] {
+function ruleIntegrationSyncStale(input: DiagnosticsInput): Diagnostic[] {
   const { connections } = input;
   if (!connections) return [];
   const labelOf = input.labelOf ?? ((n: DiagnosticsGraphNode) => n.type);

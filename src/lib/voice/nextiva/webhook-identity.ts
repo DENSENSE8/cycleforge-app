@@ -10,7 +10,7 @@ import {
 import { encryptIntegrationPayload } from '@/lib/integrations/crypto';
 import type { OrgId } from '@/lib/tenancy/constants';
 
-export interface NextivaWebhookIdentity {
+interface NextivaWebhookIdentity {
   webhookToken: string;
   webhookSigningSecret: string;
 }
@@ -26,7 +26,7 @@ function mintSecret(): string {
  * Ensure the org's Nextiva connection has a webhook token + secret, minting on
  * first call. Idempotent. Throws if Nextiva isn't connected for the org.
  */
-export async function ensureNextivaWebhookIdentity(orgId: OrgId): Promise<NextivaWebhookIdentity> {
+async function ensureNextivaWebhookIdentity(orgId: OrgId): Promise<NextivaWebhookIdentity> {
   const creds = await getIntegrationCredentials<NextivaCredentials>(orgId, 'nextiva');
   if (!creds) {
     throw new Error(`Nextiva is not connected for org ${orgId}; cannot mint webhook identity.`);

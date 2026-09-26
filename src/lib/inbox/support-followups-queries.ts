@@ -6,7 +6,7 @@
 import { tenantQuery } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';
 
-export type SupportFollowupInboxRow = {
+type SupportFollowupInboxRow = {
   ticketId: number;
   subject: string | null;
   assignedStaffId: number;

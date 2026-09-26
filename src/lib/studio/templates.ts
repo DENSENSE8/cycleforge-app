@@ -25,7 +25,7 @@ export interface TemplateGraph {
   edges: TemplateGraphEdge[];
 }
 
-export interface CreateDraftFromTemplateArgs {
+interface CreateDraftFromTemplateArgs {
   client: TxClient;
   orgId: OrgId;
   /** workflow_definitions.created_by for the new draft. */
@@ -40,7 +40,7 @@ export interface CreateDraftFromTemplateArgs {
   name?: string;
 }
 
-export type CreateDraftFromTemplateResult =
+type CreateDraftFromTemplateResult =
   | { status: 404; body: { ok: false; error: string } }
   | {
       status: 200;

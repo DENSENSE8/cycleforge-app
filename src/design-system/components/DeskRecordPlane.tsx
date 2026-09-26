@@ -24,7 +24,7 @@ import {
 import { useDeskStageOptional } from './DeskStageContext';
 import { DeskStageOverlay, DeskStageRecordHeader, isRecordEscTextEntry } from './DeskStageOverlay';
 
-export type DeskRecordView = 'in-place' | 'split';
+type DeskRecordView = 'in-place' | 'split';
 
 /** Which record view the enclosing desk stage selects. `in-place` outside a desk. */
 export function useDeskRecordView(): DeskRecordView {
@@ -32,7 +32,7 @@ export function useDeskRecordView(): DeskRecordView {
 }
 
 /** Published around the list AND the record. */
-export interface DeskRecordPlaneState {
+interface DeskRecordPlaneState {
   open: boolean;
   view: DeskRecordView;
   ownsEscape: boolean;
@@ -59,7 +59,7 @@ const FOCUSABLE = 'button, [href], input, select, textarea, [tabindex]:not([tabi
 /** Record body: the container the record's own layout queries. */
 const RECORD_BODY_CLASS = '@container flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-contain';
 
-export interface DeskRecordPlaneProps {
+interface DeskRecordPlaneProps {
   /** A record is open. */
   open: boolean;
   /** Close the record — strip the surface's deep-link param. */
@@ -294,7 +294,7 @@ function withArticle(noun: string): string {
   return /^[aeiou]/i.test(noun) ? `an ${noun}` : `a ${noun}`;
 }
 
-export interface DeskRecordLayoutProps {
+interface DeskRecordLayoutProps {
   /** The work — items, Pick/Pack, labels, timeline, notes, verbs. */
   main: ReactNode;
   /**

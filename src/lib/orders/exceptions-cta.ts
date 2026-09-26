@@ -7,13 +7,13 @@
 import { itemNumberFromPaste } from '@/lib/inventory/listing-candidate';
 import { matchCatalogHits, type CatalogPasteHit } from '@/lib/inventory/catalog-paste-match';
 
-export type ExceptionsPasteTarget = {
+type ExceptionsPasteTarget = {
   id: number;
   itemNumber: string | null;
   accountSource: string | null;
 };
 
-export type ExceptionsPasteResult =
+type ExceptionsPasteResult =
   | { ok: false; error: string }
   | { ok: true; outcome: 'ambiguous' }
   | { ok: true; outcome: 'saved-item' }

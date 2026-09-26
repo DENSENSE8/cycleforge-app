@@ -28,6 +28,6 @@ export function currentZohoOrgId(): OrgId {
  * ZOHO_ORG_TRANSITIONAL shims that bridge callers which cannot bind yet —
  * regular code should bind with `withZohoOrg` and never need to ask.
  */
-export function hasZohoOrgBinding(): boolean {
+function hasZohoOrgBinding(): boolean {
   return zohoOrgStore.getStore() != null;
 }

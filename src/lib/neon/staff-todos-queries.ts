@@ -4,9 +4,9 @@ import pool from '@/lib/db';
 import { tenantQuery, withTenantTransaction } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';
 
-export type StaffTodoKind = 'general' | 'recurring';
+type StaffTodoKind = 'general' | 'recurring';
 
-export interface StaffTodoRow {
+interface StaffTodoRow {
   id: number;
   /** Which station list the task belongs to — carried so an ALL-station
    *  triage table can show and group by it without a second fetch. */
@@ -27,10 +27,10 @@ export interface StaffTodoRow {
 }
 
 const HOUR_MS = 60 * 60_000;
-export const DEFAULT_RECUR_INTERVAL_MS = 4 * HOUR_MS;
+const DEFAULT_RECUR_INTERVAL_MS = 4 * HOUR_MS;
 
 /** Start of the current cycle for a recurring task (epoch ms). */
-export function cyclePeriodStartMs(anchorMs: number, intervalMs: number, nowMs: number): number {
+function cyclePeriodStartMs(anchorMs: number, intervalMs: number, nowMs: number): number {
   if (intervalMs <= 0 || nowMs <= anchorMs) return anchorMs;
   return anchorMs + Math.floor((nowMs - anchorMs) / intervalMs) * intervalMs;
 }

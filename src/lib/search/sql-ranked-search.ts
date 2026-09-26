@@ -4,7 +4,7 @@ export interface RankedSearchVariant {
   enabled?: boolean;
 }
 
-export interface BuildTextSearchVariantsArgs {
+interface BuildTextSearchVariantsArgs {
   expression: string;
   exactParam?: string | null;
   prefixParam?: string | null;

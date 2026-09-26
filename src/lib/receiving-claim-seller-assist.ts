@@ -5,7 +5,7 @@ import {
   type ClaimType,
 } from '@/lib/zendesk-claim-template';
 
-export const SELLER_ONLY_SYSTEM_PROMPT = [
+const SELLER_ONLY_SYSTEM_PROMPT = [
   'You draft seller-facing messages for a used-electronics receiving team.',
   'Return strict JSON only: { "seller_message": "..." }. No markdown outside JSON.',
   '',
@@ -125,7 +125,7 @@ async function fetchProvider(
   }
 }
 
-export interface SellerAssistInput {
+interface SellerAssistInput {
   claimType: ClaimType;
   reason?: string;
   subject: string;
@@ -133,7 +133,7 @@ export interface SellerAssistInput {
   zendeskTicketNumber: string;
 }
 
-export interface SellerAssistResult {
+interface SellerAssistResult {
   sellerMessage: string;
   linksStripped: boolean;
   model: string;

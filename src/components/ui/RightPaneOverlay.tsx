@@ -48,7 +48,7 @@ export function RightPaneOverlayHost({
 }
 
 /** The nearest right-pane host element, or null when rendered outside a host. */
-export function useRightPaneHost(): HTMLElement | null {
+function useRightPaneHost(): HTMLElement | null {
   return useContext(RightPaneHostContext);
 }
 
@@ -57,7 +57,7 @@ export function useRightPaneHost(): HTMLElement | null {
 const SPRING = { type: 'spring', stiffness: 350, damping: 28, mass: 0.6 } as const;
 const FADE = { duration: 0.16, ease: motionBezier.easeOut } as const;
 
-export type RightPaneOverlayAlign = 'center' | 'right';
+type RightPaneOverlayAlign = 'center' | 'right';
 
 interface RightPaneOverlayProps {
   open: boolean;

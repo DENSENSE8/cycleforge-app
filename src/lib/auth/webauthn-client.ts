@@ -6,7 +6,7 @@ export function browserSupportsWebAuthn(): boolean {
   return typeof window.PublicKeyCredential === 'function';
 }
 
-export async function platformAuthenticatorAvailable(): Promise<boolean> {
+async function platformAuthenticatorAvailable(): Promise<boolean> {
   if (!browserSupportsWebAuthn()) return false;
   try {
     const fn = window.PublicKeyCredential?.isUserVerifyingPlatformAuthenticatorAvailable;

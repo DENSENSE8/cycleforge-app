@@ -77,7 +77,7 @@ export const GENERIC_SAVED_VIEW_SURFACES = [
 type GenericSavedViewSurface = (typeof GENERIC_SAVED_VIEW_SURFACES)[number];
 
 /** Storage keys for the surfaces rebuilt in Phase 4. */
-export const SHEET_SAVED_VIEW_KEY = {
+const SHEET_SAVED_VIEW_KEY = {
   products_catalog: 'products_catalog_saved_views',
   inventory_units: 'inventory_units_saved_views',
   warehouse_bins: 'warehouse_bins_saved_views',

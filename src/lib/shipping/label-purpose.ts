@@ -25,7 +25,7 @@ export function isLabelPurpose(value: unknown): value is LabelPurpose {
   return typeof value === 'string' && (LABEL_PURPOSES as readonly string[]).includes(value);
 }
 
-export function isLabelCreationType(value: unknown): value is LabelCreationType {
+function isLabelCreationType(value: unknown): value is LabelCreationType {
   return typeof value === 'string' && (LABEL_CREATION_TYPES as readonly string[]).includes(value);
 }
 
@@ -34,7 +34,7 @@ export function isLabelCreationType(value: unknown): value is LabelCreationType 
  * Outbound and replacement parcels travel to the buyer — their tracking is the
  * order's. A return travels to us; it never joins the order's tracking.
  */
-export function purposeLinksOrderTracking(purpose: LabelPurpose): boolean {
+function purposeLinksOrderTracking(purpose: LabelPurpose): boolean {
   return purpose !== 'return';
 }
 
@@ -60,7 +60,7 @@ export interface LabelLinkFacts {
   liveRow: { id: number; orderId: number | null; purpose: LabelPurpose } | null;
 }
 
-export type LabelLinkDecision =
+type LabelLinkDecision =
   | {
       kind: 'create';
       purpose: LabelPurpose;
@@ -137,7 +137,7 @@ export function decideLabelLink(
 
 // ─── Unlink ──────────────────────────────────────────────────────────────────
 
-export interface LabelUnlinkFacts {
+interface LabelUnlinkFacts {
   status: LabelLedgerStatus;
   creationType: LabelCreationType;
   purpose: LabelPurpose;
@@ -145,7 +145,7 @@ export interface LabelUnlinkFacts {
   ingestionState: string | null;
 }
 
-export type LabelUnlinkDecision =
+type LabelUnlinkDecision =
   | { kind: 'unlink'; reopenIngestion: boolean; unlinkTracking: boolean }
   | { kind: 'replay' }
   | { kind: 'refuse'; status: 409; code: string; message: string };

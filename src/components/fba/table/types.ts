@@ -1,11 +1,11 @@
-export type ItemStatus =
+type ItemStatus =
   | 'ready_to_print'
   | 'needs_print'
   | 'pending_out_of_stock'
   | 'pending_qc_fail'
   | 'shipped';
 
-export type PendingReason = 'out_of_stock' | 'qc_fail' | null;
+type PendingReason = 'out_of_stock' | 'qc_fail' | null;
 
 export interface ShipmentTrackingEntry {
   link_id?: number;
@@ -21,7 +21,7 @@ export interface ShipmentTrackingEntry {
   label?: string | null;
 }
 
-export interface PrintQueueItem {
+interface PrintQueueItem {
   item_id: number;
   fnsku: string;
   expected_qty: number;

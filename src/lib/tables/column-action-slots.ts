@@ -1,6 +1,6 @@
 /** Map selection verbs onto the compound/slot track they edit. */
 
-export type ColumnActionSlotColumn = {
+type ColumnActionSlotColumn = {
   key: string;
   fieldId?: string;
 };

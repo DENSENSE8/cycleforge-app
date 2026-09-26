@@ -35,7 +35,7 @@ export interface SubstituteOrderUnitInput {
   clientEventId?: string | null;
 }
 
-export interface SubstituteOrderUnitSuccess {
+interface SubstituteOrderUnitSuccess {
   ok: true;
   amendmentId: number;
   orderId: number;
@@ -48,7 +48,7 @@ export interface SubstituteOrderUnitSuccess {
   idempotent?: boolean;
 }
 
-export type SubstituteOrderUnitResult =
+type SubstituteOrderUnitResult =
   | SubstituteOrderUnitSuccess
   | { ok: false; status: 404 | 409; error: string };
 
@@ -299,16 +299,16 @@ export async function substituteOrderUnit(
 
 // ─── Approve / reject a PENDING amendment ────────────────────────────────────
 
-export type AmendmentDecision = 'APPROVE' | 'REJECT';
+type AmendmentDecision = 'APPROVE' | 'REJECT';
 
-export interface DecideAmendmentInput {
+interface DecideAmendmentInput {
   amendmentId: number;
   decision: AmendmentDecision;
   actorStaffId?: number | null;
   clientEventId?: string | null;
 }
 
-export interface DecideAmendmentSuccess {
+interface DecideAmendmentSuccess {
   ok: true;
   amendmentId: number;
   orderId: number;
@@ -320,7 +320,7 @@ export interface DecideAmendmentSuccess {
   idempotent?: boolean;
 }
 
-export type DecideAmendmentResult =
+type DecideAmendmentResult =
   | DecideAmendmentSuccess
   | { ok: false; status: 404 | 409; error: string };
 

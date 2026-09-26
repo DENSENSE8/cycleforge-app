@@ -13,7 +13,7 @@ import { StaffAvatar } from '@/components/identity/StaffAvatar';
 import { cornerClass, MOBILE_ROW_CORNER } from '@/design-system/tokens/radius';
 import { cn } from '@/utils/_cn';
 
-export interface MobileDailyRowOwner {
+interface MobileDailyRowOwner {
   staffId: number;
   name: string;
 }

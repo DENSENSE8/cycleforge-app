@@ -216,7 +216,7 @@ export const TASK_DESK_RECORD_NOUN: Readonly<Record<TaskEntityType, string>> = {
  * only has the two identity fields still type-checks; a ticket task that omits
  * it simply gets the local-id face, which is the honest degradation.
  */
-export type TaskRecordRef = Pick<TaskDeskRow, 'entityType' | 'entityId'> & {
+type TaskRecordRef = Pick<TaskDeskRow, 'entityType' | 'entityId'> & {
   ticket?: TaskDeskTicket | null;
 };
 
@@ -246,7 +246,7 @@ export function taskDeskRecordLabel(row: TaskRecordRef): string | null {
  * lands on a surface it cannot run (`SURFACE_LAW` §1), so the caller says
  * where it is and this module answers once.
  */
-export type TaskDeskSurface = 'desk' | 'phone';
+type TaskDeskSurface = 'desk' | 'phone';
 
 /** The record a task points at, as a route. */
 export function taskDeskRecordHref(row: TaskRecordRef, surface: TaskDeskSurface): string | null {

@@ -1,7 +1,7 @@
 /** Per-table column registry — the single source of truth for which columns a staffer may hide on each shared list table. */
 
 /** `meta` / `chip` are the legacy row-primitive slot families (RowMetaColumns / ChipColumns). */
-export type TableColumnGroup = 'meta' | 'chip' | 'grid';
+type TableColumnGroup = 'meta' | 'chip' | 'grid';
 
 /**
  * Presentation data-type of a column — drives the header type glyph (Airtable-
@@ -26,7 +26,7 @@ export type ColumnType =
   /** Photo / thumbnail track (Image header glyph — never a blank square). */
   | 'image';
 
-export interface TableColumnSpec {
+interface TableColumnSpec {
   /** Must equal the ChipColumn.key or RowMetaColumns slot key it controls. */
   key: string;
   /** Label shown in the column-config popover. */
@@ -160,7 +160,7 @@ export type TableId =
   | 'fba';
 
 /** Canonical meta-slot keys (the left-side qty | condition | rest grid). */
-export const META_KEYS = {
+const META_KEYS = {
   qty: 'qty',
   condition: 'condition',
   rest: 'rest',
@@ -416,6 +416,6 @@ export const TABLE_COLUMNS: Record<TableId, TableColumnSpec[]> = {
   'sku-allocations': [],
 };
 
-export function tableColumnsFor(tableId: TableId): TableColumnSpec[] {
+function tableColumnsFor(tableId: TableId): TableColumnSpec[] {
   return TABLE_COLUMNS[tableId] ?? [];
 }

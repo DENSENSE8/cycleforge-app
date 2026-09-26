@@ -356,7 +356,7 @@ export async function updateProvisionalSku(
   });
 }
 
-export interface MergeResult {
+interface MergeResult {
   qtyMoved: number;
   binRowsMoved: number;
   ledgerRowsRekeyed: number;

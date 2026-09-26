@@ -1,6 +1,6 @@
 /** Browser silent-print fallback — renders label/report HTML in a hidden iframe and lets the page's own `window.print()` drive the job. */
 
-export interface IframePrintOptions {
+interface IframePrintOptions {
   /** Safety-net delay (ms) before the hidden iframe is torn down. Default 60s. */
   removeAfterMs?: number;
   /** Log prefix used if the document can't be mounted. */

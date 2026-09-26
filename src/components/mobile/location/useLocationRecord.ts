@@ -8,7 +8,7 @@ import { mobileJobReturn, withJobReturn } from '@/lib/mobile/nav-trail';
 import { locationHubPath } from '@/lib/mobile/location-hub-href';
 import { fetchLocationRecord, locationRecordQueryKey } from '@/components/mobile/scan/location-bind-api';
 
-export const LOCATION_ADDRESS_ERROR = 'No location code in this link.';
+const LOCATION_ADDRESS_ERROR = 'No location code in this link.';
 
 /**
  * The location record the hub and `/info` share: the scanned code from the

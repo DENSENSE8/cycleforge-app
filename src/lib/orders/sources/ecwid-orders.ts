@@ -144,7 +144,7 @@ export function mapEcwidOrdersToCanonicalLines(ecwidOrders: unknown[]): Canonica
 }
 
 /** Which slice of the store's order history to pull. */
-export interface EcwidOrderWindow {
+interface EcwidOrderWindow {
   /**
    * Days back to fetch. `null` removes the date filter entirely (full
    * history). Defaults to {@link LOOKBACK_DAYS} — the recurring-sync window.

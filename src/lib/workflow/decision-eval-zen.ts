@@ -9,7 +9,7 @@ const WHEN_KEYS = ['grade', 'channel', 'disposition'] as const;
 type ZenEvaluateExpression = (expression: string, context: unknown) => unknown;
 
 /** Optional pre-authored override. */
-export interface DecisionZenOptions {
+interface DecisionZenOptions {
   expression?: string;
 }
 

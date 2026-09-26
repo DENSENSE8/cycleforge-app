@@ -5,7 +5,7 @@ import { emitAppEvent, useEventBridge } from '@/hooks';
 import { dispatchCloseShippedDetails } from '@/utils/events';
 import { isDetailsReopen, resolveDetailsNavigation } from '@/components/station/station-table-logic';
 
-export interface UseStationDetailsSelectionOptions<T> {
+interface UseStationDetailsSelectionOptions<T> {
   /** Flat on-screen order, for up/down keyboard navigation. */
   orderedRecords: T[];
   /** Map a record to the details-panel payload (`open-shipped-details` detail). */
@@ -14,7 +14,7 @@ export interface UseStationDetailsSelectionOptions<T> {
   getDetailId: (record: T) => number;
 }
 
-export interface StationDetailsSelection<T> {
+interface StationDetailsSelection<T> {
   /** Detail id of the currently open row, or null. */
   selectedDetailId: number | null;
   /** Toggle the open detail for a row (re-click closes it). */

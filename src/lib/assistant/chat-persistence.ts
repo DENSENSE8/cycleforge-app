@@ -3,7 +3,7 @@
 import { tenantQuery } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';
 
-export interface AssistantHistoryTurn {
+interface AssistantHistoryTurn {
   role: 'user' | 'assistant';
   content: string;
 }

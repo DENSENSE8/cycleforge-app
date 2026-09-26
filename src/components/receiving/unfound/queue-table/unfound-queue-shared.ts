@@ -24,7 +24,7 @@ export interface QueueRow {
   checked_at: string | null;
 }
 
-export interface PatchBody {
+interface PatchBody {
   zendesk_ticket_id?: string | null;
   usa_team_note?: string | null;
   vietnam_team_note?: string | null;
@@ -34,7 +34,7 @@ export interface PatchBody {
 // Match the trailing " · PO:
 const PO_SUFFIX_RE = / · PO:\s*(.+?)\s*$/;
 
-export function splitPoContext(context: string | null): {
+function splitPoContext(context: string | null): {
   prefix: string;
   poNumbers: string[];
 } {

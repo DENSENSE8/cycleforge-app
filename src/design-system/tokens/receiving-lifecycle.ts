@@ -1,6 +1,6 @@
 import type { RecordStateFace } from './industrial-record';
 
-export type ReceivingLifecycleState =
+type ReceivingLifecycleState =
   | 'SCANNED'
   | 'UNBOXED'
   | 'RECEIVED'

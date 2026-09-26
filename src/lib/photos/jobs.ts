@@ -1,9 +1,9 @@
 import pool from '@/lib/db';
 
-export type PhotoJobType = 'analyze' | 'nas_mirror' | 'export_drive';
-export type PhotoJobStatus = 'pending' | 'running' | 'completed' | 'failed';
+type PhotoJobType = 'analyze' | 'nas_mirror' | 'export_drive';
+type PhotoJobStatus = 'pending' | 'running' | 'completed' | 'failed';
 
-export interface PhotoJobRow {
+interface PhotoJobRow {
   id: number;
   photoId: number;
   organizationId: string;

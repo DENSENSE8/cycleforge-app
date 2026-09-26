@@ -46,7 +46,7 @@ export function shipstationMarketplaceSlug(store: Pick<ShipStationV1Store, 'mark
   return KNOWN_MARKETPLACE_SLUGS[lower] ?? slugify(lower);
 }
 
-export interface StoreCatalogSyncResult {
+interface StoreCatalogSyncResult {
   platformsAdded: number;
   storesLinked: number;
 }

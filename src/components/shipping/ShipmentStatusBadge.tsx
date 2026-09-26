@@ -18,7 +18,7 @@ export type ShipmentStatusCategory =
 
 export type CarrierCode = 'UPS' | 'USPS' | 'FEDEX';
 
-export interface ShipmentStatusBadgeProps {
+interface ShipmentStatusBadgeProps {
   carrier?: CarrierCode | string | null;
   category?: ShipmentStatusCategory | string | null;
   description?: string | null;

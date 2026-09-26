@@ -1,7 +1,7 @@
 /** What tables the product offers — as **plain data**, importable from a server route. */
 
 /** One sheet the product offers. */
-export interface ProductTable {
+interface ProductTable {
   tableId: string;
   label: string;
 }

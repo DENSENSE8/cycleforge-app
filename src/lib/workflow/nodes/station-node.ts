@@ -3,7 +3,7 @@
 import type { NodeContext, NodeDefinition, NodeOutputPort, NodeResult } from '../contract';
 
 /** Owner-tunable knobs every station node exposes (no secrets here, ever). */
-export const STATION_CONFIG_SCHEMA: Record<string, unknown> = {
+const STATION_CONFIG_SCHEMA: Record<string, unknown> = {
   type: 'object',
   properties: {
     slaHours: {
@@ -31,14 +31,14 @@ export const STATION_CONFIG_SCHEMA: Record<string, unknown> = {
 };
 
 /** The trigger-slot modes a station node can render its top bar as. */
-export type StationTrigger = 'scan' | 'feed';
+type StationTrigger = 'scan' | 'feed';
 
 /**
  * Read the configured trigger mode off a station node's config bag, defaulting
  * to 'scan' (today's hardcoded behavior) for any node that hasn't set it.
  * Single source of truth so the Inspector knob and the station UI never drift.
  */
-export function stationTrigger(config: Record<string, unknown> | null | undefined): StationTrigger {
+function stationTrigger(config: Record<string, unknown> | null | undefined): StationTrigger {
   return config?.trigger === 'feed' ? 'feed' : 'scan';
 }
 

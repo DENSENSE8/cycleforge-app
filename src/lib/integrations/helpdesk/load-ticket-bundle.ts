@@ -10,20 +10,20 @@ import { enrichCommentAuthors } from './enrich-comment-authors';
 import { getOrSetZendeskBundle } from './zendesk-ticket-cache';
 import type { HelpdeskProvider } from './types';
 
-export interface ZendeskLinkedEntity {
+interface ZendeskLinkedEntity {
   type: string;
   id: number;
   source: string;
 }
 
-export interface ZendeskTicketPhoto {
+interface ZendeskTicketPhoto {
   id: number;
   url: string;
   caption?: string | null;
   [key: string]: unknown;
 }
 
-export interface ZendeskTicketBundle {
+interface ZendeskTicketBundle {
   ticket: ZendeskTicket;
   comments: ZendeskComment[];
   commentsCount: number;

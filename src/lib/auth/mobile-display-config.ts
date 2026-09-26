@@ -16,13 +16,13 @@ export const MOBILE_NAV_TAB_IDS: ReadonlyArray<MobileNavTabId> = [
  * button is the universal QR/barcode scanner ('scan' → /m/scan). 'receiving'
  * is a normal tab (→ /m/receive, the receiving-door scan), NOT a center tab.
  */
-export const MOBILE_NAV_CENTER_TAB_IDS: ReadonlyArray<MobileNavTabId> = ['scan'];
+const MOBILE_NAV_CENTER_TAB_IDS: ReadonlyArray<MobileNavTabId> = ['scan'];
 
 /** Default center tab when none is configured — the universal scanner. */
 const DEFAULT_CENTER_TAB: MobileNavTabId = 'scan';
 
 /** The single, canonical bottom-nav layout rendered for every signed-in staffer: */
-export const CANONICAL_MOBILE_NAV_TABS: ReadonlyArray<MobileNavTabId> = [
+const CANONICAL_MOBILE_NAV_TABS: ReadonlyArray<MobileNavTabId> = [
   'home',
   'picks',
   'scan',
@@ -42,7 +42,7 @@ export interface MobileDisplayConfig {
 }
 
 /** Partial input — what we accept from the DB or the admin API. */
-export type MobileDisplayConfigInput = Partial<{
+type MobileDisplayConfigInput = Partial<{
   bottomNav: Partial<MobileBottomNavConfig>;
 }>;
 

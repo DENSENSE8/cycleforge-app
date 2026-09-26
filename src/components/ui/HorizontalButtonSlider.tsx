@@ -70,7 +70,7 @@ export function platformSliderTone(platformValue: string): HorizontalSliderTone 
 }
 
 /* ── Preset filter items ── NOT a tone source of truth. */
-export const SLIDER_PRESETS = {
+const SLIDER_PRESETS = {
   all:        { id: 'all',      label: 'All',       tone: 'blue'    } as HorizontalSliderItem,
   mustGo:     { id: 'must_go',  label: 'Must Go',   tone: 'red'     } as HorizontalSliderItem,
   newest:     { id: 'newest',   label: 'Newest',    tone: 'emerald' } as HorizontalSliderItem,
@@ -97,7 +97,7 @@ function useHorizontalWheelScroll(ref: RefObject<HTMLDivElement | null>) {
   );
 }
 
-export type HorizontalButtonSliderProps = {
+type HorizontalButtonSliderProps = {
   items: HorizontalSliderItem[];
   value: string;
   onChange: (id: string) => void;

@@ -10,7 +10,7 @@ import type { CompoundRowDetail } from '@/components/tables/compound/compound-ro
 import { CompoundRowDetailFacts } from '@/components/tables/compound/CompoundRowDetailFacts';
 import { cn } from '@/utils/_cn';
 
-export type CompoundRowDetailBandColumn = {
+type CompoundRowDetailBandColumn = {
   key: string;
   width: string;
   frozen?: boolean;

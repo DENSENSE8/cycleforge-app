@@ -7,10 +7,10 @@ import { cornerClass } from '@/design-system/tokens/radius';
 
 // ─── Panel ───────────────────────────────────────────────────────────────────
 
-export type PanelPadding = 'none' | 'sm' | 'md' | 'lg';
-export type PanelRadius = 'none' | 'lg' | 'xl' | '2xl';
+type PanelPadding = 'none' | 'sm' | 'md' | 'lg';
+type PanelRadius = 'none' | 'lg' | 'xl' | '2xl';
 /** `none` / `sm` / `md` are the original raw-shadow steps, kept byte-identical so no existing Panel moves. */
-export type PanelElevation = 'none' | 'sm' | 'md' | 'raised' | 'overlay';
+type PanelElevation = 'none' | 'sm' | 'md' | 'raised' | 'overlay';
 
 const PADDING: Record<PanelPadding, string> = {
   none: 'p-0',
@@ -36,7 +36,7 @@ const ELEVATION: Record<PanelElevation, string> = {
   overlay: elevationClass('overlay'),
 };
 
-export interface PanelProps extends HTMLAttributes<HTMLDivElement> {
+interface PanelProps extends HTMLAttributes<HTMLDivElement> {
   children?: ReactNode;
   /** Inner padding from the spacing scale. Default `md`. */
   padding?: PanelPadding;
@@ -72,7 +72,7 @@ export const Panel = forwardRef<HTMLDivElement, PanelProps>(function Panel(
 
 // ─── PanelHeader ─────────────────────────────────────────────────────────────
 
-export interface PanelHeaderProps {
+interface PanelHeaderProps {
   /** Primary title row. */
   title: ReactNode;
   /** Optional muted line under the title. */
@@ -82,7 +82,7 @@ export interface PanelHeaderProps {
   className?: string;
 }
 
-export function PanelHeader({ title, subtitle, actions, className }: PanelHeaderProps) {
+function PanelHeader({ title, subtitle, actions, className }: PanelHeaderProps) {
   return (
     <div className={cn('flex items-start justify-between gap-3', className)}>
       <div className="min-w-0">
@@ -96,7 +96,7 @@ export function PanelHeader({ title, subtitle, actions, className }: PanelHeader
 
 // ─── PanelFooter ─────────────────────────────────────────────────────────────
 
-export interface PanelFooterProps {
+interface PanelFooterProps {
   children?: ReactNode;
   className?: string;
 }

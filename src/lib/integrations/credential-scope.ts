@@ -64,7 +64,7 @@ export function requireCredentialPermission(
   }
 }
 
-export interface CredentialScopeParams {
+interface CredentialScopeParams {
   orgId: OrgId;
   provider: IntegrationProvider;
   operation: CredentialOperation;
@@ -126,7 +126,7 @@ function throttleKey(parts: Array<string | null>): string {
   return parts.map((p) => p ?? '').join('|');
 }
 
-export interface CredentialUsageRecord {
+interface CredentialUsageRecord {
   orgId: OrgId;
   provider: IntegrationProvider;
   scope: string | null;
@@ -136,7 +136,7 @@ export interface CredentialUsageRecord {
 }
 
 /** Append a credential-usage row. */
-export async function recordCredentialUsage(rec: CredentialUsageRecord): Promise<void> {
+async function recordCredentialUsage(rec: CredentialUsageRecord): Promise<void> {
   if (rec.outcome === 'allowed') {
     const key = throttleKey([rec.orgId, rec.provider, rec.scope, rec.operation, 'audit']);
     const now = Date.now();

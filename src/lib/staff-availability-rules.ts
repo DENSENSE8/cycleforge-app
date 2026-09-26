@@ -1,10 +1,10 @@
 import type { Pool, PoolClient } from 'pg';
 
-export type StaffRulesQueryable = Pick<Pool, 'query'> | Pick<PoolClient, 'query'>;
+type StaffRulesQueryable = Pick<Pool, 'query'> | Pick<PoolClient, 'query'>;
 
 export type StaffAvailabilityRuleType = 'weekday_allowed' | 'date_block' | 'date_allow';
 
-export interface StaffAvailabilityDecision {
+interface StaffAvailabilityDecision {
   hasRules: boolean;
   hasAllowed: boolean;
   hasDenied: boolean;

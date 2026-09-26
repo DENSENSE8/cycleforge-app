@@ -37,7 +37,7 @@ export interface HandlingUnitMember {
   origin_receiving_line_id: number | null;
 }
 
-export interface HandlingUnitRollup {
+interface HandlingUnitRollup {
   total: number;
   tested: number;
   untested: number;
@@ -45,7 +45,7 @@ export interface HandlingUnitRollup {
   derived_status: HandlingUnitStatus | null;
 }
 
-export interface HandlingUnitDetail extends HandlingUnitRow {
+interface HandlingUnitDetail extends HandlingUnitRow {
   location_name: string | null;
   created_by_name: string | null;
   units: HandlingUnitMember[];
@@ -136,7 +136,7 @@ export async function getHandlingUnitByCode(
   return r.rows[0] ?? null;
 }
 
-export async function listMembers(
+async function listMembers(
   handlingUnitId: number,
   executor: Queryable = pool,
   orgId?: OrgId,
@@ -246,14 +246,14 @@ export async function getHandlingUnitDetail(
   };
 }
 
-export interface ListHandlingUnitsParams {
+interface ListHandlingUnitsParams {
   status?: HandlingUnitStatus | null;
   locationId?: number | null;
   limit?: number;
   offset?: number;
 }
 
-export interface HandlingUnitListItem extends HandlingUnitRow {
+interface HandlingUnitListItem extends HandlingUnitRow {
   location_name: string | null;
   unit_count: number;
 }
@@ -317,7 +317,7 @@ export async function listHandlingUnits(
 
 // ─── Writes ───────────────────────────────────────────────────────────────────
 
-export interface CreateHandlingUnitInput {
+interface CreateHandlingUnitInput {
   /** Owning org (ctx.organizationId) — handling_units is org-scoped (Phase B). */
   organizationId: string;
   createdBy: number | null;
@@ -353,7 +353,7 @@ export async function createHandlingUnit(
   return r.rows[0];
 }
 
-export interface CreateHandlingUnitsBulkInput {
+interface CreateHandlingUnitsBulkInput {
   /** Owning org (ctx.organizationId) — handling_units is org-scoped (Phase B). */
   organizationId: string;
   createdBy: number | null;
@@ -570,7 +570,7 @@ export async function unassignUnits(
 }
 
 /** Recompute + persist a box's rollup status from member test state. */
-export async function refreshHandlingUnitStatus(
+async function refreshHandlingUnitStatus(
   handlingUnitId: number,
   orgId?: OrgId,
   /** Optional already-open, GUC'd client. */

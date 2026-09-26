@@ -4,7 +4,7 @@
  import { platformMetaBrandDot, sourcePlatformMeta } from '@/lib/source-platform';
 import { resolveMarketplacePlatformMeta } from '@/lib/marketplace-order-id';
 
- export interface ReceivingGroupIdentityRow {
+ interface ReceivingGroupIdentityRow {
    zoho_purchaseorder_number?: string | null;
    zoho_purchaseorder_id?: string | null;
   source_platform?: string | null;

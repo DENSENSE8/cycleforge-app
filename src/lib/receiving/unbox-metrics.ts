@@ -39,7 +39,7 @@ export interface UnboxKpiMetricCard {
   filterable: boolean;
 }
 
-export const UNBOX_KPI_RANGES: readonly UnboxKpiRange[] = ['24h', '7d', '30d', '90d'] as const;
+const UNBOX_KPI_RANGES: readonly UnboxKpiRange[] = ['24h', '7d', '30d', '90d'] as const;
 
 export function parseUnboxKpiRange(raw: string | null | undefined): UnboxKpiRange {
   return raw === '24h' || raw === '30d' || raw === '90d' ? raw : '7d';
@@ -486,7 +486,7 @@ function resolveUnboxMetrics(ctx: UnboxMetricContext): ComputedMetric[] {
     .filter((value): value is ComputedMetric => value != null);
 }
 
-export function splitUnboxAttention(metrics: ComputedMetric[]) {
+function splitUnboxAttention(metrics: ComputedMetric[]) {
   return {
     attention: metrics.filter((m) => m.severity >= 2),
     rest: metrics.filter((m) => m.severity < 2),

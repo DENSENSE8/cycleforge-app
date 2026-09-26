@@ -47,7 +47,7 @@ export const QA_FAIL_EXCEPTION_STATUS = {
 
 export type ReceivingExceptionCode = (typeof RECEIVING_EXCEPTION_CODES)[number];
 export type PhotoPolicyOverrideCode = (typeof PHOTO_POLICY_OVERRIDE_CODES)[number];
-export type QaFailExceptionCode = keyof typeof QA_FAIL_EXCEPTION_STATUS;
+type QaFailExceptionCode = keyof typeof QA_FAIL_EXCEPTION_STATUS;
 /** Deliberately module-private: */
 type LossExceptionCode = (typeof LOSS_EXCEPTION_CODES)[number];
 

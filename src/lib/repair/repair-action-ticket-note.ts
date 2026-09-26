@@ -19,14 +19,14 @@ export const REPAIR_LOG_TICKET_NOTE_PUBLIC = false;
  */
 export const TICKET_POST_STALE_MS = 2 * 60 * 1000;
 
-export type TicketPostStatus = 'pending' | 'posted' | 'failed';
+type TicketPostStatus = 'pending' | 'posted' | 'failed';
 
 export type TicketPostFacts = Pick<
   RepairActionRecord,
   'created_at' | 'ticket_post_status' | 'ticket_post_ticket_id' | 'ticket_comment_id' | 'ticket_post_error' | 'ticket_post_attempted_at'
 >;
 
-export type TicketPostEligibility =
+type TicketPostEligibility =
   | { ok: true; ticketId: number }
   | { ok: false; reason: 'not-linked' | 'posted' | 'in-flight' };
 
@@ -48,7 +48,7 @@ export function ticketPostEligibility(
   return { ok: true, ticketId: link.zendeskTicketId };
 }
 
-export type TicketPostView =
+type TicketPostView =
   | { kind: 'posted'; ticketId: number | null }
   | { kind: 'posting' }
   | { kind: 'failed'; error: string };

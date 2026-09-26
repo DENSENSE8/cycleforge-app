@@ -48,7 +48,7 @@ export type LabelPrintRunFreeze = {
   rack?: boolean;
 };
 
-export type LabelPrintRunPanelProps = {
+type LabelPrintRunPanelProps = {
   freeze: LabelPrintRunFreeze;
   /** Initial one-axis vary when mode is axis. */
   seedVary: PrintRunVaryAxis;

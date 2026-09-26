@@ -26,10 +26,10 @@ export const COMPOUND_COLUMN_KEYS = [
   '_fill',
 ] as const;
 
-export type CompoundColumnKey = (typeof COMPOUND_COLUMN_KEYS)[number];
+type CompoundColumnKey = (typeof COMPOUND_COLUMN_KEYS)[number];
 
 /** Structural shape of one compound track. */
-export interface CompoundTrack {
+interface CompoundTrack {
   key: CompoundColumnKey;
   width: string;
   label?: string;

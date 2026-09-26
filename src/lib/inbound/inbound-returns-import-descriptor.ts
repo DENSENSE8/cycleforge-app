@@ -31,7 +31,7 @@ export type InboundReturnsImportRowView = {
   source: string;
 };
 
-export const INBOUND_RETURNS_IMPORT_SURFACE_ID = 'receiving-returns-import';
+const INBOUND_RETURNS_IMPORT_SURFACE_ID = 'receiving-returns-import';
 
 export const INBOUND_RETURNS_IMPORT_DESCRIPTOR: TableImportDescriptor<
   CsvInboundReturnsKey,

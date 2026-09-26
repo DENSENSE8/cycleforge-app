@@ -3,7 +3,7 @@
 import type { CallDirection } from '@/lib/voice/types';
 import type { IncomingCallEvent, IncomingVoicemail } from '@/lib/voice/ingest';
 
-export interface NormalizedWebhook {
+interface NormalizedWebhook {
   calls: IncomingCallEvent[];
   voicemails: IncomingVoicemail[];
 }

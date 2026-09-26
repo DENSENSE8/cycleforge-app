@@ -129,7 +129,7 @@ export function upsertReceivingLineTesting(
   }, deps);
 }
 
-export function readReceivingLineTesting(orgId: OrgId, receivingLineId: number, deps: FactsDeps = defaultDeps) {
+function readReceivingLineTesting(orgId: OrgId, receivingLineId: number, deps: FactsDeps = defaultDeps) {
   return readNarrow('receiving_line_testing', orgId, receivingLineId, deps);
 }
 
@@ -155,7 +155,7 @@ export function upsertReceivingLineReturn(
   }, deps);
 }
 
-export function readReceivingLineReturn(orgId: OrgId, receivingLineId: number, deps: FactsDeps = defaultDeps) {
+function readReceivingLineReturn(orgId: OrgId, receivingLineId: number, deps: FactsDeps = defaultDeps) {
   return readNarrow('receiving_line_return', orgId, receivingLineId, deps);
 }
 
@@ -188,6 +188,6 @@ export function upsertReceivingLinePutaway(
   }, deps);
 }
 
-export function readReceivingLinePutaway(orgId: OrgId, receivingLineId: number, deps: FactsDeps = defaultDeps) {
+function readReceivingLinePutaway(orgId: OrgId, receivingLineId: number, deps: FactsDeps = defaultDeps) {
   return readNarrow('receiving_line_putaway', orgId, receivingLineId, deps);
 }

@@ -8,7 +8,7 @@ import { and, desc, eq, sql } from 'drizzle-orm';
  * Canonical event_type values. The DB column is TEXT (not enum) for
  * forward-compat; this union narrows the application-facing API.
  */
-export type InventoryEventType =
+type InventoryEventType =
   // 2026-05-13 set
   | 'RECEIVED'
   | 'TEST_START'
@@ -37,9 +37,9 @@ export type InventoryEventType =
   | 'HELD'
   | 'RELEASED_HOLD';
 
-export type InventoryEventStation = 'RECEIVING' | 'TECH' | 'PACK' | 'SHIP' | 'MOBILE' | 'SYSTEM';
+type InventoryEventStation = 'RECEIVING' | 'TECH' | 'PACK' | 'SHIP' | 'MOBILE' | 'SYSTEM';
 
-export interface AppendEventInput {
+interface AppendEventInput {
   eventType: InventoryEventType;
   /** Tenant scope. */
   organizationId?: string | null;
@@ -121,7 +121,7 @@ export async function appendInventoryEvent(
   throw new Error('appendInventoryEvent: insert returned no row and no clientEventId to look up');
 }
 
-export async function listEventsForSerialUnit(serialUnitId: number, limit = 50): Promise<InventoryEvent[]> {
+async function listEventsForSerialUnit(serialUnitId: number, limit = 50): Promise<InventoryEvent[]> {
   return db
     .select()
     .from(inventoryEvents)
@@ -130,7 +130,7 @@ export async function listEventsForSerialUnit(serialUnitId: number, limit = 50):
     .limit(limit);
 }
 
-export async function listEventsForSku(sku: string, limit = 100): Promise<InventoryEvent[]> {
+async function listEventsForSku(sku: string, limit = 100): Promise<InventoryEvent[]> {
   return db
     .select()
     .from(inventoryEvents)
@@ -139,7 +139,7 @@ export async function listEventsForSku(sku: string, limit = 100): Promise<Invent
     .limit(limit);
 }
 
-export async function listEventsForReceivingLine(receivingLineId: number, limit = 100): Promise<InventoryEvent[]> {
+async function listEventsForReceivingLine(receivingLineId: number, limit = 100): Promise<InventoryEvent[]> {
   return db
     .select()
     .from(inventoryEvents)
@@ -148,13 +148,13 @@ export async function listEventsForReceivingLine(receivingLineId: number, limit 
     .limit(limit);
 }
 
-export interface RecentEventsByTypeOptions {
+interface RecentEventsByTypeOptions {
   sinceHours?: number;
   station?: InventoryEventStation;
   limit?: number;
 }
 
-export async function listRecentEventsByType(
+async function listRecentEventsByType(
   eventType: InventoryEventType,
   opts: RecentEventsByTypeOptions = {},
 ): Promise<InventoryEvent[]> {

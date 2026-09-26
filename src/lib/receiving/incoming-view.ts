@@ -1,14 +1,14 @@
 /** `?incview=` — leftover Incoming right-pane tokens. */
 
-export const INCOMING_VIEWS = ['pos'] as const;
+const INCOMING_VIEWS = ['pos'] as const;
 
 /** Only live collection face — the Incoming POS table. */
-export type IncomingView = (typeof INCOMING_VIEWS)[number];
+type IncomingView = (typeof INCOMING_VIEWS)[number];
 
 const VIEW_SET: ReadonlySet<string> = new Set(INCOMING_VIEWS);
 
 /** `pos` is the implicit default and is dropped from the URL. */
-export function parseIncomingView(raw: string | null | undefined): IncomingView {
+function parseIncomingView(raw: string | null | undefined): IncomingView {
   const value = String(raw ?? '').trim().toLowerCase();
   return VIEW_SET.has(value) ? (value as IncomingView) : 'pos';
 }

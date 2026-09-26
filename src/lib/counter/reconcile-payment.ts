@@ -19,7 +19,7 @@ export interface ReconcileCounterPaymentDeps {
   patchHeaderStatus(orgId: OrgId, headerId: number, status: CounterTransactionStatus): Promise<void>;
 }
 
-export type ReconcileResult =
+type ReconcileResult =
   | {
       linked: true;
       counterTransactionId: number;

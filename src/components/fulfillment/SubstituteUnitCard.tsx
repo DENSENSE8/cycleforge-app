@@ -13,7 +13,7 @@ import {
 import { useSubstitutionReasons } from '@/hooks/useSubstitutionReasons';
 
 /** Drop-in substitution surface for the testing / packing cards. */
-export interface SubstituteUnitCardProps {
+interface SubstituteUnitCardProps {
   orderId: number;
   orderLabel: string;
   enforcement?: 'advisory' | 'block_until_approved';

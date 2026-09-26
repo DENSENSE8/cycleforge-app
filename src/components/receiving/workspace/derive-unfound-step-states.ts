@@ -8,7 +8,7 @@ import {
 } from './derive-receiving-step-states';
 
 /** Unfound flow = the matched unbox flow with a `Classify` step PREPENDED: */
-export type UnfoundStepKey = 'classify' | ReceivingStepKey;
+type UnfoundStepKey = 'classify' | ReceivingStepKey;
 
 export const UNFOUND_WORKFLOW_STEPS: ReadonlyArray<{
   key: UnfoundStepKey;

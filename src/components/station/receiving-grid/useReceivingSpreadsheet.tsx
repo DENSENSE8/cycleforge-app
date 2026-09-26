@@ -36,7 +36,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { commitReceivingLineNote } from '@/lib/receiving/commit-receiving-line-note';
 import { receivingLineMatchesQuery } from '@/lib/receiving/receiving-line-search';
 
-export interface ReceivingSpreadsheetProps {
+interface ReceivingSpreadsheetProps {
   /** Day-banded PO groups (Unbox / History). */
   filteredGroupedRecords?: Record<string, ReceivingPoGroup[]>;
   /**

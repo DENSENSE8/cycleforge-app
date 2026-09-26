@@ -16,7 +16,7 @@ interface ProgressDotsProps {
   className?: string;
 }
 
-export type DotState = 'done' | 'current' | 'pending' | 'ellipsis';
+type DotState = 'done' | 'current' | 'pending' | 'ellipsis';
 
 /** The rail algorithm, exported as the contract seam: */
 export function buildDotRail(done: number, total: number, maxVisible: number): DotState[] {

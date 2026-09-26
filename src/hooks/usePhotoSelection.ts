@@ -3,12 +3,12 @@
 import { useCallback, useMemo, useState } from 'react';
 import type { LibraryPhoto } from '@/components/photos/photo-library-types';
 
-export interface PhotoSelectMods {
+interface PhotoSelectMods {
   /** Shift was held — extend a contiguous range from the anchor. */
   shift?: boolean;
 }
 
-export interface PhotoSelection {
+interface PhotoSelection {
   /** Set of selected photo ids (persists across the client pages). */
   selected: Set<number>;
   /** Selected rows, resolved against the full loaded list, in list order. */

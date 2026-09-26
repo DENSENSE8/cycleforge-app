@@ -12,14 +12,14 @@ import { printLabelFacesJob } from '@/lib/print/printLabelFacesJob';
 import { clampLabelCopies, platesPerTote, DEFAULT_TOTE_COPIES_PER_SIDE } from '@/lib/print/labelCopies';
 import { safeRandomUUID } from '@/lib/safe-uuid';
 
-export type PrintLabelRunResult = {
+type PrintLabelRunResult = {
   status: 'printed' | 'skipped' | 'register_failed' | 'mint_failed';
   channel?: 'usb' | 'iframe';
   count: number;
   error?: string;
 };
 
-export type PrintLabelRunProgress = (done: number, total: number) => void;
+type PrintLabelRunProgress = (done: number, total: number) => void;
 
 async function recordLocationPrintJobs(input: {
   segments: readonly LocationSegments[];

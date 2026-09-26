@@ -3,7 +3,7 @@ import type { OrgId } from '@/lib/tenancy/constants';
 import { getOrSet, invalidateCacheTags } from '@/lib/cache/upstash-cache';
 import { CACHE_NS, CACHE_TAGS } from '@/lib/cache/tags';
 
-export interface ReasonCodeRow {
+interface ReasonCodeRow {
   id: number;
   code: string;
   label: string;

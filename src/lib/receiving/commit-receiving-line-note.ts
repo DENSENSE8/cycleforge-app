@@ -5,7 +5,7 @@
 import type { QueryClient } from '@tanstack/react-query';
 import { patchReceivingLineCache } from '@/lib/queries/station-cache-patch';
 
-export interface CommitReceivingLineNoteArgs {
+interface CommitReceivingLineNoteArgs {
   queryClient: QueryClient;
   lineId: number;
   /** The value BEFORE the edit — used to roll back a failed write. */

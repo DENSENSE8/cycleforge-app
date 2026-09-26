@@ -1,5 +1,5 @@
 /** Build a `/…/photos` URL with optional search params. */
-export function receivingPhotosUrl(
+function receivingPhotosUrl(
   photosPath: string,
   params: Record<string, string | undefined> = {},
 ): string {
@@ -32,7 +32,7 @@ interface ReceivingLinePhotoLinkInput {
 }
 
 /** Capture + gallery URLs for a receiving line (mobile list, sheet, rows). */
-export function receivingLinePhotoHrefs(input: ReceivingLinePhotoLinkInput) {
+function receivingLinePhotoHrefs(input: ReceivingLinePhotoLinkInput) {
   const receivingId = input.receivingId;
   if (!receivingId) {
     return { captureHref: '#', galleryHref: '#' };

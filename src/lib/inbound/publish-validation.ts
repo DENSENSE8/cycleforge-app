@@ -11,7 +11,7 @@ const EBAY_FIXED_SOURCES = new Set(['receiving.incoming_ebay', 'receiving.awaiti
 const ZOHO_FIXED_SOURCES = new Set(['receiving.incoming_zoho']);
 const BY_INBOUND_FILTER_SOURCES = new Set(['receiving.incoming_all', 'receiving.awaiting_tracking_pos']);
 
-export interface BoundInbound {
+interface BoundInbound {
   /** True when any bound block requires eBay purchasing (flag + buyer account). */
   needsEbay: boolean;
   /** Inbound source_types the config pins a block to (must be org-enabled). */

@@ -51,8 +51,8 @@ export function locationStockRowId(row: LocationStockTableRow): string {
 }
 
 /** Rows with no room collapse into one honest bucket keyed this. */
-export const UNROOMED_FACET_ID = '(none)' as const;
-export const UNROOMED_FACET_LABEL = 'No room' as const;
+const UNROOMED_FACET_ID = '(none)' as const;
+const UNROOMED_FACET_LABEL = 'No room' as const;
 
 export interface LocationStockRoomFacet {
   /** The room name, or {@link UNROOMED_FACET_ID}. */

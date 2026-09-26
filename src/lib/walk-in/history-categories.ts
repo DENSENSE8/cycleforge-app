@@ -15,7 +15,7 @@ export const WALK_IN_HISTORY_ITEMS: HorizontalSliderItem[] = [
   { id: 'repairs', label: 'Repairs', icon: Wrench },
 ];
 
-export function isWalkInHistoryCategory(
+function isWalkInHistoryCategory(
   value: string | null | undefined,
 ): value is WalkInHistoryCategory {
   return (

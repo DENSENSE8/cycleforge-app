@@ -6,7 +6,7 @@ import type { ArchetypeId } from './archetype';
 import { getSurface, type SurfaceDefinition, type SurfaceKey } from './surface-keys';
 
 /** How a surface should be rendered for this org, right now. */
-export interface ResolvedSurface {
+interface ResolvedSurface {
   key: SurfaceKey;
   surface: SurfaceDefinition;
   archetype: ArchetypeId;

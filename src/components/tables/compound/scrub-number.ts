@@ -28,7 +28,7 @@ export function scrubPointerMods(event: {
   return { shift: event.shiftKey, ctrl: event.ctrlKey, alt: event.altKey };
 }
 
-export function isScrubFine(
+function isScrubFine(
   mods: ScrubPointerMods,
   scrub: Pick<CompoundSubtitleScrub, 'fineStep'>,
 ): boolean {
@@ -124,7 +124,7 @@ export function startScrubFrame(
   };
 }
 
-export function continueScrubOrigin(args: {
+function continueScrubOrigin(args: {
   originX: number;
   originValue: number;
   fineUntil: number;
@@ -152,7 +152,7 @@ export function continueScrubOrigin(args: {
   return { originX, originValue, fineUntil };
 }
 
-export function effectiveScrubMods(
+function effectiveScrubMods(
   mods: ScrubPointerMods,
   scrub: Pick<CompoundSubtitleScrub, 'fineStep'>,
   now: number,

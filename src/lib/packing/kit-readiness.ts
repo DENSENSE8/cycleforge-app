@@ -5,12 +5,12 @@ import type { PackingEnforcement } from '@/lib/tenancy/settings';
 export type { PackingEnforcement };
 
 /** Minimal shape the verdict needs from a kit part. */
-export interface KitReadinessPart {
+interface KitReadinessPart {
   id: number;
   critical: boolean;
 }
 
-export interface KitReadiness {
+interface KitReadiness {
   /** # of critical parts expected in the box. */
   requiredTotal: number;
   /** # of critical parts the packer has confirmed. */

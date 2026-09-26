@@ -91,13 +91,13 @@ export function assertReportRange(range: DateRange): void {
 }
 
 /** Map a filter dimension to the SQL column expression that represents it for a particular query. */
-export interface FilterColumnMap {
+interface FilterColumnMap {
   occurredAt: string;
   staffId?: string;
   sku?: string;
 }
 
-export interface BuiltFilter {
+interface BuiltFilter {
   /** SQL fragments suitable for `WHERE ${clauses.join(' AND ')}`. Empty array means no filtering. */
   clauses: string[];
   /** Positional parameters that match `$1`, `$2`, ... in the clauses. */
@@ -105,7 +105,7 @@ export interface BuiltFilter {
 }
 
 /** Translate parsed filters into SQL fragments scoped to a single table/alias. */
-export function buildFilterSql(
+function buildFilterSql(
   filters: AuditLogFilters,
   columns: FilterColumnMap,
   paramOffset = 0,
@@ -134,7 +134,7 @@ export function buildFilterSql(
   return { clauses, params };
 }
 
-export const AUDIT_LOG_CONSTANTS = {
+const AUDIT_LOG_CONSTANTS = {
   MAX_REPORT_DAYS,
   DEFAULT_LIMIT,
   MAX_LIMIT,

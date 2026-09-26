@@ -13,7 +13,7 @@ import {
   makeKioskDevicesGridDescriptor,
 } from './kiosk-devices-grid-descriptor';
 
-export const KIOSKDEVICES_TABLE_DEFINITION = parseTableDefinition({
+const KIOSKDEVICES_TABLE_DEFINITION = parseTableDefinition({
   id: 'settings.kiosk-devices',
   tableId: 'kiosk-devices',
   entityFamily: 'kiosk-devices',

@@ -2,7 +2,7 @@ import { sanitizeSellerMessage } from '@/lib/ai/seller-message-guard';
 import { tenantQuery } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';
 
-export interface ClaimSellerMessageRow {
+interface ClaimSellerMessageRow {
   id: number;
   receivingId: number;
   receivingLineId: number | null;
@@ -187,7 +187,7 @@ export async function upsertClaimSellerMessage(opts: {
 }
 
 /** Attach zendesk ticket id after claim is filed (best-effort). */
-export async function linkClaimSellerMessageTicket(opts: {
+async function linkClaimSellerMessageTicket(opts: {
   orgId: OrgId;
   receivingId: number;
   lineId?: number | null;

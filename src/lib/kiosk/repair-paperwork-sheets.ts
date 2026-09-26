@@ -11,7 +11,7 @@ import {
 import { isRepairPayload, type KioskCartLine } from './cart-line';
 import type { KioskRepairDevice } from './repair-devices';
 
-export interface RepairPaperworkFacts {
+interface RepairPaperworkFacts {
   customer: RepairReceiptCustomer;
   /** The visit's free-text notes — a unit with no reasons states these as its issue. */
   visitNotes: string;
@@ -24,7 +24,7 @@ export interface RepairPaperworkFacts {
   ticketNumber: string | number;
 }
 
-export interface RepairPaperworkSheet {
+interface RepairPaperworkSheet {
   /** The unit's cart line — the sheet's React key. */
   lineId: string;
   props: RepairReceiptProps;

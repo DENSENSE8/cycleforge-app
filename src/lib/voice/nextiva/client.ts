@@ -24,14 +24,14 @@ function baseUrl(): string {
   return (process.env.NEXTIVA_API_BASE_URL || 'https://api.nextiva.com').replace(/\/+$/, '');
 }
 
-export interface OriginateCallInput {
+interface OriginateCallInput {
   /** E.164 / dialable customer number to ring. */
   to: string;
   /** Agent's Nextiva extension to originate from (falls back to creds.defaultExtension). */
   fromExtension?: string;
 }
 
-export interface OriginateCallResult {
+interface OriginateCallResult {
   ok: boolean;
   externalCallId?: string;
 }

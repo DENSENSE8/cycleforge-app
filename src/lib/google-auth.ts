@@ -1,7 +1,7 @@
 import { JWT } from 'google-auth-library';
 import { normalizeEnvValue, normalizeMultilineEnvValue } from '@/lib/env-utils';
 
-export interface GoogleServiceAccountCredentials {
+interface GoogleServiceAccountCredentials {
     clientEmail: string;
     privateKey: string;
 }

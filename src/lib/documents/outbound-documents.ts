@@ -168,7 +168,7 @@ export async function listDocumentsForShipment(
   });
 }
 
-export interface AttachOutboundDocumentInput {
+interface AttachOutboundDocumentInput {
   orderId: number;
   documentType: OutboundDocumentType;
   url: string;
@@ -183,7 +183,7 @@ export interface AttachOutboundDocumentInput {
   uploadedBy?: number | null;
 }
 
-export interface AttachOutboundDocumentResult {
+interface AttachOutboundDocumentResult {
   document: OutboundDocument;
   /** True when this is the order's first shipping_label — callers should also
    * record AUDIT_ACTION.LABEL_PRINTED (order timeline precedent). */
@@ -315,13 +315,13 @@ export async function attachOutboundDocument(
   });
 }
 
-export interface DeletedOutboundDocument {
+interface DeletedOutboundDocument {
   id: number;
   documentType: OutboundDocumentType;
   orderId: number | null;
 }
 
-export interface DeleteOutboundDocumentOptions {
+interface DeleteOutboundDocumentOptions {
   /** When set, a document of a different type 404s instead of deleting — lets a type-scoped caller (e.g. */
   expectedDocumentType?: OutboundDocumentType;
 }
@@ -355,7 +355,7 @@ export async function deleteOutboundDocument(
   });
 }
 
-export interface ReplaceOutboundDocumentInput {
+interface ReplaceOutboundDocumentInput {
   url: string;
   filename?: string | null;
   mimeType?: string | null;
@@ -404,7 +404,7 @@ export interface FetchOutboundDocumentsResult {
   failed: Array<{ type: OutboundDocumentType; error: string }>;
 }
 
-export interface StoreOutboundDocumentBytesInput {
+interface StoreOutboundDocumentBytesInput {
   orderId: number;
   orderRef: string;
   documentType: OutboundDocumentType;
@@ -420,7 +420,7 @@ export interface StoreOutboundDocumentBytesInput {
   sourceHash?: string;
 }
 
-export interface StoreOutboundDocumentBytesResult extends AttachOutboundDocumentResult {
+interface StoreOutboundDocumentBytesResult extends AttachOutboundDocumentResult {
   created: boolean;
 }
 

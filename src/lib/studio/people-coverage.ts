@@ -33,7 +33,7 @@ export function staffStationForNodeDepartment(
 }
 
 /** One node as the assembler sees it — just its id and its department key. */
-export interface PeopleNodeRef {
+interface PeopleNodeRef {
   id: string;
   /** node.config.station — the operations-catalog department key (may be absent). */
   station: string | null;
@@ -69,7 +69,7 @@ export interface StudioPeopleResponse {
   error?: string;
 }
 
-export interface AssemblePeopleInput {
+interface AssemblePeopleInput {
   nodes: PeopleNodeRef[];
   /** All staff↔station assignments for the org (any station). */
   assignments: StaffStationAssignment[];

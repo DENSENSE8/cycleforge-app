@@ -36,7 +36,7 @@ type ChecklistView = {
   note?: string;
 };
 
-export function buildView(summary: ReceiveSummary): ChecklistView {
+function buildView(summary: ReceiveSummary): ChecklistView {
   // A waived receive outranks every success headline below:
   if (summary.photoPolicyWaiver) {
     const { blockers } = summary.photoPolicyWaiver;

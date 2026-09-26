@@ -5,7 +5,7 @@ export interface ShareLinkLine {
   url: string;
 }
 
-export interface FormatShareLinksOptions {
+interface FormatShareLinksOptions {
   /** Optional durable group landing page, appended as a header line. */
   groupUrl?: string | null;
   /** Human expiry hint (e.g. "24 hours") appended as a trailing note. */

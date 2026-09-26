@@ -24,7 +24,7 @@ import {
 } from './audit-log-table-definition';
 import { useAuditLogTableLayout } from './useAuditLogTableLayout';
 
-export interface UseAuditLogSpreadsheetOptions {
+interface UseAuditLogSpreadsheetOptions {
   /**
    * One keyset page — ALREADY the answer for `search.value`, because the page
    * spends that param in SQL. A header click re-orders what is here.

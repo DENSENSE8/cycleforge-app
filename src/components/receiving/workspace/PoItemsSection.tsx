@@ -24,7 +24,7 @@ interface SiblingsResponse {
   receiving_lines: unknown[];
 }
 
-export type PoItemsLane = 'accordion' | 'unmatched';
+type PoItemsLane = 'accordion' | 'unmatched';
 
 /**
  * Which surface this carton's items belong on.
@@ -32,7 +32,7 @@ export type PoItemsLane = 'accordion' | 'unmatched';
  * Exported so a host that has to know BEFORE render (a header CTA, a seed) can
  * ask the same question the section answers, rather than re-deriving it.
  */
-export function usePoItemsLane(
+function usePoItemsLane(
   row: ReceivingLineRow,
   receivingId: number,
 ): PoItemsLane {
@@ -68,7 +68,7 @@ export function usePoItemsLane(
     : 'accordion';
 }
 
-export interface PoItemsSectionProps extends UnmatchedItemsSectionProps {
+interface PoItemsSectionProps extends UnmatchedItemsSectionProps {
   /**
    * The controller-active line. Decides the lane, seeds the cold-open
    * placeholder, and supplies the default `activeLineId`.

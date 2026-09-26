@@ -3,10 +3,10 @@
 import * as Y from 'yjs';
 
 /** The one Y.Text key. Every plane MUST read/write through this constant. */
-export const MASTER_PLAN_YTEXT_KEY = 'content';
+const MASTER_PLAN_YTEXT_KEY = 'content';
 
 /** Fixed clientID used ONLY for empty-doc seeding. */
-export const MASTER_PLAN_SEED_CLIENT_ID = 0x00c0ffee;
+const MASTER_PLAN_SEED_CLIENT_ID = 0x00c0ffee;
 
 /** Transaction origin used when applying a bootstrap seed update. */
 export const SEED_APPLY_ORIGIN = 'master-plan:seed';

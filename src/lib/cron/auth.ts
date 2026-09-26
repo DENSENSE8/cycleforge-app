@@ -9,7 +9,7 @@ import { safeStrEqual } from '@/lib/security/safe-compare';
  * Resolve the app's public base URL (no trailing slash). Used by jobs that
  * need to build absolute URLs (callbacks, self-referential fetches).
  */
-export function getAppBaseUrl(): string {
+function getAppBaseUrl(): string {
   const normalized = resolvePublicAppUrl();
   if (!normalized) {
     throw new Error('APP_URL, NEXT_PUBLIC_APP_URL, or VERCEL_URL is required');

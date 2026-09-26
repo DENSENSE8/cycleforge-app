@@ -19,7 +19,7 @@ import {
 } from './station-context-action-pill';
 
 /** Row glyphs for the listing verbs — the row SoT stays icon-free. */
-export const LISTING_MENU_ICONS = {
+const LISTING_MENU_ICONS = {
   open: <ExternalLink className="h-3.5 w-3.5" />,
   copy: <Copy className="h-3.5 w-3.5" />,
   edit: <Pencil className="h-3.5 w-3.5" />,

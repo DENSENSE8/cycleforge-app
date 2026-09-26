@@ -2,7 +2,7 @@ import type { PoolClient } from 'pg';
 import type { OrgId } from '@/lib/tenancy/constants';
 import type { ExactOrderIdentity, LabelQuarantineReasonCode, ParsedLabelEvidence } from './types';
 
-export interface ExactResolution { exactOrder: ExactOrderIdentity | null; orderIds: number[]; quarantineReason: LabelQuarantineReasonCode | null; }
+interface ExactResolution { exactOrder: ExactOrderIdentity | null; orderIds: number[]; quarantineReason: LabelQuarantineReasonCode | null; }
 
 /** No address, customer, tracking, partial, regexp, LIKE, or cross-account resolution occurs here. */
 export async function resolveExactLabelOrder(client: Pick<PoolClient, 'query'>, organizationId: OrgId, evidence: ParsedLabelEvidence): Promise<ExactResolution> {

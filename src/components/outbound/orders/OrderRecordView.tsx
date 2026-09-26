@@ -79,7 +79,7 @@ import { ThreadPanel } from '@/components/threads/ThreadPanel';
 /** One column of the record: the industrial panel its sections stack in. */
 const COLUMN_CLASS = 'flex min-w-0 flex-col border border-mode-ink bg-mode-bar';
 
-export interface OrderRecordViewProps {
+interface OrderRecordViewProps {
   /** The desk this record opens on — decides which sections paint. */
   mode: OrderRecordMode;
   /** The open record (live row). */

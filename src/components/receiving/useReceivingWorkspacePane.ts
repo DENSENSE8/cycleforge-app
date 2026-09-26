@@ -51,7 +51,7 @@ export interface NavState {
   canNext: boolean;
 }
 
-export interface ReceivingWorkspacePane {
+interface ReceivingWorkspacePane {
   workspace: WorkspaceState | null;
   setWorkspace: React.Dispatch<React.SetStateAction<WorkspaceState | null>>;
   nav: NavState | null;

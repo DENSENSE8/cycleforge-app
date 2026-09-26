@@ -9,7 +9,7 @@ import { buildSearchContextBlock } from '@/lib/ai/search-context';
 import type { IntentDomain, IntentParams } from '@/lib/ai/intent-router';
 import type { OrgId } from '@/lib/tenancy/constants';
 
-export interface EnrichAssistantMessageArgs {
+interface EnrichAssistantMessageArgs {
   orgId: OrgId;
   message: string;
   intents: IntentDomain[];

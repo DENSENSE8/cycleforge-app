@@ -6,7 +6,7 @@ import { listSurfaces, type SurfaceDefinition } from '@/lib/stations/surface-key
 import type { TemplateGraph } from './templates';
 
 /** One allowed node type in the palette — the model-facing subset of NodeMeta. */
-export interface AiVocabNode {
+interface AiVocabNode {
   type: string;
   label: string;
   category: NodeMeta['category'];
@@ -15,7 +15,7 @@ export interface AiVocabNode {
 }
 
 /** One allowed operator surface in the palette. */
-export interface AiVocabSurface {
+interface AiVocabSurface {
   key: string;
   label: string;
   archetype: SurfaceDefinition['archetype'];
@@ -23,7 +23,7 @@ export interface AiVocabSurface {
   workflowNodeType: string | null;
 }
 
-export interface AiTemplateVocabulary {
+interface AiTemplateVocabulary {
   nodes: AiVocabNode[];
   surfaces: AiVocabSurface[];
 }
@@ -59,19 +59,19 @@ export function getAiTemplateVocabulary(readers: VocabularyReaders = defaultRead
   return { nodes, surfaces };
 }
 
-export interface ConstrainDeps {
+interface ConstrainDeps {
   hasNode: (type: string) => boolean;
   isSurfaceKey: (key: string) => boolean;
 }
 
-export interface ConstrainReport {
+interface ConstrainReport {
   /** Node ids dropped because their type isn't registered. */
   droppedNodes: Array<{ id: string; type: string }>;
   /** Edge ids dropped because an endpoint node was dropped (or never existed). */
   droppedEdges: string[];
 }
 
-export interface ConstrainResult {
+interface ConstrainResult {
   graph: TemplateGraph;
   report: ConstrainReport;
   /** True when nothing was dropped — the model stayed entirely on-palette. */

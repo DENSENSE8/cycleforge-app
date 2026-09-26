@@ -32,7 +32,7 @@ import type { OrgId } from '@/lib/tenancy/constants';
 /** Loose email shape — Zendesk validates for real; this just drops obvious junk. */
 const CLAIM_CC_EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-export interface FileReceivingClaimInput {
+interface FileReceivingClaimInput {
   orgId: OrgId;
   staffId: number | null;
   receivingId: number;
@@ -115,7 +115,7 @@ function parseTicketIdFromStored(raw: string | null | undefined): number | null 
 }
 
 /** When the line already carries zendesk_ticket, do not file a second claim. */
-export async function findExistingLineClaimTicket(
+async function findExistingLineClaimTicket(
   orgId: OrgId,
   lineId: number,
   deps: Pick<FileReceivingClaimDeps, 'query'> = { query: tenantQuery },

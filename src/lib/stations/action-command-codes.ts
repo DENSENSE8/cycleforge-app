@@ -3,7 +3,7 @@
 import type { TestVerdict } from '@/lib/tech/recordTestVerdict';
 import type { RegistryPermissionString } from '@/lib/auth/permission-registry';
 
-export interface ActionCommandDef {
+interface ActionCommandDef {
   /** Exact string encoded on the sticker. */
   code: string;
   /** Human label — Admin catalog + the 2×1" face center. */

@@ -6,7 +6,7 @@ import { recordAudit, AUDIT_ENTITY } from '@/lib/audit-logs';
 import type { KioskAuthContext } from '@/lib/auth/kiosk-context';
 import type { OrgId } from '@/lib/tenancy/constants';
 
-export interface KioskVisitAuditArgs {
+interface KioskVisitAuditArgs {
   action: string;
   /**
    * Which book the row hangs off. History opens counter visits AND standalone

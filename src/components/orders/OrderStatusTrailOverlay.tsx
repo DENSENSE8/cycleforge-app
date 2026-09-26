@@ -14,7 +14,7 @@ import { DeskStageOverlay } from '@/design-system/components/DeskStageOverlay';
 import { OrderTimelineSection } from '@/components/shipped/OrderTimelineSection';
 import { cn } from '@/utils/_cn';
 
-export type OrderStatusTrailRow = {
+type OrderStatusTrailRow = {
   orderPk: number;
   orderId: string;
   tracking: string | null;

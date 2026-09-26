@@ -21,7 +21,7 @@ export class PhotoReassignError extends Error {
   }
 }
 
-export interface ReassignReceivingPhotoInput {
+interface ReassignReceivingPhotoInput {
   organizationId: string;
   photoId: number;
   targetEntityType: 'RECEIVING' | 'RECEIVING_LINE';
@@ -37,7 +37,7 @@ export interface ReassignReceivingPhotoScope {
   photoType?: string | null;
 }
 
-export interface ReassignReceivingPhotoResult {
+interface ReassignReceivingPhotoResult {
   photoId: number;
   from: ReassignReceivingPhotoScope;
   to: ReassignReceivingPhotoScope;

@@ -16,4 +16,4 @@ export const RailExclusionBody = z.object({
   items: z.array(RailExclusionItemSchema).min(1).max(500),
 });
 
-export type RailExclusionBodyT = z.infer<typeof RailExclusionBody>;
+type RailExclusionBodyT = z.infer<typeof RailExclusionBody>;

@@ -5,7 +5,7 @@ import { cn } from '@/utils/_cn';
 
 // ─── Stack ───────────────────────────────────────────────────────────────────
 
-export type StackSpace = 'tight' | 'row' | 'section';
+type StackSpace = 'tight' | 'row' | 'section';
 
 const SPACE: Record<StackSpace, string> = {
   /** gap-1.5 — chip clusters, dense sub-rows. */
@@ -16,7 +16,7 @@ const SPACE: Record<StackSpace, string> = {
   section: 'stack-section',
 };
 
-export interface StackProps extends HTMLAttributes<HTMLDivElement> {
+interface StackProps extends HTMLAttributes<HTMLDivElement> {
   /** Vertical rhythm intent. Default `row`. */
   space?: StackSpace;
 }

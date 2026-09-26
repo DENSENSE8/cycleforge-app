@@ -1,12 +1,12 @@
 /** Shared health-check response parsing for integration cards + detail pages. */
 
-export interface HealthAccountResult {
+interface HealthAccountResult {
   ok?: boolean;
   error?: string;
   accountName?: string;
 }
 
-export interface HealthResponse {
+interface HealthResponse {
   ok?: boolean;
   success?: boolean;
   error?: string;

@@ -23,7 +23,7 @@ import {
 } from './report-bin-utilization-table-definition';
 import { useReportBinUtilizationTableLayout } from './useReportBinUtilizationTableLayout';
 
-export interface UseReportBinUtilizationSpreadsheetOptions {
+interface UseReportBinUtilizationSpreadsheetOptions {
   /** One report page, already ordered by the route; a header click re-orders it. */
   rows: readonly BinUtilizationReportRow[];
   loading?: boolean;

@@ -2,7 +2,7 @@
 
 import type { WarrantyClaimStatus } from './types';
 
-export type WarrantyLifecycleVerb = 'submit' | 'approve' | 'deny' | 'close';
+type WarrantyLifecycleVerb = 'submit' | 'approve' | 'deny' | 'close';
 
 export const WARRANTY_LIFECYCLE: Record<
   WarrantyLifecycleVerb,

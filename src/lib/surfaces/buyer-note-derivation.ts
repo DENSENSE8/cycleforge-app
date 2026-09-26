@@ -44,7 +44,7 @@ const defaultDeps: DeriveBuyerNoteSignalsDeps = {
   recordSignal: recordEntitySignal,
 };
 
-export interface DeriveBuyerNoteSignalsResult {
+interface DeriveBuyerNoteSignalsResult {
   enabled: boolean;
   scanned: number;
   emitted: number;

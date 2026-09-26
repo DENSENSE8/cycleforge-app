@@ -14,7 +14,7 @@ import { StaffChoiceRowButton } from '@/components/auth/StaffChoiceRowButton';
 import { Button } from '@/design-system/primitives/Button';
 import { SkeletonBase } from '@/design-system/components/Skeletons';
 
-export type StaffRow = {
+type StaffRow = {
   id: number;
   name: string;
   role: string;

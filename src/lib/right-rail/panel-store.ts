@@ -212,7 +212,7 @@ export function usePanelStore(): PanelStoreSnapshot {
 }
 
 /** Hydrate a remounted view from the last closeAndCachePanel snapshot. */
-export function useRestoredPanelDraft<T = unknown>(): T | undefined {
+function useRestoredPanelDraft<T = unknown>(): T | undefined {
   const snap = usePanelStore();
   if (!snap.draftData) return undefined;
   if (snap.activeView && snap.draftData.viewId !== snap.activeView.id) return undefined;

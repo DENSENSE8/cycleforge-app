@@ -27,7 +27,7 @@ export const Loader2 = ({ className = "w-6 h-6" }: { className?: string }) => (
     </svg>
 );
 
-export const Wifi = ({ className = "w-6 h-6" }: { className?: string }) => (
+const Wifi = ({ className = "w-6 h-6" }: { className?: string }) => (
     <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
         <path d="M5 12.55a11 11 0 0 1 14.08 0" />
         <path d="M1.42 9a16 16 0 0 1 21.16 0" />
@@ -36,7 +36,7 @@ export const Wifi = ({ className = "w-6 h-6" }: { className?: string }) => (
     </svg>
 );
 
-export const WifiOff = ({ className = "w-6 h-6" }: { className?: string }) => (
+const WifiOff = ({ className = "w-6 h-6" }: { className?: string }) => (
     <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
         <path d="M1 1l22 22" />
         <path d="M16.72 11.06A10.94 10.94 0 0 1 19 12.55" />

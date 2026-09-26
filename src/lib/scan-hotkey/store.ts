@@ -168,7 +168,7 @@ export function requestScanNext(): void {
 export const NEXT_SCAN_CHORD_LABEL = '⌘.';
 
 /** `⌘.` / `Ctrl+.` — arm next carton scan (clear + focus). Universal next-scan. */
-export function isNextScanChord(e: KeyboardEvent): boolean {
+function isNextScanChord(e: KeyboardEvent): boolean {
   if (!(e.metaKey || e.ctrlKey) || e.altKey || e.shiftKey) return false;
   return e.key === '.' || e.code === 'Period';
 }

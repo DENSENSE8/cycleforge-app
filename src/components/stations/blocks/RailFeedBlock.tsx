@@ -6,7 +6,7 @@ import { useState } from 'react';
 import { Loader2 } from '@/components/Icons';
 import type { BlockProps, FieldKind } from '@/lib/stations/contract';
 
-export interface StationSelectEventDetail {
+interface StationSelectEventDetail {
   id: string;
 }
 

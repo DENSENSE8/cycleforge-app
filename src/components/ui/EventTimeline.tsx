@@ -250,7 +250,7 @@ function ActorLabel({ item }: { item: TimelineItem }) {
 /** How the rows are grouped: */
 export type TimelineGroupMode = 'time' | 'serial';
 
-export interface EventTimelineProps {
+interface EventTimelineProps {
   items: TimelineItem[];
   emptyMessage?: string;
   /** Group rows under "EEE, MMM d" day bands (default true). Ignored when

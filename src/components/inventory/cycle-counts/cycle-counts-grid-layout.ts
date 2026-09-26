@@ -63,7 +63,7 @@ export function cycleCountsSortFactFor(
 }
 
 /** Model-derived sortability — the descriptor's and the URL guard's one answer. */
-export function isCycleCountsColumnSortable(
+function isCycleCountsColumnSortable(
   columns: readonly CycleCountsGridColumn[],
   key: string,
 ): key is CycleCountsGridColumnKey {

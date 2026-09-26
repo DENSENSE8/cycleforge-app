@@ -1,9 +1,9 @@
 /** The `/products` URL contract — the L2 view vocabulary plus the detail href. */
 
 /** Reference (`catalog`) and Kit Parts (`kit`) left this list 2026-09-15 on the operator's ruling — *"removing the products reference, the… */
-export const PRODUCTS_VIEWS = ['manuals', 'labels', 'pairing', 'qc'] as const;
+const PRODUCTS_VIEWS = ['manuals', 'labels', 'pairing', 'qc'] as const;
 
-export type ProductsView = (typeof PRODUCTS_VIEWS)[number];
+type ProductsView = (typeof PRODUCTS_VIEWS)[number];
 
 const PRODUCTS_VIEW_SET = new Set<string>(PRODUCTS_VIEWS);
 
@@ -21,7 +21,7 @@ export function parseProductsView(raw: string | null | undefined): ProductsView 
 }
 
 /** The `?view=` value for a view, or `null` when it is the default. */
-export function productsViewParam(view: ProductsView): string | null {
+function productsViewParam(view: ProductsView): string | null {
   return view === DEFAULT_PRODUCTS_VIEW ? null : view;
 }
 

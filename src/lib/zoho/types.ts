@@ -254,13 +254,13 @@ export interface CreateInvoicePayload {
 // Purchase-order / receive shapes. Moved here out of `./index` so the mock
 // provider can reference them without importing the client barrel (cycle).
 // `./index` re-exports all four for backwards compatibility.
-export interface ZohoPurchaseReceiveLine {
+interface ZohoPurchaseReceiveLine {
   line_item_id: string;
   quantity_received: number;
   item_id?: string;
 }
 
-export interface ZohoPurchaseReceive {
+interface ZohoPurchaseReceive {
   purchase_receive_id: string;
   purchaseorder_id?: string;
   purchaseorder_number?: string;
@@ -272,7 +272,7 @@ export interface ZohoPurchaseReceive {
   line_items?: ZohoPurchaseReceiveLine[];
 }
 
-export interface ZohoPurchaseOrderLine {
+interface ZohoPurchaseOrderLine {
   line_item_id: string;
   item_id: string;
   name?: string;
@@ -287,7 +287,7 @@ export interface ZohoPurchaseOrderLine {
   account_id?: string;
 }
 
-export interface ZohoPurchaseOrder {
+interface ZohoPurchaseOrder {
   purchaseorder_id: string;
   purchaseorder_number?: string;
   vendor_id?: string;

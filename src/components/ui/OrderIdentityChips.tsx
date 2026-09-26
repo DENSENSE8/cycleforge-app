@@ -24,7 +24,7 @@ import { useClipboardHistory, recordCopy } from '@/lib/clipboard-history';
 import { normalizeCopyText } from '@/lib/copy-chip-format';
 
 /** The platform · order-id · tracking chip cluster shared by the dashboard order-row tables (unshipped queue, shipped, packer, tech). */
-export interface OrderIdentityChipsProps {
+interface OrderIdentityChipsProps {
   platformLabel: string;
   /**
    * Icon color for the platform chip (gray when not linkable). Optional when
@@ -90,7 +90,7 @@ function copyValue(value: string, kind?: string, display?: string) {
 }
 
 /** Build the platform / order / tracking chip nodes once per row. */
-export function useOrderIdentityCellNodes({
+function useOrderIdentityCellNodes({
   platformLabel,
   platformIconClass,
   productPageUrl,

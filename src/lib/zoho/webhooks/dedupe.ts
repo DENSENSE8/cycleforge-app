@@ -2,7 +2,7 @@ import { tenantQuery } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';
 import type { NormalizedZohoEvent } from './types';
 
-export interface DedupeReserveResult {
+interface DedupeReserveResult {
   /** True the first time we see this event; false if it was already stored. */
   isFresh: boolean;
 }

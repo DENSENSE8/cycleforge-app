@@ -28,7 +28,7 @@ interface DraftRow {
   updated_at: string;
 }
 
-export interface NodeStationApiRow {
+interface NodeStationApiRow {
   id: number;
   pageKey: string;
   modeKey: string;
@@ -58,7 +58,7 @@ function toApi(row: DraftRow): NodeStationApiRow {
 
 // ─── Draft upsert (bind/edit a node's station) ───────────────────────────────
 
-export interface SaveNodeStationDraftArgs {
+interface SaveNodeStationDraftArgs {
   client: TxClient;
   orgId: OrgId;
   nodeId: string;
@@ -68,7 +68,7 @@ export interface SaveNodeStationDraftArgs {
   staffId: number;
 }
 
-export type SaveNodeStationDraftResult =
+type SaveNodeStationDraftResult =
   | { status: 422; body: { ok: false; error: 'INVALID_CONFIG'; issues: StationConfigIssue[] } }
   | { status: 500; body: { ok: false; error: string } }
   | {
@@ -78,7 +78,7 @@ export type SaveNodeStationDraftResult =
     };
 
 /** Injectable collaborators for the draft upsert (real impls by default). */
-export interface SaveNodeStationDraftDeps {
+interface SaveNodeStationDraftDeps {
   validate: (config: StationConfig) => StationConfigIssue[];
 }
 
@@ -162,7 +162,7 @@ export async function saveNodeStationDraft(
 
 // ─── Publish flip (activate the node's draft station) ────────────────────────
 
-export interface PublishNodeStationArgs {
+interface PublishNodeStationArgs {
   client: TxClient;
   orgId: OrgId;
   /** The draft station_definitions.id to activate. */
@@ -171,7 +171,7 @@ export interface PublishNodeStationArgs {
   staffId: number;
 }
 
-export type PublishNodeStationResult =
+type PublishNodeStationResult =
   | { status: 404; body: { ok: false; error: string } }
   | { status: 200; body: { ok: true; alreadyActive: true; id: number } }
   | { status: 422; body: { ok: false; error: 'INVALID_CONFIG'; issues: StationConfigIssue[] } }
@@ -181,7 +181,7 @@ export type PublishNodeStationResult =
       audit: { pageKey: string; modeKey: string; version: number; workflowNodeId: string | null };
     };
 
-export interface PublishNodeStationDeps {
+interface PublishNodeStationDeps {
   validate: (config: StationConfig) => StationConfigIssue[];
 }
 

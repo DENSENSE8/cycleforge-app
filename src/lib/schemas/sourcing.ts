@@ -170,11 +170,11 @@ export const SourcingImportBody = z
   })
   .strict();
 
-export type SourcingAlertPatchInput = z.infer<typeof SourcingAlertPatchBody>;
-export type SourcingAlertCreateInput = z.infer<typeof SourcingAlertCreateBody>;
-export type SavedSearchCreateInput = z.infer<typeof SavedSearchCreateBody>;
-export type SavedSearchUpdateInput = z.infer<typeof SavedSearchUpdateBody>;
-export type SourcingSearchInput = z.infer<typeof SourcingSearchBody>;
-export type SourcingCandidateCreateInput = z.infer<typeof SourcingCandidateCreateBody>;
-export type SourcingCandidateUpdateInput = z.infer<typeof SourcingCandidateUpdateBody>;
-export type SourcingImportInput = z.infer<typeof SourcingImportBody>;
+type SourcingAlertPatchInput = z.infer<typeof SourcingAlertPatchBody>;
+type SourcingAlertCreateInput = z.infer<typeof SourcingAlertCreateBody>;
+type SavedSearchCreateInput = z.infer<typeof SavedSearchCreateBody>;
+type SavedSearchUpdateInput = z.infer<typeof SavedSearchUpdateBody>;
+type SourcingSearchInput = z.infer<typeof SourcingSearchBody>;
+type SourcingCandidateCreateInput = z.infer<typeof SourcingCandidateCreateBody>;
+type SourcingCandidateUpdateInput = z.infer<typeof SourcingCandidateUpdateBody>;
+type SourcingImportInput = z.infer<typeof SourcingImportBody>;

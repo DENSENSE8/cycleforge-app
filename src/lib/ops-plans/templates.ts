@@ -1,6 +1,6 @@
 import type { OpsPlanStation } from './constants';
 
-export interface PlanTemplatePhase {
+interface PlanTemplatePhase {
   station: OpsPlanStation;
   title: string;
   /**
@@ -11,7 +11,7 @@ export interface PlanTemplatePhase {
   tasks: Array<string | { title: string; clientEventId?: string }>;
 }
 
-export interface PlanTemplate {
+interface PlanTemplate {
   templateKey: string;
   title: string;
   description: string;

@@ -10,11 +10,11 @@ import { MAX_LABEL_PDF_BYTES } from '../contracts';
 import type { ExactOrderIdentity, LabelQuarantineReasonCode, ParsedLabelEvidence } from '../types';
 import type { PublicLabelIngestion, ShipStationIngestionRecord, ShipStationLabelIngestionInput } from '../ingestion-service';
 
-export const SHIPSTATION_EVIDENCE_VERSION = 'shipstation-api-v1';
-export const DEFAULT_BACKFILL_DAYS = 7;
+const SHIPSTATION_EVIDENCE_VERSION = 'shipstation-api-v1';
+const DEFAULT_BACKFILL_DAYS = 7;
 
 /** The v2 label id of a v1 shipment. */
-export function shipStationLabelId(shipmentId: number): string {
+function shipStationLabelId(shipmentId: number): string {
   return `se-${shipmentId}`;
 }
 
@@ -37,11 +37,11 @@ export interface ShipStationLabelCandidate {
 }
 
 /** A live return label from the feed — bound for the order's label list, never its tracking. */
-export type ShipStationReturnCandidate = Omit<ShipStationLabelCandidate, 'primary' | 'trackingNumberRaw' | 'trackingNumberNormalized'> & {
+type ShipStationReturnCandidate = Omit<ShipStationLabelCandidate, 'primary' | 'trackingNumberRaw' | 'trackingNumberNormalized'> & {
   trackingNumberRaw: string | null;
 };
 
-export interface ShipStationHistoryPlan {
+interface ShipStationHistoryPlan {
   candidates: ShipStationLabelCandidate[];
   returnLabels: ShipStationReturnCandidate[];
   seen: number;
@@ -96,7 +96,7 @@ export function planShipStationHistory(shipments: readonly ShipStationV1Shipment
   return plan;
 }
 
-export interface MatchedLabelDecision {
+interface MatchedLabelDecision {
   kind: 'MATCHED';
   exactOrder: ExactOrderIdentity;
   orderIds: number[];
@@ -104,7 +104,7 @@ export interface MatchedLabelDecision {
   trackingCurrent: boolean;
 }
 
-export type ShipStationLabelDecision = MatchedLabelDecision | { kind: 'QUARANTINED'; reason: LabelQuarantineReasonCode };
+type ShipStationLabelDecision = MatchedLabelDecision | { kind: 'QUARANTINED'; reason: LabelQuarantineReasonCode };
 
 /**
  * Which order rows this label belongs to — exact, or an exception reason.
@@ -141,7 +141,7 @@ export function decideShipStationLabel(
 }
 
 /** Ledger evidence from ShipStation's own shipment record (no PDF text). */
-export function shipStationLabelEvidence(candidate: ShipStationLabelCandidate): ParsedLabelEvidence {
+function shipStationLabelEvidence(candidate: ShipStationLabelCandidate): ParsedLabelEvidence {
   return {
     parserVersion: SHIPSTATION_EVIDENCE_VERSION,
     cycleforgeReference: null,
@@ -155,18 +155,18 @@ export function shipStationLabelEvidence(candidate: ShipStationLabelCandidate): 
 }
 
 /** Why a label's PDF could not be taken (the label itself stays unrecorded). */
-export type PdfUnavailableReason = 'LABEL_NOT_FOUND' | 'LABEL_VOIDED' | 'NO_PDF_URL' | 'DOWNLOAD_FAILED' | 'NOT_A_PDF';
+type PdfUnavailableReason = 'LABEL_NOT_FOUND' | 'LABEL_VOIDED' | 'NO_PDF_URL' | 'DOWNLOAD_FAILED' | 'NOT_A_PDF';
 
 /** Validate a downloaded label body; null = usable PDF. */
-export function pdfProblem(bytes: Buffer): PdfUnavailableReason | null {
+function pdfProblem(bytes: Buffer): PdfUnavailableReason | null {
   if (bytes.length === 0 || bytes.length > MAX_LABEL_PDF_BYTES) return 'NOT_A_PDF';
   return bytes.subarray(0, 5).toString('ascii') === '%PDF-' ? null : 'NOT_A_PDF';
 }
 
-export type FetchedLabelPdf = { ok: true; bytes: Buffer } | { ok: false; problem: PdfUnavailableReason };
+type FetchedLabelPdf = { ok: true; bytes: Buffer } | { ok: false; problem: PdfUnavailableReason };
 
 /** Read the v2 label for `labelId` and download its PDF. */
-export async function fetchShipStationLabelPdf(
+async function fetchShipStationLabelPdf(
   deps: Pick<ShipStationHistoryDeps, 'getLabel' | 'downloadLabel'>,
   labelId: string,
 ): Promise<FetchedLabelPdf> {
@@ -248,7 +248,7 @@ export interface ListedLabelInput {
   ingestionId: number | null;
 }
 
-export interface ShipStationHistoryReport {
+interface ShipStationHistoryReport {
   mode: 'dry-run' | 'apply';
   since: string;
   shipmentsSeen: number;

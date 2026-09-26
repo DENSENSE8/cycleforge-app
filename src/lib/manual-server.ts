@@ -1,31 +1,31 @@
 import { normalizeIdentifier } from '@/lib/product-manuals';
 
-export interface ManualServerFile {
+interface ManualServerFile {
   name: string;
   relativePath: string;
   size: number;
   modifiedAt: string;
 }
 
-export interface ManualServerByItemResponse {
+interface ManualServerByItemResponse {
   itemNumber: string;
   folderPath: string;
   manuals: ManualServerFile[];
 }
 
-export interface ManualServerUnassignedResponse {
+interface ManualServerUnassignedResponse {
   folderPath: string;
   manuals: ManualServerFile[];
 }
 
-export interface ManualServerAssignedItem {
+interface ManualServerAssignedItem {
   itemNumber: string;
   folderPath: string;
   manualCount: number;
   manuals: ManualServerFile[];
 }
 
-export interface ManualServerAssignedItemsResponse {
+interface ManualServerAssignedItemsResponse {
   items: ManualServerAssignedItem[];
 }
 
@@ -98,7 +98,7 @@ export function normalizeManualServerItemNumber(value: string) {
   return String(value || '').trim().toUpperCase();
 }
 
-export function buildManualServerItemKey(value: string) {
+function buildManualServerItemKey(value: string) {
   return normalizeIdentifier(value);
 }
 

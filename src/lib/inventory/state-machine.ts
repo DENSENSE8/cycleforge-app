@@ -67,7 +67,7 @@ const HOLD_STATE: SerialState = 'ON_HOLD';
 
 // ─── Public API ──────────────────────────────────────────────────────────────
 
-export type GuardResult = { ok: true } | { ok: false; reason: string };
+type GuardResult = { ok: true } | { ok: false; reason: string };
 
 /**
  * Synchronous pre-flight check — does NOT touch the database. Use from UI

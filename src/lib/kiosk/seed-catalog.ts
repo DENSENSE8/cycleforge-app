@@ -15,7 +15,7 @@ export interface KioskCatalogSeed {
   segment: KioskSeedSegment;
 }
 
-export interface SeedKioskCatalogDeps {
+interface SeedKioskCatalogDeps {
   /** Resolve the device cookie to its org, or null when unpaired. */
   resolveOrg: () => Promise<OrgId | null>;
   /** Read the first catalog page for that org. */

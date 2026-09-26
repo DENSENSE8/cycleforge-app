@@ -7,9 +7,9 @@ import { providerCatalogLabel } from '@/lib/integrations/capability-labels';
 import { syncPermissionForProvider } from '@/lib/integrations/sync-permission';
 
 /** Face of the To-ship sliced dock — not a chevron row. */
-export const TO_SHIP_SYNC_FACE_PROVIDER = 'shipstation';
+const TO_SHIP_SYNC_FACE_PROVIDER = 'shipstation';
 
-export type OrderSyncMenuSource = {
+type OrderSyncMenuSource = {
   provider: string;
   /** Operator-facing row: `Sync Square · Main store`. */
   label: string;
@@ -28,7 +28,7 @@ function isSyncableOrderSource(connection: ConnectionStatus): boolean {
 }
 
 /** Build the chevron's connected-platform rows (caller appends Sync more). */
-export function buildOrderSyncMenuSources(input: {
+function buildOrderSyncMenuSources(input: {
   connections: ConnectionStatus[];
   hasPermission: (perm: PermissionString) => boolean;
 }): OrderSyncMenuSource[] {

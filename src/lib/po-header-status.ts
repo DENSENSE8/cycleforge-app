@@ -1,6 +1,6 @@
 // Single source of truth for mobile PO-detail header status tones.
 
-export type PoHeaderStatus = 'OPEN' | 'RECEIVED';
+type PoHeaderStatus = 'OPEN' | 'RECEIVED';
 
 const TONES: Record<PoHeaderStatus, string> = {
   OPEN: 'bg-amber-100 text-amber-800',

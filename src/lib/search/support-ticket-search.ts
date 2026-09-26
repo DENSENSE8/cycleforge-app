@@ -9,7 +9,7 @@ import { searchHitHref, type SearchHit } from '@/lib/search/search-hit';
 import type { OrgId } from '@/lib/tenancy/constants';
 import type { GlobalSearchResult } from '@/lib/search/global-entity-search';
 
-export interface SupportTicketSearchDeps {
+interface SupportTicketSearchDeps {
   resolve: typeof resolveSupportTicketToReceiving;
 }
 

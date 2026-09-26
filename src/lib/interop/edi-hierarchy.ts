@@ -1,7 +1,7 @@
 /** X12 EDI 856 (Advance Ship Notice) — the HL hierarchy vocabulary. */
 
 /** `HL03` level codes, restricted to the four an ASN uses. */
-export const EDI_HL_LEVEL_CODES = {
+const EDI_HL_LEVEL_CODES = {
   /** S — the shipment as a whole. Exactly one, always the root. */
   SHIPMENT: 'S',
   /** O — a purchase order the shipment fulfils. */
@@ -17,7 +17,7 @@ export const EDI_HL_LEVEL_CODES = {
 export type EdiHlLevelCode =
   (typeof EDI_HL_LEVEL_CODES)[keyof typeof EDI_HL_LEVEL_CODES];
 
-export const EDI_HL_LEVEL_CODE_VALUES = Object.values(
+const EDI_HL_LEVEL_CODE_VALUES = Object.values(
   EDI_HL_LEVEL_CODES,
 ) as readonly EdiHlLevelCode[];
 
@@ -26,7 +26,7 @@ export const ASN_SHAPES = ['SOPI', 'SOTI', 'SOTPI', 'SOI'] as const;
 export type AsnShape = (typeof ASN_SHAPES)[number];
 
 /** The level codes each shape nests, outermost first. */
-export const ASN_SHAPE_LEVELS: Record<AsnShape, readonly EdiHlLevelCode[]> = {
+const ASN_SHAPE_LEVELS: Record<AsnShape, readonly EdiHlLevelCode[]> = {
   SOPI: ['S', 'O', 'P', 'I'],
   SOTI: ['S', 'O', 'T', 'I'],
   SOTPI: ['S', 'O', 'T', 'P', 'I'],

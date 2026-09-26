@@ -4,7 +4,7 @@ import { photoContentUrl } from './display-url';
 import { createPhotoEntityLink } from './links';
 import pool from '@/lib/db';
 
-export interface CreateSharePackInput {
+interface CreateSharePackInput {
   organizationId: string;
   staffId: number;
   photoIds: number[];
@@ -17,7 +17,7 @@ export interface CreateSharePackInput {
   filenamePrefix?: string;
 }
 
-export interface SharePackResult {
+interface SharePackResult {
   packId: number;
   publicToken: string;
   shareUrl: string;

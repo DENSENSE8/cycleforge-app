@@ -1,7 +1,7 @@
 import { tenantQuery } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';
 
-export type PackTier = 'SMALL' | 'MEDIUM' | 'LARGE';
+type PackTier = 'SMALL' | 'MEDIUM' | 'LARGE';
 
 /** Upsert the SKU→pack profile link for KPI weighting. */
 export async function upsertSkuPackProfileLink(

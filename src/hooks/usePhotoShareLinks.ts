@@ -16,7 +16,7 @@ interface ShareApiResponse {
   groupUrl: string | null;
 }
 
-export interface ShareLinksOutcome {
+interface ShareLinksOutcome {
   /** The formatted, clipboard-ready text block. */
   text: string;
   /** `text/uri-list` payload (one URL per line). */

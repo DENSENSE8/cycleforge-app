@@ -14,7 +14,7 @@ import type {
   ShipmentRecord,
 } from './shipment-record-types';
 
-export const shipmentRecordKey = (shipmentId: number) => ['shipment-record', shipmentId] as const;
+const shipmentRecordKey = (shipmentId: number) => ['shipment-record', shipmentId] as const;
 
 async function readError(res: Response, fallback: string): Promise<Error> {
   const body = (await res.json().catch(() => null)) as { error?: string } | null;

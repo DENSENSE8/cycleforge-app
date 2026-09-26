@@ -17,7 +17,7 @@ export function parseStaffParam(raw: string | null | undefined): number | null {
   return Number.isFinite(n) && n > 0 ? n : null;
 }
 
-export interface UseStaffFilterResult {
+interface UseStaffFilterResult {
   /** The currently selected staff id, or null for ALL staff (default). */
   staffId: number | null;
   /** All active staff, for the picker options. Empty until loaded. */
@@ -28,7 +28,7 @@ export interface UseStaffFilterResult {
   setStaff: (id: number | null) => void;
 }
 
-export interface UseStaffFilterOptions {
+interface UseStaffFilterOptions {
   roleFilter?: (staff: StaffMember) => boolean;
   /**
    * When set (e.g. `'all'`), choosing "All staff" writes `?staff=<token>`

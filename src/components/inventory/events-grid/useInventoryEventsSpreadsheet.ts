@@ -22,7 +22,7 @@ import {
 import { INVENTORY_EVENTS_TABLE_BINDING } from './inventory-events-table-definition';
 import { useInventoryEventsTableLayout } from './useInventoryEventsTableLayout';
 
-export interface UseInventoryEventsSpreadsheetOptions {
+interface UseInventoryEventsSpreadsheetOptions {
   /** The feed. Already ordered by the caller; a header click re-orders it. */
   events: readonly PulseEventRow[];
   /** A caller-owned find box, for a mount whose feed is ONE WINDOW of a larger set. */

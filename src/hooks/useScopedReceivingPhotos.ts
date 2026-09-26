@@ -8,7 +8,7 @@ import { normalizePhotoDisplayUrl } from '@/lib/nas-photo-url';
 import { deleteNasPhoto, isNasPhotoUrl } from '@/lib/nas-photos';
 import { invalidateReceivingFeeds } from '@/lib/queries/receiving-queries';
 
-export interface ReceivingPhotoRow {
+interface ReceivingPhotoRow {
   id: number;
   receivingId: number;
   receivingLineId: number | null;
@@ -18,7 +18,7 @@ export interface ReceivingPhotoRow {
   createdAt: string;
 }
 
-export interface ScopedReceivingPhoto {
+interface ScopedReceivingPhoto {
   id: number;
   receivingId: number;
   receivingLineId: number | null;
@@ -29,7 +29,7 @@ export interface ScopedReceivingPhoto {
 }
 
 /** Canonical React Query key for a receiving photo scope (PO vs line vs all). */
-export function receivingPhotosQueryKey(scope: PhotoScope) {
+function receivingPhotosQueryKey(scope: PhotoScope) {
   const lineKey =
     scope.receivingLineId != null
       ? String(scope.receivingLineId)
@@ -70,7 +70,7 @@ function toPriorPhotos(rows: ReceivingPhotoRow[]): PriorPhoto[] {
     }));
 }
 
-export interface UseScopedReceivingPhotosResult {
+interface UseScopedReceivingPhotosResult {
   queryKey: ReturnType<typeof receivingPhotosQueryKey>;
   photos: ScopedReceivingPhoto[];
   priorPhotos: PriorPhoto[];

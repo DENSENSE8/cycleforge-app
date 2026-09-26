@@ -164,7 +164,7 @@ export async function findByNormalizedSerial(
 }
 
 /** One resolved (serial → canonical uid) row from the batch reprint resolver. */
-export interface SerialUidRow {
+interface SerialUidRow {
   id: number;
   normalized_serial: string;
   serial_number: string;
@@ -290,7 +290,7 @@ export async function findShippedOrderForSerialUnit(
 }
 
 /** Legacy ship path: */
-export async function findShippedOrderByTsnSerial(
+async function findShippedOrderByTsnSerial(
   serial: string,
   options?: { organizationId?: string | null; executor?: Queryable },
   orgId?: OrgId,
@@ -475,7 +475,7 @@ export async function resolveCurrentReceivingLineIds(
   return map;
 }
 
-export async function listByReceivingLine(
+async function listByReceivingLine(
   receivingLineId: number,
   orgId?: OrgId,
 ): Promise<SerialUnitRow[]> {
@@ -505,7 +505,7 @@ export async function listByReceivingLine(
   return result.rows;
 }
 
-export async function countByReceivingLine(
+async function countByReceivingLine(
   receivingLineId: number,
   orgId?: OrgId,
 ): Promise<number> {
@@ -537,7 +537,7 @@ export async function countByReceivingLine(
 // ─── Upsert (the single writer) ─────────────────────────────────────────────
 
 /** Find-or-create a serial_units row. */
-export interface UpsertSerialUnitOptions {
+interface UpsertSerialUnitOptions {
   /** Run on an existing pooled connection that's already inside an explicit txn (caller issued BEGIN). */
   dbClient?: import('pg').PoolClient;
 }
@@ -776,7 +776,7 @@ export async function upsertSerialUnit(
 
 // ─── Downstream-table sync (TSN + sku → serial_units master) ───────────────
 
-export interface TsnRowForSync {
+interface TsnRowForSync {
   id: number;
   serial_number: string;
   station_source?: string | null;
@@ -849,7 +849,7 @@ export async function syncTsnToSerialUnit(
 }
 
 /** Idempotent stamp of serial_unit_id on every matching TSN row for a receiving-side scan. */
-export async function stampReceivingTsnSerialUnitId(params: {
+async function stampReceivingTsnSerialUnitId(params: {
   serial_unit_id: number;
   serial_number: string;
   receiving_line_id: number;
@@ -882,7 +882,7 @@ export async function stampReceivingTsnSerialUnitId(params: {
   return result.rowCount ?? 0;
 }
 
-export interface SkuRowForSync {
+interface SkuRowForSync {
   id: number;
   serial_number: string | null;
   static_sku: string | null;
@@ -893,7 +893,7 @@ export interface SkuRowForSync {
  * After a sku row is inserted, register / update the master serial_units row
  * and stamp the FK back. Silent on no-serial rows (location-only updates).
  */
-export async function syncSkuToSerialUnit(
+async function syncSkuToSerialUnit(
   skuRow: SkuRowForSync,
   orgId: OrgId,
 ): Promise<number | null> {

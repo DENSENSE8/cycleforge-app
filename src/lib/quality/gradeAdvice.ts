@@ -13,12 +13,12 @@ const GRADE_RANK: Record<ConditionGrade, number> = {
   PARTS: 6,
 };
 
-export interface GradeAdviceInput {
+interface GradeAdviceInput {
   grade: ConditionGrade;
   openFailures: { label: string; severity: string; capsGradeAt: ConditionGrade | null }[];
 }
 
-export interface GradeWarning {
+interface GradeWarning {
   kind: 'grade_cap' | 'open_failure';
   message: string;
 }

@@ -8,7 +8,7 @@ import { hashPassword } from './password';
 
 type Executor = Pool | PoolClient;
 
-export interface AccountRecord {
+interface AccountRecord {
   id: string;
   displayName: string | null;
   passwordHash: string | null;

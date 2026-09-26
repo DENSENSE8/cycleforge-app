@@ -60,7 +60,7 @@ function isDeliveredCategory(category: string | null | undefined): boolean {
 }
 
 /** Build a CarrierShipmentView from a focused journey response (tracking/order). */
-export function shipmentFromJourney(
+function shipmentFromJourney(
   journey: JourneyResponse | undefined,
   trackingFallback: string | null,
 ): CarrierShipmentView | null {

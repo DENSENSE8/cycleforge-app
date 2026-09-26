@@ -15,7 +15,7 @@ export type InventoryTab =
   | 'triage'
   | 'pulse';
 
-export const INVENTORY_TABS = ['activity', 'bins', 'skus', 'units', 'alerts', 'counts', 'triage', 'pulse'] as const;
+const INVENTORY_TABS = ['activity', 'bins', 'skus', 'units', 'alerts', 'counts', 'triage', 'pulse'] as const;
 
 // ─── Per-tab search-field unions ─────────────────────────────────────────────
 
@@ -28,7 +28,7 @@ export type CountSearchField = 'all' | 'campaign' | 'zone' | 'counter';
 export type TriageSearchField = 'all' | 'sku' | 'issue_id' | 'reporter';
 export type PulseSearchField = 'all' | 'unit_id' | 'serial_number' | 'sku' | 'user';
 
-export type SearchFieldForTab<T extends InventoryTab> =
+type SearchFieldForTab<T extends InventoryTab> =
     T extends 'bins' ? BinSearchField :
     T extends 'skus' ? SkuSearchField :
     T extends 'units' ? UnitSearchField :
@@ -58,7 +58,7 @@ export type ActivityBucket = 'receive' | 'move' | 'pick' | 'ship' | 'adjust' | '
 export type AlertBucket = 'low_stock' | 'stale_count' | 'never_counted' | 'drift' | 'unresolved';
 export type CountBucket = 'open' | 'in_progress' | 'reconciling' | 'closed';
 
-export type BucketForTab<T extends InventoryTab> =
+type BucketForTab<T extends InventoryTab> =
     T extends 'bins' ? BinBucket :
     T extends 'skus' ? SkuBucket :
     T extends 'units' ? UnitBucket :
@@ -77,14 +77,14 @@ export type AnyInventoryBucket =
 
 // ─── Field configs (label, placeholder, helper text) ─────────────────────────
 
-export interface InventoryFieldConfig {
+interface InventoryFieldConfig {
     id: string;
     label: string;
     placeholder: string;
     helperText: string;
 }
 
-export const INVENTORY_SEARCH_FIELDS: Record<InventoryTab, InventoryFieldConfig[]> = {
+const INVENTORY_SEARCH_FIELDS: Record<InventoryTab, InventoryFieldConfig[]> = {
     bins: [
         { id: 'all',          label: 'All',          placeholder: 'Search bins, zones, rooms, or SKU contained',  helperText: 'Searches barcode, name, room, zone, and SKUs held in each bin.' },
         { id: 'bin_barcode',  label: 'Bin Barcode',  placeholder: 'Scan or type a bin barcode',                   helperText: 'Matches barcode exactly and as a prefix.' },
@@ -142,12 +142,12 @@ export const INVENTORY_SEARCH_FIELDS: Record<InventoryTab, InventoryFieldConfig[
 
 // ─── Bucket configs (multi-select pills) ─────────────────────────────────────
 
-export interface InventoryBucketConfig {
+interface InventoryBucketConfig {
     id: string;
     label: string;
 }
 
-export const INVENTORY_BUCKETS: Record<InventoryTab, InventoryBucketConfig[]> = {
+const INVENTORY_BUCKETS: Record<InventoryTab, InventoryBucketConfig[]> = {
     bins: [
         { id: 'full',           label: 'Full' },
         { id: 'low',            label: 'Low' },
@@ -287,15 +287,15 @@ export function normalizeBuckets<T extends InventoryTab>(
         .filter((s) => BUCKET_MAP[tab].has(s)) as BucketForTab<T>[];
 }
 
-export function getFieldConfig(tab: InventoryTab, field: string): InventoryFieldConfig {
+function getFieldConfig(tab: InventoryTab, field: string): InventoryFieldConfig {
     return FIELD_MAP[tab].get(field) ?? INVENTORY_SEARCH_FIELDS[tab][0];
 }
 
-export function getInventorySearchPlaceholder(tab: InventoryTab, field: string): string {
+function getInventorySearchPlaceholder(tab: InventoryTab, field: string): string {
     return getFieldConfig(tab, field).placeholder;
 }
 
-export function getInventorySearchHelperText(tab: InventoryTab, field: string): string {
+function getInventorySearchHelperText(tab: InventoryTab, field: string): string {
     return getFieldConfig(tab, field).helperText;
 }
 

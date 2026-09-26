@@ -108,7 +108,7 @@ export async function squareFetch<T = Record<string, unknown>>(
 /**
  * Convert a dollar string (e.g. "12.50") to cents integer.
  */
-export function parsePriceToMinorUnits(value: string | null | undefined): number | null {
+function parsePriceToMinorUnits(value: string | null | undefined): number | null {
   const cleaned = String(value || '').replace(/[^0-9.-]/g, '');
   const parsed = Number(cleaned);
   if (!Number.isFinite(parsed) || parsed <= 0) return null;

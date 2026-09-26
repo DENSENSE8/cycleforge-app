@@ -18,7 +18,7 @@ export const PACKING_STEP_TYPE: Record<PackingTickKind, string> = {
 /** How the tick was earned. */
 export type PackingTickOrigin = 'print' | 'acknowledgement';
 
-export interface RecordPackingTickArgs {
+interface RecordPackingTickArgs {
   orderRowId: number;
   kind: PackingTickKind;
   /** sku_kit_parts.id (KIT_PART) or qc_check_templates.id (PACKING_CHECK). */
@@ -29,7 +29,7 @@ export interface RecordPackingTickArgs {
   origin?: PackingTickOrigin;
 }
 
-export type RecordPackingTickResult =
+type RecordPackingTickResult =
   | { ok: true; verification: TechVerificationRow; stepType: string }
   | { ok: false; status: 404 | 409; error: string };
 

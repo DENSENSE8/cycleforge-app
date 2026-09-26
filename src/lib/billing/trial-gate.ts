@@ -3,7 +3,7 @@
 import { getOrganization } from '../tenancy/organizations';
 import type { OrgId } from '../tenancy/constants';
 
-export function trialEnforcementOn(): boolean {
+function trialEnforcementOn(): boolean {
   const v = (process.env.TRIAL_ENFORCEMENT ?? '').toLowerCase().trim();
   return v === '1' || v === 'true' || v === 'on' || v === 'yes';
 }

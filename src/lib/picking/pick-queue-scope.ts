@@ -5,13 +5,13 @@
  * `?staffId=` to inspect another picker. Pure — unit-tested without HTTP.
  */
 
-export type PickQueueScopeInput = {
+type PickQueueScopeInput = {
   sessionStaffId: number | null | undefined;
   staffIdParam: string | null;
   canInspectOther: boolean;
 };
 
-export type PickQueueScopeResult =
+type PickQueueScopeResult =
   | { ok: true; staffId: number }
   | { ok: false; error: string };
 

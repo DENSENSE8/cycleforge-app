@@ -7,7 +7,7 @@ import type { RailRowActionsResolver } from '@/components/sidebar/rail-shell/rai
 import { railIdentityActions } from '@/components/sidebar/rail-shell/rail-row-verbs';
 import { copyRailValue } from '@/components/sidebar/rail-shell/rail-row-copy';
 
-export type SidebarRecentRailBaseProps<TRow> = SidebarRailShellProps<TRow>;
+type SidebarRecentRailBaseProps<TRow> = SidebarRailShellProps<TRow>;
 
 /** Generic "recent activity rail" base — the single shell node shared by the domain presets: */
 export function SidebarRecentRailBase<TRow>({

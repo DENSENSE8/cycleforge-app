@@ -35,7 +35,7 @@ export function toolbarListboxOptionKeyDown(
 }
 
 /** Opens the popover on the keys a listbox trigger is expected to answer. */
-export function toolbarListboxTriggerKeyDown(
+function toolbarListboxTriggerKeyDown(
   event: KeyboardEvent<HTMLButtonElement>,
   onOpen: () => void,
 ) {

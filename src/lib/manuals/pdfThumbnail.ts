@@ -3,7 +3,7 @@
 const THUMB_WIDTH = 320;       // target render width in CSS px
 const JPEG_QUALITY = 0.85;     // PNG would be larger; JPEG is fine for a preview
 
-export interface PdfThumbnailResult {
+interface PdfThumbnailResult {
   blob: Blob;
   width: number;
   height: number;

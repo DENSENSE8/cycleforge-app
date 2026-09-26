@@ -2,7 +2,7 @@ import type { PhotoLibrarySourceScope } from '@/lib/photos/library-filter-state'
 import type { PhotoEvidenceStage } from '@/lib/photos/stages';
 
 /** Minimal photo shape for naming helpers (library row, share meta, zip). */
-export interface PhotoNamingFields {
+interface PhotoNamingFields {
   id: number;
   poRef?: string | null;
   ticketId?: number | null;
@@ -46,7 +46,7 @@ function identityNameParts(photo: PhotoNamingFields): string[] {
 export const UNLINKED_PHOTO_GROUP_KEY = '__unlinked__';
 
 /** True when ticket-based naming/grouping should apply. */
-export function isClaimsPhotoNaming(
+function isClaimsPhotoNaming(
   scope: PhotoLibrarySourceScope,
   photo?: Pick<PhotoNamingFields, 'sourceScope'>,
 ): boolean {
@@ -59,7 +59,7 @@ export function claimsTicketLabel(ticketId: number | string): string {
 }
 
 /** Zendesk ticket id used for claims-scope labels and grouping. */
-export function photoTicketId(
+function photoTicketId(
   photo: PhotoNamingFields,
   scope: PhotoLibrarySourceScope,
 ): number | null {
@@ -165,7 +165,7 @@ export function photoShareTitle(
 }
 
 /** Backfill claims display ref from ticket link when po_ref still holds the PO#. */
-export function withClaimsDisplayRef<T extends PhotoNamingFields & { sourceScope?: PhotoLibrarySourceScope | null }>(
+function withClaimsDisplayRef<T extends PhotoNamingFields & { sourceScope?: PhotoLibrarySourceScope | null }>(
   photo: T,
   scope: PhotoLibrarySourceScope,
 ): T {

@@ -53,4 +53,4 @@ export const reminderFeedQuerySchema = z.object({
   /** Days past `from`; defaults to {@link REMINDER_WINDOW_DEFAULT_DAYS}. */
   days: z.coerce.number().int().min(1).max(REMINDER_WINDOW_MAX_DAYS).optional(),
 });
-export type ReminderFeedQuery = z.infer<typeof reminderFeedQuerySchema>;
+type ReminderFeedQuery = z.infer<typeof reminderFeedQuerySchema>;

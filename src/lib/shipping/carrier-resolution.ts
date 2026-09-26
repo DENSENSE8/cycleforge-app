@@ -35,7 +35,7 @@ export function normalizeCarrierToken(value: string | null | undefined): string 
     .replace(/[^A-Z0-9_]/g, '');
 }
 
-export type CarrierSource =
+type CarrierSource =
   /** The pattern list named it. */
   | 'detected'
   /** The pattern list is silent; the label/feed's own word is all we have. */
@@ -43,7 +43,7 @@ export type CarrierSource =
   /** Neither names a carrier. */
   | 'unknown';
 
-export interface ResolvedCarrier {
+interface ResolvedCarrier {
   /** Value to store in `shipping_tracking_numbers.carrier`. Always uppercase. */
   carrier: string;
   source: CarrierSource;

@@ -28,14 +28,14 @@ import { safeChannelName, getPhoneBridgeChannelName } from '@/lib/realtime/chann
 import { notifyReceivingPhotoChanged } from '@/lib/queries/receiving-queries';
 import { MobileReceivingSwipeGallery } from '@/components/mobile/photos/MobileReceivingSwipeGallery';
 
-export type MobilePhotoStudioMode = 'capture' | 'gallery';
+type MobilePhotoStudioMode = 'capture' | 'gallery';
 
 const ARRIVAL_GUIDED_STEPS: readonly ArrivalGuidedStep[] = [
   'shipping_label',
   'box_exterior',
 ] as const;
 
-export interface MobileReceivingPhotoStudioProps {
+interface MobileReceivingPhotoStudioProps {
   mode: MobilePhotoStudioMode;
   scope: PhotoScope;
   headerLabel: string;

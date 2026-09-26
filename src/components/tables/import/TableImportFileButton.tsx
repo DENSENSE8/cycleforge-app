@@ -63,7 +63,7 @@ export function useTableImportFilePicker<TField extends string, TRowView>(
   };
 }
 
-export function TableImportFileButton<TField extends string, TRowView>({
+function TableImportFileButton<TField extends string, TRowView>({
   descriptor,
   label = 'Import from CSV',
   icon = <FileText className="h-3.5 w-3.5" />,

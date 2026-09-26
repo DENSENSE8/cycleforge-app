@@ -4,9 +4,9 @@ import { safeRandomUUID } from '../safe-uuid';
 import type { StockBinWriteTarget } from './stock-bin-writes';
 
 /** Direction of a count adjustment — `in` adds, `out` subtracts. */
-export type StockAdjustDirection = 'in' | 'out';
+type StockAdjustDirection = 'in' | 'out';
 
-export interface StockBinRequest {
+interface StockBinRequest {
   url: string;
   init: RequestInit;
 }

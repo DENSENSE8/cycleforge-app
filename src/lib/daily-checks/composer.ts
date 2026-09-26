@@ -3,7 +3,7 @@
 import type { DailyCheckCreateInput, DailyCheckLinkInput, DailyCheckItemKind } from './types';
 
 /** The field order, shared. Progressive: only the subject field is required. */
-export const DAILY_COMPOSER_FIELD_ORDER = [
+const DAILY_COMPOSER_FIELD_ORDER = [
   'subject',
   'title',
   'description',
@@ -24,7 +24,7 @@ export const DAILY_COMPOSER_SUBJECT = [
 export type DailyComposerSubject = (typeof DAILY_COMPOSER_SUBJECT)[number]['id'];
 
 /** Cadence vocabulary — "type" means cadence, never subject (2026-09-15). */
-export const DAILY_COMPOSER_CADENCE = [
+const DAILY_COMPOSER_CADENCE = [
   { id: 'recurring', label: 'Every day' },
   { id: 'once', label: 'Just today' },
 ] as const satisfies readonly { id: DailyCheckItemKind; label: string }[];
@@ -33,7 +33,7 @@ export const DAILY_COMPOSER_CADENCE = [
  * The curated grid — ~48 ops-relevant emoji. Stored as the CHARACTER itself
  * (see the migration): zero render path, works on every face.
  */
-export const DAILY_GLYPH_PALETTE: readonly string[] = [
+const DAILY_GLYPH_PALETTE: readonly string[] = [
   '✅', '⚠️', '🔒', '🔑', '📦', '🖨️', '🏷️', '🔋',
   '🔌', '🧹', '🗑️', '🚚', '📋', '📝', '📌', '📎',
   '🔧', '🔨', '🪛', '💡', '🌡️', '❄️', '💧', '🧯',
@@ -43,12 +43,12 @@ export const DAILY_GLYPH_PALETTE: readonly string[] = [
 ];
 
 /** DB CHECK ceiling: one emoji can be several code units (ZWJ, skin tones). */
-export const DAILY_GLYPH_MAX_CHARS = 8;
+const DAILY_GLYPH_MAX_CHARS = 8;
 
 const GLYPH_RECENTS_KEY = 'daily-check-glyph-recents';
 const GLYPH_RECENTS_CAP = 8;
 
-export function readGlyphRecents(): string[] {
+function readGlyphRecents(): string[] {
   if (typeof window === 'undefined') return [];
   try {
     const raw = window.localStorage.getItem(GLYPH_RECENTS_KEY);

@@ -191,7 +191,7 @@ export function listProfiles(): PrinterProfile[] {
   return readStore().profiles;
 }
 
-export function getProfile(id: string): PrinterProfile | null {
+function getProfile(id: string): PrinterProfile | null {
   return readStore().profiles.find((p) => p.id === id) ?? null;
 }
 
@@ -240,7 +240,7 @@ export function setRoute(role: PrinterRole, profileId: string | null): ProfileSt
 }
 
 // --- Device selection (must be called from a user gesture) --------------------
-export interface PairedDevice {
+interface PairedDevice {
   kind: 'usb' | 'serial';
   vendorId: number;
   productId: number;

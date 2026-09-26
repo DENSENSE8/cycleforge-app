@@ -24,9 +24,9 @@ export type WorkspaceTimelineAnchor = {
   } | null;
 };
 
-export type CarrierDataPath = 'po' | 'tracking' | 'order' | null;
+type CarrierDataPath = 'po' | 'tracking' | 'order' | null;
 
-export type TimelineSectionsPlan = {
+type TimelineSectionsPlan = {
   showCarrier: boolean;
   showSerials: boolean;
   showActivity: boolean;

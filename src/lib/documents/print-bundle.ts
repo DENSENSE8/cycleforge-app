@@ -24,7 +24,7 @@ import { dispatchPrintNodePdf } from '@/lib/print/dispatchPrintNodePdf';
 
 const BUNDLE_TYPES: OutboundDocumentType[] = ['shipping_label', 'packing_slip'];
 
-export type PrintBundleStatus =
+type PrintBundleStatus =
   | 'dispatched'
   | 'fallback_browser'
   | 'missing'
@@ -32,7 +32,7 @@ export type PrintBundleStatus =
   | 'failed'
   | 'idempotent_replay';
 
-export interface PrintableBundleItem {
+interface PrintableBundleItem {
   kind: 'outbound' | 'manual';
   /** documents.id when kind=outbound, or manual documents row when promoted */
   documentId?: number;
@@ -42,14 +42,14 @@ export interface PrintableBundleItem {
   isPdf: boolean;
 }
 
-export interface ResolvePrintBundleResult {
+interface ResolvePrintBundleResult {
   documents: OutboundDocument[];
   manuals: PackBundleManual[];
   byType: Partial<Record<OutboundDocumentType, OutboundDocument>>;
   missingTypes: OutboundDocumentType[];
 }
 
-export interface DispatchPrintBundleInput {
+interface DispatchPrintBundleInput {
   orderId: number;
   packerLogId?: number | null;
   shipmentId?: number | null;
@@ -58,7 +58,7 @@ export interface DispatchPrintBundleInput {
   clientEventIdPrefix?: string;
 }
 
-export interface DispatchPrintBundleJobResult {
+interface DispatchPrintBundleJobResult {
   documentId?: number;
   productManualId?: number;
   documentType: DocumentPrintJobType;
@@ -68,7 +68,7 @@ export interface DispatchPrintBundleJobResult {
   isPdf: boolean;
 }
 
-export interface DispatchPrintBundleResult {
+interface DispatchPrintBundleResult {
   status: PrintBundleStatus;
   missingTypes: OutboundDocumentType[];
   manualsResolved: number;

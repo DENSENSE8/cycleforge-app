@@ -7,20 +7,20 @@ export { STAFF_FILTER_PARAM };
 /** Pipeline (board) ⇄ All (dense list) view toggle. */
 export const LAYOUT_PARAM = 'layout';
 /** My work (signed-in) ⇄ All staff scope. */
-export const SCOPE_PARAM = 'scope';
+const SCOPE_PARAM = 'scope';
 /** Shared week navigation offset (0 = current week). */
 export const WEEK_OFFSET_PARAM = 'weekOffset';
 
 export type StationLayout = 'board' | 'all';
-export type StationScope = 'mine' | 'all';
+type StationScope = 'mine' | 'all';
 
-export const DEFAULT_STATION_LAYOUT: StationLayout = 'all';
+const DEFAULT_STATION_LAYOUT: StationLayout = 'all';
 
 export function parseLayout(raw: string | null | undefined): StationLayout {
   return raw === 'board' ? 'board' : 'all';
 }
 
-export function parseScope(raw: string | null | undefined, fallback: StationScope): StationScope {
+function parseScope(raw: string | null | undefined, fallback: StationScope): StationScope {
   return raw === 'mine' || raw === 'all' ? raw : fallback;
 }
 
@@ -30,7 +30,7 @@ export function parseWeekOffset(raw: string | null | undefined): number {
 }
 
 /** The station surfaces that get a saved-views + ⋮ menu. */
-export type StationSurfaceKey =
+type StationSurfaceKey =
   | 'tech_history'
   | 'packer_history'
   | 'receiving_history'

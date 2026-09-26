@@ -7,7 +7,7 @@ import type { PoolClient } from 'pg';
 const ECWID_BASE_URL = 'https://app.ecwid.com/api/v3';
 const ECWID_PAGE_LIMIT = 100;
 
-export interface LegacyProductManualRecord {
+interface LegacyProductManualRecord {
   id: number;
   sku: string | null;
   item_number: string | null;
@@ -46,7 +46,7 @@ export function normalizeIdentifier(rawValue: string): string {
   return cleaned.replace(/^0+/, '') || '';
 }
 
-export function extractGoogleDocId(input: string): string {
+function extractGoogleDocId(input: string): string {
   const raw = String(input || '').trim();
   if (!raw) return '';
 

@@ -11,7 +11,7 @@ import { cn } from '@/utils/_cn';
 
 /** Optical `pl-2` — Unbox push-band twin so the leading mark lands on content ink. */
 /** The desk top row IS the Displays top band, plus a leading inset. */
-export const DESK_RAIL_CHROME_ROW_CLASS =
+const DESK_RAIL_CHROME_ROW_CLASS =
   `${STATION_DISPLAYS_PUSH_TOP_BAND} pointer-events-auto pl-2`;
 
 /** Trailing spacer the host's control cluster paints into — matches {@link STATION_CHROME_ROW_FACE}. */

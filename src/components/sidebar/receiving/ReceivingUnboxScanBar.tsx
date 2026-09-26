@@ -22,7 +22,7 @@ interface UnboxScanModeMeta {
   iconClass: string;
 }
 
-export const UNBOX_SCAN_MODES: readonly UnboxScanModeMeta[] = [
+const UNBOX_SCAN_MODES: readonly UnboxScanModeMeta[] = [
   {
     mode: 'ticket',
     label: 'Ticket',

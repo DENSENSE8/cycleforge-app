@@ -3,9 +3,9 @@
 import { z } from 'zod';
 
 /** The velocity route's `CASE` output — a closed vocabulary, so the pill's. */
-export const VELOCITY_TIERS = ['A', 'B', 'C', 'D'] as const;
+const VELOCITY_TIERS = ['A', 'B', 'C', 'D'] as const;
 
-export type VelocityTier = (typeof VELOCITY_TIERS)[number];
+type VelocityTier = (typeof VELOCITY_TIERS)[number];
 
 /** SQL NULL and a blank string are the same absence; both read as `null`. */
 const wireText = z

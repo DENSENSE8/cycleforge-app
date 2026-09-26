@@ -12,7 +12,7 @@ import {
   makeCsvImportStagingGridDescriptor,
 } from './csv-import-staging-grid-descriptor';
 
-export const CSV_IMPORT_STAGING_TABLE_DEFINITION = parseTableDefinition({
+const CSV_IMPORT_STAGING_TABLE_DEFINITION = parseTableDefinition({
   id: 'orders-import.staging',
   tableId: 'orders-import',
   entityFamily: 'orders-import',

@@ -14,4 +14,4 @@ export const PRODUCT_HUB_PLATFORMS = [
   'shopify',
 ] as const;
 
-export type ProductHubPlatform = (typeof PRODUCT_HUB_PLATFORMS)[number];
+type ProductHubPlatform = (typeof PRODUCT_HUB_PLATFORMS)[number];

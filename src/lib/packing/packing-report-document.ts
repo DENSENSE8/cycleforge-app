@@ -24,7 +24,7 @@ function formatReportDate(day: string): string {
 }
 
 /** e.g. Wed, Jul 8 */
-export function formatWeekdayShort(day: string): string {
+function formatWeekdayShort(day: string): string {
   const date = parsePstDay(day);
   if (Number.isNaN(date.getTime())) return day;
   return date.toLocaleDateString('en-US', {
@@ -287,7 +287,7 @@ export function packerKpiSummaryToRtf(summary: PackingKpiSummary): string {
   ].join('\n');
 }
 
-export function packerKpiPeriodToRtf(period: PackingKpiPeriodSummary): string {
+function packerKpiPeriodToRtf(period: PackingKpiPeriodSummary): string {
   const dailyRows = period.daily.map((summary) => [
     formatWeekdayShort(summary.day),
     String(summary.totals.total_boxes_packed),
@@ -366,7 +366,7 @@ export function packerKpiPeriodToRtf(period: PackingKpiPeriodSummary): string {
   ].join('\n');
 }
 
-export type PackingReportDocumentFormat = 'txt' | 'rtf' | 'csv';
+type PackingReportDocumentFormat = 'txt' | 'rtf' | 'csv';
 
 export function packerKpiSummaryToDocument(
   summary: PackingKpiSummary,

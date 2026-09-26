@@ -6,7 +6,7 @@ import { resolvePriorOutbound } from '@/lib/neon/serial-units-queries';
 import { transition } from '@/lib/inventory/state-machine';
 import { tapWorkflow } from '@/lib/workflow/tap';
 
-export interface ReturnsIntakeInput {
+interface ReturnsIntakeInput {
   /** Normalized serial strings (already upper-cased, GS1 URLs extracted). */
   serials: string[];
   /** Explicit serial_units.id values, alternative to serials. */
@@ -24,7 +24,7 @@ export interface ReturnsIntakeInput {
   organizationId: string;
 }
 
-export interface ReturnsIntakeSuccess {
+interface ReturnsIntakeSuccess {
   ok: true;
   returnedUnitCount: number;
   orderId: number | null;
@@ -43,7 +43,7 @@ export interface ReturnsIntakeSuccess {
   }>;
 }
 
-export interface ReturnsIntakeFailure {
+interface ReturnsIntakeFailure {
   ok: false;
   status: 400 | 404;
   error: string;
@@ -51,7 +51,7 @@ export interface ReturnsIntakeFailure {
   missingIds?: number[];
 }
 
-export type ReturnsIntakeResult = ReturnsIntakeSuccess | ReturnsIntakeFailure;
+type ReturnsIntakeResult = ReturnsIntakeSuccess | ReturnsIntakeFailure;
 
 export async function processReturnsIntake(input: ReturnsIntakeInput): Promise<ReturnsIntakeResult> {
   if (input.serials.length === 0 && input.serialUnitIds.length === 0) {

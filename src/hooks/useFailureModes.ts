@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 
 /** Client read for the **failure-mode taxonomy** — Testing's "why" vocabulary, the sibling of `useReasonVocabulary`'s `reason_codes` reads. */
-export interface FailureModeRow {
+interface FailureModeRow {
   id: number;
   code: string;
   label: string;

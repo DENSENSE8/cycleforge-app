@@ -24,7 +24,7 @@ export interface ProductManual {
   sku_catalog_id: number | null;
 }
 
-export interface UpsertProductManualParams {
+interface UpsertProductManualParams {
   itemNumber?: string | null;
   productTitle?: string | null;
   displayName?: string | null;
@@ -39,7 +39,7 @@ export interface UpsertProductManualParams {
   type?: string | null;
 }
 
-export interface UpdateProductManualParams {
+interface UpdateProductManualParams {
   id: number;
   sku?: string | null;
   itemNumber?: string | null;
@@ -177,7 +177,7 @@ export async function searchProductManuals(
 /**
  * Get product manuals by category (type field)
  */
-export async function getProductManualsByCategory(category: string, limit = 100, orgId?: OrgId): Promise<ProductManual[]> {
+async function getProductManualsByCategory(category: string, limit = 100, orgId?: OrgId): Promise<ProductManual[]> {
   // NEEDS-COL: no organization_id; GUC-wrap when orgId present. Body unchanged.
   const sql = `SELECT id, sku, item_number, product_title, display_name, google_file_id, source_url, thumbnail_url, relative_path, folder_path, file_name, status, assigned_at, assigned_by, type, updated_at
      FROM product_manuals
@@ -194,7 +194,7 @@ export async function getProductManualsByCategory(category: string, limit = 100,
 /**
  * Get the most recently updated active product manuals
  */
-export async function getRecentProductManuals(limit = 10, orgId?: OrgId): Promise<ProductManual[]> {
+async function getRecentProductManuals(limit = 10, orgId?: OrgId): Promise<ProductManual[]> {
   // NEEDS-COL: no organization_id; GUC-wrap when orgId present. Body unchanged.
   const sql = `SELECT id, sku, item_number, product_title, display_name, google_file_id, source_url, thumbnail_url, relative_path, folder_path, file_name, status, assigned_at, assigned_by, type, updated_at
      FROM product_manuals
@@ -210,7 +210,7 @@ export async function getRecentProductManuals(limit = 10, orgId?: OrgId): Promis
 /**
  * Resolve a product manual by order ID (looks up the order's product, then searches manuals)
  */
-export async function resolveManualByOrderId(orderId: string, orgId?: OrgId): Promise<ProductManual | null> {
+async function resolveManualByOrderId(orderId: string, orgId?: OrgId): Promise<ProductManual | null> {
   // pm (product_manuals) has NO organization_id (NEEDS-COL); its parent here is the org-bearing `orders` row reached via the item_number…
   if (orgId) {
     const result = await tenantQuery<ProductManual>(
@@ -530,7 +530,7 @@ export async function updateProductManual(params: UpdateProductManualParams, org
 /**
  * Hard-delete a product manual by ID
  */
-export async function deleteProductManual(id: number, orgId?: OrgId): Promise<boolean> {
+async function deleteProductManual(id: number, orgId?: OrgId): Promise<boolean> {
   // NEEDS-COL: no organization_id; GUC-wrap the delete when orgId present. Body unchanged.
   const sql = 'DELETE FROM product_manuals WHERE id = $1';
   const result = orgId

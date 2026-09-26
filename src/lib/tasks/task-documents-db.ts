@@ -46,7 +46,7 @@ const TASK_DOCUMENTS_SQL = `
    ORDER BY d.created_at, d.id`;
 
 /** The deps seam bound to one org. */
-export function taskDocumentsDbDeps(orgId: OrgId): TaskDocumentsDeps {
+function taskDocumentsDbDeps(orgId: OrgId): TaskDocumentsDeps {
   return {
     taskExists: async (taskId) => (await findTaskAnchor(orgId, taskId)) !== null,
     readPlanFile,

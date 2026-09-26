@@ -23,7 +23,7 @@ export const TASKS_COMPOUND_COLUMNS: readonly SlotTableColumn[] = slotTableColum
 );
 
 /** The task desk is a QUEUE of handed-over work, and the capability bag says so. */
-export const TASKS_GRID_CAPABILITIES: GridSurfaceCapabilities = {
+const TASKS_GRID_CAPABILITIES: GridSurfaceCapabilities = {
   rowTriageFlags: false,
   multiSelect: true,
   inCellEdit: false,
@@ -35,7 +35,7 @@ export const TASKS_GRID_CAPABILITIES: GridSurfaceCapabilities = {
  * Build the descriptor from a RESOLVED column list (post-visibility), so a
  * header's sortability is answered against the tracks actually mounted.
  */
-export function makeTasksGridDescriptor(
+function makeTasksGridDescriptor(
   columns: readonly SlotTableColumn[],
 ): GridSurfaceDescriptor<TaskDeskRow, SlotTableColumn> {
   return makeGridSurfaceDescriptor<TaskDeskRow, SlotTableColumn>(
@@ -54,7 +54,7 @@ export function makeTasksGridDescriptor(
  * Validated at module load: a definition that violates a structural law throws
  * here rather than painting a broken grid.
  */
-export const TASKS_TABLE_DEFINITION = parseTableDefinition({
+const TASKS_TABLE_DEFINITION = parseTableDefinition({
   id: 'tasks.mine',
   tableId: 'tasks',
   entityFamily: 'tasks',

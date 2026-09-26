@@ -13,7 +13,7 @@ export interface EditableShippingFields {
   onShipByDateBlur: () => void;
 }
 
-export interface PrepackedSkuInfo {
+interface PrepackedSkuInfo {
   staticSku: string;
   productTitle?: string | null;
   photos?: Array<{ id: number; url: string }>;

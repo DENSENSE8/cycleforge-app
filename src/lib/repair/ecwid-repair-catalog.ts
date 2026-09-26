@@ -442,7 +442,7 @@ export function filterRepairRootProducts(
 }
 
 /** Repair-service SKUs carry the `-RS` suffix (e.g. */
-export function isRepairServiceSku(sku: string): boolean {
+function isRepairServiceSku(sku: string): boolean {
   return sku.trim().toUpperCase().endsWith('-RS');
 }
 

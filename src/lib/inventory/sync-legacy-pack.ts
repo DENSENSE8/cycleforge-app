@@ -5,7 +5,7 @@ import { transition } from '@/lib/inventory/state-machine';
 import { tenantQuery } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';
 
-export interface MirrorInput {
+interface MirrorInput {
   /** Source packer_logs row id (used for deterministic idempotency key). */
   packerLogId: number;
   /** Shipment to resolve orders against. */
@@ -14,7 +14,7 @@ export interface MirrorInput {
   actorStaffId?: number | null;
 }
 
-export type MirrorResult =
+type MirrorResult =
   | { ok: true; mirrored: number; skipped?: string }
   | { ok: false; error: string; mirrored: number };
 

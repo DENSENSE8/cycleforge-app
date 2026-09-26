@@ -53,7 +53,7 @@ export function resolveKind(kind: LabelKind, ctx?: LabelResolveContext): Resolve
 }
 
 /** Raw hex for a state's chart arc/segment (KPI donut, sparkline), resolved from the SAME seeded tone that drives its board dot — so the… */
-export function stateChartHex(kind: LabelKind, code: string, ctx?: LabelResolveContext): string {
+function stateChartHex(kind: LabelKind, code: string, ctx?: LabelResolveContext): string {
   return TONE_SVG_HEX[resolveLabel(kind, code, ctx).tone];
 }
 

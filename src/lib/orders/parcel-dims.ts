@@ -13,7 +13,7 @@ export interface ParcelValues {
   heightIn: number | null;
 }
 
-export interface ResolvedParcel extends ParcelValues {
+interface ResolvedParcel extends ParcelValues {
   /** Which record answered; `null` when none holds any value. */
   source: ParcelSource | null;
   /** The key that answered (`03796`, `B0CXYZ…`) when source is sku / item_number. */
@@ -33,12 +33,12 @@ export function normalizeItemKey(raw: string | null | undefined): string | null 
 }
 
 /** SQL twin of {@link normalizeSkuKey}. */
-export function skuKeySql(column: string): string {
+function skuKeySql(column: string): string {
   return `NULLIF(UPPER(TRIM(${column})), '')`;
 }
 
 /** SQL twin of {@link normalizeItemKey} (upper → strip non-alphanumerics → strip leading zeros). */
-export function itemKeySql(column: string): string {
+function itemKeySql(column: string): string {
   return `NULLIF(LTRIM(REGEXP_REPLACE(UPPER(COALESCE(${column}, '')), '[^A-Z0-9]', '', 'g'), '0'), '')`;
 }
 

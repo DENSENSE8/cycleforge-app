@@ -116,7 +116,7 @@ export const Clock = ({ className = "w-6 h-6" }: { className?: string }) => (
 // Header + sidebar frame — generic "layout" glyph (lucide layout). Previously a
 // copy of the LayoutDashboard 4-panel grid; this distinguishes a generic layout
 // from the Orders/Shipping dashboard row.
-export const Layout = ({ className = "w-6 h-6" }: { className?: string }) => (
+const Layout = ({ className = "w-6 h-6" }: { className?: string }) => (
     <svg className={className} fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
         <rect width="18" height="18" x="3" y="3" rx="2" ry="2" />
         <line x1="3" x2="21" y1="9" y2="9" />

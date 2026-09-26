@@ -1,6 +1,6 @@
 // Single source of truth for warehouse replenishment-task status tones.
 
-export type ReplenishmentStatus = 'REQUESTED' | 'IN_PROGRESS' | 'COMPLETE' | 'CANCELED';
+type ReplenishmentStatus = 'REQUESTED' | 'IN_PROGRESS' | 'COMPLETE' | 'CANCELED';
 
 const TONES: Record<ReplenishmentStatus, string> = {
   REQUESTED: 'bg-amber-100 text-amber-800 border-amber-200',

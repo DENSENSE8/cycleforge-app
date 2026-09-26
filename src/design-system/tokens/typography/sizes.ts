@@ -30,4 +30,4 @@ export const letterSpacings = {
   widest: '0.14em',
 } as const;
 
-export type FontSizes = typeof fontSizes;
+type FontSizes = typeof fontSizes;

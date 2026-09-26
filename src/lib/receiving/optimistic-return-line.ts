@@ -5,7 +5,7 @@ import {
   type LineSerial,
 } from '@/lib/receiving/optimistic-serials';
 
-export type OptimisticReturnLine = {
+type OptimisticReturnLine = {
   id: number;
   sku: string | null;
   item_name: string | null;

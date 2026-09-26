@@ -13,7 +13,7 @@ export interface OpenInventoryDetailsPayload {
     listKey?: string;
 }
 
-export interface NavigateInventoryDetailsPayload {
+interface NavigateInventoryDetailsPayload {
     direction: 'up' | 'down';
 }
 
@@ -21,7 +21,7 @@ const OPEN_EVENT = 'open-inventory-details';
 const CLOSE_EVENT = 'close-inventory-details';
 const NAVIGATE_EVENT = 'navigate-inventory-details';
 
-export function dispatchOpenInventoryDetails(payload: OpenInventoryDetailsPayload): void {
+function dispatchOpenInventoryDetails(payload: OpenInventoryDetailsPayload): void {
     if (typeof window === 'undefined') return;
     window.dispatchEvent(new CustomEvent<OpenInventoryDetailsPayload>(OPEN_EVENT, { detail: payload }));
 }

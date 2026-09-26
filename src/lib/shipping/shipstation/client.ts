@@ -473,7 +473,7 @@ export function isShipStationHost(url: string, baseUrl: string = DEFAULT_BASE_UR
 }
 
 /** Download a purchased label's bytes. */
-export async function downloadLabelBytes(
+async function downloadLabelBytes(
   url: string,
   apiKey?: string,
 ): Promise<{ buffer: Buffer; contentType: string }> {

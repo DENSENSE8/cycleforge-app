@@ -4,7 +4,7 @@ import type { OrgId } from '@/lib/tenancy/constants';
 import { REPAIR_FAILURE_LABELS } from './repair-failure-reasons';
 
 /** A reason row as the surfaces consume it. */
-export interface SkuReasonRow {
+interface SkuReasonRow {
   label: string;
   favoriteSkuId: number | null;
 }
@@ -34,7 +34,7 @@ export function isMissingRelationError(error: unknown): boolean {
   return error.code === '42P01';
 }
 
-export type AddSkuReasonResult =
+type AddSkuReasonResult =
   | { ok: true; row: SkuReasonRow }
   | { ok: false; error: 'LABEL_REQUIRED' | 'SKU_REQUIRED' };
 

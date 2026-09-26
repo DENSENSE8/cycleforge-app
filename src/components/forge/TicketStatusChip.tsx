@@ -21,7 +21,7 @@ const STATUS_DOT: Record<TicketStatus, string> = {
   deployed: 'bg-emerald-500',
 };
 
-export interface TicketStatusChipProps {
+interface TicketStatusChipProps {
   ticketId: string;
   status: TicketStatus | null;
   rawStatus?: string;

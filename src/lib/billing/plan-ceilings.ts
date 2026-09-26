@@ -12,7 +12,7 @@ export type PlanCeiling = 'maxStaff' | 'maxWarehouses' | 'maxMonthlyOrders';
 
 /** Seats currently consumed: active staff rows (invited rows hold a seat;
  *  deactivation sets active=false, releasing it). */
-export async function countActiveStaff(orgId: OrgId): Promise<number> {
+async function countActiveStaff(orgId: OrgId): Promise<number> {
   const r = await pool.query<{ n: string }>(
     `SELECT COUNT(*)::text AS n FROM staff WHERE organization_id = $1 AND active = true`,
     [orgId],
@@ -23,7 +23,7 @@ export async function countActiveStaff(orgId: OrgId): Promise<number> {
 /** Active warehouses. `warehouses` has no organization_id column yet
  *  (tenant-owned-NEEDS-COL, see /api/warehouses); run GUC-wrapped via
  *  tenantQuery so the count is RLS-subject once per-table FORCE lands. */
-export async function countActiveWarehouses(orgId: OrgId): Promise<number> {
+async function countActiveWarehouses(orgId: OrgId): Promise<number> {
   const r = await tenantQuery<{ n: string }>(
     orgId,
     `SELECT COUNT(*)::text AS n FROM warehouses WHERE is_active = true`,
@@ -33,7 +33,7 @@ export async function countActiveWarehouses(orgId: OrgId): Promise<number> {
 
 /** Orders created since the start of the current calendar month (UTC) — the
  *  unit `plans.ts.maxMonthlyOrders` is measured in. */
-export async function countOrdersThisMonth(orgId: OrgId): Promise<number> {
+async function countOrdersThisMonth(orgId: OrgId): Promise<number> {
   const r = await pool.query<{ n: string }>(
     `SELECT COUNT(*)::text AS n
        FROM orders

@@ -519,4 +519,4 @@ export function getReceivingTableModeDescriptor(
 }
 
 /** Build the search-param key shared with the history free-text box. */
-export const RECEIVING_SEARCH_PARAM_KEY = RECEIVING_HISTORY_URL_PARAMS.q;
+const RECEIVING_SEARCH_PARAM_KEY = RECEIVING_HISTORY_URL_PARAMS.q;

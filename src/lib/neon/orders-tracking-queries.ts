@@ -602,13 +602,13 @@ export interface ApplyOrderTrackingOps {
   organizationId?: OrgId;
 }
 
-export interface ApplyOrderTrackingResult {
+interface ApplyOrderTrackingResult {
   createdShipmentIds: number[];
   primaryShipmentId: number | null;
 }
 
 /** Desired-state reconcile: */
-export async function reconcileOrderTrackingSet(
+async function reconcileOrderTrackingSet(
   orderIds: number[],
   desiredRaw: string[],
   client: Tx,

@@ -1,7 +1,7 @@
 import type { DashboardCategory } from '@/features/operations/types';
 import type { KpiKind } from './KpiDetailsModal';
 
-export interface PrimaryKpiConfig {
+interface PrimaryKpiConfig {
   /** Modal kind opened on click. */
   kind: KpiKind;
   /** Which `summary` category backs the value. */

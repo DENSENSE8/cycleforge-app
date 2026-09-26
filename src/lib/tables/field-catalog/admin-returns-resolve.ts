@@ -7,7 +7,7 @@ import type { RecentReturnRow } from '@/lib/inventory/returns-row';
 export const RETURNED_STATE_LABEL = 'Returned';
 
 /** Who took the unit in when no staffer is joined to the event. */
-export const RETURNS_SYSTEM_ACTOR = 'system';
+const RETURNS_SYSTEM_ACTOR = 'system';
 
 function str(value: string | number | null | undefined): string | null {
   const s = String(value ?? '').trim();

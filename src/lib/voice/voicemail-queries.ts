@@ -11,14 +11,14 @@ import {
 
 export type VoicemailStatusFilter = 'open' | 'snoozed' | 'done' | 'all';
 
-export interface ListVoicemailsParams {
+interface ListVoicemailsParams {
   status: VoicemailStatusFilter;
   query?: string | null;
   assignedStaffId?: number | null;
   limit?: number;
 }
 
-export interface ListVoicemailsResult {
+interface ListVoicemailsResult {
   items: VoicemailListItemDTO[];
   openCount: number;
 }

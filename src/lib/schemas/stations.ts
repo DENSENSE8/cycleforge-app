@@ -9,7 +9,7 @@ const KeySchema = z
   .max(64)
   .regex(/^[a-z0-9_-]+$/i, 'keys are alphanumeric/_/- only');
 
-export const BlockInstanceSchema = z.object({
+const BlockInstanceSchema = z.object({
   id: KeySchema,
   block: KeySchema,
   source: z
@@ -23,9 +23,9 @@ export const BlockInstanceSchema = z.object({
   actions: z.array(z.string().min(1).max(128)).max(20).optional(),
   done_when: z.string().min(1).max(128).nullable().optional(),
 });
-export type BlockInstanceInput = z.infer<typeof BlockInstanceSchema>;
+type BlockInstanceInput = z.infer<typeof BlockInstanceSchema>;
 
-export const StationConfigSchema = z.object({
+const StationConfigSchema = z.object({
   slots: z.union([
     z.literal('legacy'),
     z
@@ -37,7 +37,7 @@ export const StationConfigSchema = z.object({
       .strict(),
   ]),
 });
-export type StationConfigInput = z.infer<typeof StationConfigSchema>;
+type StationConfigInput = z.infer<typeof StationConfigSchema>;
 
 export const StationDraftSaveBody = z.object({
   pageKey: KeySchema,
@@ -46,7 +46,7 @@ export const StationDraftSaveBody = z.object({
   workflowNodeId: z.string().max(128).nullable().optional(),
   config: StationConfigSchema,
 });
-export type StationDraftSaveInput = z.infer<typeof StationDraftSaveBody>;
+type StationDraftSaveInput = z.infer<typeof StationDraftSaveBody>;
 
 export const StationPublishBody = z.object({
   id: z.number().int().positive(),
@@ -58,9 +58,9 @@ export const NodeStationSaveBody = z.object({
   label: z.string().min(1).max(120),
   config: StationConfigSchema,
 });
-export type NodeStationSaveInput = z.infer<typeof NodeStationSaveBody>;
+type NodeStationSaveInput = z.infer<typeof NodeStationSaveBody>;
 
 export const NodeStationPublishBody = z.object({
   id: z.number().int().positive(),
 });
-export type NodeStationPublishInput = z.infer<typeof NodeStationPublishBody>;
+type NodeStationPublishInput = z.infer<typeof NodeStationPublishBody>;

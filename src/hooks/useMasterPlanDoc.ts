@@ -10,9 +10,9 @@ import { getMasterPlanChannel, safeChannelName } from '@/lib/realtime/channels';
 import { createMasterPlanYDoc, readMasterPlan } from '@/lib/master-plan/doc';
 import { MasterPlanAblyProvider, base64ToU8 } from '@/lib/master-plan/ably-yjs-provider';
 
-export type MasterPlanDocStatus = 'idle' | 'connecting' | 'live' | 'error';
+type MasterPlanDocStatus = 'idle' | 'connecting' | 'live' | 'error';
 
-export interface MasterPlanDocState {
+interface MasterPlanDocState {
   mdx: string;
   status: MasterPlanDocStatus;
   error: string | null;

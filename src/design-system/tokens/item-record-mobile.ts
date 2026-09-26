@@ -95,7 +95,7 @@ export const ITEM_RECORD_MOBILE_STAGE_VERBS = {
 } as const;
 
 /** Catalog iconKey → glyph. Pick = package-search; Packed = package. */
-export const ITEM_RECORD_MOBILE_STAGE_ICONS = {
+const ITEM_RECORD_MOBILE_STAGE_ICONS = {
   pick: 'package-search',
   packed: 'package',
 } as const;

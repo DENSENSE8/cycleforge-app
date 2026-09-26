@@ -16,7 +16,7 @@ function nonEmptyString(value: unknown): string | null {
 const OFFSET_RE = /^([+-])(\d{2}):?(\d{2})$/;
 
 /** "+HH:MM" | "-HHMM" | "Z" → canonical "+HH:MM", or null. */
-export function normalizeUtcOffset(raw: unknown): string | null {
+function normalizeUtcOffset(raw: unknown): string | null {
   const s = nonEmptyString(raw);
   if (!s) return null;
   if (s === 'Z' || s === 'z') return '+00:00';
@@ -48,7 +48,7 @@ function toIso(d: Date): string | null {
  * Local wall clock ("YYYY-MM-DDTHH:MM:SS") → instant: at `offset` when the
  * carrier gave one, else in the warehouse zone.
  */
-export function wallClockInstant(wall: string, offset: string | null): string | null {
+function wallClockInstant(wall: string, offset: string | null): string | null {
   return toIso(offset ? new Date(`${wall}${offset}`) : fromZonedTime(wall, WAREHOUSE_TIME_ZONE));
 }
 

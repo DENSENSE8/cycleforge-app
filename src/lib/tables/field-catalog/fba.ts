@@ -88,4 +88,4 @@ export const FBA_PRODUCT_LAYOUT: SlotLayout = {
 };
 
 /** The one tableId this catalog will serve when the board display returns. */
-export const FBA_TABLE_LAYOUT_ID = 'fba';
+const FBA_TABLE_LAYOUT_ID = 'fba';

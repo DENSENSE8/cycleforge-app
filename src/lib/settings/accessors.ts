@@ -18,12 +18,12 @@ export type ReceivingPhotoPolicy = 'optional' | 'require_one' | 'require_per_ite
 export const getReceivingPhotoPolicy = (s: OrgSettings): ReceivingPhotoPolicy =>
   readOrg<ReceivingPhotoPolicy>(s, 'receiving.photoPolicy', 'optional');
 
-export type ReceivingNasBackup = 'off' | 'mirror' | 'direct';
-export const getReceivingNasBackup = (s: OrgSettings): ReceivingNasBackup =>
+type ReceivingNasBackup = 'off' | 'mirror' | 'direct';
+const getReceivingNasBackup = (s: OrgSettings): ReceivingNasBackup =>
   readOrg<ReceivingNasBackup>(s, 'receiving.nasBackup', 'mirror');
 
-export type ReceivingAutoTicket = 'off' | 'on_qa_fail' | 'on_unfound';
-export const getReceivingAutoTicket = (s: OrgSettings): ReceivingAutoTicket =>
+type ReceivingAutoTicket = 'off' | 'on_qa_fail' | 'on_unfound';
+const getReceivingAutoTicket = (s: OrgSettings): ReceivingAutoTicket =>
   readOrg<ReceivingAutoTicket>(s, 'receiving.autoTicket', 'off');
 
 /** Default putaway bin barcode. Falls back to the legacy env value then UNSORTED. */
@@ -38,18 +38,18 @@ export const getReceivingReturnsTestBin = (s: OrgSettings, envFallback?: string)
   return readOrg<string>(s, 'receiving.returnsTestBin', env || 'RETURNS-TEST');
 };
 
-export const getReceivingAutoPrintLabel = (s: OrgSettings): boolean =>
+const getReceivingAutoPrintLabel = (s: OrgSettings): boolean =>
   readOrg<boolean>(s, 'receiving.autoPrintLabel', false);
 
-export const getReceivingConfirmSerialRemoval = (s: OrgSettings): boolean =>
+const getReceivingConfirmSerialRemoval = (s: OrgSettings): boolean =>
   readOrg<boolean>(s, 'receiving.confirmSerialRemoval', true);
 
 /** Org master switch for scan confirmation tones (per-staff opt-out applies on top). */
-export const getReceivingScanSoundsEnabled = (s: OrgSettings): boolean =>
+const getReceivingScanSoundsEnabled = (s: OrgSettings): boolean =>
   readOrg<boolean>(s, 'receiving.scanSoundsEnabled', false);
 
 /** When true, Receive is gated on a captured serial OR an explicit no-serial waiver. */
-export const getReceivingRequireSerialConfirmation = (s: OrgSettings): boolean =>
+const getReceivingRequireSerialConfirmation = (s: OrgSettings): boolean =>
   readOrg<boolean>(s, 'receiving.requireSerialConfirmation', false);
 
 /** Which item photo aspects BLOCK the `item_photos` procedure step. */
@@ -79,11 +79,11 @@ export const getReceivingUnboxRoleDefaultPins = (
   return undefined; // inherit → fall through to the org default
 };
 
-export const getReceivingVisionConsensus = (s: OrgSettings): number =>
+const getReceivingVisionConsensus = (s: OrgSettings): number =>
   readOrg<number>(s, 'receiving.vision.consensusNeeded', 2);
 
-export const getReceivingVisionScanInterval = (s: OrgSettings): number =>
+const getReceivingVisionScanInterval = (s: OrgSettings): number =>
   readOrg<number>(s, 'receiving.vision.scanIntervalMs', 280);
 
-export const getReceivingVisionSendMaxDim = (s: OrgSettings): number =>
+const getReceivingVisionSendMaxDim = (s: OrgSettings): number =>
   readOrg<number>(s, 'receiving.vision.sendMaxDim', 1600);

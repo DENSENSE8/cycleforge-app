@@ -110,7 +110,7 @@ async function selectSupply(client: PoolClient, orgId: OrgId): Promise<Allocatio
   }));
 }
 
-export interface AutoAllocateResult {
+interface AutoAllocateResult {
   inserted: number;
   shortfalls: AllocationShortfall[];
 }

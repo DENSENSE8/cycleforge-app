@@ -11,7 +11,7 @@ import {
 } from './sku-favorites';
 import { normalizeFavoriteSku, type FavoriteWorkspaceKey } from './favorite-sku-key';
 
-export interface FavoritesRailPayload {
+interface FavoritesRailPayload {
   workspaceKey: FavoriteWorkspaceKey;
   favorites: FavoriteSkuRecord[];
   /** Normalized SKU keys in curated order — what a tile star reads. */
@@ -45,9 +45,9 @@ export const FavoriteTogglePayloadSchema = z.object({
   label: z.string().trim().max(255).optional(),
 });
 
-export type FavoriteTogglePayload = z.infer<typeof FavoriteTogglePayloadSchema>;
+type FavoriteTogglePayload = z.infer<typeof FavoriteTogglePayloadSchema>;
 
-export interface FavoriteToggleResult extends FavoritesRailPayload {
+interface FavoriteToggleResult extends FavoritesRailPayload {
   success: true;
   favorited: boolean;
   sku: string;

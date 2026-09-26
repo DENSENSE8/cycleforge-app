@@ -6,7 +6,7 @@ import { MY_DAY_SHEET_COLUMNS, type MyDayGridColumn } from '@/lib/my-day/my-day-
 import { parseTableDefinition } from '@/lib/tables/table-definition';
 import { MY_DAY_GRID_CAPABILITIES, makeMyDayGridDescriptor } from './my-day-grid-descriptor';
 
-export const MY_DAY_TABLE_DEFINITION = parseTableDefinition({
+const MY_DAY_TABLE_DEFINITION = parseTableDefinition({
   id: 'my-day.today',
   tableId: 'my-day',
   entityFamily: 'my-day',

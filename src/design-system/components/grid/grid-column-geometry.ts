@@ -35,7 +35,7 @@ export function gridColVar(key: string): string {
 }
 
 /** The column's rem floor, parsed from its `minmax(Xrem, …)` track. */
-export function gridColumnTrackRem(column: TrackLike): number {
+function gridColumnTrackRem(column: TrackLike): number {
   const m = column.width.match(/([\d.]+)rem/);
   return m ? Number(m[1]) : 12;
 }

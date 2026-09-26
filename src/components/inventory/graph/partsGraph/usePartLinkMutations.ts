@@ -13,7 +13,7 @@ async function postJson(url: string, body: unknown) {
   return data;
 }
 
-export interface AssignParentArgs {
+interface AssignParentArgs {
   childLogicalKey: string;
   childBase: string;
   parentItemId: string;

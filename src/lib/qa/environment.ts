@@ -3,14 +3,14 @@
 import pool from '@/lib/db';
 import { QA_ORG_ID } from '@/lib/tenancy/constants';
 
-export const ORG_ENVIRONMENTS = ['sandbox', 'customer'] as const;
-export type OrgEnvironment = (typeof ORG_ENVIRONMENTS)[number];
+const ORG_ENVIRONMENTS = ['sandbox', 'customer'] as const;
+type OrgEnvironment = (typeof ORG_ENVIRONMENTS)[number];
 
-export function parseOrgEnvironment(value: unknown): OrgEnvironment {
+function parseOrgEnvironment(value: unknown): OrgEnvironment {
   return value === 'sandbox' ? 'sandbox' : 'customer';
 }
 
-export function isSandboxEnvironment(value: unknown): boolean {
+function isSandboxEnvironment(value: unknown): boolean {
   return parseOrgEnvironment(value) === 'sandbox';
 }
 

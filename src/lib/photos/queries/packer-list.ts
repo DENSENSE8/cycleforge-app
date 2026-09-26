@@ -7,7 +7,7 @@ const LINK_JOINS = `
   INNER JOIN photo_entity_links l ON l.photo_id = p.id AND l.organization_id = p.organization_id
 `;
 
-export interface PackerPhotoListRow {
+interface PackerPhotoListRow {
   id: number;
   url: string;
   caption: string | null;

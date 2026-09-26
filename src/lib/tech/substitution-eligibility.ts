@@ -28,7 +28,7 @@ export interface TechSubstitutionEligibilityInput {
   previewOrderId?: number | null;
 }
 
-export interface TechSubstitutionEligibility {
+interface TechSubstitutionEligibility {
   show: boolean;
   /** The order id the SubstituteUnitCard should target (null when hidden). */
   orderId: number | null;

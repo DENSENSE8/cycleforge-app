@@ -7,7 +7,7 @@ import type { OrgId } from '@/lib/tenancy/constants';
 
 type Queryable = Pick<Pool, 'query'>;
 
-export type TechSerialSalContext = {
+type TechSerialSalContext = {
   salId: number;
   staffId: number | null;
   shipmentId: number | null;
@@ -43,7 +43,7 @@ export function normalizeTechSerial(value: unknown): string {
   return String(value || '').trim().toUpperCase();
 }
 
-export function detectTechSerialType(serial: string, fnsku: string | null): string {
+function detectTechSerialType(serial: string, fnsku: string | null): string {
   if (/^(X0|B0)/i.test(serial)) return 'FNSKU';
   if (fnsku) return 'FNSKU';
   return 'SERIAL';

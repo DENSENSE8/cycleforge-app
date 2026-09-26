@@ -16,7 +16,7 @@ interface StaffBadgeProps {
  * Encapsulates the `stationThemeColors[getStaffThemeById(id)].text` pattern
  * used across 15+ files.
  */
-export function StaffBadge({ staffId, name, className = '', pill = false }: StaffBadgeProps) {
+function StaffBadge({ staffId, name, className = '', pill = false }: StaffBadgeProps) {
   const display = name?.trim() || '---';
   if (!staffId) {
     return <span className={className}>{display}</span>;
@@ -40,7 +40,7 @@ export function StaffBadge({ staffId, name, className = '', pill = false }: Staf
  * Returns the staff theme text color class for a given staff ID.
  * Convenience for cases where a full component isn't needed (e.g. inline spans).
  */
-export function getStaffTextColor(staffId: number | null | undefined): string | undefined {
+function getStaffTextColor(staffId: number | null | undefined): string | undefined {
   if (!staffId) return undefined;
   return stationThemeColors[getStaffThemeById(staffId)].text;
 }

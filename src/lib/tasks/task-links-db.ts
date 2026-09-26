@@ -97,7 +97,7 @@ export async function findTaskAnchor(orgId: OrgId, taskId: number): Promise<Task
 }
 
 /** The deps seam bound to one org (and the acting staffer, for ticket mirrors). */
-export function taskLinksDbDeps(orgId: OrgId, staffId: number | null): TaskLinksDeps {
+function taskLinksDbDeps(orgId: OrgId, staffId: number | null): TaskLinksDeps {
   return {
     findTaskAnchor: (taskId) => findTaskAnchor(orgId, taskId),
 

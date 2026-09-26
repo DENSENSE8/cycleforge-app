@@ -2,7 +2,7 @@ import type { ElementType, ReactNode } from 'react';
 import { cn } from '@/utils/_cn';
 import { SIDEBAR_GUTTER, sidebarHeaderPillRowClass } from './header-shell';
 
-export interface SidebarSectionProps {
+interface SidebarSectionProps {
   children: ReactNode;
   /**
    * Render as the shared 40px header band (pill rows, search rows): fixed

@@ -215,7 +215,7 @@ export const SHIPMENT_EXCEPTIONS_SQL = `
    ORDER BY (oe.status = 'open') DESC, oe.created_at DESC NULLS LAST, oe.id DESC
    LIMIT 20`;
 
-export async function loadShipmentRecordRows(
+async function loadShipmentRecordRows(
   orgId: OrgId,
   shipmentId: number,
 ): Promise<ShipmentRecordRows | null> {
@@ -442,7 +442,7 @@ export async function loadShipmentRecordRows(
 
 // ─── Pure shaping ────────────────────────────────────────────────────────────
 
-export function isoInstant(value: Instant | undefined): string | null {
+function isoInstant(value: Instant | undefined): string | null {
   if (value == null || value === '') return null;
   const d = value instanceof Date ? value : new Date(value);
   return Number.isNaN(d.getTime()) ? null : d.toISOString();
@@ -454,13 +454,13 @@ function clean(value: unknown): string | null {
 }
 
 /** `WS_ORDER_TESTED` / `order.document.bundle_print` → `Ws order tested` / `Order document bundle print`. */
-export function humanizeVerb(verb: string): string {
+function humanizeVerb(verb: string): string {
   const words = verb.replace(/[._\-]+/g, ' ').trim().toLowerCase();
   return words ? words.charAt(0).toUpperCase() + words.slice(1) : verb;
 }
 
 /** `metadata.source` naming an ops backfill (`ops-backfill-scan-out` …), not a live dock scan. */
-export function isBackfillSource(metadata: Record<string, unknown> | null | undefined): boolean {
+function isBackfillSource(metadata: Record<string, unknown> | null | undefined): boolean {
   return /backfill/i.test(String(metadata?.source ?? ''));
 }
 
@@ -817,7 +817,7 @@ export function buildShipmentRecord(rows: ShipmentRecordRows): ShipmentRecord {
 
 // ─── Entry point ─────────────────────────────────────────────────────────────
 
-export interface ShipmentRecordDeps {
+interface ShipmentRecordDeps {
   loadRows: (orgId: OrgId, shipmentId: number) => Promise<ShipmentRecordRows | null>;
 }
 

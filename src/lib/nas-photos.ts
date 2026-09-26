@@ -9,7 +9,7 @@ export function setNasBaseUrl(url: string | null | undefined): void {
   runtimeBase = (url || '').replace(/\/+$/, '');
 }
 
-export function getNasBaseUrl(): string {
+function getNasBaseUrl(): string {
   return runtimeBase;
 }
 
@@ -121,7 +121,7 @@ export async function listNasDir(relDir: string): Promise<NasEntry[]> {
 }
 
 /** Build the NAS destination URL for a freshly captured receiving photo. */
-export function buildNasPhotoUrl(opts: {
+function buildNasPhotoUrl(opts: {
   baseUrl: string;
   folder: string;
   scope: PhotoScope;

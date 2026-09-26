@@ -1,9 +1,9 @@
 /** Data access for `part_links` — the SaaS-owned part → parent pairing (see the 2026-06-28g migration). */
 import { tenantQuery, withTenantTransaction } from '@/lib/tenancy/db';
 
-export type PartLinkStatus = 'confirmed' | 'not_a_part';
+type PartLinkStatus = 'confirmed' | 'not_a_part';
 
-export interface PartLinkRow {
+interface PartLinkRow {
   id: number;
   child_logical_key: string;
   child_base: string;
@@ -17,12 +17,12 @@ export interface PartLinkRow {
 }
 
 /** A link enriched with its parent item's display fields (for the graph join). */
-export interface PartLinkWithParent extends PartLinkRow {
+interface PartLinkWithParent extends PartLinkRow {
   parent_sku: string | null;
   parent_name: string | null;
 }
 
-export interface AssignParentInput {
+interface AssignParentInput {
   childLogicalKey: string;
   childBase: string;
   parentItemId: string;
@@ -45,7 +45,7 @@ export async function listPartLinks(orgId: string): Promise<PartLinkWithParent[]
   return res.rows;
 }
 
-export async function getPartLinkById(orgId: string, id: number): Promise<PartLinkRow | null> {
+async function getPartLinkById(orgId: string, id: number): Promise<PartLinkRow | null> {
   const res = await tenantQuery<PartLinkRow>(
     orgId,
     `SELECT * FROM part_links WHERE id = $1 AND organization_id = $2 LIMIT 1`,

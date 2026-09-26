@@ -4,21 +4,21 @@ import type { OrgId } from '@/lib/tenancy/constants';
 import { SYSTEM_PURPOSE_KEYS, SYSTEM_PURPOSES } from './purpose-catalog';
 import type { SessionKind, WorkSessionPurpose } from './types';
 
-export interface PurposeQueryable {
+interface PurposeQueryable {
   query: (
     text: string,
     params?: ReadonlyArray<unknown>,
   ) => Promise<{ rows: unknown[]; rowCount?: number | null }>;
 }
 
-export interface PurposeDeps {
+interface PurposeDeps {
   withTenantTransaction: <T>(
     orgId: OrgId,
     fn: (db: PurposeQueryable) => Promise<T>,
   ) => Promise<T>;
 }
 
-export const defaultPurposeDeps: PurposeDeps = {
+const defaultPurposeDeps: PurposeDeps = {
   withTenantTransaction: async (orgId, fn) => {
     const { withTenantTransaction } = await import('@/lib/tenancy/db');
     return withTenantTransaction(orgId, (client) => fn(client));
@@ -30,7 +30,7 @@ const PURPOSE_COLUMNS = `
   is_system, sort_order, archived_at
 `;
 
-export function mapPurpose(row: Record<string, unknown>): WorkSessionPurpose {
+function mapPurpose(row: Record<string, unknown>): WorkSessionPurpose {
   return {
     id: Number(row.id),
     organizationId: String(row.organization_id),
@@ -45,7 +45,7 @@ export function mapPurpose(row: Record<string, unknown>): WorkSessionPurpose {
 }
 
 /** Insert any missing system rows. Never overwrites a tenant-relabelled label. */
-export async function ensureSystemPurposes(db: PurposeQueryable, orgId: OrgId): Promise<void> {
+async function ensureSystemPurposes(db: PurposeQueryable, orgId: OrgId): Promise<void> {
   for (const seed of SYSTEM_PURPOSES) {
     await db.query(
       `INSERT INTO work_session_purposes
@@ -75,7 +75,7 @@ export async function listPurposes(
   });
 }
 
-export async function getPurpose(
+async function getPurpose(
   db: PurposeQueryable,
   orgId: OrgId,
   purposeId: number,
@@ -93,7 +93,7 @@ export async function getPurpose(
  * Dedupe by org + lower(label), including archived — "staff assist" must not
  * fork. A new custom row is kind=task, no surface, is_system=false.
  */
-export async function findOrCreatePurpose(
+async function findOrCreatePurpose(
   db: PurposeQueryable,
   orgId: OrgId,
   label: string,
@@ -128,7 +128,7 @@ export async function findOrCreatePurpose(
  * Archive a catalog row. Sessions that already used it keep `purpose_id`
  * (ON DELETE RESTRICT) — this does not rewrite history.
  */
-export async function archivePurpose(
+async function archivePurpose(
   args: { orgId: OrgId; purposeId: number },
   deps: PurposeDeps = defaultPurposeDeps,
 ): Promise<
@@ -160,7 +160,7 @@ async function keysInOrg(db: PurposeQueryable, orgId: OrgId): Promise<Set<string
   return new Set((rows as Array<Record<string, unknown>>).map((r) => String(r.key)));
 }
 
-export function slugPurposeKey(label: string): string {
+function slugPurposeKey(label: string): string {
   const slug = label
     .trim()
     .toLowerCase()

@@ -3,7 +3,7 @@
 import type { CompoundRowView } from '@/components/tables/compound/compound-row-model';
 
 /** The faces a shared compound cell paints from a view field, and what each one costs the row when it is dark. */
-export const SHARED_COMPOUND_FACES = {
+const SHARED_COMPOUND_FACES = {
   identityFace: 'the Id chip’s first line — the row’s operator-facing handle',
   orderId: 'the Id chip’s order line, and the marketplace deep link',
   platformValue: 'the channel dot beside the order id (resolveMarketplacePlatformMeta)',
@@ -14,16 +14,16 @@ export const SHARED_COMPOUND_FACES = {
   amount: 'the money track',
 } as const;
 
-export type SharedCompoundFace = keyof typeof SHARED_COMPOUND_FACES;
+type SharedCompoundFace = keyof typeof SHARED_COMPOUND_FACES;
 
 /** A face left dark, paired with the family's stated reason (or none). */
-export interface ParityFinding {
+interface ParityFinding {
   face: SharedCompoundFace;
   /** What the shared cell cannot paint without it. */
   cost: string;
 }
 
-export interface CompoundViewParityOptions {
+interface CompoundViewParityOptions {
   /** Faces this family leaves dark ON PURPOSE, each with a one-line reason. */
   absent?: Partial<Record<SharedCompoundFace, string>>;
 }
@@ -32,7 +32,7 @@ export interface CompoundViewParityOptions {
  * Faces that are dark WITHOUT a declared reason. Empty ⇒ the adapter is at
  * parity with its peers for this row.
  */
-export function compoundViewParityGaps(
+function compoundViewParityGaps(
   view: CompoundRowView,
   options: CompoundViewParityOptions = {},
 ): ParityFinding[] {

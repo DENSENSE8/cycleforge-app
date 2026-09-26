@@ -85,7 +85,7 @@ export interface AuthSessionUser {
   };
 }
 
-export interface AuthContextValue {
+interface AuthContextValue {
   user: AuthSessionUser | null;
   isLoaded: boolean;
   has: (perm: string) => boolean;

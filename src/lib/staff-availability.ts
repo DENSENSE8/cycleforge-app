@@ -9,10 +9,10 @@ import {
 import { toPSTDateKey } from '@/utils/date';
 import { staffHasRole } from '@/utils/staff';
 
-export type StaffAvailabilityStatus = 'on' | 'off' | 'inactive';
-export type StaffUnavailableReason = 'off_today' | 'inactive' | 'non_business_day';
+type StaffAvailabilityStatus = 'on' | 'off' | 'inactive';
+type StaffUnavailableReason = 'off_today' | 'inactive' | 'non_business_day';
 
-export interface StaffAvailabilityMember {
+interface StaffAvailabilityMember {
   id: number;
   name: string;
   role: string;
@@ -23,7 +23,7 @@ export interface StaffAvailabilityMember {
   reason: StaffUnavailableReason | null;
 }
 
-export interface StaffAvailabilitySummary {
+interface StaffAvailabilitySummary {
   total: number;
   on: number;
   off: number;
@@ -36,7 +36,7 @@ export interface StaffAvailabilitySummary {
   packerInactive: number;
 }
 
-export interface StaffAvailabilityResponse {
+interface StaffAvailabilityResponse {
   timezone: string;
   date: string;
   dayOfWeek: StaffDayOfWeek;
@@ -47,7 +47,7 @@ export interface StaffAvailabilityResponse {
   summary: StaffAvailabilitySummary;
 }
 
-export interface StaffScheduleMatrixMember {
+interface StaffScheduleMatrixMember {
   id: number;
   name: string;
   role: string;
@@ -61,7 +61,7 @@ export interface StaffScheduleMatrixDay {
   label: string;
 }
 
-export interface StaffScheduleMatrixRow {
+interface StaffScheduleMatrixRow {
   staffId: number;
   dayOfWeek: StaffDayOfWeek;
   isScheduled: boolean;
@@ -84,7 +84,7 @@ function getPstWeekStartMonday(from: Date): Date {
   return startOfWeek(zoned, { weekStartsOn: 1 });
 }
 
-export function getWeekStartDateKeyForDate(from: Date): string {
+function getWeekStartDateKeyForDate(from: Date): string {
   const monday = getPstWeekStartMonday(from);
   return formatInTimeZone(monday, STAFF_SCHEDULE_TIMEZONE, 'yyyy-MM-dd');
 }
@@ -100,7 +100,7 @@ export function isMondayDateKey(dateKey: string): boolean {
   return pstDow === 1;
 }
 
-export function getWeekDateKeys(weekStartDate: string): string[] {
+function getWeekDateKeys(weekStartDate: string): string[] {
   const monday = fromZonedTime(`${weekStartDate}T00:00:00`, STAFF_SCHEDULE_TIMEZONE);
   return [0, 1, 2, 3, 4, 5, 6].map((offset) =>
     formatInTimeZone(addDays(monday, offset), STAFF_SCHEDULE_TIMEZONE, 'yyyy-MM-dd')

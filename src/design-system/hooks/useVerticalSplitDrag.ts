@@ -19,7 +19,7 @@ function readPersistedRatio(key: string | undefined, fallback: number): number {
   }
 }
 
-export interface UseVerticalSplitDragOptions {
+interface UseVerticalSplitDragOptions {
   /** When set, ratio persists under `${persistKey}.splitRatio`. */
   persistKey?: string;
   defaultRatio?: number;
@@ -27,7 +27,7 @@ export interface UseVerticalSplitDragOptions {
   enabled?: boolean;
 }
 
-export interface VerticalSplitDividerProps {
+interface VerticalSplitDividerProps {
   role: 'separator';
   'aria-orientation': 'horizontal';
   'aria-label': string;

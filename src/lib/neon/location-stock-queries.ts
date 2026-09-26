@@ -36,7 +36,7 @@ interface StockByLocationDbRow {
   total_count: number;
 }
 
-export interface StockByLocationPage {
+interface StockByLocationPage {
   rows: LocationStockTableRow[];
   /** Pairs with stock MATCHING `query` across the whole org, before the cap. */
   totalCount: number;

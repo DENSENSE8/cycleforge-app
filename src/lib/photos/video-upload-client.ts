@@ -1,7 +1,7 @@
 import type { PhotoEntityType } from './types';
 import { validateVideoUpload, type VideoMime } from './video-upload-rules';
 
-export interface ClientVideoUploadInput {
+interface ClientVideoUploadInput {
   file: File;
   entityType: PhotoEntityType;
   entityId: number;
@@ -9,7 +9,7 @@ export interface ClientVideoUploadInput {
   onProgress?: (fraction: number) => void;
 }
 
-export interface ClientVideoUploadResult {
+interface ClientVideoUploadResult {
   id: number;
   url: string;
   contentType: VideoMime;

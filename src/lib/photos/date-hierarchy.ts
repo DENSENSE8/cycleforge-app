@@ -1,11 +1,11 @@
 /** Date-hierarchy breadcrumb model for the photo library. */
 
-export interface PhotoDateRange {
+interface PhotoDateRange {
   dateFrom: string;
   dateTo: string;
 }
 
-export interface PhotoDateCrumb {
+interface PhotoDateCrumb {
   key: 'year' | 'month' | 'week' | 'day' | 'custom';
   label: string;
   /** The range that clicking this crumb applies (widen-to-here). */
@@ -47,7 +47,7 @@ function addDays(dt: Date, n: number): Date {
 }
 
 /** Monday of the ISO week containing `dt`. */
-export function startOfIsoWeek(dt: Date): Date {
+function startOfIsoWeek(dt: Date): Date {
   const dow = (dt.getUTCDay() + 6) % 7; // Mon=0 … Sun=6
   return addDays(dt, -dow);
 }

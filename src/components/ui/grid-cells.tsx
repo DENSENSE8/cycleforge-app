@@ -216,7 +216,7 @@ export function GridPlatformMarkValue({
  * Staff name value (tester / packer) — expects a `normalizePersonName`-cleaned
  * string where `'---'` means missing (renders the em dash).
  */
-export function GridStaffCellValue({
+function GridStaffCellValue({
   name,
   className,
 }: {
@@ -320,7 +320,7 @@ export function GridDateTimeCellValue({ raw, className }: { raw: string; classNa
  * Same preference subscription as {@link GridDateTimeCellValue}; use for narrow
  * ledger stamps (e.g. Orders Tested-at).
  */
-export function GridMonthDayTimeCellValue({ raw, className }: { raw: string; className?: string }) {
+function GridMonthDayTimeCellValue({ raw, className }: { raw: string; className?: string }) {
   useTimeFormat();
   return (
     <span className={cn('min-w-0 truncate tabular-nums normal-case tracking-normal', className)}>

@@ -27,7 +27,7 @@ const UNBOX_ROLE_DEFAULT_SETTINGS: readonly SettingDef[] = ALL_ROLES.map((role) 
  * Desks whose fullscreen choice is remembered, by `SIDEBAR_PAGE_NAV` page id (what `useActiveSidebarChild().pageId` resolves on a…
  * (`DeskRecordPlane`, operator 2026-09-25) — so it sticks per staffer, per
  */
-export const DESK_FULLSCREEN_DESKS = [
+const DESK_FULLSCREEN_DESKS = [
   { id: 'home', label: 'Daily' },
   { id: 'outbound', label: 'Shipping' },
   { id: 'fba', label: 'FBA' },

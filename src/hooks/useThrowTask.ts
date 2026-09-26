@@ -13,7 +13,7 @@ import type { StaffRecipient } from '@/lib/staff/staff-recipient';
 /** What the record field is looking FOR. */
 export type ThrowTaskMode = 'record' | 'ticket';
 
-export type ThrowResolveState =
+type ThrowResolveState =
   | { status: 'idle' }
   | { status: 'resolving' }
   | { status: 'done'; targets: ThrowTarget[]; raw: string }

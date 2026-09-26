@@ -2,7 +2,7 @@
 
 import type { BinsOverviewRow } from '@/hooks/useBinsOverview';
 
-export interface FloorBin {
+interface FloorBin {
   row: BinsOverviewRow;
   x: number;
   y: number;
@@ -10,7 +10,7 @@ export interface FloorBin {
   h: number;
 }
 
-export interface FloorZone {
+interface FloorZone {
   /** Stable id (room name) — doubles as the React Flow node id suffix. */
   room: string;
   letter: string | null;
@@ -28,14 +28,14 @@ export interface FloorZone {
   gap: number;
 }
 
-export interface FloorLayout {
+interface FloorLayout {
   bins: FloorBin[];
   zones: FloorZone[];
 }
 
 /* Grid constants (from the prototype's "comfortable" density). */
-export const FLOOR_CELL = 54;
-export const FLOOR_GAP = 8;
+const FLOOR_CELL = 54;
+const FLOOR_GAP = 8;
 const PAD = 16;
 const HEADER = 30;
 const ROW_LABEL_W = 26;

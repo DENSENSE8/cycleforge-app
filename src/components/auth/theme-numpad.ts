@@ -6,7 +6,7 @@
 import { focusRing } from '@/design-system/tokens/focus-ring';
 import type { StationTheme } from '@/utils/staff-colors';
 
-export type NumpadThemeFace = {
+type NumpadThemeFace = {
   primaryBg: string;
   primaryHover: string;
   dotActive: string;

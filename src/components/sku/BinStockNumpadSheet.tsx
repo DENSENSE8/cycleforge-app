@@ -21,7 +21,7 @@ import { cn } from '@/utils/_cn';
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
-export interface BinNumpadRow {
+interface BinNumpadRow {
   sku: string;
   qty: number;
   productTitle: string | null;

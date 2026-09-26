@@ -3,7 +3,7 @@
 import { useEffect } from 'react';
 
 /** Grid/page-level keyboard shortcuts for the media library (`/ops/photos`). */
-export interface MediaLibraryShortcutHandlers {
+interface MediaLibraryShortcutHandlers {
   /** When false, the listener is not attached (e.g. page not focused). Default true. */
   enabled?: boolean;
   /** Whether selection mode is currently active — gates `⌘/Ctrl+A`. */

@@ -9,7 +9,7 @@ import {
   makeWalkInSalesGridDescriptor,
 } from './walk-in-sales-grid-descriptor';
 
-export const WALKINSALES_TABLE_DEFINITION = parseTableDefinition({
+const WALKINSALES_TABLE_DEFINITION = parseTableDefinition({
   id: 'sales.walk-in',
   tableId: 'walk-in-sales',
   entityFamily: 'walk-in-sales',

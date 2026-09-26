@@ -6,7 +6,7 @@
 
 import { normalizeListingHref } from '@/lib/receiving/listing-href';
 
-export interface SyncNoteListingLink {
+interface SyncNoteListingLink {
   href: string;
   /** Optional human title prefix before `: https://...` on the line. */
   title: string | null;

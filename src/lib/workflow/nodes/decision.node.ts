@@ -16,7 +16,7 @@ const DEFAULT_OUTPUTS: NodeOutputPort[] = [
 ];
 
 /** Owner-tunable shape. */
-export const DECISION_CONFIG_SCHEMA: Record<string, unknown> = {
+const DECISION_CONFIG_SCHEMA: Record<string, unknown> = {
   type: 'object',
   'x-editor': 'decision-rules',
   properties: {

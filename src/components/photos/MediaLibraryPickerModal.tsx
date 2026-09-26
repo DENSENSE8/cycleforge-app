@@ -6,7 +6,7 @@ import type { ClaimPhotoInput } from '@/components/support/zendesk/claim/claim-t
 import { Button, IconButton } from '@/design-system/primitives';
 import { MediaLibraryPickerContent } from './MediaLibraryPickerContent';
 
-export interface MediaLibraryPickerModalProps {
+interface MediaLibraryPickerModalProps {
   open: boolean;
   onClose: () => void;
   ticketId?: number;

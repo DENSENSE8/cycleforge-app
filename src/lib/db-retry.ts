@@ -1,4 +1,4 @@
-export interface RetryOptions {
+interface RetryOptions {
   retries?: number;
   delayMs?: number;
 }

@@ -29,7 +29,7 @@ export const PART_COMPATIBILITY_GRID_CAPABILITIES: GridSurfaceCapabilities = {
   dayBands: false,
 };
 
-export function makePartCompatibilityGridDescriptor(
+function makePartCompatibilityGridDescriptor(
   columns: readonly PartCompatibilityGridColumn[],
 ): GridSurfaceDescriptor<PartCompatibilityEdgeRow, PartCompatibilityGridColumn> {
   return makeGridSurfaceDescriptor<PartCompatibilityEdgeRow, PartCompatibilityGridColumn>(
@@ -44,7 +44,7 @@ export function makePartCompatibilityGridDescriptor(
   );
 }
 
-export const PART_COMPATIBILITY_TABLE_DEFINITION = parseTableDefinition({
+const PART_COMPATIBILITY_TABLE_DEFINITION = parseTableDefinition({
   id: 'admin.part-compatibility',
   tableId: 'part-compatibility',
   entityFamily: 'part-compatibility',

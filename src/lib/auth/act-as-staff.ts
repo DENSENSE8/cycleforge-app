@@ -1,14 +1,14 @@
 /** "Act as staff" authorization — the pure decision behind POST /api/auth/act-as-staff. */
 
-export type ActAsError =
+type ActAsError =
   | 'NOT_SHARED_ORG'    // caller's org isn't a shared-account workspace
   | 'TARGET_NOT_FOUND'  // no such staff id
   | 'CROSS_ORG'         // target belongs to a different org than the caller
   | 'TARGET_INACTIVE';  // target staff is deactivated
 
-export type ActAsDecision = { ok: true } | { ok: false; error: ActAsError };
+type ActAsDecision = { ok: true } | { ok: false; error: ActAsError };
 
-export interface ActAsTarget {
+interface ActAsTarget {
   /** The org the target staff row belongs to. */
   orgId: string;
   /** COALESCE(active, true) for the target staff. */

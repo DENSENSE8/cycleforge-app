@@ -345,4 +345,4 @@ export function useFbaStationInput({
   };
 }
 
-export type FbaStationInputController = ReturnType<typeof useFbaStationInput>;
+type FbaStationInputController = ReturnType<typeof useFbaStationInput>;

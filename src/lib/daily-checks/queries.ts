@@ -307,7 +307,7 @@ export async function createDailyCheckItem(args: {
 }
 
 /** The fields {@link updateDailyCheckItem} may change; at least one is present. */
-export interface DailyCheckItemPatch {
+interface DailyCheckItemPatch {
   title?: string;
   /** Civil `HH:MM`, or null to clear — clearing it also clears the reminder. */
   dueTime?: string | null;
@@ -315,13 +315,13 @@ export interface DailyCheckItemPatch {
 }
 
 /** The patched fields as they stood before the edit — the audit row's `before`. */
-export interface DailyCheckItemPrevious {
+interface DailyCheckItemPrevious {
   title: string;
   dueTime: string | null;
   remindOffsetMinutes: number | null;
 }
 
-export type UpdateDailyCheckItemResult =
+type UpdateDailyCheckItemResult =
   | { ok: true; item: DailyCheckItem; previous: DailyCheckItemPrevious }
   | { ok: false; reason: 'not_found' | 'offset_requires_due_time' };
 

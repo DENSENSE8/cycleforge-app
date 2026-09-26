@@ -6,7 +6,7 @@
 const COMPOSER_TEXTAREA =
   '[data-testid="station-composer-host"] textarea:not([disabled])';
 
-export function focusUnboxComposer(): boolean {
+function focusUnboxComposer(): boolean {
   if (typeof document === 'undefined') return false;
   const el = document.querySelector<HTMLTextAreaElement>(COMPOSER_TEXTAREA);
   if (!el) return false;

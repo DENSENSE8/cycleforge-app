@@ -6,12 +6,12 @@ export function normalizeSerialText(raw: string | null | undefined): string {
   return String(raw ?? '').trim().toUpperCase();
 }
 
-export interface SerialDiffCell {
+interface SerialDiffCell {
   ch: string;
   match: boolean;
 }
 
-export interface SerialDiffResult {
+interface SerialDiffResult {
   receivedNormalized: string;
   shippedNormalized: string;
   received: SerialDiffCell[];

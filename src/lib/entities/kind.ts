@@ -4,7 +4,7 @@
  */
 
 export const ENTITY_KINDS = ['order', 'tracking', 'serial', 'phone'] as const;
-export type EntityKind = (typeof ENTITY_KINDS)[number];
+type EntityKind = (typeof ENTITY_KINDS)[number];
 
 /** The ONE word per kind — every other string is derived from it. */
 export const ENTITY_WORD: Readonly<Record<EntityKind, string>> = {

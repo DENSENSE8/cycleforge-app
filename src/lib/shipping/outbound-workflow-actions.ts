@@ -26,7 +26,7 @@ export const OUTBOUND_TRIAGE_ACTION_IDS = [
 
 export type OutboundTriageActionId = (typeof OUTBOUND_TRIAGE_ACTION_IDS)[number];
 
-export type OutboundTriageAction = Readonly<{
+type OutboundTriageAction = Readonly<{
   id: OutboundTriageActionId;
   label: string;
   persistedAs: 'shortage' | 'damaged' | 'discrepancy';
@@ -48,9 +48,9 @@ export const OUTBOUND_CHANNEL_TRIAGE_ACTION_IDS = [
   'zero_amazon_inventory',
 ] as const;
 
-export type OutboundChannelTriageActionId = (typeof OUTBOUND_CHANNEL_TRIAGE_ACTION_IDS)[number];
+type OutboundChannelTriageActionId = (typeof OUTBOUND_CHANNEL_TRIAGE_ACTION_IDS)[number];
 
-export type OutboundChannelTriageAction = Readonly<{
+type OutboundChannelTriageAction = Readonly<{
   id: OutboundChannelTriageActionId;
   platform: 'ebay' | 'amazon';
   label: string;
@@ -112,7 +112,7 @@ export type OutboundWorkflowException =
       resolutionAction: 'clear_hold';
     };
 
-export interface OutboundWorkflowActionInput {
+interface OutboundWorkflowActionInput {
   stage: OrderLifecycleStage;
   hasLabel: boolean;
   hasTechScan: boolean;

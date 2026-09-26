@@ -21,7 +21,7 @@ export type MorphingOosRow = {
   packed_at?: string | null;
 };
 
-export type MorphingOosView = 'oos-pick';
+type MorphingOosView = 'oos-pick';
 
 export function morphingOosOrderId(row: MorphingOosRow): number | null {
   const id = Number(row.id);
@@ -52,7 +52,7 @@ export function morphingListingIdentity(row: MorphingOosRow): OrderShortageIdent
   });
 }
 
-export function morphingKitPartIdentity(
+function morphingKitPartIdentity(
   row: MorphingOosRow,
   part: { id: number; component_name: string; qty_required?: number },
 ): OrderShortageIdentity {
@@ -66,7 +66,7 @@ export function morphingKitPartIdentity(
 }
 
 /** Catalog-edge child (sku_relationships) — multi-tenant bundle component. */
-export function morphingCatalogChildIdentity(args: {
+function morphingCatalogChildIdentity(args: {
   childSku: string | null;
   childSkuCatalogId: number;
   title: string;

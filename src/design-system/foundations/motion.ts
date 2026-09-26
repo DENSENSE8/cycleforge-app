@@ -16,4 +16,4 @@ export const motionEasings = {
   emphasized: 'cubic-bezier(0.2, 0.8, 0.2, 1)',
 } as const;
 
-export type MotionDurations = typeof motionDurations;
+type MotionDurations = typeof motionDurations;

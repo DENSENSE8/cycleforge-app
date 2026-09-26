@@ -30,7 +30,7 @@ export async function appRolePool(): Promise<Pool | null> {
 }
 
 /** True when the role behind `pool` is subject to RLS (not a bypass/superuser). */
-export async function roleIsRlsSubject(pool: Pool): Promise<boolean> {
+async function roleIsRlsSubject(pool: Pool): Promise<boolean> {
   const { rows } = await pool.query<{ bypass: boolean; super: boolean }>(
     `SELECT rolbypassrls AS bypass, rolsuper AS super FROM pg_roles WHERE rolname = current_user`,
   );
@@ -58,7 +58,7 @@ export async function enforcedRoleInvariant(
 }
 
 /** Proof that RLS itself (not the app filter) isolates tenants. */
-export async function proveRlsIsolatesScratch(
+async function proveRlsIsolatesScratch(
   pool: Pool,
 ): Promise<{ ownA: number; ownB: number; crossFromB: number; loudFail: boolean }> {
   const setGuc = (c: { query: (t: string, p?: unknown[]) => Promise<unknown> }, org: string) =>

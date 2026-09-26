@@ -1,5 +1,5 @@
 /** Which `/m` routes draw their OWN top bar, and therefore which ones the host header (`MobileTopBar`, mounted by `RedesignedMobileShell`)… */
-export const OWN_TOP_BAR_PREFIXES = [
+const OWN_TOP_BAR_PREFIXES = [
   '/m/receiving/po',
   '/m/r/',
   '/m/u/',

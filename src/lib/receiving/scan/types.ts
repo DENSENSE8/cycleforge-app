@@ -19,7 +19,7 @@ export interface ScanInput {
  * apply layer switches on `kind`. Extend this union as each ladder rung moves
  * out of the hook.
  */
-export type ScanResolution = InternalCodeResolution | CachedCartonResolution;
+type ScanResolution = InternalCodeResolution | CachedCartonResolution;
 
 /**
  * Internal-handle rung — a serial / unit-id / carton-handle (R-/RCV-/H-/L-/U-…)

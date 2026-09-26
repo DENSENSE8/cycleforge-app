@@ -11,7 +11,7 @@ const NAME_KEY = 'cf.printStation.name';
 /** Dispatched on the window when this computer's station id or name changes. */
 export const PRINT_STATION_CHANGED_EVENT = 'cf:print-station-changed';
 
-export interface PrintStation {
+interface PrintStation {
   id: string;
   name: string;
 }
@@ -68,7 +68,7 @@ export type PrintStationPickStorage = Pick<Storage, 'getItem' | 'setItem' | 'rem
  * One key per org + staffer: a shared phone handed to another staffer never
  * sends their paper to the previous staffer's station.
  */
-export function rememberedPrintStationKey(orgId: string, staffId: number): string | null {
+function rememberedPrintStationKey(orgId: string, staffId: number): string | null {
   if (!orgId.trim() || !Number.isInteger(staffId) || staffId <= 0) return null;
   return `cf.printStation.pick:${orgId}:${staffId}`;
 }

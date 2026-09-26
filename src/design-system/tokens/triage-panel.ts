@@ -9,7 +9,7 @@ import { TRIAGE_PANEL_INNER_CORNER } from './radius';
 export { TRIAGE_PANEL_INNER_CORNER };
 
 /** Height of every interactive control in a triage panel. */
-export const TRIAGE_PANEL_CONTROL_HEIGHT = 'h-9';
+const TRIAGE_PANEL_CONTROL_HEIGHT = 'h-9';
 
 /** The whole contract as one `cn()`-ready string — height + corner. */
 export function triagePanelControl(...extra: Parameters<typeof cn>): string {

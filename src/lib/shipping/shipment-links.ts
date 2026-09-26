@@ -126,7 +126,7 @@ export async function unlinkShipment(
   await withTenantTransaction(orgId, async (c) => { await run(c); return null; });
 }
 
-export interface OwnerShipmentLink {
+interface OwnerShipmentLink {
   shipment_id: number;
   box_seq: number;
   is_primary: boolean;

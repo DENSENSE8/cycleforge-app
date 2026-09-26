@@ -13,7 +13,7 @@ export interface TechActiveOrderPane {
   isManualLoading: boolean;
 }
 
-export interface TechOrderPanes {
+interface TechOrderPanes {
   activeOrderPane: TechActiveOrderPane | null;
   setActiveOrderPane: React.Dispatch<React.SetStateAction<TechActiveOrderPane | null>>;
   previewSel: SearchSelection | null;

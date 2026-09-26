@@ -8,11 +8,11 @@ export const TAKE_REASONS = [
 export type TakeReasonCode = (typeof TAKE_REASONS)[number]['code'];
 
 /** No choice made: the take keeps the location default. */
-export const TAKE_DEFAULT_REASON = 'BIN_PULL';
+const TAKE_DEFAULT_REASON = 'BIN_PULL';
 
 export type TakeReasonChoice = { code: TakeReasonCode; custom: string } | null;
 
-export type TakeReasonPayload =
+type TakeReasonPayload =
   | { ok: true; reason: string; notes: string | null }
   | { ok: false; error: string };
 

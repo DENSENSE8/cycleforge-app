@@ -21,7 +21,7 @@ import {
   ComposerSection,
 } from './receiving-order-composer-parts';
 
-export interface PurchaseOrderLinesProps {
+interface PurchaseOrderLinesProps {
   lines: readonly PoIntakeLineDraft[];
   missing: readonly PoIntakeMissingField[];
   onAdd: () => void;

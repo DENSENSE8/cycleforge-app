@@ -2,7 +2,7 @@
 
 import type { ReactNode } from 'react';
 
-export interface ScanDockPolicy {
+interface ScanDockPolicy {
   /** Stable identity for the publishing surface + mode (e.g. */
   id: string;
   placeholder?: string;

@@ -2,7 +2,7 @@
 
 import { useAuth } from '@/contexts/AuthContext';
 
-export type ClientStaffRole =
+type ClientStaffRole =
   | 'packer'
   | 'receiving'
   | 'technician'
@@ -25,7 +25,7 @@ function normalizeRole(raw: string | null | undefined): ClientStaffRole {
     : 'unknown';
 }
 
-export interface UseStaffRoleResult {
+interface UseStaffRoleResult {
   role: ClientStaffRole;
   isAdmin: boolean;
   isReadonly: boolean;

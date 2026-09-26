@@ -2,13 +2,13 @@ import type { PersistedClient } from '@tanstack/react-query-persist-client';
 
 /** The rules for the repair workbench's refresh-surviving cache (operator 2026-09-24, pass 4 row 7). */
 
-export const WORKBENCH_CACHE_PREFIX = 'cf-rq-wb:';
+const WORKBENCH_CACHE_PREFIX = 'cf-rq-wb:';
 /** Bump when a workbench facet's data shape changes, so old tabs don't paint it. */
 export const WORKBENCH_CACHE_BUSTER = 'wb-v1';
 export const WORKBENCH_CACHE_MAX_AGE_MS = 24 * 60 * 60 * 1000;
 export const WORKBENCH_QUERY_KEY = ['repairs', 'workbench'] as const;
 
-export interface WorkbenchCacheOwner {
+interface WorkbenchCacheOwner {
   organizationId: string;
   staffId: number;
 }

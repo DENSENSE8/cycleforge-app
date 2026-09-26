@@ -35,7 +35,7 @@ import { HoverTooltip } from '@/components/ui/HoverTooltip';
 
 const FORMATS: readonly ExportFormat[] = ['csv', 'tsv'];
 
-export interface DataTableExportMenuProps<Row> {
+interface DataTableExportMenuProps<Row> {
   fields: readonly ExportField[];
   /** Order-faithful against the field ids it is handed. */
   toRow: (row: Row, fieldIds: readonly string[]) => readonly ExportCell[];

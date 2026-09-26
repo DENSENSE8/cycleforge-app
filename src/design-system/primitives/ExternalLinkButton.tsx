@@ -9,7 +9,7 @@ interface ExternalLinkButtonProps {
   ariaLabel?: string;
 }
 
-export function ExternalLinkButton({ onClick, disabled = false, ariaLabel }: ExternalLinkButtonProps) {
+function ExternalLinkButton({ onClick, disabled = false, ariaLabel }: ExternalLinkButtonProps) {
   const { isMobile } = useUIModeOptional();
 
   return (

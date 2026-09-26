@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { setNasBaseUrl } from '@/lib/nas-photos';
 
 /** Fetch the runtime NAS config (active base URL + this operator's folder) from GET /api/nas-config and push the base URL into the… */
-export interface NasConfig {
+interface NasConfig {
   baseUrl: string;
   folder: string;
 }

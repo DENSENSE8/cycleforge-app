@@ -1,9 +1,9 @@
 /** Invisible, versioned observability seam for the Outbound realtime path. */
 
-export const OUTBOUND_REALTIME_PAINT_EVENT = 'cf:outbound-realtime-received' as const;
-export const OUTBOUND_REALTIME_PAINT_SCHEMA_VERSION = 1 as const;
+const OUTBOUND_REALTIME_PAINT_EVENT = 'cf:outbound-realtime-received' as const;
+const OUTBOUND_REALTIME_PAINT_SCHEMA_VERSION = 1 as const;
 
-export type OutboundRealtimePaintReceipt = {
+type OutboundRealtimePaintReceipt = {
   schemaVersion: typeof OUTBOUND_REALTIME_PAINT_SCHEMA_VERSION;
   orderId: number | null;
   receivedAt: number;

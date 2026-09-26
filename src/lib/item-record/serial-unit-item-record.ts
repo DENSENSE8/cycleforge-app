@@ -6,7 +6,7 @@ import type { SerialUnitDetailPayload } from '@/components/inventory/types';
 /** The unit row itself — the payload's `serial_unit`, not the whole envelope. */
 export type SerialUnitRecordSource = SerialUnitDetailPayload['serial_unit'];
 
-export interface SerialUnitItemRecordOptions {
+interface SerialUnitItemRecordOptions {
   /**
    * Thumbnail for the item face. The unit's photos live beside the row in the
    * payload, so the surface resolves which one leads and passes it here.

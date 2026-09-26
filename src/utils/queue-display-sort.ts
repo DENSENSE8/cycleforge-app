@@ -79,7 +79,7 @@ const QUEUE_CHANNEL_PIN_LABELS: ReadonlySet<string> = new Set(
 );
 
 /** `?sort=carrier:USPS` — tracking-ring names, never "USPS first". */
-export function isQueueCarrierPinSort(sort: string): sort is `carrier:${string}` {
+function isQueueCarrierPinSort(sort: string): sort is `carrier:${string}` {
   if (!sort.startsWith('carrier:')) return false;
   return QUEUE_CARRIER_PIN_LABELS.has(sort.slice('carrier:'.length));
 }
@@ -91,7 +91,7 @@ export function queueCarrierPin(sort: string): string | null {
 }
 
 /** `?sort=channel:Amazon` — Order-column filled-dot names. */
-export function isQueueChannelPinSort(sort: string): sort is `channel:${string}` {
+function isQueueChannelPinSort(sort: string): sort is `channel:${string}` {
   if (!sort.startsWith('channel:')) return false;
   return QUEUE_CHANNEL_PIN_LABELS.has(sort.slice('channel:'.length));
 }
@@ -123,7 +123,7 @@ export const COMPOUND_TRACK_SORT_KEYS: Readonly<Record<string, QueueDisplaySortC
  * `status:N`, so the bound FIELD is what makes a header clickable — a rebind
  * of Pick into `status:2` must still sort as `picked`.
  */
-export const SLOT_FIELD_SORT_FACTS: Readonly<Record<string, QueueDisplaySortColumn>> = {
+const SLOT_FIELD_SORT_FACTS: Readonly<Record<string, QueueDisplaySortColumn>> = {
   'orders.picked': 'picked',
   'orders.packed': 'packed',
   'orders.scanned_out': 'scanned_out',
@@ -175,7 +175,7 @@ export const QUEUE_DISPLAY_SORT_OPTIONS: readonly {
 ] as const;
 
 /** Closed-control face for the active `?sort=` — including header-click column sorts that are not rows in the dropdown. */
-export type QueueDisplaySortFace = {
+type QueueDisplaySortFace = {
   label: string;
   shortLabel: string;
   identity?: { kind: 'platform' | 'carrier'; label: string };

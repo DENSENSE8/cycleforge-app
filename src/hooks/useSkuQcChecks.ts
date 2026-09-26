@@ -3,7 +3,7 @@
 import { useQuery } from '@tanstack/react-query';
 import type { QcCheckTemplateRow, SkuCatalogRow } from '@/lib/neon/sku-catalog-queries';
 
-export interface SkuQcChecksResult {
+interface SkuQcChecksResult {
   catalog: SkuCatalogRow;
   checks: QcCheckTemplateRow[];
 }

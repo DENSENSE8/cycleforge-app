@@ -24,7 +24,7 @@ export function searchHitIdentifier(hit: AiSearchHit): string {
 }
 
 /** Entity noun as the TYPE column's word — the discriminator of a mixed list. */
-export function searchHitEntityLabel(hit: AiSearchHit): string {
+function searchHitEntityLabel(hit: AiSearchHit): string {
   const raw = String(hit.entityType ?? '').trim();
   if (!raw) return 'Record';
   const words = raw.split('_').join(' ');

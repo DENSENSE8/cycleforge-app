@@ -17,7 +17,7 @@ function randomId(): string {
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
-export interface BinRowDetailsData {
+interface BinRowDetailsData {
   sku: string;
   qty: number;
   productTitle: string | null;

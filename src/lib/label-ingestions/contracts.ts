@@ -31,7 +31,7 @@ export const labelIngestionListQuerySchema = z.object({
 
 export const labelIngestionIdSchema = z.coerce.number().int().positive();
 
-export const safeLabelApiErrorCodeSchema = z.enum([
+const safeLabelApiErrorCodeSchema = z.enum([
   'INVALID_REQUEST',
   'INVALID_PDF',
   'PAYLOAD_TOO_LARGE',
@@ -43,9 +43,9 @@ export const safeLabelApiErrorCodeSchema = z.enum([
   'INGESTION_PROCESSING_FAILED',
 ] as const);
 
-export type SafeLabelApiErrorCode = z.infer<typeof safeLabelApiErrorCodeSchema>;
+type SafeLabelApiErrorCode = z.infer<typeof safeLabelApiErrorCodeSchema>;
 
-export interface SafeLabelApiError {
+interface SafeLabelApiError {
   error: { code: SafeLabelApiErrorCode; message: string };
 }
 

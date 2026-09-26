@@ -2,7 +2,7 @@
 
 export type HeatLevel = 'idle' | 'active' | 'warm' | 'hot';
 
-export interface HeatInput {
+interface HeatInput {
   /** Items physically sitting at the node (active + blocked). */
   total: number;
   /** Items parked in error status. */

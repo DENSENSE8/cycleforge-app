@@ -12,7 +12,7 @@ import { KIOSK_POS_TRAIL_CONTROL } from '@/app/kiosk/kiosk-pos-surface';
 import { cn } from '@/utils/_cn';
 import { CONSULT_STANCES, type ConsultStance } from '@/lib/counter/consult-stance';
 
-export const CONSULT_STANCE_LABELS: Record<ConsultStance, string> = {
+const CONSULT_STANCE_LABELS: Record<ConsultStance, string> = {
   work: 'Work',
   show: 'Show',
   verify: 'Verify',

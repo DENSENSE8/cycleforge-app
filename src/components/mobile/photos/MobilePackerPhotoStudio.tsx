@@ -29,7 +29,7 @@ import { cn } from '@/utils/_cn';
 
 type GuidedCaptureStep = 'slip' | 'box';
 
-export interface MobilePackerPhotoStudioProps {
+interface MobilePackerPhotoStudioProps {
   packerLogId: number;
   orderId: string;
   orderRowId?: number | null;

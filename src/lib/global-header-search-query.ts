@@ -6,7 +6,7 @@ export function setGlobalHeaderSearchDraft(query: string): void {
   draftQuery = query;
 }
 
-export function getGlobalHeaderSearchDraft(): string {
+function getGlobalHeaderSearchDraft(): string {
   return draftQuery;
 }
 

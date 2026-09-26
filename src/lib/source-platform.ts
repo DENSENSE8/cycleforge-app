@@ -113,7 +113,7 @@ export function sourcePlatformHue(value: string | null | undefined): PlatformHue
 }
 
 /** Fixed lettermark for icon-only listing chrome. */
-export function sourcePlatformMark(value: string | null | undefined): string {
+function sourcePlatformMark(value: string | null | undefined): string {
   return sourcePlatformMeta(value).mark;
 }
 

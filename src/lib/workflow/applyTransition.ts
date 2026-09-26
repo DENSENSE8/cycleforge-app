@@ -11,7 +11,7 @@ import {
 import type { OrgId } from '@/lib/tenancy/constants';
 import { tapWorkflow, type WorkflowTapArgs, type WorkflowTapEvent } from './tap';
 
-export interface ApplyTransitionArgs {
+interface ApplyTransitionArgs {
   /** serial_units.id */
   unitId: number;
   /** Target lifecycle state (guarded against the unit's current state). */
@@ -50,7 +50,7 @@ export interface ApplyTransitionArgs {
   skipTap?: boolean;
 }
 
-export type ApplyTransitionResult =
+type ApplyTransitionResult =
   | {
       ok: true;
       status: 200;

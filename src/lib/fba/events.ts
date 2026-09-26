@@ -4,17 +4,17 @@
 /** FbaBoardTable → sidebar: array of selected FbaBoardItem[] */
 export const FBA_BOARD_SELECTION = 'fba-board-selection' as const;
 /** FbaBoardTable → sidebar: { selected, total, selectedQty, totalQty } */
-export const FBA_BOARD_SELECTION_COUNT = 'fba-board-selection-count' as const;
+const FBA_BOARD_SELECTION_COUNT = 'fba-board-selection-count' as const;
 /** Sidebar → FbaBoardTable: 'all' | 'none' */
 export const FBA_BOARD_TOGGLE_ALL = 'fba-board-toggle-all' as const;
 /** Sidebar → FbaBoardTable: select all items matching a due_date (YYYY-MM-DD) */
-export const FBA_BOARD_SELECT_BY_DAY = 'fba-board-select-by-day' as const;
+const FBA_BOARD_SELECT_BY_DAY = 'fba-board-select-by-day' as const;
 /** Sidebar → FbaBoardTable: deselect all items matching a due_date (YYYY-MM-DD) */
-export const FBA_BOARD_DESELECT_BY_DAY = 'fba-board-deselect-by-day' as const;
+const FBA_BOARD_DESELECT_BY_DAY = 'fba-board-deselect-by-day' as const;
 /** StationFbaInput (select mode) → FbaBoardTable: select items matching an FNSKU */
 export const FBA_BOARD_SELECT_BY_FNSKU = 'fba-board-select-by-fnsku' as const;
 /** FbaBoardTable → StationFbaInput: result of a select-by-fnsku attempt */
-export const FBA_BOARD_FNSKU_SELECT_RESULT = 'fba-board-fnsku-select-result' as const;
+const FBA_BOARD_FNSKU_SELECT_RESULT = 'fba-board-fnsku-select-result' as const;
 /** Sidebar → FbaBoardTable: deselect one item_id */
 export const FBA_BOARD_DESELECT_ITEM = 'fba-board-deselect-item' as const;
 /** User pressed "Combine items": open the center workspace + flip the sidebar to the Packed tab. */

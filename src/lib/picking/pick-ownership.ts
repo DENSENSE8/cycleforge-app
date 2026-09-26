@@ -6,9 +6,9 @@
 import type { PickOwner, PickStaffRef } from './directed-pick';
 
 /** How many backups are auto-selected per order. */
-export const PICK_BACKUP_COUNT = 2;
+const PICK_BACKUP_COUNT = 2;
 
-export interface PickOwnershipInput {
+interface PickOwnershipInput {
   assignedStaffId: number | null;
   pairedStaffId: number | null;
   /** Ranked candidates: pick history of the order's SKUs, then the picker roster. */

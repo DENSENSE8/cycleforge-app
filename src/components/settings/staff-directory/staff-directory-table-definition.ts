@@ -29,7 +29,7 @@ export const STAFF_DIRECTORY_GRID_CAPABILITIES: GridSurfaceCapabilities = {
   dayBands: false,
 };
 
-export function makeStaffDirectoryGridDescriptor(
+function makeStaffDirectoryGridDescriptor(
   columns: readonly StaffDirectoryGridColumn[],
 ): GridSurfaceDescriptor<StaffDirectoryRow, StaffDirectoryGridColumn> {
   return makeGridSurfaceDescriptor<StaffDirectoryRow, StaffDirectoryGridColumn>(
@@ -44,7 +44,7 @@ export function makeStaffDirectoryGridDescriptor(
   );
 }
 
-export const STAFF_DIRECTORY_TABLE_DEFINITION = parseTableDefinition({
+const STAFF_DIRECTORY_TABLE_DEFINITION = parseTableDefinition({
   id: 'settings.staff-directory',
   tableId: 'staff-directory',
   entityFamily: 'staff-directory',

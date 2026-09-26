@@ -17,7 +17,7 @@ const MAX_TOKENS = 16000;
 // navigate/highlight are live in Phase 2; the canvas-control namespace ships
 // as stubs the dock ignores until Phase 3 wires the Studio URL state.
 
-export const UI_TOOLS: Anthropic.Tool[] = [
+const UI_TOOLS: Anthropic.Tool[] = [
   {
     name: 'navigate',
     description:
@@ -81,7 +81,7 @@ const UI_TOOL_NAMES = new Set(UI_TOOLS.map((t) => t.name));
 // ─── System prompt ───────────────────────────────────────────────────────────
 
 /** Stable core — byte-identical across requests so the prompt cache holds. */
-export function buildSystemCore(toolNames: string[]): string {
+function buildSystemCore(toolNames: string[]): string {
   return [
     'You are the operations assistant embedded in a used-electronics reseller operations platform (receiving, testing, repair, listing, fulfillment, returns).',
     'You answer questions about THIS organization\'s live operation using your read tools — never from memory. Compose tools per question: identifiers / find / where / which → hybrid_entity_search or exact_id_serial_search; #ticket → resolve_support_ticket; full history / trace / what happened → get_operations_journey; serial return / which order shipped this serial → lookup_serial; warranty / coverage / expired → lookup_warranty_coverage or list_warranty_claims; specific order id or tracking → get_order_lookup; my tech queue → get_my_tech_queue; assignments → get_assignments; photos → search_photos; receiving by tracking → get_receiving_by_tracking; packing pace / packer KPIs → get_packing_kpi; aggregates / why failing → get_top_reasons / get_kpis / get_signals_by_node; then drill with get_unit_journey, search_notes, get_node_detail.',
@@ -95,7 +95,7 @@ export function buildSystemCore(toolNames: string[]): string {
 }
 
 /** Volatile per-request context — rendered AFTER the cache breakpoint. */
-export function buildContextFragment(context: AssistantPageContext | null | undefined): string {
+function buildContextFragment(context: AssistantPageContext | null | undefined): string {
   if (!context) return 'Page context: none provided.';
   const parts = [
     `Page context: the user is on "${context.page}"`,
@@ -116,7 +116,7 @@ export type AssistantEmit =
   | { type: 'ui_tool'; name: string; input: unknown }
   | { type: 'error'; message: string };
 
-export interface RunAssistantTurnArgs {
+interface RunAssistantTurnArgs {
   ctx: AssistantToolCtx;
   /** Prior turns, oldest first (flat text history from ai_chat_messages). */
   history: Array<{ role: 'user' | 'assistant'; content: string }>;
@@ -132,7 +132,7 @@ export interface RunAssistantTurnArgs {
   emit: (event: AssistantEmit) => void;
 }
 
-export interface RunAssistantTurnResult {
+interface RunAssistantTurnResult {
   ok: boolean;
   /** Final assistant text (what gets persisted + rendered). */
   text: string;

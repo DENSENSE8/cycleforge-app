@@ -8,7 +8,7 @@ import { shortSku, isoWeekParts, parseUnitId, formatUnitId } from '@/lib/invento
 export { parseUnitId };
 
 /** Allocate the next unit sequence for (sku_catalog_id, calendar_year) via the fn_next_unit_seq SQL function (Phase 0 migration). */
-export async function allocateNextUnitId(
+async function allocateNextUnitId(
   skuCatalogId: number,
   skuText: string,
   yearOverride?: number,

@@ -43,7 +43,7 @@ interface CartonState {
 }
 
 /** The originating order, in the minimal shape persistReturnLinkage needs. */
-export interface ReturnLinkageOrder {
+interface ReturnLinkageOrder {
   orderPk: number;
   orderId: string;
   itemNumber: string | null;
@@ -52,7 +52,7 @@ export interface ReturnLinkageOrder {
   sku?: string | null;
 }
 
-export interface ReturnLinkagePersisted {
+interface ReturnLinkagePersisted {
   /** False when the carton is a real Zoho PO (never reclassified). */
   eligible: boolean;
   promotedToFound: boolean;
@@ -152,7 +152,7 @@ function resolveReturnPlatformCols(
 // ─── Shared persistence ────────────────────────────────────────────────────────
 
 /** Persist the carton/line return linkage for a resolved order. */
-export async function persistReturnLinkage(
+async function persistReturnLinkage(
   client: PoolClient,
   params: {
     receivingLineId: number;
@@ -272,7 +272,7 @@ export async function persistReturnLinkage(
 
 // ─── Entry 1: serial scan ───────────────────────────────────────────────────────
 
-export interface ReturnedSerialLinkInput {
+interface ReturnedSerialLinkInput {
   serialUnitId: number;
   normalizedSerial: string;
   receivingLineId: number;
@@ -287,7 +287,7 @@ export interface ReturnedSerialLinkInput {
   sku?: string | null;
 }
 
-export interface ReturnedSerialLinkResult {
+interface ReturnedSerialLinkResult {
   /** True when a prior outbound order was resolved AND its linkage persisted. */
   linked: boolean;
   /** True when an open SHIPPED allocation was flipped → RETURNED. */
@@ -501,7 +501,7 @@ export async function linkReturnedSerial(
 
 // ─── Entry 2: import a sales order by its order number ───────────────────────────
 
-export interface ImportSalesOrderInput {
+interface ImportSalesOrderInput {
   orderNumber: string;
   receivingLineId: number;
   receivingId: number | null;
@@ -510,7 +510,7 @@ export interface ImportSalesOrderInput {
   reason?: string | null;
 }
 
-export interface ImportSalesOrderResult {
+interface ImportSalesOrderResult {
   /** True when the order resolved AND the (eligible) carton was reclassified. */
   imported: boolean;
   promotedToFound: boolean;
@@ -523,7 +523,7 @@ export interface ImportSalesOrderResult {
   linePatch: ReturnLinkageLinePatch | null;
 }
 
-export interface ImportSalesOrderDeps extends PersistLinkageDeps {
+interface ImportSalesOrderDeps extends PersistLinkageDeps {
   runTransaction: <T>(orgId: OrgId, cb: (client: PoolClient) => Promise<T>) => Promise<T>;
   recordInventoryEvent: typeof recordInventoryEvent;
 }
@@ -687,7 +687,7 @@ export interface ShippedOrderCompare {
   serial_match: SerialCompareOutcome;
 }
 
-export interface ShippedOrderCompareDeps {
+interface ShippedOrderCompareDeps {
   query: typeof tenantQuery;
   listingUrlForItemNumber: (itemNumber: string | null | undefined) => string | null;
   normalize: (raw: string | null | undefined) => string;
@@ -799,7 +799,7 @@ export interface ShippedOrderSuggestion {
   sku: string | null;
 }
 
-export interface ShippedOrderSuggestDeps {
+interface ShippedOrderSuggestDeps {
   query: typeof tenantQuery;
 }
 
@@ -841,7 +841,7 @@ export async function suggestShippedOrdersByNumber(
 
 // ─── Entry 4: log an unmatched received serial INTO the system ────────────────────
 
-export interface LogUnmatchedSerialInput {
+interface LogUnmatchedSerialInput {
   serialNumber: string;
   /** The receiving line to PAIR the serial to (the unfound record). */
   receivingLineId?: number | null;
@@ -856,7 +856,7 @@ export interface LogUnmatchedSerialInput {
   clientEventId?: string | null;
 }
 
-export interface LogUnmatchedSerialResult {
+interface LogUnmatchedSerialResult {
   serialUnitId: number | null;
   isNew: boolean;
   /** True when the serial was paired to a receiving line (vs registry-only). */

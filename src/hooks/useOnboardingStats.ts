@@ -6,7 +6,7 @@ import { useQuery } from '@tanstack/react-query';
 import type { OnboardingStats } from '@/lib/onboarding/steps';
 
 /** Shared cache key — one fetch serves every consumer on the page. */
-export const ONBOARDING_STATS_QUERY_KEY = ['onboarding-stats'] as const;
+const ONBOARDING_STATS_QUERY_KEY = ['onboarding-stats'] as const;
 
 export function useOnboardingStats() {
   return useQuery({

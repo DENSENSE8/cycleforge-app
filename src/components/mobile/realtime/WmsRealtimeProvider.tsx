@@ -13,7 +13,7 @@ import {
 import { wmsTicketRefreshDelayMs } from '@/lib/realtime/wms-ticket-lifetime';
 import { chooseWmsTransport, postWmsCommand } from '@/lib/realtime/wms-command-transport';
 
-export const WMS_SEND_EVENT = 'cycleforge:wms:send';
+const WMS_SEND_EVENT = 'cycleforge:wms:send';
 
 type WmsResult = {
   type: 'wms.result';
@@ -335,6 +335,6 @@ export function useWmsRealtime(): State {
   return value;
 }
 
-export function dispatchWmsSignal(payload: unknown): void {
+function dispatchWmsSignal(payload: unknown): void {
   window.dispatchEvent(new CustomEvent(WMS_SEND_EVENT, { detail: payload }));
 }

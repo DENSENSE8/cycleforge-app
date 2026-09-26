@@ -1,6 +1,6 @@
 /** Source of truth for the *manual* priority-tier override (receiving.priority_tier). */
 
-export interface PriorityOverrideTier {
+interface PriorityOverrideTier {
   /** Stored receiving.priority_tier value. Lower = higher up the sort. */
   value: number;
   /** Pill option + full collapsed-display label (Classify / tooltips). */

@@ -80,6 +80,6 @@ export function photoGridLeafClass(density: PhotoGridDensity): string {
 }
 
 /** @deprecated Use {@link photoGridLeafClass} — labeled grid-lg defers to the same layout. */
-export function photoGridLabeledClass(density: PhotoGridDensity): string {
+function photoGridLabeledClass(density: PhotoGridDensity): string {
   return photoGridLeafClass(density);
 }

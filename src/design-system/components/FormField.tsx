@@ -2,7 +2,7 @@
 
 import type { ReactNode } from 'react';
 
-export interface FormFieldProps {
+interface FormFieldProps {
   /** Field label text */
   label: string;
   /** Show red asterisk after label */

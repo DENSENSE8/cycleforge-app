@@ -10,7 +10,7 @@ import {
     dispatchNavigateInventoryDetails,
 } from '@/lib/inventory-events-channel';
 
-export interface InventoryDetailPanelShellProps {
+interface InventoryDetailPanelShellProps {
     title: string;
     subtitle?: string;
     eyebrow: string;

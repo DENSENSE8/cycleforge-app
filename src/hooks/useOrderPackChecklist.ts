@@ -3,7 +3,7 @@
 import { useQuery } from '@tanstack/react-query';
 import type { OrderPackChecklistResult } from '@/lib/packing/order-pack-checklist';
 
-export function orderPackChecklistQueryKey(
+function orderPackChecklistQueryKey(
   orderRowId: number | null,
   skuFallback?: string | null,
 ) {

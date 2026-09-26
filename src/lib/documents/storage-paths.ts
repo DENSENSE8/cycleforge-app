@@ -1,6 +1,6 @@
 /** Path convention for server-fetched outbound documents (docs/outbound-documents-plan.md §5.2). */
 
-export interface OutboundDocumentPathInput {
+interface OutboundDocumentPathInput {
   orgSlug: string;
   documentType: string;
   platform: string;

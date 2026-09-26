@@ -152,7 +152,7 @@ export function getUnboxRecentStatusDotLabel(row: ReceivingLineRow): string {
 }
 
 /** Time label for the "Received" rail's rows (formerly "Unboxed") — now a recency-merged feed of unboxed ∪ new-scanned ∪ unfound cartons. */
-export function getReceivedActivityAt(r: ReceivingLineRow): string | null {
+function getReceivedActivityAt(r: ReceivingLineRow): string | null {
   return (
     r.unboxed_at ??
     r.received_at ??
@@ -177,7 +177,7 @@ export function getTestingOpenedAt(r: ReceivingLineRow): string | null {
   return r.testing_opened_at ?? null;
 }
 
-export function getTestingStatusDot(row: ReceivingLineRow): string {
+function getTestingStatusDot(row: ReceivingLineRow): string {
   return workflowStageDot(row.workflow_status);
 }
 

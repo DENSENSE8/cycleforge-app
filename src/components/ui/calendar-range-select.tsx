@@ -7,7 +7,7 @@ import { Calendar } from '@/components/ui/calendar';
 // `mode` is dropped from BOTH halves: PropsBase also declares it (as the wide
 // `Mode`), and leaving it in would widen the literal `mode="range"` below back
 // to `Mode`, which no longer discriminates DayPicker's props union.
-export type CalendarRangeSelectProps = Omit<PropsBase, 'mode'> &
+type CalendarRangeSelectProps = Omit<PropsBase, 'mode'> &
   Omit<PropsRange, 'mode'> & {
     className?: string;
     /** The selected range. `undefined` = nothing picked yet. */

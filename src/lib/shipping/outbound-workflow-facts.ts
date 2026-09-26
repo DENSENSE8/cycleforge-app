@@ -16,7 +16,7 @@ import {
   type OutboundWorkflowException,
 } from '@/lib/shipping/outbound-workflow-actions';
 
-export interface OutboundWorkflowFactInput {
+interface OutboundWorkflowFactInput {
   shipmentId?: number | string | null;
   hasTechScan?: boolean | null;
   packedAt?: string | null;
@@ -26,7 +26,7 @@ export interface OutboundWorkflowFactInput {
   deadlineAt?: string | null;
 }
 
-export interface OutboundWorkflowFacts {
+interface OutboundWorkflowFacts {
   stage: OrderLifecycleStage;
   /** Visual role only; its state comes from this workflow verdict, never a renderer-local color branch. */
   stateRail: OutboundWorkflowStateRail;
@@ -42,7 +42,7 @@ export interface OutboundWorkflowFacts {
 /** The compact row's left state mark — semantic role, not a palette value. */
 export type OutboundWorkflowStateRail = 'ready' | 'exception' | 'packed';
 
-export function resolveOutboundWorkflowStateRail(
+function resolveOutboundWorkflowStateRail(
   stage: OrderLifecycleStage,
   exception: OutboundWorkflowException,
 ): OutboundWorkflowStateRail {

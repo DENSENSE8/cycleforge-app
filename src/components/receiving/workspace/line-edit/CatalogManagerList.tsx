@@ -43,7 +43,7 @@ const TEXT_INPUT =
   cn('w-full rounded-lg border border-border-soft bg-surface-card inset-cozy text-role-caption text-text-default transition-colors', focusRing('field', 'accent'));
 
 /** Accessible mid-saturation presets for catalog accents (platforms + types + the priority ladder). */
-export const CATALOG_COLOR_PRESETS: ReadonlyArray<ColorSwatch> = [
+const CATALOG_COLOR_PRESETS: ReadonlyArray<ColorSwatch> = [
   { hex: '#2563eb', label: 'Blue' },
   { hex: '#0ea5e9', label: 'Sky' },
   { hex: '#10b981', label: 'Emerald' },

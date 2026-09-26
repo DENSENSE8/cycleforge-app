@@ -24,7 +24,7 @@ import {
 } from './admin-bulk-allocate-table-definition';
 import { useAdminBulkAllocateTableLayout } from './useAdminBulkAllocateTableLayout';
 
-export interface UseAdminBulkAllocateSpreadsheetOptions {
+interface UseAdminBulkAllocateSpreadsheetOptions {
   /** One offset page of candidates. Already ordered by the server. */
   rows: readonly AllocationCandidateRow[];
   loading?: boolean;

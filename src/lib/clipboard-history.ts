@@ -97,7 +97,7 @@ export function recordCopy(
   emit();
 }
 
-export function removeClipboardEntry(id: string): void {
+function removeClipboardEntry(id: string): void {
   hydrate();
   const next = entries.filter((e) => e.id !== id);
   if (next.length === entries.length) return;

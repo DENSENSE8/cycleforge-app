@@ -1,8 +1,8 @@
 /** Pure, exact-deadline display facts for the mobile outbound roster. */
 
-export type OutboundSlaTone = 'neutral' | 'warning' | 'danger';
+type OutboundSlaTone = 'neutral' | 'warning' | 'danger';
 
-export interface OutboundSlaCountdown {
+interface OutboundSlaCountdown {
   label: string;
   tone: OutboundSlaTone;
   exact: boolean;

@@ -8,13 +8,13 @@ import type { TemplateGraph } from './templates';
 export const CYCLEFORGE_TEMPLATE_PACKAGE_SCHEMA_VERSION = 1 as const;
 
 /** Package graph — the same node/edge shape as the canvas + workflow_templates.graph. */
-export const TemplatePackageGraphSchema = z.object({
+const TemplatePackageGraphSchema = z.object({
   nodes: z.array(StudioGraphNodeSchema).max(200),
   edges: z.array(StudioGraphEdgeSchema).max(400),
 });
 
 /** Optional explicit surface binding carried by the package. */
-export const TemplatePackageSurfaceSeedSchema = z.object({
+const TemplatePackageSurfaceSeedSchema = z.object({
   surfaceKey: z.string().min(1).max(64),
   pageKey: z.string().min(1).max(64),
   modeKey: z.string().min(1).max(64),
@@ -23,7 +23,7 @@ export const TemplatePackageSurfaceSeedSchema = z.object({
   label: z.string().min(1).max(120),
 });
 
-export const TemplatePackageMetadataSchema = z.object({
+const TemplatePackageMetadataSchema = z.object({
   slug: z.string().min(1).max(80).regex(/^[a-z0-9-]+$/, 'slug is lowercase kebab-case'),
   name: z.string().trim().min(1).max(120),
   description: z.string().max(2000).nullable().optional(),
@@ -49,7 +49,7 @@ export interface ValidatePackageDeps {
   isSurfaceKey: (key: string) => boolean;
 }
 
-export type ValidatePackageResult =
+type ValidatePackageResult =
   | { ok: true; package: TemplatePackageV1 }
   | { ok: false; errors: string[] };
 

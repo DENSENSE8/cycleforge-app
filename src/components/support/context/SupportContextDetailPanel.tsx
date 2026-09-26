@@ -13,7 +13,7 @@ import {
 import type { SectionTab } from '@/design-system/components';
 import type { SupportContextAnchor } from '@/hooks/useSupportContext';
 
-export interface SupportContextDetailPanelProps {
+interface SupportContextDetailPanelProps {
   ticketId: number;
   anchor: SupportContextAnchor;
   open: boolean;

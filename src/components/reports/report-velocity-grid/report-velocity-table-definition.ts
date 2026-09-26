@@ -24,7 +24,7 @@ export const REPORT_VELOCITY_GRID_CAPABILITIES: GridSurfaceCapabilities = {
   dayBands: false,
 };
 
-export function makeReportVelocityGridDescriptor(
+function makeReportVelocityGridDescriptor(
   columns: readonly ReportVelocityGridColumn[],
 ): GridSurfaceDescriptor<VelocityReportRow, ReportVelocityGridColumn> {
   return makeGridSurfaceDescriptor<VelocityReportRow, ReportVelocityGridColumn>(
@@ -39,7 +39,7 @@ export function makeReportVelocityGridDescriptor(
   );
 }
 
-export const REPORT_VELOCITY_TABLE_DEFINITION = parseTableDefinition({
+const REPORT_VELOCITY_TABLE_DEFINITION = parseTableDefinition({
   id: 'reports.velocity',
   tableId: 'report-velocity',
   entityFamily: 'report-velocity',

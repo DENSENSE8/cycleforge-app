@@ -93,7 +93,7 @@ export async function recordNangoConnection(input: {
 }
 
 /** Removes the marker (does not revoke the connection inside Nango). */
-export async function forgetNangoConnection(
+async function forgetNangoConnection(
   orgId: OrgId,
   provider: IntegrationProvider,
 ): Promise<void> {

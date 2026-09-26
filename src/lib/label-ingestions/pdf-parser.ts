@@ -10,9 +10,9 @@ export class LabelPdfParseError extends Error {
   }
 }
 
-export interface PdfPageText { getTextContent(): Promise<{ items: Array<{ str?: unknown }> }>; }
-export interface PdfDocument { numPages: number; getPage(page: number): Promise<PdfPageText>; destroy?(): void; }
-export type PdfLoader = (bytes: Uint8Array) => Promise<PdfDocument>;
+interface PdfPageText { getTextContent(): Promise<{ items: Array<{ str?: unknown }> }>; }
+interface PdfDocument { numPages: number; getPage(page: number): Promise<PdfPageText>; destroy?(): void; }
+type PdfLoader = (bytes: Uint8Array) => Promise<PdfDocument>;
 
 async function bounded<T>(work: Promise<T>): Promise<T> {
   let timeout: ReturnType<typeof setTimeout> | undefined;
@@ -21,7 +21,7 @@ async function bounded<T>(work: Promise<T>): Promise<T> {
   } finally { if (timeout) clearTimeout(timeout); }
 }
 
-export async function loadPdfDocument(bytes: Uint8Array): Promise<PdfDocument> {
+async function loadPdfDocument(bytes: Uint8Array): Promise<PdfDocument> {
   try {
     // The server must use pdf.js's Node-compatible build. The browser build
     // needs DOM worker primitives and would turn valid uploads into parse

@@ -7,9 +7,9 @@ import type { OrgId } from '@/lib/tenancy/constants';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
-export type ReplenishmentTaskStatus = 'REQUESTED' | 'IN_PROGRESS' | 'COMPLETE' | 'CANCELED';
+type ReplenishmentTaskStatus = 'REQUESTED' | 'IN_PROGRESS' | 'COMPLETE' | 'CANCELED';
 
-export interface ReplenishmentTaskRow {
+interface ReplenishmentTaskRow {
   id: number;
   sku: string;
   fromBinId: number | null;
@@ -23,7 +23,7 @@ export interface ReplenishmentTaskRow {
   qtyMoved: number | null;
 }
 
-export interface DetectionResult {
+interface DetectionResult {
   scannedPickFaces: number;
   proposed: number;
   inserted: number;
@@ -33,7 +33,7 @@ export interface DetectionResult {
 // ─── Detection ───────────────────────────────────────────────────────────────
 
 /** Scan all PICK_FACE bins where qty is below min_qty and create REQUESTED tasks for them. */
-export async function detectReplenishmentNeeds(orgId?: OrgId): Promise<DetectionResult> {
+async function detectReplenishmentNeeds(orgId?: OrgId): Promise<DetectionResult> {
   // Tenant-scoped path:
   if (orgId) {
     return withTenantTransaction(orgId, async (client) => {
@@ -193,7 +193,7 @@ export async function detectReplenishmentNeeds(orgId?: OrgId): Promise<Detection
 
 // ─── Lifecycle ───────────────────────────────────────────────────────────────
 
-export type ClaimTaskResult =
+type ClaimTaskResult =
   | { ok: true }
   | { ok: false; status: 404 | 409; error: string };
 
@@ -253,12 +253,12 @@ export async function claimTask(input: {
   return { ok: true };
 }
 
-export type ReleaseTaskResult =
+type ReleaseTaskResult =
   | { ok: true }
   | { ok: false; status: 404 | 409; error: string };
 
 /** Injectable collaborators so unit tests run DB-free (house `Deps` pattern). */
-export interface ReleaseTaskDeps {
+interface ReleaseTaskDeps {
   tenantQuery: typeof tenantQuery;
 }
 
@@ -302,7 +302,7 @@ export async function releaseTask(
   return { ok: true };
 }
 
-export type CompleteTaskResult =
+type CompleteTaskResult =
   | { ok: true; fromBinQty: number | null; toBinQty: number }
   | { ok: false; status: 404 | 409; error: string };
 
@@ -398,7 +398,7 @@ export async function completeTask(input: {
   throw new Error('completeTask: orgId is required');
 }
 
-export type CancelTaskResult = { ok: true } | { ok: false; status: 404 | 409; error: string };
+type CancelTaskResult = { ok: true } | { ok: false; status: 404 | 409; error: string };
 
 export async function cancelTask(input: {
   taskId: number;

@@ -18,7 +18,7 @@ export type CustomerIntent =
   | { kind: 'create' }
   | { kind: 'unlink' };
 
-export interface RepairContactFields {
+interface RepairContactFields {
   contactName: string;
   contactPhone: string;
   contactEmail: string;
@@ -47,7 +47,7 @@ export interface RepairInfoSource {
   customer_email?: string | null;
 }
 
-export interface RepairInfoWrite {
+interface RepairInfoWrite {
   /** Operator word for the fact, shown on the Save button and in errors. */
   label: string;
   method: 'PATCH' | 'POST' | 'PUT' | 'DELETE';
@@ -55,7 +55,7 @@ export interface RepairInfoWrite {
   body?: Record<string, unknown>;
 }
 
-export interface RepairInfoPlan {
+interface RepairInfoPlan {
   writes: RepairInfoWrite[];
   /** Why the draft cannot be saved (operator words); null when it can. */
   problem: string | null;
@@ -83,7 +83,7 @@ function legacyContact(row: RepairInfoSource): RepairContactFields {
  * record's own columns, the picked customer, the intake string (unlinked or
  * about to unlink), or blanks for a new record replacing a linked one.
  */
-export function contactSeed(row: RepairInfoSource, intent: CustomerIntent): RepairContactFields {
+function contactSeed(row: RepairInfoSource, intent: CustomerIntent): RepairContactFields {
   switch (intent.kind) {
     case 'keep':
       return row.customer_id != null

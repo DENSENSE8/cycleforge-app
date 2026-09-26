@@ -141,7 +141,7 @@ export function benchActionAsPart(row: {
 }
 
 /** Which repairs to read. */
-export type VisitProvenanceScope =
+type VisitProvenanceScope =
   | { counterTransactionId: number }
   | { repairIds: number[] };
 

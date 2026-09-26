@@ -46,7 +46,7 @@ async function connectedOrgsForProvider(provider: IntegrationProvider): Promise<
   return rows.map((r) => r.organization_id as OrgId);
 }
 
-export interface OrchestratorResult {
+interface OrchestratorResult {
   provider: IntegrationProvider;
   orgId: OrgId;
   outcome: SyncOutcome;
@@ -80,7 +80,7 @@ export async function runOrdersSyncAllOrgs(only?: IntegrationProvider[]): Promis
   return out;
 }
 
-export interface ReconcileResult {
+interface ReconcileResult {
   provider: IntegrationProvider;
   orgId: OrgId;
   outcome: ReconcileOutcome;

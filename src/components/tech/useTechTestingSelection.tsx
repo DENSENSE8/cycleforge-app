@@ -38,7 +38,7 @@ async function patchAssignedTech(lineId: number, assignedTechId: number): Promis
   }
 }
 
-export interface TechTestingSelection {
+interface TechTestingSelection {
   testingSelectMode: boolean;
   testingSelectedRows: ReceivingLineRow[];
   testingClaimRow: ReceivingLineRow | null;

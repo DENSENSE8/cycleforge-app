@@ -3,7 +3,7 @@ export const CUSTOM_FIELD_ENTITY_TYPES = ['ORDER', 'RECEIVING'] as const;
 export type CustomFieldEntityType = (typeof CUSTOM_FIELD_ENTITY_TYPES)[number];
 
 /** Entity types allowed to paint / create / hydrate custom columns **in product**. */
-export const CUSTOM_FIELD_LIVE_ENTITY_TYPES = ['RECEIVING'] as const satisfies readonly CustomFieldEntityType[];
+const CUSTOM_FIELD_LIVE_ENTITY_TYPES = ['RECEIVING'] as const satisfies readonly CustomFieldEntityType[];
 
 type CustomFieldLiveEntityType = (typeof CUSTOM_FIELD_LIVE_ENTITY_TYPES)[number];
 

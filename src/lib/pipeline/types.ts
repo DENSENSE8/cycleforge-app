@@ -96,11 +96,11 @@ export interface CycleResult {
   durationSeconds: number;
 }
 
-export type PipelineStatus = 'idle' | 'discovering' | 'implementing' | 'validating' | 'collecting';
+type PipelineStatus = 'idle' | 'discovering' | 'implementing' | 'validating' | 'collecting';
 
 // ─── Model Promotion ─────────────────────────────────────────
 
-export interface PromotionResult {
+interface PromotionResult {
   promoted: boolean;
   version?: string;
   previousVersion?: string;

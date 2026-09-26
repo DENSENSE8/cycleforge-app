@@ -7,7 +7,7 @@ import type { KioskCartLine, KioskLineType } from '@/lib/kiosk/cart-line';
 import type { ConsultCatalogRef, ConsultPresentation } from '@/lib/counter/consult-stance';
 import { lineIdentification } from '@/lib/kiosk/line-identification';
 
-export interface ConsultProposal {
+interface ConsultProposal {
   title: string;
   lineType: KioskLineType;
   identifierLabel: string;
@@ -16,7 +16,7 @@ export interface ConsultProposal {
   source: 'line' | 'catalog';
 }
 
-export function proposalFromLine(line: KioskCartLine): ConsultProposal {
+function proposalFromLine(line: KioskCartLine): ConsultProposal {
   const id = lineIdentification(line);
   return {
     title: line.title,
@@ -43,7 +43,7 @@ export function catalogRefFromPick(input: {
   };
 }
 
-export function proposalFromCatalog(catalog: ConsultCatalogRef): ConsultProposal {
+function proposalFromCatalog(catalog: ConsultCatalogRef): ConsultProposal {
   return {
     title: catalog.title,
     lineType: catalog.lineType,

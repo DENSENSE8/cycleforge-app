@@ -48,7 +48,7 @@ interface MirrorDeps {
 
 const defaultDeps: MirrorDeps = { query: tenantQuery };
 
-export interface UpsertMirrorInput {
+interface UpsertMirrorInput {
   sourceType: string;
   sourceOrderId: string;
   platformAccountId?: number | null;
@@ -65,7 +65,7 @@ export interface UpsertMirrorInput {
   lastModifiedAt?: string | null; // ISO timestamptz
 }
 
-export interface MirrorRow {
+interface MirrorRow {
   id: number;
   source_type: string;
   source_order_id: string;

@@ -70,7 +70,7 @@ export function preloadUnboxDisplayLeafChunks(): void {
  * the boundary so this module doesn't import the heavy controller type; the
  * call site in LineEditPanel passes `c` directly.
  */
-export interface BuildUnboxTabsInput {
+interface BuildUnboxTabsInput {
   row: ReceivingLineRow;
   staffId: string;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any -- unbox controller return

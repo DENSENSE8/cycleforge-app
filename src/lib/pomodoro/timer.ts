@@ -41,7 +41,7 @@ function runningMilliseconds(row: TimerRow, now: Date): number {
   return row.startedAt ? Math.max(0, now.getTime() - row.startedAt.getTime()) : 0;
 }
 
-export function timerFace(row: TimerRow, now: Date): PomodoroTimer {
+function timerFace(row: TimerRow, now: Date): PomodoroTimer {
   const total = row.accumulatedMs + runningMilliseconds(row, now);
   const cycle = Math.max(0, total - row.cycleOriginMs);
   return {

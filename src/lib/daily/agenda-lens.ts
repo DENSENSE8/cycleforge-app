@@ -6,7 +6,7 @@
 import type { DailyAgendaRow } from './daily-agenda-row';
 
 export const AGENDA_LENSES = ['all', 'checklist', 'task', 'ticket', 'task_ticket'] as const;
-export type AgendaLens = (typeof AGENDA_LENSES)[number];
+type AgendaLens = (typeof AGENDA_LENSES)[number];
 
 export const AGENDA_LENS_LABEL: Readonly<Record<AgendaLens, string>> = {
   all: 'All',

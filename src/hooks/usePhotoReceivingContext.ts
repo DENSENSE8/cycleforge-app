@@ -2,7 +2,7 @@
 
 import { useQuery } from '@tanstack/react-query';
 
-export interface PhotoReceivingContextData {
+interface PhotoReceivingContextData {
   cartonId: number | null;
   /** Raw claim ref, e.g. "#9518". */
   claim: string | null;

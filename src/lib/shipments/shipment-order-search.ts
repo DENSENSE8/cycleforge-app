@@ -26,7 +26,7 @@ function positiveInt(value: unknown): number | null {
 }
 
 /** Narrow one `/api/orders` row; null when it names no order line. */
-export function toLinkableOrderLine(raw: Record<string, unknown>): LinkableOrderLine | null {
+function toLinkableOrderLine(raw: Record<string, unknown>): LinkableOrderLine | null {
   const orderRowId = positiveInt(raw.id);
   if (orderRowId == null) return null;
   const quantity = Number(raw.quantity);

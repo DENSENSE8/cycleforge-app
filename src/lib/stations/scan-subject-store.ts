@@ -1,8 +1,8 @@
 /** The scan SUBJECT — what the operator's last scan was about. */
 
-export type ScanSubjectKind = 'unit' | 'order';
+type ScanSubjectKind = 'unit' | 'order';
 
-export interface ScanSubject {
+interface ScanSubject {
   kind: ScanSubjectKind;
   /** Unit: serial / unit_uid / numeric id. Order: `orders.id` as a decimal string. */
   value: string;

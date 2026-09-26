@@ -28,7 +28,7 @@ interface FeedbackFormProps {
 }
 
 /** Standalone form export for embedding outside the popover shell. */
-export function FeedbackForm({ onSuccess, pagePath }: FeedbackFormProps) {
+function FeedbackForm({ onSuccess, pagePath }: FeedbackFormProps) {
   return <FeedbackPopoverBody onSuccess={onSuccess} pagePath={pagePath} embedded />;
 }
 

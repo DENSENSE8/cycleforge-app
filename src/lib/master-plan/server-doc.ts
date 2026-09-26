@@ -13,7 +13,7 @@ import { readMasterPlanSeed } from './seed-source';
  * the dogfood content — see the tenancy gate in withMasterPlanDoc.
  */
 const DEFAULT_FORGE_ORG = '00000000-0000-0000-0000-000000000001';
-export function forgePlanOrgId(env: Record<string, string | undefined> = process.env): string {
+function forgePlanOrgId(env: Record<string, string | undefined> = process.env): string {
   return (env.MASTER_PLAN_ORG_ID || env.FORGE_ORG_ID || DEFAULT_FORGE_ORG).trim().toLowerCase();
 }
 export function isForgePlanOrg(orgId: string, env: Record<string, string | undefined> = process.env): boolean {
@@ -57,7 +57,7 @@ async function openAblyChannel(orgId: string): Promise<MasterPlanSessionHandle> 
   };
 }
 
-export const defaultMasterPlanServerDeps: MasterPlanServerDeps = {
+const defaultMasterPlanServerDeps: MasterPlanServerDeps = {
   openChannel: openAblyChannel,
   readSeed: async () => (await readMasterPlanSeed()).mdx,
   syncWaitMs: 1200,
@@ -72,7 +72,7 @@ export interface WithMasterPlanDocResult<T> {
   seeded: boolean;
 }
 
-export interface WithMasterPlanDocOptions {
+interface WithMasterPlanDocOptions {
   /** Read paths (true, default) apply the canonical starter LOCALLY to an empty forge-org room purely so the response isn't blank — the seed… */
   seedForRead?: boolean;
 }

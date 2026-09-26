@@ -3,7 +3,7 @@
 import { listActionMeta, listBlockMeta, type BlockInstanceConfig } from '@/lib/stations';
 import type { NodeStationSummary } from '@/lib/workflow/diagnostics';
 
-export interface StationDefinitionRowLike {
+interface StationDefinitionRowLike {
   workflowNodeId: string | null;
   label: string;
   /** station_definitions.config (jsonb): { slots: {slotId: BlockInstanceConfig[]} | 'legacy' }. */

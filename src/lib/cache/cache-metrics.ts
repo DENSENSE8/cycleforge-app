@@ -1,5 +1,5 @@
 /** Per-namespace cache counters (Phase 0.6). */
-export interface NamespaceCounters {
+interface NamespaceCounters {
   hits: number;
   misses: number;
   errors: number;
@@ -33,7 +33,7 @@ export function recordCacheRebuild(ns: string, ms: number): void {
   c.rebuildMs += Math.max(0, ms);
 }
 
-export interface NamespaceMetric extends NamespaceCounters {
+interface NamespaceMetric extends NamespaceCounters {
   namespace: string;
   hitRate: number | null;
   avgRebuildMs: number | null;
@@ -54,6 +54,6 @@ export function getCacheMetricsSnapshot(): NamespaceMetric[] {
 }
 
 /** Test-only: clear all counters. */
-export function __resetCacheMetricsForTest(): void {
+function __resetCacheMetricsForTest(): void {
   counters.clear();
 }

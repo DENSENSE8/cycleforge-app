@@ -14,7 +14,7 @@ import type { ShippedOrder } from '@/types/orders';
 import { formatCurrency } from '@/utils/_number';
 import { formatMonthDayTimePST } from '@/utils/date';
 
-export interface OrdersSlotContext {
+interface OrdersSlotContext {
   /**
    * Normalized tester face from the queue view layer (`---` = missing).
    * tester family (operator ruling 2026-09-14) — the tester face now belongs to

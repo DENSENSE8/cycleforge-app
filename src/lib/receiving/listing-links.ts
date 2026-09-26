@@ -34,7 +34,7 @@ export interface StoredCartonListingLink {
   source: 'manual' | 'sync_notes';
 }
 
-export interface CatalogPlatformLinkInput {
+interface CatalogPlatformLinkInput {
   platform: string;
   platformSku?: string | null;
   platformItemId?: string | null;
@@ -199,7 +199,7 @@ export function listingLinksForReceivingRow(
   });
 }
 
-export interface ListingLinkMenuOption {
+interface ListingLinkMenuOption {
   href: string;
   label: string;
   title: string;

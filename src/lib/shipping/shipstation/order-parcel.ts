@@ -10,10 +10,10 @@ export const OrderRateDimensionsSchema = z.object({
   height: z.number().positive(),
   unit: z.enum(['inch', 'centimeter']),
 });
-export type OrderRateDimensions = z.infer<typeof OrderRateDimensionsSchema>;
+type OrderRateDimensions = z.infer<typeof OrderRateDimensionsSchema>;
 
 /** The parcel columns as they come off an `orders` row (numeric → number). */
-export interface StoredOrderParcel {
+interface StoredOrderParcel {
   weightOz: number | null;
   lengthIn: number | null;
   widthIn: number | null;

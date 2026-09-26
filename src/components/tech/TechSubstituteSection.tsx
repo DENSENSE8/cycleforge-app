@@ -4,7 +4,7 @@ import { RefreshCw } from '@/components/Icons';
 import { SubstituteUnitCard } from '@/components/fulfillment/SubstituteUnitCard';
 
 /** "Substitute unit" section for the `/tech` active-order workspace — a thin wrapper over the shared fulfillment SubstituteUnitCard (do not… */
-export interface TechSubstituteSectionProps {
+interface TechSubstituteSectionProps {
   orderId: number;
   orderLabel: string;
   enforcement?: 'advisory' | 'block_until_approved';

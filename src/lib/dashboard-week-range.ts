@@ -28,7 +28,7 @@ export function getWeekRangeForOffset(weekOffset: number, anchorDateKey?: string
  * Calendar-month range for an offset (0 = this month, 1 = last month, …),
  * first day → last day, civil keys in the warehouse frame.
  */
-export function getMonthRangeForOffset(monthOffset: number, anchorDateKey?: string) {
+function getMonthRangeForOffset(monthOffset: number, anchorDateKey?: string) {
   const baseDateKey =
     anchorDateKey && parseDateKey(anchorDateKey) ? anchorDateKey : getCurrentPSTDateKey();
   const parts = parseDateKey(baseDateKey);

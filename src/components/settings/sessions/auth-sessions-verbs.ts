@@ -3,7 +3,7 @@
 import type { CompoundRowAction } from '@/components/tables/compound/compound-row-model';
 import type { AuthSessionTableRow } from '@/lib/auth/auth-session-row';
 
-export interface AuthSessionVerbHandlers {
+interface AuthSessionVerbHandlers {
   onRevoke: (row: AuthSessionTableRow) => void;
 }
 

@@ -18,7 +18,7 @@ async function getDOMPurify(): Promise<Sanitizer> {
 
 const GMAIL_API = 'https://gmail.googleapis.com/gmail/v1/users/me';
 
-export interface GmailMessageEnvelope {
+interface GmailMessageEnvelope {
   id: string;
   threadId: string;
   labelIds: string[];

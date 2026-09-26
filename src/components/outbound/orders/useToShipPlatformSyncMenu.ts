@@ -7,7 +7,7 @@ import { invalidateDashboardOrderQueries } from '@/lib/dashboard-query-invalidat
 import { toast } from '@/lib/toast';
 import { qk } from '@/queries/keys';
 
-export type ToShipPlatformSyncRow = {
+type ToShipPlatformSyncRow = {
   label: string;
   kind: 'provider' | 'more';
   disabled?: boolean;

@@ -3,13 +3,13 @@
 import { expandPlateRun } from '@/lib/print/labelCopies';
 import { buildFaceInfoHtml, type LabelFaceModel } from '@/lib/print/labelFace';
 
-export type LabelFacesJobChannel = 'usb' | 'iframe' | 'skipped';
+type LabelFacesJobChannel = 'usb' | 'iframe' | 'skipped';
 
 /** USB sequential only — the iframe batch prints as one job and cannot tick. */
-export type LabelFacesJobProgress = (done: number, total: number) => void;
+type LabelFacesJobProgress = (done: number, total: number) => void;
 
 /** Map a face onto the shared `printLabel` shell's options. */
-export function faceToPrintOpts(face: LabelFaceModel, name?: string) {
+function faceToPrintOpts(face: LabelFaceModel, name?: string) {
   const { infoHtml, infoCss, infoAlign } = buildFaceInfoHtml(face);
   return {
     name,

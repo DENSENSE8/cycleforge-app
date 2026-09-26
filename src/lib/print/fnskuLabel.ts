@@ -9,7 +9,7 @@ import { createLabelCanvas, drawFittedText, LABEL_DPI, labelCanvasToRawCommands 
 import { escapeLabelHtml } from '@/lib/print/labelHtml';
 import { isSilentPrintEnabled } from '@/lib/print/printMode';
 
-export interface FnskuLabelFace {
+interface FnskuLabelFace {
   fnsku: string;
   /** Catalog product title; blank prints no title line. */
   title: string;

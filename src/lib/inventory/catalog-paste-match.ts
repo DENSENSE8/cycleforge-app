@@ -11,7 +11,7 @@ export type CatalogPasteHit = {
   zoho_sku?: string | null;
 };
 
-export type CatalogPasteMatch =
+type CatalogPasteMatch =
   | { kind: 'none' }
   | { kind: 'exact'; hit: CatalogPasteHit }
   | { kind: 'unique'; hit: CatalogPasteHit }

@@ -4,11 +4,11 @@ import type { PoolClient } from 'pg';
 import { withTenantTransaction } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';
 
-export const KIOSK_VISIT_EDITABLE_CUSTOMER_FIELDS = ['name', 'phone', 'email'] as const;
-export const KIOSK_VISIT_EDITABLE_DEVICE_FIELDS = ['serialNumber', 'issue', 'notes'] as const;
+const KIOSK_VISIT_EDITABLE_CUSTOMER_FIELDS = ['name', 'phone', 'email'] as const;
+const KIOSK_VISIT_EDITABLE_DEVICE_FIELDS = ['serialNumber', 'issue', 'notes'] as const;
 
-export type KioskVisitCustomerField = (typeof KIOSK_VISIT_EDITABLE_CUSTOMER_FIELDS)[number];
-export type KioskVisitDeviceField = (typeof KIOSK_VISIT_EDITABLE_DEVICE_FIELDS)[number];
+type KioskVisitCustomerField = (typeof KIOSK_VISIT_EDITABLE_CUSTOMER_FIELDS)[number];
+type KioskVisitDeviceField = (typeof KIOSK_VISIT_EDITABLE_DEVICE_FIELDS)[number];
 
 /** Every editable path, dotted, for the 403 body and for the tests. */
 export const KIOSK_VISIT_EDITABLE_FIELDS: ReadonlyArray<string> = [
@@ -16,20 +16,20 @@ export const KIOSK_VISIT_EDITABLE_FIELDS: ReadonlyArray<string> = [
   ...KIOSK_VISIT_EDITABLE_DEVICE_FIELDS.map((f) => `devices[].${f}`),
 ];
 
-export interface KioskVisitCustomerEdit {
+interface KioskVisitCustomerEdit {
   name?: string;
   phone?: string;
   email?: string;
 }
 
-export interface KioskVisitDeviceEdit {
+interface KioskVisitDeviceEdit {
   repairId: number;
   serialNumber?: string;
   issue?: string;
   notes?: string;
 }
 
-export interface KioskVisitEdit {
+interface KioskVisitEdit {
   customer?: KioskVisitCustomerEdit;
   devices?: KioskVisitDeviceEdit[];
 }
@@ -76,7 +76,7 @@ export function collectDisallowedEditFields(raw: unknown): string[] {
   return rejected;
 }
 
-export interface KioskVisitEditSnapshot {
+interface KioskVisitEditSnapshot {
   customer: { id: number; name: string | null; phone: string | null; email: string | null } | null;
   devices: Array<{
     repairId: number;
@@ -86,7 +86,7 @@ export interface KioskVisitEditSnapshot {
   }>;
 }
 
-export type KioskVisitEditResult =
+type KioskVisitEditResult =
   | {
       ok: true;
       /** Dotted paths that actually changed — empty means the edit was a no-op. */

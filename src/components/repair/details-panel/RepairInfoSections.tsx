@@ -61,7 +61,7 @@ export function RepairTechnicalSection({ repair }: { repair: RSRecord }) {
 }
 
 /** Read-only record metadata block for the repair notes/admin tab. */
-export function RepairRecordSection({ repair }: { repair: RSRecord }) {
+function RepairRecordSection({ repair }: { repair: RSRecord }) {
   return (
     <section>
       <div className="space-y-3">

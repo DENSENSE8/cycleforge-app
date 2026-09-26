@@ -42,7 +42,7 @@ export interface SelectionAction<T> {
   run: (rows: T[], resolved?: { direction: VerbDirection }) => void | Promise<void>;
 }
 
-export interface ResolvedSelectionAction<T> {
+interface ResolvedSelectionAction<T> {
   action: SelectionAction<T>;
   disabled: boolean;
   /** Why it's disabled — or, when the verb is live over a MIXED selection, which rows it will skip ("4 of 7 already scanned out"). */

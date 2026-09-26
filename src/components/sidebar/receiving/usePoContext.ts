@@ -10,7 +10,7 @@ import {
   type PoLineSummary,
 } from '@/components/sidebar/receiving/receiving-sidebar-shared';
 
-export interface PoContextState {
+interface PoContextState {
   poContext: PoContext | null;
   setPoContext: React.Dispatch<React.SetStateAction<PoContext | null>>;
   armedLineId: number | null;

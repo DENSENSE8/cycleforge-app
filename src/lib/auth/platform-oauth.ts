@@ -8,14 +8,14 @@ import type { PlatformProvider } from './platform-oauth-types';
 // components import the light twin directly (bundle altitude).
 export type { PlatformProvider };
 
-export interface PlatformProviderEndpoints {
+interface PlatformProviderEndpoints {
   authorizeUrl: string;
   tokenUrl: string;
   userinfoUrl: string;
   scope: string;
 }
 
-export interface PlatformProviderConfig extends PlatformProviderEndpoints {
+interface PlatformProviderConfig extends PlatformProviderEndpoints {
   provider: PlatformProvider;
   clientId: string;
   clientSecret: string;
@@ -145,7 +145,7 @@ export function resolveRedirectUri(cfg: PlatformProviderConfig, origin: string):
   return cfg.redirectUri || `${origin.replace(/\/$/, '')}/api/auth/oauth/${cfg.provider}/callback`;
 }
 
-export interface OAuthStatePayload {
+interface OAuthStatePayload {
   provider: PlatformProvider;
   state: string;
   nonce: string;

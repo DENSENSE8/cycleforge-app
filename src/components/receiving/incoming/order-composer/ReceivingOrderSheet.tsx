@@ -21,7 +21,7 @@ const KIND_OPTIONS = [
   { value: 'return' as const, label: 'Return', icon: <RotateCcw className="h-3.5 w-3.5" /> },
 ];
 
-export interface ReceivingOrderSheetProps {
+interface ReceivingOrderSheetProps {
   kind: ReceivingOrderKind;
   /** The kind's sections, top to bottom. */
   children: ReactNode;

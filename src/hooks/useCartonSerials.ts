@@ -9,7 +9,7 @@ import { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
 
-export async function fetchCartonSerials(receivingId: number): Promise<string[]> {
+async function fetchCartonSerials(receivingId: number): Promise<string[]> {
   const res = await fetch(`/api/receiving-lines?receiving_id=${receivingId}&include=serials`, {
     cache: 'no-store',
   });
@@ -24,7 +24,7 @@ export async function fetchCartonSerials(receivingId: number): Promise<string[]>
   return [...new Set(serials)];
 }
 
-export function cartonSerialsQueryKey(receivingId: number) {
+function cartonSerialsQueryKey(receivingId: number) {
   return ['receiving-carton-serials', receivingId] as const;
 }
 

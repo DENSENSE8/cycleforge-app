@@ -14,7 +14,7 @@ export type WalkInJob = (typeof WALK_IN_JOBS)[number];
 
 export const DEFAULT_WALK_IN_JOB: WalkInJob = 'pickup';
 
-export const WALK_IN_JOB_ITEMS: HorizontalSliderItem[] = [
+const WALK_IN_JOB_ITEMS: HorizontalSliderItem[] = [
   { id: 'sales', label: 'Sales', icon: SalesPrice },
   { id: 'pickup', label: 'Local Pickup', icon: Package },
   { id: 'repair', label: 'Repair', icon: Wrench },
@@ -36,7 +36,7 @@ export function parseWalkInJob(raw: string | null | undefined): WalkInJob {
 }
 
 /** Graduated station route for front-desk Walk-In work (still `/pickup` for path stability). */
-export const WALK_IN_STATION_PATH = '/pickup';
+const WALK_IN_STATION_PATH = '/pickup';
 
 /**
  * Build a station URL for a job, optionally carrying intake/deep-link params.

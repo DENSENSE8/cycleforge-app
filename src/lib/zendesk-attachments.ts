@@ -3,7 +3,7 @@ import { uploadFileToZendesk } from './zendesk';
 import { readPhotoBytesById } from './photos/read-bytes';
 import { linkPhoto } from './photos/service';
 
-export interface ZendeskUploadResult {
+interface ZendeskUploadResult {
   /** Upload tokens to pass as `comment.uploads` on create / addTicketComment. */
   tokens: string[];
   attached: number;

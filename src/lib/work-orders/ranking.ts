@@ -1,7 +1,7 @@
 import type { WorkOrderRow, WorkStatus } from '@/components/work-orders/types';
 
 /** Shared work-order ranking SoT. */
-export function workStatusRank(value: WorkStatus): number {
+function workStatusRank(value: WorkStatus): number {
   if (value === 'IN_PROGRESS') return 0;
   if (value === 'ASSIGNED') return 1;
   if (value === 'OPEN') return 2;

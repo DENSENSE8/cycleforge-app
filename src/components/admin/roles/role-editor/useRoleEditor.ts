@@ -198,4 +198,4 @@ export function useRoleEditor(roleId: number) {
   };
 }
 
-export type RoleEditorController = ReturnType<typeof useRoleEditor>;
+type RoleEditorController = ReturnType<typeof useRoleEditor>;

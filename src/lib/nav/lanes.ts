@@ -44,7 +44,7 @@ export function domainLane<T extends DomainGroupId>(id: T) {
  * **THE MOBILE-FIRST GATE — a lane the phone cannot run does not get a door.**
  * Operator ruling 2026-09-14, verbatim: *"everything should be mobile first …
  */
-export type LaneMobileFirstStatus =
+type LaneMobileFirstStatus =
   /** The phone runs this lane. */
   | 'ported'
   /** Desktop-only and IN USE — displays, and is queued for its port. */
@@ -52,7 +52,7 @@ export type LaneMobileFirstStatus =
   /** Not mobile-friendly and not in daily use: **no nav row on any surface.** */
   | 'hidden';
 /** The lanes the gate can hide: */
-export type GatedLaneId = DomainGroupId | 'monitor' | 'studio';
+type GatedLaneId = DomainGroupId | 'monitor' | 'studio';
 
 export const LANE_MOBILE_FIRST: Readonly<Record<GatedLaneId, LaneMobileFirstStatus>> = {
   // Kept by name (operator 2026-09-14) — in daily desktop use, port next.

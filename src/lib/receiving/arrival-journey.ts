@@ -1,6 +1,6 @@
 /** Arrival (triage) door journey — Door → Classified → Staged → Ready. */
 
-export type ArrivalPipelineKey = 'door' | 'classified' | 'staged' | 'ready';
+type ArrivalPipelineKey = 'door' | 'classified' | 'staged' | 'ready';
 type ArrivalPipelineState = 'done' | 'active' | 'pending';
 
 type ArrivalJourneyFacts = {

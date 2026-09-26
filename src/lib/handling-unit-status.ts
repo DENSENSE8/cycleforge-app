@@ -1,6 +1,6 @@
 // Single source of truth for handling-unit (H-####) box status tones.
 
-export type HandlingUnitStatus = 'OPEN' | 'STAGED' | 'IN_TEST' | 'CLOSED';
+type HandlingUnitStatus = 'OPEN' | 'STAGED' | 'IN_TEST' | 'CLOSED';
 
 const TONES: Record<HandlingUnitStatus, string> = {
   OPEN: 'bg-surface-sunken text-text-muted',

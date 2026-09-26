@@ -72,7 +72,7 @@ export function formatBenchDuration(elapsedMs: number): string {
   return `${h} h ${String(min % 60).padStart(2, '0')} min`;
 }
 
-export interface BenchSessionSummary {
+interface BenchSessionSummary {
   /** Sessions counted (open ones included). */
   count: number;
   /** Sum of every session's elapsed time, open ones up to `serverNowMs`. */

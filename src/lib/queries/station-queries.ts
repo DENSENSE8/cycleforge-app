@@ -3,14 +3,14 @@
 import { queryOptions, type QueryClient } from '@tanstack/react-query';
 import type { StationDefinitionRow } from '@/lib/stations/contract';
 
-export interface StationDefinitionsResp {
+interface StationDefinitionsResp {
   success: boolean;
   definitions: StationDefinitionRow[];
   drafts: StationDefinitionRow[];
   canManage: boolean;
 }
 
-export const stationKeys = {
+const stationKeys = {
   all: ['stations'] as const,
   page: (pageKey: string) => ['stations', 'page', pageKey] as const,
   source: (sourceId: string, filters: Record<string, unknown>) =>

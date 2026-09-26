@@ -9,7 +9,7 @@ import {
 } from '@/lib/sidebar-navigation';
 import { isTabParked } from '@/lib/nav/parked-tabs';
 
-export interface NavDestination {
+interface NavDestination {
   /** Stable row key. `pageId` for a page, `pageId:childId` for a child page. */
   key: string;
   pageId: string;

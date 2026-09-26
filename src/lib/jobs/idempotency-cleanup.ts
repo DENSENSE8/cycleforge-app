@@ -1,6 +1,6 @@
 import pool from '@/lib/db';
 
-export interface IdempotencyCleanupResult {
+interface IdempotencyCleanupResult {
   ok: boolean;
   deletedRows: number;
   durationMs: number;

@@ -8,7 +8,7 @@ import { skuCatalogNoZohoTwinPredicateSql } from '@/lib/sku/sku-identity-law';
 export type ListingTarget = { kind: 'sku'; id: number } | { kind: 'unit'; id: number };
 
 /** Optional channel-listing tags stamped on new rows (platform_listings / serial_unit_listings). */
-export interface ListingChannelRefs {
+interface ListingChannelRefs {
   platformListingId?: number | null;
   serialUnitListingId?: number | null;
 }

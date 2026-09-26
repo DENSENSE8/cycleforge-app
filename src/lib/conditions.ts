@@ -122,7 +122,7 @@ export function conditionOptions(
 }
 
 /** One-line meaning for each grade — surfaced as a HoverTooltip on the condition pills so new staff (and new tenants) learn the grades in… */
-export const CONDITION_DESCRIPTIONS: Record<string, string> = {
+const CONDITION_DESCRIPTIONS: Record<string, string> = {
   BRAND_NEW:   'Brand new — unused, in original packaging.',
   LIKE_NEW:    'Like new — open-box; no visible wear, fully functional.',
   REFURBISHED: 'Refurbished — restored and tested to working condition.',

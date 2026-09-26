@@ -3,7 +3,7 @@
  * CD changer, a soundbar and its bass module (operator 2026-09-25: "must allow
  */
 
-export const SERIAL_SEPARATOR = ', ';
+const SERIAL_SEPARATOR = ', ';
 
 /**
  * Upper bound for the joined string on every schema that carries it. Not a

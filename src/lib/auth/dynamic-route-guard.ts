@@ -19,7 +19,7 @@ function clientIp(req: NextRequest): string | null {
   return real || null;
 }
 
-export type RouteGuardResult =
+type RouteGuardResult =
   | { denied: NextResponse; ctx: null }
   | { denied: null; ctx: AuthContext };
 
@@ -88,7 +88,7 @@ export async function requireRoutePerm(
 }
 
 /** Audit-floor for dynamic-param routes. */
-export interface RouteAuditOpts {
+interface RouteAuditOpts {
   source: string;
   action: string;
   entityType: string;

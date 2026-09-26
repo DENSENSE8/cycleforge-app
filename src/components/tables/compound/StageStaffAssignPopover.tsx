@@ -23,7 +23,7 @@ import {
   type StageStaffLane,
 } from './staff-stage-lane';
 
-export type StageStaffAssignPopoverProps = {
+type StageStaffAssignPopoverProps = {
   open: boolean;
   onClose: () => void;
   anchorRef: React.RefObject<HTMLElement | null>;

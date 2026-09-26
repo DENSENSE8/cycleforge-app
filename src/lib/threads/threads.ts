@@ -83,7 +83,7 @@ const MESSAGE_COLS =
 
 // ─── resolveThreadForEntity ──────────────────────────────────────────────────
 
-export interface ResolveThreadInput {
+interface ResolveThreadInput {
   orgId: OrgId;
   entityType: SurfaceEntityType | (string & {});
   entityId: number;
@@ -126,14 +126,14 @@ export async function getThread(
 
 // ─── getOrCreateThread ───────────────────────────────────────────────────────
 
-export interface GetOrCreateThreadInput {
+interface GetOrCreateThreadInput {
   orgId: OrgId;
   entityType: SurfaceEntityType | (string & {});
   entityId: number;
   createdBy?: number | null;
 }
 
-export type GetOrCreateThreadResult =
+type GetOrCreateThreadResult =
   | { ok: true; thread: EntityThread; created: boolean }
   | { ok: false; status: 400 | 404; error: string };
 
@@ -184,7 +184,7 @@ export async function getOrCreateThread(
 
 // ─── postThreadMessage ───────────────────────────────────────────────────────
 
-export interface PostThreadMessageInput {
+interface PostThreadMessageInput {
   orgId: OrgId;
   threadId: number;
   authorStaffId?: number | null;
@@ -195,7 +195,7 @@ export interface PostThreadMessageInput {
   meta?: Record<string, unknown> | null;
 }
 
-export type PostThreadMessageResult =
+type PostThreadMessageResult =
   | { ok: true; message: ThreadMessage; idempotent: boolean }
   | { ok: false; status: 400 | 404; error: string };
 
@@ -303,7 +303,7 @@ export async function postThreadMessage(
 
 // ─── listThreadMessages ──────────────────────────────────────────────────────
 
-export interface ListThreadMessagesInput {
+interface ListThreadMessagesInput {
   orgId: OrgId;
   threadId: number;
   /** Max rows (default 50, capped 200). */
@@ -312,7 +312,7 @@ export interface ListThreadMessagesInput {
   beforeId?: number | null;
 }
 
-export type ListThreadMessagesResult =
+type ListThreadMessagesResult =
   | { ok: true; messages: ThreadMessage[] }
   | { ok: false; status: 404; error: string };
 
@@ -353,13 +353,13 @@ export async function listThreadMessages(
 
 // ─── attachSupportTicket ─────────────────────────────────────────────────────
 
-export interface AttachSupportTicketInput {
+interface AttachSupportTicketInput {
   orgId: OrgId;
   threadId: number;
   supportTicketId: number;
 }
 
-export type AttachSupportTicketResult =
+type AttachSupportTicketResult =
   | { ok: true; thread: EntityThread; idempotent: boolean }
   | { ok: false; status: 400 | 404 | 409; error: string };
 
@@ -416,13 +416,13 @@ export async function attachSupportTicket(
 
 // ─── updateThreadStatus ──────────────────────────────────────────────────────
 
-export interface UpdateThreadStatusInput {
+interface UpdateThreadStatusInput {
   orgId: OrgId;
   threadId: number;
   status: ThreadStatus;
 }
 
-export type UpdateThreadStatusResult =
+type UpdateThreadStatusResult =
   | { ok: true; thread: EntityThread }
   | { ok: false; status: 400 | 404; error: string };
 
@@ -450,7 +450,7 @@ export async function updateThreadStatus(
 
 // ─── softDeleteThread ────────────────────────────────────────────────────────
 
-export type SoftDeleteThreadResult =
+type SoftDeleteThreadResult =
   | { ok: true; idempotent: boolean }
   | { ok: false; status: 404; error: string };
 
@@ -484,7 +484,7 @@ export async function softDeleteThread(
 
 // ─── editThreadMessage / deleteThreadMessage ─────────────────────────────────
 
-export interface EditThreadMessageInput {
+interface EditThreadMessageInput {
   orgId: OrgId;
   threadId: number;
   messageId: number;
@@ -495,7 +495,7 @@ export interface EditThreadMessageInput {
   canManageAll?: boolean;
 }
 
-export type EditThreadMessageResult =
+type EditThreadMessageResult =
   | { ok: true; message: ThreadMessage }
   | { ok: false; status: 400 | 403 | 404; error: string };
 
@@ -532,7 +532,7 @@ export async function editThreadMessage(
   });
 }
 
-export interface DeleteThreadMessageInput {
+interface DeleteThreadMessageInput {
   orgId: OrgId;
   threadId: number;
   messageId: number;
@@ -540,7 +540,7 @@ export interface DeleteThreadMessageInput {
   canManageAll?: boolean;
 }
 
-export type DeleteThreadMessageResult =
+type DeleteThreadMessageResult =
   | { ok: true; idempotent: boolean }
   | { ok: false; status: 403 | 404; error: string };
 

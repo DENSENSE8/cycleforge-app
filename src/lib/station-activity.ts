@@ -2,8 +2,8 @@ type Queryable = {
   query: (text: string, params?: any[]) => Promise<{ rows: any[] }>;
 };
 
-export type StationName = 'TECH' | 'PACK' | 'FBA' | 'RECEIVING' | 'ADMIN' | 'OUTBOUND';
-export type StationActivityType =
+type StationName = 'TECH' | 'PACK' | 'FBA' | 'RECEIVING' | 'ADMIN' | 'OUTBOUND';
+type StationActivityType =
   | 'TRACKING_SCANNED'
   | 'FNSKU_SCANNED'
   | 'SERIAL_ADDED'

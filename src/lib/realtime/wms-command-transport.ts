@@ -1,7 +1,7 @@
 /** Client transport choice for WMS execution commands. */
 export const WMS_COMMAND_HTTP_PATH = '/api/wms/commands';
 
-export type WmsCommandTransport = 'socket' | 'http';
+type WmsCommandTransport = 'socket' | 'http';
 
 export function chooseWmsTransport(link: { socketOpen: boolean; hasTicket: boolean }): WmsCommandTransport {
   return link.socketOpen && link.hasTicket ? 'socket' : 'http';

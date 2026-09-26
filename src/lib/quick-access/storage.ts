@@ -151,7 +151,7 @@ export function isPinned(href: string): boolean {
   return getSettings().pinned.some((p) => p.href === href);
 }
 
-export function findPinByHref(href: string): PinnedPage | null {
+function findPinByHref(href: string): PinnedPage | null {
   return getSettings().pinned.find((p) => p.href === href) ?? null;
 }
 

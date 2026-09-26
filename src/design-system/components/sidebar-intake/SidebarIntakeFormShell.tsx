@@ -7,7 +7,7 @@ import {
   SIDEBAR_INTAKE_SUBTITLE_ACCENT,
 } from './intakeFormClasses';
 
-export interface SidebarIntakeFormShellProps {
+interface SidebarIntakeFormShellProps {
   title: string;
   /** Small uppercase line under title (e.g. “Order Information”, “Plan mode”). */
   subtitle: string;

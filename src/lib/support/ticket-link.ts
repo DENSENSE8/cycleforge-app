@@ -52,7 +52,7 @@ export type TicketLinkAnchorInput =
   /** A repair work record is the anchor for a counter-service ticket (plan D6). */
   | { type: 'repair'; repairId: number };
 
-export interface ResolvedTicketLinkAnchor extends TicketLinkAnchor {
+interface ResolvedTicketLinkAnchor extends TicketLinkAnchor {
   /** Human label for the anchor (tracking last-8, receiving id, …). */
   label: string;
 }
@@ -96,7 +96,7 @@ async function resolveOrderPrimaryShipment(
 }
 
 /** Resolve a client anchor input to a ticket_links entity ref. */
-export async function resolveTicketLinkAnchor(
+async function resolveTicketLinkAnchor(
   orgId: OrgId,
   input: TicketLinkAnchorInput,
 ): Promise<ResolvedTicketLinkAnchor> {

@@ -6,7 +6,7 @@ import type { OrgId } from '@/lib/tenancy/constants';
 import type { IntegrationProvider } from '@/lib/integrations/credentials';
 import { EBAY_PLATFORM_PREDICATE } from '@/lib/ebay/credentials';
 
-export interface OrgRunResult<T> {
+interface OrgRunResult<T> {
   orgId: OrgId;
   ok: boolean;
   result?: T;

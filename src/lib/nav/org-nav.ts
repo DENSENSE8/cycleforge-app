@@ -7,7 +7,7 @@ import type {
 } from '@/lib/sidebar-navigation';
 
 /** One per-org override for a declared child (desk tab / drill row). */
-export interface NavChildOverride {
+interface NavChildOverride {
   id: string;
   hidden?: boolean;
   label?: string;
@@ -79,7 +79,7 @@ function sortWithExplicitOrder<T>(
   return rows.map((v) => v.item);
 }
 
-export function mergeOrgPageChildren(
+function mergeOrgPageChildren(
   children: readonly SidebarChildPage[] | undefined,
   override: NavOverrideEntry | undefined,
 ): SidebarChildPage[] | undefined {
@@ -116,7 +116,7 @@ export function applyOrgNavToPage(
   return next;
 }
 
-export function isKnownChildOrder(
+function isKnownChildOrder(
   knownIds: readonly string[],
   orderedIds: readonly string[],
 ): boolean {
@@ -126,7 +126,7 @@ export function isKnownChildOrder(
   return orderedIds.every((id) => known.has(id));
 }
 
-export function upsertChildOrder(
+function upsertChildOrder(
   current: NavDefinition | null | undefined,
   pageId: string,
   orderedIds: readonly string[],

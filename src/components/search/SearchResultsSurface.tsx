@@ -19,7 +19,7 @@ import type { SearchHitEntityType } from '@/lib/search/search-hit';
 import { SearchResultRow } from '@/components/search/SearchResultRow';
 import { useFindDensity } from '@/components/search/find-density-context';
 
-export interface SearchResultsSurfaceProps {
+interface SearchResultsSurfaceProps {
   query: string;
   /** Kept for call-site compatibility; only `global` is used. */
   scope?: 'global';

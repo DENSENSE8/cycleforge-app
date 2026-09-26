@@ -56,7 +56,7 @@ export function missingRepairIntakeFields(input: {
   return missing;
 }
 
-export interface SubmitRepairIntakeResult {
+interface SubmitRepairIntakeResult {
   success: true;
   rsNumber: string;
   id: number;

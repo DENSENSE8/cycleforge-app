@@ -14,7 +14,7 @@ export const STATION_SKIN_VAR_KEYS = [
   'ink-muted',
 ] as const;
 
-export type StationSkinVarKey = (typeof STATION_SKIN_VAR_KEYS)[number];
+type StationSkinVarKey = (typeof STATION_SKIN_VAR_KEYS)[number];
 
 export type StationSkinVars = Record<StationSkinVarKey, string>;
 

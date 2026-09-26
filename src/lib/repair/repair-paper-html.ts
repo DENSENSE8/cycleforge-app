@@ -6,7 +6,7 @@ import { REPAIR_PRINT_SIGNATURE_BAND } from './signature-geometry';
 /** Matches `MM/DD/YYYY` width for drop-off / pick-up alignment on blank forms. */
 export const REPAIR_PICKUP_DATE_PLACEHOLDER = 'Date: __/__/____';
 
-export const REPAIR_SIGNATURE_ROW_GRID_STYLE =
+const REPAIR_SIGNATURE_ROW_GRID_STYLE =
   'grid-template-columns: 5.75rem minmax(0, 1fr) 11rem';
 
 /** The captured signature as it prints inside a {@link repairSignatureRowHtml} band. */

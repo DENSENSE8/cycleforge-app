@@ -9,7 +9,7 @@ import type { ReactNode } from 'react';
 import { StaffAvatar } from '@/components/identity';
 import { cn } from '@/utils/_cn';
 
-export interface StaffChoiceRowButtonProps {
+interface StaffChoiceRowButtonProps {
   staffId: number | string;
   name: string;
   role?: string | null;

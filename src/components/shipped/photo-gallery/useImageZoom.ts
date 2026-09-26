@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 
-export interface UseImageZoom {
+interface UseImageZoom {
   zoomLevel: number;
   imagePosition: { x: number; y: number };
   isDragging: boolean;

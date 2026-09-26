@@ -10,7 +10,7 @@ import { parseExternalId } from '@/lib/zendesk-links';
 import { zendeskTicketUrl } from '@/lib/zendesk-ticket-url';
 import { resolveTicketLinkQueryKind } from '@/lib/support/ticket-link-query';
 
-export interface TicketLinkCandidate {
+interface TicketLinkCandidate {
   id: number;
   subject: string | null;
   description: string | null;

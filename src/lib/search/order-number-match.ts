@@ -2,7 +2,7 @@
 
 export { looksLikeMarketplaceOrderNumber } from './looks-like-marketplace-order-number';
 
-export function compactIdentifier(raw: string): string {
+function compactIdentifier(raw: string): string {
   return String(raw ?? '')
     .trim()
     .replace(/[\u2010-\u2015\u2212]/g, '-')

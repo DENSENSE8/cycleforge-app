@@ -6,7 +6,7 @@ import { seedOrgCatalog } from '@/lib/neon/catalog-queries';
 import type { OrgId, OrgStatus, PlatformPlan } from './constants';
 import { revalidatePublicQrBrandCache } from './public-qr-brand-tag';
 
-export interface OrganizationRow {
+interface OrganizationRow {
   id: OrgId;
   slug: string;
   name: string;
@@ -118,7 +118,7 @@ export function invalidateOrgCache(orgId?: OrgId): void {
   revalidatePublicQrBrandCache();
 }
 
-export interface CreateOrganizationInput {
+interface CreateOrganizationInput {
   slug: string;
   name: string;
   plan?: PlatformPlan;
@@ -126,7 +126,7 @@ export interface CreateOrganizationInput {
   trialEndsAt?: Date | null;
 }
 
-export async function createOrganization(input: CreateOrganizationInput): Promise<OrganizationRow> {
+async function createOrganization(input: CreateOrganizationInput): Promise<OrganizationRow> {
   const settings = JSON.stringify(input.settings ?? {});
   const r = await pool.query<OrgDbRow>(
     `INSERT INTO organizations (slug, name, plan, settings, trial_ends_at)

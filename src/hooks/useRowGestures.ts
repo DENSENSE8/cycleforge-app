@@ -17,7 +17,7 @@ import {
 } from '@/lib/keyboard/table-key-layer';
 import { rowGestureForKey, rowGestureKeyOf } from '@/lib/tables/row-gestures';
 
-export interface RowGestureHandlers {
+interface RowGestureHandlers {
   /** The selection changed — hand the new set to the surface's selection model. */
   onSelectionChange: (ids: ReadonlySet<number>) => void;
   /** Open the record under the cursor (double-click / Enter / `o`). */
@@ -26,7 +26,7 @@ export interface RowGestureHandlers {
   onDismiss?: () => boolean;
 }
 
-export interface UseRowGesturesOptions<T> extends RowGestureHandlers {
+interface UseRowGesturesOptions<T> extends RowGestureHandlers {
   /** Rows in DISPLAY order — what the operator sees, after sort and filter. */
   rows: readonly T[];
   getId: (row: T) => number;
@@ -36,7 +36,7 @@ export interface UseRowGesturesOptions<T> extends RowGestureHandlers {
   enabled?: boolean;
 }
 
-export interface RowGesturesApi {
+interface RowGesturesApi {
   /** The row the keyboard cursor is on, or null before the first key. */
   cursorId: number | null;
   /** Point the cursor at a row — call from a row's `onFocus` / click. */
@@ -200,7 +200,7 @@ export function useRowGestures<T>({
 }
 
 /** The pointer twin of {@link useRowGestures}' selection keys. */
-export function resolveRowPointerSelect(
+function resolveRowPointerSelect(
   state: SelectionAnchorState,
   id: number,
   event: { shiftKey?: boolean },

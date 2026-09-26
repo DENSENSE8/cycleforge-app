@@ -5,7 +5,7 @@
 
 import type { KioskCartLine } from '@/lib/kiosk/cart-line';
 
-export interface KioskCartMoney {
+interface KioskCartMoney {
   /**
    * GOODS, signed. Retail adds; a trade-in credit subtracts, so this can be
    * negative — that is a payout to the customer, not a charge.

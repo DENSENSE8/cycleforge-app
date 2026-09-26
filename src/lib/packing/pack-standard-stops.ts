@@ -1,6 +1,6 @@
 /** Pack standard time — the stop list one drag control snaps to, and the tier that follows from the number. */
 
-export type PackTier = 'SMALL' | 'MEDIUM' | 'LARGE';
+type PackTier = 'SMALL' | 'MEDIUM' | 'LARGE';
 
 /** Minute values the slider can land on. Ascending; index IS the slider value. */
 export const PACK_STANDARD_MINUTE_STOPS = [1, 2, 3, 5, 8, 10, 15, 20, 25, 30, 45, 60] as const;
@@ -13,8 +13,8 @@ export const MAX_PACK_STOP_INDEX = PACK_STANDARD_MINUTE_STOPS.length - 1;
  * (`DEFAULT_TIER_MINUTES` = 5 / 14 / 45), so a SKU left at a tier default lands
  * back on the same tier after a round trip through the slider.
  */
-export const SMALL_MEDIUM_BOUNDARY_MINUTES = 9.5;
-export const MEDIUM_LARGE_BOUNDARY_MINUTES = 29.5;
+const SMALL_MEDIUM_BOUNDARY_MINUTES = 9.5;
+const MEDIUM_LARGE_BOUNDARY_MINUTES = 29.5;
 
 /** The tier a standard time rolls up to. The only place tier is decided. */
 export function tierForMinutes(minutes: number): PackTier {

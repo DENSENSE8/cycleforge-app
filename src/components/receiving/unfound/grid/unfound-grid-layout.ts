@@ -99,14 +99,14 @@ export function isUnfoundColumnSortable(
 }
 
 /** CSS grid template — one `var(--cf-col-<key>, <width>)` track per column. */
-export function unfoundGridTemplate(
+function unfoundGridTemplate(
   columns: readonly UnfoundGridColumn[] = UNFOUND_SHEET_COLUMNS,
 ): string {
   return gridTemplate(columns);
 }
 
 /** Sticky offset for a frozen cell, derived from the MOUNTED model. */
-export function unfoundGridFrozenLeft(
+function unfoundGridFrozenLeft(
   columns: readonly UnfoundGridColumn[],
   key: UnfoundGridColumnKey,
 ): string {

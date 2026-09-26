@@ -50,7 +50,7 @@ export interface ApiResponse {
   total: number;
 }
 
-export interface RecentActivityRailBaseProps {
+interface RecentActivityRailBaseProps {
   /** Refresh domains this rail renders (see `@/lib/refresh/domains`). */
   refreshDomains?: readonly RefreshDomain[];
   /** Currently selected line id — gets a highlight ring so the rail mirrors the workspace. */

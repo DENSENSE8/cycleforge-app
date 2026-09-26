@@ -153,7 +153,7 @@ export function exceptionRailMetaCount(
  * highest pair-once fan-out, then newer ids. Pins impact and urgency at the
  * top of the rail — not a "Resolves N" caption.
  */
-export function compareExceptionQueueRows(
+function compareExceptionQueueRows(
   a: Pick<OrderExceptionRow, 'id' | 'blockers' | 'siblingUnpairedCount'>,
   b: Pick<OrderExceptionRow, 'id' | 'blockers' | 'siblingUnpairedCount'>,
 ): number {

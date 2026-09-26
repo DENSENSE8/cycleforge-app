@@ -13,7 +13,7 @@ import {
 // Pure declarations (types, BUILTIN_IMAGE_TYPES, slugifyImageType) live in ./image-type-defs so client modules can use them without this…
 export * from './image-type-defs';
 
-export interface ImageTypeDeps {
+interface ImageTypeDeps {
   tenantQuery: typeof tenantQuery;
   withTenantTransaction: typeof withTenantTransaction;
 }
@@ -63,7 +63,7 @@ export async function listCustomImageTypes(
 }
 
 /** Built-ins followed by the org's custom types. */
-export async function listImageTypes(
+async function listImageTypes(
   orgId: OrgId,
   deps: ImageTypeDeps = defaultDeps,
 ): Promise<{ builtIn: BuiltInImageType[]; custom: CustomImageType[] }> {

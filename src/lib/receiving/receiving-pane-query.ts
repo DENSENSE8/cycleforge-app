@@ -16,7 +16,7 @@ import {
 } from '@/lib/receiving-history-search';
 
 /** Facets a compare pane may override independently of the page URL. */
-export type ReceivingPaneQuery = {
+type ReceivingPaneQuery = {
   /** Unbox tab vocabulary — maps to table mode via resolveUnboxReceivingTableMode. */
   tab: UnboxWorkspaceTab;
   /** Free-text list search (`?search=` on single layout). */

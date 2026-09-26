@@ -24,7 +24,7 @@ export const REPORT_BIN_UTILIZATION_GRID_CAPABILITIES: GridSurfaceCapabilities =
   dayBands: false,
 };
 
-export function makeReportBinUtilizationGridDescriptor(
+function makeReportBinUtilizationGridDescriptor(
   columns: readonly ReportBinUtilizationGridColumn[],
 ): GridSurfaceDescriptor<BinUtilizationReportRow, ReportBinUtilizationGridColumn> {
   return makeGridSurfaceDescriptor<BinUtilizationReportRow, ReportBinUtilizationGridColumn>(
@@ -40,7 +40,7 @@ export function makeReportBinUtilizationGridDescriptor(
   );
 }
 
-export const REPORT_BIN_UTILIZATION_TABLE_DEFINITION = parseTableDefinition({
+const REPORT_BIN_UTILIZATION_TABLE_DEFINITION = parseTableDefinition({
   id: 'reports.bin-utilization',
   tableId: 'report-bin-utilization',
   entityFamily: 'report-bin-utilization',

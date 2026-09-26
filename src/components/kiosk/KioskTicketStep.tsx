@@ -39,7 +39,7 @@ function candidateDate(iso: string): string {
 }
 
 /** The label a picked ticket is remembered by, once the list has moved on. */
-export function kioskTicketLabel(ticket: TicketCandidate): string {
+function kioskTicketLabel(ticket: TicketCandidate): string {
   const subject = ticket.subject?.trim();
   return subject ? `#${ticket.id} · ${subject}` : `#${ticket.id}`;
 }

@@ -8,7 +8,7 @@ export type RepairTicketLink =
   | { state: 'ambiguous'; zendeskTicketIds: number[] }
   | { state: 'internal'; supportTicketId: number };
 
-export interface RepairTicketLinkRow {
+interface RepairTicketLinkRow {
   supportTicketId: number;
   zendeskTicketId: number | null;
 }

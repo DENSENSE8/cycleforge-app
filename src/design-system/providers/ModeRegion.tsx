@@ -17,7 +17,7 @@ interface ModeContextValue {
 
 const ModeContext = createContext<ModeContextValue | null>(null);
 
-export interface ModeRegionProps extends ComponentPropsWithoutRef<'div'> {
+interface ModeRegionProps extends ComponentPropsWithoutRef<'div'> {
   mode: ModeName;
 }
 

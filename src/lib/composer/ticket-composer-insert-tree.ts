@@ -5,12 +5,12 @@
 
 import type { ComposerDrillNode } from '@/components/composer/ComposerDrillMenu';
 
-export type TicketInsertTreeIcons = {
+type TicketInsertTreeIcons = {
   browse?: ComposerDrillNode['icon'];
   upload?: ComposerDrillNode['icon'];
 };
 
-export type TicketInsertTreeInput = {
+type TicketInsertTreeInput = {
   photos?: {
     onBrowse?: () => void;
     onUpload?: () => void;

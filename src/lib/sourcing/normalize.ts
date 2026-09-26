@@ -53,7 +53,7 @@ function toCents(value: string | undefined): number | null {
 }
 
 /** Normalize one eBay Browse item summary into a candidate. */
-export function normalizeBrowseItem(item: BrowseItemSummary): NormalizedCandidate {
+function normalizeBrowseItem(item: BrowseItemSummary): NormalizedCandidate {
   const externalId = (item.itemId || item.legacyItemId || '').trim() || null;
   const imageUrl = item.image?.imageUrl || item.thumbnailImages?.[0]?.imageUrl || null;
   const shippingCost = item.shippingOptions?.[0]?.shippingCost?.value;

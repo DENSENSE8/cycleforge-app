@@ -61,7 +61,7 @@ interface TabSwitchProps {
 }
 
 /** Shared chrome for sidebar order/view TabSwitch rows (dashboard, repair, etc.). */
-export function SidebarTabSwitchChrome({ children }: { children: ReactNode }) {
+function SidebarTabSwitchChrome({ children }: { children: ReactNode }) {
   return <div className="border-b border-border-default px-4 py-3">{children}</div>;
 }
 

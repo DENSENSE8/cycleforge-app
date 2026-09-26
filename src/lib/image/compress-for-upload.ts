@@ -8,7 +8,7 @@ import {
   type DownscaleResult,
 } from './downscale';
 
-export interface CompressForUploadResult {
+interface CompressForUploadResult {
   blob: Blob;
   /** `data:image/jpeg;base64,…` — what most `/api/*-photos` POST bodies want. */
   base64: string;

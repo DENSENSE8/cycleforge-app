@@ -23,7 +23,7 @@ import { useThrowTask, throwTargetKey, type ThrowTaskMode } from '@/hooks/useThr
 import { TASK_ASSIGNEES_MAX, TASK_NOTE_MAX, TASK_PROJECT_NAME_MAX } from '@/lib/tasks/create-task-core';
 import { cn } from '@/utils/_cn';
 
-export interface TaskComposerSections {
+interface TaskComposerSections {
   sections: TriageSectionSpec[];
   /** What is still missing, in words, or null when the task can be thrown. */
   missing: string | null;

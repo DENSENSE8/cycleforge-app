@@ -48,7 +48,7 @@ export class DriveNotConnectedError extends Error {
 
 // ─── App config ─────────────────────────────────────────────────────────────
 
-export interface DriveAppConfig {
+interface DriveAppConfig {
   clientId: string;
   clientSecret: string;
   redirectUri: string;
@@ -75,7 +75,7 @@ export function isDriveBackupConfigured(): boolean {
 
 // ─── OAuth: authorization-code exchange (connect callback) ───────────────────
 
-export interface DriveTokenExchange {
+interface DriveTokenExchange {
   refreshToken: string | null;
   accessToken: string;
   expiresAt: number;
@@ -317,7 +317,7 @@ export async function ensureSubfolderPath(
 
 // ─── Upload / read / delete ──────────────────────────────────────────────────
 
-export interface DriveUploadResult {
+interface DriveUploadResult {
   fileId: string;
   webViewLink: string | null;
   size: number | null;
@@ -389,7 +389,7 @@ export async function getDriveFileMedia(
 }
 
 /** Delete a Drive file by id. Tolerates already-deleted (404). */
-export async function deleteDriveFile(orgId: OrgId, fileId: string): Promise<void> {
+async function deleteDriveFile(orgId: OrgId, fileId: string): Promise<void> {
   const accessToken = await getDriveAccessToken(orgId);
   const res = await fetch(`${DRIVE_API}/files/${encodeURIComponent(fileId)}`, {
     method: 'DELETE',

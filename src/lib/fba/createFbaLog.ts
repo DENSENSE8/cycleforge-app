@@ -4,9 +4,9 @@ type Queryable = {
   query: (text: string, params?: any[]) => Promise<{ rows: any[] }>;
 };
 
-export type FbaLogSourceStage = 'TECH' | 'FBA' | 'PACK' | 'SHIP' | 'ADMIN';
+type FbaLogSourceStage = 'TECH' | 'FBA' | 'PACK' | 'SHIP' | 'ADMIN';
 
-export type FbaLogEventType =
+type FbaLogEventType =
   | 'SCANNED'
   | 'READY'
   | 'VERIFIED'
@@ -18,7 +18,7 @@ export type FbaLogEventType =
   | 'LABEL_ASSIGNED'
   | 'PACKER_VERIFIED';
 
-export interface CreateFbaLogParams {
+interface CreateFbaLogParams {
   fnsku: string;
   sourceStage: FbaLogSourceStage;
   eventType: FbaLogEventType | string;

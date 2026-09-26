@@ -27,7 +27,7 @@ const SHIP_BY_TONE: Partial<Record<DeadlineBand, string>> = {
   today: 'text-text-warning',
 };
 
-export function ToShipIdentityChips({ row }: { row: WorkOrderRow }) {
+function ToShipIdentityChips({ row }: { row: WorkOrderRow }) {
   const orderId = toShipOrderId(row);
   const tracking = toShipTrackingNumber(row);
   return (
@@ -57,19 +57,19 @@ export function toShipExpectedQty(row: WorkOrderRow): number | null {
  * Plain qty — deliberately NOT `ItemRecordQtyBadge`.
  * Bare number, no `×` glyph (operator 2026-09-15): the column it sits in is
  */
-export function ToShipQtyFace({ row }: { row: WorkOrderRow }) {
+function ToShipQtyFace({ row }: { row: WorkOrderRow }) {
   const expected = toShipExpectedQty(row);
   return <span data-testid="to-ship-qty">{expected != null ? expected : EMPTY_META_DASH}</span>;
 }
 
 /** Item number — the identity a picker matches against the listing and the paperwork. */
-export function ToShipItemNumberFace({ row }: { row: WorkOrderRow }) {
+function ToShipItemNumberFace({ row }: { row: WorkOrderRow }) {
   const value = String(row.itemNumber || row.sku || '').trim();
   if (!value) return null;
   return <span data-testid="to-ship-item-number">{value}</span>;
 }
 
-export function ToShipConditionFace({ row }: { row: WorkOrderRow }) {
+function ToShipConditionFace({ row }: { row: WorkOrderRow }) {
   const label = conditionGradeTableLabel(row.condition);
   if (!label || label === EMPTY_META_DASH) return null;
   const raw = String(row.condition || '').toLowerCase();
@@ -83,7 +83,7 @@ export function ToShipConditionFace({ row }: { row: WorkOrderRow }) {
   );
 }
 
-export function ToShipPriceFace({ row }: { row: WorkOrderRow }) {
+function ToShipPriceFace({ row }: { row: WorkOrderRow }) {
   const face = formatSalePrice(row.saleAmount, row.currency);
   if (!face) return null;
   return <span data-testid="to-ship-price">{face}</span>;
@@ -107,7 +107,7 @@ export function toShipConditionParts(row: WorkOrderRow): { label: string; tone: 
 }
 
 /** Identity then facts: item number, qty, amount, condition — one font. */
-export function ToShipSlotSubtitle({ row }: { row: WorkOrderRow }) {
+function ToShipSlotSubtitle({ row }: { row: WorkOrderRow }) {
   return (
     <span data-testid="to-ship-slot-subtitle" className="min-w-0 flex-1">
       <ItemRecordMobileMeta
@@ -121,7 +121,7 @@ export function ToShipSlotSubtitle({ row }: { row: WorkOrderRow }) {
 }
 
 /** Ship-by, top-right corner of the card. */
-export function ToShipByFace({ row }: { row: WorkOrderRow }) {
+function ToShipByFace({ row }: { row: WorkOrderRow }) {
   const key = row.deadlineAt ? toPSTDateKey(row.deadlineAt) : null;
   if (!key) return null;
   const band = classifyDeadlineBand(row.deadlineAt);

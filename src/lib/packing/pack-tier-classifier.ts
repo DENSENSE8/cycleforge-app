@@ -45,7 +45,7 @@ const SMALL_RE =
 const SYSTEMISH_RE =
   /\b(system|unit|speaker|speakers|subwoofer|receiver|amplifier|player|dock|stereo|theater|bundle|kit)\b/i;
 
-export type PackTierClassification = {
+type PackTierClassification = {
   packTier: PackTier;
   estimatedMinutes: number;
   tierSource: 'rules';

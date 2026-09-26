@@ -72,7 +72,7 @@ export async function reportAiUsageMeterEvent(input: {
   }, creds);
 }
 
-export interface CreateCustomerInput {
+interface CreateCustomerInput {
   email: string;
   name?: string;
   metadata?: Record<string, string>;
@@ -92,7 +92,7 @@ export async function createStripeCustomer(input: CreateCustomerInput): Promise<
   return stripeRequest('/customers', body, creds);
 }
 
-export interface CreateCheckoutSessionInput {
+interface CreateCheckoutSessionInput {
   customerId: string;
   priceId: string;
   successUrl: string;
@@ -122,7 +122,7 @@ export async function createCheckoutSession(input: CreateCheckoutSessionInput): 
   return stripeRequest('/checkout/sessions', body, creds);
 }
 
-export interface CreatePortalSessionInput {
+interface CreatePortalSessionInput {
   customerId: string;
   returnUrl: string;
   orgId?: OrgId;

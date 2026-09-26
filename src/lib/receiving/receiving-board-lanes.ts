@@ -7,7 +7,7 @@ import type { LabelTone } from '@/lib/labels/types';
 export type ReceivingIncomingLane = 'DELIVERED_UNSCANNED' | 'IN_TRANSIT' | 'EXPECTED' | 'TRACKING_UNAVAILABLE';
 export type ReceivingLaneIconKey = 'inbox' | 'truck' | 'clock' | 'alert' | 'check' | 'search';
 
-export interface ReceivingLaneDescriptor<LaneId extends string> {
+interface ReceivingLaneDescriptor<LaneId extends string> {
   id: LaneId;
   iconKey: ReceivingLaneIconKey;
   iconClass: string;
@@ -20,7 +20,7 @@ export const RECEIVING_INCOMING_BOARD_LANES: readonly ReceivingLaneDescriptor<Re
   { id: 'TRACKING_UNAVAILABLE', iconKey: 'alert', iconClass: 'text-amber-500' },
 ];
 
-export interface ReceivingLaneMeta {
+interface ReceivingLaneMeta {
   label: string;
   description: string;
   tone: LabelTone;
@@ -34,7 +34,7 @@ export const RECEIVING_INCOMING_STATE_META: Record<ReceivingIncomingLane, Receiv
   TRACKING_UNAVAILABLE: { label: 'Tracking unavailable', description: 'Carrier is access-blocked (e.g. USPS 403).', tone: 'amber', dot: TONE_CLASSES.amber.dot },
 };
 
-export interface ReceivingIncomingLaneInput {
+interface ReceivingIncomingLaneInput {
   delivery_state?: string | null;
   workflow_status?: string | null;
 }
@@ -64,7 +64,7 @@ export const RECEIVING_HISTORY_STATE_META: Record<ReceivingHistoryLane, Receivin
   UNFOUND: { label: 'Unfound', description: 'No matched PO — needs matching.', tone: 'orange', dot: TONE_CLASSES.orange.dot },
 };
 
-export interface ReceivingHistoryLaneInput {
+interface ReceivingHistoryLaneInput {
   workflow_status?: string | null;
   zoho_purchaseorder_id?: string | null;
   updated_at?: string | null;

@@ -312,8 +312,8 @@ export function getSupportSettings(settings: OrgSettings): OrgSettings['support'
 }
 
 /** Fulfillment-substitution policy for this org. See OrgSettingsSchema.fulfillment. */
-export type SubstitutionEnforcement = OrgSettings['fulfillment']['substitutionEnforcement'];
-export type SubstitutionNode = OrgSettings['fulfillment']['substitutionAllowedNodes'][number];
+type SubstitutionEnforcement = OrgSettings['fulfillment']['substitutionEnforcement'];
+type SubstitutionNode = OrgSettings['fulfillment']['substitutionAllowedNodes'][number];
 
 export function getSubstitutionEnforcement(settings: OrgSettings): SubstitutionEnforcement {
   return settings.fulfillment?.substitutionEnforcement ?? 'advisory';

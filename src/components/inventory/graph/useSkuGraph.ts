@@ -40,7 +40,7 @@ export function useSkuChildren(skuId: number | null | undefined) {
   });
 }
 
-export function useSkuTree(skuId: number | null | undefined, depth = 10) {
+function useSkuTree(skuId: number | null | undefined, depth = 10) {
   return useQuery<SkuTreeResult>({
     queryKey: ['sku-graph', 'tree', skuId, depth],
     enabled: typeof skuId === 'number' && skuId > 0,
@@ -69,7 +69,7 @@ export function useSkuGraphData(skuId: number | null, mode: SkuGraphMode) {
 
 // ─── Mutations ───────────────────────────────────────────────────────────────
 
-export interface CreateRelationshipInput {
+interface CreateRelationshipInput {
   parentSkuId: number;
   childSkuId: number;
   qty?: number;

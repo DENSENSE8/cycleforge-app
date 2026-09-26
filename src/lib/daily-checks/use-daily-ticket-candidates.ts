@@ -10,7 +10,7 @@ export interface DailyTicketOption {
   status: string;
 }
 
-export interface DailyTicketCandidates {
+interface DailyTicketCandidates {
   options: DailyTicketOption[];
   isLoading: boolean;
   isError: boolean;

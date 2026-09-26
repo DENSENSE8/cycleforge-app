@@ -20,7 +20,7 @@ import {
 import type { TaskDeskRow } from '@/lib/tasks/task-desk-row';
 
 /** The PRODUCT-DEFAULT materialization — the canonical columns and guard SoT. */
-export const REPORT_TASKS_COMPOUND_COLUMNS: readonly SlotTableColumn[] = slotTableColumnsFor(
+const REPORT_TASKS_COMPOUND_COLUMNS: readonly SlotTableColumn[] = slotTableColumnsFor(
   REPORT_TASKS_FAMILY,
   REPORT_TASKS_PRODUCT_LAYOUT,
 );
@@ -35,7 +35,7 @@ export const REPORT_TASKS_GRID_CAPABILITIES: GridSurfaceCapabilities = {
 };
 
 /** Build the descriptor from a RESOLVED column list (post-visibility), so `contentMinWidthRem` and the TanStack defs follow the tracks that… */
-export function makeReportTasksGridDescriptor(
+function makeReportTasksGridDescriptor(
   columns: readonly SlotTableColumn[],
 ): GridSurfaceDescriptor<TaskDeskRow, SlotTableColumn> {
   return makeGridSurfaceDescriptor<TaskDeskRow, SlotTableColumn>(
@@ -51,7 +51,7 @@ export function makeReportTasksGridDescriptor(
   );
 }
 
-export const REPORT_TASKS_TABLE_DEFINITION = parseTableDefinition({
+const REPORT_TASKS_TABLE_DEFINITION = parseTableDefinition({
   id: 'reports.tasks',
   tableId: 'report-tasks',
   entityFamily: 'report-tasks',

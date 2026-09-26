@@ -3,7 +3,7 @@
 import { RECEIVING_HISTORY_URL_PARAMS } from '@/lib/receiving-history-search';
 import { HISTORY_SORT_WIRE_IDS } from '@/lib/receiving/receiving-modes';
 
-export type InboundLane = 'pipeline' | 'docked';
+type InboundLane = 'pipeline' | 'docked';
 
 const INBOUND_LANE_PARAM = 'lane';
 

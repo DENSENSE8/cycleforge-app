@@ -12,7 +12,7 @@ import {
   makeTrackingExceptionsGridDescriptor,
 } from './tracking-exceptions-grid-descriptor';
 
-export const TRACKING_EXCEPTIONS_TABLE_DEFINITION = parseTableDefinition({
+const TRACKING_EXCEPTIONS_TABLE_DEFINITION = parseTableDefinition({
   id: 'ops.tracking-exceptions',
   tableId: 'tracking-exceptions',
   entityFamily: 'tracking-exceptions',

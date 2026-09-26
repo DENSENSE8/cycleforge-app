@@ -3,7 +3,7 @@ import type { AllocationHit, ChannelDisposition } from '@/lib/channel-allocation
 /** Ready-stage disposition facets on `/shipping/fba?fbaMode=ready` (`?rtab=`). */
 export type ReadyWorkspaceTab = 'all' | 'fba' | 'prebox' | 'hold';
 
-export interface ReadyWorkspaceCounts {
+interface ReadyWorkspaceCounts {
   all: number;
   fba: number;
   prebox: number;
@@ -47,7 +47,7 @@ export function readyTabDisposition(tab: ReadyWorkspaceTab): ChannelDisposition 
 }
 
 /** Disposition tallies for the Ready KPI band — pure over the fetched hits. */
-export function readyHistoryCounts(hits: readonly AllocationHit[]): ReadyWorkspaceCounts {
+function readyHistoryCounts(hits: readonly AllocationHit[]): ReadyWorkspaceCounts {
   const next: ReadyWorkspaceCounts = { all: hits.length, fba: 0, prebox: 0, hold: 0, staged: 0 };
   for (const hit of hits) {
     if (hit.disposition === 'FBA') next.fba += 1;

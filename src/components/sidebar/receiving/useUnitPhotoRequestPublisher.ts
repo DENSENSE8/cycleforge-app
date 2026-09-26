@@ -15,7 +15,7 @@ interface UseUnitPhotoRequestPublisherArgs {
   stationChannelName: string;
 }
 
-export type UnitPhotoRequestPublisher = (args: {
+type UnitPhotoRequestPublisher = (args: {
   /** Canonical serial_units.id — the phone uses it as the upload entityId. */
   serialUnitId: number;
   /** Resolvable unit key (serial or minted unit_uid) for display + poRef filing. */

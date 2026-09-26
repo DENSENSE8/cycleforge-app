@@ -5,7 +5,7 @@ import { normalizeTrackingNumber } from '../normalize';
 
 // USPS is per-number; cap how many we subscribe per cron run so one pass can't
 // build an unbounded fan-out. Tune via env if USPS documents a higher ceiling.
-export const USPS_SUBSCRIPTION_BATCH_LIMIT = Number(
+const USPS_SUBSCRIPTION_BATCH_LIMIT = Number(
   process.env.USPS_SUBSCRIPTION_BATCH_LIMIT ?? 200,
 );
 
@@ -18,9 +18,9 @@ const CALLBACK_URL = process.env.USPS_WEBHOOK_CALLBACK_URL ?? '';
 const CALLBACK_SECRET =
   process.env.USPS_WEBHOOK_SECRET ?? process.env.USPS_WEBHOOK_BEARER ?? '';
 
-export type UspsSubscriptionAction = 'ADD' | 'DELETE';
+type UspsSubscriptionAction = 'ADD' | 'DELETE';
 
-export interface UspsSubscriptionItemResult {
+interface UspsSubscriptionItemResult {
   trackingNumber: string;
   ok: boolean;
   /** USPS-issued subscription id, when returned — stored for unsubscribe/renew. */
@@ -28,7 +28,7 @@ export interface UspsSubscriptionItemResult {
   error?: string;
 }
 
-export interface UspsSubscriptionResult {
+interface UspsSubscriptionResult {
   results: UspsSubscriptionItemResult[];
   completed: string[];
   failed: string[];
@@ -75,7 +75,7 @@ async function authedFetch(path: string, init: RequestInit): Promise<Response> {
  * Never throws — a failure is returned as `{ ok: false, error }` so a batch loop
  * isn't taken down by one rejection.
  */
-export async function subscribeTrackingNumber(
+async function subscribeTrackingNumber(
   trackingNumberRaw: string,
   action: UspsSubscriptionAction = 'ADD',
 ): Promise<UspsSubscriptionItemResult> {
@@ -121,7 +121,7 @@ export async function subscribeTrackingNumber(
 }
 
 /** Subscribe a list of tracking numbers with bounded concurrency. */
-export async function subscribeTrackingNumbers(
+async function subscribeTrackingNumbers(
   trackingNumbers: string[],
   action: UspsSubscriptionAction = 'ADD',
   options?: { concurrency?: number },

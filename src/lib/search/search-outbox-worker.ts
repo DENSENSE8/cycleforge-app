@@ -447,7 +447,7 @@ const defaultDeps: SearchOutboxDeps = {
 
 // ── Embedding retry sweep (Phase 3, org-aware) ──────────────────────────────
 
-export interface EmbedRetryDeps {
+interface EmbedRetryDeps {
   /** Orgs that currently have stale NULL-embedding docs. */
   listOrgsWithNullEmbeddings(olderThanMinutes: number, maxOrgs: number): Promise<OrgId[]>;
   /** Per-org provider resolution (cached) — null = org can't embed, skip. */

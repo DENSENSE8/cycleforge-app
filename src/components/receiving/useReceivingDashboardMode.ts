@@ -13,7 +13,7 @@ import {
   HISTORY_SURFACE_ROUTE,
 } from '@/lib/receiving/surface-path';
 
-export interface ReceivingDashboardMode {
+interface ReceivingDashboardMode {
   mode: string;
   isTriageMode: boolean;
   isHistoryMode: boolean;

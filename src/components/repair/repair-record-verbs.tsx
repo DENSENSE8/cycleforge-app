@@ -166,7 +166,7 @@ function LinkDisplay({ repair, c, done }: { repair: RSRecord; c: RepairDetailsCo
 }
 
 /** Every verb the open repair offers, in strip order. */
-export function buildRepairVerbs(
+function buildRepairVerbs(
   repair: RSRecord,
   c: RepairDetailsController,
   { onClose }: { onClose: () => void },

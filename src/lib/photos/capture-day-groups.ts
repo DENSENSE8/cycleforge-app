@@ -3,7 +3,7 @@
 import type { LibraryPhoto } from '@/components/photos/photo-library-types';
 import { toPSTDateKey } from '@/utils/date';
 
-export interface PhotoCaptureDayGroup {
+interface PhotoCaptureDayGroup {
   /** `YYYY-MM-DD` in the warehouse zone — the band label + its date-filter value. */
   dateKey: string;
   photos: LibraryPhoto[];

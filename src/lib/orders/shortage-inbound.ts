@@ -4,7 +4,7 @@ import type { PoolClient } from 'pg';
 import type { OrgId } from '@/lib/tenancy/constants';
 import { syncOrderShortageDenorm } from '@/lib/orders/order-line-shortage';
 
-export type ShortageInboundClient = Pick<PoolClient, 'query'>;
+type ShortageInboundClient = Pick<PoolClient, 'query'>;
 
 export async function earmarkPoForReplenishmentRequest(
   client: ShortageInboundClient,

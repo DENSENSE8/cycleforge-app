@@ -31,7 +31,7 @@ function NodeIcon({ name, className }: { name: string | undefined; className?: s
   return <Icon className={className} />;
 }
 
-export function ProcessNode({ data }: NodeProps) {
+function ProcessNode({ data }: NodeProps) {
   const {
     node,
     dimmed,
@@ -408,7 +408,7 @@ export function ProcessNode({ data }: NodeProps) {
   );
 }
 
-export function DepartmentNode({ data }: NodeProps) {
+function DepartmentNode({ data }: NodeProps) {
   const d = data as DepartmentNodeData;
   return (
     <div className="relative w-52 cursor-zoom-in rounded-2xl border-2 bg-surface-card px-4 py-3 shadow-sm" style={{ borderColor: d.color }}>
@@ -432,7 +432,7 @@ export function DepartmentNode({ data }: NodeProps) {
 }
 
 // ─── Annotation (sticky-note) node (Phase E3) ──────────────── A pure canvas decoration:
-export function AnnotationNode({ data }: NodeProps) {
+function AnnotationNode({ data }: NodeProps) {
   const { annotation, editable, onUpdateText, onDelete } = data as AnnotationNodeData;
   return (
     <div className="group relative w-48 rounded-md border border-amber-300 bg-amber-50 p-2 shadow-sm ring-1 ring-amber-200/60">

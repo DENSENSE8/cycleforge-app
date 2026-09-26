@@ -7,7 +7,7 @@ export interface ImageDataLike {
   height: number;
 }
 
-export interface FrameMetrics {
+interface FrameMetrics {
   /** Variance of the Laplacian. Higher = sharper. Scene-dependent; tune on real labels. */
   sharpness: number;
   /** Mean abs grayscale diff vs previous frame, 0..255. Higher = more motion. NaN if no prev. */
@@ -18,13 +18,13 @@ export interface FrameMetrics {
 
 export type GateReason = 'ok' | 'moving' | 'blurry' | 'dark' | 'too-bright';
 
-export interface GateResult {
+interface GateResult {
   ok: boolean;
   reason: GateReason;
   metrics: FrameMetrics;
 }
 
-export interface GateThresholds {
+interface GateThresholds {
   /** Below this Laplacian-variance ⇒ blurry. */
   sharpnessMin: number;
   /** Above this mean-diff ⇒ camera moving (skip to avoid motion blur). */
@@ -127,7 +127,7 @@ export function gateFrame(
 }
 
 /** Human coaching copy for each gate reason — drives the live viewfinder hint. */
-export const GATE_HINTS: Record<GateReason, string> = {
+const GATE_HINTS: Record<GateReason, string> = {
   ok: 'Hold steady…',
   moving: 'Hold steady',
   blurry: 'Move closer / focus',

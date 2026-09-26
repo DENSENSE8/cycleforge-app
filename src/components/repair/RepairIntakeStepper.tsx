@@ -8,7 +8,7 @@ import {
 
 export type RepairIntakeStepKey = 'product' | 'issue' | 'contact' | 'review';
 
-export const REPAIR_INTAKE_STEPS: ReadonlyArray<{
+const REPAIR_INTAKE_STEPS: ReadonlyArray<{
   key: RepairIntakeStepKey;
   label: string;
   /** Compact chrome-row label — fits the single-row intake header. */
@@ -25,7 +25,7 @@ export const REPAIR_INTAKE_STEPS: ReadonlyArray<{
  * current step is `active`, later steps are `pending`. Feeds
  * {@link deriveLinearStepStates} so Repair shares the Unbox stepper walk.
  */
-export function deriveRepairIntakeStepStates(
+function deriveRepairIntakeStepStates(
   currentStep: RepairIntakeStepKey,
 ): Record<string, LinearStepState> {
   const flags = REPAIR_INTAKE_STEPS.map((step) => {

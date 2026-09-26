@@ -21,7 +21,7 @@ export function visitLineAdjustmentText(adjustment: CounterVisitLineAdjustment |
 }
 
 /** One History row for a money verb on the visit: what, which line, why, who. */
-export interface VisitMoneyEvent {
+interface VisitMoneyEvent {
   id: number;
   label: 'Price change' | 'Comp' | 'Void';
   lineTitle: string | null;

@@ -21,7 +21,7 @@ export type FeedWriteInverse =
   | { kind: 'node_surface.create'; payload: Record<string, unknown> }
   | null;
 
-export interface FeedWriteResult {
+interface FeedWriteResult {
   ok: boolean;
   error?: string;
   /** HTTP-ish status for the caller to map (404 not found / 409 conflict / 400 invalid). */

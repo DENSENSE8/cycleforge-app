@@ -23,7 +23,7 @@ import {
 } from './report-dead-stock-table-definition';
 import { useReportDeadStockTableLayout } from './useReportDeadStockTableLayout';
 
-export interface UseReportDeadStockSpreadsheetOptions {
+interface UseReportDeadStockSpreadsheetOptions {
   /** One report page, already ordered by the route; a header click re-orders it. */
   rows: readonly DeadStockReportRow[];
   loading?: boolean;

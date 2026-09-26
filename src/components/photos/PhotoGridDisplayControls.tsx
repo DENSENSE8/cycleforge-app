@@ -22,7 +22,7 @@ export const PHOTO_GRID_DENSITY_ICONS: Record<PhotoGridDensity, typeof ColumnsOn
   lg: ColumnsOne,
 };
 
-export interface PhotoGridDisplayControlsProps {
+interface PhotoGridDisplayControlsProps {
   density: PhotoGridDensity;
   onDensityChange: (density: PhotoGridDensity) => void;
   /** When set, renders a refresh control to the right of the density toggle. */

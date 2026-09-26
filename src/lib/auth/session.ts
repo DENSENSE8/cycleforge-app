@@ -54,7 +54,7 @@ export interface SessionRow {
   persistent: boolean;
 }
 
-export interface IdleWindow {
+interface IdleWindow {
   idleMs: number;
   absoluteMs: number;
 }
@@ -117,7 +117,7 @@ export function resolveSessionExpiry(opts: {
 }
 
 /** @deprecated prefer cookieMaxAgeForSession(session) so policy is honored. */
-export function getCookieMaxAgeSeconds(kind: DeviceKind): number {
+function getCookieMaxAgeSeconds(kind: DeviceKind): number {
   return Math.floor(IDLE_WINDOWS[kind].absoluteMs / 1000);
 }
 
@@ -139,7 +139,7 @@ export function asPersistentFlag(raw: unknown): boolean {
   return raw === true;
 }
 
-export interface CreateSessionOpts {
+interface CreateSessionOpts {
   staffId: number;
   deviceKind: DeviceKind;
   deviceLabel?: string | null;
@@ -404,7 +404,7 @@ export async function revokeAllSessionsForStaff(staffId: number): Promise<number
   return r.rowCount ?? 0;
 }
 
-export async function listActiveSessions(staffId: number): Promise<SessionRow[]> {
+async function listActiveSessions(staffId: number): Promise<SessionRow[]> {
   const r = await pool.query(
     `SELECT sid, staff_id, organization_id, device_kind, device_label, ip::text AS ip, user_agent,
             created_at, last_seen_at, expires_at, revoked_at, persistent

@@ -34,7 +34,7 @@ const INBOUND_TRANSITIONS: Readonly<Record<string, ReadonlySet<string>>> = {
   ]),
 };
 
-export type ReceivingLineGuardResult = { ok: true } | { ok: false; reason: string };
+type ReceivingLineGuardResult = { ok: true } | { ok: false; reason: string };
 
 /** Synchronous pre-flight — does NOT touch the DB. Identity is allowed. */
 export function guardReceivingLine(from: string, to: string): ReceivingLineGuardResult {
@@ -46,7 +46,7 @@ export function guardReceivingLine(from: string, to: string): ReceivingLineGuard
   return { ok: true };
 }
 
-export interface ReceivingLineTransitionInput {
+interface ReceivingLineTransitionInput {
   receivingLineId: number;
   /** Target fine-grained workflow_status. */
   to: InboundWorkflowStatus | string;
@@ -70,7 +70,7 @@ export interface ReceivingLineTransitionInput {
   skipEvent?: boolean;
 }
 
-export type ReceivingLineTransitionResult =
+type ReceivingLineTransitionResult =
   | {
       ok: true;
       eventId: number;

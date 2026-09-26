@@ -70,7 +70,7 @@ export function OrderFactList({
 }
 
 /** A titled card grouping — header (title + optional description + actions) above the body. */
-export function OrderRecordCard({
+function OrderRecordCard({
   title,
   description,
   actions,

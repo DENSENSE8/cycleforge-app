@@ -8,7 +8,7 @@ import { loadActiveAmazonAccounts, loadAmazonCreds } from './accounts';
 const RETURNS_API_VERSION = '2021-08-19';
 
 /** Normalized return facts the route + UI consume. */
-export interface AmazonReturnMatch {
+interface AmazonReturnMatch {
   accountName: string;
   returnId: string;
   rmaId: string | null;
@@ -20,7 +20,7 @@ export interface AmazonReturnMatch {
   status: string | null;
 }
 
-export interface AmazonReturnLookupResult {
+interface AmazonReturnLookupResult {
   matched: boolean;
   /** True when NO connected account could query returns (not enrolled / no creds). */
   unsupported: boolean;

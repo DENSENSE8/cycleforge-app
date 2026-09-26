@@ -51,7 +51,7 @@ function toLabel(status: string) {
     .replace(/\b\w/g, (char) => char.toUpperCase());
 }
 
-export function StatusMicroLabel({ status, label, className = '' }: StatusMicroLabelProps) {
+function StatusMicroLabel({ status, label, className = '' }: StatusMicroLabelProps) {
   const normalized = normalize(status);
   const tone = statusToneMap[normalized] || 'neutral';
   const resolvedLabel = label || toLabel(normalized || 'Unknown');

@@ -7,7 +7,7 @@ import { tenantQuery } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';
 import { withZohoCredential } from '@/lib/zoho/with-zoho-credential';
 
-export interface SyncReport {
+interface SyncReport {
   mode: 'delta' | 'full';
   pages: number;
   fetched: number;
@@ -18,7 +18,7 @@ export interface SyncReport {
   elapsedMs: number;
 }
 
-export interface SyncOptions {
+interface SyncOptions {
   mode: 'delta' | 'full';
   /** ISO8601 with Zoho-friendly offset (formatApiOffsetTimestamp). Only used for delta mode. */
   lastModifiedTime?: string;

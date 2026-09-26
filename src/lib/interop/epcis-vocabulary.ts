@@ -137,14 +137,14 @@ export function cbvUri(
 }
 
 /** `null` on anything not in the normative list. No default. */
-export function parseBizStep(value: unknown): CbvBizStep | null {
+function parseBizStep(value: unknown): CbvBizStep | null {
   if (typeof value !== 'string') return null;
   const v = value.trim();
   return BIZ_STEP_SET.has(v) ? (v as CbvBizStep) : null;
 }
 
 /** `null` on anything not in the normative list. No default. */
-export function parseDisposition(value: unknown): CbvDisposition | null {
+function parseDisposition(value: unknown): CbvDisposition | null {
   if (typeof value !== 'string') return null;
   const v = value.trim();
   return DISPOSITION_SET.has(v) ? (v as CbvDisposition) : null;
@@ -169,7 +169,7 @@ export const EPCIS_ACTIONS = ['ADD', 'OBSERVE', 'DELETE'] as const;
 export type EpcisAction = (typeof EPCIS_ACTIONS)[number];
 
 /** Business-transaction types (CBV §7.3), the `why` dimension's identifiers. */
-export const CBV_BIZ_TRANSACTION_TYPES = ['po', 'desadv'] as const;
+const CBV_BIZ_TRANSACTION_TYPES = ['po', 'desadv'] as const;
 
 /** Not exported — callers pass the literal, same as `CbvVocabulary` above. */
 type CbvBizTransactionType = (typeof CBV_BIZ_TRANSACTION_TYPES)[number];

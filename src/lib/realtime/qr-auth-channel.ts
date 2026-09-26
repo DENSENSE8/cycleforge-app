@@ -3,7 +3,7 @@
 import { createHash } from 'node:crypto';
 
 /** Subscribe-only on exactly one QR channel — the anonymous desktop grant. */
-export const QR_AUTH_CHANNEL_OPS = ['subscribe'] as const;
+const QR_AUTH_CHANNEL_OPS = ['subscribe'] as const;
 
 /** Channel name for one QR login session's push events. */
 export function qrAuthChannelName(tokenHash: string): string {

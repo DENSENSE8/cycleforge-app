@@ -27,7 +27,7 @@ export type SupportMode =
 
 /** - tickets → recent dock in sidebar + full queue workbench in the right pane (Orders/Unbox recipe); `?ticket=` opens Station focus. */
 
-export const DEFAULT_SUPPORT_MODE: SupportMode = 'tickets';
+const DEFAULT_SUPPORT_MODE: SupportMode = 'tickets';
 
 /** Live Support modes — includes default `tickets` (usually omitted from the URL). */
 export const SUPPORT_MODES = [
@@ -132,7 +132,7 @@ export const VOICEMAIL_STATUS_ITEMS: HorizontalSliderItem[] = [
   { id: 'all', label: 'All', icon: Layers },
 ];
 
-export function parseVoicemailStatus(raw: string | null | undefined): VoicemailStatusFilter {
+function parseVoicemailStatus(raw: string | null | undefined): VoicemailStatusFilter {
   return raw === 'snoozed' || raw === 'done' || raw === 'all' ? raw : 'open';
 }
 

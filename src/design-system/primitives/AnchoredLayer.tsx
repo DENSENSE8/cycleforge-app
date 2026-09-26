@@ -36,9 +36,9 @@ export type AnchoredPlacement =
  * Which edge the panel's horizontal alignment is measured from.
  * Operator 2026-09-22: *"the drop down for the inbox on click must have no
  */
-export type AnchoredEdgeAlign = 'anchor' | 'viewport';
+type AnchoredEdgeAlign = 'anchor' | 'viewport';
 
-export interface AnchoredLayerProps {
+interface AnchoredLayerProps {
   open: boolean;
   onClose: () => void;
   /** Trigger element the panel is positioned against. */

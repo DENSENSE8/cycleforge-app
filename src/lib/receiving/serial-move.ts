@@ -6,14 +6,14 @@ import { safeRandomUUID } from '@/lib/safe-uuid';
 
 /** serial-move.ts ──────────────────────────────────────────────────────────────────── Re-home a serial's receiving-line membership IN PLACE. */
 
-export interface MoveSerialInput {
+interface MoveSerialInput {
   serial_unit_id: number;
   target_receiving_line_id: number;
   staff_id?: number | null;
   client_event_id?: string | null;
 }
 
-export interface MoveSerialResult {
+interface MoveSerialResult {
   moved: boolean;
   serial_unit_id: number;
   from_receiving_line_id: number | null;

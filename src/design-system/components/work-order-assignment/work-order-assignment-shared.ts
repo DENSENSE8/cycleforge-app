@@ -78,7 +78,7 @@ export function isRowUnassigned(row: WorkOrderRow): boolean {
   return row.techId == null && row.packerId == null;
 }
 
-export function toTimestamp(value: string | null | undefined): number {
+function toTimestamp(value: string | null | undefined): number {
   if (!value) return Number.NEGATIVE_INFINITY;
   const stamp = new Date(value).getTime();
   return Number.isFinite(stamp) ? stamp : Number.NEGATIVE_INFINITY;

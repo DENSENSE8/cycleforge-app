@@ -79,7 +79,7 @@ interface SwimlaneLaneBodyContext<Row, LaneId extends string, SortId extends str
   };
 }
 
-export interface SwimlaneBoardProps<Row, LaneId extends string, SortId extends string> {
+interface SwimlaneBoardProps<Row, LaneId extends string, SortId extends string> {
   /** Which `staff_preferences` board bag persists this board's layout. */
   prefsKey: BoardPrefsKey;
   /** Lane model, in canonical (default) top→bottom order. */

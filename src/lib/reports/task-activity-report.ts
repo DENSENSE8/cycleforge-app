@@ -2,8 +2,8 @@ import type { PomodoroReport, PomodoroReportEvent, PomodoroReportRow } from '@/l
 import { formatTime12hPST } from '@/utils/date';
 
 export type TaskActivityRow = PomodoroReportRow;
-export type TaskActivityEvent = PomodoroReportEvent;
-export type TaskActivityReport = PomodoroReport;
+type TaskActivityEvent = PomodoroReportEvent;
+type TaskActivityReport = PomodoroReport;
 
 export async function fetchTaskActivityReport(dateKey: string): Promise<TaskActivityReport> {
   const params = new URLSearchParams({ from: dateKey, to: dateKey });

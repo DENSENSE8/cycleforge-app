@@ -117,7 +117,7 @@ export const ORDERS_PRODUCT_LAYOUT: SlotLayout = {
  * Status facts that belong on the Shipped lane only. A dock scan-out is not a
  * To-ship / Packed / Labels column — those desks are in-building work.
  */
-export const SHIPPED_LANE_STATUS_FIELDS = ['orders.scanned_out'] as const;
+const SHIPPED_LANE_STATUS_FIELDS = ['orders.scanned_out'] as const;
 
 /** Drop Shipped-only bindings so a working-queue layout cannot paint them. */
 export function omitShippedOnlyBindings(layout: SlotLayout): SlotLayout {

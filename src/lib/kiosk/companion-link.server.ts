@@ -140,7 +140,7 @@ export async function readCompanionForPhone(orgId: OrgId, token: string): Promis
   };
 }
 
-export type QueueSerialResult =
+type QueueSerialResult =
   | { ok: true; devices: CompanionDevice[] }
   | { ok: false; reason: 'not_found' | 'unknown_unit' };
 

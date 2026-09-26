@@ -23,7 +23,7 @@ const KNOWN_CATEGORIES: readonly ShipmentStatusCategory[] = [
   'UNKNOWN',
 ];
 
-export function normalizeShipmentStatusCategory(
+function normalizeShipmentStatusCategory(
   value: string | null | undefined,
 ): ShipmentStatusCategory {
   const upper = String(value ?? '').toUpperCase();

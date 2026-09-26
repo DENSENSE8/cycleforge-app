@@ -4,7 +4,7 @@
 
 import { useSyncExternalStore } from 'react';
 
-export type StageAssignPanelLane = 'pick' | 'pack';
+type StageAssignPanelLane = 'pick' | 'pack';
 
 type Listener = () => void;
 
@@ -31,17 +31,17 @@ export function openStageAssignPanel(next: StageAssignPanelLane) {
   emit();
 }
 
-export function closeStageAssignPanel() {
+function closeStageAssignPanel() {
   if (lane == null) return;
   lane = null;
   emit();
 }
 
-export function toggleStageAssignPanel(next: StageAssignPanelLane) {
+function toggleStageAssignPanel(next: StageAssignPanelLane) {
   lane = lane === next ? null : next;
   emit();
 }
 
-export function useStageAssignPanelLane(): StageAssignPanelLane | null {
+function useStageAssignPanelLane(): StageAssignPanelLane | null {
   return useSyncExternalStore(subscribe, getLane, () => null);
 }

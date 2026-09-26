@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { documentNetworkUrl } from '@/lib/documents/document-network-url';
 
-export interface FetchedDocumentObjectUrl {
+interface FetchedDocumentObjectUrl {
   url: string | null;
   loading: boolean;
   error: string | null;

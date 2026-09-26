@@ -5,7 +5,7 @@ import type { OrgId } from '@/lib/tenancy/constants';
 import { installTemplateIntoOrg } from './install-template';
 import type { TemplatePackageV1 } from './template-package';
 
-export interface ImportTemplatePackageArgs {
+interface ImportTemplatePackageArgs {
   orgId: OrgId;
   staffId: number;
   package: TemplatePackageV1;
@@ -13,7 +13,7 @@ export interface ImportTemplatePackageArgs {
   nameOverride?: string;
 }
 
-export interface ImportTemplatePackageResult {
+interface ImportTemplatePackageResult {
   status: 200 | 404 | 409 | 500;
   seeded: boolean;
   definitionId: number | null;

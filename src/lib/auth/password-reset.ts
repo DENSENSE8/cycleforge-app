@@ -7,14 +7,14 @@ import dbPool from '@/lib/db';
 type Executor = Pool | PoolClient;
 
 /** Lifetime of a password-reset link, in minutes. Short — reset is high-value. */
-export const PASSWORD_RESET_TTL_MINUTES = 30;
+const PASSWORD_RESET_TTL_MINUTES = 30;
 
 /** sha256 of a raw token — the value stored in `password_reset_tokens.token_hash`. */
 export function hashResetToken(token: string): string {
   return createHash('sha256').update(token).digest('hex');
 }
 
-export interface MintedResetToken {
+interface MintedResetToken {
   /** Raw token — place ONLY in the emailed URL; never persisted in the clear. */
   token: string;
   expiresAt: Date;

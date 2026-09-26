@@ -1,6 +1,6 @@
 /** One clock for every slot-table edge-mark traveler. */
 
-export function edgeMarkEaseInOut(t: number): number {
+function edgeMarkEaseInOut(t: number): number {
   return t < 0.5 ? 2 * t * t : 1 - (-2 * t + 2) ** 2 / 2;
 }
 
@@ -28,7 +28,7 @@ export function edgeMarkTravelY(
  * Floor for a SINGLE resting mark: it breathes, it never leaves. A glyph that
  * reaches 0 reads as "gone", and the fact has not gone anywhere.
  */
-export const EDGE_MARK_FLASH_FLOOR = 0.35;
+const EDGE_MARK_FLASH_FLOOR = 0.35;
 
 /**
  * Shared-clock FLASH opacity for a resting gutter mark (`CompoundSelectStatusFace`), and the ROTATION when a row carries more than one.

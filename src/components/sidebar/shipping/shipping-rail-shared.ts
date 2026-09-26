@@ -19,7 +19,7 @@ export function normalizeShippedRailStatus(
 }
 
 /** `/api/orders/recent` row (shipped-out slice). */
-export interface RecentOrderRow {
+interface RecentOrderRow {
   id: number;
   order_id: string;
   product_title: string;
@@ -36,7 +36,7 @@ export interface RecentOrderRow {
   created_at: string;
 }
 
-export type ShippedHistoryRow = Order & { ship_confirmed_at: string | null };
+type ShippedHistoryRow = Order & { ship_confirmed_at: string | null };
 
 /** Map `/api/orders/recent` → rail Order (personal last-N ship-outs). */
 export function recentOrderToShippedRow(row: RecentOrderRow): ShippedHistoryRow {

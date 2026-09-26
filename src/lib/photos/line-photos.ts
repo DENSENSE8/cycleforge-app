@@ -11,7 +11,7 @@ export interface LinePhotoSubject {
   catalogImageUrl: string | null;
 }
 
-export interface LinePhoto {
+interface LinePhoto {
   /** `photos.id`; null for the catalog hero (a URL, not a library photo). */
   id: number | null;
   url: string;

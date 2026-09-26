@@ -15,11 +15,11 @@ export function getBlock(type: string): BlockDefinition | undefined {
   return registry.get(type);
 }
 
-export function hasBlock(type: string): boolean {
+function hasBlock(type: string): boolean {
   return registry.has(type);
 }
 
-export function listBlocks(): BlockDefinition[] {
+function listBlocks(): BlockDefinition[] {
   return [...registry.values()];
 }
 
@@ -29,6 +29,6 @@ export function listBlockMeta(): BlockMeta[] {
 }
 
 /** Test-only. */
-export function __clearBlockRegistry(): void {
+function __clearBlockRegistry(): void {
   registry.clear();
 }

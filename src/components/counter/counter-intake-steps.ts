@@ -7,7 +7,7 @@ import type {
 
 export const COUNTER_STEPS = ['identity', 'cart', 'review', 'payment'] as const;
 
-export type CounterStep = (typeof COUNTER_STEPS)[number];
+type CounterStep = (typeof COUNTER_STEPS)[number];
 
 interface CounterStepMeta {
   id: CounterStep;
@@ -15,7 +15,7 @@ interface CounterStepMeta {
   label: string;
 }
 
-export const COUNTER_STEP_META: ReadonlyArray<CounterStepMeta> = [
+const COUNTER_STEP_META: ReadonlyArray<CounterStepMeta> = [
   { id: 'identity', label: 'Customer' },
   { id: 'cart', label: 'Items' },
   { id: 'review', label: 'Review' },
@@ -58,7 +58,7 @@ export function phoneDigits(value: string, n = 10): string {
 }
 
 /** A service line only counts once it names a real product. */
-export function activeServiceLine(draft: CounterDraft): CounterServiceLine | null {
+function activeServiceLine(draft: CounterDraft): CounterServiceLine | null {
   return draft.service?.productModel?.trim() ? draft.service : null;
 }
 

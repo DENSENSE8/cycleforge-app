@@ -16,7 +16,7 @@ export interface TableImportClassification<TField extends string> {
 }
 
 /** Everything the shared staging mechanism needs to serve one `entityFamily`. */
-export interface TableImportCommitSuccess {
+interface TableImportCommitSuccess {
   ok: true;
   /** Stable ids of rows newly created by this commit, when the writer has them. */
   insertedEntityIds?: readonly number[];

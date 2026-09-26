@@ -1,6 +1,6 @@
 /** Header-track keys → catalog field ids for a slot-layout drop. */
 
-export function columnFieldId(col: { fieldId?: unknown } | null | undefined): string | undefined {
+function columnFieldId(col: { fieldId?: unknown } | null | undefined): string | undefined {
   const id = col?.fieldId;
   return typeof id === 'string' && id.length > 0 ? id : undefined;
 }

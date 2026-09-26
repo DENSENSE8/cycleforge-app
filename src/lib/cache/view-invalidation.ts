@@ -7,7 +7,7 @@ export interface ViewInvalidationDeps {
   invalidateOrg: (orgId: string, tags: string[]) => Promise<void>;
 }
 
-export const defaultViewInvalidationDeps: ViewInvalidationDeps = {
+const defaultViewInvalidationDeps: ViewInvalidationDeps = {
   invalidateLegacy: (tags) => invalidateCacheTags(tags),
   invalidateOrg: (orgId, tags) => invalidateCacheTags(orgId, tags),
 };

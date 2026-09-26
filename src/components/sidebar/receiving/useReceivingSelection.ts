@@ -22,7 +22,7 @@ interface UseReceivingSelectionArgs {
   clearScanSession: () => void;
 }
 
-export interface ReceivingSelectionState {
+interface ReceivingSelectionState {
   selectedLine: ReceivingLineRow | null;
   setSelectedLine: React.Dispatch<React.SetStateAction<ReceivingLineRow | null>>;
   scanMatchedRows: ReceivingLineRow[];

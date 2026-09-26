@@ -22,7 +22,7 @@ import {
 /** Server-order axis for History (`?sort=`). Display column sort stays on `colsort`. */
 export type HistorySortId = HistorySortWireId;
 
-export type HistoryCommandFilterState = {
+type HistoryCommandFilterState = {
   q: string;
   field: ReceivingHistorySearchField;
   scope: ReceivingHistorySearchScope;
@@ -43,13 +43,13 @@ export const EMPTY_HISTORY_COMMAND_FILTER: HistoryCommandFilterState = {
 };
 
 /** Source scope rows exposed in the Unbox History Refine funnel. */
-export const HISTORY_REFINE_SOURCE_OPTIONS = [
+const HISTORY_REFINE_SOURCE_OPTIONS = [
   { id: 'all' as const, label: 'All' },
   { id: 'unmatched' as const, label: 'Unfound' },
 ];
 
 /** Week facet rows in the Refine funnel (`?weekOffset=`). */
-export const HISTORY_REFINE_WEEK_OPTIONS = [
+const HISTORY_REFINE_WEEK_OPTIONS = [
   { offset: 0, label: 'This week' },
   { offset: 1, label: 'Last week' },
   { offset: 2, label: '2 weeks ago' },
@@ -60,9 +60,9 @@ export const HISTORY_REFINE_WEEK_OPTIONS = [
  * Top tabs inside the History Refine funnel — one facet body at a time
  * (industry filter-dialog pattern; not page lifecycle tabs).
  */
-export type HistoryRefineFacetId = 'staff' | 'source' | 'field' | 'week';
+type HistoryRefineFacetId = 'staff' | 'source' | 'field' | 'week';
 
-export const HISTORY_REFINE_FACETS = [
+const HISTORY_REFINE_FACETS = [
   { id: 'staff' as const, label: 'Staff' },
   { id: 'source' as const, label: 'Source' },
   { id: 'field' as const, label: 'Field' },

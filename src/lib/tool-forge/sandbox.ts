@@ -23,12 +23,12 @@ export const VALIDATION_STEPS: ReadonlyArray<{ label: string; cmd: string; args:
   },
 ] as const;
 
-export interface CodePayloadFile {
+interface CodePayloadFile {
   path: string;
   contents: string;
 }
 
-export interface SandboxValidationResult {
+interface SandboxValidationResult {
   ok: boolean;
   /** Per-step outcome, in order. Empty when the payload was refused up front. */
   steps: Array<{ label: string; exitCode: number; stdout: string; stderr: string }>;

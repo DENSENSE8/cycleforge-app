@@ -59,7 +59,7 @@ export {
   pickSupportContextThreadEntity,
 } from '@/lib/support/context-anchor';
 
-export interface SupportContextInput {
+interface SupportContextInput {
   order?: string | null;
   tracking?: string | null;
   ticket?: string | null;

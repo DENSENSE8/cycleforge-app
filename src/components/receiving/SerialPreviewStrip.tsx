@@ -12,7 +12,7 @@ type PreviewSerial = { id?: number; serial_number: string; unit_uid?: string | n
 type BoxableSerial = { handling_unit_id?: number | null };
 
 /** Distinct box (handling-unit) ids across a serial set, in first-seen order. */
-export function distinctBoxIds(serials?: BoxableSerial[] | null): number[] {
+function distinctBoxIds(serials?: BoxableSerial[] | null): number[] {
   if (!serials) return [];
   return Array.from(
     new Set(

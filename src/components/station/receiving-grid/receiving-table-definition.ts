@@ -17,7 +17,7 @@ import {
  * pane not a leading prefix, two flex tracks, a default set past the dense
  * ceiling) throws here rather than painting a broken grid.
  */
-export const RECEIVING_BROWSE_DEFINITION = parseTableDefinition({
+const RECEIVING_BROWSE_DEFINITION = parseTableDefinition({
   id: 'receiving.browse',
   tableId: 'receiving',
   entityFamily: 'receiving',

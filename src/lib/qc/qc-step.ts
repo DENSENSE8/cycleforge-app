@@ -1,7 +1,7 @@
 /** One QC checklist step's value rules — pass band, value kind, reading → POST fields, verdict — shared by the desk runner, the phone… */
 
 /** The template columns (`qc_check_templates`) that shape how a step is answered. */
-export interface QcStepConfig {
+interface QcStepConfig {
   value_kind?: string | null;
   value_unit?: string | null;
   pass_min?: string | number | null;
@@ -26,7 +26,7 @@ function bound(v: string | number | null | undefined): number | null {
 }
 
 /** Inclusive pass band; either side may be open. */
-export function passBand(step: QcStepConfig): { min: number | null; max: number | null } {
+function passBand(step: QcStepConfig): { min: number | null; max: number | null } {
   return { min: bound(step.pass_min), max: bound(step.pass_max) };
 }
 
@@ -52,7 +52,7 @@ export function bandDecides(step: QcStepConfig): boolean {
   return isNumericKind(step.value_kind) && (min != null || max != null);
 }
 
-export type StepValueFields = { valueNum: number } | { valueText: string | null };
+type StepValueFields = { valueNum: number } | { valueText: string | null };
 
 /**
  * A typed reading → the checklist POST fields. Numeric kinds send `valueNum`

@@ -21,14 +21,14 @@ const SYSTEM_PROMPT = [
   `Call the \`${TOOL_NAME}\` tool exactly once and stop. Do not reply with prose.`,
 ].join('\n');
 
-export interface TicketDraftInput {
+interface TicketDraftInput {
   /** Short label of what this ticket is, e.g. "Unfound item — PO Mailbox". */
   context: string;
   /** Deterministic template — authoritative facts the model must preserve. */
   template: { subject: string; description: string };
 }
 
-export interface TicketDraftResult {
+interface TicketDraftResult {
   subject: string;
   description: string;
   model: string;

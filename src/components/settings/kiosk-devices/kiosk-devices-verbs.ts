@@ -3,7 +3,7 @@
 import type { CompoundRowAction } from '@/components/tables/compound/compound-row-model';
 import type { KioskDeviceTableRow } from '@/lib/kiosk/kiosk-device-row';
 
-export interface KioskDeviceVerbHandlers {
+interface KioskDeviceVerbHandlers {
   onPairTerminal: (row: KioskDeviceTableRow) => void;
   onRevoke: (row: KioskDeviceTableRow) => void;
 }

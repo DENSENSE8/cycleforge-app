@@ -63,14 +63,14 @@ export type RepairTab = 'incoming' | 'active' | 'done' | 'all';
 export const REPAIR_DONE_TAB_STATUSES = ['Done', 'Picked Up', 'Shipped'] as const;
 
 /** Walk-in repairs list — “Incoming” tab (inbound shipments not yet in active workflow). */
-export const REPAIR_INCOMING_TAB_STATUS = 'Incoming Shipment' as const;
+const REPAIR_INCOMING_TAB_STATUS = 'Incoming Shipment' as const;
 
 /**
  * Soft-delete status. Cancelled repairs are hidden from every list tab (see
  * buildRepairTabWhere) but the row + status_history survive for the audit
  * trail. Stored in the free-text `status` column — no schema change needed.
  */
-export const REPAIR_CANCELLED_STATUS = 'Cancelled' as const;
+const REPAIR_CANCELLED_STATUS = 'Cancelled' as const;
 
 function sqlStatusInTerminal(): string {
   return `(${REPAIR_DONE_TAB_STATUSES.map((s) => `'${s}'`).join(', ')})`;
@@ -276,7 +276,7 @@ export async function getRepairById(id: number, orgId?: OrgId): Promise<RSRecord
   }
 }
 
-export type CancelRepairResult =
+type CancelRepairResult =
   | { ok: true; repair: RSRecord; alreadyCancelled: boolean }
   | { ok: false; status: 404 | 409; error: string };
 
@@ -304,7 +304,7 @@ export async function cancelRepair(id: number, reason?: string | null, orgId?: O
   return { ok: true, repair: repair!, alreadyCancelled: false };
 }
 
-export type UnopenRepairResult =
+type UnopenRepairResult =
   | { ok: true; repair: RSRecord; alreadyOpen: boolean }
   | { ok: false; status: 404 | 409; error: string };
 
@@ -473,9 +473,9 @@ export const REPAIR_LINK_FIELDS = [
 ] as const;
 export type RepairLinkField = (typeof REPAIR_LINK_FIELDS)[number];
 
-export type RepairLinkValues = Partial<Record<RepairLinkField, string | null>>;
+type RepairLinkValues = Partial<Record<RepairLinkField, string | null>>;
 
-export type RepairLinkResult =
+type RepairLinkResult =
   | { ok: true; repair: RSRecord; before: RepairLinkValues }
   | { ok: false; status: 404; error: string };
 
@@ -602,7 +602,7 @@ export async function updateRepairField(id: number, field: string, value: any, o
   }
 }
 
-export interface CreateRepairParams {
+interface CreateRepairParams {
   createdAt?: string;
   ticketNumber?: string | null;
   contactInfo: string;
@@ -739,7 +739,7 @@ export async function searchRepairs(
   }
 }
 
-export type MarkLabelPrintedResult =
+type MarkLabelPrintedResult =
   | { ok: true; repair: RSRecord; alreadyPrinted: boolean }
   | { ok: false; status: 404; error: string };
 
@@ -815,7 +815,7 @@ async function attachRepairCustomer(
 }
 
 /** The buyer as the provider payload carries them, before any parsing. */
-export interface EcwidRepairContact {
+interface EcwidRepairContact {
   name?: string | null;
   phone?: string | null;
   email?: string | null;

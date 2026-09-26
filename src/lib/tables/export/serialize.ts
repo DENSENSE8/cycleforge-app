@@ -5,7 +5,7 @@ export type ExportFormat = 'csv' | 'tsv';
 /** What a row extractor may return for one field. */
 export type ExportCell = string | number | boolean | null | undefined;
 
-export interface ExportFormatSpec {
+interface ExportFormatSpec {
   /** File extension, without the dot. */
   extension: string;
   /** MIME type for the Blob. */

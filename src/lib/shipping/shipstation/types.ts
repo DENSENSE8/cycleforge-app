@@ -129,7 +129,7 @@ export interface LabelPurchaseResult {
 }
 
 /** Result of voiding/refunding a label. */
-export interface VoidLabelResult {
+interface VoidLabelResult {
   approved: boolean;
   message?: string | null;
 }
@@ -143,7 +143,7 @@ export interface EngineCarrier {
 }
 
 /** Map a raw label-download format string to a mime type for storage. */
-export function labelFormatToMime(format: 'pdf' | 'png' | 'zpl'): string {
+function labelFormatToMime(format: 'pdf' | 'png' | 'zpl'): string {
   switch (format) {
     case 'pdf':
       return 'application/pdf';

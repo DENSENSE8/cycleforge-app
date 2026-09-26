@@ -99,7 +99,7 @@ function slotTrack<C extends MaterializableTrack>(key: string, field: FieldDef):
   } as C;
 }
 
-export interface MaterializeTracksArgs<C extends MaterializableTrack> {
+interface MaterializeTracksArgs<C extends MaterializableTrack> {
   layout: SlotLayout;
   catalog: FieldCatalog;
   /** The family's structural skeleton for this morph, in paint order. */

@@ -10,7 +10,7 @@ import { BootSplash } from '@/components/boot/BootSplash';
 // can decide "hold vs reveal" without a flash of the wrong state.
 const useIsoLayoutEffect = typeof window !== 'undefined' ? useLayoutEffect : useEffect;
 
-export interface BootGateProps {
+interface BootGateProps {
   children: React.ReactNode;
   /** Warms the page's above-the-fold data before revealing. */
   prefetch: (queryClient: QueryClient) => Promise<unknown> | void;

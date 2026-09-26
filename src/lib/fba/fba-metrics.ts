@@ -4,7 +4,7 @@ import type { ComputedMetric } from '@/lib/dashboard/outbound-metrics';
 import type { FbaBoardItem } from '@/lib/fba/types';
 
 /** Board status facet — `ALL` clears; the rest match `item_status` uppercased. */
-export type FbaBoardStatusFilter =
+type FbaBoardStatusFilter =
   | 'ALL'
   | 'PLANNED'
   | 'TESTED'
@@ -13,7 +13,7 @@ export type FbaBoardStatusFilter =
   | 'OUT_OF_STOCK';
 
 /** The facets an operator can narrow BY, in lifecycle order. */
-export const FBA_BOARD_STATUS_FACETS = [
+const FBA_BOARD_STATUS_FACETS = [
   'PLANNED',
   'TESTED',
   'PACKED',
@@ -21,9 +21,9 @@ export const FBA_BOARD_STATUS_FACETS = [
   'OUT_OF_STOCK',
 ] as const satisfies readonly FbaBoardStatusFilter[];
 
-export type FbaBoardStatusFacet = (typeof FBA_BOARD_STATUS_FACETS)[number];
+type FbaBoardStatusFacet = (typeof FBA_BOARD_STATUS_FACETS)[number];
 
-export interface FbaBoardStageCounts {
+interface FbaBoardStageCounts {
   lines: number;
   units: number;
   PLANNED: number;
@@ -58,7 +58,7 @@ export function computeFbaBoardStageCounts(items: FbaBoardItem[]): FbaBoardStage
 }
 
 /** A board metric: `ComputedMetric` + the board status facet its tile toggles. */
-export interface FbaBoardMetric extends ComputedMetric {
+interface FbaBoardMetric extends ComputedMetric {
   /** When set, clicking the tile toggles this board status facet (`ALL` clears). */
   filterStatus?: FbaBoardStatusFilter;
 }

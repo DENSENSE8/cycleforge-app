@@ -23,7 +23,7 @@ import {
 } from './report-packer-day-table-definition';
 import { useReportPackerDayTableLayout } from './useReportPackerDayTableLayout';
 
-export interface UseReportPackerDaySpreadsheetOptions {
+interface UseReportPackerDaySpreadsheetOptions {
   /** One day's packs, newest first; a header click re-orders. */
   rows: readonly PackingReportRow[];
   loading?: boolean;

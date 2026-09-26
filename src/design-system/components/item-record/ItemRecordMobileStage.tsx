@@ -8,7 +8,7 @@ import {
 } from '@/design-system/tokens/item-record-mobile';
 import { cn } from '@/utils/_cn';
 
-export type ItemRecordMobileStageSlot = {
+type ItemRecordMobileStageSlot = {
   staffId: number | null;
   name: string | null;
   /** Assigned `staff.color_hex`. Fill is the identity channel — never a photo. */
@@ -52,7 +52,7 @@ function StageMark({
  * Phone Pick / Packed marks — staff colour + catalog verb. The person's name
  * belongs on the order sheet, not this row.
  */
-export function ItemRecordMobileStage({
+function ItemRecordMobileStage({
   pick,
   packed,
   className,

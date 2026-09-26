@@ -264,7 +264,7 @@ export const lookupSerial: AssistantToolDef<z.ZodObject<{ serial: z.ZodString }>
 
 // ─── lookup_warranty_coverage ────────────────────────────────────────────────
 
-export interface WarrantyCoverageDeps {
+interface WarrantyCoverageDeps {
   lookup: typeof lookupCoverage;
   flagOn: typeof isWarrantyLogger;
 }
@@ -292,7 +292,7 @@ export const lookupWarrantyCoverage: AssistantToolDef<z.ZodObject<{ q: z.ZodStri
 
 // ─── list_warranty_claims ────────────────────────────────────────────────────
 
-export interface WarrantyClaimsDeps {
+interface WarrantyClaimsDeps {
   list: typeof listClaims;
   get: typeof getClaim;
   flagOn: typeof isWarrantyLogger;
@@ -345,7 +345,7 @@ export const listWarrantyClaims: AssistantToolDef<
 
 // ─── get_assignments ─────────────────────────────────────────────────────────
 
-export interface AssignmentsDeps {
+interface AssignmentsDeps {
   list: typeof getAssignmentsWithStaff;
 }
 
@@ -394,7 +394,7 @@ export const getAssignments: AssistantToolDef<
 
 // ─── get_my_tech_queue ───────────────────────────────────────────────────────
 
-export interface TechQueueDeps {
+interface TechQueueDeps {
   isPrimaryTech: typeof isPrimaryTechStaff;
   query: AssistantToolDeps['query'];
 }
@@ -510,7 +510,7 @@ export const getMyTechQueue: AssistantToolDef<z.ZodObject<Record<string, never>>
 
 // ─── list_support_followups ──────────────────────────────────────────────────
 
-export interface SupportFollowupsDeps {
+interface SupportFollowupsDeps {
   list: typeof listSupportFollowupsForStaff;
 }
 
@@ -536,7 +536,7 @@ export const listSupportFollowups: AssistantToolDef<z.ZodObject<Record<string, n
 
 // ─── search_photos ───────────────────────────────────────────────────────────
 
-export interface PhotosSearchDeps {
+interface PhotosSearchDeps {
   search: typeof searchPhotos;
   format: typeof formatPhotoSearchForPrompt;
 }
@@ -581,7 +581,7 @@ export const searchPhotosTool: AssistantToolDef<
 
 // ─── get_receiving_by_tracking ───────────────────────────────────────────────
 
-export interface ReceivingByTrackingDeps {
+interface ReceivingByTrackingDeps {
   resolve: typeof resolveShipmentForScan;
   resolveTicket: (
     orgId: OrgId,
@@ -639,7 +639,7 @@ export const getReceivingByTracking: AssistantToolDef<
 // ─── get_ticket_entities ─────────────────────────────────────────────────────
 // zendesk-links → nas-agent-client is `server-only` — lazy default.
 
-export interface TicketEntitiesDeps {
+interface TicketEntitiesDeps {
   get: (
     orgId: string,
     zendeskTicketId: number,
@@ -671,7 +671,7 @@ export const getTicketEntities: AssistantToolDef<
 
 // ─── get_packing_kpi ─────────────────────────────────────────────────────────
 
-export interface PackingKpiDeps {
+interface PackingKpiDeps {
   forDay: typeof getPackingKpisForDay;
 }
 

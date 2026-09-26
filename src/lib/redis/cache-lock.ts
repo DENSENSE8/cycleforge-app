@@ -19,7 +19,7 @@ function lockKey(key: string): string {
   return `cachelock:${key}`;
 }
 
-export interface CacheLockHandle {
+interface CacheLockHandle {
   /** True when a real Redis lock is held (false = fail-open, ran without a lock). */
   readonly acquired: boolean;
   release(): Promise<void>;
@@ -68,7 +68,7 @@ export function sleep(ms: number): Promise<void> {
  * another caller, wait briefly then run `fn` anyway (fail-open — the caller is
  * expected to re-check its cache first). Primarily a building block for getOrSet.
  */
-export async function withCacheLock<T>(key: string, fn: () => Promise<T>): Promise<T> {
+async function withCacheLock<T>(key: string, fn: () => Promise<T>): Promise<T> {
   const handle = await acquireCacheLock(key);
   if (handle === null) {
     await sleep(60);

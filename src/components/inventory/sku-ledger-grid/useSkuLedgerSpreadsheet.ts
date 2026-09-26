@@ -23,7 +23,7 @@ import {
 } from './sku-ledger-table-definition';
 import { useSkuLedgerTableLayout } from './useSkuLedgerTableLayout';
 
-export interface UseSkuLedgerSpreadsheetOptions {
+interface UseSkuLedgerSpreadsheetOptions {
   /** One server window (the last hundred movements), newest first. */
   rows: readonly SkuLedgerTableRow[];
   loading?: boolean;

@@ -24,7 +24,7 @@
  * confirming it is genuinely exempt, or GUC-wrap it instead.
  */
 
-export type ExemptionCategory =
+type ExemptionCategory =
   | 'preauth-identity'
   | 'cross-org-by-design'
   | 'no-db-false-positive'

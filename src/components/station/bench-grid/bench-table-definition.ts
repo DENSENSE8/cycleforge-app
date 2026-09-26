@@ -40,7 +40,7 @@ export const PACKER_GRID_CAPABILITIES: GridSurfaceCapabilities = {
 };
 
 /** Build the descriptor from a RESOLVED column list (post-visibility), so `contentMinWidthRem` and the TanStack defs follow the tracks that… */
-export function makeTechGridDescriptor(
+function makeTechGridDescriptor(
   columns: readonly OrdersQueueColumn[],
 ): GridSurfaceDescriptor<QueueRowRecord, OrdersQueueColumn> {
   return makeGridSurfaceDescriptor<QueueRowRecord, OrdersQueueColumn>(
@@ -55,7 +55,7 @@ export function makeTechGridDescriptor(
   );
 }
 
-export function makePackerGridDescriptor(
+function makePackerGridDescriptor(
   columns: readonly OrdersQueueColumn[],
 ): GridSurfaceDescriptor<QueueRowRecord, OrdersQueueColumn> {
   return makeGridSurfaceDescriptor<QueueRowRecord, OrdersQueueColumn>(
@@ -74,7 +74,7 @@ export function makePackerGridDescriptor(
  * Validated at module load: a definition that violates a structural law throws
  * here rather than painting a broken grid.
  */
-export const TECH_BENCH_DEFINITION = parseTableDefinition({
+const TECH_BENCH_DEFINITION = parseTableDefinition({
   id: 'tech.bench',
   tableId: 'tech',
   entityFamily: 'tech',
@@ -89,7 +89,7 @@ export const TECH_BENCH_DEFINITION = parseTableDefinition({
   columns: TECH_COMPOUND_COLUMNS,
 });
 
-export const PACKER_BENCH_DEFINITION = parseTableDefinition({
+const PACKER_BENCH_DEFINITION = parseTableDefinition({
   id: 'packer.bench',
   tableId: 'packer',
   entityFamily: 'packer',

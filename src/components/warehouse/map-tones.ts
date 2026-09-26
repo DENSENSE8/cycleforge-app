@@ -42,7 +42,7 @@ export function cellLabel(row: BinsOverviewRow): string {
   return `${row.barcode ?? row.name} · ${row.total_qty} unit${row.total_qty === 1 ? '' : 's'}`;
 }
 
-export interface MapLegendItem {
+interface MapLegendItem {
   tone: string;
   label: string;
 }

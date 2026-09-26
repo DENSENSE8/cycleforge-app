@@ -1,7 +1,7 @@
 export const STAFF_SCHEDULE_TIMEZONE = 'America/Los_Angeles';
 
 export const STAFF_WEEKDAY_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'] as const;
-export const STAFF_BUSINESS_DAYS = [1, 2, 3, 4, 5] as const;
+const STAFF_BUSINESS_DAYS = [1, 2, 3, 4, 5] as const;
 
 export type StaffDayOfWeek = 0 | 1 | 2 | 3 | 4 | 5 | 6;
 

@@ -29,7 +29,7 @@ export const ADMIN_SKU_DRIFT_GRID_CAPABILITIES: GridSurfaceCapabilities = {
   dayBands: false,
 };
 
-export function makeAdminSkuDriftGridDescriptor(
+function makeAdminSkuDriftGridDescriptor(
   columns: readonly AdminSkuDriftGridColumn[],
 ): GridSurfaceDescriptor<SkuDriftRow, AdminSkuDriftGridColumn> {
   return makeGridSurfaceDescriptor<SkuDriftRow, AdminSkuDriftGridColumn>(
@@ -44,7 +44,7 @@ export function makeAdminSkuDriftGridDescriptor(
   );
 }
 
-export const ADMIN_SKU_DRIFT_TABLE_DEFINITION = parseTableDefinition({
+const ADMIN_SKU_DRIFT_TABLE_DEFINITION = parseTableDefinition({
   id: 'inventory.sku-drift',
   tableId: 'admin-sku-drift',
   entityFamily: 'admin-sku-drift',

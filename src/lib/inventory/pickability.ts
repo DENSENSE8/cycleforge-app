@@ -3,7 +3,7 @@
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
-export type BinRole =
+type BinRole =
   | 'PICK_FACE'
   | 'RESERVE'
   | 'STAGING'
@@ -13,20 +13,20 @@ export type BinRole =
   | 'RETURNS'
   | 'RECEIVING';
 
-export interface PickabilityCandidate {
+interface PickabilityCandidate {
   serialStatus: string;
   binRole: BinRole | null;
   lockedForCount: boolean;
   expiresAt: Date | string | null;
 }
 
-export type PickabilityReason =
+type PickabilityReason =
   | 'WRONG_STATUS'
   | 'BIN_ROLE_BLOCKED'
   | 'BIN_LOCKED_FOR_COUNT'
   | 'EXPIRED';
 
-export type PickabilityResult =
+type PickabilityResult =
   | { ok: true }
   | { ok: false; reason: PickabilityReason; detail: string };
 
@@ -47,7 +47,7 @@ const NON_PICKABLE_ROLES: ReadonlySet<BinRole> = new Set([
  * Validate a candidate unit + bin pair. Used in write paths after the row is
  * locked via `FOR UPDATE` so we don't race on stale read.
  */
-export function isAllocatable(candidate: PickabilityCandidate): PickabilityResult {
+function isAllocatable(candidate: PickabilityCandidate): PickabilityResult {
   if (candidate.serialStatus !== 'STOCKED') {
     return { ok: false, reason: 'WRONG_STATUS', detail: `current_status=${candidate.serialStatus}` };
   }

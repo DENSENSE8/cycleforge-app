@@ -7,7 +7,7 @@ import type { TemplateGraphNode } from './templates';
 
 type TxClient = Pick<PoolClient, 'query'>;
 
-export interface TemplateSurfaceSeed {
+interface TemplateSurfaceSeed {
   surfaceKey: string;
   pageKey: string;
   modeKey: string;

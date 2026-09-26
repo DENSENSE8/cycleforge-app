@@ -7,7 +7,7 @@ import { decryptIntegrationPayload } from '@/lib/integrations/crypto';
 export const EBAY_STATE_TTL_MS = 10 * 60 * 1000;
 
 /** Shape minted by /api/ebay/connect (encryptIntegrationPayload). */
-export interface EbayOauthState {
+interface EbayOauthState {
   organizationId: string;
   accountName: string;
   environment?: string;
@@ -19,7 +19,7 @@ export interface EbayOauthState {
 }
 
 /** A state that passed every gate — binding fields proven non-null. */
-export interface VerifiedEbayOauthState {
+interface VerifiedEbayOauthState {
   organizationId: string;
   accountName: string;
   environment?: string;
@@ -30,16 +30,16 @@ export interface VerifiedEbayOauthState {
 }
 
 /** Query-string values the callback redirects with — kept stable for ResultBanner. */
-export type EbayCallbackStateCode =
+type EbayCallbackStateCode =
   | 'ebay_invalid_oauth_state'
   | 'ebay_incomplete_oauth_state'
   | 'ebay_oauth_state_expired';
 
-export type EbayCallbackStateVerdict =
+type EbayCallbackStateVerdict =
   | { ok: true; state: VerifiedEbayOauthState }
   | { ok: false; code: EbayCallbackStateCode };
 
-export interface VerifyEbayCallbackStateInput {
+interface VerifyEbayCallbackStateInput {
   /** `state` query param from eBay's redirect (the encrypted payload). */
   stateParam: string;
   /** Nonce from the httpOnly EBAY_OAUTH_STATE_COOKIE set at connect. */
@@ -80,7 +80,7 @@ export function verifyEbayCallbackState(input: VerifyEbayCallbackStateInput): Eb
   return { ok: true, state: { ...parsed, organizationId, accountName, createdBy, nonce, issuedAt } };
 }
 
-export interface ConnectActorDeps {
+interface ConnectActorDeps {
   query: (sql: string, params: readonly unknown[]) => Promise<{ rowCount: number | null }>;
 }
 

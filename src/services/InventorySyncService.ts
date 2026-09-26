@@ -6,7 +6,7 @@ import { logger } from '@/lib/observability/logger';
 import { syncCursorRepository } from '@/lib/repositories/syncCursorRepository';
 import { formatApiOffsetTimestamp } from '@/utils/date';
 
-export interface SyncResult {
+interface SyncResult {
   count: number;
 }
 

@@ -94,7 +94,7 @@ export function isCatalogColumnSortable(
   return columns.some((c) => c.key === key && catalogSortFactFor(c) !== null);
 }
 
-export function catalogGridTemplate(
+function catalogGridTemplate(
   columns: readonly CatalogGridColumn[] = CATALOG_SHEET_COLUMNS,
 ): string {
   return gridTemplate(columns);
@@ -113,19 +113,19 @@ export function defaultDirForCatalogColumn(
 }
 
 /** Sticky-left offset for a frozen cell, derived from the MOUNTED model. */
-export function catalogGridFrozenLeft(
+function catalogGridFrozenLeft(
   columns: readonly CatalogGridColumn[],
   key: string,
 ): string {
   return gridFrozenLeft(columns, key);
 }
 
-export function catalogDisplayTitle(row: CatalogListRow): string {
+function catalogDisplayTitle(row: CatalogListRow): string {
   return (row.display_title || row.product_title || row.sku || '').trim();
 }
 
 /** Row order for a column sort, keyed by SORT FACT — the structural `title` plus catalog field ids (`catalogSortFactFor` maps a mounted… */
-export function compareCatalogGridRows(
+function compareCatalogGridRows(
   a: CatalogListRow,
   b: CatalogListRow,
   fact: string,

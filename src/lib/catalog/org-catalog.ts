@@ -54,7 +54,7 @@ export async function getOrgPlatformTypeRules(orgId: string): Promise<PlatformTy
 }
 
 /** Active storefront accounts for the org, cached 5 min. */
-export async function getOrgPlatformAccounts(orgId: string): Promise<PlatformAccountRow[]> {
+async function getOrgPlatformAccounts(orgId: string): Promise<PlatformAccountRow[]> {
   const hit = accountCache.get(orgId);
   if (hit && hit.expiresAt > Date.now()) return hit.value;
   const rows = await getOrSet(CACHE_NS.catalog, orgId, 'accounts', REDIS_TTL_S, [CACHE_TAGS.catalog], () =>
@@ -65,7 +65,7 @@ export async function getOrgPlatformAccounts(orgId: string): Promise<PlatformAcc
 }
 
 /** A flow type joined to its bound account → platform → integration. */
-export interface ResolvedType {
+interface ResolvedType {
   type: TypeRow;
   account: PlatformAccountRow | null;
   platform: PlatformRow | null;
@@ -82,7 +82,7 @@ export interface ResolvedType {
  * → workflow. From a single id on a receiving/order row this reaches everything
  * the plan's linkage diagram promises. Returns null if the id isn't this org's.
  */
-export async function resolveType(orgId: string, typeId: number): Promise<ResolvedType | null> {
+async function resolveType(orgId: string, typeId: number): Promise<ResolvedType | null> {
   const [types, accounts, platforms] = await Promise.all([
     getOrgTypes(orgId),
     getOrgPlatformAccounts(orgId),
@@ -116,7 +116,7 @@ export async function resolveReceivingTypeId(
 }
 
 /** Pure intake_type/is_return → type slug mapping (shared with the backfill). */
-export function receivingTypeSlug(input: { intakeType?: string | null; isReturn?: boolean | null }): string | null {
+function receivingTypeSlug(input: { intakeType?: string | null; isReturn?: boolean | null }): string | null {
   const it = String(input.intakeType ?? '').trim().toLowerCase();
   if (it) return it; // 'po' | 'return' | 'trade_in' | 'pickup' | custom slug
   if (input.isReturn) return 'return';
@@ -124,7 +124,7 @@ export function receivingTypeSlug(input: { intakeType?: string | null; isReturn?
 }
 
 /** A resolved order channel: which platform an `account_source` value belongs to. */
-export interface ResolvedChannel {
+interface ResolvedChannel {
   platform: PlatformRow | null;
   account: PlatformAccountRow | null;
   /** Canonical label to show (platform label wins; account label as a fallback). */
@@ -132,7 +132,7 @@ export interface ResolvedChannel {
 }
 
 /** Resolve `orders.account_source` (hybrid grain: */
-export async function resolveOrderChannel(orgId: string, accountSource: string | null | undefined): Promise<ResolvedChannel> {
+async function resolveOrderChannel(orgId: string, accountSource: string | null | undefined): Promise<ResolvedChannel> {
   const key = String(accountSource ?? '').trim().toLowerCase();
   if (!key) return { platform: null, account: null, label: null };
   const [accounts, platforms] = await Promise.all([getOrgPlatformAccounts(orgId), getOrgPlatforms(orgId)]);

@@ -1,7 +1,7 @@
 /** Distributed cron lock (Wave 4). */
 import pool from '@/lib/db';
 
-export interface CronLockResult<T> {
+interface CronLockResult<T> {
   /** False when another invocation already held the lock (this run was skipped). */
   ran: boolean;
   result?: T;

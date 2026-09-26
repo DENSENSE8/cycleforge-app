@@ -41,7 +41,7 @@ export const RatesBodySchema = z.object({
   carrierIds: z.array(z.string().trim().min(1)).nullish(),
   confirmation: z.enum(['none', 'delivery', 'signature', 'adult_signature']).nullish(),
 });
-export type RatesBody = z.infer<typeof RatesBodySchema>;
+type RatesBody = z.infer<typeof RatesBodySchema>;
 
 /** POST /api/shipping/labels body — buy the exact quoted rate. */
 export const PurchaseLabelBodySchema = z.object({
@@ -51,7 +51,7 @@ export const PurchaseLabelBodySchema = z.object({
   labelFormat: z.enum(['pdf', 'png', 'zpl']).optional(),
   labelLayout: z.enum(['4x6', 'letter']).optional(),
 });
-export type PurchaseLabelBody = z.infer<typeof PurchaseLabelBodySchema>;
+type PurchaseLabelBody = z.infer<typeof PurchaseLabelBodySchema>;
 
 /** POST /api/shipping/labels/void body. Voiding reverses a paid carrier
  *  action — LABEL_VOIDED is an AUDIT_REASON_REQUIRED action. */
@@ -59,7 +59,7 @@ export const VoidLabelBodySchema = z.object({
   labelId: z.string().trim().min(1),
   reason: z.string().trim().min(1),
 });
-export type VoidLabelBody = z.infer<typeof VoidLabelBodySchema>;
+type VoidLabelBody = z.infer<typeof VoidLabelBodySchema>;
 
 type AddressInput = z.infer<typeof ShipAddressSchema>;
 

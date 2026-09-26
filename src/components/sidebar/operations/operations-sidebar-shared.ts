@@ -16,10 +16,10 @@ export type OperationsMode =
 
 /** `live` is the default and stays on the bare `/operations` path (no `?mode=`) for deep-link + realtime back-compat — it renders the… */
 
-export const DEFAULT_OPERATIONS_MODE: OperationsMode = 'live';
+const DEFAULT_OPERATIONS_MODE: OperationsMode = 'live';
 
 /** Live Operations modes — includes default `live` (usually omitted). */
-export const OPERATIONS_MODES = [
+const OPERATIONS_MODES = [
   'live',
   // 'analytics' intentionally absent — see the mode list above.
   'insights',

@@ -62,7 +62,7 @@ export function ShortageDesk({
   );
 }
 
-export function ShortageDeskBootGate({ children }: { children: React.ReactNode }) {
+function ShortageDeskBootGate({ children }: { children: React.ReactNode }) {
   const prefetch = useCallback((qc: QueryClient) => {
     consumeBootSplash();
     warmActiveView(qc, 'unshipped');

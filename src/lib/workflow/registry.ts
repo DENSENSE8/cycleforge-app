@@ -21,7 +21,7 @@ export function hasNode(type: string): boolean {
   return registry.has(type);
 }
 
-export function listNodes(): NodeDefinition[] {
+function listNodes(): NodeDefinition[] {
   return [...registry.values()];
 }
 
@@ -31,6 +31,6 @@ export function listNodeMeta(): NodeMeta[] {
 }
 
 /** Test-only: wipe the registry between cases. */
-export function __clearRegistry(): void {
+function __clearRegistry(): void {
   registry.clear();
 }

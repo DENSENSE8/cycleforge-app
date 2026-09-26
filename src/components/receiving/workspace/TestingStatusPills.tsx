@@ -216,7 +216,7 @@ export function TestingStatusPills({
 }
 
 /** Translate a {@link TestingVerdict} into the receiving-lines PATCH body. */
-export function verdictToReceivingLinePatch(verdict: TestingVerdict): {
+function verdictToReceivingLinePatch(verdict: TestingVerdict): {
   workflow_status: string;
   qa_status: string;
   disposition_code: string;
@@ -244,7 +244,7 @@ export function verdictToReceivingLinePatch(verdict: TestingVerdict): {
 }
 
 /** Best-effort reverse mapping for the initial verdict shown to the tech. */
-export function workflowToVerdict(
+function workflowToVerdict(
   workflow: string | null | undefined,
 ): TestingVerdict | null {
   const v = String(workflow ?? '').trim().toUpperCase();

@@ -49,7 +49,7 @@ const ACCESS_TOKEN_BUFFER_MS = 5 * 60 * 1000; // refresh 5 min before expiry
  * Return a valid LWA access token for an account, refreshing and persisting the
  * cached token to amazon_accounts when the current one is missing/near expiry.
  */
-export async function getAccessTokenForAccount(
+async function getAccessTokenForAccount(
   account: AmazonAccount,
   creds: AmazonCredentials,
 ): Promise<string> {
@@ -83,7 +83,7 @@ export async function getAccessTokenForAccount(
 
 const sleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
 
-export interface CallSpApiOpts {
+interface CallSpApiOpts {
   operation: string;
   path: string;
   method?: string;
@@ -220,14 +220,14 @@ export async function getMarketplaceParticipations(
 // ─── Catalog Items API (2022-04-01) ─────────────────────────────────────────
 
 /** One image from `getCatalogItem` with `includedData=images`. */
-export interface AmazonCatalogImage {
+interface AmazonCatalogImage {
   variant?: string;
   link?: string;
   height?: number;
   width?: number;
 }
 
-export interface AmazonCatalogItemImages {
+interface AmazonCatalogItemImages {
   asin?: string;
   images?: Array<{ marketplaceId?: string; images?: AmazonCatalogImage[] }>;
 }
@@ -280,7 +280,7 @@ export async function getCatalogItemImages(
 
 // ─── Orders API (v0) ────────────────────────────────────────────────────────
 
-export interface AmazonOrderSummary {
+interface AmazonOrderSummary {
   AmazonOrderId: string;
   PurchaseDate?: string;
   LastUpdateDate?: string;
@@ -311,7 +311,7 @@ export interface AmazonOrderItem {
  * Async generator over getOrders pages by NextToken. Yields one page (array of
  * order summaries) at a time so the caller can process + bail without buffering.
  */
-export async function* getOrdersGenerator(
+async function* getOrdersGenerator(
   account: AmazonAccount,
   creds: AmazonCredentials,
   params: { lastUpdatedAfter?: string; createdAfter?: string; orderStatuses?: string[]; maxResultsPerPage?: number },
@@ -357,7 +357,7 @@ export async function getOrderItems(
   return items;
 }
 
-export interface AmazonShippingAddress {
+interface AmazonShippingAddress {
   Name?: string;
   AddressLine1?: string;
   AddressLine2?: string;
@@ -370,7 +370,7 @@ export interface AmazonShippingAddress {
 }
 
 /** Shipping address (PII) — requires an RDT passed as accessToken. */
-export async function getOrderAddress(
+async function getOrderAddress(
   account: AmazonAccount,
   creds: AmazonCredentials,
   orderId: string,
@@ -388,14 +388,14 @@ export async function getOrderAddress(
 
 // ─── Tokens API (RDT for restricted PII) ────────────────────────────────────
 
-export interface RestrictedResource {
+interface RestrictedResource {
   method: 'GET' | 'PUT' | 'POST' | 'DELETE';
   path: string;
   dataElements?: string[];
 }
 
 /** Mint a Restricted Data Token for PII-bearing calls (60-min TTL). */
-export async function createRestrictedDataToken(
+async function createRestrictedDataToken(
   account: AmazonAccount,
   creds: AmazonCredentials,
   restrictedResources: RestrictedResource[],

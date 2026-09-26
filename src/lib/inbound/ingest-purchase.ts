@@ -20,7 +20,7 @@ function normalizeConditionGrade(raw: unknown, fallback: ConditionGrade = 'BRAND
   return (CONDITION_GRADES as readonly string[]).includes(upper) ? (upper as ConditionGrade) : fallback;
 }
 
-export interface IngestPurchaseInput {
+interface IngestPurchaseInput {
   /** Registered inbound source; defaults to 'ebay'. */
   sourceType?: string;
   /** External order id / PO# (eBay order id). Required. */

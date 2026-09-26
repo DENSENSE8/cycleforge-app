@@ -9,14 +9,14 @@ import { isSilentPrintEnabled } from '@/lib/print/printMode';
 // escapeLabelHtml lives in ./labelHtml (dependency-free) so face-model modules
 // don't inherit this file's bwip-js graph.
 
-export interface LabelDataMatrix {
+interface LabelDataMatrix {
   value: string;
   symbology: 'gs1datamatrix' | 'datamatrix';
   /** bwip-js module scale. Default 4 — the receiving label's proven density. */
   scale?: number;
 }
 
-export interface PrintLabelOptions {
+interface PrintLabelOptions {
   /**
    * Inner HTML of the left `.info` column. The caller owns escaping (use
    * {@link escapeLabelHtml}) and the content classes referenced here.

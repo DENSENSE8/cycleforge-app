@@ -27,7 +27,7 @@ export const WarrantyClaimListQuery = z
   })
   .strip();
 
-export type WarrantyClaimListQueryInput = z.infer<typeof WarrantyClaimListQuery>;
+type WarrantyClaimListQueryInput = z.infer<typeof WarrantyClaimListQuery>;
 
 // ─── GET /api/warranty/lookup (coverage check) ──────────────────────────────
 export const WarrantyCoverageQuery = z
@@ -237,5 +237,5 @@ export const WarrantyQuoteStatusBody = z
   })
   .strict();
 
-export type WarrantyClaimCreateInput = z.infer<typeof WarrantyClaimCreateBody>;
-export type WarrantyRepairInput = z.infer<typeof WarrantyRepairBody>;
+type WarrantyClaimCreateInput = z.infer<typeof WarrantyClaimCreateBody>;
+type WarrantyRepairInput = z.infer<typeof WarrantyRepairBody>;

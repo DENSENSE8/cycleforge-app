@@ -2,7 +2,7 @@
 
 import { useCallback, useState } from 'react';
 
-export interface UseSerialList {
+interface UseSerialList {
   snInput: string;
   setSnInput: React.Dispatch<React.SetStateAction<string>>;
   serialNumbers: string[];

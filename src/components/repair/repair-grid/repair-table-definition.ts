@@ -6,7 +6,7 @@ import { REPAIR_SHEET_COLUMNS, type RepairGridColumn } from '@/lib/repair/repair
 import { parseTableDefinition } from '@/lib/tables/table-definition';
 import { REPAIR_GRID_CAPABILITIES, makeRepairGridDescriptor } from './repair-grid-descriptor';
 
-export const REPAIR_TABLE_DEFINITION = parseTableDefinition({
+const REPAIR_TABLE_DEFINITION = parseTableDefinition({
   id: 'repair.queue',
   tableId: 'repair',
   entityFamily: 'repair',

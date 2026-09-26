@@ -17,23 +17,23 @@ export const SCAN_SESSION_TYPES = [
   'pack',
   'outbound',
 ] as const;
-export type ScanSessionType = (typeof SCAN_SESSION_TYPES)[number];
+type ScanSessionType = (typeof SCAN_SESSION_TYPES)[number];
 
-export function isScanSessionType(value: unknown): value is ScanSessionType {
+function isScanSessionType(value: unknown): value is ScanSessionType {
   return typeof value === 'string' && (SCAN_SESSION_TYPES as readonly string[]).includes(value);
 }
 
 /** What a surface declares about the session it starts. */
-export type SurfaceSessionBinding =
+type SurfaceSessionBinding =
   | { kind: 'scan'; scanType: ScanSessionType }
   | { kind: 'task' };
 
 /** `work_sessions.status`. Mirrors work_sessions_status_chk. */
-export const SESSION_STATUSES = ['open', 'parked', 'ended'] as const;
-export type SessionStatus = (typeof SESSION_STATUSES)[number];
+const SESSION_STATUSES = ['open', 'parked', 'ended'] as const;
+type SessionStatus = (typeof SESSION_STATUSES)[number];
 
 /** One `work_sessions` row, camel-cased. */
-export interface WorkSession {
+interface WorkSession {
   id: number;
   organizationId: string;
   kind: SessionKind;
@@ -70,8 +70,8 @@ export interface WorkSession {
   wrapUpSource: WrapUpSource | null;
 }
 
-export const WRAP_UP_SOURCES = ['staff', 'assistant'] as const;
-export type WrapUpSource = (typeof WRAP_UP_SOURCES)[number];
+const WRAP_UP_SOURCES = ['staff', 'assistant'] as const;
+type WrapUpSource = (typeof WRAP_UP_SOURCES)[number];
 
 /** One `work_session_purposes` row, camel-cased. */
 export interface WorkSessionPurpose {
@@ -87,7 +87,7 @@ export interface WorkSessionPurpose {
 }
 
 /** Uniform domain result — mapped straight onto HTTP by the route layer. */
-export type SessionResult<T> =
+type SessionResult<T> =
   | ({ ok: true; status: 200 } & T)
   | {
       ok: false;
@@ -104,11 +104,11 @@ export type SessionResult<T> =
 // ── work_session_intervals ──────────────────────────────────────────────────
 
 /** `work_session_intervals.kind`. */
-export const SESSION_INTERVAL_KINDS = ['active', 'parked'] as const;
-export type SessionIntervalKind = (typeof SESSION_INTERVAL_KINDS)[number];
+const SESSION_INTERVAL_KINDS = ['active', 'parked'] as const;
+type SessionIntervalKind = (typeof SESSION_INTERVAL_KINDS)[number];
 
 /** One `work_session_intervals` row, camel-cased. */
-export interface WorkSessionInterval {
+interface WorkSessionInterval {
   id: number;
   organizationId: string;
   sessionId: number;

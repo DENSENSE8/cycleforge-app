@@ -16,7 +16,7 @@ import {
 } from './helpers';
 import { compareQueueColumnRows, compareUrgentPin } from './queue-row-compare';
 
-export interface OrdersQueueRows {
+interface OrdersQueueRows {
   /** Feed rows this mount was given — the table paints all of them. */
   visibleRecords: ShippedOrder[];
   /** Date bands → folded order groups, in canonical render order — a `GroupedRenderOrder<ShippedOrder>` in all but its declared (mutable)… */
@@ -27,7 +27,7 @@ export interface OrdersQueueRows {
   totalCount: number;
 }
 
-export interface UseOrdersQueueRowsOptions {
+interface UseOrdersQueueRowsOptions {
   records: ShippedOrder[];
   sort: OrdersQueueSort;
   /** Column-sort direction; ignored for composite / legacy modes. */

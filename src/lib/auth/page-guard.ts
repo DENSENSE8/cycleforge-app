@@ -12,7 +12,7 @@ import {
   isActivationBlocked,
 } from '@/lib/onboarding/activation-gate';
 
-export interface PageGuardOpts {
+interface PageGuardOpts {
   /** @deprecated kept for callsite compatibility; enforcement is always on. */
   enforce?: boolean;
 }

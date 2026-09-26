@@ -3,7 +3,7 @@
  * API does not return a slip document. No external PDF dependency.
  */
 
-export interface PackingSlipPdfInput {
+interface PackingSlipPdfInput {
   orderRef: string;
   platform: string | null;
   lines: Array<{ sku?: string | null; title?: string | null; quantity?: string | null }>;

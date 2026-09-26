@@ -17,7 +17,7 @@ export interface SimNode {
 }
 
 /** Outcome of advancing the ghost one hop along a fired output port. */
-export interface SimStepResult {
+interface SimStepResult {
   /** The node the ghost lands on, or null when the port routes nowhere (terminal). */
   nextNodeId: string | null;
   /** The edge traversed, or null when no edge matched the fired port (terminal). */

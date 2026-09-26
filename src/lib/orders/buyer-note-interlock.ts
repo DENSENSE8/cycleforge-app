@@ -7,15 +7,15 @@
 export const BUYER_NOTE_HOLD_CODE = 'BUYER_NOTE_UNACKNOWLEDGED' as const;
 
 /** `ops_events.event_type` for one acknowledgment. */
-export const BUYER_NOTE_ACK_EVENT = 'buyer_note_acknowledged' as const;
+const BUYER_NOTE_ACK_EVENT = 'buyer_note_acknowledged' as const;
 
 /** Anything with `pg`'s `query` shape — a tenant transaction client or a wrapper. */
-export interface BuyerNoteQueryable {
+interface BuyerNoteQueryable {
   query: (text: string, params: unknown[]) => Promise<{ rows: unknown[] }>;
 }
 
 /** The note an operator must read before this order may pack; null = no hold. */
-export interface BuyerNoteHold {
+interface BuyerNoteHold {
   orderRowId: number;
   buyerNote: string;
 }
@@ -64,7 +64,7 @@ export function buyerNoteHoldBody(hold: BuyerNoteHold) {
   };
 }
 
-export type AcknowledgeBuyerNoteResult =
+type AcknowledgeBuyerNoteResult =
   | { ok: true; orderRowId: number; buyerNote: string; noteSha: string; duplicate: boolean }
   | { ok: false; reason: 'not_found' | 'no_note' };
 

@@ -18,7 +18,7 @@ export function parseTicketStatus(value: unknown): TicketStatus | null {
 }
 
 /** Props contract for the `<TicketStatus />` MDX component. */
-export interface TicketStatusProps {
+interface TicketStatusProps {
   status: TicketStatus;
   /** Stable ticket identifier, e.g. `ALP-3.2` or `P1-TRACE-02`. */
   ticketId: string;
@@ -29,7 +29,7 @@ export interface TicketStatusProps {
 }
 
 /** Props contract for the `<AgentLog />` MDX component. */
-export interface AgentLogProps {
+interface AgentLogProps {
   /** `cycle_forge_runs.run_uid` to link the plan to run history. */
   runUid: string;
   /** Forge pipeline stage the log refers to, e.g. `verify`. */
@@ -86,7 +86,7 @@ export function scanTicketStatuses(mdx: string): ScannedTicket[] {
   return out;
 }
 
-export interface SetTicketStatusResult {
+interface SetTicketStatusResult {
   /** The updated MDX (unchanged reference-equal string when not found). */
   mdx: string;
   /** True when a tag with the ticketId was found and rewritten. */
@@ -124,7 +124,7 @@ export function setTicketStatusInMdx(
 }
 
 /** Rollup used by the plan header + the ops-plans table integration. */
-export interface TicketStatusRollup {
+interface TicketStatusRollup {
   total: number;
   pending: number;
   inProgress: number;

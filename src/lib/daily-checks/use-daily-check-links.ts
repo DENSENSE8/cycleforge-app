@@ -24,7 +24,7 @@ export function useDailyCheckLinks(itemId: number | null) {
   });
 }
 
-export function useDailyCheckLinkActions(itemId: number | null) {
+function useDailyCheckLinkActions(itemId: number | null) {
   const queryClient = useQueryClient();
   const invalidate = () => {
     if (itemId != null) void queryClient.invalidateQueries({ queryKey: linksKey(itemId) });

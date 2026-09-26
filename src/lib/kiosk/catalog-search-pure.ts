@@ -4,10 +4,10 @@
  * Below this, a query is not a search — it is a keystroke. The catalog grid
  * keeps showing its current page instead of thrashing the DB per character.
  */
-export const CATALOG_SEARCH_MIN_CHARS = 2;
+const CATALOG_SEARCH_MIN_CHARS = 2;
 
 /** On-hand at or below this reads as "low" when the bin sets no own floor. */
-export const CATALOG_LOW_STOCK_FALLBACK = 3;
+const CATALOG_LOW_STOCK_FALLBACK = 3;
 
 /** A single pick location, already resolved to something a staffer can walk to. */
 export interface CatalogBin {
@@ -39,7 +39,7 @@ export interface CatalogAvailability {
 }
 
 /** What the product card should SAY about stock. */
-export type CatalogStockState = 'in_stock' | 'low' | 'out' | 'unknown';
+type CatalogStockState = 'in_stock' | 'low' | 'out' | 'unknown';
 
 /** Collapse a query to the form the search actually runs on. */
 export function normalizeCatalogQuery(raw: string | null | undefined): string {

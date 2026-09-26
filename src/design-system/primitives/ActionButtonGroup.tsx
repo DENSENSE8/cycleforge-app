@@ -2,7 +2,7 @@
 
 import type { ReactNode, MouseEvent } from 'react';
 
-export interface ActionButtonItem {
+interface ActionButtonItem {
   key: string;
   icon: ReactNode;
   ariaLabel: string;
@@ -11,7 +11,7 @@ export interface ActionButtonItem {
   variant?: 'neutral' | 'accent' | 'danger';
 }
 
-export interface ActionButtonGroupProps {
+interface ActionButtonGroupProps {
   actions: ActionButtonItem[];
   className?: string;
 }
@@ -26,7 +26,7 @@ const variantClass: Record<string, string> = {
  * Row of icon-only action buttons with consistent spacing and hover states.
  * Use for inline actions in cards, rows, and panels (copy, edit, external link, etc.).
  */
-export function ActionButtonGroup({ actions, className = '' }: ActionButtonGroupProps) {
+function ActionButtonGroup({ actions, className = '' }: ActionButtonGroupProps) {
   return (
     <div className={`flex items-center gap-1 ${className}`.trim()}>
       {actions.map((action) => (

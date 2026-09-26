@@ -12,7 +12,7 @@ import {
 
 /** Media Library saved views — thin wrappers over the polymorphic `saved_views` table with `surface = 'media_library'`. */
 
-export type MediaSavedView = SavedViewRow;
+type MediaSavedView = SavedViewRow;
 
 const SURFACE = 'media_library' as const;
 

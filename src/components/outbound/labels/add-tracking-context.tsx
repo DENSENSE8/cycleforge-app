@@ -3,7 +3,7 @@
 import { createContext, useCallback, useContext, useMemo, useState } from 'react';
 
 /** One entry in the popover's session "recently added" log. */
-export interface RecentlyAddedEntry {
+interface RecentlyAddedEntry {
   orderId: number;
   title: string;
   tracking: string;
@@ -36,7 +36,7 @@ export function useAddTrackingNav(): AddTrackingNav | null {
  * worklist: prev/next walk the ordered list of orders that still need tracking,
  * and a session-local "recently added" log shows throughput as the operator sweeps.
  */
-export function AddTrackingNavProvider({
+function AddTrackingNavProvider({
   orderedIds,
   children,
 }: {

@@ -25,7 +25,7 @@ export const ADMIN_RETURNS_GRID_CAPABILITIES: GridSurfaceCapabilities = {
 };
 
 /** Build the descriptor from a RESOLVED column list (post-visibility), so `contentMinWidthRem` and the TanStack defs follow the tracks that… */
-export function makeAdminReturnsGridDescriptor(
+function makeAdminReturnsGridDescriptor(
   columns: readonly AdminReturnsGridColumn[],
 ): GridSurfaceDescriptor<RecentReturnRow, AdminReturnsGridColumn> {
   return makeGridSurfaceDescriptor<RecentReturnRow, AdminReturnsGridColumn>(
@@ -44,7 +44,7 @@ export function makeAdminReturnsGridDescriptor(
  * Validated at module load: a definition that violates a structural law throws
  * here rather than painting a broken grid.
  */
-export const ADMIN_RETURNS_TABLE_DEFINITION = parseTableDefinition({
+const ADMIN_RETURNS_TABLE_DEFINITION = parseTableDefinition({
   id: 'admin-returns.recent',
   tableId: 'admin-returns',
   entityFamily: 'admin-returns',

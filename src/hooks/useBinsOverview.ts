@@ -22,7 +22,7 @@ export interface BinsOverviewRow {
   is_over_capacity: boolean;
 }
 
-export interface BinsOverviewCounts {
+interface BinsOverviewCounts {
   total: number;
   empty: number;
   stale: number;

@@ -16,7 +16,7 @@ const LANE_TONE: Record<FulfillmentState, 'default' | 'success' | 'danger'> = {
 
 type LaneState = Lowercase<FulfillmentState>;
 
-export interface OrdersUnshippedProjectionResult {
+interface OrdersUnshippedProjectionResult {
   success: boolean;
   /** in-queue rows upserted (all lanes). */
   upserted: number;
@@ -36,7 +36,7 @@ const defaultDeps: FeedProjectionDeps = { execute: (q) => db.execute(q) };
 /** Bulk-upsert batch size — keeps a single VALUES list well under param limits. */
 const UPSERT_CHUNK = 500;
 
-export interface OrderUnshippedMembershipWrite {
+interface OrderUnshippedMembershipWrite {
   orgId: string;
   orderPk: number;
   shipmentId: number | null;

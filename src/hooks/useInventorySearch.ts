@@ -21,7 +21,7 @@ import type {
 } from '@/lib/neon/location-queries';
 import type { PulseEventRow, UnitListRow } from '@/components/inventory/types';
 
-export interface SkuSearchRow {
+interface SkuSearchRow {
     sku: string;
     product_title: string | null;
     stock: number;
@@ -51,7 +51,7 @@ export interface CountRow {
 
 // ─── Unified result row (discriminated union) ────────────────────────────────
 
-export type InventoryResultRow =
+type InventoryResultRow =
     | { kind: 'bin'; row: BinsOverviewRow; key: string }
     | { kind: 'sku'; row: SkuSearchRow; key: string }
     | { kind: 'unit'; row: UnitListRow; key: string }
@@ -60,14 +60,14 @@ export type InventoryResultRow =
     | { kind: 'count'; row: CountRow; key: string }
     | { kind: 'triage'; row: any; key: string };
 
-export interface UseInventorySearchParams {
+interface UseInventorySearchParams {
     tab: InventoryTab;
     query: string;
     field: AnyInventorySearchField;
     buckets: AnyInventoryBucket[];
 }
 
-export interface UseInventorySearchResult {
+interface UseInventorySearchResult {
     rows: InventoryResultRow[];
     isFetching: boolean;
     isError: boolean;
@@ -265,7 +265,7 @@ async function fetchCounts(args: {
 // ─── Hook ────────────────────────────────────────────────────────────────────
 
 /** Per-tab inventory search. */
-export function useInventorySearch(params: UseInventorySearchParams): UseInventorySearchResult {
+function useInventorySearch(params: UseInventorySearchParams): UseInventorySearchResult {
     const { tab, query, field, buckets } = params;
     const trimmed = query.trim();
 

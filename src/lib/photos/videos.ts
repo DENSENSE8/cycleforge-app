@@ -9,7 +9,7 @@ import type { VideoMime } from './video-upload-rules';
 
 /** `entity_videos` — the video twin of the photo catalog, keyed by the same polymorphic (entity_type, entity_id) pair as `photo_entity_links`. */
 
-export interface EntityVideoRow {
+interface EntityVideoRow {
   id: number;
   entityType: PhotoEntityType;
   entityId: number;

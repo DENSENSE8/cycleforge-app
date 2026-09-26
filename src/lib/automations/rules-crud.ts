@@ -11,7 +11,7 @@ import type {
 } from '@/lib/schemas/automations';
 import { LISTING_AUTOMATION_TRIGGER_KEYS } from '@/lib/schemas/automations';
 
-export type AutomationRuleDto = {
+type AutomationRuleDto = {
   id: number;
   name: string;
   description: string | null;

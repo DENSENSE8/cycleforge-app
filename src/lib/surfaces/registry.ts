@@ -2,7 +2,7 @@
 
 // ─── Entity types (FIRST discriminator axis — mirrors the DB CHECKs) ──────── Must stay byte-identical with the `*_entity_type_chk` CHECK…
 
-export interface SurfaceEntityTypeDef {
+interface SurfaceEntityTypeDef {
   /** Parent table the id points at (delete-trigger target). */
   parentTable: string;
   /** Lowercase entity_type used when the same fact is emitted to ops_events. */
@@ -65,7 +65,7 @@ export function isSurfaceEntityType(v: unknown): v is SurfaceEntityType {
 
 // ─── feed_key (feed_memberships / staff_rail_exclusions / node_surfaces) ────
 
-export interface FeedKeyDef {
+interface FeedKeyDef {
   label: string;
   /** The entity type this feed's rows anchor on. */
   entityType: SurfaceEntityType;
@@ -110,8 +110,8 @@ export const FEED_KEYS = {
   },
 } as const satisfies Record<string, FeedKeyDef>;
 
-export type FeedKey = keyof typeof FEED_KEYS;
-export const FEED_KEY_LIST = Object.keys(FEED_KEYS) as FeedKey[];
+type FeedKey = keyof typeof FEED_KEYS;
+const FEED_KEY_LIST = Object.keys(FEED_KEYS) as FeedKey[];
 
 export function isFeedKey(v: unknown): v is FeedKey {
   return typeof v === 'string' && Object.hasOwn(FEED_KEYS, v);
@@ -125,11 +125,11 @@ export type FeedMembershipState = (typeof FEED_MEMBERSHIP_STATES)[number];
 
 /** Mirrors TimelineTone (src/lib/timeline/types.ts) — the house tone registry. */
 export const FEED_MEMBERSHIP_TONES = ['default', 'info', 'success', 'warning', 'danger', 'muted'] as const;
-export type FeedMembershipTone = (typeof FEED_MEMBERSHIP_TONES)[number];
+type FeedMembershipTone = (typeof FEED_MEMBERSHIP_TONES)[number];
 
 // ─── signal_kind (entity_signals) ────────────────────────────────────────────
 
-export interface SignalKindDef {
+interface SignalKindDef {
   label: string;
   /** Entity types this kind may anchor on (validation in recordEntitySignal). */
   entityTypes: readonly SurfaceEntityType[];
@@ -192,9 +192,9 @@ export const NODE_SURFACE_ROLES = {
   display: { label: 'Display', description: 'A read-only contextual feed shown at this node (no queue semantics).' },
 } as const satisfies Record<string, { label: string; description: string }>;
 
-export type NodeSurfaceRole = keyof typeof NODE_SURFACE_ROLES;
+type NodeSurfaceRole = keyof typeof NODE_SURFACE_ROLES;
 
-export function isNodeSurfaceRole(v: unknown): v is NodeSurfaceRole {
+function isNodeSurfaceRole(v: unknown): v is NodeSurfaceRole {
   return typeof v === 'string' && Object.hasOwn(NODE_SURFACE_ROLES, v);
 }
 
@@ -207,12 +207,12 @@ export const INSIGHT_LINKAGE_TYPES = {
   org_signal_rollup: { label: 'Your signal rollup', description: "This org's OWN entity_signals distribution over a trailing window (nightly cron, source='org_rollup'). Complements the seeded typicals with the operation's real reason-code breakdown." },
 } as const satisfies Record<string, { label: string; description: string }>;
 
-export type InsightLinkageType = keyof typeof INSIGHT_LINKAGE_TYPES;
+type InsightLinkageType = keyof typeof INSIGHT_LINKAGE_TYPES;
 
 export const INSIGHT_SUBJECT_KINDS = ['node_type', 'feed_key', 'signal_kind'] as const;
-export type InsightSubjectKind = (typeof INSIGHT_SUBJECT_KINDS)[number];
+type InsightSubjectKind = (typeof INSIGHT_SUBJECT_KINDS)[number];
 
-export function isInsightSubjectKind(v: unknown): v is InsightSubjectKind {
+function isInsightSubjectKind(v: unknown): v is InsightSubjectKind {
   return typeof v === 'string' && (INSIGHT_SUBJECT_KINDS as readonly string[]).includes(v);
 }
 
@@ -220,7 +220,7 @@ export function isInsightSubjectKind(v: unknown): v is InsightSubjectKind {
 
 export type MutationTrustClass = 'auto' | 'draft_scoped' | 'review';
 
-export interface MutationKindDef {
+interface MutationKindDef {
   label: string;
   trust: MutationTrustClass;
   /** target_kind stamped on agent_mutation_affects rows for this kind. */
@@ -380,7 +380,7 @@ export function mutationTrustClass(kind: MutationKind): MutationTrustClass {
 
 /** Mirrors the agent_mutations_status_chk CHECK. */
 export const AGENT_MUTATION_STATUSES = ['proposed', 'under_review', 'approved', 'applied', 'rejected', 'reverted'] as const;
-export type AgentMutationStatus = (typeof AGENT_MUTATION_STATUSES)[number];
+type AgentMutationStatus = (typeof AGENT_MUTATION_STATUSES)[number];
 
 /** All target_kind values (agent_mutation_affects) derivable from the kinds. */
 export const MUTATION_TARGET_KINDS = [...new Set(Object.values(MUTATION_KINDS).map((k) => k.targetKind))] as readonly string[];

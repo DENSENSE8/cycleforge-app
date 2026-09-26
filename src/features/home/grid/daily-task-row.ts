@@ -2,7 +2,7 @@ import { dailyCheckItemTitle } from '@/lib/daily-checks/composer';
 import type { DailyCheckItem, DailyCheckItemKind, DailyCheckReport } from '@/lib/daily-checks/types';
 
 /** One Daily table row — a checklist item resolved against the day's report. */
-export interface DailyTaskRow {
+interface DailyTaskRow {
   id: number;
   /** Glyph-prefixed when the item carries one — one derivation, both faces. */
   title: string;

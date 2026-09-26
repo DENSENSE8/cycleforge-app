@@ -4,7 +4,7 @@ import type { OrgId } from '@/lib/tenancy/constants';
 
 // ─── Interfaces ──────────────────────────────────────────────────────────────
 
-export interface SkuRelationshipRow {
+interface SkuRelationshipRow {
   id: number;
   parent_sku_id: number;
   child_sku_id: number;
@@ -15,7 +15,7 @@ export interface SkuRelationshipRow {
 }
 
 /** A catalog node enriched with the stock figure the graph/detail panel needs. */
-export interface SkuGraphNode {
+interface SkuGraphNode {
   sku_id: number;
   sku: string;
   product_title: string;
@@ -26,14 +26,14 @@ export interface SkuGraphNode {
 }
 
 /** One side of a relationship as seen from a focused SKU (the "other" node). */
-export interface SkuRelationshipEdgeView extends SkuGraphNode {
+interface SkuRelationshipEdgeView extends SkuGraphNode {
   relationship_id: number;
   qty: number;
   notes: string | null;
 }
 
 /** A single edge in a tree response (ids only; nodes are returned separately). */
-export interface SkuTreeEdge {
+interface SkuTreeEdge {
   relationship_id: number;
   parent_sku_id: number;
   child_sku_id: number;
@@ -136,7 +136,7 @@ export async function getGraphNodes(skuIds: number[], orgId?: OrgId): Promise<Sk
   return result.rows;
 }
 
-export interface SkuTreeResult {
+interface SkuTreeResult {
   root_sku_id: number;
   edges: SkuTreeEdge[];
   nodes: SkuGraphNode[];

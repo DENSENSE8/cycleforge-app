@@ -4,7 +4,7 @@ import React from 'react';
 import { AnchoredLayer } from '@/design-system';
 import { cfSans } from '@/lib/fonts';
 
-export interface ViewDropdownOption<T extends string> {
+interface ViewDropdownOption<T extends string> {
   value: T;
   label: string;
   /** Optional leading icon, rendered in blue beside the label (opt-in). */

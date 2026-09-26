@@ -33,7 +33,7 @@ export interface AdminTableColumn<Row> {
   width?: string;
 }
 
-export interface AdminTableProps<Row> {
+interface AdminTableProps<Row> {
   columns: AdminTableColumn<Row>[];
   rows: Row[];
   /** Stable row key. */

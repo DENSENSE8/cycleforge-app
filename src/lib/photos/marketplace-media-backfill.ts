@@ -16,7 +16,7 @@ import { attachPhotoWithLegacyUrlInTx } from './service';
 
 export type MarketplaceProvider = 'amazon' | 'ebay';
 
-export const MARKETPLACE_PROVIDERS: readonly MarketplaceProvider[] = ['amazon', 'ebay'];
+const MARKETPLACE_PROVIDERS: readonly MarketplaceProvider[] = ['amazon', 'ebay'];
 
 /** A listing identifier a provider can answer an image for: ASIN or eBay legacy item id. */
 export interface MarketplaceRef {
@@ -35,7 +35,7 @@ const EBAY_ITEM_ID_RE = /^\d{12}$/;
 const AMAZON_ORDER_RE = /^\d{3}-\d{7}-\d{7}$/;
 const EBAY_ORDER_RE = /^\d{2}-\d{5}-\d{5}$/;
 
-export const MARKETPLACE_REPAIR: Record<MarketplaceProvider, string> = {
+const MARKETPLACE_REPAIR: Record<MarketplaceProvider, string> = {
   amazon:
     'Settings → Integrations → Amazon → Connect: authorize in Seller Central (OAuth) or paste a self-authorized SP-API refresh token + Seller ID. The server must carry the SP-API app LWA credentials (AMAZON_LWA_CLIENT_ID / AMAZON_LWA_CLIENT_SECRET).',
   ebay:
@@ -64,7 +64,7 @@ export interface OrderImageRow {
   catalogRefs: MarketplaceRef[];
 }
 
-export type OrderImageState =
+type OrderImageState =
   | 'zoho'
   | 'catalog'
   | 'listing_gallery'
@@ -76,7 +76,7 @@ export type OrderImageState =
  * Where an order's product photo comes from today, or why it has none.
  * Only `missing` is eligible for marketplace media.
  */
-export function orderImageState(row: OrderImageRow): OrderImageState {
+function orderImageState(row: OrderImageRow): OrderImageState {
   if (row.zohoItemId) {
     const zohoPhoto =
       productImageUrl({ zohoItemId: row.zohoItemId, zohoImageDocumentId: row.zohoImageDocumentId }) ??
@@ -91,7 +91,7 @@ export function orderImageState(row: OrderImageRow): OrderImageState {
 }
 
 /** The channel an order came from, by account source, else by order-number shape. */
-export function orderChannel(accountSource: string | null, orderRef: string | null): MarketplaceProvider | null {
+function orderChannel(accountSource: string | null, orderRef: string | null): MarketplaceProvider | null {
   const source = String(accountSource ?? '').trim().toLowerCase();
   if (source.startsWith('amazon')) return 'amazon';
   if (source.startsWith('ebay')) return 'ebay';
@@ -136,14 +136,14 @@ export function marketplaceRefsFor(row: OrderImageRow): MarketplaceRef[] {
 // ─── Plan ────────────────────────────────────────────────────────────────────
 
 /** One catalog product with no photo anywhere, and the listings that could supply one. */
-export interface MissingProduct {
+interface MissingProduct {
   skuCatalogId: number;
   sku: string | null;
   orderIds: number[];
   refs: MarketplaceRef[];
 }
 
-export interface BackfillPlan {
+interface BackfillPlan {
   ordersScanned: number;
   orders: Record<OrderImageState, number>;
   /** Orders with no catalog row that DO carry a marketplace id (fetchable once paired). */
@@ -151,7 +151,7 @@ export interface BackfillPlan {
   products: MissingProduct[];
 }
 
-export function planMarketplaceMediaBackfill(rows: readonly OrderImageRow[]): BackfillPlan {
+function planMarketplaceMediaBackfill(rows: readonly OrderImageRow[]): BackfillPlan {
   const orders: Record<OrderImageState, number> = {
     zoho: 0,
     catalog: 0,
@@ -205,7 +205,7 @@ export interface MarketplaceMediaDeps {
   storeListingImage(orgId: OrgId, skuCatalogId: number, imageUrl: string): Promise<StoreOutcome>;
 }
 
-export interface ProviderReport {
+interface ProviderReport {
   gate: ProviderGate;
   /** Missing products with at least one listing id on this provider. */
   products: number;
@@ -213,7 +213,7 @@ export interface ProviderReport {
   blocked: number;
 }
 
-export interface BackfillReport {
+interface BackfillReport {
   orgId: OrgId;
   since: string;
   apply: boolean;
@@ -236,7 +236,7 @@ export interface BackfillReport {
   samples: Array<{ skuCatalogId: number; sku: string | null; ref: MarketplaceRef; imageUrl: string }>;
 }
 
-export interface BackfillOptions {
+interface BackfillOptions {
   /** Write covers. Default false: plan, gate and fetch (read-only) only. */
   apply?: boolean;
   since: Date;

@@ -70,7 +70,7 @@ interface ResolvedClaimContext {
 }
 
 /** Best-effort: pull the customer, SKU, carrier delivered date, and packed scan date for an order so a claim can stamp its clock at log time. */
-export async function resolveClaimContext(orderId: number): Promise<ResolvedClaimContext | null> {
+async function resolveClaimContext(orderId: number): Promise<ResolvedClaimContext | null> {
   try {
     const { rows } = await pool.query<{
       customer_id: number | null;
@@ -126,7 +126,7 @@ export async function resolveClaimContext(orderId: number): Promise<ResolvedClai
 
 // ─── Create ──────────────────────────────────────────────────────────────────
 
-export interface CreateClaimInput {
+interface CreateClaimInput {
   serialUnitId?: number | null;
   serialNumber?: string | null;
   orderId?: number | null;
@@ -146,7 +146,7 @@ export interface CreateClaimInput {
   organizationId: string | null;
 }
 
-export type CreateClaimResult =
+type CreateClaimResult =
   | { ok: true; claim: WarrantyClaimDetail }
   | { ok: false; status: 400 | 500; error: string };
 
@@ -260,7 +260,7 @@ export async function createClaim(input: CreateClaimInput): Promise<CreateClaimR
 
 // ─── Metadata edit (PATCH) ───────────────────────────────────────────────────
 
-export interface UpdateClaimMetaInput {
+interface UpdateClaimMetaInput {
   serialNumber?: string | null;
   sku?: string | null;
   productTitle?: string | null;
@@ -272,7 +272,7 @@ export interface UpdateClaimMetaInput {
   notes?: string | null;
 }
 
-export type UpdateClaimMetaResult =
+type UpdateClaimMetaResult =
   | { ok: true; claim: WarrantyClaimDetail }
   | { ok: false; status: 404 | 400; error: string };
 
@@ -334,7 +334,7 @@ export async function updateClaimMeta(
 
 // ─── Soft delete ─────────────────────────────────────────────────────────────
 
-export interface SoftDeleteClaimsResult {
+interface SoftDeleteClaimsResult {
   deleted: { id: number; claimNumber: string }[];
   /** Ids that didn't match a live claim (unknown or already deleted). */
   notFound: number[];
@@ -377,7 +377,7 @@ export async function softDeleteClaims(
   });
 }
 
-export interface RestoreClaimsResult {
+interface RestoreClaimsResult {
   restored: { id: number; claimNumber: string }[];
   /** Ids that didn't match a soft-deleted claim (unknown or already live). */
   notFound: number[];
@@ -423,7 +423,7 @@ export async function restoreClaims(
 
 // ─── Lifecycle transitions ───────────────────────────────────────────────────
 
-export type TransitionResult =
+type TransitionResult =
   | { ok: true; claim: WarrantyClaimDetail }
   | { ok: false; status: 404 | 409 | 400; error: string };
 
@@ -602,7 +602,7 @@ export async function revertClaimStatus(
 
 // ─── Repair attempts ─────────────────────────────────────────────────────────
 
-export interface RepairAttemptInput {
+interface RepairAttemptInput {
   technicianStaffId?: number | null;
   diagnosis?: string | null;
   partsUsed?: Array<{ sku?: string; qty?: number; cost?: number }>;
@@ -616,7 +616,7 @@ export interface RepairAttemptInput {
   completedAt?: string | null;
 }
 
-export type LogRepairResult =
+type LogRepairResult =
   | { ok: true; attemptId: number; claim: WarrantyClaimDetail }
   | { ok: false; status: 404 | 409 | 500; error: string };
 

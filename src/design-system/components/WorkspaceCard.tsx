@@ -6,9 +6,9 @@ import {
   type RaisedIntensity,
 } from '@/design-system/tokens/shadows';
 
-export type WorkspaceCardTone = 'blue' | 'emerald' | 'orange' | 'violet' | 'red' | 'gray';
+type WorkspaceCardTone = 'blue' | 'emerald' | 'orange' | 'violet' | 'red' | 'gray';
 
-export type WorkspaceCardVariant = 'solid' | 'glass';
+type WorkspaceCardVariant = 'solid' | 'glass';
 
 /** Default glass plane — primary work cards use raised default intensity. */
 const GLASS_RAISED_DEFAULT: RaisedIntensity = 'default';

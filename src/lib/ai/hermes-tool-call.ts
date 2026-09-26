@@ -17,7 +17,7 @@ export interface HermesTool {
   parameters: Record<string, unknown>;
 }
 
-export interface HermesToolCallInput {
+interface HermesToolCallInput {
   systemPrompt: string;
   userText: string;
   tool: HermesTool;
@@ -29,7 +29,7 @@ export interface HermesToolCallInput {
   orgId: OrgId;
 }
 
-export interface HermesToolCallResult<T> {
+interface HermesToolCallResult<T> {
   /** Parsed (but NOT validated) tool arguments — the caller owns validation. */
   args: T;
   /** Model id reported by the runtime (or the env default if omitted). */

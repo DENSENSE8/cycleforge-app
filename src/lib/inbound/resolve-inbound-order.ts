@@ -5,7 +5,7 @@ import type { ensureReceivingForInboundOrder as EnsureReceivingFn } from '@/lib/
 import type { tenantQuery as TenantQuery } from '@/lib/tenancy/db';
 import type { withTenantTransaction as WithTx } from '@/lib/tenancy/db';
 
-export type InboundOrderHit = {
+type InboundOrderHit = {
   receivingId: number;
   receivingLineId: number;
   sourceType: 'ebay' | 'amazon' | 'manual';

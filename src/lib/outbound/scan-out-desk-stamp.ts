@@ -2,7 +2,7 @@
 
 export const SCAN_OUT_DOCK_MAX_BACKDATE_MS = 24 * 60 * 60 * 1000;
 export const SCAN_OUT_DESK_MAX_BACKDATE_MS = 90 * 24 * 60 * 60 * 1000;
-export const SCAN_OUT_MAX_CLOCK_SKEW_MS = 5 * 60 * 1000;
+const SCAN_OUT_MAX_CLOCK_SKEW_MS = 5 * 60 * 1000;
 export const SCAN_OUT_DESK_SOURCE = 'desk-selection';
 
 export function scanOutMaxBackdateMs(source: unknown): number {

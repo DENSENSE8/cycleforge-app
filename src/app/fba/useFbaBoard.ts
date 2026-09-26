@@ -13,7 +13,7 @@ import type { FbaBoardItem } from '@/lib/fba/types';
 import type { CombineData } from './fba-page-helpers';
 import { useRefreshSignal } from '@/lib/refresh/bus';
 
-export interface FbaBoardData {
+interface FbaBoardData {
   board: CombineData;
   loading: boolean;
   error: string | null;

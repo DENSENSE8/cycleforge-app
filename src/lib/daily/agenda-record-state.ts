@@ -4,7 +4,7 @@ import type { LifecycleState } from '@cycleforge/design-tokens';
 import { WAREHOUSE_TIME_ZONE } from '@/utils/date';
 import type { DailyAgendaRow } from './daily-agenda-row';
 
-export interface AgendaRecordState {
+interface AgendaRecordState {
   lifecycle: LifecycleState;
   code: string;
   word: string;
@@ -22,7 +22,7 @@ const CIVIL_CLOCK = new Intl.DateTimeFormat('en-GB', {
 });
 
 /** `HH:MM` on the warehouse wall at `nowMs` — what a checklist due time is compared to. */
-export function warehouseClock(nowMs: number): string {
+function warehouseClock(nowMs: number): string {
   return CIVIL_CLOCK.format(nowMs);
 }
 

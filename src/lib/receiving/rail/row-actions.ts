@@ -3,7 +3,7 @@
 import type { RailRowAction } from '@/components/sidebar/rail-shell/rail-row-actions';
 
 /** Verbs, in menu order. Order here IS the order the operator reads. */
-export type RailRowVerb = 'select' | 'share' | 'hide' | 'delete';
+type RailRowVerb = 'select' | 'share' | 'hide' | 'delete';
 
 const RECEIVING_VERBS: readonly RailRowVerb[] = ['select', 'share', 'hide', 'delete'];
 

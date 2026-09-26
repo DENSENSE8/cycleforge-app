@@ -27,7 +27,7 @@ import { getUnboxWorkspaceTabFromSearch } from '@/utils/unbox-workspace-state';
 import { parseStaffParam } from '@/hooks/useStaffFilter';
 import { parseTrackingInParam, TRACKING_IN_PARAM } from '@/lib/receiving/tracking-paste';
 
-export interface ReceivingModeState {
+interface ReceivingModeState {
   mode: ReceivingModeDescriptor;
   isIncomingMode: boolean;
   isHistoryMode: boolean;

@@ -24,7 +24,7 @@ export interface BuyerEntry {
   buyer: BuyerBlock;
 }
 
-export interface ResolveBuyerCustomersArgs {
+interface ResolveBuyerCustomersArgs {
   /** Buyers to resolve, one per canonical order (duplicates collapsed here). */
   buyers: BuyerEntry[];
   orgId: OrgId;

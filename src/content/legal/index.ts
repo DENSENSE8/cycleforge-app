@@ -27,6 +27,6 @@ export const LEGAL_INDEX_BLURB =
   'working drafts maintained alongside our actual architecture and data practices, and have not ' +
   'yet been finalized with counsel. The authoritative, published versions live at cycleforge.com/legal.';
 
-export function getLegalDoc(slug: string | null | undefined): LegalDoc {
+function getLegalDoc(slug: string | null | undefined): LegalDoc {
   return LEGAL_DOCS.find((d) => d.slug === slug) ?? LEGAL_DOCS[0];
 }

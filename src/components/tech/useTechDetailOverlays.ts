@@ -21,7 +21,7 @@ export interface TechRepairPanel {
   assignedTechId: number | null;
 }
 
-export interface TechDetailOverlays {
+interface TechDetailOverlays {
   repairPanel: TechRepairPanel | null;
   setRepairPanel: React.Dispatch<React.SetStateAction<TechRepairPanel | null>>;
   loadingRepair: boolean;

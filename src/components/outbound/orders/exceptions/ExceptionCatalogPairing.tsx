@@ -12,7 +12,7 @@ import {
   triagePanelControl,
 } from '@/design-system/tokens/triage-panel';
 
-export interface CatalogHit {
+interface CatalogHit {
   id: number;
   sku: string;
   product_title?: string | null;

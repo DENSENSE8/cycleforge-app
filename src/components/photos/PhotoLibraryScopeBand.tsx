@@ -28,7 +28,7 @@ import { cn } from '@/utils/_cn';
 import { focusRing } from '@/design-system/tokens/focus-ring';
 
 
-export interface PhotoLibraryScope {
+interface PhotoLibraryScope {
   /** Lifecycle scopes, for the frame's tab row. */
   tabs: { id: string; label: string }[];
   /** Empty while a custom media type is active — see `activeSection` below. */

@@ -44,14 +44,14 @@ export async function getThreadAssignment(
 
 // ─── assignThread (upsert-to-reassign) ───────────────────────────────────────
 
-export interface AssignThreadInput {
+interface AssignThreadInput {
   orgId: OrgId;
   threadId: number;
   assignedStaffId: number;
   assignedBy?: number | null;
 }
 
-export type AssignThreadResult =
+type AssignThreadResult =
   | { ok: true; assignment: ThreadAssignment; reassigned: boolean; previousStaffId: number | null }
   | { ok: false; status: 400 | 404; error: string };
 
@@ -109,7 +109,7 @@ export async function assignThread(
 
 // ─── unassignThread (delete-to-clear) ────────────────────────────────────────
 
-export type UnassignThreadResult =
+type UnassignThreadResult =
   | { ok: true; idempotent: boolean; previousStaffId: number | null }
   | { ok: false; status: 404; error: string };
 

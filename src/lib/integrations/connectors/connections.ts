@@ -74,7 +74,7 @@ export async function getConnectionStatus(
 }
 
 /** Count of distinct connected providers — the unit `plans.ts.maxIntegrations` is measured in. */
-export async function countConnectedProviders(orgId: OrgId): Promise<number> {
+async function countConnectedProviders(orgId: OrgId): Promise<number> {
   const r = await pool.query<{ n: string }>(
     `SELECT COUNT(*)::text AS n FROM (
        SELECT DISTINCT provider
@@ -137,7 +137,7 @@ async function hasAnyProviderConnection(
   return false;
 }
 
-export interface IntegrationLimit {
+interface IntegrationLimit {
   used: number;
   /** Plan ceiling; 0 means unlimited (pro/enterprise). */
   max: number;
@@ -167,7 +167,7 @@ export async function wouldExceedIntegrationLimit(
 /** The typed 403 body every connect/start route returns when the plan's
  *  `maxIntegrations` ceiling would be exceeded. Shape is a contract with the
  *  settings UI (upgrade CTA keys off `error: 'PLAN_LIMIT'` + `upgrade: true`). */
-export interface PlanLimitRefusal {
+interface PlanLimitRefusal {
   ok: false;
   error: 'PLAN_LIMIT';
   limit: 'maxIntegrations';

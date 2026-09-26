@@ -2,7 +2,7 @@
 
 export type StationDepthName = 'flat' | 'mill' | 'deep';
 
-export interface StationDepth {
+interface StationDepth {
   name: StationDepthName;
   label: string;
   hint: string;

@@ -22,7 +22,7 @@ export async function patchFbaItem(
 }
 
 /** PATCH and return the updated row (used by the print-queue table). */
-export async function patchFbaItemWithResponse<T = unknown>(
+async function patchFbaItemWithResponse<T = unknown>(
   shipmentId: number,
   itemId: number,
   body: Record<string, unknown>,

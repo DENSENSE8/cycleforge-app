@@ -2,7 +2,7 @@
 
 import { squashCommandCode } from './nav-command-codes';
 
-export interface CommandAlias {
+interface CommandAlias {
   code: string;
   targetCode: string;
   label: string;
@@ -24,7 +24,7 @@ export function resolveCommandAlias(raw: string | null | undefined): string | nu
 }
 
 /** The alias row itself — for the book, which shows the custom name. */
-export function getCommandAlias(raw: string | null | undefined): CommandAlias | null {
+function getCommandAlias(raw: string | null | undefined): CommandAlias | null {
   return bySquashed.get(squashCommandCode(raw)) ?? null;
 }
 

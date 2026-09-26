@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { getActiveStaff } from '@/lib/staffCache';
 import { staffHasRole } from '@/utils/staff';
 
-export interface TechStaff {
+interface TechStaff {
   id: number;
   name: string;
 }

@@ -5,7 +5,7 @@ import type { OrgId } from '@/lib/tenancy/constants';
 import { createDocumentEntityLink } from '@/lib/documents/links';
 import { getProductManualById } from '@/lib/neon/product-manuals-queries';
 
-export interface ManualDocumentRow {
+interface ManualDocumentRow {
   documentId: number;
   productManualId: number | null;
   displayName: string;
@@ -15,7 +15,7 @@ export interface ManualDocumentRow {
   skuCatalogId: number | null;
 }
 
-export interface ManualDocumentDeps {
+interface ManualDocumentDeps {
   withTenantTransaction: typeof withTenantTransaction;
   createDocumentEntityLink: typeof createDocumentEntityLink;
   getProductManualById: typeof getProductManualById;

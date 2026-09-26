@@ -13,7 +13,7 @@ import {
 import { findShippedOrderByTsnSerial } from '@/lib/neon/tsn-shipped-order';
 
 /** The resolved unit identity shown at the head of the trace. */
-export interface TraceUnit {
+interface TraceUnit {
   id: number | null;
   serial_number: string;
   normalized_serial: string;
@@ -29,7 +29,7 @@ export interface TraceUnit {
 }
 
 /** The originating sales order, when the unit was shipped (powers the returns leg). */
-export interface TraceOrder {
+interface TraceOrder {
   order_id: string | null;
   product_title: string | null;
   tracking_number: string | null;
@@ -57,7 +57,7 @@ export interface TraceEvent {
   payload: Record<string, unknown>;
 }
 
-export interface TraceResult {
+interface TraceResult {
   found: boolean;
   unit: TraceUnit | null;
   order: TraceOrder | null;

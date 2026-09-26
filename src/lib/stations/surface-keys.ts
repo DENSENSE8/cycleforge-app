@@ -36,7 +36,7 @@ export const SURFACE_KEYS = [
 export type SurfaceKey = (typeof SURFACE_KEYS)[number];
 
 /** A search-param delta a legacy alias applies to reconstruct the old URL. */
-export type SurfaceParamDelta = Record<string, string | null>;
+type SurfaceParamDelta = Record<string, string | null>;
 
 /** How today's app still renders this surface — the source the migration alias redirects *from*. */
 export interface SurfaceLegacyLocation {

@@ -313,7 +313,7 @@ function DocumentTypeGroup({
   );
 }
 
-export interface OrderDocumentsSectionProps {
+interface OrderDocumentsSectionProps {
   orderId: number;
   orderRef: string;
   /** Dashboard/fulfillment/staged contexts show a read-only tray — no drop

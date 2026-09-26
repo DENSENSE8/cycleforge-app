@@ -6,13 +6,13 @@ import { hasStepUp } from './stepup';
 import type { AuthContext } from './auth-context';
 
 /** Canonical scope name for the sensitive-information wall step-up grant. */
-export const SENSITIVE_STEPUP_SCOPE = 'sensitive';
+const SENSITIVE_STEPUP_SCOPE = 'sensitive';
 
 /**
  * Whether this staff member is subject to the sensitive wall. Returns false on
  * any error (missing column / row) so behavior is unchanged pre-migration.
  */
-export async function staffRequiresSensitiveStepUp(staffId: number): Promise<boolean> {
+async function staffRequiresSensitiveStepUp(staffId: number): Promise<boolean> {
   try {
     const r = await pool.query<{ requires: boolean }>(
       `SELECT COALESCE(requires_sensitive_stepup, false) AS requires

@@ -128,7 +128,7 @@ export type DataTableFilterChrome = {
  * Idle funnel when a family has not wired facets yet. The icon still paints —
  * omit `filter` and DataTable mounts this, never hides the control.
  */
-export const DATA_TABLE_FILTER_IDLE: DataTableFilterChrome = {
+const DATA_TABLE_FILTER_IDLE: DataTableFilterChrome = {
   options: [],
   onToggle: () => {},
   onClearAll: () => {},

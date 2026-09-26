@@ -1,7 +1,7 @@
 /** Provisional SKUs — the on-hold placeholder product, and the arithmetic of merging one into a real SKU. */
 
 /** Prefix every provisional SKU carries. Visible, on purpose. */
-export const PROVISIONAL_SKU_PREFIX = 'TMP-';
+const PROVISIONAL_SKU_PREFIX = 'TMP-';
 
 /** Ledger reason recorded when a merge re-keys history onto the real SKU. */
 export const PROVISIONAL_MERGE_REASON = 'PROVISIONAL_MERGE';
@@ -67,7 +67,7 @@ export interface ProvisionalBinRow {
   qty: number;
 }
 
-export interface MergePlan {
+interface MergePlan {
   /** Locations where the target already has a row — quantities add. */
   folds: Array<{ locationId: number; provisionalQty: number; targetQty: number; mergedQty: number }>;
   /** Locations where only the provisional has a row — the row is re-keyed. */
@@ -106,7 +106,7 @@ export function planProvisionalMerge(
   return plan;
 }
 
-export type MergeRefusal =
+type MergeRefusal =
   | { ok: true }
   | { ok: false; reason: 'not-provisional' | 'target-is-provisional' | 'same-sku' | 'missing-sku' };
 

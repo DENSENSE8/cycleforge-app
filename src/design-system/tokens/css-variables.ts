@@ -48,8 +48,8 @@ function flattenTokenTree(source: FlattenableTokenTree, path: string[] = []): Re
 
 export const designSystemCssVariables = flattenTokenTree(designSystemTokenTree as FlattenableTokenTree);
 
-export const designSystemTokenStyleText = `:root {\n${Object.entries(designSystemCssVariables)
+const designSystemTokenStyleText = `:root {\n${Object.entries(designSystemCssVariables)
   .map(([name, value]) => `  ${name}: ${value};`)
   .join('\n')}\n}`;
 
-export type DesignSystemCssVariables = typeof designSystemCssVariables;
+type DesignSystemCssVariables = typeof designSystemCssVariables;

@@ -35,7 +35,7 @@ interface UseReceivingLinesDataArgs {
   scrollRef: React.RefObject<HTMLDivElement | null>;
 }
 
-export interface ReceivingLinesData {
+interface ReceivingLinesData {
   data: ApiResponse | undefined;
   isLoading: boolean;
   /** Nothing paintable AND the authoritative fetch failed — render degraded + retry. */

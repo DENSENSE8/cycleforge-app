@@ -11,7 +11,7 @@ import { useMotionPresence, useMotionTransition } from '@/design-system/foundati
 /** Day-group header shown between each day's rows in station / receiving / repair lists that still band by civil day. */
 
 /** Sticky row wrapper — left-aligned micro date+qty. */
-export const dayGroupChipRowClass = cn(
+const dayGroupChipRowClass = cn(
   'flex items-center bg-surface-card/90 py-0.5 backdrop-blur-[2px]',
   QUEUE_ROW.px,
 );
@@ -28,7 +28,7 @@ const dayGroupChipRowSolidClass = cn(
 
 /** Quiet micro date + qty — no border/shadow pill; sticky row is enough chrome.
  *  `whitespace-nowrap` keeps WED/JUN intact (no mid-weekday clip under tight parents). */
-export const dayGroupChipClass =
+const dayGroupChipClass =
   'inline-flex items-center gap-1.5 whitespace-nowrap text-role-micro font-semibold uppercase tracking-wide text-text-muted';
 
 interface DateGroupHeaderProps {

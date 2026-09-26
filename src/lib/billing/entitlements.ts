@@ -25,7 +25,7 @@ export class FeatureGatedError extends Error {
   }
 }
 
-export async function requireFeature(
+async function requireFeature(
   orgId: OrgId,
   feature: keyof Entitlements['features'],
 ): Promise<void> {

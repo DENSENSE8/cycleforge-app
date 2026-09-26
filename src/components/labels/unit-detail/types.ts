@@ -98,7 +98,7 @@ export interface UnitPhoto {
   created_at: string;
 }
 
-export interface UnitResponse {
+interface UnitResponse {
   success: boolean;
   serial_unit: UnitDetail;
   events: TimelineEvent[];
@@ -148,7 +148,7 @@ export interface SimilarProduct {
   boxed_stock: number;
 }
 
-export interface SimilarProductsResult {
+interface SimilarProductsResult {
   category: string | null;
   items: SimilarProduct[];
 }

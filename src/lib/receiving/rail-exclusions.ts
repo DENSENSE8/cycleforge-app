@@ -11,25 +11,25 @@ import { isFeedKey } from '@/lib/surfaces/registry';
 
 /** entity_types a receiving rail row can carry (positive id = line, negative = carton). */
 export const RECEIVING_RAIL_ENTITY_TYPES = ['RECEIVING', 'RECEIVING_LINE'] as const;
-export type ReceivingRailEntityType = (typeof RECEIVING_RAIL_ENTITY_TYPES)[number];
+type ReceivingRailEntityType = (typeof RECEIVING_RAIL_ENTITY_TYPES)[number];
 
 /** feed_keys a receiving rail dismiss may target. */
 export const RECEIVING_RAIL_FEED_KEYS = ['receiving_triage', 'receiving_unbox'] as const;
 export type ReceivingRailFeedKey = (typeof RECEIVING_RAIL_FEED_KEYS)[number];
 
-export interface RailExclusionItem {
+interface RailExclusionItem {
   entityType: string;
   entityId: number;
 }
 
-export interface RailExclusionArgs {
+interface RailExclusionArgs {
   orgId: OrgId;
   staffId: number;
   feedKey: string;
   items: RailExclusionItem[];
 }
 
-export interface RailExclusionResult {
+interface RailExclusionResult {
   ok: boolean;
   status: 200 | 400;
   error?: string;

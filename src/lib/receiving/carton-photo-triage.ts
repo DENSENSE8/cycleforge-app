@@ -6,16 +6,16 @@ import type { PhotoEvidenceStage } from '@/lib/photos/stages';
 import { receivingStageFromPhotoType } from '@/lib/receiving/photo-intent';
 
 /** What the operator picks between at the top of the triage surface. */
-export type CartonPhotoLane = 'exact' | 'investigative';
+type CartonPhotoLane = 'exact' | 'investigative';
 
 /**
  * The Exact drill. `box` folds arrival + unbox-carton because both answer
  * "what did the outside look like"; the stage stays on the row for the label.
  */
-export type CartonPhotoBucket = 'box' | 'item';
+type CartonPhotoBucket = 'box' | 'item';
 
 /** Why a row is in the Investigative lane. A row can carry more than one. */
-export type CartonPhotoTrailReason = 'claim' | 'share' | 'unclassified';
+type CartonPhotoTrailReason = 'claim' | 'share' | 'unclassified';
 
 /** The shape this model needs off `/api/receiving-photos`. */
 export interface CartonPhotoInput {
@@ -32,7 +32,7 @@ export interface CartonPhotoInput {
   hasInsuranceShare?: boolean;
 }
 
-export interface CartonPhotoTriageRow {
+interface CartonPhotoTriageRow {
   /** Stable list key. Falls back to the URL for rows read without a numeric id. */
   key: string;
   url: string;
@@ -51,15 +51,15 @@ export interface CartonPhotoTriageRow {
 }
 
 /** One line of the claim-readiness checklist. */
-export type CartonClaimReadinessState = 'present' | 'unclassified' | 'missing';
+type CartonClaimReadinessState = 'present' | 'unclassified' | 'missing';
 
-export interface CartonClaimReadinessLine {
+interface CartonClaimReadinessLine {
   key: 'shipping_label' | 'box_exterior' | 'item';
   label: string;
   state: CartonClaimReadinessState;
 }
 
-export interface CartonPhotoTriageModel {
+interface CartonPhotoTriageModel {
   /** The Exact lane, in capture order. */
   all: CartonPhotoTriageRow[];
   box: CartonPhotoTriageRow[];
@@ -90,11 +90,11 @@ function bucketForStage(stage: PhotoEvidenceStage | null): CartonPhotoBucket | n
 }
 
 /** Human label for a bucket — never typed at a call site. */
-export function cartonPhotoBucketLabel(bucket: CartonPhotoBucket): string {
+function cartonPhotoBucketLabel(bucket: CartonPhotoBucket): string {
   return bucket === 'box' ? 'Box' : 'Item';
 }
 
-export function cartonPhotoLaneLabel(lane: CartonPhotoLane): string {
+function cartonPhotoLaneLabel(lane: CartonPhotoLane): string {
   return lane === 'exact' ? 'Exact photo' : 'Investigative';
 }
 
@@ -104,7 +104,7 @@ const TRAIL_REASON_LABELS: Record<CartonPhotoTrailReason, string> = {
   unclassified: 'Unclassified stage',
 };
 
-export function cartonPhotoTrailReasonLabel(reason: CartonPhotoTrailReason): string {
+function cartonPhotoTrailReasonLabel(reason: CartonPhotoTrailReason): string {
   return TRAIL_REASON_LABELS[reason];
 }
 

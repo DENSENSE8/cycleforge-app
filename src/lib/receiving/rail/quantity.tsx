@@ -5,7 +5,7 @@ import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
 import { isOperatorReceived } from '@/lib/receiving/rail/status';
 
 /** { current, total } for the hover-popover progress meter. */
-export interface RailPreviewQty {
+interface RailPreviewQty {
   current: number;
   total: number | null;
 }
@@ -71,7 +71,7 @@ function renderCombinedQty(row: ReceivingLineRow): ReactNode {
 }
 
 /** Recorded-verdict count for the QC rail — prefers API `tested_count`. */
-export function getTestedQty(row: ReceivingLineRow): number {
+function getTestedQty(row: ReceivingLineRow): number {
   if (typeof row.tested_count === 'number') {
     return Math.min(row.tested_count, row.quantity_received);
   }

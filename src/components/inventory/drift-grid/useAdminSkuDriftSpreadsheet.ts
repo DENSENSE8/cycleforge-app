@@ -24,10 +24,10 @@ import {
 import { useAdminSkuDriftTableLayout } from './useAdminSkuDriftTableLayout';
 
 /** The retired clean-drift paragraph, now the table's settled-empty answer. */
-export const SKU_DRIFT_CLEAN_MESSAGE =
+const SKU_DRIFT_CLEAN_MESSAGE =
   'sku_stock.stock equals SUM(sku_stock_ledger.delta) for every SKU. The trigger is working.';
 
-export interface UseAdminSkuDriftSpreadsheetOptions {
+interface UseAdminSkuDriftSpreadsheetOptions {
   /** The feed — worst total drift first off the server, capped at 25. */
   rows: readonly SkuDriftRow[];
   loading?: boolean;

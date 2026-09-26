@@ -14,7 +14,7 @@ export interface RefetchState {
   message: string | null;
 }
 
-export interface RefetchOutcome {
+interface RefetchOutcome {
   state: RefetchState;
   /** True = a successful match → promote-in-place / invalidate feeds. */
   promote: boolean;

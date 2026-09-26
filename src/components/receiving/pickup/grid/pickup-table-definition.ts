@@ -6,7 +6,7 @@ import { PICKUP_SHEET_COLUMNS, type PickupGridColumn } from './pickup-grid-layou
 import { parseTableDefinition } from '@/lib/tables/table-definition';
 import { PICKUP_GRID_CAPABILITIES, makePickupGridDescriptor } from './pickup-grid-descriptor';
 
-export const PICKUP_TABLE_DEFINITION = parseTableDefinition({
+const PICKUP_TABLE_DEFINITION = parseTableDefinition({
   id: 'pickup.browse',
   tableId: 'pickup',
   entityFamily: 'pickup',

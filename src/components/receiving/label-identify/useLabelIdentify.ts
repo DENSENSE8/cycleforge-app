@@ -8,10 +8,10 @@ import {
 } from '@/lib/vision-identify';
 
 /** State slice for "identify a product by photographing its label". */
-export type LabelIdentifyStatus = 'idle' | 'identifying' | 'results' | 'error';
+type LabelIdentifyStatus = 'idle' | 'identifying' | 'results' | 'error';
 
 /** Result of one identify call, returned without touching React state. */
-export interface LabelIdentifyOnce {
+interface LabelIdentifyOnce {
   ok: boolean;
   candidates: LabelCandidate[];
   rawText: string;
@@ -20,7 +20,7 @@ export interface LabelIdentifyOnce {
   aborted?: boolean;
 }
 
-export interface UseLabelIdentify {
+interface UseLabelIdentify {
   status: LabelIdentifyStatus;
   candidates: LabelCandidate[];
   rawText: string;

@@ -27,7 +27,7 @@ import {
 
 /** Paperwork for one order — manuals, packing lists and any other `product_manuals` row — behind `/api/orders/[id]/manuals` (the To-ship… */
 
-export interface OrderManual {
+interface OrderManual {
   id: number;
   displayName: string;
   type: string | null;
@@ -45,7 +45,7 @@ export interface OrderManual {
   updatedAt: string;
 }
 
-export interface OrderManualList {
+interface OrderManualList {
   orderId: number;
   itemNumber: string | null;
   /** The governing SKU: the catalog row's SKU when resolved, else the order's. */
@@ -303,7 +303,7 @@ export async function listOrderManuals(orgId: OrgId, orderId: number): Promise<O
   };
 }
 
-export interface OrderPaperworkPrintRow {
+interface OrderPaperworkPrintRow {
   id: number;
   displayName: string;
   sourceUrl: string | null;
@@ -527,7 +527,7 @@ export async function removeOrderManual(
   return before;
 }
 
-export interface ManualZipFile {
+interface ManualZipFile {
   manualId: number;
   /** ZIP entry name: `manual_<safe name>.<ext>` (pdf unless the bytes are an image). */
   baseName: string;

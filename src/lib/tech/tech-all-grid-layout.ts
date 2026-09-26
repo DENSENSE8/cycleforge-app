@@ -15,7 +15,7 @@ import type { ColumnType, TableId } from '@/lib/tables/table-columns';
 import type { GridSortDir } from '@/design-system/components/grid/grid-sort-dir';
 
 /** Staff-prefs + Fields vocabulary — one All triage grid, one bucket. */
-export const TECH_ALL_TABLE_ID: TableId = 'tech-all';
+const TECH_ALL_TABLE_ID: TableId = 'tech-all';
 
 export type TechAllGridColumnKey =
   | 'select'

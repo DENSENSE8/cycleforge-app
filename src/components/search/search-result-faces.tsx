@@ -40,7 +40,7 @@ const TITLE_BY_DENSITY: Record<SearchRowDensity, string> = {
   dropdown: 'text-role-caption',
 };
 
-export function isNarrowDensity(density: SearchRowDensity): boolean {
+function isNarrowDensity(density: SearchRowDensity): boolean {
   return density === 'compact' || density === 'dropdown';
 }
 

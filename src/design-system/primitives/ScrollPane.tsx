@@ -3,7 +3,7 @@
 import type { ReactNode } from 'react';
 import { cn } from '@/utils/_cn';
 
-export interface ScrollPaneProps {
+interface ScrollPaneProps {
   children: ReactNode;
   className?: string;
   /** Forwarded to the scroll container (e.g. `tabIndex={0}` for keyboard nav). */

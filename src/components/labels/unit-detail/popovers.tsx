@@ -19,7 +19,7 @@ interface PopoverChrome {
 }
 
 /** Anchored popover panel. */
-export function PopoverShell({
+function PopoverShell({
   title,
   icon,
   width = 'w-80',
@@ -337,7 +337,7 @@ function ProductMiniRow({
 
 // ─── Header popover state (click-away + Escape) ──────────────────────────────
 
-export type HeaderPopoverKey = 'inventory' | 'compatibility' | 'similar';
+type HeaderPopoverKey = 'inventory' | 'compatibility' | 'similar';
 
 export function useHeaderPopover(): {
   open: HeaderPopoverKey | null;

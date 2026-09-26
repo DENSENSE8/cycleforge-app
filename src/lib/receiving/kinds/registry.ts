@@ -4,11 +4,11 @@ import { columnsToClassification, type IntakeClassification } from '../intake-cl
 import type { FactKind } from '../facts/registry';
 
 /** Coarse intake kinds (the receiving_type / intake_type vocabulary). */
-export const INTAKE_KINDS = ['PO', 'RETURN', 'TRADE_IN', 'PICKUP'] as const;
-export type IntakeKind = (typeof INTAKE_KINDS)[number];
+const INTAKE_KINDS = ['PO', 'RETURN', 'TRADE_IN', 'PICKUP'] as const;
+type IntakeKind = (typeof INTAKE_KINDS)[number];
 
 /** The narrow 1:1 facts tables a line can carry. */
-export type KindFactTable =
+type KindFactTable =
   | 'receiving_line_zoho'
   | 'receiving_line_return'
   | 'receiving_line_testing'
@@ -18,12 +18,12 @@ export type KindFactTable =
  * Stage facts apply to EVERY kind (they describe where the line is in the flow,
  * not what kind it is). Kind-specific tables are layered on top per kind.
  */
-export const UNIVERSAL_FACT_TABLES: ReadonlyArray<KindFactTable> = [
+const UNIVERSAL_FACT_TABLES: ReadonlyArray<KindFactTable> = [
   'receiving_line_testing',
   'receiving_line_putaway',
 ];
 
-export interface IntakeKindDef {
+interface IntakeKindDef {
   kind: IntakeKind;
   label: string;
   /** Kind-specific 1:1 facts tables (besides the universal stage tables). */
@@ -63,7 +63,7 @@ export function isIntakeKind(v: unknown): v is IntakeKind {
   return typeof v === 'string' && Object.prototype.hasOwnProperty.call(REGISTRY, v);
 }
 
-export function getIntakeKindDef(kind: IntakeKind): IntakeKindDef {
+function getIntakeKindDef(kind: IntakeKind): IntakeKindDef {
   return REGISTRY[kind];
 }
 

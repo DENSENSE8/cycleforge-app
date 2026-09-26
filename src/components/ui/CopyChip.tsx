@@ -38,7 +38,7 @@ export {
 
 // --- Icons ---
 
-export const HashIcon = () => (
+const HashIcon = () => (
   <svg
     className="h-4 w-4 shrink-0"
     viewBox="0 0 24 24"
@@ -115,7 +115,7 @@ const CHIP_FACE_ATTR = { 'data-chip-face': '' } as const;
 
 // --- Base CopyChip ---
 
-export interface CopyChipProps {
+interface CopyChipProps {
   value: string;
   display: string;
   /** Pulls icon/icon color from {@link CHIP_TONES}; individual props below override. */

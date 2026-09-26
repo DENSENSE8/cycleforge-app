@@ -407,7 +407,7 @@ interface PromptSheetProps {
   onCommit: (value: string) => void;
 }
 
-export function PromptSheet({
+function PromptSheet({
   open,
   onClose,
   title,

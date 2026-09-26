@@ -15,7 +15,7 @@ type LineApiRow = {
   listing_url?: string | null;
 };
 
-export function buildReceivingDetailsLogFromApi(
+function buildReceivingDetailsLogFromApi(
   receivingId: number,
   carton: CartonApiRow,
   lines: LineApiRow[],
@@ -48,7 +48,7 @@ export function buildReceivingDetailsLogFromApi(
   };
 }
 
-export type ReceivingDetailsEnrichResult =
+type ReceivingDetailsEnrichResult =
   | { kind: 'details'; log: ReceivingDetailsLog }
   | { kind: 'local_pickup'; orderId: number }
   | { kind: 'missing' };

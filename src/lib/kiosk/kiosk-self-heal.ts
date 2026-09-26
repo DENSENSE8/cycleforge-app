@@ -8,7 +8,7 @@ let lastHealAt = 0;
 /** Re-bind enough to ignore a second heal inside this window. */
 const HEAL_COOLDOWN_MS = 30_000;
 
-export async function healKioskBinding(): Promise<boolean> {
+async function healKioskBinding(): Promise<boolean> {
   const now = Date.now();
   if (healing) return healing;
   if (now - lastHealAt < HEAL_COOLDOWN_MS) return false;

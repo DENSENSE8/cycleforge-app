@@ -3,8 +3,8 @@ import { normalizeTrackingKey18, normalizeTrackingLast8 } from '@/lib/tracking-f
 import { transitionalDogfoodOrgId } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';
 
-export type ExceptionDomain = 'orders' | 'receiving';
-export type ExceptionSourceStation =
+type ExceptionDomain = 'orders' | 'receiving';
+type ExceptionSourceStation =
   | 'tech'
   | 'packer'
   | 'verify'
@@ -12,7 +12,7 @@ export type ExceptionSourceStation =
   | 'fba'
   | 'receiving';
 
-export interface TrackingExceptionRecord {
+interface TrackingExceptionRecord {
   id: number;
   tracking_number: string;
   domain: ExceptionDomain;
@@ -37,7 +37,7 @@ type DbClient = {
   query: (text: string, params?: any[]) => Promise<{ rows: any[]; rowCount?: number }>;
 };
 
-export interface UpsertTrackingExceptionParams {
+interface UpsertTrackingExceptionParams {
   trackingNumber: string;
   domain: ExceptionDomain;
   sourceStation: ExceptionSourceStation;

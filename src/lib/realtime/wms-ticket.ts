@@ -3,7 +3,7 @@ import { z } from 'zod';
 import { safeRandomUUID } from '@/lib/safe-uuid';
 import type { OrgId } from '@/lib/tenancy/constants';
 
-export const WmsGatewayTicketClaimsSchema = z.object({
+const WmsGatewayTicketClaimsSchema = z.object({
   v: z.literal(1),
   organizationId: z.string().min(1),
   staffId: z.number().int().positive(),
@@ -13,7 +13,7 @@ export const WmsGatewayTicketClaimsSchema = z.object({
   nonce: z.string().min(16).max(200),
 }).strict();
 
-export type WmsGatewayTicketClaims = z.infer<typeof WmsGatewayTicketClaimsSchema>;
+type WmsGatewayTicketClaims = z.infer<typeof WmsGatewayTicketClaimsSchema>;
 
 function configuredSecret(): string {
   // CRON_SECRET is a server-only compatibility fallback for existing installs.

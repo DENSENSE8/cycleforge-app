@@ -4,7 +4,7 @@
  */
 import { photoContentUrl } from './display-url';
 
-export interface ProductImageSources {
+interface ProductImageSources {
   /** `items.zoho_item_id` — the mirror's handle, and the URL's path segment. */
   zohoItemId?: string | null;
   /** `items.image_document_id` — present only when the item HAS a photo. */

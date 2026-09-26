@@ -48,7 +48,7 @@ const SORT_OPTIONS: readonly DataTableSortOption[] = [
   { id: 'zoho', label: 'Zoho status', group: 'Purchase' },
 ];
 
-export interface IncomingDeliveriesLedgerProps {
+interface IncomingDeliveriesLedgerProps {
   groups: readonly [string, RowGroup<ReceivingLineRow>[]][];
   rows: readonly ReceivingLineRow[];
   loading: boolean;

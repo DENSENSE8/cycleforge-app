@@ -6,7 +6,7 @@ import { assertRegisteredInboundSource, type InboundSourceType } from './source-
 import { recordEquivalence } from './equivalence';
 import { upsertPurchaseLink, type TxClient } from './purchase-links';
 
-export interface ManualLinkTarget {
+interface ManualLinkTarget {
   /** Registered inbound source of the identity being linked (e.g. 'zoho'). */
   system: string;
   /** External order id — a zoho_purchaseorder_id or an eBay order id. Required. */
@@ -16,7 +16,7 @@ export interface ManualLinkTarget {
   sourceLineItemId?: string | null;
 }
 
-export interface LinkInboundInput {
+interface LinkInboundInput {
   receivingLineId: number;
   target: ManualLinkTarget;
   /**
@@ -27,7 +27,7 @@ export interface LinkInboundInput {
   linkedByStaffId?: number | null;
 }
 
-export interface LinkInboundResult {
+interface LinkInboundResult {
   winnerLineId: number;
   /** A duplicate spine row was collapsed (deleted) onto the winner. */
   merged: boolean;

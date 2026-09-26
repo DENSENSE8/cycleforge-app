@@ -23,7 +23,7 @@ import {
 } from './report-staff-day-table-definition';
 import { useReportStaffDayTableLayout } from './useReportStaffDayTableLayout';
 
-export interface UseReportStaffDaySpreadsheetOptions {
+interface UseReportStaffDaySpreadsheetOptions {
   /** One day's (staffer × task) rows, roster order; a header click re-orders. */
   rows: readonly StaffDayReportRow[];
   loading?: boolean;

@@ -16,7 +16,7 @@ export function projectNextTicketId(newestId: number | null | undefined): number
   return floored + 1;
 }
 
-export interface NextTicketPreviewDeps {
+interface NextTicketPreviewDeps {
   /**
    * Highest ticket id in the account, or null. Injected so the projection is
    * unit-tested without a provider: the real one lists one ticket sorted by id

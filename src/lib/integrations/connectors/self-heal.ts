@@ -22,7 +22,7 @@ export interface SelfHealDeps {
   heal: (conn: LatchedConnection) => Promise<boolean>;
 }
 
-export interface SelfHealAttempt {
+interface SelfHealAttempt {
   orgId: OrgId;
   provider: IntegrationProvider;
   scope: string | null;
@@ -31,7 +31,7 @@ export interface SelfHealAttempt {
   error?: string;
 }
 
-export interface SelfHealResult {
+interface SelfHealResult {
   scanned: number;
   healed: number;
   stillFailing: number;
@@ -41,7 +41,7 @@ export interface SelfHealResult {
 }
 
 /** Cap per run so one sweep can't spend its whole window on dead rows. */
-export const SELF_HEAL_MAX_CONNECTIONS = 25;
+const SELF_HEAL_MAX_CONNECTIONS = 25;
 
 async function listLatchedFromDb(limit: number): Promise<LatchedConnection[]> {
   try {

@@ -38,7 +38,7 @@ import { kitFaceForCatalogId } from '@/hooks/useKitCompositionMap';
 import { AddTrackingPopover } from '@/components/outbound/labels/AddTrackingPopover';
 import { daysLateOn, queueRowStaff, useOrdersQueueFeed } from './useOrdersQueueFeed';
 
-export interface UseOrdersSpreadsheetOptions {
+interface UseOrdersSpreadsheetOptions {
   records: ShippedOrder[];
   loading: boolean;
   searchValue: string;
@@ -102,7 +102,7 @@ export interface UseOrdersSpreadsheetOptions {
 }
 
 /** The FEED half of a {@link DataTable} mount: */
-export type OrdersSpreadsheetFeed = Omit<
+type OrdersSpreadsheetFeed = Omit<
   DataTableProps<ShippedOrder, OrdersQueueColumnKey, OrdersQueueColumn>,
   'search' | 'filter' | 'tabs' | 'activeTab' | 'onTabChange' | 'totalCount'
 >;

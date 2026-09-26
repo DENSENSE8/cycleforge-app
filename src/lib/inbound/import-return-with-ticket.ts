@@ -22,7 +22,7 @@ import {
   type FileReceivingClaimResult,
 } from '@/lib/receiving/file-receiving-claim';
 
-export interface ImportReturnWithTicketInput {
+interface ImportReturnWithTicketInput {
   orgId: OrgId;
   staffId: number | null;
   body: InboundImportPurchaseBody;
@@ -30,7 +30,7 @@ export interface ImportReturnWithTicketInput {
   idempotencyKey?: string | null;
 }
 
-export interface ImportReturnWithTicketSuccess {
+interface ImportReturnWithTicketSuccess {
   success: true;
   receivingLineId: number;
   receivingId: number;
@@ -45,7 +45,7 @@ export interface ImportReturnWithTicketSuccess {
   };
 }
 
-export interface ImportReturnWithTicketIngestOnly {
+interface ImportReturnWithTicketIngestOnly {
   success: true;
   receivingLineId: number;
   receivingId: number;
@@ -59,18 +59,18 @@ export interface ImportReturnWithTicketIngestOnly {
   };
 }
 
-export type ImportReturnWithTicketResult =
+type ImportReturnWithTicketResult =
   | ImportReturnWithTicketSuccess
   | ImportReturnWithTicketIngestOnly;
 
-export interface ImportReturnWithTicketBlocked {
+interface ImportReturnWithTicketBlocked {
   blocked: true;
   status: 400 | 503;
   error: string;
   draftBody?: string;
 }
 
-export type ImportReturnWithTicketOutcome =
+type ImportReturnWithTicketOutcome =
   | ImportReturnWithTicketResult
   | ImportReturnWithTicketBlocked;
 
@@ -80,7 +80,7 @@ export function isImportReturnBlocked(
   return 'blocked' in outcome;
 }
 
-export interface ImportReturnWithTicketDeps {
+interface ImportReturnWithTicketDeps {
   getHelpdesk?: typeof getHelpdeskProvider;
   importRow?: typeof importDeskInboundRow;
   resolveCatalog?: typeof resolveCatalogById;

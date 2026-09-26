@@ -58,7 +58,7 @@ export const framerDuration = {
   composerDockMount: 0.18,
   /** Photo viewer details column — one symmetric drawer toggle (open == close reversed) */
   photoContextPanelMount: 0.22,
-  /** Nav spine push column — one symmetric width toggle that reflows the frame */
+  /** Push-rail width toggle (`motionRole.push.rail`) — one symmetric width toggle that reflows the frame */
   sidebarNavColumnMount: 0.24,
   /** Global detail-stack overlay card (full-height flyout) — slow, soft enter/exit */
   detailStackOverlayMount: 0.4,
@@ -105,7 +105,7 @@ export const framerDuration = {
   chatScrollToLatest: 0.16,
 } as const;
 
-export const framerDurationTabPager = {
+const framerDurationTabPager = {
   x: 0.32,
   opacity: 0.2,
 } as const;
@@ -147,7 +147,7 @@ export const framerTransition = {
     ease: motionBezier.easeOut,
   } satisfies Transition,
 
-  /** Nav spine push column — the left navigator's own width toggle, which reflows the whole content region (`SidebarNavColumn`). */
+  /** Push-rail width toggle (`motionRole.push.rail`) — a column's own width toggle, which reflows the whole content region. */
   sidebarNavColumnMount: {
     duration: framerDuration.sidebarNavColumnMount,
     ease: motionBezier.layout,
@@ -262,12 +262,6 @@ export const framerTransition = {
    * `framerPresence.commandBarDialog`. Physics = `springSnappy`.
    */
   commandBarDialog: springSnappy,
-
-  /**
-   * MasterNav collapsed hover-peek — scale from the top-left origin.
-   * Physics = `springSnappy`. Pair with `framerPresence.navPeekCorner`.
-   */
-  navPeekCorner: springSnappy,
 
   /** Horizontal slide between rows inside the modal — `springSnappy` */
   workOrderSlideSpring: springSnappy,
@@ -566,16 +560,6 @@ export const framerPresence = {
     animate: { opacity: 1, y: 0 },
     exit: { opacity: 0, y: -6 },
   },
-  /**
-   * Collapsed MasterNav hover-peek — grows from the top-left corner.
-   * Host MUST pin `style.transformOrigin: '0 0'`. Pair with
-   * `framerTransition.navPeekCorner`. No `x`/`y`.
-   */
-  navPeekCorner: {
-    initial: { opacity: 0, scale: 0.92 },
-    animate: { opacity: 1, scale: 1 },
-    exit: { opacity: 0, scale: 0.92 },
-  },
   /** Sidebar section — height expand/collapse */
   sidebarSection: {
     initial: { height: 0, opacity: 0 },
@@ -717,7 +701,7 @@ export const scanBandGlowOpacity = {
  * Row-to-row slide inside `WorkOrderAssignmentCard`.
  * Use with `custom={direction}` and `initial="enter" animate="center" exit="exit"`.
  */
-export const workOrderAssignmentSlideVariants: Variants = {
+const workOrderAssignmentSlideVariants: Variants = {
   enter: (dir: 'next' | 'prev' | undefined) => ({
     x: dir === 'prev' ? '-55%' : '55%',
     opacity: 0,
@@ -734,7 +718,7 @@ export const workOrderAssignmentSlideVariants: Variants = {
  * Use with `custom={direction}` (+1 right, -1 left) and `initial="enter" animate="center" exit="exit"`.
  * Pair with `AnimatePresence mode="sync"` inside a single-cell grid so both panels overlap without height glitches.
  */
-export const tabPagerVariants: Variants = {
+const tabPagerVariants: Variants = {
   enter: (dir: number) => ({
     x: dir > 0 ? '100%' : '-100%',
     opacity: 0,
@@ -752,7 +736,7 @@ export const tabPagerVariants: Variants = {
 
 // ─── Mobile-specific durations ───────────────────────────────────────────────
 
-export const framerDurationMobile = {
+const framerDurationMobile = {
   /** Bottom sheet slide up/down */
   sheetSlide: 0.32,
   /** Camera viewfinder enter */
@@ -951,11 +935,6 @@ export const framerVariants: Record<string, Variants> = {
     initial: framerPresence.dropdownPanel.initial,
     animate: framerPresence.dropdownPanel.animate,
     exit: framerPresence.dropdownPanel.exit,
-  },
-  navPeekCorner: {
-    initial: framerPresence.navPeekCorner.initial,
-    animate: framerPresence.navPeekCorner.animate,
-    exit: framerPresence.navPeekCorner.exit,
   },
   sidebarSection: {
     initial: framerPresence.sidebarSection.initial,

@@ -11,7 +11,7 @@ import {
   type HeldUnitRow,
 } from '@/lib/inventory/held-unit-row';
 
-export interface HoldReleasePlaneProps {
+interface HoldReleasePlaneProps {
   row: HeldUnitRow | null;
   onClose: () => void;
   /** The page's `releaseAction` server action, handed across the RSC boundary. */

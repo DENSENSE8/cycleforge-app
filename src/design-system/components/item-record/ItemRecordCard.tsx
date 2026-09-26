@@ -9,7 +9,7 @@ import { ItemRecordRow } from './ItemRecordRow';
 import type { ItemRecord } from './item-record-types';
 
 /** The shared item surface: */
-export function ItemRecordCard({
+function ItemRecordCard({
   items,
   activeId,
   onSelect,

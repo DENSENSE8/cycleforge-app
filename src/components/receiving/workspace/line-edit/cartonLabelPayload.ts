@@ -1,7 +1,7 @@
 import type { ReceivingLabelPayload } from '@/lib/print/printReceivingLabel';
 import type { LabelEditDraft } from './LabelEditPopover';
 
-export interface CartonPayloadContext {
+interface CartonPayloadContext {
   /** Carton receiving id — drives the Digital Link + the `RCV-{id}` fallback. */
   receivingId: number | null;
   /** Tenant slug for platform Digital Link minting (`{slug}.app.cycleforge.ai`). */

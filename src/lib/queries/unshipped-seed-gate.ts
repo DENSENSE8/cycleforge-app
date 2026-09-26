@@ -1,7 +1,7 @@
 /** When may a server seed of the Unshipped queue reach the grid that mounts? */
 
 /** A page's `searchParams`, as Next hands them over. */
-export type SeedGateSearchParams = Readonly<
+type SeedGateSearchParams = Readonly<
   Record<string, string | string[] | undefined>
 >;
 

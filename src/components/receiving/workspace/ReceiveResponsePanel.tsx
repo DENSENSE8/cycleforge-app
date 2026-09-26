@@ -15,7 +15,7 @@ import {
 
 /* ────────────────────────────────────────────────────────────────────────── ReceiveResponsePanel */
 
-export type ReceiveResponsePanelProps = {
+type ReceiveResponsePanelProps = {
   response: ReceiveResponseClassifyInput;
   expanded: boolean;
   onToggle: () => void;

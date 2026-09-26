@@ -41,7 +41,7 @@ export interface CarrierShipmentView {
  * Which pieces to render. Station Timeline keeps the hero sticky and swaps the
  * events rail behind a spine switcher (`hero` + `events` separately).
  */
-export type CarrierTrackingParts = 'all' | 'hero' | 'events';
+type CarrierTrackingParts = 'all' | 'hero' | 'events';
 
 const EMPTY_INVALIDATE_KEYS: ReadonlyArray<ReadonlyArray<unknown>> = [];
 

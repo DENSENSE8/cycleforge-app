@@ -7,14 +7,14 @@ import { tenantQuery } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';
 import type { AuditLogFilters } from './filters';
 
-export interface SkuSummary {
+interface SkuSummary {
   sku: string;
   item_name: string | null;
   event_count: number;
   latest_event_at: string | null;
 }
 
-export interface SkuEvent {
+interface SkuEvent {
   id: string;
   occurred_at: string;
   source: 'inventory_event' | 'station_activity_log' | 'audit_log';
@@ -28,7 +28,7 @@ export interface SkuEvent {
   detail: Record<string, unknown>;
 }
 
-export interface SkuDetail {
+interface SkuDetail {
   sku: string;
   item_name: string | null;
   events: SkuEvent[];

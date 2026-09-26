@@ -7,7 +7,7 @@ import { searchToolRegistry } from './dedupe';
 import { triageBuildRequest, type DedupeOutcome, type TriageDecision } from './triage';
 import type { ApprovalReasonCode, DecidedByKind } from './constants';
 
-export interface SubmitBuildRequestInput {
+interface SubmitBuildRequestInput {
   targetScope: string;
   prompt: string;
   requestedByStaffId: number | null;
@@ -15,7 +15,7 @@ export interface SubmitBuildRequestInput {
   idempotencyKey?: string | null;
 }
 
-export interface BuildRequestRecord {
+interface BuildRequestRecord {
   id: number;
   status: string;
   targetScope: string;
@@ -26,7 +26,7 @@ export interface BuildRequestRecord {
   createdAt: string;
 }
 
-export interface SubmitBuildRequestResult {
+interface SubmitBuildRequestResult {
   request: BuildRequestRecord;
   decision: TriageDecision;
   /** True when an existing row was returned for a repeated idempotency key. */
@@ -35,7 +35,7 @@ export interface SubmitBuildRequestResult {
   duplicateTool: { id: number; toolKey: string; name: string; sourcePath: string | null } | null;
 }
 
-export interface ToolForgeDeps {
+interface ToolForgeDeps {
   dedupe: (orgId: OrgId, prompt: string) => Promise<DedupeOutcome>;
   tx: <T>(orgId: OrgId, fn: (client: PoolClient) => Promise<T>) => Promise<T>;
 }
@@ -158,7 +158,7 @@ export async function submitBuildRequest(
   };
 }
 
-export interface RecordReviewInput {
+interface RecordReviewInput {
   buildRequestId: number;
   decision: 'approved' | 'denied';
   reasonCode: ApprovalReasonCode;
@@ -170,7 +170,7 @@ export interface RecordReviewInput {
 }
 
 /** Append one decision to the ledger. */
-export async function insertReview(
+async function insertReview(
   client: PoolClient,
   orgId: OrgId,
   input: RecordReviewInput,

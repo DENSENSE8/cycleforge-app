@@ -20,7 +20,7 @@ import { getIntegrationCredentials, type GoogleDriveCredentials } from '@/lib/in
 const MIRROR_AFTER_DAYS = Number(process.env.PHOTOS_DRIVE_MIRROR_AFTER_DAYS || 0);
 
 /** Copy a GCS-primary photo into the org's Google Drive (second storage row). */
-export async function mirrorPhotoToDrive(input: {
+async function mirrorPhotoToDrive(input: {
   photoId: number;
   organizationId: string;
 }): Promise<{ driveFileId: string }> {

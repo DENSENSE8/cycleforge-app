@@ -5,7 +5,7 @@ import { toast } from '@/lib/toast';
 import { dispatchManualsUpdated } from '../../ManualCrudModals';
 import { bulkDeleteManuals, bulkMoveManuals, restoreManuals } from '../manuals-library-api';
 
-export interface UseManualSelection {
+interface UseManualSelection {
   selection: Set<number>;
   toggleSelected: (id: number, additive: boolean) => void;
   clearSelection: () => void;

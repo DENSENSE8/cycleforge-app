@@ -15,12 +15,12 @@ export const FILTER_DROPDOWN_SELECT_CLASS =
 export const FILTER_DROPDOWN_LABEL_CLASS =
   'mb-1 block text-role-eyebrow uppercase tracking-wider text-text-soft';
 
-export interface FilterDropdownSelectOption {
+interface FilterDropdownSelectOption {
   value: string | number;
   label: string;
 }
 
-export interface FilterDropdownSelectProps {
+interface FilterDropdownSelectProps {
   label: string;
   value: string | number | null;
   onChange: (value: string) => void;

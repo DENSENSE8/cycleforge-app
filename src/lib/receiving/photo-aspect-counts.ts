@@ -4,7 +4,7 @@ import { tenantQuery } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';
 import { parsePhotoAspect, type PhotoAspect } from '@/lib/photos/photo-aspects';
 
-export type PhotoAspectCounts = Partial<Record<PhotoAspect, number>>;
+type PhotoAspectCounts = Partial<Record<PhotoAspect, number>>;
 
 interface AspectCountRow {
   photo_aspect: string | null;

@@ -79,7 +79,7 @@ function normalizeAddress(address: Record<string, unknown> | null | undefined) {
   return address && typeof address === 'object' ? address : {};
 }
 
-export class OrderSyncService {
+class OrderSyncService {
   /** Ingest an order received from an external channel (eBay, Ecwid, Square, …). */
   async ingestExternalOrder(orgId: string, rawOrder: ChannelOrder) {
     // Bind the supplied tenant for every zohoClient call this ingest makes

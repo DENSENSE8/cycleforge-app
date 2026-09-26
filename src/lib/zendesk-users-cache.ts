@@ -4,7 +4,7 @@ import { tenantQuery, withTenantTransaction } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';
 import type { ZendeskUser } from '@/lib/zendesk';
 
-export interface CachedZendeskUser {
+interface CachedZendeskUser {
   id: number;
   name: string;
   email: string | null;

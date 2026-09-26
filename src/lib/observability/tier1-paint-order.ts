@@ -34,7 +34,7 @@ interface Tier1PaintRoute {
  * Operator-critical floors. Paths match the live desk after outbound moved to
  * `/shipping/orders` and Unbox graduated from `/receiving`.
  */
-export const TIER1_PAINT_ORDER: readonly Tier1PaintRoute[] = [
+const TIER1_PAINT_ORDER: readonly Tier1PaintRoute[] = [
   {
     path: '/shipping/orders',
     aliases: ['/dashboard'],
@@ -124,7 +124,7 @@ export function paintMarkId(route: string, priority: PaintPriority): string {
   return `${route}:${priority}`;
 }
 
-export function resolveTier1Route(path: string): Tier1PaintRoute | undefined {
+function resolveTier1Route(path: string): Tier1PaintRoute | undefined {
   const normalized = path.split('?')[0] || path;
   return TIER1_PAINT_ORDER.find(
     (r) => r.path === normalized || r.aliases?.includes(normalized),

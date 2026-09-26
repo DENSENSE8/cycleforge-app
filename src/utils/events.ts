@@ -26,7 +26,7 @@ export function dispatchReceivingPhotoChanged(payload: ReceivingPhotoChangedPayl
 }
 
 /** Merge a single row into the dashboard pending queue cache (no full table refetch). */
-export function dispatchPendingOrderRowRefetch(orderId: number): void {
+function dispatchPendingOrderRowRefetch(orderId: number): void {
   if (typeof window === 'undefined') return;
   if (!Number.isFinite(orderId) || orderId <= 0) return;
   window.dispatchEvent(new CustomEvent('dashboard-pending-order-refetch', { detail: { orderId } }));
@@ -39,7 +39,7 @@ export function dispatchCloseShippedDetails(): void {
 
 export type ShippedDetailsContext = 'shipped' | 'queue' | 'packed';
 
-export interface OpenShippedDetailsPayload {
+interface OpenShippedDetailsPayload {
   order: ShippedOrder;
   context?: ShippedDetailsContext;
   /**
@@ -85,7 +85,7 @@ export function getOpenShippedDetailsPayload(detail: unknown): OpenShippedDetail
  * Queue-body clicks stay suppressed in `side_panel` mode. An explicit
  * operator action (`force`, gutter "More information") always opens.
  */
-export function shouldApplyOpenShippedDetails(
+function shouldApplyOpenShippedDetails(
   behavior: string,
   payload: Pick<OpenShippedDetailsPayload, 'context' | 'force'>,
 ): boolean {
@@ -94,9 +94,9 @@ export function shouldApplyOpenShippedDetails(
   return true;
 }
 
-export type ShippedDetailsNavigationDirection = 'up' | 'down';
+type ShippedDetailsNavigationDirection = 'up' | 'down';
 
-export function dispatchNavigateShippedDetails(direction: ShippedDetailsNavigationDirection): void {
+function dispatchNavigateShippedDetails(direction: ShippedDetailsNavigationDirection): void {
   if (typeof window === 'undefined') return;
   window.dispatchEvent(new CustomEvent('navigate-shipped-details', { detail: { direction } }));
 }
@@ -106,7 +106,7 @@ export function dispatchNavigateShippedDetails(direction: ShippedDetailsNavigati
 /** `GlobalDesktopSkuScanner` listens for this to open camera scan from Quick tools FAB. */
 export const SKU_STOCK_DESKTOP_SCAN_EVENT = 'sku-stock:open-desktop-scanner';
 
-export function dispatchSkuStockDesktopScanner(): void {
+function dispatchSkuStockDesktopScanner(): void {
   if (typeof window === 'undefined') return;
   window.dispatchEvent(new CustomEvent(SKU_STOCK_DESKTOP_SCAN_EVENT));
 }
@@ -129,7 +129,7 @@ export function dispatchUpNextPreview(payload: UpNextPreviewPayload): void {
 }
 
 /** Right-pane "Start" action — fired from `UpNextActionDock` when the tech commits to working the previewed order. */
-export interface UpNextActionStartPayload {
+interface UpNextActionStartPayload {
   orderId: number;
   shipping_tracking_number: string;
   order_id: string;
@@ -144,7 +144,7 @@ export function dispatchUpNextActionStart(payload: UpNextActionStartPayload): vo
  * Right-pane "Out of stock" toggle — `UpNextOrder` routes this to
  * `handleMissingParts`, which POSTs `isOutOfStock` and refreshes the queue.
  */
-export interface UpNextActionOosPayload {
+interface UpNextActionOosPayload {
   orderId: number;
   isOutOfStock: boolean;
 }
@@ -157,7 +157,7 @@ export function dispatchUpNextActionOos(payload: UpNextActionOosPayload): void {
 // ── Receiving right-pane workspace ──────────────────────────────────────────
 
 /** Payload for `receiving-workspace-open`. */
-export interface ReceivingWorkspaceOpenPayload {
+interface ReceivingWorkspaceOpenPayload {
   row: ReceivingLineRow;
   accordionBootstrap: 'default' | 'all';
   scanDriven: boolean;
@@ -197,7 +197,7 @@ export function dispatchReceivingOpenPairingPo(): void {
 }
 
 /** Nav state mirror — sidebar dispatches this whenever `scanMatchedRows` or the current line index changes so the workspace header can… */
-export interface ReceivingWorkspaceNavStatePayload {
+interface ReceivingWorkspaceNavStatePayload {
   currentIndex: number;
   total: number;
   canPrev: boolean;
@@ -255,16 +255,16 @@ export function dispatchStationDisplaysClose(): void {
 // ── Dashboard shipped search ─────────────────────────────────────────────────
 
 /** When `=1`, embedded Shipped sidebar focuses search, then strips this param from the URL. */
-export const DASHBOARD_SHIPPED_FOCUS_SEARCH_PARAM = 'focusShippedSearch';
+const DASHBOARD_SHIPPED_FOCUS_SEARCH_PARAM = 'focusShippedSearch';
 
-export function dashboardShippedFocusSearchHref(): string {
+function dashboardShippedFocusSearchHref(): string {
   const p = new URLSearchParams();
   p.set('shipped', '');
   p.set(DASHBOARD_SHIPPED_FOCUS_SEARCH_PARAM, '1');
   return `/shipping/orders?${p.toString()}`;
 }
 
-export const OPEN_LISTING_STAFF_RULES_EVENT = 'open-listing-staff-rules';
+const OPEN_LISTING_STAFF_RULES_EVENT = 'open-listing-staff-rules';
 
 export function dispatchOpenListingStaffRules(): void {
   if (typeof window === 'undefined') return;

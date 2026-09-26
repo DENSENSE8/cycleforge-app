@@ -9,7 +9,7 @@ interface PartialSegments {
 }
 
 /** Build a placeholder-padded location code from partial segments. */
-export function partialCode(s: PartialSegments): string {
+function partialCode(s: PartialSegments): string {
   const parts: string[] = [];
   parts.push(s.zone ?? '?');
   parts.push(s.aisle != null ? pad2(s.aisle) : '--');
@@ -25,7 +25,7 @@ export function partialCode(s: PartialSegments): string {
  * Zone letter is omitted intentionally — it already appears in the big code
  * and the zone/room line above this breadcrumb.
  */
-export function humanReadable(s: PartialSegments): string {
+function humanReadable(s: PartialSegments): string {
   const out: string[] = [];
   if (s.aisle != null) out.push(`Aisle ${pad2(s.aisle)}`);
   if (s.bay != null) out.push(formatLocationBayFace(s.bay));

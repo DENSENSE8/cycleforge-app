@@ -73,7 +73,7 @@ export interface PhoneSerialWrite extends CompanionSerial {
  * it: a few tablet syncs. Past that the tablet's value wins (the staffer may
  * have edited the field there).
  */
-export const PHONE_WRITE_HOLD_MS = 10_000;
+const PHONE_WRITE_HOLD_MS = 10_000;
 
 /** The phone's view of a snapshot it just read: */
 export function layPhoneWrites(

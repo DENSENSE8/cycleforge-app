@@ -4,7 +4,7 @@ import type { PoolClient } from 'pg';
 import pool from '@/lib/db';
 import { WORK_ASSIGNMENTS_ACTIVE_ON_CONFLICT } from '@/lib/neon/work-assignments-conflict';
 
-export type OrderWorkType = 'TEST' | 'PACK';
+type OrderWorkType = 'TEST' | 'PACK';
 
 export type QueryClient = {
   query: PoolClient['query'];

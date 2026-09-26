@@ -12,7 +12,7 @@ import {
 /** Keystroke settle before a search hits the wire. */
 const SEARCH_DEBOUNCE_MS = 250;
 
-export interface KioskVisitHistoryState {
+interface KioskVisitHistoryState {
   rows: KioskVisitRow[];
   loading: boolean;
   /** True while a "load more" is in flight — the rail keeps its rows. */

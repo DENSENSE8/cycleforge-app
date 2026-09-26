@@ -73,7 +73,7 @@ export interface OutboundDocument {
   updatedAt: string;
 }
 
-export function isOutboundDocumentType(value: unknown): value is OutboundDocumentType {
+function isOutboundDocumentType(value: unknown): value is OutboundDocumentType {
   return value === 'shipping_label' || value === 'packing_slip';
 }
 
@@ -91,7 +91,7 @@ export interface OutboundDocumentsResponse {
 }
 
 /** POST /api/orders/[id]/documents/fetch response. */
-export interface FetchOutboundDocumentsResponse {
+interface FetchOutboundDocumentsResponse {
   success: boolean;
   fetched: OutboundDocument[];
   failed: Array<{ type: OutboundDocumentType; error: string }>;

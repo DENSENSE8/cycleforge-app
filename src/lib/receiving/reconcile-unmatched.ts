@@ -18,7 +18,7 @@ import {
 } from '@/lib/zoho/call-reduction';
 import type { OrgId } from '@/lib/tenancy/constants';
 
-export interface ReconcileResult {
+interface ReconcileResult {
   receivingId: number;
   promoted: boolean;
   /** Set when promoted; the Zoho PO id that won the match. */

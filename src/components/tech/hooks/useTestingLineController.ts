@@ -52,7 +52,7 @@ interface AllocatedUnit {
   qrUrl: string | null;
 }
 
-export type TestingLabelDraft = {
+type TestingLabelDraft = {
   title: string;
   color: string;
   condition: string;

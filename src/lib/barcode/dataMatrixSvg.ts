@@ -4,7 +4,7 @@ import bwipjs from 'bwip-js/browser';
 
 export type DataMatrixSymbology = 'gs1datamatrix' | 'datamatrix';
 
-export interface RenderDataMatrixOptions {
+interface RenderDataMatrixOptions {
   /** Payload string. AI parens form for `gs1datamatrix`, plain for `datamatrix`. */
   value: string;
   /** Symbology — defaults to `gs1datamatrix`. */

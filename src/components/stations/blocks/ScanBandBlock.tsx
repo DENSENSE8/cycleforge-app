@@ -12,7 +12,7 @@ import { cn } from '@/utils/_cn';
 
 
 
-export interface StationScanEventDetail {
+interface StationScanEventDetail {
   raw: string;
   type: string;
   intent: string;

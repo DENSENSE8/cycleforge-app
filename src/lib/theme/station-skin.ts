@@ -8,7 +8,7 @@ import {
   type StationSkinName,
 } from '@/design-system/themes/station-skins';
 
-export const STATION_SKIN_STORAGE_KEY = 'ds-station-skin';
+const STATION_SKIN_STORAGE_KEY = 'ds-station-skin';
 
 export function applyStationSkin(skin: string | null | undefined): void {
   if (typeof document === 'undefined') return;

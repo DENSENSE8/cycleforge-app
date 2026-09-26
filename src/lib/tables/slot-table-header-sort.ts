@@ -1,6 +1,6 @@
 /** Slot DataTable header-sort law — one chrome vocabulary, every PRODUCT_TABLES peer. */
 
-export const SLOT_TABLE_CHROME_TRACK_KEYS = [
+const SLOT_TABLE_CHROME_TRACK_KEYS = [
   'select',
   'actions',
   'action',
@@ -9,7 +9,7 @@ export const SLOT_TABLE_CHROME_TRACK_KEYS = [
   'thumb',
 ] as const;
 
-export type SlotTableChromeTrackKey = (typeof SLOT_TABLE_CHROME_TRACK_KEYS)[number];
+type SlotTableChromeTrackKey = (typeof SLOT_TABLE_CHROME_TRACK_KEYS)[number];
 
 const CHROME = new Set<string>(SLOT_TABLE_CHROME_TRACK_KEYS);
 

@@ -39,12 +39,12 @@ export * from './journey-helpers';
 
 /** Master Operations Journey — the org-scoped, multi-spine event reader that powers the rebuilt Operations ▸ History view. */
 
-export interface JourneyDeps {
+interface JourneyDeps {
   readInventorySpine: typeof readInventorySpine;
 }
 const defaultDeps: JourneyDeps = { readInventorySpine };
 
-export interface JourneyBrowseResult {
+interface JourneyBrowseResult {
   events: JourneyEvent[];
   nextCursor: JourneyCursor | null;
 }

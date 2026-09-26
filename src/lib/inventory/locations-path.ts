@@ -40,7 +40,7 @@ export function parseLocationsTab(raw: string | null | undefined): LocationsTab 
  * Locations facets whose body is a print/builder — no left context rail.
  * Labels · Bays · Totes. Rooms / Bins / Map / Manage keep the warehouse rail.
  */
-export function isLocationsRaillessTab(tab: LocationsTab): boolean {
+function isLocationsRaillessTab(tab: LocationsTab): boolean {
   return tab === 'labels' || tab === 'bays' || tab === 'totes';
 }
 

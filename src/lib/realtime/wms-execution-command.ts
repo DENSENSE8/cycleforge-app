@@ -82,14 +82,14 @@ const PackVerifyCommandSchema = CommandBaseSchema.extend({
   }).strict(),
 }).strict();
 
-export const WmsExecutionCommandSchema = z.discriminatedUnion('name', [
+const WmsExecutionCommandSchema = z.discriminatedUnion('name', [
   PickConfirmCommandSchema,
   PickShortCommandSchema,
   PutawayAdjustCommandSchema,
   PackVerifyCommandSchema,
 ]);
 
-export type WmsExecutionCommand = z.infer<typeof WmsExecutionCommandSchema>;
+type WmsExecutionCommand = z.infer<typeof WmsExecutionCommandSchema>;
 
 export const WmsExecutionCommandReceiptSchema = z.object({
   commandId: z.string().min(1),

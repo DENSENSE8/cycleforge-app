@@ -21,7 +21,7 @@ import {
 import { WALKINSALES_TABLE_BINDING } from './walk-in-sales-table-definition';
 import { useWalkInSalesTableLayout } from './useWalkInSalesTableLayout';
 
-export interface UseWalkInSalesSpreadsheetOptions {
+interface UseWalkInSalesSpreadsheetOptions {
   rows: readonly SaleRow[];
   loading?: boolean;
   emptyMessage?: string;

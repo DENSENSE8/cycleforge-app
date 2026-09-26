@@ -6,7 +6,7 @@ import { tenantQuery } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';
 import { takeReasonLedgerLabel } from '@/lib/inventory/take-reason';
 
-export interface EntityAuditEvent {
+interface EntityAuditEvent {
   /** Synthetic id stable across runs so React keys hold. */
   id: string;
   occurred_at: string;

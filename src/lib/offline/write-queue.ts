@@ -91,7 +91,7 @@ async function listRecords(): Promise<QueuedRequest[]> {
 
 // ─── Public API ────────────────────────────────────────────────────────────
 
-export const OFFLINE_QUEUE_EVENT = 'offline-queue-changed';
+const OFFLINE_QUEUE_EVENT = 'offline-queue-changed';
 const MAX_ATTEMPTS = 8;
 
 function broadcast(): void {
@@ -103,7 +103,7 @@ function broadcast(): void {
   }
 }
 
-export function isOnline(): boolean {
+function isOnline(): boolean {
   if (typeof navigator === 'undefined') return true;
   return navigator.onLine;
 }
@@ -269,7 +269,7 @@ async function drainOnce(): Promise<{ flushed: number; remaining: number }> {
   return drainPromise;
 }
 
-export async function getOfflineQueueSnapshot() {
+async function getOfflineQueueSnapshot() {
   const records = await listRecords();
   return {
     pending: records.filter((record) => record.status === 'pending').length,

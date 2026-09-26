@@ -2,7 +2,7 @@
 
 import { SHIPMENT_SCANNED_PREDICATE, CARRIER_MISMATCH_PREDICATE } from '../../delivered-unscanned';
 
-export const DELIVERY_STATES = [
+const DELIVERY_STATES = [
   'RECEIVED',
   'DELIVERED_UNOPENED',
   'DELIVERED_NOT_UNBOXED',
@@ -16,7 +16,7 @@ export const DELIVERY_STATES = [
   'UNKNOWN',
   'WRONG_DESTINATION',
 ] as const;
-export type DeliveryState = (typeof DELIVERY_STATES)[number];
+type DeliveryState = (typeof DELIVERY_STATES)[number];
 
 export function isDeliveryState(v: unknown): v is DeliveryState {
   return typeof v === 'string' && (DELIVERY_STATES as readonly string[]).includes(v);

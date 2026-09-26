@@ -1,9 +1,9 @@
 /** Sheet clipboard — serialise the rows an operator can see into the format a spreadsheet pastes. */
 
 /** A cell's copy value. A column that renders JSX must supply one of these. */
-export type SheetClipboardValue = string | number | null | undefined;
+type SheetClipboardValue = string | number | null | undefined;
 
-export interface SheetClipboardColumn<Row> {
+interface SheetClipboardColumn<Row> {
   key: string;
   /** Header text. Falls back to `key` when a column's label is a glyph. */
   label?: string;
@@ -34,7 +34,7 @@ export function toSheetTsv<Row>(
 }
 
 /** Write text to the clipboard, with a `document.execCommand` fallback. */
-export async function writeSheetClipboard(text: string): Promise<boolean> {
+async function writeSheetClipboard(text: string): Promise<boolean> {
   if (!text) return false;
   if (typeof navigator !== 'undefined' && navigator.clipboard?.writeText) {
     try {

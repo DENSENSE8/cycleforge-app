@@ -1,7 +1,7 @@
 /** Navigation command vocabulary — `CMD-GO-*` stickers that move an operator between surfaces without touching a mouse. */
 
 /** Every string in this vocabulary starts here. Claimed wholesale — see below. */
-export const NAV_COMMAND_PREFIX = 'CMD' as const;
+const NAV_COMMAND_PREFIX = 'CMD' as const;
 
 /** Note what is NOT on this interface: */
 export interface NavCommandDef {

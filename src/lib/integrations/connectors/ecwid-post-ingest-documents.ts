@@ -1,12 +1,12 @@
 import type { OrgId } from '@/lib/tenancy/constants';
 
-export interface EcwidPostIngestDocumentResult {
+interface EcwidPostIngestDocumentResult {
   attempted: number;
   fetched: number;
   failed: number;
 }
 
-export type FetchEcwidPackingSlip = (
+type FetchEcwidPackingSlip = (
   orgId: OrgId,
   orderId: number,
   types: ['packing_slip'],

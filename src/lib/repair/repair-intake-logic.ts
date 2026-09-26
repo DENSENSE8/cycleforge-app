@@ -25,15 +25,15 @@ export const REPAIR_STEP_COPY: Record<RepairIntakeStepKey, { title: string; subt
   },
 };
 
-export function isProductSelected(data: RepairFormData): boolean {
+function isProductSelected(data: RepairFormData): boolean {
   return !!(data.product.type && data.product.model.trim());
 }
 
-export function hasRepairIssue(data: RepairFormData): boolean {
+function hasRepairIssue(data: RepairFormData): boolean {
   return data.repairReasons.length > 0 || data.repairNotes.trim().length > 0;
 }
 
-export function isContactComplete(data: RepairFormData): boolean {
+function isContactComplete(data: RepairFormData): boolean {
   return CONTACT_FIELDS.every((field) => isContactFieldValid(field, data));
 }
 

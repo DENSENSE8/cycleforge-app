@@ -29,7 +29,7 @@ export const ADMIN_DRIFT_ALERTS_GRID_CAPABILITIES: GridSurfaceCapabilities = {
   dayBands: false,
 };
 
-export function makeAdminDriftAlertsGridDescriptor(
+function makeAdminDriftAlertsGridDescriptor(
   columns: readonly AdminDriftAlertsGridColumn[],
 ): GridSurfaceDescriptor<DriftAlertRow, AdminDriftAlertsGridColumn> {
   return makeGridSurfaceDescriptor<DriftAlertRow, AdminDriftAlertsGridColumn>(
@@ -44,7 +44,7 @@ export function makeAdminDriftAlertsGridDescriptor(
   );
 }
 
-export const ADMIN_DRIFT_ALERTS_TABLE_DEFINITION = parseTableDefinition({
+const ADMIN_DRIFT_ALERTS_TABLE_DEFINITION = parseTableDefinition({
   id: 'inventory.drift-alerts',
   tableId: 'admin-drift-alerts',
   entityFamily: 'admin-drift-alerts',

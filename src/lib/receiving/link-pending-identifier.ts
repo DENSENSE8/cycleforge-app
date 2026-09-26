@@ -5,13 +5,13 @@ import type { OrgId } from '@/lib/tenancy/constants';
 import { relinkReceivingPo, type TxClient } from './relink-po';
 import { normalizeIdentifierKey } from './link-carton-identifier';
 
-export interface ClaimPendingIdentifierInput {
+interface ClaimPendingIdentifierInput {
   poId: string;
   poNumber?: string | null;
   referenceNumber?: string | null;
 }
 
-export interface ClaimPendingIdentifierResult {
+interface ClaimPendingIdentifierResult {
   /** Cartons whose pending identifier matched this order. */
   matched: number;
   /** Of those, how many linked successfully. */
@@ -20,7 +20,7 @@ export interface ClaimPendingIdentifierResult {
   linesImported: number;
 }
 
-export interface ClaimPendingIdentifierDeps {
+interface ClaimPendingIdentifierDeps {
   runTx: <T>(orgId: string, fn: (client: TxClient) => Promise<T>) => Promise<T>;
   relink: typeof relinkReceivingPo;
 }

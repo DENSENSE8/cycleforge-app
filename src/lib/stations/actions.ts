@@ -4,7 +4,7 @@ import type { ActionDefinition, ActionMeta, DataSourceDefinition } from './contr
 
 const registry = new Map<string, ActionDefinition>();
 
-export function registerAction(def: ActionDefinition): void {
+function registerAction(def: ActionDefinition): void {
   if (registry.has(def.id)) {
     throw new Error(`Station action already registered: ${def.id}`);
   }
@@ -15,7 +15,7 @@ export function getAction(id: string): ActionDefinition | undefined {
   return registry.get(id);
 }
 
-export function listActions(): ActionDefinition[] {
+function listActions(): ActionDefinition[] {
   return [...registry.values()];
 }
 
@@ -36,7 +36,7 @@ export function actionsForSource(source: Pick<DataSourceDefinition, 'integration
 }
 
 /** Test-only. */
-export function __clearActionRegistry(): void {
+function __clearActionRegistry(): void {
   registry.clear();
 }
 

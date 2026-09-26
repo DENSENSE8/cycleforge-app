@@ -17,8 +17,8 @@ const KEYLEN = 32;
 const SALTLEN = 16;
 const MAXMEM = 128 * 1024 * 1024;
 
-export const MIN_PASSWORD_LEN = 8;
-export const MAX_PASSWORD_LEN = 200;
+const MIN_PASSWORD_LEN = 8;
+const MAX_PASSWORD_LEN = 200;
 
 export class PasswordError extends Error {
   constructor(public readonly code: 'TOO_SHORT' | 'TOO_LONG') {

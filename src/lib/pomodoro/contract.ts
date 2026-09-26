@@ -3,7 +3,7 @@ import { z } from 'zod';
 export const FOCUS_CYCLE_MS = 25 * 60 * 1000;
 export const FOCUS_CYCLE_SECONDS = FOCUS_CYCLE_MS / 1000;
 
-export const dateKey = z.string().regex(/^\d{4}-\d{2}-\d{2}$/).refine((value) => {
+const dateKey = z.string().regex(/^\d{4}-\d{2}-\d{2}$/).refine((value) => {
   const timestamp = Date.parse(`${value}T00:00:00.000Z`);
   return Number.isFinite(timestamp) && new Date(timestamp).toISOString().slice(0, 10) === value;
 }, 'Invalid civil date');

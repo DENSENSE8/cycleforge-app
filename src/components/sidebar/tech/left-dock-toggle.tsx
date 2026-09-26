@@ -36,7 +36,7 @@ const LEFT_DOCK_TOGGLE_ICON_CLASS = FIELD_ACTION_GLYPH_CLASS;
  */
 const TOGGLE_BTN_CLASS = `shrink-0 ${FIELD_ACTION_TONE_CLASS}`;
 
-export function RailFilterCollapseButton({
+function RailFilterCollapseButton({
   onCollapse,
   label = 'Hide sidebar',
   testId = 'rail-filter-collapse',

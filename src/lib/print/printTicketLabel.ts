@@ -28,7 +28,7 @@ export interface TicketLabelPayload {
 }
 
 /** Ticket matrix via the encode SoT ({@link encodePrintMatrix}). */
-export function ticketLabelMatrix(payload: TicketLabelPayload): PrintMatrix {
+function ticketLabelMatrix(payload: TicketLabelPayload): PrintMatrix {
   return encodePrintMatrix({
     kind: 'ticket',
     orgSlug: payload.orgSlug,

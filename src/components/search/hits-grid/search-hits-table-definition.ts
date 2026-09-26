@@ -25,7 +25,7 @@ export const SEARCH_HITS_GRID_CAPABILITIES: GridSurfaceCapabilities = {
 };
 
 /** Build the descriptor from a RESOLVED column list (post-visibility), so `contentMinWidthRem` and the TanStack defs follow the tracks that… */
-export function makeSearchHitsGridDescriptor(
+function makeSearchHitsGridDescriptor(
   columns: readonly SearchHitsGridColumn[],
 ): GridSurfaceDescriptor<AiSearchHit, SearchHitsGridColumn> {
   return makeGridSurfaceDescriptor<AiSearchHit, SearchHitsGridColumn>(
@@ -44,7 +44,7 @@ export function makeSearchHitsGridDescriptor(
  * Validated at module load: a definition that violates a structural law throws
  * here rather than painting a broken grid.
  */
-export const SEARCH_HITS_TABLE_DEFINITION = parseTableDefinition({
+const SEARCH_HITS_TABLE_DEFINITION = parseTableDefinition({
   id: 'search.hits',
   tableId: 'search-hits',
   entityFamily: 'search-hits',

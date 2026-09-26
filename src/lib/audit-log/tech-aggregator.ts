@@ -7,7 +7,7 @@ import type { OrgId } from '@/lib/tenancy/constants';
 import type { AuditLogFilters } from './filters';
 import { readInventorySpine } from './inventory-spine';
 
-export interface TechSessionSummary {
+interface TechSessionSummary {
   /** The value to pass back as `?session=` (a tracking number or a PO id). */
   session_key: string;
   /** Human-facing label (tracking number, or PO number/id). */
@@ -19,7 +19,7 @@ export interface TechSessionSummary {
   sku_summary: string | null;
 }
 
-export interface TechEvent {
+interface TechEvent {
   id: string;
   occurred_at: string;
   source: 'tech_serial_number' | 'station_activity_log' | 'audit_log' | 'inventory_event';
@@ -35,7 +35,7 @@ export interface TechEvent {
   detail: Record<string, unknown>;
 }
 
-export interface TechSessionDetail {
+interface TechSessionDetail {
   tracking: string;
   serials: Array<{
     id: number;

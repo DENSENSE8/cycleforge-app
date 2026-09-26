@@ -12,7 +12,7 @@ export interface OrderPriceLine {
   currency: string | null;
 }
 
-export interface SetOrderPriceArgs {
+interface SetOrderPriceArgs {
   organizationId: OrgId;
   /** The numeric `orders.id` — exactly one line. Mutually exclusive with `orderNumber`. */
   orderId?: number | null;
@@ -24,7 +24,7 @@ export interface SetOrderPriceArgs {
   currency?: string | null;
 }
 
-export type SetOrderPriceFailure =
+type SetOrderPriceFailure =
   /** Neither or both identities supplied — there is no defensible precedence. */
   | { ok: false; status: 400; reason: 'identity_required'; error: string }
   | { ok: false; status: 400; reason: 'invalid_price'; error: string }
@@ -32,7 +32,7 @@ export type SetOrderPriceFailure =
   /** The order number spans several lines; the caller must name one. */
   | { ok: false; status: 409; reason: 'ambiguous_order_number'; error: string; lines: OrderPriceLine[] };
 
-export type SetOrderPriceResult =
+type SetOrderPriceResult =
   | {
       ok: true;
       status: 200;

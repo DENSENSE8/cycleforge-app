@@ -81,7 +81,7 @@ const QUEUE_SQL_TENANT = `
   LIMIT 200
 `;
 
-export async function loadPickQueue(orgId?: OrgId): Promise<PickQueueRow[]> {
+async function loadPickQueue(orgId?: OrgId): Promise<PickQueueRow[]> {
   const q = orgId
     ? await tenantQuery<{
         order_id: number;

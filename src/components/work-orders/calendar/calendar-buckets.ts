@@ -15,7 +15,7 @@ export function dayKey(date: Date): string {
 }
 
 /** Day key for a row's deadline (its placement field), or null when unscheduled. */
-export function rowDayKey(row: WorkOrderRow): string | null {
+function rowDayKey(row: WorkOrderRow): string | null {
   if (!row.deadlineAt) return null;
   const d = new Date(row.deadlineAt);
   if (Number.isNaN(d.getTime())) return null;

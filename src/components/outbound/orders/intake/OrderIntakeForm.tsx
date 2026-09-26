@@ -57,7 +57,7 @@ const FULFILLMENT_CHANNEL_OPTIONS = [
   { value: 'link_only', label: 'Link existing label only', group: 'Fulfillment channel' },
 ];
 
-export interface OrderIntakeFormProps {
+interface OrderIntakeFormProps {
   /** Order under triage, or `null` to start a new one. */
   orderId: number | null;
   /**

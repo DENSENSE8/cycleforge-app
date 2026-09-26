@@ -8,10 +8,10 @@ import {
   type ThemeName,
 } from '@/design-system/themes/registry';
 
-export const THEME_STORAGE_KEY = 'ds-theme';
+const THEME_STORAGE_KEY = 'ds-theme';
 
 /** Back-compat alias — prefer `ThemeName` from the registry in new code. */
-export type AppTheme = ThemeName;
+type AppTheme = ThemeName;
 
 /**
  * Apply a registry theme to <html> and cache it. `light` / null / unknown

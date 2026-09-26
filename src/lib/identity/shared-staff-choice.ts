@@ -9,7 +9,7 @@ export {
   resolveSigninDoorPath,
 } from './oauth-post-login-path';
 
-export interface SharedStaffChoiceRow {
+interface SharedStaffChoiceRow {
   id: number;
   name: string;
   role: string | null;
@@ -17,7 +17,7 @@ export interface SharedStaffChoiceRow {
   has_pin: boolean;
 }
 
-export interface SharedStaffChoice {
+interface SharedStaffChoice {
   organizationName: string;
   staff: SharedStaffChoiceRow[];
 }

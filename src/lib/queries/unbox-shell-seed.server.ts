@@ -10,7 +10,7 @@ import { UNBOX_SURFACE_ROUTE } from '@/lib/receiving/surface-path';
 const TESTING_SURFACE_ROUTES: ReadonlySet<string> = new Set(['/test', '/tech']);
 
 /** The seed for the app shell, or `null` when this request is not the Unbox station. */
-export async function maybeSeedUnboxShell(
+async function maybeSeedUnboxShell(
   pathname: string,
 ): Promise<DehydratedState | null> {
   if (pathname !== UNBOX_SURFACE_ROUTE) return null;

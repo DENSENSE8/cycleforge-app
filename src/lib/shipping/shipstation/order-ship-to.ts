@@ -6,7 +6,7 @@ import { getShipStationV1 } from './config';
 import type { Parcel, ShipAddress } from './types';
 
 /** The order fields ship-to resolution reads. Both routes' row shapes satisfy it. */
-export type ShipToOrderRow = {
+type ShipToOrderRow = {
   /** orders.id — pairs the row to its ShipStation order via `shipstation_order_refs`. */
   id?: number | string | null;
   order_id: string | null;
@@ -15,7 +15,7 @@ export type ShipToOrderRow = {
 };
 
 /** Load the buyer's stored ship-to from `customers` (the current-address cache). */
-export async function loadCustomerShipTo(
+async function loadCustomerShipTo(
   orgId: OrgId,
   customerId: number,
 ): Promise<ShipAddress | null> {
@@ -106,7 +106,7 @@ export async function resolveOrderShipTo(
 }
 
 /** Facts snapshot onto the label's STN row — the as-shipped record. */
-export interface ShipmentSnapshotMeta {
+interface ShipmentSnapshotMeta {
   shipTo: ShipAddress;
   customerId: number | null;
   orderRef: string;

@@ -41,7 +41,7 @@ export const LPN_LABEL_FACE_LAYOUT = {
  * weights/sizes the receiving label has used since it was the only label face.
  */
 // All slots share one font size (9px) and pure black so the face reads uniformly on the tiny 2×1" label without clipping; center notes…
-export const LABEL_FACE_CSS =
+const LABEL_FACE_CSS =
   '.row{display:flex;justify-content:space-between;align-items:baseline;gap:4px;line-height:1;width:100%}' +
   '.tl{flex:1 1 auto;min-width:0;font-size:9px;font-weight:700;color:#000;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}' +
   '.tr{flex:0 0 auto;font-size:9px;font-weight:700;color:#000;white-space:nowrap;font-variant-numeric:tabular-nums}' +
@@ -52,14 +52,14 @@ export const LABEL_FACE_CSS =
   '.br{flex:0 0 auto;font-size:9px;font-weight:900;letter-spacing:0.3px;line-height:1.05;color:#000;white-space:nowrap;font-variant-numeric:tabular-nums}';
 
 /** Coordinate-only location sticker — large code, no room / zone / level gloss. */
-export const LOCATION_LABEL_FACE_CSS =
+const LOCATION_LABEL_FACE_CSS =
   '.lcode{flex:1 1 auto;width:100%;min-width:0;font-size:16px;font-weight:800;font-family:ui-monospace,Menlo,Consolas,monospace;letter-spacing:-0.04em;line-height:1.05;color:#000;overflow-wrap:anywhere;word-break:break-word;display:flex;align-items:center}';
 
 /**
  * Handling-unit (box / tote) licence plate.
  * Operator ruling 2026-09-15: kicker top-left, ID left-middle, NO date. The
  */
-export const LPN_LABEL_FACE_CSS =
+const LPN_LABEL_FACE_CSS =
   `.hu-kicker{flex:0 0 auto;font-size:${LPN_LABEL_FACE_LAYOUT.kickerFontCssPx}px;font-weight:800;letter-spacing:1px;text-transform:uppercase;color:#6b7280;text-align:left;line-height:1}` +
   // The info column shares a 2in face with the 0.86in DataMatrix. 30px keeps
   // `H-100` (the first three-digit house plate) entirely on the paper instead

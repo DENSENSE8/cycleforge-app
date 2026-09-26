@@ -47,7 +47,7 @@ function useInvalidateClaims() {
   };
 }
 
-export type WarrantyLifecycleAction = 'submit' | 'approve' | 'close';
+type WarrantyLifecycleAction = 'submit' | 'approve' | 'close';
 
 export function useWarrantyMutations() {
   const invalidate = useInvalidateClaims();
@@ -154,7 +154,7 @@ export function useWarrantyMutations() {
   };
 }
 
-export interface DenialReason {
+interface DenialReason {
   code: string;
   label: string;
 }

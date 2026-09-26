@@ -16,7 +16,7 @@ export function normalizeSku(sku: string): string {
  * @param sku - The SKU to validate
  * @returns True if SKU is valid
  */
-export function isValidSku(sku: string): boolean {
+function isValidSku(sku: string): boolean {
     if (!sku || sku.trim() === '') return false;
     // SKUs should contain at least some alphanumeric characters
     return /[a-zA-Z0-9]/.test(sku);
@@ -36,7 +36,7 @@ export function formatSku(sku: string): string {
  * @param sku - The SKU to parse
  * @returns Numeric portion of SKU
  */
-export function getSkuNumber(sku: string): number {
+function getSkuNumber(sku: string): number {
     const match = sku.match(/\d+/);
     return match ? parseInt(match[0], 10) : 0;
 }
@@ -54,6 +54,6 @@ export function isRepairSku(sku: string | null | undefined): boolean {
  * Strip the -RS suffix from a repair SKU to get the base product SKU.
  * e.g. "1810-RS-1" → "1810", "244021Q-RS" → "244021Q"
  */
-export function getSkuBase(sku: string): string {
+function getSkuBase(sku: string): string {
     return sku.trim().replace(/-RS(-\d+)?$/i, '');
 }

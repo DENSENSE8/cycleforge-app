@@ -6,17 +6,17 @@
 
 export type ShippingWorkspaceTab = 'urgent' | 'pending' | 'all' | 'history';
 
-export const SHIPPING_WORKSPACE_TAB_PARAM = 'ship';
+const SHIPPING_WORKSPACE_TAB_PARAM = 'ship';
 
 /** Band-1 order — Urgent · Pending · All · History. */
-export const SHIPPING_WORKSPACE_TABS: readonly ShippingWorkspaceTab[] = [
+const SHIPPING_WORKSPACE_TABS: readonly ShippingWorkspaceTab[] = [
   'urgent',
   'pending',
   'all',
   'history',
 ] as const;
 
-export const SHIPPING_WORKSPACE_TAB_LABEL: Record<ShippingWorkspaceTab, string> = {
+const SHIPPING_WORKSPACE_TAB_LABEL: Record<ShippingWorkspaceTab, string> = {
   urgent: 'Urgent',
   pending: 'Pending',
   all: 'All',

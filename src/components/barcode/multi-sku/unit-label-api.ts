@@ -8,7 +8,7 @@ import { normalizeSku } from '@/utils/sku';
 
 /** Normalized product info from /api/get-title-by-sku. `title` is raw ('' when
  *  missing) so callers can apply their own fallback (e.g. `|| 'Not found'`). */
-export interface ProductInfo {
+interface ProductInfo {
   title: string;
   stock: string;
   location: string;
@@ -16,18 +16,18 @@ export interface ProductInfo {
   skuCatalogId: number | null;
 }
 
-export interface NextUnitId {
+interface NextUnitId {
   unitId: string;
   gtin: string;
 }
 
-export interface IssuedUnit {
+interface IssuedUnit {
   serial: string;
   unitUid: string | null;
 }
 
 /** Raw /api/units/resolve-id response (reprint path). */
-export interface ResolvedUnitId {
+interface ResolvedUnitId {
   ok?: boolean;
   unitUid?: string | null;
   gtin?: string;

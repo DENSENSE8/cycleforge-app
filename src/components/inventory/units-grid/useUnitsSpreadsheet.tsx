@@ -47,7 +47,7 @@ function compareUnitsRows(
   }
 }
 
-export interface UseUnitsSpreadsheetOptions {
+interface UseUnitsSpreadsheetOptions {
   rows: readonly UnitsOverviewRow[];
   loading?: boolean;
   emptyMessage?: string;

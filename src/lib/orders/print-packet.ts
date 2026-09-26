@@ -2,7 +2,7 @@
 
 export const PAPERWORK_PARAM = 'paperwork';
 
-export interface PrintPacketFacts {
+interface PrintPacketFacts {
   hasShippingLabelDocument: boolean;
   linkedDocumentCount: number;
   docsNotRequired: boolean;

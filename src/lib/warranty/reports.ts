@@ -4,7 +4,7 @@ import pool from '@/lib/db';
 import { tenantQuery } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';
 
-export interface WarrantyReportFilters {
+interface WarrantyReportFilters {
   status?: string | null;
   sku?: string | null;
   /** ISO date — claims created on/after. */
@@ -15,7 +15,7 @@ export interface WarrantyReportFilters {
   outcome?: string | null;
 }
 
-export interface WarrantyReportRow {
+interface WarrantyReportRow {
   claimNumber: string;
   status: string;
   sku: string | null;

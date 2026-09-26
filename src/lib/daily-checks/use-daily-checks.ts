@@ -92,7 +92,7 @@ export function useToggleCheck(dateKey: string) {
  * operator presses it at the end of a shift and walks away, so the list must
  * empty under the thumb rather than after a round trip.
  */
-export function useResetDay(dateKey: string) {
+function useResetDay(dateKey: string) {
   const queryClient = useQueryClient();
   const key = dailyChecksKey(dateKey);
 

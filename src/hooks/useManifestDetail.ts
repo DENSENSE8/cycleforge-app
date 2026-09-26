@@ -3,7 +3,7 @@
 import { useQuery } from '@tanstack/react-query';
 
 /** One member unit of a manifest, from GET /api/label-manifests/[id]. */
-export interface ManifestItemView {
+interface ManifestItemView {
   serial_unit_id: number;
   serial_number: string;
   unit_uid: string | null;
@@ -14,7 +14,7 @@ export interface ManifestItemView {
   ordinal: number;
 }
 
-export interface ManifestDetailView {
+interface ManifestDetailView {
   id: number;
   manifest_uid: string;
   manifest_type: 'PREBOX' | 'KIT' | 'MASTER_CARTON';
@@ -33,7 +33,7 @@ interface ManifestResponse {
   manifest: ManifestDetailView;
 }
 
-export function manifestDetailQueryKey(ref: string | number) {
+function manifestDetailQueryKey(ref: string | number) {
   return ['manifest.detail', String(ref)] as const;
 }
 

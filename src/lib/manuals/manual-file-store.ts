@@ -7,7 +7,7 @@ import { isVercelBlobUrl } from '@/lib/blob/vercel-blob-url';
 /** Blob lifecycle for product-manual files, shared by the library upload route (`/api/product-manuals/upload`) and the order paperwork… */
 
 /** 50MB ceiling — operators dropping huge scans into the library is almost always a mistake. */
-export const MANUAL_FILE_MAX_BYTES = 50 * 1024 * 1024;
+const MANUAL_FILE_MAX_BYTES = 50 * 1024 * 1024;
 
 export class ManualFileError extends Error {
   constructor(message: string, readonly status: number) {
@@ -16,7 +16,7 @@ export class ManualFileError extends Error {
   }
 }
 
-export interface StoredManualFile {
+interface StoredManualFile {
   /** Public Vercel Blob URL (stored as product_manuals.source_url). */
   url: string;
   /** Name of the stored file — the .pdf for converted Word docs. */

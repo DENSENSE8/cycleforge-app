@@ -60,13 +60,13 @@ export function candidateQty(row: Pick<AllocationCandidateRow, 'quantity_str'>):
 }
 
 /** Units still missing before this order can be allocated. `0` ⇒ allocatable. */
-export function candidateShortfall(
+function candidateShortfall(
   row: Pick<AllocationCandidateRow, 'quantity_str' | 'available_stocked'>,
 ): number {
   return Math.max(0, candidateQty(row) - row.available_stocked);
 }
 
-export function isCandidateAllocatable(
+function isCandidateAllocatable(
   row: Pick<AllocationCandidateRow, 'quantity_str' | 'available_stocked'>,
 ): boolean {
   return candidateShortfall(row) === 0;
@@ -74,10 +74,10 @@ export function isCandidateAllocatable(
 
 /** The state pill's CLOSED vocabulary — the fact the retired tri-colour cell carried in ink. */
 export const CANDIDATE_STATE_READY = 'Ready' as const;
-export const CANDIDATE_STATE_SHORT = 'Short' as const;
-export const CANDIDATE_STATE_NO_STOCK = 'No stock' as const;
+const CANDIDATE_STATE_SHORT = 'Short' as const;
+const CANDIDATE_STATE_NO_STOCK = 'No stock' as const;
 
-export type CandidateStateWord =
+type CandidateStateWord =
   | typeof CANDIDATE_STATE_READY
   | typeof CANDIDATE_STATE_SHORT
   | typeof CANDIDATE_STATE_NO_STOCK;

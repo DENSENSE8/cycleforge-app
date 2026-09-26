@@ -21,7 +21,7 @@ import { useSlotTableLayout } from '@/components/tables/useSlotTableLayout';
 import { SKU_BINS_FAMILY } from '@/lib/tables/field-catalog/sku-bins';
 import { SKU_BINS_GRID_CAPABILITIES, SKU_BINS_TABLE_BINDING } from './sku-bins-table-definition';
 
-export interface UseSkuBinsSpreadsheetOptions {
+interface UseSkuBinsSpreadsheetOptions {
   /** Every bin holding this SKU. Already ordered by qty; a header click re-orders it. */
   rows: readonly SkuBinTableRow[];
   loading?: boolean;

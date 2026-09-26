@@ -16,12 +16,12 @@ import {
   useMotionTransition,
 } from '@/design-system/foundations/motion-framer-hooks';
 
-export type RouteShellView = 'actions' | 'history';
+type RouteShellView = 'actions' | 'history';
 
 const PANE_PARAM = 'pane';
 
-export interface RouteShellProps {
-  /** Sidebar / actions content. Already rendered inside DashboardSidebar on desktop, so this only mounts on mobile. */
+interface RouteShellProps {
+  /** Sidebar / actions content. Already rendered in the route's context panel on desktop, so this only mounts on mobile. */
   actions: ReactNode;
   /** Main / history content. Always renders. */
   history: ReactNode;

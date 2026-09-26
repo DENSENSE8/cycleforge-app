@@ -28,7 +28,7 @@ function formatSeconds(totalSec: number): string {
   return `${m}m ${s}s`;
 }
 
-export interface AgentStepTimelineProps {
+interface AgentStepTimelineProps {
   steps: AgentStep[];
   /** true while the answer is still streaming */
   streaming: boolean;

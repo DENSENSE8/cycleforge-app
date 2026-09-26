@@ -17,7 +17,7 @@ export const MAX_RECEIVE_ATTEMPTS = 6;
 /** Backoff step. */
 const BACKOFF_STEP_MINUTES = 2;
 
-export interface PendingReceiveLine {
+interface PendingReceiveLine {
   receivingLineId: number;
   zohoPurchaseOrderId: string;
   zohoLineItemId: string;
@@ -26,12 +26,12 @@ export interface PendingReceiveLine {
 }
 
 /** Lines for one Zoho PO — the unit of work, and the unit of one POST. */
-export interface PendingReceiveGroup {
+interface PendingReceiveGroup {
   zohoPurchaseOrderId: string;
   lines: PendingReceiveLine[];
 }
 
-export interface ReceiveBacklog {
+interface ReceiveBacklog {
   /** Lines received locally but not yet acknowledged by the provider. */
   pending: number;
   /** Distinct POs those lines belong to — the real call count of a full run. */
@@ -49,9 +49,9 @@ export interface ReceiveBacklog {
  * burns no attempt, and aborts the rest of the run, because every remaining
  * group would hit the same dead credential.
  */
-export type GroupOutcome = 'posted' | 'noop' | 'failed' | 'not_connected';
+type GroupOutcome = 'posted' | 'noop' | 'failed' | 'not_connected';
 
-export interface GroupResult {
+interface GroupResult {
   zohoPurchaseOrderId: string;
   outcome: GroupOutcome;
   /** Lines this group covered (stamped on `posted`/`noop`). */
@@ -62,7 +62,7 @@ export interface GroupResult {
   reason?: string;
 }
 
-export interface BackfillReport {
+interface BackfillReport {
   /** PO groups actually attempted this run. */
   groups: number;
   /** Groups the provider accepted a receive for. */
@@ -156,7 +156,7 @@ export async function getReceiveBacklog(
 }
 
 /** Claim the next PO groups to push. */
-export async function listPendingReceiveGroups(
+async function listPendingReceiveGroups(
   orgId: OrgId,
   opts: { maxGroups?: number } = {},
   deps: BackfillDeps = defaultDeps,

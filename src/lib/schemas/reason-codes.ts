@@ -8,7 +8,7 @@ const direction = z.enum(['in', 'out', 'either']);
  * (see 2026-05-14_reason_codes.sql). Validating here turns a would-be 500
  * (constraint violation) into a clean 400.
  */
-export const REASON_CODE_CATEGORIES = [
+const REASON_CODE_CATEGORIES = [
   'shrinkage',
   'adjustment',
   'sale',

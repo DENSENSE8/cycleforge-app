@@ -12,7 +12,7 @@ import {
   type SearchResults,
 } from '../manuals-tree';
 
-export interface UseManualsTree {
+interface UseManualsTree {
   currentNode: FolderNode;
   /** Non-null only while a search query is active. */
   searchResults: SearchResults | null;

@@ -3,7 +3,7 @@
 import { PRODUCT_NAME } from '@/lib/branding/constants';
 import { logger } from '@/lib/observability/logger';
 
-export interface EmailMessage {
+interface EmailMessage {
   to: string;
   subject: string;
   text: string;
@@ -13,7 +13,7 @@ export interface EmailMessage {
   replyTo?: string;
 }
 
-export interface EmailSendResult {
+interface EmailSendResult {
   ok: boolean;
   id?: string;
   error?: string;
@@ -49,7 +49,7 @@ async function sendViaResend(msg: EmailMessage): Promise<EmailSendResult> {
   }
 }
 
-export async function sendEmail(msg: EmailMessage): Promise<EmailSendResult> {
+async function sendEmail(msg: EmailMessage): Promise<EmailSendResult> {
   if (process.env.RESEND_API_KEY) return sendViaResend(msg);
   // Dev/CI fallback. We log enough to make debugging easy without dumping
   // the entire body into the terminal.

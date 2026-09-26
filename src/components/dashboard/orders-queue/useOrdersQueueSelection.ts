@@ -5,14 +5,14 @@ import { useEventBridge } from '@/hooks';
 import { getOpenShippedDetailsPayload } from '@/utils/events';
 import type { ShippedOrder } from '@/lib/neon/orders-queries';
 
-export interface UseOrdersQueueSelectionOptions {
+interface UseOrdersQueueSelectionOptions {
   /** Records still in the queue — used to re-resolve the selection on data changes. */
   visibleRecords: ShippedOrder[];
   onOpenRecord?: (record: ShippedOrder) => void;
   onCloseRecord?: (record: ShippedOrder | null) => void;
 }
 
-export interface OrdersQueueSelection {
+interface OrdersQueueSelection {
   selectedRecord: ShippedOrder | null;
   /** Toggle the open detail for a row (re-click closes it). */
   handleRowClick: (record: ShippedOrder) => void;

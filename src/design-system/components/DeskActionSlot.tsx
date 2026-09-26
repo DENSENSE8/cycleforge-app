@@ -20,15 +20,15 @@ import { focusRing } from '../tokens/focus-ring';
 import { cornerClass } from '../tokens/radius';
 
 /** The one corner for a desk page-header CTA — `cornerClass('pill')`. */
-export const DESK_HEADER_ACTION_RADIUS = 'pill' as const;
+const DESK_HEADER_ACTION_RADIUS = 'pill' as const;
 
-export type DeskHeaderActionProps = Omit<ButtonProps, 'radius'>;
+type DeskHeaderActionProps = Omit<ButtonProps, 'radius'>;
 
 /**
  * Which face the header cluster renders in. `pill` — the card desk's header
  * row. `segment` — the industrial desk bar (`stage="flush"`).
  */
-export type DeskHeaderFace = 'pill' | 'segment';
+type DeskHeaderFace = 'pill' | 'segment';
 
 const DeskHeaderFaceContext = createContext<DeskHeaderFace>('pill');
 
@@ -135,10 +135,10 @@ function DeskHeaderActionCluster({ children }: { children: ReactNode }) {
   );
 }
 
-export type DeskActionSlotRole = 'primary' | 'overall' | 'leading';
+type DeskActionSlotRole = 'primary' | 'overall' | 'leading';
 
 /** CSV export handed to a desk's Sync / intake dropdown — not a header button. */
-export type DeskExportMenuAction = {
+type DeskExportMenuAction = {
   run: () => void;
   rowCount: number;
   empty: boolean;

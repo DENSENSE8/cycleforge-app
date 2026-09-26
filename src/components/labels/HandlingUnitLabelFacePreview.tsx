@@ -7,7 +7,7 @@ import { handlingUnitLabelToFace } from '@/lib/print/printHandlingUnitLabel';
 import type { LabelFaceModel } from '@/lib/print/labelFace';
 
 /** Obviously-not-a-real-id stand-in for the serial the database has not minted. */
-export const SPECIMEN_LPN_CODE = 'H-###';
+const SPECIMEN_LPN_CODE = 'H-###';
 
 export function HandlingUnitLabelFacePreview({
   handlingUnitId,

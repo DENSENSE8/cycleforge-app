@@ -3,7 +3,7 @@
 import pool from '@/lib/db';
 import type { PoolClient } from 'pg';
 
-export interface ActiveShift {
+interface ActiveShift {
   id: number;
   staff_id: number;
   starts_at: Date;

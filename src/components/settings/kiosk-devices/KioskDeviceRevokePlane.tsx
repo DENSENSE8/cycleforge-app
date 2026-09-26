@@ -11,7 +11,7 @@ import { Button } from '@/design-system/primitives/Button';
 import { DeskStageOverlay } from '@/design-system/components/DeskStageOverlay';
 import type { KioskDeviceTableRow } from '@/lib/kiosk/kiosk-device-row';
 
-export interface KioskDeviceRevokePlaneProps {
+interface KioskDeviceRevokePlaneProps {
   row: KioskDeviceTableRow | null;
   busy?: boolean;
   onClose: () => void;

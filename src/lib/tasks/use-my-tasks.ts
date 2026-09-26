@@ -13,7 +13,7 @@ import {
 /** Cookie session; never a cached answer for a list the operator just changed. */
 const FRESH: RequestInit = { credentials: 'include', cache: 'no-store' };
 
-export const MY_TASKS_QUERY_KEY = ['tasks', 'mine', 'all'] as const;
+const MY_TASKS_QUERY_KEY = ['tasks', 'mine', 'all'] as const;
 
 async function fetchMyTasks(): Promise<TaskDeskRow[]> {
   const res = await fetch('/api/tasks?lane=all&assignee=me&limit=200', FRESH);

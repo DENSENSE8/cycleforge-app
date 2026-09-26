@@ -25,7 +25,7 @@ export const INITIAL_TESTING_SCAN_SESSION: TestingScanSession = {
   lastVia: null,
 };
 
-export type TestingScanSessionEvent =
+type TestingScanSessionEvent =
   | { type: 'ANCHOR_TRACKING'; trackingRef: string; line: ReceivingLineRow; via: ResolvedVia }
   | { type: 'CONFIRM_UNIT'; unitKey: string; line: ReceivingLineRow; via: ResolvedVia }
   | { type: 'OPEN_LINE'; line: ReceivingLineRow; via: ResolvedVia; value: string }

@@ -2,12 +2,12 @@
 
 import { scanTicketStatuses, parseTicketStatus, type TicketStatus } from './ticket-status';
 
-export interface MarkdownSegment {
+interface MarkdownSegment {
   kind: 'markdown';
   text: string;
 }
 
-export interface TicketSegment {
+interface TicketSegment {
   kind: 'ticket';
   ticketId: string;
   status: TicketStatus | null;
@@ -16,13 +16,13 @@ export interface TicketSegment {
   resolutionCommit?: string;
 }
 
-export interface AgentLogSegment {
+interface AgentLogSegment {
   kind: 'agent-log';
   runUid: string;
   stage?: string;
 }
 
-export type MasterPlanSegment = MarkdownSegment | TicketSegment | AgentLogSegment;
+type MasterPlanSegment = MarkdownSegment | TicketSegment | AgentLogSegment;
 
 const AGENT_LOG_RE = /<AgentLog\b([^>]*?)\/?>/g;
 const ATTR_RE = /([A-Za-z_][\w-]*)\s*=\s*"([^"]*)"/g;

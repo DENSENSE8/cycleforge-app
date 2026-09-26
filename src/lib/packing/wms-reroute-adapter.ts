@@ -28,9 +28,9 @@ export const WmsRerouteIntentSchema = z.object({
   reason: z.literal('slot_full'),
 }).strict();
 
-export type WmsRerouteIntent = z.infer<typeof WmsRerouteIntentSchema>;
+type WmsRerouteIntent = z.infer<typeof WmsRerouteIntentSchema>;
 
-export const WmsRerouteCommitSchema = z.object({
+const WmsRerouteCommitSchema = z.object({
   status: z.enum(['committed', 'replayed']),
   mutationId: z.string().min(1),
   commandId: z.string().min(1),
@@ -40,9 +40,9 @@ export const WmsRerouteCommitSchema = z.object({
   committedAt: z.string().datetime({ offset: true }),
 }).strict();
 
-export type WmsRerouteCommit = z.infer<typeof WmsRerouteCommitSchema>;
+type WmsRerouteCommit = z.infer<typeof WmsRerouteCommitSchema>;
 
-export type WmsRerouteCommitErrorCode =
+type WmsRerouteCommitErrorCode =
   | 'TENANT_MISMATCH'
   | 'UNSUPPORTED_QUANTITY'
   | 'COMMAND_CONFLICT'

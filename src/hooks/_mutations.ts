@@ -38,7 +38,7 @@ export async function jsonOrThrow<T = unknown>(
   return (text ? JSON.parse(text) : null) as T;
 }
 
-export interface ResourceMutationOptions<TData, TVars>
+interface ResourceMutationOptions<TData, TVars>
   extends Omit<UseMutationOptions<TData, Error, TVars>, 'mutationFn'> {
   /**
    * Query keys to invalidate on success. Each is passed to

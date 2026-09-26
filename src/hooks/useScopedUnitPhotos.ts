@@ -6,7 +6,7 @@ import { normalizePhotoDisplayUrl } from '@/lib/nas-photo-url';
 
 /** Committed SERIAL_UNIT testing-scan photos for one unit — the unit-scoped twin of `useScopedReceivingPhotos`. */
 
-export interface UnitPhotoRow {
+interface UnitPhotoRow {
   id: number;
   url: string;
   photoType: string | null;
@@ -35,7 +35,7 @@ function toPriorPhotos(rows: UnitPhotoRow[]): PriorPhoto[] {
     }));
 }
 
-export interface UseScopedUnitPhotosResult {
+interface UseScopedUnitPhotosResult {
   queryKey: ReturnType<typeof unitPhotosQueryKey>;
   photos: UnitPhotoRow[];
   priorPhotos: PriorPhoto[];

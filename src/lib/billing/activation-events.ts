@@ -5,7 +5,7 @@ import { recordOpsEvent, type RecordOpsEventInput } from '@/lib/ops-events';
 
 /** Known activation milestones. String-typed union so new milestones are
  *  additive (the ops_events side is free-text `event_type`). */
-export type ActivationEvent =
+type ActivationEvent =
   | 'signup_completed'
   | 'onboarding_started'
   | 'onboarding_completed'
@@ -15,7 +15,7 @@ export type ActivationEvent =
   | 'first_label_printed'
   | (string & {});
 
-export interface ActivationEventOpts {
+interface ActivationEventOpts {
   actorStaffId?: number | null;
   /** Thread for idempotency — a retry with the same id is a no-op. */
   clientEventId?: string | null;

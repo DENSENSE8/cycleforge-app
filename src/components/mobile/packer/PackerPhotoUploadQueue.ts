@@ -9,7 +9,7 @@ import { safeRandomUUID } from '@/lib/safe-uuid';
 
 /** Module-singleton store for in-flight PACKER photo uploads — the packing mirror of `receiving/PhotoUploadQueue.ts`. */
 
-export type UploadState = 'queued' | 'uploading' | 'done' | 'failed';
+type UploadState = 'queued' | 'uploading' | 'done' | 'failed';
 
 export interface PackerPhotoScope {
   /** packer_logs.id the photo binds to. */
@@ -28,7 +28,7 @@ export interface PackerPhotoScope {
   capturedAtMs?: number | null;
 }
 
-export interface UploadEntry {
+interface UploadEntry {
   id: string;
   scope: PackerPhotoScope;
   previewUrl: string;
@@ -57,7 +57,7 @@ interface PersistedEntry {
 }
 
 // ─── State + subscribers ──────────────────────────────────────────────────── Fired once per photo the moment it commits (GCS upload + DB…
-export interface UploadNotice {
+interface UploadNotice {
   packerLogId: number;
   orderId: string | null;
   photoId: number;

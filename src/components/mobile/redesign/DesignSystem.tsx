@@ -27,7 +27,7 @@ export const MOBILE_GUTTER_X = 'mx-1.5';
  * Flush panel on the mobile canvas. Depth is a plane step + hairline, never a
  * tinted shadow — same rule the spine accent module states for nav chrome.
  */
-export const MobileCard = ({
+const MobileCard = ({
   children,
   className = '',
   onClick,
@@ -59,7 +59,7 @@ export const MobileCard = ({
 );
 
 /** Titled block on the mobile canvas — label row over a {@link MobileCard}. */
-export const BentoItem = ({
+const BentoItem = ({
   children,
   className = '',
   title,
@@ -86,7 +86,7 @@ export const BentoItem = ({
 );
 
 /** Section label over a mobile list, with an optional trailing verb. */
-export const SectionHeader = ({
+const SectionHeader = ({
   title,
   actionLabel,
   onAction,
@@ -112,7 +112,7 @@ export const SectionHeader = ({
 );
 
 /** Full-width mobile action. */
-export const GlassButton = ({
+const GlassButton = ({
   children,
   onClick,
   className = '',

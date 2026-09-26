@@ -1,7 +1,7 @@
 import pool from '@/lib/db';
 import { photoContentUrl } from '../display-url';
 
-export interface PhotoSearchFilters {
+interface PhotoSearchFilters {
   organizationId: string;
   poRef?: string | null;
   dateFrom?: string | null;
@@ -11,7 +11,7 @@ export interface PhotoSearchFilters {
   limit?: number;
 }
 
-export interface PhotoSearchResult {
+interface PhotoSearchResult {
   id: number;
   poRef: string | null;
   photoType: string | null;

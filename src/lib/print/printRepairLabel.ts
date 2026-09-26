@@ -11,7 +11,7 @@ const REPAIR_INFO_CSS = `
   .po{font-size:11px;font-weight:700;letter-spacing:0.3px;line-height:1.05;color:#111;white-space:nowrap;font-variant-numeric:tabular-nums}
   .date{font-size:11px;font-weight:700;color:#4b5563;white-space:nowrap;font-variant-numeric:tabular-nums}`;
 
-export interface RepairLabelPayload {
+interface RepairLabelPayload {
   /** Numeric repair id — used to build the QR URL when qrValue is not provided. */
   repairId: number;
   /** Human-readable RS code, e.g. "RS-1234". Used as the bottom-right fallback when no ticket #. */
@@ -33,7 +33,7 @@ export interface RepairLabelPayload {
  * `REP-{id}` — `routeScan()` parses the prefix and navigates to
  * /m/rs/{id} (the mobile repair-service detail page). No URL on the wire.
  */
-export function resolveRepairQrValue(payload: RepairLabelPayload): string {
+function resolveRepairQrValue(payload: RepairLabelPayload): string {
   if (payload.qrValue && payload.qrValue.trim()) return payload.qrValue.trim();
   return repairHandle(payload.repairId);
 }
@@ -50,7 +50,7 @@ function repairLabelCornerDisplay(payload: RepairLabelPayload): string {
  * label's bottom-left date is that promise in the customer's hand, so the two
  * must be derived from one constant.
  */
-export const REPAIR_LABEL_SLA_DAYS = 10;
+const REPAIR_LABEL_SLA_DAYS = 10;
 
 /** 2-digit US date — the only date format the 2×1 face has room for. */
 function labelDate(d: Date): string {

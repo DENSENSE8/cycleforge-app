@@ -23,7 +23,7 @@ import {
 } from './report-velocity-table-definition';
 import { useReportVelocityTableLayout } from './useReportVelocityTableLayout';
 
-export interface UseReportVelocitySpreadsheetOptions {
+interface UseReportVelocitySpreadsheetOptions {
   /** One report page, already ordered by the route; a header click re-orders it. */
   rows: readonly VelocityReportRow[];
   loading?: boolean;

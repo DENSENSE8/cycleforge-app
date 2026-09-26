@@ -13,7 +13,7 @@ import {
 import { yieldToInput, type YieldToInputDeps } from '@/lib/perf/yield-to-input';
 
 /** Fetches an NDJSON endpoint and invokes `onEvent` / `onBatch` for parsed events. */
-export interface StreamNdjsonOptions<T> {
+interface StreamNdjsonOptions<T> {
   onEvent?: (event: T) => void;
   /** Prefer this for React — one paint per budgeted window. */
   onBatch?: (events: T[]) => void;
@@ -23,7 +23,7 @@ export interface StreamNdjsonOptions<T> {
   fetch?: typeof fetch;
 }
 
-export type StreamNdjsonHandler<T> = ((event: T) => void) | StreamNdjsonOptions<T>;
+type StreamNdjsonHandler<T> = ((event: T) => void) | StreamNdjsonOptions<T>;
 
 function resolveHandler<T>(handler: StreamNdjsonHandler<T>): StreamNdjsonOptions<T> {
   return typeof handler === 'function' ? { onEvent: handler } : handler;

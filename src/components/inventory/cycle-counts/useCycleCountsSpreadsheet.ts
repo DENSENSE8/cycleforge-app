@@ -23,7 +23,7 @@ import {
 } from './cycle-counts-table-definition';
 import { useCycleCountsTableLayout } from './useCycleCountsTableLayout';
 
-export interface UseCycleCountsSpreadsheetOptions {
+interface UseCycleCountsSpreadsheetOptions {
   rows: readonly CycleCountCampaignRow[];
   loading?: boolean;
   emptyMessage?: string;

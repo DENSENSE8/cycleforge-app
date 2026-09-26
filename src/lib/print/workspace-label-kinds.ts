@@ -30,7 +30,7 @@ export type WorkspaceLabelKind =
   | 'ticket_minimal'
   | 'handling_unit';
 
-export type WorkspaceLabelEditor = 'carton' | 'unit' | 'as_listed' | null;
+type WorkspaceLabelEditor = 'carton' | 'unit' | 'as_listed' | null;
 
 /** What physical thing the sticker goes on. */
 type WorkspaceLabelGrain = 'carton' | 'item' | 'container';
@@ -65,7 +65,7 @@ export interface WorkspaceLabelContext {
   handlingUnitPayload?: HandlingUnitLabelPayload | null;
 }
 
-export interface WorkspaceLabelOption {
+interface WorkspaceLabelOption {
   kind: WorkspaceLabelKind;
   name: string;
   editor: WorkspaceLabelEditor;
@@ -207,7 +207,7 @@ export function workspaceLabelToFace(
  * Print the selected workspace label. Returns true when a print was issued.
  * Handling-unit uses its dedicated printer; others go through face SoTs.
  */
-export function printWorkspaceLabel(
+function printWorkspaceLabel(
   kind: WorkspaceLabelKind,
   ctx: WorkspaceLabelContext,
 ): boolean {

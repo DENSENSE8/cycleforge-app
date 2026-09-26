@@ -52,5 +52,5 @@ export const BoseModelUpdateBody = z
     message: 'At least one field must be provided',
   });
 
-export type BoseModelCreateInput = z.infer<typeof BoseModelCreateBody>;
-export type BoseModelUpdateInput = z.infer<typeof BoseModelUpdateBody>;
+type BoseModelCreateInput = z.infer<typeof BoseModelCreateBody>;
+type BoseModelUpdateInput = z.infer<typeof BoseModelUpdateBody>;

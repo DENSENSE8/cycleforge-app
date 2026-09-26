@@ -33,7 +33,7 @@ const REPAIR_SKU_PATTERN = '(-RS|-RS-[0-9]+)$';
 const FUZZY_MIN_QUERY_CHARS = 4;
 
 /** The SQL twin of `normalizeFavoriteSku` (`favorite-sku-key.ts`) — case-folded, separator-stripped SKU, i.e. */
-export const FAVORITE_SKU_KEY_SQL =
+const FAVORITE_SKU_KEY_SQL =
   "LOWER(REGEXP_REPLACE(COALESCE(pl.merchant_sku, ''), '[^A-Za-z0-9]+', '', 'g'))";
 
 /** Which half of the catalog to search. */

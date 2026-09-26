@@ -15,7 +15,7 @@ import { fetchWarrantyClaims, fetchWarrantyCoverage, type FetchWarrantyClaimsPar
 import { isPastWeekStart } from '@/lib/dashboard-week-range';
 import type { DeskPairFilter, DeskQueueFilter } from '@/lib/orders/desk-view-filters';
 
-export interface OrderQueryParams {
+interface OrderQueryParams {
   searchQuery?: string;
   packedBy?: number;
   testedBy?: number;
@@ -39,7 +39,7 @@ export interface OrderQueryParams {
 /** Per-week (and all-time) fetch ceiling. */
 export const SHIPPED_WEEK_PAGE_SIZE = 1000;
 
-export interface ShippedQueryParams {
+interface ShippedQueryParams {
   weekStart?: string;
   weekEnd?: string;
   packedBy?: number;

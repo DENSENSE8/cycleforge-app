@@ -7,7 +7,7 @@ export function parseSerialRows(value: string | null | undefined): string[] {
   return rows.length > 0 ? rows : [''];
 }
 
-export function patchSerialNumberInData(current: any, rowId: number, serialNumber: string): any {
+function patchSerialNumberInData(current: any, rowId: number, serialNumber: string): any {
   if (!current) return current;
 
   const patchRow = (row: any) => {

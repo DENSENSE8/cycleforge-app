@@ -19,7 +19,7 @@ export const TOAST_DURATION = {
   loading: 45_000,
 } as const;
 
-export type ToastKind = keyof typeof TOAST_DURATION;
+type ToastKind = keyof typeof TOAST_DURATION;
 
 export const TOAST_CLASSNAMES = {
   toast:

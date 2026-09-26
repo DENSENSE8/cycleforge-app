@@ -8,7 +8,7 @@ import { Button, type ButtonSize, type ButtonVariant } from '@/design-system/pri
 import { Clock } from '@/components/Icons';
 import { jsonFetch } from './sourcing-shared';
 
-export interface WatchSearchButtonProps {
+interface WatchSearchButtonProps {
   query: string;
   skuId?: number | null;
   cadence?: 'daily' | 'weekly';

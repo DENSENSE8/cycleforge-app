@@ -14,7 +14,7 @@ const EMPTY_DOMAINS: readonly RefreshDomain[] = [];
 
 type FeedId = string | number;
 
-export interface FeedWindowOptions<T> {
+interface FeedWindowOptions<T> {
   /** Keep only the most recent N rows (default 8 — fits one phone screen). 0/null = all. */
   limit?: number | null;
   /**
@@ -29,7 +29,7 @@ export interface FeedWindowOptions<T> {
   freshPulse?: boolean;
 }
 
-export interface FeedWindow<T> {
+interface FeedWindow<T> {
   /** The windowed + ordered rows ready to render. */
   rows: T[];
   /** Attach to the scroll container; drives the bottom-anchored auto-scroll. */
@@ -112,7 +112,7 @@ export function useCaptureStackWindow<T>(
   return { rows, scrollRef, freshIds };
 }
 
-export interface CaptureStackQueryOptions<T> {
+interface CaptureStackQueryOptions<T> {
   queryKey: readonly unknown[];
   queryFn: () => Promise<T[]>;
   /** ms before a cached result is considered stale (default 20s — snappy tab switches). */
@@ -135,7 +135,7 @@ export interface CaptureStackQueryOptions<T> {
   };
 }
 
-export interface CaptureStackQuery<T> {
+interface CaptureStackQuery<T> {
   data: T[];
   isLoading: boolean;
   /** Fourth settled state — consumers must paint Retry, never blank-as-empty. */

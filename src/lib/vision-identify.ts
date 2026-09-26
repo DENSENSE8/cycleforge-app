@@ -19,7 +19,7 @@ interface VisionCandidate {
 }
 
 /** A candidate enriched against sku_catalog by /api/receiving/visual-identify. */
-export interface EnrichedCandidate extends VisionCandidate {
+interface EnrichedCandidate extends VisionCandidate {
   sku_catalog_id: number | null;
   product_title: string | null;
   image_url: string | null;

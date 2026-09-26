@@ -3,7 +3,7 @@
 import type { OrgId } from '@/lib/tenancy/constants';
 import { installTemplateIntoOrg } from './install-template';
 
-export interface ApplyTemplateToOrgArgs {
+interface ApplyTemplateToOrgArgs {
   orgId: OrgId;
   staffId: number | null;
   /** Explicit template; omitted → the blessed default system template. */
@@ -14,7 +14,7 @@ export interface ApplyTemplateToOrgArgs {
   skipIfExists?: boolean;
 }
 
-export interface ApplyTemplateToOrgResult {
+interface ApplyTemplateToOrgResult {
   status: 200 | 404 | 409 | 500;
   seeded: boolean;
   definitionId: number | null;

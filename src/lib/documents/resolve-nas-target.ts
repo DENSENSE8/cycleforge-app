@@ -5,7 +5,7 @@ import { getActiveNasBaseUrl, getNasStorageTarget } from '@/lib/tenancy/settings
 import { resolveOperatorNasFolder } from '@/lib/nas-photos-server';
 import type { OrgId } from '@/lib/tenancy/constants';
 
-export interface OutboundNasTarget {
+interface OutboundNasTarget {
   /** '' = NAS not configured for this org (client should fall back to a manual URL or disable upload). */
   nasBaseUrl: string;
   nasFolder: string;

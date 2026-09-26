@@ -12,7 +12,7 @@ import { cartListLabel, parseKioskCartSnapshot, type KioskCartSnapshot } from '.
 const LIST_WINDOW = '24 hours';
 const LIST_CAP = 30;
 
-export interface KioskCartSummary {
+interface KioskCartSummary {
   id: number;
   label: string | null;
   itemCount: number;

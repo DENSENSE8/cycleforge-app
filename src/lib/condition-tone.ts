@@ -6,7 +6,7 @@ import {
 } from '@/lib/conditions';
 
 /** Visual tone per condition grade — shared by picker pills and inline badges. */
-export type ConditionGradeTone = {
+type ConditionGradeTone = {
   /** Selected pill (filled). */
   active: string;
   /** Unselected pill (outline). */
@@ -169,7 +169,7 @@ export function orderRowQtyTone(qty: number): string {
 }
 
 /** Icon classes for a {@link CopyChip} condition readout. */
-export function conditionGradeChipStyle(code: string | null | undefined): {
+function conditionGradeChipStyle(code: string | null | undefined): {
   iconClass: string;
 } {
   const tone = conditionGradeTone(code);

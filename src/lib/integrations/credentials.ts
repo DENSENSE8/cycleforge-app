@@ -103,9 +103,9 @@ export interface ShopifyCredentials {
   apiVersion?: string;
 }
 
-export interface UpsCredentials { clientId: string; clientSecret: string; webhookSecret?: string }
-export interface FedexCredentials { clientId: string; clientSecret: string; env: 'production' | 'sandbox' }
-export interface UspsCredentials { consumerKey: string; consumerSecret: string }
+interface UpsCredentials { clientId: string; clientSecret: string; webhookSecret?: string }
+interface FedexCredentials { clientId: string; clientSecret: string; env: 'production' | 'sandbox' }
+interface UspsCredentials { consumerKey: string; consumerSecret: string }
 export interface ZendeskCredentials { subdomain: string; email: string; apiToken: string }
 export interface GoogleSheetsCredentials { clientEmail: string; privateKey: string; defaultSpreadsheetId?: string }
 
@@ -121,7 +121,7 @@ export interface GoogleDriveCredentials {
   rootFolderId: string;
   scope?: string;
 }
-export interface AblyCredentials { apiKey: string }
+interface AblyCredentials { apiKey: string }
 
 /** Gmail (PO mailbox) credentials — the email_inbox capability. */
 export interface GmailCredentials {
@@ -386,7 +386,7 @@ export async function getIntegrationCredentials<T = unknown>(
   return null;
 }
 
-export interface UpsertIntegrationInput {
+interface UpsertIntegrationInput {
   orgId: OrgId;
   provider: IntegrationProvider;
   scope?: string | null;

@@ -25,7 +25,7 @@ function buildShippingNasRelativePath(opts: {
   return segments.join('/');
 }
 
-export function isDocumentNasMirrorConfigured(): boolean {
+function isDocumentNasMirrorConfigured(): boolean {
   return Boolean(process.env.NAS_AGENT_URL?.trim() && process.env.NAS_AGENT_TOKEN?.trim());
 }
 
@@ -51,7 +51,7 @@ async function putToNasShippingAgent(opts: {
 }
 
 /** Copy a GCS-primary outbound document to NAS cold storage (updates document_data). */
-export async function mirrorOutboundDocumentToNas(input: {
+async function mirrorOutboundDocumentToNas(input: {
   documentId: number;
   organizationId: OrgId;
 }): Promise<{ nasUrl: string }> {
@@ -132,7 +132,7 @@ export async function mirrorOutboundDocumentToNas(input: {
   return { nasUrl };
 }
 
-export async function selectDocumentsForNasMirror(
+async function selectDocumentsForNasMirror(
   limit: number,
   opts?: { organizationId?: string; skipAgeGate?: boolean },
 ): Promise<Array<{ documentId: number; organizationId: string }>> {

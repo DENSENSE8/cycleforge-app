@@ -3,7 +3,7 @@
 import { createContext, useContext, useMemo, type ReactNode } from 'react';
 
 /** Sidebar rail "edit mode" — the pencil-toggle multi-select flow. */
-export interface RailEditMode {
+interface RailEditMode {
   /** Provider mounted — rails surface the eyebrow pencil toggle. */
   enabled: boolean;
   /** True while the pencil toggle is on — rails render checkboxes. */

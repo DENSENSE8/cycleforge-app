@@ -25,7 +25,7 @@ export type OosComboboxLine = {
   zoho_item_id?: string | null;
 };
 
-export type OosPickerOption = {
+type OosPickerOption = {
   value: string;
   label: string;
   group?: string;
@@ -36,7 +36,7 @@ export type OosPickerOption = {
 
 const VALUE_PREFIX = 'oos';
 
-export type ParsedOosComboboxValue = {
+type ParsedOosComboboxValue = {
   orderRowId: number;
   kind: OrderShortageKind;
   zohoItemId: string | null;

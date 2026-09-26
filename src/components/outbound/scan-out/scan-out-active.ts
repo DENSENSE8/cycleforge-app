@@ -37,7 +37,7 @@ export interface ScanOutActivePane {
 
 export const SCAN_OUT_ACTIVE_EVENT = 'scan-out-active-changed';
 /** Fired after a dock confirm settles — rail prepends / invalidates. */
-export const SCAN_OUT_CONFIRMED_EVENT = 'scan-out-confirmed';
+const SCAN_OUT_CONFIRMED_EVENT = 'scan-out-confirmed';
 /** Composer procedure ring → open Displays Root Index (verify carton). */
 export const SCAN_OUT_OPEN_DISPLAYS_EVENT = 'scan-out-open-displays';
 /** Composer procedure ring toggle-off / panel close. */

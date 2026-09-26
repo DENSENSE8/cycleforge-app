@@ -9,7 +9,7 @@ import {
 } from '@/utils/date';
 import type { QueueDisplaySort } from '@/utils/queue-display-sort';
 
-export interface WeekRange {
+interface WeekRange {
   startStr: string;
   endStr: string;
 }
@@ -21,7 +21,7 @@ export type QueueRowRecord = ShippedOrder & Record<string, unknown>;
 export type OrdersQueueMode = 'fulfillment' | 'labels' | 'staged' | 'shipped';
 
 /** Sort order for the date-banded / column-sorted queue. */
-export type OrdersQueueSort = QueueDisplaySort;
+type OrdersQueueSort = QueueDisplaySort;
 
 /** Treat empty / whitespace / legacy `'1'` sentinel as missing. */
 function nonEmptyDateSource(value: unknown): string | null {
@@ -35,7 +35,7 @@ function nonEmptyDateSource(value: unknown): string | null {
  * {@link useOrdersQueueRows}. `newest` prefers created; otherwise ship-by
  * (deadline → ship_by_date → created).
  */
-export function queueRowBandDateSource(
+function queueRowBandDateSource(
   record: Pick<ShippedOrder, 'deadline_at' | 'created_at' | 'ship_by_date'>,
   sort: OrdersQueueSort,
 ): string | null {
@@ -59,14 +59,14 @@ export function queueRowBandDateSource(
  * Late-column tooltips / mobile date meta / sort band keys. Independent of
  * display sort so the derived days-late face stays a stable urgency fact.
  */
-export function queueRowShipBySource(
+function queueRowShipBySource(
   record: Pick<ShippedOrder, 'deadline_at' | 'created_at' | 'ship_by_date'>,
 ): string | null {
   return queueRowBandDateSource(record, 'deadline');
 }
 
 /** Compact ship-by Date-column presentation (warehouse civil day). */
-export function formatQueueRowDateCell(source: string | null | undefined): {
+function formatQueueRowDateCell(source: string | null | undefined): {
   key: string;
   label: string;
   tooltip: string;
@@ -82,7 +82,7 @@ export function formatQueueRowDateCell(source: string | null | undefined): {
   };
 }
 
-export interface RowStatusMeta {
+interface RowStatusMeta {
   dot: string;
   label: string;
   description: string;
@@ -117,7 +117,7 @@ export function formatSalePrice(
  * sentinel are "missing" (plan §9.3). Returns the raw string otherwise —
  * formatting stays with `formatDateTimePST` (never parse dates here).
  */
-export function nonSentinelTimestamp(value: unknown): string | null {
+function nonSentinelTimestamp(value: unknown): string | null {
   const raw = String(value ?? '').trim();
   if (!raw || raw === '1') return null;
   return raw;
@@ -128,7 +128,7 @@ export function nonSentinelTimestamp(value: unknown): string | null {
  * (`test_date_time`, shipped/packer feeds) then station activity
  * (`test_activity_at`, Pending's primary on `/api/orders`). Plan §9.3.
  */
-export function queueRowTestedAtRaw(record: QueueRowRecord): string | null {
+function queueRowTestedAtRaw(record: QueueRowRecord): string | null {
   return (
     nonSentinelTimestamp(record.test_date_time) ??
     nonSentinelTimestamp(record.test_activity_at)
@@ -140,7 +140,7 @@ export function queueRowTestedAtRaw(record: QueueRowRecord): string | null {
  * (`tested_by_name`), then assignee (`tester_name`). Staff-id fallback
  * (`getStaffName`) + `normalizePersonName` stay in the view layer (hooks).
  */
-export function queueRowTesterNameRaw(record: QueueRowRecord): string | null {
+function queueRowTesterNameRaw(record: QueueRowRecord): string | null {
   const scanActor = String(record.tested_by_name ?? '').trim();
   if (scanActor) return scanActor;
   const assignee = String(record.tester_name ?? '').trim();
@@ -149,7 +149,7 @@ export function queueRowTesterNameRaw(record: QueueRowRecord): string | null {
 }
 
 /** Clean a tester/packer name, stripping role prefixes and placeholder values. */
-export function normalizePersonName(value: unknown): string {
+function normalizePersonName(value: unknown): string {
   const text = String(value ?? '')
     .replace(/^tech:\s*/i, '')
     .replace(/^packer:\s*/i, '')
@@ -159,7 +159,7 @@ export function normalizePersonName(value: unknown): string {
 }
 
 /** Resolve the status dot/label/description for a row given the owning surface. */
-export function resolveRowStatus(record: QueueRowRecord, queueMode: OrdersQueueMode): RowStatusMeta {
+function resolveRowStatus(record: QueueRowRecord, queueMode: OrdersQueueMode): RowStatusMeta {
   if (queueMode === 'labels') {
     const meta = UNSHIPPED_STATE_META.AWAITING_LABEL;
     return { dot: meta.dot, label: meta.label, description: meta.description, pill: meta.pill };
@@ -198,7 +198,7 @@ export function resolveRowStatus(record: QueueRowRecord, queueMode: OrdersQueueM
  * the network (i.e. shipped) and should drop out of the queue. Rows with only a
  * created-label / unknown status remain visible.
  */
-export function isShippedByLatestStatus(record: ShippedOrder): boolean {
+function isShippedByLatestStatus(record: ShippedOrder): boolean {
   const category = String(record.latest_status_category ?? '').trim().toUpperCase();
   const label = String(record.latest_status_label ?? '').toUpperCase();
   const description = String(record.latest_status_description ?? '').toUpperCase();

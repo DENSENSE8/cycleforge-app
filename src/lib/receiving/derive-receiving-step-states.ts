@@ -1,8 +1,8 @@
-export type ReceivingStepKey = 'photos' | 'serial' | 'print';
+type ReceivingStepKey = 'photos' | 'serial' | 'print';
 
 export type LinearStepState = 'done' | 'active' | 'pending';
 
-export const RECEIVING_WORKFLOW_STEPS: ReadonlyArray<{
+const RECEIVING_WORKFLOW_STEPS: ReadonlyArray<{
   key: ReceivingStepKey;
   label: string;
 }> = [

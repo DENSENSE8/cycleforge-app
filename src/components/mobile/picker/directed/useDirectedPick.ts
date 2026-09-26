@@ -31,7 +31,7 @@ const ADVANCE_DELAY_MS = 450;
 export type DirectedPickMessage = { tone: 'error' | 'success' | 'info'; text: string };
 
 /** What the directed screen renders from, and every verb it can call. */
-export interface DirectedPickController {
+interface DirectedPickController {
   isLoaded: boolean;
   signedIn: boolean;
   loading: boolean;

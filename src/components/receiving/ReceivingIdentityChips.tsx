@@ -17,7 +17,7 @@ import { ChipColumns, CHIP_COL, type ChipColumn } from '@/components/ui/ChipColu
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { STATION_CONTEXT_PICKUP_CHROME_CLASS } from '@/components/station/entity-context/station-context-action-pill';
 
-export type FulfillmentPickupPillVariant = 'chip' | 'rail';
+type FulfillmentPickupPillVariant = 'chip' | 'rail';
 
 /** Non-copy pickup indicator for the tracking slot. */
 export function FulfillmentPickupPill({
@@ -61,7 +61,7 @@ export function FulfillmentPickupPill({
 }
 
 /** The slim, color-coded, last-8 chip cluster shared by the desktop receiving table row ({@link ReceivingLineOrderRow}) and the… */
-export interface ReceivingIdentityChipsProps {
+interface ReceivingIdentityChipsProps {
   po?: string | null;
   sku?: string | null;
   tracking?: string | null;

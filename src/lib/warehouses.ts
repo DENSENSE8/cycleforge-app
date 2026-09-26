@@ -25,7 +25,7 @@ const LIST_WAREHOUSES_SQL = `SELECT id, code, name, timezone, is_active, is_defa
      WHERE is_active = true
      ORDER BY is_default DESC, code ASC`;
 
-export async function listWarehouses(orgId?: OrgId): Promise<Warehouse[]> {
+async function listWarehouses(orgId?: OrgId): Promise<Warehouse[]> {
   // Tenant-aware path. `warehouses` has NO organization_id column (NEEDS-COL)
   // and no org-bearing parent, so isolation is the GUC/RLS backstop applied by
   // tenantQuery — there is no column to add an explicit predicate against.
@@ -43,13 +43,13 @@ export async function listWarehouses(orgId?: OrgId): Promise<Warehouse[]> {
   return r.rows;
 }
 
-export async function getDefaultWarehouse(orgId?: OrgId): Promise<Warehouse | null> {
+async function getDefaultWarehouse(orgId?: OrgId): Promise<Warehouse | null> {
   const all = await listWarehouses(orgId);
   return all.find((w) => w.is_default) ?? all[0] ?? null;
 }
 
 /** Resolve warehouse_id for a write. */
-export async function resolveWarehouseId(
+async function resolveWarehouseId(
   opts: {
     override?: number | null;
     staffId?: number | null;

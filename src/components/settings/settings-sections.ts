@@ -59,7 +59,7 @@ export type SettingsChromeTone =
   | 'danger'
   | 'fulfillment';
 
-export const SETTINGS_TONE_WELL: Record<SettingsChromeTone, string> = {
+const SETTINGS_TONE_WELL: Record<SettingsChromeTone, string> = {
   accent: 'bg-surface-accent text-accent-text',
   info: 'bg-fill-info/15 text-text-info',
   success: 'bg-surface-success text-text-success',
@@ -84,7 +84,7 @@ export const SETTINGS_TONE_INK: Record<SettingsChromeTone, string> = {
  */
 export const SETTINGS_FLOOR_CLASS = 'bg-surface-accent';
 
-export const SETTINGS_CATEGORY_TONE: Record<SettingsCategory, SettingsChromeTone> = {
+const SETTINGS_CATEGORY_TONE: Record<SettingsCategory, SettingsChromeTone> = {
   workspace: 'info',
   apps: 'fulfillment',
   people: 'success',

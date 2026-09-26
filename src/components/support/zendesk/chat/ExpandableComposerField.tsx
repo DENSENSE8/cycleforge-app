@@ -20,7 +20,7 @@ import { cn } from '@/utils/_cn';
 import { focusRing } from '@/design-system/tokens/focus-ring';
 
 
-export interface ExpandableComposerFieldProps {
+interface ExpandableComposerFieldProps {
   value: string;
   onChange: (next: string) => void;
   placeholder?: string;

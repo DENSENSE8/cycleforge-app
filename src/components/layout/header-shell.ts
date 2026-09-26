@@ -48,14 +48,14 @@ export const SIDEBAR_RAIL_TRAILING_TRACK_CLASS =
 /** Height-only atom — ops chrome **under** the navigation header (28px / `h-7`). */
 export const PRIMARY_CHROME_ROW_FACE = 'h-7 shrink-0';
 
-/** Navigation header height atom — GlobalHeader + MasterNav spine top band (40px / `h-10`). */
+/** Navigation header height atom — GlobalHeader (40px / `h-10`). */
 const TOP_CHROME_ROW_FACE = 'h-10 shrink-0';
 
 /** Pixel twin of the nav header height (assistant dock / detail-stack offset). */
 export const TOP_CHROME_ROW_PX = 40;
 
 /** Identity / mode-pill row — aligns sidebar mode slider with workspace PaneHeader. */
-export const receivingIdentityBandClass = `flex ${PRIMARY_CHROME_ROW_FACE} items-center ${appChromeClass} px-3 ${receivingHeaderHairlineClass}`;
+const receivingIdentityBandClass = `flex ${PRIMARY_CHROME_ROW_FACE} items-center ${appChromeClass} px-3 ${receivingHeaderHairlineClass}`;
 
 /**
  * Scan band — same grid height as other header bands, **full-bleed**
@@ -77,7 +77,7 @@ export const sidebarNavOverlayBandClass = cn(
   PRIMARY_CHROME_ROW_FACE,
   SIDEBAR_GUTTER,
 );
-export const sidebarHeaderControlClass =`h-full min-h-[44px] w-full appearance-none ${appChromeClass} px-3 py-1 pr-8 text-left text-role-micro uppercase tracking-wider text-text-muted outline-none transition-colors hover:bg-surface-hover`;
+const sidebarHeaderControlClass =`h-full min-h-[44px] w-full appearance-none ${appChromeClass} px-3 py-1 pr-8 text-left text-role-micro uppercase tracking-wider text-text-muted outline-none transition-colors hover:bg-surface-hover`;
 
 export const mainStickyHeaderClass = `shrink-0 sticky top-0 z-header border-b border-border-hairline ${appChromeMutedClass} backdrop-blur-sm`;
 export const mainStickyHeaderRowClass = 'flex min-h-[44px] items-center justify-between gap-4 px-4 py-1';
@@ -93,18 +93,11 @@ export const appContentShellClass = cn(
   appWashClass,
 );
 
-/** Shared hit-box for GlobalHeader icon actions (sidebar, goal ring, WO, right rail). */
+/** Shared hit-box for GlobalHeader icon actions (find, goal ring, pins, inbox, account). */
 export const HEADER_ICON_WRAP = 'relative flex h-full min-h-0 w-8 shrink-0 items-center justify-center';
 
-/**
- * Equal-fill hit-box formerly used by the MasterNav spine top pin band.
- * Kept for Displays parked-rail commentary; no live spine consumer.
- */
-export const SPINE_TOP_PIN_WRAP =
-  'relative flex h-full min-h-0 min-w-0 flex-1 items-stretch justify-center';
-
-/** Desktop navigation-header face — GlobalHeader and the MasterNav spine top band must share this box model so the 40px band is one height… */
-export const TOP_CHROME_BAND_FACE = TOP_CHROME_ROW_FACE;
+/** Desktop navigation-header face — every 40px top-chrome band shares this box model. */
+const TOP_CHROME_BAND_FACE = TOP_CHROME_ROW_FACE;
 
 /** Flex row face for GlobalHeader (and any centered nav top-chrome band). */
 export const TOP_CHROME_BAND_CLASS = `flex items-stretch ${TOP_CHROME_BAND_FACE}`;

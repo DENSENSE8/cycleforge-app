@@ -20,7 +20,7 @@ export interface ExportField {
 }
 
 /** What a surface hands the export control. */
-export interface TableExportSpec<Row> {
+interface TableExportSpec<Row> {
   /** Every field this table can write, in export order. */
   fields: readonly ExportField[];
   /**

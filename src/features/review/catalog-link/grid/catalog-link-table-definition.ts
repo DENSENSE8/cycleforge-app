@@ -14,7 +14,7 @@ import {
   type CatalogLinkGridColumn,
 } from './catalog-link-grid-layout';
 
-export const CATALOG_LINK_TABLE_DEFINITION = parseTableDefinition({
+const CATALOG_LINK_TABLE_DEFINITION = parseTableDefinition({
   id: 'review.catalog-link',
   tableId: 'catalog-link',
   entityFamily: 'catalog-link',

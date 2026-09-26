@@ -5,7 +5,7 @@ import { tenantQuery } from '@/lib/tenancy/db';
 import { LABEL_PURPOSES, type LabelCreationType, type LabelPurpose } from '@/lib/shipping/label-purpose';
 
 /** One v1 line item as the connector persists it (`shipstation_order_refs.line_items`). */
-export interface PriceLineInput {
+interface PriceLineInput {
   sku?: string | null;
   name?: string | null;
   quantity?: number | null;
@@ -299,7 +299,7 @@ const LABEL_MONEY_SQL = `
      AND lp.status IN ('purchased', 'voided')
    ORDER BY lp.created_at ASC, lp.id ASC`;
 
-export const defaultOrderPriceBreakdownDeps: OrderPriceBreakdownDeps = {
+const defaultOrderPriceBreakdownDeps: OrderPriceBreakdownDeps = {
   readOrder: async (orgId, orderId) => {
     const res = await tenantQuery<OrderMoneyRow>(orgId, ORDER_MONEY_SQL, [orderId, orgId]);
     return res.rows[0] ?? null;

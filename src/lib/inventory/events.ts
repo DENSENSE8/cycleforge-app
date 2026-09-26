@@ -181,7 +181,7 @@ export async function recordInventoryEvent(
 
 // ── Reads ──────────────────────────────────────────────────────────────────
 
-export interface TimelineFilter {
+interface TimelineFilter {
   receiving_id?: number | null;
   receiving_line_id?: number | null;
   serial_unit_id?: number | null;

@@ -2,7 +2,7 @@
 
 import { snapMinutes, tierForMinutes } from '@/lib/packing/pack-standard-stops';
 
-export type PackProfileSaveResult = {
+type PackProfileSaveResult = {
   ok: boolean;
   status: number;
   /** Operator-readable reason; already mapped for the 403 case by callers. */

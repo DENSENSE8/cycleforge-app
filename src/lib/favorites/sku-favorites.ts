@@ -34,7 +34,7 @@ export interface FavoriteSkuRecord {
   updatedAt: string;
 }
 
-export interface CreateFavoriteSkuInput {
+interface CreateFavoriteSkuInput {
   workspaceKey: FavoriteWorkspaceKey;
   ecwidProductId?: string | null;
   sku: string;
@@ -48,7 +48,7 @@ export interface CreateFavoriteSkuInput {
   staffId?: number | null;
 }
 
-export interface UpdateFavoriteSkuInput {
+interface UpdateFavoriteSkuInput {
   id: number;
   workspaceKey: FavoriteWorkspaceKey;
   ecwidProductId?: string | null;
@@ -475,7 +475,7 @@ export async function listFavoriteSkuKeys(
   return result.rows.map((row) => String(row.sku_normalized || '')).filter(Boolean);
 }
 
-export interface SetFavoriteMembershipInput {
+interface SetFavoriteMembershipInput {
   workspaceKey: FavoriteWorkspaceKey;
   /** Catalog SKU the operator starred — the identity, not a favorites row id. */
   sku: string;

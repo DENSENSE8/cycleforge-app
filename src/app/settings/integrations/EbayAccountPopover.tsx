@@ -119,7 +119,7 @@ interface EbayAccountDetailPopoverProps {
 }
 
 /** Popover showing linked eBay account identity and quick actions. */
-export function EbayAccountDetailPopover({
+function EbayAccountDetailPopover({
   account,
   open,
   onClose,

@@ -220,7 +220,7 @@ export function resolveRowWorkflowStage(record: QueueRowRecord): OrderLifecycleS
  * the network (i.e. shipped) and should drop out of the queue. Rows with only a
  * created-label / unknown status remain visible.
  */
-export function isShippedByLatestStatus(record: ShippedOrder): boolean {
+function isShippedByLatestStatus(record: ShippedOrder): boolean {
   const category = String(record.latest_status_category ?? '').trim().toUpperCase();
   const label = String(record.latest_status_label ?? '').toUpperCase();
   const description = String(record.latest_status_description ?? '').toUpperCase();

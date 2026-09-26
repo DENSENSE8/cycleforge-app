@@ -25,7 +25,7 @@ interface UseReceivingRowSelectionArgs {
   orderedVisibleRows: ReceivingLineRow[];
 }
 
-export interface ReceivingRowSelection {
+interface ReceivingRowSelection {
   selectedId: number | null;
   setSelectedId: React.Dispatch<React.SetStateAction<number | null>>;
   selectedIds: Set<number>;

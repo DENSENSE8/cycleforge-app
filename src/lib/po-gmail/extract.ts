@@ -48,7 +48,7 @@ function isPlausible(candidate: string): boolean {
   return true;
 }
 
-export interface ExtractedOrderNumbers {
+interface ExtractedOrderNumbers {
   /** Candidates with surrounding label ("PO #", "Order Number:", etc). */
   labeled: string[];
   /** Candidates from bare-pattern fallback. Empty if labeled matched. */

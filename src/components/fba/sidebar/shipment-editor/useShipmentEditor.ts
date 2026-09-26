@@ -588,4 +588,4 @@ export function useShipmentEditor({
   };
 }
 
-export type ShipmentEditorController = ReturnType<typeof useShipmentEditor>;
+type ShipmentEditorController = ReturnType<typeof useShipmentEditor>;

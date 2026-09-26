@@ -23,7 +23,7 @@ import {
 } from './search-hits-table-definition';
 import { useSearchHitsTableLayout } from './useSearchHitsTableLayout';
 
-export interface UseSearchHitsSpreadsheetOptions {
+interface UseSearchHitsSpreadsheetOptions {
   /** The refined, ranked hit list. A header click re-orders it. */
   hits: readonly AiSearchHit[];
   loading?: boolean;

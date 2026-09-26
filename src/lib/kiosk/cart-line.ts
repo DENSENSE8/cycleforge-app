@@ -13,7 +13,7 @@ export interface LinePriceAdjustment extends CounterPriceAdjustment {
 }
 
 /** Square's per-line verbs every money line shares. */
-export interface LineExtras {
+interface LineExtras {
   priceAdjustment?: LinePriceAdjustment | null;
 }
 

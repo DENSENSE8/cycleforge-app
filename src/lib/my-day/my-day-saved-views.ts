@@ -8,7 +8,7 @@ import {
 export const MY_DAY_SAVED_VIEWS_KEY = 'home_today_saved_views';
 
 /** The params that DEFINE a Today view: */
-export const MY_DAY_VIEW_PARAMS = [
+const MY_DAY_VIEW_PARAMS = [
   'scope',
   'q',
   GRID_COLUMN_SORT_PARAM,

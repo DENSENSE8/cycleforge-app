@@ -17,7 +17,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { cornerClass } from '@/design-system/tokens/radius';
 import { cn } from '@/utils/_cn';
 
-export interface IntakeComboboxOption {
+interface IntakeComboboxOption {
   value: string;
   label: string;
   group?: string;

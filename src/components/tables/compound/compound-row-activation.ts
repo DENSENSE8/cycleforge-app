@@ -10,17 +10,17 @@ const INTERACTIVE_SELECTOR =
  * Takes the raw target so the caller does not have to know about `Element` vs
  * `EventTarget`, and so this stays a pure predicate a unit test can drive.
  */
-export function isCompoundRowActivationTarget(target: EventTarget | null): boolean {
+function isCompoundRowActivationTarget(target: EventTarget | null): boolean {
   if (!(target instanceof Element)) return false;
   return target.closest(INTERACTIVE_SELECTOR) === null;
 }
 
 /** The keys that activate a focused row — the platform's two activation keys. */
-export function isCompoundRowActivationKey(key: string): boolean {
+function isCompoundRowActivationKey(key: string): boolean {
   return key === 'Enter' || key === ' ' || key === 'Spacebar';
 }
 
-export interface CompoundRowActivation {
+interface CompoundRowActivation {
   onClick?: (event: { target: EventTarget | null }) => void;
   onDoubleClick?: (event: { target: EventTarget | null }) => void;
   onKeyDown?: (event: {

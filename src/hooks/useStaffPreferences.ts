@@ -10,7 +10,7 @@ export const STAFF_PREFERENCES_QUERY_KEY = ['staff-preferences'] as const;
 const QUERY_KEY = STAFF_PREFERENCES_QUERY_KEY;
 
 /** Side-car for the sibling field on the SAME `/api/staff-preferences` response that {@link STAFF_PREFERENCES_QUERY_KEY} throws away. */
-export const UNBOX_DEFAULT_PINS_QUERY_KEY = ['staff-preferences', 'unbox-default-pins'] as const;
+const UNBOX_DEFAULT_PINS_QUERY_KEY = ['staff-preferences', 'unbox-default-pins'] as const;
 
 /** Apply only the keys present in `patch`, reading confirmed values from the server `prefs` response. */
 function mergePatchedPrefs(

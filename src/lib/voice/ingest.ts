@@ -8,7 +8,7 @@ import { matchCustomer as defaultMatchCustomer } from './match-customer';
 
 const PROVIDER = 'nextiva';
 
-export interface IngestDeps {
+interface IngestDeps {
   matchCustomer: (args: { orgId: OrgId; e164: string | null; rawNumber?: string | null }) => Promise<MatchedCustomer | null>;
 }
 
@@ -42,7 +42,7 @@ export interface IncomingVoicemail {
   clientEventId?: string | null;
 }
 
-export interface IngestResult {
+interface IngestResult {
   id: number;
   /** true when this upsert inserted a new row (vs. updated an existing one). */
   created: boolean;

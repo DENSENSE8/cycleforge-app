@@ -8,7 +8,7 @@ import { ChevronLeft } from '@/components/Icons';
 import { SETTINGS_FLOOR_CLASS } from '@/components/settings/settings-sections';
 import { cn } from '@/utils/_cn';
 
-export const SETTINGS_HUB_HREF = '/settings';
+const SETTINGS_HUB_HREF = '/settings';
 
 export function SettingsSectionHeader({
   title,

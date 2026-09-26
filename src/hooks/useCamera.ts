@@ -1,14 +1,14 @@
 import { useRef, useCallback, useState } from 'react';
 
-export interface CameraConfig {
+interface CameraConfig {
     facingMode?: 'user' | 'environment';
     width?: { ideal: number };
     height?: { ideal: number };
 }
 
-export type CameraError = 'permission-denied' | 'not-found' | 'unknown';
+type CameraError = 'permission-denied' | 'not-found' | 'unknown';
 
-export interface CameraHook {
+interface CameraHook {
     videoRef: React.RefObject<HTMLVideoElement>;
     startCamera: (config?: CameraConfig) => Promise<void>;
     stopCamera: () => void;
@@ -23,7 +23,7 @@ export interface CameraHook {
  * Safari requires getUserMedia to be called from a user gesture.
  * Call this from a button onClick handler to trigger the permission prompt.
  */
-export async function requestCameraPermission(): Promise<'granted' | 'denied' | 'unavailable'> {
+async function requestCameraPermission(): Promise<'granted' | 'denied' | 'unavailable'> {
     if (!navigator.mediaDevices?.getUserMedia) return 'unavailable';
     try {
         const stream = await navigator.mediaDevices.getUserMedia({ video: true });

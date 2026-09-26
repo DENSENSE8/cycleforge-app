@@ -97,7 +97,7 @@ export interface DailyAgendaRow {
 }
 
 /** The checklist facts this module reads, declared STRUCTURALLY. */
-export interface ChecklistAgendaSource {
+interface ChecklistAgendaSource {
   id: number;
   title: string;
   sortOrder: number;

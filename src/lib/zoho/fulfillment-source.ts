@@ -46,7 +46,7 @@ export interface ShippedFulfillmentOrder {
   sourceHash: string;
 }
 
-export interface FindShippedOrdersOptions {
+interface FindShippedOrdersOptions {
   /** Only orders changed at/after this time (delta sync). Omit for a full scan. */
   since?: Date | null;
   /** Max orders to return. */

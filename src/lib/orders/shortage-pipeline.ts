@@ -5,9 +5,9 @@
  * Callers: ordersItemStatus / ordersGroupItemStatus. No API. No schema writes.
  */
 
-export type ShortagePipelineStage = 'open' | 'ordered' | 'inbound' | 'received' | 'allocated';
+type ShortagePipelineStage = 'open' | 'ordered' | 'inbound' | 'received' | 'allocated';
 
-export type ShortagePipelineView = {
+type ShortagePipelineView = {
   stage: ShortagePipelineStage;
   label: string;
   poNumber: string | null;
@@ -16,7 +16,7 @@ export type ShortagePipelineView = {
   qtyAllocated: number;
 };
 
-export type ShortagePipelineInput = {
+type ShortagePipelineInput = {
   isOutOfStock?: boolean | null;
   replenishmentStatus?: string | null;
   poNumber?: string | null;

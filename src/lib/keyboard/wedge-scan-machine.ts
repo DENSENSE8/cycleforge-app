@@ -20,12 +20,12 @@ export interface WedgeKeyInput {
   editable: boolean;
 }
 
-export interface WedgeScanOpts {
+interface WedgeScanOpts {
   maxInterKeyMs: number;
   minLength: number;
 }
 
-export type WedgeScanStep =
+type WedgeScanStep =
   | { state: WedgeScanState; kind: 'ignore' }
   | { state: WedgeScanState; kind: 'reset' }
   | { state: WedgeScanState; kind: 'append' }

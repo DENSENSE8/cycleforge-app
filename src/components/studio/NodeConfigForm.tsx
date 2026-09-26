@@ -19,12 +19,12 @@ interface SchemaField {
 }
 
 /** The configSchema shape we render: an object schema with named properties. */
-export interface NodeConfigSchema {
+interface NodeConfigSchema {
   type?: unknown;
   properties?: Record<string, SchemaField> | unknown;
 }
 
-export interface NodeConfigOption {
+interface NodeConfigOption {
   value: string;
   label: string;
 }

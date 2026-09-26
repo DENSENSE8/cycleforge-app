@@ -938,7 +938,7 @@ type ReceivingLinesFetchPhase = 'full' | 'spine';
 const SPINE_PAINT_LIMIT = 150;
 
 /** Bound the lines fetch so a slow/hung `/api/receiving-lines` can never pin the skeleton forever (the `/incoming` "feels broken" symptom). */
-export const RECEIVING_LINES_FETCH_TIMEOUT_MS = 15_000;
+const RECEIVING_LINES_FETCH_TIMEOUT_MS = 15_000;
 
 /** The ONE query-options builder for the receiving/unbox lines table. */
 export function receivingLinesTableQuery(

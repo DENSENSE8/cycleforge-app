@@ -2,16 +2,16 @@
 import type { BackfillPolicy } from '@/lib/orders/order-row-backfill';
 
 /** The account_source the pre-attribution ShipStation connector wrote. */
-export const AGGREGATOR_ACCOUNT_SOURCE = 'shipstation';
+const AGGREGATOR_ACCOUNT_SOURCE = 'shipstation';
 
 /** Compared trimmed + case-insensitively. */
 export function isAggregatorSource(source: string | null | undefined): boolean {
   return String(source ?? '').trim().toLowerCase() === AGGREGATOR_ACCOUNT_SOURCE;
 }
 
-export type OrderRowMatchKind = 'same' | 'adopt' | 'claim' | 'ambiguous' | 'none';
+type OrderRowMatchKind = 'same' | 'adopt' | 'claim' | 'ambiguous' | 'none';
 
-export interface OrderRowMatch<R> {
+interface OrderRowMatch<R> {
   kind: OrderRowMatchKind;
   /** The rows the incoming order resolves to (empty for `ambiguous` / `none`). */
   rows: R[];

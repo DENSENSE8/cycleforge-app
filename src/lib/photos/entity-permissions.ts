@@ -3,7 +3,7 @@ import type { PermissionString } from '@/lib/auth/permissions-shared';
 import { PHOTO_ENTITY_TYPES, type PhotoEntityType } from './types';
 
 /** Upload/delete permission for each photo entity type. */
-export const UPLOAD_PERM_BY_ENTITY: Record<PhotoEntityType, PermissionString> = {
+const UPLOAD_PERM_BY_ENTITY: Record<PhotoEntityType, PermissionString> = {
   RECEIVING: 'receiving.upload_photo',
   RECEIVING_LINE: 'receiving.upload_photo',
   PACKER_LOG: 'packing.complete_order',

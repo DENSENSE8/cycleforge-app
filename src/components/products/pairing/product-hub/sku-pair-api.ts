@@ -3,7 +3,7 @@
  * the standalone form) post a single inline-create accept entry to the same
  * atomic + audited path the Save button uses, then broadcast `sku-pairing-updated`.
  */
-export interface ManualPairEntry {
+interface ManualPairEntry {
   platform: string;
   platformItemId?: string | null;
   platformSku?: string | null;

@@ -28,7 +28,7 @@ export const REPORT_STAFF_DAY_GRID_CAPABILITIES: GridSurfaceCapabilities = {
   dayBands: false,
 };
 
-export function makeReportStaffDayGridDescriptor(
+function makeReportStaffDayGridDescriptor(
   columns: readonly ReportStaffDayGridColumn[],
 ): GridSurfaceDescriptor<StaffDayReportRow, ReportStaffDayGridColumn> {
   return makeGridSurfaceDescriptor<StaffDayReportRow, ReportStaffDayGridColumn>(
@@ -43,7 +43,7 @@ export function makeReportStaffDayGridDescriptor(
   );
 }
 
-export const REPORT_STAFF_DAY_TABLE_DEFINITION = parseTableDefinition({
+const REPORT_STAFF_DAY_TABLE_DEFINITION = parseTableDefinition({
   id: 'reports.staff-day',
   tableId: 'report-staff-day',
   entityFamily: 'report-staff-day',

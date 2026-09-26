@@ -58,4 +58,4 @@ export const RepairBenchSessionBody = z.object({
   repairId: z.coerce.number().int().positive(),
   action: z.enum(['start', 'stop']),
 });
-export type RepairBenchSessionInput = z.infer<typeof RepairBenchSessionBody>;
+type RepairBenchSessionInput = z.infer<typeof RepairBenchSessionBody>;

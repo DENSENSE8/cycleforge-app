@@ -36,7 +36,7 @@ const ROW = cn(
 );
 
 /** One piece of task media on one timeline (oldest first): */
-export type TaskMediaItem =
+type TaskMediaItem =
   | { kind: 'photo'; photo: TaskMediaPhoto }
   | { kind: 'video'; video: TaskMediaVideo }
   | { kind: 'link'; link: TaskMediaLink };

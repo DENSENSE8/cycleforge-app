@@ -131,7 +131,7 @@ function useSectionCollapsed(
 
 /* ── Root ────────────────────────────────────────────────────────────────── */
 
-export interface VerticalSplitStackProps {
+interface VerticalSplitStackProps {
   children: ReactNode;
   className?: string;
   /** localStorage namespace for split ratio + per-section collapse. */
@@ -141,7 +141,7 @@ export interface VerticalSplitStackProps {
   defaultRatio?: number;
 }
 
-export function VerticalSplitStack({
+function VerticalSplitStack({
   children,
   className,
   persistKey,
@@ -316,7 +316,7 @@ VerticalSplitStackDivider.displayName = DIVIDER_DISPLAY;
 
 /* ── Section ───────────────────────────────────────────────────────────── */
 
-export interface VerticalSplitStackSectionProps {
+interface VerticalSplitStackSectionProps {
   id?: string;
   title?: ReactNode;
   badge?: ReactNode;

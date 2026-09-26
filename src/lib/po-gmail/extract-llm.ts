@@ -130,14 +130,14 @@ export interface LlmFieldResult {
 }
 
 /** Triage piles the model is allowed to suggest (omits the terminal `done`). */
-export type LlmTriagePile = 'upload' | 'ignore' | 'inbox';
+type LlmTriagePile = 'upload' | 'ignore' | 'inbox';
 
-export interface LlmPileResult {
+interface LlmPileResult {
   value: LlmTriagePile;
   confidence: 'high' | 'medium' | 'low';
 }
 
-export interface LlmExtractedFields {
+interface LlmExtractedFields {
   vendor?: LlmFieldResult;
   po_date?: LlmFieldResult;
   total?: LlmFieldResult;
@@ -148,7 +148,7 @@ export interface LlmExtractedFields {
   triage_pile?: LlmPileResult;
 }
 
-export interface ExtractWithLlmInput {
+interface ExtractWithLlmInput {
   subject: string;
   from: string;
   bodyText: string;
@@ -156,7 +156,7 @@ export interface ExtractWithLlmInput {
   knownPoNumbers?: string[];
 }
 
-export interface ExtractWithLlmResult {
+interface ExtractWithLlmResult {
   fields: LlmExtractedFields;
   /** Model id reported by the Hermes runtime (or the env default if omitted). */
   model: string;

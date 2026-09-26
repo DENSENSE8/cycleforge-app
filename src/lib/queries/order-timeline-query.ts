@@ -58,7 +58,7 @@ export interface OrderTimelinePayload {
 }
 
 /** The one key. `OrderDocumentsSection` invalidates this exact shape. */
-export function orderTimelineQueryKey(orderId: number) {
+function orderTimelineQueryKey(orderId: number) {
   return ['order-timeline', orderId] as const;
 }
 
@@ -66,7 +66,7 @@ export function orderTimelineQueryKey(orderId: number) {
  * The one fetcher. Parses the FULL route payload — never a subset, however
  * little the calling surface needs. Narrow with `select`, not here.
  */
-export async function fetchOrderTimeline(orderId: number): Promise<OrderTimelinePayload> {
+async function fetchOrderTimeline(orderId: number): Promise<OrderTimelinePayload> {
   const res = await fetch(`/api/orders/${orderId}/timeline`);
   if (!res.ok) throw new Error('Failed to fetch order timeline');
   const json = await res.json();

@@ -19,7 +19,7 @@ export function selectNextTarget(
 }
 
 /** A single (sourceNode, sourcePort) that more than one edge fans out from. */
-export interface PortFanOut {
+interface PortFanOut {
   sourceNode: string;
   sourcePort: string;
   /** The target nodes the port fans to, in edge order (the first one wins at runtime). */

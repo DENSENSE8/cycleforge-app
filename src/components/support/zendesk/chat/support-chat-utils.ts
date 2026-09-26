@@ -16,7 +16,7 @@ export function requesterLabel(ticket: ZendeskTicket): string {
   return r.name || r.email || 'Requester';
 }
 
-export function initials(name: string): string {
+function initials(name: string): string {
   return (
     name
       .split(/\s+/)
@@ -27,7 +27,7 @@ export function initials(name: string): string {
   );
 }
 
-export interface ResolvedAuthor {
+interface ResolvedAuthor {
   /** Best display name (staff name, agent/user name, or the requester label). */
   name: string;
   /** The author's email when known (from the agent/user roster) — never an id. */

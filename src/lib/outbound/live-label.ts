@@ -15,12 +15,12 @@ export interface LiveOrderLabel {
 }
 
 /** `document_data.source` of a label bought by hand on a marketplace and uploaded. */
-export const MARKETPLACE_MANUAL_LABEL_SOURCE = 'marketplace_manual';
+const MARKETPLACE_MANUAL_LABEL_SOURCE = 'marketplace_manual';
 /** `document_data.source` of a label bought through ShipStation v2. */
-export const SHIPSTATION_LABEL_SOURCE = 'shipstation_api';
+const SHIPSTATION_LABEL_SOURCE = 'shipstation_api';
 
 /** Ids of every document attached to an order: */
-export function orderDocumentIdsSql(orderIdExpr: string, orgIdExpr: string): string {
+function orderDocumentIdsSql(orderIdExpr: string, orgIdExpr: string): string {
   return `SELECT de.id FROM documents de
              WHERE de.entity_type IN ('ORDER', 'SHIPPING_LABEL') AND de.entity_id = ${orderIdExpr}
            UNION ALL
@@ -122,7 +122,7 @@ export async function readLiveOrderLabel(
 }
 
 /** The `label` payload of a `409 LABEL_EXISTS` response. */
-export function liveLabelConflictBody(label: LiveOrderLabel) {
+function liveLabelConflictBody(label: LiveOrderLabel) {
   return {
     error: 'LABEL_EXISTS' as const,
     label: {

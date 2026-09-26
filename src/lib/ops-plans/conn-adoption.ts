@@ -69,7 +69,7 @@ export function listConnectionsAdoptionTemplateEventIds(): string[] {
   return ids;
 }
 
-export interface ConnAdoptUpsertArgs {
+interface ConnAdoptUpsertArgs {
   /** Product ticket ids that just became deployed (e.g. CONN-loc-current). */
   deployedConnTicketIds: string[];
   /** Non-forge org to upsert into. */

@@ -7,7 +7,7 @@ import { getEnabledAdapters } from './adapters';
 
 /** Secondary-market sourcing orchestration (the "scour"). */
 
-export interface SearchSecondaryMarketParams {
+interface SearchSecondaryMarketParams {
   query?: string | null;
   modelNumber?: string | null;
   partRole?: string | null;
@@ -24,7 +24,7 @@ export interface SearchSecondaryMarketParams {
   sources?: CandidateSource[];
 }
 
-export interface SearchSecondaryMarketResult {
+interface SearchSecondaryMarketResult {
   query: string;
   results: NormalizedCandidate[];
   total: number;

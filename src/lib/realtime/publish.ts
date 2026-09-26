@@ -159,14 +159,14 @@ async function publishEvent(channel: string, name: string, data: Record<string, 
   }
 }
 
-export async function publishDashboardUpdate(payload: DashboardUpdatePayload) {
+async function publishDashboardUpdate(payload: DashboardUpdatePayload) {
   await publishEvent(getDashboardChannelName(payload.organizationId), payload.type, {
     ...payload,
     timestamp: formatPSTTimestamp(),
   });
 }
 
-export type OpsPlanUpdatedPayload = {
+type OpsPlanUpdatedPayload = {
   organizationId: string;
   planId: string;
   taskId?: string;
@@ -181,7 +181,7 @@ export async function publishOpsPlanUpdated(payload: OpsPlanUpdatedPayload) {
   });
 }
 
-export type ForgeRunChangedPayload = {
+type ForgeRunChangedPayload = {
   organizationId: string;
   runUid: string;
   stage?: string | null;
@@ -196,7 +196,7 @@ export async function publishForgeRunChanged(payload: ForgeRunChangedPayload) {
   });
 }
 
-export type IssueResolvedPayload = {
+type IssueResolvedPayload = {
   organizationId: string;
   /** The reporter — the toast lands ONLY on their per-staff inbox channel. */
   staffId: number;
@@ -216,7 +216,7 @@ export async function publishIssueResolved(payload: IssueResolvedPayload) {
   });
 }
 
-export type VoiceEventPayload = {
+type VoiceEventPayload = {
   organizationId: string;
   /** What changed, so the client knows which query keys to invalidate. */
   kind: 'call' | 'voicemail';
@@ -392,7 +392,7 @@ export async function publishOrderChanged(payload: OrderChangedPayload) {
   });
 }
 
-export type OrderAssignmentsBroadcastPayload = {
+type OrderAssignmentsBroadcastPayload = {
   organizationId: string;
   orderId: number;
   testerId: number | null;
@@ -403,7 +403,7 @@ export type OrderAssignmentsBroadcastPayload = {
   source: string;
 };
 
-export type QueueAssignmentsBroadcastPayload = {
+type QueueAssignmentsBroadcastPayload = {
   organizationId: string;
   entityType: string;
   entityId: number;
@@ -474,7 +474,7 @@ export async function publishRepairChanged(payload: RepairChangedPayload) {
   });
 }
 
-export type PriorityUnboxPayload = {
+type PriorityUnboxPayload = {
   organizationId: string;
   staffId: number;
   trackingNumber: string;
@@ -505,7 +505,7 @@ export async function publishPriorityUnbox(payload: PriorityUnboxPayload) {
   });
 }
 
-export type WatchedArrivalPayload = {
+type WatchedArrivalPayload = {
   organizationId: string;
   /** The operator who scanned it — this alert is only ever for them. */
   staffId: number;
@@ -530,7 +530,7 @@ export async function publishWatchedArrival(payload: WatchedArrivalPayload) {
   });
 }
 
-export type StaffMessagePayload = {
+type StaffMessagePayload = {
   organizationId: string;
   /** Recipient inbox channel (inbox:{recipientId}). */
   recipientId: number;
@@ -603,7 +603,7 @@ export async function publishInboxItem(payload: InboxItemPayload) {
   });
 }
 
-export type WarrantyClaimNotificationPayload = {
+type WarrantyClaimNotificationPayload = {
   organizationId: string;
   /** Recipient staff inbox channels to push to. */
   staffIds: number[];
@@ -684,7 +684,7 @@ export async function publishOrderReadyShip(payload: TechInboxPayload) {
   await publishTechInbox('order_ready_ship', payload);
 }
 
-export async function publishAiAssistantMessage(payload: AiAssistantPayload) {
+async function publishAiAssistantMessage(payload: AiAssistantPayload) {
   const channel = payload.channel || getAiAssistSessionChannelName(payload.organizationId, payload.sessionId);
   await publishEvent(channel, 'ai.assistant.reply', {
     type: 'ai.assistant.reply',
@@ -751,7 +751,7 @@ export async function publishPackerLogChanged(payload: PackerLogChangedPayload) 
 
 // ─── Packer mobile hand-off ─────────────────────────────────────────────── Fired when a desktop scan creates a fresh packer_log row.
 
-export interface PackerScanReadyPayload {
+interface PackerScanReadyPayload {
   organizationId: string;
   staffId: number;
   packerLogId: number | null;
@@ -796,7 +796,7 @@ export async function publishPackerScanReady(payload: PackerScanReadyPayload) {
 
 // ─── Phone → desktop scan-history feed ──────────────────────────────────── Fired when a phone scans a receiving Data Matrix label…
 
-export interface ScanLoggedPayload {
+interface ScanLoggedPayload {
   organizationId: string;
   staffId: number;
   rawValue: string;
@@ -1027,7 +1027,7 @@ export async function publishActivityLogged(payload: ActivityLoggedPayload) {
 
 // ─── Stock Ledger Event Helper ───────────────────────────────────────────────
 
-export type StockLedgerEventInput = {
+type StockLedgerEventInput = {
   organizationId: string;
   /** Row id from sku_stock_ledger (positive int). Negated on the wire so feed ids never collide with station_activity_logs ids. */
   ledgerId: number;
@@ -1074,7 +1074,7 @@ export async function publishStockLedgerEvent(input: StockLedgerEventInput) {
 
 // ── SKU exceptions (provisional / on-hold placeholder products) ─────────────
 
-export type SkuExceptionChangedAction = 'created' | 'updated' | 'photo' | 'merged';
+type SkuExceptionChangedAction = 'created' | 'updated' | 'photo' | 'merged';
 
 /** A placeholder product changed outside the stock ledger: */
 export async function publishSkuExceptionChanged(payload: {
@@ -1119,7 +1119,7 @@ export async function publishQrAuthorized(tokenHash: string, staffName: string |
 }
 
 /** A station asked for remote step-up approval. */
-export async function publishStepUpRequested(
+async function publishStepUpRequested(
   organizationId: string,
   request: { id: number; scope: string; requesterName: string },
 ) {

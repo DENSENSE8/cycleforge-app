@@ -7,9 +7,9 @@ import * as Yjs from 'yjs';
 /** Origin tag for doc transactions that came FROM the file plane. */
 export const FILE_ORIGIN = 'master-plan:file';
 /** Origin tag for the startup seed transaction. */
-export const SEED_ORIGIN = SEED_APPLY_ORIGIN;
+const SEED_ORIGIN = SEED_APPLY_ORIGIN;
 
-export interface FileSyncDeps {
+interface FileSyncDeps {
   /** Atomic write (temp + rename). The shell implements it; tests capture. */
   writeFile: (text: string) => Promise<void>;
   /** Debounced-callback scheduler; tests run it synchronously. */
@@ -17,7 +17,7 @@ export interface FileSyncDeps {
   log: (msg: string) => void;
 }
 
-export interface FileSyncOptions {
+interface FileSyncOptions {
   /** Downstream write debounce (ms). */
   writeDebounceMs?: number;
 }

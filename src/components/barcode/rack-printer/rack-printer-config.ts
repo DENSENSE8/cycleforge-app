@@ -27,7 +27,7 @@ export const STEPS: { id: Step; label: string }[] = [
 /** Configs written before 2026-08-02 also contain a `gln` — often `0614141000005`, GS1's documentation GLN, which used to be this printer's… */
 
 /** Clamp a count to a sane integer in [1, 99], falling back when invalid. */
-export function clampMax(v: unknown, fallback: number): number {
+function clampMax(v: unknown, fallback: number): number {
   const n = typeof v === 'number' ? v : parseInt(String(v ?? ''), 10);
   if (!Number.isFinite(n) || n < 1) return fallback;
   return Math.min(99, Math.max(1, Math.floor(n)));

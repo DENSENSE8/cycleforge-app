@@ -208,7 +208,7 @@ function makeTrackingDeps(platformOf: PlatformOf): ShipStationTrackingDeps {
 }
 
 /** Row lookup + attach for label-history callers that have no sync context. */
-export const trackingDeps: ShipStationTrackingDeps = makeTrackingDeps(() => null);
+const trackingDeps: ShipStationTrackingDeps = makeTrackingDeps(() => null);
 
 // ─── DB writes ───────────────────────────────────────────────────────────────
 
@@ -783,7 +783,7 @@ export async function shipstationSync(orgId: OrgId, opts?: SyncOpts): Promise<Sy
 }
 
 /** Re-attribute the rows the pre-attribution connector wrote as `shipstation`, whatever their age: */
-export async function reattributeLegacyShipStationRows(
+async function reattributeLegacyShipStationRows(
   orgId: OrgId,
   opts: { apply?: boolean; onProgress?: SyncProgress } = {},
 ): Promise<SyncOutcome> {

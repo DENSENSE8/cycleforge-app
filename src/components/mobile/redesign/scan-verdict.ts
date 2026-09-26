@@ -3,9 +3,9 @@
 import type { LookupPoData, LookupPoResolution } from '@/lib/receiving/scan';
 
 /** Outcome class. */
-export type MobileScanTone = 'matched' | 'expedited' | 'unfound' | 'miss' | 'error';
+type MobileScanTone = 'matched' | 'expedited' | 'unfound' | 'miss' | 'error';
 
-export interface MobileScanVerdict {
+interface MobileScanVerdict {
   tone: MobileScanTone;
   /** Big glanceable word — sized to be read without stopping work. */
   headline: string;

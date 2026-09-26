@@ -14,7 +14,7 @@ import {
   type ImportExceptionGridColumn,
 } from './import-exception-grid-layout';
 
-export const IMPORT_EXCEPTION_TABLE_DEFINITION = parseTableDefinition({
+const IMPORT_EXCEPTION_TABLE_DEFINITION = parseTableDefinition({
   id: 'review.import-exception',
   tableId: 'import-exception',
   entityFamily: 'import-exception',

@@ -104,7 +104,7 @@ async function insertEvent(
 
 // ─── Issue / link an RMA ─────────────────────────────────────────────────────
 
-export type RmaLinkResult =
+type RmaLinkResult =
   | {
       ok: true;
       claim: WarrantyClaimDetail;
@@ -236,7 +236,7 @@ export async function linkRmaByNumber(
 
 // ─── Repair handoff ──────────────────────────────────────────────────────────
 
-export type RepairHandoffResult =
+type RepairHandoffResult =
   | { ok: true; claim: WarrantyClaimDetail; repairServiceId: number }
   | { ok: false; status: 404 | 409 | 500; error: string };
 
@@ -326,7 +326,7 @@ export async function handoffToRepair(
 
 // ─── Reverses ────────────────────────────────────────────────────────────────
 
-export type RmaUnlinkResult =
+type RmaUnlinkResult =
   | { ok: true; claim: WarrantyClaimDetail }
   | { ok: false; status: 404 | 409 | 500; error: string };
 
@@ -360,7 +360,7 @@ export async function unlinkRma(
   return { ok: true, claim };
 }
 
-export type RepairDetachResult =
+type RepairDetachResult =
   | { ok: true; claim: WarrantyClaimDetail; revertedToApproved: boolean }
   | { ok: false; status: 404 | 409 | 500; error: string };
 

@@ -1,7 +1,7 @@
 /** Client-side "recent sign-ins" list for the staff picker (localStorage). */
 
-export const RECENT_SIGNINS_KEY = 'cf.recentSignins';
-export const MAX_RECENT_SIGNINS = 3;
+const RECENT_SIGNINS_KEY = 'cf.recentSignins';
+const MAX_RECENT_SIGNINS = 3;
 
 export function readRecentSignins(): number[] {
   if (typeof window === 'undefined') return [];
@@ -67,7 +67,7 @@ export function writeLastSigninMethod(method: SigninMethod): void {
 }
 
 /** Last email used at the email+password sign-in — prefilled on next visit. */
-export const LAST_SIGNIN_EMAIL_KEY = 'cf.lastSigninEmail';
+const LAST_SIGNIN_EMAIL_KEY = 'cf.lastSigninEmail';
 
 export function readLastSigninEmail(): string {
   if (typeof window === 'undefined') return '';

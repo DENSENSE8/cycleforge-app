@@ -25,7 +25,7 @@ export type CsvInboundReturnsKey = (typeof CSV_INBOUND_RETURNS_FIELDS)[number]['
 
 export type CsvInboundReturnsRowStatus = 'ready' | 'action_required';
 
-export type InboundReturnsImportResult = {
+type InboundReturnsImportResult = {
   created: number;
   updated: number;
   skipped: number;
@@ -182,7 +182,7 @@ export function toInboundImportCsvRecord(
 }
 
 /** Sanity-check a mapped row can become a DeskImportRow (throws on hard fail). */
-export function previewInboundReturnsDeskRow(
+function previewInboundReturnsDeskRow(
   row: Record<string, string>,
   mapping: Record<string, string>,
 ) {

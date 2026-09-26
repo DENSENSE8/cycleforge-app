@@ -3,7 +3,7 @@
 import { PACK_ACTIVITY_TYPES, TECH_TEST_ACTIVITY_TYPES, sqlInList } from '@/lib/station-activity';
 
 /** True when this shipment has no sibling orders (safe for legacy fallback). */
-export const SQL_SHIPMENT_IS_SOLE_ORDER = `(
+const SQL_SHIPMENT_IS_SOLE_ORDER = `(
   o.shipment_id IS NOT NULL
   AND NOT EXISTS (
     SELECT 1 FROM orders o2

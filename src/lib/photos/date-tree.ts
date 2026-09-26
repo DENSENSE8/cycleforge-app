@@ -1,24 +1,24 @@
 /** Derive a Year → Month → Day → PO# navigation tree from the loaded library photos (client-side; reflects whatever pages are loaded). */
 import type { LibraryPhoto } from '@/components/photos/photo-library-types';
 
-export interface DatePoNode {
+interface DatePoNode {
   ref: string;
   count: number;
 }
-export interface DateDayNode {
+interface DateDayNode {
   /** `YYYY-MM-DD` (PST) — what we set as dateFrom/dateTo when drilled. */
   ymd: string;
   dayLabel: string;
   count: number;
   pos: DatePoNode[];
 }
-export interface DateMonthNode {
+interface DateMonthNode {
   key: string; // `YYYY-MM`
   label: string;
   count: number;
   days: DateDayNode[];
 }
-export interface DateYearNode {
+interface DateYearNode {
   year: string;
   count: number;
   months: DateMonthNode[];

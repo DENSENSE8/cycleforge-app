@@ -4,7 +4,7 @@ import type { OrgId } from '@/lib/tenancy/constants';
 
 // ─── Interfaces ──────────────────────────────────────────────────────────────
 
-export interface BoseModelRow {
+interface BoseModelRow {
   id: number;
   model_number: string;
   model_name: string;
@@ -19,12 +19,12 @@ export interface BoseModelRow {
   updated_at: string;
 }
 
-export interface BoseModelListRow extends BoseModelRow {
+interface BoseModelListRow extends BoseModelRow {
   compat_count: number;
 }
 
 /** A compatible part resolved against live stock + lifecycle + open alerts. */
-export interface CompatiblePartRow {
+interface CompatiblePartRow {
   compatibility_id: number;
   sku_id: number;
   sku: string;
@@ -245,7 +245,7 @@ export async function softDeleteBoseModel(id: number, orgId?: OrgId): Promise<Bo
 // ─── Compatible parts for a model (joined to stock / lifecycle / alerts) ────
 
 /** Returns the compatible parts for a model, each resolved against: */
-export async function getCompatibleParts(boseModelId: number, orgId?: OrgId): Promise<CompatiblePartRow[]> {
+async function getCompatibleParts(boseModelId: number, orgId?: OrgId): Promise<CompatiblePartRow[]> {
   // OMITTED path: byte-identical legacy SQL on the raw pool.
   if (!orgId) {
     const result = await pool.query<CompatiblePartRow>(
@@ -314,7 +314,7 @@ export async function getCompatibleParts(boseModelId: number, orgId?: OrgId): Pr
   return result.rows;
 }
 
-export interface BoseModelDetailResult {
+interface BoseModelDetailResult {
   model: BoseModelRow;
   parts: CompatiblePartRow[];
 }
@@ -328,7 +328,7 @@ export async function getBoseModelDetail(id: number, orgId?: OrgId): Promise<Bos
 
 // ─── Lookup by serial or model (the compatibility search entry point) ───────
 
-export interface CompatibilityLookupResult {
+interface CompatibilityLookupResult {
   resolvedBy: 'model_number' | 'serial_prefix' | 'model_name' | null;
   model: BoseModelRow | null;
   parts: CompatiblePartRow[];

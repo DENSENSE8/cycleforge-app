@@ -2,7 +2,7 @@ import { CLIENT_CAPTURED_AT_FIELD } from './capture-provenance';
 import { notifyClaimPhotosArchiving } from './claim-archive-feedback';
 import type { PhotoEntityType } from './types';
 
-export interface ClientUploadInput {
+interface ClientUploadInput {
   file: Blob | File;
   entityType: PhotoEntityType;
   entityId: number;

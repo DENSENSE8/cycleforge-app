@@ -164,7 +164,7 @@ export const INCOMING_HUNT_TILE_ORDER: readonly IncomingDeliveryState[] = [
 ] as const;
 
 /** Tile icons can differ from the grid glyph (e.g. delivered-unopened uses AlertTriangle in the strip). */
-export const INCOMING_HUNT_TILE_ICON: Partial<
+const INCOMING_HUNT_TILE_ICON: Partial<
   Record<IncomingDeliveryState, ComponentType<{ className?: string }>>
 > = {
   DELIVERED_UNOPENED: AlertTriangle,
@@ -190,7 +190,7 @@ export function parseIncomingDeliveryStateWire(raw: string): string | null {
 }
 
 /** "All issued" tile — not a delivery_state facet. */
-export const INCOMING_ALL_ISSUED_TILE = {
+const INCOMING_ALL_ISSUED_TILE = {
   state: null as null,
   label: 'All issued',
   key: 'issued' as const satisfies keyof IncomingSummary,

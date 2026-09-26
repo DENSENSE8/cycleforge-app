@@ -10,7 +10,7 @@ import {
 import { encryptIntegrationPayload } from '@/lib/integrations/crypto';
 import type { OrgId } from '@/lib/tenancy/constants';
 
-export interface ZohoWebhookIdentity {
+interface ZohoWebhookIdentity {
   webhookToken: string;
   webhookSecret: string;
 }

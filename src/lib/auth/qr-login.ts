@@ -12,7 +12,7 @@ import {
  * desk→phone session handoff.
  */
 
-export const QR_LOGIN_TTL_SECONDS = 5 * 60; // 5 minutes
+const QR_LOGIN_TTL_SECONDS = 5 * 60; // 5 minutes
 
 export {
   formatHandoffDisplayCode,
@@ -40,16 +40,16 @@ export interface QrLoginSessionRow {
   consumed_at: Date | null;
 }
 
-export function hashQrToken(token: string): string {
+function hashQrToken(token: string): string {
   return createHash('sha256').update(token).digest('hex');
 }
 
-export function generateQrToken(): string {
+function generateQrToken(): string {
   return randomBytes(24).toString('base64url');
 }
 
 /** Digit-only human code shown on the desk + typed on the phone (no prefix). */
-export function generateHandoffShortCode(): string {
+function generateHandoffShortCode(): string {
   let out = '';
   for (let i = 0; i < HANDOFF_SHORT_CODE_LENGTH; i++) {
     // randomInt is rejection-sampled — no modulo bias across the 10 digits.

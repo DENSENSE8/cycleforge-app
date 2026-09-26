@@ -75,14 +75,14 @@ export interface TestedUnit {
   organization_id: string;
 }
 
-export interface TestLineRollup {
+interface TestLineRollup {
   id: number;
   workflow_status: string | null;
   qa_status: string;
   disposition_code: string;
 }
 
-export interface RecordTestVerdictArgs {
+interface RecordTestVerdictArgs {
   serialUnitId: number;
   verdict: TestVerdict;
   /** Already trimmed/capped by the caller. */
@@ -93,7 +93,7 @@ export interface RecordTestVerdictArgs {
   organizationId: OrgId;
 }
 
-export interface RecordTestVerdictResult {
+interface RecordTestVerdictResult {
   unit: TestedUnit;
   prevStatus: string;
   nextStatus: VerdictMapping['nextStatus'];

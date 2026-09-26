@@ -26,7 +26,7 @@ export const HandlingUnitCreateBody = z
   })
   .strict();
 
-export type HandlingUnitCreateInput = z.infer<typeof HandlingUnitCreateBody>;
+type HandlingUnitCreateInput = z.infer<typeof HandlingUnitCreateBody>;
 
 // ─── POST /api/handling-units/bulk ──────────────────────────────────────────
 
@@ -40,7 +40,7 @@ export const HandlingUnitBulkCreateBody = z
   })
   .strict();
 
-export type HandlingUnitBulkCreateInput = z.infer<typeof HandlingUnitBulkCreateBody>;
+type HandlingUnitBulkCreateInput = z.infer<typeof HandlingUnitBulkCreateBody>;
 
 // ─── POST /api/handling-units/[id]/assign ───────────────────────────────────
 
@@ -52,7 +52,7 @@ export const HandlingUnitAssignBody = z
   })
   .strict();
 
-export type HandlingUnitAssignInput = z.infer<typeof HandlingUnitAssignBody>;
+type HandlingUnitAssignInput = z.infer<typeof HandlingUnitAssignBody>;
 
 // ─── POST /api/handling-units/[id]/unassign ─────────────────────────────────
 
@@ -64,4 +64,4 @@ export const HandlingUnitUnassignBody = z
   })
   .strict();
 
-export type HandlingUnitUnassignInput = z.infer<typeof HandlingUnitUnassignBody>;
+type HandlingUnitUnassignInput = z.infer<typeof HandlingUnitUnassignBody>;

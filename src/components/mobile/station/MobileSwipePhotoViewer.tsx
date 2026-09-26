@@ -54,9 +54,9 @@ export interface SwipePhotoSlide {
   uploadedBy?: number | null;
 }
 
-export type ViewerPresentation = 'overlay' | 'sheet';
+type ViewerPresentation = 'overlay' | 'sheet';
 
-export interface MobileSwipePhotoViewerProps {
+interface MobileSwipePhotoViewerProps {
   slides: SwipePhotoSlide[];
   /** Controlled open state. */
   open: boolean;

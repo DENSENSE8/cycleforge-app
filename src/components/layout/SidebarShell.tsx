@@ -7,7 +7,7 @@ import { SidebarRailScrollport } from '@/components/sidebar/rail-shell/SidebarRa
 import { FilterRefinementBar, type FilterRefinementBarProps } from '@/design-system/components/FilterRefinementBar';
 
 /** The ONE layout shell for every master sidebar. */
-export interface SidebarShellProps {
+interface SidebarShellProps {
   /** Optional leftover rail filter bar. */
   filter?: Omit<FilterRefinementBarProps, 'variant'>;
 

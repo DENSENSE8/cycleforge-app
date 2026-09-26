@@ -11,11 +11,11 @@ import {
 } from '@/lib/counter/counter-transaction-types';
 
 /** Longer than any counter visit, short enough that a leaked token is stale by closing. */
-export const PRICE_APPROVAL_TTL_SECONDS = 4 * 60 * 60;
+const PRICE_APPROVAL_TTL_SECONDS = 4 * 60 * 60;
 
 const MAX_CENTS = 100_000_000;
 
-export const PriceApprovalClaimsSchema = z
+const PriceApprovalClaimsSchema = z
   .object({
     v: z.literal(1),
     organizationId: z.string().min(1),
@@ -33,7 +33,7 @@ export const PriceApprovalClaimsSchema = z
 
 export type PriceApprovalClaims = z.infer<typeof PriceApprovalClaimsSchema>;
 
-export type PriceApprovalRequest = Pick<
+type PriceApprovalRequest = Pick<
   PriceApprovalClaims,
   'organizationId' | 'staffId' | 'kind' | 'fromCents' | 'toCents' | 'reason'
 >;

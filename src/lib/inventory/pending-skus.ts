@@ -4,10 +4,10 @@ import pool from '@/lib/db';
 import type { PoolClient } from 'pg';
 import { resolveSkuCatalogId } from '@/lib/neon/sku-catalog-queries';
 
-export type PendingSkuStatus = 'PENDING' | 'CREATED' | 'IGNORED' | 'DUPLICATE';
-export type PendingSkuSource = 'sku_stock' | 'orders' | 'receiving' | 'scan' | 'ledger' | (string & {});
+type PendingSkuStatus = 'PENDING' | 'CREATED' | 'IGNORED' | 'DUPLICATE';
+type PendingSkuSource = 'sku_stock' | 'orders' | 'receiving' | 'scan' | 'ledger' | (string & {});
 
-export interface PendingSkuRow {
+interface PendingSkuRow {
   id: number;
   normalized_sku: string;
   raw_sku: string;
@@ -23,7 +23,7 @@ export interface PendingSkuRow {
   updated_at: string;
 }
 
-export interface QueuePendingSkuInput {
+interface QueuePendingSkuInput {
   rawSku: string;
   source?: PendingSkuSource | null;
   suggestedTitle?: string | null;
@@ -51,7 +51,7 @@ export async function queuePendingSku(
   return result.rows[0] ?? null;
 }
 
-export interface ResolveOrQueueInput {
+interface ResolveOrQueueInput {
   sku?: string | null;
   itemNumber?: string | null;
   source?: PendingSkuSource | null;
@@ -59,7 +59,7 @@ export interface ResolveOrQueueInput {
 }
 
 /** Resolve a SKU to its canonical sku_catalog_id through the existing crosswalk chain (direct → platform xref). */
-export async function resolveSkuCatalogIdOrQueue(
+async function resolveSkuCatalogIdOrQueue(
   input: ResolveOrQueueInput,
 ): Promise<{ skuCatalogId: number | null; queued: boolean }> {
   const id = await resolveSkuCatalogId(input.sku ?? null, input.itemNumber ?? null);
@@ -72,7 +72,7 @@ export async function resolveSkuCatalogIdOrQueue(
   return { skuCatalogId: null, queued: true };
 }
 
-export interface ListPendingSkusOptions {
+interface ListPendingSkusOptions {
   status?: PendingSkuStatus;
   limit?: number;
 }
@@ -108,7 +108,7 @@ export async function ignorePendingSku(id: number, notes?: string | null): Promi
  * new INSERTs; this catches SKUs created before they were queued, or a sweep).
  * Resolves any PENDING rows whose normalized form matches the given catalog sku.
  */
-export async function reconcilePendingForCatalog(
+async function reconcilePendingForCatalog(
   catalogId: number,
   catalogSku: string,
 ): Promise<number> {

@@ -8,7 +8,7 @@ import type { LabelTone } from '@/lib/labels/types';
 export type PackerHistoryLane = 'TODAY' | 'THIS_WEEK' | 'FBA' | 'EXCEPTION';
 export type PackerLaneIconKey = 'clock' | 'calendar' | 'package' | 'alert';
 
-export interface PackerLaneDescriptor {
+interface PackerLaneDescriptor {
   id: PackerHistoryLane;
   iconKey: PackerLaneIconKey;
   iconClass: string;
@@ -21,7 +21,7 @@ export const PACKER_HISTORY_BOARD_LANES: readonly PackerLaneDescriptor[] = [
   { id: 'EXCEPTION', iconKey: 'alert', iconClass: 'text-rose-500' },
 ];
 
-export interface PackerLaneMeta {
+interface PackerLaneMeta {
   label: string;
   description: string;
   tone: LabelTone;
@@ -36,7 +36,7 @@ export const PACKER_HISTORY_STATE_META: Record<PackerHistoryLane, PackerLaneMeta
 };
 
 /** Minimal structural input — the fields the bucket reads (decoupled from PackerRecord). */
-export interface PackerLaneInput {
+interface PackerLaneInput {
   created_at?: string | null;
   order_id?: string | null;
   account_source?: string | null;

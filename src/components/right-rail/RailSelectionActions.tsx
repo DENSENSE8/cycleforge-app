@@ -27,7 +27,7 @@ export function useRailActionSnapshot() {
 }
 
 /** How many verbs the CURRENT selection can actually run. */
-export function useRailActionCount(): number {
+function useRailActionCount(): number {
   const { scope, rows, actions } = useRailActionSnapshot();
   if (!scope || rows.length === 0) return 0;
   return actions.filter((action) => !resolveSelectionAction(action, rows).disabled).length;
@@ -53,7 +53,7 @@ export function useRailHeaderActions(): PaneHeaderActionBarAction[] {
 }
 
 /** Live selection CTAs for {@link TableStatusBar}'s left cluster. */
-export function useRailStatusBarActions(): TableStatusSelectionAction[] {
+function useRailStatusBarActions(): TableStatusSelectionAction[] {
   const { scope, rows, actions } = useRailActionSnapshot();
   if (!scope || rows.length === 0) return [];
   return actions

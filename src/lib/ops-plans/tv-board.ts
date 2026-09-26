@@ -54,7 +54,7 @@ export interface TvBoard {
   plans: TvBoardPlan[];
 }
 
-export interface BuildTvBoardInput {
+interface BuildTvBoardInput {
   /** Open + in_progress tasks (listTasksForInbox default filter). */
   tasks: TaskRow[];
   /** Active plans for the progress lane (listPlans({ status: 'active' })). */

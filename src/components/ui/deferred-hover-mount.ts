@@ -22,7 +22,7 @@ export interface DeferredHoverBridge<H> {
   readIntent: () => DeferredHoverIntent | null;
 }
 
-export interface DeferredHoverMount<T extends HTMLElement, H> {
+interface DeferredHoverMount<T extends HTMLElement, H> {
   /** True once armed (or `eager`). Never returns to false on its own. */
   mounted: boolean;
   /** Stable ref object for the trigger element — pass straight to `ref=`. */

@@ -24,7 +24,7 @@ import {
 } from './staff-directory-table-definition';
 import { useStaffDirectoryTableLayout } from './useStaffDirectoryTableLayout';
 
-export interface UseStaffDirectorySpreadsheetOptions {
+interface UseStaffDirectorySpreadsheetOptions {
   rows: readonly StaffDirectoryRow[];
   loading?: boolean;
   emptyMessage?: string;

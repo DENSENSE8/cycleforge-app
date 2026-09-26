@@ -5,11 +5,11 @@ import type { ResolvedSearchOrder } from '@/lib/search/resolve-search-order';
 
 const SEARCH_RECEIVING_STALE_MS = 30_000;
 
-export function searchReceivingQueryKey(receivingId: number) {
+function searchReceivingQueryKey(receivingId: number) {
   return ['search-receiving', receivingId] as const;
 }
 
-export function searchReceivingLinkedOrderQueryKey(receivingId: number) {
+function searchReceivingLinkedOrderQueryKey(receivingId: number) {
   return ['search-receiving-linked-order', receivingId] as const;
 }
 

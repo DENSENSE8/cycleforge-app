@@ -24,7 +24,7 @@ function previewBucket(entityType: string): string {
   return entityType;
 }
 
-export interface PreviewGroup {
+interface PreviewGroup {
   label: string;
   hits: AiSearchHit[];
 }

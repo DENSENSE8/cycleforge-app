@@ -15,7 +15,7 @@ import {
 
 const AGENDA_RAIL_LIMIT = 60;
 
-export function getAgendaStatusDot(row: DailyAgendaRow, nowMs: number): string {
+function getAgendaStatusDot(row: DailyAgendaRow, nowMs: number): string {
   if (row.done) return 'bg-fill-success';
   if (isDailyAgendaWork(row) && row.deadlineAtMs != null && row.deadlineAtMs < nowMs) {
     return 'bg-fill-warning';
@@ -23,7 +23,7 @@ export function getAgendaStatusDot(row: DailyAgendaRow, nowMs: number): string {
   return 'bg-fill-info';
 }
 
-export function getAgendaStatusDotLabel(row: DailyAgendaRow, nowMs: number): string {
+function getAgendaStatusDotLabel(row: DailyAgendaRow, nowMs: number): string {
   if (row.done) return 'Done';
   if (isDailyAgendaWork(row) && row.deadlineAtMs != null && row.deadlineAtMs < nowMs) {
     return 'Past its deadline';

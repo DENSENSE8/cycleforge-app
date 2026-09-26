@@ -6,7 +6,7 @@
 import { resolveCarrierBrand, type CarrierBrandMeta } from '@/lib/carrier-brand';
 
 /** The minimum a row must carry to contribute boxes to a fold. */
-export interface TrackingBearingRow {
+interface TrackingBearingRow {
   tracking_numbers?: readonly (string | null)[] | null;
   shipping_tracking_number?: string | null;
   tracking_number?: string | null;
@@ -14,7 +14,7 @@ export interface TrackingBearingRow {
 }
 
 /** First-seen tracking numbers across every line in the fold. */
-export function uniqueOrderTrackings(rows: readonly TrackingBearingRow[]): string[] {
+function uniqueOrderTrackings(rows: readonly TrackingBearingRow[]): string[] {
   const seen = new Set<string>();
   const out: string[] = [];
   for (const row of rows) {
@@ -35,7 +35,7 @@ export function uniqueOrderTrackings(rows: readonly TrackingBearingRow[]): strin
  * Carrier marks for a multi-line order's parent row — one dot per DISTINCT carrier, plus the box count.
  * number. Two problems, both operator-reported 2026-09-05:
  */
-export interface OrderCarrierBoxes {
+interface OrderCarrierBoxes {
   /** Distinct carriers, first-seen order — one dot each. */
   carriers: CarrierBrandMeta[];
   /** Distinct tracking numbers = boxes. */

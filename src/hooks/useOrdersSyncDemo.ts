@@ -13,7 +13,7 @@ import {
 import { DEMO_RUN_DETAIL_TAB, DEMO_RUN_OUTCOME, DEMO_RUN_SCRIPT } from '@/lib/orders-sync/demo-run';
 import { buildSyncRunDetail, type SyncRunDetail } from '@/lib/orders-sync/run-detail';
 
-export interface OrdersSyncDemo {
+interface OrdersSyncDemo {
   run: SyncRunState | null;
   elapsedMs: number;
   isRunning: boolean;

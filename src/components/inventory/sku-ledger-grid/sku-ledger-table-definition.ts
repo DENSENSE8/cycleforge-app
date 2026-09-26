@@ -25,7 +25,7 @@ export const SKU_LEDGER_GRID_CAPABILITIES: GridSurfaceCapabilities = {
 };
 
 /** Build the descriptor from a RESOLVED column list (post-visibility), so `contentMinWidthRem` and the TanStack defs follow the tracks that… */
-export function makeSkuLedgerGridDescriptor(
+function makeSkuLedgerGridDescriptor(
   columns: readonly SkuLedgerGridColumn[],
 ): GridSurfaceDescriptor<SkuLedgerTableRow, SkuLedgerGridColumn> {
   return makeGridSurfaceDescriptor<SkuLedgerTableRow, SkuLedgerGridColumn>(
@@ -44,7 +44,7 @@ export function makeSkuLedgerGridDescriptor(
  * Validated at module load: a definition that violates a structural law throws
  * here rather than painting a broken grid.
  */
-export const SKU_LEDGER_TABLE_DEFINITION = parseTableDefinition({
+const SKU_LEDGER_TABLE_DEFINITION = parseTableDefinition({
   id: 'sku-ledger.sku',
   tableId: 'sku-ledger',
   entityFamily: 'sku-ledger',

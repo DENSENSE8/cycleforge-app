@@ -40,7 +40,7 @@ export const STATION_WORKBENCH_BODY_COLUMN =
  * Docked terminal band — lighter bottom padding (in-flow dock, not absolute float).
  * Top clearance still assumes floating identity.
  */
-export const STATION_WORKBENCH_BODY_DOCKED =
+const STATION_WORKBENCH_BODY_DOCKED =
   `${STATION_WORKBENCH_COLUMN} space-y-4 pt-14 pb-6`;
 
 /** Shared flex host for scan-station center + Displays (Unbox · Arrival · Testing). */
@@ -57,7 +57,7 @@ export const STATION_UTILITY_RAIL_CLASS = cn(
  * Bottom cell of {@link STATION_UTILITY_RAIL_CLASS} — `←|` Open displays.
  * Same band as left-dock expand / `TechRailSearchBar` density=`row`.
  */
-export const STATION_UTILITY_RAIL_FOOTER_CLASS = cn(
+const STATION_UTILITY_RAIL_FOOTER_CLASS = cn(
   'mt-auto justify-center',
   STATION_COLUMN_FOOTER_BAND_FACE,
 );

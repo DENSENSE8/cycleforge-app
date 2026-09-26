@@ -62,7 +62,7 @@ export interface StaffReminderDeps {
   listChecklistMarks(orgId: OrgId, staffId: number, dayKeys: string[]): Promise<Array<{ itemId: number; dayKey: string }>>;
 }
 
-export interface ListStaffRemindersOptions {
+interface ListStaffRemindersOptions {
   fromMs: number;
   days: number;
   /** Task reminders need `work_orders.claim`; the checklist is everyone's. */

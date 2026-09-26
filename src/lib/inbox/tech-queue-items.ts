@@ -2,7 +2,7 @@ import { tenantQuery } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';
 import { isPrimaryTechStaff } from '@/lib/neon/staff-stations-queries';
 
-export type TechQueueItem = {
+type TechQueueItem = {
   kind: 'return_pending_test' | 'order_ready_ship';
   receivingId: number;
   lineId: number | null;

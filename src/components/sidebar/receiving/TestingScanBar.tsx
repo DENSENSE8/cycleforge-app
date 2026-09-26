@@ -16,7 +16,7 @@ import {
   type ForcedTestingType,
 } from '@/lib/testing/resolve-testing-scan';
 
-export interface TestingScanModeMeta {
+interface TestingScanModeMeta {
   mode: ForcedTestingType;
   label: string;
   Icon: typeof MapPin;
@@ -24,7 +24,7 @@ export interface TestingScanModeMeta {
   iconClass: string;
 }
 
-export const TESTING_SCAN_MODES: readonly TestingScanModeMeta[] = [
+const TESTING_SCAN_MODES: readonly TestingScanModeMeta[] = [
   {
     mode: 'tracking',
     label: 'Tracking',
@@ -59,7 +59,7 @@ export const TESTING_SCAN_MODES: readonly TestingScanModeMeta[] = [
  * Display-only hint when the operator hasn't armed a mode.
  * Does NOT decide resolution — un-armed scans still auto-detect server-side.
  */
-export function classifyTestingScan(value: string): ForcedTestingType {
+function classifyTestingScan(value: string): ForcedTestingType {
   const v = value.trim();
   if (!v) return 'serial';
   if (looksLikePoNumber(v)) return 'po';
@@ -75,7 +75,7 @@ export function classifyTestingScan(value: string): ForcedTestingType {
   return 'serial';
 }
 
-export function testingScanModeMeta(mode: ForcedTestingType): TestingScanModeMeta {
+function testingScanModeMeta(mode: ForcedTestingType): TestingScanModeMeta {
   return TESTING_SCAN_MODES.find((m) => m.mode === mode) ?? TESTING_SCAN_MODES[2];
 }
 
