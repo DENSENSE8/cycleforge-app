@@ -74,18 +74,21 @@ test('routeHistory rises on appear — desk tables never wipe left→right', () 
   assert.equal((animate as { y?: number }).y, 0);
 });
 
-test('there are exactly eight roles', () => {
+test('there are exactly nine roles', () => {
   const leaves = Object.values(motionRole).flatMap((group) => Object.keys(group));
   assert.equal(
     leaves.length,
-    8,
-    `Roles: ${leaves.join(', ')}. A ninth role is a claim that a new JOB exists — ` +
+    9,
+    `Roles: ${leaves.join(', ')}. A tenth role is a claim that a new JOB exists — ` +
       'wanting a different duration for an existing job is the drift this layer prevents. ' +
       '`feedback.hitMarker` (2026-08-07) is the seventh: middle confirm depth ≠ pulse ack ' +
       '(Displays open must not withhold DOM behind it). `feedback.liveChange` (2026-08-20) ' +
       'is the eighth: a value changed REMOTELY, on an element nobody is looking at — the ' +
       'other two feedback roles both acknowledge something the operator just did under ' +
-      'their own cursor, which is why 100-150ms is enough for them and not for this.',
+      'their own cursor, which is why 100-150ms is enough for them and not for this. ' +
+      '`record.pane` (2026-09-26) is the ninth: the split record pane arriving BESIDE a ' +
+      'list whose width snaps — not `push.rail`, whose own width tween owns arrival and ' +
+      'reflows siblings; here the slot is already reserved and the card lands in it.',
   );
 });
 

@@ -22,11 +22,18 @@ export const DESK_RECORD_MEASURE_CLASS = 'w-[46rem]';
 /**
  * The record pane of {@link DeskRecordPlane}'s **split** view — the right side
  * when the staffer has chosen fullscreen (operator 2026-09-25): list left for
+ * selection, record right. The mode's page pad is the gutter the card floats
+ * in (12px triage, 0 industrial — flush on the floor).
  */
-export const DESK_SPLIT_RECORD_CLASS = 'w-[46rem] shrink-0';
+export const DESK_SPLIT_RECORD_CLASS = 'flex w-[46rem] shrink-0 flex-col p-mode-page';
 
 /**
- * One record, two widths (operator 2026-09-25).
+ * The floating card inside {@link DESK_SPLIT_RECORD_CLASS}: the mode's card
+ * corner (10px triage, square industrial) on the overlay rung.
+ */
+export const DESK_SPLIT_RECORD_CARD_CLASS = `flex min-h-0 flex-1 flex-col overflow-hidden rounded-mode border border-border-hairline bg-surface-card ${elevationClass('overlay')}`;
+
+/**
  * One record, two widths (operator 2026-09-25). In place the record gets the
  */
 export const DESK_RECORD_COLUMNS_CLASS = 'grid grid-cols-1 items-start gap-4 @4xl:grid-cols-3';

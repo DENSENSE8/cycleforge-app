@@ -13,14 +13,18 @@ import {
   type ReactNode,
 } from 'react';
 import { hasOpenOverlay } from '@/lib/overlay-stack/store';
+import { motion, motionRole, useMotionRole } from '@/design-system/motion';
+import { useMode } from '@/design-system/providers/ModeRegion';
 import { cn } from '@/utils/_cn';
 import {
   DESK_RECORD_ASIDE_COLUMN_CLASS,
   DESK_RECORD_COLUMNS_CLASS,
   DESK_RECORD_MAIN_COLUMN_CLASS,
   DESK_RECORD_MEASURE_CLASS,
+  DESK_SPLIT_RECORD_CARD_CLASS,
   DESK_SPLIT_RECORD_CLASS,
 } from '../tokens/desk-stage';
+import { DeskRecordViewSwitch } from './DeskRecordViewSwitch';
 import { useDeskStageOptional } from './DeskStageContext';
 import { DeskStageOverlay, DeskStageRecordHeader, isRecordEscTextEntry } from './DeskStageOverlay';
 
@@ -118,6 +122,16 @@ export function DeskRecordPlane({
   const view = useDeskRecordView();
   const split = view === 'split';
   const listRef = useRef<HTMLDivElement>(null);
+
+  // Motion: the split pane springs in beside the list; the record body swaps
+  // (J/K, a clicked row) on the focus crossfade — enter only, so a walk never
+  // waits on an exit. Industrial regions move nothing (BRIEF §12).
+  const still = useMode() === 'industrial';
+  const pane = useMotionRole(motionRole.record.pane);
+  const swap = useMotionRole(motionRole.swap.focus);
+  const paneTransition = still ? { duration: 0 } : pane.transition;
+  const swapTransition = still ? { duration: 0 } : swap.transition;
+  const swapKey = recordKey ?? (typeof title === 'string' ? title : 'record');
 
   const onCloseRef = useRef(onClose);
   useEffect(() => {
@@ -227,36 +241,49 @@ export function DeskRecordPlane({
             data-testid={testId}
             data-desk-record-view="split"
             data-desk-record-open={open ? '' : undefined}
-            className={cn(
-              'flex min-h-0 flex-col border-l border-border-hairline bg-surface-card',
-              DESK_SPLIT_RECORD_CLASS,
-            )}
+            className={DESK_SPLIT_RECORD_CLASS}
           >
-            {open ? (
-              <>
-                <DeskStageRecordHeader
-                  title={title}
-                  subtitle={subtitle}
-                  indexLabel={indexLabel}
-                  onPrev={onPrev}
-                  onNext={onNext}
-                  prevDisabled={prevDisabled}
-                  nextDisabled={nextDisabled}
-                  onClose={onClose}
-                  actions={actions}
-                />
-                <div className={RECORD_BODY_CLASS}>{children}</div>
-                {footer ? (
-                  <footer className="shrink-0 border-t border-border-hairline px-4 py-3">{footer}</footer>
-                ) : null}
-              </>
-            ) : (
-              <div className={RECORD_BODY_CLASS}>
-                {summary ?? (
-                  <p className="px-4 py-6 text-role-caption text-text-muted">Select {withArticle(recordNoun)}</p>
-                )}
-              </div>
-            )}
+            <motion.div
+              className={DESK_SPLIT_RECORD_CARD_CLASS}
+              initial={pane.presence.initial}
+              animate={pane.presence.animate}
+              transition={paneTransition}
+            >
+              {open ? (
+                <>
+                  <DeskStageRecordHeader
+                    title={title}
+                    subtitle={subtitle}
+                    indexLabel={indexLabel}
+                    onPrev={onPrev}
+                    onNext={onNext}
+                    prevDisabled={prevDisabled}
+                    nextDisabled={nextDisabled}
+                    onClose={onClose}
+                    actions={actions}
+                    viewSwitch={<DeskRecordViewSwitch />}
+                  />
+                  <motion.div
+                    key={swapKey}
+                    className={RECORD_BODY_CLASS}
+                    initial={swap.presence.initial}
+                    animate={swap.presence.animate}
+                    transition={swapTransition}
+                  >
+                    {children}
+                  </motion.div>
+                  {footer ? (
+                    <footer className="shrink-0 border-t border-border-hairline px-4 py-3">{footer}</footer>
+                  ) : null}
+                </>
+              ) : (
+                <div className={RECORD_BODY_CLASS}>
+                  {summary ?? (
+                    <p className="px-4 py-6 text-role-caption text-text-muted">Select {withArticle(recordNoun)}</p>
+                  )}
+                </div>
+              )}
+            </motion.div>
           </section>
         ) : open ? (
           // In place the record opens BELOW the list's anchor (its search row
@@ -275,13 +302,22 @@ export function DeskRecordPlane({
               nextDisabled={nextDisabled}
               footer={footer}
               actions={actions}
+              viewSwitch={<DeskRecordViewSwitch />}
               fill="stage"
               closeOnScrim={false}
               testId={testId}
             >
-              <div ref={bodyRef} tabIndex={-1} className={cn(RECORD_BODY_CLASS, 'outline-none')}>
+              <motion.div
+                key={swapKey}
+                ref={bodyRef}
+                tabIndex={-1}
+                className={cn(RECORD_BODY_CLASS, 'outline-none')}
+                initial={swap.presence.initial}
+                animate={swap.presence.animate}
+                transition={swapTransition}
+              >
                 {children}
-              </div>
+              </motion.div>
             </DeskStageOverlay>
           </div>
         ) : null}

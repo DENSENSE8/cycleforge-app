@@ -53,6 +53,8 @@ interface DeskStageOverlayProps {
   showHeader?: boolean;
   /** The record's own verbs, painted in the header band before the walk controls. */
   actions?: ReactNode;
+  /** The record-view switch (`DeskRecordViewSwitch`) — painted after the verbs. */
+  viewSwitch?: ReactNode;
 }
 
 export function DeskStageOverlay({
@@ -74,6 +76,7 @@ export function DeskStageOverlay({
   fill = 'inset',
   showHeader = true,
   actions,
+  viewSwitch,
 }: DeskStageOverlayProps) {
   const stageFill = fill === 'stage';
   // An inset form is a transient layer:
@@ -154,6 +157,7 @@ export function DeskStageOverlay({
             nextDisabled={nextDisabled}
             onClose={onClose}
             actions={actions}
+            viewSwitch={viewSwitch}
           />
         ) : null}
 
@@ -180,6 +184,8 @@ interface DeskStageRecordHeaderProps {
   onClose: () => void;
   /** The record's own verbs — painted before n of N / ‹ › / ✕. */
   actions?: ReactNode;
+  /** The record-view switch — after the verbs, before n of N / ‹ › / ✕. */
+  viewSwitch?: ReactNode;
 }
 
 /**
@@ -197,6 +203,7 @@ export function DeskStageRecordHeader({
   nextDisabled,
   onClose,
   actions,
+  viewSwitch,
 }: DeskStageRecordHeaderProps) {
   return (
     <header className="flex shrink-0 items-start gap-2 border-b border-border-hairline px-4 py-3">
@@ -207,6 +214,7 @@ export function DeskStageRecordHeader({
         ) : null}
       </div>
       {actions ? <div className="flex shrink-0 items-center gap-1.5">{actions}</div> : null}
+      {viewSwitch}
       {indexLabel ? (
         <span className="shrink-0 tabular-nums text-role-caption text-text-muted">
           {indexLabel}

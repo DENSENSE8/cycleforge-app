@@ -167,6 +167,13 @@ export const framerTransition = {
   } satisfies Transition,
 
   /**
+   * Split record pane arriving beside the list (`DeskRecordPlane`, triage) —
+   * the house utilitarian spring, no bounce. Pair with
+   * `framerPresence.detailStackOverlay` through `motionRole.record.pane`.
+   */
+  recordPaneMount: springSnappy,
+
+  /**
    * Heavy right-pane WORKSPACE overlay crossfade (receiving line workspace) — a
    * slower, opacity-led settle. Pair with `framerPresence.workbenchPaneSettle`;
    * consume through `useMotionTransition` so reduced-motion collapses it.
