@@ -2,7 +2,7 @@
 
 /** Directed pick — `/m/pick`. */
 
-import { useState } from 'react';
+import { Fragment, useState, type ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
 import { MapPin, MessageSquare, PackageX, X } from '@/components/Icons';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
@@ -13,7 +13,7 @@ import { appMobilePageGroundClass } from '@/design-system/tokens/app-surface';
 import { ShortPickSheet } from '@/components/mobile/picker/ShortPickSheet';
 import { MobileToShipPickerSheet } from '@/components/mobile/redesign/MobileToShipPickerSheet';
 import { MobileCaptureWindow } from '@/components/mobile/station/MobileCaptureWindow';
-import { locationFace, type DirectedPickStep } from '@/lib/picking/directed-pick';
+import { locationFace, type DirectedPickLocation, type DirectedPickStep } from '@/lib/picking/directed-pick';
 import { cn } from '@/utils/_cn';
 import { DirectedPickNotesSheet } from './DirectedPickNotesSheet';
 import { DirectedPickOrderCard } from './DirectedPickOrderCard';
@@ -43,6 +43,24 @@ const MESSAGE_VARIANT = {
 
 /** Where the X leaves to — the Orders queue, the phone's outbound landing. */
 const EXIT_HREF = '/m/work';
+
+/** Every fact the line holds about its bin, on one wrapping line: confirmed · barcode · room. */
+function LocationFacts({ location, confirmed }: { location: DirectedPickLocation | null; confirmed: boolean }) {
+  if (!location) return <>Not on record — pair the bin you find it in</>;
+  const facts: ReactNode[] = [];
+  if (confirmed) facts.push(<span className="font-semibold text-text-success">Bin confirmed</span>);
+  // The label code, when the face shown above is the name rather than the code itself.
+  if (location.barcode && location.barcode !== locationFace(location)) {
+    facts.push(<span className="font-mono text-text-default">{location.barcode}</span>);
+  }
+  if (location.room) facts.push(location.room);
+  return facts.map((fact, i) => (
+    <Fragment key={i}>
+      {i > 0 ? ' · ' : null}
+      {fact}
+    </Fragment>
+  ));
+}
 
 export function DirectedPickScreen() {
   const router = useRouter();
@@ -81,9 +99,9 @@ export function DirectedPickScreen() {
         onExit={exit}
       />
 
-      <div className="flex-1 overflow-y-auto px-mode-page pb-3 pt-3">
+      <div className="flex-1 overflow-y-auto">
         {c.loadError && !line ? (
-          <Alert variant="destructive">
+          <Alert variant="destructive" className="mx-mode-page mt-3">
             <AlertTitle className="text-role-title">Couldn&apos;t load the next pick</AlertTitle>
             <AlertDescription className="text-role-body">{c.loadError}</AlertDescription>
             <Button variant="primary" size="lg" radius="flush" className="col-start-2 mt-3 w-full" onClick={() => void c.retry()}>
@@ -96,7 +114,7 @@ export function DirectedPickScreen() {
               Finding your next pick…
             </p>
           ) : (
-            <div className="py-10 text-center">
+            <div className="px-mode-page py-10 text-center">
               <p className="text-role-display text-text-default">Nothing left to pick</p>
               <p className="mt-2 text-role-body text-text-muted">
                 {progress.done} picked this run · {c.elapsed}
@@ -126,12 +144,12 @@ export function DirectedPickScreen() {
           )
         ) : (
           <>
-            {/* The location — the first thing the eye hits; Pair rides the same row. */}
-            <section aria-label="Location" className="mb-3">
-              <div className="flex items-start gap-2">
+            {/* The location — the first thing the eye hits: the face big, every fact we hold under it; Pair is the band's right cell. */}
+            <section aria-label="Location" className="flex items-stretch border-b border-mode-rule bg-surface-card">
+              <div className="min-w-0 flex-1 px-mode-page py-2">
                 <p
                   className={cn(
-                    'min-w-0 flex-1 break-words font-mono font-semibold leading-none tracking-tight tabular-nums',
+                    'break-words font-mono font-semibold leading-none tracking-tight tabular-nums',
                     // A shelf face (`C-04-15-1`) fits one line at the largest size;
                     // a long code steps down rather than breaking into three lines.
                     !line.location ? 'text-3xl text-text-muted' : locationFace(line.location).length > 9 ? 'text-4xl' : 'text-5xl',
@@ -140,22 +158,21 @@ export function DirectedPickScreen() {
                 >
                   {line.location ? locationFace(line.location) : 'No bin'}
                 </p>
-                <Button
-                  variant="secondary"
-                  size="sm"
-                  icon={c.pairing ? undefined : <MapPin />}
-                  className="shrink-0"
-                  disabled={!c.pairing && (c.busy || step === 'done')}
-                  onClick={c.pairing ? c.cancelPairing : c.startPairing}
-                >
-                  {c.pairing ? 'Cancel' : 'Pair bin'}
-                </Button>
+                <p className="mt-1 break-words text-role-data text-text-muted">
+                  <LocationFacts location={line.location} confirmed={step === 'item'} />
+                </p>
               </div>
-              {step === 'item' && line.location ? (
-                <p className="mt-1 text-role-caption text-text-success">Bin confirmed</p>
-              ) : line.location?.room ? (
-                <p className="mt-1 truncate text-role-caption text-text-muted">{line.location.room}</p>
-              ) : null}
+              <Button
+                variant="secondary"
+                size="lg"
+                radius="flush"
+                icon={c.pairing ? undefined : <MapPin />}
+                className="h-auto min-h-12 shrink-0 whitespace-normal border-l border-mode-rule px-4 shadow-none ring-0 transition-none enabled:active:scale-100 active:bg-mode-ink active:text-mode-panel"
+                disabled={!c.pairing && (c.busy || step === 'done')}
+                onClick={c.pairing ? c.cancelPairing : c.startPairing}
+              >
+                {c.pairing ? 'Cancel' : 'Pair bin'}
+              </Button>
             </section>
 
             {/* The product — photo for the glance, then its title and the count. */}
