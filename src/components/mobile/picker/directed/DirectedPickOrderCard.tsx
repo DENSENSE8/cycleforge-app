@@ -5,7 +5,7 @@ import { MobileOrderPaperworkSheet } from '@/components/mobile/orders/MobileOrde
 import { ItemCardShipBy } from '@/components/mobile/redesign/ItemCardRow';
 import { orderChannel } from '@/components/mobile/orders/OrderInfoCard';
 import { useOrderDocuments, useOrderManuals } from '@/lib/orders/order-paperwork-client';
-import { Button } from '@/design-system/primitives';
+import { DetailDock } from '@/design-system/components/DetailDock';
 import { getPlatformLabelByItemNumber, useExternalItemUrl } from '@/hooks/useExternalItemUrl';
 import type { DirectedPickOrder, PickOwnerVia } from '@/lib/picking/directed-pick';
 
@@ -15,6 +15,8 @@ const OWNER_VIA_LABEL: Record<PickOwnerVia, string> = {
   sku: 'Your SKU',
   backup: 'Backup for this SKU',
 };
+
+type OrderVerb = 'documents' | 'listing' | 'skip' | 'pass';
 
 /** The order the current line belongs to: */
 export function DirectedPickOrderCard({
@@ -59,9 +61,9 @@ export function DirectedPickOrderCard({
   const backups = order.backups.map((b) => b.name ?? `Staff #${b.staffId}`);
 
   return (
-    <section aria-label="Order" className="mt-3 border border-border-soft bg-surface-card">
-      <div className="px-4 pt-3">
-        <p className="truncate text-role-data text-text-muted">
+    <section aria-label="Order" className="border-b border-mode-rule bg-surface-card">
+      <div className="px-mode-page py-2">
+        <p className="break-words text-role-data text-text-muted">
           {channel ? <>{channel} · </> : null}
           <span className="font-mono font-semibold text-text-default">{order.orderLabel}</span>
         </p>
@@ -84,38 +86,38 @@ export function DirectedPickOrderCard({
             'No tote yet — picks land in the tote you scan'
           )}
         </p>
-        <p className="mt-1 truncate text-role-data text-text-muted">
+        <p className="mt-1 break-words text-role-data text-text-muted">
           <span className="font-semibold text-text-default">{ownership}</span>
           {backups.length > 0 ? <> · Backups: {backups.join(', ')}</> : null}
         </p>
       </div>
-      <div className="mt-3 grid grid-cols-2 gap-2 border-t border-border-soft px-4 py-3">
-        <Button
-          variant="secondary"
-          size="md"
-          icon={<Printer />}
-          disabled={documentsQuery.isError || manualsQuery.isError}
-          loading={documentsQuery.isPending || manualsQuery.isPending}
-          onClick={() => setDocsOpen(true)}
-        >
-          {docsLabel}
-        </Button>
-        <Button
-          variant="secondary"
-          size="md"
-          icon={<ExternalLink />}
-          disabled={!listingHref}
-          onClick={() => openExternalByItemNumber(order.itemNumber)}
-        >
-          {listingHref ? `${getPlatformLabelByItemNumber(order.itemNumber)} listing` : 'No listing'}
-        </Button>
-        <Button variant="secondary" size="md" icon={<ChevronsRight />} disabled={busy} onClick={onSkip}>
-          Skip
-        </Button>
-        <Button variant="secondary" size="md" icon={<User />} disabled={busy} onClick={onPass}>
-          Pass to…
-        </Button>
-      </div>
+      <DetailDock<OrderVerb>
+        label="Order actions"
+        placement="inline"
+        verbs={[
+          {
+            id: 'documents',
+            label: docsLabel,
+            icon: <Printer />,
+            disabled: documentsQuery.isError || manualsQuery.isError,
+            loading: documentsQuery.isPending || manualsQuery.isPending,
+          },
+          {
+            id: 'listing',
+            label: listingHref ? `${getPlatformLabelByItemNumber(order.itemNumber)} listing` : 'No listing',
+            icon: <ExternalLink />,
+            disabled: !listingHref,
+          },
+          { id: 'skip', label: 'Skip', icon: <ChevronsRight />, disabled: busy },
+          { id: 'pass', label: 'Pass to picker', icon: <User />, disabled: busy },
+        ]}
+        onVerb={(id) => {
+          if (id === 'documents') setDocsOpen(true);
+          else if (id === 'listing') openExternalByItemNumber(order.itemNumber);
+          else if (id === 'skip') onSkip();
+          else onPass();
+        }}
+      />
       <MobileOrderPaperworkSheet open={docsOpen} onClose={() => setDocsOpen(false)} orderId={order.orderId} orderRef={order.orderLabel} />
     </section>
   );
