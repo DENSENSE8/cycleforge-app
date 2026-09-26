@@ -107,7 +107,7 @@ export const SEGMENTED_CONTROL_CORNER = 'rounded-lg';
 export const SEGMENTED_CONTROL_FACE_CORNER = 'rounded-md';
 
 
-/** Nav-map destination rows (mobile nav drawer). */
+/** MasterNav destination rows and the open-spine labelled Search face. */
 export const SPINE_ROW_CORNER = 'rounded';
 
 /** Floating menu / dropdown / popover panel — the 8px control rung the scale already names for "soft menus / dropdown chrome". */

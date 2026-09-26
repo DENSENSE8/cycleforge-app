@@ -48,7 +48,7 @@ export const SIDEBAR_RAIL_TRAILING_TRACK_CLASS =
 /** Height-only atom — ops chrome **under** the navigation header (28px / `h-7`). */
 export const PRIMARY_CHROME_ROW_FACE = 'h-7 shrink-0';
 
-/** Navigation header height atom — GlobalHeader (40px / `h-10`). */
+/** Navigation header height atom — GlobalHeader + MasterNav spine top band (40px / `h-10`). */
 const TOP_CHROME_ROW_FACE = 'h-10 shrink-0';
 
 /** Pixel twin of the nav header height (assistant dock / detail-stack offset). */
@@ -93,10 +93,17 @@ export const appContentShellClass = cn(
   appWashClass,
 );
 
-/** Shared hit-box for GlobalHeader icon actions (find, goal ring, pins, inbox, account). */
+/** Shared hit-box for GlobalHeader icon actions (sidebar, goal ring, WO, right rail). */
 export const HEADER_ICON_WRAP = 'relative flex h-full min-h-0 w-8 shrink-0 items-center justify-center';
 
-/** Desktop navigation-header face — every 40px top-chrome band shares this box model. */
+/**
+ * Equal-fill hit-box formerly used by the MasterNav spine top pin band.
+ * Kept for Displays parked-rail commentary; no live spine consumer.
+ */
+const SPINE_TOP_PIN_WRAP =
+  'relative flex h-full min-h-0 min-w-0 flex-1 items-stretch justify-center';
+
+/** Desktop navigation-header face — GlobalHeader and the MasterNav spine top band must share this box model so the 40px band is one height… */
 const TOP_CHROME_BAND_FACE = TOP_CHROME_ROW_FACE;
 
 /** Flex row face for GlobalHeader (and any centered nav top-chrome band). */

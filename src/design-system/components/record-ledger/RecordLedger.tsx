@@ -47,12 +47,8 @@ interface RecordLedgerProps<T> {
   onClose: () => void;
   /** Existing record-cursor service controls, when this ledger participates in a shared record plane. */
   navigation?: RecordLedgerNavigation;
-  /**
-   * Toolbar contents — search, facets, counts. Sits on the 1px ink rule.
-   * Omit it and no toolbar row paints (a desk whose controls live in the
-   * contextual sidebar — Shipping, operator 2026-09-26).
-   */
-  toolbar?: ReactNode;
+  /** Toolbar contents — search, facets, counts. Sits on the 1px ink rule. */
+  toolbar: ReactNode;
   /** Optional strip under the toolbar (errors, notices). */
   banner?: ReactNode;
   /**
@@ -161,17 +157,15 @@ export function RecordLedger<T>({
   const list = (
     <>
       <div {...{ [DESK_RECORD_ANCHOR_ATTR]: '' }} className="flex min-w-0 shrink-0 flex-col">
-        {toolbar ? (
-          <div data-testid="record-ledger-toolbar" className={RECORD_TOOLBAR_CLASS}>
-            <div className="flex min-w-0 flex-1 items-stretch">{toolbar}</div>
-            {inPlace ? <RecordLedgerTally summary={summary} /> : null}
-            {onStage ? (
-              <span className="flex shrink-0 items-center border-l border-mode-edge px-1.5">
-                <DataTableFullscreenToggle />
-              </span>
-            ) : null}
-          </div>
-        ) : null}
+        <div data-testid="record-ledger-toolbar" className={RECORD_TOOLBAR_CLASS}>
+          <div className="flex min-w-0 flex-1 items-stretch">{toolbar}</div>
+          {inPlace ? <RecordLedgerTally summary={summary} /> : null}
+          {onStage ? (
+            <span className="flex shrink-0 items-center border-l border-mode-edge px-1.5">
+              <DataTableFullscreenToggle />
+            </span>
+          ) : null}
+        </div>
         {actionStrip}
       </div>
       {banner}

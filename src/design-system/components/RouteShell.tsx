@@ -21,7 +21,7 @@ type RouteShellView = 'actions' | 'history';
 const PANE_PARAM = 'pane';
 
 interface RouteShellProps {
-  /** Sidebar / actions content. Already rendered in the route's context panel on desktop, so this only mounts on mobile. */
+  /** Sidebar / actions content. Already rendered inside DashboardSidebar on desktop, so this only mounts on mobile. */
   actions: ReactNode;
   /** Main / history content. Always renders. */
   history: ReactNode;
