@@ -402,7 +402,7 @@ body {
    when the queue empties. A loop that runs whether or not anything is
    happening is the sweep line this house already deleted from `ScanSurface`.
    The outcome of a scan is NOT shown here — that is the tape's focus row
-   (`STATION_TONE_GROUND`); this wash answers only "still pending". */
+   (the row spine); this wash answers only "still pending". */
 @keyframes cf-scan-pending {
   from { opacity: 0.28; }
   to   { opacity: 1; }

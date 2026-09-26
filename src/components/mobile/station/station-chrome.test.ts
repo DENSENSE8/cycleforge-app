@@ -14,7 +14,6 @@ import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   STATION_EYEBROW_CLASS,
-  STATION_TONE_GROUND,
   STATION_TONE_INK,
 } from '@/components/mobile/station/station-chrome';
 
@@ -26,33 +25,12 @@ const HEX = /#[0-9a-f]{3,8}/i;
 
 describe('tone maps are total over StationTone', () => {
   it('every map carries exactly ok/warn/bad — a missing key renders undefined classes silently', () => {
-    for (const map of [STATION_TONE_GROUND, STATION_TONE_INK]) {
+    for (const map of [STATION_TONE_INK]) {
       assert.deepEqual(Object.keys(map).sort(), [...TONES].sort());
       for (const tone of TONES) {
         assert.ok(typeof map[tone] === 'string' && map[tone].length > 0, `${tone} present`);
       }
     }
-  });
-});
-
-describe('tone is a ground, not ink-only', () => {
-  it('ground values are surface tokens, never raw palette or hex', () => {
-    for (const tone of TONES) {
-      const v = STATION_TONE_GROUND[tone];
-      assert.match(v, /^bg-surface-/);
-      assert.doesNotMatch(v, RAW_PALETTE);
-      assert.doesNotMatch(v, HEX);
-    }
-  });
-
-  it('ok is untinted — a ledger where every row is coloured has no signal', () => {
-    assert.equal(STATION_TONE_GROUND.ok, 'bg-surface-card');
-  });
-
-  it('warn and bad tint, and are distinct signals', () => {
-    assert.notEqual(STATION_TONE_GROUND.warn, STATION_TONE_GROUND.ok);
-    assert.notEqual(STATION_TONE_GROUND.bad, STATION_TONE_GROUND.ok);
-    assert.notEqual(STATION_TONE_GROUND.warn, STATION_TONE_GROUND.bad);
   });
 });
 
@@ -64,7 +42,7 @@ describe('ink stays in the semantic token families', () => {
   });
 
   it('no map value carries a raw palette step or a hex — the two-greens regression', () => {
-    for (const map of [STATION_TONE_GROUND, STATION_TONE_INK]) {
+    for (const map of [STATION_TONE_INK]) {
       for (const tone of TONES) {
         assert.doesNotMatch(map[tone], RAW_PALETTE, `${tone}: ${map[tone]}`);
         assert.doesNotMatch(map[tone], HEX, `${tone}: ${map[tone]}`);

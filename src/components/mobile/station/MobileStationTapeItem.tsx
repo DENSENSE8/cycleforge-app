@@ -85,10 +85,8 @@ import { INTAKE, type IntakeClass } from '@/design-system/tokens/intake';
 import { STATE_TONE_CLASSES, type StateName } from '@/design-system/tokens/lifecycle';
 import { useModeFeedbackSeconds } from '@/design-system/providers/useModeFeedback';
 import { cn } from '@/utils/_cn';
-import {
-  STATION_TONE_GROUND,
-  STATION_TONE_INK,
-} from './station-chrome';
+import { STATION_TONE_INK } from './station-chrome';
+import { RECORD_LABEL_CLASS, RECORD_TITLE_CLASS } from '@/design-system/tokens/industrial-record';
 import { focusRing } from '@/design-system/tokens/focus-ring';
 import type { StationItemAction, StationTapeEntry, StationTone } from './station-tape';
 
@@ -98,6 +96,11 @@ const TONE_STATE: Record<StationTone, StateName> = {
   warn: 'warning',
   bad: 'danger',
 };
+
+/** One touch band (36px) — three per record (BRIEF §4 industrial touch). */
+const BAND = 'flex h-9 min-w-0 items-center gap-2 pl-2';
+/** The right lane: one column down all three bands, rule on the same pixel. */
+const LANE = 'flex h-full w-24 shrink-0 items-center border-l border-mode-edge px-2';
 
 /**
  * The row's code — what the thing IS, as a 3-letter mono code (BRIEF §4 triage:
@@ -162,138 +165,80 @@ function MobileStationTapeItemBase({
   const actionable = verbs.length > 0;
   const feedback = useModeFeedbackSeconds();
 
+  /*
+    The industrial phone record (BRIEF §4 industrial touch, owner 2026-09-26 for
+    /m/scan): 5px outcome spine · 108px full-bleed photo · three 36px bands, one
+    right lane down all three (when · who · outcome), 1px rules, no inset.
+
+      spine │ photo │ CODE · # order ··········│ 3w
+            │       │ title ···················│ (mark)
+            │       │ tracking | refusal ······│ VERB
+
+    Chips are inert (`disableCopy`): a copy target inside a gloved thumb's aim
+    either copies silently or opens the row. The staff MARK, never the name,
+    and only on rows the operator did not scan here.
+  */
   const body = (
     <div className="flex flex-1 items-stretch">
-      {/*
-        The photo lane, on EVERY row — reserved even when there is no photo, so
-        the text column never moves. Industrial record (owner 2026-09-26):
-        full-bleed to the row's top, bottom and left edge, square corners, one
-        rule to its right — the same lane the desk ledger and phone record wear.
-        The outcome is the code's colour, never a ring.
-      */}
-      <span className="relative flex w-14 shrink-0 self-stretch overflow-hidden border-r border-mode-rule bg-mode-well">
+      <span aria-hidden className={cn('w-[5px] shrink-0 self-stretch', STATE_TONE_CLASSES[TONE_STATE[entry.tone]].dot)} />
+      <span className="relative flex w-27 shrink-0 self-stretch overflow-hidden border-r border-mode-rule bg-mode-well">
         {entry.imageUrl && <ItemRecordThumb imageUrl={entry.imageUrl} className="h-full w-full min-h-0" />}
       </span>
 
-      <div className="flex min-w-0 flex-1 flex-col justify-center gap-0.5 px-2 py-1.5">
-        {/* Line 1 — what it is: the code, then the name. Omitted, not faked,
-            when the record has no name: the identifier on line 2 is then the
-            whole of what is known, and a row that repeated it on both lines
-            would say one fact twice. */}
-        <div className="flex min-w-0 items-center gap-1.5">
+      <div className="flex min-w-0 flex-1 flex-col">
+        {/* Band 1 — context: what it is · which record ··· when */}
+        <div className={cn(BAND, 'border-b border-mode-rule')}>
           {entry.intake && <IntakeCode intake={entry.intake} tone={focus ? entry.tone : null} />}
-          <p
-            className={cn(
-              // One line, both emphases. `truncate`, never `line-clamp-2`: a
-              // two-line focus title changes the row's height and shoves the
-              // whole tape, which is the one thing this layout exists to prevent.
-              'min-w-0 truncate',
-              // The region's body size (triage: 14 desk / 16 touch, lh 1.45).
-              // The focus row reads louder through WEIGHT and its outline — not
-              // through a third size.
-              'text-mode-body',
-              focus ? 'font-bold' : 'font-semibold',
-              entry.title ? 'text-text-default' : 'text-text-muted',
-            )}
-          >
-            {entry.title ?? untitledLabel}
-          </p>
-        </div>
-
-        {/*
-          Line 2 — record, then label, then when.
-
-          Order first and tracking to its right is the pairing every other
-          surface in this codebase already uses, so an operator reads the same
-          two chips in the same two places here as on To-ship and Packing.
-
-          Both are inert (`disableCopy`). A live copy button is ~16px tall inside
-          the area a gloved thumb is aiming at, so a mis-hit either copies
-          silently or opens the row — and a focusable descendant inside the
-          disclosure button is invalid besides. The chips still carry their glyph,
-          tint and last-eight; copying belongs on a record surface, not a running
-          ledger.
-        */}
-        <div className="flex min-w-0 items-center gap-1.5">
-          {/*
-            Always rendered, even with nothing to show.
-            `resolveChipDisplay` turns an empty value into the house em dash and
-            forces the chip inert, so an order-less row reads as "# —" in the
-            same slot rather than shifting the tracking chip left onto a
-            different rail. Every other identity surface in this codebase holds
-            the column the same way.
-          */}
-          <OrderIdChip
-            value={entry.recordId ?? ''}
-            display={entry.recordId ? getLast8(entry.recordId) : ''}
-            displayWidth="last8"
-            dense
-            truncateDisplay={false}
-          />
-          {entry.identifier ? (
-            <TrackingChip
-              value={entry.identifier}
-              showIcon
+          <span className="min-w-0 flex-1">
+            <OrderIdChip
+              value={entry.recordId ?? ''}
+              display={entry.recordId ? getLast8(entry.recordId) : ''}
+              displayWidth="last8"
               dense
-              outerPad="flush"
-              disableCopy
-              disableTooltip
+              truncateDisplay={false}
             />
-          ) : null}
-          {/*
-            Whose work this was — only ever set on rows the operator did not
-            scan here.
-
-            The staff MARK, not the name: the same contract the slot table's
-            stage cell uses (`CompoundCells`) — colour + initials,
-            `avatarPhotoId={null}` because a photo collapses to a white speck at
-            this size, and `colorRing` so the fill is the identity channel.
-
-            It also removes a layout bug the name had. It was set `shrink-0
-            truncate`, and `truncate` cannot fire on a non-shrinking flex child,
-            so a long name grew and pushed the stamp out of the row. A
-            fixed-size mark cannot.
-          */}
-          {(entry.actor || entry.actorId != null) && (
-            <StaffAvatar
-              staffId={entry.actorId}
-              name={entry.actor}
-              avatarPhotoId={null}
-              size="sm"
-              colorRing
-              alt={entry.actor ?? undefined}
-            />
-          )}
-          <time
-            dateTime={entry.at}
-            // One ink for every stamp. It used to borrow the tone's colour,
-            // which put the outcome signal in a 10px glyph at 3.3:1 — the tone
-            // is the row's GROUND now, and this can simply be legible.
-            className="ml-auto shrink-0 text-role-eyebrow tabular-nums text-text-soft"
-          >
+          </span>
+          <time dateTime={entry.at} className={cn(LANE, RECORD_LABEL_CLASS, 'tabular-nums text-mode-muted')}>
             {formatRelativeTime(entry.at, now)}
           </time>
         </div>
-
-        {/* No third line. The grade lived here and is gone (operator
-            2026-09-05): a scan-out confirms that a package LEFT, and the
-            condition of what is inside it changes nothing an operator can act on
-            at the door. It made the focus row a different height from every
-            other row for a fact nobody was reading. `conditionGrade` stays on
-            the entry — a receiving station will want it. */}
-
-        {/* The server's own words. Never suppressed on a history row: a refusal
-            the operator scrolled past is the one thing they may need to go back
-            to, and it is the only content that distinguishes a bad row now that
-            the verb is gone. */}
-        {entry.message && (
-          // Two-line clamp at the region's body size: a longer refusal wrapping
-          // to three lines would change the row's height and shove the tape —
-          // the exact failure the truncate-never-wrap rule on line 1 prevents.
-          <p className={cn('line-clamp-2 text-mode-body font-medium', ink)}>{entry.message}</p>
-        )}
+        {/* Band 2 — identity: the name (one line; a wrap would shove the tape) ··· who */}
+        <div className={cn(BAND, 'border-b border-mode-rule')}>
+          <p className={cn(RECORD_TITLE_CLASS, 'flex-1', entry.title ? 'text-mode-ink' : 'text-mode-muted')}>
+            {entry.title ?? untitledLabel}
+          </p>
+          <span className={LANE}>
+            {(entry.actor || entry.actorId != null) && (
+              <StaffAvatar
+                staffId={entry.actorId}
+                name={entry.actor}
+                avatarPhotoId={null}
+                size="sm"
+                colorRing
+                alt={entry.actor ?? undefined}
+              />
+            )}
+          </span>
+        </div>
+        {/* Band 3 — execution: what was scanned, or the server's own refusal
+            (never suppressed on a history row) ··· the outcome */}
+        <div className={BAND}>
+          {entry.message ? (
+            <p className={cn('min-w-0 flex-1 truncate text-role-data font-medium', ink)} title={entry.message}>
+              {entry.message}
+            </p>
+          ) : (
+            <span className="min-w-0 flex-1 truncate">
+              {entry.identifier ? (
+                <TrackingChip value={entry.identifier} showIcon dense outerPad="flush" disableCopy disableTooltip />
+              ) : null}
+            </span>
+          )}
+          <span className={cn(LANE, RECORD_LABEL_CLASS, ink)}>
+            <span className="truncate">{entry.verb}</span>
+          </span>
+        </div>
       </div>
-
     </div>
   );
 
@@ -302,8 +247,9 @@ function MobileStationTapeItemBase({
       className={cn(
         // Industrial record (owner 2026-09-26): edge to edge, no inset — the
         // photo lane and the ink rule reach the screen's edges.
-        'flex flex-col',
-        STATION_TONE_GROUND[entry.tone],
+        'flex flex-col bg-mode-panel',
+        // No row wash for any outcome (BRIEF §4 industrial): the spine and the
+        // lane's verb carry it.
         'border-b border-mode-ink',
         // Selection is a 2px INK outline, never a coloured one (BRIEF §4/§5 —
         // an invariant). Inset so it cannot be clipped by the scroller.

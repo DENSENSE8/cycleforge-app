@@ -26,27 +26,6 @@ import type { StationTone } from './station-tape';
 export const STATION_EYEBROW_CLASS = 'uppercase';
 
 /**
- * Tone as a GROUND, not as ink.
- *
- * The signal used to live in a 10px coloured stamp. Measured on the default
- * light theme over `bg-surface-card` #ffffff, `text-text-success` (then #16a34a) was
- * 3.26:1 and `text-text-warning` (then #ea580c) 3.54:1 — both under the 4.5:1 floor
- * for text this size, and the outcome verb had already been removed from the
- * row, so that ink WAS the entire distinction between "the job" and "stop and
- * look". A signal nobody can read is not a signal.
- *
- * Moving it to the row's ground fixes three things at once: contrast stops
- * depending on a tiny glyph, an exception becomes findable while scrolling a
- * 40-row ledger, and the outcome no longer relies on hue alone.
- */
-export const STATION_TONE_GROUND: Record<StationTone, string> = {
-  // The job. No tint — a ledger where every row is coloured has no signal.
-  ok: 'bg-surface-card',
-  warn: 'bg-surface-warning',
-  bad: 'bg-surface-danger',
-};
-
-/**
  * Ink, for the one place tone still speaks in words: the server's own message.
  *
  * That line is `role-caption` and short, not a 10px stamp, so the semantic
