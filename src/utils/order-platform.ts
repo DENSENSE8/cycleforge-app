@@ -26,11 +26,17 @@ export function getOrderPlatformLabel(orderId: string | null | undefined, accoun
     return 'FBA';
   }
 
+  // An imported channel (ShipStation store → platform, marketplace sync) names
+  // the platform outright. Shape guesses below only fill in for a row with no
+  // recognised source — a 4-digit Shopify order is not an Ecwid order.
+  const known = sourcePlatformMetaFromLabel(accountSource);
+  if (known.value) return known.value === 'ecwid' ? 'ECWID' : known.label;
+
   if (/^\d{15}$/.test(oid)) {
     return 'Walmart';
   }
 
-  if (/^\d{4}$/.test(oid)) {
+  if (/^\d{4}$/.test(oid) && !String(accountSource || '').trim()) {
     return 'ECWID';
   }
 
@@ -84,30 +90,38 @@ export function marketplaceOrderUrl(
   if (isFbaOrder(oid, accountSource)) return null;
 
   const inferred = inferMarketplaceFromOrderId(oid);
-  const label = getOrderPlatformLabel(oid, accountSource).toLowerCase();
-  const src = String(accountSource || '').trim().toLowerCase();
-
-  // Amazon SP-API AmazonOrderId — official 3-7-7
-  if (inferred === 'amazon' || label === 'amazon') {
+  if (inferred === 'amazon') {
     return `https://sellercentral.amazon.com/orders-v3/order/${encodeURIComponent(oid)}`;
   }
-  // eBay Seller Hub / receipt order number — 2-5-5
-  if (inferred === 'ebay' || label === 'ebay' || src === 'ebay') {
+  if (inferred === 'ebay') {
     return `https://www.ebay.com/mesh/ord/details?orderid=${encodeURIComponent(oid)}`;
   }
-  // Walmart 15-digit
-  if (label === 'walmart' || src === 'walmart' || /^\d{15}$/.test(oid)) {
-    return `https://seller.walmart.com/orders/manage-orders?orderId=${encodeURIComponent(oid)}`;
-  }
-  // Ecwid store admin — the store id reaches the client as
-  // NEXT_PUBLIC_ECWID_STORE_ID (next.config.ts, from ECWID_STORE_ID).
-  if (label === 'ecwid' || src === 'ecwid') {
-    const storeId = process.env.NEXT_PUBLIC_ECWID_STORE_ID;
-    return storeId
-      ? `https://my.ecwid.com/store/${encodeURIComponent(storeId)}#order:id=${encodeURIComponent(oid)}&return=orders`
-      : null;
-  }
 
-  return null;
+  // Past the exact shapes, the platform is whatever getOrderPlatformLabel
+  // resolved — the imported source first, the numeric guesses only without one.
+  switch (sourcePlatformMetaFromLabel(getOrderPlatformLabel(oid, accountSource)).value) {
+    case 'amazon':
+      return `https://sellercentral.amazon.com/orders-v3/order/${encodeURIComponent(oid)}`;
+    case 'ebay':
+      return `https://www.ebay.com/mesh/ord/details?orderid=${encodeURIComponent(oid)}`;
+    case 'walmart':
+      return `https://seller.walmart.com/orders/manage-orders?orderId=${encodeURIComponent(oid)}`;
+    case 'ecwid': {
+      // Store id reaches the client as NEXT_PUBLIC_ECWID_STORE_ID (next.config.ts).
+      const storeId = process.env.NEXT_PUBLIC_ECWID_STORE_ID;
+      return storeId
+        ? `https://my.ecwid.com/store/${encodeURIComponent(storeId)}#order:id=${encodeURIComponent(oid)}&return=orders`
+        : null;
+    }
+    case 'shopify': {
+      // Search the admin by order number. admin.shopify.com resolves the store
+      // from the session when the path has no handle; SHOPIFY_STORE_HANDLE pins it.
+      const handle = process.env.NEXT_PUBLIC_SHOPIFY_STORE_HANDLE;
+      const admin = handle ? `https://admin.shopify.com/store/${encodeURIComponent(handle)}` : 'https://admin.shopify.com';
+      return `${admin}/orders?query=${encodeURIComponent(oid)}`;
+    }
+    default:
+      return null;
+  }
 }
 

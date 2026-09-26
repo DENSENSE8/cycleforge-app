@@ -183,9 +183,7 @@ export type OrderRecordSectionId =
   | 'assign'
   /** The shipment once it has left: scanned out by + when, carrier / TRK#, tracking status. */
   | 'shipment'
-  /** Outbound label status + print the stored label / slip. */
-  | 'labels'
-  /** Every label on the order, return and replacement stories included. */
+  /** Every label on the order, return and replacement stories included (reading only — viewing / printing the label is the Label action). */
   | 'label-entries'
   /** Persisted ShipStation price breakdown. */
   | 'price'
@@ -215,8 +213,8 @@ interface OrderRecordForbiddenSections {
 export const ORDER_RECORD_SECTIONS: {
   readonly [M in OrderRecordMode]: readonly Exclude<OrderRecordSectionId, OrderRecordForbiddenSections[M]>[];
 } = {
-  'to-ship': ['state', 'buyer-note', 'item', 'stages', 'assign', 'labels', 'price', 'note', 'customer', 'facts'],
-  pending: ['state', 'buyer-note', 'item', 'stages', 'assign', 'labels', 'price', 'note', 'customer', 'facts'],
+  'to-ship': ['state', 'buyer-note', 'item', 'stages', 'assign', 'price', 'note', 'customer', 'facts'],
+  pending: ['state', 'buyer-note', 'item', 'stages', 'assign', 'price', 'note', 'customer', 'facts'],
   // A held order's job is the pairing; its notes field carries the routing
   // text (`exceptionRowToQueueRow`), so the note editor stays off.
   exceptions: ['state', 'buyer-note', 'resolve', 'item', 'stages', 'assign', 'customer', 'facts'],
@@ -229,7 +227,6 @@ export const ORDER_RECORD_SECTIONS: {
     'shipment',
     'facts',
     'customer',
-    'labels',
     'label-entries',
     'price',
     'note',
@@ -243,7 +240,6 @@ export const ORDER_RECORD_SECTIONS: {
     'item',
     'stages',
     'assign',
-    'labels',
     'label-entries',
     'price',
     'note',

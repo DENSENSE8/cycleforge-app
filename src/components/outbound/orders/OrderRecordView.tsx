@@ -63,6 +63,7 @@ import {
   LedgerSkuBinPicker,
   LedgerTrackingReplace,
   LedgerOpenAction,
+  LedgerCopyAction,
   LedgerQty,
   LedgerShipBy,
   LedgerStageAssign,
@@ -198,9 +199,14 @@ export function OrderRecordView({
               <LedgerOpenAction href={marketplaceOrderUrl(orderId, view.platformValue)} label="order number" />
             </span>
           </EvidenceFactRow>
+          {/* The listing link opens (it is the value); copy is the row's
+              secondary action, far right on the ↗ / ✎ axis (owner 2026-09-26). */}
           <EvidenceFactRow label="Listing">
-            <span className="block h-8">
-              <LedgerListingLink href={view.titleHref ?? null} itemNumber={record.item_number ?? null} face="value" />
+            <span className="flex min-w-0 flex-1 items-center">
+              <span className="block h-8 min-w-0 flex-1">
+                <LedgerListingLink href={view.titleHref ?? null} itemNumber={record.item_number ?? null} face="value" />
+              </span>
+              <LedgerCopyAction value={String(record.item_number ?? '').trim() || null} label="item number" />
             </span>
           </EvidenceFactRow>
           <EvidenceFactRow label="Tracking #">
@@ -244,9 +250,7 @@ export function OrderRecordView({
         </div>
       ) : null}
       {shows.has('customer') && buyer ? <OrderCustomerSection customer={buyer.customer} source={buyer.source} /> : null}
-      {shows.has('labels') ? (
-        <OrderLabelsSection orderId={record.id} orderRef={orderRef} entries={shows.has('label-entries')} />
-      ) : null}
+      {shows.has('label-entries') ? <OrderLabelsSection orderId={record.id} orderRef={orderRef} /> : null}
       {shows.has('price') ? <OrderPriceEvidence orderId={record.id} /> : null}
       {shows.has('note') ? (
         // The latest face of the `order_notes` trail, edited in place and

@@ -6,6 +6,7 @@ import { useEffect, useLayoutEffect, useRef, useState, type RefObject, type Reac
 import { createPortal } from 'react-dom';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { Button } from '@/design-system/primitives/Button';
+import { OrderPaperworkDialog } from '@/components/outbound/orders/paperwork/PaperworkDocuments';
 import {
   RecordActionStrip,
   type RecordActionVerb,
@@ -667,7 +668,7 @@ function OosDisplay({ rows, done }: { rows: readonly MorphingOosRow[]; done: () 
   );
 }
 
-/** Label — link a packing slip / shipping label the packer scan prints, or walk the labels. */
+/** Label — view / print the order's label and slip, link new ones the packer scan prints, or walk the labels. */
 function LabelDisplay({
   record,
   onOpenLabels,
@@ -681,6 +682,9 @@ function LabelDisplay({
   const slipInputRef = useRef<HTMLInputElement>(null);
   const labelInputRef = useRef<HTMLInputElement>(null);
   const id = Number(record.id);
+  const orderRef = String(record.order_id ?? '').trim() || `#${id}`;
+  // Stays open while the display is: the dialog is the paperwork viewer (print on the preview).
+  const [paperwork, setPaperwork] = useState<'shipping_label' | 'packing_slip' | null>(null);
 
   const upload = (documentType: 'packing_slip' | 'shipping_label', file: File | undefined) => {
     if (!file) return;
@@ -707,6 +711,19 @@ function LabelDisplay({
 
   return (
     <div className="flex min-w-0 flex-1 flex-wrap items-center gap-1" data-testid="order-label-display">
+      <Button type="button" variant="secondary" size="sm" radius="pill" icon={<Truck />} data-testid="order-label-view" onClick={() => setPaperwork('shipping_label')}>
+        View label
+      </Button>
+      <Button type="button" variant="secondary" size="sm" radius="pill" icon={<FileText />} data-testid="order-slip-view" onClick={() => setPaperwork('packing_slip')}>
+        View slip
+      </Button>
+      <OrderPaperworkDialog
+        open={paperwork != null}
+        onOpenChange={(next) => !next && setPaperwork(null)}
+        orderId={id}
+        orderRef={orderRef}
+        initialTab={paperwork ?? 'shipping_label'}
+      />
       <input
         ref={slipInputRef}
         type="file"

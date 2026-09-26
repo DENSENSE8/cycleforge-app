@@ -34,6 +34,9 @@ export function OrderPriceEvidence({ orderId }: { orderId: number }) {
   const [linesOpen, setLinesOpen] = useState(false);
   const b = query.data ?? null;
   const net = b?.net ?? null;
+  // The row reads the price the buyer paid (owner 2026-09-26: no "Net" on the
+  // row); the net math stays inside the disclosure.
+  const price = b ? (b.amountPaid ?? b.orderTotal ?? b.saleAmount ?? null) : null;
 
   return (
     <EvidenceDisclosure
@@ -41,14 +44,10 @@ export function OrderPriceEvidence({ orderId }: { orderId: number }) {
       testId="evidence-price"
       summary={
         <span
-          data-testid="evidence-price-net"
-          title={b ? `Net = ${NET_BASIS_LABEL[b.netBasis ?? 'amount_paid']} − tax − label costs. No marketplace fees.` : undefined}
-          className={cn(
-            RECORD_ID_CLASS,
-            query.isError ? 'text-mode-warn' : net == null ? 'text-mode-muted' : net < 0 ? STATE_TONE_CLASSES.danger.text : STATE_TONE_CLASSES.success.text,
-          )}
+          data-testid="evidence-price-value"
+          className={cn(RECORD_ID_CLASS, query.isError ? 'text-mode-warn' : price == null ? 'text-mode-muted' : STATE_TONE_CLASSES.success.text)}
         >
-          {query.isError ? 'Unreadable' : b == null ? '…' : net == null ? '—' : `Net ${formatCurrency(net)}${b.incomplete ? '*' : ''}`}
+          {query.isError ? 'Unreadable' : b == null ? '…' : dash(price)}
         </span>
       }
     >

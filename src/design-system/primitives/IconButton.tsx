@@ -3,7 +3,7 @@
 import { forwardRef, type ButtonHTMLAttributes, type MouseEvent, type ReactNode } from 'react';
 import { cn } from '@/utils/_cn';
 import { focusRing } from '../tokens/focus-ring';
-import { cornerClass } from '../tokens/radius';
+import { cornerClass, TRIAGE_PANEL_INNER_CORNER } from '../tokens/radius';
 
 type IconButtonTone = 'neutral' | 'accent' | 'glass';
 
@@ -51,14 +51,16 @@ interface IconButtonProps
   size?: IconButtonSize;
   /**
    * Corner. Default `flush` — the zero-radius ops law.
+   * `control` is `TRIAGE_PANEL_INNER_CORNER` — follows the region: rounded on desk records, square on phones.
    * `surface` is `cornerClass('surface')` for mobile chrome beside inset-grouped cards.
    * `pill` is `cornerClass('pill')`.
    */
-  radius?: 'flush' | 'surface' | 'pill';
+  radius?: 'flush' | 'control' | 'surface' | 'pill';
 }
 
 const ICON_BUTTON_RADIUS: Record<NonNullable<IconButtonProps['radius']>, string> = {
   flush: cornerClass('flush'),
+  control: TRIAGE_PANEL_INNER_CORNER,
   surface: cornerClass('surface'),
   pill: cornerClass('pill'),
 };

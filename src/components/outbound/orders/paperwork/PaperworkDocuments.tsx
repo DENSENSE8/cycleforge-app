@@ -925,3 +925,38 @@ export function ItemPaperworkDialog({
     </Dialog>
   );
 }
+
+/** The order's own paperwork (label · slip · manuals) — the Label action's viewer; print lives on each preview. */
+export function OrderPaperworkDialog({
+  open,
+  onOpenChange,
+  orderId,
+  orderRef,
+  initialTab = 'shipping_label',
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  orderId: number;
+  orderRef: string;
+  initialTab?: PaperworkTab;
+}) {
+  const [tab, setTab] = useState<PaperworkTab>(initialTab);
+  useEffect(() => {
+    if (open) setTab(initialTab);
+  }, [open, initialTab]);
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="flex max-h-[92dvh] max-w-5xl flex-col overflow-y-auto" data-testid="order-paperwork-dialog">
+        <DialogHeader>
+          <DialogTitle>
+            Order <span className="font-mono">{orderRef}</span> paperwork
+          </DialogTitle>
+          <DialogDescription>Shipping label, packing slip and paired manuals. Print from the preview.</DialogDescription>
+        </DialogHeader>
+        {open ? (
+          <PaperworkDocuments orderId={orderId} orderRef={orderRef} tab={tab} onTabChange={setTab} onChanged={() => undefined} />
+        ) : null}
+      </DialogContent>
+    </Dialog>
+  );
+}

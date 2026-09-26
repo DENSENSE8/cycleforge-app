@@ -23,3 +23,30 @@ test('marketplace Open URLs follow the same exact shapes', () => {
   );
   assert.equal(marketplaceOrderUrl('PO-99', null), null);
 });
+
+test('an imported platform wins over the 4-digit Ecwid guess', () => {
+  assert.equal(getOrderPlatformLabel('1117', 'shopify'), 'Shopify');
+  assert.equal(getOrderPlatformLabel('1100', 'Other'), 'Other');
+  assert.equal(getOrderPlatformLabel('5043', 'ecwid'), 'ECWID');
+  assert.equal(getOrderPlatformLabel('5043', null), 'ECWID', 'unsourced legacy rows keep the guess');
+});
+
+test('a Shopify order never opens the Ecwid admin', () => {
+  const env = process.env;
+  process.env = { ...env, NEXT_PUBLIC_ECWID_STORE_ID: '123', NEXT_PUBLIC_SHOPIFY_STORE_HANDLE: 'usav-shop' };
+  try {
+    assert.equal(
+      marketplaceOrderUrl('1117', 'shopify'),
+      'https://admin.shopify.com/store/usav-shop/orders?query=1117',
+    );
+    assert.equal(
+      marketplaceOrderUrl('5043', 'ecwid'),
+      'https://my.ecwid.com/store/123#order:id=5043&return=orders',
+    );
+    assert.equal(marketplaceOrderUrl('1100', 'Other'), null);
+    process.env.NEXT_PUBLIC_SHOPIFY_STORE_HANDLE = '';
+    assert.equal(marketplaceOrderUrl('1117', 'shopify'), 'https://admin.shopify.com/orders?query=1117');
+  } finally {
+    process.env = env;
+  }
+});

@@ -104,9 +104,12 @@ const nextConfig: NextConfig = {
     turbopack: {},
     // Workspace package shipped as TypeScript source (main: src/index.ts).
     transpilePackages: ["@cycleforge/design-tokens"],
-    // The Ecwid store id is not a secret (it is in every storefront URL);
-    // the client needs it to link an Ecwid order into the store admin.
-    env: { NEXT_PUBLIC_ECWID_STORE_ID: process.env.ECWID_STORE_ID ?? process.env.NEXT_PUBLIC_ECWID_STORE_ID ?? "" },
+    // Store identifiers are not secrets (they are in every storefront/admin
+    // URL); the client needs them to link an order into the platform admin.
+    env: {
+        NEXT_PUBLIC_ECWID_STORE_ID: process.env.ECWID_STORE_ID ?? process.env.NEXT_PUBLIC_ECWID_STORE_ID ?? "",
+        NEXT_PUBLIC_SHOPIFY_STORE_HANDLE: process.env.SHOPIFY_STORE_HANDLE ?? process.env.NEXT_PUBLIC_SHOPIFY_STORE_HANDLE ?? "",
+    },
     // Vercel sets this on platform builds. Explicit so Skew Protection can
     // pin framework-managed assets/RSC to the deployment that served the
     // page (floor stations stay open across a ship). Do not remove the
@@ -182,7 +185,8 @@ const nextConfig: NextConfig = {
         // is the symptom. Prefer slower + green (1 worker).
         cpus: 1,
         optimizePackageImports: [
-            'framer-motion',
+            'motion',
+            'motion-plus',
             'lucide-react',
             'sonner',
             'date-fns',

@@ -27,12 +27,14 @@ export function detectListingPlatform(
   if (src === 'shipstation') return 'shipstation';
   if (src.startsWith('amazon') || src.startsWith('amz')) return 'amazon';
   if (src.startsWith('walmart')) return 'walmart';
+  if (src === 'shopify') return 'shopify';
 
   const oid = (orderId || '').trim();
   if (/^\d{2}-\d+-\d+$/.test(oid)) return 'ebay';
   if (/^\d{3}-\d+-\d+$/.test(oid)) return 'amazon';
   if (/^\d{15}$/.test(oid)) return 'walmart';
-  if (/^\d{4}$/.test(oid)) return 'ecwid';
+  // Only an unsourced row falls back to the legacy Ecwid number shape.
+  if (!src && /^\d{4}$/.test(oid)) return 'ecwid';
 
   return src || 'unknown';
 }

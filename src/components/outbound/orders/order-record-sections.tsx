@@ -4,8 +4,7 @@
 
 import { useState } from 'react';
 import type { ShippedOrder } from '@/lib/neon/orders-queries';
-import { DESK_BAR_SEGMENT_CLASS, deskBarSegmentTone } from '@/design-system/components/DeskActionSlot';
-import { Check, Copy, MapPin, Printer } from '@/components/Icons';
+import { Check, Copy, MapPin } from '@/components/Icons';
 import {
   customerAddressLines,
   customerBillToLines,
@@ -14,19 +13,13 @@ import {
   type CustomerBillTo,
   type CustomerRecord,
 } from '@/lib/customers/customer-display';
-import { outboundDocumentContentSrc } from '@/lib/documents/outbound-document-display';
 import { EvidenceDisclosure, EvidenceFactRow } from '@/design-system/components/record-ledger/EvidenceDisclosure';
 import type { OrderLabelStatus } from '@/lib/shipping/order-label-summary';
 import { STATE_TONE_CLASSES } from '@/design-system/tokens/lifecycle';
 import { focusRing } from '@/design-system/tokens/focus-ring';
-import { RECORD_ID_CLASS, RECORD_LABEL_CLASS } from '@/design-system/tokens/industrial-record';
+import { RECORD_ID_CLASS, RECORD_LABEL_CLASS, RECORD_TRAILING_ACTION_CLASS } from '@/design-system/tokens/industrial-record';
 import { cn } from '@/utils/_cn';
-import {
-  pickOrderDocument,
-  printDocument,
-  useOrderDocuments,
-  useOrderLabelSummary,
-} from '@/lib/orders/order-paperwork-client';
+import { useOrderDocuments, useOrderLabelSummary } from '@/lib/orders/order-paperwork-client';
 import { OrderLabelEntries } from './OrderLabelEntries';
 import { LedgerStageAssign, stageFacts } from './outbound-orders-ledger-editors';
 import { resolveOrdersSlotValue } from '@/lib/tables/field-catalog/orders-resolve';
@@ -45,23 +38,18 @@ const LABEL_STATUS_FACE: Readonly<Record<OrderLabelStatus, { label: string; tone
   voided: { label: 'Voided', tone: 'text-mode-muted', tip: 'The last label was voided and nothing has replaced it.' },
 };
 
-/** The order's labels: */
-export function OrderLabelsSection({ orderId, orderRef, entries }: { orderId: number; orderRef: string; entries: boolean }) {
+/** The order's label history (Shipped / Search): status + every label. Viewing and printing are the Label action, not this read-out. */
+export function OrderLabelsSection({ orderId, orderRef }: { orderId: number; orderRef: string }) {
   const summaryQuery = useOrderLabelSummary(orderId);
   const documentsQuery = useOrderDocuments(orderId);
   const summary = summaryQuery.data ?? null;
-  const purchase = summary?.purchase ?? null;
   const labels = summary?.labels ?? [];
   const face = summary ? LABEL_STATUS_FACE[summary.status] : null;
   const documents = documentsQuery.data?.documents ?? [];
-  const labelSrc = outboundDocumentContentSrc(
-    pickOrderDocument(documents, 'shipping_label', purchase?.labelDocumentId ?? null),
-  );
-  const slipSrc = outboundDocumentContentSrc(pickOrderDocument(documents, 'packing_slip', null));
 
   return (
     <EvidenceDisclosure
-      label={entries && labels.length > 1 ? `Labels · ${labels.length}` : entries ? 'Labels' : 'Label'}
+      label={labels.length > 1 ? `Labels · ${labels.length}` : 'Labels'}
       testId="evidence-label"
       summary={
         <span
@@ -78,31 +66,7 @@ export function OrderLabelsSection({ orderId, orderRef, entries }: { orderId: nu
           {LABEL_STATUS_FACE.pending.tip}
         </p>
       ) : null}
-      {entries ? <OrderLabelEntries orderId={orderId} orderRef={orderRef} labels={labels} documents={documents} /> : null}
-      <div className="flex items-stretch border-t border-mode-edge bg-mode-bar" data-testid="evidence-label-print">
-        <button
-          type="button"
-          disabled={!labelSrc}
-          title={labelSrc ? 'Print the stored shipping label' : 'No shipping label stored on this order'}
-          data-testid="evidence-print-label"
-          className={cn(DESK_BAR_SEGMENT_CLASS, 'flex-1 justify-center border-r border-mode-edge', deskBarSegmentTone(false))}
-          onClick={() => labelSrc && printDocument(labelSrc)}
-        >
-          <Printer className="h-3.5 w-3.5" aria-hidden />
-          Print label
-        </button>
-        <button
-          type="button"
-          disabled={!slipSrc}
-          title={slipSrc ? 'Print the stored packing slip' : 'No packing slip stored on this order'}
-          data-testid="evidence-print-slip"
-          className={cn(DESK_BAR_SEGMENT_CLASS, 'flex-1 justify-center', deskBarSegmentTone(false))}
-          onClick={() => slipSrc && printDocument(slipSrc)}
-        >
-          <Printer className="h-3.5 w-3.5" aria-hidden />
-          Print slip
-        </button>
-      </div>
+      <OrderLabelEntries orderId={orderId} orderRef={orderRef} labels={labels} documents={documents} />
     </EvidenceDisclosure>
   );
 }
@@ -145,8 +109,7 @@ export function orderBuyer(record: ShippedOrder): { customer: CustomerRecord; so
 }
 
 /** A small icon action on a fact value (copy address, map lookup). */
-const ADDRESS_ACTION_CLASS =
-  'ds-raw-button inline-flex size-7 items-center justify-center rounded-mode-control text-mode-muted hover:bg-mode-hover hover:text-mode-ink';
+const ADDRESS_ACTION_CLASS = cn('ds-raw-button', RECORD_TRAILING_ACTION_CLASS);
 
 /** The buyer as one collapsible section: */
 export function OrderCustomerSection({ customer, source }: { customer: CustomerRecord; source?: string }) {

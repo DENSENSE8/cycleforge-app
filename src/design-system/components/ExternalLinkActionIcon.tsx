@@ -11,6 +11,8 @@ interface ExternalLinkActionIconProps {
   ariaLabel?: string;
   title?: string;
   disabled?: boolean;
+  /** IconButton corner; default flush. */
+  radius?: 'flush' | 'control' | 'surface' | 'pill';
 }
 
 export function ExternalLinkActionIcon({
@@ -20,6 +22,7 @@ export function ExternalLinkActionIcon({
   ariaLabel = 'Open external link',
   title = 'Open',
   disabled = false,
+  radius,
 }: ExternalLinkActionIconProps) {
   const canOpen = Boolean(href || onOpen) && !disabled;
 
@@ -42,6 +45,7 @@ export function ExternalLinkActionIcon({
       ariaLabel={ariaLabel}
       title={title}
       tone="accent"
+      radius={radius}
     />
   );
 }

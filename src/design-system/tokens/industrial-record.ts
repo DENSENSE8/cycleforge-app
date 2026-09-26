@@ -106,6 +106,15 @@ export const RECORD_OPEN_CLASS = 'bg-mode-hover outline outline-2 -outline-offse
 export const RECORD_TRAILING_CELL_CLASS = 'inline-flex w-8 shrink-0 items-center justify-center';
 
 /**
+ * A details-panel row's trailing icon action (open ↗, edit ✎, copy) — the
+ * same shape as the address copy / maps actions: a 28px square on the
+ * region's control corner (rounded on the desk record, square on phones),
+ * no seam. Pairs with `radius="control"` on `IconButton`.
+ */
+export const RECORD_TRAILING_ACTION_CLASS =
+  'inline-flex size-7 shrink-0 items-center justify-center rounded-mode-control text-mode-muted hover:bg-mode-hover hover:text-mode-ink';
+
+/**
  * Right inset that lands a 14px glyph drawn INSIDE another control (the
  * SearchableSelectField chevron) on the trailing-cell axis: (32 − 14) / 2.
  * Pairs with {@link RECORD_TRAILING_CELL_CLASS}; never a different pr-*.

@@ -67,6 +67,7 @@ CONSUMER_SECRET=        # USPS
 ```
 ECWID_STORE_ID=
 ECWID_API_TOKEN=
+SHOPIFY_STORE_HANDLE=   # optional; pins Shopify admin order links, else admin.shopify.com picks the session's store
 SQUARE_ACCESS_TOKEN=
 SQUARE_LOCATION_ID=
 ```

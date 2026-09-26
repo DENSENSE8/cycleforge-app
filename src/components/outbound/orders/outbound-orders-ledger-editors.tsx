@@ -34,7 +34,7 @@ import {
   type CompoundSlotValue,
   type CompoundStageStepFacts,
 } from '@/components/tables/compound/compound-row-model';
-import { Pencil, ResizeCorner, Tag } from '@/components/Icons';
+import { Check, Copy, Pencil, ResizeCorner, Tag } from '@/components/Icons';
 import { conditionGradeTextClass, conditionGradeTone, orderRowQtyTone } from '@/lib/condition-tone';
 import {
   conditionGradeTableLabel,
@@ -54,7 +54,7 @@ import {
   RECORD_LABEL_CLASS,
   RECORD_QTY_BADGE_CLASS,
   RECORD_RECESS_CLASS,
-  RECORD_TRAILING_CELL_CLASS,
+  RECORD_TRAILING_ACTION_CLASS,
   RECORD_TRAILING_GLYPH_INSET_CLASS,
 } from '@/design-system/tokens/industrial-record';
 import { LEDGER_HIT_CLASS } from './outbound-orders-ledger-geometry';
@@ -480,8 +480,8 @@ export function LedgerSkuBinPicker({
 }
 
 /**
- * The open cell beside an identifier chip in the evidence column (order #,
- * tracking #). The chip copies; this opens. Square flush cell, 1px edge.
+ * The open action beside an identifier in the details panel (order #,
+ * tracking #). The identifier copies; this opens.
  */
 export function LedgerOpenAction({ href, label }: { href: string | null; label: string }) {
   return (
@@ -489,13 +489,41 @@ export function LedgerOpenAction({ href, label }: { href: string | null; label: 
       href={href}
       ariaLabel={`Open ${label}`}
       title={`Open ${label}`}
-      className={cn(
-        'border-l border-mode-seam hover:bg-mode-hover',
-        RECORD_TRAILING_CELL_CLASS,
-        LEDGER_HIT_CLASS,
-        focusRing('cell'),
-      )}
+      radius="control"
+      className={cn(RECORD_TRAILING_ACTION_CLASS, focusRing('control'))}
     />
+  );
+}
+
+/**
+ * Copy as the row's secondary action, far right — for a value whose own
+ * click opens something (the listing link), so copy cannot live on the value.
+ */
+export function LedgerCopyAction({ value, label }: { value: string | null; label: string }) {
+  const [copied, setCopied] = useState(false);
+  const copy = async () => {
+    if (!value) return;
+    try {
+      await navigator.clipboard.writeText(value);
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 1400);
+    } catch {
+      // Clipboard denied: nothing to undo.
+    }
+  };
+  return (
+    <HoverTooltip label={copied ? 'Copied' : `Copy ${label}`} asChild placement="above">
+      <button
+        type="button"
+        disabled={!value}
+        onClick={copy}
+        aria-label={`Copy ${label}`}
+        data-testid="evidence-copy-action"
+        className={cn('ds-raw-button disabled:opacity-35', RECORD_TRAILING_ACTION_CLASS, focusRing('control'))}
+      >
+        {copied ? <Check className="h-3.5 w-3.5" aria-hidden /> : <Copy className="h-3.5 w-3.5" aria-hidden />}
+      </button>
+    </HoverTooltip>
   );
 }
 
@@ -528,12 +556,7 @@ export function LedgerTrackingReplace({
           onClick={stop}
           aria-label={current ? 'Replace tracking number' : 'Add tracking number'}
           title={current ? 'Replace tracking number' : 'Add tracking number'}
-          className={cn(
-            'ds-raw-button border-l border-mode-seam text-mode-ink hover:bg-mode-hover',
-            RECORD_TRAILING_CELL_CLASS,
-            LEDGER_HIT_CLASS,
-            focusRing('cell'),
-          )}
+          className={cn('ds-raw-button', RECORD_TRAILING_ACTION_CLASS, focusRing('control'))}
         >
           <Pencil className="h-3.5 w-3.5" aria-hidden />
         </button>
