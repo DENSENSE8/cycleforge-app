@@ -1,20 +1,20 @@
-import { NextRequest, NextResponse } from 'next/server';
 import { withAuth } from '@/lib/auth/withAuth';
+import { readV1Json, v1Data, v1DomainError } from '@/lib/api/v1-route';
 import { startSession } from '@/lib/picking/sessions';
 import { emitIdentificationCompleted } from '@/lib/automations/emit-identification-completed';
 import { identificationFromPick } from '@/lib/identification';
-import { pickOrderBodySchema, pickingV1Error, pickingV1ErrorFromStatus } from '@/lib/picking/picking-v1-contract';
+import { pickOrderBodySchema } from '@/lib/picking/picking-v1-contract';
 
 export const runtime = 'nodejs';
 
 /** POST /api/v1/picking/sessions — open (or reuse) the caller's session on a chosen order. */
-export const POST = withAuth(async (request: NextRequest, ctx) => {
-  const parsed = pickOrderBodySchema.safeParse(await request.json().catch(() => null));
-  if (!parsed.success) return NextResponse.json(pickingV1Error('INVALID_REQUEST', 'orderId is required.'), { status: 400 });
-  const { orderId } = parsed.data;
+export const POST = withAuth(async (request, ctx) => {
+  const body = await readV1Json(request, pickOrderBodySchema, 'orderId is required.');
+  if (!body.ok) return body.response;
+  const { orderId } = body.data;
 
   const result = await startSession({ orderId, pickerStaffId: ctx.staffId, deviceId: null }, ctx.organizationId);
-  if (!result.ok) return NextResponse.json(pickingV1ErrorFromStatus(result.status, result.error), { status: result.status });
+  if (!result.ok) return v1DomainError(result);
 
   if (!result.reopen) {
     // A fresh claim is an identification event; best-effort, never fails the open.
@@ -32,5 +32,5 @@ export const POST = withAuth(async (request: NextRequest, ctx) => {
       console.error('[POST /api/v1/picking/sessions] identification map', err);
     }
   }
-  return NextResponse.json({ data: { sessionId: result.sessionId, reopen: result.reopen } });
+  return v1Data({ sessionId: result.sessionId, reopen: result.reopen });
 }, { permission: 'orders.view' });

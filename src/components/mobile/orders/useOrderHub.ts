@@ -4,7 +4,8 @@ import { useQuery } from '@tanstack/react-query';
 import { useParams, useSearchParams } from 'next/navigation';
 import { qk } from '@/queries/keys';
 import { mobileJobReturn, withJobReturn } from '@/lib/mobile/nav-trail';
-import type { OutboundWorkItem, OutboundWorkPage } from '@/lib/outbound/work-contract';
+import { outboundWorkPageSchema, type OutboundWorkItem } from '@/lib/outbound/work-contract';
+import { v1Request } from '@/lib/api/v1-client';
 import type { OrderHubData, OrderLookupActivity, OrderLookupRecord } from '@/lib/orders/order-hub';
 
 type OrderLookup = { order: OrderLookupRecord; activity: OrderLookupActivity[] };
@@ -35,10 +36,11 @@ async function fetchOrder(param: string, byId: boolean, signal?: AbortSignal): P
 }
 
 async function fetchWork(pk: number, signal?: AbortSignal): Promise<OutboundWorkItem | null> {
-  const res = await fetch(`/api/v1/outbound/work?id=${pk}`, { cache: 'no-store', signal });
-  const body = (await res.json().catch(() => null)) as { data?: OutboundWorkPage; error?: { message?: string } } | null;
-  if (!res.ok || !body?.data) throw new Error(body?.error?.message || `Couldn't load the order's stage (HTTP ${res.status}).`);
-  return body.data.items[0] ?? null;
+  const page = await v1Request(`/api/v1/outbound/work?id=${pk}`, outboundWorkPageSchema, {
+    signal,
+    fallbackMessage: "Couldn't load the order's stage",
+  });
+  return page.items[0] ?? null;
 }
 
 /** The order's two server reads, shared by the hub and every door screen through `qk.orders.hub(…)`, so moving hub ↔ door is a cache hit: */

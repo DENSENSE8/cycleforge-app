@@ -1,12 +1,11 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse, type NextRequest } from 'next/server';
 import { withAuth } from '@/lib/auth/withAuth';
 import { createSession, revokeSession } from '@/lib/auth/session';
 import { authenticateAccountPassword, recordAccountSignin } from '@/lib/identity/account-signin';
-import { v1SessionCreateBodySchema, v1SessionError } from '@/lib/auth/v1-session-contract';
+import { v1SessionCreateBodySchema } from '@/lib/auth/v1-session-contract';
+import { readV1Json, v1Data, v1Error } from '@/lib/api/v1-route';
 
 export const runtime = 'nodejs';
-
-const NO_STORE = { 'cache-control': 'no-store' };
 
 function clientIp(req: NextRequest): string | null {
   const xff = req.headers.get('x-forwarded-for');
@@ -16,10 +15,8 @@ function clientIp(req: NextRequest): string | null {
 
 /** POST /api/v1/session — email + password → bearer token for a native client. Public (proxy PUBLIC_PATHS). */
 export async function POST(req: NextRequest) {
-  const parsed = v1SessionCreateBodySchema.safeParse(await req.json().catch(() => null));
-  if (!parsed.success) {
-    return NextResponse.json(v1SessionError('INVALID_REQUEST', 'Invalid sign-in body.'), { status: 400 });
-  }
+  const parsed = await readV1Json(req, v1SessionCreateBodySchema, 'Invalid sign-in body.');
+  if (!parsed.ok) return parsed.response;
   const body = parsed.data;
   const ip = clientIp(req);
   const ua = req.headers.get('user-agent');
@@ -34,29 +31,21 @@ export async function POST(req: NextRequest) {
   });
   switch (result.kind) {
     case 'rate_limited':
-      return NextResponse.json(v1SessionError('RATE_LIMITED', 'Too many sign-in attempts.'), {
-        status: 429,
+      return v1Error(429, 'RATE_LIMITED', 'Too many sign-in attempts.', {
         headers: result.retryAfterSec ? { 'retry-after': String(result.retryAfterSec) } : undefined,
       });
     case 'invalid_credentials':
-      return NextResponse.json(v1SessionError('INVALID_CREDENTIALS', 'Email or password is incorrect.'), { status: 401 });
+      return v1Error(401, 'INVALID_CREDENTIALS', 'Email or password is incorrect.');
     case 'account_not_active':
-      return NextResponse.json(v1SessionError('ACCOUNT_NOT_ACTIVE', 'This account is not active.'), { status: 403 });
+      return v1Error(403, 'ACCOUNT_NOT_ACTIVE', 'This account is not active.');
     case 'no_workspace':
-      return NextResponse.json(v1SessionError('NO_WORKSPACE', 'This account has no workspace.'), { status: 403 });
+      return v1Error(403, 'NO_WORKSPACE', 'This account has no workspace.');
     case 'not_member':
-      return NextResponse.json(v1SessionError('NOT_A_MEMBER', 'Not a member of that workspace.'), { status: 403 });
+      return v1Error(403, 'NOT_A_MEMBER', 'Not a member of that workspace.');
     case 'needs_org_choice':
-      return NextResponse.json(
-        {
-          error: {
-            code: 'ORG_CHOICE_REQUIRED',
-            message: 'Choose a workspace and sign in again with its slug as `workspace`.',
-            workspaces: result.memberships.map((m) => ({ slug: m.organizationSlug, name: m.organizationName })),
-          },
-        },
-        { status: 409 },
-      );
+      return v1Error(409, 'ORG_CHOICE_REQUIRED', 'Choose a workspace and sign in again with its slug as `workspace`.', {
+        extra: { workspaces: result.memberships.map((m) => ({ slug: m.organizationSlug, name: m.organizationName })) },
+      });
     case 'ok':
       break;
   }
@@ -79,34 +68,27 @@ export async function POST(req: NextRequest) {
     userAgent: ua,
   });
 
-  return NextResponse.json(
+  return v1Data(
     {
-      data: {
-        token: session.sid,
-        expiresAt: session.expiresAt.toISOString(),
-        staffId: session.staffId,
-        workspace: { slug: result.target.organization_slug, name: result.target.organization_name },
-      },
+      token: session.sid,
+      expiresAt: session.expiresAt.toISOString(),
+      staffId: session.staffId,
+      workspace: { slug: result.target.organization_slug, name: result.target.organization_name },
     },
-    { status: 201, headers: NO_STORE },
+    { status: 201 },
   );
 }
 
 /** GET /api/v1/session — the principal behind this bearer (or cookie). */
 export const GET = withAuth(async (_req, ctx) =>
-  NextResponse.json(
-    {
-      data: {
-        staffId: ctx.staffId,
-        name: ctx.user.name,
-        role: ctx.role,
-        permissions: [...ctx.permissions].sort(),
-        deviceKind: ctx.session.deviceKind,
-        expiresAt: ctx.session.expiresAt.toISOString(),
-      },
-    },
-    { headers: NO_STORE },
-  ),
+  v1Data({
+    staffId: ctx.staffId,
+    name: ctx.user.name,
+    role: ctx.role,
+    permissions: [...ctx.permissions].sort(),
+    deviceKind: ctx.session.deviceKind,
+    expiresAt: ctx.session.expiresAt.toISOString(),
+  }),
 );
 
 /** DELETE /api/v1/session — sign out; the token stops working immediately. */

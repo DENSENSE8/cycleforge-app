@@ -2,7 +2,8 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { getCurrentUserBySid } from './current-user';
-import { readSessionSid, readV1BearerSid } from './session';
+import { readSessionSid, readV1BearerSid, V1_API_PREFIX } from './session';
+import { v1Error, type V1ErrorCode } from '@/lib/api/v1-route';
 import { hasStepUp } from './stepup';
 import { requiresStepUp, rolesIncludeAdmin, type PermissionString } from './permissions';
 import { audit } from './audit';
@@ -136,9 +137,20 @@ export function withAuth(
     let auditWritten = false;
     const markAuditWritten = () => { auditWritten = true; };
 
+    // `/api/v1` answers every refusal in its `{ error: { code, message } }` envelope;
+    // the web routes keep their existing bodies.
+    const isV1 = req.nextUrl.pathname.startsWith(V1_API_PREFIX);
+    const refuse = (
+      status: number,
+      code: V1ErrorCode,
+      message: string,
+      legacy: Record<string, unknown>,
+      init: { extra?: Record<string, unknown>; headers?: Record<string, string> } = {},
+    ) => (isV1 ? v1Error(status, code, message, init) : NextResponse.json(legacy, { status, headers: init.headers }));
+
     if (!user) {
       if (!opts.allowAnonymous) {
-        return NextResponse.json({ error: 'UNAUTHENTICATED' }, { status: 401 });
+        return refuse(401, 'UNAUTHENTICATED', 'Sign in required.', { error: 'UNAUTHENTICATED' });
       }
       // Anonymous route: hand the handler an empty context.
       const ctx: AnonymousAuthContext = {
@@ -163,9 +175,12 @@ export function withAuth(
         userAgent: req.headers.get('user-agent'),
         detail: { permission: opts.permission, api: true, path: req.nextUrl.pathname },
       });
-      return NextResponse.json(
+      return refuse(
+        403,
+        'FORBIDDEN',
+        `Missing permission ${opts.permission}.`,
         { error: 'FORBIDDEN', permission: opts.permission, role: user.role },
-        { status: 403 },
+        { extra: { permission: opts.permission } },
       );
     }
 
@@ -179,26 +194,32 @@ export function withAuth(
       const scope = opts.permission ?? 'destructive';
       const granted = await hasStepUp(user.session.sid, scope);
       if (!granted) {
-        return NextResponse.json(
+        return refuse(
+          403,
+          'STEPUP_REQUIRED',
+          'Confirm with your PIN to continue.',
           { error: 'STEPUP_REQUIRED', scope, method_hint: 'pin' },
-          { status: 403 },
+          { extra: { scope } },
         );
       }
     }
 
     // Trial-expiry gate — OFF by default (TRIAL_ENFORCEMENT).
     if (await isTrialBlocked(user.organizationId, req.nextUrl.pathname)) {
-      return NextResponse.json(
-        { error: 'TRIAL_EXPIRED', hint: 'Subscribe at /settings/billing to continue.' },
-        { status: 402 },
-      );
+      return refuse(402, 'TRIAL_EXPIRED', 'Subscribe at /settings/billing to continue.', {
+        error: 'TRIAL_EXPIRED',
+        hint: 'Subscribe at /settings/billing to continue.',
+      });
     }
 
     // Plan-entitlement gate — OFF by default.
     if (opts.feature && (await isFeatureGated(opts.feature, user.organizationId))) {
-      return NextResponse.json(
+      return refuse(
+        403,
+        'FEATURE_GATED',
+        `Your plan does not include ${opts.feature}.`,
         { ok: false, error: 'FEATURE_GATED', feature: opts.feature, upgrade: true },
-        { status: 403 },
+        { extra: { feature: opts.feature } },
       );
     }
 
@@ -233,14 +254,16 @@ export function withAuth(
         `[withAuth:${requestId}] ${req.method} ${req.nextUrl.pathname} threw:`,
         err,
       );
+      // The legacy body carries the raw message and stack outside production; v1 never
+      // does — native clients get the request id to quote and nothing internal.
       const payload: Record<string, unknown> = { error: 'INTERNAL', requestId };
       if (process.env.NODE_ENV !== 'production') {
         payload.message = message;
         if (pgCode) payload.code = pgCode;
         if (stack) payload.stack = stack;
       }
-      return NextResponse.json(payload, {
-        status: 500,
+      return refuse(500, 'INTERNAL', 'Something went wrong on our side.', payload, {
+        extra: { requestId },
         headers: { 'x-request-id': requestId },
       });
     }

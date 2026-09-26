@@ -1,7 +1,7 @@
 {
   "openapi": "3.1.0",
   "info": {
-    "title": "CycleForge V1 Label Ingestions",
+    "title": "CycleForge V1",
     "version": "1.0.0"
   },
   "paths": {
@@ -16,38 +16,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object",
-                  "required": [
-                    "error"
-                  ],
-                  "properties": {
-                    "error": {
-                      "type": "object",
-                      "required": [
-                        "code",
-                        "message"
-                      ],
-                      "properties": {
-                        "code": {
-                          "type": "string",
-                          "enum": [
-                            "INVALID_REQUEST",
-                            "INVALID_PDF",
-                            "PAYLOAD_TOO_LARGE",
-                            "CLIENT_EVENT_PAYLOAD_MISMATCH",
-                            "INGESTION_NOT_FOUND",
-                            "INGESTION_NOT_ACTIONABLE",
-                            "ROW_VERSION_CONFLICT",
-                            "INGESTION_APPLY_CONFLICT",
-                            "INGESTION_PROCESSING_FAILED"
-                          ]
-                        },
-                        "message": {
-                          "type": "string"
-                        }
-                      }
-                    }
-                  }
+                  "$ref": "#/components/schemas/Error"
                 }
               }
             }
@@ -97,38 +66,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object",
-                  "required": [
-                    "error"
-                  ],
-                  "properties": {
-                    "error": {
-                      "type": "object",
-                      "required": [
-                        "code",
-                        "message"
-                      ],
-                      "properties": {
-                        "code": {
-                          "type": "string",
-                          "enum": [
-                            "INVALID_REQUEST",
-                            "INVALID_PDF",
-                            "PAYLOAD_TOO_LARGE",
-                            "CLIENT_EVENT_PAYLOAD_MISMATCH",
-                            "INGESTION_NOT_FOUND",
-                            "INGESTION_NOT_ACTIONABLE",
-                            "ROW_VERSION_CONFLICT",
-                            "INGESTION_APPLY_CONFLICT",
-                            "INGESTION_PROCESSING_FAILED"
-                          ]
-                        },
-                        "message": {
-                          "type": "string"
-                        }
-                      }
-                    }
-                  }
+                  "$ref": "#/components/schemas/Error"
                 }
               }
             }
@@ -158,38 +96,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object",
-                  "required": [
-                    "error"
-                  ],
-                  "properties": {
-                    "error": {
-                      "type": "object",
-                      "required": [
-                        "code",
-                        "message"
-                      ],
-                      "properties": {
-                        "code": {
-                          "type": "string",
-                          "enum": [
-                            "INVALID_REQUEST",
-                            "INVALID_PDF",
-                            "PAYLOAD_TOO_LARGE",
-                            "CLIENT_EVENT_PAYLOAD_MISMATCH",
-                            "INGESTION_NOT_FOUND",
-                            "INGESTION_NOT_ACTIONABLE",
-                            "ROW_VERSION_CONFLICT",
-                            "INGESTION_APPLY_CONFLICT",
-                            "INGESTION_PROCESSING_FAILED"
-                          ]
-                        },
-                        "message": {
-                          "type": "string"
-                        }
-                      }
-                    }
-                  }
+                  "$ref": "#/components/schemas/Error"
                 }
               }
             }
@@ -238,38 +145,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object",
-                  "required": [
-                    "error"
-                  ],
-                  "properties": {
-                    "error": {
-                      "type": "object",
-                      "required": [
-                        "code",
-                        "message"
-                      ],
-                      "properties": {
-                        "code": {
-                          "type": "string",
-                          "enum": [
-                            "INVALID_REQUEST",
-                            "INVALID_PDF",
-                            "PAYLOAD_TOO_LARGE",
-                            "CLIENT_EVENT_PAYLOAD_MISMATCH",
-                            "INGESTION_NOT_FOUND",
-                            "INGESTION_NOT_ACTIONABLE",
-                            "ROW_VERSION_CONFLICT",
-                            "INGESTION_APPLY_CONFLICT",
-                            "INGESTION_PROCESSING_FAILED"
-                          ]
-                        },
-                        "message": {
-                          "type": "string"
-                        }
-                      }
-                    }
-                  }
+                  "$ref": "#/components/schemas/Error"
                 }
               }
             }
@@ -299,38 +175,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object",
-                  "required": [
-                    "error"
-                  ],
-                  "properties": {
-                    "error": {
-                      "type": "object",
-                      "required": [
-                        "code",
-                        "message"
-                      ],
-                      "properties": {
-                        "code": {
-                          "type": "string",
-                          "enum": [
-                            "INVALID_REQUEST",
-                            "INVALID_PDF",
-                            "PAYLOAD_TOO_LARGE",
-                            "CLIENT_EVENT_PAYLOAD_MISMATCH",
-                            "INGESTION_NOT_FOUND",
-                            "INGESTION_NOT_ACTIONABLE",
-                            "ROW_VERSION_CONFLICT",
-                            "INGESTION_APPLY_CONFLICT",
-                            "INGESTION_PROCESSING_FAILED"
-                          ]
-                        },
-                        "message": {
-                          "type": "string"
-                        }
-                      }
-                    }
-                  }
+                  "$ref": "#/components/schemas/Error"
                 }
               }
             }
@@ -935,6 +780,54 @@
       }
     },
     "schemas": {
+      "Error": {
+        "type": "object",
+        "required": [
+          "error"
+        ],
+        "properties": {
+          "error": {
+            "type": "object",
+            "required": [
+              "code",
+              "message"
+            ],
+            "properties": {
+              "code": {
+                "type": "string",
+                "enum": [
+                  "INVALID_REQUEST",
+                  "UNAUTHENTICATED",
+                  "FORBIDDEN",
+                  "STEPUP_REQUIRED",
+                  "TRIAL_EXPIRED",
+                  "FEATURE_GATED",
+                  "NOT_FOUND",
+                  "CONFLICT",
+                  "RATE_LIMITED",
+                  "INTERNAL",
+                  "INVALID_CREDENTIALS",
+                  "ACCOUNT_NOT_ACTIVE",
+                  "NO_WORKSPACE",
+                  "NOT_A_MEMBER",
+                  "ORG_CHOICE_REQUIRED",
+                  "INVALID_PDF",
+                  "PAYLOAD_TOO_LARGE",
+                  "CLIENT_EVENT_PAYLOAD_MISMATCH",
+                  "INGESTION_NOT_FOUND",
+                  "INGESTION_NOT_ACTIONABLE",
+                  "ROW_VERSION_CONFLICT",
+                  "INGESTION_APPLY_CONFLICT",
+                  "INGESTION_PROCESSING_FAILED"
+                ]
+              },
+              "message": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      },
       "LabelIngestionState": {
         "type": "string",
         "enum": [
@@ -970,40 +863,6 @@
           "MULTI_PACKAGE_EVIDENCE",
           "STAGING_FAILED"
         ]
-      },
-      "Error": {
-        "type": "object",
-        "required": [
-          "error"
-        ],
-        "properties": {
-          "error": {
-            "type": "object",
-            "required": [
-              "code",
-              "message"
-            ],
-            "properties": {
-              "code": {
-                "type": "string",
-                "enum": [
-                  "INVALID_REQUEST",
-                  "INVALID_PDF",
-                  "PAYLOAD_TOO_LARGE",
-                  "CLIENT_EVENT_PAYLOAD_MISMATCH",
-                  "INGESTION_NOT_FOUND",
-                  "INGESTION_NOT_ACTIONABLE",
-                  "ROW_VERSION_CONFLICT",
-                  "INGESTION_APPLY_CONFLICT",
-                  "INGESTION_PROCESSING_FAILED"
-                ]
-              },
-              "message": {
-                "type": "string"
-              }
-            }
-          }
-        }
       },
       "OutboundWorkItem": {
         "type": "object",

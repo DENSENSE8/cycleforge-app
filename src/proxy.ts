@@ -1,6 +1,7 @@
 /** Global proxy (formerly `middleware.ts`). */
 
 import { NextRequest, NextResponse } from 'next/server';
+import { v1Error } from '@/lib/api/v1-route';
 // Dependency-free by construction (see its docblock) — safe in an edge bundle.
 import {
   SHIPPING_SHIPPED_PATH,
@@ -620,7 +621,12 @@ export function proxy(req: NextRequest): NextResponse {
   if (!hasCookie && !hasV1Bearer && isAuthV2Enabled()) {
     const isApi = pathname.startsWith('/api/');
     if (isApi) {
-      return applySecurityHeaders(req, NextResponse.json({ error: 'UNAUTHENTICATED' }, { status: 401 }));
+      return applySecurityHeaders(
+        req,
+        pathname.startsWith('/api/v1/')
+          ? v1Error(401, 'UNAUTHENTICATED', 'Sign in required.')
+          : NextResponse.json({ error: 'UNAUTHENTICATED' }, { status: 401 }),
+      );
     }
     const url = req.nextUrl.clone();
     url.pathname = '/signin';

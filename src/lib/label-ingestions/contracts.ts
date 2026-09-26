@@ -4,10 +4,6 @@ import {
   LABEL_MATCH_METHODS,
   LABEL_QUARANTINE_REASON_CODES,
 } from './types';
-import { buildOutboundWorkComponents, buildOutboundWorkOpenApi } from '@/lib/outbound/work-contract';
-import { buildReminderFeedComponents, buildReminderFeedOpenApi } from '@/lib/reminders/reminder-openapi';
-import { buildV1SessionComponents, buildV1SessionOpenApi } from '@/lib/auth/v1-session-contract';
-import { buildPickingV1Components, buildPickingV1OpenApi } from '@/lib/picking/picking-v1-contract';
 
 /** The bounded manual-upload contract. Tenant, actor, device and source are server-owned. */
 export const MAX_LABEL_PDF_BYTES = 5 * 1024 * 1024;
@@ -31,9 +27,9 @@ export const labelIngestionListQuerySchema = z.object({
   limit: z.coerce.number().int().min(1).max(100).default(50),
 }).strict();
 
-export const labelIngestionIdSchema = z.coerce.number().int().positive();
 
-const safeLabelApiErrorCodeSchema = z.enum([
+/** Label-ingestion error codes, merged into the published v1 `Error.code` enum. */
+export const LABEL_INGESTION_ERROR_CODES = [
   'INVALID_REQUEST',
   'INVALID_PDF',
   'PAYLOAD_TOO_LARGE',
@@ -43,16 +39,16 @@ const safeLabelApiErrorCodeSchema = z.enum([
   'ROW_VERSION_CONFLICT',
   'INGESTION_APPLY_CONFLICT',
   'INGESTION_PROCESSING_FAILED',
-] as const);
+] as const;
 
-type SafeLabelApiErrorCode = z.infer<typeof safeLabelApiErrorCodeSchema>;
+export type LabelIngestionErrorCode = (typeof LABEL_INGESTION_ERROR_CODES)[number];
 
-interface SafeLabelApiError {
-  error: { code: SafeLabelApiErrorCode; message: string };
-}
-
-export function safeLabelApiError(code: SafeLabelApiErrorCode, message: string): SafeLabelApiError {
-  return { error: { code, message } };
+export function buildLabelIngestionComponents(): Record<string, unknown> {
+  return {
+    LabelIngestionState: { type: 'string', enum: LABEL_INGESTION_STATES },
+    LabelMatchMethod: { type: 'string', enum: LABEL_MATCH_METHODS },
+    LabelQuarantineReason: { type: 'string', enum: LABEL_QUARANTINE_REASON_CODES },
+  };
 }
 
 /**
@@ -61,25 +57,14 @@ export function safeLabelApiError(code: SafeLabelApiErrorCode, message: string):
  * tenant or actor identity as client input.
  */
 export function buildLabelIngestionOpenApi(): Record<string, unknown> {
-  const error = { type: 'object', required: ['error'], properties: { error: { type: 'object', required: ['code', 'message'], properties: { code: { type: 'string', enum: safeLabelApiErrorCodeSchema.options }, message: { type: 'string' } } } } };
+  const error = { $ref: '#/components/schemas/Error' };
   return {
-    openapi: '3.1.0',
-    info: { title: 'CycleForge V1 Label Ingestions', version: '1.0.0' },
-    paths: {
-      '/api/v1/label-ingestions': {
-        get: { responses: { '200': { description: 'Tenant-scoped ledger list' }, '400': { description: 'Invalid query', content: { 'application/json': { schema: error } } } } },
-        post: { requestBody: { required: true, content: { 'multipart/form-data': { schema: { type: 'object', required: ['file', 'clientEventId', 'observedAt'], properties: { file: { type: 'string', format: 'binary' }, clientEventId: { type: 'string', format: 'uuid' }, observedAt: { type: 'string', format: 'date-time' }, sha256: { type: 'string', pattern: '^[0-9a-f]{64}$' } } } } } }, responses: { '201': { description: 'Created or byte-idempotent replay' }, '400': { description: 'Rejected', content: { 'application/json': { schema: error } } } } },
-      },
-      '/api/v1/label-ingestions/{id}': { get: { parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'integer', minimum: 1 } }], responses: { '200': { description: 'Tenant-scoped ledger resource' }, '404': { description: 'Not found', content: { 'application/json': { schema: error } } } } } },
-      '/api/v1/label-ingestions/{id}/apply': { post: { parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'integer', minimum: 1 } }], requestBody: { required: true, content: { 'application/json': { schema: { type: 'object', required: ['expectedRowVersion'], properties: { expectedRowVersion: { type: 'integer', minimum: 0 } } } } } }, responses: { '200': { description: 'Applied or idempotent replay' }, '409': { description: 'State or row-version conflict', content: { 'application/json': { schema: error } } } } } },
-      '/api/v1/label-ingestions/{id}/retry': { post: { parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'integer', minimum: 1 } }], responses: { '200': { description: 'Reprocessed staged PDF' }, '409': { description: 'Not retryable', content: { 'application/json': { schema: error } } } } } },
-      ...buildOutboundWorkOpenApi(),
-      ...buildReminderFeedOpenApi(),
-      ...buildV1SessionOpenApi(),
-      ...buildPickingV1OpenApi(),
+    '/api/v1/label-ingestions': {
+      get: { responses: { '200': { description: 'Tenant-scoped ledger list' }, '400': { description: 'Invalid query', content: { 'application/json': { schema: error } } } } },
+      post: { requestBody: { required: true, content: { 'multipart/form-data': { schema: { type: 'object', required: ['file', 'clientEventId', 'observedAt'], properties: { file: { type: 'string', format: 'binary' }, clientEventId: { type: 'string', format: 'uuid' }, observedAt: { type: 'string', format: 'date-time' }, sha256: { type: 'string', pattern: '^[0-9a-f]{64}$' } } } } } }, responses: { '201': { description: 'Created or byte-idempotent replay' }, '400': { description: 'Rejected', content: { 'application/json': { schema: error } } } } },
     },
-    // Native clients authenticate every call with the token from POST /api/v1/session.
-    security: [{ bearerAuth: [] }],
-    components: { securitySchemes: { bearerAuth: { type: 'http', scheme: 'bearer', description: 'Opaque session token from POST /api/v1/session.' } }, schemas: { LabelIngestionState: { type: 'string', enum: LABEL_INGESTION_STATES }, LabelMatchMethod: { type: 'string', enum: LABEL_MATCH_METHODS }, LabelQuarantineReason: { type: 'string', enum: LABEL_QUARANTINE_REASON_CODES }, Error: error, ...buildOutboundWorkComponents(), ...buildReminderFeedComponents(), ...buildV1SessionComponents(), ...buildPickingV1Components() } },
+    '/api/v1/label-ingestions/{id}': { get: { parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'integer', minimum: 1 } }], responses: { '200': { description: 'Tenant-scoped ledger resource' }, '404': { description: 'Not found', content: { 'application/json': { schema: error } } } } } },
+    '/api/v1/label-ingestions/{id}/apply': { post: { parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'integer', minimum: 1 } }], requestBody: { required: true, content: { 'application/json': { schema: { type: 'object', required: ['expectedRowVersion'], properties: { expectedRowVersion: { type: 'integer', minimum: 0 } } } } } }, responses: { '200': { description: 'Applied or idempotent replay' }, '409': { description: 'State or row-version conflict', content: { 'application/json': { schema: error } } } } } },
+    '/api/v1/label-ingestions/{id}/retry': { post: { parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'integer', minimum: 1 } }], responses: { '200': { description: 'Reprocessed staged PDF' }, '409': { description: 'Not retryable', content: { 'application/json': { schema: error } } } } } },
   };
 }

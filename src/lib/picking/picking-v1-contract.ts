@@ -121,20 +121,6 @@ export const pickToteSchema = z.object({
 
 export const pickNoteSchema = z.object({ recorded: z.number().int() });
 
-// ── Errors ──────────────────────────────────────────────────────────────────
-
-export const PICKING_V1_ERROR_CODES = ['INVALID_REQUEST', 'NOT_FOUND', 'CONFLICT'] as const;
-type PickingV1ErrorCode = (typeof PICKING_V1_ERROR_CODES)[number];
-
-export function pickingV1Error(code: PickingV1ErrorCode, message: string) {
-  return { error: { code, message } };
-}
-
-/** The domain layer answers 400/404/409 with a message; map it onto the v1 envelope. */
-export function pickingV1ErrorFromStatus(status: 400 | 404 | 409, message: string) {
-  return pickingV1Error(status === 404 ? 'NOT_FOUND' : status === 409 ? 'CONFLICT' : 'INVALID_REQUEST', message);
-}
-
 // ── OpenAPI ─────────────────────────────────────────────────────────────────
 
 function component(schema: z.ZodType, io: 'input' | 'output' = 'output'): Record<string, unknown> {

@@ -17,20 +17,15 @@ export const v1SessionCreateBodySchema = z.object({
   persistent: z.boolean().optional(),
 });
 
+/** Sign-in codes beyond the base v1 set (merged into the published `Error.code` enum). */
 export const V1_SESSION_ERROR_CODES = [
-  'INVALID_REQUEST',
   'INVALID_CREDENTIALS',
   'ACCOUNT_NOT_ACTIVE',
   'NO_WORKSPACE',
   'NOT_A_MEMBER',
   'ORG_CHOICE_REQUIRED',
-  'RATE_LIMITED',
 ] as const;
-type V1SessionErrorCode = (typeof V1_SESSION_ERROR_CODES)[number];
-
-export function v1SessionError(code: V1SessionErrorCode, message: string) {
-  return { error: { code, message } };
-}
+export type V1SessionErrorCode = (typeof V1_SESSION_ERROR_CODES)[number];
 
 const instant = { type: 'string', format: 'date-time' };
 const errorRef = { $ref: '#/components/schemas/Error' };

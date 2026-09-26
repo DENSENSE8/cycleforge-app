@@ -109,6 +109,14 @@ and migrate; the `actionStrip` typed contract lands here.
    Pattern for every next family: Zod contract → `z.toJSONSchema` components → routes
    answer `{ data }` / `{ error: { code, message } }` → callers use `v1Request` (parses
    the response with the same schema) → delete the old routes.
+   **Step 4 (same day): one v1 transport.** `src/lib/api/v1-route.ts` is the only way a v1
+   handler answers (all 13 use it; `v1SessionError` / `pickingV1Error` / `safeLabelApiError`
+   gone). `withAuth` and `proxy.ts` answer `/api/v1/*` refusals in the same envelope; web
+   routes are byte-for-byte unchanged. `buildV1OpenApi` (`src/lib/api/v1-openapi.ts`) is the
+   one OpenAPI root; its `Error.code` enum is now base ∪ session ∪ label codes (it used to
+   list label codes only, so picking / sign-in errors were off-spec for a generated client).
+   New families: add a `*_ERROR_CODES` list + paths/components, register them there.
+   The three orphan `/api/picking/session/{id}/*` routes are deleted.
    (`api/identification/methods/author` in 2.1's list was deleted in `270795058`.)
 
 **Phase 3 — port features from `main` (owner drives).** Inventory main-only features

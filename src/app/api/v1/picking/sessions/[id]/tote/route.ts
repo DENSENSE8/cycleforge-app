@@ -1,30 +1,29 @@
-import { NextRequest, NextResponse } from 'next/server';
 import { withAuth } from '@/lib/auth/withAuth';
+import { readV1Json, v1Data, v1DomainError, v1Error, v1PathId } from '@/lib/api/v1-route';
 import { pairPickingTote } from '@/lib/picking/sessions';
 import { recordAudit, AUDIT_ACTION, AUDIT_ENTITY } from '@/lib/audit-logs';
 import pool from '@/lib/db';
-import { pickToteBodySchema, pickingV1Error, pickingV1ErrorFromStatus } from '@/lib/picking/picking-v1-contract';
+import { pickToteBodySchema } from '@/lib/picking/picking-v1-contract';
 
 export const runtime = 'nodejs';
 
 /** POST /api/v1/picking/sessions/{id}/tote — pair a tote to the order of the caller's open session. */
-export const POST = withAuth(async (request: NextRequest, ctx) => {
-  const sessionId = Number(request.nextUrl.pathname.split('/').at(-2));
-  const parsed = pickToteBodySchema.safeParse(await request.json().catch(() => null));
-  if (!Number.isInteger(sessionId) || sessionId <= 0 || !parsed.success) {
-    return NextResponse.json(pickingV1Error('INVALID_REQUEST', 'A session id, orderId and toteScan are required.'), { status: 400 });
-  }
+export const POST = withAuth(async (request, ctx) => {
+  const sessionId = v1PathId(request, 2);
+  if (sessionId == null) return v1Error(400, 'INVALID_REQUEST', 'Invalid session id.');
+  const body = await readV1Json(request, pickToteBodySchema, 'orderId and toteScan are required.');
+  if (!body.ok) return body.response;
 
-  const result = await pairPickingTote(ctx.organizationId, { ...parsed.data, sessionId, staffId: ctx.staffId });
-  if (!result.ok) return NextResponse.json(pickingV1ErrorFromStatus(result.status, result.error), { status: result.status });
+  const result = await pairPickingTote(ctx.organizationId, { ...body.data, sessionId, staffId: ctx.staffId });
+  if (!result.ok) return v1DomainError(result);
   if (!result.alreadyPaired) {
     await recordAudit(pool, ctx, request, {
       source: 'directed-pick',
       action: AUDIT_ACTION.HANDLING_UNIT_PAIR,
       entityType: AUDIT_ENTITY.HANDLING_UNIT,
       entityId: result.toteId,
-      after: { orderId: parsed.data.orderId, sessionId, toteCode: result.toteCode },
+      after: { orderId: body.data.orderId, sessionId, toteCode: result.toteCode },
     });
   }
-  return NextResponse.json({ data: { toteId: result.toteId, toteCode: result.toteCode, alreadyPaired: result.alreadyPaired } });
+  return v1Data({ toteId: result.toteId, toteCode: result.toteCode, alreadyPaired: result.alreadyPaired });
 }, { permission: 'orders.view' });

@@ -7,7 +7,17 @@ from that screen's imports (**actions**). Deep screens (`/m/r/[id]`, `/m/u/[id]`
 `/m/rs/[id]`, shipments, photos) and calls made through shared `src/lib`/`src/hooks`
 helpers are not in this table yet — the scan verb on `/m/scan` is one of those.
 
-Already v1: `GET /api/v1/outbound/work` (order hub), `/api/v1/session`, `/api/v1/reminders`.
+Already v1: `GET /api/v1/outbound/work` (order hub, via `v1Request` + `outboundWorkPageSchema`),
+`/api/v1/session`, `/api/v1/reminders`, `/api/v1/label-ingestions`, the pick loop (below).
+
+**One envelope on v1 (2026-09-26).** Every `/api/v1/*` answer is `{ data }` or
+`{ error: { code, message } }` — including refusals raised in front of the handler
+(`proxy.ts` 401, `withAuth` 401/403/`STEPUP_REQUIRED`/402/`FEATURE_GATED`/500). v1 500s
+carry `requestId` only, never a stack. Handlers answer through `src/lib/api/v1-route.ts`
+(`v1Data`, `v1Error`, `v1DomainError`, `readV1Json`, `readV1Query`, `v1PathId`); each
+family keeps its own code list, merged into the published `Error.code` enum by
+`buildV1OpenApi` (`src/lib/api/v1-openapi.ts`, the one OpenAPI root). Web routes keep
+their legacy bodies (`{"error":"UNAUTHENTICATED"}`).
 
 ## Shell — every screen, on every load
 
@@ -33,11 +43,11 @@ Already v1: `GET /api/v1/outbound/work` (order hub), `/api/v1/session`, `/api/v1
 
 1. **Pick loop — DONE 2026-09-26.** `/api/v1/picking/{next,board,release,sessions,
    sessions/{id}/tote,sessions/{id}/notes}` (contract `src/lib/picking/picking-v1-contract.ts`,
-   client `src/lib/api/v1-client.ts`); the six `/api/picking/*` routes are deleted.
-   Still off v1 on the pick screens: confirm / short-pick run over the realtime WMS
-   channel (`/api/realtime/wms-ticket` + `execute({ name: 'pick.confirm' })`) — a native
-   picker needs that channel next. `/api/picking/session/{id}/{confirm-pick,short-pick,complete}`
-   have no caller in the repo (owner decides whether to delete).
+   client `src/lib/api/v1-client.ts`); the six `/api/picking/*` routes are deleted, and
+   so are the three caller-less `/api/picking/session/{id}/{confirm-pick,short-pick,complete}`.
+   Still off v1 on the pick screens: confirm / short-pick / complete run over the realtime
+   WMS channel (`/api/realtime/wms-ticket` + `execute({ name: 'pick.confirm' | 'pick.short' })`,
+   `completeSession` flag) — a native picker needs that channel as its own v1 face next.
 2. **Work / orders** — move `/m/work` onto the existing `GET /api/v1/outbound/work`
    rather than promoting `/api/orders`.
 3. **Tasks + daily checks** (home).

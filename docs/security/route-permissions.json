@@ -1,9 +1,9 @@
 {
   "version": 1,
-  "generatedAt": "2026-09-26T19:06:42Z",
-  "totalRoutes": 1095,
+  "generatedAt": "2026-09-26T19:33:59Z",
+  "totalRoutes": 1092,
   "summary": {
-    "permissionGated": 892,
+    "permissionGated": 889,
     "authenticatedNoPermission": 120,
     "anonymousIntentional": 36,
     "serviceToService": 47,
@@ -5307,33 +5307,6 @@
     },
     {
       "path": "/api/pick/unscan/route.ts",
-      "methods": [
-        "POST"
-      ],
-      "gate": "withAuth",
-      "permission": "orders.view",
-      "exemptReason": null
-    },
-    {
-      "path": "/api/picking/session/[id]/complete/route.ts",
-      "methods": [
-        "POST"
-      ],
-      "gate": "withAuth",
-      "permission": "orders.view",
-      "exemptReason": null
-    },
-    {
-      "path": "/api/picking/session/[id]/confirm-pick/route.ts",
-      "methods": [
-        "POST"
-      ],
-      "gate": "withAuth",
-      "permission": "orders.view",
-      "exemptReason": null
-    },
-    {
-      "path": "/api/picking/session/[id]/short-pick/route.ts",
       "methods": [
         "POST"
       ],
