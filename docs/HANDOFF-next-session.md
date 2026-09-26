@@ -99,6 +99,12 @@ and migrate; the `actionStrip` typed contract lands here.
    still names no org UUID as input. Shared credential check: `src/lib/identity/account-signin.ts`
    (web `/api/auth/account/signin` uses it too). Not covered yet: umbrella shared-account staff
    choice, passkey/QR sign-in. Next: map `/m/*` verbs → non-v1 endpoints, promote one per step.
+   **Step 2 (same day):** `staff_sessions.credential` (`cookie` | `bearer`, migration
+   `2026-09-26_staff_session_credential.sql`, applied to the `.env` branch) — a sid
+   authenticates only on the door it was minted for, so a phone token planted as `cf_sid`
+   opens nothing. `authenticateAccountPassword` takes injectable deps; unit tests cover
+   ok / org choice / slug / throttle / generic failure. **Apply that migration to every
+   other DB (production) before deploying this code** — deploys don't run migrations.
    (`api/identification/methods/author` in 2.1's list was deleted in `270795058`.)
 
 **Phase 3 — port features from `main` (owner drives).** Inventory main-only features

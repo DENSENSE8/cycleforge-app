@@ -123,8 +123,13 @@ export function withAuth(
   opts: WithAuthOpts = {},
 ): RouteHandler {
   return async (req, _routeCtx) => {
-    const sid = readSessionSid(req.cookies) ?? readV1BearerSid(req.nextUrl.pathname, req.headers);
-    const user = await getCurrentUserBySid(sid);
+    // A cookie sid loads only cookie sessions and a header sid only bearer sessions
+    // (staff_sessions.credential). A stale cookie in a native HTTP stack must not mask a valid bearer.
+    const cookieSid = readSessionSid(req.cookies);
+    const bearerSid = readV1BearerSid(req.nextUrl.pathname, req.headers);
+    const user =
+      (cookieSid ? await getCurrentUserBySid(cookieSid, 'cookie') : null) ??
+      (bearerSid ? await getCurrentUserBySid(bearerSid, 'bearer') : null);
 
     // Hidden flag toggled by `ctx.markAuditWritten()`. We don't put it on
     // the ctx itself because it shouldn't be observable by handlers.

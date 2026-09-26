@@ -2,7 +2,7 @@
 
 import { cookies } from 'next/headers';
 import pool from '@/lib/db';
-import { loadSession, readSessionSid, type SessionRow } from './session';
+import { loadSession, readSessionSid, type SessionCredential, type SessionRow } from './session';
 import { getOrSet } from '@/lib/cache/upstash-cache';
 import { CACHE_NS, CACHE_TAGS } from '@/lib/cache/tags';
 import { computeEffectivePermissions, type PermissionString, type StaffRole } from './permissions-shared';
@@ -160,7 +160,10 @@ export async function getCurrentUser(): Promise<CurrentUser | null> {
   return buildCurrentUser(session);
 }
 
-export async function getCurrentUserBySid(sid: string | null | undefined): Promise<CurrentUser | null> {
-  const session = await loadSession(sid);
+export async function getCurrentUserBySid(
+  sid: string | null | undefined,
+  credential: SessionCredential = 'cookie',
+): Promise<CurrentUser | null> {
+  const session = await loadSession(sid, credential);
   return buildCurrentUser(session);
 }

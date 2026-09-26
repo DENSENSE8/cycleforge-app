@@ -52,6 +52,8 @@ export function readV1BearerSid(
 export type DeviceKind = 'station' | 'personal' | 'phone';
 export type SessionPolicy = 'default' | 'extended' | 'persistent';
 export const SESSION_POLICIES: readonly SessionPolicy[] = ['default', 'extended', 'persistent'] as const;
+/** The door a session was minted for; a sid authenticates only on its own (`staff_sessions.credential`). */
+export type SessionCredential = 'cookie' | 'bearer';
 
 export interface SessionRow {
   sid: string;
@@ -68,6 +70,7 @@ export interface SessionRow {
   revokedAt: Date | null;
   /** Minted with "Keep me signed in" checked — no idle timeout, sliding year. */
   persistent: boolean;
+  credential: SessionCredential;
 }
 
 interface IdleWindow {
@@ -165,6 +168,8 @@ interface CreateSessionOpts {
   expiresAt?: Date;
   /** The sign-in page's "Keep me signed in" checkbox, for THIS device. */
   persistent?: boolean;
+  /** `bearer` only for `/api/v1/session`; every browser sign-in is `cookie`. */
+  credential?: SessionCredential;
 }
 
 interface SessionDbRow {
@@ -173,6 +178,7 @@ interface SessionDbRow {
   ip: string | null; user_agent: string | null;
   created_at: Date; last_seen_at: Date; expires_at: Date; revoked_at: Date | null;
   persistent: boolean;
+  credential: SessionCredential;
 }
 
 /** Real-DB deps for {@link enforceMaxConcurrentSessions}. */
@@ -218,13 +224,13 @@ export async function createSession(opts: CreateSessionOpts): Promise<SessionRow
   // insert time so the session inherits the tenant the staff currently
   // belongs to. When org-switching lands this will become a parameter.
   const r = await pool.query(
-    `INSERT INTO staff_sessions (sid, staff_id, organization_id, device_kind, device_label, ip, user_agent, expires_at, persistent)
-     SELECT $1, $2, st.organization_id, $3, $4, $5::inet, $6, $7, $8
+    `INSERT INTO staff_sessions (sid, staff_id, organization_id, device_kind, device_label, ip, user_agent, expires_at, persistent, credential)
+     SELECT $1, $2, st.organization_id, $3, $4, $5::inet, $6, $7, $8, $9
        FROM staff st
       WHERE st.id = $2
      RETURNING sid, staff_id, organization_id, device_kind, device_label, ip::text AS ip, user_agent,
-               created_at, last_seen_at, expires_at, revoked_at, persistent`,
-    [sid, opts.staffId, opts.deviceKind, opts.deviceLabel ?? null, opts.ip ?? null, opts.userAgent ?? null, expiresAt, persistent],
+               created_at, last_seen_at, expires_at, revoked_at, persistent, credential`,
+    [sid, opts.staffId, opts.deviceKind, opts.deviceLabel ?? null, opts.ip ?? null, opts.userAgent ?? null, expiresAt, persistent, opts.credential ?? 'cookie'],
   );
   const row = r.rows[0] as SessionDbRow | undefined;
   if (!row) {
@@ -260,29 +266,34 @@ export async function createSession(opts: CreateSessionOpts): Promise<SessionRow
     expiresAt: row.expires_at,
     revokedAt: row.revoked_at,
     persistent: row.persistent,
+    credential: row.credential,
   };
 }
 
 /**
- * Load a session by sid. Returns null if missing, revoked, expired, or idle
- * past its device's window. On a successful load, also touches last_seen_at.
+ * Load a session by sid. Returns null if missing, revoked, expired, idle past
+ * its device's window, or minted for the other credential (a bearer sid never
+ * authenticates as a cookie, nor the reverse). On a successful load, also touches last_seen_at.
  *
  * Keep this hot path lean — middleware calls it on every request.
  */
-export async function loadSession(sid: string | null | undefined): Promise<SessionRow | null> {
+export async function loadSession(
+  sid: string | null | undefined,
+  credential: SessionCredential = 'cookie',
+): Promise<SessionRow | null> {
   if (!sid || typeof sid !== 'string' || sid.length < 32) return null;
 
   const r = await pool.query(
     `SELECT s.sid, s.staff_id, s.organization_id, s.device_kind, s.device_label,
             s.ip::text AS ip, s.user_agent,
             s.created_at, s.last_seen_at, s.expires_at, s.revoked_at,
-            COALESCE(s.persistent, false) AS persistent,
+            COALESCE(s.persistent, false) AS persistent, s.credential,
             COALESCE(st.session_policy, 'default') AS session_policy
        FROM staff_sessions s
        LEFT JOIN staff st ON st.id = s.staff_id
-      WHERE s.sid = $1
+      WHERE s.sid = $1 AND s.credential = $2
       LIMIT 1`,
-    [sid],
+    [sid, credential],
   );
   const row = r.rows[0] as (SessionDbRow & { session_policy: SessionPolicy }) | undefined;
   if (!row) return null;
@@ -310,6 +321,7 @@ export async function loadSession(sid: string | null | undefined): Promise<Sessi
     expiresAt: row.expires_at,
     revokedAt: row.revoked_at,
     persistent: row.persistent,
+    credential: row.credential,
   };
 }
 
@@ -325,6 +337,7 @@ export type SessionNullReason =
 
 export async function loadSessionWithReason(
   sid: string | null | undefined,
+  credential: SessionCredential = 'cookie',
 ): Promise<{ session: SessionRow | null; reason: SessionNullReason | 'ok' }> {
   if (!sid) return { session: null, reason: 'no-cookie' };
   if (typeof sid !== 'string' || sid.length < 32) {
@@ -337,13 +350,13 @@ export async function loadSessionWithReason(
       `SELECT s.sid, s.staff_id, s.organization_id, s.device_kind, s.device_label,
               s.ip::text AS ip, s.user_agent,
               s.created_at, s.last_seen_at, s.expires_at, s.revoked_at,
-              COALESCE(s.persistent, false) AS persistent,
+              COALESCE(s.persistent, false) AS persistent, s.credential,
               COALESCE(st.session_policy, 'default') AS session_policy
          FROM staff_sessions s
          LEFT JOIN staff st ON st.id = s.staff_id
-        WHERE s.sid = $1
+        WHERE s.sid = $1 AND s.credential = $2
         LIMIT 1`,
-      [sid],
+      [sid, credential],
     );
   } catch {
     return { session: null, reason: 'db-error' };
@@ -375,6 +388,7 @@ export async function loadSessionWithReason(
       expiresAt: row.expires_at,
       revokedAt: row.revoked_at,
       persistent: row.persistent,
+      credential: row.credential,
     },
     reason: 'ok',
   };
@@ -423,7 +437,7 @@ export async function revokeAllSessionsForStaff(staffId: number): Promise<number
 async function listActiveSessions(staffId: number): Promise<SessionRow[]> {
   const r = await pool.query(
     `SELECT sid, staff_id, organization_id, device_kind, device_label, ip::text AS ip, user_agent,
-            created_at, last_seen_at, expires_at, revoked_at, persistent
+            created_at, last_seen_at, expires_at, revoked_at, persistent, credential
        FROM staff_sessions
       WHERE staff_id = $1 AND revoked_at IS NULL AND expires_at > NOW()
       ORDER BY last_seen_at DESC`,
@@ -442,5 +456,6 @@ async function listActiveSessions(staffId: number): Promise<SessionRow[]> {
     expiresAt: row.expires_at,
     revokedAt: row.revoked_at,
     persistent: row.persistent,
+    credential: row.credential,
   }));
 }

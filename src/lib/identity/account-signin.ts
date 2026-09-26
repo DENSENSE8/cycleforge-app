@@ -4,7 +4,7 @@ import pool from '@/lib/db';
 import { audit } from '@/lib/auth/audit';
 import type { SessionRow } from '@/lib/auth/session';
 import { checkRateLimitAsync } from '@/lib/api-guard';
-import { getAccountByEmail } from '@/lib/identity/accounts';
+import { getAccountByEmail, type AccountRecord } from '@/lib/identity/accounts';
 import { verifyPassword } from '@/lib/identity/password';
 import { listMembershipsForAccount, logAuthEvent, type MembershipRow } from '@/lib/identity/memberships';
 import { resolveAccountSigninTarget, type AccountMembershipRow } from '@/lib/identity/signin-target';
@@ -35,10 +35,30 @@ type AccountSigninResult =
 
 const WINDOW_MS = 10 * 60 * 1000;
 
+/** The IO the credential check reaches — injectable so the decision is testable without a DB. */
+export interface AccountSigninDeps {
+  checkRateLimit: typeof checkRateLimitAsync;
+  getAccountByEmail: (email: string) => Promise<AccountRecord | null>;
+  verifyPassword: typeof verifyPassword;
+  listMemberships: typeof listMembershipsForAccount;
+  logAuthEvent: typeof logAuthEvent;
+}
+
+const defaultDeps: AccountSigninDeps = {
+  checkRateLimit: checkRateLimitAsync,
+  getAccountByEmail: (email) => getAccountByEmail(email),
+  verifyPassword,
+  listMemberships: listMembershipsForAccount,
+  logAuthEvent,
+};
+
 /** Throttle, verify, and resolve the workspace. Never reveals whether the email exists. */
-export async function authenticateAccountPassword(input: AccountSigninInput): Promise<AccountSigninResult> {
+export async function authenticateAccountPassword(
+  input: AccountSigninInput,
+  deps: AccountSigninDeps = defaultDeps,
+): Promise<AccountSigninResult> {
   // Per-IP throttle against credential stuffing.
-  const rl = await checkRateLimitAsync({
+  const rl = await deps.checkRateLimit({
     headers: input.headers,
     routeKey: 'auth-account-signin',
     limit: 20,
@@ -47,7 +67,7 @@ export async function authenticateAccountPassword(input: AccountSigninInput): Pr
   if (!rl.ok) return { kind: 'rate_limited', retryAfterSec: rl.retryAfterSec };
 
   // Per-email throttle so one targeted account can't be brute-forced across IPs.
-  const emailRl = await checkRateLimitAsync({
+  const emailRl = await deps.checkRateLimit({
     headers: input.headers,
     routeKey: 'auth-account-signin-email',
     scope: input.email.toLowerCase(),
@@ -56,10 +76,10 @@ export async function authenticateAccountPassword(input: AccountSigninInput): Pr
   });
   if (!emailRl.ok) return { kind: 'rate_limited', retryAfterSec: emailRl.retryAfterSec };
 
-  const account = await getAccountByEmail(input.email);
-  const ok = account ? await verifyPassword(input.password, account.passwordHash) : false;
+  const account = await deps.getAccountByEmail(input.email);
+  const ok = account ? await deps.verifyPassword(input.password, account.passwordHash) : false;
   if (!account || !ok) {
-    await logAuthEvent({
+    await deps.logAuthEvent({
       accountId: account?.id ?? null,
       orgId: null,
       event: 'failed_login',
@@ -70,11 +90,15 @@ export async function authenticateAccountPassword(input: AccountSigninInput): Pr
   }
   if (account.status !== 'active') return { kind: 'account_not_active' };
 
-  const memberships = await listMembershipsForAccount(account.id);
-  // A slug resolves only against this account's own memberships; an unknown slug is simply not a membership.
-  const wantedOrgId = input.workspaceSlug
-    ? (memberships.find((m) => m.organization_slug === input.workspaceSlug)?.organization_id ?? input.workspaceSlug)
-    : input.organizationId;
+  const memberships = await deps.listMemberships(account.id);
+  // A slug resolves only against this account's own memberships, and only by slug —
+  // it never falls through to org-id matching (v1 must not accept a tenant UUID as input).
+  let wantedOrgId = input.organizationId;
+  if (input.workspaceSlug) {
+    const bySlug = memberships.find((m) => m.organization_slug === input.workspaceSlug);
+    if (!bySlug) return memberships.length === 0 ? { kind: 'no_workspace' } : { kind: 'not_member' };
+    wantedOrgId = bySlug.organization_id;
+  }
   const decision = resolveAccountSigninTarget(memberships, wantedOrgId);
   switch (decision.kind) {
     case 'no_workspace':

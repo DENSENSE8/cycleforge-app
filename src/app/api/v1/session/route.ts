@@ -68,6 +68,7 @@ export async function POST(req: NextRequest) {
     ip,
     userAgent: ua,
     persistent: body.persistent === true,
+    credential: 'bearer',
   });
   await recordAccountSignin({
     accountId: result.accountId,
