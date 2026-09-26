@@ -916,7 +916,7 @@ function recordMoreVerbs(record: ShippedOrder, verbs: readonly RecordActionVerb[
     { id: 'paperwork', label: 'Paperwork', icon: <FileText />, run: () => dispatchOpenOrderPaperwork(Number(record.id)) },
     ...verbs.filter(
       (verb) =>
-        verb.run &&
+        (verb.run || verb.display) &&
         verb.placement !== 'isolated' &&
         !ORDER_BULK_VERB_IDS.has(verb.id) &&
         !RECORD_INLINE_VERB_IDS.has(verb.id),

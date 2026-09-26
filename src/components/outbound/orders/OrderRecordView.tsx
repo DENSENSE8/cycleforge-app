@@ -129,8 +129,11 @@ export function OrderRecordView({
   // Paperwork opens INLINE in place of the details (owner 2026-09-26: never a
   // popover); Back returns. A new record always opens on its details.
   const [paperwork, setPaperwork] = useState<{ tab: PaperworkTab; itemNumber: string | null; orderId: number } | null>(null);
+  const [openVerbId, setOpenVerbId] = useState<string | null>(null);
+  const openVerb = moreVerbs.find((verb) => verb.id === openVerbId) ?? null;
   useEffect(() => {
     setPaperwork(null);
+    setOpenVerbId(null);
   }, [record.id]);
   // The Paperwork action (top strip ⋮ or More actions) opens it here.
   useEffect(
@@ -302,7 +305,8 @@ export function OrderRecordView({
                 disabled={verb.disabled}
                 title={verb.disabled ? verb.disabledReason : undefined}
                 data-testid={`record-more-${verb.id}`}
-                onClick={() => void verb.run?.()}
+                aria-pressed={verb.display ? openVerbId === verb.id : undefined}
+                onClick={() => (verb.display ? setOpenVerbId((open) => (open === verb.id ? null : verb.id)) : void verb.run?.())}
                 className={cn(
                   'ds-raw-button flex h-8 min-w-0 items-center gap-2 rounded-mode-control px-2 text-left text-role-caption font-medium text-mode-ink hover:bg-mode-hover disabled:cursor-not-allowed disabled:opacity-40',
                   '[&_svg]:h-3.5 [&_svg]:w-3.5 [&_svg]:shrink-0 [&_svg]:text-mode-muted',
@@ -314,6 +318,12 @@ export function OrderRecordView({
               </button>
             ))}
           </div>
+          {/* A form verb (create a task with this order's context) opens here, inline. */}
+          {openVerb?.display ? (
+            <div className="border-t border-mode-fact px-2 pt-2" data-testid="order-record-more-display">
+              {openVerb.display(() => setOpenVerbId(null))}
+            </div>
+          ) : null}
         </section>
       ) : null}
     </div>
