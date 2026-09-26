@@ -284,6 +284,17 @@ doesn't matter, just do everything in the production work tree, face by face, st
 step, it doesn't matter if I commit a non-working design." Commit and push each face as
 it lands; red gates are reported, not blockers.
 
+**Changed (owner, 2026-09-26) — industrial on phones, triage on desktop.** "completely dropping
+the industrial design system display from desktop and mainly only displaying it on mobile."
+Supersedes "motion and density follow the task, never the device" (above) and triage's
+"one language, two densities" (§4b, 2026-09-24). Owner picks: **every desktop route = triage**;
+triage radius = **shadcn new-york default** (`--radius` 0.625rem: cards 10 px, controls 8 px,
+chips pill); triage palette = **shadcn neutral**. Industrial (0 radius, flush, 0 ms) stays the
+phone (`/m/*`, coarse pointer) system. **Mode C — hardware mirror:** a desktop view that mirrors
+a live phone renders industrial 1:1 (explicit `ModeRegion mode="industrial"`), never triage.
+Desktop triage gets motion.dev: row selection + a fixed-width floating selection bar that
+reward the action (owner: "high throughput animations and rewarding feedback and building trust").
+
 **Repo diet (owner 2026-09-26):** dead source files, one-off scripts that already ran,
 `docs/todo/` and every screenshot under `docs/` are deleted; proof shots stay local
 (`docs/**/screenshots/` is gitignored).
