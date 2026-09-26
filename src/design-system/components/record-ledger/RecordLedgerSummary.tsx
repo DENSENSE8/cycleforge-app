@@ -68,7 +68,7 @@ export function RecordLedgerTally({ summary }: { summary: RecordLedgerSummary })
     <dl
       aria-label={`${summary.title} totals`}
       data-testid="record-ledger-tally"
-      className="flex shrink-0 items-center gap-3 border-l border-mode-edge px-3"
+      className="flex shrink-0 items-center gap-3 border-l border-mode-seam px-3"
     >
       {facts.map((fact) => (
         <div key={fact.label} className="flex items-baseline gap-1.5">

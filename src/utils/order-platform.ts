@@ -99,9 +99,13 @@ export function marketplaceOrderUrl(
   if (label === 'walmart' || src === 'walmart' || /^\d{15}$/.test(oid)) {
     return `https://seller.walmart.com/orders/manage-orders?orderId=${encodeURIComponent(oid)}`;
   }
-  // Ecwid storefront admin — best-effort; tenant store id is not always known client-side
+  // Ecwid store admin — the store id reaches the client as
+  // NEXT_PUBLIC_ECWID_STORE_ID (next.config.ts, from ECWID_STORE_ID).
   if (label === 'ecwid' || src === 'ecwid') {
-    return null;
+    const storeId = process.env.NEXT_PUBLIC_ECWID_STORE_ID;
+    return storeId
+      ? `https://my.ecwid.com/store/${encodeURIComponent(storeId)}#order:id=${encodeURIComponent(oid)}&return=orders`
+      : null;
   }
 
   return null;

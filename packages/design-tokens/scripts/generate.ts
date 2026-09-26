@@ -57,6 +57,7 @@ function resolveMode(spec: ModeSpec) {
     radius: spec.radius,
     radiusControl: spec.radiusControl,
     radiusPill: spec.radiusPill,
+    labelVoice: spec.labelVoice,
     pagePad: spec.pagePad,
     hit: spec.hit,
     hitCta,
@@ -111,6 +112,7 @@ function renderJson(): string {
     flat[`${p}.radius`] = m.radius;
     flat[`${p}.radiusControl`] = m.radiusControl;
     flat[`${p}.radiusPill`] = m.radiusPill;
+    flat[`${p}.labelVoice`] = m.labelVoice;
     for (const [measure, value] of Object.entries({
       pagePad: m.pagePad,
       hit: m.hit,
@@ -137,8 +139,9 @@ function renderJson(): string {
 // ── DesignTokens.swift ──────────────────────────────────────────────────────
 
 function swiftColor(hex: string): string {
+  if (hex === 'transparent') return 'Color.clear';
   const m = /^#([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i.exec(hex);
-  if (!m) throw new Error(`DesignTokens.swift: '${hex}' is not a #rrggbb colour`);
+  if (!m) throw new Error(`DesignTokens.swift: '${hex}' is not a #rrggbb colour or 'transparent'`);
   const [r, g, b] = m.slice(1).map((h) => parseInt(h, 16));
   return `Color(red: ${r}.0 / 255.0, green: ${g}.0 / 255.0, blue: ${b}.0 / 255.0)`;
 }
@@ -189,6 +192,11 @@ function renderSwift(): string {
     rule: 'Inner dividers.',
     edge: 'Edge / hairline around a surface.',
     control: 'Border of an input / control.',
+    divide: 'Horizontal separator between records and sections.',
+    seam: 'Vertical divider inside a row (clear = none).',
+    frame: 'Outline around a box (clear = none).',
+    fact: 'Separator between facts inside a record card (clear = spacing).',
+    mark: 'Outline on the open / checked record (clear = fill only).',
   };
   const fields: [string, string, string][] = [
     ...SURFACE_KEYS.map((k): [string, string, string] => [k, 'Color', surfaceDocs[k]]),

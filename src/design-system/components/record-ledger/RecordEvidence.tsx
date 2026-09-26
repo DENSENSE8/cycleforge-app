@@ -40,7 +40,7 @@ export const EVIDENCE_CONTROL_CLASS = cn(
 /** The record's handle, large and selectable. */
 export function EvidenceTitle({ children, sub }: { children: ReactNode; sub?: ReactNode }) {
   return (
-    <div className="border-b-2 border-mode-ink px-4 py-3">
+    <div className="border-b-2 border-mode-divide px-4 py-3">
       <h2 className="select-all break-all font-mono text-role-title font-black tracking-tight text-mode-ink">
         {children}
       </h2>
@@ -54,7 +54,7 @@ export function EvidenceStateStrip({ state, next }: { state: RecordStateFace; ne
   return (
     <div
       className={cn(
-        'flex items-center gap-2 border-b border-mode-ink px-4',
+        'flex items-center gap-2 border-b border-mode-divide px-4',
         RECORD_HIT_CLASS,
       )}
     >
@@ -157,7 +157,7 @@ export function EvidenceDecisionBar({ verbs }: { verbs: readonly EvidenceVerb[] 
     <div
       role="group"
       aria-label="Decisions"
-      className="sticky bottom-0 mt-auto grid gap-2 border-t border-mode-ink bg-mode-bar p-3"
+      className="sticky bottom-0 mt-auto grid gap-2 border-t border-mode-divide bg-mode-bar p-3"
       style={{ gridTemplateColumns: `repeat(${Math.min(shown.length, 2)}, minmax(0, 1fr))` }}
     >
       {shown.map((verb, index) => (

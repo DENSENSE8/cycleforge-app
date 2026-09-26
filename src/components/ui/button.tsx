@@ -7,14 +7,13 @@ import { Slot } from '@radix-ui/react-slot';
 import { cva, type VariantProps } from 'class-variance-authority';
 import { cn } from '@/utils/_cn';
 import { focusRing } from '@/design-system/tokens/focus-ring';
-import { cornerClass } from '@/design-system/tokens/radius';
 
 const buttonVariants = cva(
   cn(
     'inline-flex shrink-0 items-center justify-center gap-1.5 whitespace-nowrap',
     'transition-colors disabled:pointer-events-none disabled:opacity-50',
     '[&_svg]:pointer-events-none [&_svg]:shrink-0',
-    cornerClass('flush'),
+    'rounded-mode-control',
     focusRing('control', 'accent'),
   ),
   {

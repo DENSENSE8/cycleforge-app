@@ -28,6 +28,16 @@ export interface ModeSurfaces {
   edge: string;
   /** Border of an input / control. */
   control: string;
+  /** Horizontal separator between records and between sections. */
+  divide: string;
+  /** Vertical divider inside a row — a column seam. `transparent` = none. */
+  seam: string;
+  /** Outline around a box (column, photo slot, recess). `transparent` = the box reads by space or shadow. */
+  frame: string;
+  /** Separator between facts INSIDE a record card (Bin · Picked by · Order #). `transparent` = spacing alone. */
+  fact: string;
+  /** Outline on the open / checked record. `transparent` = the record is marked by its fill alone. */
+  mark: string;
 }
 
 /** A value that changes under `@media (pointer: coarse)`. */
@@ -53,6 +63,12 @@ export interface ModeSpec {
   /** Primary-action hit target (defaults to `hit`). */
   hitCta?: ModeMeasure;
   bodyText: ModeMeasure;
+  /**
+   * How a fact LABEL speaks (`BIN`, `Ship by`): `caps` — mono heavy caps, the
+   * floor voice; `sentence` — sans sentence case, the desk voice (owner
+   * 2026-09-26: sentence case reads faster when triaging).
+   */
+  labelVoice: 'caps' | 'sentence';
   motion: {
     /** State-change feedback (step, enter, scan-status spot). */
     feedback: string;
@@ -102,6 +118,11 @@ export const SLATE_SURFACES: ModeSurfaces = {
   rule: '#e2e8f0',
   edge: '#cbd5e1',
   control: '#7b8aa0',
+  divide: '#e2e8f0',
+  seam: '#e2e8f0',
+  frame: '#cbd5e1',
+  fact: '#e2e8f0',
+  mark: '#0f172a',
 };
 
 /**
@@ -120,26 +141,39 @@ export const WARM_SURFACES: ModeSurfaces = {
   rule: '#cacbc5',
   edge: '#b7b8b0',
   control: '#10110f',
+  // The floor is drawn in lines: ink between records, edge seams, ink boxes.
+  divide: '#10110f',
+  seam: '#b7b8b0',
+  frame: '#10110f',
+  fact: '#b7b8b0',
+  mark: '#10110f',
 };
 
 /**
  * shadcn/ui new-york "neutral" — the desktop triage palette (owner 2026-09-26,
- * BRIEF §12). Two departures from stock, both for the §8 floor: `faint` is
- * #707070 (stock #737373 is 4.35:1 on the muted well) and `control` is
- * #8a8a8a (stock input border #e5e5e5 is 1.3:1; non-text needs 3:1).
+ * BRIEF §12), laid out like a Shopify order list: rounded cards on a grey
+ * canvas, horizontal hairlines only — no column seams, no box outlines (a
+ * floating surface reads by its shadow). Departures from stock, for the §8
+ * floor: `faint` #6b6b6b holds 4.5:1 on the canvas and the well; `control`
+ * #8a8a8a holds 3:1 for an input border.
  */
 export const NEUTRAL_SURFACES: ModeSurfaces = {
-  canvas: '#fafafa',
+  canvas: '#ffffff',
   bar: '#ffffff',
   panel: '#ffffff',
   well: '#f5f5f5',
-  hover: '#f5f5f5',
+  hover: '#f7f7f7',
   ink: '#0a0a0a',
   muted: '#525252',
-  faint: '#707070',
-  rule: '#e5e5e5',
+  faint: '#6b6b6b',
+  rule: '#ebebeb',
   edge: '#d4d4d4',
   control: '#8a8a8a',
+  divide: '#ebebeb',
+  seam: 'transparent',
+  frame: 'transparent',
+  fact: 'transparent',
+  mark: 'transparent',
 };
 
 /** #d39200 fails contrast as text; this is its readable ink on warm and neutral planes. */
@@ -166,6 +200,7 @@ export const MODE_REGISTRY = {
     pagePad: { base: '0', coarse: '0' },
     hit: { base: '32px', coarse: '48px' },
     bodyText: { base: '13px', coarse: '13px' },
+    labelVoice: 'caps',
     // 150ms is the scan-status spot only; nothing else on the floor moves.
     motion: { feedback: '150ms' },
   },
@@ -182,6 +217,7 @@ export const MODE_REGISTRY = {
     pagePad: { base: '12px', coarse: '16px' },
     hit: { base: '32px', coarse: '48px' },
     bodyText: { base: '14px', coarse: '16px' },
+    labelVoice: 'sentence',
     motion: { feedback: '160ms', press: '120ms' },
   },
   counter: {
@@ -196,6 +232,7 @@ export const MODE_REGISTRY = {
     hit: { base: '40px', coarse: '48px' },
     hitCta: { base: '56px', coarse: '56px' },
     bodyText: { base: '16px', coarse: '16px' },
+    labelVoice: 'sentence',
     motion: { feedback: '200ms', press: '100ms' },
     // Default tenant ink (USAV navy, sampled from public/images/usav-logo.png).
     // The org's `settings.brand.primaryColor` overrides it at the region root.
@@ -212,6 +249,7 @@ export const MODE_REGISTRY = {
     pagePad: { base: '16px', coarse: '16px' },
     hit: { base: '32px', coarse: '48px' },
     bodyText: { base: '15px', coarse: '16px' },
+    labelVoice: 'sentence',
     motion: { feedback: '200ms', pulse: '1200ms' },
   },
 } satisfies Record<ModeName, ModeSpec>;
@@ -241,8 +279,9 @@ export const MODE_NEUTRAL_REMAP = {
 
 /**
  * Colour vars resolve through the theme so a dark theme keeps its own planes.
- * `bar` / `control` / `warn` have no neutral twin; their dark fallbacks are the
- * nearest theme role, and the light block below pins the mode literal.
+ * `bar` / `control` / `warn` and the three line roles have no neutral twin;
+ * their dark fallbacks are the nearest theme role, and the light block below
+ * pins the mode literal.
  */
 const MODE_COLOR_VAR_FALLBACK: Record<keyof ModeSurfaces, string> = {
   canvas: 'var(--ds-color-background-canvas)',
@@ -256,7 +295,19 @@ const MODE_COLOR_VAR_FALLBACK: Record<keyof ModeSurfaces, string> = {
   rule: 'var(--ds-color-border-subtle)',
   edge: 'var(--ds-color-border-default)',
   control: 'var(--ds-color-border-emphasis)',
+  divide: 'var(--ds-color-border-subtle)',
+  seam: 'var(--ds-color-border-subtle)',
+  frame: 'var(--ds-color-border-default)',
+  fact: 'var(--ds-color-border-subtle)',
+  mark: 'var(--ds-color-text-primary)',
 };
+
+/** Line roles — pinned on light; `transparent` is structure (no line), so it holds on dark too. */
+const LINE_KEYS = ['divide', 'seam', 'frame', 'fact', 'mark'] as const satisfies readonly (keyof ModeSurfaces)[];
+
+function isLineKey(key: keyof ModeSurfaces): key is (typeof LINE_KEYS)[number] {
+  return (LINE_KEYS as readonly string[]).includes(key);
+}
 
 const SURFACE_KEYS = Object.keys(MODE_COLOR_VAR_FALLBACK) as (keyof ModeSurfaces)[];
 
@@ -287,9 +338,24 @@ export function grainImage({ opacity, frequency }: GrainLayer): string {
   return `url("data:image/svg+xml;base64,${btoa(svg)}")`;
 }
 
+/** The label voice as CSS — consumed by the `mode-label` / `mode-label-case` utilities (tailwind.config.mjs). */
+function labelVoiceDeclarations(voice: ModeSpec['labelVoice'], indent: string): string[] {
+  const caps = voice === 'caps';
+  return [
+    `${indent}--mode-label-case: ${caps ? 'uppercase' : 'none'};`,
+    `${indent}--mode-label-tracking: ${caps ? '0.08em' : '0'};`,
+    `${indent}--mode-label-font: ${caps ? 'var(--ds-font-mono)' : 'var(--ds-font-sans)'};`,
+    `${indent}--mode-label-weight: ${caps ? '700' : '500'};`,
+    `${indent}--mode-label-size: ${caps ? '0.625rem' : '0.75rem'};`,
+  ];
+}
+
 function baseDeclarations(spec: ModeSpec): string[] {
   const hitCta = spec.hitCta ?? spec.hit;
-  const lines = SURFACE_KEYS.map((key) => `  --mode-${key}: ${MODE_COLOR_VAR_FALLBACK[key]};`);
+  const lines = SURFACE_KEYS.map((key) => {
+    const value = isLineKey(key) && spec.surfaces[key] === 'transparent' ? 'transparent' : MODE_COLOR_VAR_FALLBACK[key];
+    return `  --mode-${key}: ${value};`;
+  });
   lines.push(
     `  --mode-warn-text: var(--ds-color-text-warning);`,
     `  --mode-radius: ${spec.radius};`,
@@ -303,6 +369,7 @@ function baseDeclarations(spec: ModeSpec): string[] {
     `  --mode-motion-press: ${spec.motion.press ?? spec.motion.feedback};`,
     `  --mode-motion-pulse: ${spec.motion.pulse ?? '0s'};`,
   );
+  lines.push(...labelVoiceDeclarations(spec.labelVoice, '  '));
   if (spec.brand) lines.push(`  --mode-brand: ${spec.brand};`);
   // Every region resets the ladder, so a nested ungrained region (assistant
   // rail) never inherits its parent's grain; the light block sets the values.
@@ -317,6 +384,7 @@ function lightDeclarations(spec: ModeSpec): string[] {
   );
   // The theme-less roles pin their literal on light; the rest follow the remap.
   lines.push(`  --mode-bar: ${spec.surfaces.bar};`, `  --mode-control: ${spec.surfaces.control};`);
+  for (const key of LINE_KEYS) lines.push(`  --mode-${key}: ${spec.surfaces[key]};`);
   if (spec.warnText) lines.push(`  --mode-warn-text: ${spec.warnText};`);
   // Light scheme only: black noise is invisible on dark planes, and the
   // contrast guard measures the light palette.
@@ -350,6 +418,14 @@ export function modeRegistryCssText(): string {
     (name) => `  ${modeSelector(name)} {\n${coarseDeclarations(MODE_REGISTRY[name]).join('\n')}\n  }`,
   );
   blocks.push(`@media (pointer: coarse) {\n${coarse.join('\n')}\n}`);
+  // Outside every region (sign-in, app shell chrome) the corners follow the
+  // device: triage on a desk, square on a touch screen (owner 2026-09-26).
+  const desk = MODE_REGISTRY.triage;
+  const floor = MODE_REGISTRY.industrial;
+  blocks.push(
+    `:root {\n  --mode-radius: ${desk.radius};\n  --mode-radius-control: ${desk.radiusControl};\n  --mode-radius-pill: ${desk.radiusPill};\n${labelVoiceDeclarations(desk.labelVoice, '  ').join('\n')}\n}`,
+    `@media (pointer: coarse) {\n  :root {\n    --mode-radius: ${floor.radius};\n    --mode-radius-control: ${floor.radiusControl};\n    --mode-radius-pill: ${floor.radiusPill};\n${labelVoiceDeclarations(floor.labelVoice, '    ').join('\n')}\n  }\n}`,
+  );
   // `:where()` keeps these at zero specificity, so a component's own
   // background-image (hatched spine, gradient) always wins over the grain.
   blocks.push(

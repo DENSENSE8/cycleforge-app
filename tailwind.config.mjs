@@ -198,6 +198,11 @@ const config = {
                 'mode-rule': 'var(--mode-rule)',
                 'mode-edge': 'var(--mode-edge)',
                 'mode-control': 'var(--mode-control)',
+                'mode-divide': 'var(--mode-divide)',
+                'mode-seam': 'var(--mode-seam)',
+                'mode-frame': 'var(--mode-frame)',
+                'mode-fact': 'var(--mode-fact)',
+                'mode-mark': 'var(--mode-mark)',
                 'mode-warn': 'var(--mode-warn-text)',
                 'mode-brand': 'var(--mode-brand)',
             },
@@ -373,6 +378,21 @@ const config = {
                 ".text-role-display": { fontVariantNumeric: "tabular-nums" },
                 ".text-role-title": { fontVariantNumeric: "tabular-nums" },
                 ".text-role-data": { fontVariantNumeric: "tabular-nums" },
+                // The fact-label VOICE follows the region's mode (modes.ts
+                // `labelVoice`): mono heavy caps on the floor, sans sentence
+                // case on a desk. Fallbacks are the floor voice.
+                ".mode-label": {
+                    fontFamily: "var(--mode-label-font, var(--ds-font-mono))",
+                    fontSize: "calc(var(--mode-label-size, 0.625rem) * var(--cf-density, 1))",
+                    fontWeight: "var(--mode-label-weight, 700)",
+                    textTransform: "var(--mode-label-case, uppercase)",
+                    letterSpacing: "var(--mode-label-tracking, 0.08em)",
+                    lineHeight: "1.2",
+                },
+                ".mode-label-case": {
+                    textTransform: "var(--mode-label-case, uppercase)",
+                    letterSpacing: "var(--mode-label-tracking, 0.04em)",
+                },
             });
         }),
     ],

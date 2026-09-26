@@ -16,7 +16,7 @@ const SUMMARY_CLASS = cn(
 /** One fact row: mono label beside (or over, `wide`) its value, ruled underneath. */
 export function EvidenceFactRow({ label, children, wide = false }: { label: string; children: ReactNode; wide?: boolean }) {
   return (
-    <div className={cn('flex min-w-0 border-b border-mode-edge', wide ? 'flex-col py-2' : 'items-center')}>
+    <div className={cn('flex min-w-0 border-b border-mode-fact', wide ? 'flex-col py-2' : 'items-center')}>
       <span className={cn(RECORD_LABEL_CLASS, 'w-24 shrink-0 text-mode-muted', !wide && 'py-2')}>{label}</span>
       <div className="min-w-0 flex-1 text-role-data text-mode-ink">{children}</div>
     </div>
@@ -40,16 +40,18 @@ export function EvidenceDisclosure({
   children: ReactNode;
 }) {
   return (
-    <details data-testid={testId} className="group/section border-b border-mode-ink">
-      <summary className={cn(SUMMARY_CLASS, 'gap-2 px-4', HIT_CLASS)}>
-        <span className={cn(RECORD_LABEL_CLASS, 'shrink-0 text-mode-muted')}>{label}</span>
-        <span className="flex min-w-0 flex-1 items-center justify-end truncate">{summary}</span>
+    <details data-testid={testId} className="group/section border-b border-mode-fact">
+      <summary className={cn(SUMMARY_CLASS, 'px-4', HIT_CLASS)}>
+        {/* One left edge for every value in the panel (owner 2026-09-26):
+            the label column is the fact rows' w-24, the summary starts after it. */}
+        <span className={cn(RECORD_LABEL_CLASS, 'w-24 shrink-0 text-mode-muted')}>{label}</span>
+        <span className="flex min-w-0 flex-1 items-center justify-start truncate">{summary}</span>
         <span aria-hidden className={cn(RECORD_TRAILING_CELL_CLASS, 'text-mode-muted')}>
           <Plus className="h-3.5 w-3.5 group-open/section:hidden" />
           <Minus className="hidden h-3.5 w-3.5 group-open/section:block" />
         </span>
       </summary>
-      <div className="border-t border-mode-edge">{children}</div>
+      <div className="border-t border-mode-fact">{children}</div>
     </details>
   );
 }
@@ -70,7 +72,7 @@ export function EvidenceFactDisclosure({
   children: ReactNode;
 }) {
   return (
-    <details data-testid={testId} className="group/fact border-b border-mode-edge">
+    <details data-testid={testId} className="group/fact border-b border-mode-fact">
       <summary className={cn(SUMMARY_CLASS, HIT_CLASS)}>
         <span className={cn(RECORD_LABEL_CLASS, 'w-24 shrink-0 py-2 text-mode-muted')}>{label}</span>
         <span className="flex min-w-0 flex-1 items-center gap-1.5 text-role-data text-mode-ink">{value}</span>

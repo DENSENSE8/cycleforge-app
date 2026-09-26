@@ -12,6 +12,7 @@ import {
   RECORD_TITLE_CLASS,
   recordStateCodeClass,
   type RecordStateFace,
+  RECORD_OPEN_CLASS,
 } from '../../tokens/industrial-record';
 import { focusRing } from '../../tokens/focus-ring';
 import { cn } from '@/utils/_cn';
@@ -53,9 +54,9 @@ export function IndustrialRecord({ state, open, openLabel, onOpen, photo, bands,
       data-record-key={recordKey}
       data-state={state.id}
       className={cn(
-        'group/record relative flex border-b border-mode-ink bg-mode-panel hover:bg-mode-hover',
+        'group/record relative flex border-b border-mode-divide bg-mode-panel hover:bg-mode-hover',
         RECORD_ROW_CLASS,
-        open && 'outline outline-2 -outline-offset-2 outline-mode-ink',
+        open && RECORD_OPEN_CLASS,
       )}
     >
       <button
@@ -77,7 +78,7 @@ export function IndustrialRecord({ state, open, openLabel, onOpen, photo, bands,
       />
       <span
         className={cn(
-          'pointer-events-none relative z-10 shrink-0 overflow-hidden border-r border-mode-rule bg-mode-well',
+          'pointer-events-none relative z-10 shrink-0 overflow-hidden border-r border-mode-seam bg-mode-well',
           RECORD_PHOTO_CLASS,
         )}
       >
@@ -124,8 +125,8 @@ export function RecordBin({ faces, className }: { faces: readonly string[]; clas
       className={cn(RECORD_LABEL_CLASS, 'truncate', path ? 'text-mode-ink' : 'text-mode-warn', className)}
       title={path ?? 'No location'}
     >
-      <span className="text-mode-muted">BIN </span>
-      {path ?? 'UNASSIGNED'}
+      <span className="text-mode-muted">Bin </span>
+      {path ?? 'Unassigned'}
     </span>
   );
 }
@@ -153,7 +154,7 @@ export function RecordTitle({ children }: { children: string }) {
 export function RecordQty({ value }: { value: number }) {
   return (
     <>
-      <span className={cn(RECORD_LABEL_CLASS, 'text-mode-muted')}>QTY</span>
+      <span className={cn(RECORD_LABEL_CLASS, 'text-mode-muted')}>Qty</span>
       <span className={RECORD_QTY_BADGE_CLASS}>{value}</span>
     </>
   );

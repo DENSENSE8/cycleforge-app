@@ -9,7 +9,8 @@ const DESK_STAGE_MAX_PX = 1152;
 /**
  * Default stage: centered, capped at {@link DESK_STAGE_MAX_PX}. The grid inside
  * may still scroll horizontally when its columns exceed the stage; the PAGE
- * does not become a full-bleed spreadsheet.
+ * does not become a full-bleed spreadsheet. The list is one rounded floating
+ * card on the grey canvas (owner 2026-09-26, a Shopify order list).
  */
 export const DESK_STAGE_FIXED_CLASS = 'mx-auto w-full max-w-6xl';
 
@@ -20,18 +21,30 @@ const DESK_RECORD_MEASURE_PX = 736;
 export const DESK_RECORD_MEASURE_CLASS = 'w-[46rem]';
 
 /**
- * The record pane of {@link DeskRecordPlane}'s **split** view — the right side
- * when the staffer has chosen fullscreen (operator 2026-09-25): list left for
- * selection, record right. The mode's page pad is the gutter the card floats
- * in (12px triage, 0 industrial — flush on the floor).
+ * {@link DeskRecordPlane}'s **split** view (operator 2026-09-25; owner
+ * 2026-09-26): the padded LIST takes two thirds on the left for triage, the
+ * record pane the right third, its columns stacked into one.
  */
-export const DESK_SPLIT_RECORD_CLASS = 'flex w-[46rem] shrink-0 flex-col p-mode-page';
+export const DESK_SPLIT_LIST_CLASS = 'flex min-w-0 basis-2/3 flex-col px-4 pt-2';
+
+/** The record pane beside {@link DESK_SPLIT_LIST_CLASS} — the right third. */
+export const DESK_SPLIT_RECORD_CLASS = 'flex min-w-0 basis-1/3 flex-col';
 
 /**
- * The floating card inside {@link DESK_SPLIT_RECORD_CLASS}: the mode's card
- * corner (10px triage, square industrial) on the overlay rung.
+ * The pane surface inside {@link DESK_SPLIT_RECORD_CLASS} — PLANTED on the one
+ * white page (owner 2026-09-26): only the record's columns lift, never the
+ * pane or its header. One hairline seam separates it from the list.
  */
-export const DESK_SPLIT_RECORD_CARD_CLASS = `flex min-h-0 flex-1 flex-col overflow-hidden rounded-mode border border-border-hairline bg-surface-card ${elevationClass('overlay')}`;
+export const DESK_SPLIT_RECORD_CARD_CLASS = 'flex min-h-0 flex-1 flex-col overflow-hidden border-l border-mode-divide bg-surface-card';
+
+/**
+ * A record COLUMN — the 2/3 work column and the 1/3 facts column of
+ * {@link DESK_RECORD_COLUMNS_CLASS} — the only lifted surfaces on a desk
+ * record (owner 2026-09-26, Shopify / Ecwid order page): the mode's card
+ * corner and the raised shadow on the white page. Industrial keeps the ink box
+ * (`frame`), square.
+ */
+export const DESK_RECORD_COLUMN_CARD_CLASS = `flex min-w-0 flex-col overflow-hidden rounded-mode border border-mode-frame bg-mode-bar ${elevationClass('raised')}`;
 
 /**
  * One record, two widths (operator 2026-09-25). In place the record gets the
@@ -108,7 +121,7 @@ const DESK_LEAD_PANE_WIDTH_CLASS = 'w-[360px] shrink-0';
 const DESK_LEAD_PANE_BODY_CLASS =
   'flex min-h-0 flex-col px-4 pt-4 border-r border-border-hairline';
 
-/** The page **ground** the card sits on — WHITE (operator ruling 2026-08-31). */
+/** The page **ground** the card sits on — WHITE (operator ruling 2026-08-31; owner 2026-09-26: one white page, only record columns lift). */
 export const DESK_STAGE_GROUND_CLASS = 'bg-surface-card';
 
 /* ── FIND stage — the third surface (operator ruling 2026-09-13) ────────────── */

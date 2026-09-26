@@ -12,8 +12,8 @@ import type { ShippedOrder } from '@/lib/neon/orders-queries';
 import { getTrackingUrl, getTrackingUrlByCarrier } from '@/lib/tracking-format';
 import { DESK_BAR_SEGMENT_CLASS, deskBarSegmentTone } from '@/design-system/components/DeskActionSlot';
 import { DeskRecordLayout } from '@/design-system/components/DeskRecordPlane';
-import { BrandIdentityDot } from '@/components/ui/grid-cells';
-import { OrderNumberIdentity, TrackingIdentity } from '@/components/ui/OrderIdentityChips';
+import { DESK_RECORD_COLUMN_CARD_CLASS } from '@/design-system/tokens/desk-stage';
+import { RecordFullId } from '@/design-system/components/record-ledger/RecordFullId';
 import {
   daysLateOn,
   queueRowStaff,
@@ -23,9 +23,7 @@ import type { QueueRowRecord } from '@/components/dashboard/orders-queue/helpers
 import { ordersCompoundView } from '@/lib/orders/orders-compound-view';
 import { resolveOrdersSlotValue } from '@/lib/tables/field-catalog/orders-resolve';
 import { resolveSkuIdentityTitle } from '@/lib/sku/sku-identity-law';
-import { useOrderChannel } from '@/hooks/useCatalog';
 import { BuyerNoteBlock } from '@/design-system/components/RecordNoteSlot';
-import { platformMetaBrandDot } from '@/lib/source-platform';
 import { marketplaceOrderUrl } from '@/utils/order-platform';
 import { formatMonthDayTimePST } from '@/utils/date';
 import { formatOutboundStoragePath } from '@/lib/shipping/outbound-storage-path';
@@ -77,7 +75,7 @@ import { OrderDocumentsSection } from '@/components/shipped/OrderDocumentsSectio
 import { ThreadPanel } from '@/components/threads/ThreadPanel';
 
 /** One column of the record: the industrial panel its sections stack in. */
-const COLUMN_CLASS = 'flex min-w-0 flex-col border border-mode-ink bg-mode-bar';
+const COLUMN_CLASS = DESK_RECORD_COLUMN_CARD_CLASS;
 
 interface OrderRecordViewProps {
   /** The desk this record opens on — decides which sections paint. */
@@ -116,7 +114,6 @@ export function OrderRecordView({
   });
   const orderId = view.orderId ?? '';
   const orderRef = orderId || `#${record.id}`;
-  const channel = useOrderChannel()(orderId, view.platformValue);
   const buyer = orderBuyer(record);
   const next = view.nextStep ?? null;
 
@@ -129,7 +126,7 @@ export function OrderRecordView({
   const main = (
     <div className={COLUMN_CLASS}>
       {shows.has('state') ? (
-        <div className={cn('flex items-center gap-2 border-b border-mode-ink px-4', LEDGER_HIT_CLASS)}>
+        <div className={cn('flex items-center gap-2 border-b border-mode-fact px-4', LEDGER_HIT_CLASS)}>
           <LifecycleCode state={state} srLabel={null}>
             {spec.code} · {spec.label}
           </LifecycleCode>
@@ -167,7 +164,7 @@ export function OrderRecordView({
           ))
         : null}
       {shows.has('documents') ? (
-        <section className="border-b border-mode-ink px-4 py-3" data-testid="order-record-documents" aria-label="Documents">
+        <section className="border-b border-mode-fact px-4 py-3" data-testid="order-record-documents" aria-label="Documents">
           <p className={cn(RECORD_LABEL_CLASS, 'mb-2 text-mode-muted')}>Documents</p>
           <OrderDocumentsSection orderId={Number(record.id)} orderRef={orderRef} readOnly showPreview={false} flush />
         </section>
@@ -180,10 +177,9 @@ export function OrderRecordView({
       {shows.has('buyer-note') ? <BuyerNoteBlock note={String(record.buyer_note ?? '').trim() || null} /> : null}
       {shows.has('shipment') ? <OrderShipmentSection record={record} /> : null}
       {shows.has('facts') ? (
-        <div className="flex flex-col border-b border-mode-ink px-4" data-testid="order-record-facts">
+        <div className="flex flex-col border-b border-mode-fact px-4" data-testid="order-record-facts">
           <EvidenceFactRow label="Platform">
-            <span className="flex h-8 min-w-0 items-center gap-1.5" data-testid="evidence-platform">
-              <BrandIdentityDot {...platformMetaBrandDot(channel.meta)} />
+            <span className="flex h-8 min-w-0 items-center" data-testid="evidence-platform">
               <span className="min-w-0 flex-1">
                 <LedgerPlatformPicker
                   value={view.platformValue ?? null}
@@ -192,16 +188,12 @@ export function OrderRecordView({
               </span>
             </span>
           </EvidenceFactRow>
-          {/* Identifiers wear the one record face (OrderIdentityChips): brand
-              dot + last-8 copy chip, left-aligned, the actions to the right. */}
+          {/* A details panel shows identifiers IN FULL (owner 2026-09-26): no
+              brand dot, no last-8 chip; Copy on hover, actions to the right. */}
           <EvidenceFactRow label="Order #">
             <span className="flex min-w-0 flex-1 items-center" data-testid="evidence-order-chip">
               <span className="flex min-w-0 flex-1 items-center">
-                <OrderNumberIdentity
-                  orderId={orderId || String(record.id)}
-                  platformLabel={channel.label || null}
-                  openHref={marketplaceOrderUrl(orderId, view.platformValue)}
-                />
+                <RecordFullId value={orderId || String(record.id)} label="order number" />
               </span>
               <LedgerOpenAction href={marketplaceOrderUrl(orderId, view.platformValue)} label="order number" />
             </span>
@@ -211,13 +203,13 @@ export function OrderRecordView({
               <LedgerListingLink href={view.titleHref ?? null} itemNumber={record.item_number ?? null} face="value" />
             </span>
           </EvidenceFactRow>
-          <EvidenceFactRow label="TRK#">
+          <EvidenceFactRow label="Tracking #">
             <span className="flex min-w-0 flex-1 items-center" data-testid="evidence-tracking-chip">
               <span className="flex min-w-0 flex-1 items-center">
                 {view.tracking ? (
-                  <TrackingIdentity tracking={view.tracking} carrierHint={view.carrier ?? null} />
+                  <RecordFullId value={view.tracking} label="tracking number" />
                 ) : (
-                  <span className={cn(RECORD_ID_CLASS, 'text-mode-warn')}>NOT ATTACHED</span>
+                  <span className={cn(RECORD_ID_CLASS, 'text-mode-warn')}>Not attached</span>
                 )}
               </span>
               <LedgerTrackingReplace
@@ -236,7 +228,7 @@ export function OrderRecordView({
             </span>
           </EvidenceFactRow>
           <EvidenceFactRow label="Ship by">
-            <span className="block h-8">
+            <span className="-ml-2 block h-8">
               <LedgerShipBy
                 dateKey={view.delay?.dateKey ?? null}
                 overdueDays={view.delay?.overdue ? view.delay.days : 0}
@@ -260,12 +252,12 @@ export function OrderRecordView({
         // The latest face of the `order_notes` trail, edited in place and
         // autosaved (the same field the row's NOTE badge opens). Keyed by
         // record so switching orders saves the old draft, then reseeds.
-        <div className="border-b border-mode-ink px-4 py-2">
+        <div className="border-b border-mode-fact px-4 py-2">
           <LedgerNoteField key={record.id} label="Order note" orderId={Number(record.id)} note={record.notes ?? null} />
         </div>
       ) : null}
       {shows.has('conversation') ? (
-        <section className="flex flex-col border-b border-mode-ink" data-testid="order-record-conversation" aria-label="Conversation">
+        <section className="flex flex-col border-b border-mode-fact" data-testid="order-record-conversation" aria-label="Conversation">
           <p className={cn(RECORD_LABEL_CLASS, 'px-4 pt-3 text-mode-muted')}>Conversation</p>
           <ThreadPanel entityType="ORDER" entityId={Number(record.id)} dense className="min-h-0 flex-1" />
         </section>
@@ -338,10 +330,10 @@ function OrderItem({
       data-testid="order-record-item"
       data-current={current ? '' : undefined}
       aria-label={title || 'Item'}
-      className={cn('border-b border-mode-ink', current ? 'bg-mode-panel' : 'bg-mode-bar')}
+      className={cn('border-b border-mode-fact', current ? 'bg-mode-panel' : 'bg-mode-bar')}
     >
       <div className="flex gap-3 p-3">
-        <span className="relative h-28 w-28 shrink-0 overflow-hidden border border-mode-rule bg-mode-well">
+        <span className="relative h-28 w-28 shrink-0 overflow-hidden border border-mode-frame bg-mode-well">
           {view.thumbUrl ? (
             <Image src={view.thumbUrl} alt="" fill unoptimized sizes="112px" className="object-cover" />
           ) : (
@@ -358,7 +350,8 @@ function OrderItem({
               rel="noopener noreferrer"
               title="Open listing in a new tab"
               className={cn(
-                'line-clamp-3 text-role-body font-bold underline decoration-mode-edge underline-offset-2 hover:decoration-mode-ink',
+                // Rest: plain title; hover / focus: the link underline (owner 2026-09-26).
+                'line-clamp-3 text-role-body font-bold no-underline decoration-mode-edge underline-offset-2 hover:underline',
                 focusRing('control'),
               )}
             >
@@ -367,13 +360,14 @@ function OrderItem({
           ) : (
             <p className="line-clamp-3 text-role-body font-bold">{title || '—'}</p>
           )}
+          {/* Hierarchy (owner 2026-09-26): title · SKU + item # · qty + condition · price. */}
           <p className={cn(RECORD_LABEL_CLASS, 'flex flex-wrap items-baseline gap-x-3 text-mode-muted')}>
             <span>
               SKU <span className={cn(RECORD_ID_CLASS, 'normal-case tracking-normal text-mode-ink')}>{sku ?? '—'}</span>
             </span>
             {line.item_number ? (
               <span>
-                ITEM{' '}
+                Item{' '}
                 <button
                   type="button"
                   data-testid="evidence-item-paperwork"
@@ -382,7 +376,7 @@ function OrderItem({
                   className={cn(
                     'ds-raw-button',
                     RECORD_ID_CLASS,
-                    'normal-case tracking-normal text-mode-ink underline decoration-mode-edge underline-offset-2 hover:decoration-mode-ink',
+                    'normal-case tracking-normal text-mode-ink no-underline decoration-mode-edge underline-offset-2 hover:underline',
                     focusRing('control'),
                   )}
                 >
@@ -390,20 +384,17 @@ function OrderItem({
                 </button>
               </span>
             ) : null}
-            <span data-testid="evidence-price">
-              PRICE{' '}
-              <span className={cn(RECORD_PRICE_CLASS, 'normal-case tracking-normal')}>
-                {line.sale_amount != null && Number.isFinite(amount) ? formatCurrency(amount) : '—'}
-              </span>
-            </span>
           </p>
           <div className="flex flex-wrap items-center gap-3">
-            <span className="block h-8 w-28">
-              <LedgerQty
-                bare
-                value={Number.isFinite(qty) && qty > 0 ? qty : 1}
-                onCommit={(value) => commits.handleCommitSubtitleField(line, 'orders.qty', value)}
-              />
+            <span className="inline-flex h-8 items-center gap-2">
+              <span className={cn(RECORD_LABEL_CLASS, 'text-mode-muted')}>Qty</span>
+              <span className="block h-8 w-20">
+                <LedgerQty
+                  bare
+                  value={Number.isFinite(qty) && qty > 0 ? qty : 1}
+                  onCommit={(value) => commits.handleCommitSubtitleField(line, 'orders.qty', value)}
+                />
+              </span>
             </span>
             <span className="w-24">
               <LedgerCondition value={line.condition ?? null} onCommit={(value) => commits.handleCommitCondition(line, value)} />
@@ -414,11 +405,17 @@ function OrderItem({
               rel="noopener noreferrer"
               aria-disabled={!sku}
               data-testid="evidence-sku-stock"
-              className={cn(DESK_BAR_SEGMENT_CLASS, 'border border-mode-edge', deskBarSegmentTone(false), !sku && 'pointer-events-none opacity-40')}
+              className={cn(DESK_BAR_SEGMENT_CLASS, 'rounded-mode-control border border-mode-edge', deskBarSegmentTone(false), !sku && 'pointer-events-none opacity-40')}
             >
               SKU stock ↗
             </a>
           </div>
+          <p className={cn(RECORD_LABEL_CLASS, 'text-mode-muted')} data-testid="evidence-price">
+            Price{' '}
+            <span className={cn(RECORD_PRICE_CLASS, 'normal-case tracking-normal')}>
+              {line.sale_amount != null && Number.isFinite(amount) ? formatCurrency(amount) : '—'}
+            </span>
+          </p>
           {line.item_number ? (
             <ItemPaperworkDialog
               open={paperworkOpen}
@@ -437,7 +434,7 @@ function OrderItem({
           value={
             <>
               <span className={cn(RECORD_ID_CLASS, 'min-w-0 truncate', locationPaths[0] ? 'text-mode-ink' : 'text-mode-warn')}>
-                {locationPaths[0] ?? 'UNASSIGNED'}
+                {locationPaths[0] ?? 'Unassigned'}
               </span>
               {locationPaths.length > 1 ? (
                 <span className={cn(RECORD_LABEL_CLASS, 'shrink-0 text-mode-muted')}>+{locationPaths.length - 1}</span>

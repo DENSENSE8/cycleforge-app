@@ -81,6 +81,7 @@ import {
   RECORD_LABEL_CLASS,
   RECORD_NOTE_SPINE_CLASS,
   RECORD_TITLE_CLASS,
+  RECORD_OPEN_CLASS,
 } from '@/design-system/tokens/industrial-record';
 import { RecordNoteSlot } from '@/design-system/components/RecordNoteSlot';
 import { LifecycleCode } from '@/design-system/components/record-ledger/LifecycleCode';
@@ -388,10 +389,6 @@ export function OutboundOrdersLedger({
       title={openRecord ? `Order ${openOrderRef}` : 'Order'}
       subtitle={openRecord?.product_title?.trim() || undefined}
       indexLabel={cursor.available && cursor.position != null ? `${cursor.position} of ${cursor.total}` : undefined}
-      onPrev={cursor.onPrev ?? undefined}
-      onNext={cursor.onNext ?? undefined}
-      prevDisabled={cursor.prevDisabled}
-      nextDisabled={cursor.nextDisabled}
       recordNoun="order"
       recordKey={openId != null ? String(openId) : null}
       summary={<OrderQueueSummary records={displayedRecords} todayKey={feed.todayKey} />}
@@ -424,7 +421,7 @@ export function OutboundOrdersLedger({
             loading || searchPending ? (
               <OrdersLedgerStandIn rows={[]} zoom={zoom} />
             ) : (
-              <div className="flex min-h-60 flex-col items-center justify-center gap-2 border-b border-mode-ink text-center">
+              <div className="flex min-h-60 flex-col items-center justify-center gap-2 border-b border-mode-divide text-center">
                 {isNarrowed ? (
                   <OrderSearchEmptyState
                     query={searchValue}
@@ -614,7 +611,7 @@ const LedgerGroupRecord = memo(function LedgerGroupRecord({
     <div
       data-order-group-key={group.key}
       className={cn(
-        'relative flex border-b border-mode-ink bg-mode-bar',
+        'relative flex border-b border-mode-divide bg-mode-bar',
         LEDGER_GROUP_CLASS[zoom],
       )}
     >
@@ -634,7 +631,7 @@ const LedgerGroupRecord = memo(function LedgerGroupRecord({
         aria-label={`${folded ? 'Expand' : 'Collapse'} order ${orderId}, ${group.rows.length} lines`}
         onClick={() => onToggleFold(group.key)}
         className={cn(
-          'ds-raw-button inline-flex shrink-0 items-center justify-center border-r border-mode-rule text-mode-muted hover:bg-mode-hover',
+          'ds-raw-button inline-flex shrink-0 items-center justify-center border-r border-mode-seam text-mode-muted hover:bg-mode-hover',
           LEDGER_PHOTO_LANE_CLASS[zoom],
           LEDGER_HIT_CLASS,
           focusRing('cell'),
@@ -689,7 +686,7 @@ const LedgerGroupRecord = memo(function LedgerGroupRecord({
           <span className={cn(RECORD_LABEL_CLASS, 'min-w-0 shrink-[8] truncate text-mode-muted')}>
             {boxCount} {boxCount === 1 ? 'box' : 'boxes'} · {group.rows.length} lines
           </span>
-          <span className={cn(RECORD_LABEL_CLASS, 'shrink-0', orderRowQtyTone(qty))}>QTY {qty}</span>
+          <span className={cn(RECORD_LABEL_CLASS, 'shrink-0', orderRowQtyTone(qty))}>Qty {qty}</span>
         </span>
         <span className="h-full w-32 shrink-0">
           <LedgerStageAssign
@@ -732,7 +729,7 @@ function LedgerNextStep({ next }: { next: { label: string; tip?: string; blocked
       title={next?.tip}
       className={cn(
         RECORD_LABEL_CLASS,
-        'flex h-full w-32 shrink-0 items-center border-l border-mode-edge px-2',
+        'flex h-full w-32 shrink-0 items-center border-l border-mode-seam px-2',
         next?.blocked ? STATE_TONE_CLASSES.danger.text : 'text-mode-ink',
       )}
     >
@@ -795,7 +792,7 @@ function LedgerNoteEditor({
             onPointerDown={stop}
             className={cn(
               '!h-auto !min-h-0 !w-11 !justify-center !gap-0 !px-0 !py-0 !transform-none hover:opacity-80',
-              open && 'outline outline-2 -outline-offset-2 outline-mode-ink',
+              open && RECORD_OPEN_CLASS,
             )}
           >
             <RecordNoteSlot note={hasNote ? visibleNote : null} empty="add" />
@@ -991,9 +988,9 @@ const LedgerRecord = memo(function LedgerRecord({
       data-desk-record-key={record.id}
       data-state={state}
       className={cn(
-        'group/record relative flex border-b border-mode-ink bg-mode-panel hover:bg-mode-hover hover:z-dropdown focus-within:z-dropdown',
+        'group/record relative flex border-b border-mode-divide bg-mode-panel hover:bg-mode-hover hover:z-dropdown focus-within:z-dropdown',
         LEDGER_ROW_CLASS[zoom],
-        (open || checked) && 'outline outline-2 -outline-offset-2 outline-mode-ink',
+        (open || checked) && RECORD_OPEN_CLASS,
       )}
     >
       {/* The row's open target: */}
@@ -1031,7 +1028,7 @@ const LedgerRecord = memo(function LedgerRecord({
         }}
         onPointerDown={stop}
         className={cn(
-          'ds-raw-button relative z-10 shrink-0 cursor-zoom-in overflow-hidden border-r border-mode-rule bg-mode-well',
+          'ds-raw-button relative z-10 shrink-0 cursor-zoom-in overflow-hidden border-r border-mode-seam bg-mode-well',
           focusRing('cell'),
           LEDGER_PHOTO_CLASS[zoom],
         )}
@@ -1084,7 +1081,7 @@ const LedgerRecord = memo(function LedgerRecord({
           <span className="pointer-events-auto">{orderChip}</span>
           <span className={cn(RECORD_TITLE_CLASS, 'flex-1')}>{view.title || '—'}</span>
           <span className={cn(RECORD_LABEL_CLASS, 'w-14 shrink-0 text-right', orderRowQtyTone(qtyFace))}>
-            QTY {qtyFace}
+            Qty {qtyFace}
           </span>
           <span className="pointer-events-auto w-28 shrink-0">{shipBy}</span>
           <span className="pointer-events-auto w-32 shrink-0">{pick}</span>
@@ -1111,14 +1108,14 @@ const LedgerRecord = memo(function LedgerRecord({
             <span className="pointer-events-auto h-full shrink-0">
               <LedgerListingLink href={view.titleHref ?? null} itemNumber={record.item_number ?? null} />
             </span>
-            <span className="cf-section-rule pointer-events-auto h-full w-32 shrink-0 border-l border-mode-edge">{shipBy}</span>
+            <span className="cf-section-rule pointer-events-auto h-full w-32 shrink-0 border-l border-mode-seam">{shipBy}</span>
           </div>
           {/* Band 2 — identity: what it is ··· how many (the labour multiplier). */}
           <div className={cn('flex min-w-0 items-center gap-3 border-b border-mode-rule pl-2', LEDGER_BAND_CLASS[zoom])}>
             <span className={cn(RECORD_TITLE_CLASS, 'flex-1')} title={view.title || undefined}>
               {view.title || '—'}
             </span>
-            <span className="cf-section-rule pointer-events-auto h-full w-32 shrink-0 border-l border-mode-edge">
+            <span className="cf-section-rule pointer-events-auto h-full w-32 shrink-0 border-l border-mode-seam">
               <LedgerQty
                 value={qtyFace}
                 onCommit={(value) => commits.handleCommitSubtitleField(record, 'orders.qty', value)}
@@ -1168,8 +1165,8 @@ function LedgerLocation({
       className={cn(RECORD_ID_CLASS, 'truncate', path ? 'text-mode-ink' : 'text-mode-warn', className)}
       title={path ? (home ? `${path} — SKU home bin, no unit allocated yet` : path) : 'No allocated location'}
     >
-      <span className={RECORD_FACT_KEY_CLASS}>{home ? 'BIN HOME ' : 'BIN '}</span>
-      {path ?? 'UNASSIGNED'}
+      <span className={RECORD_FACT_KEY_CLASS}>{home ? 'Bin home ' : 'Bin '}</span>
+      {path ?? 'Unassigned'}
     </span>
   );
 }

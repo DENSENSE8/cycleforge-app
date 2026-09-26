@@ -32,6 +32,16 @@ public enum DesignTokens {
         public let edge: Color
         /// Border of an input / control.
         public let control: Color
+        /// Horizontal separator between records and sections.
+        public let divide: Color
+        /// Vertical divider inside a row (clear = none).
+        public let seam: Color
+        /// Outline around a box (clear = none).
+        public let frame: Color
+        /// Separator between facts inside a record card (clear = spacing).
+        public let fact: Color
+        /// Outline on the open / checked record (clear = fill only).
+        public let mark: Color
         /// Warning ink as text.
         public let warnText: Color
         /// Default tenant brand colour, when the mode has one.
@@ -78,6 +88,11 @@ public enum DesignTokens {
             rule: Color(red: 202.0 / 255.0, green: 203.0 / 255.0, blue: 197.0 / 255.0), // #cacbc5
             edge: Color(red: 183.0 / 255.0, green: 184.0 / 255.0, blue: 176.0 / 255.0), // #b7b8b0
             control: Color(red: 16.0 / 255.0, green: 17.0 / 255.0, blue: 15.0 / 255.0), // #10110f
+            divide: Color(red: 16.0 / 255.0, green: 17.0 / 255.0, blue: 15.0 / 255.0), // #10110f
+            seam: Color(red: 183.0 / 255.0, green: 184.0 / 255.0, blue: 176.0 / 255.0), // #b7b8b0
+            frame: Color(red: 16.0 / 255.0, green: 17.0 / 255.0, blue: 15.0 / 255.0), // #10110f
+            fact: Color(red: 183.0 / 255.0, green: 184.0 / 255.0, blue: 176.0 / 255.0), // #b7b8b0
+            mark: Color(red: 16.0 / 255.0, green: 17.0 / 255.0, blue: 15.0 / 255.0), // #10110f
             warnText: Color(red: 138.0 / 255.0, green: 95.0 / 255.0, blue: 0.0 / 255.0), // #8a5f00
             brand: nil,
             radius: 0.0,
@@ -98,17 +113,22 @@ public enum DesignTokens {
 
         /// Triage: Every desktop route — decide-and-route work: shadcn neutral, 10px cards, 8px controls, pill chips.
         public static let triage = Mode(
-            canvas: Color(red: 250.0 / 255.0, green: 250.0 / 255.0, blue: 250.0 / 255.0), // #fafafa
+            canvas: Color(red: 255.0 / 255.0, green: 255.0 / 255.0, blue: 255.0 / 255.0), // #ffffff
             bar: Color(red: 255.0 / 255.0, green: 255.0 / 255.0, blue: 255.0 / 255.0), // #ffffff
             panel: Color(red: 255.0 / 255.0, green: 255.0 / 255.0, blue: 255.0 / 255.0), // #ffffff
             well: Color(red: 245.0 / 255.0, green: 245.0 / 255.0, blue: 245.0 / 255.0), // #f5f5f5
-            hover: Color(red: 245.0 / 255.0, green: 245.0 / 255.0, blue: 245.0 / 255.0), // #f5f5f5
+            hover: Color(red: 247.0 / 255.0, green: 247.0 / 255.0, blue: 247.0 / 255.0), // #f7f7f7
             ink: Color(red: 10.0 / 255.0, green: 10.0 / 255.0, blue: 10.0 / 255.0), // #0a0a0a
             muted: Color(red: 82.0 / 255.0, green: 82.0 / 255.0, blue: 82.0 / 255.0), // #525252
-            faint: Color(red: 112.0 / 255.0, green: 112.0 / 255.0, blue: 112.0 / 255.0), // #707070
-            rule: Color(red: 229.0 / 255.0, green: 229.0 / 255.0, blue: 229.0 / 255.0), // #e5e5e5
+            faint: Color(red: 107.0 / 255.0, green: 107.0 / 255.0, blue: 107.0 / 255.0), // #6b6b6b
+            rule: Color(red: 235.0 / 255.0, green: 235.0 / 255.0, blue: 235.0 / 255.0), // #ebebeb
             edge: Color(red: 212.0 / 255.0, green: 212.0 / 255.0, blue: 212.0 / 255.0), // #d4d4d4
             control: Color(red: 138.0 / 255.0, green: 138.0 / 255.0, blue: 138.0 / 255.0), // #8a8a8a
+            divide: Color(red: 235.0 / 255.0, green: 235.0 / 255.0, blue: 235.0 / 255.0), // #ebebeb
+            seam: Color.clear, // transparent
+            frame: Color.clear, // transparent
+            fact: Color.clear, // transparent
+            mark: Color.clear, // transparent
             warnText: Color(red: 138.0 / 255.0, green: 95.0 / 255.0, blue: 0.0 / 255.0), // #8a5f00
             brand: nil,
             radius: 10.0,
@@ -140,6 +160,11 @@ public enum DesignTokens {
             rule: Color(red: 226.0 / 255.0, green: 232.0 / 255.0, blue: 240.0 / 255.0), // #e2e8f0
             edge: Color(red: 203.0 / 255.0, green: 213.0 / 255.0, blue: 225.0 / 255.0), // #cbd5e1
             control: Color(red: 123.0 / 255.0, green: 138.0 / 255.0, blue: 160.0 / 255.0), // #7b8aa0
+            divide: Color(red: 226.0 / 255.0, green: 232.0 / 255.0, blue: 240.0 / 255.0), // #e2e8f0
+            seam: Color(red: 226.0 / 255.0, green: 232.0 / 255.0, blue: 240.0 / 255.0), // #e2e8f0
+            frame: Color(red: 203.0 / 255.0, green: 213.0 / 255.0, blue: 225.0 / 255.0), // #cbd5e1
+            fact: Color(red: 226.0 / 255.0, green: 232.0 / 255.0, blue: 240.0 / 255.0), // #e2e8f0
+            mark: Color(red: 15.0 / 255.0, green: 23.0 / 255.0, blue: 42.0 / 255.0), // #0f172a
             warnText: Color(red: 194.0 / 255.0, green: 65.0 / 255.0, blue: 12.0 / 255.0), // #c2410c
             brand: Color(red: 31.0 / 255.0, green: 49.0 / 255.0, blue: 109.0 / 255.0), // #1f316d
             radius: 12.0,
@@ -171,6 +196,11 @@ public enum DesignTokens {
             rule: Color(red: 226.0 / 255.0, green: 232.0 / 255.0, blue: 240.0 / 255.0), // #e2e8f0
             edge: Color(red: 203.0 / 255.0, green: 213.0 / 255.0, blue: 225.0 / 255.0), // #cbd5e1
             control: Color(red: 123.0 / 255.0, green: 138.0 / 255.0, blue: 160.0 / 255.0), // #7b8aa0
+            divide: Color(red: 226.0 / 255.0, green: 232.0 / 255.0, blue: 240.0 / 255.0), // #e2e8f0
+            seam: Color(red: 226.0 / 255.0, green: 232.0 / 255.0, blue: 240.0 / 255.0), // #e2e8f0
+            frame: Color(red: 203.0 / 255.0, green: 213.0 / 255.0, blue: 225.0 / 255.0), // #cbd5e1
+            fact: Color(red: 226.0 / 255.0, green: 232.0 / 255.0, blue: 240.0 / 255.0), // #e2e8f0
+            mark: Color(red: 15.0 / 255.0, green: 23.0 / 255.0, blue: 42.0 / 255.0), // #0f172a
             warnText: Color(red: 194.0 / 255.0, green: 65.0 / 255.0, blue: 12.0 / 255.0), // #c2410c
             brand: nil,
             radius: 12.0,

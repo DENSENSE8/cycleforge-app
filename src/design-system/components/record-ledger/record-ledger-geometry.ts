@@ -29,7 +29,7 @@ export const RECORD_SPINE_HATCH_CLASS =
  * hairline is the same pixel on every band.
  */
 export const RECORD_RIGHT_LANE_CLASS =
-  'flex h-full w-32 shrink-0 items-center justify-end gap-1.5 border-l border-mode-edge px-2';
+  'flex h-full w-32 shrink-0 items-center justify-end gap-1.5 border-l border-mode-seam px-2';
 
 /** Location lane on band 1 — wide enough for a segmented bin code before it clips. */
 export const RECORD_LOCATION_CLASS = 'w-44 shrink-0';
@@ -39,7 +39,7 @@ export const RECORD_HIT_CLASS = 'min-h-mode-hit';
 
 /** Toolbar strip over the records — the mode's hit height plus a 1px ink rule. */
 export const RECORD_TOOLBAR_CLASS =
-  'flex min-h-mode-hit min-w-0 shrink-0 items-stretch border-b border-mode-ink bg-mode-bar';
+  'flex min-h-mode-hit min-w-0 shrink-0 items-stretch border-b border-mode-divide bg-mode-bar';
 
 /**
  * Pins the type scale inside the ledger. Row heights are fixed for the

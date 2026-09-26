@@ -3,11 +3,12 @@
 /**
  * `DeskRecordViewSwitch` — the staffer's choice of record view, named where the
  * record is read (operator 2026-09-25: "the user should have the choice to view
- * the data how they want to"). Two faces over the ONE desk fullscreen state
- * (`DeskStageContext`), never a second state:
+ * the data how they want to"). Two faces over the desk stage's ONE fullscreen
+ * state, never a second state:
  *
  * - **In place** — the record takes the list's place at the list's width.
- * - **Split** — list on the left for finding, record on the right for viewing.
+ * - **Split** — a fixed, padded list on the left for finding; the record on the
+ *   right, one column (owner 2026-09-26: easily triageable).
  *
  * Renders nothing off a desk stage (station embed, modal host): a dead switch
  * is worse than none.
@@ -22,18 +23,8 @@ import { cn } from '@/utils/_cn';
 import { useDeskStageOptional } from './DeskStageContext';
 
 const VIEWS = [
-  {
-    split: false,
-    label: 'In place',
-    title: 'In place — the record opens where the list is',
-    Icon: ColumnsOne,
-  },
-  {
-    split: true,
-    label: 'Split',
-    title: 'Split — list on the left, record on the right',
-    Icon: ColumnsTwo,
-  },
+  { split: false, label: 'In place', title: 'In place — the record opens where the list is', Icon: ColumnsOne },
+  { split: true, label: 'Split', title: 'Split — the list on the left, the record on the right', Icon: ColumnsTwo },
 ] as const;
 
 export function DeskRecordViewSwitch({ className }: { className?: string }) {

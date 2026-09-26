@@ -13,11 +13,12 @@ export interface RecordStateFace {
 }
 
 /**
- * Mono label face: 10px bold uppercase, 0.08em (BRIEF §4 industrial). 700 is
- * the heaviest mono cut loaded (`src/lib/fonts.ts`); asking for 800/900 here
- * rendered as 600 before that cut shipped (owner 2026-09-25, item 7).
+ * Fact label face — the region's label VOICE (`mode-label`, modes.ts
+ * `labelVoice`): 10px mono bold caps at 0.08em on the floor (BRIEF §4
+ * industrial; 700 is the heaviest mono cut loaded), 12px sans medium sentence
+ * case on a desk (owner 2026-09-26). Write labels in sentence case in source.
  */
-export const RECORD_LABEL_CLASS = 'font-mono text-role-micro font-bold uppercase tracking-[0.08em]';
+export const RECORD_LABEL_CLASS = 'mode-label';
 
 /** IDs / SKUs: mono bold 13. */
 export const RECORD_ID_CLASS = 'font-mono text-role-data font-bold tabular-nums';
@@ -26,7 +27,7 @@ export const RECORD_ID_CLASS = 'font-mono text-role-data font-bold tabular-nums'
  * A key/value fact on one line — `BIN ZONE-F`, `SKU B0F3G6J45B`.
  * inner span, so key and value share ONE size and line box (owner 2026-09-25:
  */
-export const RECORD_FACT_KEY_CLASS = 'font-semibold uppercase tracking-[0.04em] text-mode-muted';
+export const RECORD_FACT_KEY_CLASS = 'font-semibold mode-label-case text-mode-muted';
 
 /**
  * Price: the ID face in the success ink, so the money catches the eye where
@@ -90,6 +91,13 @@ export const RECORD_CONDITION_CHIP_CLASS =
 
 /** Noted-record accent: */
 export const RECORD_NOTE_SPINE_CLASS = 'shadow-[inset_-2px_0_0_var(--mode-warn-text)]';
+
+/**
+ * The open / checked record: an ink outline on the floor, a quiet fill on a
+ * desk (owner 2026-09-26 — no heavy black lines on desktop; the outline's
+ * colour is the mode's `mark`, transparent in triage).
+ */
+export const RECORD_OPEN_CLASS = 'bg-mode-hover outline outline-2 -outline-offset-2 outline-mode-mark';
 
 /**
  * LAW — the record's TRAILING CELL (operator 2026-09-25:

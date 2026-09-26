@@ -85,7 +85,7 @@ export const TextField = forwardRef<HTMLInputElement, TextFieldProps>(
     // Shared chrome — flush joins a host bar (no own radius/border); default keeps soft card.
     const sharedClass = cn(
       'peer block w-full bg-surface-card px-3.5 text-sm text-text-default outline-none transition-[box-shadow,border-color] duration-150 placeholder:text-transparent focus:ring-2 disabled:cursor-not-allowed disabled:bg-surface-canvas disabled:text-text-faint',
-      flush ? cornerClass('flush') : 'rounded-xl border',
+      flush ? cornerClass('flush') : 'rounded-mode-control border',
       mono && 'font-mono',
       t.input,
       inputClassName,

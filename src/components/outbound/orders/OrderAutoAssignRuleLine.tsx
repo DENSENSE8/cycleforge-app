@@ -66,7 +66,7 @@ export function OrderAutoAssignRuleLine({
             title="Edit auto-assign rule"
             onClick={() => setEditing(true)}
             className={cn(
-              'ds-raw-button border-l border-mode-edge text-mode-ink hover:bg-mode-hover',
+              'ds-raw-button border-l border-mode-seam text-mode-ink hover:bg-mode-hover',
               RECORD_TRAILING_CELL_CLASS,
               LEDGER_HIT_CLASS,
               focusRing('cell'),

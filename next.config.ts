@@ -104,6 +104,9 @@ const nextConfig: NextConfig = {
     turbopack: {},
     // Workspace package shipped as TypeScript source (main: src/index.ts).
     transpilePackages: ["@cycleforge/design-tokens"],
+    // The Ecwid store id is not a secret (it is in every storefront URL);
+    // the client needs it to link an Ecwid order into the store admin.
+    env: { NEXT_PUBLIC_ECWID_STORE_ID: process.env.ECWID_STORE_ID ?? process.env.NEXT_PUBLIC_ECWID_STORE_ID ?? "" },
     // Vercel sets this on platform builds. Explicit so Skew Protection can
     // pin framework-managed assets/RSC to the deployment that served the
     // page (floor stations stay open across a ship). Do not remove the

@@ -113,7 +113,7 @@ export function LedgerShipBy({
             onCommit(key);
           }}
           className={cn(
-            'h-full min-h-mode-hit w-full gap-1 rounded-none border-0 bg-transparent px-2 py-0 shadow-none',
+            'h-full min-h-mode-hit w-full gap-1 rounded-mode-control border-0 bg-transparent px-2 py-0 shadow-none',
             'hover:border-0 hover:bg-mode-hover',
             RECORD_LABEL_CLASS,
             overdueDays > 0 ? STATE_TONE_CLASSES.danger.text : dueToday ? 'text-mode-ink' : 'text-mode-muted',
@@ -295,7 +295,7 @@ export function LedgerCondition({
           </span>
         </button>
       </PopoverTrigger>
-      <PopoverContent align="start" sideOffset={0} className="w-48 rounded-none p-0.5" onClick={stop}>
+      <PopoverContent align="start" sideOffset={0} className="w-48 rounded-mode p-0.5" onClick={stop}>
         <ul role="listbox" aria-label="Condition" className="flex flex-col">
           {CONDITION_OPTIONS.map((opt, index) => (
             <li key={opt.value}>
@@ -360,7 +360,7 @@ export function LedgerQty({
           if (event.key === 'Escape') setEditing(false);
         }}
         className={cn(
-          'h-full w-full rounded-none border-0 bg-mode-panel px-2 outline outline-2 -outline-offset-2 outline-mode-ink',
+          'h-full w-full rounded-mode-control border-0 bg-mode-panel px-2 outline outline-2 -outline-offset-2 outline-mode-ink',
           bare ? 'text-left' : 'text-right',
           RECORD_ID_CLASS,
         )}
@@ -385,7 +385,7 @@ export function LedgerQty({
         focusRing('cell'),
       )}
     >
-      {bare ? null : <span className={cn(RECORD_LABEL_CLASS, 'text-mode-muted')}>QTY</span>}
+      {bare ? null : <span className={cn(RECORD_LABEL_CLASS, 'text-mode-muted')}>Qty</span>}
       <span className={cn(bare ? RECORD_ID_CLASS : RECORD_QTY_BADGE_CLASS, orderRowQtyTone(value))}>{value}</span>
     </button>
   );
@@ -396,7 +396,7 @@ export function LedgerQty({
  * Ship by; the ⌄ sits on the trailing-cell axis with every other right-edge glyph.
  */
 const INLINE_PICKER_CLASS = cn(
-  'h-8 w-full border-0 bg-transparent pl-2 hover:bg-mode-hover',
+  '-ml-2 h-8 w-[calc(100%+0.5rem)] rounded-mode-control border-0 bg-transparent pl-2 hover:bg-mode-hover',
   RECORD_TRAILING_GLYPH_INSET_CLASS,
 );
 
@@ -490,7 +490,7 @@ export function LedgerOpenAction({ href, label }: { href: string | null; label: 
       ariaLabel={`Open ${label}`}
       title={`Open ${label}`}
       className={cn(
-        'border-l border-mode-edge hover:bg-mode-hover',
+        'border-l border-mode-seam hover:bg-mode-hover',
         RECORD_TRAILING_CELL_CLASS,
         LEDGER_HIT_CLASS,
         focusRing('cell'),
@@ -529,7 +529,7 @@ export function LedgerTrackingReplace({
           aria-label={current ? 'Replace tracking number' : 'Add tracking number'}
           title={current ? 'Replace tracking number' : 'Add tracking number'}
           className={cn(
-            'ds-raw-button border-l border-mode-edge text-mode-ink hover:bg-mode-hover',
+            'ds-raw-button border-l border-mode-seam text-mode-ink hover:bg-mode-hover',
             RECORD_TRAILING_CELL_CLASS,
             LEDGER_HIT_CLASS,
             focusRing('cell'),
@@ -538,7 +538,7 @@ export function LedgerTrackingReplace({
           <Pencil className="h-3.5 w-3.5" aria-hidden />
         </button>
       </PopoverTrigger>
-      <PopoverContent align="end" sideOffset={0} className="w-72 rounded-none p-2" onClick={stop}>
+      <PopoverContent align="end" sideOffset={0} className="w-72 rounded-mode p-2" onClick={stop}>
         <form
           className="flex flex-col gap-2"
           onSubmit={(event) => {
@@ -556,7 +556,7 @@ export function LedgerTrackingReplace({
             data-testid="evidence-tracking-input"
             value={draft}
             onChange={(event) => setDraft(event.target.value)}
-            className={cn(RECORD_ID_CLASS, 'w-full rounded-none border border-mode-control bg-mode-panel p-2 text-mode-ink')}
+            className={cn(RECORD_ID_CLASS, 'w-full rounded-mode-control border border-mode-control bg-mode-panel p-2 text-mode-ink')}
           />
           <button
             type="submit"
@@ -725,7 +725,7 @@ export function LedgerNoteField({
           data-testid="ledger-note-field"
           style={height == null ? undefined : { height }}
           className={cn(
-            'block min-h-mode-hit w-full resize-none rounded-none bg-mode-well p-1.5 text-role-caption text-mode-ink',
+            'block min-h-mode-hit w-full resize-none rounded-mode-control bg-mode-well p-1.5 text-role-caption text-mode-ink',
             RECORD_RECESS_CLASS,
             focusRing('field'),
           )}
@@ -736,7 +736,7 @@ export function LedgerNoteField({
           aria-label="Drag to resize note"
           data-testid="ledger-note-resize"
           onPointerDown={startResize}
-          className="absolute bottom-px right-px flex h-3.5 w-3.5 cursor-ns-resize touch-none items-center justify-center bg-mode-well text-mode-muted hover:text-mode-ink"
+          className="absolute bottom-px right-px flex h-3.5 w-3.5 rounded-br-mode-control cursor-ns-resize touch-none items-center justify-center bg-mode-well text-mode-muted hover:text-mode-ink"
         >
           <ResizeCorner className="h-3.5 w-3.5" />
         </span>

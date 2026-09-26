@@ -197,10 +197,6 @@ export function RepairTable({ filter }: RepairTableProps) {
         title={selectedRepair ? String(selectedRepair.ticket_number || '').trim() || `RS-${selectedRepair.id}` : ''}
         subtitle={selectedRepair?.product_title ?? undefined}
         indexLabel={cursor.position != null ? `${cursor.position} of ${cursor.total}` : undefined}
-        onPrev={() => stepTo(cursor.prev?.id)}
-        onNext={() => stepTo(cursor.next?.id)}
-        prevDisabled={!cursor.prev}
-        nextDisabled={!cursor.next}
         recordNoun="repair"
         recordKey={openRepairId != null ? String(openRepairId) : null}
         testId="repair-record"

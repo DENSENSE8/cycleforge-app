@@ -206,7 +206,7 @@ export function DeskStageRecordHeader({
   viewSwitch,
 }: DeskStageRecordHeaderProps) {
   return (
-    <header className="flex shrink-0 items-start gap-2 border-b border-border-hairline px-4 py-3">
+    <header className="flex shrink-0 items-center gap-2 border-b border-border-hairline px-4 py-3">
       <div className="min-w-0 flex-1">
         <h2 className="truncate text-role-title text-text-default">{title}</h2>
         {subtitle ? (
@@ -214,12 +214,13 @@ export function DeskStageRecordHeader({
         ) : null}
       </div>
       {actions ? <div className="flex shrink-0 items-center gap-1.5">{actions}</div> : null}
-      {viewSwitch}
+      {/* Hierarchy: where you are (n of N), then how you view it, then ✕. */}
       {indexLabel ? (
         <span className="shrink-0 tabular-nums text-role-caption text-text-muted">
           {indexLabel}
         </span>
       ) : null}
+      {viewSwitch}
       {(onPrev || onNext) && (
         <div className="flex shrink-0 items-center gap-0.5">
           {onPrev ? (

@@ -5,7 +5,7 @@
 import { useState } from 'react';
 import type { ShippedOrder } from '@/lib/neon/orders-queries';
 import { DESK_BAR_SEGMENT_CLASS, deskBarSegmentTone } from '@/design-system/components/DeskActionSlot';
-import { Printer } from '@/components/Icons';
+import { Check, Copy, MapPin, Printer } from '@/components/Icons';
 import {
   customerAddressLines,
   customerBillToLines,
@@ -144,6 +144,10 @@ export function orderBuyer(record: ShippedOrder): { customer: CustomerRecord; so
   return null;
 }
 
+/** A small icon action on a fact value (copy address, map lookup). */
+const ADDRESS_ACTION_CLASS =
+  'ds-raw-button inline-flex size-7 items-center justify-center rounded-mode-control text-mode-muted hover:bg-mode-hover hover:text-mode-ink';
+
 /** The buyer as one collapsible section: */
 export function OrderCustomerSection({ customer, source }: { customer: CustomerRecord; source?: string }) {
   const [copied, setCopied] = useState(false);
@@ -165,8 +169,8 @@ export function OrderCustomerSection({ customer, source }: { customer: CustomerR
       label="Customer"
       testId="evidence-customer"
       summary={
-        <span className={cn(RECORD_ID_CLASS, 'truncate text-mode-ink')} title={name || undefined}>
-          {name || source || 'details'}
+        <span className="truncate text-role-data text-mode-ink" title={name || undefined}>
+          {name || source || 'Details'}
         </span>
       }
     >
@@ -176,11 +180,7 @@ export function OrderCustomerSection({ customer, source }: { customer: CustomerR
             <span className={RECORD_LABEL_CLASS}>{source}</span>
           </EvidenceFactRow>
         ) : null}
-        {name ? (
-          <EvidenceFactRow label="Name">
-            <span className="block truncate font-bold" title={name}>{name}</span>
-          </EvidenceFactRow>
-        ) : null}
+        {/* The name is the row's summary — never repeated in the body (owner 2026-09-26). */}
         {email ? (
           <EvidenceFactRow label="Email">
             <a
@@ -199,7 +199,33 @@ export function OrderCustomerSection({ customer, source }: { customer: CustomerR
         ) : null}
         {shipTo.length > 0 ? (
           <EvidenceFactRow label="Ship to" wide>
-            <span className="block select-all whitespace-pre-line break-words">{shipTo.join('\n')}</span>
+            <span className="flex min-w-0 items-start gap-2">
+              <span className="block min-w-0 flex-1 select-all whitespace-pre-line break-words">{shipTo.join('\n')}</span>
+              {/* Address actions sit on the address, top-right (owner 2026-09-26). */}
+              <span className="flex shrink-0 items-center gap-0.5">
+                <button
+                  type="button"
+                  data-testid="evidence-customer-copy-address"
+                  title={copied ? 'Copied' : 'Copy name and address'}
+                  aria-label={copied ? 'Copied' : 'Copy name and address'}
+                  onClick={copyAddress}
+                  className={cn(ADDRESS_ACTION_CLASS, focusRing('control'))}
+                >
+                  {copied ? <Check className="size-3.5" /> : <Copy className="size-3.5" />}
+                </button>
+                <a
+                  href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(shipTo.join(', '))}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  data-testid="evidence-customer-map"
+                  title="Look up the address in Google Maps"
+                  aria-label="Look up the address in Google Maps"
+                  className={cn(ADDRESS_ACTION_CLASS, focusRing('control'))}
+                >
+                  <MapPin className="size-3.5" />
+                </a>
+              </span>
+            </span>
           </EvidenceFactRow>
         ) : null}
         {billTo.length > 0 ? (
@@ -208,19 +234,6 @@ export function OrderCustomerSection({ customer, source }: { customer: CustomerR
           </EvidenceFactRow>
         ) : null}
       </div>
-      {shipTo.length > 0 ? (
-        <div className="flex items-stretch bg-mode-bar">
-          <button
-            type="button"
-            data-testid="evidence-customer-copy-address"
-            title="Copy the name and ship-to address"
-            className={cn(DESK_BAR_SEGMENT_CLASS, 'flex-1 justify-center', deskBarSegmentTone(false))}
-            onClick={copyAddress}
-          >
-            {copied ? 'Copied' : 'Copy address'}
-          </button>
-        </div>
-      ) : null}
     </EvidenceDisclosure>
   );
 }
@@ -238,7 +251,7 @@ export function OrderShipmentSection({ record }: { record: ShippedOrder }) {
   const eventAt = record.latest_event_at ? formatMonthDayTimePST(record.latest_event_at) : null;
   const statusLine = [detail, eventAt].filter(Boolean).join(' · ');
   return (
-    <div className="flex flex-col border-b border-mode-ink px-4" data-testid="order-record-shipment">
+    <div className="flex flex-col border-b border-mode-fact px-4" data-testid="order-record-shipment">
       <EvidenceFactRow label="Scanned out">
         <LedgerStageAssign
           verb="Scan out"

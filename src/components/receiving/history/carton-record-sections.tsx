@@ -31,9 +31,10 @@ import { zendeskTicketUrl } from '@/lib/zendesk-ticket-url';
 import { formatMonthDayTimePST } from '@/utils/date';
 import { formatCurrency } from '@/utils/_number';
 import { cn } from '@/utils/_cn';
+import { DESK_RECORD_COLUMN_CARD_CLASS } from '@/design-system/tokens/desk-stage';
 
 /** One column of the record: the industrial panel its sections stack in. */
-export const CARTON_COLUMN_CLASS = 'flex min-w-0 flex-col border border-mode-ink bg-mode-bar';
+export const CARTON_COLUMN_CLASS = DESK_RECORD_COLUMN_CARD_CLASS;
 
 /** A column's section head — mono label on the ink rule. */
 export function CartonColumnHead({ label, action }: { label: string; action?: ReactNode }) {

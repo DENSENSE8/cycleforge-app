@@ -30,8 +30,6 @@ interface RecordLedgerNavigation {
   total: number;
   onPrev: (() => void) | null;
   onNext: (() => void) | null;
-  prevDisabled: boolean;
-  nextDisabled: boolean;
 }
 
 interface RecordLedgerProps<T> {
@@ -161,7 +159,7 @@ export function RecordLedger<T>({
           <div className="flex min-w-0 flex-1 items-stretch">{toolbar}</div>
           {inPlace ? <RecordLedgerTally summary={summary} /> : null}
           {onStage ? (
-            <span className="flex shrink-0 items-center border-l border-mode-edge px-1.5">
+            <span className="flex shrink-0 items-center border-l border-mode-seam px-1.5">
               <DataTableFullscreenToggle />
             </span>
           ) : null}
@@ -183,7 +181,7 @@ export function RecordLedger<T>({
               ))}
             </div>
           ) : (
-            <div className="flex min-h-40 flex-col items-center justify-center gap-2 border-b border-mode-ink text-center">
+            <div className="flex min-h-40 flex-col items-center justify-center gap-2 border-b border-mode-divide text-center">
               {empty}
             </div>
           )
@@ -216,7 +214,7 @@ export function RecordLedger<T>({
       {footer ? (
         <div
           className={cn(
-            'flex shrink-0 items-center gap-3 border-t border-mode-ink bg-mode-bar px-3 text-mode-muted',
+            'flex shrink-0 items-center gap-3 border-t border-mode-divide bg-mode-bar px-3 text-mode-muted',
             RECORD_HIT_CLASS,
             RECORD_LABEL_CLASS,
           )}
@@ -239,10 +237,6 @@ export function RecordLedger<T>({
         title={recordTitle}
         subtitle={recordSubtitle}
         indexLabel={indexLabel}
-        onPrev={stepPrev}
-        onNext={stepNext}
-        prevDisabled={navigation ? navigation.prevDisabled : openIndex <= 0}
-        nextDisabled={navigation ? navigation.nextDisabled : openIndex < 0 || openIndex >= keys.length - 1}
         list={list}
         summary={<RecordLedgerSummaryPane summary={summary} />}
         recordNoun={recordNoun}

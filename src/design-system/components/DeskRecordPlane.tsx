@@ -21,6 +21,7 @@ import {
   DESK_RECORD_COLUMNS_CLASS,
   DESK_RECORD_MAIN_COLUMN_CLASS,
   DESK_RECORD_MEASURE_CLASS,
+  DESK_SPLIT_LIST_CLASS,
   DESK_SPLIT_RECORD_CARD_CLASS,
   DESK_SPLIT_RECORD_CLASS,
 } from '../tokens/desk-stage';
@@ -71,12 +72,8 @@ interface DeskRecordPlaneProps {
   /** Header title and the record region's accessible name. */
   title: ReactNode;
   subtitle?: ReactNode;
-  /** Walk position, e.g. `2 of 28`. */
+  /** Walk position, e.g. `2 of 28` — J/K step the record (the surface binds the keys; the band has no arrow buttons, owner 2026-09-26). */
   indexLabel?: ReactNode;
-  onPrev?: () => void;
-  onNext?: () => void;
-  prevDisabled?: boolean;
-  nextDisabled?: boolean;
   /** The fixed-width list — mounted once, never remounted between views. */
   list: ReactNode;
   /** The open record's view. The same component in both views. */
@@ -105,10 +102,6 @@ export function DeskRecordPlane({
   title,
   subtitle,
   indexLabel,
-  onPrev,
-  onNext,
-  prevDisabled,
-  nextDisabled,
   list,
   children,
   summary,
@@ -231,7 +224,12 @@ export function DeskRecordPlane({
         className={cn('relative flex min-h-0 min-w-0 flex-1', className)}
         data-desk-record-view={view}
       >
-        <div ref={listRef} className="flex min-h-0 min-w-0 flex-1 flex-col">
+        <div
+          ref={listRef}
+          // Split (owner 2026-09-26): the padded list takes two thirds, the
+          // record the right third.
+          className={split ? cn(DESK_SPLIT_LIST_CLASS, 'min-h-0') : 'flex min-h-0 min-w-0 flex-1 flex-col'}
+        >
           {list}
         </div>
 
@@ -255,10 +253,6 @@ export function DeskRecordPlane({
                     title={title}
                     subtitle={subtitle}
                     indexLabel={indexLabel}
-                    onPrev={onPrev}
-                    onNext={onNext}
-                    prevDisabled={prevDisabled}
-                    nextDisabled={nextDisabled}
                     onClose={onClose}
                     actions={actions}
                     viewSwitch={<DeskRecordViewSwitch />}
@@ -296,10 +290,6 @@ export function DeskRecordPlane({
               title={title}
               subtitle={subtitle}
               indexLabel={indexLabel}
-              onPrev={onPrev}
-              onNext={onNext}
-              prevDisabled={prevDisabled}
-              nextDisabled={nextDisabled}
               footer={footer}
               actions={actions}
               viewSwitch={<DeskRecordViewSwitch />}
@@ -346,6 +336,16 @@ interface DeskRecordLayoutProps {
  * stacked in the split pane — decided by the plane's container, not the viewport.
  */
 export function DeskRecordLayout({ main, aside, className }: DeskRecordLayoutProps) {
+  // Split: ONE column — the item card, then the details card (owner 2026-09-26).
+  const split = useDeskRecordView() === 'split';
+  if (split) {
+    return (
+      <div className={cn('flex max-w-full flex-col gap-4', DESK_RECORD_MEASURE_CLASS, className)}>
+        {main}
+        {aside}
+      </div>
+    );
+  }
   if (aside == null) {
     return <div className={cn('mx-auto max-w-full', DESK_RECORD_MEASURE_CLASS, className)}>{main}</div>;
   }

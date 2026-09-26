@@ -9,7 +9,7 @@ import { cn } from '@/utils/_cn';
 
 const badgeVariants = cva(
   cn(
-    'inline-flex w-fit shrink-0 items-center justify-center gap-1 whitespace-nowrap rounded-none border px-1.5 py-0.5',
+    'inline-flex w-fit shrink-0 items-center justify-center gap-1 whitespace-nowrap rounded-mode-pill border px-1.5 py-0.5',
     'text-role-micro font-semibold leading-none',
     '[&>svg]:pointer-events-none [&>svg]:size-3',
   ),

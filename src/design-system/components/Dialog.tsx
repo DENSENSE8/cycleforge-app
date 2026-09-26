@@ -42,7 +42,7 @@ const DialogContent = React.forwardRef<
     <DialogPrimitive.Content
       ref={ref}
       className={cn(
-        'fixed left-1/2 top-1/2 z-modal grid w-full max-w-lg -translate-x-1/2 -translate-y-1/2 gap-4 rounded-none border border-border-soft bg-surface-card p-5',
+        'fixed left-1/2 top-1/2 z-modal grid w-full max-w-lg -translate-x-1/2 -translate-y-1/2 gap-4 rounded-mode border border-border-soft bg-surface-card p-5',
         elevationClass('overlay'),
         className,
       )}
@@ -52,7 +52,7 @@ const DialogContent = React.forwardRef<
       {hideClose ? null : (
         <DialogPrimitive.Close
           className={cn(
-            'absolute right-4 top-4 rounded-none p-1 text-text-muted opacity-70 transition-opacity hover:opacity-100',
+            'absolute right-4 top-4 rounded-mode-control p-1 text-text-muted opacity-70 transition-opacity hover:opacity-100',
             focusRing('control'),
           )}
           aria-label="Close"

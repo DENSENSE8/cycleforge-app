@@ -36,8 +36,11 @@ export interface ButtonProps
   iconOnly?: boolean;
   /** Accessible label — required when `iconOnly` and children aren't a plain string. */
   ariaLabel?: string;
-  /** Corner. Default `surface` — desk / workbench CTAs. */
-  radius?: 'flush' | 'composer' | 'surface' | 'pill' | 'mode';
+  /**
+   * Corner. Default `control` — the mode's control corner: 8px on a desktop
+   * (triage), square on the phone floor (industrial) (owner 2026-09-26).
+   */
+  radius?: 'flush' | 'composer' | 'surface' | 'pill' | 'mode' | 'control';
 }
 
 // ─── Variant classes ─────────────────────────────────────────────────────────
@@ -52,6 +55,7 @@ const BUTTON_RADIUS: Record<NonNullable<ButtonProps['radius']>, string> = {
   surface: cornerClass('surface'),
   pill: cornerClass('pill'),
   mode: 'rounded-mode',
+  control: 'rounded-mode-control',
 };
 
 // The corner is NOT baked into these — it comes from `radius` below, so the
@@ -94,7 +98,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button
     children,
     variant = 'primary',
     size = 'md',
-    radius = 'surface',
+    radius = 'control',
     icon,
     iconRight,
     loading = false,

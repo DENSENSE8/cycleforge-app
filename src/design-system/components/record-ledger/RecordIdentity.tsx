@@ -38,9 +38,9 @@ export function RecordListingLink({ href, itemNumber, face = 'row' }: {
       onClick={(event) => event.stopPropagation()} onPointerDown={(event) => event.stopPropagation()}
       aria-label={item ? `Open listing ${item} in a new tab` : 'Open listing in a new tab'}
       title={item ? `Listing ${item}` : href} data-testid="ledger-listing-link"
-      className={cn('flex h-full min-w-0 items-center gap-1.5 px-2 text-mode-ink hover:bg-mode-hover', RECORD_HIT_CLASS, focusRing('cell'))}>
+      className={cn('group/listing flex h-full min-w-0 items-center gap-1.5 px-2 text-mode-ink hover:bg-mode-hover', face === 'value' && '-ml-2 rounded-mode-control', RECORD_HIT_CLASS, focusRing('cell'))}>
       {face === 'row' ? <span className={RECORD_LABEL_CLASS}>Listing</span> : (
-        <span className={cn(RECORD_ID_CLASS, 'min-w-0 truncate underline decoration-mode-edge underline-offset-2')}>{item || 'Open'}</span>
+        <span className={cn(RECORD_ID_CLASS, 'min-w-0 truncate no-underline decoration-mode-edge underline-offset-2 group-hover/listing:underline')}>{item || 'Open'}</span>
       )}
       <ExternalLink aria-hidden className="h-3.5 w-3.5 shrink-0" />
     </a>

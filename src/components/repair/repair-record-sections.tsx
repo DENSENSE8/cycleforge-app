@@ -12,9 +12,10 @@ import { repairTicketValue } from '@/lib/tables/field-catalog/repair-resolve';
 import { marketplaceOrderUrl } from '@/utils/order-platform';
 import { formatPhoneNumber } from '@/utils/phone';
 import { cn } from '@/utils/_cn';
+import { DESK_RECORD_COLUMN_CARD_CLASS } from '@/design-system/tokens/desk-stage';
 
 /** One column of the record: the industrial panel its sections stack in. */
-export const REPAIR_RECORD_COLUMN_CLASS = 'flex min-w-0 flex-col border border-mode-ink bg-mode-bar';
+export const REPAIR_RECORD_COLUMN_CLASS = DESK_RECORD_COLUMN_CARD_CLASS;
 
 /** An in-record link: ruled underline, darkens on hover. */
 export const REPAIR_RECORD_LINK_CLASS = cn(
