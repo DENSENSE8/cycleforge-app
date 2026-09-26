@@ -13,6 +13,7 @@ import { ItemCardShipBy } from '@/components/mobile/redesign/ItemCardRow';
 import { MobileToShipPickerSheet } from '@/components/mobile/redesign/MobileToShipPickerSheet';
 import { orderChannel } from '@/components/mobile/orders/OrderInfoCard';
 import { DESK_BAR_SEGMENT_CLASS, deskBarSegmentTone } from '@/design-system/components/DeskActionSlot';
+import { DetailDock } from '@/design-system/components/DetailDock';
 import { ItemRecordThumb } from '@/design-system/components/item-record/ItemRecordThumb';
 import { Button } from '@/design-system/primitives';
 import { appMobilePageGroundClass } from '@/design-system/tokens/app-surface';
@@ -28,6 +29,8 @@ import {
 import { cn } from '@/utils/_cn';
 
 const PICK_HREF = '/m/pick';
+
+type BoardVerb = 'take' | 'pass';
 
 const SCOPES: { id: PickBoardScope; label: string; empty: string }[] = [
   { id: 'unassigned', label: 'Unassigned', empty: 'Every open pick has an owner.' },
@@ -152,69 +155,65 @@ export function PickBoardScreen() {
               return (
                 <li
                   key={row.orderId}
-                  className={cn(
-                    'flex gap-3 border-b border-border-soft px-mode-page py-3',
-                    row.rush && 'border-l-4 border-l-border-danger',
-                  )}
+                  className={cn('border-b border-mode-rule', row.rush && 'border-l-4 border-l-border-danger')}
                 >
-                  <ItemRecordThumb imageUrl={row.imageUrl} plainEmpty className="size-16 self-start" iconClassName="h-6 w-6" />
-                  <div className="min-w-0 flex-1">
-                    <p className="line-clamp-2 text-role-body font-semibold text-text-default">{row.title}</p>
-                    <p
-                      className={cn(
-                        'mt-0.5 font-mono text-role-data font-semibold tabular-nums',
-                        row.location ? 'text-text-default' : 'text-text-muted',
-                      )}
-                    >
-                      {row.location ? locationFace(row.location) : 'No bin'}
-                    </p>
-                    <p className="mt-0.5 truncate text-role-data text-text-muted">
-                      {channel ? <>{channel} · </> : null}
-                      <span className="font-mono text-text-default">{row.orderLabel}</span>
-                    </p>
-                    <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1">
-                      <ItemCardShipBy deadlineAt={row.deadlineAt} />
-                      <span className="text-role-caption tabular-nums text-text-muted">
-                        {row.openUnits} {row.openUnits === 1 ? 'unit' : 'units'} to pick
-                      </span>
-                    </div>
-                    {scope === 'all' ? (
-                      <p className="mt-1 truncate text-role-caption text-text-muted">
-                        {row.owner ? (
-                          <>
-                            <span className="font-semibold text-text-default">
-                              {row.owner.name ?? `Staff #${row.owner.staffId}`}
-                            </span>{' '}
-                            · {OWNER_VIA_LABEL[row.owner.via]}
-                          </>
-                        ) : (
-                          'Unassigned'
+                  <div className="flex gap-3 px-mode-page py-3">
+                    <ItemRecordThumb imageUrl={row.imageUrl} plainEmpty className="size-16 self-start" iconClassName="h-6 w-6" />
+                    <div className="min-w-0 flex-1">
+                      <p className="line-clamp-2 text-role-body font-semibold text-text-default">{row.title}</p>
+                      <p
+                        className={cn(
+                          'mt-0.5 break-words font-mono text-role-data font-semibold tabular-nums',
+                          row.location ? 'text-text-default' : 'text-text-muted',
                         )}
-                        {row.heldBy ? <> · held by {row.heldBy.name ?? `Staff #${row.heldBy.staffId}`}</> : null}
+                      >
+                        {row.location ? locationFace(row.location) : 'No bin'}
+                        {row.location?.room ? (
+                          <span className="font-sans font-normal text-text-muted"> · {row.location.room}</span>
+                        ) : null}
                       </p>
-                    ) : null}
-                    <div className="mt-2 grid grid-cols-2 gap-2">
-                      <Button
-                        variant="secondary"
-                        size="md"
-                        icon={<ChevronsRight />}
-                        loading={takingId === row.orderId}
-                        disabled={takingId != null}
-                        onClick={() => take(row)}
-                      >
-                        Take
-                      </Button>
-                      <Button
-                        variant="secondary"
-                        size="md"
-                        icon={<User />}
-                        disabled={takingId != null}
-                        onClick={() => setPassRow(row)}
-                      >
-                        Pass to…
-                      </Button>
+                      <p className="mt-0.5 break-words text-role-data text-text-muted">
+                        {channel ? <>{channel} · </> : null}
+                        <span className="font-mono text-text-default">{row.orderLabel}</span>
+                      </p>
+                      <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1">
+                        <ItemCardShipBy deadlineAt={row.deadlineAt} />
+                        <span className="text-role-caption tabular-nums text-text-muted">
+                          {row.openUnits} {row.openUnits === 1 ? 'unit' : 'units'} to pick
+                        </span>
+                      </div>
+                      {scope === 'all' ? (
+                        <p className="mt-1 break-words text-role-caption text-text-muted">
+                          {row.owner ? (
+                            <>
+                              <span className="font-semibold text-text-default">
+                                {row.owner.name ?? `Staff #${row.owner.staffId}`}
+                              </span>{' '}
+                              · {OWNER_VIA_LABEL[row.owner.via]}
+                            </>
+                          ) : (
+                            'Unassigned'
+                          )}
+                          {row.heldBy ? <> · held by {row.heldBy.name ?? `Staff #${row.heldBy.staffId}`}</> : null}
+                        </p>
+                      ) : null}
                     </div>
                   </div>
+                  <DetailDock<BoardVerb>
+                    label={`Actions for ${row.orderLabel}`}
+                    placement="inline"
+                    verbs={[
+                      {
+                        id: 'take',
+                        label: 'Take',
+                        icon: <ChevronsRight />,
+                        loading: takingId === row.orderId,
+                        disabled: takingId != null,
+                      },
+                      { id: 'pass', label: 'Pass to picker', icon: <User />, disabled: takingId != null },
+                    ]}
+                    onVerb={(id) => (id === 'take' ? take(row) : setPassRow(row))}
+                  />
                 </li>
               );
             })}
