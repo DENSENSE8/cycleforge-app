@@ -175,18 +175,15 @@ export function DirectedPickScreen() {
               </Button>
             </section>
 
-            {/* The product — photo for the glance, then its title and the count. */}
+            {/* The product — full-bleed photo for the glance, then its whole title and the count; rush is the left spine. */}
             <section
               aria-label="Product"
-              className={cn(
-                'border bg-surface-card',
-                order?.rush ? 'border-l-4 border-border-danger' : 'border-border-soft',
-              )}
+              className={cn('border-b border-mode-rule bg-surface-card', order?.rush && 'border-l-4 border-l-border-danger')}
             >
               <ItemRecordThumb imageUrl={line.imageUrl} plainEmpty className="h-56 w-full self-auto" iconClassName="h-16 w-16" />
-              <div className="flex items-start gap-3 border-t border-border-soft px-4 py-3">
+              <div className="flex items-start gap-3 border-t border-mode-rule px-mode-page py-2">
                 <div className="min-w-0 flex-1">
-                  <p className="line-clamp-3 text-2xl font-semibold leading-tight text-text-default">{line.title}</p>
+                  <p className="break-words text-2xl font-semibold leading-tight text-text-default">{line.title}</p>
                 </div>
                 <div className="shrink-0 text-right">
                   <p className="font-mono text-6xl font-semibold leading-none tabular-nums text-text-default">
