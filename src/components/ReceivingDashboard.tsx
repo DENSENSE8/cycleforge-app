@@ -3,7 +3,6 @@
 /** `/receiving` right pane — thin composition layer. */
 
 import { useCallback } from 'react';
-import { useRealtimeInvalidation } from '@/hooks/useRealtimeInvalidation';
 import { useRealtimeToasts } from '@/hooks/useRealtimeToasts';
 import { useAuth } from '@/contexts/AuthContext';
 import { dispatchReceivingWorkspaceClose } from '@/utils/events';
@@ -17,7 +16,6 @@ import { ReceivingDashboardOverlays } from '@/components/receiving/ReceivingDash
 import { formatReceivingCopyRow } from '@/lib/receiving/receiving-copy-row';
 
 export default function ReceivingDashboard() {
-  useRealtimeInvalidation({ receiving: true });
   useRealtimeToasts('receiving');
   const { user } = useAuth();
   const staffId = String(user?.staffId ?? '');

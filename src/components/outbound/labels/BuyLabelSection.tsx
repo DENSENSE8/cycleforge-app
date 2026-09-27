@@ -8,9 +8,7 @@ import { Button } from '@/design-system/primitives';
 import type { ShippingRateOption } from '@/lib/shipping/shipstation/types';
 import { safeRandomUUID } from '@/lib/safe-uuid';
 import { focusRing } from '@/design-system/tokens/focus-ring';
-import { cornerClass } from '@/design-system/tokens/radius';
 import { cn } from '@/utils/_cn';
-import { DESK_BAR_SEGMENT_CLASS, deskBarSegmentTone } from '@/design-system/components/DeskActionSlot';
 import { LABEL_PURPOSES, LABEL_PURPOSE_FACE, type LabelPurpose } from '@/lib/shipping/label-purpose';
 import { orderLabelPdfSrc, orderPriceBreakdownKey } from '@/components/outbound/orders/order-labels-client';
 import { sendWithBuyerNoteAck } from '@/lib/orders/buyer-note-ack-client';
@@ -72,11 +70,6 @@ interface BuyLabelSectionProps {
   /** Called after a purchase or void so the parent refreshes the document tray. */
   onChange: () => void;
   /**
-   * Station flush host — square faces (`cornerClass('flush')`) so Buy Label matches
-   * Unbox pinned chrome under Labels Documents.
-   */
-  flush?: boolean;
-  /**
    * Parcel weight (oz) from the bound order/form — sent on the rate request so
    * the quote reflects the operator's scale, not a stale stored weight.
    */
@@ -107,14 +100,14 @@ export function BuyLabelSection({
   orderId,
   orderRef,
   onChange,
-  flush = false,
   weightOz = null,
   dimensions = null,
   onRatesError,
   onPurchased,
 }: BuyLabelSectionProps) {
-  const face = cornerClass(flush ? 'flush' : 'field');
-  const faceSm = cornerClass(flush ? 'flush' : 'control');
+  // Mode corners: a card / a control in triage, square on the floor.
+  const face = 'rounded-mode';
+  const faceSm = 'rounded-mode-control';
   const [selectedRateId, setSelectedRateId] = useState<string | null>(null);
   // Why this label is bought:
   const [purpose, setPurpose] = useState<LabelPurpose>('outbound');
@@ -270,13 +263,13 @@ export function BuyLabelSection({
   return (
     <div className="space-y-2">
       <div className="flex items-center justify-between">
-        <h3 className="text-role-eyebrow uppercase tracking-widest text-text-soft">Buy Label</h3>
+        <h3 className="mode-label text-text-soft">Buy label</h3>
         {rates.length > 0 && !bought ? (
           <button /* ds-raw-button: custom rate-shop control (selectable rate card / micro eyebrow action) */
             type="button"
             onClick={() => ratesMutation.mutate()}
             disabled={ratesMutation.isPending}
-            className={cn('-my-0.5 flex items-center gap-1 px-1.5 py-0.5 text-role-eyebrow uppercase tracking-widest text-text-faint hover:bg-surface-hover hover:text-text-accent disabled:opacity-40', cornerClass('chip'))}
+            className="-my-0.5 flex items-center gap-1 rounded-mode-pill px-2 py-0.5 text-role-caption text-text-faint hover:bg-surface-hover hover:text-text-accent disabled:opacity-40"
           >
             {ratesMutation.isPending ? <Loader2 className="h-3 w-3 animate-spin" /> : <RefreshCw className="h-3 w-3" />}
             Refresh
@@ -285,12 +278,12 @@ export function BuyLabelSection({
       </div>
       {!bought ? (
         <div
-          className={cn('flex items-stretch border border-border-default bg-surface-canvas', faceSm)}
+          className="inline-flex w-full items-center gap-0.5 rounded-mode-control bg-surface-sunken p-0.5"
           role="radiogroup"
           aria-label="Label purpose"
           data-testid="buy-label-purpose"
         >
-          {LABEL_PURPOSES.map((p, i) => (
+          {LABEL_PURPOSES.map((p) => (
             <button
               key={p}
               type="button"
@@ -299,7 +292,11 @@ export function BuyLabelSection({
               disabled={buyMutation.isPending}
               data-testid={`buy-label-purpose-${p}`}
               onClick={() => choosePurpose(p)}
-              className={cn(DESK_BAR_SEGMENT_CLASS, 'flex-1 justify-center', i > 0 && 'border-l border-border-default', deskBarSegmentTone(purpose === p))}
+              className={cn(
+                'inline-flex h-7 flex-1 items-center justify-center rounded-mode-control px-2.5 text-role-caption font-medium transition-colors',
+                purpose === p ? 'bg-surface-card text-text-default shadow-elev-soft' : 'text-text-muted hover:text-text-default',
+                focusRing('control'),
+              )}
             >
               {LABEL_PURPOSE_FACE[p].label}
             </button>
@@ -321,16 +318,16 @@ export function BuyLabelSection({
               </div>
               <dl className="mt-2 space-y-1">
                 <div className="flex items-center justify-between gap-2">
-                  <dt className="text-role-eyebrow uppercase tracking-widest text-text-success opacity-70">Tracking</dt>
+                  <dt className="mode-label text-text-success opacity-70">Tracking</dt>
                   <dd className="truncate font-mono text-role-caption font-semibold text-text-default">{bought.tracking}</dd>
                 </div>
                 <div className="flex items-center justify-between gap-2">
-                  <dt className="text-role-eyebrow uppercase tracking-widest text-text-success opacity-70">Carrier</dt>
-                  <dd className="text-role-caption font-semibold uppercase text-text-default">{bought.carrier}</dd>
+                  <dt className="mode-label text-text-success opacity-70">Carrier</dt>
+                  <dd className="text-role-caption font-semibold text-text-default">{bought.carrier}</dd>
                 </div>
                 {typeof bought.cost === 'number' ? (
                   <div className="flex items-center justify-between gap-2">
-                    <dt className="text-role-eyebrow uppercase tracking-widest text-text-success opacity-70">Cost</dt>
+                    <dt className="mode-label text-text-success opacity-70">Cost</dt>
                     <dd className="text-role-caption font-semibold text-text-default">{money(bought.cost, bought.currency)}</dd>
                   </div>
                 ) : null}
@@ -377,7 +374,7 @@ export function BuyLabelSection({
             {/* Void / refund */}
             {voidOpen ? (
               <div className={`space-y-1.5 ${faceSm} border border-border-danger bg-surface-danger px-3 py-2.5`}>
-                <label className="block text-role-eyebrow uppercase tracking-widest text-text-danger">Reason to void</label>
+                <label className="mode-label block text-text-danger">Reason to void</label>
                 <input
                   value={voidReason}
                   onChange={(e) => setVoidReason(e.target.value)}
@@ -414,7 +411,7 @@ export function BuyLabelSection({
               <button /* ds-raw-button: custom rate-shop control (selectable rate card / micro eyebrow action) */
                 type="button"
                 onClick={() => setVoidOpen(true)}
-                className="flex items-center gap-1 text-role-eyebrow uppercase tracking-widest text-text-faint hover:text-text-danger"
+                className="flex items-center gap-1 text-role-caption text-text-faint hover:text-text-danger"
               >
                 <Trash2 className="h-3 w-3" /> Void / refund this label
               </button>
@@ -433,7 +430,7 @@ export function BuyLabelSection({
               <button /* ds-raw-button: custom rate-shop control (selectable rate card / micro eyebrow action) */
                 type="button"
                 onClick={() => ratesMutation.mutate()}
-                className="mt-1 text-role-eyebrow uppercase tracking-widest text-text-danger hover:underline"
+                className="mt-1 text-role-caption text-text-danger hover:underline"
               >
                 Try again
               </button>
@@ -462,7 +459,7 @@ export function BuyLabelSection({
                         <Truck className={`h-4 w-4 shrink-0 ${selected ? 'text-text-accent' : 'text-text-faint'}`} />
                         <div className="min-w-0 flex-1">
                           <p className="truncate text-role-caption font-semibold text-text-default">{rate.carrierName}</p>
-                          <p className="truncate text-role-eyebrow font-semibold uppercase tracking-widest text-text-soft">
+                          <p className="truncate text-role-micro text-text-soft">
                             {rate.serviceName}
                           </p>
                         </div>
@@ -473,7 +470,7 @@ export function BuyLabelSection({
                           </p>
                         </div>
                         {i === 0 ? (
-                          <span className={cn('ml-1 shrink-0 bg-surface-success px-1.5 py-0.5 text-role-eyebrow uppercase tracking-widest text-text-success ring-1 ring-inset ring-border-success leading-none', cornerClass('chip'))}>
+                          <span className="ml-1 shrink-0 rounded-mode-pill bg-surface-success px-2 py-0.5 text-role-micro font-medium leading-none text-text-success ring-1 ring-inset ring-border-success">
                             Best
                           </span>
                         ) : null}
@@ -509,7 +506,7 @@ export function BuyLabelSection({
                         type="checkbox"
                         checked={notifyCustomer}
                         onChange={(e) => setNotifyCustomer(e.target.checked)}
-                        className={cn('h-3.5 w-3.5 border-border-default text-text-accent', cornerClass('chip'))}
+                        className="h-3.5 w-3.5 rounded-sm border-border-default text-text-accent"
                       />
                       Email the customer a tracking notification
                     </label>

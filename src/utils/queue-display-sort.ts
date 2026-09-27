@@ -14,6 +14,8 @@ export type QueueDisplaySortColumn =
   | 'tracking'
   /** Pick step — event stamp, blanks last; name is the tiebreak. */
   | 'picked'
+  /** Picker name A–Z (`picked_by_name`); rows nobody picked sort last in both directions. */
+  | 'picker'
   /** Pack step — event stamp, blanks last; name is the tiebreak. */
   | 'packed'
   /** Status pill label (queue-mode aware). */
@@ -49,6 +51,7 @@ const QUEUE_COLUMN_SORTS: readonly QueueDisplaySortColumn[] = [
   'order',
   'tracking',
   'picked',
+  'picker',
   'packed',
   'status',
   'amount',
@@ -196,6 +199,7 @@ const QUEUE_COLUMN_SORT_FACES: Readonly<
     | 'order'
     | 'tracking'
     | 'picked'
+    | 'picker'
     | 'packed'
     | 'status'
     | 'amount'
@@ -210,6 +214,7 @@ const QUEUE_COLUMN_SORT_FACES: Readonly<
   order: { label: 'Order number', shortLabel: 'Order' },
   tracking: { label: 'Tracking number', shortLabel: 'Tracking' },
   picked: { label: 'Pick', shortLabel: 'Pick' },
+  picker: { label: 'Picked by', shortLabel: 'Picker' },
   packed: { label: 'Pack', shortLabel: 'Pack' },
   status: { label: 'Status', shortLabel: 'Status' },
   amount: { label: 'Amount', shortLabel: 'Amount' },
@@ -222,6 +227,7 @@ const QUEUE_COLUMN_SORT_MENU_ORDER: readonly (keyof typeof QUEUE_COLUMN_SORT_FAC
   'title',
   'status',
   'picked',
+  'picker',
   'packed',
   'scanned_out',
   'qty',

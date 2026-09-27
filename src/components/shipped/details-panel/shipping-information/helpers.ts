@@ -151,9 +151,8 @@ export function deriveShippingDisplayMeta(
     || getStaffName((shipped as any).packed_by ?? null)
   ).trim() || 'Not specified';
   const techNameDisplay = String(
-    (shipped as any).tester_name
-    || (shipped as any).tested_by_name
-    || getStaffName((shipped as any).tested_by ?? (shipped as any).tester_id ?? null)
+    shipped.tested_by_name
+    || getStaffName(shipped.tested_by ?? null)
   ).trim() || 'Not specified';
 
   const returnsCopyText = [

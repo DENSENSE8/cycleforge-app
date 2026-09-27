@@ -37,7 +37,6 @@ type GlobalAddItemId =
   | 'fba-plan'
   | 'fba-fnsku'
   | 'incoming-po'
-  | 'incoming-return'
   | 'incoming-returns-csv'
   | 'incoming-zoho'
   | 'incoming-ebay'
@@ -80,8 +79,8 @@ const GLOBAL_ADD_GROUPS: readonly GlobalAddGroup[] = [
     items: [
       {
         id: 'orders-manual',
-        label: 'Add order manually',
-        subtitle: 'New order, entered here',
+        label: 'Add outbound order',
+        subtitle: 'A sales order to ship, entered here',
         href: `${SHIPPING_ORDERS_PATH}?new=true`,
       },
       {
@@ -127,17 +126,10 @@ const GLOBAL_ADD_GROUPS: readonly GlobalAddGroup[] = [
     items: [
       {
         id: 'incoming-po',
-        label: 'Add PO',
-        subtitle: 'Purchase or marketplace order',
+        label: 'Add purchase order',
+        subtitle: 'Inbound order — PO, return, trade-in or pickup',
         href: INCOMING_SURFACE_ROUTE,
         intent: { kind: 'incoming-add', leaf: 'add-po' },
-      },
-      {
-        id: 'incoming-return',
-        label: 'Add return',
-        subtitle: 'Return with linked support ticket',
-        href: INCOMING_SURFACE_ROUTE,
-        intent: { kind: 'incoming-add', leaf: 'add-return' },
       },
       {
         id: 'incoming-returns-csv',

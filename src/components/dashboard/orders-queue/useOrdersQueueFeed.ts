@@ -51,11 +51,14 @@ export function daysLateOn(todayKey: string, deadlineAt: string | null | undefin
   return value;
 }
 
-/** Who picks / packs a queue row — display faces plus the assign ids. */
+/** Who QC'd / picks / packs a queue row — display faces plus the assign ids. */
 interface QueueRowStaff {
+  /** QC face (unit QC actor) — the identity line's tester stamp. */
   testerDisplay: string;
+  /** ORDER/PICK assignee, falling back to the pick actor once picked. */
+  pickerDisplay: string;
   packerDisplay: string;
-  testerId: number | null;
+  pickerId: number | null;
   packerId: number | null;
 }
 
@@ -66,9 +69,12 @@ export function queueRowStaff(
 ): QueueRowStaff {
   const testerName =
     String(r.tested_by_name ?? '').trim() ||
-    String(r.tester_name ?? '').trim() ||
-    (Number(r.tested_by) > 0 ? getStaffName(Number(r.tested_by)) : '') ||
-    (Number(r.tester_id) > 0 ? getStaffName(Number(r.tester_id)) : '');
+    (Number(r.tested_by) > 0 ? getStaffName(Number(r.tested_by)) : '');
+  const pickerName =
+    String(r.picker_name ?? '').trim() ||
+    (Number(r.picker_id) > 0 ? getStaffName(Number(r.picker_id)) : '') ||
+    String(r.picked_by_name ?? '').trim() ||
+    (Number(r.picked_by) > 0 ? getStaffName(Number(r.picked_by)) : '');
   const packerName =
     String(r.packed_by_name ?? '').trim() ||
     String(r.packer_name ?? '').trim() ||
@@ -76,9 +82,10 @@ export function queueRowStaff(
     (Number(r.packer_id) > 0 ? getStaffName(Number(r.packer_id)) : '');
   return {
     testerDisplay: normalizePersonName(testerName),
+    pickerDisplay: normalizePersonName(pickerName),
     packerDisplay: normalizePersonName(packerName),
-    testerId:
-      Number(r.tester_id) > 0 ? Number(r.tester_id) : Number(r.tested_by) > 0 ? Number(r.tested_by) : null,
+    pickerId:
+      Number(r.picker_id) > 0 ? Number(r.picker_id) : Number(r.picked_by) > 0 ? Number(r.picked_by) : null,
     packerId:
       Number(r.packer_id) > 0 ? Number(r.packer_id) : Number(r.packed_by) > 0 ? Number(r.packed_by) : null,
   };
@@ -305,7 +312,7 @@ export function useOrdersQueueFeed({
 }
 
 /** The outbound inline-edit commits — condition, ship-by, pick / pack assign, the under-title facts, platform, SKU bin, tracking — each… */
-function useOrdersQueueCommits(): OrdersQueueCommits {
+export function useOrdersQueueCommits(): OrdersQueueCommits {
   // ONE mutation hook for the whole table (not one per row): every in-place
   // edit commits through the same `useOrderAssignment` waist — a scalar field
   // PATCH with the optimistic row update and rollback that hook already owns.
@@ -340,7 +347,7 @@ function useOrdersQueueCommits(): OrdersQueueCommits {
       const id = Number(record.id);
       if (!Number.isFinite(id)) return;
       if (fieldId === 'orders.picked') {
-        assignMutate({ orderId: id, testerId: staffId, testerName: staffName });
+        assignMutate({ orderId: id, pickerId: staffId, pickerName: staffName });
         return;
       }
       assignMutate({ orderId: id, packerId: staffId, packerName: staffName });

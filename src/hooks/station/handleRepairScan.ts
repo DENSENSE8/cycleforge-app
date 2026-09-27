@@ -18,7 +18,7 @@ export async function handleRepairScan(input: string, ctx: ScanHandlerContext): 
 
   ctx.setIsLoading(true);
   try {
-    const res = await fetch('/api/tech/scan-repair-station', {
+    const res = await fetch('/api/repair/station-scan', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({

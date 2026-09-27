@@ -89,13 +89,23 @@ const TIER1_PAINT_ORDER: readonly Tier1PaintRoute[] = [
   {
     path: '/test',
     aliases: ['/tech'],
-    label: 'Testing',
+    label: 'Quality Control',
     lcpSurface: 'primary',
     lcpHosts: [
       'src/components/tech/TechSurfacePage.tsx',
       'src/components/tech/TechPageContent.tsx',
     ],
     markRoute: 'test',
+  },
+  {
+    path: '/pick',
+    label: 'Picker',
+    lcpSurface: 'primary',
+    lcpHosts: [
+      'src/components/pick/PickSurfacePage.tsx',
+      'src/components/pick/PickPageContent.tsx',
+    ],
+    markRoute: 'pick',
   },
   {
     path: '/search',

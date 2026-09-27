@@ -2,6 +2,7 @@
 
 import { motion, AnimatePresence } from '@/design-system/motion';
 import { ScanSurface } from '@/components/mobile/ScanSurface';
+import { Collapse } from '@/design-system/components/Collapse';
 import {
   motionPresenceMobile,
   motionTransitionMobile,
@@ -63,22 +64,14 @@ export function PickerTaskCard({
         >
           {detailsExpanded ? 'Hide details' : 'Show details'}
         </Button>
-        <AnimatePresence initial={false}>
-          {detailsExpanded && (
-            <motion.dl
-              initial={{ height: 0, opacity: 0 }}
-              animate={{ height: 'auto', opacity: 1 }}
-              exit={{ height: 0, opacity: 0 }}
-              transition={{ duration: 0.18 }}
-              className="mt-2 grid grid-cols-2 gap-2 overflow-hidden text-xs"
-            >
-              <div className="rounded-none bg-surface-canvas px-3 py-2">
-                <dt className="font-semibold uppercase tracking-wider text-text-soft">Allocation</dt>
-                <dd className="mt-0.5 font-mono font-semibold text-text-default">#{currentTask.allocationId}</dd>
-              </div>
-            </motion.dl>
-          )}
-        </AnimatePresence>
+        <Collapse open={detailsExpanded} className="pt-2">
+          <dl className="grid grid-cols-2 gap-2 text-xs">
+            <div className="rounded-none bg-surface-canvas px-3 py-2">
+              <dt className="font-semibold uppercase tracking-wider text-text-soft">Allocation</dt>
+              <dd className="mt-0.5 font-mono font-semibold text-text-default">#{currentTask.allocationId}</dd>
+            </div>
+          </dl>
+        </Collapse>
 
         {/* Scanner — gated. Hint above tells the picker exactly what to
             aim at; the in-place error appears if a wrong code decodes. */}

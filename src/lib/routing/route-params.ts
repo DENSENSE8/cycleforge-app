@@ -65,6 +65,12 @@ export const paramDateKey: ParamSchema = z
   .transform((raw) => raw.trim())
   .pipe(z.string().regex(/^\d{4}-\d{2}-\d{2}$/));
 
+/** A `HH:mm` 24-hour time of day (warehouse time), e.g. `09:30`. */
+export const paramTimeKey: ParamSchema = z
+  .string()
+  .transform((raw) => raw.trim())
+  .pipe(z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/));
+
 /** Free text, trimmed, capped so a pasted essay can't ride in the URL. */
 export const paramText: ParamSchema = z
   .string()
@@ -125,10 +131,10 @@ const SHARED_OWNED_KEYS: Readonly<Record<string, string>> = {
   type: 'A type/kind facet over the surface\'s own list. Same question, different vocabularies, so each route validates its own values.',
   status: 'A status facet over the surface\'s own list. Same question; per-route values.',
   search: 'A second search box on surfaces that already spend `q` on a different field (Repair\'s queue, Support\'s orders, Sourcing\'s Models / Compatibility picker beside Scout\'s `q`), or the surface\'s only find row where `q` was never taken.',
-  attention: 'The needs-attention filter — one question ("only the rows that need me") on every queue that offers it; the To-ship table\'s urgent facet on every route that mounts it (To-ship, Picking, `/test`, `/pack`).',
-  ustatus: 'Unit-status facet, shared by the surfaces that show unit rows (Support, and every route mounting the To-ship table: To-ship, Picking, `/test`, `/pack`).',
-  packStation: 'Packing-station location id filter — Ready to Pack (`/test`), To-ship (`/shipping/orders`) and Picking (`/shipping/shortage`) share the same placement fact through the one To-ship table.',
-  packPlaced: 'Any packing-station placement filter — same question on Ready to Pack, To-ship and Picking.',
+  attention: 'The needs-attention filter — one question ("only the rows that need me") on every queue that offers it; the To-ship table\'s urgent facet on every route that mounts it (To-ship, Picking, `/pick`, `/pack`).',
+  ustatus: 'Unit-status facet, shared by the surfaces that show unit rows (Support, and every route mounting the To-ship table: To-ship, Picking, `/pick`, `/pack`).',
+  packStation: 'Packing-station location id filter — the Picker desk (`/pick`), To-ship (`/shipping/orders`) and Picking (`/shipping/shortage`) share the same placement fact through the one To-ship table.',
+  packPlaced: 'Any packing-station placement filter — same question on the Picker desk, To-ship and Picking.',
   rtab: 'Right-pane / workbench facet tab. Same question; the tab vocabularies differ per surface (Labels Queue/Recent, FBA Ready disposition, …).',
   view: 'A saved/named view within the surface. One question ("which view of this list"), per-route vocabularies.',
   range: 'A time-range facet over the surface\'s own data. Same question; each route validates its own windows.',
@@ -148,8 +154,8 @@ const SHARED_OWNED_KEYS: Readonly<Record<string, string>> = {
   code: 'Focused bay / bin code. Same id space on Locations and `/warehouse` orphans.',
   showEmpty: 'Map empty-bin toggle. Same question on Locations and `/warehouse` orphans.',
   edit: 'Edit-form toggle for a location record. Same question on Locations and `/warehouse` orphans.',
-  stage: 'A pipeline-stage facet over the surface\'s own list — Support\'s ticket stage and the To-ship table\'s stage facet on every route that mounts it (To-ship, Picking, `/test`, `/pack`). One question, per-route vocabularies.',
-  aging: 'The To-ship table\'s ship-by aging facet. `UnshippedTable` + `useToShipChrome` read and write it wherever the table mounts (To-ship, Picking, `/test`, `/pack`) — one table, one key (`TO_SHIP_QUEUE_FACET_PARAMS`).',
+  stage: 'A pipeline-stage facet over the surface\'s own list — Support\'s ticket stage and the To-ship table\'s stage facet on every route that mounts it (To-ship, Picking, `/pick`, `/pack`). One question, per-route vocabularies.',
+  aging: 'The To-ship table\'s ship-by aging facet. `UnshippedTable` + `useToShipChrome` read and write it wherever the table mounts (To-ship, Picking, `/pick`, `/pack`) — one table, one key (`TO_SHIP_QUEUE_FACET_PARAMS`).',
   late: 'The To-ship table\'s must-ship facet; same owner set and reason as `aging`.',
   rowFlag: 'The To-ship table\'s row-flag facet (Awaiting customer); same owner set and reason as `aging`.',
   cage: 'The To-ship table\'s caged facet; same owner set and reason as `aging`.',
@@ -163,7 +169,7 @@ const SHARED_OWNED_KEYS: Readonly<Record<string, string>> = {
   c2: 'Compare pane-2 recipe; shares its owner set with `clayout`.',
   c3: 'Compare pane-3 recipe; shares its owner set with `clayout`.',
   composerMode:
-    'Station composer destination (unbox|ticket). Same question on Unbox, Arrival, and Testing — independent scan stations that cannot both be current. Legacy `label` aliases to unbox.',
+    'Station composer destination (unbox|ticket). Same question on Unbox, Arrival, and Quality Control (`/test`) — independent scan stations that cannot both be current. Legacy `label` aliases to unbox.',
   sel: 'FIND confirmation identity (`order:123`).',
   etype: 'FIND browse entity-type refine.',
   hstat: 'FIND browse status refine.',

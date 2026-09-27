@@ -13,6 +13,7 @@ import type { DashboardData } from '@/features/operations/types';
 import { useRepairsTable } from '@/hooks/useRepairs';
 import { repairStatusChipClass } from '@/lib/repair-status';
 import { LIFECYCLE_CLASSES } from '@/design-system/tokens/lifecycle';
+import { VELOCITY_ACTIVITY_TYPES } from '@/lib/station-activity';
 
 export type KpiKind = 'velocity' | 'tested' | 'fba' | 'repair';
 
@@ -34,9 +35,9 @@ const TITLES: Record<KpiKind, { title: string; subtitle: string; tone: 'amber' |
   },
   tested: {
     title: 'Tested today',
-    subtitle: 'Units cleared through QA at the Tech bench',
+    subtitle: 'Unit QC verdicts recorded at the Tech bench',
     tone: 'emerald',
-    emptyHint: 'No items have been tested yet today.',
+    emptyHint: 'Bench verdicts are recorded per unit (test history), not in the station scan feed.',
   },
   fba: {
     title: 'FBA intake',
@@ -59,7 +60,7 @@ const TONE_RING: Record<'amber' | 'emerald' | 'orange', string> = {
 };
 
 const ACTIVITY_LABEL: Record<string, string> = {
-  TRACKING_SCANNED: 'Receiving scan',
+  PICK_SCANNED: 'Pick scan',
   FNSKU_SCANNED: 'FBA scan',
   PACK_SCAN: 'Pack scan',
   PACK_COMPLETED: 'Packed',
@@ -67,7 +68,7 @@ const ACTIVITY_LABEL: Record<string, string> = {
 };
 
 const ACTIVITY_DOT: Record<string, string> = {
-  TRACKING_SCANNED: 'bg-blue-500',
+  PICK_SCANNED: 'bg-blue-500',
   FNSKU_SCANNED: 'bg-amber-500',
   PACK_SCAN: 'bg-purple-500',
   PACK_COMPLETED: LIFECYCLE_CLASSES.packed.dot,
@@ -86,16 +87,12 @@ function relativeTime(iso: string): string {
 function filterFeed(kind: KpiKind, feed: ActivityRow[] | undefined): ActivityRow[] {
   if (!feed) return [];
   if (kind === 'velocity') {
-    return feed.filter((r) =>
-      ['TRACKING_SCANNED', 'FNSKU_SCANNED', 'PACK_SCAN', 'PACK_COMPLETED', 'FBA_READY'].includes(r.type),
-    );
-  }
-  if (kind === 'tested') {
-    return feed.filter((r) => r.source === 'TECH' && ['TRACKING_SCANNED', 'FNSKU_SCANNED'].includes(r.type));
+    return feed.filter((r) => (VELOCITY_ACTIVITY_TYPES as readonly string[]).includes(r.type));
   }
   if (kind === 'fba') {
     return feed.filter((r) => r.type === 'FNSKU_SCANNED');
   }
+  // `tested` is unit QC (testing_results), which the station scan feed does not carry.
   return [];
 }
 

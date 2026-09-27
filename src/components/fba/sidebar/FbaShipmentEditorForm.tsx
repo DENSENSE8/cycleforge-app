@@ -1,7 +1,8 @@
 'use client';
 
 import { DndContext, DragOverlay } from '@dnd-kit/core';
-import { AnimatePresence, motion } from '@/design-system/motion';
+import { AnimatePresence } from '@/design-system/motion';
+import { Collapse } from '@/design-system/components/Collapse';
 import { MapPin, Package, Plus, RotateCcw, Search, X } from '@/components/Icons';
 import { Button, IconButton, TextField } from '@/design-system/primitives';
 import { getLast8 } from '@/components/ui/CopyChip';
@@ -36,70 +37,60 @@ export function FbaShipmentEditorForm(props: FbaShipmentEditorFormProps) {
       </div>
 
       {/* Selection action bar */}
-      <AnimatePresence>
-        {c.selectionCount > 0 && (
-          <motion.div
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: 'auto', opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            transition={{ duration: 0.15 }}
-            className="overflow-hidden border-b border-border-accent bg-surface-accent"
-          >
-            <div className="px-3 py-2">
-              <div className="mb-1.5 flex items-center justify-between">
-                <p className="text-role-eyebrow uppercase tracking-wider text-text-accent">
-                  {c.selectionCount} selected
-                </p>
-                <Button type="button" variant="ghost" size="sm" radius="flush" onClick={c.clearSelection} className="h-auto px-0 text-role-micro text-text-accent hover:bg-transparent hover:text-text-default">
-                  Clear
-                </Button>
-              </div>
-              <div className="flex flex-wrap gap-1">
-                {c.bundles.map((bundle, idx) => {
-                  const hasTracking = bundle.tracking_number.trim().length > 0;
-                  return (
-                    <Button
-                      key={bundle.link_id ?? `action-${idx}`}
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => c.moveSelectedTo(droppableIdForBundle(idx))}
-                      radius="flush"
-                      className="h-auto gap-1 border border-border-soft bg-surface-card px-2 py-1 hover:bg-surface-hover"
-                    >
-                      {hasTracking ? (
-                        <>
-                          <MapPin className="h-3 w-3 shrink-0 text-text-accent" />
-                          <span className="border-b-2 border-border-accent pb-0.5 font-mono text-role-micro tracking-tight leading-none text-text-default">
-                            {getLast8(bundle.tracking_number)}
-                          </span>
-                        </>
-                      ) : (
-                        <>
-                          <Package className="h-3 w-3 shrink-0 text-text-soft" />
-                          <span className="text-role-eyebrow uppercase tracking-wider text-text-muted">
-                            Box {idx + 1}
-                          </span>
-                        </>
-                      )}
-                    </Button>
-                  );
-                })}
+      <Collapse open={c.selectionCount > 0} appear className="border-b border-border-accent bg-surface-accent">
+        <div className="px-3 py-2">
+          <div className="mb-1.5 flex items-center justify-between">
+            <p className="text-role-eyebrow uppercase tracking-wider text-text-accent">
+              {c.selectionCount} selected
+            </p>
+            <Button type="button" variant="ghost" size="sm" radius="flush" onClick={c.clearSelection} className="h-auto px-0 text-role-micro text-text-accent hover:bg-transparent hover:text-text-default">
+              Clear
+            </Button>
+          </div>
+          <div className="flex flex-wrap gap-1">
+            {c.bundles.map((bundle, idx) => {
+              const hasTracking = bundle.tracking_number.trim().length > 0;
+              return (
                 <Button
+                  key={bundle.link_id ?? `action-${idx}`}
                   type="button"
                   variant="ghost"
                   size="sm"
-                  onClick={() => c.moveSelectedTo(UNALLOCATED_ID)}
+                  onClick={() => c.moveSelectedTo(droppableIdForBundle(idx))}
                   radius="flush"
-                  className="h-auto border border-border-warning bg-surface-card px-2 py-1 text-role-eyebrow uppercase tracking-wider text-text-warning hover:bg-surface-warning"
+                  className="h-auto gap-1 border border-border-soft bg-surface-card px-2 py-1 hover:bg-surface-hover"
                 >
-                  Unallocated
+                  {hasTracking ? (
+                    <>
+                      <MapPin className="h-3 w-3 shrink-0 text-text-accent" />
+                      <span className="border-b-2 border-border-accent pb-0.5 font-mono text-role-micro tracking-tight leading-none text-text-default">
+                        {getLast8(bundle.tracking_number)}
+                      </span>
+                    </>
+                  ) : (
+                    <>
+                      <Package className="h-3 w-3 shrink-0 text-text-soft" />
+                      <span className="text-role-eyebrow uppercase tracking-wider text-text-muted">
+                        Box {idx + 1}
+                      </span>
+                    </>
+                  )}
                 </Button>
-              </div>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+              );
+            })}
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={() => c.moveSelectedTo(UNALLOCATED_ID)}
+              radius="flush"
+              className="h-auto border border-border-warning bg-surface-card px-2 py-1 text-role-eyebrow uppercase tracking-wider text-text-warning hover:bg-surface-warning"
+            >
+              Unallocated
+            </Button>
+          </div>
+        </div>
+      </Collapse>
 
       {/* Scrollable body */}
       <div className="relative min-h-0 flex-1 space-y-3 overflow-y-auto bg-surface-card p-3 scrollbar-hide">
@@ -171,25 +162,21 @@ export function FbaShipmentEditorForm(props: FbaShipmentEditorFormProps) {
         </AnimatePresence>
 
         {/* Undo */}
-        <AnimatePresence>
-          {c.visibleUndos.length > 0 && (
-            <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="overflow-hidden">
-              <div className="space-y-1">
-                {c.visibleUndos.map((entry) => (
-                  <div key={entry.item_id} className="flex items-center gap-2 border border-border-warning bg-surface-warning px-2.5 py-1.5">
-                    <RotateCcw className="h-3 w-3 shrink-0 text-text-warning" />
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate text-role-eyebrow text-text-muted">{entry.display_title || entry.fnsku}</p>
-                      <p className="font-mono text-role-micro text-text-faint">{entry.fnsku} · {entry.expected_qty} qty</p>
-                    </div>
-                    <Button type="button" variant="ghost" size="sm" radius="flush" onClick={() => c.popUndo(entry.item_id)} className="h-auto shrink-0 bg-surface-card px-2 py-0.5 text-role-micro uppercase tracking-wider text-text-warning hover:bg-surface-hover">Undo</Button>
-                    <IconButton type="button" radius="flush" onClick={() => c.dismissUndo(entry.item_id)} ariaLabel="Dismiss" icon={<X className="h-2.5 w-2.5" />} className="flex h-4 w-4 shrink-0 items-center justify-center text-text-warning hover:bg-surface-warning hover:text-text-default" />
-                  </div>
-                ))}
+        <Collapse open={c.visibleUndos.length > 0} appear>
+          <div className="space-y-1">
+            {c.visibleUndos.map((entry) => (
+              <div key={entry.item_id} className="flex items-center gap-2 border border-border-warning bg-surface-warning px-2.5 py-1.5">
+                <RotateCcw className="h-3 w-3 shrink-0 text-text-warning" />
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-role-eyebrow text-text-muted">{entry.display_title || entry.fnsku}</p>
+                  <p className="font-mono text-role-micro text-text-faint">{entry.fnsku} · {entry.expected_qty} qty</p>
+                </div>
+                <Button type="button" variant="ghost" size="sm" radius="flush" onClick={() => c.popUndo(entry.item_id)} className="h-auto shrink-0 bg-surface-card px-2 py-0.5 text-role-micro uppercase tracking-wider text-text-warning hover:bg-surface-hover">Undo</Button>
+                <IconButton type="button" radius="flush" onClick={() => c.dismissUndo(entry.item_id)} ariaLabel="Dismiss" icon={<X className="h-2.5 w-2.5" />} className="flex h-4 w-4 shrink-0 items-center justify-center text-text-warning hover:bg-surface-warning hover:text-text-default" />
               </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
+            ))}
+          </div>
+        </Collapse>
 
         {/* FNSKU search — popup trigger */}
         <Button type="button" variant="ghost" size="sm" radius="flush" onClick={() => c.setFnskuSearchOpen(true)} icon={<Search className="h-2.5 w-2.5" />} className="h-auto gap-1 px-0 text-role-eyebrow text-text-accent hover:bg-transparent hover:text-text-default">

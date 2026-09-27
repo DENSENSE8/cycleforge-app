@@ -530,17 +530,30 @@ test('regression: beta.review gates the beta-applications review queue; the publ
   assert.ok(apply.exemptReason, 'the apply route is intentionally anonymous (public marketing capture)');
 });
 
-test('regression: tech.view gates the fulfillment substitution-policy read; the substitute POST enforces its OR in-handler', () => {
-  // Tech-substitution wiring Phase 0 (docs/todo/tech-substitution-wiring-plan.md §3.3 Option B):
+test('regression: picking.view gates the fulfillment substitution-policy read; the substitute POST enforces its OR in-handler', () => {
+  // Substitution is raised from the Picker desk's active-order workspace, so the policy read is a picking gate (2026-09-27 QC/Pick split).
   const policy = routeByPath('/api/fulfillment/substitution-policy/route.ts');
   assert.ok(policy, 'the substitution-policy route should be in the manifest');
   assert.equal(policy.gate, 'withAuth');
-  assert.equal(policy.permission, 'tech.view');
+  assert.equal(policy.permission, 'picking.view');
 
   const substitute = routeByPath('/api/orders/[id]/substitute/route.ts');
   assert.ok(substitute, 'the substitute route should be in the manifest');
   assert.equal(substitute.gate, 'withAuth (no permission)');
   assert.ok(substitute.methods.includes('POST'));
+});
+
+test('every internal /api/picking/* route gates on a picking.* permission, never tech.* (QC)', () => {
+  // 2026-09-27: Picking and Quality Control are separate stations. A picker-only
+  // role must be able to work the desk; a tech.* gate here 403s them.
+  const manifest = JSON.parse(
+    readFileSync(join(process.cwd(), 'docs/security/route-permissions.json'), 'utf8'),
+  ) as { routes: Array<{ path: string; permission: string | null }> };
+  const picking = manifest.routes.filter((r) => r.path.startsWith('/api/picking/'));
+  assert.ok(picking.length > 0, 'the /api/picking routes should be in the manifest');
+  for (const route of picking) {
+    assert.ok(route.permission?.startsWith('picking.'), `${route.path} gates on ${route.permission}`);
+  }
 });
 
 test('regression: buyer-note ack enforces packing.complete_order OR shipping.buy_label in-handler', () => {

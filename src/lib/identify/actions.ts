@@ -15,7 +15,7 @@ export interface ActionFacts {
   entityId: number;
   deskView: DeskViewId | null;
   shipmentId: number | null;
-  hasTechScan: boolean;
+  hasPickScan: boolean;
   packed: boolean;
   staged: boolean;
   outOfStock: boolean;
@@ -39,7 +39,7 @@ export function identifyActions(facts: ActionFacts): IdentifyAction[] {
     if (facts.deskView !== 'shipped') {
       const workflow = resolveOutboundWorkflowFacts({
         shipmentId: facts.shipmentId,
-        hasTechScan: facts.hasTechScan,
+        hasPickScan: facts.hasPickScan,
         packedAt: facts.packed ? 'packed' : null,
         dockStagedAt: facts.staged ? 'staged' : null,
         isOutOfStock: facts.outOfStock,

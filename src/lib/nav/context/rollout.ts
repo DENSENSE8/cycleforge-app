@@ -46,7 +46,6 @@ export const NAV_CONTEXT_ROLLOUT: Readonly<Record<string, NavRolloutState>> = {
   packer: 'legacy',
   products: 'legacy',
   inventory: 'legacy',
-  tech: 'legacy',
   support: 'legacy',
   studio: 'legacy',
 };

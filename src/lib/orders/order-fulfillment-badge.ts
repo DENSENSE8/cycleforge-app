@@ -45,7 +45,7 @@ export type OrderFulfillmentLine = Pick<
   | 'pack_activity_at'
   | 'picked_at'
   | 'test_date_time'
-> & { has_tech_scan?: boolean | null };
+> & { has_pick_scan?: boolean | null };
 
 type LineStage = 'shipped' | 'packed' | 'in_progress' | 'unfulfilled';
 
@@ -55,7 +55,7 @@ function lineStage(line: OrderFulfillmentLine): LineStage {
     return 'packed';
   }
   if (
-    line.has_tech_scan === true ||
+    line.has_pick_scan === true ||
     nonSentinelTimestamp(line.picked_at) ||
     nonSentinelTimestamp(line.test_date_time)
   ) {

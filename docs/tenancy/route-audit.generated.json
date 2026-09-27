@@ -15115,7 +15115,7 @@
       "risk": "low"
     },
     {
-      "route": "/api/testing/receiving-lines/open",
+      "route": "/api/qc/receiving-lines/open",
       "methods": [
         "POST"
       ],
@@ -15136,7 +15136,7 @@
       "risk": "low"
     },
     {
-      "route": "/api/testing/recent",
+      "route": "/api/qc/recent",
       "methods": [
         "GET"
       ],
@@ -22590,7 +22590,7 @@
       "risk": "info"
     },
     {
-      "route": "/api/testing/receiving-lines",
+      "route": "/api/qc/receiving-lines",
       "methods": [
         "GET"
       ],
@@ -22609,7 +22609,7 @@
       "risk": "info"
     },
     {
-      "route": "/api/testing/seller-claimed",
+      "route": "/api/qc/seller-claimed",
       "methods": [
         "GET"
       ],

@@ -15,7 +15,7 @@ export async function handleSkuScan(input: string, ctx: ScanHandlerContext): Pro
 
   ctx.setIsLoading(true);
   try {
-    const res = await fetch('/api/tech/scan-sku', {
+    const res = await fetch('/api/picking/desk/sku', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -76,7 +76,7 @@ export async function handleSkuScan(input: string, ctx: ScanHandlerContext): Pro
       setTimeout(() => toast.info(`Notes for SKU: ${data.notes}`), 150);
     }
 
-    ctx.queryClient.invalidateQueries({ queryKey: ['tech-logs'] });
+    ctx.queryClient.invalidateQueries({ queryKey: ['desk-pick-logs'] });
     ctx.triggerGlobalRefresh();
   } catch (e) {
     console.error('SKU scan error:', e);

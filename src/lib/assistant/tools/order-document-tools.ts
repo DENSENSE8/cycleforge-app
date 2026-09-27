@@ -88,6 +88,20 @@ const BY_ROW_ID_SQL = `
    WHERE o.organization_id = $1 AND o.id = $2
    LIMIT 1`;
 
+/**
+ * The order rows an operator's order reference names, newest first: the
+ * order number, else (all digits) the record id. [] when neither matches.
+ */
+export async function findOrderRowsByRef(
+  deps: AssistantToolDeps,
+  org: OrgId,
+  ref: string,
+): Promise<Array<Record<string, unknown>>> {
+  const { rows } = await deps.query(org, BY_ORDER_NUMBER_SQL, [org, ref]);
+  if (rows.length > 0 || !/^\d{1,12}$/.test(ref)) return rows;
+  return (await deps.query(org, BY_ROW_ID_SQL, [org, Number(ref)])).rows;
+}
+
 // ─── Shaping ────────────────────────────────────────────────────────────────
 
 type DocEntry = ArtifactDocument['documents'][number];
@@ -189,10 +203,7 @@ export const getOrderDocuments: AssistantToolDef<typeof input> = {
       return { found: false, order: args.order, message: 'The order number is empty after removing the label word.' };
     }
 
-    let { rows } = await deps.query(org, BY_ORDER_NUMBER_SQL, [org, ref]);
-    if (rows.length === 0 && /^\d{1,12}$/.test(ref)) {
-      ({ rows } = await deps.query(org, BY_ROW_ID_SQL, [org, Number(ref)]));
-    }
+    const rows = await findOrderRowsByRef(deps, org, ref);
     if (rows.length === 0) {
       return {
         found: false,

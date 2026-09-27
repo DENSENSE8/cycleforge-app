@@ -1,7 +1,7 @@
 /**
  * The answer's prose, made scannable for triage (operator, 2026-09-27):
  *
- *  - IDENTIFIERS the turn's tools returned (SKU, FNSKU, bin, LPN) become
+ *  - IDENTIFIERS the turn's tools returned (SKU, FNSKU, bin, order, serial…) become
  *    click-to-copy chips. Only those — the set is built from the turn's own
  *    artifact data ({@link answerCopyIds}), never a regex over free text, so a
  *    string that merely looks like a SKU is never offered as one.
@@ -13,9 +13,10 @@
  * Existing code spans and fenced blocks are left untouched.
  */
 
-import type { SessionArtifact } from './ui-artifacts';
+import type { IdentityIdLabel, SessionArtifact } from './ui-artifacts';
 
-export type AnswerIdKind = 'SKU' | 'FNSKU' | 'Bin' | 'LPN';
+/** An identifier kind the answer copies — the identity header's labels. */
+export type AnswerIdKind = IdentityIdLabel;
 
 /** Table columns whose cells are identifiers, by normalized header. */
 const ID_COLUMNS: Readonly<Record<string, AnswerIdKind>> = {
@@ -24,6 +25,9 @@ const ID_COLUMNS: Readonly<Record<string, AnswerIdKind>> = {
   bin: 'Bin',
   location: 'Bin',
   lpn: 'LPN',
+  upc: 'UPC',
+  serial: 'Serial',
+  tracking: 'Tracking',
 };
 
 /** The kind of identifier a table column holds, or null. */
@@ -44,8 +48,9 @@ export function answerCopyIds(artifacts: readonly SessionArtifact[]): Map<string
     if (v.length >= MIN_ID_LENGTH && !ids.has(v)) ids.set(v, kind);
   };
   for (const artifact of artifacts) {
+    if (artifact.kind !== 'table' && artifact.kind !== 'record') continue;
+    for (const id of artifact.identity?.ids ?? []) add(id.value, id.label);
     if (artifact.kind !== 'table') continue;
-    for (const id of artifact.product?.ids ?? []) add(id.value, id.label);
     for (const column of artifact.columns) {
       const kind = idColumnKind(column);
       if (kind) for (const row of artifact.rows) add(row[column], kind);

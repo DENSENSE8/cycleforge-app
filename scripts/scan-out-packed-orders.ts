@@ -22,10 +22,7 @@
  */
 import pool from '@/lib/db';
 import { DOGFOOD_ORG_ID } from '@/lib/tenancy/constants';
-import { tenantQuery } from '@/lib/tenancy/db';
-import { SHIPPED_BY_CARRIER_SQL } from '@/lib/sql-fragments';
-import { sqlOrderHasShipConfirm } from '@/lib/orders/order-grain-sql';
-import { PACK_ACTIVITY_TYPES, sqlInList } from '@/lib/station-activity';
+import { loadPackedOnToShip, type PackedShipment } from '@/lib/outbound/packed-on-to-ship';
 import { scanOutLabel, type ScanOutResult } from '@/lib/outbound/scan-out';
 
 function arg(name: string): string | undefined {
@@ -36,52 +33,6 @@ function arg(name: string): string | undefined {
 const APPLY = process.argv.includes('--apply');
 const ORG = arg('org') ?? DOGFOOD_ORG_ID;
 const STAFF = Number(arg('staff') ?? 1);
-
-interface PackedShipment {
-  shipment_id: number;
-  tracking: string;
-  order_ids: string[];
-  order_row_ids: number[];
-  account_source: string | null;
-  status: string | null;
-  packed_at: Date;
-}
-
-async function loadPackedOnToShip(): Promise<PackedShipment[]> {
-  // Tenant-scoped (RLS) exactly like the desk's feed: a shipment row the org
-  // cannot see has no tracking on To ship, so it is not on the desk either.
-  const { rows } = await tenantQuery<PackedShipment>(
-    ORG,
-    `SELECT o.shipment_id,
-            BTRIM(stn.tracking_number_raw)               AS tracking,
-            array_agg(o.order_id ORDER BY o.id)          AS order_ids,
-            array_agg(o.id ORDER BY o.id)                AS order_row_ids,
-            min(o.account_source)                        AS account_source,
-            min(o.status)                                AS status,
-            max(COALESCE(pl.created_at, pa.created_at))  AS packed_at
-       FROM orders o
-       JOIN shipping_tracking_numbers stn ON stn.id = o.shipment_id
-       LEFT JOIN LATERAL (
-         SELECT pl.created_at FROM packer_logs pl
-          WHERE pl.shipment_id = o.shipment_id AND pl.completion_state = 'COMPLETED'
-          ORDER BY pl.created_at DESC NULLS LAST, pl.id DESC LIMIT 1) pl ON TRUE
-       LEFT JOIN LATERAL (
-         SELECT sal.created_at FROM station_activity_logs sal
-          WHERE sal.station = 'PACK' AND sal.shipment_id = o.shipment_id
-            AND sal.activity_type IN (${sqlInList(PACK_ACTIVITY_TYPES)})
-          ORDER BY sal.created_at DESC NULLS LAST, sal.id DESC LIMIT 1) pa ON TRUE
-      WHERE o.organization_id = $1
-        AND NOT ${SHIPPED_BY_CARRIER_SQL}
-        AND COALESCE(o.fulfillment_channel, '') <> 'AFN'
-        AND NOT ${sqlOrderHasShipConfirm('o')}
-        AND COALESCE(BTRIM(stn.tracking_number_raw), '') <> ''
-        AND (pl.created_at IS NOT NULL OR pa.created_at IS NOT NULL)
-      GROUP BY o.shipment_id, stn.tracking_number_raw
-      ORDER BY packed_at`,
-    [ORG],
-  );
-  return rows;
-}
 
 function tally<T>(items: T[], key: (item: T) => string): Record<string, number> {
   const out: Record<string, number> = {};
@@ -99,7 +50,7 @@ async function main(): Promise<void> {
   );
   if (!staff.rows[0]) throw new Error(`--staff=${STAFF} is not a staff member of ${ORG}`);
 
-  const shipments = await loadPackedOnToShip();
+  const shipments = await loadPackedOnToShip(ORG);
   const orderCount = shipments.reduce((n, s) => n + s.order_row_ids.length, 0);
   console.log(
     `${APPLY ? 'APPLY' : 'DRY RUN'} — org ${ORG}, as staff ${STAFF} (${staff.rows[0].name})`,

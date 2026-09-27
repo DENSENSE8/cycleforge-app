@@ -77,7 +77,7 @@ test('invalidateTechViews: v2 set includes order-detail (the audited staleness f
 
   await invalidateTechViews(ORG, [], deps);
 
-  assert.deepEqual(legacy[0], ['tech-logs', 'orders-next']);
-  assert.deepEqual(org[0].tags, ['tech-logs', 'orders-next', 'orders', 'order-detail']);
+  assert.deepEqual(legacy[0], ['desk-pick-logs', 'orders-next']);
+  assert.deepEqual(org[0].tags, ['desk-pick-logs', 'orders-next', 'orders', 'order-detail']);
   assert.ok(org[0].tags.includes('order-detail'), 'tech writes must bust the org-scoped order-detail read');
 });

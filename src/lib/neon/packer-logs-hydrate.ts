@@ -5,8 +5,6 @@ import type { OrgId } from '@/lib/tenancy/constants';
 interface PackerLogHydration {
   ship_by_date: string | null;
   deadline_at: string | null;
-  tester_id: number | null;
-  tester_name: string | null;
   packer_photos_url: Array<{
     id: number;
     url: string;
@@ -27,15 +25,13 @@ export async function fetchPackerLogHydration(opts: {
   );
   if (ids.length === 0) return {};
 
-  // work_assignments deadline + assigned tester, keyed via the matched order
+  // work_assignments deadline, keyed via the matched order
   // (enr.order_row_id — the projection is fully backfilled, so this is a cheap
   // 1:1 hop). Bounded to the given page of sal ids and org-scoped.
   const waResult = await pool.query<{
     sal_id: number;
     packer_log_id: number | null;
     deadline_at: string | null;
-    tester_id: number | null;
-    tester_name: string | null;
   }>(
     `WITH sel AS (
         SELECT sal.id AS sal_id, sal.packer_log_id, enr.order_row_id AS order_id
@@ -45,9 +41,7 @@ export async function fetchPackerLogHydration(opts: {
      )
      SELECT sel.sal_id,
             sel.packer_log_id,
-            to_char(wa_deadline.deadline_at, 'YYYY-MM-DD HH24:MI:SS') AS deadline_at,
-            wa_t.assigned_tech_id AS tester_id,
-            tester_staff.name AS tester_name
+            to_char(wa_deadline.deadline_at, 'YYYY-MM-DD HH24:MI:SS') AS deadline_at
        FROM sel
        LEFT JOIN orders o ON o.id = sel.order_id AND o.organization_id = $2
        LEFT JOIN LATERAL (
@@ -65,16 +59,7 @@ export async function fetchPackerLogHydration(opts: {
              wa.updated_at DESC,
              wa.id DESC
            LIMIT 1
-       ) wa_deadline ON TRUE
-       LEFT JOIN LATERAL (
-           SELECT wa.assigned_tech_id
-           FROM work_assignments wa
-           WHERE wa.entity_type = 'ORDER' AND wa.entity_id = o.id AND wa.work_type = 'TEST'
-             AND wa.status IN ('ASSIGNED', 'IN_PROGRESS')
-           ORDER BY wa.created_at DESC, wa.id DESC
-           LIMIT 1
-       ) wa_t ON TRUE
-       LEFT JOIN staff tester_staff ON tester_staff.id = wa_t.assigned_tech_id`,
+       ) wa_deadline ON TRUE`,
     [ids, organizationId],
   );
 
@@ -146,8 +131,6 @@ export async function fetchPackerLogHydration(opts: {
       // ship_by_date and deadline_at are the same expression in the full query.
       ship_by_date: row.deadline_at,
       deadline_at: row.deadline_at,
-      tester_id: row.tester_id,
-      tester_name: row.tester_name,
       packer_photos_url: row.packer_log_id != null ? photosByPackerLog[row.packer_log_id] ?? [] : [],
       verification_outcome:
         row.packer_log_id != null ? outcomeByPackerLog[row.packer_log_id] ?? null : null,

@@ -14,12 +14,12 @@ const ORG = '00000000-0000-0000-0000-000000000001' as OrgId;
 const TALLIES: QueueCountsTallies = {
   groups: [
     // pre-pack: 5 untested (1 urgent), 3 tested (2 must-ship), 2 blocked untested
-    { has_tech_scan: false, has_pack_scan: false, blocked: false, n: 5, urgent_n: 1, must_ship_n: 0 },
-    { has_tech_scan: true, has_pack_scan: false, blocked: false, n: 3, urgent_n: 0, must_ship_n: 2 },
-    { has_tech_scan: false, has_pack_scan: false, blocked: true, n: 2, urgent_n: 0, must_ship_n: 0 },
+    { has_pick_scan: false, has_pack_scan: false, blocked: false, n: 5, urgent_n: 1, must_ship_n: 0 },
+    { has_pick_scan: true, has_pack_scan: false, blocked: false, n: 3, urgent_n: 0, must_ship_n: 2 },
+    { has_pick_scan: false, has_pack_scan: false, blocked: true, n: 2, urgent_n: 0, must_ship_n: 0 },
     // packed-staged, tested or not
-    { has_tech_scan: true, has_pack_scan: true, blocked: false, n: 4, urgent_n: 1, must_ship_n: 1 },
-    { has_tech_scan: false, has_pack_scan: true, blocked: false, n: 1, urgent_n: 0, must_ship_n: 0 },
+    { has_pick_scan: true, has_pack_scan: true, blocked: false, n: 4, urgent_n: 1, must_ship_n: 1 },
+    { has_pick_scan: false, has_pack_scan: true, blocked: false, n: 1, urgent_n: 0, must_ship_n: 0 },
   ],
   paperwork_incomplete: 6,
   shipped_today: 9,
@@ -79,9 +79,9 @@ test('a miss partitions the To-ship scope into stages and caches the payload', a
   assert.deepEqual(payload.byStage, { all: 15, tested: 3, pending: 7, packed: 5 });
   // Lane combos are pre-pack only; packed rows are their own stage.
   assert.deepEqual(payload.combos, [
-    { hasTechScan: false, blocked: false, count: 5 },
-    { hasTechScan: true, blocked: false, count: 3 },
-    { hasTechScan: false, blocked: true, count: 2 },
+    { hasPickScan: false, blocked: false, count: 5 },
+    { hasPickScan: true, blocked: false, count: 3 },
+    { hasPickScan: false, blocked: true, count: 2 },
   ]);
   assert.equal(payload.urgent, 2);
   assert.equal(payload.mustShip, 3);

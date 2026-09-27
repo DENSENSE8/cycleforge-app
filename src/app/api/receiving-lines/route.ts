@@ -32,7 +32,7 @@ import {
 } from '@/lib/receiving/lines/build-sql';
 import { fetchReceivingLinesPage, resolveReceivingLinesReadFlags } from '@/lib/receiving/lines/list-page';
 import { getOrganization } from '@/lib/tenancy/organizations';
-import { isWrongDestination } from '@/lib/receiving/wrong-destination';
+import { enrichIncomingTrackingIntegrity } from '@/lib/receiving/lines/incoming-integrity';
 import {
   upsertReceivingLineTesting,
   upsertReceivingLineZoho,
@@ -82,7 +82,7 @@ export async function handleReceivingLinesGet(
         {
           success: false,
           error: 'TESTING_VIEW_NOT_ALLOWED',
-          message: 'Use GET /api/testing/receiving-lines for testing feeds.',
+          message: 'Use GET /api/qc/receiving-lines for testing feeds.',
         },
         { status: 403 },
       );
@@ -971,31 +971,4 @@ export const DELETE = withAuth(async (request: NextRequest, ctx) => {
     return NextResponse.json({ success: false, error: msg }, { status: 500 });
   }
 }, { permission: 'receiving.mark_received' });
-
-// ─── Normalize ────────────────────────────────────────────────────────────────
-function enrichIncomingTrackingIntegrity(
-  row: Record<string, unknown>,
-  warehousePostal: string,
-): void {
-  const hasTracking = Boolean(String(row.tracking_number || '').trim());
-  const lastChecked = row.shipment_last_checked_at as string | null;
-  const status = row.shipment_status as string | null;
-  const latestEvent = row.shipment_latest_event_at as string | null;
-  const carrierAnswered = Boolean(lastChecked || status || latestEvent);
-  if (hasTracking) {
-    row.tracking_confidence = carrierAnswered ? 'carrier_confirmed' : 'seller_reported';
-  } else {
-    row.tracking_confidence = null;
-  }
-
-  const wrong = Boolean(row.is_delivered)
-    && isWrongDestination(
-      row.shipment_latest_event_postal as string | null,
-      warehousePostal,
-    );
-  row.wrong_destination = wrong;
-  if (wrong && row.delivery_state !== 'RECEIVED') {
-    row.delivery_state = 'WRONG_DESTINATION';
-  }
-}
 

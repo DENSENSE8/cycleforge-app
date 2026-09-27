@@ -108,6 +108,31 @@ export function suggestFollowUps(input: FollowUpInput): string[] {
     candidates.push('Which follow-up has waited longest?');
   }
 
+  if (toolNames.has('reconcile_refs')) {
+    const rows = tableRows(input.artifacts, 'reconcile_refs');
+    const missing = rows.filter((r) => r.Group === 'Not in system');
+    if (missing.length > 0) {
+      candidates.push('Import the missing ones as purchase orders', 'Add the missing ones as new orders');
+    }
+    const owed = column(rows.filter((r) => r.Group === 'Not received'), 'Ref');
+    if (owed[0]) candidates.push(`Tell me when ${owed[0]} arrives`);
+  }
+
+  if (toolNames.has('get_customer')) {
+    for (const { artifact, producedBy } of input.artifacts) {
+      if (producedBy !== 'get_customer' || artifact.kind !== 'record') continue;
+      const order = artifact.fields.find((f) => f.label.startsWith('Order '))?.label.slice('Order '.length);
+      if (order) candidates.push(`Where is the package for order ${order}?`);
+      candidates.push(`New phone order for ${artifact.title}`);
+    }
+  }
+
+  if (toolNames.has('get_worklist')) {
+    const kinds = input.tools.filter((t) => t.name === 'get_worklist').map((t) => inputString(t.input, 'kind') ?? 'all');
+    if (kinds.includes('all')) candidates.push('Show the late orders', 'Show the exceptions queue');
+    else candidates.push('What should I do first?');
+  }
+
   for (const t of input.tools) {
     if (t.name === 'lookup_serial') {
       const serial = inputString(t.input, 'serial');
@@ -115,6 +140,9 @@ export function suggestFollowUps(input: FollowUpInput): string[] {
     } else if (t.name === 'get_order_lookup') {
       const order = inputString(t.input, 'orderId');
       if (order) candidates.push(`Show the journey of order ${order}`);
+    } else if (t.name === 'get_tracking_status') {
+      const tracking = inputString(t.input, 'tracking');
+      if (tracking) candidates.push(`Tell me when ${tracking} arrives`);
     }
   }
 

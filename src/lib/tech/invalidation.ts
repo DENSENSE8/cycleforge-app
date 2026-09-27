@@ -2,15 +2,15 @@
 import { CACHE_TAGS } from '@/lib/cache/tags';
 import { invalidateDomainViews, type ViewInvalidationDeps } from '@/lib/cache/view-invalidation';
 
-/** Legacy tags consumed by the org-less tech reads (api:tech-logs-v3, api:orders-next). */
+/** Legacy tags consumed by the org-less tech reads (api:desk-pick-logs-v3, api:orders-next). */
 const TECH_LEGACY_TAGS = [
-  CACHE_TAGS.techLogs,
+  CACHE_TAGS.deskPickLogs,
   CACHE_TAGS.ordersNext,
 ] as const;
 
 /** Org-scoped v2 tags — includes the order read models a tech verdict changes. */
 const TECH_V2_TAGS = [
-  CACHE_TAGS.techLogs,
+  CACHE_TAGS.deskPickLogs,
   CACHE_TAGS.ordersNext,
   CACHE_TAGS.orders,
   CACHE_TAGS.orderDetail,

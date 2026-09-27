@@ -6,8 +6,8 @@
  *    most {@link INLINE_TABLE_FULL_ROWS} rows shows whole; a longer one shows
  *    {@link INLINE_TABLE_PREVIEW_ROWS} rows and a "Show all" that opens the
  *    right panel.
- *  - DOCUMENTS (and the conversations / drafts / imports the operator works
- *    through like one) open in the RIGHT RAIL, with a compact card in the chat
+ *  - DOCUMENTS (and the conversations / drafts / imports / payments the
+ *    operator works through like one) open in the RIGHT RAIL, with a compact card in the chat
  *    that re-opens them. A live turn's rail artifact opens the rail on arrival;
  *    inline data never does.
  *
@@ -31,11 +31,14 @@ export function artifactPlacement(kind: SessionArtifact['kind']): ArtifactPlacem
     case 'chart':
     case 'timeline':
     case 'report':
+    case 'order_draft':
+    case 'po_draft':
       return 'inline';
     case 'document':
     case 'ticket_thread':
     case 'ticket_reply_draft':
     case 'import_triage':
+    case 'payment':
       return 'rail';
     default:
       return assertNeverKind(kind);
@@ -43,7 +46,10 @@ export function artifactPlacement(kind: SessionArtifact['kind']): ArtifactPlacem
 }
 
 /** The data kinds that render inline — the narrowing twin of {@link artifactPlacement}. */
-export type InlineArtifactData = Extract<SessionArtifact, { kind: 'table' | 'record' | 'chart' | 'timeline' | 'report' }>;
+export type InlineArtifactData = Extract<
+  SessionArtifact,
+  { kind: 'table' | 'record' | 'chart' | 'timeline' | 'report' | 'order_draft' | 'po_draft' }
+>;
 
 export function isInlineArtifact(artifact: SessionArtifact): artifact is InlineArtifactData {
   return artifactPlacement(artifact.kind) === 'inline';

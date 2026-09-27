@@ -37,12 +37,14 @@ export function patchUnshippedOrderCache(
   });
 }
 
-/** The tech-verdict patch — one shape for the ONE event that flips an order out of the pending lane (`order.tested`, published by… */
-export function patchUnshippedOrderTested(
+/** The pick patch — one shape for the ONE event that flips an order out of the pending lane (`order.picked`, published by the picker desk's tracking scan in `/api/picking/desk/scan`). Writes only pick facts; QC (`tested_*`) is a unit fact from the bench and is never touched here. Pack placement rides along when the scan was made at an armed bench. Returns false when the payload has no usable order id. */
+export function patchUnshippedOrderPicked(
   queryClient: QueryClient,
   event: {
     orderId: unknown;
-    testedBy?: unknown;
+    pickedBy?: unknown;
+    pickedByName?: unknown;
+    pickedAt?: unknown;
     packLocationId?: unknown;
     packLocationName?: unknown;
   },
@@ -50,11 +52,16 @@ export function patchUnshippedOrderTested(
   const orderId = Number(event?.orderId);
   if (!Number.isFinite(orderId)) return false;
 
-  const testedByRaw = event?.testedBy == null ? null : Number(event.testedBy);
-  const testedBy = testedByRaw != null && Number.isFinite(testedByRaw) ? testedByRaw : null;
+  const pickedByRaw = event?.pickedBy == null ? null : Number(event.pickedBy);
+  const pickedBy = pickedByRaw != null && Number.isFinite(pickedByRaw) ? pickedByRaw : null;
 
-  const patch: Partial<OrderRow> = { has_tech_scan: true };
-  if (testedBy != null) patch.tested_by = testedBy;
+  const patch: Partial<OrderRow> = { has_pick_scan: true };
+  // Never clobber a known picker with a null from a payload that lacks one.
+  if (pickedBy != null) {
+    patch.picked_by = pickedBy;
+    if (event?.pickedByName != null) patch.picked_by_name = String(event.pickedByName);
+  }
+  if (typeof event?.pickedAt === 'string' && event.pickedAt) patch.picked_at = event.pickedAt;
 
   // The bench, when the scan was made at an armed one.
   const packLocationId = Number(event?.packLocationName != null ? event.packLocationId : NaN);

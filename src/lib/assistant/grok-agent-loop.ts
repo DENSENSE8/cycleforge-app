@@ -85,6 +85,7 @@ import {
   RENDER_ARTIFACT_CAP_PER_TURN,
   splitToolArtifact,
 } from '@/lib/assistant/tool-artifact';
+import { takeDeviceAction } from '@/lib/assistant/tool-device-action';
 import { looksLikeHarmony, parseHarmonyToolCalls } from '@/lib/ai/harmony';
 import { panelClaimCorrection, type TurnShown } from '@/lib/assistant/panel-honesty';
 import { artifactPlacement } from '@/lib/assistant/artifact-placement';
@@ -292,7 +293,12 @@ function requestBody(config: AiProviderConfig, params: GrokTurnParams): Record<s
     // sentence comes back EMPTY ("\n\n") because the prose budget went to the
     // think phase. The mouth-only path has always disabled it (route.ts); the
     // tool loop must too, or the local brain answers with a blank bubble.
-    ...(selfHosted ? { chat_template_kwargs: { enable_thinking: false } } : {}),
+    // gpt-oss has no "off" — its Harmony template takes `reasoning_effort`
+    // instead: `low` cut the analysis channel ~30% per round on the local box
+    // (64 → 46 tokens on a two-tool routing prompt, 2026-09-27), and decode
+    // (~55 tok/s) is where a local turn spends its seconds. A template that
+    // does not know a kwarg ignores it.
+    ...(selfHosted ? { chat_template_kwargs: { enable_thinking: false, reasoning_effort: 'low' } } : {}),
     // The token count rides the stream's last chunk (no choices). Proven on
     // mlx_lm.server 0.31 and the CF compat gateway; a relay that ignores it
     // just leaves `usage` null.
@@ -729,7 +735,7 @@ export async function runGrokAssistantTurn(
   const allTools = [...serverTools, ...writeTools, ...uiTools];
   // A self-hosted runtime prefills the ENTIRE advertisement every round —
   // measured 11.8 s first-token at 54 tools vs 1.2 s at 3 on the same card.
-  // Subset to the ~8–10 verbs this turn needs; the registry core (finders,
+  // Subset to the ~8–10 verbs this turn needs; the registry core (the record finder,
   // the write chokepoint, render_artifact) always rides.
   const subset = deps.selfHosted
     ? subsetAdvertisedTools(args.userMessage, args.context, allTools)
@@ -988,6 +994,9 @@ export async function runGrokAssistantTurn(
           });
           toolsUsed.push(call.name);
           if (result.ok) collectMintedConnectUrls(result.data, mintedConnectUrls);
+          // A device tool (a print) resolved the action server-side; the browser runs it.
+          const device = result.ok ? takeDeviceAction(result.data) : null;
+          if (device) emit({ type: 'ui_tool', name: device.name, input: device.input });
           // A report tool hands back a validated artifact plus a short summary.
           // The artifact goes straight to the screen and the model is told only
           // that it rendered — see `tool-artifact.ts` for why the model must

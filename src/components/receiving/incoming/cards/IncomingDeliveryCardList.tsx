@@ -10,6 +10,7 @@
 
 import { useCallback, useMemo, useState, type ReactNode, type RefObject } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
+import { CollapseItem } from '@/design-system/components/Collapse';
 import { DESK_RECORD_ANCHOR_ATTR, DeskRecordPlane } from '@/design-system/components/DeskRecordPlane';
 import { RecordLedgerSummaryPane, type RecordLedgerSummary } from '@/design-system/components/record-ledger/RecordLedgerSummary';
 import { useRecordCursorKeyboard } from '@/hooks/useRecordCursorKeyboard';
@@ -165,24 +166,24 @@ export function IncomingDeliveryCardList({
                       </motion.li>
                     ) : null;
                   const item = (
-                  <motion.li
-                    key={card.key}
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, height: 0 }}
-                    transition={{ ...SPRING, delay: Math.min(index, 14) * 0.02 }}
-                  >
-                    <IncomingDeliveryCard
-                      model={card}
-                      open={openKey === card.key || (openLineId != null && card.rows.some((row) => row.id === openLineId))}
-                      openLineId={openLineId}
-                      expanded={expanded.has(card.key)}
-                      selectedIds={selectedIds}
-                      onOpen={onOpenKey}
-                      onToggleExpand={toggleExpand}
-                      onToggleRow={onToggleRow}
-                    />
-                  </motion.li>
+                  <CollapseItem key={card.key} as="li" enter={false}>
+                    <motion.div
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ ...SPRING, delay: Math.min(index, 14) * 0.02 }}
+                    >
+                      <IncomingDeliveryCard
+                        model={card}
+                        open={openKey === card.key || (openLineId != null && card.rows.some((row) => row.id === openLineId))}
+                        openLineId={openLineId}
+                        expanded={expanded.has(card.key)}
+                        selectedIds={selectedIds}
+                        onOpen={onOpenKey}
+                        onToggleExpand={toggleExpand}
+                        onToggleRow={onToggleRow}
+                      />
+                    </motion.div>
+                  </CollapseItem>
                   );
                   return head ? [head, item] : [item];
                 })}

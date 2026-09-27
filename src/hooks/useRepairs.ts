@@ -6,7 +6,6 @@ import { RSRecord, type RepairTab } from '@/lib/neon/repair-service-queries';
 import { useAblyChannel } from './useAblyChannel';
 import { getDbTableChannelName, getRepairsChannelName, safeChannelName } from '@/lib/realtime/channels';
 import { useAuth } from '@/contexts/AuthContext';
-import { useRefreshSignal } from '@/lib/refresh/bus';
 
 export function useRepairsTable(
   search?: string | null,
@@ -47,9 +46,6 @@ export function useRepairsTable(
     queryClient.invalidateQueries({ queryKey: qk.repairs.all });
   }, !!repairDbChannel);
 
-  useRefreshSignal('repairs', () => {
-    queryClient.invalidateQueries({ queryKey: qk.repairs.all });
-  });
 
   return query;
 }

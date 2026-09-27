@@ -12,7 +12,7 @@
  */
 
 import type { QueryResultRow } from 'pg';
-import { tenantQuery } from '@/lib/tenancy/db';
+import { tenantQueryOneTrip } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';
 import { matchBrandTokens, type BrandTokenMatch } from '@/lib/brands/lookup';
 import { brandTokens } from '@/lib/brands/normalize';
@@ -22,6 +22,7 @@ import {
   brandSubtreeIds,
   loadBrandTree,
   type BrandNode,
+  type BrandQueryDeps,
 } from '@/lib/brands/tree';
 import type { SearchEntityType } from '@/lib/search/build-search-text';
 import { docRowToHit, normalizeDocRow } from '@/lib/search/hybrid-retrieval';
@@ -58,10 +59,13 @@ export interface BrandSearchDeps {
   ): Promise<{ rows: R[] }>;
 }
 
+/** Read-only statements: one round trip each instead of BEGIN/GUC/statement/COMMIT. */
+const oneTrip: BrandQueryDeps = { query: (orgId, sql, params) => tenantQueryOneTrip(orgId, sql, params) };
+
 const defaultDeps: BrandSearchDeps = {
-  matchTokens: (orgId, tokens) => matchBrandTokens(orgId, tokens),
-  loadTree: (orgId) => loadBrandTree(orgId),
-  query: (orgId, sql, params) => tenantQuery(orgId, sql, params),
+  matchTokens: (orgId, tokens) => matchBrandTokens(orgId, tokens, oneTrip),
+  loadTree: (orgId) => loadBrandTree(orgId, oneTrip),
+  query: oneTrip.query,
 };
 
 /** Entity types whose docs can carry a brand (the SKU and the docs holding one). */

@@ -1,15 +1,10 @@
 import { NextResponse, after } from 'next/server';
-import {
-  createCacheLookupKey,
-  getCachedJson,
-  setCachedJson,
-} from '@/lib/cache/upstash-cache';
 import { errorResponse } from '@/lib/api/errors';
 import { withAuth } from '@/lib/auth/withAuth';
-import { findRecords } from '@/lib/search/find-records';
 import { BRAND_SEARCH_AXIS, type SearchAxis } from '@/lib/search/brand-search';
 import { parseSearchByScope, SEARCH_BY_SCOPES } from '@/lib/search/search-by';
-import { recordSearchQuery, type SearchSurface } from '@/lib/search/query-log';
+import type { SearchSurface } from '@/lib/search/query-log';
+import { serveFindRecords } from '@/lib/search/serve-find-records';
 
 /** Cross-entity find — the engine behind the ⌘K palette and `/search`. */
 
@@ -21,7 +16,6 @@ function parseSurface(raw: string | null): SearchSurface | null {
 }
 
 export const GET = withAuth(async (req, ctx) => {
-  const startedAt = Date.now();
   try {
     const params = req.nextUrl.searchParams;
     const query = (params.get('q') ?? params.get('search') ?? '').trim();
@@ -52,75 +46,18 @@ export const GET = withAuth(async (req, ctx) => {
       });
     }
 
-    // Cache namespace is partitioned by org — a shared one would serve one
-    // tenant's records to another. v6: payload gained `facets.brand`.
-    const namespace = `api:global-search:v6:${ctx.organizationId}`;
-    const cacheKey = createCacheLookupKey({
-      org: String(ctx.organizationId),
-      q: query,
-      limit,
-      axis: axis ?? '',
-    });
-
-    const cached = await getCachedJson<Record<string, unknown>>(namespace, cacheKey);
-    if (cached) {
-      // A cache hit is still a search the operator ran: log it, or the worklist
-      // under-counts exactly the queries people repeat most.
-      after(() =>
-        recordSearchQuery({
-          orgId: ctx.organizationId,
-          staffId: ctx.staffId ?? null,
-          query,
-          axis: axis ?? null,
-          surface,
-          resultCount: Number(cached.count ?? 0),
-          relaxed: Boolean(cached.relaxed),
-          usedSemantic: Boolean(cached.usedSemantic),
-          latencyMs: Date.now() - startedAt,
-        }),
-      );
-      return NextResponse.json(cached, { headers: { 'x-cache': 'HIT' } });
-    }
-
-    const found = await findRecords(ctx.organizationId, query, { limit, axis });
-
-    const payload = {
-      rows: found.rows,
-      count: found.rows.length,
+    // Cache + query log live in `serveFindRecords` — the assistant's
+    // `find_records` tool serves through the same door.
+    const { payload, cache } = await serveFindRecords({
+      orgId: ctx.organizationId,
+      staffId: ctx.staffId ?? null,
       query,
-      /** True when `rows` came from a broadened retry, not the typed query. */
-      relaxed: found.relaxed,
-      /** The query that produced `rows`; equals `query` unless `relaxed`. */
-      effectiveQuery: found.effectiveQuery,
-      usedSemantic: found.usedSemantic,
-      /** Root-brand buckets (a Wave record counts under Bose) over the records behind `rows`. */
-      facets: { brand: found.brandFacet },
-    };
-
-    await setCachedJson(namespace, cacheKey, payload, 60, [
-      'global-search',
-      'orders',
-      'repair-service',
-      'fba',
-      'receiving-logs',
-      'sku-catalog',
-    ]);
-
-    after(() =>
-      recordSearchQuery({
-        orgId: ctx.organizationId,
-        staffId: ctx.staffId ?? null,
-        query,
-        axis: axis ?? null,
-        surface,
-        resultCount: found.rows.length,
-        relaxed: found.relaxed,
-        usedSemantic: found.usedSemantic,
-        latencyMs: Date.now() - startedAt,
-      }),
-    );
-
-    return NextResponse.json(payload, { headers: { 'x-cache': 'MISS' } });
+      limit,
+      axis,
+      surface,
+      defer: after,
+    });
+    return NextResponse.json(payload, { headers: { 'x-cache': cache } });
   } catch (err) {
     return errorResponse(err, 'GET /api/global-search');
   }

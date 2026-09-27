@@ -29,14 +29,15 @@ import {
 /** Shared face chrome — menu trigger and static chip stay pixel-matched. */
 /** Host that owns the face width — the dropdown anchors to this box. */
 const PAGE_FACE_WRAP_CLASS = cn(
-  'relative flex h-full shrink-0 items-stretch',
+  'relative flex h-full shrink-0 items-center',
   HEADER_PAGE_FACE_WIDTH,
 );
 
+/** A 32px rounded chip — the header key's corner and the search well's hairline ring. */
 const PAGE_FACE_CLASS = cn(
   HEADER_ICON_BTN_CLASS,
-  'flex h-full min-h-8 min-w-0 w-full select-none items-center justify-start gap-1 px-1.5',
-  'bg-surface-card',
+  'flex h-8 min-w-0 w-full select-none items-center justify-start gap-1 px-1.5',
+  'bg-surface-card ring-1 ring-inset ring-border-hairline',
   'text-role-body font-medium leading-none',
   focusRing('control', 'accent'),
 );
@@ -114,7 +115,7 @@ export function HeaderPageSwitcher() {
         onClose={() => setOpen(false)}
         anchorRef={wrapRef}
         placement="bottom-stretch"
-        gap={0}
+        gap={4}
       >
         <HeaderChromeMenu
           ariaLabel={page.menuAriaLabel ?? `${page.label} pages`}

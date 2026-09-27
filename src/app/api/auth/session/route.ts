@@ -69,8 +69,9 @@ export async function GET() {
 
   // Bump last_seen_at so the idle window slides forward on each request, and
   // pick up the (possibly slid) expires_at — for persistent staff touchSession
-  // pushes it forward ~1 year on every heartbeat.
-  const slidExpiresAt = (await touchSession(session.sid)) ?? session.expiresAt;
+  // pushes it forward ~1 year on every heartbeat. Never rejects, so it runs
+  // alongside the org/membership reads below instead of ahead of them.
+  const touched = touchSession(session.sid);
 
   // Resolve the active tenant's display identity so the client can show which workspace the user is in (a passive multi-tenant safety signal).
   const org = await getOrganization(user.organizationId).catch(() => null);
@@ -84,6 +85,7 @@ export async function GET() {
     currentOrgSlug: org?.slug ?? null,
     currentOrgPlan: org?.plan ?? null,
   });
+  const slidExpiresAt = (await touched) ?? session.expiresAt;
 
   const res = NextResponse.json(
     {

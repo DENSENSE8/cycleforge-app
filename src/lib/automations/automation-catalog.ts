@@ -51,7 +51,7 @@ export const AUTOMATION_CATALOG: readonly AutomationDef[] = [
     id: 'listings.staff-rules',
     name: 'Listing → staff assignment',
     summary:
-      'When an order gets its item number, the saved rule for that listing and SKU assigns its tester and packer.',
+      'When an order gets its item number, the saved rule for that listing and SKU assigns its picker and packer.',
     trigger: { kind: 'event', on: 'order.item_number_set' },
     scope:
       'Orders whose item number + SKU pair matches a saved listing rule; an item-number-only rule covers that listing’s SKUs without their own rule. Rules are written from the to-ship selection on the orders desk.',

@@ -69,14 +69,14 @@ function readyHitMetaTokens(hit: AllocationHit): { value: string; kind: string }
 function ReadyHitMetaTrail({ hit }: { hit: AllocationHit }) {
   const tokens = readyHitMetaTokens(hit);
   return (
-    <span className="inline-flex min-w-0 max-w-full shrink items-center gap-1 overflow-hidden text-role-eyebrow uppercase tracking-widest text-text-faint">
+    <span className="inline-flex min-w-0 max-w-full shrink items-center gap-1 overflow-hidden text-role-eyebrow text-text-faint industrial:uppercase industrial:tracking-widest">
       {tokens.map((token, i) => (
         <span key={`${token.kind}:${token.value}`} className="inline-flex min-w-0 items-center gap-1">
           {i > 0 ? <span className="shrink-0" aria-hidden>·</span> : null}
           <CopyableCellValue
             value={token.value}
             historyKind={token.kind}
-            className="min-w-0 truncate font-mono text-role-eyebrow uppercase tracking-widest text-text-faint"
+            className="min-w-0 truncate font-sans text-role-eyebrow text-text-faint industrial:font-mono industrial:uppercase industrial:tracking-widest"
             dense
           />
         </span>

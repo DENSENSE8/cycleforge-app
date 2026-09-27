@@ -277,6 +277,7 @@ export async function GET(req: NextRequest) {
         SELECT
           CASE
             WHEN UPPER(COALESCE(u.station, '')) IN ('TECH') THEN 'TECH'
+            WHEN UPPER(COALESCE(u.station, '')) IN ('PICK') THEN 'PICK'
             WHEN UPPER(COALESCE(u.station, '')) IN ('FBA') THEN 'FBA'
             WHEN UPPER(COALESCE(u.station, '')) IN ('PACK', 'PACKER') THEN 'PACK'
             WHEN UPPER(COALESCE(u.station, '')) IN ('UNBOX') THEN 'UNBOX'
@@ -285,8 +286,9 @@ export async function GET(req: NextRequest) {
             WHEN LOWER(COALESCE(u.source, '')) IN ('tech', 'tech_scan', 'technician') THEN 'TECH'
             WHEN LOWER(COALESCE(u.source, '')) IN ('pack', 'packer', 'packing') THEN 'PACK'
             WHEN u.action_type ILIKE 'PACK%' THEN 'PACK'
+            WHEN u.action_type = 'PICK_SCANNED' THEN 'PICK'
             WHEN u.action_type = 'FNSKU_SCANNED' AND UPPER(COALESCE(u.station, '')) = 'FBA' THEN 'FBA'
-            WHEN u.action_type IN ('TRACKING_SCANNED', 'SERIAL_ADDED', 'FNSKU_SCANNED') THEN 'TECH'
+            WHEN u.action_type IN ('SERIAL_ADDED', 'FNSKU_SCANNED') THEN 'TECH'
             WHEN u.action_type ILIKE '%SCANNED%' THEN 'TECH'
             ELSE 'UNKNOWN'
           END AS station_bucket
@@ -301,7 +303,7 @@ export async function GET(req: NextRequest) {
         GROUP BY station_bucket
       ),
       baseline AS (
-        SELECT label FROM (VALUES ('TECH'), ('FBA'), ('PACK'), ('UNBOX'), ('SALES'), ('UNKNOWN')) AS b(label)
+        SELECT label FROM (VALUES ('TECH'), ('PICK'), ('FBA'), ('PACK'), ('UNBOX'), ('SALES'), ('UNKNOWN')) AS b(label)
       ),
       merged AS (
         SELECT

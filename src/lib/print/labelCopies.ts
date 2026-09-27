@@ -9,6 +9,9 @@ export const MAX_LABEL_COPIES = 99;
 /** Ceiling on one bulk TOTE run — distinct from {@link MAX_LABEL_COPIES}, which counts identical copies of ONE face. */
 export const MAX_TOTE_PRINT_RUN = 200;
 
+/** Ceiling on one paperwork print job — orders whose label / slip / manuals print in one station run. */
+export const MAX_PAPERWORK_PRINT_ORDERS = 25;
+
 /** Slider ceiling on the tote-print UI — a cart, not a warehouse. */
 export const TOTE_COUNT_SLIDER_MAX = 24;
 

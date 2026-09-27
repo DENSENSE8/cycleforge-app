@@ -8,6 +8,7 @@ import {
   History,
   LayoutDashboard,
   ListChecks,
+  Receipt,
   Reply,
   Sparkles,
   Ticket,
@@ -52,7 +53,7 @@ export function artifactSummary(entry: SessionArtifactEntry): ArtifactSummary {
       // row is ("1 SKU", "2 bins") — never "Table · 1 row" or a tool id.
       const noun = artifact.entityHint && artifact.entityHint.length <= 24 ? artifact.entityHint : 'row';
       return {
-        title: artifact.product?.title ?? artifact.title,
+        title: artifact.identity?.title ?? artifact.title,
         kind: entry.producedBy ? toolLabel(entry.producedBy) : 'Results',
         count: plural(artifact.rows.length, noun),
         icon: <ColumnsThree className={GLYPH} />,
@@ -67,7 +68,12 @@ export function artifactSummary(entry: SessionArtifactEntry): ArtifactSummary {
     case 'chart':
       return { title: artifact.title, kind: 'Chart', count: plural(artifact.series.length, 'point'), icon: <BarChart3 className={GLYPH} /> };
     case 'record':
-      return { title: artifact.title, kind: 'Record', count: plural(artifact.fields.length, 'field'), icon: <LayoutDashboard className={GLYPH} /> };
+      return {
+        title: artifact.identity?.title ?? artifact.title,
+        kind: entry.producedBy ? toolLabel(entry.producedBy) : 'Record',
+        count: null,
+        icon: <LayoutDashboard className={GLYPH} />,
+      };
     case 'import_triage':
       return { title: artifact.title, kind: 'Import check', count: plural(artifact.rows.length, 'row'), icon: <ListChecks className={GLYPH} /> };
     case 'document':
@@ -76,6 +82,27 @@ export function artifactSummary(entry: SessionArtifactEntry): ArtifactSummary {
         kind: artifact.subtitle || (artifact.documents.length > 1 ? `${artifact.documents.length} documents` : 'Document'),
         count: null,
         icon: <FileText className={GLYPH} />,
+      };
+    case 'payment':
+      return {
+        title: artifact.title,
+        kind: artifact.method === 'square_invoice' ? 'Invoice' : 'Payment link',
+        count: null,
+        icon: <Receipt className={GLYPH} />,
+      };
+    case 'order_draft':
+      return {
+        title: artifact.title,
+        kind: artifact.status === 'created' ? 'Order · created' : 'Order · draft',
+        count: plural(artifact.draft.lines.length + artifact.unresolved.length, 'line'),
+        icon: <ClipboardList className={GLYPH} />,
+      };
+    case 'po_draft':
+      return {
+        title: artifact.title,
+        kind: 'Purchase order · draft',
+        count: plural(artifact.draft.lines.length, 'item'),
+        icon: <ClipboardList className={GLYPH} />,
       };
     case 'report':
       return {

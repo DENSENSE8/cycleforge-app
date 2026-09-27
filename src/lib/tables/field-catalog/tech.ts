@@ -23,7 +23,7 @@ export const TECH_FIELD_CATALOG: FieldCatalog = [
     // cell already owns (`SLOT_STEP_ICONS`).
     iconKey: 'picked',
     stageLabels: { done: 'Tested', pending: 'Test' },
-    paths: { whoStaffId: 'tested_by|tester_id', at: 'test_date_time' },
+    paths: { whoStaffId: 'tested_by', at: 'test_date_time' },
   },
   {
     id: 'tech.qty',

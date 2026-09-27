@@ -4,7 +4,6 @@
 
 import { useQuery } from '@tanstack/react-query';
 import { toOrderRecord } from '@/lib/orders/order-record-normalize';
-import { useRefreshSignal } from '@/lib/refresh/bus';
 import { OrderRecordActionStrip } from './to-ship/MorphingRowActionMenu';
 
 interface OrderLineBag {
@@ -29,10 +28,6 @@ function useShippedOrderLine(lineId: number | null) {
     queryFn: () => fetchOrderLine(lineId as number),
     enabled: lineId != null,
     staleTime: 30_000,
-  });
-  const { refetch } = query;
-  useRefreshSignal('orders.outbound', () => {
-    if (lineId != null) void refetch();
   });
   const raw = query.data?.orders[0];
   return { lineId, query, line: raw ? toOrderRecord(raw) : null };

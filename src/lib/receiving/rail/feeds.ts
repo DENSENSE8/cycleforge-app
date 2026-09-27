@@ -20,7 +20,7 @@ import {
   matchesDoneQuery,
   type TriageDoneRow,
 } from './done-stub';
-import { TESTING_RECEIVING_LINES_API } from '@/lib/surface-isolation';
+import { QC_RECEIVING_LINES_API } from '@/lib/surface-isolation';
 import { TESTING_LINE_OPENED_EVENT } from '@/lib/testing/testing-line-opened-event';
 import type { RefreshDomain } from '@/lib/refresh/domains';
 
@@ -324,7 +324,7 @@ function buildTestingOpenedFetcher(rt: RailFetchRuntime): () => Promise<ApiRespo
       offset: '0',
       view: 'testing_opened',
     });
-    const res = await fetch(`${TESTING_RECEIVING_LINES_API}?${params.toString()}`);
+    const res = await fetch(`${QC_RECEIVING_LINES_API}?${params.toString()}`);
     if (!res.ok) throw new Error('testing opened fetch failed');
     const data = (await res.json()) as ApiResponse;
     let rows = data.receiving_lines ?? [];

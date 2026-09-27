@@ -22,7 +22,7 @@ async function fetchReport(dateKey: string, scope: 'mine' | 'all'): Promise<Dail
   return res.json() as Promise<DailyCheckReport>;
 }
 
-/** Key + fetcher for one day's report — shared by the hook and BootGate's welcome warm-up. */
+/** Key + fetcher for one day's report — shared by the hook and WelcomeGate's welcome warm-up. */
 export function dailyChecksQueryOptions(dateKey: string, scope: 'mine' | 'all' = 'mine') {
   return queryOptions({
     queryKey: dailyChecksKey(dateKey, scope),

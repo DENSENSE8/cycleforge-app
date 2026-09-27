@@ -1,41 +1,46 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useRef } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
-import type { NavSearch } from '@/lib/nav/context/schema';
+import type { NavLocateBucket, NavLocateEntry, NavLocateResponse, NavLocateScope, NavSearch } from '@/lib/nav/context/schema';
 import { KeyboardKey } from '@/design-system/primitives';
 import { ChevronRight, Loader2 } from '@/components/Icons';
 import { isEditableKeyTarget } from '@/lib/keyboard/is-editable-key-target';
-import { useInboundCheck } from '@/lib/receiving/inbound-check-query';
-import {
-  parseReconParam,
-  parseRefInParam,
-  parseRefList,
-  serializeRefIn,
-  type ReconEntry,
-  type ReconStatus,
-  type RefSelection,
-} from '@/lib/receiving/reconcile';
+import { parseRefInParam, parseRefList, serializeRefIn, type RefSelection } from '@/lib/receiving/reconcile';
 import { toast } from '@/lib/toast';
 import { focusRing } from '@/design-system/tokens/focus-ring';
 import { SIDEBAR_CONTROL_CORNER } from '@/design-system/tokens/radius';
 import { cn } from '@/utils/_cn';
 import { NavBulkPopout } from './NavBulkPopout';
+import { useNavLocate } from './useNavLocate';
 import { useReplaceSearchParams } from './useReplaceSearchParams';
 
-type NavBulk = NonNullable<NavSearch['bulk']>;
+type NavLocate = NonNullable<NavSearch['locate']>;
 
 /** Bare `B` toggles the pasted list, never while typing. */
 const BULK_KEY = 'b';
 
-/** The pasted list, its Check answer, and the verbs over it. */
+/** One pasted number: the locator's answer, or a placeholder while it is asked. */
+export interface BulkEntry extends NavLocateEntry {
+  /** Not answered yet — the locator is still being asked. */
+  pending: boolean;
+}
+
+/** The pasted list, where each number lives, and the verbs over it. */
 export interface BulkList {
+  scope: NavLocateScope;
   selection: RefSelection;
-  entries: ReconEntry[];
+  response: NavLocateResponse | undefined;
   loading: boolean;
   error: string | null;
   refetch: () => void;
-  status: ReconStatus | null;
+  /** One per pasted number, in paste order. */
+  entries: BulkEntry[];
+  /** The locator's buckets, in its order — counts are pasted numbers found in each. */
+  buckets: NavLocateBucket[];
+  /** The bucket filter (a bucket id), or null for every number. */
+  status: string | null;
+  setStatus: (status: string | null) => void;
   /** A paste of 2+ numbers → the list. False for a single number (it stays a Find). */
   paste: (text: string) => boolean;
   remove: (ref: string) => void;
@@ -45,41 +50,42 @@ export interface BulkList {
 }
 
 /**
- * The pasted list's URL state (`bulk.param` = the operator's strings,
- * `bulk.statusParam` = one bucket) plus the Check's answer for it. Every
- * reader — the Find toggle, the popout, the ledger's status chips — reads
- * the same URL and the same query key.
+ * The list from its refs + filter, however they are stored. `writeRefs`
+ * persists the next refs (an empty list also drops the filter).
  */
-export function useNavBulkList(bulk: NavBulk): BulkList {
-  const searchParams = useSearchParams();
-  const replace = useReplaceSearchParams();
-  const raw = searchParams?.get(bulk.param) ?? null;
-  const selection = useMemo(() => parseRefInParam(raw), [raw]);
-  const status = parseReconParam(searchParams?.get(bulk.statusParam));
-  const check = useInboundCheck(selection);
-
-  const writeRefs = useCallback(
-    (refs: readonly string[]) =>
-      replace((params) => {
-        params.delete('page');
-        if (refs.length === 0) {
-          params.delete(bulk.param);
-          params.delete(bulk.statusParam);
-        } else {
-          params.set(bulk.param, serializeRefIn(refs));
-        }
-      }),
-    [bulk.param, bulk.statusParam, replace],
-  );
+function useBulkList(
+  scope: NavLocateScope,
+  selection: RefSelection,
+  rawStatus: string | null,
+  writeRefs: (refs: readonly string[]) => void,
+  setStatus: (status: string | null) => void,
+): BulkList {
+  const locate = useNavLocate(scope, { refs: selection.refs });
+  const response = locate.data;
+  const buckets = useMemo(() => response?.buckets ?? [], [response]);
+  const entries = useMemo(() => {
+    const answered = new Map((response?.entries ?? []).map((entry) => [entry.ref, entry]));
+    return selection.refs.map((ref): BulkEntry => {
+      const hit = answered.get(ref);
+      return hit
+        ? { ...hit, pending: false }
+        : { ref, buckets: [], title: null, detail: null, recordHref: null, pending: true };
+    });
+  }, [response, selection.refs]);
+  // A filter naming no bucket this locator declares filters nothing.
+  const status = rawStatus && buckets.some((bucket) => bucket.id === rawStatus) ? rawStatus : null;
 
   return {
+    scope,
     selection,
-    entries: check.entries,
-    loading: check.loading,
-    error: check.error,
-    refetch: check.refetch,
+    response,
+    loading: locate.isFetching,
+    error: locate.error ? locate.error.message || 'Could not locate the pasted numbers' : null,
+    refetch: () => void locate.refetch(),
+    entries,
+    buckets,
     status,
-    /** A paste of 2+ numbers → the list. Returns false for a single number (it stays a Find). */
+    setStatus,
     paste: (text: string): boolean => {
       const next = parseRefList(text);
       if (next.refs.length < 2) return false;
@@ -88,7 +94,6 @@ export function useNavBulkList(bulk: NavBulk): BulkList {
       return true;
     },
     remove: (ref: string) => writeRefs(selection.refs.filter((r) => r !== ref)),
-    /** Replace one number with whatever was typed (a comma list expands in place). */
     replaceRef: (ref: string, text: string) => {
       const typed = parseRefList(text).refs;
       const at = selection.refs.indexOf(ref);
@@ -98,6 +103,55 @@ export function useNavBulkList(bulk: NavBulk): BulkList {
     },
     clear: () => writeRefs([]),
   };
+}
+
+/**
+ * A page's pasted list, in its URL (`locate.param` = the operator's strings,
+ * `locate.statusParam` = one bucket). Every reader — the Find toggle, the
+ * popout, the page's own list — reads the same URL.
+ */
+export function useNavBulkList(locate: NavLocate): BulkList {
+  const searchParams = useSearchParams();
+  const replace = useReplaceSearchParams();
+  const raw = searchParams?.get(locate.param) ?? null;
+  const selection = useMemo(() => parseRefInParam(raw), [raw]);
+  const rawStatus = searchParams?.get(locate.statusParam)?.trim() || null;
+
+  const writeRefs = useCallback(
+    (refs: readonly string[]) =>
+      replace((params) => {
+        params.delete('page');
+        if (refs.length === 0) {
+          params.delete(locate.param);
+          params.delete(locate.statusParam);
+        } else {
+          params.set(locate.param, serializeRefIn(refs));
+        }
+      }),
+    [locate.param, locate.statusParam, replace],
+  );
+  const setStatus = useCallback(
+    (status: string | null) =>
+      replace((params) => {
+        params.delete('page');
+        if (status) params.set(locate.statusParam, status);
+        else params.delete(locate.statusParam);
+      }),
+    [locate.statusParam, replace],
+  );
+
+  return useBulkList(locate.locator, selection, rawStatus, writeRefs, setStatus);
+}
+
+/** The same list held in component state — the everywhere face has no page list and no URL. */
+export function useLocalBulkList(scope: NavLocateScope): BulkList {
+  const [selection, setSelection] = useState<RefSelection>(() => parseRefInParam(null));
+  const [status, setStatus] = useState<string | null>(null);
+  const writeRefs = useCallback((refs: readonly string[]) => {
+    setSelection(parseRefInParam(serializeRefIn(refs)));
+    if (refs.length === 0) setStatus(null);
+  }, []);
+  return useBulkList(scope, selection, status, writeRefs, setStatus);
 }
 
 /**

@@ -15,7 +15,7 @@ export const PACKER_FIELD_CATALOG: FieldCatalog = [
   {
     /**
      * The UPSTREAM test stamp, carried on a packer row. Unlike the tech bench,
-     * this mapper does project name aliases (`tested_by_name` / `tester_name`),
+     * this mapper does project the name (`tested_by_name`),
      * so the step can paint a name as well as an avatar.
      */
     id: 'packer.tested',
@@ -26,8 +26,8 @@ export const PACKER_FIELD_CATALOG: FieldCatalog = [
     iconKey: 'picked',
     stageLabels: { done: 'Tested', pending: 'Test' },
     paths: {
-      who: 'tested_by_name|tester_name',
-      whoStaffId: 'tested_by|tester_id',
+      who: 'tested_by_name',
+      whoStaffId: 'tested_by',
       at: 'test_date_time',
     },
   },

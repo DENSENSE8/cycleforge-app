@@ -13,6 +13,7 @@ function makeData(overrides: Partial<DashboardData> = {}): DashboardData {
     summary: {
       all: { value: 10, delta: 1 },
       tested: { value: 5, delta: 2 },
+      picked: { value: 2, delta: 0 },
       repair: { value: 3, delta: -1 },
       outOfStock: { value: 0, delta: 0 },
       pendingLate: { value: 0, delta: 0 },

@@ -1,0 +1,45 @@
+-- 2026-09-27_perf_audit_logs_org_order_entity.sql
+--
+-- WHAT
+--   CREATE INDEX idx_audit_logs_org_order_entity_created
+--     ON audit_logs (organization_id, entity_id, created_at DESC)
+--     WHERE lower(entity_type) = 'order';
+--
+-- WHY
+--   GET /api/orders/[id]/timeline (src/app/api/orders/[id]/timeline/route.ts,
+--   the "events" trail) runs
+--     WHERE lower(al.entity_type) = 'order' AND al.entity_id = $1
+--       AND al.organization_id = $2
+--     ORDER BY al.created_at DESC LIMIT 200
+--   The only index matching the lower() predicate is idx_audit_logs_org_created
+--   (organization_id, created_at DESC) WHERE lower(entity_type) = 'order', so the
+--   planner walks EVERY order audit row of the org and filters entity_id:
+--   EXPLAIN (ANALYZE, BUFFERS) for order 7109 (usav) =
+--     Index Scan using idx_audit_logs_org_created
+--       Filter: (entity_id = '7109'), Rows Removed by Filter: 3902,
+--       Buffers: shared hit=2074, 2.7 ms warm (46 ms on a cold cache)
+--   i.e. linear in the org's whole order-audit history for a per-order lookup.
+--   idx_audit_logs_entity_created (entity_type, entity_id, created_at DESC) is
+--   unusable because the query folds entity_type through lower(). Adding
+--   entity_id to the partial index turns this into a direct range read of the
+--   one order's rows, already in created_at DESC order for the LIMIT.
+--   Leads with organization_id (per-org key); org (uuid =) and entity_id
+--   (text =) are leakproof index conditions under RLS.
+--
+-- SAFETY
+--   Plain CREATE INDEX (runner-wrapped transaction, so no CONCURRENTLY — see
+--   2026-08-02c_sku_catalog_gtin_org_unique.sql). audit_logs is ~27k rows /
+--   26 MB; the partial predicate covers ~4k of them, so the write lock is brief.
+--   No code change required.
+--
+-- VERIFY
+--   EXPLAIN (ANALYZE, BUFFERS) the query above for any order id: expect an
+--   Index Scan using idx_audit_logs_org_order_entity_created with
+--   Index Cond on (organization_id, entity_id) and no "Rows Removed by Filter".
+--
+-- ROLLBACK
+--   DROP INDEX IF EXISTS idx_audit_logs_org_order_entity_created;
+
+CREATE INDEX IF NOT EXISTS idx_audit_logs_org_order_entity_created
+  ON audit_logs (organization_id, entity_id, created_at DESC)
+  WHERE lower(entity_type) = 'order';

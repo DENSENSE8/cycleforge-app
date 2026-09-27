@@ -1,7 +1,7 @@
 import { useCallback, useMemo, useRef, useState } from 'react';
 import { computeWeekRange } from '@/utils/date';
 import { toPSTDateKey } from '@/utils/date';
-import { useTechLogs, type TechRecord } from '@/hooks/useTechLogs';
+import { useDeskPickLogs, type TechRecord } from '@/hooks/useDeskPickLogs';
 import {
   dedupeTechRecords,
   getTechRecordRowKey,
@@ -26,13 +26,13 @@ export function useTechTableController({ staffId }: UseTechTableControllerOption
   const weekOffset = useSharedScope ? sharedFeed.weekOffset : localWeekOffset;
   const setWeekOffset = useSharedScope ? sharedFeed.setWeekOffset : setLocalWeekOffset;
 
-  /** The find box text, ANSWERED BY THE SERVER — it rides `useTechLogs`' fetch key, so `records` already ARE the answer for it and nothing… */
+  /** The find box text, ANSWERED BY THE SERVER — it rides `useDeskPickLogs`' fetch key, so `records` already ARE the answer for it and nothing… */
   const [localQuery, setLocalQuery] = useState('');
   const query = useSharedScope ? sharedFeed.query : localQuery;
   const setQuery = useSharedScope ? sharedFeed.setQuery : setLocalQuery;
 
   const localWeekRange = useMemo(() => computeWeekRange(localWeekOffset), [localWeekOffset]);
-  const { data: localRecords = [], isLoading: localLoading, isFetching: localFetching } = useTechLogs(
+  const { data: localRecords = [], isLoading: localLoading, isFetching: localFetching } = useDeskPickLogs(
     staffId,
     {
       weekOffset: localWeekOffset,

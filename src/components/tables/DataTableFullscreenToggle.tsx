@@ -14,6 +14,7 @@
 import { Maximize2, Minimize2, Warehouse } from '@/components/Icons';
 import {
   DESK_FLOOR_SHORTCUT_HINT,
+  DESK_SPLIT_SHORTCUT_HINT,
   useDeskStageOptional,
 } from '@/design-system/components/DeskStageContext';
 import { DATA_TABLE_TOOLBAR_CORNER } from '@/design-system/tokens/radius';
@@ -69,7 +70,7 @@ export function DataTableFullscreenToggle({ className }: { className?: string })
         onClick={() => stage.setView(split ? 'in-place' : 'split')}
         aria-pressed={split}
         aria-label={split ? 'Exit fullscreen' : 'Expand table to fullscreen'}
-        title={split ? 'Exit fullscreen' : 'Expand table to fullscreen'}
+        title={`${split ? 'Exit fullscreen' : 'Expand table to fullscreen'} (${DESK_SPLIT_SHORTCUT_HINT})`}
         data-testid="desk-fullscreen-toggle"
         className={cn(TOOLBAR_BUTTON_CLASS, 'w-6', className)}
       >

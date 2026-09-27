@@ -6,8 +6,8 @@
  * 11.8 s @ 54 tools vs 1.2 s @ 3 tools on the same hardware).
  *
  * This module picks the ~8–10 tools THIS turn needs:
- *   • an always-on core: the two entity finders (the system core routes every
- *     find/where/which question to them), `render_artifact` (mandatory for
+ *   • an always-on core: `find_records`, the one record finder (the system
+ *     core routes every find/which question to it), `render_artifact` (mandatory for
  *     data answers), and `propose_mutation` (the one write chokepoint);
  *   • keyword-driven UI tools (navigate/highlight/canvas/print/connection);
  *   • everything else by deterministic relevance: alias hits on house
@@ -20,6 +20,7 @@
  */
 
 import type { OpenAiFunctionTool } from '@/lib/assistant/tools/openai-schema';
+import { isCarrierUniqueTracking } from '@/lib/scan-resolver';
 
 /** Total advertisement budget for a self-hosted turn (core + UI + ranked).
  * 8 not 10: measured on the 16 GB card, 10-tool rows push QLoRA training
@@ -27,10 +28,14 @@ import type { OpenAiFunctionTool } from '@/lib/assistant/tools/openai-schema';
  * only improves (≈9.6 kB at 8). Still inside the handoff's "~8–10" target. */
 export const SELF_HOSTED_TOOL_CAP_DEFAULT = 13;
 
-/** Server verbs every turn can reach for, whatever the question was. */
+/** A ranked tool at or above this score was named by an alias (a full hit scores 10). */
+const STRONG_SCORE = 5;
+/** How many tools with only description-word overlap may still ride. */
+const WEAK_FILLERS = 2;
+
+/** Server verbs every turn can reach for, whatever the question was: the one record finder. */
 const ALWAYS_ON_CORE: Record<string, true> = {
-  hybrid_entity_search: true,
-  exact_id_serial_search: true,
+  find_records: true,
 };
 
 /** The write chokepoint — subsetting it out would make write asks unanswerable. */
@@ -179,6 +184,82 @@ const TOOL_ALIASES: Record<string, readonly string[]> = {
     'go ahead',
     'cancel the link',
   ],
+  request_payment: [
+    'take payment',
+    'payment link',
+    'collect payment',
+    'charge the customer',
+    'send an invoice',
+    'invoice the order',
+    'checkout link',
+    'square',
+  ],
+  print_order_paperwork: [
+    'print the packing slip',
+    'print the shipping label',
+    'print the label and slip',
+    'print the papers',
+    'print the paperwork',
+    'print paperwork',
+    'reprint',
+    'print again',
+    'packing slip',
+    'shipping label',
+  ],
+  // A caller ordering by phone, or an order sold on a channel (eBay, Amazon…),
+  // in the operator's words — and the follow-ups that fill the card in
+  // (address, ZIP, ship-by, prices, listing link, tracking).
+  draft_manual_order: [
+    'phone order',
+    'new order',
+    'enter an order',
+    'add an order',
+    'ebay order',
+    'amazon order',
+    'walmart order',
+    'marketplace order',
+    'listing',
+    'buyer',
+    'tracking is',
+    'buy a label',
+    'called in',
+    'on the phone',
+    'wants to order',
+    'wants to buy',
+    'order for',
+    'ship to',
+    'ship by',
+    'zip',
+    'address',
+    'each',
+    'customer',
+  ],
+  create_manual_order: ['create this order', 'create the order', 'create it', 'place the order', 'confirm', 'yes'],
+  // A purchase order pasted / typed for import — and the follow-ups that
+  // complete its card (tracking, PO number, vendor, listing link).
+  draft_po_import: [
+    'purchase order',
+    'import po',
+    'import a po',
+    'po number',
+    'vendor',
+    'supplier',
+    'tracking number is',
+    'listing link',
+    'expected',
+  ],
+  import_purchase_order: ['import this po', 'import the po', 'import it', 'confirm', 'yes'],
+  set_order_flag: ['flag', 'priority', 'on hold', 'put on hold', 'damaged', 'discrepancy', 'awaiting customer', 'mark ready', 'unflag'],
+  mark_out_of_stock: ['out of stock', 'oos', 'mark out of stock', 'no stock'],
+  clear_out_of_stock: ['back in stock', 'clear out of stock', 'in stock', 'clear oos'],
+  bulk_scan_out: ['scan out', 'scanned out', 'packed orders', 'ship confirm'],
+  create_task: ['task', 'assign', 'remind', 'reminder', 'to do', 'follow up'],
+  reconcile_refs: ['reconcile', 'which of these', 'check this list', 'did we receive', 'not received', 'vendor list', 'pasted list'],
+  get_customer: ['customer', 'who is', 'calls back', 'caller', 'customer phone', 'customer email', 'find customer'],
+  get_worklist: ['what should i do first', 'do first', 'worklist', 'exceptions queue', 'out of stock orders', 'need to order', 'late orders', 'past ship by', 'pending orders', 'ready to pick', 'pick list'],
+  get_staff_report: ['staff report', 'performance', 'time spent', 'task time', 'how much time', 'per staff', 'per day', 'packing pace'],
+  get_tracking_status: ['carrier status', 'tracking status', 'delivered', 'in transit', 'out for delivery', 'where is my package', 'package'],
+  watch_tracking: ['watch', 'tell me when', 'notify me', 'let me know when', 'stop watching', 'unwatch', 'arrives'],
 };
 
 /** Words too common to carry routing signal. */
@@ -272,10 +353,118 @@ const RECALL_FLOOR: readonly { shape: RegExp; tool: string; why: string }[] = [
     tool: 'link_manual_to_sku',
     why: 'pairing a manual with a SKU is the manual link write, not a location lookup',
   },
+  {
+    shape: /\b(take|collect|request|send)\s+(a\s+)?payment\b|\bpayment\s+link\b|\bcheckout\s+link\b|\binvoice\s+(for\s+)?(the\s+)?(order|ph-)/i,
+    tool: 'request_payment',
+    why: 'taking payment for an order is the Square payment request, not a document or order read',
+  },
+  {
+    shape: /\bphone\s+order\b|\bnew\s+(\w+\s+){0,2}order\b|\b(enter|add|log|record)\s+(an?\s+|this\s+)?(\w+\s+)?order\b|\blisting\s+(link\s+)?(is|:)|\/itm\/\d|\btracking\s+(number\s+)?(is|:)|\b(buyer|buyer's\s+name)\s+(is|:)|\bbuy\s+a\s+label\b|\bcalled\s+in\b|\b(wants?|would\s+like)\s+to\s+(order|buy)\b|\bship\s+(it\s+|them\s+)?to\b|\bship[-\s]by\b|\b(zip|zip\s+code|address)\s+is\b/i,
+    tool: 'draft_manual_order',
+    why: 'a caller ordering by phone or a new channel order (and the details that fill it in) is the order draft, not a record search',
+  },
+  {
+    shape: /\bcreate\s+(this|the|that)?\s*(phone\s+)?order\b|\bplace\s+(this|the)\s+order\b/i,
+    tool: 'create_manual_order',
+    why: 'creating the drafted order is the confirm-before-write order tool',
+  },
+  {
+    shape: /\bpurchase\s+order\b|\bp\.?o\.?\s*(#|number|no\b|:)|\bpo[-\s]?\d{2,}|\b(vendor|supplier)\b|\btracking(\s+(number|#|no\.?))?\s*(is\b|:)|\bquantity\s+for\s+line\b/i,
+    tool: 'draft_po_import',
+    why: 'a pasted PO (and the answers that complete it) is the PO import draft, not a record search',
+  },
+  {
+    shape: /\bimport\s+(this|the|that)\s+(po|purchase\s+order)\b/i,
+    tool: 'import_purchase_order',
+    why: 'importing the drafted PO is the confirm-before-write import tool',
+  },
+  {
+    shape: /\b(re)?print\w*\b(?![^.?!]*\b(totes?|handling\s+units?|h-\d+|stickers?)\b)[^.?!]*\b(labels?|slips?|paperwork|papers|orders?|receipts?|manuals?)\b/i,
+    tool: 'print_order_paperwork',
+    why: 'printing an order\'s label / slip / paperwork is the station paperwork print, not the document viewer or tote labels',
+  },
+  {
+    shape: /\b(flag|flagged)\b|\b(priority|on\s+hold|put\s+on\s+hold|awaiting\s+customer|discrepancy)\b[^.?!]*\border|\border[^.?!]*\b(priority|hold|damaged|discrepancy|ready)\b/i,
+    tool: 'set_order_flag',
+    why: 'flagging orders is the confirm-before-write flag tool, not an order read',
+  },
+  {
+    shape: /\bback\s+in\s+stock\b|\bclear\w*\s+(the\s+)?(out[\s-]+of[\s-]+stock|oos)\b|\b(un-?mark|remove)\b[^.?!]*\b(out[\s-]+of[\s-]+stock|oos)\b/i,
+    tool: 'clear_out_of_stock',
+    why: 'clearing out of stock is the confirm-before-write shortage clear',
+  },
+  {
+    shape: /\b(out[\s-]+of[\s-]+stock|oos)\b/i,
+    tool: 'mark_out_of_stock',
+    why: 'marking lines out of stock is the confirm-before-write shortage write',
+  },
+  {
+    shape: /\bscan(ned)?[\s-]+out\b/i,
+    tool: 'bulk_scan_out',
+    why: 'scanning out packed orders is the confirm-before-write scan-out',
+  },
+  {
+    shape: /\b(create|add|make|new)\s+(a\s+)?task\b|\bassign\s+\w+[^.?!]*:|\bremind\s+(me|him|her|them)\b/i,
+    tool: 'create_task',
+    why: 'a task for staff (with a reminder) is the confirm-before-write task tool',
+  },
+  {
+    // Two consecutive lines that are each nothing but an identifier — a pasted list.
+    shape: /\b(reconcile|which\s+of\s+these|did\s+we\s+(receive|get))\b|(?:^|\n)[ \t]*[a-z0-9#-]*\d[a-z0-9#.-]{4,}[ \t]*\n[ \t]*[a-z0-9#-]*\d[a-z0-9#.-]{4,}[ \t]*(?:\n|$)/i,
+    tool: 'reconcile_refs',
+    why: 'a pasted list of numbers is the reconcile check, not one record lookup',
+  },
+  {
+    shape: /\bcustomers?\b|\bcall(s|ed)?\s+back\b|\bcaller\b|\bwho\s+is\s+\+?[\d(]/i,
+    tool: 'get_customer',
+    why: 'a caller / customer by name, phone or email is the customer dossier',
+  },
+  {
+    shape: /\bwhat\s+should\s+i\s+do\s+first\b|\bdo\s+first\b|\bworklist\b|\bexceptions?\s+(queue|list)\b|\bout\s+of\s+stock\s+(orders|list)\b|\bneed\s+to\s+order\b|\bpast\s+(the\s+)?ship[-\s]?by\b|\blate\s+orders?\b|\borders?\s+(are\s+|that\s+are\s+)?late\b|\bready\s+to\s+pick\b|\bpick\s+list\b|\bpending\s+(orders|list)\b/i,
+    tool: 'get_worklist',
+    why: 'a work-queue / what-first question is the ranked worklist',
+  },
+  {
+    shape: /\b(staff|packer|employee)\s+(report|performance)\b|\bperformance\b|\btime\s+(spent|report)\b|\bhow\s+much\s+time\b|\btask\s+time\b/i,
+    tool: 'get_staff_report',
+    why: 'per-staff pace / time / goals is the staff report',
+  },
+  {
+    shape: /\b(carrier|tracking)\s+status\b|\b(package|parcel)\b|\bdelivered\b|\bin\s+transit\b|\bout\s+for\s+delivery\b/i,
+    tool: 'get_tracking_status',
+    why: 'live carrier status is the carrier tracking read',
+  },
+  {
+    shape: /\b(watch|notify\s+me|tell\s+me\s+when|let\s+me\s+know\s+when)\b[^.?!]*\b(tracking|package|parcel|arrives?|lands?|delivered|1z\w+|\d{12,})\b|\b(stop\s+watching|unwatch)\b/i,
+    tool: 'watch_tracking',
+    why: 'watching a tracking number is the self-scoped watch',
+  },
 ];
 
 /** Score awarded by a recall-floor hit — above any achievable alias total. */
 const RECALL_FLOOR_SCORE = 1000;
+
+/**
+ * A recall-floor hit on the key tool takes these tools OUT of the turn: the
+ * ask is unambiguous, and a look-alike tool the model was trained on steals
+ * it. "Print the packing slip for order N" is a print, never the viewer.
+ */
+const FLOOR_SUPERSEDES: Record<string, readonly string[]> = {
+  print_order_paperwork: ['get_order_documents'],
+};
+
+/**
+ * A carrier-unique tracking number in the turn (1Z…, 9400…, TBA…) takes these
+ * tools out unless their own recall floor hit: "which order shipped with
+ * tracking 1Z…" is an order read, and the serial resolver's "which order"
+ * alias handed it a tracking number it can never match.
+ */
+const TRACKING_SUPERSEDES: readonly string[] = ['lookup_serial'];
+
+/** True when the text carries a carrier-unique tracking token. */
+function mentionsCarrierTracking(text: string): boolean {
+  return (text.match(/[a-z0-9]{12,}/gi) ?? []).some(isCarrierUniqueTracking);
+}
 
 /**
  * An `@` mention is an exact entity the operator picked, so its reader rides
@@ -335,6 +524,7 @@ export function subsetAdvertisedTools(
   if ((context?.attachments ?? []).length > 0) mentioned.add('link_manual_to_sku');
   const mandatory: OpenAiFunctionTool[] = [];
   const ranked: Array<{ tool: OpenAiFunctionTool; score: number }> = [];
+  const floorHits: string[] = [];
 
   for (const tool of tools) {
     const name = tool.function.name;
@@ -372,17 +562,28 @@ export function subsetAdvertisedTools(
     for (const floor of RECALL_FLOOR) {
       if (floor.tool === name && floor.shape.test(queryText)) {
         score += RECALL_FLOOR_SCORE;
+        floorHits.push(name);
         break;
       }
     }
     if (mentioned.has(name)) score += RECALL_FLOOR_SCORE;
     if (score > 0) ranked.push({ tool, score });
   }
+  const superseded = new Set(floorHits.flatMap((name) => FLOOR_SUPERSEDES[name] ?? []));
+  if (mentionsCarrierTracking(userMessage)) {
+    for (const name of TRACKING_SUPERSEDES) if (!floorHits.includes(name)) superseded.add(name);
+  }
+  if (superseded.size > 0) ranked.splice(0, ranked.length, ...ranked.filter((r) => !superseded.has(r.tool.function.name)));
 
   ranked.sort((a, b) => b.score - a.score || a.tool.function.name.localeCompare(b.tool.function.name));
 
+  // A description-word overlap alone (a score under one alias hit) is weak
+  // evidence: at most WEAK_FILLERS such tools ride. Every extra schema is
+  // prefill on every round of a self-hosted turn (measured ~1.5k tok/s on the
+  // local box), so noise tools cost the operator real seconds.
   const budget = Math.max(0, cap - mandatory.length);
-  const picked = ranked.slice(0, budget);
+  let weak = 0;
+  const picked = ranked.filter((r) => r.score >= STRONG_SCORE || weak++ < WEAK_FILLERS).slice(0, budget);
   const subset = [...mandatory, ...picked.map((r) => r.tool)];
   return {
     tools: subset,

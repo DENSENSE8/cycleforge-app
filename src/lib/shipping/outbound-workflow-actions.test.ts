@@ -39,7 +39,7 @@ test('every workflow verdict carries the same seven stable action ids', () => {
   const actions = resolveOutboundWorkflowActions({
     stage: 'PENDING',
     hasLabel: true,
-    hasTechScan: false,
+    hasPickScan: false,
     packed: false,
     staged: false,
   });
@@ -59,7 +59,7 @@ test('out-of-stock exposes one typed exception and only clear-hold as primary', 
   const actions = resolveOutboundWorkflowActions({
     stage: 'BLOCKED',
     hasLabel: true,
-    hasTechScan: false,
+    hasPickScan: false,
     packed: false,
     staged: false,
   });
@@ -84,7 +84,7 @@ test('packed work requires the physical dock-stage signal before scan-out', () =
   const actions = resolveOutboundWorkflowActions({
     stage: 'PACKED_STAGED',
     hasLabel: true,
-    hasTechScan: true,
+    hasPickScan: true,
     packed: true,
     staged: false,
   });
@@ -100,7 +100,7 @@ test('a dock-stage signal completes staging and unlocks scan-out', () => {
   const actions = resolveOutboundWorkflowActions({
     stage: 'PACKED_STAGED',
     hasLabel: true,
-    hasTechScan: true,
+    hasPickScan: true,
     packed: true,
     staged: true,
   });
@@ -116,7 +116,7 @@ test('missing-label data cannot create two primary commands', () => {
   const testedWithoutLabel = resolveOutboundWorkflowActions({
     stage: 'TESTED',
     hasLabel: false,
-    hasTechScan: true,
+    hasPickScan: true,
     packed: false,
     staged: false,
   });

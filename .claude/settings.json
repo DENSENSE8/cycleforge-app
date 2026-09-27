@@ -23,6 +23,18 @@
           }
         ]
       }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"$CLAUDE_PROJECT_DIR/tools/design-mcp/new-component-nudge.mjs\"",
+            "timeout": 20
+          }
+        ]
+      }
     ]
   }
 }

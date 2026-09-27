@@ -17,4 +17,4 @@ export const POST = withAuth(async (req: NextRequest, _ctx) => {
     success: true,
     message: 'Order assignment now happens automatically when tech scans tracking number'
   });
-}, { permission: 'tech.scan_serial' });
+}, { permission: 'picking.scan' });

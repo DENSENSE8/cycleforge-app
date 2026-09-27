@@ -26,7 +26,7 @@ export interface OrderLookupRecord {
   ship_to_postal_code: string | null;
   ship_to_address_1: string | null;
   ship_by_date: string | null;
-  tester_id: number | null;
+  picker_id: number | null;
   packer_id: number | null;
   tracking_numbers: string[];
   serials: string[];

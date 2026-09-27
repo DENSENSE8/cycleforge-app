@@ -146,13 +146,14 @@ export const ROUTES = [
   // (`resolvePackSurfaceRedirect`), so the manifest names the surface, not the
   // alias — see the alias note above `ROUTES`.
   { path: '/pack', tier: 1, auth: true, formFactor: 'desktop' },
-  // Testing station (the old `/tech` redirects here). Pinned `formFactor:
-  // 'desktop'` for the same reason as `/unbox`: this is a standing scan bench on
-  // a warehouse monitor, and its default landing (Ready to Pack) is a workbench
-  // sheet that only exists on the desktop tree. `/test` has NO mobile UA rewrite,
-  // so a mobile audit measured the right TREE at the wrong form factor —
-  // throttled 3x-mobile CPU against a desk surface no phone ever loads.
+  // Quality Control bench (the old `/tech` redirects here) and the Picker desk.
+  // Pinned `formFactor: 'desktop'` for the same reason as `/unbox`: standing scan
+  // benches on a warehouse monitor whose workbench sheets only exist on the
+  // desktop tree. Neither has a mobile UA rewrite, so a mobile audit measured the
+  // right TREE at the wrong form factor — throttled 3x-mobile CPU against a desk
+  // surface no phone ever loads.
   { path: '/test', tier: 1, auth: true, formFactor: 'desktop' },
+  { path: '/pick', tier: 1, auth: true, formFactor: 'desktop' },
   { path: '/search', tier: 1, auth: true, formFactor: 'desktop' },
   { path: '/m/scan', tier: 1, auth: true, formFactor: 'mobile' },
   { path: '/m/home', tier: 1, auth: true, formFactor: 'mobile' },

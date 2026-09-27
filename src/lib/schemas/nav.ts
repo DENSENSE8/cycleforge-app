@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { NAV_RECENT_SURFACE_IDS, type NavRecentSurfaceId } from '@/lib/nav/recents/surfaces';
 import { NAV_FACET_CONTEXTS } from '@/lib/nav/facets/contexts';
+import { NAV_LOCATE_SCOPES } from '@/lib/nav/context/schema';
 
 /** Request schemas for `/api/nav/recents` and `/api/nav/facets` (the contextual sidebar). */
 
@@ -38,3 +39,18 @@ export const NavFacetsQuery = z.object({
   context: z.enum(NAV_FACET_CONTEXTS),
 });
 export type NavFacetsQuery = z.infer<typeof NavFacetsQuery>;
+
+/**
+ * `GET /api/nav/locate?locator=&(q=|refs=)` — exactly one of the field's text
+ * (`q`) or a pasted list (`refs`, split and capped server-side).
+ */
+export const NavLocateQuery = z
+  .object({
+    locator: z.enum(NAV_LOCATE_SCOPES),
+    q: z.string().trim().min(1).max(200).optional(),
+    refs: z.string().trim().min(1).max(10_000).optional(),
+  })
+  .refine((query) => (query.q === undefined) !== (query.refs === undefined), {
+    message: 'Pass exactly one of q or refs',
+  });
+export type NavLocateQuery = z.infer<typeof NavLocateQuery>;

@@ -5,7 +5,7 @@ import { useQuery } from '@tanstack/react-query';
 import { Search } from '@/components/Icons';
 import { EmptyState } from '@/design-system/primitives';
 import { useSearchPrimaryPaintOptional } from '@/components/search/search-primary-paint-context';
-import { SearchDossierFrame } from '@/components/search/dossier/SearchDossierFrame';
+import { SearchEntityRecord } from '@/components/search/dossier/SearchEntityRecord';
 import {
   searchReceivingLinkedOrderQuery,
   searchReceivingQuery,
@@ -14,13 +14,14 @@ import {
   clearGlobalSearchPending,
   setGlobalSearchPending,
 } from '@/lib/global-search-pending';
-import { presentFindDossier } from '@/lib/search/find-dossier-model';
 import { presentCartonFindEvents } from '@/lib/search/find-events-from-sources';
 import { useReceivingPhotos } from '@/hooks/useReceivingPhotos';
 import {
   cartonDossierFindings,
   cartonDossierLines,
   presentFact,
+  type SearchDossierFact,
+  type SearchDossierLink,
 } from '@/lib/search/search-dossier-model';
 import { cartonHeaderIdentity } from '@/components/receiving/inspector/carton-inspector-model';
 
@@ -38,8 +39,7 @@ export function SearchReceivingDossier({
   const totals = payload?.totals ?? null;
 
   const linkedOrderQuery = useQuery(searchReceivingLinkedOrderQuery(receivingId, payload));
-  // Evidence lives IN the stream (§1.1) — the house carton-photo read, read-only
-  // (no poll, no realtime), never a Displays "Photos" leaf.
+  // The house carton-photo read, read-only (no poll, no realtime).
   const cartonPhotos = useReceivingPhotos(receivingId, { readOnly: true });
   const linkedOrder = linkedOrderQuery.data?.status === 'ok' ? linkedOrderQuery.data.order : null;
 
@@ -88,59 +88,76 @@ export function SearchReceivingDossier({
   const unmatched = findings.some((f) => f.key === 'unfound');
   const po = presentFact(header.poNumber) || presentFact(receiving.zoho_purchaseorder_number);
   const tracking = presentFact(header.tracking) || presentFact(receiving.tracking);
-  const title =
-    presentFact(header.productTitle) ||
-    po ||
-    tracking ||
-    `Carton ${receiving.id}`;
+  const title = presentFact(header.productTitle) || po || tracking || `Carton ${receiving.id}`;
   const status =
     presentFact(receiving.pairing_state) ||
     presentFact(receiving.qa_status) ||
     'open';
-  const linkedOrderId = presentFact(linkedOrder?.order_id);
-  const facts = [
-    { id: 'status', label: 'Status', value: status },
-    ...(po ? [{ id: 'po', label: 'PO', value: po }] : []),
-    ...(linkedOrderId ? [{ id: 'order', label: 'Order', value: linkedOrderId }] : []),
-    ...(tracking ? [{ id: 'tracking', label: 'Tracking', value: tracking }] : []),
+  const linkedOrderNumber = presentFact(linkedOrder?.order_id);
+  const carrier = presentFact(receiving.carrier);
+  const platform = presentFact(receiving.source_platform) || presentFact(receiving.source);
+  const staging = presentFact(receiving.staging_location_label);
+  const receivedBy = presentFact(receiving.received_by_name);
+
+  const facts: SearchDossierFact[] = [
+    ...(po ? [{ id: 'po', label: 'PO', value: po, copy: true }] : []),
+    ...(tracking ? [{ id: 'tracking', label: 'Tracking #', value: tracking, copy: true }] : []),
+    ...(carrier ? [{ id: 'carrier', label: 'Carrier', value: carrier }] : []),
+    ...(platform ? [{ id: 'platform', label: 'Source', value: platform }] : []),
+    ...(staging ? [{ id: 'staging', label: 'Staged at', value: staging }] : []),
+    ...(receivedBy ? [{ id: 'received-by', label: 'Received by', value: receivedBy }] : []),
+    ...(totals ? [{ id: 'qty', label: 'Received', value: `${totals.received} of ${totals.expected}` }] : []),
   ];
-  const handoffs = [
-    {
-      href: '/unbox',
-      label: 'Open Unbox',
-      primary: findings.length > 0,
-    },
+
+  // The other cartons on this PO come back through a PO query; the linked
+  // order (a return or local pickup) opens its own record.
+  const related: SearchDossierLink[] = [
+    ...(linkedOrder && linkedOrderNumber
+      ? [
+          {
+            id: `order:${linkedOrder.id}`,
+            label: 'Order',
+            value: linkedOrderNumber,
+            target: { sel: { entityType: 'order' as const, id: Number(linkedOrder.id) } },
+          },
+        ]
+      : []),
+    ...(po ? [{ id: `po:${po}`, label: 'PO', value: po, target: { query: po } }] : []),
   ];
-  const dossier = presentFindDossier({
-    entityType: 'receiving',
-    id: receiving.id,
-    title,
-    status,
-    facts,
-    findings,
-    handoffs,
-    events: presentCartonFindEvents({
-      events: payload?.events ?? [],
-      totals,
-      photos: cartonPhotos.photos,
-      createdAt: receiving.created_at,
-      tracking,
-      linkedOrderId,
-    }),
-  });
+
+  const photos = [...cartonPhotos.photos].sort(
+    (a, b) => (b.createdAt ? Date.parse(b.createdAt) : 0) - (a.createdAt ? Date.parse(a.createdAt) : 0),
+  );
 
   return (
-    <SearchDossierFrame
+    <SearchEntityRecord
       entity="Carton"
+      reference={String(receiving.id)}
       title={title}
+      status={status}
       onBack={onBack}
-      outline={dossier.outline}
       findings={findings}
-      facts={facts}
-      events={dossier.events}
       lines={cartonDossierLines(lines, unmatched)}
-      emptyLines="No chronology on this carton yet."
-      handoffs={handoffs}
+      linesLabel="line"
+      emptyLines="No lines on this carton yet."
+      events={presentCartonFindEvents({
+        events: payload?.events ?? [],
+        totals,
+        photos: cartonPhotos.photos,
+        createdAt: receiving.created_at,
+        tracking,
+        linkedOrderId: linkedOrderNumber,
+      })}
+      emptyEvents="No history on this carton yet."
+      facts={facts}
+      related={related}
+      handoffs={[{ href: '/unbox', label: 'Open Unbox', primary: findings.length > 0 }]}
+      photos={photos.map((photo) => ({
+        id: String(photo.id),
+        imgUrl: photo.photoUrl,
+        fullUrl: photo.photoUrl,
+        alt: `${(photo.photoType ?? 'carton').replace(/_/g, ' ')} photo`,
+      }))}
     />
   );
 }

@@ -43,14 +43,16 @@ test('legacy serial-added events fall back to metadata and describe SKU pulls', 
   assert.equal(item.subtitle, 'Added from SKU SKU:BOSE-700');
 });
 
-test('tracking scans continue to render tracking refs', () => {
+test('desk pick scans title as Picked and render tracking refs', () => {
   const [item] = stationActivityToTimeline([
     row({
-      activity_type: 'TRACKING_SCANNED',
+      station: 'PICK',
+      activity_type: 'PICK_SCANNED',
       scan_ref: '1Z9999999999999999',
     }),
   ]);
 
+  assert.equal(item.title, 'Picked');
   assert.deepEqual(item.ref, { value: '1Z9999999999999999', kind: 'tracking' });
   assert.equal(item.subtitle, undefined);
 });

@@ -11,12 +11,10 @@ import {
   DASHBOARD_SALES_PERMISSION,
   isDashboardRepairsMode,
 } from '@/lib/dashboard/dashboard-domains';
-import { useRealtimeInvalidation } from '@/hooks/useRealtimeInvalidation';
 
 function DashboardSalesViewInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  useRealtimeInvalidation({ repair: true, walkIn: true });
 
   // Domain-level gate:
   const { has, isLoaded } = useAuth();

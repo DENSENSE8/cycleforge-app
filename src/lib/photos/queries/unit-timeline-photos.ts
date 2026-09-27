@@ -1,4 +1,4 @@
-import { tenantQuery } from '@/lib/tenancy/db';
+import { tenantQueryOneTrip } from '@/lib/tenancy/db';
 import { photoContentUrl } from '@/lib/photos/display-url';
 import { UNIT_PACKING_PHOTO_TYPE, UNIT_TESTING_PHOTO_TYPE } from '@/lib/photos/types';
 import {
@@ -52,7 +52,7 @@ export async function listUnitTimelinePhotos(
   organizationId: string,
   serialUnitId: number,
 ): Promise<UnitTimelinePhoto[]> {
-  const res = await tenantQuery<DbRow>(
+  const res = await tenantQueryOneTrip<DbRow>(
     organizationId,
     `WITH origin AS (
        SELECT rl.id AS line_id, rl.receiving_id
@@ -188,7 +188,7 @@ export async function listOrderPackerTimelinePhotos(
   organizationId: string,
   orderId: number,
 ): Promise<UnitTimelinePhoto[]> {
-  const result = await tenantQuery<Pick<DbRow, 'id' | 'created_at' | 'taken_by_staff_id'>>(
+  const result = await tenantQueryOneTrip<Pick<DbRow, 'id' | 'created_at' | 'taken_by_staff_id'>>(
     organizationId,
     `SELECT DISTINCT p.id, p.created_at, p.taken_by_staff_id
        FROM orders o

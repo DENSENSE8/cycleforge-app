@@ -76,7 +76,7 @@ export async function POST(req: NextRequest) {
           return NextResponse.json({ error: 'CURRENT_PIN_REQUIRED' }, { status: 400 });
         }
         try {
-          await verifyStaffPin(targetStaffId!, currentPin, callerOrgId);
+          await verifyStaffPin(targetStaffId!, currentPin, callerOrgId, { recordLogin: false });
         } catch (err) {
           if (err instanceof PinError) {
             return NextResponse.json({ error: err.code }, { status: 401 });

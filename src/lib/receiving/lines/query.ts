@@ -1,4 +1,4 @@
-/** Query-string parser for GET /api/receiving-lines (and its testing twin at GET /api/testing/receiving-lines). */
+/** Query-string parser for GET /api/receiving-lines (and its testing twin at GET /api/qc/receiving-lines). */
 import { z } from 'zod';
 import {
   normalizeReceivingHistorySearchField,

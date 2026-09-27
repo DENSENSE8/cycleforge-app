@@ -44,10 +44,10 @@ const RESULTS_PATH = path.join(ROOT, 'docs/refactors/sidebar/probe-results.json'
 const SIDEBAR_PAGES = [
   ['home', '/'], ['sales', '/dashboard?mode=sales'], ['operations', '/operations'], ['reports', '/reports'],
   ['triage', '/triage'], ['receive', '/unbox'], ['pickup', '/pickup'], ['repair', '/repair'],
-  ['testing', '/test?view=testing'], ['ready-to-pack', '/test?ship=urgent'], ['incoming', '/incoming'],
+  ['testing', '/test'], ['ready-to-pack', '/pick?ship=urgent'], ['incoming', '/incoming'],
   ['receiving', '/unbox'], ['sourcing', '/sourcing'], ['fba', '/shipping/fba'],
   ['label-intake', '/shipping/label-intake'], ['outbound', '/shipping/orders'], ['scan-out', '/shipping/scan-out'],
-  ['packer', '/pack'], ['products', '/products'], ['inventory', '/inventory'], ['tech', '/test'],
+  ['packer', '/pack'], ['products', '/products'], ['inventory', '/inventory'],
   ['support', '/support'], ['studio', '/studio'],
 ];
 

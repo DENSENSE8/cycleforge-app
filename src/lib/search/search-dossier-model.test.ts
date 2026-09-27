@@ -81,6 +81,6 @@ describe('carton dossier findings', () => {
     ];
     const painted = cartonDossierLines(lines, true);
     assert.equal(painted[0]?.finding, 'No matched PO');
-    assert.match(painted[0]?.meta ?? '', /SKU-1/);
+    assert.deepEqual(painted[0]?.facts[0], { label: 'SKU', value: 'SKU-1' });
   });
 });

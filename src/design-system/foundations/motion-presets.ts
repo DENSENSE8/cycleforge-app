@@ -22,16 +22,11 @@ export const motionDuration = {
   /** Up Next list row mount */
   upNextRowMount: 0.18,
   upNextChevron: 0.2,
-  stationCollapseHeight: 0.32,
-  stationCollapseOpacity: 0.26,
-  upNextCollapseHeight: 0.22,
-  upNextCollapseOpacity: 0.14,
   stationSerialRow: 0.22,
   stationAddedBadge: 0.18,
   /**
-   * Capture-stack row EXIT — the vacated height collapses as the row fades, so
-   * the rows above settle into the gap instead of jumping. Deliberately shorter
-   * than the spring mount: a departing ledger line should not hold the eye.
+   * Capture-stack row EXIT fade. Deliberately shorter than the spring mount:
+   * a departing ledger line should not hold the eye.
    */
   captureStackRowExit: 0.18,
   /** Capture-stack fresh-arrival ring pulse (one shot, expanded row only) */
@@ -70,12 +65,10 @@ export const motionDuration = {
   workbenchPaneSettle: 0.3,
   /** Station carton→carton swap — scan cadence, enter only (exit is instant) */
   stationCartonSwap: 0.12,
-  /** Sidebar section expand/collapse */
-  sidebarExpand: 0.26,
   /** Contextual sidebar top ↔ section cross-fade (Vercel: ~100–150 ms, no slide) */
   sidebarScopeSwap: 0.13,
-  /** Find / ⌘K hint roll — perceived settle of each word's spring (hover-only, so brisk) */
-  findHintRoll: 0.3,
+  /** Find / ⌘K hint roll — perceived settle of the whole line's spring (hover-only, read at a glance) */
+  findHintRoll: 0.22,
   /** Dropdown menu open/close */
   dropdownOpen: 0.18,
   /** Overlay search bar toggle */
@@ -213,26 +206,9 @@ export const motionTransition = {
     ease: motionBezier.easeOut,
   } satisfies Transition,
 
-  /**
-   * Height + opacity synced for expand/collapse (active order panel).
-   * Height uses `springSnappy` (utilitarian settle); opacity uses `fadeInstant`.
-   */
-  stationCollapse: {
-    height: springSnappy,
-    opacity: fadeInstant,
-  } satisfies Transition,
-
   /** Welded peel-up hinge — pair with `motionPresence.weldedPanelPeel`. */
   weldedPanelPeel: {
-    height: springSnappy,
     rotateX: springSnappy,
-    opacity: fadeInstant,
-  } satisfies Transition,
-
-  /** Up Next expanded block — same utilitarian height + instant opacity */
-  upNextCollapse: {
-    height: springSnappy,
-    opacity: fadeInstant,
   } satisfies Transition,
 
   stationSerialRow: {
@@ -293,12 +269,6 @@ export const motionTransition = {
   sidebarRailRowMount: {
     duration: motionDuration.sidebarRailRowMount,
     ease: motionBezier.easeOut,
-  } satisfies Transition,
-
-  /** Sidebar expandable section height + opacity — utilitarian spring + fade */
-  sidebarExpand: {
-    height: springSnappy,
-    opacity: fadeInstant,
   } satisfies Transition,
 
   /** Dropdown menu open/close */
@@ -427,7 +397,7 @@ export const motionTransition = {
 
   /**
    * Find / ⌘K hint roll — pair with `motionPresence.findHintRoll`. A critically
-   * damped spring (bounce 0): words settle without overshoot and a roll
+   * damped spring (bounce 0): the line settles without overshoot and a roll
    * interrupted mid-flight (pointer leaves) retargets from its live velocity.
    */
   findHintRoll: {
@@ -525,29 +495,27 @@ export const motionPresence = {
     animate: { opacity: 1, y: 0 },
     exit: { opacity: 0, y: -4 },
   },
-  collapseHeight: {
-    initial: { height: 0, opacity: 0 },
-    animate: { height: 'auto', opacity: 1 },
-    exit: { height: 0, opacity: 0 },
-  },
-  /** Peel-up hinge — a panel WELDED to the top edge of the surface below it (the Unbox receive feedback panel over the notes composer). */
+  /**
+   * Peel-up hinge — a panel WELDED to the top edge of the surface below it (the
+   * Unbox receive feedback panel over the notes composer). Rotation only: the
+   * panel's height rides `<CollapseItem>` around it.
+   */
   weldedPanelPeel: {
-    initial: { height: 0, opacity: 0, rotateX: -15, transformPerspective: 900 },
-    animate: { height: 'auto', opacity: 1, rotateX: 0, transformPerspective: 900 },
-    exit: { height: 0, opacity: 0, rotateX: -15, transformPerspective: 900 },
+    initial: { rotateX: -15, transformPerspective: 900 },
+    animate: { rotateX: 0, transformPerspective: 900 },
+    exit: { rotateX: -15, transformPerspective: 900 },
   },
   stationSerialRow: {
     initial: { opacity: 0, y: 6 },
     animate: { opacity: 1, y: 0 },
     exit: { opacity: 0, y: -4 },
   },
-  /** Capture-stack rows — two shapes, one per row variant. */
+  /** Capture-stack rows — two shapes, one per row variant. The vacated height collapses through the `<CollapseItem>` around each row. */
   captureStackRowExpanded: {
     initial: { opacity: 0, y: 24, scale: 0.98 },
     animate: { opacity: 1, y: 0, scale: 1 },
     exit: {
       opacity: 0,
-      height: 0,
       transition: { duration: motionDuration.captureStackRowExit },
     },
   },
@@ -556,7 +524,6 @@ export const motionPresence = {
     animate: { opacity: 1, y: 0, scale: 1 },
     exit: {
       opacity: 0,
-      height: 0,
       transition: { duration: motionDuration.captureStackRowExit },
     },
   },
@@ -603,12 +570,6 @@ export const motionPresence = {
     initial: { opacity: 0, scale: 0.92 },
     animate: { opacity: 1, scale: 1 },
     exit: { opacity: 0, scale: 0.92 },
-  },
-  /** Sidebar section — height expand/collapse */
-  sidebarSection: {
-    initial: { height: 0, opacity: 0 },
-    animate: { height: 'auto' as const, opacity: 1 },
-    exit: { height: 0, opacity: 0 },
   },
   /**
    * Contextual sidebar body swap (top lane map ↔ a page's section panel):
@@ -731,14 +692,16 @@ export const motionPresence = {
     exit: { opacity: 0 },
   },
   /**
-   * Find / ⌘K hint roll, PER WORD (top → bottom): words drop in from above,
-   * the outgoing words drop out below. Travel stays inside the line (the
-   * field's masked edge does the fading); no blur — cheap to composite.
+   * Find / ⌘K hint roll, PER LINE (top → bottom): the whole phrase drops in
+   * from above as one unit and the outgoing phrase drops out below, so it
+   * reads in one fixation (operator 2026-09-27: never word by word). Travel
+   * stays inside the line (the field's masked edge does the fading); no
+   * blur — cheap to composite.
    */
   findHintRoll: {
-    initial: { opacity: 0, y: '-85%' },
+    initial: { opacity: 0, y: '-70%' },
     animate: { opacity: 1, y: '0%' },
-    exit: { opacity: 0, y: '85%' },
+    exit: { opacity: 0, y: '70%' },
   },
 } as const;
 
@@ -795,8 +758,8 @@ const tabPagerVariants: Variants = {
 };
 
 // NOTE: `signInStepVariants` / `signInStepVariantsReduced` were removed when
-// /signin stopped swapping panels. Both credential fields now stay mounted and
-// the password row reveals via `motionPresence.collapseHeight` — see
+// /signin stopped swapping panels. The credential face now paints email and
+// password together (`SignInAuthStepPanels`) — no step swap, no reveal.
 
 // ─── Mobile-specific durations ───────────────────────────────────────────────
 
@@ -975,11 +938,6 @@ export const motionVariants: Record<string, Variants> = {
     animate: motionPresence.upNextRow.animate,
     exit: motionPresence.upNextRow.exit,
   },
-  collapseHeight: {
-    initial: motionPresence.collapseHeight.initial,
-    animate: motionPresence.collapseHeight.animate,
-    exit: motionPresence.collapseHeight.exit,
-  },
   stationSerialRow: {
     initial: motionPresence.stationSerialRow.initial,
     animate: motionPresence.stationSerialRow.animate,
@@ -1004,11 +962,6 @@ export const motionVariants: Record<string, Variants> = {
     initial: motionPresence.navPeekCorner.initial,
     animate: motionPresence.navPeekCorner.animate,
     exit: motionPresence.navPeekCorner.exit,
-  },
-  sidebarSection: {
-    initial: motionPresence.sidebarSection.initial,
-    animate: motionPresence.sidebarSection.animate,
-    exit: motionPresence.sidebarSection.exit,
   },
   staggeredList: {
     animate: {

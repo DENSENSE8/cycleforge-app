@@ -1,5 +1,5 @@
 /** Grid / station-log → TSV copy formatters. */
-import type { TechRecord } from '@/hooks/useTechLogs';
+import type { TechRecord } from '@/hooks/useDeskPickLogs';
 import type { PackerRecord } from '@/hooks/usePackerLogs';
 import type { BinsOverviewRow } from '@/hooks/useBinsOverview';
 import type { CatalogListRow } from '@/components/products/catalog/types';

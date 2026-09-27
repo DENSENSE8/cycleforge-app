@@ -14,11 +14,13 @@ import { fetchStagedOrdersData } from '@/lib/outbound/outbound-table-data';
 import { fetchWarrantyClaims, fetchWarrantyCoverage, type FetchWarrantyClaimsParams } from '@/lib/warranty/client';
 import { isPastWeekStart } from '@/lib/dashboard-week-range';
 import type { DeskPairFilter, DeskQueueFilter } from '@/lib/orders/desk-view-filters';
+import type { ShippedTimeParams } from '@/lib/shipping/shipped-filter/shipped-filter-params';
 
 interface OrderQueryParams {
   searchQuery?: string;
   packedBy?: number;
-  testedBy?: number;
+  /** `?pickerId` — the order's ORDER/PICK assignee. */
+  pickerId?: number;
   /** Universal staff filter (P1-WORK-02): one staff's assigned work, or all. */
   staffId?: number;
   strictSearchScope?: boolean;
@@ -34,6 +36,14 @@ interface OrderQueryParams {
   /** Row ceiling for the fulfillment page (Phase 2). Grows on "Load more"; the
    *  server truncates + the counts endpoint's total drives whether more exist. */
   limit?: number;
+  /** `?pickedBy` — the staffer who picked the order. */
+  pickedBy?: number;
+  /** `?orderFrom` / `?orderTo` — order date, warehouse civil day (YYYY-MM-DD), inclusive. */
+  orderFrom?: string;
+  orderTo?: string;
+  /** `?shipByFrom` / `?shipByTo` — ship-by day, inclusive; either bound drops orders without one. */
+  shipByFrom?: string;
+  shipByTo?: string;
 }
 
 /** Per-week (and all-time) fetch ceiling. */
@@ -44,6 +54,10 @@ interface ShippedViewFilterParams {
   carrier?: string | null;
   statusCategory?: string | null;
   exceptionsOnly?: boolean;
+  /** Exact shipped-instant window (`?timeFrom`/`?timeTo` over `dateFrom`/`dateTo`); null/absent = none. */
+  shippedTime?: ShippedTimeParams | null;
+  /** `?pickedBy` — the order's picker. */
+  pickedBy?: number;
 }
 
 interface ShippedQueryParams extends ShippedViewFilterParams {
@@ -68,12 +82,12 @@ interface ShippedQueryParams extends ShippedViewFilterParams {
 export function pendingOrdersQuery({
   searchQuery = '',
   packedBy,
-  testedBy,
+  pickerId,
   strictSearchScope = false,
 }: OrderQueryParams = {}) {
   return queryOptions({
-    queryKey: ['dashboard-table', 'pending', { searchQuery, packedBy, testedBy, strictSearchScope }],
-    queryFn: () => fetchPendingOrdersData({ searchQuery, packedBy, testedBy, strictSearchScope }),
+    queryKey: ['dashboard-table', 'pending', { searchQuery, packedBy, pickerId, strictSearchScope }],
+    queryFn: () => fetchPendingOrdersData({ searchQuery, packedBy, pickerId, strictSearchScope }),
     staleTime: 60_000,
     gcTime: 10 * 60 * 1000,
   });
@@ -83,7 +97,7 @@ export function pendingOrdersQuery({
 export function unshippedOrdersQuery({
   searchQuery = '',
   packedBy,
-  testedBy,
+  pickerId,
   staffId,
   strictSearchScope = false,
   stage,
@@ -91,6 +105,11 @@ export function unshippedOrdersQuery({
   pair,
   queue,
   limit,
+  pickedBy,
+  orderFrom,
+  orderTo,
+  shipByFrom,
+  shipByTo,
 }: OrderQueryParams = {}) {
   return queryOptions({
     queryKey: [
@@ -99,7 +118,7 @@ export function unshippedOrdersQuery({
       {
         searchQuery,
         packedBy,
-        testedBy,
+        pickerId,
         staffId,
         strictSearchScope,
         stage: stage ?? null,
@@ -109,13 +128,19 @@ export function unshippedOrdersQuery({
         pair,
         queue,
         limit: limit ?? null,
+        // Same `undefined`-when-off rule for the sidebar refinements.
+        pickedBy,
+        orderFrom,
+        orderTo,
+        shipByFrom,
+        shipByTo,
       },
     ],
     queryFn: () =>
       fetchUnshippedOrdersData({
         searchQuery,
         packedBy,
-        testedBy,
+        pickerId,
         staffId,
         strictSearchScope,
         stage,
@@ -123,6 +148,11 @@ export function unshippedOrdersQuery({
         pair,
         queue,
         limit,
+        pickedBy,
+        orderFrom,
+        orderTo,
+        shipByFrom,
+        shipByTo,
       }),
     staleTime: 60_000,
     gcTime: 15 * 60 * 1000,
@@ -196,6 +226,8 @@ export function dashboardShippedQuery({
   carrier = null,
   statusCategory = null,
   exceptionsOnly = false,
+  shippedTime = null,
+  pickedBy,
   searchTerm = '',
   limit = SHIPPED_WEEK_PAGE_SIZE,
   phase = 'full',
@@ -204,11 +236,12 @@ export function dashboardShippedQuery({
     queryKey: [
       'dashboard-table',
       'shipped',
-      { weekStart, weekEnd, packedBy, testedBy, staffId, shippedFilter, carrier, statusCategory, exceptionsOnly, searchTerm, limit, phase },
+      // New lenses ride as `undefined` when off (dropped from the hashed key).
+      { weekStart, weekEnd, packedBy, testedBy, staffId, shippedFilter, carrier, statusCategory, exceptionsOnly, searchTerm, limit, phase, shippedTime: shippedTime ?? undefined, pickedBy },
     ],
     queryFn: () =>
       fetchDashboardPackedRecords({
-        packedBy, testedBy, staffId, weekStart, weekEnd, shippedFilter, carrier, statusCategory, exceptionsOnly, searchTerm, limit, phase,
+        packedBy, testedBy, staffId, weekStart, weekEnd, shippedFilter, carrier, statusCategory, exceptionsOnly, searchTerm, limit, phase, shippedTime, pickedBy,
       }),
     staleTime: 5 * 60 * 1000,
     gcTime: 15 * 60 * 1000,
@@ -244,6 +277,8 @@ export function dashboardShippedWeekQuery({
   carrier = null,
   statusCategory = null,
   exceptionsOnly = false,
+  shippedTime = null,
+  pickedBy,
   searchTerm = '',
   limit = SHIPPED_WEEK_PAGE_SIZE,
   phase = 'full',
@@ -257,11 +292,11 @@ export function dashboardShippedWeekQuery({
       'shipped',
       'week',
       weekStart,
-      { packedBy, testedBy, staffId, shippedFilter, carrier, statusCategory, exceptionsOnly, searchTerm, limit, phase },
+      { packedBy, testedBy, staffId, shippedFilter, carrier, statusCategory, exceptionsOnly, searchTerm, limit, phase, shippedTime: shippedTime ?? undefined, pickedBy },
     ],
     queryFn: () =>
       fetchDashboardPackedRecords({
-        weekStart, weekEnd, packedBy, testedBy, staffId, shippedFilter, carrier, statusCategory, exceptionsOnly, searchTerm, limit, phase,
+        weekStart, weekEnd, packedBy, testedBy, staffId, shippedFilter, carrier, statusCategory, exceptionsOnly, searchTerm, limit, phase, shippedTime, pickedBy,
       }),
     staleTime: immutable ? Infinity : 5 * 60 * 1000,
     gcTime: immutable ? 24 * 60 * 60 * 1000 : 15 * 60 * 1000,

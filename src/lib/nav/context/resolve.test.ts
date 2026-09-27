@@ -17,7 +17,7 @@ import { NAV_PARITY, pageStops, parityGaps, uncoveredRows } from './parity';
 import { declaredRouteParams, type ResolveNavContextInput } from './build';
 import { resolveNavContext } from './resolve';
 import { NAV_CONTEXT_PINNED_LEGACY, NAV_CONTEXT_ROLLOUT } from './rollout';
-import { NavContextSchema, NavItemSchema, type NavContext, type NavItem } from './schema';
+import { NavContextSchema, NavItemSchema, navControlParams, type NavContext, type NavItem } from './schema';
 
 const ALL = new Set<string>(ALL_PERMISSIONS);
 
@@ -255,10 +255,12 @@ test('every advertised param survives the hygiene of the view that reads it', ()
       if (stop.context.search.param) {
         assert.ok(own.includes(stop.context.search.param), `${stop.href}: search ${stop.context.search.param}`);
       }
-      const { staff, dateRange } = stop.context.controls ?? {};
-      const controlParams = [staff?.param, dateRange?.fromParam, dateRange?.toParam, ...(dateRange?.clearParams ?? [])];
-      for (const key of controlParams) {
-        if (key) assert.ok(own.includes(key), `${stop.href}: control ${key} is stripped`);
+      const locate = stop.context.search.locate;
+      for (const key of locate ? [locate.param, locate.statusParam] : []) {
+        assert.ok(own.includes(key), `${stop.href}: locate ${key} is stripped`);
+      }
+      for (const key of navControlParams(stop.context.controls)) {
+        assert.ok(own.includes(key), `${stop.href}: control ${key} is stripped`);
       }
     }
   }
@@ -277,8 +279,20 @@ test('the Shipping filters removed on 2026-09-26 are advertised and survive with
     ['/shipping/orders', 'rowFlag', 'awaiting_customer'],
     ['/shipping/orders', 'cage', '1'],
     ['/shipping/orders', 'staff', '4'],
+    ['/shipping/orders', 'pickedBy', '7'],
+    ['/shipping/orders', 'packedBy', '7'],
+    ['/shipping/orders', 'pickerId', '7'],
+    ['/shipping/orders', 'shipByFrom', '2026-09-28'],
+    ['/shipping/orders', 'shipByTo', '2026-09-30'],
+    ['/shipping/orders', 'orderFrom', '2026-09-01'],
+    ['/shipping/orders', 'orderTo', '2026-09-27'],
+    ['/shipping/shortage', 'pickedBy', '7'],
+    ['/shipping/shortage', 'shipByTo', '2026-09-30'],
     ['/shipping/orders', 'sort', 'ship_by'],
     ['/shipping/orders', 'dir', 'asc'],
+    ['/shipping/shipped', 'pickedBy', '7'],
+    ['/shipping/shipped', 'timeFrom', '09:00'],
+    ['/shipping/shipped', 'timeTo', '23:59'],
     ['/shipping/shipped', 'shippedFilter', 'orders'],
     ['/shipping/shipped', 'carrier', 'UPS'],
     ['/shipping/shipped', 'statusCategory', 'delivered'],
@@ -296,6 +310,25 @@ test('the Shipping filters removed on 2026-09-26 are advertised and survive with
   }
 });
 
+test('a pasted list and its bucket filter survive every Shipping view, past the free-text cap', () => {
+  // 40 order numbers ≈ 600 chars — longer than a text param may be.
+  const refs = Array.from({ length: 40 }, (_, i) => `02-${15200 + i}-${40000 + i}`).join(',');
+  for (const href of ['/shipping/orders', '/shipping/orders?queue=pick', '/shipping/shortage?pair=po', '/shipping/exceptions', '/shipping/shipped']) {
+    const locate = at(href).search.locate;
+    assert.ok(locate, `${href} locates a pasted list`);
+    assert.equal(locate.locator, 'outbound');
+    const spec = routeParamsFor(new URL(href, 'http://t').pathname);
+    assert.ok(spec, href);
+    const kept = parseRouteParams(spec, new URLSearchParams({ [locate.param]: refs, [locate.statusParam]: 'shipped' }));
+    assert.equal(kept.get(locate.param), refs, `${href} strips the pasted list`);
+    assert.equal(kept.get(locate.statusParam), 'shipped', `${href} strips the bucket filter`);
+  }
+  const noOrders = new Set([...ALL].filter((permission) => permission !== 'orders.view'));
+  const denied = at('/shipping/shipped', { permissions: noOrders });
+  assert.equal(denied.search.scope, 'outbound.shipped');
+  assert.equal(denied.search.locate, undefined, 'no locate without the desk lists');
+});
+
 test('each Shipping view carries the filters and controls its own list reads', () => {
   const shipped = at('/shipping/shipped');
   assert.equal(shipped.filters?.facetContext, 'outbound.shipped');
@@ -303,12 +336,19 @@ test('each Shipping view carries the filters and controls its own list reads', (
     shipped.filters?.groups.map((group) => group.param),
     ['shippedFilter', 'carrier', 'statusCategory', 'exceptions'],
   );
-  assert.deepEqual(shipped.controls, {
-    staff: { param: 'staff' },
-    dateRange: { fromParam: 'dateFrom', toParam: 'dateTo', clearParams: ['shippedWeekOffset', 'allDates'], placeholder: 'This week' },
-  });
+  // Who touched it, and when — each a button in the body, each a param the list reads.
+  const shippedControls = navControlParams(shipped.controls);
+  for (const key of ['staff', 'pickedBy', 'packedBy', 'testedBy', 'dateFrom', 'dateTo', 'timeFrom', 'timeTo']) {
+    assert.ok(shippedControls.includes(key), `shipped control ${key}`);
+  }
   for (const href of ['/shipping/orders', '/shipping/orders?queue=pick', '/shipping/shortage?pair=po']) {
-    assert.deepEqual(at(href).controls, { staff: { param: 'staff' } }, href);
+    const controls = at(href).controls;
+    const keys = navControlParams(controls);
+    for (const key of ['staff', 'pickedBy', 'shipByFrom', 'shipByTo', 'orderFrom', 'orderTo', 'sort', 'dir']) {
+      assert.ok(keys.includes(key), `${href} control ${key}`);
+    }
+    // "What to ship first": the queue's default order is ship-by, soonest first.
+    assert.equal(controls?.sort?.defaultValue, 'deadline', href);
   }
   // The Exceptions workbench reads no staff or date param.
   assert.equal(at('/shipping/exceptions').controls, undefined);

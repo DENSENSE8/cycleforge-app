@@ -74,6 +74,8 @@ const PUBLIC_PATHS: ReadonlyArray<RegExp> = [
   /^\/414\/[0-9]+\/254\/[A-Za-z0-9]+(?:$|\/)/,
   // Platform carton Digital Link — anon → branded interstitial; staff → ops.
   /^\/m\/r\/\d+(?:$|\/)/,
+  // Square checkout "thank you" landing after a customer pays an order payment link (no data, no session).
+  /^\/pay\/thanks(?:$|\/)/,
   /^\/_next\//,
   /^\/favicon\.ico$/,
   /^\/manifest\.(json|webmanifest)$/,

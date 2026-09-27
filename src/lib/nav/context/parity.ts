@@ -252,8 +252,6 @@ const ROWS: Readonly<Record<string, readonly Row[]>> = {
     ['view', 'replenish', 'src/lib/sidebar-navigation.ts:1174'],
     ['view', 'locations', 'src/lib/sidebar-navigation.ts:1176'],
   ],
-  // Compatibility entry — `/test` resolves to `testing` / `ready-to-pack`.
-  tech: [],
   support: [
     ['view', 'tickets', 'src/lib/sidebar-navigation.ts:1240-1248'],
     ['view', 'voicemail', 'src/lib/sidebar-navigation.ts:1249-1257'],

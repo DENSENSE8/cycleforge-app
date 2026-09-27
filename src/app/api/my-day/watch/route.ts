@@ -10,18 +10,11 @@ import { isHomeInbox } from '@/lib/feature-flags';
 import { listSupportFollowupsForStaff } from '@/lib/inbox/support-followups-queries';
 import { getHelpdeskProvider } from '@/lib/integrations/helpdesk';
 import { invalidateZendeskTicketCache } from '@/lib/integrations/helpdesk/zendesk-ticket-cache';
-import { NOTIFIABLE_EVENTS } from '@/lib/notifications/event-vocabulary';
-import {
-  listReceivingWatchesForStaff,
-  stopTrackingPreArrivalWatch,
-  toggleEntitySubscription,
-  watchTrackingPreArrival,
-} from '@/lib/notifications/subscriptions';
-import { resolveShipmentForScan } from '@/lib/receiving/resolve-shipment-for-scan';
+import { listReceivingWatchesForStaff } from '@/lib/notifications/subscriptions';
+import { setTrackingWatch } from '@/lib/notifications/tracking-watch';
 import { parseTicketScanValue } from '@/lib/support/ticket-scan';
 import { syncZendeskTicketRegistryCaches } from '@/lib/support/tickets';
 import { upsertTicketAssignment } from '@/lib/zendesk-assignments';
-import { extractCanonicalTracking } from '@/lib/tracking-format';
 
 export const dynamic = 'force-dynamic';
 
@@ -36,14 +29,6 @@ const Body = z.object({
    */
   desired: z.enum(['subscribed', 'muted']).optional(),
 });
-
-/**
- * The arrival a pre-arrival watch waits on — named from the vocabulary rather
- * than typed as a literal, so a rename of the event key cannot leave watches
- * silently listening for an event nobody emits.
- */
-const RECEIVING_CARTON_ARRIVED_EVENT_KEY =
-  NOTIFIABLE_EVENTS['receiving.carton.arrived'].key;
 
 export const GET = withAuth(async (_req: NextRequest, ctx) => {
   const context = 'GET /api/my-day/watch';
@@ -157,114 +142,48 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
       return NextResponse.json({ error: 'Not found' }, { status: 404 });
     }
 
-    const canonical = extractCanonicalTracking(value) || value.trim();
-    if (canonical.length < 6) {
-      throw ApiError.badRequest('Enter a full tracking number');
-    }
-
-    const resolved = await resolveShipmentForScan(canonical, ctx.organizationId);
-
-    if (desired === 'muted') {
-      /* STOP — both arms, one call. */
-      const { stopped } = await stopTrackingPreArrivalWatch({
-        orgId: ctx.organizationId,
-        staffId: ctx.staffId,
-        trackingNormalized: canonical,
-      });
-      let entityStopped = false;
-      if (resolved.receivingId) {
-        const muted = await toggleEntitySubscription({
-          orgId: ctx.organizationId,
-          staffId: ctx.staffId,
-          entityType: 'receiving',
-          entityId: resolved.receivingId,
-          desired: 'muted',
-          permissions: [...ctx.permissions],
-          clientEventId: clientEventId ?? null,
-        });
-        entityStopped = muted.outcome === 'muted';
-      }
-
-      await recordAudit(pool, ctx, req, {
-        source: 'my-day-watch',
-        action: AUDIT_ACTION.SUBSCRIPTION_TOGGLE,
-        entityType: AUDIT_ENTITY.STAFF,
-        entityId: String(ctx.staffId),
-        extra: { kind: 'tracking', tracking: canonical, desired: 'muted' },
-      });
-      ctx.markAuditWritten();
-
-      return NextResponse.json({
-        ok: true,
-        kind: 'tracking',
-        tracking: canonical,
-        stopped: stopped > 0 || entityStopped,
-      });
-    }
-    if (!resolved.receivingId) {
-      /* PRE-ARRIVAL (2026-09-22). */
-      const { created } = await watchTrackingPreArrival({
-        orgId: ctx.organizationId,
-        staffId: ctx.staffId,
-        trackingNormalized: canonical,
-        eventKey: RECEIVING_CARTON_ARRIVED_EVENT_KEY,
-      });
-
-      await recordAudit(pool, ctx, req, {
-        source: 'my-day-watch',
-        action: AUDIT_ACTION.SUBSCRIPTION_TOGGLE,
-        entityType: AUDIT_ENTITY.STAFF,
-        entityId: String(ctx.staffId),
-        extra: { kind: 'tracking', tracking: canonical, preArrival: true },
-      });
-      ctx.markAuditWritten();
-
-      return NextResponse.json({
-        ok: true,
-        kind: 'tracking',
-        tracking: canonical,
-        preArrival: true,
-        alreadyWatching: !created,
-      });
-    }
-
-    const result = await toggleEntitySubscription({
+    const watch = await setTrackingWatch({
       orgId: ctx.organizationId,
       staffId: ctx.staffId,
-      entityType: 'receiving',
-      entityId: resolved.receivingId,
-      desired: 'subscribed',
       permissions: [...ctx.permissions],
+      value,
+      desired,
       clientEventId: clientEventId ?? null,
     });
-    if (result.outcome === 'forbidden') {
-      throw new ApiError(403, 'You cannot watch this carton');
-    }
-    if (result.outcome === 'invalid_entity') {
-      throw ApiError.badRequest('Unknown entity type');
-    }
 
     await recordAudit(pool, ctx, req, {
       source: 'my-day-watch',
       action: AUDIT_ACTION.SUBSCRIPTION_TOGGLE,
       entityType: AUDIT_ENTITY.STAFF,
       entityId: String(ctx.staffId),
-      extra: {
-        kind: 'tracking',
-        tracking: canonical,
-        receivingId: resolved.receivingId,
-        shipmentId: resolved.shipmentId,
-      },
+      extra:
+        watch.kind === 'stopped'
+          ? { kind: 'tracking', tracking: watch.tracking, desired: 'muted' }
+          : watch.kind === 'pre_arrival'
+            ? { kind: 'tracking', tracking: watch.tracking, preArrival: true }
+            : { kind: 'tracking', tracking: watch.tracking, receivingId: watch.receivingId, shipmentId: watch.shipmentId },
     });
     ctx.markAuditWritten();
 
+    if (watch.kind === 'stopped') {
+      return NextResponse.json({ ok: true, kind: 'tracking', tracking: watch.tracking, stopped: watch.stopped });
+    }
+    if (watch.kind === 'pre_arrival') {
+      return NextResponse.json({
+        ok: true,
+        kind: 'tracking',
+        tracking: watch.tracking,
+        preArrival: true,
+        alreadyWatching: !watch.created,
+      });
+    }
     return NextResponse.json({
       ok: true,
       kind: 'tracking',
-      tracking: canonical,
-      receivingId: resolved.receivingId,
-      shipmentId: resolved.shipmentId,
-      subscription: result.subscription,
+      tracking: watch.tracking,
+      receivingId: watch.receivingId,
+      shipmentId: watch.shipmentId,
+      subscription: watch.subscription,
     });
   } catch (err) {
     return errorResponse(err, context);

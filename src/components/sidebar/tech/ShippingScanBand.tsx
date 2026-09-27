@@ -4,8 +4,8 @@ import { useState, useCallback, useEffect, type ReactNode } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import {
   type StationInputMode,
-  useStationTestingController,
-} from '@/hooks/useStationTestingController';
+  useDeskPickController,
+} from '@/hooks/useDeskPickController';
 import { looksLikeFnsku } from '@/lib/scan-resolver';
 import { useStationTheme } from '@/hooks/useStationTheme';
 import {
@@ -74,7 +74,7 @@ export function ShippingScanBand({
     setActiveOrder,
     handleSubmit,
     clearFeedback,
-  } = useStationTestingController({
+  } = useDeskPickController({
     userId,
     userName,
     onComplete,

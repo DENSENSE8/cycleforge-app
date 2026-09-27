@@ -148,7 +148,7 @@ export function SkuExceptionsLedger() {
               value={query}
               onChange={setQuery}
               placeholder="Search title, SKU, barcode, description or location…"
-              className="min-w-0 max-w-[28rem] flex-1 overflow-hidden rounded-none pl-2"
+              className="min-w-0 max-w-[28rem] flex-1 overflow-hidden rounded-mode-control pl-2"
               tone="neutral"
               hideUnderline
               fillHost

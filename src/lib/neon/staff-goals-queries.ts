@@ -1,6 +1,8 @@
 import pool from '../db';
 import { tenantQuery, withTenantTransaction } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';
+import { VELOCITY_ACTIVITY_TYPES, sqlInList } from '@/lib/station-activity';
+import { sqlSalGoalStation } from '@/lib/neon/staff-stations-queries';
 
 interface StaffGoal {
   id: number;
@@ -35,14 +37,6 @@ type Queryable = {
   query: (text: string, params?: any[]) => Promise<{ rows: any[] }>;
 };
 
-const STAFF_GOAL_ACTIVITY_TYPES = [
-  'TRACKING_SCANNED',
-  'FNSKU_SCANNED',
-  'PACK_SCAN',
-  'PACK_COMPLETED',
-  'FBA_READY',
-] as const;
-
 function getPacificDateStamp(date: Date = new Date()): string {
   const parts = new Intl.DateTimeFormat('en-US', {
     timeZone: 'America/Los_Angeles',
@@ -71,7 +65,7 @@ function buildStaffGoalHistorySnapshotQuery(loggedDate: string, filters?: { staf
     "(timezone('America/Los_Angeles', sal.created_at))::date = $1::date",
   ];
 
-  params.push([...STAFF_GOAL_ACTIVITY_TYPES]);
+  params.push([...VELOCITY_ACTIVITY_TYPES]);
 
   let nextParam = 3;
 
@@ -84,7 +78,7 @@ function buildStaffGoalHistorySnapshotQuery(loggedDate: string, filters?: { staf
 
   if (filters?.station) {
     goalConditions.push(`COALESCE(sg.station, ds.default_station) = $${nextParam}`);
-    actualConditions.push(`sal.station = $${nextParam}`);
+    actualConditions.push(`${sqlSalGoalStation('sal.station')} = $${nextParam}`);
     params.push(filters.station);
     nextParam += 1;
   }
@@ -123,11 +117,11 @@ function buildStaffGoalHistorySnapshotQuery(loggedDate: string, filters?: { staf
       actual_counts AS (
         SELECT
           sal.staff_id,
-          sal.station,
+          ${sqlSalGoalStation('sal.station')} AS station,
           COUNT(DISTINCT COALESCE(sal.shipment_id::text, sal.scan_ref, sal.id::text))::int AS actual
         FROM station_activity_logs sal
         WHERE ${actualConditions.join(' AND ')}
-        GROUP BY sal.staff_id, sal.station
+        GROUP BY sal.staff_id, 2
       )
       INSERT INTO staff_goal_history (staff_id, station, goal, actual, logged_date)
       SELECT
@@ -204,37 +198,37 @@ export async function getAllStaffGoalsWithStats(orgId?: OrgId): Promise<StaffGoa
       ORDER BY staff_id, updated_at DESC NULLS LAST
     ),
     today_counts AS (
-      SELECT staff_id, station,
+      SELECT staff_id, ${sqlSalGoalStation('station')} AS station,
         COUNT(DISTINCT COALESCE(shipment_id::text, scan_ref, id::text))::int AS today_count
       FROM station_activity_logs
       WHERE staff_id IS NOT NULL
-        AND activity_type IN ('TRACKING_SCANNED', 'FNSKU_SCANNED', 'PACK_SCAN', 'PACK_COMPLETED', 'FBA_READY')
+        AND activity_type IN (${sqlInList(VELOCITY_ACTIVITY_TYPES)})
         ${salOrgFilter}
         AND (timezone('America/Los_Angeles', created_at))::date
           = (timezone('America/Los_Angeles', now()))::date
-      GROUP BY staff_id, station
+      GROUP BY staff_id, 2
     ),
     week_counts AS (
-      SELECT staff_id, station,
+      SELECT staff_id, ${sqlSalGoalStation('station')} AS station,
         COUNT(DISTINCT COALESCE(shipment_id::text, scan_ref, id::text))::int AS week_count
       FROM station_activity_logs
       WHERE staff_id IS NOT NULL
-        AND activity_type IN ('TRACKING_SCANNED', 'FNSKU_SCANNED', 'PACK_SCAN', 'PACK_COMPLETED', 'FBA_READY')
+        AND activity_type IN (${sqlInList(VELOCITY_ACTIVITY_TYPES)})
         ${salOrgFilter}
         AND (timezone('America/Los_Angeles', created_at))::date
           >= (timezone('America/Los_Angeles', now()))::date - INTERVAL '6 days'
-      GROUP BY staff_id, station
+      GROUP BY staff_id, 2
     ),
     last7_counts AS (
-      SELECT staff_id, station,
+      SELECT staff_id, ${sqlSalGoalStation('station')} AS station,
              COUNT(DISTINCT COALESCE(shipment_id::text, scan_ref, id::text)) / 7.0 AS avg_daily_last_7d
       FROM station_activity_logs
       WHERE staff_id IS NOT NULL
-        AND activity_type IN ('TRACKING_SCANNED', 'FNSKU_SCANNED', 'PACK_SCAN', 'PACK_COMPLETED', 'FBA_READY')
+        AND activity_type IN (${sqlInList(VELOCITY_ACTIVITY_TYPES)})
         ${salOrgFilter}
         AND timezone('America/Los_Angeles', created_at)
           >= timezone('America/Los_Angeles', now()) - INTERVAL '7 days'
-      GROUP BY staff_id, station
+      GROUP BY staff_id, 2
     )
     SELECT
       s.id AS staff_id,

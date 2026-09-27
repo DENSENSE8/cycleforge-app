@@ -23,8 +23,8 @@ export const NAV_COMMAND_CODES: readonly NavCommandDef[] = [
   // in both hands, moving between benches.
   { code: 'CMD-GO-ARRIVAL', label: 'Go · Arrival',         pageId: 'triage',   childId: null,       sortOrder: 10 },
   { code: 'CMD-GO-UNBOX',   label: 'Go · Unbox',           pageId: 'receive',  childId: null,       sortOrder: 20 },
-  { code: 'CMD-GO-QC',      label: 'Go · Quality Control', pageId: 'tech',     childId: 'testing',  sortOrder: 30 },
-  { code: 'CMD-GO-READY',   label: 'Go · Picker',          pageId: 'tech',     childId: 'shipping', sortOrder: 40 },
+  { code: 'CMD-GO-QC',      label: 'Go · Quality Control', pageId: 'testing',       childId: null, sortOrder: 30 },
+  { code: 'CMD-GO-READY',   label: 'Go · Picker',          pageId: 'ready-to-pack', childId: null, sortOrder: 40 },
   { code: 'CMD-GO-PACK',    label: 'Go · Packing',         pageId: 'packer',   childId: null,       sortOrder: 50 },
   { code: 'CMD-GO-SCANOUT', label: 'Go · Scan out',        pageId: 'scan-out', childId: null,       sortOrder: 60 },
   { code: 'CMD-GO-PICKUP',  label: 'Go · Local Pickup',    pageId: 'pickup',   childId: null,       sortOrder: 70 },

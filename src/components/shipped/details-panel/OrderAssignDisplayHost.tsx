@@ -1,7 +1,7 @@
 'use client';
 
 /**
- * Order inspector Assign editor — inline technician / packer picker.
+ * Order inspector Assign editor — inline picker (ORDER/PICK) / packer choice.
  *
  * Mounts above the Order-tab bottom update bar (`OrderUpdateDock`). Never a
  * popover, topic cell, or {@link WorkOrderAssignmentCard} overlay takeover.
@@ -27,7 +27,7 @@ export function OrderAssignDisplayHost({
   shipped: ShippedOrder;
   onAssigned: () => void;
 }) {
-  const [techId, setTechId] = useState<number | null>(shipped.tester_id ?? null);
+  const [techId, setTechId] = useState<number | null>(shipped.picker_id ?? null);
   const [packerId, setPackerId] = useState<number | null>(shipped.packer_id ?? null);
   const [deadline, setDeadline] = useState(
     String(shipped.ship_by_date || shipped.deadline_at || '').slice(0, 10),
@@ -44,10 +44,10 @@ export function OrderAssignDisplayHost({
     });
 
   useEffect(() => {
-    setTechId(shipped.tester_id ?? null);
+    setTechId(shipped.picker_id ?? null);
     setPackerId(shipped.packer_id ?? null);
     setDeadline(String(shipped.ship_by_date || shipped.deadline_at || '').slice(0, 10));
-  }, [shipped.id, shipped.tester_id, shipped.packer_id, shipped.ship_by_date, shipped.deadline_at]);
+  }, [shipped.id, shipped.picker_id, shipped.packer_id, shipped.ship_by_date, shipped.deadline_at]);
 
   useEffect(() => {
     let cancelled = false;
@@ -96,14 +96,14 @@ export function OrderAssignDisplayHost({
       data-testid="order-assign-display"
     >
       <StaffButtonGrid
-        label="Technician"
+        label="Picker"
         options={technicianOptions}
         selectedId={techId}
         onSelect={(id) => {
           setTechId(id);
           void persist(id, packerId, deadline);
         }}
-        emptyMessage="No technicians"
+        emptyMessage="No pickers"
       />
       <StaffButtonGrid
         label="Packer"

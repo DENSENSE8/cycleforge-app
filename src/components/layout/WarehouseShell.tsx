@@ -28,6 +28,7 @@ import { ThemeSync } from '@/components/theme/ThemeSync';
 import { TimeFormatSync } from '@/components/time-format/TimeFormatSync';
 import { QuickAccessSync } from '@/components/quick-access/QuickAccessSync';
 import { AuthenticatedAblyProvider } from '@/components/providers/AuthenticatedAblyProvider';
+import { RouteRealtimeMount } from '@/design-system/providers/RouteRealtimeMount';
 import { WorkbenchCachePersistence } from '@/components/providers/WorkbenchCachePersistence';
 import { GlobalDetailStackHost } from '@/components/detail-stacks/GlobalDetailStackHost';
 import { DetailStackHistoryTracker } from '@/components/detail-stacks/DetailStackHistoryTracker';
@@ -39,6 +40,8 @@ import { UserIssueResolvedToaster } from '@/components/providers/UserIssueResolv
 import { WatchedArrivalToaster } from '@/components/providers/WatchedArrivalToaster';
 import { PostHogProvider } from '@/components/analytics/PostHogProvider';
 import { ShellQuerySeed } from '@/components/providers/ShellQuerySeed';
+import { WelcomeHost } from '@/components/boot/WelcomeHost';
+import { WelcomeReplayButton } from '@/components/boot/WelcomeReplayButton';
 
 export function WarehouseShell({
   initialUser,
@@ -88,10 +91,15 @@ export function WarehouseShell({
                       <WatchedArrivalToaster />
                       <SwitchStaffSheet />
                       <CursorLabelLayer />
+                      {/* The route's live layer — one subscription set per page (kiosk + public frames have none). */}
+                      <RouteRealtimeMount />
                       <ScanHotkeySync />
                       <ThemeSync />
                       <TimeFormatSync />
                       <QuickAccessSync />
+                      {/* Desktop only: the welcome plays over any desktop page (sign-in, staff switch, dev replay). */}
+                      {!mobileTree && <WelcomeHost />}
+                      {!mobileTree && <WelcomeReplayButton />}
                     </StaffSwitcherProvider>
                   </StaffColorsProvider>
                 </ActivityInboxProvider>

@@ -58,13 +58,13 @@ describe('ruleMatchesFacts', () => {
 describe('parseAssignActions', () => {
   it('keeps only valid assign_work rows', () => {
     const actions = parseAssignActions([
-      { type: 'assign_work', work_type: 'TEST', staff_id: 7 },
+      { type: 'assign_work', work_type: 'PICK', staff_id: 7 },
       { type: 'assign_work', work_type: 'PACK', staff_id: 12 },
       { type: 'notify', staff_id: 1 },
-      { type: 'assign_work', work_type: 'TEST', staff_id: -1 },
+      { type: 'assign_work', work_type: 'PICK', staff_id: -1 },
     ]);
     assert.deepEqual(actions, [
-      { type: 'assign_work', work_type: 'TEST', staff_id: 7 },
+      { type: 'assign_work', work_type: 'PICK', staff_id: 7 },
       { type: 'assign_work', work_type: 'PACK', staff_id: 12 },
     ]);
   });
@@ -78,25 +78,25 @@ describe('parseAssignActions', () => {
 
   it('drops a backup equal to the primary but keeps the action', () => {
     assert.deepEqual(
-      parseAssignActions([{ type: 'assign_work', work_type: 'TEST', staff_id: 7, backup_staff_id: 7 }]),
-      [{ type: 'assign_work', work_type: 'TEST', staff_id: 7 }],
+      parseAssignActions([{ type: 'assign_work', work_type: 'PICK', staff_id: 7, backup_staff_id: 7 }]),
+      [{ type: 'assign_work', work_type: 'PICK', staff_id: 7 }],
     );
   });
 
   it('drops an invalid backup but keeps the action', () => {
     const actions = parseAssignActions([
-      { type: 'assign_work', work_type: 'TEST', staff_id: 7, backup_staff_id: -3 },
-      { type: 'assign_work', work_type: 'TEST', staff_id: 7, backup_staff_id: 'abc' },
-      { type: 'assign_work', work_type: 'TEST', staff_id: 7, backup_staff_id: 2.5 },
-      { type: 'assign_work', work_type: 'TEST', staff_id: 7, backup_staff_id: 0 },
+      { type: 'assign_work', work_type: 'PICK', staff_id: 7, backup_staff_id: -3 },
+      { type: 'assign_work', work_type: 'PICK', staff_id: 7, backup_staff_id: 'abc' },
+      { type: 'assign_work', work_type: 'PICK', staff_id: 7, backup_staff_id: 2.5 },
+      { type: 'assign_work', work_type: 'PICK', staff_id: 7, backup_staff_id: 0 },
     ]);
-    assert.deepEqual(actions, Array(4).fill({ type: 'assign_work', work_type: 'TEST', staff_id: 7 }));
+    assert.deepEqual(actions, Array(4).fill({ type: 'assign_work', work_type: 'PICK', staff_id: 7 }));
   });
 });
 
 describe('resolveActionAssignee', () => {
   const withBackup = { type: 'assign_work', work_type: 'PACK', staff_id: 12, backup_staff_id: 13 } as const;
-  const noBackup = { type: 'assign_work', work_type: 'TEST', staff_id: 7 } as const;
+  const noBackup = { type: 'assign_work', work_type: 'PICK', staff_id: 7 } as const;
 
   it('primary when the primary is in', () => {
     assert.deepEqual(resolveActionAssignee(withBackup, new Set([13])), { staffId: 12, via: 'primary' });
@@ -123,7 +123,7 @@ describe('matchListingRule', () => {
       priority: 200,
       triggerKeys: ['order.imported'],
       whenJson: { item_number: 'ZZZ' },
-      thenJson: [{ type: 'assign_work', work_type: 'TEST', staff_id: 99 }],
+      thenJson: [{ type: 'assign_work', work_type: 'PICK', staff_id: 99 }],
     },
     {
       id: 1,
@@ -132,7 +132,7 @@ describe('matchListingRule', () => {
       triggerKeys: ['order.imported', 'order.item_number_set'],
       whenJson: { item_number: '9M52B2C4' },
       thenJson: [
-        { type: 'assign_work', work_type: 'TEST', staff_id: 7 },
+        { type: 'assign_work', work_type: 'PICK', staff_id: 7 },
         { type: 'assign_work', work_type: 'PACK', staff_id: 12 },
       ],
     },
@@ -155,7 +155,7 @@ describe('matchListingRule', () => {
 
 describe('matchListingRule — (item #, SKU) pair precedence', () => {
   const assign = (tech: number, packer: number) => [
-    { type: 'assign_work', work_type: 'TEST', staff_id: tech },
+    { type: 'assign_work', work_type: 'PICK', staff_id: tech },
     { type: 'assign_work', work_type: 'PACK', staff_id: packer },
   ];
   const triggers = ['order.imported', 'order.item_number_set', 'unit.test_passed'];
@@ -237,38 +237,38 @@ describe('matchListingRule — (item #, SKU) pair precedence', () => {
 
 describe('filterActionsForCsvOverride', () => {
   const actions = parseAssignActions([
-    { type: 'assign_work', work_type: 'TEST', staff_id: 7 },
+    { type: 'assign_work', work_type: 'PICK', staff_id: 7 },
     { type: 'assign_work', work_type: 'PACK', staff_id: 12 },
   ]);
 
-  it('drops TEST when csv_assignee_tech is set', () => {
-    const filtered = filterActionsForCsvOverride(actions, { csv_assignee_tech: true });
+  it('drops PICK when csv_assignee_picker is set', () => {
+    const filtered = filterActionsForCsvOverride(actions, { csv_assignee_picker: true });
     assert.deepEqual(filtered.map((a) => a.work_type), ['PACK']);
   });
 
   it('drops PACK when csv_assignee_packer is set', () => {
     const filtered = filterActionsForCsvOverride(actions, { csv_assignee_packer: true });
-    assert.deepEqual(filtered.map((a) => a.work_type), ['TEST']);
+    assert.deepEqual(filtered.map((a) => a.work_type), ['PICK']);
   });
 });
 
 describe('selectActionsForTrigger', () => {
   const actions = parseAssignActions([
-    { type: 'assign_work', work_type: 'TEST', staff_id: 7 },
+    { type: 'assign_work', work_type: 'PICK', staff_id: 7 },
     { type: 'assign_work', work_type: 'PACK', staff_id: 12 },
   ]);
 
-  it('runs TEST and PACK on order.imported', () => {
+  it('runs PICK and PACK on order.imported', () => {
     assert.deepEqual(
       selectActionsForTrigger(actions, 'order.imported').map((a) => a.work_type),
-      ['TEST', 'PACK'],
+      ['PICK', 'PACK'],
     );
   });
 
-  it('runs TEST and PACK on order.item_number_set', () => {
+  it('runs PICK and PACK on order.item_number_set', () => {
     assert.deepEqual(
       selectActionsForTrigger(actions, 'order.item_number_set').map((a) => a.work_type),
-      ['TEST', 'PACK'],
+      ['PICK', 'PACK'],
     );
   });
 
@@ -279,7 +279,7 @@ describe('selectActionsForTrigger', () => {
     );
   });
 
-  it('drops TEST and PACK on identification.completed', () => {
+  it('drops PICK and PACK on identification.completed', () => {
     assert.deepEqual(selectActionsForTrigger(actions, 'identification.completed'), []);
   });
 });

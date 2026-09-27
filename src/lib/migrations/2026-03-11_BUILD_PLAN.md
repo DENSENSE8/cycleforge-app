@@ -222,14 +222,14 @@ COALESCE(
 - Remove `IS_SHIPPED: 'is_shipped'` from `ORDER_COLUMNS` (line ~72)
 - Add derived fields: `shipment_status?`, `is_packed?`, `is_delivered?`, `carrier?`
 
-### 6c. `src/hooks/useTechLogs.ts`
+### 6c. `src/hooks/useDeskPickLogs.ts`
 - Remove `is_shipped?: boolean` (line ~28)
 
 ### 6d. `src/hooks/useUpNextData.ts`
 - Lines ~106, ~110: replace `!order.is_shipped` filter with `!order.is_shipped` from derived field
   (no code change needed if derived `is_shipped` is surfaced from the API — just verify the API response includes it)
 
-### 6e. `src/hooks/useStationTestingController.ts`
+### 6e. `src/hooks/useDeskPickController.ts`
 - Line ~409: remove `is_shipped: data.order.isShipped ?? false`
 
 ### 6f. `src/utils/orders.ts`

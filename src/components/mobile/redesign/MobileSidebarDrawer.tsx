@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from '@/design-system/motion';
+import { Collapse } from '@/design-system/components/Collapse';
 import { usePathname, useRouter } from 'next/navigation';
 import { ChevronDown } from '@/components/Icons';
 import { navIconStrokeClass } from '@/components/icons/nav-weight';
@@ -152,51 +153,41 @@ export const MobileSidebarDrawer = ({
                 </motion.span>
               </button>
 
-              <AnimatePresence initial={false}>
-                {isOpen && (
-                  <motion.ul
-                    initial={{ height: 0, opacity: 0 }}
-                    animate={{ height: 'auto', opacity: 1 }}
-                    exit={{ height: 0, opacity: 0 }}
-                    transition={{ duration: 0.22, ease: [0.23, 1, 0.32, 1] }}
-                    className="overflow-hidden"
-                  >
-                    {/*
+              <Collapse open={isOpen}>
+                {/*
  * The rail's COLUMN, shared with the desk:
  * pad (operator 2026-09-14: "aligned with the icon of the
  */}
-                    <div className={cn('relative', SPINE_CHILD_RAIL_INSET_CLASS)}>
-                      {/* The continuous trunk — same token, same column as the
-                          desk. Child segments paint over it to mark the row. */}
-                      <span className={SPINE_CHILD_RAIL_TRUNK_CLASS} aria-hidden />
-                      {item.children.map((child) => {
-                        const childActive = isLeafActive(pathname, child.href);
-                        return (
-                          <li key={child.id} className="flex items-stretch">
-                            {/* The child mark: */}
-                            <span className={spineRailLineClass(childActive)} aria-hidden />
-                            {/* ds-raw-button: text-left child nav row (label only — no glyph, by the icon law) */}
-                            <button
-                              onClick={() => navigate(child.href)}
-                              aria-current={childActive ? 'page' : undefined}
-                              className={cn(
-                                SPINE_ROW_SHELL_CLASS,
-                                SPINE_ROW_FACE_CLASS,
-                                focusRing('control'),
-                                childActive ? SPINE_ACCENT.childActive : SPINE_ACCENT.childIdle,
-                              )}
-                            >
-                              <span className={cn('min-w-0 flex-1 truncate', SPINE_LABEL_CLASS)}>
-                                {child.label}
-                              </span>
-                            </button>
-                          </li>
-                        );
-                      })}
-                    </div>
-                  </motion.ul>
-                )}
-              </AnimatePresence>
+                <ul className={cn('relative', SPINE_CHILD_RAIL_INSET_CLASS)}>
+                  {/* The continuous trunk — same token, same column as the
+                      desk. Child segments paint over it to mark the row. */}
+                  <span className={SPINE_CHILD_RAIL_TRUNK_CLASS} aria-hidden />
+                  {item.children.map((child) => {
+                    const childActive = isLeafActive(pathname, child.href);
+                    return (
+                      <li key={child.id} className="flex items-stretch">
+                        {/* The child mark: */}
+                        <span className={spineRailLineClass(childActive)} aria-hidden />
+                        {/* ds-raw-button: text-left child nav row (label only — no glyph, by the icon law) */}
+                        <button
+                          onClick={() => navigate(child.href)}
+                          aria-current={childActive ? 'page' : undefined}
+                          className={cn(
+                            SPINE_ROW_SHELL_CLASS,
+                            SPINE_ROW_FACE_CLASS,
+                            focusRing('control'),
+                            childActive ? SPINE_ACCENT.childActive : SPINE_ACCENT.childIdle,
+                          )}
+                        >
+                          <span className={cn('min-w-0 flex-1 truncate', SPINE_LABEL_CLASS)}>
+                            {child.label}
+                          </span>
+                        </button>
+                      </li>
+                    );
+                  })}
+                </ul>
+              </Collapse>
             </li>
           );
         })}

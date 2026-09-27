@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { QueryClient } from '@tanstack/react-query';
 import {
   patchUnshippedOrderCache,
-  patchUnshippedOrderTested,
+  patchUnshippedOrderPicked,
   removeUnshippedOrderFromCache,
   invalidateUnshippedCounts,
   insertUnshippedOrderIntoCache,
@@ -13,24 +13,24 @@ const listKey = (extra: Record<string, unknown>) => ['dashboard-table', 'unshipp
 
 test('patch merges into the matching row across ALL unshipped list variants', () => {
   const qc = new QueryClient();
-  qc.setQueryData(listKey({ stage: null }), [{ id: 1, has_tech_scan: false }, { id: 2, has_tech_scan: false }]);
-  qc.setQueryData(listKey({ stage: 'pending', limit: 200 }), [{ id: 1, has_tech_scan: false }]);
+  qc.setQueryData(listKey({ stage: null }), [{ id: 1, has_pick_scan: false }, { id: 2, has_pick_scan: false }]);
+  qc.setQueryData(listKey({ stage: 'pending', limit: 200 }), [{ id: 1, has_pick_scan: false }]);
 
-  patchUnshippedOrderCache(qc, 1, { has_tech_scan: true, tested_by: 7 });
+  patchUnshippedOrderCache(qc, 1, { has_pick_scan: true, picked_by: 7 });
 
   const a = qc.getQueryData(listKey({ stage: null })) as Array<Record<string, unknown>>;
   const b = qc.getQueryData(listKey({ stage: 'pending', limit: 200 })) as Array<Record<string, unknown>>;
-  assert.equal(a[0].has_tech_scan, true, 'variant A row 1 patched');
-  assert.equal(a[0].tested_by, 7);
-  assert.equal(b[0].has_tech_scan, true, 'variant B row 1 patched');
-  assert.equal(a[1].has_tech_scan, false, 'untouched row unchanged');
+  assert.equal(a[0].has_pick_scan, true, 'variant A row 1 patched');
+  assert.equal(a[0].picked_by, 7);
+  assert.equal(b[0].has_pick_scan, true, 'variant B row 1 patched');
+  assert.equal(a[1].has_pick_scan, false, 'untouched row unchanged');
 });
 
 test('patch is a no-op (reference-stable) when the row is not present', () => {
   const qc = new QueryClient();
   const rows = [{ id: 1 }, { id: 2 }];
   qc.setQueryData(listKey({ stage: null }), rows);
-  patchUnshippedOrderCache(qc, 999, { has_tech_scan: true });
+  patchUnshippedOrderCache(qc, 999, { has_pick_scan: true });
   assert.equal(qc.getQueryData(listKey({ stage: null })), rows, 'same array reference (no re-render)');
 });
 
@@ -48,7 +48,7 @@ test('list-prefix helpers never touch the separate counts key', () => {
   qc.setQueryData(['dashboard-table', 'unshipped-counts', { staffId: null }], counts);
   qc.setQueryData(listKey({ stage: null }), [{ id: 1 }]);
 
-  patchUnshippedOrderCache(qc, 1, { has_tech_scan: true });
+  patchUnshippedOrderCache(qc, 1, { has_pick_scan: true });
   removeUnshippedOrderFromCache(qc, 1);
 
   assert.equal(
@@ -75,12 +75,12 @@ test('invalidateUnshippedCounts marks the counts query stale', async () => {
 });
 
 test('patch is reference-stable when the row is present but unchanged', () => {
-  // Two subscribers now run the same `order.tested` patch (the desk hook and UnshippedTable's own, for the /tech embed that has no desk hook…
+  // Two subscribers now run the same `order.picked` patch (the desk hook and UnshippedTable's own, for the /tech embed that has no desk hook…
   const qc = new QueryClient();
-  const rows = [{ id: 1, has_tech_scan: true, tested_by: 7 }];
+  const rows = [{ id: 1, has_pick_scan: true, picked_by: 7 }];
   qc.setQueryData(listKey({ stage: null }), rows);
 
-  patchUnshippedOrderCache(qc, 1, { has_tech_scan: true, tested_by: 7 });
+  patchUnshippedOrderCache(qc, 1, { has_pick_scan: true, picked_by: 7 });
 
   assert.equal(
     qc.getQueryData(listKey({ stage: null })),
@@ -89,20 +89,28 @@ test('patch is reference-stable when the row is present but unchanged', () => {
   );
 });
 
-test('order.tested patch flips has_tech_scan across every variant + refreshes counts', () => {
+test('order.picked patch flips has_pick_scan + picker across every variant + refreshes counts', () => {
   const qc = new QueryClient();
-  qc.setQueryData(listKey({ stage: null }), [{ id: 42, has_tech_scan: false }]);
-  qc.setQueryData(listKey({ stage: 'pending' }), [{ id: 42, has_tech_scan: false }]);
+  qc.setQueryData(listKey({ stage: null }), [{ id: 42, has_pick_scan: false, tested_by: 3 }]);
+  qc.setQueryData(listKey({ stage: 'pending' }), [{ id: 42, has_pick_scan: false }]);
   qc.setQueryData(['dashboard-table', 'unshipped-counts', { staffId: null }], { total: 1 });
 
-  const applied = patchUnshippedOrderTested(qc, { orderId: 42, testedBy: 9 });
+  const applied = patchUnshippedOrderPicked(qc, {
+    orderId: 42,
+    pickedBy: 9,
+    pickedByName: 'Pat',
+    pickedAt: '2026-09-27T17:00:00.000Z',
+  });
 
   assert.equal(applied, true);
   const all = qc.getQueryData(listKey({ stage: null })) as Array<Record<string, unknown>>;
   const pending = qc.getQueryData(listKey({ stage: 'pending' })) as Array<Record<string, unknown>>;
-  assert.equal(all[0].has_tech_scan, true, 'lane signal flipped — PENDING becomes TESTED');
-  assert.equal(all[0].tested_by, 9);
-  assert.equal(pending[0].has_tech_scan, true, 'every cached variant, not just the active tab');
+  assert.equal(all[0].has_pick_scan, true, 'lane signal flipped — PENDING becomes PICKED');
+  assert.equal(all[0].picked_by, 9);
+  assert.equal(all[0].picked_by_name, 'Pat');
+  assert.equal(all[0].picked_at, '2026-09-27T17:00:00.000Z');
+  assert.equal(all[0].tested_by, 3, 'a pick is not a QC verdict — tested_* untouched');
+  assert.equal(pending[0].has_pick_scan, true, 'every cached variant, not just the active tab');
   assert.equal(
     qc.getQueryState(['dashboard-table', 'unshipped-counts', { staffId: null }])?.isInvalidated,
     true,
@@ -110,24 +118,27 @@ test('order.tested patch flips has_tech_scan across every variant + refreshes co
   );
 });
 
-test('order.tested patch never clobbers an existing tester with a null', () => {
+test('order.picked patch never clobbers an existing picker with a null', () => {
   const qc = new QueryClient();
-  qc.setQueryData(listKey({ stage: null }), [{ id: 42, has_tech_scan: false, tested_by: 3 }]);
+  qc.setQueryData(listKey({ stage: null }), [
+    { id: 42, has_pick_scan: false, picked_by: 3, picked_by_name: 'Sam' },
+  ]);
 
-  patchUnshippedOrderTested(qc, { orderId: 42, testedBy: null });
+  patchUnshippedOrderPicked(qc, { orderId: 42, pickedBy: null, pickedByName: null });
 
   const rows = qc.getQueryData(listKey({ stage: null })) as Array<Record<string, unknown>>;
-  assert.equal(rows[0].has_tech_scan, true);
-  assert.equal(rows[0].tested_by, 3, 'a payload with no tester leaves the recorded one alone');
+  assert.equal(rows[0].has_pick_scan, true);
+  assert.equal(rows[0].picked_by, 3, 'a payload with no picker leaves the recorded one alone');
+  assert.equal(rows[0].picked_by_name, 'Sam');
 });
 
-test('order.tested patch ignores a payload with no usable order id', () => {
+test('order.picked patch ignores a payload with no usable order id', () => {
   const qc = new QueryClient();
-  const rows = [{ id: 42, has_tech_scan: false }];
+  const rows = [{ id: 42, has_pick_scan: false }];
   qc.setQueryData(listKey({ stage: null }), rows);
 
-  assert.equal(patchUnshippedOrderTested(qc, { orderId: undefined }), false);
-  assert.equal(patchUnshippedOrderTested(qc, { orderId: 'not-a-number' }), false);
+  assert.equal(patchUnshippedOrderPicked(qc, { orderId: undefined }), false);
+  assert.equal(patchUnshippedOrderPicked(qc, { orderId: 'not-a-number' }), false);
   assert.equal(qc.getQueryData(listKey({ stage: null })), rows, 'cache untouched');
 });
 
@@ -141,7 +152,7 @@ test('insertUnshippedOrderIntoCache prepends a new row and promotes an existing 
     order_id: 'CFLOOP-1',
     shipping_tracking_number: 'CFLOOPTRACK01',
     tracking_number: 'CFLOOPTRACK01',
-    has_tech_scan: false,
+    has_pick_scan: false,
   };
   insertUnshippedOrderIntoCache(qc, created);
   qc.setQueryData(listKey({ stage: null }), [{ id: 1, order_id: 'OLD' }, created]);
@@ -153,17 +164,17 @@ test('insertUnshippedOrderIntoCache prepends a new row and promotes an existing 
   assert.deepEqual(b.map((r) => r.id), [99, 1]);
 });
 
-test('order.tested patch carries the pack bench the event already published', () => {
-  // `publishOrderTested` has always sent packLocationId/Name; the patch used to
-  // drop them, so the Station chip sat on an em dash until an unrelated refetch.
+test('order.picked patch carries the pack bench the event published', () => {
+  // `publishOrderPicked` sends packLocationId/Name; dropping them left the
+  // Station chip on an em dash until an unrelated refetch.
   const qc = new QueryClient();
   qc.setQueryData(listKey({ stage: null }), [
-    { id: 42, has_tech_scan: false, pack_location_id: null, pack_location_name: null },
+    { id: 42, has_pick_scan: false, pack_location_id: null, pack_location_name: null },
   ]);
 
-  patchUnshippedOrderTested(qc, {
+  patchUnshippedOrderPicked(qc, {
     orderId: 42,
-    testedBy: 9,
+    pickedBy: 9,
     packLocationId: 2,
     packLocationName: 'Station 2',
   });
@@ -173,22 +184,22 @@ test('order.tested patch carries the pack bench the event already published', ()
   assert.equal(rows[0].pack_location_name, 'Station 2');
 });
 
-test('order.tested patch leaves the bench alone when the scan placed nothing', () => {
+test('order.picked patch leaves the bench alone when the scan placed nothing', () => {
   // An unarmed bench publishes nulls. Writing them would blank a placement the
   // pack floor made a moment earlier through a different door.
   const qc = new QueryClient();
   qc.setQueryData(listKey({ stage: null }), [
-    { id: 42, has_tech_scan: false, pack_location_id: 5, pack_location_name: 'Station 5' },
+    { id: 42, has_pick_scan: false, pack_location_id: 5, pack_location_name: 'Station 5' },
   ]);
 
-  patchUnshippedOrderTested(qc, {
+  patchUnshippedOrderPicked(qc, {
     orderId: 42,
-    testedBy: 9,
+    pickedBy: 9,
     packLocationId: null,
     packLocationName: null,
   });
 
   const rows = qc.getQueryData(listKey({ stage: null })) as Array<Record<string, unknown>>;
-  assert.equal(rows[0].has_tech_scan, true);
+  assert.equal(rows[0].has_pick_scan, true);
   assert.equal(rows[0].pack_location_name, 'Station 5');
 });

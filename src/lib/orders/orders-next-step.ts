@@ -22,7 +22,7 @@ export type OrdersNextStepRecord = Pick<
   | 'is_terminal'
   | 'has_exception'
 > & {
-  has_tech_scan?: boolean | null;
+  has_pick_scan?: boolean | null;
   pack_activity_at?: string | null;
 };
 
@@ -53,7 +53,7 @@ const NEXT_BY_STAGE: Readonly<
   Record<OrderLifecycleStage, { label: string; tip: string; blocked?: boolean }>
 > = {
   AWAITING_LABEL: { label: 'Label', tip: 'Next: buy or attach a shipping label' },
-  PENDING: { label: 'Pick', tip: 'Next: pick and test at the bench' },
+  PENDING: { label: 'Pick', tip: 'Next: pick at the order desk' },
   TESTED: { label: 'Pack', tip: 'Next: pack station' },
   PACKED_STAGED: { label: 'Scan out', tip: 'Next: dock scan-out' },
   // Not a station — a hold. The row moves when a human clears it, which is why
@@ -107,7 +107,7 @@ export function ordersNextStep(
   return nextStepForLifecycleStage(
     resolveOrderLifecycleStage({
       shipmentId: record.shipment_id ?? null,
-      hasTechScan: record.has_tech_scan ?? null,
+      hasPickScan: record.has_pick_scan ?? null,
       packedAt: record.packed_at ?? record.pack_activity_at ?? null,
       isOutOfStock: record.is_out_of_stock ?? null,
     }),

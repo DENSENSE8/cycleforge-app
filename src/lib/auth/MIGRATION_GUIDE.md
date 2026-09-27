@@ -41,7 +41,8 @@ All in `src/lib/auth/permissions.ts` under `PermissionString`. Common ones:
 
 - `receiving.view`, `receiving.scan_po`, `receiving.mark_received`
 - `packing.scan_order`, `packing.complete_order`, `packing.print_label`
-- `tech.scan_serial`, `tech.qc_pass`, `tech.qc_fail`
+- `picking.view`, `picking.scan`, `picking.substitute_unit` (the Picker desk)
+- `tech.scan_serial`, `tech.qc_pass`, `tech.qc_fail` (Quality Control)
 - `shipping.mark_shipped`, `shipping.void_order`
 - `sku_stock.adjust`, `sku_stock.manage`
 - `bin.adjust`, `bin.set`, `bin.rename`, `bin.swap`, `bin.remove`, `bin.add_sku`

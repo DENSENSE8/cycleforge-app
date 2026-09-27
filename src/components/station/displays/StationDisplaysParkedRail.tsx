@@ -8,6 +8,7 @@ import {
   HEADER_ICON_BTN_OPEN_CLASS,
   TOP_CHROME_ICON_FACE,
 } from '@/components/layout/header-shell';
+import { cornerClass } from '@/design-system/tokens/radius';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { useStaffPreferences } from '@/hooks/useStaffPreferences';
 import { resolveStationDepth } from '@/design-system/themes/station-depths';
@@ -20,10 +21,15 @@ import {
 } from './display-index';
 import { withLookDisplayTabs } from './look-display-tab';
 
-/** ONE icon-chrome token, shared with the 40px nav beam. */
+/**
+ * The beam's icon chrome (ink, hover + open fill) on a FLUSH full-width cell:
+ * the rail's cells abut so the hover wash runs edge-to-edge (see the gap note
+ * below), unlike the header's rounded keys.
+ */
 const PARKED_CELL_CLASS = cn(
-  'flex w-full shrink-0 items-center justify-center',
   HEADER_ICON_BTN_CLASS,
+  'flex w-full shrink-0 items-center justify-center',
+  cornerClass('flush'),
 );
 
 /** Attention tone leaks through the closed column — an action row still marks. */

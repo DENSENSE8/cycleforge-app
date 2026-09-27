@@ -1,6 +1,10 @@
 /**
  * THE SKU IDENTITY LAW — one SKU, one title, one photo, everywhere.
- * Operator 2026-09-15: *"it all needs to be ported under one source of truth
+ * Operator 2026-09-15: *"it all needs to be ported under one source of truth"*.
+ * Operator 2026-09-27: that source of truth is CycleForge's own catalog
+ * (`sku_catalog`) — no external inventory system governs. Zoho's item name is
+ * demoted to a fallback fact; an external item id lives in
+ * `catalog_external_ids`, never as the key.
  */
 
 /** The ONLY `ON` predicate for a `sku_catalog` join off a receiving line. */
@@ -15,17 +19,21 @@ export function skuCatalogJoinOnSql(rowAlias: string, scAlias = 'sc'): string {
   return `${scAlias}.sku = ${rowAlias}.sku AND ${scAlias}.organization_id = ${rowAlias}.organization_id`;
 }
 
-/** The Zoho item title subquery — rule 2's winning arm. */
+/** The Zoho item title subquery — rule 2's fallback arm (below the catalog title). */
 export const ZOHO_ITEM_TITLE_SQL = `(SELECT name FROM items
                   WHERE zoho_item_id = rz.zoho_item_id AND status = 'active'
                   LIMIT 1)` as const;
 
-/** Write-side ownership predicate (rule 4). */
-export function skuCatalogNoZohoTwinPredicateSql(alias = 'sku_catalog'): string {
-  return `NOT EXISTS (SELECT 1 FROM items i
-             WHERE i.sku = ${alias}.sku
-               AND i.organization_id = ${alias}.organization_id
-               AND i.status = 'active')`;
+/**
+ * Write-side ownership predicate (rule 4): a platform / marketplace sync may
+ * fill `sku_catalog.product_title` / `image_url` only on a row the org has not
+ * acknowledged from its inventory master (no `catalog_external_ids` row).
+ * An acknowledged row's title is the org's own and is edited in CycleForge.
+ */
+export function skuCatalogTitleUnownedPredicateSql(alias = 'sku_catalog'): string {
+  return `NOT EXISTS (SELECT 1 FROM catalog_external_ids cxi
+             WHERE cxi.sku_catalog_id = ${alias}.id
+               AND cxi.organization_id = ${alias}.organization_id)`;
 }
 
 /**
@@ -33,8 +41,8 @@ export function skuCatalogNoZohoTwinPredicateSql(alias = 'sku_catalog'): string 
  * assert consumer ladders against it rather than restating the order.
  */
 export const SKU_IDENTITY_TITLE_ORDER = [
-  'zoho_item_title',
   'catalog_product_title',
+  'zoho_item_title',
   'item_name',
   'sku',
   'zoho_item_id',
@@ -60,10 +68,10 @@ export function skuIdentityField(value?: string | null): string {
 }
 
 export interface SkuIdentityTitleRow {
-  /** `items.name` for `rz.zoho_item_id` — the SoT. */
-  zoho_item_title?: string | null;
-  /** `sku_catalog.product_title` — marketplace-owned unless a Zoho twin exists. */
+  /** `sku_catalog.product_title` — the org's own title, the SoT. */
   catalog_product_title?: string | null;
+  /** `items.name` for `rz.zoho_item_id` — an external fact, the fallback when the catalog has no title. */
+  zoho_item_title?: string | null;
   /** The PO line's own listing-style description. */
   item_name?: string | null;
   sku?: string | null;
@@ -111,14 +119,14 @@ export const ZOHO_ITEM_BRAND_SQL = `(SELECT COALESCE(NULLIF(btrim(brand), ''), N
                   WHERE zoho_item_id = rz.zoho_item_id AND status = 'active'
                   LIMIT 1)` as const;
 
-/** Brand precedence, most authoritative first — the Zoho item governs, as for the title. */
-export const SKU_IDENTITY_BRAND_ORDER = ['zoho_item_brand', 'catalog_brand'] as const;
+/** Brand precedence, most authoritative first — the catalog governs, as for the title; Zoho's brand is the fallback. */
+export const SKU_IDENTITY_BRAND_ORDER = ['catalog_brand', 'zoho_item_brand'] as const;
 
 export interface SkuIdentityBrandRow {
-  /** `items.brand` (else `items.manufacturer`) of the active Zoho twin. */
-  zoho_item_brand?: string | null;
-  /** `product_brands.name` read through `sc.brand_id`. */
+  /** `product_brands.name` read through `sc.brand_id` — the SoT at or above the fact threshold. */
   catalog_brand?: string | null;
+  /** `items.brand` (else `items.manufacturer`) of the active Zoho twin — fallback fact. */
+  zoho_item_brand?: string | null;
   /** `sku_catalog.brand_confidence` — the catalog arm counts only at or above the fact threshold. */
   catalog_brand_confidence?: number | string | null;
 }
@@ -143,16 +151,16 @@ export function resolveSkuIdentityBrand(row: SkuIdentityBrandRow): string {
 
 /** The sentence a refusal prints — one place, so gate and tool agree. */
 export const SKU_IDENTITY_REFUSAL =
-  'One SKU, one title, one photo (operator 2026-09-15). Join sku_catalog with SKU_CATALOG_JOIN_ON_SQL — exact and org-scoped, never similarity-gated. Read the title through resolveSkuIdentityTitle: the Zoho item name governs, the marketplace title is the no-Zoho-item fallback. A platform sync may fill sku_catalog.product_title / image_url only behind skuCatalogNoZohoTwinPredicateSql(); marketplace text belongs in sku_platform_ids.display_name.' as const;
+  'One SKU, one title, one photo (operator 2026-09-15). Join sku_catalog with SKU_CATALOG_JOIN_ON_SQL — exact and org-scoped, never similarity-gated. Read the title through resolveSkuIdentityTitle: the catalog title (owned in CycleForge) governs, an external item name (Zoho) is only the fallback. A platform sync may fill sku_catalog.product_title / image_url only behind skuCatalogTitleUnownedPredicateSql(); marketplace text belongs in sku_platform_ids.display_name.' as const;
 
 export type SkuIdentityViolationKind =
   /** A `sku_catalog` join whose `ON` clause omits `organization_id`. */
   | 'tenant-blind-join'
   /** A read path gating `sku_catalog.product_title` behind `similarity()`. */
   | 'title-similarity-guard'
-  /** A TS ladder reading the marketplace title before the Zoho item title. */
-  | 'marketplace-title-first'
-  /** An `UPDATE sku_catalog` touching title/image with no Zoho-twin predicate. */
+  /** A TS ladder reading an external (Zoho) item title before the catalog title. */
+  | 'external-title-first'
+  /** An `UPDATE sku_catalog` touching title/image with no ownership predicate. */
   | 'platform-title-write'
   /** A `product_brands` join whose `ON` clause omits `organization_id`. */
   | 'tenant-blind-brand-join';
@@ -183,8 +191,8 @@ const SIMILARITY_TITLE_RE = /similarity\s*\(\s*(?:lower\s*\(\s*)?\w*\.?product_t
 const UPDATE_SKU_CATALOG_RE = /update\s+sku_catalog\b/i;
 const COMMENT_RE = /^\s*(\/\/|\*|--)/;
 /** The write-side predicate, literal or interpolated from the law. */
-const ZOHO_TWIN_GUARD_RE =
-  /skuCatalogNoZohoTwinPredicateSql|NOT EXISTS[\s\S]{0,160}?\bitems\b[\s\S]{0,200}?\bstatus\b/;
+const TITLE_OWNED_GUARD_RE =
+  /skuCatalogTitleUnownedPredicateSql|NOT EXISTS[\s\S]{0,160}?\bcatalog_external_ids\b/;
 
 /** Pure text audit of one file — no fs, so the test, the guard script and the MCP adjudicator share exactly one implementation. */
 export function auditSkuIdentitySource(file: string, text: string): SkuIdentityViolation[] {
@@ -228,20 +236,19 @@ export function auditSkuIdentitySource(file: string, text: string): SkuIdentityV
       if (!already) push('title-similarity-guard', i);
     }
 
-    // Ladder order, POSITIONALLY:
-    if (/catalog_product_title\s*\|\|/.test(line) && !COMMENT_RE.test(line)) {
-      // Forward-only: the chain starts on THIS line, so a `zoho_item_title`
-      // sitting in a type declaration four lines above must not absolve it.
+    // Ladder order, POSITIONALLY: an external title chained ahead of the catalog's.
+    if (/zoho_item_title\s*\|\|/.test(line) && !COMMENT_RE.test(line)) {
+      // Forward-only: the chain starts on THIS line.
       const chain = lines.slice(i, i + 6).join('\n');
       const cat = chain.indexOf('catalog_product_title');
       const zoho = chain.indexOf('zoho_item_title');
-      if (zoho === -1 || cat < zoho) push('marketplace-title-first', i);
+      if (cat !== -1 && zoho < cat) push('external-title-first', i);
     }
 
     if (UPDATE_SKU_CATALOG_RE.test(line) && !COMMENT_RE.test(line)) {
       const block = lines.slice(i, i + 14).join('\n');
       const touchesOwned = /\b(product_title|image_url)\s*=/.test(block);
-      if (touchesOwned && !ZOHO_TWIN_GUARD_RE.test(block)) push('platform-title-write', i);
+      if (touchesOwned && !TITLE_OWNED_GUARD_RE.test(block)) push('platform-title-write', i);
     }
   }
 
@@ -255,10 +262,10 @@ export function formatSkuIdentityViolation(v: SkuIdentityViolation): string {
       'sku_catalog join is not org-scoped — use SKU_CATALOG_JOIN_ON_SQL',
     'title-similarity-guard':
       'similarity() gate on product_title — delete it; the exact org-scoped join is total (0/2862 disagreements)',
-    'marketplace-title-first':
-      'marketplace title read before the Zoho item title — use resolveSkuIdentityTitle',
+    'external-title-first':
+      'external (Zoho) item title read before the catalog title — use resolveSkuIdentityTitle',
     'platform-title-write':
-      'UPDATE sku_catalog sets product_title/image_url with no Zoho-twin predicate — add skuCatalogNoZohoTwinPredicateSql()',
+      'UPDATE sku_catalog sets product_title/image_url with no ownership predicate — add skuCatalogTitleUnownedPredicateSql()',
     'tenant-blind-brand-join':
       'product_brands join is not org-scoped — use SKU_BRAND_JOIN_ON_SQL',
   };

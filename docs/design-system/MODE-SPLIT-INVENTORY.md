@@ -1,8 +1,9 @@
 # Mode split inventory — routes, looks, and leaks (2026-09-27)
 
-Phase 1 of the triage-vs-industrial split. Read-only census; no UI changed. Source: code read
-2026-09-27 (file:line as of that day), re-verified against the working tree the same day.
-Owner reviews this before any split work starts.
+Started as the Phase 1 read-only census (2026-09-27). Refreshed the same day after governance
+Phases A–C and the leak sweep landed: the route table is now read from
+`src/lib/routing/mode-registry.ts`, the leak table carries each leak's status, and the
+forced-triage sites carry a verdict.
 
 ## How the split works
 
@@ -16,6 +17,11 @@ Owner reviews this before any split work starts.
   - labels — `.mode-label`: industrial mono · uppercase · 10px · bold; triage sans · 12px · medium.
 - **Components that use those utilities switch looks by themselves.** Anything with a literal
   radius, font or colour does not — those are the leaks below.
+- **`industrial:` class variant** (`src/app/globals.css`): applies when the element's NEAREST
+  `data-mode` (self or ancestor) is industrial, so a triage region nested inside Floor keeps the
+  base look (bounded at the one-nested-region law). Base classes are the triage look — triage,
+  counter and assistant share one voice — and only the industrial face takes the variant:
+  `font-sans … industrial:font-mono`.
 - **Phones collapse triage to industrial.** `resolveRegionMode('triage', 'phone')`
   (`src/design-system/providers/resolve-region-mode.ts:18-19`) — every `/m/*` route and any coarse
   pointer renders industrial even when it asks for triage.
@@ -30,38 +36,26 @@ Owner reviews this before any split work starts.
     `RepairPickupSheet`, `RepairStatusSheet`, `ScanValueField`, `ProvisionalCreateSheet`,
     `ShipmentResolveSheet`, `UnitLineSheets`, `UnitSheetParts`); 3 desk dialogs
     (`LinkLabelDialog.tsx:108`, `OrderLabelEntries.tsx:275`, `ResolveShipmentExceptionDialog.tsx:107`);
-    in-page `SearchOrderLedger.tsx:110`, `LabelIntakeDesk.tsx:151`, `ReceivingLinesTable.tsx:656`,
+    in-page `LabelIntakeDesk.tsx:151`, `ReceivingLinesTable.tsx:656`,
     `ChatPrintJobCard.tsx:194` (triage inside `/ai-chat` assistant);
   - force industrial — `OutboundOrdersLedger.tsx:829` (note popover), `MobileOrderEvidenceSheet.tsx:139`.
 
-## Route → look today
+## Route → mode (from `mode-registry.ts`)
 
-> **Superseded 2026-09-27 (governance Phase C).** Every route's mode is now declared in
-> `src/lib/routing/mode-registry.ts` and applied once by `RouteModeRegion` (mounted in
-> `AppShellSwitch`); the page-level regions in the "Declared at" column are gone and the "No
-> region" rows below are triage (phones: industrial). `/shipping` stays `runtime` in its layout.
-> The table is the 2026-09-27 census the registry was seeded from.
+`DECLARED_ROUTES`, longest prefix first; applied once by `RouteModeRegion` in the app frame.
+`mode-registry.test.ts` asserts every `page.tsx` resolves. Phones collapse triage → industrial.
 
-| Area | Routes | Look | Declared at |
-|---|---|---|---|
-| Shipping | `/shipping/orders`, `/shipped`, `/shortage`, `/exceptions`, `/fba`, `/label-intake`, `/scan-out` | **runtime**: industrial on Floor (⌘/Ctrl+Shift+F), else triage | `src/app/shipping/layout.tsx:47` |
-| Home | `/` | triage | `src/app/page.tsx:9` |
-| Inbound | `/incoming`, `/triage` | triage | `src/app/incoming/page.tsx:16`, `src/app/triage/page.tsx:12` |
-| Inventory | `/inventory/stock`, `/inventory/sku-exceptions`, `/inventory?section=replenish` | triage | `InventoryDeskFrame.tsx:13,26` (`LEDGER_PATHS` + replenish only) |
-| Pack | `/pack` | triage | `src/app/pack/page.tsx:10` |
-| AI | `/ai-chat` | assistant | `src/app/ai-chat/page.tsx:14` |
-| Kiosk | `/kiosk/v2` | counter | `KioskV2Runtime.tsx:51` |
-| Mobile | `/m/scan`, `/m/orders`, `/m/work` | industrial | page / `AssignedOrders.tsx:23` |
-| Mobile | `/m/pick`, `/m/pick/unassigned`, `/m/exceptions*`, `/m/orders/[id]*`, `/m/r/[id]*`, `/m/rs/[id]*`, `/m/u/[id]*`, `/m/qc/line/[id]`, `/m/pair/*`, `/m/fnsku/*`, `/m/loc/*`, `/m/shipping/shipments/*`, `/m/pack/start/[id]`, `/m/repair-scan*` | asks triage → **renders industrial** (phone collapse) | page, `DetailHubScreen.tsx:57`, or `DetailRecordFrame` (`RepairScanCompanion.tsx:183`, `RepairScanVisitInfo.tsx:14`) |
-| **No region** | `/receiving`, `/receiving/history`, `/receiving/lines/[id]`, `/receiving/unfound/*`, `/unbox`, `/carton/[id]` | half-styled | — |
-| **No region** | `/repair`, `/pickup`, `/packer`, `/tech`, `/test`, `/wipe`, `/support`, `/dashboard` | half-styled (`RepairRecordView.tsx:155` forces triage around the repair record only) | — |
-| **No region** | every other `/inventory/*` (locations, holds, health, events, cycle-counts, bulk-allocate, units, graph, …) | half-styled | — |
-| **No region** | `/settings` + all 28 `/settings/*` | half-styled | — |
-| **No region** | `/warehouse*`, `/sourcing`, `/operations`, `/ops/photos`, `/products*`, `/search`, `/studio*`, `/walk-in`, `/tracking-exceptions`, `/calendar`, `/reports`, `/review`, `/replenish`, `/signals`, `/open-links`, `/onboarding*`, `/manuals*`, `/forge`, auth + redirect routes | half-styled (`/search` dossier nests triage) | — |
-| **No region** | `/m/pick/[orderId]`, `/m/orders/new`, `/m/orders/sync`, `/m/pack`, `/m/home`, `/m/settings`, `/m/receiving/po/*`, `/m/id/*`, `/m/*/photos`, `/m/t/*`, `/m/h/*`, `/m/claim`, sign-in/enroll | half-styled (phone radius 0 + mono labels, no mode colours) | — |
+| Mode | Routes |
+|---|---|
+| **runtime** | `/shipping/*` — `src/app/shipping/layout.tsx`: industrial while Floor is active (`useDeskFloorActive`), else triage |
+| triage | `/` (exact); outbound + sales `/counter`, `/fba`, `/pack`, `/packer`, `/pickup`, `/walk-in`, `/tracking-exceptions`; inbound `/incoming`, `/triage`, `/receiving`, `/unbox`, `/carton`; inventory + warehouse `/inventory`, `/warehouse`, `/replenish`, `/bin`; repair + test `/repair`, `/tech`, `/test`, `/wipe`; records + catalog `/dashboard`, `/products`, `/search`, `/serial`, `/photos`, `/ops`, `/review`, `/signals`, `/sourcing`, `/studio`, `/manuals`, `/forge`, `/operations`, `/reports`, `/calendar`, `/open-links`, `/support`, `/onboarding`, `/settings`, `/admin`; identifier doors `/01`, `/414`, `/l`, `/o`, `/p`, `/q`, `/qr`, `/s`; auth + public `/signin`, `/signup`, `/account`, `/invite`, `/share`, `/offline`, `/not-authorized`, `/pay` |
+| triage → **industrial on a phone** | `/m/*` |
+| industrial | `/m/scan/*`, `/m/orders` (exact), `/m/work/*` |
+| assistant | `/ai-chat/*` |
+| counter | `/kiosk/*` (its own shell; nothing else may resolve to `counter`) |
 
-**Only `/shipping` ever switches at runtime.** Every other desk is fixed. No layout above a
-"No region" row mounts a region (`src/app/layout.tsx` only injects the mode registry style).
+Only `/shipping` switches at runtime. Unwrapped `:root` fallbacks are triage (Phase B), so a
+portal that forgets its region still paints triage.
 
 ## Leaks — pieces that ignore the look
 
@@ -70,11 +64,25 @@ Owner reviews this before any split work starts.
 | State badges (RDY · Ready, → Pick, alerts) | `.state-badge-*` (`packages/design-tokens/src/state.ts:68-71`) via `stateBadgeClass` (`src/design-system/tokens/industrial-record.ts:63`); `LifecycleCode.tsx:33` (rendered by `OrderRecordView.tsx:151`, `OutboundOrdersLedger.tsx:665,936`, `OrdersQueueFirstPaint.tsx:170`); direct callers `OrderRecordView.tsx:162`, `carton-record-sections.tsx:134`, `ReceivingStatusStrip.tsx:61`, `RepairRecordStatus.tsx:170` | solid fill, **no radius** → square in triage | `/shipping/*` records, `/incoming`, `/receiving`, `/repair`, `/dashboard?mode=repairs` |
 | Square staff avatars | `StaffAvatar shape="square"`: `outbound-orders-ledger-editors.tsx:181`, `OrderAutoAssignSlot.tsx:66`, `AgendaRecord.tsx:159`, `SkuExceptionsLedger.tsx:281`; `IdentityMark.tsx:82` turns `square` into radius 0 + mono uppercase | square + mono initials | To-ship record + Floor, `/` agenda |
 | Dashed square "unassigned" boxes | `outbound-orders-ledger-editors.tsx:183`, `OrderAutoAssignSlot.tsx:68` — `border-dashed` + `cornerClass('flush')` | radius 0 | To-ship record (Picked / Packed / QC / Scanned out rows) |
-| Square search fields | `rounded-none` on `SearchField`: `StockLedger.tsx:257`, `DockedReceiptsLedger.tsx:144`, `IncomingDeliveriesLedger.tsx:352`, `SkuExceptionsLedger.tsx:151`, `DailyAgenda.tsx:350`; the primitive's own clear button `SearchField.tsx:289`; note `PopoverContent` `OutboundOrdersLedger.tsx:821` | radius 0 | `/inventory/stock`, `/inventory/sku-exceptions`, `/incoming`, `/incoming?lane=docked`, `/` |
-| Mono uppercase labels outside `.mode-label` | `industrial-record.ts:79,88,93` (note badge, add-note, condition chip); `ReplenishmentNeedTable.tsx:193`; `RepairRecordStatus.tsx:137`; `DeskActionSlot.tsx:55` (+ flush corner `:57`); `CompoundCells.tsx:1264`; `outbound/ready/grid/cells/index.tsx:79` | mono · uppercase · tracking | Floor ledger, replenish, repair, inventory primary actions, compound table cells |
-| Industrial record tokens on triage | `RECORD_ID_CLASS` + `RECORD_PRICE_CLASS`: `OrderRecordView.tsx:53-56`, `carton-record-sections.tsx:16-19`, `RepairRecordStatus.tsx:8-12`, `OrderPriceEvidence.tsx:9,11`, `OrderLabelEntries.tsx:20`. `RECORD_ID_CLASS` only: `order-record-sections.tsx:20`, `OrderAutoAssignRule.tsx:17`, `LinkLabelDialog.tsx:17`, `ResolveShipmentExceptionDialog.tsx:18`, `SkuExceptionCreateForm.tsx:18`, `SkuExceptionEvidenceSections.tsx:15`, `SkuExceptionPairSection.tsx:14`. `RECORD_RECESS_CLASS`: `outbound-orders-ledger-editors.tsx:56`, `receiving-order-composer-parts.tsx:12`. `RECORD_QTY_BADGE_CLASS`: `outbound-orders-ledger-editors.tsx:55`, `IndustrialRecord.tsx:11` | mono + recessed industrial borders | To-ship record + Floor, `/incoming`, `/repair`, `/shipped` resolve, SKU exceptions |
-| Whole-surface industrial look | `src/features/label-intake/LabelIntakeLedger.tsx:57-58` (`CELL`, `MONO_MICRO`, square cells, inset strong border) | industrial regardless of mode | `/shipping/label-intake` |
-| Forced triage inside Floor | `PaperworkWalkHost.tsx:58,65`; `RepairRecordView.tsx:155`; dialogs `LinkLabelDialog.tsx:108`, `OrderLabelEntries.tsx:275`, `ResolveShipmentExceptionDialog.tsx:107` | `ModeRegion mode="triage"` | Paperwork walk / label + ticket dialogs opened from Floor drop to triage |
+| Square search fields | `rounded-none` on `SearchField`: `StockLedger`, `DockedReceiptsLedger`, `IncomingDeliveriesLedger`, `SkuExceptionsLedger`, `DailyAgenda`; the primitive's clear button `SearchField.tsx:287` | **fixed 2026-09-27** → `rounded-mode-control` | — |
+| Mono uppercase labels outside `.mode-label` | note badge / add-note / condition chip (`industrial-record.ts`); `ReplenishmentNeedTable.tsx:193`; `RepairRecordStatus.tsx:137`; `DeskActionSlot.tsx:55` (+ flush corner); `CompoundCells.tsx:1264`; `outbound/ready/grid/cells/index.tsx:72,79` | **fixed 2026-09-27**: micro codes read the label voice (`--mode-label-font` + `mode-label-case`, "Note" written sentence case); the rest `font-sans … industrial:font-mono industrial:uppercase`; segment corner `rounded-mode-control` | — |
+| Industrial record tokens on triage | `RECORD_ID_CLASS`, `RECORD_PRICE_CLASS`, `RECORD_RECESS_CLASS`, `RECORD_QTY_BADGE_CLASS` (every caller) | **fixed 2026-09-27 at the token**: ID / qty sans semibold in triage, mono bold on industrial; recess a flat `border-mode-edge` field with `rounded-mode-control` in triage, bevelled top/left on industrial | — |
+| Whole-surface industrial look | `src/features/label-intake/LabelIntakeLedger.tsx` (`MONO_MICRO`), status labels in `src/lib/label-ingestions/ledger-view.ts` | **fixed 2026-09-27**: `mode-label` voice, labels sentence case in source, mono kept on tracking / SHA only. `LabelIntakeDesk` / `LabelIntakeRates` were already on mode tokens; `BuyLabelSection` converted by the phone-order session | — |
+| Caps presets + timeline face | `sectionLabel`, `fieldLabel`, `microBadge` (`src/design-system/tokens/typography/presets.ts`, ~75 files); `EventTimeline.tsx` group + day labels | **fixed 2026-09-27 at the preset**: sentence case in triage (`text-role-caption` section / field labels), tracked caps micro on industrial via `industrial:`. The order record's timeline is titled **Timeline** (`OrderTimelineSection`; the shared default stays "Activity") | — |
+| Forced triage inside Floor | see verdicts below | classified 2026-09-27 | — |
+
+### Forced triage inside Floor — verdicts (2026-09-27)
+
+| Site | Kind | Verdict |
+|---|---|---|
+| `LinkLabelDialog.tsx:108` | portalled dialog | **intentional** — a portal escapes the page region and must declare one; it is a form (search, purpose, confirm), read in sentence case. Keep triage |
+| `OrderLabelEntries.tsx:275` (Link a support ticket) | portalled dialog | **intentional** — same reason |
+| `ResolveShipmentExceptionDialog.tsx:107` | portalled dialog | **intentional** — same reason |
+| `PaperworkWalkHost.tsx:58,65` | in-page plane replacing the list | **intentional** — the Labels walk is form work (parcel, rates, buy label, `BuyLabelSection` triage face); the one nested region is allowed |
+| `LabelIntakeDesk.tsx:151` | in-page desk | **intentional** — not redundant: `useDeskFloorActive` is shell-wide, so a Floor left on elsewhere in `/shipping` would otherwise paint the manual label form industrial |
+| `OutboundOrdersLedger.tsx:828` (note popover) | portalled popover, forces **industrial** | **intentional** — the inline note editor is part of the Floor row; the ledger is industrial wherever it renders it |
+
+The `industrial:` variant honours every nested verdict above (nearest region wins).
 
 ## Record header — reach of a header change
 
@@ -102,35 +110,72 @@ Every caller passing a title/subtitle (all would get Back-top-left / no-✕):
   listed in the cheat sheet).
 - Esc ladder: split/floor record close (`DeskRecordPlane.tsx:134-150`) → overlay close
   (`DeskStageOverlay.tsx:91-106`) → leave Floor / Split (`DeskPageChrome.tsx:114-123`).
-- **In place / Split: no key.** `DeskRecordViewSwitch` and `DataTableFullscreenToggle.tsx:69` are
-  click-only.
+- In place ⇄ Split: ⌘/Ctrl+Shift+S (`isDeskSplitChord` in `DeskStageContext.tsx`, bound in
+  `DeskPageChrome.tsx`, cheat-sheet group `desk-split`; inert on Floor, whose records open in the right rail).
+  Hint shown on `DeskRecordViewSwitch` and `DataTableFullscreenToggle` tooltips.
 - Left nav column: `\` or `/` alone, ⌘/Ctrl + `\` or `/` (`src/lib/nav/sidebar-toggle-hotkey.ts`).
 
-## Floor right rail today
+## Floor right rail
 
-Floor (`OutboundOrdersLedger` under `useDeskFloorActive`) mounts **no** right-rail occupant —
-records open in `DeskRecordPlane`, verbs in the header (`OrdersMorphingHost`). Floor also parks the
-left column and the context rail. `RightRailHost` stays mounted but empty
-(`DesktopRouteShell.tsx`). The triage record's right-hand column (`DeskRecordLayout` aside:
-Platform · Order # · Tracking · Ship by · note · More actions) is the "status on the right" the
-owner sees in the non-industrial full view. Since 2026-09-26 that aside ends with **More actions**
-(`OrderRecordView.tsx:288-320`, `order-record-more-actions`) below the details.
+**Owner 2026-09-27 (reverses the 2026-09-26 "no right rail" ruling):** Floor keeps a right rail
+that shows the selected record's details, edge to edge. `DeskRecordPlane` places the record per
+view: In place covers the list; Split = list 2/3 + pane 1/3; **Floor = list `flex-1` from the
+viewport's left edge + a fixed `w-[30rem]` rail to the right edge** (`DESK_FLOOR_LIST_CLASS` /
+`DESK_FLOOR_RAIL_CLASS`, `desk-stage.ts`). The rail is always mounted (empty: the queue summary
+by state), so the list never changes width; the record inside takes the rail's width — no fixed
+`DESK_RECORD_MEASURE_CLASS` (`DeskRecordLayout`, one stacked column). ✕ top-right closes; Esc
+closes the record, a second Esc leaves Floor. Measured at 1440×900: stage `0–1440`, list
+`0–960`, rail `960–1440`, both `40–900` (app bar to bottom edge). The app-level `RightRailHost`
+stays empty on Floor. Still inset: the record body's own `p-4` + lifted column cards
+(`OrderRecordView.tsx`, owned by the order-record session).
+
+Floor group row (a multi-line order folded to one band): the state badge is the single-record
+code only (no `n/N` — the count rides the screen-reader label), followed by the note slot, then
+the buyer name + place like every record; bin / box / line counts are gone from the band.
+
+## Order record groups (2026-09-27)
+
+Foundation: `RecordGroup` (`src/design-system/components/record-ledger/RecordGroup.tsx`) — title
+top-left in the label voice (sentence case in source), at most one action top-right; a lifted
+rounded card in triage, a flush full-width band closed by one hairline on industrial (the Floor
+rail). `OrderRecordView` composes it; the order number reads once, in the header
+(`OrderRecordTitle`: number with copy / edit-link menu + ↗), used by To-ship ledger, cards and search.
+
+| Column | Group | Holds |
+|---|---|---|
+| Left | Item(s) · state badge top-right | photo · title · SKU + item # · **Qty · Condition · Bin** on one line; Platform; Listing |
+| Left | Fulfilment | Packed by · Scanned out by; **More details** (closed): Picked by, QC by, Pre-boxed, Pack bench, every bin, allocated, SKU home bin + set |
+| Left | Notes | buyer note (read-only) + order note (autosaves) |
+| Left | Documents | disclosure (Shipped / Search) |
+| Left | Timeline | its own card, titled "Timeline" |
+| Right | Customer | Name · Email (mailto + copy) · Phone (`tel:` + copy) · Bill to · Source — always open |
+| Right | Shipping | Ship to (copy + map) · Carrier + status (Shipped) · Tracking # · Ship by · Ordered · label history (Shipped) |
+| Right | Price | `OrderPriceEvidence` (the item no longer repeats the price) |
+| Right | Conversation · More actions | thread disclosure; the ⋮ verb list |
+
+Open against `VERIFY-order-record-triage.md`: Shipping's single **Edit** (rows still carry their own
+✎), Fulfilment **Photos** CTA, the timeline's staff · date · time line and the raw-JSON diff fix.
 
 ## Finding → phase
 
 | Phase | Fixes | Blast radius |
 |---|---|---|
-| 2. Badges + avatars follow the look | **done 2026-09-27** (`HANDOFF-mode-governance.md` Phase A): `.state-badge-*` carries `border-radius: var(--mode-radius-control)` (`state.ts`); `IdentityMark` / `StaffAvatar` `shape` removed → `face="round" \| "record"`, record face = `rounded-mode-control` + label-voice font/case; empty slots share `UNASSIGNED_MARK_CLASS` (`outbound-orders-ledger-editors.tsx`) | token-level; every triage record at once, Floor unchanged |
-| 3. Record header | Back top-left, no ✕, drop repeated product subtitle | all `DeskStageRecordHeader` callers above — confirm overlays too |
-| ~~4. Actions row under the order number~~ | **superseded** — owner 2026-09-26 (`HANDOFF-desk-record-actions.md:19-24`): top strip stays above the list as quick triage only (Report out of stock · Mark urgent · Mark scanned out · Select · ⋮); other verbs landed as More actions below the details | done |
-| 5. In place / Split keys | bind in `DeskPageChrome` next to the Floor chord; show on `DeskRecordViewSwitch` tooltips | every desk with a record plane |
-| ~~6. Floor right rail~~ | **cancelled** — owner 2026-09-26: "no right rail, no split actions bar, no duplicates" (`HANDOFF-desk-record-actions.md:21`) | — |
-| later | give every "No region" row above a region (settings, receiving, repair, inventory tools, /m tools); search-field / mono-label / label-intake leaks | per area |
+| A. Badges + avatars follow the look | **done 2026-09-27** (`HANDOFF-mode-governance.md` Phase A) | token-level |
+| B. Unwrapped routes degrade to triage | **done 2026-09-27**: `:root` declares every `--mode-*` from the triage spec | every route |
+| C. Route → mode registry applied by the shell | **done 2026-09-27**: `mode-registry.ts` + `RouteModeRegion`; page-level regions removed | every route |
+| Record header (Back / ✕) | **done 2026-09-27** (`DeskStageRecordHeader dismiss`) | every record plane |
+| In place / Split keys | **done 2026-09-27** (⌘/Ctrl+Shift+S) | every desk with a record plane |
+| Leak sweep | **done 2026-09-27**: `industrial:` variant, `RECORD_*` tokens, search fields, mono-caps labels, label intake (table above) | token-level + listed files |
+| Floor right rail | **done 2026-09-27** (owner reversal, above) | every `DeskRecordPlane` desk on Floor |
+| D. ESLint gates + burn-down | in progress (another session) — allowlists in `eslint.config.mjs` | lint |
+| E. Scan-feedback consolidation | **partial 2026-09-27**: `RepairScanCompanion` (`vibrateRead`) and `useDataWipeController` (`playVerdictCue`, shared AudioContext) route through `src/lib/scan-feedback/play.ts`; their lint burn-down entries removed. Open (owner): `useScanFeedback` still reads the `receiving` settings bucket, and those two surfaces fire without the staff toggles — gating them changes behaviour (haptics default off) and moving the keys needs a settings migration | lint + two stations |
+| F. design-mcp law | open | — |
 
 ## Owner decisions needed
 
-1. Phase 3 reach: Back / no-✕ on every record AND every overlay plane (revoke, deactivate, …), or
-   records only?
-2. ~~Phase 6~~ cancelled by the owner (no right rail). Still open only if the triage full-width
-   order facts (Platform, Tracking, Ship by, note) should move under the items instead of the aside.
+1. ~~Phase 3 reach~~ — answered 2026-09-27: the way out follows where the record sits — inline → Back
+   top-left; right rail / side pane / centred card → ✕ top-right.
+2. ~~Phase 6~~ — superseded 2026-09-27: Floor HAS a right rail (details of the selection).
+   Still open: should the triage full-width order facts (Platform, Tracking, Ship by, note) move
+   under the items instead of the aside?
 3. Phones: keep triage → industrial collapse on `/m/*`, or should `/m` triage pages stay triage?

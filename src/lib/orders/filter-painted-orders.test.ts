@@ -13,7 +13,6 @@ function row(over: Partial<ShippedOrder> & { id: number }): ShippedOrder {
     condition: 'USED_A',
     serial_number: '',
     sku: 'WAVE-1',
-    tester_id: null,
     tested_by: null,
     test_date_time: null,
     packer_id: null,

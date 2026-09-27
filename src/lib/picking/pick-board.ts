@@ -77,7 +77,7 @@ const CANDIDATES_SQL = `
     FROM open_units ou
     JOIN orders o ON o.id = ou.order_id AND o.organization_id = $1
     -- The order's SLA, picked exactly as the orders feed picks it for the
-    -- to-ship card (\`/api/orders\`): the TEST assignment, live status first.
+    -- to-ship card (\`/api/orders\`): the TEST row (the order's deadline carrier), live status first.
     LEFT JOIN LATERAL (
       SELECT wa.deadline_at
         FROM work_assignments wa
@@ -96,17 +96,17 @@ const CANDIDATES_SQL = `
                 wa.id DESC
        LIMIT 1
     ) dl ON TRUE
-    -- The picker slot: the live TEST assignment's assignee (Pass / Take).
+    -- The picker slot: the live ORDER/PICK assignment's assignee (Pass / Take).
     LEFT JOIN LATERAL (
       SELECT wa.assigned_tech_id
         FROM work_assignments wa
        WHERE wa.entity_type = 'ORDER'
          AND wa.entity_id = o.id
-         AND wa.work_type = 'TEST'
+         AND wa.work_type = 'PICK'
          AND wa.organization_id = o.organization_id
-         AND wa.status IN ('OPEN', 'ASSIGNED', 'IN_PROGRESS')
+         AND wa.status IN ('ASSIGNED', 'IN_PROGRESS')
          AND wa.assigned_tech_id IS NOT NULL
-       ORDER BY CASE wa.status WHEN 'ASSIGNED' THEN 1 WHEN 'IN_PROGRESS' THEN 2 ELSE 3 END,
+       ORDER BY CASE wa.status WHEN 'ASSIGNED' THEN 1 ELSE 2 END,
                 wa.id DESC
        LIMIT 1
     ) pass ON TRUE

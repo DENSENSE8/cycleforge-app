@@ -1,283 +1,53 @@
 'use client';
 
 /**
- * One ORDER CARD on the To-ship triage list (owner 2026-09-27, BRIEF §13).
+ * One ORDER CARD on the To-ship triage list (owner 2026-09-27, BRIEF §13) —
+ * the orders family's adapter over the shared {@link RecordCard}.
  *
- *   ┃ ☐  #114-2233445-6677889 ↗ · eBay cyclegear · Jane Doe     Listing ↗  ● Due today
- *   ┃ ⚠  [photo] Shimano Deore XT M8100 12-speed rear derailleur
- *   ┃           ×1 · Used – Good · Stock 3 · SKU-123 · Bin A-14 · $89.00   +2 items ▾ (MG)
- *
- * The rail and the status icon wear the order's worst lifecycle state.
- * Hovering the status icon lists every line (what is short, where it sits);
- * hovering the photo peeks it large. The card body opens the record — or,
- * while anything is checked, toggles the card (Shopify index semantics).
+ * The card's anatomy, motion and disclosure live in RecordCard; this file
+ * only says what an order puts in it: its facts (qty · condition · stock ·
+ * SKU · bin · price), its lifecycle state and what it means, the SLA as the
+ * top-right status, the channel and buyer, the Urgent / SKU-batch chips, and
+ * the orders-owned slots — the order number with its admin-link menu, the
+ * listing link (or its editor), the quick look and the checked-card menu.
  */
 
-import {
-  memo,
-  useCallback,
-  useEffect,
-  useRef,
-  useState,
-  type MouseEvent,
-  type PointerEvent,
-  type ReactNode,
-} from 'react';
-import { AnimatePresence, motion, type Variants } from 'motion/react';
-import { ChevronDown, ExternalLink, MapPin, MessageSquare, Package } from '@/components/Icons';
-import { Popover, PopoverAnchor, PopoverContent } from '@/design-system/primitives/radix-popover';
+import { memo, useMemo } from 'react';
+import { ExternalLink } from '@/components/Icons';
 import { BrandIdentityDot } from '@/components/ui/grid-cells';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { OrderIdChip } from '@/components/ui/CopyChip';
-import { StaffAvatar } from '@/components/identity';
+import { RecordCard, type RecordOpenEvent } from '@/design-system/components/record-card/RecordCard';
+import type { RecordCardChip, RecordCardLine, RecordCardModel } from '@/design-system/components/record-card/record-card-types';
+import type { RecordFactColumn } from '@/design-system/components/record-card/record-fact';
 import { LIFECYCLE_GLYPH } from '@/design-system/components/record-ledger/LifecycleCode';
-import { LIFECYCLE, LIFECYCLE_CLASSES, type LifecycleState } from '@/design-system/tokens/lifecycle';
+import { LIFECYCLE, lifecycleRecordState, type LifecycleState } from '@/design-system/tokens/lifecycle';
 import { focusRing } from '@/design-system/tokens/focus-ring';
+import { CARD_DISCLOSE, CARD_FACT_BOX_CLASS } from '@/design-system/tokens/desk-stage';
 import { useOrderChannel } from '@/hooks/useCatalog';
-import { conditionGradeTextClass, orderRowQtyTone } from '@/lib/condition-tone';
 import { platformMetaBrandDot } from '@/lib/source-platform';
 import type { ShippedOrder } from '@/lib/neon/orders-queries';
 import type { OrderRecordMode } from '@/lib/selection-context/order-inspector-context';
-import type { OrderCardLine, OrderCardModel, OrderCardSlaTone } from '@/lib/orders/order-card-model';
+import type { OrderCardLine, OrderCardModel } from '@/lib/orders/order-card-model';
 import type { QueueRowClickEvent } from '@/components/dashboard/orders-queue/queue-row-click';
 import { ListingLinkEditor, OrderAdminLinkAction } from '../order-link-editors';
 import { cn } from '@/utils/_cn';
 import { OrderCardActionMenu } from './OrderCardActionMenu';
 import { OrderCardPeek } from './OrderCardPeek';
 
-const SPRING = { type: 'spring', stiffness: 460, damping: 34, mass: 0.8 } as const;
-const SOFT_SPRING = { type: 'spring', stiffness: 260, damping: 30 } as const;
-
-/** Propagated from the card's `whileHover` — the photo breathes, the rail thickens, the glyph nods. */
-const RAIL_VARIANTS: Variants = { rest: { scaleX: 1 }, hover: { scaleX: 1.75 } };
-const PHOTO_VARIANTS: Variants = { rest: { scale: 1 }, hover: { scale: 1.07 } };
-const GLYPH_VARIANTS: Variants = { rest: { rotate: 0, scale: 1 }, hover: { rotate: [0, -10, 8, 0], scale: 1.08 } };
-
-const SLA_TONE_CLASS: Readonly<Record<OrderCardSlaTone, string>> = {
-  late: 'text-text-danger font-semibold',
-  today: 'text-text-warning font-semibold',
-  soon: 'text-text-default font-medium',
-  later: 'text-text-muted',
-  none: 'text-text-faint',
-};
-
-const SLA_DOT_CLASS: Readonly<Record<OrderCardSlaTone, string>> = {
-  late: 'bg-fill-danger',
-  today: 'bg-fill-warning',
-  soon: 'bg-fill-info',
-  later: 'bg-border-strong',
-  none: 'bg-border-default',
-};
-
-/** Hatched rail for out of stock — red reads on white without washing the card. */
-const HATCH_STYLE = {
-  backgroundImage:
-    'repeating-linear-gradient(135deg, transparent 0 3px, rgb(255 255 255 / 0.55) 3px 5px)',
-} as const;
-
-/** Stops a nested control's press from reaching the card's open target. */
-const stop = (event: MouseEvent | PointerEvent) => event.stopPropagation();
-
 /**
- * Hover-intent open state for a peek popover: opens after `enterMs`, and a
- * pointer travelling from the trigger into the content keeps it open.
+ * An order line's facts, in the one order the lead sentence and the unfolded
+ * columns share. SKU and price give way in the unfolded columns below the
+ * `label` tier (the quick look keeps them).
  */
-function useHoverPeek(enterMs: number, leaveMs = 120) {
-  const [open, setOpen] = useState(false);
-  const timer = useRef<number | null>(null);
-  const clear = () => {
-    if (timer.current != null) window.clearTimeout(timer.current);
-    timer.current = null;
-  };
-  useEffect(() => clear, []);
-  return {
-    open,
-    setOpen,
-    enter: () => {
-      clear();
-      timer.current = window.setTimeout(() => setOpen(true), enterMs);
-    },
-    leave: () => {
-      clear();
-      timer.current = window.setTimeout(() => setOpen(false), leaveMs);
-    },
-  };
-}
-
-// ── Checkbox ────────────────────────────────────────────────────────────────
-
-function CardCheck({
-  checked,
-  label,
-  onToggle,
-}: {
-  checked: boolean | 'mixed';
-  label: string;
-  onToggle: (event: { shiftKey: boolean }) => void;
-}) {
-  const on = checked === true;
-  const mixed = checked === 'mixed';
-  return (
-    <button
-      type="button"
-      role="checkbox"
-      aria-checked={mixed ? 'mixed' : on}
-      aria-label={label}
-      data-select-gutter=""
-      data-testid="order-card-check"
-      onPointerDown={stop}
-      onClick={(event) => {
-        event.stopPropagation();
-        onToggle({ shiftKey: event.shiftKey });
-      }}
-      // Hit box = the visible square (owner 2026-09-27): a near-miss lands on
-      // the card, which opens the order instead of checking it.
-      className={cn('group/check pointer-events-auto relative z-10 flex size-[18px] items-center justify-center rounded-[5px]', focusRing('control'))}
-    >
-      <motion.span
-        animate={on || mixed ? { scale: [1, 1.22, 1] } : { scale: 1 }}
-        transition={{ duration: 0.28, ease: [0.2, 0.9, 0.3, 1.3] }}
-        className={cn(
-          'flex size-[18px] items-center justify-center rounded-[5px] border transition-colors duration-150',
-          on || mixed
-            ? 'border-text-default bg-text-default text-surface-card'
-            : 'border-border-strong bg-surface-card group-hover/check:border-text-muted',
-        )}
-      >
-        <svg viewBox="0 0 16 16" className="size-3" fill="none" aria-hidden>
-          {mixed ? (
-            <motion.path d="M4 8h8" stroke="currentColor" strokeWidth={2.2} strokeLinecap="round" initial={{ pathLength: 0 }} animate={{ pathLength: 1 }} />
-          ) : (
-            <motion.path
-              d="M3.5 8.5l3 3 6-7"
-              stroke="currentColor"
-              strokeWidth={2.2}
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              initial={false}
-              animate={{ pathLength: on ? 1 : 0, opacity: on ? 1 : 0 }}
-              transition={{ duration: 0.22, ease: 'easeOut' }}
-            />
-          )}
-        </svg>
-      </motion.span>
-    </button>
-  );
-}
-
-// ── Photo (hover peek) ──────────────────────────────────────────────────────
-
-function CardPhoto({ line, size }: { line: OrderCardLine; size: 'lg' | 'sm' }) {
-  const peek = useHoverPeek(320);
-  const box = size === 'lg' ? 'size-12 rounded-xl' : 'size-8 rounded-lg';
-  return (
-    <Popover open={peek.open && Boolean(line.thumbUrl)} onOpenChange={peek.setOpen}>
-      <PopoverAnchor asChild>
-        <span
-          onPointerEnter={peek.enter}
-          onPointerLeave={peek.leave}
-          className={cn('relative z-10 block shrink-0 overflow-hidden bg-surface-sunken ring-1 ring-inset ring-black/5', box)}
-        >
-          {line.thumbUrl ? (
-            <motion.img
-              variants={size === 'lg' ? PHOTO_VARIANTS : undefined}
-              transition={SOFT_SPRING}
-              src={line.thumbUrl}
-              alt=""
-              loading="lazy"
-              decoding="async"
-              className="size-full object-cover"
-            />
-          ) : (
-            <span className="flex size-full items-center justify-center text-text-faint" aria-hidden>
-              <Package className={size === 'lg' ? 'size-5' : 'size-4'} />
-            </span>
-          )}
-        </span>
-      </PopoverAnchor>
-      <PopoverContent
-        side="right"
-        align="start"
-        sideOffset={10}
-        onOpenAutoFocus={(event) => event.preventDefault()}
-        onPointerEnter={peek.enter}
-        onPointerLeave={peek.leave}
-        className="w-auto overflow-hidden rounded-2xl border-0 p-0 shadow-elev-overlay"
-      >
-        {/* The photo alone (owner 2026-09-27): no title / SKU caption, and the
-            box takes the image's own aspect — no letterbox bars. */}
-        <motion.img
-          initial={{ opacity: 0, scale: 0.9, filter: 'blur(4px)' }}
-          animate={{ opacity: 1, scale: 1, filter: 'blur(0px)' }}
-          transition={SPRING}
-          style={{ transformOrigin: 'var(--radix-popover-content-transform-origin)' }}
-          src={line.thumbUrl ?? undefined}
-          alt={line.title}
-          className="block h-auto max-h-80 w-auto max-w-72"
-        />
-      </PopoverContent>
-    </Popover>
-  );
-}
-
-// ── Line facts (line 3) ─────────────────────────────────────────────────────
-
-function Sep() {
-  return <span aria-hidden className="text-text-faint">·</span>;
-}
-
-function LineFacts({ line, className }: { line: OrderCardLine; className?: string }) {
-  const low = line.stock != null && line.stock < line.qty;
-  return (
-    // Wraps on a narrow card (phone, the split's list) — each fact stays whole.
-    <span className={cn('flex min-w-0 flex-wrap items-center gap-x-1.5 gap-y-0.5 text-[13px] text-text-muted [&>*]:whitespace-nowrap', className)}>
-      <span className={cn('font-semibold tabular-nums', line.qty > 1 ? orderRowQtyTone(line.qty) : 'text-text-default')}>
-        ×{line.qty}
-      </span>
-      {line.condition ? (
-        <>
-          <Sep />
-          <span className={cn('font-medium', conditionGradeTextClass(line.conditionCode))}>{line.condition}</span>
-        </>
-      ) : null}
-      <Sep />
-      {line.outOfStock ? (
-        <span className="font-semibold text-text-danger">Out of stock</span>
-      ) : (
-        <span
-          title={line.stock == null ? 'No stock record for this SKU' : undefined}
-          className={cn('tabular-nums', low ? 'font-semibold text-text-danger' : line.stock == null ? 'text-text-faint' : undefined)}
-        >
-          Stock {line.stock ?? '—'}
-        </span>
-      )}
-      {line.sku ? (
-        <>
-          <Sep />
-          <span className="font-mono text-xs text-text-muted" title="SKU">
-            {line.sku}
-          </span>
-        </>
-      ) : null}
-      <Sep />
-      <span className={cn('inline-flex min-w-0 items-center gap-1', !line.bin.path && 'text-text-faint')} title={line.bin.path ?? undefined}>
-        <MapPin className="size-3 shrink-0" aria-hidden />
-        <span className="truncate">{line.bin.path ?? 'No bin'}</span>
-      </span>
-      {line.price ? (
-        <>
-          <Sep />
-          <span className="font-medium tabular-nums text-text-success" title={line.priceEstimate ? 'Estimate from the listing price' : undefined}>
-            {line.priceEstimate ? '~' : ''}
-            {line.price}
-          </span>
-        </>
-      ) : null}
-    </span>
-  );
-}
-
-// ── Status icon ─────────────────────────────────────────────────────────────
+const ORDER_FACT_COLUMNS: readonly RecordFactColumn[] = [
+  { id: 'qty', tier: 'always' },
+  { id: 'condition', tier: 'always' },
+  { id: 'stock', tier: 'always' },
+  { id: 'sku', tier: 'label' },
+  { id: 'bin', tier: 'always' },
+  { id: 'price', tier: 'label' },
+];
 
 /** What each status icon means — the plain tooltip on every icon but out of stock. */
 const STATUS_MEANING: Readonly<Record<LifecycleState, string>> = {
@@ -289,116 +59,25 @@ const STATUS_MEANING: Readonly<Record<LifecycleState, string>> = {
   onHold: 'On hold — cannot be picked yet',
 };
 
-/**
- * Out of stock: an animated hover card naming exactly which lines are short.
- * Every other state: a still icon with a one-line explanation.
- */
-function StatusGlyph({ model }: { model: OrderCardModel }) {
-  const peek = useHoverPeek(140);
-  const spec = LIFECYCLE[model.state];
-  const tone = LIFECYCLE_CLASSES[model.state];
-  const Glyph = LIFECYCLE_GLYPH[spec.icon];
-  if (model.outOfStockCount === 0) {
-    return (
-      <HoverTooltip label={STATUS_MEANING[model.state]} placement="right" asChild>
-        <span
-          data-testid="order-card-status"
-          role="img"
-          aria-label={STATUS_MEANING[model.state]}
-          className={cn('pointer-events-auto relative z-10 -m-1 flex size-7 items-center justify-center', tone.text)}
-        >
-          <Glyph className="size-4" />
-        </span>
-      </HoverTooltip>
-    );
-  }
-  return (
-    <Popover open={peek.open} onOpenChange={peek.setOpen}>
-      <PopoverAnchor asChild>
-        <motion.button
-          type="button"
-          aria-label={`${spec.label}${model.outOfStockCount ? `, ${model.outOfStockCount} of ${model.lines.length} lines out of stock` : ''}`}
-          data-testid="order-card-status"
-          onPointerEnter={peek.enter}
-          onPointerLeave={peek.leave}
-          onFocus={() => peek.setOpen(true)}
-          onBlur={() => peek.setOpen(false)}
-          onPointerDown={stop}
-          onClick={(event) => {
-            event.stopPropagation();
-            peek.setOpen((v) => !v);
-          }}
-          variants={GLYPH_VARIANTS}
-          transition={{ duration: 0.45 }}
-          className={cn('pointer-events-auto relative z-10 -m-1 flex size-7 items-center justify-center rounded-lg', tone.text, focusRing('control'))}
-        >
-          <Glyph className="size-4" />
-          {model.outOfStockCount > 0 && model.lines.length > 1 ? (
-            <span className="absolute -right-0.5 -top-0.5 flex size-3.5 items-center justify-center rounded-full bg-fill-danger text-[9px] font-bold leading-none text-white">
-              {model.outOfStockCount}
-            </span>
-          ) : null}
-        </motion.button>
-      </PopoverAnchor>
-      <PopoverContent
-        side="right"
-        align="start"
-        sideOffset={12}
-        onOpenAutoFocus={(event) => event.preventDefault()}
-        onPointerEnter={peek.enter}
-        onPointerLeave={peek.leave}
-        className="w-[23rem] overflow-hidden rounded-2xl p-0"
-      >
-        <motion.div
-          initial={{ opacity: 0, y: 6, scale: 0.97 }}
-          animate={{ opacity: 1, y: 0, scale: 1 }}
-          transition={SPRING}
-          style={{ transformOrigin: 'var(--radix-popover-content-transform-origin)' }}
-        >
-          <header className="flex items-center gap-2 border-b border-border-hairline px-3.5 py-2.5">
-            <span className={cn('flex size-6 items-center justify-center rounded-md', tone.pill)}>
-              <Glyph className="size-3.5" />
-            </span>
-            <span className="text-sm font-semibold text-text-default">{spec.label}</span>
-            <span className="ml-auto text-xs text-text-muted">
-              {model.outOfStockCount > 0
-                ? `${model.outOfStockCount} of ${model.lines.length} out of stock`
-                : `${model.lines.length} line${model.lines.length === 1 ? '' : 's'} · ${model.units} unit${model.units === 1 ? '' : 's'}`}
-            </span>
-          </header>
-          <ul className="max-h-80 overflow-y-auto p-1.5">
-            {model.lines.map((line, i) => (
-              <motion.li
-                key={line.id}
-                initial={{ opacity: 0, x: -8 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ ...SPRING, delay: 0.03 * i }}
-                className={cn('flex gap-2.5 rounded-xl px-2 py-2', line.outOfStock && 'bg-surface-danger')}
-              >
-                <span className="size-9 shrink-0 overflow-hidden rounded-lg bg-surface-sunken ring-1 ring-inset ring-black/5">
-                  {line.thumbUrl ? <img src={line.thumbUrl} alt="" className="size-full object-cover" /> : null}
-                </span>
-                <span className="min-w-0 flex-1">
-                  <span className="line-clamp-2 text-[13px] font-medium leading-snug text-text-default">{line.title}</span>
-                  <LineFacts line={line} className="mt-0.5 text-xs" />
-                  {line.shortNote ? <span className="mt-0.5 block text-xs font-medium text-text-danger">{line.shortNote}</span> : null}
-                </span>
-              </motion.li>
-            ))}
-          </ul>
-          {model.buyerNote ? (
-            <p className="flex gap-2 border-t border-border-hairline px-3.5 py-2.5 text-xs text-text-muted">
-              <MessageSquare className="mt-px size-3.5 shrink-0" aria-hidden />
-              <span className="line-clamp-3">{model.buyerNote}</span>
-            </p>
-          ) : null}
-        </motion.div>
-      </PopoverContent>
-    </Popover>
-  );
+function orderRecordLine(line: OrderCardLine): RecordCardLine {
+  return {
+    id: line.id,
+    title: line.title,
+    photoUrl: line.thumbUrl,
+    alert: line.outOfStock,
+    alertNote: line.shortNote,
+    facts: {
+      qty: { kind: 'qty', value: line.qty },
+      condition: line.condition ? { kind: 'grade', label: line.condition, code: line.conditionCode } : null,
+      stock: { kind: 'stock', onHand: line.stock, need: line.qty, out: line.outOfStock, missingTitle: 'No stock record for this SKU' },
+      sku: line.sku ? { kind: 'code', text: line.sku, title: 'SKU' } : null,
+      bin: { kind: 'place', path: line.bin.path, empty: 'No bin' },
+      price: line.price ? { kind: 'money', text: line.price, estimate: line.priceEstimate, estimateTitle: 'Estimate from the listing price' } : null,
+    },
+  };
 }
 
-// ── Card ────────────────────────────────────────────────────────────────────
+const moreOutOfStock = (count: number) => `${count} more out of stock`;
 
 export interface OrderCardProps {
   model: OrderCardModel;
@@ -412,7 +91,6 @@ export interface OrderCardProps {
   /** Position in the first paint — staggers the arrival; null = no entrance. */
   enterIndex: number | null;
   mode: OrderRecordMode;
-  packer: { id: number | null; name: string | null; colorHex: string | null };
   /**
    * The card body: opens the order's record — never checks it, even with a
    * check-set live (owner 2026-09-27). Only the checkbox checks.
@@ -441,7 +119,6 @@ export const OrderCard = memo(function OrderCard({
   menuOpen,
   enterIndex,
   mode,
-  packer,
   onOpen,
   onToggleSelect,
   onToggleGroup,
@@ -454,291 +131,137 @@ export const OrderCard = memo(function OrderCard({
   skuShared,
   onSelectSku,
 }: OrderCardProps) {
-  const [lead, ...rest] = model.lines;
   const channel = useOrderChannel()(model.orderId, model.accountSource);
-  const tone = LIFECYCLE_CLASSES[model.state];
-  const spec = LIFECYCLE[model.state];
-  const multi = model.lines.length > 1;
-  const selected = checked !== false;
+  const lead = model.lines[0];
 
-  const toggleCheck = useCallback(
-    (event: { shiftKey: boolean }) => {
-      if (!multi) onToggleSelect(model.lead, event);
-      else onToggleGroup(model.ids, checked !== true);
-    },
-    [multi, onToggleSelect, onToggleGroup, model.lead, model.ids, checked],
-  );
+  const record = useMemo<RecordCardModel>(() => {
+    const spec = LIFECYCLE[model.state];
+    const leadSku = model.lines[0]?.sku ?? null;
+    const chips: RecordCardChip[] = [];
+    if (model.urgent && model.state !== 'urgent') chips.push({ id: 'urgent', tone: 'warning', short: 'Urgent' });
+    if (skuShared > 1 && leadSku) {
+      chips.push({
+        id: 'sku-batch',
+        tone: 'info',
+        short: `SKU ×${skuShared}`,
+        long: `SKU in ${skuShared} orders`,
+        tooltip: `Check all ${skuShared} orders with SKU ${leadSku} — one pick trip`,
+        onPress: () => onSelectSku(leadSku),
+        testId: 'order-card-sku-batch',
+      });
+    }
+    return {
+      key: model.key,
+      leadId: model.lead.id,
+      state: lifecycleRecordState(model.state),
+      stateIcon: LIFECYCLE_GLYPH[spec.icon],
+      stateMeaning: STATUS_MEANING[model.state],
+      alert:
+        model.outOfStockCount > 0
+          ? {
+              count: model.outOfStockCount,
+              summary: `${model.outOfStockCount} of ${model.lines.length} out of stock`,
+              ariaLabel: `${spec.label}, ${model.outOfStockCount} of ${model.lines.length} lines out of stock`,
+            }
+          : null,
+      aria: {
+        card: `Order ${model.orderId}, ${spec.label}, ${model.lines[0]?.title ?? ''}`,
+        open: `Open order ${model.orderId}`,
+        check: `Select order ${model.orderId}`,
+      },
+      channel: channel.label
+        ? {
+            label: channel.label,
+            tooltip: channel.connectionName ?? channel.label,
+            dot: <BrandIdentityDot {...platformMetaBrandDot(channel.meta)} />,
+            badge: model.fba ? 'FBA' : null,
+          }
+        : null,
+      person: model.buyerName,
+      chips,
+      note: model.buyerNote ? { text: model.buyerNote, label: 'Buyer note' } : null,
+      status: model.sla,
+      lines: model.lines.map(orderRecordLine),
+      hiddenAlertLabel: moreOutOfStock,
+    };
+  }, [model, channel, skuShared, onSelectSku]);
 
   if (!lead) return null;
 
-  const platformFace = channel.label;
-  const slaNode: ReactNode = (
-    <span title={model.sla.tip ?? undefined} className={cn('flex shrink-0 items-center gap-1.5 text-[13px] tabular-nums', SLA_TONE_CLASS[model.sla.tone])}>
-      <span className="relative flex size-2">
-        {model.sla.tone === 'late' ? (
-          <motion.span
-            aria-hidden
-            className="absolute inset-0 rounded-full bg-fill-danger"
-            animate={{ scale: [1, 2.2], opacity: [0.55, 0] }}
-            transition={{ duration: 1.6, repeat: Infinity, ease: 'easeOut' }}
-          />
-        ) : null}
-        <span className={cn('relative size-2 rounded-full', SLA_DOT_CLASS[model.sla.tone])} />
-      </span>
-      {model.sla.face}
+  const openRecord = (event: RecordOpenEvent) => onOpen(model.lead, event);
+  const toggleCheck = (event: { shiftKey: boolean }) => {
+    if (model.lines.length <= 1) onToggleSelect(model.lead, event);
+    else onToggleGroup(model.ids, checked !== true);
+  };
+
+  // Hovering the order number flies out "Edit admin link" (opens the link popover); click copies; the ↗ only opens.
+  const identity = (
+    <OrderAdminLinkAction orderId={model.orderId} href={model.orderHref} storedUrl={model.adminUrl} ids={model.ids} platformLabel={channel.label}>
+      <OrderIdChip value={model.orderId} display={model.orderId} plain dense truncateDisplay={false} fitDisplayWidth disableTooltip />
+    </OrderAdminLinkAction>
+  );
+
+  const stop = (event: { stopPropagation: () => void }) => event.stopPropagation();
+  const trailing = model.listingHref ? (
+    <HoverTooltip label={model.listingItem ? `Open listing ${model.listingItem}` : 'Open listing'} asChild>
+      <a
+        href={model.listingHref}
+        target="_blank"
+        rel="noopener noreferrer"
+        onClick={stop}
+        onPointerDown={stop}
+        data-testid="order-card-open-listing"
+        aria-label={model.listingItem ? `Open listing ${model.listingItem} in a new tab` : 'Open listing in a new tab'}
+        className={cn(CARD_FACT_BOX_CLASS, 'pointer-events-auto gap-1 rounded-md px-1 text-[13px] text-text-muted hover:bg-surface-sunken hover:text-text-default', focusRing('control'))}
+      >
+        <span className={CARD_DISCLOSE.label.show}>Listing</span>
+        <ExternalLink aria-hidden className="size-3.5" />
+      </a>
+    </HoverTooltip>
+  ) : (
+    <span className={cn(CARD_FACT_BOX_CLASS, 'pointer-events-auto')}>
+      <ListingLinkEditor
+        face="label"
+        currentItem={null}
+        targets={model.lines.map((line) => ({
+          id: line.id,
+          itemNumber: line.record.item_number ?? null,
+          accountSource: line.record.account_source ?? null,
+        }))}
+      />
     </span>
   );
 
   return (
-    <Popover open={menuOpen} modal={false}>
-      <motion.article
-        data-order-row-id={model.lead.id}
-        data-desk-record-key={model.lead.id}
-        data-state={model.state}
-        data-testid="order-card"
-        aria-label={`Order ${model.orderId}, ${spec.label}, ${lead.title}`}
-        initial={enterIndex != null ? { opacity: 0, y: 10 } : false}
-        animate={{ opacity: 1, y: 0 }}
-        transition={enterIndex != null ? { ...SPRING, delay: Math.min(enterIndex, 14) * 0.028 } : SPRING}
-        whileHover="hover"
-        variants={{ rest: {}, hover: {} }}
-        className={cn(
-          'group/card @container/card relative isolate flex rounded-2xl py-3 pl-4 pr-4 transition-colors duration-150 [contain-intrinsic-size:auto_92px] [content-visibility:auto]',
-          selected
-            ? 'bg-surface-info/60'
-            : open
-              ? 'bg-surface-sunken'
-              : 'hover:bg-surface-sunken/70',
-          open && 'ring-1 ring-inset ring-border-strong',
-        )}
-      >
-        {/* The open target — the whole card. */}
-        <button
-          type="button"
-          aria-label={`Open order ${model.orderId}`}
-          aria-current={open || undefined}
-          data-testid="order-card-open"
-          onClick={(event) =>
-            onOpen(model.lead, {
-              shiftKey: event.shiftKey,
-              metaKey: event.metaKey,
-              ctrlKey: event.ctrlKey,
-              detail: event.detail,
-              target: event.target,
-            })
-          }
-          // Space = quick look; Enter (the button's own key) opens the record.
-          onKeyDown={(event) => {
-            if (event.key !== ' ' || event.repeat) return;
-            event.preventDefault();
-            onTogglePeek(model.key);
-          }}
-          aria-expanded={peekOpen}
-          className={cn('absolute inset-0 z-0 cursor-pointer rounded-2xl', focusRing('control'))}
+    <RecordCard
+      model={record}
+      factColumns={ORDER_FACT_COLUMNS}
+      testIdPrefix="order-card"
+      rowAttrs={{ 'data-order-row-id': model.lead.id }}
+      checked={checked}
+      open={open}
+      expanded={expanded}
+      peekOpen={peekOpen}
+      enterIndex={enterIndex}
+      onOpen={openRecord}
+      onToggleCheck={toggleCheck}
+      onToggleExpand={() => onToggleExpand(model.key)}
+      onTogglePeek={() => onTogglePeek(model.key)}
+      identity={identity}
+      trailing={trailing}
+      quickLook={
+        <OrderCardPeek
+          key="peek"
+          model={model}
+          todayKey={todayKey}
+          platformLabel={channel.connectionName ? `${channel.label} · ${channel.connectionName}` : channel.label}
         />
-
-        {/* Status rail */}
-        <motion.span
-          aria-hidden
-          variants={RAIL_VARIANTS}
-          initial="rest"
-          transition={SOFT_SPRING}
-          style={model.state === 'outOfStock' ? HATCH_STYLE : undefined}
-          className={cn('pointer-events-none absolute bottom-3 left-1.5 top-3 w-[3px] origin-left rounded-full', tone.dot)}
-        />
-
-        {/* Checkbox, status icon beneath */}
-        <div className="pointer-events-none relative z-10 flex w-7 shrink-0 flex-col items-center gap-3 pt-px">
-          <CardCheck checked={checked} label={`Select order ${model.orderId}`} onToggle={toggleCheck} />
-          <StatusGlyph model={model} />
-        </div>
-
-        {/* Order facts */}
-        <div className="pointer-events-none relative z-10 ml-3 flex min-w-0 flex-1 flex-col gap-2">
-          {/* Line 1 — order number · platform …… SLA */}
-          <div className="flex min-w-0 items-center gap-2">
-            <span className="pointer-events-auto inline-flex min-w-0 shrink items-center gap-0.5 text-sm font-semibold tabular-nums text-text-default" onClick={stop} onPointerDown={stop}>
-              {/* Copy on hover + click (the chip's own bubble); the link icon always sits to its right. */}
-              <OrderIdChip value={model.orderId} display={model.orderId} plain dense truncateDisplay={false} fitDisplayWidth platformLabel={platformFace || null} />
-              <OrderAdminLinkAction
-                orderId={model.orderId}
-                href={model.orderHref}
-                storedUrl={model.adminUrl}
-                ids={model.ids}
-                platformLabel={channel.label}
-              />
-            </span>
-            {platformFace ? (
-              <span className="inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap text-[13px] text-text-muted" title={channel.connectionName ?? channel.label}>
-                <BrandIdentityDot {...platformMetaBrandDot(channel.meta)} />
-                <span>{platformFace}</span>
-                {model.fba ? <span className="rounded-md bg-surface-sunken px-1 text-[11px] font-medium text-text-muted">FBA</span> : null}
-              </span>
-            ) : null}
-            {model.buyerName ? (
-              // The first thing line 1 gives up: shrinks (×100) and truncates before the order number does.
-              <span data-testid="order-card-buyer" className="min-w-0 shrink-[100] truncate text-[13px] text-text-muted" title={model.buyerName}>
-                {model.buyerName}
-              </span>
-            ) : null}
-            {model.urgent && model.state !== 'urgent' ? (
-              <span className="rounded-full bg-surface-warning px-1.5 py-px text-[11px] font-semibold text-text-warning">Urgent</span>
-            ) : null}
-            {skuShared > 1 && lead.sku ? (
-              <button
-                type="button"
-                data-testid="order-card-sku-batch"
-                title={`Check all ${skuShared} orders with SKU ${lead.sku} — one pick trip`}
-                onPointerDown={stop}
-                onClick={(event) => {
-                  event.stopPropagation();
-                  onSelectSku(lead.sku!);
-                }}
-                className={cn(
-                  'pointer-events-auto inline-flex shrink-0 items-center gap-1 rounded-full bg-surface-info px-2 py-px text-[11px] font-semibold text-text-info transition-transform hover:scale-105',
-                  focusRing('control'),
-                )}
-              >
-                SKU in {skuShared} orders
-              </button>
-            ) : null}
-            {model.buyerNote ? (
-              <span className="pointer-events-auto text-text-muted" title={model.buyerNote}>
-                <MessageSquare className="size-3.5" aria-label="Buyer note" />
-              </span>
-            ) : null}
-            <span className="ml-auto" />
-            {model.listingHref ? (
-              <a
-                href={model.listingHref}
-                target="_blank"
-                rel="noopener noreferrer"
-                onClick={stop}
-                onPointerDown={stop}
-                data-testid="order-card-open-listing"
-                aria-label={model.listingItem ? `Open listing ${model.listingItem} in a new tab` : 'Open listing in a new tab'}
-                className={cn('pointer-events-auto inline-flex shrink-0 items-center gap-1 rounded-md px-1 text-[13px] text-text-muted hover:bg-surface-sunken hover:text-text-default', focusRing('control'))}
-              >
-                Listing
-                <ExternalLink aria-hidden className="size-3.5" />
-              </a>
-            ) : (
-              <span className="pointer-events-auto">
-                <ListingLinkEditor
-                  face="label"
-                  currentItem={null}
-                  targets={model.lines.map((line) => ({
-                    id: line.id,
-                    itemNumber: line.record.item_number ?? null,
-                    accountSource: line.record.account_source ?? null,
-                  }))}
-                />
-              </span>
-            )}
-            {slaNode}
-          </div>
-
-          {/* Lines 2–3 — photo spans both */}
-          <div className="flex min-w-0 items-center gap-3">
-            <span className="pointer-events-auto">
-              <CardPhoto line={lead} size="lg" />
-            </span>
-            <div className="flex min-w-0 flex-1 flex-col gap-1">
-              <p className="line-clamp-2 break-words text-[15px] font-medium leading-snug text-text-default @xl/card:line-clamp-1" title={lead.title}>
-                {lead.title}
-              </p>
-              <div className="flex min-w-0 items-center gap-3">
-                <LineFacts line={lead} className="min-w-0 flex-1" />
-                {multi ? (
-                  <button
-                    type="button"
-                    aria-expanded={expanded}
-                    data-testid="order-card-expand"
-                    onPointerDown={stop}
-                    onClick={(event) => {
-                      event.stopPropagation();
-                      onToggleExpand(model.key);
-                    }}
-                    className={cn(
-                      'pointer-events-auto inline-flex shrink-0 items-center gap-1 rounded-full border border-border-soft bg-surface-card px-2 py-0.5 text-xs font-medium text-text-default shadow-elev-soft transition-colors hover:border-border-strong',
-                      focusRing('control'),
-                    )}
-                  >
-                    +{rest.length} item{rest.length === 1 ? '' : 's'}
-                    <motion.span animate={{ rotate: expanded ? 180 : 0 }} transition={SPRING} className="inline-flex">
-                      <ChevronDown className="size-3.5" aria-hidden />
-                    </motion.span>
-                  </button>
-                ) : null}
-                {packer.id != null ? (
-                  <span title={packer.name ? `Packer: ${packer.name}` : undefined} className="shrink-0">
-                    <StaffAvatar staffId={packer.id} name={packer.name} colorHex={packer.colorHex} size="xs" />
-                  </span>
-                ) : null}
-              </div>
-            </div>
-          </div>
-
-          {/* The other lines, unfolded in place */}
-          <AnimatePresence initial={false}>
-            {multi && expanded ? (
-              <motion.ul
-                key="lines"
-                initial={{ height: 0, opacity: 0 }}
-                animate={{ height: 'auto', opacity: 1 }}
-                exit={{ height: 0, opacity: 0 }}
-                transition={{ height: SPRING, opacity: { duration: 0.18 } }}
-                className="overflow-hidden"
-              >
-                {rest.map((line, i) => (
-                  <motion.li
-                    key={line.id}
-                    initial={{ opacity: 0, y: -6 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ ...SPRING, delay: 0.04 * (i + 1) }}
-                    className="flex min-w-0 items-center gap-3 border-t border-border-hairline pt-2 first:mt-0.5 [&+&]:mt-2"
-                  >
-                    <span className="pointer-events-auto ml-2">
-                      <CardPhoto line={line} size="sm" />
-                    </span>
-                    <div className="flex min-w-0 flex-1 flex-col">
-                      <p className="truncate text-sm text-text-default" title={line.title}>{line.title}</p>
-                      <LineFacts line={line} className="text-xs" />
-                    </div>
-                  </motion.li>
-                ))}
-              </motion.ul>
-            ) : null}
-          </AnimatePresence>
-          <AnimatePresence initial={false}>
-            {peekOpen ? <OrderCardPeek model={model} todayKey={todayKey} /> : null}
-          </AnimatePresence>
-        </div>
-
-        {/* One checked card: its actions drop down from the right edge. */}
-        <PopoverAnchor asChild>
-          <span aria-hidden className="pointer-events-none absolute bottom-0 right-3 size-px" />
-        </PopoverAnchor>
-      </motion.article>
-      <PopoverContent
-        side="bottom"
-        align="end"
-        sideOffset={6}
-        onOpenAutoFocus={(event) => event.preventDefault()}
-        onInteractOutside={(event) => event.preventDefault()}
-        onEscapeKeyDown={onMenuDone}
-        className="w-64 overflow-hidden rounded-2xl p-0"
-        data-testid="order-card-menu"
-      >
-        <motion.div
-          initial={{ opacity: 0, y: -8, scale: 0.96 }}
-          animate={{ opacity: 1, y: 0, scale: 1 }}
-          transition={SPRING}
-          style={{ transformOrigin: 'var(--radix-popover-content-transform-origin)' }}
-        >
-          <OrderCardActionMenu record={model.lead} mode={mode} onOpenLabels={onOpenLabels} onDone={onMenuDone} />
-        </motion.div>
-      </PopoverContent>
-    </Popover>
+      }
+      menu={{
+        open: menuOpen,
+        onDone: onMenuDone,
+        content: <OrderCardActionMenu record={model.lead} mode={mode} onOpenLabels={onOpenLabels} onDone={onMenuDone} />,
+      }}
+    />
   );
 });

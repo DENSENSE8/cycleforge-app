@@ -18,7 +18,7 @@ import {
 
 interface OutboundWorkflowFactInput {
   shipmentId?: number | string | null;
-  hasTechScan?: boolean | null;
+  hasPickScan?: boolean | null;
   packedAt?: string | null;
   /** `station_activity_logs.DO​​CK_STAGED.created_at`; physical dock proof. */
   dockStagedAt?: string | null;
@@ -61,12 +61,12 @@ export function resolveOutboundWorkflowFacts(
   options: { todayKey?: string } = {},
 ): OutboundWorkflowFacts {
   const hasLabel = input.shipmentId != null && String(input.shipmentId) !== '';
-  const hasTechScan = Boolean(input.hasTechScan);
+  const hasPickScan = Boolean(input.hasPickScan);
   const packed = Boolean(input.packedAt);
   const staged = Boolean(input.dockStagedAt);
   const stage = resolveOrderLifecycleStage({
     shipmentId: input.shipmentId ?? null,
-    hasTechScan,
+    hasPickScan,
     packedAt: input.packedAt ?? null,
     isOutOfStock: normalizeOutOfStock(input.isOutOfStock),
   });
@@ -74,7 +74,7 @@ export function resolveOutboundWorkflowFacts(
   const actions = resolveOutboundWorkflowActions({
     stage,
     hasLabel,
-    hasTechScan,
+    hasPickScan,
     packed,
     staged,
   });

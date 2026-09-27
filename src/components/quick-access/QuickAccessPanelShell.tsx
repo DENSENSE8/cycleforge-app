@@ -3,7 +3,7 @@
 import type { ReactNode } from 'react';
 import { X } from '@/components/Icons';
 import { IconButton } from '@/design-system/primitives';
-import { cornerClass } from '@/design-system/tokens/radius';
+import { HEADER_MENU_PANEL_CORNER, HEADER_MENU_ROW_CORNER } from '@/components/layout/header-shell';
 import { cn } from '@/utils/_cn';
 
 interface QuickAccessPanelShellProps {
@@ -48,10 +48,10 @@ export function QuickAccessPanelShell({
       role="dialog"
       aria-label={ariaLabel ?? title}
       className={cn(
-        // Flush square — matches header Popover / Kinetic Ledger ops chrome
-        // (`cornerClass('flush')`), never soft `rounded-2xl` card islands.
+        // The header dropdown panel face (owner 2026-09-27): mode radius —
+        // rounded in triage, square on a touch floor — never a literal.
         'flex flex-col overflow-hidden border border-border-soft bg-surface-card shadow-xl',
-        cornerClass('flush'),
+        HEADER_MENU_PANEL_CORNER,
         maxHeightClass,
         widthClass,
       )}
@@ -82,7 +82,7 @@ export function QuickAccessPanelShell({
             onClick={onClose}
             ariaLabel="Close"
             icon={<X className="h-3.5 w-3.5" />}
-            className="flex h-7 w-7 items-center justify-center text-text-faint hover:text-text-muted"
+            className={cn('flex h-7 w-7 items-center justify-center text-text-faint hover:bg-surface-hover hover:text-text-muted', HEADER_MENU_ROW_CORNER)}
           />
         </div>
       </header>

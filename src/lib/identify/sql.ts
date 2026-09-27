@@ -12,7 +12,7 @@
  * `entity_search_docs`, capped per line.
  */
 
-import { sqlOrderHasPackScan, sqlOrderHasShipConfirm, sqlOrderHasTechScan } from '@/lib/orders/order-grain-sql';
+import { sqlOrderHasPackScan, sqlOrderHasShipConfirm, sqlOrderHasPickScan } from '@/lib/orders/order-grain-sql';
 import {
   sqlOrderAwaitingPick,
   sqlOrderBlockedPending,
@@ -105,7 +105,7 @@ export interface IdentifyRow {
   order_condition: string | null;
   shipment_id: string | number | null;
   desk_view: string | null;
-  has_tech_scan: boolean | null;
+  has_pick_scan: boolean | null;
   packed: boolean | null;
   staged: boolean | null;
   out_of_stock: boolean | null;
@@ -435,7 +435,7 @@ function enrichSql(brandSql: string): string {
   SELECT h.arm, h.line, h.probe, h.value, h.kind, h.entity_id, h.arm_rank, h.score,
          h.doc_title, h.doc_subtitle, h.doc_condition, h.happened_at,
          o.order_id, o.product_title AS order_title, o.account_source, o.condition AS order_condition,
-         o.shipment_id, sig.desk_view, sig.has_tech_scan, sig.packed, (dock_stage.dock_staged_at IS NOT NULL) AS staged,
+         o.shipment_id, sig.desk_view, sig.has_pick_scan, sig.packed, (dock_stage.dock_staged_at IS NOT NULL) AS staged,
          o.is_out_of_stock AS out_of_stock,
          sc.sku, sc.product_title AS catalog_title, zi.name AS zoho_title,
          su.serial_number AS unit_serial, su.current_status::text AS unit_status, su.condition_grade::text AS unit_condition,
@@ -459,7 +459,7 @@ function enrichSql(brandSql: string): string {
     ) zi ON true
     LEFT JOIN LATERAL (
       SELECT ${stage} AS desk_view,
-             ${sqlOrderHasTechScan('o')} AS has_tech_scan,
+             ${sqlOrderHasPickScan('o')} AS has_pick_scan,
              ${sqlOrderHasPackScan('o')} AS packed
        WHERE h.kind = 'order' AND o.id IS NOT NULL
     ) sig ON true

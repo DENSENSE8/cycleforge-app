@@ -100,37 +100,48 @@ export const COUNTER_CARD_CORNER = 'rounded-xl';
 /** Menu rows inside a {@link COMPOSER_SHELL_CORNER} drop panel padded `p-1`. */
 export const COMPOSER_MENU_ITEM_CORNER = 'rounded-xl';
 
+/** Half the region's control corner — a row nested in a control-corner panel (triage 4px, Floor 0). */
+const DROPDOWN_ROW_HALF_CONTROL = 'rounded-[calc(var(--mode-radius-control)/2)]';
+
 /** A segmented control's track and its two faces — the concentric pair for a pick-one toggle sitting inside a SOFT shell ({@link… */
-export const SEGMENTED_CONTROL_CORNER = 'rounded-lg';
+export const SEGMENTED_CONTROL_CORNER = 'rounded-mode-control';
 
-/** The pressed/unpressed faces inside {@link SEGMENTED_CONTROL_CORNER}. */
-export const SEGMENTED_CONTROL_FACE_CORNER = 'rounded-md';
+/**
+ * The pressed/unpressed faces inside {@link SEGMENTED_CONTROL_CORNER} padded
+ * `p-0.5` — concentric: the region's control corner minus the 2px pad (triage
+ * 6px, square on the Floor; `max` keeps a 0 control corner from going negative).
+ */
+export const SEGMENTED_CONTROL_FACE_CORNER = 'rounded-[max(0px,calc(var(--mode-radius-control)_-_2px))]';
 
 
-/** MasterNav destination rows and the open-spine labelled Search face. */
-export const SPINE_ROW_CORNER = 'rounded';
+/** MasterNav destination rows and the open-spine labelled Search face — the {@link DROPDOWN_ITEM_CORNER} rung. */
+export const SPINE_ROW_CORNER = DROPDOWN_ROW_HALF_CONTROL;
 
-/** Floating menu / dropdown / popover panel — the 8px control rung the scale already names for "soft menus / dropdown chrome". */
-export const DROPDOWN_SHELL_CORNER = 'rounded-lg';
+/**
+ * Floating menu / dropdown / popover panel — the region's control corner
+ * (triage 8px, square on the Floor / a touch screen).
+ */
+export const DROPDOWN_SHELL_CORNER = 'rounded-mode-control';
 
-/** Rows inside a {@link DROPDOWN_SHELL_CORNER} panel padded `p-1`. */
-export const DROPDOWN_ITEM_CORNER = 'rounded';
+/** Rows inside a {@link DROPDOWN_SHELL_CORNER} panel padded `p-1` — half the control corner (triage 4px). */
+export const DROPDOWN_ITEM_CORNER = DROPDOWN_ROW_HALF_CONTROL;
 
 /**
  * Contextual sidebar controls — the action CTA, filter disclosure rows, the
- * boxed option list, the Reset pill. 6px: reads as a pressable button without
- * the full-pill capsule (operator 2026-09-27).
+ * boxed option list, the Reset pill. The region's control corner, so the ⌘K
+ * well and the sidebar controls match the 8px header keys (was 6px).
  */
-export const SIDEBAR_CONTROL_CORNER = 'rounded-md';
+export const SIDEBAR_CONTROL_CORNER = 'rounded-mode-control';
 
-/** Count chips and value chips inside a {@link SIDEBAR_CONTROL_CORNER} row. */
-export const SIDEBAR_CHIP_CORNER = 'rounded';
+/** Count chips and value chips inside a {@link SIDEBAR_CONTROL_CORNER} row — the {@link DROPDOWN_ITEM_CORNER} rung. */
+export const SIDEBAR_CHIP_CORNER = DROPDOWN_ROW_HALF_CONTROL;
 
 /**
  * DataTable find-row tokens — search, filter, sort, views, date, fields,
- * zoom, fullscreen, the export glyph. Operator 2026-09-01: round them off;
+ * zoom, fullscreen, the export glyph. The region's control corner (triage
+ * 8px, square on the Floor).
  */
-export const DATA_TABLE_TOOLBAR_CORNER = 'rounded-lg';
+export const DATA_TABLE_TOOLBAR_CORNER = 'rounded-mode-control';
 
 /**
  * Chrome INSIDE a `cornerClass('surface')` triage panel — the alerts, pickers, fields and buttons an operator works in the exception editor.

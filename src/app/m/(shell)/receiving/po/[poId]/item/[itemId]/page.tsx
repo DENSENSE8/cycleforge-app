@@ -7,7 +7,6 @@ import { useQuery } from '@tanstack/react-query';
 import { Camera } from '@/components/Icons';
 import { MobileDetailTopBar } from '@/components/mobile/redesign/MobileDetailTopBar';
 import { PhotoFab } from '@/components/mobile/receiving/PhotoFab';
-import { useRealtimeInvalidation } from '@/hooks/useRealtimeInvalidation';
 import { normalizePhotoDisplayUrl } from '@/lib/nas-photo-url';
 import { receivingPhotosGalleryUrl } from '@/lib/photos/mobile-gallery-url';
 import {
@@ -54,9 +53,6 @@ export default function MobilePurchaseOrderItemDetailPage(
   const { poId: rawPoId, itemId: rawItemId } = useUnwrap(props.params);
   const poId = decodeURIComponent(rawPoId || '');
   const itemId = Number(rawItemId);
-  // Same receiving-log channel — keeps per-item state and photo list fresh.
-  useRealtimeInvalidation({ receiving: true });
-
   const { data, isLoading, error } = useQuery<DetailResponse>({
     queryKey: ['receiving-po-detail', poId],
     queryFn: async () => {

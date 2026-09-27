@@ -82,10 +82,12 @@ function CommandGroup({
       data-slot="command-group"
       className={cn(
         'overflow-hidden p-0 text-text-default',
-        '[&_[cmdk-group-heading]]:px-3 [&_[cmdk-group-heading]]:pb-0.5 [&_[cmdk-group-heading]]:pt-1.5',
-        '[&_[cmdk-group-heading]]:text-role-micro [&_[cmdk-group-heading]]:font-semibold',
-        '[&_[cmdk-group-heading]]:uppercase [&_[cmdk-group-heading]]:tracking-widest',
-        '[&_[cmdk-group-heading]]:text-text-faint',
+        '[&_[cmdk-group-heading]]:px-3 [&_[cmdk-group-heading]]:pb-1 [&_[cmdk-group-heading]]:pt-2',
+        // The region's label VOICE (`mode-label-case`): sentence case in triage
+        // (the desk, where the palette lives), caps on the industrial floor.
+        '[&_[cmdk-group-heading]]:text-role-caption [&_[cmdk-group-heading]]:font-medium',
+        '[&_[cmdk-group-heading]]:mode-label-case',
+        '[&_[cmdk-group-heading]]:text-text-muted',
         className,
       )}
       {...props}

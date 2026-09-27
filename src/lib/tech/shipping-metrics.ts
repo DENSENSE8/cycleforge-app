@@ -1,4 +1,4 @@
-/** Shipping workspace KPI registry — pure descriptors for Pending / History strips on `/test` Shipping mode. */
+/** Shipping workspace KPI registry — pure descriptors for Pending / History strips on the `/pick` Picker desk. */
 
 import type { MetricIntent } from '@/design-system/components/monitor';
 import type { OperationsRoiData } from '@/features/operations/workspace/useOperationsRoi';

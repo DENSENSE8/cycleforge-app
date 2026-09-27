@@ -325,15 +325,59 @@ accessibility, not style.
 checkbox top-left with a status icon beneath it; line 1 order number · platform · SLA (right);
 line 2 photo + full product title; line 3 qty · condition · stock · bin · price. Multi-product
 orders show the first line (out of stock first) plus "+N items", which expands in place; hovering
-the status icon lists every line with what is out of stock. One checked card → its actions drop
-down from the card's right; two or more → the bar above the list becomes the bulk bar. No column
+the status icon lists every line with what is out of stock. ~~One checked card → its actions drop
+down from the card's right; two or more → the bar above the list becomes the bulk bar.~~ **Changed
+(owner, 2026-09-27):** selection verbs live only in the selection bar above the list — same verbs,
+same order, same place for 1 or N checked, disabled with a reason, never hidden; single-card verbs
+live only in fixed card spots (⋮ at line 1 far right, identity ↗, stage-chip popovers). No column
 header. Floor keeps the industrial ledger.
 
 **Changed (owner, 2026-09-27) — card line 1:** order number · ↗ (always-visible link to the
-platform's admin order page; no hover menu or hover bubble on the number, click still copies) ·
-full platform name (`channel.label`, never truncated) · buyer name (muted; the first thing to
-truncate) ······ **Listing ↗** (item number, else SKU, via `getExternalUrlByItemNumber`) · SLA.
-The shipping address stays off the card — it lives in the Space quick look and the record.
+platform's admin order page). Hovering the NUMBER flies out its menu — "Copy order ID" and "Edit
+order ID link" ("Add order ID link" when there is none), the latter opening the link popover
+under the number; nothing is reserved beside the number, hovering the ↗ shows nothing, a click
+on the number copies · full platform name (`channel.label`, medium-weight ink + brand dot) ·
+buyer name (regular, muted, after a faint `·`; the first thing to truncate) ······ **Listing ↗**
+(item number, else SKU, via `getExternalUrlByItemNumber`) · SLA. The shipping address stays off
+the card — it lives in the Space quick look and the record.
+
+**Changed (owner, 2026-09-27) — card stages: Pick and QC per line, Pack per order.** Default
+order everywhere (card, quick look, record rows) is **Pick → QC → Pack**. Pick and QC belong to the
+item, Pack to the order: every line row ends in its own Pick and QC chips; one Pack chip sits at the
+order level on the last row. Orders with 2+ lines always show their lines — up to 3, out of stock
+first — and "+N more" unfolds the rest in place (no empty space between lines and stages). A chip
+is icon + word + one short stamp (today → "2:14 PM", older → "Sep 27"): "Picked" / "QC'd" /
+"Packed", "Pre-QC'd" (QC passed before the order — backend pending), "Out of stock" (danger), or
+faint "Pick" / "QC" / "Pack". **No staff name inline.** A click opens the stage: who (or "Assigned
+to X" / "Not assigned"), the full stamp, and for Pick / Pack the record's `LedgerStageAssign`
+(pick assigns that line; pack assigns every line). Icons: Pick `PackageSearch` info blue, QC
+`ShieldCheck` success green, Pack `PackageCheck` Packed purple. "Details ▾" on card hover opens the
+quick look. Every fact sits in one 24 px line box (`CARD_FACT_BOX_CLASS`, `tokens/desk-stage.ts`).
+Data truth depends on the QC / Pick split (`HANDOFF-qc-pick-split.md`).
+
+**Changed (owner, 2026-09-27, later) — multi-line display language; stages off the card face.**
+Supersedes the stage chips and the "up to 3 lines" rule above. The card face carries **no Pick /
+QC / Pack** — no chips, no stage words; stages, who and when live in the Space quick look and the
+record only. Every card wears ONE face: the lead line (out of stock first) — big photo, title, then
+its facts in one fixed order, **qty · condition · stock · SKU · bin · price**
+(`LINE_FACT_ORDER`, `OrderCard.tsx`), with "Details ▾" always at the far right of that facts row
+and nowhere else. A 2+ line order adds one disclosure row: "+N items ▾" (plus "· N more out of
+stock" in danger when hidden lines are short). Unfolded, the other lines are columns — small photo
+· title · the same facts in the same order — so every fact sits under the same fact on every row;
+SKU and price give way below the `label` width tier.
+
+**Changed (owner, 2026-09-27) — card width disclosure:** the card is a container
+(`@container/card`); line 1 and the stage disclose by the card's OWN width, through the
+`CARD_DISCLOSE` tiers in `tokens/desk-stage.ts` — `brand` (@md: platform name; below it the brand
+dot only, *pending owner* — phase 1 asked for the full name at every desktop width), `label` (@xl:
+"Listing", "SKU in N orders", the stage word), `detail` (@2xl: buyer name, stage time). Hidden
+facts stay reachable: a `HoverTooltip` on each (platform, buyer, SLA, note, SKU chip, Listing,
+admin ↗), the stage popover, and the Space quick look (Customer, Platform, Ship to, Ordered,
+Tracking, QC, Pick, Pack — with names).
+
+**One stage source (2026-09-27):** the card, the quick look and the record's QC by / Picked by /
+Packed by rows all read `orderStage` (`src/lib/orders/order-stages.ts`). Done → the actor
+(staff directory first, then the wire name) and the PST stamp; not done → the work assignee.
 
 ## Resolved 2026-09-24 (all six approved as written)
 

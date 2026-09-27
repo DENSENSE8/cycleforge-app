@@ -20,12 +20,14 @@ import {
   searchPhotos,
 } from '@/lib/photos/queries/search';
 import { resolveShipmentForScan } from '@/lib/receiving/resolve-shipment-for-scan';
+import { isCarrierUniqueTracking } from '@/lib/scan-resolver';
 import { searchHitHref } from '@/lib/search/search-hit';
 import {
   looksLikeTicketScan,
   resolveSupportTicketToReceiving,
 } from '@/lib/support/tickets';
 import type { OrgId } from '@/lib/tenancy/constants';
+import { detectCarrier } from '@/lib/tracking-format';
 import { listClaims, getClaim } from '@/lib/warranty/claims';
 import { lookupCoverage } from '@/lib/warranty/coverage';
 import { getPackingKpisForDay } from '@/lib/packing/packer-kpi-queries';
@@ -78,7 +80,7 @@ const operationsJourneyInput = z.object({
 export const getOperationsJourney: AssistantToolDef<typeof operationsJourneyInput> = {
   name: 'get_operations_journey',
   description:
-    'THE cross-station timeline for one order/serial/tracking — receiving → test → pack → ship → return → warranty. Use when the user asks "what happened to", "full history", "trace", or after hybrid_entity_search finds an id. Returns anchors + trimmed events with sources.',
+    'THE cross-station timeline for one order/serial/tracking — receiving → test (TECH: bench QC / serials) → pick (PICK: picker-desk order pick) → pack → ship → return → warranty. Use when the user asks "what happened to", "full history", "trace", or after find_records finds an id. Returns anchors + trimmed events with sources.',
   permission: 'operations.view',
   inputSchema: operationsJourneyInput,
   run: async (input, ctx, _deps) => {
@@ -130,7 +132,8 @@ function summarizeJourneyRaw(raw: unknown): string {
   if (!raw || typeof raw !== 'object') return String(raw ?? '');
   const o = raw as Record<string, unknown>;
   const parts = [
-    o.type ?? o.event_type ?? o.action ?? o.status ?? null,
+    // SAL rows carry `activity_type` + `station`: PICK_SCANNED · PICK is an order pick, never a TECH (QC) fact.
+    o.type ?? o.event_type ?? o.activity_type ?? o.action ?? o.status ?? null,
     o.station ?? o.source_station ?? null,
     o.notes ?? o.note ?? o.message ?? null,
   ].filter(Boolean);
@@ -157,7 +160,7 @@ export const getOrderLookup: AssistantToolDef<
 > = {
   name: 'get_order_lookup',
   description:
-    'Look up a specific order id or tracking number via live pending-order + shipped context blocks (same as Hermes enrichment). Use when the user names a concrete order/tracking and hybrid search is unnecessary. Prefer hybrid_entity_search for fuzzy product/SKU questions.',
+    'Look up a specific order id or tracking number via live pending-order + shipped context blocks (same as Hermes enrichment). Use for an order\'s live details when the user names a concrete order/tracking; to find a record by anything else use find_records.',
   permission: 'dashboard.view',
   inputSchema: z
     .object({
@@ -246,7 +249,17 @@ export const lookupSerial: AssistantToolDef<z.ZodObject<{ serial: z.ZodString }>
       { organizationId: ctx.organizationId },
       ctx.organizationId,
     );
-    if (!tsnMatch) return { found: false as const, serial };
+    if (!tsnMatch) {
+      // A carrier tracking number is never a serial: say so, and name the order read that finds it.
+      if (isCarrierUniqueTracking(serial)) {
+        return {
+          found: false as const,
+          serial,
+          message: `${input.serial.trim()} is a ${detectCarrier(serial)} carrier tracking number, not a serial — no unit was looked up. Find its order with find_records {"query":"${serial}"} or get_order_lookup {"trackingNumber":"${serial}"}.`,
+        };
+      }
+      return { found: false as const, serial };
+    }
     return {
       found: true as const,
       is_return: true,

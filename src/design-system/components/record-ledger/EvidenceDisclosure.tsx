@@ -1,5 +1,7 @@
+'use client';
+
 /** Evidence-column facts that DISCLOSE — the Selected-order column of the industrial record ledger (To-ship). */
-import type { ReactNode } from 'react';
+import { useState, type ReactNode } from 'react';
 import { Minus, Plus } from '@/components/Icons';
 import { RECORD_LABEL_CLASS, RECORD_TRAILING_CELL_CLASS } from '@/design-system/tokens/industrial-record';
 import { focusRing } from '@/design-system/tokens/focus-ring';
@@ -32,15 +34,27 @@ export function EvidenceDisclosure({
   label,
   summary,
   testId,
+  lazy = false,
+  defaultOpen = false,
   children,
 }: {
   label: string;
   summary?: ReactNode;
   testId?: string;
+  /** Mount the body on first open — a collapsed section costs no fetch. */
+  lazy?: boolean;
+  /** Start expanded (the section is the work still to do); the operator's toggle wins after mount. */
+  defaultOpen?: boolean;
   children: ReactNode;
 }) {
+  const [opened, setOpened] = useState(defaultOpen);
   return (
-    <details data-testid={testId} className="group/section border-b border-mode-fact">
+    <details
+      data-testid={testId}
+      open={defaultOpen || undefined}
+      className="group/section border-b border-mode-fact"
+      onToggle={lazy ? (event) => event.currentTarget.open && setOpened(true) : undefined}
+    >
       <summary className={cn(SUMMARY_CLASS, 'px-4', HIT_CLASS)}>
         {/* One left edge for every value in the panel (owner 2026-09-26):
             the label column is the fact rows' w-24, the summary starts after it. */}
@@ -51,7 +65,7 @@ export function EvidenceDisclosure({
           <Minus className="hidden h-3.5 w-3.5 group-open/section:block" />
         </span>
       </summary>
-      <div className="border-t border-mode-fact">{children}</div>
+      <div className="border-t border-mode-fact">{!lazy || opened ? children : null}</div>
     </details>
   );
 }

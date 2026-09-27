@@ -33,7 +33,7 @@ import { cn } from '@/utils/_cn';
 import { useAuth } from '@/contexts/AuthContext';
 import { IdentificationJobFace } from '@/components/identification/IdentificationJobFace';
 import { identificationFromScanOut, type ScanOutCartonJson } from '@/lib/identification';
-import type { ActiveStationOrder } from '@/hooks/useStationTestingController';
+import type { ActiveStationOrder } from '@/hooks/useDeskPickController';
 import type { ScanOutActivePane } from '@/components/outbound/scan-out/scan-out-active';
 import {
   SCAN_OUT_CLOSE_DISPLAYS_EVENT,

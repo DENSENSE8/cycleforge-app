@@ -69,7 +69,7 @@ export function UpNextActionDock({ order }: UpNextActionDockProps) {
         embedded
         embeddedChrome="pill"
         vm={terminalVm}
-        assignedTechId={order.packer_id ?? order.tester_id ?? null}
+        assignedTechId={order.packer_id ?? order.picker_id ?? null}
       />
     </div>
   ) : null;

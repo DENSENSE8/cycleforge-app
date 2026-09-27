@@ -62,7 +62,6 @@ export function packerRecordToDetail(record: PackerRecord) {
     tracking_number_rows: record.tracking_number_rows || [],
     serial_number: '',
     sku: record.sku || '',
-    tester_id: null,
     tested_by: null,
     test_date_time: null,
     packer_id: record.packed_by || null,

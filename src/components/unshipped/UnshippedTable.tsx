@@ -18,7 +18,7 @@ import { orgHasActivity, useOnboardingStats } from '@/hooks/useOnboardingStats';
 import { PackAwaitingFeedback } from '@/components/packer/PackAwaitingFeedback';
 import { dispatchCloseShippedDetails, dispatchOpenShippedDetails } from '@/utils/events';
 import { deskCountsQuery, unshippedOrdersQuery, unshippedQueueCountsQuery } from '@/lib/queries/dashboard-queries';
-import { readDeskViewFilters } from '@/lib/orders/desk-view-filters';
+import { readDeskRefinements, readDeskViewFilters } from '@/lib/orders/desk-view-filters';
 import { fetchUnshippedOrderRowById } from '@/lib/dashboard-table-data';
 import {
   cagedOrdersQuery,
@@ -36,14 +36,13 @@ import { getCurrentPSTDateKey, toPSTDateKey } from '@/utils/date';
 import { pinRecentlyCreatedUnshipped } from '@/lib/orders/order-record-normalize';
 import {
   patchUnshippedOrderCache,
-  patchUnshippedOrderTested,
+  patchUnshippedOrderPicked,
   invalidateUnshippedCounts,
   insertUnshippedOrderIntoCache,
 } from '@/lib/queries/dashboard-cache-patch';
 import { SHIPPING_PATH } from '@/components/outbound/outbound-sidebar-shared';
 import { SHIPPING_ORDERS_PATH, ORDERS_DESK_CONTEXT_KEY, ORDERS_DESK_SUPPORT_CONTEXT, parseOrdersDeskContext } from '@/lib/shipping/orders-desk';
 import type { ShippedOrder } from '@/types/orders';
-import { useRefreshSignal } from '@/lib/refresh/bus';
 import { useLabelsWalkShortcut } from '@/components/outbound/orders/paperwork/useLabelsWalkShortcut';
 import { PaperworkWalkHost } from '@/components/outbound/orders/paperwork/PaperworkWalkHost';
 import { useNavIntent } from '@/lib/nav/use-nav-intent';
@@ -56,7 +55,7 @@ import { OrderCardList } from '@/components/outbound/orders/cards/OrderCardList'
 /** Pre-pack fulfillment queue — Dashboard Pending / Tested tabs (and pack/shipping stations that embed the same table without a lane scope). */
 interface UnshippedTableProps extends DashboardSearchSectionProps {
   packedBy?: number;
-  testedBy?: number;
+  pickerId?: number;
   /** Rail-selection model: the check-set is the single selection SoT and drives
    *  the right-rail inspector (History / order-rail SoT). */
   railSelection?: boolean;
@@ -100,9 +99,9 @@ const EMPTY_UNSHIPPED_ROWS: ShippedOrder[] = [];
 export function assignmentPatchFromEvent(detail: any): Record<string, unknown> {
   const patch: Record<string, unknown> = {};
   const {
-    testerId,
+    pickerId,
     packerId,
-    testerName,
+    pickerName,
     packerName,
     deadlineAt,
     outOfStock,
@@ -111,10 +110,9 @@ export function assignmentPatchFromEvent(detail: any): Record<string, unknown> {
     condition,
   } = detail || {};
 
-  if (testerId !== undefined) {
-    patch.tester_id = testerId;
-    patch.tester_name = testerName ?? null;
-    patch.tested_by_name = testerName ?? null;
+  if (pickerId !== undefined) {
+    patch.picker_id = pickerId;
+    patch.picker_name = pickerName ?? null;
   }
   if (packerId !== undefined) {
     patch.packer_id = packerId;
@@ -145,7 +143,7 @@ function orderIdOf(row: ShippedOrder): number {
 
 export function UnshippedTable({
   packedBy,
-  testedBy,
+  pickerId,
   strictSearchScope = false,
   searchEmptyTitle = 'No orders found',
   searchResultLabel = 'orders to ship',
@@ -228,6 +226,17 @@ export function UnshippedTable({
   const deskLens = readDeskViewFilters(searchParams);
   const pairFilter = lockedFulfillmentState === 'BLOCKED' ? deskLens.pair ?? undefined : undefined;
   const queueFilter = lockedFulfillmentState ? undefined : deskLens.queue ?? undefined;
+  /* Sidebar refinements (`?pickedBy` / `?packedBy` / `?pickerId` / `?orderFrom|To` /
+   * `?shipByFrom|To`), filtered SERVER-side with the same parse the nav facets use.
+   * An explicit `packedBy` / `pickerId` prop wins over the URL. */
+  const refine = readDeskRefinements(searchParams);
+  const packedByFilter = packedBy ?? refine.packedBy ?? undefined;
+  const pickerIdFilter = pickerId ?? refine.pickerId ?? undefined;
+  const pickedByFilter = refine.pickedBy ?? undefined;
+  const orderFrom = refine.orderFrom ?? undefined;
+  const orderTo = refine.orderTo ?? undefined;
+  const shipByFrom = refine.shipByFrom ?? undefined;
+  const shipByTo = refine.shipByTo ?? undefined;
   const [walkIds, setWalkIds] = useState<number[] | null>(null);
   const { rows: selectedRailRows } = useRailActionSnapshot();
   const isSupportContext =
@@ -249,6 +258,13 @@ export function UnshippedTable({
     cagedOnly,
     pairFilter,
     queueFilter,
+    packedByFilter,
+    pickerIdFilter,
+    pickedByFilter,
+    orderFrom,
+    orderTo,
+    shipByFrom,
+    shipByTo,
   ]);
 
 
@@ -260,8 +276,13 @@ export function UnshippedTable({
     ...unshippedOrdersQuery({
       // The find text IS part of the fetch now.
       searchQuery,
-      packedBy,
-      testedBy,
+      packedBy: packedByFilter,
+      pickerId: pickerIdFilter,
+      pickedBy: pickedByFilter,
+      orderFrom,
+      orderTo,
+      shipByFrom,
+      shipByTo,
       staffId,
       strictSearchScope,
       // Coarse stage facet now filtered SERVER-side (Phase 1). Absent = all.
@@ -280,9 +301,16 @@ export function UnshippedTable({
     // wasn't filtering, and would paint the Action list under "Pick list".
     placeholderData: (previousData, previousQuery) => {
       const prev = previousQuery?.queryKey?.[2] as
-        | { staffId?: number; pair?: string; queue?: string }
+        | { staffId?: number; pair?: string; queue?: string; pickedBy?: number; packedBy?: number; pickerId?: number }
         | undefined;
-      if (prev?.staffId !== staffId || prev?.pair !== pairFilter || prev?.queue !== queueFilter) {
+      if (
+        prev?.staffId !== staffId ||
+        prev?.pair !== pairFilter ||
+        prev?.queue !== queueFilter ||
+        prev?.pickedBy !== pickedByFilter ||
+        prev?.packedBy !== packedByFilter ||
+        prev?.pickerId !== pickerIdFilter
+      ) {
         return undefined;
       }
       return previousData;
@@ -356,16 +384,16 @@ export function UnshippedTable({
 
       const detail = {
         orderIds: [orderId],
-        testerId: d.testerId,
+        pickerId: d.pickerId,
         packerId: d.packerId,
-        testerName: d.testerName,
+        pickerName: d.pickerName,
         packerName: d.packerName,
         deadlineAt: d.deadlineAt,
         shippingTrackingNumber: d.shippingTrackingNumber,
       };
 
       const hasAnyChange =
-        detail.testerId !== undefined ||
+        detail.pickerId !== undefined ||
         detail.packerId !== undefined ||
         detail.deadlineAt !== undefined ||
         detail.shippingTrackingNumber !== undefined;
@@ -378,12 +406,12 @@ export function UnshippedTable({
     !!ordersChannelName,
   );
 
-  // Pending-stage rows live in this merged queue too, so reflect tech-test verdicts (has_tech_scan) in place — a tracking scan at the bench…
+  // Pending-stage rows live in this merged queue too, so reflect the picker desk's scan (has_pick_scan, picked_*) in place — the /tech embed has no desk hook to do it.
   useAblyChannel(
     ordersChannelName,
-    'order.tested',
-    (message: any) => {
-      patchUnshippedOrderTested(queryClient, message?.data ?? {});
+    'order.picked',
+    (message: { data?: Parameters<typeof patchUnshippedOrderPicked>[1] } | null) => {
+      patchUnshippedOrderPicked(queryClient, message?.data ?? { orderId: undefined });
     },
     !!ordersChannelName,
   );
@@ -395,7 +423,7 @@ export function UnshippedTable({
       if (orderIds.length === 0) return;
 
       const hasAnyChange =
-        detail.testerId !== undefined ||
+        detail.pickerId !== undefined ||
         detail.packerId !== undefined ||
         detail.deadlineAt !== undefined ||
         detail.outOfStock !== undefined ||
@@ -420,10 +448,6 @@ export function UnshippedTable({
     };
   }, [queryClient]);
 
-  useRefreshSignal('orders.outbound', () => {
-    void queryClient.refetchQueries({ queryKey: ['dashboard-table', 'unshipped'] });
-    invalidateUnshippedCounts(queryClient);
-  });
 
 
   const handleOpenRecord = useCallback(
@@ -467,7 +491,7 @@ export function UnshippedTable({
         ? allRecords
         : allRecords.filter((r) => {
         const row = r as {
-          has_tech_scan?: boolean;
+          has_pick_scan?: boolean;
           is_out_of_stock?: boolean;
           is_urgent?: boolean;
           tracking_number?: string | null;
@@ -484,12 +508,12 @@ export function UnshippedTable({
         const packedAt = row.packed_at || row.pack_activity_at || null;
         const lifecycle = resolveOrderLifecycleStage({
           shipmentId: row.shipment_id,
-          hasTechScan: Boolean(row.has_tech_scan),
+          hasPickScan: Boolean(row.has_pick_scan),
           isOutOfStock: Boolean(row.is_out_of_stock),
           packedAt,
         });
         const state = deriveFulfillmentState({
-          hasTechScan: Boolean(row.has_tech_scan),
+          hasPickScan: Boolean(row.has_pick_scan),
           isOutOfStock: Boolean(row.is_out_of_stock),
         });
 

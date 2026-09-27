@@ -46,7 +46,7 @@ function unshippedListKey({ blockedOnly = false, pair, queue }: UnshippedSeedVie
     {
       searchQuery: '',
       packedBy: undefined,
-      testedBy: undefined,
+      pickerId: undefined,
       staffId: undefined,
       strictSearchScope: true,
       stage: null,

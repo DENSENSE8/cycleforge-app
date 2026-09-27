@@ -1,9 +1,9 @@
 'use client';
 
-import { useRef, useState, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
-import type { NavContext, NavFilters as NavFiltersSpec } from '@/lib/nav/context/schema';
+import { navControlParams, type NavContext, type NavFilters as NavFiltersSpec } from '@/lib/nav/context/schema';
 import { fetchNavFacets } from '@/lib/nav/context/http-client';
 import { AnimatePresence, LayoutGroup, motion } from '@/design-system/motion';
 import { motionPresence, motionTransition } from '@/design-system/foundations/motion-presets';
@@ -12,11 +12,12 @@ import {
   useMotionTransition,
 } from '@/design-system/foundations/motion-presets-hooks';
 import { AnimatedStat } from '@/design-system/components/AnimatedStat';
+import { Collapse } from '@/design-system/components/Collapse';
 import { DateRangePickerField } from '@/design-system/components/DateRangePickerField';
 import { StageStaffAssignPopover } from '@/components/tables/compound/StageStaffAssignPopover';
 import { useSavedViews } from '@/hooks/useSavedViews';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Bookmark, Calendar, Check, ChevronRight, Plus, User, X } from '@/components/Icons';
+import { Bookmark, Calendar, Check, ChevronRight, Clock, Plus, User, X } from '@/components/Icons';
 import { focusRing } from '@/design-system/tokens/focus-ring';
 import { SIDEBAR_CHIP_CORNER, SIDEBAR_CONTROL_CORNER } from '@/design-system/tokens/radius';
 import { parseStaffParam } from '@/hooks/useStaffFilter';
@@ -25,7 +26,7 @@ import { peekActiveStaff } from '@/lib/staffCache';
 import { cn } from '@/utils/_cn';
 import { useReplaceSearchParams } from './useReplaceSearchParams';
 import { NavSlotError } from './NavSlotError';
-import { NAV_BLOCK_CLASS, NAV_BLOCK_PLATE_CLASS } from './nav-block';
+import { NAV_BLOCK_CLASS, NAV_BLOCK_PLATE_CLASS, NAV_CHOICE_PRESS_CLASS, NAV_CHOICE_SELECTED_CLASS } from './nav-block';
 
 const FACETS_STALE_MS = 15_000;
 
@@ -46,11 +47,13 @@ function readValues(raw: string | null, multi: boolean): string[] {
 }
 
 /**
- * The view's filters, Vercel Logs style: a hairline with a Reset pill, then
- * one closed row per filter. A row shows its current value as a chip; the
- * options (with counts from `GET /api/nav/facets`) open on click, options
- * with nothing behind them last and dimmed. Staff and date are rows too;
- * the view's saved views follow as one-click presets.
+ * What the operator changes often, as buttons — never behind a menu (modes
+ * and views, changed rarely, sit in the head's switchers). Top to bottom:
+ * the view's saved views as one-click presets, then a hairline with a Reset
+ * pill, then one closed row per filter, Vercel Logs style. A row shows its
+ * current value as a chip; the options (with counts from
+ * `GET /api/nav/facets`) open on click, options with nothing behind them
+ * last and dimmed. Staff and date are rows too.
  */
 export function NavFilters({
   filters,
@@ -72,12 +75,10 @@ export function NavFilters({
     placeholderData: keepPreviousData,
   });
 
+  // Sort orders the list; it is not a filter, so Reset and the count leave it.
   const ownedParams = [
     ...(filters?.groups.map((group) => group.param) ?? []),
-    ...(controls?.staff ? [controls.staff.param] : []),
-    ...(controls?.dateRange
-      ? [controls.dateRange.fromParam, controls.dateRange.toParam, ...controls.dateRange.clearParams]
-      : []),
+    ...navControlParams(controls ? { ...controls, sort: undefined } : undefined),
   ];
   const activeCount = ownedParams.filter((param) => searchParams?.has(param)).length;
   const [open, setOpen] = useState<ReadonlySet<string>>(
@@ -112,6 +113,7 @@ export function NavFilters({
 
   return (
     <section data-nav-filters aria-label="Filters" aria-busy={facets.isFetching || undefined} className="px-2 pt-2">
+      {savedViews ? <SavedViewPresets storageKey={savedViews.storageKey} paramKeys={savedViews.paramKeys} /> : null}
       {/* A hairline opens the category, like every other sidebar category — no
           text heading. The live count + Reset ride the line only while a
           filter is on. */}
@@ -149,8 +151,11 @@ export function NavFilters({
       </header>
 
       <div className="flex flex-col gap-px">
-        {controls?.staff ? <StaffRow param={controls.staff.param} /> : null}
-        {controls?.dateRange ? <DateRow spec={controls.dateRange} /> : null}
+        {controls?.sort ? (
+          <SortRow spec={controls.sort} open={open.has('sort')} onToggle={toggleOpen} />
+        ) : null}
+        {controls?.staff?.map((row) => <StaffRow key={row.id} id={row.id} param={row.param} label={row.label} />)}
+        {controls?.dateRanges?.map((range) => <DateRow key={range.id} spec={range} />)}
         {filters
           ? filters.groups.map((declared) => {
               const group = facets.data?.groups.find((g) => g.id === declared.id);
@@ -217,7 +222,6 @@ export function NavFilters({
             })
           : null}
       </div>
-      {savedViews ? <SavedViewPresets storageKey={savedViews.storageKey} paramKeys={savedViews.paramKeys} /> : null}
     </section>
   );
 }
@@ -233,8 +237,8 @@ function orderOptions<T extends { value: string; count: number }>(options: reado
 }
 
 /**
- * The view's saved views as one-click presets (`useSavedViews`), under the
- * filter rows: one block per view (Bookmark glyph, lit while the URL matches
+ * The view's saved views as one-click presets (`useSavedViews`), at the top
+ * of the body: one block per view (Bookmark glyph, lit while the URL matches
  * it, pressing the lit one clears it), a hover × on your own views, and a
  * `Save view` block only while unsaved filters are on. Nothing saved and no
  * filter on → nothing renders.
@@ -259,7 +263,6 @@ function SavedViewPresets({ storageKey, paramKeys }: { storageKey: string; param
 
   return (
     <div role="group" aria-label="Saved views" data-nav-presets className="flex flex-col gap-px">
-      <span role="separator" className="mx-2 my-1.5 h-px bg-border-hairline" />
       <LayoutGroup id={`nav-presets:${storageKey}`}>
         {views.map((view) => {
           const lit = view.id === activeView?.id;
@@ -392,8 +395,6 @@ function Disclosure({
   onToggle: (id: string) => void;
   children: ReactNode;
 }) {
-  const presence = useMotionPresence(motionPresence.collapseHeight);
-  const transition = useMotionTransition(motionTransition.stationCollapse);
   const chevron = useMotionTransition(motionTransition.upNextChevron);
   const bodyId = `nav-filter-${id}`;
   return (
@@ -424,26 +425,17 @@ function Disclosure({
           ) : null}
         </AnimatePresence>
       </button>
-      <AnimatePresence initial={false}>
-        {open ? (
-          <motion.div
-            id={bodyId}
-            key="body"
-            initial={presence.initial}
-            animate={presence.animate}
-            exit={presence.exit}
-            transition={transition}
-            className="overflow-hidden"
-          >
-            <div className="pb-1.5 pl-6 pr-0.5 pt-0.5">{children}</div>
-          </motion.div>
-        ) : null}
-      </AnimatePresence>
+      <Collapse open={open}>
+        <div id={bodyId} className="pb-1.5 pl-6 pr-0.5 pt-0.5">
+          {children}
+        </div>
+      </Collapse>
     </div>
   );
 }
 
-function StaffRow({ param }: { param: string }) {
+/** One staff ROLE (Assigned, Picked by, Packer, …): one staffer or everyone. */
+function StaffRow({ id, param, label }: { id: string; param: string; label: string }) {
   const searchParams = useSearchParams();
   const replace = useReplaceSearchParams();
   const anchorRef = useRef<HTMLButtonElement>(null);
@@ -456,27 +448,27 @@ function StaffRow({ param }: { param: string }) {
       <button
         ref={anchorRef}
         type="button"
-        data-nav-filter="staff"
+        data-nav-filter={`staff:${id}`}
         aria-haspopup="dialog"
         aria-expanded={open}
         onClick={() => setOpen((v) => !v)}
         className={ROW_CLASS}
       >
         <User aria-hidden className={ROW_ICON_CLASS} />
-        <span className="min-w-0 flex-1 truncate">Staff</span>
+        <span className="min-w-0 flex-1 truncate">{label}</span>
         <span className={cn(VALUE_CHIP_CLASS, staffName && 'text-text-default')}>{staffName ?? 'All'}</span>
       </button>
       <StageStaffAssignPopover
         open={open}
         onClose={() => setOpen(false)}
         anchorRef={anchorRef}
-        label="Filter by staff"
+        label={`Filter by ${label.toLowerCase()}`}
         role="all"
         selectedStaffId={staffId}
-        onCommit={(id) => {
+        onCommit={(next) => {
           replace((params) => {
-            if (id == null) params.delete(param);
-            else params.set(param, String(id));
+            if (next == null) params.delete(param);
+            else params.set(param, String(next));
           });
           setOpen(false);
         }}
@@ -485,34 +477,149 @@ function StaffRow({ param }: { param: string }) {
   );
 }
 
-function DateRow({ spec }: { spec: NonNullable<NavControls['dateRange']> }) {
+const TIME_KEY = /^([01]\d|2[0-3]):[0-5]\d$/;
+
+/**
+ * One civil-date range (Shipped, Ship by, Ordered). A range that declares
+ * time params takes a time of day at each end once a date range is picked.
+ */
+function DateRow({ spec }: { spec: NonNullable<NavControls['dateRanges']>[number] }) {
   const searchParams = useSearchParams();
   const replace = useReplaceSearchParams();
   const from = parseISODate(searchParams?.get(spec.fromParam) ?? '');
   const to = parseISODate(searchParams?.get(spec.toParam) ?? '');
+  const timed = Boolean(spec.fromTimeParam || spec.toTimeParam);
+  const setTime = (param: string | undefined, value: string) => {
+    if (!param) return;
+    replace((params) => {
+      if (TIME_KEY.test(value)) params.set(param, value);
+      else params.delete(param);
+    });
+  };
   return (
-    <div data-nav-filter="date" className={cn(ROW_CLASS, 'cursor-default pr-0.5')}>
-      <Calendar aria-hidden className={ROW_ICON_CLASS} />
-      <span className="min-w-0 flex-1 truncate">Date</span>
-      <DateRangePickerField
-        value={from && to ? { from, to } : undefined}
-        placeholder={spec.placeholder}
-        className="h-7 w-auto max-w-[9.5rem] border-transparent bg-transparent px-1.5 text-role-micro font-medium shadow-none hover:border-border-soft hover:bg-surface-card"
-        onChange={(next) => {
-          const nextFrom = toISODate(next?.from);
-          const nextTo = toISODate(next?.to ?? next?.from);
-          replace((params) => {
-            for (const key of spec.clearParams) params.delete(key);
-            if (nextFrom && nextTo) {
-              params.set(spec.fromParam, nextFrom);
-              params.set(spec.toParam, nextTo);
-            } else {
-              params.delete(spec.fromParam);
-              params.delete(spec.toParam);
-            }
-          });
-        }}
-      />
+    <div data-nav-filter={`date:${spec.id}`}>
+      <div className={cn(ROW_CLASS, 'cursor-default pr-0.5')}>
+        <Calendar aria-hidden className={ROW_ICON_CLASS} />
+        <span className="min-w-0 flex-1 truncate">{spec.label}</span>
+        <DateRangePickerField
+          value={from && to ? { from, to } : undefined}
+          placeholder={spec.placeholder}
+          className="h-7 w-auto max-w-[9.5rem] border-transparent bg-transparent px-1.5 text-role-micro font-medium shadow-none hover:border-border-soft hover:bg-surface-card"
+          onChange={(next) => {
+            const nextFrom = toISODate(next?.from);
+            const nextTo = toISODate(next?.to ?? next?.from);
+            replace((params) => {
+              for (const key of spec.clearParams) params.delete(key);
+              if (nextFrom && nextTo) {
+                params.set(spec.fromParam, nextFrom);
+                params.set(spec.toParam, nextTo);
+              } else {
+                params.delete(spec.fromParam);
+                params.delete(spec.toParam);
+                // A time of day means nothing without its days.
+                if (spec.fromTimeParam) params.delete(spec.fromTimeParam);
+                if (spec.toTimeParam) params.delete(spec.toTimeParam);
+              }
+            });
+          }}
+        />
+      </div>
+      {timed && from && to ? (
+        <div className="flex h-8 items-center gap-1.5 pl-7 pr-0.5 text-role-micro text-text-muted">
+          <Clock aria-hidden className={ROW_ICON_CLASS} />
+          <TimeField
+            label={`${spec.label} from time`}
+            value={spec.fromTimeParam ? (searchParams?.get(spec.fromTimeParam) ?? '') : ''}
+            onCommit={(value) => setTime(spec.fromTimeParam, value)}
+          />
+          <span aria-hidden>to</span>
+          <TimeField
+            label={`${spec.label} to time`}
+            value={spec.toTimeParam ? (searchParams?.get(spec.toTimeParam) ?? '') : ''}
+            onCommit={(value) => setTime(spec.toTimeParam, value)}
+          />
+        </div>
+      ) : null}
     </div>
+  );
+}
+
+/** A native `HH:mm` field; commits on blur / Enter so the URL is not rewritten per keystroke. */
+function TimeField({ label, value, onCommit }: { label: string; value: string; onCommit: (value: string) => void }) {
+  const [draft, setDraft] = useState(value);
+  useEffect(() => setDraft(value), [value]);
+  return (
+    <input
+      type="time"
+      aria-label={label}
+      value={draft}
+      onChange={(event) => setDraft(event.target.value)}
+      onBlur={() => {
+        if (draft !== value) onCommit(draft);
+      }}
+      onKeyDown={(event) => {
+        if (event.key === 'Enter' && draft !== value) onCommit(draft);
+      }}
+      className={cn(
+        'h-6 min-w-0 flex-1 bg-surface-sunken px-1 text-role-micro tabular-nums text-text-default ring-1 ring-inset ring-border-hairline',
+        SIDEBAR_CHIP_CORNER,
+        focusRing('field', 'accent'),
+      )}
+    />
+  );
+}
+
+/** The list's order, as one closed row whose options open under it. */
+function SortRow({
+  spec,
+  open,
+  onToggle,
+}: {
+  spec: NonNullable<NavControls['sort']>;
+  open: boolean;
+  onToggle: (id: string) => void;
+}) {
+  const searchParams = useSearchParams();
+  const replace = useReplaceSearchParams();
+  const value = searchParams?.get(spec.param) ?? spec.defaultValue;
+  const current = spec.options.find((option) => option.value === value) ?? spec.options[0];
+  return (
+    <Disclosure id="sort" label="Sort" summary={current?.label ?? null} open={open} onToggle={onToggle}>
+      <div
+        role="radiogroup"
+        aria-label="Sort"
+        className={cn('divide-y divide-border-hairline border border-border-soft bg-surface-card', SIDEBAR_CONTROL_CORNER)}
+      >
+        {spec.options.map((option) => {
+          const selected = option.value === current?.value;
+          return (
+            <button
+              key={option.value}
+              type="button"
+              role="radio"
+              aria-checked={selected}
+              data-nav-sort-option={option.value}
+              onClick={() =>
+                replace((params) => {
+                  if (option.value === spec.defaultValue) params.delete(spec.param);
+                  else params.set(spec.param, option.value);
+                  if (option.dir) params.set(spec.dirParam, option.dir);
+                  else params.delete(spec.dirParam);
+                })
+              }
+              className={cn(
+                'ds-raw-button flex h-8 w-full items-center gap-2 px-2 text-left text-role-caption hover:bg-surface-hover',
+                NAV_CHOICE_PRESS_CLASS,
+                // One order at a time: pressed in, never a check (a check reads as multi-select).
+                selected ? cn(NAV_CHOICE_SELECTED_CLASS, 'hover:bg-surface-sunken') : 'text-text-muted',
+                focusRing('control', 'accent'),
+              )}
+            >
+              <span className="min-w-0 flex-1 truncate">{option.label}</span>
+            </button>
+          );
+        })}
+      </div>
+    </Disclosure>
   );
 }

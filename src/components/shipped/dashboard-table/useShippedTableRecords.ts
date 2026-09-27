@@ -8,6 +8,7 @@ import { fetchShippedHydration } from '@/lib/dashboard-table-data';
 import { useShippedWeekBuckets } from './useShippedWeekBuckets';
 import { getRecentWeekBuckets } from '@/lib/dashboard-week-range';
 import { toPSTDateKey } from '@/utils/date';
+import { shippedStampInWindow } from '@/lib/shipping/shipped-filter/shipped-filter-params';
 import {
   dedupeShippedRecords,
   deriveShippedRecord,
@@ -15,7 +16,6 @@ import {
   type DerivedPackerRecord,
 } from '@/lib/shipped-records';
 import type { ShippedTableFilters } from './useShippedTableFilters';
-import { useRefreshSignal } from '@/lib/refresh/bus';
 
 // Spine-first render (immediate paint):
 const SPINE_FIRST = process.env.NEXT_PUBLIC_SHIPPED_SPINE_FIRST === 'true';
@@ -29,6 +29,9 @@ export function useShippedTableRecords(filters: ShippedTableFilters) {
     effPackedBy,
     effTestedBy,
     effStaffId,
+    effPickedBy,
+    shippedTime,
+    shippedInstantWindow,
     shippedFilter,
     exceptionsOnly,
     carrierFilter,
@@ -57,6 +60,8 @@ export function useShippedTableRecords(filters: ShippedTableFilters) {
     carrierFilter,
     statusFilter,
     exceptionsOnly,
+    shippedTime,
+    effPickedBy,
     normalizedSearch,
   ]);
   const loadMore = useCallback(() => setPageMultiplier((m) => m + 1), []);
@@ -71,6 +76,8 @@ export function useShippedTableRecords(filters: ShippedTableFilters) {
     carrier: carrierFilter,
     statusCategory: statusFilter,
     exceptionsOnly,
+    shippedTime,
+    pickedBy: effPickedBy,
     searchTerm: normalizedSearch,
     enabled: !allTimeMode,
     limit: fetchLimit,
@@ -88,6 +95,8 @@ export function useShippedTableRecords(filters: ShippedTableFilters) {
       carrier: carrierFilter,
       statusCategory: statusFilter,
       exceptionsOnly,
+      shippedTime,
+      pickedBy: effPickedBy,
       searchTerm: normalizedSearch,
       limit: fetchLimit,
       phase: SHIPPED_PHASE,
@@ -118,6 +127,7 @@ export function useShippedTableRecords(filters: ShippedTableFilters) {
             carrier: carrierFilter,
             statusCategory: statusFilter,
             exceptionsOnly,
+            pickedBy: effPickedBy,
             phase: SHIPPED_PHASE,
           }),
         );
@@ -133,14 +143,9 @@ export function useShippedTableRecords(filters: ShippedTableFilters) {
     }
     const id = window.setTimeout(warm, 300);
     return () => window.clearTimeout(id);
-  }, [effPackedBy, effTestedBy, effStaffId, shippedFilter, carrierFilter, statusFilter, exceptionsOnly, queryClient]);
+  }, [effPackedBy, effTestedBy, effStaffId, effPickedBy, shippedFilter, carrierFilter, statusFilter, exceptionsOnly, queryClient]);
 
 
-  // Refresh events from form submits / cross-pane mutations → invalidate.
-  useRefreshSignal('orders.outbound', () => {
-    queryClient.invalidateQueries({ queryKey: ['dashboard-table', 'shipped'] });
-    queryClient.invalidateQueries({ queryKey: ['shipped-table'] });
-  });
 
   useEventBridge({
   });
@@ -148,14 +153,21 @@ export function useShippedTableRecords(filters: ShippedTableFilters) {
   const fetchedRecords = allTimeMode ? allTimeQuery.data ?? [] : weekBuckets.rows;
 
   // Clip the merged rows to the ACTIVE window — the selected week OR explicit calendar range (both surface as effectiveWeekStart/End).
+  // A time window clips on the SAME exact instants the server applied (never day keys), so rows cannot disagree.
   const rawRecords = useMemo(() => {
     if (!effectiveWeekStart || !effectiveWeekEnd) return fetchedRecords;
+    if (shippedInstantWindow) {
+      return fetchedRecords.filter((r) => {
+        const src = r as { created_at?: string; effShipTime?: string };
+        return shippedStampInWindow(String(src.created_at || src.effShipTime || ''), shippedInstantWindow);
+      });
+    }
     return fetchedRecords.filter((r) => {
       const src = r as { created_at?: string; effShipTime?: string };
       const key = toPSTDateKey(String(src.created_at || src.effShipTime || ''));
       return key !== '' && key >= effectiveWeekStart && key <= effectiveWeekEnd;
     });
-  }, [fetchedRecords, effectiveWeekStart, effectiveWeekEnd]);
+  }, [fetchedRecords, effectiveWeekStart, effectiveWeekEnd, shippedInstantWindow]);
   const dedupedRecords = useMemo(() => dedupeShippedRecords(rawRecords), [rawRecords]);
 
   // Type / carrier / status / exceptions are answered by the fetch (one SQL

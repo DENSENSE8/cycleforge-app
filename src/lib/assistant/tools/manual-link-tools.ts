@@ -101,7 +101,7 @@ export async function pendingManualLinkNote(
 }
 
 /**
- * A bare yes / no answering a pending link — the operator's reply to the
+ * A bare yes / no answering a pending proposal (a manual link, a phone order) — the operator's reply to the
  * server's own question. The route settles it directly through this tool
  * (same dispatch gate, same review path) instead of hoping a small model maps
  * "yes" onto a call; anything longer or mixed goes to the model as usual.
@@ -111,7 +111,7 @@ export function confirmationReply(message: string): 'confirm' | 'cancel' | null 
   if (!t || t.length > 60) return null;
   if (/^(no|nope|n|cancel|don'?t|do not|stop|never ?mind)\b/.test(t)) return 'cancel';
   if (/\b(no|not|don'?t|cancel|wait)\b/.test(t)) return null;
-  if (/^(yes|yep|yeah|yup|y|ok|okay|sure|confirm(ed)?|go ahead|do it|link it|please do)\b/.test(t)) return 'confirm';
+  if (/^(yes|yep|yeah|yup|y|ok|okay|sure|confirm(ed)?|go ahead|do it|link it|create it|please do)\b/.test(t)) return 'confirm';
   return null;
 }
 

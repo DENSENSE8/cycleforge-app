@@ -39,8 +39,8 @@ export function ReplenishmentPlanRecord({
 }) {
   const state = REPLENISHMENT_RECORD_STATE[row.status];
   const waiting = Array.isArray(row.orders_waiting) ? row.orders_waiting.length : 0;
-  const stock = Number(row.zoho_quantity_available || 0);
-  const incoming = Number(row.zoho_incoming_quantity || 0);
+  const stock = Number(row.stock_available || 0);
+  const incoming = Number(row.stock_incoming || 0);
 
   return (
     <IndustrialRecord

@@ -313,7 +313,7 @@ Each exported `publish*` function gains `orgId` (either as a new payload field o
 | `publishOrderChanged` | 255 | `getOrdersChannelName(payload.orgId)` |
 | `publishOrderAssignmentsUpdated` | 284 | `getOrdersChannelName(payload.orgId)` |
 | `publishQueueAssignmentsUpdated` | 302 | `getOrdersChannelName(payload.orgId)` |
-| `publishOrderTested` | 317 | `getOrdersChannelName(payload.orgId)` |
+| `publishOrderPicked` | 427 | `getOrdersChannelName(payload.orgId)` |
 | `publishRepairChanged` | 330 | `getRepairsChannelName(payload.orgId)` |
 | `publishPriorityUnbox` | 357 | `getInboxChannelName(payload.orgId, staffId)` |
 | `publishStaffMessage` | 388 | `getInboxChannelName(payload.orgId, recipientId)` |
@@ -367,7 +367,7 @@ Every file from the publisher grep must supply `orgId` to its `publish*` call. R
 - `src/app/api/repair-service/[id]/route.ts`, `repair-service/pickup/route.ts`, `repair-service/repaired/route.ts`, `repair-service/route.ts`, `repair/actions/[id]/route.ts`, `repair/actions/route.ts`, `repair/submit/route.ts`, `work-orders/route.ts`
 
 **Tech / station / activity:**
-- `src/app/api/tech/delete/route.ts`, `tech/scan-repair-station/route.ts`, `tech/scan-sku/route.ts`, `tech/scan/route.ts`, `tech/serial/route.ts`, `scan/resolve/route.ts`
+- `src/app/api/picking/desk/delete/route.ts`, `repair/station-scan/route.ts`, `picking/desk/sku/route.ts`, `picking/desk/scan/route.ts`, `fba/fnsku-scan/route.ts`, `picking/desk/serial/route.ts`, `scan/resolve/route.ts`
 - `src/lib/tech/insertTechSerialForTracking.ts` (shared — add `orgId` param)
 - `src/lib/neon/stock-ledger-helpers.ts` (calls `publishStockLedgerEvent` — add `orgId` param; callers have ctx)
 - `src/components/sku/LocationDetailView.tsx` — **note this is a client component** that imports `getStationChannelName`; see §4 (it must use the org-aware client builder, not call a server publisher).

@@ -5,7 +5,7 @@
  * ## Three stores, one display, tabs (operator 2026-09-25)
  */
 
-import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore, type ReactNode } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { getCurrentPSTDateKey, parseDateKey } from '@/utils/date';
 import {
@@ -41,6 +41,7 @@ import {
 import { attachDailyCheckLinks } from '@/lib/daily-checks/use-daily-check-links';
 import { toast } from '@/lib/toast';
 import { useTaskDesk, type TaskDeskScope } from '@/features/tasks/useTaskDesk';
+import type { TaskDeskRow } from '@/lib/tasks/task-desk-row';
 import { TaskEvidence } from '@/features/tasks/workspace/TaskEvidence';
 import { cn } from '@/utils/_cn';
 import { buildDailyTaskRows } from './grid/daily-task-row';
@@ -49,6 +50,9 @@ import { AgendaRecentRail } from './AgendaRecentRail';
 import { AgendaRecord } from './AgendaRecord';
 import { ChecklistEvidence, type ChecklistSchedulePatch } from './ChecklistEvidence';
 import { parseDailyStatusFilter, type DailyStatusFilter } from './daily-check-filter';
+import { useSurfacePaintMark } from '@/lib/observability/paint-timing';
+import { paintMarkId } from '@/lib/observability/tier1-paint-order';
+import { useDailySmoothScroll } from './useDailySmoothScroll';
 
 const DAILY_STATUS_TABS = [
   { id: 'all', label: 'All' },
@@ -67,6 +71,15 @@ function parseScope(raw: string | null): TaskDeskScope {
 }
 
 const recordKey = (row: DailyAgendaRow) => row.key;
+
+const NO_TASK_ROWS: readonly TaskDeskRow[] = [];
+/** Stable no-op subscription: the hydration snapshot below never changes after mount. */
+const subscribeNothing = () => () => {};
+
+/** Stamped once the agenda's first real rows (or its empty/error state) render — the welcome assembly reveals the agenda on it. */
+export const DAILY_PRIMARY_PAINT_MARK = paintMarkId('daily', 'primary');
+/** The ledger's DOM hook (`data-testid`). */
+export const DAILY_LEDGER_TEST_ID = 'daily-ledger';
 
 export function DailyAgenda() {
   const router = useRouter();
@@ -110,16 +123,30 @@ export function DailyAgenda() {
   // `all` lanes because this surface's own status tabs narrow — asking the
   // route for one lane and filtering again would be two filters disagreeing.
   const tasks = useTaskDesk('all', scope);
+  // The server renders with an empty query cache, but the client's cache can
+  // already hold these queries when this Suspense boundary hydrates
+  // (WelcomeGate's prefetch runs in its layout effect, before the boundary
+  // hydrates). Hydrate against the server's view — loading, no rows — and read
+  // the cache from the next render on. `false` on the server and the
+  // hydration pass only; a client-side navigation reads `true` at once.
+  const hydrated = useSyncExternalStore(subscribeNothing, () => true, () => false);
+  const checksData = hydrated ? checks.data : undefined;
+  const taskRows = hydrated ? tasks.rows : NO_TASK_ROWS;
+  const loading = !hydrated || checks.isLoading || tasks.loading;
+  useSurfacePaintMark(DAILY_PRIMARY_PAINT_MARK, !loading);
+  /** The ledger's own list scroller — the ONLY element Lenis drives (never the window). */
+  const ledgerScrollRef = useRef<HTMLDivElement>(null);
+  useDailySmoothScroll(ledgerScrollRef);
 
-  const doneSet = useMemo(() => new Set(checks.data?.mine?.doneItemIds ?? []), [checks.data]);
+  const doneSet = useMemo(() => new Set(checksData?.mine?.doneItemIds ?? []), [checksData]);
 
   const rows = useMemo<DailyAgendaRow[]>(() => {
     const checklist =
       scope === 'mine'
-        ? buildDailyTaskRows(checks.data?.items ?? [], checks.data, doneSet).map(dailyAgendaFromChecklist)
+        ? buildDailyTaskRows(checksData?.items ?? [], checksData, doneSet).map(dailyAgendaFromChecklist)
         : [];
-    return sortDailyAgendaRows([...checklist, ...tasks.rows.map(dailyAgendaFromTask)]);
-  }, [checks.data, doneSet, scope, tasks.rows]);
+    return sortDailyAgendaRows([...checklist, ...taskRows.map(dailyAgendaFromTask)]);
+  }, [checksData, doneSet, scope, taskRows]);
 
   /**
    * Search narrows first; the tab and status COUNTS then describe the list a
@@ -284,7 +311,7 @@ export function DailyAgenda() {
               rows={rows}
               selectedTaskId={rawTask ? Number(rawTask) : null}
               onSelect={(row) => openRecord(row.key)}
-              loading={checks.isLoading || tasks.loading}
+              loading={loading}
               nowMs={tasks.nowMs}
             />
           }
@@ -319,19 +346,19 @@ export function DailyAgenda() {
     ? rows.find((row) => row.type !== 'checklist' && `work:${row.id}` === openKey) ?? null
     : rows.find((row) => row.key === openKey) ?? null;
   const ledgerOpenKey = openRow?.key ?? openKey;
-  const openTask = openRow && openRow.type !== 'checklist' ? tasks.rows.find((t) => t.id === openRow.id) ?? null : null;
+  const openTask = openRow && openRow.type !== 'checklist' ? taskRows.find((t) => t.id === openRow.id) ?? null : null;
   const openCheckTicket =
     openRow?.type === 'checklist'
-      ? (checks.data?.items.find((item) => item.id === openRow.id)?.ticketId ?? null)
+      ? (checksData?.items.find((item) => item.id === openRow.id)?.ticketId ?? null)
       : null;
 
-  const loading = checks.isLoading || tasks.loading;
-  const error = checks.isError ? 'Could not load the checklist.' : tasks.error;
+  // `loading` is computed above the composer branch (it gates the paint mark).
+  const error = !hydrated ? null : checks.isError ? 'Could not load the checklist.' : tasks.error;
 
   return frame(
-    <>
+    <div data-welcome-focus="Daily agenda" data-welcome-focus-mark={DAILY_PRIMARY_PAINT_MARK} className="flex min-h-0 min-w-0 flex-1">
       <RecordLedger
-        testId="daily-ledger"
+        testId={DAILY_LEDGER_TEST_ID}
         label="Daily agenda"
         records={visible}
         recordKey={recordKey}
@@ -340,13 +367,14 @@ export function DailyAgenda() {
         onOpenKey={openRecord}
         onClose={closeRecord}
         loading={loading}
+        scrollRef={ledgerScrollRef}
         toolbar={
           <>
             <SearchField
               value={query}
               onChange={(next) => setParam('q', next.trim() || null)}
               placeholder="Find a task, order #, tracking #, ticket or person…"
-              className="min-w-0 max-w-[26rem] flex-1 overflow-hidden rounded-none pl-2"
+              className="min-w-0 max-w-[26rem] flex-1 overflow-hidden rounded-mode-control pl-2"
               tone="neutral"
               hideUnderline
               fillHost
@@ -441,7 +469,7 @@ export function DailyAgenda() {
           )
         }
       />
-    </>
+    </div>
   );
 }
 

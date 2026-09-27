@@ -1,6 +1,6 @@
 import pool from '@/lib/db';
 import { orderTrackingMatchKeys } from '@/lib/tracking-format';
-import { tenantQuery, withTenantTransaction } from '@/lib/tenancy/db';
+import { tenantQuery, tenantQueryOneTrip, withTenantTransaction } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';
 import { sqlOrderOwnsShipment } from '@/lib/search/order-tracking-match-sql';
 
@@ -143,11 +143,11 @@ export async function findOrderByTrackingKey(
   const normalizedLast8 = /^\d{8}$/.test(trackingLast8) ? trackingLast8 : null;
   if (!trackingKey18) return null;
 
-  // Tenant-aware path:
+  // Tenant-aware path (read-only probes: one round trip each, GUC + statement):
   if (orgId) {
     const ownsStn = sqlOrderOwnsShipment('o', 'stn.id');
     // Prefer exact STN normalized join (same as packing / receiving).
-    const exact = await tenantQuery(
+    const exact = await tenantQueryOneTrip(
       orgId,
       `SELECT
           o.id,
@@ -164,7 +164,7 @@ export async function findOrderByTrackingKey(
     }
 
     const ownsS2 = sqlOrderOwnsShipment('o', 's2.id');
-    const tenantResult = await tenantQuery(
+    const tenantResult = await tenantQueryOneTrip(
       orgId,
       `SELECT
           o.id,

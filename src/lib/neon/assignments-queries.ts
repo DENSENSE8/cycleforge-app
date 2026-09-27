@@ -4,7 +4,7 @@ import { WORK_ASSIGNMENTS_ACTIVE_ON_CONFLICT } from '@/lib/neon/work-assignments
 
 // ─── Tenancy note ──────────────────────────────────────────────────────────── `work_assignments` is tenant-owned (organization_id NOT…
 
-export type WorkType = 'TEST' | 'PACK' | 'REPAIR' | 'QA' | 'RECEIVE' | 'STOCK_REPLENISH';
+export type WorkType = 'TEST' | 'PICK' | 'PACK' | 'REPAIR' | 'QA' | 'RECEIVE' | 'STOCK_REPLENISH';
 export type EntityType = 'ORDER' | 'REPAIR' | 'FBA_SHIPMENT' | 'RECEIVING' | 'SKU_STOCK';
 export type AssignmentStatus = 'OPEN' | 'ASSIGNED' | 'IN_PROGRESS' | 'DONE' | 'CANCELED';
 

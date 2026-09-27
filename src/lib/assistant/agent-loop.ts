@@ -34,6 +34,7 @@ import {
   RENDER_ARTIFACT_CAP_PER_TURN,
   splitToolArtifact,
 } from '@/lib/assistant/tool-artifact';
+import { takeDeviceAction } from '@/lib/assistant/tool-device-action';
 import type { AssistantPageContext } from './context-store';
 import { summarizeToolResult } from './turn-trace';
 import { resolveOrgAnthropicBrain } from '@/lib/ai/org-provider';
@@ -53,7 +54,7 @@ export const UI_TOOLS: Anthropic.Tool[] = [
   {
     name: 'navigate',
     description:
-      'Navigate the user\'s browser to an app route. Every surface is URL-addressable — e.g. /operations?mode=analytics, /unbox?openReceivingId=123 (the Unbox surface), /triage (receiving scan/identify), /pack (packing station), /test?view=testing (testing/QC station), /pickup (local pickup), /studio?focus=<nodeId>. Use after you have gathered what you need and the user asked to go somewhere or you want to show them the data in place.',
+      'Navigate the user\'s browser to an app route. Every surface is URL-addressable — e.g. /operations?mode=analytics, /unbox?openReceivingId=123 (the Unbox surface), /triage (receiving scan/identify), /pack (packing station), /test (Quality Control bench), /pick (Picker desk — pick scans, Pending / Urgent / History), /pickup (local pickup), /studio?focus=<nodeId>. Use after you have gathered what you need and the user asked to go somewhere or you want to show them the data in place.',
     input_schema: {
       type: 'object',
       properties: {
@@ -128,19 +129,24 @@ export const UI_TOOLS: Anthropic.Tool[] = [
     // station, and the transcript card shows sending → acked → printed.
     name: 'print_handling_unit_labels',
     description:
-      'Print tote/handling-unit license-plate labels (2×1" DataMatrix stickers) on the user\'s print station (the computer running CycleForge with the label printer). Pass handlingUnitIds for EXISTING handling units: a handle like H-351 IS id 351 — pass it directly, no lookup needed. Printing is a physical action the user asked for by name — say what you are printing before you call. The transcript shows whether the station took the job, so do not claim it printed. Creating NEW totes is not printable this way; tell the user to create them first.',
+      'Print tote/handling-unit license-plate labels (2×1" DataMatrix stickers) on the user\'s print station (the computer running CycleForge with the label printer). EXISTING totes: pass handlingUnitIds — a handle like H-351 IS id 351, pass it directly, no lookup needed. NEW totes ("print 50 tote labels"): pass count instead (1–200); the station creates that many new totes and prints one label each, and more than 10 waits for the user to tap Print on the card. Printing is a physical action the user asked for by name — say what you are printing before you call. The transcript shows whether the station took the job, so do not claim it printed.',
     input_schema: {
       type: 'object',
       properties: {
         handlingUnitIds: {
           type: 'array',
           items: { type: 'integer' },
-          description: 'Handling-unit ids to print, 1–10 labels per call.',
+          description: 'Existing handling-unit ids to reprint, 1–10 per call.',
           minItems: 1,
           maxItems: 10,
         },
+        count: {
+          type: 'integer',
+          description: 'How many NEW tote labels to print (new totes are created), 1–200. Only when no handlingUnitIds.',
+          minimum: 1,
+          maximum: 200,
+        },
       },
-      required: ['handlingUnitIds'],
     },
   },
   {
@@ -274,26 +280,80 @@ const REPORT_TOOL_NAMES = [
   'get_delegation_plan',
 ] as const;
 
-/** Stable core — byte-identical across requests so the prompt cache holds. */
+/**
+ * Which question each read tool answers — ONE line per advertised tool in the
+ * routing paragraph. A route to a tool the turn does not advertise teaches a
+ * small model a name it cannot call, and every route costs prefill on every
+ * round, so only the advertised ones ride.
+ */
+const TOOL_ROUTES: ReadonlyArray<readonly [tool: string, when: string]> = [
+  ['locate_product', 'where is an item / which bin / how many on hand (SKU, FNSKU, ASIN, UPC, serial, LPN or product name; value exactly as typed)'],
+  ['list_location_contents', 'what is in a bin or location'],
+  ['find_records', 'find an order, tracking, serial, PO, receiving carton, repair, customer (name, email, phone) or anything else by identifier or words'],
+  ['resolve_support_ticket', '#ticket'],
+  ['get_operations_journey', 'full history / trace / what happened / who packed'],
+  ['lookup_serial', 'serial return / which order shipped this serial (a serial, never a carrier tracking number)'],
+  ['lookup_warranty_coverage', 'warranty coverage / expired'],
+  ['list_warranty_claims', 'warranty claims'],
+  ['get_order_lookup', 'order details for an order id, or which order a tracking number (1Z…, 9400…) shipped on'],
+  ['get_my_tech_queue', 'my tech queue'],
+  ['get_assignments', 'assignments'],
+  ['search_photos', 'photos'],
+  ['get_receiving_by_tracking', 'receiving carton by tracking'],
+  ['get_packing_kpi', 'packing pace / packer KPIs'],
+  ['get_top_reasons', 'why failing / top reasons'],
+  ['get_kpis', 'throughput / event counts'],
+  ['get_signals_by_node', 'where problems cluster'],
+  ['get_daily_checks', 'daily checklist'],
+  ['get_my_day', 'what should I do next / my work'],
+  ['get_project_tasks', 'project or plan tasks'],
+  ['get_unit_journey', 'one unit\'s workflow story'],
+  ['search_notes', 'notes and reason codes'],
+  ['get_node_detail', 'one workflow station'],
+  ['reconcile_refs', 'a pasted list of tracking / order / PO numbers: which were received (call with NO arguments — never retype the list)'],
+  ['get_customer', 'who is this caller / a customer by name, phone or email (dossier: orders, ship-to, open tickets)'],
+  ['get_worklist', 'what should I do first / exceptions, out of stock, need to order, late, pending or ready-to-pick lists'],
+  ['get_staff_report', 'a staff member\'s performance / time spent per task / per day / goals'],
+  ['get_tracking_status', 'live carrier status or delivery of a tracking number'],
+  ['watch_tracking', 'tell me when a tracking number arrives / stop watching it'],
+];
+
+/** The five operator reports — phrases the owner actually types. */
+const REPORT_ROUTES: ReadonlyArray<readonly [tool: (typeof REPORT_TOOL_NAMES)[number], when: string]> = [
+  ['get_packing_performance', '"<name>\'s packing performance" / "how many boxes did <name> pack" / packer efficiency / wait minutes'],
+  ['get_unbox_backlog', '"how many boxes are left to be unboxed" / what is waiting at receiving'],
+  ['get_order_value_rank', '"most expensive order in the warehouse" / biggest order we hold'],
+  ['get_roi_rank', '"highest ROIs" / where are we leaking / what to fix first'],
+  ['get_delegation_plan', '"which staff can I delegate to" / who is free'],
+];
+
+/**
+ * The system core. Every paragraph that names a tool rides only when that
+ * tool is advertised: on a self-hosted box the prompt is prefilled on every
+ * round, so a sentence the turn cannot use is latency the operator waits on.
+ */
 export function buildSystemCore(toolNames: string[]): string {
-  // A paragraph that routes to a tool the turn does not advertise teaches a
-  // small model a name it cannot call; those paragraphs ride only with their tools.
   const has = (name: string) => toolNames.includes(name);
+  const routes = TOOL_ROUTES.filter(([tool]) => has(tool)).map(([tool, when]) => `${when} → ${tool}`);
+  const reports = REPORT_ROUTES.filter(([tool]) => has(tool)).map(([tool, when]) => `${when} → ${tool}`);
   return [
-    'You are the operations assistant embedded in a used-electronics reseller operations platform (receiving, testing, repair, listing, fulfillment, returns).',
-    'You answer questions about THIS organization\'s live operation using your read tools — never from memory. Compose tools per question: where is an item / which bin / how many on hand (a SKU, FNSKU, ASIN, UPC, serial, LPN or product name) → locate_product with the value exactly as typed; what is in a bin or location → list_location_contents; other identifiers / find / which → hybrid_entity_search or exact_id_serial_search; #ticket → resolve_support_ticket; full history / trace / what happened → get_operations_journey; serial return / which order shipped this serial → lookup_serial; warranty / coverage / expired → lookup_warranty_coverage or list_warranty_claims; specific order id or tracking → get_order_lookup; my tech queue → get_my_tech_queue; assignments → get_assignments; photos → search_photos; receiving by tracking → get_receiving_by_tracking; packing pace / packer KPIs → get_packing_kpi; aggregates / why failing → get_top_reasons / get_kpis / get_signals_by_node; today\'s daily checklist / who has run their checks → get_daily_checks; what should I do next / my assigned work / my interrupts → get_my_day; project or plan tasks (ops plans) → get_project_tasks; then drill with get_unit_journey, search_notes, get_node_detail.',
-    'When the answer depends on operational data not already in the conversation, you MUST call a read tool before answering.',
-    'If you have the propose_mutation tool you can make changes. The trust model is automatic — you never decide whether a change is applied: view-layer changes (dismiss a rail item, set a feed item state, record a signal, tune a node surface) apply immediately; workflow DRAFT edits (add/remove/wire/config a node in a draft graph) apply to a draft the user can preview and revert; changes to masters (create staff, add a reason code, change a setting) are queued for review. ALWAYS set the user\'s expectation from the returned status: "applied to your draft", "done", or "queued for review — a human needs to apply it". For draft graph edits, use the canvas-control tools (focus_node/set_lens/set_zoom) to show the user the change, and remind them publishing stays their step (you can request it, you cannot publish).',
-    'UI tools (navigate, highlight) run in the user\'s browser. Data you show lands INLINE in the chat, directly above your text; only documents (shipping labels, packing slips, invoices, files) open on the right. Many read tools show their own table: their result says { rendered: true, summary } — the table and its product title are ALREADY on screen, so do NOT call render_artifact for it; answer from the summary. For other data the user asks to see (rows, a journey, a ticket conversation, aggregates, a record) call render_artifact with that data. NEVER answer a data question with only a markdown table in text, and NEVER navigate the user to another page to show an answer. Navigate only when the user explicitly asks to go somewhere ("open the shipping desk"). Shown data is read-only — if the user wants a change, that is propose_mutation or a drafted reply they send themselves.',
-    'ANSWER SHAPE: when a tool showed data, write ONE short sentence that states the key facts (for a location: each bin with its quantity; for a bin: each SKU with its quantity; for a report: the headline number). Do not restate the table row by row, do not repeat the product title, and never add a title or name in parentheses after an identifier. Never say where data is displayed — no "panel", "table below" or "shown above"; only for a document you may say it is opened on the right.',
-    'HONESTY: when a lookup returns found: false, no rows or an empty bin, say plainly what was not found and what was searched — never invent a bin, a quantity or an identifier.',
-    has('get_order_documents') ? 'ORDER DOCUMENTS: "show me the shipping label for order 4899", "pull up the packing slip", "order … paperwork / documents / invoice" → get_order_documents with the order number exactly as typed (type shipping_label, packing_slip or paperwork when they named one). It opens the files in the document viewer beside the chat itself — do NOT call render_artifact, get_order_lookup or print_handling_unit_labels for it, and never say anything was printed. Answer in one or two sentences from its summary; when it returns found: false or documents: 0, say plainly that the order or its documents were not found and what was searched.' : '',
-    'Chat text is PROSE in markdown (sentences, short lists, bold). NEVER put a markdown table, chart, or ASCII graphic in chat text — data displays exclusively through render_artifact. Any table you write in chat is stripped from your text and shown as data anyway, so write it as an artifact from the start.',
-    has('triage_orders_csv') ? 'ORDER IMPORT TRIAGE: when the operator pastes CSV rows of pending orders (or asks to import orders), call triage_orders_csv with the raw pasted text. It returns the header mapping and every row classified — accepted, needs_resolution (with the exact missing fields), or rejected. Render it as an import_triage artifact. For rows needing an item number that carry a title or SKU, call resolve_item_number per row and re-render the triage with the resolved numbers; never invent one. The user imports the accepted rows from the panel — importing is their action, never yours.' : '',
-    REPORT_TOOL_NAMES.some(has) ? 'OPERATOR REPORTS — five questions have a purpose-built report tool, and for these you MUST use it instead of composing raw reads: "what is <name>\'s packing performance" / "how many boxes did <name> pack" / "packer efficiency" / "wait minutes" → get_packing_performance. "how many boxes are left to be unboxed" / "what is waiting at receiving" → get_unbox_backlog. "what is the most expensive order currently in the warehouse" / "biggest order we are holding" → get_order_value_rank. "what are the highest ROIs" / "where are we leaking" / "what should we fix first" → get_roi_rank. "which staff can I delegate to" / "who should attack the highest ROIs" / "who is free" → get_delegation_plan. A report tool SHOWS ITS OWN REPORT: it returns { rendered: true, summary } and the report is already on screen, so do NOT call render_artifact after one and do NOT restate its tables in chat. Say the headline in one or two sentences and name the one thing you would do next. If the operator names a staff member, pass the name through — never guess which person they meant.' : '',
-    'Grounding: report numbers exactly as tools return them; if a tool returns empty or fails, say so plainly and continue with what you have. Never invent identifiers.',
-    'Style: plain sentences, lead with the answer, keep it short. Use the org\'s vocabulary (cartons, lines, serials, feeds, nodes).',
-    `Available tools: ${toolNames.join(', ')}.`,
+    'You are the operations assistant of a used-electronics reseller (receiving, testing, repair, listing, fulfillment, returns). You answer about THIS organization\'s live operation from your read tools, never from memory: when the answer needs data not already in the conversation, call a tool first.',
+    routes.length > 0 ? `Tools per question: ${routes.join('; ')}.` : '',
+    'Tools that show data put it on screen themselves: a result with { rendered: true, summary } is ALREADY shown, so never call render_artifact for it — answer from the summary. For other data the operator asks to see, call render_artifact. Never write a markdown table in chat text.',
+    'ANSWER: one short plain sentence that leads with the key facts (a location: each bin with its quantity; a bin: each SKU with its quantity; a record: its status). Do not restate rows, do not repeat product titles, never say where data is displayed ("panel", "below"). Report numbers exactly as returned. When a lookup returns found: false or nothing, say plainly what was not found — never invent a bin, quantity or identifier.',
+    has('navigate') ? 'Navigate only when the operator asks to go somewhere; never to show an answer.' : '',
+    has('propose_mutation')
+      ? 'propose_mutation makes changes; set expectations from its returned status: "done", "applied to your draft", or "queued for review — a human needs to apply it". Publishing a workflow stays the operator\'s step.'
+      : '',
+    has('print_order_paperwork') ? 'PRINT PAPERS: the user says print / reprint an order\'s label, slip or paperwork (one or several orders) → print_order_paperwork {orders: numbers as typed, documents, reprint only if they said reprint} — never get_order_documents for a print. Answer with its message; never say it printed.' : '',
+    has('get_order_documents') ? 'ORDER DOCUMENTS: "shipping label / packing slip / paperwork for order N" → get_order_documents with the order number as typed (type shipping_label, packing_slip or paperwork when named). It opens the files beside the chat itself — no render_artifact, get_order_lookup or printing, and never say anything was printed. On found: false or documents: 0 say the documents were not found.' : '',
+    has('request_payment') ? 'TAKE PAYMENT: "take payment / payment link / invoice for order PH-…" → request_payment (order number as typed; method payment_link unless they said invoice). It opens the payment panel itself — no render_artifact. Never type an amount or link; answer in one sentence. Card numbers never go through chat.' : '',
+    has('draft_po_import') ? 'PO IMPORT: a pasted / described purchase order, and every follow-up that answers what its card still needs (tracking number, PO number, vendor, items, listing link) → draft_po_import (the message is read for you; pass only what you are sure of). Ask exactly the question its summary gives. "Import this PO" → import_purchase_order {"action":"propose"}, then wait for yes.' : '',
+    ['set_order_flag', 'mark_out_of_stock', 'clear_out_of_stock', 'bulk_scan_out', 'create_task'].some(has) ? 'ORDER/TASK WRITES: flag orders → set_order_flag {flag}; out of stock → mark_out_of_stock; back in stock → clear_out_of_stock; scan out packed orders → bulk_scan_out; a task for staff → create_task {task, assignees, order?, ticket?, due?, remind?} with names/times as typed. Pasted order #s are read from the message. Each previews first: call with action "propose", then ask for yes and stop.' : '',
+    has('triage_orders_csv') ? 'ORDER IMPORT TRIAGE: pasted pending-order CSV → triage_orders_csv with the raw text, rendered as an import_triage artifact; resolve missing item numbers with resolve_item_number per row, never invent one. Importing is the operator\'s action.' : '',
+    reports.length > 0
+      ? `OPERATOR REPORTS — use the report tool, never raw reads: ${reports.join('; ')}. A report shows itself: say the headline in one or two sentences and the one thing to do next. Pass a named staff member through; never guess who.`
+      : '',
   ]
     .filter((part) => part.length > 0)
     .join('\n\n');
@@ -647,6 +707,9 @@ export async function runAssistantTurn(
           });
           toolsUsed.push(call.name);
           if (result.ok) collectMintedConnectUrls(result.data, mintedConnectUrls);
+          // A device tool (a print) resolved the action server-side; the browser runs it.
+          const device = result.ok ? takeDeviceAction(result.data) : null;
+          if (device) args.emit({ type: 'ui_tool', name: device.name, input: device.input });
           // Report tools carry their artifact; the panel gets the payload, the
           // model gets the summary (`tool-artifact.ts`).
           const carried = result.ok ? splitToolArtifact(result.data) : null;

@@ -33,9 +33,12 @@ test('graduated surface routes map to the right AI-search boost', () => {
   // Pack (Phase 7) — order fulfillment.
   assert.deepEqual(pageContextToEntityTypes('/pack'), ['ORDER']);
   assert.deepEqual(pageContextToEntityTypes('/packer'), ['ORDER']); // legacy alias
-  // Test (Phase 8) — serial-unit verification.
-  assert.deepEqual(pageContextToEntityTypes('/test?view=testing'), ['SERIAL_UNIT']);
-  assert.deepEqual(pageContextToEntityTypes('/tech?view=testing'), ['SERIAL_UNIT']); // legacy alias
+  // Quality Control (Phase 8) — serial-unit verification.
+  assert.deepEqual(pageContextToEntityTypes('/test'), ['SERIAL_UNIT']);
+  assert.deepEqual(pageContextToEntityTypes('/tech'), ['SERIAL_UNIT']); // legacy alias
+  // The Picker desk split from `/test` (2026-09-27) — it works orders, not units.
+  assert.deepEqual(pageContextToEntityTypes('/pick?ship=history'), ['ORDER']);
+  assert.deepEqual(pageContextToEntityTypes('/pickup'), ['RECEIVING']);
   // Pickup + History (Phase 9) — receiving family.
   assert.deepEqual(pageContextToEntityTypes('/pickup'), ['RECEIVING']);
   assert.deepEqual(pageContextToEntityTypes('/receiving/history?recvId=5'), ['RECEIVING']);

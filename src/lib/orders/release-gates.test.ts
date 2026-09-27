@@ -35,10 +35,15 @@ test('all four gates green → canRelease', () => {
 
 // ── G1 identity triangle ────────────────────────────────────────────────────
 
-test('G1 fails when the item number is missing', () => {
-  const g = gate({ ...GREEN, itemNumber: null }, 'G1');
+test('G1 fails with neither an item number nor a catalog pairing', () => {
+  const g = gate({ ...GREEN, itemNumber: null, skuCatalogId: null }, 'G1');
   assert.equal(g.passed, false);
   assert.match(g.reason ?? '', /item number/);
+});
+
+test('G1 takes a catalog-paired SKU for the product corner — a phone order has no listing', () => {
+  assert.equal(gate({ ...GREEN, itemNumber: null, skuCatalogId: 741 }, 'G1').passed, true);
+  assert.equal(gate({ ...GREEN, itemNumber: '404912345678', skuCatalogId: null }, 'G1').passed, true);
 });
 
 test('G1 fails when the order number is missing', () => {
@@ -50,12 +55,12 @@ test('G1 fails when the tracking number is missing', () => {
 });
 
 test('G1 treats whitespace as absence', () => {
-  const g = gate({ ...GREEN, itemNumber: '   ' }, 'G1');
+  const g = gate({ ...GREEN, itemNumber: '   ', skuCatalogId: null }, 'G1');
   assert.equal(g.passed, false, 'a blank item number is not an item number');
 });
 
 test('G1 names every missing corner, not just the first', () => {
-  const g = gate({ ...GREEN, itemNumber: null, trackingNumber: null }, 'G1');
+  const g = gate({ ...GREEN, itemNumber: null, skuCatalogId: null, trackingNumber: null }, 'G1');
   assert.match(g.reason ?? '', /item number/);
   assert.match(g.reason ?? '', /tracking number/);
 });
@@ -173,7 +178,7 @@ test('one red gate is enough to hold the cage shut', () => {
   // more — see the test below — and that is the behaviour change of the
   // 2026-08-31 ruling, stated rather than quietly dropped from this list.
   for (const broken of [
-    { itemNumber: null },
+    { orderNumber: '' },
     { linkedDocumentCount: 0, docsNotRequired: false },
     { skuCatalogId: null },
   ] satisfies Partial<ReleaseGateFacts>[]) {

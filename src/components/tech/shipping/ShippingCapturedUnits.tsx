@@ -8,7 +8,8 @@ import { copyToClipboard } from '@/utils/_dom';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { motionPresence, motionTransition } from '@/design-system/foundations/motion-presets';
 import { useMotionPresence } from '@/design-system/foundations/motion-presets-hooks';
-import type { ActiveStationOrder } from '@/hooks/useStationTestingController';
+import { CollapseItem } from '@/design-system/components/Collapse';
+import type { ActiveStationOrder } from '@/hooks/useDeskPickController';
 
 /** Units Displays leaf — flush serial capture rollup (no WorkspaceCard island). */
 export function ShippingCapturedUnits({
@@ -19,8 +20,8 @@ export function ShippingCapturedUnits({
   onRemoveSerial?: (serial: string, index: number) => Promise<void> | void;
 }) {
   const quantity = Math.max(1, Number(activeOrder.quantity) || 1);
-  // Serial rows rise in (stationSerialRow) — never a left→right wipe. Height
-  // collapse stays so vacated gaps close cleanly on remove.
+  // Serial rows rise in (stationSerialRow) — never a left→right wipe. The
+  // row's height rides CollapseItem so vacated gaps close cleanly on remove.
   const rowPresence = useMotionPresence(motionPresence.stationSerialRow);
   const [lastAddedSerial, setLastAddedSerial] = useState<string | null>(null);
   const [removingKey, setRemovingKey] = useState<string | null>(null);
@@ -70,85 +71,86 @@ export function ShippingCapturedUnits({
           {quantity > 1 ? ` / ${quantity}` : ''} captured
         </p>
       </div>
-      <div className="max-h-64 divide-y divide-border-hairline overflow-y-auto">
+      <div className="max-h-64 overflow-y-auto">
         <AnimatePresence initial={false}>
           {activeOrder.serialNumbers.map((sn, index) => {
             const isNew = sn === lastAddedSerial;
             const isRemoving = removingKey === `${sn}-${index}`;
             return (
-              <motion.div
-                key={`${sn}-${index}`}
-                initial={{ ...rowPresence.initial, height: 0 }}
-                animate={{ ...rowPresence.animate, height: 'auto' }}
-                exit={{ ...rowPresence.exit, height: 0 }}
-                transition={motionTransition.stationSerialRow}
-                className={`flex items-center gap-2 px-3 py-2 transition-colors duration-500 ${
-                  isNew ? 'bg-surface-sunken' : 'bg-surface-card'
-                }`}
-              >
-                <Check className="h-3 w-3 flex-shrink-0 text-emerald-600" />
-                <span className="flex-1 font-mono text-xs font-semibold text-emerald-700">{sn}</span>
-                <div className="flex flex-shrink-0 items-center gap-1">
-                  <AnimatePresence>
-                    {isNew ? (
-                      <motion.span
-                        initial={motionPresence.stationAddedBadge.initial}
-                        animate={motionPresence.stationAddedBadge.animate}
-                        exit={motionPresence.stationAddedBadge.exit}
-                        transition={motionTransition.stationAddedBadge}
-                        className="text-role-eyebrow uppercase tracking-wider text-emerald-600"
-                      >
-                        ✓ Added
-                      </motion.span>
-                    ) : null}
-                  </AnimatePresence>
-                  <HoverTooltip label={copiedKey === `${sn}-${index}` ? 'Copied' : `Copy serial ${sn}`} asChild>
-                    <IconButton
-                      size="md"
-                      icon={
-                        copiedKey === `${sn}-${index}` ? (
-                          <Check className="h-3.5 w-3.5" />
-                        ) : (
-                          <Copy className="h-3.5 w-3.5" />
-                        )
-                      }
-                      onClick={() => {
-                        void copyToClipboard(sn, {
-                          historyKind: 'serial',
-                          historyDisplay: sn,
-                        }).then((ok) => {
-                          if (!ok) return;
-                          const key = `${sn}-${index}`;
-                          setCopiedKey(key);
-                          window.setTimeout(() => {
-                            setCopiedKey((current) => (current === key ? null : current));
-                          }, 1400);
-                        });
-                      }}
-                      ariaLabel={`Copy serial ${sn}`}
-                      className="text-text-muted hover:bg-surface-hover hover:text-text-default"
-                    />
-                  </HoverTooltip>
-                  {onRemoveSerial ? (
-                    <HoverTooltip label={`Remove serial ${sn}`} asChild>
+              <CollapseItem key={`${sn}-${index}`} rowRule>
+                <motion.div
+                  initial={rowPresence.initial}
+                  animate={rowPresence.animate}
+                  exit={rowPresence.exit}
+                  transition={motionTransition.stationSerialRow}
+                  className={`flex items-center gap-2 px-3 py-2 transition-colors duration-500 ${
+                    isNew ? 'bg-surface-sunken' : 'bg-surface-card'
+                  }`}
+                >
+                  <Check className="h-3 w-3 flex-shrink-0 text-emerald-600" />
+                  <span className="flex-1 font-mono text-xs font-semibold text-emerald-700">{sn}</span>
+                  <div className="flex flex-shrink-0 items-center gap-1">
+                    <AnimatePresence>
+                      {isNew ? (
+                        <motion.span
+                          initial={motionPresence.stationAddedBadge.initial}
+                          animate={motionPresence.stationAddedBadge.animate}
+                          exit={motionPresence.stationAddedBadge.exit}
+                          transition={motionTransition.stationAddedBadge}
+                          className="text-role-eyebrow uppercase tracking-wider text-emerald-600"
+                        >
+                          ✓ Added
+                        </motion.span>
+                      ) : null}
+                    </AnimatePresence>
+                    <HoverTooltip label={copiedKey === `${sn}-${index}` ? 'Copied' : `Copy serial ${sn}`} asChild>
                       <IconButton
                         size="md"
                         icon={
-                          isRemoving ? (
-                            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                          copiedKey === `${sn}-${index}` ? (
+                            <Check className="h-3.5 w-3.5" />
                           ) : (
-                            <X className="h-3.5 w-3.5" />
+                            <Copy className="h-3.5 w-3.5" />
                           )
                         }
-                        onClick={() => void handleRemoveSerial(sn, index)}
-                        disabled={Boolean(removingKey)}
-                        ariaLabel={`Remove serial ${sn}`}
-                        className="text-text-muted hover:bg-rose-50 hover:text-rose-600"
+                        onClick={() => {
+                          void copyToClipboard(sn, {
+                            historyKind: 'serial',
+                            historyDisplay: sn,
+                          }).then((ok) => {
+                            if (!ok) return;
+                            const key = `${sn}-${index}`;
+                            setCopiedKey(key);
+                            window.setTimeout(() => {
+                              setCopiedKey((current) => (current === key ? null : current));
+                            }, 1400);
+                          });
+                        }}
+                        ariaLabel={`Copy serial ${sn}`}
+                        className="text-text-muted hover:bg-surface-hover hover:text-text-default"
                       />
                     </HoverTooltip>
-                  ) : null}
-                </div>
-              </motion.div>
+                    {onRemoveSerial ? (
+                      <HoverTooltip label={`Remove serial ${sn}`} asChild>
+                        <IconButton
+                          size="md"
+                          icon={
+                            isRemoving ? (
+                              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                            ) : (
+                              <X className="h-3.5 w-3.5" />
+                            )
+                          }
+                          onClick={() => void handleRemoveSerial(sn, index)}
+                          disabled={Boolean(removingKey)}
+                          ariaLabel={`Remove serial ${sn}`}
+                          className="text-text-muted hover:bg-rose-50 hover:text-rose-600"
+                        />
+                      </HoverTooltip>
+                    ) : null}
+                  </div>
+                </motion.div>
+              </CollapseItem>
             );
           })}
         </AnimatePresence>

@@ -583,6 +583,7 @@ interface MarketplaceDocumentAdapter {
 | Item | Description |
 |------|-------------|
 | **Print bundle** | One click: slip + label PDFs merged or sequential print |
+| **Print from chat (built)** | `print_order_paperwork` resolves up to 25 orders' label / slip / manuals server-side and raises a print card that sends ONE `papers` job over the staff print bridge to the staffer's print station; the station runs `POST /api/orders/[id]/documents/print` per order (`documentTypes`, `batchId`), and the card reads the batch's `document_print_jobs` rows back via `GET /api/orders/print-packet?batch=` before it says "recorded". Papers printed before need `reprint`. |
 | **Batch fetch** | Labels queue multi-select → fetch docs for N orders (cap 20) |
 | **Sales order panel** | Read-only line items from `sales_orders.lineItems` on Outbound detail |
 | **Metrics** | PostHog: `outbound.document.fetched`, `outbound.document.printed` |

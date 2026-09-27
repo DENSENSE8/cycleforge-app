@@ -29,7 +29,7 @@ export async function GET(
             `SELECT
                  sc.id,
                  sc.sku,
-                 COALESCE(NULLIF(BTRIM(it.name), ''), sc.product_title) AS product_title,
+                 COALESCE(NULLIF(BTRIM(sc.product_title), ''), it.name) AS product_title,
                  sc.category,
                  sc.gtin,
                  sc.upc,

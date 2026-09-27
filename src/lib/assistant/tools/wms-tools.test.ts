@@ -46,7 +46,7 @@ function scripted(byMarker: Array<[RegExp, Array<Record<string, unknown>>]>) {
 test('locate_product: stocked SKU → table with a product header, bins and qty in the model summary', async () => {
   const { deps, calls } = scripted([
     [/WITH q AS/, [
-      { sku: '00066-P-2', via: 'sku', zoho_item_title: 'Bose Wave III Remote', catalog_product_title: 'marketplace title', fnsku: 'X00ABC1234', location_id: 338, location: 'C-03-12-3', room: 'Zone 3', qty: 41 },
+      { sku: '00066-P-2', via: 'sku', catalog_id: 812, zoho_item_title: 'Bose Wave III Remote', catalog_product_title: 'marketplace title', fnsku: 'X00ABC1234', location_id: 338, location: 'C-03-12-3', room: 'Zone 3', qty: 41 },
       { sku: '00066-P-2', via: 'sku', zoho_item_title: 'Bose Wave III Remote', fnsku: 'X00ABC1234', location_id: 402, location: 'C-03-16-3', room: 'Zone 3', qty: 1 },
     ]],
   ]);
@@ -60,8 +60,9 @@ test('locate_product: stocked SKU → table with a product header, bins and qty 
   // One SKU: it and its title (the Zoho item governs the marketplace title) head the table; rows are bins.
   assert.equal(carried.artifact.title, 'Where is 00066-P-2 · Bose Wave III Remote');
   assert.deepEqual(carried.artifact.kind === 'table' && carried.artifact.columns, ['Bin', 'Room', 'Qty']);
-  // The chat's header comes from the tool's data: the identity title, then the ids the operator copies.
-  assert.deepEqual(carried.artifact.kind === 'table' && carried.artifact.product, {
+  // The chat's header comes from the tool's data: the identity title, the ids
+  // the operator copies, and the product's record on /search.
+  assert.deepEqual(carried.artifact.kind === 'table' && carried.artifact.identity, {
     title: 'Bose Wave III Remote',
     ids: [
       { label: 'SKU', value: '00066-P-2' },
@@ -69,6 +70,7 @@ test('locate_product: stocked SKU → table with a product header, bins and qty 
       { label: 'Bin', value: 'C-03-12-3' },
       { label: 'Bin', value: 'C-03-16-3' },
     ],
+    href: '/search?sel=sku:812',
   });
   assert.doesNotMatch(carried.modelData.summary, /panel/i);
   assert.match(carried.modelData.summary, /42 units in 2 bins/);
@@ -77,16 +79,25 @@ test('locate_product: stocked SKU → table with a product header, bins and qty 
   assert.deepEqual(calls[0].params.slice(0, 2), [ORG, '00066-P-2']);
 });
 
-test('locate_product: identifier known but no stock → plain answer, no panel', async () => {
+test('locate_product: identifier known but no stock → the product card, zero stated, no bin invented', async () => {
   const { deps } = scripted([
-    [/WITH q AS/, [{ sku: '8K-PJTL-U9GG', via: 'fnsku', listing_title: 'Bose 151 pair', location: null, qty: null }]],
+    [/WITH q AS/, [{ sku: '8K-PJTL-U9GG', via: 'fnsku', catalog_id: 77, listing_title: 'Bose 151 pair', fnsku: 'X002MLY7R3', location: null, qty: null }]],
   ]);
   const res = await runAssistantTool('locate_product', { query: 'X002MLY7R3' }, ctx, deps);
   assert.equal(res.ok, true);
-  const data = res.ok ? res.data : null;
-  assert.equal(splitToolArtifact(data), null);
-  assert.match((data as { message: string }).message, /FNSKU X002MLY7R3 belongs to SKU 8K-PJTL-U9GG \(Bose 151 pair\)/);
-  assert.match((data as { message: string }).message, /0 units on hand/);
+  const carried = splitToolArtifact(res.ok ? res.data : null);
+  assert.ok(carried);
+  assert.equal(carried.artifact.kind, 'record');
+  assert.deepEqual(carried.artifact.kind === 'record' && carried.artifact.identity, {
+    title: 'Bose 151 pair',
+    ids: [
+      { label: 'SKU', value: '8K-PJTL-U9GG' },
+      { label: 'FNSKU', value: 'X002MLY7R3' },
+    ],
+    href: '/search?sel=sku:77',
+  });
+  assert.match(carried.modelData.summary, /FNSKU X002MLY7R3 belongs to SKU 8K-PJTL-U9GG/);
+  assert.match(carried.modelData.summary, /0 units on hand/);
 });
 
 test('locate_product: unknown value → tries serial, then found=false naming what was searched', async () => {

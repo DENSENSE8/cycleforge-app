@@ -18,7 +18,7 @@ interface LookupOrder {
   created_at: string | null;
   item_number: string | null;
   ship_by_date: string | null;
-  tester_id: number | null;
+  picker_id: number | null;
   packer_id: number | null;
   tracking_numbers: string[] | null;
   is_out_of_stock?: boolean;
@@ -38,10 +38,10 @@ function lookupToPreviewOrder(order: LookupOrder): Order {
     quantity: order.quantity != null ? String(order.quantity) : null,
     status: normalizeShippedRailStatus(order.status, false),
     shipping_tracking_number: String(order.tracking_numbers?.[0] || ''),
-    tester_id: order.tester_id ?? null,
+    picker_id: order.picker_id ?? null,
     packer_id: order.packer_id ?? null,
     is_out_of_stock: Boolean(order.is_out_of_stock),
-    has_tech_scan: false,
+    has_pick_scan: false,
     is_shipped: false,
   };
 }

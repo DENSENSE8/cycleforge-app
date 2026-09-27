@@ -196,8 +196,8 @@ async function testShipped() {
 async function testTech() {
   console.log('\n🔬  TECH / REPAIR\n');
 
-  const r1 = await get('/api/tech-logs');
-  check('GET /api/tech-logs', r1, {
+  const r1 = await get('/api/picking/desk/logs');
+  check('GET /api/picking/desk/logs', r1, {
     validate: (b) => noPackDateTime(b),
   });
 

@@ -63,4 +63,6 @@ test('isTestingSurfacePath matches /test and legacy /tech', () => {
   assert.equal(isTestingSurfacePath('/test'), true);
   assert.equal(isTestingSurfacePath('/tech'), true);
   assert.equal(isTestingSurfacePath('/unbox'), false);
+  // The Picker desk is its own station, not a Testing path.
+  assert.equal(isTestingSurfacePath('/pick'), false);
 });

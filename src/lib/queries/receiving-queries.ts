@@ -394,7 +394,7 @@ function isIdentityOnlyRailRow(row: ReceivingRailRow): boolean {
   // SKU IDENTITY LAW (src/lib/sku/sku-identity-law.ts):
   return (
     r.quantity_received == null
-    && !(r.zoho_item_title || r.catalog_product_title || r.item_name || r.sku)
+    && !(r.catalog_product_title || r.zoho_item_title || r.item_name || r.sku)
     && !(r.zoho_purchaseorder_number || r.zoho_purchaseorder_id)
   );
 }

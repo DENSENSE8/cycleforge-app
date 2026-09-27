@@ -1,10 +1,20 @@
 'use client';
 
-/** A small segmented toggle used in timeline/journey headers — e.g. */
+/**
+ * A small segmented toggle used in timeline/journey headers and as the ⌘K
+ * palette's search-method pills (`bare`). Labels speak the region's VOICE
+ * (`mode-label-case`): sentence case in triage, caps on the industrial floor.
+ * `bare` options are the triage pill chips (`rounded-mode-pill`).
+ */
 
 interface IdentifierToggleOption<T extends string> {
   value: T;
   label: string;
+  /**
+   * `bare` only — the option's identity colour: a dot before the label, and
+   * the selected pill's wash + ring (e.g. ticket orange, serial green).
+   */
+  tone?: { dot: string; selected: string } | null;
 }
 
 export function IdentifierToggle<T extends string>({
@@ -40,16 +50,19 @@ export function IdentifierToggle<T extends string>({
             role="tab"
             aria-selected={active}
             onClick={() => onChange(o.value)}
-            className={`ds-raw-button rounded px-2 py-0.5 text-role-eyebrow font-semibold uppercase tracking-[0.1em] transition-colors ${
+            className={`ds-raw-button inline-flex items-center gap-1.5 transition-colors mode-label-case ${
               bare
-                ? active
-                  ? 'bg-surface-sunken text-text-default'
-                  : 'text-text-faint hover:text-text-muted'
-                : active
-                  ? 'bg-surface-card text-text-muted shadow-sm'
-                  : 'text-text-faint hover:text-text-muted'
+                ? `rounded-mode-pill px-2.5 py-1 text-role-caption font-medium ${
+                    active
+                      ? (o.tone?.selected ?? 'bg-surface-sunken text-text-default ring-1 ring-inset ring-border-soft')
+                      : 'text-text-muted hover:bg-surface-sunken hover:text-text-default'
+                  }`
+                : `rounded px-2 py-0.5 text-role-eyebrow font-semibold ${
+                    active ? 'bg-surface-card text-text-muted shadow-sm' : 'text-text-faint hover:text-text-muted'
+                  }`
             }`}
           >
+            {bare && o.tone ? <span aria-hidden className={`size-1.5 shrink-0 rounded-full ${o.tone.dot}`} /> : null}
             {o.label}
           </button>
         );

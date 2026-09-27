@@ -12,10 +12,10 @@ describe('fulfillmentCountsFromCombos', () => {
 
   it('maps raw signal combos through deriveFulfillmentState', () => {
     const counts = fulfillmentCountsFromCombos([
-      { hasTechScan: false, blocked: false, count: 4 },
-      { hasTechScan: true, blocked: false, count: 2 },
-      { hasTechScan: true, blocked: true, count: 1 },
-      { hasTechScan: false, blocked: true, count: 3 },
+      { hasPickScan: false, blocked: false, count: 4 },
+      { hasPickScan: true, blocked: false, count: 2 },
+      { hasPickScan: true, blocked: true, count: 1 },
+      { hasPickScan: false, blocked: true, count: 3 },
     ]);
     assert.deepEqual(counts, { PENDING: 4, TESTED: 2, BLOCKED: 4 });
   });

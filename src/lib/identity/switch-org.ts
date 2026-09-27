@@ -4,6 +4,7 @@
  */
 
 import { isMobileFirstPath } from '@/lib/mobile/mobile-first-surface';
+import { resolveLandingPath, withWelcomeHandoff } from '@/lib/auth/landing-path';
 
 export function orgInitials(name: string): string {
   return (
@@ -36,8 +37,10 @@ type SwitchOrgResult =
 
 /**
  * POST /api/auth/switch-org. On success, hard-navigates (does not return) to
- * the SURFACE-AWARE landing: `/m/home` when the switch started on a phone
- * route, `/dashboard` otherwise. On failure, returns a friendly error string.
+ * the target profile's SURFACE-AWARE landing (`resolveLandingPath`, mobile when
+ * the switch started on a phone route); a desktop landing plays the welcome
+ * for the new profile via `?welcome=1`. On failure, returns a friendly error
+ * string.
  */
 export async function requestSwitchOrg(organizationId: string): Promise<SwitchOrgResult> {
   try {
@@ -47,14 +50,24 @@ export async function requestSwitchOrg(organizationId: string): Promise<SwitchOr
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ organizationId }),
     });
+    const data = (await r.json().catch(() => ({}))) as {
+      error?: string;
+      role?: string | null;
+      defaultHomePath?: string | null;
+      defaultHomePathMobile?: string | null;
+    };
     if (!r.ok) {
-      const data = (await r.json().catch(() => ({}))) as { error?: string };
       return { ok: false, error: switchOrgErrorMessage(data.error) };
     }
+    const mobile = isMobileFirstPath(window.location.pathname);
+    const landing = resolveLandingPath({
+      role: data.role,
+      defaultHomePath: data.defaultHomePath,
+      defaultHomePathMobile: data.defaultHomePathMobile,
+      mobile,
+    });
     // Hard reload — NOT router.push.
-    window.location.assign(
-      isMobileFirstPath(window.location.pathname) ? '/m/home' : '/dashboard',
-    );
+    window.location.assign(mobile ? landing : withWelcomeHandoff(landing));
     return { ok: true };
   } catch {
     return { ok: false, error: switchOrgErrorMessage(undefined) };

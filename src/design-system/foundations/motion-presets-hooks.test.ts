@@ -16,44 +16,12 @@ const TRANSFORM_KEYS = [
   'filter',
 ];
 
-test('height survives the reduction on the sanctioned height presets', () => {
-  for (const name of ['collapseHeight', 'sidebarSection'] as const) {
-    const reduced = reducePresenceShape(motionPresence[name]);
-    for (const phase of ['initial', 'animate', 'exit'] as const) {
-      const shape = reduced[phase] as Record<string, unknown> | undefined;
-      assert.ok(shape, `${name}.${phase} should still exist`);
-      assert.ok(
-        'height' in shape,
-        `${name}.${phase} lost its height key — the element would fade at full box instead of collapsing`,
-      );
-    }
-    // The collapse must still travel between 0 and its natural height.
-    assert.equal((reduced.initial as Record<string, unknown>).height, 0);
-    assert.equal((reduced.animate as Record<string, unknown>).height, 'auto');
-  }
-});
-
-test('no preset silently loses a height key when reduced', () => {
-  for (const [name, presence] of Object.entries(motionPresence)) {
-    if (!presence || typeof presence !== 'object' || !('initial' in presence)) continue;
-    const reduced = reducePresenceShape(presence as Parameters<typeof reducePresenceShape>[0]);
-    for (const phase of ['initial', 'animate', 'exit'] as const) {
-      const before = (presence as Record<string, unknown>)[phase];
-      if (!before || typeof before !== 'object' || !('height' in before)) continue;
-      assert.ok(
-        'height' in ((reduced as Record<string, unknown>)[phase] as object),
-        `motionPresence.${name}.${phase} lost its height key`,
-      );
-    }
-  }
-});
-
 test('every vestibular transform key is stripped, opacity is kept', () => {
   const all = Object.fromEntries(TRANSFORM_KEYS.map((k) => [k, 1]));
   const reduced = reducePresenceShape({
-    initial: { ...all, opacity: 0, height: 0 },
-    animate: { ...all, opacity: 1, height: 'auto' },
-    exit: { ...all, opacity: 0, height: 0 },
+    initial: { ...all, opacity: 0, clipPath: 'inset(0 100% 0 0)' },
+    animate: { ...all, opacity: 1, clipPath: 'inset(0 0% 0 0)' },
+    exit: { ...all, opacity: 0, clipPath: 'inset(0 100% 0 0)' },
   });
 
   for (const phase of ['initial', 'animate', 'exit'] as const) {
@@ -62,7 +30,7 @@ test('every vestibular transform key is stripped, opacity is kept', () => {
       assert.ok(!(key in shape), `${phase} should have stripped the "${key}" key`);
     }
     assert.ok('opacity' in shape, `${phase} must keep opacity — reduce means crossfade, not cut`);
-    assert.ok('height' in shape, `${phase} must keep height`);
+    assert.ok('clipPath' in shape, `${phase} must keep clipPath — only vestibular travel is stripped`);
   }
 });
 
@@ -74,10 +42,11 @@ test('a presence shape without an exit does not grow one', () => {
 });
 
 test('reduction does not mutate the shared preset objects', () => {
-  const before = JSON.stringify(motionPresence.collapseHeight);
-  reducePresenceShape(motionPresence.collapseHeight);
+  // A preset whose reduction strips keys (rotateX, transformPerspective) — the case a mutating implementation would corrupt.
+  const before = JSON.stringify(motionPresence.weldedPanelPeel);
+  reducePresenceShape(motionPresence.weldedPanelPeel);
   assert.equal(
-    JSON.stringify(motionPresence.collapseHeight),
+    JSON.stringify(motionPresence.weldedPanelPeel),
     before,
     'presets are module-level singletons shared by every consumer — reduction must be pure',
   );

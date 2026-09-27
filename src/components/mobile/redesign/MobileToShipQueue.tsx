@@ -39,7 +39,6 @@ import { MobileToShipSheet } from '@/components/mobile/redesign/MobileToShipShee
 import { MobileToShipPickerSheet } from '@/components/mobile/redesign/MobileToShipPickerSheet';
 import { useToShipOrders, type MobileToShipFeed } from '@/components/mobile/redesign/useToShipOrders';
 import { useStaffNameMap } from '@/hooks/useStaffNameMap';
-import { useRealtimeInvalidation } from '@/hooks/useRealtimeInvalidation';
 import type { WorkOrderRow } from '@/components/work-orders/types';
 import type { OrderShortageIdentity } from '@/lib/orders/order-shortage-identity';
 import { useAuth } from '@/contexts/AuthContext';
@@ -82,10 +81,10 @@ export function MobileToShipQueue({
   });
   const { getStaffName } = useStaffNameMap();
   const { mutate: assignOrder } = useOrderAssignment();
-  // Orders owns the canonical queue projection. Its one shared Ably subscriber
+  // Orders owns the canonical queue projection. The shell's one Ably subscriber
+  // (`RouteRealtimeMount`, `/m/orders` + `/m/work` → dashboard + reconnect)
   // invalidates the same cache keys as desk and station readers; no page-local
   // socket or direct database listener is allowed here.
-  useRealtimeInvalidation({ dashboard: true, reconnect: true });
   const [sheetRow, setSheetRow] = useState<WorkOrderRow | null>(null);
   const [activeRow, setActiveRow] = useState<WorkOrderRow | null>(null);
   const [passPickRow, setPassPickRow] = useState<WorkOrderRow | null>(null);
@@ -594,8 +593,8 @@ export function MobileToShipQueue({
           assignOrder(
             {
               orderId: passPickRow.entityId,
-              testerId: staff.id,
-              testerName: staff.name,
+              pickerId: staff.id,
+              pickerName: staff.name,
             },
             { onSuccess: () => setPassPickRow(null) },
           );

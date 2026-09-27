@@ -4,7 +4,6 @@ import { usePathname } from 'next/navigation';
 import dynamic from 'next/dynamic';
 import { useAuth } from '@/contexts/AuthContext';
 import { getSidebarRouteKey } from '@/lib/sidebar-navigation';
-import { getSidebarTitle } from '@/lib/sidebar-titles';
 
 // Every panel is code-split on the route key.
 const DashboardOrdersContextPanel = dynamic(() => import('@/components/sidebar/DashboardOrdersContextPanel').then((m) => m.DashboardOrdersContextPanel));
@@ -19,7 +18,8 @@ const FbaSidebarPanel = dynamic(() => import('@/components/fba/sidebar').then((m
 const SourcingSidebarPanel = dynamic(() => import('@/components/sidebar/SourcingSidebarPanel').then((m) => m.SourcingSidebarPanel));
 const ProductsSidebarPanel = dynamic(() => import('@/components/sidebar/ProductsSidebarPanel').then((m) => m.ProductsSidebarPanel));
 const WalkInSidebarPanel = dynamic(() => import('@/components/sidebar/WalkInSidebarPanel').then((m) => m.WalkInSidebarPanel));
-const TechSidebarPanel = dynamic(() => import('@/components/sidebar/TechSidebarPanel').then((m) => m.TechSidebarPanel));
+const TestingSidebarPanel = dynamic(() => import('@/components/sidebar/TestingSidebarPanel').then((m) => m.TestingSidebarPanel));
+const PickSidebarPanel = dynamic(() => import('@/components/sidebar/PickSidebarPanel').then((m) => m.PickSidebarPanel));
 const PackerSidebarPanel = dynamic(() => import('@/components/sidebar/PackerSidebarPanel').then((m) => m.PackerSidebarPanel));
 const ReviewSidebarPanel = dynamic(() => import('@/components/sidebar/review/ReviewSidebarPanel').then((m) => m.ReviewSidebarPanel));
 
@@ -28,7 +28,7 @@ const ReviewSidebarPanel = dynamic(() => import('@/components/sidebar/review/Rev
  * panel. Each route maps to its own sidebar panel; the two complex routes
  * (dashboard orders, admin) live in their own components.
  */
-export function SidebarContextPanel({ onBackToAppNav }: { onBackToAppNav?: () => void } = {}) {
+export function SidebarContextPanel() {
   const pathname = usePathname();
   const { user } = useAuth();
   const routeKey = getSidebarRouteKey(pathname);
@@ -66,17 +66,11 @@ export function SidebarContextPanel({ onBackToAppNav }: { onBackToAppNav?: () =>
   // (No `repair` branch: `/repair` is a Receiving MODE and resolves to the
   // `receiving` key — see getSidebarRouteKey. The branch that used to sit here
   // could never be reached.)
-  if (routeKey === 'tech') {
-    // Identity from the verified session cookie. Proxy guarantees user.
-    const techId = String(user?.staffId ?? 0);
-    return (
-      <TechSidebarPanel
-        techId={techId}
-        onBackToAppNav={onBackToAppNav}
-        contextNavTitle={getSidebarTitle(pathname)}
-      />
-    );
-  }
+  // Identity from the verified session cookie. Proxy guarantees user.
+  // Quality Control bench (`/test`, legacy `/tech`).
+  if (routeKey === 'tech') return <TestingSidebarPanel staffId={String(user?.staffId ?? 0)} />;
+  // Picker desk (`/pick`).
+  if (routeKey === 'pick') return <PickSidebarPanel pickerId={String(user?.staffId ?? 0)} />;
 
   // `ops-photos` has no branch and no rail — the Media library is RAIL-LESS (Pattern E, 2026-08-09).
   if (routeKey === 'packer') return <PackerSidebarPanel />;

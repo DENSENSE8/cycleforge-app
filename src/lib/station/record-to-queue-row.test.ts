@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import type { TechRecord } from '@/hooks/useTechLogs';
+import type { TechRecord } from '@/hooks/useDeskPickLogs';
 import type { PackerRecord } from '@/hooks/usePackerLogs';
 import {
   getStationSourceKind,
@@ -54,7 +54,6 @@ test('techRecordToQueueRow maps identity + banding + tester and stashes the sour
   assert.equal(row.deadline_at, techBase.created_at);
   // Tester comes from tested_by; no packer.
   assert.equal(row.tested_by, 7);
-  assert.equal(row.tester_id, 7);
   assert.equal(row.packed_by, null);
   // Source round-trips for detail-open / copy.
   assert.equal(getStationSourceKind(row), 'tech');

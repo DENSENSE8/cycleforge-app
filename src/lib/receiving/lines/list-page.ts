@@ -1,7 +1,7 @@
 /**
  * One page of the receiving-lines list feed — pre-limits, list + count,
  * serial hydration and the lineless-carton placeholder merges. `GET
- * /api/receiving-lines` / `GET /api/testing/receiving-lines` and the station
+ * /api/receiving-lines` / `GET /api/qc/receiving-lines` and the station
  * nav recents adapters (`receiving.*`, `testing.opened`) all read it, so a
  * rail and its sidebar recents list can never disagree on membership or order.
  */

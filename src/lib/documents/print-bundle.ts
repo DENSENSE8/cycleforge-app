@@ -56,6 +56,8 @@ interface DispatchPrintBundleInput {
   actorStaffId?: number | null;
   reprint?: boolean;
   clientEventIdPrefix?: string;
+  /** Print only these papers; absent = the whole bundle (label + slip + manuals). */
+  documentTypes?: readonly DocumentPrintJobType[];
 }
 
 interface DispatchPrintBundleJobResult {
@@ -216,16 +218,33 @@ function pushManualFallback(
   });
 }
 
+/** The bundle narrowed to the papers the sender asked for; `missingTypes` names only asked-for types. */
+function pickBundleTypes(
+  bundle: ResolvePrintBundleResult,
+  types: readonly DocumentPrintJobType[],
+): ResolvePrintBundleResult {
+  const wanted = new Set<DocumentPrintJobType>(types);
+  return {
+    documents: bundle.documents.filter((d) => wanted.has(d.documentType)),
+    manuals: wanted.has('manual') ? bundle.manuals : [],
+    byType: Object.fromEntries(
+      Object.entries(bundle.byType).filter(([t]) => wanted.has(t as DocumentPrintJobType)),
+    ),
+    missingTypes: bundle.missingTypes.filter((t) => wanted.has(t)),
+  };
+}
+
 export async function dispatchPrintBundle(
   orgId: OrgId,
   input: DispatchPrintBundleInput,
   deps: PrintBundleDeps = defaultDeps,
 ): Promise<DispatchPrintBundleResult> {
-  const resolved = await resolvePrintBundle(
+  const bundle = await resolvePrintBundle(
     orgId,
     { orderId: input.orderId, shipmentId: input.shipmentId },
     deps,
   );
+  const resolved = input.documentTypes ? pickBundleTypes(bundle, input.documentTypes) : bundle;
 
   if (resolved.documents.length === 0 && resolved.manuals.length === 0) {
     return {

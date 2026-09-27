@@ -19,13 +19,13 @@ Cycle Forge keeps **Testing** (`/test`) and **Receiving** (`/unbox`, `/triage`, 
 | Endpoint | Permission | Allowed `view=` values |
 |----------|------------|------------------------|
 | `GET /api/receiving-lines` | `receiving.view` | All **except** `testing`, `needs-test` → **403** |
-| `GET /api/testing/receiving-lines` | `tech.qc_pass` | **Only** `testing`, `needs-test` |
+| `GET /api/qc/receiving-lines` | `tech.qc_pass` | **Only** `testing`, `needs-test` |
 
 Client callers for testing rails:
 
-- `TestingRecentRail` → `/api/testing/receiving-lines`
-- `TestingHistoryList` → `/api/testing/receiving-lines`
-- Mobile `TestingRecentPanel` → `/api/testing/receiving-lines` when `view=testing`
+- `TestingRecentRail` → `/api/qc/receiving-lines`
+- `TestingHistoryList` → `/api/qc/receiving-lines`
+- Mobile `TestingRecentPanel` → `/api/qc/receiving-lines` when `view=testing`
 
 Receiving scan resolution (`resolve-testing-scan.ts`) still uses `/api/receiving-lines` with `view=all` for **read-only line lookup** — that is intentional (not a feed/list mode leak).
 
@@ -75,5 +75,5 @@ Event listeners (e.g. `useReceivingSelection`) must use `resolveLiveReceivingMod
 3. Deep-link `/unbox?view=testing` → `view` stripped on load
 4. Deep-link `/test?view=testing-history` → redirects to `/test?view=testing`
 5. `GET /api/receiving-lines?view=testing` → 403
-6. `GET /api/testing/receiving-lines?view=testing` → 200 (with `tech.qc_pass`)
+6. `GET /api/qc/receiving-lines?view=testing` → 200 (with `tech.qc_pass`)
 7. Timeline actor matches logged-in staff after mark-received / status updates

@@ -4,13 +4,9 @@ import {
   COMPOSER_MENU_ITEM_CORNER,
   COMPOSER_SHELL_CORNER,
   cornerClass,
-  DROPDOWN_ITEM_CORNER,
-  DROPDOWN_SHELL_CORNER,
-  SPINE_ROW_CORNER,
   nestedCorner,
   nestedCornerClass,
   radius,
-  SEGMENTED_CONTROL_CORNER,
   type CornerRole,
 } from './radius';
 
@@ -61,27 +57,10 @@ describe('radius SoT', () => {
     assert.equal(nestedCorner('surface', 0), 'control'); // 10 → the 8px rung
   });
 
-  it('dropdown shells are the 8px control rung — ladder stays flush', () => {
-    assert.equal(DROPDOWN_SHELL_CORNER, 'rounded-lg');
-    assert.equal(DROPDOWN_SHELL_CORNER, SEGMENTED_CONTROL_CORNER);
-    assert.equal(cornerClass('control'), 'rounded-none');
-  });
-
   it('the header icon face is FLUSH — square, edge to edge on the beam', () => {
     // Operator 2026-09-22:
     // Operator 2026-09-22: "no spacing or padding for the icons … zero corner
     assert.equal(cornerClass('flush'), 'rounded-none');
-  });
-
-  it('spine rows and labelled Search are the 4px chip rung — ladder stays flush', () => {
-    assert.equal(SPINE_ROW_CORNER, 'rounded');
-    assert.equal(SPINE_ROW_CORNER, DROPDOWN_ITEM_CORNER);
-    assert.equal(cornerClass('chip'), 'rounded-none');
-  });
-
-  it('dropdown rows nest inside the 8px shell padded p-1', () => {
-    assert.equal(DROPDOWN_SHELL_CORNER, 'rounded-lg');
-    assert.equal(DROPDOWN_ITEM_CORNER, 'rounded');
   });
 
   it('composer menu rows nest inside the 16px shell padded p-1', () => {

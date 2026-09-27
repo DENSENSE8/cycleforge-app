@@ -17,18 +17,20 @@ const QC = parseNavCommand('CMD-GO-QC')!;
 const READY = parseNavCommand('CMD-GO-READY')!;
 
 describe('resolveNavCommandTarget', () => {
-  it('sends CMD-GO-QC to /test?view=testing', () => {
+  it('sends CMD-GO-QC to the Quality Control bench at /test', () => {
     const t = resolveNavCommandTarget(QC, origin('/pack'));
     assert.equal(t?.pathname, '/test');
-    assert.equal(new URLSearchParams(t!.search).get('view'), 'testing');
+    assert.equal(t?.search, '');
   });
 
-  it('sends CMD-GO-READY to /test with view CLEARED', () => {
-    // Ready to Pack is `view: null` — the landing child. A stale `?view=testing`
-    // riding along would land the operator back on the surface they just left.
+  it('sends CMD-GO-READY to the Picker desk at /pick, never /test', () => {
+    // QC and Picking are separate stations (owner 2026-09-27): the desk left
+    // `/test`, and a QC `?view=` riding along must not follow the picker.
     const t = resolveNavCommandTarget(READY, origin('/test', 'view=testing'));
-    assert.equal(t?.pathname, '/test');
-    assert.equal(new URLSearchParams(t!.search).get('view'), null);
+    assert.equal(t?.pathname, '/pick');
+    const params = new URLSearchParams(t!.search);
+    assert.equal(params.get('ship'), 'urgent');
+    assert.equal(params.get('view'), null);
   });
 
   it('does not carry the origin surface params to the destination', () => {
@@ -41,21 +43,22 @@ describe('resolveNavCommandTarget', () => {
 
 describe('isAlreadyAtNavCommand', () => {
   it('is true on the command target and false on its sibling', () => {
-    assert.equal(isAlreadyAtNavCommand(QC, origin('/test', 'view=testing')), true);
-    assert.equal(isAlreadyAtNavCommand(READY, origin('/test', 'view=testing')), false);
-    assert.equal(isAlreadyAtNavCommand(READY, origin('/test')), true);
-    assert.equal(isAlreadyAtNavCommand(QC, origin('/test')), false);
+    assert.equal(isAlreadyAtNavCommand(QC, origin('/test')), true);
+    assert.equal(isAlreadyAtNavCommand(READY, origin('/test')), false);
+    assert.equal(isAlreadyAtNavCommand(READY, origin('/pick', 'ship=history')), true);
+    assert.equal(isAlreadyAtNavCommand(QC, origin('/pick')), false);
   });
 
   it('is false from another surface', () => {
     assert.equal(isAlreadyAtNavCommand(QC, origin('/unbox')), false);
     assert.equal(isAlreadyAtNavCommand(READY, origin('/pack')), false);
+    // `/pickup` shares a prefix with `/pick` but is Local Pickup.
+    assert.equal(isAlreadyAtNavCommand(READY, origin('/pickup')), false);
   });
 
   it('ignores an operator filter when deciding "already here"', () => {
-    // Compared on the resolved CHILD, not the URL string — re-pushing `/test`
-    // over `/test?staff=7` would silently drop a filter set by hand.
-    assert.equal(isAlreadyAtNavCommand(READY, origin('/test', 'staff=7')), true);
+    // Re-pushing `/pick` over `/pick?staff=7` would silently drop a filter set by hand.
+    assert.equal(isAlreadyAtNavCommand(READY, origin('/pick', 'staff=7')), true);
   });
 });
 

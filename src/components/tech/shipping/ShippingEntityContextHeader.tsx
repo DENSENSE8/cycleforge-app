@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { CartonContextCard } from '@/components/station/entity-context';
 import { getTrackingUrl } from '@/utils/order-links';
-import type { ActiveStationOrder } from '@/hooks/useStationTestingController';
+import type { ActiveStationOrder } from '@/hooks/useDeskPickController';
 import { displayPlatformSlugFromOrderId } from '@/lib/marketplace-order-id';
 import { resolveShippingListingLinks } from './shipping-listing-links';
 

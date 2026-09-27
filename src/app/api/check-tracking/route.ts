@@ -18,7 +18,7 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
                     COALESCE(stn.is_carrier_accepted OR stn.is_in_transit
                       OR stn.is_out_for_delivery OR stn.is_delivered, false) AS is_shipped,
                     o.product_title,
-                    wa_test.assigned_tech_id   AS tester_id,
+                    wa_pick.assigned_tech_id   AS picker_id,
                     wa_pack.assigned_packer_id AS packer_id,
                     pl.packed_by, pl.created_at AS packed_at
              FROM orders o
@@ -28,10 +28,10 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
                  FROM work_assignments
                  WHERE entity_type = 'ORDER'
                    AND entity_id   = o.id
-                   AND work_type   = 'TEST'
+                   AND work_type   = 'PICK'
                    AND organization_id = o.organization_id
                  ORDER BY id DESC LIMIT 1
-             ) wa_test ON TRUE
+             ) wa_pick ON TRUE
              LEFT JOIN LATERAL (
                  SELECT assigned_packer_id
                  FROM work_assignments
@@ -82,7 +82,7 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
             is_shipped: ordersResult.rows[0]?.is_shipped,
             has_packer_id: ordersResult.rows[0]?.packer_id != null,
             packer_id: ordersResult.rows[0]?.packer_id,
-            tester_id: ordersResult.rows[0]?.tester_id
+            picker_id: ordersResult.rows[0]?.picker_id
         }
     });
 }, { permission: 'orders.view' });

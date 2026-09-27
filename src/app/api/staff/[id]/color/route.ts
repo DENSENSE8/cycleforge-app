@@ -79,7 +79,6 @@ export const PATCH = withAuth(async (req: NextRequest, ctx) => {
     });
 
     await invalidateCacheTags([CACHE_TAGS.staff]);
-    await invalidateCacheTags(ctx.organizationId, [CACHE_TAGS.staffOverrides]);
 
     await recordAudit(pool, ctx, req, {
       source: 'staff-color',

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { tenantQuery } from '@/lib/tenancy/db';
+import { tenantQueryOneTrip } from '@/lib/tenancy/db';
 import { withAuth } from '@/lib/auth/withAuth';
 import { getOrSet } from '@/lib/cache/upstash-cache';
 import { CACHE_NS, CACHE_TAGS } from '@/lib/cache/tags';
@@ -41,7 +41,7 @@ const ORDER_DETAIL_SELECT = `
       c.shipping_address->>'postal_code' AS ship_to_postal_code,
       c.shipping_address->>'address_1' AS ship_to_address_1,
       wa_test.deadline_at AS ship_by_date,
-      wa_test.assigned_tech_id AS tester_id,
+      wa_pick.assigned_tech_id AS picker_id,
       wa_pack.assigned_packer_id AS packer_id,
       COALESCE(
         (
@@ -79,13 +79,21 @@ const ORDER_DETAIL_SELECT = `
     FROM orders o
     LEFT JOIN customers c ON c.id = o.customer_id AND c.organization_id = o.organization_id
     LEFT JOIN LATERAL (
-      SELECT deadline_at, assigned_tech_id
+      SELECT deadline_at
       FROM work_assignments
       WHERE entity_type = 'ORDER' AND entity_id = o.id AND work_type = 'TEST'
         AND organization_id = o.organization_id
       ORDER BY assigned_at DESC NULLS LAST
       LIMIT 1
     ) wa_test ON true
+    LEFT JOIN LATERAL (
+      SELECT assigned_tech_id
+      FROM work_assignments
+      WHERE entity_type = 'ORDER' AND entity_id = o.id AND work_type = 'PICK'
+        AND organization_id = o.organization_id
+      ORDER BY assigned_at DESC NULLS LAST
+      LIMIT 1
+    ) wa_pick ON true
     LEFT JOIN LATERAL (
       SELECT assigned_packer_id
       FROM work_assignments
@@ -100,7 +108,7 @@ async function loadOrderDetailByOrderId(
   orgId: OrgId,
   orderId: string,
 ): Promise<OrderDetail | null> {
-  const orderResult = await tenantQuery<OrderDetail>(
+  const orderResult = await tenantQueryOneTrip<OrderDetail>(
     orgId,
     `${ORDER_DETAIL_SELECT}
     WHERE o.order_id = $1
@@ -115,7 +123,7 @@ async function loadOrderDetailById(
   orgId: OrgId,
   id: number,
 ): Promise<OrderDetail | null> {
-  const orderResult = await tenantQuery<OrderDetail>(
+  const orderResult = await tenantQueryOneTrip<OrderDetail>(
     orgId,
     `${ORDER_DETAIL_SELECT}
     WHERE o.id = $1
@@ -127,7 +135,7 @@ async function loadOrderDetailById(
 }
 
 async function loadActivity(orgId: OrgId, orderPk: number) {
-  const activityResult = await tenantQuery<{
+  const activityResult = await tenantQueryOneTrip<{
     event_at: string;
     work_type: string;
     status: string;
@@ -174,23 +182,28 @@ export const GET = withAuth(async (request: NextRequest, ctx) => {
     orgId,
     pk != null ? `id:${pk}` : `no:${decoded}`,
     20,
-    [CACHE_TAGS.orders, CACHE_TAGS.techLogs, CACHE_TAGS.orderDetail],
+    [CACHE_TAGS.orders, CACHE_TAGS.deskPickLogs, CACHE_TAGS.orderDetail],
     async () => {
-      let order: OrderDetail | null;
       if (pk != null) {
-        order = await loadOrderDetailById(orgId, pk);
-      } else {
-        // 1) Human order # (per-tenant string key).
-        order = await loadOrderDetailByOrderId(orgId, decoded);
+        // The pk is known up front, so the detail and its activity are
+        // independent reads; the activity is dropped when the order misses.
+        const [byPk, pkActivity] = await Promise.all([
+          loadOrderDetailById(orgId, pk),
+          loadActivity(orgId, pk),
+        ]);
+        return byPk ? { order: byPk, activity: pkActivity } : { order: null, activity: [] };
+      }
 
-        // 2) Carrier tracking — header-search paste commits identifiers through
-        //    resolveSearchOrder → this route; order_id-only miss left tracking
-        //    pastes on the results list instead of opening detail.
-        if (!order) {
-          const byTracking = await findOrderByTrackingKey(decoded, pool, orgId);
-          if (byTracking) {
-            order = await loadOrderDetailById(orgId, byTracking.id);
-          }
+      // 1) Human order # (per-tenant string key).
+      let order = await loadOrderDetailByOrderId(orgId, decoded);
+
+      // 2) Carrier tracking — header-search paste commits identifiers through
+      //    resolveSearchOrder → this route; order_id-only miss left tracking
+      //    pastes on the results list instead of opening detail.
+      if (!order) {
+        const byTracking = await findOrderByTrackingKey(decoded, pool, orgId);
+        if (byTracking) {
+          order = await loadOrderDetailById(orgId, byTracking.id);
         }
       }
 

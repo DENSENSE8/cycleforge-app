@@ -36,14 +36,30 @@ export async function upsertOrderLineShortage(
     [args.orderId, args.orgId],
   );
 
+  // The internal catalog item is the shortage's identity; a Zoho-only
+  // identity is resolved through the crosswalk (dual-key window).
+  let skuCatalogId = payload.oosSkuCatalogId ?? null;
+  if (skuCatalogId == null && zohoKey) {
+    const hit = await client.query<{ sku_catalog_id: number }>(
+      `SELECT sku_catalog_id FROM catalog_external_ids
+        WHERE organization_id = $1 AND provider = 'zoho' AND external_id = $2 LIMIT 1`,
+      [args.orgId, zohoKey],
+    );
+    skuCatalogId = hit.rows[0]?.sku_catalog_id ?? null;
+  }
+  const conflictTarget = skuCatalogId != null
+    ? `(organization_id, order_id, sku_catalog_id) WHERE status <> 'cleared' AND sku_catalog_id IS NOT NULL`
+    : `(organization_id, order_id, zoho_item_id) WHERE status <> 'cleared'`;
+
   const upsert = await client.query<{ id: string }>(
     `INSERT INTO order_line_shortages (
        organization_id, order_id, commercial_order_id, zoho_item_id, item_id,
        sku_catalog_id, kit_part_id, kind, qty_short, title, sku, status, created_by
      ) VALUES ($1, $2, $3, $4, $5::uuid, $6, $7, $8, $9, $10, $11, 'open', $12)
-     ON CONFLICT (organization_id, order_id, zoho_item_id) WHERE status <> 'cleared'
+     ON CONFLICT ${conflictTarget}
      DO UPDATE SET
        item_id = COALESCE(EXCLUDED.item_id, order_line_shortages.item_id),
+       zoho_item_id = COALESCE(EXCLUDED.zoho_item_id, order_line_shortages.zoho_item_id),
        sku_catalog_id = COALESCE(EXCLUDED.sku_catalog_id, order_line_shortages.sku_catalog_id),
        kit_part_id = COALESCE(EXCLUDED.kit_part_id, order_line_shortages.kit_part_id),
        kind = EXCLUDED.kind,
@@ -57,7 +73,7 @@ export async function upsertOrderLineShortage(
       orderQ.rows[0]?.order_id ?? null,
       zohoKey,
       payload.oosItemId,
-      payload.oosSkuCatalogId,
+      skuCatalogId,
       payload.oosKitPartId,
       payload.oosKind,
       qty,
@@ -78,9 +94,9 @@ export async function clearOrderLineShortages(
     orderId: number;
     clearedBy?: string | null;
   },
-): Promise<void> {
+): Promise<string[]> {
   const schema = await readShortageSchema(client);
-  if (!schema.tables) return;
+  if (!schema.tables) return [];
 
   await client.query(
     `UPDATE shortage_inbound_links sil
@@ -94,18 +110,49 @@ export async function clearOrderLineShortages(
     [args.orgId, args.orderId],
   );
 
-  await client.query(
+  const cleared = await client.query<{ id: string }>(
     `UPDATE order_line_shortages
         SET status = 'cleared',
             cleared_at = NOW(),
             cleared_by = $3
       WHERE organization_id = $1
         AND order_id = $2
-        AND status <> 'cleared'`,
+        AND status <> 'cleared'
+      RETURNING id`,
     [args.orgId, args.orderId, args.clearedBy ?? 'staff'],
   );
 
   await syncOrderShortageDenorm(client, args.orgId, args.orderId);
+  return cleared.rows.map((r) => String(r.id));
+}
+
+/**
+ * Undo a clear: re-open shortages {@link clearOrderLineShortages} closed (by
+ * the ids it returned) and re-sync each order's out-of-stock denorm. A line
+ * that meanwhile got a NEW open shortage is left cleared (one open row per
+ * line). Released inbound links stay released — re-pair them on the order.
+ */
+export async function reopenOrderLineShortages(
+  client: ShortageWriteClient,
+  args: { orgId: OrgId; shortageIds: readonly string[] },
+): Promise<number[]> {
+  if (args.shortageIds.length === 0) return [];
+  const reopened = await client.query<{ order_id: number }>(
+    `UPDATE order_line_shortages s
+        SET status = 'open', cleared_at = NULL, cleared_by = NULL
+      WHERE s.organization_id = $1
+        AND s.id::text = ANY($2::text[])
+        AND s.status = 'cleared'
+        AND NOT EXISTS (
+          SELECT 1 FROM order_line_shortages o
+           WHERE o.organization_id = s.organization_id AND o.order_id = s.order_id
+             AND o.zoho_item_id IS NOT DISTINCT FROM s.zoho_item_id AND o.status <> 'cleared')
+      RETURNING s.order_id`,
+    [args.orgId, [...args.shortageIds]],
+  );
+  const orderIds = [...new Set(reopened.rows.map((r) => Number(r.order_id)))];
+  for (const orderId of orderIds) await syncOrderShortageDenorm(client, args.orgId, orderId);
+  return orderIds;
 }
 
 export async function syncOrderShortageDenorm(

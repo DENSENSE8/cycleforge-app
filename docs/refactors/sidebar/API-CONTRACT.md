@@ -147,7 +147,7 @@ Endpoint of every surface: `/api/nav/recents?surface=<id>`.
 | `command_bar` | nav_recents | `null` | 6 | `order`, `unit`, `receiving`, `sku`, `repair`, `fba`, `warranty`, `ticket`, `location`, `page` | `command-bar-recent` |
 
 Adapters (`src/lib/nav/recents/adapters.ts`) call the same domain read as the
-feed's own route (`/api/receiving-lines`, `/api/tech-logs`, `/api/packerlogs`,
+feed's own route (`/api/receiving-lines`, `/api/picking/desk/logs`, `/api/packerlogs`,
 `/api/labels/recent`, `/api/local-pickup-orders/lines`, `search_query_log`
 opened follow-ups) — never an HTTP self-fetch — so the sidebar and the station
 rail cannot disagree.
@@ -185,7 +185,7 @@ bar runs before submitting.
 | `unbox` | ticket · tracking · PO, receiving handles (`useTrackingScan`) | `receive` → `/api/receiving/lookup-po` |
 | `pickup` | id → exact PO/ref → customer → unique partial (`resolvePickupScan`, client-side; hit writes `?lcpu=`) | `pickup` → `/api/local-pickup-orders/lines` |
 | `testing` | handle/unit/serial → PO → tracking → partial → SKU (`resolveTestingScan`) | `testing` → `/api/receiving-lines` |
-| `station` | command → unit key → handle → SKU → FNSKU → tracking → serial (`detectStationScanType`) | `ready-to-pack` → `/api/tech/scan` |
+| `station` | command → unit key → handle → SKU → FNSKU → tracking → serial (`detectStationScanType`) | `ready-to-pack` → `/api/picking/desk/scan` |
 | `pack` | unit QR → FNSKU → tracking → packing log (`PackScanColumn`) | `packer` → `/api/packing-logs` |
 | `scan-out` | tracking-shaped commits, anything else is a note (`isScanOutTrackingCommit`) | `scan-out` → `/api/shipped/scan-out` |
 | `fnsku` | FNSKU / ASIN / FBA shipment id (`useFbaScanRouting`) | `fba` → `/api/fba/fnskus/validate` |
@@ -1804,7 +1804,7 @@ Captured (`?inWarehouse=true&limit=3`, envelope only — each order row has ~70 
       "status": "shipped",
       "deadline_at": "2026-09-10T06:59:59.999Z",
       "is_urgent": false,
-      "has_tech_scan": true,
+      "has_pick_scan": true,
       "is_out_of_stock": false,
       "…": "91 more columns"
     },
@@ -1822,7 +1822,7 @@ Captured (`?inWarehouse=true&limit=3`, envelope only — each order row has ~70 
 
 - **Route:** `src/app/api/orders/queue-counts/route.ts:10` · **Auth:** `withAuth`, permission **`orders.view`**.
 - **Query:** `staff=<positive int>` (optional; anything else = all staff).
-- **Response (`UnshippedQueueCounts`):** `{ total, byStage: { all, tested, pending, packed }, urgent, mustShip, shippedToday, combos: { hasTechScan, blocked, count }[], packPlacement: { counts: [...], totalPlaced }, paperworkIncomplete }`. On error: **200** with zero counts plus `degraded: true, error: 'queue_counts_unavailable'` and `x-db-fallback: error`. A sidebar count must not 500 the queue, and zero must not pass for an honest all-clear.
+- **Response (`UnshippedQueueCounts`):** `{ total, byStage: { all, tested, pending, packed }, urgent, mustShip, shippedToday, combos: { hasPickScan, blocked, count }[], packPlacement: { counts: [...], totalPlaced }, paperworkIncomplete }`. On error: **200** with zero counts plus `degraded: true, error: 'queue_counts_unavailable'` and `x-db-fallback: error`. A sidebar count must not 500 the queue, and zero must not pass for an honest all-clear.
 - **Status:** 200 · 401 · 403.
 - **Shared To-ship predicate:** every count is over `sqlOrderInWarehouseToShip` (`src/lib/orders/desk-view-sql.ts:64`), the same predicate `/api/orders?inWarehouse=true` lists and desk-counts `triage` counts. It used to mirror `fulfillmentScope` (orders without a label too) and printed 406 over a 38-row list. Orders without a label belong to the Labels queue (`awaitingOnly`).
 - **Notes:**
@@ -1847,12 +1847,12 @@ Captured (`x-cache: HIT`; `total` 38 = `/api/orders?inWarehouse=true` count 38):
   "shippedToday": 0,
   "combos": [
     {
-      "hasTechScan": false,
+      "hasPickScan": false,
       "blocked": true,
       "count": 5
     },
     {
-      "hasTechScan": false,
+      "hasPickScan": false,
       "blocked": false,
       "count": 19
     },

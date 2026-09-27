@@ -1,9 +1,8 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { AnimatePresence, motion } from '@/design-system/motion';
 import { ShippedOrder } from '@/lib/neon/orders-queries';
-import { motionPresence, motionTransition } from '@/design-system/foundations/motion-presets';
+import { Collapse } from '@/design-system/components/Collapse';
 import { MarkAsShippedForm } from '@/components/shipped/stacks/MarkAsShippedForm';
 import { OrderNotesTrail } from '@/components/shipped/details-panel/OrderNotesTrail';
 import { ShippedOutOfStockComposer } from '@/components/shipped/details-panel/ShippedOutOfStockComposer';
@@ -98,26 +97,13 @@ export function ShippedPanelEditorDock({
           : 'shrink-0 border-t border-border-soft bg-surface-card/95 backdrop-blur-md'
       }
     >
-      <AnimatePresence initial={false}>
-        {hasExpandedEditor ? (
-          <motion.div
-            key="mark-shipped"
-            initial={motionPresence.collapseHeight.initial}
-            animate={motionPresence.collapseHeight.animate}
-            exit={motionPresence.collapseHeight.exit}
-            transition={motionTransition.upNextCollapse}
-            className="overflow-hidden"
-          >
-            <div className="px-8 pt-3 pb-1">
-              <MarkAsShippedForm
-                shippingTrackingNumber={shippingTrackingNumber || shipped.shipping_tracking_number || ''}
-                packerOptions={packerOptions}
-                onSuccess={onMarkShippedSuccess}
-              />
-            </div>
-          </motion.div>
-        ) : null}
-      </AnimatePresence>
+      <Collapse open={hasExpandedEditor} className="px-8 pt-3 pb-1">
+        <MarkAsShippedForm
+          shippingTrackingNumber={shippingTrackingNumber || shipped.shipping_tracking_number || ''}
+          packerOptions={packerOptions}
+          onSuccess={onMarkShippedSuccess}
+        />
+      </Collapse>
 
       {showOutOfStockRegion ? (
         <ShippedOutOfStockComposer

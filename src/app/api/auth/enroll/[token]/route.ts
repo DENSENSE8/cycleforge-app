@@ -10,6 +10,7 @@ import {
   SESSION_COOKIE_NAME,
 } from '@/lib/auth/session';
 import { audit } from '@/lib/auth/audit';
+import { recordStaffLogin } from '@/lib/auth/record-staff-login';
 
 export const runtime = 'nodejs';
 
@@ -87,6 +88,8 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ token: str
       ip,
       userAgent: ua,
     });
+    // The enrollment phone session is this staff member's sign-in on the phone.
+    await recordStaffLogin(pool, enr.staffId);
     await audit({
       staffId: enr.staffId,
       sid: session.sid,

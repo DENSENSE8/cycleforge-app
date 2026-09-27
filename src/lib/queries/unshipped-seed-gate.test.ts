@@ -2,18 +2,13 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { shouldSeedReadyToPackQueue } from './unshipped-seed-gate';
 
-test('bare /test seeds — the Ready-to-Pack Pending grid is the default mount', () => {
+test('bare /pick seeds — the Picker desk Pending grid is the default mount', () => {
   assert.equal(shouldSeedReadyToPackQueue({}), true);
   assert.equal(shouldSeedReadyToPackQueue({ ship: 'pending' }), true);
 });
 
 test('Urgent keeps the seed — `attention` filters client-side, same query key', () => {
   assert.equal(shouldSeedReadyToPackQueue({ ship: 'urgent', attention: '1' }), true);
-});
-
-test('Quality Control is a different centre — no queue to seed', () => {
-  assert.equal(shouldSeedReadyToPackQueue({ view: 'testing' }), false);
-  assert.equal(shouldSeedReadyToPackQueue({ view: 'testing-history' }), false);
 });
 
 test('tabs that swap the table out do not seed', () => {
@@ -30,6 +25,6 @@ test('a facet that changes the query key does not seed', () => {
 });
 
 test('array-valued params (repeated keys) read their first value', () => {
-  assert.equal(shouldSeedReadyToPackQueue({ view: ['testing', 'x'] }), false);
+  assert.equal(shouldSeedReadyToPackQueue({ ship: ['history', 'pending'] }), false);
   assert.equal(shouldSeedReadyToPackQueue({ ship: ['pending'] }), true);
 });

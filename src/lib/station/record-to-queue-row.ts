@@ -1,7 +1,7 @@
 /** Station record → queue-row mappers (station-table-unification-plan §5.5). */
 
 import type { QueueRowRecord } from '@/components/dashboard/orders-queue/helpers';
-import type { TechRecord } from '@/hooks/useTechLogs';
+import type { TechRecord } from '@/hooks/useDeskPickLogs';
 import type { PackerRecord } from '@/hooks/usePackerLogs';
 
 /** Key under which the original domain record rides along on the mapped row. */
@@ -25,7 +25,6 @@ export function techRecordToQueueRow(record: TechRecord): QueueRowRecord {
     tracking_number_rows: record.tracking_number_rows ?? null,
     serial_number: record.serial_number ?? '',
     sku: record.sku ?? '',
-    tester_id: record.tested_by ?? null,
     tested_by: record.tested_by ?? null,
     test_date_time: record.created_at,
     packer_id: null,
@@ -64,7 +63,6 @@ export function packerRecordToQueueRow(record: PackerRecord): QueueRowRecord {
     tracking_number_rows: record.tracking_number_rows ?? null,
     serial_number: record.serial_number ?? '',
     sku: record.sku ?? '',
-    tester_id: record.tester_id ?? record.tested_by ?? null,
     tested_by: record.tested_by ?? null,
     test_date_time: record.test_date_time ?? null,
     packer_id: record.packed_by ?? null,
@@ -84,7 +82,6 @@ export function packerRecordToQueueRow(record: PackerRecord): QueueRowRecord {
     fnsku_log_id: record.fnsku_log_id ?? null,
     row_source: record.row_source ?? null,
     tested_by_name: record.tested_by_name ?? null,
-    tester_name: record.tester_name ?? null,
     packed_by_name: record.packed_by_name ?? null,
     [STATION_SOURCE_KIND_KEY]: 'packer' satisfies StationSourceKind,
     [STATION_SOURCE_RECORD_KEY]: record,

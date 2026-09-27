@@ -6,7 +6,7 @@
  */
 import 'server-only';
 import pool from '@/lib/db';
-import { tenantQuery } from '@/lib/tenancy/db';
+import { tenantQueryOneTrip } from '@/lib/tenancy/db';
 import { getCachedJson, setCachedJson } from '@/lib/cache/upstash-cache';
 import {
   ordersSearchLast8,
@@ -24,17 +24,20 @@ import {
   PREBOX_FACTS_SELECT,
   PRICE_FACTS_LATERALS,
   SHIP_OUT_LATERAL,
+  WA_PICK_LATERAL,
+  WA_PICK_SELECT,
 } from '@/lib/neon/orders-queries';
 import { resolveLinePrice } from '@/lib/orders/price-resolve';
 import { PACK_ACTIVITY_TYPES, sqlInList } from '@/lib/station-activity';
 import {
   sqlOrderHasPackScan,
   sqlOrderHasShipConfirm,
-  sqlOrderHasTechScan,
+  sqlOrderHasPickScan,
 } from '@/lib/orders/order-grain-sql';
 import { WAREHOUSE_TIME_ZONE } from '@/utils/date';
 import {
   WA_TEST_DEADLINE_RANK_ORDER_SQL,
+  sqlDeskRefinementClauses,
   sqlOrderAssignedToStaff,
   sqlOrderAwaitingPick,
   sqlOrderBlockedPending,
@@ -119,6 +122,30 @@ export interface OrdersListSchema {
   hasReplenishment: boolean;
 }
 
+/* Laterals the list projection AND the search prefilter (`search_hits`) join:
+ * the search predicate reads their aliases, so both sides must see one text. */
+const WA_PACK_LATERAL = `LEFT JOIN LATERAL (
+      SELECT wa.assigned_packer_id
+        FROM work_assignments wa
+       WHERE wa.organization_id = o.organization_id
+         AND wa.entity_type = 'ORDER'
+         AND wa.entity_id = o.id
+         AND wa.work_type = 'PACK'
+         AND wa.assigned_packer_id IS NOT NULL
+         AND wa.status <> 'CANCELED'
+       ORDER BY wa.updated_at DESC, wa.id DESC
+       LIMIT 1
+    ) wa_p ON TRUE`;
+const SS_REF_LATERAL = `LEFT JOIN LATERAL (
+      SELECT ssr.ship_to
+        FROM shipstation_order_refs ssr
+       WHERE o.customer_id IS NULL
+         AND ssr.organization_id = o.organization_id
+         AND ssr.order_row_id = o.id
+       ORDER BY ssr.last_seen_at DESC NULLS LAST, ssr.id DESC
+       LIMIT 1
+    ) ss_ref ON TRUE`;
+
 /** One list read as SQL + binds. Membership predicates are the shared builders the desk counts use. */
 export function buildOrdersListSql(
   orgId: string,
@@ -127,7 +154,7 @@ export function buildOrdersListSql(
 ): { sql: string; params: unknown[] } {
   const {
     orderIdFilter, singleOrderMode, status, assignedTo, query, weekStart, weekEnd,
-    packedDateFrom, packedDateTo, assignmentStatus, shipByDate, packedBy, testedBy, staffFilterId,
+    packedDateFrom, packedDateTo, assignmentStatus, shipByDate, staffFilterId,
     includeShipped, shippedOnly, packedOnly, excludePacked, awaitingOnly, fulfillmentScope,
     pickQueue, poPaired, inWarehouse, blockedOnly, stagedOnly, exceptionsOnly, stallHours,
     carrierFilter, statusCategoryFilter, queueShape, stageFilter, pageLimit, cursor,
@@ -161,6 +188,21 @@ export function buildOrdersListSql(
       NULL::numeric AS replenishment_quantity_to_order,
       NULL::text AS replenishment_po_number,
       NULL::text AS replenishment_notes,`;
+  // The order's latest replenishment request: one index probe per order
+  // (rol_order_idx). Was a whole-table ROW_NUMBER CTE the planner nested-looped
+  // against every candidate order (~195 ms of a 717 ms feed read, 2026-09-27).
+  const replenishmentJoin = hasReplenishment
+    ? `LEFT JOIN LATERAL (
+      SELECT req.id, req.status, req.quantity_to_order, req.zoho_po_number, req.notes
+      FROM replenishment_order_lines rol
+      JOIN replenishment_requests req
+        ON req.id = rol.replenishment_request_id AND req.organization_id = rol.organization_id
+      WHERE rol.order_id = o.id
+        AND rol.organization_id = o.organization_id
+      ORDER BY rol.created_at DESC, rol.id DESC
+      LIMIT 1
+    ) rr ON TRUE`
+    : '';
   // listShape=queue omits the heavy per-order multi-tracking arrays (a details-panel concern) — the row chip uses the single…
   const trackingArraysSelect = queueShape
     ? `'[]'::json AS tracking_numbers,
@@ -172,7 +214,12 @@ export function buildOrdersListSql(
   // under forced RLS the enum quals cannot be index conditions and their row
   // estimates collapse to defaults, so whole-table ROW_NUMBER() CTEs here were
   // joined by nested loops that filtered 22M rows (6.9 s, phase0-findings §2.8).
-  let sql = `
+  // Single-row mode binds its pk at $2 (after the org at $1) so these
+  // shipment-keyed CTEs read that one order's carton, not the org's history.
+  const shipmentScope = (column: string) => singleOrderMode
+    ? `AND ${column} IN (SELECT so.shipment_id FROM orders so WHERE so.organization_id = $1 AND so.id = $2)`
+    : '';
+  const withSql = `
     WITH pl_latest AS (
       SELECT DISTINCT ON (pl.shipment_id)
         pl.shipment_id,
@@ -182,6 +229,7 @@ export function buildOrdersListSql(
       FROM packer_logs pl
       WHERE pl.shipment_id IS NOT NULL
         AND pl.completion_state = 'COMPLETED'
+        ${shipmentScope('pl.shipment_id')}
       ORDER BY pl.shipment_id, pl.created_at DESC NULLS LAST, pl.id DESC
     ),
     pack_activity AS (
@@ -193,6 +241,7 @@ export function buildOrdersListSql(
       WHERE sal.station = 'PACK'
         AND sal.shipment_id IS NOT NULL
         AND sal.activity_type IN (${sqlInList(PACK_ACTIVITY_TYPES)})
+        ${shipmentScope('sal.shipment_id')}
       ORDER BY sal.shipment_id, sal.created_at DESC NULLS LAST, sal.id DESC
     ),
     next_pack_activity AS (
@@ -209,32 +258,6 @@ export function buildOrdersListSql(
        AND pa.created_at IS NOT NULL
        AND sal.created_at > pa.created_at
       GROUP BY pa.shipment_id
-    ),
-    test_activity AS (
-      SELECT DISTINCT ON (sal.shipment_id)
-        sal.shipment_id,
-        sal.created_at,
-        sal.staff_id
-      FROM station_activity_logs sal
-      WHERE sal.station = 'TECH'
-        AND sal.shipment_id IS NOT NULL
-        AND sal.activity_type = 'TRACKING_SCANNED'
-      ORDER BY sal.shipment_id, sal.created_at DESC NULLS LAST, sal.id DESC
-    ),
-    next_test_activity AS (
-      SELECT
-        ta.shipment_id,
-        MIN(sal.created_at) AS created_at
-      FROM test_activity ta
-      JOIN station_activity_logs sal
-        ON sal.shipment_id = ta.shipment_id
-       AND sal.station = 'TECH'
-       AND sal.activity_type = 'TRACKING_SCANNED'
-       AND ta.staff_id IS NOT NULL
-       AND sal.staff_id = ta.staff_id
-       AND ta.created_at IS NOT NULL
-       AND sal.created_at > ta.created_at
-      GROUP BY ta.shipment_id
     ),
     pack_duration AS (
       SELECT
@@ -254,67 +277,14 @@ export function buildOrdersListSql(
        AND (pa.staff_id IS NULL OR sal.staff_id = pa.staff_id)
       GROUP BY pa.shipment_id
     ),
-    test_duration AS (
-      SELECT
-        ta.shipment_id,
-        CASE
-          WHEN MIN(sal.created_at) IS NOT NULL AND MAX(sal.created_at) > MIN(sal.created_at)
-          THEN LPAD((EXTRACT(EPOCH FROM (MAX(sal.created_at) - MIN(sal.created_at)))::int / 60)::text, 2, '0')
-               || ':' ||
-               LPAD((EXTRACT(EPOCH FROM (MAX(sal.created_at) - MIN(sal.created_at)))::int % 60)::text, 2, '0')
-          ELSE NULL
-        END AS duration
-      FROM test_activity ta
-      JOIN station_activity_logs sal
-        ON sal.shipment_id = ta.shipment_id
-       AND sal.station = 'TECH'
-       AND sal.activity_type = 'TRACKING_SCANNED'
-       AND (ta.staff_id IS NULL OR sal.staff_id = ta.staff_id)
-      GROUP BY ta.shipment_id
-    ),
     sal_scan AS (
       SELECT sal.shipment_id, COUNT(*)::int AS scan_count
       FROM station_activity_logs sal
       WHERE sal.shipment_id IS NOT NULL
+        ${shipmentScope('sal.shipment_id')}
       GROUP BY sal.shipment_id
-    ),
-    ${hasReplenishment ? `
-    rr_ranked AS (
-      SELECT
-        rol.order_id,
-        req.id,
-        req.status,
-        req.quantity_to_order,
-        req.zoho_po_number,
-        req.notes,
-        ROW_NUMBER() OVER (
-          PARTITION BY rol.order_id
-          ORDER BY rol.created_at DESC, rol.id DESC
-        ) AS rn
-      FROM replenishment_order_lines rol
-      JOIN replenishment_requests req ON req.id = rol.replenishment_request_id
-    ),
-    rr AS (
-      SELECT
-        order_id,
-        id,
-        status,
-        quantity_to_order,
-        zoho_po_number,
-        notes
-      FROM rr_ranked
-      WHERE rn = 1
-    )` : `
-    rr AS (
-      SELECT
-        NULL::integer AS order_id,
-        NULL::uuid AS id,
-        NULL::text AS status,
-        NULL::numeric AS quantity_to_order,
-        NULL::text AS zoho_po_number,
-        NULL::text AS notes
-      WHERE false
-    )`}
+    )`;
+  let sql = `
     SELECT
       o.id,
       wa_deadline.deadline_at AS deadline_at,
@@ -390,7 +360,7 @@ export function buildOrdersListSql(
       to_char(timezone('America/Los_Angeles', o.created_at), 'YYYY-MM-DD HH24:MI:SS') AS created_at,
       o.tracking_added_at::text AS tracking_added_at,
       o.label_printed_at::text  AS label_printed_at,
-      wa_t.assigned_tech_id   AS tester_id,
+      ${WA_PICK_SELECT},
       wa_p.assigned_packer_id AS packer_id,
       pl_latest.packer_log_id,
       pl_latest.packed_at,
@@ -404,10 +374,15 @@ export function buildOrdersListSql(
       sku_home.location AS sku_home_location,
       sku_on_hand.on_hand AS sku_stock_on_hand,
       pack_duration.duration AS pack_duration,
-      test_activity.staff_id AS tested_by,
-      to_char(test_activity.created_at, 'YYYY-MM-DD HH24:MI:SS') AS test_activity_at,
-      to_char(next_test_activity.created_at, 'YYYY-MM-DD HH24:MI:SS') AS next_test_activity_at,
-      test_duration.duration AS test_duration,
+      /*
+       * QC is a UNIT fact: the latest bench verdict (testing_results) on a
+       * unit allocated to this order. Never a station scan — the Picker
+       * desk's scan is the pick below, and no row feeds both stages.
+       */
+      qc.tested_by AS tested_by,
+      to_char(qc.created_at, 'YYYY-MM-DD HH24:MI:SS') AS test_activity_at,
+      qc.verdict AS qc_verdict,
+      COALESCE(qc.created_at < o.created_at, false) AS qc_inherited,
       COALESCE((
         SELECT STRING_AGG(tsn.serial_number, ',' ORDER BY tsn.created_at)
         FROM tech_serial_numbers tsn
@@ -429,22 +404,20 @@ export function buildOrdersListSql(
             )
           )
       ), '') AS serial_number,
-      staff_test_assignee.name AS tester_name,
-      staff_test_assignee.name AS tested_by_name,
+      staff_qc.name            AS tested_by_name,
       staff_pack_assignee.name AS packer_name,
       staff_packed_by.name     AS packed_by_name,
       /*
        * Pick facts — THIRD copy of this projection, for the reason stated at
-       * :506: this is the live path the To-ship / Pending grid fetches, and a
-       * fact added only to ORDER_SERIALS_CTE never reaches it. Operator
-       * 2026-09-14: the Pick column must show the picker, not the tester.
-       * The laterals themselves are imported, not re-typed, so the three
+       * the row-flag block above: this is the live path the To-ship / Pending
+       * grid fetches, and a fact added only to ORDER_SERIALS_CTE never reaches
+       * it. The laterals themselves are imported, not re-typed, so the three
        * readers cannot disagree about what a pick is.
        */
-      COALESCE(pick_alloc.picked_by, pick_sess.picked_by, pick_station.picked_by) AS picked_by,
+      COALESCE(pick_alloc.picked_by, pick_sess.picked_by, pick_scan.picked_by) AS picked_by,
       s_picked.name AS picked_by_name,
       to_char(
-        COALESCE(pick_alloc.picked_at, pick_sess.picked_at, pick_station.picked_at),
+        COALESCE(pick_alloc.picked_at, pick_sess.picked_at, pick_scan.picked_at),
         'YYYY-MM-DD HH24:MI:SS'
       ) AS picked_at,
       /*
@@ -457,9 +430,8 @@ export function buildOrdersListSql(
       ship_out.shipped_out_by AS shipped_out_by,
       shipped_out_staff.name  AS shipped_out_by_name,
       ${PREBOX_FACTS_SELECT},
-      staff_pick_assignee.color_hex AS tester_color_hex,
       staff_pack_assignee.color_hex AS packer_color_hex,
-      ${sqlOrderHasTechScan('o')} AS has_tech_scan,
+      ${sqlOrderHasPickScan('o')} AS has_pick_scan,
       opp.location_id AS pack_location_id,
       COALESCE(NULLIF(BTRIM(loc_pack.display_name), ''), loc_pack.name) AS pack_location_name,
       loc_pack.location_kind AS pack_location_kind,
@@ -526,45 +498,14 @@ export function buildOrdersListSql(
        ORDER BY ${WA_TEST_DEADLINE_RANK_ORDER_SQL('wa')}
        LIMIT 1
     ) wa_deadline ON TRUE
-    LEFT JOIN LATERAL (
-      SELECT wa.assigned_tech_id
-        FROM work_assignments wa
-       WHERE wa.organization_id = o.organization_id
-         AND wa.entity_type = 'ORDER'
-         AND wa.entity_id = o.id
-         AND wa.work_type = 'TEST'
-         AND wa.assigned_tech_id IS NOT NULL
-         AND wa.status <> 'CANCELED'
-       ORDER BY wa.updated_at DESC, wa.id DESC
-       LIMIT 1
-    ) wa_t ON TRUE
-    LEFT JOIN LATERAL (
-      SELECT wa.assigned_packer_id
-        FROM work_assignments wa
-       WHERE wa.organization_id = o.organization_id
-         AND wa.entity_type = 'ORDER'
-         AND wa.entity_id = o.id
-         AND wa.work_type = 'PACK'
-         AND wa.assigned_packer_id IS NOT NULL
-         AND wa.status <> 'CANCELED'
-       ORDER BY wa.updated_at DESC, wa.id DESC
-       LIMIT 1
-    ) wa_p ON TRUE
+    ${WA_PACK_LATERAL}
     LEFT JOIN pl_latest ON pl_latest.shipment_id = o.shipment_id
     LEFT JOIN pack_activity ON pack_activity.shipment_id = o.shipment_id
     LEFT JOIN next_pack_activity ON next_pack_activity.shipment_id = o.shipment_id
     LEFT JOIN shipping_tracking_numbers stn ON stn.id = o.shipment_id
     LEFT JOIN customers cust
       ON cust.id = o.customer_id AND cust.organization_id = o.organization_id
-    LEFT JOIN LATERAL (
-      SELECT ssr.ship_to
-        FROM shipstation_order_refs ssr
-       WHERE o.customer_id IS NULL
-         AND ssr.organization_id = o.organization_id
-         AND ssr.order_row_id = o.id
-       ORDER BY ssr.last_seen_at DESC NULLS LAST, ssr.id DESC
-       LIMIT 1
-    ) ss_ref ON TRUE
+    ${SS_REF_LATERAL}
     LEFT JOIN order_pack_placements opp
       ON opp.order_id = o.id AND opp.organization_id = o.organization_id
     LEFT JOIN locations loc_pack ON loc_pack.id = opp.location_id
@@ -648,6 +589,23 @@ export function buildOrdersListSql(
          AND stock.sku = CASE WHEN sc.sku IS NOT NULL THEN sc.sku ELSE o.sku END
     ) sku_on_hand ON TRUE
     ${PICK_FACTS_LATERALS}
+    ${WA_PICK_LATERAL}
+    /* Latest bench verdict on any unit allocated to this order (org-scoped). */
+    LEFT JOIN LATERAL (
+      SELECT tr.tested_by, tr.verdict, tr.created_at
+        FROM order_unit_allocations qc_oua
+        JOIN testing_results tr
+          ON tr.serial_unit_id  = qc_oua.serial_unit_id
+         AND tr.organization_id = qc_oua.organization_id
+       WHERE qc_oua.order_id        = o.id
+         AND qc_oua.organization_id = o.organization_id
+         AND qc_oua.state <> 'RELEASED'
+       ORDER BY tr.created_at DESC, tr.id DESC
+       LIMIT 1
+    ) qc ON TRUE
+    LEFT JOIN staff staff_qc
+      ON staff_qc.id = qc.tested_by
+     AND staff_qc.organization_id = o.organization_id
     ${SHIP_OUT_LATERAL}
     ${PREBOX_FACTS_LATERAL}
     ${DOCK_STAGING_LATERAL}
@@ -703,23 +661,18 @@ export function buildOrdersListSql(
         WHERE o_sibling.order_id = o.order_id
       ) t
     ) order_trackings ON TRUE
-    LEFT JOIN rr ON rr.order_id = o.id
-    LEFT JOIN test_activity ON test_activity.shipment_id = o.shipment_id
-    LEFT JOIN next_test_activity ON next_test_activity.shipment_id = o.shipment_id
+    ${replenishmentJoin}
     LEFT JOIN pack_duration ON pack_duration.shipment_id = o.shipment_id
-    LEFT JOIN test_duration ON test_duration.shipment_id = o.shipment_id
     LEFT JOIN sal_scan ON sal_scan.shipment_id = o.shipment_id
-    LEFT JOIN staff staff_test_assignee ON staff_test_assignee.id = test_activity.staff_id
-    LEFT JOIN staff staff_pick_assignee ON staff_pick_assignee.id = wa_t.assigned_tech_id
     LEFT JOIN staff staff_packed_by ON staff_packed_by.id = COALESCE(pack_activity.staff_id, pl_latest.packed_by)
     LEFT JOIN staff staff_pack_assignee ON staff_pack_assignee.id = wa_p.assigned_packer_id
     WHERE 1=1
   `;
-  const params: unknown[] = [];
-  let paramCount = 1;
+  // $1 = org; $2 = the single-row pk, bound up front for `shipmentScope`.
+  const params: unknown[] = singleOrderMode ? [orgId, orderIdFilter] : [orgId];
+  let paramCount = params.length + 1;
 
-  sql += ` AND o.organization_id = $${paramCount++}`;
-  params.push(orgId);
+  sql += ` AND o.organization_id = $1`;
 
   if (shippedOnly) {
     sql += ` AND ${shippedByCarrierOrLatestStatusSql}`;
@@ -849,14 +802,18 @@ export function buildOrdersListSql(
     params.push(Number(assignedTo));
   }
 
-  if (packedBy) {
-    sql += ` AND wa_p.assigned_packer_id = $${paramCount++}`;
-    params.push(Number(packedBy));
-  }
-
-  if (testedBy) {
-    sql += ` AND wa_t.assigned_tech_id = $${paramCount++}`;
-    params.push(Number(testedBy));
+  // packedBy / pickerId / pickedBy / orderFrom|To / shipByFrom|To — the same
+  // predicates the outbound nav facets bind, so their totals match this list.
+  for (const clause of sqlDeskRefinementClauses(
+    q,
+    (value) => {
+      params.push(value);
+      return `$${paramCount++}`;
+    },
+    'o',
+    'wa_deadline.deadline_at',
+  )) {
+    sql += ` AND ${clause}`;
   }
 
   if (staffFilterId != null) {
@@ -903,9 +860,13 @@ export function buildOrdersListSql(
   const last8 = ordersSearchLast8(query);
   const key18 = ordersSearchTrackingKey18(query);
 
+  // The search predicate runs in the `search_hits` prefilter (built below),
+  // not on this projection: here it could only be checked after every per-row
+  // lateral had run for every order of the org.
+  let searchPredicate = '';
   if (likeValue) {
     const likeParam = paramCount;
-    sql += ` AND (
+    searchPredicate += `(
       o.product_title ILIKE $${likeParam}
       OR COALESCE(sc.product_title, '') ILIKE $${likeParam}
       OR COALESCE(sc.sku, '') ILIKE $${likeParam}
@@ -915,7 +876,7 @@ export function buildOrdersListSql(
       OR COALESCE(sc.gtin, '') ILIKE $${likeParam}
       OR COALESCE(o.sku, '') ILIKE $${likeParam}
       OR COALESCE(o.condition, '') ILIKE $${likeParam}
-      OR COALESCE(staff_test_assignee.name, '') ILIKE $${likeParam}
+      OR COALESCE(staff_picker.name, '') ILIKE $${likeParam}
       OR COALESCE(staff_pack_assignee.name, '') ILIKE $${likeParam}
       OR COALESCE(staff_packed_by.name, '') ILIKE $${likeParam}
       OR COALESCE(o.order_id, '') ILIKE $${likeParam}
@@ -937,14 +898,14 @@ export function buildOrdersListSql(
     paramCount++;
 
     if (last8) {
-      sql += ` OR RIGHT(regexp_replace(COALESCE(o.order_id, ''), '[^0-9]', '', 'g'), 8) = $${paramCount}
+      searchPredicate += ` OR RIGHT(regexp_replace(COALESCE(o.order_id, ''), '[^0-9]', '', 'g'), 8) = $${paramCount}
         OR RIGHT(regexp_replace(UPPER(COALESCE(stn.tracking_number_normalized, '')), '[^A-Z0-9]', '', 'g'), 8) = $${paramCount}`;
       params.push(last8);
       paramCount++;
     }
 
     if (key18) {
-      sql += ` OR o.shipment_id IN (
+      searchPredicate += ` OR o.shipment_id IN (
         SELECT s.id FROM shipping_tracking_numbers s
         WHERE RIGHT(regexp_replace(UPPER(COALESCE(s.tracking_number_normalized, '')), '[^A-Z0-9]', '', 'g'), 18) = $${paramCount}
       )`;
@@ -957,7 +918,7 @@ export function buildOrdersListSql(
     const phoneDigits = trimmedQuery.replace(/\D/g, '');
     if (phoneDigits.length >= 7 && phoneDigits.length <= 15 && !/[a-z]/i.test(trimmedQuery)) {
       const phoneKey = phoneDigits.slice(-10);
-      sql += ` OR RIGHT(regexp_replace(COALESCE(cust.phone, ''), '\\D', '', 'g'), 10) = $${paramCount}
+      searchPredicate += ` OR RIGHT(regexp_replace(COALESCE(cust.phone, ''), '\\D', '', 'g'), 10) = $${paramCount}
         OR RIGHT(regexp_replace(COALESCE(cust.mobile, ''), '\\D', '', 'g'), 10) = $${paramCount}
         OR RIGHT(regexp_replace(COALESCE(ss_ref.ship_to->>'phone', ''), '\\D', '', 'g'), 10) = $${paramCount}`;
       params.push(phoneKey);
@@ -965,13 +926,13 @@ export function buildOrdersListSql(
     }
 
     if (/^\d+$/.test(trimmedQuery) && trimmedQuery.length <= 10) {
-      sql += ` OR o.id = $${paramCount}
+      searchPredicate += ` OR o.id = $${paramCount}
         OR COALESCE(o.customer_id, -1) = $${paramCount}`;
       params.push(Number(trimmedQuery));
       paramCount++;
     }
 
-    sql += `
+    searchPredicate += `
       OR (
         NULLIF(BTRIM(o.order_id), '') IS NOT NULL
         AND EXISTS (
@@ -993,11 +954,14 @@ export function buildOrdersListSql(
         )
       )
     )`;
+    // `= ANY(ARRAY(...))` is a one-shot InitPlan feeding a pk index scan; an
+    // IN semi-join is placed above the laterals (the OR-of-ILIKE estimate is
+    // ~75% of the org), which runs them for every order again.
+    sql += ` AND o.id = ANY (ARRAY(SELECT id FROM search_hits))`;
   }
 
   if (singleOrderMode) {
-    sql += ` AND o.id = $${paramCount++}`;
-    params.push(orderIdFilter);
+    sql += ` AND o.id = $2`;
   }
 
   // Keyset cursor: fulfillment is `o.id DESC`; everything else is
@@ -1033,7 +997,29 @@ export function buildOrdersListSql(
     params.push(pageLimit + 1);
   }
 
-  return { sql, params };
+  // Only the joins the predicate reads, evaluated once per org order; the
+  // list's per-row laterals then run for the hits alone.
+  const searchHitsCte = searchPredicate
+    ? `,
+    search_hits AS (
+      SELECT o.id
+      FROM orders o
+      LEFT JOIN sku_catalog sc ON sc.id = o.sku_catalog_id
+      LEFT JOIN shipping_tracking_numbers stn ON stn.id = o.shipment_id
+      LEFT JOIN customers cust
+        ON cust.id = o.customer_id AND cust.organization_id = o.organization_id
+      ${SS_REF_LATERAL}
+      ${WA_PACK_LATERAL}
+      LEFT JOIN pl_latest ON pl_latest.shipment_id = o.shipment_id
+      LEFT JOIN pack_activity ON pack_activity.shipment_id = o.shipment_id
+      ${WA_PICK_LATERAL}
+      LEFT JOIN staff staff_pack_assignee ON staff_pack_assignee.id = wa_p.assigned_packer_id
+      LEFT JOIN staff staff_packed_by ON staff_packed_by.id = COALESCE(pack_activity.staff_id, pl_latest.packed_by)
+      WHERE o.organization_id = $1${singleOrderMode ? ' AND o.id = $2' : ''}
+        AND ${searchPredicate}
+    )`
+    : '';
+  return { sql: `${withSql}${searchHitsCte}${sql}`, params };
 }
 
 export interface OrdersListPayload {
@@ -1055,14 +1041,21 @@ export interface OrdersListDeps {
 }
 
 const defaultDeps: OrdersListDeps = {
-  readSchema: async () => ({
-    hasReplenishment: await hasReplenishmentSchema(),
-    hasShortage: await hasShortageSchema(),
-  }),
-  query: (orgId, sql, params) => tenantQuery(orgId, sql, params),
+  readSchema: async () => {
+    const [hasReplenishment, hasShortage] = await Promise.all([
+      hasReplenishmentSchema(),
+      hasShortageSchema(),
+    ]);
+    return { hasReplenishment, hasShortage };
+  },
+  // One round trip (GUC + statement) instead of BEGIN / set_config / query / COMMIT.
+  query: (orgId, sql, params) => tenantQueryOneTrip(orgId, sql, params),
   cacheGet: (key) => getCachedJson<OrdersListPayload>('api:orders', key),
   cacheSet: (key, payload) => setCachedJson('api:orders', key, payload, 300, ['orders']),
 };
+
+/** The schema probe {@link buildOrdersListSql} needs — for callers that wrap the list SQL. */
+export const readOrdersListSchema: () => Promise<OrdersListSchema> = defaultDeps.readSchema;
 
 /** Cache-aside list read. Search and single-row reads bypass the cache. */
 export async function listOrders(

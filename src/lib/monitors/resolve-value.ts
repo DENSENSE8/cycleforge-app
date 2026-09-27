@@ -18,13 +18,13 @@ export interface MonitorValueInput {
  */
 export interface OutboundQueueCounts {
   readonly total: number;
-  /** Coarse `has_tech_scan` split: `pending = total − tested` (double-counts blocked). */
+  /** Coarse `has_pick_scan` split: `pending = total − tested` (double-counts blocked). */
   readonly byStage: { readonly pending: number; readonly tested: number };
   /** `orders.is_urgent` tally over the same scope. */
   readonly urgent: number;
   /** Raw facts; lane-accurate tallies derive from these via resolveFulfillmentLane. */
   readonly combos: ReadonlyArray<{
-    readonly hasTechScan: boolean;
+    readonly hasPickScan: boolean;
     readonly blocked: boolean;
     readonly count: number;
   }>;
@@ -137,7 +137,7 @@ function isBundleExpressible(f: UnshippedFacets): boolean {
 
 function laneCount(counts: OutboundQueueCounts, lane: FulfillmentLane): number {
   return counts.combos
-    .filter((c) => resolveFulfillmentLane({ isOutOfStock: c.blocked, hasTechScan: c.hasTechScan }) === lane)
+    .filter((c) => resolveFulfillmentLane({ isOutOfStock: c.blocked, hasPickScan: c.hasPickScan }) === lane)
     .reduce((sum, c) => sum + c.count, 0);
 }
 

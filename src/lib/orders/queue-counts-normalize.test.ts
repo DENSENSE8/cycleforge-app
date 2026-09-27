@@ -20,7 +20,7 @@ test('packPlacement survives normalization — the field the seed dropped', () =
     total: 27,
     byStage: { all: 27, pending: 26, tested: 1 },
     urgent: 3,
-    combos: [{ hasTechScan: true, blocked: false, count: 1 }],
+    combos: [{ hasPickScan: true, blocked: false, count: 1 }],
     packPlacement: { counts: [BENCH], totalPlaced: 2 },
   });
   assert.ok(out);

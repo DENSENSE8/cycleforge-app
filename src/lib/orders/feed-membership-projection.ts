@@ -3,7 +3,7 @@
 import { sql, type SQL } from 'drizzle-orm';
 import { db } from '@/lib/drizzle/db';
 import { SHIPPED_BY_CARRIER_SQL } from '@/lib/sql-fragments';
-import { PACK_ACTIVITY_TYPES, sqlInList } from '@/lib/station-activity';
+import { ORDER_PICK_SCAN_ACTIVITY_TYPES, PACK_ACTIVITY_TYPES, sqlInList } from '@/lib/station-activity';
 import { deriveFulfillmentState, type FulfillmentState } from '@/lib/unshipped-state';
 import { sqlOrderHasShipConfirm } from '@/lib/orders/order-grain-sql';
 
@@ -42,7 +42,7 @@ interface OrderUnshippedMembershipWrite {
   shipmentId: number | null;
   title: string;
   occurredAt?: Date;
-  hasTechScan?: boolean;
+  hasPickScan?: boolean;
   isOutOfStock?: boolean;
 }
 
@@ -60,7 +60,7 @@ export function planOrderUnshippedMembership(args: OrderUnshippedMembershipWrite
   if (args.shipmentId == null) return { skip: true, state: null };
   const lane = deriveFulfillmentState({
     shipmentId: args.shipmentId,
-    hasTechScan: Boolean(args.hasTechScan),
+    hasPickScan: Boolean(args.hasPickScan),
     isOutOfStock: Boolean(args.isOutOfStock),
   });
   const state = lane.toLowerCase() as LaneState;
@@ -99,7 +99,7 @@ interface RawOrderRow {
   id: number | string;
   organization_id: string;
   shipment_id: number | string | null;
-  has_tech_scan: boolean;
+  has_pick_scan: boolean;
   is_out_of_stock: boolean;
   occurred_at: Date | string;
   title: string;
@@ -125,7 +125,7 @@ export async function projectOrdersUnshippedMemberships(
            ) OR EXISTS (
              SELECT 1 FROM station_activity_logs sal
              WHERE sal.organization_id = o.organization_id
-               AND sal.activity_type IN ('TRACKING_SCANNED', 'FNSKU_SCANNED')
+               AND sal.activity_type IN (${sql.raw(sqlInList(ORDER_PICK_SCAN_ACTIVITY_TYPES))})
                AND (
                  sal.order_row_id = o.id
                  OR sal.ext_order_id = o.order_id
@@ -142,9 +142,9 @@ export async function projectOrdersUnshippedMemberships(
                SELECT 1 FROM station_activity_logs sal
                WHERE sal.shipment_id IS NOT NULL AND sal.shipment_id = o.shipment_id
                  AND sal.organization_id = o.organization_id
-                 AND sal.activity_type IN ('TRACKING_SCANNED', 'FNSKU_SCANNED')
+                 AND sal.activity_type IN (${sql.raw(sqlInList(ORDER_PICK_SCAN_ACTIVITY_TYPES))})
              )
-           )) AS has_tech_scan,
+           )) AS has_pick_scan,
            o.is_out_of_stock,
            COALESCE(wa.deadline_at, o.created_at) AS occurred_at,
            COALESCE(NULLIF(o.product_title, ''), 'Order ' || COALESCE(o.order_id, o.id::text)) AS title
@@ -193,7 +193,7 @@ export async function projectOrdersUnshippedMemberships(
   const memberships = rows.map((r) => {
     const lane = deriveFulfillmentState({
       shipmentId: r.shipment_id,
-      hasTechScan: Boolean(r.has_tech_scan),
+      hasPickScan: Boolean(r.has_pick_scan),
       isOutOfStock: Boolean(r.is_out_of_stock),
     });
     const state = lane.toLowerCase() as LaneState;

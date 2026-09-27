@@ -11,6 +11,7 @@ import { withAuth } from '@/lib/auth/withAuth';
 import { readIdempotencyKey, withIdempotencyClaim } from '@/lib/api-idempotency';
 import { fetchPackerLogRows } from '@/lib/neon/packer-logs-week';
 import { readShippedDeskFilters } from '@/lib/shipping/shipped-filter/shipped-filter-sql';
+import { readShippedPickedBy, readShippedTimeWindow } from '@/lib/shipping/shipped-filter/shipped-filter-params';
 import { computePackerLogEnrichment } from '@/lib/neon/packer-log-enrichment';
 import { attachPhotoWithLegacyUrl } from '@/lib/photos/service';
 import { PACKER_BOX_LABEL_PHOTO_TYPE } from '@/lib/photos/types';
@@ -29,6 +30,11 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
     // `statusCategory`, `exceptions`) — answered in SQL, one predicate with
     // the sidebar facet counts. Absent params narrow nothing.
     const shippedFilters = readShippedDeskFilters(searchParams);
+    // `dateFrom`/`dateTo` + `timeFrom`/`timeTo` → the exact shipped-instant
+    // window (warehouse wall clock); absent times = no narrowing beyond the week.
+    const timeWindow = readShippedTimeWindow(searchParams);
+    // `?pickedBy` — the order's picker.
+    const pickedBy = readShippedPickedBy(searchParams);
 
     const packerIdNum = packerIdParam ? parseInt(packerIdParam) : null;
     const testedByNum = testedByParam ? parseInt(testedByParam) : null;
@@ -51,6 +57,9 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
         weekStart,
         weekEnd,
         shippedFilters,
+        shippedFrom: timeWindow?.fromIso ?? null,
+        shippedTo: timeWindow?.toIso ?? null,
+        pickedBy,
         spineOnly,
         searchTerm,
     });

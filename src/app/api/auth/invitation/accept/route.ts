@@ -16,6 +16,8 @@ import {
 import { PasswordError } from '@/lib/identity/password';
 import { logAuthEvent } from '@/lib/identity/memberships';
 import { checkRateLimitAsync } from '@/lib/api-guard';
+import { recordStaffLoginRedirect } from '@/lib/auth/record-staff-login';
+import pool from '@/lib/db';
 
 export const runtime = 'nodejs';
 
@@ -108,7 +110,9 @@ export async function POST(req: NextRequest) {
   });
   await logAuthEvent({ accountId: result.accountId, orgId: result.orgId, event: 'invite_accept', ip, userAgent: ua });
 
-  const res = NextResponse.json({ ok: true, organizationId: result.orgId });
+  const redirectTo = await recordStaffLoginRedirect(pool, result.staffId, { mobile: false });
+
+  const res = NextResponse.json({ ok: true, organizationId: result.orgId, redirectTo });
   res.cookies.set(SESSION_COOKIE_NAME, session.sid, {
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',

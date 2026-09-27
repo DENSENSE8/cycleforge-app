@@ -1,10 +1,13 @@
-/** Shared ORDER/TEST|PACK work_assignment upsert. */
+/**
+ * Shared ORDER work_assignment upsert: PICK (picker), PACK (packer), and the
+ * TEST row, which on orders only carries the deadline (upsertOrderDeadline).
+ */
 
 import type { PoolClient } from 'pg';
 import pool from '@/lib/db';
 import { WORK_ASSIGNMENTS_ACTIVE_ON_CONFLICT } from '@/lib/neon/work-assignments-conflict';
 
-type OrderWorkType = 'TEST' | 'PACK';
+type OrderWorkType = 'PICK' | 'PACK';
 
 export type QueryClient = {
   query: PoolClient['query'];
@@ -27,32 +30,29 @@ export async function upsertOrderAssignment(
     await client.query(
       `UPDATE work_assignments
        SET status = 'CANCELED', updated_at = NOW()
-       WHERE entity_type = 'ORDER'
+       WHERE organization_id = $3
+         AND entity_type = 'ORDER'
          AND entity_id   = $1
          AND work_type   = $2
          AND status IN ('ASSIGNED', 'IN_PROGRESS')`,
-      [orderId, workType],
+      [orderId, workType, organizationId],
     );
     return;
   }
 
-  const activeStatuses =
-    workType === 'TEST'
-      ? "('OPEN', 'ASSIGNED', 'IN_PROGRESS')"
-      : "('ASSIGNED', 'IN_PROGRESS')";
-
   const existing = await client.query(
     `SELECT id, ${col} AS assignee_id, status
      FROM work_assignments
-     WHERE entity_type = 'ORDER'
+     WHERE organization_id = $3
+       AND entity_type = 'ORDER'
        AND entity_id   = $1
        AND work_type   = $2
-       AND status IN ${activeStatuses}
+       AND status IN ('ASSIGNED', 'IN_PROGRESS')
      ORDER BY
-       CASE status WHEN 'ASSIGNED' THEN 1 WHEN 'IN_PROGRESS' THEN 2 WHEN 'OPEN' THEN 3 END,
+       CASE status WHEN 'ASSIGNED' THEN 1 WHEN 'IN_PROGRESS' THEN 2 END,
        id DESC
      LIMIT 1`,
-    [orderId, workType],
+    [orderId, workType, organizationId],
   );
 
   if (existing.rows.length > 0) {
@@ -77,28 +77,26 @@ export async function upsertOrderAssignment(
  * Used by automations to avoid clobbering a human assign.
  */
 export async function getActiveOrderAssignee(
+  organizationId: string,
   orderId: number,
   workType: OrderWorkType,
   client: QueryClient = pool,
 ): Promise<{ staffId: number | null; status: string } | null> {
   const col = workType === 'PACK' ? 'assigned_packer_id' : 'assigned_tech_id';
-  const activeStatuses =
-    workType === 'TEST'
-      ? "('OPEN', 'ASSIGNED', 'IN_PROGRESS')"
-      : "('ASSIGNED', 'IN_PROGRESS')";
 
   const existing = await client.query(
     `SELECT ${col} AS assignee_id, status
      FROM work_assignments
-     WHERE entity_type = 'ORDER'
+     WHERE organization_id = $3
+       AND entity_type = 'ORDER'
        AND entity_id   = $1
        AND work_type   = $2
-       AND status IN ${activeStatuses}
+       AND status IN ('ASSIGNED', 'IN_PROGRESS')
      ORDER BY
-       CASE status WHEN 'ASSIGNED' THEN 1 WHEN 'IN_PROGRESS' THEN 2 WHEN 'OPEN' THEN 3 END,
+       CASE status WHEN 'ASSIGNED' THEN 1 WHEN 'IN_PROGRESS' THEN 2 END,
        id DESC
      LIMIT 1`,
-    [orderId, workType],
+    [orderId, workType, organizationId],
   );
   if (existing.rows.length === 0) return null;
   const row = existing.rows[0] as { assignee_id: number | null; status: string };
@@ -121,7 +119,8 @@ export async function upsertOrderDeadline(
   const existing = await client.query(
     `SELECT id
      FROM work_assignments
-     WHERE entity_type = 'ORDER'
+     WHERE organization_id = $2
+       AND entity_type = 'ORDER'
        AND entity_id   = $1
        AND work_type   = 'TEST'
        AND status IN ('OPEN', 'ASSIGNED', 'IN_PROGRESS')
@@ -129,7 +128,7 @@ export async function upsertOrderDeadline(
        CASE status WHEN 'ASSIGNED' THEN 1 WHEN 'IN_PROGRESS' THEN 2 WHEN 'OPEN' THEN 3 END,
        id DESC
      LIMIT 1`,
-    [orderId],
+    [orderId, organizationId],
   );
 
   if (existing.rows.length > 0) {

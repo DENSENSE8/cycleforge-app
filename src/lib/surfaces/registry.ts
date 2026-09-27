@@ -403,6 +403,72 @@ export const MUTATION_KINDS = {
       'Pair a product manual with a catalog SKU so it resolves (and pack-prints) for every order of that SKU. Payload: { manualId, sku, restore? }. Proposed by link_manual_to_sku — use that tool, not propose_mutation. Revertable (restores the prior pairing).',
     permission: 'product_manuals.manage',
   },
+  // review — a manual (phone) order drafted in chat. The assistant proposes it
+  // with create_manual_order and the operator's next-turn "yes" (or any
+  // reviewer) approves it; approval writes the customer and every line
+  // (caged) through the same create path as POST /api/orders/add.
+  'order.create_manual': {
+    label: 'Create phone order',
+    trust: 'review',
+    targetKind: 'order',
+    description:
+      'Create a manual phone order from a chat draft: customer (existing or new), every line under one order number, ship-by, parcel — held in the cage. Payload: { draft } (the manual order field contract). Proposed by create_manual_order — use that tool, not propose_mutation. Not revertable (cancel the order instead).',
+    permission: 'orders.create',
+  },
+  // review — a purchase order imported from chat (`import_purchase_order`).
+  // The operator's next-turn "yes" (or any reviewer) approves it; approval
+  // lands every line on the Incoming spine through ingestPurchase and links
+  // the tracking to the PO's inbound carton.
+  'receiving.import_po': {
+    label: 'Import purchase order',
+    trust: 'review',
+    targetKind: 'receiving',
+    description:
+      'Import a purchase order drafted in chat onto the Incoming spine: PO number, vendor, every item (SKU or title, quantity, cost), tracking linked for the arrival scan, expected date. Payload: { draft } (the PO import field contract). Proposed by import_purchase_order — use that tool, not propose_mutation. Not revertable.',
+    permission: 'receiving.scan_po',
+  },
+  // review — chat order-status writes (ChatWrites). Each is proposed by its
+  // own tool and applied by the operator's next-turn "yes" (or any reviewer).
+  'order.set_flag': {
+    label: 'Set order flag',
+    trust: 'review',
+    targetKind: 'order',
+    description:
+      'Set or clear the triage flag (priority, hold, damaged, discrepancy, awaiting customer, ready) on order lines. Payload: { orderIds, flag|null, staffId } or the inverse { restore: [{ orderId, flag }] }. Proposed by set_order_flag — use that tool, not propose_mutation. Revertable (restores each prior flag).',
+    permission: 'orders.create',
+  },
+  'order.mark_out_of_stock': {
+    label: 'Mark out of stock',
+    trust: 'review',
+    targetKind: 'order',
+    description:
+      'Mark order lines out of stock (an open line shortage per line). Payload: { orderIds }. Proposed by mark_out_of_stock — use that tool, not propose_mutation. Revertable (clears the shortages it opened).',
+    permission: 'orders.create',
+  },
+  'order.clear_out_of_stock': {
+    label: 'Clear out of stock',
+    trust: 'review',
+    targetKind: 'order',
+    description:
+      'Clear every open shortage on order lines. Payload: { orderIds } or the inverse { reopenShortageIds }. Proposed by clear_out_of_stock — use that tool, not propose_mutation. Revertable (re-opens the cleared shortages).',
+    permission: 'orders.create',
+  },
+  'order.scan_out': {
+    label: 'Scan out packed orders',
+    trust: 'review',
+    targetKind: 'order',
+    description:
+      'Record packed cartons as scanned out (left the building) through the dock scan-out path. Payload: { shipments: [{ shipmentId, tracking }], staffId }. Proposed by bulk_scan_out — use that tool, not propose_mutation. Not revertable.',
+    permission: 'shipping.mark_shipped',
+  },
+  'task.create': {
+    label: 'Create task',
+    trust: 'review',
+    targetKind: 'work_assignment',
+    description:
+      'Create a task for one or more staff, optionally about an order and linked to a ticket, with a deadline and reminder. Payload: { task } or the inverse { cancelTaskId }. Proposed by create_task — use that tool, not propose_mutation. Revertable (cancels the task).',
+    permission: 'work_orders.claim',
+  },
 } as const satisfies Record<string, MutationKindDef>;
 
 export type MutationKind = keyof typeof MUTATION_KINDS;

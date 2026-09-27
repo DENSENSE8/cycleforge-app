@@ -180,11 +180,17 @@ function useStaffPrintBridgeHost() {
       };
 
       if (job.grain === 'papers' && job.papers) {
-        await triggerPackPrintBundle({
-          orderRowId: job.papers.orderRowId,
-          packerLogId: job.papers.packerLogId,
-          reprint: job.papers.reprint,
-        });
+        const { orderRowIds, packerLogId, reprint, documents, batchId } = job.papers;
+        // One order at a time, one tick each: the sender's progress is orders printed.
+        for (const [i, orderRowId] of orderRowIds.entries()) {
+          try {
+            const result = await triggerPackPrintBundle({ orderRowId, packerLogId, reprint, documentTypes: documents, batchId });
+            if (result.status === 'failed' || result.status === 'missing') toast.error(result.message);
+          } catch (err) {
+            toast.error(err instanceof Error ? err.message : 'Could not print the order papers');
+          }
+          onProgress(i + 1, orderRowIds.length);
+        }
         return;
       }
 

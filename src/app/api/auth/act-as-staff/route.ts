@@ -114,7 +114,7 @@ export async function POST(req: NextRequest) {
     await revokeSession(prev.sid);
   }
 
-  const { firstSigninToday } = await recordStaffLogin(pool, parsed.staffId);
+  await recordStaffLogin(pool, parsed.staffId);
 
   await audit({
     staffId: parsed.staffId, sid: session.sid, event: 'signin.act_as', result: 'ok', ip, userAgent: ua,
@@ -127,7 +127,6 @@ export async function POST(req: NextRequest) {
     role: target!.role,
     defaultHomePath: target!.default_home_path,
     defaultHomePathMobile: target!.default_home_path_mobile,
-    firstSigninToday,
   });
   res.cookies.set(SESSION_COOKIE_NAME, session.sid, {
     httpOnly: true,

@@ -37,7 +37,7 @@ test('a row maps onto the lane the operator can see', () => {
     // The lifecycle story the export exists to carry (2026-08-31): who did each
     // step, when, what the order was worth, and the stage those add up to.
     sale_amount: '129.5',
-    has_tech_scan: true,
+    has_pick_scan: true,
     picked_by_name: 'Tuan',
     picked_at: '2026-08-01T17:04:00.000Z',
     packed_by_name: 'Sam',

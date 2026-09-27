@@ -11,8 +11,8 @@ import { SidebarRecentRailBase } from '@/components/sidebar/rail-shell/SidebarRe
 import { RailRowBody } from '@/components/sidebar/rail-shell/RailRowBody';
 import type { SidebarRailRowContext } from '@/components/sidebar/SidebarRailShell';
 import { dispatchUpNextPreview, type UpNextPreviewPayload } from '@/utils/events';
-import type { ActiveStationOrder } from '@/hooks/useStationTestingController';
-import { useTechLogs, type TechRecord } from '@/hooks/useTechLogs';
+import type { ActiveStationOrder } from '@/hooks/useDeskPickController';
+import { useDeskPickLogs, type TechRecord } from '@/hooks/useDeskPickLogs';
 import { dedupeTechRecords, getTechRecordRowKey } from '@/lib/station/dedupe-tech-records';
 import {
   filterTechRecordRailRows,
@@ -97,7 +97,7 @@ export function ShippingStaffScanHistoryRail({
 
   const parsedTechId = Number(techId);
   const sessionStaffId = Number.isFinite(parsedTechId) && parsedTechId > 0 ? parsedTechId : 0;
-  const { data: rawRecords = [] } = useTechLogs(sessionStaffId, {
+  const { data: rawRecords = [] } = useDeskPickLogs(sessionStaffId, {
     limit: SHIPPING_HISTORY_FETCH_LIMIT,
   });
   const records = useMemo(

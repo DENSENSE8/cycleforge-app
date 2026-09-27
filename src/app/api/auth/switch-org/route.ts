@@ -16,6 +16,8 @@ import {
   findSwitchTarget,
   logAuthEvent,
 } from '@/lib/identity/memberships';
+import { recordStaffLogin } from '@/lib/auth/record-staff-login';
+import pool from '@/lib/db';
 
 export const runtime = 'nodejs';
 
@@ -90,11 +92,16 @@ export async function POST(req: NextRequest) {
       },
     });
     await logAuthEvent({ accountId, orgId: organizationId, event: 'switch_org', ip, userAgent: ua });
+    // Entering another workspace is a sign-in for that org's staff profile.
+    const login = await recordStaffLogin(pool, target.staffId);
 
     const res = NextResponse.json({
       ok: true,
       organizationId,
       staffId: target.staffId,
+      role: login.role,
+      defaultHomePath: login.defaultHomePath,
+      defaultHomePathMobile: login.defaultHomePathMobile,
       session: { sid: session.sid, deviceKind: session.deviceKind, expiresAt: session.expiresAt },
     });
     res.cookies.set(SESSION_COOKIE_NAME, session.sid, {

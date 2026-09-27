@@ -27,7 +27,7 @@ import { ListingLinksTab } from '@/components/receiving/workspace/line-edit/List
 import { DISPLAYS_BODY_INSET } from '@/design-system/shells/detail-stack';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { cn } from '@/utils/_cn';
-import type { ActiveStationOrder } from '@/hooks/useStationTestingController';
+import type { ActiveStationOrder } from '@/hooks/useDeskPickController';
 import type { Order } from '@/components/station/upnext/upnext-types';
 import { UpNextActionDock } from './UpNextActionDock';
 import { ShippingScanWorkspace } from './shipping/ShippingScanWorkspace';
@@ -71,7 +71,7 @@ interface ActiveOrderWorkspaceProps {
   setActiveOrder?: (next: ActiveStationOrder | null) => void;
 }
 
-/** Focused work-item view rendered in the `/test` right pane while an order is active. */
+/** Focused work-item view rendered in the `/pick` right pane while an order is active. */
 export function ActiveOrderWorkspace({
   activeOrder,
   onClose,
@@ -341,7 +341,7 @@ export function ActiveOrderWorkspace({
     />
   ) : null;
 
-  // Host (`TechRightPane`) owns scan-cadence swap; this panel is opaque content.
+  // Host (`PickOrderWorkspace`) owns scan-cadence swap; this panel is opaque content.
   return (
     <div className="flex h-full min-h-0 w-full flex-col">
       <StationScanPaneHost

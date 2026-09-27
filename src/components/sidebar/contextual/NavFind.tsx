@@ -1,8 +1,8 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
-import { usePathname, useSearchParams } from 'next/navigation';
-import type { NavSearch } from '@/lib/nav/context/schema';
+import { useEffect, useRef, useState, type ClipboardEvent, type RefObject } from 'react';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
+import type { NavLocateBucket, NavLocateScope, NavSearch } from '@/lib/nav/context/schema';
 import {
   FindField,
   HoverKeycaps,
@@ -14,115 +14,56 @@ import {
   useHintActivity,
 } from '@/design-system/components/FindField';
 import { Search } from '@/components/Icons';
-import { COMMAND_BAR_OPEN_CHANGE_EVENT, COMMAND_BAR_OPEN_EVENT } from '@/lib/app-events';
+import { COMMAND_BAR_OPEN_CHANGE_EVENT, openCommandBar } from '@/lib/app-events';
 import { chordKeys, useApplePlatform } from '@/lib/keyboard/chord-keys';
 import { isEditableKeyTarget } from '@/lib/keyboard/is-editable-key-target';
-import { subscribeDeskSearchFocus, useDeskSearch } from '@/lib/outbound/desk-search-store';
+import { setDeskSearch, subscribeDeskSearchFocus, useDeskSearch } from '@/lib/outbound/desk-search-store';
 import { focusRing } from '@/design-system/tokens/focus-ring';
+import { NAV_CHOICE_SELECTED_CLASS } from './nav-block';
 import { SIDEBAR_CONTROL_CORNER } from '@/design-system/tokens/radius';
 import { cn } from '@/utils/_cn';
 import { useReplaceSearchParams } from './useReplaceSearchParams';
-import { NavBulkToggle, useNavBulkList } from './NavBulkList';
+import { NavBulkToggle, useLocalBulkList, useNavBulkList, type BulkList } from './NavBulkList';
+import { NAV_LOCATE_MIN_QUERY, useNavLocate } from './useNavLocate';
+import { NAV_LOCATE_TONE_VAR } from './nav-locate-tone';
 
-/** The one hotkey that lands in Find. Bare `F`, never while typing. */
+/** The one hotkey that lands in the field. Bare `F`, never while typing. */
 const FIND_KEY = 'f';
 
-/** What the ⌘K face rolls while you look at it: rest "Search", then what it finds. */
-const GLOBAL_SEARCH_HINTS = ['Search', 'Order #, serial, tracking', 'Jump to any page', 'Paste to search'] as const;
+/** What the everywhere face rolls while you look at it: rest "Search", then what it finds. */
+const EVERYWHERE_HINTS = ['Search', 'Order #, serial, tracking', 'Jump to any page', 'Paste a list to locate'] as const;
 
-/** Open the ⌘K palette, optionally with its query already typed. */
-function openCommandBar(query?: string) {
-  window.dispatchEvent(new CustomEvent(COMMAND_BAR_OPEN_EVENT, { detail: query ? { query } : undefined }));
-}
+/** The page field's hand-off: the palette, already searching the text. */
+const searchEverywhere = (query: string) => openCommandBar({ query: query || undefined, scope: 'everywhere' });
 
 /**
- * Global search — the ⌘K palette's clickable face (`CommandBar` owns the
- * chord): the sidebar's top row on every page, and the header's search while
- * the sidebar is closed (`GlobalHeaderSearch`). The SAME sunken well as Find
- * (`findWellClass`): words rest gray on "Search" and turn black and roll
- * what it finds while you look at it (hover / focus); the ⌘K keycaps and the
- * paste key (clipboard → the palette, already searching) show only then.
- */
-export function NavGlobalSearch() {
-  const apple = useApplePlatform();
-  const look = useHintActivity();
-  const [open, setOpen] = useState(false);
-  useEffect(() => {
-    const onChange = (event: Event) => {
-      const detail = (event as CustomEvent<{ open?: boolean }>).detail;
-      if (typeof detail?.open === 'boolean') setOpen(detail.open);
-    };
-    window.addEventListener(COMMAND_BAR_OPEN_CHANGE_EVENT, onChange);
-    return () => window.removeEventListener(COMMAND_BAR_OPEN_CHANGE_EVENT, onChange);
-  }, []);
-  const pasteToSearch = async () => {
-    let text = '';
-    try {
-      text = (await navigator.clipboard.readText()).trim();
-    } catch {
-      // Clipboard blocked: the palette still opens, where ⌘V / Ctrl+V works.
-    }
-    openCommandBar(text || undefined);
-  };
-  return (
-    <div data-nav-global-search-well {...look.bind} className={cn(findWellClass('sidebar'), 'flex-1')}>
-      <button
-        type="button"
-        data-nav-global-search
-        aria-label="Search"
-        aria-keyshortcuts="Meta+K Control+K"
-        aria-expanded={open}
-        onClick={() => openCommandBar()}
-        className={cn(
-          'ds-raw-button flex h-full min-w-0 flex-1 items-center gap-1.5 text-left active:translate-y-px',
-          SIDEBAR_CONTROL_CORNER,
-          focusRing('control', 'accent'),
-        )}
-      >
-        <Search aria-hidden className="size-3.5 shrink-0 text-text-faint" />
-        <HoverKeycaps keys={chordKeys('mod+k', apple)} shown={look.active} />
-        <span className="relative h-full min-w-0 flex-1">
-          <RollingHint
-            hints={GLOBAL_SEARCH_HINTS}
-            active={look.active}
-            className={cn('text-role-caption font-medium', findHintTone(look.active || open))}
-          />
-        </span>
-      </button>
-      <PasteKey label="Paste to search" shown={look.active} onPaste={() => void pasteToSearch()} />
-    </div>
-  );
-}
-
-/**
- * Find — pinned under the ⌘K band and above `‹ <Page>`, narrows ONLY the list
- * on screen. `search.source` says where that list reads its query
- * (`desk-store` = the in-memory desk query keyed by pathname; `url-param` =
- * `search.param`). A page without a list of its own (`identify`) has no Find —
- * global search above covers it. The well is the shared `FindField`.
+ * THE search field — one per chrome (the sidebar's top band; the header's
+ * nav cluster while the sidebar is closed). Search splits by the ANSWER:
  *
- * `F` focuses it from anywhere on the page that is not a text field.
+ * - PAGE — the page declares a list (`search.source` desk-store / url-param):
+ *   typing narrows ONLY the list on screen, live. `F` focuses it outside a
+ *   text field. While focused the well grows right over the header, so the
+ *   words and the panel under it are readable (`FindField overflowRight`).
+ * - CONTEXTUAL — the page declares `search.locate`: the panel under the field
+ *   shows where the text lives in the section (one pill per bucket with
+ *   matches; a click opens that view with the text kept), and a pasted list
+ *   of 2+ numbers becomes the located list (NavBulkList, `[›] [B] N`).
+ * - GLOBAL — "Search everywhere" / ⌘↵ hands the text to the ⌘K palette.
+ *   A page without a list (identify, the page map, the header) shows the
+ *   palette's face instead; a list pasted there is located everywhere.
+ *
+ * The scope is never painted inside the field: the view switcher under it
+ * already names the list.
  */
-export function NavFind({ search }: { search: NavSearch }) {
-  if (search.source === 'identify') return null;
-  const label = search.placeholder.replace(/^Search\b/, 'Find');
-  return search.source === 'desk-store' ? (
-    search.bulk ? (
-      <BulkDeskStoreFind label={label} bulk={search.bulk} />
-    ) : (
-      <DeskStoreFind label={label} />
-    )
-  ) : (
-    <UrlParamFind label={label} param={search.param ?? 'q'} />
-  );
-}
+export function NavFind({ search }: { search?: NavSearch }) {
+  const list = search && search.source !== 'identify' ? search : undefined;
+  const inputRef = useRef<HTMLInputElement>(null);
 
-function useFindInput() {
-  const ref = useRef<HTMLInputElement>(null);
   useEffect(() => {
+    if (!list) return;
     const focus = () => {
-      ref.current?.focus();
-      ref.current?.select();
+      inputRef.current?.focus();
+      inputRef.current?.select();
     };
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key.toLowerCase() !== FIND_KEY || event.repeat) return;
@@ -137,51 +78,101 @@ function useFindInput() {
       window.removeEventListener('keydown', onKeyDown);
       unsubscribe();
     };
-  }, []);
-  return ref;
+  }, [list]);
+
+  if (!list) {
+    return (
+      <div data-nav-search="everywhere" className="flex min-w-0 flex-1">
+        <EverywhereFace />
+      </div>
+    );
+  }
+  const label = list.placeholder.replace(/^Search\b/, 'Find');
+  return (
+    <div data-nav-search="page" className="min-w-0 flex-1">
+      {list.locate ? (
+        <LocatedFind search={list} locate={list.locate} label={label} inputRef={inputRef} />
+      ) : (
+        <PlainFind search={list} label={label} inputRef={inputRef} />
+      )}
+    </div>
+  );
 }
 
-function DeskStoreFind({ label }: { label: string }) {
+type PageFieldProps = { search: NavSearch; label: string; inputRef: RefObject<HTMLInputElement> };
+
+/** The list's query: the in-memory desk store (per pathname), or the declared URL param. */
+function usePageQuery(search: NavSearch): [string, (next: string) => void, number] {
   const pathname = usePathname() || '/';
-  const [value, setValue] = useDeskSearch(pathname);
-  const inputRef = useFindInput();
+  const [deskValue, setDeskValue] = useDeskSearch(pathname);
+  const param = search.param ?? 'q';
+  const urlValue = useSearchParams()?.get(param) ?? '';
+  const replace = useReplaceSearchParams();
+  if (search.source === 'desk-store') return [deskValue, setDeskValue, 150];
+  const setUrl = (next: string) =>
+    replace((params) => {
+      if (next.trim()) params.set(param, next);
+      else params.delete(param);
+    });
+  return [urlValue, setUrl, 250];
+}
+
+function PlainFind({ search, label, inputRef }: PageFieldProps) {
+  const [value, setValue, debounceMs] = usePageQuery(search);
   return (
-    <div data-nav-find>
-      <FindField value={value} onChange={setValue} label={label} hints={findHints(label)} inputRef={inputRef} debounceMs={150} />
+    <div data-nav-search-well data-nav-find>
+      <FindField
+        value={value}
+        onChange={setValue}
+        label={label}
+        hints={findHints(label)}
+        inputRef={inputRef}
+        debounceMs={debounceMs}
+        escalate={searchEverywhere}
+        overflowRight
+      />
     </div>
   );
 }
 
 /**
- * Find + paste-a-list: a multi-number paste becomes the pasted list (URL,
- * answered by the page's check), and the `[›] [B] N` key right of the well
- * opens it. A single number stays a plain Find over the list on screen.
+ * Find + locate: the panel under the field says where the text lives in the
+ * section (pills), and a multi-number paste becomes the located list — the
+ * `[›] [B] N` key right of the well opens it. A single number stays a plain
+ * Find over the list on screen.
  */
-function BulkDeskStoreFind({ label, bulk }: { label: string; bulk: NonNullable<NavSearch['bulk']> }) {
-  const pathname = usePathname() || '/';
-  const [value, setValue] = useDeskSearch(pathname);
-  const inputRef = useFindInput();
-  const list = useNavBulkList(bulk);
+function LocatedFind({ search, locate, label, inputRef }: PageFieldProps & { locate: NonNullable<NavSearch['locate']> }) {
+  const [value, setValue, debounceMs] = usePageQuery(search);
+  const list = useNavBulkList(locate);
   const rowRef = useRef<HTMLDivElement>(null);
   const [open, setOpen] = useState(false);
   const hasList = list.selection.refs.length > 0;
   const fieldLabel = hasList ? 'Find in the pasted list' : label;
   return (
     <div ref={rowRef} data-nav-find-row className="flex min-w-0 items-center gap-1">
-      <div data-nav-find className="min-w-0 flex-1">
+      <div data-nav-search-well data-nav-find className="min-w-0 flex-1">
         <FindField
           value={value}
           onChange={setValue}
           label={fieldLabel}
           hints={findHints(fieldLabel)}
           inputRef={inputRef}
-          debounceMs={150}
-          interceptPaste={list.paste}
+          // A pasted list opens at once: while focused the grown well covers the `[›]` key.
+          interceptPaste={(text) => {
+            const took = list.paste(text);
+            if (took) setOpen(true);
+            return took;
+          }}
+          debounceMs={debounceMs}
+          escalate={searchEverywhere}
+          overflowRight
+          below={<NavLocatePills scope={locate.locator} query={value} />}
           onKeyDown={(event, draft, clear) => {
             // A typed "A, B, C" + Enter is a list too.
-            if (event.key === 'Enter' && list.paste(draft)) {
+            if (event.key === 'Enter' && !event.metaKey && !event.ctrlKey && list.paste(draft)) {
               event.preventDefault();
               clear();
+              setOpen(true);
             } else if (event.key === 'ArrowDown' && hasList) {
               event.preventDefault();
               setOpen(true);
@@ -189,30 +180,172 @@ function BulkDeskStoreFind({ label, bulk }: { label: string; bulk: NonNullable<N
           }}
         />
       </div>
-      <NavBulkToggle list={list} anchorRef={rowRef} open={open && hasList} onOpenChange={setOpen} />
+      <BulkKey list={list} anchorRef={rowRef} open={open} setOpen={setOpen} />
     </div>
   );
 }
 
-function UrlParamFind({ label, param }: { label: string; param: string }) {
-  const value = useSearchParams()?.get(param) ?? '';
-  const replace = useReplaceSearchParams();
-  const inputRef = useFindInput();
+function BulkKey({
+  list,
+  anchorRef,
+  open,
+  setOpen,
+}: {
+  list: BulkList;
+  anchorRef: RefObject<HTMLDivElement>;
+  open: boolean;
+  setOpen: (open: boolean) => void;
+}) {
+  const hasList = list.selection.refs.length > 0;
+  return <NavBulkToggle list={list} anchorRef={anchorRef} open={open && hasList} onOpenChange={setOpen} />;
+}
+
+/**
+ * Where the field's text lives in the section: one pill per bucket that
+ * holds matches (glyph dot · label · count), the list on screen pressed in.
+ * A click opens that bucket's list with the text kept as its Find.
+ */
+function NavLocatePills({ scope, query }: { scope: NavLocateScope; query: string }) {
+  const router = useRouter();
+  const pathname = usePathname() || '/';
+  const params = useSearchParams();
+  const text = query.trim();
+  const located = useNavLocate(scope, { q: text });
+  if (text.length < NAV_LOCATE_MIN_QUERY) return null;
+  const buckets = located.data?.buckets.filter((bucket) => bucket.count > 0) ?? [];
+  const current = currentBucketId(located.data?.buckets ?? [], pathname, params);
   return (
-    <div data-nav-find>
-      <FindField
-        value={value}
-        label={label}
-        hints={findHints(label)}
-        inputRef={inputRef}
-        debounceMs={250}
-        onChange={(next) =>
-          replace((params) => {
-            if (next.trim()) params.set(param, next);
-            else params.delete(param);
-          })
-        }
-      />
+    <div data-nav-locate-pills className="flex min-w-0 flex-wrap items-center gap-1 px-1 py-0.5">
+      {!located.data ? (
+        <span className="text-role-caption text-text-faint">Locating…</span>
+      ) : buckets.length === 0 ? (
+        <span className="text-role-caption text-text-faint">Nowhere in this section</span>
+      ) : (
+        buckets.map((bucket) => (
+          <button
+            key={bucket.id}
+            type="button"
+            data-nav-locate-pill={bucket.id}
+            disabled={!bucket.href}
+            aria-current={bucket.id === current ? 'true' : undefined}
+            onClick={() => {
+              if (!bucket.href) return;
+              setDeskSearch(bucket.href.split('?')[0] ?? bucket.href, text);
+              router.push(bucket.href, { scroll: false });
+            }}
+            className={cn(
+              'ds-raw-button inline-flex h-6 min-w-0 items-center gap-1.5 bg-surface-card px-2 text-role-caption font-medium text-text-default ring-1 ring-inset ring-border-hairline',
+              'hover:bg-surface-sunken active:translate-y-px disabled:cursor-default',
+              bucket.id === current && NAV_CHOICE_SELECTED_CLASS,
+              SIDEBAR_CONTROL_CORNER,
+              focusRing('control', 'accent'),
+            )}
+          >
+            <span aria-hidden className="size-1.5 shrink-0 rounded-full" style={{ background: NAV_LOCATE_TONE_VAR[bucket.tone] }} />
+            <span className="truncate">{bucket.label}</span>
+            <span className="tabular-nums text-text-muted">{bucket.count}</span>
+          </button>
+        ))
+      )}
+    </div>
+  );
+}
+
+/** The bucket whose list is on screen: same pathname, every defining param present — the most specific wins. */
+function currentBucketId(
+  buckets: readonly NavLocateBucket[],
+  pathname: string,
+  params: Pick<URLSearchParams, 'get'> | null,
+): string | undefined {
+  let best: { id: string; specificity: number } | undefined;
+  for (const bucket of buckets) {
+    if (!bucket.href) continue;
+    const url = new URL(bucket.href, 'http://x');
+    if (url.pathname !== pathname) continue;
+    const defining = [...url.searchParams.entries()];
+    if (!defining.every(([key, value]) => params?.get(key) === value)) continue;
+    if (!best || defining.length > best.specificity) best = { id: bucket.id, specificity: defining.length };
+  }
+  return best?.id;
+}
+
+/**
+ * The everywhere face — the palette's clickable face (`CommandBar` owns the
+ * chord). The SAME sunken well as the page field (`findWellClass`): words
+ * rest gray on "Search" and turn black and roll what it finds while you look
+ * at it (hover / focus); the ⌘K keycaps and the paste key show only then.
+ * A paste (the key, or ⌘V while it has focus) of 2+ numbers is located
+ * everywhere (NavBulkList, `[›] [B] N`); anything else opens the palette
+ * already searching it.
+ */
+function EverywhereFace() {
+  const apple = useApplePlatform();
+  const look = useHintActivity();
+  const [open, setOpen] = useState(false);
+  const list = useLocalBulkList('everywhere');
+  const rowRef = useRef<HTMLDivElement>(null);
+  const [listOpen, setListOpen] = useState(false);
+  useEffect(() => {
+    const onChange = (event: Event) => {
+      const detail = (event as CustomEvent<{ open?: boolean }>).detail;
+      if (typeof detail?.open === 'boolean') setOpen(detail.open);
+    };
+    window.addEventListener(COMMAND_BAR_OPEN_CHANGE_EVENT, onChange);
+    return () => window.removeEventListener(COMMAND_BAR_OPEN_CHANGE_EVENT, onChange);
+  }, []);
+  const take = (text: string) => {
+    if (list.paste(text)) {
+      setListOpen(true);
+      return;
+    }
+    openCommandBar({ query: text.trim() || undefined, scope: 'everywhere' });
+  };
+  const pasteKey = async () => {
+    let text = '';
+    try {
+      text = await navigator.clipboard.readText();
+    } catch {
+      // Clipboard blocked: the palette still opens, where ⌘V / Ctrl+V works.
+    }
+    take(text);
+  };
+  return (
+    <div ref={rowRef} className="flex min-w-0 flex-1 items-center gap-1">
+      <div
+        data-nav-search-well
+        {...look.bind}
+        onPaste={(event: ClipboardEvent<HTMLDivElement>) => {
+          event.preventDefault();
+          take(event.clipboardData.getData('text'));
+        }}
+        className={cn(findWellClass('sidebar'), 'flex-1')}
+      >
+        <button
+          type="button"
+          data-nav-search-everywhere
+          aria-label="Search"
+          aria-keyshortcuts="Meta+K Control+K"
+          aria-expanded={open}
+          onClick={() => openCommandBar({ scope: 'everywhere' })}
+          className={cn(
+            'ds-raw-button flex h-full min-w-0 flex-1 items-center gap-1.5 text-left active:translate-y-px',
+            SIDEBAR_CONTROL_CORNER,
+            focusRing('control', 'accent'),
+          )}
+        >
+          <Search aria-hidden className="size-3.5 shrink-0 text-text-faint" />
+          <HoverKeycaps keys={chordKeys('mod+k', apple)} shown={look.active} />
+          <span className="relative h-full min-w-0 flex-1">
+            <RollingHint
+              hints={EVERYWHERE_HINTS}
+              active={look.active}
+              className={cn('text-role-caption font-medium', findHintTone(look.active || open))}
+            />
+          </span>
+        </button>
+        <PasteKey label="Paste to search or locate a list" shown={look.active} onPaste={() => void pasteKey()} />
+      </div>
+      <BulkKey list={list} anchorRef={rowRef} open={listOpen} setOpen={setListOpen} />
     </div>
   );
 }

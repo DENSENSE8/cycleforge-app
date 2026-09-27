@@ -160,6 +160,10 @@ export function NavRecentsList({
     if (chordRows.length === 0) return undefined;
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.defaultPrevented || event.repeat) return;
+      // Never mid-rename in this list or with a row menu open: the chord
+      // would navigate away and drop the edit.
+      const target = event.target instanceof Element ? event.target : null;
+      if (target?.closest('[data-nav-recents] input, [role="menu"]')) return;
       const slot = altDigitSlot(event);
       const row = slot === null ? undefined : chordRows[slot];
       if (!row) return;

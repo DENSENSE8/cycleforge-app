@@ -16,13 +16,13 @@ export function RecordNoteSlot({ note, empty = 'blank' }: { note: string | null;
     <span className={RECORD_NOTE_SLOT_CLASS} data-testid="record-note-slot">
       {note ? (
         <span className={RECORD_NOTE_BADGE_CLASS} data-testid="record-note-badge" title={note}>
-          <span aria-hidden>NOTE</span>
+          <span aria-hidden>Note</span>
           <span className="sr-only">Buyer note: {note}</span>
         </span>
       ) : empty === 'add' ? (
         <span className={RECORD_NOTE_ADD_CLASS} data-testid="record-note-add" aria-hidden>
           <Plus className="h-2.5 w-2.5 shrink-0" />
-          NOTE
+          Note
         </span>
       ) : null}
     </span>
@@ -40,7 +40,7 @@ export function BuyerNoteBlock({ note, className }: { note: string | null; class
     >
       <span className={cn(RECORD_NOTE_SLOT_CLASS, 'self-start')}>
         <span className={RECORD_NOTE_BADGE_CLASS} aria-hidden>
-          NOTE
+          Note
         </span>
       </span>
       <div className="min-w-0 flex-1">

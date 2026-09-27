@@ -10,6 +10,7 @@ import { zIndex as zLayer } from '@/design-system/tokens/z-index';
 import { useEscapeClose } from '@/design-system/hooks';
 import { X } from '@/components/Icons';
 import { IconButton } from '@/design-system/primitives';
+import { cn } from '@/utils/_cn';
 import { buildUnboxingCartonLibraryHref } from '@/components/shipped/photo-gallery/photo-context-provenance';
 import { MovePhotosBetweenPoRail } from '@/components/receiving/workspace/line-edit/MovePhotosBetweenPoRail';
 import { usePhotoGallery } from '@/components/shipped/photo-gallery/usePhotoGallery';
@@ -73,6 +74,7 @@ export function PhotoPeekFan({
   poRef,
   onPhotoDeleted,
   onOpenMovePhotosExternal,
+  placement = 'pane',
 }: {
   cards: PeekCard[];
   holdMs?: number;
@@ -84,6 +86,11 @@ export function PhotoPeekFan({
   onPhotoDeleted?: (photoId: number) => void;
   /** Unbox: open Move photos in the station tool push instead of a center overlay. */
   onOpenMovePhotosExternal?: () => void;
+  /**
+   * `pane`: parks itself on the positioned pane's right edge, above the dock band.
+   * `inline`: the bare peek — the host places it (`DeskRecordLayout`'s `peek` edge).
+   */
+  placement?: 'pane' | 'inline';
 }) {
   const count = cards.length;
   const pendingCount = useMemo(() => cards.filter((c) => c.pending).length, [cards]);
@@ -229,10 +236,13 @@ export function PhotoPeekFan({
     <>
       {/* Peek — right-edge corner → fan, parked just above the floating notes/send (OmnichannelComposerDock) / terminal dock band. */}
       {!expanded ? (
-        <div className="pointer-events-none absolute inset-y-0 right-0 z-20 flex items-end">
+        <div className={placement === 'pane' ? 'pointer-events-none absolute inset-y-0 right-0 z-20 flex items-end' : 'contents'}>
           <motion.div
             data-testid="photo-peek"
-            className="pointer-events-auto relative mb-[calc(env(safe-area-inset-bottom,0px)+10rem)] h-36 w-28"
+            className={cn(
+              'pointer-events-auto relative h-36 w-28',
+              placement === 'pane' && 'mb-[calc(env(safe-area-inset-bottom,0px)+10rem)]',
+            )}
             initial="rest"
             animate={peekState}
             variants={{ rest: {}, fan: { transition: { staggerChildren: 0.04 } } }}

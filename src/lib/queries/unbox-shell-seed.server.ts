@@ -6,8 +6,8 @@ import { seedReadyToPackStation } from '@/lib/queries/ready-to-pack-shell-seed.s
 import { shouldSeedReadyToPackQueue } from '@/lib/queries/unshipped-seed-gate';
 import { UNBOX_SURFACE_ROUTE } from '@/lib/receiving/surface-path';
 
-/** Testing station — `/test`, plus the legacy `/tech` the proxy redirects from. */
-const TESTING_SURFACE_ROUTES: ReadonlySet<string> = new Set(['/test', '/tech']);
+/** The Picker desk — its default mount is the Pending grid the seed fills. */
+const PICKER_DESK_ROUTE = '/pick';
 
 /** The seed for the app shell, or `null` when this request is not the Unbox station. */
 async function maybeSeedUnboxShell(
@@ -29,13 +29,13 @@ export async function maybeSeedShell(
   search: string,
 ): Promise<DehydratedState | null> {
   // `/search` is deliberately unseeded.
-  if (TESTING_SURFACE_ROUTES.has(pathname)) {
+  if (pathname === PICKER_DESK_ROUTE) {
     const params = Object.fromEntries(new URLSearchParams(search));
     if (!shouldSeedReadyToPackQueue(params)) return null;
     try {
       return await seedReadyToPackStation();
     } catch (error) {
-      console.error('maybeSeedShell(test) failed; client will fetch', error);
+      console.error('maybeSeedShell(pick) failed; client will fetch', error);
       return null;
     }
   }

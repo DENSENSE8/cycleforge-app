@@ -17,10 +17,10 @@ import {
   getAccountByEmail, getAccountIdByIdentity, createAccount, linkAccountIdentity,
 } from '@/lib/identity/accounts';
 import { logAuthEvent } from '@/lib/identity/memberships';
-import { canonicalRole, ALL_ROLES, getStaffRole, type StaffRole } from '@/lib/auth/permissions';
+import { canonicalRole, ALL_ROLES, type StaffRole } from '@/lib/auth/permissions';
 import { invalidateStaffRolesCache } from '@/lib/auth/role-store';
-import { recordStaffLogin } from '@/lib/auth/record-staff-login';
-import { resolveLandingPath } from '@/lib/auth/landing-path';
+import { recordStaffLogin, type StaffLogin } from '@/lib/auth/record-staff-login';
+import { resolveLandingPath, withWelcomeHandoff } from '@/lib/auth/landing-path';
 
 /** Internal sentinel: thrown to roll back the tx when an un-provisionable
  *  subject signs in under auto_provision=false. */
@@ -184,7 +184,7 @@ export const GET = withAuth(async (req) => {
 
   // Resolve the identity layer + per-org staff profile atomically. Mirrors the
   // invitation-accept flow: global account → membership → staff, all in one tx.
-  let resolved: { staffId: number; accountId: string; defaultHomePath: string | null };
+  let resolved: { staffId: number; accountId: string; login: StaffLogin };
   try {
     resolved = await withTenantTransaction(provider.organizationId, async (client) => {
       // 1. Resolve the global account — by federated identity first (a stable
@@ -215,15 +215,15 @@ export const GET = withAuth(async (req) => {
 
       // 4. Find-or-create the per-org staff profile keyed by (org, issuer, sub).
       //    sso_provider stores the issuer string for cross-IdP disambiguation.
-      const existing = await client.query<{ id: number; default_home_path: string | null }>(
-        `SELECT id, default_home_path FROM staff
+      const existing = await client.query<{ id: number }>(
+        `SELECT id FROM staff
           WHERE organization_id = $1 AND sso_provider = $2 AND sso_subject = $3
           LIMIT 1`,
         [provider.organizationId, provider.issuer, subject],
       );
       if (existing.rows[0]) {
         const sid = existing.rows[0].id;
-        await recordStaffLogin(client, sid);
+        const login = await recordStaffLogin(client, sid);
         // Backfill the identity link for staff provisioned before this wiring.
         await client.query(
           `UPDATE staff
@@ -232,7 +232,7 @@ export const GET = withAuth(async (req) => {
             WHERE id = $1`,
           [sid, accountId, membershipId],
         );
-        return { staffId: sid, accountId, defaultHomePath: existing.rows[0].default_home_path };
+        return { staffId: sid, accountId, login };
       }
       if (!provider.autoProvision) {
         // Pre-invited-only mode: refuse unknown subjects. Throw to roll back the
@@ -254,7 +254,12 @@ export const GET = withAuth(async (req) => {
          ON CONFLICT (staff_id, role_id) DO NOTHING`,
         [sid, role],
       );
-      return { staffId: sid, accountId, defaultHomePath: null };
+      // A just-provisioned profile's INSERT already stamped last_login_at.
+      return {
+        staffId: sid,
+        accountId,
+        login: { role, defaultHomePath: null, defaultHomePathMobile: null },
+      };
     });
   } catch (err) {
     if (err instanceof SsoProvisioningError) return failRedirect(req, 'STAFF_NOT_PROVISIONED');
@@ -262,7 +267,7 @@ export const GET = withAuth(async (req) => {
     return failRedirect(req, 'PROVISIONING_FAILED');
   }
 
-  const { staffId, accountId, defaultHomePath } = resolved;
+  const { staffId, accountId, login } = resolved;
   invalidateStaffRolesCache(staffId);
 
   const ip = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || null;
@@ -284,15 +289,15 @@ export const GET = withAuth(async (req) => {
   });
 
   // Server redirect bypasses the sign-in page's finish(); apply the same
-  // landing precedence (desktop). The first-of-day flag can't arm the
-  // client welcome flag from here — it lives in sessionStorage.
+  // landing precedence (desktop) and hand the sign-in welcome to the shell
+  // via `?welcome=1` (sessionStorage can't be armed from here).
   const landing = resolveLandingPath({
     next: stateRow.next_path,
-    role: await getStaffRole(staffId),
-    defaultHomePath,
+    role: login.role,
+    defaultHomePath: login.defaultHomePath,
     mobile: false,
   });
-  const target = new URL(landing, origin(req));
+  const target = new URL(withWelcomeHandoff(landing), origin(req));
   const res = NextResponse.redirect(target);
   res.cookies.set({
     name: SESSION_COOKIE_NAME,

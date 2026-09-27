@@ -21,7 +21,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ success: true, created_pos: created });
   } catch (error: any) {
     return NextResponse.json(
-      { error: 'Failed to create Zoho purchase order', details: error?.message || String(error) },
+      { error: 'Failed to create the purchase order', details: error?.message || String(error) },
       { status: 500 }
     );
   }

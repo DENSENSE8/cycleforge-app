@@ -1,9 +1,19 @@
 /** `/search` durable selection — `?sel=order:123` / `receiving:50200` / … */
 
-import {
-  isUiEntityType,
-  type SearchHitEntityType,
-} from '@/lib/search/search-hit';
+import type { SearchHitEntityType } from '@/lib/search/search-hit';
+
+/**
+ * The entity types `/search` opens as a record (`SearchDossier`). Tickets,
+ * warranty claims and bins are search HITS, not records here: they hand off
+ * to their own desk (`searchHitHref`) instead of a `?sel=` dead end.
+ */
+const SEARCH_RECORD_TYPES = ['order', 'unit', 'receiving', 'sku', 'repair', 'fba'] as const;
+
+export type SearchRecordType = (typeof SEARCH_RECORD_TYPES)[number];
+
+export function isSearchRecordType(value: string): value is SearchRecordType {
+  return (SEARCH_RECORD_TYPES as readonly string[]).includes(value);
+}
 
 export const SEARCH_SEL_PARAM = 'sel';
 
@@ -25,7 +35,7 @@ export function parseSearchSel(raw: string | null | undefined): SearchSelection 
   if (colon <= 0) return null;
   const entityType = trimmed.slice(0, colon);
   const idStr = trimmed.slice(colon + 1);
-  if (!isUiEntityType(entityType)) return null;
+  if (!isSearchRecordType(entityType)) return null;
   const id = Number(idStr);
   if (!Number.isFinite(id) || id <= 0) return null;
   return { entityType, id };
@@ -41,8 +51,8 @@ export function isSearchSelActive(
 }
 
 /**
- * Sole-hit selection key — same gate as {@link soleHitHref}: exactly one usable
- * hit of a known UI entity type. Returns the `sel` value, or null.
+ * Sole-hit selection key: exactly one usable hit that `/search` opens as a
+ * record. Returns the `sel` value, or null.
  */
 export function soleHitSel(
   hits: ReadonlyArray<{ id: number; entityType: string }>,
@@ -50,6 +60,6 @@ export function soleHitSel(
   if (hits.length !== 1) return null;
   const hit = hits[0];
   if (!hit || !Number.isFinite(hit.id) || hit.id <= 0) return null;
-  if (!isUiEntityType(hit.entityType)) return null;
+  if (!isSearchRecordType(hit.entityType)) return null;
   return formatSearchSel(hit.entityType, hit.id);
 }

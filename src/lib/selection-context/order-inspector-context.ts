@@ -190,12 +190,14 @@ export type OrderRecordSectionId =
   /** The order's own note (`order_notes`). */
   | 'note'
   | 'customer'
-  /** Shipping facts: platform, order #, listing, TRK#, ship by, ordered. */
+  /** Order facts: Platform + Listing on the Items group; Tracking #, Ship by, Ordered in the Shipping group. */
   | 'facts'
   /** The order's documents (labels, slips, paperwork) — `OrderDocumentsSection`. */
   | 'documents'
   /** The order's staff conversation thread — `ThreadPanel`. */
-  | 'conversation';
+  | 'conversation'
+  /** Every event the order touched (audit, station scans, carrier, messages, photos), below the items — `OrderTimelineSection`. */
+  | 'timeline';
 
 /**
  * What a mode may never paint — listing it in {@link ORDER_RECORD_SECTIONS} is a type error.
@@ -213,11 +215,11 @@ interface OrderRecordForbiddenSections {
 export const ORDER_RECORD_SECTIONS: {
   readonly [M in OrderRecordMode]: readonly Exclude<OrderRecordSectionId, OrderRecordForbiddenSections[M]>[];
 } = {
-  'to-ship': ['state', 'buyer-note', 'item', 'stages', 'assign', 'price', 'note', 'customer', 'facts'],
-  pending: ['state', 'buyer-note', 'item', 'stages', 'assign', 'price', 'note', 'customer', 'facts'],
+  'to-ship': ['state', 'buyer-note', 'item', 'stages', 'assign', 'timeline', 'price', 'note', 'customer', 'facts'],
+  pending: ['state', 'buyer-note', 'item', 'stages', 'assign', 'timeline', 'price', 'note', 'customer', 'facts'],
   // A held order's job is the pairing; its notes field carries the routing
   // text (`exceptionRowToQueueRow`), so the note editor stays off.
-  exceptions: ['state', 'buyer-note', 'resolve', 'item', 'stages', 'assign', 'customer', 'facts'],
+  exceptions: ['state', 'buyer-note', 'resolve', 'item', 'stages', 'assign', 'timeline', 'customer', 'facts'],
   // The shipped archive: what left, who handled each step, where it is now.
   shipped: [
     'state',
@@ -225,12 +227,13 @@ export const ORDER_RECORD_SECTIONS: {
     'item',
     'stages',
     'shipment',
-    'facts',
-    'customer',
     'label-entries',
+    'documents',
+    'timeline',
+    'customer',
+    'facts',
     'price',
     'note',
-    'documents',
     'conversation',
   ],
   // The on-the-phone lookup: returns and replacements are why the caller rang.
@@ -240,10 +243,12 @@ export const ORDER_RECORD_SECTIONS: {
     'item',
     'stages',
     'assign',
+    'shipment',
     'label-entries',
-    'price',
-    'note',
+    'timeline',
     'customer',
     'facts',
+    'price',
+    'note',
   ],
 };

@@ -15,7 +15,7 @@ import {
 import { withAuth } from '@/lib/auth/withAuth';
 
 const ENTITY_TYPES = new Set<EntityType>(['ORDER', 'REPAIR', 'FBA_SHIPMENT', 'RECEIVING', 'SKU_STOCK']);
-const WORK_TYPES = new Set<WorkType>(['TEST', 'PACK', 'REPAIR', 'QA', 'RECEIVE', 'STOCK_REPLENISH']);
+const WORK_TYPES = new Set<WorkType>(['TEST', 'PICK', 'PACK', 'REPAIR', 'QA', 'RECEIVE', 'STOCK_REPLENISH']);
 const STATUSES = new Set<AssignmentStatus>(['OPEN', 'ASSIGNED', 'IN_PROGRESS', 'DONE', 'CANCELED']);
 
 function parseEnum<T extends string>(value: string | null, allowed: Set<T>): T | null {

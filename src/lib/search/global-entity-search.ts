@@ -1,6 +1,6 @@
 /** global-entity-search — per-entity exact/ILIKE searchers extracted from src/app/api/global-search/route.ts (AI search Phase 0) so the… */
 
-import { tenantQuery } from '@/lib/tenancy/db';
+import { tenantQueryOneTrip } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';
 import { looksLikeTicketScan } from '@/lib/support/ticket-scan';
 import { searchSupportTickets } from '@/lib/search/support-ticket-search';
@@ -61,6 +61,10 @@ export interface GlobalSearchResult {
     /** Receiving marketplace source order id. */
     source_order_id?: string | null;
     happened_at?: string | null;
+    /** Buyer identity (orders) — the chat's answer header leads with it. */
+    customer_name?: string | null;
+    customer_email?: string | null;
+    customer_phone?: string | null;
   };
 }
 
@@ -81,7 +85,9 @@ const ORDER_SEARCH_SELECT = `SELECT o.id,
             -- table is 1:1 on orders.customer_id, so MAX() is the value itself
             -- and every existing GROUP BY o.id in this file stays correct
             -- without being touched.
-            MAX(COALESCE(c.display_name, c.customer_name)) AS customer_name
+            MAX(COALESCE(c.display_name, c.customer_name)) AS customer_name,
+            MAX(c.email) AS customer_email,
+            MAX(COALESCE(NULLIF(btrim(c.phone), ''), c.mobile)) AS customer_phone
      FROM orders o
      LEFT JOIN tech_serial_numbers tsn       ON (
        tsn.organization_id = o.organization_id
@@ -139,13 +145,24 @@ function mapOrderSearchRows(rows: any[]): GlobalSearchResult[] {
         serial_number: serial && !serial.includes(',') ? serial : null,
         order_id: row.order_id != null ? String(row.order_id) : null,
         happened_at: happened,
+        customer_name: row.customer_name != null ? String(row.customer_name) : null,
+        customer_email: row.customer_email != null ? String(row.customer_email) : null,
+        customer_phone: row.customer_phone != null ? String(row.customer_phone) : null,
       },
     };
   });
 }
 
+/** A phone typed or pasted any way → its last 10 digits; '' when the query is not phone-shaped. */
+function phoneSearchKey(query: string): string {
+  const digits = query.replace(/\D/g, '');
+  return /^\+?[\d\s().-]{10,24}$/.test(query.trim()) && digits.length >= 10 && digits.length <= 15
+    ? digits.slice(-10)
+    : '';
+}
+
 /** True when the paste is long enough / shaped enough to try tracking → order. */
-function looksLikeTrackingIdentifier(
+export function looksLikeTrackingIdentifier(
   query: string,
   last8: string,
   keys: { exact: string; key18: string },
@@ -172,8 +189,31 @@ async function searchOrders(orgId: OrgId, query: string, limit: number): Promise
   const orderNumberExact = sqlIdentifierEqualsQuery('o.order_id', '$2');
   const itemNumberExact = sqlIdentifierEqualsQuery('o.item_number', '$2');
 
+  // A buyer's phone, typed or pasted any way ("(714) 596-6888", "+1 714…"):
+  // matched on its last 10 digits against the customer's phone / mobile. A
+  // 10–15 digit run may equally be a tracking or order number, so a phone
+  // miss falls through to those arms.
+  const phone = phoneSearchKey(query);
+  if (phone) {
+    const byPhone = await tenantQueryOneTrip(
+      orgId,
+      `${ORDER_SEARCH_SELECT}
+     WHERE o.organization_id = $1
+       AND o.customer_id IN (
+             SELECT pc.id FROM customers pc
+              WHERE pc.organization_id = $1
+                AND (right(regexp_replace(coalesce(pc.phone, ''), '\\D', '', 'g'), 10) = $2
+                  OR right(regexp_replace(coalesce(pc.mobile, ''), '\\D', '', 'g'), 10) = $2))
+     GROUP BY o.id
+     ORDER BY o.created_at DESC NULLS LAST
+     LIMIT $3`,
+      [orgId, phone, limit],
+    );
+    const phoneHits = mapOrderSearchRows(byPhone.rows);
+    if (phoneHits.length > 0) return phoneHits;
+  }
   if (identifier) {
-    const byNumber = await tenantQuery(
+    const byNumberPromise = tenantQueryOneTrip(
       orgId,
       `${ORDER_SEARCH_SELECT}
      WHERE o.organization_id = $1
@@ -183,16 +223,14 @@ async function searchOrders(orgId: OrgId, query: string, limit: number): Promise
      LIMIT $3`,
       [orgId, query, limit],
     );
-    const numberHits = mapOrderSearchRows(byNumber.rows);
-    if (numberHits.length >= limit || !looksLikeTrackingIdentifier(query, last8, keys)) {
-      return numberHits.slice(0, limit);
-    }
 
     // STN-first: resolve matching shipment ids, then join to orders. Cheap for
-    // carrier ids; never correlated from every order row.
-    const byTracking = await tenantQuery(
-      orgId,
-      `${ORDER_SEARCH_SELECT}
+    // carrier ids; never correlated from every order row. Independent of the
+    // number statement, so it runs alongside it instead of after it.
+    const byTrackingPromise = looksLikeTrackingIdentifier(query, last8, keys)
+      ? tenantQueryOneTrip(
+          orgId,
+          `${ORDER_SEARCH_SELECT}
      WHERE o.organization_id = $1
        AND (
             o.shipment_id IN (
@@ -225,8 +263,19 @@ async function searchOrders(orgId: OrgId, query: string, limit: number): Promise
      GROUP BY o.id
      ORDER BY o.created_at DESC NULLS LAST
      LIMIT $6`,
-      [orgId, like, keys.exact, keys.key18, last8, limit],
-    );
+          [orgId, like, keys.exact, keys.key18, last8, limit],
+        )
+      : null;
+    // A full page of number hits never reads the tracking statement; its failure
+    // must not surface as an unhandled rejection.
+    byTrackingPromise?.catch(() => {});
+
+    const numberHits = mapOrderSearchRows((await byNumberPromise).rows);
+    if (numberHits.length >= limit || !byTrackingPromise) {
+      return numberHits.slice(0, limit);
+    }
+
+    const byTracking = await byTrackingPromise;
     const seen = new Set(numberHits.map((h) => h.id));
     const merged = [...numberHits];
     for (const hit of mapOrderSearchRows(byTracking.rows)) {
@@ -249,7 +298,7 @@ async function searchOrders(orgId: OrgId, query: string, limit: number): Promise
          OR c.customer_name ILIKE $2
          OR c.email ILIKE $2
   )`;
-  const result = await tenantQuery(
+  const result = await tenantQueryOneTrip(
     orgId,
     `${ORDER_SEARCH_SELECT}
      WHERE o.organization_id = $1
@@ -264,18 +313,29 @@ async function searchOrders(orgId: OrgId, query: string, limit: number): Promise
 }
 
 async function searchRepairs(orgId: OrgId, query: string, limit: number): Promise<GlobalSearchResult[]> {
-  const result = await tenantQuery(
+  // "#10063" and "10063" name the same ticket; a phone reaches the repair
+  // through its contact line or its linked customer (last 10 digits).
+  const phone = phoneSearchKey(query);
+  const result = await tenantQueryOneTrip(
     orgId,
     `SELECT id, ticket_number, product_title, serial_number, status
-     FROM repair_service
+     FROM repair_service r
      WHERE organization_id = $4
        AND (ticket_number ILIKE $1
+        OR ltrim(btrim(ticket_number), '#') = ltrim(btrim($2), '#')
         OR product_title ILIKE $1
         OR serial_number ILIKE $1
-        OR CAST(id AS TEXT) = $2)
+        OR CAST(id AS TEXT) = $2
+        OR ($5 <> '' AND (
+             regexp_replace(coalesce(r.contact_info, ''), '\\D', '', 'g') LIKE '%' || $5 || '%'
+          OR r.customer_id IN (
+               SELECT c.id FROM customers c
+                WHERE c.organization_id = $4
+                  AND (right(regexp_replace(coalesce(c.phone, ''), '\\D', '', 'g'), 10) = $5
+                    OR right(regexp_replace(coalesce(c.mobile, ''), '\\D', '', 'g'), 10) = $5)))))
      ORDER BY created_at DESC NULLS LAST
      LIMIT $3`,
-    [`%${query}%`, query, limit, orgId],
+    [`%${query}%`, query, limit, orgId, phone],
   );
 
   return result.rows.map((row: any) => ({
@@ -293,7 +353,7 @@ async function searchRepairs(orgId: OrgId, query: string, limit: number): Promis
 }
 
 async function searchFba(orgId: OrgId, query: string, limit: number): Promise<GlobalSearchResult[]> {
-  const result = await tenantQuery(
+  const result = await tenantQueryOneTrip(
     orgId,
     `SELECT id, shipment_ref, status
      FROM fba_shipments
@@ -464,7 +524,7 @@ export function buildReceivingSearchSql(
 
 async function searchReceiving(orgId: OrgId, query: string, limit: number): Promise<GlobalSearchResult[]> {
   const { text, params } = buildReceivingSearchSql(orgId, query, limit);
-  const result = await tenantQuery(orgId, text, params);
+  const result = await tenantQueryOneTrip(orgId, text, params);
 
   return result.rows.map((row: any) => {
     const poNumber = row.po_number != null ? String(row.po_number) : null;
@@ -514,7 +574,7 @@ async function searchReceiving(orgId: OrgId, query: string, limit: number): Prom
 
 async function searchSkus(orgId: OrgId, query: string, limit: number): Promise<GlobalSearchResult[]> {
   // sku_catalog is the marketplace SKU scheme the Products workbench selects on (NOT the Zoho `items` namespace — they collide on the same…
-  const result = await tenantQuery(
+  const result = await tenantQueryOneTrip(
     orgId,
     `SELECT id, sku, product_title
      FROM sku_catalog
@@ -551,7 +611,7 @@ async function searchSerialUnits(
   if (!normalized) return [];
   const identifier = looksLikeIdentifier(query);
   const result = identifier
-    ? await tenantQuery(
+    ? await tenantQueryOneTrip(
         orgId,
         `SELECT su.id,
             su.serial_number,
@@ -576,7 +636,7 @@ async function searchSerialUnits(
      LIMIT $4`,
         [normalized, query, orgId, limit],
       )
-    : await tenantQuery(
+    : await tenantQueryOneTrip(
         orgId,
         `SELECT su.id,
             su.serial_number,
@@ -637,7 +697,7 @@ async function searchTrackingHolds(
   const like = identifier ? query : `%${query}%`;
 
   const [scanHolds, importHolds] = await Promise.all([
-    tenantQuery(
+    tenantQueryOneTrip(
       orgId,
       `SELECT id, shipping_tracking_number, source_station, staff_name,
               exception_reason, status, created_at
@@ -654,7 +714,7 @@ async function searchTrackingHolds(
        LIMIT $6`,
       [orgId, like, keys.exact, keys.key18, last8, limit],
     ).catch(() => ({ rows: [] as Array<Record<string, unknown>> })),
-    tenantQuery(
+    tenantQueryOneTrip(
       orgId,
       `SELECT id, account_order_id, account_source, product_title, tracking,
               reason, status, first_seen_at
@@ -737,7 +797,7 @@ async function searchInternalIds(
 
   let receivingIds = [...keys.receivingIds];
   if (keys.receivingLineIds.length > 0) {
-    const lines = await tenantQuery(
+    const lines = await tenantQueryOneTrip(
       orgId,
       `SELECT receiving_id
        FROM receiving_line
@@ -755,7 +815,7 @@ async function searchInternalIds(
 
   const receivingPromise =
     receivingIds.length > 0 || keys.shipmentIds.length > 0
-      ? tenantQuery(
+      ? tenantQueryOneTrip(
           orgId,
           `SELECT r.id,
                   r.shipment_id,
@@ -779,7 +839,7 @@ async function searchInternalIds(
 
   const orderPromise =
     keys.orderPks.length > 0 || keys.shipmentIds.length > 0
-      ? tenantQuery(
+      ? tenantQueryOneTrip(
           orgId,
           `SELECT o.id,
                   o.order_id,
@@ -802,7 +862,7 @@ async function searchInternalIds(
 
   const unitPromise =
     keys.unitKeys.length > 0
-      ? tenantQuery(
+      ? tenantQueryOneTrip(
           orgId,
           `SELECT su.id,
                   su.serial_number,
@@ -832,7 +892,7 @@ async function searchInternalIds(
   // units currently IN the box, each painting on `/search?sel=unit:{id}`.
   const boxUnitsPromise =
     keys.handlingUnitIds.length > 0
-      ? tenantQuery(
+      ? tenantQueryOneTrip(
           orgId,
           `SELECT su.id,
                   su.serial_number,
@@ -962,7 +1022,7 @@ async function searchManifestUnits(
 ): Promise<GlobalSearchResult[]> {
   const uid = query.trim();
   if (!/^KIT-/i.test(uid)) return [];
-  const result = await tenantQuery(
+  const result = await tenantQueryOneTrip(
     orgId,
     `SELECT m.manifest_uid,
             m.status AS manifest_status,
@@ -1016,7 +1076,7 @@ async function searchRepairByPk(
   limit: number,
 ): Promise<GlobalSearchResult[]> {
   if (!Number.isSafeInteger(repairId) || repairId <= 0) return [];
-  const result = await tenantQuery(
+  const result = await tenantQueryOneTrip(
     orgId,
     `SELECT id, ticket_number, product_title, serial_number, status
      FROM repair_service
@@ -1066,6 +1126,10 @@ export async function searchAllEntities(
   if (scanRoute?.type === 'manifest') {
     return await searchManifestUnits(orgId, query, limit).catch(() => []);
   }
+  // A bin code decodes as a printed class but is no internal PK key.
+  if (scanRoute?.type === 'bin') {
+    return await searchLocations(orgId, scanRoute.value, limit).catch(() => []);
+  }
   if (printed || axis === 'internal') {
     return searchInternalIds(orgId, query, limit).catch(() => []);
   }
@@ -1093,28 +1157,89 @@ export async function searchAllEntities(
     ]);
     return [...holds, ...orders].slice(0, limit);
   }
-  if (looksLikeTicketScan(query)) {
-    const tickets = await searchSupportTickets(orgId, query).catch(() => []);
+  // A ticket-shaped scan answers with its ticket when one exists. The record
+  // arms start alongside the ticket lookup instead of after it; every arm is
+  // caught, so the unread arms of a ticket hit cannot reject.
+  const ticketLookup = looksLikeTicketScan(query)
+    ? searchSupportTickets(orgId, query).catch(() => [])
+    : null;
+  const records = looksLikeIdentifier(query)
+    ? searchIdentifierArms(orgId, query, limit)
+    : searchBroadArms(orgId, query, limit);
+  if (ticketLookup) {
+    const tickets = await ticketLookup;
     if (tickets.length > 0) return tickets.slice(0, limit);
   }
-  if (looksLikeIdentifier(query)) {
-    // SKU and FBA belong here as much as orders do.
-    const [orders, units, holds, receiving, skus, fba, repairs] = await Promise.all([
-      searchOrders(orgId, query, limit).catch(() => []),
-      searchSerialUnits(orgId, query, limit).catch(() => []),
-      searchTrackingHolds(orgId, query, limit).catch(() => []),
-      searchReceiving(orgId, query, limit).catch(() => []),
-      searchSkus(orgId, query, limit).catch(() => []),
-      searchFba(orgId, query, limit).catch(() => []),
-      searchRepairs(orgId, query, limit).catch(() => []),
-    ]);
-    // Order stays as it was — exact parent-table hits first — with the new
-    // sources appended so nothing that already ranked moves.
-    return [...orders, ...receiving, ...holds, ...units, ...skus, ...fba, ...repairs].slice(
-      0,
-      limit,
-    );
-  }
+  return records;
+}
+
+/** Identifier-shaped query: every parent table, each arm given the whole page. */
+async function searchIdentifierArms(
+  orgId: OrgId,
+  query: string,
+  limit: number,
+): Promise<GlobalSearchResult[]> {
+  // SKU and FBA belong here as much as orders do.
+  const [orders, units, holds, receiving, skus, fba, repairs, bins] = await Promise.all([
+    searchOrders(orgId, query, limit).catch(() => []),
+    searchSerialUnits(orgId, query, limit).catch(() => []),
+    searchTrackingHolds(orgId, query, limit).catch(() => []),
+    searchReceiving(orgId, query, limit).catch(() => []),
+    searchSkus(orgId, query, limit).catch(() => []),
+    searchFba(orgId, query, limit).catch(() => []),
+    searchRepairs(orgId, query, limit).catch(() => []),
+    searchLocations(orgId, query, limit).catch(() => []),
+  ]);
+  // Order stays as it was — exact parent-table hits first — with the new
+  // sources appended so nothing that already ranked moves.
+  return [...orders, ...receiving, ...holds, ...units, ...skus, ...fba, ...repairs, ...bins].slice(
+    0,
+    limit,
+  );
+}
+
+/**
+ * A bin code, typed with or without its dashes (`D-04-08-2-00` / `D0408200`):
+ * exact on the name or the printed barcode. Bins are not a `/search` record —
+ * the hit hands off to Inventory ▸ Locations (`searchHitHref`).
+ */
+async function searchLocations(orgId: OrgId, query: string, limit: number): Promise<GlobalSearchResult[]> {
+  const bare = query.trim().replace(/[\s-]/g, '').toUpperCase();
+  if (!bare) return [];
+  const result = await tenantQueryOneTrip<{
+    id: number;
+    name: string | null;
+    barcode: string | null;
+    room: string | null;
+    bin_type: string | null;
+  }>(
+    orgId,
+    `SELECT id, name, barcode, room, bin_type
+     FROM locations
+     WHERE organization_id = $1
+       AND is_active = true
+       AND (upper(regexp_replace(name, '[\\s-]', '', 'g')) = $2
+        OR upper(regexp_replace(coalesce(barcode, ''), '[\\s-]', '', 'g')) = $2)
+     ORDER BY id
+     LIMIT $3`,
+    [orgId, bare, limit],
+  );
+  return result.rows.map((row) => ({
+    id: Number(row.id),
+    entityType: 'location' as const,
+    title: String(row.name || row.barcode || `Bin #${row.id}`),
+    subtitle: [row.barcode, row.room, row.bin_type].filter(Boolean).join(' · '),
+    href: searchHitHref('LOCATION', Number(row.id)),
+    matchField: 'location',
+  }));
+}
+
+/** Free-text query: an even share of the page per entity. */
+async function searchBroadArms(
+  orgId: OrgId,
+  query: string,
+  limit: number,
+): Promise<GlobalSearchResult[]> {
   const perEntity = Math.ceil(limit / 7);
   const [orders, repairs, fba, receiving, skus, units, holds] = await Promise.all([
     searchOrders(orgId, query, perEntity).catch(() => []),

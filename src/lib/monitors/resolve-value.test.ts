@@ -15,10 +15,10 @@ const BUNDLE: OutboundQueueCounts = {
   byStage: { pending: 9, tested: 6 },
   urgent: 7,
   combos: [
-    { hasTechScan: false, blocked: false, count: 6 }, // PENDING
-    { hasTechScan: true, blocked: false, count: 4 }, // TESTED
-    { hasTechScan: false, blocked: true, count: 3 }, // BLOCKED (exception-first)
-    { hasTechScan: true, blocked: true, count: 2 }, // BLOCKED (exception-first)
+    { hasPickScan: false, blocked: false, count: 6 }, // PENDING
+    { hasPickScan: true, blocked: false, count: 4 }, // TESTED
+    { hasPickScan: false, blocked: true, count: 3 }, // BLOCKED (exception-first)
+    { hasPickScan: true, blocked: true, count: 2 }, // BLOCKED (exception-first)
   ],
   packPlacement: {
     totalPlaced: 5,

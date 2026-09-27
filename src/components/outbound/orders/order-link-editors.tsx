@@ -13,14 +13,20 @@
  */
 
 import { useState, type ReactNode } from 'react';
-import { ExternalLink, Link2, Pencil } from '@/components/Icons';
-import { Popover, PopoverContent, PopoverTrigger } from '@/design-system/primitives/radix-popover';
+import { useQueryClient } from '@tanstack/react-query';
+import { Copy, ExternalLink, Link2, Pencil } from '@/components/Icons';
+import { Popover, PopoverAnchor, PopoverContent, PopoverTrigger } from '@/design-system/primitives/radix-popover';
+import { CopyChipHoverMenu } from '@/components/ui/CopyChipHoverMenu';
 import { Button } from '@/design-system/primitives/Button';
 import { focusRing } from '@/design-system/tokens/focus-ring';
+import { CARD_DISCLOSE } from '@/design-system/tokens/desk-stage';
+import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { commitExceptionsItemPaste } from '@/lib/orders/exceptions-cta';
+import { bustFulfillmentCaches } from '@/lib/outbound/outbound-cache-keys';
 import { refreshDomain } from '@/lib/refresh/bus';
 import { toast } from '@/lib/toast';
 import { cn } from '@/utils/_cn';
+import { copyToClipboard } from '@/utils/_dom';
 
 const stop = (event: { stopPropagation: () => void }) => event.stopPropagation();
 
@@ -29,9 +35,15 @@ const ICON_CLASS = cn(
   focusRing('control'),
 );
 
-/** A one-field popover: type or paste, Enter saves; Remove when something is stored. */
+/**
+ * A one-field popover: type or paste, Enter saves; Remove when something is stored.
+ * `trigger` toggles it; `anchor` only positions it (the host opens it via `open`).
+ */
 function LinkFieldPopover({
   trigger,
+  anchor,
+  open: openProp,
+  onOpenChange,
   label,
   placeholder,
   initial,
@@ -40,7 +52,10 @@ function LinkFieldPopover({
   onRemove,
   testId,
 }: {
-  trigger: ReactNode;
+  trigger?: ReactNode;
+  anchor?: ReactNode;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
   label: string;
   placeholder: string;
   initial: string;
@@ -49,24 +64,34 @@ function LinkFieldPopover({
   onRemove?: () => Promise<boolean>;
   testId: string;
 }) {
-  const [open, setOpen] = useState(false);
+  const [ownOpen, setOwnOpen] = useState(false);
+  const open = openProp ?? ownOpen;
+  const setOpen = (next: boolean) => {
+    if (openProp === undefined) setOwnOpen(next);
+    onOpenChange?.(next);
+  };
   const [draft, setDraft] = useState(initial);
   const [busy, setBusy] = useState(false);
+  const queryClient = useQueryClient();
+  // A host-opened popover (anchor mode) seeds its draft when it opens.
+  const [seededFor, setSeededFor] = useState(false);
+  if (open !== seededFor) {
+    setSeededFor(open);
+    if (open) setDraft(initial);
+  }
   const run = async (action: () => Promise<boolean>) => {
     setBusy(true);
     const ok = await action();
     setBusy(false);
-    if (ok) setOpen(false);
+    if (!ok) return;
+    // The To-ship list reads `['dashboard-table', 'unshipped']`; the domain
+    // signal alone does not refetch it (realtime does, when connected).
+    bustFulfillmentCaches(queryClient);
+    setOpen(false);
   };
   return (
-    <Popover
-      open={open}
-      onOpenChange={(next) => {
-        setOpen(next);
-        if (next) setDraft(initial);
-      }}
-    >
-      <PopoverTrigger asChild>{trigger}</PopoverTrigger>
+    <Popover open={open} onOpenChange={setOpen}>
+      {anchor ? <PopoverAnchor asChild>{anchor}</PopoverAnchor> : <PopoverTrigger asChild>{trigger}</PopoverTrigger>}
       <PopoverContent
         align="start"
         sideOffset={4}
@@ -139,16 +164,24 @@ async function patchAdminUrl(ids: readonly number[], adminUrl: string | null): P
 }
 
 /**
- * The icon right of the order number: ↗ opens the admin page and a pencil
- * edits it; with no link at all, a link icon adds one.
+ * The order number with its admin link. `children` is the order-number face:
+ * hovering IT flies out a menu ("Edit admin link" / "Add admin link") that opens
+ * the link popover under the number — nothing is reserved beside the number.
+ * The ↗ after it only opens. With no link at all, a link icon adds one.
  */
 export function OrderAdminLinkAction({
+  children,
+  fill = false,
   orderId,
   href,
   storedUrl,
   ids,
   platformLabel,
 }: {
+  /** The order-number face (chip / full id). */
+  children: ReactNode;
+  /** The face takes the row's free width (record fact rows); default hugs its text (cards). */
+  fill?: boolean;
   orderId: string;
   /** Effective link — {@link storedUrl} or the derived marketplace URL. */
   href: string | null;
@@ -157,62 +190,79 @@ export function OrderAdminLinkAction({
   ids: readonly number[];
   platformLabel?: string | null;
 }) {
-  const editor = (trigger: ReactNode) => (
-    <LinkFieldPopover
-      trigger={trigger}
-      label="Admin page link"
-      placeholder="https://…"
-      initial={storedUrl ?? ''}
-      submitLabel="Save link"
-      onSubmit={(value) => patchAdminUrl(ids, value)}
-      onRemove={storedUrl ? () => patchAdminUrl(ids, null) : undefined}
-      testId="order-admin-link"
-    />
-  );
-  if (!href) {
-    return editor(
-      <button
-        type="button"
-        onClick={stop}
-        onPointerDown={stop}
-        aria-label={`Add a link to order ${orderId}`}
-        title="Add admin page link"
-        data-testid="order-admin-link-add"
-        className={ICON_CLASS}
+  const [editing, setEditing] = useState(false);
+  const editLabel = storedUrl || href ? 'Edit order ID link' : 'Add order ID link';
+  const face = (
+    <span className={cn('flex min-w-0 items-center', fill && 'flex-1')} data-testid="order-admin-link-face">
+      <CopyChipHoverMenu
+        menuLabel="Order number actions"
+        denseLabel
+        className={cn('min-w-0 shrink', fill && 'flex-1')}
+        items={[
+          {
+            id: 'copy-order-id',
+            label: 'Copy order ID',
+            icon: <Copy />,
+            onSelect: () => {
+              void copyToClipboard(orderId, { historyKind: 'id', historyDisplay: orderId }).then((ok) =>
+                ok ? toast.success(`Copied ${orderId}`) : toast.error('Could not copy the order ID'),
+              );
+            },
+          },
+          { id: 'edit-admin-link', label: editLabel, icon: <Pencil />, onSelect: () => setEditing(true) },
+        ]}
       >
-        <Link2 className="size-3.5" />
-      </button>,
-    );
-  }
-  return (
-    <span className="group/order-link inline-flex shrink-0 items-center">
-      <a
-        href={href}
-        target="_blank"
-        rel="noopener noreferrer"
-        onClick={stop}
-        onPointerDown={stop}
-        data-testid="order-card-open-order"
-        aria-label={`Open order ${orderId} on ${platformLabel || 'the platform'}`}
-        title={storedUrl ? 'Open admin page (saved link)' : `Open on ${platformLabel || 'the platform'}`}
-        className={ICON_CLASS}
-      >
-        <ExternalLink aria-hidden className="size-3.5" />
-      </a>
-      {editor(
-        <button
-          type="button"
-          onClick={stop}
-          onPointerDown={stop}
-          aria-label={`Edit the link to order ${orderId}`}
-          title="Edit admin page link"
-          data-testid="order-admin-link-edit"
-          className={cn(ICON_CLASS, 'opacity-0 group-hover/order-link:opacity-100 focus-visible:opacity-100 data-[state=open]:opacity-100')}
-        >
-          <Pencil className="size-3" />
-        </button>,
-      )}
+        {children}
+      </CopyChipHoverMenu>
     </span>
+  );
+  return (
+    <>
+      <LinkFieldPopover
+        anchor={face}
+        open={editing}
+        onOpenChange={setEditing}
+        label="Admin page link"
+        placeholder="https://…"
+        initial={storedUrl ?? ''}
+        submitLabel="Save link"
+        onSubmit={(value) => patchAdminUrl(ids, value)}
+        onRemove={storedUrl ? () => patchAdminUrl(ids, null) : undefined}
+        testId="order-admin-link"
+      />
+      {href ? (
+        <HoverTooltip label={storedUrl ? 'Open admin page (saved link)' : `Open on ${platformLabel || 'the platform'}`} asChild>
+          <a
+            href={href}
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={stop}
+            onPointerDown={stop}
+            data-testid="order-card-open-order"
+            aria-label={`Open order ${orderId} on ${platformLabel || 'the platform'}`}
+            className={ICON_CLASS}
+          >
+            <ExternalLink aria-hidden className="size-3.5" />
+          </a>
+        </HoverTooltip>
+      ) : (
+        <HoverTooltip label="Add admin page link" asChild>
+          <button
+            type="button"
+            onClick={(event) => {
+              event.stopPropagation();
+              setEditing(true);
+            }}
+            onPointerDown={stop}
+            aria-label={`Add a link to order ${orderId}`}
+            data-testid="order-admin-link-add"
+            className={ICON_CLASS}
+          >
+            <Link2 className="size-3.5" />
+          </button>
+        </HoverTooltip>
+      )}
+    </>
   );
 }
 
@@ -261,11 +311,12 @@ export function ListingLinkEditor({
         title="Add listing — item number or URL"
         data-testid="order-listing-link-add"
         className={cn(
-          'ds-raw-button inline-flex shrink-0 items-center gap-1 rounded-mode-control px-1 text-[13px] text-mode-muted hover:bg-mode-hover hover:text-mode-ink',
+          'ds-raw-button inline-flex h-6 shrink-0 items-center gap-1 rounded-mode-control px-1 text-[13px] text-mode-muted hover:bg-mode-hover hover:text-mode-ink',
           focusRing('control'),
         )}
       >
-        Listing
+        {/* The card's container (`@container/card`) drops the word under the `label` tier; the aria-label carries it. */}
+        <span className={CARD_DISCLOSE.label.show}>Listing</span>
         <Link2 aria-hidden className="size-3.5" />
       </button>
     ) : (

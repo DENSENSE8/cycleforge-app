@@ -3,8 +3,9 @@
 /** Center Lock L2 host — a multi-field record form stacked on the desk stage. */
 
 import { useEffect, useRef, type ReactNode } from 'react';
-import { ChevronLeft, ChevronRight, X } from '@/components/Icons';
+import { ArrowLeft, ChevronLeft, ChevronRight, X } from '@/components/Icons';
 import { Button } from '@/design-system/primitives/Button';
+import { IconButton } from '@/design-system/primitives/IconButton';
 import { useRegisterOverlay } from '@/design-system/hooks';
 import { isEditableKeyTarget } from '@/lib/keyboard/is-editable-key-target';
 import { hasOpenOverlay } from '@/lib/overlay-stack/store';
@@ -156,6 +157,8 @@ export function DeskStageOverlay({
             prevDisabled={prevDisabled}
             nextDisabled={nextDisabled}
             onClose={onClose}
+            // Inline (covers the list) → Back, top left; a centred card keeps ✕.
+            dismiss={stageFill ? 'back' : 'close'}
             actions={actions}
             viewSwitch={viewSwitch}
           />
@@ -181,7 +184,15 @@ interface DeskStageRecordHeaderProps {
   onNext?: () => void;
   prevDisabled?: boolean;
   nextDisabled?: boolean;
-  onClose: () => void;
+  /** Omit for a record with nowhere to close to (a deep-linked lookup) — no Back / ✕. */
+  onClose?: () => void;
+  /**
+   * Where the way out sits (owner 2026-09-27): a record shown INLINE over the
+   * list gets `back` — "‹ Back" at the top left, like leaving a page; a record
+   * BESIDE the list (the split pane, a side rail) or a centred card gets
+   * `close` — ✕ at the top right, like dismissing a panel.
+   */
+  dismiss?: 'back' | 'close';
   /** The record's own verbs — painted before n of N / ‹ › / ✕. */
   actions?: ReactNode;
   /** The record-view switch — after the verbs, before n of N / ‹ › / ✕. */
@@ -189,8 +200,8 @@ interface DeskStageRecordHeaderProps {
 }
 
 /**
- * The record's title / walk / ✕ band. One band for both record views:
- * {@link DeskStageOverlay} paints it over the stage (in place), and
+ * The record's title / walk / way-out band. One band for both record views:
+ * {@link DeskStageOverlay} paints it over the stage (in place → Back), and
  * `DeskRecordPlane` paints it on the split pane — never a second header.
  */
 export function DeskStageRecordHeader({
@@ -202,11 +213,28 @@ export function DeskStageRecordHeader({
   prevDisabled,
   nextDisabled,
   onClose,
+  dismiss = 'close',
   actions,
   viewSwitch,
 }: DeskStageRecordHeaderProps) {
   return (
-    <header className="flex shrink-0 items-center gap-2 border-b border-border-hairline px-4 py-3">
+    // A container, so the band sheds its secondary pieces (n of N, then the
+    // view switch) as the record column narrows instead of crushing the title.
+    <header className="@container/record-head flex shrink-0 items-center gap-2 border-b border-border-hairline px-4 py-3">
+      {onClose && dismiss === 'back' ? (
+        // Mobile-first back (owner 2026-09-27): arrow only, a 44px round CTA —
+        // round in triage, square on Floor (industrial radius 0).
+        <IconButton
+          icon={<ArrowLeft className="size-5" />}
+          ariaLabel="Back to the list"
+          title="Back (Esc)"
+          size="touch"
+          radius="modePill"
+          onClick={onClose}
+          data-testid="desk-record-back"
+          className="-ml-1 bg-surface-sunken text-text-default hover:bg-surface-strong"
+        />
+      ) : null}
       <div className="min-w-0 flex-1">
         <h2 className="truncate text-role-title text-text-default">{title}</h2>
         {subtitle ? (
@@ -216,11 +244,11 @@ export function DeskStageRecordHeader({
       {actions ? <div className="flex shrink-0 items-center gap-1.5">{actions}</div> : null}
       {/* Hierarchy: where you are (n of N), then how you view it, then ✕. */}
       {indexLabel ? (
-        <span className="shrink-0 tabular-nums text-role-caption text-text-muted">
+        <span className="hidden shrink-0 tabular-nums text-role-caption text-text-muted @sm/record-head:inline">
           {indexLabel}
         </span>
       ) : null}
-      {viewSwitch}
+      {viewSwitch ? <span className="hidden shrink-0 @xs/record-head:flex">{viewSwitch}</span> : null}
       {(onPrev || onNext) && (
         <div className="flex shrink-0 items-center gap-0.5">
           {onPrev ? (
@@ -249,15 +277,17 @@ export function DeskStageRecordHeader({
           ) : null}
         </div>
       )}
-      <Button
-        type="button"
-        variant="ghost"
-        size="sm"
-        aria-label="Close"
-        onClick={onClose}
-      >
-        <X className="size-4" />
-      </Button>
+      {onClose && dismiss === 'close' ? (
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          aria-label="Close"
+          onClick={onClose}
+        >
+          <X className="size-4" />
+        </Button>
+      ) : null}
     </header>
   );
 }

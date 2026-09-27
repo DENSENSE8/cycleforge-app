@@ -1,11 +1,6 @@
-/** FIND case-file view-model — timeline kinds, outline, dossier. */
+/** FIND record events — the kinds a `/search` record's timeline carries, and their timeline rows. */
 
-import type { SearchHitEntityType } from '@/lib/search/search-hit';
-import type {
-  SearchDossierFact,
-  SearchDossierFinding,
-  SearchDossierHandoff,
-} from '@/lib/search/search-dossier-model';
+import type { TimelineItem, TimelineRef } from '@/lib/timeline/types';
 
 /**
  * Stream faces.
@@ -59,75 +54,8 @@ export interface FindEvent {
   children?: readonly FindEvent[];
 }
 
-export interface FindOutlineEntry {
-  kind: FindEventKind;
-  count: number;
-}
-
-export interface FindDossier {
-  entityType: SearchHitEntityType;
-  id: number;
-  title: string;
-  status: string;
-  facts: SearchDossierFact[];
-  outline: FindOutlineEntry[];
-  events: FindEvent[];
-  findings: SearchDossierFinding[];
-  handoffs: SearchDossierHandoff[];
-}
-
 export function isFindEventKind(value: string): value is FindEventKind {
   return (FIND_EVENT_KINDS as readonly string[]).includes(value);
-}
-
-/** Outline chip labels — investigation kinds, not station names. */
-export const FIND_OUTLINE_LABEL: Record<FindEventKind, string> = {
-  qty: 'Qty',
-  custody: 'Custody',
-  hop: 'Hops',
-  evidence: 'Evidence',
-  exception: 'Exceptions',
-  bind: 'Binds',
-  carrier: 'Carrier',
-  note: 'Notes',
-};
-
-/** Kinds that never get a left-nav chip (operator, 2026-09-12). */
-export const FIND_OUTLINE_CHIPLESS_KINDS: readonly FindEventKind[] = ['qty', 'custody'];
-
-
-/**
- * Phase-1 outline from adapter counts (no fake hops). Zero counts omitted.
- * Callers: FIND dossiers until the chronology APIs land in Phase 2.
- */
-export function adapterOutline(counts: Partial<Record<FindEventKind, number>>): FindOutlineEntry[] {
-  const outline: FindOutlineEntry[] = [];
-  for (const kind of FIND_EVENT_KINDS) {
-    const count = counts[kind] ?? 0;
-    if (count > 0) outline.push({ kind, count });
-  }
-  return outline;
-}
-
-function walkEvents(events: readonly FindEvent[], visit: (event: FindEvent) => void): void {
-  for (const event of events) {
-    visit(event);
-    if (event.children && event.children.length > 0) walkEvents(event.children, visit);
-  }
-}
-
-/** Kind counts from the stream. Zero counts are omitted. Catalog order. */
-export function outlineFromEvents(events: readonly FindEvent[]): FindOutlineEntry[] {
-  const counts = new Map<FindEventKind, number>();
-  walkEvents(events, (event) => {
-    counts.set(event.kind, (counts.get(event.kind) ?? 0) + 1);
-  });
-  const outline: FindOutlineEntry[] = [];
-  for (const kind of FIND_EVENT_KINDS) {
-    const count = counts.get(kind) ?? 0;
-    if (count > 0) outline.push({ kind, count });
-  }
-  return outline;
 }
 
 function byNewest(a: FindEvent, b: FindEvent): number {
@@ -150,44 +78,74 @@ export function eventsNewestFirst(events: readonly FindEvent[]): FindEvent[] {
   return sortTree(events);
 }
 
-/**
- * Overview (`kind` omitted) returns the full newest-first stream.
- * A kind filter keeps matching rows only; nested hops under a carrier are
- * lifted so outline counts stay truthful.
- */
-export function filterEventsByKind(
-  events: readonly FindEvent[],
-  kind: FindEventKind | null,
-): FindEvent[] {
-  const sorted = eventsNewestFirst(events);
-  if (kind == null) return sorted;
-  const out: FindEvent[] = [];
-  for (const event of sorted) {
-    const childHits =
-      event.children && event.children.length > 0
-        ? filterEventsByKind(event.children, kind)
-        : [];
-    if (event.kind === kind) {
-      out.push(
-        childHits.length > 0 ? { ...event, children: childHits } : { ...event, children: undefined },
-      );
-    } else {
-      out.push(...childHits);
-    }
-  }
-  return out;
+function qtyLine(qty: FindQtyLedger | undefined): string | null {
+  if (!qty) return null;
+  const parts: string[] = [];
+  if (qty.ordered != null) parts.push(`Ordered ${qty.ordered}`);
+  if (qty.received != null) parts.push(`Received ${qty.received}`);
+  if (qty.packed != null) parts.push(`Packed ${qty.packed}`);
+  if (qty.shipped != null) parts.push(`Shipped ${qty.shipped}`);
+  return parts.length > 0 ? parts.join(' · ') : null;
 }
 
-export type FindDossierDraft = Omit<FindDossier, 'outline' | 'events'> & {
-  events: readonly FindEvent[];
-};
+function bindRefs(bind: FindBind | undefined): TimelineRef[] {
+  if (!bind) return [];
+  const refs: TimelineRef[] = [];
+  if (bind.serial) refs.push({ kind: 'serial', value: bind.serial });
+  if (bind.tracking) refs.push({ kind: 'tracking', value: bind.tracking });
+  if (bind.sku) refs.push({ kind: 'sku', value: bind.sku });
+  return refs;
+}
 
-/** Sort the stream newest-first and derive the outline. Adapters call this. */
-export function presentFindDossier(draft: FindDossierDraft): FindDossier {
-  const events = eventsNewestFirst(draft.events);
-  return {
-    ...draft,
-    events,
-    outline: outlineFromEvents(events),
+/**
+ * FIND events → the house timeline rows (`TimelineSection`), the same grammar
+ * the order record's timeline paints. Carrier sub-events become rows of their
+ * own (each has its own instant); the result is newest-first.
+ */
+export function findEventsToTimelineItems(events: readonly FindEvent[]): TimelineItem[] {
+  const flat: FindEvent[] = [];
+  const walk = (list: readonly FindEvent[]) => {
+    for (const event of list) {
+      flat.push(event);
+      if (event.children && event.children.length > 0) walk(event.children);
+    }
   };
+  walk(events);
+
+  let mediaSeq = 0;
+  return eventsNewestFirst(flat).map((event): TimelineItem => {
+    const subtitle = [event.stationCaption, event.body, qtyLine(event.qty)]
+      .map((part) => String(part ?? '').trim())
+      .filter(Boolean)
+      .join(' · ');
+    const refs = bindRefs(event.bind);
+    return {
+      id: event.id,
+      at: event.at,
+      title: event.title,
+      ...(subtitle ? { subtitle } : {}),
+      ...(event.actor ? { actor: event.actor } : {}),
+      ...(refs.length === 1 ? { ref: refs[0] } : refs.length > 1 ? { refs } : {}),
+      ...(event.kind === 'exception'
+        ? {
+            badges: [
+              event.resolved
+                ? { label: 'Resolved', tone: 'success' as const }
+                : { label: 'Open exception', tone: 'warning' as const },
+            ],
+          }
+        : {}),
+      ...(event.href ? { href: event.href } : {}),
+      ...(event.evidenceUrls && event.evidenceUrls.length > 0
+        ? {
+            media: event.evidenceUrls.map((url) => ({
+              photoId: -(++mediaSeq),
+              thumbUrl: url,
+              fullUrl: url,
+              caption: event.title,
+            })),
+          }
+        : {}),
+    };
+  });
 }

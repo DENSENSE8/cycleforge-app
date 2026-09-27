@@ -15,7 +15,7 @@ WITH scope AS MATERIALIZED (
     OR EXISTS (
       SELECT 1 FROM station_activity_logs sal
       WHERE sal.organization_id = o.organization_id
-        AND sal.activity_type IN ('TRACKING_SCANNED', 'FNSKU_SCANNED')
+        AND sal.activity_type IN ('PICK_SCANNED', 'FNSKU_SCANNED')
         AND (
           sal.order_row_id = o.id
           OR sal.ext_order_id = o.order_id
@@ -35,7 +35,7 @@ WITH scope AS MATERIALIZED (
           )
         )
     )
-  ) AS has_tech_scan,
+  ) AS has_pick_scan,
         (
     EXISTS (
       SELECT 1 FROM station_activity_logs sal
@@ -117,7 +117,7 @@ WITH scope AS MATERIALIZED (
     ),
     groups AS (
       SELECT
-        s.has_tech_scan,
+        s.has_pick_scan,
         s.has_pack_scan,
         s.is_out_of_stock AS blocked,
         COUNT(*)::int AS n,

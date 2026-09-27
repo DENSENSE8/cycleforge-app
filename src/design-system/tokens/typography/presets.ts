@@ -1,10 +1,17 @@
 /** Composed typography presets — Tailwind class strings for common text patterns. */
 
-/** Section headers in sidebars, panels, and cards (e.g. "SHIPPING", "DETAILS") */
-export const sectionLabel = 'text-role-micro uppercase tracking-[0.2em] text-text-soft' as const;
+/**
+ * Section headers in sidebars, panels, and cards ("Shipping", "Details").
+ * Write them in sentence case: triage reads them as written, industrial
+ * (the nearest `data-mode`, `industrial:` in globals.css) keeps the tracked
+ * caps micro face.
+ */
+export const sectionLabel =
+  'text-role-caption font-semibold text-text-soft industrial:text-role-micro industrial:font-normal industrial:uppercase industrial:tracking-[0.2em]' as const;
 
-/** Form field labels (e.g. "SKU *", "CONDITION") */
-export const fieldLabel = 'text-role-micro uppercase tracking-[0.16em] text-text-muted' as const;
+/** Form field labels ("SKU *", "Condition") — same two faces as {@link sectionLabel}. */
+export const fieldLabel =
+  'text-role-caption font-medium text-text-muted industrial:text-role-micro industrial:font-normal industrial:uppercase industrial:tracking-[0.16em]' as const;
 
 /** Primary data values (e.g. product titles, names) */
 export const dataValue = 'text-sm font-semibold text-text-default' as const;
@@ -43,8 +50,8 @@ export const tableHeader = 'text-role-micro font-normal text-text-default' as co
 /** Table cell content */
 export const tableCell = 'text-sm font-semibold text-text-default' as const;
 
-/** Micro badges (e.g. 8px uppercase labels, subtitle accents) */
-export const microBadge = 'text-role-micro uppercase' as const;
+/** Micro badges and subtitle accents — sentence case in triage, caps on industrial. */
+export const microBadge = 'text-role-micro industrial:uppercase' as const;
 
 const typographyPresets = {
   sectionLabel,

@@ -9,8 +9,10 @@ import { cornerClass } from '../tokens/radius';
 import { focusRing } from '../tokens/focus-ring';
 import {
   DESK_FLOOR_SHORTCUT,
+  DESK_SPLIT_SHORTCUT,
   DeskStageProvider,
   isDeskFloorChord,
+  isDeskSplitChord,
   publishDeskFloorActive,
   type DeskStageView,
 } from './DeskStageContext';
@@ -106,8 +108,8 @@ export function DeskPageChrome({
   // Escape is the keyboard half of the one-click-out budget: one exit per
   // press — the record (DeskRecordPlane, document) and a check-set (window
   // capture) claim it first; then floor → the view it came from; then split.
-  const viewRef = useRef({ floor, onViewChange, onToggleFloor });
-  viewRef.current = { floor, onViewChange, onToggleFloor };
+  const viewRef = useRef({ floor, split: view === 'split', onViewChange, onToggleFloor });
+  viewRef.current = { floor, split: view === 'split', onViewChange, onToggleFloor };
   useEffect(() => {
     if (!fullscreen) return;
     const onKeyDown = (event: KeyboardEvent) => {
@@ -151,6 +153,29 @@ export function DeskPageChrome({
   useEffect(() => {
     if (floor && !floorAvailable) viewRef.current.onToggleFloor();
   }, [floor, floorAvailable]);
+
+  // ⌘/Ctrl+Shift+S — In place ⇄ Split, beside the Floor chord (same law: a
+  // chord, may fire from a text field, an open overlay still owns the keys).
+  // Floor's records always open in place, so the key rests there.
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.defaultPrevented || !isDeskSplitChord(event) || hasOpenOverlay()) return;
+      const current = viewRef.current;
+      if (current.floor) return;
+      event.preventDefault();
+      current.onViewChange(current.split ? 'in-place' : 'split');
+    };
+    window.addEventListener('keydown', onKeyDown);
+    const unregister = registerShortcutOverviewGroup({
+      id: 'desk-split',
+      title: 'Desk',
+      rows: [{ keys: [...DESK_SPLIT_SHORTCUT.keys], label: DESK_SPLIT_SHORTCUT.label }],
+    });
+    return () => {
+      window.removeEventListener('keydown', onKeyDown);
+      unregister();
+    };
+  }, []);
 
   return (
     <DeskStageProvider

@@ -11,7 +11,8 @@ export type { AutomationTriggerKey };
 
 export type AssignWorkAction = {
   type: 'assign_work';
-  work_type: 'TEST' | 'PACK';
+  /** PICK = the order's picker, PACK = its packer. */
+  work_type: 'PICK' | 'PACK';
   staff_id: number;
   /** Takes the action when `staff_id` is out that PST day. Never equals staff_id. */
   backup_staff_id?: number;
@@ -28,7 +29,7 @@ export type ListingAutomationFacts = {
   sku?: string | null;
   account_source?: string | null;
   /** When true, CSV (or other row-level) assignee already set — rules skip assign. */
-  csv_assignee_tech?: boolean;
+  csv_assignee_picker?: boolean;
   csv_assignee_packer?: boolean;
 };
 
@@ -113,7 +114,7 @@ export function parseAssignActions(raw: unknown): AssignWorkAction[] {
     const r = row as Record<string, unknown>;
     if (String(r.type ?? '') !== 'assign_work') continue;
     const workType = String(r.work_type ?? '').toUpperCase();
-    if (workType !== 'TEST' && workType !== 'PACK') continue;
+    if (workType !== 'PICK' && workType !== 'PACK') continue;
     const staffId = Number(r.staff_id);
     if (!Number.isFinite(staffId) || staffId <= 0) continue;
     const action: AssignWorkAction = { type: 'assign_work', work_type: workType, staff_id: staffId };
@@ -190,7 +191,7 @@ export function filterActionsForCsvOverride(
   facts: ListingAutomationFacts,
 ): AssignWorkAction[] {
   return actions.filter((a) => {
-    if (a.work_type === 'TEST' && facts.csv_assignee_tech) return false;
+    if (a.work_type === 'PICK' && facts.csv_assignee_picker) return false;
     if (a.work_type === 'PACK' && facts.csv_assignee_packer) return false;
     return true;
   });
@@ -202,9 +203,9 @@ export function selectActionsForTrigger(
   triggerKey: AutomationTriggerKey,
 ): AssignWorkAction[] {
   if (triggerKey === 'identification.completed') {
-    // P2: trigger exists for P3 subscribers. TEST|PACK never run on this key —
+    // P2: trigger exists for P3 subscribers. PICK|PACK never run on this key —
     // listing upserts stay on LISTING_AUTOMATION_TRIGGER_KEYS so dock scans
-    // cannot assign testers.
+    // cannot assign pickers.
     return [];
   }
   if (triggerKey === 'unit.test_passed') {

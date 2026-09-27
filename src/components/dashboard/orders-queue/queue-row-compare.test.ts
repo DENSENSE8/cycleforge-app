@@ -110,19 +110,35 @@ describe('compareQueueColumnRows', () => {
     assert.ok(compareQueueColumnRows(stamped, nobody, 'packed', 'desc') < 0);
   });
 
-  it('sorts Pick by the test stamp, not picker name', () => {
+  it('sorts Pick by the pick stamp, never the QC stamp', () => {
     const earlier = row({
       id: 1,
-      tested_by_name: 'TU',
-      test_date_time: '2026-09-08T17:00:00.000Z',
+      picked_by_name: 'TU',
+      picked_at: '2026-09-08T17:00:00.000Z',
+      test_activity_at: '2026-09-10T17:00:00.000Z',
     });
     const later = row({
       id: 2,
-      tested_by_name: 'TU',
-      test_date_time: '2026-09-09T17:00:00.000Z',
+      picked_by_name: 'TU',
+      picked_at: '2026-09-09T17:00:00.000Z',
+      test_activity_at: '2026-09-07T17:00:00.000Z',
     });
     assert.ok(compareQueueColumnRows(earlier, later, 'picked', 'asc') < 0);
     assert.ok(compareQueueColumnRows(earlier, later, 'picked', 'desc') > 0);
+  });
+
+  it('sorts Picker by picked_by_name A–Z / Z–A; unpicked rows last in both directions', () => {
+    const alice = row({ id: 1, picked_by_name: 'alice' });
+    const bob = row({ id: 2, picked_by_name: 'Bob' });
+    const nobody = row({ id: 3, picked_by_name: null });
+    const dashed = row({ id: 4, picked_by_name: '---' });
+    const sorted = (dir: 'asc' | 'desc') =>
+      [nobody, bob, dashed, alice].sort((a, b) => compareQueueColumnRows(a, b, 'picker', dir)).map((r) => r.id);
+    assert.deepEqual(sorted('asc').slice(0, 2), [1, 2]);
+    assert.deepEqual(sorted('desc').slice(0, 2), [2, 1]);
+    for (const dir of ['asc', 'desc'] as const) {
+      assert.deepEqual(sorted(dir).slice(2).sort(), [3, 4], `blanks last under ${dir}`);
+    }
   });
 
   it('sorts carriers A–Z with no hardcoded pin; blanks last in both directions', () => {

@@ -1,13 +1,15 @@
 'use client';
 
-/** Wires up the dashboard's realtime side effects in one place: */
+/**
+ * The order desks' page-level realtime extras: FBA board invalidation and the
+ * admin toasts. The order-table subscriptions themselves are the shell's
+ * (`RouteRealtimeMount`, `/shipping` → dashboard + reconnect).
+ */
 
-import { useRealtimeInvalidation } from '@/hooks/useRealtimeInvalidation';
 import { useFbaRealtimeInvalidation } from '@/hooks/useFbaRealtimeInvalidation';
 import { useRealtimeToasts } from '@/hooks/useRealtimeToasts';
 
 export function useDashboardRealtime(): void {
-  useRealtimeInvalidation({ dashboard: true, reconnect: true });
   useFbaRealtimeInvalidation();
   useRealtimeToasts('admin');
 }

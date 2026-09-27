@@ -7,12 +7,13 @@ import { cn } from '@/utils/_cn';
 
 type StackSpace = 'tight' | 'row' | 'section';
 
+/** Values belong to the region's mode (`spacing` in packages/design-tokens/src/modes.ts) — triage / other modes shown. */
 const SPACE: Record<StackSpace, string> = {
-  /** gap-1.5 — chip clusters, dense sub-rows. */
+  /** 8 / 6 — chip clusters, dense sub-rows. */
   tight: 'stack-tight',
-  /** gap-2 — the default row rhythm inside cards/panels. */
+  /** 12 / 8 — the default row rhythm inside cards/panels. */
   row: 'stack-row',
-  /** gap-6 — page/section rhythm between blocks. */
+  /** 32 / 24 — page/section rhythm between blocks. */
   section: 'stack-section',
 };
 

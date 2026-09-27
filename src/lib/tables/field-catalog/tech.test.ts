@@ -3,7 +3,7 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import { COMPOUND_COLUMN_KEYS, COMPOUND_TRACKS } from '@/components/tables/compound/compound-columns';
-import type { TechRecord } from '@/hooks/useTechLogs';
+import type { TechRecord } from '@/hooks/useDeskPickLogs';
 import { techRecordToQueueRow } from '@/lib/station/record-to-queue-row';
 import { materializeTracks } from '../materialize-tracks';
 import { parseSlotLayout } from '../slot-layout';

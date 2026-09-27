@@ -69,6 +69,7 @@ function ResetInner() {
       const body = (await res.json().catch(() => ({}))) as {
         ok?: boolean;
         organizationId?: string;
+        redirectTo?: string;
         needsOrgChoice?: boolean;
         error?: string;
       };
@@ -81,8 +82,8 @@ function ResetInner() {
         return;
       }
       if (body.organizationId) {
-        // Signed in — go to the app.
-        router.replace('/');
+        // Signed in — go to the staff member's landing.
+        router.replace(body.redirectTo || '/');
         return;
       }
       // Password set but no auto-sign-in (0 or multiple workspaces) → go log in.

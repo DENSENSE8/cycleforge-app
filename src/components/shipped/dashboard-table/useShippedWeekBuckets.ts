@@ -5,6 +5,7 @@ import { dashboardShippedWeekQuery, SHIPPED_WEEK_PAGE_SIZE } from '@/lib/queries
 import { getWeekBucketsForRange } from '@/lib/dashboard-week-range';
 import type { PackerRecord } from '@/hooks/usePackerLogs';
 import type { ShippedTypeFilter } from './useShippedTableFilters';
+import type { ShippedTimeParams } from '@/lib/shipping/shipped-filter/shipped-filter-params';
 
 interface UseShippedWeekBucketsParams {
   /** Effective window start (YYYY-MM-DD). */
@@ -19,6 +20,10 @@ interface UseShippedWeekBucketsParams {
   carrier: string | null;
   statusCategory: string | null;
   exceptionsOnly: boolean;
+  /** Exact shipped-instant window (`?timeFrom`/`?timeTo`); null = none. Answered in SQL. */
+  shippedTime: ShippedTimeParams | null;
+  /** `?pickedBy` — the order's picker. Answered in SQL. */
+  pickedBy?: number;
   /** False in all-time mode (empty window ⇒ there is nothing to bucket). */
   enabled: boolean;
   /** Desk find text. Rides the fetch (`/api/packerlogs?q=`), never a pass over
@@ -50,6 +55,8 @@ export function useShippedWeekBuckets({
   carrier,
   statusCategory,
   exceptionsOnly,
+  shippedTime,
+  pickedBy,
   enabled,
   searchTerm = '',
   limit = SHIPPED_WEEK_PAGE_SIZE,
@@ -62,7 +69,7 @@ export function useShippedWeekBuckets({
       // Key + fetch + TTLs come from the shared factory (SoT) so the warm-up
       // prefetch and this live query can never drift apart.
       ...dashboardShippedWeekQuery({
-        weekStart, weekEnd, packedBy, testedBy, staffId, shippedFilter, carrier, statusCategory, exceptionsOnly, searchTerm, limit, phase,
+        weekStart, weekEnd, packedBy, testedBy, staffId, shippedFilter, carrier, statusCategory, exceptionsOnly, shippedTime, pickedBy, searchTerm, limit, phase,
       }),
       placeholderData: (prev: PackerRecord[] | undefined) => prev,
       enabled,

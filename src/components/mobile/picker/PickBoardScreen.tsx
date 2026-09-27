@@ -71,7 +71,7 @@ export function PickBoardScreen() {
     setActionError(null);
     setTakingId(row.orderId);
     assignOrder(
-      { orderId: row.orderId, testerId: user.staffId, testerName: user.name },
+      { orderId: row.orderId, pickerId: user.staffId, pickerName: user.name },
       {
         onSuccess: () => router.push(PICK_HREF),
         onError: (err) => {
@@ -86,7 +86,7 @@ export function PickBoardScreen() {
     if (!passRow) return;
     setActionError(null);
     assignOrder(
-      { orderId: passRow.orderId, testerId: staff.id, testerName: staff.name },
+      { orderId: passRow.orderId, pickerId: staff.id, pickerName: staff.name },
       {
         onSuccess: () => {
           setPassRow(null);

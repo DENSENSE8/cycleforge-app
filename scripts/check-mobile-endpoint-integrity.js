@@ -119,7 +119,7 @@ const readChecks = [
     validate: (data) => validateArrayOfObjects(data, ['id', 'name']),
   }),
   createCheck({
-    endpoint: '/api/tech-logs?techId=1&limit=5',
+    endpoint: '/api/picking/desk/logs?techId=1&limit=5',
     validate: (data) => validateArrayOfObjects(data, ['shipping_tracking_number']),
   }),
   createCheck({
@@ -287,7 +287,7 @@ async function buildMutationChecks() {
       validate: (data) => validateObjectWithKeys(data, ['found']),
     }),
     createCheck({
-      endpoint: '/api/tech/scan',
+      endpoint: '/api/picking/desk/scan',
       method: 'POST',
       body: {
         type: 'TRACKING',
@@ -338,9 +338,10 @@ async function buildMutationChecks() {
 
   checks.push(
     createCheck({
-      endpoint: '/api/tech/add-serial',
+      endpoint: '/api/picking/desk/serial',
       method: 'POST',
       body: {
+        action: 'add',
         tracking: seedTracking,
         serial: serialValue,
         techId: '1',
@@ -366,9 +367,10 @@ async function buildMutationChecks() {
 
   checks.push(
     createCheck({
-      endpoint: '/api/tech/undo-last',
+      endpoint: '/api/picking/desk/serial',
       method: 'POST',
       body: {
+        action: 'undo',
         tracking: seedTracking,
         techId: '1',
       },

@@ -16,7 +16,7 @@ interface Captured {
 function fakes(storedRows: NavRecentDbRow[] = []) {
   const cap: Captured = { reads: [], writes: [], techLogCalls: [], sessionCalls: [] };
   const adapters = {
-    fetchTechLogRows: async (orgId: string, opts: { techId: number | null; limit: number }) => {
+    fetchDeskPickLogRows: async (orgId: string, opts: { techId: number | null; limit: number }) => {
       cap.techLogCalls.push({ orgId, techId: opts.techId, limit: opts.limit });
       return [];
     },
@@ -139,7 +139,7 @@ test('trace and labels-lookup recents link to the serial journey and the labels 
 test('adapter surfaces read the caller’s own feed (tech scans are MY scans, not the org’s)', async () => {
   const { deps, cap } = fakes();
   const res = await listNavRecents(
-    caller(['tech.view'], 21),
+    caller(['picking.view'], 21),
     // An unpaged, un-findable surface ignores the cursor and the text.
     { surface: 'tech.scans', limit: 10, before: 'cursor', q: 'x' },
     deps,

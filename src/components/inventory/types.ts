@@ -164,6 +164,8 @@ export interface ConditionHistoryRow {
 export interface AllocationRow {
     id: number;
     order_id: number;
+    /** `orders.order_id` — the marketplace order number the operator knows. */
+    order_number: string | null;
     allocated_at: string;
     state: string;
     released_at: string | null;

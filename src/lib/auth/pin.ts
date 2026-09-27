@@ -115,11 +115,25 @@ interface StaffPinRow {
   default_home_path_mobile: string | null;
 }
 
-/** Verified PIN row plus whether this bump was the first sign-in of the PST day. */
-export type VerifiedStaffPin = StaffPinRow & { firstSigninToday: boolean };
+/** Verified PIN row. */
+export type VerifiedStaffPin = StaffPinRow;
+
+export interface VerifyStaffPinOptions {
+  /**
+   * True only when this PIN check IS a sign-in (station sign-in, staff switch):
+   * stamps `staff.last_login_at`. Step-up, PIN change, kiosk-device and
+   * QR-authorize checks pass false so they never record a sign-in.
+   */
+  recordLogin: boolean;
+}
 
 /** Look up by ID and verify PIN. */
-export async function verifyStaffPin(staffId: number, pin: string, orgId?: OrgId): Promise<VerifiedStaffPin> {
+export async function verifyStaffPin(
+  staffId: number,
+  pin: string,
+  orgId: OrgId | undefined,
+  options: VerifyStaffPinOptions,
+): Promise<VerifiedStaffPin> {
   assertPinShape(pin);
 
   if (orgId) {
@@ -140,9 +154,8 @@ export async function verifyStaffPin(staffId: number, pin: string, orgId?: OrgId
       const ok = await verifyHash(pin, row.pin_hash);
       if (!ok) throw new PinError('WRONG');
 
-      // Success → bump last_login_at (and learn whether it is first-of-day)
-      const { firstSigninToday } = await recordStaffLogin(client, staffId);
-      return { ...row, firstSigninToday };
+      if (options.recordLogin) await recordStaffLogin(client, staffId);
+      return row;
     });
   }
 
@@ -161,7 +174,6 @@ export async function verifyStaffPin(staffId: number, pin: string, orgId?: OrgId
   const ok = await verifyHash(pin, row.pin_hash);
   if (!ok) throw new PinError('WRONG');
 
-  // Success → bump last_login_at (and learn whether it is first-of-day)
-  const { firstSigninToday } = await recordStaffLogin(pool, staffId);
-  return { ...row, firstSigninToday };
+  if (options.recordLogin) await recordStaffLogin(pool, staffId);
+  return row;
 }

@@ -2,6 +2,7 @@
 
 import { inferMarketplaceFromOrderId } from '@/lib/marketplace-order-id';
 import type { CsvOrderCanonicalKey } from './csv-order-import';
+import type { ManualOrderDraft } from './manual-order-draft';
 
 /** How the row entered the system. Set by the entry path, never typed. */
 export type IntakeImportOrigin = 'synced' | 'csv' | 'manual' | 'shipstation';
@@ -33,6 +34,12 @@ export interface CanonicalOrderIntake {
   labelMode: IntakeLabelMode;
   assignedTechId: number | null;
   assignedPackerId: number | null;
+  /**
+   * A phone order prefilled from the chat (`?prefill=`): customer, ship-to,
+   * every line and the ship-by. The first line also fills the single-line
+   * fields above; create sends the whole contract. Absent for every other path.
+   */
+  phoneOrder?: ManualOrderDraft;
 }
 
 /** A blank manual-entry draft — the single form's initial state. */

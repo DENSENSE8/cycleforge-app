@@ -2,6 +2,11 @@ import { NextRequest, NextResponse } from 'next/server';
 import { requireRoutePerm } from '@/lib/auth/dynamic-route-guard';
 import { recordAudit, AUDIT_ACTION } from '@/lib/audit-logs';
 import { dispatchPrintBundle } from '@/lib/documents/print-bundle';
+import {
+  isDocumentPrintJobType,
+  printBatchEventPrefix,
+  type DocumentPrintJobType,
+} from '@/lib/documents/document-print-jobs';
 import type { OrgId } from '@/lib/tenancy/constants';
 import pool from '@/lib/db';
 
@@ -10,6 +15,14 @@ import pool from '@/lib/db';
 function parseId(raw: string): number | null {
   const id = Number(raw);
   return Number.isFinite(id) && id > 0 ? id : null;
+}
+
+/** Absent → the whole bundle; a non-empty list of known types → just those; anything else is refused. */
+function parseDocumentTypes(raw: unknown): DocumentPrintJobType[] | null | 'invalid' {
+  if (raw == null) return null;
+  if (!Array.isArray(raw) || raw.length === 0) return 'invalid';
+  const types = [...new Set(raw)];
+  return types.every(isDocumentPrintJobType) ? types : 'invalid';
 }
 
 export async function POST(
@@ -35,6 +48,13 @@ export async function POST(
       ? Math.floor(Number(body.shipmentId))
       : null;
   const reprint = Boolean(body?.reprint);
+  // A chat / station batch: its own ledger keys, so the batch's rows can be read back.
+  const batchId =
+    typeof body?.batchId === 'string' && /^[A-Za-z0-9_-]{8,80}$/.test(body.batchId) ? body.batchId : null;
+  const documentTypes = parseDocumentTypes(body?.documentTypes);
+  if (documentTypes === 'invalid') {
+    return NextResponse.json({ error: 'Invalid documentTypes' }, { status: 400 });
+  }
 
   const orgId = gate.ctx.organizationId as OrgId;
   const staffId = gate.ctx.staffId ?? null;
@@ -46,6 +66,8 @@ export async function POST(
       shipmentId,
       actorStaffId: staffId,
       reprint,
+      ...(batchId ? { clientEventIdPrefix: printBatchEventPrefix(batchId, orderId) } : {}),
+      ...(documentTypes ? { documentTypes } : {}),
     });
 
     if (printBundle.status !== 'missing') {

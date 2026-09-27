@@ -77,6 +77,8 @@ interface SearchableSelectFieldProps<T = unknown> {
   loading?: boolean;
   /** Stable e2e / test hook on the combobox trigger. */
   testId?: string;
+  /** The list opened / closed — hosts load their options just in time on the first open. */
+  onOpenChange?: (open: boolean) => void;
 }
 
 const TONE_TRIGGER: Record<NonNullable<SearchableSelectFieldProps['tone']>, string> = {
@@ -170,8 +172,13 @@ export function SearchableSelectField<T = unknown>({
   onSearchChange,
   loading = false,
   testId,
+  onOpenChange,
 }: SearchableSelectFieldProps<T>) {
-  const [open, setOpen] = useState(false);
+  const [open, setOpenState] = useState(false);
+  const setOpen = (next: boolean) => {
+    setOpenState(next);
+    onOpenChange?.(next);
+  };
   const [query, setQuery] = useState('');
   const triggerRef = useRef<HTMLButtonElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -307,7 +314,7 @@ export function SearchableSelectField<T = unknown>({
           <span
             id={labelId}
             className={cn(
-              'pointer-events-none absolute left-3.5 top-1.5 text-role-micro font-semibold uppercase tracking-wide',
+              'pointer-events-none absolute left-3.5 top-1.5 text-role-micro font-semibold mode-label-case',
               TONE_FLOAT[tone],
             )}
           >
@@ -386,7 +393,7 @@ export function SearchableSelectField<T = unknown>({
             ) : (
               <Command.Empty
                 className={cn(
-                  'text-center text-role-eyebrow uppercase tracking-wider text-text-faint',
+                  'text-center text-role-eyebrow mode-label-case text-text-faint',
                   flush ? 'px-3.5 py-3' : 'px-3 py-4',
                 )}
               >
@@ -400,7 +407,7 @@ export function SearchableSelectField<T = unknown>({
                 heading={heading || undefined}
                 className={cn(
                   heading
-                    && '[&_[cmdk-group-heading]]:py-1.5 [&_[cmdk-group-heading]]:text-role-eyebrow [&_[cmdk-group-heading]]:font-semibold [&_[cmdk-group-heading]]:uppercase [&_[cmdk-group-heading]]:tracking-[0.14em] [&_[cmdk-group-heading]]:text-text-faint',
+                    && '[&_[cmdk-group-heading]]:py-1.5 [&_[cmdk-group-heading]]:text-role-eyebrow [&_[cmdk-group-heading]]:font-semibold [&_[cmdk-group-heading]]:mode-label-case [&_[cmdk-group-heading]]:text-text-faint',
                   heading
                     && (flush
                       ? '[&_[cmdk-group-heading]]:px-3.5'
@@ -434,7 +441,7 @@ export function SearchableSelectField<T = unknown>({
                             {opt.label}
                           </span>
                           {opt.meta ? (
-                            <span className="shrink-0 text-role-eyebrow uppercase tracking-wide text-text-faint">
+                            <span className="shrink-0 text-role-eyebrow mode-label-case text-text-faint">
                               {opt.meta}
                             </span>
                           ) : null}

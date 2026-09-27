@@ -2,7 +2,7 @@
 import type { PoolClient } from 'pg';
 import { tenantQuery, withTenantTransaction } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';
-import { skuCatalogNoZohoTwinPredicateSql } from '@/lib/sku/sku-identity-law';
+import { skuCatalogTitleUnownedPredicateSql } from '@/lib/sku/sku-identity-law';
 
 /** Which gallery — a catalog SKU's reusable set, or a single unit's set. */
 export type ListingTarget = { kind: 'sku'; id: number } | { kind: 'unit'; id: number };
@@ -38,7 +38,7 @@ export function listingCoverThumbUrlSql(catalogAlias: string): string {
               AND lp.sku_catalog_id = ${catalogAlias}.id
               AND lp.is_cover
               AND NULLIF(BTRIM(${catalogAlias}.image_url), '') IS NULL
-              AND ${skuCatalogNoZohoTwinPredicateSql(catalogAlias)}
+              AND ${skuCatalogTitleUnownedPredicateSql(catalogAlias)}
             LIMIT 1)`;
 }
 

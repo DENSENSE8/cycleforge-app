@@ -283,7 +283,7 @@ export function checkRateLimitForOrg(
 }
 ```
 
-Then in each authed route currently calling `checkRateLimitAsync({ headers, routeKey, limit, windowMs })`, change to `checkRateLimitForOrg({ headers, routeKey, limit, windowMs, organizationId: ctx.organizationId })`. The 12 callers (`scan-tracking`, `tech/scan`, `ai/chat`, `ai/search`, `shipping/track/*`, `receiving-lines/incoming/refresh*`, etc.) all run under `withAuth` and have `ctx`. `auth/signup` is pre-auth (no org yet) → keep IP-only there (don't pass org).
+Then in each authed route currently calling `checkRateLimitAsync({ headers, routeKey, limit, windowMs })`, change to `checkRateLimitForOrg({ headers, routeKey, limit, windowMs, organizationId: ctx.organizationId })`. The 12 callers (`scan-tracking`, `picking/desk/scan` + `fba/fnsku-scan`, `ai/chat`, `ai/search`, `shipping/track/*`, `receiving-lines/incoming/refresh*`, etc.) all run under `withAuth` and have `ctx`. `auth/signup` is pre-auth (no org yet) → keep IP-only there (don't pass org).
 
 ### Upstash Redis prod config — **finding: NOT confirmed; flag it**
 `checkRateLimitAsync` reads `UPSTASH_REDIS_REST_URL` / `UPSTASH_REDIS_REST_TOKEN` at module load. If both are unset it silently falls back to the in-memory `Map`, which the file's own header calls *"NOT fine for production multi-instance"* — under Vercel autoscaling the effective limit becomes `limit × instances`, i.e. **rate limiting is effectively off in prod.** I checked `.env`, `.env.local`, and `vercel.json`: **neither `UPSTASH_REDIS_*` var is present locally**, so it is either set only in the Vercel dashboard or not at all. Action item:

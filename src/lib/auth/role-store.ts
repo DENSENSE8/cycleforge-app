@@ -19,7 +19,7 @@ export interface RoleRow {
 
 const ROLE_TTL_MS = 60_000;
 
-interface RolesSnapshot {
+export interface RolesSnapshot {
   byId: Map<number, RoleRow>;
   byKey: Map<string, RoleRow>;
   orderedByPosition: RoleRow[];
@@ -63,7 +63,7 @@ async function fetchRoles(): Promise<RolesSnapshot> {
   return { byId, byKey, orderedByPosition: rows, expiresAt: Date.now() + ROLE_TTL_MS };
 }
 
-async function getRolesSnapshot(): Promise<RolesSnapshot> {
+export async function getRolesSnapshot(): Promise<RolesSnapshot> {
   const now = Date.now();
   if (rolesCache && rolesCache.expiresAt > now) return rolesCache;
   if (inflightRoles) return inflightRoles;
@@ -125,14 +125,19 @@ async function loadStaffRoleIds(staffId: number, orgId?: OrgId): Promise<number[
   return roleIds;
 }
 
-export async function loadRolesForStaff(staffId: number, orgId?: OrgId): Promise<RoleRow[]> {
-  const [ids, snap] = await Promise.all([loadStaffRoleIds(staffId, orgId), getRolesSnapshot()]);
+/** Assigned role ids → role rows, in the ids' order; ids missing from the snapshot are dropped. */
+export function pickRoles(snap: RolesSnapshot, ids: ReadonlyArray<number>): RoleRow[] {
   const out: RoleRow[] = [];
   for (const id of ids) {
     const r = snap.byId.get(id);
     if (r) out.push(r);
   }
   return out;
+}
+
+export async function loadRolesForStaff(staffId: number, orgId?: OrgId): Promise<RoleRow[]> {
+  const [ids, snap] = await Promise.all([loadStaffRoleIds(staffId, orgId), getRolesSnapshot()]);
+  return pickRoles(snap, ids);
 }
 
 export function invalidateStaffRolesCache(staffId?: number): void {

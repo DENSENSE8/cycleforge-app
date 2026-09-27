@@ -1,5 +1,6 @@
 import type { PoolClient } from 'pg';
 import { classifyPackTier } from '@/lib/packing/pack-tier-classifier';
+import { sqlPackerOrderMatchLateral } from '@/lib/neon/packer-order-match';
 
 /** Writer for the shipped-table read model (`packer_log_enrichment`). */
 
@@ -67,35 +68,7 @@ const ENRICHMENT_SELECT = /* sql */ `
   ) sku_lookup ON TRUE
   LEFT JOIN shipping_tracking_numbers stn ON stn.id = sal.shipment_id
   LEFT JOIN fba_fnskus ff ON ff.fnsku = sal.fnsku
-  LEFT JOIN LATERAL (
-      SELECT ord.id
-      FROM orders ord
-      LEFT JOIN shipment_links osl ON osl.owner_id = ord.id AND osl.owner_type = 'ORDER'
-      LEFT JOIN shipping_tracking_numbers ord_stn ON ord_stn.id = ord.shipment_id
-      WHERE (
-          sal.shipment_id IS NOT NULL
-          AND (
-            osl.shipment_id = sal.shipment_id
-            OR ord.shipment_id = sal.shipment_id
-          )
-      ) OR (
-          COALESCE(stn.tracking_number_raw, sal.scan_ref, '') <> ''
-          AND ord_stn.tracking_number_raw IS NOT NULL
-          AND ord_stn.tracking_number_raw != ''
-          AND RIGHT(regexp_replace(UPPER(ord_stn.tracking_number_raw), '[^A-Z0-9]', '', 'g'), 18) =
-              RIGHT(regexp_replace(UPPER(COALESCE(stn.tracking_number_raw, sal.scan_ref, '')), '[^A-Z0-9]', '', 'g'), 18)
-      )
-      ORDER BY
-          CASE
-            WHEN sal.shipment_id IS NOT NULL AND osl.shipment_id = sal.shipment_id THEN 0
-            WHEN sal.shipment_id IS NOT NULL AND ord.shipment_id = sal.shipment_id THEN 1
-            ELSE 2
-          END,
-          CASE WHEN COALESCE(osl.is_primary, false) THEN 0 ELSE 1 END,
-          ord.created_at DESC NULLS LAST,
-          ord.id DESC
-      LIMIT 1
-  ) order_match ON TRUE
+  ${sqlPackerOrderMatchLateral('order_match')} ON TRUE
   LEFT JOIN orders o ON o.id = order_match.id AND o.organization_id = sal.organization_id
   LEFT JOIN LATERAL (
       SELECT pp.pack_tier, pp.estimated_minutes

@@ -1,6 +1,7 @@
 /** SQL membership predicates for the outbound desk views (`pair=po`, `queue=pick`) and the base queues they refine. */
 
-import { sqlOrderHasPackScan, sqlOrderHasShipConfirm, sqlOrderHasTechScan } from '@/lib/orders/order-grain-sql';
+import type { DeskRefinements } from '@/lib/orders/desk-view-filters';
+import { sqlOrderHasPackScan, sqlOrderHasShipConfirm, sqlOrderHasPickScan } from '@/lib/orders/order-grain-sql';
 import { SHIPPED_BY_CARRIER_SQL } from '@/lib/sql-fragments';
 import { WAREHOUSE_TIME_ZONE } from '@/utils/date';
 
@@ -105,22 +106,22 @@ export const DESK_STAGES = ['pending', 'tested', 'packed'] as const;
 export type DeskStage = (typeof DESK_STAGES)[number];
 
 /**
- * `?stage=` on the To-ship desk, order-grain (CF-03 / CF-04): tested = bench
- * scan and no pack; pending = neither; packed = pack scan (only meaningful
+ * `?stage=` on the To-ship desk, order-grain (CF-03 / CF-04): tested = picked
+ * (pick scan) and no pack; pending = neither; packed = pack scan (only meaningful
  * under inWarehouse, where packed-staged rows still sit). The three are a
  * partition of any row set.
  */
 export function sqlOrderDeskStage(stage: DeskStage, orderAlias = 'o'): string {
   const o = alias(orderAlias);
   if (stage === 'packed') return sqlOrderHasPackScan(o);
-  if (stage === 'tested') return `(${sqlOrderHasTechScan(o)} AND NOT ${sqlOrderHasPackScan(o)})`;
-  return `(NOT ${sqlOrderHasTechScan(o)} AND NOT ${sqlOrderHasPackScan(o)})`;
+  if (stage === 'tested') return `(${sqlOrderHasPickScan(o)} AND NOT ${sqlOrderHasPackScan(o)})`;
+  return `(NOT ${sqlOrderHasPickScan(o)} AND NOT ${sqlOrderHasPackScan(o)})`;
 }
 
 const SQL_PARAM_REF = /^\$[1-9][0-9]*$/;
 
 /**
- * `?staff=` — ANY non-canceled pack or test assignment to the staffer, not
+ * `?staff=` — ANY non-canceled pack or pick assignment to the staffer, not
  * just the latest ranked one (a reassignment must not hide work).
  * `staffParam` is the bind placeholder, e.g. `$4`.
  */
@@ -134,6 +135,149 @@ export function sqlOrderAssignedToStaff(staffParam: string, orderAlias = 'o'): s
         AND wa.status <> 'CANCELED'
         AND (wa.assigned_packer_id = ${staffParam} OR wa.assigned_tech_id = ${staffParam})
     )`;
+}
+
+function paramRef(value: string): string {
+  if (!SQL_PARAM_REF.test(value)) throw new Error(`invalid SQL param ref: ${value}`);
+  return value;
+}
+
+/** `?packedBy=` subject: the latest live PACK assignee (the list's `wa_p` lateral), as a scalar subquery. */
+export function sqlOrderPackAssigneeId(orderAlias = 'o'): string {
+  const o = alias(orderAlias);
+  return `(
+      SELECT wa_pk.assigned_packer_id
+        FROM work_assignments wa_pk
+       WHERE wa_pk.organization_id = ${o}.organization_id
+         AND wa_pk.entity_type = 'ORDER'
+         AND wa_pk.entity_id = ${o}.id
+         AND wa_pk.work_type = 'PACK'
+         AND wa_pk.assigned_packer_id IS NOT NULL
+         AND wa_pk.status <> 'CANCELED'
+       ORDER BY wa_pk.updated_at DESC, wa_pk.id DESC
+       LIMIT 1
+    )`;
+}
+
+/** `?pickerId=` subject: the latest live ORDER/PICK assignee (the list's `picker_id`), as a scalar subquery. */
+export function sqlOrderPickAssigneeId(orderAlias = 'o'): string {
+  const o = alias(orderAlias);
+  return `(
+      SELECT wa_pk_asg.assigned_tech_id
+        FROM work_assignments wa_pk_asg
+       WHERE wa_pk_asg.organization_id = ${o}.organization_id
+         AND wa_pk_asg.entity_type = 'ORDER'
+         AND wa_pk_asg.entity_id = ${o}.id
+         AND wa_pk_asg.work_type = 'PICK'
+         AND wa_pk_asg.assigned_tech_id IS NOT NULL
+         AND wa_pk_asg.status <> 'CANCELED'
+       ORDER BY wa_pk_asg.updated_at DESC, wa_pk_asg.id DESC
+       LIMIT 1
+    )`;
+}
+
+/**
+ * Who actually picked the order, as a scalar: the same three sources, in the
+ * same priority, as `PICK_FACTS_LATERALS` (`picked_by` on the list rows) —
+ * allocation pick event › picking session › Picker-desk pick scan (PICK /
+ * PICK_SCANNED, order grain, else sole-shipment). Keep the two in step.
+ */
+export function sqlOrderPickedByStaffId(orderAlias = 'o'): string {
+  const o = alias(orderAlias);
+  return `COALESCE(
+      (
+        SELECT pk_ie.actor_staff_id
+          FROM order_unit_allocations pk_oua
+          JOIN inventory_events pk_ie
+            ON pk_ie.serial_unit_id = pk_oua.serial_unit_id
+           AND pk_ie.organization_id = pk_oua.organization_id
+           AND pk_ie.event_type IN ('PICKED', 'FORCE_PICK')
+           AND pk_ie.occurred_at >= pk_oua.allocated_at
+         WHERE pk_oua.order_id = ${o}.id
+           AND pk_oua.organization_id = ${o}.organization_id
+           AND pk_oua.state IN ('PICKED', 'PACKED', 'SHIPPED', 'RETURNED')
+         ORDER BY pk_ie.occurred_at DESC NULLS LAST, pk_ie.id DESC
+         LIMIT 1
+      ),
+      (
+        SELECT pk_ps.picker_staff_id
+          FROM picking_sessions pk_ps
+         WHERE pk_ps.order_id = ${o}.id
+           AND pk_ps.organization_id = ${o}.organization_id
+           AND NOT pk_ps.abandoned
+         ORDER BY COALESCE(pk_ps.ended_at, pk_ps.started_at) DESC, pk_ps.id DESC
+         LIMIT 1
+      ),
+      (
+        SELECT pk_sal.staff_id
+          FROM station_activity_logs pk_sal
+         WHERE pk_sal.organization_id = ${o}.organization_id
+           AND pk_sal.station = 'PICK'
+           AND pk_sal.activity_type = 'PICK_SCANNED'
+           AND (
+             pk_sal.order_row_id = ${o}.id
+             OR (
+               pk_sal.shipment_id IS NOT NULL
+               AND pk_sal.shipment_id = ${o}.shipment_id
+               AND (pk_sal.metadata->>'order_row_id') IS NULL
+               AND NOT EXISTS (
+                 SELECT 1 FROM orders pk_o2
+                  WHERE pk_o2.shipment_id = ${o}.shipment_id
+                    AND pk_o2.organization_id = ${o}.organization_id
+                    AND pk_o2.id <> ${o}.id
+               )
+             )
+           )
+         ORDER BY pk_sal.created_at DESC, pk_sal.id DESC
+         LIMIT 1
+      )
+    )`;
+}
+
+/** `?pickedBy=` — the order was picked by the staffer bound at `staffParam` (e.g. `$4`). */
+export function sqlOrderPickedByStaff(orderAlias: string, staffParam: string): string {
+  return `${sqlOrderPickedByStaffId(orderAlias)} = ${paramRef(staffParam)}`;
+}
+
+/** A timestamptz expression's warehouse civil day. */
+export function sqlWarehouseDay(timestampSql: string): string {
+  return `timezone('${WAREHOUSE_TIME_ZONE}', ${timestampSql})::date`;
+}
+
+/** `day(ts) >= $n` — inclusive lower civil-day bound. */
+export function sqlWarehouseDayOnOrAfter(timestampSql: string, dayParam: string): string {
+  return `${sqlWarehouseDay(timestampSql)} >= ${paramRef(dayParam)}::date`;
+}
+
+/** `day(ts) <= $n` — inclusive upper civil-day bound. */
+export function sqlWarehouseDayOnOrBefore(timestampSql: string, dayParam: string): string {
+  return `${sqlWarehouseDay(timestampSql)} <= ${paramRef(dayParam)}::date`;
+}
+
+/**
+ * The unshipped desk's refinements as `AND`-able predicates — the ONE
+ * spelling `/api/orders` and the outbound nav facets both bind, so a facet
+ * total equals the list total. `bind` pushes a value and returns its
+ * placeholder. `deadlineSql` is the order's ship-by instant (a lateral column
+ * where the caller already has one, else `sqlOrderTestDeadlineAt`).
+ */
+export function sqlDeskRefinementClauses(
+  r: DeskRefinements,
+  bind: (value: unknown) => string,
+  orderAlias = 'o',
+  deadlineSql = sqlOrderTestDeadlineAt(orderAlias),
+): string[] {
+  const o = alias(orderAlias);
+  const out: string[] = [];
+  if (r.packedBy != null) out.push(`${sqlOrderPackAssigneeId(o)} = ${paramRef(bind(r.packedBy))}`);
+  if (r.pickerId != null) out.push(`${sqlOrderPickAssigneeId(o)} = ${paramRef(bind(r.pickerId))}`);
+  if (r.pickedBy != null) out.push(sqlOrderPickedByStaff(o, bind(r.pickedBy)));
+  if (r.orderFrom) out.push(sqlWarehouseDayOnOrAfter(`${o}.order_date`, bind(r.orderFrom)));
+  if (r.orderTo) out.push(sqlWarehouseDayOnOrBefore(`${o}.order_date`, bind(r.orderTo)));
+  // A NULL ship-by fails both comparisons, so either bound drops unscheduled orders.
+  if (r.shipByFrom) out.push(sqlWarehouseDayOnOrAfter(deadlineSql, bind(r.shipByFrom)));
+  if (r.shipByTo) out.push(sqlWarehouseDayOnOrBefore(deadlineSql, bind(r.shipByTo)));
+  return out;
 }
 
 /**

@@ -82,7 +82,7 @@ describe('morphingListingRulePair', () => {
       morphingListingRulePair({
         lane: 'picker',
         staffId: 3,
-        testerId: 1,
+        pickerId: 1,
         packerId: 4,
       }),
       { techId: 3, packerId: 4 },
@@ -91,7 +91,7 @@ describe('morphingListingRulePair', () => {
       morphingListingRulePair({
         lane: 'packer',
         staffId: 5,
-        testerId: 3,
+        pickerId: 3,
         packerId: 4,
       }),
       { techId: 3, packerId: 5 },
@@ -103,7 +103,7 @@ describe('morphingListingRulePair', () => {
       morphingListingRulePair({
         lane: 'picker',
         staffId: 8,
-        testerId: null,
+        pickerId: null,
         packerId: null,
       }),
       { techId: 8, packerId: 8 },
@@ -122,7 +122,7 @@ describe('pairItemNumberOnce', () => {
 describe('morphingAssignedName', () => {
   it('prefers the assignee face over the scan stamp', () => {
     assert.equal(
-      morphingAssignedName({ tester_name: 'Sang', tested_by_name: 'Ajax' }, 'picker'),
+      morphingAssignedName({ picker_name: 'Sang', picked_by_name: 'Ajax' }, 'picker'),
       'Sang',
     );
     assert.equal(
@@ -132,8 +132,8 @@ describe('morphingAssignedName', () => {
   });
 
   it('falls back to the scan name and drops blanks', () => {
-    assert.equal(morphingAssignedName({ tested_by_name: 'Lien' }, 'picker'), 'Lien');
-    assert.equal(morphingAssignedName({ tester_name: '  ' }, 'picker'), null);
+    assert.equal(morphingAssignedName({ picked_by_name: 'Lien' }, 'picker'), 'Lien');
+    assert.equal(morphingAssignedName({ picker_name: '  ' }, 'picker'), null);
   });
 });
 

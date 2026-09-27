@@ -1,9 +1,8 @@
 'use client';
 
 import TechDashboard from '@/components/TechDashboard';
-import { TechSidebarPanel } from '@/components/sidebar/TechSidebarPanel';
+import { TestingSidebarPanel } from '@/components/sidebar/TestingSidebarPanel';
 import { RouteShell } from '@/design-system/components/RouteShell';
-import { ShippingHistoryFeedProvider } from '@/hooks/station/ShippingHistoryFeedProvider';
 import { useRealtimeToasts } from '@/hooks/useRealtimeToasts';
 import { useSurfaceParamHygiene } from '@/hooks/useSurfaceParamHygiene';
 import { useSurfacePaintMark } from '@/lib/observability/paint-timing';
@@ -13,9 +12,9 @@ interface TechPageContentProps {
 }
 
 /**
- * Single responsive tree. Desktop renders only `history` (the full TechDashboard);
- * the sidebar panel is owned by DashboardSidebar. Mobile flips between Actions
- * (TechSidebarPanel) and History (TechDashboard) via `?pane=`.
+ * Quality Control bench (`/test`). Desktop renders only `history` (the full
+ * TechDashboard); the sidebar panel is owned by DashboardSidebar. Narrow
+ * viewports flip between Actions (TestingSidebarPanel) and History via `?pane=`.
  */
 export function TechPageContent({ techId }: TechPageContentProps) {
   useSurfaceParamHygiene();
@@ -24,11 +23,9 @@ export function TechPageContent({ techId }: TechPageContentProps) {
   useSurfacePaintMark('test:primary', true);
 
   return (
-    <ShippingHistoryFeedProvider techId={techId}>
-      <RouteShell
-        actions={<TechSidebarPanel techId={techId} contextNavTitle="Testing" />}
-        history={<TechDashboard techId={techId} />}
-      />
-    </ShippingHistoryFeedProvider>
+    <RouteShell
+      actions={<TestingSidebarPanel staffId={techId} />}
+      history={<TechDashboard techId={techId} />}
+    />
   );
 }

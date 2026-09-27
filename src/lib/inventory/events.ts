@@ -13,7 +13,7 @@ export type InventoryEventType =
   | 'PUTAWAY'
   | 'MOVED'
   | 'PICKED'
-  // Operator-confirmed pick override (pick/scan override_mismatch=true): the
+  // Operator-confirmed pick override (picking/units/scan override_mismatch=true): the
   // unit had no open ALLOCATED row (or it already advanced). Distinct from
   // PICKED so audits/dashboards can separate forced picks from normal ones.
   | 'FORCE_PICK'

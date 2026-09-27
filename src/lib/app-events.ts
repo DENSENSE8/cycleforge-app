@@ -15,6 +15,19 @@ export const AI_CHAT_NEW_EVENT = 'app:ai-chat-new' as const;
 export const AI_CHAT_SESSIONS_CHANGED_EVENT = 'app:ai-chat-sessions-changed' as const;
 export const ASSISTANT_HIGHLIGHT_EVENT = 'app:assistant-highlight' as const;
 export const COMMAND_BAR_OPEN_EVENT = 'app-command-bar-open' as const;
+/**
+ * `COMMAND_BAR_OPEN_EVENT`'s detail — the contract between the one search
+ * field (`NavFind`, which hands text on) and the palette (`CommandBar`, which
+ * owns what happens next). `query` opens it already searching; `scope` says
+ * where the text came from: `everywhere` = the operator left the page's
+ * scope (the "Search everywhere" row, ⌘↵, dropping the scope chip).
+ */
+export type CommandBarOpenDetail = { query?: string; scope?: 'everywhere' };
+
+/** Open the palette. `detail.query` is trimmed by the palette. */
+export function openCommandBar(detail?: CommandBarOpenDetail): void {
+  window.dispatchEvent(new CustomEvent<CommandBarOpenDetail | undefined>(COMMAND_BAR_OPEN_EVENT, { detail }));
+}
 
 /**
  * Toggle the MasterNav spine.

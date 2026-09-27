@@ -22,7 +22,7 @@ report problems there instead.
    the code, or ask the operator before changing the law.
 3. Code, all under `src/components/sidebar/contextual/`:
    - `ContextualSidebar.tsx`: the host.
-   - `NavFind.tsx`: `NavGlobalSearch` (⌘K face) and Find (`F`).
+   - `NavFind.tsx`: THE search field — page scope (chip, `F`, narrows the list) or everywhere (the ⌘K face).
    - `NavModeSwitcher.tsx`, `NavSectionList.tsx` (views, counts, hotkeys,
      hairlines), `NavFilters.tsx` (filter rows, zero options, saved-view presets).
    - `nav-block.ts`, `nav-view-icons.ts`, `useLaneDoorHref.ts`.
@@ -86,23 +86,23 @@ the sidebar clipped to x 0–420, and an API number where the row has one.
 
 | # | Check | How |
 |---|---|---|
-| 1 | Head order and wells are 32px | Bounding boxes of `[data-nav-global-search]` and `[data-nav-find]`: height 32; Find sits directly under global search |
-| 2 | Hotkey first | In both wells, the kbd's x is less than the text's x |
+| 1 | Head order and the well is 32px | Bounding box of `[data-nav-search-well]`: height 32, in the top band beside collapse; `[data-nav-back]` sits directly under it |
+| 2 | Hotkey first | In the well (either scope), the kbd's x is less than the text's x |
 | 3 | `F` focuses Find, and never while typing | Press f → `activeElement` aria-label is the Find placeholder. Type into Find: no view switch, no refocus |
 | 4 | Find narrows the list | Type a known order number and read the list count before and after |
 | 5 | Back hover and press depth | Hover and mouse-down `[data-nav-back]`: computed box-shadow and ring change, translateY(1px) on press |
 | 6 | `‹` keeps Find in place | Find's box is identical before and after clicking `[data-nav-back]`, and the map uses block rows |
-| 7 | Mode switcher | `[data-nav-mode]` lists Shipping ✓ · FBA · Label intake; each goes to its page |
-| 8 | Views, glyphs, digits | Each view row reads glyph → digit keycap → label; keys 1–5 land on the matching view |
-| 9 | Counts equal the API | For each view, the painted count equals `GET /api/nav/facets?context=outbound.<view>`'s `total` with the view's own params |
+| 7 | Mode switcher | Hover `[data-nav-switcher="mode"]`: `[data-nav-switcher-menu="mode"]` opens right of the sidebar (its x ≥ the column's right edge) and lists Shipping ✓ · FBA · Label intake; each goes to its page |
+| 8 | View switcher, glyphs, digits | Hover `[data-nav-switcher="view"]`: each menu row reads glyph → digit keycap → label → count; no digit on the closed block; keys 1–5 land on the matching view with the menu closed |
+| 9 | Counts equal the API | For each view, the menu's `[data-nav-view-count]` equals `GET /api/nav/facets?context=outbound.<view>`'s `total` with the view's own params; off Exceptions, the closed block's `[data-nav-view-alert]` shows the Exceptions total |
 | 10 | Filters | Open a row, pick an option: the URL param is set, the chip shows the value, the count badge and Reset appear; Reset clears it |
 | 11 | Zero options | Zero-count options are dimmed and last; a selected zero option returns to its slot |
-| 12 | Saved-view presets | Save with a name, apply, clear, delete; confirm against `/api/saved-views` |
+| 12 | Saved-view presets | Presets sit at the top of the body, ABOVE the filter hairline; `Save view` appears only while unsaved filters are on. Save with a name, apply, clear, delete; confirm against `/api/saved-views` |
 | 13 | Lane door memory | Visit a view, go to another page, click Outbound in the map: it lands on the remembered view |
 | 14 | Map order | Scan Stations is the last category; Outbound is a single row |
 | 15 | No page errors that come from sidebar files | Collect `pageerror`. Errors from `OrderCardList.tsx` belong to the other session: list them, don't fix them |
 | 16 | Reduced motion | With `prefers-reduced-motion: reduce` emulated, the swaps and plates are instant and no blur remains |
-| 17 | Keyboard only | Tab through the head, views and filters: visible focus rings, Enter or Space activates, Esc closes menus |
+| 17 | Keyboard only | Tab through the head (Find, `‹`, mode and view switchers), saved views and filters: visible focus rings, Enter or Space activates (Enter on a switcher opens its menu with focus inside), Esc closes menus |
 
 Pages to run:
 - `/shipping/exceptions`

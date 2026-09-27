@@ -29,13 +29,30 @@ const TOOL_LABELS: Readonly<Record<string, string>> = {
   get_roi_rank: 'Top gaps',
   get_delegation_plan: 'Delegation plan',
   triage_orders_csv: 'Order import check',
-  hybrid_entity_search: 'Search results',
+  find_records: 'Records',
   get_operations_journey: 'Timeline',
   resolve_support_ticket: 'Support ticket',
   draft_ticket_reply: 'Reply draft',
   read_staff_document: 'Document',
   get_order_documents: 'Order documents',
   link_manual_to_sku: 'Manual link',
+  request_payment: 'Take payment',
+  print_order_paperwork: 'Print order papers',
+  draft_manual_order: 'Order draft',
+  create_manual_order: 'Order',
+  draft_po_import: 'Purchase order',
+  import_purchase_order: 'Purchase order',
+  set_order_flag: 'Order flags',
+  mark_out_of_stock: 'Out of stock',
+  clear_out_of_stock: 'Back in stock',
+  bulk_scan_out: 'Scan out',
+  create_task: 'Task',
+  reconcile_refs: 'Pasted list check',
+  get_customer: 'Customer',
+  get_worklist: 'Worklist',
+  get_staff_report: 'Staff report',
+  get_tracking_status: 'Carrier tracking',
+  watch_tracking: 'Tracking watch',
   render_artifact: 'Result',
 };
 
@@ -71,6 +88,27 @@ const ACTIVITY_LINES: Readonly<Record<string, (input: unknown) => readonly [stri
     return order
       ? [`Finding documents for order ${order}`, `Found documents for order ${order}`]
       : ['Finding order documents', 'Found order documents'];
+  },
+  request_payment: (input) => {
+    const order = inputValue(input, 'orderNumber');
+    const invoice = inputValue(input, 'method') === 'invoice';
+    if (!order) return null;
+    return invoice
+      ? [`Creating a Square invoice for order ${order}`, `Square invoice for order ${order}`]
+      : [`Creating a Square payment link for order ${order}`, `Square payment link for order ${order}`];
+  },
+  get_customer: (input) => {
+    const q = inputValue(input, 'query');
+    return q ? [`Looking up customer ${q}`, `Looked up customer ${q}`] : null;
+  },
+  get_tracking_status: (input) => {
+    const t = inputValue(input, 'tracking');
+    return t ? [`Asking the carrier about ${t}`, `Carrier status for ${t}`] : null;
+  },
+  watch_tracking: (input) => {
+    const t = inputValue(input, 'tracking');
+    if (!t) return null;
+    return inputValue(input, 'action') === 'unwatch' ? [`Stopping the watch on ${t}`, `Stopped watching ${t}`] : [`Watching ${t}`, `Watching ${t}`];
   },
 };
 

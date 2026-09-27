@@ -6,7 +6,7 @@ import { DetailFact, DetailFacts, DetailNav, DetailSectionHeading } from '@/comp
 import { DetailDock } from '@/design-system/components/DetailDock';
 import type { LineSerial } from '@/lib/receiving/serial-projection';
 import { resolveSkuIdentityTitle, type SkuIdentityTitleRow } from '@/lib/sku/sku-identity-law';
-import { TESTING_RECEIVING_LINES_API } from '@/lib/surface-isolation';
+import { QC_RECEIVING_LINES_API } from '@/lib/surface-isolation';
 
 interface QcLine extends SkuIdentityTitleRow {
   id: number;
@@ -18,7 +18,7 @@ function useQcLine(lineId: number) {
   return useQuery<QcLine>({
     queryKey: ['qc.line-units', lineId],
     queryFn: async () => {
-      const res = await fetch(`${TESTING_RECEIVING_LINES_API}?view=testing&id=${lineId}&include=serials`, {
+      const res = await fetch(`${QC_RECEIVING_LINES_API}?view=testing&id=${lineId}&include=serials`, {
         cache: 'no-store',
       });
       const json = await res.json().catch(() => null);

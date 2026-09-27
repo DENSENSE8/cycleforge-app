@@ -2,7 +2,7 @@
 
 import { useMemo } from 'react';
 import { initSkuSerialGroups } from '@/lib/tech/sku-serial-groups';
-import type { ActiveStationOrder } from '@/hooks/useStationTestingController';
+import type { ActiveStationOrder } from '@/hooks/useDeskPickController';
 import type { Order } from '@/components/station/upnext/upnext-types';
 import { ShippingSkuSerialRows } from './ShippingSkuSerialRows';
 

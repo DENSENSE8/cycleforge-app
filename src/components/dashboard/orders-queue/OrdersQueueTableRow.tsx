@@ -116,7 +116,7 @@ interface OrdersQueueTableRowProps {
   useAlternateStripe: boolean;
   testerDisplay: string;
   packerDisplay: string;
-  testerId: number | null;
+  pickerId: number | null;
   packerId: number | null;
   /** `null` on queues whose rows share one status — see `resolveRowStatus`. */
   rowStatus: RowStatusMeta | null;
@@ -585,7 +585,7 @@ export const OrdersQueueTableRow = memo(function OrdersQueueTableRow({
   useAlternateStripe,
   testerDisplay,
   packerDisplay,
-  testerId,
+  pickerId,
   packerId,
   rowStatus,
   trackingAction,
@@ -821,7 +821,7 @@ export const OrdersQueueTableRow = memo(function OrdersQueueTableRow({
     if (!(compoundLayout || indexLayout) || !onCommitStageAssign) return undefined;
     return {
       'orders.picked': {
-        selectedStaffId: testerId,
+        selectedStaffId: pickerId,
         label: 'Pick',
         role: 'technician' as const,
         onCommit: (staffId: number | null, staffName: string | null) =>
@@ -835,7 +835,7 @@ export const OrdersQueueTableRow = memo(function OrdersQueueTableRow({
           onCommitStageAssign(record, 'orders.packed', staffId, staffName),
       },
     };
-  }, [compoundLayout, indexLayout, onCommitStageAssign, testerId, packerId, record]);
+  }, [compoundLayout, indexLayout, onCommitStageAssign, pickerId, packerId, record]);
 
   // ── The cells — one shell, two column models ───────────────────────────── Fragments (no DOM) keep every cell a DIRECT grid child — the…
   const cells = isMobile ? (
@@ -1146,7 +1146,7 @@ export const OrdersQueueTableRow = memo(function OrdersQueueTableRow({
   if (prev.onCommitCondition !== next.onCommitCondition) return false;
   if (prev.onCommitShipBy !== next.onCommitShipBy) return false;
   if (prev.onCommitStageAssign !== next.onCommitStageAssign) return false;
-  if (prev.testerId !== next.testerId) return false;
+  if (prev.pickerId !== next.pickerId) return false;
   if (prev.packerId !== next.packerId) return false;
   // Live fields the COMPOUND `fulfillment` / `item` tracks paint.
   if (prev.record.shipping_tracking_number !== next.record.shipping_tracking_number) return false;

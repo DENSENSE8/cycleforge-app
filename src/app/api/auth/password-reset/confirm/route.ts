@@ -13,6 +13,7 @@ import { checkRateLimitAsync } from '@/lib/api-guard';
 import { claimPasswordResetToken } from '@/lib/auth/password-reset';
 import { setAccountPassword } from '@/lib/identity/accounts';
 import { listMembershipsForAccount, logAuthEvent } from '@/lib/identity/memberships';
+import { recordStaffLoginRedirect } from '@/lib/auth/record-staff-login';
 
 export const runtime = 'nodejs';
 
@@ -93,6 +94,7 @@ export async function POST(req: NextRequest) {
   });
 
   void pool.query(`UPDATE accounts SET last_login_at = now() WHERE id = $1`, [claim.accountId]).catch(() => {});
+  const redirectTo = await recordStaffLoginRedirect(pool, target.staff_id, { mobile: false });
 
   await audit({
     staffId: target.staff_id, sid: session.sid,
@@ -101,7 +103,7 @@ export async function POST(req: NextRequest) {
   });
   await logAuthEvent({ accountId: claim.accountId, orgId: target.organization_id, event: 'login', ip, userAgent: ua });
 
-  const res = NextResponse.json({ ok: true, organizationId: target.organization_id });
+  const res = NextResponse.json({ ok: true, organizationId: target.organization_id, redirectTo });
   res.cookies.set(SESSION_COOKIE_NAME, session.sid, {
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',

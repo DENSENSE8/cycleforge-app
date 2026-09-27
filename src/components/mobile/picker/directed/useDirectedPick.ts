@@ -481,7 +481,7 @@ export function useDirectedPick(scanPaused = false): DirectedPickController {
     try {
       await releaseOrder(order.orderId);
       if (order.owner?.via === 'assigned' && order.owner.staffId === user.staffId) {
-        await assignOrder({ orderId: order.orderId, testerId: 0 });
+        await assignOrder({ orderId: order.orderId, pickerId: 0 });
       }
       skipped.current = [...new Set([...skipped.current, order.orderId])];
       writeSkipped(skipped.current);
@@ -499,7 +499,7 @@ export function useDirectedPick(scanPaused = false): DirectedPickController {
       if (!order) return;
       setBusy(true);
       try {
-        await assignOrder({ orderId: order.orderId, testerId: staff.id, testerName: staff.name });
+        await assignOrder({ orderId: order.orderId, pickerId: staff.id, pickerName: staff.name });
         await releaseOrder(order.orderId);
         setPassOpen(false);
         setMessage({ tone: 'success', text: `Passed ${order.orderLabel} to ${staff.name}` });

@@ -8,7 +8,7 @@ import {
   resolveSkuIdentityBrand,
   resolveSkuIdentityTitle,
   skuBrandJoinOnSql,
-  skuCatalogNoZohoTwinPredicateSql,
+  skuCatalogTitleUnownedPredicateSql,
   SKU_BRAND_JOIN_ON_SQL,
   SKU_CATALOG_JOIN_ON_SQL,
   SKU_IDENTITY_TITLE_ORDER,
@@ -19,44 +19,23 @@ const REPO = path.resolve(__dirname, '../../..');
 
 /* ── rule 2: the title ladder ──────────────────────────────────────────── */
 
-test('the Zoho item title beats a contaminated marketplace title', () => {
-  // The live defect: PO 10-15153-01528, line 32354, rl.sku 00143.
+test('the catalog title governs; an external (Zoho) item name never overrides it', () => {
+  // Operator 2026-09-27: CycleForge's own catalog is the source of truth.
   assert.equal(
     resolveSkuIdentityTitle({
-      zoho_item_title: 'Bose Solo Soundbar Series II',
-      catalog_product_title: '1x Original Bose UB-20 Wall Mount Part As Pictured UB-20B (BLACK)',
+      catalog_product_title: 'Bose Solo Soundbar Series II',
+      zoho_item_title: 'Bose Solo Soundbar 2 (Zoho name)',
       item_name: 'Bose Solo Soundbar 2 Home Theater, Certified Refurbished',
       sku: '00143',
     }),
     'Bose Solo Soundbar Series II',
   );
-  // Same class, catalog SKU 00031 / 00017 — "wave radio shown as something else".
-  assert.equal(
-    resolveSkuIdentityTitle({
-      zoho_item_title: 'Bose Wave Music System',
-      catalog_product_title: 'Bose SoundDock 10 remote control',
-    }),
-    'Bose Wave Music System',
-  );
-  assert.equal(
-    resolveSkuIdentityTitle({
-      zoho_item_title: 'Bose Wave Radio II',
-      catalog_product_title: 'Bose Remote Control For Bose Cinemate II',
-    }),
-    'Bose Wave Radio II',
-  );
 });
 
-test('the marketplace title still wins when there is no Zoho item', () => {
-  // 755 of 2862 receiving lines carry no rz.zoho_item_id — for those the
-  // marketplace title is the correct face, not a fallback to be deleted.
+test('the Zoho item name is the fallback when the catalog has no title', () => {
   assert.equal(
-    resolveSkuIdentityTitle({
-      zoho_item_title: null,
-      catalog_product_title: '1x Original Bose UB-20 Wall Mount Part As Pictured UB-20B (BLACK)',
-      item_name: 'Wall mount',
-    }),
-    '1x Original Bose UB-20 Wall Mount Part As Pictured UB-20B (BLACK)',
+    resolveSkuIdentityTitle({ catalog_product_title: '  ', zoho_item_title: 'Bose Wave Music System', item_name: 'wave' }),
+    'Bose Wave Music System',
   );
 });
 
@@ -83,17 +62,17 @@ test('precedence is exactly the declared order', () => {
     seen.push(resolveSkuIdentityTitle(remaining));
     remaining = { ...remaining, [SKU_IDENTITY_TITLE_ORDER[i]]: null };
   }
-  assert.deepEqual(seen, ['z', 'c', 'i', 's', 'id']);
+  assert.deepEqual(seen, ['c', 'z', 'i', 's', 'id']);
 });
 
-/* ── brand rides the law: Zoho governs, a guess never surfaces ─────────── */
+/* ── brand rides the law: the catalog governs, a guess never surfaces ─── */
 
-test('the Zoho item brand beats the catalog brand; manufacturer text is Zoho too', () => {
+test('a catalog brand at the fact threshold beats the Zoho brand; Zoho is the fallback', () => {
   assert.equal(
-    resolveSkuIdentityBrand({ zoho_item_brand: 'BOSE', catalog_brand: 'Panasonic', catalog_brand_confidence: 1 }),
-    'BOSE',
+    resolveSkuIdentityBrand({ zoho_item_brand: 'BOSE', catalog_brand: 'Bose', catalog_brand_confidence: 1 }),
+    'Bose',
   );
-  assert.equal(resolveSkuIdentityBrand({ zoho_item_brand: '  ', catalog_brand: 'Bose', catalog_brand_confidence: '0.95' }), 'Bose');
+  assert.equal(resolveSkuIdentityBrand({ zoho_item_brand: 'BOSE', catalog_brand: 'Panasonic', catalog_brand_confidence: 0.5 }), 'BOSE');
 });
 
 test('a catalog brand below 0.90 (or with no confidence) is a proposal, not a brand', () => {
@@ -144,12 +123,16 @@ test('the deleted similarity guard is a violation if reintroduced', () => {
   assert.ok(v.some((x) => x.kind === 'title-similarity-guard'), 'guard must be refused');
 });
 
-test('a marketplace-title-first ladder is a violation', () => {
+test('an external-title-first ladder is a violation; catalog-first is not', () => {
   const v = auditSkuIdentitySource(
     'x.ts',
-    `  const raw =\n    row.catalog_product_title ||\n    row.zoho_item_title ||\n    row.sku;`,
+    `  const raw =\n    row.zoho_item_title ||\n    row.catalog_product_title ||\n    row.sku;`,
   );
-  assert.deepEqual(v.map((x) => x.kind), ['marketplace-title-first']);
+  assert.deepEqual(v.map((x) => x.kind), ['external-title-first']);
+  assert.deepEqual(
+    auditSkuIdentitySource('x.ts', `  const raw = row.catalog_product_title || row.zoho_item_title || row.sku;`),
+    [],
+  );
 });
 
 test('an unguarded catalog title write is a violation, a guarded one is not', () => {
@@ -162,7 +145,7 @@ test('an unguarded catalog title write is a violation, a guarded one is not', ()
   const guarded = `await q(\`UPDATE sku_catalog
    SET product_title = $1
  WHERE sku = $2
-   AND ${skuCatalogNoZohoTwinPredicateSql()}\`)`;
+   AND ${skuCatalogTitleUnownedPredicateSql()}\`)`;
   assert.deepEqual(auditSkuIdentitySource('x.ts', guarded), []);
 });
 
@@ -211,12 +194,12 @@ test('every receiving-line catalog join uses the one ON constant', () => {
   }
 });
 
-test('the Ecwid title sync cannot overwrite a Zoho-owned row', () => {
+test('the Ecwid title sync cannot overwrite a catalog row the org acknowledged', () => {
   const text = readFileSync(
     path.join(REPO, 'src/app/api/sku-catalog/sync-ecwid-titles/route.ts'),
     'utf8',
   );
-  assert.match(text, /skuCatalogNoZohoTwinPredicateSql/);
+  assert.match(text, /skuCatalogTitleUnownedPredicateSql/);
   assert.deepEqual(auditSkuIdentitySource('route.ts', text), []);
 });
 

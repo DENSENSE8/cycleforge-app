@@ -8,7 +8,7 @@
 import { useState } from 'react';
 import { Plus, Loader2 } from '@/components/Icons';
 import { IconButton } from '@/design-system/primitives';
-import { cornerClass } from '@/design-system/tokens/radius';
+import { HEADER_MENU_ROW_CORNER } from '@/components/layout/header-shell';
 import {
   startTrackingWatch,
   TrackingWatchError,
@@ -47,8 +47,9 @@ export function InboxTrackingWatchRow() {
     <div className="flex flex-col gap-1">
       <div
         className={cn(
-          'flex items-center gap-1 border border-border-hairline bg-surface-card pl-2',
-          cornerClass('flush'),
+          'flex items-center gap-1 border border-border-hairline bg-surface-card pl-2 pr-0.5',
+          // A field on the mode's control corner; its + key nests on the row corner.
+          'rounded-mode-control',
         )}
       >
         <input
@@ -88,7 +89,7 @@ export function InboxTrackingWatchRow() {
             void submit();
           }}
           data-testid="inbox-watch-tracking-add"
-          className={cn('h-8 w-8 shrink-0 text-text-default', cornerClass('flush'))}
+          className={cn('h-7 w-7 shrink-0 text-text-default hover:bg-surface-sunken', HEADER_MENU_ROW_CORNER)}
           icon={
             busy ? (
               <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />

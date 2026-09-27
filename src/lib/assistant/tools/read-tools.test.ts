@@ -10,11 +10,10 @@ const ORG = '11111111-2222-3333-4444-555555555555';
 function ctxWith(perms: string[]): AssistantToolCtx {
   return { organizationId: ORG, staffId: 7, permissions: new Set(perms) };
 }
-const FULL_CTX = ctxWith(['dashboard.view', 'studio.view', 'assistant.chat', 'sku_stock.view', 'orders.view']);
+const FULL_CTX = ctxWith(['dashboard.view', 'studio.view', 'assistant.chat', 'sku_stock.view', 'orders.view', 'receiving.view', 'packing.complete_order']);
 
 const SEARCH_TOOL_NAMES = new Set([
-  'hybrid_entity_search',
-  'exact_id_serial_search',
+  'find_records',
   'resolve_support_ticket',
 ]);
 
@@ -36,6 +35,13 @@ const DOMAIN_TOOL_NAMES = new Set([
   // than the injectable tenantQuery dep, same as every entry above.
   'resolve_receiving_line_for_order',
   'list_receiving_line_photos',
+  // ChatReads: each folds existing domain reads (reconcile Check + identify,
+  // customer book search, desk lists, packing / pomodoro / goals, shipments).
+  'reconcile_refs',
+  'get_customer',
+  'get_worklist',
+  'get_staff_report',
+  'get_tracking_status',
 ]);
 
 /** Tool-forge gateway tools. */
@@ -57,6 +63,8 @@ const ALLOWED_TOOL_PERMISSIONS = new Set([
   'receiving.view',
   'sku_stock.view',
   'orders.view',
+  // Device tool (print_order_paperwork): the same permission the station's print route checks.
+  'packing.complete_order',
   // Tool forge — one permission per gateway tool, deliberately NOT assistant.chat
   // (see the header of src/lib/mcp/tool-server.ts for why that distinction is
   // what keeps a write-capable gateway safe behind a read-scoped route gate).
@@ -79,13 +87,9 @@ function fakes(rowsFor?: (text: string) => Array<Record<string, unknown>>) {
       cap.push({ orgId, text, params });
       return { rows: rowsFor ? rowsFor(text) : [] };
     },
-    hybridEntitySearch: async (orgId, args) => {
-      cap.push({ orgId, text: 'hybridEntitySearch', params: [args.query] });
-      return { hits: [], usedSemantic: false };
-    },
-    exactIdSerialSearch: async (orgId, args) => {
-      cap.push({ orgId, text: 'exactIdSerialSearch', params: [args.query] });
-      return [];
+    findRecords: async (input) => {
+      cap.push({ orgId: input.orgId, text: `findRecords:${input.surface}`, params: [input.query] });
+      return { payload: { rows: [], relaxed: false, effectiveQuery: input.query } };
     },
     resolveSupportTicket: async (orgId, scanValue) => {
       cap.push({ orgId, text: 'resolveSupportTicket', params: [scanValue] });
@@ -96,13 +100,13 @@ function fakes(rowsFor?: (text: string) => Array<Record<string, unknown>>) {
   return { deps, cap };
 }
 
-test('registry: 35 tools (31 read + 4 gateway), unique names, model-grade descriptions, valid permissions', () => {
-  assert.equal(ASSISTANT_TOOLS.size, 35);
+test('registry: 42 tools (37 read + 1 device + 4 gateway), unique names, model-grade descriptions, valid permissions', () => {
+  assert.equal(ASSISTANT_TOOLS.size, 42);
   const expected = [
     'get_signals_by_node', 'get_top_reasons', 'get_unit_journey', 'get_feed_state',
     'get_graph', 'get_node_detail', 'get_benchmarks', 'get_kpis',
     'search_notes', 'get_mutation_history', 'get_chat_history',
-    'hybrid_entity_search', 'exact_id_serial_search', 'resolve_support_ticket',
+    'find_records', 'resolve_support_ticket',
     'get_operations_journey', 'get_order_lookup', 'lookup_serial',
     'lookup_warranty_coverage', 'list_warranty_claims',
     'get_assignments', 'get_my_tech_queue', 'list_support_followups',
@@ -110,6 +114,11 @@ test('registry: 35 tools (31 read + 4 gateway), unique names, model-grade descri
     'get_packing_kpi',
     'resolve_receiving_line_for_order', 'list_receiving_line_photos',
     'locate_product', 'list_location_contents', 'get_order_documents',
+    'draft_manual_order',
+    'draft_po_import',
+    'reconcile_refs', 'get_customer', 'get_worklist', 'get_staff_report', 'get_tracking_status',
+    // Device tool: resolves a print the operator's browser sends to their station.
+    'print_order_paperwork',
     // The tool-forge gateway — exactly four, per the pipeline spec.
     'search_tool_registry', 'submit_approval_decision',
     'execute_build_sandbox', 'commit_to_git',
@@ -133,6 +142,9 @@ test('every SQL tool threads ctx.organizationId as $1 into every query (never mo
     locate_product: { query: '00066-P-2' },
     list_location_contents: { location: 'C-03-12-3' },
     get_order_documents: { order: '5083' },
+    draft_manual_order: { customerName: 'Jane Doe', phone: '555-123-4567', items: [{ product: 'Bose 151 bracket' }] },
+    draft_po_import: { poNumber: 'PO-1', vendor: 'Acme', items: [{ product: 'A-1', quantity: 2 }], trackingNumbers: ['1Z999AA10123456784'] },
+    print_order_paperwork: { orders: ['5083'] },
   };
   for (const name of ASSISTANT_TOOLS.keys()) {
     if (SEARCH_TOOL_NAMES.has(name) || DOMAIN_TOOL_NAMES.has(name) || GATEWAY_TOOL_NAMES.has(name)) continue;
@@ -164,25 +176,12 @@ test('every SQL tool threads ctx.organizationId as $1 into every query (never mo
 
 test('search tools thread orgId into injected deps (no SQL)', async () => {
   const { deps, cap } = fakes();
-  const hybrid = await runAssistantTool(
-    'hybrid_entity_search',
-    { query: 'order 12345' },
-    FULL_CTX,
-    deps,
-  );
-  assert.equal(hybrid.ok, true);
+  // The finder serves through the Search page's door, logged as the assistant.
+  const found = await runAssistantTool('find_records', { query: 'order 12345' }, FULL_CTX, deps);
+  assert.equal(found.ok, true);
   assert.equal(cap[0]?.orgId, ORG);
-  assert.equal(cap[0]?.text, 'hybridEntitySearch');
-
-  cap.length = 0;
-  const exact = await runAssistantTool(
-    'exact_id_serial_search',
-    { query: 'ABC123' },
-    FULL_CTX,
-    deps,
-  );
-  assert.equal(exact.ok, true);
-  assert.equal(cap[0]?.orgId, ORG);
+  assert.equal(cap[0]?.text, 'findRecords:assistant');
+  assert.equal(found.ok && (found.data as { found: boolean }).found, false);
 
   cap.length = 0;
   const ticket = await runAssistantTool(
@@ -241,7 +240,7 @@ test('permission gating: studio tools refused without studio.view; search needs 
   assert.equal(cap.length, 0);
   const names = listAssistantTools(viewer).map((t) => t.name);
   assert.ok(!names.includes('get_graph') && !names.includes('get_node_detail'));
-  assert.ok(!names.includes('hybrid_entity_search'));
+  assert.ok(!names.includes('find_records'));
   assert.ok(!names.includes('get_operations_journey'));
   assert.ok(!names.includes('lookup_warranty_coverage'));
   // dashboard.view core (9) + order/serial/queue domain tools (4)
@@ -252,7 +251,7 @@ test('permission gating: studio tools refused without studio.view; search needs 
   assert.ok(names.includes('list_support_followups'));
 
   const searchDenied = await runAssistantTool(
-    'hybrid_entity_search',
+    'find_records',
     { query: 'x' },
     viewer,
     deps,

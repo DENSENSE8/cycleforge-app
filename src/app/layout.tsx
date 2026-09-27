@@ -117,7 +117,7 @@ export default async function RootLayout({
                       "(function(){try{if(!('serviceWorker' in navigator))return;navigator.serviceWorker.getRegistrations().then(function(rs){rs.forEach(function(r){r.unregister();});});if(window.caches){caches.keys().then(function(ks){ks.forEach(function(k){caches.delete(k);});});}}catch(e){}})();",
                   }}
                 />
-                {/* Paints the loading splash before hydration on a fresh sign-in (one-shot flag), bridging the white gap until <BootGate> mounts its own… */}
+                {/* Paints the static welcome greeting before hydration on a fresh sign-in (one-shot flag or ?welcome=1), bridging the white gap until <WelcomeGate> mounts the animated overlay. */}
                 <script dangerouslySetInnerHTML={{ __html: BOOT_SPLASH_SCRIPT }} />
             </head>
             <body className={`${cfSans.className} antialiased m-0 overflow-hidden ${appChromeClass}`}>

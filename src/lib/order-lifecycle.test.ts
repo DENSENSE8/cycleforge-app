@@ -16,7 +16,7 @@ import {
 import {
   sqlInList,
   PACK_ACTIVITY_TYPES,
-  TECH_TEST_ACTIVITY_TYPES,
+  ORDER_PICK_SCAN_ACTIVITY_TYPES,
   VELOCITY_ACTIVITY_TYPES,
 } from './station-activity';
 
@@ -25,13 +25,13 @@ import {
 function legacyUnshipped(input: OrderLifecycleSignals): string {
   if (input.packedAt) return 'PACKED_STAGED';
   if (String(input.outOfStock ?? '').trim() !== '') return 'BLOCKED';
-  if (input.hasTechScan) return 'TESTED';
+  if (input.hasPickScan) return 'TESTED';
   if (input.shipmentId != null && String(input.shipmentId) !== '') return 'PENDING';
   return 'AWAITING_LABEL';
 }
 function legacyFulfillment(input: OrderLifecycleSignals): string {
   if (String(input.outOfStock ?? '').trim() !== '') return 'BLOCKED';
-  if (input.hasTechScan) return 'TESTED';
+  if (input.hasPickScan) return 'TESTED';
   return 'PENDING';
 }
 
@@ -43,10 +43,10 @@ const OOS: Array<string | null> = [null, '', '  ', 'out of stock'];
 
 function* allSignals(): Generator<OrderLifecycleSignals> {
   for (const shipmentId of SHIPMENTS)
-    for (const hasTechScan of BOOLS)
+    for (const hasPickScan of BOOLS)
       for (const packedAt of PACKED)
         for (const outOfStock of OOS)
-          yield { shipmentId, hasTechScan, packedAt, outOfStock };
+          yield { shipmentId, hasPickScan, packedAt, outOfStock };
 }
 
 test('resolveOrderLifecycleStage matches the legacy unshipped-state derivation for every signal combo', () => {
@@ -61,14 +61,14 @@ test('resolveFulfillmentLane matches the legacy deriveFulfillmentState for every
   }
 });
 
-test('the bug fixture: a labeled, tech-scanned order resolves to TESTED', () => {
-  const tested: OrderLifecycleSignals = { shipmentId: 12247, hasTechScan: true, packedAt: null, outOfStock: null };
+test('the bug fixture: a labeled, picked order resolves to TESTED', () => {
+  const tested: OrderLifecycleSignals = { shipmentId: 12247, hasPickScan: true, packedAt: null, outOfStock: null };
   assert.equal(resolveOrderLifecycleStage(tested), 'TESTED');
   assert.equal(resolveFulfillmentLane(tested), 'TESTED');
 });
 
-test('a labeled order with no tech scan sits in PENDING', () => {
-  const pending: OrderLifecycleSignals = { shipmentId: 12247, hasTechScan: false, packedAt: null, outOfStock: null };
+test('a labeled order with no pick scan sits in PENDING', () => {
+  const pending: OrderLifecycleSignals = { shipmentId: 12247, hasPickScan: false, packedAt: null, outOfStock: null };
   assert.equal(resolveFulfillmentLane(pending), 'PENDING');
 });
 
@@ -152,10 +152,10 @@ test('sqlInList generated fragments are byte-identical to the replaced SQL liter
   // dashboard/operations + staff-goals  →  activity_type IN (<this>)
   assert.equal(
     sqlInList(VELOCITY_ACTIVITY_TYPES),
-    `'TRACKING_SCANNED', 'FNSKU_SCANNED', 'PACK_SCAN', 'PACK_COMPLETED', 'FBA_READY'`,
+    `'PICK_SCANNED', 'FNSKU_SCANNED', 'PACK_SCAN', 'PACK_COMPLETED', 'FBA_READY'`,
   );
-  // dashboard/operations tested-today  →  activity_type IN (<this>)
-  assert.equal(sqlInList(TECH_TEST_ACTIVITY_TYPES), `'TRACKING_SCANNED', 'FNSKU_SCANNED'`);
+  // order-grain picked lane  →  activity_type IN (<this>)
+  assert.equal(sqlInList(ORDER_PICK_SCAN_ACTIVITY_TYPES), `'PICK_SCANNED', 'FNSKU_SCANNED'`);
 });
 
 test('workStageLifecycleState: shipped is terminal, OOS beats urgent, urgent beats progress', () => {

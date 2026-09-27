@@ -48,6 +48,18 @@ interface IngestPurchaseInput {
   listingUrl?: string | null;
   rawStatus?: string | null;
 
+  /**
+   * Internal order identity (`inbound_order.id` + the line's key within it).
+   * When set, the spine row is found and born by (org, inbound_order_id,
+   * line_key) — the platform-aware identity — instead of the source link.
+   */
+  inboundOrderId?: number | null;
+  lineKey?: string | null;
+  /** Line-level classifier; defaults to PO. */
+  receivingType?: string | null;
+  unitCostCents?: number | null;
+  currency?: string | null;
+
   // Reconcile mirror snapshot (→ inbound_purchase_order_mirror)
   orderNumber?: string | null;
   vendorOrSellerName?: string | null;
@@ -56,6 +68,8 @@ interface IngestPurchaseInput {
   carrierCode?: string | null;
   poDate?: string | null;
   expectedDeliveryDate?: string | null;
+  /** The whole purchase's lines (a chat-imported PO's items with cost) → mirror `line_items`. */
+  lineItems?: unknown[];
   rawPayload?: unknown;
 }
 
@@ -157,24 +171,43 @@ export async function ingestPurchase(
         expectedDeliveryDate: input.expectedDeliveryDate ?? null,
         trackingNumber: input.trackingNumber ?? null,
         carrierCode: input.carrierCode ?? null,
+        lineItems: input.lineItems,
         rawPayload: input.rawPayload ?? null,
       },
       { query: (async (_o: OrgId, sql: string, params?: ReadonlyArray<unknown>) => client.query(sql, params)) as never },
     );
 
     // Find the existing spine row for this identity (idempotent re-import).
-    const existing = await client.query<{ receiving_line_id: number }>(
-      `SELECT receiving_line_id
-         FROM inbound_purchase_order_links
-        WHERE organization_id = $1 AND source_type = $2 AND source_order_id = $3
-          AND COALESCE(source_line_item_id, '') = COALESCE($4, '')
-        ORDER BY receiving_line_id
-        LIMIT 1`,
-      [orgId, sourceType, sourceOrderId, sourceLineItemId],
-    );
+    // An internal order identity wins; the source link is the legacy key.
+    const inboundOrderId = input.inboundOrderId ?? null;
+    const lineKey = input.lineKey?.trim() || null;
+    if (inboundOrderId != null && !lineKey) throw new Error('inbound: lineKey is required with inboundOrderId');
+    const existing = inboundOrderId != null
+      ? await client.query<{ receiving_line_id: number }>(
+          `SELECT id AS receiving_line_id
+             FROM receiving_line
+            WHERE organization_id = $1 AND inbound_order_id = $2 AND line_key = $3
+            LIMIT 1`,
+          [orgId, inboundOrderId, lineKey],
+        )
+      : await client.query<{ receiving_line_id: number }>(
+          `SELECT receiving_line_id
+             FROM inbound_purchase_order_links
+            WHERE organization_id = $1 AND source_type = $2 AND source_order_id = $3
+              AND COALESCE(source_line_item_id, '') = COALESCE($4, '')
+            ORDER BY receiving_line_id
+            LIMIT 1`,
+          [orgId, sourceType, sourceOrderId, sourceLineItemId],
+        );
 
     let receivingLineId = existing.rows[0]?.receiving_line_id ?? null;
     const created = receivingLineId == null;
+    const receivingType = input.receivingType?.trim().toUpperCase() || 'PO';
+    const unitCostCents =
+      input.unitCostCents != null && Number.isFinite(Number(input.unitCostCents)) && Number(input.unitCostCents) >= 0
+        ? Math.round(Number(input.unitCostCents))
+        : null;
+    const currency = input.currency?.trim().toUpperCase() || null;
 
     const skuCatalogId =
       input.skuCatalogId != null && Number.isFinite(Number(input.skuCatalogId))
@@ -190,12 +223,14 @@ export async function ingestPurchase(
            quantity_expected, quantity_received, workflow_status,
            receiving_type, source_system, source_order_id, source_line_item_id,
            inbound_source_type, platform_account_id, organization_id,
+           inbound_order_id, line_key, unit_cost_cents, currency,
            manual_entry_at, created_at, updated_at
          ) VALUES (
            NULL, $1, $2, $9, $10,
            $3, 0, 'EXPECTED'::inbound_workflow_status_enum,
-           'PO', $4, $5, $6,
+           $11, $4, $5, $6,
            $4, $7, $8::uuid,
+           $12, $13, $14, $15,
            NOW(), NOW(), NOW()
          )
          RETURNING id`,
@@ -210,6 +245,11 @@ export async function ingestPurchase(
           orgId,
           skuCatalogId,
           listingUrl,
+          receivingType,
+          inboundOrderId,
+          lineKey,
+          unitCostCents,
+          currency,
         ],
       );
       receivingLineId = inserted.rows[0].id;
@@ -247,6 +287,22 @@ export async function ingestPurchase(
           quantityExpected,
           orgId,
         ],
+      );
+    }
+
+    if (!created && inboundOrderId != null) {
+      // An internal-order re-save is the operator's current truth for the line.
+      await client.query(
+        `UPDATE receiving_line
+            SET inbound_order_id = $2,
+                line_key = $3,
+                quantity_expected = $4,
+                unit_cost_cents = COALESCE($5, unit_cost_cents),
+                currency = COALESCE($6, currency),
+                receiving_type = $7,
+                updated_at = NOW()
+          WHERE id = $1 AND organization_id = $8::uuid`,
+        [receivingLineId, inboundOrderId, lineKey, quantityExpected, unitCostCents, currency, receivingType, orgId],
       );
     }
 

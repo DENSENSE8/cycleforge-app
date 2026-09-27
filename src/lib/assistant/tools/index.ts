@@ -17,7 +17,6 @@ import {
   searchPhotosTool,
 } from './domain-read-tools';
 import {
-  exactIdSerialSearch,
   getBenchmarks,
   getChatHistory,
   getFeedState,
@@ -28,16 +27,24 @@ import {
   getSignalsByNode,
   getTopReasons,
   getUnitJourney,
-  hybridEntitySearch,
   resolveSupportTicket,
   searchNotes,
 } from './read-tools';
+import { findRecordsTool } from './find-records-tool';
 import {
   listReceivingLinePhotosTool,
   resolveReceivingLineForOrderTool,
 } from './receiving-photo-tools';
 import { getOrderDocuments } from './order-document-tools';
 import { listLocationContents, locateProduct } from './wms-tools';
+import { draftManualOrder } from './manual-order-tools';
+import { draftPoImport } from './po-import-tools';
+import { printOrderPaperwork } from './order-paperwork-print-tool';
+import { reconcileRefs } from './reconcile-refs-tool';
+import { getCustomer } from './customer-dossier-tool';
+import { getWorklist } from './worklist-tool';
+import { getStaffReport } from './staff-report-tool';
+import { getTrackingStatus } from './tracking-tools';
 import { TOOL_FORGE_GATEWAY_TOOLS } from '@/lib/tool-forge/gateway-tools';
 
 const READ_TOOLS: ReadonlyArray<AssistantToolDef<any, unknown>> = [
@@ -52,8 +59,8 @@ const READ_TOOLS: ReadonlyArray<AssistantToolDef<any, unknown>> = [
   searchNotes,
   getMutationHistory,
   getChatHistory,
-  hybridEntitySearch,
-  exactIdSerialSearch,
+  // The one record finder — the Search page's retrieval (find-records-tool.ts).
+  findRecordsTool,
   resolveSupportTicket,
   getOperationsJourney,
   getOrderLookup,
@@ -79,12 +86,33 @@ const READ_TOOLS: ReadonlyArray<AssistantToolDef<any, unknown>> = [
   // itself stays behind propose_mutation.
   resolveReceivingLineForOrderTool,
   listReceivingLinePhotosTool,
+  // An order drafted from the conversation (phone or any sales channel) —
+  // channel / catalog / listing / customer reads and an inline order card, no
+  // writes. Creating it is create_manual_order (a write).
+  draftManualOrder,
+  // A purchase order imported from pasted text — catalog / duplicate reads and
+  // an inline PO card, no writes. Importing it is import_purchase_order (a write).
+  draftPoImport,
+  // ChatReads (chat-roi rows 3, 9, 8, 11, 12): pasted-list reconcile, the
+  // customer dossier, ranked worklists, staff reports, live carrier status.
+  reconcileRefs,
+  getCustomer,
+  getWorklist,
+  getStaffReport,
+  getTrackingStatus,
 ];
 
 /** The four tool-forge gateway tools (search_tool_registry, submit_approval_decision, execute_build_sandbox, commit_to_git). */
 const GATEWAY_TOOLS: ReadonlyArray<AssistantToolDef<any, unknown>> = TOOL_FORGE_GATEWAY_TOOLS;
 
-const ALL_TOOLS: ReadonlyArray<AssistantToolDef<any, unknown>> = [...READ_TOOLS, ...GATEWAY_TOOLS];
+/**
+ * Device tools: org-scoped reads that resolve a physical action the operator's
+ * browser runs (a print on their station). Not GREEN — an Ask-only turn
+ * neither sees nor can dispatch them.
+ */
+const DEVICE_TOOLS: ReadonlyArray<AssistantToolDef<any, unknown>> = [printOrderPaperwork];
+
+const ALL_TOOLS: ReadonlyArray<AssistantToolDef<any, unknown>> = [...READ_TOOLS, ...DEVICE_TOOLS, ...GATEWAY_TOOLS];
 
 export const ASSISTANT_TOOLS: ReadonlyMap<string, AssistantToolDef<any, unknown>> = new Map(
   ALL_TOOLS.map((t) => [t.name, t]),

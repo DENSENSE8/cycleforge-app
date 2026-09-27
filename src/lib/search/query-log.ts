@@ -7,7 +7,7 @@ import { normalizeQuery } from '@/lib/search/query-expansion';
 
 /** Which surface issued the search. Their zero-result rates are not comparable
  *  to each other, so the column exists to keep them apart in any report. */
-export type SearchSurface = 'palette' | 'search-page' | 'identify';
+export type SearchSurface = 'palette' | 'search-page' | 'identify' | 'assistant';
 
 interface SearchQueryLogEntry {
   orgId: OrgId;

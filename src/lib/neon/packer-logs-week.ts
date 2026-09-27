@@ -10,6 +10,7 @@ import { getCurrentPSTDateKey } from '@/utils/date';
 import { escapeLike } from '@/lib/sql-like';
 import { queryWithRetry } from '@/lib/db-retry';
 import { isPackerLogEnrichmentRead } from '@/lib/feature-flags';
+import { sqlPackerOrderMatchLateral } from '@/lib/neon/packer-order-match';
 import { computePackerLogEnrichment } from '@/lib/neon/packer-log-enrichment';
 import type { OrgId } from '@/lib/tenancy/constants';
 import {
@@ -19,6 +20,7 @@ import {
   shippedFilterJoins,
   type ShippedDeskFilters,
 } from '@/lib/shipping/shipped-filter/shipped-filter-sql';
+import { sqlOrderPickedByStaff } from '@/lib/orders/desk-view-sql';
 
 interface FetchPackerLogRowsOptions {
   /**
@@ -38,6 +40,11 @@ interface FetchPackerLogRowsOptions {
   offset?: number;
   weekStart?: string;
   weekEnd?: string;
+  /** Exact shipped-instant window — see {@link PackerLogBaseFilter.shippedFrom}. */
+  shippedFrom?: string | null;
+  shippedTo?: string | null;
+  /** `?pickedBy` — see {@link PackerLogBaseFilter.pickedBy}. */
+  pickedBy?: number | null;
   /**
    * The Shipped desk's view filters (type / carrier / status / exceptions),
    * answered in the page WHERE — one predicate with the sidebar facet counts.
@@ -77,51 +84,22 @@ export interface PackerLogBaseFilter {
   staffId?: number | null;
   weekStart?: string;
   weekEnd?: string;
+  /**
+   * Exact shipped-instant window (`?timeFrom`/`?timeTo` over `dateFrom`/`dateTo`,
+   * see `readShippedTimeWindow`): `sal.created_at` in `[shippedFrom, shippedTo)`.
+   * Both or neither; intersects the (padded) week window.
+   */
+  shippedFrom?: string | null;
+  shippedTo?: string | null;
+  /** `?pickedBy` — the order's picker (PICK_FACTS_LATERALS source priority). */
+  pickedBy?: number | null;
 }
 
 /** Page-selection joins a testedBy / staff filter reads (the order-derived test laterals). */
 export const PACKER_LOG_ORDER_JOINS = `
         LEFT JOIN shipping_tracking_numbers stn ON stn.id = sal.shipment_id
-        LEFT JOIN LATERAL (
-            SELECT ord.id
-            FROM orders ord
-            LEFT JOIN shipment_links osl ON osl.owner_id = ord.id AND osl.owner_type = 'ORDER'
-            LEFT JOIN shipping_tracking_numbers ord_stn ON ord_stn.id = ord.shipment_id
-            WHERE (
-                sal.shipment_id IS NOT NULL
-                AND (
-                  osl.shipment_id = sal.shipment_id
-                  OR ord.shipment_id = sal.shipment_id
-                )
-            ) OR (
-                COALESCE(stn.tracking_number_raw, sal.scan_ref, '') <> ''
-                AND ord_stn.tracking_number_raw IS NOT NULL
-                AND ord_stn.tracking_number_raw != ''
-                AND RIGHT(regexp_replace(UPPER(ord_stn.tracking_number_raw), '[^A-Z0-9]', '', 'g'), 18) =
-                    RIGHT(regexp_replace(UPPER(COALESCE(stn.tracking_number_raw, sal.scan_ref, '')), '[^A-Z0-9]', '', 'g'), 18)
-            )
-            ORDER BY
-                CASE
-                  WHEN sal.shipment_id IS NOT NULL AND osl.shipment_id = sal.shipment_id THEN 0
-                  WHEN sal.shipment_id IS NOT NULL AND ord.shipment_id = sal.shipment_id THEN 1
-                  ELSE 2
-                END,
-                CASE WHEN COALESCE(osl.is_primary, false) THEN 0 ELSE 1 END,
-                ord.created_at DESC NULLS LAST,
-                ord.id DESC
-            LIMIT 1
-        ) order_match ON TRUE
+        ${sqlPackerOrderMatchLateral('order_match')} ON TRUE
         LEFT JOIN orders o ON o.id = order_match.id AND o.organization_id = sal.organization_id
-        LEFT JOIN LATERAL (
-            SELECT wa.assigned_tech_id
-            FROM work_assignments wa
-            WHERE wa.entity_type = 'ORDER'
-              AND wa.entity_id = o.id
-              AND wa.work_type = 'TEST'
-              AND wa.status IN ('ASSIGNED', 'IN_PROGRESS')
-            ORDER BY wa.created_at DESC, wa.id DESC
-            LIMIT 1
-        ) wa_t ON TRUE
         LEFT JOIN LATERAL (
             SELECT MIN(tsn.tested_by)::int AS tested_by
             FROM tech_serial_numbers tsn
@@ -203,8 +181,7 @@ export function buildPackerLogBaseWhere(
 
   if (opts.testedBy != null && !Number.isNaN(opts.testedBy)) {
     params.push(opts.testedBy);
-    const testedByIdx = params.length;
-    conditions.push(`(test_data.tested_by = $${testedByIdx} OR wa_t.assigned_tech_id = $${testedByIdx})`);
+    conditions.push(`test_data.tested_by = $${params.length}`);
   }
 
   // Universal staff filter: this person packed OR tested the row. References the
@@ -214,8 +191,7 @@ export function buildPackerLogBaseWhere(
     const staffIdx = params.length;
     conditions.push(
       `((sal.station = 'PACK' AND sal.staff_id = $${staffIdx})`
-      + ` OR test_data.tested_by = $${staffIdx}`
-      + ` OR wa_t.assigned_tech_id = $${staffIdx})`,
+      + ` OR test_data.tested_by = $${staffIdx})`,
     );
   }
 
@@ -227,76 +203,37 @@ export function buildPackerLogBaseWhere(
     conditions.push(`sal.created_at <  ($${we}::date + interval '2 days')`);
   }
 
+  if (opts.shippedFrom && opts.shippedTo) {
+    params.push(opts.shippedFrom, opts.shippedTo);
+    conditions.push(`sal.created_at >= $${params.length - 1}::timestamptz`);
+    conditions.push(`sal.created_at <  $${params.length}::timestamptz`);
+  }
+
+  const pickedBy =
+    opts.pickedBy != null && Number.isSafeInteger(opts.pickedBy) && opts.pickedBy > 0 ? opts.pickedBy : null;
+  if (pickedBy != null) {
+    params.push(pickedBy);
+    conditions.push(sqlOrderPickedByStaff('o', `$${params.length}`));
+  }
+
   return {
     conditions,
-    needsOrderJoins: (opts.testedBy != null && !Number.isNaN(opts.testedBy)) || staffFilterId != null,
+    needsOrderJoins:
+      (opts.testedBy != null && !Number.isNaN(opts.testedBy)) || staffFilterId != null || pickedBy != null,
   };
 }
 
-/** Shared loader for the /tech packer-logs week query. */
-export async function fetchPackerLogRows(
-  opts: FetchPackerLogRowsOptions,
-): Promise<FetchPackerLogRowsResult> {
-  const searchTerm = (opts.searchTerm ?? '').trim();
-  /** A searching read drops the page bound and covers the whole week. */
-  const limit = searchTerm ? SEARCH_ROW_CEILING : (opts.limit ?? 500);
-  const offset = searchTerm ? 0 : (opts.offset ?? 0);
-  const weekStart = opts.weekStart ?? '';
-  const weekEnd = opts.weekEnd ?? '';
-  // Spine-first only makes sense on the enriched read path (it trims enriched
-  // laterals); the legacy query is left whole.
-  const spineOnly = Boolean(opts.spineOnly) && isPackerLogEnrichmentRead();
-
-  const orgId = opts.organizationId;
-
-  const staffFilterId =
-    opts.staffId != null && Number.isFinite(opts.staffId) && opts.staffId > 0 ? opts.staffId : null;
-
-  const cacheLookup = createCacheLookupKey({
-    // Org id FIRST so the cache is per-tenant — never share a PACK-log page
-    // across organizations.
-    organizationId: orgId,
-    packerId: opts.packerId ?? '',
-    testedBy: opts.testedBy ?? '',
-    staffId: staffFilterId ?? '',
-    limit,
-    offset,
-    weekStart,
-    weekEnd,
-    shippedFilters: [
-      opts.shippedFilters?.type ?? '',
-      opts.shippedFilters?.carrier ?? '',
-      opts.shippedFilters?.statusCategory ?? '',
-      opts.shippedFilters?.exceptionsOnly ? 'exceptions' : '',
-    ].join('|'),
-    // The query text is part of the ANSWER, so it belongs in the key — without
-    // it a searched page and the unfiltered week collide on one entry and the
-    // first to land is served to the other.
-    q: searchTerm,
-    // Spine and full responses have different column payloads — keep them in
-    // separate cache entries so one can never be served for the other.
-    phase: spineOnly ? 'spine' : 'full',
-  });
-
-  const today = getCurrentPSTDateKey();
-  const cacheTTL = weekEnd && weekEnd < today ? 86400 : 120;
-
-  const cached = await getCachedJson<any[]>(CACHE_NAMESPACE, orgId, cacheLookup);
-  if (cached) {
-    return { rows: cached, cacheTTL, cacheHit: true };
-  }
-
-  const params: unknown[] = [];
-  const { conditions, needsOrderJoins } = buildPackerLogBaseWhere(opts, params);
-
-  /** The find box, as SQL — and it joins `conditions`, which is the PAGE CTE's WHERE, above the LIMIT. */
-  if (searchTerm) {
-    params.push(`%${escapeLike(searchTerm)}%`);
-    const q = `$${params.length}`;
-    const orderMatchesQ = (o: string) =>
-      `${o}.order_id ILIKE ${q} OR ${o}.product_title ILIKE ${q} OR ${o}.sku ILIKE ${q}`
-      + ` OR ${o}.item_number ILIKE ${q} OR ${o}.notes ILIKE ${q}`;
-    conditions.push(`(
+/**
+ * The Shipped find box (`/api/packerlogs?q=`) as one predicate over
+ * `station_activity_logs sal`; `likeParam` binds `%<escapeLike(term)>%`.
+ */
+export function sqlPackerLogSearch(likeParam: string): string {
+  if (!/^\$[1-9][0-9]*$/.test(likeParam)) throw new Error(`invalid SQL param ref: ${likeParam}`);
+  const q = likeParam;
+  const orderMatchesQ = (o: string) =>
+    `${o}.order_id ILIKE ${q} OR ${o}.product_title ILIKE ${q} OR ${o}.sku ILIKE ${q}`
+    + ` OR ${o}.item_number ILIKE ${q} OR ${o}.notes ILIKE ${q}`;
+  return `(
         sal.scan_ref ILIKE ${q}
         OR sal.fnsku ILIKE ${q}
         OR EXISTS (
@@ -339,7 +276,72 @@ export async function fetchPackerLogRows(
               AND tsn_q.shipment_id = sal.shipment_id
               AND (tsn_q.serial_number ILIKE ${q} OR tester_q.name ILIKE ${q})
         )
-    )`);
+    )`;
+}
+
+/** Shared loader for the /tech packer-logs week query. */
+export async function fetchPackerLogRows(
+  opts: FetchPackerLogRowsOptions,
+): Promise<FetchPackerLogRowsResult> {
+  const searchTerm = (opts.searchTerm ?? '').trim();
+  /** A searching read drops the page bound and covers the whole week. */
+  const limit = searchTerm ? SEARCH_ROW_CEILING : (opts.limit ?? 500);
+  const offset = searchTerm ? 0 : (opts.offset ?? 0);
+  const weekStart = opts.weekStart ?? '';
+  const weekEnd = opts.weekEnd ?? '';
+  // Spine-first only makes sense on the enriched read path (it trims enriched
+  // laterals); the legacy query is left whole.
+  const spineOnly = Boolean(opts.spineOnly) && isPackerLogEnrichmentRead();
+
+  const orgId = opts.organizationId;
+
+  const staffFilterId =
+    opts.staffId != null && Number.isFinite(opts.staffId) && opts.staffId > 0 ? opts.staffId : null;
+
+  const cacheLookup = createCacheLookupKey({
+    // Org id FIRST so the cache is per-tenant — never share a PACK-log page
+    // across organizations.
+    organizationId: orgId,
+    packerId: opts.packerId ?? '',
+    testedBy: opts.testedBy ?? '',
+    staffId: staffFilterId ?? '',
+    limit,
+    offset,
+    weekStart,
+    weekEnd,
+    shippedFilters: [
+      opts.shippedFilters?.type ?? '',
+      opts.shippedFilters?.carrier ?? '',
+      opts.shippedFilters?.statusCategory ?? '',
+      opts.shippedFilters?.exceptionsOnly ? 'exceptions' : '',
+    ].join('|'),
+    // Exact shipped-instant window + picker — each narrows the answer.
+    shippedWindow: opts.shippedFrom && opts.shippedTo ? `${opts.shippedFrom}|${opts.shippedTo}` : '',
+    pickedBy: opts.pickedBy ?? '',
+    // The query text is part of the ANSWER, so it belongs in the key — without
+    // it a searched page and the unfiltered week collide on one entry and the
+    // first to land is served to the other.
+    q: searchTerm,
+    // Spine and full responses have different column payloads — keep them in
+    // separate cache entries so one can never be served for the other.
+    phase: spineOnly ? 'spine' : 'full',
+  });
+
+  const today = getCurrentPSTDateKey();
+  const cacheTTL = weekEnd && weekEnd < today ? 86400 : 120;
+
+  const cached = await getCachedJson<any[]>(CACHE_NAMESPACE, orgId, cacheLookup);
+  if (cached) {
+    return { rows: cached, cacheTTL, cacheHit: true };
+  }
+
+  const params: unknown[] = [];
+  const { conditions, needsOrderJoins } = buildPackerLogBaseWhere(opts, params);
+
+  /** The find box, as SQL — and it joins `conditions`, which is the PAGE CTE's WHERE, above the LIMIT. */
+  if (searchTerm) {
+    params.push(`%${escapeLike(searchTerm)}%`);
+    conditions.push(sqlPackerLogSearch(`$${params.length}`));
   }
 
   // The Shipped desk's view filters. Both read paths bind the same values; only
@@ -460,11 +462,9 @@ export async function fetchPackerLogRows(
             NULLIF(TRIM(COALESCE(sku_lookup.sku_table_serial, '')), '')
         ) AS serial_number,
         sku_lookup.sku_table_id AS sku_table_id,
-        wa_t.assigned_tech_id AS tester_id,
         test_data.tested_by,
         test_data.test_date_time,
         tested_staff.name AS tested_by_name,
-        tester_staff.name AS tester_name,
         sal.fnsku,
         (NULLIF(TRIM(sal.metadata->>'fnsku_log_id'), ''))::bigint AS fnsku_log_id,
         stn.carrier                            AS carrier,
@@ -529,35 +529,7 @@ export async function fetchPackerLogRows(
     LEFT JOIN fba_fnskus ff ON ff.fnsku = sal.fnsku
     LEFT JOIN staff packed_staff ON packed_staff.id = sal.staff_id AND sal.station = 'PACK'
     ${packageLinesJoin}
-    LEFT JOIN LATERAL (
-        SELECT ord.id
-        FROM orders ord
-        LEFT JOIN shipment_links osl ON osl.owner_id = ord.id AND osl.owner_type = 'ORDER'
-        LEFT JOIN shipping_tracking_numbers ord_stn ON ord_stn.id = ord.shipment_id
-        WHERE (
-            sal.shipment_id IS NOT NULL
-            AND (
-              osl.shipment_id = sal.shipment_id
-              OR ord.shipment_id = sal.shipment_id
-            )
-        ) OR (
-            COALESCE(stn.tracking_number_raw, sal.scan_ref, '') <> ''
-            AND ord_stn.tracking_number_raw IS NOT NULL
-            AND ord_stn.tracking_number_raw != ''
-            AND RIGHT(regexp_replace(UPPER(ord_stn.tracking_number_raw), '[^A-Z0-9]', '', 'g'), 18) =
-                RIGHT(regexp_replace(UPPER(COALESCE(stn.tracking_number_raw, sal.scan_ref, '')), '[^A-Z0-9]', '', 'g'), 18)
-        )
-        ORDER BY
-            CASE
-              WHEN sal.shipment_id IS NOT NULL AND osl.shipment_id = sal.shipment_id THEN 0
-              WHEN sal.shipment_id IS NOT NULL AND ord.shipment_id = sal.shipment_id THEN 1
-              ELSE 2
-            END,
-            CASE WHEN COALESCE(osl.is_primary, false) THEN 0 ELSE 1 END,
-            ord.created_at DESC NULLS LAST,
-            ord.id DESC
-        LIMIT 1
-    ) order_match ON TRUE
+    ${sqlPackerOrderMatchLateral('order_match')} ON TRUE
     LEFT JOIN orders o ON o.id = order_match.id AND o.organization_id = sal.organization_id
     LEFT JOIN orders_exceptions oe ON oe.id = sal.orders_exception_id
     LEFT JOIN LATERAL (
@@ -737,16 +709,6 @@ export async function fetchPackerLogRows(
         LIMIT 1
     ) wa_deadline ON TRUE
     LEFT JOIN LATERAL (
-        SELECT wa.assigned_tech_id
-        FROM work_assignments wa
-        WHERE wa.entity_type = 'ORDER'
-          AND wa.entity_id = o.id
-          AND wa.work_type = 'TEST'
-          AND wa.status IN ('ASSIGNED', 'IN_PROGRESS')
-        ORDER BY wa.created_at DESC, wa.id DESC
-        LIMIT 1
-    ) wa_t ON TRUE
-    LEFT JOIN LATERAL (
         SELECT
             COALESCE(STRING_AGG(tsn.serial_number, ',' ORDER BY tsn.created_at), '') AS serial_number,
             MIN(tsn.tested_by)::int AS tested_by,
@@ -769,7 +731,6 @@ export async function fetchPackerLogRows(
           )
     ) test_data ON TRUE
     LEFT JOIN staff tested_staff ON tested_staff.id = test_data.tested_by
-    LEFT JOIN staff tester_staff ON tester_staff.id = wa_t.assigned_tech_id
     ORDER BY sal.created_at DESC NULLS LAST
   `;
 
@@ -779,8 +740,6 @@ export async function fetchPackerLogRows(
         NULL::text AS deadline_at,`
     : `to_char(wa_deadline.deadline_at, 'YYYY-MM-DD HH24:MI:SS') AS ship_by_date,
         to_char(wa_deadline.deadline_at, 'YYYY-MM-DD HH24:MI:SS') AS deadline_at,`;
-  const testerIdCol = spineOnly ? `NULL::int AS tester_id,` : `wa_t.assigned_tech_id AS tester_id,`;
-  const testerNameCol = spineOnly ? `NULL::text AS tester_name,` : `tester_staff.name AS tester_name,`;
   const deadlineJoin = spineOnly
     ? ''
     : `LEFT JOIN LATERAL (
@@ -801,19 +760,6 @@ export async function fetchPackerLogRows(
           wa.id DESC
         LIMIT 1
     ) wa_deadline ON TRUE`;
-  const waTJoin = spineOnly
-    ? ''
-    : `LEFT JOIN LATERAL (
-        SELECT wa.assigned_tech_id
-        FROM work_assignments wa
-        WHERE wa.entity_type = 'ORDER'
-          AND wa.entity_id = o.id
-          AND wa.work_type = 'TEST'
-          AND wa.status IN ('ASSIGNED', 'IN_PROGRESS')
-        ORDER BY wa.created_at DESC, wa.id DESC
-        LIMIT 1
-    ) wa_t ON TRUE`;
-  const testerStaffJoin = spineOnly ? '' : `LEFT JOIN staff tester_staff ON tester_staff.id = wa_t.assigned_tech_id`;
   const enrichedQuery = `
     ${pageCteFor(true)}
     SELECT
@@ -870,11 +816,9 @@ export async function fetchPackerLogRows(
             NULLIF(TRIM(COALESCE(enr.sku_table_serial, '')), '')
         ) AS serial_number,
         enr.sku_table_id AS sku_table_id,
-        ${testerIdCol}
         test_data.tested_by,
         test_data.test_date_time,
         tested_staff.name AS tested_by_name,
-        ${testerNameCol}
         sal.fnsku,
         (NULLIF(TRIM(sal.metadata->>'fnsku_log_id'), ''))::bigint AS fnsku_log_id,
         stn.carrier                            AS carrier,
@@ -895,39 +839,7 @@ export async function fetchPackerLogRows(
     LEFT JOIN packer_logs pl ON pl.id = sal.packer_log_id
     LEFT JOIN packer_log_enrichment enr ON enr.sal_id = sal.id
     LEFT JOIN shipping_tracking_numbers stn ON stn.id = sal.shipment_id
-    LEFT JOIN LATERAL (
-        SELECT ord.id
-        FROM orders ord
-        LEFT JOIN shipment_links osl ON osl.owner_id = ord.id AND osl.owner_type = 'ORDER'
-        LEFT JOIN shipping_tracking_numbers ord_stn ON ord_stn.id = ord.shipment_id
-        -- The guard lives HERE, as a one-time filter: a lateral's ON clause
-        -- filters after the subquery ran, so the scan ran for every row.
-        WHERE enr.sal_id IS NULL AND sal.station = 'PACK' AND (
-          ord.organization_id = sal.organization_id
-          AND (
-            sal.shipment_id IS NOT NULL
-            AND (
-              osl.shipment_id = sal.shipment_id
-              OR ord.shipment_id = sal.shipment_id
-            )
-        ) OR (
-            COALESCE(stn.tracking_number_raw, sal.scan_ref, '') <> ''
-            AND ord_stn.tracking_number_raw IS NOT NULL
-            AND ord_stn.tracking_number_raw != ''
-            AND RIGHT(regexp_replace(UPPER(ord_stn.tracking_number_raw), '[^A-Z0-9]', '', 'g'), 18) =
-                RIGHT(regexp_replace(UPPER(COALESCE(stn.tracking_number_raw, sal.scan_ref, '')), '[^A-Z0-9]', '', 'g'), 18)
-        ))
-        ORDER BY
-            CASE
-              WHEN sal.shipment_id IS NOT NULL AND osl.shipment_id = sal.shipment_id THEN 0
-              WHEN sal.shipment_id IS NOT NULL AND ord.shipment_id = sal.shipment_id THEN 1
-              ELSE 2
-            END,
-            CASE WHEN COALESCE(osl.is_primary, false) THEN 0 ELSE 1 END,
-            ord.created_at DESC NULLS LAST,
-            ord.id DESC
-        LIMIT 1
-    ) order_match_fallback ON enr.sal_id IS NULL AND sal.station = 'PACK'
+    ${sqlPackerOrderMatchLateral('order_match_fallback', "enr.sal_id IS NULL AND sal.station = 'PACK'")} ON TRUE
     -- Scan-out-only rows have no enrichment (PACK-only projection) but always a
     -- package: its owning order is two index probes, not the key18 fallback scan.
     LEFT JOIN LATERAL (
@@ -964,7 +876,6 @@ export async function fetchPackerLogRows(
       AND o.organization_id = sal.organization_id
     LEFT JOIN orders_exceptions oe ON oe.id = sal.orders_exception_id
     ${deadlineJoin}
-    ${waTJoin}
     LEFT JOIN LATERAL (
         SELECT
             COALESCE(STRING_AGG(tsn.serial_number, ',' ORDER BY tsn.created_at), '') AS serial_number,
@@ -988,7 +899,6 @@ export async function fetchPackerLogRows(
           )
     ) test_data ON TRUE
     LEFT JOIN staff tested_staff ON tested_staff.id = test_data.tested_by
-    ${testerStaffJoin}
     ORDER BY sal.created_at DESC NULLS LAST
   `;
 

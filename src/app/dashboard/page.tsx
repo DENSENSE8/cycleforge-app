@@ -2,14 +2,9 @@
 
 /** Dashboard page — Sales domain host + legacy outbound redirect shell. */
 
-import { Suspense, useCallback, useEffect } from 'react';
+import { Suspense, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import type { QueryClient } from '@tanstack/react-query';
-import { BootGate } from '@/components/boot/BootGate';
-import { BootSplash } from '@/components/boot/BootSplash';
 import { SurfaceParamHygiene } from '@/components/routing/SurfaceParamHygiene';
-import { consumeBootSplash } from '@/lib/boot-flag';
-import { warmActiveView } from '@/lib/queries/dashboard-warm';
 import { DashboardSalesView } from '@/components/dashboard/DashboardSalesView';
 import { DeskPageLayout } from '@/components/desk/DeskPageLayout';
 import {
@@ -80,26 +75,12 @@ function DashboardPageContent() {
   return <RedirectDashboardOutboundToShippingOrders />;
 }
 
-function DashboardBootGate({ children }: { children: React.ReactNode }) {
-  const prefetch = useCallback(
-    (queryClient: QueryClient) => warmActiveView(queryClient, window.location.search),
-    [],
-  );
-  return (
-    <BootGate prefetch={prefetch} shouldHold={consumeBootSplash} splash={<BootSplash />}>
-      {children}
-    </BootGate>
-  );
-}
-
 export default function DashboardPage() {
   return (
     <>
       <SurfaceParamHygiene />
-      <Suspense fallback={<BootSplash />}>
-        <DashboardBootGate>
-          <DashboardPageContent />
-        </DashboardBootGate>
+      <Suspense fallback={null}>
+        <DashboardPageContent />
       </Suspense>
     </>
   );

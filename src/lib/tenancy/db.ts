@@ -36,8 +36,10 @@ export async function withTenantConnection<T>(
   const client = await tenantPool.connect();
   try {
     // Run the work inside a transaction and set the org GUC with SET LOCAL (is_local=true).
-    await client.query('BEGIN');
-    await client.query("SELECT set_config('app.current_org', $1, true)", [orgId]);
+    // BEGIN and the GUC travel as one simple-protocol message (one round trip, not two):
+    // the explicit BEGIN keeps the block open past the message, so the setting holds for
+    // `fn` and dies at COMMIT/ROLLBACK. orgId is UUID-checked above, so inlining it is safe.
+    await client.query(`BEGIN; SELECT set_config('app.current_org', '${orgId}', true)`);
     const result = await fn(client);
     await client.query('COMMIT');
     return result;
@@ -64,7 +66,7 @@ export async function tenantQuery<T extends QueryResultRow = QueryResultRow>(
 }
 
 /**
- * `tenantQuery` in ONE network round trip instead of four (BEGIN, set_config,
+ * `tenantQuery` in ONE network round trip instead of three (BEGIN + set_config,
  * statement, COMMIT). The GUC and the statement travel as one simple-protocol
  * message, which Postgres runs as a single implicit transaction: the LOCAL
  * setting is visible to the statement and gone when it ends, so this is as

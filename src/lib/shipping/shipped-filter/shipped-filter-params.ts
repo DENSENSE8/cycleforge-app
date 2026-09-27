@@ -1,8 +1,13 @@
+import { fromZonedTime } from 'date-fns-tz';
 import type { CarrierCode, ShipmentStatusCategory } from '@/lib/shipping/shipment-status';
 import {
+  addDaysToDateKey,
   dateKeyToLocalDate,
   isDateKey,
   localDateToDateKey,
+  normalizePSTTimestamp,
+  warehouseCivilTimeToInstant,
+  WAREHOUSE_TIME_ZONE,
 } from '@/utils/date';
 import { getWeekRangeForOffset } from '@/lib/dashboard-week-range';
 import { VALID_CARRIERS, VALID_STATUS, type ShippedTypeFilter } from './shipped-filter-constants';
@@ -50,7 +55,7 @@ export function toISODate(d: Date | undefined): string | null {
 }
 
 /** Intentional "no date window" — Clear on the week chip; blocks current-week seed. */
-const SHIPPED_ALL_DATES_PARAM = 'allDates';
+export const SHIPPED_ALL_DATES_PARAM = 'allDates';
 
 export function readShippedAllDates(searchParams: ParamReader): boolean {
   const raw = String(searchParams.get(SHIPPED_ALL_DATES_PARAM) || '').toLowerCase();
@@ -94,6 +99,91 @@ export function readShippedDateWindow(searchParams: ParamReader): { start: strin
     weekStart: week.startStr,
     weekEnd: week.endStr,
   });
+}
+
+const HHMM_RE = /^([01]\d|2[0-3]):[0-5]\d$/;
+
+function readHhmm(searchParams: ParamReader, key: string): string | null {
+  const raw = (searchParams.get(key) || '').trim();
+  return HHMM_RE.test(raw) ? raw : null;
+}
+
+/** The URL's time-of-day narrowing, normalized: valid keys only, `dateTo` defaulted to `dateFrom`. */
+export interface ShippedTimeParams {
+  dateFrom: string;
+  dateTo: string;
+  timeFrom?: string;
+  timeTo?: string;
+}
+
+/**
+ * `?timeFrom` / `?timeTo` (`HH:mm`, 24h warehouse wall clock) on top of an
+ * explicit `dateFrom`/`dateTo`. Null (no narrowing beyond the day window) when
+ * neither time is valid, when there is no explicit date range, or under
+ * `allDates`.
+ */
+export function readShippedTimeParams(searchParams: ParamReader): ShippedTimeParams | null {
+  if (readShippedAllDates(searchParams)) return null;
+  const timeFrom = readHhmm(searchParams, 'timeFrom');
+  const timeTo = readHhmm(searchParams, 'timeTo');
+  if (!timeFrom && !timeTo) return null;
+  const dateFrom = (searchParams.get('dateFrom') || '').trim();
+  if (!isDateKey(dateFrom)) return null;
+  const rawTo = (searchParams.get('dateTo') || '').trim();
+  return {
+    dateFrom,
+    dateTo: isDateKey(rawTo) ? rawTo : dateFrom,
+    ...(timeFrom ? { timeFrom } : {}),
+    ...(timeTo ? { timeTo } : {}),
+  };
+}
+
+/**
+ * The exact shipped-instant window `[dateFrom timeFrom, dateTo timeTo + 1 min)`
+ * in the warehouse zone. Missing `timeFrom` = 00:00, missing `timeTo` = end of
+ * day. The list fetch, its browser trim and the facet counts all read this.
+ */
+export function shippedTimeWindow(t: ShippedTimeParams): { fromIso: string; toIso: string } | null {
+  const from = warehouseCivilTimeToInstant(t.dateFrom, t.timeFrom ?? '00:00');
+  const toBase = t.timeTo
+    ? warehouseCivilTimeToInstant(t.dateTo, t.timeTo)
+    : warehouseCivilTimeToInstant(addDaysToDateKey(t.dateTo, 1), '00:00');
+  if (!from || !toBase) return null;
+  const to = t.timeTo ? new Date(toBase.getTime() + 60_000) : toBase;
+  return { fromIso: from.toISOString(), toIso: to.toISOString() };
+}
+
+export function readShippedTimeWindow(searchParams: ParamReader): { fromIso: string; toIso: string } | null {
+  const t = readShippedTimeParams(searchParams);
+  return t ? shippedTimeWindow(t) : null;
+}
+
+/**
+ * The browser trim for a time window: is this shipped row's stamp inside
+ * `[fromIso, toIso)`? Rows carry `created_at` as a naive warehouse wall clock
+ * (the pool's session zone), so it is read in that zone — the same instant the
+ * server compared, never the host's zone.
+ */
+export function shippedStampInWindow(stamp: string, window: { fromIso: string; toIso: string }): boolean {
+  const raw = stamp.trim();
+  if (!raw) return false;
+  let ms: number;
+  if (/(Z|[+-]\d{2}:?\d{2})$/i.test(raw)) {
+    ms = Date.parse(raw);
+  } else {
+    const normalized = normalizePSTTimestamp(raw, { fallbackToNow: false });
+    if (!normalized) return false;
+    ms = fromZonedTime(normalized.replace(' ', 'T'), WAREHOUSE_TIME_ZONE).getTime();
+  }
+  return Number.isFinite(ms) && ms >= Date.parse(window.fromIso) && ms < Date.parse(window.toIso);
+}
+
+/** `?pickedBy` — the staffer who picked the order; positive int, else unset. */
+export function readShippedPickedBy(searchParams: ParamReader): number | null {
+  const raw = (searchParams.get('pickedBy') || '').trim();
+  if (!/^\d+$/.test(raw)) return null;
+  const n = Number(raw);
+  return Number.isSafeInteger(n) && n > 0 ? n : null;
 }
 
 /** Default week seed is an active filter the operator can clear. */

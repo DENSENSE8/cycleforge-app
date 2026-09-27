@@ -169,7 +169,7 @@ const LOADER_SQL: Record<SearchEntityType, string> = {
            su.condition_grade::text AS condition_grade,
            su.current_location, su.notes, su.received_at, su.created_at,
            su.shipping_tracking_number,
-           COALESCE(i.name, sc.product_title) AS product_title,
+           COALESCE(NULLIF(BTRIM(sc.product_title), ''), i.name) AS product_title,
            -- The tote a unit is physically in. Staff hold the H- code off the
            -- label (handling_units.code, 2026-06-08_handling_units_lpn.sql)
            -- and had no way to turn it into the units inside.
@@ -224,10 +224,9 @@ const LOADER_SQL: Record<SearchEntityType, string> = {
     ) lines ON TRUE
     WHERE r.organization_id = $1 AND r.id = ANY($2::bigint[])`,
   // Platform crosswalk + BOM folded in as LATERAL aggregates so the outer SELECT stays GROUP-BY-free.
-  // The Zoho twin is the SKU identity law's: the ACTIVE items row with the
-  // same sku in the same org (skuCatalogNoZohoTwinPredicateSql). Its name
-  // governs the title (resolveSkuIdentityTitle in buildSkuDoc) and its
-  // brand / manufacturer is Zoho's brand word. LATERAL + LIMIT 1 because
+  // The Zoho twin: the ACTIVE items row with the same sku in the same org.
+  // Its name is the title FALLBACK (resolveSkuIdentityTitle in buildSkuDoc —
+  // the catalog title governs) and its brand / manufacturer the brand fallback. LATERAL + LIMIT 1 because
   // items carries no (organization_id, sku) unique.
   SKU: `
     SELECT sc.id, sc.sku, sc.product_title, sc.category, sc.upc, sc.ean, sc.gtin, sc.notes,

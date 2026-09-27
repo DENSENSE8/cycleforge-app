@@ -12,14 +12,11 @@ export const CACHE_TAGS = {
   pendingUnboxing: 'pending-unboxing',
 
   // ── Tech / repair ─────────────────────────────────────────────────────────
-  techLogs: 'tech-logs',
+  deskPickLogs: 'desk-pick-logs',
   repairService: 'repair-service',
 
   // ── Staff ─────────────────────────────────────────────────────────────────
   staff: 'staff',
-  /** Per-staff overrides (name/role/added-removed perms/mobile cfg) — the auth
-   *  hot-path read. Purged on staff PATCH so a permission revocation is immediate. */
-  staffOverrides: 'staff-overrides',
 
   // ── Reference data (Phase 1 targets) ──────────────────────────────────────
   skuCatalog: 'sku-catalog',
@@ -60,7 +57,6 @@ export const CACHE_NS = {
   fbaBoard: 'fba-board',
   packPolicy: 'pack-policy',
   poByRef: 'po-by-ref',
-  staffOverrides: 'staff-ovr',
   opsDashboard: 'ops-dashboard',
   catalog: 'catalog',
   /** Per-viewer receiving sidebar-rail first-paint seed (localStorage → Redis).

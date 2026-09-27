@@ -12,14 +12,15 @@ export async function handleSerialScan(input: string, ctx: ScanHandlerContext): 
 
   if (!contextOrder) {
     // No active order — add the serial to the last scanned tracking via SAL resolution.
-    // The endpoint finds the most recent TRACKING_SCANNED SAL for this tech, inserts
+    // The endpoint finds the most recent desk session anchor (PICK_SCANNED / FNSKU_SCANNED) for this staffer, inserts
     // the serial into tech_serial_numbers, and returns the order info to restore the card.
     ctx.setIsLoading(true);
     try {
-      const res = await fetch('/api/tech/add-serial-to-last', {
+      const res = await fetch('/api/picking/desk/serial', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          action: 'add-to-last',
           serial: scanned.toUpperCase(),
           techId: ctx.userId,
           scanSessionId: ctx.scanSessionIdRef.current || undefined,
@@ -77,7 +78,7 @@ export async function handleSerialScan(input: string, ctx: ScanHandlerContext): 
       if (data.isComplete && attachedToOrder) {
         confetti({ particleCount: 100, spread: 70 });
       }
-      ctx.queryClient.invalidateQueries({ queryKey: ['tech-logs'] });
+      ctx.queryClient.invalidateQueries({ queryKey: ['desk-pick-logs'] });
       ctx.triggerGlobalRefresh();
     } catch (err) {
       console.error('Add serial to last error:', err);
@@ -112,10 +113,11 @@ export async function handleSerialScan(input: string, ctx: ScanHandlerContext): 
   ctx.setIsLoading(true);
   try {
     const sessionForSerial = (contextOrder.scanSessionId ?? ctx.scanSessionIdRef.current) || undefined;
-    const res = await fetch('/api/tech/add-serial', {
+    const res = await fetch('/api/picking/desk/serial', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
+        action: 'add',
         tracking: contextOrder.tracking,
         serial: finalSerial,
         techId: ctx.userId,
@@ -167,7 +169,7 @@ export async function handleSerialScan(input: string, ctx: ScanHandlerContext): 
       confetti({ particleCount: 100, spread: 70 });
     }
 
-    ctx.queryClient.invalidateQueries({ queryKey: ['tech-logs'] });
+    ctx.queryClient.invalidateQueries({ queryKey: ['desk-pick-logs'] });
     ctx.triggerGlobalRefresh();
   } catch (e) {
     console.error('Add serial error:', e);

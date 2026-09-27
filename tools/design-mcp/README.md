@@ -22,6 +22,19 @@ design-mcp is an opt-in lookup, not a write gate. The session-stamp receipt and
 every hook that enforced it were removed 2026-09-22 along with the `.cursor`
 tree.
 
+## Just-in-time nudge (not a gate)
+
+`new-component-nudge.mjs` runs as a Claude `PostToolUse` hook
+(`.claude/settings.json`, matcher `Write`). When a write CREATES a `.tsx` under
+`src/{components,app,design-system,features}` that exports a rendering
+component, it adds three `ds_contract` matches plus up to three unpinned
+code-graph hits to the agent's context — one line each, once per file per
+session. Edits, tests and existing files cost nothing. It never blocks: new
+components are welcome while the codebase is young; the nudge only makes the
+duplicate visible at the moment it would be written. Agents without Claude
+hooks get the same path from the `new-ui-surface` skill
+(`.claude/skills/new-ui-surface/SKILL.md`).
+
 ## Naming (pinned)
 
 - Omni Composer / station mouth → **StationComposerHost**
@@ -91,11 +104,13 @@ add a nested primitive, either flatten it or the walk has to change.
 
 ## No ds_adjudicate, deliberately
 
-Garisek's version shares a rule module with a PreToolUse hook, so its verdict is
-the same verdict that blocks a write. This repo has no such module. A tool
-returning "allowed" while nothing enforces anything would be worse than absent —
-it manufactures confidence. **ESLint is the gate here.** When a shared
-adjudicator exists, `server.mjs` is where it plugs in.
+Edits here DO pass Garisek-OS's pre-write door (`.claude/settings.json` →
+`tools/agent-contract/door.mjs`), which adjudicates against this profile's
+`adjudicator.baseRules` (only `no-suppression`) plus any `router.json`
+refuse rules (none today). An ALLOWED write returns nothing to Claude, so the
+door cannot carry advice — that is what the nudge above is for. `ds_contract`
+answering "allowed" while nothing enforces it would manufacture confidence,
+so there is no such tool. **ESLint is the gate here.**
 
 Everything `ds_critique` reports is heuristic text matching, not AST proof.
 

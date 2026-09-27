@@ -46,7 +46,7 @@ function csvCell(value: unknown): string {
 
 /** Title precedence matches the grid / inspector: Zoho item → catalog → line name. */
 function productTitle(row: ExportableReceivingRow): string {
-  return (row.zoho_item_title || row.catalog_product_title || row.item_name || '').trim();
+  return (row.catalog_product_title || row.zoho_item_title || row.item_name || '').trim();
 }
 
 export function buildReceivingHistoryExportRow(row: ExportableReceivingRow): string[] {

@@ -1,0 +1,75 @@
+/**
+ * Browser calls for inbound orders — document extraction, the dry-run
+ * preview, landing, and delete. Every inbound-order surface posts through
+ * here so the wire shape lives in one place.
+ */
+
+import type { InboundOrderDraft } from '@/lib/inbound/inbound-order-draft';
+import type {
+  DeleteInboundOrderResult,
+  IngestInboundOrderResult,
+  InboundOrderPreview,
+} from '@/lib/inbound/ingest-inbound-order';
+
+export async function readFileAsDataUrl(file: File): Promise<string> {
+  const { promise, resolve, reject } = Promise.withResolvers<string>();
+  const reader = new FileReader();
+  reader.onload = () => resolve(String(reader.result ?? ''));
+  reader.onerror = () => reject(reader.error ?? new Error('read failed'));
+  reader.readAsDataURL(file);
+  return promise;
+}
+
+async function call<T>(url: string, init: RequestInit): Promise<T> {
+  const res = await fetch(url, { ...init, headers: { 'content-type': 'application/json', ...init.headers } });
+  const data = await res.json().catch(() => null);
+  if (!res.ok || !data?.success) throw new Error(data?.error || `Request failed (${res.status})`);
+  return data as T;
+}
+
+/** Screenshot / pasted text → a draft to review (nothing lands). */
+export async function postInboundOrderExtract(opts: { text?: string; imageDataUrls?: string[] }): Promise<InboundOrderDraft> {
+  const data = await call<{ draft: InboundOrderDraft }>('/api/receiving/inbound/extract-po', {
+    method: 'POST',
+    body: JSON.stringify({
+      text: opts.text?.trim() || null,
+      image_data_urls: opts.imageDataUrls?.length ? opts.imageDataUrls : null,
+    }),
+  });
+  return data.draft;
+}
+
+export async function postInboundOrderPreview(draft: InboundOrderDraft, signal?: AbortSignal): Promise<InboundOrderPreview> {
+  const data = await call<{ preview: InboundOrderPreview }>('/api/receiving/inbound/orders', {
+    method: 'POST',
+    body: JSON.stringify({ draft, dryRun: true }),
+    signal,
+  });
+  return data.preview;
+}
+
+export interface InboundOrderTicketOutcome {
+  success: boolean;
+  ticketNumber?: string;
+  ticketUrl?: string | null;
+  error?: string;
+  draftBody?: string;
+}
+
+export async function postInboundOrder(
+  draft: InboundOrderDraft,
+  idempotencyKey: string,
+): Promise<{ result: IngestInboundOrderResult; ticket: InboundOrderTicketOutcome | null }> {
+  return call('/api/receiving/inbound/orders', {
+    method: 'POST',
+    headers: { 'Idempotency-Key': idempotencyKey },
+    body: JSON.stringify({ draft }),
+  });
+}
+
+export async function deleteInboundOrderRequest(inboundOrderId: number): Promise<DeleteInboundOrderResult> {
+  const data = await call<{ result: DeleteInboundOrderResult }>(`/api/receiving/inbound/orders?id=${inboundOrderId}`, {
+    method: 'DELETE',
+  });
+  return data.result;
+}

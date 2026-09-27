@@ -91,6 +91,20 @@ export function isDeskFloorChord(
 export const DESK_FLOOR_SHORTCUT = { keys: ['⌘/Ctrl', '⇧', 'F'], label: 'Floor view on / off' } as const;
 export const DESK_FLOOR_SHORTCUT_HINT = '⌘/Ctrl+Shift+F';
 
+/**
+ * ⌘/Ctrl+Shift+S — In place ⇄ Split. The Floor chord's sibling: same
+ * modifiers, so neither a scanner nor typing can fire it.
+ */
+export function isDeskSplitChord(
+  event: Pick<KeyboardEvent, 'key' | 'code' | 'metaKey' | 'ctrlKey' | 'shiftKey' | 'altKey'>,
+): boolean {
+  if (!(event.metaKey || event.ctrlKey) || !event.shiftKey || event.altKey) return false;
+  return event.code === 'KeyS' || event.key.toLowerCase() === 's';
+}
+
+export const DESK_SPLIT_SHORTCUT = { keys: ['⌘/Ctrl', '⇧', 'S'], label: 'Split view on / off' } as const;
+export const DESK_SPLIT_SHORTCUT_HINT = '⌘/Ctrl+Shift+S';
+
 // ── Floor, published ACROSS the tree ───────────────────────────────────────
 // The app shell's sidebar column and the route's mode region sit above the
 // desk stage, so they cannot read its context. The chrome publishes here.

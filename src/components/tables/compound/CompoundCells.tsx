@@ -1261,7 +1261,7 @@ function compoundSlotPrimary(
     case 'tag':
       return (
         <HoverTooltip label={text} asChild>
-          <span className="inline-flex min-w-0 max-w-full items-center truncate rounded bg-surface-sunken px-1.5 py-0.5 font-mono text-role-micro uppercase tracking-wide text-text-muted">
+          <span className="inline-flex min-w-0 max-w-full items-center truncate rounded-mode-control bg-surface-sunken px-1.5 py-0.5 font-sans text-role-micro text-text-muted industrial:font-mono industrial:uppercase industrial:tracking-wide">
             {text}
           </span>
         </HoverTooltip>

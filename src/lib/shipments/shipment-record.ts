@@ -469,7 +469,9 @@ const STATION_LABELS: Record<string, string> = {
   PACK_SCAN: 'Pack scan',
   FBA_READY: 'FBA ready',
   SHIP_CONFIRM: 'Scanned out at the dock',
-  TRACKING_SCANNED: 'Tech scanned the tracking',
+  PICK_SCANNED: 'Picked at the order desk',
+  // Only FBA-source tracking scans still write TRACKING_SCANNED (station FBA).
+  TRACKING_SCANNED: 'Tracking scanned at FBA',
   SERIAL_ADDED: 'Serial added',
   WS_ORDER_TESTED: 'Tested',
   LABEL_PRINTED: 'Label printed',

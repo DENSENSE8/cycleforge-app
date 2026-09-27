@@ -1,6 +1,6 @@
 'use client';
 
-/** Shipping mode Workbench on `/test` — Sheets flush chrome (Unbox recipe): */
+/** Picker desk Workbench on `/pick` — Sheets flush chrome (Unbox recipe): */
 
 import { Suspense } from 'react';
 import dynamic from 'next/dynamic';
@@ -23,7 +23,7 @@ function TableFallback() {
 
 const TechTable = dynamic(
   () => import('@/components/TechTable').then((m) => m.TechTable),
-  // SSR allowed — shipping history is not `/test` LCP (Testing centre is).
+  // SSR allowed — shipping history is not `/pick` LCP (the Pending grid is).
   // Loading fallback is the stand-in while the chunk resolves.
   { loading: TableFallback },
 );

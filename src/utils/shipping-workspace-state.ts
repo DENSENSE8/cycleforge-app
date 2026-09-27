@@ -1,5 +1,5 @@
 /**
- * Shipping-mode workspace tabs on `/test` (nested under top-level `?view=`).
+ * Picker desk workspace tabs on `/pick`.
  * Param: `?ship=urgent|pending|all|history` — absent defaults to Pending.
  * FBA tab removed 2026-07-29 (IA row L) — FBA owns `/shipping/fba`.
  */

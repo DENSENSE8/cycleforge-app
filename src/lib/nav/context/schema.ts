@@ -42,6 +42,9 @@ export const NavSectionSchema = z
 export type NavSection = z.infer<typeof NavSectionSchema>;
 
 export const NAV_SEARCH_SOURCES = ['desk-store', 'url-param', 'identify'] as const;
+/** Sections that answer "where does this identifier live" (`GET /api/nav/locate`). */
+export const NAV_LOCATORS = ['outbound', 'inbound'] as const;
+export type NavLocator = (typeof NAV_LOCATORS)[number];
 
 export const NavSearchSchema = z
   .object({
@@ -52,14 +55,17 @@ export const NavSearchSchema = z
     /** URL param the box writes when `source` is `url-param` / `desk-store`. */
     param: z.string().min(1).optional(),
     /**
-     * Paste-a-list: a multi-number paste into Find becomes a list (`param`,
-     * comma-joined) that `check` answers per number, with a status filter
-     * (`statusParam`) pinned under Find. `inbound-check` = the Unbox Check
-     * (received / not received / exception).
+     * Where a typed or pasted identifier LIVES in this section — one locator
+     * answers both (`GET /api/nav/locate`):
+     * - contextual: the field's text → per-bucket match counts, painted as
+     *   pills under the field (click = that view, text kept);
+     * - paste-a-list: a multi-number paste becomes a list (`param`,
+     *   comma-joined) answered per number, with a bucket filter
+     *   (`statusParam`) over it (NavBulkList).
      */
-    bulk: z
+    locate: z
       .object({
-        check: z.enum(['inbound-check']),
+        locator: z.enum(NAV_LOCATORS),
         param: z.string().min(1),
         statusParam: z.string().min(1),
       })
@@ -96,29 +102,78 @@ export type NavFilters = z.infer<typeof NavFiltersSchema>;
 
 /**
  * View controls that are not facet groups (no option counts), rendered
- * generically by the host. Each names the URL param(s) the view's list reads.
+ * generically by the host as buttons in the body (never behind a menu).
+ * Each names the URL param(s) the view's list — and its facet counts — read.
  */
 export const NavControlsSchema = z
   .object({
-    /** One staffer or everyone — `AssigneeCombobox` via `StageStaffAssignPopover`; writes/clears `param`. */
-    staff: z.object({ param: z.string().min(1) }).strict().optional(),
     /**
-     * A civil-date range (`DateRangePickerField variant="compact"`): picking one
-     * writes `fromParam`/`toParam` (YYYY-MM-DD) and deletes every `clearParams`
-     * key; `placeholder` names the window the list shows with neither set.
+     * One staffer per role, or everyone — `AssigneeCombobox` via
+     * `StageStaffAssignPopover`; each row writes/clears its `param`
+     * ("Assigned" = `staff`, "Picked by" = `pickedBy`, …).
      */
-    dateRange: z
+    staff: z
+      .array(z.object({ id: z.string().min(1), param: z.string().min(1), label: z.string().min(1) }).strict())
+      .optional(),
+    /**
+     * Civil-date ranges (`DateRangePickerField variant="compact"`): picking
+     * one writes `fromParam`/`toParam` (YYYY-MM-DD) and deletes every
+     * `clearParams` key; `placeholder` names the window the list shows with
+     * neither set. With `fromTimeParam`/`toTimeParam` the range also takes a
+     * time of day (HH:mm, warehouse time) at each end.
+     */
+    dateRanges: z
+      .array(
+        z
+          .object({
+            id: z.string().min(1),
+            label: z.string().min(1),
+            fromParam: z.string().min(1),
+            toParam: z.string().min(1),
+            clearParams: z.array(z.string().min(1)),
+            placeholder: z.string().min(1),
+            fromTimeParam: z.string().min(1).optional(),
+            toTimeParam: z.string().min(1).optional(),
+          })
+          .strict(),
+      )
+      .optional(),
+    /** The list's order: one choice writes `param` (and `dirParam` when the option names a direction). */
+    sort: z
       .object({
-        fromParam: z.string().min(1),
-        toParam: z.string().min(1),
-        clearParams: z.array(z.string().min(1)),
-        placeholder: z.string().min(1),
+        param: z.string().min(1),
+        dirParam: z.string().min(1),
+        /** The order the list shows with `param` unset. */
+        defaultValue: z.string().min(1),
+        options: z
+          .array(
+            z
+              .object({ value: z.string().min(1), label: z.string().min(1), dir: z.enum(['asc', 'desc']).optional() })
+              .strict(),
+          )
+          .min(2),
       })
       .strict()
       .optional(),
   })
   .strict();
 export type NavControls = z.infer<typeof NavControlsSchema>;
+
+/** Every URL param the controls own — what Reset clears and what the route must declare. */
+export function navControlParams(controls: NavControls | undefined): string[] {
+  if (!controls) return [];
+  return [
+    ...(controls.staff ?? []).map((row) => row.param),
+    ...(controls.dateRanges ?? []).flatMap((range) => [
+      range.fromParam,
+      range.toParam,
+      ...range.clearParams,
+      ...(range.fromTimeParam ? [range.fromTimeParam] : []),
+      ...(range.toTimeParam ? [range.toTimeParam] : []),
+    ]),
+    ...(controls.sort ? [controls.sort.param, controls.sort.dirParam] : []),
+  ];
+}
 
 export const NavRecentsSchema = z
   .object({
@@ -283,3 +338,63 @@ export const NavFacetsResponseSchema = z
   })
   .strict();
 export type NavFacetsResponse = z.infer<typeof NavFacetsResponseSchema>;
+
+/**
+ * `GET /api/nav/locate?locator=<id>&(q=<text>|refs=<a,b,…>)` — where
+ * identifiers live. `locator` is a page's `search.locate.locator`, or
+ * `everywhere` = every locator the caller may read (bucket ids then carry the
+ * locator: `outbound:triage`).
+ *
+ * A BUCKET is a place a record can be: a view of the section (To ship,
+ * Shipped) or a verdict the section owns (Received). Membership is the SAME
+ * predicate the bucket's list uses, so a count is the rows that list shows.
+ */
+export const NAV_LOCATE_SCOPES = [...NAV_LOCATORS, 'everywhere'] as const;
+export type NavLocateScope = (typeof NAV_LOCATE_SCOPES)[number];
+/** A bucket's ink — one meaning per tone, never a per-component hue. */
+export const NAV_LOCATE_TONES = ['neutral', 'info', 'success', 'warning', 'danger'] as const;
+/** Most refs one locate answers (the paste-a-list cap). */
+export const NAV_LOCATE_MAX_REFS = 100;
+
+export const NavLocateBucketSchema = z
+  .object({
+    /** Locator-local (`triage`, `received`); `<locator>:<id>` under `everywhere`. */
+    id: z.string().min(1),
+    label: z.string().min(1),
+    tone: z.enum(NAV_LOCATE_TONES),
+    /** The list that shows this bucket's rows; `null` = a verdict with no list of its own. */
+    href: z.string().startsWith('/').nullable(),
+    /** `q`: matching rows in this bucket. `refs`: pasted numbers found in it. */
+    count: z.number().int().nonnegative(),
+  })
+  .strict();
+export type NavLocateBucket = z.infer<typeof NavLocateBucketSchema>;
+
+export const NavLocateEntrySchema = z
+  .object({
+    /** As pasted. */
+    ref: z.string().min(1),
+    /** Bucket ids holding it, in bucket order; `[]` = found nowhere. */
+    buckets: z.array(z.string().min(1)),
+    /** What it is ("PO 4471 · Acme"), when found. */
+    title: z.string().nullable(),
+    /** Why it sits there ("Delivered · not scanned"). */
+    detail: z.string().nullable(),
+    /** Its record, when it is one record. */
+    recordHref: z.string().startsWith('/').nullable(),
+  })
+  .strict();
+export type NavLocateEntry = z.infer<typeof NavLocateEntrySchema>;
+
+export const NavLocateResponseSchema = z
+  .object({
+    locator: z.enum(NAV_LOCATE_SCOPES),
+    /** Every bucket the locator declares, in its order — zero counts included. */
+    buckets: z.array(NavLocateBucketSchema),
+    /** `refs` only, in paste order; `q` answers counts alone. */
+    entries: z.array(NavLocateEntrySchema),
+    /** Refs past {@link NAV_LOCATE_MAX_REFS}, dropped. */
+    truncated: z.number().int().nonnegative(),
+  })
+  .strict();
+export type NavLocateResponse = z.infer<typeof NavLocateResponseSchema>;

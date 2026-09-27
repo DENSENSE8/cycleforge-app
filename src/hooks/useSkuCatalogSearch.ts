@@ -31,8 +31,9 @@ export interface UseSkuCatalogSearchOptions {
    * Which field to search: ecwid_sku (default), zoho_sku, or title (display_name).
    * `zoho_catalog` sources rows purely from the Zoho `items` mirror (Zoho SKU +
    * Zoho name, no Ecwid fallback) and matches on SKU OR name in one query.
+   * `catalog` searches the internal item master (sku_catalog) on SKU OR title.
    */
-  searchField?: SearchField | 'zoho_catalog';
+  searchField?: SearchField | 'zoho_catalog' | 'catalog';
 }
 
 export function useSkuCatalogSearch(
@@ -45,7 +46,7 @@ export function useSkuCatalogSearch(
     ecwidOnly: boolean;
     hasQc: boolean;
     excludeSkuSuffix: string;
-    searchField: SearchField | 'zoho_catalog';
+    searchField: SearchField | 'zoho_catalog' | 'catalog';
   } =
     typeof limitOrOptions === 'number'
       ? { limit: limitOrOptions, allowEmpty: false, ecwidOnly: false, hasQc: false, excludeSkuSuffix: '', searchField: 'ecwid_sku' }

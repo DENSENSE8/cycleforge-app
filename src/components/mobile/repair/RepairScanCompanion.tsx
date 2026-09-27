@@ -17,17 +17,7 @@ import { RepairScanDock } from './RepairScanDock';
 import { RepairScanReadNotice, type ReadNotice, type UnitName } from './RepairScanReadNotice';
 import { RepairScanVisitCard } from './RepairScanVisitCard';
 import { repairScanInfoHref, useRepairScanVisit } from './useRepairScanVisit';
-
-/** Haptics where the phone has them (Android Chrome; iOS Safari has no Vibration API). */
-const BUZZ: Record<'saved' | 'duplicate' | 'refused', number | number[]> = {
-  saved: 40,
-  duplicate: [60, 80, 60],
-  refused: [180],
-};
-
-function buzz(kind: keyof typeof BUZZ) {
-  if (typeof navigator !== 'undefined' && typeof navigator.vibrate === 'function') navigator.vibrate(BUZZ[kind]);
-}
+import { vibrateRead } from '@/lib/scan-feedback/play';
 
 const serialCount = (n: number) => `${n} ${n === 1 ? 'serial' : 'serials'}`;
 
@@ -94,11 +84,11 @@ export function RepairScanCompanion({ token }: { token: string }) {
       const { status, serialNumber } = await writeSerial(focus.lineId, (current) => appendSerial(current, serial));
       setPending((n) => n - 1);
       if (status === 'saved') {
-        buzz(duplicateOf ? 'duplicate' : 'saved');
+        vibrateRead(duplicateOf ? 'duplicate' : 'saved');
         setLastWrite({ target: focus, serial, echo: true });
         setNotice({ kind: 'saved', target: focus, serial, duplicateOf, via, count: splitSerials(serialNumber).length });
       } else if (status === 'failed') {
-        buzz('refused');
+        vibrateRead('refused');
         setPicked(focus.lineId);
         setNotice({ kind: 'failed', target: focus });
       }
@@ -110,10 +100,10 @@ export function RepairScanCompanion({ token }: { token: string }) {
     (raw: string) => {
       const read = classifySerialRead(raw);
       if (read.kind === 'reject') {
-        buzz('refused');
+        vibrateRead('refused');
         setNotice({ kind: 'rejected', value: raw.trim().slice(0, 40), reason: read.reason });
       } else if (read.kind === 'url') {
-        buzz('refused');
+        vibrateRead('refused');
         setNotice({ kind: 'link', url: read.url });
       } else {
         void commit(read.serial, read.kind === 'url-serial' ? 'link' : 'scan');

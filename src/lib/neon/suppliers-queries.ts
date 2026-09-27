@@ -186,7 +186,7 @@ export async function upsertEbaySupplier(params: {
     orgId,
     `INSERT INTO suppliers (name, supplier_type, ebay_seller_id)
        VALUES ($1, 'ebay_seller', $2)
-     ON CONFLICT (ebay_seller_id) WHERE ebay_seller_id IS NOT NULL
+     ON CONFLICT (organization_id, ebay_seller_id) WHERE ebay_seller_id IS NOT NULL
        DO UPDATE SET is_active = true, updated_at = NOW()
      RETURNING *, (xmax = 0) AS inserted`,
     [name, sellerId],

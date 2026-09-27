@@ -7,6 +7,8 @@ import {
   splitCustomerName,
   type CustomerContactColumns,
   type CustomerContactPatch,
+  type CustomerCreate,
+  type CustomerShipTo,
   type RepairCustomerCreate,
 } from '@/lib/schemas/customers';
 
@@ -31,40 +33,145 @@ interface CustomerLookupRecord {
   updated_at: string | null;
 }
 
+/** Anything with pg's `query` — a tenant transaction's client, or a test fake. */
+type CustomerDb = Pick<PoolClient, 'query'>;
+
+/**
+ * The contact that identifies a person, as a WHERE fragment over `customers`:
+ * last-10 phone/mobile digits (`phoneParam`, '' = none), or email
+ * (`emailParam`, lowercased, '' = none).
+ */
+export function customerContactMatchSql(phoneParam: string, emailParam: string): string {
+  return `(
+          (${phoneParam} <> '' AND (
+            RIGHT(REGEXP_REPLACE(COALESCE(phone, ''), '\\D', '', 'g'), 10) = ${phoneParam}
+            OR RIGHT(REGEXP_REPLACE(COALESCE(mobile, ''), '\\D', '', 'g'), 10) = ${phoneParam}
+          ))
+          OR (${emailParam} <> '' AND LOWER(COALESCE(email, '')) = ${emailParam})
+        )`;
+}
+
+/** Last-10 phone digits and lowercased email — the params `customerContactMatchSql` compares. */
+export function customerContactKeys(contact: { phone?: string | null; email?: string | null }): { phoneDigits: string; email: string } {
+  return {
+    phoneDigits: String(contact.phone ?? '').replace(/\D/g, '').slice(-10),
+    email: String(contact.email ?? '').trim().toLowerCase(),
+  };
+}
+
+/**
+ * A customer by the contact that identifies a person: last-10 phone/mobile
+ * digits (`$2`), or email (`$3`, lowercased). Carries the display name and
+ * stored ship-to so a phone-order draft can show who it matched.
+ */
+export const CUSTOMER_BY_CONTACT_SQL = `SELECT id,
+            COALESCE(NULLIF(btrim(customer_name), ''), NULLIF(display_name, ''),
+                     NULLIF(btrim(CONCAT_WS(' ', NULLIF(first_name, ''), NULLIF(last_name, ''))), '')) AS name,
+            phone, email, shipping_address_1, shipping_address_2, shipping_city,
+            shipping_state, shipping_postal_code, shipping_country
+       FROM customers
+      WHERE organization_id = $1
+        AND ${customerContactMatchSql('$2', '$3')}
+      ORDER BY id ASC
+      LIMIT 1`;
+
+/** The existing customer a phone number or email already belongs to (exact, never fuzzy). */
+export async function findCustomerIdByContact(
+  orgId: OrgId,
+  contact: { phone?: string | null; email?: string | null },
+): Promise<number | null> {
+  const { phoneDigits, email } = customerContactKeys(contact);
+  if (!phoneDigits && !email) return null;
+  const existing = await tenantQuery<{ id: number }>(orgId, CUSTOMER_BY_CONTACT_SQL, [orgId, phoneDigits, email]);
+  const found = existing.rows[0];
+  return found ? Number(found.id) : null;
+}
+
 /** Find-or-create the `customers` row behind a PROVIDER contact (Ecwid today). */
 export async function resolveProviderCustomerId(
   orgId: OrgId,
   contact: { name?: string | null; phone?: string | null; email?: string | null },
 ): Promise<number | null> {
-  const phoneDigits = String(contact.phone ?? '').replace(/\D/g, '').slice(-10);
   const email = String(contact.email ?? '').trim().toLowerCase();
   const name = String(contact.name ?? '').trim();
-  if (!phoneDigits && !email) return null;
+  if (!String(contact.phone ?? '').replace(/\D/g, '') && !email) return null;
 
-  const existing = await tenantQuery<{ id: number }>(
-    orgId,
-    `SELECT id
-       FROM customers
-      WHERE organization_id = $1
-        AND (
-          ($2 <> '' AND (
-            RIGHT(REGEXP_REPLACE(COALESCE(phone, ''), '\\D', '', 'g'), 10) = $2
-            OR RIGHT(REGEXP_REPLACE(COALESCE(mobile, ''), '\\D', '', 'g'), 10) = $2
-          ))
-          OR ($3 <> '' AND LOWER(COALESCE(email, '')) = $3)
-        )
-      ORDER BY id ASC
-      LIMIT 1`,
-    [orgId, phoneDigits, email],
-  );
-  const found = existing.rows[0];
-  if (found) return Number(found.id);
+  const found = await findCustomerIdByContact(orgId, contact);
+  if (found != null) return found;
 
   const created = await createRepairCustomer(
     { name: name || email || contact.phone || '', phone: contact.phone ?? '', email: email || undefined },
     orgId,
   );
   return Number(created.id);
+}
+
+/**
+ * Insert a customer typed on the phone (manual phone order), on the caller's
+ * transaction. `organization_id` is the caller's org — never an input field.
+ */
+export async function insertCustomerInTx(
+  client: CustomerDb,
+  orgId: OrgId,
+  input: CustomerCreate,
+): Promise<{ id: number }> {
+  const { first, last } = splitCustomerName(input.name);
+  const s = input.shipTo;
+  const result = await client.query<{ id: number }>(
+    `INSERT INTO customers (
+      customer_name, display_name, first_name, last_name, phone, email,
+      shipping_address_1, shipping_address_2, shipping_city, shipping_state,
+      shipping_postal_code, shipping_country, contact_type,
+      organization_id, created_at, updated_at
+    ) VALUES ($1, $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, 'customer', $12, NOW(), NOW())
+    RETURNING id`,
+    [
+      input.name,
+      first,
+      last,
+      input.phone || null,
+      input.email || null,
+      s?.address1 || null,
+      s?.address2 || null,
+      s?.city || null,
+      s?.state || null,
+      s?.postalCode || null,
+      s?.country || null,
+      orgId,
+    ],
+  );
+  return { id: Number(result.rows[0].id) };
+}
+
+/**
+ * Point an existing customer's ship-to at the address given on the phone —
+ * only the fields actually given; blanks never erase a stored line.
+ * `false` when the customer is not in this org.
+ */
+export async function setCustomerShipToInTx(
+  client: CustomerDb,
+  orgId: OrgId,
+  customerId: number,
+  shipTo: CustomerShipTo,
+): Promise<boolean> {
+  const result = await client.query(
+    `UPDATE customers
+        SET shipping_address_1   = COALESCE(NULLIF($3, ''), shipping_address_1),
+            shipping_address_2   = COALESCE(NULLIF($4, ''), shipping_address_2),
+            shipping_city        = COALESCE(NULLIF($5, ''), shipping_city),
+            shipping_state       = COALESCE(NULLIF($6, ''), shipping_state),
+            shipping_postal_code = COALESCE(NULLIF($7, ''), shipping_postal_code),
+            shipping_country     = COALESCE(NULLIF($8, ''), shipping_country),
+            updated_at = NOW()
+      WHERE id = $1 AND organization_id = $2`,
+    [customerId, orgId, shipTo.address1, shipTo.address2, shipTo.city, shipTo.state, shipTo.postalCode, shipTo.country],
+  );
+  return (result.rowCount ?? 0) > 0;
+}
+
+/** `POST /api/customers` — create one customer in the caller's org. */
+export async function createCustomer(orgId: OrgId, input: CustomerCreate): Promise<{ id: number }> {
+  return withTenantTransaction(orgId, (client) => insertCustomerInTx(client, orgId, input));
 }
 
 /**

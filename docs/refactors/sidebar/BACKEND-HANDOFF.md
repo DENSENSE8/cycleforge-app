@@ -218,7 +218,7 @@ Tauri gets identical answers.
   - index `(organization_id, staff_id, surface, opened_at DESC)`
   - `GET /api/nav/recents?surface=&limit=` and `POST /api/nav/recents`
   Stations whose recents already come from server feeds (`/api/receiving-lines`,
-  `/api/tech-logs`, `/api/packerlogs`, `/api/labels/recent`) get
+  `/api/picking/desk/logs`, `/api/packerlogs`, `/api/labels/recent`) get
   `recents.endpoint` pointed at a **normalised adapter**, so every recents list
   returns one row shape: `{ id, entityType, entityId, title, subtitle, status, at, href }`.
 - **Facets**: `GET /api/nav/facets?context=<pageId.sectionId>&…current params`

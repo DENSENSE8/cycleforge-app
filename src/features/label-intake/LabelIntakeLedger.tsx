@@ -54,8 +54,14 @@ function orderReference(row: LabelIngestionDto): string | null {
 }
 
 const recordId = (id: number) => `#${String(id).padStart(5, '0')}`;
+/** `SHIPSTATION_API` → `Shipstation api`; the label voice uppercases it on the floor. */
+const sentenceCode = (code: string) => {
+  const words = code.replace(/_/g, ' ').toLowerCase();
+  return words.charAt(0).toUpperCase() + words.slice(1);
+};
 const CELL = 'flex min-h-11 items-center border-r border-border-hairline px-3';
-const MONO_MICRO = 'font-mono text-role-micro uppercase tracking-[0.08em]';
+/** The region's label voice (`mode-label`): mono caps on the floor, sans sentence case on a desk. */
+const LABEL = 'mode-label font-semibold';
 
 export function LabelIntakeLedger() {
   const queryClient = useQueryClient();
@@ -190,7 +196,7 @@ export function LabelIntakeLedger() {
           type="button"
           disabled={pending}
           onClick={() => picker.current?.click()}
-          className={cn(CELL, MONO_MICRO, 'bg-surface-inverse font-semibold text-text-inverse hover:bg-surface-inverse-hover disabled:opacity-60')}
+          className={cn(CELL, LABEL, 'bg-surface-inverse text-text-inverse hover:bg-surface-inverse-hover disabled:opacity-60')}
         >
           {upload.isPending ? 'Ingesting…' : 'Upload label PDF'}
         </button>
@@ -198,7 +204,7 @@ export function LabelIntakeLedger() {
           type="button"
           disabled={query.isFetching}
           onClick={() => void query.refetch()}
-          className={cn(CELL, MONO_MICRO, 'font-semibold hover:bg-surface-hover disabled:text-text-faint')}
+          className={cn(CELL, LABEL, 'hover:bg-surface-hover disabled:text-text-faint')}
         >
           {query.isFetching ? 'Syncing' : 'Refresh'}
         </button>
@@ -217,8 +223,8 @@ export function LabelIntakeLedger() {
             onClick={() => setView(id)}
             className={cn(
               CELL,
-              MONO_MICRO,
-              'gap-2 font-semibold',
+              LABEL,
+              'gap-2',
               view === id ? 'bg-surface-inverse text-text-inverse' : 'text-text-soft hover:bg-surface-hover',
             )}
           >
@@ -264,18 +270,18 @@ export function LabelIntakeLedger() {
                 <span aria-hidden className={SPINE[rowStatus.tone]} />
                 <span
                   aria-hidden
-                  className={cn(MONO_MICRO, 'grid place-items-center border-r border-border-hairline bg-surface-sunken font-semibold text-text-soft')}
+                  className={cn(LABEL, 'grid place-items-center border-r border-border-hairline bg-surface-sunken text-text-soft')}
                 >
                   {(row.carrier ?? 'PDF').slice(0, 4)}
                 </span>
                 <span className="grid min-w-0 py-1.5">
                   <span className="flex min-w-0 items-center gap-3 px-3">
-                    <span className={cn(MONO_MICRO, 'shrink-0 font-bold', STATE_TEXT[rowStatus.tone])}>{rowStatus.label}</span>
-                    <span className={cn(MONO_MICRO, 'min-w-0 flex-1 truncate text-text-faint')}>
-                      {row.source.replace(/_/g, ' ')}
+                    <span className={cn(LABEL, 'shrink-0 font-bold', STATE_TEXT[rowStatus.tone])}>{rowStatus.label}</span>
+                    <span className={cn(LABEL, 'min-w-0 flex-1 truncate text-text-faint')}>
+                      {sentenceCode(row.source)}
                       {row.carrier ? ` // ${row.carrier}` : ''}
                     </span>
-                    <time dateTime={row.observedAt} className={cn(MONO_MICRO, 'shrink-0 tabular-nums text-text-soft')}>
+                    <time dateTime={row.observedAt} className={cn(LABEL, 'shrink-0 tabular-nums text-text-soft')}>
                       {observedLabel(row.observedAt)}
                     </time>
                   </span>
@@ -283,12 +289,16 @@ export function LabelIntakeLedger() {
                     <strong className="min-w-0 flex-1 truncate text-role-body font-semibold">
                       {reference ?? row.fileBasename}
                     </strong>
-                    <span className="shrink-0 font-mono text-role-caption tabular-nums text-text-soft">{recordId(row.id)}</span>
+                    <span className="shrink-0 font-sans text-role-caption tabular-nums text-text-soft industrial:font-mono">{recordId(row.id)}</span>
                   </span>
                   <span className="flex min-w-0 items-center gap-3 px-3">
-                    <code className="shrink-0 font-mono text-role-caption text-text-default">
-                      {row.trackingNumberNormalized ?? 'NO TRACKING'}
-                    </code>
+                    {row.trackingNumberNormalized ? (
+                      <code className="shrink-0 font-mono text-role-caption text-text-default">{row.trackingNumberNormalized}</code>
+                    ) : (
+                      <span className="shrink-0 font-sans text-role-caption text-text-default industrial:font-mono industrial:uppercase">
+                        No tracking
+                      </span>
+                    )}
                     <span className={cn('min-w-0 flex-1 truncate text-role-caption', reason ? 'text-text-danger' : 'text-text-soft')}>
                       {reason ?? (row.matchMethod ? row.matchMethod.replace(/_/g, ' ').toLowerCase() : reference ? '' : row.fileBasename)}
                     </span>
@@ -300,7 +310,7 @@ export function LabelIntakeLedger() {
           })}
           {!visible.length && (
             <div className="grid min-h-60 place-content-center gap-2 border-b border-border-default px-6 text-center">
-              <strong className={cn(MONO_MICRO, 'font-bold')}>
+              <strong className={cn(LABEL, 'font-bold')}>
                 {query.isPending ? 'Reading ledger' : `No ${LEDGER_VIEW_LABEL[view].toLowerCase()}`}
               </strong>
               {!query.isPending && (
@@ -328,18 +338,18 @@ export function LabelIntakeLedger() {
             <>
               <header className="flex shrink-0 items-stretch border-b border-border-strong">
                 <div className="grid min-w-0 flex-1 gap-0.5 px-4 py-3">
-                  <span className={cn(MONO_MICRO, 'text-text-soft')}>Label ingestion</span>
-                  <strong className="font-mono text-role-title tabular-nums">{recordId(selected.id)}</strong>
+                  <span className={cn(LABEL, 'text-text-soft')}>Label ingestion</span>
+                  <strong className="font-sans text-role-title tabular-nums industrial:font-mono">{recordId(selected.id)}</strong>
                 </div>
                 <button
                   type="button"
                   onClick={() => setSheetOpen(false)}
-                  className={cn(MONO_MICRO, 'border-l border-border-hairline px-4 font-semibold hover:bg-surface-hover @5xl:hidden')}
+                  className={cn(LABEL, 'border-l border-border-hairline px-4 hover:bg-surface-hover @5xl:hidden')}
                 >
                   Close
                 </button>
               </header>
-              <div className={cn('flex shrink-0 items-center gap-2 border-b border-border-default px-4 py-2', MONO_MICRO, 'font-bold')}>
+              <div className={cn('flex shrink-0 items-center gap-2 border-b border-border-default px-4 py-2', LABEL, 'font-bold')}>
                 <span aria-hidden className={cn('size-2', SPINE[status.tone])} />
                 <span className={STATE_TEXT[status.tone]}>{status.label}</span>
               </div>
@@ -359,8 +369,16 @@ export function LabelIntakeLedger() {
                   ] as const
                 ).map(([term, value]) => (
                   <div key={term} className="grid gap-0.5 border-b border-border-hairline px-4 py-2">
-                    <dt className={cn(MONO_MICRO, 'text-text-faint')}>{term}</dt>
-                    <dd className={cn('font-mono text-role-caption', term === 'SHA-256' ? 'break-all' : 'break-words')}>{value}</dd>
+                    <dt className={cn(LABEL, 'text-text-faint')}>{term}</dt>
+                    <dd
+                      className={cn(
+                        'text-role-caption',
+                        term === 'Tracking' || term === 'SHA-256' ? 'font-mono' : 'font-sans industrial:font-mono',
+                        term === 'SHA-256' ? 'break-all' : 'break-words',
+                      )}
+                    >
+                      {value}
+                    </dd>
                   </div>
                 ))}
               </dl>
@@ -371,21 +389,21 @@ export function LabelIntakeLedger() {
                     disabled={actionRunning}
                     onClick={() => (status.action === 'apply' ? apply.mutate(selected) : retry.mutate(selected))}
                     className={cn(
-                      MONO_MICRO,
+                      LABEL,
                       'min-h-12 w-full bg-surface-inverse font-bold text-text-inverse hover:bg-surface-inverse-hover disabled:opacity-60',
                     )}
                   >
                     {actionRunning ? 'Working…' : LEDGER_ACTION_LABEL[status.action]}
                   </button>
                 ) : (
-                  <p className={cn(MONO_MICRO, 'px-4 py-3 text-text-soft')}>
+                  <p className={cn(LABEL, 'px-4 py-3 text-text-soft')}>
                     {selected.state === 'APPLIED' ? 'Applied — no action remains.' : 'Processing — no action yet.'}
                   </p>
                 )}
               </footer>
             </>
           ) : (
-            <p className={cn(MONO_MICRO, 'px-4 py-6 text-text-soft')}>Select a label record to inspect its evidence.</p>
+            <p className={cn(LABEL, 'px-4 py-6 text-text-soft')}>Select a label record to inspect its evidence.</p>
           )}
         </aside>
       </div>

@@ -1,7 +1,7 @@
 import { tenantQuery, withTenantTransaction } from '../tenancy/db';
 import type { OrgId } from '../tenancy/constants';
 import { photoContentUrl } from '../photos/display-url';
-import { skuCatalogNoZohoTwinPredicateSql } from '../sku/sku-identity-law';
+import { skuCatalogTitleUnownedPredicateSql } from '../sku/sku-identity-law';
 import {
   checkMergeAllowed,
   isProvisionalSku,
@@ -328,7 +328,7 @@ export async function updateProvisionalSku(
           `UPDATE sku_catalog
               SET provisional_barcode = $3, upc = COALESCE(NULLIF(upc, ''), $3), updated_at = NOW()
             WHERE organization_id = $1 AND sku = $2 AND is_provisional = true
-              AND ${skuCatalogNoZohoTwinPredicateSql()}`,
+              AND ${skuCatalogTitleUnownedPredicateSql()}`,
           [orgId, sku, barcode],
         );
       }
@@ -347,7 +347,7 @@ export async function updateProvisionalSku(
       await db.query(
         `UPDATE sku_catalog SET product_title = $3, updated_at = NOW()
           WHERE organization_id = $1 AND sku = $2 AND is_provisional = true
-            AND ${skuCatalogNoZohoTwinPredicateSql()}`,
+            AND ${skuCatalogTitleUnownedPredicateSql()}`,
         [orgId, sku, title],
       );
     }

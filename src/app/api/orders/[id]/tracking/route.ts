@@ -50,7 +50,7 @@ async function runTrackingOps(
     );
   }
 
-  await invalidateAllOrdersApiCaches(['shipped', 'orders-next', 'tech-logs', 'packing-logs', 'need-to-order'], ctx.organizationId);
+  await invalidateAllOrdersApiCaches(['shipped', 'orders-next', 'desk-pick-logs', 'packing-logs', 'need-to-order'], ctx.organizationId);
   await publishOrderChanged({ organizationId: ctx.organizationId, orderIds: [id], source: 'orders.tracking' });
 
   const updated = await getOrderById(id, ctx.organizationId);

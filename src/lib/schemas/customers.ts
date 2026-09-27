@@ -43,6 +43,32 @@ export type RepairCustomerCreate = z.infer<typeof RepairCustomerCreateBody>;
 /** Point a repair at an existing customer of the same org. */
 export const RepairCustomerLinkBody = z.object({ customerId: z.number().int().positive() }).strict();
 
+const addressLine = (max: number) => z.string().trim().max(max).optional().default('');
+
+/** A ship-to typed on the phone — `customers.shipping_*`, which `order-ship-to.ts` reads for rates and labels. */
+export const CustomerShipToBody = z
+  .object({
+    address1: addressLine(200),
+    address2: addressLine(200),
+    city: addressLine(100),
+    state: addressLine(60),
+    postalCode: addressLine(20),
+    country: addressLine(60),
+  })
+  .strict();
+export type CustomerShipTo = z.infer<typeof CustomerShipToBody>;
+
+/** `POST /api/customers` — a customer typed on the phone (manual phone order, gap 3). */
+export const CustomerCreateBody = z
+  .object({
+    name,
+    phone: phone.optional().default(''),
+    email: email.optional().default(''),
+    shipTo: CustomerShipToBody.optional(),
+  })
+  .strict();
+export type CustomerCreate = z.infer<typeof CustomerCreateBody>;
+
 /** The contact columns of a `customers` row this module reads and writes. */
 export interface CustomerContactColumns {
   customer_name: string | null;

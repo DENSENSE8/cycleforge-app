@@ -28,27 +28,3 @@ export interface StaffAvailabilityRule {
   updatedAt: string | null;
   deletedAt: string | null;
 }
-
-interface Order {
-  id: number;
-  ship_by_date: string | null;
-  order_id: string;
-  product_title: string;
-  quantity?: string | number | null;
-  item_number?: string | null;
-  account_source?: string | null;
-  sku: string;
-  shipping_tracking_number: string | null;
-  tester_id: number | null;
-  packer_id: number | null;
-  out_of_stock: string | null;
-  replenishment_request_id?: string | null;
-  replenishment_status?: string | null;
-  replenishment_quantity_to_order?: string | null;
-  replenishment_po_number?: string | null;
-  replenishment_notes?: string | null;
-  notes: string | null;
-  /** Derived from shipping_tracking_numbers carrier status */
-  is_shipped?: boolean;
-  created_at: string | null;
-}

@@ -303,7 +303,7 @@ async function runUiFlow(snapshot) {
     await page.getByPlaceholder('ORDERS, FNSKU, RS, SN').waitFor({ state: 'visible', timeout: ITEM_TIMEOUT_MS });
 
     const trackingResponsePromise = page.waitForResponse(
-      (response) => response.url().includes('/api/tech/scan') && response.request().method() === 'POST',
+      (response) => response.url().includes('/api/picking/desk/scan') && response.request().method() === 'POST',
       { timeout: ITEM_TIMEOUT_MS },
     );
     await scan(page, snapshot.tracking);
@@ -314,7 +314,7 @@ async function runUiFlow(snapshot) {
     await waitForBodyText(page, snapshot.productTitle || 'BOSE');
 
     const skuResponsePromise = page.waitForResponse(
-      (response) => response.url().includes('/api/tech/scan-sku') && response.request().method() === 'POST',
+      (response) => response.url().includes('/api/picking/desk/sku') && response.request().method() === 'POST',
       { timeout: ITEM_TIMEOUT_MS },
     );
     await scan(page, TEST_SKU);

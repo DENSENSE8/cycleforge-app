@@ -325,7 +325,7 @@ export function useOrdersSpreadsheet({
           useAlternateStripe={stripeIndex % 2 === 1}
           testerDisplay={staff.testerDisplay}
           packerDisplay={staff.packerDisplay}
-          testerId={staff.testerId}
+          pickerId={staff.pickerId}
           packerId={staff.packerId}
           rowStatus={resolveRowStatus(r, queueMode)}
           daysLate={daysLateOn(

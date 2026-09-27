@@ -123,9 +123,10 @@ export const TextField = forwardRef<HTMLInputElement, TextFieldProps>(
           className={cn(
             'pointer-events-none absolute left-3.5 origin-left transition-all duration-150',
             float
-              ? cn('top-1.5 text-role-micro font-semibold uppercase tracking-wide', t.floatLabel)
+              ? cn('top-1.5 text-role-micro font-semibold mode-label-case', t.floatLabel)
               : cn(multiline ? 'top-5' : 'top-3', 'text-sm text-text-faint'),
-            'peer-focus:top-1.5 peer-focus:text-role-micro peer-focus:font-semibold peer-focus:uppercase peer-focus:tracking-wide',
+            // Label case follows the region's mode: sentence case on a desk, caps on the floor.
+            'peer-focus:top-1.5 peer-focus:text-role-micro peer-focus:font-semibold peer-focus:mode-label-case',
             t.focusLabel,
           )}
         >

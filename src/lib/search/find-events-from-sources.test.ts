@@ -61,21 +61,38 @@ describe('find events from sources', () => {
     assert.equal(event.bind?.tracking, undefined);
   });
 
-  it('maps TECH TRACKING_SCANNED to Picked with actor', () => {
+  it('maps PICK PICK_SCANNED to Picked with actor and tracking bind', () => {
     const [event] = findEventsFromStationActivity([
       {
         id: 5,
         created_at: '2026-09-10T16:00:00.000Z',
-        station: 'TECH',
-        activity_type: 'TRACKING_SCANNED',
-        actor_name: 'Tech Pat',
+        station: 'PICK',
+        activity_type: 'PICK_SCANNED',
+        actor_name: 'Picker Pat',
         scan_ref: '9405508106244533289572',
         serial_number: null,
         metadata: null,
       },
     ]);
     assert.equal(event.title, 'Picked');
-    assert.equal(event.actor, 'Tech Pat');
+    assert.equal(event.actor, 'Picker Pat');
+    assert.equal(event.bind?.tracking, '9405508106244533289572');
+  });
+
+  it('does not call an FBA tracking scan (TRACKING_SCANNED) a pick', () => {
+    const [event] = findEventsFromStationActivity([
+      {
+        id: 7,
+        created_at: '2026-09-10T16:02:00.000Z',
+        station: 'FBA',
+        activity_type: 'TRACKING_SCANNED',
+        actor_name: 'Prep Sam',
+        scan_ref: '9405508106244533289572',
+        serial_number: null,
+        metadata: null,
+      },
+    ]);
+    assert.notEqual(event.title, 'Picked');
   });
 
   it('maps SERIAL_ADDED SKU_PULL to Picked', () => {

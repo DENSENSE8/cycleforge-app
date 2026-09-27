@@ -13,9 +13,24 @@ import {
 } from '@/lib/surfaces/registry';
 import type { AssistantToolCtx, AssistantToolDef } from './types';
 import { buildManualLinkTool, type ManualLinkDeps } from './manual-link-tools';
+import { buildRequestPaymentTool, type RequestPaymentDeps } from './request-payment-tool';
+import { buildCreateManualOrderTool, type ManualOrderToolDeps } from './manual-order-tools';
+import { buildImportPurchaseOrderTool, type PoImportToolDeps } from './po-import-tools';
+import { buildOrderStatusTools } from './order-status-tools';
+import { buildCreateTaskTool } from './task-tools';
+import { buildWatchTrackingTool } from './tracking-tools';
 
 /** Kinds a dedicated tool owns end to end (its own confirmation) — propose_mutation refuses them. */
-const DEDICATED_TOOL_KINDS: Record<string, string> = { 'product_manual.link_sku': 'link_manual_to_sku' };
+const DEDICATED_TOOL_KINDS: Record<string, string> = {
+  'product_manual.link_sku': 'link_manual_to_sku',
+  'order.create_manual': 'create_manual_order',
+  'receiving.import_po': 'import_purchase_order',
+  'order.set_flag': 'set_order_flag',
+  'order.mark_out_of_stock': 'mark_out_of_stock',
+  'order.clear_out_of_stock': 'clear_out_of_stock',
+  'order.scan_out': 'bulk_scan_out',
+  'task.create': 'create_task',
+};
 
 export interface AssistantWriteDeps {
   apply: typeof applyAgentMutation;
@@ -33,8 +48,14 @@ export function buildWriteTools(
    * chokepoint) — a description is a hint to the model, never a security
    */
   permissions?: ReadonlySet<string>,
-  /** When this turn began (link_manual_to_sku's same-turn confirmation guard); omitted → no manual-link tool. */
-  turn?: { startedAt: Date; manualLinkDeps?: ManualLinkDeps },
+  /** When this turn began (the same-turn confirmation guard of link_manual_to_sku / create_manual_order); omitted → no manual-link / order / payment tool. */
+  turn?: {
+    startedAt: Date;
+    manualLinkDeps?: ManualLinkDeps;
+    requestPaymentDeps?: RequestPaymentDeps;
+    manualOrderDeps?: ManualOrderToolDeps;
+    poImportDeps?: PoImportToolDeps;
+  },
 ) {
   const allowedKinds = (
     permissions ? MUTATION_KIND_LIST.filter((k) => permissions.has(MUTATION_KINDS[k].permission)) : MUTATION_KIND_LIST
@@ -129,5 +150,11 @@ export function buildWriteTools(
   type WriteTool = AssistantToolDef<z.ZodTypeAny, unknown>;
   const tools = [proposeMutation, revertMutation] as WriteTool[];
   if (turn) tools.push(buildManualLinkTool(sessionId, turn.startedAt, turn.manualLinkDeps) as WriteTool);
+  if (turn) tools.push(buildRequestPaymentTool(turn.requestPaymentDeps) as WriteTool);
+  if (turn) tools.push(buildCreateManualOrderTool(sessionId, turn.startedAt, turn.manualOrderDeps) as WriteTool);
+  if (turn) tools.push(buildImportPurchaseOrderTool(sessionId, turn.startedAt, turn.poImportDeps) as WriteTool);
+  if (turn) tools.push(...(buildOrderStatusTools(sessionId, turn.startedAt) as WriteTool[]), buildCreateTaskTool(sessionId, turn.startedAt) as WriteTool);
+  // Self-scoped, reversible watch — no confirmation turn, but still a write (Ask only refuses it).
+  if (turn) tools.push(buildWatchTrackingTool() as WriteTool);
   return tools as ReadonlyArray<WriteTool>;
 }

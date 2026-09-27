@@ -4,35 +4,41 @@ import { useCallback, useEffect, useMemo, useRef, useState, type KeyboardEvent a
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { KeyboardKey, Popover } from '@/design-system/primitives';
 import {
+  AlertCircle,
   AlertTriangle,
   ArrowDown,
   ArrowUp,
   ArrowUpDown,
+  Check,
+  CircleDot,
   Clock,
   Copy,
+  ExternalLink,
+  Info,
   Loader2,
-  PackageCheck,
   Pencil,
   X,
 } from '@/components/Icons';
-import { useDeskSearch } from '@/lib/outbound/desk-search-store';
-import { RECON_STATUS_LABELS, type ReconEntry, type ReconStatus } from '@/lib/receiving/reconcile';
-import { applyInboundLane } from '@/lib/receiving/inbound-lane';
+import { setDeskSearch, useDeskSearch } from '@/lib/outbound/desk-search-store';
+import type { NavLocateBucket } from '@/lib/nav/context/schema';
 import { copyToClipboard } from '@/utils/_dom';
 import { toast } from '@/lib/toast';
 import { focusRing } from '@/design-system/tokens/focus-ring';
 import { SIDEBAR_CHIP_CORNER } from '@/design-system/tokens/radius';
 import { cn } from '@/utils/_cn';
-import type { BulkList } from './NavBulkList';
+import type { BulkEntry, BulkList } from './NavBulkList';
+import { NAV_LOCATE_TONE_VAR } from './nav-locate-tone';
 
-/** Each status's glyph and ink — the verdict reads before its word. */
-const STATUS_FACE: Readonly<Record<ReconStatus, { icon: typeof PackageCheck; tone: string }>> = {
-  received: { icon: PackageCheck, tone: 'text-emerald-600' },
-  not_received: { icon: Clock, tone: 'text-amber-600' },
+type Tone = NavLocateBucket['tone'];
+
+/** Each tone's glyph — the verdict reads before its word; ink is {@link NAV_LOCATE_TONE_VAR}. */
+const TONE_ICON: Readonly<Record<Tone, typeof Check>> = {
+  neutral: CircleDot,
+  info: Info,
+  success: Check,
+  warning: Clock,
+  danger: AlertTriangle,
 };
-
-/** Worst first: what needs a person leads a status sort, then what is owed. */
-const statusRank = (entry: ReconEntry): number => (entry.exception ? 0 : entry.status === 'not_received' ? 1 : 2);
 
 type SortMode = 'pasted' | 'order-asc' | 'order-desc' | 'status';
 
@@ -47,21 +53,52 @@ const ICON_KEY_CLASS = cn(
   focusRing('control', 'accent'),
 );
 
-
-function sortEntries(entries: readonly ReconEntry[], mode: SortMode): ReconEntry[] {
+/**
+ * Status sort = bucket order: numbers found nowhere lead (they need a
+ * person), then each number by the first bucket that holds it.
+ */
+function sortEntries(entries: readonly BulkEntry[], mode: SortMode, bucketRank: ReadonlyMap<string, number>): BulkEntry[] {
   if (mode === 'pasted') return [...entries];
   if (mode === 'status') {
-    return [...entries].sort((a, b) => statusRank(a) - statusRank(b));
+    const rank = (entry: BulkEntry) =>
+      entry.buckets.length === 0 ? -1 : Math.min(...entry.buckets.map((id) => bucketRank.get(id) ?? Number.MAX_SAFE_INTEGER));
+    return [...entries].sort((a, b) => rank(a) - rank(b));
   }
   const dir = mode === 'order-asc' ? 1 : -1;
-  return [...entries].sort((a, b) => dir * ORDER_COLLATOR.compare(a.poNumber ?? a.ref, b.poNumber ?? b.ref));
+  return [...entries].sort((a, b) => dir * ORDER_COLLATOR.compare(a.ref, b.ref));
 }
 
 /**
- * The pasted list — one row per number: verdict glyph, the number as pasted,
- * why (Delivered · not scanned), the PO. It follows the status filter, so
- * "Not received" isolates exactly the numbers to chase. Enter pinpoints a
- * number in the ledger (Find narrows to it); E edit · C copy · ⌫ remove.
+ * Is `href` the list on screen? Same pathname, every param the href sets
+ * holds the same value here, and no view-defining param (one any bucket href
+ * sets) is set here to something the href does not say.
+ */
+function isCurrentView(
+  href: string,
+  pathname: string,
+  current: URLSearchParams,
+  viewKeys: ReadonlySet<string>,
+): boolean {
+  const url = new URL(href, 'http://local');
+  if (url.pathname !== pathname) return false;
+  for (const [key, value] of url.searchParams) if (current.get(key) !== value) return false;
+  for (const key of viewKeys) if (!url.searchParams.has(key) && current.has(key)) return false;
+  return true;
+}
+
+/** One bucket holding a row's number, and whether it is the list on screen. */
+interface RowBucket {
+  bucket: NavLocateBucket;
+  /** The list on screen — Enter narrows it instead of navigating. */
+  current: boolean;
+}
+
+/**
+ * The pasted list — one row per number: where it lives (bucket glyph + label),
+ * the number as pasted, why, what it is. It follows the bucket filter, so one
+ * bucket isolates exactly those numbers. Enter pinpoints a number: Find
+ * narrows the list on screen when its bucket is that list, otherwise the
+ * bucket's list opens narrowed to it. E edit · C copy · ⌫ remove.
  */
 export function NavBulkPopout({
   list,
@@ -78,23 +115,40 @@ export function NavBulkPopout({
   const [find, setFind] = useDeskSearch(pathname);
   const router = useRouter();
   const searchParams = useSearchParams();
-  // The badge's link: the Exceptions view, narrowed to this number by Find.
-  // A push, so Back returns to the pasted list.
-  const openInExceptions = (entry: ReconEntry) => {
-    const next = applyInboundLane(new URLSearchParams(searchParams?.toString() ?? ''), 'exceptions');
-    setFind(entry.ref);
-    onClose();
-    router.push(`${pathname}?${next.toString()}`, { scroll: false });
-  };
   const [sort, setSort] = useState<SortMode>('pasted');
   const [cursor, setCursor] = useState(0);
   const [editing, setEditing] = useState<string | null>(null);
   const listRef = useRef<HTMLDivElement | null>(null);
 
+  const bucketById = useMemo(() => new Map(list.buckets.map((bucket) => [bucket.id, bucket])), [list.buckets]);
+  const bucketRank = useMemo(() => new Map(list.buckets.map((bucket, index) => [bucket.id, index])), [list.buckets]);
+  // A bucket is "here" when its href is the list on screen. A verdict bucket
+  // (no href) is the page's own list under the paste — except on the
+  // everywhere face, which has no page list.
+  const currentIds = useMemo(() => {
+    const current = new URLSearchParams(searchParams?.toString() ?? '');
+    const viewKeys = new Set<string>();
+    for (const bucket of list.buckets) {
+      if (bucket.href) for (const key of new URL(bucket.href, 'http://local').searchParams.keys()) viewKeys.add(key);
+    }
+    return new Set(
+      list.buckets
+        .filter((bucket) =>
+          bucket.href ? isCurrentView(bucket.href, pathname, current, viewKeys) : list.scope !== 'everywhere',
+        )
+        .map((bucket) => bucket.id),
+    );
+  }, [list.buckets, list.scope, pathname, searchParams]);
+  const rowBuckets = (entry: BulkEntry): RowBucket[] =>
+    entry.buckets.flatMap((id) => {
+      const bucket = bucketById.get(id);
+      return bucket ? [{ bucket, current: currentIds.has(id) }] : [];
+    });
+
   const visible = useMemo(() => {
-    const kept = list.status ? list.entries.filter((entry) => entry.status === list.status) : list.entries;
-    return sortEntries(kept, sort);
-  }, [list.entries, list.status, sort]);
+    const kept = list.status ? list.entries.filter((entry) => entry.buckets.includes(list.status as string)) : list.entries;
+    return sortEntries(kept, sort, bucketRank);
+  }, [list.entries, list.status, sort, bucketRank]);
   const safeCursor = Math.min(cursor, Math.max(0, visible.length - 1));
 
   // The panel portals in after `open` flips (the anchored layer measures
@@ -112,14 +166,35 @@ export function NavBulkPopout({
   const copy = async (text: string, what: string) => {
     if (await copyToClipboard(text)) toast.success(`Copied ${what}`);
   };
-  const pinpoint = (entry: ReconEntry) => setFind(find === entry.ref ? '' : entry.ref);
+  // The bucket's list, narrowed to this number by its desk Find. A push, so
+  // Back returns to the pasted list.
+  const openBucket = (bucket: NavLocateBucket, entry: BulkEntry) => {
+    if (!bucket.href) return;
+    setDeskSearch(new URL(bucket.href, 'http://local').pathname, entry.ref);
+    onClose();
+    router.push(bucket.href, { scroll: false });
+  };
+  const openRecord = (entry: BulkEntry) => {
+    if (!entry.recordHref) return;
+    onClose();
+    router.push(entry.recordHref, { scroll: false });
+  };
+  // On screen (or found nowhere): Find narrows the list here. Elsewhere: go there.
+  const pinpoint = (entry: BulkEntry) => {
+    const buckets = rowBuckets(entry);
+    const away = buckets.find((row) => row.bucket.href);
+    if (buckets.some((row) => row.current) || !away) setFind(find === entry.ref ? '' : entry.ref);
+    else openBucket(away.bucket, entry);
+  };
   // A pinpointed number that leaves the list must not keep narrowing the ledger to nothing.
-  const removeEntry = (entry: ReconEntry) => {
+  const removeEntry = (entry: BulkEntry) => {
     if (find === entry.ref) setFind('');
     list.remove(entry.ref);
   };
   const cycleOrderSort = () =>
     setSort((current) => (current === 'order-asc' ? 'order-desc' : current === 'order-desc' ? 'pasted' : 'order-asc'));
+  const filterLabel = list.status ? bucketById.get(list.status)?.label : undefined;
+  const nowhere = list.entries.filter((entry) => !entry.pending && entry.buckets.length === 0).length;
 
   const onKeyDown = (event: ReactKeyboardEvent<HTMLDivElement>) => {
     if (editing || event.metaKey || event.ctrlKey || event.altKey) return;
@@ -158,7 +233,7 @@ export function NavBulkPopout({
       {/* Sort bar — the Find well's height, so the two read as one line. */}
       <div className="flex h-8 shrink-0 items-center gap-1 border-b border-border-hairline px-1.5">
         <span className="min-w-0 flex-1 truncate text-role-caption font-semibold tabular-nums text-text-default">
-          {list.status ? `${visible.length} ${RECON_STATUS_LABELS[list.status].toLowerCase()}` : `${list.entries.length} pasted`}
+          {filterLabel ? `${visible.length} ${filterLabel.toLowerCase()}` : `${list.entries.length} pasted`}
           {list.selection.truncated > 0 ? (
             <span className="font-normal text-text-faint"> · first {list.selection.refs.length}</span>
           ) : null}
@@ -195,10 +270,41 @@ export function NavBulkPopout({
         </button>
       </div>
 
+      {/* Bucket filter — where the pasted numbers live, with how many each holds. */}
+      {list.buckets.length > 0 ? (
+        <div data-bulk-buckets className="flex shrink-0 flex-wrap items-center gap-1 border-b border-border-hairline px-1.5 py-1">
+          <SortChip active={list.status === null} onClick={() => list.setStatus(null)} label={`All ${list.entries.length}`} />
+          {list.buckets
+            .filter((bucket) => bucket.count > 0 || bucket.id === list.status)
+            .map((bucket) => {
+              const Glyph = TONE_ICON[bucket.tone];
+              return (
+                <SortChip
+                  key={bucket.id}
+                  active={list.status === bucket.id}
+                  onClick={() => list.setStatus(list.status === bucket.id ? null : bucket.id)}
+                  label={`${bucket.label} ${bucket.count}`}
+                  lead={
+                    <span aria-hidden className="inline-flex" style={{ color: NAV_LOCATE_TONE_VAR[bucket.tone] }}>
+                      <Glyph className="size-3" />
+                    </span>
+                  }
+                />
+              );
+            })}
+          {nowhere > 0 ? (
+            <span className="inline-flex h-6 items-center gap-1 px-1.5 text-role-micro font-semibold" style={{ color: NAV_LOCATE_TONE_VAR.danger }}>
+              <AlertCircle aria-hidden className="size-3" />
+              Not found {nowhere}
+            </span>
+          ) : null}
+        </div>
+      ) : null}
+
       {list.error ? (
-        <div className="flex items-center gap-2 border-b border-border-hairline px-2 py-1.5 text-role-caption text-rose-700">
+        <div className="flex items-center gap-2 border-b border-border-hairline px-2 py-1.5 text-role-caption text-text-danger">
           <span className="min-w-0 flex-1 truncate">{list.error}</span>
-          <button type="button" onClick={list.refetch} className={cn(ICON_KEY_CLASS, 'w-auto px-1.5 text-rose-700')}>
+          <button type="button" onClick={list.refetch} className={cn(ICON_KEY_CLASS, 'w-auto px-1.5 text-text-danger')}>
             Retry
           </button>
         </div>
@@ -209,23 +315,23 @@ export function NavBulkPopout({
         role="listbox"
         tabIndex={0}
         aria-label="Pasted numbers"
-        aria-activedescendant={visible[safeCursor] ? `bulk-${visible[safeCursor].key}` : undefined}
+        aria-activedescendant={visible[safeCursor] ? `bulk-${safeCursor}` : undefined}
         onKeyDown={onKeyDown}
         className="min-h-0 flex-1 overflow-y-auto overscroll-contain py-1 outline-none"
       >
         {visible.length === 0 ? (
           <p className="px-3 py-2 text-role-caption text-text-faint">
-            {list.loading ? 'Checking…' : 'No pasted numbers in this status.'}
+            {list.loading ? 'Checking…' : 'No pasted numbers in this bucket.'}
           </p>
         ) : (
           visible.map((entry, index) => (
             <BulkRow
-              key={entry.key}
+              key={entry.ref}
               entry={entry}
+              buckets={rowBuckets(entry)}
               index={index}
               lit={index === safeCursor}
               pinned={find === entry.ref}
-              checking={list.loading}
               editing={editing === entry.ref}
               onPoint={() => setCursor(index)}
               onOpen={() => pinpoint(entry)}
@@ -241,7 +347,8 @@ export function NavBulkPopout({
               }}
               onCopy={() => void copy(entry.ref, entry.ref)}
               onRemove={() => removeEntry(entry)}
-              onOpenException={() => openInExceptions(entry)}
+              onOpenBucket={(bucket) => openBucket(bucket, entry)}
+              onOpenRecord={entry.recordHref ? () => openRecord(entry) : undefined}
             />
           ))
         )}
@@ -265,12 +372,14 @@ function SortChip({
   label,
   keycap,
   icon,
+  lead,
 }: {
   active: boolean;
   onClick: () => void;
   label: string;
   keycap?: string;
   icon?: React.ReactNode;
+  lead?: React.ReactNode;
 }) {
   return (
     <button
@@ -278,7 +387,7 @@ function SortChip({
       aria-pressed={active}
       onClick={onClick}
       className={cn(
-        'ds-raw-button inline-flex h-6 shrink-0 items-center gap-1 px-1.5 text-role-micro font-semibold',
+        'ds-raw-button inline-flex h-6 shrink-0 items-center gap-1 px-1.5 text-role-micro font-semibold tabular-nums',
         'transition-[background-color,transform,box-shadow] duration-100 active:translate-y-px',
         active
           ? 'bg-surface-card text-text-default shadow-sm ring-1 ring-border-soft'
@@ -288,6 +397,7 @@ function SortChip({
       )}
     >
       {keycap ? <KeyboardKey size="xs">{keycap}</KeyboardKey> : null}
+      {lead}
       {label}
       {icon}
     </button>
@@ -309,10 +419,10 @@ function Legend({ keys, label }: { keys: readonly string[]; label: string }) {
 
 function BulkRow({
   entry,
+  buckets,
   index,
   lit,
   pinned,
-  checking,
   editing,
   onPoint,
   onOpen,
@@ -321,13 +431,14 @@ function BulkRow({
   onCancelEdit,
   onCopy,
   onRemove,
-  onOpenException,
+  onOpenBucket,
+  onOpenRecord,
 }: {
-  entry: ReconEntry;
+  entry: BulkEntry;
+  buckets: readonly RowBucket[];
   index: number;
   lit: boolean;
   pinned: boolean;
-  checking: boolean;
   editing: boolean;
   onPoint: () => void;
   onOpen: () => void;
@@ -336,23 +447,24 @@ function BulkRow({
   onCancelEdit: () => void;
   onCopy: () => void;
   onRemove: () => void;
-  onOpenException: () => void;
+  onOpenBucket: (bucket: NavLocateBucket) => void;
+  onOpenRecord: (() => void) | undefined;
 }) {
-  const face = STATUS_FACE[entry.status];
-  const Icon = face.icon;
-  const answered = !(checking && entry.detail === 'Checking…');
+  // The bucket the row reads as: the list on screen when it holds the number, else its first.
+  const primary = buckets.find((row) => row.current) ?? buckets[0];
+  const others = buckets.filter((row) => row !== primary);
   return (
     <div
-      id={`bulk-${entry.key}`}
+      id={`bulk-${index}`}
       role="option"
       aria-selected={lit}
       data-bulk-index={index}
-      data-status={entry.status}
+      data-buckets={entry.buckets.join(' ')}
       onPointerEnter={onPoint}
       onClick={editing ? undefined : onOpen}
       className={cn(
         // Pill hover: a capsule inset from the square panel edge.
-        'group mx-1 flex h-7 cursor-default select-none items-center gap-2 rounded-full pl-2 pr-1',
+        'group mx-1 flex h-7 cursor-default select-none items-center gap-2 rounded-full pl-1 pr-1',
         'transition-[background-color,transform,box-shadow] duration-100 ease-out',
         'hover:bg-surface-card hover:shadow-sm hover:ring-1 hover:ring-border-soft',
         'active:translate-y-px active:bg-surface-sunken active:shadow-none',
@@ -360,10 +472,22 @@ function BulkRow({
         pinned && 'ring-2 ring-border-strong',
       )}
     >
-      {answered ? (
-        <Icon aria-hidden className={cn('size-3.5 shrink-0', face.tone)} />
+      {entry.pending ? (
+        <span className="inline-flex h-5 w-[6.5rem] shrink-0 items-center gap-1 px-1.5 text-role-micro text-text-faint">
+          <Loader2 aria-hidden className="size-3 shrink-0 animate-spin" />
+          Checking…
+        </span>
+      ) : primary ? (
+        <BucketChip row={primary} labelled onOpen={onOpenBucket} />
       ) : (
-        <Loader2 aria-hidden className="size-3.5 shrink-0 animate-spin text-text-faint" />
+        <span
+          data-bulk-bucket="none"
+          className="inline-flex h-5 w-[6.5rem] shrink-0 items-center gap-1 px-1.5 text-role-micro font-semibold"
+          style={{ color: NAV_LOCATE_TONE_VAR.danger }}
+        >
+          <AlertCircle aria-hidden className="size-3 shrink-0" />
+          Not found
+        </span>
       )}
       {editing ? (
         <input
@@ -382,19 +506,27 @@ function BulkRow({
         />
       ) : (
         <>
-          <span className="min-w-0 flex-1 truncate font-mono text-role-caption font-semibold text-text-default">
+          {/* The number never yields its width; detail and title share what is left. */}
+          <span className="max-w-[10rem] shrink-0 truncate font-mono text-role-caption font-semibold text-text-default">
             {entry.ref}
           </span>
-          <span className={cn('max-w-[9rem] shrink-0 truncate text-role-micro', answered ? face.tone : 'text-text-faint')}>
-            {entry.detail}
+          <span className="flex min-w-0 flex-1 items-baseline gap-2 text-role-micro">
+            {entry.detail ? <span className="min-w-0 shrink truncate text-text-muted">{entry.detail}</span> : null}
+            {entry.title ? (
+              <span className={cn('min-w-0 flex-1 truncate text-text-faint group-hover:hidden', lit && 'hidden')}>
+                {entry.title}
+              </span>
+            ) : null}
           </span>
-          {entry.exception ? <ExceptionBadge exception={entry.exception} onOpen={onOpenException} /> : null}
-          {entry.poNumber && entry.poNumber !== entry.ref ? (
-            <span className="max-w-[5.5rem] shrink-0 truncate font-mono text-role-micro text-text-faint group-hover:hidden">
-              {entry.poNumber}
-            </span>
-          ) : null}
+          {others.map((row) => (
+            <BucketChip key={row.bucket.id} row={row} onOpen={onOpenBucket} />
+          ))}
           <span className={cn('hidden shrink-0 items-center gap-0.5 group-hover:flex', lit && 'flex')}>
+            {onOpenRecord ? (
+              <RowAction label={`Open ${entry.title ?? entry.ref}`} onClick={onOpenRecord}>
+                <ExternalLink aria-hidden className="size-3" />
+              </RowAction>
+            ) : null}
             <RowAction label={`Edit ${entry.ref}`} onClick={onEdit}>
               <Pencil aria-hidden className="size-3" />
             </RowAction>
@@ -412,26 +544,36 @@ function BulkRow({
 }
 
 /**
- * The number needs a person. Linked when its lines sit in the Exceptions view;
- * otherwise (nothing anywhere names it) a marker with the reason.
+ * Where the number lives: glyph (+ label for the row's own bucket) in the
+ * bucket's ink. A bucket that is not the list on screen links to its list,
+ * narrowed to the number — how a row points at Exceptions, Shipped, ….
  */
-function ExceptionBadge({
-  exception,
+function BucketChip({
+  row,
+  labelled = false,
   onOpen,
 }: {
-  exception: NonNullable<ReconEntry['exception']>;
-  onOpen: () => void;
+  row: RowBucket;
+  labelled?: boolean;
+  onOpen: (bucket: NavLocateBucket) => void;
 }) {
+  const { bucket, current } = row;
+  const Glyph = TONE_ICON[bucket.tone];
   const face = (
     <>
-      <AlertTriangle aria-hidden className="size-3" />
-      <span className="sr-only">{exception.reason}</span>
+      <Glyph aria-hidden className="size-3 shrink-0" />
+      {labelled ? <span className="truncate">{bucket.label}</span> : <span className="sr-only">{bucket.label}</span>}
     </>
   );
-  const className = 'grid size-5 shrink-0 place-content-center rounded-full bg-rose-50 text-rose-600';
-  if (!exception.inView) {
+  const className = cn(
+    'inline-flex h-5 shrink-0 items-center gap-1 text-role-micro font-semibold',
+    labelled ? 'w-[6.5rem] px-1.5' : 'size-5 justify-center',
+    SIDEBAR_CHIP_CORNER,
+  );
+  const style = { color: NAV_LOCATE_TONE_VAR[bucket.tone] };
+  if (current || !bucket.href) {
     return (
-      <span data-bulk-exception title={exception.reason} className={className}>
+      <span data-bulk-bucket={bucket.id} title={bucket.label} className={className} style={style}>
         {face}
       </span>
     );
@@ -439,14 +581,20 @@ function ExceptionBadge({
   return (
     <button
       type="button"
-      data-bulk-exception
-      title={`${exception.reason} — open in Exceptions`}
-      aria-label={`${exception.reason} — open in Exceptions`}
+      tabIndex={-1}
+      data-bulk-bucket={bucket.id}
+      title={`Open in ${bucket.label}`}
+      aria-label={`Open in ${bucket.label}`}
       onClick={(event) => {
         event.stopPropagation();
-        onOpen();
+        onOpen(bucket);
       }}
-      className={cn(className, 'ds-raw-button hover:bg-rose-100 active:translate-y-px', focusRing('control', 'accent'))}
+      className={cn(
+        className,
+        'ds-raw-button bg-surface-sunken hover:bg-surface-card hover:shadow-sm hover:ring-1 hover:ring-border-soft active:translate-y-px',
+        focusRing('control', 'accent'),
+      )}
+      style={style}
     >
       {face}
     </button>

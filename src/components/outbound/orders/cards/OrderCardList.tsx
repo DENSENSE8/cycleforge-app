@@ -23,12 +23,9 @@
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
-import { AnimatePresence, motion } from 'motion/react';
 import type { ShippedOrder } from '@/lib/neon/orders-queries';
-import { ArrowUp } from '@/components/Icons';
 import { OrderSearchEmptyState } from '@/components/dashboard/OrderSearchEmptyState';
-import { useOrdersQueueFeed, queueRowStaff, type OrdersQueueCommits } from '@/components/dashboard/orders-queue/useOrdersQueueFeed';
-import type { QueueRowRecord } from '@/components/dashboard/orders-queue/helpers';
+import { useOrdersQueueFeed, type OrdersQueueCommits } from '@/components/dashboard/orders-queue/useOrdersQueueFeed';
 import type { QueueRowClickEvent } from '@/components/dashboard/orders-queue/queue-row-click';
 import type { ToShipChrome } from '@/components/unshipped/useToShipChrome';
 import { DESK_RECORD_ANCHOR_ATTR, DeskRecordPlane, useDeskRecordView } from '@/design-system/components/DeskRecordPlane';
@@ -47,34 +44,40 @@ import { useSidebarColumnOpen } from '@/lib/nav/sidebar-column-store';
 import { QUEUE_CARRIER_SORT_GROUP, QUEUE_CHANNEL_SORT_GROUP } from '@/utils/queue-display-sort';
 import { hasOpenOverlay } from '@/lib/overlay-stack/store';
 import { isEditableKeyTarget } from '@/lib/keyboard/is-editable-key-target';
-import { focusRing } from '@/design-system/tokens/focus-ring';
 import { getCurrentPSTDateKey } from '@/utils/date';
-import { cn } from '@/utils/_cn';
-import { OrderRecordView } from '../OrderRecordView';
+import { OrderRecordTitle, OrderRecordView } from '../OrderRecordView';
+import { OrderListLeadSlot } from '../intake/order-list-lead';
 import { OrderRecordActionStrip, OrdersMorphingHost } from '../to-ship/MorphingRowActionMenu';
-import { OrderQueueSummary, OrderQueueSummaryChips, queueRowStatusKeys } from '../OrderQueueSummary';
+import { OrderQueueSummary, OrderQueueSummaryChips, QUEUE_STATUS_CHIPS, queueRowStatusKeys } from '../OrderQueueSummary';
 import { OrderCard } from './OrderCard';
-import { OrderCardSelectBar, type SelectBarPager } from './OrderCardSelectBar';
+import { CollapseItem } from '@/design-system/components/Collapse';
+import { TriageSelectBar, type TriagePager } from '@/design-system/components/triage-card-list/TriageSelectBar';
+import { TriageAllClear, TriageListBody, TriageSectionHeader, type TriageSectionTone } from '@/design-system/components/triage-card-list/TriageListBody';
 import {
-  useCardListPageKeys,
-  useCardListPageMode,
-  useCardListUrlState,
-  useHeldNewOrders,
-  useKeptScroll,
-} from './order-card-list-state';
+  useHeldNewRecords,
+  useTriagePageKeys,
+  useTriagePageMode,
+  useTriageUrlState,
+} from '@/design-system/components/triage-card-list/triage-list-state';
 
-const SPRING = { type: 'spring', stiffness: 480, damping: 36, mass: 0.8 } as const;
+/** URL params that name the open order — they move within the list, so they are not its scope. */
+const ORDER_RECORD_PARAMS = ['openOrderId', 'open'] as const;
+/** Browser storage keys — kept from the first card list so remembered prefs survive the move. */
+const PAGE_MODE_STORAGE_KEY = 'cf:order-cards:scroll';
+const SCROLL_TOP_STORAGE_PREFIX = 'cf:order-cards:scroll-top';
+/** How the triage chrome names an order. */
+const ORDER_NOUN = { one: 'order', many: 'orders' } as const;
 
 /** Scroll mode reads every loaded card as one page. */
 const ALL_LOADED = Number.MAX_SAFE_INTEGER;
 
 /** Ship-by section headers under the default (deadline) sort. */
-const SLA_SECTION: Readonly<Record<OrderCardSlaTone, string>> = {
-  late: 'Late',
-  today: 'Due today',
-  soon: 'Tomorrow',
-  later: 'Later',
-  none: 'No ship-by',
+const SLA_SECTION: Readonly<Record<OrderCardSlaTone, { label: string; tone: TriageSectionTone }>> = {
+  late: { label: 'Late', tone: 'danger' },
+  today: { label: 'Due today', tone: 'warning' },
+  soon: { label: 'Tomorrow', tone: 'muted' },
+  later: { label: 'Later', tone: 'muted' },
+  none: { label: 'No ship-by', tone: 'muted' },
 };
 
 /** A card's key: the order number can head two groups, the lead line's id keeps it unique. */
@@ -125,12 +128,11 @@ export function OrderCardList({
 }: OrderCardListProps) {
   const searchValue = chrome.search.value;
   const scrollRef = useRef<HTMLDivElement>(null);
-  const contentRef = useRef<HTMLDivElement>(null);
 
   // ── Status filter + held new orders + ship-by sections → the feed's cut ───
   // The feed arranges BEFORE the record cursor, so J / K walk the screen's
   // order and never step onto a card the chips (or the new-orders hold) hide.
-  const url = useCardListUrlState();
+  const url = useTriageUrlState({ statusKeys: QUEUE_STATUS_CHIPS, recordParams: ORDER_RECORD_PARAMS });
   const { statusFilter } = url;
   const [heldKeys, setHeldKeys] = useState<ReadonlySet<string>>(() => new Set());
   const arrangeGroups = useCallback(
@@ -186,7 +188,7 @@ export function OrderCardList({
     () => allOrderGroupsByDate.flatMap(([, groups]) => groups.map(cardKeyOf)),
     [allOrderGroupsByDate],
   );
-  const held = useHeldNewOrders({
+  const held = useHeldNewRecords({
     groupKeys: allCardKeys,
     scrollRef,
     // Any change to the question (search, sidebar filters, chips, staff) makes
@@ -230,7 +232,7 @@ export function OrderCardList({
   }, [resetStatus]);
 
   // ── Pages (URL `?page=`) or Scroll ─────────────────────────────────────────
-  const { mode: pageMode, setMode: setPageMode, resolved: pageModeResolved } = useCardListPageMode();
+  const { mode: pageMode, setMode: setPageMode, resolved: pageModeResolved } = useTriagePageMode(PAGE_MODE_STORAGE_KEY);
   const scrollMode = pageMode === 'scroll';
   const pageSize = scrollMode ? ALL_LOADED : pageMode;
   const paged = useMemo(
@@ -273,8 +275,11 @@ export function OrderCardList({
 
   // ── Cards ─────────────────────────────────────────────────────────────────
   const cards = useMemo(
-    () => paged.order.flatMap(([, groups]) => groups.map((group) => orderCardModel(cardKeyOf(group), group.rows, todayKey))),
-    [paged.order, todayKey],
+    () =>
+      paged.order.flatMap(([, groups]) =>
+        groups.map((group) => orderCardModel(cardKeyOf(group), group.rows, todayKey, getStaffName)),
+      ),
+    [paged.order, todayKey, getStaffName],
   );
   const [expanded, setExpanded] = useState<ReadonlySet<string>>(() => new Set());
   const toggleExpand = useCallback((key: string) => {
@@ -339,7 +344,7 @@ export function OrderCardList({
     [openId, displayedRecords, plane.selectedRecord],
   );
   // In place, an open record covers the cards — no card menu floats over it.
-  const cardsCovered = openRecord != null && recordView !== 'split';
+  const cardsCovered = openRecord != null && recordView === 'in-place';
 
   // ── Find an exact order number → open it ──────────────────────────────────
   const jumpedFor = useRef<string | null>(null);
@@ -412,29 +417,6 @@ export function OrderCardList({
   const isNarrowed = Boolean(searchValue.trim()) || chrome.filter.options.some((o) => o.active);
   const openRef = openRecord ? String(openRecord.order_id ?? '').trim() || `#${openRecord.id}` : '';
 
-  // ── Scroll: bottom shadow, kept place, Scroll-mode loading ────────────────
-  const [moreBelow, setMoreBelow] = useState(false);
-  const keepScroll = useKeptScroll(scrollRef, cards.length > 0);
-  const measureEdges = useCallback(() => {
-    const el = scrollRef.current;
-    if (!el) return;
-    setMoreBelow(el.scrollTop + el.clientHeight < el.scrollHeight - 2);
-  }, []);
-  const onScroll = useCallback(() => {
-    measureEdges();
-    keepScroll();
-  }, [measureEdges, keepScroll]);
-  useEffect(() => {
-    const el = scrollRef.current;
-    const content = contentRef.current;
-    if (!el || !content) return;
-    const observer = new ResizeObserver(measureEdges);
-    observer.observe(el);
-    observer.observe(content);
-    measureEdges();
-    return () => observer.disconnect();
-  }, [measureEdges]);
-
   const trustNextBatch = held.trustNextBatch;
   const loadMore = useMemo(
     () =>
@@ -446,21 +428,6 @@ export function OrderCardList({
         : undefined,
     [onLoadMore, fetching, trustNextBatch],
   );
-  const sentinelRef = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    const el = sentinelRef.current;
-    const root = scrollRef.current;
-    if (!scrollMode || !el || !root || !loadMore) return;
-    const observer = new IntersectionObserver(
-      (entries) => {
-        if (entries.some((entry) => entry.isIntersecting)) loadMore();
-      },
-      { root, rootMargin: '0px 0px 480px 0px' },
-    );
-    observer.observe(el);
-    return () => observer.disconnect();
-  }, [scrollMode, loadMore]);
-
   // ── Count + pager ─────────────────────────────────────────────────────────
   // Unfiltered, the count is the SERVER's scope total; a status filter or a
   // search narrows to what is loaded, so it counts the cut.
@@ -481,7 +448,7 @@ export function OrderCardList({
     loadMore();
     url.setPageIndex(paged.pageIndex + 1);
   }, [lastLoadedPage, loadMore, url, paged.pageIndex]);
-  const pager: SelectBarPager | null =
+  const pager: TriagePager | null =
     !scrollMode && total > paged.shown
       ? {
           label: `${firstRow}–${firstRow + paged.shown - 1} of ${total}`,
@@ -491,7 +458,7 @@ export function OrderCardList({
           onNext: goNext,
         }
       : null;
-  useCardListPageKeys({
+  useTriagePageKeys({
     enabled: !scrollMode && openRecord == null,
     onPrev: () => {
       if (paged.pageIndex > 0) goPrev();
@@ -519,32 +486,21 @@ export function OrderCardList({
     if (grouped && card.sla.tone !== lastSection) {
       lastSection = card.sla.tone;
       cardItems.push(
-        <motion.li
-          key={`section:${card.sla.tone}`}
-          layout="position"
-          data-testid="order-card-section"
-          className="sticky top-0 z-20 -mx-1 flex items-center gap-2 bg-surface-card/90 px-5 pb-1.5 pt-3 backdrop-blur-sm"
-        >
-          <span className={cn('text-xs font-semibold', card.sla.tone === 'late' ? 'text-text-danger' : card.sla.tone === 'today' ? 'text-text-warning' : 'text-text-muted')}>
-            {SLA_SECTION[card.sla.tone]}
-          </span>
-          <span className="rounded-full bg-surface-sunken px-1.5 text-[11px] font-semibold tabular-nums text-text-muted">
-            {sectionCounts[card.sla.tone]}
-          </span>
-        </motion.li>,
+        <TriageSectionHeader
+          key={`section:${card.sla.tone}:${card.key}`}
+          label={SLA_SECTION[card.sla.tone].label}
+          tone={SLA_SECTION[card.sla.tone].tone}
+          count={sectionCounts[card.sla.tone]}
+          testId="order-card-section"
+        />,
       );
     }
     const checkedCount = card.ids.filter((id) => plane.selectedIds.has(id)).length;
     const checked = checkedCount === 0 ? false : checkedCount === card.ids.length ? true : 'mixed';
-    const r = card.lead as QueueRowRecord;
-    const staff = queueRowStaff(r, getStaffName);
     const leadSku = card.lines[0]?.sku;
     cardItems.push(
-      <motion.li
-        key={card.key}
-        exit={{ opacity: 0, height: 0, transition: { duration: 0.22 } }}
-        className="relative [&+&]:before:absolute [&+&]:before:inset-x-4 [&+&]:before:top-0 [&+&]:before:h-px [&+&]:before:bg-border-hairline"
-      >
+      // A card that leaves the list collapses; a card arriving paints at full height (its own stagger rises it).
+      <CollapseItem key={card.key} as="li" enter={false} rowRule>
         <OrderCard
           model={card}
           checked={checked}
@@ -553,11 +509,6 @@ export function OrderCardList({
           menuOpen={!cardsCovered && selectedCount === 1 && checked === true}
           enterIndex={index}
           mode={mode}
-          packer={{
-            id: staff.packerId,
-            name: staff.packerId != null ? staff.packerDisplay : null,
-            colorHex: (r.packer_color_hex as string | null | undefined) ?? null,
-          }}
           onOpen={openCard}
           onToggleSelect={plane.handleToggleSelect}
           onToggleGroup={plane.handleToggleGroup}
@@ -570,7 +521,7 @@ export function OrderCardList({
           skuShared={leadSku ? (skuOrders.get(leadSku)?.cards.size ?? 0) : 0}
           onSelectSku={selectSku}
         />
-      </motion.li>,
+      </CollapseItem>,
     );
   });
 
@@ -582,7 +533,9 @@ export function OrderCardList({
             width of its own: the desk stage (DESK_STAGE_FIXED_CLASS) is the one
             width wrapper, so the bar, the cards and the page title share edges. */}
         {openRecord ? null : (
-          <OrderCardSelectBar
+          <TriageSelectBar
+            noun={ORDER_NOUN}
+            testIdPrefix="order-card"
             selectedCount={selectedCount}
             allSelected={allSelected}
             total={total}
@@ -628,100 +581,37 @@ export function OrderCardList({
 
       {banner}
 
-      <div className="relative flex min-h-0 flex-1 flex-col">
-        {/* New orders wait here instead of shoving the cards down. */}
-        <AnimatePresence>
-          {held.held.size > 0 ? (
-            <motion.button
-              key="new-orders"
-              type="button"
-              data-testid="order-card-new-orders"
-              onClick={held.release}
-              initial={{ opacity: 0, y: -12, scale: 0.9 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, y: -12, scale: 0.9 }}
-              transition={SPRING}
-              className={cn(
-                'absolute left-1/2 top-2 z-30 flex -translate-x-1/2 items-center gap-1.5 rounded-full bg-text-default px-3 py-1.5 text-xs font-semibold text-surface-card shadow-elev-overlay',
-                focusRing('control'),
-              )}
-            >
-              <ArrowUp className="size-3.5" aria-hidden />
-              {held.held.size} new order{held.held.size === 1 ? '' : 's'}
-            </motion.button>
-          ) : null}
-        </AnimatePresence>
-
-        <div ref={scrollRef} onScroll={onScroll} className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden">
-          <div ref={contentRef} className="pb-6 pt-1">
-            {cards.length === 0 ? (
-              loading || searchPending ? (
-                <CardSkeletons />
-              ) : statusFilter.size > 0 ? (
-                <motion.div
-                  initial={{ opacity: 0, y: 8 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={SPRING}
-                  className="flex min-h-60 flex-col items-center justify-center gap-3 text-center"
-                >
-                  <p className="text-sm text-text-muted">No orders match these statuses.</p>
-                  <button
-                    type="button"
-                    onClick={resetStatus}
-                    className={cn('rounded-full bg-text-default px-3 py-1.5 text-xs font-semibold text-surface-card', focusRing('control'))}
-                  >
-                    Reset filters
-                  </button>
-                </motion.div>
-              ) : isNarrowed ? (
-                <div className="flex min-h-60 items-center justify-center">
-                  <OrderSearchEmptyState
-                    query={searchValue}
-                    title={searchEmptyTitle}
-                    resultLabel={searchResultLabel}
-                    clearLabel={clearSearchLabel}
-                    onClear={() => chrome.search.onChange('')}
-                  />
-                </div>
-              ) : (
-                <QueueClear />
-              )
-            ) : (
-              <ul role="list" aria-label="Orders to ship" aria-busy={loading || searchPending} className="flex flex-col">
-                <AnimatePresence initial={false}>{cardItems}</AnimatePresence>
-              </ul>
-            )}
-
-            {/* The end of what is loaded: more on the server. */}
-            {cards.length > 0 && lastLoadedPage && onLoadMore ? (
-              <div ref={sentinelRef} className="flex justify-center pt-4">
-                <button
-                  type="button"
-                  data-testid="order-card-load-more"
-                  disabled={!loadMore}
-                  onClick={() => loadMore?.()}
-                  className={cn(
-                    'rounded-full border border-border-soft bg-surface-card px-4 py-2 text-xs font-medium text-text-default shadow-elev-soft transition-colors hover:border-border-strong disabled:opacity-60',
-                    focusRing('control'),
-                  )}
-                >
-                  {fetching ? 'Loading…' : searchValue.trim() ? 'Load more matches' : `Load more · ${paged.total} of ${total} loaded`}
-                </button>
-              </div>
-            ) : null}
-          </div>
-        </div>
-        {/* The page's bottom edge: a soft shadow while more cards sit below the fold. */}
-        <motion.div
-          aria-hidden
-          data-testid="order-card-scroll-shadow"
-          data-visible={moreBelow ? '' : undefined}
-          initial={false}
-          animate={{ opacity: moreBelow ? 1 : 0 }}
-          transition={{ duration: 0.25 }}
-          className="pointer-events-none absolute inset-x-0 bottom-0 h-12 bg-gradient-to-t from-black/[0.11] via-black/[0.04] to-transparent"
-        />
-      </div>
+      <TriageListBody
+        testIdPrefix="order-card"
+        noun={ORDER_NOUN}
+        scrollRef={scrollRef}
+        cardCount={cards.length}
+        items={cardItems}
+        listLabel="Orders to ship"
+        busy={loading || searchPending}
+        held={{ count: held.held.size, release: held.release }}
+        leadSlot={<OrderListLeadSlot />}
+        statusFiltered={{ active: statusFilter.size > 0, onReset: resetStatus }}
+        searchEmpty={
+          isNarrowed ? (
+            <OrderSearchEmptyState
+              query={searchValue}
+              title={searchEmptyTitle}
+              resultLabel={searchResultLabel}
+              clearLabel={clearSearchLabel}
+              onClear={() => chrome.search.onChange('')}
+            />
+          ) : null
+        }
+        allClear={<TriageAllClear title="No orders to ship" detail="Queue clear." />}
+        loadMore={
+          lastLoadedPage && onLoadMore
+            ? { onPress: loadMore, fetching, searching: Boolean(searchValue.trim()), loaded: paged.total, total }
+            : null
+        }
+        scrollMode={scrollMode}
+        scrollStorageKey={SCROLL_TOP_STORAGE_PREFIX}
+      />
     </div>
   );
 
@@ -732,8 +622,7 @@ export function OrderCardList({
     <DeskRecordPlane
       open={openRecord != null}
       onClose={plane.closeRecord}
-      title={openRecord ? `Order ${openRef}` : 'Order'}
-      subtitle={openRecord?.product_title?.trim() || undefined}
+      title={openRecord ? <OrderRecordTitle record={openRecord} records={displayedRecords} /> : 'Order'}
       indexLabel={cursor.available && cursor.position != null ? `${cursor.position} of ${cursor.total}` : undefined}
       recordNoun="order"
       recordKey={openId != null ? String(openId) : null}
@@ -752,68 +641,5 @@ export function OrderCardList({
         />
       ) : null}
     </DeskRecordPlane>
-  );
-}
-
-// ── Empty + loading ───────────────────────────────────────────────────────────
-
-function QueueClear() {
-  return (
-    <motion.div
-      initial={{ opacity: 0, scale: 0.96 }}
-      animate={{ opacity: 1, scale: 1 }}
-      transition={SPRING}
-      className="flex min-h-72 flex-col items-center justify-center gap-2 text-center"
-    >
-      <motion.span
-        initial={{ scale: 0, rotate: -30 }}
-        animate={{ scale: 1, rotate: 0 }}
-        transition={{ type: 'spring', stiffness: 300, damping: 14, delay: 0.1 }}
-        className="flex size-12 items-center justify-center rounded-full bg-surface-success text-text-success"
-      >
-        <svg viewBox="0 0 24 24" className="size-6" fill="none" aria-hidden>
-          <motion.path
-            d="M5 12.5l4.5 4.5L19 7.5"
-            stroke="currentColor"
-            strokeWidth={2.4}
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            initial={{ pathLength: 0 }}
-            animate={{ pathLength: 1 }}
-            transition={{ duration: 0.45, delay: 0.3 }}
-          />
-        </svg>
-      </motion.span>
-      <p className="text-base font-semibold text-text-default">No orders to ship</p>
-      <p className="text-sm text-text-muted">Queue clear.</p>
-    </motion.div>
-  );
-}
-
-function CardSkeletons() {
-  return (
-    <ul aria-hidden className="flex flex-col">
-      {Array.from({ length: 8 }, (_, i) => (
-        <li key={i} className="flex gap-3 rounded-2xl px-4 py-3">
-          <span className="w-7 shrink-0 space-y-3 pt-0.5">
-            <span className="block size-[18px] animate-pulse rounded-[5px] bg-surface-sunken" />
-            <span className="block size-4 animate-pulse rounded-md bg-surface-sunken" />
-          </span>
-          <span className="flex min-w-0 flex-1 flex-col gap-2.5">
-            <span className="flex justify-between">
-              <span className="h-3.5 w-56 animate-pulse rounded-md bg-surface-sunken" />
-              <span className="h-3.5 w-20 animate-pulse rounded-md bg-surface-sunken" />
-            </span>
-            <span className="flex gap-3">
-              <span className="size-12 shrink-0 animate-pulse rounded-xl bg-surface-sunken" />
-              <span className="flex flex-1 flex-col gap-2 pt-1">
-                <span className="h-4 w-3/4 animate-pulse rounded-md bg-surface-sunken" style={{ animationDelay: `${i * 60}ms` }} />
-                <span className="h-3 w-1/2 animate-pulse rounded-md bg-surface-sunken" style={{ animationDelay: `${i * 60 + 30}ms` }} />
-              </span>
-            </span>
-          </span>
-        </li>
-      ))}
-    </ul>
   );
 }

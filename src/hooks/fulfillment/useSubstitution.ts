@@ -75,7 +75,7 @@ export function useSubstituteUnit() {
       qc.invalidateQueries({ queryKey: orderAmendmentsKey(vars.orderId) });
       qc.invalidateQueries({ queryKey: orderPickTasksKey(vars.orderId) });
       // Post-submit reconciliation (tech-substitution wiring §5 Phase 2.1):
-      qc.invalidateQueries({ queryKey: ['tech-logs'] });
+      qc.invalidateQueries({ queryKey: ['desk-pick-logs'] });
       dispatchDashboardAndStationRefresh();
     },
   });

@@ -21,6 +21,7 @@ import {
   LEGACY_SESSION_COOKIE_NAME,
 } from '@/lib/auth/session';
 import { audit } from '@/lib/auth/audit';
+import { recordStaffLoginRedirect } from '@/lib/auth/record-staff-login';
 import pool from '@/lib/db';
 import type { QrLoginSessionRow } from '@/lib/auth/qr-login';
 
@@ -114,10 +115,12 @@ export async function POST(req: NextRequest) {
       },
     });
 
+    const redirectUrl = await recordStaffLoginRedirect(pool, claimed.staff_id, { mobile: true });
+
     const res = NextResponse.json({
       ok: true,
       staffName: staff.name,
-      redirectUrl: '/m/home',
+      redirectUrl,
     });
 
     res.cookies.set(SESSION_COOKIE_NAME, session.sid, {

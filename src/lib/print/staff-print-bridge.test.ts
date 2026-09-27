@@ -61,12 +61,36 @@ describe('parseStaffPrintJob', () => {
     const base = {
       request_id: 'req-2',
       grain: 'papers',
-      papers: { orderRowId: 44, packerLogId: null, reprint: true },
+      papers: { orderRowIds: [44], packerLogId: null, reprint: true },
     };
     assert.equal(parseStaffPrintJob(base), null);
     assert.equal(parseStaffPrintJob({ ...base, targetStationId: '' }), null);
     assert.equal(parseStaffPrintJob({ ...base, targetStationId: '   ' }), null);
-    assert.equal(parseStaffPrintJob({ ...base, targetStationId: PACK })?.papers?.orderRowId, 44);
+    assert.deepEqual(parseStaffPrintJob({ ...base, targetStationId: PACK })?.papers?.orderRowIds, [44]);
+  });
+
+  it('a bulk papers job keeps its orders and the papers asked for, and refuses a runaway or junk list', () => {
+    const base = { request_id: 'req-3', targetStationId: PACK, grain: 'papers' };
+    const job = parseStaffPrintJob({
+      ...base,
+      papers: { orderRowIds: [7, 8, 7], packerLogId: 99, documents: ['packing_slip'], batchId: 'print-abc12345' },
+    });
+    assert.deepEqual(job?.papers, {
+      orderRowIds: [7, 8],
+      // A pack id belongs to one order; a bulk job never carries it.
+      packerLogId: null,
+      reprint: false,
+      documents: ['packing_slip'],
+      batchId: 'print-abc12345',
+    });
+    const many = Array.from({ length: 26 }, (_, i) => i + 1);
+    assert.equal(parseStaffPrintJob({ ...base, papers: { orderRowIds: many, packerLogId: null } }), null);
+    assert.equal(parseStaffPrintJob({ ...base, papers: { orderRowIds: [], packerLogId: null } }), null);
+    assert.equal(parseStaffPrintJob({ ...base, papers: { orderRowIds: [1.5], packerLogId: null } }), null);
+    assert.equal(
+      parseStaffPrintJob({ ...base, papers: { orderRowIds: [1], packerLogId: null, documents: ['invoice'] } }),
+      null,
+    );
   });
 
   it('rejects empty segments', () => {

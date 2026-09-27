@@ -13,34 +13,18 @@ import { useAblyClient } from '@/contexts/AblyContext';
 import { useAblyChannel } from './useAblyChannel';
 import { useAuth } from '@/contexts/AuthContext';
 import { qk } from '@/queries/keys';
-import { OUTBOUND_QUERY_PREFIXES } from '@/lib/outbound/outbound-cache-keys';
+import { invalidateQueryKeys, ORDER_WRITE_QUERY_KEYS } from '@/lib/refresh/query-keys';
 import { receivingFeedsRecentlyInvalidatedLocally } from '@/lib/queries/receiving-queries';
 import {
   invalidateUnshippedCounts,
-  patchUnshippedOrderTested,
+  patchUnshippedOrderPicked,
 } from '@/lib/queries/dashboard-cache-patch';
 import { optimisticallyRemoveOrderRows } from '@/lib/queries/order-cache-optimistic';
 import { publishOutboundRealtimePaintReceipt } from '@/lib/shipping/outbound-realtime-paint';
 
-function invalidateOutboundQueues(queryClient: QueryClient) {
-  for (const queryKey of OUTBOUND_QUERY_PREFIXES) {
-    queryClient.invalidateQueries({ queryKey: [...queryKey] });
-  }
-  queryClient.invalidateQueries({ queryKey: ['outbound-search', 'labels-count'] });
-}
-
-/** The dashboard caches an order-row mutation has to refresh. */
+/** The caches an order-row mutation has to refresh — the same set a local `orders.outbound` write busts. */
 function invalidateOrderDashboards(queryClient: QueryClient) {
-  queryClient.invalidateQueries({ queryKey: ['dashboard-table', 'pending'] });
-  queryClient.invalidateQueries({ queryKey: ['dashboard-table', 'unshipped'] });
-  // The new counts key (Phase 2) lives under a SEPARATE prefix, so the row
-  // invalidate above doesn't cover it — refresh it explicitly.
-  invalidateUnshippedCounts(queryClient);
-  queryClient.invalidateQueries({ queryKey: ['dashboard-table', 'shipped'] });
-  queryClient.invalidateQueries({ queryKey: ['dashboard-table', 'shipped-fba'] });
-  queryClient.invalidateQueries({ queryKey: ['shipped-table'] });
-  queryClient.invalidateQueries({ queryKey: ['shipped-table-fba'] });
-  invalidateOutboundQueues(queryClient);
+  invalidateQueryKeys(queryClient, ORDER_WRITE_QUERY_KEYS);
 }
 
 /**
@@ -143,13 +127,13 @@ export function useRealtimeInvalidation({
     frameCoalesce,
   );
 
-  // Serial added from the tech station publishes order.tested (not order.changed).
-  // Invalidate shipped views so the serial list in the details panel stays current.
+  // The picker desk's tracking scan publishes order.picked (not order.changed).
+  // Invalidate shipped views so the details panel stays current.
   useAblyChannel(
     ordersChannel,
-    'order.tested',
+    'order.picked',
     () => {
-      // Phase 3: the Unshipped rows are patched IN PLACE by the sibling subscription below (has_tech_scan → the row moves pending → tested…
+      // The Unshipped rows are patched IN PLACE by the sibling subscription below (has_pick_scan → the row moves pending → picked); only the counts and shipped views refetch here.
       invalidateUnshippedCounts(queryClient);
       queryClient.invalidateQueries({ queryKey: ['dashboard-table', 'shipped'] });
       queryClient.invalidateQueries({ queryKey: ['dashboard-table', 'shipped-fba'] });
@@ -163,15 +147,17 @@ export function useRealtimeInvalidation({
   // …and the in-place half, as its OWN subscription.
   useAblyChannel(
     ordersChannel,
-    'order.tested',
+    'order.picked',
     (message: unknown) => {
       const data = readEventData(message);
       // Invisible measurement seam: browser harnesses time this receipt to the
       // patched row's next paint. It never renders connection-health chrome.
       publishOutboundRealtimePaintReceipt(data.orderId);
-      patchUnshippedOrderTested(queryClient, {
+      patchUnshippedOrderPicked(queryClient, {
         orderId: data.orderId,
-        testedBy: data.testedBy,
+        pickedBy: data.pickedBy,
+        pickedByName: data.pickedByName,
+        pickedAt: data.pickedAt,
         packLocationId: data.packLocationId,
         packLocationName: data.packLocationName,
       });

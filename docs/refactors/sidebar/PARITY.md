@@ -733,10 +733,10 @@ Scope: the `kind: 'station'` rows in `SIDEBAR_PAGE_NAV` (src/lib/sidebar-navigat
 
 | Kind | Item | Detail | Ref |
 |---|---|---|---|
-| Panel host | Desktop left panel | `SidebarContextPanel` picks the panel by `getSidebarRouteKey`: `receiving` → ReceivingSidebarPanel, `tech` → TechSidebarPanel, `packer` → PackerSidebarPanel, `fba` → FbaSidebarPanel. `outbound` has no branch. | src/components/sidebar/SidebarContextPanel.tsx:60-61,71-84; src/lib/sidebar-navigation.ts:465-520 |
+| Panel host | Desktop left panel | `SidebarContextPanel` picks the panel by `getSidebarRouteKey`: `receiving` → ReceivingSidebarPanel, `tech` → TestingSidebarPanel, `pick` → PickSidebarPanel, `packer` → PackerSidebarPanel, `fba` → FbaSidebarPanel. `outbound` has no branch. | src/components/sidebar/SidebarContextPanel.tsx; src/lib/sidebar-navigation.ts (`getSidebarRouteKey`) |
 | Panel host | Mobile | `RouteShell actions=` mounts only on mobile. `?pane=actions\|history`. | src/design-system/components/RouteShell.tsx:21-25 |
 | Surface gate | Studio-composed override | `/api/surfaces/{key}/resolve` can swap the page for `SurfaceRenderer`. | src/components/surfaces/SurfaceGate.tsx:31,50-52 |
-| URL hygiene | Undeclared keys stripped | `parseRouteParams` keeps only `owns` + `carries`. Mounted on /triage, /unbox, /pickup, /repair, /pack (page) and /test (TechPageContent:21). | src/lib/routing/route-params.ts:184-209; src/hooks/useSurfaceParamHygiene.ts:10-24 |
+| URL hygiene | Undeclared keys stripped | `parseRouteParams` keeps only `owns` + `carries`. Mounted on /triage, /unbox, /pickup, /repair, /pack (page), /test (TechPageContent) and /pick (PickPageContent). | src/lib/routing/route-params.ts:184-209; src/hooks/useSurfaceParamHygiene.ts:10-24 |
 | Ambient params | `staff, staffId, colsort, coldir, recvId, lineId, openReceivingId, pane, layout(board\|all), weekOffset` | | src/lib/routing/route-params.ts:85-106 |
 | Scan input | Station scan bar core | `StationScanBar`: runs the `CMD-*` gate before the host submit (`navCommands` default true), marks SERIAL scans as the subject, hotkey target | src/components/station/scan-bar/StationScanBar.tsx:127,215-216,275,288-299 |
 | Scan grammar | `CMD-*` gate | NAV → router push; ACTION → POST `/api/stations/handoff`. Any other `CMD-` is claimed with an "Unknown command" toast. | src/hooks/useStationCommandScan.ts:53-157; src/lib/stations/nav-command-codes.ts:70-77 |
@@ -862,13 +862,13 @@ Route `/repair`, nav-declared `railless` (sidebar-navigation.ts:941-945). Page: 
 
 ### testing — Quality Control
 
-Route `/test?view=testing` (sidebar-navigation.ts:947-949). Page id resolves via `view` (:570-578). Page: src/app/test/page.tsx:5 → TechSurfacePage.tsx:22-28 → TechPageContent.tsx:20-34. Route key `tech` (:502). Param spec: TEST_ROUTE_PARAMS query-mode-routes.ts:271-297.
+Route `/test` (sidebar-navigation.ts `testing` row). Quality Control only since 2026-09-27 — the Picker desk moved to `/pick`. Page id `testing` for any `/test` or `/tech` URL; a legacy `?view=` is undeclared and stripped. Page: src/app/test/page.tsx → TechSurfacePage.tsx → TechPageContent.tsx (RouteShell: TestingSidebarPanel + TechDashboard). Route key `tech`. Param spec: TEST_ROUTE_PARAMS (`search`, `testTab`, `composerMode`) in query-mode-routes.ts.
 
 | Kind | Item | Values / endpoint | Ref |
 |---|---|---|---|
-| View | Top pane `?view=` | `testing`\|`testing-history`(folded to testing)\|`receiving`(ReceivingInboundFeed). Legacy `manual`, `update-manuals` are rewritten. | query-mode-routes.ts:279; TechSidebarPanel.tsx:30-46; useTechRightView.ts:16-23; TechRightPane.tsx:54-61 |
+| View | One mode | No top-pane switch: TechDashboard mounts TestingLineWorkspace directly. The old `?view=receiving` pane (ReceivingInboundFeed) had no in-repo link and was deleted with the split. | src/components/TechDashboard.tsx |
 | View | Tabs `?testTab=` | Strip lights only `history`. Default is `returns` (unlit). Unlit toggle goes to `all`. `urgent` and `pending` are deep-link only. | src/utils/testing-workspace-state.ts:6-65; src/components/tech/testing/TestingWorkspaceView.tsx:13-49 |
-| View → feed | Queue tabs `view=needs-test&return_scope=returns\|standard\|all` (+`priority_only=1` for urgent). History `view=testing&weekStart/End`. | GET `/api/testing/receiving-lines?limit=500&include=serials&tester=&search=` | src/lib/tech/testing-workspace-query.ts:37-66; TestingHistoryList.tsx:123-146; surface-isolation.ts:108 |
+| View → feed | Queue tabs `view=needs-test&return_scope=returns\|standard\|all` (+`priority_only=1` for urgent). History `view=testing&weekStart/End`. | GET `/api/qc/receiving-lines?limit=500&include=serials&tester=&search=` | src/lib/tech/testing-workspace-query.ts:37-66; TestingHistoryList.tsx:123-146; surface-isolation.ts:108 |
 | View → feed | `all` → TechAllTriageTable scope testing | | TechAllTriageTable.tsx:86-117 |
 | Filter | `?staff=` (history defaults to self), `weekOffset`, `layout` board\|all | | testing-workspace-query.ts:5-18; TestingHistoryList.tsx:106-111,235-246 |
 | Filter | Grid search | Local state. `?search=` is declared but unused. | TestingHistoryList.tsx:105,271 |
@@ -878,31 +878,31 @@ Route `/test?view=testing` (sidebar-navigation.ts:947-949). Page id resolves via
 | Scan submit | `runScan` | line → open. multi → pick panel. box → H- rail. manifest → kit rail. Also `/api/serial-units/{k}/photos`. | TestingSidebarPanel.tsx:183,269-344 |
 | Scan input | HID sink `testing-scan-bar`; event `testing-focus-scan` | | TestingSidebarPanel.tsx:347-360,382-390 |
 | Scan input (right pane) | InlineSerialAdder sink `po-line:<id>` | POST/DELETE `/api/receiving/scan-serial`, `/api/serial-units/{id}/test\|grade\|failure-tags`, `/api/units/next-id`, `/api/post-multi-sn` | receiving/workspace/InlineSerialAdder.tsx:136-190; tech/TestingUnitSlots.tsx:200-216; tech/hooks/useTestingLineController.ts:213-623 |
-| Recents (rail) | "Recent" feed `testingRecent`, limit 50 | GET `/api/testing/receiving-lines?view=testing_opened&limit=50&offset=0` (session staff; `?staff=` not read) | TestingRecentRail.tsx:20-35; feeds.ts:318-335,497-512 |
-| Recents write | POST `/api/testing/receiving-lines/open` | | src/lib/testing/record-testing-line-open.ts:10-15 |
+| Recents (rail) | "Recent" feed `testingRecent`, limit 50 | GET `/api/qc/receiving-lines?view=testing_opened&limit=50&offset=0` (session staff; `?staff=` not read) | TestingRecentRail.tsx:20-35; feeds.ts:318-335,497-512 |
+| Recents write | POST `/api/qc/receiving-lines/open` | | src/lib/testing/record-testing-line-open.ts:10-15 |
 | Action | Scan-ack chip; multi-pick panel; box/manifest rails | | TestingSidebarPanel.tsx:419-440,475-508 |
 | Saved views | None. `testing_history_saved_views` is defined with no consumer. The `all` tab → `tech_all`. | | table-url-params.ts:74; surfaces.ts:136-139 |
 | Count / badge | None | | — |
 | Client storage | `cf:testing:last-line-id`, `testing-displays-push-width`, `testing-manuals-slide-over-width` | | TestingLineWorkspace.tsx:25,64; TestingPanel.tsx:500; sku-testing/ManualsSection.tsx:197 |
-| Doc drift | The inventory doc says the Testing rail reads `/api/receiving-lines?view=testing_opened`. The code reads `/api/testing/receiving-lines`. | | current-sidebar-inventory.md:123,126 |
+| Doc drift | The inventory doc says the Testing rail reads `/api/receiving-lines?view=testing_opened`. The code reads `/api/qc/receiving-lines`. | | current-sidebar-inventory.md:123,126 |
 
 ### ready-to-pack — Picker
 
-Route `/test?ship=urgent` (sidebar-navigation.ts:951-953). Page id `ready-to-pack` whenever `view` ≠ testing (:578). Same page and param spec as `testing`.
+Route `/pick?ship=urgent` (sidebar-navigation.ts `ready-to-pack` row, gate `picking.view`). Own page since 2026-09-27: src/app/pick/page.tsx → PickSurfacePage.tsx → PickPageContent.tsx (RouteShell: PickSidebarPanel + PickDashboard). Route key `pick`. Param spec: PICK_ROUTE_PARAMS (`search`, `ship`, `packStation`, `packPlaced`, To-ship facets, `new`) in query-mode-routes.ts. Shell seed: `maybeSeedShell` seeds the Pending grid on bare `/pick`. Phone twin: `/m/pick`.
 
 | Kind | Item | Values / endpoint | Ref |
 |---|---|---|---|
 | View | Tabs `?ship=` | Strip lights `urgent` and `history`. `pending` is the default (unlit). `all` is deep-link only. | src/utils/shipping-workspace-state.ts:7-70; src/components/tech/shipping/ShippingWorkspaceView.tsx:37-66 |
-| View → feed | pending/urgent → UnshippedTable (`/api/orders` queue); history → TechTable (`/api/tech-logs?q=`); all → TechAllTriageTable scope shipping | | ShippingWorkspaceView.tsx:89-102; dashboard-queries.ts:76-129; TechTable.tsx:151 |
-| Filter | Urgent writes `attention=1`. Tab switches clear `ustatus, stage, late, surface`. **None of these is declared in TEST_ROUTE_PARAMS**, so the hygiene pass strips them `[INFERENCE]`. | UnshippedTable reads `attention`/`late` | shipping-workspace-state.ts:41-69; UnshippedTable.tsx:189-196; query-mode-routes.ts:271-297 |
-| Filter | `packStation` (positive int), `packPlaced` flag | | query-mode-routes.ts:287-289 |
+| View → feed | pending/urgent → UnshippedTable (`/api/orders` queue); history → TechTable (`/api/picking/desk/logs?q=`); all → TechAllTriageTable scope shipping | | ShippingWorkspaceView.tsx:89-102; dashboard-queries.ts:76-129; TechTable.tsx:151 |
+| Filter | Urgent writes `attention=1`. Tab switches clear `ustatus, stage, late, surface`. Declared in PICK_ROUTE_PARAMS through `TO_SHIP_QUEUE_FACET_PARAMS`. Tab writes use `readLiveSearchParams` + `window.history.replaceState`. | UnshippedTable reads `attention`/`late` | shipping-workspace-state.ts:41-69; src/hooks/useShippingWorkspaceTab.ts; query-mode-routes.ts (PICK_ROUTE_PARAMS) |
+| Filter | `packStation` (positive int), `packPlaced` flag | | query-mode-routes.ts (PICK_ROUTE_PARAMS) |
 | Filter | Rail facet platform (account_source), Preview only | Local | StationHistoryRailFilters.tsx:18-89; ShippingSidebarPanel.tsx:39-56 |
 | Scan input | ShippingScanBand → ShippingScanBar | Modes tracking · fba ("Amz Prep") · repair · serial. Placeholder "Orders · Amz SKU · Repair · Serial". Preview on. | src/components/sidebar/tech/ShippingScanBand.tsx:46-234; ShippingScanBar.tsx:20-151 |
 | Scan grammar | `detectStationScanType`: NAV/ACTION/COMMAND → decoded unit key (SERIAL) → printed handle (REPAIR/HANDLE) → `:`=SKU → `RS-\d+` → FNSKU → YES/USED/NEW/PARTS/TEST command → tracking → SERIAL. FNSKU autodetect in the band. Pack-station barcode arms placement; unit-id stages a unit. | | src/lib/station-scan-routing.ts:34-93; useStationTestingController.ts:43-61,316-409; ShippingScanBand.tsx:90-126 |
-| Scan submit | TRACKING/FNSKU → POST `/api/tech/scan`; SKU → `/api/tech/scan-sku`; SERIAL → `/api/tech/add-serial(-to-last)`; REPAIR → `/api/tech/scan-repair-station`; pack arm → GET `/api/orders/pack-placement`; unit stage → POST `/api/units/pack-placement/move`; manuals → `/api/manuals/resolve` | | hooks/station/handleTrackingScan.ts:26; handleFnskuScan.ts:18; handleSkuScan.ts:18; handleSerialScan.ts:19,115; handleRepairScan.ts:21; useStationTestingController.ts:161,328-331,362-367 |
+| Scan submit | TRACKING → POST `/api/picking/desk/scan`; FNSKU → POST `/api/fba/fnsku-scan`; SKU → `/api/picking/desk/sku`; SERIAL → `/api/picking/desk/serial` (`add` / `add-to-last`); REPAIR → `/api/repair/station-scan`; pack arm → GET `/api/orders/pack-placement`; unit stage → POST `/api/units/pack-placement/move`; manuals → `/api/manuals/resolve` | | hooks/station/handleTrackingScan.ts:26; handleFnskuScan.ts:18; handleSkuScan.ts:18; handleSerialScan.ts:19,115; handleRepairScan.ts:21; useStationTestingController.ts:161,328-331,362-367 |
 | Scan input (Preview) | `useShippingPreviewOpen` | GET `/api/orders/lookup/{raw}`, `/api/serial-units/{raw}?include=full` | sidebar/shipping/useShippingPreviewOpen.ts:54,69; ShippingSidebarPanel.tsx:43,50 |
-| Recents (rail) | "History" rail, 25 rows (fetches 100) | GET `/api/tech-logs?techId=<self>&limit=100`. Row fields: id, order_id, account_source, shipping_tracking_number, sku, product_title, quantity, condition, fnsku, source_kind, created_at, updated_at. | sidebar/shipping/ShippingStaffScanHistoryRail.tsx:45-174; src/hooks/useTechLogs.ts:126-156; station/tech-record-rail-vm.tsx:18-62 |
-| Action | New order (`?new=true` → NewOrderEntryOverlay). `new` is **undeclared** in TEST_ROUTE_PARAMS, so hygiene strips it `[INFERENCE]`. | | ShippingWorkspaceView.tsx:69-78,110; src/hooks/useNewOrderParam.ts:9-45 |
+| Recents (rail) | "History" rail, 25 rows (fetches 100) | GET `/api/picking/desk/logs?techId=<self>&limit=100`. Row fields: id, order_id, account_source, shipping_tracking_number, sku, product_title, quantity, condition, fnsku, source_kind, created_at, updated_at. | sidebar/shipping/ShippingStaffScanHistoryRail.tsx:45-174; src/hooks/useTechLogs.ts:126-156; station/tech-record-rail-vm.tsx:18-62 |
+| Action | New order (`?new=true` → NewOrderEntryOverlay). `new` is declared in PICK_ROUTE_PARAMS. | | ShippingWorkspaceView.tsx:69-78,110; src/hooks/useNewOrderParam.ts:9-45 |
 | Action | Clear armed packing station | sessionStorage `cf.pack-station-arm`, `cf.pack-station-arm.auto-off` | ShippingScanBand.tsx:198-217; src/lib/packing/pack-station-arm.ts:12-68 |
 | Action | Queue rail selection overlays | | ShippingWorkspaceView.tsx:53-56,108 |
 | Count / badge | Armed-bench staged unit count (`/api/units/pack-placement`); queue counts `/api/orders/queue-counts`; desk counts `/api/orders/desk-counts` when a lens is active | | ShippingScanBand.tsx:62-66,202-204; UnshippedTable.tsx:339-345 |
@@ -949,9 +949,9 @@ Route `/pack` (sidebar-navigation.ts:1132-1133). Page: src/app/pack/page.tsx:9-1
 | Count / badge | None in rail | | — |
 | Client storage | `pack-displays-push-width` | | packer/PackOrderPanel.tsx:297 |
 
-### tech — Testing (legacy family, compatibility only)
+### Legacy aliases
 
-Entry sidebar-navigation.ts:1222-1232: children `testing` → `/test?view=testing`, `shipping` "Picker" → `/test?ship=urgent&view=null`. resolveChild: view testing\|testing-history → testing, else shipping. Legacy `/tech` page: src/app/tech/page.tsx:4-6 (same TechSurfacePage). Route key `tech` (:503). **No route spec for `/tech`**, so hygiene falls back to `stripCrossSurfaceParams` (useSurfaceParamHygiene.ts:17-20). Tables are identical to *testing* / *ready-to-pack* above. Legacy `/packer` (src/app/packer/page.tsx:4-6) mirrors *packer* with no route spec. The legacy `receiving` family entry (sidebar-navigation.ts:976-1000) only resolves deep links / `?mode=` into the receiving stations above.
+The `tech` page family (children Quality Control / Picker on one `/test` URL) was deleted on 2026-09-27 when Quality Control and Picking became separate stations; CMD-GO-QC / CMD-GO-READY now name the `testing` / `ready-to-pack` pages. Legacy `/tech` (src/app/tech/page.tsx) mounts the same TechSurfacePage as `/test` and has **no route spec**, so hygiene falls back to `stripCrossSurfaceParams`. Legacy `/packer` (src/app/packer/page.tsx:4-6) mirrors *packer* with no route spec. The legacy `receiving` family entry only resolves deep links / `?mode=` into the receiving stations above.
 
 ### fba — FBA (Outbound lane, railless)
 

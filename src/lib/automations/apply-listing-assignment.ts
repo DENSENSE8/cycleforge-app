@@ -164,7 +164,7 @@ async function applyActions(
       assigned_staff_id: resolved.staffId,
       via: resolved.via,
     };
-    const current = await getActiveOrderAssignee(orderId, action.work_type, client);
+    const current = await getActiveOrderAssignee(organizationId, orderId, action.work_type, client);
     if (
       current &&
       current.status !== 'OPEN' &&
@@ -250,7 +250,7 @@ async function runInClient(
       };
     }
 
-    // Import / item_number_set run TEST + PACK; unit.test_passed re-runs PACK.
+    // Import / item_number_set run PICK + PACK; unit.test_passed re-runs PACK.
     const actionsForTrigger = selectActionsForTrigger(filtered, input.triggerKey);
 
     if (actionsForTrigger.length === 0) {

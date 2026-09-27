@@ -1,4 +1,4 @@
-/** Shell-level paint seed for the Testing station's default landing — **Ready to Pack** (`/test`, no `?view=`). */
+/** Shell-level paint seed for the Picker desk's default landing — the **Pending** grid on `/pick`. */
 import 'server-only';
 import { dehydrate, QueryClient, type DehydratedState } from '@tanstack/react-query';
 import { isNextDynamicUsage } from '@/lib/kiosk/next-dynamic-usage';
@@ -16,7 +16,7 @@ const UNSHIPPED_LIST_KEY = [
   {
     searchQuery: '',
     packedBy: undefined,
-    testedBy: undefined,
+    pickerId: undefined,
     staffId: undefined,
     strictSearchScope: true,
     stage: null,

@@ -1,14 +1,15 @@
 'use client';
 
 /**
- * Open state of the `/incoming` receiving-order composer — the centred,
- * fixed-width Add surface that takes over the desk stage on either lane.
- * `null` = closed; otherwise the kind of order being added.
+ * Open state of the `/incoming` inbound-order composer — the fixed-width
+ * 2/3 | 1/3 triage form that takes over the desk stage. `null` = closed;
+ * otherwise the order type the form opens on (the operator can change it —
+ * the type is a classifier on the one form, not a different form).
  */
 
-export type ReceivingOrderKind = 'purchase' | 'return';
+import type { InboundOrderType } from '@/lib/inbound/inbound-order-draft';
 
-let current: ReceivingOrderKind | null = null;
+let current: InboundOrderType | null = null;
 const listeners = new Set<() => void>();
 
 function emit(): void {
@@ -20,13 +21,13 @@ export function subscribeReceivingOrderComposer(listener: () => void): () => voi
   return () => listeners.delete(listener);
 }
 
-export function getReceivingOrderComposerKind(): ReceivingOrderKind | null {
+export function getReceivingOrderComposerKind(): InboundOrderType | null {
   return current;
 }
 
-export function openReceivingOrderComposer(kind: ReceivingOrderKind): void {
-  if (current === kind) return;
-  current = kind;
+export function openReceivingOrderComposer(type: InboundOrderType): void {
+  if (current === type) return;
+  current = type;
   emit();
 }
 

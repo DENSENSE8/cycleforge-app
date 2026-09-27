@@ -32,7 +32,7 @@ export function sellerClaimedFactsQuery(input: {
       if (input.serial) sp.set('serial', input.serial);
       if (input.skuCatalogId) sp.set('skuCatalogId', String(input.skuCatalogId));
       if (input.orderId) sp.set('orderId', input.orderId);
-      const res = await fetch(`/api/testing/seller-claimed?${sp}`, {
+      const res = await fetch(`/api/qc/seller-claimed?${sp}`, {
         cache: 'no-store',
       });
       const data = (await res.json().catch(() => null)) as SellerClaimedFactsResponse | null;

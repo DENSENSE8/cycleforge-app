@@ -3,6 +3,7 @@
 import pool from '@/lib/db';
 import { tenantQuery, withTenantTransaction } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';
+import { VELOCITY_ACTIVITY_TYPES } from '@/lib/station-activity';
 
 export const VALID_STATIONS = ['TECH', 'PACK', 'UNBOX', 'SALES', 'FBA'] as const;
 export type StationKey = (typeof VALID_STATIONS)[number];
@@ -14,7 +15,15 @@ export function asStation(v: unknown): StationKey | null {
   return isStation(v) ? (String(v).toUpperCase() as StationKey) : null;
 }
 
-const SCAN_ACTIVITY_TYPES = ['TRACKING_SCANNED', 'FNSKU_SCANNED', 'PACK_SCAN', 'PACK_COMPLETED', 'FBA_READY'];
+/**
+ * The goal station a `station_activity_logs.station` value counts toward. Desk
+ * picks log at SAL station PICK, but PICK is not an assignable goal station
+ * (staff_stations CHECK allows only VALID_STATIONS); the picker desk (/test)
+ * is staffed from TECH, so its picks count toward the TECH goal.
+ */
+export function sqlSalGoalStation(column: string): string {
+  return `(CASE WHEN ${column} = 'PICK' THEN 'TECH' ELSE ${column} END)`;
+}
 
 interface StaffStationRow {
   station: StationKey;
@@ -131,7 +140,7 @@ export async function getMyStationGoals(staffId: number, orgId?: OrgId): Promise
   const countsRes = orgId
     ? await tenantQuery(
         orgId,
-        `SELECT station,
+        `SELECT ${sqlSalGoalStation('station')} AS station,
                 COUNT(DISTINCT COALESCE(shipment_id::text, scan_ref, id::text))::int AS today_count
            FROM station_activity_logs
           WHERE staff_id = $1
@@ -139,19 +148,19 @@ export async function getMyStationGoals(staffId: number, orgId?: OrgId): Promise
             AND organization_id = $3
             AND (timezone('America/Los_Angeles', created_at))::date
               = (timezone('America/Los_Angeles', now()))::date
-          GROUP BY station`,
-        [staffId, SCAN_ACTIVITY_TYPES, orgId],
+          GROUP BY 1`,
+        [staffId, [...VELOCITY_ACTIVITY_TYPES], orgId],
       )
     : await pool.query(
-        `SELECT station,
+        `SELECT ${sqlSalGoalStation('station')} AS station,
                 COUNT(DISTINCT COALESCE(shipment_id::text, scan_ref, id::text))::int AS today_count
            FROM station_activity_logs
           WHERE staff_id = $1
             AND activity_type = ANY($2::text[])
             AND (timezone('America/Los_Angeles', created_at))::date
               = (timezone('America/Los_Angeles', now()))::date
-          GROUP BY station`,
-        [staffId, SCAN_ACTIVITY_TYPES],
+          GROUP BY 1`,
+        [staffId, [...VELOCITY_ACTIVITY_TYPES]],
       );
   const countByStation = new Map<string, number>();
   for (const row of countsRes.rows) {

@@ -80,6 +80,7 @@ export type SidebarRouteKey =
   | 'warehouse'
   | 'sourcing'
   | 'tech'
+  | 'pick'
   | 'packer'
   | 'review'
   | 'outbound'
@@ -135,7 +136,7 @@ export const MAIN_GROUPS = [
   icon: SidebarIconComponent;
 }>;
 
-/** Optional peer tags on floor benches (Arrival · Unbox / Local Pickup · Repair Service / Quality Control · Ready to Pack). */
+/** Optional peer tags on floor benches (Arrival · Unbox / Local Pickup · Repair Service / Quality Control). */
 export type StationSubgroupId = 'receiving' | 'walk-in' | 'testing';
 
 export const STATION_SUBGROUPS = [
@@ -268,6 +269,7 @@ const MOBILE_ALLOWED_PREFIXES: ReadonlyArray<string> = [
   '/outbound',
   '/test',
   '/tech',
+  '/pick',
   '/01',
   '/414',
 ];
@@ -304,10 +306,11 @@ export const APP_SIDEBAR_NAV: SidebarNavItem[] = [
   { id: 'receive',           label: 'Unbox',       href: '/unbox',              icon: RECEIVING_NAV_ICONS.receive, kind: 'station', stationGroup: 'floor', stationSubgroup: 'receiving', requires: 'receiving.view' },
   { id: 'pickup',            label: 'Local Pickup', href: '/pickup',            icon: RECEIVING_NAV_ICONS.pickup,  kind: 'station', stationGroup: 'floor', stationSubgroup: 'walk-in', requires: 'receiving.view' },
   { id: 'repair',            label: 'Repair Service', href: '/repair',          icon: RECEIVING_NAV_ICONS.repair,  kind: 'station', stationGroup: 'floor', stationSubgroup: 'walk-in', requires: 'receiving.view' },
-  // Quality Control + Ready to Pack are first-class Scan Stations rows (no
-  // parent Testing). Route key still resolves to `tech` for the shared panel.
-  { id: 'testing',           label: 'Quality Control', href: '/test?view=testing', icon: TECH_NAV_ICONS.testing,  kind: 'station', stationGroup: 'floor', stationSubgroup: 'testing', requires: 'tech.view' },
-  { id: 'ready-to-pack',     label: 'Picker',          href: '/test?ship=urgent',    icon: TECH_NAV_ICONS.shipping, kind: 'station', stationGroup: 'floor', stationSubgroup: 'testing', requires: 'tech.view' },
+  // Quality Control (`/test`) and the Picker desk (`/pick`) are separate
+  // first-class Scan Stations (owner 2026-09-27). Picking is not a testing bench,
+  // so the Picker row carries no `testing` subgroup.
+  { id: 'testing',           label: 'Quality Control', href: '/test',             icon: TECH_NAV_ICONS.testing,  kind: 'station', stationGroup: 'floor', stationSubgroup: 'testing', requires: 'tech.view' },
+  { id: 'ready-to-pack',     label: 'Picker',          href: '/pick?ship=urgent', icon: TECH_NAV_ICONS.shipping, kind: 'station', stationGroup: 'floor', requires: 'picking.view' },
   // Points at the first-class Pack surface (`/pack`) so the primary nav lands on
   // the canonical URL without a redirect hop. Route key still resolves to
   // 'packer' (reuses the packer panel), so the item stays active on /pack + /packer.
@@ -381,6 +384,7 @@ const STATION_SURFACE_ROUTE_KEYS = new Set<SidebarRouteKey>([
   'receiving',
   'outbound',
   'tech',
+  'pick',
   'packer',
   'review',
   'support',
@@ -497,10 +501,11 @@ export function getSidebarRouteKey(pathname: string | null): SidebarRouteKey {
   if (pathname === '/ai-chat' || pathname.startsWith('/ai-chat/')) return 'ai-chat';
   if (pathname === '/audit-log' || pathname.startsWith('/audit-log/')) return 'audit-log';
   if (pathname === '/settings/audit' || pathname.startsWith('/settings/audit/')) return 'audit-log';
-  // `/test` is the first-class Testing surface; it reuses the `tech` sidebar
-  // panel + station, so it resolves to the `tech` key (legacy `/tech` too).
+  // `/test` is the Quality Control bench; it resolves to the `tech` key (legacy `/tech` too).
   if (pathname === '/test' || pathname.startsWith('/test/')) return 'tech';
   if (pathname === '/tech' || pathname.startsWith('/tech/')) return 'tech';
+  // `/pick` is the Picker desk (scan band + shipping workspace).
+  if (pathname === '/pick' || pathname.startsWith('/pick/')) return 'pick';
   // `/pack` is the first-class Packing surface; it reuses the `packer` sidebar
   // panel + station, so it resolves to the `packer` key (legacy `/packer` too).
   if (pathname === '/pack' || pathname.startsWith('/pack/')) return 'packer';
@@ -566,18 +571,17 @@ export function getSidebarNavPageId(
   if (outboundMode) return 'outbound';
   if (pathname === '/shipping/orders' || pathname.startsWith('/shipping/orders/')) return 'outbound';
   if (pathname === '/reports' || pathname.startsWith('/reports/')) return 'reports';
-  // Testing family promoted: Quality Control vs Ready to Pack share `/test`
-  // (`?view=testing`). Panel mount still uses route key `tech`.
+  // Quality Control owns `/test` (legacy `/tech`); the Picker desk owns `/pick`.
+  // A stale `?view=` on `/test` is ignored — the bench has one mode.
   if (
     pathname === '/test' ||
     pathname.startsWith('/test/') ||
     pathname === '/tech' ||
     pathname.startsWith('/tech/')
   ) {
-    const view = String(searchParams?.get('view') ?? '').trim().toLowerCase();
-    if (view === 'testing' || view === 'testing-history') return 'testing';
-    return 'ready-to-pack';
+    return 'testing';
   }
+  if (pathname === '/pick' || pathname.startsWith('/pick/')) return 'ready-to-pack';
   return getSidebarRouteKey(pathname);
 }
 
@@ -715,9 +719,11 @@ export const ROUTE_PERMISSIONS: ReadonlyArray<{ prefix: string; permission: stri
   { prefix: '/triage',             permission: 'receiving.view' },
   { prefix: '/incoming',           permission: 'receiving.view' },
   { prefix: '/pickup',             permission: 'receiving.view' },
-  // `/test` is the first-class Testing surface (legacy `/tech`).
+  // `/test` is the Quality Control bench (legacy `/tech`).
   { prefix: '/test',               permission: 'tech.view' },
   { prefix: '/tech',               permission: 'tech.view' },
+  // `/pick` is the Picker desk; `/m/pick` is its phone twin.
+  { prefix: '/pick',               permission: 'picking.view' },
   { prefix: '/wipe',               permission: 'tech.data_wipe' },
   // `/pack` is the first-class Packing surface (legacy `/packer` / `/packers`).
   { prefix: '/pack',               permission: 'packing.view' },
@@ -820,8 +826,10 @@ const INCOMING = '/incoming';
 const INVENTORY = '/inventory';
 const SOURCING = '/sourcing';
 const PRODUCTS = '/products';
-// Testing graduated to its own first-class surface route (`/test`, operator-surfaces refactor Phase 8); its modes navigate there (the…
+// Quality Control's first-class surface route (operator-surfaces refactor Phase 8).
 const TECH = '/test';
+// The Picker desk — split from `/test` when Picking and QC became separate stations (owner 2026-09-27).
+const PICK = '/pick';
 const SUPPORT = '/support';
 // Packing graduated to its own first-class surface route (`/pack`,
 // operator-surfaces refactor Phase 7); its modes navigate there. Legacy
@@ -954,12 +962,12 @@ export const SIDEBAR_PAGE_NAV: SidebarPageNav[] = [
     railless: true,
   },
   {
-    id: 'testing', label: 'Quality Control', href: `${TECH}?view=testing`, icon: TECH_NAV_ICONS.testing,
+    id: 'testing', label: 'Quality Control', href: TECH, icon: TECH_NAV_ICONS.testing,
     kind: 'station', stationGroup: 'floor', stationSubgroup: 'testing', requires: 'tech.view',
   },
   {
-    id: 'ready-to-pack', label: 'Picker', href: `${TECH}?ship=urgent`, icon: TECH_NAV_ICONS.shipping,
-    kind: 'station', stationGroup: 'floor', stationSubgroup: 'testing', requires: 'tech.view',
+    id: 'ready-to-pack', label: 'Picker', href: `${PICK}?ship=urgent`, icon: TECH_NAV_ICONS.shipping,
+    kind: 'station', stationGroup: 'floor', requires: 'picking.view',
   },
   // ── Inbound (Manage Inbound) ────────────────────────────────────────────── Single desk at `/incoming`:
   // Faced **Deliveries** (operator 2026-09-14 — never the same name as its
@@ -1229,18 +1237,6 @@ export const SIDEBAR_PAGE_NAV: SidebarPageNav[] = [
       if (m === 'pulse') return 'pulse';
       return 'ledger';
     },
-  },
-  // Legacy Testing family — deep-link / CMD-GO / mode-resolution COMPATIBILITY ONLY.
-  {
-    id: 'tech', label: 'Testing', href: TECH, icon: STATION_PAGE_ICONS.tech, kind: 'station', stationGroup: 'floor', requires: 'tech.view',
-    children: [
-      { id: 'testing',  label: 'Quality Control', icon: TECH_NAV_ICONS.testing,  to: () => ({ pathname: TECH, params: { view: 'testing' } }) },
-      { id: 'shipping', label: 'Picker',          icon: TECH_NAV_ICONS.shipping, to: () => ({ pathname: TECH, params: { view: null, ship: 'urgent' } }) },
-    ],
-    resolveChild: ({ params }) =>
-      params.get('view') === 'testing' || params.get('view') === 'testing-history'
-        ? 'testing'
-        : 'shipping',
   },
   // Data Wipe (`/wipe`) is temporarily absent from master nav — revisit when the station UX is ready for general rollout.
   {

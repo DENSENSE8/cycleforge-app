@@ -1,33 +1,30 @@
 'use client';
 
 import { useCallback } from 'react';
-import { usePathname, useRouter, useSearchParams } from 'next/navigation';
+import { usePathname, useSearchParams } from 'next/navigation';
+import { readLiveSearchParams } from '@/lib/routing/optimistic-url-param';
 import {
   getShippingWorkspaceTabFromSearch,
   normalizeShippingWorkspaceTabParams,
   type ShippingWorkspaceTab,
 } from '@/utils/shipping-workspace-state';
 
-/**
- * URL SoT for Shipping mode workspace tabs on `/test` (`?ship=`).
- * Does not touch top-level `?view=` (Shipping / Testing / History).
- */
+/** URL SoT for the Picker desk workspace tabs on `/pick` (`?ship=`). */
 export function useShippingWorkspaceTab() {
   const pathname = usePathname();
-  const router = useRouter();
   const searchParams = useSearchParams();
 
   const shipTab = getShippingWorkspaceTabFromSearch(searchParams);
 
   const setShipTab = useCallback(
     (nextTab: ShippingWorkspaceTab) => {
-      const params = new URLSearchParams(searchParams.toString());
+      const params = readLiveSearchParams(searchParams.toString());
       normalizeShippingWorkspaceTabParams(params, nextTab);
       const qs = params.toString();
-      const base = pathname || '/test';
-      router.replace(qs ? `${base}?${qs}` : base, { scroll: false });
+      const base = pathname || '/pick';
+      window.history.replaceState(window.history.state, '', qs ? `${base}?${qs}` : base);
     },
-    [pathname, router, searchParams],
+    [pathname, searchParams],
   );
 
   return { shipTab, setShipTab };

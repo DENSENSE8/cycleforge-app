@@ -7,7 +7,6 @@ import { useDeskFloorActive } from '@/design-system/components/DeskStageContext'
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import { RightPaneOverlayHost } from '@/components/ui/RightPaneOverlay';
 import { SurfaceGate } from '@/components/surfaces/SurfaceGate';
-import { useRealtimeInvalidation } from '@/hooks/useRealtimeInvalidation';
 import { useSurfaceParamHygiene } from '@/hooks/useSurfaceParamHygiene';
 
 /**
@@ -29,7 +28,6 @@ export default function ShippingLayout({ children }: { children: ReactNode }) {
 }
 
 function ShippingFrame({ children }: { children: ReactNode }) {
-  useRealtimeInvalidation({ dashboard: true });
   // Drop anything this route does not declare — a pasted link, a back-button
   // entry, or the `?mode=` a legacy redirect carried in.
   useSurfaceParamHygiene();

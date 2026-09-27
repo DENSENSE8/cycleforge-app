@@ -31,8 +31,6 @@ interface DashboardOrdersViewProps {
   selectionEnabled: boolean;
   /** Modal surfaces the bulk actions open (assignment carousel, ship-by picker). */
   selectionOverlays?: ReactNode;
-  /** Center Lock L2 — order record plane stacked on the table stage. */
-  stageOverlay?: ReactNode;
   /** Primary queue has paintable rows (for SSR stand-in handoff). */
   onPrimaryPainted?: () => void;
 }
@@ -40,7 +38,6 @@ interface DashboardOrdersViewProps {
 export function DashboardOrdersView({
   selectionEnabled,
   selectionOverlays,
-  stageOverlay,
   onPrimaryPainted,
 }: DashboardOrdersViewProps) {
   const searchParams = useSearchParams();
@@ -129,7 +126,6 @@ export function DashboardOrdersView({
  */}
       {body}
       {overlays}
-      {stageOverlay}
     </div>
   );
 }

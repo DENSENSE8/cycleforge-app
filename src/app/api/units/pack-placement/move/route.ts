@@ -23,10 +23,10 @@ const ROUTE = 'units.pack-placement.move';
 export const POST = withAuth(async (req: NextRequest, ctx) => {
   try {
     const canWrite =
-      ctx.permissions.has('tech.scan_serial') || ctx.permissions.has('packing.view');
+      ctx.permissions.has('picking.scan') || ctx.permissions.has('packing.view');
     if (!canWrite) {
       return NextResponse.json(
-        { success: false, error: 'FORBIDDEN', permission: 'tech.scan_serial|packing.view' },
+        { success: false, error: 'FORBIDDEN', permission: 'picking.scan|packing.view' },
         { status: 403 },
       );
     }

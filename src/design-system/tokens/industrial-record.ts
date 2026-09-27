@@ -20,8 +20,12 @@ export interface RecordStateFace {
  */
 export const RECORD_LABEL_CLASS = 'mode-label';
 
-/** IDs / SKUs: mono bold 13. */
-export const RECORD_ID_CLASS = 'font-mono text-role-data font-bold tabular-nums';
+/**
+ * IDs / SKUs: data size, tabular. Industrial: mono bold (the floor reads
+ * characters); triage: sans semibold (a desk reads words). `industrial:` is
+ * the nearest-`data-mode` variant (`src/app/globals.css`).
+ */
+export const RECORD_ID_CLASS = 'font-sans text-role-data font-semibold tabular-nums industrial:font-mono industrial:font-bold';
 
 /**
  * A key/value fact on one line — `BIN ZONE-F`, `SKU B0F3G6J45B`.
@@ -43,13 +47,22 @@ export const RECORD_TITLE_CLASS = 'min-w-0 truncate text-role-body font-bold';
  * RECESS — an editable box reads sunk into the plane it sits on (owner
  * 2026-09-25, item 8). BRIEF §4: 1px rules, no shadows — so the depth is drawn
  */
-export const RECORD_RECESS_CLASS = 'border border-mode-edge border-t-mode-control border-l-mode-control';
+export const RECORD_RECESS_CLASS =
+  'rounded-mode-control border border-mode-edge industrial:border-t-mode-control industrial:border-l-mode-control';
 
 /**
  * Quantity on the record's right column — the labour multiplier, so it is the one boxed number in the row:
  * number heavier and a step larger than the IDs (owner 2026-09-24: one unit or
  */
-export const RECORD_QTY_BADGE_CLASS = `inline-flex min-w-7 items-center justify-center ${RECORD_RECESS_CLASS} px-1.5 py-0.5 font-mono text-role-body font-bold leading-none tabular-nums`;
+export const RECORD_QTY_BADGE_CLASS = `inline-flex min-w-7 items-center justify-center ${RECORD_RECESS_CLASS} px-1.5 py-0.5 font-sans text-role-body font-bold leading-none tabular-nums industrial:font-mono`;
+
+/**
+ * Micro code voice — note badge, `+ Note`, condition chip. The region's label
+ * voice (`--mode-label-*`, modes.ts): mono · caps · tracked on industrial,
+ * sans · sentence case in triage. Write the text in sentence case in source.
+ */
+const RECORD_MICRO_CODE_CLASS =
+  'rounded-mode-control font-[family-name:var(--mode-label-font)] text-role-micro font-bold mode-label-case leading-none';
 
 /** State code ink resolved from the registry-owned functional tone. */
 export function recordStateCodeClass(state: Pick<RecordStateFace, 'tone'>): string {
@@ -75,19 +88,16 @@ export const RECORD_NOTE_SLOT_CLASS = 'inline-flex w-11 shrink-0 items-center ju
  * the mode's 4.5:1 amber (the reason `URG` uses it), so inverting it keeps the
  * same contrast while reading as the loudest mark on the row.
  */
-export const RECORD_NOTE_BADGE_CLASS =
-  'inline-flex w-full items-center justify-center bg-mode-warn px-1 py-0.5 font-mono text-role-micro font-bold uppercase leading-none tracking-[0.08em] text-mode-bar';
+export const RECORD_NOTE_BADGE_CLASS = `inline-flex w-full items-center justify-center bg-mode-warn px-1 py-0.5 ${RECORD_MICRO_CODE_CLASS} text-mode-bar`;
 
 /**
  * The EMPTY note slot where the note can be added in place (the desk To-ship
  * ledger): `+ NOTE` filled on the well in muted ink (owner 2026-09-25: an
  */
-export const RECORD_NOTE_ADD_CLASS =
-  'inline-flex w-full items-center justify-center gap-px bg-mode-well px-0.5 py-0.5 font-mono text-role-micro font-bold uppercase leading-none tracking-[0.08em] text-mode-muted';
+export const RECORD_NOTE_ADD_CLASS = `inline-flex w-full items-center justify-center gap-px bg-mode-well px-0.5 py-0.5 ${RECORD_MICRO_CODE_CLASS} text-mode-muted`;
 
 /** The condition chip — the state badge's language (mono micro code, fixed width, icon first, 14px tall) as a SOLID fill in the grade's… */
-export const RECORD_CONDITION_CHIP_CLASS =
-  'inline-flex w-16 shrink-0 items-center gap-1 px-1 py-px font-mono text-role-micro font-bold uppercase leading-none tracking-[0.08em]';
+export const RECORD_CONDITION_CHIP_CLASS = `inline-flex w-16 shrink-0 items-center gap-1 px-1 py-px ${RECORD_MICRO_CODE_CLASS}`;
 
 /** Noted-record accent: */
 export const RECORD_NOTE_SPINE_CLASS = 'shadow-[inset_-2px_0_0_var(--mode-warn-text)]';

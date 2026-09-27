@@ -5,17 +5,17 @@
  *
  *  1. FNSKU scan → serial scan
  *     - Active order card appears after FNSKU scan (syncActiveOrderState was called)
- *     - Serial routes to /api/tech/add-serial (not add-serial-to-last)
+ *     - Serial routes to desk serial `add` (not add-to-last)
  *     - No "not found" alert fires
  *     - Card stays visible with the serial listed
  *
  *  2. FNSKU scan → 12-digit carrier-pattern serial (previously misrouted as TRACKING)
- *     - Serial still goes to /api/tech/add-serial
+ *     - Serial still goes to /api/picking/desk/serial `add`
  *     - No "not found" alert fires
  *
  *  3. Regular tracking scan → serial scan (regression check)
  *     - Card appears after tracking scan
- *     - Serial routes to /api/tech/add-serial
+ *     - Serial routes to /api/picking/desk/serial `add`
  *     - Card stays visible
  */
 
@@ -136,13 +136,13 @@ async function installApiMocks(page, calls) {
       ]);
     }
 
-    // Tech logs (TechTable / StationHistory)
-    if (pathname === '/api/tech-logs') {
+    // Desk logs (TechTable / StationHistory)
+    if (pathname === '/api/picking/desk/logs') {
       return json(route, 200, { logs: [], total: 0 });
     }
 
     // Up-next orders
-    if (pathname === '/api/orders/next' || pathname === '/api/tech/up-next') {
+    if (pathname === '/api/orders/next') {
       return json(route, 200, { orders: [], items: [] });
     }
 
@@ -152,7 +152,7 @@ async function installApiMocks(page, calls) {
     }
 
     // Repair station (ignored)
-    if (pathname === '/api/tech/scan-repair-station') {
+    if (pathname === '/api/repair/station-scan') {
       return json(route, 200, { found: false });
     }
 
@@ -162,36 +162,35 @@ async function installApiMocks(page, calls) {
     }
 
     // FNSKU scan
-    if (pathname === '/api/tech/scan-fnsku' && method === 'GET') {
-      const fnsku = String(searchParams.get('fnsku') || '').toUpperCase();
+    if (pathname === '/api/fba/fnsku-scan' && method === 'POST') {
+      let body = {};
+      try { body = JSON.parse(request.postData() || '{}'); } catch { /* */ }
+      const fnsku = String(body.value || '').toUpperCase();
       calls.fnskuScanned.push(fnsku);
       return json(route, 200, makeFnskuScanResponse(fnsku));
     }
 
     // Tracking scan
-    if (pathname === '/api/tech/scan-tracking' && method === 'POST') {
+    if (pathname === '/api/picking/desk/scan' && method === 'POST') {
       let body = {};
       try { body = JSON.parse(request.postData() || '{}'); } catch { /* */ }
-      calls.trackingScanned.push(String(body.tracking || ''));
-      const trk = String(body.tracking || '');
+      const trk = String(body.value || body.tracking || '');
+      calls.trackingScanned.push(trk);
       return json(route, 200, makeTrackingScanResponse(trk));
     }
 
-    // Add serial — PRIMARY path
-    if (pathname === '/api/tech/add-serial' && method === 'POST') {
+    // Desk serial — `add` is the PRIMARY path; `add-to-last` is the FALLBACK
+    // (should NOT be called in normal flows)
+    if (pathname === '/api/picking/desk/serial' && method === 'POST') {
       let body = {};
       try { body = JSON.parse(request.postData() || '{}'); } catch { /* */ }
       const serial = String(body.serial || '').toUpperCase();
-      calls.serialAdded.push({ serial, tracking: body.tracking });
+      if (body.action === 'add-to-last') {
+        calls.serialAddedToLast.push(serial);
+      } else {
+        calls.serialAdded.push({ serial, tracking: body.tracking });
+      }
       return json(route, 200, makeAddSerialResponse(serial));
-    }
-
-    // Add serial to last — FALLBACK path (should NOT be called in normal flows)
-    if (pathname === '/api/tech/add-serial-to-last' && method === 'POST') {
-      let body = {};
-      try { body = JSON.parse(request.postData() || '{}'); } catch { /* */ }
-      calls.serialAddedToLast.push(String(body.serial || '').toUpperCase());
-      return json(route, 200, makeAddSerialResponse(String(body.serial || '').toUpperCase()));
     }
 
     // SKU by-tracking (prepacked SKU lookup used by ShippedDetailsPanelContent)
@@ -240,7 +239,7 @@ async function assertNoNotFoundAlert(page) {
 /**
  * Flow 1: FNSKU scan followed by a regular serial number.
  * - Card must appear after FNSKU scan (proves syncActiveOrderState was called).
- * - Serial must route to /api/tech/add-serial (not add-serial-to-last).
+ * - Serial must route to desk serial `add` (not add-to-last).
  * - No "tracking not found" alert.
  * - Card stays visible with the serial listed.
  */
@@ -275,8 +274,8 @@ async function testFnskuThenSerial(browser) {
   );
 
   // add-serial must have been called — NOT add-serial-to-last
-  assert.equal(calls.serialAdded.length, 1, 'Expected exactly 1 call to /api/tech/add-serial');
-  assert.equal(calls.serialAddedToLast.length, 0, '/api/tech/add-serial-to-last should NOT be called');
+  assert.equal(calls.serialAdded.length, 1, 'Expected exactly 1 call to /api/picking/desk/serial `add`');
+  assert.equal(calls.serialAddedToLast.length, 0, 'desk serial add-to-last should NOT be called');
   assert.equal(
     calls.serialAdded[0].serial,
     serial1.toUpperCase(),
@@ -296,7 +295,7 @@ async function testFnskuThenSerial(browser) {
 
 /**
  * Flow 2: FNSKU scan followed by a 12-digit numeric serial (previously misrouted as FedEx tracking).
- * - Serial must route to /api/tech/add-serial (not tracking lookup).
+ * - Serial must route to /api/picking/desk/serial `add` (not tracking lookup).
  * - No "not found" alert fires.
  */
 async function testFnskuThenCarrierPatternSerial(browser) {
@@ -329,8 +328,8 @@ async function testFnskuThenCarrierPatternSerial(browser) {
 
   // add-serial called (not tracking scan, not add-serial-to-last)
   assert.equal(calls.trackingScanned.length, 0, 'Carrier-pattern serial should NOT trigger a tracking scan');
-  assert.equal(calls.serialAddedToLast.length, 0, '/api/tech/add-serial-to-last should NOT be called');
-  assert.equal(calls.serialAdded.length, 1, 'Expected exactly 1 call to /api/tech/add-serial');
+  assert.equal(calls.serialAddedToLast.length, 0, 'desk serial add-to-last should NOT be called');
+  assert.equal(calls.serialAdded.length, 1, 'Expected exactly 1 call to /api/picking/desk/serial `add`');
   assert.equal(
     calls.serialAdded[0].serial,
     carrierSerial.toUpperCase(),
@@ -348,7 +347,7 @@ async function testFnskuThenCarrierPatternSerial(browser) {
 /**
  * Flow 3: Regular tracking scan → serial scan (regression).
  * - Card must appear after tracking scan.
- * - Serial routes to /api/tech/add-serial.
+ * - Serial routes to /api/picking/desk/serial `add`.
  * - Card stays visible.
  */
 async function testTrackingThenSerial(browser) {
@@ -376,8 +375,8 @@ async function testTrackingThenSerial(browser) {
     { timeout: ITEM_TIMEOUT_MS },
   );
 
-  assert.equal(calls.serialAdded.length, 1, 'Expected exactly 1 call to /api/tech/add-serial');
-  assert.equal(calls.serialAddedToLast.length, 0, '/api/tech/add-serial-to-last should NOT be called');
+  assert.equal(calls.serialAdded.length, 1, 'Expected exactly 1 call to /api/picking/desk/serial `add`');
+  assert.equal(calls.serialAddedToLast.length, 0, 'desk serial add-to-last should NOT be called');
   assert.equal(
     calls.serialAdded[0].serial,
     serial2.toUpperCase(),

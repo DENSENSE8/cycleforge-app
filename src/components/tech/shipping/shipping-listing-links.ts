@@ -1,6 +1,6 @@
 /** Ready-to-Pack / Shipping listing face — same item-number → storefront URL SoT the identity chip uses ({@link getExternalUrlByItemNumber}). */
 
-import type { ActiveStationOrder } from '@/hooks/useStationTestingController';
+import type { ActiveStationOrder } from '@/hooks/useDeskPickController';
 import type { CartonListingLink } from '@/lib/receiving/listing-links';
 import { isEmptyDisplayValue } from '@/utils/empty-display-value';
 import {

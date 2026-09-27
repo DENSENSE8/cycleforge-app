@@ -9,6 +9,13 @@ const UNSHIPPED_VIEW_PARAMS = [
   'stage',
   'ustatus',
   'staff',
+  'pickedBy',
+  'packedBy',
+  'pickerId',
+  'shipByFrom',
+  'shipByTo',
+  'orderFrom',
+  'orderTo',
   'late',
   'aging',
   'attention',
@@ -24,6 +31,9 @@ const SHIPPED_VIEW_PARAMS = [
   'shippedSearchField',
   'ostatus',
   'staff',
+  'pickedBy',
+  'packedBy',
+  'testedBy',
   'exceptions',
 ] as const;
 

@@ -223,7 +223,6 @@ function PackingDetailOverlay({
             condition: '',
             serial_number: '',
             sku: '',
-            tester_id: null,
             tested_by: null,
             test_date_time: null,
             packer_id: null,

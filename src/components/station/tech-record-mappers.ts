@@ -1,4 +1,4 @@
-import { type TechRecord } from '@/hooks/useTechLogs';
+import { type TechRecord } from '@/hooks/useDeskPickLogs';
 import { hasUsableProductTitle } from '@/hooks/station/useTechTableController';
 
 /** Trim a product title to a clean string (empty when missing). */
@@ -30,7 +30,6 @@ export function techRecordToDetail(record: TechRecord) {
     tracking_number_rows: record.tracking_number_rows || [],
     serial_number: record.serial_number || '',
     sku: record.sku || '',
-    tester_id: record.tested_by || null,
     tested_by: record.tested_by || null,
     test_date_time: testedAt,
     test_activity_at: testedAt,

@@ -6,7 +6,7 @@ import {
   appWashClass,
 } from '@/design-system/tokens/app-surface';
 import { NAV_ICON_STROKE_CLASS } from '@/components/icons/nav-weight';
-import { cornerClass } from '@/design-system/tokens/radius';
+import { DROPDOWN_ITEM_CORNER, DROPDOWN_SHELL_CORNER } from '@/design-system/tokens/radius';
 import { cn } from '@/utils/_cn';
 
 /** Inner bottom hairline shared by receiving sidebar + workspace chrome (not outer border-b). */
@@ -119,16 +119,23 @@ const STATION_COLUMN_FOOTER_SEAM_CLASS = 'border-t border-border-hairline';
 export const STATION_COLUMN_FOOTER_BAND_FACE = `flex ${PRIMARY_CHROME_ROW_FACE} w-full items-center ${STATION_COLUMN_FOOTER_SEAM_CLASS}`;
 
 /**
- * Horizontal inset for GlobalHeader — flush to both edges (no left/right pad).
- * Icon cells own their geometry; edge alignment is not via header padding.
+ * Horizontal inset for GlobalHeader — 4px, so the first and last key sit
+ * inside the beam like the search well does, not cut by the window edge.
  */
-export const HEADER_INSET_X = 'px-0';
+export const HEADER_INSET_X = 'px-1';
 
-/** Exact gap between every GlobalHeader icon hit-box (nav cluster · session pace · utilities rail). */
+/** Exact gap between flush station-chrome cells (carton identity · Displays top band). */
 export const HEADER_ICON_GAP = 'gap-0';
 
-/** Flex row for a GlobalHeader icon cluster — beam-height, square cells. */
-export const HEADER_ICON_CLUSTER = `flex h-full shrink-0 items-stretch ${HEADER_ICON_GAP}`;
+/**
+ * Gap between GlobalHeader keys — 2px (= {@link TOP_CHROME_ZONE_GAP}). The
+ * keys are rounded controls (owner 2026-09-27), and two rounded hover fills
+ * that touch read as one smeared shape.
+ */
+const HEADER_KEY_GAP = 'gap-0.5';
+
+/** Flex row for a GlobalHeader key cluster — beam-height, keys centred in it. */
+export const HEADER_ICON_CLUSTER = `flex h-full shrink-0 items-center ${HEADER_KEY_GAP}`;
 
 /*
  * `TOP_CHROME_NAV_LEAD` (`pl-2`) is DELETED (operator 2026-09-22:
@@ -161,13 +168,39 @@ export const HEADER_PAGE_MENU_SCROLL_CLASS =
   'max-h-[calc(100dvh-theme(spacing.20))] overflow-y-auto overscroll-contain scroll-pb-8';
 
 /**
- * Shared IconButton chrome for GlobalHeader — the beam CELL itself, not a pill inside it:
- * **Operator 2026-09-22:** *"for all of the icons there should be no spacing
+ * The header's control corner — the mode's control radius (triage 8px, 0 on
+ * a touch screen), so every key on the beam reads as a pressable control of
+ * the same family as the ⌘K search well beside it (owner 2026-09-27;
+ * supersedes the 2026-09-22 flush beam cells).
+ */
+export const HEADER_CONTROL_CORNER = 'rounded-mode-control';
+
+/**
+ * Shared IconButton chrome for GlobalHeader — a 32px rounded KEY, the search
+ * well's height, centred in its {@link HEADER_ICON_WRAP} cell. Hover and open
+ * paint the search well's sunken fill inside that corner.
  */
 export const HEADER_ICON_BTN_CLASS = cn(
-  'h-full w-full min-h-0 text-text-default transition-colors hover:bg-surface-sunken active:scale-100',
-  cornerClass('flush'),
+  'h-8 w-8 min-h-0 shrink-0 text-text-default transition-colors hover:bg-surface-sunken active:scale-100',
+  HEADER_CONTROL_CORNER,
 );
 
 /** Pressed / open fill for header icon toggles. */
 export const HEADER_ICON_BTN_OPEN_CLASS = 'bg-surface-sunken';
+
+/**
+ * Header dropdowns (Pins · Daily tasks · page switcher · inbox) — the triage
+ * dropdown pair on the MODE radius: an 8px panel with 4px rows inside its
+ * 2px pad (the DROPDOWN_SHELL / DROPDOWN_ITEM rungs), both 0 on a touch
+ * screen. Owner 2026-09-27: header chrome speaks the triage system —
+ * rounded, pressable, sentence case.
+ */
+export const HEADER_MENU_PANEL_CORNER = DROPDOWN_SHELL_CORNER;
+export const HEADER_MENU_ROW_CORNER = DROPDOWN_ITEM_CORNER;
+
+/**
+ * A section caption inside a header dropdown — the region's label VOICE
+ * (`mode-label`: sentence case in triage, mono caps only on a touch floor),
+ * never a hand-set `uppercase tracking-widest` eyebrow.
+ */
+export const HEADER_MENU_CAPTION_CLASS = 'mode-label text-text-muted';

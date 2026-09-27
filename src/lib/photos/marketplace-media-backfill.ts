@@ -4,7 +4,7 @@
  */
 import type { OrgId } from '@/lib/tenancy/constants';
 import { tenantQuery, withTenantTransaction } from '@/lib/tenancy/db';
-import { skuCatalogNoZohoTwinPredicateSql } from '@/lib/sku/sku-identity-law';
+import { skuCatalogTitleUnownedPredicateSql } from '@/lib/sku/sku-identity-law';
 import { loadActiveAmazonAccounts, loadAmazonCreds } from '@/lib/amazon/accounts';
 import { getCatalogItemImages, pickAmazonCatalogMainImage } from '@/lib/amazon/client';
 import { getBrowseAppToken, getEbayItemImageUrl } from '@/lib/ebay/browse-client';
@@ -484,7 +484,7 @@ async function storeListingImage(orgId: OrgId, skuCatalogId: number, imageUrl: s
           WHERE sc.id = $2
             AND sc.organization_id = $1
             AND NULLIF(BTRIM(sc.image_url), '') IS NULL
-            AND ${skuCatalogNoZohoTwinPredicateSql('sc')}
+            AND ${skuCatalogTitleUnownedPredicateSql('sc')}
             AND NOT EXISTS (SELECT 1 FROM listing_photos lp
                              WHERE lp.organization_id = sc.organization_id
                                AND lp.sku_catalog_id = sc.id)

@@ -10,5 +10,5 @@
 import { UniversalLoader } from '@/design-system/components/UniversalLoader';
 
 export default function Loading() {
-  return <UniversalLoader isLoading label="Loading testing" className="h-full" />;
+  return <UniversalLoader isLoading label="Loading quality control" className="h-full" />;
 }

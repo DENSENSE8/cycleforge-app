@@ -67,8 +67,8 @@ function PanelVerb({ action }: { action: NavAction }) {
           data-nav-action-keys
           className={cn(
             '-mr-1 inline-flex max-w-0 items-center gap-0.5 overflow-hidden opacity-0 transition-[max-width,opacity,margin] duration-150',
-            'group-hover/verb:mr-0 group-hover/verb:max-w-24 group-hover/verb:opacity-100',
-            'group-focus-visible/verb:mr-0 group-focus-visible/verb:max-w-24 group-focus-visible/verb:opacity-100',
+            'group-hover/verb:mr-0 group-hover/verb:max-w-40 group-hover/verb:opacity-100',
+            'group-focus-visible/verb:mr-0 group-focus-visible/verb:max-w-40 group-focus-visible/verb:opacity-100',
           )}
         >
           {keys.map((key) => (

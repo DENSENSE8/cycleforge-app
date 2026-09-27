@@ -3,11 +3,13 @@
 import { postToAiProvider } from '@/lib/ai/failover';
 import type { OrgId } from '@/lib/tenancy/constants';
 import {
-  EMPTY_PO_INTAKE_DRAFT,
-  type PoIntakeConfidence,
-  type PoIntakeDraft,
-  type PoIntakeLineDraft,
-} from '@/lib/inbound/po-intake-draft';
+  emptyInboundOrderDraft,
+  emptyInboundOrderLine,
+  type InboundOrderDraft,
+  type InboundOrderLine,
+} from '@/lib/inbound/inbound-order-draft';
+
+type ExtractConfidence = 'high' | 'medium' | 'low';
 
 const DEFAULT_AI_MODEL = 'gemma-4-e4b';
 const TOOL_NAME = 'report_po_intake_fields';
@@ -114,7 +116,7 @@ const REPORT_TOOL = {
   },
 } as const;
 
-type ConfField = { value?: string; confidence?: PoIntakeConfidence };
+type ConfField = { value?: string; confidence?: ExtractConfidence };
 
 type RawExtract = {
   platform?: ConfField;
@@ -129,7 +131,7 @@ type RawExtract = {
     quantity?: number;
     line_item_id?: string;
     listing_url?: string;
-    confidence?: PoIntakeConfidence;
+    confidence?: ExtractConfidence;
   }>;
   notes?: string;
 };
@@ -156,7 +158,7 @@ type ExtractPoIntakeInput = {
 };
 
 type ExtractPoIntakeResult = {
-  draft: PoIntakeDraft;
+  draft: InboundOrderDraft;
   model: string;
   usage: { input_tokens: number; output_tokens: number };
 };
@@ -165,33 +167,30 @@ function fieldValue(f: ConfField | undefined): string {
   return String(f?.value ?? '').trim();
 }
 
-export function draftFromExtractArgs(raw: RawExtract): PoIntakeDraft {
-  const base = EMPTY_PO_INTAKE_DRAFT();
-  const platform = fieldValue(raw.platform).toLowerCase() || base.platform;
+/** The model's report → an InboundOrderDraft. Quantities the model did not say stay null (asked for, never assumed). */
+export function draftFromExtractArgs(raw: RawExtract): InboundOrderDraft {
+  const base = emptyInboundOrderDraft('PO');
   const fallbackListingUrl = fieldValue(raw.listing_url);
-  const lines: PoIntakeLineDraft[] = (raw.line_items ?? [])
+  const lines: InboundOrderLine[] = (raw.line_items ?? [])
     .map((li) => ({
+      ...emptyInboundOrderLine(),
+      lineKey: String(li.line_item_id ?? '').trim(),
       sku: String(li.sku ?? '').trim(),
-      itemName: String(li.item_name ?? '').trim(),
+      title: String(li.item_name ?? '').trim(),
       quantity:
-        li.quantity != null && Number.isFinite(li.quantity) && li.quantity >= 1
-          ? String(Math.floor(li.quantity))
-          : '',
-      lineItemId: String(li.line_item_id ?? '').trim(),
+        li.quantity != null && Number.isFinite(li.quantity) && li.quantity >= 1 ? Math.floor(li.quantity) : null,
       listingUrl: String(li.listing_url ?? fallbackListingUrl).trim(),
     }))
-    .filter((l) => l.sku || l.itemName || l.quantity);
+    .filter((l) => l.sku || l.title || l.quantity != null);
+  const tracking = fieldValue(raw.tracking_number);
 
   return {
     ...base,
-    platform,
-    orderId: fieldValue(raw.order_id),
-    seller: fieldValue(raw.seller),
-    trackingNumber: fieldValue(raw.tracking_number),
-    carrierCode: fieldValue(raw.carrier_code),
-    lines: lines.length > 0
-      ? lines
-      : [{ ...base.lines[0]!, listingUrl: fallbackListingUrl }],
+    platform: fieldValue(raw.platform).toLowerCase(),
+    orderNumber: fieldValue(raw.order_id),
+    vendor: fieldValue(raw.seller),
+    tracking: [{ number: tracking, carrier: fieldValue(raw.carrier_code) }],
+    lines: lines.length > 0 ? lines : [{ ...emptyInboundOrderLine(), listingUrl: fallbackListingUrl }],
     notes: String(raw.notes ?? '').trim(),
   };
 }

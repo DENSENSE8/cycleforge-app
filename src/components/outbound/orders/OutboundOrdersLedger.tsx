@@ -36,10 +36,14 @@ import {
   type OrdersQueueCommits,
 } from '@/components/dashboard/orders-queue/useOrdersQueueFeed';
 import type { QueueRowClickEvent } from '@/components/dashboard/orders-queue/queue-row-click';
-import { parentOrderLineTotals } from '@/components/dashboard/orders-queue/QueueGroupRow';
 import type { QueueRowRecord } from '@/components/dashboard/orders-queue/helpers';
 import type { ToShipChrome } from '@/components/unshipped/useToShipChrome';
-import { DESK_RECORD_ANCHOR_ATTR, DeskRecordPlane, useDeskRecordView } from '@/design-system/components/DeskRecordPlane';
+import {
+  DESK_RECORD_ANCHOR_ATTR,
+  DeskRecordPlane,
+  deskRecordBesideList,
+  useDeskRecordView,
+} from '@/design-system/components/DeskRecordPlane';
 import { useRecordCursor } from '@/lib/record-cursor/useRecordCursor';
 import type { OrderRecordMode } from '@/lib/selection-context/order-inspector-context';
 import { useRecordCursorKeyboard } from '@/hooks/useRecordCursorKeyboard';
@@ -60,7 +64,6 @@ import { slotTableFindHighlightId } from '@/lib/tables/slot-table-find';
 import { flattenRenderOrder, type RowGroup } from '@/lib/group-rows';
 import { ordersCompoundView } from '@/lib/orders/orders-compound-view';
 import { ordersNextStep } from '@/lib/orders/orders-next-step';
-import { orderCarrierBoxes } from '@/lib/orders/order-group-identity';
 import { resolveOrdersSlotValue } from '@/lib/tables/field-catalog/orders-resolve';
 import { useOrderChannel } from '@/hooks/useCatalog';
 import { orderAdminUrl } from '@/utils/order-platform';
@@ -89,12 +92,12 @@ import { useLedgerRowZoom } from './useLedgerRowZoom';
 import { OutboundOrdersLedgerToolbar } from './OutboundOrdersLedgerToolbar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/design-system/primitives/radix-popover';
 import { ModeRegion } from '@/design-system/providers/ModeRegion';
-import { OrderRecordView } from './OrderRecordView';
+import { OrderRecordTitle, OrderRecordView } from './OrderRecordView';
 import { OrderRecordActionStrip, OrdersMorphingHost } from './to-ship/MorphingRowActionMenu';
 import { OrderQueueSummary, OrderQueueSummaryLine } from './OrderQueueSummary';
 import { LedgerPhotoViewer } from './outbound-orders-ledger-photos';
 import { linePhotoLabel } from '@/lib/photos/line-photos';
-import { groupLocation, initials, recordState, worstState } from './outbound-orders-ledger-state';
+import { initials, recordState, worstState } from './outbound-orders-ledger-state';
 import {
   LedgerCondition,
   LedgerListingLink,
@@ -386,8 +389,7 @@ export function OutboundOrdersLedger({
     <DeskRecordPlane
       open={openRecord != null}
       onClose={plane.closeRecord}
-      title={openRecord ? `Order ${openOrderRef}` : 'Order'}
-      subtitle={openRecord?.product_title?.trim() || undefined}
+      title={openRecord ? <OrderRecordTitle record={openRecord} records={displayedRecords} /> : 'Order'}
       indexLabel={cursor.available && cursor.position != null ? `${cursor.position} of ${cursor.total}` : undefined}
       recordNoun="order"
       recordKey={openId != null ? String(openId) : null}
@@ -508,8 +510,8 @@ export function OutboundOrdersLedger({
       </div>
 
       <TableStatusBar
-        // In place (and floor, which places records in place) the queue summary rides the list's foot; split, the empty pane shows it.
-        lead={recordView !== 'split' ? <OrderQueueSummaryLine records={displayedRecords} todayKey={feed.todayKey} /> : undefined}
+        // In place the queue summary rides the list's foot; split / floor, the empty pane or rail shows it.
+        lead={deskRecordBesideList(recordView) ? undefined : <OrderQueueSummaryLine records={displayedRecords} todayKey={feed.todayKey} />}
         shown={paged.shown}
         total={paged.total}
         selected={selectedCount}
@@ -565,8 +567,8 @@ function groupStage(
     return {
       row,
       facts: stageFacts(resolveOrdersSlotValue(row, fieldId, staff)),
-      staffId: fieldId === 'orders.picked' ? staff.testerId : staff.packerId,
-      display: fieldId === 'orders.picked' ? staff.testerDisplay : staff.packerDisplay,
+      staffId: fieldId === 'orders.picked' ? staff.pickerId : staff.packerId,
+      display: fieldId === 'orders.picked' ? staff.pickerDisplay : staff.packerDisplay,
     };
   });
   const first = lines[0];
@@ -606,15 +608,12 @@ const LedgerGroupRecord = memo(function LedgerGroupRecord({
   const checked = checkedCount === 0 ? false : checkedCount === ids.length ? true : ('mixed' as const);
   const lead = group.rows[0]!;
   const orderId = String(lead.order_id || group.key || '').trim();
-  const { boxCount } = orderCarrierBoxes(group.rows);
-  const { qty } = parentOrderLineTotals(group.rows);
   const inState = group.rows.filter((row) => recordState(row) === state).length;
   // Band face = the org's dense short label (`AMZRN`); the full name rides the
   // tooltip and the order-number menu.
   const channel = useOrderChannel()(orderId, lead.account_source);
   const meta = channel.meta;
   const spec = LIFECYCLE[state];
-  const where = groupLocation(group.rows);
   // The order's next step is its worst line's: that line is what holds it.
   const worst = group.rows.find((row) => recordState(row) === state) ?? lead;
   const next = ordersNextStep(worst);
@@ -664,11 +663,10 @@ const LedgerGroupRecord = memo(function LedgerGroupRecord({
           />
           <LifecycleCode
             state={state}
-            className="w-25 shrink-0"
+            className="w-11 shrink-0"
             srLabel={`${spec.label}: ${inState} of ${group.rows.length} lines`}
-          >
-            {spec.code} {inState}/{group.rows.length}
-          </LifecycleCode>
+          />
+          <RecordNoteSlot note={String(lead.buyer_note ?? lead.notes ?? '').trim() || null} />
           <RecordPlatformFace channel={channel} />
           <span
             className={cn(RECORD_ID_CLASS, LEDGER_NESTED_HIT_CLASS, LEDGER_ORDER_NUMBER_SLOT_CLASS)}
@@ -685,23 +683,11 @@ const LedgerGroupRecord = memo(function LedgerGroupRecord({
             />
           </span>
         </span>
-        {/* Under the buyer / SKU column. Narrow at a 1440 desk: the location
-            (law 1) keeps the room, the box · line count gives it up first.
-            Clipped, so a split-view list never paints QTY over Pick. */}
-        <span
-          className="flex min-w-0 flex-1 items-center gap-3 overflow-hidden"
-          title={`${where.path ?? 'No bin'} · ${boxCount} ${boxCount === 1 ? 'box' : 'boxes'} · ${group.rows.length} lines · QTY ${qty}`}
-        >
-          <span className={cn('flex min-w-0 shrink items-center gap-1 truncate', RECORD_ID_CLASS)}>
-            <LedgerLocation path={where.path} className="min-w-0" />
-            {where.path && where.unassigned > 0 ? (
-              <span className="shrink-0 text-mode-warn">· {where.unassigned} unassigned</span>
-            ) : null}
-          </span>
-          <span className={cn(RECORD_LABEL_CLASS, 'min-w-0 shrink-[8] truncate text-mode-muted')}>
-            {boxCount} {boxCount === 1 ? 'box' : 'boxes'} · {group.rows.length} lines
-          </span>
-          <span className={cn(RECORD_LABEL_CLASS, 'shrink-0', orderRowQtyTone(qty))}>Qty {qty}</span>
+        {/* The buyer, on the records' buyer column — the same face every
+            single record wears (owner 2026-09-27: no bin / box / line counts
+            on the order band; the lines below carry them). */}
+        <span className="flex min-w-0 flex-1 items-center overflow-hidden">
+          <LedgerCustomerFace customer={lead.customer ?? null} />
         </span>
         <span className="h-full w-32 shrink-0">
           <LedgerStageAssign
@@ -749,6 +735,19 @@ function LedgerNextStep({ next }: { next: { label: string; tip?: string; blocked
       )}
     >
       {next?.label ?? ''}
+    </span>
+  );
+}
+
+/** The buyer's name + place, from the customer book (`/api/orders` joins it). */
+function LedgerCustomerFace({ customer }: { customer: ShippedOrder['customer'] | null }) {
+  const name = customer ? customerFullName(customer) : '';
+  const where = customer ? customerPlace(customer) : '';
+  if (!name && !where) return null;
+  return (
+    <span data-testid="ledger-customer" className="flex min-w-0 items-baseline gap-2" title={[name, where].filter(Boolean).join(' · ')}>
+      <span className="truncate text-role-data text-mode-ink">{name}</span>
+      {where ? <span className={cn(RECORD_LABEL_CLASS, 'min-w-0 shrink-[4] truncate text-mode-muted')}>{where}</span> : null}
     </span>
   );
 }
@@ -915,8 +914,8 @@ const LedgerRecord = memo(function LedgerRecord({
       doneVerb="Picked"
       role="technician"
       facts={pickFacts}
-      selectedStaffId={staff.testerId}
-      assignedName={staff.testerDisplay}
+      selectedStaffId={staff.pickerId}
+      assignedName={staff.pickerDisplay}
       showStamp
       onCommit={(id, name) => commits.handleCommitStageAssign(record, 'orders.picked', id, name)}
     />
@@ -979,21 +978,7 @@ const LedgerRecord = memo(function LedgerRecord({
     />
   );
   // The buyer, from the customer book (`/api/orders` joins it), in band 1's free span; S has no free span, so it reads in the order record only.
-  const customerName = record.customer ? customerFullName(record.customer) : '';
-  const customerWhere = record.customer ? customerPlace(record.customer) : '';
-  const customerFace =
-    customerName || customerWhere ? (
-      <span
-        data-testid="ledger-customer"
-        className="flex min-w-0 items-baseline gap-2"
-        title={[customerName, customerWhere].filter(Boolean).join(' · ')}
-      >
-        <span className="truncate text-role-data text-mode-ink">{customerName}</span>
-        {customerWhere ? (
-          <span className={cn(RECORD_LABEL_CLASS, 'min-w-0 shrink-[4] truncate text-mode-muted')}>{customerWhere}</span>
-        ) : null}
-      </span>
-    ) : null;
+  const customerFace = <LedgerCustomerFace customer={record.customer ?? null} />;
 
   return (
     <div

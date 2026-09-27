@@ -24,11 +24,12 @@ import {
 } from '@/lib/search/search-refine';
 import {
   SEARCH_SEL_PARAM,
+  isSearchRecordType,
   parseSearchSel,
   soleHitSel,
   type SearchSelection,
 } from '@/lib/search/search-selection';
-import { isUiEntityType, looksLikeIdentifier } from '@/lib/search/search-hit';
+import { looksLikeIdentifier } from '@/lib/search/search-hit';
 import { desktopSearchHref } from '@/lib/search/internal-id';
 import {
   clearGlobalSearchPending,
@@ -184,7 +185,7 @@ export function SearchBrowseShell({
   const selectHit = useCallback(
     (hit: AiSearchHit) => {
       const { entityType, id } = hit;
-      if (isUiEntityType(entityType)) {
+      if (isSearchRecordType(entityType)) {
         setSel({ entityType, id });
         return;
       }
@@ -225,7 +226,7 @@ export function SearchBrowseShell({
           current &&
           hits.some((h) => {
             const { entityType, id } = h;
-            if (!isUiEntityType(entityType)) return false;
+            if (!isSearchRecordType(entityType)) return false;
             return (
               current.entityType === entityType && current.id === id
             );

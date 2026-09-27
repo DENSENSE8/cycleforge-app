@@ -382,25 +382,29 @@ const config = {
     },
     plugins: [
         // Spacing INTENTS (spacing-token-leakage plan Phase 2) — one named
-        // utility per recurring padding/stack job, built from theme('spacing')
-        // so each inherits density-awareness. An intent is the WHOLE padding
-        // story for its element: never stack a raw p-*/px-* on top (cn() keeps
-        // both and the intent wins in CSS order — see the 'cf-*' groups in
+        // utility per recurring padding/stack job. The VALUE belongs to the
+        // region's task mode (`spacing` in packages/design-tokens/src/modes.ts
+        // → `--mode-inset-*` / `--mode-stack-*` / `--mode-row-*`, `:root` =
+        // triage), times `--cf-density` so compact density and table zoom
+        // still tighten it. An intent is the WHOLE padding story for its
+        // element: never stack a raw p-*/px-* on top (cn() keeps both and the
+        // intent wins in CSS order — see the 'cf-*' groups in
         // src/utils/_cn.ts). Registered in the safelist above; conflict groups
         // in _cn.ts; both lists must stay in sync with this plugin.
-        plugin(({ addUtilities, theme }) => {
-            const s = theme("spacing");
+        plugin(({ addUtilities }) => {
+            const d = (v) => `calc(var(--mode-${v}) * var(--cf-density, 1))`;
+            const inset = (intent) => ({ paddingInline: d(`inset-${intent}-x`), paddingBlock: d(`inset-${intent}-y`) });
             addUtilities({
-                ".inset-chip": { paddingInline: s["1.5"], paddingBlock: s["0.5"] },
-                ".inset-field": { paddingInline: s["3"], paddingBlock: s["2"] },
-                ".inset-cozy": { paddingInline: s["2.5"], paddingBlock: s["1.5"] },
-                ".inset-card": { padding: s["4"] },
-                ".inset-empty": { paddingInline: s["4"], paddingBlock: s["6"] },
-                ".stack-tight": { display: "flex", flexDirection: "column", gap: s["1.5"] },
-                ".stack-row": { display: "flex", flexDirection: "column", gap: s["2"] },
-                ".stack-section": { display: "flex", flexDirection: "column", gap: s["6"] },
-                ".row-gap": { display: "flex", alignItems: "center", gap: s["2"] },
-                ".row-tight": { display: "flex", alignItems: "center", gap: s["1.5"] },
+                ".inset-chip": inset("chip"),
+                ".inset-field": inset("field"),
+                ".inset-cozy": inset("cozy"),
+                ".inset-card": inset("card"),
+                ".inset-empty": inset("empty"),
+                ".stack-tight": { display: "flex", flexDirection: "column", gap: d("stack-tight") },
+                ".stack-row": { display: "flex", flexDirection: "column", gap: d("stack-row") },
+                ".stack-section": { display: "flex", flexDirection: "column", gap: d("stack-section") },
+                ".row-gap": { display: "flex", alignItems: "center", gap: d("row-gap") },
+                ".row-tight": { display: "flex", alignItems: "center", gap: d("row-tight") },
             });
         }),
         // CF Type — INTRINSIC role bindings (contextual-font-system, 2026-07-28).

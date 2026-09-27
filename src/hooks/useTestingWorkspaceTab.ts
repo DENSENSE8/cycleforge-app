@@ -1,30 +1,30 @@
 'use client';
 
 import { useCallback } from 'react';
-import { usePathname, useRouter, useSearchParams } from 'next/navigation';
+import { usePathname, useSearchParams } from 'next/navigation';
+import { readLiveSearchParams } from '@/lib/routing/optimistic-url-param';
 import {
   getTestingWorkspaceTabFromSearch,
   normalizeTestingWorkspaceTabParams,
   type TestingWorkspaceTab,
 } from '@/utils/testing-workspace-state';
 
-/** URL SoT for the Testing workbench tabs nested under `?view=testing`. */
+/** URL SoT for the Quality Control workbench tabs on `/test` (`?testTab=`). */
 export function useTestingWorkspaceTab() {
   const pathname = usePathname();
-  const router = useRouter();
   const searchParams = useSearchParams();
 
   const testTab = getTestingWorkspaceTabFromSearch(searchParams);
 
   const setTestTab = useCallback(
     (nextTab: TestingWorkspaceTab) => {
-      const params = new URLSearchParams(searchParams.toString());
+      const params = readLiveSearchParams(searchParams.toString());
       normalizeTestingWorkspaceTabParams(params, nextTab);
       const qs = params.toString();
       const base = pathname || '/test';
-      router.replace(qs ? `${base}?${qs}` : base, { scroll: false });
+      window.history.replaceState(window.history.state, '', qs ? `${base}?${qs}` : base);
     },
-    [pathname, router, searchParams],
+    [pathname, searchParams],
   );
 
   return { testTab, setTestTab };

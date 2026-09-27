@@ -10,6 +10,7 @@ import {
   getOrderAssignmentSnapshotsByOrderIds,
   getStaffNameMap,
 } from '@/lib/work-assignments/order-assignment-snapshot';
+import { upsertOrderDeadline } from '@/lib/work-assignments/upsert-order-assignment';
 import { withAuth } from '@/lib/auth/withAuth';
 import { invalidateFbaViews } from '@/lib/fba/invalidation';
 import { compareWorkOrderRows } from '@/lib/work-orders/ranking';
@@ -33,7 +34,7 @@ type QueueKey =
 
 type WorkStatus = 'OPEN' | 'ASSIGNED' | 'IN_PROGRESS' | 'DONE' | 'CANCELED';
 type EntityType = 'ORDER' | 'REPAIR' | 'FBA_SHIPMENT' | 'RECEIVING' | 'SKU_STOCK';
-type WorkType = 'TEST' | 'PACK' | 'REPAIR' | 'QA' | 'STOCK_REPLENISH';
+type WorkType = 'TEST' | 'PICK' | 'PACK' | 'REPAIR' | 'QA' | 'STOCK_REPLENISH';
 
 interface _WorkOrderRow {
   id: string;
@@ -325,18 +326,19 @@ export const PATCH = withAuth(async (request: NextRequest, ctx) => {
     if (owns.rowCount === 0) return false;
 
     if (entityType === 'ORDER') {
-      // TEST row owns the technician slot; never write packer here.
+      // PICK row owns the picker slot; the ORDER/TEST row only carries the deadline.
       await upsertAssignment(client, ctx.organizationId, {
         entityType: 'ORDER',
         entityId,
-        workType: 'TEST',
+        workType: 'PICK',
         assignedTechId,
         assignedPackerId: null,
         status,
         priority,
-        deadlineAt,
+        deadlineAt: null,
         notes,
       });
+      await upsertOrderDeadline(ctx.organizationId, entityId, deadlineAt, client);
 
       // PACK row owns the packer slot.
       if (packerIdProvided) {
@@ -413,15 +415,15 @@ export const PATCH = withAuth(async (request: NextRequest, ctx) => {
 
   try {
     if (entityType === 'ORDER') {
-      const snaps = await getOrderAssignmentSnapshotsByOrderIds([entityId]);
-      const snap = snaps.get(entityId) ?? { testerId: null, packerId: null, deadlineAt: null };
-      const nameMap = await getStaffNameMap([snap.testerId, snap.packerId]);
+      const snaps = await getOrderAssignmentSnapshotsByOrderIds(ctx.organizationId, [entityId]);
+      const snap = snaps.get(entityId) ?? { pickerId: null, packerId: null, deadlineAt: null };
+      const nameMap = await getStaffNameMap([snap.pickerId, snap.packerId]);
       await publishOrderAssignmentsUpdated({
         organizationId: ctx.organizationId,
         orderId: entityId,
-        testerId: snap.testerId,
+        pickerId: snap.pickerId,
         packerId: snap.packerId,
-        testerName: snap.testerId != null ? nameMap.get(snap.testerId) ?? null : null,
+        pickerName: snap.pickerId != null ? nameMap.get(snap.pickerId) ?? null : null,
         packerName: snap.packerId != null ? nameMap.get(snap.packerId) ?? null : null,
         deadlineAt: snap.deadlineAt,
         source: 'work-orders.patch',

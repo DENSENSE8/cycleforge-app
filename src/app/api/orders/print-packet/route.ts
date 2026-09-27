@@ -4,6 +4,7 @@ import { parseBody } from '@/lib/schemas/parse';
 import { PaperworkPrintBody } from '@/lib/schemas/documents';
 import { recordAudit, AUDIT_ACTION } from '@/lib/audit-logs';
 import { buildPaperworkPackets } from '@/lib/documents/paperwork-packet';
+import { listDocumentPrintJobsForBatch } from '@/lib/documents/document-print-jobs';
 import type { OrgId } from '@/lib/tenancy/constants';
 import { withTenantTransaction } from '@/lib/tenancy/db';
 
@@ -43,4 +44,25 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
   }
 
   return NextResponse.json({ success: true, packets });
+}, { permission: 'shipping.view' });
+
+/**
+ * GET /api/orders/print-packet?batch=<id> — the ledger rows one station print
+ * batch wrote (a chat paperwork print reads back what was recorded).
+ */
+export const GET = withAuth(async (req: NextRequest, ctx) => {
+  const batch = req.nextUrl.searchParams.get('batch') ?? '';
+  if (!/^[A-Za-z0-9_-]{8,80}$/.test(batch)) {
+    return NextResponse.json({ error: 'Invalid batch' }, { status: 400 });
+  }
+  const rows = await listDocumentPrintJobsForBatch(ctx.organizationId as OrgId, batch);
+  return NextResponse.json({
+    rows: rows.map((r) => ({
+      id: Number(r.id),
+      orderId: r.order_id,
+      documentType: r.document_type,
+      status: r.status,
+      isReprint: r.is_reprint,
+    })),
+  });
 }, { permission: 'shipping.view' });

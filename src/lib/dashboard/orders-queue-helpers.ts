@@ -135,19 +135,6 @@ function queueRowTestedAtRaw(record: QueueRowRecord): string | null {
   );
 }
 
-/**
- * TESTED-lane tester name from wire fields only — scan actor first
- * (`tested_by_name`), then assignee (`tester_name`). Staff-id fallback
- * (`getStaffName`) + `normalizePersonName` stay in the view layer (hooks).
- */
-function queueRowTesterNameRaw(record: QueueRowRecord): string | null {
-  const scanActor = String(record.tested_by_name ?? '').trim();
-  if (scanActor) return scanActor;
-  const assignee = String(record.tester_name ?? '').trim();
-  if (assignee) return assignee;
-  return null;
-}
-
 /** Clean a tester/packer name, stripping role prefixes and placeholder values. */
 function normalizePersonName(value: unknown): string {
   const text = String(value ?? '')
@@ -180,7 +167,7 @@ function resolveRowStatus(record: QueueRowRecord, queueMode: OrdersQueueMode): R
   // the three-lane fulfillment bucket that hid packed rows as "Tested".
   const stage = resolveOrderLifecycleStage({
     shipmentId: record.shipment_id,
-    hasTechScan: Boolean(record.has_tech_scan),
+    hasPickScan: Boolean(record.has_pick_scan),
     packedAt:
       nonSentinelTimestamp(record.packed_at) ??
       nonSentinelTimestamp((record as QueueRowRecord).pack_activity_at),

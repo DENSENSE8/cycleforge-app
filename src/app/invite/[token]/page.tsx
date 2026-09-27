@@ -73,7 +73,8 @@ export default function InviteAcceptPage() {
         setSubmitting(false);
         return;
       }
-      window.location.assign('/dashboard');
+      const data = (await r.json().catch(() => ({}))) as { redirectTo?: string };
+      window.location.assign(data.redirectTo || '/');
     } catch {
       setErr("Couldn't accept the invitation.");
       setSubmitting(false);

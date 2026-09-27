@@ -92,11 +92,13 @@ test('canEditShippingInfo: true for valid order and exception rows', () => {
 
 // ─── deriveShippedHeaderMeta ──────────────────────────────────────────────────
 
-test('deriveShippedHeaderMeta: tech scan → emerald tested status', () => {
-  const meta = deriveShippedHeaderMeta(makeShipped({ id: 5, has_tech_scan: true, tested_by: 1 }));
-  assert.equal(meta.hasTechScan, true);
+test('deriveShippedHeaderMeta: pick scan → emerald picked status naming the picker', () => {
+  const meta = deriveShippedHeaderMeta(
+    makeShipped({ id: 5, has_pick_scan: true, tested_by: 1, picked_by: 2, picked_by_name: 'Tuan' }),
+  );
+  assert.equal(meta.hasPickScan, true);
   assert.equal(meta.statusTone, 'emerald');
-  assert.match(meta.statusLabel, /^Tested by /);
+  assert.equal(meta.statusLabel, 'Picked by Tuan');
 });
 
 test('deriveShippedHeaderMeta: out of stock → red status', () => {

@@ -3,9 +3,10 @@ import type { Pool } from 'pg';
 type Queryable = Pick<Pool, 'query'>;
 
 /**
- * Resolve the testing-station "active order card" row for a shipment / tracking.
- * Shared source of truth for the tech scan route and the add-serial-to-last
- * wrapper so both rebuild the same active-card shape from one query.
+ * Resolve the picker desk's "active order card" row for a shipment / tracking.
+ * Shared source of truth for the desk tracking scan (`/api/picking/desk/scan`) and the
+ * serial `add-to-last` action (`/api/picking/desk/serial`) so both rebuild the same active-card shape from one query. The
+ * assignee is the ORDER/PICK picker — the desk picks; QC is a unit fact.
  */
 export async function findOrderByShipment(
   db: Queryable,
@@ -23,7 +24,7 @@ export async function findOrderByShipment(
        COALESCE(stn.tracking_number_raw, '') AS shipping_tracking_number,
        COALESCE(stn.is_carrier_accepted OR stn.is_in_transit OR stn.is_out_for_delivery OR stn.is_delivered, false) AS is_shipped,
        to_char(wa_d.deadline_at, 'YYYY-MM-DD') AS ship_by_date,
-       wa_t.assigned_tech_id AS tester_id,
+       wa_pick.assigned_tech_id AS picker_id,
        wa_p.assigned_packer_id AS packer_id
      FROM orders o
      LEFT JOIN shipping_tracking_numbers stn ON stn.id = o.shipment_id
@@ -35,9 +36,10 @@ export async function findOrderByShipment(
      ) wa_d ON TRUE
      LEFT JOIN LATERAL (
        SELECT assigned_tech_id FROM work_assignments
-       WHERE entity_type = 'ORDER' AND entity_id = o.id AND work_type = 'TEST' AND status NOT IN ('CANCELED','DONE')
+       WHERE organization_id = o.organization_id
+         AND entity_type = 'ORDER' AND entity_id = o.id AND work_type = 'PICK' AND status NOT IN ('CANCELED','DONE')
        ORDER BY id DESC LIMIT 1
-     ) wa_t ON TRUE
+     ) wa_pick ON TRUE
      LEFT JOIN LATERAL (
        SELECT assigned_packer_id FROM work_assignments
        WHERE entity_type = 'ORDER' AND entity_id = o.id AND work_type = 'PACK' AND status NOT IN ('CANCELED','DONE')
@@ -67,7 +69,7 @@ export async function findOrderByShipment(
   return r.rows[0] ?? null;
 }
 
-/** Map an orders row to the active-card payload the testing UI consumes. */
+/** Map an orders row to the active-card payload the picker desk consumes. */
 export function buildOrderPayload(row: any, overrides: Record<string, unknown> = {}) {
   return {
     id: row?.id ?? null,
@@ -87,7 +89,7 @@ export function buildOrderPayload(row: any, overrides: Record<string, unknown> =
     statusHistory: row?.status_history || [],
     isShipped: row?.is_shipped || false,
     packerId: row?.packer_id || null,
-    testerId: row?.tester_id || null,
+    pickerId: row?.picker_id || null,
     isOutOfStock: row?.is_out_of_stock || false,
     shipByDate: row?.ship_by_date || null,
     orderDate: row?.order_date || null,

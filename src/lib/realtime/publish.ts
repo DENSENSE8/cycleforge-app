@@ -32,10 +32,13 @@ type OrderChangedPayload = {
   source: string;
 };
 
-type OrderTestedPayload = {
+type OrderPickedPayload = {
   organizationId: string;
   orderId: number;
-  testedBy: number | null;
+  pickedBy: number | null;
+  pickedByName: string | null;
+  /** ISO timestamp of the pick scan. */
+  pickedAt: string;
   source: string;
   packLocationId?: number | null;
   packLocationName?: string | null;
@@ -253,6 +256,8 @@ async function logRealtimeEventToStationActivity(
     eventName === 'activity.logged'
     || eventName === 'order.changed'
     || eventName === 'order.assignments'
+    // The pick scan already wrote its own PICK/PICK_SCANNED row; a derived row would double it.
+    || eventName === 'order.picked'
     || eventName === 'queue.assignments'
     || eventName === 'tech-log.changed'
     || eventName === 'packer-log.changed'
@@ -273,31 +278,6 @@ async function logRealtimeEventToStationActivity(
   const selfOrgId = transitionalDogfoodOrgId();
 
   try {
-    if (eventName === 'order.tested') {
-      const orderId = parseFiniteNumber(payload.orderId);
-      const staffId = parseFiniteNumber(payload.testedBy);
-      const id = await createStationActivityLog(pool, {
-        organizationId: selfOrgId,
-        station: 'TECH',
-        activityType: 'WS_ORDER_TESTED',
-        staffId,
-        scanRef: orderId != null ? String(orderId) : null,
-        notes: orderId != null ? `Realtime order.tested for order ${orderId}` : 'Realtime order.tested',
-        metadata: { channel, eventName, source: payload.source ?? null },
-      });
-      if (!id) return;
-      await publishActivityLogged({
-        organizationId: selfOrgId,
-        id,
-        station: 'TECH',
-        activityType: 'WS_ORDER_TESTED',
-        staffId,
-        scanRef: orderId != null ? String(orderId) : null,
-        source: String(payload.source || 'realtime.order.tested'),
-      });
-      return;
-    }
-
     if (eventName === 'repair.changed') {
       const repairIds = Array.isArray(payload.repairIds)
         ? payload.repairIds.map((value) => parseFiniteNumber(value)).filter((value): value is number => value != null)
@@ -395,9 +375,9 @@ export async function publishOrderChanged(payload: OrderChangedPayload) {
 type OrderAssignmentsBroadcastPayload = {
   organizationId: string;
   orderId: number;
-  testerId: number | null;
+  pickerId: number | null;
   packerId: number | null;
-  testerName: string | null;
+  pickerName: string | null;
   packerName: string | null;
   deadlineAt: string | null;
   source: string;
@@ -410,7 +390,7 @@ type QueueAssignmentsBroadcastPayload = {
   source: string;
 };
 
-/** Broadcast ORDER work_assignment staff + deadline to all clients (dashboard queue, station Up Next). */
+/** Broadcast ORDER work_assignment staff (PICK picker, PACK packer) + TEST-row deadline to all clients (dashboard queue, station Up Next). */
 export async function publishOrderAssignmentsUpdated(payload: OrderAssignmentsBroadcastPayload) {
   const orderId = Number(payload.orderId);
   if (!Number.isFinite(orderId)) return;
@@ -418,9 +398,9 @@ export async function publishOrderAssignmentsUpdated(payload: OrderAssignmentsBr
   await publishEvent(getOrdersChannelName(payload.organizationId), 'order.assignments', {
     type: 'order.assignments',
     orderId,
-    testerId: payload.testerId,
+    pickerId: payload.pickerId,
     packerId: payload.packerId,
-    testerName: payload.testerName,
+    pickerName: payload.pickerName,
     packerName: payload.packerName,
     deadlineAt: payload.deadlineAt,
     source: payload.source,
@@ -442,16 +422,19 @@ export async function publishQueueAssignmentsUpdated(payload: QueueAssignmentsBr
   });
 }
 
-export async function publishOrderTested(payload: OrderTestedPayload) {
+/** The picker desk scanned this order's tracking: units taken, order enters the picked lane. */
+export async function publishOrderPicked(payload: OrderPickedPayload) {
   const orderId = Number(payload.orderId);
   if (!Number.isFinite(orderId)) return;
 
-  const testedByRaw = payload.testedBy == null ? null : Number(payload.testedBy);
-  const testedBy = testedByRaw != null && Number.isFinite(testedByRaw) ? testedByRaw : null;
-  await publishEvent(getOrdersChannelName(payload.organizationId), 'order.tested', {
-    type: 'order.tested',
+  const pickedByRaw = payload.pickedBy == null ? null : Number(payload.pickedBy);
+  const pickedBy = pickedByRaw != null && Number.isFinite(pickedByRaw) ? pickedByRaw : null;
+  await publishEvent(getOrdersChannelName(payload.organizationId), 'order.picked', {
+    type: 'order.picked',
     orderId,
-    testedBy,
+    pickedBy,
+    pickedByName: payload.pickedByName ?? null,
+    pickedAt: payload.pickedAt,
     source: payload.source,
     packLocationId:
       payload.packLocationId != null && Number.isFinite(Number(payload.packLocationId))

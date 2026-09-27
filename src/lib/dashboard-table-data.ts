@@ -31,12 +31,12 @@ const UNSHIPPED_FETCH_CHUNK = 200;
 export async function fetchPendingOrdersData({
   searchQuery = '',
   packedBy,
-  testedBy,
+  pickerId,
   strictSearchScope = false,
 }: {
   searchQuery?: string;
   packedBy?: number;
-  testedBy?: number;
+  pickerId?: number;
   strictSearchScope?: boolean;
 }) {
   const params = new URLSearchParams();
@@ -47,7 +47,7 @@ export async function fetchPendingOrdersData({
   // have a matching packer_logs row by shipment_id.
   params.set('excludePacked', 'true');
   if (packedBy !== undefined) params.set('packedBy', String(packedBy));
-  if (testedBy !== undefined) params.set('testedBy', String(testedBy));
+  if (pickerId !== undefined) params.set('pickerId', String(pickerId));
 
   const url = params.toString() ? `/api/orders?${params.toString()}` : '/api/orders';
   const res = await fetch(url, FRESH_FETCH_OPTIONS);
@@ -67,7 +67,7 @@ export async function fetchPendingOrdersData({
 /** One pending-queue row by DB order id (bypasses list cache on the server). */
 export async function fetchPendingOrderRowById(
   orderId: number,
-  options: { searchQuery?: string; packedBy?: number; testedBy?: number } = {}
+  options: { searchQuery?: string; packedBy?: number; pickerId?: number } = {}
 ): Promise<ShippedOrder | null> {
   if (!Number.isFinite(orderId) || orderId <= 0) return null;
   const params = new URLSearchParams();
@@ -76,7 +76,7 @@ export async function fetchPendingOrderRowById(
   const q = String(options.searchQuery || '').trim();
   if (q) params.set('q', q);
   if (options.packedBy !== undefined) params.set('packedBy', String(options.packedBy));
-  if (options.testedBy !== undefined) params.set('testedBy', String(options.testedBy));
+  if (options.pickerId !== undefined) params.set('pickerId', String(options.pickerId));
 
   const res = await fetch(`/api/orders?${params.toString()}`, FRESH_FETCH_OPTIONS);
   if (!res.ok) return null;
@@ -88,7 +88,21 @@ export async function fetchPendingOrderRowById(
   return visible[0] ?? null;
 }
 
-export async function fetchDashboardOrderRowById(orderId: number): Promise<ShippedOrder | null> {
+export async function fetchDashboardOrderRowById(
+  orderId: number,
+  {
+    includeFba = false,
+    enrichFromShipped = true,
+  }: {
+    includeFba?: boolean;
+    /**
+     * Re-read the row through `/api/shipped` for shipped-only fields. Search
+     * turns it off: its record repaints from the `/api/orders` lines query
+     * anyway, so the extra serial hop only delayed first paint (0.3–3 s).
+     */
+    enrichFromShipped?: boolean;
+  } = {},
+): Promise<ShippedOrder | null> {
   if (!Number.isFinite(orderId) || orderId <= 0) return null;
 
   const params = new URLSearchParams();
@@ -99,14 +113,13 @@ export async function fetchDashboardOrderRowById(orderId: number): Promise<Shipp
   if (!res.ok) return null;
 
   const data = await res.json();
-  const records = dedupeByOrderId(
-    ((data.orders || []).map(toOrderRecord) as ShippedOrder[]).filter(isNonFbaRecord)
-  );
+  const mapped = (data.orders || []).map(toOrderRecord) as ShippedOrder[];
+  const records = dedupeByOrderId(includeFba ? mapped : mapped.filter(isNonFbaRecord));
   const orderRecord = records[0] ?? null;
   if (!orderRecord) return null;
 
   const shippedSearchKey = String(orderRecord.order_id || orderId).trim();
-  if (!shippedSearchKey) return orderRecord;
+  if (!shippedSearchKey || !enrichFromShipped) return orderRecord;
 
   try {
     const shippedResults = await fetchDashboardShippedData({ searchQuery: shippedSearchKey });
@@ -121,7 +134,7 @@ export async function fetchDashboardOrderRowById(orderId: number): Promise<Shipp
 export async function fetchUnshippedOrdersData({
   searchQuery = '',
   packedBy,
-  testedBy,
+  pickerId,
   staffId,
   strictSearchScope = false,
   stage,
@@ -129,10 +142,16 @@ export async function fetchUnshippedOrdersData({
   pair,
   queue,
   limit,
+  pickedBy,
+  orderFrom,
+  orderTo,
+  shipByFrom,
+  shipByTo,
 }: {
   searchQuery?: string;
   packedBy?: number;
-  testedBy?: number;
+  /** `?pickerId` — the order's ORDER/PICK assignee. */
+  pickerId?: number;
   staffId?: number;
   strictSearchScope?: boolean;
   stage?: 'pending' | 'tested' | 'packed';
@@ -142,12 +161,24 @@ export async function fetchUnshippedOrdersData({
   /** To-ship lens (`?queue=pick`) — forwarded as `queue`; the server implies inWarehouse. */
   queue?: DeskQueueFilter;
   limit?: number;
+  /** `?pickedBy` — the staffer who picked the order. */
+  pickedBy?: number;
+  /** Order-date / ship-by windows — warehouse civil days (YYYY-MM-DD), inclusive. */
+  orderFrom?: string;
+  orderTo?: string;
+  shipByFrom?: string;
+  shipByTo?: string;
 }) {
   const params = new URLSearchParams();
   if (searchQuery.trim()) params.set('q', searchQuery.trim());
   if (packedBy !== undefined) params.set('packedBy', String(packedBy));
-  if (testedBy !== undefined) params.set('testedBy', String(testedBy));
+  if (pickerId !== undefined) params.set('pickerId', String(pickerId));
   if (staffId !== undefined) params.set('staff', String(staffId));
+  if (pickedBy !== undefined) params.set('pickedBy', String(pickedBy));
+  if (orderFrom) params.set('orderFrom', orderFrom);
+  if (orderTo) params.set('orderTo', orderTo);
+  if (shipByFrom) params.set('shipByFrom', shipByFrom);
+  if (shipByTo) params.set('shipByTo', shipByTo);
   const scoped = !searchQuery.trim() || strictSearchScope;
   if (scoped) params.set('inWarehouse', 'true');
   if (blockedOnly) params.set('blockedOnly', 'true');
@@ -216,14 +247,17 @@ export async function fetchUnshippedOrderRowById({
  * order #, customer, email, tracking, SKU — in ANY state, shipped included.
  * `/api/orders?q=` runs the match server-side and unbounded.
  */
-export async function fetchOrderLookupData(searchQuery: string): Promise<ShippedOrder[]> {
+export async function fetchOrderLookupData(
+  searchQuery: string,
+  { includeFba = false }: { includeFba?: boolean } = {},
+): Promise<ShippedOrder[]> {
   const q = searchQuery.trim();
   if (!q) return [];
   const params = new URLSearchParams({ q, includeShipped: 'true' });
   const res = await fetch(`/api/orders?${params.toString()}`, FRESH_FETCH_OPTIONS);
   if (!res.ok) throw new Error('Failed to search orders');
   const data = await res.json();
-  return normalizeUnshippedOrdersPayload(data.orders || []);
+  return normalizeUnshippedOrdersPayload(data.orders || [], { includeFba });
 }
 
 
@@ -383,6 +417,8 @@ export async function fetchDashboardPackedRecords({
   statusCategory,
   exceptionsOnly = false,
   searchTerm = '',
+  shippedTime = null,
+  pickedBy,
   limit = 1000,
   offset = 0,
   phase = 'full',
@@ -399,6 +435,10 @@ export async function fetchDashboardPackedRecords({
   exceptionsOnly?: boolean;
   /** The desk's find text, answered in SQL by `/api/packerlogs?q=`. */
   searchTerm?: string;
+  /** Exact shipped-instant window (`?dateFrom/dateTo` + `?timeFrom/timeTo`); null = none. */
+  shippedTime?: { dateFrom: string; dateTo: string; timeFrom?: string; timeTo?: string } | null;
+  /** `?pickedBy` — the order's picker. */
+  pickedBy?: number;
   limit?: number;
   offset?: number;
   /** Spine-first: 'spine' returns immediate-paint columns only (deferred fields
@@ -417,6 +457,13 @@ export async function fetchDashboardPackedRecords({
   if (statusCategory) params.set('statusCategory', statusCategory);
   if (exceptionsOnly) params.set('exceptions', '1');
   if (searchTerm.trim()) params.set('q', searchTerm.trim());
+  if (shippedTime) {
+    params.set('dateFrom', shippedTime.dateFrom);
+    params.set('dateTo', shippedTime.dateTo);
+    if (shippedTime.timeFrom) params.set('timeFrom', shippedTime.timeFrom);
+    if (shippedTime.timeTo) params.set('timeTo', shippedTime.timeTo);
+  }
+  if (pickedBy !== undefined) params.set('pickedBy', String(pickedBy));
   if (phase === 'spine') params.set('phase', 'spine');
 
   const res = await fetch(`/api/packerlogs?${params.toString()}`, FRESH_FETCH_OPTIONS);
@@ -432,12 +479,10 @@ export async function fetchDashboardPackedRecords({
 export interface ShippedHydrationEntry {
   ship_by_date: string | null;
   deadline_at: string | null;
-  tester_id: number | null;
-  tester_name: string | null;
   packer_photos_url: Array<{ id: number; url: string; uploadedAt: string }>;
 }
 
-/** Fetch the deferred (work_assignments deadline/tester + photos) fields for a page of shipped rows so the spine-first table can fill them… */
+/** Fetch the deferred (work_assignments deadline + photos) fields for a page of shipped rows so the spine-first table can fill them… */
 export async function fetchShippedHydration(salIds: number[]): Promise<Record<number, ShippedHydrationEntry>> {
   if (salIds.length === 0) return {};
   try {

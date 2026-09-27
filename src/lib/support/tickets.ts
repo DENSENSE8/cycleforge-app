@@ -3,7 +3,7 @@
  * operators see; provider-native ids (Zendesk today) live in external_ticket_id.
  * Polymorphic entity linkage stays on ticket_links.
  */
-import { tenantQuery } from '@/lib/tenancy/db';
+import { tenantQuery, tenantQueryOneTrip } from '@/lib/tenancy/db';
 
 export { looksLikeTicketScan, parseTicketScanValue } from '@/lib/support/ticket-scan';
 
@@ -487,25 +487,17 @@ export async function resolveSupportTicketToReceiving(
   if (!/^\d{1,12}$/.test(digits)) return null;
   const numeric = Number(digits);
 
-  // Internal id match first (operator scans #42).
-  let ticketRes = await tenantQuery<{ id: string }>(
+  // Internal id match first (operator scans #42), else the legacy Zendesk-id
+  // scan (pre-migration labels) — one statement, the id match ranked first.
+  const ticketRes = await tenantQueryOneTrip<{ id: string }>(
     orgId,
     `SELECT id FROM support_tickets
-      WHERE organization_id = $1 AND id = $2
+      WHERE organization_id = $1
+        AND (id = $2 OR (provider = 'zendesk' AND external_ticket_id = $3))
+      ORDER BY (id = $2) DESC
       LIMIT 1`,
-    [orgId, numeric],
+    [orgId, numeric, digits],
   );
-
-  // Legacy Zendesk-id scan fallback (pre-migration labels).
-  if (!ticketRes.rows[0]) {
-    ticketRes = await tenantQuery<{ id: string }>(
-      orgId,
-      `SELECT id FROM support_tickets
-        WHERE organization_id = $1 AND provider = 'zendesk' AND external_ticket_id = $2
-        LIMIT 1`,
-      [orgId, digits],
-    );
-  }
 
   const supportTicketId = ticketRes.rows[0] ? Number(ticketRes.rows[0].id) : null;
   if (supportTicketId == null) return null;
@@ -513,7 +505,7 @@ export async function resolveSupportTicketToReceiving(
   // `AND is_primary`: resolve the ticket's ANCHOR. ticket_links is
   // many-per-ticket now, so a bare LIMIT 1 would return an arbitrary reference
   // row (e.g. one of several STNs) and resolve the ticket to the wrong entity.
-  const link = await tenantQuery<{ entity_type: string; entity_id: string }>(
+  const link = await tenantQueryOneTrip<{ entity_type: string; entity_id: string }>(
     orgId,
     `SELECT entity_type, entity_id FROM ticket_links
       WHERE organization_id = $1 AND support_ticket_id = $2 AND is_primary
@@ -526,7 +518,7 @@ export async function resolveSupportTicketToReceiving(
   const id = Number(link.rows[0].entity_id);
   if (type === 'RECEIVING') return { receivingId: id, supportTicketId };
   if (type === 'RECEIVING_LINE') {
-    const parent = await tenantQuery<{ receiving_id: number | null }>(
+    const parent = await tenantQueryOneTrip<{ receiving_id: number | null }>(
       orgId,
       `SELECT receiving_id FROM receiving_line
         WHERE id = $1 AND organization_id = $2 LIMIT 1`,
@@ -536,7 +528,7 @@ export async function resolveSupportTicketToReceiving(
     if (receivingId != null) return { receivingId, lineId: id, supportTicketId };
   }
   if (type === 'SHIPMENT') {
-    const carton = await tenantQuery<{ id: string }>(
+    const carton = await tenantQueryOneTrip<{ id: string }>(
       orgId,
       `SELECT id FROM receiving_carton
         WHERE organization_id = $1 AND shipment_id = $2

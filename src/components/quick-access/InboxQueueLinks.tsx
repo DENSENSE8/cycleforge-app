@@ -4,7 +4,7 @@
 
 import Link from 'next/link';
 import { useMyDayFeed } from '@/features/my-day/useMyDayFeed';
-import { cornerClass } from '@/design-system/tokens/radius';
+import { HEADER_MENU_CAPTION_CLASS, HEADER_MENU_ROW_CORNER } from '@/components/layout/header-shell';
 import { cn } from '@/utils/_cn';
 
 /** Track count is CONTAINER-relative (`auto-fill`), never a viewport breakpoint. */
@@ -15,7 +15,7 @@ function QueueLinksSkeleton() {
   return (
     <div className={cn(QUEUE_LINK_GRID_CLASS, 'px-2 py-2')} aria-hidden>
       {[0, 1, 2, 3].map((i) => (
-        <div key={i} className={cn('h-7 animate-pulse bg-surface-hover', cornerClass('flush'))} />
+        <div key={i} className={cn('h-7 animate-pulse bg-surface-hover', HEADER_MENU_ROW_CORNER)} />
       ))}
     </div>
   );
@@ -34,7 +34,7 @@ export function InboxQueueLinks({ onNavigate }: { onNavigate: () => void }) {
 
   return (
     <div className="border-b border-border-hairline px-2 py-2">
-      <p className="px-1 pb-1 text-role-eyebrow uppercase tracking-widest text-text-soft">
+      <p className={cn('px-1 pb-1', HEADER_MENU_CAPTION_CLASS)}>
         Your queues
       </p>
       <ul className={QUEUE_LINK_GRID_CLASS}>
@@ -48,8 +48,8 @@ export function InboxQueueLinks({ onNavigate }: { onNavigate: () => void }) {
               aria-label={`${card.label} — ${card.count} waiting`}
               className={cn(
                 'flex h-7 min-w-0 items-center gap-1.5 px-1.5',
-                cornerClass('flush'),
-                'text-text-muted transition-colors hover:bg-surface-hover hover:text-text-default',
+                HEADER_MENU_ROW_CORNER,
+                'text-text-muted transition-[background-color,transform] duration-100 hover:bg-surface-hover hover:text-text-default active:translate-y-px active:bg-surface-sunken',
               )}
             >
               <span className="min-w-0 flex-1 truncate text-role-caption font-medium">

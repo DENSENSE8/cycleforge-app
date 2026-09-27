@@ -1,11 +1,12 @@
 /**
  * Shipped (`outbound.shipped`) facet counts. The list is `fetchPackerLogRows`
  * (`/api/packerlogs`); this statement reads the SAME population
- * (`buildPackerLogBaseWhere`: tenant, rows, scan-out membership, staff, window)
- * and the SAME filter fragments (`shipped-filter-sql.ts`), so an option's count
- * is by construction the list total for that pick. On top of the page query it
- * applies what the list still does in the browser to the fetched rows: the
- * exact window clip (`created_at`'s day inside the range) and the one-row-per-
+ * (`buildPackerLogBaseWhere`: tenant, rows, scan-out membership, staff, picker,
+ * window, exact time window) and the SAME filter fragments (`shipped-filter-sql.ts`),
+ * so an option's count is by construction the list total for that pick. On top
+ * of the page query it applies what the list still does in the browser to the
+ * fetched rows: the exact window clip (`created_at`'s day inside the range, or
+ * the `timeFrom`/`timeTo` instants) and the one-row-per-
  * package collapse (`dedupeShippedRecords` keys every Shipped row by its
  * package, since scan-out membership requires one).
  *
@@ -30,7 +31,11 @@ import {
   TYPE_ITEMS,
   type ShippedTypeFilter,
 } from '@/lib/shipping/shipped-filter/shipped-filter-constants';
-import { readShippedDateWindow } from '@/lib/shipping/shipped-filter/shipped-filter-params';
+import {
+  readShippedDateWindow,
+  readShippedPickedBy,
+  readShippedTimeWindow,
+} from '@/lib/shipping/shipped-filter/shipped-filter-params';
 import {
   SHIPPED_CARRIER_SQL,
   SHIPPED_EXCEPTION_SQL,
@@ -60,6 +65,7 @@ function staffParam(params: ParamReader, key: string): number | null {
 /** One statement: per-package facet values, counted per combination. */
 export function buildShippedFacetSql(orgId: OrgId, params: ParamReader, enriched: boolean) {
   const window = readShippedDateWindow(params);
+  const timeWindow = readShippedTimeWindow(params);
   const bind: unknown[] = [];
   const { conditions, needsOrderJoins } = buildPackerLogBaseWhere(
     {
@@ -69,12 +75,16 @@ export function buildShippedFacetSql(orgId: OrgId, params: ParamReader, enriched
       staffId: staffParam(params, 'staff'),
       weekStart: window.start,
       weekEnd: window.end,
+      shippedFrom: timeWindow?.fromIso ?? null,
+      shippedTo: timeWindow?.toIso ?? null,
+      pickedBy: readShippedPickedBy(params),
     },
     bind,
   );
-  if (window.start && window.end) {
+  // The list's clip of the padded page to the window (`toPSTDateKey(created_at)`);
+  // a time window replaces it with the exact instants (already bound above).
+  if (window.start && window.end && !timeWindow) {
     bind.push(window.start, window.end);
-    // The list's clip of the padded page to the window (`toPSTDateKey(created_at)`).
     conditions.push(`to_char(sal.created_at, 'YYYY-MM-DD') BETWEEN $${bind.length - 1} AND $${bind.length}`);
   }
   const sql = `

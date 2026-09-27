@@ -12,6 +12,7 @@ import {
   getSidebarHref,
   getSidebarRouteKey,
   getSidebarNavPageId,
+  permissionForPath,
   hasSidebarContextPanel,
   applyChildTarget,
   resolveSidebarChild,
@@ -685,15 +686,14 @@ test('resolver matches existing panel derivations for known deep-links', () => {
     null,
   );
   assert.equal(resolveSidebarChild('support', at('/support')), 'tickets');
-  // Tech: top-mode switch only — view=testing flips to Quality Control (id `testing`), else Ready to Pack.
-  assert.equal(resolveSidebarChild('tech', at('/test', 'view=testing')), 'testing');
-  assert.equal(resolveSidebarChild('tech', at('/test', 'staffId=7')), 'shipping');
-  assert.equal(resolveSidebarChild('tech', at('/tech', 'view=testing')), 'testing');
+  // Quality Control owns `/test` (any `?view=`); the Picker desk owns `/pick` (owner 2026-09-27).
+  assert.equal(getSidebarNavPageId('/test'), 'testing');
   assert.equal(getSidebarNavPageId('/test', new URLSearchParams('view=testing')), 'testing');
-  assert.equal(getSidebarNavPageId('/test', new URLSearchParams('view=testing-history')), 'testing');
-  assert.equal(getSidebarNavPageId('/test'), 'ready-to-pack');
-  assert.equal(getSidebarNavPageId('/tech', new URLSearchParams('view=testing')), 'testing');
-  assert.equal(getSidebarNavPageId('/tech'), 'ready-to-pack');
+  assert.equal(getSidebarNavPageId('/test', new URLSearchParams('ship=urgent')), 'testing');
+  assert.equal(getSidebarNavPageId('/tech'), 'testing');
+  assert.equal(getSidebarNavPageId('/pick'), 'ready-to-pack');
+  assert.equal(getSidebarNavPageId('/pick', new URLSearchParams('ship=history')), 'ready-to-pack');
+  assert.equal(getSidebarNavPageId('/pickup'), 'pickup');
 });
 
 // The Test surface + its legacy alias both resolve to the `tech` nav key so the
@@ -702,6 +702,8 @@ test('getSidebarRouteKey maps the Test surface + legacy alias to tech', () => {
   assert.equal(getSidebarRouteKey('/test'), 'tech');
   assert.equal(getSidebarRouteKey('/test/'), 'tech');
   assert.equal(getSidebarRouteKey('/tech'), 'tech');
+  assert.equal(getSidebarRouteKey('/pick'), 'pick');
+  assert.equal(getSidebarRouteKey('/pickup'), 'receiving');
 });
 
 test('getSidebarRouteKey does not treat retired /o as a dedicated workspace', () => {
@@ -764,6 +766,9 @@ test('isSidebarNavActive is pathname-only (query strings do not change the match
   assert.equal(isSidebarNavActive('/packer', '/pack'), true);
   assert.equal(isSidebarNavActive('/test', '/test'), true);
   assert.equal(isSidebarNavActive('/tech', '/test'), true);
+  assert.equal(isSidebarNavActive('/pick', '/test'), false);
+  assert.equal(isSidebarNavActive('/pick', '/pick?ship=urgent'), true);
+  assert.equal(isSidebarNavActive('/pickup', '/pick?ship=urgent'), false);
   assert.equal(isSidebarNavActive('/shipping/labels', '/shipping'), true);
   assert.equal(isSidebarNavActive('/outbound', '/shipping'), true);
 
@@ -821,37 +826,25 @@ test('floorStationPages is the flat Scan Stations map for the header switcher', 
   );
 });
 
-test('Testing L1 benches are Quality Control and Ready to Pack', () => {
+test('Quality Control is the only Testing bench — picking is its own station', () => {
   assert.deepEqual(
     stationSubgroupMembers('testing').map((p) => [p.id, p.label]),
-    [
-      ['testing', 'Quality Control'],
-      ['ready-to-pack', 'Picker'],
-    ],
+    [['testing', 'Quality Control']],
   );
-  const tech = getSidebarPageNav('tech');
-  assert.ok(tech?.children);
-  assert.deepEqual(
-    tech.children.map((child) => [child.id, child.label]),
-    [
-      ['testing', 'Quality Control'],
-      ['shipping', 'Picker'],
-    ],
-  );
+  assert.equal(getSidebarPageNav('testing')?.href, '/test');
+  // The mode-switch family that hosted both on `/test` is gone.
+  assert.equal(getSidebarPageNav('tech'), undefined);
 });
 
-test('Picker navigation enters its visible Urgent tab', () => {
-  assert.equal(getSidebarPageNav('ready-to-pack')?.href, '/test?ship=urgent');
-  const tech = getSidebarPageNav('tech');
-  assert.ok(tech?.children);
-  assert.deepEqual(tech.children.find((child) => child.id === 'shipping')?.to(), {
-    pathname: '/test',
-    params: { view: null, ship: 'urgent' },
-  });
+test('Picker navigation lands on /pick in its visible Urgent tab', () => {
+  assert.equal(getSidebarPageNav('ready-to-pack')?.href, '/pick?ship=urgent');
   assert.equal(
     APP_SIDEBAR_NAV.find((item) => item.id === 'ready-to-pack')?.href,
-    '/test?ship=urgent',
+    '/pick?ship=urgent',
   );
+  assert.equal(permissionForPath('/pick'), 'picking.view');
+  assert.equal(permissionForPath('/test'), 'tech.view');
+  assert.equal(permissionForPath('/pickup'), 'receiving.view');
 });
 
 test('Wave 1 catalog forks: Home paints, studio stays /studio, admin is gone, no automations href', () => {
@@ -916,7 +909,8 @@ test('masterNavLabelForPath uses APP_SIDEBAR_NAV L1, never desk tabs', () => {
     masterNavLabelForPath('/test', new URLSearchParams('view=testing')),
     'Quality Control',
   );
-  assert.equal(masterNavLabelForPath('/test'), 'Picker');
+  assert.equal(masterNavLabelForPath('/test'), 'Quality Control');
+  assert.equal(masterNavLabelForPath('/pick'), 'Picker');
   assert.equal(masterNavLabelForPath('/unbox'), 'Unbox');
   assert.equal(masterNavLabelForPath('/studio'), 'Automations');
   assert.equal(getMasterNavItem('outbound')?.label, 'Shipping');

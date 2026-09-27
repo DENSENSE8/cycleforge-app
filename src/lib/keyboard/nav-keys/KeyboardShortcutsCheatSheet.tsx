@@ -77,6 +77,7 @@ function buildGroups(): { title: string; rows: ShortcutRow[] }[] {
       rows: [
         { keys: ['⌘', ';'], label: 'Arm nav-keys (then region · letter)' },
         { keys: ['?'], label: 'Reveal hotkeys on buttons (or this sheet)' },
+        { keys: ['⌘', '⇧', '?'], label: 'This sheet — anywhere, even while typing' },
         { keys: ['⌘', 'K'], label: 'Command palette' },
         { keys: ['⌘', ']'], label: 'Open / close Station Displays' },
         { keys: ['⌘', '.'], label: 'Next scan — clear + focus station scan bar' },
@@ -161,10 +162,18 @@ export function KeyboardShortcutsCheatSheet() {
     if (!enabled || typeof window === 'undefined') return;
 
     const onKey = (e: KeyboardEvent) => {
+      if (e.repeat) return;
+      // ⌘⇧? / Ctrl+Shift+? — the sheet from anywhere, text fields included
+      // (physical Slash, so it holds on layouts where `?` moves).
+      if (e.code === 'Slash' && e.shiftKey && (e.metaKey || e.ctrlKey) && !e.altKey) {
+        e.preventDefault();
+        e.stopPropagation();
+        toggleShortcutOverview();
+        return;
+      }
       if (e.key !== '?') return;
       // Holding `?` (key-repeat) must not open / toggle the cheat sheet —
       // selection CTA reveal already ignores repeat; stay aligned.
-      if (e.repeat) return;
       if (e.metaKey || e.ctrlKey || e.altKey) return;
       // Selection CTAs own `?` while mounted — useSelectionStatusBarHotkeys toggles overlays (including from Filter-orders INPUT).
       if (isSelectionInlineHotkeySurfaceActive()) return;

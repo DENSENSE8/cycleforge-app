@@ -254,7 +254,7 @@ export function StockLedger({ rows, rooms, selectedRooms, selectedStates, totalC
             onChange={setQuery}
             placeholder="Search title, SKU, location, room or qty…"
             isSearching={pending}
-            className="min-w-0 max-w-[28rem] flex-1 overflow-hidden rounded-none pl-2"
+            className="min-w-0 max-w-[28rem] flex-1 overflow-hidden rounded-mode-control pl-2"
             tone="neutral"
             hideUnderline
             fillHost

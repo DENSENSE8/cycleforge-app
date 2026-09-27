@@ -74,6 +74,36 @@ public enum DesignTokens {
         public let motionPress: Double
         /// Indeterminate pulse period (0 = none).
         public let motionPulse: Double
+        /// Spacing intent `inset-chip-x`.
+        public let insetChipX: CGFloat
+        /// Spacing intent `inset-chip-y`.
+        public let insetChipY: CGFloat
+        /// Spacing intent `inset-field-x`.
+        public let insetFieldX: CGFloat
+        /// Spacing intent `inset-field-y`.
+        public let insetFieldY: CGFloat
+        /// Spacing intent `inset-cozy-x`.
+        public let insetCozyX: CGFloat
+        /// Spacing intent `inset-cozy-y`.
+        public let insetCozyY: CGFloat
+        /// Spacing intent `inset-card-x`.
+        public let insetCardX: CGFloat
+        /// Spacing intent `inset-card-y`.
+        public let insetCardY: CGFloat
+        /// Spacing intent `inset-empty-x`.
+        public let insetEmptyX: CGFloat
+        /// Spacing intent `inset-empty-y`.
+        public let insetEmptyY: CGFloat
+        /// Spacing intent `stack-tight`.
+        public let stackTight: CGFloat
+        /// Spacing intent `stack-row`.
+        public let stackRow: CGFloat
+        /// Spacing intent `stack-section`.
+        public let stackSection: CGFloat
+        /// Spacing intent `row-gap`.
+        public let rowGap: CGFloat
+        /// Spacing intent `row-tight`.
+        public let rowTight: CGFloat
 
         /// Industrial: Phones and scan stations — dense: flush rows, square, 13px, no page padding, 0 ms.
         public static let industrial = Mode(
@@ -108,7 +138,22 @@ public enum DesignTokens {
             bodyTextTouch: 13.0,
             motionFeedback: 0.15,
             motionPress: 0.15,
-            motionPulse: 0.0
+            motionPulse: 0.0,
+            insetChipX: 6.0,
+            insetChipY: 2.0,
+            insetFieldX: 12.0,
+            insetFieldY: 8.0,
+            insetCozyX: 10.0,
+            insetCozyY: 6.0,
+            insetCardX: 16.0,
+            insetCardY: 16.0,
+            insetEmptyX: 16.0,
+            insetEmptyY: 24.0,
+            stackTight: 6.0,
+            stackRow: 8.0,
+            stackSection: 24.0,
+            rowGap: 8.0,
+            rowTight: 6.0
         )
 
         /// Triage: Every desktop route — decide-and-route work: shadcn neutral, 10px cards, 8px controls, pill chips.
@@ -144,7 +189,22 @@ public enum DesignTokens {
             bodyTextTouch: 16.0,
             motionFeedback: 0.16,
             motionPress: 0.12,
-            motionPulse: 0.0
+            motionPulse: 0.0,
+            insetChipX: 8.0,
+            insetChipY: 2.0,
+            insetFieldX: 12.0,
+            insetFieldY: 8.0,
+            insetCozyX: 12.0,
+            insetCozyY: 8.0,
+            insetCardX: 20.0,
+            insetCardY: 16.0,
+            insetEmptyX: 24.0,
+            insetEmptyY: 32.0,
+            stackTight: 8.0,
+            stackRow: 12.0,
+            stackSection: 32.0,
+            rowGap: 8.0,
+            rowTight: 6.0
         )
 
         /// Counter: Customer-facing counter tablet — soft corners, 16px, big targets.
@@ -180,7 +240,22 @@ public enum DesignTokens {
             bodyTextTouch: 16.0,
             motionFeedback: 0.2,
             motionPress: 0.1,
-            motionPulse: 0.0
+            motionPulse: 0.0,
+            insetChipX: 6.0,
+            insetChipY: 2.0,
+            insetFieldX: 12.0,
+            insetFieldY: 8.0,
+            insetCozyX: 10.0,
+            insetCozyY: 6.0,
+            insetCardX: 16.0,
+            insetCardY: 16.0,
+            insetEmptyX: 16.0,
+            insetEmptyY: 24.0,
+            stackTight: 6.0,
+            stackRow: 8.0,
+            stackSection: 24.0,
+            rowGap: 8.0,
+            rowTight: 6.0
         )
 
         /// Assistant: Conversational AI surfaces — the assistant dock and /ai-chat.
@@ -216,7 +291,22 @@ public enum DesignTokens {
             bodyTextTouch: 16.0,
             motionFeedback: 0.2,
             motionPress: 0.2,
-            motionPulse: 1.2
+            motionPulse: 1.2,
+            insetChipX: 6.0,
+            insetChipY: 2.0,
+            insetFieldX: 12.0,
+            insetFieldY: 8.0,
+            insetCozyX: 10.0,
+            insetCozyY: 6.0,
+            insetCardX: 16.0,
+            insetCardY: 16.0,
+            insetEmptyX: 16.0,
+            insetEmptyY: 24.0,
+            stackTight: 6.0,
+            stackRow: 8.0,
+            stackSection: 24.0,
+            rowGap: 8.0,
+            rowTight: 6.0
         )
     }
 

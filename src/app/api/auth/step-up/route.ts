@@ -36,7 +36,7 @@ export async function POST(req: NextRequest) {
     if (method === 'pin') {
       const pin = String((body as { pin?: unknown }).pin ?? '');
       try {
-        await verifyStaffPin(me.staffId, pin);
+        await verifyStaffPin(me.staffId, pin, undefined, { recordLogin: false });
       } catch (err) {
         await audit({
           staffId: me.staffId, sid: me.session.sid,

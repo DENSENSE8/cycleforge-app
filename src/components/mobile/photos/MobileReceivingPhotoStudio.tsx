@@ -14,7 +14,6 @@ import {
   type PhotoScope,
 } from '@/components/mobile/receiving/PhotoUploadQueue';
 import { useNasConfig } from '@/hooks/useNasConfig';
-import { useRealtimeInvalidation } from '@/hooks/useRealtimeInvalidation';
 import { useScopedReceivingPhotos } from '@/hooks/useScopedReceivingPhotos';
 import { photoAspectLabel, type PhotoAspect } from '@/lib/photos/photo-aspects';
 import { photoStageLabel } from '@/lib/photos/stages';
@@ -76,7 +75,6 @@ export function MobileReceivingPhotoStudio({
   const queryClient = useQueryClient();
   useClearDoneOnUnmount();
   useNasConfig();
-  useRealtimeInvalidation({ receiving: true });
 
   const { getClient } = useAblyClient();
   const { user } = useAuth();

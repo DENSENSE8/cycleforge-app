@@ -32,6 +32,18 @@ export const DESK_SPLIT_LIST_CLASS = 'flex min-h-0 min-w-0 basis-2/3 flex-col px
 export const DESK_SPLIT_RECORD_CLASS = 'flex min-w-0 basis-1/3 flex-col';
 
 /**
+ * Floor (industrial) places the record in a RIGHT RAIL (owner 2026-09-27:
+ * "keep the right rail displaying details of the selection, edge to edge"):
+ * the list runs from the viewport's left edge to the rail, no gutter, no
+ * measure; the rail is a fixed width to the viewport's right edge and is
+ * always mounted, so the list never changes width as records open and close.
+ */
+export const DESK_FLOOR_LIST_CLASS = 'flex min-h-0 min-w-0 flex-1 flex-col';
+
+/** The Floor record rail beside {@link DESK_FLOOR_LIST_CLASS}. */
+export const DESK_FLOOR_RAIL_CLASS = 'flex w-[30rem] shrink-0 flex-col';
+
+/**
  * The pane surface inside {@link DESK_SPLIT_RECORD_CLASS} — PLANTED on the one
  * white page (owner 2026-09-26): only the record's columns lift, never the
  * pane or its header. One hairline seam separates it from the list.
@@ -42,10 +54,11 @@ export const DESK_SPLIT_RECORD_CARD_CLASS = 'flex min-h-0 flex-1 flex-col overfl
  * A record COLUMN — the 2/3 work column and the 1/3 facts column of
  * {@link DESK_RECORD_COLUMNS_CLASS} — the only lifted surfaces on a desk
  * record (owner 2026-09-26, Shopify / Ecwid order page): the mode's card
- * corner and the raised shadow on the white page. Industrial keeps the ink box
- * (`frame`), square.
+ * corner and the raised shadow on the white page. Industrial (the Floor rail)
+ * drops the box: no frame, no lift, no inset — each column runs the rail's full
+ * width, closed by one `divide` hairline (owner 2026-09-27).
  */
-export const DESK_RECORD_COLUMN_CARD_CLASS = `flex min-w-0 flex-col overflow-hidden rounded-mode border border-mode-frame bg-mode-bar ${elevationClass('raised')}`;
+export const DESK_RECORD_COLUMN_CARD_CLASS = `flex min-w-0 flex-col overflow-hidden rounded-mode border border-mode-frame bg-mode-bar ${elevationClass('raised')} industrial:border-x-0 industrial:border-t-0 industrial:border-b-mode-divide industrial:shadow-none`;
 
 /**
  * The split LIST's body (owner 2026-09-26): full width of its two thirds with
@@ -53,6 +66,36 @@ export const DESK_RECORD_COLUMN_CARD_CLASS = `flex min-w-0 flex-col overflow-hid
  * floating bottom edge, no in-page wrapper.
  */
 export const DESK_SPLIT_LIST_CARD_CLASS = 'flex min-h-0 min-w-0 w-full flex-1 flex-col';
+
+/* ── ORDER CARD disclosure — the To-ship card list (owner 2026-09-27) ────────── */
+
+/**
+ * One 24 px line box for every fact on a card's lines 1 and 3 — order number,
+ * platform, buyer, chips, Listing, SLA, "+N items", Details, the stage — so
+ * nothing sits taller or lower than its neighbour.
+ */
+export const CARD_FACT_BOX_CLASS = 'inline-flex h-6 shrink-0 items-center';
+
+/**
+ * Width tiers of the card face, read off the card's own container
+ * (`@container/card`) — never the viewport, so the split's narrow list and a
+ * full-width list disclose from the same rules. Everything a tier hides is in
+ * a hover tooltip and in the quick look (Space).
+ *
+ * - `brand` (@md) — the platform NAME beside its brand dot.
+ * - `label` (@xl) — words beside icons: "Listing", the stage word,
+ *   "SKU in N orders" (under it: "SKU ×N").
+ * - `detail` (@2xl) — the buyer name, the stage's PST time.
+ *
+ * `show*` = hidden below the tier, painted from it (one per display type);
+ * `hideAt` = painted below the tier, hidden from it (the short twin).
+ * Full literal strings — Tailwind 4 must see every variant in source.
+ */
+export const CARD_DISCLOSE = {
+  brand: { show: 'hidden @md/card:inline' },
+  label: { show: 'hidden @xl/card:inline', hideAt: '@xl/card:hidden' },
+  detail: { flex: 'hidden @2xl/card:flex', inlineFlex: 'hidden @2xl/card:inline-flex' },
+} as const;
 
 /**
  * One record, two widths (operator 2026-09-25). In place the record gets the

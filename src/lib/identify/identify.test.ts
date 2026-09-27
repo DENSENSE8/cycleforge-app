@@ -26,7 +26,7 @@ function row(over: Partial<IdentifyRow>): IdentifyRow {
     order_condition: null,
     shipment_id: null,
     desk_view: null,
-    has_tech_scan: false,
+    has_pick_scan: false,
     packed: false,
     staged: false,
     out_of_stock: false,

@@ -79,7 +79,7 @@
     "test:shipstation": "tsx --test src/lib/shipping/shipstation/client.test.ts src/lib/shipping/shipstation/orders-v1.test.ts src/lib/shipping/shipstation/rate-request.test.ts",
     "test:parcel-dims": "node --import tsx --import ./scripts/register-server-only-shim.cjs --test --test-force-exit src/lib/orders/parcel-dims.test.ts",
     "test:label-purchase": "node --import tsx --import ./scripts/register-server-only-shim.cjs --test --test-force-exit src/lib/shipping/label-purchase-ledger.test.ts",
-    "test:orders": "node --import tsx --import ./scripts/register-server-only-shim.cjs --test src/lib/orders/resolve-buyer-customers.test.ts",
+    "test:orders": "node --import tsx --import ./scripts/register-server-only-shim.cjs --test --test-force-exit src/lib/orders/resolve-buyer-customers.test.ts src/lib/orders/create-order.test.ts",
     "test:documents": "node --import tsx --import ./scripts/register-server-only-shim.cjs --test src/lib/documents/*.test.ts",
     "verify:cycleforge-inference": "node scripts/verify-cycleforge-inference.mjs",
     "verify:wms-graph": "node scripts/verify-wms-graph-phase.mjs",

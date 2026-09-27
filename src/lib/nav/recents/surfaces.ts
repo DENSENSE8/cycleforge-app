@@ -94,7 +94,7 @@ export const NAV_RECENT_SURFACES = [
   { id: 'receiving.unbox_opened', source: 'adapter', endpoint: endpoint('receiving.unbox_opened'), permission: 'receiving.view' },
   { id: 'receiving.scanned', source: 'adapter', endpoint: endpoint('receiving.scanned'), permission: 'receiving.view' },
   { id: 'testing.opened', source: 'adapter', endpoint: endpoint('testing.opened'), permission: 'tech.qc_pass' },
-  { id: 'tech.scans', source: 'adapter', endpoint: endpoint('tech.scans'), permission: 'tech.view' },
+  { id: 'tech.scans', source: 'adapter', endpoint: endpoint('tech.scans'), permission: 'picking.view' },
   { id: 'packer.packs', source: 'adapter', endpoint: endpoint('packer.packs'), permission: 'packing.view' },
   { id: 'labels.prints', source: 'adapter', endpoint: endpoint('labels.prints'), permission: 'print.label' },
   { id: 'pickup.orders', source: 'adapter', endpoint: endpoint('pickup.orders'), permission: 'walk_in.view' },

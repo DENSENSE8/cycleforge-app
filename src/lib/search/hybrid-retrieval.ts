@@ -1,6 +1,6 @@
 /** hybrid-retrieval — the single retrieval engine behind AI search (docs/ai-search-modernization-plan.md, locked decision 4). */
 
-import { tenantQuery } from '@/lib/tenancy/db';
+import { tenantQueryOneTrip } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';
 import { embedText } from '@/lib/ai/embed';
 import { EMBEDDING_DIMS } from '@/lib/ai/provider';
@@ -108,7 +108,7 @@ async function keywordSearchImpl(
   }
   params.push(limit);
 
-  const res = await tenantQuery(
+  const res = await tenantQueryOneTrip(
     orgId,
     `SELECT entity_type, entity_id, title, subtitle, status, condition_grade,
             source_platform, tracking_number, carrier, serial_number, happened_at,
@@ -137,7 +137,7 @@ async function vectorSearchImpl(
   }
   params.push(limit);
 
-  const res = await tenantQuery(
+  const res = await tenantQueryOneTrip(
     orgId,
     `SELECT entity_type, entity_id, title, subtitle, status, condition_grade,
             source_platform, tracking_number, carrier, serial_number, happened_at

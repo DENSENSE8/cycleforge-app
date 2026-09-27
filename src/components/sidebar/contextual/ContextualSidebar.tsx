@@ -30,9 +30,11 @@ import { NavFilters } from './NavFilters';
 import { NAV_BLOCK_CLASS } from './nav-block';
 import { NavRecentsList } from './NavRecentsList';
 import { NavPanelActions } from './NavPanelActions';
-import { NavFind, NavGlobalSearch } from './NavFind';
+import { NavFind } from './NavFind';
 import { NavSlotError } from './NavSlotError';
 import { NavModeSwitcher, isNavModeSection } from './NavModeSwitcher';
+import { NavViewSwitcher } from './NavViewSwitcher';
+import { NavGoKeys } from './NavGoKeys';
 import { useRememberLaneView } from './useLaneDoorHref';
 
 /**
@@ -42,17 +44,25 @@ import { useRememberLaneView } from './useLaneDoorHref';
  * lit, so the parent sidebar is the same face everywhere. Minimal by
  * default; detail opens on click (operator 2026-09-27):
  *
- * - pinned head: collapse · global search (the ⌘K palette's face); on a page
- *   panel also Find (`F`, the list on screen only), `‹ <Lane>` — carrying a
- *   view-less page's verbs at its right end (Chat's `+`) — and, on a lane
- *   door's landing page, the mode switcher (Shipping · FBA · Label intake).
- *   Pinned so search never scrolls away or hides while a record is open;
- * - scrolling body: the views as pressable blocks, then the closed filter
- *   rows. The view's verbs live in the page header, over the list they act
- *   on (`NavPageActions`). After `‹` the body shows the lane map
+ * - pinned head: collapse · THE search field (`NavFind`) — on a page panel
+ *   it narrows the list on screen (`F`), grows right over the header while
+ *   focused, and says where the text lives in the section (locate pills);
+ *   "Search everywhere" hands the text to the ⌘K palette; the palette's face
+ *   everywhere else — then `‹ <Lane>` — carrying a view-less page's verbs at
+ *   its right end (Chat's `+`) — then, on a lane door's landing page, the
+ *   MODE switcher (Shipping · FBA · Label intake), then the VIEW switcher
+ *   (Exceptions · PO paired · …). Modes and views are changed rarely, so
+ *   each is one block that opens to the right of the sidebar on hover
+ *   (`NavSwitcherMenu`). Pinned so search never scrolls away or hides while
+ *   a record is open;
+ * - scrolling body: what you change often, as buttons — the saved views,
+ *   then the closed filter rows. The view's verbs live in the page header,
+ *   over the list they act on (`NavPageActions`). After `‹` the body shows
+ *   the lane map
  *   (`?view=top`) with this page lit. `‹` is LOCAL state and never touches
  *   the URL; any URL change (links, back/forward) rebuilds from the URL;
- * - fixed footer: the staff account bar.
+ * - fixed footer, PARENT level only (the page map, and a panel's `‹` peek):
+ *   the staff account bar. A page's own panel does not repeat it.
  *
  * Every slot renders only when its NavContext field is present, so a page
  * needs no host code of its own.
@@ -86,6 +96,10 @@ export function ContextualSidebar() {
     });
 
   const modeSection = panel ? nav.sections.find(isNavModeSection) : undefined;
+  const viewSections = useMemo(
+    () => (panel ? nav.sections.filter((section) => !isNavModeSection(section)) : []),
+    [panel, nav?.sections],
+  );
   const showTop = peekTop || !panel;
   const body: NavContext | undefined = peekTop || mapOnly ? top.data : nav;
   useRememberLaneView(nav);
@@ -105,21 +119,20 @@ export function ContextualSidebar() {
 
   return (
     <SidebarProvider className="isolate flex h-full min-h-0 flex-col font-spine" data-contextual-sidebar>
-      {/* Pinned: global search, then this page's `‹` and Find. Neither scrolls
-          away nor hides while a record is open. */}
+      {/* Pinned: the one search field, then this page's `‹` and switchers.
+          None scrolls away or hides while a record is open. */}
       <div data-contextual-head className="flex shrink-0 flex-col gap-1 pb-1">
-        <div className={cn(TOP_CHROME_BAND_CLASS, 'items-center pr-2')}>
+        <div className={cn(TOP_CHROME_BAND_CLASS, 'items-center pl-1 pr-2')}>
           <SidebarCollapseControl
             navOpen
             onToggleNav={() => window.dispatchEvent(new Event(MASTER_NAV_TOGGLE_EVENT))}
           />
-          <NavGlobalSearch />
+          {/* The field never moves: backing out to the page map drops the
+              back row below it, not the field the eye is on. */}
+          <NavFind search={panel ? nav.search : undefined} />
         </div>
         {panel ? (
-          // Find sits ABOVE `‹` so it never moves: backing out to the page map
-          // drops the back row below it, not the field the eye is on.
           <div className="flex flex-col gap-1 px-2">
-            <NavFind search={nav.search} />
             {nav.back && !peekTop ? (
               <div className="relative flex min-w-0">
                 <button
@@ -143,9 +156,11 @@ export function ContextualSidebar() {
               </div>
             ) : null}
             {modeSection && !peekTop ? <NavModeSwitcher section={modeSection} currentPageId={nav.page.id} /> : null}
+            {!peekTop ? <NavViewSwitcher sections={viewSections} pageId={nav.page.id} /> : null}
           </div>
         ) : null}
       </div>
+      <NavGoKeys currentPageId={nav?.page.id} />
 
       <SidebarContent
         data-spine-scrollport
@@ -193,9 +208,13 @@ export function ContextualSidebar() {
         )}
       </SidebarContent>
 
-      <SidebarFooter className="shrink-0 p-0">
-        <StaffAccountFooter />
-      </SidebarFooter>
+      {/* The account bar belongs to the PARENT level (the page map), not to
+          every page's panel: a panel reaches it through `‹`. */}
+      {showTop ? (
+        <SidebarFooter className="shrink-0 p-0" data-sidebar-account>
+          <StaffAccountFooter />
+        </SidebarFooter>
+      ) : null}
     </SidebarProvider>
   );
 }
@@ -241,17 +260,14 @@ function viewlessPanelVerbs(nav: NavContext): readonly NavAction[] {
 }
 
 function SectionBody({ nav }: { nav: NavContext }) {
-  // The modes paint as the pinned switcher under `‹`, not as rows here.
-  const views = useMemo(() => nav.sections.filter((section) => !isNavModeSection(section)), [nav.sections]);
-  const hasItems = views.some((section) => section.items.length > 0);
+  // Modes and views paint as the pinned switchers in the head, not as rows here.
+  const hasViews = nav.sections.some((section) => !isNavModeSection(section) && section.items.length > 0);
   const hasFilters = Boolean(nav.filters || nav.controls || nav.savedViews);
   return (
     <>
-      {hasItems ? (
-        <NavSectionList sections={views} pageId={nav.page.id} />
-      ) : nav.recents ? null : (
+      {!hasViews && !hasFilters && !nav.recents ? (
         <p className="px-4 py-2 text-role-caption text-text-faint">No views on this page</p>
-      )}
+      ) : null}
       {hasFilters ? (
         <NavFilters
           key={nav.filters?.facetContext ?? nav.page.id}
@@ -265,7 +281,7 @@ function SectionBody({ nav }: { nav: NavContext }) {
           key={nav.recents.surface}
           recents={nav.recents}
           search={nav.search}
-          leadingHairline={hasItems || hasFilters}
+          leadingHairline={hasFilters}
         />
       ) : null}
     </>

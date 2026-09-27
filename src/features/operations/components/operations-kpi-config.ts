@@ -23,7 +23,7 @@ export const PRIMARY_KPI_CARDS: PrimaryKpiConfig[] = [
     kind: 'tested',
     summaryKey: 'tested',
     title: 'Tested today',
-    meta: 'Distinct tech-bench scans · today, PST',
+    meta: 'Unit QC verdicts at the bench · today, PST',
   },
   {
     kind: 'fba',

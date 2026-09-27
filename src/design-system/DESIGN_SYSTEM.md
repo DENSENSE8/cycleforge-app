@@ -68,8 +68,61 @@ Coarse pointers raise hit floors to 48px, and page padding and body text where t
   roles come from `rounded-mode(-pill)`, `p(x)-mode-page`, `min-h-mode-hit(-cta)`,
   `bg-mode-well` / `bg-mode-bar`, `border-mode-control`, `text-mode-warn`,
   `text-mode-body`, `duration-mode-feedback`. Look them up with `ds_tokens mode`.
+- **Spacing follows the mode, by INTENT:** padding and gaps are the spacing
+  intents — `inset-chip` / `inset-field` / `inset-cozy` / `inset-card` /
+  `inset-empty`, `stack-tight` / `stack-row` / `stack-section`, `row-gap` /
+  `row-tight` (primitives `Inset`, `Stack`). Each mode declares their values
+  in `spacing` (`packages/design-tokens/src/modes.ts`, px) → `--mode-inset-*`
+  / `--mode-stack-*` / `--mode-row-*` (rem, so the font scale moves them), and
+  the utilities multiply by `--cf-density`. **Triage** runs `TRIAGE_SPACING` —
+  a native desktop rhythm on Fluent 2's 4px ramp (2 · 4 · 8 · 12 · 16 · 20 ·
+  24 · 32, 6 as the icon nudge): list/menu rows `inset-cozy` 12×8 so a 14px
+  row lands on the 32px hit, facts `stack-tight` 8, rows `stack-row` 12,
+  sections `stack-section` 32. Industrial, counter and assistant stay on
+  `DESK_SPACING` (the pre-mode values). A mode gets roomier or tighter by
+  declaring its own scale — one edit re-pads every intent in that mode and
+  nothing outside it. Components pick the intent, never a literal `p-*` for
+  a recurring job, and never override an intent's value locally.
 
-Token density presets (`compact` / `standard` / `spacious` in `tokens/spacing.ts`) still apply inside a mode.
+Density still applies inside a mode: `--cf-density` (`[data-density='compact']`
+0.92, the DataTable zoom) multiplies every intent and the stock spacing scale.
+
+### Disclosure ladder — progressive disclosure, just in time
+
+Owner 2026-09-27. The operator's buffer holds only what the current decision
+needs; everything else is ONE intent away (click, hover, Space/Enter, a wedge
+scan) and never loaded up front. Five layers, each opened by one intent and
+closed by Esc back to the layer above:
+
+| Layer | Carries | Opened by | Primitive |
+|---|---|---|---|
+| L0 row | the **What**: identifier, state code, next physical action | — | the record row (`LifecycleCode`, next-step badge) |
+| L1 glance | read-only explanation of what the row already says | hover / focus, Space quick-look | `HoverTooltip` |
+| L2 anchored list | a list about the row, **its verbs inline per row** | click / Enter on a trigger | `AnchoredLayer` / house `Popover`, rows on `RECORD_TRAILING_CELL_CLASS` |
+| L3 record | the **Why**: history, logs, exception detail | Enter on a row, a scan | `DeskRecordPlane`; sections inside collapse via `EvidenceDisclosure` |
+| L4 confirm | a destructive or irreversible step | a verb inside L2 / L3 | `Dialog` / `AlertDialog` |
+
+1. **Separation of depth.** The row never carries the Why; the record never
+   repeats the row's What as its body. A fact the row needs to route on moves
+   down to L0 — it does not get a tooltip.
+2. **Stable frame.** Opening a layer never navigates or remounts the list: the
+   list stays mounted under every layer (`DeskRecordPlane` keeps it mounted in
+   both views) and the global search stays put. A record opens **in place** by
+   default (owner 2026-09-27; the `desk.<id>.view` setting defaults to
+   `in-place`) — Split is the staffer's own choice. Layers render in their own
+   zone — anchored panel, split column, overlay — whose corner follows the
+   mode (`rounded-mode-*`: square on the Floor, rounded in triage).
+3. **Action proximity.** A verb lives in the layer that shows its facts — a
+   popout row's Edit / Copy / ✕ sit in that row, never in the page header.
+   L1 holds no verbs (a tooltip cannot be entered).
+4. **Keyboard first.** Drill-down: Enter on a focused row opens L3 and moves
+   focus INTO it (`DeskRecordPlane`, both views). Escape hatch: Esc closes the
+   innermost layer and returns focus to the element that opened it
+   (`DeskRecordPlane` → the record's row; `AnchoredLayer` → its opener). Only
+   L4 traps focus; L2 / L3 are non-modal so J/K keep walking the list.
+
+Runtime focus behaviour has no DOM test stack yet (`skill://add-guard` Tier 4)
+— it is enforced by the two primitives above, not by a source regex.
 
 ### AI surfaces are a separate system (`ai/`)
 
@@ -133,9 +186,10 @@ usage: [`ai/README.md`](./ai/README.md) (values in `ai/tokens.ts`).
   - `foundations/motion.ts` — CSS-oriented durations / cubic-bezier strings (`micro=100ms`, `fast=150ms`)
   - `foundations/motion-presets.ts` — Motion (`motion/react`) presets used on station surfaces:
     - `motionBezier.easeOut` / `motionBezier.layout` — cubic tuples aligned with **ActiveStationOrderCard** / **Up Next OrderCard**
-    - `motionDuration` — second-scale timings (now includes `tableRowMount`, `sidebarExpand`, `dropdownOpen`, `overlaySearchIn`, `chipCopyFeedback`)
-    - `motionTransition` — named transitions (`stationCardMount`, `upNextRowMount`, `stationCollapse`, `upNextCollapse`, `tableRowMount`, `sidebarExpand`, `dropdownOpen`, `overlaySearchIn`, `chipCopyFeedback`, chevrons, serial rows, badges, work-order springs)
-    - `motionPresence` — `initial` / `animate` / `exit` objects (now includes `tableRow`, `dropdownPanel`, `sidebarSection`); `motionVariants` for the variants API
+    - `motionDuration` — second-scale timings (now includes `tableRowMount`, `dropdownOpen`, `overlaySearchIn`, `chipCopyFeedback`)
+    - `motionTransition` — named transitions (`stationCardMount`, `upNextRowMount`, `tableRowMount`, `dropdownOpen`, `overlaySearchIn`, `chipCopyFeedback`, chevrons, serial rows, badges, work-order springs). No height transitions: `<Collapse>` owns height timing.
+    - `motionPresence` — `initial` / `animate` / `exit` objects (`tableRow`, `dropdownPanel`, …); `motionVariants` for the variants API. **No height presets:** height animates only through `components/Collapse.tsx` (below).
+  - `components/Collapse.tsx` — **the one height reveal** (2026-09-27). `<Collapse open>` for a region, `<CollapseItem>` for keyed list rows under a caller's `AnimatePresence`. It measures the parent's row-gap and its own margins on mount and moves them inside the animated height, so nothing snaps when the box mounts or unmounts (the "closes, then a final hiccup" bug). `className` styles the content box; the frame takes no padding / border / background. ESLint (`no-restricted-syntax`, "Animate height only through <Collapse>") rejects `height` in any `initial` / `animate` / `exit`.
 - CSS variable generation:
   - `tokens/css-variables.ts`
 
@@ -511,7 +565,7 @@ Migrate existing components to consume new design system primitives:
 2. **TechTable / PackerTable** — replace inline sticky date headers with `DateGroupHeader` component
 3. **UpNextFilterBar** — replace inline AnimatePresence toggle with `OverlaySearch` component
 4. **Sidebar form sections** — replace inline label styling with `FormField` component
-5. **All expand/collapse patterns** — drive `AnimatePresence`+`motion.div` from `motionPresence.collapseHeight` (the `ExpandableSection` primitive was deleted 2026-07-31 — zero call sites)
+5. **All expand/collapse patterns** — `<Collapse open>` / `<CollapseItem>` (`components/Collapse.tsx`); a hand-rolled `height` animation is a lint error (the `ExpandableSection` primitive was deleted 2026-07-31; the `collapseHeight` preset was retired 2026-09-27)
 6. **Typography** — replace hand-rolled `text-[10px] uppercase tracking-[0.2em]` with `typographyPresets.sectionLabel` etc.
 
 See `.design-system-rules.md` for complete auto-UX integration rules.

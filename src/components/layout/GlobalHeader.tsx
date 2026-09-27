@@ -11,6 +11,7 @@ import { HeaderPinsSwitcher } from './HeaderPinsSwitcher';
 import { SidebarCollapseControl } from './SidebarCollapseControl';
 import { ActivityInboxButton } from '@/components/quick-access/ActivityInboxButton';
 import { GlobalHeaderAdd } from './GlobalHeaderAdd';
+import { LiveSyncIndicator } from './LiveSyncIndicator';
 import {
   HEADER_ICON_CLUSTER,
   HEADER_INSET_X,
@@ -71,6 +72,7 @@ export function GlobalHeader({
       <HeaderPageSwitcher />
       <div className="flex min-w-0 flex-1 items-center">{panelContent}</div>
       <div className={HEADER_ICON_CLUSTER} data-header-zone="actions">
+        <LiveSyncIndicator />
         <GlobalHeaderAdd />
         <ActivityInboxButton />
       </div>

@@ -5,7 +5,7 @@ import { parsePositiveInt } from '@/utils/number';
 import { TECH_EMPLOYEE_IDS } from '@/utils/staff';
 import { isTransientDbError, queryWithRetry } from '@/lib/db-retry';
 import { withAuth } from '@/lib/auth/withAuth';
-import { sqlOrderHasTechScan } from '@/lib/orders/order-grain-sql';
+import { sqlOrderHasPickScan } from '@/lib/orders/order-grain-sql';
 
 /** GET /api/orders/next - Get next order(s) for the signed-in tech. */
 export const GET = withAuth(async (req: NextRequest, ctx) => {
@@ -61,8 +61,8 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
     );
 
     // $1 = techIdScope array — used for the assignment visibility filter throughout
-    // CF-04: order-grain tech scan — sibling orders sharing a carton stay in Up Next.
-    const noTechScanClause = `NOT ${sqlOrderHasTechScan('o')}`;
+    // CF-04: order-grain pick scan — sibling orders sharing a carton stay in Up Next.
+    const notPickedClause = `NOT ${sqlOrderHasPickScan('o')}`;
 
     // Joins shared by both the count query and the main query
     const sharedJoins = `
@@ -72,13 +72,13 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
         FROM work_assignments
         WHERE entity_type = 'ORDER'
           AND entity_id   = o.id
-          AND work_type   = 'TEST'
+          AND work_type   = 'PICK'
           AND assigned_tech_id IS NOT NULL
           AND status <> 'CANCELED'
           AND organization_id = o.organization_id
         ORDER BY updated_at DESC, id DESC
         LIMIT 1
-      ) wa_t ON true
+      ) wa_pick ON true
       LEFT JOIN LATERAL (
         SELECT wa.deadline_at FROM work_assignments wa
         WHERE wa.entity_type = 'ORDER' AND wa.entity_id = o.id AND wa.work_type = 'TEST'
@@ -95,9 +95,9 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
           wa.updated_at DESC, wa.id DESC
         LIMIT 1
       ) wa_deadline ON TRUE
-      LEFT JOIN staff staff_t ON staff_t.id = wa_t.assigned_tech_id AND staff_t.organization_id = o.organization_id
+      LEFT JOIN staff staff_pick ON staff_pick.id = wa_pick.assigned_tech_id AND staff_pick.organization_id = o.organization_id
       LEFT JOIN LATERAL (
-        SELECT ${sqlOrderHasTechScan('o')} AS has_scan
+        SELECT ${sqlOrderHasPickScan('o')} AS has_scan
       ) sal_scan ON true
     `;
 
@@ -115,9 +115,9 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
          OR stn.is_out_for_delivery OR stn.is_delivered, false)`);
       countConditions.push(`o.shipment_id IS NOT NULL`);
       countConditions.push(`NOT o.is_out_of_stock`);
-      countConditions.push(noTechScanClause);
-      // Normal order flow: show orders assigned to this tech or currently unassigned.
-      countConditions.push(`(wa_t.assigned_tech_id IS NULL OR wa_t.assigned_tech_id = ANY($1::int[]))`);
+      countConditions.push(notPickedClause);
+      // Normal order flow: show orders assigned to this picker or currently unassigned.
+      countConditions.push(`(wa_pick.assigned_tech_id IS NULL OR wa_pick.assigned_tech_id = ANY($1::int[]))`);
     }
 
     // techIdScope is bound as $1 unconditionally so the org anchor can be $2
@@ -148,9 +148,9 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
           false
         ) AS is_shipped,
         o.is_out_of_stock,
-        wa_t.assigned_tech_id AS tester_id,
-        staff_t.name          AS tester_name,
-        COALESCE(sal_scan.has_scan, false) AS has_tech_scan
+        wa_pick.assigned_tech_id AS picker_id,
+        staff_pick.name          AS picker_name,
+        COALESCE(sal_scan.has_scan, false) AS has_pick_scan
       FROM orders o
       ${sharedJoins}
       WHERE ${mainConditions.join(' AND ')}

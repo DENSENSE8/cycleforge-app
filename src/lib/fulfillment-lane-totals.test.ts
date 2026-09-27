@@ -7,26 +7,26 @@ import {
 } from '@/lib/unshipped-state';
 
 /** The grid's own rule: Pending hides only TESTED, so it shows PENDING+BLOCKED. */
-function rowsOnPendingTab(rows: { hasTechScan: boolean; isOutOfStock: boolean }[]) {
+function rowsOnPendingTab(rows: { hasPickScan: boolean; isOutOfStock: boolean }[]) {
   return rows.filter((r) => deriveFulfillmentState(r) !== 'TESTED').length;
 }
 
 /** Build the `/api/orders/queue-counts` payload those rows would produce. */
-function countsFor(rows: { hasTechScan: boolean; isOutOfStock: boolean }[]) {
-  const combos: { hasTechScan: boolean; blocked: boolean; count: number }[] = [];
+function countsFor(rows: { hasPickScan: boolean; isOutOfStock: boolean }[]) {
+  const combos: { hasPickScan: boolean; blocked: boolean; count: number }[] = [];
   for (const r of rows) {
-    const hit = combos.find((c) => c.hasTechScan === r.hasTechScan && c.blocked === r.isOutOfStock);
+    const hit = combos.find((c) => c.hasPickScan === r.hasPickScan && c.blocked === r.isOutOfStock);
     if (hit) hit.count += 1;
-    else combos.push({ hasTechScan: r.hasTechScan, blocked: r.isOutOfStock, count: 1 });
+    else combos.push({ hasPickScan: r.hasPickScan, blocked: r.isOutOfStock, count: 1 });
   }
   const total = rows.length;
-  const tested = rows.filter((r) => r.hasTechScan).length;
+  const tested = rows.filter((r) => r.hasPickScan).length;
   return { combos, byStage: { all: total, pending: total - tested, tested } };
 }
 
 describe('fulfillmentLaneTotals', () => {
   it('the reported case: one untested BLOCKED order is a tab of 1, not 2', () => {
-    const rows = [{ hasTechScan: false, isOutOfStock: true }];
+    const rows = [{ hasPickScan: false, isOutOfStock: true }];
     const counts = countsFor(rows);
 
     // The old formula, verbatim — this is what shipped the "2".
@@ -40,16 +40,16 @@ describe('fulfillmentLaneTotals', () => {
 
   it('tab total equals rendered rows across every signal combination', () => {
     const rows = [
-      { hasTechScan: false, isOutOfStock: false }, // PENDING
-      { hasTechScan: false, isOutOfStock: false }, // PENDING
-      { hasTechScan: false, isOutOfStock: true }, // BLOCKED (untested)
-      { hasTechScan: true, isOutOfStock: true }, // BLOCKED (tested — blocked wins)
-      { hasTechScan: true, isOutOfStock: false }, // TESTED
+      { hasPickScan: false, isOutOfStock: false }, // PENDING
+      { hasPickScan: false, isOutOfStock: false }, // PENDING
+      { hasPickScan: false, isOutOfStock: true }, // BLOCKED (untested)
+      { hasPickScan: true, isOutOfStock: true }, // BLOCKED (tested — blocked wins)
+      { hasPickScan: true, isOutOfStock: false }, // TESTED
     ];
     const totals = fulfillmentLaneTotals(countsFor(rows));
 
     assert.equal(totals.pending, rowsOnPendingTab(rows), 'Pending tab vs Pending grid');
-    // 2 PENDING + 2 BLOCKED (blocked wins over a tech scan, so the blocked+tested
+    // 2 PENDING + 2 BLOCKED (blocked wins over a pick scan, so the blocked+tested
     // row is on the Pending grid too — and must be in its total exactly once).
     assert.equal(totals.pending, 4);
     // A blocked+tested order belongs to BLOCKED, so the Tested tab must NOT
@@ -67,7 +67,7 @@ describe('fulfillmentLaneTotals', () => {
   it('a legitimate zero lane is not treated as a missing value', () => {
     // The `||` chain's real defect: PENDING===0 is falsy, so it fell through to
     // the raw bucket. With combos present the raw split must never be consulted.
-    const counts = countsFor([{ hasTechScan: false, isOutOfStock: true }]);
+    const counts = countsFor([{ hasPickScan: false, isOutOfStock: true }]);
     assert.equal(counts.byStage.pending, 1, 'raw bucket does hold the blocked row');
     assert.equal(fulfillmentLaneTotals(counts).pending, 1, 'lane total ignores it');
   });

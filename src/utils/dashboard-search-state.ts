@@ -34,7 +34,7 @@ export interface DashboardSelectionSnapshot {
 
 interface DashboardAssignmentUpdateDetail {
   orderIds?: unknown[];
-  testerId?: number | null;
+  pickerId?: number | null;
   packerId?: number | null;
   shipByDate?: string | null;
   outOfStock?: string | null;
@@ -292,7 +292,7 @@ export function patchDashboardSelectedOrderFromAssignment(
   if (idSet.size === 0 || !idSet.has(Number(current.id))) return current;
 
   const next: ShippedOrder & Record<string, unknown> = { ...current };
-  if (detail.testerId !== undefined) next.tester_id = detail.testerId;
+  if (detail.pickerId !== undefined) next.picker_id = detail.pickerId;
   if (detail.packerId !== undefined) next.packer_id = detail.packerId;
   if (detail.shipByDate !== undefined) next.ship_by_date = detail.shipByDate;
   if (detail.outOfStock !== undefined || detail.isOutOfStock !== undefined) {

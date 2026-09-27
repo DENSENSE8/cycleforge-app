@@ -12,7 +12,7 @@ import { parseReceivingLinesQuery } from '@/lib/receiving/lines/query';
 import { fetchReceivingLinesPage, resolveReceivingLinesReadFlags } from '@/lib/receiving/lines/list-page';
 import type { NormalizedReceivingLine } from '@/lib/receiving/lines/normalize-row';
 import { openInUnboxHref } from '@/lib/receiving/surface-path';
-import { fetchTechLogRows, type TechLogRow } from '@/lib/tech/tech-logs-query';
+import { fetchDeskPickLogRows, type DeskPickLogRow } from '@/lib/picking/desk-pick-logs-query';
 import { fetchPackerLogRows } from '@/lib/neon/packer-logs-week';
 import { listRecentLabelPrints, type RecentLabelPrintRow } from '@/lib/labels/recent-prints';
 import { listLocalPickupLines, type LocalPickupLineRow } from '@/lib/local-pickup/pickup-lines-query';
@@ -145,7 +145,7 @@ export function receivingLineRecentRow(
 // ── Picker scans (tech.scans) ────────────────────────────────────────────────
 
 type TechRecentFields = Pick<
-  TechLogRow,
+  DeskPickLogRow,
   'id' | 'created_at' | 'source_kind' | 'fnsku' | 'shipping_tracking_number' | 'order_db_id' | 'order_id' | 'product_title'
 >;
 
@@ -163,7 +163,7 @@ export function techLogRecentRow(row: TechRecentFields): NavRecentRow | null {
     ? shippingOrdersHref({ openOrderId: orderId })
     : fnsku
       ? `/shipping/fba?${new URLSearchParams({ q: fnsku })}`
-      : `/test?${new URLSearchParams({ ship: 'history', ...(tracking ? { search: tracking } : {}) })}`;
+      : `/pick?${new URLSearchParams({ ship: 'history', ...(tracking ? { search: tracking } : {}) })}`;
   return {
     id: `tech_scan:${row.id}`,
     entityType,
@@ -339,7 +339,7 @@ export const IDENTIFIED_RECENTS_SQL = `
 export interface NavRecentAdapterDeps {
   listAssistantSessions: typeof listAssistantSessions;
   fetchReceivingLinesPage: typeof fetchReceivingLinesPage;
-  fetchTechLogRows: typeof fetchTechLogRows;
+  fetchDeskPickLogRows: typeof fetchDeskPickLogRows;
   fetchPackerLogRows: (opts: { organizationId: OrgId; packerId: number; limit: number }) => Promise<{ rows: PackerRecentFields[] }>;
   listRecentLabelPrints: typeof listRecentLabelPrints;
   listLocalPickupLines: typeof listLocalPickupLines;
@@ -349,7 +349,7 @@ export interface NavRecentAdapterDeps {
 export const defaultNavRecentAdapterDeps: NavRecentAdapterDeps = {
   listAssistantSessions,
   fetchReceivingLinesPage,
-  fetchTechLogRows,
+  fetchDeskPickLogRows,
   fetchPackerLogRows,
   listRecentLabelPrints,
   listLocalPickupLines,
@@ -411,7 +411,7 @@ async function unpagedRows(
     case 'testing.opened':
       return receivingAdapter(surface, args, deps);
     case 'tech.scans': {
-      const rows = await deps.fetchTechLogRows(orgId, {
+      const rows = await deps.fetchDeskPickLogRows(orgId, {
         techId: staffId, weekStart: '', weekEnd: '', searchTerm: '', limit, offset: 0,
       });
       return keepRows(rows.map(techLogRecentRow), limit);

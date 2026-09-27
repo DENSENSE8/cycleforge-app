@@ -3,7 +3,14 @@ import assert from 'node:assert/strict';
 import { getNavFacets, type NavFacetsDeps } from './service';
 import { NAV_FACET_GROUPS, type NavFacetContext } from './contexts';
 import type { LocalPickupLineRow } from '@/lib/local-pickup/pickup-lines-query';
-import { sqlDeskQueueScope, type DeskAgingBucket, type DeskStage } from '@/lib/orders/desk-view-sql';
+import type { DeskRefinements } from '@/lib/orders/desk-view-filters';
+import {
+  sqlDeskQueueScope,
+  sqlDeskRefinementClauses,
+  sqlOrderAssignedToStaff,
+  type DeskAgingBucket,
+  type DeskStage,
+} from '@/lib/orders/desk-view-sql';
 
 const ORG = '00000000-0000-0000-0000-000000000001';
 const DESK = { orgId: ORG, permissions: new Set(['orders.view']) };
@@ -15,6 +22,14 @@ interface FixtureOrder {
   aging: DeskAgingBucket;
   urgent: boolean;
   blocked: boolean;
+  /** Latest live PACK / PICK assignee (`?packedBy` / `?pickerId`; `?staff` = either). */
+  packer: number;
+  pickAssignee: number;
+  /** Who picked it (`?pickedBy`); null = not picked. */
+  picker: number | null;
+  /** Warehouse civil days. */
+  orderDay: string;
+  shipByDay: string | null;
 }
 
 const STAGES: DeskStage[] = ['pending', 'tested', 'packed'];
@@ -29,7 +44,17 @@ function fixtureOrders(): FixtureOrder[] {
         for (const blocked of [false, true]) {
           // Uneven multiplicities so a wrong sum cannot pass by symmetry.
           const copies = (i++ % 4) + (stage === 'tested' ? 2 : 0);
-          for (let k = 0; k < copies; k++) out.push({ stage, aging, urgent, blocked });
+          for (let k = 0; k < copies; k++) {
+            const j = out.length;
+            out.push({
+              stage, aging, urgent, blocked,
+              packer: 10 + (j % 3),
+              pickAssignee: 20 + (j % 2),
+              picker: j % 4 === 0 ? null : 30 + (j % 3),
+              orderDay: `2026-09-${String(10 + (j % 6))}`,
+              shipByDay: aging === 'unscheduled' ? null : `2026-09-${String(20 + (j % 5))}`,
+            });
+          }
         }
       }
     }
@@ -40,14 +65,30 @@ function fixtureOrders(): FixtureOrder[] {
 /** The desk list's own filter, evaluated per order (UnshippedTable + /api/orders semantics). */
 function listRows(orders: FixtureOrder[], params: Record<string, string>): FixtureOrder[] {
   const truthy = (v: string | undefined) => v === '1' || v === 'true';
+  const id = (v: string | undefined) => (v && /^\d+$/.test(v.trim()) && Number(v) > 0 ? Number(v) : null);
+  const day = (v: string | undefined) =>
+    v && /^\d{4}-\d{2}-\d{2}$/.test(v) && !Number.isNaN(Date.parse(`${v}T00:00:00Z`)) ? v : null;
   const stage = (params.stage ?? '').toLowerCase();
   const aging = (params.aging ?? '').toLowerCase();
+  const staff = Number(params.staff) > 0 ? Number(params.staff) : null;
+  const [packedBy, pickerId, pickedBy] = [id(params.packedBy), id(params.pickerId), id(params.pickedBy)];
+  const [orderFrom, orderTo] = [day(params.orderFrom), day(params.orderTo)];
+  const [shipByFrom, shipByTo] = [day(params.shipByFrom), day(params.shipByTo)];
   return orders.filter((o) => {
     if ((STAGES as string[]).includes(stage) && o.stage !== stage) return false;
     if ((AGINGS as string[]).includes(aging) && o.aging !== aging) return false;
     if (truthy(params.late) && !(o.aging === 'overdue' || o.aging === 'today')) return false;
     if (truthy(params.attention) && !o.urgent) return false;
     if ((params.ustatus ?? '').trim().toUpperCase() === 'BLOCKED' && !o.blocked) return false;
+    if (staff != null && o.packer !== staff && o.pickAssignee !== staff) return false;
+    if (packedBy != null && o.packer !== packedBy) return false;
+    if (pickerId != null && o.pickAssignee !== pickerId) return false;
+    if (pickedBy != null && o.picker !== pickedBy) return false;
+    if (orderFrom && o.orderDay < orderFrom) return false;
+    if (orderTo && o.orderDay > orderTo) return false;
+    if ((shipByFrom || shipByTo) && o.shipByDay == null) return false;
+    if (shipByFrom && o.shipByDay! < shipByFrom) return false;
+    if (shipByTo && o.shipByDay! > shipByTo) return false;
     return true;
   });
 }
@@ -58,16 +99,47 @@ async function facetsBody(context: NavFacetContext, params: URLSearchParams, dep
   return res.body;
 }
 
-/** Stand-in for Postgres' GROUP BY over the scoped orders: combination rows with counts. */
+const NO_REFINEMENTS: DeskRefinements = {
+  packedBy: null, pickerId: null, pickedBy: null, orderFrom: null, orderTo: null, shipByFrom: null, shipByTo: null,
+};
+
+/** The facet statement's text for ONE refinement bound at `ref`. */
+function refinementSql(one: Partial<DeskRefinements>, ref: string): string {
+  return sqlDeskRefinementClauses({ ...NO_REFINEMENTS, ...one }, () => ref, 'o', 'dl.deadline_at')[0];
+}
+
+/** Each SQL-bound predicate the facet statement may carry, and what it means for a fixture order. */
+const BOUND_FILTERS: Array<{ sql: (ref: string) => string; keep: (o: FixtureOrder, value: unknown) => boolean }> = [
+  { sql: (ref) => sqlOrderAssignedToStaff(ref), keep: (o, v) => o.packer === v || o.pickAssignee === v },
+  { sql: (ref) => refinementSql({ packedBy: 1 }, ref), keep: (o, v) => o.packer === v },
+  { sql: (ref) => refinementSql({ pickerId: 1 }, ref), keep: (o, v) => o.pickAssignee === v },
+  { sql: (ref) => refinementSql({ pickedBy: 1 }, ref), keep: (o, v) => o.picker === v },
+  { sql: (ref) => refinementSql({ orderFrom: 'x' }, ref), keep: (o, v) => o.orderDay >= String(v) },
+  { sql: (ref) => refinementSql({ orderTo: 'x' }, ref), keep: (o, v) => o.orderDay <= String(v) },
+  { sql: (ref) => refinementSql({ shipByFrom: 'x' }, ref), keep: (o, v) => o.shipByDay != null && o.shipByDay >= String(v) },
+  { sql: (ref) => refinementSql({ shipByTo: 'x' }, ref), keep: (o, v) => o.shipByDay != null && o.shipByDay <= String(v) },
+];
+
+/**
+ * Stand-in for Postgres: applies each predicate the statement actually binds
+ * (found by its exact text at its placeholder), then GROUP BY → combination
+ * rows with counts. A bound value no predicate reads fails the test.
+ */
 function comboRunner(orders: FixtureOrder[], captured: Array<{ sql: string; params: readonly unknown[] }> = []): NavFacetsDeps {
   return {
     listLocalPickupLines: noPickup,
     run: async (_orgId, sql, params) => {
       captured.push({ sql, params });
+      let scoped = orders;
+      for (let i = 2; i <= params.length; i++) {
+        const hits = BOUND_FILTERS.filter((f) => sql.includes(f.sql(`$${i}`)));
+        assert.equal(hits.length, 1, `bound param $${i} is read by exactly one known predicate`);
+        scoped = scoped.filter((o) => hits[0].keep(o, params[i - 1]));
+      }
       const byKey = new Map<string, Record<string, unknown>>();
-      for (const o of orders) {
+      for (const o of scoped) {
         const key = `${o.stage}|${o.aging}|${o.urgent}|${o.blocked}`;
-        const row = byKey.get(key) ?? { ...o, n: 0 };
+        const row = byKey.get(key) ?? { stage: o.stage, aging: o.aging, urgent: o.urgent, blocked: o.blocked, n: 0 };
         row.n = (row.n as number) + 1;
         byKey.set(key, row);
       }
@@ -75,6 +147,22 @@ function comboRunner(orders: FixtureOrder[], captured: Array<{ sql: string; para
     },
   };
 }
+
+/** Sidebar refinements — each narrows the fixture (asserted below). */
+const REFINEMENT_CASES: Array<Record<string, string>> = [
+  { staff: '11' },
+  { packedBy: '11' },
+  { pickerId: '20', stage: 'tested' },
+  { pickedBy: '31' },
+  { pickedBy: '32', late: '1' },
+  { orderFrom: '2026-09-12' },
+  { orderTo: '2026-09-11', attention: '1' },
+  { orderFrom: '2026-09-12', orderTo: '2026-09-13' },
+  { shipByFrom: '2026-09-22' },
+  { shipByTo: '2026-09-21' },
+  { shipByFrom: '2026-09-20', shipByTo: '2026-09-20', ustatus: 'BLOCKED' },
+  { staff: '20', packedBy: '12', pickedBy: '32', orderFrom: '2026-09-11', shipByTo: '2026-09-23' },
+];
 
 const PARAM_CASES: Array<Record<string, string>> = [
   {},
@@ -85,7 +173,17 @@ const PARAM_CASES: Array<Record<string, string>> = [
   { attention: 'true', ustatus: 'blocked' },
   { stage: 'pending', aging: 'today', late: '1', attention: '1', ustatus: 'BLOCKED' },
   { stage: 'bogus', aging: 'someday', late: 'yes' }, // values the list ignores
+  { pickedBy: 'abc', packedBy: '-4', pickerId: '1.5', orderFrom: '2026-13-45', orderTo: '09/20/2026', shipByFrom: 'x', shipByTo: '' },
+  ...REFINEMENT_CASES,
 ];
+
+test('every refinement case narrows the fixture, so the equality below is a real check', () => {
+  const orders = fixtureOrders();
+  for (const params of REFINEMENT_CASES) {
+    const n = listRows(orders, params).length;
+    assert.ok(n > 0 && n < orders.length, `${JSON.stringify(params)} → ${n} of ${orders.length}`);
+  }
+});
 
 for (const context of ['outbound.triage', 'outbound.pick', 'outbound.po'] as const) {
   test(`${context}: total and every option count equal the list total for the same params`, async () => {

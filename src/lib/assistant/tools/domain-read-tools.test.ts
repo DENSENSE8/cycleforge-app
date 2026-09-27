@@ -159,6 +159,17 @@ test('lookup_serial: unit path returns href; miss returns found:false', async ()
   assert.equal(data.href, '/inventory/units?unit=7');
 });
 
+test('lookup_serial: a carrier tracking number that is no serial is named as tracking, with the order read that finds it', async () => {
+  const miss: SerialLookupDeps = { findUnit: async () => null, findOrderForUnit: async () => null, findOrderByTsn: async () => null };
+  const deps = { query: async () => ({ rows: [] }), serialLookup: miss } as AssistantToolDeps & { serialLookup: SerialLookupDeps };
+  const tracking = await runAssistantTool('lookup_serial', { serial: '1ZJ22B100324366661' }, ctxWith(['dashboard.view']), deps);
+  const message = String((tracking.ok ? (tracking.data as { message?: string }) : {}).message);
+  assert.match(message, /UPS carrier tracking number, not a serial/);
+  assert.match(message, /get_order_lookup \{"trackingNumber":"1ZJ22B100324366661"\}/);
+  const serial = await runAssistantTool('lookup_serial', { serial: 'SN-4471' }, ctxWith(['dashboard.view']), deps);
+  assert.deepEqual(serial.ok && serial.data, { found: false, serial: 'SN4471' });
+});
+
 test('lookup_warranty_coverage: flag off degrades; flag on threads org', async () => {
   const off = await runAssistantTool(
     'lookup_warranty_coverage',

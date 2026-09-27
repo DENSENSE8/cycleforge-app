@@ -227,7 +227,7 @@ mobile/live-feed program.
 | Unbox `/unbox` | `unbox` → `/api/receiving/lookup-po` | `receiving.unbox_opened` | `UnboxScanBand` |
 | Local Pickup `/pickup` | `pickup` → `/api/local-pickup-orders/lines` | `pickup.orders` | `PickupScanBand` |
 | Quality Control `/test?view=testing` | `testing` → `/api/receiving-lines` | `testing.opened` | `TestingScanBar` |
-| Picker `/test?ship=urgent` | `station` → `/api/tech/scan` | `tech.scans` | `ShippingScanBand` |
+| Picker `/test?ship=urgent` | `station` → `/api/picking/desk/scan` | `tech.scans` | `ShippingScanBand` |
 | Packing `/pack` | `pack` → `/api/packing-logs` | `packer.packs` | `PackScanColumn` |
 | Scan out `/shipping/scan-out` | `scan-out` → `/api/shipped/scan-out` | — | `ScanOutComposerDock` |
 | FBA `/shipping/fba` | `fnsku` → `/api/fba/fnskus/validate` | — | `FbaWorkspaceScanField`, which is **not mounted** on `/shipping/fba` today (see PARITY) |

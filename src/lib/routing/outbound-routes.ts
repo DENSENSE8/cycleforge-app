@@ -8,6 +8,12 @@ import { parseFbaModeWire } from '@/lib/fba/fba-modes';
 import { ORDER_EXCEPTION_CATEGORIES } from '@/lib/orders/order-exception-types';
 import { DESK_PAIR_PARAM } from '@/lib/outbound/desk-views';
 import {
+  OUTBOUND_LOCATE_REFS_PARAM,
+  OUTBOUND_LOCATE_STATUSES,
+  OUTBOUND_LOCATE_STATUS_PARAM,
+} from '@/lib/nav/locate/outbound-params';
+import { parseRefInParam, serializeRefIn } from '@/lib/receiving/reconcile';
+import {
   SHIPPING_EXCEPTIONS_PATH,
   SHIPPING_ORDERS_PATH,
   SHIPPING_SHORTAGE_PATH,
@@ -17,6 +23,7 @@ import { parseShippedSearchFieldWire } from '@/lib/shipped-search';
 import { parseReadyWorkspaceTabWire } from '@/utils/ready-workspace-state';
 import {
   defineRouteParams,
+  paramCanonical,
   paramDateKey,
   paramEnum,
   paramFlag,
@@ -24,9 +31,34 @@ import {
   paramPresence,
   paramRoundTrip,
   paramText,
+  paramTimeKey,
   type RouteParamsSpec,
 } from './route-params';
 import { TO_SHIP_QUEUE_FACET_PARAMS } from './to-ship-queue-params';
+
+/** Sidebar triage controls every queue list reads (`QUEUE_CONTROLS` in nav pages). */
+const QUEUE_TRIAGE_PARAMS = {
+  /** Who ACTUALLY picked the order (pick facts), not the pick assignee. */
+  pickedBy: paramPositiveInt,
+  packedBy: paramPositiveInt,
+  /** The order's ORDER/PICK assignee (the order-desk operator). */
+  pickerId: paramPositiveInt,
+  /** Ship-by and order-date windows — PT civil days, inclusive. */
+  shipByFrom: paramDateKey,
+  shipByTo: paramDateKey,
+  orderFrom: paramDateKey,
+  orderTo: paramDateKey,
+} as const;
+
+/**
+ * The sidebar's paste-a-list on every desk view (`NavSearch.locate`,
+ * `GET /api/nav/locate`): the pasted refs (deduped + capped, the Check's
+ * splitter) and the bucket filter over them (a desk view id).
+ */
+const DESK_LOCATE_PARAMS = {
+  [OUTBOUND_LOCATE_REFS_PARAM]: paramCanonical((raw) => serializeRefIn(parseRefInParam(raw).refs) || null),
+  [OUTBOUND_LOCATE_STATUS_PARAM]: paramEnum(OUTBOUND_LOCATE_STATUSES),
+} as const;
 
 /** Every shipping mode reads the same operator-level bits. */
 const SHIPPING_CARRIES = ['staff', 'staffId', 'colsort', 'coldir', 'pane', 'layout', 'weekOffset'] as const;
@@ -73,7 +105,7 @@ const ORDERS_ROUTE_PARAMS = defineRouteParams({
     new: paramEnum(['true'] as const),
     /** Add-orders rail, opened on the method list rather than hand entry. */
     ingest: paramEnum(['true'] as const),
-    /** Caged → released intake session (`OrderIntakeOverlay`, centered). */
+    /** Intake entry inline at the top of the order list (`OrderIntakeEntry`): `new` or a caged order id. */
     triage: paramText,
     /** To-ship Labels walk (`PaperworkWalkHost`). */
     paperwork: paramPositiveInt,
@@ -95,8 +127,8 @@ const ORDERS_ROUTE_PARAMS = defineRouteParams({
     exceptions: paramFlag,
     carrier: paramText,
     statusCategory: paramText,
-    packedBy: paramPositiveInt,
-    testedBy: paramPositiveInt,
+    ...DESK_LOCATE_PARAMS,
+    ...QUEUE_TRIAGE_PARAMS,
     dateFrom: paramDateKey,
     dateTo: paramDateKey,
     /**
@@ -173,9 +205,15 @@ const SHIPPED_ROUTE_PARAMS = defineRouteParams({
     statusCategory: paramText,
     packedBy: paramPositiveInt,
     testedBy: paramPositiveInt,
+    /** Who ACTUALLY picked the shipped order (pick facts). */
+    pickedBy: paramPositiveInt,
+    /** Time of day at each end of the dateFrom/dateTo window (HH:mm, PT). */
+    timeFrom: paramTimeKey,
+    timeTo: paramTimeKey,
     /** Grid display sort — column/server ids, same alphabet as the desk. */
     sort: paramText,
     dir: paramEnum(['asc', 'desc'] as const),
+    ...DESK_LOCATE_PARAMS,
   },
   carries: SHIPPING_CARRIES,
 });
@@ -194,6 +232,7 @@ const EXCEPTIONS_ROUTE_PARAMS = defineRouteParams({
     category: paramRoundTrip((raw) =>
       (ORDER_EXCEPTION_CATEGORIES as readonly string[]).includes(raw) ? raw : null,
     ),
+    ...DESK_LOCATE_PARAMS,
   },
   carries: SHIPPING_CARRIES,
 });
@@ -218,6 +257,8 @@ const SHORTAGE_ROUTE_PARAMS = defineRouteParams({
     /** Packing DESK/STAGING placement filter, read by the same table. */
     packStation: paramPositiveInt,
     packPlaced: paramFlag,
+    ...DESK_LOCATE_PARAMS,
+    ...QUEUE_TRIAGE_PARAMS,
   },
   carries: SHIPPING_CARRIES,
 });

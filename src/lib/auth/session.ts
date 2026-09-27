@@ -271,98 +271,33 @@ export async function createSession(opts: CreateSessionOpts): Promise<SessionRow
 }
 
 /**
- * Load a session by sid. Returns null if missing, revoked, expired, idle past
- * its device's window, or minted for the other credential (a bearer sid never
- * authenticates as a cookie, nor the reverse). On a successful load, also touches last_seen_at.
- *
- * Keep this hot path lean — middleware calls it on every request.
+ * Session columns every loader selects — `s` is `staff_sessions`, `st` its
+ * LEFT JOINed `staff` row (for `session_policy`). Shared so a loader that joins
+ * more (current-user folds the staff envelope into the same round trip) reads
+ * exactly the row {@link validateSessionRow} expects.
  */
-export async function loadSession(
-  sid: string | null | undefined,
-  credential: SessionCredential = 'cookie',
-): Promise<SessionRow | null> {
-  if (!sid || typeof sid !== 'string' || sid.length < 32) return null;
-
-  const r = await pool.query(
-    `SELECT s.sid, s.staff_id, s.organization_id, s.device_kind, s.device_label,
+export const SESSION_ROW_COLUMNS = `s.sid, s.staff_id, s.organization_id, s.device_kind, s.device_label,
             s.ip::text AS ip, s.user_agent,
             s.created_at, s.last_seen_at, s.expires_at, s.revoked_at,
             COALESCE(s.persistent, false) AS persistent, s.credential,
-            COALESCE(st.session_policy, 'default') AS session_policy
-       FROM staff_sessions s
-       LEFT JOIN staff st ON st.id = s.staff_id
-      WHERE s.sid = $1 AND s.credential = $2
-      LIMIT 1`,
-    [sid, credential],
-  );
-  const row = r.rows[0] as (SessionDbRow & { session_policy: SessionPolicy }) | undefined;
-  if (!row) return null;
-  if (row.revoked_at) return null;
-  if (row.expires_at.getTime() <= Date.now()) return null;
+            COALESCE(st.session_policy, 'default') AS session_policy`;
 
-  const window = resolveSessionWindow(row.device_kind as DeviceKind, row.session_policy, row.persistent);
-  const idleFor = Date.now() - row.last_seen_at.getTime();
-  if (Number.isFinite(window.idleMs) && idleFor > window.idleMs) {
-    // Auto-revoke on idle so the row reflects the truth.
-    await pool.query(`UPDATE staff_sessions SET revoked_at = NOW() WHERE sid = $1`, [sid]);
-    return null;
-  }
+export type SessionQueryRow = SessionDbRow & { session_policy: SessionPolicy };
 
-  return {
-    sid: row.sid,
-    staffId: row.staff_id,
-    organizationId: row.organization_id,
-    deviceKind: row.device_kind,
-    deviceLabel: row.device_label,
-    ip: row.ip,
-    userAgent: row.user_agent,
-    createdAt: row.created_at,
-    lastSeenAt: row.last_seen_at,
-    expiresAt: row.expires_at,
-    revokedAt: row.revoked_at,
-    persistent: row.persistent,
-    credential: row.credential,
-  };
+/** True for a sid worth a DB lookup (present, string, ≥32 chars). */
+export function isPlausibleSid(sid: unknown): sid is string {
+  return typeof sid === 'string' && sid.length >= 32;
 }
 
-/** Diagnostic variant of loadSession — returns the same row plus a `reason` tag explaining why a null was produced. */
-export type SessionNullReason =
-  | 'no-cookie'
-  | 'sid-malformed'
-  | 'no-row'
-  | 'revoked'
-  | 'expired'
-  | 'idle-timed-out'
-  | 'db-error';
-
-export async function loadSessionWithReason(
-  sid: string | null | undefined,
-  credential: SessionCredential = 'cookie',
-): Promise<{ session: SessionRow | null; reason: SessionNullReason | 'ok' }> {
-  if (!sid) return { session: null, reason: 'no-cookie' };
-  if (typeof sid !== 'string' || sid.length < 32) {
-    return { session: null, reason: 'sid-malformed' };
-  }
-
-  let r;
-  try {
-    r = await pool.query(
-      `SELECT s.sid, s.staff_id, s.organization_id, s.device_kind, s.device_label,
-              s.ip::text AS ip, s.user_agent,
-              s.created_at, s.last_seen_at, s.expires_at, s.revoked_at,
-              COALESCE(s.persistent, false) AS persistent, s.credential,
-              COALESCE(st.session_policy, 'default') AS session_policy
-         FROM staff_sessions s
-         LEFT JOIN staff st ON st.id = s.staff_id
-        WHERE s.sid = $1 AND s.credential = $2
-        LIMIT 1`,
-      [sid, credential],
-    );
-  } catch {
-    return { session: null, reason: 'db-error' };
-  }
-
-  const row = r.rows[0] as (SessionDbRow & { session_policy: SessionPolicy }) | undefined;
+/**
+ * The whole validity decision for a loaded session row: missing, revoked,
+ * expired, or idle past its device window (auto-revoked so the row reflects
+ * the truth) → null with the reason; otherwise the {@link SessionRow}.
+ */
+export async function validateSessionRow(
+  sid: string,
+  row: SessionQueryRow | undefined,
+): Promise<{ session: SessionRow | null; reason: Exclude<SessionNullReason, 'no-cookie' | 'sid-malformed' | 'db-error'> | 'ok' }> {
   if (!row) return { session: null, reason: 'no-row' };
   if (row.revoked_at) return { session: null, reason: 'revoked' };
   if (row.expires_at.getTime() <= Date.now()) return { session: null, reason: 'expired' };
@@ -392,6 +327,64 @@ export async function loadSessionWithReason(
     },
     reason: 'ok',
   };
+}
+
+/**
+ * Load a session by sid. Returns null if missing, revoked, expired, idle past
+ * its device's window, or minted for the other credential (a bearer sid never
+ * authenticates as a cookie, nor the reverse). On a successful load, also touches last_seen_at.
+ *
+ * Keep this hot path lean — middleware calls it on every request.
+ */
+export async function loadSession(
+  sid: string | null | undefined,
+  credential: SessionCredential = 'cookie',
+): Promise<SessionRow | null> {
+  if (!isPlausibleSid(sid)) return null;
+
+  const r = await pool.query(
+    `SELECT ${SESSION_ROW_COLUMNS}
+       FROM staff_sessions s
+       LEFT JOIN staff st ON st.id = s.staff_id
+      WHERE s.sid = $1 AND s.credential = $2
+      LIMIT 1`,
+    [sid, credential],
+  );
+  return (await validateSessionRow(sid, r.rows[0] as SessionQueryRow | undefined)).session;
+}
+
+/** Diagnostic variant of loadSession — returns the same row plus a `reason` tag explaining why a null was produced. */
+export type SessionNullReason =
+  | 'no-cookie'
+  | 'sid-malformed'
+  | 'no-row'
+  | 'revoked'
+  | 'expired'
+  | 'idle-timed-out'
+  | 'db-error';
+
+export async function loadSessionWithReason(
+  sid: string | null | undefined,
+  credential: SessionCredential = 'cookie',
+): Promise<{ session: SessionRow | null; reason: SessionNullReason | 'ok' }> {
+  if (!sid) return { session: null, reason: 'no-cookie' };
+  if (!isPlausibleSid(sid)) return { session: null, reason: 'sid-malformed' };
+
+  let r;
+  try {
+    r = await pool.query(
+      `SELECT ${SESSION_ROW_COLUMNS}
+         FROM staff_sessions s
+         LEFT JOIN staff st ON st.id = s.staff_id
+        WHERE s.sid = $1 AND s.credential = $2
+        LIMIT 1`,
+      [sid, credential],
+    );
+  } catch {
+    return { session: null, reason: 'db-error' };
+  }
+
+  return validateSessionRow(sid, r.rows[0] as SessionQueryRow | undefined);
 }
 
 /** Bump last_seen_at and return the session's (possibly slid) expires_at so the caller can refresh the cookie's max-age to match. */

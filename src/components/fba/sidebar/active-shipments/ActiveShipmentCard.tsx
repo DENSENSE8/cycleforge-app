@@ -1,15 +1,12 @@
 'use client';
 
-import { motion, AnimatePresence } from '@/design-system/motion';
+import { motion } from '@/design-system/motion';
 import { Package, Pencil } from '@/components/Icons';
 import { FBA_BOARD_INJECT_ITEM, FBA_OPEN_SHIPMENT_EDITOR } from '@/lib/fba/events';
 import { shipmentItemToBoardItem } from '@/lib/fba/board-item';
 import { patchFbaItem } from '@/lib/fba/patch';
-import {
-  ChevronToggle,
-  motionPresence,
-  motionTransition,
-} from '@/design-system';
+import { ChevronToggle } from '@/design-system';
+import { Collapse } from '@/design-system/components/Collapse';
 import { IconButton } from '@/design-system/primitives';
 import { FbaSelectedLineRow } from '@/components/fba/sidebar/FbaSelectedLineRow';
 import { FbaQtyDisplay } from '@/components/fba/sidebar/FbaQtyStepper';
@@ -137,73 +134,61 @@ export function ActiveShipmentCard({
       </div>
 
       {/* ── Expanded: Tracking Groups + Items ── */}
-      <AnimatePresence initial={false}>
-        {isExpanded && (
-          <motion.div
-            key="expanded-shipment"
-            initial={motionPresence.collapseHeight.initial}
-            animate={motionPresence.collapseHeight.animate}
-            exit={motionPresence.collapseHeight.exit}
-            transition={motionTransition.upNextCollapse}
-            style={{ willChange: 'height, opacity' }}
-            className="overflow-hidden"
-          >
-            <div className="border-t border-border-hairline">
-              {(() => {
-                const hasBundles = (shipment.bundles?.length ?? 0) > 0;
-                // Compute unallocated items: items not in any tracking bundle
-                const allocatedIds = new Set<number>();
-                if (hasBundles) {
-                  for (const b of shipment.bundles) {
-                    for (const bi of b.items) allocatedIds.add(bi.item_id);
-                  }
-                }
-                const unallocatedItems = hasBundles
-                  ? shipment.items.filter((i) => !allocatedIds.has(i.item_id))
-                  : shipment.items;
+      <Collapse open={isExpanded}>
+        <div className="border-t border-border-hairline">
+          {(() => {
+            const hasBundles = (shipment.bundles?.length ?? 0) > 0;
+            // Compute unallocated items: items not in any tracking bundle
+            const allocatedIds = new Set<number>();
+            if (hasBundles) {
+              for (const b of shipment.bundles) {
+                for (const bi of b.items) allocatedIds.add(bi.item_id);
+              }
+            }
+            const unallocatedItems = hasBundles
+              ? shipment.items.filter((i) => !allocatedIds.has(i.item_id))
+              : shipment.items;
 
-                return (
-                  <>
-                    {unallocatedItems.length > 0 && (
-                      <div className="divide-y divide-border-hairline">
-                        {hasBundles && (
-                          <p className="px-2.5 py-1.5 text-role-eyebrow uppercase tracking-widest text-text-faint">
-                            Unallocated
-                          </p>
-                        )}
-                        {unallocatedItems.map((item) => (
-                          <FbaSelectedLineRow
-                            key={item.item_id}
-                            displayTitle={item.display_title || 'No title'}
-                            fnsku={String(item.fnsku || '').toUpperCase()}
-                            stationTheme={stationTheme}
-                            checked
-                            checkboxDisabled={!editable}
-                            onCheckedChange={() => handleReturnItem(item)}
-                            rightSlot={<FbaQtyDisplay value={item.expected_qty} />}
-                          />
-                        ))}
-                      </div>
+            return (
+              <>
+                {unallocatedItems.length > 0 && (
+                  <div className="divide-y divide-border-hairline">
+                    {hasBundles && (
+                      <p className="px-2.5 py-1.5 text-role-eyebrow uppercase tracking-widest text-text-faint">
+                        Unallocated
+                      </p>
                     )}
-                    {hasBundles &&
-                      shipment.bundles.map((bundle) => (
-                        <TrackingGroup
-                          key={bundle.link_id}
-                          bundle={bundle}
-                          shipmentId={shipment.id}
-                          amazonShipmentId={shipment.amazon_shipment_id}
-                          editable={editable}
-                          stationTheme={stationTheme}
-                          onChanged={onChanged}
-                        />
-                      ))}
-                  </>
-                );
-              })()}
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+                    {unallocatedItems.map((item) => (
+                      <FbaSelectedLineRow
+                        key={item.item_id}
+                        displayTitle={item.display_title || 'No title'}
+                        fnsku={String(item.fnsku || '').toUpperCase()}
+                        stationTheme={stationTheme}
+                        checked
+                        checkboxDisabled={!editable}
+                        onCheckedChange={() => handleReturnItem(item)}
+                        rightSlot={<FbaQtyDisplay value={item.expected_qty} />}
+                      />
+                    ))}
+                  </div>
+                )}
+                {hasBundles &&
+                  shipment.bundles.map((bundle) => (
+                    <TrackingGroup
+                      key={bundle.link_id}
+                      bundle={bundle}
+                      shipmentId={shipment.id}
+                      amazonShipmentId={shipment.amazon_shipment_id}
+                      editable={editable}
+                      stationTheme={stationTheme}
+                      onChanged={onChanged}
+                    />
+                  ))}
+              </>
+            );
+          })()}
+        </div>
+      </Collapse>
     </motion.div>
   );
 }

@@ -28,7 +28,6 @@ function row(overrides: Record<string, unknown> = {}): ShippedOrder {
     product_title: 'Bose Wave Radio',
     condition: 'Used',
     serial_number: '',
-    tester_id: null,
     tested_by: null,
     test_date_time: null,
     packer_id: null,
@@ -152,17 +151,18 @@ describe('resolveOrdersSlotValue — stage events', () => {
     });
   });
 
-  it('picked: a TESTED row with no pick data resolves EMPTY — Pick no longer borrows testing data (2026-09-14)', () => {
-    // The Picker desk's own scan IS a pick signal, but it reaches this resolver as `picked_*` through PICK_FACTS_LATERALS' `pick_station` arm.
-    const tested = row({
+  it('picked: QC facts and an assigned picker are not a pick — the cell resolves EMPTY', () => {
+    // QC is the unit's bench verdict and `picker_*` is the PICK assignment;
+    // only `picked_*` (allocation, session, or PICK_SCANNED scan) marks it picked.
+    const qcdAndAssigned = row({
       tested_by: 7,
-      tester_id: 3,
       tested_by_name: 'Marco',
-      tester_name: 'Marco',
-      test_date_time: '2026-07-13T16:15:00Z',
       test_activity_at: '2026-07-13 16:15:00',
+      qc_verdict: 'PASS',
+      picker_id: 5,
+      picker_name: 'Lena',
     });
-    assert.deepEqual(resolveOrdersSlotValue(tested, 'orders.picked', { testerDisplay: 'Marco' }), {
+    assert.deepEqual(resolveOrdersSlotValue(qcdAndAssigned, 'orders.picked', { testerDisplay: 'Marco' }), {
       kind: 'stage_event',
       who: null,
       whoStaffId: null,
@@ -216,13 +216,6 @@ describe('resolveOrdersSlotValue — stage events', () => {
     const packed = resolveOrdersSlotValue(row({ packed_by: 12 }), 'orders.packed');
     if (packed?.kind !== 'stage_event') return assert.fail('expected stage_event');
     assert.equal(packed.whoStaffId, 12);
-
-    // A tester id is NOT a picker id — the Pick mark stays blank on it. The
-    // Picker desk's scan arrives as `picked_by` from the SQL `pick_station`
-    // arm, so it never needs the tester columns to reach this resolver.
-    const nobody = resolveOrdersSlotValue(row({ tested_by: 7, tester_id: 3 }), 'orders.picked');
-    if (nobody?.kind !== 'stage_event') return assert.fail('expected stage_event');
-    assert.equal(nobody.whoStaffId, null);
   });
 });
 

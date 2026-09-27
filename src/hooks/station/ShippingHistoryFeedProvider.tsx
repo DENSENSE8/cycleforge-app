@@ -10,14 +10,14 @@ import {
 } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { computeWeekRange, type WeekRange } from '@/utils/date';
-import { useTechLogs, type TechLogsScope } from '@/hooks/useTechLogs';
+import { useDeskPickLogs, type DeskPickLogsScope } from '@/hooks/useDeskPickLogs';
 import { STAFF_FILTER_PARAM, useStaffFilter } from '@/hooks/useStaffFilter';
 import { dedupeTechRecords, getTechRecordRowKey } from '@/lib/station/dedupe-tech-records';
-import type { TechRecord } from '@/hooks/useTechLogs';
+import type { TechRecord } from '@/hooks/useDeskPickLogs';
 
 interface ShippingHistoryFeedContextValue {
   /** Resolved staff scope — session tech by default, `all` when `?staff=all`. */
-  staffId: TechLogsScope;
+  staffId: DeskPickLogsScope;
   weekOffset: number;
   setWeekOffset: (next: number | ((prev: number) => number)) => void;
   weekRange: WeekRange;
@@ -51,13 +51,13 @@ export function ShippingHistoryFeedProvider({ techId, children }: ShippingHistor
   const parsedTechId = parseInt(techId, 10);
   const sessionTechId = Number.isFinite(parsedTechId) && parsedTechId > 0 ? parsedTechId : 0;
 
-  const staffId: TechLogsScope = wantAllExplicit
+  const staffId: DeskPickLogsScope = wantAllExplicit
     ? 'all'
     : (urlStaffId ?? sessionTechId);
 
   const [query, setQuery] = useState('');
   const weekRange = useMemo(() => computeWeekRange(weekOffset), [weekOffset]);
-  const { data: rawRecords = [], isLoading, isFetching } = useTechLogs(staffId, {
+  const { data: rawRecords = [], isLoading, isFetching } = useDeskPickLogs(staffId, {
     weekOffset,
     weekRange,
     search: query,

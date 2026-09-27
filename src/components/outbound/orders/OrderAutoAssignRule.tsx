@@ -51,7 +51,7 @@ function saveOutcome(body: SaveResponse): { text: string; failed: boolean } {
   const assigned = results.filter((r) => r.status === 'assigned');
   const failed = results.filter((r) => r.status === 'failed');
   const viaBackup = assigned.filter(
-    (r) => r.assigned?.TEST?.via === 'backup' || r.assigned?.PACK?.via === 'backup',
+    (r) => r.assigned?.PICK?.via === 'backup' || r.assigned?.PACK?.via === 'backup',
   ).length;
   const parts = [`Saved · ${assigned.length} assigned`];
   if (viaBackup > 0) parts.push(`${viaBackup} via backup`);

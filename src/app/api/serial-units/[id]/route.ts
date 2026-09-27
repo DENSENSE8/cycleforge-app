@@ -158,11 +158,12 @@ export async function GET(
           .catch(() => [] as unknown[]),
         tenantQuery(
             orgId,
-            `SELECT a.id, a.order_id, a.allocated_at,
+            `SELECT a.id, a.order_id, o.order_id AS order_number, a.allocated_at,
                     a.state::text AS state,
                     a.released_at, a.released_reason,
                     s.name AS allocated_by_name
                FROM order_unit_allocations a
+               LEFT JOIN orders o ON o.id = a.order_id AND o.organization_id = a.organization_id
                LEFT JOIN staff s ON s.id = a.allocated_by_staff_id
               WHERE a.serial_unit_id = $1 AND a.organization_id = $2
               ORDER BY a.allocated_at DESC, a.id DESC`,

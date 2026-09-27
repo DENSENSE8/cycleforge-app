@@ -183,7 +183,7 @@ export const SURFACE_REGISTRY: Record<SurfaceKey, SurfaceDefinition> = {
   },
   test: {
     key: 'test',
-    label: 'Testing',
+    label: 'Quality Control',
     route: '/test',
     archetype: 'station',
     workbenchBranch: null,
@@ -194,7 +194,8 @@ export const SURFACE_REGISTRY: Record<SurfaceKey, SurfaceDefinition> = {
     // Engine node type (src/lib/workflow/nodes/inspection.node.ts) — the test/QC
     // step. Was the synthetic 'testing'; a template names it `inspection`.
     workflowNodeType: 'inspection',
-    legacy: { pathname: '/tech', params: { view: 'testing' } },
+    // The Picker desk that shared `/test` moved to `/pick` (owner 2026-09-27).
+    legacy: { pathname: '/tech', bareResolves: true },
   },
   outbound: {
     key: 'outbound',

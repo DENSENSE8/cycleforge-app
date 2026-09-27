@@ -18,6 +18,7 @@ export * from './UnderlineValue';
 export * from './InlineNotice';
 export * from './InlineEditableValue';
 export * from './DenseComposeFields';
+export * from './Collapse';
 export * from './CopyActionIcon';
 export * from './ExternalLinkActionIcon';
 export * from './StatusMicroLabel';

@@ -7,12 +7,12 @@
 
 | metric | count |
 |---|---|
-| base tables | 371 |
-| with `organization_id` | 327 |
-| `organization_id NOT NULL` | 312 |
-| RLS enabled | 322 |
-| **RLS FORCEd** | **318** |
-| has tenant_isolation policy | 322 |
+| base tables | 372 |
+| with `organization_id` | 328 |
+| `organization_id NOT NULL` | 313 |
+| RLS enabled | 323 |
+| **RLS FORCEd** | **319** |
+| has tenant_isolation policy | 323 |
 | still on USAV-fallback default (footgun) | 0 |
 | tenant-owned, **missing org_id col** | 3 |
 | platform-identity (exempt by design) | 10 |
@@ -67,7 +67,7 @@ Legend: org=has organization_id · NN=NOT NULL · dflt=default kind · FK=FK→o
 | `return_dispositions` | reference-decide | ✅ | — | loud-fail | ✅ | ✅ | — | ✅ | — | ? |
 | `admin_features` | system-global | — | — | none | — | — | — | — | — | ? |
 | `config` | system-global | — | — | none | — | — | — | — | — | ? |
-| `cron_runs` | system-global | — | — | none | — | — | — | — | — | 72171 |
+| `cron_runs` | system-global | — | — | none | — | — | — | — | — | 72535 |
 | `organization_integrations` | system-global | ✅ | ✅ | loud-fail | ✅ | ✅ | ✅ | ✅ | ✅ | 10 |
 | `organizations` | system-global | — | — | none | — | — | — | — | — | 8 |
 | `roles` | system-global | ✅ | ✅ | none | ✅ | ✅ | ✅ | ✅ | — | 64 |
@@ -77,15 +77,15 @@ Legend: org=has organization_id · NN=NOT NULL · dflt=default kind · FK=FK→o
 | `workflow_templates` | system-global | — | — | none | — | — | — | — | — | 2 |
 | `_tenant_iso_test` | tenant-owned | ✅ | ✅ | loud-fail | — | ✅ | ✅ | ✅ | ✅ | 0 |
 | `agent_mutation_affects` | tenant-owned | ✅ | ✅ | loud-fail | — | ✅ | ✅ | ✅ | ✅ | ? |
-| `agent_mutations` | tenant-owned | ✅ | ✅ | loud-fail | — | ✅ | ✅ | ✅ | ✅ | ? |
-| `ai_chat_messages` | tenant-owned | ✅ | ✅ | loud-fail | ✅ | ✅ | ✅ | ✅ | ✅ | 474 |
-| `ai_chat_sessions` | tenant-owned | ✅ | ✅ | loud-fail | ✅ | ✅ | ✅ | ✅ | ✅ | 116 |
-| `ai_usage_events` | tenant-owned | ✅ | ✅ | loud-fail | — | ✅ | ✅ | ✅ | ✅ | ? |
+| `agent_mutations` | tenant-owned | ✅ | ✅ | loud-fail | — | ✅ | ✅ | ✅ | ✅ | 46 |
+| `ai_chat_messages` | tenant-owned | ✅ | ✅ | loud-fail | ✅ | ✅ | ✅ | ✅ | ✅ | 706 |
+| `ai_chat_sessions` | tenant-owned | ✅ | ✅ | loud-fail | ✅ | ✅ | ✅ | ✅ | ✅ | 260 |
+| `ai_usage_events` | tenant-owned | ✅ | ✅ | loud-fail | — | ✅ | ✅ | ✅ | ✅ | 176 |
 | `amazon_accounts` | tenant-owned | ✅ | ✅ | loud-fail | — | ✅ | ✅ | ✅ | ✅ | ? |
 | `amazon_api_calls` | tenant-owned | ✅ | ✅ | loud-fail | — | ✅ | ✅ | ✅ | ✅ | ? |
-| `api_idempotency_responses` | tenant-owned | ✅ | ✅ | loud-fail | ✅ | ✅ | ✅ | ✅ | ✅ | 803 |
+| `api_idempotency_responses` | tenant-owned | ✅ | ✅ | loud-fail | ✅ | ✅ | ✅ | ✅ | ✅ | 720 |
 | `approval_reviews` | tenant-owned | ✅ | ✅ | loud-fail | — | ✅ | ✅ | ✅ | ✅ | ? |
-| `audit_logs` | tenant-owned | ✅ | ✅ | loud-fail | — | ✅ | ✅ | ✅ | ✅ | 24229 |
+| `audit_logs` | tenant-owned | ✅ | ✅ | loud-fail | — | ✅ | ✅ | ✅ | ✅ | 26704 |
 | `automation_rules` | tenant-owned | ✅ | ✅ | loud-fail | — | ✅ | ✅ | ✅ | ✅ | ? |
 | `automation_runs` | tenant-owned | ✅ | ✅ | loud-fail | — | ✅ | ✅ | ✅ | ✅ | 729 |
 | `billing_subscriptions` | tenant-owned | ✅ | ✅ | loud-fail | ✅ | ✅ | ✅ | ✅ | ✅ | ? |
@@ -164,7 +164,7 @@ Legend: org=has organization_id · NN=NOT NULL · dflt=default kind · FK=FK→o
 | `kiosk_attract_slides` | tenant-owned | ✅ | ✅ | loud-fail | — | ✅ | ✅ | ✅ | ✅ | ? |
 | `kiosk_carts` | tenant-owned | ✅ | ✅ | loud-fail | — | ✅ | ✅ | ✅ | ✅ | 2 |
 | `kiosk_companion_links` | tenant-owned | ✅ | ✅ | loud-fail | — | ✅ | ✅ | ✅ | ✅ | 4 |
-| `kiosk_devices` | tenant-owned | ✅ | ✅ | loud-fail | — | ✅ | ✅ | ✅ | ✅ | 702 |
+| `kiosk_devices` | tenant-owned | ✅ | ✅ | loud-fail | — | ✅ | ✅ | ✅ | ✅ | 704 |
 | `kiosk_slot_events` | tenant-owned | ✅ | ✅ | none | ✅ | — | — | — | — | ? |
 | `label_ingestion_orders` | tenant-owned | ✅ | ✅ | loud-fail | — | ✅ | ✅ | ✅ | ✅ | 55 |
 | `label_ingestions` | tenant-owned | ✅ | ✅ | loud-fail | — | ✅ | ✅ | ✅ | ✅ | 99 |
@@ -202,6 +202,7 @@ Legend: org=has organization_id · NN=NOT NULL · dflt=default kind · FK=FK→o
 | `order_notes` | tenant-owned | ✅ | ✅ | loud-fail | — | ✅ | ✅ | ✅ | ✅ | ? |
 | `order_pack_placement_events` | tenant-owned | ✅ | ✅ | loud-fail | — | ✅ | ✅ | ✅ | ✅ | ? |
 | `order_pack_placements` | tenant-owned | ✅ | ✅ | loud-fail | — | ✅ | ✅ | ✅ | ✅ | ? |
+| `order_payments` | tenant-owned | ✅ | ✅ | loud-fail | — | ✅ | ✅ | ✅ | ✅ | ? |
 | `order_unit_allocations` | tenant-owned | ✅ | ✅ | loud-fail | ✅ | ✅ | ✅ | ✅ | ✅ | 48 |
 | `order_unit_amendments` | tenant-owned | ✅ | ✅ | loud-fail | — | ✅ | ✅ | ✅ | ✅ | ? |
 | `orders` | tenant-owned | ✅ | ✅ | loud-fail | ✅ | ✅ | ✅ | ✅ | ✅ | 5183 |
@@ -258,7 +259,7 @@ Legend: org=has organization_id · NN=NOT NULL · dflt=default kind · FK=FK→o
 | `qa_test_runs` | tenant-owned | ✅ | ✅ | loud-fail | — | ✅ | ✅ | ✅ | ✅ | ? |
 | `qa_webhook_replays` | tenant-owned | ✅ | ✅ | loud-fail | — | ✅ | ✅ | ✅ | ✅ | ? |
 | `qc_check_templates` | tenant-owned | ✅ | ✅ | loud-fail | ✅ | ✅ | ✅ | ✅ | ✅ | 42 |
-| `qr_login_sessions` | tenant-owned | ✅ | — | none | — | — | — | — | — | 1833 |
+| `qr_login_sessions` | tenant-owned | ✅ | — | none | — | — | — | — | — | 2044 |
 | `rag_document_chunks` | tenant-owned | ✅ | ✅ | loud-fail | — | ✅ | ✅ | ✅ | ✅ | ? |
 | `rag_documents` | tenant-owned | ✅ | ✅ | loud-fail | — | ✅ | ✅ | ✅ | ✅ | ? |
 | `reason_codes` | tenant-owned | ✅ | ✅ | loud-fail | ✅ | ✅ | ✅ | ✅ | ✅ | 633 |
@@ -292,7 +293,7 @@ Legend: org=has organization_id · NN=NOT NULL · dflt=default kind · FK=FK→o
 | `saved_views` | tenant-owned | ✅ | ✅ | loud-fail | — | ✅ | ✅ | ✅ | ✅ | 1 |
 | `scan_triage_photos` | tenant-owned | ✅ | ✅ | loud-fail | — | ✅ | ✅ | ✅ | ✅ | ? |
 | `scan_triage_records` | tenant-owned | ✅ | ✅ | loud-fail | — | ✅ | ✅ | ✅ | ✅ | 500 |
-| `search_query_log` | tenant-owned | ✅ | ✅ | loud-fail | — | ✅ | ✅ | ✅ | ✅ | 2566 |
+| `search_query_log` | tenant-owned | ✅ | ✅ | loud-fail | — | ✅ | ✅ | ✅ | ✅ | 2903 |
 | `search_recents` | tenant-owned | ✅ | ✅ | loud-fail | — | ✅ | ✅ | ✅ | ✅ | 94 |
 | `serial_unit_condition_history` | tenant-owned | ✅ | ✅ | loud-fail | ✅ | ✅ | ✅ | ✅ | ✅ | ? |
 | `serial_unit_listings` | tenant-owned | ✅ | ✅ | loud-fail | — | ✅ | ✅ | ✅ | ✅ | ? |
@@ -301,7 +302,7 @@ Legend: org=has organization_id · NN=NOT NULL · dflt=default kind · FK=FK→o
 | `shipment_links` | tenant-owned | ✅ | ✅ | loud-fail | — | ✅ | ✅ | ✅ | ✅ | 6470 |
 | `shipment_tracking_events` | tenant-owned | ✅ | — | loud-fail | ✅ | ✅ | ✅ | ✅ | — | 27558 |
 | `shipping_label_purchases` | tenant-owned | ✅ | ✅ | loud-fail | — | ✅ | ✅ | ✅ | ✅ | 56 |
-| `shipping_tracking_numbers` | tenant-owned | ✅ | — | loud-fail | ✅ | ✅ | ✅ | ✅ | — | 12849 |
+| `shipping_tracking_numbers` | tenant-owned | ✅ | — | loud-fail | ✅ | ✅ | ✅ | ✅ | — | 12009 |
 | `shipstation_order_refs` | tenant-owned | ✅ | ✅ | loud-fail | — | ✅ | ✅ | ✅ | ✅ | 538 |
 | `shipstation_shipment_refs` | tenant-owned | ✅ | ✅ | loud-fail | — | ✅ | ✅ | ✅ | ✅ | 66 |
 | `shipstation_sync_runs` | tenant-owned | ✅ | ✅ | loud-fail | — | ✅ | ✅ | ✅ | ✅ | ? |
@@ -329,7 +330,7 @@ Legend: org=has organization_id · NN=NOT NULL · dflt=default kind · FK=FK→o
 | `staff_messages` | tenant-owned | ✅ | ✅ | loud-fail | — | ✅ | ✅ | ✅ | ✅ | ? |
 | `staff_preferences` | tenant-owned | ✅ | ✅ | loud-fail | — | ✅ | ✅ | ✅ | ✅ | 18 |
 | `staff_rail_exclusions` | tenant-owned | ✅ | ✅ | loud-fail | — | ✅ | ✅ | ✅ | ✅ | ? |
-| `staff_sessions` | tenant-owned | ✅ | ✅ | loud-fail | ✅ | ✅ | ✅ | ✅ | ✅ | 3557 |
+| `staff_sessions` | tenant-owned | ✅ | ✅ | loud-fail | ✅ | ✅ | ✅ | ✅ | ✅ | 3669 |
 | `staff_stations` | tenant-owned | ✅ | ✅ | loud-fail | ✅ | ✅ | ✅ | ✅ | ✅ | 2 |
 | `staff_subscriptions` | tenant-owned | ✅ | ✅ | loud-fail | — | ✅ | ✅ | ✅ | ✅ | ? |
 | `staff_todo_completions` | tenant-owned | ✅ | ✅ | loud-fail | ✅ | ✅ | ✅ | ✅ | ✅ | ? |

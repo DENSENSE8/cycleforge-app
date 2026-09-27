@@ -3,7 +3,7 @@
 /** Raw signal combo from the queue-counts endpoint — mapped to a fulfillment
  *  lane CLIENT-side via `deriveFulfillmentState` (Decision 8), never in SQL. */
 export interface QueueCountsCombo {
-  hasTechScan: boolean;
+  hasPickScan: boolean;
   blocked: boolean;
   count: number;
 }

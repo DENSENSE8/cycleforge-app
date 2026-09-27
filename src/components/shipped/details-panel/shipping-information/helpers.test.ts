@@ -9,7 +9,7 @@ function makeShipped(overrides: Record<string, unknown>): ShippedOrder {
 
 test('deriveShippingDisplayMeta: prefers explicit name columns over staff lookup', () => {
   const meta = deriveShippingDisplayMeta(
-    makeShipped({ packed_by_name: 'Alice', tester_name: 'Bob' }),
+    makeShipped({ packed_by_name: 'Alice', tested_by_name: 'Bob' }),
     [],
   );
   assert.equal(meta.packerNameDisplay, 'Alice');

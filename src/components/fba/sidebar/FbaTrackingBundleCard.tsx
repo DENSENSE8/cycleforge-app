@@ -2,7 +2,6 @@
 
 import { useState } from 'react';
 import { useDroppable } from '@dnd-kit/core';
-import { AnimatePresence, motion } from '@/design-system/motion';
 import { ChevronDown, ChevronUp, Pencil, Trash2 } from '@/components/Icons';
 import { FbaDraggableLineRow } from '@/components/fba/sidebar/FbaDraggableLineRow';
 import { FbaQtyStepper } from '@/components/fba/sidebar/FbaQtyStepper';
@@ -10,7 +9,7 @@ import { PrintTableCheckbox } from '@/components/fba/table/Checkbox';
 import { TrackingChip, getLast8 } from '@/components/ui/CopyChip';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { IconButton, TextField } from '@/design-system/primitives';
-import { motionPresence, motionTransition } from '@/design-system/foundations/motion-presets';
+import { Collapse } from '@/design-system/components/Collapse';
 import type { StationTheme } from '@/utils/staff-colors';
 
 export interface BundleItemAllocation {
@@ -152,55 +151,45 @@ export function FbaTrackingBundleCard({
       </div>
 
       {/* Collapsible items */}
-      <AnimatePresence initial={false}>
-        {!bundle.collapsed && (
-          <motion.div
-            initial={motionPresence.collapseHeight.initial}
-            animate={motionPresence.collapseHeight.animate}
-            exit={motionPresence.collapseHeight.exit}
-            transition={motionTransition.upNextCollapse}
-            className="overflow-hidden"
-          >
-            {bundle.allocations.length === 0 ? (
-              <div className="border-t border-border-hairline px-3 py-2">
-                <p className="text-center text-role-eyebrow uppercase tracking-wider text-text-faint">
-                  Drag items here
-                </p>
-              </div>
-            ) : (
-              <div className="border-t border-border-hairline">
-                {bundle.allocations.map((alloc) => (
-                  <FbaDraggableLineRow
-                    key={alloc.item_id}
-                    dragId={`editor-drag-${alloc.item_id}-${droppableId}`}
-                    dragData={{ itemId: alloc.item_id, sourceContainer: droppableId }}
-                    displayTitle={alloc.display_title || 'No title'}
-                    fnsku={alloc.fnsku.toUpperCase()}
-                    stationTheme={stationTheme}
-                    checked
-                    selected={selectedIds.has(alloc.item_id)}
-                    onToggleSelect={() => onToggleSelect(alloc.item_id)}
-                    onCheckedChange={() => onDeallocateItem(bundleIndex, alloc.item_id)}
-                    rightSlot={
-                      <FbaQtyStepper
-                        value={alloc.qty}
-                        onChange={(v) => {
-                          if (v <= 0) {
-                            onDeallocateItem(bundleIndex, alloc.item_id);
-                          } else {
-                            onChangeAllocationQty(bundleIndex, alloc.item_id, Math.min(v, alloc.max_qty));
-                          }
-                        }}
-                        fnsku={alloc.fnsku}
-                      />
-                    }
+      <Collapse open={!bundle.collapsed}>
+        {bundle.allocations.length === 0 ? (
+          <div className="border-t border-border-hairline px-3 py-2">
+            <p className="text-center text-role-eyebrow uppercase tracking-wider text-text-faint">
+              Drag items here
+            </p>
+          </div>
+        ) : (
+          <div className="border-t border-border-hairline">
+            {bundle.allocations.map((alloc) => (
+              <FbaDraggableLineRow
+                key={alloc.item_id}
+                dragId={`editor-drag-${alloc.item_id}-${droppableId}`}
+                dragData={{ itemId: alloc.item_id, sourceContainer: droppableId }}
+                displayTitle={alloc.display_title || 'No title'}
+                fnsku={alloc.fnsku.toUpperCase()}
+                stationTheme={stationTheme}
+                checked
+                selected={selectedIds.has(alloc.item_id)}
+                onToggleSelect={() => onToggleSelect(alloc.item_id)}
+                onCheckedChange={() => onDeallocateItem(bundleIndex, alloc.item_id)}
+                rightSlot={
+                  <FbaQtyStepper
+                    value={alloc.qty}
+                    onChange={(v) => {
+                      if (v <= 0) {
+                        onDeallocateItem(bundleIndex, alloc.item_id);
+                      } else {
+                        onChangeAllocationQty(bundleIndex, alloc.item_id, Math.min(v, alloc.max_qty));
+                      }
+                    }}
+                    fnsku={alloc.fnsku}
                   />
-                ))}
-              </div>
-            )}
-          </motion.div>
+                }
+              />
+            ))}
+          </div>
         )}
-      </AnimatePresence>
+      </Collapse>
     </div>
   );
 }

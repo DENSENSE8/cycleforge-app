@@ -114,7 +114,7 @@ function dispatchSkuStockDesktopScanner(): void {
 // ── Tech Up Next preview (right-pane workspace) ─────────────────────────────
 
 /**
- * Selected Up Next item to preview in the `/tech` right pane. `null` clears
+ * Selected Up Next item to preview in the `/pick` right pane. `null` clears
  * the preview and returns the pane to the global history (or the active-order
  * workspace, if one is in progress).
  */

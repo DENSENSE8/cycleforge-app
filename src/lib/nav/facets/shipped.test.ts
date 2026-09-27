@@ -6,6 +6,13 @@ import {
   VALID_STATUS,
   type ShippedTypeFilter,
 } from '@/lib/shipping/shipped-filter/shipped-filter-constants';
+import {
+  readShippedPickedBy,
+  readShippedTimeWindow,
+  shippedStampInWindow,
+} from '@/lib/shipping/shipped-filter/shipped-filter-params';
+import { fromZonedTime } from 'date-fns-tz';
+import { WAREHOUSE_TIME_ZONE } from '@/utils/date';
 
 const ORG = '00000000-0000-0000-0000-000000000001';
 const DESK = { orgId: ORG, permissions: new Set(['packing.view']) };
@@ -21,7 +28,23 @@ interface FixturePackage {
   carrier: string;
   status: string;
   exception: boolean;
+  /** The row's `created_at` as the list receives it: naive warehouse wall clock. */
+  shippedAt: string;
+  /** The order's picker (PICK_FACTS source priority), null = no pick fact / no order. */
+  pickedBy: number | null;
 }
+
+// Stamps straddling the 09:00–11:30 window's minute edges on 2026-09-20 (PDT), plus the prior day.
+const STAMPS = [
+  '2026-09-19 23:59:59',
+  '2026-09-20 08:59:59',
+  '2026-09-20 09:00:00',
+  '2026-09-20 10:15:00',
+  '2026-09-20 11:30:59',
+  '2026-09-20 11:31:00',
+  '2026-09-20 23:59:59',
+];
+const PICKERS = [3, 5, null];
 
 const row = (...types: ShippedTypeFilter[]) =>
   Object.fromEntries(TYPES.map((t) => [t, types.includes(t)])) as Record<ShippedTypeFilter, boolean>;
@@ -42,7 +65,13 @@ function fixturePackages(): FixturePackage[] {
         for (const exception of [false, true]) {
           // Uneven multiplicities so a wrong sum cannot pass by symmetry.
           const copies = i++ % 3;
-          for (let k = 0; k < copies; k++) out.push({ rows, carrier, status, exception });
+          for (let k = 0; k < copies; k++) {
+            out.push({
+              rows, carrier, status, exception,
+              shippedAt: STAMPS[(i + k) % STAMPS.length],
+              pickedBy: PICKERS[(i * 7 + k) % PICKERS.length],
+            });
+          }
         }
       }
     }
@@ -61,13 +90,25 @@ function listPackages(packages: FixturePackage[], params: Record<string, string>
   const carrier = (params.carrier ?? '').toUpperCase();
   const status = (params.statusCategory ?? '').toUpperCase();
   const exceptions = ['1', 'true'].includes((params.exceptions ?? '').toLowerCase());
+  const search = new URLSearchParams(params);
+  // The list's browser trim for a time window, and its picker filter.
+  const timeWindow = readShippedTimeWindow(search);
+  const pickedBy = readShippedPickedBy(search);
   return packages.filter((p) => {
     if (!p.rows.some((r) => r[type])) return false;
     if ((VALID_CARRIERS as Set<string>).has(carrier) && p.carrier !== carrier) return false;
     if ((VALID_STATUS as Set<string>).has(status) && p.status !== status) return false;
     if (exceptions && !p.exception) return false;
+    if (timeWindow && !shippedStampInWindow(p.shippedAt, timeWindow)) return false;
+    if (pickedBy != null && p.pickedBy !== pickedBy) return false;
     return true;
   });
+}
+
+/** The bound value of `$n` for the first `pattern` match in `sql`, if the statement carries it. */
+function boundBy(sql: string, params: readonly unknown[], pattern: RegExp): unknown {
+  const m = pattern.exec(sql);
+  return m ? params[Number(m[1]) - 1] : undefined;
 }
 
 /** Stand-in for Postgres: per-package values (bool_or over its rows), counted per combination. */
@@ -76,8 +117,18 @@ function comboRunner(packages: FixturePackage[], captured: Array<{ sql: string; 
     listLocalPickupLines: noPickup,
     run: async (_orgId, sql, params) => {
       captured.push({ sql, params });
+      // The predicates the statement binds, evaluated as Postgres would.
+      const from = boundBy(sql, params, /sal\.created_at >= \$(\d+)::timestamptz/);
+      const to = boundBy(sql, params, /sal\.created_at <\s+\$(\d+)::timestamptz/);
+      // `sqlOrderPickedByStaff`: its last (Picker-desk scan) arm closes the COALESCE, then `= $n`.
+      const picker = boundBy(sql, params, /pk_sal\.id DESC[\s\S]*?\)\s*\)\s*=\s*\$(\d+)/);
       const byKey = new Map<string, Record<string, unknown>>();
       for (const p of packages) {
+        // Postgres (session zone = warehouse) reads the naive stamp as this instant.
+        const shippedMs = fromZonedTime(p.shippedAt.replace(' ', 'T'), WAREHOUSE_TIME_ZONE).getTime();
+        if (from !== undefined && shippedMs < Date.parse(String(from))) continue;
+        if (to !== undefined && shippedMs >= Date.parse(String(to))) continue;
+        if (picker !== undefined && p.pickedBy !== picker) continue;
         const combo = {
           t_all: p.rows.some((r) => r.all),
           t_orders: p.rows.some((r) => r.orders),
@@ -112,6 +163,16 @@ const PARAM_CASES: Array<Record<string, string>> = [
   { statusCategory: 'DELIVERED', exceptions: 'true' },
   { shippedFilter: 'all', carrier: 'USPS', statusCategory: 'EXCEPTION', exceptions: '1' },
   { shippedFilter: 'ORDERS', carrier: 'DHL', statusCategory: 'lost', exceptions: 'yes' }, // values the list ignores
+  // Exact shipped-instant window (warehouse wall clock, inclusive to the minute).
+  { dateFrom: '2026-09-20', dateTo: '2026-09-20', timeFrom: '09:00', timeTo: '11:30' },
+  { dateFrom: '2026-09-20', timeFrom: '10:00', carrier: 'UPS' }, // no dateTo = the one day; no timeTo = end of day
+  { dateFrom: '2026-09-19', dateTo: '2026-09-20', timeTo: '09:00', shippedFilter: 'sku' }, // no timeFrom = 00:00
+  { dateFrom: '2026-09-20', dateTo: '2026-09-20', timeFrom: '9am', timeTo: '24:00' }, // invalid times: no narrowing
+  // The order's picker.
+  { pickedBy: '5' },
+  { pickedBy: '3', shippedFilter: 'orders', exceptions: '1' },
+  { pickedBy: '5', dateFrom: '2026-09-20', dateTo: '2026-09-20', timeFrom: '09:00', timeTo: '11:30' },
+  { pickedBy: 'x' }, // not a staff id: no narrowing
 ];
 
 test('outbound.shipped: total and every option count equal the Shipped list total for the same params', async () => {
@@ -152,6 +213,20 @@ test('outbound.shipped: the statement binds the list’s window (padded page + e
   assert.deepEqual(captured[0].params, [ORG, 7, '2026-08-03', '2026-08-07', '2026-08-03', '2026-08-07']);
   // All dates: no window; staff values the list rejects are not filters.
   assert.deepEqual(captured[1].params, [ORG]);
+});
+
+test('outbound.shipped: a time window binds exact warehouse instants in place of the day clip, and pickedBy binds the picker', async () => {
+  const captured: Array<{ sql: string; params: readonly unknown[] }> = [];
+  const deps = comboRunner([], captured);
+  await facetsBody(
+    new URLSearchParams({ dateFrom: '2026-09-20', dateTo: '2026-09-20', timeFrom: '09:00', timeTo: '11:30', pickedBy: '5' }),
+    deps,
+  );
+  // 09:00 PDT = 16:00Z; 11:30 inclusive to the minute = < 11:31 PDT = 18:31Z.
+  assert.deepEqual(captured[0].params, [ORG, '2026-09-20', '2026-09-20', '2026-09-20T16:00:00.000Z', '2026-09-20T18:31:00.000Z', 5]);
+  assert.ok(!captured[0].sql.includes('to_char(sal.created_at'), 'the time window replaces the day clip');
+  // The picker reads the matched order, so the order joins ride along.
+  assert.ok(captured[0].sql.includes('order_match'));
 });
 
 test('outbound.shipped: a DB without packer_log_enrichment falls back to the legacy order match', async () => {

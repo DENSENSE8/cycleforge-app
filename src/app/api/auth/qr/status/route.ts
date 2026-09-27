@@ -8,6 +8,7 @@ import {
   LEGACY_SESSION_COOKIE_NAME,
 } from '@/lib/auth/session';
 import { audit } from '@/lib/auth/audit';
+import { recordStaffLogin } from '@/lib/auth/record-staff-login';
 import pool from '@/lib/db';
 
 export const runtime = 'nodejs';
@@ -80,9 +81,17 @@ export async function GET(req: NextRequest) {
         detail: { via: 'qr_phone_cross_device', qrSessionId: claimed.id },
       });
 
+      // The desk claiming the session IS the sign-in (the phone's PIN authorize
+      // does not stamp), so the login is recorded here.
+      const login = await recordStaffLogin(pool, claimed.staff_id);
+
       const res = NextResponse.json({
         status: 'completed',
+        staffId: claimed.staff_id,
         staffName: staff?.name || null,
+        role: login.role,
+        defaultHomePath: login.defaultHomePath,
+        defaultHomePathMobile: login.defaultHomePathMobile,
         redirectUrl: '/',
       });
 

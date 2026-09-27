@@ -6,6 +6,7 @@ import pool from '@/lib/db';
 import { withAuth } from '@/lib/auth/withAuth';
 import { checkRateLimitAsync } from '@/lib/api-guard';
 import { createSession, SESSION_COOKIE_NAME, cookieMaxAgeForSession } from '@/lib/auth/session';
+import { recordStaffLoginRedirect } from '@/lib/auth/record-staff-login';
 import { hashPin, isObviousPin } from '@/lib/auth/pin';
 import { getOrganizationBySlug } from '@/lib/tenancy/organizations';
 import { getAccountByEmail, createAccount, setAccountPassword } from '@/lib/identity/accounts';
@@ -231,11 +232,15 @@ export const POST = withAuth(async (req: NextRequest) => {
       .catch((err) => console.warn('[signup] stripe customer create failed:', err));
   }
 
+  // The owner's very first sign-in: stamps last_login_at and lands on Daily
+  // with the welcome (`/?welcome=1`).
+  const redirectTo = await recordStaffLoginRedirect(pool, staffId, { mobile: false });
+
   const res = NextResponse.json({
     orgId,
     slug,
     staffId,
-    defaultHomePath: '/',
+    redirectTo,
   });
   res.cookies.set({
     name: SESSION_COOKIE_NAME,

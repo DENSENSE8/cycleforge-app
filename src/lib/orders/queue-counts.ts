@@ -10,7 +10,7 @@
  * (`awaitingOnly`), not To-ship's.
  *
  * Per-count predicate (all ∩ the To-ship scope, ∩ `sqlOrderAssignedToStaff` when `?staff=`):
- *   byStage.tested / pending / packed — `sqlOrderHasTechScan` / `sqlOrderHasPackScan`
+ *   byStage.tested / pending / packed — `sqlOrderHasPickScan` / `sqlOrderHasPackScan`
  *     (the partition `sqlOrderDeskStage` filters the list with);
  *   combos.blocked — `orders.is_out_of_stock`; urgent — `orders.is_urgent`;
  *   mustShip — ship-by (`sqlOrderTestDeadlineAt`, the list's `deadline_at`) is
@@ -22,7 +22,7 @@
 
 import { createCacheLookupKey, getCachedJson, setCachedJson } from '@/lib/cache/upstash-cache';
 import { createSingleFlight, type SingleFlight } from '@/lib/cache/single-flight';
-import { sqlOrderHasPackScan, sqlOrderHasTechScan } from '@/lib/orders/order-grain-sql';
+import { sqlOrderHasPackScan, sqlOrderHasPickScan } from '@/lib/orders/order-grain-sql';
 import { PRINT_PACKET_INCOMPLETE_SQL } from '@/lib/orders/print-packet';
 import {
   sqlDeskAgingBucket,
@@ -38,7 +38,7 @@ import type { OrgId } from '@/lib/tenancy/constants';
 
 /** One grouped signal row of the To-ship scope. */
 interface QueueCountsGroupRow {
-  has_tech_scan: boolean;
+  has_pick_scan: boolean;
   has_pack_scan: boolean;
   blocked: boolean;
   n: number;
@@ -75,7 +75,7 @@ export function buildQueueCountsSql(orgId: string, staffId: number | null): { sq
         o.docs_not_required,
         o.is_out_of_stock,
         o.is_urgent,
-        ${sqlOrderHasTechScan('o')} AS has_tech_scan,
+        ${sqlOrderHasPickScan('o')} AS has_pick_scan,
         ${sqlOrderHasPackScan('o')} AS has_pack_scan,
         ${sqlOrderTestDeadlineAt('o')} AS deadline_at
       FROM orders o
@@ -85,7 +85,7 @@ export function buildQueueCountsSql(orgId: string, staffId: number | null): { sq
     ),
     groups AS (
       SELECT
-        s.has_tech_scan,
+        s.has_pick_scan,
         s.has_pack_scan,
         s.is_out_of_stock AS blocked,
         COUNT(*)::int AS n,
@@ -114,7 +114,7 @@ export function assembleQueueCounts(
   const combos: QueueCountsCombo[] = tallies.groups
     .filter((r) => !r.has_pack_scan)
     .map((r) => ({
-      hasTechScan: Boolean(r.has_tech_scan),
+      hasPickScan: Boolean(r.has_pick_scan),
       blocked: Boolean(r.blocked),
       count: Number(r.n) || 0,
     }));
@@ -122,7 +122,7 @@ export function assembleQueueCounts(
     .filter((r) => r.has_pack_scan)
     .reduce((s, r) => s + (Number(r.n) || 0), 0);
   const prePack = combos.reduce((s, c) => s + c.count, 0);
-  const tested = combos.filter((c) => c.hasTechScan).reduce((s, c) => s + c.count, 0);
+  const tested = combos.filter((c) => c.hasPickScan).reduce((s, c) => s + c.count, 0);
   const total = prePack + packed;
   return {
     total,

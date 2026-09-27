@@ -3,10 +3,10 @@ import { tenantQuery } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';
 import { queuePendingSku } from '@/lib/inventory/pending-skus';
 import { skuColorVariant, type SkuColorVariant } from '@/lib/inventory/sku-variant';
-import { skuCatalogNoZohoTwinPredicateSql } from '@/lib/sku/sku-identity-law';
+import { skuCatalogTitleUnownedPredicateSql } from '@/lib/sku/sku-identity-law';
 
 /** Rule 4 of the SKU identity law, for the unaliased `sku_catalog` reads below. */
-const NO_ZOHO_TWIN_SQL = skuCatalogNoZohoTwinPredicateSql('sku_catalog');
+const TITLE_UNOWNED_SQL = skuCatalogTitleUnownedPredicateSql('sku_catalog');
 
 export interface ResolvedSkuCatalog {
   id: number;
@@ -145,7 +145,7 @@ async function lookupSkuCatalogRow(
             UPPER(TRIM(sku)) = UPPER(TRIM($1))
             OR (
               regexp_replace(UPPER(TRIM(sku)), '^0+', '') = regexp_replace(UPPER(TRIM($1)), '^0+', '')
-              AND ${NO_ZOHO_TWIN_SQL}
+              AND ${TITLE_UNOWNED_SQL}
             )
           )
         ORDER BY (UPPER(TRIM(sku)) = UPPER(TRIM($1))) DESC

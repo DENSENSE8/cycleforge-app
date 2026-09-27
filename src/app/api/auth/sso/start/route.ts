@@ -56,7 +56,8 @@ export const GET = withAuth(async (req) => {
   }
 
   const slug = req.nextUrl.searchParams.get('slug') || req.headers.get('x-tenant-slug');
-  const nextPath = req.nextUrl.searchParams.get('next') || '/dashboard';
+  // No default: an absent `next` lets the callback resolve the staff landing.
+  const nextPath = req.nextUrl.searchParams.get('next') || null;
   const persistent = req.nextUrl.searchParams.get('persist') === '1';
   if (!slug) {
     return NextResponse.json({ error: 'TENANT_REQUIRED' }, { status: 400 });

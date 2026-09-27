@@ -12,6 +12,7 @@ import {
 import { unwrapScannedSerial } from '@/lib/barcode-routing';
 import { safeRandomUUID } from '@/lib/safe-uuid';
 import { refreshDomains } from '@/lib/refresh/bus';
+import { playVerdictCue } from '@/lib/scan-feedback/play';
 // Type-only — the SoT enum lives in a server module (`'server-only'`).
 import type { WipeMethod } from '@/lib/tech/recordDataWipe';
 
@@ -36,39 +37,6 @@ export interface WipeOutcome {
 }
 
 const DEFAULT_METHOD: WipeMethod = 'factory_reset';
-
-/**
- * Non-visual pass/fail cue for the eyes-down operator (station.md §6 — "pair the
- * visual pass/fail with an audio confirmation"). Pure WebAudio, SSR-guarded,
- * best-effort: a locked-down / autoplay-blocked browser silently no-ops.
- */
-function playWipeCue(kind: 'wiped' | 'failed'): void {
-  if (typeof window === 'undefined') return;
-  try {
-    const AudioCtx: typeof AudioContext | undefined =
-      window.AudioContext ??
-      (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
-    if (!AudioCtx) return;
-    const ctx = new AudioCtx();
-    const osc = ctx.createOscillator();
-    const gain = ctx.createGain();
-    osc.connect(gain);
-    gain.connect(ctx.destination);
-    osc.type = 'sine';
-    osc.frequency.value = kind === 'wiped' ? 880 : 220;
-    const now = ctx.currentTime;
-    gain.gain.setValueAtTime(0.0001, now);
-    gain.gain.exponentialRampToValueAtTime(0.16, now + 0.01);
-    gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.22);
-    osc.start(now);
-    osc.stop(now + 0.24);
-    osc.onended = () => {
-      void ctx.close().catch(() => {});
-    };
-  } catch {
-    /* audio unavailable — visual state is the source of truth */
-  }
-}
 
 export function useDataWipeController() {
   const [inputValue, setInputValue] = useState('');
@@ -200,7 +168,7 @@ export function useDataWipeController() {
 
         const kind: WipeOutcome['kind'] = success ? 'wiped' : 'failed';
         setOutcome({ kind, method: wipeMethod, idempotent: Boolean(data.idempotent), unit });
-        playWipeCue(kind);
+        playVerdictCue(kind === 'wiped' ? 'pass' : 'fail');
         refreshDomains(['receiving.lines']);
       } catch {
         setErrorMessage('Network error recording the wipe. Try again.');

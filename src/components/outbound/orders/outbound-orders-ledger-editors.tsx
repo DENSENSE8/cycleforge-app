@@ -463,7 +463,9 @@ export function LedgerSkuBinPicker({
   current: string | null;
   onCommit: (locationBarcode: string) => void;
 }) {
-  const { options, loading } = useLocationPickerOptions();
+  // Just in time: the bin list loads on the first open, not with the record.
+  const [wanted, setWanted] = useState(false);
+  const { options, loading } = useLocationPickerOptions({ enabled: wanted });
   return (
     <SearchableSelectField
       value={null}
@@ -480,6 +482,9 @@ export function LedgerSkuBinPicker({
       emptyMessage="No matching location"
       ariaLabel={sku ? `Set the bin for SKU ${sku}` : 'Set bin (no SKU)'}
       testId="evidence-sku-bin-picker"
+      onOpenChange={(open) => {
+        if (open) setWanted(true);
+      }}
       className={INLINE_PICKER_CLASS}
     />
   );

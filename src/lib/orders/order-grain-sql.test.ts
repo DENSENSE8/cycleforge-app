@@ -3,16 +3,17 @@ import assert from 'node:assert/strict';
 import {
   sqlOrderHasPackScan,
   sqlOrderHasShipConfirm,
-  sqlOrderHasTechScan,
+  sqlOrderHasPickScan,
   sqlOrderSerialsAgg,
   sqlTsnMatchesOrder,
 } from './order-grain-sql';
 
-test('sqlOrderHasTechScan prefers TSN.order_id and SAL metadata order_row_id', () => {
-  const sql = sqlOrderHasTechScan('o');
+test('sqlOrderHasPickScan prefers TSN.order_id and SAL order_row_id, reading pick scans only', () => {
+  const sql = sqlOrderHasPickScan('o');
   assert.match(sql, /tsn\.order_id = o\.id/);
   assert.match(sql, /order_row_id/);
-  assert.match(sql, /TRACKING_SCANNED/);
+  assert.match(sql, /'PICK_SCANNED', 'FNSKU_SCANNED'/);
+  assert.doesNotMatch(sql, /TRACKING_SCANNED/);
   // Sole-shipment fallback is gated by sibling exclusion — not naked shipment EXISTS.
   assert.match(sql, /o2\.id <> o\.id/);
 });

@@ -1,5 +1,5 @@
 /**
- * Testing-mode workspace tabs on `/test?view=testing`.
+ * Quality Control workbench tabs on `/test`.
  * Param: `?testTab=urgent|returns|pending|all|history` — absent defaults to Returns.
  */
 

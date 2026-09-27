@@ -1,33 +1,36 @@
 'use client';
 
 /**
- * Purchase-order section: fill the draft from an order document. Paste the
- * confirmation text or screenshots (or attach them), then Fill fields reads
- * them through `extract-po` and hands the draft back to the composer.
+ * Inbound-order section: fill the form from an order document. Paste the
+ * confirmation text or screenshots (or attach them); Fill fields reads them
+ * through `extract-po` and hands back an InboundOrderDraft to review — nothing
+ * lands until the operator adds it.
  */
 
 import { useCallback, useRef, useState, type ClipboardEvent } from 'react';
 import { ImagePlus, Sparkles, X } from '@/components/Icons';
-import { postPoIntakeExtract, readFileAsDataUrl } from '@/lib/inbound/po-intake-client';
-import type { PoIntakeDraft } from '@/lib/inbound/po-intake-draft';
+import { Button, IconButton } from '@/design-system/primitives';
+import { TRIAGE_PANEL_INNER_CORNER } from '@/design-system/tokens/triage-panel';
+import { focusRing } from '@/design-system/tokens/focus-ring';
+import { postInboundOrderExtract, readFileAsDataUrl } from '@/lib/inbound/inbound-order-client';
+import type { InboundOrderDraft, InboundOrderType } from '@/lib/inbound/inbound-order-draft';
 import { toast } from '@/lib/toast';
-import {
-  ComposerButton,
-  ComposerIconButton,
-  ComposerSection,
-  ComposerStatus,
-  ComposerTextArea,
-} from './receiving-order-composer-parts';
+import { cn } from '@/utils/_cn';
 
-const MAX_DOCUMENT_IMAGES = 8;
+const MAX_DOCUMENT_IMAGES = 6;
 
 type DocumentImage = { name: string; dataUrl: string };
 
-export function OrderDocumentFill({ onFilled }: { onFilled: (draft: PoIntakeDraft) => void }) {
+export function OrderDocumentFill({
+  currentType,
+  onFilled,
+}: {
+  currentType: InboundOrderType;
+  onFilled: (draft: InboundOrderDraft) => void;
+}) {
   const [text, setText] = useState('');
   const [images, setImages] = useState<DocumentImage[]>([]);
   const [extracting, setExtracting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
   const addImages = useCallback(async (files: readonly File[]) => {
@@ -55,37 +58,21 @@ export function OrderDocumentFill({ onFilled }: { onFilled: (draft: PoIntakeDraf
 
   const fill = useCallback(async () => {
     setExtracting(true);
-    setError(null);
     try {
-      const result = await postPoIntakeExtract({
-        text,
-        imageDataUrl: images[0]?.dataUrl ?? null,
-        imageDataUrls: images.map((image) => image.dataUrl),
-      });
-      onFilled(result.draft);
+      const draft = await postInboundOrderExtract({ text, imageDataUrls: images.map((image) => image.dataUrl) });
+      onFilled({ ...draft, type: currentType });
       setText('');
       setImages([]);
-      toast.message(result.ready ? 'Order filled — review and add it' : result.missing_prompt || 'Filled what the document showed');
+      toast.message('Filled from the document — review, then add it');
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Extract failed';
-      setError(message);
-      toast.error(message);
+      toast.error(err instanceof Error ? err.message : 'Could not read the document');
     } finally {
       setExtracting(false);
     }
-  }, [images, onFilled, text]);
-
-  const empty = !text.trim() && images.length === 0;
+  }, [currentType, images, onFilled, text]);
 
   return (
-    <ComposerSection
-      label="Fill from order document"
-      trailing={
-        <ComposerButton tone="ghost" icon={<ImagePlus className="h-3.5 w-3.5" />} onClick={() => fileRef.current?.click()}>
-          Attach screenshot
-        </ComposerButton>
-      }
-    >
+    <div className="flex flex-col gap-3">
       <input
         ref={fileRef}
         type="file"
@@ -97,39 +84,50 @@ export function OrderDocumentFill({ onFilled }: { onFilled: (draft: PoIntakeDraf
           event.target.value = '';
         }}
       />
-      <ComposerTextArea
+      <textarea
         aria-label="Order document text"
         placeholder="Paste the order confirmation text or a screenshot here"
         value={text}
+        rows={3}
         onChange={(event) => setText(event.target.value)}
         onPaste={onPaste}
+        className={cn(
+          'w-full resize-y border border-border-soft bg-surface-card px-3 py-2 text-sm text-text-default placeholder:text-text-faint',
+          TRIAGE_PANEL_INNER_CORNER,
+          focusRing('field'),
+        )}
       />
       {images.length > 0 ? (
         <ul className="flex flex-wrap gap-2" aria-label="Attached screenshots">
           {images.map((image, index) => (
-            <li key={`${image.name}:${index}`} className="flex items-start border border-mode-rule">
+            <li key={`${image.name}:${index}`} className={cn('flex items-start border border-border-soft', TRIAGE_PANEL_INNER_CORNER)}>
               {/* eslint-disable-next-line @next/next/no-img-element -- local data-URL preview */}
               <img src={image.dataUrl} alt={image.name} className="h-16 w-16 object-cover" />
-              <ComposerIconButton
-                label={`Remove ${image.name}`}
+              <IconButton
+                size="xs"
                 icon={<X className="h-3 w-3" />}
+                ariaLabel={`Remove ${image.name}`}
                 onClick={() => setImages((current) => current.filter((_, i) => i !== index))}
               />
             </li>
           ))}
         </ul>
       ) : null}
-      <div className="flex items-center gap-3">
-        {error ? <ComposerStatus tone="error">{error}</ComposerStatus> : <span className="flex-1" />}
-        <ComposerButton
-          icon={<Sparkles className="h-3.5 w-3.5" />}
-          busy={extracting}
-          disabled={empty}
+      <div className="flex items-center justify-end gap-2">
+        <Button variant="ghost" size="sm" icon={<ImagePlus />} onClick={() => fileRef.current?.click()}>
+          Attach screenshot
+        </Button>
+        <Button
+          variant="secondary"
+          size="sm"
+          icon={<Sparkles />}
+          loading={extracting}
+          disabled={!text.trim() && images.length === 0}
           onClick={() => void fill()}
         >
-          {extracting ? 'Reading document…' : 'Fill fields'}
-        </ComposerButton>
+          Fill fields
+        </Button>
       </div>
-    </ComposerSection>
+    </div>
   );
 }

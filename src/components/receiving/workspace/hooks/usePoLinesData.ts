@@ -13,7 +13,6 @@ import { shouldPreserveCachedSerials } from '@/lib/receiving/optimistic-return-l
 import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
 import type { LineSerial } from '@/lib/receiving/optimistic-serials';
 import { filterLinesByPoGroup } from '@/lib/receiving/po-group-title';
-import { useRefreshSignal } from '@/lib/refresh/bus';
 
 interface ApiResponse {
   success: boolean;
@@ -256,12 +255,6 @@ export function usePoLinesData({
     window.addEventListener('receiving-line-updated', handler);
     return () => window.removeEventListener('receiving-line-updated', handler);
   }, [queryClient, queryKey]);
-
-  // After a sibling click the workspace re-seeds. Invalidate so the new
-  // workspace sees fresh siblings (in case a remote actor edited one).
-  useRefreshSignal('receiving.poLines', () => {
-    queryClient.invalidateQueries({ queryKey });
-  });
 
   // Single source of truth = the query cache.
   const cartonRows = data?.receiving_lines ?? EMPTY_ROWS;

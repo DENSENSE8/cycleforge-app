@@ -15,7 +15,8 @@
  */
 
 import { memo, type MouseEvent, type PointerEvent } from 'react';
-import { AnimatePresence, motion } from 'motion/react';
+import { motion } from 'motion/react';
+import { Collapse } from '@/design-system/components/Collapse';
 import { ChevronDown, Package } from '@/components/Icons';
 import { GridRowCheckbox } from '@/components/ui/GridRowCheckbox';
 import { STATE_TONE_CLASSES } from '@/design-system/tokens/lifecycle';
@@ -254,43 +255,34 @@ export const IncomingDeliveryCard = memo(function IncomingDeliveryCard({
         </div>
 
         {/* Every line, unfolded in place — each opens its own record. */}
-        <AnimatePresence initial={false}>
-          {multi && expanded ? (
-            <motion.ul
-              key="lines"
-              initial={{ height: 0, opacity: 0 }}
-              animate={{ height: 'auto', opacity: 1 }}
-              exit={{ height: 0, opacity: 0 }}
-              transition={{ height: SPRING, opacity: { duration: 0.18 } }}
-              className="overflow-hidden"
-            >
-              {model.rows.map((row) => (
-                <li key={row.id} className="border-t border-border-hairline pt-1.5 first:mt-0.5 [&+&]:mt-1.5">
-                  <button
-                    type="button"
-                    aria-current={openLineId === row.id || undefined}
-                    onPointerDown={stop}
-                    onClick={(event) => {
-                      event.stopPropagation();
-                      onOpen(`line:${row.id}`);
-                    }}
-                    className={cn(
-                      'pointer-events-auto flex w-full min-w-0 items-center gap-3 rounded-xl px-2 py-1 text-left transition-colors hover:bg-surface-card active:translate-y-px',
-                      openLineId === row.id && 'bg-surface-card ring-1 ring-border-soft',
-                      focusRing('control'),
-                    )}
-                  >
-                    <CardPhoto row={row} size="sm" />
-                    <span className="flex min-w-0 flex-1 flex-col">
-                      <span className="truncate text-sm text-text-default">{displayReceivingProductTitle(row)}</span>
-                      <LineFacts row={row} className="text-xs" />
-                    </span>
-                  </button>
-                </li>
-              ))}
-            </motion.ul>
-          ) : null}
-        </AnimatePresence>
+        <Collapse open={multi && expanded}>
+          <ul className="pt-0.5">
+            {model.rows.map((row) => (
+              <li key={row.id} className="border-t border-border-hairline pt-1.5 [&+&]:mt-1.5">
+                <button
+                  type="button"
+                  aria-current={openLineId === row.id || undefined}
+                  onPointerDown={stop}
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    onOpen(`line:${row.id}`);
+                  }}
+                  className={cn(
+                    'pointer-events-auto flex w-full min-w-0 items-center gap-3 rounded-xl px-2 py-1 text-left transition-colors hover:bg-surface-card active:translate-y-px',
+                    openLineId === row.id && 'bg-surface-card ring-1 ring-border-soft',
+                    focusRing('control'),
+                  )}
+                >
+                  <CardPhoto row={row} size="sm" />
+                  <span className="flex min-w-0 flex-1 flex-col">
+                    <span className="truncate text-sm text-text-default">{displayReceivingProductTitle(row)}</span>
+                    <LineFacts row={row} className="text-xs" />
+                  </span>
+                </button>
+              </li>
+            ))}
+          </ul>
+        </Collapse>
       </div>
     </motion.article>
   );

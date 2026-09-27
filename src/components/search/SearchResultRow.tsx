@@ -150,11 +150,13 @@ function TitleOnlyDropdownRow({
   const identifier = marketplaceId || serial || tracking;
   const title = identifier || String(hit.title ?? '').trim() || 'Untitled';
   const primaryIsId = Boolean(identifier);
-  const detail = primaryIsId
-    ? [hit.entityType === 'order' ? hit.title : null, hit.subtitle]
-        .map((s) => String(s ?? '').trim())
-        .find((s) => s && s !== title) || ''
-    : '';
+  // An order row is its number alone (owner 2026-09-27: no product title under
+  // the order number — the record carries the item). Other identifier rows keep
+  // their subtitle as the second line.
+  const detail =
+    primaryIsId && hit.entityType !== 'order'
+      ? [String(hit.subtitle ?? '').trim()].find((s) => s && s !== title) || ''
+      : '';
 
   const Glyph = ENTITY_ICONS[hit.entityType] || Search;
   const entityTone = ENTITY_TONE[hit.entityType] ?? 'gray';

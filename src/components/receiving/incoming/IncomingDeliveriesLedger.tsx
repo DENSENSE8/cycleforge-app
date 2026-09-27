@@ -22,7 +22,6 @@ import type { IncomingGridColumnKey } from '@/lib/receiving/receiving-grid-layou
 import type { RowGroup } from '@/lib/group-rows';
 import { foldKey } from '@/lib/group-rows';
 import { usePublishRecordCursor, useRecordCursor } from '@/lib/record-cursor/useRecordCursor';
-import { displayReceivingProductTitle } from '@/components/station/receiving-grid/cells';
 import {
   IncomingDeliveryEvidence,
   incomingDeliverySummary,
@@ -260,7 +259,6 @@ export function IncomingDeliveriesLedger({
   const cardsFace = stage != null && stage.view !== 'floor';
 
   const recordTitle = openRow ? `PO ${purchaseIdentity(openRow)}` : 'Delivery';
-  const recordSubtitle = openRow ? displayReceivingProductTitle(openRow) : undefined;
   const actionStrip = openRow ? (
     <RecordActionStrip
       key={openKey}
@@ -318,7 +316,6 @@ export function IncomingDeliveriesLedger({
         notice={notice ?? null}
         sectioned={sectioned}
         recordTitle={recordTitle}
-        recordSubtitle={recordSubtitle}
         record={record}
         actionStrip={actionStrip}
         indexLabel={openKey != null && position != null ? `${position} of ${recordNavigation.total}` : undefined}
@@ -356,7 +353,7 @@ export function IncomingDeliveriesLedger({
               value={query ?? ''}
               onChange={onQueryChange}
               placeholder="Filter incoming…"
-              className="min-w-0 flex-1 overflow-hidden rounded-none pl-2"
+              className="min-w-0 flex-1 overflow-hidden rounded-mode-control pl-2"
               tone="neutral"
               hideUnderline
               fillHost
@@ -374,7 +371,6 @@ export function IncomingDeliveriesLedger({
       }
       empty={<b className="text-role-body font-bold text-mode-ink">{emptyMessage}</b>}
       recordTitle={recordTitle}
-      recordSubtitle={recordSubtitle}
       recordNoun="delivery"
       actionStrip={actionStrip}
       summary={summary}

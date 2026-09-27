@@ -5,8 +5,6 @@ import pool from '@/lib/db';
 import { withAuth } from '@/lib/auth/withAuth';
 import { audit } from '@/lib/auth/audit';
 import { invalidateStaffRolesCache } from '@/lib/auth/role-store';
-import { invalidateCacheTags } from '@/lib/cache/upstash-cache';
-import { CACHE_TAGS } from '@/lib/cache/tags';
 import { tenantQuery, withTenantTransaction } from '@/lib/tenancy/db';
 
 export const runtime = 'nodejs';
@@ -125,7 +123,6 @@ export const PUT = withAuth(async (req: NextRequest, ctx) => {
   });
 
   invalidateStaffRolesCache(staffId);
-  await invalidateCacheTags(ctx.organizationId, [CACHE_TAGS.staffOverrides]);
 
   await audit({
     staffId: ctx.staffId, sid: ctx.session?.sid ?? null,

@@ -29,11 +29,7 @@ import { cn } from '@/utils/_cn';
 
 /** Flush Displays body — sits in the push column `px-4`; no card radius / inset. */
 const PAIRING_FLUSH_HOST_CLASS = cn('min-h-0', cornerClass('flush'));
-import { motionPresence, motionTransition } from '@/design-system/foundations/motion-presets';
-import {
-  useMotionPresence,
-  useMotionTransition,
-} from '@/design-system/foundations/motion-presets-hooks';
+import { Collapse } from '@/design-system/components/Collapse';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { Button, IconButton } from '@/design-system/primitives';
 import {
@@ -264,8 +260,6 @@ function MatchHubCard({
   const [forcePicker, setForcePicker] = useState(false);
   const { unlinkCarton, unlinking } = useReceivingCartonUnlink();
   const pickerCollapsed = orderLinked && !forcePicker;
-  const pairingCollapse = useMotionPresence(motionPresence.collapseHeight);
-  const pairingCollapseTransition = useMotionTransition(motionTransition.sidebarExpand);
 
   // Auto-match strip when unfound — same presentation on bare and card.
   const showQuickMatchStrip = Boolean(autoMatch) && !pickerCollapsed;
@@ -593,19 +587,9 @@ function MatchHubCard({
               actions={headerActions}
             />
           </div>
-          <motion.div
-            initial={false}
-            animate={
-              collapsed
-                ? { ...pairingCollapse.exit }
-                : { ...pairingCollapse.animate }
-            }
-            transition={pairingCollapseTransition}
-            className={collapsed ? 'overflow-hidden' : 'overflow-visible'}
-            aria-hidden={collapsed}
-          >
-            <div className={collapsed ? undefined : 'mt-2'}>{content}</div>
-          </motion.div>
+          <Collapse open={!collapsed} className="pt-2">
+            {content}
+          </Collapse>
         </div>
       );
     }
@@ -613,33 +597,21 @@ function MatchHubCard({
     return (
       <div>
         {quickMatchBlock}
-        <motion.div
-          initial={false}
-          layout="position"
-          animate={
-            collapsed
-              ? { ...pairingCollapse.exit, marginTop: 0 }
-              : {
-                  ...pairingCollapse.animate,
-                  marginTop: quickMatchStrip ? 12 : showTopRule ? 8 : 0,
-                }
-          }
-          transition={pairingCollapseTransition}
-          className={collapsed ? 'overflow-hidden' : 'overflow-visible'}
-          aria-hidden={collapsed}
-        >
-          <div
-            className={
-              showTopRule && !quickMatchStrip
-                ? 'border-t border-border-hairline pt-2'
-                : undefined
-            }
-          >
-            <div className="mb-2">
-              <MatchHubHeader collapsed={collapsed} actions={headerActions} />
+        <motion.div layout="position">
+          <Collapse open={!collapsed} className={quickMatchStrip ? 'pt-3' : showTopRule ? 'pt-2' : undefined}>
+            <div
+              className={
+                showTopRule && !quickMatchStrip
+                  ? 'border-t border-border-hairline pt-2'
+                  : undefined
+              }
+            >
+              <div className="mb-2">
+                <MatchHubHeader collapsed={collapsed} actions={headerActions} />
+              </div>
+              {content}
             </div>
-            {content}
-          </div>
+          </Collapse>
         </motion.div>
       </div>
     );

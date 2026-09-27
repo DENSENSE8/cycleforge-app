@@ -57,7 +57,7 @@ export function HeaderDailyTasks() {
         onClose={() => setOpen(false)}
         anchorRef={wrapRef}
         placement="bottom-start"
-        gap={0}
+        gap={4}
       >
         {/* Mounted only while open (AnchoredLayer renders nothing closed), so
             the always-visible beam costs no daily-checks request per page. */}

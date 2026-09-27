@@ -9,6 +9,7 @@ import { publishSaleCompleted } from '@/lib/realtime/walkin-events';
 import { resolveWebhookOrgForSquareMerchant } from '@/lib/shipping/webhook-org-resolver';
 import { checkRateLimitAsync } from '@/lib/api-guard';
 import { isRepairSku } from '@/utils/sku';
+import { applySquarePaymentWebhook } from '@/lib/order-payments/service';
 
 const WEBHOOK_SIGNATURE_KEY = () =>
   (process.env.SQUARE_WEBHOOK_SIGNATURE_KEY || '').trim();
@@ -90,6 +91,20 @@ export async function POST(req: NextRequest) {
     }
 
     const event: SquareWebhookEvent = JSON.parse(rawBody);
+
+    /* Order payment requests (payment links / invoices from the order rail) → order_payments. */
+    if (/^(payment|invoice|refund)\./.test(event.type)) {
+      try {
+        const merchantId = typeof event.merchant_id === 'string' ? event.merchant_id : '';
+        const merchantOrg = merchantId ? await resolveWebhookOrgForSquareMerchant(merchantId) : null;
+        const applied = await applySquarePaymentWebhook(event, merchantOrg);
+        if (applied.handled) {
+          console.warn('[square-webhook] order payment updated', { paymentId: applied.paymentId, status: applied.status, eventType: event.type });
+        }
+      } catch (err) {
+        console.error('[square-webhook] order payment update failed', err);
+      }
+    }
 
     if (event.type === 'payment.completed') {
       const payment = event.data?.object?.payment;

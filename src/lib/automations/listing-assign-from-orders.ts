@@ -120,11 +120,11 @@ function buildAssignActions(staff: {
   packerId: number;
   backupPackerId: number | null;
 }): AssignWorkAction[] {
-  const test: AssignWorkAction = { type: 'assign_work', work_type: 'TEST', staff_id: staff.techId };
-  if (staff.backupTechId != null) test.backup_staff_id = staff.backupTechId;
+  const pick: AssignWorkAction = { type: 'assign_work', work_type: 'PICK', staff_id: staff.techId };
+  if (staff.backupTechId != null) pick.backup_staff_id = staff.backupTechId;
   const pack: AssignWorkAction = { type: 'assign_work', work_type: 'PACK', staff_id: staff.packerId };
   if (staff.backupPackerId != null) pack.backup_staff_id = staff.backupPackerId;
-  return [test, pack];
+  return [pick, pack];
 }
 
 async function upsertRuleForPair(
@@ -206,12 +206,12 @@ type PreviewRuleRow = {
 const LISTING_RULE_WHEN_KEYS = new Set(['item_number', 'sku']);
 
 function summarizeRule(id: number, actions: AssignWorkAction[]): ListingRuleSummary {
-  const test = actions.find((a) => a.work_type === 'TEST');
+  const pick = actions.find((a) => a.work_type === 'PICK');
   const pack = actions.find((a) => a.work_type === 'PACK');
   return {
     id,
-    techId: test?.staff_id ?? null,
-    backupTechId: test?.backup_staff_id ?? null,
+    techId: pick?.staff_id ?? null,
+    backupTechId: pick?.backup_staff_id ?? null,
     packerId: pack?.staff_id ?? null,
     backupPackerId: pack?.backup_staff_id ?? null,
   };

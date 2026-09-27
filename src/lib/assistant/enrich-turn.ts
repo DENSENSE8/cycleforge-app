@@ -1,13 +1,16 @@
 /**
- * Pre-loop enrichment for the Sparkles assistant — parity with Hermes
- * `/api/ai/chat` preprocessing (local_ops fast path + intent/search blocks).
+ * Pre-loop turn preparation for the assistant: the deterministic answers that
+ * need no model (local_ops shipping pace) and the two VOICE briefs (the open
+ * carton, workspace packing facts).
  *
- * Extracted so assistant and (optionally) ai/chat share one orchestration
- * without duplicating detectIntents / enrichAssistantMessage calls.
+ * It used to also stuff every other message with "live workspace data" — an
+ * intent-routed context block plus a hybrid-search block. Both are gone: the
+ * read tools (`find_records`, `locate_product`, `get_order_lookup`, …) fetch
+ * exactly what the question needs, and the stuffed block cost ~0.5–1.3 s of
+ * DB work plus prefill on every round, bypassed `findRecords` (a second
+ * retrieval path), and polluted the tool subsetter's keyword signal.
  */
 
-import { enrichAssistantMessage } from '@/lib/ai/enrich-message';
-import { detectIntents, extractParams } from '@/lib/ai/intent-router';
 import {
   formatAnalysisForPrompt,
   resolveLocalAiAnswer,
@@ -27,18 +30,14 @@ export type EnrichPageContext = {
   page?: string | null;
   selection?: { kind: string; id: string | number } | null;
 };
-
 export type EnrichVoice = 'carton' | 'org_chat';
 
 export type EnrichTurnResult =
   | { kind: 'local_ops'; resolution: LocalAiResolution }
-  | { kind: 'enriched'; userMessage: string; intents: string[]; voice?: EnrichVoice };
+  | { kind: 'enriched'; userMessage: string; voice?: EnrichVoice };
 
 export interface EnrichTurnDeps {
   resolveLocal: typeof resolveLocalAiAnswer;
-  enrich: typeof enrichAssistantMessage;
-  detect: typeof detectIntents;
-  extract: typeof extractParams;
   fetchCarton?: (orgId: OrgId, receivingId: number) => Promise<string>;
   fetchOrgChat?: (args: {
     orgId: OrgId;
@@ -56,9 +55,6 @@ export interface EnrichTurnDeps {
 
 const defaultDeps: EnrichTurnDeps = {
   resolveLocal: resolveLocalAiAnswer,
-  enrich: enrichAssistantMessage,
-  detect: detectIntents,
-  extract: extractParams,
   fetchCarton: async (orgId, receivingId) => {
     const mod = await import('@/lib/ai/context-fetchers');
     return mod.fetchReceivingCartonContext(orgId, receivingId);
@@ -93,7 +89,6 @@ async function cartonBrief(
   return {
     kind: 'enriched',
     userMessage: `${block}\n\nOperator: ${trimmed}`,
-    intents: ['receiving'],
     voice: 'carton',
   };
 }
@@ -131,15 +126,14 @@ async function orgChatBrief(
     userMessage:
       block?.trim() ||
       `Workspace facts did not load for this organization.\n\nOperator: ${trimmed}`,
-    intents: ['packing'],
     voice: 'org_chat',
   };
 }
 
 /**
  * Prepare a user turn for the assistant agent loop.
- * - local_ops → caller should short-circuit (no Claude).
- * - else → return enriched userMessage with live DB blocks when available.
+ * - local_ops → caller should short-circuit (no model).
+ * - else → the message as typed, or a voice brief (open carton / packing facts).
  *
  * Carton briefing only runs when the utterance is about the open carton.
  * Workspace packing questions query the signed-in org (and session packer)
@@ -176,16 +170,7 @@ export async function enrichAssistantTurn(
     return { kind: 'local_ops', resolution: local };
   }
 
-  const intents = deps.detect(trimmed);
-  const params = deps.extract(trimmed, intents);
-  const enriched = await deps.enrich({
-    orgId,
-    message: trimmed,
-    intents,
-    params,
-  });
-
-  return { kind: 'enriched', userMessage: enriched, intents };
+  return { kind: 'enriched', userMessage: trimmed };
 }
 
 /** Format a local_ops resolution as the assistant reply text. */

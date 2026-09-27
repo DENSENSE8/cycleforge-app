@@ -14,8 +14,12 @@ import {
   readShippedCarrierFilter,
   readShippedDateWindow,
   readShippedExceptionsFilter,
+  readShippedPickedBy,
   readShippedStatusFilter,
+  readShippedTimeParams,
   readShippedWeekOffset,
+  shippedTimeWindow,
+  type ShippedTimeParams,
 } from '@/lib/shipping/shipped-filter/shipped-filter-params';
 import { deriveShippedRecord } from '@/lib/shipped-records';
 import type { PackerRecord } from '@/hooks/usePackerLogs';
@@ -86,6 +90,8 @@ export function useShippedTableFilters({
   const effTestedBy = testedBy ?? parseStaffParam(searchParams.get('testedBy'));
   // Universal staff filter (P1-WORK-02): one `?staff=` → packed OR tested by.
   const effStaffId = parseStaffParam(searchParams.get('staff'));
+  // `?pickedBy` — the order's picker; answered in SQL like the staff filters.
+  const effPickedBy = readShippedPickedBy(searchParams) ?? undefined;
 
   const dateFrom = (searchParams.get('dateFrom') || '').trim();
   const dateTo = (searchParams.get('dateTo') || '').trim();
@@ -98,6 +104,26 @@ export function useShippedTableFilters({
   const dateWindow = readShippedDateWindow(searchParams);
   const effectiveWeekStart = dateWindow.start;
   const effectiveWeekEnd = dateWindow.end;
+  // `?timeFrom`/`?timeTo` over the explicit range: the exact shipped-instant
+  // window. Memoized on its parts so the fetch key and trim stay stable.
+  const rawTime = readShippedTimeParams(searchParams);
+  const rtFrom = rawTime?.dateFrom ?? '';
+  const rtTo = rawTime?.dateTo ?? '';
+  const rtTimeFrom = rawTime?.timeFrom ?? '';
+  const rtTimeTo = rawTime?.timeTo ?? '';
+  const shippedTime = useMemo<ShippedTimeParams | null>(
+    () =>
+      rtFrom
+        ? {
+            dateFrom: rtFrom,
+            dateTo: rtTo,
+            ...(rtTimeFrom ? { timeFrom: rtTimeFrom } : {}),
+            ...(rtTimeTo ? { timeTo: rtTimeTo } : {}),
+          }
+        : null,
+    [rtFrom, rtTo, rtTimeFrom, rtTimeTo],
+  );
+  const shippedInstantWindow = useMemo(() => (shippedTime ? shippedTimeWindow(shippedTime) : null), [shippedTime]);
 
   // Free-text search is desk-local (never navigates once per typed character):
   // one in-memory query per desk path, shared with the desk sidebar's input.
@@ -213,12 +239,15 @@ export function useShippedTableFilters({
     effPackedBy,
     effTestedBy,
     effStaffId,
+    effPickedBy,
     dateFrom,
     dateTo,
     hasDateRange,
     allDates,
     effectiveWeekStart,
     effectiveWeekEnd,
+    shippedTime,
+    shippedInstantWindow,
     search,
     normalizedSearch,
     layout,

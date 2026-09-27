@@ -2,9 +2,11 @@ type Queryable = {
   query: (text: string, params?: any[]) => Promise<{ rows: any[] }>;
 };
 
-type StationName = 'TECH' | 'PACK' | 'FBA' | 'RECEIVING' | 'ADMIN' | 'OUTBOUND';
+type StationName = 'TECH' | 'PICK' | 'PACK' | 'FBA' | 'RECEIVING' | 'ADMIN' | 'OUTBOUND';
 type StationActivityType =
   | 'TRACKING_SCANNED'
+  // Picker desk (/pick?ship=urgent) tracking scan: units taken for this order.
+  | 'PICK_SCANNED'
   | 'FNSKU_SCANNED'
   | 'SERIAL_ADDED'
   | 'PACK_COMPLETED'
@@ -15,7 +17,6 @@ type StationActivityType =
   | 'SHIP_CONFIRM'
   // Dock staging: packed package placed in the outbound staging lane, awaiting scan-out.
   | 'DOCK_STAGED'
-  | 'WS_ORDER_TESTED'
   | 'WS_REPAIR_CHANGED'
   | 'WS_RECEIVING_CHANGED'
   | 'WS_FBA_SCAN';
@@ -25,12 +26,15 @@ type StationActivityType =
 /** A packer completed/scanned the box (the "packed" signal). */
 export const PACK_ACTIVITY_TYPES = ['PACK_COMPLETED', 'PACK_SCAN'] as const;
 
-/** A tech bench "tested today" signal (tracking or FNSKU scan at TECH). */
-export const TECH_TEST_ACTIVITY_TYPES = ['TRACKING_SCANNED', 'FNSKU_SCANNED'] as const;
+/** The picker desk's own pick signal (a tracking scan at station PICK). */
+export const PICK_ACTIVITY_TYPES = ['PICK_SCANNED'] as const;
+
+/** Every scan that puts an order in the picked lane: a desk pick, or an FNSKU scan. */
+export const ORDER_PICK_SCAN_ACTIVITY_TYPES = ['PICK_SCANNED', 'FNSKU_SCANNED'] as const;
 
 /** Every scan that counts toward daily throughput / staff-velocity rollups. */
 export const VELOCITY_ACTIVITY_TYPES = [
-  'TRACKING_SCANNED',
+  'PICK_SCANNED',
   'FNSKU_SCANNED',
   'PACK_SCAN',
   'PACK_COMPLETED',
@@ -40,6 +44,18 @@ export const VELOCITY_ACTIVITY_TYPES = [
 /** Render a string vocabulary as the body of a SQL `IN (...)` clause, producing exactly `'A', 'B'` (single-quoted, comma+space) —… */
 export function sqlInList(values: readonly string[]): string {
   return values.map((v) => `'${v}'`).join(', ');
+}
+
+/**
+ * SQL predicate for the picker desk's session anchor — the SAL row a following
+ * serial add / undo / edit attaches to (`tech_serial_numbers.context_station_activity_log_id`):
+ * a PICK tracking scan, or an FNSKU scan at the TECH desk. Pass the table alias
+ * (`'sal'`) or omit it for unqualified columns.
+ */
+export function sqlDeskSessionAnchor(alias?: string): string {
+  const c = alias ? `${alias}.` : '';
+  return `((${c}station = 'PICK' AND ${c}activity_type IN (${sqlInList(PICK_ACTIVITY_TYPES)}))
+        OR (${c}station = 'TECH' AND ${c}activity_type = 'FNSKU_SCANNED'))`;
 }
 
 /** @deprecated FROZEN for NEW writer sites — ops-events unification plan, move 1 (docs/todo/ops-events-station-workflow-unification-plan.md… */

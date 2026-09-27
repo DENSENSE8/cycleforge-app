@@ -1,0 +1,400 @@
+{
+  "url": "http://localhost:3100/shipping/orders",
+  "ttfb": 1385,
+  "isDev": false,
+  "rows": [
+    {
+      "url": "/api/station-commands/aliases",
+      "start": 1625,
+      "end": 2005,
+      "ms": 380,
+      "bytes": 324
+    },
+    {
+      "url": "/api/staff-preferences",
+      "start": 1629,
+      "end": 2548,
+      "ms": 920,
+      "bytes": 2976
+    },
+    {
+      "url": "/api/nav/context?path=%2Fshipping%2Forders",
+      "start": 1636,
+      "end": 2126,
+      "ms": 490,
+      "bytes": 3439
+    },
+    {
+      "url": "/api/catalog/platforms",
+      "start": 1664,
+      "end": 2840,
+      "ms": 1176,
+      "bytes": 3682
+    },
+    {
+      "url": "/api/surfaces/outbound/resolve",
+      "start": 1670,
+      "end": 2657,
+      "ms": 987,
+      "bytes": 431
+    },
+    {
+      "url": "/api/staff?active=false",
+      "start": 1751,
+      "end": 3080,
+      "ms": 1329,
+      "bytes": 5871
+    },
+    {
+      "url": "/api/inbox/tech-queue",
+      "start": 1752,
+      "end": 3792,
+      "ms": 2040,
+      "bytes": 368
+    },
+    {
+      "url": "/api/inbox/support",
+      "start": 1752,
+      "end": 2965,
+      "ms": 1212,
+      "bytes": 322
+    },
+    {
+      "url": "/api/staff-messages?unread=1",
+      "start": 1753,
+      "end": 2988,
+      "ms": 1235,
+      "bytes": 312
+    },
+    {
+      "url": "/api/nav/facets?context=outbound.exceptions",
+      "start": 3088,
+      "end": 3544,
+      "ms": 456,
+      "bytes": 893
+    },
+    {
+      "url": "/api/nav/facets?pair=po&context=outbound.po",
+      "start": 3089,
+      "end": 3508,
+      "ms": 420,
+      "bytes": 822
+    },
+    {
+      "url": "/api/nav/facets?queue=pick&context=outbound.pick",
+      "start": 3089,
+      "end": 3684,
+      "ms": 595,
+      "bytes": 1145
+    },
+    {
+      "url": "/api/nav/facets?context=outbound.triage",
+      "start": 3090,
+      "end": 3624,
+      "ms": 534,
+      "bytes": 1147
+    },
+    {
+      "url": "/api/nav/facets?context=outbound.shipped",
+      "start": 3090,
+      "end": 3601,
+      "ms": 511,
+      "bytes": 1382
+    },
+    {
+      "url": "/api/saved-views?surface=dashboard_unshipped",
+      "start": 3091,
+      "end": 3920,
+      "ms": 829,
+      "bytes": 327
+    },
+    {
+      "url": "/api/catalog/platform-accounts",
+      "start": 3093,
+      "end": 3905,
+      "ms": 811,
+      "bytes": 3548
+    },
+    {
+      "url": "/api/staff?active=true",
+      "start": 3097,
+      "end": 4380,
+      "ms": 1284,
+      "bytes": 4624
+    },
+    {
+      "url": "/api/sku-catalog/composition/batch",
+      "start": 3097,
+      "end": 4069,
+      "ms": 971,
+      "bytes": 885
+    },
+    {
+      "url": "/api/orders/caged?countOnly=1",
+      "start": 3123,
+      "end": 4232,
+      "ms": 1109,
+      "bytes": 328
+    },
+    {
+      "url": "/api/onboarding/stats",
+      "start": 3124,
+      "end": 4340,
+      "ms": 1216,
+      "bytes": 471
+    },
+    {
+      "url": "/api/integrations/order-sources",
+      "start": 3125,
+      "end": 4117,
+      "ms": 992,
+      "bytes": 329
+    },
+    {
+      "url": "/api/settings?page=desk",
+      "start": 3126,
+      "end": 4117,
+      "ms": 991,
+      "bytes": 1560
+    },
+    {
+      "url": "/api/realtime/token?rnd=09906822789325809",
+      "start": 4093,
+      "end": 4513,
+      "ms": 419,
+      "bytes": 2019
+    }
+  ],
+  "focus": [
+    {
+      "count": 0,
+      "bytes": 0,
+      "rows": []
+    },
+    {
+      "count": 1,
+      "bytes": 1147,
+      "rows": [
+        {
+          "url": "/api/nav/facets?context=outbound.triage",
+          "ms": 1052,
+          "bytes": 1147
+        }
+      ]
+    }
+  ],
+  "analysis": {
+    "duplicates": [],
+    "multiShape": [
+      {
+        "endpoint": "/api/staff",
+        "shapes": [
+          "/api/staff?active=false",
+          "/api/staff?active=true"
+        ],
+        "totalBytes": 10495
+      },
+      {
+        "endpoint": "/api/nav/facets",
+        "shapes": [
+          "/api/nav/facets?context=outbound.exceptions",
+          "/api/nav/facets?pair=po&context=outbound.po",
+          "/api/nav/facets?queue=pick&context=outbound.pick",
+          "/api/nav/facets?context=outbound.triage",
+          "/api/nav/facets?context=outbound.shipped"
+        ],
+        "totalBytes": 5389
+      }
+    ],
+    "chains": [
+      {
+        "from": "/api/sku-catalog/composition/batch",
+        "to": "/api/realtime/token?rnd=09906822789325809",
+        "gapMs": 24,
+        "tailEnd": 4513
+      },
+      {
+        "from": "/api/staff?active=false",
+        "to": "/api/staff?active=true",
+        "gapMs": 17,
+        "tailEnd": 4380
+      },
+      {
+        "from": "/api/staff?active=false",
+        "to": "/api/onboarding/stats",
+        "gapMs": 44,
+        "tailEnd": 4340
+      },
+      {
+        "from": "/api/staff?active=false",
+        "to": "/api/orders/caged?countOnly=1",
+        "gapMs": 43,
+        "tailEnd": 4232
+      },
+      {
+        "from": "/api/staff?active=false",
+        "to": "/api/integrations/order-sources",
+        "gapMs": 45,
+        "tailEnd": 4117
+      },
+      {
+        "from": "/api/staff?active=false",
+        "to": "/api/settings?page=desk",
+        "gapMs": 46,
+        "tailEnd": 4117
+      },
+      {
+        "from": "/api/staff?active=false",
+        "to": "/api/sku-catalog/composition/batch",
+        "gapMs": 17,
+        "tailEnd": 4069
+      },
+      {
+        "from": "/api/staff?active=false",
+        "to": "/api/saved-views?surface=dashboard_unshipped",
+        "gapMs": 11,
+        "tailEnd": 3920
+      },
+      {
+        "from": "/api/staff?active=false",
+        "to": "/api/catalog/platform-accounts",
+        "gapMs": 13,
+        "tailEnd": 3905
+      },
+      {
+        "from": "/api/staff?active=false",
+        "to": "/api/nav/facets?queue=pick&context=outbound.pick",
+        "gapMs": 9,
+        "tailEnd": 3684
+      }
+    ],
+    "peakConcurrency": 14,
+    "countProbes": [],
+    "heaviest": [
+      {
+        "url": "/api/staff?active=false",
+        "start": 1751,
+        "end": 3080,
+        "ms": 1329,
+        "bytes": 5871
+      },
+      {
+        "url": "/api/staff?active=true",
+        "start": 3097,
+        "end": 4380,
+        "ms": 1284,
+        "bytes": 4624
+      },
+      {
+        "url": "/api/catalog/platforms",
+        "start": 1664,
+        "end": 2840,
+        "ms": 1176,
+        "bytes": 3682
+      },
+      {
+        "url": "/api/catalog/platform-accounts",
+        "start": 3093,
+        "end": 3905,
+        "ms": 811,
+        "bytes": 3548
+      },
+      {
+        "url": "/api/nav/context?path=%2Fshipping%2Forders",
+        "start": 1636,
+        "end": 2126,
+        "ms": 490,
+        "bytes": 3439
+      },
+      {
+        "url": "/api/staff-preferences",
+        "start": 1629,
+        "end": 2548,
+        "ms": 920,
+        "bytes": 2976
+      },
+      {
+        "url": "/api/realtime/token?rnd=09906822789325809",
+        "start": 4093,
+        "end": 4513,
+        "ms": 419,
+        "bytes": 2019
+      },
+      {
+        "url": "/api/settings?page=desk",
+        "start": 3126,
+        "end": 4117,
+        "ms": 991,
+        "bytes": 1560
+      }
+    ],
+    "slowest": [
+      {
+        "url": "/api/inbox/tech-queue",
+        "start": 1752,
+        "end": 3792,
+        "ms": 2040,
+        "bytes": 368
+      },
+      {
+        "url": "/api/staff?active=false",
+        "start": 1751,
+        "end": 3080,
+        "ms": 1329,
+        "bytes": 5871
+      },
+      {
+        "url": "/api/staff?active=true",
+        "start": 3097,
+        "end": 4380,
+        "ms": 1284,
+        "bytes": 4624
+      },
+      {
+        "url": "/api/staff-messages?unread=1",
+        "start": 1753,
+        "end": 2988,
+        "ms": 1235,
+        "bytes": 312
+      },
+      {
+        "url": "/api/onboarding/stats",
+        "start": 3124,
+        "end": 4340,
+        "ms": 1216,
+        "bytes": 471
+      },
+      {
+        "url": "/api/inbox/support",
+        "start": 1752,
+        "end": 2965,
+        "ms": 1212,
+        "bytes": 322
+      },
+      {
+        "url": "/api/catalog/platforms",
+        "start": 1664,
+        "end": 2840,
+        "ms": 1176,
+        "bytes": 3682
+      },
+      {
+        "url": "/api/orders/caged?countOnly=1",
+        "start": 3123,
+        "end": 4232,
+        "ms": 1109,
+        "bytes": 328
+      }
+    ]
+  },
+  "route": "/shipping/orders",
+  "base": "http://localhost:3100",
+  "runs": 3,
+  "metrics": {
+    "duplicateRequests": 0,
+    "countProbes": 0,
+    "focusRefetch": 1,
+    "requests": 23
+  },
+  "capturedAt": "2026-09-27T20:00:55.052Z"
+}

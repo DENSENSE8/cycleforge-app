@@ -37,15 +37,15 @@ export interface Order {
   is_out_of_stock?: boolean;
   /** @deprecated Prefer is_out_of_stock. */
   out_of_stock?: string | null;
-  /** Staff id from work_assignments; null means unassigned (visible to all techs) */
-  tester_id?: number | null;
-  /** Display name of the assigned tester */
-  tester_name?: string | null;
+  /** ORDER/PICK assignee (staff id); null means unassigned (visible to every picker). */
+  picker_id?: number | null;
+  /** Display name of the assigned picker */
+  picker_name?: string | null;
   /** PACK work_assignment (realtime may populate before next /api/orders/next fetch) */
   packer_id?: number | null;
   packer_name?: string | null;
-  /** True when a tech_serial_numbers scan exists for this shipment_id (order already processed) */
-  has_tech_scan?: boolean;
+  /** True when the order has been picked (`sqlOrderHasPickScan`: serial taken or desk/FBA pick scan). */
+  has_pick_scan?: boolean;
   /** Derived from shipping_tracking_numbers carrier status */
   is_shipped?: boolean;
 }

@@ -380,7 +380,7 @@ export async function resolveKioskStepUp(
 ): Promise<number | null> {
   if (!Number.isFinite(staffId) || staffId <= 0 || !pin) return null;
   try {
-    const row = await verifyStaffPin(staffId, pin, orgId);
+    const row = await verifyStaffPin(staffId, pin, orgId, { recordLogin: false });
     if (requiredPermission) {
       const permissions = await effectivePermissionsForStaff(row.id, {}, orgId);
       if (!permissions.has(requiredPermission)) {

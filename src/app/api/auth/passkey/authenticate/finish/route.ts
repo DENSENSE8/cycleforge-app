@@ -91,7 +91,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'ACCOUNT_NOT_ACTIVE' }, { status: 403 });
     }
 
-    const { firstSigninToday } = await recordStaffLogin(pool, staffRow.id);
+    await recordStaffLogin(pool, staffRow.id);
 
     // Sign-in == clock-in (soft gate — never blocks).
     const activeShift = await findActiveShift(staffRow.id);
@@ -130,7 +130,6 @@ export async function POST(req: NextRequest) {
       name: staffRow.name,
       defaultHomePath: staffRow.default_home_path,
       defaultHomePathMobile: staffRow.default_home_path_mobile,
-      firstSigninToday,
       session: { sid: session.sid, deviceKind, expiresAt: session.expiresAt },
     });
     res.cookies.set(SESSION_COOKIE_NAME, session.sid, {

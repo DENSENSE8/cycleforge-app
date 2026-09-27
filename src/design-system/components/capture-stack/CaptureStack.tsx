@@ -7,6 +7,7 @@ import {
   useMotionPresence,
   useMotionTransition,
 } from '@/design-system/foundations/motion-presets-hooks';
+import { CollapseItem } from '@/design-system/components/Collapse';
 
 type FeedId = string | number;
 
@@ -90,16 +91,19 @@ export function CaptureStack<T>({
             const fresh = freshIds?.has(id) ?? false;
             const presence = variant === 'expanded' ? expandedPresence : collapsedPresence;
             return (
-              <motion.div
-                key={id}
-                layout={reduceMotion ? false : 'position'}
-                initial={presence.initial}
-                animate={presence.animate}
-                exit={presence.exit}
-                transition={transition}
-              >
-                {renderRow(row, { variant, fresh, index: i, isLast })}
-              </motion.div>
+              // The row paints at full height and rises in; on exit the
+              // CollapseItem closes its height while the row fades.
+              <CollapseItem key={id} enter={false}>
+                <motion.div
+                  layout={reduceMotion ? false : 'position'}
+                  initial={presence.initial}
+                  animate={presence.animate}
+                  exit={presence.exit}
+                  transition={transition}
+                >
+                  {renderRow(row, { variant, fresh, index: i, isLast })}
+                </motion.div>
+              </CollapseItem>
             );
           })}
         </AnimatePresence>

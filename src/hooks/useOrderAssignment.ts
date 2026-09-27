@@ -8,9 +8,9 @@ export type OrderAssignPayload = {
   orderId?: number;
   orderIds?: number[];
   orderNumber?: string | null;
-  testerId?: number | null;
+  pickerId?: number | null;
   packerId?: number | null;
-  testerName?: string | null;
+  pickerName?: string | null;
   packerName?: string | null;
   shipByDate?: string | null;
   outOfStock?: string | null;
@@ -50,17 +50,11 @@ function applyOptimisticUpdate(current: unknown, payload: OrderAssignPayload): u
     if (!row || !idsToUpdate.has(Number(row.id))) return row;
     const next: Record<string, unknown> = { ...row };
 
-    if (payload.testerId !== undefined) {
-      // Assignee only — tested_by is the scan-completion actor, not the claim.
-      next.tester_id = payload.testerId;
-      next.testerId = payload.testerId;
-      if (payload.testerName !== undefined) {
-        next.tester_name = payload.testerName;
-        // Prefer assignee face on the Pick cell when no scan stamp has landed.
-        if (payload.testerId != null) {
-          next.tested_by_name = next.tested_by_name || payload.testerName;
-        }
-      }
+    if (payload.pickerId !== undefined) {
+      // ORDER/PICK assignee only — picked_by is the pick actor, not the claim.
+      next.picker_id = payload.pickerId;
+      next.pickerId = payload.pickerId;
+      if (payload.pickerName !== undefined) next.picker_name = payload.pickerName;
     }
     if (payload.packerId !== undefined) {
       next.packer_id = payload.packerId;
@@ -220,9 +214,9 @@ export function useOrderAssignment() {
         new CustomEvent('order-assignment-updated', {
           detail: {
             orderIds,
-            testerId: payload.testerId,
+            pickerId: payload.pickerId,
             packerId: payload.packerId,
-            testerName: payload.testerName,
+            pickerName: payload.pickerName,
             packerName: payload.packerName,
             orderNumber: payload.orderNumber,
             shipByDate: payload.shipByDate,

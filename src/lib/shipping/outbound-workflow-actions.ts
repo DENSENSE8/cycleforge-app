@@ -115,7 +115,7 @@ export type OutboundWorkflowException =
 interface OutboundWorkflowActionInput {
   stage: OrderLifecycleStage;
   hasLabel: boolean;
-  hasTechScan: boolean;
+  hasPickScan: boolean;
   packed: boolean;
   staged: boolean;
 }
@@ -185,7 +185,7 @@ export function resolveOutboundWorkflowActions(
         ? disabled('label', 'blocked', holdReason)
         : enabled('label', 'primary');
 
-  const pick = input.hasTechScan
+  const pick = input.hasPickScan
     ? disabled('pick', 'complete', 'Pick scan recorded.', 'direct_signal')
     : blockedByHold
       ? disabled('pick', 'blocked', holdReason)
@@ -199,7 +199,7 @@ export function resolveOutboundWorkflowActions(
       ? disabled('pack', 'blocked', holdReason)
       : !input.hasLabel
         ? disabled('pack', 'blocked', 'Attach the shipping label first.')
-        : !input.hasTechScan
+        : !input.hasPickScan
           ? disabled('pack', 'blocked', 'Complete the pick first.')
           : enabled('pack', 'primary');
 

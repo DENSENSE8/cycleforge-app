@@ -43,14 +43,14 @@ test('IDOR: setStaffPin/verifyStaffPin reject cross-org (staff has NO RLS — pr
     // M1/C1: cross-org verify → NOT_FOUND (never reveals the row or validates).
     let threw = false;
     try {
-      await verifyStaffPin(staffB, '4729', ORG_A);
+      await verifyStaffPin(staffB, '4729', ORG_A, { recordLogin: false });
     } catch (err) {
       threw = err instanceof PinError && err.code === 'NOT_FOUND';
     }
     ok(threw, 'cross-org verifyStaffPin must throw NOT_FOUND');
 
     // Same-org verify succeeds.
-    const row = await verifyStaffPin(staffB, '4729', ORG_B);
+    const row = await verifyStaffPin(staffB, '4729', ORG_B, { recordLogin: false });
     strictEqual(row.id, staffB);
   } finally {
     await pool.query(`DELETE FROM staff WHERE name LIKE 'idor-test-%'`);

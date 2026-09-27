@@ -5,7 +5,7 @@ import { parseSerialCsvField } from '@/lib/tech/serialFields';
 import { withAuth } from '@/lib/auth/withAuth';
 
 /**
- * GET ?code=STATICSKU:tag or SKUx2:tag — returns serials from sku row (same matching rules as tech scan-sku).
+ * GET ?code=STATICSKU:tag or SKUx2:tag — returns serials from sku row (same matching rules as the desk SKU scan, /api/picking/desk/sku).
  */
 type SkuSerialsRow = {
   id: number;

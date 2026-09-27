@@ -20,6 +20,9 @@ import type { SessionArtifactEntry } from '../useSessionArtifacts';
 import { copyArtifact, downloadTableCsv } from './artifact-export';
 import { artifactSummary } from './artifact-summary';
 import { DocumentArtifact } from './DocumentArtifact';
+import { PaymentArtifact } from './PaymentArtifact';
+import { OrderDraftArtifact } from './OrderDraftArtifact';
+import { PoDraftArtifact } from './PoDraftArtifact';
 import {
   ChartArtifact,
   ImportTriageArtifact,
@@ -126,6 +129,12 @@ function renderArtifact(
       return <ReportArtifact artifact={artifact} />;
     case 'document':
       return <DocumentArtifact artifact={artifact} />;
+    case 'payment':
+      return <PaymentArtifact artifact={artifact} />;
+    case 'order_draft':
+      return <OrderDraftArtifact artifact={artifact} />;
+    case 'po_draft':
+      return <PoDraftArtifact artifact={artifact} />;
     default:
       return assertNeverArtifactKind(artifact);
   }

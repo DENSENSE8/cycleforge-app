@@ -84,7 +84,6 @@ export function cagedRecordToQueueRow(record: CagedOrderRecord): ShippedOrder {
     shipment_id: null,
     deadline_at: null,
     ship_by_date: null,
-    tester_id: null,
     tested_by: null,
     test_date_time: null,
     packer_id: null,
@@ -92,7 +91,7 @@ export function cagedRecordToQueueRow(record: CagedOrderRecord): ShippedOrder {
     packed_at: null,
     account_source: record.accountSource ?? null,
     created_at: record.createdAt ?? null,
-    has_tech_scan: false,
+    has_pick_scan: false,
     is_out_of_stock: false,
     is_urgent: false,
   } as unknown as ShippedOrder;
@@ -122,7 +121,6 @@ export function exceptionRowToQueueRow(row: OrderExceptionRow): ShippedOrder {
     shipment_id: null,
     deadline_at: null,
     ship_by_date: null,
-    tester_id: null,
     tested_by: null,
     test_date_time: null,
     packer_id: null,
@@ -132,7 +130,7 @@ export function exceptionRowToQueueRow(row: OrderExceptionRow): ShippedOrder {
     notes: responsibility,
     buyer_note: row.buyerNote,
     created_at: null,
-    has_tech_scan: false,
+    has_pick_scan: false,
     is_out_of_stock: row.routing.category === 'Out of Stock',
     is_urgent: false,
   } as unknown as ShippedOrder;

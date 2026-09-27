@@ -3,7 +3,7 @@ import { tenantQuery, withTenantTransaction } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';
 import { upsertSkuPackProfileLink } from '@/lib/neon/pack-profile-links';
 import { classifyPackTier } from '@/lib/packing/pack-tier-classifier';
-import { skuCatalogNoZohoTwinPredicateSql } from '@/lib/sku/sku-identity-law';
+import { skuCatalogTitleUnownedPredicateSql } from '@/lib/sku/sku-identity-law';
 import type { OutboundHandlingFact } from '@/lib/shipping/outbound-handling-facts';
 
 // ─── Interfaces ──────────────────────────────────────────────────────────────
@@ -1278,7 +1278,7 @@ export async function pairEcwidToZoho(
       `UPDATE sku_catalog
        SET image_url = $1, updated_at = NOW()
        WHERE id = $2 AND image_url IS NULL AND organization_id = $3
-         AND ${skuCatalogNoZohoTwinPredicateSql()}`,
+         AND ${skuCatalogTitleUnownedPredicateSql()}`,
       [ecwidImageUrl, skuCatalogId, orgId],
     );
     imageBackfilled = (imgResult.rowCount || 0) > 0;
@@ -1457,7 +1457,7 @@ export async function getSkuCatalogList(params: {
              OR ps.normalized_sku = fn_normalize_sku(sc.sku)
            )
        ) AS has_pending_action,
-       COALESCE(NULLIF(BTRIM(it.name), ''), sc.product_title) AS display_title,
+       COALESCE(NULLIF(BTRIM(sc.product_title), ''), it.name) AS display_title,
        COUNT(DISTINCT sp.id)::int AS platform_count,
        COUNT(DISTINCT pm.id)::int AS manual_count,
        COUNT(DISTINCT qc.id)::int AS qc_step_count,

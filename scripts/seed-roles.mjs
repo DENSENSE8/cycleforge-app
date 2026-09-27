@@ -41,10 +41,12 @@ const ROLE_PERMISSION_SETS = {
   technician: [
     'tech.view', 'tech.scan_serial', 'tech.qc_pass', 'tech.qc_fail', 'tech.assign_bin',
     'serial_units.grade',
-    // Fulfillment substitution from the tech bench (docs/todo/tech-substitution-
+    // The Picker desk (`/pick`) — its own ids since the 2026-09-27 QC/Pick split.
+    'picking.view', 'picking.scan',
+    // Fulfillment substitution from the Picker desk (docs/todo/tech-substitution-
     // wiring-plan.md §3.3 Option B). orders.view is required by the card's reads
     // (GET /api/orders/[id]/pick-tasks + /amendments).
-    'tech.substitute_unit', 'orders.view',
+    'picking.substitute_unit', 'orders.view',
     'repair.view', 'repair.intake', 'repair.mark_repaired',
     'sku_stock.view', 'bin.adjust', 'bin.set', 'bin.add_sku',
     'print.label', 'work_orders.view', 'work_orders.claim', 'work_orders.complete',
@@ -71,7 +73,7 @@ const ROLE_PERMISSION_SETS = {
   ],
   viewer: [
     'dashboard.view', 'operations.view', 'operations.tv.view', 'receiving.view', 'packing.view',
-    'tech.view', 'shipping.view', 'fba.view', 'sku_stock.view',
+    'tech.view', 'picking.view', 'shipping.view', 'fba.view', 'sku_stock.view',
     'cycle_count.view', 'work_orders.view',
     'walk_in.view', 'repair.view', 'orders.view', 'reports.view',
     // Both, not just rma.view: orders.view previously gated every RMA route

@@ -18,13 +18,13 @@ import type { ReceivingMode } from '@/components/sidebar/receiving/receiving-sid
 /** Dashboard route — hosts the inbound-cartons mode (`?mode=inbound`). */
 const DASHBOARD_SURFACE_ROUTE = '/dashboard';
 
-/** Canonical Testing station route (`/test`). */
+/** Canonical Quality Control route (`/test`). The Picker desk (`/pick`) is not a testing surface. */
 const TESTING_SURFACE_ROUTE = '/test';
 
 /** Legacy alias — proxy normalizes `/tech` → `/test`. */
 const TESTING_SURFACE_LEGACY_ROUTE = '/tech';
 
-/** API `view=` values that belong on `/api/testing/receiving-lines` only. */
+/** API `view=` values that belong on `/api/qc/receiving-lines` only. */
 const TESTING_API_VIEWS = ['testing', 'needs-test', 'testing_opened'] as const;
 
 type TestingApiView = (typeof TESTING_API_VIEWS)[number];
@@ -105,4 +105,4 @@ export function stripCrossSurfaceParams(
 }
 
 /** Base URL for testing-only receiving-line feeds. */
-export const TESTING_RECEIVING_LINES_API = '/api/testing/receiving-lines';
+export const QC_RECEIVING_LINES_API = '/api/qc/receiving-lines';

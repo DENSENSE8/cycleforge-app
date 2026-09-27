@@ -29,16 +29,16 @@ export const ZERO_FULFILLMENT_COUNTS: FulfillmentCounts = {
 
 /**
  * Map `/api/orders/queue-counts` raw combos → PENDING/TESTED/BLOCKED tallies.
- * SQL only returns signal facts (`hasTechScan` × `blocked`); lane SoT stays
+ * SQL only returns signal facts (`hasPickScan` × `blocked`); lane SoT stays
  * {@link deriveFulfillmentState} (Decision 8) so the sidebar never re-implements it.
  */
 export function fulfillmentCountsFromCombos(
-  combos: ReadonlyArray<{ hasTechScan: boolean; blocked: boolean; count: number }>,
+  combos: ReadonlyArray<{ hasPickScan: boolean; blocked: boolean; count: number }>,
 ): FulfillmentCounts {
   const counts: FulfillmentCounts = { ...ZERO_FULFILLMENT_COUNTS };
   for (const c of combos) {
     const state = deriveFulfillmentState({
-      hasTechScan: c.hasTechScan,
+      hasPickScan: c.hasPickScan,
       isOutOfStock: c.blocked,
     });
     counts[state] += c.count;
@@ -58,7 +58,7 @@ interface FulfillmentLaneTotals {
 export function fulfillmentLaneTotals(
   counts:
     | {
-        combos?: ReadonlyArray<{ hasTechScan: boolean; blocked: boolean; count: number }>;
+        combos?: ReadonlyArray<{ hasPickScan: boolean; blocked: boolean; count: number }>;
         byStage?: { pending: number; tested: number };
       }
     | null

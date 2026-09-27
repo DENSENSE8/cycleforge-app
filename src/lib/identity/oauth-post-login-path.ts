@@ -22,18 +22,20 @@ export function isSafeAppPath(url: string): boolean {
  * Where the OAuth callback sends the browser after minting the umbrella session.
  *
  * Shared org → the existing staff-name picker on /signin (or /m/signin).
- * Individual org → `next` when it is a same-origin path, otherwise `/`.
+ * Individual org → `next` when it is a same-origin path, otherwise `home`
+ * (the staff member's resolved landing — see `resolveLandingPath`).
  */
 export function resolveOAuthPostLoginPath(input: {
   sharedStaffOrg: boolean;
   next: string | null | undefined;
   signinPath: string | null | undefined;
+  home: string;
 }): string {
   const nextRaw = (input.next ?? '').trim();
   const next = nextRaw && isSafeAppPath(nextRaw) ? nextRaw.replace(/[\t\r\n]/g, '') : '';
 
   if (!input.sharedStaffOrg) {
-    return next || '/';
+    return next || input.home;
   }
 
   const params = new URLSearchParams();

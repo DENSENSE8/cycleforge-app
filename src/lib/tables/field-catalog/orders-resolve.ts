@@ -35,8 +35,9 @@ import { resolveSkuIdentityTitle } from '@/lib/sku/sku-identity-law';
 
 interface OrdersSlotContext {
   /**
-   * Normalized tester face from the queue view layer (`---` = missing).
-   * tester family (operator ruling 2026-09-14) — the tester face now belongs to
+   * Normalized tester face from the queue view layer (`---` = missing). No
+   * stage resolver reads it: Pick reads its own `picked_*` projection, never
+   * the tester (operator ruling 2026-09-14; QC/Pick split 2026-09-27).
    */
   testerDisplay?: string | null;
   /** Normalized packer face from the queue view layer (`---` = missing). */
@@ -79,8 +80,10 @@ function staffId(...candidates: unknown[]): number | null {
 }
 
 /**
- * Pick step facts, off the feed's own pick projection (`picked_by_name` / `picked_by` / `picked_at`).
- * Until the operator ruling of 2026-09-14 this read the tester/test_date
+ * Pick step facts, off the feed's own pick projection (`picked_by_name` /
+ * `picked_by` / `picked_at` — allocation pick, picking session, or the Picker
+ * desk's PICK_SCANNED scan). Never QC facts, never the PICK assignee
+ * (`picker_*` is who it is ASSIGNED to, not who picked it).
  */
 function pickedStep(row: OrdersRow): CompoundSlotValue {
   return {
@@ -89,7 +92,7 @@ function pickedStep(row: OrdersRow): CompoundSlotValue {
     whoStaffId: staffId(row.picked_by),
     at: stamp(row.picked_at),
     // No pick bench on the wire: the pick scan's station is 'PACK' for every
-    // event (api/pick/scan), which would paint the wrong desk's name here.
+    // event (api/picking/units/scan), which would paint the wrong desk's name here.
     station: null,
   };
 }

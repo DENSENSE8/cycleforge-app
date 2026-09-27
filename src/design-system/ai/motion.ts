@@ -33,8 +33,6 @@ export const aiTransition = {
   turn: { type: 'spring', visualDuration: 0.3, bounce: 0.18 },
   /** Greeting / chips leaving when the first message is sent. */
   leave: { type: 'tween', duration: 0.16, ease: [0.4, 0, 1, 1] },
-  /** Height reveal (thinking timeline, step detail). */
-  reveal: { type: 'spring', visualDuration: 0.28, bounce: 0.15 },
   /** Spinner → ✓ / ✕ morph. */
   morph: { type: 'spring', visualDuration: 0.24, bounce: 0.25 },
   /** Card press / hover lift. */
@@ -98,12 +96,6 @@ export const aiPresence = {
     initial: { opacity: 0, y: 6 },
     animate: { opacity: 1, y: 0 },
     exit: { opacity: 0 },
-  },
-  /** Collapsible detail (thinking timeline, a step's detail). */
-  reveal: {
-    initial: { opacity: 0, height: 0 },
-    animate: { opacity: 1, height: 'auto' },
-    exit: { opacity: 0, height: 0 },
   },
 } as const;
 

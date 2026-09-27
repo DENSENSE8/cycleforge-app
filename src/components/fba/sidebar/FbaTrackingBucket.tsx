@@ -2,14 +2,13 @@
 
 import { useMemo } from 'react';
 import { useDroppable } from '@dnd-kit/core';
-import { AnimatePresence, motion } from '@/design-system/motion';
 import { ChevronDown, ChevronUp, Trash2 } from '@/components/Icons';
 import { FbaDraggableLineRow } from '@/components/fba/sidebar/FbaDraggableLineRow';
 import { FbaQtyStepper } from '@/components/fba/sidebar/FbaQtyStepper';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { IconButton } from '@/design-system/primitives';
 import { emitOpenQuickAddFnsku } from '@/components/fba/FbaQuickAddFnskuModal';
-import { motionPresence, motionTransition } from '@/design-system/foundations/motion-presets';
+import { Collapse } from '@/design-system/components/Collapse';
 import { microBadge } from '@/design-system/tokens/typography/presets';
 import type { FbaBoardItem } from '@/lib/fba/types';
 import type { TrackingBucket } from '@/lib/fba/types';
@@ -124,69 +123,59 @@ export function FbaTrackingBucket({
       </div>
 
       {/* Collapsible items */}
-      <AnimatePresence initial={false}>
-        {!bucket.collapsed && (
-          <motion.div
-            initial={motionPresence.collapseHeight.initial}
-            animate={motionPresence.collapseHeight.animate}
-            exit={motionPresence.collapseHeight.exit}
-            transition={motionTransition.upNextCollapse}
-            className="overflow-hidden"
-          >
-            {bucket.allocations.length === 0 ? (
-              <div className="border-t border-border-hairline px-3 py-2">
-                <p className={`${microBadge} text-center tracking-wider text-text-faint`}>
-                  Drag items here
-                </p>
-              </div>
-            ) : (
-              <div className="border-t border-border-hairline">
-                {bucket.allocations.map((alloc) => {
-                  const item = itemMap.get(alloc.item_id);
-                  if (!item) return null;
-                  return (
-                    <FbaDraggableLineRow
-                      key={alloc.item_id}
-                      dragId={`draggable-${alloc.item_id}-bucket-${bucket.bucketId}`}
-                      dragData={{
-                        itemId: alloc.item_id,
-                        sourceContainer: `bucket-${bucket.bucketId}`,
+      <Collapse open={!bucket.collapsed}>
+        {bucket.allocations.length === 0 ? (
+          <div className="border-t border-border-hairline px-3 py-2">
+            <p className={`${microBadge} text-center tracking-wider text-text-faint`}>
+              Drag items here
+            </p>
+          </div>
+        ) : (
+          <div className="border-t border-border-hairline">
+            {bucket.allocations.map((alloc) => {
+              const item = itemMap.get(alloc.item_id);
+              if (!item) return null;
+              return (
+                <FbaDraggableLineRow
+                  key={alloc.item_id}
+                  dragId={`draggable-${alloc.item_id}-bucket-${bucket.bucketId}`}
+                  dragData={{
+                    itemId: alloc.item_id,
+                    sourceContainer: `bucket-${bucket.bucketId}`,
+                  }}
+                  sidebarBoardSnapshots={sidebarBoardSnapshots}
+                  bucketItemIds={bucketItemIds}
+                  displayTitle={item.display_title || 'No title'}
+                  fnsku={String(item.fnsku || '').toUpperCase()}
+                  stationTheme={stationTheme}
+                  checked
+                  onCheckedChange={(next) => { if (!next) onRemoveItem(item); }}
+                  onEditDetails={() =>
+                    emitOpenQuickAddFnsku({
+                      fnsku: String(item.fnsku || '').trim(),
+                      product_title: item.display_title || null,
+                      asin: item.asin ?? null,
+                      sku: item.sku ?? null,
+                      condition: item.condition ?? null,
+                    })
+                  }
+                  rightSlot={
+                    <FbaQtyStepper
+                      value={alloc.qty}
+                      fnsku={item.fnsku}
+                      warnAbove={Math.max(1, Number(item.actual_qty || 0))}
+                      onChange={(v) => {
+                        if (v <= 0) { onRemoveItem(item); return; }
+                        onQtyChange(alloc.item_id, v);
                       }}
-                      sidebarBoardSnapshots={sidebarBoardSnapshots}
-                      bucketItemIds={bucketItemIds}
-                      displayTitle={item.display_title || 'No title'}
-                      fnsku={String(item.fnsku || '').toUpperCase()}
-                      stationTheme={stationTheme}
-                      checked
-                      onCheckedChange={(next) => { if (!next) onRemoveItem(item); }}
-                      onEditDetails={() =>
-                        emitOpenQuickAddFnsku({
-                          fnsku: String(item.fnsku || '').trim(),
-                          product_title: item.display_title || null,
-                          asin: item.asin ?? null,
-                          sku: item.sku ?? null,
-                          condition: item.condition ?? null,
-                        })
-                      }
-                      rightSlot={
-                        <FbaQtyStepper
-                          value={alloc.qty}
-                          fnsku={item.fnsku}
-                          warnAbove={Math.max(1, Number(item.actual_qty || 0))}
-                          onChange={(v) => {
-                            if (v <= 0) { onRemoveItem(item); return; }
-                            onQtyChange(alloc.item_id, v);
-                          }}
-                        />
-                      }
                     />
-                  );
-                })}
-              </div>
-            )}
-          </motion.div>
+                  }
+                />
+              );
+            })}
+          </div>
         )}
-      </AnimatePresence>
+      </Collapse>
     </div>
   );
 }

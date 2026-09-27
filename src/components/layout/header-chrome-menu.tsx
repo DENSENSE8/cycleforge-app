@@ -1,9 +1,10 @@
 'use client';
 
 /**
- * Shared GlobalHeader chrome menu — panel + row SoT for Page · Recents · Pins.
- * Industrial flush column: zero radius, zero outer pad, square row hover.
- * Never fork local panel/row classes in those three switchers.
+ * Shared GlobalHeader chrome menu — panel + row SoT for Page · Pins · Daily.
+ * Triage dropdown (owner 2026-09-27): a mode-radius panel with a 2px pad,
+ * rounded rows that wash on hover and sink on press, sentence-case captions.
+ * Never fork local panel/row classes in these switchers.
  */
 
 import {
@@ -15,7 +16,15 @@ import { Check } from '@/components/Icons';
 import { focusRing } from '@/design-system/tokens/focus-ring';
 import { elevationClass } from '@/design-system/tokens/shadows';
 import { cn } from '@/utils/_cn';
-import { TOP_CHROME_ICON_FACE } from './header-shell';
+import {
+  HEADER_MENU_CAPTION_CLASS,
+  HEADER_MENU_PANEL_CORNER,
+  HEADER_MENU_ROW_CORNER,
+  TOP_CHROME_ICON_FACE,
+} from './header-shell';
+
+/** Row face: hover wash, 1px press sink (NAV_BLOCK's key feel), current = held fill. */
+const ROW_PRESS_CLASS = 'transition-[background-color,transform] duration-100 ease-out hover:bg-surface-hover active:translate-y-px active:bg-surface-sunken';
 
 export function HeaderChromeMenu({
   ariaLabel,
@@ -31,7 +40,8 @@ export function HeaderChromeMenu({
       role="menu"
       aria-label={ariaLabel}
       className={cn(
-        'min-w-[11rem] overflow-y-auto rounded-none border border-border-default border-t-0 bg-surface-card p-0',
+        'flex min-w-[11rem] flex-col gap-px overflow-y-auto border border-border-soft bg-surface-card p-0.5',
+        HEADER_MENU_PANEL_CORNER,
         elevationClass('raised', 'soft'),
         className,
       )}
@@ -90,10 +100,11 @@ export const HeaderChromeMenuItem = forwardRef<HTMLButtonElement, HeaderChromeMe
         aria-current={active ? 'page' : undefined}
         className={cn(
           // Rail-matched row type (2026-08-16, bumped again same day) — `font-semibold text-text-default`, same weight/ink as RailRowBody's title…
-          'ds-raw-button flex min-w-0 flex-1 items-center gap-2 rounded-none px-3 py-2.5 text-left text-role-nav text-text-default',
+          'ds-raw-button flex min-w-0 flex-1 items-center gap-2 px-2 py-1.5 text-left text-role-nav text-text-default',
+          HEADER_MENU_ROW_CORNER,
           focusRing('control', 'accent'),
-          !hasSideSlots && 'w-full border-b border-border-hairline hover:bg-surface-sunken',
-          !hasSideSlots && active && 'bg-surface-sunken',
+          !hasSideSlots && cn('w-full', ROW_PRESS_CLASS),
+          !hasSideSlots && active && 'bg-surface-sunken font-medium',
           className,
         )}
         {...rest}
@@ -126,9 +137,10 @@ export const HeaderChromeMenuItem = forwardRef<HTMLButtonElement, HeaderChromeMe
     return (
       <div
         className={cn(
-          'flex w-full items-center gap-0.5 rounded-none border-b border-border-hairline',
-          'hover:bg-surface-sunken',
-          active && 'bg-surface-sunken',
+          'flex w-full items-center gap-0.5',
+          HEADER_MENU_ROW_CORNER,
+          ROW_PRESS_CLASS,
+          active && 'bg-surface-sunken font-medium',
         )}
       >
         {leading ? <div className="flex shrink-0 items-center pl-1.5">{leading}</div> : null}
@@ -141,18 +153,15 @@ export const HeaderChromeMenuItem = forwardRef<HTMLButtonElement, HeaderChromeMe
   },
 );
 
-/** A BAND caption inside the menu — the same word the desk paints over the same run of rows. */
+/** A BAND caption inside the menu — the same word the desk paints over the same run of rows, in the region's label voice. */
 export function HeaderChromeMenuLabel({ children }: { children: ReactNode }) {
   return (
-    <p
-      role="presentation"
-      className="border-b border-border-hairline bg-surface-sunken px-3 py-1 text-role-eyebrow font-semibold uppercase tracking-widest text-text-soft"
-    >
+    <p role="presentation" className={cn('px-2 pb-0.5 pt-2', HEADER_MENU_CAPTION_CLASS)}>
       {children}
     </p>
   );
 }
 
 export function HeaderChromeMenuEmpty({ children }: { children: ReactNode }) {
-  return <p className="px-3 py-2.5 text-role-caption text-text-faint">{children}</p>;
+  return <p className="px-2 py-2 text-role-caption text-text-faint">{children}</p>;
 }

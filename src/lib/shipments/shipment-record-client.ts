@@ -6,7 +6,7 @@
  */
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { refreshDomain, useRefreshSignal } from '@/lib/refresh/bus';
+import { refreshDomain } from '@/lib/refresh/bus';
 import type {
   ResolveShipmentExceptionBody,
   ResolveShipmentExceptionResult,
@@ -43,10 +43,6 @@ export function useShipmentRecord(shipmentId: number | null) {
     queryFn: () => fetchShipmentRecord(shipmentId as number),
     enabled: shipmentId != null && shipmentId > 0,
     staleTime: 30_000,
-  });
-  const { refetch } = query;
-  useRefreshSignal('orders.outbound', () => {
-    if (shipmentId != null) void refetch();
   });
   return query;
 }

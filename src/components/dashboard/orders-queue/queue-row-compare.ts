@@ -12,7 +12,6 @@ import { queueCarrierPin, queueChannelPin } from '@/utils/queue-display-sort';
 import {
   nonSentinelTimestamp,
   queueRowPackedAtRaw,
-  queueRowTestedAtRaw,
   resolveRowStatus,
   type OrdersQueueMode,
   type QueueRowRecord,
@@ -45,7 +44,7 @@ function personName(record: QueueRowRecord, keys: readonly string[]): string {
 }
 
 function pickerName(record: QueueRowRecord): string {
-  return personName(record, ['tested_by_name', 'tester_name']);
+  return personName(record, ['picked_by_name', 'picker_name']);
 }
 
 function packerName(record: QueueRowRecord): string {
@@ -171,14 +170,22 @@ export function compareQueueColumnRows(
       break;
     }
     case 'picked': {
-      const ta = instantMs(queueRowTestedAtRaw(ra));
-      const tb = instantMs(queueRowTestedAtRaw(rb));
+      const ta = instantMs(nonSentinelTimestamp(ra.picked_at));
+      const tb = instantMs(nonSentinelTimestamp(rb.picked_at));
       const blank = compareBlankLast(ta == null, tb == null);
       if (blank !== null) return blank;
       primary = (ta as number) - (tb as number);
       if (primary === 0) {
         primary = pickerName(ra).localeCompare(pickerName(rb), undefined, { sensitivity: 'base' });
       }
+      break;
+    }
+    case 'picker': {
+      const pa = pickerName(ra);
+      const pb = pickerName(rb);
+      const blank = compareBlankLast(!pa, !pb);
+      if (blank !== null && blank !== 0) return blank;
+      primary = pa.localeCompare(pb, undefined, { sensitivity: 'base' });
       break;
     }
     case 'packed': {

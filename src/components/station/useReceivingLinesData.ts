@@ -20,7 +20,6 @@ import {
 } from '@/components/station/receiving-delivered-not-unboxed';
 import { mergeReceivingPackageMetaIntoRow } from './receiving-lines-table-helpers';
 import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
-import { useRefreshSignal } from '@/lib/refresh/bus';
 
 interface UseReceivingLinesDataArgs {
   mode: ReceivingModeDescriptor;
@@ -139,10 +138,6 @@ export function useReceivingLinesData({
     }
   }, [isIncomingMode, data?.total, incomingPage, router, searchParams, pathname]);
 
-  // Refresh signals → invalidate the list query.
-  useRefreshSignal('receiving.lines', () => {
-    queryClient.invalidateQueries({ queryKey: ['receiving-lines-table'] });
-  });
 
   useEffect(() => {
     const handler = () => {

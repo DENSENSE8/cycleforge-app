@@ -36,6 +36,8 @@ const EXACT: Record<string, TimelineGlyphSpec> = {
 
   // SAL / packing / shipping
   FNSKU_SCANNED: { id: 'tracking-scan', tooltip: 'Amazon SKU scan' },
+  // Picker-desk order pick — same family as inventory PICKED.
+  PICK_SCANNED: { id: 'shipping', tooltip: 'Shipping' },
   SERIAL_ADDED: { id: 'receiving', tooltip: 'Receiving' },
   PACK_COMPLETED: { id: 'packing', tooltip: 'Packing' },
   PACK_SCAN: { id: 'packing', tooltip: 'Packing' },

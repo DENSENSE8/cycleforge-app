@@ -172,7 +172,8 @@ export function decodeCursor(raw: string | null | undefined): JourneyCursor | nu
 
 /**
  * Map a requested UI station to the per-spine station vocabularies. SAL uses
- * TECH/PACK/FBA/RECEIVING/OUTBOUND; inventory_events uses RECEIVING/TECH/PACK/SHIP.
+ * TECH/PICK/PACK/FBA/RECEIVING/OUTBOUND; inventory_events uses RECEIVING/TECH/PACK/SHIP.
+ * PICK (the picker desk's order picks) is SAL-only and distinct from TECH (bench QC / serials).
  */
 export function mapStationsToSpines(stations: string[]): { sal: string[]; inv: string[] } {
   const sal = new Set<string>();
@@ -186,6 +187,9 @@ export function mapStationsToSpines(stations: string[]): { sal: string[]; inv: s
       case 'TECH':
         sal.add('TECH');
         inv.add('TECH');
+        break;
+      case 'PICK':
+        sal.add('PICK');
         break;
       case 'PACK':
         sal.add('PACK');

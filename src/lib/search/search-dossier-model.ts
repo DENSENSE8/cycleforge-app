@@ -16,6 +16,8 @@ import {
   type CartonInspectorTotals,
 } from '@/components/receiving/inspector/carton-inspector-model';
 import { SHIPPING_EXCEPTIONS_PATH, shippingOrdersHref } from '@/lib/shipping/orders-desk';
+import { resolveSkuIdentityTitle } from '@/lib/sku/sku-identity-law';
+import type { SearchSelection } from '@/lib/search/search-selection';
 
 export interface SearchDossierFinding {
   key: string;
@@ -29,12 +31,31 @@ export interface SearchDossierFact {
   id: string;
   label: string;
   value: string;
+  /** An identifier (serial, tracking, PO, SKU) — painted in full, click copies. */
+  copy?: boolean;
 }
 
+/** Where a related-record link lands: another `/search` record, or a query. */
+export type SearchDossierTarget =
+  | { sel: SearchSelection }
+  | { query: string };
+
+/** A record this one points at (the order a unit shipped on, the PO a carton came from). */
+export interface SearchDossierLink {
+  id: string;
+  label: string;
+  value: string;
+  target: SearchDossierTarget;
+}
+
+/** One thing the record holds — a carton line, the unit itself, the catalog item. */
 export interface SearchDossierLine {
   id: string | number;
   title: string;
-  meta: string;
+  imageUrl?: string | null;
+  facts: ReadonlyArray<{ label: string; value: string }>;
+  /** Records the line points at (its serial units, …). */
+  links?: readonly SearchDossierLink[];
   finding?: string | null;
 }
 
@@ -47,10 +68,6 @@ export interface SearchDossierHandoff {
 export function presentFact(value: string | null | undefined): string | null {
   const v = String(value ?? '').trim();
   return v || null;
-}
-
-export function joinMeta(parts: Array<string | null | undefined>): string {
-  return parts.map((p) => String(p ?? '').trim()).filter(Boolean).join(' · ');
 }
 
 export function orderDossierFindings(order: {
@@ -119,28 +136,39 @@ export function cartonDossierLines(
   unmatched: boolean,
 ): SearchDossierLine[] {
   return lines.map((line) => {
-    const title =
-      presentFact(line.catalog_product_title) ||
-      presentFact(line.zoho_item_title) ||
-      presentFact(line.item_name) ||
-      presentFact(line.sku) ||
-      `Line ${line.id}`;
+    // SKU identity law: the Zoho item title governs.
+    const title = resolveSkuIdentityTitle(line) || `Line ${line.id}`;
     const expected = line.quantity_expected;
     const received = line.quantity_received;
-    const qty =
-      expected != null || received != null
-        ? `qty ${received ?? '—'} / ${expected ?? '—'}`
-        : null;
     const finding =
       unmatched && !presentFact(line.zoho_purchaseorder_number)
         ? 'No matched PO'
         : expected != null && expected > 0 && (received ?? 0) === 0
           ? 'None received'
           : null;
+    const facts: Array<{ label: string; value: string }> = [];
+    const sku = presentFact(line.sku);
+    if (sku) facts.push({ label: 'SKU', value: sku });
+    if (expected != null || received != null) {
+      facts.push({ label: 'Received', value: `${received ?? '—'} of ${expected ?? '—'}` });
+    }
+    const grade = presentFact(line.condition_grade);
+    if (grade) facts.push({ label: 'Condition', value: grade });
+    const bin = presentFact(line.location_code);
+    if (bin) facts.push({ label: 'Bin', value: bin });
+    const po = presentFact(line.zoho_purchaseorder_number);
+    if (po) facts.push({ label: 'PO', value: po });
     return {
       id: line.id,
       title,
-      meta: joinMeta([line.sku, qty, line.condition_grade]),
+      imageUrl: presentFact(line.image_url),
+      facts,
+      links: (line.serials ?? []).map((serial) => ({
+        id: `unit:${serial.id}`,
+        label: 'Serial',
+        value: serial.serial_number,
+        target: { sel: { entityType: 'unit' as const, id: serial.id } },
+      })),
       finding,
     };
   });

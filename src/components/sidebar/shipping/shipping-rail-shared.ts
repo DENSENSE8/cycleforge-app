@@ -1,5 +1,5 @@
 import type { Order } from '@/components/station/upnext/upnext-types';
-import type { TechRecord } from '@/hooks/useTechLogs';
+import type { TechRecord } from '@/hooks/useDeskPickLogs';
 import type { RefreshDomain } from '@/lib/refresh/domains';
 
 export const SHIPPING_RAIL_REFRESH_EVENTS = ['tech-log-added'] as const;
@@ -54,9 +54,9 @@ export function recentOrderToShippedRow(row: RecentOrderRow): ShippedHistoryRow 
     status: normalizeShippedRailStatus(row.status, row.is_shipped),
     shipping_tracking_number: String(row.tracking_number || ''),
     is_out_of_stock: false,
-    tester_id: null,
-    tester_name: null,
-    has_tech_scan: false,
+    picker_id: null,
+    picker_name: null,
+    has_pick_scan: false,
     is_shipped: true,
     ship_confirmed_at: row.ship_confirmed_at ?? null,
   };
@@ -78,9 +78,10 @@ export function techRecordToPreviewOrder(record: TechRecord): Order {
     status: normalizeShippedRailStatus(record.status, record.is_shipped),
     shipping_tracking_number: String(record.shipping_tracking_number || ''),
     is_out_of_stock: Boolean(record.is_out_of_stock),
-    tester_id: record.tested_by ?? null,
-    tester_name: null,
-    has_tech_scan: true,
+    // The desk tracking scan is the pick; its actor is the picker.
+    picker_id: record.tested_by ?? null,
+    picker_name: null,
+    has_pick_scan: true,
     is_shipped: Boolean(record.is_shipped),
   };
 }

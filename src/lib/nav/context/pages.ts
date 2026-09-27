@@ -73,18 +73,64 @@ export type NavScanGrammar = (typeof NAV_SCAN_GRAMMARS)[number];
 const UNSHIPPED_VIEWS = outboundSavedViewsConfig('unshipped');
 const SHIPPED_VIEWS = outboundSavedViewsConfig('shipped');
 
-/** `?staff=` — the universal staff filter every Shipping queue list reads (`STAFF_FILTER_PARAM`, `useToShipChrome.ts:59`, `UnshippedTable.tsx:220`). */
-const STAFF_CONTROL: NavControls = { staff: { param: 'staff' } };
-
-/** Shipped's period picker (`useShippedTableFilters.setPeriodRange`) plus its `?staff=` (`effStaffId`). */
-const SHIPPED_CONTROLS: NavControls = {
-  staff: { param: 'staff' },
-  dateRange: {
-    fromParam: 'dateFrom',
-    toParam: 'dateTo',
-    clearParams: ['shippedWeekOffset', 'allDates'],
-    placeholder: 'This week',
+/**
+ * Shipping's queue lists (To ship · Pick list · PO paired). Staff roles: the
+ * universal `?staff=` assignee filter (`STAFF_FILTER_PARAM`, `sqlOrderAssignedToStaff`)
+ * and `?pickedBy=` — who ACTUALLY picked (`PICK_FACTS_LATERALS`), plus the
+ * pick / pack assignees the list already reads (`?pickerId=` / `?packedBy=`). Dates: order date and ship-by
+ * (PT civil days). Sort: the queue's own `?sort=`/`?dir=` alphabet
+ * (`queue-display-sort.ts`), ship-by soonest first by default.
+ */
+const QUEUE_CONTROLS: NavControls = {
+  staff: [
+    { id: 'assigned', param: 'staff', label: 'Assigned' },
+    { id: 'picked-by', param: 'pickedBy', label: 'Picked by' },
+    { id: 'packer', param: 'packedBy', label: 'Packer' },
+    { id: 'picker', param: 'pickerId', label: 'Picker' },
+  ],
+  dateRanges: [
+    { id: 'ship-by', label: 'Ship-by date', fromParam: 'shipByFrom', toParam: 'shipByTo', clearParams: [], placeholder: 'Any day' },
+    { id: 'ordered', label: 'Order date', fromParam: 'orderFrom', toParam: 'orderTo', clearParams: [], placeholder: 'Any day' },
+  ],
+  sort: {
+    param: 'sort',
+    dirParam: 'dir',
+    defaultValue: 'deadline',
+    options: [
+      { value: 'deadline', label: 'Ship by, soonest first' },
+      { value: 'age', label: 'Most overdue first', dir: 'desc' },
+      { value: 'newest', label: 'Newest orders first' },
+      { value: 'picked', label: 'Picked, most recent first', dir: 'desc' },
+      { value: 'picker', label: 'Picker, A to Z', dir: 'asc' },
+      { value: 'amount', label: 'Highest value first', dir: 'desc' },
+    ],
   },
+};
+
+/**
+ * Shipped's period picker (`useShippedTableFilters.setPeriodRange`), now with
+ * a time of day at each end (`timeFrom`/`timeTo`, PT), plus who shipped it:
+ * `?staff=` (`effStaffId`), `?pickedBy=`, `?packedBy=`, `?testedBy=`.
+ */
+const SHIPPED_CONTROLS: NavControls = {
+  staff: [
+    { id: 'any', param: 'staff', label: 'Staff' },
+    { id: 'picked-by', param: 'pickedBy', label: 'Picked by' },
+    { id: 'packed-by', param: 'packedBy', label: 'Packed by' },
+    { id: 'tested-by', param: 'testedBy', label: 'Tested by' },
+  ],
+  dateRanges: [
+    {
+      id: 'shipped',
+      label: 'Shipped',
+      fromParam: 'dateFrom',
+      toParam: 'dateTo',
+      clearParams: ['shippedWeekOffset', 'allDates'],
+      placeholder: 'This week',
+      fromTimeParam: 'timeFrom',
+      toTimeParam: 'timeTo',
+    },
+  ],
 };
 
 /** The To-ship desk header (OrdersDeskAddAction · Past imports · Labels walk), removed 2026-09-26. */
@@ -118,29 +164,29 @@ export const NAV_PAGE_DECLS: Readonly<Record<string, NavPageDecl>> = {
   // Search for the Shipping views comes from `DESK_VIEWS` (the desk store).
   outbound: {
     items: {
-      po: { savedViews: UNSHIPPED_VIEWS, controls: STAFF_CONTROL },
-      pick: { savedViews: UNSHIPPED_VIEWS, actions: TO_SHIP_ACTIONS, controls: STAFF_CONTROL },
-      triage: { savedViews: UNSHIPPED_VIEWS, actions: TO_SHIP_ACTIONS, controls: STAFF_CONTROL },
+      po: { savedViews: UNSHIPPED_VIEWS, controls: QUEUE_CONTROLS },
+      pick: { savedViews: UNSHIPPED_VIEWS, actions: TO_SHIP_ACTIONS, controls: QUEUE_CONTROLS },
+      triage: { savedViews: UNSHIPPED_VIEWS, actions: TO_SHIP_ACTIONS, controls: QUEUE_CONTROLS },
       shipped: { savedViews: SHIPPED_VIEWS, controls: SHIPPED_CONTROLS },
     },
   },
   // Header split action `IncomingDeskAddAction` — the Global Add inbound leaves.
   // Find narrows the ledger through the desk store (the ledger toolbar's old
   // "Filter incoming…" field); On the way also takes a pasted vendor list,
-  // answered by the Unbox Check (`IncomingBulkTrackingPanel`'s Check receipts).
+  // located per number by `GET /api/nav/locate` (the inbound locator).
   incoming: {
     items: {
       pipeline: {
         search: {
           placeholder: 'Search deliveries',
           source: 'desk-store',
-          bulk: { check: 'inbound-check', param: REF_IN_PARAM, statusParam: RECON_PARAM },
+          locate: { locator: 'inbound', param: REF_IN_PARAM, statusParam: RECON_PARAM },
         },
       },
       docked: { search: { placeholder: 'Search received history', source: 'desk-store' } },
     },
     actions: [
-      { action: { id: 'incoming.add-po', label: 'Add PO', intent: 'global-add:incoming-po' } },
+      { action: { id: 'incoming.add-po', label: 'Add purchase order', intent: 'global-add:incoming-po' } },
       { action: { id: 'incoming.add-return', label: 'Add return', intent: 'global-add:incoming-return' } },
       {
         action: { id: 'incoming.import-returns', label: 'Import returns (CSV/TSV)', intent: 'global-add:incoming-returns-csv' },
@@ -226,7 +272,7 @@ export const NAV_PAGE_DECLS: Readonly<Record<string, NavPageDecl>> = {
   },
   'ready-to-pack': {
     recents: 'tech.scans',
-    scanInput: { grammar: 'station', endpoint: '/api/tech/scan' },
+    scanInput: { grammar: 'station', endpoint: '/api/picking/desk/scan' },
   },
   packer: {
     recents: 'packer.packs',

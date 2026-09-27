@@ -1,0 +1,352 @@
+{
+  "url": "http://localhost:3100/search?sel=order:7109",
+  "ttfb": 1286,
+  "isDev": false,
+  "rows": [
+    {
+      "url": "/api/station-commands/aliases",
+      "start": 1613,
+      "end": 2385,
+      "ms": 772,
+      "bytes": 324
+    },
+    {
+      "url": "/api/staff-preferences",
+      "start": 1616,
+      "end": 1934,
+      "ms": 318,
+      "bytes": 2976
+    },
+    {
+      "url": "/api/nav/context?path=%2Fsearch%3Fsel%3Dorder%253A7109",
+      "start": 1623,
+      "end": 1932,
+      "ms": 309,
+      "bytes": 2365
+    },
+    {
+      "url": "/api/catalog/platforms",
+      "start": 1650,
+      "end": 2545,
+      "ms": 896,
+      "bytes": 3682
+    },
+    {
+      "url": "/api/orders?orderId=7109&includeShipped=true",
+      "start": 1658,
+      "end": 2330,
+      "ms": 672,
+      "bytes": 3576
+    },
+    {
+      "url": "/api/orders/7109/timeline",
+      "start": 1659,
+      "end": 2313,
+      "ms": 655,
+      "bytes": 1115
+    },
+    {
+      "url": "/api/staff?active=true",
+      "start": 1659,
+      "end": 2692,
+      "ms": 1032,
+      "bytes": 4624
+    },
+    {
+      "url": "/api/staff?active=false",
+      "start": 1747,
+      "end": 2657,
+      "ms": 910,
+      "bytes": 5871
+    },
+    {
+      "url": "/api/inbox/tech-queue",
+      "start": 1761,
+      "end": 3145,
+      "ms": 1385,
+      "bytes": 368
+    },
+    {
+      "url": "/api/inbox/support",
+      "start": 1761,
+      "end": 2673,
+      "ms": 912,
+      "bytes": 322
+    },
+    {
+      "url": "/api/staff-messages?unread=1",
+      "start": 1762,
+      "end": 2793,
+      "ms": 1031,
+      "bytes": 312
+    },
+    {
+      "url": "/api/shipped?q=FBA19JY9D8PV",
+      "start": 2331,
+      "end": 2814,
+      "ms": 483,
+      "bytes": 3869
+    },
+    {
+      "url": "/api/realtime/token?rnd=554909739865522",
+      "start": 2687,
+      "end": 3130,
+      "ms": 442,
+      "bytes": 2019
+    },
+    {
+      "url": "/api/locations",
+      "start": 2863,
+      "end": 3579,
+      "ms": 715,
+      "bytes": 130875
+    },
+    {
+      "url": "/api/orders/7109/label-purchase",
+      "start": 2864,
+      "end": 3750,
+      "ms": 885,
+      "bytes": 375
+    },
+    {
+      "url": "/api/orders/7109/documents",
+      "start": 2865,
+      "end": 3221,
+      "ms": 356,
+      "bytes": 419
+    },
+    {
+      "url": "/api/catalog/platform-accounts",
+      "start": 2867,
+      "end": 3485,
+      "ms": 619,
+      "bytes": 3548
+    },
+    {
+      "url": "/api/catalog/store-links",
+      "start": 2868,
+      "end": 3525,
+      "ms": 657,
+      "bytes": 3413
+    },
+    {
+      "url": "/api/orders/7109/price-breakdown",
+      "start": 2869,
+      "end": 3765,
+      "ms": 896,
+      "bytes": 665
+    },
+    {
+      "url": "/api/orders?q=FBA19JY9D8PV&includeShipped=true",
+      "start": 2870,
+      "end": 3962,
+      "ms": 1092,
+      "bytes": 3576
+    }
+  ],
+  "analysis": {
+    "duplicates": [],
+    "multiShape": [
+      {
+        "endpoint": "/api/staff",
+        "shapes": [
+          "/api/staff?active=true",
+          "/api/staff?active=false"
+        ],
+        "totalBytes": 10495
+      },
+      {
+        "endpoint": "/api/orders",
+        "shapes": [
+          "/api/orders?orderId=7109&includeShipped=true",
+          "/api/orders?q=FBA19JY9D8PV&includeShipped=true"
+        ],
+        "totalBytes": 7152
+      }
+    ],
+    "chains": [
+      {
+        "from": "/api/shipped?q=FBA19JY9D8PV",
+        "to": "/api/orders?q=FBA19JY9D8PV&includeShipped=true",
+        "gapMs": 56,
+        "tailEnd": 3962
+      },
+      {
+        "from": "/api/shipped?q=FBA19JY9D8PV",
+        "to": "/api/orders/7109/price-breakdown",
+        "gapMs": 55,
+        "tailEnd": 3765
+      },
+      {
+        "from": "/api/shipped?q=FBA19JY9D8PV",
+        "to": "/api/orders/7109/label-purchase",
+        "gapMs": 50,
+        "tailEnd": 3750
+      },
+      {
+        "from": "/api/shipped?q=FBA19JY9D8PV",
+        "to": "/api/locations",
+        "gapMs": 49,
+        "tailEnd": 3579
+      },
+      {
+        "from": "/api/shipped?q=FBA19JY9D8PV",
+        "to": "/api/catalog/store-links",
+        "gapMs": 54,
+        "tailEnd": 3525
+      },
+      {
+        "from": "/api/shipped?q=FBA19JY9D8PV",
+        "to": "/api/catalog/platform-accounts",
+        "gapMs": 53,
+        "tailEnd": 3485
+      },
+      {
+        "from": "/api/shipped?q=FBA19JY9D8PV",
+        "to": "/api/orders/7109/documents",
+        "gapMs": 51,
+        "tailEnd": 3221
+      },
+      {
+        "from": "/api/inbox/support",
+        "to": "/api/realtime/token?rnd=554909739865522",
+        "gapMs": 14,
+        "tailEnd": 3130
+      },
+      {
+        "from": "/api/orders?orderId=7109&includeShipped=true",
+        "to": "/api/shipped?q=FBA19JY9D8PV",
+        "gapMs": 1,
+        "tailEnd": 2814
+      }
+    ],
+    "peakConcurrency": 11,
+    "countProbes": [],
+    "heaviest": [
+      {
+        "url": "/api/locations",
+        "start": 2863,
+        "end": 3579,
+        "ms": 715,
+        "bytes": 130875
+      },
+      {
+        "url": "/api/staff?active=false",
+        "start": 1747,
+        "end": 2657,
+        "ms": 910,
+        "bytes": 5871
+      },
+      {
+        "url": "/api/staff?active=true",
+        "start": 1659,
+        "end": 2692,
+        "ms": 1032,
+        "bytes": 4624
+      },
+      {
+        "url": "/api/shipped?q=FBA19JY9D8PV",
+        "start": 2331,
+        "end": 2814,
+        "ms": 483,
+        "bytes": 3869
+      },
+      {
+        "url": "/api/catalog/platforms",
+        "start": 1650,
+        "end": 2545,
+        "ms": 896,
+        "bytes": 3682
+      },
+      {
+        "url": "/api/orders?orderId=7109&includeShipped=true",
+        "start": 1658,
+        "end": 2330,
+        "ms": 672,
+        "bytes": 3576
+      },
+      {
+        "url": "/api/orders?q=FBA19JY9D8PV&includeShipped=true",
+        "start": 2870,
+        "end": 3962,
+        "ms": 1092,
+        "bytes": 3576
+      },
+      {
+        "url": "/api/catalog/platform-accounts",
+        "start": 2867,
+        "end": 3485,
+        "ms": 619,
+        "bytes": 3548
+      }
+    ],
+    "slowest": [
+      {
+        "url": "/api/inbox/tech-queue",
+        "start": 1761,
+        "end": 3145,
+        "ms": 1385,
+        "bytes": 368
+      },
+      {
+        "url": "/api/orders?q=FBA19JY9D8PV&includeShipped=true",
+        "start": 2870,
+        "end": 3962,
+        "ms": 1092,
+        "bytes": 3576
+      },
+      {
+        "url": "/api/staff?active=true",
+        "start": 1659,
+        "end": 2692,
+        "ms": 1032,
+        "bytes": 4624
+      },
+      {
+        "url": "/api/staff-messages?unread=1",
+        "start": 1762,
+        "end": 2793,
+        "ms": 1031,
+        "bytes": 312
+      },
+      {
+        "url": "/api/inbox/support",
+        "start": 1761,
+        "end": 2673,
+        "ms": 912,
+        "bytes": 322
+      },
+      {
+        "url": "/api/staff?active=false",
+        "start": 1747,
+        "end": 2657,
+        "ms": 910,
+        "bytes": 5871
+      },
+      {
+        "url": "/api/catalog/platforms",
+        "start": 1650,
+        "end": 2545,
+        "ms": 896,
+        "bytes": 3682
+      },
+      {
+        "url": "/api/orders/7109/price-breakdown",
+        "start": 2869,
+        "end": 3765,
+        "ms": 896,
+        "bytes": 665
+      }
+    ]
+  },
+  "route": "/search?sel=order:7109",
+  "base": "http://localhost:3100",
+  "runs": 1,
+  "metrics": {
+    "duplicateRequests": 0,
+    "countProbes": 0,
+    "focusRefetch": 0,
+    "requests": 20
+  },
+  "capturedAt": "2026-09-27T20:01:14.139Z"
+}

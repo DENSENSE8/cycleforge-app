@@ -55,6 +55,12 @@ import {
 import { z } from 'zod';
 import type { PoolClient } from 'pg';
 import { OrderManualError, linkManualToSkuInTx, restoreManualPairingInTx } from '@/lib/manuals/order-manuals';
+import { ManualOrderRefused, createManualOrderInTx, registerDraftTracking } from '@/lib/orders/create-order';
+import { manualOrderDraftSchema } from '@/lib/orders/manual-order-draft';
+import { PoImportRefused, importPurchaseOrderInTx } from '@/lib/inbound/import-po';
+import { poImportDraftSchema } from '@/lib/inbound/po-import-draft';
+import type { TxClient } from '@/lib/inbound/purchase-links';
+import { dispatchChatWrite } from './chat-write-dispatch';
 
 type Client = FeedWriteClient & DraftGraphClient;
 type Payload = Record<string, unknown>;
@@ -209,6 +215,16 @@ async function dispatchApply(
       return dispatchBrand(client, orgId, kind, payload);
     case 'product_manual.link_sku':
       return dispatchManualLink(client, orgId, payload);
+    case 'order.create_manual':
+      return dispatchManualOrder(client, orgId, payload);
+    case 'receiving.import_po':
+      return dispatchPoImport(client, orgId, payload);
+    case 'order.set_flag':
+    case 'order.mark_out_of_stock':
+    case 'order.clear_out_of_stock':
+    case 'order.scan_out':
+    case 'task.create':
+      return dispatchChatWrite(client as unknown as PoolClient, orgId, kind, payload);
     default:
       // review-class kinds never reach dispatchApply; anything else is a gap.
       return { ok: false, status: 400, error: `no apply path for mutation kind "${kind}"` };
@@ -262,6 +278,49 @@ async function dispatchManualLink(client: Client, orgId: OrgId, payload: Payload
     if (err instanceof OrderManualError) {
       return { ok: false, status: err.status === 404 ? 404 : 400, error: err.message };
     }
+    throw err;
+  }
+}
+
+const ManualOrderPayload = z.object({ draft: manualOrderDraftSchema }).strict();
+
+/**
+ * A chat-drafted order — phone or any sales channel (review class: applied by
+ * the operator's confirmation or a reviewer). The same writes as POST
+ * /api/orders/add, inside the review transaction; its tracking is registered
+ * as a shipment first, as that route does. Not revertable — an order is
+ * cancelled, not undone. `targetRef` is the order NUMBER: one order may be
+ * several rows.
+ */
+async function dispatchManualOrder(client: Client, orgId: OrgId, payload: Payload): Promise<DispatchResult> {
+  const parsed = ManualOrderPayload.safeParse(payload);
+  if (!parsed.success) return payloadError('order.create_manual', parsed.error.issues);
+  try {
+    const shipmentIds = await registerDraftTracking(orgId, parsed.data.draft);
+    const created = await createManualOrderInTx(client as unknown as PoolClient, orgId, null, parsed.data.draft, undefined, shipmentIds);
+    return { ok: true, inverse: null, targetRef: created.orderNumber };
+  } catch (err) {
+    if (err instanceof ManualOrderRefused) return { ok: false, status: err.status, error: err.message };
+    throw err;
+  }
+}
+
+const PoImportPayload = z.object({ draft: poImportDraftSchema }).strict();
+
+/**
+ * A chat-drafted purchase order (review class: applied by the operator's
+ * confirmation or a reviewer). The same ingestPurchase the Incoming desk Add
+ * runs, inside the review transaction. Not revertable. `targetRef` is the PO
+ * number; the receiving ids ride back through the tool's read-back.
+ */
+async function dispatchPoImport(client: Client, orgId: OrgId, payload: Payload): Promise<DispatchResult> {
+  const parsed = PoImportPayload.safeParse(payload);
+  if (!parsed.success) return payloadError('receiving.import_po', parsed.error.issues);
+  try {
+    const imported = await importPurchaseOrderInTx(client as unknown as TxClient, orgId, parsed.data.draft);
+    return { ok: true, inverse: null, targetRef: imported.poNumber };
+  } catch (err) {
+    if (err instanceof PoImportRefused) return { ok: false, status: err.status, error: err.message };
     throw err;
   }
 }

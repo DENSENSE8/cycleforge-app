@@ -174,7 +174,7 @@ test('patchDashboardSelectedOrderFromAssignment updates only matching selected o
   const current = {
     id: 77,
     packed_at: null,
-    tester_id: 1,
+    picker_id: 1,
     packer_id: null,
     ship_by_date: null,
     notes: 'old',
@@ -185,7 +185,7 @@ test('patchDashboardSelectedOrderFromAssignment updates only matching selected o
 
   const next = patchDashboardSelectedOrderFromAssignment(current, {
     orderIds: [77],
-    testerId: 2,
+    pickerId: 2,
     packerId: 4,
     shipByDate: '2026-03-30',
     notes: 'new',
@@ -194,14 +194,14 @@ test('patchDashboardSelectedOrderFromAssignment updates only matching selected o
     itemNumber: 'NEW-ITEM',
   });
 
-  assert.equal(next?.tester_id, 2);
+  assert.equal(next?.picker_id, 2);
   assert.equal(next?.packer_id, 4);
   assert.equal(next?.ship_by_date, '2026-03-30');
   assert.equal(next?.notes, 'new');
   assert.equal(next?.condition, 'NEW');
   assert.equal(next?.shipping_tracking_number, 'BBB');
   assert.equal(next?.item_number, 'NEW-ITEM');
-  assert.equal(patchDashboardSelectedOrderFromAssignment(current, { orderIds: [88], testerId: 9 }), current);
+  assert.equal(patchDashboardSelectedOrderFromAssignment(current, { orderIds: [88], pickerId: 9 }), current);
 });
 
 test('every param the retired-front-door redirects forward is declared by /dashboard', () => {

@@ -62,7 +62,7 @@ const IDENTIFY_CACHE_TAGS = [
   CACHE_TAGS.skuCatalog,
   CACHE_TAGS.receivingLogs,
   CACHE_TAGS.fbaFnskus,
-  CACHE_TAGS.techLogs,
+  CACHE_TAGS.deskPickLogs,
 ];
 
 export const defaultIdentifyDeps: IdentifyDeps = {
@@ -211,7 +211,7 @@ function factsOf(row: IdentifyRow): Facts | null {
       entityId,
       deskView,
       shipmentId,
-      hasTechScan: Boolean(row.has_tech_scan),
+      hasPickScan: Boolean(row.has_pick_scan),
       packed: Boolean(row.packed),
       staged: Boolean(row.staged),
       outOfStock: Boolean(row.out_of_stock),

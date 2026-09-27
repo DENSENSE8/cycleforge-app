@@ -690,8 +690,8 @@
 | low | `/api/tech/test-result` | POST | ✅ | ✅ | ✅ | serial_unit_condition_history, serial_units, sku |
 | low | `/api/tech/undo-last` | POST | ✅ | ✅ | ✅ | station_activity_logs |
 | low | `/api/tech/update-serials` | POST | ✅ | ✅ | ✅ | shipping_tracking_numbers, station_activity_logs, fba_fnsku_logs |
-| low | `/api/testing/receiving-lines/open` | POST | ✅ | ✅ | ✅ | receiving_line_testing_opens |
-| low | `/api/testing/recent` | GET | ✅ | ✅ | ✅ | testing_results, serial_units, staff, sku |
+| low | `/api/qc/receiving-lines/open` | POST | ✅ | ✅ | ✅ | receiving_line_testing_opens |
+| low | `/api/qc/recent` | GET | ✅ | ✅ | ✅ | testing_results, serial_units, staff, sku |
 | low | `/api/threads/[id]/assign` | POST/DELETE | — | ✅ | ✅ | messages, staff |
 | low | `/api/threads/[id]/messages` | GET/POST | — | ✅ | ✅ | thread_messages, messages |
 | low | `/api/threads/[id]/messages/[messageId]` | PATCH/DELETE | — | ✅ | ✅ | messages |
@@ -1852,7 +1852,7 @@
 
 ### `receiving_line_testing_opens` — 1 routes, 0 not yet GUC-safe
 
-- ✅ `/api/testing/receiving-lines/open` (low)
+- ✅ `/api/qc/receiving-lines/open` (low)
 
 ### `receiving_line_unit` — 2 routes, 0 not yet GUC-safe
 
@@ -2001,7 +2001,7 @@
 - ✅ `/api/serial-units/[id]/timeline-photos` (low)
 - ✅ `/api/sku/by-tracking` (low)
 - ✅ `/api/tech/test-result` (low)
-- ✅ `/api/testing/recent` (low)
+- ✅ `/api/qc/recent` (low)
 - ✅ `/api/workflow/flow-audit` (low)
 
 ### `shifts` — 2 routes, 0 not yet GUC-safe
@@ -2276,7 +2276,7 @@
 - ✅ `/api/tech/scan` (low)
 - ✅ `/api/tech/scan-sku` (low)
 - ✅ `/api/tech/test-result` (low)
-- ✅ `/api/testing/recent` (low)
+- ✅ `/api/qc/recent` (low)
 - ✅ `/api/tracking-exceptions/[id]/refresh` (low)
 - ✅ `/api/transfers` (low)
 - ✅ `/api/units/next-id` (low)
@@ -2649,7 +2649,7 @@
 - ✅ `/api/studio/people` (low)
 - ✅ `/api/tech/scan` (low)
 - ✅ `/api/tech/scan-sku` (low)
-- ✅ `/api/testing/recent` (low)
+- ✅ `/api/qc/recent` (low)
 - ✅ `/api/threads/[id]/assign` (low)
 - ✅ `/api/tracking-exceptions` (low)
 - ✅ `/api/tracking-exceptions/[id]` (low)
@@ -2822,7 +2822,7 @@
 
 ### `testing_results` — 1 routes, 0 not yet GUC-safe
 
-- ✅ `/api/testing/recent` (low)
+- ✅ `/api/qc/recent` (low)
 
 ### `thread_messages` — 2 routes, 0 not yet GUC-safe
 

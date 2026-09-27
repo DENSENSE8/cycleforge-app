@@ -115,10 +115,8 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
     const previous = await setAvatarPointer(ctx.organizationId, subject.staffId, uploaded.id);
     await discardReplacedPhoto(previous, ctx.organizationId);
 
-    // /api/staff feeds the client staff identity cache (colours + avatars);
-    // the per-staff override namespace is org-scoped, so it takes the org form.
+    // /api/staff feeds the client staff identity cache (colours + avatars).
     await invalidateCacheTags([CACHE_TAGS.staff]);
-    await invalidateCacheTags(ctx.organizationId, [CACHE_TAGS.staffOverrides]);
 
     await recordAudit(pool, ctx, req, {
       source: 'staff-avatar',
@@ -149,7 +147,6 @@ export const DELETE = withAuth(async (req: NextRequest, ctx) => {
     const previous = await setAvatarPointer(ctx.organizationId, subject.staffId, null);
     await discardReplacedPhoto(previous, ctx.organizationId);
     await invalidateCacheTags([CACHE_TAGS.staff]);
-    await invalidateCacheTags(ctx.organizationId, [CACHE_TAGS.staffOverrides]);
 
     await recordAudit(pool, ctx, req, {
       source: 'staff-avatar',

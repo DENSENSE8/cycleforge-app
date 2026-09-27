@@ -5,6 +5,7 @@
 
 import type { LocationSegments } from '@/lib/barcode-routing';
 import {
+  MAX_PAPERWORK_PRINT_ORDERS,
   MAX_TOTE_PRINT_RUN,
   clampCopiesPerSide,
   clampLabelCopies,
@@ -27,11 +28,27 @@ export type StaffPrintLocationPayload = {
   segments: LocationSegments[];
 };
 
+/** Which order papers a `papers` job prints — the ledger's document types. */
+export type StaffPrintPaperDocument = 'shipping_label' | 'packing_slip' | 'manual';
+
+/**
+ * Order paperwork on the station's paper printer. One job may carry several
+ * orders (a bulk print from chat); the station prints them in order and
+ * reports progress per order.
+ */
 export type StaffPrintPapersPayload = {
-  orderRowId: number;
+  orderRowIds: number[];
+  /** The pack this print belongs to — only meaningful for a one-order job. */
   packerLogId: number | null;
   reprint?: boolean;
+  /** Only these papers; absent = the whole bundle (label + slip + manuals). */
+  documents?: StaffPrintPaperDocument[];
+  /** The sender's print batch — keys the ledger rows so the sender can read them back. */
+  batchId?: string;
 };
+
+const PAPER_DOCUMENTS: Record<string, true> = { shipping_label: true, packing_slip: true, manual: true };
+const BATCH_ID_RE = /^[A-Za-z0-9_-]{8,80}$/;
 
 /**
  * Bulk tote run. Mint jobs send a COUNT (never minted ids). Reprint jobs send
@@ -249,9 +266,18 @@ export function parseStaffPrintJob(raw: unknown): StaffPrintJob | null {
     const papers = rec.papers;
     if (!papers || typeof papers !== 'object') return null;
     const p = papers as Record<string, unknown>;
-    const orderRowId = asInt(p.orderRowId);
-    if (orderRowId == null || orderRowId <= 0) return null;
+    if (!Array.isArray(p.orderRowIds)) return null;
+    const orderRowIds = [...new Set(p.orderRowIds.map((v) => asInt(v) ?? 0))];
+    if (orderRowIds.length === 0 || orderRowIds.length > MAX_PAPERWORK_PRINT_ORDERS) return null;
+    if (orderRowIds.some((id) => !Number.isInteger(id) || id <= 0)) return null;
     const packerLogId = p.packerLogId == null ? null : asInt(p.packerLogId);
+    let documents: StaffPrintPaperDocument[] | undefined;
+    if (p.documents != null) {
+      if (!Array.isArray(p.documents) || p.documents.length === 0) return null;
+      if (!p.documents.every((d) => typeof d === 'string' && Object.hasOwn(PAPER_DOCUMENTS, d))) return null;
+      documents = [...new Set(p.documents as StaffPrintPaperDocument[])];
+    }
+    const batchId = typeof p.batchId === 'string' && BATCH_ID_RE.test(p.batchId) ? p.batchId : undefined;
     return {
       type: 'staff.print_job',
       request_id: requestId,
@@ -259,9 +285,11 @@ export function parseStaffPrintJob(raw: unknown): StaffPrintJob | null {
       grain,
       role: 'paper',
       papers: {
-        orderRowId,
-        packerLogId,
+        orderRowIds,
+        packerLogId: orderRowIds.length === 1 ? packerLogId : null,
         reprint: p.reprint === true,
+        ...(documents ? { documents } : {}),
+        ...(batchId ? { batchId } : {}),
       },
     };
   }

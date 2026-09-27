@@ -1,6 +1,6 @@
 /** Order-grain station membership SQL fragments (CF-03 / CF-04). */
 
-import { PACK_ACTIVITY_TYPES, TECH_TEST_ACTIVITY_TYPES, sqlInList } from '@/lib/station-activity';
+import { ORDER_PICK_SCAN_ACTIVITY_TYPES, PACK_ACTIVITY_TYPES, sqlInList } from '@/lib/station-activity';
 
 /** True when this shipment has no sibling orders (safe for legacy fallback). */
 const SQL_SHIPMENT_IS_SOLE_ORDER = `(
@@ -47,8 +47,12 @@ function sqlOrderHasStationActivity(alias: string, activityTypes: readonly strin
     )`;
 }
 
-/** Order has a Testing bench scan attributed to it (order-grain). */
-export function sqlOrderHasTechScan(alias = 'o'): string {
+/**
+ * Order has been picked (order-grain): a serial was taken for it, or the
+ * picker desk / FBA scanned it (ORDER_PICK_SCAN_ACTIVITY_TYPES). A pick, not
+ * QC — unit QC lives on testing_results.
+ */
+export function sqlOrderHasPickScan(alias = 'o'): string {
   const a = alias;
   return `(
     EXISTS (
@@ -56,7 +60,7 @@ export function sqlOrderHasTechScan(alias = 'o'): string {
       WHERE tsn.order_id = ${a}.id
         AND tsn.organization_id = ${a}.organization_id
     )
-    OR ${sqlOrderHasStationActivity(a, TECH_TEST_ACTIVITY_TYPES)}
+    OR ${sqlOrderHasStationActivity(a, ORDER_PICK_SCAN_ACTIVITY_TYPES)}
   )`;
 }
 

@@ -444,17 +444,30 @@ test('/sourcing owns the two keys both of its clear lists forgot', () => {
   assert.equal(parse('mode=alerts'), 'mode=alerts');
 });
 
-test('/test owns the tab params that are read through a CONSTANT', () => {
-  // `ship` / `testTab` are read as `searchParams.get(SHIPPING_WORKSPACE_TAB_PARAM)` from `@/utils/*-workspace-state` — outside any surface…
-  const spec = routeParamsFor('/test')!;
-  assert.equal(spec.route, '/test');
-  const parse = (qs: string) => parseRouteParams(spec, new URLSearchParams(qs)).toString();
+test('/test (Quality Control) and /pick (Picker desk) each own their tab param, read through a CONSTANT', () => {
+  // `ship` / `testTab` are read as `searchParams.get(SHIPPING_WORKSPACE_TAB_PARAM)` from `@/utils/*-workspace-state` — outside any surface folder, so the owners are asserted here.
+  const test_ = routeParamsFor('/test')!;
+  assert.equal(test_.route, '/test');
+  const parseTest = (qs: string) => parseRouteParams(test_, new URLSearchParams(qs)).toString();
+  assert.equal(parseTest('testTab=returns'), 'testTab=returns');
+  // The desk left `/test` (owner 2026-09-27): its params die at the QC boundary.
+  assert.equal(parseTest('ship=history'), '');
+  assert.equal(parseTest('attention=1&packStation=4&new=true'), '');
+  // A legacy `?view=testing` link still lands — the one-mode bench ignores it.
+  assert.equal(parseTest('view=testing&testTab=returns'), 'testTab=returns');
 
-  assert.equal(parse('ship=history'), 'ship=history');
+  const pick = routeParamsFor('/pick')!;
+  assert.equal(pick.route, '/pick');
+  const parsePick = (qs: string) => parseRouteParams(pick, new URLSearchParams(qs)).toString();
+  assert.equal(parsePick('ship=history'), 'ship=history');
   // Legacy ship=fba rejected — FBA owns `/shipping/fba` (IA row L).
-  assert.equal(parse('ship=fba'), '');
-  assert.equal(parse('testTab=returns'), 'testTab=returns');
-  assert.equal(parse('ship=bogus'), '');
+  assert.equal(parsePick('ship=fba'), '');
+  assert.equal(parsePick('ship=bogus'), '');
+  // QC state never rides into the desk.
+  assert.equal(parsePick('testTab=returns&view=testing'), '');
+  // `/pickup` shares letters, not the spec.
+  assert.equal(routeParamsFor('/pickup')?.route, '/pickup');
+
   // `/tech` is a legacy alias the proxy redirects; it deliberately has no spec
   // of its own, so it must not resolve to `/test`'s.
   assert.equal(routeParamsFor('/tech'), null);
@@ -464,7 +477,7 @@ test('the mobile RouteShell pane param is ambient on every shell that mounts it'
   // A live defect until 2026-07-29: `RouteShell` is a shared DS component read
   // through a constant, so no route declared `?pane=` and the hygiene hook
   // stripped it the instant the operator tapped the mobile Actions tab.
-  for (const route of ['/test', '/sourcing', '/support', '/unbox', '/receiving/history']) {
+  for (const route of ['/test', '/pick', '/sourcing', '/support', '/unbox', '/receiving/history']) {
     const spec = routeParamsFor(route)!;
     assert.equal(
       parseRouteParams(spec, new URLSearchParams('pane=actions')).get('pane'),
@@ -538,7 +551,7 @@ test('every To-ship triage facet survives hygiene on each route that mounts the 
   // The filter menu writes these through `applyToShipTriageFacet`; a route that
   // did not own the key stripped it, so e.g. Awaiting customer died on reload.
   const facets: ToShipTriageFacet[] = ['must_ship', 'urgent', 'blocked', 'awaiting_customer', 'caged'];
-  for (const route of ['/shipping/orders', '/shipping/shortage', '/test', '/pack']) {
+  for (const route of ['/shipping/orders', '/shipping/shortage', '/pick', '/pack']) {
     const spec = routeParamsFor(route)!;
     assert.equal(spec.route, route);
     for (const facet of facets) {
@@ -616,8 +629,8 @@ test('station queues keep their new-order, label and picker params', () => {
   const parse = (route: string, qs: string) =>
     parseRouteParams(routeParamsFor(route)!, new URLSearchParams(qs)).toString();
 
-  // `useNewOrderParam` on the Testing (Shipping) and Pack workbenches.
-  assert.equal(parse('/test', 'new=true'), 'new=true');
+  // `useNewOrderParam` on the Picker desk and Pack workbenches.
+  assert.equal(parse('/pick', 'new=true'), 'new=true');
   assert.equal(parse('/pack', 'new=true'), 'new=true');
   assert.equal(parse('/pack', 'new=yes'), '');
   // `RepairTable` reads `needsLabel === '1'`.

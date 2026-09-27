@@ -32,14 +32,14 @@ function stamp(...candidates: unknown[]): string | null {
 
 /**
  * The test scan step. `who` stays null by design: `techRecordToQueueRow` sets
- * `tested_by` / `tester_id` and no name alias, and `CompoundStageStep` already
+ * `tested_by` and no name alias, and `CompoundStageStep` already
  * treats a bare staff id as an actor (`hasActor = actorId || actorName`).
  */
 function testedStep(row: QueueRowRecord): CompoundSlotValue {
   return {
     kind: 'stage_event',
     who: null,
-    whoStaffId: staffId(row.tested_by, row.tester_id),
+    whoStaffId: staffId(row.tested_by),
     at: stamp(row.test_date_time),
     station: null,
   };

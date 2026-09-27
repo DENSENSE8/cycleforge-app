@@ -28,7 +28,7 @@ describe('order-station-sections', () => {
     assert.equal(orderStationForTimelineItem(item({ sourceEventType: 'UNBOX_PHOTOS' })), 'unbox');
 
     assert.equal(orderStationForTimelineItem(item({ sourceEventType: 'TEST_PASS' })), 'testing');
-    assert.equal(orderStationForTimelineItem(item({ sourceEventType: 'TRACKING_SCANNED' })), 'testing');
+    assert.equal(orderStationForTimelineItem(item({ sourceEventType: 'PICK_SCANNED' })), 'shipping');
     assert.equal(orderStationForTimelineItem(item({ sourceEventType: 'SERIAL_ADDED' })), 'testing');
 
     assert.equal(orderStationForTimelineItem(item({ sourceEventType: 'PACKED' })), 'shipping');

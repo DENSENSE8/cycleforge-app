@@ -10,6 +10,7 @@ import {
   stagingRowsFromExtractedOrders,
   type ExtractedOrderRow,
 } from '@/lib/orders/import/paste-intake';
+import type { CapturedOrder } from '@/lib/orders/import/order-text-parse';
 import { loadTableImportDraft } from '@/lib/tables/import/staging-store';
 import { isTableImportLive } from '@/lib/tables/import/registry';
 import { useTableImportParam } from '@/hooks/useTableImportParam';
@@ -18,6 +19,8 @@ import { toast } from '@/lib/toast';
 
 /** The one mouth's identity hook — {@link StationComposerHost} `data-testid`. */
 const MOUTH_SELECTOR = '[data-testid="station-composer-host"]';
+/** The inline intake entry — {@link OrderIntakeEntry} `data-testid`. */
+const INTAKE_SELECTOR = '[data-testid="order-intake-entry"]';
 /** Pages of one list, at most — the route's cap. */
 const MAX_CAPTURE_IMAGES = 6;
 
@@ -56,35 +59,53 @@ type CaptureResponse =
         ship_by_date: string;
         tracking_number: string;
       }>;
+      captured: CapturedOrder[];
     }
   | { success: false; error?: string };
 
-async function postCapture(files: File[]): Promise<ExtractedOrderRow[]> {
-  const image_data_urls: string[] = [];
-  for (const file of files.slice(0, MAX_CAPTURE_IMAGES)) {
-    const scaled = await downscaleImageTo720(file);
-    image_data_urls.push(await blobToBase64DataUrl(scaled.blob));
+/**
+ * Read a pasted order — text, or screenshots (downscaled to 720) — through
+ * `/api/orders/import/extract-capture`. Shared by the desk's paste staging and
+ * the intake form's "Paste an order"; nothing is created.
+ */
+export async function requestOrderCapture(input: { text: string } | { files: File[] }): Promise<{
+  rows: ExtractedOrderRow[];
+  captured: CapturedOrder[];
+}> {
+  let body: { text: string } | { image_data_urls: string[] };
+  if ('text' in input) {
+    body = { text: input.text };
+  } else {
+    const image_data_urls: string[] = [];
+    for (const file of input.files.slice(0, MAX_CAPTURE_IMAGES)) {
+      const scaled = await downscaleImageTo720(file);
+      image_data_urls.push(await blobToBase64DataUrl(scaled.blob));
+    }
+    body = { image_data_urls };
   }
   const res = await fetch('/api/orders/import/extract-capture', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ image_data_urls }),
+    body: JSON.stringify(body),
   });
   const data = (await res.json().catch(() => null)) as CaptureResponse | null;
   if (!res.ok || !data || !data.success) {
     throw new Error((data && !data.success && data.error) || `Extract failed (${res.status})`);
   }
-  return data.orders.map((o) => ({
-    orderNumber: o.order_number,
-    platform: o.platform,
-    itemTitle: o.item_title,
-    itemNumber: o.item_number,
-    sku: o.sku,
-    quantity: o.quantity,
-    customerName: o.customer_name,
-    shipByDate: o.ship_by_date,
-    trackingNumber: o.tracking_number,
-  }));
+  return {
+    rows: data.orders.map((o) => ({
+      orderNumber: o.order_number,
+      platform: o.platform,
+      itemTitle: o.item_title,
+      itemNumber: o.item_number,
+      sku: o.sku,
+      quantity: o.quantity,
+      customerName: o.customer_name,
+      shipByDate: o.ship_by_date,
+      trackingNumber: o.tracking_number,
+    })),
+    captured: data.captured,
+  };
 }
 
 interface OrderPasteIntakeState {
@@ -118,7 +139,7 @@ export function useOrderPasteIntake(): OrderPasteIntakeState {
       busy.current = true;
       setExtracting(true);
       try {
-        const orders = await postCapture(files);
+        const { rows: orders } = await requestOrderCapture({ files });
         if (orders.length === 0) {
           toast.error('No order lines could be read from that screenshot.');
           return;
@@ -139,6 +160,8 @@ export function useOrderPasteIntake(): OrderPasteIntakeState {
     if (!live) return;
 
     const onPaste = (e: ClipboardEvent) => {
+      // The intake form reads its own pastes (it fills fields for review).
+      if (e.defaultPrevented || (e.target instanceof Element && e.target.closest(INTAKE_SELECTOR))) return;
       const scope = pasteScopeFor(e.target);
       if (scope === 'other') return;
 

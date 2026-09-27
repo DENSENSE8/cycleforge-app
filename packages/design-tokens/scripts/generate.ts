@@ -32,6 +32,7 @@ import {
   lightThemeCssText,
   modeRegistryCssText,
   stateCodeCssText,
+  modeSpacingVars,
   trialCssText,
   type ModeSpec,
   type ModeSurfaces,
@@ -62,6 +63,7 @@ function resolveMode(spec: ModeSpec) {
     hit: spec.hit,
     hitCta,
     bodyText: spec.bodyText,
+    spacing: spec.spacing,
     motion: {
       feedback: spec.motion.feedback,
       press: spec.motion.press ?? spec.motion.feedback,
@@ -122,6 +124,9 @@ function renderJson(): string {
       flat[`${p}.${measure}.base`] = value.base;
       flat[`${p}.${measure}.coarse`] = value.coarse;
     }
+    for (const [name, value] of modeSpacingVars(m.spacing)) {
+      flat[`${p}.spacing.${name.replace('--mode-', '').replaceAll('-', '.')}`] = value;
+    }
     for (const [motion, value] of Object.entries(m.motion)) flat[`${p}.motion.${motion}`] = value;
   }
   for (const [themeKey, surface] of Object.entries(MODE_NEUTRAL_REMAP)) {
@@ -144,6 +149,13 @@ function swiftColor(hex: string): string {
   if (!m) throw new Error(`DesignTokens.swift: '${hex}' is not a #rrggbb colour or 'transparent'`);
   const [r, g, b] = m.slice(1).map((h) => parseInt(h, 16));
   return `Color(red: ${r}.0 / 255.0, green: ${g}.0 / 255.0, blue: ${b}.0 / 255.0)`;
+}
+
+/** `--mode-inset-chip-x` → `insetChipX`. */
+function swiftSpacingField(cssVar: string): string {
+  return cssVar
+    .replace('--mode-', '')
+    .replace(/-([a-z])/g, (_, c: string) => c.toUpperCase());
 }
 
 /** CSS length → points. Only unitless 0 and px exist in the registry. */
@@ -216,6 +228,11 @@ function renderSwift(): string {
     ['motionFeedback', 'Double', 'State-change feedback duration.'],
     ['motionPress', 'Double', 'Press response duration.'],
     ['motionPulse', 'Double', 'Indeterminate pulse period (0 = none).'],
+    ...modeSpacingVars(MODE_REGISTRY.triage.spacing).map(([name]): [string, string, string] => [
+      swiftSpacingField(name),
+      'CGFloat',
+      `Spacing intent \`${name.replace('--mode-', '')}\`.`,
+    ]),
   ];
   for (const [name, type, doc] of fields) {
     out.push(`${I2}/// ${doc}`, `${I2}public let ${name}: ${type}`);
@@ -239,7 +256,11 @@ function renderSwift(): string {
     values.bodyTextTouch = `${swiftLength(m.bodyText.coarse)},`;
     values.motionFeedback = `${swiftSeconds(m.motion.feedback)},`;
     values.motionPress = `${swiftSeconds(m.motion.press)},`;
-    values.motionPulse = `${swiftSeconds(m.motion.pulse)}`;
+    values.motionPulse = `${swiftSeconds(m.motion.pulse)},`;
+    for (const [name, value] of modeSpacingVars(m.spacing)) values[swiftSpacingField(name)] = `${swiftLength(value)},`;
+    // The last argument carries no trailing comma.
+    const last = fields[fields.length - 1][0];
+    values[last] = values[last].replace(/,(\s*\/\/.*)?$/, '$1');
     out.push('', `${I2}/// ${MODE_REGISTRY[name].label}: ${MODE_REGISTRY[name].hint}`);
     out.push(`${I2}public static let ${name} = Mode(`);
     for (const [field] of fields) out.push(`${I3}${field}: ${values[field]}`);

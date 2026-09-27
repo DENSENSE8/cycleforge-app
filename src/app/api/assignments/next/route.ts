@@ -3,7 +3,7 @@ import { tenantQuery } from '@/lib/tenancy/db';
 import { withAuth } from '@/lib/auth/withAuth';
 import { parsePositiveInt } from '@/utils/number';
 
-const WORK_TYPES = new Set(['TEST', 'PACK', 'REPAIR', 'QA', 'RECEIVE']);
+const WORK_TYPES = new Set(['TEST', 'PICK', 'PACK', 'REPAIR', 'QA', 'RECEIVE']);
 
 export const GET = withAuth(async (request: NextRequest, ctx) => {
   const orgId = ctx.organizationId;

@@ -189,6 +189,10 @@ export function SidebarNavColumn({
                 )
               : cn(
                   'absolute inset-y-0 left-0',
+                  // The search field outranks the column: while it is grown
+                  // (`FindField overflowRight`) the column stops clipping and
+                  // sits over the header, so the operator's words stay readable.
+                  'has-[[data-find-expanded]]:z-[60] has-[[data-find-expanded]]:overflow-visible',
                   // The seam belongs to an OPEN column.
                   open ? 'border-r border-border-soft' : null,
                   // The navigator is CHROME, not a work canvas (app-surface SoT:

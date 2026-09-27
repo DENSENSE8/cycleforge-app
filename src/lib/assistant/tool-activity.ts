@@ -32,7 +32,20 @@
  * chat session — but they emit the same `tool` event, so they need the same
  * copy.
  */
-export const WRITE_TOOL_NAMES = ['propose_mutation', 'revert_mutation', 'link_manual_to_sku'] as const;
+export const WRITE_TOOL_NAMES = [
+  'propose_mutation',
+  'revert_mutation',
+  'link_manual_to_sku',
+  'request_payment',
+  'create_manual_order',
+  'import_purchase_order',
+  'set_order_flag',
+  'mark_out_of_stock',
+  'clear_out_of_stock',
+  'bulk_scan_out',
+  'create_task',
+  'watch_tracking',
+] as const;
 
 /** Tool id → the line shown while it runs. The tripwire reads these keys. */
 export const TOOL_ACTIVITY_PHRASES: Readonly<Record<string, string>> = {
@@ -47,8 +60,7 @@ export const TOOL_ACTIVITY_PHRASES: Readonly<Record<string, string>> = {
   search_notes: 'Searching notes',
 
   // ── Identity / search ───────────────────────────────────────────────────
-  hybrid_entity_search: 'Searching the warehouse',
-  exact_id_serial_search: 'Matching that identifier',
+  find_records: 'Finding records',
   resolve_item_number: 'Resolving the item number',
   list_staff: 'Looking up staff',
   locate_product: 'Searching locations',
@@ -59,6 +71,7 @@ export const TOOL_ACTIVITY_PHRASES: Readonly<Record<string, string>> = {
   get_operations_journey: 'Tracing the cross-station timeline',
   get_order_lookup: 'Looking up the order',
   get_order_documents: 'Finding the order documents',
+  print_order_paperwork: 'Sending the order papers to your printer',
   lookup_serial: 'Looking up the serial',
 
   // ── Receiving / photos ──────────────────────────────────────────────────
@@ -95,9 +108,27 @@ export const TOOL_ACTIVITY_PHRASES: Readonly<Record<string, string>> = {
   propose_mutation: 'Proposing the change',
   revert_mutation: 'Reverting the change',
   link_manual_to_sku: 'Linking the manual to the SKU',
+  request_payment: 'Setting up the Square payment',
+  create_manual_order: 'Creating the order',
+  import_purchase_order: 'Importing the purchase order',
+  set_order_flag: 'Flagging the orders',
+  mark_out_of_stock: 'Marking the lines out of stock',
+  clear_out_of_stock: 'Clearing out of stock',
+  bulk_scan_out: 'Scanning out the packed orders',
+  create_task: 'Creating the task',
+  watch_tracking: 'Setting your tracking watch',
+
+  // ── ChatReads: lists, people, reports, carriers ─────────────────────────
+  reconcile_refs: 'Checking the pasted numbers',
+  get_customer: 'Looking up the customer',
+  get_worklist: 'Ranking the worklist',
+  get_staff_report: 'Building the staff report',
+  get_tracking_status: 'Asking the carrier',
 
   // ── Order intake (session surface) ──────────────────────────────────────
   triage_orders_csv: 'Triaging the pasted orders',
+  draft_manual_order: 'Drafting the order',
+  draft_po_import: 'Drafting the purchase order',
 
   // ── Where the operation is leaking ──────────────────────────────────────
   get_roi_gaps: 'Finding where we are leaking',

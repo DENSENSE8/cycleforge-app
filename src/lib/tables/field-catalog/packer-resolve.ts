@@ -30,15 +30,15 @@ function stamp(...candidates: unknown[]): string | null {
   return null;
 }
 
-/** The UPSTREAM test stamp carried on a packer row — scan actor, then assignee. */
+/** The UPSTREAM test stamp carried on a packer row — the serial scan actor. */
 function testedStep(row: QueueRowRecord): CompoundSlotValue {
   // `---` is the queue's "nobody" face — a step line omits it rather than
   // painting a placeholder where a name goes.
-  const tester = str(row, 'tested_by_name') ?? str(row, 'tester_name');
+  const tester = str(row, 'tested_by_name');
   return {
     kind: 'stage_event',
     who: tester === '---' ? null : tester,
-    whoStaffId: staffId(row.tested_by, row.tester_id),
+    whoStaffId: staffId(row.tested_by),
     at: stamp(row.test_date_time),
     station: null,
   };

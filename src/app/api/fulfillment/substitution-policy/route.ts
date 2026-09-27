@@ -15,7 +15,7 @@ export const GET = withAuth(async (_req: NextRequest, ctx) => {
     ? getSubstitutionAllowedNodes(org.settings)
     : ['pick'];
   const hasPermission =
-    ctx.permissions.has('tech.substitute_unit') || ctx.permissions.has('packing.substitute_unit');
+    ctx.permissions.has('picking.substitute_unit') || ctx.permissions.has('packing.substitute_unit');
   const canSubstitute = enabled && allowedNodes.includes('test') && hasPermission;
 
   const policy: SubstitutionPolicy = {
@@ -25,4 +25,4 @@ export const GET = withAuth(async (_req: NextRequest, ctx) => {
     canSubstitute,
   };
   return NextResponse.json(policy);
-}, { permission: 'tech.view' });
+}, { permission: 'picking.view' });

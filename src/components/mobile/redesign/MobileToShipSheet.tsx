@@ -199,7 +199,7 @@ export function MobileToShipSheet({
         : null);
   const picker = toShipPickerLabel(row, resolveName);
   const packer = toShipPackerLabel(row, resolveName);
-  const pickFilled = row.techId != null || picker ? (row.hasTechScan ? 3 : 2) : 0;
+  const pickFilled = row.techId != null || picker ? (row.hasPickScan ? 3 : 2) : 0;
   const packFilled = row.packerId != null || packer ? 2 : 0;
 
   const openHref = (href: string) => {

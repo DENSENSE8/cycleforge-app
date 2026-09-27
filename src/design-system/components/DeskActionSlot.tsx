@@ -16,7 +16,6 @@ import { Loader2 } from '@/components/Icons';
 import { cn } from '@/utils/_cn';
 import { Button, type ButtonProps } from '../primitives/Button';
 import { focusRing } from '../tokens/focus-ring';
-import { cornerClass } from '../tokens/radius';
 
 /** The one corner for a desk page-header CTA — `cornerClass('pill')`. */
 const DESK_HEADER_ACTION_RADIUS = 'pill' as const;
@@ -52,9 +51,9 @@ export function useDeskHeaderFace(): DeskHeaderFace {
  */
 export const DESK_BAR_SEGMENT_CLASS = cn(
   'ds-raw-button inline-flex min-h-mode-hit shrink-0 items-center gap-2 px-4',
-  'font-mono text-role-eyebrow font-extrabold uppercase tracking-[0.08em]',
+  'font-sans text-role-eyebrow font-semibold industrial:font-mono industrial:font-extrabold industrial:uppercase industrial:tracking-[0.08em]',
   'disabled:cursor-not-allowed disabled:opacity-40',
-  cornerClass('flush'),
+  'rounded-mode-control',
   focusRing('cell'),
 );
 

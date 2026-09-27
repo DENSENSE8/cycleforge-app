@@ -2,7 +2,7 @@
 
 import 'server-only';
 import pool from '@/lib/db';
-import { tenantQuery } from '@/lib/tenancy/db';
+import { tenantQueryOneTrip } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';
 
 export interface InventoryEventRecord {
@@ -137,7 +137,7 @@ export async function readInventorySpine(
       ${limitSql}`;
 
   const { rows } = orgId
-    ? await tenantQuery(orgId, sql, params)
+    ? await tenantQueryOneTrip(orgId, sql, params)
     : await pool.query(sql, params);
 
   return rows as InventoryEventRecord[];

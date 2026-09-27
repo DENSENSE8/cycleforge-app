@@ -79,6 +79,8 @@ export const AUDIT_ENTITY = {
   PO: 'purchase_order',
   RECEIVING: 'receiving',
   RECEIVING_LINE: 'receiving_line',
+  /** An internal inbound order header (`inbound_order`). */
+  INBOUND_ORDER: 'inbound_order',
   // Incoming email worklist row (email_missing_purchase_orders to-do pile)
   EMAIL_MISSING_PO: 'email_missing_purchase_order',
   SERIAL_UNIT: 'serial_unit',
@@ -236,6 +238,8 @@ export const AUDIT_ACTION = {
   /** A marketplace purchase (eBay buyer account, …) was imported onto the Incoming
    *  spine via the bridge/sync (Universal Incoming Phase 2). */
   RECEIVING_INBOUND_IMPORT:  'receiving.inbound.import',
+  /** An inbound order entered by mistake was deleted before anything physical happened (`deleteInboundOrder`). */
+  RECEIVING_INBOUND_ORDER_DELETE: 'receiving.inbound.order.delete',
   /** An operator manually linked one Incoming spine row to a second purchase identity (e.g. */
   RECEIVING_INBOUND_LINKED:  'receiving.inbound.linked',
   /** An operator created / edited / reordered / deleted a durable carton listing
@@ -606,6 +610,8 @@ export const AUDIT_ACTION = {
   REPAIR_SERVICE_CUSTOMER_UNLINK: 'repair_service.customer_unlink',
   // A customer's contact columns corrected (PATCH /api/customers/[id])
   CUSTOMER_CONTACT_UPDATE: 'customer.contact_update',
+  // A customer typed on the phone (POST /api/customers, manual phone orders)
+  CUSTOMER_CREATE: 'customer.create',
   REPAIR_SERVICE_LABEL_PRINTED: 'repair_service.label_printed',
   // A station printed the repair paper or a manual for a repair (phone → station job).
   REPAIR_SERVICE_DOCUMENT_PRINTED: 'repair_service.document_printed',

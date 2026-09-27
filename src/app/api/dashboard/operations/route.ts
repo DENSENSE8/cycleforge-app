@@ -3,7 +3,7 @@ import { withAuth } from '@/lib/auth/withAuth';
 import { tenantQuery } from '@/lib/tenancy/db';
 import { getAllStaffGoalsWithStats } from '@/lib/neon/staff-goals-queries';
 import { SHIPPED_BY_CARRIER_SQL } from '@/lib/sql-fragments';
-import { VELOCITY_ACTIVITY_TYPES, TECH_TEST_ACTIVITY_TYPES, sqlInList } from '@/lib/station-activity';
+import { VELOCITY_ACTIVITY_TYPES, PICK_ACTIVITY_TYPES, sqlInList } from '@/lib/station-activity';
 import { getOrSet } from '@/lib/cache/upstash-cache';
 import { CACHE_NS, CACHE_TAGS } from '@/lib/cache/tags';
 
@@ -16,7 +16,7 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
     orgId,
     'today',
     45,
-    [CACHE_TAGS.orders, CACHE_TAGS.techLogs],
+    [CACHE_TAGS.orders, CACHE_TAGS.deskPickLogs],
     async () => {
   // $1 carries the tenant org id into every subquery below.
   const todayFilter = `(timezone('America/Los_Angeles', created_at))::date = (timezone('America/Los_Angeles', now()))::date`;
@@ -53,11 +53,16 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
          WHERE activity_type IN (${sqlInList(VELOCITY_ACTIVITY_TYPES)})
            AND organization_id = $1
            AND ${todayFilter}) AS all_today,
-        (SELECT count(DISTINCT COALESCE(shipment_id::text, scan_ref, id::text))::int FROM station_activity_logs
-         WHERE station = 'TECH'
-           AND activity_type IN (${sqlInList(TECH_TEST_ACTIVITY_TYPES)})
-           AND organization_id = $1
+        -- Bench QC: one testing_results row per unit verdict recorded today.
+        (SELECT count(*)::int FROM testing_results
+         WHERE organization_id = $1
            AND ${todayFilter}) AS tested_today,
+        -- Picker desk: order picks (PICK station scans) today.
+        (SELECT count(DISTINCT COALESCE(shipment_id::text, scan_ref, id::text))::int FROM station_activity_logs
+         WHERE station = 'PICK'
+           AND activity_type IN (${sqlInList(PICK_ACTIVITY_TYPES)})
+           AND organization_id = $1
+           AND ${todayFilter}) AS picked_today,
         (SELECT count(*)::int FROM repair_service WHERE status NOT IN ('Done', 'Shipped', 'Picked Up') AND organization_id = $1) AS repair_count,
         (SELECT count(*)::int FROM pending_orders WHERE is_out_of_stock) AS oos_count,
         (SELECT count(*)::int FROM late_orders) AS late_count,
@@ -119,6 +124,7 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
     summary: {
       all: { value: s.all_today },
       tested: { value: s.tested_today },
+      picked: { value: s.picked_today },
       repair: { value: s.repair_count },
       outOfStock: { value: s.oos_count },
       pendingLate: { value: s.late_count },

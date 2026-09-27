@@ -206,7 +206,7 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
               CASE
                 WHEN sal.activity_type = 'SERIAL_ADDED'
                   THEN COALESCE(tsn.serial_number, sal.notes, sal.scan_ref, sal.fnsku)
-                WHEN sal.activity_type IN ('TRACKING_SCANNED', 'PACK_COMPLETED', 'PACK_SCAN')
+                WHEN sal.activity_type IN ('PICK_SCANNED', 'TRACKING_SCANNED', 'PACK_COMPLETED', 'PACK_SCAN')
                   THEN COALESCE(
                     stn.tracking_number_raw,
                     stn.tracking_number_normalized,

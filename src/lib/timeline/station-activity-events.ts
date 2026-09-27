@@ -19,7 +19,8 @@ export interface StationActivityRow {
 
 /** activity_type → display. Unmapped types fall back to a prettified label. */
 const ACTIVITY_MAP: Record<string, { title: string; tone: TimelineTone }> = {
-  TRACKING_SCANNED: { title: 'Testing scanned', tone: 'info' },
+  PICK_SCANNED: { title: 'Picked', tone: 'info' },
+  TRACKING_SCANNED: { title: 'Tracking scanned', tone: 'info' },
   FNSKU_SCANNED: { title: 'Amazon SKU scanned', tone: 'info' },
   SERIAL_ADDED: { title: 'Serial added', tone: 'muted' },
   PACK_COMPLETED: { title: 'Packed', tone: LIFECYCLE.packed.tone },

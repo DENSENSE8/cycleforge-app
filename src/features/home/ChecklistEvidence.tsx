@@ -17,6 +17,7 @@ import {
 } from '@/design-system/components/record-ledger/RecordEvidence';
 import { RECORD_HIT_CLASS } from '@/design-system/components/record-ledger/record-ledger-geometry';
 import { RECORD_LABEL_CLASS } from '@/design-system/tokens/industrial-record';
+import { cornerClass } from '@/design-system/tokens/radius';
 import { LIFECYCLE_CLASSES } from '@/design-system/tokens/lifecycle';
 import { agendaRecordState } from '@/lib/daily/agenda-record-state';
 import type { DailyAgendaRow } from '@/lib/daily/daily-agenda-row';
@@ -135,7 +136,7 @@ export function ChecklistEvidence({
                   onKeyDown={(event) => {
                     if (event.key === 'Enter') commitTime();
                   }}
-                  className={cn(EVIDENCE_CONTROL_CLASS, 'w-32 tabular-nums')}
+                  className={cn(EVIDENCE_CONTROL_CLASS, cornerClass('flush'), 'w-32 tabular-nums')}
                   aria-label="Due time (warehouse time)"
                   data-testid="checklist-due-time"
                 />
@@ -150,7 +151,7 @@ export function ChecklistEvidence({
                     aria-pressed={row.remindOffsetMinutes === offset.minutes}
                     disabled={!canManage || pending || (row.dueTime == null && offset.minutes != null)}
                     onClick={() => onSchedule({ remindOffsetMinutes: offset.minutes })}
-                    className={cn(evidenceVerbClass(row.remindOffsetMinutes === offset.minutes), 'min-h-0 py-1')}
+                    className={cn(evidenceVerbClass(row.remindOffsetMinutes === offset.minutes), cornerClass('flush'), 'min-h-0 py-1')}
                   >
                     {offset.label}
                   </button>

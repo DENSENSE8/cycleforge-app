@@ -124,9 +124,11 @@ function dedupeByOrderProduct(records: ShippedOrder[]): ShippedOrder[] {
   return Array.from(seen.values());
 }
 
-/** Normalize API `orders` payload into the Unshipped table row list. */
-export function normalizeUnshippedOrdersPayload(orders: unknown[]): ShippedOrder[] {
-  return dedupeByOrderProduct(
-    (orders || []).map((o) => toOrderRecord(o as Record<string, unknown>)).filter(isNonFbaRecord),
-  );
+/**
+ * Normalize API `orders` payload into the Unshipped table row list. Queues
+ * drop FBA rows; a lookup (Search) keeps them — they are internal records too.
+ */
+export function normalizeUnshippedOrdersPayload(orders: unknown[], { includeFba = false }: { includeFba?: boolean } = {}): ShippedOrder[] {
+  const records = (orders || []).map((o) => toOrderRecord(o as Record<string, unknown>));
+  return dedupeByOrderProduct(includeFba ? records : records.filter(isNonFbaRecord));
 }

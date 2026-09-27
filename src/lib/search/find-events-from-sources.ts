@@ -230,6 +230,7 @@ function bindFromStationRow(row: StationActivityRow): FindBind | undefined {
   if (type === 'SERIAL_ADDED') return bindOf({ serial: serial || undefined, sku: skuFromMeta || undefined });
   if (type === 'FNSKU_SCANNED') return bindOf({ sku: scan || skuFromMeta || undefined });
   if (
+    type === 'PICK_SCANNED' ||
     type === 'TRACKING_SCANNED' ||
     type === 'SHIP_CONFIRM' ||
     type === 'PACK_SHIPPED' ||
@@ -247,7 +248,7 @@ function bindFromStationRow(row: StationActivityRow): FindBind | undefined {
 function findHopTitle(row: StationActivityRow): string {
   const type = String(row.activity_type ?? '').trim();
   const method = String(row.metadata?.source_method ?? '').trim().toUpperCase();
-  if (type === 'TRACKING_SCANNED' || type === 'FNSKU_SCANNED') return 'Picked';
+  if (type === 'PICK_SCANNED' || type === 'FNSKU_SCANNED') return 'Picked';
   if (type === 'SERIAL_ADDED' && method === 'SKU_PULL') return 'Picked';
   return stationActivityTitle(type);
 }

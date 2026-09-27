@@ -117,7 +117,7 @@ const SEEDED_ROUTES = [
     ],
   },
   {
-    route: '/test',
+    route: '/pick',
     module: 'src/lib/queries/ready-to-pack-shell-seed.server.ts',
     seeds: [
       { label: 'Ready-to-pack queue', keyPrefix: ['dashboard-table', 'unshipped'] },

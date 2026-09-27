@@ -10,9 +10,11 @@ import { createCacheLookupKey } from '@/lib/cache/upstash-cache';
 import { parsePackedDateKey } from '@/lib/packed/packed-filters';
 import { SHIPMENT_STATUS_CATEGORIES } from '@/lib/order-lifecycle';
 import {
+  readDeskRefinements,
   readDeskViewFilters,
   type DeskPairFilter,
   type DeskQueueFilter,
+  type DeskRefinements,
 } from '@/lib/orders/desk-view-filters';
 
 export type OrdersListStage = 'pending' | 'tested' | 'packed';
@@ -23,7 +25,8 @@ export interface OrdersListCursor {
   id: number;
 }
 
-export interface OrdersListQuery {
+/** `DeskRefinements` = `packedBy` / `pickerId` / `pickedBy` / `orderFrom|To` / `shipByFrom|To`. */
+export interface OrdersListQuery extends DeskRefinements {
   /** `orderId=` — single-row mode (deep links); NaN when absent/invalid. */
   orderIdFilter: number;
   singleOrderMode: boolean;
@@ -37,8 +40,6 @@ export interface OrdersListQuery {
   packedDateTo: string;
   assignmentStatus: string;
   shipByDate: string;
-  packedBy: string | null;
-  testedBy: string | null;
   /** Universal staff filter (P1-WORK-02): packer OR tech assignee. */
   staffFilterId: number | null;
   includeShipped: boolean;
@@ -124,8 +125,7 @@ export function parseOrdersListQuery(searchParams: URLSearchParams): OrdersListQ
     packedDateTo: parsePackedDateKey(searchParams.get('dateTo')) ?? '',
     assignmentStatus: searchParams.get('assignmentStatus') || '',
     shipByDate: searchParams.get('shipByDate') || '',
-    packedBy: searchParams.get('packedBy'),
-    testedBy: searchParams.get('testedBy'),
+    ...readDeskRefinements(searchParams),
     staffFilterId,
     includeShipped: searchParams.get('includeShipped') === 'true',
     shippedOnly: searchParams.get('shippedOnly') === 'true',
@@ -159,7 +159,7 @@ export function parseOrdersListQuery(searchParams: URLSearchParams): OrdersListQ
  * Bump when the membership SQL or the payload shape changes, so a payload
  * cached under the old rules cannot outlive the fix by a TTL.
  */
-const ORDERS_LIST_CACHE_VERSION = 'orders_list_v3_to_ship_scope_sal_columns';
+const ORDERS_LIST_CACHE_VERSION = 'orders_list_v4_desk_refinements';
 
 /**
  * Cache key for one list read. Built from EVERY field of the parsed query —

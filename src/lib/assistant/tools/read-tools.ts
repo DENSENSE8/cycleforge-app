@@ -1,45 +1,13 @@
 /** Assistant read tools (plan §3.1 + Sparkles exact-data wiring) — the AI's eyes over the org's operation: */
 
 import { z } from 'zod';
-import { SEARCH_ENTITY_TYPES, type SearchEntityType } from '@/lib/search/build-search-text';
-import { searchAllEntities } from '@/lib/search/global-entity-search';
-import { hybridSearch } from '@/lib/search/hybrid-retrieval';
 import { searchHitHref } from '@/lib/search/search-hit';
 import {
   formatSupportTicketLabel,
   resolveSupportTicketToReceiving,
 } from '@/lib/support/tickets';
 import { tenantQuery } from '@/lib/tenancy/db';
-import type { OrgId } from '@/lib/tenancy/constants';
 import type { AssistantToolCtx, AssistantToolDef, AssistantToolDeps } from './types';
-
-/** Thin adapters — same bodies as search-tools.ts executors, without importing
- *  hermes-client (server-only) into the assistant registry / unit tests. */
-async function runHybridEntitySearch(
-  orgId: OrgId,
-  args: { query: string; entityTypes?: string[]; limit?: number },
-) {
-  const rawTypes = Array.isArray(args.entityTypes) ? args.entityTypes : [];
-  const entityTypes = rawTypes.filter((t): t is SearchEntityType =>
-    (SEARCH_ENTITY_TYPES as readonly string[]).includes(t),
-  );
-  const limit =
-    typeof args.limit === 'number' && Number.isInteger(args.limit) && args.limit > 0
-      ? args.limit
-      : undefined;
-  return hybridSearch(orgId, String(args.query ?? ''), {
-    entityTypes: entityTypes.length > 0 ? entityTypes : undefined,
-    limit,
-  });
-}
-
-async function runExactIdSerialSearch(
-  orgId: OrgId,
-  args: { query: string; limit?: number },
-) {
-  const results = await searchAllEntities(orgId, args.query, args.limit ?? 20);
-  return results.map((r, rank) => ({ ...r, score: 1000 - rank, chips: [] }));
-}
 
 const rangeDays = z.number().int().min(1).max(365).default(30);
 const rowLimit = (max: number, def: number) => z.number().int().min(1).max(max).default(def);
@@ -579,63 +547,6 @@ async function defaultGetSupportTicket(
     statusCache: row.status_cache,
   };
 }
-
-const searchEntityTypeSchema = z.enum([
-  'ORDER',
-  'SERIAL_UNIT',
-  'RECEIVING',
-  'SKU',
-  'REPAIR',
-  'FBA_SHIPMENT',
-]);
-
-export const hybridEntitySearch: AssistantToolDef<
-  z.ZodObject<{
-    query: z.ZodString;
-    entityTypes: z.ZodOptional<z.ZodArray<typeof searchEntityTypeSchema>>;
-    limit: z.ZodDefault<z.ZodNumber>;
-  }>
-> = {
-  name: 'hybrid_entity_search',
-  description:
-    'Search warehouse entities (orders, serialized units, receiving cartons, SKU catalog, repairs, FBA shipments) by natural language or identifier. Returns SearchHit[] with title, subtitle, href, score. Use FIRST for find/where/which/show/list questions and any order id, serial, SKU, tracking, or carton lookup. Prefer this over guessing. Optionally scope entityTypes.',
-  permission: 'assistant.chat',
-  inputSchema: z.object({
-    query: z.string().min(1).max(300),
-    entityTypes: z.array(searchEntityTypeSchema).max(SEARCH_ENTITY_TYPES.length).optional(),
-    limit: rowLimit(50, 12),
-  }),
-  run: async (input, ctx, deps) => {
-    const search = deps.hybridEntitySearch ?? runHybridEntitySearch;
-    const result = await search(ctx.organizationId, {
-      query: input.query,
-      entityTypes: input.entityTypes,
-      limit: input.limit,
-    });
-    return result;
-  },
-};
-
-export const exactIdSerialSearch: AssistantToolDef<
-  z.ZodObject<{ query: z.ZodString; limit: z.ZodDefault<z.ZodNumber> }>
-> = {
-  name: 'exact_id_serial_search',
-  description:
-    'Deterministic exact-identifier lookup across parent tables: order id, tracking number, SKU code, repair ticket, numeric record id, or support-ticket-shaped #NNNN. Returns SearchHit[]. Use when the user pasted a bare identifier (no spaces) and hybrid_entity_search is not needed. For #ticket scans prefer resolve_support_ticket.',
-  permission: 'assistant.chat',
-  inputSchema: z.object({
-    query: z.string().min(1).max(200),
-    limit: rowLimit(50, 20),
-  }),
-  run: async (input, ctx, deps) => {
-    const search = deps.exactIdSerialSearch ?? runExactIdSerialSearch;
-    const hits = await search(ctx.organizationId, {
-      query: input.query,
-      limit: input.limit,
-    });
-    return { hits };
-  },
-};
 
 export const resolveSupportTicket: AssistantToolDef<
   z.ZodObject<{ scanValue: z.ZodString }>

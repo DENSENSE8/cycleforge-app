@@ -53,9 +53,10 @@ interface IconButtonProps
    * Corner. Default `flush` — the zero-radius ops law.
    * `control` is `TRIAGE_PANEL_INNER_CORNER` — follows the region: rounded on desk records, square on phones.
    * `surface` is `cornerClass('surface')` for mobile chrome beside inset-grouped cards.
-   * `pill` is `cornerClass('pill')`.
+   * `pill` is `cornerClass('pill')` — a circle in every region.
+   * `modePill` is `rounded-mode-pill` — a circle in triage, square on Floor / phones (industrial radius 0).
    */
-  radius?: 'flush' | 'control' | 'surface' | 'pill';
+  radius?: 'flush' | 'control' | 'surface' | 'pill' | 'modePill';
 }
 
 const ICON_BUTTON_RADIUS: Record<NonNullable<IconButtonProps['radius']>, string> = {
@@ -63,6 +64,7 @@ const ICON_BUTTON_RADIUS: Record<NonNullable<IconButtonProps['radius']>, string>
   control: TRIAGE_PANEL_INNER_CORNER,
   surface: cornerClass('surface'),
   pill: cornerClass('pill'),
+  modePill: 'rounded-mode-pill',
 };
 
 export const IconButton = forwardRef<HTMLButtonElement, IconButtonProps>(function IconButton(

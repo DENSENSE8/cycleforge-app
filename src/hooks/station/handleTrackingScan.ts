@@ -23,7 +23,7 @@ export async function handleTrackingScan(
     // serials). Placement is earned by arming, never required to scan.
     const packLocationId = ctx.getArmedPackLocationId?.() ?? null;
 
-    const res = await fetch('/api/tech/scan', {
+    const res = await fetch('/api/picking/desk/scan', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({

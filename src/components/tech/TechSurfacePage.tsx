@@ -5,7 +5,7 @@ import { TechPageContent } from '@/components/tech/TechPageContent';
 import { SurfaceGate } from '@/components/surfaces/SurfaceGate';
 import { getCurrentUser } from '@/lib/auth/current-user';
 
-/** Shared Testing-surface page shell — mounted by BOTH `/tech` (legacy) and `/test` (the first-class Test surface, Studio-driven operator… */
+/** Quality Control page shell — mounted by `/test` and its legacy alias `/tech`. The Picker desk is `/pick`. */
 export async function TechSurfacePage({
   fallbackPath = '/test',
 }: {

@@ -22,7 +22,7 @@ describe('orderFulfillmentBadge', () => {
 
   it('picked or tested but not packed is In progress', () => {
     assert.equal(face([line({ picked_at: '2026-09-25T10:00:00Z' })]), 'In progress · info · partiallyComplete');
-    assert.equal(face([line({ has_tech_scan: true })]), 'In progress · info · partiallyComplete');
+    assert.equal(face([line({ has_pick_scan: true })]), 'In progress · info · partiallyComplete');
   });
 
   it('every line packed is Packed; the pack-activity stamp counts', () => {

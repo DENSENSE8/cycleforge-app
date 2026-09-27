@@ -172,7 +172,6 @@ export function OrderQueueSummaryChips({
             disabled={count === 0 && !on}
             onClick={() => onToggle(key)}
             whileTap={{ scale: 0.94 }}
-            layout
             transition={CHIP_SPRING}
             className={cn(
               'inline-flex h-8 shrink-0 snap-start items-center gap-1.5 rounded-full border px-3 text-xs transition-colors',

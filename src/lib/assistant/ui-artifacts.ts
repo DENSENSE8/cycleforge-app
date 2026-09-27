@@ -16,6 +16,9 @@
  */
 
 import { z } from 'zod';
+import { CONDITION_GRADES } from '@/lib/conditions';
+import { manualOrderDraftSchema } from '@/lib/orders/manual-order-draft';
+import { poImportDraftSchema } from '@/lib/inbound/po-import-draft';
 
 /**
  * An in-app route the record card navigates to. `^\/` alone admits
@@ -38,6 +41,38 @@ const appPath = z
  */
 const artifactTitle = z.string().trim().min(1).max(120);
 
+/** The identifier kinds an answer header copies — each paints with its house chip tone. */
+export const IDENTITY_ID_LABELS = [
+  'SKU',
+  'FNSKU',
+  'UPC',
+  'Bin',
+  'LPN',
+  'Order',
+  'Tracking',
+  'Serial',
+  'PO',
+  'Email',
+  'Phone',
+] as const;
+export type IdentityIdLabel = (typeof IDENTITY_ID_LABELS)[number];
+
+/**
+ * WHAT the answer is about, from the TOOL's own data (never typed by the
+ * model — `sanitizeSessionArtifact` rebuilds model payloads without it): the
+ * record's name in bold (product title, customer, order), a quiet subtitle,
+ * the identifiers the operator copies, plain status chips, and the record's
+ * `/search?sel=<type>:<id>` link. The chat renders it as the answer's header.
+ */
+export const artifactIdentitySchema = z.object({
+  title: artifactTitle,
+  subtitle: z.string().trim().min(1).max(160).optional(),
+  ids: z.array(z.object({ label: z.enum(IDENTITY_ID_LABELS), value: z.string().trim().min(1).max(80) })).max(12),
+  chips: z.array(z.string().trim().min(1).max(40)).max(6).optional(),
+  href: appPath.optional(),
+});
+export type ArtifactIdentity = z.infer<typeof artifactIdentitySchema>;
+
 export const artifactTableSchema = z.object({
   kind: z.literal('table'),
   title: artifactTitle,
@@ -47,19 +82,8 @@ export const artifactTableSchema = z.object({
   entityHint: z.string().max(60).optional(),
   /** The id column name used when attaching a row as a composer reference. */
   idColumn: z.string().max(60).optional(),
-  /**
-   * The product the table is about, from the TOOL's own data (never typed by
-   * the model): the resolved identity title and the identifiers the operator
-   * copies (SKU, FNSKU, bins). The chat renders it as the answer's header.
-   */
-  product: z
-    .object({
-      title: artifactTitle,
-      ids: z
-        .array(z.object({ label: z.enum(['SKU', 'FNSKU', 'Bin', 'LPN']), value: z.string().trim().min(1).max(80) }))
-        .max(12),
-    })
-    .optional(),
+  /** The record the table is about — the answer's header. */
+  identity: artifactIdentitySchema.optional(),
 });
 
 export const artifactTimelineItemSchema = z.object({
@@ -116,7 +140,9 @@ export const artifactRecordSchema = z.object({
   title: artifactTitle,
   /** Absolute app path the record lives at (navigate target). */
   path: appPath,
-  fields: z.array(z.object({ label: z.string().max(80), value: z.string().max(300) })).max(20),
+  /** `href`: the in-app record a field names (an order on a customer card) — tool-built only. */
+  fields: z.array(z.object({ label: z.string().max(80), value: z.string().max(300), href: appPath.optional() })).max(20),
+  identity: artifactIdentitySchema.optional(),
 });
 
 export const artifactImportTriageSchema = z.object({
@@ -185,6 +211,105 @@ export const artifactDocumentSchema = z.object({
     .max(20),
   /** What the documents belong to, e.g. "order". */
   entityHint: z.string().max(60).optional(),
+});
+
+/**
+ * Take payment for one order — opened in the right rail. Deliberately carries
+ * NO money and NO link: the rail reads the order's lines, totals, payment link
+ * and live status from the server by `orderNumber` (`/api/orders/payments`),
+ * so nothing a model typed can ever become an amount or a checkout URL. Card
+ * details are only entered on Square's hosted pages.
+ */
+export const artifactPaymentSchema = z.object({
+  kind: z.literal('payment'),
+  title: artifactTitle,
+  orderNumber: z.string().trim().min(1).max(120),
+  /** The method the request was made with — the rail's opening tab. */
+  method: z.enum(['square_link', 'square_invoice']).optional(),
+});
+
+/**
+ * A purchase order being imported through chat — inline triage card. Carries
+ * the PO import field contract (`poImportDraftSchema`, the payload
+ * `import_purchase_order` files), the "Still needed" checklist (each item a
+ * one-click prompt) and what already exists. Produced only by
+ * `draft_po_import` (the envelope brand); the import itself answers with a
+ * record card linking to the receiving view.
+ */
+export const artifactPoDraftSchema = z.object({
+  kind: z.literal('po_draft'),
+  title: artifactTitle,
+  draft: poImportDraftSchema,
+  missing: z
+    .array(
+      z.object({
+        field: z.enum(['po_number', 'vendor', 'items', 'quantity', 'tracking']),
+        label: z.string().max(200),
+        question: z.string().max(200),
+        prompt: z.string().max(80),
+      }),
+    )
+    .max(30),
+  /** The PO number or a tracking number already on the Incoming spine. */
+  duplicates: z
+    .array(
+      z.object({
+        field: z.enum(['po_number', 'tracking']),
+        value: z.string().max(120),
+        path: appPath.nullable(),
+      }),
+    )
+    .max(12),
+  /** Plain notes, e.g. a SKU not in the catalog that imports by title. */
+  notes: z.array(z.string().max(200)).max(20),
+});
+
+/**
+ * An order being drafted in chat (phone or any sales channel) — inline triage
+ * card. Carries the field contract (`manualOrderDraftSchema`, the same payload
+ * the intake form's `?prefill=` reads), plus what is not resolved yet. Produced
+ * only by the order tools (the envelope brand); `created` once the order exists.
+ */
+export const artifactOrderDraftSchema = z.object({
+  kind: z.literal('order_draft'),
+  title: artifactTitle,
+  status: z.enum(['draft', 'created']),
+  draft: manualOrderDraftSchema,
+  /** The customer: matched to an existing row by phone / email, or new on create. */
+  customerMatch: z.enum(['existing', 'new']),
+  /** Products the conversation named that are not one catalog product yet. */
+  unresolved: z
+    .array(
+      z.object({
+        query: z.string().max(200),
+        quantity: z.number().int().min(1).max(9999),
+        unitPriceCents: z.number().int().min(0).max(100_000_000).nullable(),
+        condition: z.enum(CONDITION_GRADES).nullable(),
+        candidates: z
+          .array(z.object({ skuCatalogId: z.number().int().positive(), sku: z.string().max(100), title: z.string().max(300) }))
+          .max(5),
+      }),
+    )
+    .max(20),
+  /** The channel was ambiguous (one platform, several accounts): the choices to pick from. */
+  channelChoices: z.array(z.object({ value: z.string().max(80), label: z.string().max(120) })).max(12).default([]),
+  /** An order this org already has with the same order number or tracking — shown instead of creating a copy. */
+  duplicate: z
+    .object({
+      orderPk: z.number().int().positive(),
+      orderNumber: z.string().max(120),
+      matchedOn: z.enum(['order number', 'tracking']),
+    })
+    .nullable()
+    .default(null),
+  /** Short noun phrases — "ZIP" — still needed before Create. */
+  missing: z.array(z.string().max(300)).max(40),
+  created: z
+    .object({
+      orderIds: z.array(z.number().int().positive()).min(1).max(50),
+      customerId: z.number().int().positive().nullable(),
+    })
+    .nullable(),
 });
 
 // ─── The operator report ─────────────────────────────────────────────────────
@@ -324,6 +449,9 @@ export const sessionArtifactUnion = z.discriminatedUnion('kind', [
   artifactRecordSchema,
   artifactImportTriageSchema,
   artifactDocumentSchema,
+  artifactPaymentSchema,
+  artifactOrderDraftSchema,
+  artifactPoDraftSchema,
   artifactReportSchema,
 ]);
 
@@ -364,6 +492,9 @@ export type ArtifactChart = z.infer<typeof artifactChartSchema>;
 export type ArtifactRecord = z.infer<typeof artifactRecordSchema>;
 export type ArtifactImportTriage = z.infer<typeof artifactImportTriageSchema>;
 export type ArtifactDocument = z.infer<typeof artifactDocumentSchema>;
+export type ArtifactPayment = z.infer<typeof artifactPaymentSchema>;
+export type ArtifactOrderDraft = z.infer<typeof artifactOrderDraftSchema>;
+export type ArtifactPoDraft = z.infer<typeof artifactPoDraftSchema>;
 export type ArtifactReport = z.infer<typeof artifactReportSchema>;
 export type ArtifactReportKpi = z.infer<typeof artifactReportKpiSchema>;
 export type ArtifactReportSection = z.infer<typeof artifactReportSectionSchema>;
@@ -380,6 +511,9 @@ export const SESSION_ARTIFACT_KINDS = [
   'record',
   'import_triage',
   'document',
+  'payment',
+  'order_draft',
+  'po_draft',
   'report',
 ] as const;
 

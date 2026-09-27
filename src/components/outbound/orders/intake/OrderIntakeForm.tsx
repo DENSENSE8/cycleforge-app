@@ -1,84 +1,79 @@
 'use client';
 
 /**
- * **Order Intake & Acknowledgment** form body — shadcn-lane chrome.
- * Operator override (2026-08-30, in chat): the intake session is a CENTERED
+ * The manual order intake — ONE form for a phone order, a pasted order, a
+ * chat prefill (`?prefill=`) and a staged CSV row. Triage face
+ * (`HANDOFF-manual-phone-order.md`): Customer · Items · Order · Payment ·
+ * Shipping · Review, each a `rounded-mode` card that folds to a summary line
+ * once filled; a sticky footer with the total left and the decision right.
+ *
+ * Save draft creates the order caged (every line under one number); Release
+ * saves and lets it into To ship when the gates are green. A saved order stays
+ * on the form: Buy with ShipStation, payment and the gates work on it.
  */
 
-import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
-import { useRouter } from 'next/navigation';
-import { AlertCircle, Check } from '@/components/Icons';
-import { BuyLabelSection } from '@/components/outbound/labels/BuyLabelSection';
-import { ConditionPills } from '@/components/receiving/workspace/ConditionPills';
-import { StaffButtonGrid, type StaffOption } from '@/components/shipping/StaffButtonGrid';
-import { PlatformMark } from '@/components/ui/PlatformMark';
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
-import { Checkbox } from '@/components/ui/checkbox';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Separator } from '@/components/ui/separator';
-import { usePlatformCatalog } from '@/hooks/useCatalog';
-import {
-  emptyCanonicalOrderIntake,
-  intakePlatformState,
-  rankOrderIntakePlatforms,
-  type CanonicalOrderIntake,
-  type IntakeFulfillmentChannel,
-  type IntakeLabelMode,
-} from '@/lib/orders/canonical-order-intake';
-import type { EvaluatedReleaseGate } from '@/lib/orders/release-gates';
-import { getPresentStaffForToday } from '@/lib/staffCache';
-import { SHIPPING_ORDERS_PATH } from '@/lib/shipping/orders-desk';
-import { sourcePlatformMeta } from '@/lib/source-platform';
+import { useCallback, useEffect, useMemo, useRef, useState, type ClipboardEvent } from 'react';
+import { ClipboardPaste, Plus } from '@/components/Icons';
+import { StageStaffAssignPopover } from '@/components/tables/compound/StageStaffAssignPopover';
+import { DateRangePickerField } from '@/design-system/components/DateRangePickerField';
+import { SearchableSelectField } from '@/design-system/components/SearchableSelectField';
+import { Checkbox } from '@/design-system/primitives';
+import { Button } from '@/design-system/primitives/Button';
+import { TextField } from '@/design-system/primitives/TextField';
+import { focusRing } from '@/design-system/tokens/focus-ring';
+import { usePlatformAccountCatalog, usePlatformCatalog, useStoreLinks } from '@/hooks/useCatalog';
+import { requestOrderCapture } from '@/hooks/useOrderPasteIntake';
+import { hasOpenOverlay } from '@/lib/overlay-stack/store';
+import type { CanonicalOrderIntake } from '@/lib/orders/canonical-order-intake';
+import { PHONE_ORDER_CHANNEL, formatCents } from '@/lib/orders/manual-order-draft';
+import { orderPlatformChoices } from '@/lib/platform-display';
+import { toast } from '@/lib/toast';
 import { saveWorkOrder } from '@/lib/work-orders/saveWorkOrder';
-import { staffHasRole } from '@/utils/staff';
 import { cn } from '@/utils/_cn';
-import { IntakeCombobox } from './IntakeCombobox';
+import { IntakeCustomerFields } from './IntakeCustomerFields';
+import { IntakeLineCard } from './IntakeLineCard';
+import { IntakePaymentFields } from './IntakePaymentFields';
+import { IntakeProductSearch, searchProducts } from './IntakeProductSearch';
+import { IntakeSection } from './IntakeSection';
+import { IntakeShippingFields } from './IntakeShippingFields';
 import {
-  lookupExistingOrder,
-  pairCatalogByItemNumber,
-  useOrderTriage,
-} from './useOrderTriage';
+  addressLine,
+  emptyIntake,
+  intakeBlockers,
+  intakeFromCanonical,
+  intakeToCanonical,
+  intakeTotals,
+  intakeWithCaptured,
+  isDirty,
+  newIntakeLine,
+  shipToComplete,
+  type IntakeIntent,
+  type IntakeLine,
+  type IntakeState,
+} from './intake-model';
+import { findOrderByNumber, nextOrderNumber, useOrderTriage } from './useOrderTriage';
 
-const SECTIONS = [
-  { id: 'identity', label: 'Identity' },
-  { id: 'links', label: 'Links' },
-  { id: 'documents', label: 'Documents' },
-  { id: 'shipping', label: 'Shipping' },
-  { id: 'assignment', label: 'Assign' },
-  { id: 'review', label: 'Review' },
-] as const;
+type SectionId = 'customer' | 'items' | 'order' | 'payment' | 'shipping';
+const SECTION_ORDER: readonly SectionId[] = ['customer', 'items', 'order', 'payment', 'shipping'];
 
-type SectionId = (typeof SECTIONS)[number]['id'];
+/** Matches a paste read can be trusted to pair on its own; anything fuzzier waits for the operator. */
+const EXACT_MATCH: Record<string, true> = { sku: true, item_number: true, gtin: true, fnsku: true, asin: true };
 
-const FULFILLMENT_CHANNEL_OPTIONS = [
-  { value: 'shipstation', label: 'ShipStation (buy label)', group: 'Fulfillment channel' },
-  { value: 'link_only', label: 'Link existing label only', group: 'Fulfillment channel' },
-];
+/** Debounce for the inline order-number uniqueness check. */
+const ORDER_NUMBER_CHECK_MS = 350;
 
 interface OrderIntakeFormProps {
   /** Order under triage, or `null` to start a new one. */
   orderId: number | null;
-  /**
-   * Called with the order id the form binds to — a freshly created caged
-   * order, or an EXISTING duplicate the operator chose to open instead of
-   * inserting a second row.
-   */
+  /** The saved (or opened-existing) order the form now works on — hosts bind their URL to it. */
   onOrderCreated?: (orderId: number) => void;
-  /** Called after a successful release, so the host can close the overlay. */
+  /** Released into To ship — hosts close the entry. */
   onReleased?: () => void;
-  /**
-   * Prefill for the create draft — the CSV staging inspector passes the
-   * focused row projected onto `CanonicalOrderIntake`. Read once on mount;
-   * hosts remount (key) per row.
-   */
+  /** Cancel / Close / Esc. Hosts that omit it paint no Cancel. */
+  onCancel?: () => void;
+  /** Prefill: a chat draft (`phoneOrder`) or a staged CSV row. Read once on mount. */
   initialDraft?: Partial<CanonicalOrderIntake>;
-  /**
-   * Fired on every draft change while unbound, so the staging inspector can
-   * write canonical edits back onto its staged row. Single-density hosts omit
-   * it.
-   */
+  /** Unbound edits projected back (CSV staging writes them onto its row). */
   onDraftChange?: (draft: CanonicalOrderIntake) => void;
 }
 
@@ -86,1058 +81,644 @@ export function OrderIntakeForm({
   orderId,
   onOrderCreated,
   onReleased,
+  onCancel,
   initialDraft,
   onDraftChange,
 }: OrderIntakeFormProps) {
-  const router = useRouter();
-  // A just-created order binds LOCALLY first: the `?triage=<id>` URL replace
-  // arrives a tick later, and rendering the blank create form in that window
-  // reads as "my order vanished". The prop wins once the host catches up.
-  const [createdId, setCreatedId] = useState<number | null>(null);
-  const boundOrderId = orderId ?? createdId;
-  const triage = useOrderTriage(boundOrderId);
-  const fieldId = useId();
-  const [draft, setDraft] = useState<CanonicalOrderIntake>(() => ({
-    ...emptyCanonicalOrderIntake(),
-    ...initialDraft,
-  }));
-  const sectionRefs = useRef<Partial<Record<SectionId, HTMLElement | null>>>({});
-
+  const [initial] = useState<IntakeState>(() => (initialDraft ? intakeFromCanonical(initialDraft) : emptyIntake()));
+  const [state, setState] = useState<IntakeState>(initial);
+  const patch = useCallback((next: Partial<IntakeState>) => setState((s) => ({ ...s, ...next })), []);
+  // Lines this session created; a reopened caged order knows only its own row.
+  const [createdIds, setCreatedIds] = useState<number[] | null>(null);
+  const boundId = createdIds?.[0] ?? orderId;
+  const sessionIds = useMemo(() => createdIds ?? (orderId ? [orderId] : []), [createdIds, orderId]);
+  const bound = boundId != null;
+  const triage = useOrderTriage(boundId);
   const record = triage.record;
-  const gates = record?.gates;
-  const released = record?.releaseState === 'released';
+  const [labelFile, setLabelFile] = useState<File | null>(null);
+  const [taken, setTaken] = useState<{ id: number; orderNumber: string } | null>(null);
+  const [confirmDiscard, setConfirmDiscard] = useState(false);
+  const [pasteOpen, setPasteOpen] = useState(false);
+  const [pasteText, setPasteText] = useState('');
+  const [reading, setReading] = useState(false);
+  const [showMore, setShowMore] = useState(() => Boolean(initial.shipBy || initial.isUrgent || initial.buyerNote || initial.adminUrl));
+  const totals = intakeTotals(state);
+  const manual = state.origin === 'manual';
 
-  /* ── Identity acknowledgment state ─────────────────────────────────── */
-  const platformState = intakePlatformState(boundOrderId ? record?.orderNumber : draft.orderNumber);
-  const platformCatalog = usePlatformCatalog();
-  const platformOptions = useMemo(
-    () =>
-      rankOrderIntakePlatforms(platformCatalog.options ?? []).map((o) => ({
-        value: o.value,
-        label: o.label,
-        group: 'Platforms',
-      })),
-    [platformCatalog.options],
-  );
-
-  const [duplicate, setDuplicate] = useState<{ id: number; orderNumber: string } | null>(null);
-  const [paired, setPaired] = useState<{ sku: string; productTitle: string } | null>(null);
-
-  /* ── Shipping state ────────────────────────────────────────────────── */
-  const [labelMode, setLabelMode] = useState<IntakeLabelMode>(
-    initialDraft?.labelMode ?? 'link',
-  );
-  const [channel, setChannel] = useState<IntakeFulfillmentChannel>(
-    initialDraft?.fulfillmentChannel ?? 'shipstation',
-  );
-  /** Named reason ShipStation cannot buy right now (`null` = no known blocker). */
-  const [shipstationDown, setShipstationDown] = useState<string | null>(null);
-  const numToText = (v: number | null | undefined) => (v == null ? '' : String(v));
-  const [weightText, setWeightText] = useState(numToText(initialDraft?.weightOz));
-  const [dimLText, setDimLText] = useState(numToText(initialDraft?.dimL));
-  const [dimWText, setDimWText] = useState(numToText(initialDraft?.dimW));
-  const [dimHText, setDimHText] = useState(numToText(initialDraft?.dimH));
-
-  /* ── Assignment state ──────────────────────────────────────────────── */
-  const [techOptions, setTechOptions] = useState<StaffOption[]>([]);
-  const [packerOptions, setPackerOptions] = useState<StaffOption[]>([]);
-  const [techId, setTechId] = useState<number | null>(initialDraft?.assignedTechId ?? null);
-  const [packerId, setPackerId] = useState<number | null>(
-    initialDraft?.assignedPackerId ?? null,
-  );
-  const [assignSaving, setAssignSaving] = useState(false);
-  const [assignError, setAssignError] = useState<string | null>(null);
-  const staffLoadedRef = useRef(false);
-
-  const setField = useCallback(
-    (key: keyof CanonicalOrderIntake) => (value: string) =>
-      setDraft((prev) => ({ ...prev, [key]: value })),
-    [],
-  );
-
-  // Bulk density write-back: the staging inspector applies these edits onto
-  // its staged row. Only meaningful while the draft IS the record (unbound).
+  /* ── A reopened caged order (`?triage=<id>`): read its facts into the form once. ── */
+  const hydratedFor = useRef<number | null>(null);
   useEffect(() => {
-    if (boundOrderId) return;
-    onDraftChange?.(draft);
-  }, [draft, boundOrderId, onDraftChange]);
+    if (!record || createdIds || hydratedFor.current === record.id || state.lines.length > 0) return;
+    hydratedFor.current = record.id;
+    const n = (v: number | null) => (v == null ? '' : String(v));
+    setState((s) => ({
+      ...s,
+      origin: 'manual',
+      orderNumber: record.orderNumber ?? '',
+      channel: record.accountSource ?? s.channel,
+      lines: [
+        newIntakeLine({
+          skuCatalogId: record.skuCatalogId,
+          sku: record.sku ?? '',
+          title: record.productTitle ?? '',
+          itemNumber: record.itemNumber ?? '',
+          quantity: Math.max(1, Number.parseInt(record.quantity ?? '1', 10) || 1),
+        }),
+      ],
+      parcel: {
+        weightOz: n(record.parcelWeightOz),
+        lengthIn: n(record.parcelLengthIn),
+        widthIn: n(record.parcelWidthIn),
+        heightIn: n(record.parcelHeightIn),
+      },
+      trackingNumber: record.trackingNumber ?? '',
+      docsNotRequired: record.docsNotRequired,
+    }));
+  }, [record, createdIds, state.lines.length]);
 
-  // Once bound, initialize the parcel inputs from the stored order — the DB is the SoT the rate-shop reads.
-  const parcelSyncedForId = useRef<number | null>(null);
-  const parcelTouched = useRef(false);
+  /* ── CSV staging write-back ── */
   useEffect(() => {
-    if (!record?.id || parcelSyncedForId.current === record.id) return;
-    parcelSyncedForId.current = record.id;
-    if (parcelTouched.current) return;
-    setWeightText(numToText(record.parcelWeightOz));
-    setDimLText(numToText(record.parcelLengthIn));
-    setDimWText(numToText(record.parcelWidthIn));
-    setDimHText(numToText(record.parcelHeightIn));
-  }, [record]);
-  const touchParcel = useCallback((set: (value: string) => void) => (value: string) => {
-    parcelTouched.current = true;
-    set(value);
-  }, []);
+    if (!bound) onDraftChange?.(intakeToCanonical(state));
+  }, [state, bound, onDraftChange]);
 
-  // Present staff for the Assignment pickers — loaded once the section can be
-  // used (an order exists to assign against).
+  /* ── Order number: the channel's next number, unless the operator typed one ── */
+  // A prefilled number (the chat's) stands until the channel changes or it turns out taken.
+  // Keyed by the channel it was generated for, so a re-run (Strict Mode) is a no-op.
+  const numberForChannel = useRef<string | null>(initial.orderNumber.trim() ? initial.channel : null);
   useEffect(() => {
-    if (!boundOrderId || staffLoadedRef.current) return;
-    staffLoadedRef.current = true;
-    getPresentStaffForToday()
-      .then((members) => {
-        setTechOptions(
-          members
-            .filter((m) => staffHasRole(m, 'technician'))
-            .map((m) => ({ id: Number(m.id), name: m.name }))
-            .sort((a, b) => a.name.localeCompare(b.name)),
-        );
-        setPackerOptions(
-          members
-            .filter((m) => staffHasRole(m, 'packer'))
-            .map((m) => ({ id: Number(m.id), name: m.name }))
-            .sort((a, b) => a.name.localeCompare(b.name)),
-        );
-      })
-      .catch(() => {
-        /* proceed with empty lists — the grids state their own emptiness */
-      });
-  }, [boundOrderId]);
-
-  const jumpTo = useCallback((id: SectionId) => {
-    // `scrollIntoView` moves the SCROLL PORT, not the section — no geometry is
-    // animated and no neighbour moves, so this stays inside the no-layout-tween
-    // law. `block: 'start'` lands the heading at the top of the port.
-    sectionRefs.current[id]?.scrollIntoView({ block: 'start' });
-  }, []);
-
-  /* ── Identity actions ──────────────────────────────────────────────── */
-
-  // Blur lookups are async and un-cancellable; a slow response for the
-  // PREVIOUS value must never overwrite state derived from the current one.
-  // Each fire bumps the sequence; only the latest is allowed to land.
-  const duplicateSeq = useRef(0);
-  const pairSeq = useRef(0);
-
-  const acknowledgeOrderNumber = useCallback(async () => {
-    const seq = ++duplicateSeq.current;
-    const q = draft.orderNumber.trim();
-    if (!q) {
-      setDuplicate(null);
-      return;
-    }
-    const existing = await lookupExistingOrder(q);
-    if (duplicateSeq.current !== seq) return; // superseded by a newer blur
-    setDuplicate(existing);
-  }, [draft.orderNumber]);
-
-  const pairItemNumber = useCallback(async () => {
-    const seq = ++pairSeq.current;
-    const q = draft.itemNumber.trim();
-    if (!q) {
-      setPaired(null);
-      return;
-    }
-    const catalog = await pairCatalogByItemNumber(q);
-    if (pairSeq.current !== seq) return; // superseded by a newer blur
-    setPaired(catalog);
-    if (!catalog) return;
-    // Fill, never overwrite: the pair completes what the operator has not
-    // typed and leaves everything they have — and only if the item number the
-    // response answered is still the one on the draft.
-    setDraft((prev) => {
-      if (prev.itemNumber.trim() !== q) return prev;
-      return {
-        ...prev,
-        sku: prev.sku.trim() ? prev.sku : catalog.sku,
-        productTitle: prev.productTitle.trim() ? prev.productTitle : catalog.productTitle,
-      };
-    });
-  }, [draft.itemNumber]);
-
-  const handleStartTriage = useCallback(async () => {
-    const newId = await triage.createCaged({
-      ...draft,
-      fulfillmentChannel: channel,
-      labelMode,
-      weightOz: parsePositive(weightText),
-      dimL: parsePositive(dimLText),
-      dimW: parsePositive(dimWText),
-      dimH: parsePositive(dimHText),
-    });
-    if (newId) {
-      // Bind locally FIRST — the host's URL replace lands a tick later, and
-      // that gap must show the bound session, not a blank create form.
-      setCreatedId(newId);
-      onOrderCreated?.(newId);
-      setDraft(emptyCanonicalOrderIntake());
-      setDuplicate(null);
-      setPaired(null);
-    }
-  }, [channel, dimHText, dimLText, dimWText, draft, labelMode, onOrderCreated, triage, weightText]);
-
-  const handleRelease = useCallback(() => {
-    triage.release();
-  }, [triage]);
-
-  /* ── Shipping actions ──────────────────────────────────────────────── */
-
-  const currentWeightOz = parsePositive(weightText) ?? record?.parcelWeightOz ?? null;
-  const currentDims = useMemo(() => {
-    const l = parsePositive(dimLText) ?? record?.parcelLengthIn ?? null;
-    const w = parsePositive(dimWText) ?? record?.parcelWidthIn ?? null;
-    const h = parsePositive(dimHText) ?? record?.parcelHeightIn ?? null;
-    return l != null && w != null && h != null
-      ? { length: l, width: w, height: h, unit: 'inch' as const }
-      : null;
-  }, [dimLText, dimWText, dimHText, record]);
-
-  const commitParcel = useCallback(() => {
-    if (!boundOrderId) {
-      // Unbound: the parcel lives on the draft until Start triage lands it.
-      setDraft((prev) => ({
-        ...prev,
-        weightOz: parsePositive(weightText),
-        dimL: parsePositive(dimLText),
-        dimW: parsePositive(dimWText),
-        dimH: parsePositive(dimHText),
-      }));
-      return;
-    }
-    triage.setParcel({
-      weightOz: parsePositive(weightText),
-      lengthIn: parsePositive(dimLText),
-      widthIn: parsePositive(dimWText),
-      heightIn: parsePositive(dimHText),
-    });
-  }, [dimHText, dimLText, dimWText, boundOrderId, triage, weightText]);
-
-  const handleRatesError = useCallback(
-    (info: { code: string | null; message: string }) => {
-      if (info.code !== 'SHIPSTATION_NOT_CONNECTED') return;
-      setShipstationDown(
-        'ShipStation is not connected — connect it in Settings → Integrations, or link an existing label.',
+    if (bound || !manual || !state.channel.trim() || numberForChannel.current === state.channel) return;
+    if (state.orderNumber.trim() && !state.orderNumberGenerated) return;
+    const channel = state.channel;
+    numberForChannel.current = channel;
+    void nextOrderNumber(channel).then((next) => {
+      if (!next) return;
+      // Lands only if the channel still wants it and the operator has not typed their own.
+      setState((s) =>
+        s.channel !== channel || (s.orderNumber.trim() && !s.orderNumberGenerated) ? s : { ...s, orderNumber: next, orderNumberGenerated: true },
       );
-      setChannel('link_only');
-      setLabelMode('link');
-    },
-    [],
-  );
+    });
+    // Re-generate on a channel change only — the number itself is the effect's output.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state.channel, bound, manual]);
 
-  const buyBlockedReason = !boundOrderId
-    ? 'Start triage first — buying a label needs the order.'
-    : shipstationDown
-      ? shipstationDown
-      : channel === 'link_only'
-        ? 'Fulfillment channel is link-only. Switch it to ShipStation to buy.'
-        : currentWeightOz == null
-          ? 'Add a parcel weight — carriers cannot rate a 0 oz parcel.'
-          : null;
+  useEffect(() => {
+    const q = state.orderNumber.trim();
+    if (bound || !q) {
+      setTaken(null);
+      return;
+    }
+    let live = true;
+    const timer = window.setTimeout(() => {
+      void findOrderByNumber(q).then((hit) => {
+        if (!live) return;
+        setTaken(hit);
+        // A generated number someone took meanwhile: take the next one.
+        if (hit && state.orderNumberGenerated) {
+          void nextOrderNumber(state.channel).then((next) => {
+            if (live && next && next !== q) setState((s) => ({ ...s, orderNumber: next, orderNumberGenerated: true }));
+          });
+        }
+      });
+    }, ORDER_NUMBER_CHECK_MS);
+    return () => {
+      live = false;
+      window.clearTimeout(timer);
+    };
+  }, [state.orderNumber, state.orderNumberGenerated, state.channel, bound]);
 
-  /* ── Assignment actions ────────────────────────────────────────────── */
+  /* ── Channels: Phone first, then the org's platforms / accounts ── */
+  const { rows: platforms, options: builtin } = usePlatformCatalog();
+  const { rows: accounts } = usePlatformAccountCatalog();
+  const { rows: links } = useStoreLinks();
+  const channelOptions = useMemo(() => {
+    const choices = platforms.length === 0 ? builtin.map((o) => ({ value: o.value, label: o.label })) : orderPlatformChoices(platforms, accounts, links);
+    const out = [{ value: PHONE_ORDER_CHANNEL, label: PHONE_ORDER_CHANNEL }, ...choices.filter((c) => c.value.toLowerCase() !== 'phone')];
+    if (state.channel && !out.some((o) => o.value.toLowerCase() === state.channel.toLowerCase())) {
+      out.push({ value: state.channel, label: state.channel });
+    }
+    return out;
+  }, [platforms, builtin, accounts, links, state.channel]);
+  const channelLabel = channelOptions.find((o) => o.value.toLowerCase() === state.channel.toLowerCase())?.label ?? state.channel;
 
-  const persistAssignment = useCallback(
-    async (nextTechId: number | null, nextPackerId: number | null) => {
-      if (!boundOrderId) return;
-      setAssignSaving(true);
-      setAssignError(null);
+  /* ── Sections: filled ones fold to a summary; the one being worked stays open ── */
+  const complete: Record<SectionId, boolean> = {
+    customer: !manual || ((state.customer.id != null || Boolean(state.customer.name.trim())) && shipToComplete(state.customer.shipTo)),
+    items: state.lines.length > 0 && state.lines.every((l) => l.title.trim() && (l.skuCatalogId != null || l.itemNumber.trim())),
+    order: Boolean(state.orderNumber.trim() && state.channel.trim()) && taken == null,
+    payment: !manual || totals.priced,
+    shipping:
+      state.shippingMode === 'elsewhere'
+        ? Boolean(state.trackingNumber.trim())
+        : Boolean(record?.shippingLabelPurchased || record?.shippingLabelLinked),
+  };
+  const firstIncomplete = SECTION_ORDER.find((id) => !complete[id]) ?? null;
+  const [active, setActive] = useState<SectionId | null>(() => firstIncomplete);
+  const isOpen = (id: SectionId) => active === id || (active == null && id === firstIncomplete);
+  const done = (id: SectionId) => setActive(SECTION_ORDER.find((s) => s !== id && !complete[s]) ?? null);
+
+  /* ── Lines ── */
+  const setLine = (key: string, next: Partial<IntakeLine>) =>
+    setState((s) => ({ ...s, lines: s.lines.map((l) => (l.key === key ? { ...l, ...next } : l)) }));
+  const [adding, setAdding] = useState(false);
+
+  /* ── Paste import: fills the form for review, never creates ── */
+  const readPaste = useCallback(
+    async (input: { text: string } | { files: File[] }) => {
+      if ('text' in input && !input.text.trim()) return;
+      setReading(true);
       try {
-        // Existing write path: PATCH /api/work-orders upserts the TEST row
-        // (tech slot) and — because the packer key is present — the PACK row.
-        // Queue tester/packer names project from those work_assignments.
-        await saveWorkOrder({
-          entityType: 'ORDER',
-          entityId: boundOrderId,
-          assignedTechId: nextTechId,
-          assignedPackerId: nextPackerId,
-          status: nextTechId != null ? 'ASSIGNED' : 'OPEN',
-          priority: 100,
-          deadlineAt: null,
+        const read = await requestOrderCapture(input).catch((err: unknown) => {
+          toast.error(err instanceof Error ? err.message : 'Could not read that order.');
+          return null;
         });
-      } catch (err) {
-        setAssignError(err instanceof Error ? err.message : 'Failed to save assignment');
+        const captured = read?.captured[0];
+        if (!captured) {
+          if (read) toast.error('Nothing order-like in that paste.');
+          return;
+        }
+        let next = intakeWithCaptured(state, captured);
+        if (captured.shipBy && /^\d{4}-\d{2}-\d{2}$/.test(captured.shipBy)) next = { ...next, shipBy: captured.shipBy };
+        // Pair each pasted line the catalog answers exactly; the rest wait for the operator's pick.
+        const lines = await Promise.all(
+          next.lines.map(async (line) => {
+            if (line.skuCatalogId != null) return line;
+            const hits = await searchProducts(line.sku || line.itemNumber || line.title).catch(() => []);
+            const hit = hits.length === 1 || (hits[0] && EXACT_MATCH[hits[0].matchedOn]) ? hits[0] : null;
+            return hit
+              ? { ...line, skuCatalogId: hit.skuCatalogId, sku: hit.sku, title: hit.title, itemNumber: line.itemNumber || hit.itemNumber || '', imageUrl: hit.imageUrl, onHand: hit.onHand, bin: hit.bin }
+              : line;
+          }),
+        );
+        setState({ ...next, lines });
+        setPasteOpen(false);
+        setPasteText('');
+        setActive(null);
+        toast.success('Read the paste into the form — check it before saving.');
       } finally {
-        setAssignSaving(false);
+        setReading(false);
       }
     },
-    [boundOrderId],
+    [state],
   );
+  const onRootPaste = (e: ClipboardEvent<HTMLDivElement>) => {
+    const target = e.target as HTMLElement;
+    if (bound || target.closest('input, textarea, [contenteditable="true"]')) return;
+    const files = Array.from(e.clipboardData.files).filter((f) => f.type.startsWith('image/'));
+    const text = e.clipboardData.getData('text/plain');
+    if (files.length === 0 && !text.trim()) return;
+    e.preventDefault();
+    void readPaste(files.length > 0 ? { files } : { text });
+  };
 
-  const selectTech = useCallback(
-    (id: number) => {
-      const next = techId === id ? null : id;
-      setTechId(next);
-      void persistAssignment(next, packerId);
-    },
-    [packerId, persistAssignment, techId],
-  );
-
-  const selectPacker = useCallback(
-    (id: number) => {
-      const next = packerId === id ? null : id;
-      setPackerId(next);
-      void persistAssignment(techId, next);
-    },
-    [packerId, persistAssignment, techId],
-  );
-
-  /** Released is a terminal state for this form: */
-  const releaseBaseline = useRef<'unseeded' | 'released' | 'not-released'>('unseeded');
-  useEffect(() => {
-    // Rebinding to a different order restarts the observation.
-    releaseBaseline.current = 'unseeded';
-  }, [boundOrderId]);
-  useEffect(() => {
-    if (!record || record.id !== boundOrderId) return;
-    if (releaseBaseline.current === 'unseeded') {
-      releaseBaseline.current = released ? 'released' : 'not-released';
+  /* ── Save / release ── */
+  const releaseBlockers = intakeBlockers(state, 'release');
+  const draftBlockers = intakeBlockers(state, 'draft');
+  const submit = async (intent: IntakeIntent) => {
+    if (bound) {
+      // A saved order: land what changed on it, then release every line.
+      if (state.shippingMode === 'elsewhere' && state.trackingNumber.trim() && !record?.trackingNumber) {
+        await triage.attachTracking(sessionIds, state.trackingNumber.trim(), labelFile, state.orderNumber);
+        setLabelFile(null);
+      }
+      if (await triage.release(sessionIds)) onReleased?.();
       return;
     }
-    if (released && releaseBaseline.current === 'not-released') {
-      releaseBaseline.current = 'released';
-      onReleased?.();
-    }
-  }, [record, released, boundOrderId, onReleased]);
+    const result = await triage.save(state, { intent, labelFile });
+    if (!result) return;
+    setCreatedIds(result.orderIds);
+    setState((s) => ({ ...s, orderNumber: result.orderNumber, orderNumberGenerated: false }));
+    setLabelFile(null);
+    onOrderCreated?.(result.orderIds[0]!);
+    if (result.released) onReleased?.();
+  };
 
-  /**
-   * Open this order's own details panel, where `OrderDocumentsSection` mounts
-   * the document tray — the existing attach/link path. Re-check re-reads the
-   * gates when the operator comes back.
-   */
-  const openLabelsWorkbench = useCallback(() => {
-    if (!boundOrderId) return;
-    router.push(`${SHIPPING_ORDERS_PATH}?openOrderId=${boundOrderId}`);
-  }, [boundOrderId, router]);
+  /* ── Leave: Esc / Cancel, with a discard check when unsaved work would be lost ── */
+  const dirty = !bound && isDirty(state, initial);
+  const leave = useCallback(() => {
+    if (dirty) setConfirmDiscard(true);
+    else onCancel?.();
+  }, [dirty, onCancel]);
+  useEffect(() => {
+    if (!onCancel) return;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape' || event.defaultPrevented || hasOpenOverlay()) return;
+      if (document.querySelector('[data-radix-popper-content-wrapper]')) return;
+      event.preventDefault();
+      if (confirmDiscard) setConfirmDiscard(false);
+      else leave();
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [confirmDiscard, leave, onCancel]);
 
-  const gateById = useMemo(() => {
-    const map = new Map<string, EvaluatedReleaseGate>();
-    for (const gate of gates?.gates ?? []) map.set(gate.id, gate);
-    return map;
-  }, [gates]);
-
-  const registerSection = useCallback(
-    (id: SectionId) => (node: HTMLElement | null) => {
-      sectionRefs.current[id] = node;
-    },
-    [],
-  );
-
-  const inferredMeta = platformState.inferred
-    ? sourcePlatformMeta(platformState.inferred)
-    : null;
-  const startBlocked =
-    duplicate != null
-    || (platformState.requiresChoice && !draft.platformChosen.trim());
+  const busy = triage.saving || triage.releasing;
+  const released = record?.releaseState === 'released';
+  const itemCount = state.lines.reduce((n, l) => n + l.quantity, 0);
 
   return (
-    // `order-intake-form` is the acknowledgment surface's own id;
-    // `order-triage-form` stays on the inner root so every pre-existing
-    // locator keeps resolving. Same DOM, two names, zero forked markup.
-    <div className="flex h-full min-h-0 flex-col" data-testid="order-intake-form">
-      <div className="flex h-full min-h-0 flex-col" data-testid="order-triage-form">
-        <nav
-          aria-label="Intake sections"
-          className="flex shrink-0 items-stretch gap-0 border-b border-border-hairline bg-surface-card"
-        >
-          {SECTIONS.map((section) => {
-            const enabled = section.id === 'identity' || Boolean(boundOrderId);
-            return (
-              <Button
-                key={section.id}
-                variant="ghost"
-                size="sm"
-                disabled={!enabled}
-                onClick={() => jumpTo(section.id)}
-                data-testid={`triage-jump-${section.id}`}
-                className="h-8 flex-1"
-              >
-                {section.label}
-              </Button>
-            );
-          })}
-        </nav>
-
-        <div className="min-h-0 flex-1 overflow-y-auto">
-          {/* ── 1. Identity ─────────────────────────────────────────────── */}
-          <IntakeSection id="identity" title="Identity" registerRef={registerSection('identity')}>
-            {boundOrderId ? (
-              <div className="space-y-3 px-5 py-4">
-                <PlatformAcknowledgeRow
-                  inferredLabel={inferredMeta?.label ?? null}
-                  inferredValue={platformState.inferred}
-                />
-                <dl className="divide-y divide-border-hairline border-y border-border-hairline">
-                  <IdentityRow label="Order number" value={record?.orderNumber} mono />
-                  {/* Item number and SKU sit ADJACENT on purpose. */}
-                  <IdentityRow
-                    label="Item number"
-                    value={record?.itemNumber}
-                    mono
-                    pairedWith={record?.sku}
-                  />
-                  <IdentityRow
-                    label="SKU"
-                    value={record?.sku}
-                    mono
-                    pairedWith={record?.itemNumber}
-                  />
-                  <IdentityRow label="Title" value={record?.productTitle} />
-                  <IdentityRow label="Quantity" value={record?.quantity} />
-                  <IdentityRow label="Condition" value={record?.condition} />
-                  <IdentityRow label="Source" value={record?.accountSource} />
-                </dl>
-              </div>
-            ) : (
-              <div className="space-y-4 px-5 py-4">
-                <div className="grid gap-x-4 gap-y-3 sm:grid-cols-2">
-                  <div className="space-y-1.5 sm:col-span-2">
-                    <Label htmlFor={`${fieldId}-order-number`}>Order number</Label>
-                    <Input
-                      id={`${fieldId}-order-number`}
-                      value={draft.orderNumber}
-                      onChange={(e) => {
-                        setDuplicate(null);
-                        setField('orderNumber')(e.target.value);
-                      }}
-                      onBlur={() => void acknowledgeOrderNumber()}
-                      className="font-mono"
-                      data-testid="intake-order-number"
-                    />
-                    <PlatformAcknowledgeRow
-                      inferredLabel={inferredMeta?.label ?? null}
-                      inferredValue={platformState.inferred}
-                      origin={draft.importOrigin}
-                    />
-                  </div>
-
-                  {duplicate ? (
-                    <div className="flex items-center justify-between gap-2 border border-border-warning bg-surface-warning px-3 py-2 sm:col-span-2">
-                      <p className="min-w-0 text-role-caption text-text-warning" role="status">
-                        This org already has order{' '}
-                        <span className="font-mono font-semibold">{duplicate.orderNumber}</span>
-                        {' '}— it will not be inserted twice.
-                      </p>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => onOrderCreated?.(duplicate.id)}
-                        data-testid="intake-open-existing"
-                      >
-                        Open it
-                      </Button>
-                    </div>
-                  ) : null}
-
-                  {platformState.requiresChoice ? (
-                    <div className="space-y-1.5">
-                      <Label htmlFor={`${fieldId}-platform-chosen`}>Platform</Label>
-                      <IntakeCombobox
-                        triggerId={`${fieldId}-platform-chosen`}
-                        value={draft.platformChosen || null}
-                        onChange={(value) => setField('platformChosen')(value)}
-                        options={platformOptions}
-                        placeholder="Search or select…"
-                        searchPlaceholder="Type to filter…"
-                        emptyMessage="No platforms match"
-                        ariaLabel="Platform"
-                        testId="intake-platform-chosen"
-                      />
-                    </div>
-                  ) : null}
-
-                  <div className="space-y-1.5">
-                    <Label htmlFor={`${fieldId}-channel`}>Fulfillment channel</Label>
-                    <IntakeCombobox
-                      triggerId={`${fieldId}-channel`}
-                      value={channel}
-                      onChange={(value) => {
-                        setChannel(value as IntakeFulfillmentChannel);
-                        if (value === 'shipstation') setShipstationDown(null);
-                        setDraft((prev) => ({
-                          ...prev,
-                          fulfillmentChannel: value as IntakeFulfillmentChannel,
-                        }));
-                      }}
-                      options={FULFILLMENT_CHANNEL_OPTIONS}
-                      placeholder="Search or select…"
-                      searchPlaceholder="Type to filter…"
-                      emptyMessage="No channels match"
-                      ariaLabel="Fulfillment channel"
-                      testId="intake-fulfillment-channel"
-                    />
-                  </div>
-
-                  <div className="space-y-1.5">
-                    <Label htmlFor={`${fieldId}-item-number`}>Item number</Label>
-                    <Input
-                      id={`${fieldId}-item-number`}
-                      value={draft.itemNumber}
-                      onChange={(e) => {
-                        setPaired(null);
-                        setField('itemNumber')(e.target.value);
-                      }}
-                      onBlur={() => void pairItemNumber()}
-                      className="font-mono"
-                      data-testid="intake-item-number"
-                    />
-                  </div>
-
-                  <div className="space-y-1.5">
-                    <Label htmlFor={`${fieldId}-sku`}>SKU</Label>
-                    <Input
-                      id={`${fieldId}-sku`}
-                      value={draft.sku}
-                      onChange={(e) => setField('sku')(e.target.value)}
-                      className="font-mono"
-                      data-testid="intake-sku"
-                    />
-                  </div>
-
-                  {paired ? (
-                    <p className="text-role-caption text-text-success sm:col-span-2" role="status">
-                      Paired to catalog: <span className="font-mono">{paired.sku}</span>
-                      {paired.productTitle ? ` · ${paired.productTitle}` : ''}
-                    </p>
-                  ) : null}
-
-                  <div className="space-y-1.5">
-                    <Label htmlFor={`${fieldId}-title`}>Title</Label>
-                    <Input
-                      id={`${fieldId}-title`}
-                      value={draft.productTitle}
-                      onChange={(e) => setField('productTitle')(e.target.value)}
-                    />
-                  </div>
-
-                  <div className="space-y-1.5">
-                    <Label htmlFor={`${fieldId}-qty`}>Quantity</Label>
-                    <div data-testid="intake-qty">
-                      <Input
-                        id={`${fieldId}-qty`}
-                        type="number"
-                        min={1}
-                        step={1}
-                        value={draft.quantity}
-                        onChange={(e) => setField('quantity')(e.target.value)}
-                        onBlur={() => {
-                          // Deferred clamp: commit a whole number ≥ 1, revert junk.
-                          const parsed = parseInt(draft.quantity, 10);
-                          setField('quantity')(
-                            String(Number.isFinite(parsed) ? Math.max(1, parsed) : 1),
-                          );
-                        }}
-                        className="w-28"
-                      />
-                    </div>
-                  </div>
-
-                  <div className="space-y-1.5 sm:col-span-2">
-                    {/* Group heading, not a form label — the pills are their own radiogroup. */}
-                    <p className="text-role-micro font-semibold uppercase tracking-wide text-text-soft">
-                      Condition
-                    </p>
-                    <ConditionPills
-                      value={draft.condition}
-                      onChange={(next) => setField('condition')(next)}
-                    />
-                  </div>
-
-                  <div className="space-y-1.5 sm:col-span-2">
-                    <Label htmlFor={`${fieldId}-tracking`}>Tracking number</Label>
-                    <Input
-                      id={`${fieldId}-tracking`}
-                      value={draft.trackingNumbers[0] ?? ''}
-                      onChange={(e) =>
-                        setDraft((prev) => ({
-                          ...prev,
-                          trackingNumbers: e.target.value.trim() ? [e.target.value] : [],
-                        }))
-                      }
-                      className="font-mono"
-                    />
-                  </div>
-                </div>
-
-                <Separator />
-
-                <div>
-                  <Button
-                    variant="default"
-                    size="md"
-                    disabled={startBlocked || triage.creating}
-                    onClick={() => void handleStartTriage()}
-                    data-testid="triage-start"
-                  >
-                    {triage.creating ? 'Starting…' : 'Start triage'}
-                  </Button>
-                  {duplicate ? (
-                    <p className="pt-2 text-role-caption text-text-warning">
-                      That order already exists — open it above instead of creating a twin.
-                    </p>
-                  ) : platformState.requiresChoice && !draft.platformChosen.trim() ? (
-                    <p className="pt-2 text-role-caption text-text-danger">
-                      Pick a platform — this order number&rsquo;s shape doesn&rsquo;t name one.
-                    </p>
-                  ) : (
-                    <p className="pt-2 text-role-caption text-text-soft">
-                      Creates the order <strong>caged</strong> — it stays out of the To-ship
-                      queue until all three gates below are green.
-                    </p>
-                  )}
-                </div>
-              </div>
-            )}
-          </IntakeSection>
-
-          {/* ── 2. Links (G1) ───────────────────────────────────────────── */}
-          <IntakeSection
-            id="links"
-            title="Links"
-            gate={gateById.get('G1')}
-            registerRef={registerSection('links')}
+    <div className="flex min-w-0 flex-col" data-testid="order-intake-form" onPaste={onRootPaste}>
+      <div className="flex items-center gap-2 px-1 pb-3">
+        <h2 className="min-w-0 flex-1 truncate text-role-title font-semibold text-text-default">
+          {bound ? (
+            <>
+              Order <span className="font-mono">{state.orderNumber}</span>
+              <span className="text-text-muted">{released ? ' · released' : ' · draft'}</span>
+            </>
+          ) : manual && state.channel === PHONE_ORDER_CHANNEL ? (
+            'New phone order'
+          ) : (
+            'New order'
+          )}
+        </h2>
+        {!bound ? (
+          <Button
+            variant="ghost"
+            size="sm"
+            icon={<ClipboardPaste className="size-4" />}
+            onClick={() => setPasteOpen((v) => !v)}
+            data-testid="intake-paste-toggle"
           >
-            <div className="space-y-3 px-5 py-4">
-              <dl className="divide-y divide-border-hairline border-y border-border-hairline">
-                <IdentityRow label="Item number" value={record?.itemNumber} mono />
-                <IdentityRow label="Order number" value={record?.orderNumber} mono />
-                <IdentityRow label="Tracking number" value={record?.trackingNumber} mono />
-              </dl>
-              <p className="text-role-caption text-text-soft">
-                All three must be present and on this record. Tracking is registered from the
-                order&rsquo;s own tracking field — add it on the order to close this gate.
-              </p>
-            </div>
-          </IntakeSection>
-
-          {/* ── 3. Documents (G2) ───────────────────────────────────────── */}
-          <IntakeSection
-            id="documents"
-            title="Documents"
-            gate={gateById.get('G2')}
-            registerRef={registerSection('documents')}
-          >
-            <div className="space-y-3 px-5 py-4">
-              <p className="text-role-caption text-text-soft">
-                {record
-                  ? `${record.linkedDocumentCount} document${record.linkedDocumentCount === 1 ? '' : 's'} linked to this item.`
-                  : 'No order yet.'}
-              </p>
-              <div className={cn('flex items-start gap-2.5', !boundOrderId && 'opacity-50')}>
-                <Checkbox
-                  id={`${fieldId}-docs-exempt`}
-                  checked={record?.docsNotRequired ?? false}
-                  disabled={!boundOrderId || triage.savingDocsFlag || released}
-                  onCheckedChange={(next) => triage.setDocsNotRequired(next === true)}
-                  data-testid="triage-docs-not-required"
-                  className="mt-0.5"
-                />
-                <label htmlFor={`${fieldId}-docs-exempt`} className="min-w-0 cursor-pointer">
-                  <span className="block text-role-body text-text-default">
-                    Item number does not require documents
-                  </span>
-                  <span className="block text-role-caption text-text-soft">
-                    An explicit decision, not an absence. It is recorded on the order and shown
-                    in the release audit.
-                  </span>
-                </label>
-              </div>
-            </div>
-          </IntakeSection>
-
-          {/* ── 4. Shipping (G3) ────────────────────────────────────────── */}
-          <IntakeSection
-            id="shipping"
-            title="Shipping"
-            gate={gateById.get('G3')}
-            registerRef={registerSection('shipping')}
-          >
-            <div className="space-y-4 px-5 py-4">
-              {/* Parcel — weight + dims persist on the order and ride the rate
-                  request (dim-weight pricing). Commit on blur/Enter. */}
-              <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-                <ParcelField
-                  id={`${fieldId}-weight`}
-                  label="Weight oz"
-                  value={weightText}
-                  onChange={touchParcel(setWeightText)}
-                  onCommit={commitParcel}
-                  testId="intake-weight"
-                />
-                <ParcelField
-                  id={`${fieldId}-dim-l`}
-                  label="L in"
-                  value={dimLText}
-                  onChange={touchParcel(setDimLText)}
-                  onCommit={commitParcel}
-                  testId="intake-dim-l"
-                />
-                <ParcelField
-                  id={`${fieldId}-dim-w`}
-                  label="W in"
-                  value={dimWText}
-                  onChange={touchParcel(setDimWText)}
-                  onCommit={commitParcel}
-                  testId="intake-dim-w"
-                />
-                <ParcelField
-                  id={`${fieldId}-dim-h`}
-                  label="H in"
-                  value={dimHText}
-                  onChange={touchParcel(setDimHText)}
-                  onCommit={commitParcel}
-                  testId="intake-dim-h"
-                />
-              </div>
-              {triage.savingParcel ? (
-                <p className="text-role-micro text-text-faint">Saving parcel…</p>
-              ) : null}
-
-              <p className="text-role-caption text-text-soft">
-                {record?.shippingLabelPurchased
-                  ? 'Label bought through the existing label path.'
-                  : record?.shippingLabelLinked
-                    ? 'Label linked to this order.'
-                    : 'No shipping label on this order yet.'}
-              </p>
-
-              {/* Link vs Buy — one mode, two panes; the buy pane COMPOSES the
-                  existing BuyLabelSection (never a second engine). */}
-              <div className="flex flex-wrap items-center gap-2">
-                <Button
-                  variant={labelMode === 'link' ? 'default' : 'outline'}
-                  size="sm"
-                  onClick={() => setLabelMode('link')}
-                  data-testid="intake-label-link"
-                >
-                  Link label
-                </Button>
-                <Button
-                  variant={labelMode === 'buy' ? 'default' : 'outline'}
-                  size="sm"
-                  disabled={buyBlockedReason != null}
-                  onClick={() => setLabelMode('buy')}
-                  data-testid="intake-label-buy-toggle"
-                >
-                  Buy label
-                </Button>
-                {buyBlockedReason ? (
-                  <p className="w-full text-role-caption text-text-warning" role="status">
-                    {buyBlockedReason}
-                  </p>
-                ) : null}
-              </div>
-
-              {labelMode === 'buy' && boundOrderId && buyBlockedReason == null ? (
-                <div
-                  className="border border-border-hairline p-3"
-                  data-testid="intake-label-buy"
-                >
-                  <BuyLabelSection
-                    orderId={boundOrderId}
-                    orderRef={record?.orderNumber ?? `#${boundOrderId}`}
-                    flush
-                    weightOz={currentWeightOz}
-                    dimensions={currentDims}
-                    onChange={triage.refresh}
-                    onRatesError={handleRatesError}
-                  />
-                </div>
-              ) : (
-                <div className="flex flex-wrap items-center gap-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    disabled={!boundOrderId}
-                    onClick={openLabelsWorkbench}
-                    data-testid="triage-open-labels"
-                  >
-                    Link or buy a label
-                  </Button>
-                  <Button variant="ghost" size="sm" onClick={triage.refresh} disabled={!boundOrderId}>
-                    Re-check
-                  </Button>
-                </div>
-              )}
-              <p className="text-role-caption text-text-soft">
-                Buying rate-shops the existing ShipStation engine with this parcel&rsquo;s
-                weight and dimensions. Linking attaches a label that already exists. Either
-                closes G3 — Re-check re-reads the gates.
-              </p>
-            </div>
-          </IntakeSection>
-
-          {/* ── 5. Assignment (not a gate) ──────────────────────────────── */}
-          <IntakeSection
-            id="assignment"
-            title="Assignment"
-            registerRef={registerSection('assignment')}
-          >
-            {!boundOrderId ? (
-              <p className="px-5 py-4 text-role-caption text-text-soft">
-                Start triage above to assign who fulfills and who packs.
-              </p>
-            ) : (
-              <div className="space-y-3 px-5 py-4">
-                <div className="grid gap-4 sm:grid-cols-2">
-                  <div data-testid="intake-assign-tech">
-                    <StaffButtonGrid
-                      label="Fulfillment / test"
-                      options={techOptions}
-                      selectedId={techId}
-                      onSelect={selectTech}
-                      columns={2}
-                      emptyMessage="No technicians present today"
-                    />
-                  </div>
-                  <div data-testid="intake-assign-packer">
-                    <StaffButtonGrid
-                      label="Pack"
-                      options={packerOptions}
-                      selectedId={packerId}
-                      onSelect={selectPacker}
-                      columns={2}
-                      emptyMessage="No packers present today"
-                    />
-                  </div>
-                </div>
-                {assignError ? (
-                  <p className="text-role-caption text-text-danger">{assignError}</p>
-                ) : null}
-                {assignSaving ? (
-                  <p className="text-role-micro text-text-faint">Saving…</p>
-                ) : null}
-                <p className="text-role-caption text-text-soft">
-                  Operational, not a gate — unassigned work is valid and Release does not wait
-                  on it.
-                </p>
-              </div>
-            )}
-          </IntakeSection>
-
-          {/* ── 6. Review / Release ─────────────────────────────────────── */}
-          <IntakeSection id="review" title="Review" registerRef={registerSection('review')}>
-            {!boundOrderId ? (
-              <p className="px-5 py-4 text-role-caption text-text-soft">
-                Start triage above to evaluate the release gates.
-              </p>
-            ) : (
-              <div className="space-y-3 px-5 py-4">
-                <ul className="divide-y divide-border-hairline border-y border-border-hairline">
-                  {(gates?.gates ?? []).map((gate) => (
-                    <li key={gate.id} className="flex items-start gap-2.5 px-3 py-2.5">
-                      <GateBadge passed={gate.passed} />
-                      <span className="min-w-0">
-                        <span className="block text-role-body text-text-default">
-                          {gate.id} · {gate.label}
-                        </span>
-                        {gate.reason ? (
-                          <span className="block text-role-caption text-text-soft">
-                            {gate.reason}
-                          </span>
-                        ) : null}
-                      </span>
-                    </li>
-                  ))}
-                </ul>
-                <div>
-                  {released ? (
-                    <p className="text-role-body font-semibold text-text-success">
-                      Released — this order is in the To-ship queue.
-                    </p>
-                  ) : (
-                    <>
-                      <Button
-                        variant="default"
-                        size="md"
-                        disabled={!gates?.canRelease || triage.releasing}
-                        onClick={handleRelease}
-                        data-testid="triage-release"
-                      >
-                        {triage.releasing ? 'Releasing…' : 'Release'}
-                      </Button>
-                      {/*
-                        The plan forbids a silently-disabled Release, so the
-                        blockers are printed next to it — the checklist above
-                        says WHICH, this says THAT.
-                      */}
-                      {!gates?.canRelease && gates ? (
-                        <p className="pt-2 text-role-caption text-text-danger" role="status">
-                          Blocked by {gates.failing.map((gate) => gate.id).join(', ')}.
-                        </p>
-                      ) : null}
-                    </>
-                  )}
-                </div>
-              </div>
-            )}
-          </IntakeSection>
-        </div>
+            Paste an order
+          </Button>
+        ) : null}
       </div>
-    </div>
-  );
-}
 
-function parsePositive(raw: string): number | null {
-  const trimmed = raw.trim();
-  if (!trimmed) return null;
-  const value = Number(trimmed);
-  return Number.isFinite(value) && value > 0 ? value : null;
-}
+      {pasteOpen ? (
+        <div className="mb-3 space-y-2 rounded-mode border border-border-hairline bg-surface-card p-4" data-testid="intake-paste">
+          <TextField
+            label="Paste an email, a marketplace row or a note"
+            value={pasteText}
+            onChange={setPasteText}
+            multiline
+            rows={6}
+            data-testid="intake-paste-text"
+          />
+          <div className="flex items-center justify-end gap-2">
+            <p className="mr-auto text-role-caption text-text-muted">Fills the form for review — nothing is created.</p>
+            <Button variant="ghost" size="sm" onClick={() => setPasteOpen(false)}>Cancel</Button>
+            <Button variant="ink" size="sm" loading={reading} disabled={!pasteText.trim()} onClick={() => void readPaste({ text: pasteText })} data-testid="intake-paste-read">
+              Fill the form
+            </Button>
+          </div>
+        </div>
+      ) : null}
 
-/**
- * The Identity acknowledgment row: the platform the order number itself
- * names, painted with the house `PlatformMark` — or an honest dash when the
- * shape names nothing. Never a second copy of the inference rule.
- */
-function PlatformAcknowledgeRow({
-  inferredValue,
-  inferredLabel,
-  origin,
-}: {
-  inferredValue: 'amazon' | 'ebay' | null;
-  inferredLabel: string | null;
-  origin?: string;
-}) {
-  return (
-    <div
-      className="flex items-center justify-between gap-3 pt-1"
-      data-testid="intake-platform-inferred"
-    >
-      {/* Read-only acknowledgment line — a heading, not a control label. */}
-      <span className="text-role-micro font-semibold uppercase tracking-wide text-text-soft">
-        Platform
-      </span>
-      <span className="flex min-w-0 items-center gap-1.5">
-        {inferredValue ? (
+      <div className="space-y-2">
+        <IntakeSection
+          id="customer"
+          title="Customer"
+          complete={complete.customer}
+          open={isOpen('customer')}
+          onOpen={() => setActive('customer')}
+          onDone={() => done('customer')}
+          summary={
+            [state.customer.name, state.customer.phone, addressLine(state.customer.shipTo)].filter((p) => p.trim()).join(' · ')
+            || (manual ? 'Who is ordering, and where it ships' : 'Optional')
+          }
+        >
+          <IntakeCustomerFields customer={state.customer} onChange={(customer) => patch({ customer })} />
+        </IntakeSection>
+
+        <IntakeSection
+          id="items"
+          title="Items"
+          complete={complete.items}
+          open={isOpen('items')}
+          onOpen={() => setActive('items')}
+          onDone={() => done('items')}
+          summary={
+            state.lines.length
+              ? state.lines.map((l) => `${l.quantity} × ${l.title || l.sku}`).join(' · ')
+              : 'No products yet'
+          }
+        >
+          {state.lines.length > 0 ? (
+            <ul className="space-y-2">
+              {state.lines.map((line, i) => (
+                <IntakeLineCard
+                  key={line.key}
+                  line={line}
+                  index={i}
+                  currency={state.currency}
+                  onChange={(next) => setLine(line.key, next)}
+                  onRemove={() => setState((s) => ({ ...s, lines: s.lines.filter((l) => l.key !== line.key) }))}
+                />
+              ))}
+            </ul>
+          ) : null}
+          {state.lines.length === 0 || adding ? (
+            <IntakeProductSearch
+              testId="intake-product-search"
+              onPick={(hit) => {
+                setAdding(false);
+                setState((s) => ({
+                  ...s,
+                  lines: [
+                    ...s.lines,
+                    newIntakeLine({
+                      skuCatalogId: hit.skuCatalogId,
+                      sku: hit.sku,
+                      title: hit.title,
+                      itemNumber: hit.itemNumber ?? '',
+                      imageUrl: hit.imageUrl,
+                      onHand: hit.onHand,
+                      bin: hit.bin,
+                    }),
+                  ],
+                }));
+              }}
+            />
+          ) : (
+            <Button variant="ghost" size="sm" icon={<Plus className="size-4" />} onClick={() => setAdding(true)} data-testid="intake-add-line">
+              Add another item
+            </Button>
+          )}
+        </IntakeSection>
+
+        <IntakeSection
+          id="order"
+          title="Order"
+          complete={complete.order}
+          open={isOpen('order')}
+          onOpen={() => setActive('order')}
+          onDone={() => done('order')}
+          summary={[state.orderNumber, channelLabel, state.shipBy ? `ship by ${state.shipBy}` : null, state.isUrgent ? 'urgent' : null].filter(Boolean).join(' · ')}
+        >
+          <div className="grid gap-3 sm:grid-cols-2">
+            <TextField
+              label="Order number"
+              value={state.orderNumber}
+              onChange={(v) => patch({ orderNumber: v, orderNumberGenerated: false })}
+              mono
+              disabled={bound}
+              autoComplete="off"
+              data-testid="intake-order-number"
+            />
+            <SearchableSelectField
+              value={channelOptions.find((o) => o.value.toLowerCase() === state.channel.toLowerCase())?.value ?? null}
+              onChange={(value) => value != null && patch({ channel: String(value) })}
+              options={channelOptions}
+              label="Channel"
+              placeholder="Pick the channel"
+              ariaLabel="Channel"
+              disabled={bound}
+              testId="intake-channel"
+              className="h-11 rounded-mode-control px-3.5 pb-1 pt-5 text-sm"
+            />
+          </div>
+          {taken ? (
+            <div className="flex items-center gap-2 rounded-mode-control bg-surface-warning px-3 py-2" role="status" data-testid="intake-order-taken">
+              <p className="min-w-0 flex-1 text-role-caption text-text-warning">
+                Order <span className="font-mono">{taken.orderNumber}</span> already exists.
+              </p>
+              {onOrderCreated ? (
+                <Button variant="secondary" size="sm" onClick={() => onOrderCreated(taken.id)}>Open it</Button>
+              ) : null}
+            </div>
+          ) : !bound && state.orderNumberGenerated ? (
+            <p className="text-role-caption text-text-muted">Next free {channelLabel} number — type over it to use your own.</p>
+          ) : null}
+
+          {showMore ? (
+            <div className="grid gap-3 sm:grid-cols-2" data-testid="intake-order-more">
+              <div>
+                <p className="mode-label pb-1 text-text-soft">Ship by</p>
+                <DateRangePickerField
+                  variant="compact"
+                  value={state.shipBy ? new Date(`${state.shipBy}T12:00:00`) : undefined}
+                  onChange={(day) => patch({ shipBy: `${day.getFullYear()}-${String(day.getMonth() + 1).padStart(2, '0')}-${String(day.getDate()).padStart(2, '0')}` })}
+                  ariaLabel="Ship by"
+                  className="h-11 w-full rounded-mode-control border border-border-soft px-3.5 text-sm"
+                />
+              </div>
+              <label className="flex items-center gap-2 self-end pb-3 text-role-body text-text-default">
+                <Checkbox checked={state.isUrgent} onCheckedChange={(v) => patch({ isUrgent: v === true })} />
+                Urgent
+              </label>
+              <TextField label="Buyer note" value={state.buyerNote} onChange={(v) => patch({ buyerNote: v })} className="sm:col-span-2" />
+              <TextField label="Admin page link" value={state.adminUrl} onChange={(v) => patch({ adminUrl: v })} className="sm:col-span-2" inputMode="url" />
+            </div>
+          ) : (
+            <Button variant="ghost" size="sm" icon={<Plus className="size-4" />} onClick={() => setShowMore(true)} data-testid="intake-order-more-toggle">
+              Ship by, urgent, note, admin link
+            </Button>
+          )}
+        </IntakeSection>
+
+        <IntakeSection
+          id="payment"
+          title="Payment"
+          complete={complete.payment}
+          open={isOpen('payment')}
+          onOpen={() => setActive('payment')}
+          onDone={() => done('payment')}
+          summary={totals.subtotalCents > 0 ? `${formatCents(totals.totalCents, state.currency)} total` : 'No prices yet'}
+        >
+          <IntakePaymentFields totals={totals} currency={state.currency} orderNumber={bound ? state.orderNumber : null} />
+        </IntakeSection>
+
+        <IntakeSection
+          id="shipping"
+          title="Shipping"
+          complete={complete.shipping}
+          open={isOpen('shipping')}
+          onOpen={() => setActive('shipping')}
+          onDone={() => done('shipping')}
+          summary={
+            state.shippingMode === 'elsewhere'
+              ? state.trackingNumber ? `Tracking ${state.trackingNumber}${labelFile ? ' · label attached' : ''}` : 'Bought elsewhere — no tracking yet'
+              : record?.shippingLabelPurchased ? 'Label bought with ShipStation' : 'Buy with ShipStation'
+          }
+        >
+          <IntakeShippingFields
+            state={state}
+            onChange={patch}
+            labelFile={labelFile}
+            onLabelFile={setLabelFile}
+            bound={boundId != null ? { orderId: boundId, orderRef: state.orderNumber, onLabelChanged: triage.refresh } : null}
+          />
+        </IntakeSection>
+
+        <ReviewCard
+          state={state}
+          onChange={patch}
+          blockers={bound ? [] : releaseBlockers}
+          gates={record?.gates ?? null}
+          sessionIds={sessionIds}
+          onDocsNotRequired={(value) => (bound ? triage.setDocsNotRequired(sessionIds, value) : undefined)}
+        />
+      </div>
+
+      <footer className="sticky bottom-0 z-10 mt-3 flex items-center gap-2 rounded-mode border border-border-hairline bg-surface-card px-4 py-3 shadow-elev-soft" data-testid="intake-footer">
+        {confirmDiscard ? (
           <>
-            <PlatformMark platformValue={inferredValue} />
-            <span className="truncate text-role-caption font-semibold text-text-default">
-              {inferredLabel}
-            </span>
-            <span className="shrink-0 text-role-micro text-text-faint">from the number</span>
+            <p className="min-w-0 flex-1 text-role-body text-text-default">Discard this order? Nothing has been saved.</p>
+            <Button variant="ghost" size="sm" onClick={() => setConfirmDiscard(false)}>Keep editing</Button>
+            <Button variant="danger" size="sm" onClick={() => onCancel?.()} data-testid="intake-discard">Discard</Button>
           </>
         ) : (
-          <span className="text-role-caption text-text-faint">—</span>
+          <>
+            <div className="min-w-0 flex-1">
+              <p className="text-role-body font-semibold tabular-nums text-text-default" data-testid="intake-total">
+                {formatCents(totals.totalCents, state.currency)}
+              </p>
+              <p className="truncate text-role-caption text-text-muted">
+                {itemCount} item{itemCount === 1 ? '' : 's'}
+                {(bound ? [] : draftBlockers)[0] ? ` · ${draftBlockers[0]}` : ''}
+              </p>
+            </div>
+            {onCancel ? (
+              <Button variant="ghost" size="sm" onClick={leave} data-testid="intake-cancel">{bound ? 'Close' : 'Cancel'}</Button>
+            ) : null}
+            {!bound ? (
+              <Button variant="secondary" size="sm" disabled={busy || draftBlockers.length > 0} loading={triage.saving} onClick={() => void submit('draft')} data-testid="intake-save-draft">
+                Save draft
+              </Button>
+            ) : null}
+            {!released ? (
+              <Button
+                variant="ink"
+                size="sm"
+                disabled={busy || (bound ? false : releaseBlockers.length > 0)}
+                loading={busy}
+                onClick={() => void submit('release')}
+                data-testid="intake-release"
+              >
+                Release
+              </Button>
+            ) : null}
+          </>
         )}
-        {origin ? (
-          <Badge variant="secondary" className="ml-2">
-            {origin === 'csv' ? 'CSV row' : 'Manual entry'}
-          </Badge>
-        ) : null}
-      </span>
+      </footer>
     </div>
   );
 }
 
-/** Labeled numeric parcel cell (commit on blur/Enter). */
-function ParcelField({
-  id,
-  label,
-  value,
+/** Review — what still blocks release, the live gates once saved, and the optional assignees. */
+function ReviewCard({
+  state,
   onChange,
-  onCommit,
-  testId,
+  blockers,
+  gates,
+  sessionIds,
+  onDocsNotRequired,
 }: {
-  id: string;
-  label: string;
-  value: string;
-  onChange: (value: string) => void;
-  onCommit: () => void;
-  testId: string;
+  state: IntakeState;
+  onChange: (patch: Partial<IntakeState>) => void;
+  blockers: string[];
+  gates: { canRelease: boolean; gates: Array<{ id: string; label: string; passed: boolean; reason: string | null }> } | null;
+  sessionIds: readonly number[];
+  onDocsNotRequired: (value: boolean) => void;
 }) {
   return (
-    <div className="space-y-1.5">
-      <Label htmlFor={id}>{label}</Label>
-      <Input
-        id={id}
-        value={value}
-        inputMode="decimal"
-        onChange={(e) => onChange(e.target.value)}
-        onBlur={onCommit}
-        onKeyDown={(e) => {
-          if (e.key === 'Enter') e.currentTarget.blur();
-        }}
-        data-testid={testId}
-      />
-    </div>
-  );
-}
-
-function IntakeSection({
-  id,
-  title,
-  gate,
-  registerRef,
-  children,
-}: {
-  id: SectionId;
-  title: string;
-  gate?: EvaluatedReleaseGate;
-  registerRef: (node: HTMLElement | null) => void;
-  children: React.ReactNode;
-}) {
-  return (
-    <section ref={registerRef} data-intake-section={id} className="scroll-mt-0">
-      <header className="sticky top-0 z-raised flex items-center justify-between gap-2 border-b border-border-hairline bg-surface-card px-5 py-2">
-        <h3 className="text-role-eyebrow font-semibold uppercase tracking-widest text-text-soft">
-          {title}
-        </h3>
-        {gate ? <GateBadge passed={gate.passed} withLabel /> : null}
-      </header>
-      {children}
+    <section className="space-y-3 rounded-mode border border-border-hairline bg-surface-card p-4" data-testid="intake-review">
+      <h3 className="text-role-body font-semibold text-text-default">Review</h3>
+      {gates ? (
+        <ul className="space-y-1.5" data-testid="intake-gates">
+          {gates.gates.map((g) => (
+            <li key={g.id} className="flex items-start gap-2 text-role-caption">
+              <span className={cn('mt-0.5 size-2 shrink-0 rounded-mode-pill', g.passed ? 'bg-text-success' : 'bg-text-warning')} aria-hidden />
+              <span className="min-w-0">
+                <span className="text-text-default">{g.label}</span>
+                {g.reason ? <span className="block text-text-muted">{g.reason}</span> : null}
+              </span>
+            </li>
+          ))}
+        </ul>
+      ) : blockers.length > 0 ? (
+        <ul className="space-y-1" data-testid="intake-blockers">
+          {blockers.map((b) => (
+            <li key={b} className="flex items-center gap-2 text-role-caption text-text-muted">
+              <span className="size-2 shrink-0 rounded-mode-pill bg-text-warning" aria-hidden />
+              {b}
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <p className="text-role-caption text-text-success">Ready to release.</p>
+      )}
+      <label className="flex items-start gap-2 text-role-body text-text-default">
+        <Checkbox
+          checked={state.docsNotRequired}
+          onCheckedChange={(v) => {
+            onChange({ docsNotRequired: v === true });
+            onDocsNotRequired(v === true);
+          }}
+          data-testid="intake-docs-not-required"
+        />
+        <span>
+          No manual or paperwork needed
+          <span className="block text-role-caption text-text-muted">Recorded on the order for the release audit.</span>
+        </span>
+      </label>
+      {sessionIds.length > 0 ? <AssignRow sessionIds={sessionIds} shipBy={state.shipBy} /> : null}
     </section>
   );
 }
 
-/** Colour + glyph, never colour alone — the gate state must survive a mono display. */
-function GateBadge({ passed, withLabel = false }: { passed: boolean; withLabel?: boolean }) {
-  return (
-    <Badge variant={passed ? 'success' : 'destructive'}>
-      {passed ? <Check aria-hidden /> : <AlertCircle aria-hidden />}
-      <span className={withLabel ? undefined : 'sr-only'}>{passed ? 'Green' : 'Blocked'}</span>
-    </Badge>
+/** Pick / Pack assignees (optional) — the house staff picker, written to every line. */
+function AssignRow({ sessionIds, shipBy }: { sessionIds: readonly number[]; shipBy: string | null }) {
+  const [staff, setStaff] = useState<{ technician: { id: number | null; name: string | null }; packer: { id: number | null; name: string | null } }>({
+    technician: { id: null, name: null },
+    packer: { id: null, name: null },
+  });
+  const [open, setOpen] = useState<'technician' | 'packer' | null>(null);
+  const pickRef = useRef<HTMLButtonElement>(null);
+  const packRef = useRef<HTMLButtonElement>(null);
+  const commit = async (lane: 'technician' | 'packer', id: number | null, name: string | null) => {
+    const next = { ...staff, [lane]: { id, name } };
+    setStaff(next);
+    try {
+      await Promise.all(
+        sessionIds.map((entityId) =>
+          saveWorkOrder({
+            entityType: 'ORDER',
+            entityId,
+            assignedTechId: next.technician.id,
+            assignedPackerId: next.packer.id,
+            status: next.technician.id != null ? 'ASSIGNED' : 'OPEN',
+            priority: 100,
+            deadlineAt: shipBy,
+          }),
+        ),
+      );
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Could not save the assignee.');
+    }
+  };
+  const chip = (lane: 'technician' | 'packer', label: string, ref: React.RefObject<HTMLButtonElement>) => (
+    <button
+      ref={ref}
+      type="button"
+      onClick={() => setOpen(lane)}
+      className={cn('inline-flex h-9 items-center gap-1.5 rounded-mode-control border border-border-soft px-3 text-role-caption text-text-default hover:bg-surface-hover', focusRing('control'))}
+      data-testid={`intake-assign-${lane}`}
+    >
+      <span className="text-text-muted">{label}</span> {staff[lane].name ?? 'Unassigned'}
+    </button>
   );
-}
-
-function IdentityRow({
-  label,
-  value,
-  mono = false,
-  pairedWith,
-}: {
-  label: string;
-  value?: string | null;
-  mono?: boolean;
-  /**
-   * The counterpart key this row is read against (item number ↔ SKU). When
-   * both are present and differ, the row is marked — glyph + text, never
-   * colour alone, so the flag survives a mono display.
-   */
-  pairedWith?: string | null;
-}) {
-  const present = typeof value === 'string' && value.trim().length > 0;
-  const counterpart = typeof pairedWith === 'string' ? pairedWith.trim() : '';
-  const differs =
-    present && counterpart.length > 0 && counterpart !== (value ?? '').trim();
   return (
-    <div className="flex items-baseline justify-between gap-3 px-3 py-2">
-      <dt className="shrink-0 text-role-caption text-text-soft">{label}</dt>
-      <dd
-        className={cn(
-          'flex min-w-0 items-baseline justify-end gap-1.5 text-right text-role-body',
-          present ? 'text-text-default' : 'text-text-faint',
-        )}
-      >
-        <span className={cn('min-w-0 truncate', mono && 'font-mono')}>
-          {present ? value : '—'}
-        </span>
-        {differs ? (
-          <Badge variant="warning" className="shrink-0">
-            <AlertCircle aria-hidden />
-            differs
-          </Badge>
-        ) : null}
-      </dd>
+    <div className="flex flex-wrap items-center gap-2">
+      {chip('technician', 'Pick', pickRef)}
+      {chip('packer', 'Pack', packRef)}
+      <StageStaffAssignPopover
+        open={open === 'technician'}
+        onClose={() => setOpen(null)}
+        anchorRef={pickRef}
+        label="Pick"
+        role="technician"
+        selectedStaffId={staff.technician.id}
+        onCommit={(id, name) => void commit('technician', id, name)}
+      />
+      <StageStaffAssignPopover
+        open={open === 'packer'}
+        onClose={() => setOpen(null)}
+        anchorRef={packRef}
+        label="Pack"
+        role="packer"
+        selectedStaffId={staff.packer.id}
+        onCommit={(id, name) => void commit('packer', id, name)}
+      />
     </div>
   );
 }

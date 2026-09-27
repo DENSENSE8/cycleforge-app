@@ -31,6 +31,7 @@ import {
   IconButton,
 } from '@/design-system/primitives';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
+import { KeyboardChord } from '@/design-system/primitives/KeyboardKey';
 import { ExternalLink, GripVertical, Pencil, Pin, Star, X } from '@/components/Icons';
 import { useAuth } from '@/contexts/AuthContext';
 import { useQuickAccess } from '@/lib/quick-access/use-quick-access';
@@ -59,6 +60,7 @@ import {
   HeaderChromeMenuItem,
 } from './header-chrome-menu';
 import {
+  HEADER_CONTROL_CORNER,
   HEADER_ICON_BTN_CLASS,
   HEADER_ICON_BTN_OPEN_CLASS,
   HEADER_ICON_WRAP,
@@ -134,11 +136,7 @@ function SortablePinRow({
         }
         trailing={
           <span className="flex shrink-0 items-center gap-1">
-            {hotkey ? (
-              <kbd className="rounded px-1 font-mono text-role-micro text-text-faint">
-                {hotkey}
-              </kbd>
-            ) : null}
+            {hotkey ? <KeyboardChord chord={hotkey} size="xs" tone="default" /> : null}
             <IconButton
               type="button"
               size="xs"
@@ -181,12 +179,14 @@ function HeaderPinChip({
           aria-label={`Open pinned page ${pin.label}`}
           onClick={onNavigate}
           className={cn(
-            // FULL BAND HEIGHT, not a padded pill (operator 2026-09-22:
-            // FULL BAND HEIGHT, not a padded pill (operator 2026-09-22: "there
-            'hidden h-full max-w-[10rem] min-w-0 items-center gap-1.5 rounded-none border-b px-2 text-left text-role-micro font-semibold transition-colors xl:flex',
+            // A 32px rounded key on the beam, like the icon keys beside it
+            // (owner 2026-09-27: triage corners and a pressable face; this
+            // supersedes the 2026-09-22 full-band-height underline tab).
+            'hidden h-8 max-w-[10rem] min-w-0 items-center gap-1.5 px-2 text-left text-role-caption font-medium transition-colors active:translate-y-px xl:flex',
+            HEADER_CONTROL_CORNER,
             active
-              ? 'border-text-default bg-surface-sunken text-text-default'
-              : 'border-transparent text-text-muted hover:border-border-default hover:bg-surface-hover hover:text-text-default',
+              ? 'bg-surface-sunken text-text-default ring-1 ring-inset ring-border-hairline'
+              : 'text-text-muted hover:bg-surface-sunken hover:text-text-default',
           )}
         >
           <Icon className="h-3.5 w-3.5 shrink-0" aria-hidden />
@@ -300,7 +300,7 @@ export function HeaderPinsSwitcher() {
           />
         </HoverTooltip>
       </div>
-      <div className="flex h-full min-w-0 items-stretch">
+      <div className="flex h-full min-w-0 items-center gap-0.5">
         {pinned.slice(0, 5).map((p) => (
           <HeaderPinChip
             key={p.id}
@@ -321,7 +321,7 @@ export function HeaderPinsSwitcher() {
         onClose={() => setOpen(false)}
         anchorRef={wrapRef}
         placement="bottom-start"
-        gap={0}
+        gap={4}
       >
         <HeaderChromeMenu ariaLabel="Pinned pages" className="min-w-[14rem]">
           {canPin ? (

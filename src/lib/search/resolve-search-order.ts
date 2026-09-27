@@ -2,11 +2,13 @@
 
 import type { ShippedOrder } from '@/types/orders';
 import { fetchDashboardOrderRowById } from '@/lib/dashboard-table-data';
-import { isFbaOrder } from '@/utils/order-platform';
 
+/**
+ * FBA rows resolve like any other order (owner 2026-09-27): the shipment,
+ * tracking and timeline are internal records — never a "channel" dead end.
+ */
 type ResolvedSearchOrder =
   | { status: 'ok'; order: ShippedOrder }
-  | { status: 'fba' }
   | { status: 'notfound' };
 
 export type { ResolvedSearchOrder };
@@ -68,7 +70,6 @@ export function toShippedOrderFromApi(raw: Record<string, unknown> | null | unde
     tracking_numbers: mergedTracking,
     serial_number: serialNumber,
     sku: asString(raw.sku),
-    tester_id: asNullableNumber(raw.tester_id),
     tested_by: asNullableNumber(raw.tested_by),
     test_date_time: asNullableString(raw.test_date_time),
     packer_id: asNullableNumber(raw.packer_id),
@@ -96,18 +97,14 @@ export function toShippedOrderFromApi(raw: Record<string, unknown> | null | unde
 }
 
 async function fetchOrderByNumericId(id: number): Promise<ResolvedSearchOrder> {
-  const dashboard = await fetchDashboardOrderRowById(id);
+  const dashboard = await fetchDashboardOrderRowById(id, { includeFba: true, enrichFromShipped: false });
   if (dashboard) return { status: 'ok', order: dashboard };
 
   try {
     const res = await fetch(`/api/orders/${id}`, { credentials: 'include', cache: 'no-store' });
     if (!res.ok) return { status: 'notfound' };
     const payload = (await res.json())?.order as Record<string, unknown> | undefined;
-    if (!payload) return { status: 'notfound' };
-    if (isFbaOrder(asString(payload.order_id), asNullableString(payload.account_source))) {
-      return { status: 'fba' };
-    }
-    const order = toShippedOrderFromApi(payload);
+    const order = payload ? toShippedOrderFromApi(payload) : null;
     return order ? { status: 'ok', order } : { status: 'notfound' };
   } catch {
     return { status: 'notfound' };
@@ -140,10 +137,6 @@ export async function resolveSearchOrder(orderId: string): Promise<ResolvedSearc
     if (res.ok) {
       const payload = (await res.json())?.order as Record<string, unknown> | undefined;
       if (payload) {
-        if (isFbaOrder(asString(payload.order_id), asNullableString(payload.account_source))) {
-          return { status: 'fba' };
-        }
-
         const lookupId = Number(payload.id);
         if (Number.isFinite(lookupId) && lookupId > 0) {
           const fromNumeric = await fetchOrderByNumericId(lookupId);

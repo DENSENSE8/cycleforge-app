@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
-import type { TechRecord } from '@/hooks/useTechLogs';
+import type { TechRecord } from '@/hooks/useDeskPickLogs';
 import { dedupeTechRecords, getTechRecordRowKey } from '@/lib/station/dedupe-tech-records';
 import {
   techRecordRailId,
@@ -70,12 +70,12 @@ describe('getTechRecordRowKey', () => {
 });
 
 describe('techRecordToPreviewOrder', () => {
-  it('maps order_db_id and stamps has_tech_scan', () => {
+  it('maps order_db_id and stamps has_pick_scan', () => {
     const order = techRecordToPreviewOrder(
       baseRecord({ order_db_id: 900, id: 55, is_shipped: true, status: null }),
     );
     assert.equal(order.id, 900);
-    assert.equal(order.has_tech_scan, true);
+    assert.equal(order.has_pick_scan, true);
     assert.equal(order.status, 'SHIPPED');
   });
 

@@ -8,7 +8,7 @@ test('mobile and desktop-shaped inputs receive the same workflow verdict', () =>
   const desktop = resolveOutboundWorkflowFacts(
     {
       shipmentId: 42,
-      hasTechScan: true,
+      hasPickScan: true,
       packedAt: null,
       isOutOfStock: false,
       deadlineAt: '2026-09-15T12:00:00Z',
@@ -18,7 +18,7 @@ test('mobile and desktop-shaped inputs receive the same workflow verdict', () =>
   const mobile = resolveOutboundWorkflowFacts(
     {
       shipmentId: '42',
-      hasTechScan: true,
+      hasPickScan: true,
       packedAt: null,
       isOutOfStock: null,
       deadlineAt: '2026-09-15T12:00:00Z',
@@ -38,7 +38,7 @@ test('mobile and desktop-shaped inputs receive the same workflow verdict', () =>
 test('packed work needs a dock-stage fact before it becomes scan-out ready', () => {
   const facts = resolveOutboundWorkflowFacts({
     shipmentId: 42,
-    hasTechScan: true,
+    hasPickScan: true,
     packedAt: '2026-09-16T12:00:00Z',
     isOutOfStock: 'Out of stock',
   });
@@ -53,7 +53,7 @@ test('packed work needs a dock-stage fact before it becomes scan-out ready', () 
 test('a DOCK_STAGED timestamp is the only scan-out readiness proof', () => {
   const facts = resolveOutboundWorkflowFacts({
     shipmentId: 42,
-    hasTechScan: true,
+    hasPickScan: true,
     packedAt: '2026-09-16T12:00:00Z',
     dockStagedAt: '2026-09-16T12:10:00Z',
   });

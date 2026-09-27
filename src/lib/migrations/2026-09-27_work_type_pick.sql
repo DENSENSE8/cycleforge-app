@@ -1,0 +1,32 @@
+-- ============================================================================
+-- 2026-09-27_work_type_pick.sql
+--
+-- WHAT
+--   work_type_enum += 'PICK'.
+--
+-- WHY
+--   Picking and Quality Control are two facts (docs/design-system/
+--   HANDOFF-qc-pick-split.md). Until now the order's "Picked by" assignee was
+--   stored as work_type='TEST', so the picker and the tester were one row.
+--   PICK is a station type like PACK: "who takes this order's units off the
+--   shelf". Its assignee lives in the station slot `assigned_tech_id`, which
+--   fn_sync_work_assignment_assignee already mirrors into assignee_staff_id —
+--   the same slot RECEIVE / REPAIR / QA use. No trigger change.
+--
+-- WHY THIS IS ITS OWN FILE
+--   scripts/run-pending-migrations.mjs wraps every file in BEGIN/COMMIT and
+--   PostgreSQL forbids using a freshly added enum label in the same
+--   transaction. 2026-09-27b_order_pick_assignments_from_test.sql writes
+--   'PICK' rows, so the label must commit first (letter suffix = ordering).
+--
+-- SAFETY / GATING
+--   Purely additive; no row changes.
+--
+-- ROLLBACK — NONE (PostgreSQL cannot drop an enum label). An unused label is
+--   inert: nothing defaults to or CHECKs against it.
+--
+-- VERIFY
+--   SELECT unnest(enum_range(NULL::work_type_enum));  -- includes PICK
+-- ============================================================================
+
+ALTER TYPE work_type_enum ADD VALUE IF NOT EXISTS 'PICK';

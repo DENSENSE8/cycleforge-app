@@ -10,6 +10,7 @@
  */
 
 import { Pool } from 'pg';
+import { loadChatReadsFixtures, type ChatReadsFixtures } from './chat-reads-fixture';
 
 export interface BinQty {
   bin: string;
@@ -35,6 +36,12 @@ export interface EvalFixtures {
   orderWithLabel: { orderNumber: string };
   /** A one-row order with no label, slip or paired paperwork on file. */
   orderNoDocs: { orderNumber: string };
+  /** Two one-row orders with a label AND a slip on file that the print ledger has never seen (ChatPrint). */
+  unprintedOrders: Array<{ id: number; orderNumber: string }>;
+  // ── AiSpeed corpus (A7): one real value per identifier kind ──────────────
+  corpus: CorpusFixtures;
+  /** ChatReads: reconcile paste, delivered package, busiest pack day. */
+  chatReads: ChatReadsFixtures;
 }
 
 /** The bin-face shape the invented-bin guard recognises. */
@@ -121,6 +128,16 @@ SELECT o.order_id AS "orderNumber"
  ORDER BY o.id DESC
  LIMIT 1`;
 
+const UNPRINTED_ORDERS = `
+WITH o AS (${ONE_ROW_ORDERS})
+SELECT o.id, o.order_id AS "orderNumber"
+  FROM o
+ WHERE EXISTS (${ORDER_DOC_TYPES} AND d.document_type = 'shipping_label')
+   AND EXISTS (${ORDER_DOC_TYPES} AND d.document_type = 'packing_slip')
+   AND NOT EXISTS (SELECT 1 FROM document_print_jobs j WHERE j.organization_id = $1 AND j.order_id = o.id)
+ ORDER BY o.id DESC
+ LIMIT 2`;
+
 const ORDER_NO_DOCS = `
 WITH o AS (${ONE_ROW_ORDERS})
 SELECT o.order_id AS "orderNumber"
@@ -134,6 +151,101 @@ SELECT o.order_id AS "orderNumber"
           OR (o.sku IS NOT NULL AND upper(btrim(pm.sku)) = upper(btrim(o.sku)))))
  ORDER BY o.id DESC
  LIMIT 1`;
+
+// ── AiSpeed corpus (A7) — one real value per identifier kind, each chosen so
+// it resolves to exactly one record (unique across its own table) ─────────
+
+export interface CorpusFixtures {
+  /** A one-row marketplace order with a named buyer and a platform. */
+  order: { orderNumber: string; customerName: string };
+  /** A UPS tracking number shipped on exactly one order. */
+  tracking: { tracking: string; orderNumber: string };
+  /** A serialized unit whose SKU is in the catalog. */
+  serial: { serial: string; sku: string };
+  /** A buyer with orders: Title Case name, email and 10-digit phone, each unique among customers. */
+  customer: { name: string; email: string; phone: string };
+  /** A receiving carton's Zoho PO number that is nobody's order number. */
+  po: { po: string };
+  /** A handling-unit code (LPN). */
+  lpn: { lpn: string };
+}
+
+const CORPUS_ORDER = `
+WITH o AS (${ONE_ROW_ORDERS})
+SELECT o.order_id AS "orderNumber", COALESCE(c.display_name, c.customer_name) AS "customerName"
+  FROM o
+  JOIN orders oo ON oo.id = o.id AND oo.organization_id = $1
+  JOIN customers c ON c.id = oo.customer_id AND c.organization_id = $1
+ WHERE oo.account_source IS NOT NULL AND o.order_id ~ '^\\d{3}-\\d{7}-\\d{7}$'
+   AND COALESCE(c.display_name, c.customer_name) ~ '^[A-Z][a-z]+ [A-Z][a-z]+$'
+ ORDER BY o.id DESC
+ LIMIT 1`;
+
+const CORPUS_TRACKING = `
+SELECT stn.tracking_number_raw AS tracking, o.order_id AS "orderNumber"
+  FROM orders o
+  JOIN shipping_tracking_numbers stn ON stn.id = o.shipment_id
+ WHERE o.organization_id = $1 AND stn.tracking_number_raw ~ '^1Z[0-9A-Z]{16}$'
+   AND (SELECT count(*) FROM orders o2 WHERE o2.organization_id = $1 AND o2.shipment_id = o.shipment_id) = 1
+   AND (SELECT count(*) FROM orders o3 WHERE o3.organization_id = $1 AND upper(btrim(o3.order_id)) = upper(btrim(o.order_id))) = 1
+ ORDER BY o.id DESC
+ LIMIT 1`;
+
+const CORPUS_SERIAL = `
+SELECT su.serial_number AS serial, su.sku
+  FROM serial_units su
+ WHERE su.organization_id = $1 AND su.serial_number ~ '^[A-Z0-9]{10,}$' AND su.serial_number ~ '[A-Z]' AND su.serial_number ~ '[0-9]'
+   AND EXISTS (SELECT 1 FROM sku_catalog sc WHERE sc.organization_id = $1 AND sc.sku = su.sku)
+   AND (SELECT count(*) FROM serial_units s2 WHERE s2.organization_id = $1 AND s2.normalized_serial = su.normalized_serial) = 1
+ ORDER BY su.id DESC
+ LIMIT 1`;
+
+const CORPUS_CUSTOMER = `
+WITH c AS (
+  SELECT COALESCE(c.display_name, c.customer_name) AS name, c.email,
+         right(regexp_replace(COALESCE(NULLIF(btrim(c.phone), ''), c.mobile, ''), '\\D', '', 'g'), 10) AS phone, c.id
+    FROM customers c
+   WHERE c.organization_id = $1 AND c.email ~ '^[a-z0-9._-]+@[a-z0-9.-]+\\.[a-z]{2,}$' AND c.email !~ 'members\\.ebay|marketplace'
+     AND EXISTS (SELECT 1 FROM orders o WHERE o.organization_id = $1 AND o.customer_id = c.id)
+)
+SELECT c.name, c.email, c.phone
+  FROM c
+ WHERE c.name ~ '^[A-Z][a-z]+ [A-Z][a-z]+$' AND length(c.phone) = 10
+   AND (SELECT count(*) FROM c c2 WHERE lower(c2.name) = lower(c.name)) = 1
+   AND (SELECT count(*) FROM c c3 WHERE c3.phone = c.phone) = 1
+   AND (SELECT count(*) FROM c c4 WHERE lower(c4.email) = lower(c.email)) = 1
+ ORDER BY c.id DESC
+ LIMIT 1`;
+
+const CORPUS_PO = `
+SELECT r.zoho_purchaseorder_number AS po
+  FROM receiving_carton r
+ WHERE r.organization_id = $1 AND r.zoho_purchaseorder_number ~ '^\\d{2}-\\d{5}-\\d{5}$'
+   AND (SELECT count(*) FROM receiving_carton r2 WHERE r2.organization_id = $1 AND r2.zoho_purchaseorder_number = r.zoho_purchaseorder_number) = 1
+   AND NOT EXISTS (SELECT 1 FROM orders o WHERE o.organization_id = $1 AND (o.order_id = r.zoho_purchaseorder_number OR o.item_number = r.zoho_purchaseorder_number))
+ ORDER BY r.id DESC
+ LIMIT 1`;
+
+const CORPUS_LPN = `
+SELECT hu.code AS lpn
+  FROM handling_units hu
+ WHERE hu.organization_id = $1 AND hu.code ~ '^H-\\d+$'
+ ORDER BY (SELECT count(*) FROM serial_units su WHERE su.organization_id = $1 AND su.handling_unit_id = hu.id) DESC, hu.id DESC
+ LIMIT 1`;
+
+async function loadCorpus(q: <R>(sql: string, params: unknown[]) => Promise<R[]>, orgId: string): Promise<CorpusFixtures> {
+  const one = async <R>(sql: string, what: string) => need((await q<R>(sql, [orgId]))[0], what);
+  return {
+    order: await one(CORPUS_ORDER, 'marketplace order with a named buyer'),
+    tracking: await one(CORPUS_TRACKING, 'UPS tracking on one order'),
+    serial: await one(CORPUS_SERIAL, 'catalogued serial'),
+    customer: await one(CORPUS_CUSTOMER, 'buyer with a unique name, email and phone'),
+    po: await one(CORPUS_PO, 'receiving PO number'),
+    lpn: await one(CORPUS_LPN, 'LPN'),
+  };
+}
+
+// ── end AiSpeed corpus ───────────────────────────────────────────────────────
 
 function need<T>(row: T | undefined, what: string): T {
   if (!row) throw new Error(`ai-eval fixtures: no live ${what} in this org — the golden cannot be built`);
@@ -179,6 +291,8 @@ export function loadFixtures(tenantSlug: string): Promise<EvalFixtures> {
     if (probe?.found) throw new Error(`ai-eval fixtures: "${unknownSku}" exists now — pick another unknown SKU`);
     const [withLabel] = await q<{ orderNumber: string }>(ORDER_WITH_LABEL, [orgId]);
     const [noDocs] = await q<{ orderNumber: string }>(ORDER_NO_DOCS, [orgId]);
+    const unprinted = await q<{ id: number; orderNumber: string }>(UNPRINTED_ORDERS, [orgId]);
+    if (unprinted.length < 2) throw new Error('ai-eval fixtures: need two never-printed orders with a label and a slip');
     return {
       orgId,
       multiBin: pairOf(need(pairs[0], 'SKU stocked in two bins')),
@@ -190,6 +304,9 @@ export function loadFixtures(tenantSlug: string): Promise<EvalFixtures> {
       unknownSku,
       orderWithLabel: need(withLabel, 'order with a shipping label and packing slip'),
       orderNoDocs: need(noDocs, 'order with no documents'),
+      unprintedOrders: unprinted,
+      corpus: await loadCorpus(q, orgId),
+      chatReads: await loadChatReadsFixtures(q, orgId),
     };
   });
 }

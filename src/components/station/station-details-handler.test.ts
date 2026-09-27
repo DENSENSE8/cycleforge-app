@@ -38,5 +38,5 @@ test('techRecordToDetail maps test_activity_at from created_at', () => {
   });
   assert.equal(detail.test_date_time, '2026-07-01 12:00:00');
   assert.equal(detail.test_activity_at, '2026-07-01 12:00:00');
-  assert.equal(detail.tester_id, 3);
+  assert.equal(detail.tested_by, 3);
 });

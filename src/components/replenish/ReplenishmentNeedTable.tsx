@@ -145,13 +145,13 @@ export function ReplenishmentNeedTable({ skuSearch, statusFilter }: Replenishmen
       });
       const payload = await response.json().catch(() => null) as {
         error?: string;
-        created_pos?: Array<{ zoho_po_number: string }>;
+        purchase_orders?: Array<{ order_number: string }>;
       } | null;
       if (!response.ok) throw new Error(payload?.error || 'Draft PO creation failed');
       setSelectedIds(new Set());
       await refresh();
-      const count = payload?.created_pos?.length ?? 0;
-      toast.success(count === 1 ? 'Created 1 Zoho draft PO' : `Created ${count} Zoho draft POs`);
+      const count = payload?.purchase_orders?.length ?? 0;
+      toast.success(count === 1 ? 'Created 1 purchase order on Incoming' : `Created ${count} purchase orders on Incoming`);
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Draft PO creation failed');
     } finally {
@@ -190,8 +190,8 @@ export function ReplenishmentNeedTable({ skuSearch, statusFilter }: Replenishmen
       navigation={navigation.available ? navigation : undefined}
       toolbar={
         <>
-          <span className="min-w-0 flex-1 truncate px-2 font-mono text-role-micro font-bold uppercase tracking-[0.08em] text-mode-muted">
-            {statusFilter ? statusFilter.replaceAll('_', ' ') : 'Active requests'}
+          <span className="mode-label min-w-0 flex-1 truncate px-2 text-mode-muted first-letter:uppercase">
+            {statusFilter ? statusFilter.replaceAll('_', ' ').toLowerCase() : 'Active requests'}
           </span>
           <Button
             type="button"

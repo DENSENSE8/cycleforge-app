@@ -4,7 +4,7 @@
  * identity (title / qty·condition) — not the old order ship-out chrome.
  */
 
-import type { TechRecord } from '@/hooks/useTechLogs';
+import type { TechRecord } from '@/hooks/useDeskPickLogs';
 import { hasUsableProductTitle } from '@/hooks/station/useTechTableController';
 import { normalizeProductTitle } from '@/components/station/tech-record-mappers';
 import type { RailRowVM } from '@/components/sidebar/rail-shell/RailRowBody';

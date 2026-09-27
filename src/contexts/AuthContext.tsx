@@ -39,6 +39,8 @@ const CLIENT_PUBLIC_PATHS: ReadonlyArray<RegExp> = [
   /^\/m\/r\/\d+(?:$|\/)/,
   // Generic anon QR landing — must match proxy.ts PUBLIC_PATHS.
   /^\/qr(?:$|\/)/,
+  // Square checkout thank-you landing — must match proxy.ts PUBLIC_PATHS.
+  /^\/pay\/thanks(?:$|\/)/,
 ];
 
 export function isClientPublicPath(pathname: string | null): boolean {

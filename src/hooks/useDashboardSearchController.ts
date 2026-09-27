@@ -19,6 +19,7 @@ import {
 } from '@/utils/dashboard-preferences';
 import { normalizeShippedSearchField, type ShippedSearchField } from '@/lib/shipped-search';
 import { useDeskSearch } from '@/lib/outbound/desk-search-store';
+import { ORDER_PREFILL_PARAM } from '@/lib/orders/manual-order-draft';
 export type ShippedTypeFilter = 'all' | 'orders' | 'sku' | 'fba';
 
 /**
@@ -100,6 +101,8 @@ export function useDashboardSearchController() {
     if (next === 'manual') params.set('new', 'true');
     if (next === 'triage') params.set('triage', triageTargetRef.current);
     else params.delete('triage');
+    // A chat-drafted phone order's `prefill` belongs to one new-order session only.
+    if (next !== 'triage' || triageTargetRef.current !== 'new') params.delete(ORDER_PREFILL_PARAM);
   }, []);
 
   const { value: ingestMode, setValue: setIngestMode } = useOptimisticUrlParam<OutboundIngestMode>({
@@ -168,6 +171,7 @@ export function useDashboardSearchController() {
       triageTargetRef.current = String(orderId);
       updateSearch((params) => {
         params.set('triage', String(orderId));
+        params.delete(ORDER_PREFILL_PARAM);
       });
     },
     [updateSearch],

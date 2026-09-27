@@ -3,7 +3,8 @@
 /**
  * Inbound desk header CTA — **Add** (primary) plus Import menu.
  *
- * Add / Add return open the centred receiving-order composer on either lane.
+ * Add / Add return open the one inbound-order form (2/3 | 1/3 triage stage)
+ * on either lane — Add return only pre-picks the Return type.
  * Also consumes Global Header Add intents for Incoming.
  */
 
@@ -67,11 +68,11 @@ export function IncomingDeskAddAction() {
   const returnsCsv = useTableImportFilePicker(INBOUND_RETURNS_IMPORT_DESCRIPTOR);
 
   const openIntake = useCallback(() => {
-    openReceivingOrderComposer('purchase');
+    openReceivingOrderComposer('PO');
   }, []);
 
   const openReturn = useCallback(() => {
-    openReceivingOrderComposer('return');
+    openReceivingOrderComposer('RETURN');
   }, []);
 
   const armReturnsImport = useCallback(() => {

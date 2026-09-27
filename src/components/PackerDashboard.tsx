@@ -1,7 +1,6 @@
 'use client';
 
 import React from 'react';
-import { useQueryClient } from '@tanstack/react-query';
 import { PackerRightPane } from '@/components/packer/PackerRightPane';
 import {
   dispatchPackActiveFba,
@@ -10,7 +9,6 @@ import {
 } from '@/components/packer/usePackerOrderPane';
 import { StationDetailsHandler } from './station/StationDetailsHandler';
 import { useRealtimeToasts } from '@/hooks/useRealtimeToasts';
-import { useRefreshSignal } from '@/lib/refresh/bus';
 
 interface PackerDashboardProps {
   packerId: string;
@@ -18,14 +16,8 @@ interface PackerDashboardProps {
 
 export default function PackerDashboard({ packerId }: PackerDashboardProps) {
   useRealtimeToasts('packer');
-  const queryClient = useQueryClient();
   const { activeOrderPane, setActiveOrderPane, activeFbaPane, setActiveFbaPane } =
     usePackerOrderPane();
-
-  // Invalidate the packer-logs query in place (station-table-unification §Phase 2).
-  useRefreshSignal('packer.logs', () => {
-    queryClient.invalidateQueries({ queryKey: ['packer-logs'] });
-  });
 
   return (
     <>

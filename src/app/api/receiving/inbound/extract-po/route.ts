@@ -1,7 +1,7 @@
 /**
  * POST /api/receiving/inbound/extract-po
  *
- * Screenshot / text → structured Incoming PO draft (not persisted).
+ * Screenshot / text → an InboundOrderDraft (not persisted).
  */
 
 import { NextRequest, NextResponse } from 'next/server';
@@ -9,11 +9,7 @@ import { z } from 'zod';
 import { withAuth } from '@/lib/auth/withAuth';
 import { parseBody } from '@/lib/schemas/parse';
 import { extractPoIntake } from '@/lib/inbound/extract-po-llm';
-import {
-  canConfirmPoIntake,
-  missingPoIntakeFields,
-  poIntakeMissingPrompt,
-} from '@/lib/inbound/po-intake-draft';
+import { inboundOrderMissing, inboundOrderMissingSentence } from '@/lib/inbound/inbound-order-draft';
 
 const Body = z.object({
   text: z.string().trim().max(20_000).optional().nullable(),
@@ -50,29 +46,13 @@ export const POST = withAuth(async (request: NextRequest, ctx) => {
       imageDataUrl,
       imageDataUrls,
     });
-    const missing = missingPoIntakeFields(result.draft);
+    const missing = inboundOrderMissing(result.draft);
     return NextResponse.json({
       success: true,
-      draft: {
-        platform: result.draft.platform,
-        order_id: result.draft.orderId,
-        seller: result.draft.seller,
-        account_name: result.draft.accountName,
-        tracking_number: result.draft.trackingNumber,
-        carrier_code: result.draft.carrierCode,
-        priority: result.draft.priority,
-        notes: result.draft.notes,
-        lines: result.draft.lines.map((l) => ({
-          sku: l.sku,
-          item_name: l.itemName,
-          quantity: l.quantity,
-          line_item_id: l.lineItemId,
-          listing_url: l.listingUrl,
-        })),
-      },
+      draft: result.draft,
       missing,
-      missing_prompt: poIntakeMissingPrompt(missing),
-      ready: canConfirmPoIntake(result.draft),
+      missing_prompt: inboundOrderMissingSentence(missing),
+      ready: missing.length === 0,
       model: result.model,
       usage: result.usage,
     });

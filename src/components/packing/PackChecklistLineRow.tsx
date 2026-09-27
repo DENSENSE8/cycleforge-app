@@ -1,18 +1,13 @@
 'use client';
 
-import { useState } from 'react';
 import Image from 'next/image';
-import { AnimatePresence, motion } from '@/design-system/motion';
+import { AnimatePresence } from '@/design-system/motion';
 import { Check, ChevronDown, FileText, Package } from '@/components/Icons';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { SkuScanRefChip, getLast8 } from '@/components/ui/CopyChip';
 import { InlineNotice } from '@/design-system/components';
 import { Button } from '@/design-system/primitives';
-import { motionPresence, motionTransition } from '@/design-system/foundations/motion-presets';
-import {
-  useMotionPresence,
-  useMotionTransition,
-} from '@/design-system/foundations/motion-presets-hooks';
+import { CollapseItem } from '@/design-system/components/Collapse';
 import { PoLineHeaderThumb } from '@/components/receiving/workspace/PoLineHeaderThumb';
 import { PO_LINE_HEADER_FACE } from '@/components/receiving/workspace/station-scan-face';
 import type { PackChecklistLineDto, PackKitPartDto, PackCheckDto } from '@/lib/packing/order-pack-checklist';
@@ -63,22 +58,9 @@ function KitPartDocumentStrip({
   onView: () => void;
   onPrint: () => void;
 }) {
-  const [settled, setSettled] = useState(false);
-  const presence = useMotionPresence(motionPresence.collapseHeight);
-  const transition = useMotionTransition(motionTransition.stationCollapse);
-
   return (
-    <motion.div
-      initial={presence.initial}
-      animate={presence.animate}
-      exit={presence.exit}
-      transition={transition}
-      onAnimationStart={() => setSettled(false)}
-      onAnimationComplete={() => setSettled(true)}
-      className={cn('px-1 -mx-1', settled ? 'overflow-visible' : 'overflow-hidden')}
-      data-testid="kit-part-document-strip"
-    >
-      <div className="mt-1 flex items-center gap-2 rounded-none border border-border-soft bg-surface-card px-2 py-1.5">
+    <CollapseItem className="pt-1" data-testid="kit-part-document-strip">
+      <div className="flex items-center gap-2 rounded-none border border-border-soft bg-surface-card px-2 py-1.5">
         <FileText className="h-3.5 w-3.5 shrink-0 text-text-soft" aria-hidden />
         <span className="min-w-0 flex-1 truncate text-role-micro font-semibold text-text-muted">
           {doc.title}
@@ -90,7 +72,7 @@ function KitPartDocumentStrip({
           Print
         </Button>
       </div>
-    </motion.div>
+    </CollapseItem>
   );
 }
 

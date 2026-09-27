@@ -9,7 +9,6 @@ import { ChevronRight, Camera } from '@/components/Icons';
 import { MobileDetailTopBar } from '@/components/mobile/redesign/MobileDetailTopBar';
 import { PhotoFab } from '@/components/mobile/receiving/PhotoFab';
 import { MobileReceivingPhotoStrip } from '@/components/mobile/receiving/MobileReceivingPhotoStrip';
-import { useRealtimeInvalidation } from '@/hooks/useRealtimeInvalidation';
 import { poHeaderStatusChipClass } from '@/lib/po-header-status';
 import { workflowStatusTableLabel } from '@/lib/receiving/receiving-constants';
 import { workflowStageBadge } from '@/lib/receiving/workflow-stages';
@@ -62,10 +61,6 @@ export default function MobilePoDetailPage(props: { params: Promise<{ poId: stri
   const [tab, setTab] = useState<Tab>('items');
   const { user } = useAuth();
   const staffId = user?.staffId ?? 0;
-  // Refresh header/items/photos when receiving-log events fire (desktop scan,
-  // QA update, another phone uploaded a photo for this PO).
-  useRealtimeInvalidation({ receiving: true });
-
   const { data, isLoading, error } = useQuery<DetailResponse>({
     queryKey: ['receiving-po-detail', poId],
     queryFn: async () => {

@@ -14,7 +14,6 @@ function order(over: Partial<ShippedOrder> & Pick<ShippedOrder, 'id'>): ShippedO
     condition: 'Used',
     serial_number: '',
     sku: 'SKU-1',
-    tester_id: null,
     tested_by: null,
     test_date_time: null,
     packer_id: null,
@@ -104,23 +103,25 @@ describe('shippedOrderAsWorkRow', () => {
     assert.equal(row.outOfStock, 'Out of stock');
   });
 
-  it('marks packer or tech assignment as ASSIGNED', () => {
+  it('marks packer or picker assignment as ASSIGNED', () => {
     assert.equal(shippedOrderAsWorkRow(order({ id: 1, packer_id: 9 })).status, 'ASSIGNED');
-    assert.equal(shippedOrderAsWorkRow(order({ id: 2, tester_id: 3 })).status, 'ASSIGNED');
+    assert.equal(shippedOrderAsWorkRow(order({ id: 2, picker_id: 3 })).status, 'ASSIGNED');
   });
 
-  it('maps assigned staff colour onto the phone Pick / Packed marks', () => {
+  it('maps the picker and its colour onto the phone Pick mark', () => {
     const row = shippedOrderAsWorkRow(
       order({
         id: 8,
-        tester_id: 4,
-        tester_name: 'Sang',
-        tester_color_hex: '#E11D48',
+        picker_id: 4,
+        picker_name: 'Sang',
+        picker_color_hex: '#E11D48',
         packer_id: 3,
         packer_name: 'Tuan',
         packer_color_hex: '#2563EB',
       }),
     );
+    assert.equal(row.techId, 4);
+    assert.equal(row.techName, 'Sang');
     assert.equal(row.techColorHex, '#e11d48');
     assert.equal(row.packerColorHex, '#2563eb');
     assert.equal(row.packerName, 'Tuan');

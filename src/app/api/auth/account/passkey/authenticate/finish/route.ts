@@ -85,7 +85,7 @@ export async function POST(req: NextRequest) {
     });
 
     void pool.query(`UPDATE accounts SET last_login_at = now() WHERE id = $1`, [accountId]).catch(() => {});
-    const { firstSigninToday } = await recordStaffLogin(pool, target.staff_id);
+    const login = await recordStaffLogin(pool, target.staff_id);
 
     await audit({
       staffId: target.staff_id, sid: session.sid,
@@ -98,7 +98,9 @@ export async function POST(req: NextRequest) {
       ok: true,
       organizationId: target.organization_id,
       workspaces: memberships.length,
-      firstSigninToday,
+      role: login.role,
+      defaultHomePath: login.defaultHomePath,
+      defaultHomePathMobile: login.defaultHomePathMobile,
     });
     res.cookies.set(SESSION_COOKIE_NAME, session.sid, {
       httpOnly: true, secure: process.env.NODE_ENV === 'production',

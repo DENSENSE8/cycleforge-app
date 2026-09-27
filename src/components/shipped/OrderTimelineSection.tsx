@@ -55,15 +55,19 @@ function tag(items: TimelineItem[], lens: TaggedItem['lens']): TaggedItem[] {
 export function OrderTimelineSection({
   orderId,
   flush = false,
+  initialLimit,
   initialLens = 'all',
 }: {
   orderId: number;
   flush?: boolean;
+  /** Progressive disclosure: paint the newest N events; the rest open in place. */
+  initialLimit?: number;
   initialLens?: OrderTimelineLens;
 }) {
   const [groupMode, setGroupMode] = useState<TimelineGroupMode>('time');
   const [lens, setLens] = useState<OrderTimelineLens>(initialLens);
   const [showPhotos, setShowPhotos] = useState(false);
+  const [showAll, setShowAll] = useState(false);
 
   const { data, isLoading } = useQuery(orderTimelineQuery(orderId));
 
@@ -150,9 +154,13 @@ export function OrderTimelineSection({
   // Only offer the serial view when there's at least one identifier to group by.
   const hasSerials = useMemo(() => items.some((it) => it.ref), [items]);
 
+  const hiddenCount = !showAll && initialLimit != null ? Math.max(0, items.length - initialLimit) : 0;
+
   return (
+    <>
     <TimelineSection
-      items={items}
+      title="Timeline"
+      items={hiddenCount > 0 ? items.slice(0, initialLimit) : items}
       loading={isLoading}
       groupMode={groupMode}
       className={
@@ -198,5 +206,13 @@ export function OrderTimelineSection({
         ) : undefined
       }
     />
+    {hiddenCount > 0 ? (
+      <div className={flush ? 'px-3 pb-4' : 'mx-8 pb-6'}>
+        <Button variant="ghost" size="sm" onClick={() => setShowAll(true)} data-testid="order-timeline-show-all">
+          Show {hiddenCount} earlier {hiddenCount === 1 ? 'event' : 'events'}
+        </Button>
+      </div>
+    ) : null}
+    </>
   );
 }

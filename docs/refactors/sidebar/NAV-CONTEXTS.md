@@ -1,6 +1,6 @@
 # NAV-CONTEXTS — every page's resolved NavContext
 
-Generated 2026-09-26 by `resolveNavContext` with the full permission set, no org nav override, no rollout overrides (all pages `legacy`). Regenerate after registry changes; `GET /api/nav/context?path=<href>` returns the same shape per caller.
+Generated 2026-09-27 by `resolveNavContext` with the full permission set, no org nav override, no rollout overrides (all pages `legacy`). Regenerate after registry changes; `GET /api/nav/context?path=<href>` returns the same shape per caller.
 
 ## home — Daily (`/`)
 
@@ -22,6 +22,13 @@ Generated 2026-09-26 by `resolveNavContext` with the full permission set, no org
    "id": "top",
    "items": [
     {
+     "id": "ai-chat",
+     "label": "Chat",
+     "href": "/ai-chat",
+     "active": false,
+     "kind": "drill"
+    },
+    {
      "id": "home",
      "label": "Daily",
      "href": "/",
@@ -36,13 +43,6 @@ Generated 2026-09-26 by `resolveNavContext` with the full permission set, no org
      "kind": "link"
     },
     {
-     "id": "ai-chat",
-     "label": "Chat",
-     "href": "/ai-chat",
-     "active": false,
-     "kind": "link"
-    },
-    {
      "id": "reports",
      "label": "Reports",
      "href": "/reports",
@@ -52,82 +52,12 @@ Generated 2026-09-26 by `resolveNavContext` with the full permission set, no org
    ]
   },
   {
-   "id": "floor",
-   "label": "Scan Stations",
-   "items": [
-    {
-     "id": "triage",
-     "label": "Arrival",
-     "href": "/triage",
-     "active": false,
-     "kind": "link"
-    },
-    {
-     "id": "receive",
-     "label": "Unbox",
-     "href": "/unbox",
-     "active": false,
-     "kind": "link"
-    },
-    {
-     "id": "pickup",
-     "label": "Local Pickup",
-     "href": "/pickup",
-     "active": false,
-     "kind": "link"
-    },
-    {
-     "id": "repair",
-     "label": "Repair Service",
-     "href": "/repair",
-     "active": false,
-     "kind": "link"
-    },
-    {
-     "id": "testing",
-     "label": "Quality Control",
-     "href": "/test?view=testing",
-     "active": false,
-     "kind": "link"
-    },
-    {
-     "id": "ready-to-pack",
-     "label": "Picker",
-     "href": "/test?ship=urgent",
-     "active": false,
-     "kind": "link"
-    },
-    {
-     "id": "packer",
-     "label": "Packing",
-     "href": "/pack",
-     "active": false,
-     "kind": "link"
-    },
-    {
-     "id": "scan-out",
-     "label": "Scan out",
-     "href": "/shipping/scan-out",
-     "active": false,
-     "kind": "link"
-    }
-   ]
-  },
-  {
    "id": "inbound",
-   "label": "Inbound",
    "items": [
     {
      "id": "incoming",
-     "label": "Deliveries",
+     "label": "Inbound",
      "href": "/incoming",
-     "active": false,
-     "kind": "drill"
-    },
-    {
-     "id": "sourcing",
-     "label": "Sourcing",
-     "href": "/sourcing",
      "active": false,
      "kind": "drill"
     }
@@ -135,28 +65,13 @@ Generated 2026-09-26 by `resolveNavContext` with the full permission set, no org
   },
   {
    "id": "fulfillment",
-   "label": "Outbound",
    "items": [
     {
      "id": "outbound",
-     "label": "Shipping",
+     "label": "Outbound",
      "href": "/shipping/orders",
      "active": false,
      "kind": "drill"
-    },
-    {
-     "id": "fba",
-     "label": "FBA",
-     "href": "/shipping/fba",
-     "active": false,
-     "kind": "drill"
-    },
-    {
-     "id": "label-intake",
-     "label": "Label intake",
-     "href": "/shipping/label-intake",
-     "active": false,
-     "kind": "link"
     }
    ]
   },
@@ -207,6 +122,68 @@ Generated 2026-09-26 by `resolveNavContext` with the full permission set, no org
      "kind": "drill"
     }
    ]
+  },
+  {
+   "id": "floor",
+   "label": "Scan Stations",
+   "items": [
+    {
+     "id": "triage",
+     "label": "Arrival",
+     "href": "/triage",
+     "active": false,
+     "kind": "link"
+    },
+    {
+     "id": "receive",
+     "label": "Unbox",
+     "href": "/unbox",
+     "active": false,
+     "kind": "link"
+    },
+    {
+     "id": "pickup",
+     "label": "Local Pickup",
+     "href": "/pickup",
+     "active": false,
+     "kind": "link"
+    },
+    {
+     "id": "repair",
+     "label": "Repair Service",
+     "href": "/repair",
+     "active": false,
+     "kind": "link"
+    },
+    {
+     "id": "testing",
+     "label": "Quality Control",
+     "href": "/test",
+     "active": false,
+     "kind": "link"
+    },
+    {
+     "id": "ready-to-pack",
+     "label": "Picker",
+     "href": "/pick?ship=urgent",
+     "active": false,
+     "kind": "link"
+    },
+    {
+     "id": "packer",
+     "label": "Packing",
+     "href": "/pack",
+     "active": false,
+     "kind": "link"
+    },
+    {
+     "id": "scan-out",
+     "label": "Scan out",
+     "href": "/shipping/scan-out",
+     "active": false,
+     "kind": "link"
+    }
+   ]
   }
  ],
  "params": [
@@ -231,6 +208,52 @@ Generated 2026-09-26 by `resolveNavContext` with the full permission set, no org
   }
  ],
  "rollout": "legacy"
+}
+```
+
+## ai-chat — Chat (`/ai-chat`)
+
+```json
+{
+ "scope": "section",
+ "page": {
+  "id": "ai-chat",
+  "label": "Chat"
+ },
+ "back": {
+  "label": "Chat",
+  "mode": "local"
+ },
+ "search": {
+  "scope": "ai-chat",
+  "placeholder": "Search chats",
+  "source": "desk-store"
+ },
+ "sections": [],
+ "params": [],
+ "recents": {
+  "endpoint": "/api/nav/recents?surface=assistant.sessions",
+  "surface": "assistant.sessions",
+  "find": true,
+  "paged": true,
+  "rowActions": {
+   "endpoint": "/api/ai/chat-sessions/{id}",
+   "verbs": [
+    "rename",
+    "delete"
+   ]
+  },
+  "chords": true
+ },
+ "actions": [
+  {
+   "id": "chat.new",
+   "label": "New chat",
+   "intent": "ai-chat:new",
+   "hotkey": "mod+shift+o"
+  }
+ ],
+ "rollout": "contextual"
 }
 ```
 
@@ -591,6 +614,13 @@ Generated 2026-09-26 by `resolveNavContext` with the full permission set, no org
    "id": "top",
    "items": [
     {
+     "id": "ai-chat",
+     "label": "Chat",
+     "href": "/ai-chat",
+     "active": false,
+     "kind": "drill"
+    },
+    {
      "id": "home",
      "label": "Daily",
      "href": "/",
@@ -605,13 +635,6 @@ Generated 2026-09-26 by `resolveNavContext` with the full permission set, no org
      "kind": "link"
     },
     {
-     "id": "ai-chat",
-     "label": "Chat",
-     "href": "/ai-chat",
-     "active": false,
-     "kind": "link"
-    },
-    {
      "id": "reports",
      "label": "Reports",
      "href": "/reports",
@@ -621,82 +644,12 @@ Generated 2026-09-26 by `resolveNavContext` with the full permission set, no org
    ]
   },
   {
-   "id": "floor",
-   "label": "Scan Stations",
-   "items": [
-    {
-     "id": "triage",
-     "label": "Arrival",
-     "href": "/triage",
-     "active": true,
-     "kind": "link"
-    },
-    {
-     "id": "receive",
-     "label": "Unbox",
-     "href": "/unbox",
-     "active": false,
-     "kind": "link"
-    },
-    {
-     "id": "pickup",
-     "label": "Local Pickup",
-     "href": "/pickup",
-     "active": false,
-     "kind": "link"
-    },
-    {
-     "id": "repair",
-     "label": "Repair Service",
-     "href": "/repair",
-     "active": false,
-     "kind": "link"
-    },
-    {
-     "id": "testing",
-     "label": "Quality Control",
-     "href": "/test?view=testing",
-     "active": false,
-     "kind": "link"
-    },
-    {
-     "id": "ready-to-pack",
-     "label": "Picker",
-     "href": "/test?ship=urgent",
-     "active": false,
-     "kind": "link"
-    },
-    {
-     "id": "packer",
-     "label": "Packing",
-     "href": "/pack",
-     "active": false,
-     "kind": "link"
-    },
-    {
-     "id": "scan-out",
-     "label": "Scan out",
-     "href": "/shipping/scan-out",
-     "active": false,
-     "kind": "link"
-    }
-   ]
-  },
-  {
    "id": "inbound",
-   "label": "Inbound",
    "items": [
     {
      "id": "incoming",
-     "label": "Deliveries",
+     "label": "Inbound",
      "href": "/incoming",
-     "active": false,
-     "kind": "drill"
-    },
-    {
-     "id": "sourcing",
-     "label": "Sourcing",
-     "href": "/sourcing",
      "active": false,
      "kind": "drill"
     }
@@ -704,28 +657,13 @@ Generated 2026-09-26 by `resolveNavContext` with the full permission set, no org
   },
   {
    "id": "fulfillment",
-   "label": "Outbound",
    "items": [
     {
      "id": "outbound",
-     "label": "Shipping",
+     "label": "Outbound",
      "href": "/shipping/orders",
      "active": false,
      "kind": "drill"
-    },
-    {
-     "id": "fba",
-     "label": "FBA",
-     "href": "/shipping/fba",
-     "active": false,
-     "kind": "drill"
-    },
-    {
-     "id": "label-intake",
-     "label": "Label intake",
-     "href": "/shipping/label-intake",
-     "active": false,
-     "kind": "link"
     }
    ]
   },
@@ -774,6 +712,68 @@ Generated 2026-09-26 by `resolveNavContext` with the full permission set, no org
      "href": "/studio",
      "active": false,
      "kind": "drill"
+    }
+   ]
+  },
+  {
+   "id": "floor",
+   "label": "Scan Stations",
+   "items": [
+    {
+     "id": "triage",
+     "label": "Arrival",
+     "href": "/triage",
+     "active": true,
+     "kind": "link"
+    },
+    {
+     "id": "receive",
+     "label": "Unbox",
+     "href": "/unbox",
+     "active": false,
+     "kind": "link"
+    },
+    {
+     "id": "pickup",
+     "label": "Local Pickup",
+     "href": "/pickup",
+     "active": false,
+     "kind": "link"
+    },
+    {
+     "id": "repair",
+     "label": "Repair Service",
+     "href": "/repair",
+     "active": false,
+     "kind": "link"
+    },
+    {
+     "id": "testing",
+     "label": "Quality Control",
+     "href": "/test",
+     "active": false,
+     "kind": "link"
+    },
+    {
+     "id": "ready-to-pack",
+     "label": "Picker",
+     "href": "/pick?ship=urgent",
+     "active": false,
+     "kind": "link"
+    },
+    {
+     "id": "packer",
+     "label": "Packing",
+     "href": "/pack",
+     "active": false,
+     "kind": "link"
+    },
+    {
+     "id": "scan-out",
+     "label": "Scan out",
+     "href": "/shipping/scan-out",
+     "active": false,
+     "kind": "link"
     }
    ]
   }
@@ -827,6 +827,13 @@ Generated 2026-09-26 by `resolveNavContext` with the full permission set, no org
    "id": "top",
    "items": [
     {
+     "id": "ai-chat",
+     "label": "Chat",
+     "href": "/ai-chat",
+     "active": false,
+     "kind": "drill"
+    },
+    {
      "id": "home",
      "label": "Daily",
      "href": "/",
@@ -841,13 +848,6 @@ Generated 2026-09-26 by `resolveNavContext` with the full permission set, no org
      "kind": "link"
     },
     {
-     "id": "ai-chat",
-     "label": "Chat",
-     "href": "/ai-chat",
-     "active": false,
-     "kind": "link"
-    },
-    {
      "id": "reports",
      "label": "Reports",
      "href": "/reports",
@@ -857,82 +857,12 @@ Generated 2026-09-26 by `resolveNavContext` with the full permission set, no org
    ]
   },
   {
-   "id": "floor",
-   "label": "Scan Stations",
-   "items": [
-    {
-     "id": "triage",
-     "label": "Arrival",
-     "href": "/triage",
-     "active": false,
-     "kind": "link"
-    },
-    {
-     "id": "receive",
-     "label": "Unbox",
-     "href": "/unbox",
-     "active": true,
-     "kind": "link"
-    },
-    {
-     "id": "pickup",
-     "label": "Local Pickup",
-     "href": "/pickup",
-     "active": false,
-     "kind": "link"
-    },
-    {
-     "id": "repair",
-     "label": "Repair Service",
-     "href": "/repair",
-     "active": false,
-     "kind": "link"
-    },
-    {
-     "id": "testing",
-     "label": "Quality Control",
-     "href": "/test?view=testing",
-     "active": false,
-     "kind": "link"
-    },
-    {
-     "id": "ready-to-pack",
-     "label": "Picker",
-     "href": "/test?ship=urgent",
-     "active": false,
-     "kind": "link"
-    },
-    {
-     "id": "packer",
-     "label": "Packing",
-     "href": "/pack",
-     "active": false,
-     "kind": "link"
-    },
-    {
-     "id": "scan-out",
-     "label": "Scan out",
-     "href": "/shipping/scan-out",
-     "active": false,
-     "kind": "link"
-    }
-   ]
-  },
-  {
    "id": "inbound",
-   "label": "Inbound",
    "items": [
     {
      "id": "incoming",
-     "label": "Deliveries",
+     "label": "Inbound",
      "href": "/incoming",
-     "active": false,
-     "kind": "drill"
-    },
-    {
-     "id": "sourcing",
-     "label": "Sourcing",
-     "href": "/sourcing",
      "active": false,
      "kind": "drill"
     }
@@ -940,28 +870,13 @@ Generated 2026-09-26 by `resolveNavContext` with the full permission set, no org
   },
   {
    "id": "fulfillment",
-   "label": "Outbound",
    "items": [
     {
      "id": "outbound",
-     "label": "Shipping",
+     "label": "Outbound",
      "href": "/shipping/orders",
      "active": false,
      "kind": "drill"
-    },
-    {
-     "id": "fba",
-     "label": "FBA",
-     "href": "/shipping/fba",
-     "active": false,
-     "kind": "drill"
-    },
-    {
-     "id": "label-intake",
-     "label": "Label intake",
-     "href": "/shipping/label-intake",
-     "active": false,
-     "kind": "link"
     }
    ]
   },
@@ -1010,6 +925,68 @@ Generated 2026-09-26 by `resolveNavContext` with the full permission set, no org
      "href": "/studio",
      "active": false,
      "kind": "drill"
+    }
+   ]
+  },
+  {
+   "id": "floor",
+   "label": "Scan Stations",
+   "items": [
+    {
+     "id": "triage",
+     "label": "Arrival",
+     "href": "/triage",
+     "active": false,
+     "kind": "link"
+    },
+    {
+     "id": "receive",
+     "label": "Unbox",
+     "href": "/unbox",
+     "active": true,
+     "kind": "link"
+    },
+    {
+     "id": "pickup",
+     "label": "Local Pickup",
+     "href": "/pickup",
+     "active": false,
+     "kind": "link"
+    },
+    {
+     "id": "repair",
+     "label": "Repair Service",
+     "href": "/repair",
+     "active": false,
+     "kind": "link"
+    },
+    {
+     "id": "testing",
+     "label": "Quality Control",
+     "href": "/test",
+     "active": false,
+     "kind": "link"
+    },
+    {
+     "id": "ready-to-pack",
+     "label": "Picker",
+     "href": "/pick?ship=urgent",
+     "active": false,
+     "kind": "link"
+    },
+    {
+     "id": "packer",
+     "label": "Packing",
+     "href": "/pack",
+     "active": false,
+     "kind": "link"
+    },
+    {
+     "id": "scan-out",
+     "label": "Scan out",
+     "href": "/shipping/scan-out",
+     "active": false,
+     "kind": "link"
     }
    ]
   }
@@ -1097,6 +1074,13 @@ Generated 2026-09-26 by `resolveNavContext` with the full permission set, no org
    "id": "top",
    "items": [
     {
+     "id": "ai-chat",
+     "label": "Chat",
+     "href": "/ai-chat",
+     "active": false,
+     "kind": "drill"
+    },
+    {
      "id": "home",
      "label": "Daily",
      "href": "/",
@@ -1111,13 +1095,6 @@ Generated 2026-09-26 by `resolveNavContext` with the full permission set, no org
      "kind": "link"
     },
     {
-     "id": "ai-chat",
-     "label": "Chat",
-     "href": "/ai-chat",
-     "active": false,
-     "kind": "link"
-    },
-    {
      "id": "reports",
      "label": "Reports",
      "href": "/reports",
@@ -1127,82 +1104,12 @@ Generated 2026-09-26 by `resolveNavContext` with the full permission set, no org
    ]
   },
   {
-   "id": "floor",
-   "label": "Scan Stations",
-   "items": [
-    {
-     "id": "triage",
-     "label": "Arrival",
-     "href": "/triage",
-     "active": false,
-     "kind": "link"
-    },
-    {
-     "id": "receive",
-     "label": "Unbox",
-     "href": "/unbox",
-     "active": false,
-     "kind": "link"
-    },
-    {
-     "id": "pickup",
-     "label": "Local Pickup",
-     "href": "/pickup",
-     "active": true,
-     "kind": "link"
-    },
-    {
-     "id": "repair",
-     "label": "Repair Service",
-     "href": "/repair",
-     "active": false,
-     "kind": "link"
-    },
-    {
-     "id": "testing",
-     "label": "Quality Control",
-     "href": "/test?view=testing",
-     "active": false,
-     "kind": "link"
-    },
-    {
-     "id": "ready-to-pack",
-     "label": "Picker",
-     "href": "/test?ship=urgent",
-     "active": false,
-     "kind": "link"
-    },
-    {
-     "id": "packer",
-     "label": "Packing",
-     "href": "/pack",
-     "active": false,
-     "kind": "link"
-    },
-    {
-     "id": "scan-out",
-     "label": "Scan out",
-     "href": "/shipping/scan-out",
-     "active": false,
-     "kind": "link"
-    }
-   ]
-  },
-  {
    "id": "inbound",
-   "label": "Inbound",
    "items": [
     {
      "id": "incoming",
-     "label": "Deliveries",
+     "label": "Inbound",
      "href": "/incoming",
-     "active": false,
-     "kind": "drill"
-    },
-    {
-     "id": "sourcing",
-     "label": "Sourcing",
-     "href": "/sourcing",
      "active": false,
      "kind": "drill"
     }
@@ -1210,28 +1117,13 @@ Generated 2026-09-26 by `resolveNavContext` with the full permission set, no org
   },
   {
    "id": "fulfillment",
-   "label": "Outbound",
    "items": [
     {
      "id": "outbound",
-     "label": "Shipping",
+     "label": "Outbound",
      "href": "/shipping/orders",
      "active": false,
      "kind": "drill"
-    },
-    {
-     "id": "fba",
-     "label": "FBA",
-     "href": "/shipping/fba",
-     "active": false,
-     "kind": "drill"
-    },
-    {
-     "id": "label-intake",
-     "label": "Label intake",
-     "href": "/shipping/label-intake",
-     "active": false,
-     "kind": "link"
     }
    ]
   },
@@ -1280,6 +1172,68 @@ Generated 2026-09-26 by `resolveNavContext` with the full permission set, no org
      "href": "/studio",
      "active": false,
      "kind": "drill"
+    }
+   ]
+  },
+  {
+   "id": "floor",
+   "label": "Scan Stations",
+   "items": [
+    {
+     "id": "triage",
+     "label": "Arrival",
+     "href": "/triage",
+     "active": false,
+     "kind": "link"
+    },
+    {
+     "id": "receive",
+     "label": "Unbox",
+     "href": "/unbox",
+     "active": false,
+     "kind": "link"
+    },
+    {
+     "id": "pickup",
+     "label": "Local Pickup",
+     "href": "/pickup",
+     "active": true,
+     "kind": "link"
+    },
+    {
+     "id": "repair",
+     "label": "Repair Service",
+     "href": "/repair",
+     "active": false,
+     "kind": "link"
+    },
+    {
+     "id": "testing",
+     "label": "Quality Control",
+     "href": "/test",
+     "active": false,
+     "kind": "link"
+    },
+    {
+     "id": "ready-to-pack",
+     "label": "Picker",
+     "href": "/pick?ship=urgent",
+     "active": false,
+     "kind": "link"
+    },
+    {
+     "id": "packer",
+     "label": "Packing",
+     "href": "/pack",
+     "active": false,
+     "kind": "link"
+    },
+    {
+     "id": "scan-out",
+     "label": "Scan out",
+     "href": "/shipping/scan-out",
+     "active": false,
+     "kind": "link"
     }
    ]
   }
@@ -1339,6 +1293,13 @@ Generated 2026-09-26 by `resolveNavContext` with the full permission set, no org
    "id": "top",
    "items": [
     {
+     "id": "ai-chat",
+     "label": "Chat",
+     "href": "/ai-chat",
+     "active": false,
+     "kind": "drill"
+    },
+    {
      "id": "home",
      "label": "Daily",
      "href": "/",
@@ -1353,13 +1314,6 @@ Generated 2026-09-26 by `resolveNavContext` with the full permission set, no org
      "kind": "link"
     },
     {
-     "id": "ai-chat",
-     "label": "Chat",
-     "href": "/ai-chat",
-     "active": false,
-     "kind": "link"
-    },
-    {
      "id": "reports",
      "label": "Reports",
      "href": "/reports",
@@ -1369,82 +1323,12 @@ Generated 2026-09-26 by `resolveNavContext` with the full permission set, no org
    ]
   },
   {
-   "id": "floor",
-   "label": "Scan Stations",
-   "items": [
-    {
-     "id": "triage",
-     "label": "Arrival",
-     "href": "/triage",
-     "active": false,
-     "kind": "link"
-    },
-    {
-     "id": "receive",
-     "label": "Unbox",
-     "href": "/unbox",
-     "active": false,
-     "kind": "link"
-    },
-    {
-     "id": "pickup",
-     "label": "Local Pickup",
-     "href": "/pickup",
-     "active": false,
-     "kind": "link"
-    },
-    {
-     "id": "repair",
-     "label": "Repair Service",
-     "href": "/repair",
-     "active": true,
-     "kind": "link"
-    },
-    {
-     "id": "testing",
-     "label": "Quality Control",
-     "href": "/test?view=testing",
-     "active": false,
-     "kind": "link"
-    },
-    {
-     "id": "ready-to-pack",
-     "label": "Picker",
-     "href": "/test?ship=urgent",
-     "active": false,
-     "kind": "link"
-    },
-    {
-     "id": "packer",
-     "label": "Packing",
-     "href": "/pack",
-     "active": false,
-     "kind": "link"
-    },
-    {
-     "id": "scan-out",
-     "label": "Scan out",
-     "href": "/shipping/scan-out",
-     "active": false,
-     "kind": "link"
-    }
-   ]
-  },
-  {
    "id": "inbound",
-   "label": "Inbound",
    "items": [
     {
      "id": "incoming",
-     "label": "Deliveries",
+     "label": "Inbound",
      "href": "/incoming",
-     "active": false,
-     "kind": "drill"
-    },
-    {
-     "id": "sourcing",
-     "label": "Sourcing",
-     "href": "/sourcing",
      "active": false,
      "kind": "drill"
     }
@@ -1452,28 +1336,13 @@ Generated 2026-09-26 by `resolveNavContext` with the full permission set, no org
   },
   {
    "id": "fulfillment",
-   "label": "Outbound",
    "items": [
     {
      "id": "outbound",
-     "label": "Shipping",
+     "label": "Outbound",
      "href": "/shipping/orders",
      "active": false,
      "kind": "drill"
-    },
-    {
-     "id": "fba",
-     "label": "FBA",
-     "href": "/shipping/fba",
-     "active": false,
-     "kind": "drill"
-    },
-    {
-     "id": "label-intake",
-     "label": "Label intake",
-     "href": "/shipping/label-intake",
-     "active": false,
-     "kind": "link"
     }
    ]
   },
@@ -1522,6 +1391,68 @@ Generated 2026-09-26 by `resolveNavContext` with the full permission set, no org
      "href": "/studio",
      "active": false,
      "kind": "drill"
+    }
+   ]
+  },
+  {
+   "id": "floor",
+   "label": "Scan Stations",
+   "items": [
+    {
+     "id": "triage",
+     "label": "Arrival",
+     "href": "/triage",
+     "active": false,
+     "kind": "link"
+    },
+    {
+     "id": "receive",
+     "label": "Unbox",
+     "href": "/unbox",
+     "active": false,
+     "kind": "link"
+    },
+    {
+     "id": "pickup",
+     "label": "Local Pickup",
+     "href": "/pickup",
+     "active": false,
+     "kind": "link"
+    },
+    {
+     "id": "repair",
+     "label": "Repair Service",
+     "href": "/repair",
+     "active": true,
+     "kind": "link"
+    },
+    {
+     "id": "testing",
+     "label": "Quality Control",
+     "href": "/test",
+     "active": false,
+     "kind": "link"
+    },
+    {
+     "id": "ready-to-pack",
+     "label": "Picker",
+     "href": "/pick?ship=urgent",
+     "active": false,
+     "kind": "link"
+    },
+    {
+     "id": "packer",
+     "label": "Packing",
+     "href": "/pack",
+     "active": false,
+     "kind": "link"
+    },
+    {
+     "id": "scan-out",
+     "label": "Scan out",
+     "href": "/shipping/scan-out",
+     "active": false,
+     "kind": "link"
     }
    ]
   }
@@ -1546,7 +1477,7 @@ Generated 2026-09-26 by `resolveNavContext` with the full permission set, no org
 }
 ```
 
-## testing — Quality Control (`/test?view=testing`)
+## testing — Quality Control (`/test`)
 
 ```json
 {
@@ -1566,6 +1497,13 @@ Generated 2026-09-26 by `resolveNavContext` with the full permission set, no org
    "id": "top",
    "items": [
     {
+     "id": "ai-chat",
+     "label": "Chat",
+     "href": "/ai-chat",
+     "active": false,
+     "kind": "drill"
+    },
+    {
      "id": "home",
      "label": "Daily",
      "href": "/",
@@ -1580,13 +1518,6 @@ Generated 2026-09-26 by `resolveNavContext` with the full permission set, no org
      "kind": "link"
     },
     {
-     "id": "ai-chat",
-     "label": "Chat",
-     "href": "/ai-chat",
-     "active": false,
-     "kind": "link"
-    },
-    {
      "id": "reports",
      "label": "Reports",
      "href": "/reports",
@@ -1596,82 +1527,12 @@ Generated 2026-09-26 by `resolveNavContext` with the full permission set, no org
    ]
   },
   {
-   "id": "floor",
-   "label": "Scan Stations",
-   "items": [
-    {
-     "id": "triage",
-     "label": "Arrival",
-     "href": "/triage",
-     "active": false,
-     "kind": "link"
-    },
-    {
-     "id": "receive",
-     "label": "Unbox",
-     "href": "/unbox",
-     "active": false,
-     "kind": "link"
-    },
-    {
-     "id": "pickup",
-     "label": "Local Pickup",
-     "href": "/pickup",
-     "active": false,
-     "kind": "link"
-    },
-    {
-     "id": "repair",
-     "label": "Repair Service",
-     "href": "/repair",
-     "active": false,
-     "kind": "link"
-    },
-    {
-     "id": "testing",
-     "label": "Quality Control",
-     "href": "/test?view=testing",
-     "active": true,
-     "kind": "link"
-    },
-    {
-     "id": "ready-to-pack",
-     "label": "Picker",
-     "href": "/test?ship=urgent",
-     "active": false,
-     "kind": "link"
-    },
-    {
-     "id": "packer",
-     "label": "Packing",
-     "href": "/pack",
-     "active": false,
-     "kind": "link"
-    },
-    {
-     "id": "scan-out",
-     "label": "Scan out",
-     "href": "/shipping/scan-out",
-     "active": false,
-     "kind": "link"
-    }
-   ]
-  },
-  {
    "id": "inbound",
-   "label": "Inbound",
    "items": [
     {
      "id": "incoming",
-     "label": "Deliveries",
+     "label": "Inbound",
      "href": "/incoming",
-     "active": false,
-     "kind": "drill"
-    },
-    {
-     "id": "sourcing",
-     "label": "Sourcing",
-     "href": "/sourcing",
      "active": false,
      "kind": "drill"
     }
@@ -1679,28 +1540,13 @@ Generated 2026-09-26 by `resolveNavContext` with the full permission set, no org
   },
   {
    "id": "fulfillment",
-   "label": "Outbound",
    "items": [
     {
      "id": "outbound",
-     "label": "Shipping",
+     "label": "Outbound",
      "href": "/shipping/orders",
      "active": false,
      "kind": "drill"
-    },
-    {
-     "id": "fba",
-     "label": "FBA",
-     "href": "/shipping/fba",
-     "active": false,
-     "kind": "drill"
-    },
-    {
-     "id": "label-intake",
-     "label": "Label intake",
-     "href": "/shipping/label-intake",
-     "active": false,
-     "kind": "link"
     }
    ]
   },
@@ -1751,24 +1597,74 @@ Generated 2026-09-26 by `resolveNavContext` with the full permission set, no org
      "kind": "drill"
     }
    ]
+  },
+  {
+   "id": "floor",
+   "label": "Scan Stations",
+   "items": [
+    {
+     "id": "triage",
+     "label": "Arrival",
+     "href": "/triage",
+     "active": false,
+     "kind": "link"
+    },
+    {
+     "id": "receive",
+     "label": "Unbox",
+     "href": "/unbox",
+     "active": false,
+     "kind": "link"
+    },
+    {
+     "id": "pickup",
+     "label": "Local Pickup",
+     "href": "/pickup",
+     "active": false,
+     "kind": "link"
+    },
+    {
+     "id": "repair",
+     "label": "Repair Service",
+     "href": "/repair",
+     "active": false,
+     "kind": "link"
+    },
+    {
+     "id": "testing",
+     "label": "Quality Control",
+     "href": "/test",
+     "active": true,
+     "kind": "link"
+    },
+    {
+     "id": "ready-to-pack",
+     "label": "Picker",
+     "href": "/pick?ship=urgent",
+     "active": false,
+     "kind": "link"
+    },
+    {
+     "id": "packer",
+     "label": "Packing",
+     "href": "/pack",
+     "active": false,
+     "kind": "link"
+    },
+    {
+     "id": "scan-out",
+     "label": "Scan out",
+     "href": "/shipping/scan-out",
+     "active": false,
+     "kind": "link"
+    }
+   ]
   }
  ],
  "params": [
-  "view",
   "search",
-  "ship",
   "testTab",
-  "packStation",
-  "packPlaced",
   "composerMode",
-  "stage",
-  "aging",
-  "attention",
-  "late",
-  "ustatus",
-  "rowFlag",
-  "cage",
-  "new",
   "staff",
   "staffId",
   "colsort",
@@ -1789,7 +1685,7 @@ Generated 2026-09-26 by `resolveNavContext` with the full permission set, no org
 }
 ```
 
-## ready-to-pack — Picker (`/test?ship=urgent`)
+## ready-to-pack — Picker (`/pick?ship=urgent`)
 
 ```json
 {
@@ -1809,6 +1705,13 @@ Generated 2026-09-26 by `resolveNavContext` with the full permission set, no org
    "id": "top",
    "items": [
     {
+     "id": "ai-chat",
+     "label": "Chat",
+     "href": "/ai-chat",
+     "active": false,
+     "kind": "drill"
+    },
+    {
      "id": "home",
      "label": "Daily",
      "href": "/",
@@ -1823,13 +1726,6 @@ Generated 2026-09-26 by `resolveNavContext` with the full permission set, no org
      "kind": "link"
     },
     {
-     "id": "ai-chat",
-     "label": "Chat",
-     "href": "/ai-chat",
-     "active": false,
-     "kind": "link"
-    },
-    {
      "id": "reports",
      "label": "Reports",
      "href": "/reports",
@@ -1839,82 +1735,12 @@ Generated 2026-09-26 by `resolveNavContext` with the full permission set, no org
    ]
   },
   {
-   "id": "floor",
-   "label": "Scan Stations",
-   "items": [
-    {
-     "id": "triage",
-     "label": "Arrival",
-     "href": "/triage",
-     "active": false,
-     "kind": "link"
-    },
-    {
-     "id": "receive",
-     "label": "Unbox",
-     "href": "/unbox",
-     "active": false,
-     "kind": "link"
-    },
-    {
-     "id": "pickup",
-     "label": "Local Pickup",
-     "href": "/pickup",
-     "active": false,
-     "kind": "link"
-    },
-    {
-     "id": "repair",
-     "label": "Repair Service",
-     "href": "/repair",
-     "active": false,
-     "kind": "link"
-    },
-    {
-     "id": "testing",
-     "label": "Quality Control",
-     "href": "/test?view=testing",
-     "active": false,
-     "kind": "link"
-    },
-    {
-     "id": "ready-to-pack",
-     "label": "Picker",
-     "href": "/test?ship=urgent",
-     "active": true,
-     "kind": "link"
-    },
-    {
-     "id": "packer",
-     "label": "Packing",
-     "href": "/pack",
-     "active": false,
-     "kind": "link"
-    },
-    {
-     "id": "scan-out",
-     "label": "Scan out",
-     "href": "/shipping/scan-out",
-     "active": false,
-     "kind": "link"
-    }
-   ]
-  },
-  {
    "id": "inbound",
-   "label": "Inbound",
    "items": [
     {
      "id": "incoming",
-     "label": "Deliveries",
+     "label": "Inbound",
      "href": "/incoming",
-     "active": false,
-     "kind": "drill"
-    },
-    {
-     "id": "sourcing",
-     "label": "Sourcing",
-     "href": "/sourcing",
      "active": false,
      "kind": "drill"
     }
@@ -1922,28 +1748,13 @@ Generated 2026-09-26 by `resolveNavContext` with the full permission set, no org
   },
   {
    "id": "fulfillment",
-   "label": "Outbound",
    "items": [
     {
      "id": "outbound",
-     "label": "Shipping",
+     "label": "Outbound",
      "href": "/shipping/orders",
      "active": false,
      "kind": "drill"
-    },
-    {
-     "id": "fba",
-     "label": "FBA",
-     "href": "/shipping/fba",
-     "active": false,
-     "kind": "drill"
-    },
-    {
-     "id": "label-intake",
-     "label": "Label intake",
-     "href": "/shipping/label-intake",
-     "active": false,
-     "kind": "link"
     }
    ]
   },
@@ -1994,16 +1805,75 @@ Generated 2026-09-26 by `resolveNavContext` with the full permission set, no org
      "kind": "drill"
     }
    ]
+  },
+  {
+   "id": "floor",
+   "label": "Scan Stations",
+   "items": [
+    {
+     "id": "triage",
+     "label": "Arrival",
+     "href": "/triage",
+     "active": false,
+     "kind": "link"
+    },
+    {
+     "id": "receive",
+     "label": "Unbox",
+     "href": "/unbox",
+     "active": false,
+     "kind": "link"
+    },
+    {
+     "id": "pickup",
+     "label": "Local Pickup",
+     "href": "/pickup",
+     "active": false,
+     "kind": "link"
+    },
+    {
+     "id": "repair",
+     "label": "Repair Service",
+     "href": "/repair",
+     "active": false,
+     "kind": "link"
+    },
+    {
+     "id": "testing",
+     "label": "Quality Control",
+     "href": "/test",
+     "active": false,
+     "kind": "link"
+    },
+    {
+     "id": "ready-to-pack",
+     "label": "Picker",
+     "href": "/pick?ship=urgent",
+     "active": true,
+     "kind": "link"
+    },
+    {
+     "id": "packer",
+     "label": "Packing",
+     "href": "/pack",
+     "active": false,
+     "kind": "link"
+    },
+    {
+     "id": "scan-out",
+     "label": "Scan out",
+     "href": "/shipping/scan-out",
+     "active": false,
+     "kind": "link"
+    }
+   ]
   }
  ],
  "params": [
-  "view",
   "search",
   "ship",
-  "testTab",
   "packStation",
   "packPlaced",
-  "composerMode",
   "stage",
   "aging",
   "attention",
@@ -2026,7 +1896,7 @@ Generated 2026-09-26 by `resolveNavContext` with the full permission set, no org
  },
  "scanInput": {
   "grammar": "station",
-  "endpoint": "/api/tech/scan"
+  "endpoint": "/api/picking/desk/scan"
  },
  "rollout": "legacy"
 }
@@ -2039,18 +1909,43 @@ Generated 2026-09-26 by `resolveNavContext` with the full permission set, no org
  "scope": "section",
  "page": {
   "id": "incoming",
-  "label": "Deliveries"
+  "label": "Inbound"
  },
  "back": {
-  "label": "Deliveries",
+  "label": "Inbound",
   "mode": "local"
  },
  "search": {
-  "scope": "global",
-  "placeholder": "Find anything — scan or type",
-  "source": "identify"
+  "scope": "incoming.pipeline",
+  "placeholder": "Search deliveries",
+  "source": "desk-store",
+  "locate": {
+   "locator": "inbound",
+   "param": "ref_in",
+   "statusParam": "recon"
+  }
  },
  "sections": [
+  {
+   "id": "incoming.inbound.modes",
+   "label": "Mode",
+   "items": [
+    {
+     "id": "incoming",
+     "label": "Deliveries",
+     "href": "/incoming",
+     "active": false,
+     "kind": "link"
+    },
+    {
+     "id": "sourcing",
+     "label": "Sourcing",
+     "href": "/sourcing",
+     "active": false,
+     "kind": "link"
+    }
+   ]
+  },
   {
    "id": "incoming.pipeline",
    "items": [
@@ -2075,6 +1970,8 @@ Generated 2026-09-26 by `resolveNavContext` with the full permission set, no org
   "lane",
   "incview",
   "tracking_in",
+  "ref_in",
+  "recon",
   "state",
   "inbound",
   "inkind",
@@ -2122,7 +2019,7 @@ Generated 2026-09-26 by `resolveNavContext` with the full permission set, no org
    "intent": "global-add:incoming-ebay"
   }
  ],
- "rollout": "legacy"
+ "rollout": "contextual"
 }
 ```
 
@@ -2146,6 +2043,13 @@ Generated 2026-09-26 by `resolveNavContext` with the full permission set, no org
    "id": "top",
    "items": [
     {
+     "id": "ai-chat",
+     "label": "Chat",
+     "href": "/ai-chat",
+     "active": false,
+     "kind": "drill"
+    },
+    {
      "id": "home",
      "label": "Daily",
      "href": "/",
@@ -2160,13 +2064,6 @@ Generated 2026-09-26 by `resolveNavContext` with the full permission set, no org
      "kind": "link"
     },
     {
-     "id": "ai-chat",
-     "label": "Chat",
-     "href": "/ai-chat",
-     "active": false,
-     "kind": "link"
-    },
-    {
      "id": "reports",
      "label": "Reports",
      "href": "/reports",
@@ -2176,82 +2073,12 @@ Generated 2026-09-26 by `resolveNavContext` with the full permission set, no org
    ]
   },
   {
-   "id": "floor",
-   "label": "Scan Stations",
-   "items": [
-    {
-     "id": "triage",
-     "label": "Arrival",
-     "href": "/triage",
-     "active": false,
-     "kind": "link"
-    },
-    {
-     "id": "receive",
-     "label": "Unbox",
-     "href": "/unbox",
-     "active": true,
-     "kind": "link"
-    },
-    {
-     "id": "pickup",
-     "label": "Local Pickup",
-     "href": "/pickup",
-     "active": false,
-     "kind": "link"
-    },
-    {
-     "id": "repair",
-     "label": "Repair Service",
-     "href": "/repair",
-     "active": false,
-     "kind": "link"
-    },
-    {
-     "id": "testing",
-     "label": "Quality Control",
-     "href": "/test?view=testing",
-     "active": false,
-     "kind": "link"
-    },
-    {
-     "id": "ready-to-pack",
-     "label": "Picker",
-     "href": "/test?ship=urgent",
-     "active": false,
-     "kind": "link"
-    },
-    {
-     "id": "packer",
-     "label": "Packing",
-     "href": "/pack",
-     "active": false,
-     "kind": "link"
-    },
-    {
-     "id": "scan-out",
-     "label": "Scan out",
-     "href": "/shipping/scan-out",
-     "active": false,
-     "kind": "link"
-    }
-   ]
-  },
-  {
    "id": "inbound",
-   "label": "Inbound",
    "items": [
     {
      "id": "incoming",
-     "label": "Deliveries",
+     "label": "Inbound",
      "href": "/incoming",
-     "active": false,
-     "kind": "drill"
-    },
-    {
-     "id": "sourcing",
-     "label": "Sourcing",
-     "href": "/sourcing",
      "active": false,
      "kind": "drill"
     }
@@ -2259,28 +2086,13 @@ Generated 2026-09-26 by `resolveNavContext` with the full permission set, no org
   },
   {
    "id": "fulfillment",
-   "label": "Outbound",
    "items": [
     {
      "id": "outbound",
-     "label": "Shipping",
+     "label": "Outbound",
      "href": "/shipping/orders",
      "active": false,
      "kind": "drill"
-    },
-    {
-     "id": "fba",
-     "label": "FBA",
-     "href": "/shipping/fba",
-     "active": false,
-     "kind": "drill"
-    },
-    {
-     "id": "label-intake",
-     "label": "Label intake",
-     "href": "/shipping/label-intake",
-     "active": false,
-     "kind": "link"
     }
    ]
   },
@@ -2329,6 +2141,68 @@ Generated 2026-09-26 by `resolveNavContext` with the full permission set, no org
      "href": "/studio",
      "active": false,
      "kind": "drill"
+    }
+   ]
+  },
+  {
+   "id": "floor",
+   "label": "Scan Stations",
+   "items": [
+    {
+     "id": "triage",
+     "label": "Arrival",
+     "href": "/triage",
+     "active": false,
+     "kind": "link"
+    },
+    {
+     "id": "receive",
+     "label": "Unbox",
+     "href": "/unbox",
+     "active": true,
+     "kind": "link"
+    },
+    {
+     "id": "pickup",
+     "label": "Local Pickup",
+     "href": "/pickup",
+     "active": false,
+     "kind": "link"
+    },
+    {
+     "id": "repair",
+     "label": "Repair Service",
+     "href": "/repair",
+     "active": false,
+     "kind": "link"
+    },
+    {
+     "id": "testing",
+     "label": "Quality Control",
+     "href": "/test",
+     "active": false,
+     "kind": "link"
+    },
+    {
+     "id": "ready-to-pack",
+     "label": "Picker",
+     "href": "/pick?ship=urgent",
+     "active": false,
+     "kind": "link"
+    },
+    {
+     "id": "packer",
+     "label": "Packing",
+     "href": "/pack",
+     "active": false,
+     "kind": "link"
+    },
+    {
+     "id": "scan-out",
+     "label": "Scan out",
+     "href": "/shipping/scan-out",
+     "active": false,
+     "kind": "link"
     }
    ]
   }
@@ -2590,6 +2464,13 @@ Generated 2026-09-26 by `resolveNavContext` with the full permission set, no org
    "id": "top",
    "items": [
     {
+     "id": "ai-chat",
+     "label": "Chat",
+     "href": "/ai-chat",
+     "active": false,
+     "kind": "drill"
+    },
+    {
      "id": "home",
      "label": "Daily",
      "href": "/",
@@ -2604,13 +2485,6 @@ Generated 2026-09-26 by `resolveNavContext` with the full permission set, no org
      "kind": "link"
     },
     {
-     "id": "ai-chat",
-     "label": "Chat",
-     "href": "/ai-chat",
-     "active": false,
-     "kind": "link"
-    },
-    {
      "id": "reports",
      "label": "Reports",
      "href": "/reports",
@@ -2620,82 +2494,12 @@ Generated 2026-09-26 by `resolveNavContext` with the full permission set, no org
    ]
   },
   {
-   "id": "floor",
-   "label": "Scan Stations",
-   "items": [
-    {
-     "id": "triage",
-     "label": "Arrival",
-     "href": "/triage",
-     "active": false,
-     "kind": "link"
-    },
-    {
-     "id": "receive",
-     "label": "Unbox",
-     "href": "/unbox",
-     "active": false,
-     "kind": "link"
-    },
-    {
-     "id": "pickup",
-     "label": "Local Pickup",
-     "href": "/pickup",
-     "active": false,
-     "kind": "link"
-    },
-    {
-     "id": "repair",
-     "label": "Repair Service",
-     "href": "/repair",
-     "active": false,
-     "kind": "link"
-    },
-    {
-     "id": "testing",
-     "label": "Quality Control",
-     "href": "/test?view=testing",
-     "active": false,
-     "kind": "link"
-    },
-    {
-     "id": "ready-to-pack",
-     "label": "Picker",
-     "href": "/test?ship=urgent",
-     "active": false,
-     "kind": "link"
-    },
-    {
-     "id": "packer",
-     "label": "Packing",
-     "href": "/pack",
-     "active": false,
-     "kind": "link"
-    },
-    {
-     "id": "scan-out",
-     "label": "Scan out",
-     "href": "/shipping/scan-out",
-     "active": false,
-     "kind": "link"
-    }
-   ]
-  },
-  {
    "id": "inbound",
-   "label": "Inbound",
    "items": [
     {
      "id": "incoming",
-     "label": "Deliveries",
+     "label": "Inbound",
      "href": "/incoming",
-     "active": false,
-     "kind": "drill"
-    },
-    {
-     "id": "sourcing",
-     "label": "Sourcing",
-     "href": "/sourcing",
      "active": false,
      "kind": "drill"
     }
@@ -2703,28 +2507,13 @@ Generated 2026-09-26 by `resolveNavContext` with the full permission set, no org
   },
   {
    "id": "fulfillment",
-   "label": "Outbound",
    "items": [
     {
      "id": "outbound",
-     "label": "Shipping",
+     "label": "Outbound",
      "href": "/shipping/orders",
-     "active": false,
-     "kind": "drill"
-    },
-    {
-     "id": "fba",
-     "label": "FBA",
-     "href": "/shipping/fba",
-     "active": false,
-     "kind": "drill"
-    },
-    {
-     "id": "label-intake",
-     "label": "Label intake",
-     "href": "/shipping/label-intake",
      "active": true,
-     "kind": "link"
+     "kind": "drill"
     }
    ]
   },
@@ -2775,6 +2564,68 @@ Generated 2026-09-26 by `resolveNavContext` with the full permission set, no org
      "kind": "drill"
     }
    ]
+  },
+  {
+   "id": "floor",
+   "label": "Scan Stations",
+   "items": [
+    {
+     "id": "triage",
+     "label": "Arrival",
+     "href": "/triage",
+     "active": false,
+     "kind": "link"
+    },
+    {
+     "id": "receive",
+     "label": "Unbox",
+     "href": "/unbox",
+     "active": false,
+     "kind": "link"
+    },
+    {
+     "id": "pickup",
+     "label": "Local Pickup",
+     "href": "/pickup",
+     "active": false,
+     "kind": "link"
+    },
+    {
+     "id": "repair",
+     "label": "Repair Service",
+     "href": "/repair",
+     "active": false,
+     "kind": "link"
+    },
+    {
+     "id": "testing",
+     "label": "Quality Control",
+     "href": "/test",
+     "active": false,
+     "kind": "link"
+    },
+    {
+     "id": "ready-to-pack",
+     "label": "Picker",
+     "href": "/pick?ship=urgent",
+     "active": false,
+     "kind": "link"
+    },
+    {
+     "id": "packer",
+     "label": "Packing",
+     "href": "/pack",
+     "active": false,
+     "kind": "link"
+    },
+    {
+     "id": "scan-out",
+     "label": "Scan out",
+     "href": "/shipping/scan-out",
+     "active": false,
+     "kind": "link"
+    }
+   ]
   }
  ],
  "params": [],
@@ -2789,18 +2640,50 @@ Generated 2026-09-26 by `resolveNavContext` with the full permission set, no org
  "scope": "section",
  "page": {
   "id": "outbound",
-  "label": "Shipping"
+  "label": "Outbound"
  },
  "back": {
-  "label": "Shipping",
+  "label": "Outbound",
   "mode": "local"
  },
  "search": {
   "scope": "outbound.triage",
   "placeholder": "Search orders to ship",
-  "source": "desk-store"
+  "source": "desk-store",
+  "locate": {
+   "locator": "outbound",
+   "param": "refs",
+   "statusParam": "located"
+  }
  },
  "sections": [
+  {
+   "id": "outbound.fulfillment.modes",
+   "label": "Mode",
+   "items": [
+    {
+     "id": "outbound",
+     "label": "Shipping",
+     "href": "/shipping/orders",
+     "active": false,
+     "kind": "link"
+    },
+    {
+     "id": "fba",
+     "label": "FBA",
+     "href": "/shipping/fba",
+     "active": false,
+     "kind": "link"
+    },
+    {
+     "id": "label-intake",
+     "label": "Label intake",
+     "href": "/shipping/label-intake",
+     "active": false,
+     "kind": "link"
+    }
+   ]
+  },
   {
    "id": "outbound.exceptions",
    "items": [
@@ -2856,6 +2739,8 @@ Generated 2026-09-26 by `resolveNavContext` with the full permission set, no org
  "params": [
   "order",
   "category",
+  "refs",
+  "located",
   "staff",
   "staffId",
   "colsort",
@@ -2876,6 +2761,13 @@ Generated 2026-09-26 by `resolveNavContext` with the full permission set, no org
   "cage",
   "packStation",
   "packPlaced",
+  "pickedBy",
+  "packedBy",
+  "pickerId",
+  "shipByFrom",
+  "shipByTo",
+  "orderFrom",
+  "orderTo",
   "context",
   "createTicket",
   "unshipped",
@@ -2891,6 +2783,8 @@ Generated 2026-09-26 by `resolveNavContext` with the full permission set, no org
   "triage",
   "paperwork",
   "queue",
+  "cardStatus",
+  "page",
   "import",
   "shippedFilter",
   "shippedSearchField",
@@ -2899,8 +2793,6 @@ Generated 2026-09-26 by `resolveNavContext` with the full permission set, no org
   "exceptions",
   "carrier",
   "statusCategory",
-  "packedBy",
-  "testedBy",
   "dateFrom",
   "dateTo",
   "allDates",
@@ -2911,7 +2803,10 @@ Generated 2026-09-26 by `resolveNavContext` with the full permission set, no org
   "c1",
   "c2",
   "c3",
-  "shipment"
+  "shipment",
+  "testedBy",
+  "timeFrom",
+  "timeTo"
  ],
  "filters": {
   "facetContext": "outbound.triage",
@@ -2949,8 +2844,80 @@ Generated 2026-09-26 by `resolveNavContext` with the full permission set, no org
   ]
  },
  "controls": {
-  "staff": {
-   "param": "staff"
+  "staff": [
+   {
+    "id": "assigned",
+    "param": "staff",
+    "label": "Assigned"
+   },
+   {
+    "id": "picked-by",
+    "param": "pickedBy",
+    "label": "Picked by"
+   },
+   {
+    "id": "packer",
+    "param": "packedBy",
+    "label": "Packer"
+   },
+   {
+    "id": "picker",
+    "param": "pickerId",
+    "label": "Picker"
+   }
+  ],
+  "dateRanges": [
+   {
+    "id": "ship-by",
+    "label": "Ship-by date",
+    "fromParam": "shipByFrom",
+    "toParam": "shipByTo",
+    "clearParams": [],
+    "placeholder": "Any day"
+   },
+   {
+    "id": "ordered",
+    "label": "Order date",
+    "fromParam": "orderFrom",
+    "toParam": "orderTo",
+    "clearParams": [],
+    "placeholder": "Any day"
+   }
+  ],
+  "sort": {
+   "param": "sort",
+   "dirParam": "dir",
+   "defaultValue": "deadline",
+   "options": [
+    {
+     "value": "deadline",
+     "label": "Ship by, soonest first"
+    },
+    {
+     "value": "age",
+     "label": "Most overdue first",
+     "dir": "desc"
+    },
+    {
+     "value": "newest",
+     "label": "Newest orders first"
+    },
+    {
+     "value": "picked",
+     "label": "Picked, most recent first",
+     "dir": "desc"
+    },
+    {
+     "value": "picker",
+     "label": "Picker, A to Z",
+     "dir": "asc"
+    },
+    {
+     "value": "amount",
+     "label": "Highest value first",
+     "dir": "desc"
+    }
+   ]
   }
  },
  "savedViews": {
@@ -2959,6 +2926,13 @@ Generated 2026-09-26 by `resolveNavContext` with the full permission set, no org
    "stage",
    "ustatus",
    "staff",
+   "pickedBy",
+   "packedBy",
+   "pickerId",
+   "shipByFrom",
+   "shipByTo",
+   "orderFrom",
+   "orderTo",
    "late",
    "aging",
    "attention",
@@ -3039,6 +3013,13 @@ Generated 2026-09-26 by `resolveNavContext` with the full permission set, no org
    "id": "top",
    "items": [
     {
+     "id": "ai-chat",
+     "label": "Chat",
+     "href": "/ai-chat",
+     "active": false,
+     "kind": "drill"
+    },
+    {
      "id": "home",
      "label": "Daily",
      "href": "/",
@@ -3053,13 +3034,6 @@ Generated 2026-09-26 by `resolveNavContext` with the full permission set, no org
      "kind": "link"
     },
     {
-     "id": "ai-chat",
-     "label": "Chat",
-     "href": "/ai-chat",
-     "active": false,
-     "kind": "link"
-    },
-    {
      "id": "reports",
      "label": "Reports",
      "href": "/reports",
@@ -3069,82 +3043,12 @@ Generated 2026-09-26 by `resolveNavContext` with the full permission set, no org
    ]
   },
   {
-   "id": "floor",
-   "label": "Scan Stations",
-   "items": [
-    {
-     "id": "triage",
-     "label": "Arrival",
-     "href": "/triage",
-     "active": false,
-     "kind": "link"
-    },
-    {
-     "id": "receive",
-     "label": "Unbox",
-     "href": "/unbox",
-     "active": false,
-     "kind": "link"
-    },
-    {
-     "id": "pickup",
-     "label": "Local Pickup",
-     "href": "/pickup",
-     "active": false,
-     "kind": "link"
-    },
-    {
-     "id": "repair",
-     "label": "Repair Service",
-     "href": "/repair",
-     "active": false,
-     "kind": "link"
-    },
-    {
-     "id": "testing",
-     "label": "Quality Control",
-     "href": "/test?view=testing",
-     "active": false,
-     "kind": "link"
-    },
-    {
-     "id": "ready-to-pack",
-     "label": "Picker",
-     "href": "/test?ship=urgent",
-     "active": false,
-     "kind": "link"
-    },
-    {
-     "id": "packer",
-     "label": "Packing",
-     "href": "/pack",
-     "active": false,
-     "kind": "link"
-    },
-    {
-     "id": "scan-out",
-     "label": "Scan out",
-     "href": "/shipping/scan-out",
-     "active": true,
-     "kind": "link"
-    }
-   ]
-  },
-  {
    "id": "inbound",
-   "label": "Inbound",
    "items": [
     {
      "id": "incoming",
-     "label": "Deliveries",
+     "label": "Inbound",
      "href": "/incoming",
-     "active": false,
-     "kind": "drill"
-    },
-    {
-     "id": "sourcing",
-     "label": "Sourcing",
-     "href": "/sourcing",
      "active": false,
      "kind": "drill"
     }
@@ -3152,28 +3056,13 @@ Generated 2026-09-26 by `resolveNavContext` with the full permission set, no org
   },
   {
    "id": "fulfillment",
-   "label": "Outbound",
    "items": [
     {
      "id": "outbound",
-     "label": "Shipping",
+     "label": "Outbound",
      "href": "/shipping/orders",
      "active": false,
      "kind": "drill"
-    },
-    {
-     "id": "fba",
-     "label": "FBA",
-     "href": "/shipping/fba",
-     "active": false,
-     "kind": "drill"
-    },
-    {
-     "id": "label-intake",
-     "label": "Label intake",
-     "href": "/shipping/label-intake",
-     "active": false,
-     "kind": "link"
     }
    ]
   },
@@ -3222,6 +3111,68 @@ Generated 2026-09-26 by `resolveNavContext` with the full permission set, no org
      "href": "/studio",
      "active": false,
      "kind": "drill"
+    }
+   ]
+  },
+  {
+   "id": "floor",
+   "label": "Scan Stations",
+   "items": [
+    {
+     "id": "triage",
+     "label": "Arrival",
+     "href": "/triage",
+     "active": false,
+     "kind": "link"
+    },
+    {
+     "id": "receive",
+     "label": "Unbox",
+     "href": "/unbox",
+     "active": false,
+     "kind": "link"
+    },
+    {
+     "id": "pickup",
+     "label": "Local Pickup",
+     "href": "/pickup",
+     "active": false,
+     "kind": "link"
+    },
+    {
+     "id": "repair",
+     "label": "Repair Service",
+     "href": "/repair",
+     "active": false,
+     "kind": "link"
+    },
+    {
+     "id": "testing",
+     "label": "Quality Control",
+     "href": "/test",
+     "active": false,
+     "kind": "link"
+    },
+    {
+     "id": "ready-to-pack",
+     "label": "Picker",
+     "href": "/pick?ship=urgent",
+     "active": false,
+     "kind": "link"
+    },
+    {
+     "id": "packer",
+     "label": "Packing",
+     "href": "/pack",
+     "active": false,
+     "kind": "link"
+    },
+    {
+     "id": "scan-out",
+     "label": "Scan out",
+     "href": "/shipping/scan-out",
+     "active": true,
+     "kind": "link"
     }
    ]
   }
@@ -3266,6 +3217,13 @@ Generated 2026-09-26 by `resolveNavContext` with the full permission set, no org
    "id": "top",
    "items": [
     {
+     "id": "ai-chat",
+     "label": "Chat",
+     "href": "/ai-chat",
+     "active": false,
+     "kind": "drill"
+    },
+    {
      "id": "home",
      "label": "Daily",
      "href": "/",
@@ -3280,13 +3238,6 @@ Generated 2026-09-26 by `resolveNavContext` with the full permission set, no org
      "kind": "link"
     },
     {
-     "id": "ai-chat",
-     "label": "Chat",
-     "href": "/ai-chat",
-     "active": false,
-     "kind": "link"
-    },
-    {
      "id": "reports",
      "label": "Reports",
      "href": "/reports",
@@ -3296,82 +3247,12 @@ Generated 2026-09-26 by `resolveNavContext` with the full permission set, no org
    ]
   },
   {
-   "id": "floor",
-   "label": "Scan Stations",
-   "items": [
-    {
-     "id": "triage",
-     "label": "Arrival",
-     "href": "/triage",
-     "active": false,
-     "kind": "link"
-    },
-    {
-     "id": "receive",
-     "label": "Unbox",
-     "href": "/unbox",
-     "active": false,
-     "kind": "link"
-    },
-    {
-     "id": "pickup",
-     "label": "Local Pickup",
-     "href": "/pickup",
-     "active": false,
-     "kind": "link"
-    },
-    {
-     "id": "repair",
-     "label": "Repair Service",
-     "href": "/repair",
-     "active": false,
-     "kind": "link"
-    },
-    {
-     "id": "testing",
-     "label": "Quality Control",
-     "href": "/test?view=testing",
-     "active": false,
-     "kind": "link"
-    },
-    {
-     "id": "ready-to-pack",
-     "label": "Picker",
-     "href": "/test?ship=urgent",
-     "active": false,
-     "kind": "link"
-    },
-    {
-     "id": "packer",
-     "label": "Packing",
-     "href": "/pack",
-     "active": true,
-     "kind": "link"
-    },
-    {
-     "id": "scan-out",
-     "label": "Scan out",
-     "href": "/shipping/scan-out",
-     "active": false,
-     "kind": "link"
-    }
-   ]
-  },
-  {
    "id": "inbound",
-   "label": "Inbound",
    "items": [
     {
      "id": "incoming",
-     "label": "Deliveries",
+     "label": "Inbound",
      "href": "/incoming",
-     "active": false,
-     "kind": "drill"
-    },
-    {
-     "id": "sourcing",
-     "label": "Sourcing",
-     "href": "/sourcing",
      "active": false,
      "kind": "drill"
     }
@@ -3379,28 +3260,13 @@ Generated 2026-09-26 by `resolveNavContext` with the full permission set, no org
   },
   {
    "id": "fulfillment",
-   "label": "Outbound",
    "items": [
     {
      "id": "outbound",
-     "label": "Shipping",
+     "label": "Outbound",
      "href": "/shipping/orders",
      "active": false,
      "kind": "drill"
-    },
-    {
-     "id": "fba",
-     "label": "FBA",
-     "href": "/shipping/fba",
-     "active": false,
-     "kind": "drill"
-    },
-    {
-     "id": "label-intake",
-     "label": "Label intake",
-     "href": "/shipping/label-intake",
-     "active": false,
-     "kind": "link"
     }
    ]
   },
@@ -3449,6 +3315,68 @@ Generated 2026-09-26 by `resolveNavContext` with the full permission set, no org
      "href": "/studio",
      "active": false,
      "kind": "drill"
+    }
+   ]
+  },
+  {
+   "id": "floor",
+   "label": "Scan Stations",
+   "items": [
+    {
+     "id": "triage",
+     "label": "Arrival",
+     "href": "/triage",
+     "active": false,
+     "kind": "link"
+    },
+    {
+     "id": "receive",
+     "label": "Unbox",
+     "href": "/unbox",
+     "active": false,
+     "kind": "link"
+    },
+    {
+     "id": "pickup",
+     "label": "Local Pickup",
+     "href": "/pickup",
+     "active": false,
+     "kind": "link"
+    },
+    {
+     "id": "repair",
+     "label": "Repair Service",
+     "href": "/repair",
+     "active": false,
+     "kind": "link"
+    },
+    {
+     "id": "testing",
+     "label": "Quality Control",
+     "href": "/test",
+     "active": false,
+     "kind": "link"
+    },
+    {
+     "id": "ready-to-pack",
+     "label": "Picker",
+     "href": "/pick?ship=urgent",
+     "active": false,
+     "kind": "link"
+    },
+    {
+     "id": "packer",
+     "label": "Packing",
+     "href": "/pack",
+     "active": true,
+     "kind": "link"
+    },
+    {
+     "id": "scan-out",
+     "label": "Scan out",
+     "href": "/shipping/scan-out",
+     "active": false,
+     "kind": "link"
     }
    ]
   }
@@ -3648,249 +3576,6 @@ Generated 2026-09-26 by `resolveNavContext` with the full permission set, no org
   "new",
   "edit"
  ],
- "rollout": "legacy"
-}
-```
-
-## tech — Testing (`/test`)
-
-```json
-{
- "scope": "top",
- "page": {
-  "id": "ready-to-pack",
-  "label": "Picker"
- },
- "back": null,
- "search": {
-  "scope": "global",
-  "placeholder": "Find anything — scan or type",
-  "source": "identify"
- },
- "sections": [
-  {
-   "id": "top",
-   "items": [
-    {
-     "id": "home",
-     "label": "Daily",
-     "href": "/",
-     "active": false,
-     "kind": "link"
-    },
-    {
-     "id": "ops-photos",
-     "label": "Media Library",
-     "href": "/ops/photos",
-     "active": false,
-     "kind": "link"
-    },
-    {
-     "id": "ai-chat",
-     "label": "Chat",
-     "href": "/ai-chat",
-     "active": false,
-     "kind": "link"
-    },
-    {
-     "id": "reports",
-     "label": "Reports",
-     "href": "/reports",
-     "active": false,
-     "kind": "drill"
-    }
-   ]
-  },
-  {
-   "id": "floor",
-   "label": "Scan Stations",
-   "items": [
-    {
-     "id": "triage",
-     "label": "Arrival",
-     "href": "/triage",
-     "active": false,
-     "kind": "link"
-    },
-    {
-     "id": "receive",
-     "label": "Unbox",
-     "href": "/unbox",
-     "active": false,
-     "kind": "link"
-    },
-    {
-     "id": "pickup",
-     "label": "Local Pickup",
-     "href": "/pickup",
-     "active": false,
-     "kind": "link"
-    },
-    {
-     "id": "repair",
-     "label": "Repair Service",
-     "href": "/repair",
-     "active": false,
-     "kind": "link"
-    },
-    {
-     "id": "testing",
-     "label": "Quality Control",
-     "href": "/test?view=testing",
-     "active": false,
-     "kind": "link"
-    },
-    {
-     "id": "ready-to-pack",
-     "label": "Picker",
-     "href": "/test?ship=urgent",
-     "active": true,
-     "kind": "link"
-    },
-    {
-     "id": "packer",
-     "label": "Packing",
-     "href": "/pack",
-     "active": false,
-     "kind": "link"
-    },
-    {
-     "id": "scan-out",
-     "label": "Scan out",
-     "href": "/shipping/scan-out",
-     "active": false,
-     "kind": "link"
-    }
-   ]
-  },
-  {
-   "id": "inbound",
-   "label": "Inbound",
-   "items": [
-    {
-     "id": "incoming",
-     "label": "Deliveries",
-     "href": "/incoming",
-     "active": false,
-     "kind": "drill"
-    },
-    {
-     "id": "sourcing",
-     "label": "Sourcing",
-     "href": "/sourcing",
-     "active": false,
-     "kind": "drill"
-    }
-   ]
-  },
-  {
-   "id": "fulfillment",
-   "label": "Outbound",
-   "items": [
-    {
-     "id": "outbound",
-     "label": "Shipping",
-     "href": "/shipping/orders",
-     "active": false,
-     "kind": "drill"
-    },
-    {
-     "id": "fba",
-     "label": "FBA",
-     "href": "/shipping/fba",
-     "active": false,
-     "kind": "drill"
-    },
-    {
-     "id": "label-intake",
-     "label": "Label intake",
-     "href": "/shipping/label-intake",
-     "active": false,
-     "kind": "link"
-    }
-   ]
-  },
-  {
-   "id": "inventory",
-   "items": [
-    {
-     "id": "inventory",
-     "label": "Inventory",
-     "href": "/inventory",
-     "active": false,
-     "kind": "drill"
-    }
-   ]
-  },
-  {
-   "id": "catalog",
-   "items": [
-    {
-     "id": "products",
-     "label": "Products",
-     "href": "/products",
-     "active": false,
-     "kind": "drill"
-    }
-   ]
-  },
-  {
-   "id": "sales",
-   "items": [
-    {
-     "id": "sales",
-     "label": "Sales",
-     "href": "/dashboard?mode=sales",
-     "active": false,
-     "kind": "drill"
-    }
-   ]
-  },
-  {
-   "id": "studio",
-   "items": [
-    {
-     "id": "studio",
-     "label": "Automations",
-     "href": "/studio",
-     "active": false,
-     "kind": "drill"
-    }
-   ]
-  }
- ],
- "params": [
-  "view",
-  "search",
-  "ship",
-  "testTab",
-  "packStation",
-  "packPlaced",
-  "composerMode",
-  "stage",
-  "aging",
-  "attention",
-  "late",
-  "ustatus",
-  "rowFlag",
-  "cage",
-  "new",
-  "staff",
-  "staffId",
-  "colsort",
-  "coldir",
-  "pane",
-  "layout",
-  "weekOffset"
- ],
- "recents": {
-  "endpoint": "/api/nav/recents?surface=tech.scans",
-  "surface": "tech.scans"
- },
- "scanInput": {
-  "grammar": "station",
-  "endpoint": "/api/tech/scan"
- },
  "rollout": "legacy"
 }
 ```

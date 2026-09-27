@@ -15,9 +15,15 @@ export interface NeedToOrderRow {
   status: ReplenishmentRequestStatus;
   quantity_needed: string | null;
   quantity_to_order: string | null;
-  zoho_quantity_available: string | null;
-  zoho_quantity_on_hand: string | null;
-  zoho_incoming_quantity: string | null;
+  /** CycleForge's own inventory position (src/lib/inventory/inventory-position.ts). */
+  stock_available: string | null;
+  stock_on_hand: string | null;
+  stock_incoming: string | null;
+  /** The internal purchase order this request became. */
+  inbound_order_id: number | null;
+  inbound_order_number?: string | null;
+  inbound_order_status?: string | null;
+  /** Present only when a Zoho copy was exported. */
   zoho_po_id: string | null;
   zoho_po_number: string | null;
   notes: string | null;

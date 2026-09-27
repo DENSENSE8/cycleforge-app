@@ -10,6 +10,7 @@ import {
 } from '@/lib/auth/session';
 import { hashVerificationToken } from '@/lib/auth/email-verification';
 import { checkRateLimitAsync } from '@/lib/api-guard';
+import { recordStaffLoginRedirect } from '@/lib/auth/record-staff-login';
 
 export const GET = withAuth(async (req: NextRequest) => {
   const base = process.env.NEXT_PUBLIC_APP_URL || process.env.APP_URL || '';
@@ -66,7 +67,8 @@ export const GET = withAuth(async (req: NextRequest) => {
     userAgent: req.headers.get('user-agent'),
   });
 
-  const res = NextResponse.redirect(`${base || ''}/dashboard?email_verified=1`);
+  const landing = await recordStaffLoginRedirect(pool, staffId, { mobile: false });
+  const res = NextResponse.redirect(`${base || ''}${landing}`);
   res.cookies.set({
     name: SESSION_COOKIE_NAME,
     value: session.sid,

@@ -5,7 +5,8 @@
 export const PERMISSION_CATEGORY_DEFS = [
   { id: 'receiving',    label: 'Receiving' },
   { id: 'packing',      label: 'Packing' },
-  { id: 'tech',         label: 'Tech & Repair' },
+  { id: 'picking',      label: 'Picking' },
+  { id: 'tech',         label: 'Quality Control' },
   { id: 'shipping',     label: 'Shipping & Orders' },
   { id: 'fba',          label: 'Amazon Prep' },
   { id: 'inventory',    label: 'Inventory' },
@@ -54,14 +55,18 @@ export const PERMISSIONS = [
   { id: 'packing.approve_amendment', category: 'packing', label: 'Approve substitution amendment' },
   { id: 'packing.review',           category: 'packing', label: 'Review packed orders' },
 
-  // ─ Tech & Repair ─
-  { id: 'tech.view',                category: 'tech', label: 'View tech station' },
+  // ─ Picking (the Picker desk, `/pick`) ─
+  { id: 'picking.view',             category: 'picking', label: 'View picker desk' },
+  { id: 'picking.scan',             category: 'picking', label: 'Scan orders, SKUs and serials into picks' },
+  { id: 'picking.substitute_unit',  category: 'picking', label: 'Substitute fulfilled unit' },
+
+  // ─ Quality Control & Repair (`tech.*` ids are the QC bench, `/test`) ─
+  { id: 'tech.view',                category: 'tech', label: 'View QC bench' },
   { id: 'tech.scan_serial',         category: 'tech', label: 'Scan serial' },
   { id: 'tech.qc_pass',             category: 'tech', label: 'QC pass' },
   { id: 'tech.qc_fail',             category: 'tech', label: 'QC fail' },
   { id: 'tech.data_wipe',           category: 'tech', label: 'Data wipe (secure erase)' },
   { id: 'tech.assign_bin',          category: 'tech', label: 'Assign bin from tech' },
-  { id: 'tech.substitute_unit',     category: 'tech', label: 'Substitute fulfilled unit (tech bench)' },
   { id: 'serial_units.grade',       category: 'tech', label: 'Grade serial unit (condition)' },
   { id: 'repair.view',              category: 'tech', label: 'View repair queue' },
   { id: 'repair.intake',            category: 'tech', label: 'Intake repair' },

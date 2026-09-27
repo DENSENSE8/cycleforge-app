@@ -1,18 +1,11 @@
 import { tenantQuery } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';
-import type { IntentDomain, IntentParams } from '@/lib/ai/intent-router';
-import { searchPhotos, formatPhotoSearchForPrompt } from '@/lib/photos/queries/search';
+import type { IntentParams } from '@/lib/ai/intent-router';
 import { normalizeTrackingCanonical } from '@/lib/tracking-format';
-
-function pct(value: number, total: number): string {
-  if (!total) return '0%';
-  return `${Math.round((value / total) * 100)}%`;
-}
 
 function normalizeLookupLike(value: string): string {
   return `%${value.trim()}%`;
 }
-
 
 function formatTitle(value: string | null | undefined, fallback: string): string {
   const cleaned = String(value || '').trim();
@@ -41,13 +34,13 @@ export async function fetchOrdersContext(params: IntentParams, orgId: OrgId): Pr
           stn.tracking_number_raw,
           COALESCE(stn.is_carrier_accepted OR stn.is_in_transit
             OR stn.is_out_for_delivery OR stn.is_delivered, false) AS is_shipped,
-          wa.assigned_tech_id,
-          s.name AS tech_name,
+          wa_pick.assigned_tech_id,
+          s.name AS picker_name,
           wa.deadline_at
         FROM orders o
         LEFT JOIN shipping_tracking_numbers stn ON stn.id = o.shipment_id
         LEFT JOIN LATERAL (
-          SELECT assigned_tech_id, deadline_at
+          SELECT deadline_at
           FROM work_assignments
           WHERE entity_type = 'ORDER'
             AND entity_id = o.id
@@ -56,7 +49,18 @@ export async function fetchOrdersContext(params: IntentParams, orgId: OrgId): Pr
           ORDER BY updated_at DESC, id DESC
           LIMIT 1
         ) wa ON TRUE
-        LEFT JOIN staff s ON s.id = wa.assigned_tech_id
+        LEFT JOIN LATERAL (
+          SELECT assigned_tech_id
+          FROM work_assignments
+          WHERE organization_id = o.organization_id
+            AND entity_type = 'ORDER'
+            AND entity_id = o.id
+            AND work_type = 'PICK'
+            AND status <> 'CANCELED'
+          ORDER BY updated_at DESC, id DESC
+          LIMIT 1
+        ) wa_pick ON TRUE
+        LEFT JOIN staff s ON s.id = wa_pick.assigned_tech_id AND s.organization_id = o.organization_id
         WHERE o.organization_id = $1
           AND o.order_id ILIKE $2
         ORDER BY o.id DESC
@@ -73,7 +77,7 @@ export async function fetchOrdersContext(params: IntentParams, orgId: OrgId): Pr
         `Product: ${formatTitle(row.product_title as string, 'Unknown product')}`,
         `Status: ${row.is_shipped ? 'Shipped' : 'Pending'}${row.status ? ` | Workflow: ${row.status}` : ''}`,
       ];
-      if (row.tech_name) lines.push(`Assigned tech: ${row.tech_name}`);
+      if (row.picker_name) lines.push(`Assigned picker: ${row.picker_name}`);
       if (row.deadline_at) lines.push(`Deadline: ${row.deadline_at}`);
       if (row.tracking_number_raw) lines.push(`Tracking: ${row.tracking_number_raw}`);
       if (row.sku) lines.push(`SKU: ${row.sku}`);
@@ -95,7 +99,7 @@ export async function fetchOrdersContext(params: IntentParams, orgId: OrgId): Pr
           COUNT(*) FILTER (
             WHERE NOT COALESCE(stn.is_carrier_accepted OR stn.is_in_transit
               OR stn.is_out_for_delivery OR stn.is_delivered, false)
-              AND wa_t.assigned_tech_id IS NULL
+              AND wa_pick.assigned_tech_id IS NULL
           )::int AS unassigned,
           COUNT(*) FILTER (
             WHERE wa_d.deadline_at::date < CURRENT_DATE
@@ -115,13 +119,14 @@ export async function fetchOrdersContext(params: IntentParams, orgId: OrgId): Pr
         LEFT JOIN LATERAL (
           SELECT assigned_tech_id
           FROM work_assignments
-          WHERE entity_type = 'ORDER'
+          WHERE organization_id = o.organization_id
+            AND entity_type = 'ORDER'
             AND entity_id = o.id
-            AND work_type = 'TEST'
+            AND work_type = 'PICK'
             AND status <> 'CANCELED'
           ORDER BY updated_at DESC, id DESC
           LIMIT 1
-        ) wa_t ON TRUE
+        ) wa_pick ON TRUE
         LEFT JOIN LATERAL (
           SELECT deadline_at
           FROM work_assignments
@@ -180,253 +185,9 @@ export async function fetchOrdersContext(params: IntentParams, orgId: OrgId): Pr
   return [
     '=== PENDING ORDERS (live) ===',
     `Total unshipped: ${counts.pending_total ?? 0}`,
-    `Overdue: ${counts.overdue ?? 0} | Due today: ${counts.due_today ?? 0} | Unassigned: ${counts.unassigned ?? 0}`,
+    `Overdue: ${counts.overdue ?? 0} | Due today: ${counts.due_today ?? 0} | No picker: ${counts.unassigned ?? 0}`,
     `Out of stock: ${counts.out_of_stock ?? 0}`,
     urgent ? `Most urgent: ${urgent}` : 'Most urgent: none',
-  ].join('\n');
-}
-
-async function fetchStaffContext(params: IntentParams, orgId: OrgId): Promise<string> {
-  const values: Array<string | OrgId> = [orgId];
-  let whereClause = `WHERE s.active = true AND s.organization_id = $1`;
-
-  if (params.staffName) {
-    values.push(normalizeLookupLike(params.staffName));
-    whereClause += ` AND s.name ILIKE $${values.length}`;
-  }
-
-  const result = await tenantQuery(
-    orgId,
-    `
-      WITH today_tech AS (
-        SELECT tested_by AS sid, COUNT(*)::int AS today_count
-        FROM tech_serial_numbers
-        WHERE tested_by IS NOT NULL
-          AND (created_at AT TIME ZONE 'America/Los_Angeles')::date = (now() AT TIME ZONE 'America/Los_Angeles')::date
-        GROUP BY tested_by
-      ),
-      week_tech AS (
-        SELECT tested_by AS sid, COUNT(*)::int AS week_count
-        FROM tech_serial_numbers
-        WHERE tested_by IS NOT NULL
-          AND (created_at AT TIME ZONE 'America/Los_Angeles')::date >= (now() AT TIME ZONE 'America/Los_Angeles')::date - 6
-        GROUP BY tested_by
-      ),
-      today_pack AS (
-        SELECT packed_by AS sid, COUNT(*)::int AS today_pack
-        FROM packer_logs
-        WHERE packed_by IS NOT NULL
-          AND completion_state = 'COMPLETED'
-          AND (created_at AT TIME ZONE 'America/Los_Angeles')::date = (now() AT TIME ZONE 'America/Los_Angeles')::date
-        GROUP BY packed_by
-      ),
-      week_pack AS (
-        SELECT packed_by AS sid, COUNT(*)::int AS week_pack
-        FROM packer_logs
-        WHERE packed_by IS NOT NULL
-          AND completion_state = 'COMPLETED'
-          AND (created_at AT TIME ZONE 'America/Los_Angeles')::date >= (now() AT TIME ZONE 'America/Los_Angeles')::date - 6
-        GROUP BY packed_by
-      )
-      SELECT
-        s.name,
-        s.role,
-        COALESCE(sg.daily_goal, 50) AS goal,
-        COALESCE(tt.today_count, 0) AS tech_today,
-        COALESCE(wt.week_count, 0) AS tech_week,
-        COALESCE(tp.today_pack, 0) AS pack_today,
-        COALESCE(wp.week_pack, 0) AS pack_week
-      FROM staff s
-      LEFT JOIN staff_goals sg ON sg.staff_id = s.id
-      LEFT JOIN today_tech tt ON tt.sid = s.id
-      LEFT JOIN week_tech wt ON wt.sid = s.id
-      LEFT JOIN today_pack tp ON tp.sid = s.id
-      LEFT JOIN week_pack wp ON wp.sid = s.id
-      ${whereClause}
-      ORDER BY s.role, s.name
-    `,
-    values
-  );
-
-  const techLines: string[] = [];
-  const packerLines: string[] = [];
-
-  for (const row of result.rows as QueryRow[]) {
-    const role = String(row.role || '').toLowerCase();
-    const name = formatTitle(row.name as string, 'Unknown');
-    const goal = Number(row.goal || 50);
-    const techToday = Number(row.tech_today || 0);
-    const techWeek = Number(row.tech_week || 0);
-    const packToday = Number(row.pack_today || 0);
-    const packWeek = Number(row.pack_week || 0);
-
-    if (role.includes('tech')) {
-      techLines.push(`  ${name} - goal ${goal} | today ${techToday} (${pct(techToday, goal)}) | week ${techWeek}`);
-    } else {
-      packerLines.push(`  ${name} - packed today: ${packToday} | week: ${packWeek}`);
-    }
-  }
-
-  return [
-    '=== STAFF PERFORMANCE (today / this week) ===',
-    techLines.length ? 'Technicians:' : 'Technicians: none',
-    ...(techLines.length ? techLines : []),
-    packerLines.length ? 'Packers:' : 'Packers: none',
-    ...(packerLines.length ? packerLines : []),
-  ].join('\n');
-}
-
-async function fetchRepairContext(params: IntentParams, orgId: OrgId): Promise<string> {
-  const lookup = params.ticketNumber || params.orderId;
-  if (lookup) {
-    const detail = await tenantQuery(
-      orgId,
-      `
-        SELECT
-          rs.ticket_number,
-          rs.status,
-          rs.product_title,
-          rs.issue,
-          rs.serial_number,
-          rs.contact_info,
-          wa.out_of_stock,
-          s.name AS tech_name
-        FROM repair_service rs
-        LEFT JOIN LATERAL (
-          SELECT out_of_stock, assigned_tech_id
-          FROM work_assignments
-          WHERE entity_type = 'REPAIR'
-            AND entity_id = rs.id
-            AND work_type = 'REPAIR'
-            AND status IN ('ASSIGNED', 'IN_PROGRESS')
-          ORDER BY id DESC
-          LIMIT 1
-        ) wa ON TRUE
-        LEFT JOIN staff s ON s.id = wa.assigned_tech_id
-        WHERE rs.organization_id = $1
-          AND (
-               rs.ticket_number ILIKE $2
-            OR rs.contact_info ILIKE $2
-            OR rs.product_title ILIKE $2
-            OR rs.serial_number ILIKE $2
-          )
-        ORDER BY rs.updated_at DESC, rs.id DESC
-        LIMIT 1
-      `,
-      [orgId, normalizeLookupLike(lookup)]
-    );
-
-    if (detail.rows.length > 0) {
-      const row = detail.rows[0] as QueryRow;
-      const lines = [
-        '=== REPAIR LOOKUP ===',
-        `Ticket: ${formatTitle(row.ticket_number as string, 'Unknown')}`,
-        `Status: ${formatTitle(row.status as string, 'Unknown')}`,
-        `Product: ${formatTitle(row.product_title as string, 'Unknown product')}`,
-      ];
-      if (row.tech_name) lines.push(`Assigned tech: ${row.tech_name}`);
-      if (row.issue) lines.push(`Issue: ${row.issue}`);
-      if (row.serial_number) lines.push(`Serial: ${row.serial_number}`);
-      if (row.contact_info) lines.push(`Customer: ${row.contact_info}`);
-      if (row.out_of_stock) lines.push(`Waiting on parts: ${row.out_of_stock}`);
-      return lines.join('\n');
-    }
-  }
-
-  const values: Array<string | OrgId> = [orgId];
-  let statusFilter = '';
-  if (params.repairStatus) {
-    if (params.repairStatus === 'waiting_for_parts') {
-      statusFilter = ` AND COALESCE(BTRIM(wa.out_of_stock), '') <> ''`;
-    } else {
-      values.push(params.repairStatus);
-      statusFilter = ` AND rs.status = $${values.length}`;
-    }
-  }
-
-  const result = await tenantQuery(
-    orgId,
-    `
-      SELECT
-        rs.status,
-        COUNT(*)::int AS cnt,
-        COUNT(*) FILTER (
-          WHERE COALESCE(BTRIM(wa.out_of_stock), '') <> ''
-        )::int AS waiting_parts
-      FROM repair_service rs
-      LEFT JOIN LATERAL (
-        SELECT out_of_stock, assigned_tech_id
-        FROM work_assignments
-        WHERE entity_type = 'REPAIR'
-          AND entity_id = rs.id
-          AND work_type = 'REPAIR'
-          AND status IN ('ASSIGNED', 'IN_PROGRESS')
-        ORDER BY id DESC
-        LIMIT 1
-      ) wa ON TRUE
-      WHERE rs.organization_id = $1
-        AND rs.status NOT IN ('Done', 'Shipped', 'Picked Up')
-      ${statusFilter}
-      GROUP BY rs.status
-      ORDER BY rs.status
-    `,
-    values
-  );
-
-  const total = result.rows.reduce((sum, row) => sum + Number(row.cnt || 0), 0);
-  const lines = result.rows.map((row) => {
-    const waiting = Number(row.waiting_parts || 0);
-    const waitingSuffix = waiting > 0 ? ` (${waiting} waiting for parts)` : '';
-    return `${row.status}: ${row.cnt}${waitingSuffix}`;
-  });
-
-  return ['=== OPEN REPAIRS ===', ...lines, `Total open: ${total}`].join('\n');
-}
-
-async function fetchReceivingContext(orgId: OrgId): Promise<string> {
-  const [receiving, lines] = await Promise.all([
-    tenantQuery(
-      orgId,
-      `
-        SELECT
-          COUNT(*)::int AS awaiting_unboxing,
-          COUNT(*) FILTER (WHERE rt.door_received_at::date = CURRENT_DATE)::int AS received_today,
-          COUNT(*) FILTER (WHERE r.is_return = true)::int AS returns_pending
-        FROM receiving_carton r
-        -- Wave-2 reader cutover: carton received/unboxed facts come from the
-        -- 1:1 street tables (trigger-mirrored; NULL when no row = not yet).
-        LEFT JOIN receiving_triage rt
-          ON rt.receiving_id = r.id
-         AND rt.organization_id = r.organization_id
-        LEFT JOIN receiving_unbox ru
-          ON ru.receiving_id = r.id
-         AND ru.organization_id = r.organization_id
-        WHERE r.organization_id = $1
-          AND ru.unboxed_at IS NULL
-      `,
-      [orgId],
-    ),
-    tenantQuery(
-      orgId,
-      `
-        SELECT
-          COUNT(*) FILTER (WHERE workflow_status = 'EXPECTED')::int AS expected_count,
-          COUNT(*) FILTER (WHERE workflow_status = 'ARRIVED')::int AS arrived_count
-        FROM receiving_line
-        WHERE organization_id = $1
-      `,
-      [orgId],
-    ),
-  ]);
-
-  const summary = (receiving.rows[0] || {}) as QueryRow;
-  const statusCounts = (lines.rows[0] || {}) as QueryRow;
-  const pendingLines = Number(statusCounts.expected_count || 0) + Number(statusCounts.arrived_count || 0);
-
-  return [
-    '=== RECEIVING ===',
-    `Packages awaiting unboxing: ${summary.awaiting_unboxing ?? 0} (${summary.received_today ?? 0} received today, ${summary.returns_pending ?? 0} return)`,
-    `PO line items still expected: ${pendingLines}`,
   ].join('\n');
 }
 
@@ -556,115 +317,6 @@ export async function fetchReceivingCartonContext(orgId: OrgId, receivingId: num
   });
 }
 
-async function fetchFbaContext(params: IntentParams, orgId: OrgId): Promise<string> {
-  const values: string[] = [];
-  let whereClause = `WHERE COALESCE(fs.status, 'PLANNED') != 'SHIPPED'`;
-
-  if (params.orderId) {
-    values.push(normalizeLookupLike(params.orderId));
-    whereClause += ` AND fs.shipment_ref ILIKE $${values.length}`;
-  }
-
-  // Tenant ownership filter — never surface another org's FBA shipments.
-  values.push(orgId);
-  whereClause += ` AND fs.organization_id = $${values.length}`;
-
-  const result = await tenantQuery(
-    orgId,
-    `
-      SELECT
-        fs.status,
-        COUNT(*)::int AS shipments,
-        COALESCE(SUM(fs.ready_item_count), 0)::int AS ready,
-        COALESCE(SUM(fs.packed_item_count), 0)::int AS packed
-      FROM fba_shipments fs
-      ${whereClause}
-      GROUP BY fs.status
-      ORDER BY fs.status
-    `,
-    values
-  );
-
-  return [
-    '=== FBA SHIPMENTS ===',
-    ...result.rows.map(
-      (row) => `${row.status}: ${formatCountLabel(Number(row.shipments || 0), 'shipment')} | ready: ${row.ready} items, packed: ${row.packed}`
-    ),
-  ].join('\n');
-}
-
-async function fetchInventoryContext(params: IntentParams, orgId: OrgId): Promise<string> {
-  if (params.sku) {
-    const specific = await tenantQuery(
-      orgId,
-      `
-        SELECT sku, product_title, stock
-        FROM sku_stock
-        WHERE organization_id = $1
-          AND (
-               LOWER(COALESCE(sku, '')) ILIKE LOWER($2)
-            OR LOWER(COALESCE(product_title, '')) ILIKE LOWER($2)
-          )
-        ORDER BY sku ASC NULLS LAST, id DESC
-        LIMIT 5
-      `,
-      [orgId, normalizeLookupLike(params.sku)]
-    );
-
-    return [
-      '=== INVENTORY / SKU STOCK ===',
-      ...specific.rows.map((row) => `  ${formatTitle(row.sku as string, 'Unknown SKU')}: ${row.stock ?? '0'} units (${formatTitle(row.product_title as string, 'Unknown product')})`),
-    ].join('\n');
-  }
-
-  const result = await tenantQuery(
-    orgId,
-    `
-      SELECT
-        sku,
-        product_title,
-        COALESCE(stock, 0) AS qty
-      FROM sku_stock
-      WHERE organization_id = $1
-      ORDER BY qty ASC, sku ASC NULLS LAST
-      LIMIT 10
-    `,
-    [orgId],
-  );
-
-  return [
-    '=== INVENTORY / SKU STOCK ===',
-    'Low stock items (bottom 10):',
-    ...result.rows.map((row) => `  ${formatTitle(row.sku as string, 'Unknown SKU')}: ${row.qty} units`),
-  ].join('\n');
-}
-
-async function fetchExceptionsContext(orgId: OrgId): Promise<string> {
-  const result = await tenantQuery(
-    orgId,
-    `
-      SELECT source_station, COUNT(*)::int AS cnt
-      FROM orders_exceptions
-      WHERE organization_id = $1
-        AND status = 'open'
-      GROUP BY source_station
-      ORDER BY source_station
-    `,
-    [orgId],
-  );
-
-  const total = result.rows.reduce((sum, row) => sum + Number(row.cnt || 0), 0);
-  const stations = result.rows
-    .map((row) => `${formatTitle(String(row.source_station || ''), 'Unknown')} station: ${row.cnt}`)
-    .join(' | ');
-
-  return [
-    '=== OPEN EXCEPTIONS ===',
-    `Unresolved tracking exceptions: ${total}`,
-    stations ? `  ${stations}` : '  none',
-  ].join('\n');
-}
-
 export async function fetchShippedContext(params: IntentParams, orgId: OrgId): Promise<string> {
   if (!params.orderId && !params.trackingNumber) return '';
 
@@ -747,49 +399,3 @@ export async function fetchShippedContext(params: IntentParams, orgId: OrgId): P
   ].join('\n');
 }
 
-async function fetchPhotosContext(params: IntentParams, orgId: OrgId): Promise<string> {
-  const rows = await searchPhotos({
-    organizationId: orgId,
-    poRef: params.poRef,
-    damageDetected: params.damageDetected ?? null,
-    q: params.rawQuery ?? params.poRef ?? null,
-    limit: 15,
-  });
-  return formatPhotoSearchForPrompt(rows);
-}
-
-export async function buildContextBlock(
-  intents: IntentDomain[],
-  params: IntentParams,
-  orgId: OrgId
-): Promise<string> {
-  const selected = intents.slice(0, 3);
-  const tasks = selected.map(async (intent) => {
-    switch (intent) {
-      case 'orders':
-        return fetchOrdersContext(params, orgId);
-      case 'staff':
-        return fetchStaffContext(params, orgId);
-      case 'repair':
-        return fetchRepairContext(params, orgId);
-      case 'receiving':
-        return fetchReceivingContext(orgId);
-      case 'fba':
-        return fetchFbaContext(params, orgId);
-      case 'inventory':
-        return fetchInventoryContext(params, orgId);
-      case 'exceptions':
-        return fetchExceptionsContext(orgId);
-      case 'photos':
-        return fetchPhotosContext(params, orgId);
-      case 'shipped':
-        if (!params.orderId && !params.trackingNumber) return '';
-        return fetchShippedContext(params, orgId);
-      default:
-        return '';
-    }
-  });
-
-  const blocks = (await Promise.all(tasks)).map((block) => block.trim()).filter(Boolean);
-  return blocks.join('\n\n');
-}

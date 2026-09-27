@@ -11,11 +11,8 @@ function first(params: SeedGateSearchParams, key: string): string {
   return String(value ?? '').trim();
 }
 
-/** True when a bare `/test` request will mount the Ready-to-Pack **Pending** grid against the seeded key. */
+/** True when a `/pick` request will mount the Picker desk's **Pending** grid against the seeded key. */
 export function shouldSeedReadyToPackQueue(params: SeedGateSearchParams): boolean {
-  const view = first(params, 'view').toLowerCase();
-  if (view === 'testing' || view === 'testing-history') return false;
-
   const ship = first(params, 'ship').toLowerCase();
   if (ship !== '' && ship !== 'pending' && ship !== 'urgent') return false;
 

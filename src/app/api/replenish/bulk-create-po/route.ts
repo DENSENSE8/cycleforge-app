@@ -2,7 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createDraftPurchaseOrders } from '@/lib/replenishment';
 import { withAuth } from '@/lib/auth/withAuth';
 
-// Creates draft Zoho POs from staged replenishment requests. Approval-level
+// Creates internal purchase orders (inbound_order, on Incoming) from staged
+// replenishment requests; `export_to_zoho: true` also posts a Zoho copy. Approval-level
 // action — wired to replenish.approve_po which is in STEP_UP_PERMISSIONS so
 // the wrapper also requires a fresh step-up grant.
 export const POST = withAuth(async (req: NextRequest, ctx) => {
@@ -24,7 +25,10 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
   }
 
   // Thread the caller's active tenant so the shared module filters out any cross-tenant replenishment_request_ids (org-scoped SELECT/UPDATE)…
-  const created = await createDraftPurchaseOrders(ids, ctx.organizationId);
+  const created = await createDraftPurchaseOrders(ids, ctx.organizationId, undefined, {
+    exportToZoho: body.export_to_zoho === true,
+    staffId: ctx.staffId,
+  });
 
   return NextResponse.json({
     success: true,

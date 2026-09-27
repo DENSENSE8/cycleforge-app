@@ -186,8 +186,12 @@ export const INCOMING_ROUTE_PARAMS = defineRouteParams({
      * On-the-way lane with every line those numbers name.
      */
     ref_in: paramText,
-    /** Reconciliation status filter over `ref_in` (`RECON_PARAM`). */
-    recon: paramEnum(['received', 'not_received'] as const),
+    /**
+     * Bucket filter over `ref_in` (`RECON_PARAM`) — the inbound locator's
+     * bucket ids. The ledger narrows on received / not_received only;
+     * `exceptions` narrows the pasted-list popout.
+     */
+    recon: paramEnum(['received', 'not_received', 'exceptions'] as const),
     /** Delivery-state tile filter. */
     state: paramRoundTrip(parseIncomingDeliveryStateWire),
     /** Source filter (`all` default | `zoho` | `ebay` | `amazon` | `manual`) — Pipeline. */

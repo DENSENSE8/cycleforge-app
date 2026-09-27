@@ -13,8 +13,17 @@
  * `node --env-file` never overrides a variable already set in the shell, so
  * the inline `CYCLEFORGE_LOCAL_MLX=0` wins over `.env`.
  *
+ * A CANDIDATE local model on another loopback port (no `.env` edit, no restart):
+ *   pnpm ai:eval --base-url http://127.0.0.1:18090/v1 --model cf-v2 --label cf-v2
+ * (loopback `http://127.0.0.1|localhost:<port>/v1` only — `@/lib/ai/eval-pin`).
+ *
  * Flags: --model a,b  --only id,id  --min-pass 0..1 (default 1)  --label x
+ *        --base-url http://127.0.0.1:<port>/v1 (local pin only; --model = its id)
  *        --harvest (print 👎 turns as golden candidates and exit)
+ * A golden's `maxMs` is a latency budget checked like any other assertion.
+ *        --with-payments (also run take-payment, which creates a REAL Square
+ *        payment link on a TEMP $1 order and deletes both after the run;
+ *        default runs never call Square and report take-payment as SKIP)
  * Env:   LH_BASE_URL (http://localhost:3050), LH_TENANT_SLUG (usav), LH_STAFF_NAME.
  *
  * Output: a table on stdout and `evals/assistant/<iso>-<model>.json`
@@ -26,8 +35,11 @@ import { execFileSync } from 'node:child_process';
 import { randomUUID } from 'node:crypto';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
+import { setTimeout as sleep } from 'node:timers/promises';
 import { loadFixtures, loadThumbsDown } from './fixtures';
-import { buildGoldens, commonChecks, type TurnResult } from './goldens';
+import { SQUARE_GOLDEN_IDS, buildGoldens, commonChecks, type TurnResult } from './goldens';
+import { cleanupPaymentFixture, createPaymentFixture } from './payment-fixture';
+import { parseEvalBaseURL } from '../../src/lib/ai/eval-pin';
 
 const BASE = process.env.LH_BASE_URL || 'http://localhost:3050';
 const TENANT = process.env.LH_TENANT_SLUG || 'usav';
@@ -46,6 +58,8 @@ function flag(name: string): string | null {
 }
 
 function mintCookie(): string {
+  // A session the caller already holds (`cf_sid=…`) — signin is rate-limited.
+  if (process.env.LH_COOKIE) return process.env.LH_COOKIE.trim();
   const out = execFileSync('node', ['scripts/lighthouse-mint-session.mjs'], {
     encoding: 'utf8',
     env: { ...process.env, LH_BASE_URL: BASE, LH_TENANT_SLUG: TENANT },
@@ -75,6 +89,7 @@ type Usage = NonNullable<EvalRow['usage']>;
 interface Pin {
   provider: 'local' | 'gateway';
   model: string | null;
+  baseURL: string | null;
 }
 
 async function ask(cookie: string, pin: Pin, sessionId: string, message: string): Promise<TurnResult & { httpError?: string }> {
@@ -87,6 +102,7 @@ async function ask(cookie: string, pin: Pin, sessionId: string, message: string)
       'x-tenant-slug': TENANT,
       'x-ai-eval-provider': pin.provider,
       ...(pin.model ? { 'x-ai-eval-model': pin.model } : {}),
+      ...(pin.baseURL ? { 'x-ai-eval-base-url': pin.baseURL } : {}),
     },
     body: JSON.stringify({
       sessionId,
@@ -101,6 +117,7 @@ async function ask(cookie: string, pin: Pin, sessionId: string, message: string)
     reasoning: '',
     tools: [],
     artifacts: [],
+    uiTools: [],
     done: null,
     errors: [],
     suggestions: [],
@@ -143,7 +160,10 @@ async function ask(cookie: string, pin: Pin, sessionId: string, message: string)
           title: d.input?.artifact?.title,
           rows: d.input?.artifact?.rows?.length ?? 0,
           documents: (d.input?.artifact?.documents ?? []).map((doc: { docType?: string }) => doc.docType ?? ''),
+          identity: d.input?.artifact?.identity ? { title: d.input.artifact.identity.title, href: d.input.artifact.identity.href ?? null } : null,
         });
+      } else if (ev === 'ui_tool') {
+        out.uiTools?.push({ name: d.name, input: d.input });
       } else if (ev === 'done') {
         out.done = d;
         // `done` ends the turn (K4); latency is measured here, not at close.
@@ -161,41 +181,66 @@ const pct = (sorted: number[], p: number) =>
 
 async function runModel(cookie: string, pin: Pin, only: string[], label: string) {
   const fixtures = await loadFixtures(TENANT);
-  const goldens = buildGoldens(fixtures).filter((g) => only.length === 0 || only.includes(g.id));
   const runId = `${Date.now().toString(36)}${randomUUID().slice(0, 4)}`;
+  const startedAt = new Date();
+  // Opt-in only: take-payment makes a real Square link on a TEMP $1 order, torn down in `finally`.
+  const withPayments = process.argv.includes('--with-payments');
+  const payment = withPayments ? await createPaymentFixture(fixtures.orgId, runId) : null;
+  const goldens = buildGoldens(fixtures, { startedAt, payment }).filter((g) => only.length === 0 || only.includes(g.id));
+  const skipped = withPayments ? [] : SQUARE_GOLDEN_IDS.filter((id) => only.length === 0 || only.includes(id));
   const sessions = new Set<string>();
   const results: EvalRow[] = [];
-  const modelName = pin.provider === 'local' ? 'local_mlx' : (pin.model ?? process.env.AI_CHAT_MODEL ?? 'gateway');
+  const modelName =
+    pin.provider === 'local'
+      ? pin.baseURL
+        ? `local_${pin.model ?? 'default_model'}@${new URL(pin.baseURL).port}`
+        : 'local_mlx'
+      : (pin.model ?? process.env.AI_CHAT_MODEL ?? 'gateway');
   console.log(`\n▶ ${label} · ${pin.provider} · ${modelName} · ${goldens.length} goldens`);
+  for (const id of skipped) console.log(`SKIP ${id.padEnd(15)} (calls production Square — pass --with-payments to run it)`);
 
-  for (const g of goldens) {
-    const sessionId = `eval-${runId}-${g.thread ?? g.id}`;
-    sessions.add(sessionId);
-    const r = await ask(cookie, pin, sessionId, g.question);
-    const checks = r.httpError ? [[r.httpError, false] as const] : [...g.check(r), ...commonChecks(r, g.bins)];
-    const fails = checks.filter(([, ok]) => !ok).map(([name]) => name);
-    const usage = r.done?.usage ?? null;
-    const row: EvalRow = {
-      id: g.id,
-      question: g.question,
-      pass: fails.length === 0,
-      fails,
-      ms: r.ms,
-      firstDeltaMs: r.firstDeltaMs,
-      provider: r.providers.at(-1) ?? null,
-      mode: r.done?.mode ?? null,
-      usage,
-      tools: r.tools.map((t) => `${t.name}(${JSON.stringify(t.input)})${t.ok === false ? '!' : ''}`),
-      artifacts: r.artifacts,
-      suggestions: r.suggestions,
-      errors: r.errors,
-      text: r.text,
-    };
-    results.push(row);
-    const tok = usage ? `${usage.inputTokens ?? '?'}→${usage.outputTokens ?? '?'} tok` : 'no usage';
-    console.log(
-      `${row.pass ? 'PASS' : 'FAIL'} ${g.id.padEnd(15)} ${String(r.ms).padStart(6)}ms ${tok.padEnd(16)} ${row.provider ?? '-'} ${row.tools.join(' ')}${fails.length ? `\n     FAILS: ${fails.join('; ')}` : ''}${r.errors.length ? `\n     ERROR: ${r.errors.map((e) => `[${e.code ?? '-'}] ${e.message}`).join(' | ').slice(0, 600)}` : ''}\n     > ${r.text.replace(/\n/g, ' ⏎ ').slice(0, 240)}`,
-    );
+  try {
+    for (const g of goldens) {
+      const sessionId = `eval-${runId}-${g.thread ?? g.id}`;
+      sessions.add(sessionId);
+      // The route's per-org limit (25/min) refuses BEFORE any work, so a fast model
+      // would otherwise score 429s as fails: wait out the window and re-ask.
+      let r = await ask(cookie, pin, sessionId, g.question);
+      for (let tries = 0; r.httpError?.startsWith('HTTP 429') && tries < 8; tries++) {
+        await sleep(10_000);
+        r = await ask(cookie, pin, sessionId, g.question);
+      }
+      const budget: Array<readonly [string, boolean]> = g.maxMs ? [[`within ${g.maxMs}ms (${r.ms}ms)`, r.ms <= g.maxMs]] : [];
+      const checks = r.httpError ? [[r.httpError, false] as const] : [...(await g.check(r)), ...commonChecks(r, g.bins), ...budget];
+      const fails = checks.filter(([, ok]) => !ok).map(([name]) => name);
+      const usage = r.done?.usage ?? null;
+      const row: EvalRow = {
+        id: g.id,
+        question: g.question,
+        pass: fails.length === 0,
+        fails,
+        ms: r.ms,
+        firstDeltaMs: r.firstDeltaMs,
+        provider: r.providers.at(-1) ?? null,
+        mode: r.done?.mode ?? null,
+        usage,
+        tools: r.tools.map((t) => `${t.name}(${JSON.stringify(t.input)})${t.ok === false ? '!' : ''}`),
+        artifacts: r.artifacts,
+        suggestions: r.suggestions,
+        errors: r.errors,
+        text: r.text,
+      };
+      results.push(row);
+      const tok = usage ? `${usage.inputTokens ?? '?'}→${usage.outputTokens ?? '?'} tok` : 'no usage';
+      console.log(
+        `${row.pass ? 'PASS' : 'FAIL'} ${g.id.padEnd(15)} ${String(r.ms).padStart(6)}ms ${tok.padEnd(16)} ${row.provider ?? '-'} ${row.tools.join(' ')}${fails.length ? `\n     FAILS: ${fails.join('; ')}` : ''}${r.errors.length ? `\n     ERROR: ${r.errors.map((e) => `[${e.code ?? '-'}] ${e.message}`).join(' | ').slice(0, 600)}` : ''}\n     > ${r.text.replace(/\n/g, ' ⏎ ').slice(0, 240)}`,
+      );
+    }
+  } finally {
+    if (payment) {
+      const cleaned = await cleanupPaymentFixture(BASE, cookie, TENANT, fixtures.orgId, payment);
+      console.log(`   payment fixture cleaned up: ${cleaned.join('; ')}`);
+    }
   }
 
   // Soft-delete this run's threads (they belong to the minted staffer).
@@ -222,6 +267,7 @@ async function runModel(cookie: string, pin: Pin, only: string[], label: string)
     outputTokens: sum((u) => u.outputTokens),
     costMicrocents: sum((u) => u.costMicrocents),
     usageReported: results.filter((r) => r.usage?.inputTokens != null).length,
+    skipped,
     fixtures,
   };
   console.log(
@@ -247,7 +293,12 @@ async function main() {
     return;
   }
 
-  const local = !/^(0|off|false)$/i.test(process.env.CYCLEFORGE_LOCAL_MLX ?? '1');
+  const baseURL = flag('base-url');
+  // The route drops an invalid pin (normal chain) — fail here instead of scoring the wrong endpoint.
+  if (baseURL !== null && parseEvalBaseURL(baseURL) === null) {
+    throw new Error(`--base-url must be http://127.0.0.1|localhost:<port>/v1, got ${JSON.stringify(baseURL)}`);
+  }
+  const local = baseURL !== null || !/^(0|off|false)$/i.test(process.env.CYCLEFORGE_LOCAL_MLX ?? '1');
   const models = (flag('model') ?? '')
     .split(',')
     .map((m) => m.trim())
@@ -257,10 +308,11 @@ async function main() {
   const minPass = Number(flag('min-pass') ?? '1');
   const label = flag('label') ?? 'ai-eval';
   const pins: Pin[] = local
-    ? [{ provider: 'local', model: null }]
-    : (models.length ? models : [null]).map((model) => ({ provider: 'gateway' as const, model }));
+    ? [{ provider: 'local', model: baseURL ? (models[0] ?? null) : null, baseURL }]
+    : (models.length ? models : [null]).map((model) => ({ provider: 'gateway' as const, model, baseURL: null }));
 
-  const cookie = mintCookie();
+  // CF_COOKIE="cf_sid=…" reuses a live staff session instead of signing in (signin is rate-limited).
+  const cookie = process.env.CF_COOKIE?.trim() || mintCookie();
   const summaries = [];
   for (const pin of pins) summaries.push(await runModel(cookie, pin, only, label));
 

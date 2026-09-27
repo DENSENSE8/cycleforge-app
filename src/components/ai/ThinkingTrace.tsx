@@ -14,14 +14,13 @@
  */
 
 import { useId } from 'react';
-import { AnimatePresence, motion, useReducedMotion } from '@/design-system/motion';
+import { motion, useReducedMotion } from '@/design-system/motion';
+import { Collapse } from '@/design-system/components/Collapse';
 import {
   AI_FOCUS_CLASS,
   AI_ICON_BUTTON_CLASS,
   AiTextShimmer,
-  aiPresence,
   aiTransition,
-  useMotionPresence,
   useMotionTransition,
 } from '@/design-system/ai';
 import { X } from '@/components/Icons';
@@ -97,8 +96,6 @@ export function ThinkingTrace({
   onClose: () => void;
 }) {
   const headingId = useId();
-  const presence = useMotionPresence(aiPresence.reveal);
-  const transition = useMotionTransition(aiTransition.reveal);
   const tools = steps.filter((s): s is ToolStep => s.kind === 'tool');
   const thoughts = steps
     .filter((s): s is Exclude<AssistantStep, ToolStep> => s.kind !== 'tool')
@@ -115,61 +112,50 @@ export function ThinkingTrace({
     .join(' · ');
 
   return (
-    <AnimatePresence initial={false}>
-      {open ? (
-        <motion.section
-          key="thought-process"
-          aria-labelledby={headingId}
-          {...presence}
-          transition={transition}
-          className="overflow-hidden"
-          data-thinking-trace
-        >
-          <div className="flex flex-col gap-3 pb-1">
-            <div className="flex items-center justify-between gap-2">
-              <h4 id={headingId} className="text-ai-title font-semibold text-ai-ink">
-                Thought process
-              </h4>
-              <button
-                type="button"
-                aria-label="Close thought process"
-                title="Close (Esc)"
-                onClick={onClose}
-                data-thinking-close
-                className={cn('ds-raw-button h-7 w-7', AI_ICON_BUTTON_CLASS, AI_FOCUS_CLASS)}
-              >
-                <X className="h-3.5 w-3.5" />
-              </button>
-            </div>
-            {tools.length > 0 ? (
-              <ol className="ml-5 list-decimal space-y-1 text-ai-prose text-ai-ink marker:text-ai-faint">
-                {tools.map((step, i) => (
-                  <li key={i} className="pl-1" data-step="tool" data-status={step.status}>
-                    {step.status === 'running' ? toolActivityLabel(step.name, step.input) : toolDoneLabel(step.name, step.input)}
-                    {step.status === 'error' ? (
-                      <span className="text-text-danger"> → failed</span>
-                    ) : step.result ? (
-                      <span> → {step.result}</span>
-                    ) : null}
-                  </li>
-                ))}
-              </ol>
-            ) : (
-              <p className="text-ai-prose text-ai-ink">No lookups — answered from the conversation.</p>
-            )}
-            {thoughts.map((text, i) => (
-              <p key={i} className="whitespace-pre-wrap text-ai-prose text-ai-ink" data-step="reasoning">
-                {text}
-              </p>
+    <Collapse open={open}>
+      <section aria-labelledby={headingId} data-thinking-trace className="flex flex-col gap-3 pb-1">
+        <div className="flex items-center justify-between gap-2">
+          <h4 id={headingId} className="text-ai-title font-semibold text-ai-ink">
+            Thought process
+          </h4>
+          <button
+            type="button"
+            aria-label="Close thought process"
+            title="Close (Esc)"
+            onClick={onClose}
+            data-thinking-close
+            className={cn('ds-raw-button h-7 w-7', AI_ICON_BUTTON_CLASS, AI_FOCUS_CLASS)}
+          >
+            <X className="h-3.5 w-3.5" />
+          </button>
+        </div>
+        {tools.length > 0 ? (
+          <ol className="ml-5 list-decimal space-y-1 text-ai-prose text-ai-ink marker:text-ai-faint">
+            {tools.map((step, i) => (
+              <li key={i} className="pl-1" data-step="tool" data-status={step.status}>
+                {step.status === 'running' ? toolActivityLabel(step.name, step.input) : toolDoneLabel(step.name, step.input)}
+                {step.status === 'error' ? (
+                  <span className="text-text-danger"> → failed</span>
+                ) : step.result ? (
+                  <span> → {step.result}</span>
+                ) : null}
+              </li>
             ))}
-            {cost ? (
-              <p className="text-ai-label text-ai-faint" data-thinking-cost>
-                {cost}
-              </p>
-            ) : null}
-          </div>
-        </motion.section>
-      ) : null}
-    </AnimatePresence>
+          </ol>
+        ) : (
+          <p className="text-ai-prose text-ai-ink">No lookups — answered from the conversation.</p>
+        )}
+        {thoughts.map((text, i) => (
+          <p key={i} className="whitespace-pre-wrap text-ai-prose text-ai-ink" data-step="reasoning">
+            {text}
+          </p>
+        ))}
+        {cost ? (
+          <p className="text-ai-label text-ai-faint" data-thinking-cost>
+            {cost}
+          </p>
+        ) : null}
+      </section>
+    </Collapse>
   );
 }

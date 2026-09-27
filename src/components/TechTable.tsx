@@ -2,7 +2,7 @@
 
 import { useCallback, useMemo } from 'react';
 import { useEventBridge } from '@/hooks';
-import { type TechRecord } from '@/hooks/useTechLogs';
+import { type TechRecord } from '@/hooks/useDeskPickLogs';
 import { useTechTableController } from '@/hooks/station/useTechTableController';
 import { useStationDetailsSelection } from '@/hooks/station/useStationDetailsSelection';
 import { StationHistoryTable } from '@/components/station/StationHistoryTable';
@@ -148,7 +148,7 @@ export function TechTable({
       savedViewsParamKeys={SAVED_VIEW_PARAM_KEYS.tech_history}
       emptyMessage="No tech records found"
       firstRunEmpty={<ContextualEmptyState state="no-work" />}
-      // The find box is answered by `/api/tech-logs?q=`, not by a pass over the mounted week.
+      // The find box is answered by `/api/picking/desk/logs?q=`, not by a pass over the mounted week.
       search={{ value: query, onChange: setQuery, pending: isRefreshing }}
       pipeline={{
         records: orderedRecords,

@@ -80,8 +80,8 @@ test('guard: RETURNED → SHIPPED is allowed (returns-intake undo restores the p
   assert.equal(guard('RETURNED', 'RMA').ok, true);
 });
 
-test('guard: force-pick override edges (STOCKED/TESTED/GRADED → PICKED, pick/scan override_mismatch)', () => {
-  // /api/pick/scan with override_mismatch=true force-picks a sellable unit
+test('guard: force-pick override edges (STOCKED/TESTED/GRADED → PICKED, picking/units/scan override_mismatch)', () => {
+  // /api/picking/units/scan with override_mismatch=true force-picks a sellable unit
   // that has no open ALLOCATED row. Only sellable sources are modeled.
   for (const from of ['STOCKED', 'TESTED', 'GRADED'] as const) {
     assert.equal(guard(from, 'PICKED').ok, true, `${from} → PICKED must be allowed`);

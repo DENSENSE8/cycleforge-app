@@ -1,19 +1,23 @@
 'use client';
 
-import { useEffect, useMemo } from 'react';
+import { useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Search } from '@/components/Icons';
 import { EmptyState } from '@/design-system/primitives';
 import { useSearchPrimaryPaintOptional } from '@/components/search/search-primary-paint-context';
-import { SearchDossierFrame } from '@/components/search/dossier/SearchDossierFrame';
+import { SearchEntityRecord } from '@/components/search/dossier/SearchEntityRecord';
 import type { SerialUnitDetailPayload } from '@/components/inventory/types';
-import { presentFindDossier } from '@/lib/search/find-dossier-model';
 import {
   findEventsFromInventory,
   findEventsFromTimelineRows,
   findEventsFromUnitPhotos,
 } from '@/lib/search/find-events-from-sources';
-import { presentFact } from '@/lib/search/search-dossier-model';
+import {
+  presentFact,
+  type SearchDossierFact,
+  type SearchDossierFinding,
+  type SearchDossierLink,
+} from '@/lib/search/search-dossier-model';
 import { searchHitHref } from '@/lib/search/search-hit';
 
 export function SearchUnitDossier({
@@ -45,27 +49,6 @@ export function SearchUnitDossier({
     primaryPaint?.onPrimaryPainted();
   }, [settled, primaryPaint]);
 
-  const serial = presentFact(unit?.serial_number);
-  const title = presentFact(unit?.product_title) || serial || `Unit ${token}`;
-  const location = presentFact(unit?.current_location);
-  const status = presentFact(unit?.current_status)?.replace(/_/g, ' ') ?? null;
-  const grade = presentFact(unit?.condition_grade);
-  const sku = presentFact(unit?.sku);
-
-  const findings = useMemo(() => {
-    if (!unit) return [];
-    if (location) return [];
-    return [
-      {
-        key: 'no_location',
-        label: 'No location',
-        hint: 'This unit is not sitting in a bin. Open inventory to place it.',
-        href: searchHitHref('SERIAL_UNIT', unit.id),
-        hrefLabel: 'Open inventory',
-      },
-    ];
-  }, [unit, location]);
-
   if (!settled) {
     return <div className="min-h-0 flex-1" aria-busy />;
   }
@@ -81,6 +64,61 @@ export function SearchUnitDossier({
       </div>
     );
   }
+
+  const serial = presentFact(unit.serial_number);
+  const title = presentFact(unit.product_title) || serial || `Unit ${unit.id}`;
+  const location = presentFact(unit.current_location);
+  const status = presentFact(unit.current_status)?.replace(/_/g, ' ') ?? 'unknown';
+  const grade = presentFact(unit.condition_grade);
+  const sku = presentFact(unit.sku);
+  const tracking = presentFact(unit.shipping_tracking_number);
+  const receivedBy = presentFact(unit.received_by_name);
+  const inventoryHref = searchHitHref('SERIAL_UNIT', unit.id);
+
+  const findings: SearchDossierFinding[] = location
+    ? []
+    : [
+        {
+          key: 'no_location',
+          label: 'No location',
+          hint: 'This unit is not sitting in a bin. Open inventory to place it.',
+          href: inventoryHref,
+          hrefLabel: 'Open inventory',
+        },
+      ];
+
+  const photos = [...(query.data?.photos ?? [])].sort(
+    (a, b) => Date.parse(b.created_at) - Date.parse(a.created_at),
+  );
+
+  const facts: SearchDossierFact[] = [
+    ...(serial ? [{ id: 'serial', label: 'Serial', value: serial, copy: true }] : []),
+    ...(sku ? [{ id: 'sku', label: 'SKU', value: sku, copy: true }] : []),
+    { id: 'location', label: 'Bin', value: location || '—' },
+    ...(grade ? [{ id: 'grade', label: 'Condition', value: grade.replace(/_/g, ' ') }] : []),
+    ...(tracking ? [{ id: 'tracking', label: 'Tracking #', value: tracking, copy: true }] : []),
+    ...(receivedBy ? [{ id: 'received-by', label: 'Received by', value: receivedBy }] : []),
+  ];
+
+  // The orders this unit was allocated to (live first) and its catalog item.
+  const related: SearchDossierLink[] = [
+    ...(query.data?.allocations ?? []).map((allocation) => ({
+      id: `order:${allocation.order_id}`,
+      label: allocation.released_at ? 'Was on order' : 'Order',
+      value: presentFact(allocation.order_number) || `#${allocation.order_id}`,
+      target: { sel: { entityType: 'order' as const, id: allocation.order_id } },
+    })),
+    ...(unit.sku_catalog_id != null && sku
+      ? [
+          {
+            id: `sku:${unit.sku_catalog_id}`,
+            label: 'Product',
+            value: sku,
+            target: { sel: { entityType: 'sku' as const, id: unit.sku_catalog_id } },
+          },
+        ]
+      : []),
+  ];
 
   const scanEvents =
     (query.data?.events_full?.length ?? 0) > 0
@@ -101,41 +139,40 @@ export function SearchUnitDossier({
             actor_name: row.actor_name,
           })),
         );
-  const photoEvents = findEventsFromUnitPhotos(query.data?.photos ?? []);
-  const dossier = presentFindDossier({
-    entityType: 'unit',
-    id: unit.id,
-    title,
-    status: status || 'unknown',
-    facts: [
-      { id: 'status', label: 'Status', value: status || '—' },
-      { id: 'location', label: 'Location', value: location || '—' },
-      ...(sku ? [{ id: 'sku', label: 'SKU', value: sku }] : []),
-      ...(serial ? [{ id: 'serial', label: 'Serial', value: serial }] : []),
-      ...(grade ? [{ id: 'grade', label: 'Grade', value: grade }] : []),
-    ],
-    findings,
-    handoffs: [
-      {
-        href: searchHitHref('SERIAL_UNIT', unit.id),
-        label: 'Open inventory',
-        primary: true,
-      },
-    ],
-    events: [...scanEvents, ...photoEvents],
-  });
 
   return (
-    <SearchDossierFrame
+    <SearchEntityRecord
       entity="Unit"
+      reference={serial || String(unit.id)}
       title={title}
+      status={status}
       onBack={onBack}
-      outline={dossier.outline}
       findings={findings}
-      facts={dossier.facts}
-      events={dossier.events}
-      emptyLines="No chronology on this unit yet."
-      handoffs={dossier.handoffs}
+      lines={[
+        {
+          id: unit.id,
+          title,
+          imageUrl: photos[0]?.url ?? null,
+          facts: [
+            ...(sku ? [{ label: 'SKU', value: sku }] : []),
+            ...(grade ? [{ label: 'Condition', value: grade.replace(/_/g, ' ') }] : []),
+            { label: 'Bin', value: location || 'Unassigned' },
+          ],
+        },
+      ]}
+      linesLabel="unit"
+      emptyLines="No unit."
+      events={[...scanEvents, ...findEventsFromUnitPhotos(photos)]}
+      emptyEvents="No history on this unit yet."
+      facts={facts}
+      related={related}
+      handoffs={[{ href: inventoryHref, label: 'Open inventory', primary: true }]}
+      photos={photos.map((photo) => ({
+        id: String(photo.id),
+        imgUrl: photo.url,
+        fullUrl: photo.url,
+        alt: `${(photo.photo_type ?? 'unit').replace(/_/g, ' ')} photo`,
+      }))}
     />
   );
 }

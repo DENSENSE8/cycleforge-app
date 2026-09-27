@@ -24,6 +24,15 @@ function previewBucket(entityType: string): string {
   return entityType;
 }
 
+/** Sentence-case plural name of an entity type ("Orders", "SKUs") — group headings and the palette's type pills. */
+export function previewEntityLabel(entityType: string): string {
+  const type = previewBucket(entityType);
+  const label = ENTITY_GROUP_LABEL[type];
+  if (label) return label;
+  const words = type.replace(/_/g, ' ');
+  return words.charAt(0).toUpperCase() + words.slice(1);
+}
+
 interface PreviewGroup {
   label: string;
   hits: AiSearchHit[];

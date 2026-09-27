@@ -13,7 +13,7 @@ import { IncomingReturnsImportStagingRail } from '@/components/sidebar/receiving
 import { IncomingDeliveriesLedger } from '@/components/receiving/incoming/IncomingDeliveriesLedger';
 import { useIncomingStatusChips } from '@/components/receiving/incoming/IncomingStatusChips';
 import { DockedReceiptsLedger } from '@/components/receiving/history/DockedReceiptsLedger';
-import { ReceivingOrderComposer } from '@/components/receiving/incoming/order-composer/ReceivingOrderComposer';
+import { InboundOrderComposer } from '@/components/receiving/incoming/order-composer/InboundOrderComposer';
 import {
   getReceivingOrderComposerKind,
   subscribeReceivingOrderComposer,
@@ -208,7 +208,7 @@ export default function ReceivingLinesTable({
   const reconciling = refSelection.refs.length > 0;
   const recon = reconciling ? parseReconParam(searchParams.get(RECON_PARAM)) : null;
   const inboundCheck = useInboundCheck(refSelection);
-  // Add swaps the ledger for the receiving-order composer — either lane of the
+  // Add swaps the ledger for the inbound-order form — either lane of the
   // Inbound desk, and the Unbox Inbound tab (its header's Add purchase order).
   const composerKind = useSyncExternalStore(
     subscribeReceivingOrderComposer,
@@ -675,7 +675,7 @@ export default function ReceivingLinesTable({
     const inTriageRegion = (body: ReactNode) =>
       isInboundDeskHost ? body : <ModeRegion mode="triage" className="contents">{body}</ModeRegion>;
     if (composerKind && (isInboundDeskHost || isIncomingMode)) {
-      return inTriageRegion(<ReceivingOrderComposer kind={composerKind} />);
+      return inTriageRegion(<InboundOrderComposer initialType={composerKind} />);
     }
     return inTriageRegion(
       <>

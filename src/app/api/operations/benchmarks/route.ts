@@ -16,7 +16,7 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
     ctx.organizationId,
     `benchmarks:${rangeDays}`,
     120,
-    [CACHE_TAGS.orders, CACHE_TAGS.techLogs],
+    [CACHE_TAGS.orders, CACHE_TAGS.deskPickLogs],
     () => getBenchmarkComparison(ctx.organizationId, rangeDays),
   );
   return NextResponse.json({ success: true, ...comparison });

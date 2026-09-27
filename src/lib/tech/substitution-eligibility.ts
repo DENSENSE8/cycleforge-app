@@ -1,4 +1,4 @@
-/** Pure gating logic for showing the fulfillment-substitution section on the `/tech` shipping station… */
+/** Pure gating logic for showing the fulfillment-substitution section on the `/pick` Picker desk… */
 
 /** Response shape of GET /api/fulfillment/substitution-policy. */
 export interface SubstitutionPolicy {

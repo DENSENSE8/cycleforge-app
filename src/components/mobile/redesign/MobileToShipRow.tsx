@@ -70,7 +70,7 @@ export const MobileToShipRow = memo(function MobileToShipRow({
     : `Order · ${orderReference}`;
   const workflow = resolveOutboundWorkflowFacts({
     shipmentId: row.shipmentId,
-    hasTechScan: row.hasTechScan,
+    hasPickScan: row.hasPickScan,
     packedAt: row.packedAt,
     dockStagedAt: row.dockStagedAt,
     isOutOfStock: blocked || row.outOfStock,

@@ -55,7 +55,7 @@ export interface ResolvedProductManual {
 }
 
 /**
- * Shared context passed from useStationTestingController to every scan handler.
+ * Shared context passed from useDeskPickController to every scan handler.
  * Handlers are plain async functions — not hooks — so this object is the only
  * dependency they need rather than importing React state directly.
  */
@@ -81,7 +81,7 @@ export interface ScanHandlerContext {
   onUnitLabelScanned?: (rawInput: string) => void;
   /**
    * Armed packing DESK/STAGING location id for Ready-to-Pack TRACKING scans.
-   * Required by POST /api/tech/scan when marking an order TESTED.
+   * Sent to POST /api/picking/desk/scan to place the picked order at that bench.
    */
   getArmedPackLocationId?: () => number | null;
 }

@@ -331,7 +331,7 @@ function useOrderActionVerbs({
 
   const openExceptionResolve = () => {
     onFinished();
-    if (stage && stage.view !== 'split') stage.setView('split');
+    if (stage && stage.view === 'in-place') stage.setView('split');
     const params = new URLSearchParams(searchParams.toString());
     params.set('order', String(record.id));
     router.replace(`${SHIPPING_EXCEPTIONS_PATH}?${params.toString()}`, { scroll: false });

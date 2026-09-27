@@ -1,4 +1,4 @@
-export type DashboardCategory = 'all' | 'tested' | 'repair' | 'outOfStock' | 'pendingLate' | 'fba';
+export type DashboardCategory = 'all' | 'tested' | 'picked' | 'repair' | 'outOfStock' | 'pendingLate' | 'fba';
 
 export interface DashboardData {
   /* VALUE ONLY. `delta` was removed 2026-09-16: */

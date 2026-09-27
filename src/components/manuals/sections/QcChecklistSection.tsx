@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useState } from 'react';
-import { AnimatePresence, motion } from '@/design-system/motion';
+import { Collapse } from '@/design-system/components/Collapse';
 import { ChevronDown, Plus, Loader2, Trash2, Pencil } from '@/components/Icons';
 import { FILTER_DROPDOWN_SELECT_CLASS } from '@/design-system/components/FilterDropdownSelect';
 import { microBadge } from '@/design-system/tokens/typography/presets';
@@ -266,138 +266,129 @@ export function QcChecklistSection({ catalogId, qcChecks, onRefresh }: QcCheckli
         );
       })}
 
-      <AnimatePresence>
-        {showAdd && (
-          <motion.div
-            initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: 'auto' }}
-            exit={{ opacity: 0, height: 0 }}
-            className="overflow-hidden"
-          >
-            <Panel radius="xl" padding="none" className="p-2.5 space-y-2">
-              <input
-                type="text"
-                value={stepLabel}
-                onChange={(e) => setStepLabel(e.target.value)}
-                placeholder="Check step description"
-                className="w-full rounded-lg border border-border-soft bg-surface-canvas px-2.5 py-1.5 text-role-caption font-semibold text-text-default placeholder:text-text-faint"
-              />
-              <div className="flex gap-2">
-                <HoverTooltip label="Category badge" asChild>
-                  <div className="relative flex-1">
-                    <select
-                      value={stepType}
-                      onChange={(e) => setStepType(e.target.value)}
-                      className={FILTER_DROPDOWN_SELECT_CLASS}
-                      aria-label="Category badge"
-                    >
-                      {STEP_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
-                    </select>
-                    <ChevronDown className="pointer-events-none absolute right-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-text-faint" />
-                  </div>
-                </HoverTooltip>
-                <HoverTooltip label="How the tester records this step" asChild>
-                  <div className="relative flex-1">
-                    <select
-                      value={valueKind}
-                      onChange={(e) => setValueKind(e.target.value)}
-                      className={FILTER_DROPDOWN_SELECT_CLASS}
-                      aria-label="How the tester records this step"
-                    >
-                      {VALUE_KINDS.map((k) => (
-                        <option key={k || 'default'} value={k}>{VALUE_KIND_LABEL[k]}</option>
-                      ))}
-                    </select>
-                    <ChevronDown className="pointer-events-none absolute right-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-text-faint" />
-                  </div>
-                </HoverTooltip>
+      <Collapse open={showAdd} appear>
+        <Panel radius="xl" padding="none" className="p-2.5 space-y-2">
+          <input
+            type="text"
+            value={stepLabel}
+            onChange={(e) => setStepLabel(e.target.value)}
+            placeholder="Check step description"
+            className="w-full rounded-lg border border-border-soft bg-surface-canvas px-2.5 py-1.5 text-role-caption font-semibold text-text-default placeholder:text-text-faint"
+          />
+          <div className="flex gap-2">
+            <HoverTooltip label="Category badge" asChild>
+              <div className="relative flex-1">
+                <select
+                  value={stepType}
+                  onChange={(e) => setStepType(e.target.value)}
+                  className={FILTER_DROPDOWN_SELECT_CLASS}
+                  aria-label="Category badge"
+                >
+                  {STEP_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
+                </select>
+                <ChevronDown className="pointer-events-none absolute right-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-text-faint" />
               </div>
+            </HoverTooltip>
+            <HoverTooltip label="How the tester records this step" asChild>
+              <div className="relative flex-1">
+                <select
+                  value={valueKind}
+                  onChange={(e) => setValueKind(e.target.value)}
+                  className={FILTER_DROPDOWN_SELECT_CLASS}
+                  aria-label="How the tester records this step"
+                >
+                  {VALUE_KINDS.map((k) => (
+                    <option key={k || 'default'} value={k}>{VALUE_KIND_LABEL[k]}</option>
+                  ))}
+                </select>
+                <ChevronDown className="pointer-events-none absolute right-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-text-faint" />
+              </div>
+            </HoverTooltip>
+          </div>
 
-              {showNumeric && (
-                <div className="flex gap-2">
-                  <input
-                    type="number"
-                    value={passMin}
-                    onChange={(e) => setPassMin(e.target.value)}
-                    placeholder="Pass min"
-                    className="flex-1 rounded-lg border border-border-soft bg-surface-canvas px-2.5 py-1.5 text-role-caption font-semibold text-text-default placeholder:text-text-faint"
-                  />
-                  <input
-                    type="number"
-                    value={passMax}
-                    onChange={(e) => setPassMax(e.target.value)}
-                    placeholder="Pass max"
-                    className="flex-1 rounded-lg border border-border-soft bg-surface-canvas px-2.5 py-1.5 text-role-caption font-semibold text-text-default placeholder:text-text-faint"
-                  />
-                  {valueKind !== 'PERCENT' && (
-                    <input
-                      type="text"
-                      value={valueUnit}
-                      onChange={(e) => setValueUnit(e.target.value)}
-                      placeholder="Unit"
-                      className="w-20 rounded-lg border border-border-soft bg-surface-canvas px-2.5 py-1.5 text-role-caption font-semibold text-text-default placeholder:text-text-faint"
-                    />
-                  )}
-                </div>
-              )}
-
-              {showEnum && (
+          {showNumeric && (
+            <div className="flex gap-2">
+              <input
+                type="number"
+                value={passMin}
+                onChange={(e) => setPassMin(e.target.value)}
+                placeholder="Pass min"
+                className="flex-1 rounded-lg border border-border-soft bg-surface-canvas px-2.5 py-1.5 text-role-caption font-semibold text-text-default placeholder:text-text-faint"
+              />
+              <input
+                type="number"
+                value={passMax}
+                onChange={(e) => setPassMax(e.target.value)}
+                placeholder="Pass max"
+                className="flex-1 rounded-lg border border-border-soft bg-surface-canvas px-2.5 py-1.5 text-role-caption font-semibold text-text-default placeholder:text-text-faint"
+              />
+              {valueKind !== 'PERCENT' && (
                 <input
                   type="text"
-                  value={valueEnumText}
-                  onChange={(e) => setValueEnumText(e.target.value)}
-                  placeholder="Choices, comma-separated (e.g. A, B, C)"
-                  className="w-full rounded-lg border border-border-soft bg-surface-canvas px-2.5 py-1.5 text-role-caption font-semibold text-text-default placeholder:text-text-faint"
+                  value={valueUnit}
+                  onChange={(e) => setValueUnit(e.target.value)}
+                  placeholder="Unit"
+                  className="w-20 rounded-lg border border-border-soft bg-surface-canvas px-2.5 py-1.5 text-role-caption font-semibold text-text-default placeholder:text-text-faint"
                 />
               )}
+            </div>
+          )}
 
-              <HoverTooltip label="Auto-tag this failure mode on the unit when this step fails" asChild>
-                <div className="relative">
-                  <select
-                    value={failureModeId}
-                    onChange={(e) => setFailureModeId(e.target.value)}
-                    className={FILTER_DROPDOWN_SELECT_CLASS}
-                    aria-label="Auto-tag this failure mode on the unit when this step fails"
-                  >
-                    <option value="">Auto-tag on fail: none</option>
-                    {failureModes.map((m) => (
-                      <option key={m.id} value={m.id}>{`⚠ ${m.label} (${m.severity})`}</option>
-                    ))}
-                  </select>
-                  <ChevronDown className="pointer-events-none absolute right-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-text-faint" />
-                </div>
+          {showEnum && (
+            <input
+              type="text"
+              value={valueEnumText}
+              onChange={(e) => setValueEnumText(e.target.value)}
+              placeholder="Choices, comma-separated (e.g. A, B, C)"
+              className="w-full rounded-lg border border-border-soft bg-surface-canvas px-2.5 py-1.5 text-role-caption font-semibold text-text-default placeholder:text-text-faint"
+            />
+          )}
+
+          <HoverTooltip label="Auto-tag this failure mode on the unit when this step fails" asChild>
+            <div className="relative">
+              <select
+                value={failureModeId}
+                onChange={(e) => setFailureModeId(e.target.value)}
+                className={FILTER_DROPDOWN_SELECT_CLASS}
+                aria-label="Auto-tag this failure mode on the unit when this step fails"
+              >
+                <option value="">Auto-tag on fail: none</option>
+                {failureModes.map((m) => (
+                  <option key={m.id} value={m.id}>{`⚠ ${m.label} (${m.severity})`}</option>
+                ))}
+              </select>
+              <ChevronDown className="pointer-events-none absolute right-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-text-faint" />
+            </div>
+          </HoverTooltip>
+
+          <div className="flex items-center gap-2">
+            <Button
+              variant="brand"
+              size="sm"
+              onClick={handleSave}
+              loading={saving}
+              disabled={!stepLabel.trim()}
+              className="flex-1"
+            >
+              {editingId ? 'Update' : 'Add Step'}
+            </Button>
+            {editingId && (
+              <HoverTooltip label="Delete step" asChild>
+                <IconButton
+                  icon={removing === editingId ? <Loader2 className="h-3 w-3 animate-spin" /> : <Trash2 className="h-3 w-3" />}
+                  ariaLabel="Delete step"
+                  onClick={() => handleRemove(editingId)}
+                  disabled={removing === editingId}
+                  className="flex items-center gap-1 rounded-lg border border-red-200 px-2.5 py-1.5 text-red-600 hover:bg-red-50"
+                />
               </HoverTooltip>
-
-              <div className="flex items-center gap-2">
-                <Button
-                  variant="brand"
-                  size="sm"
-                  onClick={handleSave}
-                  loading={saving}
-                  disabled={!stepLabel.trim()}
-                  className="flex-1"
-                >
-                  {editingId ? 'Update' : 'Add Step'}
-                </Button>
-                {editingId && (
-                  <HoverTooltip label="Delete step" asChild>
-                    <IconButton
-                      icon={removing === editingId ? <Loader2 className="h-3 w-3 animate-spin" /> : <Trash2 className="h-3 w-3" />}
-                      ariaLabel="Delete step"
-                      onClick={() => handleRemove(editingId)}
-                      disabled={removing === editingId}
-                      className="flex items-center gap-1 rounded-lg border border-red-200 px-2.5 py-1.5 text-red-600 hover:bg-red-50"
-                    />
-                  </HoverTooltip>
-                )}
-                <Button variant="secondary" size="sm" onClick={resetForm}>
-                  Cancel
-                </Button>
-              </div>
-            </Panel>
-          </motion.div>
-        )}
-      </AnimatePresence>
+            )}
+            <Button variant="secondary" size="sm" onClick={resetForm}>
+              Cancel
+            </Button>
+          </div>
+        </Panel>
+      </Collapse>
 
       {!showAdd && (
         <Button

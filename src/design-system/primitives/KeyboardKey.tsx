@@ -3,14 +3,13 @@
 /**
  * KeyboardKey — ONE physical keycap face for teaching chords.
  *
- * Gray sunken face + black letter. Overlay it on a Button (absolute right) or
+ * Quiet sunken face + muted, sentence-case letters. Overlay it on a Button (absolute right) or
  * place it inline in a cheat sheet — same paint either way. Do not fork a
  * second `<kbd>` recipe for hotkey teaching.
  */
 
 import type { HTMLAttributes, ReactNode } from 'react';
 import { SEGMENTED_CONTROL_FACE_CORNER } from '@/design-system/tokens/radius';
-import { elevationClass } from '@/design-system/tokens/shadows';
 import { cn } from '@/utils/_cn';
 
 export type KeyboardKeySize = 'xs' | 'sm' | 'md';
@@ -18,7 +17,7 @@ export type KeyboardKeySize = 'xs' | 'sm' | 'md';
 /**
  * Which ground the cap is sitting on.
  *
- * `default` — page chrome: gray sunken face, black letter, soft lift.
+ * `default` — page chrome: quiet sunken face, muted sentence-case letters, no lift.
  * `inverse` — an inverse surface (the hover tooltip chip). The cap must READ
  * as a hint, not as a target: it is darker than the chip it sits on, outlined
  * with a light hairline, and carries no lift. A light face here (the default
@@ -37,23 +36,20 @@ const SIZE_CLASS: Record<KeyboardKeySize, string> = {
 };
 
 /**
- * Geometry every cap shares. Case, weight and tracking are TONE decisions, not
- * shared ones: a teaching key on page chrome shouts (uppercase, tracked out), a
- * hint on a tooltip does not.
+ * Geometry every cap shares: sans, sentence case ("Ctrl", "Shift", "Alt"; a
+ * letter key reads as printed), normal tracking — a key is READ, never
+ * announced (operator 2026-09-27: "softer, not all caps, not loud").
  */
 const KEYBOARD_KEY_STRUCTURE = cn(
   'inline-flex shrink-0 items-center justify-center',
-  'text-role-micro font-mono tabular-nums',
+  'text-role-micro font-sans font-medium normal-case tracking-normal tabular-nums',
   SEGMENTED_CONTROL_FACE_CORNER,
 );
 
 const TONE_CLASS: Record<KeyboardKeyTone, string> = {
-  default: cn(
-    'border border-border-soft bg-surface-sunken',
-    'ring-1 ring-inset ring-border-hairline',
-    'font-semibold uppercase tracking-widest text-text-default',
-    elevationClass('raised', 'soft'),
-  ),
+  // Page chrome: a quiet sunken face with a hairline inset and muted ink — no
+  // border, no lift — so the cap sits beside its words instead of over them.
+  default: cn('bg-surface-sunken ring-1 ring-inset ring-border-hairline', 'text-text-muted'),
   // Darker than the chip, light hairline, dimmed letter, no shadow. Sentence
   // case and normal tracking: the cap is read, not announced.
   inverse: cn(

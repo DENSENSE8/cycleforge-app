@@ -12,7 +12,7 @@ import { substituteOrderUnit, type AmendmentNode } from '@/lib/fulfillment/subst
 import type { OrgId } from '@/lib/tenancy/constants';
 
 /** POST /api/orders/[id]/substitute */
-const SUBSTITUTE_PERMISSIONS = ['packing.substitute_unit', 'tech.substitute_unit'] as const;
+const SUBSTITUTE_PERMISSIONS = ['packing.substitute_unit', 'picking.substitute_unit'] as const;
 
 export const POST = withAuth(async (request, ctx) => {
   if (!SUBSTITUTE_PERMISSIONS.some((p) => ctx.permissions.has(p))) {

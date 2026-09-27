@@ -15,16 +15,16 @@ interface LedgerStatus {
 }
 
 const STATUS: Record<LabelIngestionState, LedgerStatus> = {
-  QUARANTINED: { label: 'QUARANTINED', tone: 'danger', rank: 0, action: 'retry' },
-  FAILED: { label: 'FAILED', tone: 'danger', rank: 0, action: 'retry' },
-  MATCHED: { label: 'READY TO APPLY', tone: 'warning', rank: 1, action: 'apply' },
-  RECEIVED: { label: 'RECEIVED', tone: 'info', rank: 2, action: null },
-  STAGED: { label: 'STAGED', tone: 'info', rank: 2, action: null },
-  PARSED: { label: 'PARSED', tone: 'info', rank: 2, action: null },
-  APPLYING: { label: 'APPLYING', tone: 'fulfillment', rank: 2, action: null },
-  APPLIED: { label: 'APPLIED', tone: 'success', rank: 3, action: null },
+  QUARANTINED: { label: 'Quarantined', tone: 'danger', rank: 0, action: 'retry' },
+  FAILED: { label: 'Failed', tone: 'danger', rank: 0, action: 'retry' },
+  MATCHED: { label: 'Ready to apply', tone: 'warning', rank: 1, action: 'apply' },
+  RECEIVED: { label: 'Received', tone: 'info', rank: 2, action: null },
+  STAGED: { label: 'Staged', tone: 'info', rank: 2, action: null },
+  PARSED: { label: 'Parsed', tone: 'info', rank: 2, action: null },
+  APPLYING: { label: 'Applying', tone: 'fulfillment', rank: 2, action: null },
+  APPLIED: { label: 'Applied', tone: 'success', rank: 3, action: null },
   // Paired to an order by an operator (Link label) — resolved, nothing to do.
-  LINKED: { label: 'LINKED', tone: 'success', rank: 3, action: null },
+  LINKED: { label: 'Linked', tone: 'success', rank: 3, action: null },
 };
 
 export function ledgerStatus(state: LabelIngestionState): LedgerStatus {

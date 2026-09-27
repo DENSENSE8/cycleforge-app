@@ -67,7 +67,7 @@ Each concern has exactly one root. Upgrading it upgrades every contextual page.
 | Host layout (pinned head, body, footer) | `src/components/sidebar/contextual/ContextualSidebar.tsx` |
 | Pressable block (rest / hover lift / press sink) | `nav-block.ts` → `NAV_BLOCK_CLASS`, `NAV_BLOCK_PLATE_CLASS` |
 | Corners | `SIDEBAR_CONTROL_CORNER`, `SIDEBAR_CHIP_CORNER` in `src/design-system/tokens/radius.ts` |
-| Search wells (global ⌘K, Find `F`) | `NavFind.tsx` (`NavGlobalSearch`, `NavFind`) |
+| Search field (one field: page scope `F`, everywhere ⌘K) | `NavFind.tsx` (`NavFind`), `FindField` (`scope`, `escalate`) |
 | Views, counts, 1–9 keys, hairlines | `NavSectionList.tsx` (`useViewCounts`, `useViewHotkeys`) |
 | View glyphs | `nav-view-icons.ts` (`<pageId>.<viewId>`) |
 | Modes | `NavModeSwitcher.tsx` |

@@ -26,8 +26,8 @@ export function buildAssignmentRow(shipped: ShippedOrder): WorkOrderRow {
     subtitle: [shipped.order_id, shipped.shipping_tracking_number, shipped.sku].filter(Boolean).join(' • '),
     recordLabel: shipped.order_id || shipped.item_number || `Order #${shipped.id}`,
     sourcePath: '/dashboard',
-    techId: shipped.tester_id ?? null,
-    techName: shipped.tester_name || null,
+    techId: shipped.picker_id ?? null,
+    techName: shipped.picker_name || null,
     packerId: shipped.packer_id ?? null,
     packerName: shipped.packed_by_name || null,
     status: 'ASSIGNED',
@@ -55,7 +55,7 @@ interface ShippedHeaderMeta {
   hasOutOfStock: boolean;
   testedById: number | null;
   canEditAssignment: boolean;
-  hasTechScan: boolean;
+  hasPickScan: boolean;
   statusTone: StatusTone;
   statusLabel: string;
   orderIdTrimmed: string;
@@ -106,13 +106,14 @@ export function deriveShippedHeaderMeta(shipped: ShippedOrder): ShippedHeaderMet
   const outOfStockValue = hasOutOfStock ? 'Out of stock' : '';
   const testedById = shipped.tested_by ?? null;
   const canEditAssignment = Number(shipped.id) > 0 && !isExceptionShippedRow(shipped);
-  const hasTechScan = Boolean((shipped as any).has_tech_scan);
+  const hasPickScan = Boolean((shipped as any).has_pick_scan);
   // State decision flows through the canonical fulfillment projection so this header pill can never disagree with the order's board lane…
-  const lane = resolveFulfillmentLane({ hasTechScan, isOutOfStock: hasOutOfStock });
+  const lane = resolveFulfillmentLane({ hasPickScan, isOutOfStock: hasOutOfStock });
   const statusTone: StatusTone = lane === 'TESTED' ? 'emerald' : lane === 'BLOCKED' ? 'red' : 'yellow';
+  // The TESTED lane is the picked lane (a pick fact, not QC) — name the picker, not the unit tester.
   const statusLabel =
     lane === 'TESTED'
-      ? `Tested by ${getStaffName(testedById)}`
+      ? `Picked by ${String(shipped.picked_by_name || '').trim() || getStaffName(shipped.picked_by ?? null)}`
       : lane === 'BLOCKED'
         ? 'Out of stock'
         : 'Pending';
@@ -125,7 +126,7 @@ export function deriveShippedHeaderMeta(shipped: ShippedOrder): ShippedHeaderMet
     hasOutOfStock,
     testedById,
     canEditAssignment,
-    hasTechScan,
+    hasPickScan,
     statusTone,
     statusLabel,
     orderIdTrimmed,

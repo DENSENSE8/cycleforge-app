@@ -9,7 +9,7 @@ export { TESTING_LINE_OPENED_EVENT };
  */
 export function recordTestingLineOpen(lineId: number, receivingId?: number | null): void {
   if (!(lineId > 0)) return;
-  void fetch('/api/testing/receiving-lines/open', {
+  void fetch('/api/qc/receiving-lines/open', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({

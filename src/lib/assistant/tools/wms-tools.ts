@@ -21,7 +21,9 @@ import { scannedFnsku } from '@/lib/scan-resolver';
 import { escapeLike } from '@/lib/sql-like';
 import { resolveSkuIdentityTitle, skuCatalogJoinOnSql } from '@/lib/sku/sku-identity-law';
 import { brandReportEnvelope, type ToolArtifactEnvelope } from '@/lib/assistant/tool-artifact';
-import type { ArtifactTable } from '@/lib/assistant/ui-artifacts';
+import { formatSearchSel } from '@/lib/search/search-selection';
+import { searchHitHref } from '@/lib/search/search-hit';
+import type { ArtifactIdentity, ArtifactRecord, ArtifactTable } from '@/lib/assistant/ui-artifacts';
 import type { AssistantToolDef } from './types';
 
 // ─── Classification (pure) ───────────────────────────────────────────────────
@@ -97,8 +99,8 @@ function day(v: unknown): string | null {
   return Number.isNaN(d.getTime()) ? null : d.toISOString().slice(0, 10);
 }
 
-function envelope(tool: string, artifact: ArtifactTable, summary: string): ToolArtifactEnvelope {
-  return brandReportEnvelope({ artifact, summary }, tool);
+function envelope(tool: string, artifact: ArtifactTable | ArtifactRecord, summary: string, answer: string): ToolArtifactEnvelope {
+  return brandReportEnvelope({ artifact, summary, answer }, tool);
 }
 
 /** "C-03-12-3: 41, C-03-16-3: 1" — at most `max` bins, then "+N more". */
@@ -142,7 +144,7 @@ hit AS (
     JOIN sku_catalog sc ON sc.id = spi.sku_catalog_id AND sc.organization_id = spi.organization_id, q
    WHERE spi.organization_id = $1 AND q.raw IN (spi.platform_sku, spi.platform_item_id)
 )
-SELECT h.sku, h.via, h.listing_title,
+SELECT h.sku, h.via, h.listing_title, sc.id AS catalog_id,
        i.name AS zoho_item_title,
        sc.product_title AS catalog_product_title,
        (SELECT f2.fnsku FROM fba_fnskus f2, q
@@ -165,12 +167,17 @@ SELECT h.sku, h.via, h.listing_title,
  LIMIT 200`;
 
 const SERIAL_SQL = `
-SELECT su.serial_number, su.sku, su.current_status, su.current_location,
-       hu.code AS lpn, ${LOCATION_FACE_SQL} AS location
+SELECT su.id, su.serial_number, su.sku, su.current_status, su.current_location,
+       hu.code AS lpn, ${LOCATION_FACE_SQL} AS location,
+       i.name AS zoho_item_title, sc.product_title AS catalog_product_title
   FROM serial_units su
   LEFT JOIN handling_units hu ON hu.id = su.handling_unit_id AND hu.organization_id = su.organization_id
   LEFT JOIN locations l ON l.id = hu.location_id AND l.organization_id = hu.organization_id
+  LEFT JOIN sku_catalog sc ON ${skuCatalogJoinOnSql('su')}
+  LEFT JOIN items i ON i.zoho_item_id = sc.provider_item_id
+                   AND i.organization_id = sc.organization_id AND i.status = 'active'
  WHERE su.organization_id = $1 AND su.normalized_serial = upper(btrim($2::text))
+ ORDER BY su.id DESC
  LIMIT 5`;
 
 const LPN_SQL = `
@@ -226,6 +233,8 @@ interface BinRow {
 
 interface SkuHit {
   sku: string;
+  /** `sku_catalog.id` — the product's `/search?sel=sku:` handle; null for a bin-only SKU. */
+  catalogId: number | null;
   title: string;
   fnsku: string | null;
   via: string;
@@ -248,6 +257,7 @@ function foldIdentifierRows(rows: ReadonlyArray<Record<string, unknown>>): SkuHi
           item_name: str(r.listing_title),
           sku,
         }),
+        catalogId: num(r.catalog_id),
         fnsku: str(r.fnsku),
         via: String(r.via ?? 'sku'),
         bins: [],
@@ -309,18 +319,21 @@ function locateTable(query: string, hits: ReadonlyArray<SkuHit>): ArtifactTable 
     rows: rows.slice(0, 200),
     entityHint: 'bin',
     idColumn: 'Bin',
-    ...(single
-      ? {
-          product: {
-            title: hits[0].title.slice(0, 120),
-            ids: [
-              { label: 'SKU' as const, value: hits[0].sku },
-              ...(hits[0].fnsku ? [{ label: 'FNSKU' as const, value: hits[0].fnsku }] : []),
-              ...hits[0].bins.slice(0, HEADER_BINS).map((b) => ({ label: 'Bin' as const, value: b.location })),
-            ],
-          },
-        }
-      : {}),
+    ...(single ? { identity: productIdentity(hits[0], query) } : {}),
+  };
+}
+
+/** A product's answer header: identity title, then SKU · FNSKU · UPC (when scanned as one) · bins. */
+function productIdentity(hit: SkuHit, query: string): ArtifactIdentity {
+  return {
+    title: hit.title.slice(0, 120),
+    ids: [
+      { label: 'SKU' as const, value: hit.sku },
+      ...(hit.fnsku ? [{ label: 'FNSKU' as const, value: hit.fnsku }] : []),
+      ...(hit.via === 'gtin' ? [{ label: 'UPC' as const, value: query }] : []),
+      ...hit.bins.slice(0, HEADER_BINS).map((b) => ({ label: 'Bin' as const, value: b.location })),
+    ].slice(0, 12),
+    ...(hit.catalogId ? { href: `/search?sel=${formatSearchSel('sku', hit.catalogId)}` } : {}),
   };
 }
 
@@ -380,6 +393,7 @@ export const locateProduct: AssistantToolDef<typeof locateInput> = {
         'locate_product',
         artifact,
         `${candidates.length} products match "${value}" — the candidates table is already on screen (do not render it again). Top: ${top}. Ask the operator which SKU they mean; do not pick one.`,
+        `${candidates.length} products match "${value}" — which SKU do you mean?`,
       );
     }
 
@@ -392,17 +406,45 @@ export const locateProduct: AssistantToolDef<typeof locateInput> = {
       const unit = serial.rows[0];
       if (unit) {
         const sku = str(unit.sku);
+        const serialNumber = str(unit.serial_number) ?? value;
+        const status = str(unit.current_status);
+        const lpn = str(unit.lpn);
         const where = str(unit.location) ?? str(unit.current_location);
-        return {
-          found: true,
-          kind: 'serial',
-          serial: str(unit.serial_number),
-          sku,
-          status: str(unit.current_status),
-          lpn: str(unit.lpn),
-          location: where,
-          message: `Serial ${str(unit.serial_number)}${sku ? ` (SKU ${sku})` : ''} is ${str(unit.current_status) ?? 'in an unknown status'}${where ? `, location ${where}` : ', with no recorded location'}${str(unit.lpn) ? `, on LPN ${str(unit.lpn)}` : ''}.`,
+        const productTitle = sku
+          ? resolveSkuIdentityTitle({ zoho_item_title: str(unit.zoho_item_title), catalog_product_title: str(unit.catalog_product_title), sku })
+          : null;
+        const href = `/search?sel=${formatSearchSel('unit', Number(unit.id))}`;
+        const message = `Serial ${serialNumber}${sku ? ` (SKU ${sku})` : ''} is ${status ?? 'in an unknown status'}${where ? `, location ${where}` : ', with no recorded location'}${lpn ? `, on LPN ${lpn}` : ''}.`;
+        const fields: ArtifactRecord['fields'] = [
+          { label: 'Serial', value: serialNumber },
+          ...(sku ? [{ label: 'SKU', value: sku }] : []),
+          { label: 'Status', value: status ?? 'Unknown' },
+          { label: 'Location', value: where ?? 'No recorded location' },
+          ...(lpn ? [{ label: 'LPN', value: lpn }] : []),
+        ];
+        const card: ArtifactRecord = {
+          kind: 'record',
+          title: `Serial ${serialNumber}`.slice(0, 120),
+          path: href,
+          fields,
+          identity: {
+            title: (productTitle ?? `Serial ${serialNumber}`).slice(0, 120),
+            ids: [
+              { label: 'Serial', value: serialNumber },
+              ...(sku ? [{ label: 'SKU' as const, value: sku }] : []),
+              ...(lpn ? [{ label: 'LPN' as const, value: lpn }] : []),
+              ...(str(unit.location) ? [{ label: 'Bin' as const, value: str(unit.location) as string }] : []),
+            ],
+            ...(status ? { chips: [status.charAt(0) + status.slice(1).toLowerCase().replace(/_/g, ' ')] } : {}),
+            href,
+          },
         };
+        return envelope(
+          'locate_product',
+          card,
+          `${message} The unit card is already on screen — do not render it again.`,
+          message,
+        );
       }
       return {
         found: false,
@@ -417,13 +459,39 @@ export const locateProduct: AssistantToolDef<typeof locateInput> = {
       const names = hits
         .map((h) => `${h.via === 'sku' ? '' : `${h.via.toUpperCase()} ${value} belongs to `}SKU ${h.sku} (${h.title})`)
         .join('; ');
+      const stockless = `No bin holds any stock of ${hits.length === 1 ? `SKU ${hits[0].sku}` : 'these SKUs'} right now (0 units on hand in bins).`;
+      if (hits.length === 1) {
+        // One known product: its identity still leads the answer — title, SKU,
+        // FNSKU / UPC — with the zero stated on the card, not a blank screen.
+        const hit = hits[0];
+        const identity = productIdentity(hit, value);
+        const card: ArtifactRecord = {
+          kind: 'record',
+          title: hit.title.slice(0, 120),
+          path: identity.href ?? '/inventory',
+          fields: [
+            { label: 'SKU', value: hit.sku },
+            ...(hit.fnsku ? [{ label: 'FNSKU', value: hit.fnsku }] : []),
+            ...(hit.via !== 'sku' ? [{ label: 'Matched as', value: `${hit.via.toUpperCase()} ${value}` }] : []),
+            { label: 'On hand in bins', value: '0' },
+          ],
+          identity,
+        };
+        return envelope(
+          'locate_product',
+          card,
+          `${names}. ${stockless} The product card is already on screen — do not render it again.`,
+          `${names}. ${stockless}`,
+        );
+      }
       return {
         found: true,
         inStock: false,
         query: value,
         matched: hits.map((h) => ({ sku: h.sku, title: h.title, matchedAs: h.via })),
         bins: [],
-        message: `${names}. No bin holds any stock of ${hits.length === 1 ? `SKU ${hits[0].sku}` : 'these SKUs'} right now (0 units on hand in bins). No table was shown.`,
+        message: `${names}. ${stockless} No table was shown.`,
+        answer: `${names}. ${stockless}`,
       };
     }
 
@@ -435,6 +503,9 @@ export const locateProduct: AssistantToolDef<typeof locateInput> = {
       'locate_product',
       locateTable(value, stocked),
       `${lines.join('. ')}. The location table and the product title are already on screen — do not render them again. Product titles, for your understanding only (already shown as the heading; never write them in the answer): ${stocked.map((h) => `${h.sku} = ${h.title}`).join('; ')}.`,
+      `${stocked
+        .map((h) => `SKU ${h.sku} has ${plural(h.bins.reduce((s, b) => s + b.qty, 0), 'unit')} in ${plural(h.bins.length, 'bin')}: ${binList(h.bins).replace(/ \(\+(\d+) more bins in the table\)$/, ' and $1 more')}`)
+        .join('. ')}.`,
     );
   },
 };
@@ -501,6 +572,7 @@ export const listLocationContents: AssistantToolDef<typeof locationInput> = {
         location: value,
         candidates: locs.map((l) => ({ name: str(l.name), barcode: str(l.barcode), room: str(l.room) })),
         message: `"${value}" matches more than one location — ask which barcode they mean.`,
+        answer: `"${value}" matches more than one location (${locs.map((l) => str(l.barcode) ?? str(l.name)).join(', ')}) — scan the bin barcode.`,
       };
     }
     const loc = locs[0];
@@ -521,15 +593,20 @@ export const listLocationContents: AssistantToolDef<typeof locationInput> = {
     const units = lpns.rows.map((r) => ({ code: String(r.code), status: str(r.status), units: num(r.units) ?? 0 }));
 
     if (items.length === 0 && units.length === 0) {
+      const empty = `Bin ${face}${str(loc.room) ? ` (${str(loc.room)})` : ''} is empty — no stock and no LPNs.`;
       return {
         found: true,
         empty: true,
         location: face,
         barcode: str(loc.barcode),
         room: str(loc.room),
-        message: `Bin ${face}${str(loc.room) ? ` (${str(loc.room)})` : ''} is empty — no stock and no LPNs. No table was shown.`,
+        message: `${empty} No table was shown.`,
+        answer: empty,
       };
     }
+
+    // Bins are not a `/search` record; their home is Inventory ▸ Locations.
+    const binHref = searchHitHref('LOCATION', Number(loc.id));
 
     const artifact: ArtifactTable = {
       kind: 'table',
@@ -550,7 +627,7 @@ export const listLocationContents: AssistantToolDef<typeof locationInput> = {
       idColumn: 'SKU',
       // One loose SKU and nothing else → the answer is about that product;
       // otherwise the bin itself is the subject of the header.
-      product:
+      identity:
         items.length === 1 && units.length === 0
           ? {
               title: items[0].title.slice(0, 120),
@@ -559,8 +636,13 @@ export const listLocationContents: AssistantToolDef<typeof locationInput> = {
                 ...(items[0].fnsku ? [{ label: 'FNSKU' as const, value: items[0].fnsku }] : []),
                 { label: 'Bin', value: face },
               ],
+              href: binHref,
             }
-          : { title: `Bin ${face}${str(loc.room) ? ` · ${str(loc.room)}` : ''}`.slice(0, 120), ids: [{ label: 'Bin', value: face }] },
+          : {
+              title: `Bin ${face}${str(loc.room) ? ` · ${str(loc.room)}` : ''}`.slice(0, 120),
+              ids: [{ label: 'Bin', value: face }],
+              href: binHref,
+            },
     };
     const total = items.reduce((s, i) => s + i.qty, 0);
     const skuText = items.slice(0, 10).map((i) => `${i.sku}: ${i.qty}`).join('; ');
@@ -571,6 +653,7 @@ export const listLocationContents: AssistantToolDef<typeof locationInput> = {
       'list_location_contents',
       artifact,
       `Bin ${face}${str(loc.room) ? ` in ${str(loc.room)}` : ''} holds ${plural(items.length, 'SKU')}, ${total} units: ${skuText || 'no loose stock'}${more}.${lpnText} The contents table is already on screen — do not render it again.${titleText ? ` Product titles, for your understanding only (already shown; never write them in the answer): ${titleText}.` : ''}`,
+      `Bin ${face} holds ${plural(total, 'unit')} across ${plural(items.length, 'SKU')}${skuText ? ` — ${skuText.replace(/; /g, ', ')}` : ''}${more ? ` and ${items.length - 10} more` : ''}.${units.length > 0 ? ` LPNs here: ${units.map((u) => u.code).join(', ')}.` : ''}`,
     );
   },
 };

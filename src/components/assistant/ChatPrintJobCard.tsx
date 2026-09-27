@@ -1,12 +1,15 @@
 'use client';
 
 /**
- * The transcript face of a `print_handling_unit_labels` call. The labels print
- * on the staffer's print station over the staff print bridge — the roster,
- * pick, ack and progress every other sender uses (`useStaffPrintBridgeClient`).
- * The station prints them and writes the `label_print_jobs` rows. Which
- * station is `decideStaffPrintAutoSend`: a remembered pick that stays silent is
- * never swapped for another computer.
+ * The transcript face of a chat print (`chat-print-job.ts`): tote labels from
+ * `print_handling_unit_labels`, order papers from `print_order_paperwork`.
+ * Both print on the staffer's print station over the staff print bridge — the
+ * roster, pick, ack and progress every other sender uses
+ * (`useStaffPrintBridgeClient`). Which station is `decideStaffPrintAutoSend`:
+ * a remembered pick that stays silent is never swapped for another computer.
+ * The station writes the ledger rows (`label_print_jobs` for totes,
+ * `document_print_jobs` for papers); a papers print reads its batch's rows
+ * back before it says "recorded".
  */
 
 import { useEffect, useState, type ReactNode } from 'react';
@@ -16,9 +19,16 @@ import { Button } from '@/design-system/primitives';
 import { ModeRegion } from '@/design-system/providers/ModeRegion';
 import { useStaffPrintBridgeClient } from '@/hooks/useStaffPrintBridgeClient';
 import { DEFAULT_TOTE_COPIES_PER_SIDE } from '@/lib/print/labelCopies';
-import { decideStaffPrintAutoSend } from '@/lib/print/staff-print-bridge';
+import { decideStaffPrintAutoSend, type StaffPrintJobBody } from '@/lib/print/staff-print-bridge';
+import {
+  chatPrintRole,
+  chatPrintTitle,
+  chatPrintUnits,
+  type ChatPrintJob,
+  type ChatPrintRequest,
+} from '@/lib/assistant/chat-print-job';
 import { cn } from '@/utils/_cn';
-import type { AssistantChatState, AssistantPrintJob } from '@/components/assistant/useAssistantChat';
+import type { AssistantChatState } from '@/components/assistant/useAssistantChat';
 
 /** How long every station gets to answer the roster poll before the card decides. */
 const ROSTER_WAIT_MS = 3_000;
@@ -28,13 +38,41 @@ const PRINT_REPORT_TIMEOUT_MS = 30_000;
 
 type SetPrintPhase = AssistantChatState['setPrintPhase'];
 
-function plural(n: number): string {
-  return `${n} label${n === 1 ? '' : 's'}`;
+/** The bridge job a request sends; papers key their ledger rows by the card's job id. */
+function jobBody(job: ChatPrintJob): StaffPrintJobBody {
+  const r = job.request;
+  if (r.kind === 'papers') {
+    return {
+      grain: 'papers',
+      role: 'paper',
+      papers: {
+        orderRowIds: r.orders.map((o) => o.orderRowId),
+        packerLogId: null,
+        reprint: r.reprint,
+        documents: r.documents,
+        batchId: job.id,
+      },
+    };
+  }
+  return {
+    grain: 'tote',
+    role: 'label',
+    tote:
+      r.kind === 'tote_new'
+        ? { count: r.count, copiesPerSide: DEFAULT_TOTE_COPIES_PER_SIDE }
+        : { codes: r.codes, copiesPerSide: DEFAULT_TOTE_COPIES_PER_SIDE },
+  };
 }
 
-export function ChatPrintJobCard({ job, setPhase }: { job: AssistantPrintJob; setPhase: SetPrintPhase }) {
+export function ChatPrintJobCard({ job, setPhase }: { job: ChatPrintJob; setPhase: SetPrintPhase }) {
   const { phase } = job;
-  if (phase.kind === 'printed' || phase.kind === 'failed') return <SettledPrintJob job={job} setPhase={setPhase} />;
+  if (phase.kind === 'confirm') return <ConfirmPrintJob job={job} setPhase={setPhase} />;
+  const settled =
+    phase.kind === 'failed' ||
+    phase.kind === 'cancelled' ||
+    phase.kind === 'recorded' ||
+    (phase.kind === 'printed' && job.request.kind !== 'papers');
+  if (settled) return <SettledPrintJob job={job} setPhase={setPhase} />;
   return <LivePrintJob job={job} setPhase={setPhase} />;
 }
 
@@ -43,7 +81,7 @@ function CardShell({
   tone = 'neutral',
   children,
 }: {
-  job: AssistantPrintJob;
+  job: ChatPrintJob;
   tone?: 'neutral' | 'success' | 'danger';
   children: ReactNode;
 }) {
@@ -57,11 +95,23 @@ function CardShell({
         tone === 'neutral' && 'border-border-soft bg-surface-sunken',
       )}
     >
-      <p className="text-role-micro font-semibold uppercase tracking-wide text-text-muted">
-        Label print · {job.codes.join(', ')}
-      </p>
+      <p className="text-role-micro font-semibold uppercase tracking-wide text-text-muted">{chatPrintTitle(job.request)}</p>
+      {job.request.kind === 'papers' ? <PaperOrders request={job.request} /> : null}
       {children}
     </div>
+  );
+}
+
+function PaperOrders({ request }: { request: Extract<ChatPrintRequest, { kind: 'papers' }> }) {
+  return (
+    <ul className="flex flex-col gap-0.5 text-role-caption text-text-default">
+      {request.orders.map((o) => (
+        <li key={o.orderRowId} className="flex gap-2">
+          <span className="font-semibold">Order {o.orderNumber}</span>
+          <span className="min-w-0 truncate text-text-muted">{o.papers}</span>
+        </li>
+      ))}
+    </ul>
   );
 }
 
@@ -74,14 +124,58 @@ function StatusLine({ icon, children }: { icon: ReactNode; children: ReactNode }
   );
 }
 
-function SettledPrintJob({ job, setPhase }: { job: AssistantPrintJob; setPhase: SetPrintPhase }) {
+/** A big new-tote run: nothing is minted or printed until the operator taps. */
+function ConfirmPrintJob({ job, setPhase }: { job: ChatPrintJob; setPhase: SetPrintPhase }) {
+  const count = job.request.kind === 'tote_new' ? job.request.count : 0;
+  return (
+    <CardShell job={job}>
+      <StatusLine icon={<Printer className="h-4 w-4 shrink-0 text-text-muted" />}>
+        Print {count} new tote labels? Each one creates a new tote.
+      </StatusLine>
+      <div className="flex gap-2">
+        <Button variant="primary" size="sm" onClick={() => setPhase(job.id, { kind: 'finding' }, ['confirm'])}>
+          Print {count} labels
+        </Button>
+        <Button variant="secondary" size="sm" onClick={() => setPhase(job.id, { kind: 'cancelled' }, ['confirm'])}>
+          Cancel
+        </Button>
+      </div>
+    </CardShell>
+  );
+}
+
+function SettledPrintJob({ job, setPhase }: { job: ChatPrintJob; setPhase: SetPrintPhase }) {
   const { phase } = job;
+  const ok = <Check className="h-4 w-4 shrink-0 text-text-success" />;
   if (phase.kind === 'printed') {
     return (
       <CardShell job={job} tone="success">
-        <StatusLine icon={<Check className="h-4 w-4 shrink-0 text-text-success" />}>
-          Printed {plural(phase.labels)} on {phase.station}.
+        <StatusLine icon={ok}>
+          Printed {chatPrintUnits(job.request, phase.count)} on {phase.station}.
         </StatusLine>
+      </CardShell>
+    );
+  }
+  if (phase.kind === 'recorded') {
+    return (
+      <CardShell job={job} tone={phase.missing.length > 0 ? 'danger' : 'success'}>
+        <StatusLine icon={ok}>
+          Printed {chatPrintUnits(job.request, phase.count)} on {phase.station} · {phase.rows}{' '}
+          {phase.rows === 1 ? 'print' : 'prints'} recorded
+          {job.request.kind === 'papers' && job.request.reprint ? (phase.rows === 1 ? ' as a reprint' : ' as reprints') : ''}.
+        </StatusLine>
+        {phase.missing.length > 0 ? (
+          <StatusLine icon={<AlertTriangle className="h-4 w-4 shrink-0 text-text-danger" />}>
+            Nothing recorded for order {phase.missing.join(', ')} — check the papers on file.
+          </StatusLine>
+        ) : null}
+      </CardShell>
+    );
+  }
+  if (phase.kind === 'cancelled') {
+    return (
+      <CardShell job={job}>
+        <StatusLine icon={<Printer className="h-4 w-4 shrink-0 text-text-muted" />}>Cancelled — nothing printed.</StatusLine>
       </CardShell>
     );
   }
@@ -98,8 +192,9 @@ function SettledPrintJob({ job, setPhase }: { job: AssistantPrintJob; setPhase: 
   );
 }
 
-function LivePrintJob({ job, setPhase }: { job: AssistantPrintJob; setPhase: SetPrintPhase }) {
-  const { phase } = job;
+function LivePrintJob({ job, setPhase }: { job: ChatPrintJob; setPhase: SetPrintPhase }) {
+  const { phase, request } = job;
+  const role = chatPrintRole(request);
   const choosing = phase.kind === 'finding' || phase.kind === 'pick';
   const bridge = useStaffPrintBridgeClient({ active: choosing });
   const { stations, target, rememberedId, now, progress, sendJob, pickStation } = bridge;
@@ -110,7 +205,7 @@ function LivePrintJob({ job, setPhase }: { job: AssistantPrintJob; setPhase: Set
     return () => window.clearTimeout(timer);
   }, []);
 
-  const decision = decideStaffPrintAutoSend({ stations, rememberedId, role: 'label', now, settled: waited });
+  const decision = decideStaffPrintAutoSend({ stations, rememberedId, role, now, settled: waited });
   const sendTo = decision.kind === 'send' ? decision.station.status.stationName : null;
   const reason = decision.kind === 'pick' || decision.kind === 'fail' ? decision.reason : null;
 
@@ -119,11 +214,7 @@ function LivePrintJob({ job, setPhase }: { job: AssistantPrintJob; setPhase: Set
     if (!choosing) return;
     if (sendTo) {
       if (!setPhase(job.id, { kind: 'sending', station: sendTo }, ['finding', 'pick'])) return;
-      void sendJob({
-        grain: 'tote',
-        role: 'label',
-        tote: { codes: job.codes, copiesPerSide: DEFAULT_TOTE_COPIES_PER_SIDE },
-      }).then((acked) =>
+      void sendJob(jobBody(job)).then((acked) =>
         setPhase(
           job.id,
           acked
@@ -136,20 +227,49 @@ function LivePrintJob({ job, setPhase }: { job: AssistantPrintJob; setPhase: Set
     }
     if (phase.kind !== 'finding' || !reason) return;
     setPhase(job.id, decision.kind === 'fail' ? { kind: 'failed', reason } : { kind: 'pick', reason }, ['finding']);
-  }, [choosing, sendTo, reason, decision.kind, phase.kind, job.id, job.codes, setPhase, sendJob]);
+  }, [choosing, sendTo, reason, decision.kind, phase.kind, job, setPhase, sendJob]);
 
-  // The station reports each plate; the last one is the print done.
+  // The station reports each plate (or each order's papers); the last one is the print done.
   useEffect(() => {
     if (phase.kind !== 'acked' || !progress || progress.total <= 0) return;
     if (progress.done === phase.done && progress.total === phase.total) return;
     setPhase(
       job.id,
       progress.done >= progress.total
-        ? { kind: 'printed', station: phase.station, labels: progress.total }
+        ? { kind: 'printed', station: phase.station, count: progress.total }
         : { kind: 'acked', station: phase.station, done: progress.done, total: progress.total },
       ['acked'],
     );
   }, [phase, progress, job.id, setPhase]);
+
+  // Papers: "printed" is the station's word; "recorded" is the ledger's — read
+  // back the rows this batch wrote.
+  useEffect(() => {
+    if (phase.kind !== 'printed' || request.kind !== 'papers') return;
+    let live = true;
+    void fetch(`/api/orders/print-packet?batch=${encodeURIComponent(job.id)}`)
+      .then(async (res) => {
+        if (!res.ok) throw new Error(String(res.status));
+        return ((await res.json()) as { rows?: Array<{ orderId: number }> }).rows ?? [];
+      })
+      .then((rows) => {
+        if (!live) return;
+        const missing = request.orders.filter((o) => !rows.some((r) => r.orderId === o.orderRowId)).map((o) => o.orderNumber);
+        setPhase(
+          job.id,
+          rows.length > 0
+            ? { kind: 'recorded', station: phase.station, count: phase.count, rows: rows.length, missing }
+            : { kind: 'failed', reason: `${phase.station} finished, but no print was recorded. Check the papers on file, then retry.` },
+          ['printed'],
+        );
+      })
+      .catch(() => {
+        if (live) setPhase(job.id, { kind: 'failed', reason: `Printed on ${phase.station}, but the print log could not be read.` }, ['printed']);
+      });
+    return () => {
+      live = false;
+    };
+  }, [phase, request, job.id, setPhase]);
 
   // A station that took the job but goes quiet (printer error, tab closed)
   // must not leave the card spinning. Each tick restarts the wait.
@@ -180,7 +300,17 @@ function LivePrintJob({ job, setPhase }: { job: AssistantPrintJob; setPhase: Set
     return (
       <CardShell job={job}>
         <StatusLine icon={spinner}>
-          Acked by {phase.station} — printing{phase.total > 0 ? ` ${phase.done}/${phase.total}` : '…'}
+          Acked by {phase.station} — printing
+          {phase.total > 0 ? ` ${phase.done}/${chatPrintUnits(request, phase.total)}` : '…'}
+        </StatusLine>
+      </CardShell>
+    );
+  }
+  if (phase.kind === 'printed') {
+    return (
+      <CardShell job={job}>
+        <StatusLine icon={spinner}>
+          Printed {chatPrintUnits(request, phase.count)} on {phase.station} — checking the print log…
         </StatusLine>
       </CardShell>
     );
@@ -188,11 +318,9 @@ function LivePrintJob({ job, setPhase }: { job: AssistantPrintJob; setPhase: Set
   if (phase.kind === 'pick') {
     return (
       <CardShell job={job}>
-        <StatusLine icon={<Printer className="h-4 w-4 shrink-0 text-text-muted" />}>
-          {reason ?? phase.reason}
-        </StatusLine>
+        <StatusLine icon={<Printer className="h-4 w-4 shrink-0 text-text-muted" />}>{reason ?? phase.reason}</StatusLine>
         <ModeRegion mode="triage" className="overflow-hidden rounded-md">
-          <StaffPrintStationPicker stations={stations} target={target} now={now} role="label" onPick={pickStation} />
+          <StaffPrintStationPicker stations={stations} target={target} now={now} role={role} onPick={pickStation} />
         </ModeRegion>
       </CardShell>
     );

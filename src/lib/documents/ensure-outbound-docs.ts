@@ -9,7 +9,7 @@ import {
   type FetchOutboundDocumentsResult,
 } from '@/lib/documents/outbound-documents';
 import type { OutboundDocument, OutboundDocumentType } from '@/lib/documents/types';
-import { sqlOrderHasTechScan, sqlOrderHasPackScan } from '@/lib/orders/order-grain-sql';
+import { sqlOrderHasPickScan, sqlOrderHasPackScan } from '@/lib/orders/order-grain-sql';
 import { listSweepOrgIds } from '@/lib/cron/for-each-org';
 
 const BUNDLE_TYPES: OutboundDocumentType[] = ['shipping_label', 'packing_slip'];
@@ -96,7 +96,7 @@ export async function ensureOutboundDocsForOrder(
 }
 
 /**
- * Fire-and-forget after the response — keeps tech-scan / add-serial latency short.
+ * Fire-and-forget after the response — keeps pick-scan / add-serial latency short.
  * Falls back to inline void if `after()` is unavailable outside a request.
  */
 export function scheduleEnsureOutboundDocsOnPackReady(
@@ -136,19 +136,19 @@ export function scheduleEnsureOutboundDocsOnPackReady(
   }
 }
 
-/** Pack-ready (has tech scan), not yet packed, missing at least one outbound doc type. */
+/** Pack-ready (picked), not yet packed, missing at least one outbound doc type. */
 async function listPackReadyOrdersMissingOutboundDocs(
   orgId: OrgId,
   limit = 25,
 ): Promise<number[]> {
-  const hasTech = sqlOrderHasTechScan('o');
+  const hasPick = sqlOrderHasPickScan('o');
   const hasPack = sqlOrderHasPackScan('o');
   const res = await tenantQuery<{ id: number }>(
     orgId,
     `SELECT o.id
        FROM orders o
       WHERE o.organization_id = $1
-        AND ${hasTech}
+        AND ${hasPick}
         AND NOT ${hasPack}
         AND (
           NOT EXISTS (

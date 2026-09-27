@@ -46,6 +46,48 @@ export interface ModeMeasure {
   coarse: string;
 }
 
+/** A padding pair: inline (x) and block (y). */
+export interface ModeInset {
+  x: string;
+  y: string;
+}
+
+/**
+ * The spacing INTENTS, per mode — one value per recurring padding / gap job,
+ * consumed by the `inset-*` / `stack-*` / `row-*` utilities (tailwind.config.mjs).
+ * px here (the unit every mode measure speaks, and what the Swift face reads);
+ * the web emits rem, so the Appearance font scale still grows them, and the
+ * utilities multiply by `--cf-density`.
+ */
+export interface ModeSpacing {
+  inset: {
+    /** Chip / badge / count pill. */
+    chip: ModeInset;
+    /** Form field, command input, a padded control face. */
+    field: ModeInset;
+    /** Menu row, list row, compact control. */
+    cozy: ModeInset;
+    /** Card / panel body (uniform). */
+    card: ModeInset;
+    /** Empty / zero state. */
+    empty: ModeInset;
+  };
+  /** Vertical gap between stacked items. */
+  stack: {
+    /** Facts inside a record. */
+    tight: string;
+    /** Rows / fields in a form or list. */
+    row: string;
+    /** Sections / panels. */
+    section: string;
+  };
+  /** Horizontal gap between items on one line. */
+  row: {
+    gap: string;
+    tight: string;
+  };
+}
+
 export interface ModeSpec {
   name: ModeName;
   label: string;
@@ -63,6 +105,8 @@ export interface ModeSpec {
   /** Primary-action hit target (defaults to `hit`). */
   hitCta?: ModeMeasure;
   bodyText: ModeMeasure;
+  /** Padding / gap per intent. */
+  spacing: ModeSpacing;
   /**
    * How a fact LABEL speaks (`BIN`, `Ship by`): `caps` — mono heavy caps, the
    * floor voice; `sentence` — sans sentence case, the desk voice (owner
@@ -179,6 +223,47 @@ export const NEUTRAL_SURFACES: ModeSurfaces = {
 /** #d39200 fails contrast as text; this is its readable ink on warm and neutral planes. */
 const WARN_INK = '#8a5f00';
 
+/**
+ * The pre-mode spacing scale — the values the intent utilities rendered
+ * before they became mode-aware; industrial, counter and assistant run it.
+ * A mode diverges by declaring its own {@link ModeSpacing} (triage:
+ * {@link TRIAGE_SPACING}), never by a component overriding an intent.
+ */
+export const DESK_SPACING: ModeSpacing = {
+  inset: {
+    chip: { x: '6px', y: '2px' },
+    field: { x: '12px', y: '8px' },
+    cozy: { x: '10px', y: '6px' },
+    card: { x: '16px', y: '16px' },
+    empty: { x: '16px', y: '24px' },
+  },
+  stack: { tight: '6px', row: '8px', section: '24px' },
+  row: { gap: '8px', tight: '6px' },
+};
+
+/**
+ * Triage spacing — a native desktop app's rhythm (owner 2026-09-27): every
+ * value on Fluent 2's 4px ramp (2 · 4 · 8 · 12 · 16 · 20 · 24 · 32, with 6 as
+ * the icon nudge — fluent2.microsoft.design/layout). One step roomier than
+ * {@link DESK_SPACING} where the eye reads (rows, facts, sections); controls
+ * whose height is fixed by the hit target keep their inset.
+ *
+ * vs DESK: chip 6→8 x · cozy 10×6→12×8 (a 14px row lands on the 32px hit) ·
+ * card 16→20 x · empty 24→32 y · stack 6/8/24→8/12/32. Unchanged: field,
+ * row gap 8, row tight 6.
+ */
+export const TRIAGE_SPACING: ModeSpacing = {
+  inset: {
+    chip: { x: '8px', y: '2px' },
+    field: { x: '12px', y: '8px' },
+    cozy: { x: '12px', y: '8px' },
+    card: { x: '20px', y: '16px' },
+    empty: { x: '24px', y: '32px' },
+  },
+  stack: { tight: '8px', row: '12px', section: '32px' },
+  row: { gap: '8px', tight: '6px' },
+};
+
 /** Industrial on phones, triage on desktop (owner 2026-09-26, BRIEF §12). */
 export const MODE_REGISTRY = {
   industrial: {
@@ -200,6 +285,7 @@ export const MODE_REGISTRY = {
     pagePad: { base: '0', coarse: '0' },
     hit: { base: '32px', coarse: '48px' },
     bodyText: { base: '13px', coarse: '13px' },
+    spacing: DESK_SPACING,
     labelVoice: 'caps',
     // 150ms is the scan-status spot only; nothing else on the floor moves.
     motion: { feedback: '150ms' },
@@ -217,6 +303,7 @@ export const MODE_REGISTRY = {
     pagePad: { base: '12px', coarse: '16px' },
     hit: { base: '32px', coarse: '48px' },
     bodyText: { base: '14px', coarse: '16px' },
+    spacing: TRIAGE_SPACING,
     labelVoice: 'sentence',
     motion: { feedback: '160ms', press: '120ms' },
   },
@@ -232,6 +319,7 @@ export const MODE_REGISTRY = {
     hit: { base: '40px', coarse: '48px' },
     hitCta: { base: '56px', coarse: '56px' },
     bodyText: { base: '16px', coarse: '16px' },
+    spacing: DESK_SPACING,
     labelVoice: 'sentence',
     motion: { feedback: '200ms', press: '100ms' },
     // Default tenant ink (USAV navy, sampled from public/images/usav-logo.png).
@@ -249,6 +337,7 @@ export const MODE_REGISTRY = {
     pagePad: { base: '16px', coarse: '16px' },
     hit: { base: '32px', coarse: '48px' },
     bodyText: { base: '15px', coarse: '16px' },
+    spacing: DESK_SPACING,
     labelVoice: 'sentence',
     motion: { feedback: '200ms', pulse: '1200ms' },
   },
@@ -350,6 +439,24 @@ function labelVoiceDeclarations(voice: ModeSpec['labelVoice'], indent: string): 
   ];
 }
 
+/** A px length as rem (16px root) — so the Appearance font scale moves it. */
+function pxToRem(css: string): string {
+  const m = /^(\d+(?:\.\d+)?)(px)?$/.exec(css);
+  if (!m || (!m[2] && m[1] !== '0')) throw new Error(`mode spacing: '${css}' is not a px length`);
+  return m[1] === '0' ? '0' : `${Number(m[1]) / 16}rem`;
+}
+
+/** Every spacing-intent var, flattened: `[--mode-inset-chip-x, '6px'], …`. */
+export function modeSpacingVars(spacing: ModeSpacing): [string, string][] {
+  const vars: [string, string][] = [];
+  for (const [intent, pad] of Object.entries(spacing.inset)) {
+    vars.push([`--mode-inset-${intent}-x`, pad.x], [`--mode-inset-${intent}-y`, pad.y]);
+  }
+  for (const [intent, gap] of Object.entries(spacing.stack)) vars.push([`--mode-stack-${intent}`, gap]);
+  for (const [intent, gap] of Object.entries(spacing.row)) vars.push([`--mode-row-${intent}`, gap]);
+  return vars;
+}
+
 /** Every `--mode-*` variable a region declares — also the unwrapped-route `:root` fallback. */
 function modeVarDeclarations(spec: ModeSpec): string[] {
   const hitCta = spec.hitCta ?? spec.hit;
@@ -370,6 +477,7 @@ function modeVarDeclarations(spec: ModeSpec): string[] {
     `  --mode-motion-press: ${spec.motion.press ?? spec.motion.feedback};`,
     `  --mode-motion-pulse: ${spec.motion.pulse ?? '0s'};`,
   );
+  for (const [name, value] of modeSpacingVars(spec.spacing)) lines.push(`  ${name}: ${pxToRem(value)};`);
   lines.push(...labelVoiceDeclarations(spec.labelVoice, '  '));
   if (spec.brand) lines.push(`  --mode-brand: ${spec.brand};`);
   // Every region resets the ladder, so a nested ungrained region (assistant

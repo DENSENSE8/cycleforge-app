@@ -1,6 +1,6 @@
 /** Per-staff UI preference queries — a generic JSONB key/value bag, one row per (org, staff). */
 
-import { tenantQuery } from '@/lib/tenancy/db';
+import { tenantQuery, tenantQueryOneTrip } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';
 
 /**
@@ -158,7 +158,7 @@ export interface StaffPreferences {
 
 /** Read one staffer's prefs bag (empty object when no row yet). */
 export async function getStaffPreferences(staffId: number, orgId: OrgId): Promise<StaffPreferences> {
-  const { rows } = await tenantQuery<{ prefs: StaffPreferences }>(
+  const { rows } = await tenantQueryOneTrip<{ prefs: StaffPreferences }>(
     orgId,
     `SELECT prefs
        FROM staff_preferences

@@ -15,7 +15,7 @@ export const GET = withAuth(async (_request: NextRequest, ctx) => {
     orgId,
     'roi',
     120,
-    [CACHE_TAGS.orders, CACHE_TAGS.techLogs],
+    [CACHE_TAGS.orders, CACHE_TAGS.deskPickLogs],
     async () => {
   const now = new Date();
   const weekAgo = new Date(now.getTime() - 7 * 86_400_000);

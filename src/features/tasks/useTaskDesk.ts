@@ -52,7 +52,7 @@ async function readJson(res: Response): Promise<Record<string, unknown>> {
   return data;
 }
 
-/** Key + fetcher for one lane × scope of the desk — shared by the hook and BootGate's welcome warm-up. */
+/** Key + fetcher for one lane × scope of the desk — shared by the hook and WelcomeGate's welcome warm-up. */
 export function taskDeskQueryOptions(lane: TaskDeskLane, scope: TaskDeskScope = 'mine') {
   return queryOptions({
     queryKey: ['tasks', 'desk', lane, scope] as const,

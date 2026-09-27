@@ -7,7 +7,6 @@
 import type { ShippedOrder } from '@/lib/neon/orders-queries';
 import { resolveRowWorkflowStage, type QueueRowRecord } from '@/components/dashboard/orders-queue/helpers';
 import { orderLifecycleState } from '@/lib/order-lifecycle';
-import { formatOutboundStoragePath } from '@/lib/shipping/outbound-storage-path';
 import type { LifecycleState } from '@/design-system/tokens/lifecycle';
 
 /** Worst-first — a group's shared spine wears its worst child. */
@@ -22,6 +21,10 @@ const STATE_RANK: Readonly<Record<LifecycleState, number>> = {
 
 export function recordState(record: ShippedOrder): LifecycleState {
   const r = record as QueueRowRecord;
+  // Scanned out at the dock = shipped, whatever the pre-dock stage last read
+  // (same rule as `workStageLifecycleState`'s SCANNED_OUT). Without it a
+  // shipped order opened from Search / Shipped wore "RDY · Ready".
+  if (record.ship_confirmed_at?.trim()) return 'shipped';
   return orderLifecycleState(resolveRowWorkflowStage(r), { urgent: Boolean(r.is_urgent) });
 }
 
@@ -30,16 +33,6 @@ export function worstState(states: readonly LifecycleState[]): LifecycleState {
     (worst, s) => (STATE_RANK[s] < STATE_RANK[worst] ? s : worst),
     'ready',
   );
-}
-
-/** A seed group's WHERE: */
-export function groupLocation(rows: readonly ShippedOrder[]): {
-  path: string | null;
-  unassigned: number;
-} {
-  const path = formatOutboundStoragePath(rows.flatMap((row) => row.storage_locations ?? []));
-  const unassigned = rows.filter((row) => !formatOutboundStoragePath(row.storage_locations)).length;
-  return { path, unassigned };
 }
 
 export function initials(title: string): string {

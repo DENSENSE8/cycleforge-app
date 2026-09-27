@@ -15,7 +15,6 @@ function order(overrides: Partial<ShippedOrder> = {}): ShippedOrder {
     condition: 'USED_GOOD',
     serial_number: '',
     sku: 'LAT7420',
-    tester_id: null,
     tested_by: null,
     test_date_time: null,
     packer_id: null,

@@ -19,6 +19,8 @@ import {
   DESK_RECORD_ASIDE_COLUMN_CLASS,
   DESK_RECORD_COLUMNS_CLASS,
   DESK_RECORD_MAIN_COLUMN_CLASS,
+  DESK_FLOOR_LIST_CLASS,
+  DESK_FLOOR_RAIL_CLASS,
   DESK_RECORD_MEASURE_CLASS,
   DESK_SPLIT_LIST_CARD_CLASS,
   DESK_SPLIT_LIST_CLASS,
@@ -31,10 +33,15 @@ import { DeskStageOverlay, DeskStageRecordHeader, isRecordEscTextEntry } from '.
 
 /**
  * Which view the enclosing desk stage selects. `in-place` outside a desk.
- * `floor` places the record in place — the whole width stays rows.
+ * `floor` places the record in a right rail beside an edge-to-edge list.
  */
 export function useDeskRecordView(): DeskStageView {
   return useDeskStageOptional()?.view ?? 'in-place';
+}
+
+/** Split and Floor keep the list beside the record; only In place covers it. */
+export function deskRecordBesideList(view: DeskStageView): boolean {
+  return view !== 'in-place';
 }
 
 /** Published around the list AND the record. */
@@ -115,6 +122,8 @@ export function DeskRecordPlane({
 }: DeskRecordPlaneProps) {
   const view = useDeskRecordView();
   const split = view === 'split';
+  const floor = view === 'floor';
+  const beside = deskRecordBesideList(view);
   const listRef = useRef<HTMLDivElement>(null);
 
   // Motion: the split pane springs in beside the list; the record body swaps
@@ -178,21 +187,33 @@ export function DeskRecordPlane({
     target?.focus({ preventScroll: true });
   }, [open, recordKey]);
 
-  // In place the list is covered, so focus follows the record: a row left
-  // focused under the stage would keep taking keys (arrows, the row's Esc) for
-  // a list the staffer cannot see. Runs after the focus-return capture above.
+  // Drill-down (progressive-disclosure ladder, DESIGN_SYSTEM.md): the FIRST
+  // render of an open record seats focus INTO it, in place and split alike —
+  // Enter, a click or a scan, the next key reads the record. Not a trap — J/K
+  // are window-level and keep walking the list, and Esc returns focus to the
+  // row (above). A later walk remounts the body (keyed swap) and re-seats focus
+  // only if that remount dropped it, so a row clicked in the split list keeps
+  // its focus. Only one view renders, so `bodyRef` has one owner at a time.
+  // Declared after the focus-return capture above, so it runs after it.
   const bodyRef = useRef<HTMLDivElement>(null);
+  const seatedRef = useRef(false);
   useEffect(() => {
-    if (!open || split) return;
-    bodyRef.current?.focus({ preventScroll: true });
-  }, [open, split]);
+    if (!open) {
+      seatedRef.current = false;
+      return;
+    }
+    const active = document.activeElement;
+    const dropped = !active || active === document.body;
+    if (!seatedRef.current || dropped) bodyRef.current?.focus({ preventScroll: true });
+    seatedRef.current = true;
+  }, [open, beside, swapKey]);
 
   // The in-place record's top edge: the bottom of the list's anchor (search
   // row + action strip), re-measured as the strip arms, morphs and disarms.
   const [overlayTop, setOverlayTop] = useState(0);
   useLayoutEffect(() => {
     const host = listRef.current;
-    if (split || !open || !host) return;
+    if (beside || !open || !host) return;
     let observed: HTMLElement | null = null;
     const observer = new ResizeObserver(() => measure());
     function measure() {
@@ -211,7 +232,7 @@ export function DeskRecordPlane({
     observer.observe(host);
     measure();
     return () => observer.disconnect();
-  }, [split, open]);
+  }, [beside, open]);
 
   const context = useMemo(
     () => ({ open, view, ownsEscape: open || split }),
@@ -229,8 +250,8 @@ export function DeskRecordPlane({
         <div
           ref={listRef}
           // Split (owner 2026-09-26): the list takes two thirds, the record
-          // the right third.
-          className={split ? DESK_SPLIT_LIST_CLASS : 'flex min-h-0 min-w-0 flex-1 flex-col'}
+          // the right third. Floor: the list fills to the rail, edge to edge.
+          className={split ? DESK_SPLIT_LIST_CLASS : floor ? DESK_FLOOR_LIST_CLASS : 'flex min-h-0 min-w-0 flex-1 flex-col'}
         >
           {/* Split: the list is one lifted card at a fixed, centred measure
               (operator 2026-09-26). Always mounted, so toggling the view
@@ -240,13 +261,13 @@ export function DeskRecordPlane({
           </div>
         </div>
 
-        {split ? (
+        {beside ? (
           <section
             aria-label={regionLabel}
             data-testid={testId}
-            data-desk-record-view="split"
+            data-desk-record-view={view}
             data-desk-record-open={open ? '' : undefined}
-            className={DESK_SPLIT_RECORD_CLASS}
+            className={floor ? DESK_FLOOR_RAIL_CLASS : DESK_SPLIT_RECORD_CLASS}
           >
             <motion.div
               className={DESK_SPLIT_RECORD_CARD_CLASS}
@@ -262,11 +283,13 @@ export function DeskRecordPlane({
                     indexLabel={indexLabel}
                     onClose={onClose}
                     actions={actions}
-                    viewSwitch={<DeskRecordViewSwitch />}
+                    viewSwitch={floor ? undefined : <DeskRecordViewSwitch />}
                   />
                   <motion.div
                     key={swapKey}
-                    className={RECORD_BODY_CLASS}
+                    ref={bodyRef}
+                    tabIndex={-1}
+                    className={cn(RECORD_BODY_CLASS, 'outline-none')}
                     initial={swap.presence.initial}
                     animate={swap.presence.animate}
                     transition={swapTransition}
@@ -335,31 +358,60 @@ interface DeskRecordLayoutProps {
    * simple record (task, checklist item): one column at the record measure.
    */
   aside?: ReactNode;
+  /**
+   * A photo peek (`PhotoPeekFan placement="inline"`) held on the record's edge while it
+   * scrolls: the LEFT edge of the details rail when there is one, else the record's right
+   * edge (owner 2026-09-27). The peek tucks right, so the rail / record edge clips it.
+   */
+  peek?: ReactNode;
   className?: string;
+}
+
+/** Sticky, zero-height strip whose clip box holds the peek against one edge. */
+function DeskRecordPeekEdge({ peek, rail, className }: { peek: ReactNode; rail: boolean; className?: string }) {
+  return (
+    <div className={cn('pointer-events-none sticky top-0 z-10 h-0', className)} data-testid="desk-record-peek-edge">
+      <div className={cn('absolute top-0 h-56 w-72 overflow-hidden', rail ? 'right-0 @4xl:right-full' : 'right-0')}>
+        <div className="absolute right-0 top-12">{peek}</div>
+      </div>
+    </div>
+  );
 }
 
 /**
  * One record, two widths: main 2/3 · aside 1/3 on the fixed stage (in place),
  * stacked in the split pane — decided by the plane's container, not the viewport.
  */
-export function DeskRecordLayout({ main, aside, className }: DeskRecordLayoutProps) {
-  // Split: ONE column — the item card, then the details card (owner 2026-09-26).
-  const split = useDeskRecordView() === 'split';
-  if (split) {
+export function DeskRecordLayout({ main, aside, peek, className }: DeskRecordLayoutProps) {
+  // Split pane / Floor rail: ONE column — the item card, then the details card
+  // (owner 2026-09-26). The rail is the measure on Floor: no fixed record width.
+  const view = useDeskRecordView();
+  if (deskRecordBesideList(view)) {
     return (
-      <div className={cn('flex max-w-full flex-col gap-4', DESK_RECORD_MEASURE_CLASS, className)}>
+      <div className={cn('flex max-w-full flex-col gap-4 industrial:gap-0', view === 'floor' ? 'w-full' : DESK_RECORD_MEASURE_CLASS, className)}>
+        {/* `-mb-4` cancels the column gap the zero-height strip would add. */}
+        {peek != null ? <DeskRecordPeekEdge peek={peek} rail={false} className="-mb-4 industrial:mb-0" /> : null}
         {main}
         {aside}
       </div>
     );
   }
   if (aside == null) {
-    return <div className={cn('mx-auto max-w-full', DESK_RECORD_MEASURE_CLASS, className)}>{main}</div>;
+    return (
+      <div className={cn('mx-auto max-w-full', DESK_RECORD_MEASURE_CLASS, className)}>
+        {peek != null ? <DeskRecordPeekEdge peek={peek} rail={false} /> : null}
+        {main}
+      </div>
+    );
   }
   return (
     <div className={cn(DESK_RECORD_COLUMNS_CLASS, className)}>
       <div className={DESK_RECORD_MAIN_COLUMN_CLASS}>{main}</div>
-      <aside className={DESK_RECORD_ASIDE_COLUMN_CLASS}>{aside}</aside>
+      {/* With a peek the rail runs the record's full height, so the peek stays in view. */}
+      <aside className={cn(DESK_RECORD_ASIDE_COLUMN_CLASS, peek != null && '@4xl:self-stretch')}>
+        {peek != null ? <DeskRecordPeekEdge peek={peek} rail /> : null}
+        {aside}
+      </aside>
     </div>
   );
 }

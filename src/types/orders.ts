@@ -25,16 +25,31 @@ export interface ShippedOrder {
   }> | null;
   serial_number: string; // Aggregated from tech_serial_numbers
   sku: string;
-  /** Staff ID assigned to test — sourced from work_assignments.assigned_tech_id */
-  tester_id: number | null;
+  /**
+   * QC actor. `/api/orders`: `testing_results.tested_by` of the latest bench
+   * verdict on a unit allocated to this order. Shipped feeds: the
+   * `tech_serial_numbers` serial scanner.
+   */
   tested_by: number | null;
   test_date_time: string | null;   // aliased from tsn.created_at
+  /** When {@link tested_by} recorded that verdict (`testing_results.created_at` on `/api/orders`). */
   test_activity_at?: string | null;
-  next_test_activity_at?: string | null;
-  /** Pick actor — inventory_events.actor_staff_id (PICKED / FORCE_PICK scan), else picking_sessions.picker_staff_id */
+  /** The latest unit verdict behind {@link tested_by}; null when no allocated unit was ever tested. */
+  qc_verdict?: 'PASS' | 'TEST_AGAIN' | 'TESTING_FAILED' | null;
+  /** The verdict predates the order (`testing_results.created_at < orders.created_at`): a pre-tested unit pulled from stock. */
+  qc_inherited?: boolean;
+  /** Staff ID assigned to the order's PICK work_assignment (`WA_PICK_LATERAL`). */
+  picker_id?: number | null;
+  picker_name?: string | null;
+  /** Assigned picker `staff.color_hex`. */
+  picker_color_hex?: string | null;
+  /**
+   * Pick actor — first of: inventory_events.actor_staff_id (PICKED / FORCE_PICK),
+   * picking_sessions.picker_staff_id, the Picker desk's PICK / PICK_SCANNED scan.
+   */
   picked_by?: number | null;
   picked_by_name?: string | null;
-  picked_at?: string | null;       // inventory_events.occurred_at (pick scan), else picking_sessions.ended_at
+  picked_at?: string | null;       // the same arm's timestamp
   /** Staff ID assigned to pack — sourced from work_assignments.assigned_packer_id */
   packer_id: number | null;
   packed_by: number | null;
@@ -72,7 +87,6 @@ export interface ShippedOrder {
   pack_location_name?: string | null;
   pack_location_kind?: string | null;
   pack_duration?: string | null;
-  test_duration?: string | null;
   packer_photos_url: any;
   tracking_type: string | null;
   account_source: string | null;
@@ -146,10 +160,7 @@ export interface ShippedOrder {
   created_at: string | null;
   tested_by_name?: string | null;
   packed_by_name?: string | null;
-  tester_name?: string | null;
   packer_name?: string | null;
-  /** Assigned picker `staff.color_hex` (work_assignments.assigned_tech_id). */
-  tester_color_hex?: string | null;
   /** Assigned packer `staff.color_hex` (work_assignments.assigned_packer_id). */
   packer_color_hex?: string | null;
   /** `packer_logs.id` for DELETE; from packerlogs API join. */

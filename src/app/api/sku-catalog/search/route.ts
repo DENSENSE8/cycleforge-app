@@ -18,7 +18,8 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
     | 'ecwid_sku'
     | 'zoho_sku'
     | 'title'
-    | 'zoho_catalog';
+    | 'zoho_catalog'
+    | 'catalog';
   const limit = Math.min(Math.max(Number(searchParams.get('limit') || 20), 1), 100);
 
   // Reference catalog search → org-scoped cache.
@@ -49,7 +50,8 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
         return searchFromZohoCatalog(q, excludeSkuSuffix, limit, orgId);
       }
 
-      return searchFromCatalog(q, category, ecwidOnly, excludeSkuSuffix, limit, orgId);
+      // `catalog`: the internal item master — SKU or title, no external mirror.
+      return searchFromCatalog(q, category, ecwidOnly, excludeSkuSuffix, limit, orgId, searchField === 'catalog');
     },
   );
 
@@ -313,6 +315,7 @@ async function searchFromCatalog(
   excludeSkuSuffix: string,
   limit: number,
   orgId?: OrgId,
+  matchTitle = false,
 ) {
   const filterClauses: string[] = ['sc.is_active = true'];
   const params: unknown[] = [];
@@ -344,7 +347,7 @@ async function searchFromCatalog(
     const likeIdx = params.length;
     params.push(q);
     exactIdx = params.length;
-    filterClauses.push(`sc.sku ILIKE $${likeIdx}`);
+    filterClauses.push(matchTitle ? `(sc.sku ILIKE $${likeIdx} OR sc.product_title ILIKE $${likeIdx})` : `sc.sku ILIKE $${likeIdx}`);
   }
 
   if (category) {

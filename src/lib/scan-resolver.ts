@@ -59,7 +59,7 @@ export function looksLikeFnsku(value: string): boolean {
 
 /**
  * True while input could still become a valid 10-char FNSKU (X00...) or ASIN (B0...).
- * For station UI mode only — routing to `/api/tech/scan` must use {@link looksLikeFnsku} (complete).
+ * For station UI mode only — routing to `/api/fba/fnsku-scan` must use {@link looksLikeFnsku} (complete).
  */
 export function looksLikeFnskuPrefix(value: string): boolean {
   if (looksLikeFnsku(value)) return true;
@@ -110,6 +110,17 @@ export function classifyInput(raw: string): ClassifyResult {
   }
 
   return { type: 'unknown', carrier: null, normalized: norm };
+}
+
+/**
+ * A carrier-unique tracking shape (1Z…, TBA…, 1LS…, 9400… / 20–22 digit
+ * USPS, 20+ digit FedEx…) — nothing else in the building looks like it. Pure
+ * 10–15 digit carrier shapes collide with order numbers, UPCs and serials,
+ * so they are not.
+ */
+export function isCarrierUniqueTracking(raw: string): boolean {
+  const classified = classifyInput(raw);
+  return classified.type === 'tracking' && !/^\d{10,15}$/.test(classified.normalized);
 }
 
 // ─── GS1 DIGITAL LINK + INTERNAL URL PARSER ──────────────────────────────────

@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { X, Share, Plus } from 'lucide-react';
-import { motion, AnimatePresence } from '@/design-system/motion';
+import { Collapse } from '@/design-system/components/Collapse';
 import { Button } from '@/design-system/primitives/Button';
 import { IconButton } from '@/design-system/primitives/IconButton';
 import { cornerClass } from '@/design-system/tokens/radius';
@@ -72,76 +72,68 @@ export function InstallPrompt() {
   };
 
   // An in-flow flex child at the foot of `#app-root` (see `WarehouseShell`), never `fixed`:
+  // `shrink-0` so the column never squeezes the prompt while it is open.
   return (
-    <AnimatePresence>
-      {show && (
-        <motion.div
-          key="install-prompt"
-          initial={{ height: 0, opacity: 0 }}
-          animate={{ height: 'auto', opacity: 1 }}
-          exit={{ height: 0, opacity: 0 }}
-          transition={{ type: 'spring', stiffness: 300, damping: 28 }}
-          className="shrink-0 overflow-hidden bg-surface-card"
+    <div className="shrink-0">
+      <Collapse open={show} appear className="bg-surface-card">
+        <div
+          className="px-4 pt-2"
+          style={{ paddingBottom: 'max(0.5rem, env(safe-area-inset-bottom, 0px))' }}
         >
-          <div
-            className="px-4 pt-2"
-            style={{ paddingBottom: 'max(0.5rem, env(safe-area-inset-bottom, 0px))' }}
-          >
-            <div className={`${cornerClass('field')} bg-navy-800 p-4 text-white`}>
-              <div className="flex items-start justify-between gap-3 mb-3">
-                <div>
-                  <p className="text-role-eyebrow tracking-[0.18em] uppercase text-navy-300 font-sans mb-0.5">
-                    {PRODUCT_NAME}
-                  </p>
-                  <p className="text-sm font-semibold text-white font-sans">
-                    Add to Home Screen
-                  </p>
-                </div>
-                <IconButton
-                  onClick={dismiss}
-                  ariaLabel="Dismiss"
-                  icon={<X size={14} className="text-white/60" />}
-                  className="flex items-center justify-center w-7 h-7 rounded-full bg-glass/10 hover:bg-glass/20 transition-colors touch-manipulation"
-                />
+          <div className={`${cornerClass('field')} bg-navy-800 p-4 text-white`}>
+            <div className="flex items-start justify-between gap-3 mb-3">
+              <div>
+                <p className="text-role-eyebrow tracking-[0.18em] uppercase text-navy-300 font-sans mb-0.5">
+                  {PRODUCT_NAME}
+                </p>
+                <p className="text-sm font-semibold text-white font-sans">
+                  Add to Home Screen
+                </p>
               </div>
-
-              {platform === 'ios' ? (
-                <div className="space-y-2">
-                  <p className="text-xs text-navy-200 font-sans leading-relaxed">
-                    Install for the best station experience — works offline, no browser chrome.
-                  </p>
-                  <div className="flex items-center gap-2 text-xs text-white font-sans">
-                    <span>1. Tap</span>
-                    <Share size={14} className="text-navy-300" />
-                    <span>in Safari, then</span>
-                    <Plus size={14} className="text-navy-300" />
-                    <span className="font-semibold">Add to Home Screen</span>
-                  </div>
-                </div>
-              ) : (
-                <div className="flex gap-2">
-                  <Button
-                    variant="ghost"
-                    size="md"
-                    onClick={dismiss}
-                    className={`flex-1 ${cornerClass('control')} border border-glass/20 text-role-caption font-semibold tracking-wide uppercase text-white/70 hover:bg-glass/10 hover:text-white/70 touch-manipulation font-sans`}
-                  >
-                    Not now
-                  </Button>
-                  <Button
-                    variant="secondary"
-                    size="md"
-                    onClick={install}
-                    className={`flex-1 ${cornerClass('control')} ring-0 bg-surface-card text-navy-800 text-role-caption font-semibold tracking-wide uppercase hover:bg-navy-50 touch-manipulation font-sans`}
-                  >
-                    Install
-                  </Button>
-                </div>
-              )}
+              <IconButton
+                onClick={dismiss}
+                ariaLabel="Dismiss"
+                icon={<X size={14} className="text-white/60" />}
+                className="flex items-center justify-center w-7 h-7 rounded-full bg-glass/10 hover:bg-glass/20 transition-colors touch-manipulation"
+              />
             </div>
+
+            {platform === 'ios' ? (
+              <div className="space-y-2">
+                <p className="text-xs text-navy-200 font-sans leading-relaxed">
+                  Install for the best station experience — works offline, no browser chrome.
+                </p>
+                <div className="flex items-center gap-2 text-xs text-white font-sans">
+                  <span>1. Tap</span>
+                  <Share size={14} className="text-navy-300" />
+                  <span>in Safari, then</span>
+                  <Plus size={14} className="text-navy-300" />
+                  <span className="font-semibold">Add to Home Screen</span>
+                </div>
+              </div>
+            ) : (
+              <div className="flex gap-2">
+                <Button
+                  variant="ghost"
+                  size="md"
+                  onClick={dismiss}
+                  className={`flex-1 ${cornerClass('control')} border border-glass/20 text-role-caption font-semibold tracking-wide uppercase text-white/70 hover:bg-glass/10 hover:text-white/70 touch-manipulation font-sans`}
+                >
+                  Not now
+                </Button>
+                <Button
+                  variant="secondary"
+                  size="md"
+                  onClick={install}
+                  className={`flex-1 ${cornerClass('control')} ring-0 bg-surface-card text-navy-800 text-role-caption font-semibold tracking-wide uppercase hover:bg-navy-50 touch-manipulation font-sans`}
+                >
+                  Install
+                </Button>
+              </div>
+            )}
           </div>
-        </motion.div>
-      )}
-    </AnimatePresence>
+        </div>
+      </Collapse>
+    </div>
   );
 }

@@ -64,7 +64,7 @@ export interface WorkOrderRow {
   packerColorHex?: string | null;
   createdAt?: string | null;
   stockLevel?: number | null;
-  hasTechScan?: boolean;
+  hasPickScan?: boolean;
   /** Completed pack event; shared mobile/desk workflow stage signal. */
   packedAt?: string | null;
   /** Physical dock-stage scan; distinct from packing and required for scan-out. */

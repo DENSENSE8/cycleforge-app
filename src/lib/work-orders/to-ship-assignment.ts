@@ -43,7 +43,7 @@ export function filterToShipByOrderView(
     const facts = resolveOutboundWorkflowFacts(
       {
         shipmentId: row.shipmentId,
-        hasTechScan: row.hasTechScan,
+        hasPickScan: row.hasPickScan,
         packedAt: row.packedAt,
         dockStagedAt: row.dockStagedAt,
         isOutOfStock: row.outOfStock,
@@ -206,7 +206,7 @@ function resolveStaffLabel(
   return null;
 }
 
-/** Pick assignment — tester_id / tester_name on the unshipped feed. */
+/** Pick assignment — picker_id / picker_name (ORDER/PICK) on the unshipped feed. */
 export function toShipPickerLabel(
   row: Pick<WorkOrderRow, 'techName' | 'techId'>,
   resolveName?: (id: number) => string,

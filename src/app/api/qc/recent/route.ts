@@ -1,0 +1,56 @@
+import { NextResponse } from 'next/server';
+import { withAuth } from '@/lib/auth/withAuth';
+import { tenantQuery } from '@/lib/tenancy/db';
+
+/** GET /api/qc/recent */
+export const GET = withAuth(async (request, ctx) => {
+  const { searchParams } = new URL(request.url);
+  const limit = Math.max(1, Math.min(200, Number(searchParams.get('limit') || 50)));
+  const tester = Number(searchParams.get('tester'));
+  const sku = (searchParams.get('sku') || '').trim();
+  const verdict = (searchParams.get('verdict') || '').trim().toUpperCase();
+
+  const where: string[] = [];
+  const params: unknown[] = [];
+  // Tenant ownership filter — never return another org's testing feed.
+  params.push(ctx.organizationId);
+  where.push(`tr.organization_id = $${params.length}`);
+  if (Number.isFinite(tester) && tester > 0) {
+    params.push(tester);
+    where.push(`tr.tested_by = $${params.length}`);
+  }
+  if (sku) {
+    params.push(sku);
+    where.push(`su.sku = $${params.length}`);
+  }
+  if (['PASS', 'TEST_AGAIN', 'TESTING_FAILED'].includes(verdict)) {
+    params.push(verdict);
+    where.push(`tr.verdict = $${params.length}`);
+  }
+  params.push(limit);
+
+  const result = await tenantQuery(
+    ctx.organizationId,
+    `SELECT tr.id,
+              tr.serial_unit_id,
+              tr.receiving_line_id,
+              su.serial_number,
+              su.sku,
+              su.condition_grade::text AS condition_grade,
+              su.current_status::text  AS unit_current_status,
+              tr.verdict,
+              tr.unit_status,
+              tr.tested_by,
+              s.name AS tested_by_name,
+              tr.notes,
+              tr.created_at
+         FROM testing_results tr
+    LEFT JOIN serial_units su ON su.id = tr.serial_unit_id AND su.organization_id = tr.organization_id
+    LEFT JOIN staff s         ON s.id  = tr.tested_by
+        ${where.length ? `WHERE ${where.join(' AND ')}` : ''}
+     ORDER BY tr.created_at DESC, tr.id DESC
+        LIMIT $${params.length}`,
+    params,
+  );
+  return NextResponse.json({ ok: true, results: result.rows });
+}, { permission: 'tech.qc_pass' });

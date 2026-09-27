@@ -2,6 +2,7 @@
 
 import { AlertTriangle, Tool, Package, PackageOpen, Box, PackageCheck, Boxes, Search } from '@/components/Icons';
 import { LIFECYCLE, STATE_TONE_CLASSES, type StateName } from '@/design-system/tokens/lifecycle';
+import type { SearchByScope } from '@/lib/search/search-by';
 
 type IconComponent = (props: { className?: string }) => JSX.Element;
 
@@ -79,6 +80,29 @@ const DOT_BY_TONE: Record<ChipTone, string> = {
   rose: 'bg-rose-500',
   purple: STATE_TONE_CLASSES.fulfillment.dot,
 };
+
+/**
+ * Search-method identity colour — the ⌘K method pills (and any surface that
+ * names an identifier kind). Each kind keeps the colour it already wears in
+ * the product: a ticket is the warning orange (Daily's ticket door), a serial
+ * the success green (units), an order the info blue (orders), tracking the
+ * fulfillment purple (carrier / shipment). The internal ID stays neutral.
+ */
+export const SEARCH_METHOD_STATE: Readonly<Record<SearchByScope, StateName | null>> = {
+  order: 'info',
+  tracking: 'fulfillment',
+  serial: 'success',
+  ticket: 'warning',
+  internal: null,
+};
+
+/** Dot + selected-pill paint for a search method (`null` = neutral). */
+export function searchMethodTone(scope: SearchByScope): { dot: string; selected: string } | null {
+  const state = SEARCH_METHOD_STATE[scope];
+  if (!state) return null;
+  const tone = STATE_TONE_CLASSES[state];
+  return { dot: tone.dot, selected: `${tone.pill} ring-1 ring-inset ${tone.ring}` };
+}
 
 /** Functional state tone → this vocabulary's chip tone (lifecycle states resolve here). */
 const CHIP_TONE_FOR_STATE: Record<StateName, ChipTone> = {

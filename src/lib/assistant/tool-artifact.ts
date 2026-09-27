@@ -40,6 +40,12 @@ import { sessionArtifactSchema, type SessionArtifact } from './ui-artifacts';
 export interface ToolArtifactEnvelope {
   artifact: SessionArtifact;
   summary: string;
+  /**
+   * The operator-facing one-liner, built from the same data. A turn that runs
+   * the tool WITHOUT a model (the scan / pasted-id fast path) shows it as the
+   * answer; the model never reads it (it reads `summary`).
+   */
+  answer?: string;
 }
 
 /**

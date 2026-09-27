@@ -467,7 +467,24 @@ export function RecordArtifact({ artifact, onOpen }: { artifact: ArtifactRecord;
       <dl className="divide-y divide-border-hairline">
         {artifact.fields.map((f, i) => (
           <div key={i} className="flex gap-3 py-1.5 text-role-caption">
-            <dt className="w-40 shrink-0 text-role-caption font-medium text-text-faint">{f.label}</dt>
+            <dt className="w-40 shrink-0 text-role-caption font-medium text-text-faint">
+              {f.href ? (
+                <a
+                  href={f.href}
+                  onClick={(event) => {
+                    if (event.metaKey || event.ctrlKey || event.shiftKey || event.button !== 0) return;
+                    event.preventDefault();
+                    onOpen(f.href as string);
+                  }}
+                  className="underline-offset-2 hover:text-text-default hover:underline"
+                  data-record-field-link
+                >
+                  {f.label}
+                </a>
+              ) : (
+                f.label
+              )}
+            </dt>
             <dd className="min-w-0 text-text-default">{f.value}</dd>
           </div>
         ))}

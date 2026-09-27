@@ -204,8 +204,9 @@ async function installApiMocks(page, state) {
       return json(route, 200, { success: true, results });
     }
 
-    if (pathname === '/api/tech/scan-fnsku' && method === 'GET') {
-      const fnsku = String(searchParams.get('fnsku') || '').trim().toUpperCase();
+    if (pathname === '/api/fba/fnsku-scan' && method === 'POST') {
+      const body = JSON.parse(request.postData() || '{}');
+      const fnsku = String(body.value || '').trim().toUpperCase();
       const catalogRow = state.catalog.get(fnsku);
       return json(route, 200, {
         found: true,

@@ -33,7 +33,7 @@ export function mobileRecordFacts(
 ): MobileRecordFacts {
   const workflow = resolveOutboundWorkflowFacts({
     shipmentId: row.shipmentId,
-    hasTechScan: row.hasTechScan,
+    hasPickScan: row.hasPickScan,
     packedAt: row.packedAt,
     dockStagedAt: row.dockStagedAt,
     isOutOfStock: opts.blocked || Boolean(String(row.outOfStock || '').trim()),

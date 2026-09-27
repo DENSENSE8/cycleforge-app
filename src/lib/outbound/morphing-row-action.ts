@@ -60,20 +60,20 @@ function positiveStaffId(value: unknown): number | null {
 }
 
 /**
- * One listing rule writes TEST + PACK. The lane just picked is the source of
+ * One listing rule writes PICK + PACK. The lane just picked is the source of
  * truth; the other slot keeps the row's assignee, or repeats this staffer so
  * the rule can exist before both faces are filled.
  */
 export function morphingListingRulePair(args: {
   lane: MorphingActionLane;
   staffId: number;
-  testerId: number | null | undefined;
+  pickerId: number | null | undefined;
   packerId: number | null | undefined;
 }): { techId: number; packerId: number } {
-  const otherTester = positiveStaffId(args.testerId);
+  const otherPicker = positiveStaffId(args.pickerId);
   const otherPacker = positiveStaffId(args.packerId);
   if (args.lane === 'packer') {
-    return { techId: otherTester ?? args.staffId, packerId: args.staffId };
+    return { techId: otherPicker ?? args.staffId, packerId: args.staffId };
   }
   return { techId: args.staffId, packerId: otherPacker ?? args.staffId };
 }
@@ -113,8 +113,8 @@ export function morphingNotesHint(record: {
 /** Current picker / packer name on the row, if one is assigned. */
 export function morphingAssignedName(
   record: {
-    tester_name?: string | null;
-    tested_by_name?: string | null;
+    picker_name?: string | null;
+    picked_by_name?: string | null;
     packer_name?: string | null;
     packed_by_name?: string | null;
   },
@@ -123,7 +123,7 @@ export function morphingAssignedName(
   const raw =
     lane === 'packer'
       ? record.packer_name || record.packed_by_name
-      : record.tester_name || record.tested_by_name;
+      : record.picker_name || record.picked_by_name;
   const name = String(raw ?? '').trim();
   return name.length > 0 ? name : null;
 }

@@ -2,15 +2,18 @@
  * Shipping (page `outbound`) facet counts. Every membership predicate is the
  * one the list and desk-counts already read — `sqlDeskQueueScope` (To ship,
  * Pick list, PO paired), `sqlOrderDeskStage`, `sqlOrderAssignedToStaff`,
- * `sqlOrderTestDeadlineAt` (the list's ship-by), `exceptionScopeWhere` +
+ * `sqlDeskRefinementClauses` (packedBy / pickerId / pickedBy / order date /
+ * ship-by window), `sqlOrderTestDeadlineAt` (the list's ship-by), `exceptionScopeWhere` +
  * `ORDER_EXCEPTION_CATEGORY_SQL` + `exceptionSearchSql` (Exceptions) — so a
  * facet count is, by construction, the total the list shows for that pick.
  *
  * One statement per request: it returns one row per combination of facet
  * values with its count, and `computeFacets` does the rest in memory.
  *
- * Not reflected: the To-ship free-text search (`q`) — the list switches to an
- * unscoped search feed when it is set, so counts describe the unsearched view.
+ * Not reflected: the desk's free-text search. It lives in the in-memory desk
+ * store (never the URL), so these counts describe the unsearched view; the
+ * list's search itself stays in the view's scope (`strictSearchScope` on every
+ * desk mount). The text's per-view counts are `GET /api/nav/locate`'s.
  */
 
 import {
@@ -21,11 +24,13 @@ import {
 } from '@/lib/nav/facets/compute';
 import { NAV_FACET_GROUPS, type NavFacetContext } from '@/lib/nav/facets/contexts';
 import type { NavFacetsResponse } from '@/lib/nav/context/schema';
+import { readDeskRefinements, type DeskRefinements } from '@/lib/orders/desk-view-filters';
 import {
   DESK_AGING_BUCKETS,
   DESK_STAGES,
   sqlDeskAgingBucket,
   sqlDeskQueueScope,
+  sqlDeskRefinementClauses,
   sqlOrderAssignedToStaff,
   sqlOrderDeskStage,
   sqlOrderTestDeadlineAt,
@@ -127,13 +132,21 @@ export function readStaffFilter(params: ParamReader): number | null {
 }
 
 /** One statement: facet-value combinations with their counts for a queue view. */
-export function buildQueueFacetSql(view: DeskQueueView, orgId: string, staffId: number | null) {
+export function buildQueueFacetSql(
+  view: DeskQueueView,
+  orgId: string,
+  staffId: number | null,
+  refinements: DeskRefinements,
+) {
   const params: unknown[] = [orgId];
-  let staffClause = '';
-  if (staffId != null) {
-    params.push(staffId);
-    staffClause = `AND ${sqlOrderAssignedToStaff(`$${params.length}`)}`;
-  }
+  const bind = (value: unknown) => {
+    params.push(value);
+    return `$${params.length}`;
+  };
+  const clauses: string[] = [];
+  if (staffId != null) clauses.push(sqlOrderAssignedToStaff(bind(staffId)));
+  clauses.push(...sqlDeskRefinementClauses(refinements, bind, 'o', 'dl.deadline_at'));
+  const refineClause = clauses.map((c) => `AND ${c}`).join('\n          ');
   const sql = `
     SELECT f.stage, f.aging, f.urgent, f.blocked, COUNT(*)::int AS n
       FROM (
@@ -151,7 +164,7 @@ export function buildQueueFacetSql(view: DeskQueueView, orgId: string, staffId: 
         LEFT JOIN LATERAL (SELECT ${sqlOrderTestDeadlineAt('o')} AS deadline_at) dl ON TRUE
         WHERE o.organization_id = $1
           AND ${sqlDeskQueueScope(view)}
-          ${staffClause}
+          ${refineClause}
       ) f
      GROUP BY 1, 2, 3, 4`;
   return { sql, params };
@@ -240,7 +253,7 @@ export async function outboundFacets(
 
   const view = QUEUE_VIEW[context];
   if (!view) throw new Error(`no outbound facet source for ${context}`);
-  const { sql, params: bind } = buildQueueFacetSql(view, orgId, readStaffFilter(params));
+  const { sql, params: bind } = buildQueueFacetSql(view, orgId, readStaffFilter(params), readDeskRefinements(params));
   const rows = (await run(sql, bind)).map(toQueueCombo);
   const { total, groups } = computeFacets(rows, queueDimensions(context), readQueueFacetFilters(params));
   return { context, total, groups: declaredGroups(context, groups) };

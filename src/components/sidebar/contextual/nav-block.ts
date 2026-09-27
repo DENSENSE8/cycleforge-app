@@ -23,3 +23,17 @@ export const NAV_BLOCK_PLATE_CLASS = cn(
   'absolute inset-0 -z-10 bg-surface-card shadow-sm ring-1 ring-border-soft',
   SIDEBAR_CONTROL_CORNER,
 );
+
+/**
+ * The CHOSEN one of a single-choice list (a view, a mode, a sort order) — a
+ * key held down, not a black outline and not a check (a check reads as
+ * multi-select): the sunken well of the Find field (inset shade + hairline),
+ * so the choice reads as pressed into the surface. Unchosen rows sink the
+ * same way while pressed, so the click feels like the state it lands in.
+ */
+export const NAV_CHOICE_SELECTED_CLASS =
+  'bg-surface-sunken font-medium text-text-default shadow-[inset_0_1px_2px_rgba(15,23,42,0.08)] ring-1 ring-inset ring-border-hairline';
+
+/** Press depth for a choice row: sinks 1px into the same well while held. */
+export const NAV_CHOICE_PRESS_CLASS =
+  'transition-[background-color,box-shadow,transform] duration-100 active:translate-y-px active:bg-surface-sunken active:shadow-[inset_0_1px_2px_rgba(15,23,42,0.08)]';

@@ -2,7 +2,7 @@
 
 /** CommandBar — centered ⌘K find palette. */
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import {
   Clock,
@@ -20,7 +20,9 @@ import {
   CommandList,
 } from '@/components/ui/command';
 import { SearchResultRow } from '@/components/search/SearchResultRow';
-import { groupHitsForPreview } from '@/components/search/search-tabs';
+import { groupHitsForPreview, previewEntityLabel } from '@/components/search/search-tabs';
+import { runNavIntent } from '@/lib/nav/intents';
+import { CommandBarPageMap } from '@/components/CommandBarPageMap';
 import {
   COMMAND_BAR_OPEN_CHANGE_EVENT,
   COMMAND_BAR_OPEN_EVENT,
@@ -40,6 +42,7 @@ import {
   CHIP_TONE_CLASSES,
   ENTITY_TONE,
   entityGlyph,
+  searchMethodTone,
 } from '@/components/search/search-result-chips';
 import { PlatformMark } from '@/components/ui/PlatformMark';
 import { IdentifierToggle } from '@/components/ui/IdentifierToggle';
@@ -161,8 +164,14 @@ const SCOPE_OPTIONS = [
   ...SEARCH_BY_SCOPES.map((scope) => ({
     value: scope as string,
     label: SEARCH_BY_METHOD_LABEL[scope],
+    tone: searchMethodTone(scope),
   })),
 ];
+
+/** A facet pill's count — lighter than its label, fixed-width digits. */
+function FacetCount({ count }: { count: number }) {
+  return <span className="tabular-nums text-text-faint">{count}</span>;
+}
 
 function dispatchOpenChange(open: boolean) {
   if (typeof window === 'undefined') return;
@@ -493,13 +502,30 @@ export function CommandBar() {
         : headerFindEmptyMessage(trimmedQuery, findMode ? 'order' : undefined);
 
   const showRecents = open && !trimmedQuery && recents.length > 0;
-  // Page destinations. With the left spine removed (2026-09-26) ⌘K is the one
-  // page-to-page navigator: empty query lists every reachable page, a query
-  // narrows them through the shared nav matcher.
-  const pageRows = (trimmedQuery ? filterCommandBarNavGroups(navGroups, trimmedQuery) : navGroups)
-    .flatMap((group) => group.rows)
-    .filter((row) => row.type === 'page')
-    .slice(0, trimmedQuery ? 6 : undefined);
+  // Page destinations. ⌘K is the page-to-page navigator. Empty query: the
+  // contextual sidebar's own contract (`CommandBarPageMap` — this page's
+  // verbs + views, then the page map). A query narrows the shared nav matcher,
+  // which also finds the pages a lane door hides.
+  const pageRows = trimmedQuery
+    ? filterCommandBarNavGroups(navGroups, trimmedQuery)
+        .flatMap((group) => group.rows)
+        .filter((row) => row.type === 'page')
+        .slice(0, 6)
+    : [];
+  const goHref = useCallback(
+    (href: string) => {
+      setDialogOpen(false);
+      window.requestAnimationFrame(() => router.push(href));
+    },
+    [router, setDialogOpen],
+  );
+  const goIntent = useCallback(
+    (intent: string) => {
+      setDialogOpen(false);
+      window.requestAnimationFrame(() => runNavIntent(intent));
+    },
+    [setDialogOpen],
+  );
   const showIdentifierMiss =
     findMode && trimmedQuery && !searching && previewHits.length === 0;
   /** The fetch came back FULL, so the server had at least one more it was not asked for. */
@@ -538,13 +564,13 @@ export function CommandBar() {
               onClick={() => setTypeFilter(null)}
               aria-pressed={typeFilter === null}
               className={cn(
-                'rounded-mode-pill px-2 py-0.5 text-role-eyebrow uppercase tracking-wide',
+                'inline-flex items-center gap-1 rounded-mode-pill px-2.5 py-1 text-role-caption font-medium mode-label-case transition-colors',
                 typeFilter === null
                   ? 'bg-accent-bg text-text-accent'
-                  : 'text-text-faint hover:text-text-muted',
+                  : 'text-text-muted hover:bg-surface-sunken hover:text-text-default',
               )}
             >
-              All {searchResults.length}
+              All <FacetCount count={searchResults.length} />
             </button>
             {typeCounts.map(([entityType, count]) => {
               const on = typeFilter === entityType;
@@ -555,13 +581,13 @@ export function CommandBar() {
                   onClick={() => setTypeFilter(on ? null : entityType)}
                   aria-pressed={on}
                   className={cn(
-                    'rounded-mode-pill px-2 py-0.5 text-role-eyebrow uppercase tracking-wide ring-1 ring-inset transition-colors',
+                    'inline-flex items-center gap-1 rounded-mode-pill px-2.5 py-1 text-role-caption font-medium mode-label-case ring-1 ring-inset transition-colors',
                     on
                       ? CHIP_TONE_CLASSES[ENTITY_TONE[entityType] ?? 'gray']
-                      : 'text-text-faint ring-transparent hover:text-text-muted',
+                      : 'text-text-muted ring-transparent hover:bg-surface-sunken hover:text-text-default',
                   )}
                 >
-                  {entityType} {count}
+                  {previewEntityLabel(entityType)} <FacetCount count={count} />
                 </button>
               );
             })}
@@ -585,10 +611,10 @@ export function CommandBar() {
                   aria-pressed={on}
                   title={meta.label}
                   className={cn(
-                    'inline-flex items-center gap-1.5 rounded-mode-pill px-2 py-0.5 text-role-eyebrow uppercase tracking-wide transition-colors',
+                    'inline-flex items-center gap-1.5 rounded-mode-pill px-2.5 py-1 text-role-caption font-medium mode-label-case transition-colors',
                     on
                       ? 'bg-surface-sunken text-text-default'
-                      : 'text-text-faint hover:text-text-muted',
+                      : 'text-text-muted hover:bg-surface-sunken hover:text-text-default',
                   )}
                 >
                   <span
@@ -596,7 +622,7 @@ export function CommandBar() {
                     style={dot.style}
                     aria-hidden
                   />
-                  {meta.label} {count}
+                  {meta.label} <FacetCount count={count} />
                 </button>
               );
             })}
@@ -660,6 +686,12 @@ export function CommandBar() {
                 );
               })}
             </CommandGroup>
+          ) : null}
+          {open && !trimmedQuery ? (
+            // The contract hooks read the live URL (`useSearchParams`).
+            <Suspense fallback={null}>
+              <CommandBarPageMap onHref={goHref} onIntent={goIntent} />
+            </Suspense>
           ) : null}
           {directOpen && trimmedQuery ? (
             <CommandGroup heading="Find">

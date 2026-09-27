@@ -31,8 +31,8 @@ describe('mobile warehouse order views', () => {
     row({ entityId: 1, deadlineAt: today }),
     row({ entityId: 2, isUrgent: true }),
     row({ entityId: 3, outOfStock: 'Out of stock' }),
-    row({ entityId: 4, shipmentId: 44, hasTechScan: true }),
-    row({ entityId: 5, shipmentId: 55, hasTechScan: true, packedAt: today }),
+    row({ entityId: 4, shipmentId: 44, hasPickScan: true }),
+    row({ entityId: 5, shipmentId: 55, hasPickScan: true, packedAt: today }),
   ];
 
   it('parses only governed views', () => {

@@ -2,12 +2,16 @@ import type { PoolClient } from 'pg';
 import pool from '@/lib/db';
 import { getCurrentPSTDateKey } from '@/utils/date';
 import { getPurchaseOrderById, listPurchaseReceives } from '@/lib/zoho';
-import { zohoGet, zohoPost } from '@/lib/zoho/httpClient';
+import { zohoPost } from '@/lib/zoho/httpClient';
 import { withZohoOrg } from '@/lib/zoho/tenant-context';
 import { withTenantConnection, withTenantTransaction } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';
 import { attachShortageReplenishment } from '@/lib/orders/order-line-shortage';
 import { earmarkPoForReplenishmentRequest } from '@/lib/orders/shortage-inbound';
+import { readInventoryPositions, type InventoryPosition } from '@/lib/inventory/inventory-position';
+import { ingestInboundOrderInTx } from '@/lib/inbound/ingest-inbound-order';
+import { emptyInboundOrderDraft, emptyInboundOrderLine } from '@/lib/inbound/inbound-order-draft';
+import type { TxClient } from '@/lib/inbound/purchase-links';
 import {
   REPLENISHMENT_ALLOWED_TRANSITIONS,
   type ReplenishmentRequestStatus,
@@ -15,14 +19,23 @@ import {
 
 export interface ReplenishmentRequestRow {
   id: string;
-  item_id: string;
-  zoho_item_id: string;
+  item_id: string | null;
+  /** External (Zoho) item id — a fact for export, not the identity. */
+  zoho_item_id: string | null;
+  /** The internal catalog item — the request's identity. */
+  sku_catalog_id: number | null;
+  supplier_id: number | null;
+  inbound_order_id: number | null;
   sku: string | null;
   item_name: string;
   quantity_needed: string;
   zoho_quantity_available: string | null;
   zoho_quantity_on_hand: string | null;
   zoho_incoming_quantity: string | null;
+  /** CycleForge's own inventory position (src/lib/inventory/inventory-position.ts). */
+  stock_available: string | null;
+  stock_on_hand: string | null;
+  stock_incoming: string | null;
   quantity_to_order: string | null;
   vendor_zoho_contact_id: string | null;
   vendor_name: string | null;
@@ -98,7 +111,17 @@ async function getOrderItemContext(orderId: number, client: DbClient, orgId: Org
        i.purchase_rate,
        i.quantity_available AS item_quantity_available,
        i.quantity_on_hand AS item_quantity_on_hand,
-       i.custom_fields
+       i.custom_fields,
+       COALESCE(
+         o.oos_sku_catalog_id,
+         o.sku_catalog_id,
+         (SELECT x.sku_catalog_id FROM catalog_external_ids x
+           WHERE x.organization_id = o.organization_id AND x.provider = 'zoho'
+             AND x.external_id = NULLIF(BTRIM(o.oos_zoho_item_id), '') LIMIT 1),
+         (SELECT sc2.id FROM sku_catalog sc2
+           WHERE sc2.organization_id = o.organization_id
+             AND sc2.sku = COALESCE(NULLIF(BTRIM(o.oos_sku), ''), NULLIF(BTRIM(o.sku), '')) LIMIT 1)
+       ) AS sku_catalog_id
      FROM orders o
      LEFT JOIN LATERAL (
        SELECT i2.id, i2.zoho_item_id, i2.name, i2.purchase_rate,
@@ -136,162 +159,58 @@ async function getOrderItemContext(orderId: number, client: DbClient, orgId: Org
   return result.rows[0] ?? null;
 }
 
-async function getItemStock(zohoItemId: string, orgId: OrgId): Promise<{
-  zohoItemId: string;
-  name: string;
-  quantityAvailable: number;
-  quantityOnHand: number;
-}> {
-  const res = await withZohoOrg(orgId, () =>
-    zohoGet<{ item?: Record<string, unknown> }>(`/api/v1/items/${encodeURIComponent(zohoItemId)}`)
+/**
+ * The request's internal catalog item: its own `sku_catalog_id`, else the
+ * crosswalk of its Zoho item id (requests created before 2026-09-27i).
+ */
+async function catalogIdForRequest(request: ReplenishmentRequestRow, exec: DbClient, orgId: OrgId): Promise<number | null> {
+  if (request.sku_catalog_id != null) return Number(request.sku_catalog_id);
+  if (!request.zoho_item_id) return null;
+  const hit = await exec.query(
+    `SELECT sku_catalog_id FROM catalog_external_ids
+      WHERE organization_id = $1 AND provider = 'zoho' AND external_id = $2 LIMIT 1`,
+    [orgId, request.zoho_item_id],
   );
-  const item = res.item;
-  if (!item) throw new Error(`Zoho item not found: ${zohoItemId}`);
-
-  return {
-    zohoItemId: String(item.item_id || zohoItemId),
-    name: String(item.name || ''),
-    quantityAvailable: toNumber(item.available_stock, 0),
-    quantityOnHand: toNumber(item.stock_on_hand, 0),
-  };
+  return hit.rows[0]?.sku_catalog_id != null ? Number(hit.rows[0].sku_catalog_id) : null;
 }
 
-async function getIncomingQuantityForItem(zohoItemId: string, orgId: OrgId): Promise<{ incomingQty: number; openPoIds: string[] }> {
-  const statuses = ['open', 'confirmed'];
-  let incomingQty = 0;
-  const openPoIds = new Set<string>();
-
-  for (const status of statuses) {
-    const res = await withZohoOrg(orgId, () =>
-      zohoGet<{ purchaseorders?: Array<{ purchaseorder_id?: string; line_items?: Array<{ item_id?: string; quantity?: number; quantity_received?: number }> }> }>(
-        '/api/v1/purchaseorders',
-        { status, item_id: zohoItemId, per_page: 200 }
-      )
-    );
-    for (const po of res.purchaseorders || []) {
-      const line = (po.line_items || []).find((entry) => String(entry.item_id || '') === zohoItemId);
-      if (!line) continue;
-      const ordered = toNumber(line.quantity, 0);
-      const received = toNumber(line.quantity_received, 0);
-      const pending = Math.max(0, ordered - received);
-      incomingQty += pending;
-      if (pending > 0 && po.purchaseorder_id) openPoIds.add(po.purchaseorder_id);
-    }
-  }
-
-  return { incomingQty, openPoIds: Array.from(openPoIds) };
-}
-
-// Tenant-aware body for refreshStockCacheForItem.
-async function refreshStockCacheForItemBody(zohoItemId: string, exec: DbClient, orgId: OrgId) {
-  const itemLookup = await exec.query(
-    `SELECT id, quantity_available, quantity_on_hand FROM items WHERE zoho_item_id = $1 AND organization_id = $2 LIMIT 1`,
-    [zohoItemId, orgId]
+/** CycleForge's own position for one catalog item (zeros when the item is unknown). */
+async function positionFor(skuCatalogId: number | null, exec: DbClient, orgId: OrgId): Promise<InventoryPosition | null> {
+  if (skuCatalogId == null) return null;
+  const positions = await readInventoryPositions(
+    (text, params) => exec.query(text, params as unknown[]) as never,
+    orgId,
+    [skuCatalogId],
   );
-  const localItem = itemLookup.rows[0] ?? null;
-
-  try {
-    const [stock, incoming] = await Promise.all([
-      getItemStock(zohoItemId, orgId),
-      getIncomingQuantityForItem(zohoItemId, orgId),
-    ]);
-
-    const upsert = await exec.query(
-      `INSERT INTO item_stock_cache (
-         organization_id, zoho_item_id, item_id, quantity_available, quantity_on_hand, incoming_quantity, open_po_ids, sync_error, last_synced_at
-       ) VALUES ($7, $1, $2, $3, $4, $5, $6, NULL, NOW())
-       ON CONFLICT (zoho_item_id) DO UPDATE SET
-         item_id = EXCLUDED.item_id,
-         quantity_available = EXCLUDED.quantity_available,
-         quantity_on_hand = EXCLUDED.quantity_on_hand,
-         incoming_quantity = EXCLUDED.incoming_quantity,
-         open_po_ids = EXCLUDED.open_po_ids,
-         sync_error = NULL,
-         last_synced_at = NOW()
-       WHERE item_stock_cache.organization_id = $7
-       RETURNING *`,
-      [zohoItemId, localItem?.id ?? null, stock.quantityAvailable, stock.quantityOnHand, incoming.incomingQty, incoming.openPoIds, orgId]
-    );
-
-    await exec.query(
-      `UPDATE replenishment_requests
-       SET zoho_quantity_available = $2,
-           zoho_quantity_on_hand = $3,
-           zoho_incoming_quantity = $4,
-           updated_at = NOW()
-       WHERE zoho_item_id = $1
-         AND organization_id = $5
-         AND status <> 'fulfilled'
-         AND status <> 'cancelled'`,
-      [zohoItemId, stock.quantityAvailable, stock.quantityOnHand, incoming.incomingQty, orgId]
-    );
-
-    return upsert.rows[0];
-  } catch (error) {
-    const message = error instanceof Error ? error.message : 'Unknown Zoho sync error';
-    const fallbackAvailable = toNumber(localItem?.quantity_available, 0);
-    const fallbackOnHand = toNumber(localItem?.quantity_on_hand, 0);
-
-    const upsert = await exec.query(
-      `INSERT INTO item_stock_cache (
-         organization_id, zoho_item_id, item_id, quantity_available, quantity_on_hand, incoming_quantity, open_po_ids, sync_error, last_synced_at
-       ) VALUES ($6, $1, $2, $3, $4, 0, NULL, $5, NULL)
-       ON CONFLICT (zoho_item_id) DO UPDATE SET
-         item_id = EXCLUDED.item_id,
-         quantity_available = EXCLUDED.quantity_available,
-         quantity_on_hand = EXCLUDED.quantity_on_hand,
-         sync_error = EXCLUDED.sync_error
-       WHERE item_stock_cache.organization_id = $6
-       RETURNING *`,
-      [zohoItemId, localItem?.id ?? null, fallbackAvailable, fallbackOnHand, message, orgId]
-    );
-
-    return upsert.rows[0];
-  }
+  return positions.get(skuCatalogId) ?? null;
 }
 
-async function refreshStockCacheForItem(zohoItemId: string, client: DbClient, orgId: OrgId) {
-  // Caller already supplied a (GUC-scoped / transaction) client → use it in place.
-  if (client !== pool) return refreshStockCacheForItemBody(zohoItemId, client, orgId);
-  // Default pool sentinel → run inside a fresh GUC-scoped transaction.
-  return withTenantTransaction(orgId, (c) => refreshStockCacheForItemBody(zohoItemId, c, orgId));
-}
-
-async function getOrRefreshStockCacheBody(zohoItemId: string, exec: DbClient, orgId: OrgId) {
-  const result = await exec.query(
-    `SELECT * FROM item_stock_cache WHERE zoho_item_id = $1 AND organization_id = $2 LIMIT 1`,
-    [zohoItemId, orgId]
-  );
-  const existing = result.rows[0] ?? null;
-
-  const stale = !existing?.last_synced_at || (Date.now() - new Date(existing.last_synced_at).getTime()) > 10 * 60 * 1000;
-  if (!stale) return existing;
-
-  return refreshStockCacheForItem(zohoItemId, exec, orgId);
-}
-
-async function getOrRefreshStockCache(zohoItemId: string, client: DbClient, orgId: OrgId) {
-  if (client !== pool) return getOrRefreshStockCacheBody(zohoItemId, client, orgId);
-  return withTenantConnection(orgId, (c) => getOrRefreshStockCacheBody(zohoItemId, c, orgId));
-}
-
-async function findActiveRequestForItemBody(zohoItemId: string, exec: DbClient, orgId: OrgId): Promise<ReplenishmentRequestRow | null> {
+async function findActiveRequestForItemBody(
+  item: { skuCatalogId: number | null; zohoItemId: string | null },
+  exec: DbClient,
+  orgId: OrgId,
+): Promise<ReplenishmentRequestRow | null> {
   const result = await exec.query(
     `SELECT *
      FROM replenishment_requests
-     WHERE zoho_item_id = $1
-       AND organization_id = $3
+     WHERE organization_id = $3
        AND status = ANY($2::replenishment_status[])
-     ORDER BY created_at DESC
+       AND (($1::int IS NOT NULL AND sku_catalog_id = $1)
+            OR ($4::text IS NOT NULL AND zoho_item_id = $4))
+     ORDER BY (sku_catalog_id IS NOT DISTINCT FROM $1::int) DESC, created_at DESC
      LIMIT 1`,
-    [zohoItemId, ACTIVE_STATUSES, orgId]
+    [item.skuCatalogId, ACTIVE_STATUSES, orgId, item.zohoItemId]
   );
   return (result.rows[0] as ReplenishmentRequestRow | undefined) ?? null;
 }
 
-async function findActiveRequestForItem(zohoItemId: string, client: DbClient, orgId: OrgId): Promise<ReplenishmentRequestRow | null> {
-  if (client !== pool) return findActiveRequestForItemBody(zohoItemId, client, orgId);
-  return withTenantConnection(orgId, (c) => findActiveRequestForItemBody(zohoItemId, c, orgId));
+async function findActiveRequestForItem(
+  item: { skuCatalogId: number | null; zohoItemId: string | null },
+  client: DbClient,
+  orgId: OrgId,
+): Promise<ReplenishmentRequestRow | null> {
+  if (client !== pool) return findActiveRequestForItemBody(item, client, orgId);
+  return withTenantConnection(orgId, (c) => findActiveRequestForItemBody(item, c, orgId));
 }
 
 async function recomputeRequestQuantityBody(requestId: string, exec: DbClient, orgId: OrgId) {
@@ -374,22 +293,22 @@ async function recalculateNeedBody(requestId: string, exec: DbClient, orgId: Org
   const request = result.rows[0] as ReplenishmentRequestRow | undefined;
   if (!request) return;
 
-  const stock = await getOrRefreshStockCache(request.zoho_item_id, exec, orgId);
+  const skuCatalogId = await catalogIdForRequest(request, exec, orgId);
+  const stock = await positionFor(skuCatalogId, exec, orgId);
   const effectiveShortfall = Math.max(
     0,
-    toNumber(request.quantity_needed, 0) -
-      toNumber(stock?.quantity_available, 0) -
-      toNumber(stock?.incoming_quantity, 0)
+    toNumber(request.quantity_needed, 0) - (stock?.available ?? 0) - (stock?.incoming ?? 0)
   );
 
   await exec.query(
     `UPDATE replenishment_requests
-     SET zoho_quantity_available = $2,
-         zoho_quantity_on_hand = $3,
-         zoho_incoming_quantity = $4,
+     SET stock_available = $2,
+         stock_on_hand = $3,
+         stock_incoming = $4,
+         sku_catalog_id = COALESCE(sku_catalog_id, $6),
          updated_at = NOW()
      WHERE id = $1 AND organization_id = $5`,
-    [requestId, toNumber(stock?.quantity_available, 0), toNumber(stock?.quantity_on_hand, 0), toNumber(stock?.incoming_quantity, 0), orgId]
+    [requestId, stock?.available ?? 0, stock?.onHand ?? 0, stock?.incoming ?? 0, orgId, skuCatalogId]
   );
 
   if (effectiveShortfall === 0 && ['detected', 'pending_review'].includes(request.status)) {
@@ -414,16 +333,19 @@ async function ensureReplenishmentForOrderBody(
     return { requestId: null, skipped: 'order_not_found' as const };
   }
 
-  if (!order.item_id || !order.zoho_item_id) {
+  // The internal catalog item is the identity; a Zoho item is optional.
+  const skuCatalogId = order.sku_catalog_id != null ? Number(order.sku_catalog_id) : null;
+  const zohoItemId = cleanText(order.zoho_item_id);
+  if (skuCatalogId == null && !zohoItemId) {
     return { requestId: null, skipped: 'item_not_linked' as const };
   }
 
-  const stock = await getOrRefreshStockCache(order.zoho_item_id, client, orgId);
+  const stock = await positionFor(skuCatalogId, client, orgId);
   const orderQty = normalizeQuantity(order.oos_qty_short ?? order.quantity);
-  const shortfall = forceFullQuantity ? orderQty : Math.max(0, orderQty - toNumber(stock?.quantity_available, 0));
+  const shortfall = forceFullQuantity ? orderQty : Math.max(0, orderQty - (stock?.available ?? 0));
   const quantityNeeded = shortfall > 0 ? shortfall : orderQty;
 
-  const existing = await findActiveRequestForItem(order.zoho_item_id, client, orgId);
+  const existing = await findActiveRequestForItem({ skuCatalogId, zohoItemId }, client, orgId);
   let requestId = existing?.id ?? null;
 
   if (!existing) {
@@ -436,30 +358,32 @@ async function ensureReplenishmentForOrderBody(
          sku,
          item_name,
          quantity_needed,
-         zoho_quantity_available,
-         zoho_quantity_on_hand,
-         zoho_incoming_quantity,
+         stock_available,
+         stock_on_hand,
+         stock_incoming,
          vendor_zoho_contact_id,
          vendor_name,
          unit_cost,
          status,
-         notes
-       ) VALUES ($13, $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, 'detected', $12)
+         notes,
+         sku_catalog_id
+       ) VALUES ($13, $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, 'detected', $12, $14)
        RETURNING id`,
       [
-        order.item_id,
-        order.zoho_item_id,
+        order.item_id ?? null,
+        zohoItemId,
         cleanText(order.sku),
         cleanText(order.item_name) || cleanText(order.product_title) || 'Unknown item',
         quantityNeeded,
-        toNumber(stock?.quantity_available, 0),
-        toNumber(stock?.quantity_on_hand, 0),
-        toNumber(stock?.incoming_quantity, 0),
+        stock?.available ?? 0,
+        stock?.onHand ?? 0,
+        stock?.incoming ?? 0,
         vendor.vendorZohoContactId,
         vendor.vendorName,
         cleanText(order.purchase_rate),
         cleanText(reason) || (order.is_out_of_stock ? 'Out of stock' : null),
         orgId,
+        skuCatalogId,
       ]
     );
     requestId = String(insert.rows[0].id);
@@ -580,8 +504,7 @@ export async function listNeedToOrder(options: {
   const skuSearch = cleanText(options.skuSearch) ?? null;
   const sortDir = options.sort === 'newest' ? 'DESC' : 'ASC'; // FIFO by default
 
-  // Reads gated by rr.organization_id and the string-key JOIN
-  // (isc.zoho_item_id = rr.zoho_item_id) aligned on org.
+  // Reads gated by rr.organization_id; the internal order joins on its id + org.
   // Params (rows): $1 statuses, $2 limit, $3 offset, $4 orgId, [$5 skuSearch].
   const rowsParams: unknown[] = [statuses, limit, offset, orgId];
   if (skuSearch) rowsParams.push(skuSearch);
@@ -591,8 +514,8 @@ export async function listNeedToOrder(options: {
     withTenantConnection(orgId, (c) => c.query(
       `SELECT
          rr.*,
-         isc.open_po_ids,
-         isc.sync_error,
+         io.order_number AS inbound_order_number,
+         io.status AS inbound_order_status,
          COALESCE((
            SELECT json_agg(
              json_build_object(
@@ -607,9 +530,9 @@ export async function listNeedToOrder(options: {
              AND rol.organization_id = rr.organization_id
          ), '[]'::json) AS orders_waiting
        FROM replenishment_requests rr
-       LEFT JOIN item_stock_cache isc
-         ON isc.zoho_item_id = rr.zoho_item_id
-         AND isc.organization_id = rr.organization_id
+       LEFT JOIN inbound_order io
+         ON io.id = rr.inbound_order_id
+         AND io.organization_id = rr.organization_id
        WHERE rr.status = ANY($1::replenishment_status[])
          AND rr.organization_id = $4
        ${skuClause}
@@ -715,6 +638,7 @@ export async function cancelNeedToOrderRequest(id: string, changedBy = 'staff', 
  */
 export interface CreateDraftPurchaseOrdersDeps {
   loadRequests: (replenishmentIds: string[], orgId: OrgId) => Promise<ReplenishmentRequestRow[]>;
+  /** Optional export — only called when the caller asks for a Zoho copy. */
   createZohoPurchaseOrder: (
     orgId: OrgId,
     payload: {
@@ -726,6 +650,7 @@ export interface CreateDraftPurchaseOrdersDeps {
   ) => Promise<{ purchaseorder?: { purchaseorder_id?: string; purchaseorder_number?: string } }>;
   withTenantTransaction: <T>(orgId: OrgId, fn: (client: PoolClient) => Promise<T>) => Promise<T>;
   transitionStatus: typeof transitionReplenishmentStatus;
+  ingestOrder: typeof ingestInboundOrderInTx;
 }
 
 const defaultCreateDraftPurchaseOrdersDeps: CreateDraftPurchaseOrdersDeps = {
@@ -746,72 +671,146 @@ const defaultCreateDraftPurchaseOrdersDeps: CreateDraftPurchaseOrdersDeps = {
     )),
   withTenantTransaction,
   transitionStatus: transitionReplenishmentStatus,
+  ingestOrder: ingestInboundOrderInTx,
 };
 
+export interface CreatedPurchaseOrder {
+  vendor: string | null;
+  inbound_order_id: number;
+  order_number: string;
+  /** Present only when a Zoho copy was exported. */
+  zoho_po_id: string | null;
+  zoho_po_number: string | null;
+}
+
+/**
+ * Turn staged replenishment requests into purchase orders — one INTERNAL
+ * inbound order per vendor (CycleForge's own `inbound_order`, origin
+ * `auto_replenish`, landed through the one inbound writer). The order is on
+ * Incoming, its lines are what receiving expects, and every shortage that
+ * asked for it is earmarked onto it. Zoho is not involved unless
+ * `exportToZoho` asks for a copy (requests that carry a Zoho item + vendor).
+ */
 export async function createDraftPurchaseOrders(
   replenishmentIds: string[],
   orgId: OrgId,
-  deps: CreateDraftPurchaseOrdersDeps = defaultCreateDraftPurchaseOrdersDeps
-) {
+  deps: CreateDraftPurchaseOrdersDeps = defaultCreateDraftPurchaseOrdersDeps,
+  opts: { exportToZoho?: boolean; staffId?: number | null } = {},
+): Promise<CreatedPurchaseOrder[]> {
   const requests = await deps.loadRequests(replenishmentIds, orgId);
 
   const byVendor = new Map<string, ReplenishmentRequestRow[]>();
   for (const request of requests) {
-    const vendorId = cleanText(request.vendor_zoho_contact_id);
-    if (!vendorId) continue;
-    const bucket = byVendor.get(vendorId) ?? [];
+    if (request.sku_catalog_id == null && !cleanText(request.sku)) continue;
+    if (Math.max(0, toNumber(request.quantity_to_order, 0)) <= 0) continue;
+    const vendorKey = request.supplier_id != null
+      ? `s:${request.supplier_id}`
+      : `n:${(cleanText(request.vendor_name) ?? cleanText(request.vendor_zoho_contact_id) ?? '').toLowerCase()}`;
+    const bucket = byVendor.get(vendorKey) ?? [];
     bucket.push(request);
-    byVendor.set(vendorId, bucket);
+    byVendor.set(vendorKey, bucket);
   }
 
-  const createdPos: Array<{ vendor: string | null; zoho_po_id: string; zoho_po_number: string }> = [];
+  const created: CreatedPurchaseOrder[] = [];
+  const day = getCurrentPSTDateKey().replace(/-/g, '');
 
-  for (const [vendorId, vendorRequests] of Array.from(byVendor.entries())) {
-    const lineItems = vendorRequests
-      .map((request: ReplenishmentRequestRow) => ({
-        item_id: request.zoho_item_id,
-        quantity: Math.max(0, toNumber(request.quantity_to_order, 0)),
-        rate: toNumber(request.unit_cost, 0),
-      }))
-      .filter((entry: { item_id: string; quantity: number; rate: number }) => entry.quantity > 0);
+  for (const vendorRequests of byVendor.values()) {
+    const vendor = cleanText(vendorRequests[0].vendor_name);
+    const orderNumber = `RP-${day}-${vendorRequests[0].id.slice(0, 8).toUpperCase()}`;
+    const draft = {
+      ...emptyInboundOrderDraft('PO'),
+      platform: 'manual',
+      orderNumber,
+      vendor: vendor ?? '',
+      notes: `Replenishment: ${vendorRequests.map((r) => r.sku || r.item_name).join(', ')}`,
+      tracking: [],
+      lines: vendorRequests.map((r) => ({
+        ...emptyInboundOrderLine(),
+        lineKey: `R-${r.id.slice(0, 8)}`,
+        skuCatalogId: r.sku_catalog_id,
+        sku: r.sku ?? '',
+        title: r.item_name,
+        quantity: Math.max(1, Math.round(toNumber(r.quantity_to_order, 0))),
+        unitCostCents: r.unit_cost != null ? Math.round(toNumber(r.unit_cost, 0) * 100) : null,
+      })),
+    };
 
-    if (lineItems.length === 0) continue;
+    let zohoPoId: string | null = null;
+    let zohoPoNumber: string | null = null;
+    const zohoVendor = cleanText(vendorRequests[0].vendor_zoho_contact_id);
+    if (opts.exportToZoho && zohoVendor && vendorRequests.every((r) => cleanText(r.zoho_item_id))) {
+      const response = await deps.createZohoPurchaseOrder(orgId, {
+        vendor_id: zohoVendor,
+        date: getCurrentPSTDateKey(),
+        line_items: vendorRequests.map((r) => ({
+          item_id: r.zoho_item_id as string,
+          quantity: Math.max(1, Math.round(toNumber(r.quantity_to_order, 0))),
+          rate: toNumber(r.unit_cost, 0),
+        })),
+        notes: `Exported from CycleForge inbound order ${orderNumber}`,
+      });
+      zohoPoId = cleanText(response.purchaseorder?.purchaseorder_id);
+      zohoPoNumber = cleanText(response.purchaseorder?.purchaseorder_number);
+      if (!zohoPoId || !zohoPoNumber) throw new Error('Zoho PO create returned no purchaseorder id/number');
+    }
 
-    const response = await deps.createZohoPurchaseOrder(orgId, {
-      vendor_id: vendorId,
-      date: getCurrentPSTDateKey(),
-      line_items: lineItems,
-      notes: `Auto-generated from Need-to-Order dashboard (${vendorRequests.map((r: ReplenishmentRequestRow) => r.sku || r.item_name).join(', ')})`,
-    });
-
-    const poId = cleanText(response.purchaseorder?.purchaseorder_id);
-    const poNumber = cleanText(response.purchaseorder?.purchaseorder_number);
-    if (!poId || !poNumber) throw new Error('Zoho PO create returned no purchaseorder id/number');
-
-    await deps.withTenantTransaction(orgId, async (client) => {
+    const inboundOrderId = await deps.withTenantTransaction(orgId, async (client) => {
+      const landed = await deps.ingestOrder(client as unknown as TxClient, orgId, draft, {
+        origin: 'auto_replenish',
+        source: 'replenish',
+        staffId: opts.staffId ?? null,
+        sourceEventId: `replenish:${orderNumber}`,
+        replenishmentRequestId: vendorRequests.length === 1 ? vendorRequests[0].id : null,
+      });
       for (const request of vendorRequests) {
         await client.query(
           `UPDATE replenishment_requests
-           SET zoho_po_id = $2,
-               zoho_po_number = $3,
+           SET inbound_order_id = $2,
+               zoho_po_id = COALESCE($3, zoho_po_id),
+               zoho_po_number = COALESCE($4, zoho_po_number),
                updated_at = NOW()
-           WHERE id = $1 AND organization_id = $4`,
-          [request.id, poId, poNumber, orgId]
+           WHERE id = $1 AND organization_id = $5`,
+          [request.id, landed.inboundOrderId, zohoPoId, zohoPoNumber, orgId]
         );
-        await deps.transitionStatus(request.id, 'po_created', 'system', `Zoho PO ${poNumber} created`, client, orgId);
+        await deps.transitionStatus(request.id, 'po_created', 'system', `Inbound order ${orderNumber} created`, client, orgId);
         await earmarkPoForReplenishmentRequest(client, {
           orgId,
           replenishmentRequestId: request.id,
-          zohoPoId: poId,
-          zohoPoNumber: poNumber,
+          inboundOrderId: landed.inboundOrderId,
+          zohoPoId,
+          zohoPoNumber,
         });
       }
+      return landed.inboundOrderId;
     });
 
-    createdPos.push({ vendor: vendorRequests[0]?.vendor_name ?? null, zoho_po_id: poId, zoho_po_number: poNumber });
+    created.push({ vendor, inbound_order_id: inboundOrderId, order_number: orderNumber, zoho_po_id: zohoPoId, zoho_po_number: zohoPoNumber });
   }
 
-  return createdPos;
+  return created;
+}
+
+/**
+ * Internal receipt state of a request's inbound order: fulfilled once the
+ * order's lines for this catalog item have received what the request needs.
+ */
+async function reconcileInboundOrderStatus(request: ReplenishmentRequestRow, orgId: OrgId) {
+  if (request.inbound_order_id == null) return;
+  const received = await withTenantConnection(orgId, (c) => c.query(
+    `SELECT COALESCE(SUM(rl.quantity_received), 0)::int AS total
+       FROM receiving_line rl
+      WHERE rl.organization_id = $1
+        AND rl.inbound_order_id = $2
+        AND ($3::int IS NULL OR rl.sku_catalog_id = $3)`,
+    [orgId, request.inbound_order_id, request.sku_catalog_id]
+  ));
+  const total = toNumber(received.rows[0]?.total, 0);
+  if (total > 0 && request.status === 'po_created') {
+    await transitionReplenishmentStatus(request.id, 'waiting_for_receipt', 'system', null, pool, orgId);
+  }
+  if (total >= toNumber(request.quantity_needed, 0) && total > 0 && request.status !== 'fulfilled') {
+    await transitionReplenishmentStatus(request.id, 'fulfilled', 'system', `Received ${total} units`, pool, orgId);
+  }
 }
 
 async function reconcilePOStatus(request: ReplenishmentRequestRow, orgId: OrgId) {
@@ -882,18 +881,12 @@ export async function runReplenishmentSync(orgId: OrgId) {
     [ACTIVE_STATUSES, orgId]
   ));
 
-  const uniqueZohoItemIds = Array.from(
-    new Set(activeRequests.rows.map((row) => String(row.zoho_item_id || '')).filter(Boolean))
-  );
-  for (const zohoItemId of uniqueZohoItemIds) {
-    await refreshStockCacheForItem(zohoItemId, pool, orgId);
-  }
-
   for (const request of activeRequests.rows as ReplenishmentRequestRow[]) {
-    if (request.zoho_po_id && ['po_created', 'waiting_for_receipt'].includes(request.status)) {
-      await reconcilePOStatus(request, orgId);
+    if (['po_created', 'waiting_for_receipt'].includes(request.status)) {
+      // Internal orders reconcile from receiving; a legacy Zoho-only PO still reconciles from Zoho.
+      if (request.inbound_order_id != null) await reconcileInboundOrderStatus(request, orgId);
+      else if (request.zoho_po_id) await reconcilePOStatus(request, orgId);
     }
     await recalculateNeed(request.id, pool, orgId);
   }
 }
-

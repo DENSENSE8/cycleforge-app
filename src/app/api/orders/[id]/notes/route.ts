@@ -6,6 +6,7 @@ import { recordAudit, AUDIT_ACTION, AUDIT_ENTITY } from '@/lib/audit-logs';
 import { parseBody } from '@/lib/schemas/parse';
 import pool from '@/lib/db';
 import { invalidateAllOrdersApiCaches } from '@/lib/orders/invalidation';
+import { publishOrderChanged } from '@/lib/realtime/publish';
 
 /** Internal ops annotations on an order (`order_notes`). */
 
@@ -73,6 +74,9 @@ export async function POST(
     // count are IN that payload — without this the operator's flag silently
     // does not appear for up to five minutes.
     await invalidateAllOrdersApiCaches([], gate.ctx.organizationId);
+    // Other desks' rows carry the same note count — tell them (the author's
+    // own list repaints from its `orders.outbound` refresh signal).
+    await publishOrderChanged({ organizationId: gate.ctx.organizationId, orderIds: [id], source: 'orders.note' });
 
     await recordAudit(pool, gate.ctx, req, {
       source: 'orders-queue-note',

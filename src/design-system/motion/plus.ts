@@ -13,6 +13,9 @@
  * - `AnimateText` — split-by-word/char spans carrying variants.
  * - `Typewriter` — natural-variance typing with `replace="type"` morphing;
  *   the Motion Lab's replayable prose demo.
+ *
+ * Welcome assembly (2026-09-27): `AnimateNumber` (real open count),
+ * `useMagneticPull` (dev replay button).
  */
 export { AnimateNumber } from 'motion-plus/react';
 export { AnimateText, Typewriter } from 'motion-plus/react';
@@ -21,3 +24,4 @@ export type {
   TypewriterProps,
   TypingSpeed,
 } from 'motion-plus/react';
+export { useMagneticPull } from 'motion-plus/react';

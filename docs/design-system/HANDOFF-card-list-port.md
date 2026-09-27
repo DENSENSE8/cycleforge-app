@@ -57,23 +57,74 @@ extracting.
    - the **triage list length** — the card list's own measure inside the desk stage;
    - the **full-platform length** — a slot sized to the longest full platform name, so a long name
      never pushes the SLA or reflows the card.
-   Today the list measure is `DESK_SPLIT_LIST_CLASS` / `DESK_SPLIT_LIST_CARD_CLASS` (split) and
-   `DESK_STAGE_FIXED_CLASS` (in place); BRIEF §13 calls the list "fixed-width". Ask the owner
-   whether "triage list length" is one of those or a new token, then add the label and platform
-   measures beside them in `src/design-system/tokens/desk-stage.ts` and consume them from the card
-   and the bar so the bar's check axis and the cards stay aligned. The request was "a separation
-   between label length and triage data table length, full platform length".
-3. **Pick name + pick date/time, bottom-right of the card.** From `picked_by_name` (fallback:
-   `getStaffName(picked_by)`) and `picked_at` (format with the repo's date helpers in
-   `src/utils/date`, PST like the rest of the desk). Keep the packer avatar; the pick line sits with
-   it in the bottom-right cluster. Not picked yet → show nothing (no placeholder dash). Thread the
-   facts through `orderCardModel` (pure) rather than reading the row in the card.
-4. **Extract the reusable triage list** once 1–3 are approved: split the order-specific parts
-   (`orderCardModel`, order verbs) from the list chrome (bar, sections, pager, Find, check axis,
-   record plane) into a design-system component under `src/design-system/components/` so a second
-   domain can reuse it. Keep To-ship behaviour identical. Reuse `FindField`; do not extend the
-   form-oriented `TriageSections` / `TriageScrollLayout` into a list — give the list its own name
-   (e.g. `TriageCardList`) and confirm it with the owner.
+   **Partly done (2026-09-27):** the card's own disclosure tiers are tokens now —
+   `CARD_FACT_BOX_CLASS` and `CARD_DISCLOSE` (`brand` @md, `label` @xl, `detail` @2xl) in
+   `desk-stage.ts`. Still open, ask the owner: the list measure (today `DESK_SPLIT_LIST_CLASS` /
+   `DESK_SPLIT_LIST_CARD_CLASS` split, `DESK_STAGE_FIXED_CLASS` in place; BRIEF §13 says
+   "fixed-width") and a fixed platform slot so a long name never pushes the SLA. The request was
+   "a separation between label length and triage data table length, full platform length".
+3. **DONE (2026-09-27, owner verifying) — current stage inline, timeline on click.**
+   `src/lib/orders/order-stages.ts` (`orderStage`, `currentOrderStage`, `ORDER_STAGE_KINDS`) is the
+   one stage source for the card, the quick look and the record's QC by / Picked by / Packed by
+   rows. The card face shows the current stage (icon + word, PST time when done, no staff name);
+   a click opens the QC → Pick → Pack timeline with names and, when the record's mode allows
+   assigning, `LedgerStageAssign` for Pick / Pack (`onAssignStage` → `handleCommitStageAssign`
+   on every line). "Details ▾" on hover opens the quick look. Card tooltips are `HoverTooltip`.
+   BRIEF §13 "card stages" / "card width disclosure" / "One stage source".
+   **Superseded same day by the cleaner display:** Pick → QC → Pack everywhere; Pick + QC chips per
+   line, Pack once per order; 2+ line orders always show up to 3 lines (`CARD_LINES_SHOWN`), "+N
+   more" for the rest; chip stamp `atShort` (today → time, older → date). Model: `orderStage(row,
+   kind, { todayKey, staffName?, outOfStock? })` (options object) with `atShort`, `inherited`
+   (Pre-QC'd, false until the backend feeds it), `blocked: 'out_of_stock'`; `OrderCardLine.stages
+   { pick, qc }`, `OrderCardModel.pack`. Data truth: `HANDOFF-qc-pick-split.md`.
+   **Superseded again (owner, 2026-09-27 later):** no stage chips on the card face at all; lead
+   line + "+N items" disclosure; unfolded lines are columns in the fixed fact order. See BRIEF §13
+   "multi-line display language". Stages remain in the quick look and the record.
+3b. **PROPOSED (owner idea 2026-09-27, not started) — bulk assign QC / pick / pack + auto-rule.**
+   With cards checked, the bulk bar offers "Assign QC / pick / pack → staff"; the same action can
+   save a rule ("item number or SKU X → staff Y for pick") so future orders auto-assign. Map what
+   exists first: `handleCommitStageAssign` (`OutboundOrdersLedger.tsx`), `work_assignments`, and
+   any existing rule engine (the record's "rule pencil", commit e5684cb60). Confirm with the owner:
+   rule key (item number vs SKU), precedence vs manual assignment, and where rules are managed.
+4. **RecordCard foundation (owner, 2026-09-27) — one card, told what to show, never forked per page.**
+   Target surfaces: To-ship, daily, inbound, inventory, sales, products, automations, saved views,
+   AI chat. Full autonomous-run prompt (waves, laws, action QoL, ASK points):
+   `docs/design-system/HANDOFF-record-card-foundation.md`. Five layers; a page supplies only the top one:
+
+   | Layer | Owns | State |
+   |---|---|---|
+   | 5. Page | family + layout (or saved view) + actions | a few lines per page |
+   | 4. `TriageCardList` (list shell) | bar, check axis, sections, pager, Find, J/K, quick look, record plane | extract from `OrderCardList` |
+   | 3. `RecordCard` (anatomy) | fixed slots: rail · check · identity (top-left) · status (top-right) · lead photo + title · subtitle facts · stage/time (bottom-right) · Details | extract from `OrderCard` |
+   | 2. Hierarchy | field catalog + layout (`src/lib/tables/field-catalog/<family>.ts`, `types.ts`): WHAT each slot shows, per family and saved view | exists (~60 families); extend |
+   | 1. Data | family resolver → `CompoundSlotValue` (`<family>-resolve.ts`) | exists |
+
+   **Law:** pages pass field ids, never JSX; the card owns placement, one painter per display type
+   (shared with the DataTable), the layout owns hierarchy. No `if (family === …)` in `RecordCard` /
+   `TriageCardList` — a page that "needs" one is missing a field, a slot binding or an action.
+   Layout additions for cards: `lead` (photo + title), `stage` (timeline fields; words/icons from
+   `FieldDef.stageLabels` / `iconKey`, replacing the card's hardcoded `STAGE_FACE`), `rail` (tone
+   field), and a disclosure priority per binding mapped to `CARD_DISCLOSE` (`brand`/`label`/`detail`).
+   Actions by id from a per-family registry (assign, admin link, listing, copy).
+   Example hierarchy: orders — status = SLA, subtitle = qty · condition · stock · bin · price;
+   inventory — status = stock + location, subtitle = condition · received, no price.
+   Steps:
+   1. **DONE 2026-09-27 — Map** → `docs/design-system/RESEARCH-record-card-foundation.md`. Key facts:
+      layouts are `SlotLayout` (`src/lib/tables/slot-layout-core.ts`, strict gate `slot-layout.ts`),
+      cascaded saved view → staff → org → product default (`resolve-effective-layout.ts`); saved views
+      store it in `saved_views.filters.layout` (`useSavedViews.ts`); tables register in
+      `SLOT_LAYOUT_TABLES` (`org-table-layouts.ts`); painters are `CompoundSlotCell` /
+      `CompoundStageStep` / `CompoundThumb` / `CompoundItem` (`tables/compound/CompoundCells.tsx`) +
+      `compound-slot-face.ts`. Gaps the card needs: lead item + sub-lines, photo field, stage summary
+      + ordering + assignable roles, rail field, disclosure priority, card-level actions.
+   2. Extend `SlotLayout` (not a new type) with `lead`, `stage`, `rail`, priority — through the strict
+      gate and the cascade — and fill the orders layout.
+   3. Extract `RecordCard` + `TriageCardList`; move To-ship onto the orders layout with zero visual
+      change (the proof). Reuse `FindField`; don't stretch the form-oriented `TriageSections` /
+      `TriageScrollLayout` into a list.
+   4. Second family that stresses hierarchy differently: inventory (bins / units), stock- and
+      location-first. A new paint kind goes into the shared painter set, never the page.
+   5. Inbound, daily, saved views, AI chat (artifact `entityHint` → family + default layout).
 5. **Port to Inbound (`/incoming`).** Reconcile with `IncomingDeliveryCardList` (another session's
    WIP — untracked, so `git log` has nothing; ask the owner who owns it before editing. The earlier
    build break is gone: the files typecheck clean on 2026-09-27). Same bar, same card grammar,

@@ -42,6 +42,7 @@ import { applyOrgNavToPage, mergeOrgNav, type NavDefinition } from '@/lib/nav/or
 import { LANE_DOORS } from '@/lib/nav/lanes';
 import { NAV_FACET_GROUPS, NAV_FACET_PERMISSION, isNavFacetContext } from '@/lib/nav/facets/contexts';
 import { getNavRecentSurface } from '@/lib/nav/recents/surfaces';
+import { OUTBOUND_LOCATE, OUTBOUND_LOCATE_PERMISSION } from '@/lib/nav/locate/outbound-params';
 import {
   DESK_VIEWS,
   DESK_VIEW_ORDER,
@@ -296,12 +297,26 @@ function surfaceFor(pageId: string, activeId: string | null): NavSurfaceDecl {
   return { ...pageDecl, ...(activeId ? items?.[activeId] : undefined) };
 }
 
-function searchFor(pageId: string, activeId: string | null, decl: NavSurfaceDecl): NavSearch {
+function searchFor(
+  pageId: string,
+  activeId: string | null,
+  decl: NavSurfaceDecl,
+  permissions: ReadonlySet<string>,
+): NavSearch {
   const scope = activeId ? `${pageId}.${activeId}` : pageId;
   const deskView = DESK_VIEWS.find((view) => pageId === SHIPPING_PAGE_ID && view.id === activeId);
   // The Shipping box is the in-memory desk store, keyed by the view's pathname
-  // (`useDeskSearch`) — it writes no URL param, so none is advertised.
-  if (deskView) return { scope, placeholder: deskView.searchScope, source: 'desk-store' };
+  // (`useDeskSearch`) — it writes no URL param, so none is advertised. A pasted
+  // list is located across the desk's views (`GET /api/nav/locate`), offered
+  // only to a caller who can read the desk's lists.
+  if (deskView) {
+    return {
+      scope,
+      placeholder: deskView.searchScope,
+      source: 'desk-store',
+      ...(permissions.has(OUTBOUND_LOCATE_PERMISSION) ? { locate: { ...OUTBOUND_LOCATE } } : {}),
+    };
+  }
   return decl.search ? { scope, ...decl.search } : IDENTIFY_SEARCH;
 }
 
@@ -337,7 +352,7 @@ export function buildNavContext(input: ResolveNavContextInput): NavContext {
     scope: sectionScope ? 'section' : 'top',
     page: { id: pageId, label },
     back: sectionScope ? { label, mode: 'local' } : null,
-    search: searchFor(pageId, activeId, decl),
+    search: searchFor(pageId, activeId, decl, permissions),
     sections: sectionScope ? toSections(pageId, panelRows, activeId) : laneMap(pipeline, pageId),
     params: declaredRouteParams(viewPathnames),
     // The REQUESTED switch; `resolveNavContext` clamps it against parity.
@@ -349,11 +364,8 @@ export function buildNavContext(input: ResolveNavContextInput): NavContext {
     context.filters = { facetContext, groups: NAV_FACET_GROUPS[facetContext].map((group) => ({ ...group })) };
   }
   if (decl.controls) {
-    const { staff, dateRange } = decl.controls;
-    context.controls = {
-      ...(staff ? { staff: { ...staff } } : {}),
-      ...(dateRange ? { dateRange: { ...dateRange, clearParams: [...dateRange.clearParams] } } : {}),
-    };
+    // A deep copy — the declaration is shared module state, the context goes on the wire.
+    context.controls = structuredClone(decl.controls);
   }
   const recents = decl.recents ? getNavRecentSurface(decl.recents) : null;
   if (recents && (!recents.permission || permissions.has(recents.permission))) {

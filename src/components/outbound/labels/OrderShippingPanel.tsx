@@ -309,7 +309,6 @@ export function OrderShippingPanel({
             <BuyLabelSection
               orderId={orderId}
               orderRef={orderRef}
-              flush
               weightOz={currentWeightOz}
               dimensions={currentDims}
               onChange={handleFactsChanged}

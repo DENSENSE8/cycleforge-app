@@ -543,6 +543,8 @@ export const workTypeEnum = pgEnum('work_type_enum', [
   'STOCK_REPLENISH',
   /** The ad-hoc *throwable task* (2026-08-08a) — "please look at this", handed between operators. */
   'FOLLOW_UP',
+  /** Order picking (2026-09-27) — who takes the order's units off the shelf. Split from TEST, which on orders only carries the deadline. */
+  'PICK',
 ]);
 
 export const assignmentStatusEnum = pgEnum('assignment_status_enum', [
@@ -2056,7 +2058,7 @@ export const techSerialNumbers = pgTable('tech_serial_numbers', {
   fnskuLogId: bigint('fnsku_log_id', { mode: 'number' }),
   fbaShipmentId: integer('fba_shipment_id').references(() => fbaShipments.id, { onDelete: 'set null' }),
   fbaShipmentItemId: integer('fba_shipment_item_id').references(() => fbaShipmentItems.id, { onDelete: 'set null' }),
-  /** TRACKING_SCANNED / FNSKU_SCANNED SAL row that opened this serial session (not scan_ref-based). */
+  /** Desk session anchor SAL row (PICK_SCANNED / FNSKU_SCANNED) that opened this serial session (not scan_ref-based). */
   contextStationActivityLogId: integer('context_station_activity_log_id').references(
     () => stationActivityLogs.id,
     { onDelete: 'set null' },

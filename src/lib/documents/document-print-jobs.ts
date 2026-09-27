@@ -8,6 +8,19 @@ import type { OrgId } from '@/lib/tenancy/constants';
 
 export type DocumentPrintJobType = 'shipping_label' | 'packing_slip' | 'manual';
 
+export function isDocumentPrintJobType(value: unknown): value is DocumentPrintJobType {
+  return value === 'shipping_label' || value === 'packing_slip' || value === 'manual';
+}
+
+/**
+ * Ledger key prefix for one order in a sender's print batch (a chat print):
+ * every row that batch writes starts with `batch:{batchId}:`, so the sender
+ * can read back exactly what its print recorded.
+ */
+export function printBatchEventPrefix(batchId: string, orderId: number): string {
+  return `batch:${batchId}:${orderId}`;
+}
+
 export type DocumentPrintJobStatus =
   | 'queued'
   | 'dispatched'
@@ -106,6 +119,22 @@ export async function getDocumentPrintJobByEventId(
     [orgId, clientEventId],
   );
   return res.rows[0] ?? null;
+}
+
+/** Every ledger row one print batch wrote (see {@link printBatchEventPrefix}), oldest first. */
+export async function listDocumentPrintJobsForBatch(
+  orgId: OrgId,
+  batchId: string,
+): Promise<DocumentPrintJobRow[]> {
+  const res = await tenantQuery<DocumentPrintJobRow>(
+    orgId,
+    `SELECT * FROM document_print_jobs
+      WHERE organization_id = $1 AND starts_with(client_event_id, $2)
+      ORDER BY id ASC
+      LIMIT 500`,
+    [orgId, `batch:${batchId}:`],
+  );
+  return res.rows;
 }
 
 async function listDocumentPrintJobsForOrder(

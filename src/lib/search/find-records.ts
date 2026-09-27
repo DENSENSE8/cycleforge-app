@@ -123,6 +123,16 @@ async function withBrandFacet(
   return { ...result, brandFacet };
 }
 
+/**
+ * "ticket 530" / "Ticket #530" / "ticket no. 530" → "#530": the word is how
+ * people say a ticket number, not a term to match (as free text it matched
+ * the word "ticket" in some other ticket's title).
+ */
+export function ticketPhraseToId(query: string): string {
+  const m = /^(?:support\s+|repair\s+)?ticket\s*(?:no\.?|number|num)?\s*#?\s*(\d{1,12})$/i.exec(query);
+  return m ? `#${m[1]}` : query;
+}
+
 /** Find records, recovering from a miss instead of dead-ending on one. */
 export async function findRecords(
   orgId: OrgId,
@@ -130,7 +140,7 @@ export async function findRecords(
   opts: FindRecordsOptions,
   deps: FindRecordsDeps = defaultDeps,
 ): Promise<FindRecordsResult> {
-  const q = query.trim();
+  const q = ticketPhraseToId(query.trim());
   const empty: FindRecordsResult = {
     rows: [],
     effectiveQuery: q,

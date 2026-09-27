@@ -191,6 +191,60 @@ export default [
           message:
             'Do not read an AI endpoint from env. Resolve it with resolveOrgAiConfig(orgId, capability) — src/lib/ai/provider.ts is the only legal env reader (the platform-default leaf).',
         },
+        // ── Mode law (docs/design-system/HANDOFF-mode-governance-2.md, Phase D) ──
+        // Homes that may do these things are exempted by the rule-OFF blocks
+        // below ("Mode-law homes"); pre-existing violators sit in the
+        // "Mode-law burn-down" list. Never a second declaration of this rule.
+        {
+          selector: "JSXAttribute[name.name='className'] Literal[value=/rounded-none/]",
+          message:
+            'Literal `rounded-none` is mode-blind. Use the mode rung (`rounded-mode` / `rounded-mode-control` / `rounded-mode-pill`) — the Floor renders square through the mode, not a hard-coded corner. See DESIGN_SYSTEM.md § Task modes.',
+        },
+        {
+          selector: "JSXAttribute[name.name='className'] TemplateElement[value.raw=/rounded-none/]",
+          message:
+            'Literal `rounded-none` is mode-blind. Use the mode rung (`rounded-mode` / `rounded-mode-control` / `rounded-mode-pill`) — the Floor renders square through the mode, not a hard-coded corner. See DESIGN_SYSTEM.md § Task modes.',
+        },
+        {
+          selector: "MemberExpression[property.name='vibrate']",
+          message:
+            'Haptics go through src/lib/scan-feedback (`vibrateScan` / `vibratePress`) so the org master switch and per-staff toggles apply.',
+        },
+        {
+          selector:
+            'NewExpression[callee.name=/^(webkit)?AudioContext$/], MemberExpression[property.name=/^(webkit)?AudioContext$/]',
+          message:
+            'Scan tones go through src/lib/scan-feedback (`playScanTone`) — one AudioContext, one settings switch.',
+        },
+        {
+          selector: "JSXOpeningElement[name.name='ModeRegion']",
+          message:
+            'Modes are declared once per route in src/lib/routing/mode-registry.ts (applied by RouteModeRegion). A nested/portal ModeRegion is a reviewed exception — see DESIGN_SYSTEM.md § Task modes.',
+        },
+        {
+          selector:
+            "ImportDeclaration[source.value='react-dom'] > ImportSpecifier[imported.name='createPortal'], MemberExpression[object.name='ReactDOM'][property.name='createPortal']",
+          message:
+            'Raw portals escape the mode region and the overlay stack. Use a design-system layer (`AnchoredLayer`, `BottomSheet`, `RightPaneOverlay`, Dialog) — portals live only in src/design-system and src/components/ui.',
+        },
+        {
+          selector:
+            "ImportDeclaration[source.value=/^@radix-ui\\/react-(popover|dropdown-menu|hover-card|tooltip)$/]",
+          message:
+            'Import the wrapped primitive (`@/components/ui/popover`, `@/design-system/primitives/DropdownMenu`, `HoverTooltip`, `AnchoredLayer`) — raw Radix overlays live only in src/design-system and src/components/ui.',
+        },
+        // ── Height reveals (2026-09-27) ──────────────────────────────────────
+        // A hand-rolled height animation leaves the parent's gap / its own
+        // margin outside the animated box, so it snaps on mount and unmount
+        // (the order card's quick-look "hiccup"). Collapse measures that
+        // spacing and moves it inside the height; it builds its shapes as
+        // module constants, so it never trips these selectors.
+        {
+          selector:
+            "JSXAttribute[name.name=/^(initial|animate|exit)$/] ObjectExpression > Property[key.name='height'], Property[key.name=/^(initial|animate|exit)$/] > ObjectExpression > Property[key.name='height']",
+          message:
+            'Animate height only through <Collapse open> / <CollapseItem> (src/design-system/components/Collapse.tsx). A hand-rolled height animation leaves the parent gap and its own margin outside the animated box, so the layout snaps when it mounts and unmounts.',
+        },
       ],
     },
   },
@@ -315,7 +369,244 @@ export default [
     },
   },
 
+  // ── Mode-law homes ───────────────────────────────────────────────────────
+  // The places the mode-law selectors (merged block above) exist to point AT.
+  // Rule-OFF for the whole file, same shape as the tenancy burn-down: this
+  // also drops the tenancy / brand / randomUUID selectors in these trees —
+  // an accepted tradeoff of keeping ONE no-restricted-syntax declaration.
+  //   · src/design-system + src/components/ui — own portals, Radix, ModeRegion
+  //   · src/lib/scan-feedback — owns navigator.vibrate + AudioContext
+  //   · src/app/shipping/layout.tsx — the Floor/triage ModeRegion switch
+  {
+    files: [
+      'src/design-system/**/*.{ts,tsx}',
+      'src/components/ui/**/*.{ts,tsx}',
+      'src/lib/scan-feedback/**/*.{ts,tsx}',
+      'src/app/shipping/layout.tsx',
+    ],
+    // Mirror the merged block's ignore — tokens are not linted as TS.
+    ignores: ['src/design-system/tokens/**'],
+    rules: {
+      'no-restricted-syntax': 'off',
+    },
+  },
 
+  // ── Mode-law burn-down ───────────────────────────────────────────────────
+  // Pre-existing violators when the mode-law selectors landed (2026-09-27).
+  // Grouped by the selector they trip; a file may appear in several groups.
+  // Fix a file's violation → delete it from THAT group. When a file leaves
+  // every group, the guard enforces it. Never add a new entry to dodge a rule.
+  {
+    files: [
+      // Kept in-component / portal ModeRegions (reviewed exceptions, not debt):
+      // a BottomSheet / Dialog / popover portals out of the route region, or a
+      // component owns a nested triage/industrial plane. New ones need review.
+      'src/components/assistant/ChatPrintJobCard.tsx',
+      'src/components/mobile/fnsku/FnskuStationSheet.tsx',
+      'src/components/mobile/orders/MobileOrderEvidenceSheet.tsx',
+      'src/components/mobile/receiving/MobileArrivalClassifyFlow.tsx',
+      'src/components/mobile/repair/RepairCustomerPickerSheet.tsx',
+      'src/components/mobile/repair/RepairInfoEditSheet.tsx',
+      'src/components/mobile/repair/RepairPickupSheet.tsx',
+      'src/components/mobile/repair/RepairStatusSheet.tsx',
+      'src/components/mobile/repair/ScanValueField.tsx',
+      'src/components/mobile/scan/ProvisionalCreateSheet.tsx',
+      'src/components/mobile/shipping/shipment/ShipmentResolveSheet.tsx',
+      'src/components/mobile/unit/UnitLineSheets.tsx',
+      'src/components/mobile/unit/UnitSheetParts.tsx',
+      // Header chrome sits outside the page's RouteModeRegion; re-resolves it.
+      'src/components/layout/LiveSyncIndicator.tsx',
+      'src/components/outbound/label-intake/LabelIntakeDesk.tsx',
+      'src/components/outbound/orders/LinkLabelDialog.tsx',
+      'src/components/outbound/orders/OrderLabelEntries.tsx',
+      'src/components/outbound/orders/OutboundOrdersLedger.tsx',
+      'src/components/outbound/orders/paperwork/PaperworkWalkHost.tsx',
+      'src/components/repair/RepairRecordView.tsx',
+      'src/components/right-rail/RightRailHost.tsx',
+      'src/components/shipped/ledger/ResolveShipmentExceptionDialog.tsx',
+      'src/components/station/ReceivingLinesTable.tsx',
+      'src/components/ui/command.tsx',
+      // Raw `createPortal` outside src/design-system + src/components/ui.
+      'src/components/admin/access/AddRolePopover.tsx',
+      'src/components/board/SwimlaneBoard.tsx',
+      'src/components/boot/WelcomeHost.tsx',
+      'src/components/boot/WelcomeReplayButton.tsx',
+      'src/components/kiosk/KioskFloatingPhoneKeypad.tsx',
+      'src/components/mobile/redesign/ItemCardRow.tsx',
+      'src/components/mobile/station/MobilePackerSpamCamera.tsx',
+      'src/components/mobile/station/MobileSwipePhotoViewer.tsx',
+      'src/components/outbound/orders/to-ship/MorphingRowActionMenu.tsx',
+      'src/components/providers/SiteTooltipProvider.tsx',
+      'src/components/receiving/workspace/CartonAddPopover.tsx',
+      'src/components/receiving/workspace/SerialCard.tsx',
+      'src/components/receiving/workspace/line-edit/PhotoPeekFan.tsx',
+      'src/components/repair/RepairDetailsPanel.tsx',
+      'src/components/repair/RepairIntakeHost.tsx',
+      'src/components/repair/repair-record-verbs.tsx',
+      'src/components/settings/sections/KioskAttractMediaCard.tsx',
+      'src/components/shipped/photo-gallery/PhotoViewerPortal.tsx',
+      'src/components/sidebar/contextual/NavGoKeys.tsx',
+      'src/components/sidebar/rail-shell/RailPopover.tsx',
+      'src/components/station/StationHistoryTable.tsx',
+      'src/features/operations/components/DataSourcePopover.tsx',
+      // Direct Radix popover / dropdown-menu / hover-card / tooltip imports.
+      'src/components/board/SwimlaneBoard.tsx',
+      'src/components/outbound/labels/AddTrackingPopover.tsx',
+      'src/components/photos/PhotoLibraryFindRow.tsx',
+      'src/components/photos/PhotoLibraryScopeBand.tsx',
+      'src/components/receiving/workspace/line-edit/LabelEditPopover.tsx',
+      'src/components/session/composer/AccessModeSwitch.tsx',
+      'src/components/session/composer/ContextUsageRing.tsx',
+      'src/components/sidebar/master-nav/StaffAccountFooter.tsx',
+      // Literal `rounded-none` in a className (Phase D2 / per-file burn-down).
+      // src/app entries are here because the merged block covers all of src.
+      'src/app/m/\\(shell\\)/h/\\[id\\]/page.tsx',
+      'src/app/m/\\(shell\\)/pick/\\[orderId\\]/_picker/PickerTaskCard.tsx',
+      'src/app/m/\\(shell\\)/pick/\\[orderId\\]/page.tsx',
+      'src/app/m/\\(shell\\)/receiving/po/\\[poId\\]/item/\\[itemId\\]/page.tsx',
+      'src/app/m/\\(shell\\)/receiving/po/\\[poId\\]/page.tsx',
+      'src/app/settings/ai/page.tsx',
+      'src/app/settings/audit/page.tsx',
+      'src/app/settings/integrations/IntegrationCard.tsx',
+      'src/app/settings/integrations/\\[provider\\]/IntegrationDetailClient.tsx',
+      'src/app/settings/integrations/diagnostics/page.tsx',
+      'src/app/settings/staff/StaffTable.tsx',
+      'src/components/admin/AccessSidebarPanel.tsx',
+      'src/components/admin/AdminLogsTab.tsx',
+      'src/components/admin/FBAManagementTab.tsx',
+      'src/components/admin/FavoritesManagementTab.tsx',
+      'src/components/admin/GoalsAnalyticsTab.tsx',
+      'src/components/admin/PhotoAnalysisProviderPanel.tsx',
+      'src/components/admin/PhotosPlatformPanel.tsx',
+      'src/components/admin/QualityDashboardTab.tsx',
+      'src/components/admin/SystemSyncActivityTab.tsx',
+      'src/components/admin/access/cards/CredentialsCard.tsx',
+      'src/components/admin/access/cards/LandingPageCard.tsx',
+      'src/components/admin/nas-folders/NasAddressPanel.tsx',
+      'src/components/admin/nas-folders/NasWorkflowsPanel.tsx',
+      'src/components/admin/nas-folders/StationFoldersPanel.tsx',
+      'src/components/admin/roles/role-editor/RoleMembersCard.tsx',
+      'src/components/admin/roles/role-editor/RolePermissionsSection.tsx',
+      'src/components/admin/sourcing/BoseModelsManagementTab.tsx',
+      'src/components/admin/staff-management/AvailabilityRulesSection.tsx',
+      'src/components/barcode/multi-sku/MultiSkuWorkspaceCards.tsx',
+      'src/components/dashboard/GettingStartedChecklist.tsx',
+      'src/components/fba/FbaBoardDetailPanel.tsx',
+      'src/components/fba/FbaStateShells.tsx',
+      'src/components/fba/StationFbaInput.tsx',
+      'src/components/fba/board-detail/FbaDeleteControl.tsx',
+      'src/components/fba/board-detail/PlanEntryCard.tsx',
+      'src/components/fba/shared/FbaStatusBadge.tsx',
+      'src/components/fba/sidebar/FbaCatalogSidebar.tsx',
+      'src/components/fba/sidebar/FbaFnskuScanToast.tsx',
+      'src/components/fba/sidebar/FbaQtySplitPopover.tsx',
+      'src/components/fba/sidebar/FbaSidebarRails.tsx',
+      'src/components/fba/sidebar/FbaTrackingBucket.tsx',
+      'src/components/fba/sidebar/FbaTrackingBundleCard.tsx',
+      'src/components/fba/sidebar/FbaUnallocatedBucket.tsx',
+      'src/components/fba/sidebar/FbaWorkspaceSidebar.tsx',
+      'src/components/fba/sidebar/active-shipments/ActiveShipmentCard.tsx',
+      'src/components/fba/sidebar/shipment-editor/FnskuSearchModal.tsx',
+      'src/components/fba/sidebar/shipment-editor/UnallocatedDropZone.tsx',
+      'src/components/labels/LabelTypeSelect.tsx',
+      'src/components/labels/LabelsProductsWorkspace.tsx',
+      'src/components/labels/unit-detail/UnitDetailWorkspace.tsx',
+      'src/components/labels/unit-detail/cards.tsx',
+      'src/components/layout/goal-chip/GoalPanelHomeCta.tsx',
+      'src/components/layout/goal-chip/TaskList.tsx',
+      'src/components/layout/goal-chip/ThrowTaskRow.tsx',
+      'src/components/mobile/ScanSurface.tsx',
+      'src/components/mobile/packer/MobilePackingRow.tsx',
+      'src/components/mobile/packer/MobilePackingSheet.tsx',
+      'src/components/mobile/photos/MobilePackerPhotoStudio.tsx',
+      'src/components/mobile/picker/ShortPickSheet.tsx',
+      'src/components/mobile/picker/directed/DirectedPickNotesSheet.tsx',
+      'src/components/mobile/receiving/MobilePhotoCountBadge.tsx',
+      'src/components/mobile/receiving/MobileReceivingPhotoStrip.tsx',
+      'src/components/mobile/receiving/ReceivingShareToPhoneSheet.tsx',
+      'src/components/mobile/redesign/MobileShell.tsx',
+      'src/components/mobile/redesign/ScanInput.tsx',
+      'src/components/mobile/station/MobilePackerSpamCamera.tsx',
+      'src/components/outbound/orders/OutboundOrdersLedger.tsx',
+      'src/components/packer/PackFbaScanCard.tsx',
+      'src/components/packer/PackPapersStatusCard.tsx',
+      'src/components/packer/UnitPackPhotoPeek.tsx',
+      'src/components/packing/OrderPackChecklist.tsx',
+      'src/components/packing/PackChecklistLineRow.tsx',
+      'src/components/products/ProductDetail.tsx',
+      'src/components/products/pairing/product-hub/ChannelManualAdd.tsx',
+      'src/components/products/pairing/product-hub/ManualPairForm.tsx',
+      'src/components/receiving/PreboxWizard.tsx',
+      'src/components/receiving/unbox/UnboxPreviewLock.tsx',
+      'src/components/receiving/unfound/ecwid-search/ecwid-search-rows.tsx',
+      'src/components/receiving/workspace/BulkQuantityPanel.tsx',
+      'src/components/receiving/workspace/claim/components/ClaimBackupStep.tsx',
+      'src/components/receiving/workspace/claim/components/ClaimPhotoPicker.tsx',
+      'src/components/receiving/workspace/claim/components/ClaimTemplateEditor.tsx',
+      'src/components/receiving/workspace/claim/components/ClaimTicketReply.tsx',
+      'src/components/receiving/workspace/line-edit/InventoryDisplayHost.tsx',
+      'src/components/receiving/workspace/line-edit/NoSerialControl.tsx',
+      'src/components/receiving/workspace/line-edit/UnfoundMatchStrip.tsx',
+      'src/components/repair/ProductSelector.tsx',
+      'src/components/repair/RepairPaperworkSheet.tsx',
+      'src/components/right-rail/RightRailHost.tsx',
+      'src/components/scan/ScanHotkeyControl.tsx',
+      'src/components/settings/PrintPreferences.tsx',
+      'src/components/settings/sections/AiProviderOrderCard.tsx',
+      'src/components/settings/sections/AppearanceSection.tsx',
+      'src/components/settings/sections/CatalogSection.tsx',
+      'src/components/settings/sections/KioskAttractMediaCard.tsx',
+      'src/components/settings/sections/KioskDevicesSection.tsx',
+      'src/components/settings/sections/OrganizationSection.tsx',
+      'src/components/settings/sections/QuickAccessSection.tsx',
+      'src/components/settings/sections/SecuritySection.tsx',
+      'src/components/settings/sections/SupportVisionLaneCard.tsx',
+      'src/components/settings/sections/WorkspaceSwitcher.tsx',
+      'src/components/shipped/OrderDocumentsSection.tsx',
+      'src/components/shipped/details-panel/OrderAssignDisplayHost.tsx',
+      'src/components/shipped/details-panel/OrderStationHandoff.tsx',
+      'src/components/shipping/ShipmentStatusBadge.tsx',
+      'src/components/shipping/shipped-filter/ShippedCarrierFilters.tsx',
+      'src/components/shipping/shipped-filter/ShippedFilterControls.tsx',
+      'src/components/sidebar/OperationsSidebarPanel.tsx',
+      'src/components/sidebar/receiving/incoming-details/EbayTab.tsx',
+      'src/components/sidebar/receiving/incoming/IncomingBulkTrackingPanel.tsx',
+      'src/components/sidebar/receiving/incoming/IncomingReturnsImportStagingHost.tsx',
+      'src/components/sku/BinStockNumpadSheet.tsx',
+      'src/components/sku/LocationDetailView.tsx',
+      'src/components/sku/SkuDetailView.tsx',
+      'src/components/sku/sku-detail/SkuDetailCards.tsx',
+      'src/components/sku/sku-detail/SkuLocationCard.tsx',
+      'src/components/sku/sku-detail/SkuStockCard.tsx',
+      'src/components/station/PackScanColumn.tsx',
+      'src/components/station/displays/StationLookDisplayHost.tsx',
+      'src/components/station/entity-context/CartonContextCard.tsx',
+      'src/components/station/scan-bar/StationScanBar.tsx',
+      'src/components/station/workbench/StationWorkspaceSkeleton.tsx',
+      'src/components/support/voice/VoicemailDetail.tsx',
+      'src/components/support/zendesk/claim/ClaimTicketPicker.tsx',
+      'src/components/tech/ActiveOrderWorkspace.tsx',
+      'src/components/tech/shipping/ShippingSkuSerialRows.tsx',
+      'src/components/tech/sku-testing/ChecklistStepRow.tsx',
+      'src/components/tech/sku-testing/ManualPicker.tsx',
+      'src/components/tech/sku-testing/ManualsSection.tsx',
+      'src/components/tech/sku-testing/NoCatalogNotice.tsx',
+      'src/components/tech/testing-panel/TestingScanSessionFeedback.tsx',
+      'src/components/walk-in/SalesHistoryTable.tsx',
+      'src/components/walk-in/WalkInHistoryHub.tsx',
+      'src/components/warehouse/LabelPrintWorkspace.tsx',
+      'src/components/warehouse/RackDetailView.tsx',
+      'src/components/warehouse/WarehouseFloorPlan.tsx',
+      'src/components/warehouse/room-detail/RoomDetailPieces.tsx',
+      'src/components/warranty/WarrantyClaimsTable.tsx',
+      'src/components/warranty/WarrantyCoverageCard.tsx',
+      'src/components/warranty/WarrantyQuotesSection.tsx',
+      'src/features/review/packer/PackerReviewMode.tsx',
+    ],
+    rules: {
+      'no-restricted-syntax': 'off',
+    },
+  },
 
   // ── AI provider consolidation: ONE resolver owns the endpoint ──────────────
   // `resolveOrgAiConfig(orgId, capability)` is the only way to learn where an

@@ -8,7 +8,7 @@ const CACHE_HEADERS = { 'Cache-Control': 'private, max-age=300, stale-while-reva
 
 /**
  * GET /api/orders - Fetch orders with optional filters (`@/lib/orders/orders-list-query`).
- * Assignment info (tester_id / packer_id) is sourced from work_assignments.
+ * Assignment info (picker_id / packer_id) is sourced from work_assignments.
  */
 export const GET = withAuth(async (req: NextRequest, ctx) => {
   const startedAt = Date.now();

@@ -52,7 +52,8 @@ const INVENTORY_STATION: Record<string, OrderStationSectionId> = {
 
 /** SAL `activity_type` → station (unmapped → more). */
 const SAL_STATION: Record<string, OrderStationSectionId> = {
-  TRACKING_SCANNED: 'testing',
+  // A desk pick sits with inventory PICKED (shipping), not with bench QC.
+  PICK_SCANNED: 'shipping',
   FNSKU_SCANNED: 'testing',
   SERIAL_ADDED: 'testing',
   PACK_COMPLETED: 'shipping',

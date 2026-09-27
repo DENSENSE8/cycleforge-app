@@ -42,13 +42,22 @@ import type { ArtifactTable } from '@/lib/assistant/ui-artifacts';
 import { copyArtifact, downloadTableCsv } from './artifact-export';
 import type { ArtifactSummary } from './artifact-summary';
 import { ChartArtifact, RecordArtifact, ReportArtifact, TimelineArtifact, cellText, rowLookup } from './renderers';
+import { OrderDraftArtifact } from './OrderDraftArtifact';
+import { PoDraftArtifact } from './PoDraftArtifact';
 
 /** An identifier kind → the house chip tone that paints it (`CopyChip`'s registry). */
 const TONE_BY_KIND: Readonly<Record<AnswerIdKind, ChipTone>> = {
   SKU: 'sku',
   FNSKU: 'fnsku',
+  UPC: 'sku',
   Bin: 'bin',
   LPN: 'serial',
+  Order: 'id',
+  Tracking: 'tracking',
+  Serial: 'serial',
+  PO: 'id',
+  Email: 'id',
+  Phone: 'id',
 };
 
 /** How long the ✓ holds after a copy. */
@@ -113,7 +122,7 @@ export function InlineArtifact({
   const states = useAiActionStates();
   const presence = useMotionPresence(aiPresence.turn);
   const transition = useMotionTransition(aiTransition.turn);
-  const product = artifact.kind === 'table' ? artifact.product : undefined;
+  const identity = artifact.kind === 'table' || artifact.kind === 'record' ? artifact.identity : undefined;
 
   // Icon-only, top-right of the card: Copy (TSV / record lines) · Download CSV · Expand.
   const controls: AiTurnAction[] = [];
@@ -157,11 +166,42 @@ export function InlineArtifact({
         <h3 className="min-w-0 text-ai-title font-semibold text-ai-ink" data-inline-title>
           {summary.title}
         </h3>
-        {product && product.ids.length > 0 ? (
-          <div className="flex flex-wrap items-center gap-1.5" data-product-ids>
-            {product.ids.map((id) => (
+        {identity?.subtitle ? (
+          <p className="min-w-0 truncate text-ai-prose-sm text-ai-muted" data-identity-subtitle>
+            {identity.subtitle}
+          </p>
+        ) : null}
+        {identity && (identity.ids.length > 0 || identity.chips?.length || identity.href) ? (
+          <div className="flex flex-wrap items-center gap-1.5" data-identity-ids>
+            {identity.chips?.map((chip) => (
+              <span
+                key={`chip:${chip}`}
+                className="inline-flex items-center rounded-ai-control border border-ai-line bg-ai-sunken px-1.5 py-px text-ai-label text-ai-muted"
+                data-identity-chip
+              >
+                {chip}
+              </span>
+            ))}
+            {identity.ids.map((id) => (
               <AnswerIdChip key={`${id.label}:${id.value}`} value={id.value} kind={id.label} showKind />
             ))}
+            {identity.href ? (
+              <a
+                href={identity.href}
+                onClick={(event) => {
+                  if (event.metaKey || event.ctrlKey || event.shiftKey || event.button !== 0) return;
+                  event.preventDefault();
+                  router.push(identity.href as string);
+                }}
+                className={cn(
+                  'inline-flex items-center gap-1 text-ai-label font-medium text-ai-muted underline-offset-2 hover:text-ai-ink hover:underline',
+                  AI_FOCUS_CLASS,
+                )}
+                data-identity-open
+              >
+                Open record
+              </a>
+            ) : null}
           </div>
         ) : null}
       </header>
@@ -175,6 +215,10 @@ export function InlineArtifact({
         </div>
         {artifact.kind === 'table' ? (
           <InlineTable artifact={artifact} onShowAll={onExpand} />
+        ) : artifact.kind === 'order_draft' ? (
+          <OrderDraftArtifact artifact={artifact} />
+        ) : artifact.kind === 'po_draft' ? (
+          <PoDraftArtifact artifact={artifact} />
         ) : (
           <div className="max-h-[28rem] min-w-0 overflow-auto">
             {artifact.kind === 'record' ? (

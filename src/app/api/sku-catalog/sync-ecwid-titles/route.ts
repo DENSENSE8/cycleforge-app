@@ -3,7 +3,7 @@ import { withAuth } from '@/lib/auth/withAuth';
 import { tenantQuery } from '@/lib/tenancy/db';
 import { invalidateCacheTags } from '@/lib/cache/upstash-cache';
 import { CACHE_TAGS } from '@/lib/cache/tags';
-import { skuCatalogNoZohoTwinPredicateSql } from '@/lib/sku/sku-identity-law';
+import { skuCatalogTitleUnownedPredicateSql } from '@/lib/sku/sku-identity-law';
 
 const ECWID_BASE_URL = 'https://app.ecwid.com/api/v3';
 
@@ -81,7 +81,7 @@ export const POST = withAuth(async (_req: NextRequest, ctx) => {
              updated_at = NOW()
          WHERE sku = $3
            AND organization_id = $4
-           AND ${skuCatalogNoZohoTwinPredicateSql()}
+           AND ${skuCatalogTitleUnownedPredicateSql()}
            AND (product_title IS DISTINCT FROM $1 OR (image_url IS NULL AND $2::text IS NOT NULL))`,
       [product.name, product.thumbnailUrl, product.sku, ctx.organizationId],
     );

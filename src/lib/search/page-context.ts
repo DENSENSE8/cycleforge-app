@@ -17,8 +17,9 @@ const SEGMENT_SCOPE: Record<string, SearchEntityType[]> = {
   products: ['SKU'],
   'sku-stock': ['SKU'],
   inventory: ['SERIAL_UNIT', 'SKU'],
-  test: ['SERIAL_UNIT'], // first-class Testing surface (operator-surfaces Phase 8)
+  test: ['SERIAL_UNIT'], // Quality Control bench (operator-surfaces Phase 8)
   tech: ['SERIAL_UNIT'], // legacy alias
+  pick: ['ORDER'], // Picker desk — scans resolve orders
   testing: ['SERIAL_UNIT'],
   repair: ['REPAIR'],
   fba: ['FBA_SHIPMENT'],

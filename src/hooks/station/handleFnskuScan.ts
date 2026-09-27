@@ -15,10 +15,10 @@ export async function handleFnskuScan(
   ctx.setIsLoading(true);
   try {
     const fnsku = normalizeTrackingCanonical(fnskuInput);
-    const res = await fetch('/api/tech/scan', {
+    const res = await fetch('/api/fba/fnsku-scan', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ type: 'FNSKU', value: fnsku, techId: ctx.userId }),
+      body: JSON.stringify({ value: fnsku, techId: ctx.userId }),
     });
     const data = await res.json();
 
@@ -108,11 +108,11 @@ export async function handleFnskuScan(
       }));
     }
 
-    const techLogsTechId = Number(ctx.userId);
+    const deskPickLogsTechId = Number(ctx.userId);
     ctx.queryClient.invalidateQueries(
-      Number.isFinite(techLogsTechId) && techLogsTechId > 0
-        ? { queryKey: ['tech-logs', techLogsTechId] }
-        : { queryKey: ['tech-logs'] },
+      Number.isFinite(deskPickLogsTechId) && deskPickLogsTechId > 0
+        ? { queryKey: ['desk-pick-logs', deskPickLogsTechId] }
+        : { queryKey: ['desk-pick-logs'] },
     );
 
     // Notify FBA workspace sidebar so techs can add this FNSKU to an open plan.

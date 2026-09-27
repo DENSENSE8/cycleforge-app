@@ -7,6 +7,7 @@ WITH pl_latest AS (
       FROM packer_logs pl
       WHERE pl.shipment_id IS NOT NULL
         AND pl.completion_state = 'COMPLETED'
+
       ORDER BY pl.shipment_id, pl.created_at DESC NULLS LAST, pl.id DESC
     ),
     pack_activity AS (
@@ -18,6 +19,7 @@ WITH pl_latest AS (
       WHERE sal.station = 'PACK'
         AND sal.shipment_id IS NOT NULL
         AND sal.activity_type IN ('PACK_COMPLETED', 'PACK_SCAN')
+
       ORDER BY sal.shipment_id, sal.created_at DESC NULLS LAST, sal.id DESC
     ),
     next_pack_activity AS (
@@ -34,32 +36,6 @@ WITH pl_latest AS (
        AND pa.created_at IS NOT NULL
        AND sal.created_at > pa.created_at
       GROUP BY pa.shipment_id
-    ),
-    test_activity AS (
-      SELECT DISTINCT ON (sal.shipment_id)
-        sal.shipment_id,
-        sal.created_at,
-        sal.staff_id
-      FROM station_activity_logs sal
-      WHERE sal.station = 'TECH'
-        AND sal.shipment_id IS NOT NULL
-        AND sal.activity_type = 'TRACKING_SCANNED'
-      ORDER BY sal.shipment_id, sal.created_at DESC NULLS LAST, sal.id DESC
-    ),
-    next_test_activity AS (
-      SELECT
-        ta.shipment_id,
-        MIN(sal.created_at) AS created_at
-      FROM test_activity ta
-      JOIN station_activity_logs sal
-        ON sal.shipment_id = ta.shipment_id
-       AND sal.station = 'TECH'
-       AND sal.activity_type = 'TRACKING_SCANNED'
-       AND ta.staff_id IS NOT NULL
-       AND sal.staff_id = ta.staff_id
-       AND ta.created_at IS NOT NULL
-       AND sal.created_at > ta.created_at
-      GROUP BY ta.shipment_id
     ),
     pack_duration AS (
       SELECT
@@ -79,31 +55,14 @@ WITH pl_latest AS (
        AND (pa.staff_id IS NULL OR sal.staff_id = pa.staff_id)
       GROUP BY pa.shipment_id
     ),
-    test_duration AS (
-      SELECT
-        ta.shipment_id,
-        CASE
-          WHEN MIN(sal.created_at) IS NOT NULL AND MAX(sal.created_at) > MIN(sal.created_at)
-          THEN LPAD((EXTRACT(EPOCH FROM (MAX(sal.created_at) - MIN(sal.created_at)))::int / 60)::text, 2, '0')
-               || ':' ||
-               LPAD((EXTRACT(EPOCH FROM (MAX(sal.created_at) - MIN(sal.created_at)))::int % 60)::text, 2, '0')
-          ELSE NULL
-        END AS duration
-      FROM test_activity ta
-      JOIN station_activity_logs sal
-        ON sal.shipment_id = ta.shipment_id
-       AND sal.station = 'TECH'
-       AND sal.activity_type = 'TRACKING_SCANNED'
-       AND (ta.staff_id IS NULL OR sal.staff_id = ta.staff_id)
-      GROUP BY ta.shipment_id
-    ),
     sal_scan AS (
       SELECT sal.shipment_id, COUNT(*)::int AS scan_count
       FROM station_activity_logs sal
       WHERE sal.shipment_id IS NOT NULL
+
       GROUP BY sal.shipment_id
     ),
-    
+
     rr_ranked AS (
       SELECT
         rol.order_id,
@@ -195,7 +154,7 @@ WITH pl_latest AS (
       o.is_urgent,
       o.sale_amount,
       o.currency,
-      
+
       rr.id AS replenishment_request_id,
       rr.status AS replenishment_status,
       rr.quantity_to_order AS replenishment_quantity_to_order,
@@ -236,6 +195,10 @@ WITH pl_latest AS (
       o.tracking_added_at::text AS tracking_added_at,
       o.label_printed_at::text  AS label_printed_at,
       wa_t.assigned_tech_id   AS tester_id,
+
+      wa_pick.picker_id        AS picker_id,
+      staff_picker.name        AS picker_name,
+      staff_picker.color_hex   AS picker_color_hex,
       wa_p.assigned_packer_id AS packer_id,
       pl_latest.packer_log_id,
       pl_latest.packed_at,
@@ -247,11 +210,17 @@ WITH pl_latest AS (
       allocation_facts.allocated_unit_count,
       allocation_facts.picked_unit_count,
       sku_home.location AS sku_home_location,
+      sku_on_hand.on_hand AS sku_stock_on_hand,
       pack_duration.duration AS pack_duration,
-      test_activity.staff_id AS tested_by,
-      to_char(test_activity.created_at, 'YYYY-MM-DD HH24:MI:SS') AS test_activity_at,
-      to_char(next_test_activity.created_at, 'YYYY-MM-DD HH24:MI:SS') AS next_test_activity_at,
-      test_duration.duration AS test_duration,
+      /*
+       * QC is a UNIT fact: the latest bench verdict (testing_results) on a
+       * unit allocated to this order. Never a station scan — the Picker
+       * desk's scan is the pick below, and no row feeds both stages.
+       */
+      qc.tested_by AS tested_by,
+      to_char(qc.created_at, 'YYYY-MM-DD HH24:MI:SS') AS test_activity_at,
+      qc.verdict AS qc_verdict,
+      COALESCE(qc.created_at < o.created_at, false) AS qc_inherited,
       COALESCE((
         SELECT STRING_AGG(tsn.serial_number, ',' ORDER BY tsn.created_at)
         FROM tech_serial_numbers tsn
@@ -273,22 +242,21 @@ WITH pl_latest AS (
             )
           )
       ), '') AS serial_number,
-      staff_test_assignee.name AS tester_name,
-      staff_test_assignee.name AS tested_by_name,
+      staff_tester.name        AS tester_name,
+      staff_qc.name            AS tested_by_name,
       staff_pack_assignee.name AS packer_name,
       staff_packed_by.name     AS packed_by_name,
       /*
        * Pick facts — THIRD copy of this projection, for the reason stated at
-       * :506: this is the live path the To-ship / Pending grid fetches, and a
-       * fact added only to ORDER_SERIALS_CTE never reaches it. Operator
-       * 2026-09-14: the Pick column must show the picker, not the tester.
-       * The laterals themselves are imported, not re-typed, so the three
+       * the row-flag block above: this is the live path the To-ship / Pending
+       * grid fetches, and a fact added only to ORDER_SERIALS_CTE never reaches
+       * it. The laterals themselves are imported, not re-typed, so the three
        * readers cannot disagree about what a pick is.
        */
-      COALESCE(pick_alloc.picked_by, pick_sess.picked_by, pick_station.picked_by) AS picked_by,
+      COALESCE(pick_alloc.picked_by, pick_sess.picked_by, pick_scan.picked_by) AS picked_by,
       s_picked.name AS picked_by_name,
       to_char(
-        COALESCE(pick_alloc.picked_at, pick_sess.picked_at, pick_station.picked_at),
+        COALESCE(pick_alloc.picked_at, pick_sess.picked_at, pick_scan.picked_at),
         'YYYY-MM-DD HH24:MI:SS'
       ) AS picked_at,
       /*
@@ -300,12 +268,12 @@ WITH pl_latest AS (
       to_char(ship_out.ship_confirmed_at, 'YYYY-MM-DD HH24:MI:SS') AS ship_confirmed_at,
       ship_out.shipped_out_by AS shipped_out_by,
       shipped_out_staff.name  AS shipped_out_by_name,
-      
+
       prebox.unit_count       AS prebox_unit_count,
       prebox.pre_boxed_count  AS pre_boxed_count,
       prebox_staff.name       AS pre_boxed_by_name,
       to_char(prebox.pre_boxed_at, 'YYYY-MM-DD HH24:MI:SS') AS pre_boxed_at,
-      staff_pick_assignee.color_hex AS tester_color_hex,
+      staff_tester.color_hex AS tester_color_hex,
       staff_pack_assignee.color_hex AS packer_color_hex,
       (
     EXISTS (
@@ -316,7 +284,7 @@ WITH pl_latest AS (
     OR EXISTS (
       SELECT 1 FROM station_activity_logs sal
       WHERE sal.organization_id = o.organization_id
-        AND sal.activity_type IN ('TRACKING_SCANNED', 'FNSKU_SCANNED')
+        AND sal.activity_type IN ('PICK_SCANNED', 'FNSKU_SCANNED')
         AND (
           sal.order_row_id = o.id
           OR sal.ext_order_id = o.order_id
@@ -336,7 +304,7 @@ WITH pl_latest AS (
           )
         )
     )
-  ) AS has_tech_scan,
+  ) AS has_pick_scan,
       opp.location_id AS pack_location_id,
       COALESCE(NULLIF(BTRIM(loc_pack.display_name), ''), loc_pack.name) AS pack_location_name,
       loc_pack.location_kind AS pack_location_kind,
@@ -358,6 +326,7 @@ WITH pl_latest AS (
        * against.
        */
       o.account_source,
+      o.admin_url,
       listing_price.listing_price_cents AS listing_price_cents,
       listing_price.platform           AS listing_platform,
       unit_price.listing_price_cents   AS unit_listing_price_cents
@@ -533,7 +502,15 @@ WITH pl_latest AS (
          AND NULLIF(btrim(stock.location), '') IS NOT NULL
        LIMIT 1
     ) sku_home ON TRUE
-    
+    /* The SKU's on-hand count (sku_stock.stock, ledger-maintained) — the order
+     * card's "Stock n". Same CASE key as sku_home so it stays an index lookup. */
+    LEFT JOIN LATERAL (
+      SELECT SUM(stock.stock)::int AS on_hand
+        FROM sku_stock stock
+       WHERE stock.organization_id = o.organization_id
+         AND stock.sku = CASE WHEN sc.sku IS NOT NULL THEN sc.sku ELSE o.sku END
+    ) sku_on_hand ON TRUE
+
   LEFT JOIN LATERAL (
     SELECT ie.actor_staff_id AS picked_by,
            ie.occurred_at    AS picked_at
@@ -560,36 +537,70 @@ WITH pl_latest AS (
     LIMIT 1
   ) pick_sess ON true
   /*
-   * Third arm — the PICKER DESK's own scan. Operator 2026-09-14, after the
-   * first pass blanked this column: for this org "Picker" is not `/m/pick`,
-   * it is `/test?ship=urgent` (SIDEBAR_PAGE_NAV `ready-to-pack` →
-   * label 'Picker'). Measured that day: 49 TECH/TRACKING_SCANNED rows, 0
-   * allocation picks, 0 picking_sessions. Reading only the two arms above
-   * therefore showed an empty Pick cell for the one pick workflow in use.
-   *
-   * It keys on the SHIPMENT, not the order, because that is what the scan
-   * carries — the same key `packer_logs` uses, which is what finally puts
-   * Pick and Pack on one axis.
-   *
-   * TRACKING_SCANNED only: the QC verdict activities on the same station
-   * (SERIAL_ADDED / WS_ORDER_TESTED, and `tech_serial_numbers.tested_by`)
-   * are a DIFFERENT verb, and letting them in here is exactly the borrowed
-   * tester data this projection replaced.
+   * The Picker desk's scan, at ORDER grain: a scan attributed to this order
+   * (`order_row_id`), else an unattributed scan on this order's shipment only
+   * when no sibling order shares that shipment — the sole-shipment rule of
+   * order-grain-sql.ts, so one carton's scan never marks its siblings picked.
    */
   LEFT JOIN LATERAL (
     SELECT sal.staff_id  AS picked_by,
            sal.created_at AS picked_at
     FROM station_activity_logs sal
-    WHERE sal.shipment_id     = o.shipment_id
-      AND sal.organization_id = o.organization_id
-      AND sal.station         = 'TECH'
-      AND sal.activity_type   = 'TRACKING_SCANNED'
+    WHERE sal.organization_id = o.organization_id
+      AND sal.station         = 'PICK'
+      AND sal.activity_type   = 'PICK_SCANNED'
+      AND (
+        sal.order_row_id = o.id
+        OR (
+          sal.shipment_id IS NOT NULL
+          AND sal.shipment_id = o.shipment_id
+          AND (sal.metadata->>'order_row_id') IS NULL
+          AND NOT EXISTS (
+            SELECT 1 FROM orders o2
+            WHERE o2.shipment_id = o.shipment_id
+              AND o2.organization_id = o.organization_id
+              AND o2.id <> o.id
+          )
+        )
+      )
     ORDER BY sal.created_at DESC, sal.id DESC
     LIMIT 1
-  ) pick_station ON o.shipment_id IS NOT NULL
+  ) pick_scan ON true
   LEFT JOIN staff s_picked
-    ON s_picked.id = COALESCE(pick_alloc.picked_by, pick_sess.picked_by, pick_station.picked_by)
-    
+    ON s_picked.id = COALESCE(pick_alloc.picked_by, pick_sess.picked_by, pick_scan.picked_by)
+
+    LEFT JOIN LATERAL (
+      SELECT wa.assigned_tech_id AS picker_id
+        FROM work_assignments wa
+       WHERE wa.organization_id = o.organization_id
+         AND wa.entity_type = 'ORDER'
+         AND wa.entity_id = o.id
+         AND wa.work_type = 'PICK'
+         AND wa.assigned_tech_id IS NOT NULL
+         AND wa.status <> 'CANCELED'
+       ORDER BY wa.updated_at DESC, wa.id DESC
+       LIMIT 1
+    ) wa_pick ON TRUE
+    LEFT JOIN staff staff_picker
+      ON staff_picker.id = wa_pick.picker_id
+     AND staff_picker.organization_id = o.organization_id
+    /* Latest bench verdict on any unit allocated to this order (org-scoped). */
+    LEFT JOIN LATERAL (
+      SELECT tr.tested_by, tr.verdict, tr.created_at
+        FROM order_unit_allocations qc_oua
+        JOIN testing_results tr
+          ON tr.serial_unit_id  = qc_oua.serial_unit_id
+         AND tr.organization_id = qc_oua.organization_id
+       WHERE qc_oua.order_id        = o.id
+         AND qc_oua.organization_id = o.organization_id
+         AND qc_oua.state <> 'RELEASED'
+       ORDER BY tr.created_at DESC, tr.id DESC
+       LIMIT 1
+    ) qc ON TRUE
+    LEFT JOIN staff staff_qc
+      ON staff_qc.id = qc.tested_by
+     AND staff_qc.organization_id = o.organization_id
+
     LEFT JOIN LATERAL (
       SELECT
         MAX(so.created_at) AS ship_confirmed_at,
@@ -601,7 +612,7 @@ WITH pl_latest AS (
         AND so.organization_id = o.organization_id
     ) ship_out ON true
     LEFT JOIN staff shipped_out_staff ON shipped_out_staff.id = ship_out.shipped_out_by
-    
+
     LEFT JOIN LATERAL (
       SELECT
         COUNT(*)::int  AS unit_count,
@@ -623,7 +634,7 @@ WITH pl_latest AS (
         AND prebox_oua.state NOT IN ('RELEASED', 'RETURNED')
     ) prebox ON true
     LEFT JOIN staff prebox_staff ON prebox_staff.id = prebox.pre_boxed_by
-    
+
     LEFT JOIN LATERAL (
       SELECT MAX(stage.created_at) AS dock_staged_at
       FROM station_activity_logs stage
@@ -632,7 +643,7 @@ WITH pl_latest AS (
         AND stage.shipment_id = o.shipment_id
         AND stage.organization_id = o.organization_id
     ) dock_stage ON true
-    
+
     LEFT JOIN LATERAL (
       SELECT p.listing_price_cents,
              p.platform
@@ -717,13 +728,9 @@ WITH pl_latest AS (
       ) t
     ) order_trackings ON TRUE
     LEFT JOIN rr ON rr.order_id = o.id
-    LEFT JOIN test_activity ON test_activity.shipment_id = o.shipment_id
-    LEFT JOIN next_test_activity ON next_test_activity.shipment_id = o.shipment_id
     LEFT JOIN pack_duration ON pack_duration.shipment_id = o.shipment_id
-    LEFT JOIN test_duration ON test_duration.shipment_id = o.shipment_id
     LEFT JOIN sal_scan ON sal_scan.shipment_id = o.shipment_id
-    LEFT JOIN staff staff_test_assignee ON staff_test_assignee.id = test_activity.staff_id
-    LEFT JOIN staff staff_pick_assignee ON staff_pick_assignee.id = wa_t.assigned_tech_id
+    LEFT JOIN staff staff_tester ON staff_tester.id = wa_t.assigned_tech_id
     LEFT JOIN staff staff_packed_by ON staff_packed_by.id = COALESCE(pack_activity.staff_id, pl_latest.packed_by)
     LEFT JOIN staff staff_pack_assignee ON staff_pack_assignee.id = wa_p.assigned_packer_id
     WHERE 1=1

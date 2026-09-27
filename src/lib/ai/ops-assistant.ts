@@ -87,10 +87,10 @@ function buildBreakdown(records: ShippedOrder[], dimension: ShippingDimension): 
   const map = new Map<string, AiBreakdownRow>();
 
   for (const record of records) {
-    const staffId = dimension === 'packer' ? record.packed_by ?? record.packer_id : record.tested_by ?? record.tester_id;
+    const staffId = dimension === 'packer' ? record.packed_by ?? record.packer_id : record.tested_by;
     const staffName = dimension === 'packer'
       ? formatStaffName(record.packed_by_name, staffId, 'Unassigned packer')
-      : formatStaffName(record.tested_by_name || record.tester_name, staffId, 'Unassigned tester');
+      : formatStaffName(record.tested_by_name, staffId, 'Unassigned tester');
     const key = `${staffId ?? 'none'}:${staffName}`;
     const existing = map.get(key);
     if (existing) {
@@ -161,7 +161,7 @@ function buildAnalysis(args: {
   const missingDimensionCount = records.filter((record) =>
     dimension === 'packer'
       ? record.packed_by == null && record.packer_id == null
-      : record.tested_by == null && record.tester_id == null
+      : record.tested_by == null
   ).length;
 
   const topRow = breakdown[0];
@@ -290,7 +290,7 @@ export async function resolveLocalAiAnswer(
     ? allRecords.filter((record) =>
         dimension === 'packer'
           ? record.packed_by == null && record.packer_id == null
-          : record.tested_by == null && record.tester_id == null
+          : record.tested_by == null
       )
     : allRecords;
   const breakdown = queryKind === 'missing_attribution' ? [] : buildBreakdown(records, dimension);

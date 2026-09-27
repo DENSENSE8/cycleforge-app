@@ -7,14 +7,15 @@ import { cn } from '@/utils/_cn';
 
 type InsetSpace = 'card' | 'field' | 'cozy' | 'chip';
 
+/** Values belong to the region's mode (`spacing` in packages/design-tokens/src/modes.ts) — triage / other modes shown. */
 const SPACE: Record<InsetSpace, string> = {
-  /** p-4 — card bodies. */
+  /** 20×16 / 16 — card bodies. */
   card: 'inset-card',
-  /** px-3 py-2 — the dominant control/box padding. */
+  /** 12×8 — the dominant control/box padding. */
   field: 'inset-field',
-  /** px-2.5 py-1.5 — compact list rows, notice lines. */
+  /** 12×8 / 10×6 — compact list rows, notice lines. */
   cozy: 'inset-cozy',
-  /** px-1.5 py-0.5 — chip/badge anatomy. */
+  /** 8×2 / 6×2 — chip/badge anatomy. */
   chip: 'inset-chip',
 };
 

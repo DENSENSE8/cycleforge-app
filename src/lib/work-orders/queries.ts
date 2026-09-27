@@ -46,20 +46,21 @@ export async function getOrders(orgId: string): Promise<WorkOrderRow[]> {
        o.created_at,
        (COALESCE((SELECT count(*) FROM station_activity_logs sal2
          WHERE sal2.shipment_id IS NOT NULL AND sal2.shipment_id = o.shipment_id
-           AND sal2.organization_id = $1), 0) > 0) AS has_tech_scan,
-       test_wa.id AS test_assignment_id,
-       test_wa.assigned_tech_id AS tech_id,
+           AND sal2.organization_id = $1), 0) > 0) AS has_pick_scan,
+       pick_wa.id AS pick_assignment_id,
+       pick_wa.assigned_tech_id AS tech_id,
        st.name AS tech_name,
-       test_wa.status AS test_status,
-       test_wa.priority AS test_priority,
+       pick_wa.status AS pick_status,
+       COALESCE(pick_wa.priority, test_wa.priority) AS pick_priority,
        test_wa.deadline_at AS deadline_at,
-       test_wa.notes AS test_notes,
-       test_wa.assigned_at AS test_assigned_at,
-       test_wa.updated_at AS test_updated_at,
+       COALESCE(pick_wa.notes, test_wa.notes) AS pick_notes,
+       pick_wa.assigned_at AS pick_assigned_at,
+       COALESCE(pick_wa.updated_at, test_wa.updated_at) AS pick_updated_at,
        pack_wa.id AS pack_assignment_id,
        pack_wa.assigned_packer_id AS packer_id,
        sp.name AS packer_name
      FROM orders o
+     -- ORDER/TEST carries only the deadline; the picker is the ORDER/PICK row.
      LEFT JOIN LATERAL (
        SELECT *
        FROM work_assignments wa
@@ -81,6 +82,22 @@ export async function getOrders(orgId: string): Promise<WorkOrderRow[]> {
        FROM work_assignments wa
        WHERE wa.entity_type = 'ORDER'
          AND wa.entity_id = o.id
+         AND wa.work_type = 'PICK'
+         AND wa.organization_id = $1
+         AND wa.status IN ('OPEN', 'ASSIGNED', 'IN_PROGRESS')
+       ORDER BY CASE wa.status
+         WHEN 'IN_PROGRESS' THEN 1
+         WHEN 'ASSIGNED' THEN 2
+         WHEN 'OPEN' THEN 3
+         ELSE 4
+       END, wa.updated_at DESC, wa.id DESC
+       LIMIT 1
+     ) pick_wa ON TRUE
+     LEFT JOIN LATERAL (
+       SELECT *
+       FROM work_assignments wa
+       WHERE wa.entity_type = 'ORDER'
+         AND wa.entity_id = o.id
          AND wa.work_type = 'PACK'
          AND wa.organization_id = $1
          AND wa.status IN ('OPEN', 'ASSIGNED', 'IN_PROGRESS')
@@ -92,7 +109,7 @@ export async function getOrders(orgId: string): Promise<WorkOrderRow[]> {
        END, wa.updated_at DESC, wa.id DESC
        LIMIT 1
      ) pack_wa ON TRUE
-     LEFT JOIN staff st ON st.id = test_wa.assigned_tech_id
+     LEFT JOIN staff st ON st.id = pick_wa.assigned_tech_id AND st.organization_id = $1
      LEFT JOIN staff sp ON sp.id = pack_wa.assigned_packer_id
      LEFT JOIN shipping_tracking_numbers stn ON stn.id = o.shipment_id
      WHERE NOT ${shippedByCarrierOrLatestStatusSql}
@@ -136,15 +153,15 @@ function mapOrderRow(row: any) {
     techName: row.tech_name ? String(row.tech_name) : null,
     packerId: row.packer_id == null ? null : Number(row.packer_id),
     packerName: row.packer_name ? String(row.packer_name) : null,
-    status: normalizeStatus(row.test_status),
-    priority: Number(row.test_priority || 100),
+    status: normalizeStatus(row.pick_status),
+    priority: Number(row.pick_priority || 100),
     deadlineAt: normalizePSTTimestamp(row.deadline_at),
-    notes: (row.test_notes || row.notes) ? String(row.test_notes || row.notes) : null,
-    assignedAt: normalizePSTTimestamp(row.test_assigned_at),
-    updatedAt: normalizePSTTimestamp(row.test_updated_at),
-    primaryAssignmentId: row.test_assignment_id == null ? null : Number(row.test_assignment_id),
+    notes: (row.pick_notes || row.notes) ? String(row.pick_notes || row.notes) : null,
+    assignedAt: normalizePSTTimestamp(row.pick_assigned_at),
+    updatedAt: normalizePSTTimestamp(row.pick_updated_at),
+    primaryAssignmentId: row.pick_assignment_id == null ? null : Number(row.pick_assignment_id),
     secondaryAssignmentId: row.pack_assignment_id == null ? null : Number(row.pack_assignment_id),
-    primaryWorkType: 'TEST' as const,
+    primaryWorkType: 'PICK' as const,
     orderId: row.order_id ? String(row.order_id) : null,
     trackingNumber: row.tracking_number ? String(row.tracking_number) : null,
     trackingNumberRows: Array.isArray(row.tracking_number_rows) ? row.tracking_number_rows : [],
@@ -155,7 +172,7 @@ function mapOrderRow(row: any) {
     accountSource: row.account_source ? String(row.account_source) : null,
     quantity: row.quantity ? String(row.quantity) : null,
     createdAt: normalizePSTTimestamp(row.created_at),
-    hasTechScan: Boolean(row.has_tech_scan),
+    hasPickScan: Boolean(row.has_pick_scan),
     isOutOfStock: Boolean(row.is_out_of_stock),
   };
 }
@@ -182,16 +199,16 @@ export async function getWorkOrdersInRange(
        o.notes,
        o.is_out_of_stock,
        o.created_at,
-       false AS has_tech_scan,
-       test_wa.id AS test_assignment_id,
-       test_wa.assigned_tech_id AS tech_id,
+       false AS has_pick_scan,
+       pick_wa.id AS pick_assignment_id,
+       pick_wa.assigned_tech_id AS tech_id,
        st.name AS tech_name,
-       test_wa.status AS test_status,
-       test_wa.priority AS test_priority,
+       pick_wa.status AS pick_status,
+       COALESCE(pick_wa.priority, test_wa.priority) AS pick_priority,
        test_wa.deadline_at AS deadline_at,
-       test_wa.notes AS test_notes,
-       test_wa.assigned_at AS test_assigned_at,
-       test_wa.updated_at AS test_updated_at,
+       COALESCE(pick_wa.notes, test_wa.notes) AS pick_notes,
+       pick_wa.assigned_at AS pick_assigned_at,
+       COALESCE(pick_wa.updated_at, test_wa.updated_at) AS pick_updated_at,
        pack_wa.id AS pack_assignment_id,
        pack_wa.assigned_packer_id AS packer_id,
        sp.name AS packer_name
@@ -209,7 +226,17 @@ export async function getWorkOrdersInRange(
        ORDER BY wa.updated_at DESC, wa.id DESC
        LIMIT 1
      ) pack_wa ON TRUE
-     LEFT JOIN staff st ON st.id = test_wa.assigned_tech_id
+     LEFT JOIN LATERAL (
+       SELECT *
+       FROM work_assignments wa
+       WHERE wa.entity_type = 'ORDER'
+         AND wa.entity_id = o.id
+         AND wa.work_type = 'PICK'
+         AND wa.organization_id = $1
+       ORDER BY wa.updated_at DESC, wa.id DESC
+       LIMIT 1
+     ) pick_wa ON TRUE
+     LEFT JOIN staff st ON st.id = pick_wa.assigned_tech_id AND st.organization_id = $1
      LEFT JOIN staff sp ON sp.id = pack_wa.assigned_packer_id
      LEFT JOIN shipping_tracking_numbers stn ON stn.id = o.shipment_id
      WHERE test_wa.entity_type = 'ORDER'

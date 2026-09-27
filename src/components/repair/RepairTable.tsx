@@ -195,7 +195,6 @@ export function RepairTable({ filter }: RepairTableProps) {
         open={selectedRepair != null}
         onClose={handleCloseDetails}
         title={selectedRepair ? String(selectedRepair.ticket_number || '').trim() || `RS-${selectedRepair.id}` : ''}
-        subtitle={selectedRepair?.product_title ?? undefined}
         indexLabel={cursor.position != null ? `${cursor.position} of ${cursor.total}` : undefined}
         recordNoun="repair"
         recordKey={openRepairId != null ? String(openRepairId) : null}

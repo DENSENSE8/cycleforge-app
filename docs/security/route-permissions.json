@@ -1,10 +1,10 @@
 {
   "version": 1,
-  "generatedAt": "2026-09-27T15:31:02Z",
-  "totalRoutes": 1100,
+  "generatedAt": "2026-09-27T23:14:32Z",
+  "totalRoutes": 1097,
   "summary": {
-    "permissionGated": 894,
-    "authenticatedNoPermission": 123,
+    "permissionGated": 892,
+    "authenticatedNoPermission": 122,
     "anonymousIntentional": 36,
     "serviceToService": 47,
     "ungatedRead": 0,
@@ -2107,6 +2107,15 @@
       "exemptReason": null
     },
     {
+      "path": "/api/customers/route.ts",
+      "methods": [
+        "POST"
+      ],
+      "gate": "withAuth",
+      "permission": "orders.create",
+      "exemptReason": null
+    },
+    {
       "path": "/api/customers/search/route.ts",
       "methods": [
         "GET"
@@ -2446,6 +2455,15 @@
       "exemptReason": null
     },
     {
+      "path": "/api/fba/fnsku-scan/route.ts",
+      "methods": [
+        "POST"
+      ],
+      "gate": "withAuth",
+      "permission": "tech.scan_serial",
+      "exemptReason": null
+    },
+    {
       "path": "/api/fba/fnskus/[fnsku]/route.ts",
       "methods": [
         "GET",
@@ -2778,7 +2796,7 @@
         "GET"
       ],
       "gate": "withAuth",
-      "permission": "tech.view",
+      "permission": "picking.view",
       "exemptReason": null
     },
     {
@@ -4660,6 +4678,15 @@
       "exemptReason": null
     },
     {
+      "path": "/api/orders/import/extract-capture/route.ts",
+      "methods": [
+        "POST"
+      ],
+      "gate": "withAuth",
+      "permission": "orders.create",
+      "exemptReason": null
+    },
+    {
       "path": "/api/orders/import/suggest-mapping/route.ts",
       "methods": [
         "POST"
@@ -4670,6 +4697,24 @@
     },
     {
       "path": "/api/orders/intake-suggestions/route.ts",
+      "methods": [
+        "GET"
+      ],
+      "gate": "withAuth",
+      "permission": "orders.create",
+      "exemptReason": null
+    },
+    {
+      "path": "/api/orders/intake/order-number/route.ts",
+      "methods": [
+        "GET"
+      ],
+      "gate": "withAuth",
+      "permission": "orders.create",
+      "exemptReason": null
+    },
+    {
+      "path": "/api/orders/intake/products/route.ts",
       "methods": [
         "GET"
       ],
@@ -4741,6 +4786,25 @@
       "exemptReason": null
     },
     {
+      "path": "/api/orders/payments/cancel/route.ts",
+      "methods": [
+        "POST"
+      ],
+      "gate": "withAuth",
+      "permission": "orders.create",
+      "exemptReason": null
+    },
+    {
+      "path": "/api/orders/payments/route.ts",
+      "methods": [
+        "GET",
+        "POST"
+      ],
+      "gate": "withAuth",
+      "permission": "orders.view",
+      "exemptReason": null
+    },
+    {
       "path": "/api/orders/price/route.ts",
       "methods": [
         "PUT"
@@ -4752,6 +4816,7 @@
     {
       "path": "/api/orders/print-packet/route.ts",
       "methods": [
+        "GET",
         "POST"
       ],
       "gate": "withAuth",
@@ -4800,7 +4865,7 @@
         "POST"
       ],
       "gate": "withAuth",
-      "permission": "tech.scan_serial",
+      "permission": "picking.scan",
       "exemptReason": null
     },
     {
@@ -4809,7 +4874,7 @@
         "POST"
       ],
       "gate": "withAuth",
-      "permission": "tech.scan_serial",
+      "permission": "picking.scan",
       "exemptReason": null
     },
     {
@@ -5374,30 +5439,84 @@
       "exemptReason": null
     },
     {
-      "path": "/api/pick/queue/route.ts",
+      "path": "/api/picking/desk/delete/route.ts",
+      "methods": [
+        "POST"
+      ],
+      "gate": "withAuth",
+      "permission": "picking.scan",
+      "exemptReason": null
+    },
+    {
+      "path": "/api/picking/desk/logs/counts/route.ts",
       "methods": [
         "GET"
       ],
       "gate": "withAuth",
-      "permission": "orders.view",
+      "permission": "picking.view",
       "exemptReason": null
     },
     {
-      "path": "/api/pick/scan/route.ts",
+      "path": "/api/picking/desk/logs/route.ts",
+      "methods": [
+        "GET"
+      ],
+      "gate": "withAuth",
+      "permission": "picking.view",
+      "exemptReason": null
+    },
+    {
+      "path": "/api/picking/desk/scan/route.ts",
       "methods": [
         "POST"
       ],
       "gate": "withAuth",
-      "permission": "orders.view",
+      "permission": "picking.scan",
       "exemptReason": null
     },
     {
-      "path": "/api/pick/unscan/route.ts",
+      "path": "/api/picking/desk/serial/route.ts",
       "methods": [
         "POST"
       ],
       "gate": "withAuth",
-      "permission": "orders.view",
+      "permission": "picking.scan",
+      "exemptReason": null
+    },
+    {
+      "path": "/api/picking/desk/sku/route.ts",
+      "methods": [
+        "POST"
+      ],
+      "gate": "withAuth",
+      "permission": "picking.scan",
+      "exemptReason": null
+    },
+    {
+      "path": "/api/picking/queue/route.ts",
+      "methods": [
+        "GET"
+      ],
+      "gate": "withAuth",
+      "permission": "picking.view",
+      "exemptReason": null
+    },
+    {
+      "path": "/api/picking/units/scan/route.ts",
+      "methods": [
+        "POST"
+      ],
+      "gate": "withAuth",
+      "permission": "picking.scan",
+      "exemptReason": null
+    },
+    {
+      "path": "/api/picking/units/unscan/route.ts",
+      "methods": [
+        "POST"
+      ],
+      "gate": "withAuth",
+      "permission": "picking.scan",
       "exemptReason": null
     },
     {
@@ -5600,6 +5719,42 @@
       ],
       "gate": "requireRoutePerm",
       "permission": "sku_stock.view",
+      "exemptReason": null
+    },
+    {
+      "path": "/api/qc/receiving-lines/open/route.ts",
+      "methods": [
+        "POST"
+      ],
+      "gate": "withAuth",
+      "permission": "tech.qc_pass",
+      "exemptReason": null
+    },
+    {
+      "path": "/api/qc/receiving-lines/route.ts",
+      "methods": [
+        "GET"
+      ],
+      "gate": "withAuth",
+      "permission": "tech.qc_pass",
+      "exemptReason": null
+    },
+    {
+      "path": "/api/qc/recent/route.ts",
+      "methods": [
+        "GET"
+      ],
+      "gate": "withAuth",
+      "permission": "tech.qc_pass",
+      "exemptReason": null
+    },
+    {
+      "path": "/api/qc/seller-claimed/route.ts",
+      "methods": [
+        "GET"
+      ],
+      "gate": "withAuth",
+      "permission": "tech.qc_pass",
       "exemptReason": null
     },
     {
@@ -6991,6 +7146,15 @@
       ],
       "gate": "withAuth",
       "permission": "repair.mark_repaired",
+      "exemptReason": null
+    },
+    {
+      "path": "/api/repair/station-scan/route.ts",
+      "methods": [
+        "POST"
+      ],
+      "gate": "withAuth",
+      "permission": "tech.scan_serial",
       "exemptReason": null
     },
     {
@@ -8931,201 +9095,12 @@
       "exemptReason": null
     },
     {
-      "path": "/api/tech-logs/route.ts",
-      "methods": [
-        "GET"
-      ],
-      "gate": "re-export (inherits target)",
-      "permission": null,
-      "exemptReason": null
-    },
-    {
-      "path": "/api/tech-logs/search/route.ts",
-      "methods": [
-        "GET"
-      ],
-      "gate": "withAuth",
-      "permission": "tech.view",
-      "exemptReason": null
-    },
-    {
-      "path": "/api/tech-logs/update/route.ts",
-      "methods": [
-        "PATCH"
-      ],
-      "gate": "withAuth",
-      "permission": "tech.view",
-      "exemptReason": null
-    },
-    {
-      "path": "/api/tech/add-serial-to-last/route.ts",
-      "methods": [
-        "POST"
-      ],
-      "gate": "withAuth",
-      "permission": "tech.scan_serial",
-      "exemptReason": null
-    },
-    {
-      "path": "/api/tech/add-serial/route.ts",
-      "methods": [
-        "POST"
-      ],
-      "gate": "withAuth",
-      "permission": "tech.scan_serial",
-      "exemptReason": null
-    },
-    {
-      "path": "/api/tech/delete-tracking/route.ts",
-      "methods": [
-        "POST"
-      ],
-      "gate": "withAuth",
-      "permission": "tech.scan_serial",
-      "exemptReason": null
-    },
-    {
-      "path": "/api/tech/delete/route.ts",
-      "methods": [
-        "POST"
-      ],
-      "gate": "withAuth",
-      "permission": "tech.scan_serial",
-      "exemptReason": null
-    },
-    {
-      "path": "/api/tech/logs/counts/route.ts",
-      "methods": [
-        "GET"
-      ],
-      "gate": "withAuth",
-      "permission": "tech.view",
-      "exemptReason": null
-    },
-    {
-      "path": "/api/tech/logs/route.ts",
-      "methods": [
-        "GET"
-      ],
-      "gate": "withAuth",
-      "permission": "tech.view",
-      "exemptReason": null
-    },
-    {
-      "path": "/api/tech/orders-without-manual/route.ts",
-      "methods": [
-        "GET"
-      ],
-      "gate": "withAuth",
-      "permission": "tech.view",
-      "exemptReason": null
-    },
-    {
-      "path": "/api/tech/scan-repair-station/route.ts",
-      "methods": [
-        "POST"
-      ],
-      "gate": "withAuth",
-      "permission": "tech.scan_serial",
-      "exemptReason": null
-    },
-    {
-      "path": "/api/tech/scan-sku/route.ts",
-      "methods": [
-        "POST"
-      ],
-      "gate": "withAuth",
-      "permission": "tech.scan_serial",
-      "exemptReason": null
-    },
-    {
-      "path": "/api/tech/scan/route.ts",
-      "methods": [
-        "POST"
-      ],
-      "gate": "withAuth",
-      "permission": "tech.scan_serial",
-      "exemptReason": null
-    },
-    {
-      "path": "/api/tech/serial/route.ts",
-      "methods": [
-        "POST"
-      ],
-      "gate": "withAuth",
-      "permission": "tech.scan_serial",
-      "exemptReason": null
-    },
-    {
-      "path": "/api/tech/test-result/route.ts",
-      "methods": [
-        "POST"
-      ],
-      "gate": "withAuth",
-      "permission": "tech.scan_serial",
-      "exemptReason": null
-    },
-    {
-      "path": "/api/tech/undo-last/route.ts",
-      "methods": [
-        "POST"
-      ],
-      "gate": "withAuth",
-      "permission": "tech.scan_serial",
-      "exemptReason": null
-    },
-    {
-      "path": "/api/tech/update-serials/route.ts",
-      "methods": [
-        "POST"
-      ],
-      "gate": "withAuth",
-      "permission": "tech.scan_serial",
-      "exemptReason": null
-    },
-    {
       "path": "/api/test-db/route.ts",
       "methods": [
         "GET"
       ],
       "gate": "withAuth",
       "permission": "admin.view",
-      "exemptReason": null
-    },
-    {
-      "path": "/api/testing/receiving-lines/open/route.ts",
-      "methods": [
-        "POST"
-      ],
-      "gate": "withAuth",
-      "permission": "tech.qc_pass",
-      "exemptReason": null
-    },
-    {
-      "path": "/api/testing/receiving-lines/route.ts",
-      "methods": [
-        "GET"
-      ],
-      "gate": "withAuth",
-      "permission": "tech.qc_pass",
-      "exemptReason": null
-    },
-    {
-      "path": "/api/testing/recent/route.ts",
-      "methods": [
-        "GET"
-      ],
-      "gate": "withAuth",
-      "permission": "tech.qc_pass",
-      "exemptReason": null
-    },
-    {
-      "path": "/api/testing/seller-claimed/route.ts",
-      "methods": [
-        "GET"
-      ],
-      "gate": "withAuth",
-      "permission": "tech.qc_pass",
       "exemptReason": null
     },
     {

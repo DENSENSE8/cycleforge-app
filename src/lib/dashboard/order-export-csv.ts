@@ -31,7 +31,7 @@ export interface ExportableOrderRow {
   pack_activity_at?: string | null;
   shipped_out_by_name?: string | null;
   ship_confirmed_at?: string | null;
-  has_tech_scan?: boolean | null;
+  has_pick_scan?: boolean | null;
   sale_amount?: string | number | null;
 }
 
@@ -110,7 +110,7 @@ export function buildOrderExportRow(row: ExportableOrderRow): string[] {
   })();
   const status = resolveOrderLifecycleStage({
     shipmentId: row.shipment_id,
-    hasTechScan: Boolean(row.has_tech_scan),
+    hasPickScan: Boolean(row.has_pick_scan),
     packedAt: packedAt || null,
     isOutOfStock: row.is_out_of_stock ?? null,
   });

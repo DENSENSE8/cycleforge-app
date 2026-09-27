@@ -57,6 +57,10 @@ export async function triggerPackPrintBundle(input: {
   orderRowId: number;
   packerLogId: number | null;
   reprint?: boolean;
+  /** Only these papers; absent = the whole bundle. */
+  documentTypes?: readonly string[];
+  /** A sender's print batch — its ledger rows are keyed so the sender can read them back. */
+  batchId?: string;
 }): Promise<PrintBundleUiState> {
   const res = await fetch(`/api/orders/${input.orderRowId}/documents/print`, {
     method: 'POST',
@@ -64,6 +68,8 @@ export async function triggerPackPrintBundle(input: {
     body: JSON.stringify({
       packerLogId: input.packerLogId,
       reprint: Boolean(input.reprint),
+      ...(input.documentTypes ? { documentTypes: input.documentTypes } : {}),
+      ...(input.batchId ? { batchId: input.batchId } : {}),
     }),
   });
   const data = await res.json().catch(() => ({}));

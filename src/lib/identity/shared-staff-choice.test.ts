@@ -31,26 +31,26 @@ describe('isSafeAppPath', () => {
 describe('resolveOAuthPostLoginPath', () => {
   test('individual org follows a same-origin next, else home', () => {
     assert.equal(
-      resolveOAuthPostLoginPath({ sharedStaffOrg: false, next: '/orders', signinPath: '/signin' }),
+      resolveOAuthPostLoginPath({ sharedStaffOrg: false, next: '/orders', signinPath: '/signin', home: '/pack' }),
       '/orders',
     );
     assert.equal(
-      resolveOAuthPostLoginPath({ sharedStaffOrg: false, next: '//evil.example', signinPath: '/signin' }),
-      '/',
+      resolveOAuthPostLoginPath({ sharedStaffOrg: false, next: '//evil.example', signinPath: '/signin', home: '/pack' }),
+      '/pack',
     );
     assert.equal(
-      resolveOAuthPostLoginPath({ sharedStaffOrg: false, next: null, signinPath: '/m/signin' }),
-      '/',
+      resolveOAuthPostLoginPath({ sharedStaffOrg: false, next: null, signinPath: '/m/signin', home: '/m/home' }),
+      '/m/home',
     );
   });
 
   test('shared org always opens the staff picker on the sign-in door', () => {
     assert.equal(
-      resolveOAuthPostLoginPath({ sharedStaffOrg: true, next: null, signinPath: '/signin' }),
+      resolveOAuthPostLoginPath({ sharedStaffOrg: true, next: null, signinPath: '/signin', home: '/' }),
       '/signin?choose_staff=1',
     );
     assert.equal(
-      resolveOAuthPostLoginPath({ sharedStaffOrg: true, next: '/m/home', signinPath: '/m/signin' }),
+      resolveOAuthPostLoginPath({ sharedStaffOrg: true, next: '/m/home', signinPath: '/m/signin', home: '/m/home' }),
       '/m/signin?choose_staff=1&next=%2Fm%2Fhome',
     );
   });
@@ -61,6 +61,7 @@ describe('resolveOAuthPostLoginPath', () => {
         sharedStaffOrg: true,
         next: '//evil.example',
         signinPath: '/signin',
+        home: '/',
       }),
       '/signin?choose_staff=1',
     );

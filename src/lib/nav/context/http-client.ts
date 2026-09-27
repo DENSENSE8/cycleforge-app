@@ -8,9 +8,12 @@ import { z } from 'zod';
 import {
   NavContextSchema,
   NavFacetsResponseSchema,
+  NavLocateResponseSchema,
   NavRecentRowSchema,
   type NavContext,
   type NavFacetsResponse,
+  type NavLocateResponse,
+  type NavLocateScope,
   type NavRecentRow,
   type NavRecents,
 } from './schema';
@@ -55,6 +58,21 @@ export async function fetchNavFacets(
   qs.delete('context');
   qs.set('context', facetContext);
   return NavFacetsResponseSchema.parse(await getJson(`/api/nav/facets?${qs}`, signal));
+}
+
+/**
+ * `GET /api/nav/locate` — where identifiers live. `q` = the field's text
+ * (bucket counts only); `refs` = a pasted list (one entry per ref).
+ */
+export async function fetchNavLocate(
+  scope: NavLocateScope,
+  input: { q: string } | { refs: readonly string[] },
+  signal?: AbortSignal,
+): Promise<NavLocateResponse> {
+  const qs = new URLSearchParams({ locator: scope });
+  if ('q' in input) qs.set('q', input.q);
+  else qs.set('refs', input.refs.join(','));
+  return NavLocateResponseSchema.parse(await getJson(`/api/nav/locate?${qs}`, signal));
 }
 
 const NavRecentsResponseSchema = z.object({

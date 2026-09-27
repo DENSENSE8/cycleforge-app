@@ -18,6 +18,7 @@ import type { CompoundDelay } from '@/components/tables/compound/compound-row-mo
 import { formatCurrency } from '@/utils/_number';
 import { getExternalUrlByItemNumber } from '@/utils/external-item-url';
 import { orderAdminUrl } from '@/utils/order-platform';
+import { orderStage, type OrderStage } from '@/lib/orders/order-stages';
 import { customerFullName } from '@/lib/customers/customer-display';
 
 export interface OrderCardLine {
@@ -40,6 +41,12 @@ export interface OrderCardLine {
   shortNote: string | null;
   sku: string | null;
   state: LifecycleState;
+  /**
+   * This line's own Pick and QC, read from its own row (Pick is
+   * {@link OrderStage.blocked} when the line is out of stock). Pack is the
+   * order's — see {@link OrderCardModel.pack}.
+   */
+  stages: { pick: OrderStage; qc: OrderStage };
 }
 
 export type OrderCardSlaTone = 'late' | 'today' | 'soon' | 'later' | 'none';
@@ -75,6 +82,14 @@ export interface OrderCardModel {
   listingHref: string | null;
   /** The item number (or SKU) {@link listingHref} was built from. */
   listingItem: string | null;
+  /** Pack — once per order (one box), read from the lead row. */
+  pack: OrderStage;
+  /**
+   * The order-level Pick → QC → Pack reading (quick look, record, "where is it
+   * now"): Pick / QC are the first line still waiting on that stage (else the
+   * shown line's), Pack is {@link pack}. Always all three, in that order.
+   */
+  stages: readonly OrderStage[];
 }
 
 function linePrice(line: ShippedOrder): { text: string | null; estimate: boolean } {
@@ -114,11 +129,12 @@ function shortNote(line: ShippedOrder): string | null {
   return parts.length > 0 ? parts.join(' · ') : null;
 }
 
-export function orderCardLine(line: ShippedOrder): OrderCardLine {
+export function orderCardLine(line: ShippedOrder, todayKey: string, staffName?: (id: number) => string): OrderCardLine {
   const condition = lineCondition(line);
   const price = linePrice(line);
   const stock = Number(line.sku_stock_on_hand);
   const qty = Number(line.quantity);
+  const outOfStock = line.is_out_of_stock === true;
   return {
     record: line,
     id: Number(line.id),
@@ -131,10 +147,14 @@ export function orderCardLine(line: ShippedOrder): OrderCardLine {
     bin: resolveOrderBin(line.storage_locations, line.sku_home_location),
     price: price.text,
     priceEstimate: price.estimate,
-    outOfStock: line.is_out_of_stock === true,
+    outOfStock,
     shortNote: shortNote(line),
     sku: String(line.sku ?? '').trim() || null,
     state: recordState(line),
+    stages: {
+      pick: orderStage(line, 'pick', { todayKey, staffName, outOfStock }),
+      qc: orderStage(line, 'qc', { todayKey, staffName }),
+    },
   };
 }
 
@@ -164,10 +184,18 @@ export function orderSla(rows: readonly ShippedOrder[], todayKey: string): Order
  */
 export const ORDER_SLA_SECTIONS: readonly OrderCardSlaTone[] = ['late', 'today', 'soon', 'later', 'none'];
 
-/** One order's card. `rows` is every line of the order, in display order. */
-export function orderCardModel(key: string, rows: readonly ShippedOrder[], todayKey: string): OrderCardModel {
+/**
+ * One order's card. `rows` is every line of the order, in display order.
+ * `staffName` names a pick / pack actor the wire sent only as an id.
+ */
+export function orderCardModel(
+  key: string,
+  rows: readonly ShippedOrder[],
+  todayKey: string,
+  staffName?: (id: number) => string,
+): OrderCardModel {
   const lead = rows[0]!;
-  const built = rows.map(orderCardLine);
+  const built = rows.map((row) => orderCardLine(row, todayKey, staffName));
   // Out-of-stock lines first; otherwise keep the feed's order.
   const lines = [...built.filter((l) => l.outOfStock), ...built.filter((l) => !l.outOfStock)];
   const sla = orderSla(rows, todayKey);
@@ -175,7 +203,11 @@ export function orderCardModel(key: string, rows: readonly ShippedOrder[], today
   const shipTo = lead.shipstation_ship_to;
   const buyerName =
     (lead.customer ? customerFullName(lead.customer) : String(shipTo?.name || shipTo?.company || '').trim()) || null;
-  const shown = lines[0]!.record;
+  const shownLine = lines[0]!;
+  const shown = shownLine.record;
+  const pack = orderStage(lead, 'pack', { todayKey, staffName });
+  const lineStage = (kind: 'pick' | 'qc') =>
+    lines.find((l) => !l.stages[kind].done)?.stages[kind] ?? shownLine.stages[kind];
   const listingItem = String(shown.item_number || shown.sku || '').trim() || null;
   const orderId = String(lead.order_id || '').trim() || `#${lead.id}`;
   const adminUrl = rows.map((r) => String(r.admin_url ?? '').trim()).find(Boolean) ?? null;
@@ -198,5 +230,7 @@ export function orderCardModel(key: string, rows: readonly ShippedOrder[], today
     buyerName,
     listingHref: getExternalUrlByItemNumber(listingItem),
     listingItem,
+    pack,
+    stages: [lineStage('pick'), lineStage('qc'), pack],
   };
 }

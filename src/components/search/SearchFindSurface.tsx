@@ -8,6 +8,7 @@ import { SearchBrowseShell } from '@/components/search/SearchBrowseShell';
 import { SearchDetailWorkspace } from '@/components/search/SearchDetailWorkspace';
 import { LabelIntakeDesk } from '@/components/outbound/label-intake/LabelIntakeDesk';
 import { useSearchSelParam } from '@/hooks/useSearchSelParam';
+import { SearchAssistantFrame } from '@/components/search/assistant/SearchAssistantFrame';
 import {
   FindDensityProvider,
   type FindDensity,
@@ -29,15 +30,26 @@ export function SearchFindSurface({ density }: { density: FindDensity }) {
 
   if (labelEntry) return <LabelIntakeDesk />;
 
+  const body = (
+    <div className="flex min-h-0 w-full flex-1 flex-col overflow-hidden">
+      {q && !sel ? (
+        <SearchBrowseShell setSel={setSel} autoOpen={browsedQuery !== q} />
+      ) : (
+        <SearchDetailWorkspace sel={sel} hasQuery={Boolean(q)} onExit={exitToResults} />
+      )}
+    </div>
+  );
+
   return (
     <FindDensityProvider density={density}>
-      <div className="flex min-h-0 w-full flex-1 flex-col overflow-hidden">
-        {q && !sel ? (
-          <SearchBrowseShell setSel={setSel} autoOpen={browsedQuery !== q} />
-        ) : (
-          <SearchDetailWorkspace sel={sel} hasQuery={Boolean(q)} onExit={exitToResults} />
-        )}
-      </div>
+      {/* Desk: the assistant rides the search (⌘J); the phone keeps /m/assistant. */}
+      {density === 'comfortable' ? (
+        <SearchAssistantFrame sel={sel} query={q} onSelect={setSel}>
+          {body}
+        </SearchAssistantFrame>
+      ) : (
+        body
+      )}
     </FindDensityProvider>
   );
 }

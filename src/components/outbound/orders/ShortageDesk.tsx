@@ -6,12 +6,7 @@
  * 2026-09-26; was "Pending").
  */
 
-import { Suspense, useCallback } from 'react';
-import type { QueryClient } from '@tanstack/react-query';
-import { BootGate } from '@/components/boot/BootGate';
-import { BootSplash } from '@/components/boot/BootSplash';
-import { consumeBootSplash } from '@/lib/boot-flag';
-import { warmActiveView } from '@/lib/queries/dashboard-warm';
+import { Suspense } from 'react';
 import { UnshippedTable } from '@/components/unshipped/UnshippedTable';
 import { OrdersViewChromeProvider } from '@/components/outbound/orders/orders-view-chrome-context';
 import { useOrderRailSelection } from '@/hooks/useOrderRailSelection';
@@ -58,17 +53,5 @@ export function ShortageDesk({
     <Suspense fallback={null}>
       <ShortageDeskContent onPrimaryPainted={onPrimaryPainted} />
     </Suspense>
-  );
-}
-
-function ShortageDeskBootGate({ children }: { children: React.ReactNode }) {
-  const prefetch = useCallback((qc: QueryClient) => {
-    consumeBootSplash();
-    warmActiveView(qc, 'unshipped');
-  }, []);
-  return (
-    <BootGate prefetch={prefetch} splash={<BootSplash />}>
-      {children}
-    </BootGate>
   );
 }

@@ -189,6 +189,26 @@ export function AnchoredLayer({
   useRegisterOverlay(open);
   useEscapeClose(open && closeOnEscape, onClose);
 
+  // Escape hatch (progressive-disclosure ladder, DESIGN_SYSTEM.md): closing
+  // hands focus back to what opened the layer. Only when the close DROPPED
+  // focus (it sat in the panel, which just unmounted): a click that moved
+  // focus elsewhere keeps it there, and a combobox input that never lost
+  // focus is untouched.
+  const openerRef = useRef<HTMLElement | null>(null);
+  useEffect(() => {
+    if (open) {
+      const active = document.activeElement;
+      openerRef.current = active instanceof HTMLElement && active !== document.body ? active : anchorRef.current;
+      return;
+    }
+    const opener = openerRef.current;
+    openerRef.current = null;
+    if (!opener?.isConnected) return;
+    const active = document.activeElement;
+    if (active && active !== document.body) return;
+    opener.focus({ preventScroll: true });
+  }, [open, anchorRef]);
+
   // Track the trigger rect so the portaled panel follows it. useLayoutEffect
   // measures before paint so the panel never flashes at (0,0) first.
   useLayoutEffect(() => {

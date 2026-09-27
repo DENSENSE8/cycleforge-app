@@ -134,7 +134,12 @@ export function RepairStatusStrip({ repair, zendeskUrl }: { repair: RSRecord; ze
       <div className="flex flex-wrap items-center gap-x-4 gap-y-1 border-b border-mode-ink px-4 py-2">
         <span className="flex items-center gap-2" data-testid="repair-record-state" data-status={status}>
           <span aria-hidden className={cn('h-2.5 w-2.5 shrink-0', tone ? STATE_TONE_CLASSES[tone].dot : 'bg-mode-muted')} />
-          <span className={cn('font-mono text-role-body font-black uppercase tracking-tight', tone ? STATE_TONE_CLASSES[tone].text : 'text-mode-ink')}>
+          <span
+            className={cn(
+              'font-sans text-role-body font-bold industrial:font-mono industrial:font-black industrial:uppercase industrial:tracking-tight',
+              tone ? STATE_TONE_CLASSES[tone].text : 'text-mode-ink',
+            )}
+          >
             {status ? repairStatusOperatorLabel(status) : 'No status'}
           </span>
         </span>

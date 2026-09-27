@@ -125,18 +125,6 @@ export function nonSentinelTimestamp(value: unknown): string | null {
 }
 
 /**
- * TESTED-lane "Tested at" raw value — prefer the serial MIN stamp
- * (`test_date_time`, shipped/packer feeds) then station activity
- * (`test_activity_at`, Pending's primary on `/api/orders`). Plan §9.3.
- */
-export function queueRowTestedAtRaw(record: QueueRowRecord): string | null {
-  return (
-    nonSentinelTimestamp(record.test_date_time) ??
-    nonSentinelTimestamp(record.test_activity_at)
-  );
-}
-
-/**
  * Pack-lane stamp — same ladder the Pack cell paints (`packed_at`, then
  * `pack_activity_at`). Column sort reads this instant, not the packer name.
  */
@@ -145,19 +133,6 @@ export function queueRowPackedAtRaw(record: QueueRowRecord): string | null {
     nonSentinelTimestamp(record.packed_at) ??
     nonSentinelTimestamp(record.pack_activity_at)
   );
-}
-
-/**
- * TESTED-lane tester name from wire fields only — scan actor first
- * (`tested_by_name`), then assignee (`tester_name`). Staff-id fallback
- * (`getStaffName`) + `normalizePersonName` stay in the view layer (hooks).
- */
-export function queueRowTesterNameRaw(record: QueueRowRecord): string | null {
-  const scanActor = String(record.tested_by_name ?? '').trim();
-  if (scanActor) return scanActor;
-  const assignee = String(record.tester_name ?? '').trim();
-  if (assignee) return assignee;
-  return null;
 }
 
 /** Clean a tester/packer name, stripping role prefixes and placeholder values. */
@@ -202,7 +177,7 @@ export function resolveRowStatus(
 export function resolveRowWorkflowStage(record: QueueRowRecord): OrderLifecycleStage {
   return resolveOutboundWorkflowFacts({
     shipmentId: record.shipment_id,
-    hasTechScan: Boolean(record.has_tech_scan),
+    hasPickScan: Boolean(record.has_pick_scan),
     packedAt:
       nonSentinelTimestamp(record.packed_at) ??
       nonSentinelTimestamp((record as QueueRowRecord).pack_activity_at),

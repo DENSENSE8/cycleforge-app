@@ -18,7 +18,8 @@
 import { useCallback, useRef, useState, useSyncExternalStore } from 'react';
 import { useRouter } from 'next/navigation';
 import { safeRandomUUID } from '@/lib/safe-uuid';
-import { handlingUnitHandle } from '@/lib/barcode-routing';
+import { redactCardNumbers } from '@/lib/assistant/pan-guard';
+import { initialChatPrintPhase, parseChatPrintRequest, type ChatPrintJob, type ChatPrintPhase } from '@/lib/assistant/chat-print-job';
 import { useStudioWorkspace } from '@/components/studio/StudioWorkspaceContext';
 import type { AssistantPageContext } from '@/lib/assistant/context-store';
 import type { AssistantAccessMode } from '@/lib/assistant/access-mode';
@@ -107,34 +108,6 @@ export interface AssistantConnectionPrompt {
   reason: string | null;
 }
 
-/**
- * Where one chat-raised label print is on the staff print bridge:
- * finding a station → (pick) → sending → acked (printing n/total) → printed,
- * or failed. The operator can retry a failed print.
- */
-export type AssistantPrintPhase =
-  | { kind: 'finding' }
-  | { kind: 'pick'; reason: string }
-  | { kind: 'sending'; station: string }
-  | { kind: 'acked'; station: string; done: number; total: number }
-  | { kind: 'printed'; station: string; labels: number }
-  | { kind: 'failed'; reason: string };
-
-/**
- * A `print_handling_unit_labels` call, sent to the staffer's print station.
- * Lives on the THREAD (like connection prompts) so every surface showing the
- * thread reads one state, and the phase move to `sending` is the one claim
- * that sends the job exactly once.
- */
-export interface AssistantPrintJob {
-  id: string;
-  /** The answer that raised it — the card renders under it. */
-  messageId: string;
-  /** House handles (`H-{id}`) the station reprints. */
-  codes: string[];
-  phase: AssistantPrintPhase;
-}
-
 export interface AssistantChatState {
   sessionId: string;
   messages: AssistantMessage[];
@@ -145,13 +118,18 @@ export interface AssistantChatState {
   connectionPrompts: AssistantConnectionPrompt[];
   /** Called by the pill once polling shows the app connected. */
   dismissConnectionPrompt: (id: string) => void;
-  /** Label prints this session raised, oldest first. Not persisted: a reload never re-prints. */
-  printJobs: AssistantPrintJob[];
+  /**
+   * Prints this session raised (`chat-print-job.ts`), oldest first. They live
+   * on the THREAD so every surface showing it reads one state, and the phase
+   * move to `sending` is the one claim that sends a job exactly once. Not
+   * persisted: a reload never re-prints.
+   */
+  printJobs: ChatPrintJob[];
   /**
    * Move a print to `next`; with `from`, only when it is currently in one of
    * those phases. Returns whether it moved.
    */
-  setPrintPhase: (id: string, next: AssistantPrintPhase, from?: readonly AssistantPrintPhase['kind'][]) => boolean;
+  setPrintPhase: (id: string, next: ChatPrintPhase, from?: readonly ChatPrintPhase['kind'][]) => boolean;
   send: (text: string, context: AssistantPageContext | null) => Promise<void>;
   /** Abort the running turn; the partial answer stays, marked stopped. */
   stop: () => void;
@@ -194,7 +172,7 @@ type AskThreadSnap = {
   status: 'idle' | 'streaming';
   title?: string;
   connectionPrompts: AssistantConnectionPrompt[];
-  printJobs: AssistantPrintJob[];
+  printJobs: ChatPrintJob[];
 };
 
 function emptyThread(): AskThreadSnap {
@@ -314,21 +292,20 @@ export function useAssistantChat(opts?: {
         setThread({ ...live, connectionPrompts: [prompt, ...live.connectionPrompts].slice(0, 3) });
         return;
       }
-      // Device tool: the labels print on the staffer's print station over the
-      // staff print bridge. The job rides the thread; the transcript's print
-      // card resolves the station, sends it once, and shows each phase.
-      if (name === 'print_handling_unit_labels' && Array.isArray(input.handlingUnitIds)) {
-        const ids = input.handlingUnitIds
-          .map((v) => Number(v))
-          .filter((v) => Number.isInteger(v) && v > 0)
-          .slice(0, 10);
-        if (ids.length === 0) return;
+      // Device verbs: a print on the staffer's print station over the staff
+      // print bridge. The job rides the thread; the transcript's print card
+      // resolves the station, sends it once, and shows each phase. Tote labels
+      // come from the model's UI tool; order papers from print_order_paperwork's
+      // server-resolved device action.
+      if (name === 'print_handling_unit_labels' || name === 'print_order_paperwork') {
+        const request = parseChatPrintRequest(name, input);
+        if (!request) return;
         const live = getLive();
-        const job: AssistantPrintJob = {
+        const job: ChatPrintJob = {
           id: `print-${safeRandomUUID()}`,
           messageId,
-          codes: [...new Set(ids)].map(handlingUnitHandle),
-          phase: { kind: 'finding' },
+          request,
+          phase: initialChatPrintPhase(request),
         };
         setThread({ ...live, printJobs: [...live.printJobs, job] });
         return;
@@ -555,7 +532,9 @@ export function useAssistantChat(opts?: {
 
   const send = useCallback(
     async (text: string, context: AssistantPageContext | null) => {
-      const trimmed = text.trim();
+      // A card number never leaves the browser: the bubble and the request carry the
+      // placeholder, and the route answers a placeholder with the card refusal.
+      const trimmed = redactCardNumbers(text.trim());
       const live = getLive();
       if (!trimmed || live.status === 'streaming') return;
       await runTurn({ base: live.messages, question: trimmed, userId: `m-${safeRandomUUID()}`, appendUser: true, context });
@@ -681,7 +660,7 @@ export function useAssistantChat(opts?: {
   );
 
   const setPrintPhase = useCallback(
-    (id: string, next: AssistantPrintPhase, from?: readonly AssistantPrintPhase['kind'][]): boolean => {
+    (id: string, next: ChatPrintPhase, from?: readonly ChatPrintPhase['kind'][]): boolean => {
       const live = getLive();
       const job = live.printJobs.find((j) => j.id === id);
       if (!job || (from && !from.includes(job.phase.kind))) return false;

@@ -27,7 +27,7 @@ export interface ModeRouteEntry {
 
 const DESK_TRIAGE_ROUTES = [
   // Outbound + sales
-  '/counter', '/fba', '/pack', '/packer', '/pickup', '/walk-in', '/tracking-exceptions',
+  '/counter', '/fba', '/pack', '/packer', '/pick', '/pickup', '/walk-in', '/tracking-exceptions',
   // Inbound
   '/incoming', '/triage', '/receiving', '/unbox', '/carton',
   // Inventory + warehouse
@@ -41,21 +41,28 @@ const DESK_TRIAGE_ROUTES = [
   // Identifier doors that resolve and redirect (GS1 links, short links, QR)
   '/01', '/414', '/l', '/o', '/p', '/q', '/qr', '/s',
   // Auth + public entry
-  '/signin', '/signup', '/account', '/invite', '/share', '/offline', '/not-authorized',
+  '/signin', '/signup', '/account', '/invite', '/share', '/offline', '/not-authorized', '/pay',
 ] as const;
+
+/**
+ * The customer-facing kiosk — its own system, never a desk: the counter tablet
+ * runs its own shell (`KioskAppShell`) and its own mode, and nothing else in
+ * the app may resolve to `counter` (owner 2026-09-27: keep it separate).
+ */
+const KIOSK_ROUTES: readonly ModeRouteEntry[] = [{ route: '/kiosk', mode: 'counter' }];
 
 const DECLARED_ROUTES: readonly ModeRouteEntry[] = [
   { route: '/', mode: 'triage', exact: true },
   ...DESK_TRIAGE_ROUTES.map((route): ModeRouteEntry => ({ route, mode: 'triage' })),
   { route: '/shipping', mode: 'runtime' },
   { route: '/ai-chat', mode: 'assistant' },
-  { route: '/kiosk', mode: 'counter' },
   // The phone tree asks for triage; `resolveRegionMode` paints it industrial on
   // a phone (BRIEF §12). The scan floor and the orders queue are industrial by job.
   { route: '/m', mode: 'triage' },
   { route: '/m/scan', mode: 'industrial' },
   { route: '/m/orders', mode: 'industrial', exact: true },
   { route: '/m/work', mode: 'industrial' },
+  ...KIOSK_ROUTES,
 ];
 
 /** Every declared entry, longest route first so `/m/scan` beats `/m`. */

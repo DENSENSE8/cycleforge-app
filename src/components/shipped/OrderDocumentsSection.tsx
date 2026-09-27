@@ -440,7 +440,6 @@ export function OrderDocumentsSection({
             orderId={orderId}
             orderRef={orderRef}
             onChange={onChange}
-            flush={flush}
           />
         </div>
       ) : null}

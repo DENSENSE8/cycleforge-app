@@ -108,11 +108,12 @@ export function ReplenishmentPlanEvidence({
       <EvidenceSection label="Demand and stock">
         <EvidenceFacts>
           <EvidenceFact label="Need" mono>{numText(row.quantity_needed)}</EvidenceFact>
-          <EvidenceFact label="Available" mono>{numText(row.zoho_quantity_available)}</EvidenceFact>
-          <EvidenceFact label="On hand" mono>{numText(row.zoho_quantity_on_hand)}</EvidenceFact>
-          <EvidenceFact label="Incoming" mono>{numText(row.zoho_incoming_quantity)}</EvidenceFact>
+          <EvidenceFact label="Available" mono>{numText(row.stock_available)}</EvidenceFact>
+          <EvidenceFact label="On hand" mono>{numText(row.stock_on_hand)}</EvidenceFact>
+          <EvidenceFact label="Incoming" mono>{numText(row.stock_incoming)}</EvidenceFact>
           <EvidenceFact label="Blocked orders" mono>{waiting.length}</EvidenceFact>
-          <EvidenceFact label="Zoho PO" mono>{row.zoho_po_number || '—'}</EvidenceFact>
+          <EvidenceFact label="Purchase order" mono>{row.inbound_order_number || '—'}</EvidenceFact>
+          {row.zoho_po_number ? <EvidenceFact label="Zoho copy" mono>{row.zoho_po_number}</EvidenceFact> : null}
         </EvidenceFacts>
       </EvidenceSection>
       <EvidenceSection label="Purchasing facts">

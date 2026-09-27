@@ -21,8 +21,8 @@ describe('assignmentPatchFromEvent', () => {
     // never hears about it. Every key the strip / details panel can write.
     const patch = assignmentPatchFromEvent({
       orderIds: [1],
-      testerId: 7,
-      testerName: 'Ada',
+      pickerId: 7,
+      pickerName: 'Ada',
       packerId: 8,
       packerName: 'Bo',
       deadlineAt: '2026-09-20',
@@ -33,9 +33,8 @@ describe('assignmentPatchFromEvent', () => {
       shippingTrackingNumber: '1Z9',
     });
     assert.deepEqual(patch, {
-      tester_id: 7,
-      tester_name: 'Ada',
-      tested_by_name: 'Ada',
+      picker_id: 7,
+      picker_name: 'Ada',
       packer_id: 8,
       packer_name: 'Bo',
       packed_by_name: 'Bo',

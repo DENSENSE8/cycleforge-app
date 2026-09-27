@@ -36,7 +36,7 @@ export function UnboxDeskActions() {
 
   const handleAddPo = useCallback(() => {
     setUnboxView('incoming', { clearLine: false });
-    openReceivingOrderComposer('purchase');
+    openReceivingOrderComposer('PO');
   }, [setUnboxView]);
 
   const handleUnbox = useCallback(() => {

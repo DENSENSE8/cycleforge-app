@@ -20,7 +20,6 @@ test('toShippedOrderFromApi: maps lookup-shaped payload without dashboard row', 
     ship_by_date: '2026-07-21T00:00:00.000Z',
     created_at: '2026-07-01T00:00:00.000Z',
     notes: null,
-    tester_id: 3,
     packer_id: 4,
   });
   assert.ok(order);
@@ -30,7 +29,6 @@ test('toShippedOrderFromApi: maps lookup-shaped payload without dashboard row', 
   assert.equal(order!.shipping_tracking_number, '9400111899561234567890');
   assert.deepEqual(order!.tracking_numbers, ['9400111899561234567890']);
   assert.equal(order!.serial_number, 'SN-1, SN-2');
-  assert.equal(order!.tester_id, 3);
   assert.equal(order!.packer_id, 4);
   assert.equal(order!.row_source, 'order');
 });

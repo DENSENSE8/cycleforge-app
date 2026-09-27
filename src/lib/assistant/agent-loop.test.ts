@@ -210,7 +210,7 @@ test('prompt-cache discipline: stable core has cache_control; volatile context a
   assert.equal(messages.length, 3); // history + new user msg
   // permission-filtered registry (full ctx) + UI namespace + search narrow waist
   assert.ok(toolNames.includes('get_graph'));
-  assert.ok(toolNames.includes('hybrid_entity_search'));
+  assert.ok(toolNames.includes('find_records'));
   assert.ok(toolNames.includes('resolve_support_ticket'));
   assert.ok(toolNames.includes('get_order_lookup'));
   assert.ok(toolNames.includes('lookup_serial'));
@@ -219,8 +219,9 @@ test('prompt-cache discipline: stable core has cache_control; volatile context a
   // operations.view / warranty.view tools stay gated out of this ctx
   assert.ok(!toolNames.includes('get_operations_journey'));
   assert.ok(!toolNames.includes('lookup_warranty_coverage'));
-  assert.match(system[0].text, /hybrid_entity_search/);
-  assert.match(system[0].text, /get_operations_journey/);
+  assert.match(system[0].text, /find_records/);
+  // A route to a tool this turn cannot call is never taught.
+  assert.doesNotMatch(system[0].text, /get_operations_journey/);
 });
 
 test('streamTurn throw → emitted error + ok:false (route maps to SSE error, not a 500 crash)', async () => {

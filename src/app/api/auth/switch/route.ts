@@ -57,7 +57,8 @@ export async function POST(req: NextRequest) {
 
     // Tenant scope:
     const targetOrgId = prev?.organizationId ?? (await resolveOrgIdFromRequest(req));
-    const row = await verifyStaffPin(staffId, pin, targetOrgId);
+    // A staff switch IS a sign-in — it stamps last_login_at.
+    const row = await verifyStaffPin(staffId, pin, targetOrgId, { recordLogin: true });
     if (row.status !== 'active') {
       await audit({
         staffId, event: 'signin.switch', result: 'denied', ip, userAgent: ua,

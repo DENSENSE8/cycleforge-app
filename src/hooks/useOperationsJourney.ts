@@ -56,8 +56,8 @@ export function useOperationsJourney(url: OperationsTimelineUrlState) {
   const ordersChannel = safeChannelName(() => getOrdersChannelName(orgId!));
   const stationChannel = safeChannelName(() => getStationChannelName(orgId!));
 
-  // Subscribe only to the meaningful, lower-frequency journey nudges (tech serial-add → order.tested; order edits → order.changed; receiving…
-  useAblyChannel(ordersChannel, 'order.tested', invalidate, !!ordersChannel);
+  // Subscribe only to the meaningful, lower-frequency journey nudges (desk pick scan → order.picked; order edits → order.changed; receiving → receiving-log.changed).
+  useAblyChannel(ordersChannel, 'order.picked', invalidate, !!ordersChannel);
   useAblyChannel(ordersChannel, 'order.changed', invalidate, !!ordersChannel);
   useAblyChannel(stationChannel, 'receiving-log.changed', invalidate, !!stationChannel);
 

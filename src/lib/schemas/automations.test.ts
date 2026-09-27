@@ -11,7 +11,7 @@ describe('AutomationRuleCreateBody', () => {
       name: 'Bose Wave IV → Michael',
       when: { item_number: '9M52B2C4' },
       then: [
-        { type: 'assign_work', work_type: 'TEST', staff_id: 7 },
+        { type: 'assign_work', work_type: 'PICK', staff_id: 7 },
         { type: 'assign_work', work_type: 'PACK', staff_id: 12 },
       ],
     });
@@ -24,7 +24,7 @@ describe('AutomationRuleCreateBody', () => {
       AutomationRuleCreateBody.parse({
         name: 'bad',
         when: { sku: 'ONLY' },
-        then: [{ type: 'assign_work', work_type: 'TEST', staff_id: 1 }],
+        then: [{ type: 'assign_work', work_type: 'PICK', staff_id: 1 }],
       }),
     );
   });
@@ -44,7 +44,7 @@ describe('AutomationRuleCreateBody', () => {
       name: 'After identify',
       triggerKeys: ['identification.completed'],
       when: { item_number: '9M52B2C4' },
-      then: [{ type: 'assign_work', work_type: 'TEST', staff_id: 7 }],
+      then: [{ type: 'assign_work', work_type: 'PICK', staff_id: 7 }],
     });
     assert.deepEqual(parsed.triggerKeys, ['identification.completed']);
   });

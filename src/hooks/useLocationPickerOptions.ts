@@ -25,7 +25,11 @@ interface LocationPickerOption {
 
 const LOCATION_PICKER_QUERY_KEY = ['stock-pair-locations'] as const;
 
-export function useLocationPickerOptions(): {
+/**
+ * `enabled: false` holds the ~130 KB list until the picker actually opens —
+ * a record shows its bin as a fact and only a correction needs every bin.
+ */
+export function useLocationPickerOptions({ enabled = true }: { enabled?: boolean } = {}): {
   options: readonly LocationPickerOption[];
   loading: boolean;
 } {
@@ -37,6 +41,7 @@ export function useLocationPickerOptions(): {
       const json = (await res.json()) as { locations?: LocationOptionRow[] };
       return json.locations ?? [];
     },
+    enabled,
     staleTime: 5 * 60_000,
   });
 

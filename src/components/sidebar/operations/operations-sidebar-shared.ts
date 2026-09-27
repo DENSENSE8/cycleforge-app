@@ -80,6 +80,7 @@ export function parseJourneyDimension(raw: string | null | undefined): JourneyDi
 export const JOURNEY_STATION_ITEMS: HorizontalSliderItem[] = [
   { id: 'RECEIVING', label: 'Receiving' },
   { id: 'TECH', label: 'Testing' },
+  { id: 'PICK', label: 'Picking' },
   { id: 'PACK', label: 'Packing' },
   { id: 'SHIP', label: 'Shipping' },
   { id: 'FBA', label: 'Amazon Prep' },
@@ -91,7 +92,7 @@ export const JOURNEY_TYPE_ITEMS: { id: string; label: string }[] = [
   { id: 'TEST_PASS', label: 'Tested — Pass' },
   { id: 'TEST_FAIL', label: 'Tested — Fail' },
   { id: 'GRADED', label: 'Graded' },
-  { id: 'TRACKING_SCANNED', label: 'Testing scan' },
+  { id: 'PICK_SCANNED', label: 'Picked' },
   { id: 'SERIAL_ADDED', label: 'Serial added' },
   { id: 'PACK_COMPLETED', label: 'Packed' },
   { id: 'SHIP_CONFIRM', label: 'Shipped out' },

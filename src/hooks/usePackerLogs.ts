@@ -6,7 +6,6 @@ import { invalidatePackerCounts } from '@/lib/queries/station-cache-patch';
 import { getStationChannelName, safeChannelName } from '@/lib/realtime/channels';
 import { useAblyChannel } from './useAblyChannel';
 import { useAuth } from '@/contexts/AuthContext';
-import { useRefreshSignal } from '@/lib/refresh/bus';
 
 export interface PackerRecord {
   id: number;
@@ -44,11 +43,9 @@ export interface PackerRecord {
   ship_by_date?: string | null;
   deadline_at?: string | null;
   serial_number?: string | null;
-  tester_id?: number | null;
   tested_by?: number | null;
   test_date_time?: string | null;
   tested_by_name?: string | null;
-  tester_name?: string | null;
   packed_by_name?: string | null;
   packer_photos_url: any[];
   fnsku?: string | null;
@@ -189,9 +186,6 @@ export function usePackerLogs(packerId: number, options: UsePackerLogsOptions = 
   }, [queryClient, packerId]);
 
   // ── Full invalidation for manual refreshes ────────────────────────────────
-  useRefreshSignal('packer.logs', () => {
-    queryClient.invalidateQueries({ queryKey: ['packer-logs', packerId] });
-  });
 
   return query;
 }

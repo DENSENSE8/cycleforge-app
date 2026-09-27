@@ -10,15 +10,17 @@ const WA_ORDER_BY = `
 `;
 
 type OrderAssignmentSnapshot = {
-  testerId: number | null;
+  pickerId: number | null;
   packerId: number | null;
   deadlineAt: string | null;
 };
 
 /**
- * Latest TEST (tech + deadline) and PACK (packer) rows per order id for realtime broadcasts.
+ * Latest PICK (picker), PACK (packer) and TEST (deadline carrier) rows per
+ * order id for realtime broadcasts.
  */
 export async function getOrderAssignmentSnapshotsByOrderIds(
+  organizationId: string,
   orderIds: number[]
 ): Promise<Map<number, OrderAssignmentSnapshot>> {
   const unique = Array.from(
@@ -26,58 +28,60 @@ export async function getOrderAssignmentSnapshotsByOrderIds(
   );
   if (unique.length === 0) return new Map();
 
-  const [testQ, packQ] = await Promise.all([
-    pool.query<{
-      entity_id: number;
-      assigned_tech_id: number | null;
-      deadline_at: Date | string | null;
-    }>(
-      `SELECT DISTINCT ON (entity_id) entity_id, assigned_tech_id, deadline_at
+  const [pickQ, packQ, deadlineQ] = await Promise.all([
+    pool.query<{ entity_id: number; assigned_tech_id: number | null }>(
+      `SELECT DISTINCT ON (entity_id) entity_id, assigned_tech_id
        FROM work_assignments
-       WHERE entity_type = 'ORDER'
+       WHERE organization_id = $2
+         AND entity_type = 'ORDER'
          AND entity_id = ANY($1::int[])
-         AND work_type = 'TEST'
+         AND work_type = 'PICK'
          AND status IN ${ACTIVE_STATUSES}
        ${WA_ORDER_BY}`,
-      [unique]
+      [unique, organizationId]
     ),
     pool.query<{ entity_id: number; assigned_packer_id: number | null }>(
       `SELECT DISTINCT ON (entity_id) entity_id, assigned_packer_id
        FROM work_assignments
-       WHERE entity_type = 'ORDER'
+       WHERE organization_id = $2
+         AND entity_type = 'ORDER'
          AND entity_id = ANY($1::int[])
          AND work_type = 'PACK'
          AND status IN ${ACTIVE_STATUSES}
        ${WA_ORDER_BY}`,
-      [unique]
+      [unique, organizationId]
+    ),
+    pool.query<{ entity_id: number; deadline_at: Date | string | null }>(
+      `SELECT DISTINCT ON (entity_id) entity_id, deadline_at
+       FROM work_assignments
+       WHERE organization_id = $2
+         AND entity_type = 'ORDER'
+         AND entity_id = ANY($1::int[])
+         AND work_type = 'TEST'
+         AND status IN ${ACTIVE_STATUSES}
+       ${WA_ORDER_BY}`,
+      [unique, organizationId]
     ),
   ]);
 
   const map = new Map<number, OrderAssignmentSnapshot>();
   for (const id of unique) {
-    map.set(id, { testerId: null, packerId: null, deadlineAt: null });
+    map.set(id, { pickerId: null, packerId: null, deadlineAt: null });
   }
 
-  for (const row of testQ.rows) {
-    const id = Number(row.entity_id);
-    const cur = map.get(id);
-    if (!cur) continue;
-    cur.testerId =
-      row.assigned_tech_id != null && Number.isFinite(Number(row.assigned_tech_id))
-        ? Number(row.assigned_tech_id)
-        : null;
-    cur.deadlineAt =
-      row.deadline_at != null ? String(row.deadline_at) : null;
+  for (const row of pickQ.rows) {
+    const cur = map.get(Number(row.entity_id));
+    if (cur) cur.pickerId = row.assigned_tech_id != null ? Number(row.assigned_tech_id) : null;
   }
 
   for (const row of packQ.rows) {
-    const id = Number(row.entity_id);
-    const cur = map.get(id);
-    if (!cur) continue;
-    cur.packerId =
-      row.assigned_packer_id != null && Number.isFinite(Number(row.assigned_packer_id))
-        ? Number(row.assigned_packer_id)
-        : null;
+    const cur = map.get(Number(row.entity_id));
+    if (cur) cur.packerId = row.assigned_packer_id != null ? Number(row.assigned_packer_id) : null;
+  }
+
+  for (const row of deadlineQ.rows) {
+    const cur = map.get(Number(row.entity_id));
+    if (cur) cur.deadlineAt = row.deadline_at != null ? String(row.deadline_at) : null;
   }
 
   return map;

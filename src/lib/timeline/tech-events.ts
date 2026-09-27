@@ -33,6 +33,7 @@ const KIND_MAP: Record<string, { title: string; tone: TimelineTone }> = {
   SERIAL_ADDED: { title: 'Serial added', tone: 'muted' },
   FNSKU_SCANNED: { title: 'Amazon SKU scanned', tone: 'info' },
   TRACKING_SCANNED: { title: 'Tracking scanned', tone: 'info' },
+  PICK_SCANNED: { title: 'Picked', tone: 'info' },
   LABEL_PRINTED: { title: 'Label printed', tone: 'info' },
   PACK_COMPLETED: { title: 'Packed', tone: LIFECYCLE.packed.tone },
   PACK_SCAN: { title: 'Pack scan', tone: 'muted' },

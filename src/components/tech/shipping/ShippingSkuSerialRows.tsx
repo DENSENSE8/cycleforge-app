@@ -8,7 +8,7 @@ import { PO_LINE_HEADER_FACE } from '@/components/receiving/workspace/station-sc
 import { ProgressBadge } from '@/components/receiving/workspace/PoLineBadges';
 import { stripConditionPrefix } from '@/utils/upnext-helpers';
 import { initSkuSerialGroups, type SkuSerialGroup } from '@/lib/tech/sku-serial-groups';
-import type { ActiveStationOrder } from '@/hooks/useStationTestingController';
+import type { ActiveStationOrder } from '@/hooks/useDeskPickController';
 import { cn } from '@/utils/_cn';
 
 /**

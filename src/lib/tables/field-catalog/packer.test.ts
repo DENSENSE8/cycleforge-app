@@ -168,15 +168,6 @@ describe('resolvePackerSlotValue', () => {
     assert.ok(value.at, 'the test stamp must resolve');
   });
 
-  it('falls back from the scan actor to the assignee name', () => {
-    const value = resolvePackerSlotValue(
-      row({ tested_by_name: null, tester_name: 'Sam Assignee' }),
-      'packer.tested',
-    );
-    assert.ok(value && value.kind === 'stage_event');
-    assert.equal(value.who, 'Sam Assignee');
-  });
-
   it('resolves each remaining catalog field off the mapped row', () => {
     const r = row();
     assert.deepEqual(resolvePackerSlotValue(r, 'packer.order_id'), {
@@ -205,7 +196,7 @@ describe('resolvePackerSlotValue', () => {
   });
 
   it('honest absence: a row with no upstream test resolves no tester, not a guess', () => {
-    const untested = row({ tested_by: 0, tested_by_name: null, tester_name: null, test_date_time: null });
+    const untested = row({ tested_by: 0, tested_by_name: null, test_date_time: null });
     const step = resolvePackerSlotValue(untested, 'packer.tested');
     assert.ok(step && step.kind === 'stage_event');
     assert.equal(step.who, null);

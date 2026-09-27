@@ -66,11 +66,15 @@ function present(value: string | null | undefined): boolean {
 /** Evaluate G1–G3 against a snapshot of an order's facts. */
 export function evaluateReleaseGates(facts: ReleaseGateFacts): EvaluatedReleaseGates {
   const hasOrderNumber = present(facts.orderNumber);
-  const hasItemNumber = present(facts.itemNumber);
   const hasTracking = present(facts.trackingNumber);
+  const paired =
+    typeof facts.skuCatalogId === 'number' && Number.isFinite(facts.skuCatalogId);
+  // The product half of the triangle: a listing's item number, or — for an
+  // order with no listing (phone, walk-in) — the catalog SKU it is paired to.
+  const hasProduct = present(facts.itemNumber) || paired;
 
   const g1Missing: string[] = [];
-  if (!hasItemNumber) g1Missing.push('item number');
+  if (!hasProduct) g1Missing.push('item number (or a catalog SKU)');
   if (!hasOrderNumber) g1Missing.push('order number');
   if (!hasTracking) g1Missing.push('tracking number');
 
@@ -80,9 +84,6 @@ export function evaluateReleaseGates(facts: ReleaseGateFacts): EvaluatedReleaseG
 
   const labelLinked = facts.shippingLabelLinked === true;
   const labelPurchased = facts.shippingLabelPurchased === true;
-
-  const paired =
-    typeof facts.skuCatalogId === 'number' && Number.isFinite(facts.skuCatalogId);
 
   const gates: EvaluatedReleaseGate[] = [
     {

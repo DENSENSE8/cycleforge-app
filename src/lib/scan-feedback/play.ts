@@ -52,6 +52,27 @@ export function playScanTone(kind: ScanFeedbackKind): void {
   }
 }
 
+/**
+ * One-note pass / fail cue for an eyes-down verdict (the wipe bench,
+ * station.md §6 — "pair the visual pass/fail with an audio confirmation").
+ * Best-effort: an autoplay-blocked browser silently no-ops.
+ */
+export function playVerdictCue(kind: 'pass' | 'fail'): void {
+  const ctx = getCtx();
+  if (!ctx) return;
+  const osc = ctx.createOscillator();
+  const gain = ctx.createGain();
+  osc.connect(gain).connect(ctx.destination);
+  osc.type = 'sine';
+  osc.frequency.value = kind === 'pass' ? 880 : 220;
+  const now = ctx.currentTime;
+  gain.gain.setValueAtTime(0.0001, now);
+  gain.gain.exponentialRampToValueAtTime(0.16, now + 0.01);
+  gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.22);
+  osc.start(now);
+  osc.stop(now + 0.24);
+}
+
 /** Fire a best-effort haptic pulse (no-op where the Vibration API is unsupported). */
 export function vibrateScan(kind: ScanFeedbackKind): void {
   if (typeof navigator === 'undefined' || typeof navigator.vibrate !== 'function') return;
@@ -71,6 +92,22 @@ export function vibratePress(): void {
   if (typeof navigator === 'undefined' || typeof navigator.vibrate !== 'function') return;
   try {
     navigator.vibrate(40);
+  } catch {
+    /* vibrate is best-effort; ignore unsupported hardware */
+  }
+}
+
+/** Read-outcome buzz for a phone serial read (repair scan companion): saved · duplicate · refused. */
+const READ_BUZZ: Record<'saved' | 'duplicate' | 'refused', number | number[]> = {
+  saved: 40,
+  duplicate: [60, 80, 60],
+  refused: [180],
+};
+
+export function vibrateRead(kind: keyof typeof READ_BUZZ): void {
+  if (typeof navigator === 'undefined' || typeof navigator.vibrate !== 'function') return;
+  try {
+    navigator.vibrate(READ_BUZZ[kind]);
   } catch {
     /* vibrate is best-effort; ignore unsupported hardware */
   }

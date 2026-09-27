@@ -78,10 +78,8 @@ export default function SignUpPage() {
         setSubmitting(false);
         return;
       }
-      const data = await r.json().catch(() => ({}));
-      const base = (data as { defaultHomePath?: string }).defaultHomePath || '/';
-      const target = base === '/' ? '/?welcome=1' : base;
-      router.replace(target);
+      const data = (await r.json().catch(() => ({}))) as { redirectTo?: string };
+      router.replace(data.redirectTo || '/');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Network error.');
       setSubmitting(false);

@@ -31,7 +31,7 @@ export type AutomationTriggerKey = (typeof AUTOMATION_TRIGGER_KEYS)[number];
 export const AutomationAssignAction = z
   .object({
     type: z.literal('assign_work'),
-    work_type: z.enum(['TEST', 'PACK']),
+    work_type: z.enum(['PICK', 'PACK']),
     staff_id: z.number().int().positive(),
     backup_staff_id: z.number().int().positive().optional(),
   })

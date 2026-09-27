@@ -13,7 +13,7 @@ import { dispatchSelectLine } from '@/components/station/receiving-lines-table-h
 import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
 import type { PickupLine } from '@/components/receiving/pickup/pickup-lines';
 import { pickupLineNeedsProcess } from '@/lib/local-pickup/order-status';
-import { TESTING_RECEIVING_LINES_API } from '@/lib/surface-isolation';
+import { QC_RECEIVING_LINES_API } from '@/lib/surface-isolation';
 import { unshippedOrdersQuery } from '@/lib/queries/dashboard-queries';
 import type { RSRecord } from '@/lib/neon/repair-service-queries';
 import type { ShippedOrder } from '@/types/orders';
@@ -81,7 +81,7 @@ async function fetchNeedsTestLines(): Promise<ReceivingLineRow[]> {
     view: 'needs-test',
     return_scope: 'all',
   });
-  const res = await fetch(`${TESTING_RECEIVING_LINES_API}?${params.toString()}`);
+  const res = await fetch(`${QC_RECEIVING_LINES_API}?${params.toString()}`);
   if (!res.ok) throw new Error('testing lines fetch failed');
   const data = (await res.json()) as { receiving_lines?: ReceivingLineRow[] };
   return Array.isArray(data.receiving_lines) ? data.receiving_lines : [];

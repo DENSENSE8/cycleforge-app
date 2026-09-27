@@ -2,6 +2,7 @@
 
 /** WorkspaceNotesCard — the auto-saving carton Notes composer. */
 
+import { resolveSkuIdentityTitle } from '@/lib/sku/sku-identity-law';
 import type { ReactNode } from 'react';
 import { LineNotesCard } from './LineNotesCard';
 import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
@@ -114,7 +115,7 @@ export function WorkspaceNotesCard({
         onNoteTyped={onNoteTyped}
         notes={c.itemNote}
         overallZohoNotes={row.receiving_zoho_notes ?? null}
-        skuTitle={row.zoho_item_title || row.item_name || null}
+        skuTitle={resolveSkuIdentityTitle(row) || null}
         unitPrice={row.unit_price ?? null}
         zendeskTicket={c.zendeskTrimmed || row.zendesk_ticket || null}
         zendeskProviderTicketId={c.providerTicketId}

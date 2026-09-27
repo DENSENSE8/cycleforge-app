@@ -15,11 +15,11 @@ function asStaffColorHex(raw: string | null | undefined): string | null {
  */
 export function shippedOrderAsWorkRow(row: ShippedOrder): WorkOrderRow {
   const projected = row as ShippedOrder & {
-    has_tech_scan?: boolean | null;
+    has_pick_scan?: boolean | null;
     pack_activity_at?: string | null;
   };
   const orderId = String(row.order_id || '').trim();
-  const assigned = row.tester_id != null || row.packer_id != null;
+  const assigned = row.picker_id != null || row.packer_id != null;
   return {
     id: `ORDER:${row.id}`,
     entityType: 'ORDER',
@@ -30,9 +30,10 @@ export function shippedOrderAsWorkRow(row: ShippedOrder): WorkOrderRow {
     subtitle: '',
     recordLabel: orderId || `#${row.id}`,
     sourcePath: `/m/orders/${encodeURIComponent(orderId || String(row.id))}`,
-    techId: row.tester_id ?? null,
-    techName: row.tester_name ?? null,
-    techColorHex: asStaffColorHex(row.tester_color_hex),
+    // The phone's Pick mark: the ORDER/PICK assignee.
+    techId: row.picker_id ?? null,
+    techName: row.picker_name ?? null,
+    techColorHex: asStaffColorHex(row.picker_color_hex),
     packerId: row.packer_id ?? null,
     packerName: row.packer_name ?? row.packed_by_name ?? null,
     packerColorHex: asStaffColorHex(row.packer_color_hex),
@@ -58,7 +59,7 @@ export function shippedOrderAsWorkRow(row: ShippedOrder): WorkOrderRow {
     saleAmount: row.sale_amount ?? null,
     currency: row.currency ?? null,
     imageUrl: String(row.catalog_image_url || '').trim() || null,
-    hasTechScan: Boolean(projected.has_tech_scan),
+    hasPickScan: Boolean(projected.has_pick_scan),
     packedAt: row.packed_at ?? projected.pack_activity_at ?? null,
     dockStagedAt: row.dock_staged_at ?? null,
     storageLocations: row.storage_locations ?? null,

@@ -1,6 +1,7 @@
 /** Outbound desk VIEW filters — the two lenses the desk sidebar adds on top of the existing queues: */
 
 import { DESK_PAIR_PARAM, DESK_QUEUE_PARAM, type DeskCountKey } from '@/lib/outbound/desk-views';
+import { isDateKey, parseDateKey } from '@/utils/date';
 
 export type DeskPairFilter = 'po';
 export type DeskQueueFilter = 'pick';
@@ -28,6 +29,52 @@ export function readDeskViewFilters(params: Pick<URLSearchParams, 'get'>): {
   return {
     pair: parseDeskPairParam(params.get(DESK_PAIR_PARAM)),
     queue: parseDeskQueueParam(params.get(DESK_QUEUE_PARAM)),
+  };
+}
+
+/**
+ * Unshipped-desk refinements (`/api/orders` and the outbound nav facets read
+ * them through this one parse). Absent or invalid ⇒ `null` = no filter.
+ * Dates are warehouse civil days (`YYYY-MM-DD`, inclusive).
+ */
+export interface DeskRefinements {
+  /** `?packedBy=` — the latest live PACK assignee. */
+  packedBy: number | null;
+  /** `?pickerId=` — the latest live ORDER/PICK assignee (the order-desk operator). */
+  pickerId: number | null;
+  /** `?pickedBy=` — the staffer who actually picked the order. */
+  pickedBy: number | null;
+  /** `?orderFrom=` / `?orderTo=` — order date. */
+  orderFrom: string | null;
+  orderTo: string | null;
+  /** `?shipByFrom=` / `?shipByTo=` — ship-by deadline; either bound drops orders without one. */
+  shipByFrom: string | null;
+  shipByTo: string | null;
+}
+
+/** Positive integer id (digits only), else `null`. */
+export function parseStaffIdParam(raw: string | null | undefined): number | null {
+  const value = String(raw ?? '').trim();
+  if (!/^\d+$/.test(value)) return null;
+  const n = Number(value);
+  return Number.isSafeInteger(n) && n > 0 ? n : null;
+}
+
+/** Valid `YYYY-MM-DD` calendar day, else `null`. */
+export function parseDayParam(raw: string | null | undefined): string | null {
+  const value = String(raw ?? '').trim();
+  return isDateKey(value) && parseDateKey(value) ? value : null;
+}
+
+export function readDeskRefinements(params: Pick<URLSearchParams, 'get'>): DeskRefinements {
+  return {
+    packedBy: parseStaffIdParam(params.get('packedBy')),
+    pickerId: parseStaffIdParam(params.get('pickerId')),
+    pickedBy: parseStaffIdParam(params.get('pickedBy')),
+    orderFrom: parseDayParam(params.get('orderFrom')),
+    orderTo: parseDayParam(params.get('orderTo')),
+    shipByFrom: parseDayParam(params.get('shipByFrom')),
+    shipByTo: parseDayParam(params.get('shipByTo')),
   };
 }
 

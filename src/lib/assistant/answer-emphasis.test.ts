@@ -17,11 +17,11 @@ const ids = answerCopyIds([
       { Bin: 'C-03-12-3', Room: 'Zone 3', Qty: 41 },
       { Bin: 'C-03-16-3', Room: 'Zone 3', Qty: 1 },
     ],
-    product: { title: 'Bose Wave III Remote', ids: [{ label: 'SKU', value: '00066-P-2' }] },
+    identity: { title: 'Bose Wave III Remote', ids: [{ label: 'SKU', value: '00066-P-2' }] },
   },
 ]);
 
-test('ids come from the product header and id columns only', () => {
+test('ids come from the identity header and id columns only', () => {
   assert.deepEqual([...ids.entries()].sort(), [
     ['00066-P-2', 'SKU'],
     ['C-03-12-3', 'Bin'],

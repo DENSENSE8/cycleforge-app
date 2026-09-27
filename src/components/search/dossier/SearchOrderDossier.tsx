@@ -1,11 +1,17 @@
 'use client';
 
+/**
+ * `/search?sel=order:` on the phone — the same record grammar as every other
+ * search record (items → timeline · facts → related), stacked in one column.
+ * The desk opens the full `OrderRecordView` instead (`SearchOrderRecord`).
+ */
+
 import { useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Search } from '@/components/Icons';
 import { EmptyState } from '@/design-system/primitives';
 import { useSearchPrimaryPaintOptional } from '@/components/search/search-primary-paint-context';
-import { SearchDossierFrame } from '@/components/search/dossier/SearchDossierFrame';
+import { SearchEntityRecord } from '@/components/search/dossier/SearchEntityRecord';
 import {
   searchOrderByIdResolveQuery,
   searchOrderResolveQuery,
@@ -15,16 +21,31 @@ import {
   clearGlobalSearchPending,
   setGlobalSearchPending,
 } from '@/lib/global-search-pending';
-import { shippedOrderToItemRecords } from '@/lib/item-record/shipped-order-item-record';
-import { presentFindDossier } from '@/lib/search/find-dossier-model';
+import { ordersCompoundView } from '@/lib/orders/orders-compound-view';
 import { presentOrderFindEvents } from '@/lib/search/find-events-from-sources';
 import { toast } from '@/lib/toast';
 import {
-  joinMeta,
   orderDossierFindings,
   orderDossierHandoffs,
   presentFact,
+  type SearchDossierFact,
+  type SearchDossierLink,
 } from '@/lib/search/search-dossier-model';
+import { getCurrentPSTDateKey } from '@/utils/date';
+
+const EMPTY_TIMELINE = {
+  events: [],
+  lifecycle: [],
+  stationEvents: [],
+  threadMessages: [],
+  orderNotes: [],
+  signals: [],
+  carrierEvents: [],
+  rmaEvents: [],
+  unitPhotos: [],
+  pickSessions: [],
+  packEvents: [],
+};
 
 export function SearchOrderDossier({
   orderId,
@@ -51,11 +72,9 @@ export function SearchOrderDossier({
       ? 'loading'
       : resolved?.status === 'ok'
         ? 'ok'
-        : resolved?.status === 'fba'
-          ? 'fba'
-          : resolveQuery.isError
-            ? 'notfound'
-            : (resolved?.status ?? 'loading');
+        : resolveQuery.isError
+          ? 'notfound'
+          : (resolved?.status ?? 'loading');
   const order = resolved?.status === 'ok' ? resolved.order : null;
   const timelineQuery = useQuery({
     ...orderTimelineQuery(order?.id ?? 0),
@@ -85,18 +104,6 @@ export function SearchOrderDossier({
     return <div className="min-h-0 flex-1" aria-busy />;
   }
 
-  if (resolveStatus === 'fba') {
-    return (
-      <div className="flex h-full min-h-0 flex-1 items-center justify-center bg-surface-card">
-        <EmptyState
-          icon={<Search className="h-6 w-6 text-text-faint" />}
-          title="FBA order"
-          description="Amazon fulfills this order. Open the FBA desk for channel-specific detail."
-        />
-      </div>
-    );
-  }
-
   if (resolveStatus === 'notfound' || !order) {
     return (
       <div className="flex h-full min-h-0 flex-1 items-center justify-center bg-surface-card">
@@ -115,7 +122,7 @@ export function SearchOrderDossier({
     sku: order.sku,
     sku_catalog_id: null,
   });
-  const items = shippedOrderToItemRecords(order);
+  const view = ordersCompoundView(order, { stateLabel: null, delayDays: null, todayKey: getCurrentPSTDateKey() });
   const status =
     presentFact(order.latest_status_label) ||
     presentFact(order.shipment_status) ||
@@ -125,64 +132,63 @@ export function SearchOrderDossier({
   const qty = presentFact(order.quantity);
   const marketplaceId = presentFact(order.order_id);
   const itemNumber = presentFact(order.item_number);
-  const title = presentFact(order.product_title) || marketplaceId || `Order ${order.id}`;
-  const facts = [
-    { id: 'status', label: 'Status', value: status },
-    ...(marketplaceId ? [{ id: 'order', label: 'Order', value: marketplaceId }] : []),
-    ...(itemNumber ? [{ id: 'item-number', label: 'Item number', value: itemNumber }] : []),
-    ...(sku ? [{ id: 'sku', label: 'SKU', value: sku }] : []),
-    ...(qty ? [{ id: 'qty', label: 'Qty', value: qty }] : []),
-    ...(tracking ? [{ id: 'tracking', label: 'Tracking', value: tracking }] : []),
+  const platform = presentFact(order.account_source);
+  const carrier = presentFact(order.carrier);
+  const title = presentFact(view.title) || presentFact(order.product_title) || marketplaceId || `Order ${order.id}`;
+  const facts: SearchDossierFact[] = [
+    ...(marketplaceId ? [{ id: 'order', label: 'Order #', value: marketplaceId, copy: true }] : []),
+    ...(platform ? [{ id: 'platform', label: 'Platform', value: platform }] : []),
+    ...(tracking ? [{ id: 'tracking', label: 'Tracking #', value: tracking, copy: true }] : []),
+    ...(carrier ? [{ id: 'carrier', label: 'Carrier', value: carrier }] : []),
+    ...(itemNumber ? [{ id: 'item-number', label: 'Item #', value: itemNumber, copy: true }] : []),
   ];
-  const handoffs = orderDossierHandoffs(order.id, findings.length > 0);
-  const streamEvents = presentOrderFindEvents(timelineQuery.data ?? {
-    events: [],
-    lifecycle: [],
-    stationEvents: [],
-    threadMessages: [],
-    orderNotes: [],
-    signals: [],
-    carrierEvents: [],
-    rmaEvents: [],
-    unitPhotos: [],
-    pickSessions: [],
-    packEvents: [],
-  }, {
-    quantity: order.quantity,
-    isShipped: order.is_shipped,
-    createdAt: order.created_at,
-    tracking,
-    packedAt: order.packed_at,
-    packedByName: order.packed_by_name,
-  });
-  const dossier = presentFindDossier({
-    entityType: 'order',
-    id: order.id,
-    title,
-    status,
-    facts,
-    findings,
-    handoffs,
-    events: streamEvents,
-  });
+  const related: SearchDossierLink[] = sku
+    ? [{ id: `sku:${sku}`, label: 'SKU', value: sku, target: { query: sku } }]
+    : [];
+  const unitPhotos = [...(timelineQuery.data?.unitPhotos ?? [])].sort(
+    (a, b) => (b.at ? Date.parse(b.at) : 0) - (a.at ? Date.parse(a.at) : 0),
+  );
 
   return (
-    <SearchDossierFrame
+    <SearchEntityRecord
       entity="Order"
+      reference={marketplaceId || `#${order.id}`}
       title={title}
+      status={status}
       onBack={onBack}
-      outline={dossier.outline}
       findings={findings}
+      lines={[
+        {
+          id: order.id,
+          title,
+          imageUrl: view.thumbUrl ?? null,
+          facts: [
+            ...(sku ? [{ label: 'SKU', value: sku }] : []),
+            ...(qty ? [{ label: 'Qty', value: qty }] : []),
+            ...(presentFact(order.condition) ? [{ label: 'Condition', value: order.condition as string }] : []),
+          ],
+        },
+      ]}
+      linesLabel="item"
+      emptyLines="No items on this order."
+      events={presentOrderFindEvents(timelineQuery.data ?? EMPTY_TIMELINE, {
+        quantity: order.quantity,
+        isShipped: order.is_shipped,
+        createdAt: order.created_at,
+        tracking,
+        packedAt: order.packed_at,
+        packedByName: order.packed_by_name,
+      })}
+      emptyEvents="No history on this order yet."
       facts={facts}
-      events={dossier.events}
-      lines={items.map((item) => ({
-        id: item.id,
-        title: item.title,
-        meta: joinMeta([item.sku, item.quantity?.expected != null ? `qty ${item.quantity.expected}` : null, item.conditionGrade]),
+      related={related}
+      handoffs={orderDossierHandoffs(order.id, findings.length > 0)}
+      photos={unitPhotos.map((photo) => ({
+        id: String(photo.photoId),
+        imgUrl: photo.thumbUrl,
+        fullUrl: photo.fullUrl,
+        alt: `${photo.source.replace('_', ' ')} photo`,
       }))}
-      emptyLines="No chronology on this order yet."
-      handoffs={handoffs}
     />
   );
 }
-

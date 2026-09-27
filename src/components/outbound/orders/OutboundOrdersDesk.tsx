@@ -5,11 +5,7 @@
 import { Suspense, useCallback, useEffect, useMemo, useState } from 'react';
 import dynamic from 'next/dynamic';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { useQueryClient, type QueryClient } from '@tanstack/react-query';
-import { BootGate } from '@/components/boot/BootGate';
-import { BootSplash } from '@/components/boot/BootSplash';
-import { consumeBootSplash } from '@/lib/boot-flag';
-import { warmActiveView } from '@/lib/queries/dashboard-warm';
+import { useQueryClient } from '@tanstack/react-query';
 import { useDashboardSearchController } from '@/hooks/useDashboardSearchController';
 import { useDashboardSelectedOrder } from '@/hooks/useDashboardSelectedOrder';
 import { useOrderRailSelection } from '@/hooks/useOrderRailSelection';
@@ -18,7 +14,8 @@ import { useDashboardRealtime } from '@/hooks/useDashboardRealtime';
 import { useSupportOrderOpenParam } from '@/hooks/useSupportOrderOpenParam';
 import { DashboardOrdersView } from '@/components/dashboard/DashboardOrdersView';
 import { OrdersViewChromeProvider } from '@/components/outbound/orders/orders-view-chrome-context';
-import { OrderIntakeOverlay } from '@/components/outbound/orders/intake/OrderIntakeOverlay';
+import { OrderIntakeEntry } from '@/components/outbound/orders/intake/OrderIntakeEntry';
+import { OrderListLeadProvider } from '@/components/outbound/orders/intake/order-list-lead';
 import { ToShipPlatformSyncDialog } from '@/components/outbound/orders/ToShipPlatformSyncDialog';
 import { OrderPasteIntake } from '@/components/outbound/orders/OrderPasteIntake';
 import { useTableImportParam } from '@/hooks/useTableImportParam';
@@ -253,30 +250,27 @@ function OutboundOrdersDeskContent({
   return (
     <OrdersSyncRunProvider value={runSurface}>
     <OrdersViewChromeProvider>
+    <OrderListLeadProvider
+      lead={
+        // The hand-entry intake opens INLINE at the top of the order list
+        // (owner 2026-09-27: no dialog). The open record stays the ledger's own.
+        !isSupportContext &&
+        parsePaperworkOrderId(searchParams.get(PAPERWORK_PARAM)) == null &&
+        showIngestRail &&
+        ingestLeaf === 'triage' &&
+        !importActive ? (
+          <OrderIntakeEntry orderId={triageOrderId} onClose={closeIntakeForm} onOrderCreated={bindTriageOrder} />
+        ) : null
+      }
+    >
       <DashboardOrdersView
         orderView={orderView}
         onSelectView={setOrderView}
         selectionEnabled={selectionEnabled}
         selectionOverlays={selectionOverlays}
         onPrimaryPainted={onPrimaryPainted}
-        stageOverlay={
-          // The open record is the ledger's own (`OrderRecordView` through
-          // `DeskRecordPlane`), never this slot or the right rail. The stage
-          // only ever carries the hand-entry intake.
-          !isSupportContext &&
-          parsePaperworkOrderId(searchParams.get(PAPERWORK_PARAM)) == null &&
-          showIngestRail &&
-          ingestLeaf === 'triage' &&
-          !importActive ? (
-            <OrderIntakeOverlay
-              open
-              orderId={triageOrderId}
-              onClose={closeIntakeForm}
-              onOrderCreated={bindTriageOrder}
-            />
-          ) : null
-        }
       />
+    </OrderListLeadProvider>
       {!isSupportContext ? (
         <>
           <ToShipPlatformSyncDialog open={platformSyncOpen} onOpenChange={setPlatformSyncOpen} />
@@ -287,18 +281,6 @@ function OutboundOrdersDeskContent({
       ) : null}
     </OrdersViewChromeProvider>
     </OrdersSyncRunProvider>
-  );
-}
-
-function OutboundOrdersBootGate({ children }: { children: React.ReactNode }) {
-  const prefetch = useCallback(
-    (queryClient: QueryClient) => warmActiveView(queryClient, window.location.search),
-    [],
-  );
-  return (
-    <BootGate prefetch={prefetch} shouldHold={consumeBootSplash} splash={<BootSplash />}>
-      {children}
-    </BootGate>
   );
 }
 
@@ -337,10 +319,8 @@ export function OutboundOrdersDesk({
   onPrimaryPainted?: () => void;
 } = {}) {
   return (
-    <Suspense fallback={<BootSplash />}>
-      <OutboundOrdersBootGate>
-        <OutboundOrdersDeskContent onPrimaryPainted={onPrimaryPainted} />
-      </OutboundOrdersBootGate>
+    <Suspense fallback={null}>
+      <OutboundOrdersDeskContent onPrimaryPainted={onPrimaryPainted} />
     </Suspense>
   );
 }

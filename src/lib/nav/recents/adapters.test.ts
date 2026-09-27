@@ -77,7 +77,7 @@ test('a bench scan links to its order, else its FNSKU, else the Picker history s
   assert.deepEqual([order?.entityType, order?.entityId, order?.href], ['order', '4411', '/shipping/orders?openOrderId=4411']);
   assert.equal(order?.title, 'Order 114-22');
   assert.deepEqual([fnsku?.entityType, fnsku?.href], ['fnsku', '/shipping/fba?q=X00ABC123']);
-  assert.deepEqual([raw?.entityType, raw?.href], ['tech_scan', '/test?ship=history&search=9400+1111']);
+  assert.deepEqual([raw?.entityType, raw?.href], ['tech_scan', '/pick?ship=history&search=9400+1111']);
 });
 
 test('a pack opens on Packing Review (with its order when known)', () => {

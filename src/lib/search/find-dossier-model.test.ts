@@ -1,8 +1,6 @@
 /**
- * FIND case-file model — outline omit-zeros, newest-first, tracking is not a sel type.
- *
- * Callers: node:test runner only. No HTTP API. No DB schema.
- * User: start Session A / Phase 0 (law, model, guards; no paint).
+ * FIND record events — the kind catalog, newest-first, tracking is not a sel
+ * type, and the timeline rows a `/search` record paints.
  */
 
 import assert from 'node:assert/strict';
@@ -11,14 +9,9 @@ import { isUiEntityType } from '@/lib/search/search-hit';
 import { parseSearchSel } from '@/lib/search/search-selection';
 import {
   FIND_EVENT_KINDS,
-  FIND_OUTLINE_CHIPLESS_KINDS,
-  FIND_OUTLINE_LABEL,
-  adapterOutline,
   eventsNewestFirst,
-  filterEventsByKind,
+  findEventsToTimelineItems,
   isFindEventKind,
-  outlineFromEvents,
-  presentFindDossier,
   type FindEvent,
 } from './find-dossier-model';
 
@@ -47,16 +40,6 @@ describe('FIND event kinds', () => {
     }
     assert.equal(isFindEventKind('carrier'), true);
   });
-
-  it('keeps qty and custody off the rail, and never chips hop by default', () => {
-    // The rail is a filter, not a table of contents. `hop` is absent from the
-    // chipless set because it must APPEAR — but only via a non-zero count,
-    // which only a real ship→return produces.
-    assert.deepEqual([...FIND_OUTLINE_CHIPLESS_KINDS], ['qty', 'custody']);
-    assert.equal(FIND_OUTLINE_CHIPLESS_KINDS.includes('hop'), false);
-    assert.equal(FIND_OUTLINE_LABEL.hop, 'Hops');
-    assert.equal(FIND_OUTLINE_LABEL.custody, 'Custody');
-  });
 });
 
 describe('tracking paste is not a FIND entity type', () => {
@@ -76,39 +59,6 @@ describe('tracking paste is not a FIND entity type', () => {
   });
 });
 
-describe('outlineFromEvents', () => {
-  it('omits kinds with count 0 and keeps catalog order', () => {
-    const events = [
-      ev({ id: 'h', kind: 'custody', at: '2026-09-01T00:00:00.000Z' }),
-      ev({
-        id: 'c',
-        kind: 'carrier',
-        at: '2026-09-02T00:00:00.000Z',
-        children: [ev({ id: 'c1', kind: 'custody', at: '2026-09-02T01:00:00.000Z' })],
-      }),
-      ev({ id: 'q', kind: 'qty', at: '2026-08-01T00:00:00.000Z' }),
-    ];
-    assert.deepEqual(outlineFromEvents(events), [
-      { kind: 'qty', count: 1 },
-      { kind: 'custody', count: 2 },
-      { kind: 'carrier', count: 1 },
-    ]);
-  });
-
-  it('empty stream yields an empty outline', () => {
-    assert.deepEqual(outlineFromEvents([]), []);
-  });
-});
-
-describe('adapterOutline', () => {
-  it('omits zero counts and does not invent hops', () => {
-    assert.deepEqual(adapterOutline({ note: 1, hop: 0, qty: 2 }), [
-      { kind: 'qty', count: 2 },
-      { kind: 'note', count: 1 },
-    ]);
-  });
-});
-
 describe('eventsNewestFirst', () => {
   it('sorts newest-first without dropping children', () => {
     const events = [
@@ -123,52 +73,36 @@ describe('eventsNewestFirst', () => {
   });
 });
 
-describe('presentFindDossier', () => {
-  it('fills outline from the sorted stream', () => {
-    const dossier = presentFindDossier({
-      entityType: 'order',
-      id: 13924,
-      title: '113-1397006-0292212',
-      status: 'Shipped',
-      facts: [{ id: 'status', label: 'Status', value: 'Shipped' }],
-      findings: [],
-      handoffs: [{ href: '/shipping/orders?open=13924', label: 'Open on To-ship', primary: true }],
-      events: [
-        ev({ id: 'older', kind: 'qty', at: '2026-01-01T00:00:00.000Z' }),
-        ev({ id: 'newer', kind: 'evidence', at: '2026-09-01T00:00:00.000Z' }),
-      ],
-    });
-    assert.deepEqual(
-      dossier.events.map((e) => e.id),
-      ['newer', 'older'],
-    );
-    assert.deepEqual(dossier.outline, [
-      { kind: 'qty', count: 1 },
-      { kind: 'evidence', count: 1 },
-    ]);
-    assert.equal(filterEventsByKind(dossier.events, 'qty')[0]?.id, 'older');
-    assert.equal(filterEventsByKind(dossier.events, null).length, 2);
-  });
-});
-
-describe('filterEventsByKind', () => {
-  it('lifts nested hops when the filter is hop', () => {
-    const events = [
+describe('findEventsToTimelineItems', () => {
+  it('lifts carrier sub-events into their own rows, newest-first', () => {
+    const items = findEventsToTimelineItems([
+      ev({ id: 'scan', kind: 'custody', at: '2026-09-01T00:00:00.000Z' }),
       ev({
-        id: 'c',
+        id: 'ship',
         kind: 'carrier',
         at: '2026-09-02T00:00:00.000Z',
-        children: [ev({ id: 'c1', kind: 'custody', at: '2026-09-02T01:00:00.000Z' })],
+        children: [ev({ id: 'delivered', kind: 'custody', at: '2026-09-04T00:00:00.000Z' })],
       }),
-      ev({ id: 'h', kind: 'custody', at: '2026-09-01T00:00:00.000Z' }),
-    ];
-    assert.deepEqual(
-      filterEventsByKind(events, 'custody').map((e) => e.id),
-      ['c1', 'h'],
-    );
-    assert.deepEqual(
-      filterEventsByKind(events, 'carrier').map((e) => e.id),
-      ['c'],
-    );
+    ]);
+    assert.deepEqual(items.map((item) => item.id), ['delivered', 'ship', 'scan']);
+  });
+
+  it('keeps who, the bound identifiers, the qty ledger and an open exception', () => {
+    const [row] = findEventsToTimelineItems([
+      ev({
+        id: 'x',
+        kind: 'exception',
+        at: '2026-09-01T00:00:00.000Z',
+        title: 'Short received',
+        actor: 'Tuan',
+        stationCaption: 'Unbox',
+        qty: { ordered: 3, received: 2 },
+        bind: { serial: 'SN1', tracking: '1Z9' },
+      }),
+    ]);
+    assert.equal(row?.actor, 'Tuan');
+    assert.equal(row?.subtitle, 'Unbox · Ordered 3 · Received 2');
+    assert.deepEqual(row?.refs?.map((ref) => ref.value), ['SN1', '1Z9']);
+    assert.deepEqual(row?.badges, [{ label: 'Open exception', tone: 'warning' }]);
   });
 });

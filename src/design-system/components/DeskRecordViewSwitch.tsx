@@ -20,11 +20,11 @@ import { ColumnsOne, ColumnsTwo } from '@/components/Icons';
 import { LayoutGroup, motion, motionRole, useReducedMotion } from '@/design-system/motion';
 import { focusRing } from '@/design-system/tokens/focus-ring';
 import { cn } from '@/utils/_cn';
-import { useDeskStageOptional } from './DeskStageContext';
+import { DESK_SPLIT_SHORTCUT_HINT, useDeskStageOptional } from './DeskStageContext';
 
 const VIEWS = [
-  { view: 'in-place', label: 'In place', title: 'In place — the record opens where the list is', Icon: ColumnsOne },
-  { view: 'split', label: 'Split', title: 'Split — the list on the left, the record on the right', Icon: ColumnsTwo },
+  { view: 'in-place', label: 'In place', title: `In place — the record opens where the list is (${DESK_SPLIT_SHORTCUT_HINT})`, Icon: ColumnsOne },
+  { view: 'split', label: 'Split', title: `Split — the list on the left, the record on the right (${DESK_SPLIT_SHORTCUT_HINT})`, Icon: ColumnsTwo },
 ] as const;
 
 export function DeskRecordViewSwitch({ className }: { className?: string }) {

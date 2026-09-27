@@ -269,31 +269,38 @@ export const SOURCING_ROUTE_PARAMS = defineRouteParams({
   carries: WORKBENCH_CARRIES,
 });
 
-/** `/test` — the Testing station's Workbench half (Shipping | Testing). */
+/**
+ * `/test` — the Quality Control bench. One mode: a legacy `?view=testing` is
+ * not declared, so the boundary parse drops it and the bench still paints.
+ */
 export const TEST_ROUTE_PARAMS = defineRouteParams({
   route: '/test',
   owns: {
-    /**
-     * Top-level pane. Absent = Shipping (the default), so it is not listed.
-     * `testing-history` is a legacy spelling `useTechRightView` still folds into
-     * `testing`; kept declared so an old link survives the boundary parse.
-     */
-    view: paramEnum(['testing', 'testing-history', 'receiving'] as const),
     /** Workspace search box (Testing history + the KPI strip both read it). */
     search: paramText,
-    /** Shipping-mode workspace tab — composes the tab SoT, never a re-typed list. */
-    ship: paramRoundTrip(parseShippingWorkspaceTab),
-    /** Testing-mode workspace tab — same, from its own SoT. */
+    /** Workbench tab — composes the tab SoT, never a re-typed list. */
     testTab: paramRoundTrip(parseTestingWorkspaceTab),
-    /** Armed packing DESK/STAGING filter (Ready-to-Pack placement). */
-    packStation: paramPositiveInt,
-    /** Any packing-station placement filter. */
-    packPlaced: paramFlag,
     /**
      * Station composer destination — `label` (default, omitted) · `ticket`.
      * Shared with Unbox / Arrival (`SHARED_OWNED_KEYS.composerMode`).
      */
     composerMode: paramEnum(['unbox', 'ticket', 'label'] as const),
+  },
+  carries: WORKBENCH_CARRIES,
+});
+
+/** `/pick` — the Picker desk: scan band + Pending / Urgent / History workspace. */
+export const PICK_ROUTE_PARAMS = defineRouteParams({
+  route: '/pick',
+  owns: {
+    /** Scan-history search (a tech-scan recent lands on `?ship=history&search=`). */
+    search: paramText,
+    /** Workspace tab — composes the tab SoT, never a re-typed list. */
+    ship: paramRoundTrip(parseShippingWorkspaceTab),
+    /** Armed packing DESK/STAGING filter (Picker placement). */
+    packStation: paramPositiveInt,
+    /** Any packing-station placement filter. */
+    packPlaced: paramFlag,
     /** The Pending / Urgent queue is `UnshippedTable` + its filter menu (`?ship=urgent` writes `attention=1`). */
     ...TO_SHIP_QUEUE_FACET_PARAMS,
     /** New-order entry overlay (`useNewOrderParam`). */
@@ -591,6 +598,7 @@ export const QUERY_MODE_ROUTE_PARAMS: readonly RouteParamsSpec[] = [
   PRODUCTS_ROUTE_PARAMS,
   SOURCING_ROUTE_PARAMS,
   TEST_ROUTE_PARAMS,
+  PICK_ROUTE_PARAMS,
   WALK_IN_ROUTE_PARAMS,
   INVENTORY_ROUTE_PARAMS,
   SPECIAL_BIN_PRINT_ROUTE_PARAMS,

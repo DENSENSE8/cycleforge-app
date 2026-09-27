@@ -38,6 +38,10 @@ import { joinStackedIdentityKeys } from '@/components/ui/StackedRowIdentity';
 import { Button, IconButton } from '@/design-system/primitives';
 import { SubscribeToggle } from '@/components/notifications/SubscribeToggle';
 import { cn } from '@/utils/_cn';
+import {
+  HEADER_MENU_CAPTION_CLASS,
+  HEADER_MENU_ROW_CORNER,
+} from '@/components/layout/header-shell';
 import { InboxQueueLinks } from './InboxQueueLinks';
 import { QuickAccessPanelShell } from './QuickAccessPanelShell';
 import { InboxTrackingWatchRow } from './InboxTrackingWatchRow';
@@ -184,6 +188,12 @@ const DURABLE_INBOX_QUERY_KEY = ['api-inbox'] as const;
 const DURABLE_DOT_CLASS = 'bg-sky-500';
 const DURABLE_SECTION_LABEL = 'Watching';
 
+/** A row's trailing icon key — the header dropdown row corner, a hover wash, never a flush square. */
+const INBOX_ROW_KEY_CLASS = cn(
+  'pointer-events-auto flex h-7 w-7 items-center justify-center transition-colors hover:bg-surface-sunken',
+  HEADER_MENU_ROW_CORNER,
+);
+
 async function fetchDurableInbox(): Promise<InboxItemDto[]> {
   // 404 is the org running with the Home Inbox flag off — a silent empty
   // section, never an error: this panel works without it.
@@ -241,7 +251,7 @@ function DurableInboxRow({
                 <IconButton
                   ariaLabel="Dismiss"
                   onClick={() => onDismiss(item.id)}
-                  className="pointer-events-auto flex h-7 w-7 items-center justify-center rounded-none text-text-faint hover:bg-surface-sunken hover:text-text-muted"
+                  className={cn(INBOX_ROW_KEY_CLASS, 'text-text-faint hover:text-text-muted')}
                   icon={<X className="h-3.5 w-3.5" />}
                 />
               </HoverTooltip>
@@ -413,7 +423,7 @@ export function ActivityInboxPopover({ onClose }: ActivityInboxPopoverProps) {
                         if (!it.body) return;
                         void handleCopyBack(it.body, it.id);
                       }}
-                      className="pointer-events-auto flex h-7 w-7 items-center justify-center rounded-none hover:bg-surface-sunken"
+                      className={INBOX_ROW_KEY_CLASS}
                       icon={
                         copiedId === it.id ? (
                           <Check className="h-3.5 w-3.5 text-emerald-600" />
@@ -428,7 +438,7 @@ export function ActivityInboxPopover({ onClose }: ActivityInboxPopoverProps) {
                   <IconButton
                     ariaLabel="Dismiss"
                     onClick={() => dismissItem(it.id)}
-                    className="pointer-events-auto flex h-7 w-7 items-center justify-center rounded-none text-text-faint hover:bg-surface-sunken hover:text-text-muted"
+                    className={cn(INBOX_ROW_KEY_CLASS, 'text-text-faint hover:text-text-muted')}
                     icon={<X className="h-3.5 w-3.5" />}
                   />
                 </HoverTooltip>
@@ -469,7 +479,7 @@ export function ActivityInboxPopover({ onClose }: ActivityInboxPopoverProps) {
                               // `text-role-eyebrow` bundles its own ~13.2px line-height (taller than this line's `text-role-micro` ~12px), so without `leading-none` a…
                               <span
                                 className={cn(
-                                  'ml-1.5 text-role-eyebrow font-semibold uppercase tracking-widest leading-none',
+                                  'ml-1.5 text-role-micro font-medium leading-none',
                                   it.undoFailed ? 'text-rose-600' : 'text-text-faint',
                                 )}
                               >
@@ -491,7 +501,7 @@ export function ActivityInboxPopover({ onClose }: ActivityInboxPopoverProps) {
           // and the durable ledger — rows the server keeps until they are
           // triaged — reads as its own standing section.
           <section aria-label={DURABLE_SECTION_LABEL} className="border-t border-border-hairline">
-            <p className="px-3 pb-0.5 pt-2 text-role-eyebrow font-semibold uppercase tracking-widest leading-none text-text-faint">
+            <p className={cn('px-3 pb-0.5 pt-2', HEADER_MENU_CAPTION_CLASS)}>
               {DURABLE_SECTION_LABEL}
             </p>
             <ul className="divide-y divide-border-hairline">

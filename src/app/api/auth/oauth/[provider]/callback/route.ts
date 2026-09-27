@@ -29,6 +29,9 @@ import { audit } from '@/lib/auth/audit';
 import { oauthOrigin } from '@/lib/auth/oauth-origin';
 import { loadSharedStaffChoices } from '@/lib/identity/shared-staff-choice';
 import { resolveOAuthPostLoginPath } from '@/lib/identity/oauth-post-login-path';
+import { recordStaffLogin } from '@/lib/auth/record-staff-login';
+import { resolveLandingPath, withWelcomeHandoff } from '@/lib/auth/landing-path';
+import pool from '@/lib/db';
 
 export const runtime = 'nodejs';
 
@@ -224,16 +227,28 @@ async function handleCallback(req: NextRequest, provider: string): Promise<NextR
     detail: { accountId, orgId: target.organization_id, via: `oauth_${provider}` },
   });
   await logAuthEvent({ accountId, orgId: target.organization_id, event: 'login', ip, userAgent: ua });
+  const login = await recordStaffLogin(pool, target.staff_id);
 
   // Shared-account orgs: keep the umbrella session and land on the same
   // staff-name picker as email+password. Do not treat the Google/Apple email
   // as a person identity.
   const shared = await loadSharedStaffChoices(target.organization_id, target.staff_id);
-  const dest = resolveOAuthPostLoginPath({
+  const mobile = payload.signinPath === '/m/signin';
+  const home = resolveLandingPath({
+    role: login.role,
+    defaultHomePath: login.defaultHomePath,
+    defaultHomePathMobile: login.defaultHomePathMobile,
+    mobile,
+  });
+  const postLogin = resolveOAuthPostLoginPath({
     sharedStaffOrg: shared != null,
     next: payload.next,
     signinPath: payload.signinPath,
+    home,
   });
+  // Server redirect can't arm the client welcome flag; the desktop shell reads
+  // `?welcome=1`. The shared-org picker arms it itself when a staffer is picked.
+  const dest = shared == null && !mobile ? withWelcomeHandoff(postLogin) : postLogin;
   const res = NextResponse.redirect(new URL(dest, oauthOrigin(req)));
   res.cookies.set(SESSION_COOKIE_NAME, session.sid, {
     httpOnly: true, secure: process.env.NODE_ENV === 'production', sameSite: 'lax', path: '/',

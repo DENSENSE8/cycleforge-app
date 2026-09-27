@@ -2,7 +2,7 @@
  * E2E: SAL · TSN · FBA-FNSKU  —  DB-ping tests
  *
  * Verifies that each tech-station action correctly writes to the three tables
- * and that /api/tech/logs reads them back with the right shapes:
+ * and that /api/picking/desk/logs reads them back with the right shapes:
  *
  *   station_activity_logs  (SAL — source of truth for every scan)
  *   tech_serial_numbers    (TSN — one row per serial)
@@ -65,7 +65,7 @@ async function testTrackingScan() {
   console.log(`\n── 1  Tracking scan → SAL insert`);
   console.log(`     tracking: ${TEST_TRACKING}  techId: ${TECH_ID}`);
 
-  const { ok, status, data } = await api('/api/tech/scan', {
+  const { ok, status, data } = await api('/api/picking/desk/scan', {
     type:   'TRACKING',
     value:  TEST_TRACKING,
     techId: TECH_ID,
@@ -84,25 +84,25 @@ async function testTrackingScan() {
   return salId;
 }
 
-// ── phase 2: tech-logs shows the SAL row ─────────────────────────────────────
+// ── phase 2: desk logs shows the SAL row ─────────────────────────────────────
 
 async function testLogsShowSAL(salId) {
-  console.log(`\n── 2  tech-logs shows SAL row  (id=${salId})`);
+  console.log(`\n── 2  desk logs shows SAL row  (id=${salId})`);
 
-  const { ok, status, data } = await api(`/api/tech-logs?techId=${TECH_ID}&limit=30`);
+  const { ok, status, data } = await api(`/api/picking/desk/logs?techId=${TECH_ID}&limit=30`);
 
   assert(ok,                  `HTTP ${status}`);
   assert(Array.isArray(data), `response is array`);
   if (!Array.isArray(data)) return;
 
-  // tech/logs query: sal.id AS id, sal.id AS source_row_id
+  // desk/logs query: sal.id AS id, sal.id AS source_row_id
   const row = data.find(r => Number(r.id) === salId);
-  assert(row != null, `SAL row id=${salId} in tech-logs  (${data.length} rows)`,
+  assert(row != null, `SAL row id=${salId} in desk logs  (${data.length} rows)`,
     data.length > 0 ? `first row id=${data[0]?.id}` : 'empty');
 
   if (!row) return;
 
-  // Verify required fields from the SELECT in /api/tech/logs/route.ts
+  // Verify required fields from the SELECT in /api/picking/desk/logs (fetchDeskPickLogRows)
   const REQUIRED = ['id', 'source_row_id', 'source_kind', 'created_at', 'tested_by',
                     'shipping_tracking_number', 'serial_number', 'fnsku_log_id'];
   for (const f of REQUIRED) {
@@ -124,10 +124,10 @@ async function testLogsShowSAL(salId) {
 async function testSerialAdd(salId) {
   console.log(`\n── 3  Serial add → TSN insert  (${TEST_SERIAL_1})`);
 
-  // POST /api/tech/serial { action:'add', salId, serial, techId }
+  // POST /api/picking/desk/serial { action:'add', salId, serial, techId }
   // Route: inserts tech_serial_numbers row + SERIAL_ADDED SAL row
   // Response: { success, serialNumbers, tsnId }
-  const { ok, status, data } = await api('/api/tech/serial', {
+  const { ok, status, data } = await api('/api/picking/desk/serial', {
     action: 'add',
     salId,
     serial:  TEST_SERIAL_1,
@@ -149,19 +149,19 @@ async function testSerialAdd(salId) {
   return data?.tsnId ?? null;
 }
 
-// ── phase 4: tech-logs aggregates serial + source_kind flips ─────────────────
+// ── phase 4: desk logs aggregates serial + source_kind flips ─────────────────
 
 async function testLogsShowSerial(salId) {
-  console.log(`\n── 4  tech-logs: serial aggregated, source_kind → "tech_serial"`);
+  console.log(`\n── 4  desk logs: serial aggregated, source_kind → "tech_serial"`);
 
-  const { ok, status, data } = await api(`/api/tech-logs?techId=${TECH_ID}&limit=30`);
+  const { ok, status, data } = await api(`/api/picking/desk/logs?techId=${TECH_ID}&limit=30`);
 
   assert(ok,                  `HTTP ${status}`);
   assert(Array.isArray(data), `response is array`);
   if (!Array.isArray(data)) return;
 
   const row = data.find(r => Number(r.id) === salId);
-  assert(row != null, `SAL row id=${salId} still in tech-logs`);
+  assert(row != null, `SAL row id=${salId} still in desk logs`);
   if (!row) return;
 
   // After adding a serial: source_kind computed as 'tech_serial' because
@@ -184,9 +184,9 @@ async function testLogsShowSerial(salId) {
 async function testSerialUndo(salId) {
   console.log(`\n── 5  Serial undo → TSN deleted`);
 
-  // POST /api/tech/serial { action:'undo', salId, techId }
+  // POST /api/picking/desk/serial { action:'undo', salId, techId }
   // Route: deletes last TSN row for the SAL; returns removedSerial
-  const { ok, status, data } = await api('/api/tech/serial', {
+  const { ok, status, data } = await api('/api/picking/desk/serial', {
     action: 'undo',
     salId,
     techId: TECH_ID,
@@ -209,16 +209,16 @@ async function testSerialUndo(salId) {
 // ── phase 6: source_kind reverts after undo ───────────────────────────────────
 
 async function testLogsSourceKindReverts(salId) {
-  console.log(`\n── 6  tech-logs: source_kind reverts to "tech_scan" after undo`);
+  console.log(`\n── 6  desk logs: source_kind reverts to "tech_scan" after undo`);
 
-  const { ok, status, data } = await api(`/api/tech-logs?techId=${TECH_ID}&limit=30`);
+  const { ok, status, data } = await api(`/api/picking/desk/logs?techId=${TECH_ID}&limit=30`);
 
   assert(ok,                  `HTTP ${status}`);
   assert(Array.isArray(data), `response is array`);
   if (!Array.isArray(data)) return;
 
   const row = data.find(r => Number(r.id) === salId);
-  assert(row != null, `SAL row id=${salId} still in tech-logs after undo`);
+  assert(row != null, `SAL row id=${salId} still in desk logs after undo`);
   if (!row) return;
 
   // No TSN rows → source_kind reverts to 'tech_scan'
@@ -237,13 +237,12 @@ async function testLogsSourceKindReverts(salId) {
 async function testFnskuScan() {
   console.log(`\n── 7  FNSKU scan → SAL + fba_fnsku_logs  (fnsku=${TEST_FNSKU})`);
 
-  // POST /api/tech/scan { type:'FNSKU', value, techId }
+  // POST /api/fba/fnsku-scan { value, techId }
   // Uses ensureFnskuCatalog → auto-creates stub in fba_fnskus if missing
   // Then createFbaLog with stationActivityLogId → fba_fnsku_logs.station_activity_log_id is set
   // Response: { success, found, orderFound, catalogCreated, salId, fnskuLogId,
   //             techActivityId (===salId), scanSessionId, summary, shipment, order }
-  const { ok, status, data } = await api('/api/tech/scan', {
-    type:   'FNSKU',
+  const { ok, status, data } = await api('/api/fba/fnsku-scan', {
     value:  TEST_FNSKU,
     techId: TECH_ID,
   });
@@ -283,19 +282,19 @@ async function testFnskuScan() {
   return { fnskuSalId, fnskuLogId };
 }
 
-// ── phase 8: tech-logs shows fba_scan row with fnsku_log_id populated ────────
+// ── phase 8: desk logs shows fba_scan row with fnsku_log_id populated ────────
 
 async function testLogsShowFnskuRow(fnskuSalId, fnskuLogId) {
-  console.log(`\n── 8  tech-logs: fba_scan row with fnsku_log_id  (salId=${fnskuSalId})`);
+  console.log(`\n── 8  desk logs: fba_scan row with fnsku_log_id  (salId=${fnskuSalId})`);
 
-  const { ok, status, data } = await api(`/api/tech-logs?techId=${TECH_ID}&limit=30`);
+  const { ok, status, data } = await api(`/api/picking/desk/logs?techId=${TECH_ID}&limit=30`);
 
   assert(ok,                  `HTTP ${status}`);
   assert(Array.isArray(data), `response is array`);
   if (!Array.isArray(data)) return;
 
   const row = data.find(r => Number(r.id) === fnskuSalId);
-  assert(row != null, `fba_scan SAL row id=${fnskuSalId} in tech-logs  (${data.length} rows)`);
+  assert(row != null, `fba_scan SAL row id=${fnskuSalId} in desk logs  (${data.length} rows)`);
   if (!row) return;
 
   // FNSKU scan → source_kind = 'fba_scan'
@@ -326,12 +325,12 @@ async function testLogsShowFnskuRow(fnskuSalId, fnskuLogId) {
 async function testDeleteFnskuScan(fnskuSalId) {
   console.log(`\n── 9  Delete FNSKU scan  (sourceKind=fba_scan  sourceRowId=${fnskuSalId})`);
 
-  // delete-tracking with sourceKind='fba_scan' deletes:
+  // desk/delete with sourceKind='fba_scan' deletes:
   //   fba_fnsku_logs row (resolved via sal.metadata.fnsku_log_id or time-correlation)
   //   any TSN rows attached to that fnsku log
   //   the FNSKU SAL row itself
   // Response: { success: true, deletedCount: number }
-  const { ok, status, data } = await api('/api/tech/delete-tracking', {
+  const { ok, status, data } = await api('/api/picking/desk/delete', {
     sourceKind:   'fba_scan',
     sourceRowId:  fnskuSalId,
     techId:       TECH_ID,
@@ -339,7 +338,7 @@ async function testDeleteFnskuScan(fnskuSalId) {
 
   assert(ok,                                     `HTTP ${status}`,                    JSON.stringify(data?.error));
   assert(data?.success === true,                 `success === true`);
-  // tech/delete returns { success, deletedSerials: TSN count } — SAL + fba_fnsku_logs also removed
+  // desk/delete returns { success, deletedSerials: TSN count } — SAL + fba_fnsku_logs also removed
   assert(typeof data?.deletedSerials === 'number', `deletedSerials is number`,        String(data?.deletedSerials));
 }
 
@@ -348,12 +347,12 @@ async function testDeleteFnskuScan(fnskuSalId) {
 async function testDeleteTrackingScan(salId) {
   console.log(`\n── 10  Delete tracking scan  (sourceKind=tech_scan  sourceRowId=${salId})`);
 
-  // delete-tracking with sourceKind='tech_scan' deletes:
+  // desk/delete with sourceKind='tech_scan' deletes:
   //   SAL rows where tech_serial_number_id IN (TSN rows for this anchor SAL)
   //   TSN rows where context_station_activity_log_id = sourceRowId
   //   the anchor SAL row itself
   // Response: { success: true, deletedCount: number }
-  const { ok, status, data } = await api('/api/tech/delete-tracking', {
+  const { ok, status, data } = await api('/api/picking/desk/delete', {
     sourceKind:  'tech_scan',
     sourceRowId: salId,
     techId:      TECH_ID,
@@ -361,16 +360,16 @@ async function testDeleteTrackingScan(salId) {
 
   assert(ok,                                     `HTTP ${status}`,                    JSON.stringify(data?.error));
   assert(data?.success === true,                 `success === true`);
-  // tech/delete returns { success, deletedSerials: TSN count }
+  // desk/delete returns { success, deletedSerials: TSN count }
   assert(typeof data?.deletedSerials === 'number', `deletedSerials is number`,        String(data?.deletedSerials));
 }
 
-// ── phase 11: tech-logs confirms rows are gone ───────────────────────────────
+// ── phase 11: desk logs confirms rows are gone ───────────────────────────────
 
 async function testLogsConfirmGone(salId, fnskuSalId) {
-  console.log(`\n── 11  tech-logs confirms both rows deleted`);
+  console.log(`\n── 11  desk logs confirms both rows deleted`);
 
-  const { ok, status, data } = await api(`/api/tech-logs?techId=${TECH_ID}&limit=50`);
+  const { ok, status, data } = await api(`/api/picking/desk/logs?techId=${TECH_ID}&limit=50`);
 
   assert(ok,                  `HTTP ${status}`);
   assert(Array.isArray(data), `response is array`);
@@ -378,11 +377,11 @@ async function testLogsConfirmGone(salId, fnskuSalId) {
 
   assert(
     !data.some(r => Number(r.id) === salId),
-    `SAL row id=${salId} absent from tech-logs`,
+    `SAL row id=${salId} absent from desk logs`,
   );
   assert(
     !data.some(r => Number(r.id) === fnskuSalId),
-    `fba_scan SAL row id=${fnskuSalId} absent from tech-logs`,
+    `fba_scan SAL row id=${fnskuSalId} absent from desk logs`,
   );
 }
 

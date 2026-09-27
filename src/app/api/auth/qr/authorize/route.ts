@@ -186,7 +186,7 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ error: 'STAFF_NOT_ACTIVE' }, { status: 403 });
       }
 
-      const verified = await verifyStaffPin(staffId, pin, staff.organization_id);
+      const verified = await verifyStaffPin(staffId, pin, staff.organization_id, { recordLogin: false });
       if (!verified) {
         return NextResponse.json({ error: 'AUTHENTICATION_REQUIRED' }, { status: 401 });
       }

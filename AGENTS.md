@@ -43,8 +43,11 @@ the design system when it is actually good.
   Law: `docs/mobile-first/SURFACE_LAW.md`. Start URLs: `/m/pick`, `/m/work`.
 - Nav: a lane is a `SidebarGroup`; icons at parent level only; a parent and a
   child never share a name. Detail: `src/lib/nav/lanes.ts`.
-- SKU identity source of truth is the Zoho item — read through
+- SKU identity source of truth is CycleForge's own catalog (`sku_catalog.id`);
+  Zoho is a demoted external fact (`catalog_external_ids`). Read titles through
   `resolveSkuIdentityTitle`, join with `SKU_CATALOG_JOIN_ON_SQL`.
+- Inbound orders enter through ONE writer: `InboundOrderDraft` →
+  `ingestInboundOrder` (`src/lib/inbound/`), identity `inbound_order`.
 - Ship-by / date-in-a-cell is `DateRangePickerField variant="compact"`.
   Staff pickers are `AssigneeCombobox` via `StageStaffAssignPopover`.
 

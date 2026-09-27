@@ -8,7 +8,6 @@ import { EvidenceNotice } from '@/design-system/components/record-ledger/RecordE
 import { CartonRecordView } from '@/components/receiving/history/CartonRecordView';
 import { cartonRecordTitle, useCartonRecord } from '@/components/receiving/history/use-carton-record';
 import { useCartonVerbs } from '@/components/receiving/history/carton-record-verbs';
-import { displayReceivingProductTitle } from '@/components/station/receiving-grid/cells';
 import { receivingLineMatchesQuery } from '@/lib/receiving/receiving-line-search';
 import { usePublishRecordCursor, useRecordCursor } from '@/lib/record-cursor/useRecordCursor';
 import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
@@ -141,7 +140,7 @@ export function DockedReceiptsLedger({
               value={query}
               onChange={onQueryChange}
               placeholder="Filter docked records…"
-              className="min-w-0 flex-1 overflow-hidden rounded-none pl-2"
+              className="min-w-0 flex-1 overflow-hidden rounded-mode-control pl-2"
               tone="neutral"
               hideUnderline
               fillHost
@@ -198,7 +197,7 @@ export function DockedReceiptsLedger({
         </b>
       }
       recordTitle={openRow ? cartonRecordTitle(openRow) : 'Receipt'}
-      recordSubtitle={openRow ? `Carton ${openRow.receiving_id ?? openRow.id} · ${displayReceivingProductTitle(openRow)}` : undefined}
+      recordSubtitle={openRow ? `Carton ${openRow.receiving_id ?? openRow.id}` : undefined}
       recordNoun="receipt"
       summary={{
         title: 'Receiving history',
