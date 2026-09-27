@@ -8,7 +8,6 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Check, X } from '@/components/Icons';
 import { Button } from '@/design-system/primitives/Button';
 import { DetailDock } from '@/design-system/components/DetailDock';
-import { ModeRegion } from '@/design-system/providers/ModeRegion';
 import { MobileDetailTopBar } from '@/components/mobile/redesign/MobileDetailTopBar';
 import { takeReasonPayload, type TakeReasonChoice } from '@/lib/inventory/take-reason';
 import { TakeReasonChooser } from './TakeReasonChooser';
@@ -191,7 +190,7 @@ export function MobilePairQty({
     // Flat like every record screen; the working half — direction, keypad,
     // confirm — is pinned to the bottom under the thumb (operator
     // 2026-09-25: "the keypad is not pinned to the bottom").
-    <ModeRegion mode="triage" className="flex min-h-svh flex-col bg-mode-panel">
+    <div className="flex min-h-svh flex-col bg-mode-panel">
       <MobileDetailTopBar
         title={title}
         subtitle={face}
@@ -307,6 +306,6 @@ export function MobilePairQty({
           onVerb={() => confirm()}
         />
       </div>
-    </ModeRegion>
+    </div>
   );
 }

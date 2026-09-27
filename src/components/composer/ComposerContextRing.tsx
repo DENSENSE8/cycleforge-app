@@ -30,6 +30,7 @@ export function ComposerContextRing({
   onClick,
   pressed = false,
   label = 'Context',
+  summary,
 }: {
   /** Attached context items. 0 = the empty track. */
   count?: number;
@@ -44,6 +45,13 @@ export function ComposerContextRing({
   pressed?: boolean;
   /** Base aria / title when count is 0. */
   label?: string;
+  /**
+   * The whole reading, when the ring meters something other than attached
+   * slots (the AI composer's token window: "Context: 12.4k / 16.4k tokens").
+   * It becomes the accessible name; the caller's hover card shows it, so the
+   * native title is dropped rather than doubled.
+   */
+  summary?: string;
 }) {
   const slots = Math.max(1, capacity);
   const filled = Math.max(0, Math.min(slots, count));
@@ -54,11 +62,13 @@ export function ComposerContextRing({
       type="button"
       data-testid="composer-context-ring"
       data-context-fill={percent}
-      title={filled > 0 ? `${label} — ${filled} of ${slots} attached` : `${label} — empty`}
+      title={summary ? undefined : filled > 0 ? `${label} — ${filled} of ${slots} attached` : `${label} — empty`}
       aria-label={
-        filled > 0
-          ? `${label}. ${filled} of ${slots} attached, ${percent}% full — open tools`
-          : `${label} — empty, add tools`
+        summary
+          ? `${summary} — details`
+          : filled > 0
+            ? `${label}. ${filled} of ${slots} attached, ${percent}% full — open tools`
+            : `${label} — empty, add tools`
       }
       // No `aria-value*`: those belong to a `meter` / `progressbar`, and this
       // is a BUTTON that opens the context panel. The quantity travels in the

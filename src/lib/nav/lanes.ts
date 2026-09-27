@@ -45,6 +45,9 @@ export const DOMAIN_GROUPS = [
  */
 export const LANE_DOORS: Readonly<Partial<Record<string, string>>> = {
   fulfillment: 'outbound',
+  // Inbound (operator 2026-09-27): Deliveries is the landing page; its mode
+  // switcher reaches Sourcing.
+  inbound: 'incoming',
 };
 
 /** Look a lane up BY ID. */

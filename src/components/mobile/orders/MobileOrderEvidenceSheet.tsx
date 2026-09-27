@@ -82,7 +82,7 @@ function Assignee({ staffId, name, colorHex }: { staffId: number | null; name: s
   if (!staffId && !name) return <span className={cn(RECORD_LABEL_CLASS, 'text-mode-muted')}>Unassigned</span>;
   return (
     <span className="flex min-w-0 items-center gap-2">
-      <StaffAvatar staffId={staffId} name={name} colorHex={colorHex} size="xs" shape="square" alt="" />
+      <StaffAvatar staffId={staffId} name={name} colorHex={colorHex} size="xs" face="record" alt="" />
       <span className="truncate">{name}</span>
     </span>
   );

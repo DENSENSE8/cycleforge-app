@@ -51,6 +51,8 @@ export interface ReceivingLinesPageInput {
   universalIncoming: boolean;
   applyScannedZohoExclusion: boolean;
   unboxRailColumnRead: boolean;
+  /** Org ship-from postal — `view=exceptions` only. */
+  warehousePostal?: string;
 }
 
 export async function fetchReceivingLinesPage(
@@ -80,6 +82,7 @@ export async function fetchReceivingLinesPage(
     universalIncoming,
     applyScannedZohoExclusion,
     unboxRailColumnRead,
+    warehousePostal: input.warehousePostal,
     ...(scannedLineIdIn ? { scannedLineIdIn } : {}),
   });
   const [rowsRes, countRes] = await withTenantConnection(orgId, (client) => Promise.all([

@@ -24,6 +24,12 @@ import {
   sqlReceivingZendeskTicketColumn,
 } from './sql-receiving-ticket';
 import { RECEIVING_LINE_IMAGE_URL_SQL } from './sql-receiving-image';
+import {
+  EXCEPTION_PO_LIVE_SQL,
+  incomingExceptionCodeSql,
+  incomingExceptionMembershipSql,
+} from '@/lib/receiving/incoming-exceptions-sql';
+import { normalizePostalCode } from '@/lib/receiving/wrong-destination';
 import { SKU_CATALOG_JOIN_ON_SQL } from '@/lib/sku/sku-identity-law';
 import {
   QA_STATUSES,
@@ -464,7 +470,30 @@ interface ReceivingLinesListSqlInput {
   unboxRailColumnRead?: boolean;
   /** Gate-before-decorate pre-limit for `view=scanned` (2026-08-27): */
   scannedLineIdIn?: readonly number[];
+  /** The org's ship-from postal (`settings.shipFrom.postalCode`) — `view=exceptions` wrong-destination arm. */
+  warehousePostal?: string;
 }
+
+/**
+ * The Incoming walk order (`sort=urgency`, `incoming-sections.ts`): delivered →
+ * arriving today → in transit → awaiting tracking → the rest. Reads `stn` only
+ * — the lane already excludes scanned lines, so "delivered" here IS delivered
+ * and not scanned, and no per-row EXISTS is paid to rank a page. Stalled and
+ * blocked shipments rank with the rest, as the delivery_state CASE files them.
+ */
+const INCOMING_URGENCY_RANK_SQL = `(CASE
+           WHEN COALESCE(rl.quantity_received, 0) > 0 OR rl.workflow_status <> 'EXPECTED' THEN 4
+           WHEN COALESCE(stn.is_delivered, false) = true THEN 0
+           WHEN stn.latest_status_category = 'OUT_FOR_DELIVERY' THEN 1
+           WHEN stn.id IS NOT NULL
+            AND COALESCE(stn.is_terminal, false) = false
+            AND (stn.has_exception = true
+                 OR (stn.latest_event_at IS NOT NULL AND stn.latest_event_at < (NOW() - interval '72 hours'))) THEN 4
+           WHEN stn.tracking_blocked_reason IS NOT NULL THEN 4
+           WHEN stn.latest_status_category IN ('IN_TRANSIT','ACCEPTED','LABEL_CREATED') THEN 2
+           WHEN stn.id IS NULL THEN 3
+           ELSE 4
+         END)`;
 
 /** `view=scanned` membership — door-scanned and physically in, but NOT yet unboxed: */
 function scannedViewPredicateSql(unboxOpenedPredicate: string): string {
@@ -546,6 +575,21 @@ export function buildScannedCandidateSql(input: {
   };
 }
 
+/** Upper-alnum — the same canonical form as `canonicalizeTrackingKey` and `*_number_norm`. */
+const canonicalSql = (column: string) => `regexp_replace(upper(COALESCE(${column}, '')), '[^A-Z0-9]', '', 'g')`;
+
+/**
+ * A line some pasted `?ref_in=` key names — its tracking (indexed), its Zoho
+ * PO number or id, its marketplace order id, or its carton's PO number.
+ */
+function lineRefMatchSql(param: string): string {
+  return `(stn.tracking_number_normalized = ANY(${param}::text[])
+           OR rz.zoho_purchaseorder_number_norm = ANY(${param}::text[])
+           OR rz.zoho_purchaseorder_id::text = ANY(${param}::text[])
+           OR ${canonicalSql('rl.source_order_id')} = ANY(${param}::text[])
+           OR ${canonicalSql('r.zoho_purchaseorder_number')} = ANY(${param}::text[]))`;
+}
+
 /**
  * Paginated list — all lines, optionally filtered — plus the sibling COUNT.
  * Byte-identical move of the route's dynamic WHERE / ORDER BY / SELECT
@@ -557,10 +601,12 @@ export function buildReceivingLinesListSql(input: ReceivingLinesListSqlInput): B
     view, deliveryStateFilter, poFrom, poTo,
     incomingSort, historySort, wantsPrioritySort, testerId, returnScope, priorityOnly, weekStart, weekEnd, limit, offset,
     inboundSourceParam, incomingLinkParam, inboundKindParam, staffFilterRaw, staffFilterId,
-    unboxQueueStage, unboxQueueLane, trackingIn, receivingIdIn,
+    unboxQueueStage, unboxQueueLane, trackingIn, refIn, receivingIdIn,
   } = input.query;
   /** The operator named specific trackings, so this query is about THOSE ROWS — not about the lane's default population. */
   const trackingInActive = trackingIn.length > 0;
+  /** `view=exceptions`: the warehouse ZIP5 as `$n`, or null when the org has none. */
+  let exceptionZipParam: string | null = null;
   const { orgId, viewerStaffId, universalIncoming, applyScannedZohoExclusion } = input;
   // view=unbox_opened membership predicate — column-only (read-after-write
   // consistent) when the flag is on, else the legacy OR-arm. Defaulting the
@@ -1029,6 +1075,35 @@ export function buildReceivingLinesListSql(input: ReceivingLinesListSqlInput): B
     } else if (inboundKindParam === 'purchase') {
       conditions.push(`UPPER(COALESCE(rl.receiving_type, 'PO')) <> 'RETURN'`);
     }
+  } else if (view === 'exceptions') {
+    // Inbound lines that need a person. Same population as Incoming — on a PO,
+    // nothing received, no dock scan — EXCEPT the vendor-received guard: a Zoho
+    // "received" with nothing scanned is exactly one of the reasons.
+    const warehouseZip = normalizePostalCode(input.warehousePostal);
+    if (warehouseZip) {
+      exceptionZipParam = `$${idx++}`;
+      values.push(warehouseZip);
+    }
+    conditions.push(
+      `rl.workflow_status = 'EXPECTED'
+         AND COALESCE(rl.quantity_received, 0) = 0
+         AND (
+           (rz.zoho_purchaseorder_id IS NOT NULL AND ${EXCEPTION_PO_LIVE_SQL})${universalIncoming ? `
+           OR (rz.zoho_purchaseorder_id IS NULL
+               AND ${INBOUND_MARKETPLACE_LINE_SOURCES_SQL}
+               AND ${notLineInboundMirrorTerminalPredicate()})` : ''}
+         )
+         AND ${incomingExceptionMembershipSql(exceptionZipParam)}`,
+    );
+  } else if (view === 'reconcile') {
+    // No lane: a pasted number is about THAT delivery wherever it is now —
+    // on its way, docked, tested or failed. No list, no rows.
+    if (refIn.length === 0) {
+      conditions.push('FALSE');
+    } else {
+      conditions.push(lineRefMatchSql(`$${idx++}`));
+      values.push(refIn);
+    }
   }
 
   const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
@@ -1041,9 +1116,11 @@ export function buildReceivingLinesListSql(input: ReceivingLinesListSqlInput): B
         ? `ORDER BY mirror.expected_delivery_date ASC NULLS LAST, rl.id ASC`
         : incomingSort === 'recently_added'
           ? `ORDER BY rl.created_at DESC, rl.id DESC`
-          : `ORDER BY mirror.po_date DESC NULLS LAST, rl.id DESC`;
+          : incomingSort === 'urgency'
+            ? `ORDER BY ${INCOMING_URGENCY_RANK_SQL}, mirror.po_date DESC NULLS LAST, rl.id DESC`
+            : `ORDER BY mirror.po_date DESC NULLS LAST, rl.id DESC`;
   let orderBy =
-    view === 'incoming'
+    view === 'incoming' || view === 'reconcile' || view === 'exceptions'
       ? incomingOrderBy
       // Most recently departed first — the lane answers "where did the thing I was just looking at go", so recency IS the ranking.
       : view === 'incoming_removed'
@@ -1177,7 +1254,7 @@ export function buildReceivingLinesListSql(input: ReceivingLinesListSqlInput): B
 
   // Incoming-only extras:
   const incomingExtrasSelect =
-    view === 'incoming'
+    view === 'incoming' || view === 'reconcile' || view === 'exceptions'
       ? `,
                 CASE
                   WHEN COALESCE(rl.quantity_received, 0) > 0 OR rl.workflow_status <> 'EXPECTED'
@@ -1234,6 +1311,8 @@ export function buildReceivingLinesListSql(input: ReceivingLinesListSqlInput): B
   // Phase 2: surface the Zoho PO mirror status so the UI can badge a physically-present box whose PO Zoho already marks received/closed…
   const needsZohoMirror =
     view === 'incoming'
+    || view === 'reconcile'
+    || view === 'exceptions'
     || view === 'incoming_removed'
     || view === 'scanned'
     || view === 'activity'
@@ -1296,13 +1375,19 @@ export function buildReceivingLinesListSql(input: ReceivingLinesListSqlInput): B
     : '';
   // Universal Incoming:
   const platformAccountJoin =
-    view === 'incoming'
+    view === 'incoming' || view === 'reconcile' || view === 'exceptions'
       ? `LEFT JOIN platform_accounts pa_inbound
              ON pa_inbound.id = rl.platform_account_id
             AND pa_inbound.organization_id = rl.organization_id`
       : '';
+  // Exceptions: the reason code (same CASE as the WHERE) and the ZIP it was judged against.
+  const exceptionSelect =
+    view === 'exceptions'
+      ? `, ${incomingExceptionCodeSql(exceptionZipParam)} AS exception_code,
+                ${exceptionZipParam ? `${exceptionZipParam}::text` : 'NULL::text'} AS warehouse_postal`
+      : '';
   const platformAccountSelect =
-    view === 'incoming'
+    view === 'incoming' || view === 'reconcile' || view === 'exceptions'
       ? `, COALESCE(pa_inbound.label, pa_inbound.integration_scope) AS platform_account_label`
       : '';
 
@@ -1393,7 +1478,7 @@ export function buildReceivingLinesListSql(input: ReceivingLinesListSqlInput): B
                 ${needsTestSelect}
                 ${incomingExtrasSelect}
                 ${zohoStatusSelect}${removedSignalsSelect}
-                ${platformAccountSelect}
+                ${platformAccountSelect}${exceptionSelect}
                 ${viewedAtSelect}
                 ${unboxOpenedSelect}
          FROM receiving_line rl
@@ -1500,7 +1585,7 @@ export function buildReceivingLinesListSql(input: ReceivingLinesListSqlInput): B
 /** Unmatched/unfound cartons live in the `receiving` table with no `receiving_line` row yet, so they never come back from the main query. */
 export function shouldIncludeUnmatchedPlaceholders(query: ReceivingLinesQuery): boolean {
   return (
-    (query.view === 'all' || query.view === 'activity') &&
+    ((query.view === 'all' || query.view === 'activity') || (query.view === 'reconcile' && query.refIn.length > 0)) &&
     query.searchScope !== 'zoho_po' &&
     !receivingHistorySkipsUnmatchedPlaceholders(query.searchField)
   );
@@ -1520,10 +1605,18 @@ export function buildUnmatchedPlaceholdersSql(
 ): BuiltListSql {
   const { search, searchField } = query;
   // $1 is reserved for orgId (these placeholder queries run on `receiving`,
-  // which is org-owned); the optional search pattern becomes $2.
+  // which is org-owned); the optional search pattern (or the pasted keys) is $2.
   const unmatchedSearchVals: unknown[] = [orgId];
   let unmatchedSearchSql = '';
-  if (search) {
+  // Reconcile: a lineless carton a pasted number names — door-scanned but not
+  // yet matched is RECEIVED, so it must not read as "no match".
+  const reconcile = query.view === 'reconcile';
+  if (reconcile) {
+    unmatchedSearchVals.push(query.refIn);
+    unmatchedSearchSql = ` AND (stn.tracking_number_normalized = ANY($2::text[])
+            OR ${canonicalSql('r.zoho_purchaseorder_number')} = ANY($2::text[])
+            OR ${canonicalSql('r.source_order_id')} = ANY($2::text[]))`;
+  } else if (search) {
     unmatchedSearchVals.push(`%${search}%`);
     if (searchField === 'po') {
       unmatchedSearchSql =
@@ -1545,9 +1638,11 @@ export function buildUnmatchedPlaceholdersSql(
   }
   // Browse History stays Unfound/local-pickup + Unbox-touched.
   const searchActive = Boolean(search);
-  const sourceInSql = searchActive
-    ? `('unmatched', 'local_pickup', 'zoho_po')`
-    : `('unmatched', 'local_pickup')`;
+  const sourceInSql = reconcile
+    ? ''
+    : searchActive
+      ? `AND r.source IN ('unmatched', 'local_pickup', 'zoho_po')`
+      : `AND r.source IN ('unmatched', 'local_pickup')`;
   const activityGatesMembership = query.view === 'activity' && !searchActive;
   const activityUnboxTouchSql = activityGatesMembership
     ? ACTIVITY_UNMATCHED_UNBOX_TOUCH_SQL
@@ -1631,7 +1726,7 @@ export function buildUnmatchedPlaceholdersSql(
                  AND oe_uo.event_type = 'UNBOX_SCAN_OPENED'
            ) unbox_open ON TRUE
            WHERE r.organization_id = $1
-             AND r.source IN ${sourceInSql}
+             ${sourceInSql}
              AND NOT EXISTS (
                SELECT 1 FROM receiving_line rl
                 WHERE rl.receiving_id = r.id
@@ -1649,7 +1744,7 @@ export function buildUnmatchedPlaceholdersSql(
              FROM receiving_carton r
              LEFT JOIN shipping_tracking_numbers stn ON stn.id = r.shipment_id${countUnboxJoinsSql}
             WHERE r.organization_id = $1
-              AND r.source IN ${sourceInSql}
+              ${sourceInSql}
               AND NOT EXISTS (
                 SELECT 1 FROM receiving_line rl
                  WHERE rl.receiving_id = r.id

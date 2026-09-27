@@ -6,7 +6,6 @@ import { DetailSectionHeading } from '@/components/mobile/detail/DetailParts';
 import { useMobileUnit } from '@/components/mobile/unit/useMobileUnit';
 import { newestUnitEvents, unitEventLabel } from '@/components/mobile/unit/unitTimeline';
 import { formatMonthDayTimePST } from '@/utils/date';
-import { ModeRegion } from '@/design-system/providers/ModeRegion';
 
 /**
  * `/m/u/[id]/history` — the unit's lifecycle events, newest first (last 25),
@@ -21,7 +20,7 @@ export default function MobileUnitHistoryPage() {
   const events = newestUnitEvents(data?.events ?? []);
 
   return (
-    <ModeRegion mode="triage" className="flex min-h-screen flex-col bg-mode-panel">
+    <div className="flex min-h-screen flex-col bg-mode-panel">
       <MobileDetailTopBar
         backHref={`/m/u/${rawParam}`}
         subtitle="History"
@@ -72,6 +71,6 @@ export default function MobileUnitHistoryPage() {
           </section>
         ) : null}
       </div>
-    </ModeRegion>
+    </div>
   );
 }

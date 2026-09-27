@@ -156,7 +156,7 @@ export const AgendaRecord = memo(function AgendaRecord({
             <>
               <span className="inline-flex w-40 shrink-0 items-center gap-1.5">
                 {who ? (
-                  <StaffAvatar staffId={row.ownerId} name={who} size="xs" shape="square" />
+                  <StaffAvatar staffId={row.ownerId} name={who} size="xs" face="record" />
                 ) : null}
                 <span className={cn(RECORD_LABEL_CLASS, 'truncate text-mode-muted')}>
                   {who ?? (row.type === 'checklist' ? 'Whole shift' : 'Unassigned')}

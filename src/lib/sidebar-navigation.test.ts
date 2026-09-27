@@ -55,17 +55,18 @@ test('getSidebarNavItems applies the MOBILE-FIRST GATE, and nothing else, by def
   }
 });
 
-test('Home is top-pinned; Reports joined the tops; Operations in Monitor; Plans between Media and Chat', () => {
+test('Chat leads the tops; Reports joined them; Operations in Monitor; Plans after Media', () => {
   const items = getSidebarNavItems();
   const topIds = items.filter((item) => item.kind === 'top').map((item) => item.id);
   // `reports` joined on 2026-09-15 (operator:
   // (`/?mode=tasks`), not a sibling destination (operator 2026-09-22 —
+  // Chat moved to the top of the page map on 2026-09-27.
   assert.deepEqual(topIds, [
+    'ai-chat',
     'home',
     'search',
     'ops-photos',
     'plans-live',
-    'ai-chat',
     'settings',
     'reports',
   ]);
@@ -160,11 +161,11 @@ test('plans-live pin requires operations.plans.view', () => {
   );
 });
 
-test('Chat paints on the spine map after Media Library; Search, Plans, and Settings stay off it', () => {
+test('Chat leads the spine map; Search, Plans, and Settings stay off it', () => {
   const items = getSidebarNavItems();
   const mapTopIds = items.filter(isSpineMapTopRow).map((item) => item.id);
   // The structural rows above the reorderable lane band:
-  assert.deepEqual(mapTopIds, ['home', 'ops-photos', 'ai-chat', 'reports']);
+  assert.deepEqual(mapTopIds, ['ai-chat', 'home', 'ops-photos', 'reports']);
 
   const search = items.find((item) => item.id === 'search');
   const plans = items.find((item) => item.id === 'plans-live');
@@ -438,10 +439,9 @@ test('getSidebarHref resolves every sidebar page to its real route', () => {
 });
 
 // resolveSidebarChild returns null for single-surface pages (no mode row).
-// NB: `support` gained tickets/voicemail/calls modes in SIDEBAR_PAGE_NAV, so it
-// is no longer modeless — use `ai-chat`, which lives only in APP_SIDEBAR_NAV.
+// `ai-chat` is registered (its panel is its threads) but declares no modes.
 test('resolveSidebarChild returns null for pages without modes', () => {
-  assert.equal(getSidebarPageNav('ai-chat'), undefined);
+  assert.equal(getSidebarPageNav('ai-chat')?.children, undefined);
   assert.equal(resolveSidebarChild('ai-chat', { pathname: '/ai-chat', params: new URLSearchParams() }), null);
   assert.equal(resolveSidebarChild('settings', { pathname: '/settings', params: new URLSearchParams() }), null);
   // Search is modeless (APP_SIDEBAR_NAV only) — no SIDEBAR_PAGE_NAV entry.

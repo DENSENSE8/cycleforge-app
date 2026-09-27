@@ -4,7 +4,6 @@
 
 import { useEffect, useState } from 'react';
 import { cn } from '@/utils/_cn';
-import { cornerClass } from '@/design-system/tokens/radius';
 import { blackOrWhiteInk } from '@/lib/color-contrast';
 
 export type IdentityMarkSize = 'xs' | 'sm' | 'md' | 'lg' | 'xl' | '2xl';
@@ -39,11 +38,13 @@ interface IdentityMarkProps {
    */
   ringHex?: string | null;
   /**
-   * `round` (default) — the spine / nav mark.
-   * (To-ship ledger pick / pack, owner 2026-09-24). The square mark is the
-   * terminal face (owner 2026-09-25): no hairline ring — the hard edge of the
+   * `round` (default) — the spine / nav mark: a circle with a hairline ring.
+   * `record` — the mark on a record row (To-ship pick / pack, agenda owner):
+   * no hairline ring, and the corner + initials voice follow the region's
+   * mode — radius 0 + mono caps on the industrial Floor, the control radius +
+   * sans in triage. There is no forced square: the mode owns the corner.
    */
-  shape?: 'round' | 'square';
+  face?: 'round' | 'record';
   className?: string;
   /** Accessible name. Omit ⇒ `aria-hidden` (the row already names the entity). */
   alt?: string;
@@ -56,7 +57,7 @@ export function IdentityMark({
   size = 'sm',
   ring = true,
   ringHex,
-  shape = 'round',
+  face = 'round',
   className,
   alt,
 }: IdentityMarkProps) {
@@ -72,16 +73,18 @@ export function IdentityMark({
   const a11y = alt ? { role: 'img' as const, 'aria-label': alt } : { 'aria-hidden': true };
   // Preserve the saved staff colour; only initials switch to black or white.
   const initialsInk = !showPhoto && colorHex ? blackOrWhiteInk(colorHex) : null;
-  const square = shape === 'square';
+  const record = face === 'record';
 
   return (
     <span
       {...a11y}
       className={cn(
         'relative flex shrink-0 items-center justify-center overflow-hidden text-white',
-        square ? cn(cornerClass('flush'), 'font-mono font-bold uppercase tracking-[0.04em]') : 'rounded-full font-semibold',
+        record
+          ? 'rounded-mode-control font-[family-name:var(--mode-label-font,var(--ds-font-mono))] font-bold tracking-[0.04em] [text-transform:var(--mode-label-case,uppercase)]'
+          : 'rounded-full font-semibold',
         SIZE_CLASS[size],
-        ring && !square && 'ring-1 ring-border-soft',
+        ring && !record && 'ring-1 ring-border-soft',
         !showPhoto && !colorHex && 'bg-surface-inverse',
         className,
       )}

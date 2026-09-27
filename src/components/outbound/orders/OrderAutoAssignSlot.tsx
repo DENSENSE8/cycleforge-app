@@ -12,9 +12,8 @@ import { StaffAvatar } from '@/components/identity';
 import { StageStaffAssignPopover } from '@/components/tables/compound/StageStaffAssignPopover';
 import { STATE_TONE_CLASSES } from '@/design-system/tokens/lifecycle';
 import { focusRing } from '@/design-system/tokens/focus-ring';
-import { cornerClass } from '@/design-system/tokens/radius';
 import { cn } from '@/utils/_cn';
-import { stop } from './outbound-orders-ledger-editors';
+import { stop, UNASSIGNED_MARK_CLASS } from './outbound-orders-ledger-editors';
 import { LEDGER_HIT_CLASS } from './outbound-orders-ledger-geometry';
 
 export function OrderAutoAssignSlot({
@@ -63,9 +62,9 @@ export function OrderAutoAssignSlot({
         )}
       >
         {staffId ? (
-          <StaffAvatar staffId={staffId} name={name} avatarPhotoId={null} size="xs" colorRing shape="square" alt={name ?? undefined} />
+          <StaffAvatar staffId={staffId} name={name} avatarPhotoId={null} size="xs" colorRing face="record" alt={name ?? undefined} />
         ) : (
-          <span aria-hidden className={cn('h-5 w-5 shrink-0 border border-dashed border-mode-edge', cornerClass('flush'))} />
+          <span aria-hidden className={UNASSIGNED_MARK_CLASS} />
         )}
         <span
           className={cn(

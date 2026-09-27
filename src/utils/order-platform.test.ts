@@ -27,8 +27,8 @@ test('marketplace Open URLs follow the same exact shapes', () => {
 test('an imported platform wins over the 4-digit Ecwid guess', () => {
   assert.equal(getOrderPlatformLabel('1117', 'shopify'), 'Shopify');
   assert.equal(getOrderPlatformLabel('1100', 'Other'), 'Other');
-  assert.equal(getOrderPlatformLabel('5043', 'ecwid'), 'ECWID');
-  assert.equal(getOrderPlatformLabel('5043', null), 'ECWID', 'unsourced legacy rows keep the guess');
+  assert.equal(getOrderPlatformLabel('5043', 'ecwid'), 'Ecwid');
+  assert.equal(getOrderPlatformLabel('5043', null), 'Ecwid', 'unsourced legacy rows keep the guess');
 });
 
 test('a Shopify order never opens the Ecwid admin', () => {

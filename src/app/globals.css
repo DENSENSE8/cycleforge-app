@@ -372,6 +372,85 @@ body {
   }
 }
 
+/* WelcomeAssembly (src/components/boot/WelcomeAssembly.tsx) — material layer
+   of the post-sign-in welcome overlay: brushed-aluminium ground, a one-shot
+   specular sweep, HUD tick rulers, the staff name's metallic ink + glow, and
+   the Find key-cap pulse. Literal hexes live ONLY in these metal/sheen
+   gradients. `--cf-welcome-name` is the signed-in staffer's colour, set (and
+   tweened when the colour cache fills) on the overlay root. Animated
+   properties are transform/opacity only; reduced motion stills every loop. */
+.cf-welcome-grain {
+  /* Fine horizontal streaks on three non-commensurate periods so the brushing
+     never reads as a regular stripe, plus a faint anisotropic lateral sheen. */
+  background-image:
+    repeating-linear-gradient(180deg, #ffffff73 0 1px, transparent 1px 3px),
+    repeating-linear-gradient(180deg, #0f172a0d 0 1px, transparent 1px 5px),
+    repeating-linear-gradient(180deg, transparent 0 11px, #0f172a0a 11px 12px, transparent 12px 17px),
+    linear-gradient(90deg, #ffffff00 0%, #ffffff40 22%, #0f172a08 46%, #ffffff33 71%, #0f172a06 100%);
+}
+.dark .cf-welcome-grain {
+  opacity: 0.3;
+}
+.cf-welcome-specular {
+  background-image: linear-gradient(
+    105deg,
+    transparent 36%,
+    #ffffff59 46%,
+    #ffffffa6 50%,
+    #ffffff59 54%,
+    transparent 64%
+  );
+  animation: cf-welcome-specular 2.6s cubic-bezier(0.4, 0, 0.2, 1) 0.15s both;
+}
+@keyframes cf-welcome-specular {
+  from { transform: translateX(-100%); }
+  to   { transform: translateX(22%);   }
+}
+.cf-welcome-ticks-x {
+  background-image: repeating-linear-gradient(90deg, currentColor 0 1px, transparent 1px 16px);
+}
+.cf-welcome-ticks-y {
+  background-image: repeating-linear-gradient(180deg, currentColor 0 1px, transparent 1px 16px);
+}
+.cf-welcome-accent {
+  background-color: var(--cf-welcome-name, currentColor);
+}
+/* Chrome-lettering ink: light crown, dark horizon line, lifted foot — all
+   mixed from the staffer's own colour so any hue reads as polished metal. */
+.cf-welcome-name-ink {
+  background-image: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--cf-welcome-name) 45%, #ffffff) 0%,
+    var(--cf-welcome-name) 40%,
+    color-mix(in srgb, var(--cf-welcome-name) 70%, #0b0f14) 58%,
+    color-mix(in srgb, var(--cf-welcome-name) 85%, #ffffff) 100%
+  );
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+/* On the name's clip box (not the ink) so the glow is not cut by the clip. */
+.cf-welcome-name-glow {
+  filter: drop-shadow(0 0 0.3em color-mix(in srgb, var(--cf-welcome-name) 45%, transparent));
+}
+.cf-welcome-glint {
+  background-image: linear-gradient(90deg, transparent, #ffffffd9 50%, transparent);
+}
+@keyframes cf-welcome-pulse {
+  0%        { transform: scale(1);    opacity: 0.6; }
+  70%, 100% { transform: scale(1.55); opacity: 0;   }
+}
+.cf-welcome-pulse {
+  opacity: 0.4;
+  animation: cf-welcome-pulse 1.4s cubic-bezier(0, 0, 0.2, 1) infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .cf-welcome-specular,
+  .cf-welcome-pulse {
+    animation: none;
+  }
+}
+
 /* ── Scan pending wash ─────────────────────────────────────────────────────
    The accent tint UNDER the mobile camera panel's glass bar
    (`MobileCameraPanel`), breathing while at least one scanned label is still

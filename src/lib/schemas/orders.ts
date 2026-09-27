@@ -16,6 +16,12 @@ export const OrderUpdateBody = z
     // `notes` is deliberately absent.
     isOutOfStock: z.boolean().optional(),
     accountSource: nullableText.optional(),
+    // Operator-set admin page link; null clears it (the derived URL returns).
+    adminUrl: trimmed
+      .url()
+      .refine((v) => /^https?:\/\//i.test(v), { message: 'Link must start with http:// or https://' })
+      .nullable()
+      .optional(),
   })
   .strict()
   .refine((b) => Object.keys(b).length > 0, {

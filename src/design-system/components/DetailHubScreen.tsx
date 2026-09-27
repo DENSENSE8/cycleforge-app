@@ -4,7 +4,6 @@ import type { ReactNode } from 'react';
 import { MobileDetailTopBar } from '@/components/mobile/redesign/MobileDetailTopBar';
 import { DetailAck, DetailNav } from '@/components/mobile/detail/DetailParts';
 import { Button } from '@/design-system/primitives';
-import { ModeRegion } from '@/design-system/providers/ModeRegion';
 import type { DetailDoor } from '@/lib/mobile/detail-door';
 
 type PerRecord<T> = ReactNode | ((record: T) => ReactNode);
@@ -53,8 +52,7 @@ export function DetailRecordFrame<T>({
 }) {
   const live = record ?? null;
   return (
-    // Deciding what a scanned thing is — and recording it — is a triage job.
-    <ModeRegion mode="triage" className="flex min-h-screen flex-col bg-mode-panel">
+    <div className="flex min-h-screen flex-col bg-mode-panel">
       <MobileDetailTopBar
         title={bar.title}
         mono={bar.mono}
@@ -87,7 +85,7 @@ export function DetailRecordFrame<T>({
           )}
         </div>
       )}
-    </ModeRegion>
+    </div>
   );
 }
 

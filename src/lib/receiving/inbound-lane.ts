@@ -1,14 +1,17 @@
-/** Inbound desk lane — Pipeline (on the way) vs Docked (landed activity). */
+/** Inbound desk lane — Pipeline (on the way), Docked (landed activity), Exceptions (needs a person). */
 
 import { RECEIVING_HISTORY_URL_PARAMS } from '@/lib/receiving-history-search';
 import { HISTORY_SORT_WIRE_IDS } from '@/lib/receiving/receiving-modes';
 
-type InboundLane = 'pipeline' | 'docked';
+export type InboundLane = 'pipeline' | 'docked' | 'exceptions';
 
 const INBOUND_LANE_PARAM = 'lane';
 
-/** Wire value that selects Docked; Pipeline omits the param. */
-const INBOUND_LANE_DOCKED = 'docked' as const;
+/** Wire values; Pipeline omits the param. */
+const INBOUND_LANE_WIRE = ['docked', 'exceptions'] as const;
+
+/** `?lane=` values the route hygiene keeps (`INCOMING_ROUTE_PARAMS`). */
+export const INBOUND_LANE_PARAM_VALUES = ['pipeline', ...INBOUND_LANE_WIRE] as const;
 
 const PIPELINE_SORT_IDS = [
   'zoho_newest',
@@ -29,6 +32,9 @@ const PIPELINE_ONLY_PARAMS = [
   'po_to',
 ] as const;
 
+/** A pasted list reconciles On the way; Exceptions and Docked never carry it. */
+const PASTE_PARAMS = ['ref_in', 'recon'] as const;
+
 /** Params that belong only to the Docked (history) lane. */
 const DOCKED_ONLY_PARAMS = [
   RECEIVING_HISTORY_URL_PARAMS.field,
@@ -36,7 +42,8 @@ const DOCKED_ONLY_PARAMS = [
 ] as const;
 
 export function parseInboundLane(raw: string | null | undefined): InboundLane {
-  return String(raw || '').trim().toLowerCase() === INBOUND_LANE_DOCKED ? 'docked' : 'pipeline';
+  const value = String(raw || '').trim().toLowerCase();
+  return (INBOUND_LANE_WIRE as readonly string[]).includes(value) ? (value as InboundLane) : 'pipeline';
 }
 
 /** True when `?sort=` is a Pipeline (Incoming) ORDER BY id. */
@@ -72,9 +79,15 @@ export function clearCrossLaneParams(
 ): URLSearchParams {
   const next = new URLSearchParams(params.toString());
   if (nextLane === 'docked') {
-    for (const key of PIPELINE_ONLY_PARAMS) next.delete(key);
+    for (const key of [...PIPELINE_ONLY_PARAMS, ...PASTE_PARAMS]) next.delete(key);
     const sort = next.get('sort');
     if (sort && isPipelineSort(sort)) next.delete('sort');
+    next.delete('page');
+  } else if (nextLane === 'exceptions') {
+    // Its own population: no facet, no paste, no Docked sort; Pipeline sorts apply.
+    for (const key of [...PIPELINE_ONLY_PARAMS, ...PASTE_PARAMS, ...DOCKED_ONLY_PARAMS]) next.delete(key);
+    const sort = next.get('sort');
+    if (sort && isDockedSort(sort)) next.delete('sort');
     next.delete('page');
   } else {
     for (const key of DOCKED_ONLY_PARAMS) next.delete(key);
@@ -89,14 +102,14 @@ export function clearCrossLaneParams(
 
 /**
  * Apply a lane switch onto a copy of the current search params.
- * Pipeline clears `lane`; Docked sets `lane=docked`.
+ * Pipeline clears `lane`; Docked / Exceptions set it.
  */
 export function applyInboundLane(
   searchParams: URLSearchParams,
   lane: InboundLane,
 ): URLSearchParams {
   const next = clearCrossLaneParams(searchParams, lane);
-  if (lane === 'docked') next.set(INBOUND_LANE_PARAM, INBOUND_LANE_DOCKED);
-  else next.delete(INBOUND_LANE_PARAM);
+  if (lane === 'pipeline') next.delete(INBOUND_LANE_PARAM);
+  else next.set(INBOUND_LANE_PARAM, lane);
   return next;
 }

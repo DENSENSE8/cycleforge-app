@@ -61,11 +61,19 @@ export function navRecentStoreRow(surface: string, row: NavRecentDbRow): NavRece
   };
 }
 
+/** One surface read on the wire: newest-first rows, and the cursor of the next (older) page, if any. */
+export interface NavRecentsList {
+  ok: true;
+  surface: NavRecentSurfaceId;
+  rows: NavRecentRow[];
+  nextBefore: string | null;
+}
+
 export async function listNavRecents(
   caller: NavRecentsCaller,
-  input: { surface: NavRecentSurfaceId; limit?: number },
+  input: { surface: NavRecentSurfaceId; limit?: number; before?: string; q?: string },
   deps: NavRecentsDeps = defaultNavRecentsDeps,
-): Promise<{ ok: true; surface: NavRecentSurfaceId; rows: NavRecentRow[] } | NavRecentsFailure> {
+): Promise<NavRecentsList | NavRecentsFailure> {
   const surface = getNavRecentSurface(input.surface);
   if (!surface) throw new Error(`unknown recents surface: ${input.surface}`);
   if (surface.permission && !caller.permissions.has(surface.permission)) {
@@ -78,15 +86,27 @@ export async function listNavRecents(
       { orgId: caller.orgId, staffId: caller.staffId, surface: surface.id, limit },
       deps.store,
     );
-    return { ok: true, surface: input.surface, rows: rows.map((row) => navRecentStoreRow(surface.id, row)) };
+    return {
+      ok: true,
+      surface: input.surface,
+      rows: rows.map((row) => navRecentStoreRow(surface.id, row)),
+      nextBefore: null,
+    };
   }
 
-  const rows = await runNavRecentAdapter(
+  const page = await runNavRecentAdapter(
     surface.id as NavRecentAdapterId,
-    { orgId: caller.orgId, staffId: caller.staffId, limit: input.limit ?? DEFAULT_ADAPTER_LIMIT },
+    {
+      orgId: caller.orgId,
+      staffId: caller.staffId,
+      limit: input.limit ?? DEFAULT_ADAPTER_LIMIT,
+      // A surface reads only the knobs it declares.
+      before: surface.paged ? input.before : undefined,
+      q: surface.find && input.q ? input.q : undefined,
+    },
     deps.adapters,
   );
-  return { ok: true, surface: input.surface, rows };
+  return { ok: true, surface: input.surface, rows: page.rows, nextBefore: page.nextBefore };
 }
 
 export async function recordNavRecentOpen(

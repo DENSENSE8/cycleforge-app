@@ -66,8 +66,8 @@ export type AiNeutralKey = keyof typeof AI_NEUTRALS;
 /**
  * Four hues, violet → blue → teal → pink. Dark lifts them so the shimmer still
  * reads on a dark plane. `--ai-iris-<n>`; composed into the gradient vars
- * below — components use the gradients (`bg-ai-iris`, `AiIrisRing`,
- * `AiIrisSpinner`), never a single stop.
+ * below — components use the gradients (`bg-ai-iris` through
+ * `AiTextShimmer`), never a single stop.
  */
 export const AI_IRIS = {
   light: { 1: '#8b5cf6', 2: '#3b82f6', 3: '#14b8a6', 4: '#ec4899' },

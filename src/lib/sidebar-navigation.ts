@@ -281,14 +281,15 @@ export function isMobileAllowedPath(pathname: string | null | undefined): boolea
 
 /** Dogfood prod surface (stations + shipping + inventory + warehouse + thin support). */
 export const APP_SIDEBAR_NAV: SidebarNavItem[] = [
-  // Top map rows — Home → Media Library.
+  // Top map rows — Chat → Daily → Media Library. Chat leads the page map and
+  // the ⌘K pin (operator 2026-09-27); `/ai-chat` → SessionSurface, the ONE
+  // assistant door.
+  { id: 'ai-chat',           label: 'Chat',           href: '/ai-chat',            icon: MessageSquare,   kind: 'top', requires: 'assistant.chat' },
   { id: 'home',              label: 'Daily',           href: '/',                   icon: ListChecks,      kind: 'top' },
   { id: 'search',            label: 'Search',         href: '/search',             icon: Search,          kind: 'top', spineBand: false },
   { id: 'ops-photos',        label: 'Media Library',  href: '/ops/photos',         icon: Images,          kind: 'top', requires: 'photos.view', keywords: ['photos', 'photo library', 'images', 'assets', 'gallery'] },
   // Plans — live master-plan console (Home forge). Same landing as `/forge`.
   { id: 'plans-live',        label: 'Plans',          href: '/?mode=forge',        icon: Zap,             kind: 'top', spineBand: false, requires: 'operations.plans.view' },
-  // Chat — the ONE assistant door (`/ai-chat` → SessionSurface).
-  { id: 'ai-chat',           label: 'Chat',           href: '/ai-chat',            icon: MessageSquare,   kind: 'top', requires: 'assistant.chat' },
   // NO standalone Tasks row.
   // (`/?mode=tasks`, see SIDEBAR_PAGE_NAV) — operator 2026-09-22: *"focus on
   { id: 'settings',          label: 'Settings',    href: '/settings',           icon: Settings,        kind: 'top', spineBand: false },
@@ -833,6 +834,11 @@ export const SIDEBAR_PAGE_NAV: SidebarPageNav[] = [
   {
     id: 'home', label: 'Daily', href: '/', icon: ListChecks, kind: 'top',
     deskChrome: true,
+  },
+  // ── Chat ─────────────────────────────────────────────────────────────────── No views: its panel is the staffer's
+  // threads (`NAV_PAGE_DECLS['ai-chat'].recentsPanel`), led by New chat.
+  {
+    id: 'ai-chat', label: 'Chat', href: '/ai-chat', icon: MessageSquare, kind: 'top', requires: 'assistant.chat',
   },
   // ── Sales (front-desk history) ──────────────────────────────────────────── The `/dashboard` sales domain, promoted to its own root…
   {

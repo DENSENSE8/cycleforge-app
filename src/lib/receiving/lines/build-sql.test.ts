@@ -669,3 +669,96 @@ test('tracking_in works on the removed lane — it is where a fruitless paste la
   assert.ok(built.list.sql.includes('stn.tracking_number_normalized = ANY($2::text[])'));
   assert.deepEqual(built.list.params[1], ['1Z999AA10123456784']);
 });
+
+// ── view=reconcile — every line a pasted order / tracking list names ─────────
+
+test('reconcile matches the pasted keys on tracking, PO number, PO id and order id — with no lane membership', () => {
+  const built = listFor('view=reconcile&ref_in=PO-10423,1z999-aa1-0123456784,12-34567-89012');
+  const sql = built.list.sql;
+  assert.deepEqual(built.list.params[1], ['PO10423', '1Z999AA10123456784', '123456789012']);
+  for (const arm of [
+    'stn.tracking_number_normalized = ANY($2::text[])',
+    'rz.zoho_purchaseorder_number_norm = ANY($2::text[])',
+    'rz.zoho_purchaseorder_id::text = ANY($2::text[])',
+    `regexp_replace(upper(COALESCE(rl.source_order_id, '')), '[^A-Z0-9]', '', 'g') = ANY($2::text[])`,
+  ]) {
+    assert.ok(sql.includes(arm), arm);
+  }
+  // A received, unboxed or failed line must come back: no lane predicate at all.
+  assert.ok(!sql.includes(`rl.workflow_status = 'EXPECTED'`));
+  assert.ok(!sql.includes(NOT_ZOHO_RECEIVED));
+  // Painted by the Incoming ledger, so it carries the Incoming decorations.
+  assert.ok(sql.includes('AS delivery_state'));
+  assert.equal(built.count.params[1], built.list.params[1], 'the count names the same keys');
+});
+
+test('reconcile without a list returns nothing, never the whole org', () => {
+  const built = listFor('view=reconcile');
+  assert.ok(/WHERE rl\.organization_id = \$1 AND FALSE/.test(built.list.sql.replace(/\s+/g, ' ')));
+});
+
+test('reconcile brings lineless door-scanned cartons the list names, from any source', () => {
+  const query = parseReceivingLinesQuery(new URLSearchParams('view=reconcile&ref_in=1Z999AA10123456784,PO-7'));
+  assert.equal(shouldIncludeUnmatchedPlaceholders(query), true);
+  const placeholders = buildUnmatchedPlaceholdersSql(query, ORG);
+  assert.deepEqual(placeholders.list.params, [ORG, ['1Z999AA10123456784', 'PO7']]);
+  assert.ok(placeholders.list.sql.includes('stn.tracking_number_normalized = ANY($2::text[])'));
+  assert.ok(!placeholders.list.sql.includes('r.source IN'), 'a scanned zoho_po carton counts too');
+  assert.equal(
+    shouldIncludeUnmatchedPlaceholders(parseReceivingLinesQuery(new URLSearchParams('view=reconcile'))),
+    false,
+  );
+});
+
+// ── view=exceptions — Inbound lines that need a person ───────────────────────
+
+const exceptionsFor = (warehousePostal?: string, universalIncoming = false) =>
+  buildReceivingLinesListSql({
+    query: parseReceivingLinesQuery(new URLSearchParams('view=exceptions&limit=50&offset=0')),
+    orgId: ORG,
+    viewerStaffId: NaN,
+    universalIncoming,
+    applyScannedZohoExclusion: true,
+    warehousePostal,
+  });
+
+test('exceptions keeps the Zoho-received-never-scanned lines Incoming hides, but never a cancelled PO', () => {
+  const sql = exceptionsFor('92647').list.sql;
+  assert.ok(!sql.includes(NOT_ZOHO_RECEIVED), 'the vendor-received guard is the ERP_AHEAD reason, not an exclusion');
+  assert.ok(sql.includes(`COALESCE(mirror.status, '') NOT IN ('cancelled','rejected')`), 'a dead PO is nobody’s problem');
+  assert.ok(sql.includes(`COALESCE(mirror.status, '') IN ('received','billed','closed')`), 'ERP_AHEAD reads received-like only');
+  // Physical-first: a received line never labels, and a tracking scan keeps it out.
+  assert.ok(sql.includes(`rl.workflow_status = 'EXPECTED'`));
+  assert.ok(sql.includes('ru.unboxed_at IS NOT NULL') && sql.includes('rt.door_received_at IS NOT NULL'));
+  assert.ok(/NOT EXISTS \(\s*SELECT 1\s+FROM receiving_scans rs/.test(sql), 'the scan match is an anti join');
+});
+
+test('exceptions judges wrong destination against the org ZIP, and not at all without one', () => {
+  const withZip = exceptionsFor('92647-1234');
+  assert.equal(withZip.list.params[1], '92647', 'the ZIP5, normalized once');
+  assert.ok(withZip.list.sql.includes(`<> $2`) && withZip.list.sql.includes(`'WRONG_DESTINATION'`));
+  assert.ok(withZip.list.sql.includes('$2::text AS warehouse_postal'));
+  assert.equal(withZip.count.params[1], '92647', 'the count judges by the same ZIP');
+  assert.equal(withZip.count.params.length, withZip.list.params.length - 2, 'count = list without LIMIT / OFFSET');
+
+  for (const unset of [undefined, '', 'n/a']) {
+    const without = exceptionsFor(unset);
+    assert.ok(!without.list.sql.includes(`'WRONG_DESTINATION'`), `no crying wolf (${String(unset)})`);
+    assert.ok(without.list.sql.includes('NULL::text AS warehouse_postal'));
+    assert.equal(without.list.params.length, 3, 'org + LIMIT + OFFSET only');
+  }
+});
+
+test('exceptions joins every alias its CASE reads in the COUNT too', () => {
+  const built = exceptionsFor('92647', true);
+  for (const sql of [built.list.sql, built.count.sql]) {
+    for (const join of ['LEFT JOIN zoho_po_mirror mirror', ') stn_evt ON TRUE', 'LEFT JOIN receiving_unbox ru', 'LEFT JOIN receiving_triage rt']) {
+      assert.ok(sql.includes(join), join);
+    }
+  }
+  assert.ok(built.list.sql.includes(`AS exception_code`) && built.list.sql.includes('AS delivery_state'));
+  assert.ok(
+    built.list.sql.includes(`rl.inbound_source_type IN ('ebay', 'amazon', 'manual')`),
+    'Universal Incoming marketplace lines can be exceptions too',
+  );
+});

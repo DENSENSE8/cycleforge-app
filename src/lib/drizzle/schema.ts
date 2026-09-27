@@ -1063,6 +1063,8 @@ export const orders = pgTable('orders', {
   statusHistory: jsonb('status_history').default([]),
   // is_shipped removed from schema — shipped state is derived from shipping_tracking_numbers
   accountSource: text('account_source'),
+  /** Operator-set link to the order's admin page; wins over the derived marketplace URL. 2026-09-27. */
+  adminUrl: text('admin_url'),
   orderDate: timestamp('order_date', { withTimezone: true }),
   /** Realized sale price of this order line — what it sold for on its platform.
    *  Per-transaction fact (varies by platform/time), filled at ingestion. */

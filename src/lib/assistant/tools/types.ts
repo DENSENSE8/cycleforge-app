@@ -2,6 +2,7 @@
 
 import type { z } from 'zod';
 import type { OrgId } from '@/lib/tenancy/constants';
+import type { AssistantAccessMode } from '@/lib/assistant/access-mode';
 import type { PermissionString } from '@/lib/auth/permissions-shared';
 
 export interface AssistantToolCtx {
@@ -9,6 +10,8 @@ export interface AssistantToolCtx {
   staffId: number | null;
   /** The caller's resolved permission set (from AuthContext). */
   permissions: ReadonlySet<string>;
+  /** The composer's access mode; absent = full. `ask` narrows dispatch to GREEN reads. */
+  accessMode?: AssistantAccessMode;
 }
 
 export interface AssistantToolQueryResult {

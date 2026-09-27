@@ -392,6 +392,17 @@ export const MUTATION_KINDS = {
       'Set (or clear with brandId: null) the brand of one catalog SKU. Payload: { skuCatalogId, brandId }. Approval stamps it as a human-confirmed fact (operator, 1.00); revertable. The brand backfill queues its below-threshold guesses here.',
     permission: 'sku_stock.manage',
   },
+  // review — the paperwork a SKU prints with. The assistant proposes it with
+  // link_manual_to_sku and the operator's next-turn "confirm" (or any
+  // reviewer) approves it; approval re-pairs the product_manuals row.
+  'product_manual.link_sku': {
+    label: 'Link manual to SKU',
+    trust: 'review',
+    targetKind: 'product_manual',
+    description:
+      'Pair a product manual with a catalog SKU so it resolves (and pack-prints) for every order of that SKU. Payload: { manualId, sku, restore? }. Proposed by link_manual_to_sku — use that tool, not propose_mutation. Revertable (restores the prior pairing).',
+    permission: 'product_manuals.manage',
+  },
 } as const satisfies Record<string, MutationKindDef>;
 
 export type MutationKind = keyof typeof MUTATION_KINDS;

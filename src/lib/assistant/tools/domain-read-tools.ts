@@ -553,7 +553,7 @@ export const listSupportFollowups: AssistantToolDef<z.ZodObject<Record<string, n
           entityHint: 'ticket',
           idColumn: 'Ticket',
         },
-        summary: `${items.length} support follow-up${items.length === 1 ? ' is' : 's are'} waiting on you: ${listed}${items.length > 10 ? ` (+${items.length - 10} more in the table)` : ''}. The list is on the panel.`,
+        summary: `${items.length} support follow-up${items.length === 1 ? ' is' : 's are'} waiting on you: ${listed}${items.length > 10 ? ` (+${items.length - 10} more in the table)` : ''}. The list is already on screen — do not render it again.`,
       },
       'list_support_followups',
     );
@@ -760,7 +760,7 @@ export const getPackingKpi: AssistantToolDef<
           `Packing on ${day} (PST): ${t.total_boxes_packed} boxes (${t.small_count} small, ${t.medium_count} medium, ${t.large_count} large), ` +
           `${Math.round(t.weighted_minutes)} weighted minutes of ${summary.capacity.daily_capacity_minutes} capacity (${Math.round(t.remaining_minutes)} remaining, ${summary.capacity.packer_headcount} packers). ` +
           `FBA pending: ${summary.fba.pending_units} units (~${Math.round(summary.fba.pending_weighted_minutes)} min). ` +
-          `By packer: ${packers.map((p) => `${p.name} ${p.boxes} boxes`).join(', ')}. The per-packer table is on the panel.`,
+          `By packer: ${packers.map((p) => `${p.name} ${p.boxes} boxes`).join(', ')}. The per-packer table is already on screen — do not render it again.`,
       },
       'get_packing_kpi',
     );

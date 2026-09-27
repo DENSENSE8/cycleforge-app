@@ -36,11 +36,10 @@ export interface AiArtifactCardProps {
 }
 
 /**
- * AiArtifactCard — the compact face of an artifact IN the transcript.
- *
- * Title + kind + count, one click to open it in the side panel. The data
- * itself never renders in the column: the column is the conversation, the
- * panel is where the operator chooses to look.
+ * AiArtifactCard — the compact face of a result that lives in the side panel
+ * (a document, a ticket conversation, a reply draft), or of one still
+ * arriving. Title + kind + count, one click to open it on the right. Data
+ * never takes this card — it renders inline in the column.
  */
 export function AiArtifactCard({
   title,

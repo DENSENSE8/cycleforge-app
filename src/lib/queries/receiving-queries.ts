@@ -5,9 +5,11 @@ import {
   dispatchReceivingPhotoChanged,
   type ReceivingPhotoChangedPayload,
 } from '@/utils/events';
-import type {
-  ReceivingModeContext,
-  ReceivingModeDescriptor,
+import {
+  reconcileListParams,
+  reconcileListQueryKey,
+  type ReceivingModeContext,
+  type ReceivingModeDescriptor,
 } from '@/lib/receiving/receiving-modes';
 import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
 import {
@@ -961,13 +963,29 @@ export function receivingLinesTableQuery(
       : mode.queryKey(ctx);
   return {
     queryKey,
-    queryFn: async (): Promise<ReceivingLinesListResponse> => {
-      const res = await fetch(`/api/receiving-lines?${params.toString()}`, {
-        signal: AbortSignal.timeout(RECEIVING_LINES_FETCH_TIMEOUT_MS),
-      });
-      if (!res.ok) throw new Error('fetch failed');
-      return res.json();
-    },
+    queryFn: () => fetchReceivingLinesList(params),
+    staleTime: 20_000,
+  };
+}
+
+async function fetchReceivingLinesList(params: URLSearchParams): Promise<ReceivingLinesListResponse> {
+  const res = await fetch(`/api/receiving-lines?${params.toString()}`, {
+    signal: AbortSignal.timeout(RECEIVING_LINES_FETCH_TIMEOUT_MS),
+  });
+  if (!res.ok) throw new Error('fetch failed');
+  return res.json();
+}
+
+/**
+ * A pasted Inbound list's rows — the SAME key and request the Incoming table
+ * makes for `?ref_in=` (`incomingMode`), so the Check's warehouse fallback and
+ * the ledger share one fetch.
+ */
+export function receivingReconcileRowsQuery(refIn: readonly string[]) {
+  const params = reconcileListParams(refIn);
+  return {
+    queryKey: reconcileListQueryKey(refIn),
+    queryFn: () => fetchReceivingLinesList(params),
     staleTime: 20_000,
   };
 }

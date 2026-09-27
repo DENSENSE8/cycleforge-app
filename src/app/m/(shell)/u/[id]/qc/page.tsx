@@ -5,7 +5,6 @@ import { useParams, useRouter } from 'next/navigation';
 import { MobileDetailTopBar } from '@/components/mobile/redesign/MobileDetailTopBar';
 import { UnitQcRunner } from '@/components/mobile/qc/UnitQcRunner';
 import { useMobileUnit } from '@/components/mobile/unit/useMobileUnit';
-import { ModeRegion } from '@/design-system/providers/ModeRegion';
 import { QC_SCAN_HREF } from '@/lib/scan/identify-land';
 
 /** `/m/u/[id]/qc` — the unit's QC checklist. */
@@ -16,7 +15,7 @@ function UnitQcInner() {
   const { data } = useMobileUnit(rawParam);
 
   return (
-    <ModeRegion mode="triage" className="flex min-h-screen flex-col bg-mode-panel">
+    <div className="flex min-h-screen flex-col bg-mode-panel">
       <MobileDetailTopBar
         backHref={`/m/u/${rawParam}`}
         subtitle="Quality control"
@@ -24,7 +23,7 @@ function UnitQcInner() {
         mono
       />
       <UnitQcRunner unitRef={rawParam} onNext={() => router.push(QC_SCAN_HREF)} />
-    </ModeRegion>
+    </div>
   );
 }
 

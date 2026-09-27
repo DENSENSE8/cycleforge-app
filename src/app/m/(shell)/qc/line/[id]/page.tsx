@@ -4,7 +4,6 @@ import { Suspense } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { MobileDetailTopBar } from '@/components/mobile/redesign/MobileDetailTopBar';
 import { QcLinePicker } from '@/components/mobile/qc/QcLinePicker';
-import { ModeRegion } from '@/design-system/providers/ModeRegion';
 import { QC_SCAN_HREF } from '@/lib/scan/identify-land';
 
 /**
@@ -18,14 +17,14 @@ function QcLineInner() {
   const router = useRouter();
 
   return (
-    <ModeRegion mode="triage" className="flex min-h-screen flex-col bg-mode-panel">
+    <div className="flex min-h-screen flex-col bg-mode-panel">
       <MobileDetailTopBar backHref={QC_SCAN_HREF} subtitle="Quality control" title={`L-${lineId}`} mono />
       <QcLinePicker
         lineId={lineId}
         onPick={(unitRef) => router.push(`/m/u/${encodeURIComponent(unitRef)}/qc`)}
         onBack={() => router.push(QC_SCAN_HREF)}
       />
-    </ModeRegion>
+    </div>
   );
 }
 

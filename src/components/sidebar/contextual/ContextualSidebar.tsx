@@ -1,8 +1,8 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
-import type { NavContext } from '@/lib/nav/context/schema';
+import type { NavAction, NavContext } from '@/lib/nav/context/schema';
 import { fetchNavContext } from '@/lib/nav/context/http-client';
 import { MASTER_NAV_TOGGLE_EVENT } from '@/lib/app-events';
 import { AnimatePresence, motion } from '@/design-system/motion';
@@ -29,17 +29,24 @@ import { NavSectionList } from './NavSectionList';
 import { NavFilters } from './NavFilters';
 import { NAV_BLOCK_CLASS } from './nav-block';
 import { NavRecentsList } from './NavRecentsList';
+import { NavPanelActions } from './NavPanelActions';
 import { NavFind, NavGlobalSearch } from './NavFind';
 import { NavSlotError } from './NavSlotError';
+import { NavModeSwitcher, isNavModeSection } from './NavModeSwitcher';
+import { useRememberLaneView } from './useLaneDoorHref';
 
 /**
- * The contextual sidebar host (stage 5) — one host for every page whose
- * `NavContext.rollout` is `contextual`. Minimal by default; detail opens on
- * click (operator 2026-09-27):
+ * THE desktop sidebar — one host for every page. A page whose
+ * `NavContext.rollout` is `contextual` gets its own panel; every other page
+ * gets the page map (the resolver's lane map, `?view=top`) with that page
+ * lit, so the parent sidebar is the same face everywhere. Minimal by
+ * default; detail opens on click (operator 2026-09-27):
  *
  * - pinned head: collapse · global search (the ⌘K palette's face); on a page
- *   panel also `‹ <Page>` and Find (`F`, the list on screen only). Pinned so
- *   search never scrolls away or hides while a record is open;
+ *   panel also Find (`F`, the list on screen only), `‹ <Lane>` — carrying a
+ *   view-less page's verbs at its right end (Chat's `+`) — and, on a lane
+ *   door's landing page, the mode switcher (Shipping · FBA · Label intake).
+ *   Pinned so search never scrolls away or hides while a record is open;
  * - scrolling body: the views as pressable blocks, then the closed filter
  *   rows. The view's verbs live in the page header, over the list they act
  *   on (`NavPageActions`). After `‹` the body shows the lane map
@@ -56,7 +63,12 @@ export function ContextualSidebar() {
   const queryClient = useQueryClient();
   const page = useNavContext(path);
   const [peekTop, setPeekTop] = useState(false);
-  const top = useNavContext(path, { view: 'top', enabled: peekTop });
+  const nav = page.data;
+  // A page without its own contextual panel shows the page map, never a panel.
+  const panel = nav?.rollout === 'contextual' && nav.scope === 'section';
+  const mapOnly = nav !== undefined && nav.scope === 'section' && !panel;
+  const backVerbs = panel ? viewlessPanelVerbs(nav) : [];
+  const top = useNavContext(path, { view: 'top', enabled: peekTop || mapOnly });
   const backRowRef = useRef<HTMLButtonElement>(null);
   const litTopRowRef = useRef<HTMLAnchorElement>(null);
   const returnFocusToBack = useRef(false);
@@ -73,9 +85,10 @@ export function ContextualSidebar() {
       staleTime: 30_000,
     });
 
-  const nav = page.data;
-  const showTop = peekTop || nav?.scope === 'top';
-  const body: NavContext | undefined = peekTop ? top.data : nav;
+  const modeSection = panel ? nav.sections.find(isNavModeSection) : undefined;
+  const showTop = peekTop || !panel;
+  const body: NavContext | undefined = peekTop || mapOnly ? top.data : nav;
+  useRememberLaneView(nav);
 
   useEffect(() => {
     if (peekTop && top.data) litTopRowRef.current?.focus({ preventScroll: true });
@@ -102,25 +115,34 @@ export function ContextualSidebar() {
           />
           <NavGlobalSearch />
         </div>
-        {nav?.scope === 'section' ? (
+        {panel ? (
           // Find sits ABOVE `‹` so it never moves: backing out to the page map
           // drops the back row below it, not the field the eye is on.
           <div className="flex flex-col gap-1 px-2">
             <NavFind search={nav.search} />
             {nav.back && !peekTop ? (
-              <button
-                ref={backRowRef}
-                type="button"
-                data-nav-back
-                onClick={() => setPeekTop(true)}
-                onPointerEnter={prefetchTop}
-                onFocus={prefetchTop}
-                className={cn(NAV_BLOCK_CLASS, 'h-8 text-role-body font-semibold')}
-              >
-                <ChevronLeft aria-hidden className="size-4 shrink-0 text-text-muted" />
-                <span className="min-w-0 flex-1 truncate">{nav.back.label}</span>
-              </button>
+              <div className="relative flex min-w-0">
+                <button
+                  ref={backRowRef}
+                  type="button"
+                  data-nav-back
+                  onClick={() => setPeekTop(true)}
+                  onPointerEnter={prefetchTop}
+                  onFocus={prefetchTop}
+                  className={cn(NAV_BLOCK_CLASS, 'h-8 text-role-body font-semibold', backVerbs.length > 0 && 'pr-10')}
+                >
+                  <ChevronLeft aria-hidden className="size-4 shrink-0 text-text-muted" />
+                  <span className="min-w-0 flex-1 truncate">{nav.back.label}</span>
+                </button>
+                {backVerbs.length > 0 ? (
+                  // A sibling of `‹`, never inside it: a verb must not also go back.
+                  <span className="absolute inset-y-0 right-1 flex items-center">
+                    <NavPanelActions actions={backVerbs} />
+                  </span>
+                ) : null}
+              </div>
             ) : null}
+            {modeSection && !peekTop ? <NavModeSwitcher section={modeSection} currentPageId={nav.page.id} /> : null}
           </div>
         ) : null}
       </div>
@@ -149,8 +171,8 @@ export function ContextualSidebar() {
                 {showTop ? (
                   <TopBody
                     nav={body}
-                    loading={peekTop && !top.data}
-                    failed={peekTop && top.isError}
+                    loading={(peekTop || mapOnly) && !top.data}
+                    failed={(peekTop || mapOnly) && top.isError}
                     onRetry={() => void top.refetch()}
                     litRowRef={litTopRowRef}
                     onReturn={
@@ -209,16 +231,28 @@ function TopBody({
   return <NavSectionList sections={nav.sections} onActiveSelect={onReturn} activeRowRef={litRowRef} />;
 }
 
+/**
+ * A VIEW-LESS panel (Chat) is its recents list; with no desk header over that
+ * list, the page's verbs ride the `‹` back row (`NavPanelActions`).
+ */
+function viewlessPanelVerbs(nav: NavContext): readonly NavAction[] {
+  const hasViews = nav.sections.some((section) => !isNavModeSection(section) && section.items.length > 0);
+  return !hasViews && nav.recents ? (nav.actions ?? []) : [];
+}
+
 function SectionBody({ nav }: { nav: NavContext }) {
-  const hasItems = nav.sections.some((section) => section.items.length > 0);
+  // The modes paint as the pinned switcher under `‹`, not as rows here.
+  const views = useMemo(() => nav.sections.filter((section) => !isNavModeSection(section)), [nav.sections]);
+  const hasItems = views.some((section) => section.items.length > 0);
+  const hasFilters = Boolean(nav.filters || nav.controls || nav.savedViews);
   return (
     <>
       {hasItems ? (
-        <NavSectionList sections={nav.sections} pageId={nav.page.id} />
-      ) : (
+        <NavSectionList sections={views} pageId={nav.page.id} />
+      ) : nav.recents ? null : (
         <p className="px-4 py-2 text-role-caption text-text-faint">No views on this page</p>
       )}
-      {nav.filters || nav.controls || nav.savedViews ? (
+      {hasFilters ? (
         <NavFilters
           key={nav.filters?.facetContext ?? nav.page.id}
           filters={nav.filters}
@@ -226,7 +260,14 @@ function SectionBody({ nav }: { nav: NavContext }) {
           savedViews={nav.savedViews}
         />
       ) : null}
-      {nav.recents ? <NavRecentsList endpoint={nav.recents.endpoint} surface={nav.recents.surface} /> : null}
+      {nav.recents ? (
+        <NavRecentsList
+          key={nav.recents.surface}
+          recents={nav.recents}
+          search={nav.search}
+          leadingHairline={hasItems || hasFilters}
+        />
+      ) : null}
     </>
   );
 }

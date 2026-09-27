@@ -7,6 +7,7 @@ import type { ReactNode } from 'react';
 import type { DehydratedState } from '@tanstack/react-query';
 import Providers from '@/components/Providers';
 import type { AuthSessionUser } from '@/contexts/AuthContext';
+import { RouteModeRegion } from '@/design-system/providers/RouteModeRegion';
 
 const WarehouseShell = dynamic(() =>
   import('@/components/layout/WarehouseShell').then((m) => m.WarehouseShell),
@@ -35,17 +36,21 @@ export function AppShellSwitch({
   shellSeed: DehydratedState | null;
   children: ReactNode;
 }) {
+  // Every frame's page slot wears the route's declared mode — one mount for
+  // public, kiosk, desk and phone (`src/lib/routing/mode-registry.ts`).
+  const page = <RouteModeRegion>{children}</RouteModeRegion>;
+
   if (publicChrome) {
     /* PUBLIC CHROME — signed-out entry surfaces only. */
     return (
       <div id="app-root" className="fixed inset-0 flex min-h-0 flex-col overflow-hidden">
-        <Providers publicChrome>{children}</Providers>
+        <Providers publicChrome>{page}</Providers>
       </div>
     );
   }
 
   if (kioskHost) {
-    return <KioskAppShell initialUser={initialUser}>{children}</KioskAppShell>;
+    return <KioskAppShell initialUser={initialUser}>{page}</KioskAppShell>;
   }
 
   return (
@@ -54,7 +59,7 @@ export function AppShellSwitch({
       mobileTree={mobileTree}
       shellSeed={shellSeed}
     >
-      {children}
+      {page}
     </WarehouseShell>
   );
 }

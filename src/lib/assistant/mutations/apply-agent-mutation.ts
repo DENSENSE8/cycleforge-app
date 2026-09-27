@@ -52,6 +52,9 @@ import {
   BrandUpdateMutationPayload,
   SkuBrandAssignPayload,
 } from '@/lib/schemas/brands';
+import { z } from 'zod';
+import type { PoolClient } from 'pg';
+import { OrderManualError, linkManualToSkuInTx, restoreManualPairingInTx } from '@/lib/manuals/order-manuals';
 
 type Client = FeedWriteClient & DraftGraphClient;
 type Payload = Record<string, unknown>;
@@ -204,6 +207,8 @@ async function dispatchApply(
     case 'brand.update':
     case 'sku_brand.assign':
       return dispatchBrand(client, orgId, kind, payload);
+    case 'product_manual.link_sku':
+      return dispatchManualLink(client, orgId, payload);
     default:
       // review-class kinds never reach dispatchApply; anything else is a gap.
       return { ok: false, status: 400, error: `no apply path for mutation kind "${kind}"` };
@@ -217,6 +222,48 @@ type DispatchResult =
 function payloadError(kind: string, issues: ReadonlyArray<{ path: PropertyKey[]; message: string }>): DispatchResult {
   const detail = issues.map((i) => `${i.path.map(String).join('.') || '(payload)'}: ${i.message}`).join('; ');
   return { ok: false, status: 400, error: `invalid ${kind} payload — ${detail}` };
+}
+
+const ManualLinkPayload = z.union([
+  z.object({ manualId: z.number().int().positive(), sku: z.string().trim().min(1).max(100) }).strict(),
+  // The inverse: the manual's exact prior pairing.
+  z
+    .object({
+      manualId: z.number().int().positive(),
+      restore: z
+        .object({
+          orderId: z.number().int().positive().nullable(),
+          itemNumber: z.string().max(64).nullable(),
+          sku: z.string().max(100).nullable(),
+          skuCatalogId: z.number().int().positive().nullable(),
+        })
+        .strict(),
+    })
+    .strict(),
+]);
+
+/** Manual ↔ SKU pairing (review class: applied by the operator's confirmation or a reviewer, or by a revert). */
+async function dispatchManualLink(client: Client, orgId: OrgId, payload: Payload): Promise<DispatchResult> {
+  const parsed = ManualLinkPayload.safeParse(payload);
+  if (!parsed.success) return payloadError('product_manual.link_sku', parsed.error.issues);
+  const pg = client as unknown as PoolClient;
+  try {
+    if ('restore' in parsed.data) {
+      await restoreManualPairingInTx(pg, orgId, parsed.data.manualId, parsed.data.restore);
+      return { ok: true, inverse: null, targetRef: String(parsed.data.manualId) };
+    }
+    const link = await linkManualToSkuInTx(pg, orgId, parsed.data.manualId, parsed.data.sku);
+    return {
+      ok: true,
+      inverse: { kind: 'product_manual.link_sku', payload: { manualId: link.manualId, restore: link.before } },
+      targetRef: String(link.manualId),
+    };
+  } catch (err) {
+    if (err instanceof OrderManualError) {
+      return { ok: false, status: err.status === 404 ? 404 : 400, error: err.message };
+    }
+    throw err;
+  }
 }
 
 /** Brand vocabulary + SKU brand writes (review class: reached only through an approval or a revert). */

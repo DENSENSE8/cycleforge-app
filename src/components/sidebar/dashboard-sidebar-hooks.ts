@@ -6,11 +6,10 @@
  * route-context panels stay thin and presentational.
  */
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useMemo } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/contexts/AuthContext';
-import { useEventBridge } from '@/hooks';
 import type { ShippedFormData } from '@/components/shipped';
 import { refreshDomains } from '@/lib/refresh/bus';
 import { REFRESH_BUNDLES } from '@/lib/refresh/domains';
@@ -31,30 +30,6 @@ export function useAuthPermissions(): Set<string> | undefined {
   }, [isLoaded, user]);
 }
 
-
-/** Wires the cross-pane `open-shipped-details` / `close-shipped-details` window event bridge that sibling tables dispatch, and resets on… */
-export function useStationDetailsPanel(onActivate?: () => void): void {
-  const pathname = usePathname();
-  const [, setStationDetailsOpen] = useState(false);
-  const prevPathnameRef = useRef(pathname);
-
-  // Only reset on actual route changes, not search-param updates.
-  useEffect(() => {
-    if (!pathname) return;
-    if (prevPathnameRef.current !== pathname) {
-      setStationDetailsOpen(false);
-      prevPathnameRef.current = pathname;
-    }
-  }, [pathname]);
-
-  useEventBridge({
-    'open-shipped-details': () => {
-      setStationDetailsOpen(true);
-      onActivate?.();
-    },
-    'close-shipped-details': () => setStationDetailsOpen(false),
-  });
-}
 
 /** Returns a submit handler for the shared shipped/order intake form. */
 export function useShippedFormSubmit(

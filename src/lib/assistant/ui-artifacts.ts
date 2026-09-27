@@ -18,19 +18,6 @@
 import { z } from 'zod';
 
 /**
- * A link the panel will hand to the browser. `z.url()` alone is not a scheme
- * check — `javascript:alert(1)` and `data:text/html,…` are both well-formed
- * URLs and both were ACCEPTED by this contract, which put a model-authored
- * (and therefore document-injectable) scheme one click from execution. The
- * panel opens exactly one scheme.
- */
-const externalLink = z
-  .string()
-  .url()
-  .max(600)
-  .refine((u) => u.toLowerCase().startsWith('https://'), 'must be an https:// URL');
-
-/**
  * An in-app route the record card navigates to. `^\/` alone admits
  * `//evil.test/x` (protocol-relative — an external origin) and `/\evil.test`
  * (which browsers normalize to the same thing), so the anchor has to exclude
@@ -60,6 +47,19 @@ export const artifactTableSchema = z.object({
   entityHint: z.string().max(60).optional(),
   /** The id column name used when attaching a row as a composer reference. */
   idColumn: z.string().max(60).optional(),
+  /**
+   * The product the table is about, from the TOOL's own data (never typed by
+   * the model): the resolved identity title and the identifiers the operator
+   * copies (SKU, FNSKU, bins). The chat renders it as the answer's header.
+   */
+  product: z
+    .object({
+      title: artifactTitle,
+      ids: z
+        .array(z.object({ label: z.enum(['SKU', 'FNSKU', 'Bin', 'LPN']), value: z.string().trim().min(1).max(80) }))
+        .max(12),
+    })
+    .optional(),
 });
 
 export const artifactTimelineItemSchema = z.object({
@@ -146,20 +146,45 @@ export const artifactImportTriageSchema = z.object({
 });
 
 /**
- * An external document read through a connected app — the inline retriever.
- * Plain text only: no HTML, no iframe, no embed. The panel is a read plane, so
- * a document renders as text plus a link back to the source of record.
+ * The byte routes a document viewer may frame: the org's own auth-gated
+ * content endpoints (outbound labels / slips, paired paperwork). Nothing else —
+ * a model-typed payload cannot point the viewer at another origin, a data: URL
+ * or an arbitrary app route.
+ */
+const documentContentUrl = z
+  .string()
+  .max(300)
+  .regex(
+    /^\/api\/(?:documents|product-manuals)\/\d+\/content(?:\?[A-Za-z0-9=&._-]*)?$/,
+    'must be a same-origin document content route',
+  );
+
+/**
+ * Paperwork for one entity (an order's shipping label, packing slip, paired
+ * manuals) — opened in the right rail, never inline in the chat column. Each
+ * file is served by its own auth-gated content route; the rail frames those
+ * bytes and switches between files.
  */
 export const artifactDocumentSchema = z.object({
   kind: z.literal('document'),
-  title: z.string().trim().min(1).max(200),
-  /** Where it lives, e.g. "Google Docs". */
-  source: z.string().max(60),
-  /** Absolute external URL to open the real document. */
-  url: externalLink.nullable().optional(),
-  /** Extracted plain text, trimmed by the tool before it ever reaches here. */
-  body: z.string().max(20000),
-  lastModified: z.string().max(40).nullable().optional(),
+  title: artifactTitle,
+  subtitle: z.string().max(200).optional(),
+  documents: z
+    .array(
+      z.object({
+        id: z.string().min(1).max(60),
+        /** Switcher face: "Shipping label", "Packing slip", a manual's name. */
+        label: z.string().trim().min(1).max(80),
+        /** shipping_label | packing_slip | manual | … */
+        docType: z.string().max(40),
+        mime: z.string().max(80),
+        url: documentContentUrl,
+      }),
+    )
+    .min(1)
+    .max(20),
+  /** What the documents belong to, e.g. "order". */
+  entityHint: z.string().max(60).optional(),
 });
 
 // ─── The operator report ─────────────────────────────────────────────────────

@@ -14,7 +14,7 @@ function failure(result: NavRecentsFailure): NextResponse {
   return NextResponse.json(body, { status });
 }
 
-/** GET ?surface=<id>&limit=<n> → `{ surface, rows: NavRecentRow[] }` for the signed-in staffer. */
+/** GET ?surface=<id>&limit=<n>[&before=][&q=] → `{ surface, rows: NavRecentRow[], nextBefore }` for the signed-in staffer. */
 export const GET = withAuth(async (req: NextRequest, ctx) => {
   try {
     const parsed = parseBody(NavRecentsQuery, Object.fromEntries(new URL(req.url).searchParams));
@@ -24,7 +24,7 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
       parsed,
     );
     if (!result.ok) return failure(result);
-    return NextResponse.json({ surface: result.surface, rows: result.rows });
+    return NextResponse.json({ surface: result.surface, rows: result.rows, nextBefore: result.nextBefore });
   } catch (error) {
     return errorResponse(error, 'GET /api/nav/recents');
   }

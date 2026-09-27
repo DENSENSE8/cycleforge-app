@@ -7,7 +7,6 @@ import { KioskCatalogFirstPaint } from '../KioskCatalogFirstPaint';
 import { useDogfoodKioskBind } from '@/lib/kiosk/use-dogfood-kiosk-bind';
 import type { KioskCatalogSeed } from '@/lib/kiosk/seed-catalog';
 import { useEffect, type CSSProperties } from 'react';
-import { ModeRegion } from '@/design-system/providers/ModeRegion';
 import { kioskSessionStore } from '@/lib/kiosk/kiosk-session-store';
 import { KIOSK_FALLBACK_COMMAND, type KioskCommandId } from '@/lib/kiosk/commands';
 import { DEFAULT_LINE_REASONS, type KioskLineReasons } from '@/lib/kiosk/price-approval-kinds';
@@ -44,16 +43,14 @@ export function KioskV2Runtime({
   /* The bind gate is why the SEED lands here and not in the picker: */
   if (!bound) return <KioskCatalogFirstPaint seed={seed} />;
 
-  // The counter task mode wraps the whole shell (staff AND customer face); the
-  // org's brand colour overrides the registry default on the region root,
-  // where the `[data-mode='counter']` declaration would otherwise win.
+  // The route's counter mode comes from src/lib/routing/mode-registry.ts; the
+  // org's brand override now sits on the counter region's first box.
   return (
-    <ModeRegion
-      mode="counter"
+    <div
       className="relative h-full w-full overflow-hidden"
       style={brandColor ? ({ '--mode-brand': brandColor } as CSSProperties) : undefined}
     >
       <KioskShell />
-    </ModeRegion>
+    </div>
   );
 }

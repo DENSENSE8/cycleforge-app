@@ -13,12 +13,13 @@ import {
   Ticket,
 } from '@/components/Icons';
 import type { SessionArtifactEntry } from '../useSessionArtifacts';
+import { toolLabel } from '@/lib/assistant/tool-labels';
 
 export interface ArtifactSummary {
   title: string;
-  /** "Table", "Timeline", … */
+  /** What it is, in the operator's words — "Bin contents", "Timeline", … */
   kind: string;
-  /** "12 rows" — null when the kind has nothing to count. */
+  /** "1 SKU", "12 rows" — null when the kind has nothing to count. */
   count: string | null;
   icon: ReactNode;
 }
@@ -36,18 +37,27 @@ function plural(n: number, one: string, many = `${one}s`): string {
  */
 export function artifactSummary(entry: SessionArtifactEntry): ArtifactSummary {
   const artifact = entry.artifact;
-  if (entry.pending) return { title: 'Preparing…', kind: 'Artifact', count: null, icon: <Sparkles className={GLYPH} /> };
+  if (entry.pending) return { title: 'Preparing…', kind: 'Result', count: null, icon: <Sparkles className={GLYPH} /> };
   if (!artifact) {
     return {
       title: 'Could not show this result',
-      kind: 'Rejected',
+      kind: 'Not shown',
       count: null,
       icon: <AlertCircle className={GLYPH} />,
     };
   }
   switch (artifact.kind) {
-    case 'table':
-      return { title: artifact.title, kind: 'Table', count: plural(artifact.rows.length, 'row'), icon: <ColumnsThree className={GLYPH} /> };
+    case 'table': {
+      // Named for what the lookup was ("Bin contents"), counted in what one
+      // row is ("1 SKU", "2 bins") — never "Table · 1 row" or a tool id.
+      const noun = artifact.entityHint && artifact.entityHint.length <= 24 ? artifact.entityHint : 'row';
+      return {
+        title: artifact.product?.title ?? artifact.title,
+        kind: entry.producedBy ? toolLabel(entry.producedBy) : 'Results',
+        count: plural(artifact.rows.length, noun),
+        icon: <ColumnsThree className={GLYPH} />,
+      };
+    }
     case 'timeline':
       return { title: artifact.title, kind: 'Timeline', count: plural(artifact.items.length, 'event'), icon: <History className={GLYPH} /> };
     case 'ticket_thread':
@@ -61,7 +71,12 @@ export function artifactSummary(entry: SessionArtifactEntry): ArtifactSummary {
     case 'import_triage':
       return { title: artifact.title, kind: 'Import check', count: plural(artifact.rows.length, 'row'), icon: <ListChecks className={GLYPH} /> };
     case 'document':
-      return { title: artifact.title, kind: artifact.source || 'Document', count: null, icon: <FileText className={GLYPH} /> };
+      return {
+        title: artifact.title,
+        kind: artifact.subtitle || (artifact.documents.length > 1 ? `${artifact.documents.length} documents` : 'Document'),
+        count: null,
+        icon: <FileText className={GLYPH} />,
+      };
     case 'report':
       return {
         title: artifact.title,

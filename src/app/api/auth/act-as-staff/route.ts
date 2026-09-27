@@ -17,6 +17,7 @@ import { audit } from '@/lib/auth/audit';
 import { parseOrgSettings, isSharedStaffAccountOrg } from '@/lib/tenancy/settings';
 import { evaluateActAs, actAsErrorStatus } from '@/lib/auth/act-as-staff';
 import { checkRateLimitAsync } from '@/lib/api-guard';
+import { recordStaffLogin } from '@/lib/auth/record-staff-login';
 
 export const runtime = 'nodejs';
 
@@ -113,6 +114,8 @@ export async function POST(req: NextRequest) {
     await revokeSession(prev.sid);
   }
 
+  const { firstSigninToday } = await recordStaffLogin(pool, parsed.staffId);
+
   await audit({
     staffId: parsed.staffId, sid: session.sid, event: 'signin.act_as', result: 'ok', ip, userAgent: ua,
     detail: { previousStaffId: prev.staffId, previousSid: prev.sid, orgId: callerOrgId, deviceKind, persistent },
@@ -124,6 +127,7 @@ export async function POST(req: NextRequest) {
     role: target!.role,
     defaultHomePath: target!.default_home_path,
     defaultHomePathMobile: target!.default_home_path_mobile,
+    firstSigninToday,
   });
   res.cookies.set(SESSION_COOKIE_NAME, session.sid, {
     httpOnly: true,

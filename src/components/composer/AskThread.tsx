@@ -8,6 +8,7 @@
 import { useEffect, useRef } from 'react';
 import MarkdownRenderer from '@/components/ai/MarkdownRenderer';
 import type { AssistantChatState } from '@/components/assistant/useAssistantChat';
+import { ChatPrintJobCard } from '@/components/assistant/ChatPrintJobCard';
 import { NO_ANSWER_FALLBACK } from '@/lib/assistant/turn-trace';
 
 export function AskThread({
@@ -44,17 +45,24 @@ export function AskThread({
                   <MarkdownRenderer content={m.content} variant="bubble" />
                 </div>
               </div>
-            ) : m.error ? (
-              <div key={m.id} className="min-w-0">
-                {/* Error copy stays plain — it is UI text, not prose. */}
-                <p className="whitespace-pre-wrap text-role-caption leading-6 text-text-danger">{m.content}</p>
-              </div>
             ) : (
-              <div key={m.id} className="min-w-0 [&>*:last-child]:mb-0">
-                {/* A turn that worked but found no answer says so — never an empty reply. */}
-                <MarkdownRenderer
-                  content={m.content || (m.streaming ? '…' : m.steps.length > 0 ? NO_ANSWER_FALLBACK : '')}
-                />
+              <div key={m.id} className="flex min-w-0 flex-col gap-2">
+                {m.error ? (
+                  // Error copy stays plain — it is UI text, not prose.
+                  <p className="whitespace-pre-wrap text-role-caption leading-6 text-text-danger">{m.content}</p>
+                ) : (
+                  <div className="min-w-0 [&>*:last-child]:mb-0">
+                    {/* A turn that worked but found no answer says so — never an empty reply. */}
+                    <MarkdownRenderer
+                      content={m.content || (m.streaming ? '…' : m.steps.length > 0 ? NO_ANSWER_FALLBACK : '')}
+                    />
+                  </div>
+                )}
+                {chat.printJobs
+                  .filter((job) => job.messageId === m.id)
+                  .map((job) => (
+                    <ChatPrintJobCard key={job.id} job={job} setPhase={chat.setPrintPhase} />
+                  ))}
               </div>
             ),
           )}

@@ -1421,6 +1421,7 @@ export async function updateOrder(
     isOutOfStock: boolean;
     statusHistory: any;
     accountSource: string | null;
+    adminUrl: string | null;
     saleAmount: number | null;
     currency: string | null;
   }>,
@@ -1437,6 +1438,7 @@ export async function updateOrder(
     isOutOfStock: 'is_out_of_stock',
     statusHistory: 'status_history',
     accountSource: 'account_source',
+    adminUrl: 'admin_url',
     saleAmount: 'sale_amount',
     currency: 'currency',
   };

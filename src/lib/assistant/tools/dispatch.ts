@@ -27,7 +27,9 @@
  */
 
 import type { z } from 'zod';
-import type { runAssistantTool } from './index';
+import { askOnlyRefusal } from '@/lib/assistant/access-mode';
+import { WRITE_TOOL_NAMES } from '@/lib/assistant/tool-activity';
+import { ASSISTANT_TOOLS, GREEN_READ_TOOL_NAMES, type runAssistantTool } from './index';
 import type { AssistantToolCtx, AssistantToolDef, AssistantToolRunResult } from './types';
 
 export type WriteToolDef = AssistantToolDef<z.ZodTypeAny, unknown>;
@@ -38,12 +40,14 @@ export type RunAssistantToolFn = typeof runAssistantTool;
  * The per-request write tools this caller may see at all, keyed by name.
  * Filtering on the tool's own `permission` here is what keeps a caller without
  * it from ever being advertised (or able to dispatch) that tool; the per-kind
- * check inside propose_mutation is the second, finer gate.
+ * check inside propose_mutation is the second, finer gate. An Ask-only turn
+ * gets none.
  */
 export function buildWriteToolMap(
-  ctx: Pick<AssistantToolCtx, 'permissions'>,
+  ctx: Pick<AssistantToolCtx, 'permissions' | 'accessMode'>,
   writeTools: ReadonlyArray<WriteToolDef> | undefined,
 ): WriteToolMap {
+  if (ctx.accessMode === 'ask') return new Map();
   const permitted = (writeTools ?? []).filter((t) => ctx.permissions.has(t.permission));
   return new Map(permitted.map((t) => [t.name, t]));
 }
@@ -55,6 +59,16 @@ export async function dispatchToolCall(
   writeMap: WriteToolMap,
   runTool: RunAssistantToolFn,
 ): Promise<AssistantToolRunResult> {
+  // Ask only: the GREEN registry or nothing. A session write or a gateway
+  // decision is refused HERE, whatever the advertisement said; an invented
+  // name still falls through to the registry's own `unknown_tool`.
+  if (
+    ctx.accessMode === 'ask' &&
+    !GREEN_READ_TOOL_NAMES.has(name) &&
+    ((WRITE_TOOL_NAMES as readonly string[]).includes(name) || writeMap.has(name) || ASSISTANT_TOOLS.has(name))
+  ) {
+    return { ok: false, code: 'forbidden', error: askOnlyRefusal(name) };
+  }
   const tool = writeMap.get(name);
   if (!tool) return runTool(name, rawInput, ctx);
 

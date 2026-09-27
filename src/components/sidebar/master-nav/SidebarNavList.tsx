@@ -58,6 +58,7 @@ import { cn } from '@/utils/_cn';
 import { ChatSessionsNav } from './ChatSessionsNav';
 import { StaffAccountFooter } from './StaffAccountFooter';
 import { useSpineSectionCollapse } from './useSpineSectionCollapse';
+import { useLaneDoorHref } from '@/components/sidebar/contextual/useLaneDoorHref';
 
 /** MasterNav page list, painted on the shadcn `Sidebar*` primitives (`@/components/ui/sidebar`) — the component tree the operator named… */
 interface SidebarNavListProps {
@@ -257,6 +258,7 @@ export function SidebarNavList({
   const topPages = spineStructuralTopPages(otherPages);
   const stationsSection = SPINE_SECTIONS.find((s) => s.id === 'floor');
   const { isSectionOpen, setSectionOpen } = useSpineSectionCollapse();
+  const doorHref = useLaneDoorHref();
 
   const floorPages = useMemo(
     () => otherPages.filter((p) => spineSectionIdForPage(p) === 'floor'),
@@ -446,7 +448,11 @@ export function SidebarNavList({
               icon={lane.icon}
               active={lanePages.some((page) => page.id === activePage.id)}
               ariaLabel={`Go to ${lane.label}`}
-              onActivate={() => onNavigate(door.id)}
+              onActivate={() => {
+                const href = doorHref(door.id);
+                if (href) onOpenHref(href);
+                else onNavigate(door.id);
+              }}
               onMouseEnter={onRowHover ? () => onRowHover(door) : undefined}
             />
           </SidebarMenu>

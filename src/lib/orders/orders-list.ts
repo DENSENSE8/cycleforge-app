@@ -481,6 +481,7 @@ export function buildOrdersListSql(
        * against.
        */
       o.account_source,
+      o.admin_url,
       listing_price.listing_price_cents AS listing_price_cents,
       listing_price.platform           AS listing_platform,
       unit_price.listing_price_cents   AS unit_listing_price_cents

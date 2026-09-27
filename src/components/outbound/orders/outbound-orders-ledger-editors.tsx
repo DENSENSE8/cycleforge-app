@@ -46,7 +46,6 @@ import { dateKeyToLocalDate, localDateToDateKey } from '@/utils/date';
 import { formatShipByFace } from '@/lib/orders/ship-by-face';
 import { STATE_TONE_CLASSES } from '@/design-system/tokens/lifecycle';
 import { focusRing } from '@/design-system/tokens/focus-ring';
-import { cornerClass } from '@/design-system/tokens/radius';
 import { cn } from '@/utils/_cn';
 import {
   RECORD_CONDITION_CHIP_CLASS,
@@ -63,6 +62,13 @@ import { LEDGER_HIT_CLASS } from './outbound-orders-ledger-geometry';
 export function stop(event: { stopPropagation: () => void }) {
   event.stopPropagation();
 }
+
+/**
+ * The empty staff slot beside a stage stamp — a dashed outline the size of an
+ * `xs` record mark, on the mode's control corner so it matches the mark it
+ * stands in for (square on the Floor, rounded in triage).
+ */
+export const UNASSIGNED_MARK_CLASS = 'h-5 w-5 shrink-0 rounded-mode-control border border-dashed border-mode-edge';
 
 const CONDITION_OPTIONS = conditionOptions('table').map((opt) => ({
   value: opt.value as string,
@@ -178,9 +184,9 @@ export function LedgerStageAssign({
   const face = (
     <>
       {hasActor ? (
-        <StaffAvatar staffId={actorId} name={actorName} avatarPhotoId={null} size="xs" colorRing shape="square" alt={actorName ?? undefined} />
+        <StaffAvatar staffId={actorId} name={actorName} avatarPhotoId={null} size="xs" colorRing face="record" alt={actorName ?? undefined} />
       ) : (
-        <span aria-hidden className={cn('h-5 w-5 shrink-0 border border-dashed border-mode-edge', cornerClass('flush'))} />
+        <span aria-hidden className={UNASSIGNED_MARK_CLASS} />
       )}
       {showStamp ? (
         <span className="flex min-w-0 flex-col py-1">

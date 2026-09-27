@@ -17,6 +17,7 @@ import {
 } from '@/lib/auth/session';
 import { audit } from '@/lib/auth/audit';
 import { getStaffRole } from '@/lib/auth/permissions';
+import { recordStaffLogin } from '@/lib/auth/record-staff-login';
 
 export const runtime = 'nodejs';
 
@@ -119,6 +120,8 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'ACCOUNT_NOT_ACTIVE' }, { status: 403 });
     }
 
+    const { firstSigninToday } = await recordStaffLogin(pool, row.id);
+
     const session = await createSession({
       staffId: row.id,
       deviceKind,
@@ -144,6 +147,7 @@ export async function POST(req: NextRequest) {
       staffId: row.id,
       role,
       name: row.name,
+      firstSigninToday,
       session: { sid: session.sid, deviceKind, expiresAt: session.expiresAt },
     });
     res.cookies.set(SESSION_COOKIE_NAME, session.sid, {

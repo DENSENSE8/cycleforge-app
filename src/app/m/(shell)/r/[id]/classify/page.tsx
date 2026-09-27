@@ -3,7 +3,6 @@
 import { Suspense, useCallback } from 'react';
 import { useParams, useSearchParams } from 'next/navigation';
 import { MobileArrivalClassifyFlow } from '@/components/mobile/receiving/MobileArrivalClassifyFlow';
-import { ModeRegion } from '@/design-system/providers/ModeRegion';
 import { mobileJobReturn, withJobReturn } from '@/lib/mobile/nav-trail';
 import {
   parseArrivalClassifyStep,
@@ -35,15 +34,13 @@ function CartonClassifyInner() {
     return <p className="px-mode-page py-10 text-center text-sm font-semibold text-text-soft">Not a carton id.</p>;
   }
   return (
-    <ModeRegion mode="triage" className="contents">
-      <MobileArrivalClassifyFlow
-        receivingId={id}
-        step={step}
-        typeHint={typeHint}
-        stepHref={stepHref}
-        exit={{ href: hub, label: 'Back to carton' }}
-      />
-    </ModeRegion>
+    <MobileArrivalClassifyFlow
+      receivingId={id}
+      step={step}
+      typeHint={typeHint}
+      stepHref={stepHref}
+      exit={{ href: hub, label: 'Back to carton' }}
+    />
   );
 }
 

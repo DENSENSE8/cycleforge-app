@@ -66,6 +66,7 @@ import type { AssistantToolCtx, AssistantToolDef, AssistantToolDeps } from '@/li
 import { buildWriteToolMap, dispatchToolCall, type WriteToolMap } from '@/lib/assistant/tools/dispatch';
 import { toOpenAiFunctionTool, type OpenAiFunctionTool } from '@/lib/assistant/tools/openai-schema';
 import { subsetAdvertisedTools } from '@/lib/assistant/tool-subsetting';
+import { accessModeAllowsUiTool, accessModeFragment, askOnlyRefusal } from '@/lib/assistant/access-mode';
 import {
   MAX_TURNS,
   UI_TOOLS,
@@ -85,7 +86,8 @@ import {
   splitToolArtifact,
 } from '@/lib/assistant/tool-artifact';
 import { looksLikeHarmony, parseHarmonyToolCalls } from '@/lib/ai/harmony';
-import { panelClaimCorrection } from '@/lib/assistant/panel-honesty';
+import { panelClaimCorrection, type TurnShown } from '@/lib/assistant/panel-honesty';
+import { artifactPlacement } from '@/lib/assistant/artifact-placement';
 import { createVisibleTextFilter, type EchoedToolCall, type VisibleTextSlice } from '@/lib/ai/visible-text';
 import { humanizeToolInput, toolActivityPhrase } from '@/lib/assistant/tool-activity';
 import { aiRequestHeaders, isSelfHostedAiRuntime, type AiProviderConfig } from '@/lib/ai/provider';
@@ -220,6 +222,8 @@ export interface RunGrokAssistantTurnResult {
   stopped?: true;
   /** Summed over every round that reported usage; null when none did. */
   usage: RoundUsage | null;
+  /** The LAST reporting round alone — its prompt is the thread's live context size. */
+  lastRoundUsage: RoundUsage | null;
   /** The LAST round's gateway log id (CF AI Gateway only). */
   gatewayLogId: string | null;
 }
@@ -715,7 +719,7 @@ export async function runGrokAssistantTurn(
   const writeTools = [...writeMap.values()].map(toSchema);
   // UI_TOOLS are Anthropic.Tool (description optional, Anthropic's InputSchema
   // shape); narrow them to the wire helper's source type explicitly.
-  const uiTools = UI_TOOLS.map((t) =>
+  const uiTools = UI_TOOLS.filter((t) => accessModeAllowsUiTool(args.ctx.accessMode, t.name)).map((t) =>
     toOpenAiFunctionTool({
       name: t.name,
       description: t.description ?? '',
@@ -744,6 +748,7 @@ export async function runGrokAssistantTurn(
   const system = [
     buildSystemCore(advertisedToolNames),
     (args.voiceOverlay ?? '').trim(),
+    accessModeFragment(args.ctx.accessMode),
     buildContextFragment(args.context),
   ]
     .filter((part) => part.length > 0)
@@ -775,8 +780,10 @@ export async function runGrokAssistantTurn(
   /** Connect links this turn's tools actually minted — the pill's provenance. */
   const mintedConnectUrls = new Set<string>();
   const renderAllowed = makeRenderArtifactCap();
-  /** Artifacts actually painted this turn — the panel-honesty check reads it. */
-  let artifactsPainted = 0;
+  /** What this turn actually showed, inline vs the right rail — the panel-honesty check reads it. */
+  const onScreen: TurnShown = { inline: 0, rail: 0 };
+  /** Tables a lookup tool carried to the screen this turn — a model-typed copy would duplicate them. */
+  let carriedTables = 0;
   /** One "answer the operator" nudge per turn, for a model that only reasons. */
   let nudgedForFinal = false;
   let turns = 0;
@@ -784,6 +791,7 @@ export async function runGrokAssistantTurn(
   let shown = '';
   /** Token counts summed over the rounds that reported any; `reported` false → usage null. */
   const spent = { promptTokens: 0, completionTokens: 0, reported: false };
+  let lastRoundUsage: RoundUsage | null = null;
   let gatewayLogId: string | null = null;
   /** The fields every return carries, read at return time. */
   const tally = () => ({
@@ -793,6 +801,7 @@ export async function runGrokAssistantTurn(
     advertisedToolNames,
     wireBytes,
     usage: spent.reported ? { promptTokens: spent.promptTokens, completionTokens: spent.completionTokens } : null,
+    lastRoundUsage,
     gatewayLogId,
   });
   const stoppedResult = (): RunGrokAssistantTurnResult => ({ ok: true, stopped: true, text: answer || shown.trim(), ...tally() });
@@ -828,8 +837,11 @@ export async function runGrokAssistantTurn(
         }
         echoes.push(...slice.echoes);
       };
+      // Once a lookup has put its own data on screen, render_artifact is off
+      // the menu: a small model otherwise spends extra rounds re-rendering it.
+      const roundTools = onScreen.inline + onScreen.rail > 0 ? tools.filter((t) => t.function.name !== 'render_artifact') : tools;
       const round = await deps.streamTurn(
-        { messages, tools, stream: true },
+        { messages, tools: roundTools, stream: true },
         (text) => publish(visible.push(text)),
         (name) => {
           // UI tools only: a server read-tool's start is reported by
@@ -845,6 +857,7 @@ export async function runGrokAssistantTurn(
         spent.promptTokens += round.usage.promptTokens;
         spent.completionTokens += round.usage.completionTokens;
         spent.reported = true;
+        lastRoundUsage = round.usage;
       }
       if (round.gatewayLogId) gatewayLogId = round.gatewayLogId;
       // Release whatever the filter held back for a split marker.
@@ -885,7 +898,7 @@ export async function runGrokAssistantTurn(
           messages.push({
             role: 'user',
             content:
-              'Answer the operator now in the final channel: 1-3 plain sentences off the tool results above. Mention the panel only if a tool result above said rendered: true.',
+              'Answer the operator now in the final channel: one short sentence off the tool results above, stating the key facts. Never say where the data is shown.',
           });
           continue;
         }
@@ -911,6 +924,10 @@ export async function runGrokAssistantTurn(
         for (const [i, call] of calls.entries()) {
           const id = call.id || `call_${turns}_${i}`;
           const input = parseArguments(call.arguments);
+          if (UI_TOOL_NAMES.has(call.name) && !accessModeAllowsUiTool(args.ctx.accessMode, call.name)) {
+            out.push({ id, content: `ERROR: ${askOnlyRefusal(call.name)}` });
+            continue;
+          }
           if (UI_TOOL_NAMES.has(call.name)) {
             // Same chokepoint validation as the Anthropic loop: a malformed
             // render_artifact returns as an ERROR tool message the model can
@@ -926,6 +943,13 @@ export async function runGrokAssistantTurn(
                 });
                 continue;
               }
+              if (parsed.data.kind === 'table' && carriedTables > 0) {
+                out.push({
+                  id,
+                  content: 'Not rendered: the lookup already put its table on screen this turn. Answer in one short sentence instead.',
+                });
+                continue;
+              }
               if (!renderAllowed()) {
                 out.push({
                   id,
@@ -934,8 +958,8 @@ export async function runGrokAssistantTurn(
                 continue;
               }
               emit({ type: 'ui_tool', name: call.name, input: { artifact: parsed.data } });
-              artifactsPainted += 1;
-              out.push({ id, content: 'Rendered on the session view panel.' });
+              onScreen[artifactPlacement(parsed.data.kind)] += 1;
+              out.push({ id, content: 'Rendered — the operator sees it.' });
               continue;
             }
             // Provenance check, not a scheme check: the pill may only carry a
@@ -965,18 +989,23 @@ export async function runGrokAssistantTurn(
           toolsUsed.push(call.name);
           if (result.ok) collectMintedConnectUrls(result.data, mintedConnectUrls);
           // A report tool hands back a validated artifact plus a short summary.
-          // The artifact goes straight to the panel and the model is told only
+          // The artifact goes straight to the screen and the model is told only
           // that it rendered — see `tool-artifact.ts` for why the model must
           // never be the one to retype a report's numbers.
           const carried = result.ok ? splitToolArtifact(result.data) : null;
           if (carried && renderAllowed()) {
             emit({ type: 'ui_tool', name: 'render_artifact', input: { artifact: carried.artifact, producedBy: carried.tool } });
-            artifactsPainted += 1;
+            onScreen[artifactPlacement(carried.artifact.kind)] += 1;
+            if (carried.artifact.kind === 'table') carriedTables += 1;
           }
           out.push({
             id,
             content: result.ok
-              ? JSON.stringify(carried ? carried.modelData : result.data)
+              ? JSON.stringify(
+                  carried
+                    ? { ...carried.modelData, note: 'Already on screen for the user. Do not call any tool to show it. Answer now in one short sentence.' }
+                    : result.data,
+                )
               : `ERROR: ${result.error}`,
           });
         }
@@ -995,9 +1024,9 @@ export async function runGrokAssistantTurn(
       emit({ type: 'delta', text });
     }
     // Server-side half of PANEL HONESTY: an answer that points at the panel in
-    // a turn that painted nothing gets a one-line correction, streamed and
-    // persisted with it (panel-honesty.ts).
-    const correction = panelClaimCorrection(text, artifactsPainted);
+    // a turn that opened nothing there gets a one-line correction, streamed
+    // and persisted with it (panel-honesty.ts).
+    const correction = panelClaimCorrection(text, onScreen);
     if (correction) {
       const tail = `\n\n${correction}`;
       emit({ type: 'delta', text: tail });

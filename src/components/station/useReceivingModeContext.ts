@@ -22,10 +22,12 @@ import {
 import type { ReceivingActivityAxis } from '@/components/station/receiving-lines-table-helpers';
 import { resolveLiveReceivingMode } from '@/lib/surface-isolation';
 import { WEEK_OFFSET_PARAM } from '@/lib/station/table-url-params';
-import { UNBOX_SURFACE_ROUTE } from '@/lib/receiving/surface-path';
+import { INCOMING_SURFACE_ROUTE, UNBOX_SURFACE_ROUTE } from '@/lib/receiving/surface-path';
+import { parseInboundLane } from '@/lib/receiving/inbound-lane';
 import { getUnboxWorkspaceTabFromSearch } from '@/utils/unbox-workspace-state';
 import { parseStaffParam } from '@/hooks/useStaffFilter';
 import { parseTrackingInParam, TRACKING_IN_PARAM } from '@/lib/receiving/tracking-paste';
+import { parseRefInParam, REF_IN_PARAM } from '@/lib/receiving/reconcile';
 
 interface ReceivingModeState {
   mode: ReceivingModeDescriptor;
@@ -135,6 +137,13 @@ export function useReceivingModeContext(): ReceivingModeState {
   // key and the grid's column tiers all read the same list.
   const trackingIn = parseTrackingInParam(searchParams.get(TRACKING_IN_PARAM)).keys;
   const trackingInKey = trackingIn.join(',');
+  // Inbound reconciliation paste — the operator's strings. Only the Incoming
+  // lane reads it (it swaps the lane for `view=reconcile`).
+  const refIn = isIncomingMode ? parseRefInParam(searchParams.get(REF_IN_PARAM)).refs : [];
+  // `/incoming?lane=exceptions` — its own server view on the Incoming ledger.
+  const incomingExceptions =
+    isIncomingMode && pathname.startsWith(INCOMING_SURFACE_ROUTE) && parseInboundLane(searchParams.get('lane')) === 'exceptions';
+  const refInKey = refIn.join(',');
 
   const staffFilterId = parseStaffParam(
     searchParams.get('staff') ?? searchParams.get('staffId'),
@@ -178,6 +187,8 @@ export function useReceivingModeContext(): ReceivingModeState {
       queueLane,
       priorityOnly,
       trackingIn,
+      refIn,
+      incomingExceptions,
     }),
     [
       historySearch,
@@ -202,6 +213,8 @@ export function useReceivingModeContext(): ReceivingModeState {
       // a fresh array every render, so the array itself would defeat the memo
       // and re-key the react-query fetch on every keystroke elsewhere.
       trackingInKey,
+      refInKey,
+      incomingExceptions,
     ],
   );
 

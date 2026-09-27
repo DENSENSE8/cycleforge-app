@@ -14,7 +14,6 @@ import type { RepairInfoDraft } from '@/lib/repair/repair-info-edit';
 import { formatMonthDayTimePST } from '@/utils/date';
 import { IconButton } from '@/design-system/primitives';
 import { Pencil } from '@/components/Icons';
-import { ModeRegion } from '@/design-system/providers/ModeRegion';
 
 /** `/m/rs/[id]/info` — the depth behind the hub's summary card: */
 function RepairInfoInner() {
@@ -44,7 +43,7 @@ function RepairInfoInner() {
   );
 
   return (
-    <ModeRegion mode="triage" className="flex min-h-screen flex-col bg-mode-panel">
+    <div className="flex min-h-screen flex-col bg-mode-panel">
       <MobileDetailTopBar
         backHref={`/m/rs/${repairId}`}
         subtitle="Details"
@@ -115,7 +114,7 @@ function RepairInfoInner() {
           onClose={() => setEditOpen(false)}
         />
       ) : null}
-    </ModeRegion>
+    </div>
   );
 }
 

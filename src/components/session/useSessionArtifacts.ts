@@ -6,9 +6,9 @@
  * Subscribes to the agent's `render_artifact` UI-tool events, validates every
  * payload against the zod contract (ui-artifacts.ts) BEFORE it can render, and
  * keeps them in ARRIVAL order, each anchored to the assistant message that
- * produced it (`messageId`). The transcript draws every entry as a compact
- * card under its message; an invalid payload degrades to a rejected card —
- * never a rendered guess.
+ * produced it (`messageId`). The transcript draws every entry under its
+ * message — data inline, a document as a compact card; an invalid payload
+ * degrades to a rejected card — never a rendered guess.
  *
  * One PENDING slot rides alongside: the loop announces the opened
  * `render_artifact` block (`ui_tool_start`) long before its payload finishes
@@ -17,11 +17,13 @@
  *
  * ## What opens the panel
  *
- * The side panel shows ONE entry. A LIVE turn's `render_artifact` opens it on
- * arrival (`detail.live`): each valid artifact of the turn takes the panel, so
- * the newest one wins. Nothing replayed or derived opens it — a reopened past
- * session, a leaked table moved to a card, a printer report, a rejected
- * payload. Clicking a card (`open(id)`) switches to it; × / Esc `close()`.
+ * The side panel shows ONE entry. Data renders inline in the transcript
+ * (`artifact-placement.ts`), so only a LIVE turn's RAIL artifact — a document,
+ * a ticket conversation, a reply draft, an import check — opens it on arrival
+ * (`detail.live`); the newest one wins. Nothing replayed or derived opens it —
+ * a reopened past session, a leaked table, a printer report, a rejected
+ * payload. "Show all" / Expand / a card (`open(id)`) switches to an entry;
+ * × / Esc `close()`.
  */
 
 import { useCallback, useSyncExternalStore } from 'react';
@@ -33,6 +35,7 @@ import {
   type SessionArtifactPendingDetail,
 } from '@/lib/app-events';
 import { sessionArtifactSchema, type SessionArtifact } from '@/lib/assistant/ui-artifacts';
+import { artifactPlacement } from '@/lib/assistant/artifact-placement';
 import { safeRandomUUID } from '@/lib/safe-uuid';
 
 export interface SessionArtifactEntry {
@@ -115,7 +118,7 @@ export function ensureSessionArtifactListener(): void {
     const detail = (event as CustomEvent<SessionArtifactEventDetail | undefined>).detail;
     if (!detail) return;
     const entry = toEntry(detail.artifact, detail.producedBy, detail.messageId ?? null);
-    pushEntry(entry, detail.live === true && entry.artifact !== null);
+    pushEntry(entry, detail.live === true && entry.artifact !== null && artifactPlacement(entry.artifact.kind) === 'rail');
   });
   window.addEventListener(SESSION_ARTIFACT_STALE_EVENT, (event) => {
     const reason = (event as CustomEvent<{ reason?: unknown }>).detail?.reason;

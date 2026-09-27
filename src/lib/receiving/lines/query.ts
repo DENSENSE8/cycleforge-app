@@ -7,6 +7,7 @@ import {
 import { parseReceivingView, RECEIVING_VIEWS } from '@/lib/receiving/receiving-views';
 import { RECEIVING_HISTORY_LIMIT } from '@/lib/receiving/receiving-modes';
 import { parseTrackingInParam, TRACKING_IN_PARAM } from '@/lib/receiving/tracking-paste';
+import { parseRefInParam, REF_IN_PARAM } from '@/lib/receiving/reconcile';
 
 /**
  * Filter vocabularies shared by the GET filters (build-sql) and the POST/PATCH
@@ -49,7 +50,7 @@ export const receivingLinesQuerySchema = z.object({
   poFrom: z.string(),
   poTo: z.string(),
   sortRaw: z.string(),
-  incomingSort: z.enum(['zoho_newest', 'zoho_oldest', 'expected_soonest', 'recently_added']),
+  incomingSort: z.enum(['zoho_newest', 'zoho_oldest', 'expected_soonest', 'recently_added', 'urgency']),
   historySort: z.enum(['scanned_newest', 'scanned_oldest', 'unboxed_newest', 'received_newest', 'unbox_activity']),
   wantsPrioritySort: z.boolean(),
   /** `?zohoStatus=open` — the "Hide Zoho-received" toggle. */
@@ -91,6 +92,8 @@ export const receivingLinesQuerySchema = z.object({
   unboxQueueLane: z.enum(['', 'PO_STOCKOUT', 'PO_STANDARD', 'RETURN', 'HOLD']),
   /** `?tracking_in=` — canonical (upper-alnum) tracking keys from a bulk paste. */
   trackingIn: z.array(z.string()),
+  /** `?ref_in=` — canonical keys of a pasted order / tracking list; `view=reconcile` matches them. */
+  refIn: z.array(z.string()),
 });
 
 export type ReceivingLinesQuery = z.infer<typeof receivingLinesQuerySchema>;
@@ -152,14 +155,17 @@ export function parseReceivingLinesQuery(searchParams: URLSearchParams): Receivi
     | 'zoho_newest'
     | 'zoho_oldest'
     | 'expected_soonest'
-    | 'recently_added' =
+    | 'recently_added'
+    | 'urgency' =
     sortRaw === 'zoho_oldest' || sortRaw === 'po_oldest'
       ? 'zoho_oldest'
       : sortRaw === 'expected_soonest'
         ? 'expected_soonest'
         : sortRaw === 'recently_added'
           ? 'recently_added'
-          : 'zoho_newest';
+          : sortRaw === 'urgency'
+            ? 'urgency'
+            : 'zoho_newest';
   // Sort axis for the receiving-history feed (view=all/activity).
   const historySort:
     | 'scanned_newest'
@@ -236,6 +242,7 @@ export function parseReceivingLinesQuery(searchParams: URLSearchParams): Receivi
   // Bulk tracking paste (`?tracking_in=`). One parser for every paste in the
   // product — the ERP check and this filter split the same blob the same way.
   const trackingIn = parseTrackingInParam(searchParams.get(TRACKING_IN_PARAM)).keys;
+  const refIn = parseRefInParam(searchParams.get(REF_IN_PARAM)).keys;
 
   const ulaneRaw = String(searchParams.get('ulane') || '').trim().toUpperCase();
   const unboxQueueLane =
@@ -283,5 +290,6 @@ export function parseReceivingLinesQuery(searchParams: URLSearchParams): Receivi
     unboxQueueStage,
     unboxQueueLane,
     trackingIn,
+    refIn,
   });
 }

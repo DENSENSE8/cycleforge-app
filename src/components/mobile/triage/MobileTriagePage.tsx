@@ -7,7 +7,6 @@
 
 import type { ReactNode } from 'react';
 import { SearchField } from '@/design-system/primitives/SearchField';
-import { ModeRegion } from '@/design-system/providers/ModeRegion';
 import { MobileDetailTopBar } from '@/components/mobile/redesign/MobileDetailTopBar';
 import { appMobilePageGroundClass } from '@/design-system/tokens/app-surface';
 import { STATION_EYEBROW_CLASS } from '@/components/mobile/station/station-chrome';
@@ -51,9 +50,7 @@ export function MobileTriagePage({
   dock?: ReactNode;
 }) {
   return (
-    // Triage mode owns the rows' tokens (rules, press ink) wherever the page
-    // mounts — a host without a region drew the commit's rule in currentColor.
-    <ModeRegion mode="triage" className={cn('flex min-h-svh flex-col', appMobilePageGroundClass)}>
+    <div className={cn('flex min-h-svh flex-col', appMobilePageGroundClass)}>
       {/* No `mono`. It used to be `mono={Boolean(subtitle)}` — "has an eyebrow" standing in for "the title is an identifier", which is true on a… */}
       <MobileDetailTopBar title={title} subtitle={subtitle} backHref={backHref} />
 
@@ -106,6 +103,6 @@ export function MobileTriagePage({
         {footer && <div className="px-3 py-4">{footer}</div>}
       </div>
       {dock}
-    </ModeRegion>
+    </div>
   );
 }

@@ -72,7 +72,7 @@ export async function POST(req: NextRequest) {
     userAgent: ua,
     persistent: parsed.persistent === true,
   });
-  await recordAccountSignin({
+  const { firstSigninToday } = await recordAccountSignin({
     accountId: result.accountId,
     target,
     session,
@@ -87,6 +87,7 @@ export async function POST(req: NextRequest) {
   const res = NextResponse.json({
     ok: true,
     organizationId: target.organization_id,
+    firstSigninToday,
     ...(staffChoice
       ? { needsStaffChoice: true, organizationName: target.organization_name, staff: staffChoice.staff }
       : {}),

@@ -3,7 +3,7 @@
 /** Data layer for Home → Daily. */
 
 import { useCallback } from 'react';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { queryOptions, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { clearMineFromReport } from '@/lib/daily-checks/reset-report';
 import type {
   DailyCheckCreateInput,
@@ -22,12 +22,17 @@ async function fetchReport(dateKey: string, scope: 'mine' | 'all'): Promise<Dail
   return res.json() as Promise<DailyCheckReport>;
 }
 
-export function useDailyChecks(dateKey: string, scope: 'mine' | 'all' = 'mine') {
-  return useQuery({
+/** Key + fetcher for one day's report — shared by the hook and BootGate's welcome warm-up. */
+export function dailyChecksQueryOptions(dateKey: string, scope: 'mine' | 'all' = 'mine') {
+  return queryOptions({
     queryKey: dailyChecksKey(dateKey, scope),
     queryFn: () => fetchReport(dateKey, scope),
     staleTime: 15_000,
   });
+}
+
+export function useDailyChecks(dateKey: string, scope: 'mine' | 'all' = 'mine') {
+  return useQuery(dailyChecksQueryOptions(dateKey, scope));
 }
 
 /** Tick / untick one item for the signed-in staffer, optimistically. */

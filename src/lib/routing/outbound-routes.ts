@@ -83,6 +83,9 @@ const ORDERS_ROUTE_PARAMS = defineRouteParams({
      * MUST stay declared — hygiene drops undeclared keys on the next tick.
      */
     queue: paramEnum(['pick'] as const),
+    /** Order card list (owner 2026-09-27): status chips (comma list) and the 1-based page. */
+    cardStatus: paramText,
+    page: paramPositiveInt,
     /** CSV import staging surface on the To-Ship desk (session draft in memory). */
     import: paramEnum(['csv'] as const),
     shippedFilter: paramEnum(['all', 'orders', 'sku', 'fba'] as const),

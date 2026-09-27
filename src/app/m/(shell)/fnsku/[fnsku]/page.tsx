@@ -3,7 +3,7 @@
 import { Suspense, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Printer, ScanBarcode } from '@/components/Icons';
-import { printStationState } from '@/components/mobile/print/StaffPrintStationPicker';
+import { printStationState } from '@/components/ui/StaffPrintStationPicker';
 import { FnskuStationSheet } from '@/components/mobile/fnsku/FnskuStationSheet';
 import { FnskuSummaryCard } from '@/components/mobile/fnsku/FnskuSummaryCard';
 import { FnskuCopiesStepper } from '@/components/mobile/fnsku/FnskuCopiesStepper';

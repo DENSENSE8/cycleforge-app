@@ -31,6 +31,10 @@ export interface EvalFixtures {
   upcStocked: { upc: string; sku: string; bin: string; qty: number };
   /** Verified absent from every identifier table. */
   unknownSku: string;
+  /** A one-row order with a shipping label AND a packing slip linked (newest first). */
+  orderWithLabel: { orderNumber: string };
+  /** A one-row order with no label, slip or paired paperwork on file. */
+  orderNoDocs: { orderNumber: string };
 }
 
 /** The bin-face shape the invented-bin guard recognises. */
@@ -94,6 +98,43 @@ SELECT EXISTS (SELECT 1 FROM sku_catalog WHERE organization_id = $1 AND upper(sk
     OR EXISTS (SELECT 1 FROM bin_contents WHERE organization_id = $1 AND upper(sku) = upper($2))
     OR EXISTS (SELECT 1 FROM fba_fnskus WHERE organization_id = $1 AND upper(btrim(fnsku)) = upper($2)) AS found`;
 
+/** Documents linked to an order row: the link hub plus legacy SHIPPING_LABEL rows (listDocumentsForOrder). */
+const ORDER_DOC_TYPES = `
+  SELECT d.document_type
+    FROM documents d
+    LEFT JOIN document_entity_links l
+      ON l.document_id = d.id AND l.organization_id = $1 AND l.entity_type = 'ORDER' AND l.entity_id = o.id
+   WHERE d.organization_id = $1 AND (l.document_id IS NOT NULL OR (d.entity_type = 'SHIPPING_LABEL' AND d.entity_id = o.id))`;
+
+const ONE_ROW_ORDERS = `
+  SELECT o.id, o.order_id, o.sku, o.item_number
+    FROM orders o
+   WHERE o.organization_id = $1 AND o.order_id ~ '^[0-9A-Za-z-]{3,40}$'
+     AND (SELECT count(*) FROM orders o2 WHERE o2.organization_id = $1 AND upper(btrim(o2.order_id)) = upper(btrim(o.order_id))) = 1`;
+
+const ORDER_WITH_LABEL = `
+WITH o AS (${ONE_ROW_ORDERS})
+SELECT o.order_id AS "orderNumber"
+  FROM o
+ WHERE EXISTS (${ORDER_DOC_TYPES} AND d.document_type = 'shipping_label')
+   AND EXISTS (${ORDER_DOC_TYPES} AND d.document_type = 'packing_slip')
+ ORDER BY o.id DESC
+ LIMIT 1`;
+
+const ORDER_NO_DOCS = `
+WITH o AS (${ONE_ROW_ORDERS})
+SELECT o.order_id AS "orderNumber"
+  FROM o
+ WHERE NOT EXISTS (${ORDER_DOC_TYPES})
+   AND NOT EXISTS (
+     SELECT 1 FROM product_manuals pm
+      WHERE pm.organization_id = $1 AND pm.is_active
+        AND (pm.order_id = o.id
+          OR (o.item_number IS NOT NULL AND upper(btrim(pm.item_number)) = upper(btrim(o.item_number)))
+          OR (o.sku IS NOT NULL AND upper(btrim(pm.sku)) = upper(btrim(o.sku)))))
+ ORDER BY o.id DESC
+ LIMIT 1`;
+
 function need<T>(row: T | undefined, what: string): T {
   if (!row) throw new Error(`ai-eval fixtures: no live ${what} in this org — the golden cannot be built`);
   return row;
@@ -136,6 +177,8 @@ export function loadFixtures(tenantSlug: string): Promise<EvalFixtures> {
     const unknownSku = 'ZZ-NOPE-000';
     const [probe] = await q<{ found: boolean }>(IDENTIFIER_EXISTS, [orgId, unknownSku]);
     if (probe?.found) throw new Error(`ai-eval fixtures: "${unknownSku}" exists now — pick another unknown SKU`);
+    const [withLabel] = await q<{ orderNumber: string }>(ORDER_WITH_LABEL, [orgId]);
+    const [noDocs] = await q<{ orderNumber: string }>(ORDER_NO_DOCS, [orgId]);
     return {
       orgId,
       multiBin: pairOf(need(pairs[0], 'SKU stocked in two bins')),
@@ -145,6 +188,8 @@ export function loadFixtures(tenantSlug: string): Promise<EvalFixtures> {
       fnskuNoStock: need(fnsku, 'FNSKU with no stock'),
       upcStocked: need(upc, 'UPC stocked in one bin'),
       unknownSku,
+      orderWithLabel: need(withLabel, 'order with a shipping label and packing slip'),
+      orderNoDocs: need(noDocs, 'order with no documents'),
     };
   });
 }

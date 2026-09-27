@@ -19,8 +19,11 @@ import { listLocalPickupLines, type LocalPickupLineRow } from '@/lib/local-picku
 import { shippingOrdersHref } from '@/lib/shipping/orders-desk';
 import { recordHref } from '@/lib/identify/record-href';
 import { isUiEntityType, toDbEntityType } from '@/lib/search/search-hit';
+import { listAssistantSessions } from '@/lib/assistant/chat-persistence';
+import { assistantSessionRecentRow } from '@/lib/nav/recents/assistant-sessions';
 
 export type NavRecentAdapterId =
+  | 'assistant.sessions'
   | 'receiving.viewed'
   | 'receiving.unbox_opened'
   | 'receiving.scanned'
@@ -35,6 +38,16 @@ export interface NavRecentAdapterArgs {
   orgId: OrgId;
   staffId: number;
   limit: number;
+  /** A `paged` surface's cursor (the previous page's `nextBefore`). */
+  before?: string;
+  /** A `find` surface's narrowing text. */
+  q?: string;
+}
+
+/** One read of a surface. `nextBefore` is null when there is no older page (always, on an unpaged surface). */
+export interface NavRecentPage {
+  rows: NavRecentRow[];
+  nextBefore: string | null;
 }
 
 /** ISO instant, or null when the value is missing / unparseable (the row is then dropped). */
@@ -324,6 +337,7 @@ export const IDENTIFIED_RECENTS_SQL = `
 // ── wiring ───────────────────────────────────────────────────────────────────
 
 export interface NavRecentAdapterDeps {
+  listAssistantSessions: typeof listAssistantSessions;
   fetchReceivingLinesPage: typeof fetchReceivingLinesPage;
   fetchTechLogRows: typeof fetchTechLogRows;
   fetchPackerLogRows: (opts: { organizationId: OrgId; packerId: number; limit: number }) => Promise<{ rows: PackerRecentFields[] }>;
@@ -333,6 +347,7 @@ export interface NavRecentAdapterDeps {
 }
 
 export const defaultNavRecentAdapterDeps: NavRecentAdapterDeps = {
+  listAssistantSessions,
   fetchReceivingLinesPage,
   fetchTechLogRows,
   fetchPackerLogRows,
@@ -371,6 +386,22 @@ export async function runNavRecentAdapter(
   surface: NavRecentAdapterId,
   args: NavRecentAdapterArgs,
   deps: NavRecentAdapterDeps = defaultNavRecentAdapterDeps,
+): Promise<NavRecentPage> {
+  if (surface === 'assistant.sessions') {
+    const page = await deps.listAssistantSessions(args.orgId, args.staffId, {
+      limit: args.limit,
+      before: args.before,
+      q: args.q,
+    });
+    return { rows: page.sessions.map(assistantSessionRecentRow), nextBefore: page.nextBefore };
+  }
+  return { rows: await unpagedRows(surface, args, deps), nextBefore: null };
+}
+
+async function unpagedRows(
+  surface: Exclude<NavRecentAdapterId, 'assistant.sessions'>,
+  args: NavRecentAdapterArgs,
+  deps: NavRecentAdapterDeps,
 ): Promise<NavRecentRow[]> {
   const { orgId, staffId, limit } = args;
   switch (surface) {

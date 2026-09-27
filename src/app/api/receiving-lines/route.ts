@@ -134,7 +134,7 @@ export async function handleReceivingLinesGet(
     // Universal Incoming (flag-gated, plan §6): when ON, view=incoming also shows
     // eBay-buyer lines and the ?inbound facet filters by primary source. OFF (the
     // default) = byte-identical Zoho-only path — no eBay rows, no new-column refs.
-    const universalIncoming = view === 'incoming' ? await isIncomingUniversal(orgId) : false;
+    const universalIncoming = view === 'incoming' || view === 'exceptions' ? await isIncomingUniversal(orgId) : false;
 
     // Single row
     if (Number.isFinite(id) && id > 0) {
@@ -217,6 +217,11 @@ export async function handleReceivingLinesGet(
       });
     }
 
+    // `view=exceptions` judges wrong destination against the org's ship-from ZIP.
+    const warehousePostal = view === 'exceptions'
+      ? ((await getOrganization(orgId))?.settings?.shipFrom?.postalCode ?? '')
+      : undefined;
+
     // ── `?count_only=1` — the total, without the list ───────────────────────
     const countOnly =
       searchParams.get('count_only') === '1'
@@ -226,6 +231,7 @@ export async function handleReceivingLinesGet(
         query,
         orgId,
         viewerStaffId,
+        warehousePostal,
         universalIncoming,
         applyScannedZohoExclusion,
         unboxRailColumnRead,
@@ -267,6 +273,7 @@ export async function handleReceivingLinesGet(
       query,
       orgId,
       viewerStaffId,
+      warehousePostal,
       universalIncoming,
       applyScannedZohoExclusion,
       unboxRailColumnRead,
@@ -274,7 +281,7 @@ export async function handleReceivingLinesGet(
     let normalizedList = page.rows;
     let total = page.total;
 
-    if (view === 'incoming') {
+    if (view === 'incoming' || view === 'reconcile' || view === 'exceptions') {
       const org = await getOrganization(orgId);
       const warehousePostal = org?.settings?.shipFrom?.postalCode ?? '';
       for (const row of normalizedList) {

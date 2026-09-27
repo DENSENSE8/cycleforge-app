@@ -48,7 +48,8 @@ export function DockedReceiptsLedger({
   loading: boolean;
   emptyMessage: string;
   query: string;
-  onQueryChange: (value: string) => void;
+  /** Omitted on `/incoming` — the sidebar Find owns search there; `query` still narrows. */
+  onQueryChange?: (value: string) => void;
   activityAxis: ReceivingActivityAxis;
   toolbarExtra?: ReactNode;
   selectedId: number | null;
@@ -135,15 +136,19 @@ export function DockedReceiptsLedger({
       navigation={navigation.available ? navigation : undefined}
       toolbar={
         <>
-          <SearchField
-            value={query}
-            onChange={onQueryChange}
-            placeholder="Filter docked records…"
-            className="min-w-0 flex-1 overflow-hidden rounded-none pl-2"
-            tone="neutral"
-            hideUnderline
-            fillHost
-          />
+          {onQueryChange ? (
+            <SearchField
+              value={query}
+              onChange={onQueryChange}
+              placeholder="Filter docked records…"
+              className="min-w-0 flex-1 overflow-hidden rounded-none pl-2"
+              tone="neutral"
+              hideUnderline
+              fillHost
+            />
+          ) : (
+            <span className="flex-1" />
+          )}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" size="sm">

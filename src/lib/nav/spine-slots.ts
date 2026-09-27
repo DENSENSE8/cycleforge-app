@@ -72,22 +72,24 @@ function lanesPresent(allowed: readonly SidebarNavItem[]): SpineSectionId[] {
 }
 
 /**
- * Default order: **the lane band, then Scan Stations**, then remaining L1
- * (Automations). A lane with no visible page is absent — never a header over
- * nothing (C10: absent, not a disabled pill).
+ * Default order: **the lane band, then remaining L1** (Automations), then
+ * **Scan Stations at the very bottom** (operator 2026-09-27 — station work is
+ * physical and belongs on the phone; the desk map leads with the desks). A
+ * lane with no visible page is absent — never a header over nothing (C10:
+ * absent, not a disabled pill).
  */
 export function defaultSpineOrder(allowed: readonly SidebarNavItem[]): string[] {
-  // Lanes lead (v2 ruling, kept): the domains are the work; the benches are the
-  // input model that feeds them.
+  // Lanes lead (v2 ruling, kept): the domains are the work.
   const out: string[] = [...lanesPresent(allowed)];
-  if (allowed.some((item) => item.kind === 'station')) {
-    out.push(SPINE_STATIONS_SLOT_ID);
-  }
+  const stations = allowed.some((item) => item.kind === 'station');
+  // Keep the last slot for Stations so the cap never drops it.
+  const cap = stations ? SPINE_SLOTS_MAX - 1 : SPINE_SLOTS_MAX;
   for (const item of allowed) {
     if (!isSpineSlottable(item)) continue;
     out.push(item.id);
-    if (out.length >= SPINE_SLOTS_MAX) break;
+    if (out.length >= cap) break;
   }
+  if (stations) out.push(SPINE_STATIONS_SLOT_ID);
   return out.slice(0, SPINE_SLOTS_MAX);
 }
 

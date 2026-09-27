@@ -53,6 +53,7 @@ const MobileSignInQrChooser = dynamic(
 );
 import { BootSplash } from '@/components/boot/BootSplash';
 import { armBootSplash } from '@/lib/boot-flag';
+import { DAILY_HOME_PATH, resolveLandingPath } from '@/lib/auth/landing-path';
 // Deep paths, NOT the `@/design-system/primitives` barrel.
 import { CheckCircle2, Fingerprint } from 'lucide-react';
 import { Button } from '@/design-system/primitives/Button';
@@ -80,23 +81,6 @@ import {
   writeRecentSignin,
   type SigninMethod,
 } from '@/lib/auth/recent-signins';
-
-const ROLE_HOME: Record<string, string> = {
-  admin: '/',
-  receiver: '/receiving',
-  receiving: '/receiving',
-  packer: '/pack',
-  technician: '/test',
-  shipper: '/',
-  inventory_manager: '/',
-  sales: '/',
-  viewer: '/',
-  readonly: '/',
-};
-
-const MOBILE_ROLE_HOME: Record<string, string> = {
-  packer: '/m/pick',
-};
 
 function isMobileDevice(): boolean {
   if (typeof window === 'undefined' || typeof navigator === 'undefined') return false;
@@ -288,20 +272,14 @@ export default function SignInPage() {
     role: string | null | undefined,
     defaultHomePath: string | null | undefined,
     defaultHomePathMobile: string | null | undefined,
+    firstSigninToday: boolean,
   ) => {
     flushSync(() => setSigningIn(true));
     if (staffId != null) writeRecentSignin(staffId);
     const onMobile = isMobileDevice();
-    const normalizedRole = role ? role.toLowerCase() : '';
-    const roleHome = normalizedRole
-      ? onMobile
-        ? MOBILE_ROLE_HOME[normalizedRole] ?? '/m/home'
-        : ROLE_HOME[normalizedRole]
-      : null;
-    const fallback = onMobile ? '/m/home' : '/';
-    const override = onMobile ? defaultHomePathMobile : defaultHomePath;
-    const target = next || override || roleHome || fallback;
-    if (target.startsWith('/dashboard')) armBootSplash();
+    const target = resolveLandingPath({ next, role, defaultHomePath, defaultHomePathMobile, mobile: onMobile });
+    // First sign-in of the PST day on Daily plays the welcome assembly.
+    if (!onMobile && target === DAILY_HOME_PATH && firstSigninToday) armBootSplash();
     if (typeof window !== 'undefined') window.location.assign(target);
     else router.replace(target);
   }, [router, next]);
@@ -343,7 +321,9 @@ export default function SignInPage() {
           setStaffChoiceOrg(data.organizationName ?? null);
           return;
         }
-        finish(null, null, null, null);
+        // Umbrella session minted by the OAuth callback redirect; that path
+        // doesn't carry the first-of-day flag.
+        finish(null, null, null, null, false);
       } catch {
         if (!cancelled) setError('Sign-in failed. Try again.');
       } finally {
@@ -379,6 +359,7 @@ export default function SignInPage() {
         organizationName?: string;
         staff?: StaffChoiceRow[];
         error?: string;
+        firstSigninToday?: boolean;
       };
       if (!r.ok) {
         setError(humanError(data.error));
@@ -398,12 +379,13 @@ export default function SignInPage() {
         setStaffChoiceOrg(data.organizationName ?? null);
         return;
       }
+      const firstSigninToday = data.firstSigninToday === true;
       // Password worked on a Face ID-capable device and they haven't saved a passkey (or asked us to stop asking):
       if (platformPasskey && !window.localStorage.getItem('cf.passkeyPrompt.dismissed')) {
-        setPasskeyPrompt({ proceed: () => finish(null, null, null, null), saving: false });
+        setPasskeyPrompt({ proceed: () => finish(null, null, null, null, firstSigninToday), saving: false });
         return;
       }
-      finish(null, null, null, null);
+      finish(null, null, null, null, firstSigninToday);
     } catch {
       setError('Sign-in failed. Try again.');
     } finally {
@@ -476,8 +458,9 @@ export default function SignInPage() {
       const data = await finishRes.json().catch(() => ({}));
       throw new Error(humanError((data as { error?: string }).error));
     }
+    const data = (await finishRes.json().catch(() => ({}))) as { firstSigninToday?: boolean };
     writeLastSigninMethod('passkey');
-    finish(null, null, null, null);
+    finish(null, null, null, null, data.firstSigninToday === true);
   }, [finish]);
 
   const submitAccountPasskey = useCallback(async () => {
@@ -572,8 +555,8 @@ export default function SignInPage() {
       return { ok: false as const, error: humanError((data as { error?: string }).error) };
     }
     const data = await r.json().catch(() => ({}));
-    const d = data as { defaultHomePath?: string | null; defaultHomePathMobile?: string | null };
-    finish(picked.id, picked.role, d.defaultHomePath, d.defaultHomePathMobile);
+    const d = data as { defaultHomePath?: string | null; defaultHomePathMobile?: string | null; firstSigninToday?: boolean };
+    finish(picked.id, picked.role, d.defaultHomePath, d.defaultHomePathMobile, d.firstSigninToday === true);
     return { ok: true as const };
   }, [picked, finish]);
 
@@ -593,8 +576,8 @@ export default function SignInPage() {
       setPicked(null);
       return;
     }
-    const d = data as { defaultHomePath?: string | null; defaultHomePathMobile?: string | null };
-    finish(row.id, row.role, d.defaultHomePath, d.defaultHomePathMobile);
+    const d = data as { defaultHomePath?: string | null; defaultHomePathMobile?: string | null; firstSigninToday?: boolean };
+    finish(row.id, row.role, d.defaultHomePath, d.defaultHomePathMobile, d.firstSigninToday === true);
   }, [finish]);
 
   // DOGFOOD / QA — pick a staff to act as (no PIN); owner session already set.
@@ -613,13 +596,14 @@ export default function SignInPage() {
       });
       const data = (await r.json().catch(() => ({}))) as {
         error?: string; role?: string | null; defaultHomePath?: string | null; defaultHomePathMobile?: string | null;
+        firstSigninToday?: boolean;
       };
       if (!r.ok) {
         setError(humanError(data.error));
         setBusy(false);
         return;
       }
-      finish(row.id, row.role ?? data.role, data.defaultHomePath, data.defaultHomePathMobile);
+      finish(row.id, row.role ?? data.role, data.defaultHomePath, data.defaultHomePathMobile, data.firstSigninToday === true);
     } catch {
       setError('Sign-in failed. Try again.');
       setBusy(false);
@@ -649,8 +633,8 @@ export default function SignInPage() {
       return { ok: false as const, error: humanError((data as { error?: string }).error) };
     }
     const data = await r.json().catch(() => ({}));
-    const d = data as { defaultHomePath?: string | null; defaultHomePathMobile?: string | null };
-    finish(picked.id, picked.role, d.defaultHomePath, d.defaultHomePathMobile);
+    const d = data as { defaultHomePath?: string | null; defaultHomePathMobile?: string | null; firstSigninToday?: boolean };
+    finish(picked.id, picked.role, d.defaultHomePath, d.defaultHomePathMobile, d.firstSigninToday === true);
     return { ok: true as const };
   }, [picked, finish]);
 
@@ -674,8 +658,8 @@ export default function SignInPage() {
       throw new Error(humanError((data as { error?: string }).error));
     }
     const data = await finishRes.json().catch(() => ({}));
-    const d = data as { defaultHomePath?: string | null; defaultHomePathMobile?: string | null };
-    finish(picked.id, picked.role, d.defaultHomePath, d.defaultHomePathMobile);
+    const d = data as { defaultHomePath?: string | null; defaultHomePathMobile?: string | null; firstSigninToday?: boolean };
+    finish(picked.id, picked.role, d.defaultHomePath, d.defaultHomePathMobile, d.firstSigninToday === true);
   }, [picked, finish]);
 
   const workspaceName = useMemo(
@@ -751,7 +735,8 @@ export default function SignInPage() {
       <MobileSigninWelcome
         name={mobileSession.name}
         onContinue={() =>
-          finish(mobileSession.staffId, mobileSession.role, null, null)
+          // Resuming an existing session — not a fresh sign-in.
+          finish(mobileSession.staffId, mobileSession.role, null, null, false)
         }
         onSignOut={() => void signOutMobileSession()}
       />
@@ -967,6 +952,9 @@ export default function SignInPage() {
                     data?.role ?? null,
                     data?.defaultHomePath ?? null,
                     data?.defaultHomePathMobile ?? null,
+                    // The phone's PIN authorize stamps last_login_at; the desk
+                    // claim doesn't carry the first-of-day flag across devices.
+                    false,
                   );
                 }}
               />

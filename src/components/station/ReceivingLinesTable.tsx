@@ -11,6 +11,7 @@ import { DateRangePickerPill } from '@/components/ui/DateRangeHeader';
 import { IncomingReturnsImportStagingHost } from '@/components/sidebar/receiving/incoming/IncomingReturnsImportStagingHost';
 import { IncomingReturnsImportStagingRail } from '@/components/sidebar/receiving/incoming/IncomingReturnsImportStagingRail';
 import { IncomingDeliveriesLedger } from '@/components/receiving/incoming/IncomingDeliveriesLedger';
+import { useIncomingStatusChips } from '@/components/receiving/incoming/IncomingStatusChips';
 import { DockedReceiptsLedger } from '@/components/receiving/history/DockedReceiptsLedger';
 import { ReceivingOrderComposer } from '@/components/receiving/incoming/order-composer/ReceivingOrderComposer';
 import {
@@ -54,6 +55,18 @@ import { useIncomingTableChrome } from '@/components/station/incoming-grid/useIn
 import { useReceivingTableChrome } from '@/components/station/receiving-grid/useReceivingTableChrome';
 import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
 import { INCOMING_PAGE_SIZE } from '@/lib/receiving/receiving-modes';
+import { useDeskSearch } from '@/lib/outbound/desk-search-store';
+import {
+  filterRowsByRecon,
+  parseReconParam,
+  parseRefInParam,
+  RECON_PARAM,
+  RECONCILE_CAP_NOTE,
+  REF_IN_PARAM,
+  RECON_STATUS_LABELS,
+} from '@/lib/receiving/reconcile';
+import { useInboundCheck } from '@/lib/receiving/inbound-check-query';
+import { cutIncomingSections } from '@/lib/receiving/incoming-sections';
 import { StationPipelineBoard } from '@/components/station/StationPipelineBoard';
 import { STATION_PIPELINE_BOARDS } from '@/lib/station/flags';
 import { LAYOUT_PARAM, parseLayout, parseWeekOffset, WEEK_OFFSET_PARAM } from '@/lib/station/table-url-params';
@@ -154,7 +167,10 @@ export default function ReceivingLinesTable({
 
   // History week is a query facet (`?weekOffset=`); other modes keep session-local.
   const [localWeekOffset, setLocalWeekOffset] = useState(0);
-  const [receivingSearchValue, setReceivingSearchValue] = useState('');
+  // `/incoming` searches from the contextual sidebar's Find (the desk store,
+  // keyed by the desk path); the Unbox embeds keep their own ledger field.
+  const [localSearchValue, setLocalSearchValue] = useState('');
+  const [deskSearchValue, setDeskSearchValue] = useDeskSearch(INCOMING_SURFACE_ROUTE);
   const weekOffsetFromUrl = Math.max(0, parseWeekOffset(searchParams.get(WEEK_OFFSET_PARAM)));
   const weekOffset = isHistoryMode ? weekOffsetFromUrl : localWeekOffset;
   const weekExplicit = isHistoryMode ? searchParams.has(WEEK_OFFSET_PARAM) : true;
@@ -183,6 +199,15 @@ export default function ReceivingLinesTable({
   // records on DeskRecordPlane) — never the History sheet chrome.
   const isInboundDeskHost = pathname.startsWith(INCOMING_SURFACE_ROUTE);
   const isInboundDocked = isInboundDeskHost && parseInboundLane(searchParams.get('lane')) === 'docked';
+  const receivingSearchValue = isInboundDeskHost ? deskSearchValue : localSearchValue;
+  const setReceivingSearchValue = isInboundDeskHost ? setDeskSearchValue : setLocalSearchValue;
+  // Inbound reconciliation: a pasted list (`?ref_in=`) swaps On the way for
+  // every line it names; the Check says which bucket each number is in and
+  // `?recon=` keeps one bucket. Same query key as the sidebar — one Check.
+  const refSelection = parseRefInParam(isInboundDeskHost && isIncomingMode ? searchParams.get(REF_IN_PARAM) : null);
+  const reconciling = refSelection.refs.length > 0;
+  const recon = reconciling ? parseReconParam(searchParams.get(RECON_PARAM)) : null;
+  const inboundCheck = useInboundCheck(refSelection);
   // Add swaps the ledger for the receiving-order composer — either lane of the
   // Inbound desk, and the Unbox Inbound tab (its header's Add purchase order).
   const composerKind = useSyncExternalStore(
@@ -286,6 +311,26 @@ export default function ReceivingLinesTable({
     scrollRef,
   });
 
+  // A pasted list and the Exceptions view load as ONE page (up to
+  // `RECONCILE_ROW_LIMIT`), so Find and the status filter reach every line.
+  const isInboundExceptions = modeContext.incomingExceptions;
+  const onePage = reconciling || isInboundExceptions;
+  // Over the cap the rows are a partial set: a bucket filter over them would
+  // hide lines that are there, so the chips stand down and a note says so.
+  const reconcileCapped =
+    onePage && data != null && Number(data.total ?? 0) > (data.receiving_lines?.length ?? 0);
+  const reconFilter = reconcileCapped ? null : recon;
+  // Status chips over the Incoming ledger: delivery state (`?state=`), or the
+  // pasted list's buckets (`?recon=`) — ⌥1–⌥N.
+  // Exceptions is its own population: no delivery-state or paste buckets over it.
+  const incomingStatusChips = useIncomingStatusChips({
+    enabled: isIncomingMode && !isInboundExceptions,
+    reconciling,
+    check: inboundCheck,
+    recon: reconFilter,
+    disabledReason: reconcileCapped ? RECONCILE_CAP_NOTE : null,
+  });
+
   // KPI-tile click-to-filter (Unbox only).
   const ukpiParam = searchParams.get(UNBOX_KPI_FILTER_PARAM);
   const unboxTabForFilter = getUnboxWorkspaceTabFromSearch(searchParams);
@@ -384,7 +429,11 @@ export default function ReceivingLinesTable({
     }
   }, [embedded, unboxPrimaryPaint, data, isLoading]);
 
-  const emptyMessage = mode.emptyMessage(modeContext);
+  const emptyMessage = reconFilter
+    ? inboundCheck.loading
+      ? 'Checking the pasted numbers…'
+      : `No pasted numbers are ${RECON_STATUS_LABELS[reconFilter].toLowerCase()}.`
+    : mode.emptyMessage(modeContext);
 
   // Fourth settled state (degraded):
   const incomingDegraded = isIncomingMode && isError && localRows.length === 0;
@@ -403,13 +452,17 @@ export default function ReceivingLinesTable({
     const po = (row.zoho_purchaseorder_id || row.zoho_purchaseorder_number || '').trim();
     return po || `line:${row.id}`;
   };
+  const incomingSectioned =
+    isIncomingMode && !incomingColumnSort && !modeContext.incomingSort && !isInboundExceptions;
   const { incomingGroups, incomingFlatRows } = useMemo(() => {
     const all = Object.values(filteredGroupedRecords).flatMap((day) =>
       day.flatMap((g) => g.rows),
     );
+    const reconciled = reconFilter ? filterRowsByRecon(all, inboundCheck.entries, reconFilter) : all;
+    const narrowed = reconFilter !== null;
     const flat = receivingSearchValue.trim()
-      ? all.filter((row) => receivingLineMatchesQuery(row, receivingSearchValue))
-      : all;
+      ? reconciled.filter((row) => receivingLineMatchesQuery(row, receivingSearchValue))
+      : reconciled;
     // Column sort: one flat global order (single synthetic band — LedgerGrid has
     // no day headers). Otherwise day-band the PO groups.
     if (incomingColumnSort && incomingSortDir) {
@@ -424,7 +477,19 @@ export default function ReceivingLinesTable({
         incomingFlatRows: sorted,
       };
     }
-    if (receivingSearchValue.trim()) {
+    const plain = receivingSearchValue.trim() || narrowed;
+    // Default sort (no column sort, no server sort picked) on On the way: cut
+    // the purchases into urgency sections — the band key is the section, so
+    // both faces and J / K walk the cut. The server pages by the same ladder.
+    if (incomingSectioned) {
+      const ordered = plain
+        ? groupRowsBy(flat, incomingFoldKey)
+        : Object.entries(filteredGroupedRecords)
+            .sort((a, b) => b[0].localeCompare(a[0]))
+            .flatMap(([, dayGroups]) => dayGroups);
+      return { incomingGroups: cutIncomingSections(ordered), incomingFlatRows: flat };
+    }
+    if (plain) {
       return {
         incomingGroups: [['', groupRowsBy(flat, incomingFoldKey)]] as [
           string,
@@ -443,7 +508,7 @@ export default function ReceivingLinesTable({
       });
     return { incomingGroups: banded, incomingFlatRows: flat };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [filteredGroupedRecords, mode.serverSorted, incomingColumnSort, incomingSortDir, receivingSearchValue]);
+  }, [filteredGroupedRecords, mode.serverSorted, incomingColumnSort, incomingSortDir, receivingSearchValue, reconFilter, inboundCheck.entries, incomingSectioned]);
   const setIncomingPage = useCallback(
     (nextPage: number) => {
       const params = new URLSearchParams(searchParams.toString());
@@ -629,9 +694,13 @@ export default function ReceivingLinesTable({
                   rows={incomingFlatRows}
                   loading={isLoading && localRows.length === 0}
                   emptyMessage={emptyMessage}
-                  query={receivingSearchValue}
-                  onQueryChange={setReceivingSearchValue}
+                  query={isInboundDeskHost ? undefined : receivingSearchValue}
+                  onQueryChange={isInboundDeskHost ? undefined : setReceivingSearchValue}
                   filter={incomingChrome.filter}
+                  statusChips={incomingStatusChips}
+                  notice={reconcileCapped ? RECONCILE_CAP_NOTE : null}
+                  lane={isInboundExceptions ? 'exceptions' : 'pipeline'}
+                  sectioned={incomingSectioned}
                   sort={incomingColumnSort}
                   sortDir={incomingSortDir}
                   onSort={(key) => {
@@ -643,9 +712,10 @@ export default function ReceivingLinesTable({
                   onOpenRow={openLedgerRow}
                   onCloseRow={closeLedgerRow}
                   onToggleRow={handleToggleRow}
-                  page={incomingPage}
-                  pageSize={INCOMING_PAGE_SIZE}
-                  total={Number(data?.total ?? incomingFlatRows.length)}
+                  // A pasted list and Exceptions are one page — every line, filtered in place.
+                  page={onePage ? 1 : incomingPage}
+                  pageSize={onePage ? Math.max(1, incomingFlatRows.length) : INCOMING_PAGE_SIZE}
+                  total={onePage ? incomingFlatRows.length : Number(data?.total ?? incomingFlatRows.length)}
                   onPage={setIncomingPage}
                   scrollRef={scrollRef}
                 />
@@ -656,7 +726,7 @@ export default function ReceivingLinesTable({
                 loading={isLoading && localRows.length === 0}
                 emptyMessage={emptyMessage}
                 query={receivingSearchValue}
-                onQueryChange={setReceivingSearchValue}
+                onQueryChange={isInboundDeskHost ? undefined : setReceivingSearchValue}
                 activityAxis={historyAxis}
                 toolbarExtra={chromePill}
                 selectedId={openLineId}

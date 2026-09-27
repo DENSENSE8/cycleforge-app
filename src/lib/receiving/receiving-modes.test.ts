@@ -46,6 +46,8 @@ function ctx(overrides: Partial<ReceivingModeContext> = {}): ReceivingModeContex
     queueLane: null,
     priorityOnly: false,
     trackingIn: [],
+    refIn: [],
+    incomingExceptions: false,
     ...overrides,
   };
 }

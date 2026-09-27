@@ -264,7 +264,12 @@ export function CommandBar() {
   }, [open, query]);
 
   useEffect(() => {
-    const onOpen = () => setDialogOpen(true);
+    // `detail.query` (the ⌘K face's paste key) opens the palette already searching.
+    const onOpen = (event: Event) => {
+      const query = (event as CustomEvent<{ query?: unknown } | undefined>).detail?.query;
+      if (typeof query === 'string' && query.trim()) setQuery(query.trim().slice(0, 500));
+      setDialogOpen(true);
+    };
     window.addEventListener(COMMAND_BAR_OPEN_EVENT, onOpen);
     window.addEventListener(GLOBAL_SEARCH_FOCUS_EVENT, onOpen);
     return () => {

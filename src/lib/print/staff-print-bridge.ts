@@ -35,14 +35,14 @@ export type StaffPrintPapersPayload = {
 
 /**
  * Bulk tote run. Mint jobs send a COUNT (never minted ids). Reprint jobs send
- * the typed tote code; the desk looks it up and prints more plates of that
- * identity. Copies is the sticker repeat of that identity — no × sides.
+ * the existing tote codes; the desk prints more plates of those identities.
+ * Copies is the sticker repeat of each identity — no × sides.
  */
 export type StaffPrintTotePayload = {
   count?: number;
   copiesPerSide: number;
-  /** Existing tote `H-{id}` / numeric id / external code — reprint, no mint. */
-  code?: string;
+  /** Existing totes — `H-{id}` / numeric id / external code each; reprint, no mint. */
+  codes?: string[];
 };
 
 /** Which repair document a `repair` job prints — the role follows from it. */
@@ -217,15 +217,18 @@ export function parseStaffPrintJob(raw: unknown): StaffPrintJob | null {
     const copiesPerSide = clampCopiesPerSide(
       asInt(t.copiesPerSide) ?? DEFAULT_TOTE_COPIES_PER_SIDE,
     );
-    const code = String(t.code ?? '').trim();
-    if (code) {
+    const codes = Array.isArray(t.codes)
+      ? [...new Set(t.codes.map((c) => String(c ?? '').trim()).filter(Boolean))]
+      : [];
+    if (codes.length > MAX_TOTE_PRINT_RUN) return null;
+    if (codes.length > 0) {
       return {
         type: 'staff.print_job',
         request_id: requestId,
         targetStationId,
         grain,
         role: 'label',
-        tote: { copiesPerSide, code },
+        tote: { copiesPerSide, codes },
       };
     }
     const count = asInt(t.count);
@@ -443,4 +446,50 @@ export function staffPrintBlockedReason(
   if (!isStaffPrintStationLive(station, now)) return `${name} is offline.`;
   if (!roleReady(station.status, role)) return `${name} has no ${role} printer set up.`;
   return null;
+}
+
+export const NO_PRINT_STATION_ONLINE =
+  'No print station online. Keep CycleForge open on the computer with the printer.';
+
+/** What a sender that sends without a tap (the chat print card) does with the roster heard so far. */
+export type StaffPrintAutoDecision =
+  | { kind: 'send'; station: StaffPrintStation }
+  | { kind: 'wait' }
+  | { kind: 'pick'; reason: string }
+  | { kind: 'fail'; reason: string };
+
+/**
+ * The staffer's remembered pick sends the moment it answers ready. With no
+ * pick, the only live station sends once `settled` (every station had its
+ * chance to answer — an early lone reply is not "the only one"). A remembered
+ * pick that never answers is NOT swapped for another computer: the operator
+ * picks. Nothing ready anywhere fails.
+ */
+export function decideStaffPrintAutoSend(input: {
+  stations: readonly StaffPrintStation[];
+  rememberedId: string | null;
+  role: StaffPrintRole;
+  now: number;
+  settled: boolean;
+}): StaffPrintAutoDecision {
+  const { stations, rememberedId, role, now, settled } = input;
+  const target = resolveStaffPrintTarget(stations, rememberedId, now);
+  const blocked = staffPrintBlockedReason(target, role, now);
+  const picked = !!target && target.status.stationId === rememberedId;
+  if (target && !blocked && (picked || (settled && !rememberedId))) return { kind: 'send', station: target };
+  if (!settled) return { kind: 'wait' };
+  const live = stations.filter((s) => isStaffPrintStationLive(s, now));
+  if (!live.some((s) => roleReady(s.status, role))) {
+    return {
+      kind: 'fail',
+      reason:
+        live.length === 0
+          ? NO_PRINT_STATION_ONLINE
+          : target && blocked
+            ? blocked
+            : `No computer online has a ${role} printer set up.`,
+    };
+  }
+  if (rememberedId && !picked) return { kind: 'pick', reason: "Your print station isn't answering. Choose a printer." };
+  return { kind: 'pick', reason: picked && blocked ? blocked : 'Choose a printer.' };
 }

@@ -48,7 +48,7 @@ import {
 } from '@/components/outbound/orders/to-ship/MorphingRowActionMenu';
 import { applyMorphingGutterClick } from '@/lib/outbound/morphing-row-action';
 import type { GridSurfaceCapabilities } from '@/design-system/components/grid';
-import { isFbaOrder, marketplaceOrderUrl } from '@/utils/order-platform';
+import { isFbaOrder, orderAdminUrl } from '@/utils/order-platform';
 import { useOrderChannel } from '@/hooks/useCatalog';
 import {
   formatDateWithOrdinal,
@@ -395,7 +395,7 @@ function OrdersQueueMobileStack({
     // label. One fact, one place — the row needs no channel track of its own.
     platformLabel: resolveOrderChannel(record.order_id || '', record.account_source).label,
     productPageUrl: null,
-    marketplaceOrderUrl: marketplaceOrderUrl(record.order_id, record.account_source),
+    marketplaceOrderUrl: orderAdminUrl(record.order_id, record.account_source, record.admin_url),
     isFba: isFbaOrder(record.order_id, record.account_source),
     orderId: record.order_id || '',
     hideOrderId: isSkuSourceRecord({

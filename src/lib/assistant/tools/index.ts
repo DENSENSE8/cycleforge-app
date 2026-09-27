@@ -36,6 +36,7 @@ import {
   listReceivingLinePhotosTool,
   resolveReceivingLineForOrderTool,
 } from './receiving-photo-tools';
+import { getOrderDocuments } from './order-document-tools';
 import { listLocationContents, locateProduct } from './wms-tools';
 import { TOOL_FORGE_GATEWAY_TOOLS } from '@/lib/tool-forge/gateway-tools';
 
@@ -70,6 +71,9 @@ const READ_TOOLS: ReadonlyArray<AssistantToolDef<any, unknown>> = [
   // their own table to the panel (wms-tools.ts).
   locateProduct,
   listLocationContents,
+  // An order's shipping label / packing slip / paired paperwork, opened in the
+  // document rail (order-document-tools.ts).
+  getOrderDocuments,
   // The two reads that make "move the photos from order A to order B on this
   // carton" expressible: order id → line id, and line → photo ids. The move
   // itself stays behind propose_mutation.
@@ -86,8 +90,16 @@ export const ASSISTANT_TOOLS: ReadonlyMap<string, AssistantToolDef<any, unknown>
   ALL_TOOLS.map((t) => [t.name, t]),
 );
 
-export function listAssistantTools(ctx?: Pick<AssistantToolCtx, 'permissions'>) {
-  return ALL_TOOLS.filter((t) => !ctx || ctx.permissions.has(t.permission)).map((t) => ({
+/**
+ * The GREEN tier: org-scoped reads with no side effect. The only server tools
+ * an Ask-only turn may advertise or dispatch (`access-mode.ts`); the gateway
+ * tools submit decisions and commits, so they are not in it.
+ */
+export const GREEN_READ_TOOL_NAMES: ReadonlySet<string> = new Set(READ_TOOLS.map((t) => t.name));
+
+export function listAssistantTools(ctx?: Pick<AssistantToolCtx, 'permissions' | 'accessMode'>) {
+  const pool = ctx?.accessMode === 'ask' ? READ_TOOLS : ALL_TOOLS;
+  return pool.filter((t) => !ctx || ctx.permissions.has(t.permission)).map((t) => ({
     name: t.name,
     description: t.description,
     permission: t.permission,

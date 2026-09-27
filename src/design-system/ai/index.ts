@@ -14,20 +14,20 @@ export {
   AI_COMPOSER_SHELL_CLASS,
   AI_FOCUS_CLASS,
   AI_ICON_BUTTON_CLASS,
+  AI_ID_CHIP_CLASS,
   AI_LABEL_CLASS,
   AI_NOTICE_CLASS,
   AI_PANEL_CLASS,
   AI_PRIMARY_BUTTON_CLASS,
   AI_PROSE_CLASS,
   AI_SKELETON_BAR_CLASS,
-  AI_STEP_ROW_CLASS,
+  AI_STOP_BUTTON_CLASS,
   AI_SURFACE_CLASS,
   AI_USER_BUBBLE_CLASS,
 } from './classes';
 
 export {
   AI_COMPOSER_LAYOUT_ID,
-  AI_PHASE_SCRAMBLE_DURATION,
   AI_STEP_STAGGER,
   aiGesture,
   aiPresence,
@@ -42,4 +42,4 @@ export { AiArtifactCard, type AiArtifactCardProps } from './AiArtifactCard';
 export { AiSidePanel, type AiSidePanelProps } from './AiSidePanel';
 export { AiTurn } from './AiTurn';
 export { AiTurnActions, useAiActionStates, type AiTurnAction, type AiTurnActionsProps } from './AiTurnActions';
-export { AiIrisRing, AiIrisSpinner, AiShimmer } from './AiIris';
+export { AiTextShimmer } from './AiIris';

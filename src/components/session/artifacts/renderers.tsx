@@ -12,13 +12,12 @@
  */
 
 import { useCallback, useState } from 'react';
-import { Button } from '@/design-system/primitives';
+import { Button, IconButton } from '@/design-system/primitives';
 import { Check, ExternalLink, Send } from '@/components/Icons';
 import { postTicketComment } from '@/lib/support/post-ticket-comment';
 import { requestComposerSeed } from '@/lib/assistant/composer-seed-store';
 import type {
   ArtifactChart,
-  ArtifactDocument,
   ArtifactImportTriage,
   ArtifactRecord,
   ArtifactTable,
@@ -29,7 +28,7 @@ import type {
 
 // ─── table ───────────────────────────────────────────────────────────────────
 
-function cellText(value: string | number | boolean | null): string {
+export function cellText(value: string | number | boolean | null): string {
   if (value == null) return '';
   if (typeof value === 'boolean') return value ? 'yes' : 'no';
   return String(value);
@@ -41,7 +40,7 @@ function cellText(value: string | number | boolean | null): string {
  * answer renders instead of printing a grid of blanks.
  */
 const normKey = (s: string) => s.toLowerCase().replace(/[^a-z0-9]/g, '');
-function rowLookup(row: Record<string, unknown>): (col: string) => string | number | boolean | null {
+export function rowLookup(row: Record<string, unknown>): (col: string) => string | number | boolean | null {
   const byNorm = new Map<string, unknown>();
   for (const [k, v] of Object.entries(row)) byNorm.set(normKey(k), v);
   return (col: string) => {
@@ -83,7 +82,7 @@ export function TableArtifact({ artifact }: { artifact: ArtifactTable }) {
           <thead className="sticky top-0 bg-surface-canvas">
             <tr>
               {artifact.columns.map((col) => (
-                <th key={col} className="border-b border-border-hairline px-3 py-1.5 text-role-eyebrow uppercase tracking-widest text-text-faint">
+                <th key={col} className="border-b border-border-hairline px-3 py-1.5 text-role-caption font-medium text-text-faint">
                   {col}
                 </th>
               ))}
@@ -111,10 +110,7 @@ export function TableArtifact({ artifact }: { artifact: ArtifactTable }) {
         </table>
       </div>
       {rows.length > 0 ? (
-        <div className="flex shrink-0 items-center justify-between border-t border-border-hairline px-3 py-1">
-          <p className="text-role-eyebrow uppercase tracking-widest text-text-faint">
-            {rows.length} row{rows.length === 1 ? '' : 's'} · j/k move · Enter attach
-          </p>
+        <div className="flex shrink-0 items-center justify-end border-t border-border-hairline px-3 py-1">
           <Button variant="ghost" size="sm" onClick={attach} ariaLabel="Attach row to composer">
             Ask about this row
           </Button>
@@ -397,7 +393,7 @@ export function ImportTriageArtifact({ artifact }: { artifact: ArtifactImportTri
           <thead className="sticky top-0 bg-surface-canvas">
             <tr>
               {['Order', 'Item number', 'Qty', 'Status', 'Why'].map((h) => (
-                <th key={h} className="border-b border-border-hairline px-3 py-1.5 text-role-eyebrow uppercase tracking-widest text-text-faint">
+                <th key={h} className="border-b border-border-hairline px-3 py-1.5 text-role-caption font-medium text-text-faint">
                   {h}
                 </th>
               ))}
@@ -471,15 +467,20 @@ export function RecordArtifact({ artifact, onOpen }: { artifact: ArtifactRecord;
       <dl className="divide-y divide-border-hairline">
         {artifact.fields.map((f, i) => (
           <div key={i} className="flex gap-3 py-1.5 text-role-caption">
-            <dt className="w-40 shrink-0 text-role-eyebrow uppercase tracking-widest text-text-faint">{f.label}</dt>
+            <dt className="w-40 shrink-0 text-role-caption font-medium text-text-faint">{f.label}</dt>
             <dd className="min-w-0 text-text-default">{f.value}</dd>
           </div>
         ))}
       </dl>
       <div className="mt-3">
-        <Button variant="ghost" size="sm" onClick={() => onOpen(artifact.path)} ariaLabel={`Open ${artifact.title}`}>
-          <ExternalLink className="h-3.5 w-3.5" /> Open record
-        </Button>
+        <IconButton
+          icon={<ExternalLink className="h-3.5 w-3.5" />}
+          onClick={() => onOpen(artifact.path)}
+          ariaLabel="Open record"
+          title="Open record"
+          size="sm"
+          radius="control"
+        />
       </div>
     </div>
   );
@@ -493,45 +494,3 @@ export function RecordArtifact({ artifact, onOpen }: { artifact: ArtifactRecord;
  * mounting every renderer from this one registry.
  */
 export { ReportArtifact } from './ReportArtifact';
-
-// ─── document ────────────────────────────────────────────────────────────────
-
-/**
- * An external document read through a connected app — the read plane twin of
- * `artifactDocumentSchema`. Plain text plus a link back to the source of
- * record; no iframe, no embed, no HTML. This branch is what makes the
- * `document` kind reachable from the panel at all (angle 20: the kind was in
- * the schema and in SESSION_ARTIFACT_KINDS, but no renderer existed).
- */
-export function DocumentArtifact({ artifact }: { artifact: ArtifactDocument }) {
-  return (
-    <div className="flex min-h-0 flex-1 flex-col" data-artifact-document>
-      <div
-        className="min-h-0 flex-1 overflow-y-auto px-3 py-2.5"
-        role="region"
-        aria-label={artifact.title}
-        tabIndex={0}
-      >
-        <p className="text-role-eyebrow uppercase tracking-widest text-text-faint">
-          {artifact.source}
-          {artifact.lastModified ? ` · ${artifact.lastModified}` : ''}
-        </p>
-        <p className="mt-2 whitespace-pre-wrap text-role-caption leading-5 text-text-default">
-          {artifact.body}
-        </p>
-      </div>
-      {artifact.url ? (
-        <div className="shrink-0 border-t border-border-hairline px-3 py-1.5">
-          <a
-            href={artifact.url}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center gap-1 text-role-caption text-text-muted hover:text-text-default"
-          >
-            <ExternalLink className="h-3.5 w-3.5" /> Open in {artifact.source}
-          </a>
-        </div>
-      ) : null}
-    </div>
-  );
-}

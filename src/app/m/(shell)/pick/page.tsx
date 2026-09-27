@@ -6,12 +6,9 @@
  */
 
 import { DirectedPickScreen } from '@/components/mobile/picker/directed/DirectedPickScreen';
-import { ModeRegion } from '@/design-system/providers/ModeRegion';
 
 export default function MobilePickPage() {
   return (
-    <ModeRegion mode="triage" className="contents">
-      <DirectedPickScreen />
-    </ModeRegion>
+    <DirectedPickScreen />
   );
 }

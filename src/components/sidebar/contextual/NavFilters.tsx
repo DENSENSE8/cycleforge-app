@@ -5,7 +5,7 @@ import { useSearchParams } from 'next/navigation';
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import type { NavContext, NavFilters as NavFiltersSpec } from '@/lib/nav/context/schema';
 import { fetchNavFacets } from '@/lib/nav/context/http-client';
-import { AnimatePresence, motion } from '@/design-system/motion';
+import { AnimatePresence, LayoutGroup, motion } from '@/design-system/motion';
 import { motionPresence, motionTransition } from '@/design-system/foundations/motion-presets';
 import {
   useMotionPresence,
@@ -14,9 +14,9 @@ import {
 import { AnimatedStat } from '@/design-system/components/AnimatedStat';
 import { DateRangePickerField } from '@/design-system/components/DateRangePickerField';
 import { StageStaffAssignPopover } from '@/components/tables/compound/StageStaffAssignPopover';
-import { SavedViewsList } from '@/components/saved-views/SavedViewsList';
+import { useSavedViews } from '@/hooks/useSavedViews';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Bookmark, Calendar, Check, ChevronRight, User } from '@/components/Icons';
+import { Bookmark, Calendar, Check, ChevronRight, Plus, User, X } from '@/components/Icons';
 import { focusRing } from '@/design-system/tokens/focus-ring';
 import { SIDEBAR_CHIP_CORNER, SIDEBAR_CONTROL_CORNER } from '@/design-system/tokens/radius';
 import { parseStaffParam } from '@/hooks/useStaffFilter';
@@ -25,7 +25,7 @@ import { peekActiveStaff } from '@/lib/staffCache';
 import { cn } from '@/utils/_cn';
 import { useReplaceSearchParams } from './useReplaceSearchParams';
 import { NavSlotError } from './NavSlotError';
-import { NAV_BLOCK_CLASS } from './nav-block';
+import { NAV_BLOCK_CLASS, NAV_BLOCK_PLATE_CLASS } from './nav-block';
 
 const FACETS_STALE_MS = 15_000;
 
@@ -46,11 +46,11 @@ function readValues(raw: string | null, multi: boolean): string[] {
 }
 
 /**
- * The view's filters, Vercel Logs style: a `Filters` heading with a Reset
- * pill, then one closed row per filter. A row shows its current value as a
- * chip; the options (with counts from `GET /api/nav/facets`, the only place
- * counts appear) open on click. Staff, date and saved views are rows too, so
- * nothing view-level lives anywhere else.
+ * The view's filters, Vercel Logs style: a hairline with a Reset pill, then
+ * one closed row per filter. A row shows its current value as a chip; the
+ * options (with counts from `GET /api/nav/facets`) open on click, options
+ * with nothing behind them last and dimmed. Staff and date are rows too;
+ * the view's saved views follow as one-click presets.
  */
 export function NavFilters({
   filters,
@@ -112,36 +112,40 @@ export function NavFilters({
 
   return (
     <section data-nav-filters aria-label="Filters" aria-busy={facets.isFetching || undefined} className="px-2 pt-2">
+      {/* A hairline opens the category, like every other sidebar category — no
+          text heading. The live count + Reset ride the line only while a
+          filter is on. */}
       <header className="flex h-7 items-center gap-1.5 px-2">
-        <h2 className="text-role-caption font-semibold text-text-muted">Filters</h2>
+        <span role="separator" className="h-px min-w-0 flex-1 bg-border-hairline" />
         <AnimatePresence initial={false}>
           {activeCount > 0 ? (
             <motion.span
-              key="count"
+              key="active"
               initial={badgePresence.initial}
               animate={badgePresence.animate}
               exit={badgePresence.exit}
               transition={badgeTransition}
-              className={cn('bg-text-default px-1.5 text-role-micro font-semibold text-surface-card', SIDEBAR_CHIP_CORNER)}
+              className="flex shrink-0 items-center gap-1.5"
             >
-              <AnimatedStat value={activeCount} speed="fast" />
+              <span className={cn('bg-text-default px-1.5 text-role-micro font-semibold text-surface-card', SIDEBAR_CHIP_CORNER)}>
+                <AnimatedStat value={activeCount} speed="fast" />
+              </span>
+              <button
+                type="button"
+                data-nav-filters-reset
+                onClick={reset}
+                className={cn(
+                  'ds-raw-button h-6 border border-border-soft bg-surface-card px-2 text-role-micro font-medium text-text-default shadow-sm',
+                  'transition-[background-color,transform] hover:bg-surface-hover active:translate-y-px',
+                  SIDEBAR_CONTROL_CORNER,
+                  focusRing('control', 'accent'),
+                )}
+              >
+                Reset
+              </button>
             </motion.span>
           ) : null}
         </AnimatePresence>
-        <button
-          type="button"
-          data-nav-filters-reset
-          onClick={reset}
-          disabled={activeCount === 0}
-          className={cn(
-            'ds-raw-button ml-auto h-6 border border-border-soft bg-surface-card px-2 text-role-micro font-medium text-text-default shadow-sm',
-            'transition-colors hover:bg-surface-hover disabled:border-transparent disabled:bg-transparent disabled:text-text-faint disabled:shadow-none',
-            SIDEBAR_CONTROL_CORNER,
-            focusRing('control', 'accent'),
-          )}
-        >
-          Reset
-        </button>
       </header>
 
       <div className="flex flex-col gap-px">
@@ -172,19 +176,22 @@ export function NavFilters({
                       aria-label={declared.label}
                       className={cn('divide-y divide-border-hairline border border-border-soft bg-surface-card', SIDEBAR_CONTROL_CORNER)}
                     >
-                      {group.options.map((option) => {
+                      {orderOptions(group.options, active).map((option) => {
                         const selected = active.includes(option.value);
+                        const empty = option.count === 0 && !selected;
                         return (
                           <button
                             key={option.value}
                             type="button"
                             role="checkbox"
                             aria-checked={selected}
+                            data-nav-filter-option={option.value}
+                            data-empty={empty || undefined}
                             onClick={() => toggleValue(declared, option.value)}
                             className={cn(
                               'ds-raw-button flex h-8 w-full items-center gap-2 px-2 text-left text-role-caption',
                               'transition-colors hover:bg-surface-hover',
-                              selected ? 'text-text-default' : 'text-text-muted',
+                              selected ? 'text-text-default' : empty ? 'text-text-faint' : 'text-text-muted',
                               focusRing('control', 'accent'),
                             )}
                           >
@@ -209,20 +216,136 @@ export function NavFilters({
               );
             })
           : null}
-        {savedViews ? (
-          <Disclosure
-            id="saved-views"
-            label="Saved views"
-            icon={<Bookmark aria-hidden className={ROW_ICON_CLASS} />}
-            summary={null}
-            open={open.has('saved-views')}
-            onToggle={toggleOpen}
-          >
-            <SavedViewsList storageKey={savedViews.storageKey} paramKeys={savedViews.paramKeys} hideHeader />
-          </Disclosure>
-        ) : null}
       </div>
+      {savedViews ? <SavedViewPresets storageKey={savedViews.storageKey} paramKeys={savedViews.paramKeys} /> : null}
     </section>
+  );
+}
+
+/**
+ * An open group's options in list order, except that options with nothing
+ * behind them (count 0) sink to the end — unless selected, which never move
+ * under the cursor.
+ */
+function orderOptions<T extends { value: string; count: number }>(options: readonly T[], active: readonly string[]): T[] {
+  const empty = (option: T) => option.count === 0 && !active.includes(option.value);
+  return [...options.filter((option) => !empty(option)), ...options.filter(empty)];
+}
+
+/**
+ * The view's saved views as one-click presets (`useSavedViews`), under the
+ * filter rows: one block per view (Bookmark glyph, lit while the URL matches
+ * it, pressing the lit one clears it), a hover × on your own views, and a
+ * `Save view` block only while unsaved filters are on. Nothing saved and no
+ * filter on → nothing renders.
+ */
+function SavedViewPresets({ storageKey, paramKeys }: { storageKey: string; paramKeys: readonly string[] }) {
+  const { views, activeView, hasActiveFilters, applyView, clearView, saveView, removeView } = useSavedViews({
+    storageKey,
+    paramKeys,
+  });
+  const [naming, setNaming] = useState(false);
+  const [draft, setDraft] = useState('');
+  const plateTransition = useMotionTransition(motionTransition.sliderIndicator);
+  const canSave = hasActiveFilters && !activeView;
+  if (views.length === 0 && !canSave) return null;
+
+  const commit = () => {
+    if (!draft.trim()) return;
+    saveView(draft);
+    setDraft('');
+    setNaming(false);
+  };
+
+  return (
+    <div role="group" aria-label="Saved views" data-nav-presets className="flex flex-col gap-px">
+      <span role="separator" className="mx-2 my-1.5 h-px bg-border-hairline" />
+      <LayoutGroup id={`nav-presets:${storageKey}`}>
+        {views.map((view) => {
+          const lit = view.id === activeView?.id;
+          return (
+            <div key={view.id} className="group relative">
+              <button
+                type="button"
+                aria-pressed={lit}
+                data-nav-preset={view.id}
+                onClick={() => (lit ? clearView() : applyView(view))}
+                className={cn(ROW_CLASS, view.isMine && 'pr-8', lit && 'font-medium')}
+              >
+                {lit ? (
+                  <motion.span aria-hidden layoutId="nav-preset-plate" transition={plateTransition} className={NAV_BLOCK_PLATE_CLASS} />
+                ) : null}
+                <Bookmark aria-hidden className={cn(ROW_ICON_CLASS, lit && 'text-text-default')} />
+                <span className="min-w-0 flex-1 truncate" title={view.name}>
+                  {view.name}
+                </span>
+              </button>
+              {view.isMine ? (
+                <button
+                  type="button"
+                  aria-label={`Delete view ${view.name}`}
+                  data-nav-preset-delete={view.id}
+                  onClick={() => removeView(view.id)}
+                  className={cn(
+                    'ds-raw-button absolute right-1 top-1/2 grid size-6 -translate-y-1/2 place-content-center text-text-faint',
+                    'opacity-0 transition-opacity hover:text-text-default group-hover:opacity-100 focus-visible:opacity-100',
+                    SIDEBAR_CHIP_CORNER,
+                    focusRing('control', 'accent'),
+                  )}
+                >
+                  <X aria-hidden className="size-3.5" />
+                </button>
+              ) : null}
+            </div>
+          );
+        })}
+      </LayoutGroup>
+      {canSave ? (
+        naming ? (
+          <form
+            onSubmit={(event) => {
+              event.preventDefault();
+              commit();
+            }}
+            className="flex h-8 items-center gap-2 px-2"
+          >
+            <Bookmark aria-hidden className={ROW_ICON_CLASS} />
+            <input
+              autoFocus
+              value={draft}
+              data-nav-preset-name
+              aria-label="Name this view"
+              placeholder="Name this view…"
+              onChange={(event) => setDraft(event.target.value)}
+              onBlur={() => {
+                if (!draft.trim()) setNaming(false);
+              }}
+              onKeyDown={(event) => {
+                if (event.key !== 'Escape') return;
+                event.preventDefault();
+                setDraft('');
+                setNaming(false);
+              }}
+              className={cn(
+                'h-6 min-w-0 flex-1 bg-surface-sunken px-1.5 text-role-caption text-text-default ring-1 ring-inset ring-border-hairline',
+                SIDEBAR_CHIP_CORNER,
+                focusRing('field', 'accent'),
+              )}
+            />
+          </form>
+        ) : (
+          <button
+            type="button"
+            data-nav-preset-save
+            onClick={() => setNaming(true)}
+            className={cn(ROW_CLASS, 'text-text-muted')}
+          >
+            <Plus aria-hidden className={ROW_ICON_CLASS} />
+            <span className="min-w-0 flex-1 truncate">Save view</span>
+          </button>
+        )
+      ) : null}
+    </div>
   );
 }
 
@@ -257,7 +380,6 @@ function CheckFace({ checked }: { checked: boolean }) {
 function Disclosure({
   id,
   label,
-  icon,
   summary,
   open,
   onToggle,
@@ -265,7 +387,6 @@ function Disclosure({
 }: {
   id: string;
   label: string;
-  icon?: ReactNode;
   summary: string | null;
   open: boolean;
   onToggle: (id: string) => void;
@@ -284,11 +405,9 @@ function Disclosure({
         onClick={() => onToggle(id)}
         className={ROW_CLASS}
       >
-        {icon ?? (
-          <motion.span animate={{ rotate: open ? 90 : 0 }} transition={chevron} className="grid shrink-0 place-content-center">
-            <ChevronRight aria-hidden className={ROW_ICON_CLASS} />
-          </motion.span>
-        )}
+        <motion.span animate={{ rotate: open ? 90 : 0 }} transition={chevron} className="grid shrink-0 place-content-center">
+          <ChevronRight aria-hidden className={ROW_ICON_CLASS} />
+        </motion.span>
         <span className="min-w-0 flex-1 truncate">{label}</span>
         <AnimatePresence initial={false} mode="popLayout">
           {summary ? (

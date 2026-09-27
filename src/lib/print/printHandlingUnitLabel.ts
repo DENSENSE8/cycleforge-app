@@ -35,12 +35,7 @@ export function handlingUnitLabelToFace(payload: HandlingUnitLabelPayload): Labe
   };
 }
 
-/**
- * Awaitable print of one handling-unit label — the chat `print_handling_unit_labels`
- * tool needs the per-label outcome. Same face and print path as
- * {@link printHandlingUnitLabel}.
- */
-export async function printHandlingUnitLabelJob(
+async function printHandlingUnitLabelJob(
   payload: HandlingUnitLabelPayload,
 ): Promise<'usb' | 'iframe' | 'skipped'> {
   if (typeof window === 'undefined') return 'skipped';

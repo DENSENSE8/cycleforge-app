@@ -74,6 +74,8 @@ export const motionDuration = {
   sidebarExpand: 0.26,
   /** Contextual sidebar top ↔ section cross-fade (Vercel: ~100–150 ms, no slide) */
   sidebarScopeSwap: 0.13,
+  /** Find / ⌘K hint roll — perceived settle of each word's spring (hover-only, so brisk) */
+  findHintRoll: 0.3,
   /** Dropdown menu open/close */
   dropdownOpen: 0.18,
   /** Overlay search bar toggle */
@@ -423,6 +425,17 @@ export const motionTransition = {
     ease: motionBezier.easeOut,
   } satisfies Transition,
 
+  /**
+   * Find / ⌘K hint roll — pair with `motionPresence.findHintRoll`. A critically
+   * damped spring (bounce 0): words settle without overshoot and a roll
+   * interrupted mid-flight (pointer leaves) retargets from its live velocity.
+   */
+  findHintRoll: {
+    type: 'spring',
+    visualDuration: motionDuration.findHintRoll,
+    bounce: 0,
+  } satisfies Transition,
+
   /** Identity chip on password step — pair with `motionPresence.signInIdentityChip` */
   signInIdentityChip: {
     duration: motionDuration.signInIdentityChip,
@@ -716,6 +729,16 @@ export const motionPresence = {
     initial: { opacity: 0 },
     animate: { opacity: 1 },
     exit: { opacity: 0 },
+  },
+  /**
+   * Find / ⌘K hint roll, PER WORD (top → bottom): words drop in from above,
+   * the outgoing words drop out below. Travel stays inside the line (the
+   * field's masked edge does the fading); no blur — cheap to composite.
+   */
+  findHintRoll: {
+    initial: { opacity: 0, y: '-85%' },
+    animate: { opacity: 1, y: '0%' },
+    exit: { opacity: 0, y: '85%' },
   },
 } as const;
 

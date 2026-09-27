@@ -25,6 +25,7 @@
 import {
   APP_SIDEBAR_NAV,
   SPINE_SECTIONS,
+  STATION_GROUPS,
   applyChildTarget,
   filterPageChildren,
   getSidebarNavItems,
@@ -153,8 +154,12 @@ function sectionRows(page: SidebarPageNav): SectionRow[] {
   return page.id === SHIPPING_PAGE_ID ? shippingRows(page) : childRows(page);
 }
 
-/** A page draws a section panel when it has ≥2 views to switch between (Shipping: any). */
+/**
+ * A page draws a section panel when it has ≥2 views to switch between
+ * (Shipping: any), or when its recents list is its panel (`recentsPanel`, Chat).
+ */
 function hasSectionPanel(page: SidebarPageNav, rows: readonly SectionRow[]): boolean {
+  if (NAV_PAGE_DECLS[page.id]?.recentsPanel) return true;
   return page.id === SHIPPING_PAGE_ID ? rows.length > 0 : rows.length >= 2;
 }
 
@@ -205,7 +210,13 @@ function laneMap(input: PipelineInput, activePageId: string): NavSection[] {
   const sections: NavSection[] = [];
   const topItems = rows.filter(isSpineMapTopRow).map(toItem).filter((item): item is NavItem => item !== null);
   if (topItems.length > 0) sections.push({ id: 'top', items: topItems });
-  for (const lane of SPINE_SECTIONS) {
+  // Scan Stations sit at the very bottom (operator 2026-09-27); the desks lead.
+  const isStationLane = (id: string) => STATION_GROUPS.some((group) => group.id === id);
+  const laneOrder = [
+    ...SPINE_SECTIONS.filter((lane) => !isStationLane(lane.id)),
+    ...SPINE_SECTIONS.filter((lane) => isStationLane(lane.id)),
+  ];
+  for (const lane of laneOrder) {
     const items = rows
       .filter((row) => spineSectionIdForPage(row) === lane.id)
       .map(toItem)
@@ -226,7 +237,7 @@ function laneMap(input: PipelineInput, activePageId: string): NavSection[] {
 
 /**
  * The door lane a landing page opens from, else null. Its page panel wears
- * the lane's name and lists the lane's other pages (the map no longer does).
+ * the lane's name and switches between the lane's pages as MODES.
  */
 function doorLaneOf(page: SidebarPageNav | null): (typeof SPINE_SECTIONS)[number] | null {
   if (!page) return null;
@@ -235,22 +246,29 @@ function doorLaneOf(page: SidebarPageNav | null): (typeof SPINE_SECTIONS)[number
   return SPINE_SECTIONS.find((lane) => lane.id === laneId) ?? null;
 }
 
-/** The door lane's other pages, as rows under the landing page's views. */
-function laneSiblingRows(
+/**
+ * A door lane's pages as its MODES — the landing page first under its own
+ * name (Shipping), then the rest (FBA, Label intake). One section, id
+ * `<page>.<lane>.modes`, painted as the mode switcher under `‹ <Lane>`.
+ */
+function laneModeRows(
   lane: (typeof SPINE_SECTIONS)[number],
-  landingId: string,
+  landing: SidebarPageNav,
   input: PipelineInput,
 ): SectionRow[] {
-  const group = { id: `${lane.id}.pages`, label: `More in ${lane.label}` };
-  return mergeOrgNav(getSidebarNavItems({ permissions: input.permissions }), input.orgNav)
-    .filter((row) => row.id !== landingId && spineSectionIdForPage(row) === lane.id)
-    .map((row) => ({
-      id: row.id,
-      label: row.label,
-      href: row.href,
-      pathname: new URL(row.href, 'http://nav.local').pathname,
-      group,
-    }));
+  const group = { id: `${lane.id}.modes`, label: 'Mode' };
+  const toRow = (row: { id: string; label: string; href: string }): SectionRow => ({
+    id: row.id,
+    label: row.label,
+    href: row.href,
+    pathname: new URL(row.href, 'http://nav.local').pathname,
+    group,
+  });
+  const others = mergeOrgNav(getSidebarNavItems({ permissions: input.permissions }), input.orgNav)
+    .filter((row) => row.id !== landing.id && spineSectionIdForPage(row) === lane.id)
+    .map(toRow);
+  // One page is no choice: a lane with a single reachable page has no switcher.
+  return others.length > 0 ? [toRow(landing), ...others] : [];
 }
 
 /** Every key the routes' param specs declare (owned or carried) — what hygiene keeps. */
@@ -300,10 +318,10 @@ export function buildNavContext(input: ResolveNavContextInput): NavContext {
   const activeId = rows.some((row) => row.id === resolvedActive) ? resolvedActive : null;
   const sectionScope = page !== null && hasSectionPanel(page, rows) && input.view !== 'top';
   // A lane door's landing page wears the lane's name (the map shows no page
-  // rows for that lane) and its panel carries the lane's other pages.
+  // rows for that lane) and its panel leads with the lane's modes.
   const doorLane = doorLaneOf(page);
   const label = doorLane ? doorLane.label : pageLabel(pageId, page);
-  const panelRows = doorLane ? [...rows, ...laneSiblingRows(doorLane, pageId, pipeline)] : rows;
+  const panelRows = doorLane && page ? [...laneModeRows(doorLane, page, pipeline), ...rows] : rows;
 
   const viewPathnames = new Set<string>(rows.map((row) => row.pathname));
   if (registered) viewPathnames.add(new URL(registered.href, 'http://nav.local').pathname);
@@ -339,7 +357,16 @@ export function buildNavContext(input: ResolveNavContextInput): NavContext {
   }
   const recents = decl.recents ? getNavRecentSurface(decl.recents) : null;
   if (recents && (!recents.permission || permissions.has(recents.permission))) {
-    context.recents = { endpoint: recents.endpoint, surface: recents.id };
+    context.recents = {
+      endpoint: recents.endpoint,
+      surface: recents.id,
+      ...(recents.find ? { find: true as const } : {}),
+      ...(recents.paged ? { paged: true as const } : {}),
+      ...(recents.rowActions
+        ? { rowActions: { endpoint: recents.rowActions.endpoint, verbs: [...recents.rowActions.verbs] } }
+        : {}),
+      ...(recents.chords ? { chords: true as const } : {}),
+    };
   }
   if (decl.savedViews) {
     context.savedViews = { storageKey: decl.savedViews.storageKey, paramKeys: [...decl.savedViews.paramKeys] };

@@ -52,6 +52,9 @@ export const STATE_NAMES = Object.keys(STATE_TONES) as StateName[];
  * Lifecycle code CSS. `.state-code-<tone>` is the tone's ink as bare text
  * (warning reads the mode's readable warn ink); `.state-badge-<tone>` is the
  * solid code badge — `code` fill, `codeInk` text — worn by the desk state code.
+ * The badge corner is the region's CONTROL radius, not the pill: the code is a
+ * boxed chip (modes.ts `radiusControl` — "filter chips that are not pills"),
+ * rounded in triage and square on the industrial Floor / phones.
  */
 export function stateCodeCssText(): string {
   const ink: Record<StateName, string> = {
@@ -68,6 +71,7 @@ export function stateCodeCssText(): string {
     `.state-badge-${tone} {`,
     `  color: ${STATE_TONES[tone].codeInk};`,
     `  background-color: ${STATE_TONES[tone].code};`,
+    `  border-radius: var(--mode-radius-control);`,
     `}`,
   ]).join('\n');
 }

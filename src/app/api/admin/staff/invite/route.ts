@@ -52,8 +52,8 @@ export const POST = withAuth(async (req, ctx) => {
   const token = makeToken();
   const newStaffId = await withTenantTransaction(ctx.organizationId, async (client) => {
     const staffRes = await client.query<{ id: number }>(
-      `INSERT INTO staff (name, role, organization_id, active, status, default_home_path)
-       VALUES ($1, $2, $3, true, 'invited', '/dashboard')
+      `INSERT INTO staff (name, role, organization_id, active, status)
+       VALUES ($1, $2, $3, true, 'invited')
        RETURNING id`,
       [parsed.name, canonical, ctx.organizationId],
     );

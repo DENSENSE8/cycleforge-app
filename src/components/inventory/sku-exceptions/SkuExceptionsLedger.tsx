@@ -278,7 +278,7 @@ const SkuExceptionRecord = memo(function SkuExceptionRecord({
                   staffId={row.createdByStaffId}
                   name={row.createdByName}
                   size="xs"
-                  shape="square"
+                  face="record"
                 />
                 <span className={cn(RECORD_LABEL_CLASS, 'truncate text-mode-muted')}>
                   {row.createdByName ?? '—'}

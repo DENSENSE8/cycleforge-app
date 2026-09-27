@@ -2,7 +2,7 @@
  * Loading copy for the assistant's active-tool line.
  *
  * While a turn runs, the chat pane shows exactly one transient line naming
- * what the agent is doing right now (`ThinkingDisclosure`'s live row, driven
+ * what the agent is doing right now (`ThinkingLine`, driven
  * by the SSE `tool` frames). That line used to render the raw tool id
  * with its underscores swapped for spaces — `get_packing_kpi` became
  * "get packing kpi", which reads like a leaked internal and tells a packer
@@ -32,7 +32,7 @@
  * chat session — but they emit the same `tool` event, so they need the same
  * copy.
  */
-export const WRITE_TOOL_NAMES = ['propose_mutation', 'revert_mutation'] as const;
+export const WRITE_TOOL_NAMES = ['propose_mutation', 'revert_mutation', 'link_manual_to_sku'] as const;
 
 /** Tool id → the line shown while it runs. The tripwire reads these keys. */
 export const TOOL_ACTIVITY_PHRASES: Readonly<Record<string, string>> = {
@@ -51,11 +51,14 @@ export const TOOL_ACTIVITY_PHRASES: Readonly<Record<string, string>> = {
   exact_id_serial_search: 'Matching that identifier',
   resolve_item_number: 'Resolving the item number',
   list_staff: 'Looking up staff',
+  locate_product: 'Searching locations',
+  list_location_contents: 'Checking the bin',
 
   // ── One thing's story ───────────────────────────────────────────────────
   get_unit_journey: 'Walking the unit journey',
   get_operations_journey: 'Tracing the cross-station timeline',
   get_order_lookup: 'Looking up the order',
+  get_order_documents: 'Finding the order documents',
   lookup_serial: 'Looking up the serial',
 
   // ── Receiving / photos ──────────────────────────────────────────────────
@@ -91,6 +94,7 @@ export const TOOL_ACTIVITY_PHRASES: Readonly<Record<string, string>> = {
   // ── Writes (session-scoped) ─────────────────────────────────────────────
   propose_mutation: 'Proposing the change',
   revert_mutation: 'Reverting the change',
+  link_manual_to_sku: 'Linking the manual to the SKU',
 
   // ── Order intake (session surface) ──────────────────────────────────────
   triage_orders_csv: 'Triaging the pasted orders',
@@ -173,7 +177,7 @@ const IRREGULAR_PAST: Readonly<Record<string, string>> = {
 /**
  * The same activity, DONE and mid-sentence: "Searching the warehouse" →
  * "searched the warehouse". It names a finished step in the collapsed
- * thinking summary ("Thought for 4s · searched the warehouse"), where the
+ * "Thought process" view (`ThinkingTrace`, via `toolDoneLabel`), where the
  * live participle would read as if the work were still running.
  *
  * Derived from {@link toolActivityPhrase} rather than a second map, so a new

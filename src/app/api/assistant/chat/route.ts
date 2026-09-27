@@ -14,6 +14,10 @@ import {
   formatLocalOpsReply,
 } from '@/lib/assistant/enrich-turn';
 import { buildWriteTools } from '@/lib/assistant/tools/write-tools';
+import { LINK_MANUAL_TOOL_NAME, confirmationReply, pendingManualLinkNote } from '@/lib/assistant/tools/manual-link-tools';
+import { buildWriteToolMap, dispatchToolCall } from '@/lib/assistant/tools/dispatch';
+import { runAssistantTool } from '@/lib/assistant/tools';
+import { splitToolArtifact } from '@/lib/assistant/tool-artifact';
 import {
   CLIENT_MSG_ID_RE,
   claimSession,
@@ -29,6 +33,7 @@ import {
   parseTurnFrame,
   persistableArtifact,
   settleTurn,
+  summarizeToolResult,
   toPersistedTrace,
   type PersistedTurnArtifact,
   type PersistedTurnTrace,
@@ -41,6 +46,8 @@ import type { AssistantToolCtx } from '@/lib/assistant/tools/types';
 import { resolveOrgAiChain, type OrgAiConfig } from '@/lib/ai/org-provider';
 import { isSelfHostedAiRuntime } from '@/lib/ai/provider';
 import { estimateCostMicrocents } from '@/lib/ai/model-pricing';
+import { resolveModelContextWindow } from '@/lib/ai/model-context-window';
+import { ASSISTANT_ACCESS_MODES } from '@/lib/assistant/access-mode';
 import { recordAiUsage } from '@/lib/ai/usage';
 import { markProviderUnhealthy } from '@/lib/ai/provider-health';
 import { isProviderReachableCached } from '@/lib/ai/provider-reachability';
@@ -117,6 +124,20 @@ const ContextSchema = z
       )
       .max(5)
       .nullish(),
+    /** Files uploaded from the composer for this message (stored manuals). */
+    attachments: z
+      .array(
+        z
+          .object({
+            id: z.number().int().positive(),
+            kind: z.literal('product_manual'),
+            name: z.string().min(1).max(200),
+            mime: z.string().max(120),
+          })
+          .strict(),
+      )
+      .max(10)
+      .nullish(),
   })
   .strict();
 
@@ -131,6 +152,8 @@ const BodySchema = z
       .object({ messageId: ClientMsgIdSchema, mode: z.enum(['edit', 'regenerate']) })
       .strict()
       .nullish(),
+    /** The composer's mode: `ask` = read-only, enforced at dispatch. Absent = full. */
+    accessMode: z.enum(ASSISTANT_ACCESS_MODES).nullish(),
   })
   .strict();
 
@@ -207,15 +230,17 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
   if (!parsed.success) {
     return NextResponse.json({ error: 'invalid body', detail: parsed.error.message }, { status: 400 });
   }
-  const { sessionId, message, context, turnIds, rewind } = parsed.data;
+  const { sessionId, message, context, turnIds, rewind, accessMode } = parsed.data;
   const orgId = ctx.organizationId;
   const staffId = ctx.staffId;
   const evalPin = readEvalPin(req);
+  const turnStartedAt = new Date();
 
   const toolCtx: AssistantToolCtx = {
     organizationId: orgId,
     staffId,
     permissions: ctx.permissions,
+    accessMode: accessMode ?? 'full',
   };
 
   // Stop / client gone: `req.signal` fires on a closed connection, `cancel()`
@@ -371,6 +396,12 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
         const historyLoading = loadAssistantHistory(orgId, staffId, sessionId, {
           excludeClientId: turnIds.user,
         }).catch(() => []);
+        // A manual link proposed on an earlier turn and awaiting "yes" — only a
+        // turn that could confirm it (Full access, the kind's permission) needs to know.
+        const pendingLinkLoading =
+          toolCtx.accessMode !== 'ask' && ctx.permissions.has('product_manuals.manage')
+            ? pendingManualLinkNote(orgId, sessionId).catch(() => null)
+            : Promise.resolve(null);
 
         const enrichStartedAt = Date.now();
         const prepared = await enrichAssistantTurn(
@@ -393,7 +424,58 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
           return;
         }
 
-        const [providers, history] = await Promise.all([providersResolving, historyLoading]);
+        // Confirmation fast path — a bare yes / no answering a manual link
+        // this thread proposed on an earlier turn. It runs the link tool
+        // through the same dispatch gate (access mode, permission) and review
+        // path a model call would; no model reads "yes" and guesses.
+        const pendingNote = await pendingLinkLoading;
+        const reply = pendingNote ? confirmationReply(userText) : null;
+        if (reply) {
+          let trace = beginTurn(startedAt);
+          const out = (event: string, data: Record<string, unknown>) => {
+            write(event, data);
+            const folded = parseTurnFrame(event, data);
+            if (folded) trace = applyTurnFrame(trace, folded, Date.now());
+          };
+          const input = { action: reply };
+          const linkMap = buildWriteToolMap(
+            toolCtx,
+            buildWriteTools(sessionId, undefined, ctx.permissions, { startedAt: turnStartedAt }),
+          );
+          out('step', { index: 1 });
+          out('tool', { name: LINK_MANUAL_TOOL_NAME, status: 'start', input });
+          const result = await dispatchToolCall(LINK_MANUAL_TOOL_NAME, input, toolCtx, linkMap, runAssistantTool);
+          out('tool', {
+            name: LINK_MANUAL_TOOL_NAME,
+            status: 'end',
+            ok: result.ok,
+            result: result.ok ? summarizeToolResult(result.data) : null,
+          });
+          const carried = result.ok ? splitToolArtifact(result.data) : null;
+          const kept: PersistedTurnArtifact[] = [];
+          if (carried) {
+            write('ui_tool', { name: 'render_artifact', input: { artifact: carried.artifact, producedBy: carried.tool } });
+            const persisted = persistableArtifact(carried.artifact);
+            if (persisted) kept.push({ artifact: persisted, producedBy: carried.tool });
+          }
+          out('step_end', { index: 1, toolRound: true });
+          const data = result.ok ? result.data : null;
+          const toolSummary =
+            data && typeof data === 'object' && 'summary' in data && typeof data.summary === 'string' ? data.summary : null;
+          const summary = carried?.modelData.summary ?? toolSummary ?? (result.ok ? 'Done.' : `Not done — ${result.error}`);
+          markFirstToken();
+          out('step', { index: 2 });
+          out('delta', { text: summary });
+          out('step_end', { index: 2, toolRound: false });
+          // No model ran: no usage, so the context ring keeps reading the
+          // thread's last MODEL turn instead of a zero.
+          await persistReply(summary, toPersistedTrace(settleTurn(trace, Date.now()), { artifacts: kept }));
+          write('done', { ok: result.ok, turns: 0, mode: 'confirmation' });
+          timing('confirmation', { tool: LINK_MANUAL_TOOL_NAME, action: reply, ok: result.ok });
+          return;
+        }
+
+        const [providers, history, pendingLink] = await Promise.all([providersResolving, historyLoading, pendingLinkLoading]);
 
         const voiceSystem =
           prepared.voice === 'carton'
@@ -483,12 +565,15 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
 
         // Permissions narrow the advertised kind list; enforcement is per-kind
         // inside the tools themselves.
-        const writeTools = buildWriteTools(sessionId, undefined, ctx.permissions);
+        const writeTools = buildWriteTools(sessionId, undefined, ctx.permissions, { startedAt: turnStartedAt });
         const toolDeps = { query: session.query };
         const turnArgs = {
           ctx: toolCtx,
           history,
-          userMessage: prepared.userMessage,
+          // The pending-link note rides WITH the user's reply: a small local
+          // model reads its own last question in history and asks for ids it
+          // does not need unless the answer and the instruction arrive together.
+          userMessage: pendingLink ? `${prepared.userMessage}\n\n[${pendingLink}]` : prepared.userMessage,
           context: context ?? null,
           voiceOverlay: voiceSystem ?? null,
           writeTools,
@@ -562,6 +647,7 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
 
         const tokens = spent as RoundUsage | null;
         const totalMs = Date.now() - startedAt;
+        const lastRound = result.lastRoundUsage;
         const usage: TurnUsage = {
           provider: config.source,
           model: config.model,
@@ -576,6 +662,8 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
           firstTokenMs,
           totalMs,
           rounds: result.turns,
+          contextTokens: lastRound ? lastRound.promptTokens + lastRound.completionTokens : null,
+          contextWindow: await resolveModelContextWindow(config),
         };
         recordAiUsage({
           orgId,

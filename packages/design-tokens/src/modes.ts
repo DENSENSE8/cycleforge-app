@@ -350,7 +350,8 @@ function labelVoiceDeclarations(voice: ModeSpec['labelVoice'], indent: string): 
   ];
 }
 
-function baseDeclarations(spec: ModeSpec): string[] {
+/** Every `--mode-*` variable a region declares — also the unwrapped-route `:root` fallback. */
+function modeVarDeclarations(spec: ModeSpec): string[] {
   const hitCta = spec.hitCta ?? spec.hit;
   const lines = SURFACE_KEYS.map((key) => {
     const value = isLineKey(key) && spec.surfaces[key] === 'transparent' ? 'transparent' : MODE_COLOR_VAR_FALLBACK[key];
@@ -374,7 +375,24 @@ function baseDeclarations(spec: ModeSpec): string[] {
   // Every region resets the ladder, so a nested ungrained region (assistant
   // rail) never inherits its parent's grain; the light block sets the values.
   for (const depth of GRAIN_DEPTHS) lines.push(`  --mode-grain-${depth}: none;`);
-  lines.push('  color: var(--mode-ink);');
+  return lines;
+}
+
+function baseDeclarations(spec: ModeSpec): string[] {
+  return [...modeVarDeclarations(spec), '  color: var(--mode-ink);'];
+}
+
+/**
+ * Light-scheme `--mode-*` literals. A region reaches its planes by remapping
+ * the theme neutrals ({@link lightDeclarations}); `:root` must not touch the
+ * theme, so it pins every mode colour directly instead.
+ */
+function lightModeVarDeclarations(spec: ModeSpec): string[] {
+  const lines = SURFACE_KEYS.map((key) => `  --mode-${key}: ${spec.surfaces[key]};`);
+  if (spec.warnText) lines.push(`  --mode-warn-text: ${spec.warnText};`);
+  if (spec.grain) {
+    for (const depth of GRAIN_DEPTHS) lines.push(`  --mode-grain-${depth}: ${grainImage(spec.grain[depth])};`);
+  }
   return lines;
 }
 
@@ -418,13 +436,17 @@ export function modeRegistryCssText(): string {
     (name) => `  ${modeSelector(name)} {\n${coarseDeclarations(MODE_REGISTRY[name]).join('\n')}\n  }`,
   );
   blocks.push(`@media (pointer: coarse) {\n${coarse.join('\n')}\n}`);
-  // Outside every region (sign-in, app shell chrome) the corners follow the
-  // device: triage on a desk, square on a touch screen (owner 2026-09-26).
+  // Outside every region (sign-in, app shell chrome, any route no layout wraps)
+  // the page renders as triage: every `--mode-*` var resolves, so no
+  // `bg-mode-*` / `text-mode-*` / `border-mode-*` utility paints nothing.
+  // Corners + label voice still follow the device: square caps on a touch
+  // screen (owner 2026-09-26); hit / pad / body text follow the pointer.
   const desk = MODE_REGISTRY.triage;
   const floor = MODE_REGISTRY.industrial;
   blocks.push(
-    `:root {\n  --mode-radius: ${desk.radius};\n  --mode-radius-control: ${desk.radiusControl};\n  --mode-radius-pill: ${desk.radiusPill};\n${labelVoiceDeclarations(desk.labelVoice, '  ').join('\n')}\n}`,
-    `@media (pointer: coarse) {\n  :root {\n    --mode-radius: ${floor.radius};\n    --mode-radius-control: ${floor.radiusControl};\n    --mode-radius-pill: ${floor.radiusPill};\n${labelVoiceDeclarations(floor.labelVoice, '    ').join('\n')}\n  }\n}`,
+    `:root {\n${modeVarDeclarations(desk).join('\n')}\n}`,
+    `html:not([data-color-scheme='dark']) {\n${lightModeVarDeclarations(desk).join('\n')}\n}`,
+    `@media (pointer: coarse) {\n  :root {\n    --mode-radius: ${floor.radius};\n    --mode-radius-control: ${floor.radiusControl};\n    --mode-radius-pill: ${floor.radiusPill};\n${labelVoiceDeclarations(floor.labelVoice, '    ').join('\n')}\n${coarseDeclarations(desk).join('\n')}\n  }\n}`,
   );
   // `:where()` keeps these at zero specificity, so a component's own
   // background-image (hatched spine, gradient) always wins over the grain.
@@ -435,7 +457,7 @@ export function modeRegistryCssText(): string {
     ),
   );
   blocks.push(
-    `@media (prefers-reduced-motion: reduce) {\n  [data-mode] {\n    --mode-motion-feedback: 0ms;\n    --mode-motion-press: 0ms;\n    --mode-motion-pulse: 0s;\n  }\n}`,
+    `@media (prefers-reduced-motion: reduce) {\n  :root,\n  [data-mode] {\n    --mode-motion-feedback: 0ms;\n    --mode-motion-press: 0ms;\n    --mode-motion-pulse: 0s;\n  }\n}`,
   );
   return blocks.join('\n\n');
 }

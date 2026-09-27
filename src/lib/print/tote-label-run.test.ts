@@ -40,6 +40,15 @@ describe('tote print job on the wire', () => {
     assert.equal(parseStaffPrintJob(toteJob({ count: MAX_TOTE_PRINT_RUN + 1 })), null);
   });
 
+  it('reprints existing totes by code, never minting alongside them', () => {
+    const job = parseStaffPrintJob(toteJob({ codes: [' H-351 ', 'H-351', '', 'H-7'], count: 5, copiesPerSide: 1 }));
+    assert.deepEqual(job?.tote, { copiesPerSide: 1, codes: ['H-351', 'H-7'] });
+    // An empty code list is not a reprint — it falls back to the count rules.
+    assert.equal(parseStaffPrintJob(toteJob({ codes: ['  '] })), null);
+    const tooMany = Array.from({ length: MAX_TOTE_PRINT_RUN + 1 }, (_, i) => `H-${i + 1}`);
+    assert.equal(parseStaffPrintJob(toteJob({ codes: tooMany })), null);
+  });
+
   it('still parses the location grains it shares the channel with', () => {
     const bin = parseStaffPrintJob({
       type: 'staff.print_job',

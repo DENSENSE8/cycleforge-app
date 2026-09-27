@@ -97,6 +97,16 @@ interface UseOrdersQueueFeedOptions {
   tableId: TableId;
   /** Record-cursor surface id (the shell's test id). */
   surfaceId: string;
+  /**
+   * Re-cuts the groups the presenter shows AND the record cursor walks (the
+   * card list's status chips and ship-by sections), so J / K follow the screen
+   * and never step onto a hidden order. `orderGroupsByDate` comes back
+   * arranged; `allOrderGroupsByDate` does not.
+   */
+  arrangeGroups?: (
+    groups: [string, RowGroup<ShippedOrder>[]][],
+    sort: QueueDisplaySort,
+  ) => [string, RowGroup<ShippedOrder>[]][];
 }
 
 /** Inline-edit commit targets — one waist for every presenter. */
@@ -136,7 +146,10 @@ interface OrdersQueueFeed extends OrdersQueueCommits {
   recentImportedOrders: ReadonlyMap<number, string>;
   /** Rows this lane paints (search already applied when the client answers it). */
   painted: ShippedOrder[];
+  /** The groups on screen — `arrangeGroups` applied. The record cursor walks these. */
   orderGroupsByDate: [string, RowGroup<ShippedOrder>[]][];
+  /** Every group, unfiltered (counts that must not shrink with the filter). */
+  allOrderGroupsByDate: [string, RowGroup<ShippedOrder>[]][];
   displayedRecords: ShippedOrder[];
   compositionMap: ReadonlyMap<number, KitComposition>;
   plane: OrdersQueuePlane;
@@ -156,6 +169,7 @@ export function useOrdersQueueFeed({
   queueMode,
   tableId,
   surfaceId,
+  arrangeGroups,
 }: UseOrdersQueueFeedOptions): OrdersQueueFeed {
   // Resolved ONCE per render and threaded into every row's lateness lookup —
   // see `daysLateOn`.
@@ -173,12 +187,16 @@ export function useOrdersQueueFeed({
         : filterShippedOrdersByQuery(records, searchValue),
     [records, searchValue, searchAnsweredBy],
   );
-  const { orderGroupsByDate, displayedRecords } = useOrdersQueueRows({
+  const { orderGroupsByDate: allOrderGroupsByDate, displayedRecords } = useOrdersQueueRows({
     records: painted,
     sort,
     dir,
     queueMode,
   });
+  const orderGroupsByDate = useMemo(
+    () => (arrangeGroups ? arrangeGroups(allOrderGroupsByDate, sort) : allOrderGroupsByDate),
+    [allOrderGroupsByDate, arrangeGroups, sort],
+  );
 
   const kitCatalogIds = useMemo(
     () => catalogIdsFromOrderRecords(displayedRecords),
@@ -270,6 +288,7 @@ export function useOrdersQueueFeed({
     recentImportedOrders,
     painted,
     orderGroupsByDate,
+    allOrderGroupsByDate,
     displayedRecords,
     compositionMap,
     plane,

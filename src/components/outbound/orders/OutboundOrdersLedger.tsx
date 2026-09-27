@@ -63,7 +63,7 @@ import { ordersNextStep } from '@/lib/orders/orders-next-step';
 import { orderCarrierBoxes } from '@/lib/orders/order-group-identity';
 import { resolveOrdersSlotValue } from '@/lib/tables/field-catalog/orders-resolve';
 import { useOrderChannel } from '@/hooks/useCatalog';
-import { marketplaceOrderUrl } from '@/utils/order-platform';
+import { orderAdminUrl } from '@/utils/order-platform';
 import { orderRowQtyTone } from '@/lib/condition-tone';
 import { resolveOrderBin, type OrderBinFace } from '@/lib/shipping/outbound-storage-path';
 import { customerFullName, customerPlace } from '@/lib/customers/customer-display';
@@ -678,7 +678,7 @@ const LedgerGroupRecord = memo(function LedgerGroupRecord({
             <OrderNumberMenuChip
               value={orderId}
               platformLabel={meta.value ? meta.label : null}
-              openHref={marketplaceOrderUrl(orderId, lead.account_source)}
+              openHref={orderAdminUrl(orderId, lead.account_source, lead.admin_url)}
               face="full"
               plain
               dense
@@ -955,7 +955,7 @@ const LedgerRecord = memo(function LedgerRecord({
       <OrderNumberMenuChip
         value={orderId}
         platformLabel={meta.value ? meta.label : null}
-        openHref={marketplaceOrderUrl(orderId, view.platformValue)}
+        openHref={orderAdminUrl(orderId, view.platformValue, record.admin_url)}
         face="full"
         plain
         dense

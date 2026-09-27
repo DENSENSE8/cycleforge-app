@@ -17,7 +17,7 @@ export function toNullableDateInput(value: string): string | null {
 
 /** Curated list of paths the admin can pick as a per-staff default landing page. */
 export const STAFF_HOME_OPTIONS: ReadonlyArray<{ value: string; label: string }> = [
-  { value: '/dashboard',   label: 'Dashboard' },
+  { value: '/',            label: 'Daily' },
   { value: '/operations',  label: 'Operations' },
   { value: '/receiving',   label: 'Receiving' },
   { value: '/test',        label: 'Testing' },
@@ -28,5 +28,4 @@ export const STAFF_HOME_OPTIONS: ReadonlyArray<{ value: string; label: string }>
   { value: '/walk-in',     label: 'Walk-in' },
   { value: '/fba',         label: 'Amazon Prep' },
   { value: '/inventory?section=replenish', label: 'Replenish' },
-  { value: '/operations', label: 'Operations' },
 ];

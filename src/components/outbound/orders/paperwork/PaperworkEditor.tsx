@@ -26,7 +26,7 @@ import { resolveOrdersSlotValue } from '@/lib/tables/field-catalog/orders-resolv
 import { toast } from '@/lib/toast';
 import type { ShippedOrder } from '@/types/orders';
 import { cn } from '@/utils/_cn';
-import { marketplaceOrderUrl } from '@/utils/order-platform';
+import { orderAdminUrl } from '@/utils/order-platform';
 import { stageFacts } from '../outbound-orders-ledger-editors';
 import { initials, recordState } from '../outbound-orders-ledger-state';
 import { PaperworkDocuments, type PaperworkTab } from './PaperworkDocuments';
@@ -253,7 +253,7 @@ export function PaperworkEditor({
             <OrderNumberIdentity
               orderId={orderId || String(row.id)}
               platformLabel={channel.label || null}
-              openHref={marketplaceOrderUrl(orderId, row.account_source)}
+              openHref={orderAdminUrl(orderId, row.account_source, row.admin_url)}
             />
           </span>
         </Fact>

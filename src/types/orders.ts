@@ -76,6 +76,8 @@ export interface ShippedOrder {
   packer_photos_url: any;
   tracking_type: string | null;
   account_source: string | null;
+  /** Operator-set admin page link (`orders.admin_url`); wins over the derived marketplace URL. */
+  admin_url?: string | null;
   /**
    * Phase-5 governing-event READ projections (denormalized from audit_logs onto
    * `orders`): first-time-only stamps of when tracking was added / a label was

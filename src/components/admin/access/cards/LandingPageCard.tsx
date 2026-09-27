@@ -15,12 +15,11 @@ const MOBILE_LANDING_OPTIONS: ReadonlyArray<{ value: string; label: string }> = 
   { value: '/m/pick',      label: 'Pick' },
 ];
 
+// Mirrors sign-in precedence: station roles → their station; everyone else → Daily ('/').
 const DESKTOP_ROLE_DEFAULTS: Record<string, string> = {
-  admin: '/dashboard', receiver: '/receiving', receiving: '/receiving',
-  packer: '/pack', technician: '/test', shipper: '/dashboard',
-  inventory_manager: '/inventory', sales: '/dashboard',
-  viewer: '/dashboard', readonly: '/dashboard',
+  receiver: '/receiving', receiving: '/receiving', packer: '/pack', technician: '/test',
 };
+const DESKTOP_FALLBACK_HOME = '/';
 const MOBILE_ROLE_DEFAULTS: Record<string, string> = {
   packer: '/m/pick',
 };
@@ -41,6 +40,7 @@ export function LandingPageCard({
   // Desktop options = sidebar pages the staff can actually open, in sidebar order.
   const desktopOptions = APP_SIDEBAR_NAV
     .filter((item) => !item.requires || permissions.has(item.requires))
+    .filter((item) => item.href !== '/dashboard' && !item.href.startsWith('/dashboard?'))
     .map((item) => ({ value: item.href, label: item.label }));
 
   // If a saved override points somewhere not in the filtered list (e.g. the
@@ -53,7 +53,8 @@ export function LandingPageCard({
     ? [...MOBILE_LANDING_OPTIONS, { value: mobilePath, label: `${mobilePath} (legacy)` }]
     : MOBILE_LANDING_OPTIONS;
 
-  const desktopDefault = primaryRoleKey ? DESKTOP_ROLE_DEFAULTS[primaryRoleKey.toLowerCase()] ?? '/dashboard' : '/dashboard';
+  const desktopDefault = (primaryRoleKey && DESKTOP_ROLE_DEFAULTS[primaryRoleKey.toLowerCase()]) || DESKTOP_FALLBACK_HOME;
+  const desktopDefaultLabel = desktopDefault === '/' ? 'Daily' : desktopDefault;
   const mobileDefault = primaryRoleKey ? MOBILE_ROLE_DEFAULTS[primaryRoleKey.toLowerCase()] ?? '/m/work' : '/m/work';
 
   return (
@@ -75,13 +76,13 @@ export function LandingPageCard({
             disabled={busy}
             className={cn("h-9 rounded-lg border border-border-soft bg-surface-card px-2 text-sm text-text-default transition disabled:opacity-60", focusRing('field', 'accent'))}
           >
-            <option value="">Use role default ({desktopDefault})</option>
+            <option value="">Use role default ({desktopDefaultLabel})</option>
             {desktopList.map((o) => (
               <option key={o.value} value={o.value}>{o.label} — {o.value}</option>
             ))}
           </select>
           <span className="text-role-micro text-text-faint">
-            {desktopPath ? <>Override active: <span className="font-mono text-text-muted">{desktopPath}</span></> : <>Inheriting <span className="font-mono">{desktopDefault}</span></>}
+            {desktopPath ? <>Override active: <span className="font-mono text-text-muted">{desktopPath}</span></> : <>Inheriting <span className="font-mono">{desktopDefaultLabel}</span></>}
           </span>
         </label>
 

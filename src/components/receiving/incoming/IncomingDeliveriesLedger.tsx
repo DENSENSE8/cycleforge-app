@@ -9,10 +9,14 @@ import {
 } from '@/components/tables/DataTable';
 import { SearchField, Button } from '@/design-system/primitives';
 import { RecordLedger } from '@/design-system/components/record-ledger/RecordLedger';
+import { useDeskFloorFace, useDeskStageOptional } from '@/design-system/components/DeskStageContext';
+import { IncomingDeliveryCardList } from './cards/IncomingDeliveryCardList';
+import { IncomingStatusChips, type IncomingStatusChipSet } from './IncomingStatusChips';
 import { RecordActionStrip } from '@/design-system/components/record-action-strip/RecordActionStrip';
 import { useRouter } from 'next/navigation';
 import { buildIncomingDeliveryVerbs } from './incoming-record-verbs';
 import { RECORD_ID_CLASS } from '@/design-system/tokens/industrial-record';
+import { cn } from '@/utils/_cn';
 import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
 import type { IncomingGridColumnKey } from '@/lib/receiving/receiving-grid-layout';
 import type { RowGroup } from '@/lib/group-rows';
@@ -53,9 +57,18 @@ interface IncomingDeliveriesLedgerProps {
   rows: readonly ReceivingLineRow[];
   loading: boolean;
   emptyMessage: string;
-  query: string;
-  onQueryChange: (value: string) => void;
+  /** The ledger's own search field — omitted on `/incoming`, where the sidebar Find owns search. */
+  query?: string;
+  onQueryChange?: (value: string) => void;
   filter: DataTableFilterChrome;
+  /** Status chips top-left (delivery state, or the pasted list's buckets). */
+  statusChips?: IncomingStatusChipSet | null;
+  /** One line above the list (e.g. the pasted list hit the row cap). */
+  notice?: string | null;
+  /** Which Inbound lane the rows are — the summary pane reads it. */
+  lane?: 'pipeline' | 'exceptions';
+  /** `groups` bands are urgency sections (`cutIncomingSections`) — the cards head each one. */
+  sectioned?: boolean;
   sort: IncomingGridColumnKey | null;
   sortDir: 'asc' | 'desc' | null;
   onSort: (key: IncomingGridColumnKey) => void;
@@ -79,6 +92,10 @@ export function IncomingDeliveriesLedger({
   query,
   onQueryChange,
   filter,
+  statusChips,
+  notice,
+  lane = 'pipeline',
+  sectioned = false,
   sort,
   sortDir,
   onSort,
@@ -232,7 +249,85 @@ export function IncomingDeliveriesLedger({
   const shownStart = total === 0 ? 0 : (page - 1) * pageSize + 1;
   const shownEnd = total === 0 ? 0 : Math.min((page - 1) * pageSize + rows.length, total);
 
-  const summary = useMemo(() => incomingDeliverySummary(rows), [rows]);
+  const summary = useMemo(() => incomingDeliverySummary(rows, lane), [lane, rows]);
+
+  // Two faces over one state (owner 2026-09-27, the To-ship pattern): on a
+  // desk stage, In place / Split paint the triage cards and Floor
+  // (⌘/Ctrl+Shift+F) the industrial ledger. Off a stage (the Unbox embed) the
+  // ledger is the only face.
+  const stage = useDeskStageOptional();
+  useDeskFloorFace(stage != null);
+  const cardsFace = stage != null && stage.view !== 'floor';
+
+  const recordTitle = openRow ? `PO ${purchaseIdentity(openRow)}` : 'Delivery';
+  const recordSubtitle = openRow ? displayReceivingProductTitle(openRow) : undefined;
+  const actionStrip = openRow ? (
+    <RecordActionStrip
+      key={openKey}
+      verbs={buildIncomingDeliveryVerbs({ row: openRow, delivery, navigate: router.push, onRemoved: close })}
+      label={`PO ${purchaseIdentity(openRow)} actions`}
+      testId="incoming-actions"
+    />
+  ) : null;
+  const record = openRow ? (
+    <IncomingDeliveryEvidence
+      key={openRow.id}
+      row={openRow}
+      lines={openLines}
+      state={incomingDeliveryRecordState(openRow)}
+      delivery={delivery}
+    />
+  ) : null;
+  const tableControls = (
+    <>
+      <DataTableFilterMenu {...filter} />
+      <DataTableSortMenu
+        options={SORT_OPTIONS}
+        active={sort}
+        hot={sort != null}
+        activeFace={sort && sortDir ? { label: `${sort} · ${sortDir}` } : undefined}
+        onSelect={(id) => onSort(id as IncomingGridColumnKey)}
+      />
+    </>
+  );
+  const footer = (
+    <>
+      <span>{shownStart.toLocaleString()}–{shownEnd.toLocaleString()} of {total.toLocaleString()}</span>
+      <span className="ml-auto inline-flex items-center gap-1">
+        <Button type="button" variant="ghost" size="sm" disabled={page <= 1} onClick={() => onPage(page - 1)}>Previous</Button>
+        <span className={RECORD_ID_CLASS}>{page} / {pageCount}</span>
+        <Button type="button" variant="ghost" size="sm" disabled={page >= pageCount} onClick={() => onPage(page + 1)}>Next</Button>
+      </span>
+    </>
+  );
+
+  if (cardsFace) {
+    const position = recordNavigation.available ? recordNavigation.position : null;
+    return (
+      <IncomingDeliveryCardList
+        groups={groups}
+        loading={loading}
+        empty={emptyMessage}
+        openKey={openKey}
+        onOpenKey={handleOpen}
+        onClose={close}
+        selectedIds={selectedIds}
+        onToggleRow={onToggleRow}
+        toolbar={tableControls}
+        statusChips={statusChips ? <IncomingStatusChips set={statusChips} face="cards" /> : null}
+        notice={notice ?? null}
+        sectioned={sectioned}
+        recordTitle={recordTitle}
+        recordSubtitle={recordSubtitle}
+        record={record}
+        actionStrip={actionStrip}
+        indexLabel={openKey != null && position != null ? `${position} of ${recordNavigation.total}` : undefined}
+        summary={summary}
+        footer={footer}
+        scrollRef={scrollRef}
+      />
+    );
+  }
 
   return (
     <RecordLedger
@@ -247,63 +342,44 @@ export function IncomingDeliveriesLedger({
       scrollRef={scrollRef}
       loading={loading}
       navigation={recordNavigation.available ? recordNavigation : undefined}
+      banner={
+        notice ? (
+          <p role="status" data-testid="incoming-notice" className="border-b border-mode-divide bg-mode-bar px-3 py-1 text-role-caption font-semibold text-mode-warn">
+            {notice}
+          </p>
+        ) : undefined
+      }
       toolbar={
         <>
-          <SearchField
-            value={query}
-            onChange={onQueryChange}
-            placeholder="Filter incoming…"
-            className="min-w-0 flex-1 overflow-hidden rounded-none pl-2"
-            tone="neutral"
-            hideUnderline
-            fillHost
-          />
-          <DataTableFilterMenu {...filter} />
-          <DataTableSortMenu
-            options={SORT_OPTIONS}
-            active={sort}
-            hot={sort != null}
-            activeFace={sort && sortDir ? { label: `${sort} · ${sortDir}` } : undefined}
-            onSelect={(id) => onSort(id as IncomingGridColumnKey)}
-          />
+          {onQueryChange ? (
+            <SearchField
+              value={query ?? ''}
+              onChange={onQueryChange}
+              placeholder="Filter incoming…"
+              className="min-w-0 flex-1 overflow-hidden rounded-none pl-2"
+              tone="neutral"
+              hideUnderline
+              fillHost
+            />
+          ) : null}
+          {statusChips ? (
+            <span className={cn('flex min-w-0 items-stretch', onQueryChange ? 'shrink' : 'flex-1')}>
+              <IncomingStatusChips set={statusChips} face="floor" />
+            </span>
+          ) : onQueryChange ? null : (
+            <span className="flex-1" />
+          )}
+          {tableControls}
         </>
       }
       empty={<b className="text-role-body font-bold text-mode-ink">{emptyMessage}</b>}
-      recordTitle={openRow ? `PO ${purchaseIdentity(openRow)}` : 'Delivery'}
-      recordSubtitle={openRow ? displayReceivingProductTitle(openRow) : undefined}
+      recordTitle={recordTitle}
+      recordSubtitle={recordSubtitle}
       recordNoun="delivery"
-      actionStrip={
-        openRow ? (
-          <RecordActionStrip
-            key={openKey}
-            verbs={buildIncomingDeliveryVerbs({ row: openRow, delivery, navigate: router.push, onRemoved: close })}
-            label={`PO ${purchaseIdentity(openRow)} actions`}
-            testId="incoming-actions"
-          />
-        ) : null
-      }
+      actionStrip={actionStrip}
       summary={summary}
-      record={
-        openRow ? (
-          <IncomingDeliveryEvidence
-            key={openRow.id}
-            row={openRow}
-            lines={openLines}
-            state={incomingDeliveryRecordState(openRow)}
-            delivery={delivery}
-          />
-        ) : null
-      }
-      footer={
-        <>
-          <span>{shownStart.toLocaleString()}–{shownEnd.toLocaleString()} of {total.toLocaleString()}</span>
-          <span className="ml-auto inline-flex items-center gap-1">
-            <Button type="button" variant="ghost" size="sm" disabled={page <= 1} onClick={() => onPage(page - 1)}>Previous</Button>
-            <span className={RECORD_ID_CLASS}>{page} / {pageCount}</span>
-            <Button type="button" variant="ghost" size="sm" disabled={page >= pageCount} onClick={() => onPage(page + 1)}>Next</Button>
-          </span>
-        </>
-      }
+      record={record}
+      footer={footer}
     />
   );
 }

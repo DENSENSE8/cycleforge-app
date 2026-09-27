@@ -101,6 +101,8 @@ test('an org or staff contextual override on a page with parity gaps still resol
 test('the org nav override stored in nav_definitions reaches the section', async () => {
   const navConfig = { entries: [{ id: 'outbound', children: [{ id: 'shipped', hidden: true }] }] };
   const nav = await getNavContextForStaff(request('/shipping/orders'), fakes({ navConfig }).deps);
-  const ids = nav.sections.flatMap((section) => section.items.map((item) => item.id));
+  // The lane's modes (`<page>.<lane>.modes`) lead the panel; the views follow.
+  const views = nav.sections.filter((section) => !section.id.endsWith('.modes'));
+  const ids = views.flatMap((section) => section.items.map((item) => item.id));
   assert.deepEqual(ids, ['exceptions', 'po', 'pick', 'triage']);
 });

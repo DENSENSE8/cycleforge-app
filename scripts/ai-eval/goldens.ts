@@ -1,21 +1,25 @@
 /**
- * The assistant goldens — 11 turns the chat must get right on any model we
+ * The assistant goldens — 13 turns the chat must get right on any model we
  * put behind it. Each check is a function of the LIVE fixtures
- * (`fixtures.ts`), so the expected bins and quantities follow the stock.
+ * (`fixtures.ts`), so the expected bins, quantities and orders follow the data.
  *
  * Common guards (every golden): `done.ok`, no `error` frame, no raw tool-call
- * syntax in the answer, no bin the data did not return, and no "see the panel"
- * claim unless an artifact was actually painted.
+ * syntax in the answer, no bin the data did not return, and — in the model's
+ * own words, a server correction aside — no "see the panel" pointer unless the
+ * turn opened a document on the right (data renders inline in the chat).
  */
 
 import { BIN_FACE_RE, type EvalFixtures } from './fixtures';
+import { CORRECTION_PREFIX, claimsPanelContent } from '../../src/lib/assistant/panel-honesty';
+import { artifactPlacement } from '../../src/lib/assistant/artifact-placement';
+import type { SessionArtifact } from '../../src/lib/assistant/ui-artifacts';
 
 export interface TurnResult {
   providers: string[];
   text: string;
   reasoning: string;
   tools: Array<{ name: string; input: unknown; ok?: boolean }>;
-  artifacts: Array<{ producedBy: string; title: string | undefined; rows: number }>;
+  artifacts: Array<{ producedBy: string; kind?: string; title: string | undefined; rows: number; documents: string[] }>;
   done: {
     ok?: boolean;
     turns?: number;
@@ -50,12 +54,17 @@ export interface Golden {
 }
 
 const RAW_SYNTAX =
-  /to=functions|<\||\|>|\b(?:locate_product|list_location_contents|get_packing_kpi|list_support_followups|render_artifact|hybrid_entity_search)\s*\(|"name"\s*:\s*"/;
-const PANEL_CLAIM =
-  /\b(?:(?:on|in|to)\s+(?:the\s+)?(?:right[-\s]hand\s+|right\s+|side\s+|view\s+|session\s+)?panel|see\s+the\s+table)\b/i;
-const NEG = /\b(?:no|nothing|not|never|none|without|empty)\b|n['’]t\b/i;
+  /to=functions|<\||\|>|\b(?:locate_product|list_location_contents|get_packing_kpi|list_support_followups|get_order_documents|render_artifact|hybrid_entity_search)\s*\(|"name"\s*:\s*"/;
 
-const claimsPanel = (t: string) => t.split(/(?<=[.!?])\s+|\n+/).some((s) => PANEL_CLAIM.test(s) && !NEG.test(s));
+const NEG = /\b(?:no|nothing|not|never|none|without|empty)\b|n['’]t\b/i;
+/** The answer as the model wrote it — a streamed server correction line is not the model speaking. */
+const modelWords = (t: string) =>
+  t
+    .split('\n')
+    .filter((line) => !line.trim().startsWith(CORRECTION_PREFIX))
+    .join('\n');
+const openedRail = (r: TurnResult) =>
+  r.artifacts.some((a) => a.kind !== undefined && artifactPlacement(a.kind as SessionArtifact['kind']) === 'rail');
 const has = (t: string, ...needles: Array<string | number>) =>
   needles.every((n) => t.toLowerCase().includes(String(n).toLowerCase()));
 const word = (t: string, n: number) => new RegExp(`\\b${n}\\b`).test(t);
@@ -72,10 +81,7 @@ export function commonChecks(r: TurnResult, bins: string[]): Check[] {
     ['no errors', r.errors.length === 0],
     ['no raw tool syntax', !RAW_SYNTAX.test(r.text)],
     [`no invented bins${invented.length ? ` (${invented.join(',')})` : ''}`, invented.length === 0],
-    [
-      'panel claim only with artifact',
-      r.artifacts.length > 0 || !claimsPanel(r.text) || r.text.includes('Correction: nothing was put on the panel'),
-    ],
+    ['no panel pointer (data is inline)', openedRail(r) || !claimsPanelContent(modelWords(r.text))],
   ];
 }
 
@@ -123,7 +129,7 @@ export function buildGoldens(f: EvalFixtures): Golden[] {
         ['no artifact', r.artifacts.length === 0],
         [
           'honest not-found',
-          /\b(not find|no match|couldn['’]t find|could not find|not found|doesn['’]t match|does not match|nothing|no product|no record|no sku|isn['’]t in|no results?)\b/i.test(
+          /\b(not find|no match|couldn['’]t (?:find|locate)|could not (?:find|locate)|not found|doesn['’]t match|does not match|nothing|no product|no record|no sku|no bins?|isn['’]t in|no results?)\b/i.test(
             r.text,
           ),
         ],
@@ -201,6 +207,45 @@ export function buildGoldens(f: EvalFixtures): Golden[] {
         ['artifact', r.artifacts.length >= 1],
         ['text states sku+qty', has(r.text, f.tableBin.sku) && word(r.text, f.tableBin.qty)],
         ['no markdown table in text', !/^\s*\|.*\|\s*$/m.test(r.text)],
+      ],
+    },
+    {
+      id: 'order-label',
+      question: `Show me the shipping label for order ${f.orderWithLabel.orderNumber}`,
+      bins: [],
+      check: (r) => [
+        [`tool get_order_documents(${f.orderWithLabel.orderNumber})`, called(r, 'get_order_documents', f.orderWithLabel.orderNumber)],
+        [
+          'document artifact: label first, slip switchable',
+          r.artifacts.some(
+            (a) =>
+              a.producedBy === 'get_order_documents' &&
+              a.kind === 'document' &&
+              a.documents[0] === 'shipping_label' &&
+              a.documents.includes('packing_slip'),
+          ),
+        ],
+        ['text names the order + label', has(r.text, f.orderWithLabel.orderNumber, 'label')],
+        [
+          'nothing printed',
+          !called(r, 'print_handling_unit_labels') &&
+            !r.text.split(/(?<=[.!?])\s+|\n+/).some((s) => /\bprint(?:ed|ing)\b/i.test(s) && !NEG.test(s)),
+        ],
+      ],
+    },
+    {
+      id: 'order-no-docs',
+      question: `Show me the shipping label for order ${f.orderNoDocs.orderNumber}`,
+      bins: [],
+      check: (r) => [
+        [`tool get_order_documents(${f.orderNoDocs.orderNumber})`, called(r, 'get_order_documents', f.orderNoDocs.orderNumber)],
+        ['no artifact', r.artifacts.length === 0],
+        [
+          'honest no-documents',
+          has(r.text, f.orderNoDocs.orderNumber) &&
+            /\b(no|not|none|nothing|isn['’]t|aren['’]t|doesn['’]t|couldn['’]t)\b/i.test(r.text) &&
+            /\b(label|slip|documents?|paperwork)\b/i.test(r.text),
+        ],
       ],
     },
   ];

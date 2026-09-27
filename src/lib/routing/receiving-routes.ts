@@ -14,7 +14,7 @@ import {
   parseReceivingHistorySearchScopeWire,
 } from '@/lib/receiving-history-search';
 import { HISTORY_SORT_WIRE_IDS } from '@/lib/receiving/receiving-modes';
-import { parseInboundDeskSort } from '@/lib/receiving/inbound-lane';
+import { INBOUND_LANE_PARAM_VALUES, parseInboundDeskSort } from '@/lib/receiving/inbound-lane';
 import { parseIncomingViewWire } from '@/lib/receiving/incoming-view';
 import { parseIncomingDeliveryStateWire } from '@/lib/receiving/incoming-delivery-state-face';
 import { parseUnboxKpiFilterWire } from '@/lib/receiving/unbox-metrics';
@@ -170,8 +170,8 @@ export const TRIAGE_ROUTE_PARAMS = defineRouteParams({
 export const INCOMING_ROUTE_PARAMS = defineRouteParams({
   route: INCOMING_SURFACE_ROUTE,
   owns: {
-    /** Desk lane (`pipeline` default, omitted | `docked`). */
-    lane: paramEnum(['pipeline', 'docked'] as const),
+    /** Desk lane (`pipeline` default, omitted | `docked` | `exceptions`). */
+    lane: paramEnum(INBOUND_LANE_PARAM_VALUES),
     /** Retired Incoming collection face (`pos` only). Hygiene strips leftovers. */
     incview: paramRoundTrip(parseIncomingViewWire),
     /**
@@ -180,6 +180,14 @@ export const INCOMING_ROUTE_PARAMS = defineRouteParams({
      * the bulk-tracking panel.
      */
     tracking_in: paramText,
+    /**
+     * Inbound reconciliation — the operator's pasted order / tracking numbers,
+     * comma-joined (`REF_IN_PARAM`), written by the sidebar Find. Replaces the
+     * On-the-way lane with every line those numbers name.
+     */
+    ref_in: paramText,
+    /** Reconciliation status filter over `ref_in` (`RECON_PARAM`). */
+    recon: paramEnum(['received', 'not_received'] as const),
     /** Delivery-state tile filter. */
     state: paramRoundTrip(parseIncomingDeliveryStateWire),
     /** Source filter (`all` default | `zoho` | `ebay` | `amazon` | `manual`) — Pipeline. */

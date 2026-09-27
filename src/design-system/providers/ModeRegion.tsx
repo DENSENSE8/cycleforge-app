@@ -25,7 +25,11 @@ function useCoarsePointer(): boolean {
   );
 }
 
-/** Page region + one nested region. */
+/**
+ * Page region + one nested region. The page region is the route's registry
+ * mode (`RouteModeRegion`); a region re-declaring the mode it already sits in
+ * (a portalled dialog / sheet stamping its own box) is not a new level.
+ */
 const MAX_MODE_DEPTH = 2;
 
 interface ModeContextValue {
@@ -55,14 +59,15 @@ interface ModeRegionProps extends ComponentPropsWithoutRef<'div'> {
 export function ModeRegion({ mode: requested, asChild = false, children, ...rest }: ModeRegionProps) {
   const parent = useContext(ModeContext);
   const mode = resolveRegionMode(requested, modeDeviceOf(usePathname(), useCoarsePointer()));
-  const depth = (parent?.depth ?? 0) + 1;
+  const redeclared = parent !== null && parent.mode === mode;
+  const depth = redeclared ? parent.depth : (parent?.depth ?? 0) + 1;
   if (parent && depth > MAX_MODE_DEPTH && process.env.NODE_ENV !== 'production') {
     console.error(
       `ModeRegion: "${mode}" is mode level ${depth}, nested inside "${parent.outer}" → "${parent.mode}". ` +
         'Modes nest one level deep (a page region plus one nested region); mount this content outside the nested region or drop its ModeRegion.',
     );
   }
-  const outer = parent?.mode ?? null;
+  const outer = redeclared ? parent.outer : (parent?.mode ?? null);
   const value = useMemo<ModeContextValue>(() => ({ mode, depth, outer }), [mode, depth, outer]);
   const Host = asChild ? Slot : 'div';
   return (

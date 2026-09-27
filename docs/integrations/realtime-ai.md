@@ -144,8 +144,8 @@ Consumers:
   as text (`[name(args)]`, `<tool_call>`, `<|python_tag|>`, bare JSON) before
   they reach the chat. `step_end {toolRound:true}` moves that round's text
   into a `note` step. One reducer (`src/lib/assistant/turn-trace.ts`) folds
-  the frames in the browser (the collapsed "Thought for Ns · …" row,
-  `ThinkingDisclosure`) and in the route, which persists the trace on the
+  the frames in the browser (the live thinking line and the "How I got
+  this" trace, `ThinkingTrace`) and in the route, which persists the trace on the
   assistant row as `ai_chat_messages.analysis = {kind:'turn_trace', …}`.
 - `POST /api/ai/transcribe` — chat mic dictation; `GET /api/home-board` — the
   chat surface's ledger/telemetry read.

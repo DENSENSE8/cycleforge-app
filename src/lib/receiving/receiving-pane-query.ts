@@ -79,6 +79,8 @@ export function buildReceivingPaneModeState(
     queueLane: query.queueLane ?? null,
     priorityOnly: false,
     trackingIn: EMPTY_TRACKING,
+    refIn: EMPTY_TRACKING,
+    incomingExceptions: false,
   };
 
   return {

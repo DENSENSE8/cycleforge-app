@@ -7,6 +7,8 @@ import {
 } from '@/lib/receiving-history-search';
 import type { ReceivingView } from '@/lib/receiving/receiving-views';
 import { serializeTrackingIn, TRACKING_IN_PARAM } from '@/lib/receiving/tracking-paste';
+import { RECONCILE_ROW_LIMIT, REF_IN_PARAM, serializeRefIn } from '@/lib/receiving/reconcile';
+import { INCOMING_URGENCY_SORT } from '@/lib/receiving/incoming-sections';
 import type { UnboxWorkspaceTab } from '@/utils/unbox-workspace-state';
 
 /** Server-side page size for the Incoming list (other modes use a long scroll). */
@@ -152,6 +154,18 @@ export interface ReceivingModeContext {
   priorityOnly: boolean;
   /** `?tracking_in=` — canonical tracking keys from a bulk paste. */
   trackingIn: string[];
+  /**
+   * `?ref_in=` — the pasted order / tracking numbers (operator strings) the
+   * Inbound reconciliation checks. Non-empty swaps Incoming for `view=reconcile`.
+   */
+  refIn: string[];
+  /**
+   * `/incoming?lane=exceptions` — the lines that need a person
+   * (`view=exceptions`), sorted like Incoming, no facets. One page up to
+   * `RECONCILE_ROW_LIMIT`, like a pasted list: it is short, and Find (a
+   * client filter) must reach every line — the pasted list's badge lands here.
+   */
+  incomingExceptions: boolean;
 }
 
 export interface ReceivingModeDescriptor {
@@ -376,6 +390,22 @@ const historyMode: ReceivingModeDescriptor = {
   },
 };
 
+/**
+ * The pasted list's rows (`view=reconcile`): every line those numbers name, on
+ * one page. The table and the Check's warehouse fallback read this ONE key.
+ */
+export function reconcileListParams(refIn: readonly string[]): URLSearchParams {
+  const p = new URLSearchParams({ limit: String(RECONCILE_ROW_LIMIT), offset: '0' });
+  p.set('include', 'serials');
+  p.set('view', 'reconcile');
+  p.set(REF_IN_PARAM, serializeRefIn(refIn));
+  return p;
+}
+
+export function reconcileListQueryKey(refIn: readonly string[]): readonly unknown[] {
+  return [QUERY_ROOT, 'incoming', 'reconcile', refIn.join(',')] as const;
+}
+
 const incomingMode: ReceivingModeDescriptor = {
   id: 'incoming',
   // Server filters to EXPECTED Zoho POs with zero received.
@@ -385,6 +415,16 @@ const incomingMode: ReceivingModeDescriptor = {
   isIncoming: true,
   pageSize: INCOMING_PAGE_SIZE,
   buildParams(ctx) {
+    // A pasted list outranks the lane: every line those numbers name, on one
+    // page, so the status filter over it is instant and client-side.
+    if (ctx.refIn.length > 0) return reconcileListParams(ctx.refIn);
+    if (ctx.incomingExceptions) {
+      const p = new URLSearchParams({ limit: String(RECONCILE_ROW_LIMIT), offset: '0' });
+      p.set('include', 'serials');
+      p.set('view', 'exceptions');
+      if (ctx.incomingSort) p.set('sort', ctx.incomingSort);
+      return p;
+    }
     const limit = INCOMING_PAGE_SIZE;
     const offset = (ctx.incomingPage - 1) * INCOMING_PAGE_SIZE;
     const p = new URLSearchParams({ limit: String(limit), offset: String(offset) });
@@ -397,7 +437,8 @@ const incomingMode: ReceivingModeDescriptor = {
       p.set('search_field', 'po');
     }
     if (ctx.incomingState) p.set('delivery_state', ctx.incomingState);
-    if (ctx.incomingSort) p.set('sort', ctx.incomingSort);
+    // No sort picked → the walk order: pages start where the dock does.
+    p.set('sort', ctx.incomingSort || INCOMING_URGENCY_SORT);
     if (ctx.incomingPoFrom) p.set('po_from', ctx.incomingPoFrom);
     if (ctx.incomingPoTo) p.set('po_to', ctx.incomingPoTo);
     // Purchasing-source tab → server `?inbound=` facet. `all` is the default
@@ -407,6 +448,10 @@ const incomingMode: ReceivingModeDescriptor = {
     return p;
   },
   queryKey(ctx) {
+    if (ctx.refIn.length > 0) return reconcileListQueryKey(ctx.refIn);
+    if (ctx.incomingExceptions) {
+      return [QUERY_ROOT, 'incoming', 'exceptions', ctx.incomingSort] as const;
+    }
     return [
       QUERY_ROOT,
       'incoming',
@@ -429,6 +474,10 @@ const incomingMode: ReceivingModeDescriptor = {
     return true;
   },
   emptyMessage(ctx) {
+    if (ctx.refIn.length > 0) {
+      return 'Nothing on file carries these numbers — the pasted list shows each one as No match.';
+    }
+    if (ctx.incomingExceptions) return 'Nothing needs a person right now.';
     // A paste DROPS the vendor-receipt guard server-side (`build-sql.ts` → "The vendor-receipt guard is dropped entirely under…
     if (ctx.trackingIn.length > 0) {
       return 'None of these tracking numbers are on Incoming — the tracking list says where each one went.';

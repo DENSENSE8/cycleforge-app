@@ -13,7 +13,7 @@ export function getOrderPlatformLabel(orderId: string | null | undefined, accoun
     const src = String(accountSource || '').trim().toLowerCase();
     if (!src) return '';
     if (src === 'fba') return 'FBA';
-    if (src === 'ecwid') return 'ECWID';
+    if (src === 'ecwid') return sourcePlatformMeta('ecwid').label;
     return String(accountSource || '').trim();
   }
 
@@ -30,14 +30,14 @@ export function getOrderPlatformLabel(orderId: string | null | undefined, accoun
   // the platform outright. Shape guesses below only fill in for a row with no
   // recognised source — a 4-digit Shopify order is not an Ecwid order.
   const known = sourcePlatformMetaFromLabel(accountSource);
-  if (known.value) return known.value === 'ecwid' ? 'ECWID' : known.label;
+  if (known.value) return known.label;
 
   if (/^\d{15}$/.test(oid)) {
     return 'Walmart';
   }
 
   if (/^\d{4}$/.test(oid) && !String(accountSource || '').trim()) {
-    return 'ECWID';
+    return sourcePlatformMeta('ecwid').label;
   }
 
   return accountSource || '';
@@ -123,5 +123,17 @@ export function marketplaceOrderUrl(
     default:
       return null;
   }
+}
+
+/**
+ * The order's admin page: the operator-set link (`orders.admin_url`) when one
+ * is stored, else the URL derived from the order number + platform.
+ */
+export function orderAdminUrl(
+  orderId: string | null | undefined,
+  accountSource: string | null | undefined,
+  storedUrl: string | null | undefined,
+): string | null {
+  return String(storedUrl ?? '').trim() || marketplaceOrderUrl(orderId, accountSource);
 }
 

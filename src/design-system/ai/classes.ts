@@ -8,7 +8,7 @@
  * second colour / radius / type size.
  *
  * Static chrome is NEUTRAL. The iridescent accent appears only through the
- * activity primitives (`AiIrisRing`, `AiIrisSpinner`, `AiShimmer`).
+ * activity primitive (`AiTextShimmer`, the live thinking line).
  */
 
 /** Root plane of an AI surface — `AiSurface` wears it. */
@@ -58,6 +58,18 @@ export const AI_ICON_BUTTON_CLASS =
 export const AI_PRIMARY_BUTTON_CLASS =
   'inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-ai-chip bg-ai-solid text-ai-solid-ink transition-opacity duration-150 hover:opacity-90 disabled:pointer-events-none disabled:opacity-40';
 
+/**
+ * Stop — the send slot while a turn runs: a square stop key a size up from
+ * send, surface fill with the danger edge and a danger square, so it reads as
+ * the one thing to press without shouting in the accent.
+ */
+export const AI_STOP_BUTTON_CLASS =
+  'inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-ai-chip border-[1.5px] border-border-danger bg-ai-surface text-text-danger transition-colors duration-150 hover:bg-surface-danger';
+
+/** A click-to-copy identifier (SKU, FNSKU, bin) — mono face, quiet edge. */
+export const AI_ID_CHIP_CLASS =
+  'inline-flex max-w-full items-center gap-1 rounded-ai-control border border-ai-line bg-ai-surface px-1.5 py-px align-baseline font-mono text-[0.875em] leading-snug text-ai-ink transition-colors duration-150 hover:border-ai-line-strong hover:bg-ai-hover';
+
 /** Small solid pill — the one affirmative action in a notice. */
 export const AI_ACTION_CLASS =
   'inline-flex items-center rounded-ai-chip bg-ai-solid px-3 py-1 text-ai-label text-ai-solid-ink transition-opacity duration-150 hover:opacity-90';
@@ -75,9 +87,6 @@ export const AI_CARD_GLYPH_CLASS =
 
 /** A skeleton bar (pending card, pending panel body). */
 export const AI_SKELETON_BAR_CLASS = 'block rounded-full bg-ai-sunken';
-
-/** One thinking-step row. */
-export const AI_STEP_ROW_CLASS = 'relative overflow-hidden rounded-ai-step';
 
 /** The side panel sheet (docked or overlaid). */
 export const AI_PANEL_CLASS = 'rounded-ai-panel border border-ai-line bg-ai-surface shadow-ai-panel';

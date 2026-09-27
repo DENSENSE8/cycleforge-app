@@ -61,3 +61,16 @@ test('applyInboundLane writes or clears lane=', () => {
   const back = applyInboundLane(docked, 'pipeline');
   assert.equal(back.get('lane'), null);
 });
+
+test('exceptions is a lane of its own: parsed, written, and it sheds the paste and the facets', () => {
+  assert.equal(parseInboundLane('Exceptions'), 'exceptions');
+  const pasted = new URLSearchParams('ref_in=PO-1,PO-2&recon=not_received&state=IN_TRANSIT&sort=zoho_oldest&openLine=7&page=3');
+  const next = applyInboundLane(pasted, 'exceptions');
+  assert.equal(next.get('lane'), 'exceptions');
+  for (const gone of ['ref_in', 'recon', 'state', 'openLine', 'page']) assert.equal(next.get(gone), null, gone);
+  assert.equal(next.get('sort'), 'zoho_oldest', 'Exceptions orders like Incoming');
+  assert.equal(applyInboundLane(new URLSearchParams('sort=unboxed_newest'), 'exceptions').get('sort'), null);
+  // Docked never carries a paste either; Pipeline round-trips back to no lane.
+  assert.equal(applyInboundLane(pasted, 'docked').get('ref_in'), null);
+  assert.equal(applyInboundLane(next, 'pipeline').get('lane'), null);
+});

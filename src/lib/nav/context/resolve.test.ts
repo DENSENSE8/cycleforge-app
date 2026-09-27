@@ -67,8 +67,8 @@ test('every SIDEBAR_PAGE_NAV page resolves to itself and survives the wire', () 
   assert.ok(LIVE_PAGES.length >= 20);
 });
 
-/** A door lane's other pages, listed under its landing page's views. */
-const isLanePageSection = (section: NavContext['sections'][number]): boolean => section.id.endsWith('.pages');
+/** A door lane's pages, painted as its landing page's mode switcher. */
+const isLanePageSection = (section: NavContext['sections'][number]): boolean => section.id.endsWith('.modes');
 
 test('every section item href round-trips: resolving it lights exactly that item', () => {
   for (const page of LIVE_PAGES) {
@@ -98,7 +98,7 @@ test('every lane-map row lands on its own page, and the peek lights it', () => {
   }
 });
 
-test('a section lists its own views — and, on a door lane landing, the lane pages', () => {
+test('a section lists its own views — and, on a door lane landing, the lane modes', () => {
   for (const { href, ctx } of everyContext()) {
     if (ctx.scope !== 'section') continue;
     for (const section of ctx.sections) {
@@ -110,7 +110,7 @@ test('a section lists its own views — and, on a door lane landing, the lane pa
   }
 });
 
-test('Outbound is a lane door: one map row, the lane name on its panel, its pages under the views', () => {
+test('Outbound is a lane door: one map row, the lane name on its panel, its pages as modes', () => {
   const map = at('/unbox');
   const outbound = map.sections.find((section) => section.id === 'fulfillment');
   assert.deepEqual(outbound?.items.map((item) => [item.id, item.label]), [['outbound', 'Outbound']]);
@@ -122,9 +122,17 @@ test('Outbound is a lane door: one map row, the lane name on its panel, its page
   const landing = at('/shipping/orders');
   assert.equal(landing.page.label, 'Outbound');
   assert.equal(landing.back?.label, 'Outbound');
-  const pages = landing.sections.find(isLanePageSection);
-  assert.equal(pages?.label, 'More in Outbound');
-  assert.deepEqual(pages?.items.map((item) => item.id), ['fba', 'label-intake']);
+  const modes = landing.sections.find(isLanePageSection);
+  assert.equal(landing.sections[0], modes, 'modes lead the panel');
+  assert.deepEqual(modes?.items.map((item) => [item.id, item.label]), [
+    ['outbound', 'Shipping'],
+    ['fba', 'FBA'],
+    ['label-intake', 'Label intake'],
+  ]);
+  assert.ok(modes?.items.every((item) => !item.active), 'a mode row never lights a view');
+
+  // Scan Stations sit at the very bottom of the map.
+  assert.equal(map.sections.at(-1)?.id, 'floor');
 });
 
 test('back is null exactly at top, and never navigates', () => {
@@ -151,12 +159,13 @@ test('nav items carry no counts', () => {
 test('permission filtering removes the rows a role cannot reach', () => {
   const noPacking = new Set([...ALL].filter((p) => p !== 'packing.view'));
   assert.deepEqual(itemIds(at('/shipping/orders', { permissions: noPacking })), [
+    'outbound',
+    'fba',
+    'label-intake',
     'exceptions',
     'po',
     'pick',
     'triage',
-    'fba',
-    'label-intake',
   ]);
 
   // Only the Shipped archive door: still the Shipping section, one row.
@@ -198,16 +207,17 @@ test('the org nav override shapes the section and the map — one pipeline with 
         ],
       },
       { id: 'fba', hidden: true },
-      { id: 'incoming', label: 'Arrivals desk' },
+      // Not a lane door (a door row wears its lane's name, like Outbound).
+      { id: 'products', label: 'Catalog desk' },
     ],
   };
   const shipping = at('/shipping/orders?queue=pick', { orgNav });
-  assert.deepEqual(itemIds(shipping), ['triage', 'exceptions', 'po', 'pick', 'label-intake']);
+  assert.deepEqual(itemIds(shipping), ['outbound', 'label-intake', 'triage', 'exceptions', 'po', 'pick']);
   assert.equal(shipping.sections.find((s) => s.items.some((i) => i.id === 'pick'))?.label, 'Pick queue');
 
   const map = at('/', { orgNav });
   assert.ok(!itemIds(map).includes('fba'));
-  assert.equal(items(map).find((i) => i.id === 'incoming')?.label, 'Arrivals desk');
+  assert.equal(items(map).find((i) => i.id === 'products')?.label, 'Catalog desk');
 });
 
 test('Picking replaces Pending everywhere the sidebar paints a word', () => {
@@ -324,7 +334,7 @@ test('every facet context names a real page or section view, and every recents s
 test('every desk view hangs under a Shipping child, so none can silently vanish', () => {
   const children = new Set(getSidebarPageNav('outbound')?.children?.map((child) => child.id));
   for (const view of DESK_VIEWS) assert.ok(children.has(view.navChild), view.id);
-  assert.deepEqual(itemIds(at('/shipping/orders')), ['exceptions', 'po', 'pick', 'triage', 'shipped', 'fba', 'label-intake']);
+  assert.deepEqual(itemIds(at('/shipping/orders')), ['outbound', 'fba', 'label-intake', 'exceptions', 'po', 'pick', 'triage', 'shipped']);
 });
 
 test('view=top is the ‹ peek: the lane map with the page lit, the page tools kept', () => {
@@ -406,4 +416,66 @@ test('the gate has teeth: a param counts only on the view whose route keeps it',
   assert.equal(uncoveredRows([{ ...row, view: 'triage' }], shipping).length, 1);
   // Unbox carries the Unbox grammar; an Arrival scan row is not covered by it.
   assert.equal(uncoveredRows([{ kind: 'scanInput', id: 'arrival', source: 'test' }], pageStops('receive')).length, 1);
+});
+
+test('Chat is the first row of the page map for every permission set that can open it', () => {
+  const sets: Array<[string, ReadonlySet<string>]> = [
+    ['all', ALL],
+    ['chat only', new Set(['assistant.chat'])],
+    ...[...ALL].filter((p) => p !== 'assistant.chat').map((p): [string, ReadonlySet<string>] => [
+      `all but ${p}`,
+      new Set([...ALL].filter((q) => q !== p)),
+    ]),
+  ];
+  for (const [name, permissions] of sets) {
+    for (const href of ['/', '/incoming', '/ai-chat']) {
+      const map = at(href, { permissions, view: 'top' });
+      assert.equal(items(map)[0]?.id, 'ai-chat', `${name} @ ${href}`);
+    }
+  }
+  const noChat = new Set([...ALL].filter((p) => p !== 'assistant.chat'));
+  assert.ok(!itemIds(at('/', { permissions: noChat })).includes('ai-chat'));
+});
+
+test('/ai-chat is a contextual page panel: its threads, New chat, Find over the threads', () => {
+  const chat = at('/ai-chat?session=a1b2');
+  assert.equal(chat.scope, 'section');
+  assert.equal(chat.rollout, 'contextual');
+  assert.deepEqual(chat.back, { label: 'Chat', mode: 'local' });
+  assert.deepEqual(chat.sections, [], 'no views: the threads are the panel');
+  assert.deepEqual(chat.recents, {
+    endpoint: '/api/nav/recents?surface=assistant.sessions',
+    surface: 'assistant.sessions',
+    find: true,
+    paged: true,
+    rowActions: { endpoint: '/api/ai/chat-sessions/{id}', verbs: ['rename', 'delete'] },
+    chords: true,
+  });
+  // ⌘⇧O is the chat body's own chord; ⌘N (Chrome: new window) is never advertised.
+  assert.deepEqual(chat.actions, [{ id: 'chat.new', label: 'New chat', intent: 'ai-chat:new', hotkey: 'mod+shift+o' }]);
+  const reserved = /^mod\+(n|t|w|[0-9])$/;
+  for (const { href, ctx } of everyContext()) {
+    for (const action of ctx.actions ?? []) {
+      if (action.hotkey) assert.doesNotMatch(action.hotkey, reserved, `${href}: ${action.id}`);
+    }
+  }
+  assert.deepEqual(
+    { source: chat.search.source, placeholder: chat.search.placeholder, param: chat.search.param },
+    { source: 'desk-store', placeholder: 'Search chats', param: undefined },
+  );
+  assert.deepEqual(parityGaps('ai-chat'), []);
+  // The map drills into the panel.
+  assert.equal(items(at('/', { view: 'top' })).find((item) => item.id === 'ai-chat')?.kind, 'drill');
+
+  // No door, no threads: the map, and nothing of Chat's leaks onto it.
+  const noChat = at('/ai-chat', { permissions: new Set([...ALL].filter((p) => p !== 'assistant.chat')) });
+  assert.equal(noChat.scope, 'top');
+  assert.equal(noChat.recents, undefined);
+});
+
+test('the gate has teeth for recents verbs: a surface without them leaves the row uncovered', () => {
+  const labels = pageStops('products');
+  assert.equal(uncoveredRows([{ kind: 'rowAction', id: 'rename', source: 'test' }], labels).length, 1);
+  assert.equal(uncoveredRows([{ kind: 'paging', id: 'labels.prints', source: 'test' }], labels).length, 1);
+  assert.deepEqual(uncoveredRows([{ kind: 'paging', id: 'assistant.sessions', source: 'test' }], pageStops('ai-chat')), []);
 });

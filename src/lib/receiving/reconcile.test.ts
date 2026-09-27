@@ -1,0 +1,149 @@
+import { test } from 'node:test';
+import assert from 'node:assert/strict';
+import type { CheckZohoReceivedRow } from '@/lib/receiving/check-zoho-received';
+import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
+import {
+  filterRowsByRecon,
+  parseRefList,
+  reconCounts,
+  reconOfCheckRow,
+  reconcileCheck,
+  type ReconStatus,
+} from './reconcile';
+
+function checkRow(overrides: Partial<CheckZohoReceivedRow> = {}): CheckZohoReceivedRow {
+  return {
+    tracking: '1Z999AA10123456784',
+    po_number: 'PO-1',
+    reference_number: null,
+    vendor_name: null,
+    status: 'issued',
+    reason: 'matched',
+    source: 'mirror',
+    synced_at: null,
+    local: { known: true, delivered: false, delivered_at: null, scanned: false, unboxed: false, watch: 'in_flight' },
+    verdict: 'open',
+    ...overrides,
+  };
+}
+
+const local = (patch: Partial<NonNullable<CheckZohoReceivedRow['local']>>) => ({
+  known: true,
+  delivered: false,
+  delivered_at: null,
+  scanned: false,
+  unboxed: false,
+  watch: 'in_flight' as const,
+  ...patch,
+});
+
+test('a dock scan or an unbox is a receipt, whatever the ERP says', () => {
+  assert.equal(reconOfCheckRow(checkRow({ local: local({ scanned: true }) })).status, 'received');
+  assert.equal(reconOfCheckRow(checkRow({ local: local({ unboxed: true }), verdict: 'warehouse_ahead' })).status, 'received');
+});
+
+test('the ERP saying received with nothing scanned is owed, never a receipt — and an Exceptions-view badge', () => {
+  const recon = reconOfCheckRow(checkRow({ status: 'received', verdict: 'erp_ahead', local: local({ delivered: true }) }));
+  assert.equal(recon.status, 'not_received');
+  assert.deepEqual(recon.exception, { reason: 'Zoho received · never scanned', inView: true });
+});
+
+test('a number nothing identifies is owed with an unlinked badge; one the carrier knows is plainly owed', () => {
+  const nothing = reconOfCheckRow(checkRow({ reason: 'no_match', verdict: 'unknown', local: local({ known: false }) }));
+  assert.deepEqual([nothing.status, nothing.exception], ['not_received', { reason: 'No match anywhere', inView: false }]);
+  const delivered = reconOfCheckRow(checkRow({ reason: 'no_match', verdict: 'unknown', local: local({ delivered: true }) }));
+  assert.deepEqual(delivered, { status: 'not_received', detail: 'Delivered · not scanned', exception: null });
+  assert.deepEqual(reconOfCheckRow(checkRow({ reason: 'error', verdict: 'unknown' })).exception, { reason: 'Lookup failed', inView: false });
+});
+
+test('entries keep the paste order and match the Check by canonical key', () => {
+  const selection = parseRefList('po-2\n1z999-aa1-0123456784\nNOPE-1');
+  const entries = reconcileCheck(selection, [
+    checkRow({ tracking: '1Z999AA10123456784', local: local({ scanned: true }) }),
+    checkRow({ tracking: 'PO-2', po_number: 'PO-2', verdict: 'erp_ahead', status: 'received' }),
+    checkRow({ tracking: 'NOPE-1', reason: 'no_match', verdict: 'unknown', local: null }),
+  ]);
+  assert.deepEqual(entries.map((e) => [e.ref, e.status, e.exception?.reason ?? null]), [
+    ['po-2', 'not_received', 'Zoho received · never scanned'],
+    ['1z999-aa1-0123456784', 'received', null],
+    ['NOPE-1', 'not_received', 'No match anywhere'],
+  ]);
+  // Every pasted number is in exactly one bucket: the counts sum to the paste.
+  assert.deepEqual(reconCounts(entries), { received: 1, not_received: 2 });
+});
+
+test('a status filter keeps every line of the numbers in that bucket, by PO or tracking', () => {
+  const selection = parseRefList('PO-7\n9400111899223344556677');
+  const entries = reconcileCheck(selection, [
+    checkRow({ tracking: 'PO-7', po_number: 'PO-7' }),
+    checkRow({ tracking: '9400111899223344556677', local: local({ scanned: true }) }),
+  ]);
+  const line = (id: number, patch: Partial<ReceivingLineRow>) => ({ id, ...patch }) as ReceivingLineRow;
+  const rows = [
+    line(1, { zoho_purchaseorder_number: 'PO-7', tracking_number: null }),
+    line(2, { zoho_purchaseorder_number: 'PO-7', tracking_number: null }),
+    line(3, { zoho_purchaseorder_number: 'PO-8', tracking_number: '9400 1118 9922 3344 5566 77' }),
+    line(4, { zoho_purchaseorder_number: 'PO-9', tracking_number: null }),
+  ];
+  assert.deepEqual(filterRowsByRecon(rows, entries, 'not_received').map((r) => r.id), [1, 2]);
+  assert.deepEqual(filterRowsByRecon(rows, entries, 'received').map((r) => r.id), [3]);
+});
+
+test('a number only the warehouse knows reads its status from its lines', () => {
+  const line = (patch: Partial<ReceivingLineRow>) =>
+    ({ id: 1, tracking_number: null, zoho_purchaseorder_number: null, quantity_received: 0, ...patch }) as ReceivingLineRow;
+  const unknownToCheck = checkRow({ reason: 'no_match', verdict: 'unknown', po_number: null, local: local({ known: false }) });
+  const cases: [string, Partial<ReceivingLineRow> | null, ReconStatus, string][] = [
+    ['unboxed manual receipt', { unboxed_at: '2026-09-20T10:00:00Z' }, 'received', 'Unboxed'],
+    ['dock-scanned carton', { received_at: '2026-09-20T10:00:00Z' }, 'received', 'Scanned at dock'],
+    ['tracking scan only', { scanned_at: '2026-09-20T10:00:00Z' }, 'received', 'Scanned at dock'],
+    ['units received, no carton times', { quantity_received: 2 }, 'received', 'Received here'],
+    ['line past EXPECTED', { delivery_state: 'RECEIVED' }, 'received', 'Received here'],
+    ['carrier delivered, untouched', { delivery_state: 'DELIVERED_UNOPENED' }, 'not_received', 'Delivered · not scanned'],
+    ['a line and nothing else', {}, 'not_received', 'Warehouse record · not received'],
+    ['no lines at all', null, 'not_received', 'No match anywhere'],
+  ];
+  for (const [name, patch, status, detail] of cases) {
+    const selection = parseRefList('MANUAL-1\nOTHER-2');
+    const lines = patch ? [line({ tracking_number: 'manual-1', zoho_purchaseorder_number: 'PO-M', ...patch })] : [];
+    const [entry] = reconcileCheck(selection, [{ ...unknownToCheck, tracking: 'MANUAL-1' }], lines);
+    assert.deepEqual([entry.status, entry.detail], [status, detail], name);
+    if (patch) assert.equal(entry.poNumber, 'PO-M', name);
+  }
+});
+
+test('warehouse lines never override a number the Check resolved', () => {
+  const selection = parseRefList('PO-5\nNOPE-9');
+  const scanned = { id: 1, zoho_purchaseorder_number: 'PO-5', tracking_number: null, received_at: '2026-09-20T10:00:00Z' } as ReceivingLineRow;
+  const entries = reconcileCheck(
+    selection,
+    [
+      checkRow({ tracking: 'PO-5', po_number: 'PO-5', verdict: 'erp_ahead', status: 'received', local: local({ known: true }) }),
+      checkRow({ tracking: 'NOPE-9', reason: 'no_match', verdict: 'unknown', local: local({ known: false }) }),
+    ],
+    [scanned],
+  );
+  // The Check owns PO-5 (its local facts said nothing scanned); NOPE-9 has no lines.
+  assert.deepEqual(entries.map((e) => [e.status, e.exception?.inView]), [['not_received', true], ['not_received', false]]);
+});
+
+test('an owed number whose lines sit in an exception state links to the Exceptions view', () => {
+  const selection = parseRefList('PO-11\nPO-12\nPO-13');
+  const line = (id: number, po: string, delivery_state: ReceivingLineRow['delivery_state']) =>
+    ({ id, zoho_purchaseorder_number: po, tracking_number: null, delivery_state }) as ReceivingLineRow;
+  const entries = reconcileCheck(
+    selection,
+    [
+      checkRow({ tracking: 'PO-11', po_number: 'PO-11' }),
+      checkRow({ tracking: 'PO-12', po_number: 'PO-12' }),
+      checkRow({ tracking: 'PO-13', po_number: 'PO-13', local: local({ scanned: true }) }),
+    ],
+    [line(1, 'PO-11', 'CARRIER_MISMATCH'), line(2, 'PO-12', 'IN_TRANSIT'), line(3, 'PO-13', 'STALLED')],
+  );
+  assert.deepEqual(entries.map((e) => e.exception), [
+    { reason: 'Carrier mismatch', inView: true },
+    null,
+    // Received outranks a stale carrier state: a scanned box is nobody's exception.
+    null,
+  ]);
+});

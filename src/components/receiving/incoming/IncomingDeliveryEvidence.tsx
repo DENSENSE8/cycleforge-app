@@ -31,18 +31,26 @@ import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
 import { resolveSkuIdentityTitle } from '@/lib/sku/sku-identity-law';
 import { cn } from '@/utils/_cn';
 import { cartonIdOf, IncomingItem, IncomingRecordAside } from './incoming-record-sections';
-import { incomingDeliveryNextAction } from './IncomingDeliveryRecord';
+import { incomingDeliveryNextAction, purchaseExceptionReason } from './IncomingDeliveryRecord';
 
-/** On the way read as a whole — the ledger's summary with nothing open. */
-export function incomingDeliverySummary(rows: readonly ReceivingLineRow[]): RecordLedgerSummary {
+/**
+ * The lane read as a whole — the ledger's summary with nothing open. On the
+ * way counts carrier states; Exceptions counts reasons.
+ */
+export function incomingDeliverySummary(
+  rows: readonly ReceivingLineRow[],
+  lane: 'pipeline' | 'exceptions' = 'pipeline',
+): RecordLedgerSummary {
   const counts = new Map<string, number>();
   for (const row of rows) {
-    const key = row.delivery_state || 'UNKNOWN';
+    const key = (lane === 'exceptions' && row.exception_code) || row.delivery_state || 'UNKNOWN';
     counts.set(key, (counts.get(key) ?? 0) + 1);
   }
   return {
-    title: 'On the way',
-    sub: 'Carrier-side lifecycle before warehouse receipt',
+    title: lane === 'exceptions' ? 'Exceptions' : 'On the way',
+    sub: lane === 'exceptions'
+      ? 'Inbound lines that need a person, not time'
+      : 'Carrier-side lifecycle before warehouse receipt',
     facts: [
       { label: 'Lines', value: rows.length },
       ...[...counts]
@@ -99,13 +107,23 @@ export function IncomingDeliveryEvidence({ row, lines, state, delivery }: Incomi
   const strip = (
     <ReceivingStatusStrip
       state={state}
-      next={incomingDeliveryNextAction(row.delivery_state)}
+      next={incomingDeliveryNextAction(state.id)}
       count={`${itemCount} ${itemCount === 1 ? 'item' : 'items'}`}
       steps={steps}
       alerts={alerts}
       testId="incoming-record-status"
     />
   );
+
+  // Exceptions: WHY this needs a person and the next action, above everything.
+  const exception = purchaseExceptionReason(lines.length > 0 ? lines : [row]);
+  const why = exception ? (
+    <EvidenceNotice tone="warn">
+      <span data-testid="incoming-record-exception">
+        <b className="font-semibold">{exception.why}</b> → {exception.next}
+      </span>
+    </EvidenceNotice>
+  ) : null;
 
   let body: ReactNode;
   if (resolved && !resolved.ok) {
@@ -141,6 +159,7 @@ export function IncomingDeliveryEvidence({ row, lines, state, delivery }: Incomi
   return (
     <div className="flex flex-1 flex-col gap-4 bg-mode-canvas p-4 text-mode-ink" data-testid="incoming-record-view">
       {strip}
+      {why}
       {body}
     </div>
   );

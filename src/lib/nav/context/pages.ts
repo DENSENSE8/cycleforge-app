@@ -11,7 +11,8 @@
 import { outboundSavedViewsConfig } from '@/components/unshipped/outbound-sidebar-shared';
 import { walkInStationHref } from '@/lib/walk-in/jobs';
 import type { NavRecentSurfaceId } from '@/lib/nav/recents/surfaces';
-import type { NavAction, NavControls } from './schema';
+import type { NavAction, NavControls, NavSearch } from './schema';
+import { RECON_PARAM, REF_IN_PARAM } from '@/lib/receiving/reconcile';
 
 /** A page-level verb plus the permission its door needs (never on the wire). */
 export interface NavActionDecl {
@@ -19,12 +20,8 @@ export interface NavActionDecl {
   requires?: string;
 }
 
-/** A page search box that filters its list through a URL param. */
-export interface NavSearchDecl {
-  placeholder: string;
-  source: 'url-param';
-  param: string;
-}
+/** A page search box — the list it narrows reads `param` (url-param) or the desk store. */
+export type NavSearchDecl = Omit<NavSearch, 'scope'>;
 
 export interface NavSurfaceDecl {
   search?: NavSearchDecl;
@@ -39,6 +36,13 @@ export interface NavSurfaceDecl {
 export interface NavPageDecl extends NavSurfaceDecl {
   /** Overrides for one section item (child / desk view id); item fields win. */
   items?: Readonly<Record<string, NavSurfaceDecl>>;
+  /**
+   * The page has no views: its `recents` list IS its panel (Chat's threads).
+   * There is no desk header over that list, so its `actions` ride the `‹`
+   * back row as glyph buttons (`NAV_ACTION_ICONS`). Resolves `section` scope
+   * with no view rows.
+   */
+  recentsPanel?: true;
 }
 
 /**
@@ -100,6 +104,17 @@ const TO_SHIP_ACTIONS: readonly NavActionDecl[] = [
 ];
 
 export const NAV_PAGE_DECLS: Readonly<Record<string, NavPageDecl>> = {
+  // The MasterNav Chat row's `+` and its thread list (`SidebarNavList.tsx`
+  // Chat branches → `ChatSessionsNav`). Find narrows the threads (the desk
+  // store keyed by `/ai-chat`; the page itself reads no `q`). New chat's
+  // chord is the chat body's own (`useSessionHotkeys`: ⌘⇧O / Ctrl+Shift+O —
+  // ⌘N is Chrome's new window in a tab).
+  'ai-chat': {
+    recentsPanel: true,
+    search: { placeholder: 'Search chats', source: 'desk-store' },
+    recents: 'assistant.sessions',
+    actions: [{ action: { id: 'chat.new', label: 'New chat', intent: 'ai-chat:new', hotkey: 'mod+shift+o' } }],
+  },
   // Search for the Shipping views comes from `DESK_VIEWS` (the desk store).
   outbound: {
     items: {
@@ -110,7 +125,20 @@ export const NAV_PAGE_DECLS: Readonly<Record<string, NavPageDecl>> = {
     },
   },
   // Header split action `IncomingDeskAddAction` — the Global Add inbound leaves.
+  // Find narrows the ledger through the desk store (the ledger toolbar's old
+  // "Filter incoming…" field); On the way also takes a pasted vendor list,
+  // answered by the Unbox Check (`IncomingBulkTrackingPanel`'s Check receipts).
   incoming: {
+    items: {
+      pipeline: {
+        search: {
+          placeholder: 'Search deliveries',
+          source: 'desk-store',
+          bulk: { check: 'inbound-check', param: REF_IN_PARAM, statusParam: RECON_PARAM },
+        },
+      },
+      docked: { search: { placeholder: 'Search received history', source: 'desk-store' } },
+    },
     actions: [
       { action: { id: 'incoming.add-po', label: 'Add PO', intent: 'global-add:incoming-po' } },
       { action: { id: 'incoming.add-return', label: 'Add return', intent: 'global-add:incoming-return' } },

@@ -145,6 +145,9 @@ hit AS (
 SELECT h.sku, h.via, h.listing_title,
        i.name AS zoho_item_title,
        sc.product_title AS catalog_product_title,
+       (SELECT f2.fnsku FROM fba_fnskus f2, q
+         WHERE f2.organization_id = h.organization_id AND f2.sku = h.sku AND f2.fnsku IS NOT NULL
+         ORDER BY (upper(btrim(f2.fnsku)) = q.up) DESC, f2.fnsku LIMIT 1) AS fnsku,
        bl.location_id, bl.location, bl.barcode, bl.room, bl.bin_role,
        bl.qty, bl.min_qty, bl.max_qty, bl.last_counted
   FROM hit h
@@ -224,6 +227,7 @@ interface BinRow {
 interface SkuHit {
   sku: string;
   title: string;
+  fnsku: string | null;
   via: string;
   bins: BinRow[];
 }
@@ -244,6 +248,7 @@ function foldIdentifierRows(rows: ReadonlyArray<Record<string, unknown>>): SkuHi
           item_name: str(r.listing_title),
           sku,
         }),
+        fnsku: str(r.fnsku),
         via: String(r.via ?? 'sku'),
         bins: [],
       };
@@ -271,10 +276,14 @@ function foldIdentifierRows(rows: ReadonlyArray<Record<string, unknown>>): SkuHi
   return [...bySku.values()];
 }
 
+/** How many bin chips a product header carries before the table takes over. */
+const HEADER_BINS = 8;
+
 /**
- * The panel table for stocked hits. One SKU → the SKU and its title ride in
- * the heading and the rows are just bins; several SKUs → SKU/Title columns.
- * Min / Max / Last counted appear only when some bin actually has a value.
+ * The location table for stocked hits. One SKU → the SKU, its title and its
+ * identifiers ride in the product header and the rows are just bins; several
+ * SKUs → SKU/Title columns. Min / Max / Last counted appear only when some bin
+ * actually has a value.
  */
 function locateTable(query: string, hits: ReadonlyArray<SkuHit>): ArtifactTable {
   const single = hits.length === 1;
@@ -300,13 +309,25 @@ function locateTable(query: string, hits: ReadonlyArray<SkuHit>): ArtifactTable 
     rows: rows.slice(0, 200),
     entityHint: 'bin',
     idColumn: 'Bin',
+    ...(single
+      ? {
+          product: {
+            title: hits[0].title.slice(0, 120),
+            ids: [
+              { label: 'SKU' as const, value: hits[0].sku },
+              ...(hits[0].fnsku ? [{ label: 'FNSKU' as const, value: hits[0].fnsku }] : []),
+              ...hits[0].bins.slice(0, HEADER_BINS).map((b) => ({ label: 'Bin' as const, value: b.location })),
+            ],
+          },
+        }
+      : {}),
   };
 }
 
 export const locateProduct: AssistantToolDef<typeof locateInput> = {
   name: 'locate_product',
   description:
-    'WHERE IS an item in the warehouse: which bins hold it and how many. Use for "where is SKU …", "which bin has …", "how many … do we have", FNSKU / ASIN / UPC / serial / LPN / product-name lookups. Pass the value exactly as typed. Returns the bins and quantities (and shows the location table on the panel itself) or found=false with what was searched.',
+    'WHERE IS an item in the warehouse: which bins hold it and how many. Use for "where is SKU …", "which bin has …", "how many … do we have", FNSKU / ASIN / UPC / serial / LPN / product-name lookups. Pass the value exactly as typed. Returns the bins and quantities (and shows the location table to the operator itself) or found=false with what was searched.',
   permission: 'sku_stock.view',
   inputSchema: locateInput,
   run: async (input, ctx, deps) => {
@@ -358,7 +379,7 @@ export const locateProduct: AssistantToolDef<typeof locateInput> = {
       return envelope(
         'locate_product',
         artifact,
-        `${candidates.length} products match "${value}" — the candidates table is on the panel. Top: ${top}. Ask the operator which SKU they mean; do not pick one.`,
+        `${candidates.length} products match "${value}" — the candidates table is already on screen (do not render it again). Top: ${top}. Ask the operator which SKU they mean; do not pick one.`,
       );
     }
 
@@ -402,18 +423,18 @@ export const locateProduct: AssistantToolDef<typeof locateInput> = {
         query: value,
         matched: hits.map((h) => ({ sku: h.sku, title: h.title, matchedAs: h.via })),
         bins: [],
-        message: `${names}. No bin holds any stock of ${hits.length === 1 ? `SKU ${hits[0].sku}` : 'these SKUs'} right now (0 units on hand in bins). Nothing to show on the panel.`,
+        message: `${names}. No bin holds any stock of ${hits.length === 1 ? `SKU ${hits[0].sku}` : 'these SKUs'} right now (0 units on hand in bins). No table was shown.`,
       };
     }
 
     const lines = stocked.map((h) => {
       const total = h.bins.reduce((s, b) => s + b.qty, 0);
-      return `SKU ${h.sku} (${h.title})${h.via !== 'sku' ? ` [matched as ${h.via}]` : ''}: ${total} units in ${plural(h.bins.length, 'bin')} — ${binList(h.bins)}`;
+      return `SKU ${h.sku}${h.via !== 'sku' ? ` [matched as ${h.via}]` : ''}: ${total} units in ${plural(h.bins.length, 'bin')} — ${binList(h.bins)}`;
     });
     return envelope(
       'locate_product',
       locateTable(value, stocked),
-      `${lines.join('. ')}. The location table is on the panel.`,
+      `${lines.join('. ')}. The location table and the product title are already on screen — do not render them again. Product titles, for your understanding only (already shown as the heading; never write them in the answer): ${stocked.map((h) => `${h.sku} = ${h.title}`).join('; ')}.`,
     );
   },
 };
@@ -430,7 +451,10 @@ SELECT l.id, l.name, ${LOCATION_FACE_SQL} AS location, l.barcode, l.room, l.loca
 
 const CONTENTS_SQL = `
 SELECT bc.sku, bc.qty, bc.min_qty, bc.max_qty, bc.last_counted,
-       i.name AS zoho_item_title, sc.product_title AS catalog_product_title
+       i.name AS zoho_item_title, sc.product_title AS catalog_product_title,
+       (SELECT f.fnsku FROM fba_fnskus f
+         WHERE f.organization_id = bc.organization_id AND f.sku = bc.sku AND f.fnsku IS NOT NULL
+         ORDER BY f.fnsku LIMIT 1) AS fnsku
   FROM bin_contents bc
   LEFT JOIN sku_catalog sc ON ${skuCatalogJoinOnSql('bc')}
   LEFT JOIN items i ON i.zoho_item_id = sc.provider_item_id
@@ -460,7 +484,7 @@ const locationInput = z.object({
 export const listLocationContents: AssistantToolDef<typeof locationInput> = {
   name: 'list_location_contents',
   description:
-    'WHAT IS IN a bin / shelf location: every SKU with its quantity, plus LPNs parked there. Use for "what\'s in bin C-03-12-3", "contents of location …", a scanned bin barcode. Shows the contents table on the panel itself.',
+    'WHAT IS IN a bin / shelf location: every SKU with its quantity, plus LPNs parked there. Use for "what\'s in bin C-03-12-3", "contents of location …", a scanned bin barcode. Shows the contents table to the operator itself.',
   permission: 'sku_stock.view',
   inputSchema: locationInput,
   run: async (input, ctx, deps) => {
@@ -487,6 +511,7 @@ export const listLocationContents: AssistantToolDef<typeof locationInput> = {
     ]);
     const items = contents.rows.map((r) => ({
       sku: String(r.sku),
+      fnsku: str(r.fnsku),
       title: resolveSkuIdentityTitle({ zoho_item_title: str(r.zoho_item_title), catalog_product_title: str(r.catalog_product_title), sku: String(r.sku) }),
       qty: num(r.qty) ?? 0,
       min: num(r.min_qty),
@@ -502,7 +527,7 @@ export const listLocationContents: AssistantToolDef<typeof locationInput> = {
         location: face,
         barcode: str(loc.barcode),
         room: str(loc.room),
-        message: `Bin ${face}${str(loc.room) ? ` (${str(loc.room)})` : ''} is empty — no stock and no LPNs. Nothing to show on the panel.`,
+        message: `Bin ${face}${str(loc.room) ? ` (${str(loc.room)})` : ''} is empty — no stock and no LPNs. No table was shown.`,
       };
     }
 
@@ -523,15 +548,29 @@ export const listLocationContents: AssistantToolDef<typeof locationInput> = {
       ].slice(0, 200),
       entityHint: 'SKU',
       idColumn: 'SKU',
+      // One loose SKU and nothing else → the answer is about that product;
+      // otherwise the bin itself is the subject of the header.
+      product:
+        items.length === 1 && units.length === 0
+          ? {
+              title: items[0].title.slice(0, 120),
+              ids: [
+                { label: 'SKU', value: items[0].sku },
+                ...(items[0].fnsku ? [{ label: 'FNSKU' as const, value: items[0].fnsku }] : []),
+                { label: 'Bin', value: face },
+              ],
+            }
+          : { title: `Bin ${face}${str(loc.room) ? ` · ${str(loc.room)}` : ''}`.slice(0, 120), ids: [{ label: 'Bin', value: face }] },
     };
     const total = items.reduce((s, i) => s + i.qty, 0);
-    const skuText = items.slice(0, 10).map((i) => `${i.sku} (${i.title}): ${i.qty}`).join('; ');
+    const skuText = items.slice(0, 10).map((i) => `${i.sku}: ${i.qty}`).join('; ');
+    const titleText = items.slice(0, 10).map((i) => `${i.sku} = ${i.title}`).join('; ');
     const more = items.length > 10 ? ` (+${items.length - 10} more SKUs in the table)` : '';
     const lpnText = units.length > 0 ? ` LPNs here: ${units.map((u) => `${u.code} (${plural(u.units, 'unit')})`).join(', ')}.` : '';
     return envelope(
       'list_location_contents',
       artifact,
-      `Bin ${face}${str(loc.room) ? ` in ${str(loc.room)}` : ''} holds ${plural(items.length, 'SKU')}, ${total} units: ${skuText || 'no loose stock'}${more}.${lpnText} The contents table is on the panel.`,
+      `Bin ${face}${str(loc.room) ? ` in ${str(loc.room)}` : ''} holds ${plural(items.length, 'SKU')}, ${total} units: ${skuText || 'no loose stock'}${more}.${lpnText} The contents table is already on screen — do not render it again.${titleText ? ` Product titles, for your understanding only (already shown; never write them in the answer): ${titleText}.` : ''}`,
     );
   },
 };

@@ -170,6 +170,17 @@ export const Copy = ({ className = "w-6 h-6" }: { className?: string }) => (
     </svg>
 );
 
+// Clipboard with an inbound arrow — "paste from clipboard" (lucide clipboard-paste).
+export const ClipboardPaste = ({ className = "w-6 h-6" }: { className?: string }) => (
+    <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+        <path d="M11 14h10" />
+        <path d="M16 4h2a2 2 0 0 1 2 2v1.344" />
+        <path d="m17 18 4-4-4-4" />
+        <path d="M8 4H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 1.793-1.113" />
+        <rect x="8" y="2" width="8" height="4" rx="1" />
+    </svg>
+);
+
 export const Edit = ({ className = "w-6 h-6" }: { className?: string }) => (
     <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />

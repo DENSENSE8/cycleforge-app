@@ -204,7 +204,10 @@ request.
 }
 ```
 
-Nav items never carry counts. Counts appear only in facet groups.
+Nav items never carry counts. Counts come from facets: option counts in facet groups,
+and each page-panel view's unfiltered count is that view's facets `total`
+(`GET /api/nav/facets?context=<pageId.viewId>&<the view href's own params>`), painted
+right-aligned by `NavSectionList`; a view with no facet context shows no count.
 
 `rollout` is clamped at runtime. It is `contextual` only when the override or map
 says so **and** `parityGaps(pageId)` is empty (`src/lib/nav/context/resolve.ts`).
@@ -306,8 +309,9 @@ action). Close their gaps in the NavContext before porting them.
   the new ones fade in over them). No horizontal slide. The back is the same
   cross-fade in reverse.
 - **Click-open** dropdowns and popovers (switcher, `…`, filters), not hover-open.
-- **No nav counts.** Counts appear only inside facet groups (the Logs-panel pattern)
-  and in page content.
+- **No counts on nav items.** Counts come from `/api/nav/facets`: option counts inside
+  facet groups (the Logs-panel pattern) and each view's unfiltered facets `total`
+  on its view row; plus page content.
 - Find is a popover anchored to the Find field, not a full-screen modal. With an
   empty query it suggests items scoped to the current page first (identify's
   `context` param already ranks current-context first).

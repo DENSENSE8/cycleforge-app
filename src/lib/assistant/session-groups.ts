@@ -28,6 +28,11 @@ export function groupSessionsByRecency<T extends { updatedAt: string }>(
   rows: readonly T[],
   now: Date,
 ): SessionGroup<T>[] {
+  return groupByRecency(rows, now, (row) => row.updatedAt);
+}
+
+/** {@link groupSessionsByRecency} over any row: `atOf` reads its ISO timestamp (the sidebar recents use `at`). */
+export function groupByRecency<T>(rows: readonly T[], now: Date, atOf: (row: T) => string): SessionGroup<T>[] {
   const starts = GROUPS.map(({ daysBack }) => {
     const d = new Date(now.getFullYear(), now.getMonth(), now.getDate() - daysBack);
     return d.getTime();
@@ -37,7 +42,7 @@ export function groupSessionsByRecency<T extends { updatedAt: string }>(
     { key: 'older', label: 'Older', rows: [] },
   ];
   for (const row of rows) {
-    const at = Date.parse(row.updatedAt);
+    const at = Date.parse(atOf(row));
     // A future timestamp (clock skew) or an unparseable one reads as "Today"
     // and "Older" respectively: never dropped.
     const index = Number.isNaN(at) ? buckets.length - 1 : starts.findIndex((start) => at >= start);

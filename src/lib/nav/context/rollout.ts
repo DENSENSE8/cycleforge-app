@@ -25,6 +25,7 @@ export const NAV_CONTEXT_PINNED_LEGACY: ReadonlySet<string> = new Set(
 );
 
 export const NAV_CONTEXT_ROLLOUT: Readonly<Record<string, NavRolloutState>> = {
+  'ai-chat': 'contextual',
   home: 'legacy',
   sales: 'legacy',
   operations: 'legacy',
@@ -35,7 +36,7 @@ export const NAV_CONTEXT_ROLLOUT: Readonly<Record<string, NavRolloutState>> = {
   repair: 'legacy',
   testing: 'legacy',
   'ready-to-pack': 'legacy',
-  incoming: 'legacy',
+  incoming: 'contextual',
   receiving: 'legacy',
   sourcing: 'legacy',
   fba: 'legacy',

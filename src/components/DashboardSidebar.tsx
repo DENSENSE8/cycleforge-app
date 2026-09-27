@@ -2,10 +2,7 @@
 
 import { useUIMode } from '@/design-system/providers/UIModeProvider';
 import { SidebarShell } from '@/components/sidebar/SidebarShell';
-import {
-  useAuthPermissions,
-  useStationDetailsPanel,
-} from '@/components/sidebar/dashboard-sidebar-hooks';
+import { useAuthPermissions } from '@/components/sidebar/dashboard-sidebar-hooks';
 
 interface DashboardSidebarProps {
   /** Rendered inside ResponsiveLayout's mobile drawer (it owns positioning + backdrop). */
@@ -21,7 +18,6 @@ export function DashboardSidebar({
 }: DashboardSidebarProps) {
   const { isMobile } = useUIMode();
   const permissions = useAuthPermissions();
-  useStationDetailsPanel();
 
   return (
     <SidebarShell

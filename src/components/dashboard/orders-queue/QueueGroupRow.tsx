@@ -11,7 +11,7 @@ import { orderCarrierBoxes } from '@/lib/orders/order-group-identity';
 import type { ShippedOrder } from '@/lib/neon/orders-queries';
 import { resolveMarketplacePlatformMeta } from '@/lib/marketplace-order-id';
 import { platformMetaBrandDot } from '@/lib/source-platform';
-import { marketplaceOrderUrl } from '@/utils/order-platform';
+import { orderAdminUrl } from '@/utils/order-platform';
 import { ordersCompoundView, ordersEdgeMark, ordersGroupItemStatus } from '@/lib/orders/orders-compound-view';
 import { ordersSlotValues } from '@/lib/tables/field-catalog/orders-resolve';
 import { lineQtySubtitlePart } from '@/lib/tables/slot-table-line-qty';
@@ -202,7 +202,7 @@ function QueueOrderParentRow({
               kind: 'order',
               value: orderId,
               dot: platformMetaBrandDot(orderMeta),
-              href: marketplaceOrderUrl(orderId, lead.account_source),
+              href: orderAdminUrl(orderId, lead.account_source, lead.admin_url),
               platformLabel: orderMeta.value ? orderMeta.label : null,
             }
           : null

@@ -16,6 +16,9 @@ import { resolveOrderBin, type OrderBinFace } from '@/lib/shipping/outbound-stor
 import { ordersLineTitle, resolveOrdersIndexValue } from '@/lib/tables/field-catalog/orders-resolve';
 import type { CompoundDelay } from '@/components/tables/compound/compound-row-model';
 import { formatCurrency } from '@/utils/_number';
+import { getExternalUrlByItemNumber } from '@/utils/external-item-url';
+import { orderAdminUrl } from '@/utils/order-platform';
+import { customerFullName } from '@/lib/customers/customer-display';
 
 export interface OrderCardLine {
   record: ShippedOrder;
@@ -55,6 +58,10 @@ export interface OrderCardModel {
   state: LifecycleState;
   orderId: string;
   accountSource: string | null;
+  /** The operator-set admin link (`orders.admin_url`), when one is stored. */
+  adminUrl: string | null;
+  /** Where the order's ↗ goes: {@link adminUrl}, else the derived marketplace URL. Null → the card offers "Add link". */
+  orderHref: string | null;
   fba: boolean;
   sla: OrderCardSla;
   /** Units across every line. */
@@ -62,6 +69,12 @@ export interface OrderCardModel {
   outOfStockCount: number;
   urgent: boolean;
   buyerNote: string | null;
+  /** Linked customer's name, else the ShipStation ship-to name / company. Null when neither. */
+  buyerName: string | null;
+  /** The shown product's marketplace listing — item number, else SKU (the To-ship listing rule). */
+  listingHref: string | null;
+  /** The item number (or SKU) {@link listingHref} was built from. */
+  listingItem: string | null;
 }
 
 function linePrice(line: ShippedOrder): { text: string | null; estimate: boolean } {
@@ -137,31 +150,53 @@ export function orderCardSla(delay: CompoundDelay, tip: string | null): OrderCar
   return { face: day, tone: 'later', tip };
 }
 
+/** The order's SLA — its earliest deadline across `rows`, worded and toned. */
+export function orderSla(rows: readonly ShippedOrder[], todayKey: string): OrderCardSla {
+  const deadline = resolveOrdersIndexValue(rows, 'orders.fulfill_by', { todayKey });
+  return deadline?.kind === 'deadline'
+    ? orderCardSla(deadline.delay, deadline.tip)
+    : { face: 'No ship-by', tone: 'none', tip: null };
+}
+
+/**
+ * Ship-by section order: Late · Due today · Tomorrow · Later · No ship-by.
+ * The list's sections, its pages and J / K all follow it.
+ */
+export const ORDER_SLA_SECTIONS: readonly OrderCardSlaTone[] = ['late', 'today', 'soon', 'later', 'none'];
+
 /** One order's card. `rows` is every line of the order, in display order. */
 export function orderCardModel(key: string, rows: readonly ShippedOrder[], todayKey: string): OrderCardModel {
   const lead = rows[0]!;
   const built = rows.map(orderCardLine);
   // Out-of-stock lines first; otherwise keep the feed's order.
   const lines = [...built.filter((l) => l.outOfStock), ...built.filter((l) => !l.outOfStock)];
-  const deadline = resolveOrdersIndexValue(rows, 'orders.fulfill_by', { todayKey });
-  const sla =
-    deadline?.kind === 'deadline'
-      ? orderCardSla(deadline.delay, deadline.tip)
-      : { face: 'No ship-by', tone: 'none' as const, tip: null };
+  const sla = orderSla(rows, todayKey);
   const buyerNote = rows.map((r) => String(r.buyer_note ?? '').trim()).find(Boolean) ?? null;
+  const shipTo = lead.shipstation_ship_to;
+  const buyerName =
+    (lead.customer ? customerFullName(lead.customer) : String(shipTo?.name || shipTo?.company || '').trim()) || null;
+  const shown = lines[0]!.record;
+  const listingItem = String(shown.item_number || shown.sku || '').trim() || null;
+  const orderId = String(lead.order_id || '').trim() || `#${lead.id}`;
+  const adminUrl = rows.map((r) => String(r.admin_url ?? '').trim()).find(Boolean) ?? null;
   return {
     key,
     ids: built.map((l) => l.id),
     lead,
     lines,
     state: worstState(built.map((l) => l.state)),
-    orderId: String(lead.order_id || '').trim() || `#${lead.id}`,
+    orderId,
     accountSource: lead.account_source ?? null,
+    adminUrl,
+    orderHref: orderAdminUrl(orderId, lead.account_source, adminUrl),
     fba: String(lead.fulfillment_channel ?? '').trim().toUpperCase() === 'AFN',
     sla,
     units: built.reduce((sum, l) => sum + l.qty, 0),
     outOfStockCount: built.filter((l) => l.outOfStock).length,
     urgent: rows.some((r) => r.is_urgent === true),
     buyerNote,
+    buyerName,
+    listingHref: getExternalUrlByItemNumber(listingItem),
+    listingItem,
   };
 }

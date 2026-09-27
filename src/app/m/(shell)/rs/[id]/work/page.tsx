@@ -26,7 +26,6 @@ import {
   type RepairActionRecord,
 } from '@/lib/repair/repair-actions';
 import { formatMonthDayTimePST } from '@/utils/date';
-import { ModeRegion } from '@/design-system/providers/ModeRegion';
 
 /** `/m/rs/[id]/work` — the bench log. */
 function RepairWorkInner() {
@@ -76,7 +75,7 @@ function RepairWorkInner() {
   };
 
   return (
-    <ModeRegion mode="triage" className="flex min-h-screen flex-col bg-mode-panel">
+    <div className="flex min-h-screen flex-col bg-mode-panel">
       <MobileDetailTopBar
         backHref={`/m/rs/${repairId}`}
         subtitle="Bench log"
@@ -151,7 +150,7 @@ function RepairWorkInner() {
         verbs={[{ id: 'log', label: 'Log work', icon: <Wrench />, primary: true }]}
         onVerb={() => setLogOpen(true)}
       />
-    </ModeRegion>
+    </div>
   );
 }
 

@@ -18,8 +18,10 @@
 import { useCallback, useRef, useState, useSyncExternalStore } from 'react';
 import { useRouter } from 'next/navigation';
 import { safeRandomUUID } from '@/lib/safe-uuid';
+import { handlingUnitHandle } from '@/lib/barcode-routing';
 import { useStudioWorkspace } from '@/components/studio/StudioWorkspaceContext';
 import type { AssistantPageContext } from '@/lib/assistant/context-store';
+import type { AssistantAccessMode } from '@/lib/assistant/access-mode';
 import type { ChatHistoryRow } from '@/lib/assistant/chat-persistence';
 import {
   applyTurnFrame,
@@ -105,6 +107,34 @@ export interface AssistantConnectionPrompt {
   reason: string | null;
 }
 
+/**
+ * Where one chat-raised label print is on the staff print bridge:
+ * finding a station → (pick) → sending → acked (printing n/total) → printed,
+ * or failed. The operator can retry a failed print.
+ */
+export type AssistantPrintPhase =
+  | { kind: 'finding' }
+  | { kind: 'pick'; reason: string }
+  | { kind: 'sending'; station: string }
+  | { kind: 'acked'; station: string; done: number; total: number }
+  | { kind: 'printed'; station: string; labels: number }
+  | { kind: 'failed'; reason: string };
+
+/**
+ * A `print_handling_unit_labels` call, sent to the staffer's print station.
+ * Lives on the THREAD (like connection prompts) so every surface showing the
+ * thread reads one state, and the phase move to `sending` is the one claim
+ * that sends the job exactly once.
+ */
+export interface AssistantPrintJob {
+  id: string;
+  /** The answer that raised it — the card renders under it. */
+  messageId: string;
+  /** House handles (`H-{id}`) the station reprints. */
+  codes: string[];
+  phase: AssistantPrintPhase;
+}
+
 export interface AssistantChatState {
   sessionId: string;
   messages: AssistantMessage[];
@@ -115,6 +145,13 @@ export interface AssistantChatState {
   connectionPrompts: AssistantConnectionPrompt[];
   /** Called by the pill once polling shows the app connected. */
   dismissConnectionPrompt: (id: string) => void;
+  /** Label prints this session raised, oldest first. Not persisted: a reload never re-prints. */
+  printJobs: AssistantPrintJob[];
+  /**
+   * Move a print to `next`; with `from`, only when it is currently in one of
+   * those phases. Returns whether it moved.
+   */
+  setPrintPhase: (id: string, next: AssistantPrintPhase, from?: readonly AssistantPrintPhase['kind'][]) => boolean;
   send: (text: string, context: AssistantPageContext | null) => Promise<void>;
   /** Abort the running turn; the partial answer stays, marked stopped. */
   stop: () => void;
@@ -157,6 +194,7 @@ type AskThreadSnap = {
   status: 'idle' | 'streaming';
   title?: string;
   connectionPrompts: AssistantConnectionPrompt[];
+  printJobs: AssistantPrintJob[];
 };
 
 function emptyThread(): AskThreadSnap {
@@ -165,6 +203,7 @@ function emptyThread(): AskThreadSnap {
     messages: [],
     status: 'idle',
     connectionPrompts: [],
+    printJobs: [],
   };
 }
 
@@ -194,8 +233,12 @@ export function useAssistantChat(opts?: {
   shared?: 'station';
   /** Regenerate / edit is about to supersede these messages (drop their cards). */
   onSupersede?: (messageIds: string[]) => void;
+  /** The composer's access mode; the server enforces it (`ask` = read-only). Absent = full. */
+  accessMode?: AssistantAccessMode;
 }): AssistantChatState {
   const shared = opts?.shared === 'station';
+  const accessModeRef = useRef<AssistantAccessMode>(opts?.accessMode ?? 'full');
+  accessModeRef.current = opts?.accessMode ?? 'full';
   const router = useRouter();
   // The dock is inside StudioWorkspaceProvider, so it can drive the Studio's
   // URL view state directly (canvas-control tools). setParams hard-routes to
@@ -271,19 +314,23 @@ export function useAssistantChat(opts?: {
         setThread({ ...live, connectionPrompts: [prompt, ...live.connectionPrompts].slice(0, 3) });
         return;
       }
-      // Device tool: tote labels print from THIS workstation through the
-      // desktop bridge (silent print under Electron, USB/iframe in browser).
-      // Fired-and-shown: the panel reports the outcome in the artifact feed.
+      // Device tool: the labels print on the staffer's print station over the
+      // staff print bridge. The job rides the thread; the transcript's print
+      // card resolves the station, sends it once, and shows each phase.
       if (name === 'print_handling_unit_labels' && Array.isArray(input.handlingUnitIds)) {
         const ids = input.handlingUnitIds
           .map((v) => Number(v))
           .filter((v) => Number.isInteger(v) && v > 0)
           .slice(0, 10);
-        if (ids.length > 0) {
-          void import('@/components/session/print-handling-unit-labels').then((m) =>
-            m.printHandlingUnitLabelsFromChat(ids),
-          );
-        }
+        if (ids.length === 0) return;
+        const live = getLive();
+        const job: AssistantPrintJob = {
+          id: `print-${safeRandomUUID()}`,
+          messageId,
+          codes: [...new Set(ids)].map(handlingUnitHandle),
+          phase: { kind: 'finding' },
+        };
+        setThread({ ...live, printJobs: [...live.printJobs, job] });
         return;
       }
       // Canvas-control tools drive the Studio URL view state (?focus/z/lens);
@@ -388,10 +435,12 @@ export function useAssistantChat(opts?: {
                   selection: context.selection ?? null,
                   skill: context.skill ?? null,
                   mentions: context.mentions && context.mentions.length > 0 ? context.mentions : null,
+                  attachments: context.attachments && context.attachments.length > 0 ? context.attachments : null,
                 }
               : null,
             turnIds: { user: args.userId, assistant: assistantId },
             ...(args.rewind ? { rewind: args.rewind } : {}),
+            accessMode: accessModeRef.current,
           }),
           signal: controller.signal,
         });
@@ -585,6 +634,7 @@ export function useAssistantChat(opts?: {
         status: 'idle',
         ...(loadedTitle ? { title: loadedTitle } : {}),
         connectionPrompts: [],
+        printJobs: [],
       });
       return cards;
     },
@@ -630,6 +680,17 @@ export function useAssistantChat(opts?: {
     [getLive, setThread],
   );
 
+  const setPrintPhase = useCallback(
+    (id: string, next: AssistantPrintPhase, from?: readonly AssistantPrintPhase['kind'][]): boolean => {
+      const live = getLive();
+      const job = live.printJobs.find((j) => j.id === id);
+      if (!job || (from && !from.includes(job.phase.kind))) return false;
+      setThread({ ...live, printJobs: live.printJobs.map((j) => (j.id === id ? { ...j, phase: next } : j)) });
+      return true;
+    },
+    [getLive, setThread],
+  );
+
   return {
     sessionId,
     messages,
@@ -637,6 +698,8 @@ export function useAssistantChat(opts?: {
     title: thread.title,
     connectionPrompts,
     dismissConnectionPrompt,
+    printJobs: thread.printJobs,
+    setPrintPhase,
     send,
     stop,
     regenerate,

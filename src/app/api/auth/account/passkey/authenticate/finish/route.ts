@@ -16,6 +16,7 @@ import {
 import { audit } from '@/lib/auth/audit';
 import { listMembershipsForAccount, logAuthEvent } from '@/lib/identity/memberships';
 import { checkRateLimitAsync } from '@/lib/api-guard';
+import { recordStaffLogin } from '@/lib/auth/record-staff-login';
 import type { AuthenticationResponseJSON } from '@simplewebauthn/types';
 
 export const runtime = 'nodejs';
@@ -84,6 +85,7 @@ export async function POST(req: NextRequest) {
     });
 
     void pool.query(`UPDATE accounts SET last_login_at = now() WHERE id = $1`, [accountId]).catch(() => {});
+    const { firstSigninToday } = await recordStaffLogin(pool, target.staff_id);
 
     await audit({
       staffId: target.staff_id, sid: session.sid,
@@ -96,6 +98,7 @@ export async function POST(req: NextRequest) {
       ok: true,
       organizationId: target.organization_id,
       workspaces: memberships.length,
+      firstSigninToday,
     });
     res.cookies.set(SESSION_COOKIE_NAME, session.sid, {
       httpOnly: true, secure: process.env.NODE_ENV === 'production',

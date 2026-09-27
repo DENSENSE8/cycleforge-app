@@ -4,8 +4,10 @@
  * SessionPlusMenu — the + menu content for the session composer. Unifies the
  * add-verbs that used to be scattered across surfaces:
  *
- *   • Add file / Add photo — stage a reference into the draft (the agent
- *     reasons about the reference; photo library search finds existing ones).
+ *   • Attach file — uploads through the composer's attachment chips (the
+ *     same path as a drop on the composer); the message carries the stored id.
+ *   • Add photo — stage a reference into the draft (the agent reasons about
+ *     the reference; photo library search finds existing ones).
  *   • # Order number — ping an order: seeds "Look up order #<num>".
  *   • Log details — seeds a "Log: …" entry the agent records.
  *
@@ -15,13 +17,21 @@
  */
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Camera, FileText, Hash, Search } from '@/components/Icons';
+import { Camera, FileText, Hash, Paperclip, Search } from '@/components/Icons';
 import { ComposerPlusMenuRow, ComposerPlusMenuSection } from '@/components/composer/ComposerPlusMenu';
 import { requestComposerSeed } from '@/lib/assistant/composer-seed-store';
+import { COMPOSER_ATTACHMENT_ACCEPT } from './composer/useComposerAttachments';
 
 type Sub = null | { kind: 'photoSearch' } | { kind: 'order' } | { kind: 'log' };
 
-export function SessionPlusMenu({ onClose }: { onClose: () => void }) {
+export function SessionPlusMenu({
+  onClose,
+  onAttachFiles,
+}: {
+  onClose: () => void;
+  /** Uploads picked files as composer attachments (`useComposerAttachments.add`). */
+  onAttachFiles: (files: File[]) => void;
+}) {
   const [sub, setSub] = useState<Sub>(null);
   const fileRef = useRef<HTMLInputElement | null>(null);
   const photoRef = useRef<HTMLInputElement | null>(null);
@@ -34,12 +44,12 @@ export function SessionPlusMenu({ onClose }: { onClose: () => void }) {
   const onPickFile = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
       const files = Array.from(e.target.files ?? []);
-      if (files.length === 0) return;
-      const names = files.map((f) => f.name).join(', ');
-      seed(`I'm attaching ${files.length > 1 ? 'files' : 'a file'}: ${names}. Keep them in mind as context for what I ask next.`);
       e.target.value = '';
+      if (files.length === 0) return;
+      onClose();
+      onAttachFiles(files);
     },
-    [seed],
+    [onAttachFiles, onClose],
   );
 
   const onPickPhoto = useCallback(
@@ -58,8 +68,8 @@ export function SessionPlusMenu({ onClose }: { onClose: () => void }) {
       {sub === null ? (
         <>
           <ComposerPlusMenuSection>
-            <ComposerPlusMenuRow icon={<FileText className="h-3.5 w-3.5" />} onClick={() => fileRef.current?.click()}>
-              Add file
+            <ComposerPlusMenuRow icon={<Paperclip className="h-3.5 w-3.5" />} onClick={() => fileRef.current?.click()}>
+              Attach file
             </ComposerPlusMenuRow>
             <ComposerPlusMenuRow icon={<Camera className="h-3.5 w-3.5" />} onClick={() => photoRef.current?.click()}>
               Add photo
@@ -101,6 +111,7 @@ export function SessionPlusMenu({ onClose }: { onClose: () => void }) {
         ref={fileRef}
         type="file"
         multiple
+        accept={COMPOSER_ATTACHMENT_ACCEPT}
         className="hidden"
         onChange={onPickFile}
         data-testid="session-add-file-input"

@@ -12,6 +12,7 @@ import {
   type NavContext,
   type NavFacetsResponse,
   type NavRecentRow,
+  type NavRecents,
 } from './schema';
 
 export class NavHttpError extends Error {
@@ -59,14 +60,42 @@ export async function fetchNavFacets(
 const NavRecentsResponseSchema = z.object({
   surface: z.string(),
   rows: z.array(NavRecentRowSchema),
+  nextBefore: z.string().nullable(),
 });
 
-/** `GET <recents.endpoint>` — the endpoint already carries `surface=`. */
+export interface NavRecentsPage {
+  rows: NavRecentRow[];
+  nextBefore: string | null;
+}
+
+/** `GET <recents.endpoint>` — the endpoint already carries `surface=`; `before` / `q` page and narrow a `paged` / `find` surface. */
 export async function fetchNavRecents(
   endpoint: string,
-  signal?: AbortSignal,
-): Promise<NavRecentRow[]> {
-  return NavRecentsResponseSchema.parse(await getJson(endpoint, signal)).rows;
+  options: { before?: string | null; q?: string; signal?: AbortSignal } = {},
+): Promise<NavRecentsPage> {
+  const url = new URL(endpoint, 'http://nav.local');
+  if (options.before) url.searchParams.set('before', options.before);
+  if (options.q?.trim()) url.searchParams.set('q', options.q.trim());
+  const { rows, nextBefore } = NavRecentsResponseSchema.parse(
+    await getJson(`${url.pathname}${url.search}`, options.signal),
+  );
+  return { rows, nextBefore };
+}
+
+/** One row verb against the feed owner's route (`NavRecents.rowActions`). `restore` undoes a `delete`. */
+export async function runNavRecentRowVerb(
+  rowActions: NonNullable<NavRecents['rowActions']>,
+  entityId: string,
+  verb: { kind: 'rename'; title: string } | { kind: 'delete' } | { kind: 'restore' },
+): Promise<void> {
+  const url = rowActions.endpoint.replace('{id}', encodeURIComponent(entityId));
+  const body = verb.kind === 'rename' ? { title: verb.title } : verb.kind === 'restore' ? { restore: true } : null;
+  const res = await fetch(url, {
+    method: verb.kind === 'delete' ? 'DELETE' : 'PATCH',
+    credentials: 'same-origin',
+    ...(body ? { headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) } : {}),
+  });
+  if (!res.ok) throw new NavHttpError(res.status, url);
 }
 
 /** `POST /api/nav/recents` — upsert-on-open for `nav_recents`-backed surfaces. */

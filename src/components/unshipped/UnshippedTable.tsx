@@ -821,6 +821,7 @@ export function UnshippedTable({
           railSelection={railSelection}
           onLoadMore={onLoadMore}
           queueTotal={cagedOnly ? undefined : stageTotal}
+          fetching={!cagedOnly && query.isFetching}
           banner={queueError ? <QueueStaleBand onRetry={retryQueue} /> : null}
           searchEmptyTitle={searchEmptyTitle}
           searchResultLabel={searchResultLabel}

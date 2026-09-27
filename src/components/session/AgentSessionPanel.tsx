@@ -18,24 +18,28 @@
  * so the move is one transform, and the draft, caret and voice state survive
  * it. Greeting and chips pop out of flow as it leaves.
  *
- * Artifacts never render in the column — each one is a compact card under
- * the answer that produced it; a live turn's artifact opens the side panel
- * on arrival and any card re-opens it (`SessionSurface`, `useSessionArtifacts`).
+ * The display rule (`artifact-placement.ts`): DATA renders inline under the
+ * answer that produced it — a product answer reads title → id chips → table →
+ * one summary sentence → follow-ups; a long table previews and "Show all"
+ * opens the side panel. DOCUMENTS open in the side panel on arrival, with a
+ * compact card in the column that re-opens them (`SessionSurface`,
+ * `useSessionArtifacts`). While a turn works, one shimmering line says what it
+ * is doing; after, the lightbulb in the action row opens its "Thought process".
  *
  * Threads are continuable: `?session=<id>` loads the thread from
  * `GET /api/ai/chat-sessions/[id]` into the live engine, so the next send
  * appends to it; a fresh thread writes its id back to the URL once its first
  * turn ends. The recents list lives in the sidebar under Chat. Every turn has
- * a hover action row (Copy · Regenerate · 👍 / 👎; Copy · Edit on the
- * operator's bubbles), and the keyboard is `useSessionHotkeys`.
+ * an icon row (Copy · Regenerate · 👍 / 👎 · Thought process; Copy · Edit on
+ * the operator's bubbles), and the keyboard is `useSessionHotkeys`.
  */
 
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
-import { ArrowDown, ArrowUp, Copy, Loader2, Mic, Pencil, Plus, RefreshCw, Stop, ThumbsDown, ThumbsUp, X } from '@/components/Icons';
+import { ArrowDown, ArrowUp, Copy, Loader2, Mic, Pencil, Plus, RefreshCw, Stop, Thought, ThumbsDown, ThumbsUp, X } from '@/components/Icons';
 import { ComposerPlusMenuPanel } from '@/components/composer/ComposerPlusMenu';
 import MarkdownRenderer from '@/components/ai/MarkdownRenderer';
-import { ThinkingDisclosure } from '@/components/ai/ThinkingDisclosure';
+import { ThinkingLine, ThinkingTrace } from '@/components/ai/ThinkingTrace';
 import { AnimatePresence, motion, useReducedMotion, type Transition } from '@/design-system/motion';
 import {
   AI_ACTION_CLASS,
@@ -48,10 +52,10 @@ import {
   AI_LABEL_CLASS,
   AI_NOTICE_CLASS,
   AI_PRIMARY_BUTTON_CLASS,
+  AI_STOP_BUTTON_CLASS,
   AI_USER_BUBBLE_CLASS,
   AiArtifactCard,
   AiComposer,
-  AiIrisRing,
   AiTurn,
   AiTurnActions,
   aiPresence,
@@ -81,6 +85,8 @@ import {
   subscribeComposerSeed,
 } from '@/lib/assistant/composer-seed-store';
 import { extractGfmTables, type ArtifactTable } from '@/lib/assistant/ui-artifacts';
+import { isInlineArtifact } from '@/lib/assistant/artifact-placement';
+import { answerCopyIds, emphasizeAnswer, type AnswerIdKind } from '@/lib/assistant/answer-emphasis';
 import { normalizeAssistantProse } from '@/lib/assistant/prose-normalize';
 import { NO_ANSWER_FALLBACK } from '@/lib/assistant/turn-trace';
 import { WRITE_TOOL_NAMES } from '@/lib/assistant/tool-activity';
@@ -94,10 +100,18 @@ import { publishSessionTitle } from './session-title-store';
 import { displaySessionTitle } from '@/lib/ai/session-title-text';
 import { SessionPlusMenu } from './SessionPlusMenu';
 import { ConnectAppPill } from './ConnectAppPill';
+import { ChatPrintJobCard } from '@/components/assistant/ChatPrintJobCard';
 import { useSessionArtifacts, type SessionArtifactEntry } from './useSessionArtifacts';
 import { useSessionHotkeys } from './useSessionHotkeys';
 import { useComposerMentions } from './composer/useComposerMentions';
+import { useAssistantAccessMode } from './composer/useAssistantAccessMode';
+import { AccessModeSwitch } from './composer/AccessModeSwitch';
+import { ContextUsageRing } from './composer/ContextUsageRing';
+import { useComposerAttachments } from './composer/useComposerAttachments';
+import { ComposerDropzone } from './composer/ComposerAttachments';
 import { artifactSummary } from './artifacts/artifact-summary';
+import { AnswerIdChip, InlineArtifact } from './artifacts/InlineArtifact';
+import { DocumentArtifactCard } from './artifacts/DocumentArtifact';
 
 /**
  * The empty-state chips — each sentence lands on a tool this lane's registry
@@ -146,7 +160,10 @@ export function AgentSessionPanel({
   const artifacts = useSessionArtifacts();
   // Shared 'station' thread: one transcript, whichever surface commits. A
   // regenerate / edit drops the superseded answers' cards with them.
-  const chat = useAssistantChat({ shared: 'station', onSupersede: artifacts.dropMessages });
+  const [accessMode, setAccessMode] = useAssistantAccessMode();
+  const attachments = useComposerAttachments();
+  const clearAttachments = attachments.clear;
+  const chat = useAssistantChat({ shared: 'station', onSupersede: artifacts.dropMessages, accessMode });
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -324,20 +341,26 @@ export function AgentSessionPanel({
     publishSessionTitle(currentTitle, renameableSessionId);
   }, [currentTitle, renameableSessionId]);
 
-  /** The page context plus this message's `@` references. */
+  /** The page context plus this message's `@` references and uploaded files. */
   const turnContext = useCallback((): AssistantPageContext | null => {
     const picked = mentions.mentions.length > 0 ? mentions.mentions : null;
-    if (!context) return picked ? { page: 'home', mentions: picked } : null;
-    return { ...context, mentions: picked };
-  }, [context, mentions.mentions]);
+    const files = attachments.ready.length > 0 ? attachments.ready : null;
+    if (!context) return picked || files ? { page: 'home', mentions: picked, attachments: files } : null;
+    return { ...context, mentions: picked, attachments: files };
+  }, [context, mentions.mentions, attachments.ready]);
 
   const send = useCallback(
     (live?: string) => {
       const text = (live ?? draft).trim();
       if (!text || streaming) return;
+      if (attachments.uploading) {
+        toast.error('Still uploading — send once the files show Uploaded');
+        return;
+      }
       const ctx = turnContext();
       setDraft('');
       resetMentions();
+      clearAttachments();
       scrollToEnd('smooth');
       if (editing && live === undefined) {
         setEditing(null);
@@ -346,7 +369,7 @@ export function AgentSessionPanel({
       }
       void chat.send(text, ctx);
     },
-    [chat, draft, editing, resetMentions, scrollToEnd, streaming, turnContext],
+    [attachments.uploading, chat, clearAttachments, draft, editing, resetMentions, scrollToEnd, streaming, turnContext],
   );
 
   const startEdit = useCallback(
@@ -447,6 +470,33 @@ export function AgentSessionPanel({
     [chat, scrollToEnd, turnContext],
   );
 
+  // ── "Thought process": the one answer whose trace is open — only ever by a
+  // click on its lightbulb. × or Esc (focus in the transcript, not the
+  // composer, and never while a turn runs — Esc is Stop then) closes it and
+  // hands focus back to the lightbulb.
+  const [traceFor, setTraceFor] = useState<string | null>(null);
+  const closeTrace = useCallback(() => {
+    const open = traceFor;
+    setTraceFor(null);
+    if (!open) return;
+    window.requestAnimationFrame(() =>
+      document.querySelector<HTMLElement>(`[data-message-id="${CSS.escape(open)}"] [data-action="thinking"]`)?.focus(),
+    );
+  }, [traceFor]);
+  useEffect(() => {
+    if (!traceFor || streaming) return;
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape' || e.defaultPrevented) return;
+      const focus = document.activeElement;
+      const inTranscript = focus === document.body || (scrollRef.current?.contains(focus) ?? false);
+      if (!inTranscript || focus?.closest('[data-testid="session-composer-dock"]')) return;
+      e.preventDefault();
+      closeTrace();
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [traceFor, streaming, closeTrace]);
+
   // ── Feedback: optimistic thumbs; 👎 records at once, then offers reasons.
   const [reasonFor, setReasonFor] = useState<string | null>(null);
   const [reasonNote, setReasonNote] = useState('');
@@ -479,9 +529,10 @@ export function AgentSessionPanel({
     return () => window.clearInterval(timer);
   }, [coolingUntil]);
 
-  // Each card sits under the answer that produced it; a result with no
-  // message (a printer report) sits at the foot.
-  const cardsByMessage = useMemo(() => {
+  // Each result sits under the answer that produced it; a result with no
+  // message (a printer report) sits at the foot. The same pass collects the
+  // identifiers each answer's results carry — the only ids its prose may chip.
+  const { cardsByMessage, idsByMessage } = useMemo(() => {
     const byMessage = new Map<string | null, SessionArtifactEntry[]>();
     const all = artifacts.pending ? [...artifacts.entries, artifacts.pending] : artifacts.entries;
     for (const entry of all) {
@@ -489,7 +540,12 @@ export function AgentSessionPanel({
       list.push(entry);
       byMessage.set(entry.messageId, list);
     }
-    return byMessage;
+    const ids = new Map<string, ReadonlyMap<string, AnswerIdKind>>();
+    for (const [messageId, list] of byMessage) {
+      if (messageId === null) continue;
+      ids.set(messageId, answerCopyIds(list.flatMap((e) => (e.artifact ? [e.artifact] : []))));
+    }
+    return { cardsByMessage: byMessage, idsByMessage: ids };
   }, [artifacts.entries, artifacts.pending]);
   const footCards = cardsByMessage.get(null) ?? [];
 
@@ -511,11 +567,22 @@ export function AgentSessionPanel({
     return () => observer.disconnect();
   }, [started]);
 
-  const renderCards = (entries: readonly SessionArtifactEntry[] | undefined) =>
+  // The display rule: data inline, a document (or anything worked through
+  // like one) as a compact card that opens the side panel.
+  const renderResults = (entries: readonly SessionArtifactEntry[] | undefined) =>
     entries && entries.length > 0 ? (
-      <div className="flex flex-col gap-2" data-session-artifact-cards>
+      <div className="flex min-w-0 flex-col gap-4" data-session-artifact-cards>
         {entries.map((entry) => {
           const summary = artifactSummary(entry);
+          const artifact = entry.artifact;
+          const selected = artifacts.opened?.id === entry.id;
+          const open = () => artifacts.open(entry.id);
+          if (artifact && artifact.kind === 'document') {
+            return <DocumentArtifactCard key={entry.id} artifact={artifact} onOpen={open} active={selected} />;
+          }
+          if (artifact && isInlineArtifact(artifact)) {
+            return <InlineArtifact key={entry.id} artifact={artifact} summary={summary} open={selected} onExpand={open} />;
+          }
           return (
             <AiArtifactCard
               key={entry.id}
@@ -525,8 +592,8 @@ export function AgentSessionPanel({
               icon={summary.icon}
               pending={entry.pending === true}
               stale={entry.staleAt !== undefined}
-              selected={artifacts.opened?.id === entry.id}
-              onOpen={() => artifacts.open(entry.id)}
+              selected={selected}
+              onOpen={open}
             />
           );
         })}
@@ -572,36 +639,35 @@ export function AgentSessionPanel({
         <Plus className="h-4 w-4" />
       </button>
       <ComposerPlusMenuPanel open={plusOpen} onClose={closePlus} anchorRef={plusAnchorRef} ariaLabel="Add context menu">
-        <SessionPlusMenu onClose={closePlus} />
+        <SessionPlusMenu onClose={closePlus} onAttachFiles={attachments.add} />
       </ComposerPlusMenuPanel>
     </>
   );
 
-  // Streaming with nothing typed, the key is Stop; typing ahead shows the
-  // (held) send arrow instead.
-  const stopKey = streaming && !hasText;
-  const voiceOrSend = (
+  // While a turn runs the send slot IS Stop — a square key a size up from send
+  // (tooltip "Stop (Esc)"); a draft typed ahead waits for the turn to end.
+  const voiceOrSend = streaming ? (
+    <button
+      type="button"
+      data-testid="composer-stop"
+      aria-label="Stop generating"
+      title="Stop (Esc)"
+      onClick={chat.stop}
+      className={cn('ds-raw-button', AI_STOP_BUTTON_CLASS, AI_FOCUS_CLASS)}
+    >
+      <Stop className="h-3.5 w-3.5" />
+    </button>
+  ) : (
     <button
       type="button"
       data-testid="composer-voice-commit"
       aria-label={
-        stopKey
-          ? 'Stop generating'
-          : listening
-            ? 'Stop recording'
-            : transcribing
-              ? 'Transcribing'
-              : hasText
-                ? editing
-                  ? 'Send edited message'
-                  : 'Send message'
-                : 'Dictate'
+        listening ? 'Stop recording' : transcribing ? 'Transcribing' : hasText ? (editing ? 'Send edited message' : 'Send message') : 'Dictate'
       }
-      title={stopKey ? 'Stop (Esc)' : undefined}
-      disabled={transcribing || (hasText && streaming) || (!stopKey && !hasText && voice.state === 'unsupported')}
+      title={listening ? 'Stop recording' : hasText ? 'Send (Enter)' : 'Dictate'}
+      disabled={transcribing || (!hasText && voice.state === 'unsupported')}
       onClick={() => {
-        if (stopKey) chat.stop();
-        else if (listening) voice.stop();
+        if (listening) voice.stop();
         else if (hasText) send();
         else voice.toggle();
       }}
@@ -610,14 +676,12 @@ export function AgentSessionPanel({
         AI_FOCUS_CLASS,
         listening
           ? cn(AI_PRIMARY_BUTTON_CLASS, 'bg-fill-danger hover:bg-fill-danger')
-          : hasText || stopKey
+          : hasText
             ? AI_PRIMARY_BUTTON_CLASS
             : AI_ICON_BUTTON_CLASS,
       )}
     >
-      {stopKey ? (
-        <Stop className="h-3.5 w-3.5" />
-      ) : transcribing ? (
+      {transcribing ? (
         <Loader2 className="h-4 w-4 animate-spin" />
       ) : listening ? (
         <span className="h-2.5 w-2.5 animate-pulse rounded-sm bg-ai-solid-ink" />
@@ -649,6 +713,7 @@ export function AgentSessionPanel({
       actions.push({
         id: 'copy',
         label: 'Copy',
+        hint: 'Copy answer',
         icon: <Copy className="h-3.5 w-3.5" />,
         onClick: () => copyText(`${m.id}:copy`, m.content),
         state: actionStates.get(`${m.id}:copy`),
@@ -658,6 +723,7 @@ export function AgentSessionPanel({
       actions.push({
         id: 'regenerate',
         label: 'Regenerate',
+        hint: 'Ask again for a new answer',
         icon: <RefreshCw className="h-3.5 w-3.5" />,
         onClick: () => regenerate(m),
       });
@@ -691,17 +757,24 @@ export function AgentSessionPanel({
         },
       );
     }
+    // "Thought process": the turn's steps, reasoning and cost, folded into one
+    // small lightbulb once the answer has landed. Nothing opens it but a click.
+    const traceable = settled && (m.steps.length > 0 || m.thinkingMs !== null);
+    if (traceable) {
+      actions.push({
+        id: 'thinking',
+        label: 'Thought process',
+        icon: <Thought className="h-3.5 w-3.5" />,
+        pressed: traceFor === m.id,
+        onClick: () => (traceFor === m.id ? closeTrace() : setTraceFor(m.id)),
+      });
+    }
     const retryable = isLast && m.error && !streaming && RETRYABLE_ERROR_CODES[m.errorCode ?? 'internal'] === true;
     const coolSeconds = Math.max(0, Math.ceil(((m.retryAfter ?? 0) - now) / 1000));
     return (
       <AiTurn key={m.id} className="group/turn flex min-w-0 flex-col gap-3" data-message-id={m.id} data-role="assistant">
-        <ThinkingDisclosure
-          steps={m.steps}
-          thinkingMs={m.thinkingMs}
-          streaming={m.streaming === true}
-          answering={m.content.length > 0}
-          usage={m.usage}
-        />
+        {renderResults(cardsByMessage.get(m.id))}
+        {m.streaming && !m.content ? <ThinkingLine steps={m.steps} /> : null}
         {m.error ? (
           <div className="flex flex-wrap items-center gap-2" data-turn-error={m.errorCode ?? 'internal'}>
             <p className="text-ai-prose text-text-danger">{m.content}</p>
@@ -737,6 +810,7 @@ export function AgentSessionPanel({
             id={m.id}
             content={m.content || (settled && m.steps.length > 0 && !m.stopped ? NO_ANSWER_FALLBACK : '')}
             streaming={m.streaming}
+            ids={idsByMessage.get(m.id) ?? NO_IDS}
           />
         )}
         {m.stopped ? (
@@ -744,7 +818,25 @@ export function AgentSessionPanel({
             Stopped
           </p>
         ) : null}
-        {renderCards(cardsByMessage.get(m.id))}
+        {chat.printJobs
+          .filter((job) => job.messageId === m.id)
+          .map((job) => (
+            <ChatPrintJobCard key={job.id} job={job} setPhase={chat.setPrintPhase} />
+          ))}
+        {isLast && settled && !streaming && !m.error && m.suggestions && m.suggestions.length > 0 ? (
+          <div className="flex flex-wrap gap-2" data-follow-ups>
+            {m.suggestions.map((item) => (
+              <button
+                key={item}
+                type="button"
+                onClick={() => send(item)}
+                className={cn('ds-raw-button text-left', AI_CHIP_CLASS, AI_FOCUS_CLASS)}
+              >
+                {item}
+              </button>
+            ))}
+          </div>
+        ) : null}
         {actions.length > 0 ? (
           <AiTurnActions actions={actions} visible={isLast || reasonFor === m.id}>
             {reasonFor === m.id ? (
@@ -794,6 +886,9 @@ export function AgentSessionPanel({
             ) : null}
           </AiTurnActions>
         ) : null}
+        {traceable ? (
+          <ThinkingTrace open={traceFor === m.id} steps={m.steps} thinkingMs={m.thinkingMs} usage={m.usage} onClose={closeTrace} />
+        ) : null}
         {confirmRegenerate === m.id ? (
           <div className={cn(AI_NOTICE_CLASS, 'flex items-center justify-between gap-3')} data-regenerate-confirm>
             <p className="min-w-0 text-ai-prose-sm text-ai-muted">
@@ -807,20 +902,6 @@ export function AgentSessionPanel({
                 Cancel
               </button>
             </div>
-          </div>
-        ) : null}
-        {isLast && settled && !streaming && !m.error && m.suggestions && m.suggestions.length > 0 ? (
-          <div className="flex flex-wrap gap-2" data-follow-ups>
-            {m.suggestions.map((item) => (
-              <button
-                key={item}
-                type="button"
-                onClick={() => send(item)}
-                className={cn('ds-raw-button text-left', AI_CHIP_CLASS, AI_FOCUS_CLASS)}
-              >
-                {item}
-              </button>
-            ))}
           </div>
         ) : null}
       </AiTurn>
@@ -890,7 +971,7 @@ export function AgentSessionPanel({
             </p>
           ) : null}
           {chat.messages.map((m, index) => (m.role === 'user' ? renderQuestion(m) : renderAnswer(m, index)))}
-          {renderCards(footCards)}
+          {renderResults(footCards)}
           {/*
             In-chat OAuth handoffs sit at the FOOT of the transcript, after
             the sentence that raised them, so the ask and the button read as
@@ -987,8 +1068,8 @@ export function AgentSessionPanel({
             transition={composerGlide}
             data-testid="session-composer-dock"
           >
-            {/* The iris edge is the composer's "working" state — only while a turn runs. */}
-            <AiIrisRing active={streaming} className="rounded-ai-composer">
+            {/* Calm while a turn runs: no edge, no shimmer — the Stop key says it is working. */}
+            <ComposerDropzone items={attachments.items} onFiles={attachments.add} onRemove={attachments.remove}>
               <AiComposer
                 textareaRef={composerRef}
                 value={draft}
@@ -998,10 +1079,20 @@ export function AgentSessionPanel({
                 onKeyDown={onComposerKeyDown}
                 overlay={mentions.overlay}
                 placeholder={editing ? 'Edit your message…' : started ? 'Reply…' : 'Ask anything…'}
-                leading={plusMenu}
-                trailing={voiceOrSend}
+                leading={
+                  <>
+                    {plusMenu}
+                    <AccessModeSwitch mode={accessMode} onChange={setAccessMode} fieldRef={composerRef} />
+                  </>
+                }
+                trailing={
+                  <>
+                    <ContextUsageRing messages={chat.messages} title={currentTitle} />
+                    {voiceOrSend}
+                  </>
+                }
               />
-            </AiIrisRing>
+            </ComposerDropzone>
           </motion.div>
           <AnimatePresence mode="popLayout" initial={false}>
             {started ? null : (
@@ -1059,16 +1150,37 @@ function FocusGreeting({ exitTransition }: { exitTransition: Transition }) {
 /** One dispatch per table per reply — survives re-renders and StrictMode. */
 const dispatchedTables = new Set<string>();
 
+/** An answer whose turn returned no identifiers. */
+const NO_IDS: ReadonlyMap<string, AnswerIdKind> = new Map();
+
 /**
- * AssistantReply — the column is PROSE ONLY. A GFM table the model leaks into
- * text is MOVED to an artifact card under this answer (the same validated
- * pipeline as render_artifact) and stripped from the rendered text. Dispatch
- * waits for the turn to settle so partial streaming tables never fire.
+ * AssistantReply — the answer's PROSE. A GFM table the model leaks into text
+ * is MOVED to a result under this answer (the same validated pipeline as
+ * render_artifact, rendered inline like any data) and stripped from the text.
+ * Dispatch waits for the turn to settle so partial streaming tables never fire.
+ *
+ * Scannable for triage: numbers with units turn bold, and the identifiers this
+ * turn's tools returned (`ids`, never a guess from the text) become copy chips.
  */
-function AssistantReply({ id, content, streaming }: { id: string; content: string; streaming?: boolean }) {
+function AssistantReply({
+  id,
+  content,
+  streaming,
+  ids,
+}: {
+  id: string;
+  content: string;
+  streaming?: boolean;
+  ids: ReadonlyMap<string, AnswerIdKind>;
+}) {
   // Normalize BEFORE extraction so the table mover and the renderer see the
   // same coerced text — an H1 or a tab-indented list is fixed once, here.
   const { tables, text } = useMemo(() => extractGfmTables(normalizeAssistantProse(content)), [content]);
+  const emphasized = useMemo(() => emphasizeAnswer(text, ids), [text, ids]);
+  const renderInlineCode = useCallback((code: string) => {
+    const kind = ids.get(code);
+    return kind ? <AnswerIdChip value={code} kind={kind} /> : null;
+  }, [ids]);
   useEffect(() => {
     if (streaming || tables.length === 0) return;
     tables.forEach((t, idx) => {
@@ -1082,8 +1194,8 @@ function AssistantReply({ id, content, streaming }: { id: string; content: strin
   }, [id, tables, streaming]);
   if (!text && !streaming) return null;
   return (
-    <div className="min-w-0">
-      <MarkdownRenderer content={text} variant="ai" />
+    <div className="min-w-0" data-answer-prose>
+      <MarkdownRenderer content={emphasized} variant="ai" renderInlineCode={renderInlineCode} />
     </div>
   );
 }

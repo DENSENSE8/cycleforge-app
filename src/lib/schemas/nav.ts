@@ -9,10 +9,12 @@ const NavRecentSurfaceParam = z.enum(NAV_RECENT_SURFACE_IDS as [NavRecentSurface
 /** Hard ceiling on one recents read; each surface also caps at its own size. */
 export const NAV_RECENTS_MAX_LIMIT = 50;
 
-/** `GET /api/nav/recents?surface=&limit=` */
+/** `GET /api/nav/recents?surface=&limit=[&before=][&q=]` — `before` / `q` are read only by `paged` / `find` surfaces. */
 export const NavRecentsQuery = z.object({
   surface: NavRecentSurfaceParam,
   limit: z.coerce.number().int().min(1).max(NAV_RECENTS_MAX_LIMIT).optional(),
+  before: z.string().trim().min(1).max(256).optional(),
+  q: z.string().trim().max(200).optional(),
 });
 export type NavRecentsQuery = z.infer<typeof NavRecentsQuery>;
 

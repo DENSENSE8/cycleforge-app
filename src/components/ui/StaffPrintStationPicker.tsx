@@ -1,6 +1,6 @@
 'use client';
 
-/** Pick the printer a phone's jobs go to: */
+/** Pick the print station a job goes to (phone /m surfaces and the desktop chat print card). */
 
 import { Check, Printer } from '@/components/Icons';
 import { isStaffPrintStationLive, roleReady } from '@/lib/print/staff-print-bridge';

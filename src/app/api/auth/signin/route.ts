@@ -3,6 +3,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import pool from '@/lib/db';
 import { verifyStaffPin, PinError } from '@/lib/auth/pin';
+import { recordStaffLogin } from '@/lib/auth/record-staff-login';
 import {
   createSession,
   cookieMaxAgeForSession,
@@ -100,6 +101,9 @@ export async function POST(req: NextRequest) {
     }
 
     let row: { name: string; role: string; status: string; default_home_path: string | null; default_home_path_mobile: string | null };
+    // PIN path stamps last_login_at inside verifyStaffPin; pinless stamps it
+    // below once the account is known active.
+    let firstSigninToday = false;
     if (pinless) {
       const lookup = await pool.query<{ name: string; role: string; status: string; default_home_path: string | null; default_home_path_mobile: string | null }>(
         `SELECT name, role, COALESCE(status, 'active') AS status, default_home_path, default_home_path_mobile
@@ -120,7 +124,9 @@ export async function POST(req: NextRequest) {
       }
       row = found;
     } else {
-      row = await verifyStaffPin(staffId, pin, orgId);
+      const verified = await verifyStaffPin(staffId, pin, orgId);
+      row = verified;
+      firstSigninToday = verified.firstSigninToday;
     }
     if (row.status !== 'active') {
       await audit({
@@ -128,6 +134,10 @@ export async function POST(req: NextRequest) {
         detail: { reason: 'status', status: row.status },
       });
       return NextResponse.json({ error: 'ACCOUNT_NOT_ACTIVE', status: row.status }, { status: 403 });
+    }
+
+    if (pinless) {
+      ({ firstSigninToday } = await recordStaffLogin(pool, staffId));
     }
 
     // Sign-in == clock-in (soft gate).
@@ -168,6 +178,7 @@ export async function POST(req: NextRequest) {
       name: row.name,
       defaultHomePath: row.default_home_path,
       defaultHomePathMobile: row.default_home_path_mobile,
+      firstSigninToday,
       session: {
         sid: session.sid,
         deviceKind: session.deviceKind,

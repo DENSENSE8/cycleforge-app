@@ -5,6 +5,7 @@ import { promisify } from 'node:util';
 import pool from '@/lib/db';
 import { tenantQuery, withTenantTransaction } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';
+import { recordStaffLogin } from '@/lib/auth/record-staff-login';
 
 const scrypt = promisify(scryptCb) as (
   password: string | Buffer,
@@ -114,8 +115,11 @@ interface StaffPinRow {
   default_home_path_mobile: string | null;
 }
 
+/** Verified PIN row plus whether this bump was the first sign-in of the PST day. */
+export type VerifiedStaffPin = StaffPinRow & { firstSigninToday: boolean };
+
 /** Look up by ID and verify PIN. */
-export async function verifyStaffPin(staffId: number, pin: string, orgId?: OrgId): Promise<StaffPinRow> {
+export async function verifyStaffPin(staffId: number, pin: string, orgId?: OrgId): Promise<VerifiedStaffPin> {
   assertPinShape(pin);
 
   if (orgId) {
@@ -136,12 +140,9 @@ export async function verifyStaffPin(staffId: number, pin: string, orgId?: OrgId
       const ok = await verifyHash(pin, row.pin_hash);
       if (!ok) throw new PinError('WRONG');
 
-      // Success → bump last_login_at
-      await client.query(
-        `UPDATE staff SET last_login_at = NOW() WHERE id = $1 AND organization_id = $2`,
-        [staffId, orgId],
-      );
-      return row;
+      // Success → bump last_login_at (and learn whether it is first-of-day)
+      const { firstSigninToday } = await recordStaffLogin(client, staffId);
+      return { ...row, firstSigninToday };
     });
   }
 
@@ -160,10 +161,7 @@ export async function verifyStaffPin(staffId: number, pin: string, orgId?: OrgId
   const ok = await verifyHash(pin, row.pin_hash);
   if (!ok) throw new PinError('WRONG');
 
-  // Success → bump last_login_at
-  await pool.query(
-    `UPDATE staff SET last_login_at = NOW() WHERE id = $1`,
-    [staffId],
-  );
-  return row;
+  // Success → bump last_login_at (and learn whether it is first-of-day)
+  const { firstSigninToday } = await recordStaffLogin(pool, staffId);
+  return { ...row, firstSigninToday };
 }

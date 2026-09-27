@@ -27,7 +27,7 @@ import {
 
 /** Paperwork for one order — manuals, packing lists and any other `product_manuals` row — behind `/api/orders/[id]/manuals` (the To-ship… */
 
-interface OrderManual {
+export interface OrderManual {
   id: number;
   displayName: string;
   type: string | null;
@@ -594,4 +594,93 @@ export async function readManualFilesForZip(orgId: OrgId, manualIds: number[]): 
     files.push({ manualId, baseName: `${stem || `manual-${manualId}`}.${ext}`, bytes: fetched.bytes });
   }
   return files;
+}
+
+/** A manual ↔ SKU link, as applied: who it was, where it was pinned, where it is now. */
+export interface ManualSkuLink {
+  manualId: number;
+  displayName: string;
+  fileName: string | null;
+  /** The catalog row's own SKU spelling. */
+  sku: string;
+  skuCatalogId: number;
+  before: PaperworkPairing;
+}
+
+/**
+ * Pin an org manual to a catalog SKU inside the caller's transaction (the
+ * assistant's `product_manual.link_sku` apply). Like pairing from an order it
+ * ADDS the SKU key and keeps the row's order / item-number keys, so the manual
+ * resolves — and pack-prints — for every order of that SKU. The SKU must be an
+ * org catalog row: a typo is refused, never stored as a dangling key.
+ */
+export async function linkManualToSkuInTx(
+  client: PoolClient,
+  orgId: OrgId,
+  manualId: number,
+  sku: string,
+): Promise<ManualSkuLink> {
+  const existing = await lockManual(client, orgId, manualId);
+  if (!existing) throw new OrderManualError(`Manual ${manualId} not found`, 404);
+  const key = paperworkSkuKey(sku);
+  if (!key) throw new OrderManualError('SKU needs a letter or digit', 400);
+  const catalog = await client.query<{ id: number; sku: string }>(
+    `SELECT id, sku FROM sku_catalog
+      WHERE organization_id = $1
+        AND regexp_replace(UPPER(TRIM(sku)), '[^A-Z0-9]', '', 'g') = $2
+      ORDER BY id
+      LIMIT 1`,
+    [orgId, key],
+  );
+  const hit = catalog.rows[0];
+  if (!hit) throw new OrderManualError(`SKU ${sku.trim()} is not in the catalog`, 404);
+  const before = pairingOf(existing);
+  const target = mergePairing(before, { orderId: null, itemNumber: null, sku: hit.sku.trim() });
+  await writePairing(client, orgId, manualId, target, Number(hit.id));
+  return {
+    manualId,
+    displayName: existing.display_name?.trim() || existing.file_name?.trim() || `Manual ${manualId}`,
+    fileName: existing.file_name || null,
+    sku: hit.sku.trim(),
+    skuCatalogId: Number(hit.id),
+    before,
+  };
+}
+
+/**
+ * Put a manual's pairing back exactly as it was (the link's inverse). A row
+ * that had no key at all returns to the library as unassigned.
+ */
+export async function restoreManualPairingInTx(
+  client: PoolClient,
+  orgId: OrgId,
+  manualId: number,
+  pairing: PaperworkPairing,
+): Promise<void> {
+  const existing = await lockManual(client, orgId, manualId);
+  if (!existing) throw new OrderManualError(`Manual ${manualId} not found`, 404);
+  const unpaired = pairing.orderId == null && !pairing.itemNumber && !pairing.sku && pairing.skuCatalogId == null;
+  await client.query(
+    `UPDATE product_manuals
+        SET order_id = $3::int,
+            item_number = $4,
+            sku = $5,
+            sku_catalog_id = $6::int,
+            status = CASE WHEN $7 THEN 'unassigned' ELSE 'assigned' END,
+            assigned_at = CASE WHEN $7 THEN NULL ELSE COALESCE(assigned_at, NOW()) END,
+            updated_at = NOW()
+      WHERE id = $1 AND organization_id = $2`,
+    [manualId, orgId, pairing.orderId, pairing.itemNumber, pairing.sku, pairing.skuCatalogId, unpaired],
+  );
+}
+
+/** After a link / restore commits: the old catalog's projection goes, caches bust. */
+export async function settleManualRepair(
+  orgId: OrgId,
+  manualId: number,
+  beforeCatalogId: number | null,
+  afterCatalogId: number | null,
+): Promise<void> {
+  await dropCatalogProjection(orgId, manualId, beforeCatalogId, afterCatalogId);
+  await bustManualCaches(orgId);
 }

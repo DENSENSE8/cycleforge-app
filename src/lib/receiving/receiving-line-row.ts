@@ -124,6 +124,10 @@ export interface ReceivingLineRow {
   expected_delivery_date?: string | null;
   /** Vendor name from zoho_po_mirror (Incoming view only). */
   vendor_name?: string | null;
+  /** `view=exceptions` — why the line needs a person (`IncomingExceptionCode`). */
+  exception_code?: string | null;
+  /** `view=exceptions` — the org ship-from ZIP5 the wrong-destination arm compared against. */
+  warehouse_postal?: string | null;
   /**
    * Hours-since-delivered SLA band for the delivered-unscanned hunt queue
    * (`lt_24h` | `h24_48` | `gt_48h`). Set on synthetic shipment rows only.

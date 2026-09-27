@@ -118,6 +118,9 @@ export function normalizeRow(row: Record<string, unknown>) {
     removed_written_off:      row.removed_written_off === true,
     removed_aged_out:         row.removed_aged_out === true,
     removed_at:               (row.removed_at as string | null) ?? null,
+    // view=exceptions only — the reason code and the ZIP it was judged against.
+    exception_code:           (row.exception_code as string | null) ?? null,
+    warehouse_postal:         (row.warehouse_postal as string | null) ?? null,
     // Incoming-view only; null on other views (SELECT omits the columns).
     delivery_state:           (row.delivery_state as string | null) ?? null,
     po_date:                  (row.po_date as string | null) ?? null,

@@ -19,6 +19,13 @@ import { resolveInboundDeliveryRecordState } from '@/design-system/tokens/inboun
 import { IncomingAttachTrackingButton } from '@/components/station/IncomingAttachTrackingButton';
 import { displayReceivingProductTitle } from '@/components/station/receiving-grid/cells';
 import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
+import {
+  INCOMING_EXCEPTION_VERB,
+  incomingExceptionLabel,
+  incomingExceptionReason,
+  parseIncomingExceptionCode,
+  type IncomingExceptionReason,
+} from '@/lib/receiving/incoming-exceptions';
 import type { RowGroup } from '@/lib/group-rows';
 import { fmtDate } from '@/components/sidebar/receiving/incoming-details/incoming-details-shared';
 import { cn } from '@/utils/_cn';
@@ -42,15 +49,38 @@ const DELIVERY_RISK: Record<string, number> = {
   RECEIVED: 10,
 };
 
+/** Exception reasons with no carrier-state twin in `INBOUND_DELIVERY`. */
+const EXCEPTION_ONLY_FACE: Readonly<Record<'ERP_AHEAD' | 'DELIVERED_OVERDUE', Omit<RecordStateFace, 'id'>>> = {
+  ERP_AHEAD: { code: 'ERP', label: incomingExceptionLabel('ERP_AHEAD'), tone: 'danger', icon: 'package-open' },
+  DELIVERED_OVERDUE: { code: 'OVD', label: incomingExceptionLabel('DELIVERED_OVERDUE'), tone: 'danger', icon: 'inbox' },
+};
+
+/** A row's face: its exception reason (Exceptions view) outranks its carrier state. */
 export function incomingDeliveryRecordState(row: ReceivingLineRow): RecordStateFace {
+  const exception = parseIncomingExceptionCode(row.exception_code);
+  if (exception === 'ERP_AHEAD' || exception === 'DELIVERED_OVERDUE') {
+    return { id: exception, ...EXCEPTION_ONLY_FACE[exception] };
+  }
+  if (exception) return { ...resolveInboundDeliveryRecordState(exception), tone: 'danger' };
   return resolveInboundDeliveryRecordState(row.delivery_state);
 }
 
-function groupState(rows: readonly ReceivingLineRow[]): RecordStateFace {
-  const worst = [...rows].sort(
-    (a, b) => (DELIVERY_RISK[b.delivery_state ?? 'UNKNOWN'] ?? 0) - (DELIVERY_RISK[a.delivery_state ?? 'UNKNOWN'] ?? 0),
-  )[0]!;
+const rowRisk = (row: ReceivingLineRow): number =>
+  row.exception_code ? 200 : (DELIVERY_RISK[row.delivery_state ?? 'UNKNOWN'] ?? 0);
+
+/** A purchase's face: its worst line — an exception first, then the riskiest delivery state. */
+export function purchaseDeliveryState(rows: readonly ReceivingLineRow[]): RecordStateFace {
+  const worst = [...rows].sort((a, b) => rowRisk(b) - rowRisk(a))[0]!;
   return incomingDeliveryRecordState(worst);
+}
+
+/** The purchase's first line that needs a person, as WHY + next action. */
+export function purchaseExceptionReason(rows: readonly ReceivingLineRow[]): IncomingExceptionReason | null {
+  for (const row of rows) {
+    const reason = incomingExceptionReason(row);
+    if (reason) return reason;
+  }
+  return null;
 }
 
 /** The delivery's purchase handle — the record's title wherever it is read. */
@@ -63,6 +93,8 @@ function sourceFace(row: ReceivingLineRow): string {
 }
 
 export function incomingDeliveryNextAction(state: string | null | undefined): string {
+  const exception = parseIncomingExceptionCode(state);
+  if (exception === 'ERP_AHEAD' || exception === 'DELIVERED_OVERDUE') return INCOMING_EXCEPTION_VERB[exception];
   switch (state) {
     case 'AWAITING_TRACKING': return 'Attach tracking';
     case 'DELIVERED_UNOPENED': return 'Receive';
@@ -108,7 +140,7 @@ export function IncomingDeliveryRecord({
     const checkedCount = entry.group.rows.filter((row) => selectedIds.has(row.id)).length;
     const checked = checkedCount === 0 ? false : checkedCount === entry.group.rows.length ? true : 'mixed';
     const qty = entry.group.rows.reduce((sum, row) => sum + quantity(row), 0);
-    const state = groupState(entry.group.rows);
+    const state = purchaseDeliveryState(entry.group.rows);
     const title = `${entry.group.rows.length} items · ${first.vendor_name || sourceFace(first)}`;
     return (
       <IndustrialRecord
@@ -215,7 +247,7 @@ export function IncomingDeliveryRecord({
               ) : null}
             </>
           ),
-          right: <RecordNext label={incomingDeliveryNextAction(row.delivery_state)} warn={state.tone === 'danger'} />,
+          right: <RecordNext label={incomingDeliveryNextAction(state.id)} warn={state.tone === 'danger'} />,
         },
       ]}
     />

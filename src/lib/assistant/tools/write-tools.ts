@@ -12,6 +12,10 @@ import {
   mutationTrustClass,
 } from '@/lib/surfaces/registry';
 import type { AssistantToolCtx, AssistantToolDef } from './types';
+import { buildManualLinkTool, type ManualLinkDeps } from './manual-link-tools';
+
+/** Kinds a dedicated tool owns end to end (its own confirmation) — propose_mutation refuses them. */
+const DEDICATED_TOOL_KINDS: Record<string, string> = { 'product_manual.link_sku': 'link_manual_to_sku' };
 
 export interface AssistantWriteDeps {
   apply: typeof applyAgentMutation;
@@ -29,10 +33,12 @@ export function buildWriteTools(
    * chokepoint) — a description is a hint to the model, never a security
    */
   permissions?: ReadonlySet<string>,
+  /** When this turn began (link_manual_to_sku's same-turn confirmation guard); omitted → no manual-link tool. */
+  turn?: { startedAt: Date; manualLinkDeps?: ManualLinkDeps },
 ) {
-  const allowedKinds = permissions
-    ? MUTATION_KIND_LIST.filter((k) => permissions.has(MUTATION_KINDS[k].permission))
-    : MUTATION_KIND_LIST;
+  const allowedKinds = (
+    permissions ? MUTATION_KIND_LIST.filter((k) => permissions.has(MUTATION_KINDS[k].permission)) : MUTATION_KIND_LIST
+  ).filter((k) => !Object.hasOwn(DEDICATED_TOOL_KINDS, k));
   const proposeMutation: AssistantToolDef<
     z.ZodObject<{ mutationKind: z.ZodString; payload: z.ZodRecord<z.ZodString, z.ZodUnknown> }>,
     unknown
@@ -53,6 +59,13 @@ export function buildWriteTools(
         return {
           ok: false as const,
           error: `unknown mutation_kind "${input.mutationKind}"`,
+          httpStatus: 400 as const,
+        };
+      }
+      if (Object.hasOwn(DEDICATED_TOOL_KINDS, input.mutationKind)) {
+        return {
+          ok: false as const,
+          error: `${input.mutationKind} goes through the ${DEDICATED_TOOL_KINDS[input.mutationKind]} tool, not propose_mutation.`,
           httpStatus: 400 as const,
         };
       }
@@ -113,5 +126,8 @@ export function buildWriteTools(
     },
   };
 
-  return [proposeMutation, revertMutation] as ReadonlyArray<AssistantToolDef<z.ZodTypeAny, unknown>>;
+  type WriteTool = AssistantToolDef<z.ZodTypeAny, unknown>;
+  const tools = [proposeMutation, revertMutation] as WriteTool[];
+  if (turn) tools.push(buildManualLinkTool(sessionId, turn.startedAt, turn.manualLinkDeps) as WriteTool);
+  return tools as ReadonlyArray<WriteTool>;
 }

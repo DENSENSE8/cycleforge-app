@@ -23,8 +23,8 @@ interface StaffAvatarProps {
   ring?: boolean;
   /** Keep the staffer's assigned COLOUR visible when their photo shows, as a 2px ring (see {@link IdentityMark.ringHex}). */
   colorRing?: boolean;
-  /** Mark corner — see {@link IdentityMark} `shape`. */
-  shape?: 'round' | 'square';
+  /** Mark face — see {@link IdentityMark} `face`. */
+  face?: 'round' | 'record';
   className?: string;
   /** Accessible name. Omit on rows that already name the staffer in text. */
   alt?: string;
@@ -38,7 +38,7 @@ export function StaffAvatar({
   size = 'sm',
   ring = true,
   colorRing = false,
-  shape = 'round',
+  face = 'round',
   className,
   alt,
 }: StaffAvatarProps) {
@@ -67,7 +67,7 @@ export function StaffAvatar({
       size={size}
       ring={ring}
       ringHex={colorRing ? resolvedColor : null}
-      shape={shape}
+      face={face}
       className={className}
       alt={alt ?? (trimmed || undefined)}
     />

@@ -8,6 +8,7 @@ import { getAccountByEmail, type AccountRecord } from '@/lib/identity/accounts';
 import { verifyPassword } from '@/lib/identity/password';
 import { listMembershipsForAccount, logAuthEvent, type MembershipRow } from '@/lib/identity/memberships';
 import { resolveAccountSigninTarget, type AccountMembershipRow } from '@/lib/identity/signin-target';
+import { recordStaffLogin } from '@/lib/auth/record-staff-login';
 
 interface AccountSigninInput {
   headers: Headers;
@@ -119,7 +120,7 @@ export async function authenticateAccountPassword(
   }
 }
 
-/** The stamps every successful account sign-in leaves: last login, audit row, auth event. */
+/** The stamps every successful account sign-in leaves: last login (account + staff), audit row, auth event. */
 export async function recordAccountSignin(args: {
   accountId: string;
   target: AccountMembershipRow;
@@ -127,10 +128,11 @@ export async function recordAccountSignin(args: {
   event: 'signin.account' | 'signin.v1';
   ip: string | null;
   userAgent: string | null;
-}): Promise<void> {
+}): Promise<{ firstSigninToday: boolean }> {
   void pool
     .query(`UPDATE accounts SET last_login_at = now() WHERE id = $1`, [args.accountId])
     .catch(() => {});
+  const { firstSigninToday } = await recordStaffLogin(pool, args.target.staff_id);
   await audit({
     staffId: args.target.staff_id,
     sid: args.session.sid,
@@ -152,4 +154,5 @@ export async function recordAccountSignin(args: {
     ip: args.ip,
     userAgent: args.userAgent,
   });
+  return { firstSigninToday };
 }

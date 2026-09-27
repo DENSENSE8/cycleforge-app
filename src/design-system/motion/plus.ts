@@ -13,14 +13,11 @@
  * - `AnimateText` — split-by-word/char spans carrying variants.
  * - `Typewriter` — natural-variance typing with `replace="type"` morphing;
  *   the Motion Lab's replayable prose demo.
- * - `ScrambleText` — character settle between phrase swaps; the AI phase
- *   line morphing from one tool phrase to the next.
  */
 export { AnimateNumber } from 'motion-plus/react';
-export { AnimateText, ScrambleText, Typewriter } from 'motion-plus/react';
+export { AnimateText, Typewriter } from 'motion-plus/react';
 export type {
   AnimateTextProps,
-  ScrambleTextProps,
   TypewriterProps,
   TypingSpeed,
 } from 'motion-plus/react';

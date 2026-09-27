@@ -5,11 +5,10 @@ import { useParams } from 'next/navigation';
 import { MobileDetailTopBar } from '@/components/mobile/redesign/MobileDetailTopBar';
 import { DetailAck, DetailSectionHeading } from '@/components/mobile/detail/DetailParts';
 import { RepairDocumentRow, RepairPrintLogList } from '@/components/mobile/repair/RepairPaperworkParts';
-import { StaffPrintStationPicker } from '@/components/mobile/print/StaffPrintStationPicker';
+import { StaffPrintStationPicker } from '@/components/ui/StaffPrintStationPicker';
 import { useRepairPaperwork, type RepairPaperDoc } from '@/components/mobile/repair/useRepairPaperwork';
 import { useStaffPrintBridgeClient } from '@/hooks/useStaffPrintBridgeClient';
 import { repairDocumentRole, staffPrintBlockedReason } from '@/lib/print/staff-print-bridge';
-import { ModeRegion } from '@/design-system/providers/ModeRegion';
 
 /** How long after an ack the station's own print-log write is expected to land. */
 const LOG_SETTLE_MS = 4_000;
@@ -47,7 +46,7 @@ function RepairPaperworkInner() {
   };
 
   return (
-    <ModeRegion mode="triage" className="flex min-h-screen flex-col bg-mode-panel">
+    <div className="flex min-h-screen flex-col bg-mode-panel">
       <MobileDetailTopBar
         backHref={`/m/rs/${repairId}`}
         subtitle="Paperwork"
@@ -129,7 +128,7 @@ function RepairPaperworkInner() {
           </>
         ) : null}
       </div>
-    </ModeRegion>
+    </div>
   );
 }
 

@@ -8,7 +8,6 @@ import { useAuth } from '@/contexts/AuthContext';
 import { unitStatusBadgeTone } from '@/lib/receiving/receiving-constants';
 import { conditionLabel } from '@/lib/conditions';
 import { Button } from '@/design-system/primitives';
-import { ModeRegion } from '@/design-system/providers/ModeRegion';
 import { MobileDetailTopBar } from '@/components/mobile/redesign/MobileDetailTopBar';
 import { DetailAck, DetailFact, DetailFacts, DetailNav, DetailSectionHeading } from '@/components/mobile/detail/DetailParts';
 import { useMobileUnit } from '@/components/mobile/unit/useMobileUnit';
@@ -117,9 +116,7 @@ export default function MobileUnitPage() {
   }
 
   return (
-    // Unit work is decide-and-record, like the repair hub: triage mode owns
-    // neutral geometry; the unit status tone stays semantic.
-    <ModeRegion mode="triage" className="flex min-h-screen flex-col bg-mode-panel">
+    <div className="flex min-h-screen flex-col bg-mode-panel">
       <MobileDetailTopBar
         subtitle="Unit"
         title={unit?.serial_number ?? (isLoading ? 'Loading…' : 'Not found')}
@@ -203,7 +200,7 @@ export default function MobileUnitPage() {
           ) : null}
         </>
       ) : null}
-    </ModeRegion>
+    </div>
   );
 }
 

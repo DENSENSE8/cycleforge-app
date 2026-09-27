@@ -36,6 +36,13 @@ interface Tier1PaintRoute {
  */
 const TIER1_PAINT_ORDER: readonly Tier1PaintRoute[] = [
   {
+    path: '/',
+    label: 'Daily',
+    lcpSurface: 'primary',
+    lcpHosts: ['src/features/home/DailyAgenda.tsx'],
+    markRoute: 'daily',
+  },
+  {
     path: '/shipping/orders',
     aliases: ['/dashboard'],
     label: 'To-ship desk',

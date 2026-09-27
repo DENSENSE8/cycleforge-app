@@ -9,8 +9,10 @@ import { aiPresence, aiTransition, useMotionPresence, useMotionTransition } from
 
 export interface AiTurnAction {
   id: string;
-  /** Accessible name and hover title ("Copy", "Regenerate", "Good answer"). */
+  /** Accessible name, and the tooltip unless `hint` says more ("Copy", "Regenerate"). */
   label: string;
+  /** Hover tooltip when it says more than the label ("Copy answer", "Ask again for a new answer"). */
+  hint?: string;
   icon: ReactNode;
   onClick: () => void;
   /** Toggle actions (thumbs): the chosen one reads as held. */
@@ -70,10 +72,11 @@ export function useAiActionStates() {
 
 /**
  * AiTurnActions — the quiet icon row under a transcript turn (Copy ·
- * Regenerate · 👍 · 👎 under an answer; Copy · Edit under the operator's
- * bubble). The row fades in while the turn is hovered or holds focus: the
+ * Regenerate · 👍 · 👎 · Thought process under an answer; Copy · Edit under the
+ * operator's bubble). Every action is an icon with a tooltip and an
+ * aria-label. The row fades in while the turn is hovered or holds focus: the
  * host turn carries `group/turn`. Pointer-less devices always show it.
- * `children` trail the buttons (a reason popover, a status line).
+ * `children` trail the buttons (a reason popover).
  */
 export function AiTurnActions({ actions, visible, align = 'start', ariaLabel = 'Message actions', className, children }: AiTurnActionsProps) {
   const glyph = useMotionPresence(aiPresence.glyph);
@@ -99,7 +102,7 @@ export function AiTurnActions({ actions, visible, align = 'start', ariaLabel = '
             key={action.id}
             type="button"
             aria-label={action.label}
-            title={action.label}
+            title={action.hint ?? action.label}
             aria-pressed={action.pressed}
             disabled={action.disabled || state === 'busy'}
             onClick={action.onClick}
@@ -108,8 +111,8 @@ export function AiTurnActions({ actions, visible, align = 'start', ariaLabel = '
             className={cn(
               'ds-raw-button',
               AI_ICON_BUTTON_CLASS,
-              AI_FOCUS_CLASS,
               'h-7 w-7',
+              AI_FOCUS_CLASS,
               action.pressed && 'bg-ai-hover text-ai-ink',
               state === 'error' && 'text-text-danger',
             )}

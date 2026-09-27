@@ -9,7 +9,6 @@ import { repairStatusOperatorLabel } from '@/lib/repair-status';
 import { pickupEntry } from '@/lib/repair/repair-history';
 import type { RepairTicketLink } from '@/lib/repair/ticket-link';
 import { formatMonthDayTimePST } from '@/utils/date';
-import { ModeRegion } from '@/design-system/providers/ModeRegion';
 
 function ticketLinkFace(link: RepairTicketLink | null): string {
   if (!link) return 'Checking…';
@@ -41,7 +40,7 @@ function RepairRecordInner() {
   const history = [...(repair?.status_history ?? [])].reverse();
 
   return (
-    <ModeRegion mode="triage" className="flex min-h-screen flex-col bg-mode-panel">
+    <div className="flex min-h-screen flex-col bg-mode-panel">
       <MobileDetailTopBar backHref={`/m/rs/${repairId}`} subtitle="Record" title={rsCode} mono />
 
       <div className="flex-1 divide-y divide-mode-rule">
@@ -136,7 +135,7 @@ function RepairRecordInner() {
           </>
         ) : null}
       </div>
-    </ModeRegion>
+    </div>
   );
 }
 

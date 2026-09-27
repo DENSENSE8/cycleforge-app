@@ -13,6 +13,17 @@ export interface AssistantMention {
   label: string;
 }
 
+/**
+ * A file dropped on the composer, already uploaded. Per-message like a
+ * mention: `id` is the stored row (`product_manuals.id` for `product_manual`).
+ */
+export interface AssistantAttachment {
+  id: number;
+  kind: 'product_manual';
+  name: string;
+  mime: string;
+}
+
 export interface AssistantPageContext {
   /** Route/page identity, e.g. 'operations', 'studio', 'packer-station'. */
   page: string;
@@ -29,6 +40,8 @@ export interface AssistantPageContext {
   skill?: string | null;
   /** `@` references on THIS message only — see {@link AssistantMention}. */
   mentions?: AssistantMention[] | null;
+  /** Files uploaded for THIS message only — see {@link AssistantAttachment}. */
+  attachments?: AssistantAttachment[] | null;
 }
 
 interface RegisteredContext {

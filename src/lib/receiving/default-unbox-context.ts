@@ -17,6 +17,8 @@ export const DEFAULT_UNBOX_CONTEXT: ReceivingModeContext = {
   incomingPage: 1,
   incomingSource: 'all',
   trackingIn: [],
+  refIn: [],
+  incomingExceptions: false,
   isDeliveredUnscannedFacet: false,
   isDeliveredNotUnboxedFacet: false,
   staffFilterId: null,

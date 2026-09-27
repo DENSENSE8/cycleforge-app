@@ -30,7 +30,6 @@ import { repairMediaTimeline } from '@/lib/repair/repair-photos';
 import { formatMegabytes } from '@/lib/photos/video-upload-rules';
 import { Button } from '@/design-system/primitives';
 import { DetailDock, type DetailDockVerb } from '@/design-system/components/DetailDock';
-import { ModeRegion } from '@/design-system/providers/ModeRegion';
 import { formatMonthDayTimePST } from '@/utils/date';
 
 const plural = (n: number, one: string) => (n === 1 ? `1 ${one}` : `${n} ${one}s`);
@@ -165,7 +164,7 @@ function RepairPhotosInner() {
   };
 
   return (
-    <ModeRegion mode="triage" className="flex min-h-screen flex-col bg-mode-panel">
+    <div className="flex min-h-screen flex-col bg-mode-panel">
       <MobileDetailTopBar
         backHref={`/m/rs/${repairId}`}
         subtitle="Photos"
@@ -335,7 +334,7 @@ function RepairPhotosInner() {
         verbs={dockVerbs}
         onVerb={onDockVerb}
       />
-    </ModeRegion>
+    </div>
   );
 }
 

@@ -1,14 +1,13 @@
 'use client';
 
-/** Incoming's chrome, as DATA — the same job {@link useToShipChrome} does for To-ship. */
+/**
+ * Incoming's chrome, as DATA — the same job {@link useToShipChrome} does for To-ship.
+ * Delivery state is not here: it is the status chips' (`IncomingStatusChips`).
+ */
 
 import { useCallback, useMemo } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import type { DataTableFilterOption } from '@/components/tables/DataTable';
-import {
-  INCOMING_DELIVERY_STATE_FACE,
-  INCOMING_HUNT_TILE_ORDER,
-} from '@/lib/receiving/incoming-delivery-state-face';
 import { receivingSurfaceBasePath } from '@/lib/receiving/surface-path';
 
 const SOURCE_OPTIONS = [
@@ -28,7 +27,6 @@ export function useIncomingTableChrome(): {
   const searchParams = useSearchParams();
   const base = receivingSurfaceBasePath(pathname);
 
-  const state = (searchParams.get('state') || '').trim().toUpperCase();
   const inbound = (searchParams.get('inbound') || '').trim().toLowerCase();
 
   const replaceParams = useCallback(
@@ -43,34 +41,22 @@ export function useIncomingTableChrome(): {
   );
 
   const filterOptions = useMemo<DataTableFilterOption[]>(
-    () => [
-      ...INCOMING_HUNT_TILE_ORDER.map((id) => ({
-        id,
-        group: 'Delivery',
-        label: INCOMING_DELIVERY_STATE_FACE[id].tileLabel,
-        active: state === id,
-      })),
-      ...SOURCE_OPTIONS.map((option) => ({
+    () =>
+      SOURCE_OPTIONS.map((option) => ({
         id: `source:${option.id}`,
         group: 'Source',
         label: option.label,
         active: inbound === option.id,
       })),
-    ],
-    [state, inbound],
+    [inbound],
   );
 
   const onToggle = useCallback(
     (id: string) => {
+      const src = id.slice('source:'.length);
       replaceParams((params) => {
-        if (id.startsWith('source:')) {
-          const src = id.slice('source:'.length);
-          if (params.get('inbound') === src) params.delete('inbound');
-          else params.set('inbound', src);
-          return;
-        }
-        if (params.get('state') === id) params.delete('state');
-        else params.set('state', id);
+        if (params.get('inbound') === src) params.delete('inbound');
+        else params.set('inbound', src);
       });
     },
     [replaceParams],
@@ -78,7 +64,6 @@ export function useIncomingTableChrome(): {
 
   const onClearAll = useCallback(() => {
     replaceParams((params) => {
-      params.delete('state');
       params.delete('inbound');
     });
   }, [replaceParams]);

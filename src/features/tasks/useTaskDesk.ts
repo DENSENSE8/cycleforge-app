@@ -3,7 +3,7 @@
 /** Data + writes for the task desk — `work_assignments` rows handed to a person. */
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { queryOptions, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   sortTaskDeskRows,
   taskDeskRowFromWire,
@@ -52,6 +52,20 @@ async function readJson(res: Response): Promise<Record<string, unknown>> {
   return data;
 }
 
+/** Key + fetcher for one lane × scope of the desk — shared by the hook and BootGate's welcome warm-up. */
+export function taskDeskQueryOptions(lane: TaskDeskLane, scope: TaskDeskScope = 'mine') {
+  return queryOptions({
+    queryKey: ['tasks', 'desk', lane, scope] as const,
+    queryFn: async (): Promise<TaskDeskWireRow[]> => {
+      const params = new URLSearchParams({ lane, ...SCOPE_PARAMS[scope] });
+      const res = await fetch(`/api/tasks?${params}`, { credentials: 'same-origin' });
+      const data = (await readJson(res)) as unknown as TaskDeskListPayload;
+      return data.tasks ?? [];
+    },
+    staleTime: 0,
+  });
+}
+
 export function useTaskDesk(lane: TaskDeskLane, scope: TaskDeskScope = 'mine') {
   const queryClient = useQueryClient();
 
@@ -61,16 +75,7 @@ export function useTaskDesk(lane: TaskDeskLane, scope: TaskDeskScope = 'mine') {
     return () => window.clearInterval(id);
   }, []);
 
-  const query = useQuery({
-    queryKey: ['tasks', 'desk', lane, scope],
-    queryFn: async (): Promise<TaskDeskWireRow[]> => {
-      const params = new URLSearchParams({ lane, ...SCOPE_PARAMS[scope] });
-      const res = await fetch(`/api/tasks?${params}`, { credentials: 'same-origin' });
-      const data = (await readJson(res)) as unknown as TaskDeskListPayload;
-      return data.tasks ?? [];
-    },
-    staleTime: 0,
-  });
+  const query = useQuery(taskDeskQueryOptions(lane, scope));
 
   const rows: TaskDeskRow[] = useMemo(
     () => sortTaskDeskRows((query.data ?? []).map(taskDeskRowFromWire)),

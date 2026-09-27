@@ -171,6 +171,8 @@ export function useStaffPrintBridgeClient({ active = true }: { active?: boolean 
   return {
     /** Every station heard from, this device excluded, sorted by name. */
     stations,
+    /** The station this staffer last picked on this device (may be unheard yet). */
+    rememberedId,
     /** The station jobs go to right now (remembered pick, else the only live one). */
     target,
     /** Clock the roster's liveness is judged against; advances on each poll. */

@@ -203,10 +203,10 @@ function useStaffPrintBridgeHost() {
       if (job.grain === 'tote' && job.tote) {
         const copies = platesPerTote(job.tote.copiesPerSide);
         try {
-          const result = job.tote.code
+          const result = job.tote.codes
             ? await printHandlingUnitLabelRun({
                 copies,
-                boxes: [toteReprintFromTyped(job.tote.code)],
+                boxes: job.tote.codes.map(toteReprintFromTyped),
                 onProgress,
               })
             : await printHandlingUnitLabelRun({
@@ -215,6 +215,8 @@ function useStaffPrintBridgeHost() {
                 mint: (n) => mintTotesForPrint(n, job.request_id),
                 onProgress,
               });
+          // A one-plate run prints without ticking; the sender still hears it finish.
+          if (result.status === 'printed') onProgress(result.count, result.count);
           if (result.status === 'mint_failed') {
             toast.error(result.error || 'Could not mint totes — nothing printed');
           }

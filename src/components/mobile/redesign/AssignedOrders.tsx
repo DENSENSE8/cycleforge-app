@@ -9,18 +9,16 @@
 
 import { Suspense } from 'react';
 import { Inset } from '@/design-system/primitives';
-import { ModeRegion } from '@/design-system/providers/ModeRegion';
 import { TOKENS } from '@/components/mobile/redesign/DesignSystem';
 import { MobileToShipQueue } from '@/components/mobile/redesign/MobileToShipQueue';
 
 /**
- * The industrial region lives here, not on a route file, so `/m/orders` (a
- * bare re-export) and `/m/work` resolve the same `*-mode-*` tokens the
- * ported ledger record reads.
+ * The route's mode comes from src/lib/routing/mode-registry.ts (industrial for
+ * `/m/orders` and `/m/work`).
  */
 export default function RedesignedMobileAssignedOrders() {
   return (
-    <ModeRegion mode="industrial" className={`h-full overflow-hidden ${TOKENS.colors.background}`}>
+    <div className={`h-full overflow-hidden ${TOKENS.colors.background}`}>
       <Suspense
         fallback={
           <Inset space="field">
@@ -30,6 +28,6 @@ export default function RedesignedMobileAssignedOrders() {
       >
         <MobileToShipQueue />
       </Suspense>
-    </ModeRegion>
+    </div>
   );
 }

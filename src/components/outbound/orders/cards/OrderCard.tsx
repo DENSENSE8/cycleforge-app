@@ -3,9 +3,9 @@
 /**
  * One ORDER CARD on the To-ship triage list (owner 2026-09-27, BRIEF §13).
  *
- *   ┃ ☐  #114-2233445-6677889 · eBay cyclegear              ● Due today
+ *   ┃ ☐  #114-2233445-6677889 ↗ · eBay cyclegear · Jane Doe     Listing ↗  ● Due today
  *   ┃ ⚠  [photo] Shimano Deore XT M8100 12-speed rear derailleur
- *   ┃           ×1 · Used – Good · Stock 3 · Bin A-14 · $89.00   +2 items ▾ (MG)
+ *   ┃           ×1 · Used – Good · Stock 3 · SKU-123 · Bin A-14 · $89.00   +2 items ▾ (MG)
  *
  * The rail and the status icon wear the order's worst lifecycle state.
  * Hovering the status icon lists every line (what is short, where it sits);
@@ -24,11 +24,11 @@ import {
   type ReactNode,
 } from 'react';
 import { AnimatePresence, motion, type Variants } from 'motion/react';
-import { ChevronDown, MapPin, MessageSquare, Package } from '@/components/Icons';
+import { ChevronDown, ExternalLink, MapPin, MessageSquare, Package } from '@/components/Icons';
 import { Popover, PopoverAnchor, PopoverContent } from '@/design-system/primitives/radix-popover';
 import { BrandIdentityDot } from '@/components/ui/grid-cells';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
-import { OrderNumberMenuChip } from '@/components/ui/OrderNumberMenuChip';
+import { OrderIdChip } from '@/components/ui/CopyChip';
 import { StaffAvatar } from '@/components/identity';
 import { LIFECYCLE_GLYPH } from '@/design-system/components/record-ledger/LifecycleCode';
 import { LIFECYCLE, LIFECYCLE_CLASSES, type LifecycleState } from '@/design-system/tokens/lifecycle';
@@ -40,9 +40,10 @@ import type { ShippedOrder } from '@/lib/neon/orders-queries';
 import type { OrderRecordMode } from '@/lib/selection-context/order-inspector-context';
 import type { OrderCardLine, OrderCardModel, OrderCardSlaTone } from '@/lib/orders/order-card-model';
 import type { QueueRowClickEvent } from '@/components/dashboard/orders-queue/queue-row-click';
-import { marketplaceOrderUrl } from '@/utils/order-platform';
+import { ListingLinkEditor, OrderAdminLinkAction } from '../order-link-editors';
 import { cn } from '@/utils/_cn';
 import { OrderCardActionMenu } from './OrderCardActionMenu';
+import { OrderCardPeek } from './OrderCardPeek';
 
 const SPRING = { type: 'spring', stiffness: 460, damping: 34, mass: 0.8 } as const;
 const SOFT_SPRING = { type: 'spring', stiffness: 260, damping: 30 } as const;
@@ -129,7 +130,9 @@ function CardCheck({
         event.stopPropagation();
         onToggle({ shiftKey: event.shiftKey });
       }}
-      className={cn('group/check relative z-10 -m-1.5 flex size-8 items-center justify-center rounded-lg', focusRing('control'))}
+      // Hit box = the visible square (owner 2026-09-27): a near-miss lands on
+      // the card, which opens the order instead of checking it.
+      className={cn('group/check pointer-events-auto relative z-10 flex size-[18px] items-center justify-center rounded-[5px]', focusRing('control'))}
     >
       <motion.span
         animate={on || mixed ? { scale: [1, 1.22, 1] } : { scale: 1 }}
@@ -201,19 +204,17 @@ function CardPhoto({ line, size }: { line: OrderCardLine; size: 'lg' | 'sm' }) {
         onPointerLeave={peek.leave}
         className="w-auto overflow-hidden rounded-2xl border-0 p-0 shadow-elev-overlay"
       >
-        <motion.figure
+        {/* The photo alone (owner 2026-09-27): no title / SKU caption, and the
+            box takes the image's own aspect — no letterbox bars. */}
+        <motion.img
           initial={{ opacity: 0, scale: 0.9, filter: 'blur(4px)' }}
           animate={{ opacity: 1, scale: 1, filter: 'blur(0px)' }}
           transition={SPRING}
           style={{ transformOrigin: 'var(--radix-popover-content-transform-origin)' }}
-          className="w-72"
-        >
-          {line.thumbUrl ? <img src={line.thumbUrl} alt={line.title} className="aspect-square w-full bg-surface-sunken object-contain" /> : null}
-          <figcaption className="space-y-0.5 px-3 py-2.5">
-            <p className="line-clamp-2 text-sm font-medium text-text-default">{line.title}</p>
-            {line.sku ? <p className="font-mono text-xs text-text-muted">{line.sku}</p> : null}
-          </figcaption>
-        </motion.figure>
+          src={line.thumbUrl ?? undefined}
+          alt={line.title}
+          className="block h-auto max-h-80 w-auto max-w-72"
+        />
       </PopoverContent>
     </Popover>
   );
@@ -250,6 +251,14 @@ function LineFacts({ line, className }: { line: OrderCardLine; className?: strin
           Stock {line.stock ?? '—'}
         </span>
       )}
+      {line.sku ? (
+        <>
+          <Sep />
+          <span className="font-mono text-xs text-text-muted" title="SKU">
+            {line.sku}
+          </span>
+        </>
+      ) : null}
       <Sep />
       <span className={cn('inline-flex min-w-0 items-center gap-1', !line.bin.path && 'text-text-faint')} title={line.bin.path ?? undefined}>
         <MapPin className="size-3 shrink-0" aria-hidden />
@@ -296,7 +305,7 @@ function StatusGlyph({ model }: { model: OrderCardModel }) {
           data-testid="order-card-status"
           role="img"
           aria-label={STATUS_MEANING[model.state]}
-          className={cn('relative z-10 -m-1 flex size-7 items-center justify-center', tone.text)}
+          className={cn('pointer-events-auto relative z-10 -m-1 flex size-7 items-center justify-center', tone.text)}
         >
           <Glyph className="size-4" />
         </span>
@@ -321,7 +330,7 @@ function StatusGlyph({ model }: { model: OrderCardModel }) {
           }}
           variants={GLYPH_VARIANTS}
           transition={{ duration: 0.45 }}
-          className={cn('relative z-10 -m-1 flex size-7 items-center justify-center rounded-lg', tone.text, focusRing('control'))}
+          className={cn('pointer-events-auto relative z-10 -m-1 flex size-7 items-center justify-center rounded-lg', tone.text, focusRing('control'))}
         >
           <Glyph className="size-4" />
           {model.outOfStockCount > 0 && model.lines.length > 1 ? (
@@ -404,12 +413,24 @@ export interface OrderCardProps {
   enterIndex: number | null;
   mode: OrderRecordMode;
   packer: { id: number | null; name: string | null; colorHex: string | null };
-  onRowAction: (record: ShippedOrder, event?: QueueRowClickEvent) => void;
+  /**
+   * The card body: opens the order's record — never checks it, even with a
+   * check-set live (owner 2026-09-27). Only the checkbox checks.
+   */
+  onOpen: (record: ShippedOrder, event?: QueueRowClickEvent) => void;
   onToggleSelect: (record: ShippedOrder, event: { shiftKey: boolean }) => void;
   onToggleGroup: (ids: readonly number[], checked: boolean) => void;
   onToggleExpand: (key: string) => void;
   onMenuDone: () => void;
   onOpenLabels?: (record: ShippedOrder) => void;
+  /** Quick look (Space) is unfolded under this card. */
+  peekOpen: boolean;
+  onTogglePeek: (key: string) => void;
+  todayKey: string;
+  /** Loaded orders whose lines carry the lead line's SKU (this one included); ≥ 2 shows the batch chip. */
+  skuShared: number;
+  /** Check every loaded order carrying this SKU — one pick trip. */
+  onSelectSku: (sku: string) => void;
 }
 
 export const OrderCard = memo(function OrderCard({
@@ -421,12 +442,17 @@ export const OrderCard = memo(function OrderCard({
   enterIndex,
   mode,
   packer,
-  onRowAction,
+  onOpen,
   onToggleSelect,
   onToggleGroup,
   onToggleExpand,
   onMenuDone,
   onOpenLabels,
+  peekOpen,
+  onTogglePeek,
+  todayKey,
+  skuShared,
+  onSelectSku,
 }: OrderCardProps) {
   const [lead, ...rest] = model.lines;
   const channel = useOrderChannel()(model.orderId, model.accountSource);
@@ -445,7 +471,7 @@ export const OrderCard = memo(function OrderCard({
 
   if (!lead) return null;
 
-  const platformFace = channel.shortLabel || channel.label;
+  const platformFace = channel.label;
   const slaNode: ReactNode = (
     <span title={model.sla.tip ?? undefined} className={cn('flex shrink-0 items-center gap-1.5 text-[13px] tabular-nums', SLA_TONE_CLASS[model.sla.tone])}>
       <span className="relative flex size-2">
@@ -493,7 +519,7 @@ export const OrderCard = memo(function OrderCard({
           aria-current={open || undefined}
           data-testid="order-card-open"
           onClick={(event) =>
-            onRowAction(model.lead, {
+            onOpen(model.lead, {
               shiftKey: event.shiftKey,
               metaKey: event.metaKey,
               ctrlKey: event.ctrlKey,
@@ -501,6 +527,13 @@ export const OrderCard = memo(function OrderCard({
               target: event.target,
             })
           }
+          // Space = quick look; Enter (the button's own key) opens the record.
+          onKeyDown={(event) => {
+            if (event.key !== ' ' || event.repeat) return;
+            event.preventDefault();
+            onTogglePeek(model.key);
+          }}
+          aria-expanded={peekOpen}
           className={cn('absolute inset-0 z-0 cursor-pointer rounded-2xl', focusRing('control'))}
         />
 
@@ -515,7 +548,7 @@ export const OrderCard = memo(function OrderCard({
         />
 
         {/* Checkbox, status icon beneath */}
-        <div className="relative z-10 flex w-7 shrink-0 flex-col items-center gap-3 pt-px">
+        <div className="pointer-events-none relative z-10 flex w-7 shrink-0 flex-col items-center gap-3 pt-px">
           <CardCheck checked={checked} label={`Select order ${model.orderId}`} onToggle={toggleCheck} />
           <StatusGlyph model={model} />
         </div>
@@ -524,25 +557,50 @@ export const OrderCard = memo(function OrderCard({
         <div className="pointer-events-none relative z-10 ml-3 flex min-w-0 flex-1 flex-col gap-2">
           {/* Line 1 — order number · platform …… SLA */}
           <div className="flex min-w-0 items-center gap-2">
-            <span className="pointer-events-auto min-w-0 shrink text-sm font-semibold tabular-nums text-text-default" onClick={stop} onPointerDown={stop}>
-              <OrderNumberMenuChip
-                value={model.orderId}
-                platformLabel={channel.meta.value ? channel.meta.label : null}
-                openHref={marketplaceOrderUrl(model.orderId, model.accountSource)}
-                face="full"
-                plain
-                dense
+            <span className="pointer-events-auto inline-flex min-w-0 shrink items-center gap-0.5 text-sm font-semibold tabular-nums text-text-default" onClick={stop} onPointerDown={stop}>
+              {/* Copy on hover + click (the chip's own bubble); the link icon always sits to its right. */}
+              <OrderIdChip value={model.orderId} display={model.orderId} plain dense truncateDisplay={false} fitDisplayWidth platformLabel={platformFace || null} />
+              <OrderAdminLinkAction
+                orderId={model.orderId}
+                href={model.orderHref}
+                storedUrl={model.adminUrl}
+                ids={model.ids}
+                platformLabel={channel.label}
               />
             </span>
             {platformFace ? (
-              <span className="inline-flex min-w-0 items-center gap-1.5 text-[13px] text-text-muted" title={channel.connectionName ?? channel.label}>
+              <span className="inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap text-[13px] text-text-muted" title={channel.connectionName ?? channel.label}>
                 <BrandIdentityDot {...platformMetaBrandDot(channel.meta)} />
-                <span className="truncate">{platformFace}</span>
+                <span>{platformFace}</span>
                 {model.fba ? <span className="rounded-md bg-surface-sunken px-1 text-[11px] font-medium text-text-muted">FBA</span> : null}
+              </span>
+            ) : null}
+            {model.buyerName ? (
+              // The first thing line 1 gives up: shrinks (×100) and truncates before the order number does.
+              <span data-testid="order-card-buyer" className="min-w-0 shrink-[100] truncate text-[13px] text-text-muted" title={model.buyerName}>
+                {model.buyerName}
               </span>
             ) : null}
             {model.urgent && model.state !== 'urgent' ? (
               <span className="rounded-full bg-surface-warning px-1.5 py-px text-[11px] font-semibold text-text-warning">Urgent</span>
+            ) : null}
+            {skuShared > 1 && lead.sku ? (
+              <button
+                type="button"
+                data-testid="order-card-sku-batch"
+                title={`Check all ${skuShared} orders with SKU ${lead.sku} — one pick trip`}
+                onPointerDown={stop}
+                onClick={(event) => {
+                  event.stopPropagation();
+                  onSelectSku(lead.sku!);
+                }}
+                className={cn(
+                  'pointer-events-auto inline-flex shrink-0 items-center gap-1 rounded-full bg-surface-info px-2 py-px text-[11px] font-semibold text-text-info transition-transform hover:scale-105',
+                  focusRing('control'),
+                )}
+              >
+                SKU in {skuShared} orders
+              </button>
             ) : null}
             {model.buyerNote ? (
               <span className="pointer-events-auto text-text-muted" title={model.buyerNote}>
@@ -550,6 +608,33 @@ export const OrderCard = memo(function OrderCard({
               </span>
             ) : null}
             <span className="ml-auto" />
+            {model.listingHref ? (
+              <a
+                href={model.listingHref}
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={stop}
+                onPointerDown={stop}
+                data-testid="order-card-open-listing"
+                aria-label={model.listingItem ? `Open listing ${model.listingItem} in a new tab` : 'Open listing in a new tab'}
+                className={cn('pointer-events-auto inline-flex shrink-0 items-center gap-1 rounded-md px-1 text-[13px] text-text-muted hover:bg-surface-sunken hover:text-text-default', focusRing('control'))}
+              >
+                Listing
+                <ExternalLink aria-hidden className="size-3.5" />
+              </a>
+            ) : (
+              <span className="pointer-events-auto">
+                <ListingLinkEditor
+                  face="label"
+                  currentItem={null}
+                  targets={model.lines.map((line) => ({
+                    id: line.id,
+                    itemNumber: line.record.item_number ?? null,
+                    accountSource: line.record.account_source ?? null,
+                  }))}
+                />
+              </span>
+            )}
             {slaNode}
           </div>
 
@@ -624,6 +709,9 @@ export const OrderCard = memo(function OrderCard({
                 ))}
               </motion.ul>
             ) : null}
+          </AnimatePresence>
+          <AnimatePresence initial={false}>
+            {peekOpen ? <OrderCardPeek model={model} todayKey={todayKey} /> : null}
           </AnimatePresence>
         </div>
 

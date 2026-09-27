@@ -13,6 +13,10 @@ export const RECEIVING_VIEWS = [
   'needs-test',
   'testing_opened',
   'viewed',
+  /** Every line a pasted `?ref_in=` list names, whatever its lane (Inbound reconciliation). */
+  'reconcile',
+  /** Inbound lines that need a person (`incomingExceptionCodeSql`) — the Exceptions view. */
+  'exceptions',
 ] as const;
 
 export type ReceivingView = (typeof RECEIVING_VIEWS)[number];

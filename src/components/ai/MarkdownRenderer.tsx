@@ -140,9 +140,16 @@ function ListItem({ children }: { children?: ReactNode }) {
 export default function MarkdownRenderer({
   content,
   variant = 'prose',
+  renderInlineCode,
 }: {
   content: string;
   variant?: MarkdownVariant;
+  /**
+   * Replaces an inline code span (single backticks) — the AI answer turns a
+   * span holding one of the turn's identifiers into a copy chip. Return null
+   * to keep the plain code face.
+   */
+  renderInlineCode?: (text: string) => ReactNode | null;
 }) {
   const skin = variant === 'ai' || variant === 'ai-bubble' ? AI_SKIN : HOUSE_SKIN;
   const components = useMemo<Components>(() => {
@@ -171,6 +178,8 @@ export default function MarkdownRenderer({
           const language = /language-([\w-]+)/.exec(cls)?.[1] ?? '';
           return <CodeBlock language={language}>{children}</CodeBlock>;
         }
+        const replaced = typeof children === 'string' ? renderInlineCode?.(children) : null;
+        if (replaced) return replaced;
         return (
           <code className={skin.code} {...props}>
             {children}
@@ -195,7 +204,7 @@ export default function MarkdownRenderer({
         </a>
       ),
     };
-  }, [variant, skin]);
+  }, [variant, skin, renderInlineCode]);
 
   return (
     <SkinContext.Provider value={skin}>

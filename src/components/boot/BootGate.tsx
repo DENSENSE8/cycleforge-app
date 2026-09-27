@@ -4,6 +4,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useQueryClient, type QueryClient } from '@tanstack/react-query';
 import { BootSplash } from '@/components/boot/BootSplash';
+import { WelcomeAssembly, WelcomeReplayButton } from '@/components/boot/WelcomeAssembly';
 
 // useLayoutEffect warns during SSR; fall back to useEffect there. On the client
 // the layout variant is what we want — it runs before the browser paints, so we
@@ -24,6 +25,13 @@ interface BootGateProps {
   timeoutMs?: number;
   /** Fade-out duration for the splash, in ms. */
   fadeMs?: number;
+  /**
+   * When the hold fires (fresh sign-in), play the choreographed WelcomeAssembly
+   * instead of `splash`: children mount when the timeline finishes or is
+   * skipped, while `prefetch` warms the cache in parallel. Dev builds also get
+   * a persistent replay button.
+   */
+  welcome?: boolean;
 }
 
 /** Holds a single loading splash over a route until its above-the-fold data is warmed into the React Query cache, then reveals the page… */
@@ -35,6 +43,7 @@ export function BootGate({
   minDurationMs = 550,
   timeoutMs = 8000,
   fadeMs = 320,
+  welcome = false,
 }: BootGateProps) {
   const queryClient = useQueryClient();
   // `revealed` = children are mounted (behind the splash).
@@ -47,6 +56,9 @@ export function BootGate({
   // React StrictMode's dev mount→unmount→mount doesn't consume the one-shot
   // sign-in flag twice — the second consume would read false and skip the hold.
   const holdDecisionRef = useRef<boolean | null>(null);
+  // Welcome overlay mount + remount key (dev replay restarts the timeline).
+  const [introUp, setIntroUp] = useState(false);
+  const [introNonce, setIntroNonce] = useState(0);
 
   useIsoLayoutEffect(() => {
     setPortalEl(document.body);
@@ -75,6 +87,16 @@ export function BootGate({
       return () => {
         cancelled = true;
         timers.forEach(clearTimeout);
+      };
+    }
+
+    if (welcome) {
+      // The welcome timeline owns the reveal (onReveal); the CSS splash never shows.
+      setSplashMounted(false);
+      setIntroUp(true);
+      Promise.resolve(prefetch(queryClient)).catch(() => {});
+      return () => {
+        cancelled = true;
       };
     }
 
@@ -115,6 +137,27 @@ export function BootGate({
   return (
     <>
       {revealed && children}
+      {portalEl &&
+        introUp &&
+        createPortal(
+          <WelcomeAssembly
+            key={introNonce}
+            onReveal={() => setRevealed(true)}
+            onExited={() => setIntroUp(false)}
+          />,
+          portalEl,
+        )}
+      {portalEl &&
+        welcome &&
+        createPortal(
+          <WelcomeReplayButton
+            onReplay={() => {
+              setIntroNonce((n) => n + 1);
+              setIntroUp(true);
+            }}
+          />,
+          portalEl,
+        )}
       {portalEl &&
         splashMounted &&
         createPortal(

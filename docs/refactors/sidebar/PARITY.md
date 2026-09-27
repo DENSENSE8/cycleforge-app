@@ -629,6 +629,19 @@ Nav: `src/lib/sidebar-navigation.ts:1300-1314` (children Studio `/studio`, Rules
 | catalog | count/badge | "N templates" / "N pending" | derived | `CommunityCatalogWorkbench.tsx:106-108`; `src/components/studio/CatalogReviewWorkbench.tsx:88-90` | |
 | catalog | action | Review: select (local state), Approve for catalog / Reject | POST `/api/studio/catalog/submissions/:id/review` | `CatalogReviewWorkbench.tsx:46,60-76,194-215` | |
 
+### ai-chat — Chat
+
+Nav: `src/lib/sidebar-navigation.ts` `SIDEBAR_PAGE_NAV` entry (no children) + APP row, FIRST top row (operator 2026-09-27). Page `src/app/ai-chat/page.tsx` → `SessionSurface`; `AiChatNavBridge` registers the `ai-chat:new` intent and publishes the live thread (`usePublishNavLiveRecent('assistant.sessions', …)`). Contract: `NAV_PAGE_DECLS['ai-chat']` (`recentsPanel`, Find `desk-store`, recents `assistant.sessions`, action `chat.new`); rollout `contextual`. The old UI below lives only in MasterNav, which since 2026-09-27 is the phone-width drawer only.
+
+| Kind | Item | URL param / allowed values / store | file:line | Notes |
+|---|---|---|---|---|
+| action | `+` New chat trailing the Chat row → `AI_CHAT_NEW_EVENT` then `/ai-chat?new=1` | `?new=1` (self-stripping) | `src/components/sidebar/master-nav/SidebarNavList.tsx:547-560` | `chat.new` → `+` on the `‹ Chat` back row (`NavPanelActions`), ⌘⇧O keycap on hover (the chat body's `useSessionHotkeys` chord) |
+| recents | Thread list under Chat (on `/ai-chat` only), recency groups, lit open thread, optimistic live thread | `GET /api/ai/chat-sessions` | `src/components/sidebar/master-nav/ChatSessionsNav.tsx:176-234` | `assistant.sessions` adapter (`listAssistantSessions`) |
+| rowAction | Rename (inline) | PATCH `/api/ai/chat-sessions/:id` `{ title }` | `ChatSessionsNav.tsx:74-80,150-158` | `rowActions.verbs` `rename` |
+| rowAction | Delete (soft) + 10 s Undo → restore | DELETE / PATCH `{ restore: true }` | `ChatSessionsNav.tsx:82-98,160-163` | `rowActions.verbs` `delete` |
+| paging | Show more (keyset) | `before=<nextBefore>` | `ChatSessionsNav.tsx:220-230` | `recents.paged`, response `nextBefore` |
+| filter | — (new) Find narrows the threads | desk store keyed `/ai-chat` → `q` | `src/lib/nav/recents/surfaces.ts` (`find`) | `/ai-chat` owns no route spec; nothing new in its URL |
+
 ### home — Daily
 
 Nav: `src/lib/sidebar-navigation.ts:833-836` (`deskChrome`, no children); APP twin `:285`. Page `src/app/page.tsx:6-14` → `src/features/home/HomeWorkspace.tsx:10-12` → `DailyAgenda`. Rail-less (`hasSidebarContextPanel('/')` false; comment `SidebarContextPanel.tsx:37-39`). Spec `HOME_ROUTE_PARAMS` declares only `mode, date, item, q, filter` (`query-mode-routes.ts:141-158`).

@@ -41,17 +41,14 @@ export const aiTransition = {
   press: { type: 'spring', visualDuration: 0.2, bounce: 0.25 },
   /** Opacity-only swaps. */
   fade: { type: 'tween', duration: 0.2, ease: [0.2, 0, 0, 1] },
-  /** The iris spinner / composer edge rotation — one turn, looped. */
-  irisSpin: { duration: 2.4, ease: 'linear', repeat: Infinity },
-  /** The active step's shimmer sweep, looped. */
+  /** A new thinking-line phrase wiping in, left to right. */
+  wipe: { type: 'tween', duration: 0.38, ease: [0.2, 0, 0, 1] },
+  /** The thinking line's left-to-right sweep (`AiTextShimmer`), looped. */
   shimmer: { duration: 1.6, ease: 'easeInOut', repeat: Infinity, repeatDelay: 0.2 },
 } as const satisfies Record<string, Transition>;
 
 /** Stagger between thinking-step rows entering together (seconds). */
 export const AI_STEP_STAGGER = 0.05;
-
-/** Motion+ `ScrambleText` settle time for the live phase line (seconds). */
-export const AI_PHASE_SCRAMBLE_DURATION = 0.45;
 
 export const aiPresence = {
   /** Transcript turn / artifact card mount. */

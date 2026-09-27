@@ -352,6 +352,7 @@ export const OrderIdChip = ({
   displayWidth = 'content',
   truncateDisplay = true,
   fitDisplayWidth = false,
+  disableTooltip = false,
 }: {
   value: string;
   display: string;
@@ -368,6 +369,8 @@ export const OrderIdChip = ({
   /** Grid tracks: keep last-8 fully visible (no `33…` ellipsis). */
   truncateDisplay?: boolean;
   fitDisplayWidth?: boolean;
+  /** Skip the hover bubble (host prints its own Open) — click still copies. */
+  disableTooltip?: boolean;
 }) => (
   <CopyChip
     value={value}
@@ -381,6 +384,7 @@ export const OrderIdChip = ({
     displayWidth={displayWidth}
     truncateDisplay={truncateDisplay}
     fitDisplayWidth={fitDisplayWidth}
+    disableTooltip={disableTooltip}
     // Empty → quiet em dash (resolveChipDisplay / 2B); disable copy so the button
     // stays full-opacity instead of the no-value disabled fade.
     disableCopy={isEmptyDisplayValue(value)}

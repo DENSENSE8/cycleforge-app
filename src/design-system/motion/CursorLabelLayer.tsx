@@ -46,6 +46,10 @@ export function CursorLabelLayer() {
     readCursorLabelServer,
   );
   const tooltip = cursorLabel?.text ?? null;
+  // The chord a trigger published with its label (`HoverTooltip shortcut`).
+  // Dropping it here hid every tooltip shortcut on desktop, where the label
+  // rides the cursor instead of the anchored bubble.
+  const chord = cursorLabel?.keys ?? null;
 
   // Tell triggers a follower exists to carry their label. Off → they fall
   // back to the anchored HoverTooltip bubble (floor, touch, reduced motion).
@@ -117,9 +121,9 @@ export function CursorLabelLayer() {
           ref={chipRef}
           data-testid="cursor-label-chip"
           style={{ x: labelX, y: labelY }}
-          className={cn(DROPDOWN_SHELL_CORNER, 'absolute left-0 top-0', tooltipChipClass())}
+          className={cn(DROPDOWN_SHELL_CORNER, 'absolute left-0 top-0', tooltipChipClass({ row: chord != null }))}
         >
-          <TooltipChipBody label={tooltip} />
+          <TooltipChipBody label={tooltip} chord={chord} />
         </motion.span>
       ) : null}
     </motion.div>

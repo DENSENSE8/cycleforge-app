@@ -86,6 +86,7 @@ const TOOL_ALIASES: Record<string, readonly string[]> = {
   resolve_support_ticket: ['support ticket', 'ticket scan', 'ticket number', 'the ticket'],
   get_operations_journey: ['what happened to', 'journey', 'full history', 'trace', 'timeline', 'cross-station'],
   get_order_lookup: ['order id', 'tracking number', 'look up order', 'specific order'],
+  get_order_documents: ['shipping label', 'packing slip', 'paperwork', 'invoice', 'order documents', 'label for order', 'slip for order', 'show me the label', 'pull up the label'],
   lookup_serial: ['serial return', 'shipped this serial', 'is this a return', 'return-intake', 'which order'],
   lookup_warranty_coverage: ['warranty', 'coverage', 'under warranty', 'when does the warranty'],
   list_warranty_claims: ['warranty claims', 'claims', 'claim status', 'open claims'],
@@ -162,6 +163,22 @@ const TOOL_ALIASES: Record<string, readonly string[]> = {
   execute_build_sandbox: ['build sandbox', 'run the build', 'sandbox'],
   commit_to_git: ['commit', 'git', 'branch'],
   revert_mutation: ['undo', 'revert', 'undo that', 'revert it'],
+  // The operator's own sentences for pairing a dropped file, plus the replies
+  // that confirm or cancel a pending link on the next turn.
+  link_manual_to_sku: [
+    'link this manual',
+    'link the manual',
+    'attach this manual',
+    'manual to sku',
+    'manual',
+    'link',
+    'attach',
+    'print outs',
+    'confirm',
+    'yes',
+    'go ahead',
+    'cancel the link',
+  ],
 };
 
 /** Words too common to carry routing signal. */
@@ -238,6 +255,11 @@ function hasWord(haystack: string, word: string): boolean {
 const RECALL_FLOOR: readonly { shape: RegExp; tool: string; why: string }[] = [
   { shape: /\btracking\b|\b1z[0-9a-z]{10,}\b/i, tool: 'get_order_lookup', why: 'a tracking number is an order question' },
   { shape: /\bord-\s?\d+\b/i, tool: 'get_order_lookup', why: 'ORD- is the order id shape' },
+  {
+    shape: /\b(shipping\s+labels?|packing\s+slips?|paperwork|invoices?)\b|\border\b[^.?!]*\b(labels?|slips?|documents?|docs?)\b|\b(labels?|slips?|documents?|docs?)\b[^.?!]*\border\b/i,
+    tool: 'get_order_documents',
+    why: 'an order\'s label / slip / paperwork is the order document reader, not document search or label printing',
+  },
   { shape: /\bserial\b|\bsn-\s?\w+\b/i, tool: 'lookup_serial', why: 'a serial is a unit question' },
   { shape: /\bdoc_\w+\b/i, tool: 'read_staff_document', why: 'doc_ is a document id — read it, do not search' },
   { shape: /\b(document|doc|docs|handbook|sop)\b/i, tool: 'search_staff_documents', why: 'document vocabulary must reach document search' },
@@ -245,6 +267,11 @@ const RECALL_FLOOR: readonly { shape: RegExp; tool: string; why: string }[] = [
   { shape: /\bsku-\w+\b|\bitem\s*(number|#)\b/i, tool: 'resolve_item_number', why: 'an item number is a resolution question' },
   { shape: /\bwhere\s+(is|are|do)\b|\bwhich\s+bins?\b|\b(sku|fnsku|asin|upc|gtin)\b|\bx00[a-z0-9]{7}\b|\bb0[a-z0-9]{8}\b/i, tool: 'locate_product', why: 'a where-is / identifier question is a location lookup' },
   { shape: /\b(bin|location|shelf|slot)\b/i, tool: 'list_location_contents', why: 'bin vocabulary must reach the bin reader' },
+  {
+    shape: /\b(link|attach|pair)\w*\b[^.?!]*\bmanuals?\b|\bmanuals?\b[^.?!]*\b(link|attach|pair|sku)\w*\b/i,
+    tool: 'link_manual_to_sku',
+    why: 'pairing a manual with a SKU is the manual link write, not a location lookup',
+  },
 ];
 
 /** Score awarded by a recall-floor hit — above any achievable alias total. */
@@ -266,6 +293,8 @@ export interface ToolSubsetQueryContext {
   mode?: string | null;
   station?: string | null;
   mentions?: ReadonlyArray<{ kind: 'order' | 'sku' | 'bin' }> | null;
+  /** Files uploaded with this message — their consumer must be callable. */
+  attachments?: ReadonlyArray<unknown> | null;
 }
 
 export interface ToolSubsetResult {
@@ -303,6 +332,7 @@ export function subsetAdvertisedTools(
   );
 
   const mentioned = new Set((context?.mentions ?? []).flatMap((m) => MENTION_TOOLS[m.kind] ?? []));
+  if ((context?.attachments ?? []).length > 0) mentioned.add('link_manual_to_sku');
   const mandatory: OpenAiFunctionTool[] = [];
   const ranked: Array<{ tool: OpenAiFunctionTool; score: number }> = [];
 

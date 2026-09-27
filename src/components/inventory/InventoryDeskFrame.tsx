@@ -3,7 +3,6 @@
 import type { ReactNode } from 'react';
 import { usePathname, useSearchParams } from 'next/navigation';
 import { DeskPageLayout } from '@/components/desk/DeskPageLayout';
-import { ModeRegion } from '@/design-system/providers/ModeRegion';
 
 /**
  * The record-ledger tabs:
@@ -23,10 +22,8 @@ export function InventoryDeskFrame({ children }: { children: ReactNode }) {
     return <DeskPageLayout className="h-full">{children}</DeskPageLayout>;
   }
   return (
-    <ModeRegion mode="triage" className="contents">
-      <DeskPageLayout className="h-full" stage="flush">
-        {children}
-      </DeskPageLayout>
-    </ModeRegion>
+    <DeskPageLayout className="h-full" stage="flush">
+      {children}
+    </DeskPageLayout>
   );
 }

@@ -49,11 +49,20 @@ A mode is what the operator is DOING in a region; it is orthogonal to theme.
 Coarse pointers raise hit floors to 48px, and page padding and body text where the registry says so.
 
 - **Nesting is by REGION, one level deep:** a page region plus at most one nested
-  region (e.g. the right rail). `ModeRegion` reports a third level in development.
+  region (e.g. the right rail). `ModeRegion` reports a third level in development;
+  a region re-declaring the mode it already sits in (a portalled dialog or sheet)
+  is not a new level.
   The scan bar and state colours (success/warning/danger/info/fulfillment) never change by mode.
-- **Mechanism:** wrap the region root in `<ModeRegion mode="…">`
-  (`providers/ModeRegion.tsx`; `useMode()` reads it). The registry generates
-  `[data-mode]` CSS, injected by `app/layout.tsx` as `<style id="app-mode-registry">`.
+- **Page mode is declared, not mounted:** `src/lib/routing/mode-registry.ts` maps
+  every route prefix to its mode (longest first; `mode-registry.test.ts` fails on an
+  undeclared page) and `RouteModeRegion`, mounted once in `AppShellSwitch`, applies
+  it. Pages do not mount a page-level `ModeRegion`. `runtime` routes (`/shipping`:
+  Floor ⇄ triage) declare the mode in their layout. Outside every region `:root`
+  carries the triage values.
+- **Mechanism:** `<ModeRegion mode="…">` for a nested region or a portal that
+  escapes the page's DOM (`providers/ModeRegion.tsx`; `useMode()` reads it). The
+  registry generates `[data-mode]` CSS, injected by `app/layout.tsx` as
+  `<style id="app-mode-registry">`.
   On light schemes the region remaps the neutral `--ds-color-*` vars, so existing
   `bg-surface-*` / `text-text-*` / `border-border-*` adopt the mode for free. Mode-only
   roles come from `rounded-mode(-pill)`, `p(x)-mode-page`, `min-h-mode-hit(-cta)`,

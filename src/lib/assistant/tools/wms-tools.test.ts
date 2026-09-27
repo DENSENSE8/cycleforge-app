@@ -1,6 +1,6 @@
 /**
  * DB-free tests for the WMS location tools: identifier classification and the
- * server-carried artifact (bins go to the panel AND into the model summary).
+ * server-carried artifact (bins go to the screen AND into the model summary).
  * Run: npx tsx --test src/lib/assistant/tools/wms-tools.test.ts
  */
 
@@ -43,23 +43,34 @@ function scripted(byMarker: Array<[RegExp, Array<Record<string, unknown>>]>) {
   return { deps, calls };
 }
 
-test('locate_product: stocked SKU → table on the panel, bins and qty in the model summary', async () => {
+test('locate_product: stocked SKU → table with a product header, bins and qty in the model summary', async () => {
   const { deps, calls } = scripted([
     [/WITH q AS/, [
-      { sku: '00066-P-2', via: 'sku', zoho_item_title: 'Bose Wave III Remote', catalog_product_title: 'marketplace title', location_id: 338, location: 'C-03-12-3', room: 'Zone 3', qty: 41 },
-      { sku: '00066-P-2', via: 'sku', zoho_item_title: 'Bose Wave III Remote', location_id: 402, location: 'C-03-16-3', room: 'Zone 3', qty: 1 },
+      { sku: '00066-P-2', via: 'sku', zoho_item_title: 'Bose Wave III Remote', catalog_product_title: 'marketplace title', fnsku: 'X00ABC1234', location_id: 338, location: 'C-03-12-3', room: 'Zone 3', qty: 41 },
+      { sku: '00066-P-2', via: 'sku', zoho_item_title: 'Bose Wave III Remote', fnsku: 'X00ABC1234', location_id: 402, location: 'C-03-16-3', room: 'Zone 3', qty: 1 },
     ]],
   ]);
   const res = await runAssistantTool('locate_product', { query: 'SKU 00066-P-2' }, ctx, deps);
   assert.equal(res.ok, true);
   const carried = splitToolArtifact(res.ok ? res.data : null);
-  assert.ok(carried, 'the location table rides to the panel without render_artifact');
+  assert.ok(carried, 'the location table rides to the screen without render_artifact');
   assert.equal(carried.tool, 'locate_product');
   assert.equal(carried.artifact.kind, 'table');
   assert.equal(carried.artifact.kind === 'table' && carried.artifact.rows.length, 2);
   // One SKU: it and its title (the Zoho item governs the marketplace title) head the table; rows are bins.
   assert.equal(carried.artifact.title, 'Where is 00066-P-2 · Bose Wave III Remote');
   assert.deepEqual(carried.artifact.kind === 'table' && carried.artifact.columns, ['Bin', 'Room', 'Qty']);
+  // The chat's header comes from the tool's data: the identity title, then the ids the operator copies.
+  assert.deepEqual(carried.artifact.kind === 'table' && carried.artifact.product, {
+    title: 'Bose Wave III Remote',
+    ids: [
+      { label: 'SKU', value: '00066-P-2' },
+      { label: 'FNSKU', value: 'X00ABC1234' },
+      { label: 'Bin', value: 'C-03-12-3' },
+      { label: 'Bin', value: 'C-03-16-3' },
+    ],
+  });
+  assert.doesNotMatch(carried.modelData.summary, /panel/i);
   assert.match(carried.modelData.summary, /42 units in 2 bins/);
   assert.match(carried.modelData.summary, /C-03-12-3: 41, C-03-16-3: 1/);
   // Cleaned value bound; org is always the first parameter and the ctx org.

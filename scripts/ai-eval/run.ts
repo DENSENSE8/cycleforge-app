@@ -139,8 +139,10 @@ async function ask(cookie: string, pin: Pin, sessionId: string, message: string)
       } else if (ev === 'ui_tool' && d.name === 'render_artifact') {
         out.artifacts.push({
           producedBy: d.input?.producedBy ?? 'model',
+          kind: d.input?.artifact?.kind,
           title: d.input?.artifact?.title,
           rows: d.input?.artifact?.rows?.length ?? 0,
+          documents: (d.input?.artifact?.documents ?? []).map((doc: { docType?: string }) => doc.docType ?? ''),
         });
       } else if (ev === 'done') {
         out.done = d;

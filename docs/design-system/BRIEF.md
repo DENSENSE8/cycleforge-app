@@ -329,6 +329,12 @@ the status icon lists every line with what is out of stock. One checked card →
 down from the card's right; two or more → the bar above the list becomes the bulk bar. No column
 header. Floor keeps the industrial ledger.
 
+**Changed (owner, 2026-09-27) — card line 1:** order number · ↗ (always-visible link to the
+platform's admin order page; no hover menu or hover bubble on the number, click still copies) ·
+full platform name (`channel.label`, never truncated) · buyer name (muted; the first thing to
+truncate) ······ **Listing ↗** (item number, else SKU, via `getExternalUrlByItemNumber`) · SLA.
+The shipping address stays off the card — it lives in the Space quick look and the record.
+
 ## Resolved 2026-09-24 (all six approved as written)
 
 1. **Packed = purple** via the `LIFECYCLE` map (§5).

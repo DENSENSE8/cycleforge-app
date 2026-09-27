@@ -28,6 +28,7 @@ import { sessionArtifactSchema, sanitizeSessionArtifact } from './ui-artifacts';
 import { listAssistantTools, runAssistantTool } from '@/lib/assistant/tools';
 import type { AssistantToolCtx, AssistantToolDef, AssistantToolDeps } from '@/lib/assistant/tools/types';
 import { buildWriteToolMap, dispatchToolCall } from '@/lib/assistant/tools/dispatch';
+import { accessModeAllowsUiTool, accessModeFragment, askOnlyRefusal } from '@/lib/assistant/access-mode';
 import {
   makeRenderArtifactCap,
   RENDER_ARTIFACT_CAP_PER_TURN,
@@ -108,7 +109,7 @@ export const UI_TOOLS: Anthropic.Tool[] = [
   {
     name: 'render_artifact',
     description:
-      'MANDATORY for data answers: whenever the user asks to SEE data — a list, table, timeline, ticket history, chart, or record — call this tool with that data INSTEAD of writing rows as text or a markdown table. The artifact renders on the view panel beside the chat. Source every value from a read-tool result you already ran; never invent identifiers or numbers. Kinds: table, timeline, ticket_thread, ticket_reply_draft (a reply you drafted — the USER sends it with Enter, you cannot send), chart (bar/line/donut aggregates), record (a link card for one entity), import_triage (a pasted-CSV order-import triage from triage_orders_csv — the user imports the accepted rows from the panel). For tables: every row object MUST be keyed by the exact column names you declare. After the tool returns "Rendered", write 1–3 sentences pointing at the panel — do not repeat the data in text. Every field is a plain string/number/boolean — no nested objects in table cells.',
+      'MANDATORY for data answers: whenever the user asks to SEE data — a list, table, timeline, ticket history, chart, or record — call this tool with that data INSTEAD of writing rows as text or a markdown table. Data renders inline in the chat, right above your answer; a document opens on the right. Source every value from a read-tool result you already ran; never invent identifiers or numbers. Kinds: table, timeline, ticket_thread, ticket_reply_draft (a reply you drafted — the USER sends it with Enter, you cannot send), chart (bar/line/donut aggregates), record (a link card for one entity), import_triage (a pasted-CSV order-import triage from triage_orders_csv — the user imports the accepted rows from the panel). For tables: every row object MUST be keyed by the exact column names you declare. After the tool returns "Rendered", write one short sentence with the key facts — do not repeat the data in text and do not say where it is shown. Every field is a plain string/number/boolean — no nested objects in table cells.',
     input_schema: {
       type: 'object',
       properties: {
@@ -123,10 +124,11 @@ export const UI_TOOLS: Anthropic.Tool[] = [
   },
   {
     // Device tool — client-executed. The chat loop acknowledges immediately;
-    // the browser runs it through the desktop bridge (silent print / WebUSB).
+    // the browser sends it over the staff print bridge to the staffer's print
+    // station, and the transcript card shows sending → acked → printed.
     name: 'print_handling_unit_labels',
     description:
-      'Print tote/handling-unit license-plate labels (2×1" DataMatrix stickers) on the workstation\'s paired label printer. Pass handlingUnitIds for EXISTING handling units (from a read tool). Printing is a physical action the user asked for by name — say what you are printing before you call. Creating NEW totes is not printable this way; tell the user to create them first.',
+      'Print tote/handling-unit license-plate labels (2×1" DataMatrix stickers) on the user\'s print station (the computer running CycleForge with the label printer). Pass handlingUnitIds for EXISTING handling units: a handle like H-351 IS id 351 — pass it directly, no lookup needed. Printing is a physical action the user asked for by name — say what you are printing before you call. The transcript shows whether the station took the job, so do not claim it printed. Creating NEW totes is not printable this way; tell the user to create them first.',
     input_schema: {
       type: 'object',
       properties: {
@@ -282,11 +284,13 @@ export function buildSystemCore(toolNames: string[]): string {
     'You answer questions about THIS organization\'s live operation using your read tools — never from memory. Compose tools per question: where is an item / which bin / how many on hand (a SKU, FNSKU, ASIN, UPC, serial, LPN or product name) → locate_product with the value exactly as typed; what is in a bin or location → list_location_contents; other identifiers / find / which → hybrid_entity_search or exact_id_serial_search; #ticket → resolve_support_ticket; full history / trace / what happened → get_operations_journey; serial return / which order shipped this serial → lookup_serial; warranty / coverage / expired → lookup_warranty_coverage or list_warranty_claims; specific order id or tracking → get_order_lookup; my tech queue → get_my_tech_queue; assignments → get_assignments; photos → search_photos; receiving by tracking → get_receiving_by_tracking; packing pace / packer KPIs → get_packing_kpi; aggregates / why failing → get_top_reasons / get_kpis / get_signals_by_node; today\'s daily checklist / who has run their checks → get_daily_checks; what should I do next / my assigned work / my interrupts → get_my_day; project or plan tasks (ops plans) → get_project_tasks; then drill with get_unit_journey, search_notes, get_node_detail.',
     'When the answer depends on operational data not already in the conversation, you MUST call a read tool before answering.',
     'If you have the propose_mutation tool you can make changes. The trust model is automatic — you never decide whether a change is applied: view-layer changes (dismiss a rail item, set a feed item state, record a signal, tune a node surface) apply immediately; workflow DRAFT edits (add/remove/wire/config a node in a draft graph) apply to a draft the user can preview and revert; changes to masters (create staff, add a reason code, change a setting) are queued for review. ALWAYS set the user\'s expectation from the returned status: "applied to your draft", "done", or "queued for review — a human needs to apply it". For draft graph edits, use the canvas-control tools (focus_node/set_lens/set_zoom) to show the user the change, and remind them publishing stays their step (you can request it, you cannot publish).',
-    'UI tools (navigate, highlight) run in the user\'s browser. The view panel beside the chat is where data LANDS. Many read tools put their own table on the panel: their result says { rendered: true, summary } — the table is ALREADY on screen, so do NOT call render_artifact for it; answer from the summary, stating the key facts (for a location: the bins and quantities) in one to three sentences. For other data the user asks to see (rows, a journey, a ticket conversation, aggregates, a record) call render_artifact with that data. NEVER answer a data question with only a markdown table in text, and NEVER navigate the user to another page to show an answer. Navigate only when the user explicitly asks to go somewhere ("open the shipping desk"). The panel is read-only — if the user wants a change, that is propose_mutation or a drafted reply they send themselves.',
-    'PANEL HONESTY: say that something is shown on the panel ONLY when a tool result in THIS turn said rendered: true or you called render_artifact in THIS turn. When a lookup returns found: false, no rows or an empty bin, say plainly what was not found and what was searched — never point at the panel, never invent a bin, a quantity or an identifier.',
-    'Chat text is PROSE in markdown (sentences, short lists, bold). NEVER put a markdown table, chart, or ASCII graphic in chat text — data displays exclusively through render_artifact on the panel. Any table you write in chat is stripped from the reply and moved to the panel anyway, so write it as an artifact from the start.',
+    'UI tools (navigate, highlight) run in the user\'s browser. Data you show lands INLINE in the chat, directly above your text; only documents (shipping labels, packing slips, invoices, files) open on the right. Many read tools show their own table: their result says { rendered: true, summary } — the table and its product title are ALREADY on screen, so do NOT call render_artifact for it; answer from the summary. For other data the user asks to see (rows, a journey, a ticket conversation, aggregates, a record) call render_artifact with that data. NEVER answer a data question with only a markdown table in text, and NEVER navigate the user to another page to show an answer. Navigate only when the user explicitly asks to go somewhere ("open the shipping desk"). Shown data is read-only — if the user wants a change, that is propose_mutation or a drafted reply they send themselves.',
+    'ANSWER SHAPE: when a tool showed data, write ONE short sentence that states the key facts (for a location: each bin with its quantity; for a bin: each SKU with its quantity; for a report: the headline number). Do not restate the table row by row, do not repeat the product title, and never add a title or name in parentheses after an identifier. Never say where data is displayed — no "panel", "table below" or "shown above"; only for a document you may say it is opened on the right.',
+    'HONESTY: when a lookup returns found: false, no rows or an empty bin, say plainly what was not found and what was searched — never invent a bin, a quantity or an identifier.',
+    has('get_order_documents') ? 'ORDER DOCUMENTS: "show me the shipping label for order 4899", "pull up the packing slip", "order … paperwork / documents / invoice" → get_order_documents with the order number exactly as typed (type shipping_label, packing_slip or paperwork when they named one). It opens the files in the document viewer beside the chat itself — do NOT call render_artifact, get_order_lookup or print_handling_unit_labels for it, and never say anything was printed. Answer in one or two sentences from its summary; when it returns found: false or documents: 0, say plainly that the order or its documents were not found and what was searched.' : '',
+    'Chat text is PROSE in markdown (sentences, short lists, bold). NEVER put a markdown table, chart, or ASCII graphic in chat text — data displays exclusively through render_artifact. Any table you write in chat is stripped from your text and shown as data anyway, so write it as an artifact from the start.',
     has('triage_orders_csv') ? 'ORDER IMPORT TRIAGE: when the operator pastes CSV rows of pending orders (or asks to import orders), call triage_orders_csv with the raw pasted text. It returns the header mapping and every row classified — accepted, needs_resolution (with the exact missing fields), or rejected. Render it as an import_triage artifact. For rows needing an item number that carry a title or SKU, call resolve_item_number per row and re-render the triage with the resolved numbers; never invent one. The user imports the accepted rows from the panel — importing is their action, never yours.' : '',
-    REPORT_TOOL_NAMES.some(has) ? 'OPERATOR REPORTS — five questions have a purpose-built report tool, and for these you MUST use it instead of composing raw reads: "what is <name>\'s packing performance" / "how many boxes did <name> pack" / "packer efficiency" / "wait minutes" → get_packing_performance. "how many boxes are left to be unboxed" / "what is waiting at receiving" → get_unbox_backlog. "what is the most expensive order currently in the warehouse" / "biggest order we are holding" → get_order_value_rank. "what are the highest ROIs" / "where are we leaking" / "what should we fix first" → get_roi_rank. "which staff can I delegate to" / "who should attack the highest ROIs" / "who is free" → get_delegation_plan. A report tool RENDERS ITS OWN PANEL: it returns { rendered: true, summary } and the report is already on screen, so do NOT call render_artifact after one and do NOT restate its tables in chat. Say the headline in one or two sentences and name the one thing you would do next. If the operator names a staff member, pass the name through — never guess which person they meant.' : '',
+    REPORT_TOOL_NAMES.some(has) ? 'OPERATOR REPORTS — five questions have a purpose-built report tool, and for these you MUST use it instead of composing raw reads: "what is <name>\'s packing performance" / "how many boxes did <name> pack" / "packer efficiency" / "wait minutes" → get_packing_performance. "how many boxes are left to be unboxed" / "what is waiting at receiving" → get_unbox_backlog. "what is the most expensive order currently in the warehouse" / "biggest order we are holding" → get_order_value_rank. "what are the highest ROIs" / "where are we leaking" / "what should we fix first" → get_roi_rank. "which staff can I delegate to" / "who should attack the highest ROIs" / "who is free" → get_delegation_plan. A report tool SHOWS ITS OWN REPORT: it returns { rendered: true, summary } and the report is already on screen, so do NOT call render_artifact after one and do NOT restate its tables in chat. Say the headline in one or two sentences and name the one thing you would do next. If the operator names a staff member, pass the name through — never guess which person they meant.' : '',
     'Grounding: report numbers exactly as tools return them; if a tool returns empty or fails, say so plainly and continue with what you have. Never invent identifiers.',
     'Style: plain sentences, lead with the answer, keep it short. Use the org\'s vocabulary (cartons, lines, serials, feeds, nodes).',
     `Available tools: ${toolNames.join(', ')}.`,
@@ -314,7 +318,16 @@ export function buildContextFragment(context: AssistantPageContext | null | unde
     })
     .join('; ');
   const referenced = mentions ? `\nReferenced (exact ids — pass them to tools verbatim): ${mentions}.` : '';
-  return `${parts.join(', ')}.${referenced}${skill}`;
+  // Files the operator dropped on the composer for THIS message. Each is
+  // already stored as an (unlinked) product manual; the id is what
+  // link_manual_to_sku takes as manualId.
+  const files = (context.attachments ?? [])
+    .map((a) => `manual id ${a.id} "${oneLine(a.name)}" (${oneLine(a.mime) || 'file'})`)
+    .join('; ');
+  const attached = files
+    ? `\nAttached files (uploaded with this message; "this manual" / "this file" means these — pass the manual id verbatim): ${files}.`
+    : '';
+  return `${parts.join(', ')}.${referenced}${attached}${skill}`;
 }
 
 // ─── Loop types ──────────────────────────────────────────────────────────────
@@ -474,7 +487,12 @@ export async function runAssistantTurn(
   // the shared chokepoint (tools/dispatch.ts) both loops use.
   const writeMap = buildWriteToolMap(args.ctx, args.writeTools);
   const writeTools = [...writeMap.values()].map(toSchema);
-  const tools = [...serverTools, ...writeTools, ...UI_TOOLS];
+  const tools = [
+    ...serverTools,
+    ...writeTools,
+    ...UI_TOOLS.filter((t) => accessModeAllowsUiTool(args.ctx.accessMode, t.name)),
+  ];
+  const accessNote = accessModeFragment(args.ctx.accessMode);
 
   const overlay = (args.voiceOverlay ?? '').trim();
   const system: Anthropic.Messages.TextBlockParam[] = [
@@ -484,6 +502,7 @@ export async function runAssistantTurn(
       cache_control: { type: 'ephemeral' },
     },
     ...(overlay ? [{ type: 'text' as const, text: overlay }] : []),
+    ...(accessNote ? [{ type: 'text' as const, text: accessNote }] : []),
     { type: 'text', text: buildContextFragment(args.context) },
   ];
 
@@ -549,6 +568,10 @@ export async function runAssistantTurn(
       const results = await runBatch(async () => {
         const out: Anthropic.ToolResultBlockParam[] = [];
         for (const call of toolUses) {
+          if (UI_TOOL_NAMES.has(call.name) && !accessModeAllowsUiTool(args.ctx.accessMode, call.name)) {
+            out.push({ type: 'tool_result', tool_use_id: call.id, content: askOnlyRefusal(call.name), is_error: true });
+            continue;
+          }
           if (UI_TOOL_NAMES.has(call.name)) {
             // Client tool: forward to the browser, acknowledge to the model.
             // render_artifact is validated HERE, at the chokepoint, so a
@@ -581,7 +604,7 @@ export async function runAssistantTurn(
               out.push({
                 type: 'tool_result',
                 tool_use_id: call.id,
-                content: 'Rendered on the session view panel.',
+                content: 'Rendered — the operator sees it.',
               });
               continue;
             }

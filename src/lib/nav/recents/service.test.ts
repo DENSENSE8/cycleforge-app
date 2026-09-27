@@ -10,14 +10,22 @@ interface Captured {
   reads: Array<{ orgId: string; params: readonly unknown[] }>;
   writes: Array<{ orgId: string; params: readonly unknown[] }>;
   techLogCalls: Array<{ orgId: string; techId: number | null; limit: number }>;
+  sessionCalls: Array<{ orgId: string; staffId: number; limit: number; before?: string; q?: string }>;
 }
 
 function fakes(storedRows: NavRecentDbRow[] = []) {
-  const cap: Captured = { reads: [], writes: [], techLogCalls: [] };
+  const cap: Captured = { reads: [], writes: [], techLogCalls: [], sessionCalls: [] };
   const adapters = {
     fetchTechLogRows: async (orgId: string, opts: { techId: number | null; limit: number }) => {
       cap.techLogCalls.push({ orgId, techId: opts.techId, limit: opts.limit });
       return [];
+    },
+    listAssistantSessions: async (orgId: string, staffId: number, opts: { limit: number; before?: string; q?: string }) => {
+      cap.sessionCalls.push({ orgId, staffId, ...opts });
+      return {
+        sessions: [{ id: 'a1b2', title: 'Label printer', updatedAt: '2026-09-27T10:00:00.000Z', messageCount: 4 }],
+        nextBefore: 'cursor-2',
+      };
     },
   } as unknown as NavRecentAdapterDeps;
   const deps: NavRecentsDeps = {
@@ -130,7 +138,31 @@ test('trace and labels-lookup recents link to the serial journey and the labels 
 
 test('adapter surfaces read the caller’s own feed (tech scans are MY scans, not the org’s)', async () => {
   const { deps, cap } = fakes();
-  const res = await listNavRecents(caller(['tech.view'], 21), { surface: 'tech.scans', limit: 10 }, deps);
-  assert.deepEqual(res, { ok: true, surface: 'tech.scans', rows: [] });
+  const res = await listNavRecents(
+    caller(['tech.view'], 21),
+    // An unpaged, un-findable surface ignores the cursor and the text.
+    { surface: 'tech.scans', limit: 10, before: 'cursor', q: 'x' },
+    deps,
+  );
+  assert.deepEqual(res, { ok: true, surface: 'tech.scans', rows: [], nextBefore: null });
   assert.deepEqual(cap.techLogCalls, [{ orgId: ORG, techId: 21, limit: 10 }]);
+});
+
+test('chat threads are MY threads, paged by cursor and narrowed by Find, rows linking to the thread', async () => {
+  const { deps, cap } = fakes();
+  const denied = await listNavRecents(caller([], 21), { surface: 'assistant.sessions' }, deps);
+  assert.deepEqual(denied, { ok: false, status: 403, error: 'FORBIDDEN', permission: 'assistant.chat' });
+
+  const res = await listNavRecents(
+    caller(['assistant.chat'], 21),
+    { surface: 'assistant.sessions', limit: 30, before: 'cursor-1', q: 'label' },
+    deps,
+  );
+  assert.ok(res.ok);
+  assert.deepEqual(cap.sessionCalls, [{ orgId: ORG, staffId: 21, limit: 30, before: 'cursor-1', q: 'label' }]);
+  assert.equal(res.nextBefore, 'cursor-2');
+  assert.deepEqual(
+    res.rows.map((row) => [row.entityId, row.title, row.at, row.href]),
+    [['a1b2', 'Label printer', '2026-09-27T10:00:00.000Z', '/ai-chat?session=a1b2']],
+  );
 });

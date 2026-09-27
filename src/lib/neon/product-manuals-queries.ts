@@ -284,8 +284,10 @@ export async function upsertProductManual(params: UpsertProductManualParams, org
     if (!normalizedItemNumber && status === 'assigned') {
       throw new Error('itemNumber is required for assigned manuals');
     }
-    if (!googleDocId && !relativePath) {
-      throw new Error('googleDocIdOrUrl or relativePath is required');
+    // A file uploaded to the manual store (`/api/product-manuals/upload`) is
+    // identified by its stored URL — it has no Doc id and no NAS path.
+    if (!googleDocId && !relativePath && !sourceUrl) {
+      throw new Error('googleDocIdOrUrl, relativePath or sourceUrl is required');
     }
 
     const existing = relativePath

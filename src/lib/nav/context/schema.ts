@@ -13,6 +13,7 @@
  */
 
 import { z } from 'zod';
+import { NAV_RECENT_ROW_VERBS } from '@/lib/nav/recents/surfaces';
 
 export const NAV_ITEM_KINDS = ['link', 'drill', 'filter', 'toggle'] as const;
 export type NavItemKind = (typeof NAV_ITEM_KINDS)[number];
@@ -50,6 +51,20 @@ export const NavSearchSchema = z
     source: z.enum(NAV_SEARCH_SOURCES),
     /** URL param the box writes when `source` is `url-param` / `desk-store`. */
     param: z.string().min(1).optional(),
+    /**
+     * Paste-a-list: a multi-number paste into Find becomes a list (`param`,
+     * comma-joined) that `check` answers per number, with a status filter
+     * (`statusParam`) pinned under Find. `inbound-check` = the Unbox Check
+     * (received / not received / exception).
+     */
+    bulk: z
+      .object({
+        check: z.enum(['inbound-check']),
+        param: z.string().min(1),
+        statusParam: z.string().min(1),
+      })
+      .strict()
+      .optional(),
   })
   .strict();
 export type NavSearch = z.infer<typeof NavSearchSchema>;
@@ -110,8 +125,31 @@ export const NavRecentsSchema = z
     /** Returns the normalised recents row shape (`NavRecentRow`). */
     endpoint: z.string().startsWith('/api/'),
     surface: z.string().min(1),
+    /** The page's Find narrows this list (sent as `q`). */
+    find: z.literal(true).optional(),
+    /** Keyset-paged: `nextBefore` in the response fetches older rows (`before=`). */
+    paged: z.literal(true).optional(),
+    /**
+     * Row verbs, written to the feed owner's route (`endpoint` with `{id}` =
+     * the row's `entityId`): rename = PATCH `{ title }`, delete = DELETE (soft),
+     * its undo = PATCH `{ restore: true }`.
+     */
+    rowActions: z
+      .object({
+        endpoint: z.string().startsWith('/api/').includes('{id}'),
+        verbs: z.array(z.enum(NAV_RECENT_ROW_VERBS)).min(1),
+      })
+      .strict()
+      .optional(),
+    /**
+     * ⌥1…⌥9, ⌥0 (Alt on Windows / Linux) open the first ten rows in painted
+     * order, from anywhere on the page — typing included; the row's chord
+     * shows as a keycap on hover.
+     */
+    chords: z.literal(true).optional(),
   })
   .strict();
+export type NavRecents = z.infer<typeof NavRecentsSchema>;
 
 export const NavSavedViewsSchema = z
   .object({
@@ -142,6 +180,15 @@ export const NavActionSchema = z
     href: z.string().startsWith('/').optional(),
     /** Client verb (`<surface>:<verb>`) the host dispatches when no URL expresses the action. */
     intent: z.string().min(1).optional(),
+    /**
+     * The chord that already runs this verb on the page (`mod+shift+o`),
+     * painted as a keycap on hover. Display only: the page body owns the
+     * binding. Never a browser-reserved chord (⌘N, ⌘T, ⌘W, ⌘1–9).
+     */
+    hotkey: z
+      .string()
+      .regex(/^(mod\+)?(shift\+)?(alt\+)?[a-z0-9/;.]$/)
+      .optional(),
   })
   .strict()
   .refine((action) => action.href !== undefined || action.intent !== undefined, {

@@ -1,7 +1,7 @@
 /**
  * One assistant turn as the operator sees it: the ANSWER (`content`), and the
  * ordered WORK that led there (`steps`) with how long the model thought before
- * answering (`thinkingMs`) — the collapsed "Thought for 4s · 3 steps" row and the timeline it opens (`ThinkingDisclosure`).
+ * answering (`thinkingMs`) — the live thinking line and the "Thought process" view in the answer (`ThinkingTrace`).
  *
  * ONE reducer, two callers, so what streamed and what reopens cannot differ:
  *   • the browser folds `/api/assistant/chat`'s SSE frames into the live
@@ -221,16 +221,25 @@ const RESULT_LIST_KEYS = ['results', 'matches', 'items', 'rows', 'orders', 'tick
 
 /**
  * A tool result in a few words for its timeline row — "3 results", "1 result",
- * or null when the shape says nothing countable. A top-level array counts its
- * items; an object counts its first list under {@link RESULT_LIST_KEYS}, else
- * a numeric `count` / `total`. Never the data itself: the row is provenance,
- * not an answer.
+ * or null when the shape says nothing countable. A lookup that carried its own
+ * table counts its rows by what one row is ("2 bins"); a miss says "nothing
+ * found"; a top-level array counts its items; an object counts its first list
+ * under {@link RESULT_LIST_KEYS}, else a numeric `count` / `total`. Never the
+ * data itself: the row is provenance, not an answer.
  */
 export function summarizeToolResult(data: unknown): string | null {
   const noun = (n: number) => `${n.toLocaleString('en-US')} ${n === 1 ? 'result' : 'results'}`;
   if (Array.isArray(data)) return noun(data.length);
   if (!data || typeof data !== 'object') return null;
   const record = data as Record<string, unknown>;
+  // A lookup that carried its own table: count what one row IS ("2 bins", "1 SKU").
+  const artifact = record.artifact as { kind?: unknown; rows?: unknown; entityHint?: unknown } | null | undefined;
+  if (artifact && typeof artifact === 'object' && artifact.kind === 'table' && Array.isArray(artifact.rows)) {
+    const n = artifact.rows.length;
+    const one = typeof artifact.entityHint === 'string' && artifact.entityHint.length <= 24 ? artifact.entityHint : 'row';
+    return `${n.toLocaleString('en-US')} ${n === 1 ? one : `${one}s`}`;
+  }
+  if (record.found === false) return 'nothing found';
   for (const key of RESULT_LIST_KEYS) {
     const value = record[key];
     if (Array.isArray(value)) return noun(value.length);
@@ -283,6 +292,13 @@ export interface TurnUsage {
   firstTokenMs: number | null;
   totalMs: number;
   rounds: number;
+  /**
+   * The thread's context after this turn: the LAST round's prompt plus its
+   * completion (`inputTokens` sums every round, so it overcounts the window).
+   */
+  contextTokens?: number | null;
+  /** The serving model's context window in tokens, when the endpoint or the table knows it. */
+  contextWindow?: number | null;
 }
 
 /** An artifact the turn painted, kept on the row so a reopened thread re-creates its card. */
@@ -356,6 +372,8 @@ function parseUsage(raw: unknown): TurnUsage | null {
     firstTokenMs: numOrNull(u.firstTokenMs),
     totalMs: u.totalMs,
     rounds: numOrNull(u.rounds) ?? 0,
+    ...(numOrNull(u.contextTokens) != null ? { contextTokens: numOrNull(u.contextTokens) } : {}),
+    ...(numOrNull(u.contextWindow) != null ? { contextWindow: numOrNull(u.contextWindow) } : {}),
   };
 }
 

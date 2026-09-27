@@ -23,7 +23,8 @@ import { ordersCompoundView } from '@/lib/orders/orders-compound-view';
 import { resolveOrdersSlotValue } from '@/lib/tables/field-catalog/orders-resolve';
 import { resolveSkuIdentityTitle } from '@/lib/sku/sku-identity-law';
 import { BuyerNoteBlock } from '@/design-system/components/RecordNoteSlot';
-import { marketplaceOrderUrl } from '@/utils/order-platform';
+import { orderAdminUrl } from '@/utils/order-platform';
+import { ListingLinkEditor, OrderAdminLinkAction } from './order-link-editors';
 import { formatMonthDayTimePST } from '@/utils/date';
 import { formatOutboundStoragePath } from '@/lib/shipping/outbound-storage-path';
 import { formatCurrency } from '@/utils/_number';
@@ -216,7 +217,12 @@ export function OrderRecordView({
               <span className="flex min-w-0 flex-1 items-center">
                 <RecordFullId value={orderId || String(record.id)} label="order number" />
               </span>
-              <LedgerOpenAction href={marketplaceOrderUrl(orderId, view.platformValue)} label="order number" />
+              <OrderAdminLinkAction
+                orderId={orderId || String(record.id)}
+                href={orderAdminUrl(orderId, view.platformValue, record.admin_url)}
+                storedUrl={String(record.admin_url ?? '').trim() || null}
+                ids={lines.map((line) => Number(line.id))}
+              />
             </span>
           </EvidenceFactRow>
           {/* The listing link opens (it is the value); copy is the row's
@@ -226,6 +232,11 @@ export function OrderRecordView({
               <span className="block h-8 min-w-0 flex-1">
                 <LedgerListingLink href={view.titleHref ?? null} itemNumber={record.item_number ?? null} face="value" />
               </span>
+              <ListingLinkEditor
+                face="icon"
+                currentItem={String(record.item_number ?? '').trim() || null}
+                targets={[{ id: Number(record.id), itemNumber: record.item_number ?? null, accountSource: record.account_source ?? null }]}
+              />
               <LedgerCopyAction value={String(record.item_number ?? '').trim() || null} label="item number" />
             </span>
           </EvidenceFactRow>

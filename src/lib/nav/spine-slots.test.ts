@@ -36,14 +36,14 @@ const catalog: SidebarNavItem[] = [
   { id: 'studio', label: 'Operations Studio', href: '/studio', icon: Icon, kind: 'main', mainGroup: 'studio' },
 ];
 
-test('null / empty / absent hydrate to the lane band, Stations, then remaining L1', () => {
+test('null / empty / absent hydrate to the lane band, remaining L1, then Stations last', () => {
   // Fixture desks: `outbound` (fulfillment) + `products` (catalog). Lanes emit
   // in DESK_SPINE_SECTIONS order, so fulfillment precedes catalog.
   assert.deepEqual(hydrateSpineSlots(null, catalog), [
     'fulfillment',
     'catalog',
-    SPINE_STATIONS_SLOT_ID,
     'studio',
+    SPINE_STATIONS_SLOT_ID,
   ]);
   assert.deepEqual(hydrateSpineSlots(undefined, catalog), defaultSpineOrder(catalog));
   assert.deepEqual(hydrateSpineSlots([], catalog), defaultSpineOrder(catalog));
@@ -60,10 +60,10 @@ test('there is no Workspaces parent slot — lanes are the parents', () => {
   }
 });
 
-test('the lane band leads, then Stations, then remaining L1', () => {
+test('the lane band leads, then remaining L1, then Stations at the very bottom', () => {
   const order = defaultSpineOrder(catalog);
-  assert.ok(order.indexOf('catalog') < order.indexOf(SPINE_STATIONS_SLOT_ID));
-  assert.ok(order.indexOf(SPINE_STATIONS_SLOT_ID) < order.indexOf('studio'));
+  assert.ok(order.indexOf('catalog') < order.indexOf('studio'));
+  assert.equal(order.at(-1), SPINE_STATIONS_SLOT_ID);
 });
 
 test('a catalog with only benches yields only the stations slot', () => {
@@ -75,8 +75,8 @@ test('hydrate keeps staff lane order and appends new catalog ids', () => {
   assert.deepEqual(hydrateSpineSlots(['catalog', 'fulfillment'], catalog), [
     'catalog',
     'fulfillment',
-    SPINE_STATIONS_SLOT_ID,
     'studio',
+    SPINE_STATIONS_SLOT_ID,
   ]);
 });
 

@@ -1,7 +1,7 @@
 'use client';
 
 import { BottomSheet } from '@/components/ui/BottomSheet';
-import { StaffPrintStationPicker } from '@/components/mobile/print/StaffPrintStationPicker';
+import { StaffPrintStationPicker } from '@/components/ui/StaffPrintStationPicker';
 import type { StaffPrintStation } from '@/lib/print/staff-print-bridge';
 import { ModeRegion } from '@/design-system/providers/ModeRegion';
 

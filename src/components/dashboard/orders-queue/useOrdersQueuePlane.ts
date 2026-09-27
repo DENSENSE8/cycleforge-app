@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef } from 'react';
 import type { ShippedOrder } from '@/lib/neon/orders-queries';
-import type { RowGroup } from '@/lib/group-rows';
+import { flattenRenderOrder, type RowGroup } from '@/lib/group-rows';
 import { useTableSelectMode } from '@/hooks/useTableSelectMode';
 import { useGridRowFills } from '@/design-system/components/grid';
 import type { TableId } from '@/lib/tables/table-columns';
@@ -29,9 +29,13 @@ function scrollQueueRowIntoView(id: number | string) {
 }
 
 interface OrdersQueuePlaneArgs {
-  /** Sorted, visible rows (the grid's own feed output). */
+  /** Every row the feed holds, sorted — open-record lookups resolve against these. */
   displayedRecords: ShippedOrder[];
-  /** Grouped order for the record cursor's next/prev walk. */
+  /**
+   * The groups ON SCREEN, in screen order — the record cursor's J / K walk and
+   * the check-set's Shift-range / select-all (a presenter's `arrangeGroups`
+   * can re-cut and re-order them).
+   */
   orderGroupsByDate: [string, RowGroup<ShippedOrder>[]][];
   onOpenRecord: (record: ShippedOrder) => void;
   onCloseRecord?: (record: ShippedOrder | null) => void;
@@ -85,11 +89,15 @@ export function useOrdersQueuePlane({
   // Checkbox gutter is the only bulk-select gesture. Row body opens the
   // record. Sheets click-to-select (row click toggles the set) is off.
   const clickSelect = false;
+  // Identical to `displayedRecords` unless the presenter arranged the groups.
+  const screenRecords = useMemo(() => flattenRenderOrder(orderGroupsByDate), [orderGroupsByDate]);
   const { fillsById } = useGridRowFills(tableId);
   const { selectedIds, toggle, selectOnly, clear, setMany } = useTableSelectMode<ShippedOrder>({
     scope: selectionScope,
     selectMode: true,
-    rows: displayedRecords,
+    // Display order: a Shift-range spans the rows between the two clicks AS
+    // SHOWN, never lines the screen puts elsewhere (or hides).
+    rows: screenRecords,
     getId: getRowId,
   });
   // Read at click time so the row handler keeps one identity across checks —

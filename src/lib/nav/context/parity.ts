@@ -18,11 +18,15 @@ import { getSidebarPageNav } from '@/lib/sidebar-navigation';
 import { buildNavContext, declaredRouteParams } from './build';
 import type { NavContext } from './schema';
 
-export type ParityKind = 'view' | 'param' | 'action' | 'recents' | 'scanInput' | 'savedViews';
+export type ParityKind = 'view' | 'param' | 'action' | 'recents' | 'rowAction' | 'paging' | 'scanInput' | 'savedViews';
 
 export interface ParityRow {
   kind: ParityKind;
-  /** view: section item id · param: URL key · action: action id · recents: surface · scanInput: grammar · savedViews: storage key. */
+  /**
+   * view: section item id · param: URL key · action: action id · recents: surface ·
+   * rowAction: recents row verb (`delete` carries its undo, restore) · paging: the paged recents surface ·
+   * scanInput: grammar · savedViews: storage key.
+   */
   id: string;
   /** Where the old UI provides it (file:line, as PARITY.md cites it). */
   source: string;
@@ -34,6 +38,13 @@ export interface ParityRow {
 type Row = readonly [ParityKind, string, string, string?];
 
 const ROWS: Readonly<Record<string, readonly Row[]>> = {
+  'ai-chat': [
+    ['action', 'chat.new', 'src/components/sidebar/master-nav/SidebarNavList.tsx:547-560 (Chat row `+`)'],
+    ['recents', 'assistant.sessions', 'src/components/sidebar/master-nav/ChatSessionsNav.tsx:176-234'],
+    ['rowAction', 'rename', 'src/components/sidebar/master-nav/ChatSessionsNav.tsx:74-80,150-158'],
+    ['rowAction', 'delete', 'src/components/sidebar/master-nav/ChatSessionsNav.tsx:82-98,160-163 (Undo → restore)'],
+    ['paging', 'assistant.sessions', 'src/components/sidebar/master-nav/ChatSessionsNav.tsx:220-230 (Show more)'],
+  ],
   home: [
     ['view', 'all', 'src/features/home/DailyAgenda.tsx:260-276'],
     ['view', 'checklist', 'src/features/home/DailyAgenda.tsx:260-276; src/lib/daily/agenda-lens.ts:8-22'],
@@ -302,6 +313,10 @@ function isCovered(row: ParityRow, stops: readonly PageStop[]): boolean {
       return stops.some(({ context }) => (context.actions ?? []).some((action) => action.id === row.id));
     case 'recents':
       return stops.some(({ context }) => context.recents?.surface === row.id);
+    case 'rowAction':
+      return stops.some(({ context }) => context.recents?.rowActions?.verbs.some((verb) => verb === row.id) ?? false);
+    case 'paging':
+      return stops.some(({ context }) => context.recents?.surface === row.id && context.recents.paged === true);
     case 'scanInput':
       return stops.some(({ context }) => context.scanInput?.grammar === row.id);
     case 'savedViews':

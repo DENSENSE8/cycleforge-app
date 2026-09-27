@@ -15,6 +15,8 @@ import {
   resolveStaffPrintTarget,
   roleReady,
   staffPrintBlockedReason,
+  decideStaffPrintAutoSend,
+  NO_PRINT_STATION_ONLINE,
   thisDeviceCanFulfillPrintJob,
   upsertStaffPrintStation,
   type StaffPrintStatus,
@@ -234,5 +236,49 @@ describe('station roster', () => {
     assert.equal(staffPrintBlockedReason(bench, 'label', now), null);
     assert.notEqual(staffPrintBlockedReason(bench, 'paper', now), null);
     assert.notEqual(staffPrintBlockedReason(null, 'label', now), null);
+  });
+});
+
+describe('decideStaffPrintAutoSend', () => {
+  const now = 1_000_000;
+  const bench = { status: status(BENCH), lastSeenAt: now };
+  const pack = { status: status(PACK), lastSeenAt: now };
+  const decide = (stations: (typeof bench)[], rememberedId: string | null, settled: boolean) =>
+    decideStaffPrintAutoSend({ stations, rememberedId, role: 'label', now, settled });
+
+  it('sends to the remembered pick the moment it answers ready', () => {
+    assert.deepEqual(decide([bench, pack], PACK, false), { kind: 'send', station: pack });
+  });
+
+  it('waits for the whole roster before trusting a lone reply', () => {
+    // One station has answered so far; another may still be answering.
+    assert.equal(decide([bench], null, false).kind, 'wait');
+    assert.deepEqual(decide([bench], null, true), { kind: 'send', station: bench });
+  });
+
+  it('never swaps a silent remembered pick for the only other live station', () => {
+    assert.equal(decide([bench], PACK, false).kind, 'wait');
+    assert.equal(decide([bench], PACK, true).kind, 'pick');
+  });
+
+  it('asks the operator to pick when several stations are live and none is remembered', () => {
+    assert.equal(decide([bench, pack], null, true).kind, 'pick');
+  });
+
+  it('fails when no station is online or none can print labels', () => {
+    assert.deepEqual(decide([], null, true), { kind: 'fail', reason: NO_PRINT_STATION_ONLINE });
+    const paperOnly = {
+      status: status(PACK, { label: { ready: false, name: null, kind: null }, paper: { ready: true, name: 'HP', kind: 'os' } }),
+      lastSeenAt: now,
+    };
+    assert.deepEqual(decide([paperOnly], PACK, true), { kind: 'fail', reason: 'Pack 1 has no label printer set up.' });
+  });
+
+  it('keeps a picked station that cannot print labels as the reason to pick another', () => {
+    const paperOnly = {
+      status: status(PACK, { label: { ready: false, name: null, kind: null }, paper: { ready: true, name: 'HP', kind: 'os' } }),
+      lastSeenAt: now,
+    };
+    assert.deepEqual(decide([bench, paperOnly], PACK, true), { kind: 'pick', reason: 'Pack 1 has no label printer set up.' });
   });
 });

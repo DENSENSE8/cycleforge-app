@@ -3,8 +3,6 @@
 import { type ReactNode, useState, useCallback, useEffect, useRef } from 'react';
 import { Suspense } from 'react';
 import { AnimatePresence, motion } from '@/design-system/motion';
-import { motionTransition } from '@/design-system/foundations/motion-presets';
-import { useMotionTransition } from '@/design-system/foundations/motion-presets-hooks';
 import { usePathname, useRouter } from 'next/navigation';
 import dynamic from 'next/dynamic';
 import { ErrorBoundary } from '@/components/error/ErrorBoundary';
@@ -19,6 +17,8 @@ import { ContextPanelLayout } from '@/components/sidebar/ContextPanelLayout';
 import { RightRailHost } from '@/components/right-rail/RightRailHost';
 import { GlobalWedgeScannerMount, PhoneScanBridgeMount, StaffPrintBridgeMount } from '@/components/layout/scan-mounts';
 import { setRightRailFrameWidth } from '@/lib/right-rail/frame';
+import { setSidebarColumnOpen } from '@/lib/nav/sidebar-column-store';
+import { useSidebarToggleHotkey } from '@/lib/nav/sidebar-toggle-hotkey';
 import { isClientPublicPath } from '@/contexts/AuthContext';
 import { GlobalHeader } from '@/components/layout/GlobalHeader';
 import { MASTER_NAV_TOGGLE_EVENT } from '@/lib/app-events';
@@ -46,9 +46,8 @@ const SidebarNavColumn = dynamic(
   () => import('@/components/sidebar/SidebarNavColumn').then((m) => m.SidebarNavColumn),
   { ssr: false },
 );
-// The contextual sidebar (stage 5) — mounted in the same column for pages
-// whose NavContext resolves `rollout: 'contextual'`; every other page keeps
-// the master nav spine above.
+// THE desktop sidebar — a contextual page's panel, or the page map everywhere
+// else. One host, so the parent sidebar never falls back to an older face.
 const ContextualSidebar = dynamic(
   () => import('@/components/sidebar/contextual/ContextualSidebar').then((m) => m.ContextualSidebar),
   { ssr: false, loading: () => <div className="h-full w-full" aria-hidden /> },
@@ -129,13 +128,6 @@ const drawerTransition = {
   mass: 0.8,
 };
 
-/** Sidebar map ↔ contextual morph; `custom` = entering the contextual face. */
-const sidebarMorph = {
-  enter: (toContextual: boolean) => ({ opacity: 0, x: toContextual ? 12 : -12, filter: 'blur(4px)' }),
-  center: { opacity: 1, x: 0, filter: 'blur(0px)' },
-  exit: (toContextual: boolean) => ({ opacity: 0, x: toContextual ? -12 : 12, filter: 'blur(4px)' }),
-};
-
 // ─── Component ───────────────────────────────────────────────────────────────
 
 /** ResponsiveLayout — wraps the desktop app frame. */
@@ -165,7 +157,10 @@ export function DesktopRouteShell({ children }: DesktopRouteShellProps) {
   // without touching the remembered choice (owner 2026-09-26).
   const deskFloor = useDeskFloorActive();
   const columnOpen = (contextualActive ? contextualOpen : navOpen) && !deskFloor;
-  const sidebarMorphTransition = useMotionTransition(motionTransition.sidebarScopeSwap);
+  // ⌘\ / Ctrl+\ opens and closes the column (owner 2026-09-27); the toggle's
+  // tooltip shows the chord. Off on Floor — the column is parked there, and a
+  // toggle would silently flip the remembered choice.
+  useSidebarToggleHotkey(toggleNav, !deskFloor);
   const navPeek = useHoverSurface({
     id: 'master-nav-spine-peek',
     disabled: true,
@@ -181,6 +176,11 @@ export function DesktopRouteShell({ children }: DesktopRouteShellProps) {
   /** Auth / enroll / offline — no permanent sidebar; page owns full-bleed chrome.
    *  (Kiosk paths never reach this shell: `AppShellSwitch` gives them `KioskAppShell`.) */
   const chromeless = isClientPublicPath(pathname);
+  // Pages move their own controls in (e.g. the order list's Find) while the
+  // column is closed.
+  useEffect(() => {
+    setSidebarColumnOpen(columnOpen && !chromeless);
+  }, [columnOpen, chromeless]);
 
   const closeDrawer = useCallback(() => setDrawerOpen(false), []);
 
@@ -293,8 +293,8 @@ export function DesktopRouteShell({ children }: DesktopRouteShellProps) {
         <PhoneScanBridgeMount />
         <StaffPrintBridgeMount />
 
-        {/* The nav spine — the page map, or the contextual sidebar where the
-            page's NavContext resolves `contextual`. The probe publishes that. */}
+        {/* The nav column — one host for every page. The probe publishes
+            whether the page has its own panel (it opens the column by default). */}
         {!chromeless && (
           <ErrorBoundary label="sidebar-nav-column" fallback={() => null}>
             <Suspense fallback={null}>
@@ -305,26 +305,7 @@ export function DesktopRouteShell({ children }: DesktopRouteShellProps) {
                 peekSurfaceProps={navPeek.surfaceProps}
                 onPeekDismiss={navPeek.close}
               >
-                {/* Map ↔ contextual morph: both faces share one grid cell and
-                    cross-fade with a short directional slide (into a page's
-                    panel slides in from the right; back to the map, from the
-                    left). Same timing as the sidebar's own `‹` swap. */}
-                <div className="grid h-full min-h-0 [&>*]:col-start-1 [&>*]:row-start-1">
-                  <AnimatePresence initial={false} custom={contextualActive}>
-                    <motion.div
-                      key={contextualActive ? 'contextual' : 'map'}
-                      custom={contextualActive}
-                      variants={sidebarMorph}
-                      initial="enter"
-                      animate="center"
-                      exit="exit"
-                      transition={sidebarMorphTransition}
-                      className="flex h-full min-h-0 min-w-0 flex-col"
-                    >
-                      {contextualActive ? <ContextualSidebar /> : <DashboardSidebar />}
-                    </motion.div>
-                  </AnimatePresence>
-                </div>
+                <ContextualSidebar />
               </SidebarNavColumn>
             </Suspense>
           </ErrorBoundary>
