@@ -182,9 +182,6 @@ importers:
       fast-xml-parser:
         specifier: ^5.8.0
         version: 5.8.0
-      framer-motion:
-        specifier: ^12.42.2
-        version: 12.42.2(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
       google-auth-library:
         specifier: ^10.6.2
         version: 10.6.2

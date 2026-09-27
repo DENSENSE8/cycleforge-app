@@ -55,7 +55,6 @@ export function handlePanelStoreKeydown(
   if (overlayOpen) return false;
   if (snapshot.dismissed) return false;
   if (!snapshot.activeView) return false;
-  if (snapshot.activeView.id === 'assistant') return false;
 
   event.preventDefault();
   event.stopPropagation();

@@ -6,9 +6,22 @@ import { looksLikeIdentifier, type SearchHit } from '@/lib/search/search-hit';
 import { expandQuery } from '@/lib/search/query-expansion';
 import { relaxationLadder } from '@/lib/search/query-relaxation';
 import type { SearchByScope } from '@/lib/search/search-by';
+import {
+  BRAND_SEARCH_AXIS,
+  brandFacetForResults,
+  searchByBrand,
+  type BrandFacetEntry,
+  type BrandSearchResult,
+  type SearchAxis,
+} from '@/lib/search/brand-search';
 import type { OrgId } from '@/lib/tenancy/constants';
 
 interface FindRecordsOptions {
+  limit: number;
+  axis?: SearchAxis;
+}
+
+interface RunOnceOptions {
   limit: number;
   axis?: SearchByScope;
 }
@@ -23,6 +36,8 @@ interface FindRecordsResult {
   effectiveQuery: string;
   relaxed: boolean;
   usedSemantic: boolean;
+  /** Root-brand buckets over the records behind `rows` (axis=brand: the whole brand-restricted set). */
+  brandFacet: BrandFacetEntry[];
 }
 
 export interface FindRecordsDeps {
@@ -33,11 +48,17 @@ export interface FindRecordsDeps {
     axis?: SearchByScope,
   ): Promise<GlobalSearchResult[]>;
   hybrid(orgId: OrgId, query: string, opts: { limit: number }): Promise<HybridSearchResult>;
+  /** axis=brand retrieval: the page plus the facet over the full candidate set. */
+  brand(orgId: OrgId, query: string, limit: number): Promise<BrandSearchResult>;
+  /** Brand facet for a result list the other arms already chose. */
+  brandFacet(orgId: OrgId, rows: GlobalSearchResult[]): Promise<BrandFacetEntry[]>;
 }
 
 const defaultDeps: FindRecordsDeps = {
   exact: searchAllEntities,
   hybrid: (orgId, query, opts) => hybridSearch(orgId, query, opts),
+  brand: searchByBrand,
+  brandFacet: (orgId, rows) => brandFacetForResults(orgId, rows),
 };
 
 /** SearchHit → GlobalSearchResult. The doc index carries a strict subset of the
@@ -62,7 +83,7 @@ function keyOf(row: { entityType: string; id: number }): string {
 async function runOnce(
   orgId: OrgId,
   query: string,
-  opts: FindRecordsOptions,
+  opts: RunOnceOptions,
   deps: FindRecordsDeps,
 ): Promise<{ rows: GlobalSearchResult[]; usedSemantic: boolean }> {
   const exact = await deps.exact(orgId, query, opts.limit, opts.axis).catch(() => []);
@@ -91,6 +112,17 @@ async function runOnce(
   return { rows: merged.slice(0, opts.limit), usedSemantic: fuzzy.usedSemantic };
 }
 
+/** Attach the brand facet of the chosen rows; a facet failure never costs the rows. */
+async function withBrandFacet(
+  orgId: OrgId,
+  result: Omit<FindRecordsResult, 'brandFacet'>,
+  deps: FindRecordsDeps,
+): Promise<FindRecordsResult> {
+  const brandFacet =
+    result.rows.length > 0 ? await deps.brandFacet(orgId, result.rows).catch(() => []) : [];
+  return { ...result, brandFacet };
+}
+
 /** Find records, recovering from a miss instead of dead-ending on one. */
 export async function findRecords(
   orgId: OrgId,
@@ -104,28 +136,54 @@ export async function findRecords(
     effectiveQuery: q,
     relaxed: false,
     usedSemantic: false,
+    brandFacet: [],
   };
   if (!q) return empty;
 
-  const first = await runOnce(orgId, q, opts, deps);
+  const axis = opts.axis;
+  // A brand is an explicit scope like any other axis: never widened, never
+  // relaxed. Its facet comes from the same statement as its rows.
+  if (axis === BRAND_SEARCH_AXIS) {
+    const found = await deps
+      .brand(orgId, q, opts.limit)
+      .catch((): BrandSearchResult => ({ hits: [], facet: [] }));
+    return {
+      rows: found.hits.slice(0, opts.limit).map(hitToResult),
+      effectiveQuery: q,
+      relaxed: false,
+      usedSemantic: false,
+      brandFacet: found.facet,
+    };
+  }
+  const runOpts: RunOnceOptions = { limit: opts.limit, axis };
+
+  const first = await runOnce(orgId, q, runOpts, deps);
   if (first.rows.length > 0) {
-    return { rows: first.rows, effectiveQuery: q, relaxed: false, usedSemantic: first.usedSemantic };
+    return withBrandFacet(
+      orgId,
+      { rows: first.rows, effectiveQuery: q, relaxed: false, usedSemantic: first.usedSemantic },
+      deps,
+    );
   }
 
   // A miss on an identifier or a scoped axis is the answer, not a starting
   // point. See the header.
-  if (opts.axis || looksLikeIdentifier(q)) return empty;
+  if (axis || looksLikeIdentifier(q)) return empty;
 
   const { expansions } = expandQuery(q);
   for (const rung of relaxationLadder(q, expansions)) {
-    const retry = await runOnce(orgId, rung, opts, deps);
+    const retry = await runOnce(orgId, rung, runOpts, deps);
     if (retry.rows.length > 0) {
-      return {
-        rows: retry.rows,
-        effectiveQuery: rung,
-        relaxed: true,
-        usedSemantic: retry.usedSemantic,
-      };
+      return withBrandFacet(
+        orgId,
+        {
+          rows: retry.rows,
+          effectiveQuery: rung,
+          relaxed: true,
+          usedSemantic: retry.usedSemantic,
+        },
+        deps,
+      );
     }
   }
 

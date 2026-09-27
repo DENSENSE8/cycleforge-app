@@ -1,0 +1,35 @@
+-- ops_events_support_receiving_spine: BEFORE
+-- captured 2026-09-26T19:38:55.425Z as app_tenant (unpooled ep-shiny-hall-adz0n0nu), app.current_org=00000000-0000-0000-0000-000000000001
+-- BEGIN READ ONLY; SELECT set_config('app.current_org', '<org>', true); EXPLAIN (ANALYZE, BUFFERS) <sql>; ROLLBACK;
+-- src/lib/support/context.ts:210-221 fetchTimelineSpines ops_events arm
+-- params inlined as literals: ["00000000-0000-0000-0000-000000000001", 4148]
+-- SQL:
+--   SELECT id, occurred_at, event_type, entity_type, entity_id
+--                FROM ops_events
+--               WHERE organization_id = '00000000-0000-0000-0000-000000000001'
+--                 AND lower(entity_type) = 'receiving'
+--                 AND entity_id = 4148
+--               ORDER BY occurred_at DESC
+--               LIMIT 100
+
+                                                                             QUERY PLAN                                                                             
+--------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ Limit  (cost=1224.26..1224.27 rows=1 width=51) (actual time=11.800..11.806 rows=39 loops=1)
+   Buffers: shared hit=735
+   ->  Sort  (cost=1224.26..1224.27 rows=1 width=51) (actual time=11.798..11.801 rows=39 loops=1)
+         Sort Key: occurred_at DESC
+         Sort Method: quicksort  Memory: 30kB
+         Buffers: shared hit=735
+         ->  Result  (cost=0.01..1224.25 rows=1 width=51) (actual time=0.251..11.762 rows=39 loops=1)
+               One-Time Filter: ((NULLIF(current_setting('app.current_org'::text, true), ''::text))::uuid = '00000000-0000-0000-0000-000000000001'::uuid)
+               Buffers: shared hit=732
+               ->  Seq Scan on ops_events  (cost=0.01..1224.25 rows=1 width=51) (actual time=0.244..11.743 rows=39 loops=1)
+                     Filter: ((organization_id = '00000000-0000-0000-0000-000000000001'::uuid) AND (entity_id = 4148) AND (lower(entity_type) = 'receiving'::text))
+                     Rows Removed by Filter: 23894
+                     Buffers: shared hit=732
+ Planning:
+   Buffers: shared hit=289
+ Planning Time: 0.581 ms
+ Execution Time: 11.870 ms
+(17 rows)
+

@@ -18,7 +18,6 @@ import {
   StationDisplaysUtilityRail,
   STATION_DISPLAY_INDEX,
   resolveDisplaysActiveTab,
-  useYieldStationDisplaysOnAssistantOpen,
   type DisplayIndexRow,
 } from '@/components/station/displays';
 
@@ -104,7 +103,6 @@ export function EntityStationPane({
   );
 
   const closeDisplays = useCallback(() => onSideTabChange(null), [onSideTabChange]);
-  useYieldStationDisplaysOnAssistantOpen(closeDisplays);
 
   // `←|` Open displays → the Root Index, never a guessed leaf.
   const openDisplaysIndex = useCallback(

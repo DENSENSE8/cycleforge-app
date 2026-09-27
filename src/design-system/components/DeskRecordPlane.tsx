@@ -14,7 +14,6 @@ import {
 } from 'react';
 import { hasOpenOverlay } from '@/lib/overlay-stack/store';
 import { motion, motionRole, useMotionRole } from '@/design-system/motion';
-import { useMode } from '@/design-system/providers/ModeRegion';
 import { cn } from '@/utils/_cn';
 import {
   DESK_RECORD_ASIDE_COLUMN_CLASS,
@@ -27,20 +26,21 @@ import {
   DESK_SPLIT_RECORD_CLASS,
 } from '../tokens/desk-stage';
 import { DeskRecordViewSwitch } from './DeskRecordViewSwitch';
-import { useDeskStageOptional } from './DeskStageContext';
+import { useDeskStageOptional, type DeskStageView } from './DeskStageContext';
 import { DeskStageOverlay, DeskStageRecordHeader, isRecordEscTextEntry } from './DeskStageOverlay';
 
-type DeskRecordView = 'in-place' | 'split';
-
-/** Which record view the enclosing desk stage selects. `in-place` outside a desk. */
-export function useDeskRecordView(): DeskRecordView {
-  return useDeskStageOptional()?.fullscreen ? 'split' : 'in-place';
+/**
+ * Which view the enclosing desk stage selects. `in-place` outside a desk.
+ * `floor` places the record in place — the whole width stays rows.
+ */
+export function useDeskRecordView(): DeskStageView {
+  return useDeskStageOptional()?.view ?? 'in-place';
 }
 
 /** Published around the list AND the record. */
 interface DeskRecordPlaneState {
   open: boolean;
-  view: DeskRecordView;
+  view: DeskStageView;
   ownsEscape: boolean;
 }
 
@@ -119,12 +119,11 @@ export function DeskRecordPlane({
 
   // Motion: the split pane springs in beside the list; the record body swaps
   // (J/K, a clicked row) on the focus crossfade — enter only, so a walk never
-  // waits on an exit. Industrial regions move nothing (BRIEF §12).
-  const still = useMode() === 'industrial';
+  // waits on an exit.
   const pane = useMotionRole(motionRole.record.pane);
   const swap = useMotionRole(motionRole.swap.focus);
-  const paneTransition = still ? { duration: 0 } : pane.transition;
-  const swapTransition = still ? { duration: 0 } : swap.transition;
+  const paneTransition = pane.transition;
+  const swapTransition = swap.transition;
   const swapKey = recordKey ?? (typeof title === 'string' ? title : 'record');
 
   const onCloseRef = useRef(onClose);
@@ -132,9 +131,11 @@ export function DeskRecordPlane({
     onCloseRef.current = onClose;
   }, [onClose]);
 
-  // Split: the first Esc closes the record.
+  // Split and floor: the first Esc closes the record. On `document`, so it
+  // runs before the stage's own Esc (leave floor / split) on `window`.
+  const ownsFirstEscape = view !== 'in-place';
   useEffect(() => {
-    if (!split || !open) return;
+    if (!ownsFirstEscape || !open) return;
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key !== 'Escape' || event.defaultPrevented || hasOpenOverlay()) return;
       event.preventDefault();
@@ -146,7 +147,7 @@ export function DeskRecordPlane({
     };
     document.addEventListener('keydown', onKeyDown);
     return () => document.removeEventListener('keydown', onKeyDown);
-  }, [split, open]);
+  }, [ownsFirstEscape, open]);
 
   // Focus return: remember the open record (it moves with J/K) and the element
   // focused when it opened; on close, focus that record's row in the list.

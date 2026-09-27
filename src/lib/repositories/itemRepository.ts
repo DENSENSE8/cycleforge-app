@@ -27,6 +27,8 @@ interface InsertItem {
   description?: string | null;
   itemType?: string | null;
   productType?: string | null;
+  brand?: string | null;
+  manufacturer?: string | null;
   status: string;
   rate?: string | null;
   purchaseRate?: string | null;
@@ -106,6 +108,8 @@ class DrizzleItemRepository implements ItemRepository {
         description: sql`excluded.description`,
         itemType: sql`excluded.item_type`,
         productType: sql`excluded.product_type`,
+        brand: sql`excluded.brand`,
+        manufacturer: sql`excluded.manufacturer`,
         status: sql`excluded.status`,
         rate: sql`excluded.rate`,
         purchaseRate: sql`excluded.purchase_rate`,

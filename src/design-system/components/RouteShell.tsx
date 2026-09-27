@@ -10,11 +10,11 @@ import {
 } from '@/components/ui/HorizontalButtonSlider';
 import { cn } from '@/utils/_cn';
 import { appChromeClass } from '@/design-system/tokens/app-surface';
-import { framerPresence, framerTransition } from '@/design-system/foundations/motion-framer';
+import { motionPresence, motionTransition } from '@/design-system/foundations/motion-presets';
 import {
   useMotionPresence,
   useMotionTransition,
-} from '@/design-system/foundations/motion-framer-hooks';
+} from '@/design-system/foundations/motion-presets-hooks';
 
 type RouteShellView = 'actions' | 'history';
 
@@ -53,8 +53,8 @@ export function RouteShell({
   const router = useRouter();
   const searchParams = useSearchParams();
   const activeView = parseView(searchParams.get(PANE_PARAM), defaultView);
-  const presence = useMotionPresence(framerPresence.routeHistory);
-  const transition = useMotionTransition(framerTransition.routeHistoryMount);
+  const presence = useMotionPresence(motionPresence.routeHistory);
+  const transition = useMotionTransition(motionTransition.routeHistoryMount);
 
   const setView = useCallback(
     (next: string) => {

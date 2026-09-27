@@ -74,9 +74,6 @@ export const DESK_STAGE_FULLSCREEN_CLASS = 'w-full';
  */
 export const DESK_STAGE_GUTTER_CLASS = 'px-4';
 
-/** The **floor** under the card (operator ruling 2026-08-31). */
-export const DESK_STAGE_FLOOR_CLASS = 'pb-4';
-
 /**
  * Desk **corner + inset** grammar — the deliberate split from the scan-station
  * chrome (operator ruling 2026-08-30).
@@ -106,11 +103,11 @@ const DESK_TAB_TRIGGER_CLASS =
 export const DESK_STAGE_DETACH_CLASS = '';
 
 /**
- * The desk **card shell** — rounded container under the tab row.
- * NO outer border or hairline (operator ruling 2026-08-31). Soft geometry, not
+ * The desk stage under the tab row — planted on the one white page: no border,
+ * no corner radius, no frame (owner 2026-09-27: "remove the framing and just
+ * have a bottom of page shadow"). The list paints its own bottom scroll shadow.
  */
-export const DESK_CHROME_STAGE_BODY_CLASS =
-  'overflow-hidden rounded-b-xl bg-surface-card';
+export const DESK_CHROME_STAGE_BODY_CLASS = 'overflow-hidden bg-surface-card';
 
 /** DataTable mount inside {@link DESK_CHROME_STAGE_BODY_CLASS} — flush, no inner rounded shell. */
 export const DESK_TABLE_SURFACE_CLASS =

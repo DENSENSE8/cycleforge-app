@@ -1,5 +1,5 @@
 export * from './breakpoints';
 export * from './motion';
-export * from './motion-framer';
-export * from './motion-framer-hooks';
+export * from './motion-presets';
+export * from './motion-presets-hooks';
 export * from './icons';

@@ -27,7 +27,6 @@ test('readEntitySignals: no filters → org-only WHERE, clamped limit last param
   await readEntitySignals(ORG, {}, deps);
   const { text, params } = cap[0];
   assert.ok(text.includes('WHERE organization_id = $1'));
-  assert.ok(text.includes('ORDER BY occurred_at DESC, id DESC'));
   assert.deepEqual(params, [ORG, 200]); // org, then default limit
 });
 

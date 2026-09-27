@@ -26,7 +26,7 @@ record it points to.
 
 Net since `92a32d00d`: ~6.8k files touched, ~397k lines deleted. `docs/` 36 MB → 3 MB.
 
-**Kept on purpose:** `vision/` (owner will port it), `framer-motion`/`motion`,
+**Kept on purpose:** `vision/` (owner will port it), `motion`/`motion-plus`,
 `docs/design-system`, `docs/tenancy`, `docs/security`, `docs/eval`, `docs/mobile-first`,
 `scripts/apply-migrations.js`, `seed-roles.mjs`, key-rotation and openapi scripts.
 

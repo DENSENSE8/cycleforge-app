@@ -15,6 +15,7 @@ export function MasterNavView({
   activeChildId,
   otherPages,
   onNavigate,
+  onOpenHref,
   onRowHover,
   spineOrder,
   onSpineOrderChange,
@@ -24,6 +25,7 @@ export function MasterNavView({
   activeChildId: string | null;
   otherPages: SidebarPageNav[];
   onNavigate: (pageId: string, childId?: string) => void;
+  onOpenHref: (href: string) => void;
   onRowHover?: (page: SidebarPageNav) => void;
   spineOrder: string[];
   onSpineOrderChange: (ids: string[]) => void;
@@ -37,6 +39,7 @@ export function MasterNavView({
         activeChildId={activeChildId}
         otherPages={otherPages}
         onNavigate={onNavigate}
+        onOpenHref={onOpenHref}
         onRowHover={onRowHover}
         spineOrder={spineOrder}
         onSpineOrderChange={onSpineOrderChange}

@@ -7,6 +7,14 @@
 export const SKU_CATALOG_JOIN_ON_SQL =
   'sc.sku = rl.sku AND sc.organization_id = rl.organization_id' as const;
 
+/**
+ * `SKU_CATALOG_JOIN_ON_SQL` for a row alias other than `rl` (a bin row, a CTE
+ * hit). Same predicate: exact SKU, same organization — never similarity.
+ */
+export function skuCatalogJoinOnSql(rowAlias: string, scAlias = 'sc'): string {
+  return `${scAlias}.sku = ${rowAlias}.sku AND ${scAlias}.organization_id = ${rowAlias}.organization_id`;
+}
+
 /** The Zoho item title subquery — rule 2's winning arm. */
 export const ZOHO_ITEM_TITLE_SQL = `(SELECT name FROM items
                   WHERE zoho_item_id = rz.zoho_item_id AND status = 'active'
@@ -75,6 +83,64 @@ export function resolveSkuIdentityTitle(row: SkuIdentityTitleRow): string {
   return '';
 }
 
+/**
+ * Brand rides the same law (operator 2026-09-26, phase0-findings §Brand):
+ * a brand is an attribute of the already-joined `sc` row, never re-parsed
+ * from a title on a record surface. Below this confidence a brand is a
+ * proposal waiting in the review queue, not a fact.
+ */
+export const SKU_BRAND_FACT_MIN_CONFIDENCE = 0.9 as const;
+
+/**
+ * The ONLY `ON` predicate for a `product_brands` join off an already-joined
+ * `sku_catalog` row: org-scoped, and gated on the fact threshold so a guess
+ * can never pass as a fact. Aliased form for callers whose catalog alias is
+ * not `sc`.
+ */
+export function skuBrandJoinOnSql(scAlias = 'sc', pbAlias = 'pb'): string {
+  return `${pbAlias}.id = ${scAlias}.brand_id AND ${pbAlias}.organization_id = ${scAlias}.organization_id AND ${scAlias}.brand_confidence >= 0.90`;
+}
+
+/** `skuBrandJoinOnSql()` for the canonical `sc` / `pb` aliases. */
+export const SKU_BRAND_JOIN_ON_SQL =
+  'pb.id = sc.brand_id AND pb.organization_id = sc.organization_id AND sc.brand_confidence >= 0.90' as const;
+
+/** The Zoho item brand subquery — mirrors ZOHO_ITEM_TITLE_SQL; `brand`, else `manufacturer`. */
+export const ZOHO_ITEM_BRAND_SQL = `(SELECT COALESCE(NULLIF(btrim(brand), ''), NULLIF(btrim(manufacturer), ''))
+                  FROM items
+                  WHERE zoho_item_id = rz.zoho_item_id AND status = 'active'
+                  LIMIT 1)` as const;
+
+/** Brand precedence, most authoritative first — the Zoho item governs, as for the title. */
+export const SKU_IDENTITY_BRAND_ORDER = ['zoho_item_brand', 'catalog_brand'] as const;
+
+export interface SkuIdentityBrandRow {
+  /** `items.brand` (else `items.manufacturer`) of the active Zoho twin. */
+  zoho_item_brand?: string | null;
+  /** `product_brands.name` read through `sc.brand_id`. */
+  catalog_brand?: string | null;
+  /** `sku_catalog.brand_confidence` — the catalog arm counts only at or above the fact threshold. */
+  catalog_brand_confidence?: number | string | null;
+}
+
+/**
+ * The brand ladder. Returns `''` when the row carries no brand fact; a
+ * catalog brand below SKU_BRAND_FACT_MIN_CONFIDENCE (or with no confidence)
+ * is a pending proposal and never reaches a record surface.
+ */
+export function resolveSkuIdentityBrand(row: SkuIdentityBrandRow): string {
+  for (const field of SKU_IDENTITY_BRAND_ORDER) {
+    const face = String(row[field] ?? '').trim();
+    if (!face) continue;
+    if (field === 'catalog_brand') {
+      const confidence = Number(row.catalog_brand_confidence);
+      if (row.catalog_brand_confidence == null || !(confidence >= SKU_BRAND_FACT_MIN_CONFIDENCE)) continue;
+    }
+    return face;
+  }
+  return '';
+}
+
 /** The sentence a refusal prints — one place, so gate and tool agree. */
 export const SKU_IDENTITY_REFUSAL =
   'One SKU, one title, one photo (operator 2026-09-15). Join sku_catalog with SKU_CATALOG_JOIN_ON_SQL — exact and org-scoped, never similarity-gated. Read the title through resolveSkuIdentityTitle: the Zoho item name governs, the marketplace title is the no-Zoho-item fallback. A platform sync may fill sku_catalog.product_title / image_url only behind skuCatalogNoZohoTwinPredicateSql(); marketplace text belongs in sku_platform_ids.display_name.' as const;
@@ -87,7 +153,9 @@ export type SkuIdentityViolationKind =
   /** A TS ladder reading the marketplace title before the Zoho item title. */
   | 'marketplace-title-first'
   /** An `UPDATE sku_catalog` touching title/image with no Zoho-twin predicate. */
-  | 'platform-title-write';
+  | 'platform-title-write'
+  /** A `product_brands` join whose `ON` clause omits `organization_id`. */
+  | 'tenant-blind-brand-join';
 
 export interface SkuIdentityViolation {
   kind: SkuIdentityViolationKind;
@@ -110,6 +178,7 @@ export const SKU_IDENTITY_SCAN_EXEMPT = [
 ] as const;
 
 const JOIN_RE = /join\s+sku_catalog\s+(?:as\s+)?(\w+)\s+on\s+([^\n]*)/i;
+const BRAND_JOIN_RE = /join\s+product_brands\s+(?:as\s+)?(\w+)\s+on\s+([^\n]*)/i;
 const SIMILARITY_TITLE_RE = /similarity\s*\(\s*(?:lower\s*\(\s*)?\w*\.?product_title/i;
 const UPDATE_SKU_CATALOG_RE = /update\s+sku_catalog\b/i;
 const COMMENT_RE = /^\s*(\/\/|\*|--)/;
@@ -143,6 +212,13 @@ export function auditSkuIdentitySource(file: string, text: string): SkuIdentityV
         push('tenant-blind-join', i);
       }
       if (skuKeyed && SIMILARITY_TITLE_RE.test(clause)) push('title-similarity-guard', i);
+    }
+
+    // A brand is only ever read through an org-scoped join (SKU_BRAND_JOIN_ON_SQL).
+    const brandJoin = BRAND_JOIN_RE.exec(line);
+    if (brandJoin) {
+      const clause = [brandJoin[2], lines[i + 1] ?? '', lines[i + 2] ?? ''].join(' ');
+      if (!/SKU_BRAND_JOIN_ON_SQL|skuBrandJoinOnSql|organization_id/.test(clause)) push('tenant-blind-brand-join', i);
     }
 
     // `similarity(... product_title ...)` in a join predicate block, several
@@ -183,6 +259,8 @@ export function formatSkuIdentityViolation(v: SkuIdentityViolation): string {
       'marketplace title read before the Zoho item title — use resolveSkuIdentityTitle',
     'platform-title-write':
       'UPDATE sku_catalog sets product_title/image_url with no Zoho-twin predicate — add skuCatalogNoZohoTwinPredicateSql()',
+    'tenant-blind-brand-join':
+      'product_brands join is not org-scoped — use SKU_BRAND_JOIN_ON_SQL',
   };
   return `${v.file}:${v.line} — ${why[v.kind]}\n      ${v.excerpt}`;
 }

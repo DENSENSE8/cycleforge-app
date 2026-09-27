@@ -117,6 +117,16 @@ export const DROPDOWN_SHELL_CORNER = 'rounded-lg';
 export const DROPDOWN_ITEM_CORNER = 'rounded';
 
 /**
+ * Contextual sidebar controls — the action CTA, filter disclosure rows, the
+ * boxed option list, the Reset pill. 6px: reads as a pressable button without
+ * the full-pill capsule (operator 2026-09-27).
+ */
+export const SIDEBAR_CONTROL_CORNER = 'rounded-md';
+
+/** Count chips and value chips inside a {@link SIDEBAR_CONTROL_CORNER} row. */
+export const SIDEBAR_CHIP_CORNER = 'rounded';
+
+/**
  * DataTable find-row tokens — search, filter, sort, views, date, fields,
  * zoom, fullscreen, the export glyph. Operator 2026-09-01: round them off;
  */

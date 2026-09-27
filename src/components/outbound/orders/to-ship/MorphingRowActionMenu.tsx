@@ -331,7 +331,7 @@ function useOrderActionVerbs({
 
   const openExceptionResolve = () => {
     onFinished();
-    if (stage && !stage.fullscreen) stage.toggleFullscreen();
+    if (stage && stage.view !== 'split') stage.setView('split');
     const params = new URLSearchParams(searchParams.toString());
     params.set('order', String(record.id));
     router.replace(`${SHIPPING_EXCEPTIONS_PATH}?${params.toString()}`, { scroll: false });
@@ -941,6 +941,44 @@ export function useOrderRecordMoreVerbs(record: ShippedOrder, mode: OrderRecordM
   return recordMoreVerbs(record, verbs);
 }
 
+/** One checked order card's verbs, grouped for its drop-down (owner 2026-09-27). */
+export interface OrderCardVerbs {
+  /** Triage verbs — out of stock, urgent, scan out — plus Label and Notes. */
+  quick: RecordActionVerb[];
+  /** The record's other actions (Paperwork first), the same list as its ⋮. */
+  more: RecordActionVerb[];
+  /** Delete — armed by the first press, run by the second. */
+  danger: RecordActionVerb | null;
+}
+
+const CARD_QUICK_EXTRA_IDS: Readonly<Record<string, true>> = { label: true, notes: true };
+
+export function useOrderCardVerbs(
+  record: ShippedOrder,
+  mode: OrderRecordMode,
+  onOpenLabels: ((record: ShippedOrder) => void) | undefined,
+  onFinished: () => void,
+): OrderCardVerbs {
+  const verbs = useOrderActionVerbs({
+    record,
+    rows: [record],
+    stateRows: [record],
+    mode,
+    openRecord: { checked: true, onOpenLabels },
+    onFinished,
+  });
+  return {
+    quick: verbs.filter(
+      (verb) =>
+        (ORDER_BULK_VERB_IDS.has(verb.id) || CARD_QUICK_EXTRA_IDS[verb.id]) &&
+        verb.id !== 'select' &&
+        verb.id !== 'delete',
+    ),
+    more: recordMoreVerbs(record, verbs),
+    danger: verbs.find((verb) => verb.id === 'delete') ?? null,
+  };
+}
+
 /**
  * The ENGINE-facing face of the check-set strip — what
  * `TableSurfaceBinding.rowPlane` registers for the orders entity (`row` →
@@ -959,6 +997,7 @@ function MorphingRowActionMenu({
   inline = false,
   liveRecords,
   mode,
+  face = 'strip',
 }: {
   record: ShippedOrder;
   open: boolean;
@@ -974,6 +1013,11 @@ function MorphingRowActionMenu({
   liveRecords?: readonly ShippedOrder[];
   /** The desk; defaults from the route (Exceptions) else To Ship. */
   mode?: OrderRecordMode;
+  /**
+   * `header`: painted inside the table header that became the bulk bar —
+   * bare strip, and Escape clears the check-set before anything else closes.
+   */
+  face?: 'strip' | 'header';
 }) {
   const [notesOpen, setNotesOpen] = useState(false);
   const [overlayHost, setOverlayHost] = useState<HTMLElement | null>(null);
@@ -1043,7 +1087,8 @@ function MorphingRowActionMenu({
         verbs={verbs}
         label="Row actions"
         testId="morphing-row-action-menu"
-        onDismiss={selectedRows.length === 0 ? close : undefined}
+        face={face}
+        onDismiss={face === 'header' || selectedRows.length === 0 ? close : undefined}
       />
       {onMobileUrl ? (
         <BottomSheet
@@ -1063,20 +1108,26 @@ function MorphingRowActionMenu({
 }
 
 /**
- * The slot-table host of the order strip (`DataTable` `actionStrip`): the
- * check-set strip while rows are checked, else the open record's strip when
- * the list sits in a record plane with a record open.
+ * The slot-table host of the order strip — ONE verbs source, two placements:
+ * - `header` (`DataTable` `bulkBar`, and the floor ledger's check-set bar):
+ *   the check-set strip while rows are checked, else nothing. Escape clears
+ *   the check-set.
+ * - `action-row` (`DataTable` `actionStrip`): the open record's strip when the
+ *   list sits in a record plane with a record open and nothing is checked —
+ *   a live check-set owns the verbs in the header instead.
  */
 export function OrdersMorphingHost({
   records,
   selectedIds,
   mode,
+  placement,
   openRecordStrip,
 }: {
   records: ShippedOrder[];
   selectedIds: ReadonlySet<number>;
   mode: OrderRecordMode;
-  /** The open record's strip, from the desk that owns the open record. */
+  placement: 'header' | 'action-row';
+  /** The open record's strip, from the desk that owns the open record (`action-row` only). */
   openRecordStrip?: ReactNode;
 }) {
   const anchorRef = useRef<HTMLElement | null>(null);
@@ -1085,12 +1136,16 @@ export function OrdersMorphingHost({
   const record =
     (rows[0] as ShippedOrder | undefined)
     ?? records.find((row) => selectedIds.has(Number(row.id)));
-  if (!record) return plane?.open ? <>{openRecordStrip}</> : null;
+  if (placement === 'action-row') {
+    return !record && plane?.open ? <>{openRecordStrip}</> : null;
+  }
+  if (!record) return null;
   return (
     <MorphingRowActionMenu
       record={record}
       open
       inline
+      face="header"
       mode={mode}
       liveRecords={records}
       onClose={() => {

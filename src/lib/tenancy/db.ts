@@ -2,6 +2,7 @@
 
 import type { PoolClient, QueryResult, QueryResultRow } from 'pg';
 import pool, { tenantPool as configuredTenantPool } from '@/lib/db';
+import { inlineSqlParams } from './inline-params';
 import { resolveTenantAppDatabaseUrl } from '@/lib/env-utils';
 import { DOGFOOD_ORG_ID, type OrgId } from './constants';
 
@@ -60,6 +61,34 @@ export async function tenantQuery<T extends QueryResultRow = QueryResultRow>(
   return withTenantConnection(orgId, (client) =>
     client.query<T>(text, params as unknown[] | undefined),
   );
+}
+
+/**
+ * `tenantQuery` in ONE network round trip instead of four (BEGIN, set_config,
+ * statement, COMMIT). The GUC and the statement travel as one simple-protocol
+ * message, which Postgres runs as a single implicit transaction: the LOCAL
+ * setting is visible to the statement and gone when it ends, so this is as
+ * safe behind a transaction-pooling PgBouncer as `withTenantConnection`.
+ *
+ * Parameters are inlined as literals (`inlineSqlParams`) because the simple
+ * protocol carries none. Read paths only — one statement, no write intent.
+ */
+export async function tenantQueryOneTrip<T extends QueryResultRow = QueryResultRow>(
+  orgId: OrgId,
+  text: string,
+  params: ReadonlyArray<unknown> = [],
+): Promise<QueryResult<T>> {
+  assertOrgId(orgId);
+  const statement = inlineSqlParams(text, params);
+  const client = await tenantPool.connect();
+  try {
+    const results = (await client.query(
+      `SELECT set_config('app.current_org', '${orgId}', true);\n${statement}`,
+    )) as unknown as Array<QueryResult<T>>;
+    return results[results.length - 1];
+  } finally {
+    client.release();
+  }
 }
 
 /**

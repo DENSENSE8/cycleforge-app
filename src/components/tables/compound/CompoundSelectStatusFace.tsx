@@ -9,7 +9,7 @@
 
 import type { ReactNode } from 'react';
 import { motion, useAnimationFrame, useMotionValue, useReducedMotion } from '@/design-system/motion';
-import { framerDuration } from '@/design-system/foundations/motion-framer';
+import { motionDuration } from '@/design-system/foundations/motion-presets';
 import { AlertTriangle, Clock, Zap } from '@/components/Icons';
 import { cn } from '@/utils/_cn';
 import type { CompoundSelectStatus } from './compound-select-status';
@@ -20,7 +20,7 @@ import { edgeMarkFlashOpacity } from './edge-mark-pulse';
  * clock), but a flash rather than a breath. Derived, so the pair can never be
  * retuned apart.
  */
-const FLASH_SEC = framerDuration.edgeMarkPulse / 2;
+const FLASH_SEC = motionDuration.edgeMarkPulse / 2;
 
 /** The mark's BOX is the 16px square's box and the glyph is 14px inside it — the same optical weight as the rail tick, and the same outer… */
 const BOX_CLASS = 'h-4 w-4';

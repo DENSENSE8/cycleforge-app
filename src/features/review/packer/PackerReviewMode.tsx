@@ -6,11 +6,11 @@ import { useCallback, useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { motion, useReducedMotion, type Variants } from '@/design-system/motion';
-import { framerPresence, framerTransition } from '@/design-system/foundations/motion-framer';
+import { motionPresence, motionTransition } from '@/design-system/foundations/motion-presets';
 import {
   useMotionPresence,
   useMotionTransition,
-} from '@/design-system/foundations/motion-framer-hooks';
+} from '@/design-system/foundations/motion-presets-hooks';
 import {
   staggerRevealContainer,
   staggerRevealRiseItem,
@@ -44,7 +44,6 @@ import {
   StationDisplaysPushStack,
   STATION_DISPLAY_INDEX,
   resolveDisplaysActiveTab,
-  useYieldStationDisplaysOnAssistantOpen,
 } from '@/components/station/displays';
 import { buildReviewDisplayIndexRows } from '@/features/review/packer/review-display-index';
 import type { TerminalActionVm } from '@/lib/station-terminal';
@@ -112,8 +111,8 @@ export function PackerReviewMode({
   }, [row.packTier]);
 
   const reduceMotion = useReducedMotion();
-  const cardPresence = useMotionPresence(framerPresence.stationCard);
-  const cardTransition = useMotionTransition(framerTransition.stationCardMount);
+  const cardPresence = useMotionPresence(motionPresence.stationCard);
+  const cardTransition = useMotionTransition(motionTransition.stationCardMount);
   const revealContainer = staggerRevealContainer(reduceMotion ? 0 : STAGGER_REVEAL_STEP);
   const revealItem: Variants = reduceMotion
     ? { hidden: { opacity: 0 }, show: { opacity: 1, transition: { duration: 0.001 } } }
@@ -176,7 +175,6 @@ export function PackerReviewMode({
   /** `←|` Open displays → the Root Index, not a guessed leaf. */
   const openDisplaysIndex = useCallback(() => setActiveSideTab(STATION_DISPLAY_INDEX), []);
   const closeDisplays = useCallback(() => setActiveSideTab(null), []);
-  useYieldStationDisplaysOnAssistantOpen(closeDisplays);
 
   const displayTabs = useMemo(
     () =>

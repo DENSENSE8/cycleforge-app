@@ -1,0 +1,24 @@
+-- entity_search_outbox_stale_claim: BEFORE
+-- captured 2026-09-26T19:39:47.375Z as app_tenant (unpooled ep-shiny-hall-adz0n0nu), app.current_org=00000000-0000-0000-0000-000000000001
+-- BEGIN READ ONLY; SELECT set_config('app.current_org', '<org>', true); EXPLAIN (ANALYZE, BUFFERS) <sql>; ROLLBACK;
+-- src/lib/search/search-outbox-worker.ts:343-348 crash-recovery claim release. Runtime statement is
+-- `UPDATE entity_search_outbox SET claimed_at = NULL WHERE <same predicate>` on the OWNER pool (@/lib/db default);
+-- EXPLAIN ANALYZE of the UPDATE cannot run READ ONLY, so this is the SELECT with the identical WHERE (same scan node).
+-- Owner-role plan at capture time: Seq Scan, Rows Removed by Filter: 9475, 2.08 ms. No params.
+-- SQL:
+--   SELECT id FROM entity_search_outbox
+--          WHERE processed_at IS NULL
+--            AND claimed_at < now() - INTERVAL '15 minutes'
+
+                                                                                      QUERY PLAN                                                                                       
+---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ Seq Scan on entity_search_outbox  (cost=0.00..458.84 rows=1577 width=8) (actual time=1.135..1.136 rows=0 loops=1)
+   Filter: ((processed_at IS NULL) AND (claimed_at < (now() - '00:15:00'::interval)) AND (organization_id = (NULLIF(current_setting('app.current_org'::text, true), ''::text))::uuid))
+   Rows Removed by Filter: 9475
+   Buffers: shared hit=167
+ Planning:
+   Buffers: shared hit=156
+ Planning Time: 0.506 ms
+ Execution Time: 1.171 ms
+(8 rows)
+

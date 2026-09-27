@@ -602,7 +602,6 @@ test('regression: operations.plans.view gates the forge master-plan routes (agen
   const paths = routesGatedBy('operations.plans.view').map((r) => r.path);
   assert.ok(paths.includes('/api/forge/master-plan/route.ts'), 'view perm should gate /api/forge/master-plan');
   assert.ok(paths.includes('/api/forge/master-plan/seed/route.ts'), 'view perm should gate /api/forge/master-plan/seed');
-  assert.ok(paths.includes('/api/forge/chat/route.ts'), 'view perm should gate /api/forge/chat');
 });
 
 test('regression: forge master-plan sync is machine-gated (allowAnonymous + forge token)', () => {
@@ -862,4 +861,19 @@ test('regression: label pairing + price routes carry their gates (Link label, ti
     assert.equal(r.permission, permission, path);
     assert.deepEqual([...r.methods].sort(), [...methods].sort(), path);
   }
+});
+
+test('regression: assistant.chat gates every chat-sessions route (per-staff threads)', () => {
+  const expected: Record<string, string[]> = {
+    '/api/ai/chat-sessions/route.ts': ['GET'],
+    '/api/ai/chat-sessions/[sessionId]/route.ts': ['DELETE', 'GET', 'PATCH'],
+    '/api/ai/chat-sessions/[sessionId]/feedback/route.ts': ['POST'],
+  };
+  for (const [path, methods] of Object.entries(expected)) {
+    const r = routeByPath(path);
+    assert.ok(r, `${path} should be in the manifest`);
+    assert.equal(r.permission, 'assistant.chat', `${path} permission`);
+    assert.deepEqual(r.methods, methods, `${path} methods`);
+  }
+  assert.equal(routeByPath('/api/ai/chat-sessions/[sessionId]/messages/route.ts'), null);
 });

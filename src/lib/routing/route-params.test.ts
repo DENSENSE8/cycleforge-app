@@ -31,6 +31,11 @@ import {
   type UnboxWorkspaceTab,
 } from '@/utils/unbox-workspace-state';
 import { SUPPORT_MODES } from '@/components/sidebar/support/support-sidebar-shared';
+import {
+  applyToShipTriageFacet,
+  getToShipTriageFacetFromSearch,
+  type ToShipTriageFacet,
+} from '@/utils/dashboard-search-state';
 
 const DEMO = defineRouteParams({
   route: '/demo',
@@ -527,4 +532,99 @@ test('/inventory declares the whole set its URL-state SoT reads', () => {
 
   // A sibling surface's state still dies at the boundary.
   assert.equal(parse('triq=BOX-9&unboxview=queue'), '');
+});
+
+test('every To-ship triage facet survives hygiene on each route that mounts the To-ship table', () => {
+  // The filter menu writes these through `applyToShipTriageFacet`; a route that
+  // did not own the key stripped it, so e.g. Awaiting customer died on reload.
+  const facets: ToShipTriageFacet[] = ['must_ship', 'urgent', 'blocked', 'awaiting_customer', 'caged'];
+  for (const route of ['/shipping/orders', '/shipping/shortage', '/test', '/pack']) {
+    const spec = routeParamsFor(route)!;
+    assert.equal(spec.route, route);
+    for (const facet of facets) {
+      const written = applyToShipTriageFacet(new URLSearchParams(), facet);
+      const kept = parseRouteParams(spec, written);
+      assert.equal(getToShipTriageFacetFromSearch(kept), facet, `${route} strips the ${facet} facet`);
+    }
+    const parse = (qs: string) => parseRouteParams(spec, new URLSearchParams(qs)).toString();
+    assert.equal(parse('aging=overdue'), 'aging=overdue', `${route} strips aging`);
+    assert.equal(parse('stage=tested'), 'stage=tested', `${route} strips stage`);
+    // Closed vocabularies still refuse junk.
+    assert.equal(parse('rowFlag=bogus'), '');
+    assert.equal(parse('aging=someday'), '');
+  }
+});
+
+test('/shipping/shortage owns the Picking desk params and nothing of To-ship\'s', () => {
+  const spec = routeParamsFor('/shipping/shortage')!;
+  assert.equal(spec.route, '/shipping/shortage');
+  const parse = (qs: string) => parseRouteParams(spec, new URLSearchParams(qs)).toString();
+
+  assert.equal(parse('pair=po'), 'pair=po');
+  assert.equal(parse('pair=PO'), 'pair=po');
+  assert.equal(parse('pair=vendor'), '');
+  assert.equal(parse('openOrderId=42'), 'openOrderId=42');
+  assert.equal(parse('sort=deadline&dir=asc'), 'sort=deadline&dir=asc');
+  assert.equal(parse('staff=7'), 'staff=7');
+  // The Labels walk and the pick-list lens are To-ship's; the table ignores them here.
+  assert.equal(parse('paperwork=42&queue=pick'), '');
+});
+
+test('/shipping/exceptions keeps a canonical category and drops anything else', () => {
+  const spec = routeParamsFor('/shipping/exceptions')!;
+  const parse = (qs: string) => parseRouteParams(spec, new URLSearchParams(qs)).get('category');
+
+  assert.equal(parse('category=SKU+Mapping'), 'SKU Mapping');
+  assert.equal(parse('category=Out%20of%20Stock'), 'Out of Stock');
+  // The workbench matches the label exactly, so a re-cased value is not a category.
+  assert.equal(parse('category=sku+mapping'), null);
+  assert.equal(parse('category=bogus'), null);
+});
+
+test('/reports keeps a known tab and a civil date', () => {
+  const spec = routeParamsFor('/reports')!;
+  assert.equal(spec.route, '/reports');
+  const parse = (qs: string) => parseRouteParams(spec, new URLSearchParams(qs)).toString();
+
+  for (const tab of ['staff', 'packer', 'utilization', 'velocity', 'dead', 'tasks', 'activity']) {
+    assert.equal(parse(`tab=${tab}`), `tab=${tab}`);
+  }
+  assert.equal(parse('tab=bogus'), '');
+  assert.equal(parse('date=2026-09-25'), 'date=2026-09-25');
+  assert.equal(parse('date=yesterday'), '');
+});
+
+test('/counter, /studio and /studio/catalog keep the params their pages read', () => {
+  const parse = (route: string, qs: string) =>
+    parseRouteParams(routeParamsFor(route)!, new URLSearchParams(qs)).toString();
+
+  assert.equal(parse('/counter', 'session=12'), 'session=12');
+  assert.equal(parse('/counter', 'session=abc'), '');
+  assert.equal(parse('/counter', 'pane=history'), 'pane=history');
+
+  assert.equal(parse('/studio', 'v=floor&focus=n1&z=2&lens=gaps'), 'v=floor&focus=n1&z=2&lens=gaps');
+  assert.equal(parse('/studio', 'z=9&lens=bogus'), '');
+
+  assert.equal(routeParamsFor('/studio/catalog')?.route, '/studio/catalog');
+  assert.equal(parse('/studio/catalog', 'mode=review&selectedId=5'), 'mode=review&selectedId=5');
+  assert.equal(parse('/studio/catalog', 'mode=edit'), '');
+  // The canvas state is not the catalog's.
+  assert.equal(parse('/studio/catalog', 'lens=gaps'), '');
+});
+
+test('station queues keep their new-order, label and picker params', () => {
+  const parse = (route: string, qs: string) =>
+    parseRouteParams(routeParamsFor(route)!, new URLSearchParams(qs)).toString();
+
+  // `useNewOrderParam` on the Testing (Shipping) and Pack workbenches.
+  assert.equal(parse('/test', 'new=true'), 'new=true');
+  assert.equal(parse('/pack', 'new=true'), 'new=true');
+  assert.equal(parse('/pack', 'new=yes'), '');
+  // `RepairTable` reads `needsLabel === '1'`.
+  assert.equal(parse('/repair', 'needsLabel=1'), 'needsLabel=1');
+  assert.equal(parse('/repair', 'needsLabel=0'), '');
+  // Sourcing Models / Compatibility picker.
+  assert.equal(parse('/sourcing', 'search=QC35'), 'search=QC35');
+  assert.equal(parse('/sourcing', 'boseModelId=17'), 'boseModelId=17');
+  assert.equal(parse('/sourcing', 'boseModelId=x'), '');
 });

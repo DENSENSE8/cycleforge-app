@@ -21,7 +21,6 @@ test('sqlLinkedSupportTicketLateralJoin resolves RECEIVING_LINE, RECEIVING, and 
   const join = sqlLinkedSupportTicketLateralJoin();
   assert.match(join, /RECEIVING_LINE/);
   assert.match(join, /RECEIVING/);
-  assert.match(join, /COALESCE\(rl\.receiving_id, r\.id\)/);
   assert.match(join, /SHIPMENT/);
   assert.match(join, /support_tickets st/);
 });

@@ -112,9 +112,12 @@ function applyBinBuckets(rows: BinsOverviewRow[], buckets: BinBucket[]): BinsOve
 
 // ─── SKUs ────────────────────────────────────────────────────────────────────
 
-async function fetchSkus(args: { q: string; signal?: AbortSignal }): Promise<SkuSearchRow[]> {
+async function fetchSkus(args: { q: string; field: string; signal?: AbortSignal }): Promise<SkuSearchRow[]> {
     if (!args.q) return [];
     const params = new URLSearchParams({ q: args.q });
+    // Brand is a server-side filter (brand + its product lines); every other
+    // field is the default SKU/title match.
+    if (args.field === 'brand') params.set('field', 'brand');
     const res = await fetch(`/api/inventory/sku-search?${params.toString()}`, { signal: args.signal });
     if (!res.ok) throw new Error(`sku-search ${res.status}`);
     const data = (await res.json()) as { success: boolean; results: SkuSearchRow[] };
@@ -291,7 +294,7 @@ function useInventorySearch(params: UseInventorySearchParams): UseInventorySearc
                     return { kind: 'bins' as const, rows: filtered, counts: data.counts };
                 }
                 case 'skus': {
-                    const rows = await fetchSkus({ q: trimmed, signal });
+                    const rows = await fetchSkus({ q: trimmed, field, signal });
                     const filtered = applySkuBuckets(rows, buckets as SkuBucket[]);
                     return { kind: 'skus' as const, rows: filtered };
                 }

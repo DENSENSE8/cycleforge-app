@@ -6,8 +6,8 @@ import { Check, Copy, Loader2, X } from '@/components/Icons';
 import { IconButton } from '@/design-system/primitives';
 import { copyToClipboard } from '@/utils/_dom';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
-import { framerPresence, framerTransition } from '@/design-system/foundations/motion-framer';
-import { useMotionPresence } from '@/design-system/foundations/motion-framer-hooks';
+import { motionPresence, motionTransition } from '@/design-system/foundations/motion-presets';
+import { useMotionPresence } from '@/design-system/foundations/motion-presets-hooks';
 import type { ActiveStationOrder } from '@/hooks/useStationTestingController';
 
 /** Units Displays leaf — flush serial capture rollup (no WorkspaceCard island). */
@@ -21,7 +21,7 @@ export function ShippingCapturedUnits({
   const quantity = Math.max(1, Number(activeOrder.quantity) || 1);
   // Serial rows rise in (stationSerialRow) — never a left→right wipe. Height
   // collapse stays so vacated gaps close cleanly on remove.
-  const rowPresence = useMotionPresence(framerPresence.stationSerialRow);
+  const rowPresence = useMotionPresence(motionPresence.stationSerialRow);
   const [lastAddedSerial, setLastAddedSerial] = useState<string | null>(null);
   const [removingKey, setRemovingKey] = useState<string | null>(null);
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
@@ -81,7 +81,7 @@ export function ShippingCapturedUnits({
                 initial={{ ...rowPresence.initial, height: 0 }}
                 animate={{ ...rowPresence.animate, height: 'auto' }}
                 exit={{ ...rowPresence.exit, height: 0 }}
-                transition={framerTransition.stationSerialRow}
+                transition={motionTransition.stationSerialRow}
                 className={`flex items-center gap-2 px-3 py-2 transition-colors duration-500 ${
                   isNew ? 'bg-surface-sunken' : 'bg-surface-card'
                 }`}
@@ -92,10 +92,10 @@ export function ShippingCapturedUnits({
                   <AnimatePresence>
                     {isNew ? (
                       <motion.span
-                        initial={framerPresence.stationAddedBadge.initial}
-                        animate={framerPresence.stationAddedBadge.animate}
-                        exit={framerPresence.stationAddedBadge.exit}
-                        transition={framerTransition.stationAddedBadge}
+                        initial={motionPresence.stationAddedBadge.initial}
+                        animate={motionPresence.stationAddedBadge.animate}
+                        exit={motionPresence.stationAddedBadge.exit}
+                        transition={motionTransition.stationAddedBadge}
                         className="text-role-eyebrow uppercase tracking-wider text-emerald-600"
                       >
                         ✓ Added

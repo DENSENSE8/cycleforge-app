@@ -18,7 +18,6 @@ import {
   StationDisplaysUtilityRail,
   STATION_DISPLAY_INDEX,
   resolveDisplaysActiveTab,
-  useYieldStationDisplaysOnAssistantOpen,
   type DisplayIndexRow,
 } from '@/components/station/displays';
 import type { SectionTab } from '@/design-system/components';
@@ -40,7 +39,6 @@ export function ScanOutIdleAwait({
     () => setActiveSideTab(STATION_DISPLAY_INDEX),
     [],
   );
-  useYieldStationDisplaysOnAssistantOpen(closeDisplays);
 
   useEffect(() => {
     if (!listenDisplays) {

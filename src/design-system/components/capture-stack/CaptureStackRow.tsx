@@ -2,7 +2,7 @@
 
 import type { ReactNode } from 'react';
 import { motion, useReducedMotion } from '@/design-system/motion';
-import { framerPresence, framerTransition } from '@/design-system/foundations/motion-framer';
+import { motionPresence, motionTransition } from '@/design-system/foundations/motion-presets';
 import { MOBILE_GUTTER, MOBILE_GUTTER_X } from '@/components/mobile/redesign/DesignSystem';
 
 /** Shared chrome for a {@link CaptureStack} row — the collapsed one-line record vs. */
@@ -48,9 +48,9 @@ export function CaptureStackRow({
       {isExpanded && fresh && !reduceMotion && (
         <motion.span
           aria-hidden
-          initial={framerPresence.captureStackFreshPulse.initial}
-          animate={framerPresence.captureStackFreshPulse.animate}
-          transition={framerTransition.captureStackFreshPulse}
+          initial={motionPresence.captureStackFreshPulse.initial}
+          animate={motionPresence.captureStackFreshPulse.animate}
+          transition={motionTransition.captureStackFreshPulse}
           className="pointer-events-none absolute inset-0 z-0 rounded-none ring-2 ring-border-accent/70"
         />
       )}

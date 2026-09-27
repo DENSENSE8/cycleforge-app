@@ -295,11 +295,39 @@ a live phone renders industrial 1:1 (explicit `ModeRegion mode="industrial"`), n
 Desktop triage gets motion.dev: row selection + a fixed-width floating selection bar that
 reward the action (owner: "high throughput animations and rewarding feedback and building trust").
 
+**Mode D — floor (owner 2026-09-26):** the one user-invoked industrial view on desktop. A desk
+whose list offers a floor face (To ship: `OutboundOrdersLedger`) enters it with **⌘/Ctrl+Shift+F**
+or the **Floor** button on the table's toolbar row; the stage view becomes `floor` (one enum with
+In place / Split, `DeskStageContext`), the page header, tab row and sidebar leave, and the route's
+page region paints `industrial` (square, caps, 0 ms). Records open In place. Floor is a session
+posture, never remembered; Esc (after closing the record / clearing checks) or **Exit floor**
+returns to the view it was entered from. Every other desktop view stays triage — the To-ship
+index face included.
+
 **Repo diet (owner 2026-09-26):** dead source files, one-off scripts that already ran,
 `docs/todo/` and every screenshot under `docs/` are deleted; proof shots stay local
 (`docs/**/screenshots/` is gitignored).
 
 **Order of work:** remove dead code first, so design-system investigation reads only live code.
+
+## 13. Owner rulings 2026-09-27
+
+**Motion rules abolished (owner 2026-09-27):** "Completely abolish any motion.dev animation
+rules." Supersedes every motion line in this brief (§4 dials, §11, §12 context matrix, the 0 ms
+industrial / floor posture, the ≤120 ms triage crossfade). Any surface may import `motion/react`
+(or `@/design-system/motion`, which re-exports the whole engine) and animate as it sees fit;
+`motionRole` / `motion-presets` are optional presets, not law. The one thing kept is the OS
+"reduce motion" setting (`ReducedMotionProvider`, `MotionConfig reducedMotion="user"`) —
+accessibility, not style.
+
+**To-ship triage list = order cards (owner 2026-09-27):** the DataTable index face is replaced by
+`OrderCardList` — a fixed-width list of order cards. Each card: slim status rail on the far left;
+checkbox top-left with a status icon beneath it; line 1 order number · platform · SLA (right);
+line 2 photo + full product title; line 3 qty · condition · stock · bin · price. Multi-product
+orders show the first line (out of stock first) plus "+N items", which expands in place; hovering
+the status icon lists every line with what is out of stock. One checked card → its actions drop
+down from the card's right; two or more → the bar above the list becomes the bulk bar. No column
+header. Floor keeps the industrial ledger.
 
 ## Resolved 2026-09-24 (all six approved as written)
 

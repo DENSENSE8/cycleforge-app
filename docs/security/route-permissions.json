@@ -1,10 +1,10 @@
 {
   "version": 1,
-  "generatedAt": "2026-09-26T19:33:59Z",
-  "totalRoutes": 1092,
+  "generatedAt": "2026-09-27T15:31:02Z",
+  "totalRoutes": 1100,
   "summary": {
-    "permissionGated": 889,
-    "authenticatedNoPermission": 120,
+    "permissionGated": 894,
+    "authenticatedNoPermission": 123,
     "anonymousIntentional": 36,
     "serviceToService": 47,
     "ungatedRead": 0,
@@ -570,31 +570,32 @@
       "exemptReason": null
     },
     {
-      "path": "/api/ai/chat-sessions/[sessionId]/messages/route.ts",
+      "path": "/api/ai/chat-sessions/[sessionId]/feedback/route.ts",
       "methods": [
-        "GET"
+        "POST"
       ],
       "gate": "requireRoutePerm",
-      "permission": "dashboard.view",
+      "permission": "assistant.chat",
+      "exemptReason": null
+    },
+    {
+      "path": "/api/ai/chat-sessions/[sessionId]/route.ts",
+      "methods": [
+        "DELETE",
+        "GET",
+        "PATCH"
+      ],
+      "gate": "requireRoutePerm",
+      "permission": "assistant.chat",
       "exemptReason": null
     },
     {
       "path": "/api/ai/chat-sessions/route.ts",
       "methods": [
-        "DELETE",
         "GET"
       ],
       "gate": "withAuth",
-      "permission": "dashboard.view",
-      "exemptReason": null
-    },
-    {
-      "path": "/api/ai/chat/stream/route.ts",
-      "methods": [
-        "POST"
-      ],
-      "gate": "withAuth",
-      "permission": "dashboard.view",
+      "permission": "assistant.chat",
       "exemptReason": null
     },
     {
@@ -604,6 +605,15 @@
       ],
       "gate": "withAuth",
       "permission": "dashboard.view",
+      "exemptReason": null
+    },
+    {
+      "path": "/api/ai/transcribe/route.ts",
+      "methods": [
+        "POST"
+      ],
+      "gate": "withAuth",
+      "permission": "assistant.chat",
       "exemptReason": null
     },
     {
@@ -1330,6 +1340,53 @@
       ],
       "gate": "withAuth",
       "permission": "sourcing.view",
+      "exemptReason": null
+    },
+    {
+      "path": "/api/brands/[id]/products/route.ts",
+      "methods": [
+        "GET"
+      ],
+      "gate": "requireRoutePerm",
+      "permission": "sku_stock.view",
+      "exemptReason": null
+    },
+    {
+      "path": "/api/brands/[id]/route.ts",
+      "methods": [
+        "GET",
+        "PATCH"
+      ],
+      "gate": "requireRoutePerm",
+      "permission": "sku_stock.view",
+      "exemptReason": null
+    },
+    {
+      "path": "/api/brands/proposals/[id]/route.ts",
+      "methods": [
+        "POST"
+      ],
+      "gate": "requireRoutePerm",
+      "permission": "sku_stock.manage",
+      "exemptReason": null
+    },
+    {
+      "path": "/api/brands/proposals/route.ts",
+      "methods": [
+        "GET"
+      ],
+      "gate": "withAuth",
+      "permission": "sku_stock.view",
+      "exemptReason": null
+    },
+    {
+      "path": "/api/brands/route.ts",
+      "methods": [
+        "GET",
+        "POST"
+      ],
+      "gate": "withAuth",
+      "permission": "sku_stock.view",
       "exemptReason": null
     },
     {
@@ -2671,15 +2728,6 @@
       "exemptReason": null
     },
     {
-      "path": "/api/forge/chat/route.ts",
-      "methods": [
-        "POST"
-      ],
-      "gate": "withAuth",
-      "permission": "operations.plans.view",
-      "exemptReason": null
-    },
-    {
       "path": "/api/forge/ingest/route.ts",
       "methods": [
         "POST"
@@ -2832,6 +2880,16 @@
       ],
       "gate": "withAuth",
       "permission": "orders.view",
+      "exemptReason": null
+    },
+    {
+      "path": "/api/identify/route.ts",
+      "methods": [
+        "GET",
+        "POST"
+      ],
+      "gate": "withAuth",
+      "permission": "sku_stock.view",
       "exemptReason": null
     },
     {
@@ -3874,6 +3932,34 @@
       ],
       "gate": "withAuth",
       "permission": "receiving.view",
+      "exemptReason": null
+    },
+    {
+      "path": "/api/nav/context/route.ts",
+      "methods": [
+        "GET"
+      ],
+      "gate": "withAuth (no permission)",
+      "permission": null,
+      "exemptReason": null
+    },
+    {
+      "path": "/api/nav/facets/route.ts",
+      "methods": [
+        "GET"
+      ],
+      "gate": "withAuth (no permission)",
+      "permission": null,
+      "exemptReason": null
+    },
+    {
+      "path": "/api/nav/recents/route.ts",
+      "methods": [
+        "GET",
+        "POST"
+      ],
+      "gate": "withAuth (no permission)",
+      "permission": null,
       "exemptReason": null
     },
     {
@@ -7221,17 +7307,6 @@
       ],
       "gate": "withAuth (no permission)",
       "permission": null,
-      "exemptReason": null
-    },
-    {
-      "path": "/api/search/recents/route.ts",
-      "methods": [
-        "DELETE",
-        "GET",
-        "POST"
-      ],
-      "gate": "withAuth",
-      "permission": "dashboard.view",
       "exemptReason": null
     },
     {

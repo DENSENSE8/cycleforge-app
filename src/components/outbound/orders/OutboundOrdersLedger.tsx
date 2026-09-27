@@ -35,6 +35,7 @@ import {
   queueRowStaff,
   type OrdersQueueCommits,
 } from '@/components/dashboard/orders-queue/useOrdersQueueFeed';
+import type { QueueRowClickEvent } from '@/components/dashboard/orders-queue/queue-row-click';
 import { parentOrderLineTotals } from '@/components/dashboard/orders-queue/QueueGroupRow';
 import type { QueueRowRecord } from '@/components/dashboard/orders-queue/helpers';
 import type { ToShipChrome } from '@/components/unshipped/useToShipChrome';
@@ -42,7 +43,6 @@ import { DESK_RECORD_ANCHOR_ATTR, DeskRecordPlane, useDeskRecordView } from '@/d
 import { useRecordCursor } from '@/lib/record-cursor/useRecordCursor';
 import type { OrderRecordMode } from '@/lib/selection-context/order-inspector-context';
 import { useRecordCursorKeyboard } from '@/hooks/useRecordCursorKeyboard';
-import { useTableSelection } from '@/hooks/useTableSelection';
 import { emitSelectionTotal } from '@/lib/selection/table-selection';
 import { DASHBOARD_ORDERS_SELECTION_SCOPE } from '@/lib/selection/dashboard-scopes';
 import {
@@ -86,10 +86,11 @@ import {
 import { RecordNoteSlot } from '@/design-system/components/RecordNoteSlot';
 import { LifecycleCode } from '@/design-system/components/record-ledger/LifecycleCode';
 import { useLedgerRowZoom } from './useLedgerRowZoom';
+import { OutboundOrdersLedgerToolbar } from './OutboundOrdersLedgerToolbar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/design-system/primitives/radix-popover';
 import { ModeRegion } from '@/design-system/providers/ModeRegion';
 import { OrderRecordView } from './OrderRecordView';
-import { OrderRecordActionStrip } from './to-ship/MorphingRowActionMenu';
+import { OrderRecordActionStrip, OrdersMorphingHost } from './to-ship/MorphingRowActionMenu';
 import { OrderQueueSummary, OrderQueueSummaryLine } from './OrderQueueSummary';
 import { LedgerPhotoViewer } from './outbound-orders-ledger-photos';
 import { linePhotoLabel } from '@/lib/photos/line-photos';
@@ -312,11 +313,9 @@ export function OutboundOrdersLedger({
   }, [scrollToKey, items, virtualizer]);
 
   // ── Selection chrome ───────────────────────────────────────────────────────
-  const selectedRows = useTableSelection<{ id?: number | string }>(
-    DASHBOARD_ORDERS_SELECTION_SCOPE,
-    (r) => Number(r.id),
-  );
-  const selectedCount = selectedRows.length;
+  // The plane owns the check-set; reading it back off the selection bus lost
+  // every emit (the listener re-subscribed in the same commit it fired).
+  const selectedCount = plane.selectedIds.size;
 
   const filterActive = chrome.filter.options.some((o: DataTableFilterOption) => o.active);
   const isNarrowed = Boolean(searchValue.trim()) || filterActive;
@@ -332,7 +331,7 @@ export function OutboundOrdersLedger({
   );
 
   const seededOpenIdRef = useRef<number | null>(null);
-  const openRow = plane.handleRowAction;
+  const openRow = plane.openRecord;
   useEffect(() => {
     // The param cleared (the record closed): the same id may be named again.
     if (openRecordId == null) {
@@ -396,12 +395,26 @@ export function OutboundOrdersLedger({
       testId="order-record"
       list={
     <div data-testid="pending-grid-body" className="flex min-h-0 min-w-0 flex-1 flex-col">
-      {/* ── The list anchor: the open record's action strip. No toolbar above
-          the records (operator 2026-09-26): search, selection, filter, sort,
-          views, page size, platforms, density and fullscreen move to the
-          contextual sidebar. ── */}
+      {/* ── The list anchor: the table toolbar + the open record's action strip.
+          Table-level controls only (operator 2026-09-26): search, filters,
+          views and category are view-level and live in the contextual sidebar. ── */}
       <div {...{ [DESK_RECORD_ANCHOR_ATTR]: '' }} className="flex min-w-0 shrink-0 flex-col">
-      {openRecord ? (
+      <OutboundOrdersLedgerToolbar
+        selectedCount={selectedCount}
+        sortMenu={feed.sortMenu}
+        pageSize={pageSize}
+        onPageSizeChange={setPageSize}
+      />
+      {/* Checked rows own the verbs (the check-set bar, the index face's
+          header bulk bar); otherwise the open record's strip. */}
+      {selectedCount > 0 ? (
+        <OrdersMorphingHost
+          placement="header"
+          records={displayedRecords}
+          selectedIds={plane.selectedIds}
+          mode={mode}
+        />
+      ) : openRecord ? (
         <OrderRecordActionStrip
           key={openRecord.id}
           record={openRecord}
@@ -495,8 +508,8 @@ export function OutboundOrdersLedger({
       </div>
 
       <TableStatusBar
-        // In place the queue summary rides the list's foot; split, the empty pane shows it.
-        lead={recordView === 'in-place' ? <OrderQueueSummaryLine records={displayedRecords} todayKey={feed.todayKey} /> : undefined}
+        // In place (and floor, which places records in place) the queue summary rides the list's foot; split, the empty pane shows it.
+        lead={recordView !== 'split' ? <OrderQueueSummaryLine records={displayedRecords} todayKey={feed.todayKey} /> : undefined}
         shown={paged.shown}
         total={paged.total}
         selected={selectedCount}
@@ -840,10 +853,7 @@ interface LedgerRecordProps {
   onCloseNote: (orderId: number) => void;
   todayKey: string;
   getStaffName: (id: number) => string;
-  onRowAction: (
-    record: ShippedOrder,
-    event?: { shiftKey: boolean; detail?: number; target?: EventTarget | null },
-  ) => void;
+  onRowAction: (record: ShippedOrder, event?: QueueRowClickEvent) => void;
   onToggleSelect: (record: ShippedOrder, event: { shiftKey: boolean }) => void;
   commits: OrdersQueueCommits;
 }
@@ -1003,7 +1013,13 @@ const LedgerRecord = memo(function LedgerRecord({
         aria-label={`Order ${orderId || record.id}, ${spec.label}, ${record.product_title || 'item'}`}
         aria-current={open || undefined}
         onClick={(event) =>
-          onRowAction(record, { shiftKey: event.shiftKey, detail: event.detail, target: event.target })
+          onRowAction(record, {
+            shiftKey: event.shiftKey,
+            metaKey: event.metaKey,
+            ctrlKey: event.ctrlKey,
+            detail: event.detail,
+            target: event.target,
+          })
         }
         className={cn('absolute inset-0 z-0 cursor-pointer', focusRing('cell'))}
       />

@@ -127,9 +127,8 @@ export async function projectOrdersUnshippedMemberships(
              WHERE sal.organization_id = o.organization_id
                AND sal.activity_type IN ('TRACKING_SCANNED', 'FNSKU_SCANNED')
                AND (
-                 (sal.metadata->>'order_row_id') ~ '^[0-9]+$'
-                   AND (sal.metadata->>'order_row_id')::int = o.id
-                 OR sal.metadata->>'order_id' = o.order_id
+                 sal.order_row_id = o.id
+                 OR sal.ext_order_id = o.order_id
                )
            ) OR (
              o.shipment_id IS NOT NULL
@@ -170,9 +169,8 @@ export async function projectOrdersUnshippedMemberships(
          WHERE sal.organization_id = o.organization_id
            AND sal.activity_type IN (${sql.raw(sqlInList(PACK_ACTIVITY_TYPES))})
            AND (
-             (sal.metadata->>'order_row_id') ~ '^[0-9]+$'
-               AND (sal.metadata->>'order_row_id')::int = o.id
-             OR sal.metadata->>'order_id' = o.order_id
+             sal.order_row_id = o.id
+             OR sal.ext_order_id = o.order_id
              OR (
                sal.shipment_id IS NOT NULL AND sal.shipment_id = o.shipment_id
                AND (sal.metadata->>'order_row_id') IS NULL

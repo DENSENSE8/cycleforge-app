@@ -3,6 +3,8 @@
 import { z } from 'zod';
 import { parsePhotoAspectList } from '@/lib/photos/photo-aspects';
 import { ALL_ROLES } from '@/lib/auth/permissions-shared';
+import { SIDEBAR_PAGE_NAV } from '@/lib/sidebar-navigation';
+import { NAV_ROLLOUT_SETTING_VALUES, navRolloutSettingKey } from '@/lib/nav/context/rollout';
 import type { SettingDef, SettingPage } from './types';
 
 /** Per-role override of the Unbox Inbound pin default (Gemini D9). */
@@ -24,10 +26,11 @@ const UNBOX_ROLE_DEFAULT_SETTINGS: readonly SettingDef[] = ALL_ROLES.map((role) 
 }));
 
 /**
- * Desks whose fullscreen choice is remembered, by `SIDEBAR_PAGE_NAV` page id (what `useActiveSidebarChild().pageId` resolves on a…
+ * Desks whose record view (In place / Split) is remembered, by `SIDEBAR_PAGE_NAV` page id (what `useActiveSidebarChild().pageId` resolves on a…
  * (`DeskRecordPlane`, operator 2026-09-25) — so it sticks per staffer, per
+ * desk. Floor is a session posture and is never stored (owner 2026-09-26).
  */
-const DESK_FULLSCREEN_DESKS = [
+const DESK_VIEW_DESKS = [
   { id: 'home', label: 'Daily' },
   { id: 'outbound', label: 'Shipping' },
   { id: 'fba', label: 'FBA' },
@@ -42,26 +45,59 @@ const DESK_FULLSCREEN_DESKS = [
   { id: 'sales', label: 'Sales' },
 ] as const;
 
-/** Storage key of one desk's remembered fullscreen choice. */
-export function deskFullscreenSettingKey(deskId: string): string {
-  return `desk.${deskId}.fullscreen`;
+/** Storage key of one desk's remembered record view. */
+export function deskViewSettingKey(deskId: string): string {
+  return `desk.${deskId}.view`;
 }
 
-const DESK_FULLSCREEN_SETTINGS: readonly SettingDef[] = DESK_FULLSCREEN_DESKS.map((desk) => ({
-  key: deskFullscreenSettingKey(desk.id),
+const DESK_VIEW_SETTINGS: readonly SettingDef[] = DESK_VIEW_DESKS.map((desk) => ({
+  key: deskViewSettingKey(desk.id),
   page: 'desk' as const,
   group: 'Record view',
   scope: 'staff' as const,
-  label: `${desk.label}: open fullscreen (list + record side by side)`,
+  label: `${desk.label}: record view`,
   description:
-    'Remembered from the fullscreen toggle on the table row. Off: a record opens in place of the list.',
-  control: 'toggle' as const,
-  schema: z.boolean().default(false),
+    'Remembered from the In place / Split switch and the table-row toggle. In place: a record opens where the list is. Split: list left, record right.',
+  control: 'segmented' as const,
+  schema: z.enum(['in-place', 'split']).default('in-place'),
+  options: [
+    { value: 'in-place', label: 'In place' },
+    { value: 'split', label: 'Split' },
+  ],
+  // Before 2026-09-26 the choice was a boolean `desk.<id>.fullscreen` (on = Split).
+  legacy: {
+    key: `desk.${desk.id}.fullscreen`,
+    read: (raw: unknown) => (raw === true ? 'split' : raw === false ? 'in-place' : undefined),
+  },
+}));
+
+/**
+ * The contextual-sidebar switch, one per `SIDEBAR_PAGE_NAV` page — the org
+ * dogfoods a page before `NAV_CONTEXT_ROLLOUT` flips it for everyone, and a
+ * staffer may keep their own pick. `inherit` defers staff → org → the map.
+ */
+const NAV_CONTEXTUAL_SETTINGS: readonly SettingDef[] = SIDEBAR_PAGE_NAV.map((page) => ({
+  key: navRolloutSettingKey(page.id),
+  page: 'nav' as const,
+  group: 'Contextual sidebar',
+  scope: 'org' as const,
+  personalizable: true,
+  label: `${page.label} (${page.id})`,
+  description: 'Which sidebar this page shows. Inherit follows the rollout.',
+  control: 'segmented' as const,
+  schema: z.enum(NAV_ROLLOUT_SETTING_VALUES).default('inherit'),
+  options: [
+    { value: 'inherit', label: 'Inherit' },
+    { value: 'legacy', label: 'Classic' },
+    { value: 'contextual', label: 'Contextual' },
+  ],
+  permission: 'admin.manage_features',
 }));
 
 export const SETTING_PAGES = [
   { id: 'receiving', label: 'Receiving', description: 'Unboxing & intake behavior' },
   { id: 'desk', label: 'Desks', description: 'How each desk shows its records' },
+  { id: 'nav', label: 'Sidebar', description: 'Which pages use the contextual sidebar' },
 ] as const satisfies readonly { id: SettingPage; label: string; description: string }[];
 
 export const SETTINGS: readonly SettingDef[] = [
@@ -416,7 +452,8 @@ export const SETTINGS: readonly SettingDef[] = [
       { value: 'all', label: 'Expand all' },
     ],
   },
-  ...DESK_FULLSCREEN_SETTINGS,
+  ...DESK_VIEW_SETTINGS,
+  ...NAV_CONTEXTUAL_SETTINGS,
 ];
 
 const BY_KEY = new Map<string, SettingDef>(SETTINGS.map((s) => [s.key, s]));

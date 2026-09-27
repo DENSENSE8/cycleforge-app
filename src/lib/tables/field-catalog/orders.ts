@@ -129,3 +129,141 @@ export function omitShippedOnlyBindings(layout: SlotLayout): SlotLayout {
 
 /** The one tableId this catalog serves — `PRODUCT_TABLES`' To-ship entry. */
 export const ORDERS_TABLE_LAYOUT_ID = 'orders';
+
+/**
+ * ORDER-level facts — the To-ship INDEX face (owner 2026-09-26: a Shopify-admin
+ * order list, one row per ORDER). Each resolves over ALL of an order's lines
+ * (`resolveOrdersIndexValue`), so a group parent and a single-line row paint the
+ * same fact. Ids avoid the `.qty` / `.amount` suffixes on purpose: those are the
+ * LINE laws that pin qty and price under an item title, and the index has no
+ * item title — Items and Total are order sums, not lines.
+ */
+const ORDERS_INDEX_ONLY_FIELDS: FieldCatalog = [
+  {
+    id: 'orders.order_date',
+    family: 'orders',
+    label: 'Date',
+    displayType: 'date',
+    slotKinds: ['status'],
+    paths: { at: 'order_date|created_at' },
+  },
+  {
+    id: 'orders.customer',
+    family: 'orders',
+    label: 'Customer',
+    displayType: 'text',
+    slotKinds: ['status'],
+    paths: { name: 'customer|shipstation_ship_to' },
+  },
+  {
+    id: 'orders.channel',
+    family: 'orders',
+    label: 'Channel',
+    displayType: 'tag',
+    slotKinds: ['status'],
+    paths: { value: 'account_source', fba: 'fulfillment_channel' },
+  },
+  {
+    id: 'orders.total',
+    family: 'orders',
+    label: 'Total',
+    displayType: 'money',
+    slotKinds: ['status'],
+    paths: { value: 'sale_amount|price_cents', currency: 'currency|price_currency' },
+  },
+  {
+    id: 'orders.fulfillment',
+    family: 'orders',
+    label: 'Fulfillment',
+    displayType: 'tag',
+    slotKinds: ['status'],
+    paths: { packed: 'packed_at', shipped: 'ship_confirmed_at', held: 'is_out_of_stock|row_flag' },
+  },
+  {
+    id: 'orders.fulfill_by',
+    family: 'orders',
+    label: 'Fulfill by',
+    displayType: 'date',
+    slotKinds: ['status'],
+    paths: { at: 'deadline_at|ship_by_date' },
+  },
+  {
+    id: 'orders.items',
+    family: 'orders',
+    label: 'Items',
+    displayType: 'number',
+    slotKinds: ['status'],
+    paths: { value: 'quantity' },
+  },
+  {
+    // Carrier only until a structured delivery service lands (research P4).
+    id: 'orders.delivery',
+    family: 'orders',
+    label: 'Delivery',
+    displayType: 'text',
+    slotKinds: ['status'],
+    paths: { carrier: 'carrier', tracking: 'shipping_tracking_number' },
+  },
+  {
+    // Derived chips only (owner D6): urgent, hold / shortage reason, row flag, condition.
+    id: 'orders.tags',
+    family: 'orders',
+    label: 'Tags',
+    displayType: 'tag',
+    slotKinds: ['status'],
+    paths: { flag: 'row_flag', condition: 'condition', urgent: 'is_urgent' },
+  },
+  {
+    id: 'orders.bin',
+    family: 'orders',
+    label: 'Bin',
+    displayType: 'text',
+    slotKinds: ['status'],
+    paths: { bins: 'storage_locations' },
+  },
+];
+
+/**
+ * The INDEX face's catalog: the order handle, the order-level facts, then the
+ * warehouse steps (Bin · Pick · Pack) — offered in the Fields picker, unbound by
+ * default. No line facts (qty, price, condition, item #, notes): they belong to
+ * the line rows of the industrial floor and the record, not the order list.
+ */
+export const ORDERS_INDEX_FIELD_CATALOG: FieldCatalog = [
+  ...ORDERS_FIELD_CATALOG.filter((f) => f.id === 'orders.order_id'),
+  ...ORDERS_INDEX_ONLY_FIELDS,
+  ...ORDERS_FIELD_CATALOG.filter((f) => f.id === 'orders.picked' || f.id === 'orders.packed'),
+];
+
+/**
+ * The PRODUCT default of the To-ship index face — Shopify's Unfulfilled view,
+ * minus Payment (owner D4: every To-ship order is paid by construction).
+ * Order is the locked identity track, so it is always first.
+ */
+export const ORDERS_INDEX_LAYOUT: SlotLayout = {
+  morph: 'sheet',
+  identityFieldId: 'orders.order_id',
+  statusBindings: [
+    { fieldId: 'orders.order_date' },
+    { fieldId: 'orders.customer' },
+    { fieldId: 'orders.channel' },
+    { fieldId: 'orders.total' },
+    { fieldId: 'orders.fulfillment' },
+    { fieldId: 'orders.fulfill_by' },
+    { fieldId: 'orders.items' },
+    { fieldId: 'orders.delivery' },
+    { fieldId: 'orders.tags' },
+  ],
+  subtitleBindings: [],
+  amountFieldId: null,
+};
+
+/**
+ * The index face's OWN layout document, over its own catalog. Not `orders`:
+ * that document is the compound LINE layout (orgs have stored copies binding
+ * Pick · Pack · Scanned out plus five under-title facts), and its catalog
+ * carries `orders.qty` / `orders.amount`, which the cascade pins into every
+ * layout as columns. Neither may bleed into the order list — the staging /
+ * per-SKU-allocations precedent of one entity, two documents.
+ */
+export const ORDERS_INDEX_TABLE_LAYOUT_ID = 'orders-index';

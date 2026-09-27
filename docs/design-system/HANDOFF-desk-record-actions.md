@@ -38,6 +38,15 @@ eBay placeholder: ShipStation adopt now re-keys rows filed under a bare platform
 - **To-ship row redesign** (handoff `HANDOFF-desktop-triage-foundation.md` §spec) and **row selection + floating bar** are still to do.
 - Red gates not ours: `Tenancy isolation` (11 routes), typecheck in `src/lib/assistant/grok-agent-loop.ts` (another session).
 
+## Floor — the industrial fullscreen (owner 2026-09-26, BRIEF §12 Mode D)
+
+- **One stage state, three views**: `DeskStageContext` `view: 'in-place' | 'split' | 'floor'` + `setView` / `toggleFloor`; `fullscreen` is derived (`view !== 'in-place'`). `DeskPageLayout` remembers In place / Split as `desk.<deskId>.view` (the old boolean `desk.<deskId>.fullscreen` is still read via the setting's `legacy` key); floor is never stored.
+- **Faces**: To ship paints the triage index face (`UnshippedSheet` → `DataTable`) in In place and Split; `UnshippedTable floor` registers a floor face (`useDeskFloorFace`) and paints `OutboundOrdersLedger` only while `view === 'floor'`. The Picking desk keeps its always-ledger (`ledger`).
+- **Records on the index face**: `UnshippedSheet` wraps its `DataTable` in `DeskRecordPlane` + `OrderRecordView` (same placement as the ledger) using `useOrdersSpreadsheet`'s `recordPlane` bag (live open row, close, rows, commits — not a `DataTable` prop; destructure it off). The hook builds the open record's `OrderRecordActionStrip` for the action row itself; checked rows turn the header into the bulk bar instead. Station embeds (pack, shipping workspaces) render the bare table.
+- **Entering**: ⌘/Ctrl+Shift+F anywhere on the desk (a chord — passes scanner and text-entry guards; an open overlay still owns the keys; listed under "Desk" in `?`), or the **Floor** button `DataTableFullscreenToggle` paints beside ⤢ when a floor face is registered. Ctrl/⌘+F stays browser find.
+- **In floor**: no page header / tab row, the sidebar column and context rail park (`useDeskFloorActive`, not written to their remembered state), the shipping page `ModeRegion` flips to `industrial`, records open In place (the In place / Split switch hides), and the toolbar shows **Exit floor**. Checking rows with no record open shows the check-set strip (`OrdersMorphingHost placement="header"`) under the ledger toolbar.
+- **Esc, one exit per press**: close the record (`DeskRecordPlane`, `document`) / clear the check-set (strip, window capture) → leave floor for the view it came from → leave Split.
+
 ## Working rules
 
 - Verify at `http://localhost:3050` only (sign in: `/api/auth/staff-picker` → `/api/auth/signin`, tenant `usav`, see `scripts/ds-trial-shots.ts`). Screenshot in place + split + a phone viewport (`/m/pick`, `isMobile/hasTouch`) — phones must stay industrial (square, caps, flush).

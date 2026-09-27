@@ -50,7 +50,7 @@ export function ShippingWorkspaceView({ techId }: ShippingWorkspaceViewProps) {
   const parsedTechId = parseInt(techId, 10);
   const queueTab = shipTab === 'pending' || shipTab === 'urgent';
   // Pending / Urgent reuse the dashboard To Ship selection scope + rail actions.
-  const { selectionEnabled, selectMode, selectionOverlays } = useOrderRailSelection(
+  const { selectionEnabled, selectionOverlays } = useOrderRailSelection(
     'unshipped',
     { publish: queueTab },
   );
@@ -96,7 +96,6 @@ export function ShippingWorkspaceView({ techId }: ShippingWorkspaceViewProps) {
                 ) : (
                   <UnshippedTable
                     strictSearchScope
-                    selectMode={selectMode}
                     railSelection
                   />
                 )}

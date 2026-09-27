@@ -28,7 +28,7 @@ interface StepRow {
 
 /**
  * GET /api/forge/runs — Cycle Forge run history for the org, newest-first, each
- * run with its ordered stage steps. Powers the /forge chat-timeline. Read-only;
+ * run with its ordered stage steps. Powers the /forge run rail. Read-only;
  * org from ctx.
  */
 export const GET = withAuth(async (req: NextRequest, ctx) => {

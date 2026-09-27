@@ -3,8 +3,8 @@
 import {
   useMotionPresence,
   useMotionTransition,
-} from '../foundations/motion-framer-hooks';
-import { useReducedMotion } from './framer';
+} from '../foundations/motion-presets-hooks';
+import { useReducedMotion } from './react';
 import type { PresenceRole, motionRole } from './roles';
 
 /** Resolve a presence role to render-ready `{ presence, transition }`, already routed through the reduced-motion bridge. */

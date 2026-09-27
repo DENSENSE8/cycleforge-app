@@ -10,8 +10,9 @@ import { themePaletteStyleText } from '@/design-system/themes/registry';
 import { stationSkinStyleText } from '@/design-system/themes/station-skins';
 import { stationDepthStyleText } from '@/design-system/themes/station-depths';
 import { modeRegistryStyleText } from '@/design-system/modes/registry';
+import { aiSystemStyleText } from '@/design-system/ai/tokens';
 import { TRIAL_BOOT_SCRIPT } from '@/lib/design/trials';
-// `MotionConfig`, so a static import in this file shipped the framer runtime
+// `MotionConfig`, so a static import in this file shipped the Motion runtime
 // (~104KB gz) to every route, public chrome included. It now lives inside
 // `WarehouseShell`, which is already behind `next/dynamic` — see the note there.
 import { getInitialAuthUser } from "@/lib/auth/server-session";
@@ -100,6 +101,10 @@ export default async function RootLayout({
                     theme palettes because a light-scheme region remaps their
                     neutral --ds-color-* vars. */}
                 <style id="app-mode-registry">{modeRegistryStyleText}</style>
+                {/* AI design system (`@/design-system/ai`) — its own palette,
+                    corners, prose scale and measure; after the mode registry
+                    because `[data-ai-surface]` remaps the neutral vars again. */}
+                <style id="app-ai-system">{aiSystemStyleText}</style>
                 {/* Applies the cached theme before paint (no light→dark flash). */}
                 <script dangerouslySetInnerHTML={{ __html: THEME_BOOT_SCRIPT }} />
                 <script dangerouslySetInnerHTML={{ __html: STATION_SKIN_BOOT_SCRIPT }} />

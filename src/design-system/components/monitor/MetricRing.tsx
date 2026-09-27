@@ -2,7 +2,7 @@
 
 import type { ReactNode } from 'react';
 import { motion, useReducedMotion } from '@/design-system/motion';
-import { motionBezier } from '@/design-system/foundations/motion-framer';
+import { motionBezier } from '@/design-system/foundations/motion-presets';
 
 /** MetricRing — a small **180° open-bottom gauge** for a KPI tile. */
 

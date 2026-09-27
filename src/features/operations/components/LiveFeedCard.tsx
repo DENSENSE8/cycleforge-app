@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { motion, AnimatePresence } from '@/design-system/motion';
-import { motionBezier } from '@/design-system/foundations/motion-framer';
+import { motionBezier } from '@/design-system/foundations/motion-presets';
 import { Barcode, Package, Wrench, Activity } from '@/components/Icons';
 import type { DashboardData } from '@/features/operations/types';
 import { sectionLabel } from '@/design-system/tokens/typography/presets';

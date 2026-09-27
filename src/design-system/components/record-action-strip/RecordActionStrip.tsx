@@ -49,16 +49,24 @@ interface RecordActionStripProps {
    * passes on to the record plane.
    */
   onDismiss?: () => void;
+  /**
+   * `strip` (default): its own bordered row. `header`: bare, inside a table
+   * header that became the bulk bar (the header owns the rule and the fill).
+   */
+  face?: 'strip' | 'header';
 }
 
 const STRIP_CLASS = 'flex w-full min-w-0 items-center gap-1 border-b border-border-soft bg-surface-card px-2 py-1.5';
+const HEADER_FACE_CLASS = 'flex min-w-0 items-center gap-1';
 
 export function RecordActionStrip({
   verbs,
   label,
   testId = 'record-action-strip',
   onDismiss,
+  face = 'strip',
 }: RecordActionStripProps) {
+  const shellClass = face === 'header' ? HEADER_FACE_CLASS : STRIP_CLASS;
   const [activeId, setActiveId] = useState<string | null>(null);
   const [armedId, setArmedId] = useState<string | null>(null);
   const showHotkeys = useSelectionInlineHotkeysRevealed();
@@ -97,7 +105,7 @@ export function RecordActionStrip({
         aria-label={`${label}: ${active.label}`}
         data-testid={testId}
         data-view={active.id}
-        className={cn(STRIP_CLASS, 'flex-nowrap')}
+        className={cn(shellClass, 'flex-nowrap')}
       >
         <Button type="button" variant="ghost" size="sm" onClick={done} data-testid={`${testId}-back`}>
           Back
@@ -130,6 +138,8 @@ export function RecordActionStrip({
         aria-haspopup={verb.display ? 'true' : undefined}
         data-testid={`${testId}-${verb.id}`}
         data-armed={armed ? '' : undefined}
+        // The header face sits in a 28px chrome row: 24px pills, not 32px.
+        className={face === 'header' ? 'h-6' : undefined}
         onClick={() => press(verb)}
       >
         {armed ? `${verb.label} — press again` : verb.label}
@@ -148,16 +158,18 @@ export function RecordActionStrip({
       aria-label={label}
       data-testid={testId}
       data-view="verbs"
-      className={cn(STRIP_CLASS, 'flex-wrap')}
+      className={cn(shellClass, face === 'header' ? 'flex-nowrap' : 'flex-wrap')}
     >
-      <div className="flex min-w-0 flex-1 flex-wrap items-center gap-1">{primary.map(verbButton)}</div>
+      <div className={cn('flex min-w-0 flex-1 items-center gap-1', face === 'header' ? 'flex-nowrap' : 'flex-wrap')}>
+        {primary.map(verbButton)}
+      </div>
       <div className="flex shrink-0 items-center gap-1">
         {overflow.length > 0 ? (
           <DropdownMenu modal={false}>
             <DropdownMenuTrigger asChild>
               <IconButton
                 type="button"
-                size="sm"
+                size={face === 'header' ? 'xs' : 'sm'}
                 radius="pill"
                 tone="neutral"
                 icon={<MoreHorizontal className="h-3.5 w-3.5" />}

@@ -60,7 +60,7 @@ export function MasterPlanView({
     return (
       <div className="rounded-xl border border-dashed border-border-default bg-surface-sunken px-4 py-6 text-center text-role-caption text-text-muted">
         The master plan is empty. Seed it by saving <code className="font-mono">master-plan.mdx</code> with the sync
-        daemon running, or ask the plan agent to add tickets.
+        daemon running.
       </div>
     );
   }

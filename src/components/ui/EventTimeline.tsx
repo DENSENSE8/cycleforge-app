@@ -4,7 +4,7 @@ import { useMemo, useState, type ReactNode } from 'react';
 import Link from 'next/link';
 import { format, formatDistanceToNow, parseISO } from 'date-fns';
 import { motion, useReducedMotion, type Variants } from '@/design-system/motion';
-import { motionBezier } from '@/design-system/foundations/motion-framer';
+import { motionBezier } from '@/design-system/foundations/motion-presets';
 import type {
   TimelineItem,
   TimelineMedia,

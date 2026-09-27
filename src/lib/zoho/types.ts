@@ -25,6 +25,10 @@ export interface ZohoItem {
   description?: string;
   item_type?: string;
   product_type?: string;
+  /** Native item field (free text) — mirrored to items.brand; the Zoho item governs SKU brand. */
+  brand?: string;
+  /** Native item field (free text) — mirrored to items.manufacturer; brand fallback. */
+  manufacturer?: string;
   status?: string;
   rate?: number | string;
   purchase_rate?: number | string;

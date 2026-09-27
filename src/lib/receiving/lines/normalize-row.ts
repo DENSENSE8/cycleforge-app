@@ -189,6 +189,9 @@ export function normalizeRow(row: Record<string, unknown>) {
   };
 }
 
+/** One receiving-lines feed row, as every GET path serves it. */
+export type NormalizedReceivingLine = ReturnType<typeof normalizeRow>;
+
 
 /** A lineless carton rendered as a `receiving_line`-shaped placeholder row (synthetic id `-receiving_id`). */
 const UNMATCHED_EMPTY_LINE_LABEL = 'Unfound PO';

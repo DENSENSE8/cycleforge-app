@@ -12,8 +12,13 @@ import { queryWithRetry } from '@/lib/db-retry';
 import { isPackerLogEnrichmentRead } from '@/lib/feature-flags';
 import { computePackerLogEnrichment } from '@/lib/neon/packer-log-enrichment';
 import type { OrgId } from '@/lib/tenancy/constants';
-
-export type PackerLogsTrackingFilter = 'all' | 'orders' | 'sku' | 'fba';
+import {
+  NO_SHIPPED_DESK_FILTERS,
+  hasShippedDeskFilter,
+  shippedDeskConditions,
+  shippedFilterJoins,
+  type ShippedDeskFilters,
+} from '@/lib/shipping/shipped-filter/shipped-filter-sql';
 
 interface FetchPackerLogRowsOptions {
   /**
@@ -33,7 +38,12 @@ interface FetchPackerLogRowsOptions {
   offset?: number;
   weekStart?: string;
   weekEnd?: string;
-  trackingTypeFilter?: PackerLogsTrackingFilter;
+  /**
+   * The Shipped desk's view filters (type / carrier / status / exceptions),
+   * answered in the page WHERE — one predicate with the sidebar facet counts.
+   * Absent = no such narrowing (packer station, recents, review).
+   */
+  shippedFilters?: ShippedDeskFilters;
   /** The bench find box, ANSWERED HERE. */
   searchTerm?: string;
   /** Spine-first render (immediate paint). */
@@ -48,7 +58,10 @@ interface FetchPackerLogRowsResult {
 
 // v9: rows carry the PACKAGE (`package_shipment_id` / `package_tracking` /
 // `package_line_count`), and scan-out-only packages join the feed.
-const CACHE_NAMESPACE = 'api:packing-logs-v9';
+// v10: the Shipped desk's type / carrier / status / exceptions filters are
+// answered here (they were a browser pass over the page), so a filtered page
+// is a different answer than v9's.
+const CACHE_NAMESPACE = 'api:packing-logs-v10';
 const CACHE_TAGS = ['packing-logs'];
 
 // Hard ceiling for a SEARCHING read — the page bound `searchTerm` replaces.
@@ -57,56 +70,93 @@ const SEARCH_ROW_CEILING = 5000;
 // Set once if `packer_log_enrichment` is absent (a DB that hasn't run the 2026-06-29f migration — e.g.
 let enrichmentTableMissing = false;
 
-/** Shared loader for the /tech packer-logs week query. */
-export async function fetchPackerLogRows(
-  opts: FetchPackerLogRowsOptions,
-): Promise<FetchPackerLogRowsResult> {
-  const searchTerm = (opts.searchTerm ?? '').trim();
-  /** A searching read drops the page bound and covers the whole week. */
-  const limit = searchTerm ? SEARCH_ROW_CEILING : (opts.limit ?? 500);
-  const offset = searchTerm ? 0 : (opts.offset ?? 0);
+export interface PackerLogBaseFilter {
+  organizationId: OrgId;
+  packerId?: number | null;
+  testedBy?: number | null;
+  staffId?: number | null;
+  weekStart?: string;
+  weekEnd?: string;
+}
+
+/** Page-selection joins a testedBy / staff filter reads (the order-derived test laterals). */
+export const PACKER_LOG_ORDER_JOINS = `
+        LEFT JOIN shipping_tracking_numbers stn ON stn.id = sal.shipment_id
+        LEFT JOIN LATERAL (
+            SELECT ord.id
+            FROM orders ord
+            LEFT JOIN shipment_links osl ON osl.owner_id = ord.id AND osl.owner_type = 'ORDER'
+            LEFT JOIN shipping_tracking_numbers ord_stn ON ord_stn.id = ord.shipment_id
+            WHERE (
+                sal.shipment_id IS NOT NULL
+                AND (
+                  osl.shipment_id = sal.shipment_id
+                  OR ord.shipment_id = sal.shipment_id
+                )
+            ) OR (
+                COALESCE(stn.tracking_number_raw, sal.scan_ref, '') <> ''
+                AND ord_stn.tracking_number_raw IS NOT NULL
+                AND ord_stn.tracking_number_raw != ''
+                AND RIGHT(regexp_replace(UPPER(ord_stn.tracking_number_raw), '[^A-Z0-9]', '', 'g'), 18) =
+                    RIGHT(regexp_replace(UPPER(COALESCE(stn.tracking_number_raw, sal.scan_ref, '')), '[^A-Z0-9]', '', 'g'), 18)
+            )
+            ORDER BY
+                CASE
+                  WHEN sal.shipment_id IS NOT NULL AND osl.shipment_id = sal.shipment_id THEN 0
+                  WHEN sal.shipment_id IS NOT NULL AND ord.shipment_id = sal.shipment_id THEN 1
+                  ELSE 2
+                END,
+                CASE WHEN COALESCE(osl.is_primary, false) THEN 0 ELSE 1 END,
+                ord.created_at DESC NULLS LAST,
+                ord.id DESC
+            LIMIT 1
+        ) order_match ON TRUE
+        LEFT JOIN orders o ON o.id = order_match.id AND o.organization_id = sal.organization_id
+        LEFT JOIN LATERAL (
+            SELECT wa.assigned_tech_id
+            FROM work_assignments wa
+            WHERE wa.entity_type = 'ORDER'
+              AND wa.entity_id = o.id
+              AND wa.work_type = 'TEST'
+              AND wa.status IN ('ASSIGNED', 'IN_PROGRESS')
+            ORDER BY wa.created_at DESC, wa.id DESC
+            LIMIT 1
+        ) wa_t ON TRUE
+        LEFT JOIN LATERAL (
+            SELECT MIN(tsn.tested_by)::int AS tested_by
+            FROM tech_serial_numbers tsn
+            WHERE tsn.organization_id = o.organization_id
+              AND (
+                tsn.order_id = o.id
+                OR (
+                  tsn.order_id IS NULL
+                  AND o.shipment_id IS NOT NULL
+                  AND tsn.shipment_id = o.shipment_id
+                  AND NOT EXISTS (
+                    SELECT 1 FROM orders o2
+                    WHERE o2.shipment_id = o.shipment_id
+                      AND o2.organization_id = o.organization_id
+                      AND o2.id <> o.id
+                  )
+                )
+              )
+        ) test_data ON TRUE`;
+
+/**
+ * The packer-log population every read shares — tenant, row population, the
+ * Shipped-desk membership (a dock scan-out), staff and the padded date window —
+ * over `station_activity_logs sal` + `packer_logs pl`. Appends its bind values
+ * to `params`. `needsOrderJoins` = the query must add {@link PACKER_LOG_ORDER_JOINS}.
+ */
+export function buildPackerLogBaseWhere(
+  opts: PackerLogBaseFilter,
+  params: unknown[],
+): { conditions: string[]; needsOrderJoins: boolean } {
+  const orgId = opts.organizationId;
   const weekStart = opts.weekStart ?? '';
   const weekEnd = opts.weekEnd ?? '';
-  const trackingTypeFilter: PackerLogsTrackingFilter = opts.trackingTypeFilter ?? 'all';
-  // Spine-first only makes sense on the enriched read path (it trims enriched
-  // laterals); the legacy query is left whole.
-  const spineOnly = Boolean(opts.spineOnly) && isPackerLogEnrichmentRead();
-
-  const orgId = opts.organizationId;
-
   const staffFilterId =
     opts.staffId != null && Number.isFinite(opts.staffId) && opts.staffId > 0 ? opts.staffId : null;
-
-  const cacheLookup = createCacheLookupKey({
-    // Org id FIRST so the cache is per-tenant — never share a PACK-log page
-    // across organizations.
-    organizationId: orgId,
-    packerId: opts.packerId ?? '',
-    testedBy: opts.testedBy ?? '',
-    staffId: staffFilterId ?? '',
-    limit,
-    offset,
-    weekStart,
-    weekEnd,
-    trackingTypeFilter,
-    // The query text is part of the ANSWER, so it belongs in the key — without
-    // it a searched page and the unfiltered week collide on one entry and the
-    // first to land is served to the other.
-    q: searchTerm,
-    // Spine and full responses have different column payloads — keep them in
-    // separate cache entries so one can never be served for the other.
-    phase: spineOnly ? 'spine' : 'full',
-  });
-
-  const today = getCurrentPSTDateKey();
-  const cacheTTL = weekEnd && weekEnd < today ? 86400 : 120;
-
-  const cached = await getCachedJson<any[]>(CACHE_NAMESPACE, orgId, cacheLookup);
-  if (cached) {
-    return { rows: cached, cacheTTL, cacheHit: true };
-  }
-
-  const params: any[] = [];
   const conditions: string[] = [];
 
   params.push(orgId);
@@ -177,21 +227,67 @@ export async function fetchPackerLogRows(
     conditions.push(`sal.created_at <  ($${we}::date + interval '2 days')`);
   }
 
-  if (trackingTypeFilter === 'fba') {
-    conditions.push(
-      `(COALESCE(pl.tracking_type, '') IN ('FBA', 'FNSKU')`
-      + ` OR sal.activity_type = 'FBA_READY'`
-      + ` OR COALESCE(sal.scan_ref, '') ~* '^FBA[0-9A-Z]{8,}$')`,
-    );
-  } else if (trackingTypeFilter === 'orders') {
-    conditions.push(
-      `(COALESCE(pl.tracking_type, 'ORDERS') = 'ORDERS'`
-      + ` AND COALESCE(sal.scan_ref, '') !~* '^FBA[0-9A-Z]{8,}$'`
-      + ` AND sal.activity_type != 'FBA_READY')`,
-    );
-  } else if (trackingTypeFilter === 'sku') {
-    conditions.push(`COALESCE(pl.tracking_type, '') = 'SKU'`);
+  return {
+    conditions,
+    needsOrderJoins: (opts.testedBy != null && !Number.isNaN(opts.testedBy)) || staffFilterId != null,
+  };
+}
+
+/** Shared loader for the /tech packer-logs week query. */
+export async function fetchPackerLogRows(
+  opts: FetchPackerLogRowsOptions,
+): Promise<FetchPackerLogRowsResult> {
+  const searchTerm = (opts.searchTerm ?? '').trim();
+  /** A searching read drops the page bound and covers the whole week. */
+  const limit = searchTerm ? SEARCH_ROW_CEILING : (opts.limit ?? 500);
+  const offset = searchTerm ? 0 : (opts.offset ?? 0);
+  const weekStart = opts.weekStart ?? '';
+  const weekEnd = opts.weekEnd ?? '';
+  // Spine-first only makes sense on the enriched read path (it trims enriched
+  // laterals); the legacy query is left whole.
+  const spineOnly = Boolean(opts.spineOnly) && isPackerLogEnrichmentRead();
+
+  const orgId = opts.organizationId;
+
+  const staffFilterId =
+    opts.staffId != null && Number.isFinite(opts.staffId) && opts.staffId > 0 ? opts.staffId : null;
+
+  const cacheLookup = createCacheLookupKey({
+    // Org id FIRST so the cache is per-tenant — never share a PACK-log page
+    // across organizations.
+    organizationId: orgId,
+    packerId: opts.packerId ?? '',
+    testedBy: opts.testedBy ?? '',
+    staffId: staffFilterId ?? '',
+    limit,
+    offset,
+    weekStart,
+    weekEnd,
+    shippedFilters: [
+      opts.shippedFilters?.type ?? '',
+      opts.shippedFilters?.carrier ?? '',
+      opts.shippedFilters?.statusCategory ?? '',
+      opts.shippedFilters?.exceptionsOnly ? 'exceptions' : '',
+    ].join('|'),
+    // The query text is part of the ANSWER, so it belongs in the key — without
+    // it a searched page and the unfiltered week collide on one entry and the
+    // first to land is served to the other.
+    q: searchTerm,
+    // Spine and full responses have different column payloads — keep them in
+    // separate cache entries so one can never be served for the other.
+    phase: spineOnly ? 'spine' : 'full',
+  });
+
+  const today = getCurrentPSTDateKey();
+  const cacheTTL = weekEnd && weekEnd < today ? 86400 : 120;
+
+  const cached = await getCachedJson<any[]>(CACHE_NAMESPACE, orgId, cacheLookup);
+  if (cached) {
+    return { rows: cached, cacheTTL, cacheHit: true };
   }
+
+  const params: unknown[] = [];
+  const { conditions, needsOrderJoins } = buildPackerLogBaseWhere(opts, params);
 
   /** The find box, as SQL — and it joins `conditions`, which is the PAGE CTE's WHERE, above the LIMIT. */
   if (searchTerm) {
@@ -246,77 +342,32 @@ export async function fetchPackerLogRows(
     )`);
   }
 
-  const whereClause = `WHERE ${conditions.join(' AND ')}`;
+  // The Shipped desk's view filters. Both read paths bind the same values; only
+  // the order-match fragment differs, so each gets its own WHERE over one list.
+  const shippedFilters = opts.shippedFilters ?? NO_SHIPPED_DESK_FILTERS;
+  const boundShipped = new Map<unknown, string>();
+  const bindShipped = (value: unknown) => {
+    let placeholder = boundShipped.get(value);
+    if (!placeholder) {
+      params.push(value);
+      placeholder = `$${params.length}`;
+      boundShipped.set(value, placeholder);
+    }
+    return placeholder;
+  };
+  const whereFor = (enriched: boolean) =>
+    `WHERE ${[...conditions, ...shippedDeskConditions(shippedFilters, enriched, bindShipped)].join(' AND ')}`;
+  const legacyWhere = whereFor(false);
+  const enrichedWhere = whereFor(true);
   params.push(limit, offset);
   const limitIdx = params.length - 1;
   const offsetIdx = params.length;
 
   // Page-selection joins. Almost every filter touches only sal/pl, but a
-  // testedBy filter references the order-derived laterals — so pull those into
-  // the page query only when testedBy is active (keeps the common path minimal).
-  const pageFilterJoins = (opts.testedBy != null && !Number.isNaN(opts.testedBy)) || staffFilterId != null
-    ? `
-        LEFT JOIN shipping_tracking_numbers stn ON stn.id = sal.shipment_id
-        LEFT JOIN LATERAL (
-            SELECT ord.id
-            FROM orders ord
-            LEFT JOIN shipment_links osl ON osl.owner_id = ord.id AND osl.owner_type = 'ORDER'
-            LEFT JOIN shipping_tracking_numbers ord_stn ON ord_stn.id = ord.shipment_id
-            WHERE (
-                sal.shipment_id IS NOT NULL
-                AND (
-                  osl.shipment_id = sal.shipment_id
-                  OR ord.shipment_id = sal.shipment_id
-                )
-            ) OR (
-                COALESCE(stn.tracking_number_raw, sal.scan_ref, '') <> ''
-                AND ord_stn.tracking_number_raw IS NOT NULL
-                AND ord_stn.tracking_number_raw != ''
-                AND RIGHT(regexp_replace(UPPER(ord_stn.tracking_number_raw), '[^A-Z0-9]', '', 'g'), 18) =
-                    RIGHT(regexp_replace(UPPER(COALESCE(stn.tracking_number_raw, sal.scan_ref, '')), '[^A-Z0-9]', '', 'g'), 18)
-            )
-            ORDER BY
-                CASE
-                  WHEN sal.shipment_id IS NOT NULL AND osl.shipment_id = sal.shipment_id THEN 0
-                  WHEN sal.shipment_id IS NOT NULL AND ord.shipment_id = sal.shipment_id THEN 1
-                  ELSE 2
-                END,
-                CASE WHEN COALESCE(osl.is_primary, false) THEN 0 ELSE 1 END,
-                ord.created_at DESC NULLS LAST,
-                ord.id DESC
-            LIMIT 1
-        ) order_match ON TRUE
-        LEFT JOIN orders o ON o.id = order_match.id AND o.organization_id = sal.organization_id
-        LEFT JOIN LATERAL (
-            SELECT wa.assigned_tech_id
-            FROM work_assignments wa
-            WHERE wa.entity_type = 'ORDER'
-              AND wa.entity_id = o.id
-              AND wa.work_type = 'TEST'
-              AND wa.status IN ('ASSIGNED', 'IN_PROGRESS')
-            ORDER BY wa.created_at DESC, wa.id DESC
-            LIMIT 1
-        ) wa_t ON TRUE
-        LEFT JOIN LATERAL (
-            SELECT MIN(tsn.tested_by)::int AS tested_by
-            FROM tech_serial_numbers tsn
-            WHERE tsn.organization_id = o.organization_id
-              AND (
-                tsn.order_id = o.id
-                OR (
-                  tsn.order_id IS NULL
-                  AND o.shipment_id IS NOT NULL
-                  AND tsn.shipment_id = o.shipment_id
-                  AND NOT EXISTS (
-                    SELECT 1 FROM orders o2
-                    WHERE o2.shipment_id = o.shipment_id
-                      AND o2.organization_id = o.organization_id
-                      AND o2.id <> o.id
-                  )
-                )
-              )
-        ) test_data ON TRUE`
-    : '';
+  // testedBy / staff filter references the order-derived laterals, and a
+  // Shipped desk filter reads the package — pulled in only when active.
+  const pageFilterJoins = needsOrderJoins ? PACKER_LOG_ORDER_JOINS : '';
+  const shippedJoins = hasShippedDeskFilter(shippedFilters);
 
   // The PACKAGE a row is about:
   const packageCols = `sal.shipment_id::int                   AS package_shipment_id,
@@ -340,18 +391,18 @@ export async function fetchPackerLogRows(
     ) package_lines ON sal.shipment_id IS NOT NULL`;
 
   // Resolve the page of station_activity_logs rows BEFORE the expensive per-row product-title / serial / order-match laterals run.
-  const pageCte = `
+  const pageCteFor = (enriched: boolean) => `
     WITH page AS MATERIALIZED (
         SELECT sal.id
         FROM station_activity_logs sal
-        LEFT JOIN packer_logs pl ON pl.id = sal.packer_log_id${pageFilterJoins}
-        ${whereClause}
+        LEFT JOIN packer_logs pl ON pl.id = sal.packer_log_id${pageFilterJoins}${shippedJoins ? shippedFilterJoins(enriched) : ''}
+        ${enriched ? enrichedWhere : legacyWhere}
         ORDER BY sal.created_at DESC NULLS LAST
         LIMIT $${limitIdx} OFFSET $${offsetIdx}
     )`;
 
   const legacyQuery = `
-    ${pageCte}
+    ${pageCteFor(false)}
     SELECT
         sal.id,
         sal.packer_log_id AS packer_log_id,
@@ -764,7 +815,7 @@ export async function fetchPackerLogRows(
     ) wa_t ON TRUE`;
   const testerStaffJoin = spineOnly ? '' : `LEFT JOIN staff tester_staff ON tester_staff.id = wa_t.assigned_tech_id`;
   const enrichedQuery = `
-    ${pageCte}
+    ${pageCteFor(true)}
     SELECT
         sal.id,
         sal.packer_log_id AS packer_log_id,

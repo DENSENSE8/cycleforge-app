@@ -10,17 +10,25 @@ import type {
 import {
   isAiConfigured,
   resolveAiConfig,
+  resolveLocalAgentConfig,
   resolvePlatformAnthropicKey,
   type AiCapability,
   type AiProviderConfig,
+  type LocalAgentConfig,
 } from '@/lib/ai/provider';
 import type { OrgId } from '@/lib/tenancy/constants';
 import { aiProviderSequence, type AiProviderOrder } from '@/lib/ai/provider-order';
 import { isProviderDemoted } from '@/lib/ai/provider-health';
 
+/**
+ * Who serves a capability: a vault provider, the platform env default, or the
+ * env-selected local agent model (assistant tool loop only — `localAgent`).
+ */
+export type AiProviderSource = IntegrationProvider | 'platform' | 'local_mlx';
+
 export interface OrgAiConfig extends AiProviderConfig {
-  /** Which vault provider (or 'platform') is serving this capability. */
-  source: IntegrationProvider | 'platform';
+  /** Which vault provider (or 'platform' / 'local_mlx') is serving this capability. */
+  source: AiProviderSource;
 }
 
 /** Injectable collaborators (house `Deps` pattern — backend-patterns.md), so the resolution CHAIN is unit-testable with zero DB. */
@@ -31,9 +39,11 @@ export interface OrgAiDeps {
   /** This org's stored order preference (local-first by default). */
   resolveOrder: (orgId: OrgId) => Promise<AiProviderOrder>;
   /** Whether a provider is in its short post-failure demotion window. */
-  isDemoted: (orgId: OrgId, source: IntegrationProvider | 'platform', capability: AiCapability) => boolean;
+  isDemoted: (orgId: OrgId, source: AiProviderSource, capability: AiCapability) => boolean;
   /** The platform's Anthropic key (agent loop only — native tool-use protocol). */
   resolvePlatformAnthropicKey: () => string;
+  /** The env-selected local agent model (`CYCLEFORGE_LOCAL_MLX`), or null. */
+  resolveLocalAgent?: () => LocalAgentConfig | null;
 }
 
 const defaultDeps: OrgAiDeps = {
@@ -49,6 +59,7 @@ const defaultDeps: OrgAiDeps = {
   },
   isDemoted: (orgId, source, capability) => isProviderDemoted(orgId, source, capability),
   resolvePlatformAnthropicKey: () => resolvePlatformAnthropicKey(),
+  resolveLocalAgent: () => resolveLocalAgentConfig(),
 };
 
 const GATEWAY_BASE = 'https://ai-gateway.vercel.sh/v1';
@@ -133,11 +144,32 @@ async function candidateFor(
   }
 }
 
+/** Per-call precedence for {@link resolveOrgAiChain}. */
+export interface OrgAiChainOptions {
+  /**
+   * Put the platform default (`AI_CHAT_*` / `AI_EMBED_*`) at the HEAD instead
+   * of the tail. Tenant providers stay behind it in their usual order as
+   * failover, and demotion still applies — a demoted platform sinks like any
+   * other. The assistant chat passes this so the operator-configured gateway
+   * answers even when an env-bootstrapped local box is in the vault order.
+   */
+  platformFirst?: boolean;
+  /**
+   * Include the env-selected LOCAL AGENT model (`CYCLEFORGE_LOCAL_MLX` +
+   * `LOCAL_MLX_BASE_URL`) in a CHAT chain: at the very head (`1`/`first`), or
+   * directly behind the platform leaf (`fallback`) so a gateway quota/outage
+   * fails over to it. Only the assistant tool loop passes this — it is the one
+   * caller that speaks a tool-tuned local model's wire. Switch off → no effect.
+   */
+  localAgent?: boolean;
+}
+
 /** The ordered candidate chain for an org + capability, most-preferred first. */
 export async function resolveOrgAiChain(
   orgId: OrgId,
   capability: AiCapability,
   deps: OrgAiDeps = defaultDeps,
+  options: OrgAiChainOptions = {},
 ): Promise<OrgAiConfig[]> {
   const { getIntegrationCredentials } = deps;
   const chain: OrgAiConfig[] = [];
@@ -153,7 +185,21 @@ export async function resolveOrgAiChain(
   }
 
   if (deps.isAiConfigured(capability)) {
-    chain.push({ source: 'platform', ...deps.resolveAiConfig(capability) });
+    const platform: OrgAiConfig = { source: 'platform', ...deps.resolveAiConfig(capability) };
+    if (options.platformFirst) chain.unshift(platform);
+    else chain.push(platform);
+  }
+
+  // Precedence rule (one): an enabled local agent slot goes at the head of the
+  // chat chain, or — as `fallback` — directly behind the platform leaf (the
+  // head when there is no platform), for the caller that asked for it.
+  if (options.localAgent && capability === 'chat') {
+    const local = deps.resolveLocalAgent?.() ?? null;
+    if (local) {
+      const entry: OrgAiConfig = { source: 'local_mlx', ...local.config };
+      const platformAt = chain.findIndex((c) => c.source === 'platform');
+      chain.splice(local.position === 'first' ? 0 : platformAt + 1, 0, entry);
+    }
   }
 
   // Demoted providers keep their relative order but sink below healthy ones.
@@ -171,8 +217,9 @@ export async function resolveOrgAiConfig(
   orgId: OrgId,
   capability: AiCapability,
   deps: OrgAiDeps = defaultDeps,
+  options: OrgAiChainOptions = {},
 ): Promise<OrgAiConfig | null> {
-  const chain = await resolveOrgAiChain(orgId, capability, deps);
+  const chain = await resolveOrgAiChain(orgId, capability, deps, options);
   return chain[0] ?? null;
 }
 

@@ -5,7 +5,7 @@
 import { useEffect, useMemo, useRef, useState, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence, type Variants } from '@/design-system/motion';
-import { motionBezier } from '@/design-system/foundations/motion-framer';
+import { motionBezier } from '@/design-system/foundations/motion-presets';
 import { zIndex as zLayer } from '@/design-system/tokens/z-index';
 import { useEscapeClose } from '@/design-system/hooks';
 import { X } from '@/components/Icons';

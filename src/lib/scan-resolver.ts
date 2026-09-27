@@ -1,3 +1,4 @@
+import { hasValidGs1CheckDigit } from '@/lib/interop/gs1-keys';
 import { normalizeTrackingCanonical } from '@/lib/tracking-format';
 import { TRACKING_PATTERNS, type CarrierCode } from '@/utils/carrier-patterns';
 
@@ -204,7 +205,18 @@ const GS1_AI_VAR_MAX: Record<string, number> = {
   '421': 12, // ship-to postal code w/ ISO country
 };
 
-const FNC1 = ''; // ASCII GS
+const FNC1 = '\x1D'; // ASCII GS
+
+/**
+ * AIs whose value is a GS1 key ending in a mod-10 check digit. A bare
+ * (unmarked) digit string must open with one of these — the check digit is
+ * the proof it is GS1 at all.
+ */
+const GS1_KEY_AIS: Record<string, true> = { '00': true, '01': true, '02': true };
+/** AIs whose value is a YYMMDD date (DD may be 00 = end of month). */
+const GS1_DATE_AIS: Record<string, true> = { '11': true, '13': true, '15': true, '17': true };
+/** Variable-length AIs whose value is numeric. */
+const GS1_NUMERIC_VAR_AIS: Record<string, true> = { '30': true, '37': true };
 
 export type Gs1AiTree = {
   /** Original raw payload (with FNC1 / parentheses removed for analysis). */
@@ -212,77 +224,109 @@ export type Gs1AiTree = {
   ais: Record<string, string>;
 };
 
+/** ZXing/AIM symbology identifiers that declare GS1 data (GS1-128, GS1 DataMatrix, GS1 QR, DataBar, Dot Code). */
+const GS1_SYMBOLOGY_ID_RE = /^\](?:C1|d2|Q3|e0|J1)/;
+
 /** Strip ZXing symbology identifiers like `]C1`, `]d2`, `]Q1` that may prefix scans. */
 function stripSymbologyId(raw: string): string {
   return raw.replace(/^\][A-Za-z][0-9]/, '');
 }
 
+/** Whether one AI's value is well-formed. Unknown AIs (explicit forms only) are accepted as-is. */
+function isValidAiValue(ai: string, value: string): boolean {
+  if (!value) return false;
+  const fixedLen = GS1_AI_FIXED_LEN[ai];
+  if (fixedLen !== undefined) {
+    if (value.length !== fixedLen || !/^\d+$/.test(value)) return false;
+    if (GS1_KEY_AIS[ai]) return hasValidGs1CheckDigit(value);
+    if (GS1_DATE_AIS[ai]) {
+      const month = Number(value.slice(2, 4));
+      const day = Number(value.slice(4, 6));
+      return month >= 1 && month <= 12 && day <= 31;
+    }
+    return true;
+  }
+  const maxLen = GS1_AI_VAR_MAX[ai];
+  if (maxLen !== undefined && value.length > maxLen) return false;
+  if (GS1_NUMERIC_VAR_AIS[ai]) return /^\d+$/.test(value);
+  return true;
+}
+
+/** Longest known AI at `i` (4, then 3, then 2 digits), or null. */
+function aiAt(payload: string, i: number): string | null {
+  for (const len of [4, 3, 2]) {
+    const candidate = payload.slice(i, i + len);
+    if (
+      candidate.length === len &&
+      /^\d+$/.test(candidate) &&
+      (GS1_AI_FIXED_LEN[candidate] !== undefined || GS1_AI_VAR_MAX[candidate] !== undefined)
+    ) {
+      return candidate;
+    }
+  }
+  return null;
+}
+
 /**
- * Parse a GS1 AI payload from either FNC1-separated or parenthesized form.
- * Returns null when the input is clearly not an AI-encoded payload.
+ * Parse a GS1 element string. STRICT: a payload is GS1 only when it says so —
+ * parentheses `(01)…`, an FNC1 (GS) separator, or a GS1 symbology identifier —
+ * or, for a bare digit string, when it opens with a check-digit key (00/01/02)
+ * whose check digit is valid AND every AI after it parses to exactly the end.
+ * Every known AI's value must be well-formed (length, digits, check digit,
+ * date). An order number, SKU, UPC or serial that merely starts with two
+ * digits is not GS1 and returns null.
  */
 export function parseGs1AiPayload(raw: string): Gs1AiTree | null {
   if (!raw) return null;
-  const cleaned = stripSymbologyId(raw.trim());
+  const trimmed = raw.trim();
+  const declaredGs1 = GS1_SYMBOLOGY_ID_RE.test(trimmed);
+  const cleaned = stripSymbologyId(trimmed);
   if (!cleaned) return null;
 
-  // Parenthesized form: (01)...(21)...
-  if (cleaned.includes('(') && /\((\d{2,4})\)/.test(cleaned)) {
+  // Parenthesized form: (01)...(21)... — must open with an AI and consist only of (AI)value pairs.
+  if (cleaned.startsWith('(')) {
+    if (!/^(?:\(\d{2,4}\)[^()]+)+$/.test(cleaned)) return null;
     const ais: Record<string, string> = {};
     const re = /\((\d{2,4})\)([^(]*)/g;
     let m: RegExpExecArray | null;
     while ((m = re.exec(cleaned)) !== null) {
       const ai = m[1];
       const value = m[2].trim();
-      if (value) ais[ai] = value;
+      if (!isValidAiValue(ai, value)) return null;
+      ais[ai] = value;
     }
-    return Object.keys(ais).length > 0 ? { raw: cleaned, ais } : null;
+    return { raw: cleaned, ais };
   }
 
-  // FNC1 / fixed-length form. Must start with a recognized 2-4 digit AI.
-  // Tolerate a leading FNC1.
-  const stripped = cleaned.replace(/^/, '');
-  if (!/^\d{2}/.test(stripped)) return null;
+  const payload = cleaned.replace(/^\x1D/, '');
+  const explicit = declaredGs1 || payload.includes(FNC1);
+  if (!/^\d{2}/.test(payload)) return null;
+  if (!explicit && !GS1_KEY_AIS[payload.slice(0, 2)]) return null;
 
   const ais: Record<string, string> = {};
   let i = 0;
-  let parsedAny = false;
-  while (i < stripped.length) {
-    // Choose AI length: 4-digit AIs exist (240, 250, 310x, 400, 420…). Try 4, then 3, then 2.
-    let ai = '';
-    let aiLen = 0;
-    for (const tryLen of [4, 3, 2]) {
-      const candidate = stripped.slice(i, i + tryLen);
-      if (/^\d+$/.test(candidate) && (GS1_AI_FIXED_LEN[candidate] !== undefined || GS1_AI_VAR_MAX[candidate] !== undefined)) {
-        ai = candidate;
-        aiLen = tryLen;
-        break;
-      }
-    }
-    if (!ai) break;
-
-    i += aiLen;
+  while (i < payload.length) {
+    const ai = aiAt(payload, i);
+    // Unparseable remainder: the whole string must be AI-encoded.
+    if (!ai) return null;
+    i += ai.length;
     const fixedLen = GS1_AI_FIXED_LEN[ai];
     let value: string;
     if (fixedLen !== undefined) {
-      value = stripped.slice(i, i + fixedLen);
+      value = payload.slice(i, i + fixedLen);
       i += fixedLen;
+      if (payload[i] === FNC1) i += 1;
     } else {
-      const maxLen = GS1_AI_VAR_MAX[ai] ?? 30;
-      const fs = stripped.indexOf(FNC1, i);
-      const end = fs === -1 ? Math.min(stripped.length, i + maxLen) : Math.min(fs, i + maxLen);
-      value = stripped.slice(i, end);
-      i = end;
-      if (stripped[i] === FNC1) i += 1;
+      const fs = payload.indexOf(FNC1, i);
+      const end = fs === -1 ? payload.length : fs;
+      value = payload.slice(i, end);
+      i = fs === -1 ? end : end + 1;
     }
-
-    if (value) {
-      ais[ai] = value;
-      parsedAny = true;
-    }
+    if (!isValidAiValue(ai, value)) return null;
+    ais[ai] = value;
   }
 
-  return parsedAny ? { raw: stripped, ais } : null;
+  return Object.keys(ais).length > 0 ? { raw: payload, ais } : null;
 }
 
 /** Convenience: collapse a parsed AI tree to the highest-priority single value for routing. */
@@ -298,6 +342,21 @@ export function pickAiRoutingValue(tree: Gs1AiTree): { kind: 'serial' | 'trackin
 }
 
 // ─── SERIAL MATCHER ───────────────────────────────────────────────────────────
+
+/**
+ * `LIKE` patterns a server-side partial-serial search may try after an exact
+ * miss, in order. A fragment qualifies only when it looks like part of a
+ * serial: at least 5 characters with a digit (suffix), and a letter too for
+ * contains. A short number or a word (`4993`, `bose`) never fuzzy-matches —
+ * it once landed on whatever serial happened to contain it.
+ */
+export function serialFragmentPatterns(normalized: string): string[] {
+  const hasDigit = /\d/.test(normalized);
+  if (normalized.length < 5 || !hasDigit) return [];
+  const patterns = [`%${normalized}`];
+  if (normalized.length <= 10 && /[A-Z]/.test(normalized)) patterns.push(`%${normalized}%`);
+  return patterns;
+}
 
 /** findSerialInCatalog(input, serialCatalog) */
 export function findSerialInCatalog(input: string, serialCatalog: string[]): SerialMatchResult {

@@ -28,7 +28,6 @@ interface DashboardOrdersViewProps {
   orderView: DashboardOrderView;
   /** Kept for callers; the desk is one in-warehouse list (facets own refine). */
   onSelectView: (view: DashboardOrderView) => void;
-  selectMode: boolean;
   selectionEnabled: boolean;
   /** Modal surfaces the bulk actions open (assignment carousel, ship-by picker). */
   selectionOverlays?: ReactNode;
@@ -39,7 +38,6 @@ interface DashboardOrdersViewProps {
 }
 
 export function DashboardOrdersView({
-  selectMode,
   selectionEnabled,
   selectionOverlays,
   stageOverlay,
@@ -105,12 +103,12 @@ export function DashboardOrdersView({
   ) : (
     <UnshippedTable
       strictSearchScope
-      selectMode={selectMode}
       railSelection
       onPrimaryPainted={onPrimaryPainted}
-      // To ship paints the industrial record ledger (BRIEF §11, first slice).
-      // Support › Inquiries aliases this desk and keeps the slot table.
-      ledger={!isSupportContext}
+      // To ship paints the order card list in In place and Split; the
+      // industrial ledger is its FLOOR face (⌘/Ctrl+Shift+F, owner 2026-09-26).
+      // Support › Inquiries aliases this desk: cards only.
+      floor={!isSupportContext}
     />
   );
 

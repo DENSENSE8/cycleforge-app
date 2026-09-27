@@ -211,7 +211,7 @@ export function gs1CheckDigit(payload: string): number {
 }
 
 /** True when a GS1 numeric key's trailing check digit is self-consistent. */
-function hasValidGs1CheckDigit(key: string): boolean {
+export function hasValidGs1CheckDigit(key: string): boolean {
   const digits = key.replace(/\D/g, '');
   if (digits.length < 2) return false;
   const body = digits.slice(0, -1);

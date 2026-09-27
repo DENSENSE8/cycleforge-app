@@ -36,6 +36,7 @@ import {
   listReceivingLinePhotosTool,
   resolveReceivingLineForOrderTool,
 } from './receiving-photo-tools';
+import { listLocationContents, locateProduct } from './wms-tools';
 import { TOOL_FORGE_GATEWAY_TOOLS } from '@/lib/tool-forge/gateway-tools';
 
 const READ_TOOLS: ReadonlyArray<AssistantToolDef<any, unknown>> = [
@@ -65,6 +66,10 @@ const READ_TOOLS: ReadonlyArray<AssistantToolDef<any, unknown>> = [
   getReceivingByTracking,
   getTicketEntities,
   getPackingKpi,
+  // Warehouse location reads: "where is X" and "what is in bin Y". Both carry
+  // their own table to the panel (wms-tools.ts).
+  locateProduct,
+  listLocationContents,
   // The two reads that make "move the photos from order A to order B on this
   // carton" expressible: order id → line id, and line → photo ids. The move
   // itself stays behind propose_mutation.

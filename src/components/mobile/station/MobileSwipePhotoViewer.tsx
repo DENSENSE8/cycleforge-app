@@ -16,10 +16,10 @@ import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { StaffAvatar } from '@/components/identity/StaffAvatar';
 import { zIndex as zLayer } from '@/design-system/tokens/z-index';
 import {
-  framerPresenceMobile,
-  framerTransitionMobile,
+  motionPresenceMobile,
+  motionTransitionMobile,
   motionBezier,
-} from '@/design-system/foundations/motion-framer';
+} from '@/design-system/foundations/motion-presets';
 
 // Paging commits past this horizontal travel OR on a fast flick.
 const SWIPE_THRESHOLD = 64;
@@ -141,7 +141,7 @@ export function MobileSwipePhotoViewer({
       const base = -idx * (widthRef.current + GAP);
       if (animated && !reduce) {
         animate(trackX, base, {
-          ...framerTransitionMobile.viewerPaging,
+          ...motionTransitionMobile.viewerPaging,
           velocity,
         });
       } else {
@@ -184,7 +184,7 @@ export function MobileSwipePhotoViewer({
 
     if (presentationRef.current === 'sheet' && !reduce && typeof window !== 'undefined') {
       dragY.set(window.innerHeight);
-      void animate(dragY, 0, framerTransitionMobile.sheetSlide);
+      void animate(dragY, 0, motionTransitionMobile.sheetSlide);
     } else {
       dragY.set(0);
     }
@@ -327,7 +327,7 @@ export function MobileSwipePhotoViewer({
           trackX.set(-cur * w);
         } else {
           animate(trackX, -cur * w, {
-            ...framerTransitionMobile.viewerPaging,
+            ...motionTransitionMobile.viewerPaging,
             velocity: p.velX,
           });
         }
@@ -341,7 +341,7 @@ export function MobileSwipePhotoViewer({
         dragY.set(0);
       } else {
         animate(dragY, 0, {
-          ...framerTransitionMobile.viewerPaging,
+          ...motionTransitionMobile.viewerPaging,
           velocity: p.velY,
         });
       }
@@ -373,7 +373,7 @@ export function MobileSwipePhotoViewer({
   }, [active, deleteArmed, deleting, index, dismissViewer, onDelete, slides.length]);
 
   const isSheet = presentation === 'sheet';
-  const rootPresence = isSheet ? null : framerPresenceMobile.camera;
+  const rootPresence = isSheet ? null : motionPresenceMobile.camera;
 
   if (!mounted) return null;
 
@@ -384,7 +384,7 @@ export function MobileSwipePhotoViewer({
           initial={rootPresence?.initial ?? false}
           animate={rootPresence?.animate ?? undefined}
           exit={rootPresence?.exit}
-          transition={isSheet ? undefined : framerTransitionMobile.cameraEnter}
+          transition={isSheet ? undefined : motionTransitionMobile.cameraEnter}
           className="fixed inset-0 select-none overflow-hidden"
           style={{ zIndex: zLayer.modal + 1 }}
           data-testid="mobile-swipe-photo-viewer"

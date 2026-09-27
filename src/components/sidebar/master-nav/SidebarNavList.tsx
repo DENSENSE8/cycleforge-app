@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useMemo, type ReactNode } from 'react';
+import { Suspense, useCallback, useMemo, type ReactNode } from 'react';
 import {
   DndContext,
   PointerSensor,
@@ -16,7 +16,7 @@ import {
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { ChevronDown } from '@/components/Icons';
+import { ChevronDown, Plus } from '@/components/Icons';
 import { navIconStrokeClass } from '@/components/icons/nav-weight';
 import {
   resolveSpineMapEntries,
@@ -51,7 +51,10 @@ import {
   SPINE_SCROLLPORT_SCROLLBAR_CLASS,
   SPINE_SECTION_LABEL_STICKY_CLASS,
 } from '@/components/sidebar/sidebar-spine';
+import { IconButton } from '@/design-system/primitives/IconButton';
+import { AI_CHAT_NEW_EVENT } from '@/lib/app-events';
 import { cn } from '@/utils/_cn';
+import { ChatSessionsNav } from './ChatSessionsNav';
 import { StaffAccountFooter } from './StaffAccountFooter';
 import { useSpineSectionCollapse } from './useSpineSectionCollapse';
 
@@ -61,6 +64,8 @@ interface SidebarNavListProps {
   activeChildId: string | null;
   otherPages: SidebarPageNav[];
   onNavigate: (pageId: string, childId?: string) => void;
+  /** Push an in-app href (a chat thread, `?new=1`) and close the mobile sheet. */
+  onOpenHref: (href: string) => void;
   onRowHover?: (page: SidebarPageNav) => void;
   spineOrder: string[];
   onSpineOrderChange: (ids: string[]) => void;
@@ -241,6 +246,7 @@ export function SidebarNavList({
   activeChildId,
   otherPages,
   onNavigate,
+  onOpenHref,
   onRowHover,
   spineOrder,
   onSpineOrderChange,
@@ -326,12 +332,14 @@ export function SidebarNavList({
     ariaLabel: string;
     onClick: () => void;
     onMouseEnter?: () => void;
+    /** Hover-revealed action at the row's end (always shown on the active row). */
+    trailing?: ReactNode;
   }) => {
     const RowIcon = opts.icon;
     return (
       <SidebarMenuItem
         key={opts.key}
-        className={RowIcon ? undefined : 'flex min-w-0 w-full items-stretch'}
+        className={cn(RowIcon ? undefined : 'flex min-w-0 w-full items-stretch', opts.trailing && 'group/row')}
       >
         {RowIcon ? null : (
           <span className={spineRailLineClass(opts.active)} aria-hidden />
@@ -342,13 +350,25 @@ export function SidebarNavList({
           onMouseEnter={opts.onMouseEnter}
           aria-label={opts.ariaLabel}
           aria-current={opts.active ? 'page' : undefined}
-          className={RowIcon ? undefined : 'min-w-0 w-auto flex-1'}
+          className={cn(RowIcon ? undefined : 'min-w-0 w-auto flex-1', opts.trailing && 'pr-9')}
         >
           {RowIcon ? <RowIcon className={navIconStrokeClass(SPINE_ROW_ICON_CLASS)} /> : null}
           <span className={cn('min-w-0 flex-1 truncate', SPINE_LABEL_CLASS)} title={opts.label}>
             {opts.label}
           </span>
         </SidebarMenuButton>
+        {opts.trailing ? (
+          <div
+            className={cn(
+              'absolute right-1 top-1/2 -translate-y-1/2 transition-opacity',
+              opts.active
+                ? 'opacity-100'
+                : 'opacity-0 group-hover/row:opacity-100 group-focus-within/row:opacity-100',
+            )}
+          >
+            {opts.trailing}
+          </div>
+        ) : null}
       </SidebarMenuItem>
     );
   };
@@ -487,8 +507,8 @@ export function SidebarNavList({
         {topPages.length > 0 ? (
           <SidebarGroup id="spine-section-top" role="group" aria-label="Pinned">
             <SidebarMenu>
-              {topPages.map((page) =>
-                renderMenuRow({
+              {topPages.map((page) => {
+                const row = renderMenuRow({
                   key: page.id,
                   label: page.label,
                   icon: page.icon,
@@ -496,8 +516,32 @@ export function SidebarNavList({
                   ariaLabel: `Go to ${page.label}`,
                   onClick: () => onNavigate(page.id),
                   onMouseEnter: onRowHover ? () => onRowHover(page) : undefined,
-                }),
-              )}
+                  trailing:
+                    page.id === 'ai-chat' ? (
+                      <IconButton
+                        size="xs"
+                        ariaLabel="New chat"
+                        title="New chat"
+                        icon={<Plus className="h-4 w-4" />}
+                        className="text-text-faint hover:bg-surface-sunken hover:text-text-default"
+                        onClick={() => {
+                          window.dispatchEvent(new CustomEvent(AI_CHAT_NEW_EVENT));
+                          onOpenHref('/ai-chat?new=1');
+                        }}
+                      />
+                    ) : undefined,
+                });
+                // The Chat row's threads, only while on /ai-chat: the WMS spine stays calm elsewhere.
+                if (page.id !== 'ai-chat' || activePage.id !== 'ai-chat') return row;
+                return [
+                  row,
+                  <SidebarMenuItem key="ai-chat-sessions">
+                    <Suspense fallback={null}>
+                      <ChatSessionsNav onOpenHref={onOpenHref} />
+                    </Suspense>
+                  </SidebarMenuItem>,
+                ];
+              })}
             </SidebarMenu>
           </SidebarGroup>
         ) : null}

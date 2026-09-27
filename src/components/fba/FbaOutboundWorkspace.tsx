@@ -14,8 +14,8 @@ import { FbaCombineRailBody, FbaPlanRailBody } from '@/components/fba/sidebar/Fb
 import { ReadyWorkspaceBody } from '@/components/outbound/ready/ReadyWorkspaceBody';
 import { Button, SlicedActionDock } from '@/design-system/primitives';
 import { Package, X } from '@/components/Icons';
-import { framerPresence, framerTransition, motionBezier } from '@/design-system/foundations/motion-framer';
-import { useMotionPresence, useMotionTransition } from '@/design-system/foundations/motion-framer-hooks';
+import { motionPresence, motionTransition, motionBezier } from '@/design-system/foundations/motion-presets';
+import { useMotionPresence, useMotionTransition } from '@/design-system/foundations/motion-presets-hooks';
 import { zIndex } from '@/design-system/tokens/z-index';
 import { stationThemeColors } from '@/utils/staff-colors';
 import { useStationTheme } from '@/hooks/useStationTheme';
@@ -119,8 +119,8 @@ export function FbaOutboundWorkspace() {
   const theme = stationThemeColors[stationTheme];
 
   const paneMotionProps = {
-    ...useMotionPresence(framerPresence.workbenchPaneSettle),
-    transition: useMotionTransition(framerTransition.workbenchPaneSettle),
+    ...useMotionPresence(motionPresence.workbenchPaneSettle),
+    transition: useMotionTransition(motionTransition.workbenchPaneSettle),
   };
 
   return (

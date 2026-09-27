@@ -1,45 +1,24 @@
 'use client';
 
-import { useCallback, useEffect, useState, type ReactNode } from 'react';
+import type { ReactNode } from 'react';
 import { DeskPageLayout } from '@/components/desk/DeskPageLayout';
-import type { DeskPageTab } from '@/design-system/components/DeskPageChrome';
+import { NavPageActions } from '@/components/desk/NavPageActions';
+import { useCurrentNavPath, useNavContext } from '@/components/sidebar/contextual/useNavContext';
 
-/** The Shipping **desk** frame — Pending · To ship · Shipped · Exceptions. */
+/**
+ * The Shipping **desk** frame — Exceptions · Picking · To ship · Shipped.
+ *
+ * No tab row (operator 2026-09-26): views, Find and filters live in the
+ * contextual sidebar. The header names the view you are on and carries its
+ * verbs top-right, over the list they act on (operator 2026-09-27). Both read
+ * the same `NavContext` the sidebar paints.
+ */
 export default function ShippingDeskLayout({ children }: { children: ReactNode }) {
-  /** The Exceptions tab carries the held-order count, so "22 blocked" is legible from To ship without navigating (a status overview costs ≤1… */
-  const [cagedCount, setCagedCount] = useState<number | null>(null);
-  useEffect(() => {
-    let cancelled = false;
-    void (async () => {
-      try {
-        const res = await fetch('/api/orders/caged?countOnly=1', {
-          credentials: 'same-origin',
-        });
-        if (!res.ok) return;
-        const data = (await res.json()) as { count?: number };
-        if (!cancelled && typeof data.count === 'number') setCagedCount(data.count);
-      } catch {
-        /* badge simply does not appear */
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
-  const decorateTabs = useCallback(
-    (tabs: readonly DeskPageTab[]) =>
-      cagedCount != null && cagedCount > 0
-        ? tabs.map((tab) => (tab.id === 'exceptions' ? { ...tab, count: cagedCount } : tab))
-        : tabs,
-    [cagedCount],
-  );
-
-  // Every Shipping desk is a fixed-width card stage (owner 2026-09-25): the
-  // list takes the 1152px stage and a picked row's record opens in its place;
-  // fullscreen — the staffer's choice — is what widens it to the split view.
+  const nav = useNavContext(useCurrentNavPath()).data;
+  const view = nav?.sections.flatMap((section) => section.items).find((item) => item.active);
   return (
-    <DeskPageLayout decorateTabs={decorateTabs} stage="card">
+    <DeskPageLayout bare stage="card" title={view?.label}>
+      <NavPageActions actions={nav?.actions} />
       {children}
     </DeskPageLayout>
   );

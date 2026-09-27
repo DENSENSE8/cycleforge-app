@@ -78,7 +78,7 @@ export async function syncMasterPlanToOpsPlans(
         [
           orgId,
           MASTER_PLAN_OPS_TITLE,
-          'Auto-synced from master-plan.mdx (agentic loop). Edit the plan in Cursor or via the /forge plan agent — direct task edits here will be overwritten by the next sync.',
+          'Auto-synced from master-plan.mdx (agentic loop). Edit the plan in Cursor — direct task edits here will be overwritten by the next sync.',
         ],
       );
       planId = String(inserted.rows[0].id);

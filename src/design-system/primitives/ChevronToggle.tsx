@@ -2,7 +2,7 @@
 
 import { motion } from '@/design-system/motion';
 import { useUIModeOptional } from '../providers/UIModeProvider';
-import { framerTransition } from '../foundations/motion-framer';
+import { motionTransition } from '../foundations/motion-presets';
 import { ChevronDown } from '@/components/Icons';
 
 interface ChevronToggleProps {
@@ -24,7 +24,7 @@ export function ChevronToggle({ isExpanded, tone = 'emerald', className = '' }: 
   return (
     <motion.span
       animate={{ rotate: isExpanded ? 180 : 0 }}
-      transition={framerTransition.upNextChevron}
+      transition={motionTransition.upNextChevron}
       className={`inline-flex items-center justify-center rounded-none border ${TONE_CLASSES[tone]} ${
         isMobile
           ? 'h-11 w-11 active:scale-95 transition-transform'

@@ -1,5 +1,18 @@
 /** Assistant context registry — the module-scope store behind useAssistantContext (plan §-2 "Context injection is a registry hook, not… */
 
+/**
+ * An entity the operator picked with `@` in the composer. Per-turn, never page
+ * state: the composer sends it on one message and the server names the exact
+ * id to the model (`buildContextFragment`).
+ */
+export interface AssistantMention {
+  kind: 'order' | 'sku' | 'bin';
+  /** The entity's own id: orders.id, the SKU string, the bin barcode. */
+  id: string;
+  /** What the composer inserted after `@`, e.g. "order 4899". */
+  label: string;
+}
+
 export interface AssistantPageContext {
   /** Route/page identity, e.g. 'operations', 'studio', 'packer-station'. */
   page: string;
@@ -14,6 +27,8 @@ export interface AssistantPageContext {
    * and jobs. Injected server-side into the system prompt for this request.
    */
   skill?: string | null;
+  /** `@` references on THIS message only — see {@link AssistantMention}. */
+  mentions?: AssistantMention[] | null;
 }
 
 interface RegisteredContext {

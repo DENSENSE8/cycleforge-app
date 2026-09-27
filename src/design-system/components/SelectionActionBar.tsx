@@ -2,7 +2,7 @@
 
 import type { ReactNode } from 'react';
 import { AnimatePresence, motion, useReducedMotion } from '@/design-system/motion';
-import { motionBezier } from '@/design-system/foundations/motion-framer';
+import { motionBezier } from '@/design-system/foundations/motion-presets';
 import {
   StickyActionBar,
   type StickyActionMenuItem,

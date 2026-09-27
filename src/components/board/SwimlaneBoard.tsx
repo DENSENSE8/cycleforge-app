@@ -16,8 +16,8 @@ import { PRIMARY_CHROME_ROW_FACE } from '@/components/layout/header-shell';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { ToolbarSegmentGroup, type ToolbarSegmentItem } from '@/components/ui/ToolbarButton';
 import { DateRangePickerField } from '@/design-system/components/DateRangePickerField';
-import { framerTransition } from '@/design-system/foundations/motion-framer';
-import { useMotionTransition } from '@/design-system/foundations/motion-framer-hooks';
+import { motionTransition } from '@/design-system/foundations/motion-presets';
+import { useMotionTransition } from '@/design-system/foundations/motion-presets-hooks';
 import { zIndex } from '@/design-system/tokens/z-index';
 import { useStaffPreferences } from '@/hooks/useStaffPreferences';
 import type { BoardLanePref, BoardPrefs, BoardPrefsKey } from '@/lib/neon/staff-preferences-queries';
@@ -347,7 +347,7 @@ function SwimlaneBubble<Row, LaneId extends string, SortId extends string>({
   useEffect(() => {
     setLayoutReady(true);
   }, []);
-  const laneLayoutTransition = useMotionTransition(framerTransition.boardLaneLayout);
+  const laneLayoutTransition = useMotionTransition(motionTransition.boardLaneLayout);
   const dragStyle: React.CSSProperties | undefined = isDragging
     ? {
         transform: CSS.Transform.toString(transform),

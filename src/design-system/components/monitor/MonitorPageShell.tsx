@@ -3,7 +3,7 @@
 import type { ReactNode } from 'react';
 import { motion } from '@/design-system/motion';
 import { cn } from '@/utils/_cn';
-import { framerVariants } from '@/design-system/foundations/motion-framer';
+import { motionVariants } from '@/design-system/foundations/motion-presets';
 
 export type MonitorPageShellProps = {
   children: ReactNode;
@@ -41,7 +41,7 @@ export function MonitorPageShell({
     >
       {stagger ? (
         <motion.main
-          variants={framerVariants.monitorStaggerContainer}
+          variants={motionVariants.monitorStaggerContainer}
           initial="hidden"
           animate="visible"
           className={content}

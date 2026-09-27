@@ -21,7 +21,6 @@ import {
   StationDisplaysUtilityRail,
   STATION_DISPLAY_INDEX,
   resolveDisplaysActiveTab,
-  useYieldStationDisplaysOnAssistantOpen,
   type DisplayIndexRow,
 } from '@/components/station/displays';
 import { ListingLinksTab } from '@/components/receiving/workspace/line-edit/ListingLinksTab';
@@ -164,7 +163,6 @@ export function ScanOutActivePanel({
     () => setActiveSideTab(STATION_DISPLAY_INDEX),
     [],
   );
-  useYieldStationDisplaysOnAssistantOpen(closeDisplays);
 
   useEffect(() => {
     const onOpen = () => openDisplaysIndex();

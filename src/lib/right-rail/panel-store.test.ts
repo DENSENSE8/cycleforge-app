@@ -86,13 +86,8 @@ describe('panel-store — singleton lifecycle', () => {
     assert.deepEqual(snap.draftData?.data, { qty: 3 });
   });
 
-  it('closeAndCachePanel is a no-op when already dismissed or when assistant is active', () => {
+  it('closeAndCachePanel is a no-op when already dismissed', () => {
     const { cap } = installCapture();
-    openPanel({ id: 'assistant' });
-    closeAndCachePanel();
-    assert.equal(getPanelStore().dismissed, false);
-    assert.equal(getPanelStore().draftData, null);
-
     openPanel({ id: 'detail:order' });
     closeAndCachePanel();
     const first = getPanelStore().draftData;

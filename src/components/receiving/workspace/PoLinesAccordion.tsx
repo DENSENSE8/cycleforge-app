@@ -120,7 +120,7 @@ export function PoLinesAccordion({
     placeholderActiveRow,
   });
 
-  // Ops capture bodies snap open — never Framer `layout` tween when under-row
+  // Ops capture bodies snap open — never Motion `layout` tween when under-row
   // faces mount or update (reads as a dropdown).
   const listRef = useRef<HTMLUListElement>(null);
 

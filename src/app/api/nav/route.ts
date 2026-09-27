@@ -37,8 +37,11 @@ export const PUT = withAuth(async (req: NextRequest, ctx) => {
     }
 
     const published = await withTenantTransaction(ctx.organizationId, async (client) => {
-      // Deactivate the current active row + insert the next version active, in
-      // one statement, so two concurrent publishes can't both stay active.
+      // Deactivate the current active row, then insert the next version active,
+      // in one statement so two concurrent publishes can't both stay active.
+      // The INSERT reads `deactivated`, which forces the UPDATE to finish first;
+      // an unreferenced data-modifying CTE may run after the INSERT and trip
+      // `ux_nav_definitions_org_active`.
       const { rows } = await client.query<{ id: number; version: number }>(
         `WITH deactivated AS (
            UPDATE nav_definitions
@@ -47,11 +50,11 @@ export const PUT = withAuth(async (req: NextRequest, ctx) => {
             RETURNING version
          )
          INSERT INTO nav_definitions (organization_id, config, version, is_active, updated_by)
-         VALUES (
+         SELECT
            $1, $2::jsonb,
            COALESCE((SELECT MAX(version) FROM nav_definitions WHERE organization_id = $1), 0) + 1,
            TRUE, $3
-         )
+         FROM (SELECT COUNT(*) FROM deactivated) AS settled
          RETURNING id, version`,
         [ctx.organizationId, JSON.stringify(definition), ctx.staffId],
       );

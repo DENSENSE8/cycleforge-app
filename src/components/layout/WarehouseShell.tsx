@@ -2,7 +2,7 @@
 
 /** The warehouse client — every provider, sync and host that makes this app an operator workstation, in ONE lazily-loadable boundary. */
 
-import type { ReactNode } from 'react';
+import { Suspense, type ReactNode } from 'react';
 import type { DehydratedState } from '@tanstack/react-query';
 import dynamic from 'next/dynamic';
 import Providers from '@/components/Providers';
@@ -29,7 +29,8 @@ import { TimeFormatSync } from '@/components/time-format/TimeFormatSync';
 import { QuickAccessSync } from '@/components/quick-access/QuickAccessSync';
 import { AuthenticatedAblyProvider } from '@/components/providers/AuthenticatedAblyProvider';
 import { WorkbenchCachePersistence } from '@/components/providers/WorkbenchCachePersistence';
-import { AssistantProvider } from '@/components/assistant/AssistantProvider';
+import { GlobalDetailStackHost } from '@/components/detail-stacks/GlobalDetailStackHost';
+import { DetailStackHistoryTracker } from '@/components/detail-stacks/DetailStackHistoryTracker';
 import { InstallPrompt } from '@/components/station/InstallPrompt';
 /** The app-wide reduced-motion floor lives HERE, not in the root layout. */
 import { ReducedMotionProvider } from '@/components/providers/ReducedMotionProvider';
@@ -66,18 +67,20 @@ export function WarehouseShell({
                       <HeaderProvider>
                         <FbaWorkspaceProvider>
                           <StudioWorkspaceProvider>
-                            <AssistantProvider>
-                              {/* Station paint seed. */}
-                              <ShellQuerySeed state={shellSeed}>
-                                {mobileTree ? (
-                                  <MobileRouteShell>{children}</MobileRouteShell>
-                                ) : (
-                                  <DesktopRouteShell>
-                                    {children}
-                                  </DesktopRouteShell>
-                                )}
-                              </ShellQuerySeed>
-                            </AssistantProvider>
+                            {/* Station paint seed. */}
+                            <ShellQuerySeed state={shellSeed}>
+                              {mobileTree ? (
+                                <MobileRouteShell>{children}</MobileRouteShell>
+                              ) : (
+                                <DesktopRouteShell>
+                                  {children}
+                                </DesktopRouteShell>
+                              )}
+                            </ShellQuerySeed>
+                            <GlobalDetailStackHost />
+                            <Suspense fallback={null}>
+                              <DetailStackHistoryTracker />
+                            </Suspense>
                           </StudioWorkspaceProvider>
                         </FbaWorkspaceProvider>
                       </HeaderProvider>

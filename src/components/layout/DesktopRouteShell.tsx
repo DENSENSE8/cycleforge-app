@@ -8,6 +8,7 @@ import dynamic from 'next/dynamic';
 import { ErrorBoundary } from '@/components/error/ErrorBoundary';
 import { useUIMode } from '@/design-system/providers/UIModeProvider';
 import { useBodyScrollLock } from '@/design-system/hooks';
+import { useDeskFloorActive } from '@/design-system/components/DeskStageContext';
 import { AlertTriangle, RotateCcw, X } from '@/components/Icons';
 import { Button, IconButton } from '@/design-system/primitives';
 import { isMobileAllowedPath } from '@/lib/sidebar-navigation';
@@ -24,6 +25,11 @@ import { appContentShellClass } from '@/components/layout/header-shell';
 import { appChromeClass } from '@/design-system/tokens/app-surface';
 import { cn } from '@/utils/_cn';
 import { warmSpineChunk } from '@/components/sidebar/preload-spine';
+import {
+  NavRolloutProbe,
+  useContextualSidebarActive,
+} from '@/components/sidebar/contextual/useNavContext';
+import { useLocalStorage } from '@/hooks';
 
 // The sidebar is its own chunk:
 const DashboardSidebar = dynamic(
@@ -37,6 +43,13 @@ const DashboardSidebar = dynamic(
 const SidebarNavColumn = dynamic(
   () => import('@/components/sidebar/SidebarNavColumn').then((m) => m.SidebarNavColumn),
   { ssr: false },
+);
+// The contextual sidebar (stage 5) — mounted in the same column for pages
+// whose NavContext resolves `rollout: 'contextual'`; every other page keeps
+// the master nav spine above.
+const ContextualSidebar = dynamic(
+  () => import('@/components/sidebar/contextual/ContextualSidebar').then((m) => m.ContextualSidebar),
+  { ssr: false, loading: () => <div className="h-full w-full" aria-hidden /> },
 );
 
 // On-demand chrome, split out of the shell chunk. Find / clipboard / throw /
@@ -125,12 +138,24 @@ export function DesktopRouteShell({ children }: DesktopRouteShellProps) {
   const [drawerOpen, setDrawerOpen] = useState(false);
   // A route's OWN sidebar (picker / facet rail / bench) is no longer mounted here at all:
   const [navOpen, setNavOpen] = useState(false);
-  const toggleNav = useCallback(() => setNavOpen((prev) => !prev), []);
+  // A contextual page's sidebar carries its views and filters, so it is open
+  // unless the operator closed it (remembered); the spine keeps its own state.
+  const contextualActive = useContextualSidebarActive();
+  const [contextualOpen, setContextualOpen] = useLocalStorage('contextual-sidebar-open', true);
+  const contextualActiveRef = useRef(contextualActive);
+  contextualActiveRef.current = contextualActive;
+  const toggleNav = useCallback(() => {
+    if (contextualActiveRef.current) setContextualOpen((prev) => !prev);
+    else setNavOpen((prev) => !prev);
+  }, [setContextualOpen]);
   useEffect(() => {
-    const toggle = () => setNavOpen((v) => !v);
-    window.addEventListener(MASTER_NAV_TOGGLE_EVENT, toggle);
-    return () => window.removeEventListener(MASTER_NAV_TOGGLE_EVENT, toggle);
-  }, []);
+    window.addEventListener(MASTER_NAV_TOGGLE_EVENT, toggleNav);
+    return () => window.removeEventListener(MASTER_NAV_TOGGLE_EVENT, toggleNav);
+  }, [toggleNav]);
+  // Floor (a desk's industrial full canvas) parks the column for the session
+  // without touching the remembered choice (owner 2026-09-26).
+  const deskFloor = useDeskFloorActive();
+  const columnOpen = (contextualActive ? contextualOpen : navOpen) && !deskFloor;
   const navPeek = useHoverSurface({
     id: 'master-nav-spine-peek',
     disabled: true,
@@ -258,17 +283,19 @@ export function DesktopRouteShell({ children }: DesktopRouteShellProps) {
         <PhoneScanBridgeMount />
         <StaffPrintBridgeMount />
 
-        {/* The nav spine — the page list, and only the page list. */}
+        {/* The nav spine — the page map, or the contextual sidebar where the
+            page's NavContext resolves `contextual`. The probe publishes that. */}
         {!chromeless && (
           <ErrorBoundary label="sidebar-nav-column" fallback={() => null}>
             <Suspense fallback={null}>
+              <NavRolloutProbe />
               <SidebarNavColumn
-                open={navOpen}
+                open={columnOpen}
                 peeking={navPeek.isOpen}
                 peekSurfaceProps={navPeek.surfaceProps}
                 onPeekDismiss={navPeek.close}
               >
-                <DashboardSidebar />
+                {contextualActive ? <ContextualSidebar /> : <DashboardSidebar />}
               </SidebarNavColumn>
             </Suspense>
           </ErrorBoundary>
@@ -277,7 +304,7 @@ export function DesktopRouteShell({ children }: DesktopRouteShellProps) {
         <div className={cn('relative flex h-full min-w-0 flex-1 flex-col overflow-hidden', appChromeClass)}>
           {!chromeless && (
           <GlobalHeader
-            navOpen={navOpen}
+            navOpen={columnOpen}
             onToggleNav={toggleNav}
             peeking={navPeek.isOpen}
             peekTriggerProps={navPeek.triggerProps}

@@ -2,11 +2,11 @@
 
 import React, { useEffect, useRef, useState, type ReactNode } from 'react';
 import { motion, AnimatePresence } from '@/design-system/motion';
-import { framerPresence, framerTransition } from '@/design-system/foundations/motion-framer';
+import { motionPresence, motionTransition } from '@/design-system/foundations/motion-presets';
 import {
   useMotionPresence,
   useMotionTransition,
-} from '@/design-system/foundations/motion-framer-hooks';
+} from '@/design-system/foundations/motion-presets-hooks';
 import { Barcode, AlertCircle } from '../Icons';
 import { useStationTheme } from '@/hooks/useStationTheme';
 import { useLast8TrackingSearch } from '@/hooks/useLast8TrackingSearch';
@@ -89,8 +89,8 @@ export default function PackScanColumn({
 }: PackScanColumnProps) {
   // Global-assistant context: station Q&A skill fragment (plan §-2.2).
   useAssistantContext({ page: 'packing-station', station: 'PACKING', skill: STATION_SKILL });
-  const cardPresence = useMotionPresence(framerPresence.stationCard);
-  const cardTransition = useMotionTransition(framerTransition.stationCardMount);
+  const cardPresence = useMotionPresence(motionPresence.stationCard);
+  const cardTransition = useMotionTransition(motionTransition.stationCardMount);
   const [inputValue, setInputValue] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);

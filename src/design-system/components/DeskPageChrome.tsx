@@ -2,11 +2,18 @@
 
 /** `DeskPageChrome` — the frame every **non-scan desk** wears. */
 
-import { useEffect, type ReactNode } from 'react';
+import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import { hasOpenOverlay } from '@/lib/overlay-stack/store';
+import { registerShortcutOverviewGroup } from '@/lib/keyboard/shortcut-overview';
 import { cornerClass } from '../tokens/radius';
 import { focusRing } from '../tokens/focus-ring';
-import { DeskStageProvider } from './DeskStageContext';
+import {
+  DESK_FLOOR_SHORTCUT,
+  DeskStageProvider,
+  isDeskFloorChord,
+  publishDeskFloorActive,
+  type DeskStageView,
+} from './DeskStageContext';
 import {
   DESK_BAR_SEGMENT_CLASS,
   DeskHeaderFaceProvider,
@@ -19,7 +26,6 @@ import {
   DESK_STAGE_FIXED_CLASS,
   DESK_STAGE_FULLSCREEN_CLASS,
   DESK_STAGE_GROUND_CLASS,
-  DESK_STAGE_FLOOR_CLASS,
   DESK_STAGE_GUTTER_CLASS,
   DESK_TAB_ROW_CLASS,
 } from '../tokens/desk-stage';
@@ -54,8 +60,11 @@ interface DeskPageChromeProps {
   addSlot?: ReactNode;
   /** A control at the START of the tab row, on the SAME axis as the tabs. */
   tabsLead?: ReactNode;
-  fullscreen: boolean;
-  onToggleFullscreen: () => void;
+  /** The stage's ONE state — see {@link DeskStageView}. */
+  view: DeskStageView;
+  onViewChange: (view: DeskStageView) => void;
+  /** Enter floor, or leave it for the view it was entered from. */
+  onToggleFloor: () => void;
   /**
    * `'card'` (default):
    * `'flush'`: an industrial desk (BRIEF §4) — the desktop terminal's frame.
@@ -74,28 +83,83 @@ export function DeskPageChrome({
   onTabChange,
   addSlot,
   tabsLead,
-  fullscreen,
-  onToggleFullscreen,
+  view,
+  onViewChange,
+  onToggleFloor,
   stage = 'card',
   children,
   className,
 }: DeskPageChromeProps) {
+  const fullscreen = view !== 'in-place';
+  const floor = view === 'floor';
   const flush = stage === 'flush' && !fullscreen;
   const measure = fullscreen || flush ? DESK_STAGE_FULLSCREEN_CLASS : DESK_STAGE_FIXED_CLASS;
 
-  // Escape is the keyboard half of the one-click-out budget.
+  // Lists that can paint the floor face register while mounted.
+  const [floorFaces, setFloorFaces] = useState(0);
+  const registerFloorFace = useCallback(() => {
+    setFloorFaces((n) => n + 1);
+    return () => setFloorFaces((n) => n - 1);
+  }, []);
+  const floorAvailable = floorFaces > 0;
+
+  // Escape is the keyboard half of the one-click-out budget: one exit per
+  // press — the record (DeskRecordPlane, document) and a check-set (window
+  // capture) claim it first; then floor → the view it came from; then split.
+  const viewRef = useRef({ floor, onViewChange, onToggleFloor });
+  viewRef.current = { floor, onViewChange, onToggleFloor };
   useEffect(() => {
     if (!fullscreen) return;
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key !== 'Escape' || event.defaultPrevented || hasOpenOverlay()) return;
-      onToggleFullscreen();
+      const current = viewRef.current;
+      if (current.floor) current.onToggleFloor();
+      else current.onViewChange('in-place');
     };
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
-  }, [fullscreen, onToggleFullscreen]);
+  }, [fullscreen]);
+
+  // ⌘/Ctrl+Shift+F — a chord, so no scanner can type it and it may fire from
+  // a text field; an open overlay still owns the keyboard.
+  useEffect(() => {
+    if (!floorAvailable) return undefined;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.defaultPrevented || !isDeskFloorChord(event) || hasOpenOverlay()) return;
+      event.preventDefault();
+      viewRef.current.onToggleFloor();
+    };
+    window.addEventListener('keydown', onKeyDown);
+    const unregister = registerShortcutOverviewGroup({
+      id: 'desk-floor',
+      title: 'Desk',
+      rows: [{ keys: [...DESK_FLOOR_SHORTCUT.keys], label: DESK_FLOOR_SHORTCUT.label }],
+    });
+    return () => {
+      window.removeEventListener('keydown', onKeyDown);
+      unregister();
+    };
+  }, [floorAvailable]);
+
+  // The sidebar column and the route's mode region live above this stage.
+  useEffect(() => {
+    publishDeskFloorActive(floor);
+    return () => publishDeskFloorActive(false);
+  }, [floor]);
+
+  // A floor whose list face left (the desk switched lists) is no floor.
+  useEffect(() => {
+    if (floor && !floorAvailable) viewRef.current.onToggleFloor();
+  }, [floor, floorAvailable]);
 
   return (
-    <DeskStageProvider fullscreen={fullscreen} toggleFullscreen={onToggleFullscreen}>
+    <DeskStageProvider
+      view={view}
+      setView={onViewChange}
+      toggleFloor={onToggleFloor}
+      floorAvailable={floorAvailable}
+      registerFloorFace={registerFloorFace}
+    >
       <div
         className={cn(
           'flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden',
@@ -104,7 +168,6 @@ export function DeskPageChrome({
           !fullscreen && !flush && DESK_STAGE_GUTTER_CLASS,
           !fullscreen && (flush ? 'bg-mode-canvas' : DESK_STAGE_GROUND_CLASS),
           !fullscreen && !flush && 'pt-2',
-          !fullscreen && !flush && DESK_STAGE_FLOOR_CLASS,
           className,
         )}
       >
@@ -213,6 +276,7 @@ export function DeskPageChrome({
         <div
           data-testid="desk-page-stage"
           data-fullscreen={fullscreen ? '' : undefined}
+          data-desk-view={view}
           className={cn(
             'flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden',
             measure,

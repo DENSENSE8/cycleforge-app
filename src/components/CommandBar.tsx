@@ -33,6 +33,8 @@ import {
 import { useFindFieldScan } from '@/hooks/useFindFieldScan';
 import { cn } from '@/utils/_cn';
 import { usePlatformMeta } from '@/hooks/useCatalog';
+import { useAuth } from '@/contexts/AuthContext';
+import { buildCommandBarNavGroups, filterCommandBarNavGroups } from '@/lib/nav/command-bar-nav-groups';
 import { platformMetaBrandDot } from '@/lib/source-platform';
 import {
   CHIP_TONE_CLASSES,
@@ -196,7 +198,11 @@ export function CommandBar() {
   // The catalog-aware resolver — the SAME one the rails and grids use, so an
   // org that recolours a channel in its platform catalog recolours it here.
   const platformMeta = usePlatformMeta();
-
+  const { user } = useAuth();
+  const navGroups = useMemo(
+    () => buildCommandBarNavGroups(new Set(user?.permissions ?? [])),
+    [user?.permissions],
+  );
   const setDialogOpen = useCallback((next: boolean) => {
     setOpen(next);
     dispatchOpenChange(next);
@@ -482,6 +488,13 @@ export function CommandBar() {
         : headerFindEmptyMessage(trimmedQuery, findMode ? 'order' : undefined);
 
   const showRecents = open && !trimmedQuery && recents.length > 0;
+  // Page destinations. With the left spine removed (2026-09-26) ⌘K is the one
+  // page-to-page navigator: empty query lists every reachable page, a query
+  // narrows them through the shared nav matcher.
+  const pageRows = (trimmedQuery ? filterCommandBarNavGroups(navGroups, trimmedQuery) : navGroups)
+    .flatMap((group) => group.rows)
+    .filter((row) => row.type === 'page')
+    .slice(0, trimmedQuery ? 6 : undefined);
   const showIdentifierMiss =
     findMode && trimmedQuery && !searching && previewHits.length === 0;
   /** The fetch came back FULL, so the server had at least one more it was not asked for. */
@@ -616,6 +629,28 @@ export function CommandBar() {
                     <Icon className={cn('size-4', glyph?.className ?? 'text-text-faint')} />
                     <span className="min-w-0 flex-1 truncate">{r.label}</span>
                     {channel ? <PlatformMark meta={platformMeta(channel)} /> : null}
+                  </CommandItem>
+                );
+              })}
+            </CommandGroup>
+          ) : null}
+          {pageRows.length > 0 ? (
+            <CommandGroup heading="Go to">
+              {pageRows.map((row) => {
+                const Icon = row.icon;
+                return (
+                  <CommandItem
+                    key={`page:${row.id}`}
+                    value={`page ${row.label} ${row.href}`}
+                    onSelect={() => {
+                      // Same exit order as the palette's other exits: unmount
+                      // the portal first, then push (React 19 removeChild race).
+                      setDialogOpen(false);
+                      window.requestAnimationFrame(() => router.push(row.href));
+                    }}
+                  >
+                    <Icon className="size-4 text-text-faint" />
+                    <span className="min-w-0 flex-1 truncate">{row.label}</span>
                   </CommandItem>
                 );
               })}

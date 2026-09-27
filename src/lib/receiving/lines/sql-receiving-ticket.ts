@@ -20,7 +20,13 @@ export function sqlLinkedSupportTicketLateralJoin(): string {
     WHERE tl.organization_id = rl.organization_id
       AND (
         (tl.entity_type = 'RECEIVING_LINE' AND tl.entity_id = rl.id)
-        OR (tl.entity_type = 'RECEIVING' AND tl.entity_id = COALESCE(rl.receiving_id, r.id))
+        -- CASE, not COALESCE: under forced RLS (app_tenant) only leakproof
+        -- quals may become index conditions, and the planner treats
+        -- COALESCE as leaky while CASE/IS NOT NULL are safe. With COALESCE
+        -- this arm could not probe idx_ticket_links_org_entity, so the whole
+        -- OR lost its BitmapOr and seq-scanned ticket_links once per row.
+        OR (tl.entity_type = 'RECEIVING'
+            AND tl.entity_id = CASE WHEN rl.receiving_id IS NOT NULL THEN rl.receiving_id ELSE r.id END)
         OR (r.shipment_id IS NOT NULL AND tl.entity_type = 'SHIPMENT' AND tl.entity_id = r.shipment_id)
       )
     ORDER BY

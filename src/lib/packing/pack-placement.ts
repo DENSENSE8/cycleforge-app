@@ -1,8 +1,8 @@
 /** Pack placement SoT — labeled outbound orders at packing DESK / STAGING locations on the warehouse `locations` map. */
 
 import type { PoolClient } from 'pg';
-import { SHIPPED_BY_CARRIER_SQL } from '@/lib/sql-fragments';
-import { sqlOrderHasPackScan, sqlOrderHasShipConfirm } from '@/lib/orders/order-grain-sql';
+import { sqlOrderHasPackScan } from '@/lib/orders/order-grain-sql';
+import { sqlOrderInWarehouseToShip } from '@/lib/orders/desk-view-sql';
 import type { OrgId } from '@/lib/tenancy/constants';
 import { withTenantTransaction } from '@/lib/tenancy/db';
 import {
@@ -62,16 +62,12 @@ export class PackPlacementError extends Error {
   }
 }
 
-/** Open unshipped / pre-pack membership — mirrors queue-counts scope. */
+/** Open pre-pack membership: the To-ship scope queue-counts and the desk list use, not yet packed. */
 function prepackMembershipSql(orderAlias = 'o'): string {
   return `
     ${orderAlias}.organization_id = $1
-    AND ${orderAlias}.shipment_id IS NOT NULL
-    AND COALESCE(TRIM(stn.tracking_number_raw), '') <> ''
-    AND NOT ${SHIPPED_BY_CARRIER_SQL}
-    AND COALESCE(${orderAlias}.fulfillment_channel, '') <> 'AFN'
+    AND ${sqlOrderInWarehouseToShip(orderAlias)}
     AND NOT ${sqlOrderHasPackScan(orderAlias)}
-    AND NOT ${sqlOrderHasShipConfirm(orderAlias)}
   `;
 }
 

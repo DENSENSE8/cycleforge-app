@@ -207,16 +207,21 @@ gate today), so its trigger is built separately from this framework.
 
 ## Desk catalog
 
-**Personal** (`scope: 'staff'`), one row per desk in `DESK_FULLSCREEN_DESKS`:
+**Personal** (`scope: 'staff'`), one row per desk in `DESK_VIEW_DESKS`:
 
 | key | control | scope | decision point |
 |---|---|---|---|
-| `desk.<deskId>.fullscreen` | toggle | staff | `DeskPageLayout` seeds the desk's fullscreen state from it and writes it from the table-row ⤢ toggle (and Esc-exit) |
+| `desk.<deskId>.view` | segmented (`in-place` / `split`) | staff | `DeskPageLayout` seeds the desk's stage view from it and writes it from the table-row ⤢ toggle, the In place / Split switch and Esc-exit |
 
-`<deskId>` is the desk's `SIDEBAR_PAGE_NAV` page id (`home`, `outbound`, `incoming`, …). Fullscreen is
-the staffer's choice of record view (operator 2026-09-25): off → a record opens in place of the
-fixed-width list; on → list left, record right (`DeskRecordPlane`). A desk with no row still toggles,
-it just forgets on reload.
+`<deskId>` is the desk's `SIDEBAR_PAGE_NAV` page id (`home`, `outbound`, `incoming`, …). The view is
+the staffer's choice of record view (operator 2026-09-25): `in-place` → a record opens in place of the
+fixed-width list; `split` → list left, record right (`DeskRecordPlane`). A desk with no row still
+switches, it just forgets on reload. The third stage view, `floor` (owner 2026-09-26), is a session
+posture and is never stored.
+
+Renamed keys: a def's `legacy: { key, read }` is read (mapped by `read`) only while `key` holds no
+value; writes always land on `key`. `desk.<deskId>.view` reads the old boolean
+`desk.<deskId>.fullscreen` this way (`true` → `split`).
 
 ## File map
 

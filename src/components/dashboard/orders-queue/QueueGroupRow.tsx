@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, type ReactNode } from 'react';
+import { useState, type MouseEvent, type ReactNode } from 'react';
 import {
   SlotTableGroupFold,
   SlotTableGroupFoldBody,
@@ -20,6 +20,11 @@ import { resolveRowStatus } from './helpers';
 import type { OrdersQueueMode, QueueRowRecord } from '@/lib/dashboard/orders-queue-helpers';
 import { lineMoneySubtitlePart } from '@/lib/tables/slot-table-line-money';
 import { formatCurrency } from '@/utils/_number';
+import { getCurrentPSTDateKey } from '@/utils/date';
+import { isOrdersIndexColumnModel, type OrdersQueueColumn } from '@/lib/dashboard-order-row-layout';
+import { ordersIndexValues } from '@/lib/tables/field-catalog/orders-resolve';
+import { queueRowClickIntent, type QueueRowClickEvent } from './queue-row-click';
+import { OrdersIndexGroupRow } from './OrdersIndexCells';
 
 interface QueueGroupRowProps {
   /** One order's lines (singleton or multi-product). */
@@ -47,6 +52,12 @@ interface QueueGroupRowProps {
    * the band and its children can never disagree about the stage.
    */
   queueMode: OrdersQueueMode;
+  /**
+   * INDEX face only — a click on the order row (not its checkbox or fold).
+   * Opens the lead line's record while nothing is checked; toggles the whole
+   * order once anything is (Polaris `selectMode`).
+   */
+  onRowClick?: (record: ShippedOrder, event?: QueueRowClickEvent) => void;
 }
 
 /** Commercial totals for the parent band — units and money, not boxes. */
@@ -82,12 +93,26 @@ export function QueueGroupRow({
   onToggleGroup,
   renderRow,
   queueMode,
+  onRowClick,
 }: QueueGroupRowProps) {
   const multi = group.rows.length > 1;
-  const [folded, setFolded] = useState(false);
+  // The index face is one row per ORDER: its lines start folded under it.
+  const index = isOrdersIndexColumnModel(columns);
+  // A single-line order has nothing to fold — its line IS the order row.
+  const [folded, setFolded] = useState(index && multi);
   return (
     <SlotTableGroupFold multi={multi}>
-      {multi ? (
+      {multi && index ? (
+        <QueueOrderIndexRow
+          group={group}
+          columns={columns as readonly OrdersQueueColumn[]}
+          selectedIds={selectedIds}
+          onToggleGroup={onToggleGroup}
+          folded={folded}
+          onToggleFold={() => setFolded((open) => !open)}
+          onRowClick={onRowClick}
+        />
+      ) : multi ? (
         <QueueOrderParentRow
           group={group}
           columns={columns}
@@ -193,6 +218,71 @@ function QueueOrderParentRow({
       folded={folded}
       onToggleFold={onToggleFold}
       view={view}
+    />
+  );
+}
+
+/** A multi-line order on the INDEX face — the order's own row, facts summed over its lines. */
+function QueueOrderIndexRow({
+  group,
+  columns,
+  selectedIds,
+  onToggleGroup,
+  folded,
+  onToggleFold,
+  onRowClick,
+}: {
+  group: RowGroup<ShippedOrder>;
+  columns: readonly OrdersQueueColumn[];
+  selectedIds: ReadonlySet<number>;
+  onToggleGroup: (ids: readonly number[], checked: boolean) => void;
+  folded: boolean;
+  onToggleFold: () => void;
+  onRowClick?: (record: ShippedOrder, event?: QueueRowClickEvent) => void;
+}) {
+  const ids = group.rows.map((row) => Number(row.id)).filter((id) => Number.isFinite(id) && id > 0);
+  const checkedCount = ids.filter((id) => selectedIds.has(id)).length;
+  const checked = checkedCount === 0 ? false : checkedCount === ids.length ? true : 'mixed';
+  const lead = group.rows[0]!;
+  const toggle = () => onToggleGroup(ids, checked !== true);
+  return (
+    <OrdersIndexGroupRow
+      columns={columns}
+      facts={{
+        values: ordersIndexValues(group.rows, columns, { todayKey: getCurrentPSTDateKey() }),
+        view: {
+          ...ordersCompoundView(lead, { stateLabel: null, delayDays: null }),
+          edgeMark: ordersEdgeMark({
+            has_exception: group.rows.some((row) => Boolean(row.has_exception)),
+            is_urgent: group.rows.some((row) => Boolean(row.is_urgent)),
+            is_out_of_stock: group.rows.some((row) => Boolean(row.is_out_of_stock)),
+          }),
+        },
+        orderId: String(lead.order_id || group.key || '').trim(),
+        accountSource: lead.account_source ?? null,
+        hasNote: group.rows.some(
+          (row) => Number(row.note_count ?? 0) > 0 || Boolean(String(row.buyer_note ?? '').trim()),
+        ),
+      }}
+      checked={checked}
+      onToggle={toggle}
+      lineCount={group.rows.length}
+      folded={folded}
+      onToggleFold={onToggleFold}
+      onActivate={(event: MouseEvent<HTMLDivElement>) => {
+        // Same gesture law as a line row (`queueRowClickIntent`), with the
+        // ORDER as the unit: a live check-set makes the click check every line.
+        const click = {
+          shiftKey: event.shiftKey,
+          metaKey: event.metaKey,
+          ctrlKey: event.ctrlKey,
+          detail: event.detail,
+          target: event.target,
+        };
+        const intent = queueRowClickIntent(click, selectedIds.size > 0);
+        if (intent === 'toggle') toggle();
+        else if (intent !== 'ignore') onRowClick?.(lead, click);
+      }}
     />
   );
 }

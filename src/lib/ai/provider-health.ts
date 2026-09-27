@@ -1,6 +1,6 @@
 /** Short-lived demotion cache for AI providers. */
 
-import type { IntegrationProvider } from '@/lib/integrations/credentials';
+import type { AiProviderSource } from '@/lib/ai/org-provider';
 import type { AiCapability } from '@/lib/ai/provider';
 
 /** How long a failed provider stays demoted. */
@@ -12,9 +12,9 @@ const PROVIDER_TIMEOUT_MS: Record<'local' | 'cloud', number> = {
   cloud: 10_000,
 };
 
-/** `ollama` is the self-hosted/custom OpenAI-compatible slot — the only local one. */
-export function providerTimeoutMs(source: IntegrationProvider | 'platform'): number {
-  return source === 'ollama' ? PROVIDER_TIMEOUT_MS.local : PROVIDER_TIMEOUT_MS.cloud;
+/** `ollama` (the self-hosted vault slot) and `local_mlx` (the env-selected local agent) are local. */
+export function providerTimeoutMs(source: AiProviderSource): number {
+  return source === 'ollama' || source === 'local_mlx' ? PROVIDER_TIMEOUT_MS.local : PROVIDER_TIMEOUT_MS.cloud;
 }
 
 type Key = string;
@@ -32,7 +32,7 @@ const systemClock: HealthClock = { now: () => Date.now() };
 /** Demote a provider that just timed out or returned 5xx. */
 export function markProviderUnhealthy(
   orgId: string,
-  source: IntegrationProvider | 'platform',
+  source: AiProviderSource,
   capability: AiCapability,
   clock: HealthClock = systemClock,
   ttlMs: number = PROVIDER_DEMOTION_TTL_MS,
@@ -43,7 +43,7 @@ export function markProviderUnhealthy(
 /** Whether a provider is currently demoted. Expired entries are swept on read. */
 export function isProviderDemoted(
   orgId: string,
-  source: IntegrationProvider | 'platform',
+  source: AiProviderSource,
   capability: AiCapability,
   clock: HealthClock = systemClock,
 ): boolean {
@@ -60,7 +60,7 @@ export function isProviderDemoted(
 /** A provider that answered is trusted again immediately. */
 export function markProviderHealthy(
   orgId: string,
-  source: IntegrationProvider | 'platform',
+  source: AiProviderSource,
   capability: AiCapability,
 ): void {
   demotedUntil.delete(key(orgId, source, capability));

@@ -10,17 +10,16 @@ import { usePanelStoreKeyboard } from '@/hooks/usePanelStoreKeyboard';
 import { closeRightPanel } from '@/lib/right-rail/close';
 import { usePanelDraft, usePanelStore } from '@/lib/right-rail/panel-store';
 import {
-  framerDuration,
-  framerPresence,
-  framerTransition,
+  motionDuration,
+  motionPresence,
+  motionTransition,
   motionBezier,
-} from '@/design-system/foundations/motion-framer';
-import { useMotionPresence, useMotionTransition } from '@/design-system/foundations/motion-framer-hooks';
+} from '@/design-system/foundations/motion-presets';
+import { useMotionPresence, useMotionTransition } from '@/design-system/foundations/motion-presets-hooks';
 import { HorizontalEdgeResizeHandle } from '@/design-system/components/HorizontalEdgeResizeHandle';
 import {
   useAnyOverlayOpen,
   useBodyScrollLock,
-  useEscapeClose,
   useHorizontalEdgeResize,
 } from '@/design-system/hooks';
 import { STATION_CHROME_ROW_FACE } from '@/components/station/entity-context';
@@ -33,8 +32,6 @@ import {
   DETAIL_STACK_PUSH_COLUMN_CLASS,
   DETAIL_STACK_PUSH_STRIP_CLASS,
   DETAIL_STACK_RESIZE,
-  assistantDockAsideClassName,
-  assistantDockAsideStyle,
   detailStackAsideClassName,
   detailStackAsideElevatedClassName,
   detailStackAsideStyle,
@@ -60,14 +57,13 @@ import {
 } from '@/lib/right-rail/store';
 import { cn } from '@/utils/_cn';
 import { ModeRegion } from '@/design-system/providers/ModeRegion';
-import type { ModeName } from '@/design-system/modes/registry';
 
 /** The occupant's body is the rail's task-mode region: */
-function RightRailOccupantBody({ node, mode }: { node: ReactNode; mode: ModeName }) {
+function RightRailOccupantBody({ node }: { node: ReactNode }) {
   const restored = usePanelDraft();
   return (
     <ModeRegion
-      mode={mode}
+      mode="triage"
       className="flex h-full min-h-0 flex-1 flex-col overflow-hidden p-0"
       data-right-rail-has-draft={restored != null ? '' : undefined}
     >
@@ -142,7 +138,7 @@ function RightRailHostTrailingCluster({
 }
 
 const BACKDROP_FADE = {
-  duration: framerDuration.detailStackOverlayMount * 0.75,
+  duration: motionDuration.detailStackOverlayMount * 0.75,
   ease: motionBezier.easeOut,
 } as const;
 
@@ -160,14 +156,13 @@ export function RightRailHost({ inline = true }: { inline?: boolean } = {}) {
     getRightRailFrame,
     getServerRightRailFrame,
   );
-  const overlayPresence = useMotionPresence(framerPresence.detailStackOverlay);
-  const overlayTransition = useMotionTransition(framerTransition.detailStackOverlayMount);
+  const overlayPresence = useMotionPresence(motionPresence.detailStackOverlay);
+  const overlayTransition = useMotionTransition(motionTransition.detailStackOverlayMount);
 
   const renderable = top && top.node != null ? top : null;
-  const isAssistantDock = renderable?.id === 'assistant';
   const isElevated = !!renderable?.elevated;
   // Modality is a per-occupant contract (`RightRailPanel.modal`, default true).
-  const isModal = !isAssistantDock && renderable?.modal !== false;
+  const isModal = renderable?.modal !== false;
 
   // The innermost open overlay owns Escape: while a popover / menu / cell editor
   // is up, Escape dismisses THAT, not the whole inspector underneath it.
@@ -189,7 +184,7 @@ export function RightRailHost({ inline = true }: { inline?: boolean } = {}) {
   }, [setCollapsed]);
 
   // Drag-to-resize + collapse, non-modal occupants only.
-  const isResizable = !!renderable && !isModal && !isAssistantDock;
+  const isResizable = !!renderable && !isModal;
   // Occupants that opt out of host park (Incoming Unbox-parity) ignore DETAIL_STACK_COLLAPSE / Band 3 parking — treat them as expanded even…
   const allowEdgeCollapse = renderable?.edgeCollapse !== false;
   const isCollapsed = isResizable && collapsed && allowEdgeCollapse;
@@ -200,20 +195,14 @@ export function RightRailHost({ inline = true }: { inline?: boolean } = {}) {
     inline &&
     !!renderable &&
     !isModal &&
-    !isAssistantDock &&
     renderable.push !== false &&
     !(isCollapsed && !showCollapsedStrip);
   // Push mode has nothing to lock: it covers nothing.
   const isPush = wantsPush;
 
   useBodyScrollLock(!!renderable && isModal && !isPush);
-  // Assistant keeps its own Esc. Every other occupant goes through
-  // `closeRightPanel` (unmount + draft toast + occupant teardown) so wedge
-  // listeners on the view die with it.
-  useEscapeClose(
-    isAssistantDock && !!renderable?.onClose && !overlayOpen,
-    renderable?.onClose ?? (() => {}),
-  );
+  // Every occupant goes through `closeRightPanel` (unmount + draft toast +
+  // occupant teardown) so wedge listeners on the view die with it.
   usePanelStoreKeyboard();
 
   /** Maximize — in-flow sash widen that **covers the middle**. */
@@ -287,19 +276,16 @@ export function RightRailHost({ inline = true }: { inline?: boolean } = {}) {
   const showDismissLayer =
     !!renderable?.onClose &&
     !isModal &&
-    !isAssistantDock &&
     !!renderable.closeOnOutsideClick &&
     !isCollapsed &&
     !isPush;
   const showModalBackdrop = !!renderable?.onClose && isModal && !isPush;
 
-  const occupantMode: ModeName = isAssistantDock ? 'assistant' : 'triage';
-  const body =
-    renderable?.node != null ? <RightRailOccupantBody node={renderable.node} mode={occupantMode} /> : null;
+  const body = renderable?.node != null ? <RightRailOccupantBody node={renderable.node} /> : null;
 
   const showPush = isPush && !!renderable;
   const showOverlay = !isPush && !!renderable;
-  const showHostClose = !!renderable && !isAssistantDock && !isCollapsed;
+  const showHostClose = !!renderable && !isCollapsed;
   // Read the veto every render — it tracks a run that starts and ends while
   // the panel stays mounted.
   const closeRefused = top?.canClose ? !top.canClose() : false;
@@ -418,28 +404,16 @@ export function RightRailHost({ inline = true }: { inline?: boolean } = {}) {
             }
             exit={overlayPresence.exit}
             transition={overlayTransition}
-            style={
-              isAssistantDock
-                ? assistantDockAsideStyle()
-                : {
-                    ...detailStackAsideStyle(isResizable ? width : undefined),
-                    ...(isCollapsed
-                      ? { width: 0, minWidth: 0, padding: 0, border: 'none' }
-                      : null),
-                  }
-            }
-            className={
-              isAssistantDock
-                ? assistantDockAsideClassName
-                : cn(
-                    isElevated
-                      ? detailStackAsideElevatedClassName
-                      : detailStackAsideClassName,
-                    // Inset grip paints on the panel seam; column may keep
-                    // overflow-hidden (DETAIL_STACK_ASIDE_SURFACE).
-                    isCollapsed && 'pointer-events-none opacity-0',
-                  )
-            }
+            style={{
+              ...detailStackAsideStyle(isResizable ? width : undefined),
+              ...(isCollapsed ? { width: 0, minWidth: 0, padding: 0, border: 'none' } : null),
+            }}
+            className={cn(
+              isElevated ? detailStackAsideElevatedClassName : detailStackAsideClassName,
+              // Inset grip paints on the panel seam; column may keep
+              // overflow-hidden (DETAIL_STACK_ASIDE_SURFACE).
+              isCollapsed && 'pointer-events-none opacity-0',
+            )}
             // Collapsed aside stays mounted so the registrant does not remount
             // on expand — same latch idiom as ContextPanelLayout.
             inert={isCollapsed || undefined}

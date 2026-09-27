@@ -34,6 +34,9 @@ describe('slotCatalogFor', () => {
 describe('slotMorphsFor', () => {
   it('each mount only accepts the morphs it can PAINT — others refuse at the write gate', () => {
     assert.deepEqual(slotMorphsFor('orders'), ['compound']);
+    // The To-ship INDEX face is its own document — one line per order, so a
+    // stored compound layout can never be written into it.
+    assert.deepEqual(slotMorphsFor('orders-index'), ['sheet']);
     // Pickup is the sheet-morph proof; a compound layout would promise a
     // two-row item cell nothing draws.
     assert.deepEqual(slotMorphsFor('pickup'), ['sheet']);

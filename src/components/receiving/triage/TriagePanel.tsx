@@ -34,7 +34,6 @@ import {
   StationDisplaysUtilityRail,
   STATION_DISPLAY_INDEX,
   resolveDisplaysActiveTab,
-  useYieldStationDisplaysOnAssistantOpen,
 } from '@/components/station/displays';
 import { useUnboxLineController } from '../workspace/line-edit/hooks/useUnboxLineController';
 import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
@@ -94,7 +93,6 @@ export function TriagePanel({
     [claimDisplays],
   );
   const closeDisplays = useCallback(() => setActiveSideTab(null), []);
-  useYieldStationDisplaysOnAssistantOpen(closeDisplays);
 
   useEffect(() => {
     const onAddClaimsEdge = () => closeDisplays();

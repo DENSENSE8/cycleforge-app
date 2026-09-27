@@ -421,6 +421,13 @@ export interface DataTableProps<Row, K extends string, C extends LedgerGridColum
   bodyPrefix?: ReactNode;
   /** The record action strip (`RecordActionStrip`) — painted in the in-flow action row under the search toolbar, inside the list anchor… */
   actionStrip?: ReactNode;
+  /**
+   * The check-set's verbs (Shopify index). While ≥1 row is checked the sticky
+   * column header BECOMES the bulk bar — select-all check, "N selected", these
+   * verbs, Clear. Needs `selectionScope`. The header lives outside the
+   * virtualized body, so the bar never unmounts with a row.
+   */
+  bulkBar?: ReactNode;
 }
 
 /** Serialize rows as CSV — what a FILE download expects. */
@@ -1262,6 +1269,7 @@ export function DataTable<Row, K extends string, C extends LedgerGridColumnModel
   className,
   bodyPrefix,
   actionStrip,
+  bulkBar,
 }: DataTableProps<Row, K, C>) {
   const selectedRows = useTableSelection<Row>(selectionScope ?? '__idle__');
   const selectedCount = selectionScope ? selectedRows.length : 0;
@@ -1407,6 +1415,7 @@ export function DataTable<Row, K extends string, C extends LedgerGridColumnModel
         onReorderColumn={headerReorder}
         onResizeColumn={onResizeColumn}
         labelFor={labelFor}
+        bulkBar={bulkBar}
       />
     ),
     [
@@ -1419,6 +1428,7 @@ export function DataTable<Row, K extends string, C extends LedgerGridColumnModel
       labelFor,
       headerReorder,
       onResizeColumn,
+      bulkBar,
     ],
   );
 

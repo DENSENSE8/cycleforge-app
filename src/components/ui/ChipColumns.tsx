@@ -3,8 +3,8 @@
 import type { ReactNode } from 'react';
 import { AnimatePresence, LayoutGroup, motion } from '@/design-system/motion';
 import { cn } from '@/utils/_cn';
-import { framerTransition } from '@/design-system/foundations/motion-framer';
-import { useMotionTransition } from '@/design-system/foundations/motion-framer-hooks';
+import { motionTransition } from '@/design-system/foundations/motion-presets';
+import { useMotionTransition } from '@/design-system/foundations/motion-presets-hooks';
 
 /** Fixed column widths for a table row's identity-chip grid. */
 export const CHIP_COL = {
@@ -37,8 +37,8 @@ export function ChipColumns({
   // Per-staff column hiding went with the column-display rail (2026-08-29):
   // every declared slot paints.
   const isHidden = (_key?: string) => false;
-  const layoutTransition = useMotionTransition(framerTransition.chipColumnLayout);
-  const presenceTransition = useMotionTransition(framerTransition.dropdownOpen);
+  const layoutTransition = useMotionTransition(motionTransition.chipColumnLayout);
+  const presenceTransition = useMotionTransition(motionTransition.dropdownOpen);
 
   return (
     <LayoutGroup>

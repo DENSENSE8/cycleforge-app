@@ -24,13 +24,8 @@ import {
   toggleExportField,
   type ExportField,
 } from '@/lib/tables/export/export-fields';
-import {
-  EXPORT_FORMATS,
-  exportFilename,
-  serializeRows,
-  type ExportCell,
-  type ExportFormat,
-} from '@/lib/tables/export/serialize';
+import { EXPORT_FORMATS, type ExportCell, type ExportFormat } from '@/lib/tables/export/serialize';
+import { downloadExport } from '@/lib/tables/export/download';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 
 const FORMATS: readonly ExportFormat[] = ['csv', 'tsv'];
@@ -58,24 +53,6 @@ interface DataTableExportMenuProps<Row> {
     ariaLabel: string;
     children: React.ReactNode;
   }) => React.ReactNode;
-}
-
-/** Build the file and hand it to the browser. The only DOM in this module. */
-function download(
-  header: readonly string[],
-  rows: Iterable<readonly ExportCell[]>,
-  base: string,
-  format: ExportFormat,
-): void {
-  const text = serializeRows(header, rows, format);
-  const url = URL.createObjectURL(new Blob([text], { type: EXPORT_FORMATS[format].mime }));
-  const link = document.createElement('a');
-  link.href = url;
-  link.download = exportFilename(base, format);
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
-  URL.revokeObjectURL(url);
 }
 
 export function DataTableExportMenu<Row>({
@@ -108,7 +85,7 @@ export function DataTableExportMenu<Row>({
   const run = useCallback(
     (rows: readonly Row[]) => {
       if (rows.length === 0) return;
-      download(labels, rows.map((row) => toRow(row, activeIds)), filename, format);
+      downloadExport(labels, rows.map((row) => toRow(row, activeIds)), filename, format);
       setOpen(false);
     },
     [labels, activeIds, toRow, filename, format],

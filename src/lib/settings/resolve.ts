@@ -60,8 +60,13 @@ export function resolveSetting(def: SettingDef, ctx: ResolveContext): ResolvedSe
   const usable = (v: SettingValue | undefined): SettingValue | undefined =>
     v !== undefined && lockedOptions.some((lv) => lv === v) ? undefined : v;
 
-  const staffVal = usable(coerce(def, ctx.staffPrefs[def.key]));
-  const orgVal = usable(coerce(def, ctx.orgSettings[def.key]));
+  // A renamed setting still honours the value stored under its old key until
+  // the first write lands on the new one.
+  const stored = (bag: Record<string, unknown>): SettingValue | undefined =>
+    coerce(def, bag[def.key]) ??
+    (def.legacy ? coerce(def, def.legacy.read(bag[def.legacy.key])) : undefined);
+  const staffVal = usable(stored(ctx.staffPrefs));
+  const orgVal = usable(stored(ctx.orgSettings));
 
   if (def.scope === 'staff') {
     const value = staffVal ?? fallback;

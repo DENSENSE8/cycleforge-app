@@ -1,10 +1,6 @@
 /** Unbox right-edge secondary surfaces — one at a time. */
 
-import {
-  dispatchAssistantDockClose,
-  dispatchStationDeskOccupantClose,
-  dispatchStationDisplaysClose,
-} from '@/utils/events';
+import { dispatchStationDisplaysClose } from '@/utils/events';
 import { readLiveSearchParams } from '@/lib/routing/optimistic-url-param';
 
 /**
@@ -64,26 +60,6 @@ export function stripStaleUnboxRightEdgeParamsFromUrl(): void {
   window.history.replaceState(window.history.state, '', after ? `${path}?${after}` : path);
 }
 
-/**
- * AI dock just opened (false→true) — yield every Unbox station right-edge surface.
- *
- * Unbox twin of {@link useYieldStationDisplaysOnAssistantOpen}: closes Displays
- * via React state only (Arrival / Testing parity). Mechanisms stay forked (C2).
- */
-export function yieldUnboxStationPushesOnAssistantOpen(opts: {
-  closeDisplays?: () => void;
-  /** @deprecated Prefer `closeDisplays` — aliased when present. */
-  clearDisplay?: () => void;
-  /** @deprecated URL peer clear retired — Displays are local state. */
-  clearAllUrl?: () => void;
-  /** @deprecated Tool push retired — kept optional for one release of call sites. */
-  closeToolPush?: () => void;
-}): void {
-  (opts.closeDisplays ?? opts.clearDisplay)?.();
-  opts.closeToolPush?.();
-  dispatchStationDeskOccupantClose();
-}
-
 /** Claim the right edge for a DESK occupant of `RightRailHost` mounted on a station page — Check receipts and any future Band-1 tool. */
 export function yieldStationRightEdgeForDeskOccupant(replaceUrl?: (qs: string) => void): void {
   if (typeof window === 'undefined') return;
@@ -99,6 +75,5 @@ export function yieldStationRightEdgeForDeskOccupant(replaceUrl?: (qs: string) =
       window.history.replaceState(window.history.state, '', after ? `${path}?${after}` : path);
     }
   }
-  dispatchAssistantDockClose();
   dispatchStationDisplaysClose();
 }

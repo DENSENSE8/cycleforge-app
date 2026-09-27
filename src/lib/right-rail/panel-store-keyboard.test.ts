@@ -59,10 +59,9 @@ describe('handlePanelStoreKeydown', () => {
     assert.equal(event.stopped, true);
   });
 
-  it('Esc stands down for overlays, assistant, dismissed, and empty slot', () => {
+  it('Esc stands down for overlays, dismissed, and empty slot', () => {
     const cases: PanelStoreSnapshot[] = [
       idle,
-      { ...idle, activeView: { id: 'assistant' } },
       { ...idle, dismissed: true },
       { ...idle, activeView: null },
     ];

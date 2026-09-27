@@ -8,11 +8,11 @@ import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { SkuScanRefChip, getLast8 } from '@/components/ui/CopyChip';
 import { InlineNotice } from '@/design-system/components';
 import { Button } from '@/design-system/primitives';
-import { framerPresence, framerTransition } from '@/design-system/foundations/motion-framer';
+import { motionPresence, motionTransition } from '@/design-system/foundations/motion-presets';
 import {
   useMotionPresence,
   useMotionTransition,
-} from '@/design-system/foundations/motion-framer-hooks';
+} from '@/design-system/foundations/motion-presets-hooks';
 import { PoLineHeaderThumb } from '@/components/receiving/workspace/PoLineHeaderThumb';
 import { PO_LINE_HEADER_FACE } from '@/components/receiving/workspace/station-scan-face';
 import type { PackChecklistLineDto, PackKitPartDto, PackCheckDto } from '@/lib/packing/order-pack-checklist';
@@ -64,8 +64,8 @@ function KitPartDocumentStrip({
   onPrint: () => void;
 }) {
   const [settled, setSettled] = useState(false);
-  const presence = useMotionPresence(framerPresence.collapseHeight);
-  const transition = useMotionTransition(framerTransition.stationCollapse);
+  const presence = useMotionPresence(motionPresence.collapseHeight);
+  const transition = useMotionTransition(motionTransition.stationCollapse);
 
   return (
     <motion.div

@@ -1,0 +1,247 @@
+/**
+ * Shipping (page `outbound`) facet counts. Every membership predicate is the
+ * one the list and desk-counts already read — `sqlDeskQueueScope` (To ship,
+ * Pick list, PO paired), `sqlOrderDeskStage`, `sqlOrderAssignedToStaff`,
+ * `sqlOrderTestDeadlineAt` (the list's ship-by), `exceptionScopeWhere` +
+ * `ORDER_EXCEPTION_CATEGORY_SQL` + `exceptionSearchSql` (Exceptions) — so a
+ * facet count is, by construction, the total the list shows for that pick.
+ *
+ * One statement per request: it returns one row per combination of facet
+ * values with its count, and `computeFacets` does the rest in memory.
+ *
+ * Not reflected: the To-ship free-text search (`q`) — the list switches to an
+ * unscoped search feed when it is set, so counts describe the unsearched view.
+ */
+
+import {
+  computeFacets,
+  type ActiveFacetFilters,
+  type ComputedFacetGroup,
+  type FacetDimension,
+} from '@/lib/nav/facets/compute';
+import { NAV_FACET_GROUPS, type NavFacetContext } from '@/lib/nav/facets/contexts';
+import type { NavFacetsResponse } from '@/lib/nav/context/schema';
+import {
+  DESK_AGING_BUCKETS,
+  DESK_STAGES,
+  sqlDeskAgingBucket,
+  sqlDeskQueueScope,
+  sqlOrderAssignedToStaff,
+  sqlOrderDeskStage,
+  sqlOrderTestDeadlineAt,
+  type DeskAgingBucket,
+  type DeskQueueView,
+  type DeskStage,
+} from '@/lib/orders/desk-view-sql';
+import {
+  ORDER_EXCEPTION_CATEGORY_SQL,
+  exceptionScopeWhere,
+  exceptionSearchSql,
+} from '@/lib/orders/order-exceptions';
+import { ORDER_EXCEPTION_CATEGORIES } from '@/lib/orders/order-exception-types';
+
+type ParamReader = Pick<URLSearchParams, 'get'>;
+
+export interface FacetSqlRunner {
+  (sql: string, params: readonly unknown[]): Promise<Array<Record<string, unknown>>>;
+}
+
+// ── queue views: To ship (triage) · Pick list (pick) · PO paired (po) ─────────
+
+export interface QueueFacetCombo {
+  stage: DeskStage;
+  aging: DeskAgingBucket;
+  urgent: boolean;
+  blocked: boolean;
+  n: number;
+}
+
+const STAGE_LABEL: Record<DeskStage, string> = { pending: 'Not tested', tested: 'Tested', packed: 'Packed' };
+const AGING_LABEL: Record<DeskAgingBucket, string> = {
+  overdue: 'Overdue',
+  today: 'Due today',
+  upcoming: 'Upcoming',
+  unscheduled: 'No ship-by',
+};
+
+function groupDecl(context: NavFacetContext, id: string) {
+  const decl = NAV_FACET_GROUPS[context].find((g) => g.id === id);
+  // Every queue context filters on all five params the list honours; groups a
+  // context does not DECLARE still narrow its total but are not returned.
+  return decl ?? { id, label: id, param: id, multi: false };
+}
+
+function queueDimensions(context: NavFacetContext): FacetDimension<QueueFacetCombo>[] {
+  const g = (id: string) => groupDecl(context, id);
+  return [
+    {
+      groupId: 'stage', label: g('stage').label, param: g('stage').param,
+      options: DESK_STAGES.map((value) => ({ value, label: STAGE_LABEL[value] })),
+      matches: (row, value) => row.stage === value,
+    },
+    {
+      groupId: 'aging', label: g('aging').label, param: g('aging').param,
+      options: DESK_AGING_BUCKETS.map((value) => ({ value, label: AGING_LABEL[value] })),
+      matches: (row, value) => row.aging === value,
+    },
+    {
+      // Must ship = ship-by today or earlier (overdue ∪ today).
+      groupId: 'late', label: g('late').label, param: g('late').param,
+      options: [{ value: '1', label: 'Must ship' }],
+      matches: (row, value) => value === '1' && (row.aging === 'overdue' || row.aging === 'today'),
+    },
+    {
+      groupId: 'attention', label: g('attention').label, param: g('attention').param,
+      options: [{ value: '1', label: 'Urgent' }],
+      matches: (row, value) => value === '1' && row.urgent,
+    },
+    {
+      groupId: 'ustatus', label: g('ustatus').label, param: g('ustatus').param,
+      options: [{ value: 'BLOCKED', label: 'Out of stock' }],
+      matches: (row, value) => value === 'BLOCKED' && row.blocked,
+    },
+  ];
+}
+
+function flag(raw: string | null): '1' | null {
+  return raw === '1' || raw === 'true' ? '1' : null;
+}
+
+/** The list's own parsing of each facet param (UnshippedTable / `/api/orders`). */
+export function readQueueFacetFilters(params: ParamReader): ActiveFacetFilters {
+  const stage = String(params.get('stage') || '').toLowerCase();
+  const aging = String(params.get('aging') || '').toLowerCase();
+  return {
+    stage: (DESK_STAGES as readonly string[]).includes(stage) ? stage : null,
+    aging: (DESK_AGING_BUCKETS as readonly string[]).includes(aging) ? aging : null,
+    late: flag(params.get('late')),
+    attention: flag(params.get('attention')),
+    ustatus: String(params.get('ustatus') || '').trim().toUpperCase() === 'BLOCKED' ? 'BLOCKED' : null,
+  };
+}
+
+/** `?staff=` — positive integer, else all staff (the list's parse). */
+export function readStaffFilter(params: ParamReader): number | null {
+  const n = Number(params.get('staff'));
+  return Number.isFinite(n) && n > 0 ? n : null;
+}
+
+/** One statement: facet-value combinations with their counts for a queue view. */
+export function buildQueueFacetSql(view: DeskQueueView, orgId: string, staffId: number | null) {
+  const params: unknown[] = [orgId];
+  let staffClause = '';
+  if (staffId != null) {
+    params.push(staffId);
+    staffClause = `AND ${sqlOrderAssignedToStaff(`$${params.length}`)}`;
+  }
+  const sql = `
+    SELECT f.stage, f.aging, f.urgent, f.blocked, COUNT(*)::int AS n
+      FROM (
+        SELECT
+          CASE
+            WHEN ${sqlOrderDeskStage('packed')} THEN 'packed'
+            WHEN ${sqlOrderDeskStage('tested')} THEN 'tested'
+            ELSE 'pending'
+          END AS stage,
+          ${sqlDeskAgingBucket('dl.deadline_at')} AS aging,
+          COALESCE(o.is_urgent, false) AS urgent,
+          COALESCE(o.is_out_of_stock, false) AS blocked
+        FROM orders o
+        LEFT JOIN shipping_tracking_numbers stn ON stn.id = o.shipment_id
+        LEFT JOIN LATERAL (SELECT ${sqlOrderTestDeadlineAt('o')} AS deadline_at) dl ON TRUE
+        WHERE o.organization_id = $1
+          AND ${sqlDeskQueueScope(view)}
+          ${staffClause}
+      ) f
+     GROUP BY 1, 2, 3, 4`;
+  return { sql, params };
+}
+
+function toQueueCombo(row: Record<string, unknown>): QueueFacetCombo {
+  return {
+    stage: String(row.stage) as DeskStage,
+    aging: String(row.aging) as DeskAgingBucket,
+    urgent: row.urgent === true,
+    blocked: row.blocked === true,
+    n: Number(row.n) || 0,
+  };
+}
+
+// ── Exceptions ───────────────────────────────────────────────────────────────
+
+export interface ExceptionFacetCombo {
+  category: string;
+  n: number;
+}
+
+/** `?category=` exactly as the workbench parses it; `?search=` → the list's `q`. */
+export function readExceptionFacetFilters(params: ParamReader): { active: ActiveFacetFilters; search: string } {
+  const raw = params.get('category');
+  return {
+    active: { category: raw && (ORDER_EXCEPTION_CATEGORIES as readonly string[]).includes(raw) ? raw : null },
+    search: String(params.get('search') ?? '').trim(),
+  };
+}
+
+export function buildExceptionFacetSql(orgId: string, search: string) {
+  const params: unknown[] = [orgId];
+  let searchClause = '';
+  if (search) {
+    params.push(`%${search.toLowerCase()}%`);
+    searchClause = `AND ${exceptionSearchSql(`$${params.length}`)}`;
+  }
+  const sql = `
+    SELECT (${ORDER_EXCEPTION_CATEGORY_SQL}) AS category, COUNT(*)::int AS n
+      FROM orders o
+      LEFT JOIN shipping_tracking_numbers stn ON stn.id = o.shipment_id
+     ${exceptionScopeWhere('actionable')}
+     ${searchClause}
+     GROUP BY 1`;
+  return { sql, params };
+}
+
+function exceptionDimensions(): FacetDimension<ExceptionFacetCombo>[] {
+  const decl = groupDecl('outbound.exceptions', 'category');
+  return [
+    {
+      groupId: 'category', label: decl.label, param: decl.param,
+      options: ORDER_EXCEPTION_CATEGORIES.map((value) => ({ value, label: value })),
+      matches: (row, value) => row.category === value,
+    },
+  ];
+}
+
+// ── entry ────────────────────────────────────────────────────────────────────
+
+const QUEUE_VIEW: Partial<Record<NavFacetContext, DeskQueueView>> = {
+  'outbound.triage': 'triage',
+  'outbound.pick': 'pick',
+  'outbound.po': 'po',
+};
+
+/** Keep only the groups the context declares, in its declared order. */
+function declaredGroups(context: NavFacetContext, groups: readonly ComputedFacetGroup[]): ComputedFacetGroup[] {
+  return NAV_FACET_GROUPS[context].flatMap((decl) => groups.filter((g) => g.id === decl.id));
+}
+
+export async function outboundFacets(
+  context: NavFacetContext,
+  orgId: string,
+  params: ParamReader,
+  run: FacetSqlRunner,
+): Promise<NavFacetsResponse> {
+  if (context === 'outbound.exceptions') {
+    const { active, search } = readExceptionFacetFilters(params);
+    const { sql, params: bind } = buildExceptionFacetSql(orgId, search);
+    const rows = (await run(sql, bind)).map((r) => ({ category: String(r.category), n: Number(r.n) || 0 }));
+    const { total, groups } = computeFacets(rows, exceptionDimensions(), active);
+    return { context, total, groups: declaredGroups(context, groups) };
+  }
+
+  const view = QUEUE_VIEW[context];
+  if (!view) throw new Error(`no outbound facet source for ${context}`);
+  const { sql, params: bind } = buildQueueFacetSql(view, orgId, readStaffFilter(params));
+  const rows = (await run(sql, bind)).map(toQueueCombo);
+  const { total, groups } = computeFacets(rows, queueDimensions(context), readQueueFacetFilters(params));
+  return { context, total, groups: declaredGroups(context, groups) };
+}

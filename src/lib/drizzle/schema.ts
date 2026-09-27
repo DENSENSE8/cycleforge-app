@@ -651,6 +651,10 @@ export const items = pgTable('items', {
   description: text('description'),
   itemType: text('item_type'),
   productType: text('product_type'),
+  /** Zoho native `brand` (verbatim). Migration 2026-09-26_brands_3. */
+  brand: text('brand'),
+  /** Zoho native `manufacturer` (verbatim). Migration 2026-09-26_brands_3. */
+  manufacturer: text('manufacturer'),
   status: text('status').notNull(),
   rate: numeric('rate', { precision: 12, scale: 4 }),
   purchaseRate: numeric('purchase_rate', { precision: 12, scale: 4 }),
@@ -1117,6 +1121,11 @@ export const stationActivityLogs = pgTable('station_activity_logs', {
   metadata: jsonb('metadata').notNull().default({}),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow(),
+  /** GENERATED ALWAYS ... STORED (2026-09-26_perf_01) — typed order-grain keys over `metadata`; excluded from $inferInsert. */
+  orderRowId: bigint('order_row_id', { mode: 'number' }).generatedAlwaysAs(
+    sql`CASE WHEN (metadata->>'order_row_id') ~ '^[0-9]{1,18}$' THEN (metadata->>'order_row_id')::bigint END`,
+  ),
+  extOrderId: text('ext_order_id').generatedAlwaysAs(sql`metadata->>'order_id'`),
 });
 
 // Photo bytes/metadata row.
@@ -3418,6 +3427,8 @@ export const aiChatSessions = pgTable('ai_chat_sessions', {
   title: text('title'),                             // auto-generated from first message
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  staffId: integer('staff_id').references(() => staff.id, { onDelete: 'set null' }), // owner; NULL = legacy org-shared (hidden)
+  deletedAt: timestamp('deleted_at', { withTimezone: true }),                        // soft delete (restore within the undo window)
 }, (table) => ({
   updatedIdx: index('ai_chat_sessions_updated_idx').on(table.updatedAt),
 }));
@@ -3429,9 +3440,14 @@ export const aiChatMessages = pgTable('ai_chat_messages', {
   role: text('role').notNull(),                     // 'user' | 'assistant'
   content: text('content').notNull(),
   mode: text('mode'),                               // 'local_ops' | 'rag' | 'hybrid' | 'assistant'
-  analysis: jsonb('analysis'),                      // AiStructuredAnswer JSON
+  analysis: jsonb('analysis'),                      // AiStructuredAnswer JSON (local_ops) | PersistedTurnTrace {kind:'turn_trace'} (assistant)
   error: boolean('error').default(false),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  clientId: text('client_id'),                      // client-minted `m-<uuid>`; unique per live thread row
+  supersededAt: timestamp('superseded_at', { withTimezone: true }), // rewound by regenerate / edit
+  feedback: smallint('feedback'),                   // -1 | 1 (thumbs), NULL = none
+  feedbackNote: text('feedback_note'),
+  feedbackAt: timestamp('feedback_at', { withTimezone: true }),
 }, (table) => ({
   sessionIdx: index('ai_chat_messages_session_idx').on(table.sessionId),
 }));
@@ -3785,6 +3801,11 @@ export const entitySearchDocs = pgTable('entity_search_docs', {
   happenedAt: timestamp('happened_at', { withTimezone: true }),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  // SKU brand node (leaf; may be a product_line) — migration
+  // 2026-09-26_brands_4. Composite FK (organization_id, brand_id) →
+  // product_brands(organization_id, id) ON DELETE SET NULL (brand_id), kept
+  // in SQL. Stamped only for a fact brand (brand_confidence >= 0.90).
+  brandId: integer('brand_id'),
 }, (table) => ({
   naturalUx: uniqueIndex('ux_entity_search_docs_natural').on(
     table.organizationId, table.entityType, table.entityId,
@@ -3815,7 +3836,7 @@ export const entitySearchOutbox = pgTable('entity_search_outbox', {
 
 export type EntitySearchOutboxRow = typeof entitySearchOutbox.$inferSelect;
 
-/** ai_usage_events — per-org AI usage metering (migration 2026-07-04b): */
+/** ai_usage_events — per-org AI usage metering (migrations 2026-07-04b, 2026-09-27 assistant_turn): */
 export const aiUsageEvents = pgTable('ai_usage_events', {
   id: bigserial('id', { mode: 'number' }).primaryKey(),
   organizationId: orgIdCol(),
@@ -3828,10 +3849,19 @@ export const aiUsageEvents = pgTable('ai_usage_events', {
   costMicrocents: bigint('cost_microcents', { mode: 'number' }),
   stripeReportedAt: timestamp('stripe_reported_at', { withTimezone: true }),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  staffId: integer('staff_id').references(() => staff.id, { onDelete: 'set null' }),
+  /** Chat session of an `assistant_turn` row. No FK: usage outlives chat purges. */
+  sessionId: text('session_id'),
+  latencyMs: integer('latency_ms'),
+  /** Cloudflare AI Gateway `cf-aig-log-id` of the turn's last round. */
+  gatewayLogId: text('gateway_log_id'),
 }, (table) => ({
   orgCreatedIdx: index('idx_ai_usage_events_org_created').on(
     table.organizationId, table.createdAt.desc(),
   ),
+  orgSessionIdx: index('idx_ai_usage_events_org_session')
+    .on(table.organizationId, table.sessionId)
+    .where(sql`${table.sessionId} IS NOT NULL`),
 }));
 
 export type AiUsageEvent = typeof aiUsageEvents.$inferSelect;
@@ -4220,7 +4250,6 @@ export const feedMemberships = pgTable('feed_memberships', {
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 }, (table) => ({
   naturalIdx: uniqueIndex('ux_feed_memberships_natural').on(table.organizationId, table.feedKey, table.entityType, table.entityId),
-  railIdx: index('idx_feed_memberships_org_feed_state_time').on(table.organizationId, table.feedKey, table.state, table.occurredAt.desc(), table.id.desc()),
   entityIdx: index('idx_feed_memberships_org_entity').on(table.organizationId, table.entityType, table.entityId),
   nodeIdx: index('idx_feed_memberships_org_node').on(table.organizationId, table.nodeId).where(sql`node_id IS NOT NULL`),
 }));
@@ -5636,3 +5665,47 @@ export const staffFunctionalRoles = pgTable('staff_functional_roles', {
 }));
 
 export type StaffFunctionalRole = typeof staffFunctionalRoles.$inferSelect;
+
+/**
+ * product_brands — per-org brand / franchise / product_line vocabulary
+ * (sidebar Phase 1, migration 2026-09-26_brands_1). sku_catalog.brand_id
+ * points here; written only by src/lib/brands/store.ts.
+ */
+export const productBrands = pgTable('product_brands', {
+  id: serial('id').primaryKey(),
+  organizationId: orgIdCol(),
+  name: text('name').notNull(),
+  slug: text('slug').notNull(),
+  normalizedName: text('normalized_name').notNull(),
+  kind: text('kind').$type<'brand' | 'franchise' | 'product_line'>().notNull().default('brand'),
+  /** Same-org self FK via (organization_id, parent_brand_id). */
+  parentBrandId: integer('parent_brand_id'),
+  publisher: text('publisher'),
+  isActive: boolean('is_active').notNull().default(true),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+}, (table) => ({
+  orgIdUnique: uniqueIndex('product_brands_org_id_unique').on(table.organizationId, table.id),
+  orgSlugUnique: uniqueIndex('product_brands_org_slug_unique').on(table.organizationId, table.slug),
+  orgNormalizedNameUnique: uniqueIndex('product_brands_org_normalized_name_unique').on(table.organizationId, table.normalizedName),
+  orgParentIdx: index('idx_product_brands_org_parent').on(table.organizationId, table.parentBrandId).where(sql`parent_brand_id IS NOT NULL`),
+}));
+
+/** product_brand_aliases — one normalized alias → exactly one brand per org (collision = error). */
+export const productBrandAliases = pgTable('product_brand_aliases', {
+  id: bigserial('id', { mode: 'number' }).primaryKey(),
+  organizationId: orgIdCol(),
+  brandId: integer('brand_id').notNull(),
+  alias: text('alias').notNull(),
+  normalizedAlias: text('normalized_alias').notNull(),
+  source: text('source').$type<'seed' | 'zoho' | 'listing' | 'operator' | 'agent'>().notNull().default('operator'),
+  /** Ambiguous alias: a hit is only ever a review-queue proposal. */
+  reviewOnly: boolean('review_only').notNull().default(false),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+}, (table) => ({
+  orgAliasUnique: uniqueIndex('product_brand_aliases_org_alias_unique').on(table.organizationId, table.normalizedAlias),
+  orgBrandIdx: index('idx_product_brand_aliases_org_brand').on(table.organizationId, table.brandId),
+}));
+
+export type ProductBrand = typeof productBrands.$inferSelect;
+export type ProductBrandAlias = typeof productBrandAliases.$inferSelect;

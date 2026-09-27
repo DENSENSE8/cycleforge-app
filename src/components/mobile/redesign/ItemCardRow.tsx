@@ -27,7 +27,7 @@ import {
   useReducedMotion,
   type PanInfo,
 } from '@/design-system/motion';
-import { framerTransition } from '@/design-system/foundations/motion-framer';
+import { motionTransition } from '@/design-system/foundations/motion-presets';
 import { cn } from '@/utils/_cn';
 import { classifyDeadlineBand, type DeadlineBand } from '@/lib/work-orders/deadline-bands';
 import { resolveOutboundSlaCountdown } from '@/lib/shipping/outbound-sla';
@@ -135,7 +135,7 @@ function ItemCardPhotoInspect({
             initial={{ opacity: 0, scale: 0.7 }}
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 0.7 }}
-            transition={framerTransition.cardExpansion}
+            transition={motionTransition.cardExpansion}
           />
         </motion.div>
       ) : null}
@@ -239,15 +239,15 @@ export function ItemCardRow({
         !primary.disabled &&
         (info.offset.x >= SWIPE_COMMIT_PX || info.velocity.x >= SWIPE_FLICK_VX);
       if (commitNow) {
-        void animate(x, SWIPE_REVEAL_PX, framerTransition.cardExpansion);
+        void animate(x, SWIPE_REVEAL_PX, motionTransition.cardExpansion);
         commit();
         return;
       }
       if (triageActions.length > 0 && (info.offset.x <= -SWIPE_COMMIT_PX || info.velocity.x <= -SWIPE_FLICK_VX)) {
-        void animate(x, -SWIPE_TRIAGE_REVEAL_PX, framerTransition.cardExpansion);
+        void animate(x, -SWIPE_TRIAGE_REVEAL_PX, motionTransition.cardExpansion);
         return;
       }
-      void animate(x, 0, framerTransition.cardExpansion);
+      void animate(x, 0, motionTransition.cardExpansion);
       window.setTimeout(() => {
         dragging.current = false;
       }, 80);
@@ -304,7 +304,7 @@ export function ItemCardRow({
               onClick={(event) => {
                 event.stopPropagation();
                 action.onCommit();
-                void animate(x, 0, framerTransition.cardExpansion);
+                void animate(x, 0, motionTransition.cardExpansion);
               }}
             >
               {action.label}

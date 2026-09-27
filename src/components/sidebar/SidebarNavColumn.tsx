@@ -18,11 +18,11 @@ import { cornerClass } from '@/design-system/tokens/radius';
 import { elevationClass } from '@/design-system/tokens/shadows';
 import { zIndex } from '@/design-system/tokens/z-index';
 import { motion, useAnimationControls } from '@/design-system/motion';
-import { framerPresence, framerTransition } from '@/design-system/foundations/motion-framer';
+import { motionPresence, motionTransition } from '@/design-system/foundations/motion-presets';
 import {
   useMotionPresence,
   useMotionTransition,
-} from '@/design-system/foundations/motion-framer-hooks';
+} from '@/design-system/foundations/motion-presets-hooks';
 import {
   useHorizontalEdgeResize,
 } from '@/design-system/hooks/useHorizontalEdgeResize';
@@ -85,8 +85,8 @@ export function SidebarNavColumn({
   const peekOverlay = peeking && !open;
   const navVisible = open || peeking;
 
-  const peekPresence = useMotionPresence(framerPresence.navPeekCorner);
-  const peekTransition = useMotionTransition(framerTransition.navPeekCorner);
+  const peekPresence = useMotionPresence(motionPresence.navPeekCorner);
+  const peekTransition = useMotionTransition(motionTransition.navPeekCorner);
   const peekControls = useAnimationControls();
   const [peekFace, setPeekFace] = useState(peekOverlay);
   const peekOverlayRef = useRef(peekOverlay);

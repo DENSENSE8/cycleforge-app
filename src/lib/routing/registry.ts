@@ -1,5 +1,6 @@
 /** The route → param-spec registry. */
 
+import { DESK_PAGE_ROUTE_PARAMS } from './desk-page-routes';
 import { OUTBOUND_ROUTE_PARAMS } from './outbound-routes';
 import { QUERY_MODE_ROUTE_PARAMS } from './query-mode-routes';
 import { RECEIVING_ROUTE_PARAMS } from './receiving-routes';
@@ -13,6 +14,7 @@ const ROUTE_PARAM_SPECS: readonly RouteParamsSpec[] = [
   ...RECEIVING_ROUTE_PARAMS,
   ...OUTBOUND_ROUTE_PARAMS,
   ...QUERY_MODE_ROUTE_PARAMS,
+  ...DESK_PAGE_ROUTE_PARAMS,
 ].sort((a, b) => b.route.length - a.route.length);
 
 /** The spec governing `pathname`, or `null` when that route has not migrated. */

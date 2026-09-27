@@ -78,7 +78,7 @@ test('Home is top-pinned; Reports joined the tops; Operations in Monitor; Plans 
   assert.ok(plans, 'plans-live should ship on prod nav');
   assert.equal(plans.kind, 'top', 'plans-live stays a top registry pin (parked from the spine band)');
   assert.equal(plans.label, 'Plans');
-  assert.equal(plans.href, '/?mode=forge&view=live');
+  assert.equal(plans.href, '/?mode=forge');
   assert.equal(plans.requires, 'operations.plans.view');
 
   const aiChat = items.find((item) => item.id === 'ai-chat');
@@ -160,11 +160,11 @@ test('plans-live pin requires operations.plans.view', () => {
   );
 });
 
-test('Search, Plans, Chat, and Settings stay in the registry but stay off the spine map', () => {
+test('Chat paints on the spine map after Media Library; Search, Plans, and Settings stay off it', () => {
   const items = getSidebarNavItems();
   const mapTopIds = items.filter(isSpineMapTopRow).map((item) => item.id);
   // The structural rows above the reorderable lane band:
-  assert.deepEqual(mapTopIds, ['home', 'ops-photos', 'reports']);
+  assert.deepEqual(mapTopIds, ['home', 'ops-photos', 'ai-chat', 'reports']);
 
   const search = items.find((item) => item.id === 'search');
   const plans = items.find((item) => item.id === 'plans-live');
@@ -172,15 +172,22 @@ test('Search, Plans, Chat, and Settings stay in the registry but stay off the sp
   const settings = items.find((item) => item.id === 'settings');
   assert.ok(search && plans && chat && settings);
   assert.equal(search.kind, 'top');
-  assert.equal(search.spineBand, false);
-  assert.equal(plans.spineBand, false);
-  assert.equal(chat.spineBand, false);
-  assert.equal(settings.kind, 'top');
-  assert.equal(settings.spineBand, false);
   assert.equal(isSpineMapTopRow(search), false);
   assert.equal(isSpineMapTopRow(plans), false);
-  assert.equal(isSpineMapTopRow(chat), false);
+  assert.equal(settings.kind, 'top');
   assert.equal(isSpineMapTopRow(settings), false);
+
+  // Chat is the ONE assistant door: a painted L1 row gated on the chat API's own permission.
+  assert.equal(chat.kind, 'top');
+  assert.equal(chat.href, '/ai-chat');
+  assert.equal(chat.requires, 'assistant.chat');
+  assert.equal(isSpineMapTopRow(chat), true);
+  assert.equal(getSidebarRouteKey('/ai-chat'), 'ai-chat');
+
+  const withoutChat = getSidebarNavItems({ permissions: new Set(['photos.view', 'dashboard.view', 'operations.view']) });
+  assert.equal(withoutChat.some((item) => item.id === 'ai-chat'), false, 'no Chat door for staff the chat API would 403');
+  const withChat = getSidebarNavItems({ permissions: new Set(['photos.view', 'dashboard.view', 'assistant.chat']) });
+  assert.equal(withChat.some((item) => item.id === 'ai-chat'), true);
 
   const media = items.find((item) => item.id === 'ops-photos');
   assert.equal(media?.label, 'Media Library');
@@ -448,7 +455,6 @@ test('resolveSidebarChild reads the operations mode', () => {
   assert.equal(resolveSidebarChild('operations', at()), 'live');
   // `analytics` was RETIRED 2026-09-16 — the mode reported numbers nobody could trust and its one reconcilable read moved to…
   assert.equal(resolveSidebarChild('operations', at('mode=analytics')), 'live');
-  assert.equal(resolveSidebarChild('operations', at('mode=insights')), 'insights');
   assert.equal(resolveSidebarChild('operations', at('mode=history')), 'history');
   assert.equal(resolveSidebarChild('operations', at('mode=signals')), 'signals');
   // `plans` is no longer an Operations mode (forge/plans moved to Home, HOME-OPS
@@ -859,7 +865,7 @@ test('Wave 1 catalog forks: Home paints, studio stays /studio, admin is gone, no
   assert.equal(studio?.label, 'Automations');
 
   const plans = APP_SIDEBAR_NAV.find((item) => item.id === 'plans-live');
-  assert.equal(plans?.href, '/?mode=forge&view=live');
+  assert.equal(plans?.href, '/?mode=forge');
 
   assert.equal(APP_SIDEBAR_NAV.some((item) => item.id === 'admin'), false);
   assert.equal(
@@ -938,8 +944,8 @@ test('every desk lane is expandable: 2+ pages, or one page that declares childre
     if (lane.pages.length > 1) continue; // header + page rows
 
     const page = lane.pages[0]!;
-    // `spineFlat` is the declared opt-out. Nothing claims it since 2026-09-23,
-    // when Automations dropped it to paint its Rules child as a spine row.
+    // `spineFlat` is the declared opt-out (Shipping claims it since 2026-09-27:
+    // its stages live in its contextual sidebar, not the page map).
     if (page.spineFlat) continue;
 
     assert.ok(

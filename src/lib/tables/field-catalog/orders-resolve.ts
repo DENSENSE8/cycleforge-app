@@ -1,18 +1,37 @@
 /** Orders slot resolvers — row + fieldId → the resolved facts a slot cell paints. */
 
 import type {
+  CompoundDelay,
   CompoundSlotValue,
   CompoundSubtitlePart,
 } from '@/components/tables/compound/compound-row-model';
-import { nonSentinelTimestamp } from '@/components/dashboard/orders-queue/helpers';
+import {
+  formatQueueRowDateCell,
+  nonSentinelTimestamp,
+} from '@/components/dashboard/orders-queue/helpers';
 import { conditionGradeTextClass, orderRowQtyTone } from '@/lib/condition-tone';
-import { conditionGradeTableLabel, EMPTY_META_DASH } from '@/lib/conditions';
+import { conditionGradeTableLabel, conditionLabel, EMPTY_META_DASH } from '@/lib/conditions';
 import { catalogById, type FieldDef } from '@/lib/tables/field-catalog/types';
 import { ORDERS_FIELD_CATALOG } from '@/lib/tables/field-catalog/orders';
 import { packBenchShortLabel } from '@/lib/packing/pack-bench-display';
 import type { ShippedOrder } from '@/types/orders';
 import { formatCurrency } from '@/utils/_number';
-import { formatMonthDayTimePST } from '@/utils/date';
+import { formatMonthDayTimePST, getDaysLateNullable } from '@/utils/date';
+import { customerFullName, customerPlace } from '@/lib/customers/customer-display';
+import { resolveCarrierBrand, type CarrierBrandMeta } from '@/lib/carrier-brand';
+import {
+  orderFulfillmentBadge,
+  type OrderFulfillmentBadge,
+} from '@/lib/orders/order-fulfillment-badge';
+import { resolveOrderRowFlag } from '@/lib/orders/order-row-flags';
+import {
+  ordersGroupItemStatus,
+  ordersOrderedAt,
+  ordersShipByDelay,
+  ordersShipByRaw,
+} from '@/lib/orders/orders-compound-view';
+import { formatOutboundStoragePath } from '@/lib/shipping/outbound-storage-path';
+import { resolveSkuIdentityTitle } from '@/lib/sku/sku-identity-law';
 
 interface OrdersSlotContext {
   /**
@@ -218,4 +237,225 @@ export function ordersSubtitleParts(
     parts.push({ text: value.text, key: fieldId });
   }
   return parts;
+}
+
+// ── The INDEX face — one ORDER (all its lines) per row ───────────────────────
+
+/** One derived chip in the Tags column (owner D6: no free-form tags yet). */
+export interface OrdersIndexTag {
+  label: string;
+  /** `flag` wears the row flag's own house chip (`chipClass`). */
+  tone: 'warning' | 'critical' | 'neutral' | 'flag';
+  chipClass?: string;
+}
+
+/** One resolved index cell — the cell paints by `kind`, never by field id. */
+export type OrdersIndexValue =
+  | { kind: 'placed'; face: string; tip: string }
+  | { kind: 'customer'; name: string | null; place: string | null }
+  | { kind: 'channel'; orderId: string; accountSource: string | null; fba: boolean }
+  | { kind: 'money'; text: string | null; estimate: boolean }
+  | { kind: 'fulfillment'; badge: OrderFulfillmentBadge }
+  | { kind: 'deadline'; delay: CompoundDelay; tip: string | null }
+  | { kind: 'items'; face: string; lines: readonly string[] }
+  | { kind: 'delivery'; carriers: readonly CarrierBrandMeta[] }
+  | { kind: 'tags'; tags: readonly OrdersIndexTag[] }
+  | { kind: 'bin'; path: string | null }
+  | CompoundSlotValue;
+
+interface OrdersIndexContext {
+  /** Warehouse civil today (`YYYY-MM-DD`) — "Today" and due-today faces. */
+  todayKey: string;
+  packerDisplay?: string | null;
+}
+
+function lineQty(line: ShippedOrder): number {
+  const qty = Number(line.quantity);
+  return Number.isFinite(qty) && qty > 0 ? qty : 1;
+}
+
+/** A line's product title under the SKU identity law (Zoho item → catalog listing → SKU). */
+export function ordersLineTitle(line: ShippedOrder): string {
+  const zohoTitle = (line as OrdersRow).zoho_item_title;
+  return (
+    resolveSkuIdentityTitle({
+      zoho_item_title: typeof zohoTitle === 'string' ? zohoTitle : null,
+      catalog_product_title: line.product_title,
+      sku: line.sku,
+    }) || 'Untitled line'
+  );
+}
+
+/** Order total: realised sale amounts; a line with none falls back to its resolved price (an ask ⇒ estimate). */
+function orderTotal(lines: readonly ShippedOrder[]): { text: string | null; estimate: boolean } {
+  let total = 0;
+  let priced = false;
+  let estimate = false;
+  for (const line of lines) {
+    const sale = Number(line.sale_amount);
+    if (line.sale_amount != null && line.sale_amount !== '' && Number.isFinite(sale)) {
+      total += sale;
+      priced = true;
+    } else if (typeof line.price_cents === 'number') {
+      total += line.price_cents / 100;
+      priced = true;
+      estimate ||= line.price_is_estimate === true;
+    }
+  }
+  if (!priced) return { text: null, estimate: false };
+  const lead = lines[0];
+  const currency = String(lead?.currency || lead?.price_currency || 'USD').trim().toUpperCase();
+  try {
+    return { text: formatCurrency(total, currency), estimate };
+  } catch {
+    // A stored currency Intl does not know — the figure still reads in USD.
+    return { text: formatCurrency(total), estimate };
+  }
+}
+
+function orderCustomer(lead: ShippedOrder): { name: string | null; place: string | null } {
+  if (lead.customer) {
+    return {
+      name: customerFullName(lead.customer) || null,
+      place: customerPlace(lead.customer) || null,
+    };
+  }
+  const shipTo = lead.shipstation_ship_to;
+  const name = String(shipTo?.name || shipTo?.company || '').trim() || null;
+  const place = [shipTo?.city, shipTo?.state].map((v) => String(v ?? '').trim()).filter(Boolean).join(', ');
+  return { name, place: place || null };
+}
+
+/** Earliest deadline across the lines — the one that makes the order late. */
+function orderDeadline(
+  lines: readonly ShippedOrder[],
+  todayKey: string,
+): { delay: CompoundDelay; tip: string | null } {
+  let raw: string | null = null;
+  let lead: ShippedOrder = lines[0]!;
+  for (const line of lines) {
+    const candidate = ordersShipByRaw(line);
+    if (candidate && (!raw || new Date(candidate).getTime() < new Date(raw).getTime())) {
+      raw = candidate;
+      lead = line;
+    }
+  }
+  const delay = ordersShipByDelay(lead, getDaysLateNullable(raw), todayKey);
+  return { delay, tip: formatQueueRowDateCell(raw)?.tooltip ?? null };
+}
+
+function orderTags(lines: readonly ShippedOrder[]): OrdersIndexTag[] {
+  const tags: OrdersIndexTag[] = [];
+  if (lines.some((line) => line.is_urgent === true)) tags.push({ label: 'Urgent', tone: 'warning' });
+  // The WHY of a hold — the badge already says "On hold"; the chip names the reason.
+  const exceptionReason = lines
+    .map((line) => String(line.exception_reason ?? '').trim())
+    .find(Boolean);
+  if (exceptionReason) tags.push({ label: exceptionReason, tone: 'critical' });
+  const shortage = ordersGroupItemStatus(lines);
+  if (shortage && shortage.label !== 'Out of stock' && shortage.label !== 'Exception') {
+    tags.push({ label: shortage.label, tone: 'critical' });
+  }
+  // Hold is the fulfillment badge's word, not a second chip.
+  const flag = resolveOrderRowFlag(lines[0]?.row_flag?.flag);
+  if (flag && flag.id !== 'hold') {
+    tags.push({ label: flag.label, tone: 'flag', chipClass: flag.chipClass });
+  }
+  const conditions = new Set<string>();
+  for (const line of lines) {
+    const code = String(line.condition ?? '').trim().toUpperCase();
+    if (!code || code === 'N/A') continue; // ds-allow-na: marketplace empty-vocab reader
+    // A marketplace word outside the grade vocabulary comes back raw ("USED");
+    // the triage face is sentence case.
+    const label = conditionLabel(code, 'label');
+    conditions.add(label === label.toUpperCase() ? label[0] + label.slice(1).toLowerCase() : label);
+  }
+  for (const label of conditions) tags.push({ label, tone: 'neutral' });
+  return tags;
+}
+
+/**
+ * Resolve one INDEX field for one ORDER. `lines` is every line of the order
+ * (a single-line order passes one) — a group parent and a lone row resolve the
+ * same fact, which is what makes the list one row per order. Unknown field id
+ * → null (the cell dashes).
+ */
+export function resolveOrdersIndexValue(
+  lines: readonly ShippedOrder[],
+  fieldId: string,
+  ctx: OrdersIndexContext,
+): OrdersIndexValue | null {
+  const lead = lines[0];
+  if (!lead) return null;
+  switch (fieldId) {
+    case 'orders.order_date': {
+      const placed = ordersOrderedAt(lead);
+      if (!placed) return null;
+      return {
+        kind: 'placed',
+        face: placed.dateKey === ctx.todayKey ? 'Today' : placed.label,
+        tip: placed.tip ?? placed.label,
+      };
+    }
+    case 'orders.customer':
+      return { kind: 'customer', ...orderCustomer(lead) };
+    case 'orders.channel':
+      return {
+        kind: 'channel',
+        orderId: String(lead.order_id || '').trim(),
+        accountSource: lead.account_source ?? null,
+        fba: String(lead.fulfillment_channel ?? '').trim().toUpperCase() === 'AFN',
+      };
+    case 'orders.total':
+      return { kind: 'money', ...orderTotal(lines) };
+    case 'orders.fulfillment':
+      return { kind: 'fulfillment', badge: orderFulfillmentBadge(lines) };
+    case 'orders.fulfill_by':
+      return { kind: 'deadline', ...orderDeadline(lines, ctx.todayKey) };
+    case 'orders.items': {
+      const count = lines.reduce((sum, line) => sum + lineQty(line), 0);
+      return {
+        kind: 'items',
+        face: `${count} item${count === 1 ? '' : 's'}`,
+        lines: lines.map((line) => `${lineQty(line)} × ${ordersLineTitle(line)}`),
+      };
+    }
+    case 'orders.delivery': {
+      const byCarrier = new Map<string, CarrierBrandMeta>();
+      for (const line of lines) {
+        const tracking = String(line.shipping_tracking_number ?? '').trim();
+        if (!tracking && !String(line.carrier ?? '').trim()) continue;
+        const brand = resolveCarrierBrand(tracking, line.carrier);
+        if (brand.carrier !== 'Unknown') byCarrier.set(brand.carrier, brand);
+      }
+      return { kind: 'delivery', carriers: [...byCarrier.values()] };
+    }
+    case 'orders.tags':
+      return { kind: 'tags', tags: orderTags(lines) };
+    case 'orders.bin':
+      return {
+        kind: 'bin',
+        path: formatOutboundStoragePath(lines.flatMap((line) => line.storage_locations ?? [])),
+      };
+    case 'orders.picked':
+    case 'orders.packed':
+      return resolveOrdersSlotValue(lead, fieldId, { packerDisplay: ctx.packerDisplay });
+    default:
+      return null;
+  }
+}
+
+/** Every mounted index slot track of one order, keyed by track key. */
+export function ordersIndexValues(
+  lines: readonly ShippedOrder[],
+  columns: readonly { key: string; fieldId?: string }[],
+  ctx: OrdersIndexContext,
+): Readonly<Record<string, OrdersIndexValue>> {
+  const values: Record<string, OrdersIndexValue> = {};
+  for (const col of columns) {
+    if (!col.fieldId || !col.key.startsWith('status:')) continue;
+    const value = resolveOrdersIndexValue(lines, col.fieldId, ctx);
+    if (value) values[col.key] = value;
+  }
+  return values;
 }

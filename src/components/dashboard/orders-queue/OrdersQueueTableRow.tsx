@@ -7,11 +7,15 @@ import { CompoundRowDetailHost } from '@/components/tables/compound/CompoundRowD
 import { useCompoundRowDetail } from '@/components/tables/compound/useCompoundRowDetail';
 import { ignoreRowSelectFromSubtitle } from '@/components/tables/compound/useSubtitlePointerReorder';
 import { ordersCompoundView } from '@/lib/orders/orders-compound-view';
+import type { QueueRowClickEvent } from './queue-row-click';
 import { useOrderStatusTrail } from '@/components/orders/OrderStatusTrailOverlay';
 import {
+  ordersIndexValues,
+  ordersLineTitle,
   ordersSlotValues,
   ordersSubtitleParts,
 } from '@/lib/tables/field-catalog/orders-resolve';
+import { renderOrdersIndexCell, type OrdersIndexRowFacts } from './OrdersIndexCells';
 import {
   Fragment,
   memo,
@@ -23,8 +27,8 @@ import {
   type Ref,
 } from 'react';
 import { motion } from '@/design-system/motion';
-import { framerPresence, framerTransition } from '@/design-system/foundations/motion-framer';
-import { useMotionPresence, useMotionTransition } from '@/design-system/foundations/motion-framer-hooks';
+import { motionPresence, motionTransition } from '@/design-system/foundations/motion-presets';
+import { useMotionPresence, useMotionTransition } from '@/design-system/foundations/motion-presets-hooks';
 import { OrderIdentityChips } from '@/components/ui/OrderIdentityChips';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import {
@@ -49,12 +53,16 @@ import { useOrderChannel } from '@/hooks/useCatalog';
 import {
   formatDateWithOrdinal,
   formatLaneAgeCompact,
+  getCurrentPSTDateKey,
   getLaneAgeHours,
   toPSTDateKey,
 } from '@/utils/date';
 import { isSkuSourceRecord } from '@/utils/source-dot';
 import type { ShippedOrder } from '@/lib/neon/orders-queries';
-import type { OrdersQueueColumn } from '@/lib/dashboard-order-row-layout';
+import {
+  isOrdersIndexColumnModel,
+  type OrdersQueueColumn,
+} from '@/lib/dashboard-order-row-layout';
 import {
   LEDGER_GRID_FROZEN_CELL,
   ledgerGridCell,
@@ -144,10 +152,7 @@ interface OrdersQueueTableRowProps {
   subtitleFieldIds?: readonly string[];
   /** The MOUNTING SURFACE's declared capabilities — required, never defaulted. */
   capabilities: Pick<GridSurfaceCapabilities, 'rowTriageFlags'>;
-  onRowClick: (
-    record: ShippedOrder,
-    event?: { shiftKey: boolean; detail?: number; target?: EventTarget | null },
-  ) => void;
+  onRowClick: (record: ShippedOrder, event?: QueueRowClickEvent) => void;
   /** Sheets click-select open gesture (double-click / Enter). */
   onRowOpen?: (record: ShippedOrder) => void;
   /**
@@ -291,9 +296,9 @@ function AnimatedOrdersQueueRowShell({
   /** The row element — the CYC-82 assign menu anchors to its gutter cell. */
   ref?: Ref<HTMLDivElement>;
 }) {
-  const rowPresence = useMotionPresence(framerPresence.tableRow);
-  const mountTransition = useMotionTransition(framerTransition.tableRowMount);
-  const layoutTransition = useMotionTransition(framerTransition.chipColumnLayout);
+  const rowPresence = useMotionPresence(motionPresence.tableRow);
+  const mountTransition = useMotionTransition(motionTransition.tableRowMount);
+  const layoutTransition = useMotionTransition(motionTransition.chipColumnLayout);
   return (
     <motion.div
       layout={animateLayout}
@@ -614,9 +619,12 @@ export const OrdersQueueTableRow = memo(function OrdersQueueTableRow({
   /**
    * WHICH COLUMN MODEL is mounted — this row's one layout discriminant.
    *
-   * `columns` is the compound slot materialization (`ordersCompoundColumnsFor`).
-   * Mobile never maps `columns` — it paints the chip cluster + meta row.
+   * `columns` is either the To-ship INDEX materialization (`ordersIndexColumnsFor`,
+   * one line per order) or the compound slot materialization
+   * (`ordersCompoundColumnsFor`). Mobile never maps `columns` — it paints the
+   * chip cluster + meta row.
    */
+  const indexLayout = !isMobile && isOrdersIndexColumnModel(columns);
   const compoundLayout = !isMobile && isCompoundColumnModel(columns);
 
   const isStagedRow = queueMode === 'staged' || queueMode === 'shipped';
@@ -776,6 +784,21 @@ export const OrdersQueueTableRow = memo(function OrdersQueueTableRow({
       })
     : null;
 
+  // The INDEX face resolves order facts over this row's line (a single-line
+  // order, or one line of a group whose parent owns the order facts).
+  const indexFacts: OrdersIndexRowFacts | null = indexLayout
+    ? {
+        values: ordersIndexValues([record], columns, {
+          todayKey: getCurrentPSTDateKey(),
+          packerDisplay,
+        }),
+        view: ordersCompoundView(record, { stateLabel: null, delayDays: daysLate }),
+        orderId: String(record.order_id || '').trim(),
+        accountSource: record.account_source ?? null,
+        hasNote: Number(record.note_count ?? 0) > 0 || Boolean(String(record.buyer_note ?? '').trim()),
+        childTitle: quietIdentity ? ordersLineTitle(record) : null,
+      }
+    : null;
   const inTable = rowIndex != null;
 
   const shipByEdit =
@@ -795,7 +818,7 @@ export const OrdersQueueTableRow = memo(function OrdersQueueTableRow({
       : undefined;
 
   const stageAssigns = useMemo(() => {
-    if (!compoundView || !onCommitStageAssign) return undefined;
+    if (!(compoundLayout || indexLayout) || !onCommitStageAssign) return undefined;
     return {
       'orders.picked': {
         selectedStaffId: testerId,
@@ -812,7 +835,7 @@ export const OrdersQueueTableRow = memo(function OrdersQueueTableRow({
           onCommitStageAssign(record, 'orders.packed', staffId, staffName),
       },
     };
-  }, [compoundView, onCommitStageAssign, testerId, packerId, record]);
+  }, [compoundLayout, indexLayout, onCommitStageAssign, testerId, packerId, record]);
 
   // ── The cells — one shell, two column models ───────────────────────────── Fragments (no DOM) keep every cell a DIRECT grid child — the…
   const cells = isMobile ? (
@@ -837,6 +860,27 @@ export const OrdersQueueTableRow = memo(function OrdersQueueTableRow({
   ) : (
     columns.map((col, i) => {
       const rule = i !== columns.length - 1;
+      if (indexFacts) {
+        return (
+          <Fragment key={col.key}>
+            {renderOrdersIndexCell({
+              col,
+              columns,
+              rule,
+              facts: indexFacts,
+              select: {
+                checked: isChecked,
+                onToggle: onToggleSelect ? (event) => onToggleSelect(record, event) : undefined,
+                label: `${isChecked ? 'Deselect' : 'Select'} order ${record.order_id || record.id}`,
+              },
+              onCommitShipBy: onCommitShipBy
+                ? (dateKey) => onCommitShipBy(record, dateKey)
+                : undefined,
+              stageAssigns,
+            }) ?? renderStructuralCell(col, rule, dataCell)}
+          </Fragment>
+        );
+      }
       const compoundCell = compoundView
         ? renderCompoundGridCell({
             col,
@@ -911,6 +955,8 @@ export const OrdersQueueTableRow = memo(function OrdersQueueTableRow({
       if (ignoreRowSelectFromSubtitle(event)) return;
       onRowClick(record, {
         shiftKey: event.shiftKey,
+        metaKey: event.metaKey,
+        ctrlKey: event.ctrlKey,
         detail: event.detail,
         target: event.target,
       });
@@ -933,6 +979,13 @@ export const OrdersQueueTableRow = memo(function OrdersQueueTableRow({
           onRowOpen?.(record);
           return;
         }
+        return;
+      }
+      // Space is the check gesture (Shopify index): toggle, Shift+Space extends
+      // the range from the anchor. Enter opens the record.
+      if (event.key === ' ' && onToggleSelect && event.target === event.currentTarget) {
+        event.preventDefault();
+        onToggleSelect(record, { shiftKey: event.shiftKey });
         return;
       }
       if (event.key === 'Enter' || event.key === ' ') {
@@ -1102,6 +1155,21 @@ export const OrdersQueueTableRow = memo(function OrdersQueueTableRow({
   if (prev.record.carrier !== next.record.carrier) return false;
   // The triage flag washes the whole row through `ledgerRowFillClass`.
   if (prev.record.row_flag?.flag !== next.record.row_flag?.flag) return false;
+  // Facts only the INDEX face paints (order date, customer, channel, total,
+  // fulfillment badge, tags, bin, note mark).
+  if (prev.record.order_date !== next.record.order_date) return false;
+  if (prev.record.customer !== next.record.customer) return false;
+  if (prev.record.shipstation_ship_to !== next.record.shipstation_ship_to) return false;
+  if (prev.record.fulfillment_channel !== next.record.fulfillment_channel) return false;
+  if (prev.record.price_cents !== next.record.price_cents) return false;
+  if (prev.record.price_is_estimate !== next.record.price_is_estimate) return false;
+  if (prev.record.is_urgent !== next.record.is_urgent) return false;
+  if (prev.record.is_out_of_stock !== next.record.is_out_of_stock) return false;
+  if (prev.record.has_exception !== next.record.has_exception) return false;
+  if (prev.record.exception_reason !== next.record.exception_reason) return false;
+  if (prev.record.note_count !== next.record.note_count) return false;
+  if (prev.record.buyer_note !== next.record.buyer_note) return false;
+  if (prev.record.storage_locations !== next.record.storage_locations) return false;
   // `aria-rowindex` is this row's announced position in the table; a sort or an
   // insert moves it without touching any fact on the record.
   if (prev.rowIndex !== next.rowIndex) return false;

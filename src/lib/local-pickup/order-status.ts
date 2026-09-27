@@ -21,6 +21,34 @@ export function pickupOrderNeedsProcess(args: {
   return true;
 }
 
+/** The fields of one LCPU product line the status tabs read. */
+export interface PickupLineStatusFacts {
+  order_status: string;
+  /** Linked receiving carton id once finalize/process started; null = need to process. */
+  receiving_id: number | null;
+}
+
+/** True when this product line's order belongs on the Need to process tab. */
+export function pickupLineNeedsProcess(line: PickupLineStatusFacts): boolean {
+  return pickupOrderNeedsProcess({
+    status: line.order_status,
+    receivingId: line.receiving_id,
+    itemCount: 1,
+  });
+}
+
+/**
+ * Status-tab filter over flat product lines — the `/pickup` grid, its filter
+ * counts and the `pickup` nav facet all read this one rule.
+ */
+export function pickupLineMatchesStatus(line: PickupLineStatusFacts, tab: PickupStatusTab): boolean {
+  if (tab === 'all') return true;
+  if (tab === 'done') return pickupOrderIsDone(line.order_status);
+  if (tab === 'process') return pickupLineNeedsProcess(line);
+  // draft — unfinished (not COMPLETED), including empty shells once they have lines
+  return !pickupOrderIsDone(line.order_status);
+}
+
 /** Tailwind fill for the 8px status dot (rail + Product cell). */
 export function pickupOrderStatusDot(
   status: string | null | undefined,

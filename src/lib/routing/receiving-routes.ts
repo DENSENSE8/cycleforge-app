@@ -243,6 +243,8 @@ const REPAIR_ROUTE_PARAMS = defineRouteParams({
     /** Display sort — `newest` or a grid column key (SoT: repair-display-sort). */
     sort: paramRoundTrip((raw) => (raw === 'newest' || isRepairColumnSort(raw) ? raw : null)),
     dir: paramEnum(['asc', 'desc'] as const),
+    /** Labels-to-print refine — `RepairTable` reads exactly `1`. */
+    needsLabel: paramEnum(['1'] as const),
   },
   carries: BROWSE_SURFACE_CARRIES,
 });

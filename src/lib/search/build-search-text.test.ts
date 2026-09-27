@@ -322,35 +322,92 @@ test('SKU: long catalog notes cannot truncate the platform identifiers', () => {
   assert.ok(doc.searchText.includes('Power cable'), 'BOM part must survive the cap');
 });
 
-test('SKU: the Zoho item number and provider identifiers reach search text', () => {
+test('SKU: the Zoho twin identifiers reach search text ahead of the prose cap', () => {
   const doc = buildSearchText('SKU', {
     id: 13,
     sku: 'BOSE-901-IV',
     product_title: 'Bose 901 Series IV Speakers',
     category: 'Speakers',
     upc: '017817000000',
-    // sku_catalog.provider_item_id = items.zoho_item_id — the ONE legal join.
     provider_item_id: '4728690000000212345',
-    // items.* fields. item_sku is a DIFFERENT numbering scheme from sku and
-    // must be indexed as its own token, not assumed equal.
-    item_name: 'Bose 901 Series IV (Zoho)',
-    item_sku: 'ZH-0091',
+    // The active items twin by sku + org (the identity law's join).
+    zoho_item_title: 'Bose 901 Series IV (Zoho)',
+    zoho_item_id: '4728690000000299999',
     item_upc: '017817999999',
     item_ean: '4006381333931',
     notes: 'x'.repeat(5000),
   });
   for (const needle of [
-    '4728690000000212345', // Zoho item number
-    'ZH-0091',             // provider SKU (independent scheme)
+    '4728690000000212345', // catalog provider link
+    '4728690000000299999', // the twin's Zoho item number
     '017817999999',        // provider UPC
     '4006381333931',       // provider EAN
     'Bose 901 Series IV (Zoho)',
   ]) {
     assert.ok(doc.searchText.includes(needle), `searchText missing ${needle}`);
   }
-  // The identifier ordering is a truncation contract: prose cannot push the
-  // provider item number past the 2000-char cap.
   assert.ok(doc.searchText.length <= 2000);
+});
+
+test('SKU: the Zoho item name governs the title over the marketplace catalog title', () => {
+  const doc = buildSearchText('SKU', {
+    id: 14,
+    sku: 'BOSE-SLM2-BK',
+    product_title: 'NEW Bose SoundLink Mini II Portable Speaker FREE SHIPPING',
+    zoho_item_title: 'Bose SoundLink Mini II - Black',
+    zoho_item_id: '4728690000000211111',
+  });
+  assert.equal(doc.title, 'Bose SoundLink Mini II - Black');
+  // The marketplace title is still searchable text, just not the identity.
+  assert.ok(doc.searchText.includes('FREE SHIPPING'));
+
+  const noTwin = buildSearchText('SKU', { id: 15, sku: 'X-1', product_title: '  ', zoho_item_title: null });
+  assert.equal(noTwin.title, 'X-1', 'a blank catalog title falls through to the sku');
+});
+
+test('SKU: brand name, ancestors and aliases plus the Zoho brand word are searchable; brand id is a facet', () => {
+  const doc = buildSearchText('SKU', {
+    id: 16,
+    sku: 'BOSE-WMS-III',
+    product_title: 'Wave Music System III',
+    zoho_item_brand: 'Bose Corporation',
+    brand_id: 7,
+    // sqlSkuBrandSearchText: the Wave node + its Bose ancestor, with aliases.
+    brand_text: 'Wave Bose B0SE Bose Corp',
+    notes: 'y'.repeat(5000),
+  });
+  for (const needle of ['Wave Bose B0SE Bose Corp', 'Bose Corporation']) {
+    assert.ok(doc.searchText.includes(needle), `searchText missing ${needle}`);
+  }
+  assert.equal(doc.facets.brandId, 7);
+
+  const unbranded = buildSearchText('SKU', { id: 17, sku: 'CABLE-1', brand_id: null, brand_text: null });
+  assert.equal(unbranded.facets.brandId, null);
+});
+
+test('ORDER / SERIAL_UNIT / RECEIVING carry their SKU brand text and brand id', () => {
+  const brand = { brand_id: '7', brand_text: 'Wave Bose B0SE' };
+  const docs = [
+    buildSearchText('ORDER', { id: 1, order_id: 'ORD-1', sku: 'BOSE-WMS-III', ...brand }),
+    buildSearchText('SERIAL_UNIT', { id: 2, serial_number: 'SN-1', sku: 'BOSE-WMS-III', ...brand }),
+    buildSearchText('RECEIVING', {
+      id: 3,
+      line_skus: 'BOSE-WMS-III SONY-XM4',
+      line_count: 2,
+      distinct_sku_count: 2,
+      // Every line's brand, aggregated by the loader.
+      brand_id: 7,
+      brand_text: 'Wave Bose B0SE Sony',
+    }),
+  ];
+  for (const doc of docs) {
+    assert.ok(doc.searchText.includes('Wave Bose B0SE'), `${doc.title}: brand text missing`);
+    assert.equal(doc.facets.brandId, 7, `${doc.title}: brand id missing`);
+  }
+  assert.ok(docs[2].searchText.includes('Sony'), 'the second line brand is searchable too');
+
+  const unbranded = buildSearchText('ORDER', { id: 4, order_id: 'ORD-4', sku: 'CABLE-1' });
+  assert.equal(unbranded.facets.brandId, null);
 });
 
 test('LOCATION: the bin barcode leads search text; contents and state follow', () => {

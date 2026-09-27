@@ -1,5 +1,5 @@
 /**
- * Tests for morphing OOS picker decisions + Pending toast targets.
+ * Tests for morphing OOS picker decisions + Picking toast targets.
  * Callers: MorphingRowActionMenu, ordersItemStatus. User: OOS identity plan.
  */
 
@@ -77,7 +77,7 @@ describe('morphing-oos', () => {
 });
 
 describe('oos-pending-toast', () => {
-  it('targets the Shipping Pending desk with a long enough duration', () => {
+  it('targets the Shipping Picking desk with a long enough duration', () => {
     assert.equal(pendingDeskHref(), SHIPPING_SHORTAGE_PATH);
     assert.ok(OOS_PENDING_TOAST_DURATION_MS >= 6000);
   });

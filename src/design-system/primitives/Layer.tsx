@@ -26,7 +26,7 @@ interface LayerProps extends HTMLAttributes<HTMLDivElement> {
 }
 
 /**
- * Resolve a scale token to its numeric z-index — for inline styles, framer
+ * Resolve a scale token to its numeric z-index — for inline styles, Motion
  * `animate`, canvas, or any non-className context.
  */
 function useZIndex(level: ZIndexToken, offset = 0): number {

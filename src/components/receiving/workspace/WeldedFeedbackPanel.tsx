@@ -12,13 +12,13 @@ import { COMPOSER_SHELL_CORNER } from '@/design-system/tokens/radius';
 import { elevationClass } from '@/design-system/tokens/shadows';
 import { focusRing } from '@/design-system/tokens/focus-ring';
 import {
-  framerPresence,
-  framerTransition,
-} from '@/design-system/foundations/motion-framer';
+  motionPresence,
+  motionTransition,
+} from '@/design-system/foundations/motion-presets';
 import {
   useMotionPresence,
   useMotionTransition,
-} from '@/design-system/foundations/motion-framer-hooks';
+} from '@/design-system/foundations/motion-presets-hooks';
 import {
   INLINE_ACTION_FEEDBACK_TONE,
   type InlineActionFeedbackTone,
@@ -95,10 +95,10 @@ export function WeldedFeedbackPanel({
   children?: ReactNode;
 }) {
   const palette = INLINE_ACTION_FEEDBACK_TONE[tone];
-  const peel = useMotionPresence(framerPresence.weldedPanelPeel);
-  const peelTransition = useMotionTransition(framerTransition.weldedPanelPeel);
-  const collapse = useMotionPresence(framerPresence.collapseHeight);
-  const collapseTransition = useMotionTransition(framerTransition.stationCollapse);
+  const peel = useMotionPresence(motionPresence.weldedPanelPeel);
+  const peelTransition = useMotionTransition(motionTransition.weldedPanelPeel);
+  const collapse = useMotionPresence(motionPresence.collapseHeight);
+  const collapseTransition = useMotionTransition(motionTransition.stationCollapse);
   const status = useCyclingStep(steps, cycling);
 
   return (

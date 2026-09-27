@@ -6,7 +6,7 @@
 import { tenantQuery } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';
 import { evaluateReleaseGates } from './release-gates';
-import { exceptionHeldSql } from './exception-membership';
+import { exceptionHeldSql, sqlOrderInExceptionQueue } from './exception-membership';
 import {
   ORDER_EXCEPTION_CATEGORIES,
   deriveOrderExceptionBlockers,
@@ -157,6 +157,20 @@ function mapRow(row: RawExceptionRow): OrderExceptionRow {
   };
 }
 
+/**
+ * The ONE exception-category expression — the list's column, its `?category=`
+ * filter and the nav facet counts all read it. Deliberately explicit: missing
+ * facts are not silently promoted into a new exception class. Expects `o` =
+ * orders and `stn` = its shipping_tracking_numbers join.
+ */
+export const ORDER_EXCEPTION_CATEGORY_SQL = `CASE
+      WHEN o.is_out_of_stock THEN 'Out of Stock'
+      WHEN NULLIF(TRIM(COALESCE(o.buyer_note, '')), '') IS NOT NULL THEN 'Buyer Request'
+      WHEN COALESCE(stn.has_exception, false) THEN 'Shipping Issue'
+      WHEN ${exceptionHeldSql('o')} THEN 'SKU Mapping'
+      ELSE 'Other'
+    END`;
+
 const EXCEPTION_SELECT = `
   SELECT
     o.id,
@@ -173,13 +187,7 @@ const EXCEPTION_SELECT = `
     sc.product_title AS catalog_title,
     sc.sku           AS catalog_sku,
     NULLIF(TRIM(COALESCE(stn.tracking_number_raw, '')), '') AS tracking_number,
-    CASE
-      WHEN o.is_out_of_stock THEN 'Out of Stock'
-      WHEN NULLIF(TRIM(COALESCE(o.buyer_note, '')), '') IS NOT NULL THEN 'Buyer Request'
-      WHEN COALESCE(stn.has_exception, false) THEN 'Shipping Issue'
-      WHEN ${exceptionHeldSql('o')} THEN 'SKU Mapping'
-      ELSE 'Other'
-    END AS exception_category,
+    ${ORDER_EXCEPTION_CATEGORY_SQL} AS exception_category,
     assignment.responsible_person,
     NULLIF(TRIM(COALESCE(o.buyer_note, '')), '') AS buyer_note,
     NULLIF(TRIM(COALESCE(o.notes, '')), '') AS internal_note,
@@ -206,18 +214,13 @@ const EXCEPTION_SELECT = `
 `;
 
 /**
- * Queue membership for a scope — the ONE predicate both the list and the
- * desk-sidebar count read, so the badge cannot disagree with the rows.
- * Expects `o` = orders and `stn` = its shipping_tracking_numbers join.
+ * Queue membership for a scope — the ONE predicate the list, the desk-sidebar
+ * count and the nav facets read, so a badge cannot disagree with the rows.
+ * Expects `o` = orders and `stn` = its shipping_tracking_numbers join; `$1` = org.
  */
-function exceptionScopeWhere(scope: OrderExceptionScope): string {
+export function exceptionScopeWhere(scope: OrderExceptionScope): string {
   let where = `WHERE o.organization_id = $1
-    AND (
-      ${exceptionHeldSql('o')}
-      OR o.is_out_of_stock
-      OR NULLIF(TRIM(COALESCE(o.buyer_note, '')), '') IS NOT NULL
-      OR COALESCE(stn.has_exception, false)
-    )`;
+    AND ${sqlOrderInExceptionQueue('o', 'stn')}`;
   if (scope === 'all') {
     where += `
       AND NOT EXISTS (
@@ -228,6 +231,17 @@ function exceptionScopeWhere(scope: OrderExceptionScope): string {
       )`;
   }
   return where;
+}
+
+/** `?q=` over the exception queue; `likeParam` binds `%<lowercased query>%`. */
+export function exceptionSearchSql(likeParam: string): string {
+  if (!/^\$[1-9][0-9]*$/.test(likeParam)) throw new Error(`invalid SQL param ref: ${likeParam}`);
+  return `(
+        LOWER(COALESCE(o.order_id, '')) LIKE ${likeParam}
+        OR LOWER(COALESCE(o.item_number, '')) LIKE ${likeParam}
+        OR LOWER(COALESCE(o.sku, '')) LIKE ${likeParam}
+        OR LOWER(COALESCE(o.product_title, '')) LIKE ${likeParam}
+      )`;
 }
 
 /** How many orders the exception queue holds for `scope` — uncapped, no search/category. */
@@ -246,10 +260,7 @@ export async function countOrderExceptions(
   return Number(res.rows[0]?.n) || 0;
 }
 
-/**
- * The exception queue. The category CASE is deliberately explicit: missing
- * facts are not silently promoted into a new exception class.
- */
+/** The exception queue. */
 export async function listOrderExceptions(
   orgId: OrgId,
   options: {
@@ -271,27 +282,12 @@ export async function listOrderExceptions(
 
   if (category) {
     params.push(category);
-    where += ` AND (
-      CASE
-        WHEN o.is_out_of_stock THEN 'Out of Stock'
-        WHEN NULLIF(TRIM(COALESCE(o.buyer_note, '')), '') IS NOT NULL THEN 'Buyer Request'
-        WHEN COALESCE(stn.has_exception, false) THEN 'Shipping Issue'
-        WHEN ${exceptionHeldSql('o')} THEN 'SKU Mapping'
-        ELSE 'Other'
-      END
-    ) = $${params.length}`;
+    where += ` AND (${ORDER_EXCEPTION_CATEGORY_SQL}) = $${params.length}`;
   }
 
   if (search) {
     params.push(`%${search.toLowerCase()}%`);
-    const p = `$${params.length}`;
-    where += `
-      AND (
-        LOWER(COALESCE(o.order_id, '')) LIKE ${p}
-        OR LOWER(COALESCE(o.item_number, '')) LIKE ${p}
-        OR LOWER(COALESCE(o.sku, '')) LIKE ${p}
-        OR LOWER(COALESCE(o.product_title, '')) LIKE ${p}
-      )`;
+    where += ` AND ${exceptionSearchSql(`$${params.length}`)}`;
   }
 
   params.push(limit);

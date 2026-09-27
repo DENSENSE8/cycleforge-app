@@ -1,7 +1,7 @@
 'use client';
 
 import { motion, useReducedMotion } from '@/design-system/motion';
-import { motionBezier, framerDuration } from '@/design-system/foundations/motion-framer';
+import { motionBezier, motionDuration } from '@/design-system/foundations/motion-presets';
 import { sectionLabel } from '@/design-system/tokens/typography/presets';
 
 interface ProgressBarProps {
@@ -59,7 +59,7 @@ export function ProgressBar({
                   transition={
                     reduceMotion
                       ? { duration: 0 }
-                      : { duration: framerDuration.progressFill, ease: motionBezier.easeOut }
+                      : { duration: motionDuration.progressFill, ease: motionBezier.easeOut }
                   }
                   style={{ transformOrigin: 'left' }}
                   className={`h-full w-full rounded-full ${barColor}`}
@@ -89,7 +89,7 @@ export function ProgressBar({
           transition={
             reduceMotion
               ? { duration: 0 }
-              : { duration: framerDuration.progressFill, ease: motionBezier.easeOut }
+              : { duration: motionDuration.progressFill, ease: motionBezier.easeOut }
           }
           style={{ transformOrigin: 'left' }}
           className={`h-full w-full rounded-full ${barColor}`}

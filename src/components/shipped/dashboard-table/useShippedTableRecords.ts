@@ -8,14 +8,9 @@ import { fetchShippedHydration } from '@/lib/dashboard-table-data';
 import { useShippedWeekBuckets } from './useShippedWeekBuckets';
 import { getRecentWeekBuckets } from '@/lib/dashboard-week-range';
 import { toPSTDateKey } from '@/utils/date';
-import { isStalled } from '@/lib/shipping/shipment-status';
 import {
   dedupeShippedRecords,
   deriveShippedRecord,
-  isFbaPackerRecord,
-  isSkuPackerRecord,
-  hasLinkedOrder,
-  isExceptionPackerRecord,
   isShippedDeskRow,
   type DerivedPackerRecord,
 } from '@/lib/shipped-records';
@@ -26,7 +21,7 @@ import { useRefreshSignal } from '@/lib/refresh/bus';
 const SPINE_FIRST = process.env.NEXT_PUBLIC_SHIPPED_SPINE_FIRST === 'true';
 const SHIPPED_PHASE: 'spine' | 'full' = SPINE_FIRST ? 'spine' : 'full';
 
-/** Fetches the shipped records (week buckets or all-time), runs the type + carrier/status/exception/outbound filter pipeline, and attaches… */
+/** Fetches the shipped records (week buckets or all-time) with the view filters answered server-side, applies the outbound-state (`ostatus`) filter, and attaches… */
 export function useShippedTableRecords(filters: ShippedTableFilters) {
   const {
     effectiveWeekStart,
@@ -38,7 +33,6 @@ export function useShippedTableRecords(filters: ShippedTableFilters) {
     exceptionsOnly,
     carrierFilter,
     statusFilter,
-    obStatus,
     matchesOutbound,
     normalizedSearch,
   } = filters;
@@ -60,6 +54,9 @@ export function useShippedTableRecords(filters: ShippedTableFilters) {
     effTestedBy,
     effStaffId,
     shippedFilter,
+    carrierFilter,
+    statusFilter,
+    exceptionsOnly,
     normalizedSearch,
   ]);
   const loadMore = useCallback(() => setPageMultiplier((m) => m + 1), []);
@@ -71,6 +68,9 @@ export function useShippedTableRecords(filters: ShippedTableFilters) {
     testedBy: effTestedBy,
     staffId: effStaffId ?? undefined,
     shippedFilter,
+    carrier: carrierFilter,
+    statusCategory: statusFilter,
+    exceptionsOnly,
     searchTerm: normalizedSearch,
     enabled: !allTimeMode,
     limit: fetchLimit,
@@ -85,6 +85,9 @@ export function useShippedTableRecords(filters: ShippedTableFilters) {
       testedBy: effTestedBy,
       staffId: effStaffId ?? undefined,
       shippedFilter,
+      carrier: carrierFilter,
+      statusCategory: statusFilter,
+      exceptionsOnly,
       searchTerm: normalizedSearch,
       limit: fetchLimit,
       phase: SHIPPED_PHASE,
@@ -112,6 +115,9 @@ export function useShippedTableRecords(filters: ShippedTableFilters) {
             testedBy: effTestedBy,
             staffId: effStaffId ?? undefined,
             shippedFilter,
+            carrier: carrierFilter,
+            statusCategory: statusFilter,
+            exceptionsOnly,
             phase: SHIPPED_PHASE,
           }),
         );
@@ -127,7 +133,7 @@ export function useShippedTableRecords(filters: ShippedTableFilters) {
     }
     const id = window.setTimeout(warm, 300);
     return () => window.clearTimeout(id);
-  }, [effPackedBy, effTestedBy, effStaffId, shippedFilter, queryClient]);
+  }, [effPackedBy, effTestedBy, effStaffId, shippedFilter, carrierFilter, statusFilter, exceptionsOnly, queryClient]);
 
 
   // Refresh events from form submits / cross-pane mutations → invalidate.
@@ -152,44 +158,12 @@ export function useShippedTableRecords(filters: ShippedTableFilters) {
   }, [fetchedRecords, effectiveWeekStart, effectiveWeekEnd]);
   const dedupedRecords = useMemo(() => dedupeShippedRecords(rawRecords), [rawRecords]);
 
-  const typeFilteredRecords = useMemo(() =>
-    shippedFilter === 'fba'
-      ? dedupedRecords.filter(isFbaPackerRecord)
-      : shippedFilter === 'orders'
-        ? dedupedRecords.filter((r) => !isFbaPackerRecord(r) && (hasLinkedOrder(r) || isExceptionPackerRecord(r)))
-        : shippedFilter === 'sku'
-          ? dedupedRecords.filter(isSkuPackerRecord)
-          : dedupedRecords.filter((r) => {
-              if (isSkuPackerRecord(r)) return false;
-              if (isFbaPackerRecord(r)) return true;
-              return hasLinkedOrder(r) || isExceptionPackerRecord(r);
-            }),
-    [dedupedRecords, shippedFilter],
-  );
-
-  const carrierFilteredRecords = useMemo(() => {
-    if (!exceptionsOnly && !carrierFilter && !statusFilter && !obStatus) return typeFilteredRecords;
-    return typeFilteredRecords.filter((r) => {
-      if (!matchesOutbound(r)) return false;
-      if (carrierFilter && String(r.carrier ?? '').toUpperCase() !== carrierFilter) return false;
-      if (statusFilter && String(r.latest_status_category ?? '').toUpperCase() !== statusFilter) return false;
-      if (exceptionsOnly) {
-        const hasEx = Boolean(r.has_exception);
-        const stalled = isStalled({
-          isTerminal: r.is_terminal ?? null,
-          category: r.latest_status_category ?? null,
-          latestEventAt: r.latest_event_at ?? null,
-        });
-        if (!hasEx && !stalled) return false;
-      }
-      return true;
-    });
-  }, [typeFilteredRecords, exceptionsOnly, carrierFilter, statusFilter, obStatus, matchesOutbound]);
-
-
+  // Type / carrier / status / exceptions are answered by the fetch (one SQL
+  // predicate with the sidebar facet counts); `?ostatus` — a state derived from
+  // the whole record — is the one view filter still applied here.
   const records = useMemo(
-    () => carrierFilteredRecords.filter(isShippedDeskRow),
-    [carrierFilteredRecords],
+    () => dedupedRecords.filter((r) => isShippedDeskRow(r) && matchesOutbound(r)),
+    [dedupedRecords, matchesOutbound],
   );
 
   // Attach the derived outbound state (packed-time vs left-warehouse-time) once,

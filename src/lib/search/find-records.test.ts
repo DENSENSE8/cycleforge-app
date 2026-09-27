@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import { findRecords, type FindRecordsDeps } from '@/lib/search/find-records';
+import type { BrandSearchResult } from '@/lib/search/brand-search';
 import type { GlobalSearchResult } from '@/lib/search/global-entity-search';
 import type { HybridSearchResult } from '@/lib/search/hybrid-retrieval';
 import type { SearchHit } from '@/lib/search/search-hit';
@@ -36,9 +37,12 @@ function hit(id: number, entityType: SearchHit['entityType'] = 'order'): SearchH
 function fakes(
   exactBy: Record<string, GlobalSearchResult[]> = {},
   hybridBy: Record<string, SearchHit[]> = {},
+  brandBy: Record<string, BrandSearchResult> = {},
 ) {
   const exactCalls: Array<{ query: string; axis?: string }> = [];
   const hybridCalls: string[] = [];
+  const brandCalls: string[] = [];
+  const facetCalls: GlobalSearchResult[][] = [];
 
   const deps: FindRecordsDeps = {
     exact: async (_org, query, _limit, axis) => {
@@ -49,9 +53,17 @@ function fakes(
       hybridCalls.push(query);
       return { hits: hybridBy[query] ?? [], usedSemantic: false } as HybridSearchResult;
     },
+    brand: async (_org, query) => {
+      brandCalls.push(query);
+      return brandBy[query] ?? { hits: [], facet: [] };
+    },
+    brandFacet: async (_org, rows) => {
+      facetCalls.push(rows);
+      return rows.length > 0 ? [{ id: 1, name: 'Bose', count: rows.length }] : [];
+    },
   };
 
-  return { deps, exactCalls, hybridCalls };
+  return { deps, exactCalls, hybridCalls, brandCalls, facetCalls };
 }
 
 // ── the merge ───────────────────────────────────────────────────────────────
@@ -115,6 +127,50 @@ test('an axis-scoped search is never widened or relaxed', async () => {
   assert.equal(f.exactCalls.length, 1);
   assert.equal(out.relaxed, false);
   assert.equal(f.exactCalls[0].axis, 'serial', 'the axis is threaded to the fan-out');
+});
+
+// ── brand axis + facet ──────────────────────────────────────────────────────
+
+test('axis=brand answers from the brand arm alone, facet included, and a miss is never relaxed', async () => {
+  const bose = { id: 1, name: 'Bose', count: 12 };
+  const f = fakes({ bose: [result(1)] }, { bose: [hit(2)] }, {
+    bose: { hits: [hit(30, 'sku'), hit(31, 'order')], facet: [bose] },
+  });
+  const out = await findRecords(ORG, 'bose', { limit: 5, axis: 'brand' }, f.deps);
+
+  assert.deepEqual(out.rows.map((r) => `${r.entityType}:${r.id}`), ['sku:30', 'order:31']);
+  assert.deepEqual(out.brandFacet, [bose], 'facet comes from the brand statement, not a row re-count');
+  assert.deepEqual(f.exactCalls, []);
+  assert.deepEqual(f.hybridCalls, []);
+  assert.deepEqual(f.facetCalls, []);
+
+  const miss = await findRecords(ORG, 'broken box', { limit: 5, axis: 'brand' }, f.deps);
+  assert.deepEqual(miss.rows, []);
+  assert.equal(miss.relaxed, false);
+  assert.deepEqual(f.brandCalls, ['bose', 'broken box'], 'no relaxation rung was tried');
+});
+
+test('the brand facet is computed over the rows actually returned — the relaxed rung, not the miss', async () => {
+  const f = fakes({ 'damaged box': [result(4), result(5, 'unit')] }, {});
+  const out = await findRecords(ORG, 'broken box', { limit: 5 }, f.deps);
+
+  assert.equal(out.relaxed, true);
+  assert.equal(f.facetCalls.length, 1);
+  assert.deepEqual(f.facetCalls[0].map((r) => `${r.entityType}:${r.id}`), ['order:4', 'unit:5']);
+  assert.deepEqual(out.brandFacet, [{ id: 1, name: 'Bose', count: 2 }]);
+});
+
+test('a brand-facet failure keeps the rows and reports an empty facet', async () => {
+  const f = fakes({ laptop: [result(1)] }, {});
+  const deps: FindRecordsDeps = {
+    ...f.deps,
+    brandFacet: async () => {
+      throw new Error('product_brands missing');
+    },
+  };
+  const out = await findRecords(ORG, 'laptop', { limit: 5 }, deps);
+  assert.deepEqual(out.rows.map((r) => r.id), [1]);
+  assert.deepEqual(out.brandFacet, []);
 });
 
 // ── relaxation ──────────────────────────────────────────────────────────────
@@ -195,6 +251,7 @@ test('an identifier query asks EVERY entity source, not just the order-shaped on
   // Regression: the identifier branch queried orders / units / holds / receiving and nothing else, so a bare SKU ("00624"), an FBA shipment…
   const asked: string[] = [];
   const deps: FindRecordsDeps = {
+    ...fakes().deps,
     exact: async (_org, query) => {
       asked.push(query);
       return [];

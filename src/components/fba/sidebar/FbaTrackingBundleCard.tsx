@@ -10,7 +10,7 @@ import { PrintTableCheckbox } from '@/components/fba/table/Checkbox';
 import { TrackingChip, getLast8 } from '@/components/ui/CopyChip';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { IconButton, TextField } from '@/design-system/primitives';
-import { framerPresence, framerTransition } from '@/design-system/foundations/motion-framer';
+import { motionPresence, motionTransition } from '@/design-system/foundations/motion-presets';
 import type { StationTheme } from '@/utils/staff-colors';
 
 export interface BundleItemAllocation {
@@ -155,10 +155,10 @@ export function FbaTrackingBundleCard({
       <AnimatePresence initial={false}>
         {!bundle.collapsed && (
           <motion.div
-            initial={framerPresence.collapseHeight.initial}
-            animate={framerPresence.collapseHeight.animate}
-            exit={framerPresence.collapseHeight.exit}
-            transition={framerTransition.upNextCollapse}
+            initial={motionPresence.collapseHeight.initial}
+            animate={motionPresence.collapseHeight.animate}
+            exit={motionPresence.collapseHeight.exit}
+            transition={motionTransition.upNextCollapse}
             className="overflow-hidden"
           >
             {bundle.allocations.length === 0 ? (

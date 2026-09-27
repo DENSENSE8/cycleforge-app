@@ -15,7 +15,6 @@ import {
   STATION_DISPLAY_INDEX,
   StationDisplaysParkedRail,
   resolveDisplaysActiveTab,
-  useYieldStationDisplaysOnAssistantOpen,
 } from '@/components/station/displays';
 import { StationDisplaysUtilityRail } from '@/components/station/displays';
 import { UnboxLabelPreview } from '@/components/receiving/workspace/line-edit/UnboxLabelPreview';
@@ -109,7 +108,6 @@ export function TestingPanel({
     bands.close('label');
     // eslint-disable-next-line react-hooks/exhaustive-deps -- only the line flips
   }, [row?.id]);
-  useYieldStationDisplaysOnAssistantOpen(closeDisplays);
   const openDisplays = useCallback((tab: TestingDisplayTab) => setActiveSideTab(tab), []);
 
   /**

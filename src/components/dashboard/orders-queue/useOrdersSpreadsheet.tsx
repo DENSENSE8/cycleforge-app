@@ -12,14 +12,17 @@ import {
 import type { DataTableProps } from '@/components/tables/DataTable';
 import type { TableId } from '@/lib/tables/table-columns';
 import {
-  ordersCompoundColumnsFor,
+  ordersIndexColumnsFor,
   type OrdersQueueColumn,
   type OrdersQueueColumnKey,
 } from '@/lib/dashboard-order-row-layout';
 import { useOrdersTableLayout } from './useOrdersTableLayout';
 import { ORDERS_GRID_CAPABILITIES } from '@/components/dashboard/orders-queue/orders-queue-descriptor';
 import { ORDERS_DEFAULT_TABLE_BINDING } from './orders-table-definition';
-import { OrdersMorphingHost } from '@/components/outbound/orders/to-ship/MorphingRowActionMenu';
+import {
+  OrderRecordActionStrip,
+  OrdersMorphingHost,
+} from '@/components/outbound/orders/to-ship/MorphingRowActionMenu';
 import {
   COMPOUND_TRACK_SORT_KEYS,
   isQueueColumnSort,
@@ -36,7 +39,12 @@ import { OrdersQueueTableRow } from './OrdersQueueTableRow';
 import { QueueGroupRow } from './QueueGroupRow';
 import { kitFaceForCatalogId } from '@/hooks/useKitCompositionMap';
 import { AddTrackingPopover } from '@/components/outbound/labels/AddTrackingPopover';
-import { daysLateOn, queueRowStaff, useOrdersQueueFeed } from './useOrdersQueueFeed';
+import {
+  daysLateOn,
+  queueRowStaff,
+  useOrdersQueueFeed,
+  type OrdersQueueCommits,
+} from './useOrdersQueueFeed';
 
 interface UseOrdersSpreadsheetOptions {
   records: ShippedOrder[];
@@ -92,20 +100,32 @@ interface UseOrdersSpreadsheetOptions {
   renderActiveWorkBand?: (record: ShippedOrder) => ReactNode;
   /** Shortage / blocked-queue paint. Optional — ignored when unset. */
   shortageDesk?: boolean;
+  /** Paperwork walk on one order — the open record's strip offers it (To-ship Labels). */
   onOpenLabels?: (record: ShippedOrder) => void;
-  /**
-   * The open record's action strip (`OrderRecordActionStrip`), from the desk
-   * that owns the open record — painted in the table's action row while a
-   * record plane has a record open and no row is checked.
-   */
-  openRecordStrip?: ReactNode;
+}
+
+/**
+ * The open record, for the desk that PLACES it (`DeskRecordPlane` around the
+ * table, owner 2026-09-26). Not a `DataTable` prop — take it off the bag
+ * before spreading the rest onto the table.
+ */
+export interface OrdersSpreadsheetRecordPlane {
+  /** The LIVE row of the open record (optimistic edits land there), or null. */
+  record: ShippedOrder | null;
+  /** Close the record (✕, Esc) — the plane's own close, which also tells the surface. */
+  close: () => void;
+  /** The rows in display order — the record's group siblings live here. */
+  records: ShippedOrder[];
+  todayKey: string;
+  getStaffName: (id: number) => string;
+  commits: OrdersQueueCommits;
 }
 
 /** The FEED half of a {@link DataTable} mount: */
 type OrdersSpreadsheetFeed = Omit<
   DataTableProps<ShippedOrder, OrdersQueueColumnKey, OrdersQueueColumn>,
   'search' | 'filter' | 'tabs' | 'activeTab' | 'onTabChange' | 'totalCount'
->;
+> & { recordPlane: OrdersSpreadsheetRecordPlane };
 
 /** **Outbound orders spreadsheet** — the family glue that resolves a {@link DataTable} feed bag for every outbound lane. */
 export function useOrdersSpreadsheet({
@@ -132,7 +152,7 @@ export function useOrdersSpreadsheet({
   scrollParentRef,
   activeWorkRowId = null,
   renderActiveWorkBand,
-  openRecordStrip,
+  onOpenLabels,
 }: UseOrdersSpreadsheetOptions): OrdersSpreadsheetFeed {
   const { isMobile } = useUIModeOptional();
 
@@ -141,12 +161,13 @@ export function useOrdersSpreadsheet({
   // "show who + when for pick" is the `orders.picked` slot binding.
   const binding = ORDERS_DEFAULT_TABLE_BINDING;
 
-  // Effective slot layout (staff ?? org ?? product) → the mounted compound
-  // model. Rebinding changes bindings, never keys, so slot-keyed prefs hold.
+  // Effective slot layout (staff ?? org ?? product) → the mounted INDEX model:
+  // one line per order (owner 2026-09-26). Rebinding changes bindings, never
+  // keys, so slot-keyed prefs hold. The industrial line ledger is the floor.
   const { effectiveLayout, subtitleFieldIds, fields } = useOrdersTableLayout();
-  const compoundColumns = useMemo(
-    () => ordersCompoundColumnsFor(effectiveLayout, { queueMode }),
-    [effectiveLayout, queueMode],
+  const indexColumns = useMemo(
+    () => ordersIndexColumnsFor(effectiveLayout),
+    [effectiveLayout],
   );
 
   // The feed — rows, grouping, URL sort, selection plane, inline-edit commits,
@@ -172,11 +193,15 @@ export function useOrdersSpreadsheet({
       handleToggleSelect,
       handleToggleGroup,
       handleRequestReplaceTracking,
+      closeRecord,
     },
     handleCommitCondition,
     handleCommitShipBy,
     handleCommitStageAssign,
     handleCommitSubtitleField,
+    handleCommitPlatform,
+    handleCommitSkuBin,
+    handleCommitTracking,
     sortMenu,
     views,
   } = useOrdersQueueFeed({
@@ -194,6 +219,43 @@ export function useOrdersSpreadsheet({
 
   const getTableRowId = useCallback((r: ShippedOrder) => String(r.id), []);
 
+  // ── The open record, placed by the desk (`DeskRecordPlane`) ───────────────
+  // The record reads the LIVE row (optimistic edits land there), not the
+  // snapshot the selection plane captured when the row was opened.
+  const openId = selectedRecord ? Number(selectedRecord.id) : null;
+  const openRecord = useMemo(
+    () =>
+      openId == null
+        ? null
+        : (displayedRecords.find((r) => Number(r.id) === openId) ?? selectedRecord),
+    [openId, displayedRecords, selectedRecord],
+  );
+  const commits = useMemo<OrdersQueueCommits>(
+    () => ({
+      handleCommitCondition,
+      handleCommitShipBy,
+      handleCommitStageAssign,
+      handleCommitSubtitleField,
+      handleCommitPlatform,
+      handleCommitSkuBin,
+      handleCommitTracking,
+    }),
+    [
+      handleCommitCondition,
+      handleCommitShipBy,
+      handleCommitStageAssign,
+      handleCommitSubtitleField,
+      handleCommitPlatform,
+      handleCommitSkuBin,
+      handleCommitTracking,
+    ],
+  );
+  const recordPlane = useMemo<OrdersSpreadsheetRecordPlane>(
+    () => ({ record: openRecord, close: closeRecord, records: displayedRecords, todayKey, getStaffName, commits }),
+    [openRecord, closeRecord, displayedRecords, todayKey, getStaffName, commits],
+  );
+  const stripMode = queueMode === 'shipped' ? 'shipped' : 'to-ship';
+
   const shellRef = useRef<HTMLDivElement>(null);
 
   /** Header grip → a persisted per-track width. */
@@ -206,12 +268,12 @@ export function useOrdersSpreadsheet({
       // Resolve through the compound map: the header's key is a TRACK
       // (`fulfillment`, `item`, `status:1`), and the `?sort=` vocabulary is in
       // FACTS (`order`, `title`, `picked`). Slot tracks resolve via fieldId.
-      const col = compoundColumns.find((c) => c.key === key);
+      const col = indexColumns.find((c) => c.key === key);
       const resolved = queueSortForColumnKey(key, col?.fieldId);
       if (!resolved) return;
       setSort(resolved, nextDir);
     },
-    [setSort, compoundColumns],
+    [setSort, indexColumns],
   );
 
   const isSearching = Boolean(searchValue.trim());
@@ -220,7 +282,7 @@ export function useOrdersSpreadsheet({
 
   /* The header's ACTIVE key, mapped back from the `?sort=` fact. */
   const sortedTrack =
-    compoundColumns.find((c) => queueSortForColumnKey(c.key, c.fieldId) === sort)?.key ??
+    indexColumns.find((c) => queueSortForColumnKey(c.key, c.fieldId) === sort)?.key ??
     Object.entries(COMPOUND_TRACK_SORT_KEYS).find(([, fact]) => fact === sort)?.[0];
   const columnSort =
     isQueueColumnSort(sort) && !isQueueNamePinSort(sort)
@@ -329,8 +391,8 @@ export function useOrdersSpreadsheet({
       columns: [...ORDER_EXPORT_COLUMNS],
       toRow: (row: ShippedOrder) => buildOrderExportRow(row),
     },
-    // COMPOUND (two-row) layout — the one row shape across every table, MATERIALIZED from the effective slot layout (staff ??
-    columns: compoundColumns,
+    // INDEX (one line per order) layout — MATERIALIZED from the effective slot layout, never a hand array.
+    columns: indexColumns,
     // Fields picker data — DataTable renders it when the definition declares
     // `fieldsMenu` (org/staff slot binding lives behind it). Header and
     // under-title drags both write through `fields.onReorderByDrop`.
@@ -341,7 +403,7 @@ export function useOrdersSpreadsheet({
     rows: displayedRecords,
     getRowId: getTableRowId,
     scrollToKey: findScrollToKey,
-    sort: columnSort && isQueueSortableColumnKey(columnSort, compoundColumns.find((c) => c.key === columnSort)?.fieldId)
+    sort: columnSort && isQueueSortableColumnKey(columnSort, indexColumns.find((c) => c.key === columnSort)?.fieldId)
       ? columnSort
       : null,
     dir: columnSortDir,
@@ -366,19 +428,41 @@ export function useOrdersSpreadsheet({
     className,
     testId: dataTestId,
     selectionScope,
+    recordPlane,
     actionStrip: (
       <OrdersMorphingHost
+        placement="action-row"
         records={displayedRecords}
         selectedIds={selectedIds}
-        mode={queueMode === 'shipped' ? 'shipped' : 'to-ship'}
-        openRecordStrip={openRecordStrip}
+        mode={stripMode}
+        openRecordStrip={
+          openRecord ? (
+            <OrderRecordActionStrip
+              key={openRecord.id}
+              record={openRecord}
+              mode={stripMode}
+              checked={selectedIds.has(Number(openRecord.id))}
+              onToggleSelect={handleToggleSelect}
+              onOpenLabels={onOpenLabels}
+            />
+          ) : null
+        }
+      />
+    ),
+    // The check-set's verbs ride the header, which becomes the bulk bar.
+    bulkBar: (
+      <OrdersMorphingHost
+        placement="header"
+        records={displayedRecords}
+        selectedIds={selectedIds}
+        mode={stripMode}
       />
     ),
     // A header key on the compound row is a TRACK; the sort vocabulary is in
     // FACTS. `queueSortForColumnKey` bridges them, and this predicate is what
     // keeps the header offering the sorts the engine will actually perform.
     isSortable: (key) => {
-      const col = compoundColumns.find((c) => c.key === key);
+      const col = indexColumns.find((c) => c.key === key);
       return isQueueSortableColumnKey(key, col?.fieldId);
     },
     selectGutterChrome: 'hover' as const,
@@ -392,6 +476,7 @@ export function useOrdersSpreadsheet({
         selectedIds={selectedIds}
         queueMode={queueMode}
         onToggleGroup={handleToggleGroup}
+        onRowClick={handleRowAction}
         renderRow={(record, stripeIndex, leafRowIndex, quietIdentity) =>
           renderLeaf(record, stripeIndex, visible, leafRowIndex, quietIdentity)
         }

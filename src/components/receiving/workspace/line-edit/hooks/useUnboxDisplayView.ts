@@ -4,7 +4,6 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
-  dispatchAssistantDockClose,
   dispatchStationDeskOccupantClose,
   STATION_DISPLAYS_CLOSE_EVENT,
 } from '@/utils/events';
@@ -143,10 +142,7 @@ export function useUnboxDisplayView(currentRecordId: number | null): UnboxDispla
 
   const setDisplay = useCallback((tab: UnboxDisplayNav | null, opts?: SetUnboxDisplayOpts) => {
     const next = buildDisplayPending(tab, opts, null);
-    if (tab) {
-      dispatchAssistantDockClose();
-      dispatchStationDeskOccupantClose();
-    }
+    if (tab) dispatchStationDeskOccupantClose();
     setSnapshot(next);
   }, []);
 

@@ -3,7 +3,7 @@
 import type { ComponentType, ReactNode } from 'react';
 import { motion } from '@/design-system/motion';
 import { cn } from '@/utils/_cn';
-import { framerVariants } from '@/design-system/foundations/motion-framer';
+import { motionVariants } from '@/design-system/foundations/motion-presets';
 import { MONITOR_SECTION_CARD_PADDED } from './shell';
 
 export type MonitorSectionCardProps = {
@@ -20,7 +20,7 @@ export type MonitorSectionCardProps = {
   className?: string;
   /**
    * When true, wraps as `motion.section` with `monitorStaggerItem` variants.
-   * Parent must use `framerVariants.monitorStaggerContainer`.
+   * Parent must use `motionVariants.monitorStaggerContainer`.
    */
   stagger?: boolean;
   /** Extra header actions (right side when no headline). */
@@ -84,7 +84,7 @@ export function SectionCard({
 
   if (stagger) {
     return (
-      <motion.section id={htmlId} variants={framerVariants.monitorStaggerItem} className={shellClass}>
+      <motion.section id={htmlId} variants={motionVariants.monitorStaggerItem} className={shellClass}>
         {body}
       </motion.section>
     );

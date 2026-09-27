@@ -3,8 +3,8 @@
 import { useState, useRef, type MouseEvent as ReactMouseEvent, type ReactNode } from 'react';
 import type { Variants } from '@/design-system/motion';
 import { motion } from '@/design-system/motion';
-import { framerPresence, framerTransition, motionBezier } from '@/design-system/foundations/motion-framer';
-import { useMotionPresence, useMotionTransition } from '@/design-system/foundations/motion-framer-hooks';
+import { motionPresence, motionTransition, motionBezier } from '@/design-system/foundations/motion-presets';
+import { useMotionPresence, useMotionTransition } from '@/design-system/foundations/motion-presets-hooks';
 import { SIDEBAR_RAIL_INSET_LEFT } from '@/components/layout/header-shell';
 import { Check, ChevronDown } from '@/components/Icons';
 import { CompactActivityRow } from '@/components/ui/CompactActivityRow';
@@ -18,7 +18,7 @@ import { RailRowMenu } from './RailRowMenu';
 import type { RailRowAction } from './rail-row-actions';
 import { useRailHoverPreview } from './useRailHoverPreview';
 
-/** No-op `onUpdate` — its mere presence forces framer to run the row's reveal on the MAIN-THREAD (JS) animator instead of the compositor… */
+/** No-op `onUpdate` — its mere presence forces Motion to run the row's reveal on the MAIN-THREAD (JS) animator instead of the compositor… */
 const keepOnMainThread = () => {};
 
 /** Hides the row's trailing age while the ⋮ is showing. */
@@ -51,7 +51,7 @@ export function RailRow<TRow>({
   isCollapsed: boolean;
   showInlinePkgChip: boolean;
   /** Present on stagger rails — the row rides the parent ul's `show` timeline via
-   * these variants. Never pair with Framer `layout` — projection rubber-bands
+   * these variants. Never pair with Motion `layout` — projection rubber-bands
    * every row when the context column resizes (Displays dual-rail / sash). */
   staggerItemVariants?: Variants;
   onToggleGroup?: () => void;
@@ -84,8 +84,8 @@ export function RailRow<TRow>({
     enabled: Boolean(renderPopover) && !editActive && !isDisabled && !menuOpen,
   });
 
-  const crudPresence = useMotionPresence(framerPresence.sidebarRailRow);
-  const crudTransition = useMotionTransition(framerTransition.sidebarRailRowMount);
+  const crudPresence = useMotionPresence(motionPresence.sidebarRailRow);
+  const crudTransition = useMotionTransition(motionTransition.sidebarRailRowMount);
 
   const pkgChip = showInlinePkgChip ? (
     <HoverTooltip label={`Expand — show ${groupSize - 1} more in this package`} asChild focusable={false}>
@@ -125,7 +125,7 @@ export function RailRow<TRow>({
       ref={rowRef}
       role="option"
       aria-selected={editActive ? isChecked : isSelected}
-      // Presence only (scan-in / dismiss) — NEVER Framer `layout`.
+      // Presence only (scan-in / dismiss) — NEVER Motion `layout`.
       {...motionProps}
       // Full-bleed host:
       className="group/railrow relative"

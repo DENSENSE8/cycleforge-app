@@ -8,7 +8,7 @@
 import type { ReactNode } from 'react';
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { motion, useReducedMotion } from '@/design-system/motion';
-import { motionBezier } from '@/design-system/foundations/motion-framer';
+import { motionBezier } from '@/design-system/foundations/motion-presets';
 import { cornerClass } from '@/design-system/tokens/radius';
 import { navIconStrokeClass } from '@/components/icons/nav-weight';
 import { cn } from '@/utils/_cn';

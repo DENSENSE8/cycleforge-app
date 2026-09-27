@@ -1,0 +1,221 @@
+-- queue_counts_main: AFTER
+-- captured 2026-09-26T19:49:07Z as app_tenant (unpooled), app.current_org=00000000-0000-0000-0000-000000000001
+-- SQL: docs/refactors/sidebar/perf-explain/queue_counts_main.after.sql
+
+                                                                                                                                                                                                                                                                                                QUERY PLAN                                                                                                                                                                                                                                                                                                 
+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ Result  (cost=266084.95..266084.96 rows=1 width=40) (actual time=52.882..52.907 rows=1 loops=1)
+   Buffers: shared hit=16523
+   CTE scope
+     ->  Result  (cost=1700.58..175182.85 rows=2034 width=37) (actual time=34.281..38.570 rows=38 loops=1)
+           One-Time Filter: ((NULLIF(current_setting('app.current_org'::text, true), ''::text))::uuid = '00000000-0000-0000-0000-000000000001'::uuid)
+           Buffers: shared hit=16244
+           ->  Merge Right Anti Join  (cost=1700.58..3665.95 rows=2034 width=51) (actual time=30.941..33.440 rows=38 loops=1)
+                 Merge Cond: (sal_out.shipment_id = o.shipment_id)
+                 Buffers: shared hit=15303
+                 ->  Result  (cost=0.29..4965.00 rows=1874 width=24) (actual time=0.025..14.933 rows=4745 loops=1)
+                       One-Time Filter: ((NULLIF(current_setting('app.current_org'::text, true), ''::text))::uuid = '00000000-0000-0000-0000-000000000001'::uuid)
+                       Buffers: shared hit=14229
+                       ->  Index Scan using idx_station_activity_logs_shipment_id on station_activity_logs sal_out  (cost=0.29..4965.00 rows=1874 width=24) (actual time=0.023..14.439 rows=4745 loops=1)
+                             Filter: ((organization_id = '00000000-0000-0000-0000-000000000001'::uuid) AND ((activity_type)::text = 'SHIP_CONFIRM'::text))
+                             Rows Removed by Filter: 12404
+                             Buffers: shared hit=14229
+                 ->  Sort  (cost=1700.28..1705.95 rows=2268 width=51) (actual time=17.255..17.542 rows=1791 loops=1)
+                       Sort Key: o.shipment_id
+                       Sort Method: quicksort  Memory: 166kB
+                       Buffers: shared hit=1074
+                       ->  Hash Left Join  (cost=1314.16..1573.87 rows=2268 width=51) (actual time=11.750..16.768 rows=1791 loops=1)
+                             Hash Cond: (o.shipment_id = stn.id)
+                             Filter: ((COALESCE(TRIM(BOTH FROM stn.tracking_number_raw), ''::text) <> ''::text) AND (NOT COALESCE((stn.is_carrier_accepted OR stn.is_in_transit OR stn.is_out_for_delivery OR stn.is_delivered OR ((COALESCE(btrim(stn.latest_status_category), ''::text) <> ''::text) AND (upper(btrim(stn.latest_status_category)) <> ALL ('{LABEL_CREATED,UNKNOWN}'::text[]))) OR (upper(COALESCE(stn.latest_status_label, ''::text)) ~~ '%MOVING THROUGH NETWORK%'::text) OR (upper(COALESCE(stn.latest_status_description, ''::text)) ~~ '%MOVING THROUGH NETWORK%'::text)), false)))
+                             Rows Removed by Filter: 2816
+                             Buffers: shared hit=1074
+                             ->  Seq Scan on orders o  (cost=0.00..247.75 rows=4558 width=51) (actual time=0.075..2.369 rows=4607 loops=1)
+                                   Filter: ((shipment_id IS NOT NULL) AND (organization_id = '00000000-0000-0000-0000-000000000001'::uuid) AND (COALESCE(fulfillment_channel, ''::text) <> 'AFN'::text))
+                                   Rows Removed by Filter: 576
+                                   Buffers: shared hit=170
+                             ->  Hash  (cost=1174.13..1174.13 rows=11202 width=72) (actual time=11.604..11.604 rows=11202 loops=1)
+                                   Buckets: 16384  Batches: 1  Memory Usage: 1117kB
+                                   Buffers: shared hit=904
+                                   ->  Seq Scan on shipping_tracking_numbers stn  (cost=0.00..1174.13 rows=11202 width=72) (actual time=0.010..8.770 rows=11202 loops=1)
+                                         Filter: (organization_id = (NULLIF(current_setting('app.current_org'::text, true), ''::text))::uuid)
+                                         Rows Removed by Filter: 804
+                                         Buffers: shared hit=904
+           SubPlan 2
+             ->  Seq Scan on tech_serial_numbers tsn  (cost=0.00..170.63 rows=4117 width=20) (actual time=0.030..2.510 rows=4117 loops=1)
+                   Filter: (organization_id = (NULLIF(current_setting('app.current_org'::text, true), ''::text))::uuid)
+                   Buffers: shared hit=78
+           SubPlan 4
+             ->  Result  (cost=30.00..107.30 rows=20 width=0) (actual time=0.022..0.022 rows=0 loops=37)
+                   One-Time Filter: ((NULLIF(current_setting('app.current_org'::text, true), ''::text))::uuid = o.organization_id)
+                   Buffers: shared hit=402
+                   InitPlan 3
+                     ->  Result  (cost=0.28..8.31 rows=1 width=0) (actual time=0.030..0.030 rows=0 loops=4)
+                           One-Time Filter: ((NULLIF(current_setting('app.current_org'::text, true), ''::text))::uuid = o.organization_id)
+                           Buffers: shared hit=12
+                           ->  Index Scan using idx_orders_shipment_id on orders o2  (cost=0.28..8.31 rows=1 width=0) (actual time=0.027..0.027 rows=0 loops=4)
+                                 Index Cond: (shipment_id = o.shipment_id)
+                                 Filter: ((id <> o.id) AND (organization_id = o.organization_id))
+                                 Rows Removed by Filter: 1
+                                 Buffers: shared hit=12
+                   ->  Bitmap Heap Scan on station_activity_logs sal  (cost=30.00..107.30 rows=20 width=0) (actual time=0.021..0.021 rows=0 loops=37)
+                         Recheck Cond: (((organization_id = o.organization_id) AND ((activity_type)::text = ANY ('{TRACKING_SCANNED,FNSKU_SCANNED}'::text[])) AND (order_row_id = o.id)) OR ((organization_id = o.organization_id) AND ((activity_type)::text = ANY ('{TRACKING_SCANNED,FNSKU_SCANNED}'::text[])) AND (ext_order_id = o.order_id)) OR ((shipment_id IS NOT NULL) AND (shipment_id = o.shipment_id)))
+                         Filter: (((activity_type)::text = ANY ('{TRACKING_SCANNED,FNSKU_SCANNED}'::text[])) AND (organization_id = o.organization_id) AND ((order_row_id = o.id) OR (ext_order_id = o.order_id) OR ((shipment_id IS NOT NULL) AND (shipment_id = o.shipment_id) AND ((metadata ->> 'order_row_id'::text) IS NULL) AND (o.shipment_id IS NOT NULL) AND (NOT (InitPlan 3).col1))))
+                         Rows Removed by Filter: 0
+                         Heap Blocks: exact=17
+                         Buffers: shared hit=402
+                         ->  BitmapOr  (cost=21.68..21.68 rows=21 width=0) (actual time=0.016..0.016 rows=0 loops=37)
+                               Buffers: shared hit=373
+                               ->  Bitmap Index Scan on idx_sal_org_type_row_id  (cost=0.00..8.68 rows=10 width=0) (actual time=0.008..0.008 rows=0 loops=37)
+                                     Index Cond: ((organization_id = o.organization_id) AND ((activity_type)::text = ANY ('{TRACKING_SCANNED,FNSKU_SCANNED}'::text[])) AND (order_row_id = o.id))
+                                     Buffers: shared hit=151
+                               ->  Bitmap Index Scan on idx_sal_org_type_ext_order  (cost=0.00..8.69 rows=10 width=0) (actual time=0.004..0.004 rows=0 loops=37)
+                                     Index Cond: ((organization_id = o.organization_id) AND ((activity_type)::text = ANY ('{TRACKING_SCANNED,FNSKU_SCANNED}'::text[])) AND (ext_order_id = o.order_id))
+                                     Buffers: shared hit=148
+                               ->  Bitmap Index Scan on idx_station_activity_logs_shipment_id  (cost=0.00..4.30 rows=1 width=0) (actual time=0.002..0.002 rows=1 loops=37)
+                                     Index Cond: ((shipment_id IS NOT NULL) AND (shipment_id = o.shipment_id))
+                                     Buffers: shared hit=74
+           SubPlan 6
+             ->  Result  (cost=30.16..155.49 rows=33 width=0) (actual time=0.015..0.015 rows=0 loops=38)
+                   One-Time Filter: ((NULLIF(current_setting('app.current_org'::text, true), ''::text))::uuid = o.organization_id)
+                   Buffers: shared hit=350
+                   InitPlan 5
+                     ->  Result  (cost=0.28..8.31 rows=1 width=0) (actual time=0.007..0.008 rows=0 loops=2)
+                           One-Time Filter: ((NULLIF(current_setting('app.current_org'::text, true), ''::text))::uuid = o.organization_id)
+                           Buffers: shared hit=6
+                           ->  Index Scan using idx_orders_shipment_id on orders o2_1  (cost=0.28..8.31 rows=1 width=0) (actual time=0.006..0.006 rows=0 loops=2)
+                                 Index Cond: (shipment_id = o.shipment_id)
+                                 Filter: ((id <> o.id) AND (organization_id = o.organization_id))
+                                 Rows Removed by Filter: 1
+                                 Buffers: shared hit=6
+                   ->  Bitmap Heap Scan on station_activity_logs sal_1  (cost=30.16..155.49 rows=33 width=0) (actual time=0.014..0.014 rows=0 loops=38)
+                         Recheck Cond: (((organization_id = o.organization_id) AND ((activity_type)::text = ANY ('{PACK_COMPLETED,PACK_SCAN}'::text[])) AND (order_row_id = o.id)) OR ((organization_id = o.organization_id) AND ((activity_type)::text = ANY ('{PACK_COMPLETED,PACK_SCAN}'::text[])) AND (ext_order_id = o.order_id)) OR ((shipment_id IS NOT NULL) AND (shipment_id = o.shipment_id)))
+                         Filter: (((activity_type)::text = ANY ('{PACK_COMPLETED,PACK_SCAN}'::text[])) AND (organization_id = o.organization_id) AND ((order_row_id = o.id) OR (ext_order_id = o.order_id) OR ((shipment_id IS NOT NULL) AND (shipment_id = o.shipment_id) AND ((metadata ->> 'order_row_id'::text) IS NULL) AND (o.shipment_id IS NOT NULL) AND (NOT (InitPlan 5).col1))))
+                         Rows Removed by Filter: 0
+                         Heap Blocks: exact=24
+                         Buffers: shared hit=350
+                         ->  BitmapOr  (cost=21.84..21.84 rows=35 width=0) (actual time=0.012..0.012 rows=0 loops=38)
+                               Buffers: shared hit=320
+                               ->  Bitmap Index Scan on idx_sal_org_type_row_id  (cost=0.00..8.75 rows=17 width=0) (actual time=0.006..0.006 rows=0 loops=38)
+                                     Index Cond: ((organization_id = o.organization_id) AND ((activity_type)::text = ANY ('{PACK_COMPLETED,PACK_SCAN}'::text[])) AND (order_row_id = o.id))
+                                     Buffers: shared hit=92
+                               ->  Bitmap Index Scan on idx_sal_org_type_ext_order  (cost=0.00..8.76 rows=17 width=0) (actual time=0.005..0.005 rows=0 loops=38)
+                                     Index Cond: ((organization_id = o.organization_id) AND ((activity_type)::text = ANY ('{PACK_COMPLETED,PACK_SCAN}'::text[])) AND (ext_order_id = o.order_id))
+                                     Buffers: shared hit=152
+                               ->  Bitmap Index Scan on idx_station_activity_logs_shipment_id  (cost=0.00..4.30 rows=1 width=0) (actual time=0.001..0.001 rows=1 loops=38)
+                                     Index Cond: ((shipment_id IS NOT NULL) AND (shipment_id = o.shipment_id))
+                                     Buffers: shared hit=76
+           SubPlan 7
+             ->  Limit  (cost=8.33..8.34 rows=1 width=24) (actual time=0.012..0.012 rows=0 loops=38)
+                   Buffers: shared hit=111
+                   ->  Sort  (cost=8.33..8.34 rows=1 width=24) (actual time=0.012..0.012 rows=0 loops=38)
+                         Sort Key: (CASE wa_dl.status WHEN 'IN_PROGRESS'::assignment_status_enum THEN 1 WHEN 'ASSIGNED'::assignment_status_enum THEN 2 WHEN 'OPEN'::assignment_status_enum THEN 3 WHEN 'DONE'::assignment_status_enum THEN 4 ELSE 5 END), wa_dl.updated_at DESC, wa_dl.id DESC
+                         Sort Method: quicksort  Memory: 25kB
+                         Buffers: shared hit=111
+                         ->  Result  (cost=0.29..8.32 rows=1 width=24) (actual time=0.007..0.008 rows=0 loops=38)
+                               One-Time Filter: ((NULLIF(current_setting('app.current_org'::text, true), ''::text))::uuid = o.organization_id)
+                               Buffers: shared hit=105
+                               ->  Index Scan using idx_wa_org_entity on work_assignments wa_dl  (cost=0.29..8.31 rows=1 width=24) (actual time=0.006..0.007 rows=0 loops=38)
+                                     Index Cond: ((organization_id = o.organization_id) AND (entity_id = o.id))
+                                     Filter: ((entity_type = 'ORDER'::work_entity_type_enum) AND (work_type = 'TEST'::work_type_enum))
+                                     Rows Removed by Filter: 0
+                                     Buffers: shared hit=105
+   InitPlan 9
+     ->  Aggregate  (cost=137.54..137.55 rows=1 width=32) (actual time=38.901..38.902 rows=1 loops=1)
+           Buffers: shared hit=16244
+           ->  Subquery Scan on g  (cost=137.29..137.52 rows=8 width=27) (actual time=38.885..38.888 rows=5 loops=1)
+                 Buffers: shared hit=16244
+                 ->  HashAggregate  (cost=137.29..137.44 rows=8 width=15) (actual time=38.880..38.881 rows=5 loops=1)
+                       Group Key: s.has_tech_scan, s.has_pack_scan, s.is_out_of_stock
+                       Batches: 1  Memory Usage: 24kB
+                       Buffers: shared hit=16244
+                       ->  CTE Scan on scope s  (cost=0.00..40.68 rows=2034 width=12) (actual time=34.284..38.578 rows=38 loops=1)
+                             Buffers: shared hit=16244
+   InitPlan 15
+     ->  Aggregate  (cost=89277.24..89277.25 rows=1 width=4) (actual time=1.648..1.654 rows=1 loops=1)
+           Buffers: shared hit=219
+           ->  CTE Scan on scope o_1  (cost=0.00..89275.01 rows=890 width=0) (actual time=1.519..1.647 rows=32 loops=1)
+                 Filter: (((NOT (ANY ((organization_id = (hashed SubPlan 11).col1) AND (id = (hashed SubPlan 11).col2)))) AND (NOT (ANY ((organization_id = (hashed SubPlan 13).col1) AND (id = (hashed SubPlan 13).col2))))) OR ((NOT COALESCE(docs_not_required, false)) AND (NOT EXISTS(SubPlan 14))))
+                 Rows Removed by Filter: 6
+                 Buffers: shared hit=219
+                 SubPlan 11
+                   ->  Hash Join  (cost=137.34..215.56 rows=93 width=24) (actual time=1.089..1.459 rows=49 loops=1)
+                         Hash Cond: (l.document_id = d.id)
+                         Buffers: shared hit=136
+                         ->  Seq Scan on document_entity_links l  (cost=0.00..75.80 rows=920 width=28) (actual time=0.011..0.846 rows=965 loops=1)
+                               Filter: ((entity_type = 'ORDER'::text) AND (organization_id = (NULLIF(current_setting('app.current_org'::text, true), ''::text))::uuid))
+                               Rows Removed by Filter: 1054
+                               Buffers: shared hit=27
+                         ->  Hash  (cost=135.97..135.97 rows=109 width=20) (actual time=0.492..0.493 rows=49 loops=1)
+                               Buckets: 1024  Batches: 1  Memory Usage: 11kB
+                               Buffers: shared hit=109
+                               ->  Seq Scan on documents d  (cost=0.00..135.97 rows=109 width=20) (actual time=0.431..0.480 rows=49 loops=1)
+                                     Filter: ((document_type = 'shipping_label'::text) AND (organization_id = (NULLIF(current_setting('app.current_org'::text, true), ''::text))::uuid))
+                                     Rows Removed by Filter: 1030
+                                     Buffers: shared hit=109
+                 SubPlan 13
+                   ->  Index Only Scan using idx_documents_org_entity on documents d_1  (cost=0.29..6.33 rows=1 width=20) (actual time=0.024..0.024 rows=0 loops=1)
+                         Index Cond: ((organization_id = (NULLIF(current_setting('app.current_org'::text, true), ''::text))::uuid) AND (entity_type = 'SHIPPING_LABEL'::text))
+                         Heap Fetches: 0
+                         Buffers: shared hit=3
+                 SubPlan 14
+                   ->  Result  (cost=8.87..20.93 rows=1 width=0) (actual time=0.012..0.012 rows=1 loops=9)
+                         One-Time Filter: ((NULLIF(current_setting('app.current_org'::text, true), ''::text))::uuid = o_1.organization_id)
+                         Buffers: shared hit=80
+                         ->  Nested Loop  (cost=8.87..20.93 rows=1 width=0) (actual time=0.011..0.011 rows=1 loops=9)
+                               Buffers: shared hit=80
+                               ->  Bitmap Heap Scan on document_entity_links l_1  (cost=8.58..12.60 rows=1 width=20) (actual time=0.005..0.006 rows=2 loops=9)
+                                     Recheck Cond: (((organization_id = o_1.organization_id) AND (entity_type = 'ORDER'::text) AND (entity_id = o_1.id)) OR ((organization_id = o_1.organization_id) AND (entity_type = 'SKU'::text) AND (entity_id = o_1.sku_catalog_id)))
+                                     Heap Blocks: exact=15
+                                     Buffers: shared hit=35
+                                     ->  BitmapOr  (cost=8.58..8.58 rows=1 width=0) (actual time=0.004..0.004 rows=0 loops=9)
+                                           Buffers: shared hit=20
+                                           ->  Bitmap Index Scan on idx_document_entity_links_entity  (cost=0.00..4.29 rows=1 width=0) (actual time=0.003..0.003 rows=2 loops=9)
+                                                 Index Cond: ((organization_id = o_1.organization_id) AND (entity_type = 'ORDER'::text) AND (entity_id = o_1.id))
+                                                 Buffers: shared hit=18
+                                           ->  Bitmap Index Scan on idx_document_entity_links_entity  (cost=0.00..4.29 rows=1 width=0) (actual time=0.000..0.000 rows=0 loops=9)
+                                                 Index Cond: ((organization_id = o_1.organization_id) AND (entity_type = 'SKU'::text) AND (entity_id = o_1.sku_catalog_id))
+                                                 Buffers: shared hit=2
+                               ->  Index Scan using ux_documents_org_id on documents d_2  (cost=0.28..8.30 rows=1 width=20) (actual time=0.003..0.003 rows=0 loops=15)
+                                     Index Cond: ((organization_id = o_1.organization_id) AND (id = l_1.document_id))
+                                     Filter: (COALESCE(document_type, ''::text) <> 'shipping_label'::text)
+                                     Rows Removed by Filter: 1
+                                     Buffers: shared hit=45
+   InitPlan 18
+     ->  Aggregate  (cost=1487.29..1487.30 rows=1 width=4) (actual time=12.327..12.329 rows=1 loops=1)
+           Buffers: shared hit=60
+           CTE shipped_day
+             ->  Subquery Scan on z  (cost=4.68..4.71 rows=1 width=16) (actual time=11.875..11.877 rows=1 loops=1)
+                   Buffers: shared hit=2
+                   ->  Result  (cost=4.68..4.69 rows=1 width=32) (actual time=11.866..11.868 rows=1 loops=1)
+                         Buffers: shared hit=2
+                         InitPlan 16
+                           ->  Limit  (cost=2.12..4.68 rows=1 width=32) (actual time=11.861..11.863 rows=1 loops=1)
+                                 Buffers: shared hit=2
+                                 ->  Hash Join  (cost=2.12..14.93 rows=5 width=32) (actual time=11.860..11.861 rows=1 loops=1)
+                                       Hash Cond: (pg_timezone_names.name = (org.settings ->> 'timezone'::text))
+                                       Buffers: shared hit=2
+                                       ->  Function Scan on pg_timezone_names  (cost=0.00..10.00 rows=1000 width=32) (actual time=11.699..11.749 rows=500 loops=1)
+                                       ->  Hash  (cost=2.10..2.10 rows=1 width=289) (actual time=0.040..0.041 rows=1 loops=1)
+                                             Buckets: 1024  Batches: 1  Memory Usage: 10kB
+                                             Buffers: shared hit=2
+                                             ->  Seq Scan on organizations org  (cost=0.00..2.10 rows=1 width=289) (actual time=0.027..0.029 rows=1 loops=1)
+                                                   Filter: (id = '00000000-0000-0000-0000-000000000001'::uuid)
+                                                   Rows Removed by Filter: 7
+                                                   Buffers: shared hit=2
+           ->  Result  (cost=0.43..1480.62 rows=785 width=0) (actual time=12.323..12.324 rows=0 loops=1)
+                 One-Time Filter: ((NULLIF(current_setting('app.current_org'::text, true), ''::text))::uuid = '00000000-0000-0000-0000-000000000001'::uuid)
+                 Buffers: shared hit=60
+                 ->  Nested Loop  (cost=0.43..1480.62 rows=785 width=0) (actual time=12.321..12.322 rows=0 loops=1)
+                       Buffers: shared hit=60
+                       ->  CTE Scan on shipped_day d_3  (cost=0.00..0.02 rows=1 width=16) (actual time=11.877..11.878 rows=1 loops=1)
+                             Buffers: shared hit=2
+                       ->  Index Only Scan using idx_sal_org_station_activity_created on station_activity_logs sal_2  (cost=0.41..1472.74 rows=785 width=8) (actual time=0.439..0.440 rows=0 loops=1)
+                             Index Cond: ((organization_id = '00000000-0000-0000-0000-000000000001'::uuid) AND (station = 'PACK'::text) AND (created_at >= d_3.lo) AND (created_at < d_3.hi))
+                             Heap Fetches: 0
+                             Buffers: shared hit=58
+ Planning:
+   Buffers: shared hit=2492 dirtied=1
+ Planning Time: 7.189 ms
+ Execution Time: 54.374 ms
+(213 rows)
+

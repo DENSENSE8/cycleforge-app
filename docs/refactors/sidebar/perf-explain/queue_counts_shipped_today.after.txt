@@ -1,0 +1,47 @@
+-- queue_counts_shipped_today: AFTER
+-- captured 2026-09-26T19:49:10Z as app_tenant (unpooled), app.current_org=00000000-0000-0000-0000-000000000001
+-- SQL: docs/refactors/sidebar/perf-explain/queue_counts_shipped_today.after.sql
+
+                                                                                             QUERY PLAN                                                                                             
+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ Result  (cost=1487.30..1487.31 rows=1 width=4) (actual time=11.967..11.970 rows=1 loops=1)
+   Buffers: shared hit=60
+   InitPlan 3
+     ->  Aggregate  (cost=1487.29..1487.30 rows=1 width=4) (actual time=11.964..11.967 rows=1 loops=1)
+           Buffers: shared hit=60
+           CTE shipped_day
+             ->  Subquery Scan on z  (cost=4.68..4.71 rows=1 width=16) (actual time=11.381..11.384 rows=1 loops=1)
+                   Buffers: shared hit=2
+                   ->  Result  (cost=4.68..4.69 rows=1 width=32) (actual time=11.234..11.237 rows=1 loops=1)
+                         Buffers: shared hit=2
+                         InitPlan 1
+                           ->  Limit  (cost=2.12..4.68 rows=1 width=32) (actual time=11.232..11.234 rows=1 loops=1)
+                                 Buffers: shared hit=2
+                                 ->  Hash Join  (cost=2.12..14.93 rows=5 width=32) (actual time=11.230..11.232 rows=1 loops=1)
+                                       Hash Cond: (pg_timezone_names.name = (org.settings ->> 'timezone'::text))
+                                       Buffers: shared hit=2
+                                       ->  Function Scan on pg_timezone_names  (cost=0.00..10.00 rows=1000 width=32) (actual time=11.063..11.112 rows=500 loops=1)
+                                       ->  Hash  (cost=2.10..2.10 rows=1 width=289) (actual time=0.052..0.052 rows=1 loops=1)
+                                             Buckets: 1024  Batches: 1  Memory Usage: 10kB
+                                             Buffers: shared hit=2
+                                             ->  Seq Scan on organizations org  (cost=0.00..2.10 rows=1 width=289) (actual time=0.025..0.032 rows=1 loops=1)
+                                                   Filter: (id = '00000000-0000-0000-0000-000000000001'::uuid)
+                                                   Rows Removed by Filter: 7
+                                                   Buffers: shared hit=2
+           ->  Result  (cost=0.43..1480.62 rows=785 width=0) (actual time=11.960..11.961 rows=0 loops=1)
+                 One-Time Filter: ((NULLIF(current_setting('app.current_org'::text, true), ''::text))::uuid = '00000000-0000-0000-0000-000000000001'::uuid)
+                 Buffers: shared hit=60
+                 ->  Nested Loop  (cost=0.43..1480.62 rows=785 width=0) (actual time=11.955..11.955 rows=0 loops=1)
+                       Buffers: shared hit=60
+                       ->  CTE Scan on shipped_day d  (cost=0.00..0.02 rows=1 width=16) (actual time=11.383..11.384 rows=1 loops=1)
+                             Buffers: shared hit=2
+                       ->  Index Only Scan using idx_sal_org_station_activity_created on station_activity_logs sal  (cost=0.41..1472.74 rows=785 width=8) (actual time=0.567..0.567 rows=0 loops=1)
+                             Index Cond: ((organization_id = '00000000-0000-0000-0000-000000000001'::uuid) AND (station = 'PACK'::text) AND (created_at >= d.lo) AND (created_at < d.hi))
+                             Heap Fetches: 0
+                             Buffers: shared hit=58
+ Planning:
+   Buffers: shared hit=612
+ Planning Time: 1.675 ms
+ Execution Time: 12.095 ms
+(39 rows)
+

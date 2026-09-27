@@ -18,7 +18,6 @@ export type { DisplaysVisitFrame } from './StationDisplaysPushStack';
 export { CartonDisplaysActionFloor } from './CartonDisplaysActionFloor';
 export { StationDisplaysEdgeToggle } from './StationDisplaysEdgeToggle';
 export { useDisplaysLeafChrome } from './displays-leaf-chrome';
-export { useYieldStationDisplaysOnAssistantOpen } from './useYieldStationDisplaysOnAssistantOpen';
 export { StationDenseFactStrip } from './StationDenseFactStrip';
 
 export { StationActionDossierShell } from './StationActionDossierShell';

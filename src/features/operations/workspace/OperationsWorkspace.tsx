@@ -8,7 +8,6 @@ import { useOperationsMode } from '@/components/sidebar/operations/useOperations
 import { useAssistantContext } from '@/hooks/useAssistantContext';
 import { OPERATIONS_SKILL } from '@/lib/assistant/page-skills';
 import { OperationsDashboard } from '@/features/operations/components/OperationsDashboard';
-import { OperationsInsightsView } from './OperationsInsightsView';
 import { OperationsHistoryView } from './OperationsHistoryView';
 import { OperationsReconciliationView } from './OperationsReconciliationView';
 import { OperationsChecksView } from './OperationsChecksView';
@@ -25,12 +24,9 @@ import { AdminLogsTab } from '@/components/admin/AdminLogsTab';
 /** Legacy `/operations?mode=plans` → Plans Live (`/forge`). */
 function OperationsPlansRedirect() {
   const router = useRouter();
-  const params = useSearchParams();
   useEffect(() => {
-    // The `?view=live` half is the console's own param, so it forwards; the
-    // other half used to land on Home Tasks, which no longer exists.
-    router.replace(params.get('view') === 'live' ? '/forge?view=live' : '/forge');
-  }, [router, params]);
+    router.replace('/forge');
+  }, [router]);
   return null;
 }
 
@@ -50,7 +46,6 @@ export function OperationsWorkspace() {
   }
 
   /* `analytics` is GONE (2026-09-16, operator ruling). */
-  if (mode === 'insights') return <OperationsInsightsView />;
   if (mode === 'history') return <OperationsHistoryView />;
   if (mode === 'signals') return <SignalsWorkspace />;
   if (mode === 'goals') return <GoalsAnalyticsTab />;

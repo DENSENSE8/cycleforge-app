@@ -2,7 +2,7 @@
 
 import { motion } from '@/design-system/motion';
 import { cn } from '@/utils/_cn';
-import { framerVariants } from '@/design-system/foundations/motion-framer';
+import { motionVariants } from '@/design-system/foundations/motion-presets';
 import { KpiTile, type KpiTileProps } from './KpiTile';
 
 export type KpiStripProps = {
@@ -10,7 +10,7 @@ export type KpiStripProps = {
   className?: string;
   /**
    * When true, each tile is a motion child of a Monitor stagger container.
-   * Parent must use `framerVariants.monitorStaggerContainer` with
+   * Parent must use `motionVariants.monitorStaggerContainer` with
    * `initial="hidden" animate="visible"`.
    */
   stagger?: boolean;
@@ -30,7 +30,7 @@ export function KpiStrip({ items, className, stagger = false, size }: KpiStripPr
 
   if (stagger) {
     return (
-      <motion.section variants={framerVariants.monitorStaggerItem} className={gridClass}>
+      <motion.section variants={motionVariants.monitorStaggerItem} className={gridClass}>
         {tiles}
       </motion.section>
     );

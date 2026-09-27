@@ -45,6 +45,13 @@ import {
   type DraftGraphClient,
   type DraftGraphInverse,
 } from '@/lib/workflow/draft-graph-writes';
+import { assignSkuBrand, createBrand, updateBrand } from '@/lib/brands/brands';
+import { sqlBrandStore, type Queryable } from '@/lib/brands/store';
+import {
+  BrandCreateMutationPayload,
+  BrandUpdateMutationPayload,
+  SkuBrandAssignPayload,
+} from '@/lib/schemas/brands';
 
 type Client = FeedWriteClient & DraftGraphClient;
 type Payload = Record<string, unknown>;
@@ -193,10 +200,89 @@ async function dispatchApply(
       return draftToDispatch(await draftRemoveEdge(client, orgId, p as never));
     case 'workflow_draft.set_annotations':
       return draftToDispatch(await draftSetAnnotations(client, orgId, p as never));
+    case 'brand.create':
+    case 'brand.update':
+    case 'sku_brand.assign':
+      return dispatchBrand(client, orgId, kind, payload);
     default:
       // review-class kinds never reach dispatchApply; anything else is a gap.
       return { ok: false, status: 400, error: `no apply path for mutation kind "${kind}"` };
   }
+}
+
+type DispatchResult =
+  | { ok: true; inverse: Inverse; targetRef: string | null }
+  | { ok: false; status: 400 | 404 | 409; error: string };
+
+function payloadError(kind: string, issues: ReadonlyArray<{ path: PropertyKey[]; message: string }>): DispatchResult {
+  const detail = issues.map((i) => `${i.path.map(String).join('.') || '(payload)'}: ${i.message}`).join('; ');
+  return { ok: false, status: 400, error: `invalid ${kind} payload — ${detail}` };
+}
+
+/** Brand vocabulary + SKU brand writes (review class: reached only through an approval or a revert). */
+async function dispatchBrand(
+  client: Client,
+  orgId: OrgId,
+  kind: 'brand.create' | 'brand.update' | 'sku_brand.assign',
+  payload: Payload,
+): Promise<DispatchResult> {
+  const store = sqlBrandStore(client as unknown as Queryable, orgId);
+  if (kind === 'brand.create') {
+    const parsed = BrandCreateMutationPayload.safeParse(payload);
+    if (!parsed.success) return payloadError(kind, parsed.error.issues);
+    const { assignSkuCatalogIds, dedupeKey: _dedupeKey, aliasSource, ...input } = parsed.data;
+    const r = await createBrand(store, { ...input, aliasSource: aliasSource ?? 'agent' });
+    if (!r.ok) return { ok: false, status: r.status, error: r.error };
+    if (assignSkuCatalogIds?.length) {
+      // A Zoho brand is the Zoho item's own fact; anything else a human just confirmed.
+      const source = aliasSource === 'zoho' ? 'zoho' : 'operator';
+      await store.writeDerivedBrands(
+        assignSkuCatalogIds.map((skuCatalogId) => ({ skuCatalogId, brandId: r.brand.id, confidence: 1, source })),
+      );
+    }
+    // Creating vocabulary is not undone by deleting it (SKUs may already point at it).
+    return { ok: true, inverse: null, targetRef: String(r.brand.id) };
+  }
+  if (kind === 'brand.update') {
+    const parsed = BrandUpdateMutationPayload.safeParse(payload);
+    if (!parsed.success) return payloadError(kind, parsed.error.issues);
+    const { brandId, dedupeKey: _dedupeKey, ...patch } = parsed.data;
+    const before = await store.getBrand(brandId);
+    if (!before) return { ok: false, status: 404, error: 'brand not found' };
+    const aliasesBefore = await store.listAliases(brandId);
+    const r = await updateBrand(store, brandId, { ...patch, aliasSource: 'agent' });
+    if (!r.ok) return { ok: false, status: r.status, error: r.error };
+    const had = new Set(aliasesBefore.map((a) => a.normalizedAlias));
+    const has = new Set(r.aliases.map((a) => a.normalizedAlias));
+    const inverse: Payload = {
+      brandId,
+      ...(r.brand.name !== before.name ? { name: before.name } : {}),
+      ...(r.brand.kind !== before.kind ? { kind: before.kind } : {}),
+      ...(r.brand.parentBrandId !== before.parentBrandId ? { parentBrandId: before.parentBrandId } : {}),
+      ...(r.brand.publisher !== before.publisher ? { publisher: before.publisher } : {}),
+      ...(r.brand.isActive !== before.isActive ? { isActive: before.isActive } : {}),
+      aliasesAdd: aliasesBefore.filter((a) => !has.has(a.normalizedAlias)).map((a) => a.alias),
+      aliasesRemove: r.aliases.filter((a) => !had.has(a.normalizedAlias)).map((a) => a.alias),
+    };
+    return { ok: true, inverse: r.changed ? { kind: 'brand.update', payload: inverse } : null, targetRef: String(brandId) };
+  }
+  const parsed = SkuBrandAssignPayload.safeParse(payload);
+  if (!parsed.success) return payloadError(kind, parsed.error.issues);
+  const { skuCatalogId, brandId, restore } = parsed.data;
+  if (brandId == null && !restore && parsed.data.reason === 'compat_mention') {
+    return {
+      ok: false,
+      status: 400,
+      error: 'a compatibility proposal names no brand — approve it with the brand to set (brandId)',
+    };
+  }
+  const r = await assignSkuBrand(store, { skuCatalogId, brandId, restore });
+  if (!r.ok) return { ok: false, status: r.status, error: r.error };
+  return {
+    ok: true,
+    inverse: { kind: 'sku_brand.assign', payload: { skuCatalogId, brandId: r.previous.brandId, restore: r.previous } },
+    targetRef: String(skuCatalogId),
+  };
 }
 
 function feedToDispatch(r: { ok: boolean; error?: string; status?: 400 | 404 | 409; inverse: FeedWriteInverse; entityId?: number }) {
@@ -406,6 +492,109 @@ export async function revertAgentMutation(
     });
   }
   return { ok: outcome.status === 200, status: outcome.status, error: outcome.error };
+}
+
+// ─── review (approval-first queue, LAWS T28) ─────────────────────────────────
+
+export interface ReviewAgentMutationInput {
+  organizationId: OrgId;
+  mutationId: number;
+  decision: 'approve' | 'reject';
+  actorStaffId: number | null;
+  /** The reviewer's permissions — the kind's own permission is required to decide it. */
+  actorPermissions: ReadonlySet<string>;
+  notes?: string | null;
+  /** Reviewer edits merged over the proposed payload before it applies (e.g. the brand a compat proposal lacks). */
+  payloadPatch?: Payload;
+  /** Restrict to these kinds (a domain-scoped queue); another kind is refused untouched. */
+  kinds?: readonly MutationKind[];
+}
+
+export type ReviewAgentMutationResult =
+  | { ok: true; status: 'applied' | 'rejected'; mutationId: number; targetRef: string | null }
+  | { ok: false; status: 400 | 403 | 404 | 409; error: string };
+
+class ReviewRefused extends Error {
+  constructor(readonly status: 400 | 403 | 404 | 409, message: string) {
+    super(message);
+  }
+}
+
+/**
+ * A human decides a queued proposal. Approve runs the kind's guarded write
+ * and marks the row applied (with its inverse, so it stays revertable);
+ * reject closes it. Any refusal rolls the whole transaction back.
+ */
+export async function reviewAgentMutation(
+  input: ReviewAgentMutationInput,
+  deps: ApplyAgentMutationDeps = defaultDeps,
+): Promise<ReviewAgentMutationResult> {
+  let outcome: { status: 'applied' | 'rejected'; kind: MutationKind; targetRef: string | null };
+  try {
+    outcome = await deps.runTransaction(input.organizationId, async (client) => {
+      const row = await client.query(
+        `SELECT status, mutation_kind, payload FROM agent_mutations
+          WHERE organization_id = $1 AND id = $2 FOR UPDATE`,
+        [input.organizationId, input.mutationId],
+      );
+      if (row.rows.length === 0) throw new ReviewRefused(404, 'mutation not found');
+      const r = row.rows[0];
+      if (r.status !== 'proposed' && r.status !== 'under_review') {
+        throw new ReviewRefused(409, `mutation is ${r.status}; only proposed mutations can be reviewed`);
+      }
+      const kind = String(r.mutation_kind);
+      if (!isMutationKind(kind)) throw new ReviewRefused(400, `unknown mutation kind "${kind}"`);
+      if (input.kinds && !input.kinds.includes(kind)) {
+        throw new ReviewRefused(400, `a "${kind}" mutation cannot be reviewed here`);
+      }
+      const need = MUTATION_KINDS[kind].permission;
+      if (!input.actorPermissions.has(need)) throw new ReviewRefused(403, `reviewing "${kind}" requires ${need}`);
+
+      if (input.decision === 'reject') {
+        await client.query(
+          `UPDATE agent_mutations
+              SET status = 'rejected', review_notes = COALESCE($3, review_notes), updated_at = NOW()
+            WHERE organization_id = $1 AND id = $2`,
+          [input.organizationId, input.mutationId, input.notes ?? null],
+        );
+        return { status: 'rejected' as const, kind, targetRef: null };
+      }
+
+      const payload: Payload = { ...((r.payload ?? {}) as Payload), ...(input.payloadPatch ?? {}) };
+      const applied = await dispatchApply(client, input.organizationId, kind, payload);
+      if (!applied.ok) throw new ReviewRefused(applied.status, applied.error);
+      await client.query(
+        `UPDATE agent_mutations
+            SET status = 'applied', payload = $3::jsonb, applied_by = $4, applied_at = NOW(),
+                review_notes = COALESCE($5, review_notes), extra_audit = $6::jsonb, updated_at = NOW()
+          WHERE organization_id = $1 AND id = $2`,
+        [
+          input.organizationId,
+          input.mutationId,
+          JSON.stringify(payload),
+          input.actorStaffId,
+          input.notes ?? null,
+          JSON.stringify({ inverse: applied.inverse, trust: mutationTrustClass(kind), reviewedBy: input.actorStaffId }),
+        ],
+      );
+      await insertAffects(client, input.organizationId, input.mutationId, kind, MUTATION_KINDS[kind].targetKind, applied.targetRef);
+      return { status: 'applied' as const, kind, targetRef: applied.targetRef };
+    });
+  } catch (err) {
+    if (err instanceof ReviewRefused) return { ok: false, status: err.status, error: err.message };
+    throw err;
+  }
+
+  await deps.sideEffects({
+    organizationId: input.organizationId,
+    mutationId: input.mutationId,
+    mutationKind: outcome.kind,
+    action: outcome.status === 'applied' ? AUDIT_ACTION.AGENT_MUTATION_APPLY : AUDIT_ACTION.AGENT_MUTATION_REJECT,
+    actorStaffId: input.actorStaffId,
+    targetRef: outcome.targetRef,
+    db: poolDb(deps),
+  });
+  return { ok: true, status: outcome.status, mutationId: input.mutationId, targetRef: outcome.targetRef };
 }
 
 // ─── helpers ─────────────────────────────────────────────────────────────────

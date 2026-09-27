@@ -170,15 +170,8 @@ export async function GET(
               AND sal.activity_type IN ('PACK_COMPLETED', 'PACK_SCAN')
               AND (
                 ($3::bigint IS NOT NULL AND sal.shipment_id = $3)
-                OR (
-                  (sal.metadata->>'order_row_id') ~ '^[0-9]+$'
-                  AND (sal.metadata->>'order_row_id')::int = $1
-                )
-                OR (
-                  $4 <> ''
-                  AND sal.metadata->>'order_id' IS NOT NULL
-                  AND sal.metadata->>'order_id' = $4
-                )
+                OR sal.order_row_id = $1
+                OR ($4 <> '' AND sal.ext_order_id = $4)
               )
             ORDER BY sal.created_at DESC, sal.id DESC
             LIMIT 200`,

@@ -26,7 +26,7 @@ Three items surfaced in the chassis discovery are actually **token-layer work** 
 
 1. **Central status-tone registry** — the chassis wants to kill per-page `STATUS_TONE` maps. That consolidation is a token-system task (§4). The chassis just consumes the result.
 2. **Theming mechanism (light/dark + density)** — the chassis Phase 4 *selects* a theme via `staff_preferences`, but the `data-theme` → CSS-var swap and the dark-theme completion live here (§5).
-3. **SoT inventory the chassis must "consume not fork"** — `z-index.ts`, `motion-framer.ts`, `CHIP_TONES`, `source-platform.ts`, `conditions.ts`, `unit-status.ts`, `unshipped-state.ts`, `outbound-state.ts`. This doc is the registry of those SoTs (§6) so the chassis has one authoritative list.
+3. **SoT inventory the chassis must "consume not fork"** — `z-index.ts`, `motion-presets.ts`, `CHIP_TONES`, `source-platform.ts`, `conditions.ts`, `unit-status.ts`, `unshipped-state.ts`, `outbound-state.ts`. This doc is the registry of those SoTs (§6) so the chassis has one authoritative list.
 
 ---
 
@@ -37,7 +37,7 @@ The token layer is genuinely strong in places. Do **not** rebuild these:
 - **Z-index scale** — `src/design-system/tokens/z-index.ts` (18 named bands), wired into Tailwind (`z-panel`/`z-modal`/…), CSS vars (`--ds-zIndex-*`), and inline usage. Complete. (See SoT memory: never hardcode `z-[NNN]`.)
 - **Color token structure** — `tokens/colors/base.ts` (raw palettes) → `tokens/colors/semantic.ts` (`semanticColors`: text/background/surface/border/outline/functional/status/gradient/overlay/tonalNesting + dashboard nested tones). Clean two-tier separation.
 - **CSS-var generation** — `tokens/css-variables.ts` flattens the token tree into `--ds-{section}-{name}` vars + a `:root` style block. Mechanism is solid.
-- **Motion foundations** — `foundations/motion.ts` (durations/easings) + `foundations/motion-framer.ts` (`motionBezier`, `framerDuration`, `framerTransition`, `framerPresence`, `framerGesture`, slide/pager variants, mobile set). The library is comprehensive — the gap is *adoption*, not coverage (§7).
+- **Motion foundations** — `foundations/motion.ts` (durations/easings) + `foundations/motion-presets.ts` (`motionBezier`, `motionDuration`, `motionTransition`, `motionPresence`, `motionGesture`, slide/pager variants, mobile set). The library is comprehensive — the gap is *adoption*, not coverage (§7).
 - **Exemplary tone/label registries (the pattern to copy):**
   - `src/lib/unit-status.ts` — `STATUS_TONES` (14 states × `badge`/`chip`) + `unitStatusBadgeClass()`/`unitStatusChipClass()`.
   - `src/lib/outbound-state.ts` / `src/lib/unshipped-state.ts` — `*_STATE_META` (label/description/pill/dot), deliberately hue-coordinated at the `PACKED_STAGED` seam.
@@ -198,14 +198,14 @@ The single list the chassis (and everyone) must consume, never fork:
 | Unshipped/outbound dots | `lib/unshipped-state.ts` + `lib/outbound-state.ts` | hand-pick dot hues (must stay hue-distinct) |
 | Copy-chip tones | `CopyChip.tsx` `CHIP_TONES` | recolor chips (FNSKU ≠ Tracking) |
 | Sidebar gutter / search band | `SIDEBAR_GUTTER`, `sidebarHeaderSearchRowClass` | hardcode sidebar padding/row heights |
-| Motion | `foundations/motion-framer.ts` | inline `transition`/`animate` numbers (T3) |
+| Motion | `foundations/motion-presets.ts` | inline `transition`/`animate` numbers (T3) |
 | Status tones (post-T1) | per-domain `lib/<domain>-status.ts` | inline `STATUS_TONE` |
 
 ---
 
 ## 7. T3 — Motion-token adoption
 
-**Problem:** ~155 inline `animate={{…}}` + ~111 inline `transition={{…}}` across components duplicate values that already exist as `framerDuration`/`framerTransition`/`framerPresence` (e.g. `SidebarRailShell` hardcodes `duration: 0.18, ease: [0.22,1,0.36,1]` = `framerDuration.stationChevron` + `motionBezier.easeOut`). The library is complete; adoption isn't.
+**Problem:** ~155 inline `animate={{…}}` + ~111 inline `transition={{…}}` across components duplicate values that already exist as `motionDuration`/`motionTransition`/`motionPresence` (e.g. `SidebarRailShell` hardcodes `duration: 0.18, ease: [0.22,1,0.36,1]` = `motionDuration.stationChevron` + `motionBezier.easeOut`). The library is complete; adoption isn't.
 
 **Direction:**
 - Catalog the inline instances; tag each to its token equivalent (most map 1:1 to an existing preset).
@@ -214,10 +214,10 @@ The single list the chassis (and everyone) must consume, never fork:
 
 **🔧 In progress 2026-06-21 — easing-curve consolidation (the clean part):**
 - The duplicated easing magic-array `[0.22, 1, 0.36, 1]` (= `motionBezier.easeOut`) appeared in ~30 spots across 25 files. Replacing the literal with the named token is exact + zero timing change. Pattern: `import { motionBezier }` → `ease: motionBezier.easeOut`.
-- **✅ COMPLETE 2026-06-21:** every framer occurrence now sources from `motionBezier.easeOut` (verified repo-wide; tsc clean). `StationTesting`'s local `STATION_EASE_OUT` const now points at the token too. The only remaining match is `FilterRefinementBar`'s Tailwind `ease-[0.22,1,0.36,1]` *class* — intentionally excluded (CSS utility, not a framer value).
-- **Correction to an earlier audit note:** durations do NOT map cleanly (`0.18` ≠ `framerDuration.stationChevron`, which is `0.28`); value-only matching is misleading, so durations need a careful per-site pass with semantically-correct tokens — NOT a blind swap.
-- **✅ All ~24 framer files done** across iterations: SidebarRailShell, TabSwitch, SelectionActionBar, RightPaneOverlay, EventTimeline, MobileBottomActionBar, FavoritesDefaultView, RecentActivityRailBase, LocalPickupReviewPanel, BootSplash, OrderSearchEmptyState, MobileRowCard, StationScanBar, SquareProductSearchPopover, ReceivingRightPane, UpNextActionButton, StationTesting, UpNextFilterBar (×2), CartonAddPopover, ReceivingLineWorkspace, PhotoPeekFan, EcwidProductSearchPopover, FbaBoardRegion (×2), FbaShipmentEditorForm.
-- **⛔ Excluded (false positive):** `FilterRefinementBar` uses a Tailwind arbitrary class `ease-[0.22,1,0.36,1]` (CSS utility, not a framer value).
+- **✅ COMPLETE 2026-06-21:** every Motion occurrence now sources from `motionBezier.easeOut` (verified repo-wide; tsc clean). `StationTesting`'s local `STATION_EASE_OUT` const now points at the token too. The only remaining match is `FilterRefinementBar`'s Tailwind `ease-[0.22,1,0.36,1]` *class* — intentionally excluded (CSS utility, not a Motion value).
+- **Correction to an earlier audit note:** durations do NOT map cleanly (`0.18` ≠ `motionDuration.stationChevron`, which is `0.28`); value-only matching is misleading, so durations need a careful per-site pass with semantically-correct tokens — NOT a blind swap.
+- **✅ All ~24 Motion files done** across iterations: SidebarRailShell, TabSwitch, SelectionActionBar, RightPaneOverlay, EventTimeline, MobileBottomActionBar, FavoritesDefaultView, RecentActivityRailBase, LocalPickupReviewPanel, BootSplash, OrderSearchEmptyState, MobileRowCard, StationScanBar, SquareProductSearchPopover, ReceivingRightPane, UpNextActionButton, StationTesting, UpNextFilterBar (×2), CartonAddPopover, ReceivingLineWorkspace, PhotoPeekFan, EcwidProductSearchPopover, FbaBoardRegion (×2), FbaShipmentEditorForm.
+- **⛔ Excluded (false positive):** `FilterRefinementBar` uses a Tailwind arbitrary class `ease-[0.22,1,0.36,1]` (CSS utility, not a Motion value).
 - **✅ Duration pass — RESOLVED (decision 2026-06-21): durations stay literal.** Inline `duration: N` values do NOT map 1:1 to named tokens (`0.18`/`0.22`/etc. each span several semantic tokens; `0.18 ≠ stationChevron`'s `0.28`), so forcing a token would be arbitrary or misleading. The shared *easing curve* was the real duplication (one magic-array repeated 30×) and is now fully consolidated to `motionBezier.easeOut`. Per-component durations are legitimately local tuning; leaving them literal is correct, not debt. T3 is complete.
 
 ---
@@ -272,7 +272,7 @@ Each step is independently shippable and tsc/build-gated. Ordering chosen so lat
 ### Appendix — primary file anchors
 
 - Tokens: `src/design-system/tokens/{z-index,spacing,radii,shadows,borders,touch}.ts`, `tokens/colors/{base,semantic}.ts`, `tokens/typography/*`, `tokens/css-variables.ts`.
-- Motion: `src/design-system/foundations/{motion,motion-framer}.ts`.
+- Motion: `src/design-system/foundations/{motion,motion-presets}.ts`.
 - Themes: `src/design-system/themes/{light,dark}.ts`; `src/styles/globals.css` (`[data-theme]`); `src/design-system/providers/UIModeProvider.tsx`.
 - Tailwind: `tailwind.config.ts`.
 - Exemplar registries: `src/lib/{unit-status,outbound-state,unshipped-state,conditions,source-platform}.ts`, `src/lib/warranty/types.ts`, `src/components/ui/CopyChip.tsx`.

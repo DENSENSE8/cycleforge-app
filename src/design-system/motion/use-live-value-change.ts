@@ -5,7 +5,7 @@
 import { useEffect, useRef, type RefObject } from 'react';
 
 import { motionRole } from './roles';
-import { animate, useReducedMotion } from './framer';
+import { animate, useReducedMotion } from './react';
 
 /** Marks the chip for the duration of the pulse. */
 export const LIVE_VALUE_CHANGE_ATTR = 'data-live-value-change';

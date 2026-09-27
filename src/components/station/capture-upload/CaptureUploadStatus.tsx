@@ -1,11 +1,11 @@
 'use client';
 
 import { AnimatePresence, motion } from '@/design-system/motion';
-import { framerPresence, framerTransition } from '@/design-system/foundations/motion-framer';
+import { motionPresence, motionTransition } from '@/design-system/foundations/motion-presets';
 import {
   useMotionPresence,
   useMotionTransition,
-} from '@/design-system/foundations/motion-framer-hooks';
+} from '@/design-system/foundations/motion-presets-hooks';
 import { AlertTriangle, Check, Loader2, RefreshCw, X } from '@/components/Icons';
 import { Button, IconButton } from '@/design-system/primitives';
 import {
@@ -54,8 +54,8 @@ export function CaptureUploadStatus({
   onDismissCommitted,
   className,
 }: CaptureUploadStatusProps) {
-  const presence = useMotionPresence(framerPresence.composerDock);
-  const transition = useMotionTransition(framerTransition.composerDockMount);
+  const presence = useMotionPresence(motionPresence.composerDock);
+  const transition = useMotionTransition(motionTransition.composerDockMount);
 
   const { tone } = summary;
   const visible = tone !== 'idle';

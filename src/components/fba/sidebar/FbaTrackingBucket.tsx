@@ -9,7 +9,7 @@ import { FbaQtyStepper } from '@/components/fba/sidebar/FbaQtyStepper';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { IconButton } from '@/design-system/primitives';
 import { emitOpenQuickAddFnsku } from '@/components/fba/FbaQuickAddFnskuModal';
-import { framerPresence, framerTransition } from '@/design-system/foundations/motion-framer';
+import { motionPresence, motionTransition } from '@/design-system/foundations/motion-presets';
 import { microBadge } from '@/design-system/tokens/typography/presets';
 import type { FbaBoardItem } from '@/lib/fba/types';
 import type { TrackingBucket } from '@/lib/fba/types';
@@ -127,10 +127,10 @@ export function FbaTrackingBucket({
       <AnimatePresence initial={false}>
         {!bucket.collapsed && (
           <motion.div
-            initial={framerPresence.collapseHeight.initial}
-            animate={framerPresence.collapseHeight.animate}
-            exit={framerPresence.collapseHeight.exit}
-            transition={framerTransition.upNextCollapse}
+            initial={motionPresence.collapseHeight.initial}
+            animate={motionPresence.collapseHeight.animate}
+            exit={motionPresence.collapseHeight.exit}
+            transition={motionTransition.upNextCollapse}
             className="overflow-hidden"
           >
             {bucket.allocations.length === 0 ? (

@@ -7,7 +7,7 @@ import { motion, useReducedMotion, type Variants } from '@/design-system/motion'
 import { AlertTriangle, Check, X } from '@/components/Icons';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { IconButton } from '@/design-system/primitives';
-import { useMotionPresence } from '@/design-system/foundations/motion-framer-hooks';
+import { useMotionPresence } from '@/design-system/foundations/motion-presets-hooks';
 import {
   INLINE_ACTION_FEEDBACK_TONE,
   type InlineActionFeedbackTone,

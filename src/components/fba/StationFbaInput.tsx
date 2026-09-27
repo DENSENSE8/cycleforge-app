@@ -4,11 +4,11 @@ import { motion } from '@/design-system/motion';
 import { AlertCircle, Loader2, Package } from '@/components/Icons';
 import { StationScanBar, ThemedStationScanBar } from '@/components/station/scan-bar';
 import { ScanBandGlowHost } from '@/components/station/scan-bar/ScanBandGlowHost';
-import { framerPresence, framerTransition } from '@/design-system/foundations/motion-framer';
+import { motionPresence, motionTransition } from '@/design-system/foundations/motion-presets';
 import {
   useMotionPresence,
   useMotionTransition,
-} from '@/design-system/foundations/motion-framer-hooks';
+} from '@/design-system/foundations/motion-presets-hooks';
 import { useFbaStationInput, type StationFbaInputProps } from './station-input/useFbaStationInput';
 import { FbaPendingPlanQueue } from './station-input/FbaPendingPlanQueue';
 import { FbaPlanPreviewList } from './station-input/FbaPlanPreviewList';
@@ -28,8 +28,8 @@ export default function StationFbaInput(props: StationFbaInputProps) {
   const c = useFbaStationInput(props);
   const staffId = props.techStaffIdOverride ?? null;
   // Station card mount — rises into place (never left→right wipe).
-  const scanPresence = useMotionPresence(framerPresence.stationCard);
-  const scanTransition = useMotionTransition(framerTransition.stationCardMount);
+  const scanPresence = useMotionPresence(motionPresence.stationCard);
+  const scanTransition = useMotionTransition(motionTransition.stationCardMount);
 
   // Sidebar band: match packing/testing — themed bar, spinner-only right rail.
   // Standalone (non-band) keeps dual mode + paste for free-form plan stations.

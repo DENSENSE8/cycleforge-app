@@ -13,7 +13,7 @@ import {
 import { useHoverSurface } from '@/hooks/useHoverSurface';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { focusRing } from '@/design-system/tokens/focus-ring';
-import { motionBezier, framerDuration } from '@/design-system/foundations/motion-framer';
+import { motionBezier, motionDuration } from '@/design-system/foundations/motion-presets';
 import { cn } from '@/utils/_cn';
 import {
   ChipHoverMenuSurface,
@@ -263,7 +263,7 @@ export function InlinePillPicker({
     reduceMotion
       ? { duration: 0.01 }
       : {
-          duration: framerDuration.chipCopyFeedback,
+          duration: motionDuration.chipCopyFeedback,
           delay: i * OPTION_STAGGER_MS,
           ease: motionBezier.easeOut,
         };

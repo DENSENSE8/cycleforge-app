@@ -10,7 +10,7 @@ const ORG = '11111111-2222-3333-4444-555555555555';
 function ctxWith(perms: string[]): AssistantToolCtx {
   return { organizationId: ORG, staffId: 7, permissions: new Set(perms) };
 }
-const FULL_CTX = ctxWith(['dashboard.view', 'studio.view', 'assistant.chat']);
+const FULL_CTX = ctxWith(['dashboard.view', 'studio.view', 'assistant.chat', 'sku_stock.view']);
 
 const SEARCH_TOOL_NAMES = new Set([
   'hybrid_entity_search',
@@ -55,6 +55,7 @@ const ALLOWED_TOOL_PERMISSIONS = new Set([
   'work_orders.view',
   'photos.view',
   'receiving.view',
+  'sku_stock.view',
   // Tool forge — one permission per gateway tool, deliberately NOT assistant.chat
   // (see the header of src/lib/mcp/tool-server.ts for why that distinction is
   // what keeps a write-capable gateway safe behind a read-scoped route gate).
@@ -94,8 +95,8 @@ function fakes(rowsFor?: (text: string) => Array<Record<string, unknown>>) {
   return { deps, cap };
 }
 
-test('registry: 32 tools (28 read + 4 gateway), unique names, model-grade descriptions, valid permissions', () => {
-  assert.equal(ASSISTANT_TOOLS.size, 32);
+test('registry: 34 tools (30 read + 4 gateway), unique names, model-grade descriptions, valid permissions', () => {
+  assert.equal(ASSISTANT_TOOLS.size, 34);
   const expected = [
     'get_signals_by_node', 'get_top_reasons', 'get_unit_journey', 'get_feed_state',
     'get_graph', 'get_node_detail', 'get_benchmarks', 'get_kpis',
@@ -107,6 +108,7 @@ test('registry: 32 tools (28 read + 4 gateway), unique names, model-grade descri
     'search_photos', 'get_receiving_by_tracking', 'get_ticket_entities',
     'get_packing_kpi',
     'resolve_receiving_line_for_order', 'list_receiving_line_photos',
+    'locate_product', 'list_location_contents',
     // The tool-forge gateway — exactly four, per the pipeline spec.
     'search_tool_registry', 'submit_approval_decision',
     'execute_build_sandbox', 'commit_to_git',
@@ -127,6 +129,8 @@ test('every SQL tool threads ctx.organizationId as $1 into every query (never mo
     get_node_detail: { nodeId: 'n-abc' },
     search_notes: { query: 'no audio' },
     get_feed_state: { feedKey: 'receiving_triage' },
+    locate_product: { query: '00066-P-2' },
+    list_location_contents: { location: 'C-03-12-3' },
   };
   for (const name of ASSISTANT_TOOLS.keys()) {
     if (SEARCH_TOOL_NAMES.has(name) || DOMAIN_TOOL_NAMES.has(name) || GATEWAY_TOOL_NAMES.has(name)) continue;

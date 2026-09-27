@@ -23,7 +23,7 @@ function ShortageDeskContent({
 }: {
   onPrimaryPainted?: () => void;
 }) {
-  const { selectMode, selectionEnabled, selectionOverlays } = useOrderRailSelection('unshipped');
+  const { selectionEnabled, selectionOverlays } = useOrderRailSelection('unshipped');
   useDashboardRealtime();
   // Keeps `?openOrderId=` and the open record in step (deep links, reload,
   // back/forward) — the same owner To ship mounts; the record itself is the
@@ -35,7 +35,6 @@ function ShortageDeskContent({
       <div className="relative flex min-h-0 min-w-0 flex-1 flex-col">
         <UnshippedTable
           strictSearchScope
-          selectMode={selectMode}
           railSelection={selectionEnabled}
           ledger
           onPrimaryPainted={onPrimaryPainted}

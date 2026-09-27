@@ -2,7 +2,7 @@
 
 The agentic-loop master plan is a single MDX string, merged conflict-free across
 three planes: the local file (`master-plan.mdx`, edited in Cursor), the `/forge`
-web dashboard, and the plan agent / forge loop. Stack is locked (plan §-2):
+web dashboard, and the forge loop. Stack is locked (plan §-2):
 **Yjs rides Ably** — no third-party CRDT host, no second browser Ably client.
 
 ## Modules
@@ -12,7 +12,6 @@ web dashboard, and the plan agent / forge loop. Stack is locked (plan §-2):
 | `ticket-status.ts` | `TicketStatus` enum + MDX scan/mutate helpers (ALP-0.4) |
 | `doc.ts` | `createMasterPlanYDoc()` — one `Y.Text('content')`; seed + diff-replace helpers |
 | `ably-yjs-provider.ts` | Custom Ably↔Yjs provider (we own the protocol; this file documents it) |
-| `tools/` | Plan-agent server tools (`mutate_master_plan`) |
 
 ## Channel
 

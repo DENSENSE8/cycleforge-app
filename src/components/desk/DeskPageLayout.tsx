@@ -8,7 +8,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { useActiveSidebarChild } from '@/components/sidebar/master-nav/useActiveSidebarChild';
 import { useSetting } from '@/hooks/useSettings';
-import { deskFullscreenSettingKey, settingByKey } from '@/lib/settings/registry';
+import { deskViewSettingKey, settingByKey } from '@/lib/settings/registry';
+import type { DeskRememberedView, DeskStageView } from '@/design-system/components/DeskStageContext';
 import {
   DeskPageChrome,
   type DeskPageTab,
@@ -21,6 +22,7 @@ import { useDeskPageChromeTabs } from '@/components/desk/useDeskPageChromeTabs';
 
 /** A tab row supplied without a handler answers no click — say so once, here. */
 const noop = () => undefined;
+const NO_TABS: readonly DeskPageTab[] = [];
 
 export interface DeskPageLayoutProps {
   children: ReactNode;
@@ -44,6 +46,11 @@ export interface DeskPageLayoutProps {
   tabsLead?: ReactNode;
   /** Stage shape — see `DeskPageChromeProps.stage`. */
   stage?: 'card' | 'flush';
+  /**
+   * No tab row — the views live in the contextual sidebar (Shipping, operator
+   * 2026-09-26). Header actions still paint (operator 2026-09-27).
+   */
+  bare?: boolean;
   className?: string;
 }
 
@@ -67,13 +74,14 @@ function DeskPageFrame({
   tabsLead,
   stage,
   className,
+  bare = false,
 }: DeskPageLayoutProps) {
   const nav = useDeskPageChromeTabs();
   const title = titleOverride ?? nav.title;
   const tabs = tabsOverride ?? nav.tabs;
   const activeTab = tabsOverride ? (activeTabOverride ?? '') : nav.activeTab;
   const onTabChange = tabsOverride ? (onTabChangeOverride ?? noop) : nav.onTabChange;
-  const { fullscreen, toggleFullscreen } = useDeskFullscreen(useActiveSidebarChild().pageId);
+  const { view, setView, toggleFloor } = useDeskView(useActiveSidebarChild().pageId);
   const addSlot = useDeskActionSlotNode();
 
   const decorated = useMemo(
@@ -85,13 +93,14 @@ function DeskPageFrame({
     <DeskPageChrome
       title={title}
       subtitle={subtitle}
-      tabs={decorated}
+      tabs={bare ? NO_TABS : decorated}
       activeTab={activeTab}
       onTabChange={onTabChange}
       addSlot={addSlot}
       tabsLead={tabsLead}
-      fullscreen={fullscreen}
-      onToggleFullscreen={toggleFullscreen}
+      view={view}
+      onViewChange={setView}
+      onToggleFloor={toggleFloor}
       stage={stage}
       className={className}
     >
@@ -100,27 +109,45 @@ function DeskPageFrame({
   );
 }
 
-/** The desk's fullscreen state, seeded from and written to the staffer's remembered choice for THIS desk. */
-function useDeskFullscreen(deskId: string) {
-  const key = deskFullscreenSettingKey(deskId);
+/**
+ * The desk's stage view. In place / Split are seeded from and written to the
+ * staffer's remembered choice for THIS desk; floor is a session posture on
+ * top of it (owner 2026-09-26) — never written, and leaving it lands on the
+ * remembered view it was entered from.
+ */
+function useDeskView(deskId: string) {
+  const key = deskViewSettingKey(deskId);
   const remembered = settingByKey(key) != null;
-  const setting = useSetting<boolean>('desk', key);
-  const [local, setLocal] = useState<{ deskId: string; value: boolean } | null>(null);
-  const fullscreen =
-    local?.deskId === deskId ? local.value : remembered ? setting.value === true : false;
+  const setting = useSetting<DeskRememberedView>('desk', key);
+  const [local, setLocal] = useState<{ deskId: string; value: DeskRememberedView } | null>(null);
+  const [floorDesk, setFloorDesk] = useState<string | null>(null);
+  const base: DeskRememberedView =
+    local?.deskId === deskId ? local.value : remembered && setting.value === 'split' ? 'split' : 'in-place';
+  const view: DeskStageView = floorDesk === deskId ? 'floor' : base;
 
   // `useSetting`'s setter is a fresh function every render; the ref keeps the
-  // toggle (and so the DeskStageProvider value) stable between clicks.
+  // setter (and so the DeskStageProvider value) stable between clicks.
   const setRef = useRef(setting.set);
   useEffect(() => {
     setRef.current = setting.set;
   }, [setting.set]);
-  const toggleFullscreen = useCallback(() => {
-    const next = !fullscreen;
-    setLocal({ deskId, value: next });
-    // The click already took effect; a failed write only means it is not remembered.
-    if (remembered) void setRef.current(next).catch(() => undefined);
-  }, [deskId, fullscreen, remembered]);
+  const setView = useCallback(
+    (next: DeskStageView) => {
+      if (next === 'floor') {
+        setFloorDesk(deskId);
+        return;
+      }
+      setFloorDesk(null);
+      if (next === base) return;
+      setLocal({ deskId, value: next });
+      // The click already took effect; a failed write only means it is not remembered.
+      if (remembered) void setRef.current(next).catch(() => undefined);
+    },
+    [deskId, base, remembered],
+  );
+  const toggleFloor = useCallback(() => {
+    setFloorDesk((current) => (current === deskId ? null : deskId));
+  }, [deskId]);
 
-  return { fullscreen, toggleFullscreen };
+  return { view, setView, toggleFloor };
 }

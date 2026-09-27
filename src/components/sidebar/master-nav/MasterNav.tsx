@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useRef } from 'react';
+import { useRouter } from 'next/navigation';
 import { useQueryClient } from '@tanstack/react-query';
 import {
   APP_SIDEBAR_NAV,
@@ -100,6 +101,15 @@ export function MasterNav({
     [navigate, onNavigate],
   );
 
+  const router = useRouter();
+  const handleOpenHref = useCallback(
+    (href: string) => {
+      router.push(href);
+      onNavigate?.();
+    },
+    [router, onNavigate],
+  );
+
   const queryClient = useQueryClient();
   const handleRowHover = useCallback(
     (page: SidebarPageNav) => prefetchNavData(page.href, queryClient),
@@ -114,6 +124,7 @@ export function MasterNav({
       activeChildId={childId}
       otherPages={pages}
       onNavigate={handleNavigate}
+      onOpenHref={handleOpenHref}
       onRowHover={handleRowHover}
       spineOrder={spineOrder}
       onSpineOrderChange={handleSpineOrderChange}

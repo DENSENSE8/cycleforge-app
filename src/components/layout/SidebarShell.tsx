@@ -42,7 +42,7 @@ interface SidebarShellProps {
    *  OUTSIDE the scroll — e.g. an always-available dock scan bar. */
   footer?: ReactNode;
 
-  /** Outer container element. Pass a framer `motion.div` for stagger panels;
+  /** Outer container element. Pass a `motion.div` for stagger panels;
    *  `containerProps` (initial/animate/variants) spread onto it. */
   as?: React.ElementType;
   containerProps?: Record<string, unknown>;

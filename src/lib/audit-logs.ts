@@ -187,6 +187,8 @@ export const AUDIT_ENTITY = {
   // A work_assignments row. Covers both bench assignments and the ad-hoc
   // FOLLOW_UP task one operator throws at another (WS-TASKS, 2026-08-08).
   WORK_ASSIGNMENT: 'work_assignment',
+  // ── Brands (sidebar Phase 1) — product_brands + aliases ──────────────────
+  PRODUCT_BRAND: 'product_brand',
 } as const;
 
 export const AUDIT_ACTION = {
@@ -366,8 +368,6 @@ export const AUDIT_ACTION = {
   WORK_TASK_MEDIA_LINK_ADD:    'work_task.media_link_add',
   WORK_TASK_MEDIA_LINK_UPDATE: 'work_task.media_link_update',
   WORK_TASK_MEDIA_LINK_REMOVE: 'work_task.media_link_remove',
-  // Agentic-loop master plan (plan-agent mutations via /api/forge/chat)
-  MASTER_PLAN_TICKET_STATUS: 'master_plan.ticket_status',
   // In-app issue → fix → toast loop
   USER_ISSUE_REPORT:       'user_issue.report',
   USER_ISSUE_RESOLVE:      'user_issue.resolve',
@@ -685,6 +685,11 @@ export const AUDIT_ACTION = {
   // Pick-face replenishment task — reversibility 5.7: undo a claim
   // (IN_PROGRESS → REQUESTED, clears assigned_staff_id).
   REPLENISH_TASK_RELEASE: 'replenish_task.release',
+  // ── Brands (sidebar Phase 1) ─────────────────────────────────────────────
+  BRAND_CREATE: 'brand.create',
+  BRAND_UPDATE: 'brand.update',
+  // Approval-first review queue (LAWS T28): a human refuses a proposal.
+  AGENT_MUTATION_REJECT: 'agent_mutation.reject',
 } as const;
 
 export type AuditEntity = (typeof AUDIT_ENTITY)[keyof typeof AUDIT_ENTITY];

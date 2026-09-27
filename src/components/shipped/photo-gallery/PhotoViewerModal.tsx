@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type MouseEvent as ReactMouseEvent, type SyntheticEvent } from 'react';
 import { AnimatePresence, motion, useReducedMotion } from '@/design-system/motion';
-import { framerTransition } from '@/design-system/foundations/motion-framer';
-import { useMotionTransition } from '@/design-system/foundations/motion-framer-hooks';
+import { motionTransition } from '@/design-system/foundations/motion-presets';
+import { useMotionTransition } from '@/design-system/foundations/motion-presets-hooks';
 import { useFocusTrap } from '@/design-system/hooks';
 import {
   X, Download, ZoomIn, ZoomOut, ChevronLeft, ChevronRight,
@@ -56,9 +56,9 @@ export function PhotoViewerModal({ g }: { g: PhotoGalleryController }) {
   const canReset = zoomLevel > 1 || g.rotation !== 0;
   const panelVisible = g.panelOpen;
   const reduceMotion = useReducedMotion();
-  const heroTransition = useMotionTransition(framerTransition.photoHeroMorph);
-  const scrimTransition = useMotionTransition(framerTransition.overlayScrim);
-  const toolbarTransition = useMotionTransition(framerTransition.dropdownOpen);
+  const heroTransition = useMotionTransition(motionTransition.photoHeroMorph);
+  const scrimTransition = useMotionTransition(motionTransition.overlayScrim);
+  const toolbarTransition = useMotionTransition(motionTransition.dropdownOpen);
   // Keep Tab inside the lightbox — without this the page behind the scrim
   // keeps receiving keyboard focus.
   const trapRef = useFocusTrap<HTMLDivElement>(true);
@@ -555,7 +555,7 @@ export function PhotoViewerModal({ g }: { g: PhotoGalleryController }) {
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
         exit={{ opacity: 0, scale: 0.95 }}
-        transition={framerTransition.dropdownOpen}
+        transition={motionTransition.dropdownOpen}
         className="pointer-events-none relative flex h-full w-full items-center justify-center p-4 sm:py-16 sm:pl-16 sm:pr-16"
       >
         {photoItems[currentIndex]?.status === 'loaded' ? (

@@ -213,26 +213,6 @@ export function dispatchReceivingWorkspaceNavState(
   );
 }
 
-/**
- * Close the global assistant dock (header Sparkles / ⌘J).
- * Unbox station push openers dispatch this so AI and Ticket/Claim/Displays/tool
- * cannot both occupy a full right column (source-of-truth → Right-rail modality).
- */
-export const ASSISTANT_DOCK_CLOSE_EVENT = 'assistant-dock-close';
-
-/** Fired when the assistant dock transitions closed→open (Sparkles / ⌘J). */
-export const ASSISTANT_DOCK_OPEN_EVENT = 'assistant-dock-open';
-
-export function dispatchAssistantDockClose(): void {
-  if (typeof window === 'undefined') return;
-  window.dispatchEvent(new CustomEvent(ASSISTANT_DOCK_CLOSE_EVENT));
-}
-
-export function dispatchAssistantDockOpen(): void {
-  if (typeof window === 'undefined') return;
-  window.dispatchEvent(new CustomEvent(ASSISTANT_DOCK_OPEN_EVENT));
-}
-
 /** Close whatever DESK occupant is holding `RightRailHost` on a station page — Add inbound (Incoming add walk), Check receipts… */
 export const STATION_DESK_OCCUPANT_CLOSE_EVENT = 'incoming-add-inbound-close';
 

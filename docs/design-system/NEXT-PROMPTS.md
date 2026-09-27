@@ -56,7 +56,7 @@ PLAN C — /m/work. After the desk To ship ledger (OutboundOrdersLedger) has lan
 ## PLAN D — Pack + scan-out stations (industrial) + the scan-status feedback spot
 
 ```text
-PLAN D — /pack and /shipping/scan-out. Both are already inside ModeRegion industrial. Apply BRIEF §4 industrial to each page, one per session: #fafafa canvas, white rows, 1 px rules, radius 0, mono uppercase labels, LIFECYCLE codes, no motion. Build the ONE allowed industrial animation: a fixed scan-status spot at a constant position where the eye already is, with success/fail feedback ≤150 ms (motion via src/design-system/motion/framer.ts on web; duration from the mode token `duration-mode-feedback`; reduced motion = instant colour change; plus haptic on handhelds where supported). Reuse the To ship ledger row where the data is an order row. Don't change StationScanBar scan routing (the scan bar is invariant).
+PLAN D — /pack and /shipping/scan-out. Both are already inside ModeRegion industrial. Apply BRIEF §4 industrial to each page, one per session: #fafafa canvas, white rows, 1 px rules, radius 0, mono uppercase labels, LIFECYCLE codes, no motion. Build the ONE allowed industrial animation: a fixed scan-status spot at a constant position where the eye already is, with success/fail feedback ≤150 ms (motion via src/design-system/motion/react.ts on web; duration from the mode token `duration-mode-feedback`; reduced motion = instant colour change; plus haptic on handhelds where supported). Reuse the To ship ledger row where the data is an order row. Don't change StationScanBar scan routing (the scan bar is invariant).
 ```
 
 ## PLAN E — Counter (kiosk v2) fix list

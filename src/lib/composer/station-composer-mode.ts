@@ -1,11 +1,17 @@
 /**
- * Scan-station composer modes — Unbox (notes / Print·Receive) and Ticket.
+ * Scan-station composer modes — Unbox (notes / Print·Receive) and Ticket, plus
+ * Ask: the operations assistant, honored ONLY by a mouth that names it
+ * (`modes={['ask']}` on `/ai-chat`). Ask is never a URL / session latch and
+ * never a Shift+Tab destination, so no station grows a second chat door.
  * SHIFT+TAB, AND WHY IT WAS NOT (operator ruling 2026-08-31). This chord used
  */
 
-export const STATION_COMPOSER_MODES = ['unbox', 'ticket'] as const;
+export const STATION_COMPOSER_MODES = ['unbox', 'ticket', 'ask'] as const;
 
 export type StationComposerMode = (typeof STATION_COMPOSER_MODES)[number];
+
+/** The station faces — what a mouth honors by default and what Shift+Tab cycles. */
+export const STATION_COMPOSER_FACES = ['unbox', 'ticket'] as const satisfies readonly StationComposerMode[];
 
 export const STATION_COMPOSER_MODE_DEFAULT: StationComposerMode = 'unbox';
 
@@ -37,6 +43,11 @@ export const STATION_COMPOSER_MODE_CATALOG: readonly StationComposerModeCatalogE
       id: 'ticket',
       label: 'Ticket',
       destination: 'a Zendesk update on the linked ticket',
+    },
+    {
+      id: 'ask',
+      label: 'Ask',
+      destination: 'the operations assistant',
     },
   ];
 
@@ -73,20 +84,21 @@ export function resolveStationComposerMode(
 export function cycleStationComposerMode(
   current: StationComposerMode,
 ): StationComposerMode {
-  const i = STATION_COMPOSER_MODES.indexOf(current);
-  return STATION_COMPOSER_MODES[(i + 1) % STATION_COMPOSER_MODES.length]!;
+  const i = (STATION_COMPOSER_FACES as readonly StationComposerMode[]).indexOf(current);
+  return STATION_COMPOSER_FACES[(i + 1) % STATION_COMPOSER_FACES.length]!;
 }
 
 export function stationComposerModeKeepsTrailingAction(
   mode: StationComposerMode,
 ): boolean {
-  return mode === 'unbox';
+  return mode === 'unbox' || mode === 'ask';
 }
 
 export function stationComposerModePlaceholder(
   mode: StationComposerMode,
   opts: { ticketLabel?: string | null; hasTicket?: boolean } = {},
 ): string {
+  if (mode === 'ask') return 'Ask about your operation…';
   if (mode === 'ticket') {
     if (opts.hasTicket) {
       const face = (opts.ticketLabel || '').trim() || 'ticket';
@@ -110,6 +122,7 @@ export function stationComposerModeAriaLabel(
   mode: StationComposerMode,
   opts: { ticketLabel?: string | null; hasTicket?: boolean } = {},
 ): string {
+  if (mode === 'ask') return 'Ask the operations assistant';
   if (mode === 'ticket') {
     if (opts.hasTicket) {
       const face = (opts.ticketLabel || '').trim() || 'ticket';

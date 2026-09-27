@@ -100,7 +100,15 @@ test('trust model (plan §-2, locked): auto = view-layer OR reversible evidence 
     'staff_rail_exclusion.insert',
   ]);
   // Nothing touching identity/vocabulary/settings masters may ever be auto or draft-scoped.
-  for (const kind of ['staff.create', 'staff.assign_station', 'reason_code.create', 'setting.update'] as const) {
+  for (const kind of [
+    'staff.create',
+    'staff.assign_station',
+    'reason_code.create',
+    'setting.update',
+    'brand.create',
+    'brand.update',
+    'sku_brand.assign',
+  ] as const) {
     assert.equal(mutationTrustClass(kind), 'review', `${kind} must stay review-gated`);
   }
   // All workflow_draft.* kinds are draft-scoped (the draft is the safety layer).

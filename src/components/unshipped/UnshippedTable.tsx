@@ -5,17 +5,14 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { getOrdersChannelName, safeChannelName } from '@/lib/realtime/channels';
 import type { DashboardSearchSectionProps } from '@/components/dashboard/DashboardSearchSectionProps';
-import { DataTable, downloadDataTableCsv, type DataTableExport } from '@/components/tables/DataTable';
+import { downloadDataTableCsv } from '@/components/tables/DataTable';
 import { SLOT_TABLE_PAGE_SIZES } from '@/lib/tables/slot-table-page';
-import { useOrdersSpreadsheet } from '@/components/dashboard/orders-queue/useOrdersSpreadsheet';
 import { OrderStatusTrailStage } from '@/components/orders/OrderStatusTrailOverlay';
-import { useToShipChrome, type ToShipChrome } from '@/components/unshipped/useToShipChrome';
-import { DASHBOARD_ORDERS_SELECTION_SCOPE } from '@/lib/selection/dashboard-scopes';
+import { useToShipChrome } from '@/components/unshipped/useToShipChrome';
 import {
   ORDER_EXPORT_COLUMNS,
   buildOrderExportRow,
 } from '@/lib/dashboard/order-export-csv';
-import { useRecordCursorKeyboard } from '@/hooks/useRecordCursorKeyboard';
 import { OrdersFirstRunEmptyState } from '@/components/dashboard/OrdersFirstRunEmptyState';
 import { orgHasActivity, useOnboardingStats } from '@/hooks/useOnboardingStats';
 import { PackAwaitingFeedback } from '@/components/packer/PackAwaitingFeedback';
@@ -46,24 +43,20 @@ import {
 import { SHIPPING_PATH } from '@/components/outbound/outbound-sidebar-shared';
 import { SHIPPING_ORDERS_PATH, ORDERS_DESK_CONTEXT_KEY, ORDERS_DESK_SUPPORT_CONTEXT, parseOrdersDeskContext } from '@/lib/shipping/orders-desk';
 import type { ShippedOrder } from '@/types/orders';
-import type {
-  OrdersQueueColumn,
-  OrdersQueueColumnKey,
-} from '@/lib/dashboard-order-row-layout';
 import { useRefreshSignal } from '@/lib/refresh/bus';
-import { OrdersDeskLabelsAction } from '@/components/outbound/orders/paperwork/OrdersDeskLabelsAction';
+import { useLabelsWalkShortcut } from '@/components/outbound/orders/paperwork/useLabelsWalkShortcut';
 import { PaperworkWalkHost } from '@/components/outbound/orders/paperwork/PaperworkWalkHost';
-import { DeskExportMenuRegistrar } from '@/design-system/components/DeskActionSlot';
+import { useNavIntent } from '@/lib/nav/use-nav-intent';
 import { PAPERWORK_PARAM, parsePaperworkOrderId } from '@/lib/orders/print-packet';
 import { PACK_PLACED_PARAM, PACK_STATION_PARAM } from '@/lib/packing/pack-station-arm';
 import { OutboundOrdersLedger } from '@/components/outbound/orders/OutboundOrdersLedger';
+import { useDeskFloorFace, useDeskStageOptional } from '@/design-system/components/DeskStageContext';
+import { OrderCardList } from '@/components/outbound/orders/cards/OrderCardList';
 
 /** Pre-pack fulfillment queue — Dashboard Pending / Tested tabs (and pack/shipping stations that embed the same table without a lane scope). */
 interface UnshippedTableProps extends DashboardSearchSectionProps {
   packedBy?: number;
   testedBy?: number;
-  /** Pencil multi-select: rows render checkboxes; chrome owns the Select toggle. */
-  selectMode?: boolean;
   /** Rail-selection model: the check-set is the single selection SoT and drives
    *  the right-rail inspector (History / order-rail SoT). */
   railSelection?: boolean;
@@ -87,8 +80,13 @@ interface UnshippedTableProps extends DashboardSearchSectionProps {
   awaitingMessage?: string;
   /** SSR stand-in handoff — primary queue has paintable rows (seed or fetch). */
   onPrimaryPainted?: () => void;
-  /** Paint the rows as the industrial record ledger (`OutboundOrdersLedger`) instead of the slot `DataTable`. */
+  /** Always paint the industrial record ledger (`OutboundOrdersLedger`) instead of the slot `DataTable` index face. */
   ledger?: boolean;
+  /**
+   * This list offers the desk's FLOOR face (owner 2026-09-26): the index face
+   * in In place and Split, the industrial ledger while the stage is `floor`.
+   */
+  floor?: boolean;
 }
 
 /** Stable empty page. `query.data || []` minted a fresh array on every render
@@ -152,7 +150,6 @@ export function UnshippedTable({
   searchEmptyTitle = 'No orders found',
   searchResultLabel = 'orders to ship',
   clearSearchLabel = 'Show All Pending Orders',
-  selectMode = false,
   railSelection = false,
   onOpenRecord,
   fulfillmentLane,
@@ -160,6 +157,7 @@ export function UnshippedTable({
   awaitingMessage,
   onPrimaryPainted,
   ledger = false,
+  floor = false,
 }: UnshippedTableProps = {}) {
   const pathname = usePathname();
   const router = useRouter();
@@ -167,6 +165,8 @@ export function UnshippedTable({
   const queryClient = useQueryClient();
   const { user } = useAuth();
   const orgId = user?.organizationId;
+  useDeskFloorFace(floor);
+  const floorView = useDeskStageOptional()?.view === 'floor';
   // Fulfillment queue stages: pending (not tested) and tested (packing now).
   const stageParam = String(searchParams.get('stage') || 'all').toLowerCase();
 
@@ -702,7 +702,7 @@ export function UnshippedTable({
     // UNKNOWN is not new.
     hasActivity === false;
 
-  // Labels / export hooks MUST sit above the empty/awaiting/degraded early returns.
+  // Labels / export verbs MUST sit above the empty/awaiting/degraded early returns.
   const onToShipDesk =
     pathname === SHIPPING_ORDERS_PATH && !isSupportContext && !cagedOnly;
   const toggleLabelsWalk = useCallback(() => {
@@ -719,6 +719,22 @@ export function UnshippedTable({
   const runExport = useCallback(() => {
     downloadDataTableCsv(copyExportRef.current, recordsRef.current, 'to-ship.csv');
   }, []);
+
+  // The sidebar's To-ship verbs (`orders:labels-walk`, `desk-export:csv`);
+  // withheld (painted disabled) when there is nothing to walk or export.
+  const walkOpen = paperworkId != null;
+  const nothingToWalk = records.length === 0;
+  useNavIntent('desk-export:csv', onToShipDesk && !nothingToWalk ? runExport : null);
+  useNavIntent(
+    'orders:labels-walk',
+    onToShipDesk && (walkOpen || !nothingToWalk) ? toggleLabelsWalk : null,
+  );
+  useLabelsWalkShortcut({
+    enabled: onToShipDesk,
+    walkOpen,
+    disabled: nothingToWalk,
+    onToggle: toggleLabelsWalk,
+  });
 
   if (awaitingMessage && (isIdleEmpty || (query.isError && allRecords.length === 0))) {
     return (
@@ -772,29 +788,11 @@ export function UnshippedTable({
   const showLoadMore = !cagedOnly && !searchQuery.trim() && stageTotal > rowLimit;
   const onLoadMore = showLoadMore ? () => setRowLimit((n) => n + fetchWindow) : undefined;
 
-  const labelsCta = onToShipDesk ? (
-    <OrdersDeskLabelsAction
-      incompleteCount={queueCounts?.paperworkIncomplete ?? 0}
-      walkOpen={paperworkId != null}
-      disabled={records.length === 0}
-      onToggle={toggleLabelsWalk}
-    />
-  ) : null;
-  const exportMenu = onToShipDesk ? (
-    <DeskExportMenuRegistrar
-      run={runExport}
-      rowCount={records.length}
-      empty={records.length === 0}
-    />
-  ) : null;
-
   return (
     <>
-      {labelsCta}
-      {exportMenu}
       {/* Q5 stage. Walk + STATUS trail are SIBLINGS of the sheet inside {@link OrderStatusTrailStage}'s `relative` box, never a body swap. */}
       <OrderStatusTrailStage>
-        {ledger ? (
+        {ledger || (floor && floorView) ? (
           <OutboundOrdersLedger
             mode={lockedFulfillmentState === 'BLOCKED' ? 'pending' : 'to-ship'}
             chrome={chrome}
@@ -812,24 +810,21 @@ export function UnshippedTable({
             onOpenLabels={onToShipDesk ? openLabelsWalkForRecord : undefined}
           />
         ) : (
-        <UnshippedSheet
+        <OrderCardList
+          mode={lockedFulfillmentState === 'BLOCKED' ? 'pending' : 'to-ship'}
           chrome={chrome}
           searchPending={!cagedOnly && query.isFetching}
           records={records}
           loading={cagedOnly ? cagedQuery.isLoading : query.isLoading}
-          selectMode={selectMode}
-          railSelection={railSelection}
           onOpenRecord={handleOpenRecord}
+          onCloseRecord={dispatchCloseShippedDetails}
+          railSelection={railSelection}
+          onLoadMore={onLoadMore}
+          banner={queueError ? <QueueStaleBand onRetry={retryQueue} /> : null}
           searchEmptyTitle={searchEmptyTitle}
           searchResultLabel={searchResultLabel}
           clearSearchLabel={clearSearchLabel}
-          onLoadMore={onLoadMore}
-          copyExport={copyExport}
-          copyExportPlacement={onToShipDesk ? 'menu' : 'header'}
           onOpenLabels={onToShipDesk ? openLabelsWalkForRecord : undefined}
-          stale={queueError}
-          onRetryStale={retryQueue}
-          shortageDesk={lockedFulfillmentState === 'BLOCKED'}
         />
         )}
         {paperworkId != null && onToShipDesk ? (
@@ -866,98 +861,3 @@ function QueueStaleBand({ onRetry }: { onRetry: () => void }) {
   );
 }
 
-/** Unshipped · Pending sheet — the To Ship fulfillment queue as a single connected spreadsheet (`useOrdersSpreadsheet` → {@link… */
-function UnshippedSheet({
-  chrome,
-  searchPending,
-  records,
-  loading,
-  onOpenRecord,
-  searchEmptyTitle = 'No orders found',
-  searchResultLabel = 'orders to ship',
-  clearSearchLabel = 'Show All Pending Orders',
-  selectMode = false,
-  railSelection = false,
-  onLoadMore,
-  copyExport,
-  copyExportPlacement = 'header',
-  onOpenLabels,
-  stale = false,
-  onRetryStale,
-  shortageDesk = false,
-}: {
-  /**
-   * Resolved by the FEED above, not here: the find field is an input to the
-   * fetch, so the component that owns the fetch has to own the value. See the
-   * docblock on the `useToShipChrome` call in {@link UnshippedTable}.
-   */
-  chrome: ToShipChrome;
-  /** The queue fetch for the CURRENT find text is still running. */
-  searchPending: boolean;
-  records: ShippedOrder[];
-  loading: boolean;
-  onOpenRecord: (record: ShippedOrder) => void;
-  searchEmptyTitle?: string;
-  searchResultLabel?: string;
-  clearSearchLabel?: string;
-  selectMode?: boolean;
-  /** Rail-selection model: the check-set is the single selection SoT and drives
-   *  the right-rail inspector (History / order-rail SoT). */
-  railSelection?: boolean;
-  /** Next page, drawn inside the status bar's count sentence. */
-  onLoadMore?: () => void;
-  copyExport: DataTableExport<ShippedOrder>;
-  copyExportPlacement?: 'header' | 'menu';
-  /** Tracking-hover Label → paperwork walk. Omitted off the To-ship desk. */
-  onOpenLabels?: (record: ShippedOrder) => void;
-  /** A read failed while these rows were already painted — see {@link QueueStaleBand}. */
-  stale?: boolean;
-  onRetryStale?: () => void;
-  /** Pending (ex-Shortage) desk — coverage column, blocked chrome total. */
-  shortageDesk?: boolean;
-}) {
-  const sheet = useOrdersSpreadsheet({
-    ariaLabel: shortageDesk ? 'Pending out-of-stock orders' : 'Shelved unshipped orders',
-    records,
-    loading,
-    searchValue: chrome.search.value,
-    // `/api/orders?q=` ran the match over the whole scope; `records` ARE the
-    // hits. Re-running `filterShippedOrdersByQuery` over them would narrow the
-    // server's answer by a rule that reads fewer facts.
-    searchAnsweredBy: 'server',
-    onOpenRecord,
-    onCloseRecord: () => {
-      dispatchCloseShippedDetails();
-    },
-    onClearSearch: () => chrome.search.onChange(''),
-    selectMode,
-    selectionScope: DASHBOARD_ORDERS_SELECTION_SCOPE,
-    railSelection,
-    queueMode: 'fulfillment',
-    shortageDesk,
-    searchEmptyTitle,
-    searchResultLabel,
-    clearSearchLabel,
-    onOpenLabels,
-    'data-testid': 'pending-grid-body',
-  });
-
-  // The spreadsheet hook publishes the cursor (it owns grouping + folds);
-  // this lane only turns the keyboard on.
-  useRecordCursorKeyboard({ enabled: true, scope: 'record' });
-
-  return (
-    <div className="flex min-h-0 min-w-0 flex-1 flex-col">
-      {stale && onRetryStale ? <QueueStaleBand onRetry={onRetryStale} /> : null}
-      <DataTable<ShippedOrder, OrdersQueueColumnKey, OrdersQueueColumn>
-        {...sheet}
-        {...chrome}
-        search={{ ...chrome.search, answeredBy: 'server', pending: searchPending }}
-        copyExport={copyExport}
-        copyExportPlacement={copyExportPlacement}
-        exportFilename="to-ship.csv"
-        onLoadMore={onLoadMore}
-      />
-    </div>
-  );
-}

@@ -1,6 +1,9 @@
-'use client';
-
-/** Shared helpers for the dashboard Sourcing hub (Queue / Scout / Watchlist). */
+/**
+ * Shared helpers for the dashboard Sourcing hub (Queue / Scout / Watchlist).
+ * Pure — no `'use client'`: the `/sourcing` route param spec runs these
+ * parsers on the server too (`GET /api/nav/context`), where a client
+ * reference cannot be called.
+ */
 
 type SourcingMode =
   | 'queue' | 'scout' | 'watchlist' | 'searches' | 'suppliers' | 'analytics'

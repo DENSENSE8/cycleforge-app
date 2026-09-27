@@ -4,7 +4,7 @@
 
 import type { StationTheme } from '@/hooks/useStationTheme';
 
-/** Bottom-up staff-tint gradient (no opacity — Framer owns that). */
+/** Bottom-up staff-tint gradient (no opacity — Motion owns that). */
 const BAND_GLOW_GRADIENT: Record<StationTheme, string> = {
   green: 'bg-gradient-to-t from-emerald-500/20 via-emerald-50/50 to-white',
   blue: 'bg-gradient-to-t from-blue-500/20 via-blue-50/50 to-white',
@@ -16,7 +16,7 @@ const BAND_GLOW_GRADIENT: Record<StationTheme, string> = {
   pink: 'bg-gradient-to-t from-pink-500/20 via-pink-50/50 to-white',
 };
 
-/** Gradient class for the Framer glow overlay. */
+/** Gradient class for the Motion glow overlay. */
 export function scanBandGlowGradientClass(themeColor: StationTheme): string {
   return BAND_GLOW_GRADIENT[themeColor];
 }

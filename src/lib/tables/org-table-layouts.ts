@@ -4,7 +4,12 @@ import {
   ORDERS_IMPORT_FIELD_CATALOG,
   ORDERS_IMPORT_TABLE_LAYOUT_ID,
 } from '@/lib/tables/field-catalog/orders-import';
-import { ORDERS_FIELD_CATALOG, ORDERS_TABLE_LAYOUT_ID } from '@/lib/tables/field-catalog/orders';
+import {
+  ORDERS_FIELD_CATALOG,
+  ORDERS_INDEX_FIELD_CATALOG,
+  ORDERS_INDEX_TABLE_LAYOUT_ID,
+  ORDERS_TABLE_LAYOUT_ID,
+} from '@/lib/tables/field-catalog/orders';
 import {
   AUTHSESSIONS_FIELD_CATALOG,
   AUTHSESSIONS_TABLE_LAYOUT_ID,
@@ -157,6 +162,10 @@ export const SLOT_LAYOUT_TABLES: Readonly<
   Record<string, { catalog: FieldCatalog; morphs: readonly ('sheet' | 'compound')[] }>
 > = {
   [ORDERS_TABLE_LAYOUT_ID]: { catalog: ORDERS_FIELD_CATALOG, morphs: ['compound'] },
+  // To-ship INDEX face (owner 2026-09-26) — the Shopify-style order list. SHEET
+  // only: one line per order. Its own document so the compound line layout
+  // above (and the qty / price pins its catalog carries) never reaches it.
+  [ORDERS_INDEX_TABLE_LAYOUT_ID]: { catalog: ORDERS_INDEX_FIELD_CATALOG, morphs: ['sheet'] },
   // Wave 2 (kill-list 07 §4): pickup renders the SHEET morph only — a stored
   // `compound` layout would promise a two-row item cell nothing draws.
   [PICKUP_TABLE_LAYOUT_ID]: { catalog: PICKUP_FIELD_CATALOG, morphs: ['sheet'] },

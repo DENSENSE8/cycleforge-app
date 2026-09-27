@@ -30,7 +30,6 @@ import {
   Share2,
   ShieldCheck,
   ShoppingCart,
-  Sparkles,
   Star,
   Tags,
   TrendingUp,
@@ -61,6 +60,7 @@ import { parseProductsView } from '@/components/products/products-view';
 import { OUTBOUND_MODE_PATHS, outboundModeFromPath } from '@/components/outbound/outbound-sidebar-shared';
 import { SHIPPING_EXCEPTIONS_PATH, SHIPPING_LABEL_INTAKE_PATH, SHIPPING_ORDERS_PATH, SHIPPING_SHORTAGE_PATH } from '@/lib/shipping/orders-desk';
 import { SHIPPING_SHIPPED_PATH } from '@/lib/shipping/shipped-desk';
+import { DESK_QUEUE_PARAM } from '@/lib/outbound/desk-views';
 import { routeParamsFor } from '@/lib/routing/registry';
 import { parseRouteParams } from '@/lib/routing/route-params';
 
@@ -286,9 +286,9 @@ export const APP_SIDEBAR_NAV: SidebarNavItem[] = [
   { id: 'search',            label: 'Search',         href: '/search',             icon: Search,          kind: 'top', spineBand: false },
   { id: 'ops-photos',        label: 'Media Library',  href: '/ops/photos',         icon: Images,          kind: 'top', requires: 'photos.view', keywords: ['photos', 'photo library', 'images', 'assets', 'gallery'] },
   // Plans — live master-plan console (Home forge). Same landing as `/forge`.
-  { id: 'plans-live',        label: 'Plans',          href: '/?mode=forge&view=live', icon: Zap,           kind: 'top', spineBand: false, requires: 'operations.plans.view' },
-  // Chat — streaming assistant workspace; `/ai` shares it.
-  { id: 'ai-chat',           label: 'Chat',           href: '/ai-chat',            icon: MessageSquare,   kind: 'top', spineBand: false, requires: 'dashboard.view' },
+  { id: 'plans-live',        label: 'Plans',          href: '/?mode=forge',        icon: Zap,             kind: 'top', spineBand: false, requires: 'operations.plans.view' },
+  // Chat — the ONE assistant door (`/ai-chat` → SessionSurface).
+  { id: 'ai-chat',           label: 'Chat',           href: '/ai-chat',            icon: MessageSquare,   kind: 'top', requires: 'assistant.chat' },
   // NO standalone Tasks row.
   // (`/?mode=tasks`, see SIDEBAR_PAGE_NAV) — operator 2026-09-22: *"focus on
   { id: 'settings',          label: 'Settings',    href: '/settings',           icon: Settings,        kind: 'top', spineBand: false },
@@ -442,7 +442,6 @@ const CONTEXT_PANEL_ROUTE_KEYS = new Set<SidebarRouteKey>([
   'dashboard',
   'operations',
   'studio',
-  'ai-chat',
   // `settings` DROPPED 2026-09-10 — Pattern E card landing + /settings/me.
   // Roles/Access still need their picker rails; those paths are special-cased
   // in hasSidebarContextPanel below (the route key stays `settings`).
@@ -565,6 +564,7 @@ export function getSidebarNavPageId(
   if (pathname === SHIPPING_LABEL_INTAKE_PATH || pathname.startsWith(`${SHIPPING_LABEL_INTAKE_PATH}/`)) return 'label-intake';
   if (outboundMode) return 'outbound';
   if (pathname === '/shipping/orders' || pathname.startsWith('/shipping/orders/')) return 'outbound';
+  if (pathname === '/reports' || pathname.startsWith('/reports/')) return 'reports';
   // Testing family promoted: Quality Control vs Ready to Pack share `/test`
   // (`?view=testing`). Panel mount still uses route key `tech`.
   if (
@@ -736,7 +736,7 @@ export const ROUTE_PERMISSIONS: ReadonlyArray<{ prefix: string; permission: stri
   // /support is the native Zendesk ticket console — gated by the same
   // permission as the /api/zendesk/* routes it calls.
   { prefix: '/support',            permission: 'integrations.zendesk' },
-  { prefix: '/ai-chat',            permission: 'dashboard.view' },
+  { prefix: '/ai-chat',            permission: 'assistant.chat' },
   // Plans Live (master-plan console). Same gate as the Plans spine pin and
   // `/api/forge/master-plan`. Needed since 2026-08-19: `/forge` used to redirect
   // into a self-gated Home mode, so the route map never had to name it.
@@ -854,7 +854,7 @@ export const SIDEBAR_PAGE_NAV: SidebarPageNav[] = [
       return 'sales';
     },
   },
-  // ── Operations ──────────────────────────────────────────────────────────── `?mode=insights|history|signals`; bare /operations = the Live…
+  // ── Operations ──────────────────────────────────────────────────────────── `?mode=history|signals`; bare /operations = the Live…
   {
     id: 'operations', label: 'Operations', href: OPERATIONS, icon: Monitor, kind: 'main', mainGroup: 'monitor', requires: 'operations.view',
     // Desk page chrome (2026-08-31): the children below are drawn as IN-PAGE
@@ -869,7 +869,6 @@ export const SIDEBAR_PAGE_NAV: SidebarPageNav[] = [
       // Empty delta: `/review` param spec; bare URL is the packing lane.
       { id: 'packing-review', label: 'Packing Review', icon: ClipboardList, requires: 'packing.review', to: () => ({ pathname: REVIEW, params: {} }) },
       // 'analytics' removed 2026-09-16 — see the note above this entry.
-      { id: 'insights',  label: 'Insights',  icon: Sparkles,  to: () => ({ pathname: OPERATIONS, params: { mode: 'insights' } }) },
       { id: 'history',   label: 'History',   icon: History,   to: () => ({ pathname: OPERATIONS, params: { mode: 'history' } }) },
       { id: 'signals',   label: 'Signals',   icon: Zap,       to: () => ({ pathname: OPERATIONS, params: { mode: 'signals' } }) },
       { id: 'reconciliation', label: 'Reconcile', icon: Link2, to: () => ({ pathname: OPERATIONS, params: { mode: 'reconciliation' } }) },
@@ -890,7 +889,6 @@ export const SIDEBAR_PAGE_NAV: SidebarPageNav[] = [
       const m = params.get('mode');
       // An old `?mode=analytics` link resolves to no child and falls through to
       // 'live', matching what OperationsWorkspace renders for it.
-      if (m === 'insights') return 'insights';
       if (m === 'history') return 'history';
       if (m === 'signals') return 'signals';
       if (m === 'reconciliation') return 'reconciliation';
@@ -903,7 +901,7 @@ export const SIDEBAR_PAGE_NAV: SidebarPageNav[] = [
       return 'live';
     },
   },
-  // ── Reports ──────────────────────────────────────────────────────────────── `?tab=staff|utilization|velocity|dead` (Staff day is the…
+  // ── Reports ──────────────────────────────────────────────────────────────── `?tab=` — the seven tabs `src/app/reports/page.tsx` renders (`REPORT_TABS`); Staff day is the bare URL.
   {
     // `kind: 'top'` must match the APP_SIDEBAR_NAV twin above — the two
     // registries are kept in lockstep, and a `main`/`top` split would put the
@@ -912,15 +910,21 @@ export const SIDEBAR_PAGE_NAV: SidebarPageNav[] = [
     deskChrome: true,
     children: [
       { id: 'staff-day',   label: 'Staff day',       icon: ClipboardList, to: () => ({ pathname: '/reports', params: { tab: null } }) },
+      { id: 'packer-day',  label: 'Packer day',      icon: Package,       to: () => ({ pathname: '/reports', params: { tab: 'packer' } }) },
       { id: 'utilization', label: 'Bin Utilization', icon: BarChart3,     to: () => ({ pathname: '/reports', params: { tab: 'utilization' } }) },
       { id: 'velocity',    label: 'Velocity (30d)',  icon: TrendingUp,    to: () => ({ pathname: '/reports', params: { tab: 'velocity' } }) },
       { id: 'dead-stock',  label: 'Dead Stock',      icon: FileText,      to: () => ({ pathname: '/reports', params: { tab: 'dead' } }) },
+      { id: 'tasks',       label: 'Tasks',           icon: ListChecks,    to: () => ({ pathname: '/reports', params: { tab: 'tasks' } }) },
+      { id: 'activity',    label: 'Task time',       icon: Clock,         to: () => ({ pathname: '/reports', params: { tab: 'activity' } }) },
     ],
     resolveChild: ({ params }) => {
       const tab = params.get('tab');
+      if (tab === 'packer') return 'packer-day';
       if (tab === 'utilization') return 'utilization';
       if (tab === 'velocity') return 'velocity';
       if (tab === 'dead') return 'dead-stock';
+      if (tab === 'tasks') return 'tasks';
+      if (tab === 'activity') return 'activity';
       return 'staff-day';
     },
   },
@@ -1045,15 +1049,19 @@ export const SIDEBAR_PAGE_NAV: SidebarPageNav[] = [
     id: 'label-intake', label: 'Label intake', href: SHIPPING_LABEL_INTAKE_PATH, icon: SHIPPING_NAV_ICONS.labels, kind: 'domain', domainGroup: 'fulfillment', requires: 'packing.review',
     railless: true,
   },
-  // ── Shipping (Manage Shipping — Fulfillment) ────────────────────────────── Pending · To ship · Shipped · Exceptions.
+  // ── Shipping (Manage Shipping — Fulfillment) ────────────────────────────── Exceptions · Picking · To ship · Shipped.
   {
     id: 'outbound', label: 'Shipping', href: SHIPPING_ORDERS_PATH, icon: STATION_PAGE_ICONS.outbound, kind: 'domain', domainGroup: 'fulfillment', requires: 'shipping.view',
     // First adopter of desk page chrome (plan §2.2):
     deskChrome: true,
     // Rail-less, and now said out loud rather than derived from the line above (2026-08-31).
     railless: true,
-    // Tab order (owner 2026-09-24):
-    // Tab order (owner 2026-09-24): Exceptions · Pending · To ship · Shipped —
+    // One flat row in the page map (operator 2026-09-27): the stages are
+    // child-level context and render only in Shipping's own contextual
+    // sidebar. Children stay live for ⌘K, deep links and that sidebar.
+    spineFlat: true,
+    // Tab order (owner 2026-09-24): Exceptions · Picking · To ship · Shipped —
+    // the same order the contextual sidebar paints from `DESK_VIEWS`.
     children: [
       // Exceptions is a PEER by the same test FBA passes:
       { id: 'exceptions', label: 'Exceptions', icon: AlertTriangle,             requires: 'orders.view',  to: () => ({ pathname: SHIPPING_EXCEPTIONS_PATH, params: {} }) },
@@ -1104,6 +1112,8 @@ export const SIDEBAR_PAGE_NAV: SidebarPageNav[] = [
       ) {
         // Support › Inquiries alias — Support's resolveChild owns the pin.
         if (params.get('context') === 'support') return null;
+        // The pick list is a Picking view (`DESK_VIEWS` `pick`), not To ship.
+        if (params.get(DESK_QUEUE_PARAM) === 'pick') return 'shortage';
         return 'orders';
       }
       // FBA is a SIBLING DESK in the Outbound lane, not a tab here, so its paths light nothing on this band rather than falling through to the…

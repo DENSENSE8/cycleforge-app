@@ -129,6 +129,13 @@ const SLOT_FIELD_SORT_FACTS: Readonly<Record<string, QueueDisplaySortColumn>> = 
   'orders.scanned_out': 'scanned_out',
   'orders.qty': 'qty',
   'orders.amount': 'amount',
+  // To-ship INDEX face (order-level facts) — each rides the line fact it sums
+  // or extends. Date / Customer / Channel / Fulfillment / Tags have no queue
+  // sort fact yet, so their headers stay inert rather than sort by a proxy.
+  'orders.fulfill_by': 'age',
+  'orders.total': 'amount',
+  'orders.items': 'qty',
+  'orders.delivery': 'carrier',
 };
 
 /** The `?sort=` value a header key drives, or null when it does not sort. */

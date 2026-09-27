@@ -3,7 +3,7 @@ import { motion } from '@/design-system/motion';
 import { RefreshCw } from '@/components/Icons';
 import { IconButton } from '@/design-system/primitives';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
-import { framerTransition } from '@/design-system/foundations/motion-framer';
+import { motionTransition } from '@/design-system/foundations/motion-presets';
 import { sectionLabel, dataValue, fieldLabel } from '@/design-system/tokens/typography/presets';
 
 export function SidebarSection({
@@ -31,7 +31,7 @@ export function SidebarSection({
             <motion.span
               initial={false}
               animate={{ scaleY: expanded ? 0 : 1, opacity: expanded ? 0 : 1 }}
-              transition={framerTransition.overlayScrim}
+              transition={motionTransition.overlayScrim}
               className="absolute left-1/2 top-0 h-3.5 w-px -translate-x-1/2 bg-current origin-center"
             />
           </span>

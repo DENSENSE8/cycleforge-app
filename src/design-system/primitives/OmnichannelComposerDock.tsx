@@ -19,13 +19,13 @@ import { elevationClass } from '@/design-system/tokens/shadows';
 import { COMPOSER_SHELL_CORNER } from '@/design-system/tokens/radius';
 import { focusRing } from '@/design-system/tokens/focus-ring';
 import {
-  framerPresence,
-  framerTransition,
-} from '@/design-system/foundations/motion-framer';
+  motionPresence,
+  motionTransition,
+} from '@/design-system/foundations/motion-presets';
 import {
   useMotionPresence,
   useMotionTransition,
-} from '@/design-system/foundations/motion-framer-hooks';
+} from '@/design-system/foundations/motion-presets-hooks';
 import { Button } from './Button';
 import { CornerDownLeft, Send } from '@/components/Icons';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
@@ -261,8 +261,8 @@ export const OmnichannelComposerDock = forwardRef<
     grow();
   }, [value, grow]);
 
-  const presence = useMotionPresence(framerPresence.composerDock);
-  const mountTransition = useMotionTransition(framerTransition.composerDockMount);
+  const presence = useMotionPresence(motionPresence.composerDock);
+  const mountTransition = useMotionTransition(motionTransition.composerDockMount);
 
   const canCommit =
     commitDisabled !== undefined ? !commitDisabled : value.trim().length > 0;

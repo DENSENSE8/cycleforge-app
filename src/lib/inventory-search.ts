@@ -96,7 +96,7 @@ const INVENTORY_SEARCH_FIELDS: Record<InventoryTab, InventoryFieldConfig[]> = {
         { id: 'all',           label: 'All',           placeholder: 'Search SKU code or product title',  helperText: 'Searches SKU code and product title.' },
         { id: 'sku',           label: 'SKU',           placeholder: 'Search SKU code',                    helperText: 'Prefix and exact SKU matches rank first.' },
         { id: 'product_title', label: 'Product Title', placeholder: 'Search product title',               helperText: 'Substring match across product titles.' },
-        { id: 'brand',         label: 'Brand',         placeholder: 'Brand name',                         helperText: 'Filters SKUs by brand prefix.' },
+        { id: 'brand',         label: 'Brand',         placeholder: 'Brand name',                         helperText: 'Filters SKUs to a brand and its product lines.' },
     ],
     units: [
         { id: 'all',           label: 'All',           placeholder: 'Search any unit identifier',         helperText: 'Searches unit id, serial #, SKU, order id, and tracking.' },

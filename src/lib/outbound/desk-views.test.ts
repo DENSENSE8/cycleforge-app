@@ -18,7 +18,7 @@ test('every view href resolves back to that view (cold load paints the selection
   }
 });
 
-test('pick list and action list share a path and split on queue=pick', () => {
+test('pick list and to ship share a path and split on queue=pick', () => {
   assert.equal(at('/shipping/orders'), 'triage');
   assert.equal(at('/shipping/orders?queue=pick'), 'pick');
   assert.equal(at('/shipping/orders?queue=other&stage=packed'), 'triage');

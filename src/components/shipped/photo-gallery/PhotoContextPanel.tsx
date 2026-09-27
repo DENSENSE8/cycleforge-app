@@ -10,8 +10,8 @@ import { IconButton } from '@/design-system/primitives';
 import { formatDateTimePST } from '@/utils/date';
 import { useZendeskTicketSubject } from '@/hooks/useZendeskTicketSubject';
 import { usePhotoReceivingContext } from '@/hooks/usePhotoReceivingContext';
-import { framerTransition } from '@/design-system/foundations/motion-framer';
-import { useMotionTransition } from '@/design-system/foundations/motion-framer-hooks';
+import { motionTransition } from '@/design-system/foundations/motion-presets';
+import { useMotionTransition } from '@/design-system/foundations/motion-presets-hooks';
 import { photoStageLabel } from '@/lib/photos/stages';
 import type { PhotoIdentityMeta } from '@/components/photos/photo-library-types';
 import {
@@ -61,7 +61,7 @@ export function PhotoContextPanel({
   // One transition for BOTH directions — the drawer is a single reversible
   // toggle (close == open reversed). Under reduced motion this collapses to
   // duration 0, so the width snaps open/closed instantly.
-  const panelTransition = useMotionTransition(framerTransition.photoContextPanelMount);
+  const panelTransition = useMotionTransition(motionTransition.photoContextPanelMount);
   // Hooks must run unconditionally; each self-disables for null/invalid ids.
   const ticketSubject = useZendeskTicketSubject(meta?.ticketId ?? null);
   // Lazy provenance detail (serial / tracking / claim) — fetched only while the

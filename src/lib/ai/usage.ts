@@ -11,9 +11,17 @@ export interface AiUsageInput {
   /** Vault provider serving the call, or 'platform' for the metered default. */
   source: string;
   model: string;
-  context: 'query_embed' | 'doc_embed' | 'ask_ai';
+  /** `assistant_turn`: one row per chat turn (all rounds summed); `assistant_aux`: its side calls. */
+  context: 'query_embed' | 'doc_embed' | 'ask_ai' | 'assistant_turn' | 'assistant_aux';
   inputTokens: number;
   outputTokens?: number;
+  /** Overrides the rate-table estimate — e.g. 0 for a self-hosted model. */
+  costMicrocents?: number | null;
+  staffId?: number | null;
+  sessionId?: string | null;
+  latencyMs?: number | null;
+  /** Cloudflare AI Gateway `cf-aig-log-id`, linking the row to CF's own cost record. */
+  gatewayLogId?: string | null;
 }
 
 export type RecordAiUsage = (input: AiUsageInput) => void;
@@ -24,13 +32,17 @@ export type RecordAiUsage = (input: AiUsageInput) => void;
  */
 export function recordAiUsage(input: AiUsageInput): void {
   const outputTokens = input.outputTokens ?? 0;
-  const cost = estimateCostMicrocents(input.model, input.inputTokens, outputTokens);
+  const cost =
+    input.costMicrocents !== undefined
+      ? input.costMicrocents
+      : estimateCostMicrocents(input.model, input.inputTokens, outputTokens);
   void pool
     .query(
       `INSERT INTO ai_usage_events
          (organization_id, capability, provider, model, context,
-          input_tokens, output_tokens, cost_microcents)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+          input_tokens, output_tokens, cost_microcents,
+          staff_id, session_id, latency_ms, gateway_log_id)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)`,
       [
         input.orgId,
         input.capability,
@@ -40,6 +52,10 @@ export function recordAiUsage(input: AiUsageInput): void {
         input.inputTokens,
         outputTokens,
         cost,
+        input.staffId ?? null,
+        input.sessionId ?? null,
+        input.latencyMs ?? null,
+        input.gatewayLogId ?? null,
       ],
     )
     .catch((err) => {

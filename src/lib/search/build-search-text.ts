@@ -4,6 +4,7 @@ import {
   receivingOrderIdFromParts,
   receivingSearchTitle,
 } from '@/lib/search/receiving-search-title';
+import { resolveSkuIdentityTitle } from '@/lib/sku/sku-identity-law';
 
 export type SearchEntityType =
   | 'ORDER'
@@ -46,6 +47,13 @@ export interface SearchDocFacets {
    */
   serialNumber: string | null;
   happenedAt: Date | null;
+  /**
+   * product_brands.id of the doc's SKU brand node (a leaf — may be a
+   * product_line such as Wave under Bose), only when the catalog brand is a
+   * fact (brand_confidence >= 0.90). SKU: its own; ORDER / SERIAL_UNIT /
+   * RECEIVING: the carried SKU's. Powers `axis=brand` and the brand facet.
+   */
+  brandId: number | null;
 }
 
 export interface BuiltSearchDoc {
@@ -79,6 +87,13 @@ function dateOrNull(...candidates: unknown[]): Date | null {
     if (!Number.isNaN(d.getTime())) return d;
   }
   return null;
+}
+
+/** A positive integer id, or null (pg returns int columns as numbers, bigint as strings). */
+function idOrNull(value: unknown): number | null {
+  if (value == null || value === '') return null;
+  const n = Number(value);
+  return Number.isSafeInteger(n) && n > 0 ? n : null;
 }
 
 /** Join, drop blanks, dedupe (case-insensitive), cap length. */
@@ -123,6 +138,9 @@ function buildOrderDoc(row: SearchSourceRow): BuiltSearchDoc {
       row.order_id,
       row.product_title,
       row.sku,
+      // The carried SKU's brand name, ancestors and aliases — "bose" finds
+      // a Wave order. Short, so it rides ahead of the serial lists.
+      row.brand_text,
       row.serials,
       // Serials bound through `order_unit_allocations` — the modern path.
       row.allocated_serials,
@@ -151,6 +169,7 @@ function buildOrderDoc(row: SearchSourceRow): BuiltSearchDoc {
       carrier: strOrNull(row.carrier),
       serialNumber: null,
       happenedAt: dateOrNull(row.order_date, row.created_at),
+      brandId: idOrNull(row.brand_id),
     },
   };
 }
@@ -166,6 +185,7 @@ function buildSerialUnitDoc(row: SearchSourceRow): BuiltSearchDoc {
       row.unit_uid,
       row.sku,
       row.product_title,
+      row.brand_text,
       row.current_location,
       row.handling_unit_code,
       row.shipping_tracking_number,
@@ -181,6 +201,7 @@ function buildSerialUnitDoc(row: SearchSourceRow): BuiltSearchDoc {
       carrier: null,
       serialNumber: strOrNull(row.serial_number),
       happenedAt: dateOrNull(row.received_at, row.created_at),
+      brandId: idOrNull(row.brand_id),
     },
   };
 }
@@ -217,6 +238,8 @@ function buildReceivingDoc(row: SearchSourceRow): BuiltSearchDoc {
       row.exception_code,
       row.line_item_names,
       row.line_skus,
+      // Every line's SKU brand, not only the first line's.
+      row.brand_text,
       row.support_notes,
       row.zoho_notes,
       row.qa_status,
@@ -229,21 +252,30 @@ function buildReceivingDoc(row: SearchSourceRow): BuiltSearchDoc {
       carrier: strOrNull(row.carrier),
       serialNumber: null,
       happenedAt: dateOrNull(row.received_at, row.created_at),
+      brandId: idOrNull(row.brand_id),
     },
   };
 }
 
 /** Loader row contract: */
 function buildSkuDoc(row: SearchSourceRow): BuiltSearchDoc {
-  const title = str(row.product_title) || str(row.item_name) || str(row.sku) || `SKU #${str(row.id)}`;
+  // THE SKU IDENTITY LAW: the Zoho item name governs; the marketplace-owned
+  // catalog title is only the no-Zoho-twin fallback.
+  const title =
+    resolveSkuIdentityTitle({
+      zoho_item_title: strOrNull(row.zoho_item_title),
+      catalog_product_title: strOrNull(row.product_title),
+      sku: strOrNull(row.sku),
+      zoho_item_id: strOrNull(row.zoho_item_id),
+    }) || `SKU #${str(row.id)}`;
   return {
     title,
     subtitle: subtitleOf([row.sku, row.category]),
     searchText: joinSearchText([
       // Identifiers first:
       row.sku,
-      row.item_sku,
       row.provider_item_id,
+      row.zoho_item_id,
       row.platform_skus,
       row.platform_item_ids,
       row.upc,
@@ -251,8 +283,13 @@ function buildSkuDoc(row: SearchSourceRow): BuiltSearchDoc {
       row.ean,
       row.item_ean,
       row.gtin,
+      row.zoho_item_title,
       row.product_title,
-      row.item_name,
+      // Brand: Zoho's own brand word, then the catalog fact brand's name,
+      // ancestors and aliases — short, so ahead of the prose that can hit
+      // the cap.
+      row.zoho_item_brand,
+      row.brand_text,
       row.category,
       row.platform_accounts,
       row.kit_part_names,
@@ -268,6 +305,7 @@ function buildSkuDoc(row: SearchSourceRow): BuiltSearchDoc {
       carrier: null,
       serialNumber: null,
       happenedAt: dateOrNull(row.updated_at, row.created_at),
+      brandId: idOrNull(row.brand_id),
     },
   };
 }
@@ -297,6 +335,7 @@ function buildRepairDoc(row: SearchSourceRow): BuiltSearchDoc {
       carrier: null,
       serialNumber: strOrNull(row.serial_number),
       happenedAt: dateOrNull(row.received_at, row.created_at),
+      brandId: null,
     },
   };
 }
@@ -326,6 +365,7 @@ function buildFbaDoc(row: SearchSourceRow): BuiltSearchDoc {
       carrier: null,
       serialNumber: null,
       happenedAt: dateOrNull(row.shipped_at, row.due_date, row.created_at),
+      brandId: null,
     },
   };
 }
@@ -368,6 +408,7 @@ function buildWarrantyClaimDoc(row: SearchSourceRow): BuiltSearchDoc {
       // When the claim was LOGGED. warranty_expires_at is a countdown, not a
       // recency anchor, and delivered_at belongs to the shipment, not the claim.
       happenedAt: dateOrNull(row.created_at),
+      brandId: null,
     },
   };
 }
@@ -394,6 +435,7 @@ function buildSupportTicketDoc(row: SearchSourceRow): BuiltSearchDoc {
       carrier: null,
       serialNumber: null,
       happenedAt: dateOrNull(row.updated_at, row.created_at),
+      brandId: null,
     },
   };
 }
@@ -435,6 +477,7 @@ function buildLocationDoc(row: SearchSourceRow): BuiltSearchDoc {
       carrier: null,
       serialNumber: null,
       happenedAt: dateOrNull(row.updated_at, row.created_at),
+      brandId: null,
     },
   };
 }

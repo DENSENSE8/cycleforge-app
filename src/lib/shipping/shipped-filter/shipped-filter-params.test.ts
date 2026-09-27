@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import {
   readShippedAllDates,
+  readShippedDateWindow,
   shippedEffectiveDateWindow,
   shippedWeekFilterActive,
 } from './shipped-filter-params';
@@ -13,14 +14,13 @@ describe('shippedEffectiveDateWindow', () => {
         allDates: false,
         dateFrom: '',
         dateTo: '',
-        anyCarrierFilter: false,
         weekStart: '2026-09-08',
         weekEnd: '2026-09-14',
       }),
       { start: '2026-09-08', end: '2026-09-14' },
     );
     assert.equal(
-      shippedWeekFilterActive({ allDates: false, hasDateRange: false, anyCarrierFilter: false }),
+      shippedWeekFilterActive({ allDates: false, hasDateRange: false }),
       true,
     );
   });
@@ -31,14 +31,13 @@ describe('shippedEffectiveDateWindow', () => {
         allDates: true,
         dateFrom: '',
         dateTo: '',
-        anyCarrierFilter: false,
         weekStart: '2026-09-08',
         weekEnd: '2026-09-14',
       }),
       { start: '', end: '' },
     );
     assert.equal(
-      shippedWeekFilterActive({ allDates: true, hasDateRange: false, anyCarrierFilter: false }),
+      shippedWeekFilterActive({ allDates: true, hasDateRange: false }),
       false,
     );
   });
@@ -49,7 +48,6 @@ describe('shippedEffectiveDateWindow', () => {
         allDates: false,
         dateFrom: '2026-08-01',
         dateTo: '2026-08-31',
-        anyCarrierFilter: false,
         weekStart: '2026-09-08',
         weekEnd: '2026-09-14',
       }),
@@ -57,18 +55,14 @@ describe('shippedEffectiveDateWindow', () => {
     );
   });
 
-  it('a carrier/status/exception facet is all-time', () => {
+  it('carrier / status / exceptions narrow within the window, never widen it to all-time', () => {
     assert.deepEqual(
-      shippedEffectiveDateWindow({
-        allDates: false,
-        dateFrom: '',
-        dateTo: '',
-        anyCarrierFilter: true,
-        weekStart: '2026-09-08',
-        weekEnd: '2026-09-14',
-      }),
-      { start: '', end: '' },
+      readShippedDateWindow(
+        new URLSearchParams('dateFrom=2026-08-01&dateTo=2026-08-31&carrier=UPS&statusCategory=IN_TRANSIT&exceptions=1'),
+      ),
+      { start: '2026-08-01', end: '2026-08-31' },
     );
+    assert.deepEqual(readShippedDateWindow(new URLSearchParams('allDates=1&carrier=UPS')), { start: '', end: '' });
   });
 });
 

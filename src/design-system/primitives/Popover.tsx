@@ -4,8 +4,8 @@ import { useLayoutEffect, useState, type ComponentPropsWithoutRef, type ReactNod
 import { AnimatePresence, motion } from '@/design-system/motion';
 import { cn } from '@/utils/_cn';
 import { AnchoredLayer, type AnchoredPlacement } from './AnchoredLayer';
-import { framerPresence, framerTransition } from '../foundations/motion-framer';
-import { useMotionPresence, useMotionTransition } from '../foundations/motion-framer-hooks';
+import { motionPresence, motionTransition } from '../foundations/motion-presets';
+import { useMotionPresence, useMotionTransition } from '../foundations/motion-presets-hooks';
 import { elevationClass } from '../tokens/shadows';
 import { DROPDOWN_SHELL_CORNER } from '../tokens/radius';
 import type { ZIndexToken } from '../tokens/z-index';
@@ -57,8 +57,8 @@ export function Popover({
   children,
   ...rest
 }: PopoverProps) {
-  const presence = useMotionPresence(framerPresence.dropdownPanel);
-  const transition = useMotionTransition(framerTransition.dropdownOpen);
+  const presence = useMotionPresence(motionPresence.dropdownPanel);
+  const transition = useMotionTransition(motionTransition.dropdownOpen);
   // Keep the portal alive until the exit motion finishes — otherwise
   // AnchoredLayer unmounts on `open=false` and AnimatePresence never plays.
   // useLayoutEffect so the open path mounts before paint (no missed first frame).

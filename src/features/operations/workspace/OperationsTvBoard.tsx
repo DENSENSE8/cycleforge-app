@@ -14,7 +14,7 @@ import {
   MonitorPageShell,
   SectionCard,
 } from '@/design-system/components/monitor';
-import { framerVariants } from '@/design-system/foundations/motion-framer';
+import { motionVariants } from '@/design-system/foundations/motion-presets';
 import { Activity, AlertTriangle, Clock, Layers, Loader2, Warehouse } from '@/components/Icons';
 import { AnimatedCheck } from '@/components/ui/AnimatedCheck';
 import { formatDateKeyShort, formatTime12hPST } from '@/utils/date';
@@ -147,7 +147,7 @@ function TvBoardBody({
 }) {
   const header = (
     <motion.header
-      variants={framerVariants.monitorStaggerItem}
+      variants={motionVariants.monitorStaggerItem}
       className="flex flex-wrap items-center justify-between gap-4"
     >
       <div className="flex items-center gap-3.5">

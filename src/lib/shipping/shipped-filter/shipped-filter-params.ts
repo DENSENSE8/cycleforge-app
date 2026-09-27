@@ -4,6 +4,7 @@ import {
   isDateKey,
   localDateToDateKey,
 } from '@/utils/date';
+import { getWeekRangeForOffset } from '@/lib/dashboard-week-range';
 import { VALID_CARRIERS, VALID_STATUS, type ShippedTypeFilter } from './shipped-filter-constants';
 
 type ParamReader = URLSearchParams | { get: (k: string) => string | null };
@@ -58,18 +59,18 @@ export function readShippedAllDates(searchParams: ParamReader): boolean {
 
 /**
  * The fetch window for Shipped. Default is this warehouse week. `allDates=1`
- * (or a carrier/status/exception facet) is all-time. An explicit `dateFrom`/`dateTo`
- * wins over the week seed.
+ * is all-time. An explicit `dateFrom`/`dateTo` wins over the week seed. The
+ * type / carrier / status / exceptions filters narrow WITHIN the window
+ * (operator ruling 2026-09-26: they are answered in SQL over the range).
  */
 export function shippedEffectiveDateWindow(args: {
   allDates: boolean;
   dateFrom: string;
   dateTo: string;
-  anyCarrierFilter: boolean;
   weekStart: string;
   weekEnd: string;
 }): { start: string; end: string } {
-  if (args.allDates || args.anyCarrierFilter) return { start: '', end: '' };
+  if (args.allDates) return { start: '', end: '' };
   if (/^\d{4}-\d{2}-\d{2}$/.test(args.dateFrom)) {
     const end = /^\d{4}-\d{2}-\d{2}$/.test(args.dateTo) ? args.dateTo : args.dateFrom;
     return { start: args.dateFrom, end };
@@ -77,11 +78,25 @@ export function shippedEffectiveDateWindow(args: {
   return { start: args.weekStart, end: args.weekEnd };
 }
 
+/** `?shippedWeekOffset` — whole weeks back from this one (0 = this week). */
+export function readShippedWeekOffset(searchParams: ParamReader): number {
+  const raw = searchParams.get('shippedWeekOffset');
+  return raw == null ? 0 : Math.max(0, Number.parseInt(raw || '0', 10) || 0);
+}
+
+/** The Shipped list's window for these URL params — the list and its facet counts read this one derivation. */
+export function readShippedDateWindow(searchParams: ParamReader): { start: string; end: string } {
+  const week = getWeekRangeForOffset(readShippedWeekOffset(searchParams));
+  return shippedEffectiveDateWindow({
+    allDates: readShippedAllDates(searchParams),
+    dateFrom: (searchParams.get('dateFrom') || '').trim(),
+    dateTo: (searchParams.get('dateTo') || '').trim(),
+    weekStart: week.startStr,
+    weekEnd: week.endStr,
+  });
+}
+
 /** Default week seed is an active filter the operator can clear. */
-export function shippedWeekFilterActive(args: {
-  allDates: boolean;
-  hasDateRange: boolean;
-  anyCarrierFilter: boolean;
-}): boolean {
-  return !args.allDates && !args.hasDateRange && !args.anyCarrierFilter;
+export function shippedWeekFilterActive(args: { allDates: boolean; hasDateRange: boolean }): boolean {
+  return !args.allDates && !args.hasDateRange;
 }

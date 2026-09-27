@@ -159,7 +159,7 @@ function serialFromSubtitle(subtitle: string | null): string | null {
   return first || null;
 }
 
-function normalizeDocRow(row: any): DocHitRow {
+export function normalizeDocRow(row: Record<string, unknown>): DocHitRow {
   const subtitle = row.subtitle == null ? null : String(row.subtitle);
   const entityType = String(row.entity_type) as SearchEntityType;
   const serialCol = row.serial_number == null ? null : String(row.serial_number);
@@ -175,7 +175,10 @@ function normalizeDocRow(row: any): DocHitRow {
     carrier: row.carrier == null ? null : String(row.carrier),
     serial_number:
       serialCol || (entityType === 'SERIAL_UNIT' ? serialFromSubtitle(subtitle) : null),
-    happened_at: row.happened_at ?? null,
+    happened_at:
+      row.happened_at instanceof Date || typeof row.happened_at === 'string'
+        ? row.happened_at
+        : null,
   };
 }
 
@@ -215,7 +218,7 @@ function docKey(row: DocHitRow): string {
   return `${row.entity_type}:${row.entity_id}`;
 }
 
-function docRowToHit(row: DocHitRow, score: number, matchField: string): SearchHit {
+export function docRowToHit(row: DocHitRow, score: number, matchField: string): SearchHit {
   const facets = {
     status: row.status,
     conditionGrade: row.condition_grade,

@@ -45,8 +45,13 @@ interface RecordLedgerProps<T> {
   onClose: () => void;
   /** Existing record-cursor service controls, when this ledger participates in a shared record plane. */
   navigation?: RecordLedgerNavigation;
-  /** Toolbar contents — search, facets, counts. Sits on the 1px ink rule. */
-  toolbar: ReactNode;
+  /**
+   * Toolbar contents — search, facets, counts. Sits on the 1px ink rule.
+   * Omit it on a desk whose view-level controls live in the contextual
+   * sidebar (Shipping, operator 2026-09-26): the row still paints on a desk
+   * stage to hold the table-level controls (tally + fullscreen).
+   */
+  toolbar?: ReactNode;
   /** Optional strip under the toolbar (errors, notices). */
   banner?: ReactNode;
   /**
@@ -98,7 +103,8 @@ export function RecordLedger<T>({
 }: RecordLedgerProps<T>) {
   const keys = useMemo(() => records.map(recordKey), [records, recordKey]);
   const openIndex = openKey == null ? -1 : keys.indexOf(openKey);
-  const inPlace = useDeskRecordView() === 'in-place';
+  // Floor places the record in place too — only Split has a record pane.
+  const inPlace = useDeskRecordView() !== 'split';
   const onStage = useDeskStageOptional() != null;
 
   const internalScrollRef = useRef<HTMLDivElement>(null);
@@ -155,15 +161,17 @@ export function RecordLedger<T>({
   const list = (
     <>
       <div {...{ [DESK_RECORD_ANCHOR_ATTR]: '' }} className="flex min-w-0 shrink-0 flex-col">
-        <div data-testid="record-ledger-toolbar" className={RECORD_TOOLBAR_CLASS}>
-          <div className="flex min-w-0 flex-1 items-stretch">{toolbar}</div>
-          {inPlace ? <RecordLedgerTally summary={summary} /> : null}
-          {onStage ? (
-            <span className="flex shrink-0 items-center border-l border-mode-seam px-1.5">
-              <DataTableFullscreenToggle />
-            </span>
-          ) : null}
-        </div>
+        {toolbar || onStage ? (
+          <div data-testid="record-ledger-toolbar" className={RECORD_TOOLBAR_CLASS}>
+            <div className="flex min-w-0 flex-1 items-stretch">{toolbar}</div>
+            {inPlace ? <RecordLedgerTally summary={summary} /> : null}
+            {onStage ? (
+              <span className="flex shrink-0 items-center border-l border-mode-seam px-1.5">
+                <DataTableFullscreenToggle />
+              </span>
+            ) : null}
+          </div>
+        ) : null}
         {actionStrip}
       </div>
       {banner}

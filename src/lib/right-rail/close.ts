@@ -13,11 +13,6 @@ export function closeRightPanel(): void {
   // capture, no park, and no toast.
   if (top.canClose && !top.canClose()) return;
 
-  if (top.id === 'assistant') {
-    top.onClose?.();
-    return;
-  }
-
   // Ephemeral desk tools unmount on close — no draft park / Resume toast.
   if (top.resumeOnDismiss === false) {
     top.onClose?.();

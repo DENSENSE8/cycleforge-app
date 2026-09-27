@@ -3,12 +3,7 @@
 /** Local Pickup display data — the LCPU product lines feeding the `/pickup` receiving mode's rail + table. */
 
 import { useQuery } from '@tanstack/react-query';
-import {
-  parsePickupStatusTab,
-  pickupOrderIsDone,
-  pickupOrderNeedsProcess,
-  type PickupStatusTab,
-} from '@/lib/local-pickup/order-status';
+import { parsePickupStatusTab, type PickupStatusTab } from '@/lib/local-pickup/order-status';
 
 export type { PickupStatusTab };
 export { parsePickupStatusTab };
@@ -50,24 +45,6 @@ export interface PickupOrderGroup {
   lines: PickupLine[];
   itemCount: number;
   totalValue: number;
-}
-
-/** True when this product line's order belongs on the Need to process tab. */
-export function pickupLineNeedsProcess(line: PickupLine): boolean {
-  return pickupOrderNeedsProcess({
-    status: line.order_status,
-    receivingId: line.receiving_id,
-    itemCount: 1,
-  });
-}
-
-/** Status-tab filter over flat product lines. */
-export function pickupLineMatchesStatus(line: PickupLine, tab: PickupStatusTab): boolean {
-  if (tab === 'all') return true;
-  if (tab === 'done') return pickupOrderIsDone(line.order_status);
-  if (tab === 'process') return pickupLineNeedsProcess(line);
-  // draft — unfinished (not COMPLETED), including empty shells once they have lines
-  return !pickupOrderIsDone(line.order_status);
 }
 
 /** React-query feed of every LCPU product line (newest pickup date first). */

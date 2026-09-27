@@ -48,6 +48,8 @@ export interface ShippedOrder {
    * nothing is allocated. Never outranks `storage_locations` on the record.
    */
   sku_home_location?: OutboundStorageLocation | null;
+  /** The SKU's on-hand count (`SUM(sku_stock.stock)`); null when the SKU has no stock row. */
+  sku_stock_on_hand?: number | null;
   /** Server-derived allocation progress for the mobile Orders roster. */
   allocated_unit_count?: number | null;
   picked_unit_count?: number | null;

@@ -10,6 +10,8 @@ import {
   type GridSelectGutterChrome,
 } from '@/components/ui/GridRowCheckbox';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
+import { X } from '@/components/Icons';
+import { IconButton } from '@/design-system/primitives/IconButton';
 import { tableHeader } from '@/design-system/tokens/typography/presets';
 import { emitToggleAll } from '@/lib/selection/table-selection';
 import { useTableSelection, useTableSelectionTotal } from '@/hooks/useTableSelection';
@@ -89,6 +91,13 @@ export type LedgerGridColumnHeaderProps<C extends LedgerGridColumnModel> = {
    * bucket only. Ignored when the column list still has `select`.
    */
   leadingChrome?: ReactNode;
+  /**
+   * The check-set's verbs (Shopify index). Present ⇒ while ≥1 row is checked
+   * the row BECOMES the bulk bar: the select-all check stays mounted (focus
+   * holds on it), and the column labels give way to "N selected", these
+   * verbs and Clear. Omit to keep the plain column header at every count.
+   */
+  bulkBar?: ReactNode;
 };
 
 export function LedgerGridColumnHeader<C extends LedgerGridColumnModel>({
@@ -106,6 +115,7 @@ export function LedgerGridColumnHeader<C extends LedgerGridColumnModel>({
   onResizeColumn,
   labelFor,
   leadingChrome,
+  bulkBar,
 }: LedgerGridColumnHeaderProps<C>) {
   const scope = selectionScope ?? '__idle__';
   const selectedRows = useTableSelection<{ id?: number | string }>(scope, (r) => Number(r.id));
@@ -132,10 +142,13 @@ export function LedgerGridColumnHeader<C extends LedgerGridColumnModel>({
   };
 
   const emptyGutter = isEmptyGutterChrome(selectGutterChrome);
-
+  // The bar hangs off the select track (focus stays on its check).
+  const bulk = Boolean(bulkBar) && hasSelect && selectActive && selectedCount > 0;
+  const selectedLabel = `${selectedCount} selected`;
   return (
     <div
       role="row"
+      data-bulk-bar={bulk ? '' : undefined}
       className={cn(
         'group/hrow grid border-b border-border-default bg-surface-card px-0 py-0',
         LEDGER_HEADER_ROW_FACE,
@@ -172,10 +185,56 @@ export function LedgerGridColumnHeader<C extends LedgerGridColumnModel>({
             // check: a mark here would look like a control that does nothing.
             <span aria-hidden />
           )}
+          {bulkBar && selectActive ? (
+            // Always mounted so the count is ANNOUNCED as the bar swaps in and
+            // out; the check keeps focus, so nothing else tells a reader.
+            <span className="sr-only" role="status" aria-live="polite">
+              {selectedCount > 0 ? selectedLabel : ''}
+            </span>
+          ) : null}
         </div>
       ) : null}
 
-      {dataColumns.map((column, i) => {
+      {bulk ? (
+        <div
+          role="columnheader"
+          aria-colspan={Math.max(1, dataColumns.length)}
+          data-testid="data-table-bulk-bar"
+          // Frozen like the check beside it: on a split-x sheet the header row
+          // translates with the body and `.sticky` cells counter-translate, so
+          // the verbs stay on screen after a horizontal scroll.
+          className={cn(
+            ledgerGridCell({ inset: 'none', rule: false }),
+            LEDGER_HEADER_ROW_FACE,
+            LEDGER_GRID_FROZEN_CELL,
+            // Spans every data track after the check.
+            'col-[2/-1] min-w-0 gap-2 pl-2',
+          )}
+        >
+          <span
+            className="mode-label shrink-0 whitespace-nowrap text-text-default"
+            data-testid="data-table-bulk-count"
+          >
+            {selectedLabel}
+          </span>
+          <div className="flex min-w-0 items-center">{bulkBar}</div>
+          <IconButton
+            type="button"
+            size="xs"
+            radius="pill"
+            tone="neutral"
+            icon={<X className="h-3.5 w-3.5" aria-hidden />}
+            ariaLabel="Clear selection"
+            title="Clear selection"
+            data-testid="data-table-bulk-clear"
+            onClick={() => {
+              if (selectionScope) emitToggleAll(selectionScope, 'none');
+            }}
+          />
+        </div>
+      ) : null}
+
+      {bulk ? null : dataColumns.map((column, i) => {
         const last = i === dataColumns.length - 1;
         if (isGridColumnFillTrack(column)) {
           return (

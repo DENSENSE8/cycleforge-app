@@ -22,6 +22,11 @@ const RATES: ModelRate[] = [
   { match: 'gpt-4o', inputPerM: 2.5, outputPerM: 10.0 },
   { match: 'gpt-4.1-mini', inputPerM: 0.4, outputPerM: 1.6 },
   { match: 'gpt-4.1', inputPerM: 2.0, outputPerM: 8.0 },
+  // Cloudflare Workers AI (billed in neurons at $0.011/1k; token rates from
+  // developers.cloudflare.com/workers-ai/platform/pricing, read 2026-09-27).
+  { match: '@cf/meta/llama-4-scout-17b-16e-instruct', inputPerM: 0.27, outputPerM: 0.85 },
+  { match: '@cf/zai-org/glm-4.7-flash', inputPerM: 0.06, outputPerM: 0.4 },
+  { match: '@cf/qwen/qwen3-30b-a3b-fp8', inputPerM: 0.051, outputPerM: 0.335 },
 ];
 
 const MICROCENTS_PER_USD = 100_000_000;

@@ -9,7 +9,8 @@ import { createStationActivityLog } from '@/lib/station-activity';
 import { recordAudit, AUDIT_ACTION } from '@/lib/audit-logs';
 import { withAuth } from '@/lib/auth/withAuth';
 import { readIdempotencyKey, withIdempotencyClaim } from '@/lib/api-idempotency';
-import { fetchPackerLogRows, type PackerLogsTrackingFilter } from '@/lib/neon/packer-logs-week';
+import { fetchPackerLogRows } from '@/lib/neon/packer-logs-week';
+import { readShippedDeskFilters } from '@/lib/shipping/shipped-filter/shipped-filter-sql';
 import { computePackerLogEnrichment } from '@/lib/neon/packer-log-enrichment';
 import { attachPhotoWithLegacyUrl } from '@/lib/photos/service';
 import { PACKER_BOX_LABEL_PHOTO_TYPE } from '@/lib/photos/types';
@@ -24,13 +25,10 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
     const offset = parseInt(searchParams.get('offset') || '0');
     const weekStart = searchParams.get('weekStart') || '';
     const weekEnd = searchParams.get('weekEnd') || '';
-    // Accept shippedFilter (from dashboard) or trackingType (legacy direct callers)
-    const rawTypeFilter = searchParams.get('shippedFilter') || searchParams.get('trackingType') || 'all';
-    const trackingTypeFilter: PackerLogsTrackingFilter =
-      rawTypeFilter === 'orders' ? 'orders'
-      : rawTypeFilter === 'fba' ? 'fba'
-      : rawTypeFilter === 'sku' ? 'sku'
-      : 'all';
+    // The Shipped desk's view filters (`shippedFilter`, `carrier`,
+    // `statusCategory`, `exceptions`) — answered in SQL, one predicate with
+    // the sidebar facet counts. Absent params narrow nothing.
+    const shippedFilters = readShippedDeskFilters(searchParams);
 
     const packerIdNum = packerIdParam ? parseInt(packerIdParam) : null;
     const testedByNum = testedByParam ? parseInt(testedByParam) : null;
@@ -52,7 +50,7 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
         offset,
         weekStart,
         weekEnd,
-        trackingTypeFilter,
+        shippedFilters,
         spineOnly,
         searchTerm,
     });

@@ -106,17 +106,3 @@ export const detailStackDismissLayerClassName = 'fixed inset-0 z-panelBackdrop';
 
 export const detailStackDismissLayerElevatedClassName =
   'fixed inset-0 z-detailStackBackdrop';
-
-/** Full-height dock for the persistent assistant (⌘J) — flush right edge, no inset card. */
-export function assistantDockAsideStyle(): CSSProperties {
-  const { headerOffsetPx, widthPx } = DETAIL_STACK_LAYOUT;
-  return {
-    top: headerOffsetPx,
-    right: 0,
-    bottom: 0,
-    width: `min(${widthPx}px, 100vw)`,
-  };
-}
-
-export const assistantDockAsideClassName =
-  'fixed z-panel flex flex-col overflow-hidden border-l border-border-soft bg-surface-card shadow-xl';

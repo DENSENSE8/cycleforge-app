@@ -883,8 +883,8 @@ export function CompoundDates({
   return <CompoundCell primary={startedWrapped} secondary={dueWrapped} />;
 }
 
-/** One line of the DATES cell: */
-const CompoundDateField = forwardRef<
+/** One line of the DATES cell — also the To-ship index's Fulfill by cell. */
+export const CompoundDateField = forwardRef<
   HTMLDivElement,
   {
     dateKey: string | null;

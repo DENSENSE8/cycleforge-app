@@ -1,0 +1,36 @@
+-- entity_search_docs_null_embedding: BEFORE
+-- captured 2026-09-26T19:39:48.250Z as app_tenant (unpooled ep-shiny-hall-adz0n0nu), app.current_org=00000000-0000-0000-0000-000000000001
+-- BEGIN READ ONLY; SELECT set_config('app.current_org', '<org>', true); EXPLAIN (ANALYZE, BUFFERS) <sql>; ROLLBACK;
+-- src/lib/search/search-outbox-worker.ts:524-540 enqueueNullEmbeddingDocs, the SELECT feeding the INSERT (INSERT cannot run READ ONLY).
+-- Runtime is the OWNER pool (@/lib/db default). Owner-role plan at capture time: Seq Scan + top-N sort, 5.12 ms.
+-- params inlined as literals: ["00000000-0000-0000-0000-000000000001", 100, 30]
+-- SQL:
+--   SELECT organization_id, entity_type, entity_id
+--          FROM entity_search_docs
+--          WHERE organization_id = '00000000-0000-0000-0000-000000000001'
+--            AND embedding IS NULL
+--            AND updated_at < now() - (30::int * INTERVAL '1 minute')
+--          ORDER BY updated_at ASC
+--          LIMIT 100
+
+                                                                                QUERY PLAN                                                                                
+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ Limit  (cost=1291.35..1291.60 rows=100 width=40) (actual time=6.012..6.025 rows=100 loops=1)
+   Buffers: shared hit=595
+   ->  Sort  (cost=1291.35..1320.69 rows=11737 width=40) (actual time=6.011..6.016 rows=100 loops=1)
+         Sort Key: updated_at
+         Sort Method: top-N heapsort  Memory: 33kB
+         Buffers: shared hit=595
+         ->  Result  (cost=0.01..842.77 rows=11737 width=40) (actual time=0.017..4.079 rows=11732 loops=1)
+               One-Time Filter: ((NULLIF(current_setting('app.current_org'::text, true), ''::text))::uuid = '00000000-0000-0000-0000-000000000001'::uuid)
+               Buffers: shared hit=592
+               ->  Seq Scan on entity_search_docs  (cost=0.01..842.77 rows=11737 width=40) (actual time=0.013..2.959 rows=11732 loops=1)
+                     Filter: ((embedding IS NULL) AND (organization_id = '00000000-0000-0000-0000-000000000001'::uuid) AND (updated_at < (now() - '00:30:00'::interval)))
+                     Rows Removed by Filter: 801
+                     Buffers: shared hit=592
+ Planning:
+   Buffers: shared hit=248
+ Planning Time: 1.086 ms
+ Execution Time: 6.075 ms
+(17 rows)
+

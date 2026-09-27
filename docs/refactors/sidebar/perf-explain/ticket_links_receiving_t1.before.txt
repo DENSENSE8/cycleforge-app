@@ -1,0 +1,96 @@
+-- ticket_links_receiving_t1: BEFORE
+-- captured 2026-09-26T19:33:38.188Z as app_tenant (unpooled ep-shiny-hall-adz0n0nu), app.current_org=00000000-0000-0000-0000-000000000001
+-- BEGIN READ ONLY; SELECT set_config('app.current_org', '<org>', true); EXPLAIN (ANALYZE, BUFFERS) <sql>; ROLLBACK;
+-- T1: sqlLinkedSupportTicketLateralJoin (src/lib/receiving/lines/sql-receiving-ticket.ts) over the 200 newest receiving lines
+-- no params (org scoping comes from RLS; the lateral correlates on rl.organization_id)
+-- SQL:
+--   SELECT rl.id, linked_ticket.ticket_label
+--   FROM (SELECT * FROM receiving_line ORDER BY id DESC LIMIT 200) rl
+--   LEFT JOIN receiving_carton r ON r.id = rl.receiving_id AND r.organization_id = rl.organization_id
+--   LEFT JOIN LATERAL (
+--       SELECT
+--         CASE
+--           WHEN st.provider = 'zendesk' AND NULLIF(TRIM(st.external_ticket_id), '') IS NOT NULL
+--             THEN '#' || TRIM(LEADING '#' FROM st.external_ticket_id)
+--           WHEN st.id IS NOT NULL
+--             THEN '#' || st.id::text
+--           WHEN tl.zendesk_ticket_id IS NOT NULL
+--             THEN '#' || tl.zendesk_ticket_id::text
+--           ELSE NULL
+--         END AS ticket_label
+--       FROM ticket_links tl
+--       LEFT JOIN support_tickets st
+--         ON st.id = tl.support_ticket_id
+--        AND st.organization_id = tl.organization_id
+--       WHERE tl.organization_id = rl.organization_id
+--         AND (
+--           (tl.entity_type = 'RECEIVING_LINE' AND tl.entity_id = rl.id)
+--           OR (tl.entity_type = 'RECEIVING' AND tl.entity_id = COALESCE(rl.receiving_id, r.id))
+--           OR (r.shipment_id IS NOT NULL AND tl.entity_type = 'SHIPMENT' AND tl.entity_id = r.shipment_id)
+--         )
+--       ORDER BY
+--         CASE tl.entity_type
+--           WHEN 'RECEIVING_LINE' THEN 0
+--           WHEN 'RECEIVING' THEN 1
+--           WHEN 'SHIPMENT' THEN 2
+--           ELSE 3
+--         END,
+--         -- Within a tier, an ANCHORED ticket beats one that merely references the
+--         -- entity: ticket_links is many-per-ticket, so the SHIPMENT arm above can
+--         -- now match tickets that carry this STN as one of several references.
+--         tl.is_primary DESC,
+--         tl.created_at DESC
+--       LIMIT 1
+--     ) linked_ticket ON TRUE
+
+                                                                                                                                                                          QUERY PLAN                                                                                                                                                                          
+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ Nested Loop Left Join  (cost=96.01..8548.41 rows=200 width=36) (actual time=2.650..30.067 rows=200 loops=1)
+   Buffers: shared hit=3018
+   ->  Hash Right Join  (cost=54.96..324.41 rows=200 width=36) (actual time=2.344..3.607 rows=200 loops=1)
+         Hash Cond: ((r.id = rl.receiving_id) AND (r.organization_id = rl.organization_id))
+         Buffers: shared hit=275
+         ->  Seq Scan on receiving_carton r  (cost=0.00..241.43 rows=3583 width=28) (actual time=0.017..2.774 rows=3589 loops=1)
+               Filter: (organization_id = (NULLIF(current_setting('app.current_org'::text, true), ''::text))::uuid)
+               Rows Removed by Filter: 608
+               Buffers: shared hit=147
+         ->  Hash  (cost=51.96..51.96 rows=200 width=24) (actual time=0.401..0.402 rows=200 loops=1)
+               Buckets: 1024  Batches: 1  Memory Usage: 19kB
+               Buffers: shared hit=128
+               ->  Subquery Scan on rl  (cost=0.28..51.96 rows=200 width=24) (actual time=0.038..0.360 rows=200 loops=1)
+                     Buffers: shared hit=128
+                     ->  Limit  (cost=0.28..49.96 rows=200 width=721) (actual time=0.038..0.340 rows=200 loops=1)
+                           Buffers: shared hit=128
+                           ->  Index Scan Backward using receiving_lines_pkey on receiving_line  (cost=0.28..677.61 rows=2727 width=721) (actual time=0.037..0.322 rows=200 loops=1)
+                                 Filter: (organization_id = (NULLIF(current_setting('app.current_org'::text, true), ''::text))::uuid)
+                                 Rows Removed by Filter: 3
+                                 Buffers: shared hit=128
+   ->  Limit  (cost=41.05..41.10 rows=1 width=45) (actual time=0.132..0.132 rows=0 loops=200)
+         Buffers: shared hit=2743
+         ->  Result  (cost=41.05..41.10 rows=1 width=45) (actual time=0.132..0.132 rows=0 loops=200)
+               Buffers: shared hit=2743
+               ->  Sort  (cost=41.05..41.05 rows=1 width=42) (actual time=0.131..0.131 rows=0 loops=200)
+                     Sort Key: (CASE tl.entity_type WHEN 'RECEIVING_LINE'::text THEN 0 WHEN 'RECEIVING'::text THEN 1 WHEN 'SHIPMENT'::text THEN 2 ELSE 3 END), tl.is_primary DESC, tl.created_at DESC
+                     Sort Method: quicksort  Memory: 25kB
+                     Buffers: shared hit=2743
+                     ->  Result  (cost=0.29..41.04 rows=1 width=42) (actual time=0.129..0.130 rows=0 loops=200)
+                           One-Time Filter: ((NULLIF(current_setting('app.current_org'::text, true), ''::text))::uuid = rl.organization_id)
+                           Buffers: shared hit=2732
+                           ->  Nested Loop Left Join  (cost=0.29..41.03 rows=1 width=48) (actual time=0.128..0.129 rows=0 loops=200)
+                                 Buffers: shared hit=2732
+                                 ->  Seq Scan on ticket_links tl  (cost=0.00..32.72 rows=1 width=51) (actual time=0.127..0.128 rows=0 loops=200)
+                                       Filter: ((organization_id = rl.organization_id) AND (((entity_type = 'RECEIVING_LINE'::text) AND (entity_id = rl.id)) OR ((entity_type = 'RECEIVING'::text) AND (entity_id = COALESCE(rl.receiving_id, r.id))) OR ((r.shipment_id IS NOT NULL) AND (entity_type = 'SHIPMENT'::text) AND (entity_id = r.shipment_id))))
+                                       Rows Removed by Filter: 761
+                                       Buffers: shared hit=2600
+                                 ->  Result  (cost=0.27..8.29 rows=1 width=37) (actual time=0.004..0.004 rows=1 loops=44)
+                                       One-Time Filter: ((NULLIF(current_setting('app.current_org'::text, true), ''::text))::uuid = rl.organization_id)
+                                       Buffers: shared hit=132
+                                       ->  Index Scan using idx_support_tickets_org on support_tickets st  (cost=0.27..8.29 rows=1 width=37) (actual time=0.003..0.003 rows=1 loops=44)
+                                             Index Cond: ((organization_id = rl.organization_id) AND (id = tl.support_ticket_id))
+                                             Buffers: shared hit=132
+ Planning:
+   Buffers: shared hit=1146
+ Planning Time: 2.503 ms
+ Execution Time: 30.216 ms
+(47 rows)
+

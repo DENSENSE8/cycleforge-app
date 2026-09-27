@@ -13,7 +13,7 @@ Law: BRIEF §12 "industrial on phones, triage on desktop" (owner, 2026-09-26). R
   `src/app` files mount it. No device awareness yet.
 - shadcn: `components.json` = new-york, neutral, CSS variables, `@/components/ui`. Radix
   dialog/popover/dropdown/checkbox/switch/slot + `class-variance-authority` installed.
-- Motion: `motion` + `framer-motion` 12.42, `lenis`, `animejs` 4 installed. House wrapper
+- Motion: `motion` 12.42 + Motion+ (`motion-plus`), `lenis`, `animejs` 4 installed. House wrapper
   `@/design-system/motion` (roles, `use-motion-role`, `use-pointer-fine`, reduced-motion).
 - Selection: `src/design-system/components/SelectionActionBar.tsx` (+ `StickyActionBar`)
   already uses `AnimatePresence`/`motion` and `useTableSelection(scope)` /

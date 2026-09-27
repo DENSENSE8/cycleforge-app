@@ -4,7 +4,7 @@ export const SHIPPING_ORDERS_PATH = '/shipping/orders';
 
 /**
  * Shortage / need-to-buy workbench. A Shipping PEER, not a To-ship facet:
- * out-of-stock lines are the procurement queue. Reads as Pending in the tab.
+ * out-of-stock lines are the procurement queue. Reads as Picking in the nav.
  */
 export const SHIPPING_SHORTAGE_PATH = '/shipping/shortage';
 /** The order-exception workbench. */

@@ -153,7 +153,8 @@ export function ReviewPackingTable({ onOpenRow, onCloseRow }: ReviewPackingTable
   /** Only the Shipped lane's feed answered the find in SQL — see above. */
   const searchAnsweredBy = tab === 'shipped' ? ('server' as const) : ('client' as const);
 
-  const sheet = useOrdersSpreadsheet({
+  // Review opens records in its own workspace — the desk record plane bag is not a table prop.
+  const { recordPlane, ...sheet } = useOrdersSpreadsheet({
     ariaLabel: 'Orders awaiting packing review',
     records: records as ShippedOrder[],
     loading,

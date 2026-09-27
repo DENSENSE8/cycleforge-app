@@ -33,7 +33,7 @@ export function PackWorkspaceView({ packerId }: { packerId: number }) {
   const { packView, setPackView } = usePackWorkspaceTab();
   const { newOpen, openNew, closeNew } = useNewOrderParam();
   const queueActive = packView === 'queue';
-  const { selectionEnabled, selectMode, selectionOverlays } = useOrderRailSelection(
+  const { selectionEnabled, selectionOverlays } = useOrderRailSelection(
     'unshipped',
     { publish: queueActive },
   );
@@ -80,7 +80,6 @@ export function PackWorkspaceView({ packerId }: { packerId: number }) {
                 ) : (
                   <UnshippedTable
                     strictSearchScope
-                    selectMode={selectMode}
                     railSelection
                     onOpenRecord={handleOpenQueueRecord}
                     searchEmptyTitle="No ready-to-pack orders"

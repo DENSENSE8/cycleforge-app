@@ -1,0 +1,219 @@
+-- queue_counts_main: BEFORE
+-- captured 2026-09-26T19:08:48.466Z as app_tenant (unpooled ep-shiny-hall-adz0n0nu), app.current_org=00000000-0000-0000-0000-000000000001
+-- BEGIN READ ONLY; SELECT set_config('app.current_org', '<org>', true); EXPLAIN (ANALYZE, BUFFERS) <sql>; ROLLBACK;
+-- params inlined as literals (= the custom plan tenantQuery gets): ["00000000-0000-0000-0000-000000000001"]
+-- SQL:
+--   
+--         SELECT
+--           (
+--       EXISTS (
+--         SELECT 1 FROM tech_serial_numbers tsn
+--         WHERE tsn.order_id = o.id
+--           AND tsn.organization_id = o.organization_id
+--       )
+--       OR EXISTS (
+--         SELECT 1 FROM station_activity_logs sal
+--         WHERE sal.organization_id = o.organization_id
+--           AND sal.activity_type IN ('TRACKING_SCANNED', 'FNSKU_SCANNED')
+--           AND (
+--             (
+--               (sal.metadata->>'order_row_id') ~ '^[0-9]+$'
+--                 AND (sal.metadata->>'order_row_id')::int = o.id
+--               OR (
+--                 sal.metadata->>'order_id' IS NOT NULL
+--                 AND sal.metadata->>'order_id' = o.order_id
+--               )
+--             )
+--             OR (
+--               sal.shipment_id IS NOT NULL
+--               AND sal.shipment_id = o.shipment_id
+--               AND (sal.metadata->>'order_row_id') IS NULL
+--               AND (
+--     o.shipment_id IS NOT NULL
+--     AND NOT EXISTS (
+--       SELECT 1 FROM orders o2
+--       WHERE o2.shipment_id = o.shipment_id
+--         AND o2.organization_id = o.organization_id
+--         AND o2.id <> o.id
+--     )
+--   )
+--             )
+--           )
+--       )
+--     ) AS has_tech_scan,
+--           (
+--       EXISTS (
+--         SELECT 1 FROM station_activity_logs sal
+--         WHERE sal.organization_id = o.organization_id
+--           AND sal.activity_type IN ('PACK_COMPLETED', 'PACK_SCAN')
+--           AND (
+--             (
+--               (sal.metadata->>'order_row_id') ~ '^[0-9]+$'
+--                 AND (sal.metadata->>'order_row_id')::int = o.id
+--               OR (
+--                 sal.metadata->>'order_id' IS NOT NULL
+--                 AND sal.metadata->>'order_id' = o.order_id
+--               )
+--             )
+--             OR (
+--               sal.shipment_id IS NOT NULL
+--               AND sal.shipment_id = o.shipment_id
+--               AND (sal.metadata->>'order_row_id') IS NULL
+--               AND (
+--     o.shipment_id IS NOT NULL
+--     AND NOT EXISTS (
+--       SELECT 1 FROM orders o2
+--       WHERE o2.shipment_id = o.shipment_id
+--         AND o2.organization_id = o.organization_id
+--         AND o2.id <> o.id
+--     )
+--   )
+--             )
+--           )
+--       )
+--     ) AS has_pack_scan,
+--           o.is_out_of_stock AS blocked,
+--           COUNT(*)::int AS n,
+--           COUNT(*) FILTER (WHERE o.is_urgent)::int AS urgent_n,
+--           COUNT(*) FILTER (
+--             WHERE COALESCE(wa_d.deadline_at, NULL) IS NOT NULL
+--               AND timezone('America/Los_Angeles', wa_d.deadline_at)::date
+--                 <= timezone('America/Los_Angeles', NOW())::date
+--           )::int AS must_ship_n
+--         FROM orders o
+--         LEFT JOIN shipping_tracking_numbers stn ON stn.id = o.shipment_id
+--         LEFT JOIN LATERAL (
+--           SELECT wa.deadline_at
+--           FROM work_assignments wa
+--           WHERE wa.entity_type = 'ORDER' AND wa.entity_id = o.id
+--             AND wa.status <> 'CANCELED'
+--             AND wa.deadline_at IS NOT NULL
+--           ORDER BY wa.deadline_at ASC
+--           LIMIT 1
+--         ) wa_d ON true
+--         WHERE o.organization_id = '00000000-0000-0000-0000-000000000001'
+--           AND NOT COALESCE(
+--     stn.is_carrier_accepted
+--     OR stn.is_in_transit
+--     OR stn.is_out_for_delivery
+--     OR stn.is_delivered
+--     OR (
+--       COALESCE(BTRIM(stn.latest_status_category), '') <> ''
+--       AND UPPER(BTRIM(stn.latest_status_category)) NOT IN ('LABEL_CREATED', 'UNKNOWN')
+--     )
+--     OR UPPER(COALESCE(stn.latest_status_label, '')) LIKE '%MOVING THROUGH NETWORK%'
+--     OR UPPER(COALESCE(stn.latest_status_description, '')) LIKE '%MOVING THROUGH NETWORK%',
+--     false
+--   )
+--           AND COALESCE(o.fulfillment_channel, '') <> 'AFN'
+--           AND NOT EXISTS (
+--         SELECT 1 FROM station_activity_logs sal_out
+--         WHERE sal_out.shipment_id IS NOT NULL
+--           AND sal_out.shipment_id = o.shipment_id
+--           AND sal_out.organization_id = o.organization_id
+--           AND sal_out.activity_type = 'SHIP_CONFIRM'
+--       )
+--         GROUP BY 1, 2, 3
+--       
+
+                                                                                                                                                                                                                                                             QUERY PLAN                                                                                                                                                                                                                                                              
+-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ GroupAggregate  (cost=1679108.17..1681748.96 rows=8 width=15) (actual time=10973.194..10973.215 rows=5 loops=1)
+   Group Key: (((ANY ((o.id = (hashed SubPlan 2).col1) AND (o.organization_id = (hashed SubPlan 2).col2))) OR EXISTS(SubPlan 4))), (EXISTS(SubPlan 6)), o.is_out_of_stock
+   Buffers: shared hit=1504874
+   ->  Sort  (cost=1679108.17..1679113.71 rows=2215 width=12) (actual time=10972.860..10972.890 rows=406 loops=1)
+         Sort Key: (((ANY ((o.id = (hashed SubPlan 2).col1) AND (o.organization_id = (hashed SubPlan 2).col2))) OR EXISTS(SubPlan 4))), (EXISTS(SubPlan 6)), o.is_out_of_stock
+         Sort Method: quicksort  Memory: 34kB
+         Buffers: shared hit=1504874
+         ->  Result  (cost=2149.30..1678985.09 rows=2215 width=12) (actual time=112.497..10971.716 rows=406 loops=1)
+               One-Time Filter: ((NULLIF(current_setting('app.current_org'::text, true), ''::text))::uuid = '00000000-0000-0000-0000-000000000001'::uuid)
+               Buffers: shared hit=1504869
+               ->  Nested Loop Left Join  (cost=2149.30..967787.60 rows=2215 width=54) (actual time=49.955..160.405 rows=406 loops=1)
+                     Buffers: shared hit=51530
+                     ->  Merge Right Anti Join  (cost=1714.11..3850.28 rows=2215 width=46) (actual time=49.454..51.712 rows=406 loops=1)
+                           Merge Cond: (sal_out.shipment_id = o.shipment_id)
+                           Buffers: shared hit=15747
+                           ->  Result  (cost=0.29..5391.31 rows=1839 width=24) (actual time=0.024..17.936 rows=4745 loops=1)
+                                 One-Time Filter: ((NULLIF(current_setting('app.current_org'::text, true), ''::text))::uuid = '00000000-0000-0000-0000-000000000001'::uuid)
+                                 Buffers: shared hit=14673
+                                 ->  Index Scan using idx_station_activity_logs_shipment_id on station_activity_logs sal_out  (cost=0.29..5391.31 rows=1839 width=24) (actual time=0.022..17.461 rows=4745 loops=1)
+                                       Filter: ((organization_id = '00000000-0000-0000-0000-000000000001'::uuid) AND ((activity_type)::text = 'SHIP_CONFIRM'::text))
+                                       Rows Removed by Filter: 12404
+                                       Buffers: shared hit=14673
+                           ->  Sort  (cost=1713.83..1720.00 rows=2469 width=46) (actual time=31.715..32.369 rows=2159 loops=1)
+                                 Sort Key: o.shipment_id
+                                 Sort Method: quicksort  Memory: 238kB
+                                 Buffers: shared hit=1074
+                                 ->  Hash Left Join  (cost=1314.16..1574.70 rows=2469 width=46) (actual time=19.120..26.952 rows=2159 loops=1)
+                                       Hash Cond: (o.shipment_id = stn.id)
+                                       Filter: (NOT COALESCE((stn.is_carrier_accepted OR stn.is_in_transit OR stn.is_out_for_delivery OR stn.is_delivered OR ((COALESCE(btrim(stn.latest_status_category), ''::text) <> ''::text) AND (upper(btrim(stn.latest_status_category)) <> ALL ('{LABEL_CREATED,UNKNOWN}'::text[]))) OR (upper(COALESCE(stn.latest_status_label, ''::text)) ~~ '%MOVING THROUGH NETWORK%'::text) OR (upper(COALESCE(stn.latest_status_description, ''::text)) ~~ '%MOVING THROUGH NETWORK%'::text)), false))
+                                       Rows Removed by Filter: 2815
+                                       Buffers: shared hit=1074
+                                       ->  Seq Scan on orders o  (cost=0.00..247.58 rows=4938 width=46) (actual time=0.021..1.849 rows=4974 loops=1)
+                                             Filter: ((organization_id = '00000000-0000-0000-0000-000000000001'::uuid) AND (COALESCE(fulfillment_channel, ''::text) <> 'AFN'::text))
+                                             Rows Removed by Filter: 209
+                                             Buffers: shared hit=170
+                                       ->  Hash  (cost=1174.13..1174.13 rows=11202 width=50) (actual time=18.969..18.970 rows=11202 loops=1)
+                                             Buckets: 16384  Batches: 1  Memory Usage: 799kB
+                                             Buffers: shared hit=904
+                                             ->  Seq Scan on shipping_tracking_numbers stn  (cost=0.00..1174.13 rows=11202 width=50) (actual time=0.012..12.049 rows=11202 loops=1)
+                                                   Filter: (organization_id = (NULLIF(current_setting('app.current_org'::text, true), ''::text))::uuid)
+                                                   Rows Removed by Filter: 804
+                                                   Buffers: shared hit=904
+                     ->  Limit  (cost=435.17..435.18 rows=1 width=8) (actual time=0.264..0.264 rows=0 loops=406)
+                           Buffers: shared hit=35783
+                           ->  Sort  (cost=435.17..435.18 rows=1 width=8) (actual time=0.261..0.261 rows=0 loops=406)
+                                 Sort Key: wa.deadline_at
+                                 Sort Method: quicksort  Memory: 25kB
+                                 Buffers: shared hit=35783
+                                 ->  Index Scan using idx_work_assignments_entity on work_assignments wa  (cost=0.29..435.16 rows=1 width=8) (actual time=0.252..0.253 rows=0 loops=406)
+                                       Index Cond: (entity_id = o.id)
+                                       Filter: ((deadline_at IS NOT NULL) AND (organization_id = (NULLIF(current_setting('app.current_org'::text, true), ''::text))::uuid) AND (entity_type = 'ORDER'::work_entity_type_enum) AND (status <> 'CANCELED'::assignment_status_enum))
+                                       Rows Removed by Filter: 0
+                                       Buffers: shared hit=35780
+               SubPlan 2
+                 ->  Seq Scan on tech_serial_numbers tsn  (cost=0.00..170.63 rows=4117 width=20) (actual time=0.024..2.344 rows=4117 loops=1)
+                       Filter: (organization_id = (NULLIF(current_setting('app.current_org'::text, true), ''::text))::uuid)
+                       Buffers: shared hit=78
+               SubPlan 4
+                 ->  Result  (cost=8.60..2027.68 rows=11 width=0) (actual time=13.053..13.053 rows=0 loops=405)
+                       One-Time Filter: ((NULLIF(current_setting('app.current_org'::text, true), ''::text))::uuid = o.organization_id)
+                       Buffers: shared hit=726436
+                       InitPlan 3
+                         ->  Result  (cost=0.28..8.31 rows=1 width=0) (actual time=0.029..0.029 rows=0 loops=4)
+                               One-Time Filter: ((NULLIF(current_setting('app.current_org'::text, true), ''::text))::uuid = o.organization_id)
+                               Buffers: shared hit=12
+                               ->  Index Scan using idx_orders_shipment_id on orders o2  (cost=0.28..8.31 rows=1 width=0) (actual time=0.022..0.023 rows=0 loops=4)
+                                     Index Cond: (shipment_id = o.shipment_id)
+                                     Filter: ((id <> o.id) AND (organization_id = o.organization_id))
+                                     Rows Removed by Filter: 1
+                                     Buffers: shared hit=12
+                       ->  Index Scan using idx_station_activity_logs_organization on station_activity_logs sal  (cost=8.60..2027.68 rows=11 width=0) (actual time=13.047..13.047 rows=0 loops=405)
+                             Index Cond: (organization_id = o.organization_id)
+                             Filter: (((activity_type)::text = ANY ('{TRACKING_SCANNED,FNSKU_SCANNED}'::text[])) AND ((((metadata ->> 'order_row_id'::text) ~ '^[0-9]+$'::text) AND (((metadata ->> 'order_row_id'::text))::integer = o.id)) OR (((metadata ->> 'order_id'::text) IS NOT NULL) AND ((metadata ->> 'order_id'::text) = o.order_id)) OR ((shipment_id IS NOT NULL) AND (shipment_id = o.shipment_id) AND ((metadata ->> 'order_row_id'::text) IS NULL) AND (o.shipment_id IS NOT NULL) AND (NOT (InitPlan 3).col1))))
+                             Rows Removed by Filter: 43464
+                             Buffers: shared hit=726436
+               SubPlan 6
+                 ->  Result  (cost=8.60..2027.68 rows=18 width=0) (actual time=13.581..13.581 rows=0 loops=406)
+                       One-Time Filter: ((NULLIF(current_setting('app.current_org'::text, true), ''::text))::uuid = o.organization_id)
+                       Buffers: shared hit=726825
+                       InitPlan 5
+                         ->  Result  (cost=0.28..8.31 rows=1 width=0) (actual time=0.034..0.034 rows=0 loops=2)
+                               One-Time Filter: ((NULLIF(current_setting('app.current_org'::text, true), ''::text))::uuid = o.organization_id)
+                               Buffers: shared hit=6
+                               ->  Index Scan using idx_orders_shipment_id on orders o2_1  (cost=0.28..8.31 rows=1 width=0) (actual time=0.020..0.020 rows=0 loops=2)
+                                     Index Cond: (shipment_id = o.shipment_id)
+                                     Filter: ((id <> o.id) AND (organization_id = o.organization_id))
+                                     Rows Removed by Filter: 1
+                                     Buffers: shared hit=6
+                       ->  Index Scan using idx_station_activity_logs_organization on station_activity_logs sal_1  (cost=8.60..2027.68 rows=18 width=0) (actual time=13.575..13.575 rows=0 loops=406)
+                             Index Cond: (organization_id = o.organization_id)
+                             Filter: (((activity_type)::text = ANY ('{PACK_COMPLETED,PACK_SCAN}'::text[])) AND ((((metadata ->> 'order_row_id'::text) ~ '^[0-9]+$'::text) AND (((metadata ->> 'order_row_id'::text))::integer = o.id)) OR (((metadata ->> 'order_id'::text) IS NOT NULL) AND ((metadata ->> 'order_id'::text) = o.order_id)) OR ((shipment_id IS NOT NULL) AND (shipment_id = o.shipment_id) AND ((metadata ->> 'order_row_id'::text) IS NULL) AND (o.shipment_id IS NOT NULL) AND (NOT (InitPlan 5).col1))))
+                             Rows Removed by Filter: 43362
+                             Buffers: shared hit=726825
+ Planning:
+   Buffers: shared hit=2001
+ Planning Time: 13.822 ms
+ Execution Time: 10977.897 ms
+(97 rows)
+

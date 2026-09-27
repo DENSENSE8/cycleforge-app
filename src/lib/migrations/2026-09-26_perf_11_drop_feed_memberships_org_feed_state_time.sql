@@ -1,0 +1,37 @@
+-- 2026-09-26_perf_11_drop_feed_memberships_org_feed_state_time.sql
+--
+-- WHAT
+--   DROP INDEX idx_feed_memberships_org_feed_state_time
+--     (organization_id, feed_key, state, occurred_at DESC, id DESC)
+--
+-- WHY
+--   idx_scan = 2 (pg_stat_user_indexes, read 2026-09-26) against
+--   6.5M scans on ux_feed_memberships_natural. Its intended reader, the open
+--   rail in getFeedState, filters `state <> 'done'`, which this key order cannot
+--   serve; that read moves to idx_feed_memberships_open
+--   (2026-09-26_perf_07_feed_memberships_open_rail.sql). The remaining reader
+--   shapes all lead with (organization_id, feed_key[, entity_type, entity_id]):
+--     - getFeedState counts (read-tools.ts:242-249): org + feed_key GROUP BY state
+--       -> ux_feed_memberships_natural prefix;
+--     - projection flips/upserts (src/lib/orders|receiving/feed-membership-projection.ts)
+--       -> ux_feed_memberships_natural / ON CONFLICT on the natural key;
+--     - setFeedMembershipState (src/lib/surfaces/feed-writes.ts) -> natural key.
+--   No src/ or scripts/ query filters `state = <literal>` per feed. Dropping it
+--   removes write amplification on every projection upsert.
+--   Evidence: docs/refactors/sidebar/perf-explain/feed_memberships_open_rail.before.txt.
+--
+-- SAFETY
+--   Apply AFTER 2026-09-26_perf_07 (filename order guarantees it). DROP INDEX
+--   takes a brief ACCESS EXCLUSIVE lock; no data change. src/lib/drizzle/schema.ts
+--   still declares this index as `railIdx`; that declaration must be removed in
+--   the same change so drizzle does not recreate it.
+--
+-- VERIFY
+--   SELECT indexrelid::regclass FROM pg_index
+--    WHERE indrelid = 'feed_memberships'::regclass;   -- name not listed
+--
+-- ROLLBACK (as a new migration; applied files are immutable)
+--   CREATE INDEX IF NOT EXISTS idx_feed_memberships_org_feed_state_time
+--     ON feed_memberships (organization_id, feed_key, state, occurred_at DESC, id DESC);
+
+DROP INDEX IF EXISTS idx_feed_memberships_org_feed_state_time;

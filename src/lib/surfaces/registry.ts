@@ -365,6 +365,33 @@ export const MUTATION_KINDS = {
     description: 'Change a settings-registry value for the org. Review-gated: settings alter live behavior.',
     permission: 'admin.manage_features',
   },
+  // review — the brand vocabulary and SKU brand facts are catalog masters
+  // (sidebar Phase 1). A human approves each proposal; approval writes the
+  // brand domain (src/lib/brands/brands.ts) inside the review transaction.
+  'brand.create': {
+    label: 'Create brand',
+    trust: 'review',
+    targetKind: 'product_brand',
+    description:
+      "Add a brand / franchise / product_line with its aliases. Payload: { name, kind?: 'brand'|'franchise'|'product_line', parentBrandId?, publisher?, aliases?: string[], assignSkuCatalogIds?: number[] }. Review-gated: the brand vocabulary classifies every search and identify call.",
+    permission: 'sku_stock.manage',
+  },
+  'brand.update': {
+    label: 'Update brand',
+    trust: 'review',
+    targetKind: 'product_brand',
+    description:
+      'Rename / re-parent / (de)activate a brand, or add and remove aliases. Payload: { brandId, name?, kind?, parentBrandId?, publisher?, isActive?, aliasesAdd?: string[], aliasesRemove?: string[] }. An alias owned by another brand is refused. Review-gated (catalog master).',
+    permission: 'sku_stock.manage',
+  },
+  'sku_brand.assign': {
+    label: 'Set SKU brand',
+    trust: 'review',
+    targetKind: 'sku_catalog',
+    description:
+      'Set (or clear with brandId: null) the brand of one catalog SKU. Payload: { skuCatalogId, brandId }. Approval stamps it as a human-confirmed fact (operator, 1.00); revertable. The brand backfill queues its below-threshold guesses here.',
+    permission: 'sku_stock.manage',
+  },
 } as const satisfies Record<string, MutationKindDef>;
 
 export type MutationKind = keyof typeof MUTATION_KINDS;

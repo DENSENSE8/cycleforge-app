@@ -3,7 +3,7 @@
 import type { ComponentProps } from 'react';
 import { useReducedMotion } from '@/design-system/motion';
 import { cn } from '@/utils/_cn';
-import { framerTransition } from '@/design-system/foundations/motion-framer';
+import { motionTransition } from '@/design-system/foundations/motion-presets';
 import { AnimateNumber } from '@/design-system/motion/plus';
 
 type AnimateNumberFormat = NonNullable<ComponentProps<typeof AnimateNumber>['format']>;
@@ -73,7 +73,7 @@ export function AnimatedStat({
       format={format}
       prefix={prefix}
       suffix={suffix}
-      transition={speed === 'fast' ? FAST_TRANSITION : framerTransition.quantityBump}
+      transition={speed === 'fast' ? FAST_TRANSITION : motionTransition.quantityBump}
     >
       {safe}
     </AnimateNumber>

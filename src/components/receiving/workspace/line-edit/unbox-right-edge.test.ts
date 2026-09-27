@@ -5,7 +5,6 @@ import {
   clearAllUnboxRightEdgeParams,
   clearPeerRightEdgeParams,
   stripStaleUnboxRightEdgeParamsFromUrl,
-  yieldUnboxStationPushesOnAssistantOpen,
 } from './unbox-right-edge';
 
 test('clearPeerRightEdgeParams keeps display surface params when keep=display', () => {
@@ -65,19 +64,4 @@ test('stripStaleUnboxRightEdgeParamsFromUrl uses silent replaceState', () => {
   } finally {
     globalThis.window = prev;
   }
-});
-
-test('yieldUnboxStationPushesOnAssistantOpen closes Displays locally once', () => {
-  let displayClears = 0;
-  let urlClears = 0;
-  yieldUnboxStationPushesOnAssistantOpen({
-    closeDisplays: () => {
-      displayClears += 1;
-    },
-    clearAllUrl: () => {
-      urlClears += 1;
-    },
-  });
-  assert.equal(displayClears, 1);
-  assert.equal(urlClears, 0, 'URL clear is retired — Displays are local state');
 });

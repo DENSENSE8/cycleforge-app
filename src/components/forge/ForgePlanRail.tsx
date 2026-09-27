@@ -1,13 +1,12 @@
 'use client';
 
-/** Plans Live right-rail occupant — live MDX HTML Monitor + collapsed run history. */
+/** Plans Live right-rail occupant — selected ticket + run history. */
 
 import { useState } from 'react';
 import { DetailStackRailRegistrar } from '@/components/right-rail/DetailStackRailRegistrar';
 import { DeskInspectorIndexShell } from '@/components/right-rail/DeskInspectorIndexShell';
 import { EventTimeline } from '@/components/ui/EventTimeline';
 import { cycleForgeStepsToTimeline, type CycleForgeStepRow } from '@/lib/timeline/cycle-forge';
-import { MasterPlanView } from '@/components/forge/MasterPlanView';
 import { Loader2, ChevronDown, ChevronUp } from '@/components/Icons';
 import { Panel, Button } from '@/design-system/primitives';
 import { cn } from '@/utils/_cn';
@@ -117,39 +116,20 @@ function RunHistoryAdvanced({
 export function ForgePlanRail({
   open,
   onClose,
-  title,
-  mdx,
   highlightTicketId,
-  planStatus,
-  planError,
   showRuns,
   runs,
   runsLoading,
   runsError,
-  /** `preview` = live MDX Monitor (agent-primary). `runs` = extras only (doc-primary). */
-  content = 'preview',
 }: {
   open: boolean;
   onClose: () => void;
-  /** The band's ONE title — the current segment, never a path or a crumb. */
-  title: string;
-  /**
-   * Ignored since 2026-08-21 — the band is one line. Kept so the console
-   * compiles; the plan's provenance reads from the console around this rail.
-   */
-  eyebrow?: string;
-  mdx: string;
   highlightTicketId?: string | null;
-  planStatus: string;
-  planError?: string | null;
   showRuns: boolean;
   runs: ForgeRunRow[];
   runsLoading: boolean;
   runsError: string | null;
-  content?: 'preview' | 'runs';
 }) {
-  const showPreview = content === 'preview';
-
   return (
     <DetailStackRailRegistrar
       id="detail:forge-master-plan"
@@ -164,47 +144,30 @@ export function ForgePlanRail({
           // No index above this rail — the console's own toggle opens it — so
           // it declares `standalone` and owes no Back.
           stance="standalone"
-          title={title}
+          // ONE title cell, one segment; the plan's provenance is the console
+          // around the rail, not a second header line.
+          title="Runs"
           ariaLabel="Live master plan"
           testId="forge-plan-rail"
           body={
-            showPreview ? (
-              <div className="px-3 py-3">
-                {planStatus === 'connecting' && (
-                  <p className="flex items-center gap-2 text-role-caption text-text-muted">
-                    <Loader2 className="h-4 w-4 animate-spin" /> Loading the live plan…
-                  </p>
-                )}
-                {planStatus === 'error' && (
-                  <div className="rounded-xl border border-dashed border-rose-200 bg-rose-50 px-4 py-6 text-center text-role-caption text-rose-700">
-                    Could not join the live plan{planError ? ` — ${planError}` : ''}. The file copy in
-                    <code className="mx-1 font-mono">master-plan.mdx</code> is still the source of truth.
-                  </div>
-                )}
-                {(planStatus === 'live' || (mdx && planStatus !== 'connecting')) && (
-                  <MasterPlanView mdx={mdx} highlightTicketId={highlightTicketId} />
-                )}
-              </div>
-            ) : (
-              <div className="px-3 py-3">
-                {highlightTicketId ? (
-                  <p className="mb-3 text-role-caption text-text-muted">
-                    Selected{' '}
-                    <span className="font-semibold text-text-default">{highlightTicketId}</span>
-                    {' — '}visible in the document.
-                  </p>
-                ) : (
-                  <p className="mb-3 text-role-caption text-text-muted">
-                    Pick a ticket in the outline, or expand run history below.
-                  </p>
-                )}
-              </div>
-            )
+            <div className="px-3 py-3">
+              {highlightTicketId ? (
+                <p className="mb-3 text-role-caption text-text-muted">
+                  Selected{' '}
+                  <span className="font-semibold text-text-default">{highlightTicketId}</span>
+                  {' — '}visible in the document.
+                </p>
+              ) : (
+                <p className="mb-3 text-role-caption text-text-muted">
+                  Pick a ticket in the outline, or expand run history below.
+                </p>
+              )}
+            </div>
           }
         />
         {showRuns ? (
           <div className="shrink-0">
-            <RunHistoryAdvanced runs={runs} loading={runsLoading} error={runsError} defaultOpen={!showPreview} />
+            <RunHistoryAdvanced runs={runs} loading={runsLoading} error={runsError} defaultOpen />
           </div>
         ) : null}
       </div>

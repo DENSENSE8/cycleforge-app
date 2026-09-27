@@ -7,7 +7,7 @@ import type { JourneyDimension } from '@/lib/timeline/journey';
 // ── Sidebar mode switcher ───────────────────────────────────────────────────
 
 export type OperationsMode =
-  | 'live' | 'insights' | 'history' | 'signals' | 'plans'
+  | 'live' | 'history' | 'signals' | 'plans'
   | 'reconciliation' | 'checks'
   // Absorbed from /admin on dissolution: the monitor desk owns performance +
   // system observability. Nav children in SIDEBAR_PAGE_NAV carry each mode's
@@ -22,7 +22,6 @@ const DEFAULT_OPERATIONS_MODE: OperationsMode = 'live';
 const OPERATIONS_MODES = [
   'live',
   // 'analytics' intentionally absent — see the mode list above.
-  'insights',
   'history',
   'signals',
   'plans',
@@ -36,8 +35,7 @@ const OPERATIONS_MODES = [
 ] as const satisfies readonly OperationsMode[];
 
 export function parseOperationsMode(raw: string | null | undefined): OperationsMode {
-  return raw === 'insights' ||
-    raw === 'history' ||
+  return raw === 'history' ||
     raw === 'signals' ||
     raw === 'plans' ||
     raw === 'reconciliation' ||

@@ -7,8 +7,8 @@ import { shipmentItemToBoardItem } from '@/lib/fba/board-item';
 import { patchFbaItem } from '@/lib/fba/patch';
 import {
   ChevronToggle,
-  framerPresence,
-  framerTransition,
+  motionPresence,
+  motionTransition,
 } from '@/design-system';
 import { IconButton } from '@/design-system/primitives';
 import { FbaSelectedLineRow } from '@/components/fba/sidebar/FbaSelectedLineRow';
@@ -141,10 +141,10 @@ export function ActiveShipmentCard({
         {isExpanded && (
           <motion.div
             key="expanded-shipment"
-            initial={framerPresence.collapseHeight.initial}
-            animate={framerPresence.collapseHeight.animate}
-            exit={framerPresence.collapseHeight.exit}
-            transition={framerTransition.upNextCollapse}
+            initial={motionPresence.collapseHeight.initial}
+            animate={motionPresence.collapseHeight.animate}
+            exit={motionPresence.collapseHeight.exit}
+            transition={motionTransition.upNextCollapse}
             style={{ willChange: 'height, opacity' }}
             className="overflow-hidden"
           >

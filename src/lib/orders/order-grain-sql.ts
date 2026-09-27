@@ -13,7 +13,21 @@ const SQL_SHIPMENT_IS_SOLE_ORDER = `(
   )
 )`;
 
-/** ONE correlated `EXISTS` over `station_activity_logs` covering BOTH grains (order-grain metadata attribution + the sole-shipment legacy… */
+/**
+ * ONE correlated `EXISTS` over `station_activity_logs` covering BOTH grains:
+ * order-grain attribution (`order_row_id` / `ext_order_id`, the STORED
+ * generated columns over `metadata` from migration 2026-09-26_perf_01) and
+ * the sole-shipment legacy fallback.
+ *
+ * Every arm compares plain int/text columns because under forced RLS
+ * (`app_tenant`) only leakproof operators can be index conditions: the
+ * jsonb `->>` / `~` / `::int` spelling this replaced planned as a scan of the
+ * org's whole SAL table per order (queue-counts 11 s; phase0-findings §2.1).
+ * With int/text equality each arm is an index probe and the three arms
+ * combine as a BitmapOr. The legacy arm's `metadata->>'order_row_id' IS NULL`
+ * stays jsonb on purpose (exact legacy semantics) — it only filters the few
+ * rows the shipment_id probe returns.
+ */
 function sqlOrderHasStationActivity(alias: string, activityTypes: readonly string[]): string {
   const a = alias;
   return `EXISTS (
@@ -21,14 +35,8 @@ function sqlOrderHasStationActivity(alias: string, activityTypes: readonly strin
       WHERE sal.organization_id = ${a}.organization_id
         AND sal.activity_type IN (${sqlInList(activityTypes)})
         AND (
-          (
-            (sal.metadata->>'order_row_id') ~ '^[0-9]+$'
-              AND (sal.metadata->>'order_row_id')::int = ${a}.id
-            OR (
-              sal.metadata->>'order_id' IS NOT NULL
-              AND sal.metadata->>'order_id' = ${a}.order_id
-            )
-          )
+          sal.order_row_id = ${a}.id
+          OR sal.ext_order_id = ${a}.order_id
           OR (
             sal.shipment_id IS NOT NULL
             AND sal.shipment_id = ${a}.shipment_id

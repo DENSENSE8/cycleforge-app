@@ -80,7 +80,7 @@ Before promoting components, make the token layer load-bearing.
       flag new raw `<button>`, new `fixed inset-0 z-[` modals, and `text-[Npx]`
       where a preset exists. Guards are what keep adoption from regressing.
 - [ ] **Shared spring tokens.** Export the showroom's `spring` / `softSpring`
-      into `src/design-system/foundations/motion-framer.ts` so every promoted
+      into `src/design-system/foundations/motion-presets.ts` so every promoted
       component shares one motion vocabulary.
 
 **Exit criteria:** tokens documented as the default, z-index scale in use, CI
@@ -267,7 +267,7 @@ async surfaces; documented toast conventions.
 
 ### 07 · Motion lab  — `New` · `M` · risk Low
 
-Adopt the proven Framer patterns where they add clarity (not everywhere):
+Adopt the proven Motion patterns where they add clarity (not everywhere):
 
 - **Shared-element expand** (`layoutId`) → detail-panel reveals on tables.
 - **Spring press** (`whileTap`) → already in Button; extend to cards/toggles.

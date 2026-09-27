@@ -15,8 +15,6 @@ import { StudioStationPreview } from './StudioStationPreview';
 import { StudioNodeStationEditor } from './StudioNodeStationEditor';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { useAssistantContext } from '@/hooks/useAssistantContext';
-import { useAssistantDockOpen } from '@/components/assistant/AssistantProvider';
-import { cn } from '@/utils/_cn';
 import { STUDIO_SKILL } from '@/lib/assistant/page-skills';
 
 export function StudioShell() {
@@ -69,9 +67,6 @@ export function StudioShell() {
     selection: focus ? { kind: 'workflow_node', id: focus } : null,
     skill: STUDIO_SKILL,
   });
-
-  // AI-first refactor (plan §4):
-  const dockAbsorbsInspector = useAssistantDockOpen();
 
   // Inspector is a workspace preference (not shareable view state) → localStorage.
   const [inspectorOpen, setInspectorOpen] = useLocalStorage('studio:inspector-open', true);
@@ -331,14 +326,8 @@ export function StudioShell() {
           </aside>
         )}
 
-        {/* An OPEN dock absorbs the inspector (plan §4). */}
         {inspectorOpen ? (
-          <aside
-            className={cn(
-              'hidden w-72 shrink-0 flex-col border-l border-border-soft bg-surface-card md:flex',
-              dockAbsorbsInspector && 'lg:hidden',
-            )}
-          >
+          <aside className="hidden w-72 shrink-0 flex-col border-l border-border-soft bg-surface-card md:flex">
             <div className="flex shrink-0 items-center justify-between border-b border-border-hairline px-3 py-2">
               <span className="text-role-micro uppercase tracking-wider text-text-faint">Inspector</span>
               <HoverTooltip label="Hide inspector" asChild>
@@ -383,10 +372,7 @@ export function StudioShell() {
               type="button"
               onClick={() => setInspectorOpen(true)}
               aria-label="Show inspector panel"
-              className={cn(
-                'relative hidden w-8 shrink-0 flex-col items-center gap-2 border-l border-border-soft bg-surface-card py-3 text-text-faint transition-colors hover:bg-surface-hover hover:text-text-muted md:flex',
-                dockAbsorbsInspector && 'lg:hidden',
-              )}
+              className="relative hidden w-8 shrink-0 flex-col items-center gap-2 border-l border-border-soft bg-surface-card py-3 text-text-faint transition-colors hover:bg-surface-hover hover:text-text-muted md:flex"
             >
               <ChevronLeft className="h-4 w-4" />
               <span className="text-role-micro font-semibold uppercase tracking-wider [writing-mode:vertical-rl]">

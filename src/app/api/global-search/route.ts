@@ -7,6 +7,7 @@ import {
 import { errorResponse } from '@/lib/api/errors';
 import { withAuth } from '@/lib/auth/withAuth';
 import { findRecords } from '@/lib/search/find-records';
+import { BRAND_SEARCH_AXIS, type SearchAxis } from '@/lib/search/brand-search';
 import { parseSearchByScope, SEARCH_BY_SCOPES } from '@/lib/search/search-by';
 import { recordSearchQuery, type SearchSurface } from '@/lib/search/query-log';
 
@@ -31,20 +32,29 @@ export const GET = withAuth(async (req, ctx) => {
     const rawAxis = params.get('axis');
     // `parseSearchByScope` answers 'internal' for junk, which is a real scope
     // and would silently narrow an unscoped search. Only honour a value the
-    // caller actually named.
-    const axis =
-      rawAxis && (SEARCH_BY_SCOPES as readonly string[]).includes(rawAxis)
-        ? parseSearchByScope(rawAxis)
-        : undefined;
+    // caller actually named. `brand` is API-only (no header picker scope):
+    // records whose product is the named brand or one of its lines.
+    const axis: SearchAxis | undefined =
+      rawAxis === BRAND_SEARCH_AXIS
+        ? BRAND_SEARCH_AXIS
+        : rawAxis && (SEARCH_BY_SCOPES as readonly string[]).includes(rawAxis)
+          ? parseSearchByScope(rawAxis)
+          : undefined;
     const surface = parseSurface(params.get('surface'));
 
     if (!query) {
-      return NextResponse.json({ rows: [], count: 0, query, relaxed: false });
+      return NextResponse.json({
+        rows: [],
+        count: 0,
+        query,
+        relaxed: false,
+        facets: { brand: [] },
+      });
     }
 
     // Cache namespace is partitioned by org — a shared one would serve one
-    // tenant's records to another.
-    const namespace = `api:global-search:v5:${ctx.organizationId}`;
+    // tenant's records to another. v6: payload gained `facets.brand`.
+    const namespace = `api:global-search:v6:${ctx.organizationId}`;
     const cacheKey = createCacheLookupKey({
       org: String(ctx.organizationId),
       q: query,
@@ -83,6 +93,8 @@ export const GET = withAuth(async (req, ctx) => {
       /** The query that produced `rows`; equals `query` unless `relaxed`. */
       effectiveQuery: found.effectiveQuery,
       usedSemantic: found.usedSemantic,
+      /** Root-brand buckets (a Wave record counts under Bose) over the records behind `rows`. */
+      facets: { brand: found.brandFacet },
     };
 
     await setCachedJson(namespace, cacheKey, payload, 60, [

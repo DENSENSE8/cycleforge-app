@@ -159,7 +159,6 @@ export function syncPanelOccupant(id: string | null): void {
 export function closeAndCachePanel(): void {
   const view = snapshot.activeView;
   if (!view || snapshot.dismissed) return;
-  if (view.id === 'assistant') return;
 
   const data = captureDraft();
   liveDraft = undefined;

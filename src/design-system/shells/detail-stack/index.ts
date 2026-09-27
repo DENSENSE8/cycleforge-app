@@ -6,8 +6,6 @@ export {
   DETAIL_STACK_PUSH_STRIP_CLASS,
   DISPLAYS_FLUSH_HOST,
   DISPLAYS_BODY_INSET,
-  assistantDockAsideClassName,
-  assistantDockAsideStyle,
   detailStackAsideClassName,
   detailStackAsideElevatedClassName,
   detailStackAsideStyle,

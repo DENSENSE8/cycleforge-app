@@ -359,6 +359,9 @@ export async function fetchDashboardPackedRecords({
   weekStart,
   weekEnd,
   shippedFilter,
+  carrier,
+  statusCategory,
+  exceptionsOnly = false,
   searchTerm = '',
   limit = 1000,
   offset = 0,
@@ -370,6 +373,10 @@ export async function fetchDashboardPackedRecords({
   weekStart?: string;
   weekEnd?: string;
   shippedFilter?: string;
+  /** Shipped desk view filters, answered in SQL by `/api/packerlogs` (one predicate with the facet counts). */
+  carrier?: string | null;
+  statusCategory?: string | null;
+  exceptionsOnly?: boolean;
   /** The desk's find text, answered in SQL by `/api/packerlogs?q=`. */
   searchTerm?: string;
   limit?: number;
@@ -386,6 +393,9 @@ export async function fetchDashboardPackedRecords({
   if (testedBy !== undefined) params.set('testedBy', String(testedBy));
   if (staffId !== undefined) params.set('staff', String(staffId));
   if (shippedFilter) params.set('shippedFilter', shippedFilter);
+  if (carrier) params.set('carrier', carrier);
+  if (statusCategory) params.set('statusCategory', statusCategory);
+  if (exceptionsOnly) params.set('exceptions', '1');
   if (searchTerm.trim()) params.set('q', searchTerm.trim());
   if (phase === 'spine') params.set('phase', 'spine');
 

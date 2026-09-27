@@ -13,19 +13,12 @@ import { getForgeRunsChannelName, safeChannelName } from '@/lib/realtime/channel
 import { scanTicketStatuses, rollupTicketStatuses } from '@/lib/master-plan/ticket-status';
 import { MasterPlanView } from '@/components/forge/MasterPlanView';
 import { MasterPlanOutline } from '@/components/forge/MasterPlanOutline';
-import { PlanAgentChat } from '@/components/forge/PlanAgentChat';
 import {
   ForgePlanRail,
   ForgePlanRailReopenButton,
   type ForgeRunRow,
 } from '@/components/forge/ForgePlanRail';
-import {
-  forgeViewParam,
-  parseForgeView,
-  type ForgeView,
-} from '@/components/forge/forge-view';
-import { HorizontalButtonSlider } from '@/components/ui/HorizontalButtonSlider';
-import { FileText, Loader2, MessageSquare } from '@/components/Icons';
+import { Loader2 } from '@/components/Icons';
 import { cn } from '@/utils/_cn';
 
 interface ForgeRun {
@@ -48,19 +41,13 @@ const PLAN_STATUS_DOT: Record<string, { dot: string; label: string }> = {
   error: { dot: 'bg-rose-500', label: 'Realtime unavailable' },
 };
 
-const VIEW_ITEMS = [
-  { id: 'agent', label: 'Agent', icon: MessageSquare },
-  { id: 'doc', label: 'Doc', icon: FileText },
-];
-
 export function AgenticLoopLiveConsole({ showRuns = true }: { showRuns?: boolean }) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const { user, has } = useAuth();
+  const { user } = useAuth();
   const plan = useMasterPlanDoc();
 
-  const forgeView = parseForgeView(searchParams.get('view'));
   const selectedTicketId = searchParams.get('ticket');
 
   const [runs, setRuns] = useState<ForgeRun[]>([]);
@@ -81,13 +68,6 @@ export function AgenticLoopLiveConsole({ showRuns = true }: { showRuns?: boolean
       router.replace(qs ? `${base}?${qs}` : base);
     },
     [pathname, router, searchParams],
-  );
-
-  const setForgeView = useCallback(
-    (next: ForgeView) => {
-      setParams({ view: forgeViewParam(next) });
-    },
-    [setParams],
   );
 
   const fetchRuns = useCallback(async () => {
@@ -128,8 +108,6 @@ export function AgenticLoopLiveConsole({ showRuns = true }: { showRuns?: boolean
 
   const rollup = useMemo(() => rollupTicketStatuses(scanTicketStatuses(plan.mdx)), [plan.mdx]);
   const planDot = PLAN_STATUS_DOT[plan.status] ?? PLAN_STATUS_DOT.idle;
-  const showChat = plan.canEdit && has('assistant.chat');
-  const agentPrimary = forgeView === 'agent' && showChat;
 
   const runRows: ForgeRunRow[] = useMemo(
     () =>
@@ -154,7 +132,7 @@ export function AgenticLoopLiveConsole({ showRuns = true }: { showRuns?: boolean
 
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-3">
-      {/* Chrome — live status + Agent|Doc switch */}
+      {/* Chrome — live status */}
       <div className="flex shrink-0 flex-wrap items-center gap-3">
         <p className="text-role-eyebrow uppercase tracking-[0.18em] text-text-faint">Plans live</p>
         <HoverTooltip label={planDot.label} focusable={false}>
@@ -180,20 +158,11 @@ export function AgenticLoopLiveConsole({ showRuns = true }: { showRuns?: boolean
             )}
           </span>
         )}
-        <div className="ml-auto flex items-center gap-2">
-          {!railOpen ? <ForgePlanRailReopenButton onClick={() => setRailOpen(true)} /> : null}
-          {showChat ? (
-            <HorizontalButtonSlider
-              items={VIEW_ITEMS}
-              value={forgeView}
-              onChange={(id) => setForgeView(id === 'doc' ? 'doc' : 'agent')}
-              variant="nav"
-              dense
-              className="w-auto"
-              aria-label="Plans primary pane"
-            />
-          ) : null}
-        </div>
+        {!railOpen ? (
+          <div className="ml-auto flex items-center gap-2">
+            <ForgePlanRailReopenButton onClick={() => setRailOpen(true)} />
+          </div>
+        ) : null}
       </div>
 
       <div className="flex min-h-0 flex-1 overflow-hidden rounded-lg border border-border-hairline bg-surface-card">
@@ -217,57 +186,33 @@ export function AgenticLoopLiveConsole({ showRuns = true }: { showRuns?: boolean
           />
         </aside>
 
-        {/* Center floor — one PlanAgentChat mount so Agent↔Doc keeps the thread */}
-        <div className="flex min-h-0 min-w-0 flex-1 flex-col bg-surface-canvas">
-          {!agentPrimary ? (
-            <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 py-4">
-              {plan.status === 'connecting' && (
-                <p className="flex items-center gap-2 text-role-caption text-text-muted">
-                  <Loader2 className="h-4 w-4 animate-spin" /> Loading the live plan…
-                </p>
-              )}
-              {plan.status === 'error' && (
-                <div className="rounded-xl border border-dashed border-rose-200 bg-rose-50 px-4 py-6 text-center text-role-caption text-rose-700">
-                  Could not join the live plan{plan.error ? ` — ${plan.error}` : ''}.
-                </div>
-              )}
-              {(plan.status === 'live' || (plan.mdx && plan.status !== 'connecting')) && (
-                <MasterPlanView mdx={plan.mdx} highlightTicketId={selectedTicketId} />
-              )}
+        {/* Center floor — the live master plan */}
+        <div className="min-h-0 min-w-0 flex-1 overflow-y-auto overscroll-contain bg-surface-canvas px-4 py-4">
+          {plan.status === 'connecting' && (
+            <p className="flex items-center gap-2 text-role-caption text-text-muted">
+              <Loader2 className="h-4 w-4 animate-spin" /> Loading the live plan…
+            </p>
+          )}
+          {plan.status === 'error' && (
+            <div className="rounded-xl border border-dashed border-rose-200 bg-rose-50 px-4 py-6 text-center text-role-caption text-rose-700">
+              Could not join the live plan{plan.error ? ` — ${plan.error}` : ''}.
             </div>
-          ) : null}
-          {showChat ? (
-            <div
-              className={cn(
-                'flex min-h-0 flex-col',
-                agentPrimary
-                  ? 'flex-1'
-                  : 'max-h-[min(420px,45vh)] shrink-0 border-t border-border-hairline',
-              )}
-            >
-              <PlanAgentChat className="min-h-0 flex-1" seedHint={selectedTicketId} />
-            </div>
-          ) : null}
+          )}
+          {(plan.status === 'live' || (plan.mdx && plan.status !== 'connecting')) && (
+            <MasterPlanView mdx={plan.mdx} highlightTicketId={selectedTicketId} />
+          )}
         </div>
       </div>
 
-      {/* Right rail — HTML Monitor (agent-primary) or runs-focused extras (doc) */}
+      {/* Right rail — selected ticket + run history */}
       <ForgePlanRail
         open={railOpen}
         onClose={() => setRailOpen(false)}
-        // ONE title cell, one segment. `Master plan` used to ride above this as
-        // an eyebrow, making the rail's top two rows deep; the plan's
-        // provenance is the console around the rail, not a second header line.
-        title={agentPrimary ? 'Preview' : 'Runs'}
-        mdx={plan.mdx}
         highlightTicketId={selectedTicketId}
-        planStatus={plan.status}
-        planError={plan.error}
         showRuns={showRuns}
         runs={runRows}
         runsLoading={loading}
         runsError={error}
-        content={agentPrimary ? 'preview' : 'runs'}
       />
     </div>
   );

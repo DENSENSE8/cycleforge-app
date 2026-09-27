@@ -3,7 +3,7 @@
 /** Slot-table leading-edge rail — reusable across every PRODUCT_TABLES family. */
 
 import { motion, useAnimationFrame, useMotionValue, useReducedMotion } from '@/design-system/motion';
-import { framerDuration } from '@/design-system/foundations/motion-framer';
+import { motionDuration } from '@/design-system/foundations/motion-presets';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { cn } from '@/utils/_cn';
 import { COMPOUND_EDGE_RAIL_CLASS, COMPOUND_ROW_PX } from './compound-row-chrome';
@@ -15,7 +15,7 @@ const TRAVEL = COMPOUND_ROW_PX - 1;
 function SyncedTraveler({ tickClass }: { tickClass?: string }) {
   const y = useMotionValue(0);
   useAnimationFrame((time) => {
-    y.set(edgeMarkTravelY(time, TRAVEL, framerDuration.edgeMarkPulse));
+    y.set(edgeMarkTravelY(time, TRAVEL, motionDuration.edgeMarkPulse));
   });
   return (
     <motion.span className="absolute inset-x-0 top-0 h-px" style={{ y }}>

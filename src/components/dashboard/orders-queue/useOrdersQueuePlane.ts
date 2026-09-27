@@ -14,6 +14,10 @@ import { usePublishRecordCursor } from '@/lib/record-cursor/useRecordCursor';
 import type { CursorIntent } from '@/lib/record-cursor/cursor-model';
 import { RECORD_CURSOR_PRIORITY } from '@/lib/record-cursor/store';
 import { ignoreRowSelectFromSubtitle } from '@/components/tables/compound/useSubtitlePointerReorder';
+import { shippingOrdersHref } from '@/lib/shipping/orders-desk';
+import { hasOpenOverlay } from '@/lib/overlay-stack/store';
+import { isEditableKeyTarget } from '@/lib/keyboard/is-editable-key-target';
+import { queueRowClickIntent, type QueueRowClickEvent } from './queue-row-click';
 
 /** The Orders queue **selection / cursor plane** — the page concern lifted out of the old `OrdersGridHost` (plan Phase 1, wave 5c) so the… */
 function scrollQueueRowIntoView(id: number | string) {
@@ -45,11 +49,15 @@ export interface OrdersQueuePlane {
   selectedRecord: ShippedOrder | null;
   clickSelect: boolean;
   fillsById: Record<string, string>;
-  handleRowAction: (
-    record: ShippedOrder,
-    event?: { shiftKey: boolean; detail?: number; target?: EventTarget | null },
-  ) => void;
+  /**
+   * The row-body click (Shopify index semantics): ⌘/Ctrl opens the order in a
+   * new tab; while anything is checked the click toggles the row (Shift =
+   * range from the anchor); otherwise it opens the record.
+   */
+  handleRowAction: (record: ShippedOrder, event?: QueueRowClickEvent) => void;
   handleRowOpen: (record: ShippedOrder) => void;
+  /** Open a record unconditionally — a deep link / seed, never a click (a click may toggle instead). */
+  openRecord: (record: ShippedOrder) => void;
   /** Close the open record (the record plane's ✕ / Esc) — also tells the surface via `onCloseRecord`. */
   closeRecord: () => void;
   handleToggleSelect: (record: ShippedOrder, event: { shiftKey: boolean }) => void;
@@ -84,6 +92,30 @@ export function useOrdersQueuePlane({
     rows: displayedRecords,
     getId: getRowId,
   });
+  // Read at click time so the row handler keeps one identity across checks —
+  // every painted row takes it as a prop.
+  const hasCheckSetRef = useRef(false);
+  hasCheckSetRef.current = selectedIds.size > 0;
+  const clearRef = useRef(clear);
+  clearRef.current = clear;
+
+  // Escape clears a live check-set BEFORE anything closes (record, floor,
+  // split). Window capture, bound once at mount: this hook runs ahead of the
+  // host's `useRecordCursorKeyboard` (whose capture Esc closes the record), so
+  // this listener is registered — and fires — first. An open popover/dialog
+  // and a focused text field keep their own Escape.
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape' || event.defaultPrevented) return;
+      if (!hasCheckSetRef.current || hasOpenOverlay()) return;
+      if (isEditableKeyTarget(event.target)) return;
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      clearRef.current();
+    };
+    window.addEventListener('keydown', onKeyDown, true);
+    return () => window.removeEventListener('keydown', onKeyDown, true);
+  }, []);
   // ─── Rail selection: the check-set is the only selection ───────────────────
   // Set iteration is insertion order, so this preserves the order rows were
   // picked in — which is what the compare pane's left/right columns key off.
@@ -195,40 +227,35 @@ export function useOrdersQueuePlane({
   });
 
   const handleRowAction = useCallback(
-    (
-      record: ShippedOrder,
-      event?: { shiftKey: boolean; detail?: number; target?: EventTarget | null },
-    ) => {
+    (record: ShippedOrder, event?: QueueRowClickEvent) => {
       const target = event?.target;
       // Subtitle-band drag fires `click` on the row (common ancestor of qty →
       // condition). Bail before bulk-select AND before inspector-open; both
       // remount the grid and look like "the drag selected the row".
       if (ignoreRowSelectFromSubtitle({ target: target ?? null })) return;
-      if (!railSelection) {
-        handleRowClick(record);
-        return;
-      }
       // Checkbox / spacer lives inside the row; if a click somehow reaches here
       // from the select gutter, bail — toggle already ran (or spacer is inert).
       if (target instanceof Element && target.closest('[data-select-gutter]')) {
         return;
       }
-
-      // Checkbox gutter remains the only bulk-select gesture. A row-body tap is
-      // the record-open gesture: mobile and desktop now share the same V1
-      // order → documents path without turning a row tap into selection.
-      if (clickSelect) {
-        if ((event?.detail ?? 1) > 1) return;
-        if (event?.shiftKey) {
-          toggle(Number(record.id), true);
-          return;
+      const intent = queueRowClickIntent(event, clickSelect || hasCheckSetRef.current);
+      if (intent === 'ignore') return;
+      if (intent === 'new-tab') {
+        const id = Number(record.id);
+        if (Number.isFinite(id) && id > 0) {
+          window.open(shippingOrdersHref({ openOrderId: id }), '_blank', 'noopener');
         }
-        toggle(Number(record.id), false);
+        return;
+      }
+      // A check-set is live: the row body is the check gesture (Polaris
+      // `selectMode`), so building a set never opens records under it.
+      if (intent === 'toggle') {
+        toggle(Number(record.id), Boolean(event?.shiftKey));
         return;
       }
       handleRowClick(record);
     },
-    [railSelection, clickSelect, handleRowClick, toggle],
+    [clickSelect, handleRowClick, toggle],
   );
 
   const handleRowOpen = useCallback(
@@ -262,6 +289,7 @@ export function useOrdersQueuePlane({
     fillsById,
     handleRowAction,
     handleRowOpen,
+    openRecord,
     closeRecord,
     handleToggleSelect,
     handleToggleGroup,

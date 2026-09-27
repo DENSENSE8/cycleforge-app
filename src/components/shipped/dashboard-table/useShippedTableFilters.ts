@@ -12,9 +12,10 @@ import { getWeekRangeForOffset } from '@/lib/dashboard-week-range';
 import {
   readShippedAllDates,
   readShippedCarrierFilter,
+  readShippedDateWindow,
   readShippedExceptionsFilter,
   readShippedStatusFilter,
-  shippedEffectiveDateWindow,
+  readShippedWeekOffset,
 } from '@/lib/shipping/shipped-filter/shipped-filter-params';
 import { deriveShippedRecord } from '@/lib/shipped-records';
 import type { PackerRecord } from '@/hooks/usePackerLogs';
@@ -58,13 +59,7 @@ export function useShippedTableFilters({
     return readShippedFilterPreference() ?? 'all';
   }, [shippedFilterParam]);
 
-  const weekOffsetParam = searchParams.get('shippedWeekOffset');
-  const weekOffset = useMemo(() => {
-    if (weekOffsetParam != null) {
-      return Math.max(0, Number.parseInt(weekOffsetParam || '0', 10) || 0);
-    }
-    return 0;
-  }, [weekOffsetParam]);
+  const weekOffset = readShippedWeekOffset(searchParams);
   const weekRange = getWeekRangeForOffset(weekOffset);
 
   const exceptionsOnly = readShippedExceptionsFilter(searchParams);
@@ -97,16 +92,10 @@ export function useShippedTableFilters({
   const hasDateRange =
     /^\d{4}-\d{2}-\d{2}$/.test(dateFrom) && /^\d{4}-\d{2}-\d{2}$/.test(dateTo);
 
-  const anyCarrierFilter = exceptionsOnly || !!carrierFilter || !!statusFilter;
   const allDates = readShippedAllDates(searchParams);
-  const dateWindow = shippedEffectiveDateWindow({
-    allDates,
-    dateFrom,
-    dateTo,
-    anyCarrierFilter,
-    weekStart: weekRange.startStr,
-    weekEnd: weekRange.endStr,
-  });
+  // One window derivation with the sidebar facet counts; the view filters
+  // narrow within it (server-side), they never widen it to all-time.
+  const dateWindow = readShippedDateWindow(searchParams);
   const effectiveWeekStart = dateWindow.start;
   const effectiveWeekEnd = dateWindow.end;
 
@@ -228,7 +217,6 @@ export function useShippedTableFilters({
     dateTo,
     hasDateRange,
     allDates,
-    anyCarrierFilter,
     effectiveWeekStart,
     effectiveWeekEnd,
     search,

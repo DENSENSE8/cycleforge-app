@@ -150,14 +150,14 @@ export function ordersIdentityLine(
 }
 
 /** Absolute ship-by for the STATUS line — deadline, then `ship_by_date`. */
-function ordersShipByRaw(
+export function ordersShipByRaw(
   record: Pick<ShippedOrder, 'deadline_at' | 'ship_by_date'>,
 ): string | null {
   return nonSentinelTimestamp(record.deadline_at) ?? nonSentinelTimestamp(record.ship_by_date);
 }
 
 /** Civil-day delay facts the compound STATUS line paints. */
-function ordersShipByDelay(
+export function ordersShipByDelay(
   record: Pick<ShippedOrder, 'deadline_at' | 'ship_by_date'>,
   delayDays: number | null,
   todayKey: string,
@@ -191,7 +191,7 @@ function civilDaysBetween(fromKey: string, toKey: string | null): number | null 
 }
 
 /** DATES column, top — WHEN THE ORDER WAS PLACED, with the import stamp as the honest fallback. */
-function ordersOrderedAt(
+export function ordersOrderedAt(
   record: Pick<ShippedOrder, 'created_at' | 'order_date'>,
 ): NonNullable<CompoundRowView['orderedAt']> | null {
   const placedRaw = nonSentinelTimestamp(record.order_date);

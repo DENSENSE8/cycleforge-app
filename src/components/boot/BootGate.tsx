@@ -118,7 +118,7 @@ export function BootGate({
       {portalEl &&
         splashMounted &&
         createPortal(
-          // Plain CSS opacity fade — deliberately NOT framer-motion.
+          // Plain CSS opacity fade — deliberately NOT Motion.
           <div
             className={`fixed inset-0 z-splash transition-opacity ease-out ${
               splashUp ? 'opacity-100' : 'opacity-0 pointer-events-none'

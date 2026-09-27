@@ -29,11 +29,11 @@ import { cn } from '@/utils/_cn';
 
 /** Flush Displays body — sits in the push column `px-4`; no card radius / inset. */
 const PAIRING_FLUSH_HOST_CLASS = cn('min-h-0', cornerClass('flush'));
-import { framerPresence, framerTransition } from '@/design-system/foundations/motion-framer';
+import { motionPresence, motionTransition } from '@/design-system/foundations/motion-presets';
 import {
   useMotionPresence,
   useMotionTransition,
-} from '@/design-system/foundations/motion-framer-hooks';
+} from '@/design-system/foundations/motion-presets-hooks';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { Button, IconButton } from '@/design-system/primitives';
 import {
@@ -264,8 +264,8 @@ function MatchHubCard({
   const [forcePicker, setForcePicker] = useState(false);
   const { unlinkCarton, unlinking } = useReceivingCartonUnlink();
   const pickerCollapsed = orderLinked && !forcePicker;
-  const pairingCollapse = useMotionPresence(framerPresence.collapseHeight);
-  const pairingCollapseTransition = useMotionTransition(framerTransition.sidebarExpand);
+  const pairingCollapse = useMotionPresence(motionPresence.collapseHeight);
+  const pairingCollapseTransition = useMotionTransition(motionTransition.sidebarExpand);
 
   // Auto-match strip when unfound — same presentation on bare and card.
   const showQuickMatchStrip = Boolean(autoMatch) && !pickerCollapsed;

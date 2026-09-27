@@ -17,6 +17,12 @@ const CUSTOM_FONT_SIZES = [
   'role-field',
   // Task-mode body text (modes/registry.ts) — size follows the region's mode.
   'mode-body',
+  // AI chat prose scale (src/design-system/ai/tokens.ts AI_TYPE).
+  'ai-greeting',
+  'ai-prose',
+  'ai-title',
+  'ai-prose-sm',
+  'ai-label',
 ] as const;
 
 const twMerge = extendTailwindMerge<'cf-inset' | 'cf-stack' | 'cf-row'>({
@@ -32,18 +38,44 @@ const twMerge = extendTailwindMerge<'cf-inset' | 'cf-stack' | 'cf-row'>({
             'elev-overlay',
             'elev-overlay-left',
             'elev-overlay-right',
+            // AI system depth (src/design-system/ai/tokens.ts AI_ELEVATION).
+            'ai-card',
+            'ai-card-hover',
+            'ai-composer',
+            'ai-panel',
           ],
         },
       ],
       // Task-mode vars (src/design-system/modes/registry.ts). Not named steps,
       // so twMerge cannot place them unaided; registered so `rounded-mode`
       // vs `rounded-lg` (etc.) resolve last-wins instead of both surviving.
-      rounded: [{ rounded: ['mode', 'mode-control', 'mode-pill'] }],
+      rounded: [
+        {
+          rounded: [
+            'mode',
+            'mode-control',
+            'mode-pill',
+            // AI system corners (src/design-system/ai/tokens.ts AI_RADIUS).
+            'ai-control',
+            'ai-chip',
+            'ai-step',
+            'ai-card',
+            'ai-panel',
+            'ai-bubble',
+            'ai-composer',
+          ],
+        },
+      ],
       p: [{ p: ['mode-page'] }],
-      px: [{ px: ['mode-page'] }],
+      px: [{ px: ['mode-page', 'ai-gutter'] }],
+      gap: [{ gap: ['ai-turn'] }],
+      'max-w': [{ 'max-w': ['ai-column'] }],
+      w: [{ w: ['ai-panel'] }],
       py: [{ py: ['mode-page'] }],
       'min-h': [{ 'min-h': ['mode-hit', 'mode-hit-cta'] }],
       duration: [{ duration: ['mode-feedback', 'mode-press', 'mode-pulse'] }],
+      // AI iridescent accent (backgroundImage, src/design-system/ai/tokens.ts).
+      'bg-image': [{ bg: ['ai-iris', 'ai-iris-sweep', 'ai-iris-conic'] }],
       // Spacing intents (tailwind.config.mjs plugin — spacing plan Phase 2).
       'cf-inset': ['inset-chip', 'inset-field', 'inset-cozy', 'inset-card', 'inset-empty'],
       'cf-stack': ['stack-tight', 'stack-row', 'stack-section'],

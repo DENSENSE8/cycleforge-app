@@ -5,7 +5,13 @@ import {
   type OutboundMode,
 } from '@/components/outbound/outbound-sidebar-shared';
 import { parseFbaModeWire } from '@/lib/fba/fba-modes';
-import { SHIPPING_EXCEPTIONS_PATH, SHIPPING_ORDERS_PATH } from '@/lib/shipping/orders-desk';
+import { ORDER_EXCEPTION_CATEGORIES } from '@/lib/orders/order-exception-types';
+import { DESK_PAIR_PARAM } from '@/lib/outbound/desk-views';
+import {
+  SHIPPING_EXCEPTIONS_PATH,
+  SHIPPING_ORDERS_PATH,
+  SHIPPING_SHORTAGE_PATH,
+} from '@/lib/shipping/orders-desk';
 import { SHIPPING_SHIPPED_PATH } from '@/lib/shipping/shipped-desk';
 import { parseShippedSearchFieldWire } from '@/lib/shipped-search';
 import { parseReadyWorkspaceTabWire } from '@/utils/ready-workspace-state';
@@ -20,6 +26,7 @@ import {
   paramText,
   type RouteParamsSpec,
 } from './route-params';
+import { TO_SHIP_QUEUE_FACET_PARAMS } from './to-ship-queue-params';
 
 /** Every shipping mode reads the same operator-level bits. */
 const SHIPPING_CARRIES = ['staff', 'staffId', 'colsort', 'coldir', 'pane', 'layout', 'weekOffset'] as const;
@@ -57,14 +64,9 @@ const ORDERS_ROUTE_PARAMS = defineRouteParams({
     sort: paramText,
     dir: paramEnum(['asc', 'desc'] as const),
     rtab: paramText,
-    type: paramText,
     search: paramText,
-    attention: paramFlag,
-    ustatus: paramText,
-    stage: paramText,
-    /** Ship-by aging bucket: overdue, today, upcoming, or unscheduled. */
-    aging: paramEnum(['overdue', 'today', 'upcoming', 'unscheduled'] as const),
-    late: paramFlag,
+    /** Queue facets (stage · aging · attention · late · ustatus · rowFlag · cage). */
+    ...TO_SHIP_QUEUE_FACET_PARAMS,
     /** Packing DESK/STAGING placement filter (Ready-to-Pack → To-ship). */
     packStation: paramPositiveInt,
     packPlaced: paramFlag,
@@ -75,8 +77,6 @@ const ORDERS_ROUTE_PARAMS = defineRouteParams({
     triage: paramText,
     /** To-ship Labels walk (`PaperworkWalkHost`). */
     paperwork: paramPositiveInt,
-    /** Caged facet on the To-ship queue — shows the held set instead of the live one. */
-    cage: paramFlag,
     /**
      * Desk-sidebar lens: `pick` = the pick list (not packed, not fully picked,
      * newest synced first). Filtered server-side via `GET /api/orders?queue=`.
@@ -180,14 +180,41 @@ const SHIPPED_ROUTE_PARAMS = defineRouteParams({
 /**
  * `/shipping/exceptions` — the held-order queue, on the outbound grid.
  * (operator ruling 2026-08-31 — `all` redefines the queue into a
+ * Search is desk-local (`useDeskSearch`), never a URL param.
  */
 const EXCEPTIONS_ROUTE_PARAMS = defineRouteParams({
   route: SHIPPING_EXCEPTIONS_PATH,
   owns: {
     /** The open record. Present ⇒ the editor page; absent ⇒ the table. */
     order: paramPositiveInt,
-    /** Find row (order # / item # / SKU / title). */
-    search: paramText,
+    /** Category facet — the exact `ORDER_EXCEPTION_CATEGORIES` label (`SKU Mapping`, …). */
+    category: paramRoundTrip((raw) =>
+      (ORDER_EXCEPTION_CATEGORIES as readonly string[]).includes(raw) ? raw : null,
+    ),
+  },
+  carries: SHIPPING_CARRIES,
+});
+
+/**
+ * `/shipping/shortage` — the Picking desk: the To-ship table locked to BLOCKED
+ * (`lockedFulfillmentState`), narrowed server-side by the PO-pair lens. Search
+ * is desk-local (`useDeskSearch`), never a URL param.
+ */
+const SHORTAGE_ROUTE_PARAMS = defineRouteParams({
+  route: SHIPPING_SHORTAGE_PATH,
+  owns: {
+    /** PO-paired lens; the page redirects any other value to `po`. */
+    [DESK_PAIR_PARAM]: paramEnum(['po'] as const),
+    /** The open record (`useDashboardSelectedOrder`). */
+    openOrderId: paramPositiveInt,
+    /** Queue display sort (`useQueueDisplaySort` via the ledger feed). */
+    sort: paramText,
+    dir: paramEnum(['asc', 'desc'] as const),
+    /** The To-ship filter menu the table mounts here too. */
+    ...TO_SHIP_QUEUE_FACET_PARAMS,
+    /** Packing DESK/STAGING placement filter, read by the same table. */
+    packStation: paramPositiveInt,
+    packPlaced: paramFlag,
   },
   carries: SHIPPING_CARRIES,
 });
@@ -212,6 +239,7 @@ export const OUTBOUND_MODE_ROUTE_PARAMS = {
 export const OUTBOUND_ROUTE_PARAMS: readonly RouteParamsSpec[] = [
   ORDERS_ROUTE_PARAMS,
   EXCEPTIONS_ROUTE_PARAMS,
+  SHORTAGE_ROUTE_PARAMS,
   FBA_ROUTE_PARAMS,
   SHIPPED_ROUTE_PARAMS,
   SCAN_OUT_ROUTE_PARAMS,

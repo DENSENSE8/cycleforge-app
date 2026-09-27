@@ -8,6 +8,7 @@ import {
   aiRequestHeaders,
   EMBEDDING_DIMS,
   isAiConfigured,
+  isSelfHostedAiRuntime,
   resolveAiConfig,
   resolveCloudflareAccessHeaders,
   type ProviderEnv,
@@ -117,6 +118,20 @@ test('chat: headers are omitted entirely when CF Access is unconfigured', () => 
   const cfg = resolveAiConfig('chat', { AI_CHAT_BASE_URL: 'http://127.0.0.1:8642/v1' });
   assert.equal(cfg.headers, undefined);
   assert.ok(!('headers' in cfg));
+});
+
+test('chat: CF_AIG_TOKEN rides as cf-aig-authorization, never as the provider bearer', () => {
+  const cfg = resolveAiConfig('chat', {
+    AI_CHAT_BASE_URL: 'https://gateway.ai.cloudflare.com/v1/acct/default/compat',
+    AI_CHAT_API_KEY: '',
+    CF_AIG_TOKEN: 'aig-token',
+    CLOUDFLARE_ACCESS_CLIENT_ID: 'cf-id',
+  });
+  const h = aiRequestHeaders(cfg);
+  assert.equal(h['cf-aig-authorization'], 'Bearer aig-token');
+  assert.equal(h['CF-Access-Client-Id'], 'cf-id');
+  assert.equal(h.Authorization, undefined);
+  assert.equal(isSelfHostedAiRuntime(cfg), false);
 });
 
 test('resolveCloudflareAccessHeaders: undefined when neither var is set', () => {

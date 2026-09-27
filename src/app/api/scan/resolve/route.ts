@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import {
   classifyInput,
+  serialFragmentPatterns,
   parseScannedUrl,
   parseGs1AiPayload,
   pickAiRoutingValue,
@@ -10,7 +11,10 @@ import {
 import { routeScan } from '@/lib/barcode-routing';
 import { classifyIdentificationScan } from '@/lib/identification/compile-grammar';
 import { loadPublishedIdentificationMethods } from '@/lib/identification/load-published';
-import { normalizeTrackingKey18 } from '@/lib/tracking-format';
+import { orderTrackingMatchKeys } from '@/lib/tracking-format';
+import { sqlOrderHasMatchingTracking } from '@/lib/search/order-tracking-match-sql';
+import { sqlTsnMatchesOrder } from '@/lib/orders/order-grain-sql';
+import { brandsForSkus, type SkuBrandFact } from '@/lib/brands/lookup';
 import { query } from '@/lib/neon-client';
 import { tenantQuery } from '@/lib/tenancy/db';
 import { withAuth } from '@/lib/auth/withAuth';
@@ -50,6 +54,9 @@ interface OrderMatch {
   account_source: string | null;
 }
 
+/** A match as returned: product-bearing rows carry their catalog brand fact. */
+type BrandedOrderMatch = OrderMatch & { brand: SkuBrandFact | null };
+
 interface ResolveResponse {
   ok: true;
   kind: ResolveKind;
@@ -67,144 +74,77 @@ interface ResolveResponse {
 
 // ─── Order lookups ───────────────────────────────────────────────────────────
 
+/**
+ * Orders owning a shipment whose tracking matches the scan — exact canonical
+ * (index-backed) or the 18-char key a GS1 gun read shares with the sheet STN.
+ */
 async function lookupOrdersByTracking(tracking: string, organizationId: string): Promise<OrderMatch[]> {
-  const key18 = normalizeTrackingKey18(tracking);
-  if (!key18) return [];
-  try {
-    const { rows } = await tenantQuery<OrderMatch>(
-      organizationId,
-      `SELECT DISTINCT o.id, o.order_id, o.sku, o.product_title, o.status, o.quantity, o.account_source
-       FROM orders o
-       JOIN shipping_tracking_numbers stn ON stn.id = o.shipment_id
-       WHERE stn.tracking_number_key18 = $1
-         AND o.organization_id = $2
-       ORDER BY o.id DESC
-       LIMIT 20`,
-      [key18, organizationId],
-    );
-    return rows;
-  } catch {
-    return [];
-  }
+  const { exact, key18 } = orderTrackingMatchKeys(tracking);
+  if (!exact || !key18) return [];
+  const { rows } = await tenantQuery<OrderMatch>(
+    organizationId,
+    `SELECT o.id, o.order_id, o.sku, o.product_title, o.status, o.quantity, o.account_source
+     FROM orders o
+     WHERE o.organization_id = $4
+       AND ${sqlOrderHasMatchingTracking({
+         orderAlias: 'o',
+         likeParam: '$1',
+         canonicalParam: '$2',
+         key18Param: '$3',
+         // A full scan never matches on a last-8 tail — that is a typed-fragment affordance.
+         last8Param: "''",
+       })}
+     ORDER BY o.id DESC
+     LIMIT 20`,
+    [exact, exact, key18, organizationId],
+  );
+  return rows;
 }
+
+const ORDERS_BY_TSN_SQL = (predicate: string) => `
+  SELECT DISTINCT o.id, o.order_id, o.sku, o.product_title, o.status, o.quantity, o.account_source
+    FROM orders o
+    JOIN tech_serial_numbers tsn ON ${sqlTsnMatchesOrder('o', 'tsn')}
+   WHERE ${predicate}
+     AND o.organization_id = $2
+   ORDER BY o.id DESC
+   LIMIT 20`;
 
 async function lookupOrdersBySerial(serial: string, organizationId: string): Promise<OrderMatch[]> {
   const norm = serial.trim().toUpperCase();
   if (!norm) return [];
-  try {
-    const { rows: exact } = await tenantQuery<OrderMatch>(
+  // tech_serial_numbers.serial_number is stored upper(trim()) — plain equality stays leakproof.
+  const { rows: exact } = await tenantQuery<OrderMatch>(
+    organizationId,
+    ORDERS_BY_TSN_SQL('tsn.serial_number = $1'),
+    [norm, organizationId],
+  );
+  if (exact.length) return exact;
+
+  for (const pattern of serialFragmentPatterns(norm)) {
+    const { rows } = await tenantQuery<OrderMatch>(
       organizationId,
-      `SELECT DISTINCT o.id, o.order_id, o.sku, o.product_title, o.status, o.quantity, o.account_source
-       FROM orders o
-       JOIN tech_serial_numbers tsn ON (
-         tsn.organization_id = o.organization_id
-         AND (
-           tsn.order_id = o.id
-           OR (
-             tsn.order_id IS NULL
-             AND tsn.shipment_id IS NOT NULL
-             AND tsn.shipment_id = o.shipment_id
-             AND NOT EXISTS (
-               SELECT 1 FROM orders o2
-               WHERE o2.shipment_id = o.shipment_id
-                 AND o2.organization_id = o.organization_id
-                 AND o2.id <> o.id
-             )
-           )
-         )
-       )
-       WHERE UPPER(tsn.serial_number) = $1
-         AND o.organization_id = $2
-       ORDER BY o.id DESC
-       LIMIT 20`,
-      [norm, organizationId],
+      ORDERS_BY_TSN_SQL('tsn.serial_number LIKE $1'),
+      [pattern, organizationId],
     );
-    if (exact.length) return exact;
-
-    if (norm.length >= 4) {
-      const { rows: suffix } = await tenantQuery<OrderMatch>(
-        organizationId,
-        `SELECT DISTINCT o.id, o.order_id, o.sku, o.product_title, o.status, o.quantity, o.account_source
-         FROM orders o
-         JOIN tech_serial_numbers tsn ON (
-         tsn.organization_id = o.organization_id
-         AND (
-           tsn.order_id = o.id
-           OR (
-             tsn.order_id IS NULL
-             AND tsn.shipment_id IS NOT NULL
-             AND tsn.shipment_id = o.shipment_id
-             AND NOT EXISTS (
-               SELECT 1 FROM orders o2
-               WHERE o2.shipment_id = o.shipment_id
-                 AND o2.organization_id = o.organization_id
-                 AND o2.id <> o.id
-             )
-           )
-         )
-       )
-         WHERE UPPER(tsn.serial_number) LIKE $1
-           AND o.organization_id = $2
-         ORDER BY o.id DESC
-         LIMIT 20`,
-        ['%' + norm, organizationId],
-      );
-      if (suffix.length) return suffix;
-    }
-
-    if (norm.length >= 3 && norm.length <= 10) {
-      const { rows } = await tenantQuery<OrderMatch>(
-        organizationId,
-        `SELECT DISTINCT o.id, o.order_id, o.sku, o.product_title, o.status, o.quantity, o.account_source
-         FROM orders o
-         JOIN tech_serial_numbers tsn ON (
-         tsn.organization_id = o.organization_id
-         AND (
-           tsn.order_id = o.id
-           OR (
-             tsn.order_id IS NULL
-             AND tsn.shipment_id IS NOT NULL
-             AND tsn.shipment_id = o.shipment_id
-             AND NOT EXISTS (
-               SELECT 1 FROM orders o2
-               WHERE o2.shipment_id = o.shipment_id
-                 AND o2.organization_id = o.organization_id
-                 AND o2.id <> o.id
-             )
-           )
-         )
-       )
-         WHERE UPPER(tsn.serial_number) LIKE $1
-           AND o.organization_id = $2
-         ORDER BY o.id DESC
-         LIMIT 20`,
-        ['%' + norm + '%', organizationId],
-      );
-      return rows;
-    }
-    return [];
-  } catch {
-    return [];
+    if (rows.length) return rows;
   }
+  return [];
 }
 
 async function lookupOrderById(orderId: string, organizationId: string): Promise<OrderMatch[]> {
-  const trimmed = orderId.trim();
+  const trimmed = orderId.trim().replace(/^#+/, '');
   if (!trimmed) return [];
-  try {
-    const { rows } = await tenantQuery<OrderMatch>(
-      organizationId,
-      `SELECT o.id, o.order_id, o.sku, o.product_title, o.status, o.quantity, o.account_source
-       FROM orders o
-       WHERE o.order_id = $1
-         AND o.organization_id = $2
-       LIMIT 5`,
-      [trimmed, organizationId],
-    );
-    return rows;
-  } catch {
-    return [];
-  }
+  const { rows } = await tenantQuery<OrderMatch>(
+    organizationId,
+    `SELECT o.id, o.order_id, o.sku, o.product_title, o.status, o.quantity, o.account_source
+     FROM orders o
+     WHERE o.order_id = $1
+       AND o.organization_id = $2
+     LIMIT 5`,
+    [trimmed, organizationId],
+  );
+  return rows;
 }
 
 // ─── Receiving lookups ───────────────────────────────────────────────────────
@@ -212,74 +152,69 @@ async function lookupOrderById(orderId: string, organizationId: string): Promise
 async function lookupReceivingByPoNumber(po: string, organizationId: string): Promise<{ id: number; zoho_purchaseorder_number: string | null } | null> {
   const trimmed = po.trim();
   if (!trimmed) return null;
-  try {
-    const { rows } = await tenantQuery<{ id: number; zoho_purchaseorder_number: string | null }>(
-      organizationId,
-      `SELECT id, zoho_purchaseorder_number
-       FROM receiving_carton
-       WHERE (zoho_purchaseorder_number = $1
-          OR zoho_purchaseorder_id = $1)
-         AND organization_id = $2
-       ORDER BY id DESC
-       LIMIT 1`,
-      [trimmed, organizationId],
-    );
-    return rows[0] ?? null;
-  } catch {
-    return null;
-  }
+  const { rows } = await tenantQuery<{ id: number; zoho_purchaseorder_number: string | null }>(
+    organizationId,
+    `SELECT id, zoho_purchaseorder_number
+     FROM receiving_carton
+     WHERE (zoho_purchaseorder_number = $1
+        OR zoho_purchaseorder_id = $1)
+       AND organization_id = $2
+     ORDER BY id DESC
+     LIMIT 1`,
+    [trimmed, organizationId],
+  );
+  return rows[0] ?? null;
 }
 
 async function lookupOrdersBySku(sku: string, organizationId: string): Promise<OrderMatch[]> {
   const trimmed = sku.trim();
   if (!trimmed) return [];
-  try {
-    const { rows } = await tenantQuery<OrderMatch>(
-      organizationId,
-      `SELECT o.id, o.order_id, o.sku, o.product_title, o.status, o.quantity, o.account_source
-       FROM orders o
-       WHERE o.sku = $1
-         AND (o.status IS NULL OR o.status NOT IN ('shipped', 'cancelled', 'closed'))
-         AND o.organization_id = $2
-       ORDER BY o.id DESC
-       LIMIT 20`,
-      [trimmed, organizationId],
-    );
-    return rows;
-  } catch {
-    return [];
-  }
+  const { rows } = await tenantQuery<OrderMatch>(
+    organizationId,
+    `SELECT o.id, o.order_id, o.sku, o.product_title, o.status, o.quantity, o.account_source
+     FROM orders o
+     WHERE o.sku = $1
+       AND (o.status IS NULL OR o.status NOT IN ('shipped', 'cancelled', 'closed'))
+       AND o.organization_id = $2
+     ORDER BY o.id DESC
+     LIMIT 20`,
+    [trimmed, organizationId],
+  );
+  return rows;
+}
+
+/** Product-bearing matches carry their catalog brand fact (one statement for all SKUs). */
+async function withBrands(organizationId: string, matches: OrderMatch[]): Promise<BrandedOrderMatch[]> {
+  const skus = matches.map((m) => m.sku).filter((s): s is string => Boolean(s));
+  const brands = await brandsForSkus(organizationId, skus);
+  return matches.map((m) => ({ ...m, brand: (m.sku && brands.get(m.sku.trim())) || null }));
 }
 
 // ─── URL helper enrichment ───────────────────────────────────────────────────
 
 async function resolveSkuByGtin(gtin: string, organizationId: string): Promise<string | null> {
-  try {
-    const cleaned = gtin.replace(/\D/g, '');
-    if (!cleaned) return null;
-    // gtin→sku is stable reference data; cache per (org, gtin), busted by any
-    // sku_catalog write (tag sku-catalog). Negative results aren't cached.
-    return await getOrSet<string | null>(
-      CACHE_NS.skuByGtin,
-      organizationId,
-      cleaned,
-      1800,
-      [CACHE_TAGS.skuCatalog],
-      async () => {
-        const { rows } = await tenantQuery<{ sku: string | null }>(
-          organizationId,
-          `SELECT sku FROM sku_catalog
-           WHERE gtin = $1
-             AND organization_id = $2
-           LIMIT 1`,
-          [cleaned, organizationId],
-        );
-        return rows[0]?.sku ?? null;
-      },
-    );
-  } catch {
-    return null;
-  }
+  const cleaned = gtin.replace(/\D/g, '');
+  if (!cleaned) return null;
+  // gtin→sku is stable reference data; cache per (org, gtin), busted by any
+  // sku_catalog write (tag sku-catalog).
+  return getOrSet<string | null>(
+    CACHE_NS.skuByGtin,
+    organizationId,
+    cleaned,
+    1800,
+    [CACHE_TAGS.skuCatalog],
+    async () => {
+      const { rows } = await tenantQuery<{ sku: string | null }>(
+        organizationId,
+        `SELECT sku FROM sku_catalog
+         WHERE gtin = $1
+           AND organization_id = $2
+         LIMIT 1`,
+        [cleaned, organizationId],
+      );
+      return rows[0]?.sku ?? null;
+    },
+  );
 }
 
 // ─── Telemetry ───────────────────────────────────────────────────────────────
@@ -533,15 +468,18 @@ async function resolve(input: string, organizationId: string, staffId: number, d
     return result;
   }
 
-  // 3. Pattern classify branch.
+  // 3. Pattern classify branch. An exact order number wins before any serial
+  //    fragment search, so a short number or a word can't land on a stray
+  //    serial that merely contains it.
   const classified = classifyInput(trimmed);
   let matches: OrderMatch[] = [];
   if (classified.type === 'tracking') {
-    matches = await lookupOrdersByTracking(classified.normalized, organizationId);
-  } else if (classified.type === 'serial_full' || classified.type === 'serial_partial') {
-    matches = await lookupOrdersBySerial(classified.normalized, organizationId);
+    matches = await lookupOrdersByTracking(trimmed, organizationId);
   } else {
     matches = await lookupOrderById(trimmed, organizationId);
+    if (!matches.length && (classified.type === 'serial_full' || classified.type === 'serial_partial')) {
+      matches = await lookupOrdersBySerial(classified.normalized, organizationId);
+    }
     if (!matches.length) matches = await lookupOrdersBySku(trimmed, organizationId);
   }
 
@@ -566,12 +504,12 @@ async function resolve(input: string, organizationId: string, staffId: number, d
 export const GET = withAuth(async (request: NextRequest, ctx) => {
   const input = request.nextUrl.searchParams.get('input') ?? '';
   const result = await resolve(input, ctx.organizationId, ctx.staffId, null);
-  return NextResponse.json(result);
+  return NextResponse.json({ ...result, matches: await withBrands(ctx.organizationId, result.matches) });
 }, { permission: 'sku_stock.view' });
 
 export const POST = withAuth(async (request: NextRequest, ctx) => {
   const body = await request.json().catch(() => ({}));
   const input = typeof body?.input === 'string' ? body.input : '';
   const result = await resolve(input, ctx.organizationId, ctx.staffId, body?.device ?? null);
-  return NextResponse.json(result);
+  return NextResponse.json({ ...result, matches: await withBrands(ctx.organizationId, result.matches) });
 }, { permission: 'sku_stock.view' });

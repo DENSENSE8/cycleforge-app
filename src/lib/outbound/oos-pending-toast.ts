@@ -12,10 +12,10 @@ type OosPendingToastArgs = {
   qtyShort?: number | null;
   /**
    * When true the row stays packed (lifecycle packed wins over BLOCKED) —
-   * confirm the hold without claiming a Pending-tab move.
+   * confirm the hold without claiming a move to Picking.
    */
   staysPacked?: boolean;
-  /** Navigate to the Pending desk. Caller supplies router.push. */
+  /** Navigate to the Picking desk. Caller supplies router.push. */
   onViewPending: () => void;
 };
 
@@ -26,7 +26,7 @@ export function showOosPendingToast(args: OosPendingToastArgs): void {
   }
 
   const title =
-    args.count === 1 ? 'Moved to Pending' : `${args.count} orders moved to Pending`;
+    args.count === 1 ? 'Moved to Picking' : `${args.count} orders moved to Picking`;
   const sku = String(args.sku || '').trim();
   const qty = Number(args.qtyShort);
   const description =
@@ -41,7 +41,7 @@ export function showOosPendingToast(args: OosPendingToastArgs): void {
     duration: OOS_PENDING_TOAST_DURATION_MS,
     closeButton: true,
     action: {
-      label: 'View Pending',
+      label: 'View Picking',
       onClick: args.onViewPending,
     },
   });

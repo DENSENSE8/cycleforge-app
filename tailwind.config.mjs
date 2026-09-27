@@ -205,6 +205,24 @@ const config = {
                 'mode-mark': 'var(--mode-mark)',
                 'mode-warn': 'var(--mode-warn-text)',
                 'mode-brand': 'var(--mode-brand)',
+                // AI design system (src/design-system/ai/tokens.ts). Neutrals
+                // alias the theme (so they follow light/dark and every
+                // palette); the iridescent accent is a GRADIENT, bound under
+                // backgroundImage below — there is no flat accent colour.
+                'ai-canvas': 'var(--ai-canvas)',
+                'ai-surface': 'var(--ai-surface)',
+                'ai-sunken': 'var(--ai-sunken)',
+                'ai-hover': 'var(--ai-hover)',
+                'ai-ink': 'var(--ai-ink)',
+                'ai-muted': 'var(--ai-muted)',
+                'ai-faint': 'var(--ai-faint)',
+                'ai-line': 'var(--ai-line)',
+                'ai-line-strong': 'var(--ai-line-strong)',
+                'ai-solid': 'var(--ai-solid)',
+                'ai-solid-ink': 'var(--ai-solid-ink)',
+                'ai-user': 'var(--ai-user)',
+                'ai-user-ink': 'var(--ai-user-ink)',
+                'ai-scrim': 'var(--ai-scrim)',
             },
             fontFamily: {
                 sans: ['var(--ds-font-sans)', 'Inter', 'system-ui', 'sans-serif'],
@@ -276,6 +294,14 @@ const config = {
                 // Task-mode body text (modes/registry.ts) — size follows the
                 // region's mode and pointer; registered in CUSTOM_FONT_SIZES.
                 'mode-body': ['var(--mode-text-body)', { lineHeight: '1.45' }],
+                // AI chat prose scale (src/design-system/ai/tokens.ts AI_TYPE) —
+                // NOT density-scaled: prose is read, not scanned. Registered in
+                // CUSTOM_FONT_SIZES (src/utils/_cn.ts).
+                'ai-greeting': ['var(--ai-text-greeting)', { lineHeight: 'var(--ai-leading-greeting)', letterSpacing: 'var(--ai-tracking-greeting)', fontWeight: 'var(--ai-weight-greeting)' }],
+                'ai-prose': ['var(--ai-text-prose)', { lineHeight: 'var(--ai-leading-prose)', letterSpacing: 'var(--ai-tracking-prose)', fontWeight: 'var(--ai-weight-prose)' }],
+                'ai-title': ['var(--ai-text-title)', { lineHeight: 'var(--ai-leading-title)', letterSpacing: 'var(--ai-tracking-title)', fontWeight: 'var(--ai-weight-title)' }],
+                'ai-prose-sm': ['var(--ai-text-prose-sm)', { lineHeight: 'var(--ai-leading-prose-sm)', letterSpacing: 'var(--ai-tracking-prose-sm)', fontWeight: 'var(--ai-weight-prose-sm)' }],
+                'ai-label': ['var(--ai-text-label)', { lineHeight: 'var(--ai-leading-label)', letterSpacing: 'var(--ai-tracking-label)', fontWeight: 'var(--ai-weight-label)' }],
             },
             // Density-aware spacing (spacing-token-leakage plan Phase 1) —
             // the same calc(× --cf-density) treatment as the role-* type
@@ -284,7 +310,22 @@ const config = {
             // additive; inside [data-density='compact'] padding/margin/gap
             // tighten together with type. `extend` merges per key: keys in
             // spacing.mjs become density-aware, unlisted keys stay stock.
-            spacing: { ...spacingScale, 'mode-page': 'var(--mode-page-pad)' },
+            spacing: {
+                ...spacingScale,
+                'mode-page': 'var(--mode-page-pad)',
+                // AI system measure (src/design-system/ai/tokens.ts AI_SPACE).
+                'ai-gutter': 'var(--ai-gutter)',
+                'ai-turn': 'var(--ai-turn)',
+            },
+            maxWidth: { 'ai-column': 'var(--ai-column)' },
+            width: { 'ai-panel': 'var(--ai-panel)' },
+            // The AI iridescent accent (src/design-system/ai/tokens.ts
+            // AI_IRIS_GRADIENTS) — AI activity only, never static chrome.
+            backgroundImage: {
+                'ai-iris': 'var(--ai-iris-linear)',
+                'ai-iris-sweep': 'var(--ai-iris-sweep)',
+                'ai-iris-conic': 'var(--ai-iris-conic)',
+            },
             // borderRadius stays 100% Tailwind stock for every NAMED step — the
             // one alias that lived here (`station: 8px`) duplicated `rounded-lg`.
             // Semantic corners come from `cornerClass(role)`
@@ -297,6 +338,14 @@ const config = {
                 mode: 'var(--mode-radius)',
                 'mode-control': 'var(--mode-radius-control)',
                 'mode-pill': 'var(--mode-radius-pill)',
+                // AI system corners (src/design-system/ai/tokens.ts AI_RADIUS).
+                'ai-control': 'var(--ai-radius-control)',
+                'ai-chip': 'var(--ai-radius-chip)',
+                'ai-step': 'var(--ai-radius-step)',
+                'ai-card': 'var(--ai-radius-card)',
+                'ai-panel': 'var(--ai-radius-panel)',
+                'ai-bubble': 'var(--ai-radius-bubble)',
+                'ai-composer': 'var(--ai-radius-composer)',
             },
             minHeight: {
                 'mode-hit': 'var(--mode-hit)',
@@ -322,6 +371,11 @@ const config = {
                 'elev-overlay': 'var(--ds-elev-overlay)',
                 'elev-overlay-left': 'var(--ds-elev-overlay-left)',
                 'elev-overlay-right': 'var(--ds-elev-overlay-right)',
+                // AI system depth (src/design-system/ai/tokens.ts AI_ELEVATION).
+                'ai-card': 'var(--ai-shadow-card)',
+                'ai-card-hover': 'var(--ai-shadow-card-hover)',
+                'ai-composer': 'var(--ai-shadow-composer)',
+                'ai-panel': 'var(--ai-shadow-panel)',
             },
             zIndex: zIndexScale,
         },

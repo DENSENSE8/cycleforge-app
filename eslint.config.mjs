@@ -106,6 +106,20 @@ export default [
       '@next/next/no-img-element': 'off',
       'jsx-a11y/no-autofocus': 'off',
       'jsx-a11y/no-static-element-interactions': 'off',
+      // `framer-motion` is the retired package name of Motion (not installed).
+      // Motion itself (`motion/react`, `motion-plus/react`) is free to import
+      // anywhere — motion rules were abolished (owner 2026-09-27).
+      'no-restricted-imports': [
+        'error',
+        {
+          paths: [
+            { name: 'framer-motion', message: 'framer-motion is retired — import from motion/react.' },
+          ],
+          patterns: [
+            { regex: '^framer-motion/', message: 'framer-motion is retired — import from motion/react.' },
+          ],
+        },
+      ],
     },
   },
 

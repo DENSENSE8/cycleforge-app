@@ -1,6 +1,6 @@
 'use client';
 
-/** Station scan-band glow host — Framer opacity layer over a white base. */
+/** Station scan-band glow host — Motion opacity layer over a white base. */
 
 import {
   useCallback,
@@ -17,10 +17,10 @@ import {
   useReducedMotion,
 } from '@/design-system/motion';
 import {
-  framerTransition,
+  motionTransition,
   scanBandGlowOpacity,
-} from '@/design-system/foundations/motion-framer';
-import { useMotionTransition } from '@/design-system/foundations/motion-framer-hooks';
+} from '@/design-system/foundations/motion-presets';
+import { useMotionTransition } from '@/design-system/foundations/motion-presets-hooks';
 import { scanBandGlowGradientClass } from '@/components/sidebar/receiving/useScanBandHalo';
 import { appSurfaceFillClass } from '@/design-system/components/AppSurfaceFill';
 import type { StationTheme } from '@/hooks/useStationTheme';
@@ -56,8 +56,8 @@ export function ScanBandGlowHost({
   const pulsingRef = useRef(false);
   const controls = useAnimationControls();
   const shouldReduce = useReducedMotion();
-  const glowTransition = useMotionTransition(framerTransition.scanBandGlow);
-  const pulseTransition = useMotionTransition(framerTransition.scanBandGlowPulse);
+  const glowTransition = useMotionTransition(motionTransition.scanBandGlow);
+  const pulseTransition = useMotionTransition(motionTransition.scanBandGlowPulse);
 
   focusedRef.current = focused;
 

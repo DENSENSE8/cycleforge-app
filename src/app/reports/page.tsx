@@ -35,27 +35,7 @@ import { parseTaskDeskReportRows } from '@/lib/reports/report-tasks-feed';
 import type { TaskDeskRow } from '@/lib/tasks/task-desk-row';
 
 import { TaskActivityReport } from '@/components/reports/TaskActivityReport';
-type Tab = 'staff' | 'packer' | 'utilization' | 'velocity' | 'dead' | 'tasks' | 'activity';
-
-const TABS: ReadonlyArray<{ id: Tab; label: string }> = [
-  { id: 'staff', label: 'Staff day' },
-  /*
-   * Packer day arrived 2026-09-16 when `/operations?mode=analytics` was
-   * retired. It is a DAY-scoped report like Staff day, which is why it sits
-   * beside it rather than at the end with the three SKU families.
-   */
-  { id: 'packer', label: 'Packer day' },
-  { id: 'utilization', label: 'Bin Utilization' },
-  { id: 'velocity', label: 'Velocity (30d)' },
-  { id: 'dead', label: 'Dead Stock (90d+)' },
-  /*
-   * Completed tasks arrived 2026-09-22 with the `work_assignments` task desk.
-   * It sits last because it is the only tab that is not about stock or a
-   * shift: it is the record one staffer's finished follow-ups leave behind.
-   */
-  { id: 'tasks', label: 'Tasks' },
-  { id: 'activity', label: 'Task time / activity' },
-];
+import { REPORT_TABS as TABS, parseReportTab, type ReportTab as Tab } from '@/lib/reports/report-tabs';
 
 /** Unchanged route + limit per tab — the day-scoped and task tabs read below. */
 const REPORT_URLS: Readonly<Record<Exclude<Tab, 'staff' | 'packer' | 'tasks' | 'activity'>, string>> = {
@@ -410,8 +390,7 @@ function ReportsPageInner() {
   const searchParams = useSearchParams();
 
   /* URL-ADDRESSABLE tabs and date (Track R1): */
-  const tabParam = searchParams.get('tab');
-  const tab: Tab = TABS.some((t) => t.id === tabParam) ? (tabParam as Tab) : 'staff';
+  const tab: Tab = parseReportTab(searchParams.get('tab')) ?? 'staff';
   const dateParam = searchParams.get('date');
   const dateKey = dateParam && /^\d{4}-\d{2}-\d{2}$/.test(dateParam) ? dateParam : getCurrentPSTDateKey();
 

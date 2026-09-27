@@ -18,12 +18,14 @@ import {
 import { emitReceiving } from '@/components/receiving/receiving-events';
 import { focusRing } from '@/design-system/tokens/focus-ring';
 import { createLocalPickupOrder } from '@/lib/local-pickup/create-order';
-import { pickupOrderIsDone } from '@/lib/local-pickup/order-status';
+import {
+  pickupLineMatchesStatus,
+  pickupLineNeedsProcess,
+  pickupOrderIsDone,
+} from '@/lib/local-pickup/order-status';
 import { cn } from '@/utils/_cn';
 import {
   parsePickupStatusTab,
-  pickupLineMatchesStatus,
-  pickupLineNeedsProcess,
   usePickupLines,
   type PickupLine,
   type PickupStatusTab,

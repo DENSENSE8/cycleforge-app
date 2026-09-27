@@ -63,7 +63,7 @@ export async function readEntitySignals(
             reason_code, notes, severity
        FROM entity_signals
       WHERE ${where.join(' AND ')}
-      ORDER BY occurred_at DESC, id DESC
+      ORDER BY entity_signals.occurred_at DESC, entity_signals.id DESC
       LIMIT $${params.length}`,
     params,
   );

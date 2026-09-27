@@ -20,7 +20,6 @@ import {
   StationDisplaysPushStack,
   STATION_DISPLAY_INDEX,
   resolveDisplaysActiveTab,
-  useYieldStationDisplaysOnAssistantOpen,
   type DisplayIndexRow,
 } from '@/components/station/displays';
 import { StationConditionEditor } from '@/components/tech/StationConditionEditor';
@@ -316,7 +315,6 @@ export function ActiveOrderWorkspace({
 
   /** `←|` Open displays → the Root Index, not `displayTabs[0]`. */
   const openDisplaysIndex = useCallback(() => setActiveSideTab(STATION_DISPLAY_INDEX), []);
-  useYieldStationDisplaysOnAssistantOpen(closeDisplays);
 
   const resolvedSideTab = useMemo(
     () =>

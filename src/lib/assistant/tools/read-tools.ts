@@ -498,26 +498,35 @@ export const getChatHistory: AssistantToolDef<
 > = {
   name: 'get_chat_history',
   description:
-    'Past assistant conversations for this org: recent sessions (id, title, last activity), or one session\'s messages when sessionId is given. Use to recall prior context ("as we discussed yesterday...").',
+    'Your own past assistant conversations (private to the signed-in staffer): recent sessions (id, title, last activity), or one session\'s messages when sessionId is given. Use to recall prior context ("as we discussed yesterday...").',
   permission: 'dashboard.view',
   inputSchema: z.object({
     sessionId: z.string().max(80).optional(),
     limit: rowLimit(100, 30),
   }),
   run: async (input, ctx, deps) => {
+    // Threads are private per staffer: owner + live (not deleted, not
+    // superseded by a rewind). No staff identity → nothing to recall.
+    if (ctx.staffId == null) {
+      return input.sessionId ? { sessionId: input.sessionId, messages: [] } : { sessions: [] };
+    }
     if (input.sessionId) {
       // Newest N messages, returned oldest→newest for natural reading.
       const r = await deps.query(
         ctx.organizationId,
         `SELECT role, content, at FROM (
-           SELECT id, role, content, created_at::text AS at
-             FROM ai_chat_messages
-            WHERE organization_id = $1 AND session_id = $2
-            ORDER BY id DESC
+           SELECT m.id, m.role, m.content, m.created_at::text AS at
+             FROM ai_chat_messages m
+             JOIN ai_chat_sessions s
+               ON s.id = m.session_id AND s.organization_id = m.organization_id
+            WHERE m.organization_id = $1 AND m.session_id = $2
+              AND s.staff_id = $4 AND s.deleted_at IS NULL
+              AND m.superseded_at IS NULL
+            ORDER BY m.id DESC
             LIMIT $3
          ) latest
          ORDER BY id ASC`,
-        [ctx.organizationId, input.sessionId, input.limit],
+        [ctx.organizationId, input.sessionId, input.limit, ctx.staffId],
       );
       return { sessionId: input.sessionId, messages: r.rows };
     }
@@ -525,10 +534,10 @@ export const getChatHistory: AssistantToolDef<
       ctx.organizationId,
       `SELECT id, title, updated_at::text AS updated_at
          FROM ai_chat_sessions
-        WHERE organization_id = $1
+        WHERE organization_id = $1 AND staff_id = $3 AND deleted_at IS NULL
         ORDER BY updated_at DESC
         LIMIT $2`,
-      [ctx.organizationId, input.limit],
+      [ctx.organizationId, input.limit, ctx.staffId],
     );
     return { sessions: r.rows };
   },

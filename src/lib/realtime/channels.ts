@@ -76,7 +76,7 @@ export const getWalkInChannelName = (orgId: string) =>
 /**
  * Agentic-loop master-plan CRDT channel (`org:{uuid}:forge:master-plan`).
  * Carries Yjs sync/update messages for the shared `master-plan.mdx` document —
- * Cursor daemon, web clients, and the forge plan-agent all merge through it.
+ * Cursor daemon and web clients merge through it.
  */
 export const getMasterPlanChannel = (orgId: string) =>
   `${orgChannelPrefix(orgId)}:${DEFAULT_MASTER_PLAN_CHANNEL}`;

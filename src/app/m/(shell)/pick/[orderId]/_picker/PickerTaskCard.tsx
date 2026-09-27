@@ -3,9 +3,9 @@
 import { motion, AnimatePresence } from '@/design-system/motion';
 import { ScanSurface } from '@/components/mobile/ScanSurface';
 import {
-  framerPresenceMobile,
-  framerTransitionMobile,
-} from '@/design-system/foundations/motion-framer';
+  motionPresenceMobile,
+  motionTransitionMobile,
+} from '@/design-system/foundations/motion-presets';
 import { Button } from '@/design-system/primitives';
 import type { useBarcodeScanner } from '@/hooks/useBarcodeScanner';
 import type { PickTask } from './picker-shared';
@@ -30,10 +30,10 @@ export function PickerTaskCard({
     <AnimatePresence mode="wait">
       <motion.section
         key={currentTask.allocationId}
-        initial={framerPresenceMobile.mobileCard.initial}
-        animate={framerPresenceMobile.mobileCard.animate}
-        exit={framerPresenceMobile.mobileCard.exit}
-        transition={framerTransitionMobile.mobileCardMount}
+        initial={motionPresenceMobile.mobileCard.initial}
+        animate={motionPresenceMobile.mobileCard.animate}
+        exit={motionPresenceMobile.mobileCard.exit}
+        transition={motionTransitionMobile.mobileCardMount}
         className="rounded-none border border-border-soft bg-surface-card p-5"
       >
         {/* Bin chip — the thing the worker looks for. */}

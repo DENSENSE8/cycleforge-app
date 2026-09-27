@@ -27,7 +27,6 @@ import {
   shouldCockpitYieldToDisplaysIndex,
   shouldItemPhotosCompareAutoOpen,
 } from './line-edit/unbox-displays-nav';
-import { yieldUnboxStationPushesOnAssistantOpen } from './line-edit/unbox-right-edge';
 import {
   StationDisplaysParkedRail,
   StationDisplaysPushStack,
@@ -35,8 +34,6 @@ import {
   isDisplaysHostedLeaf,
   type DisplaysVisitFrame,
 } from '@/components/station/displays';
-import { useAssistantDockOpen } from '@/components/assistant/AssistantProvider';
-import { ASSISTANT_DOCK_OPEN_EVENT } from '@/utils/events';
 import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
 import { dispatchLineUpdated, dispatchSelectLine } from '@/components/station/receiving-lines-table-helpers';
 import { useReturnOrderLinkage } from './line-edit/hooks/useReturnOrderLinkage';
@@ -347,29 +344,6 @@ export function LineEditPanel({
     },
     syncKey: row.receiving_id ?? row.id,
   });
-
-  // AI open → yield Displays (one details column) — local close only.
-  const assistantOpen = useAssistantDockOpen();
-  const yieldPeersRef = useRef({
-    closeDisplays: () => setRequestedSideTab(null),
-  });
-  yieldPeersRef.current = {
-    closeDisplays: () => setRequestedSideTab(null),
-  };
-  useEffect(() => {
-    const onOpen = () => {
-      yieldUnboxStationPushesOnAssistantOpen(yieldPeersRef.current);
-    };
-    window.addEventListener(ASSISTANT_DOCK_OPEN_EVENT, onOpen);
-    return () => window.removeEventListener(ASSISTANT_DOCK_OPEN_EVENT, onOpen);
-  }, []);
-  const prevAssistantOpenRef = useRef(false);
-  useEffect(() => {
-    const opened = assistantOpen && !prevAssistantOpenRef.current;
-    prevAssistantOpenRef.current = assistantOpen;
-    if (!opened) return;
-    yieldUnboxStationPushesOnAssistantOpen(yieldPeersRef.current);
-  }, [assistantOpen]);
 
   // Cockpit auto-follow yields to an EXPLICIT close (per CARTON — the parent, not the active child line).
   const cartonKey = row.receiving_id ?? row.id ?? null;

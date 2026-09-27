@@ -5,8 +5,8 @@ import Link from 'next/link';
 import { motion } from '@/design-system/motion';
 import confetti from 'canvas-confetti';
 import { Check } from '@/components/Icons';
-import { framerTransition } from '@/design-system/foundations/motion-framer';
-import { useMotionTransition } from '@/design-system/foundations/motion-framer-hooks';
+import { motionTransition } from '@/design-system/foundations/motion-presets';
+import { useMotionTransition } from '@/design-system/foundations/motion-presets-hooks';
 
 const ICON_SPRING = { type: 'spring' as const, stiffness: 500, damping: 24, mass: 0.6 };
 
@@ -26,7 +26,7 @@ export function IntegrationConnectSuccess({
   href,
   linkLabel,
 }: IntegrationConnectSuccessProps) {
-  const transition = useMotionTransition(framerTransition.cardExpansion);
+  const transition = useMotionTransition(motionTransition.cardExpansion);
 
   useEffect(() => {
     if (!confettiBurst) return;

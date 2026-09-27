@@ -1,0 +1,57 @@
+-- feed_memberships_open_rail: BEFORE
+-- captured 2026-09-26T19:37:33.229Z as app_tenant (unpooled ep-shiny-hall-adz0n0nu), app.current_org=00000000-0000-0000-0000-000000000001
+-- BEGIN READ ONLY; SELECT set_config('app.current_org', '<org>', true); EXPLAIN (ANALYZE, BUFFERS) <sql>; ROLLBACK;
+-- src/lib/assistant/tools/read-tools.ts:227-240 getFeedState items query, useExclusions branch
+-- params inlined as literals: ["00000000-0000-0000-0000-000000000001", "receiving_triage", 20, 1, "RECEIVING"]
+-- SQL:
+--   SELECT m.entity_type, m.entity_id, m.state, m.priority_tier, m.title,
+--                 m.subtitle, m.tone, m.node_id, m.occurred_at::text AS occurred_at
+--            FROM feed_memberships m
+--            
+--         LEFT JOIN staff_rail_exclusions x
+--           ON x.organization_id = m.organization_id
+--          AND x.feed_key = m.feed_key
+--          AND x.entity_type = m.entity_type
+--          AND x.entity_id = m.entity_id
+--          AND x.staff_id = 1 AND x.station = 'RECEIVING'
+--           WHERE m.organization_id = '00000000-0000-0000-0000-000000000001' AND m.feed_key = 'receiving_triage'
+--             AND m.state <> 'done'
+--             AND x.id IS NULL
+--           ORDER BY m.occurred_at DESC
+--           LIMIT 20
+
+                                                                                                         QUERY PLAN                                                                                                          
+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ Limit  (cost=140.75..140.75 rows=2 width=187) (actual time=0.587..0.593 rows=20 loops=1)
+   Buffers: shared hit=89
+   ->  Sort  (cost=140.75..140.75 rows=2 width=187) (actual time=0.586..0.590 rows=20 loops=1)
+         Sort Key: m.occurred_at DESC
+         Sort Method: top-N heapsort  Memory: 32kB
+         Buffers: shared hit=89
+         ->  Result  (cost=8.20..140.74 rows=2 width=187) (actual time=0.118..0.532 rows=114 loops=1)
+               One-Time Filter: ((NULLIF(current_setting('app.current_org'::text, true), ''::text))::uuid = '00000000-0000-0000-0000-000000000001'::uuid)
+               Buffers: shared hit=86
+               ->  Hash Left Join  (cost=8.20..140.73 rows=2 width=155) (actual time=0.109..0.494 rows=114 loops=1)
+                     Hash Cond: ((m.entity_type = x.entity_type) AND (m.entity_id = x.entity_id))
+                     Filter: (x.id IS NULL)
+                     Rows Removed by Filter: 27
+                     Buffers: shared hit=86
+                     ->  Seq Scan on feed_memberships m  (cost=0.00..130.80 rows=330 width=188) (actual time=0.047..0.397 rows=141 loops=1)
+                           Filter: ((state <> 'done'::text) AND (organization_id = '00000000-0000-0000-0000-000000000001'::uuid) AND (feed_key = 'receiving_triage'::text))
+                           Rows Removed by Filter: 2533
+                           Buffers: shared hit=84
+                     ->  Hash  (cost=8.17..8.17 rows=1 width=96) (actual time=0.050..0.051 rows=31 loops=1)
+                           Buckets: 1024  Batches: 1  Memory Usage: 11kB
+                           Buffers: shared hit=2
+                           ->  Result  (cost=0.15..8.17 rows=1 width=96) (actual time=0.029..0.040 rows=31 loops=1)
+                                 One-Time Filter: ((NULLIF(current_setting('app.current_org'::text, true), ''::text))::uuid = '00000000-0000-0000-0000-000000000001'::uuid)
+                                 Buffers: shared hit=2
+                                 ->  Index Scan using ux_staff_rail_exclusions_natural on staff_rail_exclusions x  (cost=0.15..8.17 rows=1 width=96) (actual time=0.028..0.034 rows=31 loops=1)
+                                       Index Cond: ((organization_id = '00000000-0000-0000-0000-000000000001'::uuid) AND (staff_id = 1) AND ((station)::text = 'RECEIVING'::text) AND (feed_key = 'receiving_triage'::text))
+                                       Buffers: shared hit=2
+ Planning:
+   Buffers: shared hit=650
+ Planning Time: 1.158 ms
+ Execution Time: 0.672 ms
+(31 rows)
+

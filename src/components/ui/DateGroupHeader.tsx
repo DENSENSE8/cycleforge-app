@@ -5,8 +5,8 @@ import { AnimatePresence, motion } from '@/design-system/motion';
 import { formatDateWithOrdinal } from '@/utils/date';
 import { cn } from '@/utils/_cn';
 import { QUEUE_ROW } from '@/components/ui/queue-row-chrome';
-import { framerPresence, framerTransition } from '@/design-system/foundations/motion-framer';
-import { useMotionPresence, useMotionTransition } from '@/design-system/foundations/motion-framer-hooks';
+import { motionPresence, motionTransition } from '@/design-system/foundations/motion-presets';
+import { useMotionPresence, useMotionTransition } from '@/design-system/foundations/motion-presets-hooks';
 
 /** Day-group header shown between each day's rows in station / receiving / repair lists that still band by civil day. */
 
@@ -78,9 +78,9 @@ export function DateGroupHeader({
   animate = false,
 }: DateGroupHeaderProps) {
   const rowClass = surface === 'solid' ? dayGroupChipRowSolidClass : dayGroupChipRowClass;
-  const layoutTransition = useMotionTransition(framerTransition.chipColumnLayout);
-  const mountTransition = useMotionTransition(framerTransition.tableRowMount);
-  const countPresence = useMotionPresence(framerPresence.tableRow);
+  const layoutTransition = useMotionTransition(motionTransition.chipColumnLayout);
+  const mountTransition = useMotionTransition(motionTransition.tableRowMount);
+  const countPresence = useMotionPresence(motionPresence.tableRow);
 
   const countEl = animate ? (
     <span className="relative inline-flex min-w-[1ch] items-center justify-center overflow-hidden">

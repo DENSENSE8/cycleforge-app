@@ -2,7 +2,7 @@
 
 import type { ReactNode } from 'react';
 import { motion, type Variants } from '@/design-system/motion';
-import { motionBezier } from '../foundations/motion-framer';
+import { motionBezier } from '../foundations/motion-presets';
 
 /** Stagger reveal — list items cascade in for freshly-loaded queues. */
 
@@ -25,7 +25,7 @@ export const staggerRevealContainer = (step: number = STAGGER_REVEAL_STEP): Vari
 export const staggerRevealSidebarItem: Variants = {
   hidden: { opacity: 1, y: 8 },
   show: { opacity: 1, y: 0, transition: { duration: 0.28, ease: motionBezier.easeOut } },
-  // Left-edge exit matches scan/dismiss CRUD presence (`framerPresence.sidebarRailRow`).
+  // Left-edge exit matches scan/dismiss CRUD presence (`motionPresence.sidebarRailRow`).
   exit: {
     opacity: 0,
     x: -12,

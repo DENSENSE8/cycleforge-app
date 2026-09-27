@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { AnimatePresence, motion } from '@/design-system/motion';
 import { ShippedOrder } from '@/lib/neon/orders-queries';
-import { framerPresence, framerTransition } from '@/design-system/foundations/motion-framer';
+import { motionPresence, motionTransition } from '@/design-system/foundations/motion-presets';
 import { MarkAsShippedForm } from '@/components/shipped/stacks/MarkAsShippedForm';
 import { OrderNotesTrail } from '@/components/shipped/details-panel/OrderNotesTrail';
 import { ShippedOutOfStockComposer } from '@/components/shipped/details-panel/ShippedOutOfStockComposer';
@@ -102,10 +102,10 @@ export function ShippedPanelEditorDock({
         {hasExpandedEditor ? (
           <motion.div
             key="mark-shipped"
-            initial={framerPresence.collapseHeight.initial}
-            animate={framerPresence.collapseHeight.animate}
-            exit={framerPresence.collapseHeight.exit}
-            transition={framerTransition.upNextCollapse}
+            initial={motionPresence.collapseHeight.initial}
+            animate={motionPresence.collapseHeight.animate}
+            exit={motionPresence.collapseHeight.exit}
+            transition={motionTransition.upNextCollapse}
             className="overflow-hidden"
           >
             <div className="px-8 pt-3 pb-1">

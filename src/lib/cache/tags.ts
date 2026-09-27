@@ -85,6 +85,8 @@ export const CACHE_NS = {
   receivingIncomingLanes: 'receiving-incoming-lanes',
   /** Ecwid repair-service catalog (products + category tree). */
   ecwidRepairCatalog: 'ecwid-repair-catalog',
+  /** `POST /api/identify` — per-org answer for one normalised paste (+ context, limit). */
+  identify: 'identify',
 } as const;
 
 type CacheNamespace = (typeof CACHE_NS)[keyof typeof CACHE_NS];

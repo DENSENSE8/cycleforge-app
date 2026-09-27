@@ -27,7 +27,6 @@ import {
   StationDisplaysPushStack,
   STATION_DISPLAY_INDEX,
   resolveDisplaysActiveTab,
-  useYieldStationDisplaysOnAssistantOpen,
 } from '@/components/station/displays';
 import { PackLocationsLeaf } from '@/components/tech/shipping/PackLocationsLeaf';
 import { usePackOrderPlacement } from '@/components/tech/shipping/usePackOrderPlacement';
@@ -89,7 +88,6 @@ export function PackOrderPanel({ activeOrder, onClose }: PackOrderPanelProps) {
     tracking.length > 0 || orderId.length > 0 || timelineSerials.length > 0;
 
   const closeDisplays = useCallback(() => setActiveSideTab(null), []);
-  useYieldStationDisplaysOnAssistantOpen(closeDisplays);
 
   /**
    * `←|` Open displays → the Root Index, never a guessed leaf.

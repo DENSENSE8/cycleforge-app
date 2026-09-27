@@ -51,7 +51,8 @@ export function ReviewPairingTable({ onOpenOrder, onCloseOrder }: ReviewPairingT
   const setSearch = useCallback((next: string) => setSearchQuery(next), []);
   const clearSearch = useCallback(() => setSearchQuery(''), []);
 
-  const sheet = useOrdersSpreadsheet({
+  // Review opens records in its own workspace — the desk record plane bag is not a table prop.
+  const { recordPlane, ...sheet } = useOrdersSpreadsheet({
     ariaLabel: 'Orders awaiting pairing review',
     records,
     loading,

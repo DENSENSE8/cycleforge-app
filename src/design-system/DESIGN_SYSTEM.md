@@ -62,6 +62,14 @@ Coarse pointers raise hit floors to 48px, and page padding and body text where t
 
 Token density presets (`compact` / `standard` / `spacious` in `tokens/spacing.ts`) still apply inside a mode.
 
+### AI surfaces are a separate system (`ai/`)
+
+AI surfaces (`/ai-chat` first) do NOT use Kinetic Ledger chrome. They mount
+`AiSurface` and compose `@/design-system/ai` — theme-following neutrals, an
+iridescent accent used only while the AI works, soft 12–20px corners, a chat
+prose scale, a fixed centred chat frame, and Motion + Motion+ presets. SoT and
+usage: [`ai/README.md`](./ai/README.md) (values in `ai/tokens.ts`).
+
 ### Visual principles
 
 - Data-first hierarchy and compact scanning.
@@ -114,11 +122,11 @@ Token density presets (`compact` / `standard` / `spacious` in `tokens/spacing.ts
     xl radius + raised lift + sunken frozen header; airtable column rules continuous)
 - Motion:
   - `foundations/motion.ts` — CSS-oriented durations / cubic-bezier strings (`micro=100ms`, `fast=150ms`)
-  - `foundations/motion-framer.ts` — Framer Motion presets used on station surfaces:
+  - `foundations/motion-presets.ts` — Motion (`motion/react`) presets used on station surfaces:
     - `motionBezier.easeOut` / `motionBezier.layout` — cubic tuples aligned with **ActiveStationOrderCard** / **Up Next OrderCard**
-    - `framerDuration` — second-scale timings (now includes `tableRowMount`, `sidebarExpand`, `dropdownOpen`, `overlaySearchIn`, `chipCopyFeedback`)
-    - `framerTransition` — named transitions (`stationCardMount`, `upNextRowMount`, `stationCollapse`, `upNextCollapse`, `tableRowMount`, `sidebarExpand`, `dropdownOpen`, `overlaySearchIn`, `chipCopyFeedback`, chevrons, serial rows, badges, work-order springs)
-    - `framerPresence` — `initial` / `animate` / `exit` objects (now includes `tableRow`, `dropdownPanel`, `sidebarSection`); `framerVariants` for the variants API
+    - `motionDuration` — second-scale timings (now includes `tableRowMount`, `sidebarExpand`, `dropdownOpen`, `overlaySearchIn`, `chipCopyFeedback`)
+    - `motionTransition` — named transitions (`stationCardMount`, `upNextRowMount`, `stationCollapse`, `upNextCollapse`, `tableRowMount`, `sidebarExpand`, `dropdownOpen`, `overlaySearchIn`, `chipCopyFeedback`, chevrons, serial rows, badges, work-order springs)
+    - `motionPresence` — `initial` / `animate` / `exit` objects (now includes `tableRow`, `dropdownPanel`, `sidebarSection`); `motionVariants` for the variants API
 - CSS variable generation:
   - `tokens/css-variables.ts`
 
@@ -361,7 +369,7 @@ the dark-mode flip of these tones is **T2**.
 - Labels: 9px, uppercase, heavy weight, tracked (see typography presets).
 - Values: 13px bold, with monospace for technical identifiers.
 - **Status / identifiers:** resolve via presentation SoTs — `StatusText` / lifecycle tones / typed `CopyChip` / condition chips as appropriate. Do not invent a parallel badge system.
-- Interaction micro-motion: 100–150ms; named Framer presets only (`foundations/motion-framer.ts` + reduced-motion hooks).
+- Interaction micro-motion: 100–150ms; named Motion presets only (`foundations/motion-presets.ts` + reduced-motion hooks).
 
 ## Desktop ↔ Mobile Design Mapping
 
@@ -432,12 +440,12 @@ Detection priority:
 - Spacing is the density-aware scale (`tokens/spacing.mjs`, `calc(rem × var(--cf-density))`),
   so mobile rows tighten through `data-density` rather than a parallel `mobileDensity.*` map.
 
-### Mobile Motion Presets (`foundations/motion-framer.ts`)
+### Mobile Motion Presets (`foundations/motion-presets.ts`)
 
 Mobile-specific additions to the existing motion system:
-- `framerDurationMobile.*` — sheet slides (0.32s), camera enter/exit, scan feedback, FAB, nav
-- `framerTransitionMobile.*` — spring-damped sheets, camera transitions, scan success/failure
-- `framerPresenceMobile.*` — sheet (y: 100%), camera (scale+opacity), FAB (scale from 0.6), scan feedback (pulse/shake)
+- `motionDurationMobile.*` — sheet slides (0.32s), camera enter/exit, scan feedback, FAB, nav
+- `motionTransitionMobile.*` — spring-damped sheets, camera transitions, scan success/failure
+- `motionPresenceMobile.*` — sheet (y: 100%), camera (scale+opacity), FAB (scale from 0.6), scan feedback (pulse/shake)
 
 ### Mobile Icon UX Rules
 
@@ -468,7 +476,7 @@ design-system/
 │   ├── UIModeProvider.tsx    — React context: mode, capabilities, override
 │   └── index.ts
 ├── foundations/
-│   └── motion-framer.ts      — Extended with framerDurationMobile, framerTransitionMobile, framerPresenceMobile
+│   └── motion-presets.ts     — Extended with motionDurationMobile, motionTransitionMobile, motionPresenceMobile
 ├── primitives/
 │   ├── Button.tsx            — Mode-aware button (auto-promotes touch targets on mobile)
 │   └── IconButton.tsx        — Owns the hit box via `size`; `size="touch"` is the 44px floor
@@ -494,7 +502,7 @@ Migrate existing components to consume new design system primitives:
 2. **TechTable / PackerTable** — replace inline sticky date headers with `DateGroupHeader` component
 3. **UpNextFilterBar** — replace inline AnimatePresence toggle with `OverlaySearch` component
 4. **Sidebar form sections** — replace inline label styling with `FormField` component
-5. **All expand/collapse patterns** — drive `AnimatePresence`+`motion.div` from `framerPresence.collapseHeight` (the `ExpandableSection` primitive was deleted 2026-07-31 — zero call sites)
+5. **All expand/collapse patterns** — drive `AnimatePresence`+`motion.div` from `motionPresence.collapseHeight` (the `ExpandableSection` primitive was deleted 2026-07-31 — zero call sites)
 6. **Typography** — replace hand-rolled `text-[10px] uppercase tracking-[0.2em]` with `typographyPresets.sectionLabel` etc.
 
 See `.design-system-rules.md` for complete auto-UX integration rules.

@@ -151,6 +151,8 @@ async function fetchTicketLinkOpsEvents(
 ): Promise<TicketLinkOpsRow[]> {
   const ids = entityIds.filter((n) => Number.isFinite(n) && n > 0);
   if (ids.length === 0) return [];
+  // Plain `entity_type = $2`: ops_events_entity_type_chk stores lowercase only,
+  // and lower() would be non-leakproof under RLS (no index condition).
   const res = await tenantQuery<TicketLinkOpsRow>(
     orgId,
     `SELECT oe.id, oe.occurred_at, oe.event_type, oe.payload,
@@ -158,7 +160,7 @@ async function fetchTicketLinkOpsEvents(
        FROM ops_events oe
        LEFT JOIN staff s ON s.id = oe.actor_staff_id
       WHERE oe.organization_id = $1
-        AND lower(oe.entity_type) = $2
+        AND oe.entity_type = $2
         AND oe.entity_id = ANY($3::bigint[])
         AND oe.event_type IN ('TICKET_LINKED', 'TICKET_UNLINKED')
       ORDER BY oe.occurred_at DESC
@@ -212,7 +214,7 @@ async function fetchTimelineSpines(args: {
           `SELECT id, occurred_at, event_type, entity_type, entity_id
              FROM ops_events
             WHERE organization_id = $1
-              AND lower(entity_type) = 'receiving'
+              AND entity_type = 'receiving'
               AND entity_id = $2
             ORDER BY occurred_at DESC
             LIMIT 100`,

@@ -8,6 +8,7 @@ import '@/lib/workflow'; // side-effect: registers built-in node types (hasNode)
 import {
   applyAgentMutation,
   revertAgentMutation,
+  reviewAgentMutation,
   type AgentMutationSideEffects,
   type ApplyAgentMutationDeps,
 } from './apply-agent-mutation';
@@ -556,4 +557,123 @@ test('revert is refused when the actor lacks the KIND permission (gap 3, on the 
   assert.equal(out.ok, false);
   assert.equal(out.status, 403);
   assert.ok(!cap.queries.some((q) => q.text.includes('UPDATE photo_entity_links')));
+});
+
+/* ── review queue (approval-first, LAWS T28): brand proposals ─────────────── */
+
+const MANAGE = new Set(['sku_stock.manage']);
+
+/** A queued sku_brand.assign proposal for catalog row 7, brand 3 active, SKU currently unbranded. */
+function brandQueue(status = 'proposed', payload: Record<string, unknown> = { skuCatalogId: 7, brandId: 3, source: 'listing', confidence: 0.6, reason: 'below_threshold' }) {
+  return fakes((text) => {
+    if (text.includes('FROM agent_mutations') && text.includes('FOR UPDATE')) {
+      return [{ status, mutation_kind: 'sku_brand.assign', payload }];
+    }
+    if (text.includes('FROM product_brands b WHERE b.organization_id = $1 AND b.id = $2')) {
+      return [{ id: 3, name: 'Sony', slug: 'sony', normalized_name: 'sony', kind: 'brand', parent_brand_id: null, publisher: null, is_active: true, created_at: 't', updated_at: 't' }];
+    }
+    if (text.includes('WITH prev AS')) return [{ brand_id: null, brand_confidence: null, brand_source: null }];
+    return [];
+  });
+}
+
+test('review approve: a queued SKU brand lands as a human fact (operator, 1.00) with a revertable inverse', async () => {
+  const { deps, cap } = brandQueue();
+  const out = await reviewAgentMutation(
+    { organizationId: ORG, mutationId: 77, decision: 'approve', actorStaffId: 4, actorPermissions: MANAGE },
+    deps,
+  );
+  assert.deepEqual(out, { ok: true, status: 'applied', mutationId: 77, targetRef: '7' });
+  const write = cap.queries.find((q) => q.text.includes('WITH prev AS'))!;
+  assert.deepEqual(write.params, [ORG, 7, 3, 1, 'operator']);
+  const done = cap.queries.find((q) => q.text.includes("SET status = 'applied'"))!;
+  const extra = JSON.parse(String(done.params[5])) as { inverse: { kind: string; payload: Record<string, unknown> } };
+  assert.deepEqual(extra.inverse, {
+    kind: 'sku_brand.assign',
+    payload: { skuCatalogId: 7, brandId: null, restore: { brandId: null, confidence: null, source: null } },
+  });
+  assert.deepEqual(cap.side.map((e) => [e.action, e.actorStaffId]), [['agent_mutation.apply', 4]]);
+});
+
+test('review refuses a reviewer without the kind permission — nothing written, nothing emitted', async () => {
+  const { deps, cap } = brandQueue();
+  const out = await reviewAgentMutation(
+    { organizationId: ORG, mutationId: 77, decision: 'approve', actorStaffId: 4, actorPermissions: new Set(['sku_stock.view']) },
+    deps,
+  );
+  assert.deepEqual(out, { ok: false, status: 403, error: 'reviewing "sku_brand.assign" requires sku_stock.manage' });
+  assert.ok(!cap.queries.some((q) => /^\s*(UPDATE|WITH prev)/.test(q.text)));
+  assert.equal(cap.side.length, 0);
+});
+
+test('review: a decided proposal cannot be decided again', async () => {
+  const { deps, cap } = brandQueue('rejected');
+  const out = await reviewAgentMutation(
+    { organizationId: ORG, mutationId: 77, decision: 'approve', actorStaffId: 4, actorPermissions: MANAGE },
+    deps,
+  );
+  assert.equal(out.ok ? 200 : out.status, 409);
+  assert.equal(cap.side.length, 0);
+});
+
+test('review reject closes the proposal without touching the SKU', async () => {
+  const { deps, cap } = brandQueue();
+  const out = await reviewAgentMutation(
+    { organizationId: ORG, mutationId: 77, decision: 'reject', actorStaffId: 4, actorPermissions: MANAGE, notes: 'mispaired listing' },
+    deps,
+  );
+  assert.deepEqual(out, { ok: true, status: 'rejected', mutationId: 77, targetRef: null });
+  assert.ok(cap.queries.some((q) => q.text.includes("SET status = 'rejected'") && q.params[2] === 'mispaired listing'));
+  assert.ok(!cap.queries.some((q) => q.text.includes('WITH prev AS')));
+  assert.equal(cap.side[0]!.action, 'agent_mutation.reject');
+});
+
+test('review: a compatibility proposal names no brand, so approval needs the reviewer to pick one', async () => {
+  const compat = { skuCatalogId: 7, brandId: null, source: 'compat', confidence: 0.3, reason: 'compat_mention', compatBrandId: 1 };
+  const bare = brandQueue('proposed', compat);
+  const refused = await reviewAgentMutation(
+    { organizationId: ORG, mutationId: 78, decision: 'approve', actorStaffId: 4, actorPermissions: MANAGE },
+    bare.deps,
+  );
+  assert.equal(refused.ok ? 200 : refused.status, 400);
+  assert.ok(!bare.cap.queries.some((q) => q.text.includes('WITH prev AS')));
+
+  const picked = brandQueue('proposed', compat);
+  const ok = await reviewAgentMutation(
+    { organizationId: ORG, mutationId: 78, decision: 'approve', actorStaffId: 4, actorPermissions: MANAGE, payloadPatch: { brandId: 3 } },
+    picked.deps,
+  );
+  assert.equal(ok.ok, true);
+  assert.deepEqual(picked.cap.queries.find((q) => q.text.includes('WITH prev AS'))!.params, [ORG, 7, 3, 1, 'operator']);
+});
+
+test('review scoped to brand kinds leaves a staff.create proposal untouched', async () => {
+  const { deps, cap } = fakes((text) =>
+    text.includes('FROM agent_mutations') && text.includes('FOR UPDATE')
+      ? [{ status: 'proposed', mutation_kind: 'staff.create', payload: {} }]
+      : [],
+  );
+  const out = await reviewAgentMutation(
+    {
+      organizationId: ORG,
+      mutationId: 79,
+      decision: 'reject',
+      actorStaffId: 4,
+      actorPermissions: new Set(['admin.manage_staff']),
+      kinds: ['sku_brand.assign', 'brand.create', 'brand.update'],
+    },
+    deps,
+  );
+  assert.equal(out.ok ? 200 : out.status, 400);
+  assert.ok(!cap.queries.some((q) => q.text.includes('UPDATE agent_mutations')));
+});
+
+test('assistant-proposed brand kinds are review-class: queued, never applied', async () => {
+  const { deps, cap } = fakes();
+  const out = await applyAgentMutation(
+    { organizationId: ORG, mutationKind: 'brand.create', payload: { name: 'Sonos' }, proposedByStaffId: 3 },
+    deps,
+  );
+  assert.equal(out.ok && out.status, 'proposed');
+  assert.ok(!cap.queries.some((q) => q.text.includes('product_brands')));
 });

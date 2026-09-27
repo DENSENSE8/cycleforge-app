@@ -1,0 +1,47 @@
+-- ops_events_support_ticket_link_ops: BEFORE
+-- captured 2026-09-26T19:38:54.498Z as app_tenant (unpooled ep-shiny-hall-adz0n0nu), app.current_org=00000000-0000-0000-0000-000000000001
+-- BEGIN READ ONLY; SELECT set_config('app.current_org', '<org>', true); EXPLAIN (ANALYZE, BUFFERS) <sql>; ROLLBACK;
+-- src/lib/support/context.ts:147-169 fetchTicketLinkOpsEvents (support context panel), entityType=shipment
+-- params inlined as literals: ["00000000-0000-0000-0000-000000000001", "shipment", [180354,180352]]
+-- SQL:
+--   SELECT oe.id, oe.occurred_at, oe.event_type, oe.payload,
+--               s.name AS actor_name
+--          FROM ops_events oe
+--          LEFT JOIN staff s ON s.id = oe.actor_staff_id
+--         WHERE oe.organization_id = '00000000-0000-0000-0000-000000000001'
+--           AND lower(oe.entity_type) = 'shipment'
+--           AND oe.entity_id = ANY('{180354,180352}'::bigint[])
+--           AND oe.event_type IN ('TICKET_LINKED', 'TICKET_UNLINKED')
+--         ORDER BY oe.occurred_at DESC
+--         LIMIT 20
+
+                                                                                 QUERY PLAN                                                                                  
+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ Limit  (cost=430.65..430.66 rows=1 width=136) (actual time=5.125..5.127 rows=2 loops=1)
+   Buffers: shared hit=322
+   ->  Sort  (cost=430.65..430.66 rows=1 width=136) (actual time=5.123..5.125 rows=2 loops=1)
+         Sort Key: oe.occurred_at DESC
+         Sort Method: quicksort  Memory: 25kB
+         Buffers: shared hit=322
+         ->  Result  (cost=0.42..430.64 rows=1 width=136) (actual time=0.076..5.099 rows=2 loops=1)
+               One-Time Filter: ((NULLIF(current_setting('app.current_org'::text, true), ''::text))::uuid = '00000000-0000-0000-0000-000000000001'::uuid)
+               Buffers: shared hit=319
+               ->  Nested Loop Left Join  (cost=0.42..430.64 rows=1 width=136) (actual time=0.073..5.095 rows=2 loops=1)
+                     Join Filter: (s.id = oe.actor_staff_id)
+                     Rows Removed by Join Filter: 42
+                     Buffers: shared hit=319
+                     ->  Index Scan using idx_ops_events_org_type_time on ops_events oe  (cost=0.41..427.49 rows=1 width=131) (actual time=0.035..5.035 rows=2 loops=1)
+                           Index Cond: ((organization_id = '00000000-0000-0000-0000-000000000001'::uuid) AND (event_type = ANY ('{TICKET_LINKED,TICKET_UNLINKED}'::text[])))
+                           Filter: ((entity_id = ANY ('{180354,180352}'::bigint[])) AND (lower(entity_type) = 'shipment'::text))
+                           Rows Removed by Filter: 311
+                           Buffers: shared hit=315
+                     ->  Seq Scan on staff s  (cost=0.00..2.85 rows=23 width=13) (actual time=0.009..0.027 rows=22 loops=2)
+                           Filter: (organization_id = (NULLIF(current_setting('app.current_org'::text, true), ''::text))::uuid)
+                           Rows Removed by Filter: 15
+                           Buffers: shared hit=4
+ Planning:
+   Buffers: shared hit=751
+ Planning Time: 1.432 ms
+ Execution Time: 5.189 ms
+(26 rows)
+

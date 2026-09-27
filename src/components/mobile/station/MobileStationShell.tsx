@@ -103,7 +103,7 @@ export function MobileStationShell({
               {older.map((entry) => (
                 <motion.div
                   key={entry.id}
-                  // No `layout`. Rows are only ever PREPENDED — the tape never reorders — but `layout` made Framer measure every visible row on each commit,…
+                  // No `layout`. Rows are only ever PREPENDED — the tape never reorders — but `layout` made Motion measure every visible row on each commit,…
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
                   transition={{ duration: feedback }}

@@ -38,7 +38,7 @@ interface RightRailFrameInput {
   railCostOpenPx: number;
   /** True when the OPERATOR collapsed the rail — their choice, not a mask. */
   railOperatorCollapsed: boolean;
-  /** False for occupants that must not push (station edge, assistant, modal). */
+  /** False for occupants that must not push (station edge, modal). */
   wantsPush: boolean;
   /**
    * Px the center must keep while computing the right-panel cap.
@@ -371,7 +371,7 @@ export function setRightRailDemand(next: {
 
 /**
  * Unbox station push (`StationDisplaysPushColumn`) — separate writer from RightRailHost so
- * assistant `push: false` cannot clear the width-budget demand a Displays/Claim/
+ * a `push: false` occupant cannot clear the width-budget demand a Displays/Claim/
  * Ticket/tool column needs at 1440.
  */
 export function setStationPushDemand(next: {

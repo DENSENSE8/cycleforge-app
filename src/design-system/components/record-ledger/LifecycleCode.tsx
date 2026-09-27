@@ -5,7 +5,7 @@ import { RECORD_LABEL_CLASS, stateBadgeClass } from '../../tokens/industrial-rec
 import { cn } from '@/utils/_cn';
 import type { LifecycleIcon } from '@cycleforge/design-tokens';
 
-const LIFECYCLE_GLYPH: Readonly<Record<LifecycleIcon, ComponentType<{ className?: string }>>> = {
+export const LIFECYCLE_GLYPH: Readonly<Record<LifecycleIcon, ComponentType<{ className?: string }>>> = {
   'circle-dot': CircleDot,
   'alarm-clock': AlarmClock,
   package: Package,

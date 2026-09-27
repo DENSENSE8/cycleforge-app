@@ -4,16 +4,16 @@ import { forwardRef, type ReactNode } from 'react';
 import { motion, motionRole, useMotionPressRole, useReducedMotion } from '@/design-system/motion';
 import { useUIModeOptional } from '../providers/UIModeProvider';
 import {
-  framerPresence,
-  framerPresenceMobile,
-  framerTransition,
-  framerTransitionMobile,
-  framerGesture,
-} from '../foundations/motion-framer';
+  motionPresence,
+  motionPresenceMobile,
+  motionTransition,
+  motionTransitionMobile,
+  motionGesture,
+} from '../foundations/motion-presets';
 import {
   useMotionPresence,
   useMotionTransition,
-} from '../foundations/motion-framer-hooks';
+} from '../foundations/motion-presets-hooks';
 import { staggerRevealRiseItem } from './StaggerReveal';
 
 type CardTone = 'emerald' | 'red' | 'orange' | 'purple' | 'teal' | 'gray';
@@ -124,8 +124,8 @@ const CardShell = forwardRef<HTMLDivElement, CardShellProps>(function CardShell(
   } ${showActiveBorder ? border.active : `${border.idle} active:${border.active}`}`;
 
   const shouldReduce = useReducedMotion();
-  const rawPresence = isMobile ? framerPresenceMobile.mobileCard : framerPresence.upNextRow;
-  const rawTransition = isMobile ? framerTransitionMobile.mobileCardMount : framerTransition.upNextRowMount;
+  const rawPresence = isMobile ? motionPresenceMobile.mobileCard : motionPresence.upNextRow;
+  const rawTransition = isMobile ? motionTransitionMobile.mobileCardMount : motionTransition.upNextRowMount;
   const presence = useMotionPresence(rawPresence);
   const transition = useMotionTransition(rawTransition);
   // Linear + rail variants intentionally suppress the lift/scale hover gesture
@@ -134,7 +134,7 @@ const CardShell = forwardRef<HTMLDivElement, CardShellProps>(function CardShell(
   // `motionRole.gesture.press` — suppressed (not reduced) under prefers-reduced-motion.
   const pressGesture = useMotionPressRole(motionRole.gesture.press);
   const hoverGesture =
-    shouldReduce || (!isMobile && flatRow) ? undefined : framerGesture.cardHover;
+    shouldReduce || (!isMobile && flatRow) ? undefined : motionGesture.cardHover;
 
   // `stagger`: omit own initial/animate/transition so the card inherits the parent stagger-reveal container's hidden→show timeline (vertical…
   const entranceProps =

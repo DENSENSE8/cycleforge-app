@@ -319,7 +319,18 @@ async function searchFba(orgId: OrgId, query: string, limit: number): Promise<Gl
   }));
 }
 
-async function searchReceiving(orgId: OrgId, query: string, limit: number): Promise<GlobalSearchResult[]> {
+/**
+ * The receiving searcher's statement. Every branch binds EXACTLY the
+ * placeholders its text references: node-pg sends parameters untyped, so an
+ * unreferenced `$n` fails the whole query ("could not determine data type of
+ * parameter $n") — the identifier path used to pass the tracking-normalized
+ * key to the order-number branch that never reads it.
+ */
+export function buildReceivingSearchSql(
+  orgId: OrgId,
+  query: string,
+  limit: number,
+): { text: string; params: unknown[] } {
   // Join shipping_tracking_numbers so search matches rows reachable only via receiving.shipment_id (post inbound-tracking unification).
   const identifier = looksLikeIdentifier(query);
   const normalizedQuery = query.replace(/[^A-Za-z0-9]/g, '').toUpperCase();
@@ -356,12 +367,34 @@ async function searchReceiving(orgId: OrgId, query: string, limit: number): Prom
        FROM receiving_line rl WHERE rl.receiving_id = r.id
      ) lines ON TRUE`;
 
-  let result;
-  if (identifier) {
-    // Params: $1=query $2=normalized $3=limit $4=org — never leave an unused
-    // `$1` (Postgres: "could not determine data type of parameter").
+  if (identifier && trackingShaped) {
+    // Params: $1=query $2=normalized $3=limit $4=org. Tracking pastes must not
+    // OR into the per-carton line EXISTS (timeout).
     const q = '$1';
     const norm = '$2';
+    const cartonTrackingMatch = `(
+            stn.tracking_number_raw = ${q}
+         OR stn.tracking_number_normalized = ${norm}
+         OR (${norm} <> '' AND regexp_replace(UPPER(COALESCE(stn.tracking_number_normalized, '')), '[^A-Z0-9]', '', 'g') = ${norm})
+         OR (
+              length(regexp_replace(${q}, '[^0-9]', '', 'g')) >= 8
+              AND RIGHT(regexp_replace(COALESCE(stn.tracking_number_normalized, ''), '[^0-9]', '', 'g'), 8)
+                = RIGHT(regexp_replace(${q}, '[^0-9]', '', 'g'), 8)
+            )
+    )`;
+    return {
+      text: `${selectSql}
+     WHERE r.organization_id = $4
+       AND ${cartonTrackingMatch}
+     ORDER BY r.id DESC
+     LIMIT $3`,
+      params: [query, normalizedQuery, limit, orgId],
+    };
+  }
+
+  if (identifier) {
+    // Params: $1=query $2=limit $3=org — the normalized key is a tracking-only input.
+    const q = '$1';
     const lineOrderMatch = sqlIdentifierEqualsQuery('rl.source_order_id', q);
     const linkOrderMatch = sqlIdentifierEqualsQuery('l.source_order_id', q);
     const cartonOrderMatch = `(
@@ -383,29 +416,17 @@ async function searchReceiving(orgId: OrgId, query: string, limit: number): Prom
                 AND ${linkOrderMatch}
             )
     )`;
-    const cartonTrackingMatch = `(
-            stn.tracking_number_raw = ${q}
-         OR stn.tracking_number_normalized = ${norm}
-         OR (${norm} <> '' AND regexp_replace(UPPER(COALESCE(stn.tracking_number_normalized, '')), '[^A-Z0-9]', '', 'g') = ${norm})
-         OR (
-              length(regexp_replace(${q}, '[^0-9]', '', 'g')) >= 8
-              AND RIGHT(regexp_replace(COALESCE(stn.tracking_number_normalized, ''), '[^0-9]', '', 'g'), 8)
-                = RIGHT(regexp_replace(${q}, '[^0-9]', '', 'g'), 8)
-            )
-    )`;
-    // Tracking pastes must not OR into the per-carton line EXISTS (timeout).
-    const whereClause = trackingShaped ? cartonTrackingMatch : cartonOrderMatch;
-    result = await tenantQuery(
-      orgId,
-      `${selectSql}
-     WHERE r.organization_id = $4
-       AND ${whereClause}
+    return {
+      text: `${selectSql}
+     WHERE r.organization_id = $3
+       AND ${cartonOrderMatch}
      ORDER BY r.id DESC
-     LIMIT $3`,
-      [query, normalizedQuery, limit, orgId],
-    );
-  } else {
-    const broadMatch = `(
+     LIMIT $2`,
+      params: [query, limit, orgId],
+    };
+  }
+
+  const broadMatch = `(
             stn.tracking_number_raw ILIKE $1
          OR stn.tracking_number_normalized = $3
          OR CAST(r.id AS TEXT) = $2
@@ -431,16 +452,19 @@ async function searchReceiving(orgId: OrgId, query: string, limit: number): Prom
                   OR ($3 <> '' AND regexp_replace(UPPER(COALESCE(l.source_order_id, '')), '[^A-Z0-9]', '', 'g') = $3))
             )
     )`;
-    result = await tenantQuery(
-      orgId,
-      `${selectSql}
+  return {
+    text: `${selectSql}
      WHERE r.organization_id = $5
        AND ${broadMatch}
      ORDER BY r.id DESC
      LIMIT $4`,
-      [`%${query}%`, query, normalizedQuery, limit, orgId],
-    );
-  }
+    params: [`%${query}%`, query, normalizedQuery, limit, orgId],
+  };
+}
+
+async function searchReceiving(orgId: OrgId, query: string, limit: number): Promise<GlobalSearchResult[]> {
+  const { text, params } = buildReceivingSearchSql(orgId, query, limit);
+  const result = await tenantQuery(orgId, text, params);
 
   return result.rows.map((row: any) => {
     const poNumber = row.po_number != null ? String(row.po_number) : null;

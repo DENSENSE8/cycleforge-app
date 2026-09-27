@@ -3,7 +3,7 @@
 /**
  * `DeskRecordViewSwitch` — the staffer's choice of record view, named where the
  * record is read (operator 2026-09-25: "the user should have the choice to view
- * the data how they want to"). Two faces over the desk stage's ONE fullscreen
+ * the data how they want to"). Two faces over the desk stage's ONE view
  * state, never a second state:
  *
  * - **In place** — the record takes the list's place at the list's width.
@@ -11,30 +11,29 @@
  *   right, one column (owner 2026-09-26: easily triageable).
  *
  * Renders nothing off a desk stage (station embed, modal host): a dead switch
- * is worse than none.
+ * is worse than none. Nor in floor: floor is a face of the LIST, and its
+ * records always open in place (owner 2026-09-26).
  */
 
 import { useId } from 'react';
 import { ColumnsOne, ColumnsTwo } from '@/components/Icons';
 import { LayoutGroup, motion, motionRole, useReducedMotion } from '@/design-system/motion';
-import { useMode } from '@/design-system/providers/ModeRegion';
 import { focusRing } from '@/design-system/tokens/focus-ring';
 import { cn } from '@/utils/_cn';
 import { useDeskStageOptional } from './DeskStageContext';
 
 const VIEWS = [
-  { split: false, label: 'In place', title: 'In place — the record opens where the list is', Icon: ColumnsOne },
-  { split: true, label: 'Split', title: 'Split — the list on the left, the record on the right', Icon: ColumnsTwo },
+  { view: 'in-place', label: 'In place', title: 'In place — the record opens where the list is', Icon: ColumnsOne },
+  { view: 'split', label: 'Split', title: 'Split — the list on the left, the record on the right', Icon: ColumnsTwo },
 ] as const;
 
 export function DeskRecordViewSwitch({ className }: { className?: string }) {
   const stage = useDeskStageOptional();
   const groupId = useId();
   const reduce = useReducedMotion();
-  const still = useMode() === 'industrial';
-  if (!stage) return null;
+  if (!stage || stage.view === 'floor') return null;
 
-  const transition = reduce || still ? { duration: 0 } : motionRole.record.pane.transition;
+  const transition = reduce ? { duration: 0 } : motionRole.record.pane.transition;
 
   return (
     <LayoutGroup id={groupId}>
@@ -43,8 +42,8 @@ export function DeskRecordViewSwitch({ className }: { className?: string }) {
         aria-label="Record view"
         className={cn('inline-flex shrink-0 items-center gap-0.5 rounded-mode-control bg-surface-sunken p-0.5', className)}
       >
-        {VIEWS.map(({ split, label, title, Icon }) => {
-          const active = stage.fullscreen === split;
+        {VIEWS.map(({ view, label, title, Icon }) => {
+          const active = stage.view === view;
           return (
             <button
               key={label}
@@ -52,7 +51,7 @@ export function DeskRecordViewSwitch({ className }: { className?: string }) {
               role="radio"
               aria-checked={active}
               title={title}
-              onClick={active ? undefined : stage.toggleFullscreen}
+              onClick={active ? undefined : () => stage.setView(view)}
               className={cn(
                 'relative inline-flex h-7 items-center gap-1.5 rounded-mode-control px-2.5 text-role-caption font-medium transition-colors duration-mode-feedback',
                 active ? 'text-text-default' : 'text-text-muted hover:text-text-default',

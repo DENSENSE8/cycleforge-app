@@ -1,0 +1,33 @@
+-- 2026-09-26_perf_04_documents_org_entity_index.sql
+--
+-- WHAT
+--   idx_documents_org_entity ON documents (organization_id, entity_type, entity_id)
+--
+-- WHY
+--   The print-packet label test (src/lib/orders/print-packet.ts, used by
+--   queue-counts' paperworkIncomplete) now probes the legacy label row directly:
+--   `d.organization_id = o.organization_id AND d.entity_type = 'SHIPPING_LABEL'
+--    AND d.entity_id = o.id`. The only entity index, idx_documents_entity
+--   (entity_type, entity_id), is not org-led, so the RLS policy qual on
+--   organization_id is re-checked on the heap instead of bounding the scan.
+--   All three columns compare with leakproof operators (uuid_eq, texteq,
+--   int4eq), so this index is a full Index Cond under app_tenant.
+--   The query rewrite itself carries the win (1,225 ms -> tens of ms:
+--   docs/refactors/sidebar/perf-explain/queue_counts_paperwork.before.txt; the
+--   old OR-shaped EXISTS read every org document per order, 552k buffers);
+--   this index keeps the direct arm org-bounded as documents grow.
+--   idx_documents_entity stays: owner-role (BYPASSRLS) readers without an org
+--   filter still use it.
+--
+-- SAFETY
+--   Plain CREATE INDEX (the runner wraps the file in a transaction); ~1.1k rows.
+--   No code depends on it existing.
+--
+-- VERIFY
+--   scripts/perf-explain-after.sh -> queue_counts_paperwork.after.txt.
+--
+-- ROLLBACK
+--   DROP INDEX IF EXISTS idx_documents_org_entity;
+
+CREATE INDEX IF NOT EXISTS idx_documents_org_entity
+  ON documents (organization_id, entity_type, entity_id);

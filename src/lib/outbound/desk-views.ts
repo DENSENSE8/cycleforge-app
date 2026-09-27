@@ -1,4 +1,4 @@
-/** Outbound desk views — the ONE registry the desktop desk sidebar, its collapsed rail and the routing contract read. */
+/** Outbound desk views — the ONE registry the Shipping sidebar section (`resolveNavContext`) and the routing contract read. */
 
 import {
   SHIPPING_EXCEPTIONS_PATH,
@@ -12,17 +12,23 @@ export type DeskViewId = 'exceptions' | 'po' | 'pick' | 'triage' | 'shipped';
 /** Keys of `GET /api/orders/desk-counts`. */
 export type DeskCountKey = 'exceptions' | 'po' | 'pick' | 'triage' | 'shippedToday';
 
-export type DeskViewGroup = 'queues' | 'pending' | 'history';
+/**
+ * The `SIDEBAR_PAGE_NAV` `outbound` child a view hangs under. The child carries
+ * the view's permission and the org nav's hide / rename / order, so the desk
+ * views and the old tab row go through ONE pipeline. A child with two views
+ * (`shortage` → PO paired · Pick list) is the sidebar's labelled group.
+ */
+export type DeskViewNavChild = 'exceptions' | 'shortage' | 'orders' | 'shipped';
 
 export interface DeskView {
   id: DeskViewId;
   label: string;
-  group: DeskViewGroup;
+  navChild: DeskViewNavChild;
   pathname: string;
   /** Params that DEFINE the view. Every other param is the operator's own. */
   params: Readonly<Record<string, string>>;
   countKey: DeskCountKey;
-  /** Scope line under the sidebar search. */
+  /** Placeholder of the sidebar search while this view is open. */
   searchScope: string;
 }
 
@@ -35,7 +41,7 @@ export const DESK_VIEWS: readonly DeskView[] = [
   {
     id: 'exceptions',
     label: 'Exceptions',
-    group: 'queues',
+    navChild: 'exceptions',
     pathname: SHIPPING_EXCEPTIONS_PATH,
     params: {},
     countKey: 'exceptions',
@@ -44,7 +50,7 @@ export const DESK_VIEWS: readonly DeskView[] = [
   {
     id: 'po',
     label: 'PO paired',
-    group: 'pending',
+    navChild: 'shortage',
     pathname: SHIPPING_SHORTAGE_PATH,
     params: { [DESK_PAIR_PARAM]: 'po' },
     countKey: 'po',
@@ -53,7 +59,7 @@ export const DESK_VIEWS: readonly DeskView[] = [
   {
     id: 'pick',
     label: 'Pick list',
-    group: 'pending',
+    navChild: 'shortage',
     pathname: SHIPPING_ORDERS_PATH,
     params: { [DESK_QUEUE_PARAM]: 'pick' },
     countKey: 'pick',
@@ -61,8 +67,8 @@ export const DESK_VIEWS: readonly DeskView[] = [
   },
   {
     id: 'triage',
-    label: 'Action list',
-    group: 'queues',
+    label: 'To ship',
+    navChild: 'orders',
     pathname: SHIPPING_ORDERS_PATH,
     params: {},
     countKey: 'triage',
@@ -71,7 +77,7 @@ export const DESK_VIEWS: readonly DeskView[] = [
   {
     id: 'shipped',
     label: 'Shipped',
-    group: 'history',
+    navChild: 'shipped',
     pathname: SHIPPING_SHIPPED_PATH,
     params: {},
     countKey: 'shippedToday',
@@ -79,15 +85,8 @@ export const DESK_VIEWS: readonly DeskView[] = [
   },
 ];
 
-export const DESK_VIEW_GROUP_LABEL: Readonly<Record<DeskViewGroup, string>> = {
-  queues: 'Queues',
-  // "Picking", not "Pending" (operator 2026-09-26): waiting to be picked.
-  pending: 'Picking',
-  history: 'History',
-};
-
-/** Paint order, grouped: Queues (Exceptions · Action list) · Picking (PO paired · Pick list) · History (Shipped). */
-export const DESK_VIEW_ORDER: readonly DeskViewId[] = ['exceptions', 'triage', 'po', 'pick', 'shipped'];
+/** Paint order: Exceptions · Picking (PO paired · Pick list) · To ship · Shipped. */
+export const DESK_VIEW_ORDER: readonly DeskViewId[] = ['exceptions', 'po', 'pick', 'triage', 'shipped'];
 
 export function getDeskView(id: DeskViewId): DeskView {
   const view = DESK_VIEWS.find((v) => v.id === id);

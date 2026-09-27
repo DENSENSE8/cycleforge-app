@@ -73,7 +73,7 @@
 
    Corner radius, elevation and motion are deliberately NOT here: `cornerClass()`
    already returns `rounded-none` for every role, `elevationClass('flat')` owns
-   depth, and motion roles are JS objects Framer consumes — a CSS var could never
+   depth, and motion roles are JS objects Motion consumes — a CSS var could never
    reach them. Draft + phasing: docs/todo/station-floor-density-DRAFT.md */
 [data-density='floor'] {
   --cf-density: 1;
@@ -102,7 +102,7 @@
               shell): adds opacity-only indeterminate status motion.
 
    The floor-density comment above says motion tokens could never live in CSS —
-   that stays true for Framer ROLES (JS objects); these are the CSS half, and
+   that stays true for Motion ROLES (JS objects); these are the CSS half, and
    a component consuming them is inert-by-arithmetic outside its band. */
 [data-motion='0'] {
   --cf-motion-feedback: 0ms;

@@ -4,9 +4,9 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from '@/design-system/motion';
 import {
-  framerPresenceMobile,
-  framerTransitionMobile,
-} from '@/design-system/foundations/motion-framer';
+  motionPresenceMobile,
+  motionTransitionMobile,
+} from '@/design-system/foundations/motion-presets';
 import { Camera, X, Check } from '@/components/Icons';
 import { Button, IconButton } from '@/design-system/primitives';
 import { useCamera } from '@/hooks/useCamera';
@@ -360,10 +360,10 @@ export function MobilePackerSpamCamera({
 
   const cameraUi = (
     <motion.div
-      initial={framerPresenceMobile.camera.initial}
-      animate={framerPresenceMobile.camera.animate}
-      exit={framerPresenceMobile.camera.exit}
-      transition={framerTransitionMobile.cameraEnter}
+      initial={motionPresenceMobile.camera.initial}
+      animate={motionPresenceMobile.camera.animate}
+      exit={motionPresenceMobile.camera.exit}
+      transition={motionTransitionMobile.cameraEnter}
       className={`${embedded ? 'absolute' : 'fixed'} inset-0 z-modal overflow-hidden bg-stage select-none`}
     >
       {/* ── Full-bleed viewfinder ── */}

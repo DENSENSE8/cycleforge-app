@@ -10,7 +10,6 @@ import { EvidenceNotice } from '@/design-system/components/record-ledger/RecordE
 import { Button } from '@/design-system/primitives';
 import { useShippedTableFilters } from '@/components/shipped/dashboard-table/useShippedTableFilters';
 import { useShippedTableRecords } from '@/components/shipped/dashboard-table/useShippedTableRecords';
-import { useShippedFilterActions } from '@/components/shipping/shipped-filter/useShippedFilterActions';
 import { usePublishRecordCursor, useRecordCursor } from '@/lib/record-cursor/useRecordCursor';
 import type { GroupedRenderOrder } from '@/lib/group-rows';
 import { readLiveSearchParams } from '@/lib/routing/optimistic-url-param';
@@ -22,7 +21,6 @@ import { toast } from '@/lib/toast';
 import { detectCarrierFromTracking } from '@/utils/carrier-patterns';
 import { formatWeekRangeCompact } from '@/utils/date';
 import { ShipmentRecordView } from './ShipmentRecordView';
-import { ShippedLedgerToolbar } from './ShippedLedgerToolbar';
 import { ShippedPackageActionStrip } from './ShippedPackageActionStrip';
 import { ShippedPackageRecord, shippedPackageKey, shippedPackageTracking } from './ShippedPackageRecord';
 import { isOpenExceptionStatus } from './shipped-package-state';
@@ -44,7 +42,6 @@ export function ShippedLedger() {
   const searchParams = useSearchParams();
   const filters = useShippedTableFilters({});
   const { query, derivedRecords, pagination } = useShippedTableRecords(filters);
-  const refine = useShippedFilterActions();
   const scrollRef = useRef<HTMLDivElement>(null);
 
   const rows = useMemo(() => [...derivedRecords].sort(byShippedDesc), [derivedRecords]);
@@ -179,7 +176,6 @@ export function ShippedLedger() {
       scrollRef={scrollRef}
       loading={query.isLoading}
       navigation={navigation.available ? navigation : undefined}
-      toolbar={<ShippedLedgerToolbar filters={filters} refine={refine} isSearching={query.isFetching} />}
       actionStrip={
         openKey ? (
           <ShippedPackageActionStrip

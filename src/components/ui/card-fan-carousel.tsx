@@ -113,7 +113,7 @@ export default function SocialCards({ cards, onCardClick, cardTestId }: SocialCa
     );
   }, [totalCards, needsPagination]);
 
-  /** GSAP sits outside framer's `MotionConfig` reduced-motion floor (different engine, different context), so this is the one place that… */
+  /** GSAP sits outside Motion's `MotionConfig` reduced-motion floor (different engine, different context), so this is the one place that… */
   const prefersReducedMotion = useReducedMotion();
 
   useEffect(() => {

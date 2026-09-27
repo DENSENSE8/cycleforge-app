@@ -1,13 +1,13 @@
 import type { HorizontalSliderItem } from '@/lib/ui/horizontal-slider-item';
 import type { CarrierCode, ShipmentStatusCategory } from '@/lib/shipping/shipment-status';
 
-const CARRIERS: ReadonlyArray<{ value: CarrierCode; label: string }> = [
+export const CARRIERS: ReadonlyArray<{ value: CarrierCode; label: string }> = [
   { value: 'UPS', label: 'UPS' },
   { value: 'USPS', label: 'USPS' },
   { value: 'FEDEX', label: 'FedEx' },
 ];
 
-const STATUS_CATEGORIES: ReadonlyArray<{ value: ShipmentStatusCategory; label: string }> = [
+export const STATUS_CATEGORIES: ReadonlyArray<{ value: ShipmentStatusCategory; label: string }> = [
   { value: 'LABEL_CREATED', label: 'Label created' },
   { value: 'ACCEPTED', label: 'Accepted' },
   { value: 'IN_TRANSIT', label: 'In transit' },
@@ -28,7 +28,7 @@ interface StaffOption {
 }
 
 // Type filter is a *view switcher* (Shopify-style segmented tabs), not a refinement.
-const TYPE_ITEMS: HorizontalSliderItem[] = [
+export const TYPE_ITEMS: HorizontalSliderItem[] = [
   { id: 'all', label: 'All' },
   { id: 'orders', label: 'Orders' },
   { id: 'sku', label: 'SKU' },

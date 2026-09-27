@@ -29,6 +29,7 @@ import type { OrgId } from '@/lib/tenancy/constants';
 import { listClaims, getClaim } from '@/lib/warranty/claims';
 import { lookupCoverage } from '@/lib/warranty/coverage';
 import { getPackingKpisForDay } from '@/lib/packing/packer-kpi-queries';
+import { brandReportEnvelope } from '@/lib/assistant/tool-artifact';
 import type { AssistantToolDef, AssistantToolDeps } from './types';
 
 const rowLimit = (max: number, def: number) => z.number().int().min(1).max(max).default(def);
@@ -530,7 +531,32 @@ export const listSupportFollowups: AssistantToolDef<z.ZodObject<Record<string, n
       (deps as AssistantToolDeps & { supportFollowups?: SupportFollowupsDeps }).supportFollowups ??
       defaultSupportFollowupsDeps;
     const items = await d.list(ctx.organizationId, ctx.staffId);
-    return { items, count: items.length };
+    if (items.length === 0) return { items, count: 0 };
+    // A non-empty inbox carries its own table to the panel; the model reads
+    // the tickets in the summary and never retypes them (tool-artifact.ts).
+    const listed = items
+      .slice(0, 10)
+      .map((i) => `#${i.ticketId} ${i.subject ?? '(no subject)'}${i.assignedByStaffName ? ` (from ${i.assignedByStaffName})` : ''}`)
+      .join('; ');
+    return brandReportEnvelope(
+      {
+        artifact: {
+          kind: 'table',
+          title: 'Support follow-ups waiting on you',
+          columns: ['Ticket', 'Subject', 'Assigned by', 'Updated'],
+          rows: items.slice(0, 200).map((i) => ({
+            Ticket: `#${i.ticketId}`,
+            Subject: i.subject ?? '',
+            'Assigned by': i.assignedByStaffName ?? '',
+            Updated: new Date(i.updatedAtMs).toISOString().slice(0, 10),
+          })),
+          entityHint: 'ticket',
+          idColumn: 'Ticket',
+        },
+        summary: `${items.length} support follow-up${items.length === 1 ? ' is' : 's are'} waiting on you: ${listed}${items.length > 10 ? ` (+${items.length - 10} more in the table)` : ''}. The list is on the panel.`,
+      },
+      'list_support_followups',
+    );
   },
 };
 
@@ -704,6 +730,39 @@ export const getPackingKpi: AssistantToolDef<
         day: '2-digit',
       }).format(new Date());
     const summary = await d.forDay(ctx.organizationId, day);
-    return { dayPst: day, ...summary };
+    if (summary.by_packer.length === 0) return { dayPst: day, ...summary };
+    // Per-packer rows go to the panel as a server-carried table; the summary
+    // carries every number the answer needs (tool-artifact.ts).
+    const t = summary.totals;
+    const packers = summary.by_packer.map((p) => ({
+      name: p.staff_name ?? `Staff ${p.staff_id}`,
+      boxes: p.small_count + p.medium_count + p.large_count,
+      ...p,
+    }));
+    return brandReportEnvelope(
+      {
+        artifact: {
+          kind: 'table',
+          title: `Packing pace · ${day}`,
+          columns: ['Packer', 'Boxes', 'Small', 'Medium', 'Large', 'Weighted min'],
+          rows: packers.map((p) => ({
+            Packer: p.name,
+            Boxes: p.boxes,
+            Small: p.small_count,
+            Medium: p.medium_count,
+            Large: p.large_count,
+            'Weighted min': Math.round(p.weighted_minutes),
+          })),
+          entityHint: 'packer',
+          idColumn: 'Packer',
+        },
+        summary:
+          `Packing on ${day} (PST): ${t.total_boxes_packed} boxes (${t.small_count} small, ${t.medium_count} medium, ${t.large_count} large), ` +
+          `${Math.round(t.weighted_minutes)} weighted minutes of ${summary.capacity.daily_capacity_minutes} capacity (${Math.round(t.remaining_minutes)} remaining, ${summary.capacity.packer_headcount} packers). ` +
+          `FBA pending: ${summary.fba.pending_units} units (~${Math.round(summary.fba.pending_weighted_minutes)} min). ` +
+          `By packer: ${packers.map((p) => `${p.name} ${p.boxes} boxes`).join(', ')}. The per-packer table is on the panel.`,
+      },
+      'get_packing_kpi',
+    );
   },
 };

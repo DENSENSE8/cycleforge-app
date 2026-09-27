@@ -1,8 +1,8 @@
-import type { Transition, Variants } from '../motion/framer';
+import type { Transition, Variants } from '../motion/react';
 import { fadeInstant, springArmedTrack, springSnappy } from '../motion/tokens';
 
 /**
- * Cubic-bezier tuples for Framer Motion `ease`.
+ * Cubic-bezier tuples for Motion `ease`.
  * Primary curve matches station / Up Next cards (kinetic ledger rhythm).
  */
 
@@ -16,7 +16,7 @@ export const motionBezier = {
 };
 
 /** Durations in seconds — pair with `motionBezier` */
-export const framerDuration = {
+export const motionDuration = {
   /** Active station order card mount */
   stationCardMount: 0.26,
   /** Up Next list row mount */
@@ -72,6 +72,8 @@ export const framerDuration = {
   stationCartonSwap: 0.12,
   /** Sidebar section expand/collapse */
   sidebarExpand: 0.26,
+  /** Contextual sidebar top ↔ section cross-fade (Vercel: ~100–150 ms, no slide) */
+  sidebarScopeSwap: 0.13,
   /** Dropdown menu open/close */
   dropdownOpen: 0.18,
   /** Overlay search bar toggle */
@@ -105,63 +107,63 @@ export const framerDuration = {
   chatScrollToLatest: 0.16,
 } as const;
 
-const framerDurationTabPager = {
+const motionDurationTabPager = {
   x: 0.32,
   opacity: 0.2,
 } as const;
 
-/** Named Framer `transition` presets */
-export const framerTransition = {
+/** Named Motion `transition` presets */
+export const motionTransition = {
   stationCardMount: {
-    duration: framerDuration.stationCardMount,
+    duration: motionDuration.stationCardMount,
     ease: motionBezier.easeOut,
   } satisfies Transition,
 
-  /** Workbench right-pane / detail crossfade — pair with `framerPresence.workbenchPane` */
+  /** Workbench right-pane / detail crossfade — pair with `motionPresence.workbenchPane` */
   workbenchPaneMount: {
-    duration: framerDuration.workbenchPaneMount,
+    duration: motionDuration.workbenchPaneMount,
     ease: motionBezier.easeOut,
   } satisfies Transition,
 
   /**
    * Route history / desk table surface mount — pair with
-   * `framerPresence.routeHistory`. House utilitarian spring (no bounce); never
+   * `motionPresence.routeHistory`. House utilitarian spring (no bounce); never
    * invent stiffness/damping at the call site.
    */
   routeHistoryMount: springSnappy,
 
-  /** Omnichannel composer dock mount — pair with `framerPresence.composerDock`. */
+  /** Omnichannel composer dock mount — pair with `motionPresence.composerDock`. */
   composerDockMount: {
-    duration: framerDuration.composerDockMount,
+    duration: motionDuration.composerDockMount,
     ease: motionBezier.easeOut,
   } satisfies Transition,
 
-  /* `spineBodySwap` deleted 2026-08-08 — see `framerDuration`. */
+  /* `spineBodySwap` deleted 2026-08-08 — see `motionDuration`. */
 
-  /* `spineActiveWash` deleted 2026-08-08 — see `framerDuration`. */
+  /* `spineActiveWash` deleted 2026-08-08 — see `motionDuration`. */
 
   /** Photo viewer details drawer — one symmetric width toggle (open == close
    *  reversed); consumed by `PhotoContextPanel` via `useMotionTransition` */
   photoContextPanelMount: {
-    duration: framerDuration.photoContextPanelMount,
+    duration: motionDuration.photoContextPanelMount,
     ease: motionBezier.easeOut,
   } satisfies Transition,
 
   /** Nav spine push column — the left navigator's own width toggle, which reflows the whole content region (`SidebarNavColumn`). */
   sidebarNavColumnMount: {
-    duration: framerDuration.sidebarNavColumnMount,
+    duration: motionDuration.sidebarNavColumnMount,
     ease: motionBezier.layout,
   } satisfies Transition,
 
   /** Procedure Focus Deck layout settle — margin pull-up, face height, peek geometry on step pointer advance via Motion `layout` FLIP… */
   procedureStackLayout: {
-    duration: framerDuration.procedureStackLayout,
+    duration: motionDuration.procedureStackLayout,
     ease: motionBezier.layout,
   } satisfies Transition,
 
-  /** Detail-stack overlay card — pair with `framerPresence.detailStackOverlay` */
+  /** Detail-stack overlay card — pair with `motionPresence.detailStackOverlay` */
   detailStackOverlayMount: {
-    duration: framerDuration.detailStackOverlayMount,
+    duration: motionDuration.detailStackOverlayMount,
     // Softer curve than easeOut so the full-height panel eases open/shut gently.
     ease: motionBezier.layout,
   } satisfies Transition,
@@ -169,23 +171,23 @@ export const framerTransition = {
   /**
    * Split record pane arriving beside the list (`DeskRecordPlane`, triage) —
    * the house utilitarian spring, no bounce. Pair with
-   * `framerPresence.detailStackOverlay` through `motionRole.record.pane`.
+   * `motionPresence.detailStackOverlay` through `motionRole.record.pane`.
    */
   recordPaneMount: springSnappy,
 
   /**
    * Heavy right-pane WORKSPACE overlay crossfade (receiving line workspace) — a
-   * slower, opacity-led settle. Pair with `framerPresence.workbenchPaneSettle`;
+   * slower, opacity-led settle. Pair with `motionPresence.workbenchPaneSettle`;
    * consume through `useMotionTransition` so reduced-motion collapses it.
    */
   workbenchPaneSettle: {
-    duration: framerDuration.workbenchPaneSettle,
+    duration: motionDuration.workbenchPaneSettle,
     ease: motionBezier.easeOut,
   } satisfies Transition,
 
   /** Station carton→carton swap (scan cadence). */
   stationCartonSwapMount: {
-    duration: framerDuration.stationCartonSwap,
+    duration: motionDuration.stationCartonSwap,
     ease: motionBezier.easeOut,
   } satisfies Transition,
 
@@ -194,18 +196,18 @@ export const framerTransition = {
    * `procedure.advance`. Distinct from carton `swap.scan` (exit:0).
    */
   procedureFocusBodyMount: {
-    duration: framerDuration.stationCartonSwap,
+    duration: motionDuration.stationCartonSwap,
     ease: motionBezier.easeOut,
   } satisfies Transition,
 
   upNextRowMount: {
-    duration: framerDuration.upNextRowMount,
+    duration: motionDuration.upNextRowMount,
     ease: motionBezier.easeOut,
   } satisfies Transition,
 
   upNextChevron: {
     type: 'tween' as const,
-    duration: framerDuration.upNextChevron,
+    duration: motionDuration.upNextChevron,
     ease: motionBezier.easeOut,
   } satisfies Transition,
 
@@ -218,7 +220,7 @@ export const framerTransition = {
     opacity: fadeInstant,
   } satisfies Transition,
 
-  /** Welded peel-up hinge — pair with `framerPresence.weldedPanelPeel`. */
+  /** Welded peel-up hinge — pair with `motionPresence.weldedPanelPeel`. */
   weldedPanelPeel: {
     height: springSnappy,
     rotateX: springSnappy,
@@ -233,7 +235,7 @@ export const framerTransition = {
 
   stationSerialRow: {
     type: 'tween' as const,
-    duration: framerDuration.stationSerialRow,
+    duration: motionDuration.stationSerialRow,
     ease: motionBezier.easeOut,
   } satisfies Transition,
 
@@ -247,13 +249,13 @@ export const framerTransition = {
    */
   captureStackFreshPulse: {
     type: 'tween' as const,
-    duration: framerDuration.captureStackFreshPulse,
+    duration: motionDuration.captureStackFreshPulse,
     ease: motionBezier.easeOut,
   } satisfies Transition,
 
   stationAddedBadge: {
     type: 'tween' as const,
-    duration: framerDuration.stationAddedBadge,
+    duration: motionDuration.stationAddedBadge,
     ease: motionBezier.easeOut,
   } satisfies Transition,
 
@@ -266,13 +268,13 @@ export const framerTransition = {
   /**
    * ⌘K command palette dialog — top-anchored slide-down (negative y), unlike
    * centered `workOrderModalSpring` which rises from below. Pair with
-   * `framerPresence.commandBarDialog`. Physics = `springSnappy`.
+   * `motionPresence.commandBarDialog`. Physics = `springSnappy`.
    */
   commandBarDialog: springSnappy,
 
   /**
    * MasterNav collapsed hover-peek — scale from the top-left origin.
-   * Physics = `springSnappy`. Pair with `framerPresence.navPeekCorner`.
+   * Physics = `springSnappy`. Pair with `motionPresence.navPeekCorner`.
    */
   navPeekCorner: springSnappy,
 
@@ -281,13 +283,13 @@ export const framerTransition = {
 
   /** Table row enter/exit */
   tableRowMount: {
-    duration: framerDuration.tableRowMount,
+    duration: motionDuration.tableRowMount,
     ease: motionBezier.easeOut,
   } satisfies Transition,
 
   /** Sidebar recent-activity rail — scan-in / dismiss-out left slide */
   sidebarRailRowMount: {
-    duration: framerDuration.sidebarRailRowMount,
+    duration: motionDuration.sidebarRailRowMount,
     ease: motionBezier.easeOut,
   } satisfies Transition,
 
@@ -299,13 +301,19 @@ export const framerTransition = {
 
   /** Dropdown menu open/close */
   dropdownOpen: {
-    duration: framerDuration.dropdownOpen,
+    duration: motionDuration.dropdownOpen,
+    ease: motionBezier.easeOut,
+  } satisfies Transition,
+
+  /** Contextual sidebar top ↔ section cross-fade — pair with `motionPresence.sidebarScopeSwap`. */
+  sidebarScopeSwap: {
+    duration: motionDuration.sidebarScopeSwap,
     ease: motionBezier.easeOut,
   } satisfies Transition,
 
   /** Overlay search bar toggle */
   overlaySearchIn: {
-    duration: framerDuration.overlaySearchIn,
+    duration: motionDuration.overlaySearchIn,
     ease: motionBezier.easeOut,
   } satisfies Transition,
 
@@ -325,14 +333,14 @@ export const framerTransition = {
    * Pair with `motionRole.feedback.hitMarker`. Never inline stiffness here.
    */
   hitMarker: {
-    duration: framerDuration.hitMarker,
+    duration: motionDuration.hitMarker,
     ease: motionBezier.easeOut,
   } satisfies Transition,
 
   /** Armed-list ↑↓ geometry snap — lead nudge `x` + traveling `layoutId` marker. */
   armedSnap: {
     type: 'tween' as const,
-    duration: framerDuration.armedSnap,
+    duration: motionDuration.armedSnap,
   } satisfies Transition,
 
   /** Armed-list traveling track / underline — Shared Layout FLIP via `layoutId`. */
@@ -351,7 +359,7 @@ export const framerTransition = {
   /** Live VALUE change on a collection row — the "attention pulse & morph" a status chip runs when its fact was changed remotely. */
   liveValueChange: {
     type: 'tween' as const,
-    duration: framerDuration.liveValueChange,
+    duration: motionDuration.liveValueChange,
     times: [0, 0.14, 0.3, 0.45, 0.62, 1],
     ease: 'easeOut' as const,
   } satisfies Transition,
@@ -369,7 +377,7 @@ export const framerTransition = {
    * `scanBandGlowOpacity` + `useMotionTransition`. Opacity only (GPU).
    */
   scanBandGlow: {
-    duration: framerDuration.scanBandGlow,
+    duration: motionDuration.scanBandGlow,
     ease: motionBezier.easeOut,
   } satisfies Transition,
 
@@ -378,7 +386,7 @@ export const framerTransition = {
    * flash then settle. Pair with `useMotionTransition`.
    */
   scanBandGlowPulse: {
-    duration: framerDuration.scanBandGlowPulse,
+    duration: motionDuration.scanBandGlowPulse,
     ease: motionBezier.easeOut,
     times: [0, 0.4, 1],
   } satisfies Transition,
@@ -388,14 +396,14 @@ export const framerTransition = {
    * Transform-only (`y`). Pair with {@link CompoundEdgeRail} when `edgeMark.pulse`.
    */
   edgeMarkPulse: {
-    duration: framerDuration.edgeMarkPulse,
+    duration: motionDuration.edgeMarkPulse,
     ease: motionBezier.easeInOut,
     repeat: Infinity,
   } satisfies Transition,
 
-  /** Auth card shell mount — pair with `framerPresence.signInCard` */
+  /** Auth card shell mount — pair with `motionPresence.signInCard` */
   signInCardMount: {
-    duration: framerDuration.signInCardMount,
+    duration: motionDuration.signInCardMount,
     ease: motionBezier.easeOut,
   } satisfies Transition,
 
@@ -405,38 +413,38 @@ export const framerTransition = {
    * `AnimatePresence mode="wait" initial={false}`.
    */
   signInStepSlide: {
-    duration: framerDuration.signInStepSlide,
+    duration: motionDuration.signInStepSlide,
     ease: motionBezier.easeOut,
   } satisfies Transition,
 
-  /** Workspace title swap — pair with `framerPresence.signInTitle` */
+  /** Workspace title swap — pair with `motionPresence.signInTitle` */
   signInTitle: {
-    duration: framerDuration.signInTitle,
+    duration: motionDuration.signInTitle,
     ease: motionBezier.easeOut,
   } satisfies Transition,
 
-  /** Identity chip on password step — pair with `framerPresence.signInIdentityChip` */
+  /** Identity chip on password step — pair with `motionPresence.signInIdentityChip` */
   signInIdentityChip: {
-    duration: framerDuration.signInIdentityChip,
+    duration: motionDuration.signInIdentityChip,
     ease: motionBezier.easeOut,
   } satisfies Transition,
 
-  /** Alternate auth section fade — pair with `framerPresence.signInAlternateSection` */
+  /** Alternate auth section fade — pair with `motionPresence.signInAlternateSection` */
   signInAlternateFade: {
-    duration: framerDuration.signInAlternateFade,
+    duration: motionDuration.signInAlternateFade,
     ease: motionBezier.easeOut,
   } satisfies Transition,
 
-  /** AI chat "jump to latest" floating pill — pair with `framerPresence.chatScrollToLatest` */
+  /** AI chat "jump to latest" floating pill — pair with `motionPresence.chatScrollToLatest` */
   chatScrollToLatestMount: {
-    duration: framerDuration.chatScrollToLatest,
+    duration: motionDuration.chatScrollToLatest,
     ease: motionBezier.easeOut,
   } satisfies Transition,
 
   /** Horizontal tab pager — x slide + opacity crossfade */
   tabPager: {
-    x: { type: 'tween' as const, duration: framerDurationTabPager.x, ease: [0.32, 0.72, 0, 1] as const },
-    opacity: { duration: framerDurationTabPager.opacity, ease: 'easeOut' as const },
+    x: { type: 'tween' as const, duration: motionDurationTabPager.x, ease: [0.32, 0.72, 0, 1] as const },
+    opacity: { duration: motionDurationTabPager.opacity, ease: 'easeOut' as const },
   } satisfies Transition,
 
   /** Reduced-motion fallback for tab pager */
@@ -493,7 +501,7 @@ export const framerTransition = {
  * Common `initial` / `animate` / `exit` shapes for `motion.*` + `AnimatePresence`.
  * Use: `initial={presets.stationCard.initial}` etc.
  */
-export const framerPresence = {
+export const motionPresence = {
   stationCard: {
     initial: { opacity: 0, y: 8 },
     animate: { opacity: 1, y: 0 },
@@ -527,7 +535,7 @@ export const framerPresence = {
     exit: {
       opacity: 0,
       height: 0,
-      transition: { duration: framerDuration.captureStackRowExit },
+      transition: { duration: motionDuration.captureStackRowExit },
     },
   },
   captureStackRowCollapsed: {
@@ -536,7 +544,7 @@ export const framerPresence = {
     exit: {
       opacity: 0,
       height: 0,
-      transition: { duration: framerDuration.captureStackRowExit },
+      transition: { duration: motionDuration.captureStackRowExit },
     },
   },
   /** Capture-stack fresh-arrival ring pulse — one shot, no exit. */
@@ -560,7 +568,7 @@ export const framerPresence = {
   /**
    * Sidebar rail CRUD presence — scan slides in from the left, dismiss slides
    * back out to the left (`x: -12`, not −20, so overflow-x clip stays calm).
-   * Pair with `framerTransition.sidebarRailRowMount` + `useMotionPresence`.
+   * Pair with `motionTransition.sidebarRailRowMount` + `useMotionPresence`.
    */
   sidebarRailRow: {
     initial: { opacity: 0, x: -12 },
@@ -576,7 +584,7 @@ export const framerPresence = {
   /**
    * Collapsed MasterNav hover-peek — grows from the top-left corner.
    * Host MUST pin `style.transformOrigin: '0 0'`. Pair with
-   * `framerTransition.navPeekCorner`. No `x`/`y`.
+   * `motionTransition.navPeekCorner`. No `x`/`y`.
    */
   navPeekCorner: {
     initial: { opacity: 0, scale: 0.92 },
@@ -588,6 +596,16 @@ export const framerPresence = {
     initial: { height: 0, opacity: 0 },
     animate: { height: 'auto' as const, opacity: 1 },
     exit: { height: 0, opacity: 0 },
+  },
+  /**
+   * Contextual sidebar body swap (top lane map ↔ a page's section panel):
+   * old labels fade + blur out while the new ones fade in over them. No
+   * translation — the host stacks both faces in one grid cell.
+   */
+  sidebarScopeSwap: {
+    initial: { opacity: 0, filter: 'blur(4px)' },
+    animate: { opacity: 1, filter: 'blur(0px)' },
+    exit: { opacity: 0, filter: 'blur(4px)' },
   },
   workOrderScrim: {
     initial: { opacity: 0 },
@@ -601,7 +619,7 @@ export const framerPresence = {
   },
   /**
    * ⌘K command palette dialog — top-anchored (y: -8). Pair with
-   * `framerTransition.commandBarDialog`. Reduced-motion callers strip
+   * `motionTransition.commandBarDialog`. Reduced-motion callers strip
    * transform (opacity-only) at the consumer.
    */
   commandBarDialog: {
@@ -639,8 +657,8 @@ export const framerPresence = {
     animate: { opacity: 1, y: 0 },
     exit: { opacity: 0, y: 8 },
   },
-  /* `spineBodySwap` deleted 2026-08-08 — see `framerDuration`. */
-  /* `spineActiveWash` deleted 2026-08-08 — see `framerDuration`. */
+  /* `spineBodySwap` deleted 2026-08-08 — see `motionDuration`. */
+  /* `spineActiveWash` deleted 2026-08-08 — see `motionDuration`. */
   /** Global detail-stack overlay — floating card near the top-right edge. */
   detailStackOverlay: {
     initial: { opacity: 0, x: 48 },
@@ -673,7 +691,7 @@ export const framerPresence = {
   },
   /**
    * Auth card shell — subtle opacity + y mount (no scale/blur). B2B auth surfaces
-   * stay sub-300ms and transform-only; pair with `framerTransition.signInCardMount`
+   * stay sub-300ms and transform-only; pair with `motionTransition.signInCardMount`
    * via `useMotionPresence` / `useMotionTransition`.
    */
   signInCard: {
@@ -702,7 +720,7 @@ export const framerPresence = {
 } as const;
 
 /** Tech / packer grid chips — shared `whileTap` target */
-export const framerGesture = {
+export const motionGesture = {
   tapPress: { scale: 0.9 },
   cardHover: { scale: 1.002, y: -2 },
   rowHover: { x: 2 },
@@ -711,7 +729,7 @@ export const framerGesture = {
 /**
  * Station scan-band glow opacity targets — chromatic depth rises from the
  * staff bottom-rule. Quiet at rest; full when focused; pulse on submit.
- * Consume via `ScanBandGlowHost` + `framerTransition.scanBandGlow*`.
+ * Consume via `ScanBandGlowHost` + `motionTransition.scanBandGlow*`.
  */
 export const scanBandGlowOpacity = {
   idle: 0.18,
@@ -755,11 +773,11 @@ const tabPagerVariants: Variants = {
 
 // NOTE: `signInStepVariants` / `signInStepVariantsReduced` were removed when
 // /signin stopped swapping panels. Both credential fields now stay mounted and
-// the password row reveals via `framerPresence.collapseHeight` — see
+// the password row reveals via `motionPresence.collapseHeight` — see
 
 // ─── Mobile-specific durations ───────────────────────────────────────────────
 
-const framerDurationMobile = {
+const motionDurationMobile = {
   /** Bottom sheet slide up/down */
   sheetSlide: 0.32,
   /** Camera viewfinder enter */
@@ -788,7 +806,7 @@ const framerDurationMobile = {
 
 // ─── Mobile-specific transitions ─────────────────────────────────────────────
 
-export const framerTransitionMobile = {
+export const motionTransitionMobile = {
   /** Bottom sheet — utilitarian spring settle */
   sheetSlide: springSnappy,
 
@@ -801,19 +819,19 @@ export const framerTransitionMobile = {
 
   /** Camera fullscreen enter — opacity + scale */
   cameraEnter: {
-    duration: framerDurationMobile.cameraEnter,
+    duration: motionDurationMobile.cameraEnter,
     ease: motionBezier.easeOut,
   } satisfies Transition,
 
   /** Camera exit — faster for responsiveness */
   cameraExit: {
-    duration: framerDurationMobile.cameraExit,
+    duration: motionDurationMobile.cameraExit,
     ease: [0.4, 0, 1, 1] as const,
   } satisfies Transition,
 
   /** Scan success — quick pulse feedback */
   scanSuccess: {
-    duration: framerDurationMobile.scanSuccess,
+    duration: motionDurationMobile.scanSuccess,
     ease: motionBezier.easeOut,
   } satisfies Transition,
 
@@ -830,25 +848,25 @@ export const framerTransitionMobile = {
 
   /** Bottom nav active icon crossfade */
   navIconSwap: {
-    duration: framerDurationMobile.navIconSwap,
+    duration: motionDurationMobile.navIconSwap,
     ease: motionBezier.easeOut,
   } satisfies Transition,
 
   /** Mobile card mount — slightly softer than desktop */
   mobileCardMount: {
-    duration: framerDurationMobile.mobileCardMount,
+    duration: motionDurationMobile.mobileCardMount,
     ease: motionBezier.easeOut,
   } satisfies Transition,
 
   /** Photo thumbnail appear */
   photoThumb: {
-    duration: framerDurationMobile.photoThumb,
+    duration: motionDurationMobile.photoThumb,
     ease: motionBezier.easeOut,
   } satisfies Transition,
 
   /** Mobile toolbar slide in from top */
   toolbarSlide: {
-    duration: framerDurationMobile.toolbarSlide,
+    duration: motionDurationMobile.toolbarSlide,
     ease: motionBezier.easeOut,
   } satisfies Transition,
 
@@ -861,7 +879,7 @@ export const framerTransitionMobile = {
 
 // ─── Mobile-specific presence shapes ─────────────────────────────────────────
 
-export const framerPresenceMobile = {
+export const motionPresenceMobile = {
   /** Bottom sheet — slides up from below viewport */
   sheet: {
     initial: { y: '100%' },
@@ -923,51 +941,51 @@ export const framerPresenceMobile = {
 } as const;
 
 /** Optional variants API — `initial="initial" animate="animate" exit="exit"` */
-export const framerVariants: Record<string, Variants> = {
+export const motionVariants: Record<string, Variants> = {
   stationCard: {
-    initial: framerPresence.stationCard.initial,
-    animate: framerPresence.stationCard.animate,
-    exit: framerPresence.stationCard.exit,
+    initial: motionPresence.stationCard.initial,
+    animate: motionPresence.stationCard.animate,
+    exit: motionPresence.stationCard.exit,
   },
   upNextRow: {
-    initial: framerPresence.upNextRow.initial,
-    animate: framerPresence.upNextRow.animate,
-    exit: framerPresence.upNextRow.exit,
+    initial: motionPresence.upNextRow.initial,
+    animate: motionPresence.upNextRow.animate,
+    exit: motionPresence.upNextRow.exit,
   },
   collapseHeight: {
-    initial: framerPresence.collapseHeight.initial,
-    animate: framerPresence.collapseHeight.animate,
-    exit: framerPresence.collapseHeight.exit,
+    initial: motionPresence.collapseHeight.initial,
+    animate: motionPresence.collapseHeight.animate,
+    exit: motionPresence.collapseHeight.exit,
   },
   stationSerialRow: {
-    initial: framerPresence.stationSerialRow.initial,
-    animate: framerPresence.stationSerialRow.animate,
-    exit: framerPresence.stationSerialRow.exit,
+    initial: motionPresence.stationSerialRow.initial,
+    animate: motionPresence.stationSerialRow.animate,
+    exit: motionPresence.stationSerialRow.exit,
   },
   stationAddedBadge: {
-    initial: framerPresence.stationAddedBadge.initial,
-    animate: framerPresence.stationAddedBadge.animate,
-    exit: framerPresence.stationAddedBadge.exit,
+    initial: motionPresence.stationAddedBadge.initial,
+    animate: motionPresence.stationAddedBadge.animate,
+    exit: motionPresence.stationAddedBadge.exit,
   },
   tableRow: {
-    initial: framerPresence.tableRow.initial,
-    animate: framerPresence.tableRow.animate,
-    exit: framerPresence.tableRow.exit,
+    initial: motionPresence.tableRow.initial,
+    animate: motionPresence.tableRow.animate,
+    exit: motionPresence.tableRow.exit,
   },
   dropdownPanel: {
-    initial: framerPresence.dropdownPanel.initial,
-    animate: framerPresence.dropdownPanel.animate,
-    exit: framerPresence.dropdownPanel.exit,
+    initial: motionPresence.dropdownPanel.initial,
+    animate: motionPresence.dropdownPanel.animate,
+    exit: motionPresence.dropdownPanel.exit,
   },
   navPeekCorner: {
-    initial: framerPresence.navPeekCorner.initial,
-    animate: framerPresence.navPeekCorner.animate,
-    exit: framerPresence.navPeekCorner.exit,
+    initial: motionPresence.navPeekCorner.initial,
+    animate: motionPresence.navPeekCorner.animate,
+    exit: motionPresence.navPeekCorner.exit,
   },
   sidebarSection: {
-    initial: framerPresence.sidebarSection.initial,
-    animate: framerPresence.sidebarSection.animate,
-    exit: framerPresence.sidebarSection.exit,
+    initial: motionPresence.sidebarSection.initial,
+    animate: motionPresence.sidebarSection.animate,
+    exit: motionPresence.sidebarSection.exit,
   },
   staggeredList: {
     animate: {
@@ -995,7 +1013,7 @@ export const framerVariants: Record<string, Variants> = {
       opacity: 1,
       y: 0,
       transition: {
-        duration: framerDuration.stationCardMount,
+        duration: motionDuration.stationCardMount,
         ease: motionBezier.easeOut,
       },
     },
@@ -1005,7 +1023,7 @@ export const framerVariants: Record<string, Variants> = {
     hidden: {},
     visible: {
       transition: {
-        staggerChildren: framerDuration.spineRowStagger,
+        staggerChildren: motionDuration.spineRowStagger,
       },
     },
   },
@@ -1015,7 +1033,7 @@ export const framerVariants: Record<string, Variants> = {
       opacity: 1,
       y: 0,
       transition: {
-        duration: framerDuration.spineRowMount,
+        duration: motionDuration.spineRowMount,
         ease: motionBezier.easeOut,
       },
     },

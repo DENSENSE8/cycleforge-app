@@ -1,0 +1,40 @@
+-- 2026-09-26_perf_06_entity_signals_org_time.sql
+--
+-- WHAT
+--   CREATE INDEX idx_entity_signals_org_time
+--     ON entity_signals (organization_id, occurred_at DESC, id DESC);
+--
+-- WHY
+--   The /api/entity-signals timeline (readEntitySignals,
+--   src/lib/surfaces/entity-signals-read.ts:60-67) reads
+--     WHERE organization_id = $1 [AND occurred_at >= NOW() - make_interval(days => $n)]
+--     ORDER BY entity_signals.occurred_at DESC, entity_signals.id DESC LIMIT $m
+--   and no index leads (organization_id, occurred_at): the existing time
+--   indexes all put entity_type/entity_id or signal_kind second. Measured as
+--   app_tenant (docs/refactors/sidebar/perf-explain/entity_signals_timeline.before.txt):
+--   Seq Scan on entity_signals, Rows Removed by Filter: 15,658, ~740 buffers,
+--   4.9 ms, growing linearly with the table.
+--   Under RLS only `organization_id = $1` is a leakproof index condition (the
+--   `now() - interval` bound is not), so the index serves the probe as
+--   "Index Cond org, walk occurred_at DESC, stop at LIMIT"; the time bound is
+--   a Filter that only trims the tail.
+--   Requires the same-day code change that qualifies the ORDER BY: before it,
+--   `ORDER BY occurred_at` bound to the `occurred_at::text` output alias and
+--   sorted text, which no index can serve.
+--
+-- SAFETY
+--   Plain CREATE INDEX (the runner wraps each file in a transaction, so no
+--   CONCURRENTLY). entity_signals is ~16k rows; the SHARE lock blocks writers
+--   for well under a second. Safe to apply before or after the code deploy;
+--   the index is only chosen once the qualified ORDER BY ships.
+--
+-- VERIFY
+--   \d entity_signals   -- idx_entity_signals_org_time present
+--   Run docs/refactors/sidebar/perf-explain/entity_signals_timeline.after.sql
+--   as app_tenant: expect Index Scan using idx_entity_signals_org_time, no Sort.
+--
+-- ROLLBACK
+--   DROP INDEX IF EXISTS idx_entity_signals_org_time;
+
+CREATE INDEX IF NOT EXISTS idx_entity_signals_org_time
+  ON entity_signals (organization_id, occurred_at DESC, id DESC);

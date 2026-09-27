@@ -1,6 +1,6 @@
 'use client';
 
-import { useReducedMotion, type Transition } from '../motion/framer';
+import { useReducedMotion, type Transition } from '../motion/react';
 
 /** Pair a motion transition with `prefers-reduced-motion`. */
 export function useMotionTransition(transition: Transition): Transition {

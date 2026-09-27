@@ -1,0 +1,34 @@
+-- entity_signals_timeline: BEFORE
+-- captured 2026-09-26T19:34:25.490Z as app_tenant (unpooled ep-shiny-hall-adz0n0nu), app.current_org=00000000-0000-0000-0000-000000000001
+-- BEGIN READ ONLY; SELECT set_config('app.current_org', '<org>', true); EXPLAIN (ANALYZE, BUFFERS) <sql>; ROLLBACK;
+-- src/lib/surfaces/entity-signals-read.ts:60-67 readEntitySignals (/api/entity-signals), limit=200, sinceDays=7
+-- params inlined as literals: ["00000000-0000-0000-0000-000000000001", 7, 200]
+-- SQL:
+--   SELECT id, occurred_at::text AS occurred_at, signal_kind, entity_type, entity_id,
+--               reason_code, notes, severity
+--          FROM entity_signals
+--         WHERE organization_id = '00000000-0000-0000-0000-000000000001' AND occurred_at >= NOW() - make_interval(days => 7)
+--         ORDER BY occurred_at DESC, id DESC
+--         LIMIT 200
+
+                                                                        QUERY PLAN                                                                        
+----------------------------------------------------------------------------------------------------------------------------------------------------------
+ Limit  (cost=1059.57..1059.79 rows=87 width=111) (actual time=4.800..4.824 rows=200 loops=1)
+   Buffers: shared hit=745
+   ->  Sort  (cost=1059.57..1059.79 rows=87 width=111) (actual time=4.799..4.807 rows=200 loops=1)
+         Sort Key: ((occurred_at)::text) DESC, id DESC
+         Sort Method: quicksort  Memory: 55kB
+         Buffers: shared hit=745
+         ->  Result  (cost=0.01..1056.77 rows=87 width=111) (actual time=4.555..4.714 rows=220 loops=1)
+               One-Time Filter: ((NULLIF(current_setting('app.current_org'::text, true), ''::text))::uuid = '00000000-0000-0000-0000-000000000001'::uuid)
+               Buffers: shared hit=739
+               ->  Seq Scan on entity_signals  (cost=0.01..1056.33 rows=87 width=87) (actual time=4.546..4.653 rows=220 loops=1)
+                     Filter: ((organization_id = '00000000-0000-0000-0000-000000000001'::uuid) AND (occurred_at >= (now() - '7 days'::interval)))
+                     Rows Removed by Filter: 15658
+                     Buffers: shared hit=739
+ Planning:
+   Buffers: shared hit=279
+ Planning Time: 0.624 ms
+ Execution Time: 4.900 ms
+(17 rows)
+

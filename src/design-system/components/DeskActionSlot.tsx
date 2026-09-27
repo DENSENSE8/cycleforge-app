@@ -2,7 +2,6 @@
 
 /**
  * The seam between a desk's **body** and its **chrome's right slot**.
- * ({@link DeskExportMenuRegistrar}), operator 2026-09-01. Labels is a
  */
 
 import {
@@ -135,24 +134,13 @@ function DeskHeaderActionCluster({ children }: { children: ReactNode }) {
   );
 }
 
-type DeskActionSlotRole = 'primary' | 'overall' | 'leading';
-
-/** CSV export handed to a desk's Sync / intake dropdown — not a header button. */
-type DeskExportMenuAction = {
-  run: () => void;
-  rowCount: number;
-  empty: boolean;
-};
+type DeskActionSlotRole = 'primary' | 'overall';
 
 interface DeskActionSlotValue {
   primary: ReactNode;
   overall: ReactNode;
-  leading: ReactNode;
-  exportMenu: DeskExportMenuAction | null;
   setPrimary: (node: ReactNode) => void;
   setOverall: (node: ReactNode) => void;
-  setLeading: (node: ReactNode) => void;
-  setExportMenu: (action: DeskExportMenuAction | null) => void;
 }
 
 const DeskActionSlotContext = createContext<DeskActionSlotValue | null>(null);
@@ -160,20 +148,14 @@ const DeskActionSlotContext = createContext<DeskActionSlotValue | null>(null);
 export function DeskActionSlotProvider({ children }: { children: ReactNode }) {
   const [primary, setPrimary] = useState<ReactNode>(null);
   const [overall, setOverall] = useState<ReactNode>(null);
-  const [leading, setLeading] = useState<ReactNode>(null);
-  const [exportMenu, setExportMenu] = useState<DeskExportMenuAction | null>(null);
   const value = useMemo(
     () => ({
       primary,
       overall,
-      leading,
-      exportMenu,
       setPrimary,
       setOverall,
-      setLeading,
-      setExportMenu,
     }),
-    [primary, overall, leading, exportMenu],
+    [primary, overall],
   );
   return (
     <DeskActionSlotContext.Provider value={value}>
@@ -183,27 +165,22 @@ export function DeskActionSlotProvider({ children }: { children: ReactNode }) {
 }
 
 /**
- * What the chrome hands to `addSlot`. Overall · leading (Labels) ·
- * primary (Sync). `null` when nothing has registered. To-ship Export is not
- * in this cluster — {@link useDeskExportMenuAction} feeds the Sync menu.
+ * What the chrome hands to `addSlot`. Overall · primary. `null`
+ * when nothing has registered.
  */
 export function useDeskActionSlotNode(): ReactNode {
   const ctx = useContext(DeskActionSlotContext);
   const primary = ctx?.primary ?? null;
   const overall = ctx?.overall ?? null;
-  const leading = ctx?.leading ?? null;
   return useMemo(() => {
-    const count = [overall, leading, primary].filter(Boolean).length;
-    if (count === 0) return null;
-    if (count === 1) return overall ?? leading ?? primary;
+    if (!overall || !primary) return overall ?? primary;
     return (
       <DeskHeaderActionCluster>
         {overall}
-        {leading}
         {primary}
       </DeskHeaderActionCluster>
     );
-  }, [primary, overall, leading]);
+  }, [primary, overall]);
 }
 
 function setterForRole(
@@ -211,9 +188,7 @@ function setterForRole(
   role: DeskActionSlotRole,
 ) {
   if (!ctx) return undefined;
-  if (role === 'overall') return ctx.setOverall;
-  if (role === 'leading') return ctx.setLeading;
-  return ctx.setPrimary;
+  return role === 'overall' ? ctx.setOverall : ctx.setPrimary;
 }
 
 /** Register this subtree's content as a desk chrome header action. */
@@ -234,30 +209,4 @@ export function DeskActionSlotRegistrar({
   }, [children, setNode]);
 
   return null;
-}
-
-/**
- * Register the current table's CSV export so a desk's Sync / intake dropdown
- * can tuck it (To-ship). The header does not paint a second Export button.
- */
-export function DeskExportMenuRegistrar({
-  run,
-  rowCount,
-  empty,
-}: DeskExportMenuAction) {
-  const ctx = useContext(DeskActionSlotContext);
-  const setExportMenu = ctx?.setExportMenu;
-
-  useEffect(() => {
-    if (!setExportMenu) return;
-    setExportMenu({ run, rowCount, empty });
-    return () => setExportMenu(null);
-  }, [setExportMenu, run, rowCount, empty]);
-
-  return null;
-}
-
-/** The table's CSV export, if a {@link DeskExportMenuRegistrar} is mounted. */
-export function useDeskExportMenuAction(): DeskExportMenuAction | null {
-  return useContext(DeskActionSlotContext)?.exportMenu ?? null;
 }

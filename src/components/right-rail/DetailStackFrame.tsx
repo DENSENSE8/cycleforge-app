@@ -9,8 +9,6 @@ export {
   DETAIL_STACK_PUSH_COLUMN_CLASS,
   DETAIL_STACK_PUSH_STRIP_CLASS,
   DETAIL_INSPECTOR_COLLAPSE_EVENT,
-  assistantDockAsideClassName,
-  assistantDockAsideStyle,
   detailStackAsideClassName,
   detailStackAsideElevatedClassName,
   detailStackAsideStyle,

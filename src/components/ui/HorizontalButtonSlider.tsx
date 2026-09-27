@@ -4,7 +4,7 @@ import { Fragment, useCallback, useId, useRef, type RefObject, type WheelEvent }
 import { motion, useReducedMotion } from '@/design-system/motion';
 import { navIconStrokeClass } from '@/components/icons/nav-weight';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
-import { framerTransition } from '@/design-system/foundations/motion-framer';
+import { motionTransition } from '@/design-system/foundations/motion-presets';
 import { PRIMARY_CHROME_ROW_FACE } from '@/components/layout/header-shell';
 import { appCanvasClass, appChromeClass } from '@/design-system/tokens/app-surface';
 import { cn } from '@/utils/_cn';
@@ -236,7 +236,7 @@ export function HorizontalButtonSlider({
                   initial={mountInitial}
                   animate={animateItemMount ? { opacity: 1, scale: 1 } : undefined}
                   whileTap={{ scale: 0.94 }}
-                  transition={framerTransition.sliderIndicator}
+                  transition={motionTransition.sliderIndicator}
                   onClick={() => onChange(item.id)}
                   className={`${segTabClass} transition-colors ${
                     isActive ? 'text-white' : 'text-text-muted hover:text-text-default'
@@ -246,7 +246,7 @@ export function HorizontalButtonSlider({
                     <motion.span
                       layoutId={`${indicatorId}-seg`}
                       className={segIndicatorClass}
-                      transition={framerTransition.sliderIndicator}
+                      transition={motionTransition.sliderIndicator}
                     />
                   ) : null}
                   {Icon ? <Icon className={navIconStrokeClass('relative z-10 h-[18px] w-[18px]')} /> : null}
@@ -300,7 +300,7 @@ export function HorizontalButtonSlider({
                     scale: isActive && !isDisabled && !dense ? 1.04 : 1,
                     ...(animateItemMount ? { opacity: 1 } : {}),
                   }}
-                  transition={framerTransition.sliderIndicator}
+                  transition={motionTransition.sliderIndicator}
                   whileTap={isDisabled ? undefined : { scale: 0.96 }}
                   onClick={isDisabled ? undefined : () => onChange(item.id)}
                   className={`group relative inline-flex snap-start items-center whitespace-nowrap rounded-none font-semibold uppercase transition-colors ring-1 ring-inset ${navSizeCls} ${stateClass}`}
@@ -353,7 +353,7 @@ export function HorizontalButtonSlider({
                   aria-selected={isActive}
                   aria-label={item.label}
                   animate={{ scale: isActive ? 1.04 : 1 }}
-                  transition={framerTransition.sliderIndicator}
+                  transition={motionTransition.sliderIndicator}
                   whileTap={{ scale: 0.96 }}
                   onClick={() => onChange(item.id)}
                   className={`group relative inline-flex snap-start items-center whitespace-nowrap rounded-none font-semibold uppercase transition-colors ${sizeCls} ${stateClass}`}
@@ -377,7 +377,7 @@ export function HorizontalButtonSlider({
                   role="tab"
                   aria-selected={isActive}
                   animate={{ scale: isActive ? 1.03 : 1 }}
-                  transition={framerTransition.sliderIndicator}
+                  transition={motionTransition.sliderIndicator}
                   whileTap={{ scale: 0.95 }}
                   onClick={() => onChange(item.id)}
                   className={`snap-start whitespace-nowrap rounded-none border font-semibold uppercase transition-colors ${sizeCls} ${
@@ -402,7 +402,7 @@ export function HorizontalButtonSlider({
                 role="tab"
                 aria-selected={isActive}
                 animate={{ scale: isActive ? 1.03 : 1 }}
-                transition={framerTransition.sliderIndicator}
+                transition={motionTransition.sliderIndicator}
                 whileTap={{ scale: 0.92 }}
                 onClick={() => onChange(item.id)}
                 className={`snap-start whitespace-nowrap rounded-none font-semibold uppercase transition-colors ring-1 ring-inset ${sizeCls} ${

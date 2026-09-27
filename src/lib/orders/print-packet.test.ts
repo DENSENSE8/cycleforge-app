@@ -1,12 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import {
-  isPrintPacketIncomplete,
-  parsePaperworkOrderId,
-  PRINT_PACKET_G2_DOCUMENT_COUNT_SQL,
-  PRINT_PACKET_INCOMPLETE_SQL,
-  PRINT_PACKET_LABEL_EXISTS_SQL,
-} from './print-packet';
+import { isPrintPacketIncomplete, parsePaperworkOrderId } from './print-packet';
 
 test('packet is incomplete without a shipping-label document', () => {
   assert.equal(
@@ -58,11 +52,4 @@ test('parsePaperworkOrderId rejects junk', () => {
   assert.equal(parsePaperworkOrderId('0'), null);
   assert.equal(parsePaperworkOrderId('abc'), null);
   assert.equal(parsePaperworkOrderId('42'), 42);
-});
-
-test('incomplete SQL names both the label EXISTS and the G2 count', () => {
-  assert.match(PRINT_PACKET_INCOMPLETE_SQL, /shipping_label/);
-  assert.match(PRINT_PACKET_INCOMPLETE_SQL, /docs_not_required/);
-  assert.ok(PRINT_PACKET_INCOMPLETE_SQL.includes(PRINT_PACKET_LABEL_EXISTS_SQL));
-  assert.ok(PRINT_PACKET_INCOMPLETE_SQL.includes(PRINT_PACKET_G2_DOCUMENT_COUNT_SQL));
 });

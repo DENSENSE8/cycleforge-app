@@ -8,20 +8,9 @@ import { cn } from '@/utils/_cn';
 import { SidebarShell } from '@/components/layout/SidebarShell';
 import { SIDEBAR_GUTTER } from '@/components/layout/header-shell';
 import { SearchBar } from '@/components/ui/SearchBar';
-import { IconButton } from '@/design-system/primitives';
-import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { SidebarNavOverlaySlider } from '@/components/sidebar/SidebarNavOverlaySlider';
 import { HorizontalButtonSlider } from '@/components/ui/HorizontalButtonSlider';
 import { sectionLabel } from '@/design-system/tokens/typography/presets';
-import {
-  Database,
-  MessageSquare,
-  PackageCheck,
-  RefreshCw,
-  Sparkles,
-  Wrench,
-} from '@/components/Icons';
-import { emitAiChatNew, emitAiChatPrompt } from '@/components/ai/ai-chat-events';
 import { useQuery } from '@tanstack/react-query';
 import { OPERATIONS_QUERY_KEY } from '@/features/operations/components/operations-dashboard-logic';
 import type { DashboardData } from '@/features/operations/types';
@@ -50,24 +39,9 @@ import { LogsSidebarPanel } from '@/components/admin/LogsSidebarPanel';
 
 /* `ANALYTICS_RANGES` / `ANALYTICS_SECTIONS` and `AnalyticsSidebar` were deleted 2026-09-16 with the mode they steered. */
 
-const INSIGHTS_CAPABILITIES = [
-  { icon: PackageCheck, title: 'Throughput & pace', detail: 'Velocity, tested, FBA intake vs. yesterday' },
-  { icon: Database, title: 'Inventory health', detail: 'Stockouts, dead stock, A/B/C velocity tiers' },
-  { icon: Wrench, title: 'Exceptions', detail: 'Repair backlog, overdue tests, stuck shipments' },
-  { icon: MessageSquare, title: 'Benchmarks', detail: 'Compare today vs. industry-standard ops targets' },
-];
-
-const INSIGHTS_PROMPTS = [
-  'How does today’s throughput compare to yesterday?',
-  'Which SKUs are dead stock and should be liquidated?',
-  'Where is the biggest bottleneck in the floor right now?',
-  'Suggest a streamlined workflow to cut repair backlog.',
-];
-
 export function OperationsSidebarPanel() {
   const { mode } = useOperationsMode();
 
-  if (mode === 'insights') return <InsightsSidebar />;
   if (mode === 'history') return <HistorySidebar />;
   if (mode === 'signals') return <SignalsSidebar />;
   if (mode === 'reconciliation') return <ReconciliationSidebar />;
@@ -179,68 +153,6 @@ function LiveSidebar() {
                 </li>
               ))}
           </ul>
-        </div>
-      </div>
-    </SidebarShell>
-  );
-}
-
-// ── Analytics ─────────────────────────────────────────────────────────────────
-// ── Insights (AI) ─────────────────────────────────────────────────────────────
-
-function InsightsSidebar() {
-  return (
-    <SidebarShell bodyClassName="pt-0 pb-6">
-      <div className={cn('space-y-5 pt-3')}>
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-surface-inverse text-white">
-              <Sparkles className="h-4 w-4" />
-            </div>
-            <p className="text-base font-semibold tracking-tight text-text-default">Ops Assistant</p>
-          </div>
-          <HoverTooltip label="New chat" asChild>
-            <IconButton
-              icon={<RefreshCw className="h-4 w-4" />}
-              ariaLabel="New chat"
-              onClick={() => emitAiChatNew()}
-              className="-my-1 rounded-md p-1.5 hover:bg-surface-sunken"
-            />
-          </HoverTooltip>
-        </div>
-
-        <p className="text-role-caption leading-5 text-text-muted">
-          Ask about the floor in plain English. The assistant streams its reply in the panel on the
-          right with live operations + inventory context.
-        </p>
-
-        <div className="flex flex-col gap-2.5">
-          {INSIGHTS_CAPABILITIES.map((c) => (
-            <div key={c.title} className="rounded-none border border-border-soft bg-surface-card p-3">
-              <div className="flex items-center gap-2 text-text-default">
-                <c.icon className="h-4 w-4 text-blue-500" />
-                <p className="text-role-caption font-semibold tracking-tight">{c.title}</p>
-              </div>
-              <p className="mt-1 text-role-micro leading-5 text-text-muted">{c.detail}</p>
-            </div>
-          ))}
-        </div>
-
-        <div>
-          <p className="text-role-micro uppercase tracking-[0.2em] text-text-soft">Try asking</p>
-          <div className="mt-3 flex flex-col gap-2">
-            {INSIGHTS_PROMPTS.map((p) => (
-              <button
-                key={p}
-                type="button"
-                onClick={() => emitAiChatPrompt(p)}
-                /* ds-raw-button: multi-line text-left prompt suggestion card — not a Button shape */
-                className="ds-raw-button rounded-none border border-border-soft bg-surface-card inset-field text-left text-role-caption leading-5 text-text-muted transition-colors hover:border-blue-300 hover:bg-blue-50 hover:text-text-default"
-              >
-                {p}
-              </button>
-            ))}
-          </div>
         </div>
       </div>
     </SidebarShell>

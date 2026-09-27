@@ -7,7 +7,7 @@ import { seedUnshippedQueue } from '@/lib/queries/unshipped-queue-seed.server';
 import { shortageDeskRedirectSearch } from '@/lib/orders/desk-view-filters';
 import { SHIPPING_SHORTAGE_PATH } from '@/lib/shipping/orders-desk';
 
-/** `/shipping/shortage` — out-of-stock / backorder coverage desk (Pending tab). */
+/** `/shipping/shortage` — out-of-stock / backorder coverage desk (Picking › PO paired). */
 export default async function ShippingShortagePage({
   searchParams,
 }: {

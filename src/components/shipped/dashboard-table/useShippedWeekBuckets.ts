@@ -15,6 +15,10 @@ interface UseShippedWeekBucketsParams {
   testedBy?: number;
   staffId?: number;
   shippedFilter: ShippedTypeFilter;
+  /** Carrier / status / exceptions-only — answered in SQL like the type filter. */
+  carrier: string | null;
+  statusCategory: string | null;
+  exceptionsOnly: boolean;
   /** False in all-time mode (empty window ⇒ there is nothing to bucket). */
   enabled: boolean;
   /** Desk find text. Rides the fetch (`/api/packerlogs?q=`), never a pass over
@@ -43,6 +47,9 @@ export function useShippedWeekBuckets({
   testedBy,
   staffId,
   shippedFilter,
+  carrier,
+  statusCategory,
+  exceptionsOnly,
   enabled,
   searchTerm = '',
   limit = SHIPPED_WEEK_PAGE_SIZE,
@@ -54,7 +61,9 @@ export function useShippedWeekBuckets({
     queries: buckets.map(({ weekStart, weekEnd }) => ({
       // Key + fetch + TTLs come from the shared factory (SoT) so the warm-up
       // prefetch and this live query can never drift apart.
-      ...dashboardShippedWeekQuery({ weekStart, weekEnd, packedBy, testedBy, staffId, shippedFilter, searchTerm, limit, phase }),
+      ...dashboardShippedWeekQuery({
+        weekStart, weekEnd, packedBy, testedBy, staffId, shippedFilter, carrier, statusCategory, exceptionsOnly, searchTerm, limit, phase,
+      }),
       placeholderData: (prev: PackerRecord[] | undefined) => prev,
       enabled,
     })),

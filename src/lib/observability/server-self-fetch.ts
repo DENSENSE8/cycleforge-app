@@ -10,11 +10,17 @@ function originFromHeaders(h: Headers): string | null {
   return `${proto}://${host.split(',')[0]!.trim()}`;
 }
 
+/*
+ * The request's own origin first: a self-fetch must land on the deployment that
+ * is serving this request, whose cookie it forwards. APP_URL /
+ * NEXT_PUBLIC_APP_URL name a canonical public host — in a dev lane that is a
+ * different deployment, which 401s the lane's session cookie (phase0-findings
+ * §3.4). The env value is only the fallback for a header-less context.
+ */
 async function resolveServerOrigin(): Promise<string> {
-  const fromEnv = resolvePublicAppUrl();
-  if (fromEnv) return fromEnv;
-  const h = await headers();
-  return originFromHeaders(h) || 'http://localhost:3050';
+  const fromRequest = originFromHeaders(await headers());
+  if (fromRequest) return fromRequest;
+  return resolvePublicAppUrl() || 'http://localhost:3050';
 }
 
 export async function serverSelfFetch(

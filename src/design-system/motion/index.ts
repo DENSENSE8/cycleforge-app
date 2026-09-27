@@ -1,27 +1,6 @@
-/** `@/design-system/motion` — THE motion import path for `src/`. */
+/** `@/design-system/motion` — the whole Motion engine plus the house presets (optional, owner 2026-09-27). */
 
-export {
-  motion,
-  animate,
-  AnimatePresence,
-  MotionConfig,
-  LayoutGroup,
-  Reorder,
-  useReducedMotion,
-  useAnimationControls,
-  useAnimationFrame,
-  useMotionValue,
-  useTransform,
-  useDragControls,
-} from './framer';
-
-export type {
-  Transition,
-  Variants,
-  PanInfo,
-  HTMLMotionProps,
-  DragControls,
-} from './framer';
+export * from './react';
 
 export { motionRole } from './roles';
 

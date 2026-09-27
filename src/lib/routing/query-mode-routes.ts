@@ -9,7 +9,6 @@ import {
 } from '@/components/sourcing/sourcing-shared';
 import { parseSupportModeWire } from '@/components/sidebar/support/support-sidebar-shared';
 import { parseOperationsModeWire } from '@/components/sidebar/operations/operations-sidebar-shared';
-import { parseForgeViewWire } from '@/components/forge/forge-view';
 import { parseHomeModeWire } from '@/features/home/home-modes';
 import { parseReviewModeWire } from '@/features/review/review-mode';
 import { parseDashboardModeWire } from '@/lib/dashboard/dashboard-domains';
@@ -44,6 +43,7 @@ import {
   paramText,
   type RouteParamsSpec,
 } from './route-params';
+import { TO_SHIP_QUEUE_FACET_PARAMS } from './to-ship-queue-params';
 
 /** Operator-level bits every workbench accepts on arrival. */
 const WORKBENCH_CARRIES = ['staff', 'staffId', 'colsort', 'coldir', 'pane', 'layout', 'weekOffset'] as const;
@@ -158,7 +158,7 @@ const HOME_ROUTE_PARAMS = defineRouteParams({
 });
 
 /**
- * `/forge` — Plans Live (master-plan MDX + TicketStatus + plan agent).
+ * `/forge` — Plans Live (master-plan MDX + TicketStatus).
  *
  * Its own spec since 2026-08-19: the console moved off Home's `?mode=forge`
  * onto a real route, and a param vocabulary belongs to the route that owns it.
@@ -166,8 +166,6 @@ const HOME_ROUTE_PARAMS = defineRouteParams({
 const FORGE_ROUTE_PARAMS = defineRouteParams({
   route: '/forge',
   owns: {
-    /** Forge Plans Live: `live`|`agent` (agent-primary) · `doc` (MDX-primary). */
-    view: paramRoundTrip(parseForgeViewWire),
     /** Selected master-plan `<TicketStatus ticketId>`. */
     ticket: paramText,
   },
@@ -263,6 +261,10 @@ export const SOURCING_ROUTE_PARAMS = defineRouteParams({
     supplier: paramText,
     /** Models CRUD editor door (`<id>` or `new`) — the Models mode's twin of `supplier`, read by `BoseModelsManagementTab` (admin dissolution). */
     model: paramText,
+    /** Models / Compatibility picker filter (`BoseModelsSidebarPanel`, `CompatibilitySidebarPanel`). */
+    search: paramText,
+    /** Compatibility picker selection — a `bose_models` row id. */
+    boseModelId: paramPositiveInt,
   },
   carries: WORKBENCH_CARRIES,
 });
@@ -292,6 +294,10 @@ export const TEST_ROUTE_PARAMS = defineRouteParams({
      * Shared with Unbox / Arrival (`SHARED_OWNED_KEYS.composerMode`).
      */
     composerMode: paramEnum(['unbox', 'ticket', 'label'] as const),
+    /** The Pending / Urgent queue is `UnshippedTable` + its filter menu (`?ship=urgent` writes `attention=1`). */
+    ...TO_SHIP_QUEUE_FACET_PARAMS,
+    /** New-order entry overlay (`useNewOrderParam`). */
+    new: paramEnum(['true'] as const),
   },
   carries: WORKBENCH_CARRIES,
 });
@@ -517,8 +523,10 @@ const PACK_ROUTE_PARAMS = defineRouteParams({
     packview: paramRoundTrip(parsePackWorkspaceTab),
     /** Pack mode; `standard` is the default and is omitted from the URL. */
     packMode: paramRoundTrip(parsePackScanModeWire),
-    /** Unit-status facet on the pack queue. */
-    ustatus: paramText,
+    /** The queue view is `UnshippedTable` + its filter menu (`ustatus` included). */
+    ...TO_SHIP_QUEUE_FACET_PARAMS,
+    /** New-order entry overlay (`useNewOrderParam`). */
+    new: paramEnum(['true'] as const),
   },
   carries: WORKBENCH_CARRIES,
 });

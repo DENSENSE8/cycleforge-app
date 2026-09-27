@@ -12,7 +12,7 @@ import {
   type Ref,
 } from 'react';
 import { motion, AnimatePresence, useReducedMotion } from '@/design-system/motion';
-import { motionBezier } from '@/design-system/foundations/motion-framer';
+import { motionBezier } from '@/design-system/foundations/motion-presets';
 import { Clipboard, ClipboardList, Pencil } from '@/components/Icons';
 import { ScanHotkeyControl } from '@/components/scan/ScanHotkeyControl';
 import { usePublishCollapseScan } from '@/components/sidebar/context-panel-collapse-context';

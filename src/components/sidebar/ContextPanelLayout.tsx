@@ -47,6 +47,7 @@ import {
 import { useLocalStorage } from '@/hooks';
 import { isStationSurfaceRoute } from '@/lib/sidebar-navigation';
 import { cn } from '@/utils/_cn';
+import { useDeskFloorActive } from '@/design-system/components/DeskStageContext';
 
 // Kept lazy, exactly as they were when this mounted from the app shell:
 const SidebarContextPanel = dynamic(
@@ -158,8 +159,10 @@ export function ContextPanelLayout({ children }: { children: ReactNode }) {
 
   // No cross-rail coupling (Option A).
 
-  // Collapse is operator-owned on desk surfaces.
-  const isCollapsed = hasPanel && collapsed;
+  // Collapse is operator-owned on desk surfaces; a desk's floor view parks the
+  // rail for the session without writing that choice (owner 2026-09-26).
+  const deskFloor = useDeskFloorActive();
+  const isCollapsed = hasPanel && (collapsed || deskFloor);
   // Park/restore snaps — same as Station Displays (no `motionRole.push.rail`
   // width tween). Live sash drag paints every frame from local `width`.
 
@@ -216,7 +219,7 @@ export function ContextPanelLayout({ children }: { children: ReactNode }) {
         {/* The strip is the OPERATOR's restore control — only when they collapsed
             the rail. Mid-strip MRU pins come from the open rail via
             {@link usePublishCollapsePins}. */}
-        {isCollapsed ? (
+        {isCollapsed && !deskFloor ? (
           <ContextPanelCollapseStripSlot onExpand={expand} />
         ) : null}
 

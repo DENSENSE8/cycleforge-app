@@ -1,7 +1,7 @@
 'use client';
 
 import { motion } from '@/design-system/motion';
-import { framerPresence, framerTransition } from '../foundations/motion-framer';
+import { motionPresence, motionTransition } from '../foundations/motion-presets';
 
 interface SkeletonProps {
   className?: string;
@@ -25,8 +25,8 @@ export function SkeletonBase({ className = '', width, height, circle }: Skeleton
 function SkeletonRow() {
   return (
     <motion.div
-      {...framerPresence.tableRow}
-      transition={framerTransition.tableRowMount}
+      {...motionPresence.tableRow}
+      transition={motionTransition.tableRowMount}
       className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-4 px-3 py-2.5 border-b border-border-hairline"
     >
       <div className="flex flex-col gap-2">
@@ -46,8 +46,8 @@ function SkeletonRow() {
 function SkeletonOrderCard() {
   return (
     <motion.div
-      {...framerPresence.upNextRow}
-      transition={framerTransition.upNextRowMount}
+      {...motionPresence.upNextRow}
+      transition={motionTransition.upNextRowMount}
       className="relative bg-surface-card px-3 py-2.5 border-b border-border-hairline"
     >
       {/* Row 1 — meta line */}

@@ -39,7 +39,14 @@ interface OrderQueryParams {
 /** Per-week (and all-time) fetch ceiling. */
 export const SHIPPED_WEEK_PAGE_SIZE = 1000;
 
-interface ShippedQueryParams {
+/** The Shipped desk's view filters — answered in SQL by `/api/packerlogs`, one predicate with the sidebar facet counts. Part of the key. */
+interface ShippedViewFilterParams {
+  carrier?: string | null;
+  statusCategory?: string | null;
+  exceptionsOnly?: boolean;
+}
+
+interface ShippedQueryParams extends ShippedViewFilterParams {
   weekStart?: string;
   weekEnd?: string;
   packedBy?: number;
@@ -186,20 +193,29 @@ export function dashboardShippedQuery({
   testedBy,
   staffId,
   shippedFilter,
+  carrier = null,
+  statusCategory = null,
+  exceptionsOnly = false,
   searchTerm = '',
   limit = SHIPPED_WEEK_PAGE_SIZE,
   phase = 'full',
 }: ShippedQueryParams = {}) {
   return queryOptions({
-    queryKey: ['dashboard-table', 'shipped', { weekStart, weekEnd, packedBy, testedBy, staffId, shippedFilter, searchTerm, limit, phase }],
+    queryKey: [
+      'dashboard-table',
+      'shipped',
+      { weekStart, weekEnd, packedBy, testedBy, staffId, shippedFilter, carrier, statusCategory, exceptionsOnly, searchTerm, limit, phase },
+    ],
     queryFn: () =>
-      fetchDashboardPackedRecords({ packedBy, testedBy, staffId, weekStart, weekEnd, shippedFilter, searchTerm, limit, phase }),
+      fetchDashboardPackedRecords({
+        packedBy, testedBy, staffId, weekStart, weekEnd, shippedFilter, carrier, statusCategory, exceptionsOnly, searchTerm, limit, phase,
+      }),
     staleTime: 5 * 60 * 1000,
     gcTime: 15 * 60 * 1000,
   });
 }
 
-interface ShippedWeekQueryParams {
+interface ShippedWeekQueryParams extends ShippedViewFilterParams {
   /** Canonical Monday (YYYY-MM-DD) — the stable per-week cache unit. */
   weekStart: string;
   /** Canonical Sunday (YYYY-MM-DD). */
@@ -225,15 +241,28 @@ export function dashboardShippedWeekQuery({
   testedBy,
   staffId,
   shippedFilter,
+  carrier = null,
+  statusCategory = null,
+  exceptionsOnly = false,
   searchTerm = '',
   limit = SHIPPED_WEEK_PAGE_SIZE,
   phase = 'full',
 }: ShippedWeekQueryParams) {
-  const immutable = isPastWeekStart(weekStart) && !searchTerm;
+  // Tracking status and stalls move after the week closes; only a status-free
+  // past week is a fixed answer.
+  const immutable = isPastWeekStart(weekStart) && !searchTerm && !statusCategory && !exceptionsOnly;
   return queryOptions({
-    queryKey: ['dashboard-table', 'shipped', 'week', weekStart, { packedBy, testedBy, staffId, shippedFilter, searchTerm, limit, phase }],
+    queryKey: [
+      'dashboard-table',
+      'shipped',
+      'week',
+      weekStart,
+      { packedBy, testedBy, staffId, shippedFilter, carrier, statusCategory, exceptionsOnly, searchTerm, limit, phase },
+    ],
     queryFn: () =>
-      fetchDashboardPackedRecords({ weekStart, weekEnd, packedBy, testedBy, staffId, shippedFilter, searchTerm, limit, phase }),
+      fetchDashboardPackedRecords({
+        weekStart, weekEnd, packedBy, testedBy, staffId, shippedFilter, carrier, statusCategory, exceptionsOnly, searchTerm, limit, phase,
+      }),
     staleTime: immutable ? Infinity : 5 * 60 * 1000,
     gcTime: immutable ? 24 * 60 * 60 * 1000 : 15 * 60 * 1000,
   });

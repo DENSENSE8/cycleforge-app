@@ -111,3 +111,17 @@ test('invalid stored value falls back to default', () => {
   assert.equal(r.value, 'optional');
   assert.equal(r.source, 'default');
 });
+
+test('renamed setting: the old key answers until the new key holds a value', () => {
+  const d = def('desk.outbound.view'); // was the boolean desk.outbound.fullscreen
+  const ctx = (staffPrefs: Record<string, unknown>) => ({ orgSettings: {}, staffPrefs, features: ENTERPRISE });
+  assert.equal(resolveSetting(d, ctx({})).value, 'in-place');
+  assert.equal(resolveSetting(d, ctx({ 'desk.outbound.fullscreen': true })).value, 'split');
+  assert.equal(resolveSetting(d, ctx({ 'desk.outbound.fullscreen': true })).source, 'staff');
+  assert.equal(resolveSetting(d, ctx({ 'desk.outbound.fullscreen': false })).value, 'in-place');
+  // The new key wins once written — the old boolean is never read again.
+  assert.equal(
+    resolveSetting(d, ctx({ 'desk.outbound.fullscreen': true, 'desk.outbound.view': 'in-place' })).value,
+    'in-place',
+  );
+});

@@ -1,0 +1,3209 @@
+{
+  "baseUrl": "http://localhost:3050",
+  "tenant": "usav",
+  "staff": "Michael",
+  "startedAt": "2026-09-26T20:54:54.430Z",
+  "finishedAt": "2026-09-26T21:02:32.564Z",
+  "summary": {
+    "PASS": 377,
+    "WARN": 20,
+    "INFO": 15,
+    "FAIL": 1
+  },
+  "latency": {
+    "endpoints": {
+      "context": {
+        "p50": 376,
+        "p95": 396,
+        "n": 20,
+        "unanswered": 0
+      },
+      "context(top)": {
+        "p50": 365,
+        "p95": 384,
+        "n": 20,
+        "unanswered": 0
+      },
+      "recents": {
+        "p50": 699,
+        "p95": 745,
+        "n": 20,
+        "unanswered": 0
+      },
+      "recents(adapter)": {
+        "p50": 701,
+        "p95": 980,
+        "n": 20,
+        "unanswered": 0
+      },
+      "facets": {
+        "p50": 744,
+        "p95": 982,
+        "n": 20,
+        "unanswered": 0
+      },
+      "facets(exceptions)": {
+        "p50": 719,
+        "p95": 752,
+        "n": 20,
+        "unanswered": 0
+      },
+      "identify(free)": {
+        "p50": 575,
+        "p95": 629,
+        "n": 20,
+        "unanswered": 0
+      },
+      "brands": {
+        "p50": 416,
+        "p95": 465,
+        "n": 20,
+        "unanswered": 0
+      }
+    },
+    "identifyByClass": {
+      "exact": {
+        "p50": 428,
+        "p95": 1111,
+        "n": 220,
+        "budgetP95": 150
+      },
+      "free": {
+        "p50": 551,
+        "p95": 726,
+        "n": 80,
+        "budgetP95": 400
+      },
+      "batch": {
+        "p50": 457,
+        "p95": 3284,
+        "n": 19,
+        "budgetP95": null
+      }
+    },
+    "allCalls": {
+      "context(crawl)": {
+        "p50": 399,
+        "p95": 464,
+        "n": 134
+      },
+      "recents": {
+        "p50": 783,
+        "p95": 1823,
+        "n": 14
+      },
+      "facets": {
+        "p50": 693,
+        "p95": 955,
+        "n": 42
+      },
+      "identify": {
+        "p50": 455,
+        "p95": 873,
+        "n": 300
+      },
+      "brands": {
+        "p50": 407,
+        "p95": 3492,
+        "n": 30
+      }
+    }
+  },
+  "transportErrors": [
+    {
+      "seq": 551,
+      "at": "2026-09-26T21:00:02.171Z",
+      "method": "POST",
+      "url": "/api/identify",
+      "urlLength": 13,
+      "bodyBytes": 63,
+      "cookieBytes": 71,
+      "elapsedMs": 249,
+      "phase": "awaiting response",
+      "cause": [
+        {
+          "name": "TypeError",
+          "message": "fetch failed"
+        },
+        {
+          "name": "SocketError",
+          "code": "UND_ERR_SOCKET",
+          "message": "other side closed",
+          "socket": {
+            "localPort": 38212,
+            "remotePort": 3050,
+            "bytesWritten": 84820,
+            "bytesRead": 708561
+          }
+        }
+      ],
+      "laneRecovery": {
+        "recovered": true,
+        "waitedMs": 5200,
+        "attempts": 3
+      }
+    }
+  ],
+  "laneErrors": [],
+  "checks": [
+    {
+      "section": "context",
+      "name": "shape /",
+      "status": "PASS",
+      "detail": "scope=top page=home"
+    },
+    {
+      "section": "context",
+      "name": "view=top /",
+      "status": "PASS",
+      "detail": "status 200 scope=top back=null"
+    },
+    {
+      "section": "context",
+      "name": "round-trip page home",
+      "status": "PASS",
+      "detail": "home active=true in home/top"
+    },
+    {
+      "section": "context",
+      "name": "shape /dashboard?mode=sales",
+      "status": "PASS",
+      "detail": "scope=section page=sales"
+    },
+    {
+      "section": "context",
+      "name": "section has no page items /dashboard?mode=sales",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "section": "context",
+      "name": "view=top /dashboard?mode=sales",
+      "status": "PASS",
+      "detail": "status 200 scope=top back=null"
+    },
+    {
+      "section": "context",
+      "name": "round-trip page sales",
+      "status": "PASS",
+      "detail": "sales active=true in sales/section"
+    },
+    {
+      "section": "context",
+      "name": "shape /operations",
+      "status": "PASS",
+      "detail": "scope=section page=operations"
+    },
+    {
+      "section": "context",
+      "name": "section has no page items /operations",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "section": "context",
+      "name": "view=top /operations",
+      "status": "PASS",
+      "detail": "status 200 scope=top back=null"
+    },
+    {
+      "section": "context",
+      "name": "view=top lights page /operations",
+      "status": "WARN",
+      "detail": "nothing lit — page operations is not on the lane map",
+      "evidence": {
+        "page": "operations",
+        "laneMapIds": [
+          "home",
+          "ops-photos",
+          "ai-chat",
+          "reports",
+          "triage",
+          "receive",
+          "pickup",
+          "repair",
+          "testing",
+          "ready-to-pack",
+          "packer",
+          "scan-out",
+          "incoming",
+          "sourcing",
+          "outbound",
+          "fba",
+          "label-intake",
+          "inventory",
+          "products",
+          "sales",
+          "studio"
+        ]
+      }
+    },
+    {
+      "section": "context",
+      "name": "round-trip page operations",
+      "status": "PASS",
+      "detail": "operations active=true in operations/section"
+    },
+    {
+      "section": "context",
+      "name": "shape /reports",
+      "status": "PASS",
+      "detail": "scope=section page=reports"
+    },
+    {
+      "section": "context",
+      "name": "section has no page items /reports",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "section": "context",
+      "name": "view=top /reports",
+      "status": "PASS",
+      "detail": "status 200 scope=top back=null"
+    },
+    {
+      "section": "context",
+      "name": "round-trip page reports",
+      "status": "PASS",
+      "detail": "reports active=true in reports/section"
+    },
+    {
+      "section": "context",
+      "name": "shape /triage",
+      "status": "PASS",
+      "detail": "scope=top page=triage"
+    },
+    {
+      "section": "context",
+      "name": "view=top /triage",
+      "status": "PASS",
+      "detail": "status 200 scope=top back=null"
+    },
+    {
+      "section": "context",
+      "name": "round-trip page triage",
+      "status": "PASS",
+      "detail": "triage active=true in triage/top"
+    },
+    {
+      "section": "context",
+      "name": "shape /unbox",
+      "status": "PASS",
+      "detail": "scope=top page=receive"
+    },
+    {
+      "section": "context",
+      "name": "view=top /unbox",
+      "status": "PASS",
+      "detail": "status 200 scope=top back=null"
+    },
+    {
+      "section": "context",
+      "name": "round-trip page receive",
+      "status": "PASS",
+      "detail": "receive active=true in receive/top"
+    },
+    {
+      "section": "context",
+      "name": "shape /pickup",
+      "status": "PASS",
+      "detail": "scope=top page=pickup"
+    },
+    {
+      "section": "context",
+      "name": "view=top /pickup",
+      "status": "PASS",
+      "detail": "status 200 scope=top back=null"
+    },
+    {
+      "section": "context",
+      "name": "round-trip page pickup",
+      "status": "PASS",
+      "detail": "pickup active=true in pickup/top"
+    },
+    {
+      "section": "context",
+      "name": "shape /repair",
+      "status": "PASS",
+      "detail": "scope=top page=repair"
+    },
+    {
+      "section": "context",
+      "name": "view=top /repair",
+      "status": "PASS",
+      "detail": "status 200 scope=top back=null"
+    },
+    {
+      "section": "context",
+      "name": "round-trip page repair",
+      "status": "PASS",
+      "detail": "repair active=true in repair/top"
+    },
+    {
+      "section": "context",
+      "name": "shape /test?view=testing",
+      "status": "PASS",
+      "detail": "scope=top page=testing"
+    },
+    {
+      "section": "context",
+      "name": "view=top /test?view=testing",
+      "status": "PASS",
+      "detail": "status 200 scope=top back=null"
+    },
+    {
+      "section": "context",
+      "name": "round-trip page testing",
+      "status": "PASS",
+      "detail": "testing active=true in testing/top"
+    },
+    {
+      "section": "context",
+      "name": "shape /test?ship=urgent",
+      "status": "PASS",
+      "detail": "scope=top page=ready-to-pack"
+    },
+    {
+      "section": "context",
+      "name": "view=top /test?ship=urgent",
+      "status": "PASS",
+      "detail": "status 200 scope=top back=null"
+    },
+    {
+      "section": "context",
+      "name": "round-trip page ready-to-pack",
+      "status": "PASS",
+      "detail": "ready-to-pack active=true in ready-to-pack/top"
+    },
+    {
+      "section": "context",
+      "name": "shape /incoming",
+      "status": "PASS",
+      "detail": "scope=section page=incoming"
+    },
+    {
+      "section": "context",
+      "name": "section has no page items /incoming",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "section": "context",
+      "name": "view=top /incoming",
+      "status": "PASS",
+      "detail": "status 200 scope=top back=null"
+    },
+    {
+      "section": "context",
+      "name": "round-trip page incoming",
+      "status": "PASS",
+      "detail": "incoming active=true in incoming/section"
+    },
+    {
+      "section": "context",
+      "name": "page receiving (/unbox)",
+      "status": "INFO",
+      "detail": "resolves to page receive (href shared by receive, receiving)"
+    },
+    {
+      "section": "context",
+      "name": "round-trip page receiving",
+      "status": "PASS",
+      "detail": "receive active=true in receive/top"
+    },
+    {
+      "section": "context",
+      "name": "shape /sourcing",
+      "status": "PASS",
+      "detail": "scope=section page=sourcing"
+    },
+    {
+      "section": "context",
+      "name": "section has no page items /sourcing",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "section": "context",
+      "name": "view=top /sourcing",
+      "status": "PASS",
+      "detail": "status 200 scope=top back=null"
+    },
+    {
+      "section": "context",
+      "name": "round-trip page sourcing",
+      "status": "PASS",
+      "detail": "sourcing active=true in sourcing/section"
+    },
+    {
+      "section": "context",
+      "name": "shape /shipping/fba",
+      "status": "PASS",
+      "detail": "scope=section page=fba"
+    },
+    {
+      "section": "context",
+      "name": "section has no page items /shipping/fba",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "section": "context",
+      "name": "view=top /shipping/fba",
+      "status": "PASS",
+      "detail": "status 200 scope=top back=null"
+    },
+    {
+      "section": "context",
+      "name": "round-trip page fba",
+      "status": "PASS",
+      "detail": "fba active=true in fba/section"
+    },
+    {
+      "section": "context",
+      "name": "shape /shipping/label-intake",
+      "status": "PASS",
+      "detail": "scope=top page=label-intake"
+    },
+    {
+      "section": "context",
+      "name": "view=top /shipping/label-intake",
+      "status": "PASS",
+      "detail": "status 200 scope=top back=null"
+    },
+    {
+      "section": "context",
+      "name": "round-trip page label-intake",
+      "status": "PASS",
+      "detail": "label-intake active=true in label-intake/top"
+    },
+    {
+      "section": "context",
+      "name": "shape /shipping/orders",
+      "status": "PASS",
+      "detail": "scope=section page=outbound"
+    },
+    {
+      "section": "context",
+      "name": "section has no page items /shipping/orders",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "section": "context",
+      "name": "view=top /shipping/orders",
+      "status": "PASS",
+      "detail": "status 200 scope=top back=null"
+    },
+    {
+      "section": "context",
+      "name": "round-trip page outbound",
+      "status": "PASS",
+      "detail": "outbound active=true in outbound/section"
+    },
+    {
+      "section": "context",
+      "name": "shape /shipping/scan-out",
+      "status": "PASS",
+      "detail": "scope=top page=scan-out"
+    },
+    {
+      "section": "context",
+      "name": "view=top /shipping/scan-out",
+      "status": "PASS",
+      "detail": "status 200 scope=top back=null"
+    },
+    {
+      "section": "context",
+      "name": "round-trip page scan-out",
+      "status": "PASS",
+      "detail": "scan-out active=true in scan-out/top"
+    },
+    {
+      "section": "context",
+      "name": "shape /pack",
+      "status": "PASS",
+      "detail": "scope=top page=packer"
+    },
+    {
+      "section": "context",
+      "name": "view=top /pack",
+      "status": "PASS",
+      "detail": "status 200 scope=top back=null"
+    },
+    {
+      "section": "context",
+      "name": "round-trip page packer",
+      "status": "PASS",
+      "detail": "packer active=true in packer/top"
+    },
+    {
+      "section": "context",
+      "name": "shape /products",
+      "status": "PASS",
+      "detail": "scope=section page=products"
+    },
+    {
+      "section": "context",
+      "name": "section has no page items /products",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "section": "context",
+      "name": "view=top /products",
+      "status": "PASS",
+      "detail": "status 200 scope=top back=null"
+    },
+    {
+      "section": "context",
+      "name": "round-trip page products",
+      "status": "PASS",
+      "detail": "products active=true in products/section"
+    },
+    {
+      "section": "context",
+      "name": "shape /inventory",
+      "status": "PASS",
+      "detail": "scope=section page=inventory"
+    },
+    {
+      "section": "context",
+      "name": "section has no page items /inventory",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "section": "context",
+      "name": "view=top /inventory",
+      "status": "PASS",
+      "detail": "status 200 scope=top back=null"
+    },
+    {
+      "section": "context",
+      "name": "round-trip page inventory",
+      "status": "PASS",
+      "detail": "inventory active=true in inventory/section"
+    },
+    {
+      "section": "context",
+      "name": "shape /test",
+      "status": "PASS",
+      "detail": "scope=top page=ready-to-pack"
+    },
+    {
+      "section": "context",
+      "name": "view=top /test",
+      "status": "PASS",
+      "detail": "status 200 scope=top back=null"
+    },
+    {
+      "section": "context",
+      "name": "page tech (/test)",
+      "status": "WARN",
+      "detail": "resolves to page ready-to-pack; registry page tech is not on the lane map",
+      "evidence": {
+        "resolved": "ready-to-pack"
+      }
+    },
+    {
+      "section": "context",
+      "name": "round-trip page tech",
+      "status": "PASS",
+      "detail": "ready-to-pack active=true in ready-to-pack/top"
+    },
+    {
+      "section": "context",
+      "name": "shape /support",
+      "status": "PASS",
+      "detail": "scope=section page=support"
+    },
+    {
+      "section": "context",
+      "name": "section has no page items /support",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "section": "context",
+      "name": "view=top /support",
+      "status": "PASS",
+      "detail": "status 200 scope=top back=null"
+    },
+    {
+      "section": "context",
+      "name": "view=top lights page /support",
+      "status": "WARN",
+      "detail": "nothing lit — page support is not on the lane map",
+      "evidence": {
+        "page": "support",
+        "laneMapIds": [
+          "home",
+          "ops-photos",
+          "ai-chat",
+          "reports",
+          "triage",
+          "receive",
+          "pickup",
+          "repair",
+          "testing",
+          "ready-to-pack",
+          "packer",
+          "scan-out",
+          "incoming",
+          "sourcing",
+          "outbound",
+          "fba",
+          "label-intake",
+          "inventory",
+          "products",
+          "sales",
+          "studio"
+        ]
+      }
+    },
+    {
+      "section": "context",
+      "name": "round-trip page support",
+      "status": "PASS",
+      "detail": "support active=true in support/section"
+    },
+    {
+      "section": "context",
+      "name": "shape /studio",
+      "status": "PASS",
+      "detail": "scope=section page=studio"
+    },
+    {
+      "section": "context",
+      "name": "section has no page items /studio",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "section": "context",
+      "name": "view=top /studio",
+      "status": "PASS",
+      "detail": "status 200 scope=top back=null"
+    },
+    {
+      "section": "context",
+      "name": "round-trip page studio",
+      "status": "PASS",
+      "detail": "studio active=true in studio/section"
+    },
+    {
+      "section": "context",
+      "name": "shape /counter",
+      "status": "PASS",
+      "detail": "scope=section page=sales"
+    },
+    {
+      "section": "context",
+      "name": "section has no page items /counter",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "section": "context",
+      "name": "view=top /counter",
+      "status": "PASS",
+      "detail": "status 200 scope=top back=null"
+    },
+    {
+      "section": "context",
+      "name": "round-trip sales.counter (/counter)",
+      "status": "PASS",
+      "detail": "counter active=true in sales/section"
+    },
+    {
+      "section": "context",
+      "name": "round-trip sales.sales (/dashboard?mode=sales)",
+      "status": "PASS",
+      "detail": "sales active=true in sales/section"
+    },
+    {
+      "section": "context",
+      "name": "shape /dashboard?mode=pickup",
+      "status": "PASS",
+      "detail": "scope=section page=sales"
+    },
+    {
+      "section": "context",
+      "name": "section has no page items /dashboard?mode=pickup",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "section": "context",
+      "name": "view=top /dashboard?mode=pickup",
+      "status": "PASS",
+      "detail": "status 200 scope=top back=null"
+    },
+    {
+      "section": "context",
+      "name": "round-trip sales.pickup (/dashboard?mode=pickup)",
+      "status": "PASS",
+      "detail": "pickup active=true in sales/section"
+    },
+    {
+      "section": "context",
+      "name": "shape /dashboard?mode=repairs",
+      "status": "PASS",
+      "detail": "scope=section page=sales"
+    },
+    {
+      "section": "context",
+      "name": "section has no page items /dashboard?mode=repairs",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "section": "context",
+      "name": "view=top /dashboard?mode=repairs",
+      "status": "PASS",
+      "detail": "status 200 scope=top back=null"
+    },
+    {
+      "section": "context",
+      "name": "round-trip sales.repairs (/dashboard?mode=repairs)",
+      "status": "PASS",
+      "detail": "repairs active=true in sales/section"
+    },
+    {
+      "section": "context",
+      "name": "round-trip operations.live (/operations)",
+      "status": "PASS",
+      "detail": "live active=true in operations/section"
+    },
+    {
+      "section": "context",
+      "name": "shape /operations?mode=checks",
+      "status": "PASS",
+      "detail": "scope=section page=operations"
+    },
+    {
+      "section": "context",
+      "name": "section has no page items /operations?mode=checks",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "section": "context",
+      "name": "view=top /operations?mode=checks",
+      "status": "PASS",
+      "detail": "status 200 scope=top back=null"
+    },
+    {
+      "section": "context",
+      "name": "view=top lights page /operations?mode=checks",
+      "status": "WARN",
+      "detail": "nothing lit — page operations is not on the lane map",
+      "evidence": {
+        "page": "operations",
+        "laneMapIds": [
+          "home",
+          "ops-photos",
+          "ai-chat",
+          "reports",
+          "triage",
+          "receive",
+          "pickup",
+          "repair",
+          "testing",
+          "ready-to-pack",
+          "packer",
+          "scan-out",
+          "incoming",
+          "sourcing",
+          "outbound",
+          "fba",
+          "label-intake",
+          "inventory",
+          "products",
+          "sales",
+          "studio"
+        ]
+      }
+    },
+    {
+      "section": "context",
+      "name": "round-trip operations.checks (/operations?mode=checks)",
+      "status": "PASS",
+      "detail": "checks active=true in operations/section"
+    },
+    {
+      "section": "context",
+      "name": "shape /review",
+      "status": "PASS",
+      "detail": "scope=section page=operations"
+    },
+    {
+      "section": "context",
+      "name": "section has no page items /review",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "section": "context",
+      "name": "view=top /review",
+      "status": "PASS",
+      "detail": "status 200 scope=top back=null"
+    },
+    {
+      "section": "context",
+      "name": "view=top lights page /review",
+      "status": "WARN",
+      "detail": "nothing lit — page operations is not on the lane map",
+      "evidence": {
+        "page": "operations",
+        "laneMapIds": [
+          "home",
+          "ops-photos",
+          "ai-chat",
+          "reports",
+          "triage",
+          "receive",
+          "pickup",
+          "repair",
+          "testing",
+          "ready-to-pack",
+          "packer",
+          "scan-out",
+          "incoming",
+          "sourcing",
+          "outbound",
+          "fba",
+          "label-intake",
+          "inventory",
+          "products",
+          "sales",
+          "studio"
+        ]
+      }
+    },
+    {
+      "section": "context",
+      "name": "round-trip operations.packing-review (/review)",
+      "status": "PASS",
+      "detail": "packing-review active=true in operations/section"
+    },
+    {
+      "section": "context",
+      "name": "shape /operations?mode=history",
+      "status": "PASS",
+      "detail": "scope=section page=operations"
+    },
+    {
+      "section": "context",
+      "name": "section has no page items /operations?mode=history",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "section": "context",
+      "name": "view=top /operations?mode=history",
+      "status": "PASS",
+      "detail": "status 200 scope=top back=null"
+    },
+    {
+      "section": "context",
+      "name": "view=top lights page /operations?mode=history",
+      "status": "WARN",
+      "detail": "nothing lit — page operations is not on the lane map",
+      "evidence": {
+        "page": "operations",
+        "laneMapIds": [
+          "home",
+          "ops-photos",
+          "ai-chat",
+          "reports",
+          "triage",
+          "receive",
+          "pickup",
+          "repair",
+          "testing",
+          "ready-to-pack",
+          "packer",
+          "scan-out",
+          "incoming",
+          "sourcing",
+          "outbound",
+          "fba",
+          "label-intake",
+          "inventory",
+          "products",
+          "sales",
+          "studio"
+        ]
+      }
+    },
+    {
+      "section": "context",
+      "name": "round-trip operations.history (/operations?mode=history)",
+      "status": "PASS",
+      "detail": "history active=true in operations/section"
+    },
+    {
+      "section": "context",
+      "name": "shape /operations?mode=signals",
+      "status": "PASS",
+      "detail": "scope=section page=operations"
+    },
+    {
+      "section": "context",
+      "name": "section has no page items /operations?mode=signals",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "section": "context",
+      "name": "view=top /operations?mode=signals",
+      "status": "PASS",
+      "detail": "status 200 scope=top back=null"
+    },
+    {
+      "section": "context",
+      "name": "view=top lights page /operations?mode=signals",
+      "status": "WARN",
+      "detail": "nothing lit — page operations is not on the lane map",
+      "evidence": {
+        "page": "operations",
+        "laneMapIds": [
+          "home",
+          "ops-photos",
+          "ai-chat",
+          "reports",
+          "triage",
+          "receive",
+          "pickup",
+          "repair",
+          "testing",
+          "ready-to-pack",
+          "packer",
+          "scan-out",
+          "incoming",
+          "sourcing",
+          "outbound",
+          "fba",
+          "label-intake",
+          "inventory",
+          "products",
+          "sales",
+          "studio"
+        ]
+      }
+    },
+    {
+      "section": "context",
+      "name": "round-trip operations.signals (/operations?mode=signals)",
+      "status": "PASS",
+      "detail": "signals active=true in operations/section"
+    },
+    {
+      "section": "context",
+      "name": "shape /operations?mode=reconciliation",
+      "status": "PASS",
+      "detail": "scope=section page=operations"
+    },
+    {
+      "section": "context",
+      "name": "section has no page items /operations?mode=reconciliation",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "section": "context",
+      "name": "view=top /operations?mode=reconciliation",
+      "status": "PASS",
+      "detail": "status 200 scope=top back=null"
+    },
+    {
+      "section": "context",
+      "name": "view=top lights page /operations?mode=reconciliation",
+      "status": "WARN",
+      "detail": "nothing lit — page operations is not on the lane map",
+      "evidence": {
+        "page": "operations",
+        "laneMapIds": [
+          "home",
+          "ops-photos",
+          "ai-chat",
+          "reports",
+          "triage",
+          "receive",
+          "pickup",
+          "repair",
+          "testing",
+          "ready-to-pack",
+          "packer",
+          "scan-out",
+          "incoming",
+          "sourcing",
+          "outbound",
+          "fba",
+          "label-intake",
+          "inventory",
+          "products",
+          "sales",
+          "studio"
+        ]
+      }
+    },
+    {
+      "section": "context",
+      "name": "round-trip operations.reconciliation (/operations?mode=reconciliation)",
+      "status": "PASS",
+      "detail": "reconciliation active=true in operations/section"
+    },
+    {
+      "section": "context",
+      "name": "shape /operations?mode=goals",
+      "status": "PASS",
+      "detail": "scope=section page=operations"
+    },
+    {
+      "section": "context",
+      "name": "section has no page items /operations?mode=goals",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "section": "context",
+      "name": "view=top /operations?mode=goals",
+      "status": "PASS",
+      "detail": "status 200 scope=top back=null"
+    },
+    {
+      "section": "context",
+      "name": "view=top lights page /operations?mode=goals",
+      "status": "WARN",
+      "detail": "nothing lit — page operations is not on the lane map",
+      "evidence": {
+        "page": "operations",
+        "laneMapIds": [
+          "home",
+          "ops-photos",
+          "ai-chat",
+          "reports",
+          "triage",
+          "receive",
+          "pickup",
+          "repair",
+          "testing",
+          "ready-to-pack",
+          "packer",
+          "scan-out",
+          "incoming",
+          "sourcing",
+          "outbound",
+          "fba",
+          "label-intake",
+          "inventory",
+          "products",
+          "sales",
+          "studio"
+        ]
+      }
+    },
+    {
+      "section": "context",
+      "name": "round-trip operations.goals (/operations?mode=goals)",
+      "status": "PASS",
+      "detail": "goals active=true in operations/section"
+    },
+    {
+      "section": "context",
+      "name": "shape /operations?mode=quality",
+      "status": "PASS",
+      "detail": "scope=section page=operations"
+    },
+    {
+      "section": "context",
+      "name": "section has no page items /operations?mode=quality",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "section": "context",
+      "name": "view=top /operations?mode=quality",
+      "status": "PASS",
+      "detail": "status 200 scope=top back=null"
+    },
+    {
+      "section": "context",
+      "name": "view=top lights page /operations?mode=quality",
+      "status": "WARN",
+      "detail": "nothing lit — page operations is not on the lane map",
+      "evidence": {
+        "page": "operations",
+        "laneMapIds": [
+          "home",
+          "ops-photos",
+          "ai-chat",
+          "reports",
+          "triage",
+          "receive",
+          "pickup",
+          "repair",
+          "testing",
+          "ready-to-pack",
+          "packer",
+          "scan-out",
+          "incoming",
+          "sourcing",
+          "outbound",
+          "fba",
+          "label-intake",
+          "inventory",
+          "products",
+          "sales",
+          "studio"
+        ]
+      }
+    },
+    {
+      "section": "context",
+      "name": "round-trip operations.quality (/operations?mode=quality)",
+      "status": "PASS",
+      "detail": "quality active=true in operations/section"
+    },
+    {
+      "section": "context",
+      "name": "shape /operations?mode=staff",
+      "status": "PASS",
+      "detail": "scope=section page=operations"
+    },
+    {
+      "section": "context",
+      "name": "section has no page items /operations?mode=staff",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "section": "context",
+      "name": "view=top /operations?mode=staff",
+      "status": "PASS",
+      "detail": "status 200 scope=top back=null"
+    },
+    {
+      "section": "context",
+      "name": "view=top lights page /operations?mode=staff",
+      "status": "WARN",
+      "detail": "nothing lit — page operations is not on the lane map",
+      "evidence": {
+        "page": "operations",
+        "laneMapIds": [
+          "home",
+          "ops-photos",
+          "ai-chat",
+          "reports",
+          "triage",
+          "receive",
+          "pickup",
+          "repair",
+          "testing",
+          "ready-to-pack",
+          "packer",
+          "scan-out",
+          "incoming",
+          "sourcing",
+          "outbound",
+          "fba",
+          "label-intake",
+          "inventory",
+          "products",
+          "sales",
+          "studio"
+        ]
+      }
+    },
+    {
+      "section": "context",
+      "name": "round-trip operations.staff (/operations?mode=staff)",
+      "status": "PASS",
+      "detail": "staff active=true in operations/section"
+    },
+    {
+      "section": "context",
+      "name": "shape /operations?mode=sync",
+      "status": "PASS",
+      "detail": "scope=section page=operations"
+    },
+    {
+      "section": "context",
+      "name": "section has no page items /operations?mode=sync",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "section": "context",
+      "name": "view=top /operations?mode=sync",
+      "status": "PASS",
+      "detail": "status 200 scope=top back=null"
+    },
+    {
+      "section": "context",
+      "name": "view=top lights page /operations?mode=sync",
+      "status": "WARN",
+      "detail": "nothing lit — page operations is not on the lane map",
+      "evidence": {
+        "page": "operations",
+        "laneMapIds": [
+          "home",
+          "ops-photos",
+          "ai-chat",
+          "reports",
+          "triage",
+          "receive",
+          "pickup",
+          "repair",
+          "testing",
+          "ready-to-pack",
+          "packer",
+          "scan-out",
+          "incoming",
+          "sourcing",
+          "outbound",
+          "fba",
+          "label-intake",
+          "inventory",
+          "products",
+          "sales",
+          "studio"
+        ]
+      }
+    },
+    {
+      "section": "context",
+      "name": "round-trip operations.sync (/operations?mode=sync)",
+      "status": "PASS",
+      "detail": "sync active=true in operations/section"
+    },
+    {
+      "section": "context",
+      "name": "shape /operations?mode=logs",
+      "status": "PASS",
+      "detail": "scope=section page=operations"
+    },
+    {
+      "section": "context",
+      "name": "section has no page items /operations?mode=logs",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "section": "context",
+      "name": "view=top /operations?mode=logs",
+      "status": "PASS",
+      "detail": "status 200 scope=top back=null"
+    },
+    {
+      "section": "context",
+      "name": "view=top lights page /operations?mode=logs",
+      "status": "WARN",
+      "detail": "nothing lit — page operations is not on the lane map",
+      "evidence": {
+        "page": "operations",
+        "laneMapIds": [
+          "home",
+          "ops-photos",
+          "ai-chat",
+          "reports",
+          "triage",
+          "receive",
+          "pickup",
+          "repair",
+          "testing",
+          "ready-to-pack",
+          "packer",
+          "scan-out",
+          "incoming",
+          "sourcing",
+          "outbound",
+          "fba",
+          "label-intake",
+          "inventory",
+          "products",
+          "sales",
+          "studio"
+        ]
+      }
+    },
+    {
+      "section": "context",
+      "name": "round-trip operations.logs (/operations?mode=logs)",
+      "status": "PASS",
+      "detail": "logs active=true in operations/section"
+    },
+    {
+      "section": "context",
+      "name": "round-trip reports.staff-day (/reports)",
+      "status": "PASS",
+      "detail": "staff-day active=true in reports/section"
+    },
+    {
+      "section": "context",
+      "name": "shape /reports?tab=packer",
+      "status": "PASS",
+      "detail": "scope=section page=reports"
+    },
+    {
+      "section": "context",
+      "name": "section has no page items /reports?tab=packer",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "section": "context",
+      "name": "view=top /reports?tab=packer",
+      "status": "PASS",
+      "detail": "status 200 scope=top back=null"
+    },
+    {
+      "section": "context",
+      "name": "round-trip reports.packer-day (/reports?tab=packer)",
+      "status": "PASS",
+      "detail": "packer-day active=true in reports/section"
+    },
+    {
+      "section": "context",
+      "name": "shape /reports?tab=utilization",
+      "status": "PASS",
+      "detail": "scope=section page=reports"
+    },
+    {
+      "section": "context",
+      "name": "section has no page items /reports?tab=utilization",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "section": "context",
+      "name": "view=top /reports?tab=utilization",
+      "status": "PASS",
+      "detail": "status 200 scope=top back=null"
+    },
+    {
+      "section": "context",
+      "name": "round-trip reports.utilization (/reports?tab=utilization)",
+      "status": "PASS",
+      "detail": "utilization active=true in reports/section"
+    },
+    {
+      "section": "context",
+      "name": "shape /reports?tab=velocity",
+      "status": "PASS",
+      "detail": "scope=section page=reports"
+    },
+    {
+      "section": "context",
+      "name": "section has no page items /reports?tab=velocity",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "section": "context",
+      "name": "view=top /reports?tab=velocity",
+      "status": "PASS",
+      "detail": "status 200 scope=top back=null"
+    },
+    {
+      "section": "context",
+      "name": "round-trip reports.velocity (/reports?tab=velocity)",
+      "status": "PASS",
+      "detail": "velocity active=true in reports/section"
+    },
+    {
+      "section": "context",
+      "name": "shape /reports?tab=dead",
+      "status": "PASS",
+      "detail": "scope=section page=reports"
+    },
+    {
+      "section": "context",
+      "name": "section has no page items /reports?tab=dead",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "section": "context",
+      "name": "view=top /reports?tab=dead",
+      "status": "PASS",
+      "detail": "status 200 scope=top back=null"
+    },
+    {
+      "section": "context",
+      "name": "round-trip reports.dead-stock (/reports?tab=dead)",
+      "status": "PASS",
+      "detail": "dead-stock active=true in reports/section"
+    },
+    {
+      "section": "context",
+      "name": "shape /reports?tab=tasks",
+      "status": "PASS",
+      "detail": "scope=section page=reports"
+    },
+    {
+      "section": "context",
+      "name": "section has no page items /reports?tab=tasks",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "section": "context",
+      "name": "view=top /reports?tab=tasks",
+      "status": "PASS",
+      "detail": "status 200 scope=top back=null"
+    },
+    {
+      "section": "context",
+      "name": "round-trip reports.tasks (/reports?tab=tasks)",
+      "status": "PASS",
+      "detail": "tasks active=true in reports/section"
+    },
+    {
+      "section": "context",
+      "name": "shape /reports?tab=activity",
+      "status": "PASS",
+      "detail": "scope=section page=reports"
+    },
+    {
+      "section": "context",
+      "name": "section has no page items /reports?tab=activity",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "section": "context",
+      "name": "view=top /reports?tab=activity",
+      "status": "PASS",
+      "detail": "status 200 scope=top back=null"
+    },
+    {
+      "section": "context",
+      "name": "round-trip reports.activity (/reports?tab=activity)",
+      "status": "PASS",
+      "detail": "activity active=true in reports/section"
+    },
+    {
+      "section": "context",
+      "name": "round-trip incoming.pipeline (/incoming)",
+      "status": "PASS",
+      "detail": "pipeline active=true in incoming/section"
+    },
+    {
+      "section": "context",
+      "name": "shape /incoming?lane=docked",
+      "status": "PASS",
+      "detail": "scope=section page=incoming"
+    },
+    {
+      "section": "context",
+      "name": "section has no page items /incoming?lane=docked",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "section": "context",
+      "name": "view=top /incoming?lane=docked",
+      "status": "PASS",
+      "detail": "status 200 scope=top back=null"
+    },
+    {
+      "section": "context",
+      "name": "round-trip incoming.docked (/incoming?lane=docked)",
+      "status": "PASS",
+      "detail": "docked active=true in incoming/section"
+    },
+    {
+      "section": "context",
+      "name": "round-trip sourcing.queue (/sourcing)",
+      "status": "PASS",
+      "detail": "queue active=true in sourcing/section"
+    },
+    {
+      "section": "context",
+      "name": "shape /sourcing?mode=scout",
+      "status": "PASS",
+      "detail": "scope=section page=sourcing"
+    },
+    {
+      "section": "context",
+      "name": "section has no page items /sourcing?mode=scout",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "section": "context",
+      "name": "view=top /sourcing?mode=scout",
+      "status": "PASS",
+      "detail": "status 200 scope=top back=null"
+    },
+    {
+      "section": "context",
+      "name": "round-trip sourcing.scout (/sourcing?mode=scout)",
+      "status": "PASS",
+      "detail": "scout active=true in sourcing/section"
+    },
+    {
+      "section": "context",
+      "name": "shape /sourcing?mode=watchlist",
+      "status": "PASS",
+      "detail": "scope=section page=sourcing"
+    },
+    {
+      "section": "context",
+      "name": "section has no page items /sourcing?mode=watchlist",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "section": "context",
+      "name": "view=top /sourcing?mode=watchlist",
+      "status": "PASS",
+      "detail": "status 200 scope=top back=null"
+    },
+    {
+      "section": "context",
+      "name": "round-trip sourcing.watchlist (/sourcing?mode=watchlist)",
+      "status": "PASS",
+      "detail": "watchlist active=true in sourcing/section"
+    },
+    {
+      "section": "context",
+      "name": "shape /sourcing?mode=searches",
+      "status": "PASS",
+      "detail": "scope=section page=sourcing"
+    },
+    {
+      "section": "context",
+      "name": "section has no page items /sourcing?mode=searches",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "section": "context",
+      "name": "view=top /sourcing?mode=searches",
+      "status": "PASS",
+      "detail": "status 200 scope=top back=null"
+    },
+    {
+      "section": "context",
+      "name": "round-trip sourcing.searches (/sourcing?mode=searches)",
+      "status": "PASS",
+      "detail": "searches active=true in sourcing/section"
+    },
+    {
+      "section": "context",
+      "name": "shape /sourcing?mode=suppliers",
+      "status": "PASS",
+      "detail": "scope=section page=sourcing"
+    },
+    {
+      "section": "context",
+      "name": "section has no page items /sourcing?mode=suppliers",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "section": "context",
+      "name": "view=top /sourcing?mode=suppliers",
+      "status": "PASS",
+      "detail": "status 200 scope=top back=null"
+    },
+    {
+      "section": "context",
+      "name": "round-trip sourcing.suppliers (/sourcing?mode=suppliers)",
+      "status": "PASS",
+      "detail": "suppliers active=true in sourcing/section"
+    },
+    {
+      "section": "context",
+      "name": "shape /sourcing?mode=models",
+      "status": "PASS",
+      "detail": "scope=section page=sourcing"
+    },
+    {
+      "section": "context",
+      "name": "section has no page items /sourcing?mode=models",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "section": "context",
+      "name": "view=top /sourcing?mode=models",
+      "status": "PASS",
+      "detail": "status 200 scope=top back=null"
+    },
+    {
+      "section": "context",
+      "name": "round-trip sourcing.models (/sourcing?mode=models)",
+      "status": "PASS",
+      "detail": "models active=true in sourcing/section"
+    },
+    {
+      "section": "context",
+      "name": "shape /sourcing?mode=compatibility",
+      "status": "PASS",
+      "detail": "scope=section page=sourcing"
+    },
+    {
+      "section": "context",
+      "name": "section has no page items /sourcing?mode=compatibility",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "section": "context",
+      "name": "view=top /sourcing?mode=compatibility",
+      "status": "PASS",
+      "detail": "status 200 scope=top back=null"
+    },
+    {
+      "section": "context",
+      "name": "round-trip sourcing.compatibility (/sourcing?mode=compatibility)",
+      "status": "PASS",
+      "detail": "compatibility active=true in sourcing/section"
+    },
+    {
+      "section": "context",
+      "name": "shape /shipping/fba?fbaMode=plan",
+      "status": "PASS",
+      "detail": "scope=section page=fba"
+    },
+    {
+      "section": "context",
+      "name": "section has no page items /shipping/fba?fbaMode=plan",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "section": "context",
+      "name": "view=top /shipping/fba?fbaMode=plan",
+      "status": "PASS",
+      "detail": "status 200 scope=top back=null"
+    },
+    {
+      "section": "context",
+      "name": "round-trip fba.plan (/shipping/fba?fbaMode=plan)",
+      "status": "PASS",
+      "detail": "plan active=true in fba/section"
+    },
+    {
+      "section": "context",
+      "name": "round-trip fba.combine (/shipping/fba)",
+      "status": "PASS",
+      "detail": "combine active=true in fba/section"
+    },
+    {
+      "section": "context",
+      "name": "shape /shipping/fba?fbaMode=shipped",
+      "status": "PASS",
+      "detail": "scope=section page=fba"
+    },
+    {
+      "section": "context",
+      "name": "section has no page items /shipping/fba?fbaMode=shipped",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "section": "context",
+      "name": "view=top /shipping/fba?fbaMode=shipped",
+      "status": "PASS",
+      "detail": "status 200 scope=top back=null"
+    },
+    {
+      "section": "context",
+      "name": "round-trip fba.shipped (/shipping/fba?fbaMode=shipped)",
+      "status": "PASS",
+      "detail": "shipped active=true in fba/section"
+    },
+    {
+      "section": "context",
+      "name": "shape /shipping/shortage?pair=po",
+      "status": "PASS",
+      "detail": "scope=section page=outbound"
+    },
+    {
+      "section": "context",
+      "name": "section has no page items /shipping/shortage?pair=po",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "section": "context",
+      "name": "view=top /shipping/shortage?pair=po",
+      "status": "PASS",
+      "detail": "status 200 scope=top back=null"
+    },
+    {
+      "section": "context",
+      "name": "round-trip outbound.po (/shipping/shortage?pair=po)",
+      "status": "PASS",
+      "detail": "po active=true in outbound/section"
+    },
+    {
+      "section": "context",
+      "name": "shape /shipping/orders?queue=pick",
+      "status": "PASS",
+      "detail": "scope=section page=outbound"
+    },
+    {
+      "section": "context",
+      "name": "section has no page items /shipping/orders?queue=pick",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "section": "context",
+      "name": "view=top /shipping/orders?queue=pick",
+      "status": "PASS",
+      "detail": "status 200 scope=top back=null"
+    },
+    {
+      "section": "context",
+      "name": "round-trip outbound.pick (/shipping/orders?queue=pick)",
+      "status": "PASS",
+      "detail": "pick active=true in outbound/section"
+    },
+    {
+      "section": "context",
+      "name": "round-trip outbound.triage (/shipping/orders)",
+      "status": "PASS",
+      "detail": "triage active=true in outbound/section"
+    },
+    {
+      "section": "context",
+      "name": "shape /shipping/shipped",
+      "status": "PASS",
+      "detail": "scope=section page=outbound"
+    },
+    {
+      "section": "context",
+      "name": "section has no page items /shipping/shipped",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "section": "context",
+      "name": "view=top /shipping/shipped",
+      "status": "PASS",
+      "detail": "status 200 scope=top back=null"
+    },
+    {
+      "section": "context",
+      "name": "round-trip outbound.shipped (/shipping/shipped)",
+      "status": "PASS",
+      "detail": "shipped active=true in outbound/section"
+    },
+    {
+      "section": "context",
+      "name": "shape /shipping/exceptions",
+      "status": "PASS",
+      "detail": "scope=section page=outbound"
+    },
+    {
+      "section": "context",
+      "name": "section has no page items /shipping/exceptions",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "section": "context",
+      "name": "view=top /shipping/exceptions",
+      "status": "PASS",
+      "detail": "status 200 scope=top back=null"
+    },
+    {
+      "section": "context",
+      "name": "round-trip outbound.exceptions (/shipping/exceptions)",
+      "status": "PASS",
+      "detail": "exceptions active=true in outbound/section"
+    },
+    {
+      "section": "context",
+      "name": "round-trip products.manuals (/products)",
+      "status": "PASS",
+      "detail": "manuals active=true in products/section"
+    },
+    {
+      "section": "context",
+      "name": "shape /products?view=labels",
+      "status": "PASS",
+      "detail": "scope=section page=products"
+    },
+    {
+      "section": "context",
+      "name": "section has no page items /products?view=labels",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "section": "context",
+      "name": "view=top /products?view=labels",
+      "status": "PASS",
+      "detail": "status 200 scope=top back=null"
+    },
+    {
+      "section": "context",
+      "name": "round-trip products.labels (/products?view=labels)",
+      "status": "PASS",
+      "detail": "labels active=true in products/section"
+    },
+    {
+      "section": "context",
+      "name": "shape /products?view=pairing",
+      "status": "PASS",
+      "detail": "scope=section page=products"
+    },
+    {
+      "section": "context",
+      "name": "section has no page items /products?view=pairing",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "section": "context",
+      "name": "view=top /products?view=pairing",
+      "status": "PASS",
+      "detail": "status 200 scope=top back=null"
+    },
+    {
+      "section": "context",
+      "name": "round-trip products.pairing (/products?view=pairing)",
+      "status": "PASS",
+      "detail": "pairing active=true in products/section"
+    },
+    {
+      "section": "context",
+      "name": "shape /products?view=qc",
+      "status": "PASS",
+      "detail": "scope=section page=products"
+    },
+    {
+      "section": "context",
+      "name": "section has no page items /products?view=qc",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "section": "context",
+      "name": "view=top /products?view=qc",
+      "status": "PASS",
+      "detail": "status 200 scope=top back=null"
+    },
+    {
+      "section": "context",
+      "name": "round-trip products.qc (/products?view=qc)",
+      "status": "PASS",
+      "detail": "qc active=true in products/section"
+    },
+    {
+      "section": "context",
+      "name": "shape /inventory/stock",
+      "status": "PASS",
+      "detail": "scope=section page=inventory"
+    },
+    {
+      "section": "context",
+      "name": "section has no page items /inventory/stock",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "section": "context",
+      "name": "view=top /inventory/stock",
+      "status": "PASS",
+      "detail": "status 200 scope=top back=null"
+    },
+    {
+      "section": "context",
+      "name": "round-trip inventory.stock (/inventory/stock)",
+      "status": "PASS",
+      "detail": "stock active=true in inventory/section"
+    },
+    {
+      "section": "context",
+      "name": "shape /inventory/sku-exceptions",
+      "status": "PASS",
+      "detail": "scope=section page=inventory"
+    },
+    {
+      "section": "context",
+      "name": "section has no page items /inventory/sku-exceptions",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "section": "context",
+      "name": "view=top /inventory/sku-exceptions",
+      "status": "PASS",
+      "detail": "status 200 scope=top back=null"
+    },
+    {
+      "section": "context",
+      "name": "round-trip inventory.sku-exceptions (/inventory/sku-exceptions)",
+      "status": "PASS",
+      "detail": "sku-exceptions active=true in inventory/section"
+    },
+    {
+      "section": "context",
+      "name": "round-trip inventory.ledger (/inventory)",
+      "status": "PASS",
+      "detail": "ledger active=true in inventory/section"
+    },
+    {
+      "section": "context",
+      "name": "shape /inventory?section=replenish",
+      "status": "PASS",
+      "detail": "scope=section page=inventory"
+    },
+    {
+      "section": "context",
+      "name": "section has no page items /inventory?section=replenish",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "section": "context",
+      "name": "view=top /inventory?section=replenish",
+      "status": "PASS",
+      "detail": "status 200 scope=top back=null"
+    },
+    {
+      "section": "context",
+      "name": "round-trip inventory.replenish (/inventory?section=replenish)",
+      "status": "PASS",
+      "detail": "replenish active=true in inventory/section"
+    },
+    {
+      "section": "context",
+      "name": "shape /inventory/locations",
+      "status": "PASS",
+      "detail": "scope=section page=inventory"
+    },
+    {
+      "section": "context",
+      "name": "section has no page items /inventory/locations",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "section": "context",
+      "name": "view=top /inventory/locations",
+      "status": "PASS",
+      "detail": "status 200 scope=top back=null"
+    },
+    {
+      "section": "context",
+      "name": "round-trip inventory.locations (/inventory/locations)",
+      "status": "PASS",
+      "detail": "locations active=true in inventory/section"
+    },
+    {
+      "section": "context",
+      "name": "round-trip support.tickets (/support)",
+      "status": "PASS",
+      "detail": "tickets active=true in support/section"
+    },
+    {
+      "section": "context",
+      "name": "shape /support?mode=voicemail",
+      "status": "PASS",
+      "detail": "scope=section page=support"
+    },
+    {
+      "section": "context",
+      "name": "section has no page items /support?mode=voicemail",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "section": "context",
+      "name": "view=top /support?mode=voicemail",
+      "status": "PASS",
+      "detail": "status 200 scope=top back=null"
+    },
+    {
+      "section": "context",
+      "name": "view=top lights page /support?mode=voicemail",
+      "status": "WARN",
+      "detail": "nothing lit — page support is not on the lane map",
+      "evidence": {
+        "page": "support",
+        "laneMapIds": [
+          "home",
+          "ops-photos",
+          "ai-chat",
+          "reports",
+          "triage",
+          "receive",
+          "pickup",
+          "repair",
+          "testing",
+          "ready-to-pack",
+          "packer",
+          "scan-out",
+          "incoming",
+          "sourcing",
+          "outbound",
+          "fba",
+          "label-intake",
+          "inventory",
+          "products",
+          "sales",
+          "studio"
+        ]
+      }
+    },
+    {
+      "section": "context",
+      "name": "round-trip support.voicemail (/support?mode=voicemail)",
+      "status": "PASS",
+      "detail": "voicemail active=true in support/section"
+    },
+    {
+      "section": "context",
+      "name": "shape /support?mode=calls",
+      "status": "PASS",
+      "detail": "scope=section page=support"
+    },
+    {
+      "section": "context",
+      "name": "section has no page items /support?mode=calls",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "section": "context",
+      "name": "view=top /support?mode=calls",
+      "status": "PASS",
+      "detail": "status 200 scope=top back=null"
+    },
+    {
+      "section": "context",
+      "name": "view=top lights page /support?mode=calls",
+      "status": "WARN",
+      "detail": "nothing lit — page support is not on the lane map",
+      "evidence": {
+        "page": "support",
+        "laneMapIds": [
+          "home",
+          "ops-photos",
+          "ai-chat",
+          "reports",
+          "triage",
+          "receive",
+          "pickup",
+          "repair",
+          "testing",
+          "ready-to-pack",
+          "packer",
+          "scan-out",
+          "incoming",
+          "sourcing",
+          "outbound",
+          "fba",
+          "label-intake",
+          "inventory",
+          "products",
+          "sales",
+          "studio"
+        ]
+      }
+    },
+    {
+      "section": "context",
+      "name": "round-trip support.calls (/support?mode=calls)",
+      "status": "PASS",
+      "detail": "calls active=true in support/section"
+    },
+    {
+      "section": "context",
+      "name": "shape /support?mode=warranty",
+      "status": "PASS",
+      "detail": "scope=section page=support"
+    },
+    {
+      "section": "context",
+      "name": "section has no page items /support?mode=warranty",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "section": "context",
+      "name": "view=top /support?mode=warranty",
+      "status": "PASS",
+      "detail": "status 200 scope=top back=null"
+    },
+    {
+      "section": "context",
+      "name": "view=top lights page /support?mode=warranty",
+      "status": "WARN",
+      "detail": "nothing lit — page support is not on the lane map",
+      "evidence": {
+        "page": "support",
+        "laneMapIds": [
+          "home",
+          "ops-photos",
+          "ai-chat",
+          "reports",
+          "triage",
+          "receive",
+          "pickup",
+          "repair",
+          "testing",
+          "ready-to-pack",
+          "packer",
+          "scan-out",
+          "incoming",
+          "sourcing",
+          "outbound",
+          "fba",
+          "label-intake",
+          "inventory",
+          "products",
+          "sales",
+          "studio"
+        ]
+      }
+    },
+    {
+      "section": "context",
+      "name": "round-trip support.warranty (/support?mode=warranty)",
+      "status": "PASS",
+      "detail": "warranty active=true in support/section"
+    },
+    {
+      "section": "context",
+      "name": "shape /support?mode=issues",
+      "status": "PASS",
+      "detail": "scope=section page=support"
+    },
+    {
+      "section": "context",
+      "name": "section has no page items /support?mode=issues",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "section": "context",
+      "name": "view=top /support?mode=issues",
+      "status": "PASS",
+      "detail": "status 200 scope=top back=null"
+    },
+    {
+      "section": "context",
+      "name": "view=top lights page /support?mode=issues",
+      "status": "WARN",
+      "detail": "nothing lit — page support is not on the lane map",
+      "evidence": {
+        "page": "support",
+        "laneMapIds": [
+          "home",
+          "ops-photos",
+          "ai-chat",
+          "reports",
+          "triage",
+          "receive",
+          "pickup",
+          "repair",
+          "testing",
+          "ready-to-pack",
+          "packer",
+          "scan-out",
+          "incoming",
+          "sourcing",
+          "outbound",
+          "fba",
+          "label-intake",
+          "inventory",
+          "products",
+          "sales",
+          "studio"
+        ]
+      }
+    },
+    {
+      "section": "context",
+      "name": "round-trip support.issues (/support?mode=issues)",
+      "status": "PASS",
+      "detail": "issues active=true in support/section"
+    },
+    {
+      "section": "context",
+      "name": "round-trip studio.graph (/studio)",
+      "status": "PASS",
+      "detail": "graph active=true in studio/section"
+    },
+    {
+      "section": "context",
+      "name": "shape /studio/automations",
+      "status": "PASS",
+      "detail": "scope=section page=studio"
+    },
+    {
+      "section": "context",
+      "name": "section has no page items /studio/automations",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "section": "context",
+      "name": "view=top /studio/automations",
+      "status": "PASS",
+      "detail": "status 200 scope=top back=null"
+    },
+    {
+      "section": "context",
+      "name": "round-trip studio.rules (/studio/automations)",
+      "status": "PASS",
+      "detail": "rules active=true in studio/section"
+    },
+    {
+      "section": "context",
+      "name": "shape /studio/catalog",
+      "status": "PASS",
+      "detail": "scope=section page=studio"
+    },
+    {
+      "section": "context",
+      "name": "section has no page items /studio/catalog",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "section": "context",
+      "name": "view=top /studio/catalog",
+      "status": "PASS",
+      "detail": "status 200 scope=top back=null"
+    },
+    {
+      "section": "context",
+      "name": "round-trip studio.catalog (/studio/catalog)",
+      "status": "PASS",
+      "detail": "catalog active=true in studio/section"
+    },
+    {
+      "section": "context",
+      "name": "foreign path refused",
+      "status": "PASS",
+      "detail": "status 400"
+    },
+    {
+      "section": "context",
+      "name": "coverage",
+      "status": "INFO",
+      "detail": "67 distinct paths resolved (pages + section items)"
+    },
+    {
+      "section": "recents",
+      "name": "GET receiving.viewed [adapter]",
+      "status": "PASS",
+      "detail": "25 rows"
+    },
+    {
+      "section": "recents",
+      "name": "GET receiving.unbox_opened [adapter]",
+      "status": "PASS",
+      "detail": "25 rows"
+    },
+    {
+      "section": "recents",
+      "name": "GET receiving.scanned [adapter]",
+      "status": "PASS",
+      "detail": "23 rows"
+    },
+    {
+      "section": "recents",
+      "name": "GET testing.opened [adapter]",
+      "status": "PASS",
+      "detail": "21 rows"
+    },
+    {
+      "section": "recents",
+      "name": "GET tech.scans [adapter]",
+      "status": "PASS",
+      "detail": "25 rows"
+    },
+    {
+      "section": "recents",
+      "name": "GET packer.packs [adapter]",
+      "status": "PASS",
+      "detail": "7 rows"
+    },
+    {
+      "section": "recents",
+      "name": "GET labels.prints [adapter]",
+      "status": "PASS",
+      "detail": "25 rows"
+    },
+    {
+      "section": "recents",
+      "name": "GET pickup.orders [adapter]",
+      "status": "PASS",
+      "detail": "25 rows"
+    },
+    {
+      "section": "recents",
+      "name": "GET identify.opened [adapter]",
+      "status": "PASS",
+      "detail": "14 rows"
+    },
+    {
+      "section": "recents",
+      "name": "GET support.tickets [nav_recents]",
+      "status": "PASS",
+      "detail": "0 rows"
+    },
+    {
+      "section": "recents",
+      "name": "GET detail_stacks [nav_recents]",
+      "status": "PASS",
+      "detail": "0 rows"
+    },
+    {
+      "section": "recents",
+      "name": "GET audit_log.trace [nav_recents]",
+      "status": "PASS",
+      "detail": "0 rows"
+    },
+    {
+      "section": "recents",
+      "name": "GET labels.lookups [nav_recents]",
+      "status": "PASS",
+      "detail": "0 rows"
+    },
+    {
+      "section": "recents",
+      "name": "GET command_bar [nav_recents]",
+      "status": "PASS",
+      "detail": "2 rows"
+    },
+    {
+      "section": "recents",
+      "name": "POST command_bar page",
+      "status": "PASS",
+      "detail": "status 200"
+    },
+    {
+      "section": "recents",
+      "name": "POST→GET row first",
+      "status": "PASS",
+      "detail": "first=page:/shipping/orders→/shipping/orders"
+    },
+    {
+      "section": "recents",
+      "name": "POST adapter surface → 400",
+      "status": "PASS",
+      "detail": "status 400 SURFACE_NOT_WRITABLE"
+    },
+    {
+      "section": "recents",
+      "name": "POST bad entityType → 400",
+      "status": "PASS",
+      "detail": "status 400 ENTITY_TYPE_NOT_ALLOWED"
+    },
+    {
+      "section": "facets",
+      "name": "desk-counts",
+      "status": "INFO",
+      "detail": "x-cache=MISS {\"exceptions\":382,\"po\":0,\"pick\":30,\"triage\":38,\"shippedToday\":0}"
+    },
+    {
+      "section": "facets",
+      "name": "shape outbound.exceptions",
+      "status": "PASS",
+      "detail": "total=382"
+    },
+    {
+      "section": "facets",
+      "name": "list total == facet total outbound.exceptions",
+      "status": "PASS",
+      "detail": "list 382 (x-cache -) vs facet 382"
+    },
+    {
+      "section": "facets",
+      "name": "facet total == desk-counts.exceptions",
+      "status": "PASS",
+      "detail": "desk 382 vs facet 382"
+    },
+    {
+      "section": "facets",
+      "name": "outbound.exceptions category=SKU Mapping",
+      "status": "PASS",
+      "detail": "option count 342 vs filtered total 342"
+    },
+    {
+      "section": "facets",
+      "name": "outbound.exceptions list category=SKU Mapping",
+      "status": "PASS",
+      "detail": "list 342 (x-cache -) vs option 342"
+    },
+    {
+      "section": "facets",
+      "name": "outbound.exceptions category=Out of Stock",
+      "status": "PASS",
+      "detail": "option count 39 vs filtered total 39"
+    },
+    {
+      "section": "facets",
+      "name": "outbound.exceptions list category=Out of Stock",
+      "status": "PASS",
+      "detail": "list 39 (x-cache -) vs option 39"
+    },
+    {
+      "section": "facets",
+      "name": "outbound.exceptions category=Address Issue",
+      "status": "PASS",
+      "detail": "option count 0 vs filtered total 0"
+    },
+    {
+      "section": "facets",
+      "name": "outbound.exceptions list category=Address Issue",
+      "status": "PASS",
+      "detail": "list 0 (x-cache -) vs option 0"
+    },
+    {
+      "section": "facets",
+      "name": "outbound.exceptions category=Buyer Request",
+      "status": "PASS",
+      "detail": "option count 0 vs filtered total 0"
+    },
+    {
+      "section": "facets",
+      "name": "outbound.exceptions list category=Buyer Request",
+      "status": "PASS",
+      "detail": "list 0 (x-cache -) vs option 0"
+    },
+    {
+      "section": "facets",
+      "name": "outbound.exceptions category=Marketplace Hold",
+      "status": "PASS",
+      "detail": "option count 0 vs filtered total 0"
+    },
+    {
+      "section": "facets",
+      "name": "outbound.exceptions list category=Marketplace Hold",
+      "status": "PASS",
+      "detail": "list 0 (x-cache -) vs option 0"
+    },
+    {
+      "section": "facets",
+      "name": "outbound.exceptions category=Testing Issue",
+      "status": "PASS",
+      "detail": "option count 0 vs filtered total 0"
+    },
+    {
+      "section": "facets",
+      "name": "outbound.exceptions list category=Testing Issue",
+      "status": "PASS",
+      "detail": "list 0 (x-cache -) vs option 0"
+    },
+    {
+      "section": "facets",
+      "name": "outbound.exceptions category=Shipping Issue",
+      "status": "PASS",
+      "detail": "option count 1 vs filtered total 1"
+    },
+    {
+      "section": "facets",
+      "name": "outbound.exceptions list category=Shipping Issue",
+      "status": "PASS",
+      "detail": "list 1 (x-cache -) vs option 1"
+    },
+    {
+      "section": "facets",
+      "name": "outbound.exceptions category=Other",
+      "status": "PASS",
+      "detail": "option count 0 vs filtered total 0"
+    },
+    {
+      "section": "facets",
+      "name": "outbound.exceptions list category=Other",
+      "status": "PASS",
+      "detail": "list 0 (x-cache -) vs option 0"
+    },
+    {
+      "section": "facets",
+      "name": "shape outbound.triage",
+      "status": "PASS",
+      "detail": "total=38"
+    },
+    {
+      "section": "facets",
+      "name": "list total == facet total outbound.triage",
+      "status": "PASS",
+      "detail": "list 38 (x-cache MISS) vs facet 38"
+    },
+    {
+      "section": "facets",
+      "name": "facet total == desk-counts.triage",
+      "status": "PASS",
+      "detail": "desk 38 vs facet 38"
+    },
+    {
+      "section": "facets",
+      "name": "outbound.triage stage=pending",
+      "status": "PASS",
+      "detail": "option count 24 vs filtered total 24"
+    },
+    {
+      "section": "facets",
+      "name": "outbound.triage list stage=pending",
+      "status": "PASS",
+      "detail": "list 24 (x-cache MISS) vs option 24"
+    },
+    {
+      "section": "facets",
+      "name": "outbound.triage stage=tested",
+      "status": "PASS",
+      "detail": "option count 6 vs filtered total 6"
+    },
+    {
+      "section": "facets",
+      "name": "outbound.triage list stage=tested",
+      "status": "PASS",
+      "detail": "list 6 (x-cache MISS) vs option 6"
+    },
+    {
+      "section": "facets",
+      "name": "outbound.triage stage=packed",
+      "status": "PASS",
+      "detail": "option count 8 vs filtered total 8"
+    },
+    {
+      "section": "facets",
+      "name": "outbound.triage list stage=packed",
+      "status": "PASS",
+      "detail": "list 8 (x-cache MISS) vs option 8"
+    },
+    {
+      "section": "facets",
+      "name": "outbound.triage aging=overdue",
+      "status": "PASS",
+      "detail": "option count 4 vs filtered total 4"
+    },
+    {
+      "section": "facets",
+      "name": "outbound.triage aging=today",
+      "status": "PASS",
+      "detail": "option count 0 vs filtered total 0"
+    },
+    {
+      "section": "facets",
+      "name": "outbound.triage aging=upcoming",
+      "status": "PASS",
+      "detail": "option count 0 vs filtered total 0"
+    },
+    {
+      "section": "facets",
+      "name": "outbound.triage aging=unscheduled",
+      "status": "PASS",
+      "detail": "option count 34 vs filtered total 34"
+    },
+    {
+      "section": "facets",
+      "name": "outbound.triage late=1",
+      "status": "PASS",
+      "detail": "option count 4 vs filtered total 4"
+    },
+    {
+      "section": "facets",
+      "name": "outbound.triage attention=1",
+      "status": "PASS",
+      "detail": "option count 2 vs filtered total 2"
+    },
+    {
+      "section": "facets",
+      "name": "outbound.triage ustatus=BLOCKED",
+      "status": "PASS",
+      "detail": "option count 5 vs filtered total 5"
+    },
+    {
+      "section": "facets",
+      "name": "shape outbound.pick",
+      "status": "PASS",
+      "detail": "total=30"
+    },
+    {
+      "section": "facets",
+      "name": "list total == facet total outbound.pick",
+      "status": "PASS",
+      "detail": "list 30 (x-cache MISS) vs facet 30"
+    },
+    {
+      "section": "facets",
+      "name": "facet total == desk-counts.pick",
+      "status": "PASS",
+      "detail": "desk 30 vs facet 30"
+    },
+    {
+      "section": "facets",
+      "name": "outbound.pick stage=pending",
+      "status": "PASS",
+      "detail": "option count 24 vs filtered total 24"
+    },
+    {
+      "section": "facets",
+      "name": "outbound.pick list stage=pending",
+      "status": "PASS",
+      "detail": "list 24 (x-cache MISS) vs option 24"
+    },
+    {
+      "section": "facets",
+      "name": "outbound.pick stage=tested",
+      "status": "PASS",
+      "detail": "option count 6 vs filtered total 6"
+    },
+    {
+      "section": "facets",
+      "name": "outbound.pick list stage=tested",
+      "status": "PASS",
+      "detail": "list 6 (x-cache MISS) vs option 6"
+    },
+    {
+      "section": "facets",
+      "name": "outbound.pick stage=packed",
+      "status": "PASS",
+      "detail": "option count 0 vs filtered total 0"
+    },
+    {
+      "section": "facets",
+      "name": "outbound.pick list stage=packed",
+      "status": "PASS",
+      "detail": "list 0 (x-cache MISS) vs option 0"
+    },
+    {
+      "section": "facets",
+      "name": "outbound.pick aging=overdue",
+      "status": "PASS",
+      "detail": "option count 3 vs filtered total 3"
+    },
+    {
+      "section": "facets",
+      "name": "outbound.pick aging=today",
+      "status": "PASS",
+      "detail": "option count 0 vs filtered total 0"
+    },
+    {
+      "section": "facets",
+      "name": "outbound.pick aging=upcoming",
+      "status": "PASS",
+      "detail": "option count 0 vs filtered total 0"
+    },
+    {
+      "section": "facets",
+      "name": "outbound.pick aging=unscheduled",
+      "status": "PASS",
+      "detail": "option count 27 vs filtered total 27"
+    },
+    {
+      "section": "facets",
+      "name": "outbound.pick late=1",
+      "status": "PASS",
+      "detail": "option count 3 vs filtered total 3"
+    },
+    {
+      "section": "facets",
+      "name": "outbound.pick attention=1",
+      "status": "PASS",
+      "detail": "option count 2 vs filtered total 2"
+    },
+    {
+      "section": "facets",
+      "name": "outbound.pick ustatus=BLOCKED",
+      "status": "PASS",
+      "detail": "option count 5 vs filtered total 5"
+    },
+    {
+      "section": "facets",
+      "name": "shape outbound.po",
+      "status": "PASS",
+      "detail": "total=0"
+    },
+    {
+      "section": "facets",
+      "name": "list total == facet total outbound.po",
+      "status": "PASS",
+      "detail": "list 0 (x-cache MISS) vs facet 0"
+    },
+    {
+      "section": "facets",
+      "name": "facet total == desk-counts.po",
+      "status": "PASS",
+      "detail": "desk 0 vs facet 0"
+    },
+    {
+      "section": "facets",
+      "name": "outbound.po aging=overdue",
+      "status": "PASS",
+      "detail": "option count 0 vs filtered total 0"
+    },
+    {
+      "section": "facets",
+      "name": "outbound.po aging=today",
+      "status": "PASS",
+      "detail": "option count 0 vs filtered total 0"
+    },
+    {
+      "section": "facets",
+      "name": "outbound.po aging=upcoming",
+      "status": "PASS",
+      "detail": "option count 0 vs filtered total 0"
+    },
+    {
+      "section": "facets",
+      "name": "outbound.po aging=unscheduled",
+      "status": "PASS",
+      "detail": "option count 0 vs filtered total 0"
+    },
+    {
+      "section": "facets",
+      "name": "outbound.po late=1",
+      "status": "PASS",
+      "detail": "option count 0 vs filtered total 0"
+    },
+    {
+      "section": "facets",
+      "name": "outbound.po attention=1",
+      "status": "PASS",
+      "detail": "option count 0 vs filtered total 0"
+    },
+    {
+      "section": "facets",
+      "name": "shape pickup",
+      "status": "PASS",
+      "detail": "total=243"
+    },
+    {
+      "section": "facets",
+      "name": "list total == facet total pickup",
+      "status": "PASS",
+      "detail": "list 243 (x-cache -) vs facet 243"
+    },
+    {
+      "section": "facets",
+      "name": "pickup status=process",
+      "status": "PASS",
+      "detail": "option count 238 vs filtered total 238"
+    },
+    {
+      "section": "facets",
+      "name": "pickup status=draft",
+      "status": "PASS",
+      "detail": "option count 238 vs filtered total 238"
+    },
+    {
+      "section": "facets",
+      "name": "pickup status=done",
+      "status": "PASS",
+      "detail": "option count 5 vs filtered total 5"
+    },
+    {
+      "section": "facets",
+      "name": "unknown context → 400",
+      "status": "PASS",
+      "detail": "status 400"
+    },
+    {
+      "section": "identify",
+      "name": "fixture fnsku",
+      "status": "INFO",
+      "detail": "none in this tenant — skipped"
+    },
+    {
+      "section": "identify",
+      "name": "exact tracking \"1ZJ22B100324366661\"",
+      "status": "PASS",
+      "detail": "mode=single top=order:19444 via tracking expected order:19444 (1 candidates)"
+    },
+    {
+      "section": "identify",
+      "name": "exact amazon_order \"112-4537975-2438625\"",
+      "status": "PASS",
+      "detail": "mode=single top=order:19456 via order_id expected order:19456 (1 candidates)"
+    },
+    {
+      "section": "identify",
+      "name": "exact ebay_order \"05-15226-74526\"",
+      "status": "PASS",
+      "detail": "mode=single top=order:19462 via order_id expected order:19462 (1 candidates)"
+    },
+    {
+      "section": "identify",
+      "name": "exact numeric_order \"100622\"",
+      "status": "PASS",
+      "detail": "mode=single top=order:19451 via order_id expected order:19451 (1 candidates)"
+    },
+    {
+      "section": "identify",
+      "name": "exact serial \"069234P80398429AE\"",
+      "status": "PASS",
+      "detail": "mode=single top=unit:1684 via serial expected unit:1684 (1 candidates)"
+    },
+    {
+      "section": "identify",
+      "name": "exact sku \"00364-WY\"",
+      "status": "PASS",
+      "detail": "mode=single top=sku:2639 via sku expected sku:2639 (1 candidates)"
+    },
+    {
+      "section": "identify",
+      "name": "exact gtin \"02000000023847\"",
+      "status": "PASS",
+      "detail": "mode=single top=sku:2384 via gtin expected sku:2384 (1 candidates)"
+    },
+    {
+      "section": "identify",
+      "name": "exact po \"08-15215-13868\"",
+      "status": "PASS",
+      "detail": "mode=single top=receiving:53351 via po expected receiving:53351 (1 candidates)"
+    },
+    {
+      "section": "identify",
+      "name": "exact receiving_handle \"R-53351\"",
+      "status": "PASS",
+      "detail": "mode=single top=receiving:53351 via handle expected receiving:53351 (1 candidates)"
+    },
+    {
+      "section": "identify",
+      "name": "exact unit_handle \"U-2807\"",
+      "status": "PASS",
+      "detail": "mode=single top=unit:2807 via handle expected unit:2807 (1 candidates)"
+    },
+    {
+      "section": "identify",
+      "name": "exact digital_link \"https://id.gs1.org/01/02000000000015\"",
+      "status": "PASS",
+      "detail": "mode=single top=sku:1 via digital_link expected sku:1 (1 candidates)"
+    },
+    {
+      "section": "identify",
+      "name": "observe fnsku_unlinked \"X001FE2MBB\"",
+      "status": "INFO",
+      "detail": "245 FNSKUs, none linked to sku_catalog; mode=none 0 candidates",
+      "evidence": {
+        "tokens": [
+          {
+            "text": "X001FE2MBB",
+            "kinds": [
+              "fnsku",
+              "order_number",
+              "marketplace_item",
+              "po",
+              "serial",
+              "sku",
+              "model"
+            ]
+          }
+        ],
+        "candidates": []
+      }
+    },
+    {
+      "section": "identify",
+      "name": "brand \"bose\" → Bose",
+      "status": "PASS",
+      "detail": "brand filter Bose=true; top5 all Bose=true; 8 candidates: sku:2844 Original Bose power cable [Bose] | sku:2834 Bose Link cable [Bose] | sku:2833 Bose PS DCS 91 AV18, 28, 38 [Bose]"
+    },
+    {
+      "section": "identify",
+      "name": "brand \"bsoe\" → Bose",
+      "status": "PASS",
+      "detail": "brand filter Bose=true; top5 all Bose=true; 8 candidates: sku:2844 Original Bose power cable [Bose] | sku:2834 Bose Link cable [Bose] | sku:2833 Bose PS DCS 91 AV18, 28, 38 [Bose]"
+    },
+    {
+      "section": "identify",
+      "name": "free \"guitar hero\"",
+      "status": "INFO",
+      "detail": "mode=list 8 candidates: sku:176 Guitar Hero World Tour Instrum [Guitar Hero] | sku:175 Guitar Hero World Tour Instrum [Guitar Hero] | sku:981 Guitar Hero World Tour Drums [Guitar Hero]",
+      "evidence": {
+        "mode": "list",
+        "filters": {
+          "brands": [
+            {
+              "id": 66,
+              "name": "Guitar Hero",
+              "token": "guitar hero"
+            }
+          ],
+          "conditions": []
+        },
+        "tokens": [
+          {
+            "text": "guitar",
+            "kinds": [
+              "word"
+            ]
+          },
+          {
+            "text": "hero",
+            "kinds": [
+              "word"
+            ]
+          }
+        ],
+        "top": [
+          {
+            "kind": "sku",
+            "entityId": 176,
+            "title": "Guitar Hero World Tour Instrument - Drums Controller",
+            "brand": "Guitar Hero",
+            "root": "Guitar Hero",
+            "matchedOn": {
+              "field": "brand",
+              "token": "guitar hero"
+            }
+          },
+          {
+            "kind": "sku",
+            "entityId": 175,
+            "title": "Guitar Hero World Tour Instrument",
+            "brand": "Guitar Hero",
+            "root": "Guitar Hero",
+            "matchedOn": {
+              "field": "brand",
+              "token": "guitar hero"
+            }
+          },
+          {
+            "kind": "sku",
+            "entityId": 981,
+            "title": "Guitar Hero World Tour Drums",
+            "brand": "Guitar Hero",
+            "root": "Guitar Hero",
+            "matchedOn": {
+              "field": "brand",
+              "token": "guitar hero"
+            }
+          },
+          {
+            "kind": "sku",
+            "entityId": 910,
+            "title": "Guitar Hero 5 Guitar for Nintendo Wii - Guitar Controller",
+            "brand": "Guitar Hero",
+            "root": "Guitar Hero",
+            "matchedOn": {
+              "field": "brand",
+              "token": "guitar hero"
+            }
+          },
+          {
+            "kind": "sku",
+            "entityId": 909,
+            "title": "Guitar Hero 5 Guitar for Nintendo Wii",
+            "brand": "Guitar Hero",
+            "root": "Guitar Hero",
+            "matchedOn": {
+              "field": "brand",
+              "token": "guitar hero"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "section": "identify",
+      "name": "free \"jbl flip\"",
+      "status": "WARN",
+      "detail": "mode=none 0 candidates: none",
+      "evidence": {
+        "mode": "none",
+        "filters": {
+          "brands": [
+            {
+              "id": 48,
+              "name": "JBL",
+              "token": "jbl"
+            }
+          ],
+          "conditions": []
+        },
+        "tokens": [
+          {
+            "text": "jbl",
+            "kinds": [
+              "word"
+            ]
+          },
+          {
+            "text": "flip",
+            "kinds": [
+              "word"
+            ]
+          }
+        ],
+        "top": []
+      }
+    },
+    {
+      "section": "identify",
+      "name": "batch 3 lines",
+      "status": "PASS",
+      "detail": "mode=batch lines=3 per-line ok=true,true,true"
+    },
+    {
+      "section": "identify",
+      "name": "transport POST /api/identify",
+      "status": "FAIL",
+      "detail": "TypeError ← UND_ERR_SOCKET after 249 ms (awaiting response); lane back after 5200 ms",
+      "evidence": {
+        "seq": 551,
+        "at": "2026-09-26T21:00:02.171Z",
+        "method": "POST",
+        "url": "/api/identify",
+        "urlLength": 13,
+        "bodyBytes": 63,
+        "cookieBytes": 71,
+        "elapsedMs": 249,
+        "phase": "awaiting response",
+        "cause": [
+          {
+            "name": "TypeError",
+            "message": "fetch failed"
+          },
+          {
+            "name": "SocketError",
+            "code": "UND_ERR_SOCKET",
+            "message": "other side closed",
+            "socket": {
+              "localPort": 38212,
+              "remotePort": 3050,
+              "bytesWritten": 84820,
+              "bytesRead": 708561
+            }
+          }
+        ],
+        "laneRecovery": {
+          "recovered": true,
+          "waitedMs": 5200,
+          "attempts": 3
+        }
+      }
+    },
+    {
+      "section": "identify",
+      "name": "empty q → 400",
+      "status": "PASS",
+      "detail": "status 400"
+    },
+    {
+      "section": "identify",
+      "name": "latency exact",
+      "status": "WARN",
+      "detail": "p50 428 ms · p95 1111 ms · n=220 · budget p95 <150 ms"
+    },
+    {
+      "section": "identify",
+      "name": "latency free",
+      "status": "WARN",
+      "detail": "p50 551 ms · p95 726 ms · n=80 · budget p95 <400 ms"
+    },
+    {
+      "section": "identify",
+      "name": "latency batch",
+      "status": "INFO",
+      "detail": "p50 457 ms · p95 3284 ms · n=19"
+    },
+    {
+      "section": "brands",
+      "name": "typeahead q=bose → Bose first",
+      "status": "PASS",
+      "detail": "status 200 first=Bose (Bose, Wave, Lifestyle)"
+    },
+    {
+      "section": "brands",
+      "name": "typeahead shape",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "section": "brands",
+      "name": "GET /api/brands/34 shape",
+      "status": "PASS",
+      "detail": "counts {\"skuCount\":1148,\"activeSkuCount\":221,\"openOrderCount\":145,\"onHandUnits\":732}"
+    },
+    {
+      "section": "brands",
+      "name": "typeahead activeSkuCount == detail activeSkuCount",
+      "status": "PASS",
+      "detail": "list 221 vs detail 221"
+    },
+    {
+      "section": "brands",
+      "name": "products status=active paging",
+      "status": "PASS",
+      "detail": "5 pages, 221 unique, 0 repeats vs counts.activeSkuCount=221"
+    },
+    {
+      "section": "brands",
+      "name": "products status=all paging",
+      "status": "PASS",
+      "detail": "23 pages, 1148 unique, 0 repeats vs counts.skuCount=1148"
+    },
+    {
+      "section": "brands",
+      "name": "malformed cursor → 400",
+      "status": "PASS",
+      "detail": "status 400"
+    },
+    {
+      "section": "brands",
+      "name": "unknown brand → 404",
+      "status": "PASS",
+      "detail": "status 404"
+    },
+    {
+      "section": "latency",
+      "name": "context",
+      "status": "INFO",
+      "detail": "p50 376 ms · p95 396 ms · n=20"
+    },
+    {
+      "section": "latency",
+      "name": "context(top)",
+      "status": "INFO",
+      "detail": "p50 365 ms · p95 384 ms · n=20"
+    },
+    {
+      "section": "latency",
+      "name": "recents",
+      "status": "INFO",
+      "detail": "p50 699 ms · p95 745 ms · n=20"
+    },
+    {
+      "section": "latency",
+      "name": "recents(adapter)",
+      "status": "INFO",
+      "detail": "p50 701 ms · p95 980 ms · n=20"
+    },
+    {
+      "section": "latency",
+      "name": "facets",
+      "status": "INFO",
+      "detail": "p50 744 ms · p95 982 ms · n=20"
+    },
+    {
+      "section": "latency",
+      "name": "facets(exceptions)",
+      "status": "INFO",
+      "detail": "p50 719 ms · p95 752 ms · n=20"
+    },
+    {
+      "section": "latency",
+      "name": "identify(free)",
+      "status": "INFO",
+      "detail": "p50 575 ms · p95 629 ms · n=20"
+    },
+    {
+      "section": "latency",
+      "name": "brands",
+      "status": "INFO",
+      "detail": "p50 416 ms · p95 465 ms · n=20"
+    }
+  ]
+}

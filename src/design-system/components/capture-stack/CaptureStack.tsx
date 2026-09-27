@@ -2,11 +2,11 @@
 
 import type { ReactNode } from 'react';
 import { AnimatePresence, LayoutGroup, motion, useReducedMotion } from '@/design-system/motion';
-import { framerPresence, framerTransition } from '@/design-system/foundations/motion-framer';
+import { motionPresence, motionTransition } from '@/design-system/foundations/motion-presets';
 import {
   useMotionPresence,
   useMotionTransition,
-} from '@/design-system/foundations/motion-framer-hooks';
+} from '@/design-system/foundations/motion-presets-hooks';
 
 type FeedId = string | number;
 
@@ -61,9 +61,9 @@ export function CaptureStack<T>({
 }: CaptureStackProps<T>) {
   const reduceMotion = useReducedMotion();
   // Resolved per VARIANT, not per row: hooks cannot be called inside the map.
-  const expandedPresence = useMotionPresence(framerPresence.captureStackRowExpanded);
-  const collapsedPresence = useMotionPresence(framerPresence.captureStackRowCollapsed);
-  const transition = useMotionTransition(framerTransition.captureStackRowMount);
+  const expandedPresence = useMotionPresence(motionPresence.captureStackRowExpanded);
+  const collapsedPresence = useMotionPresence(motionPresence.captureStackRowCollapsed);
+  const transition = useMotionTransition(motionTransition.captureStackRowMount);
 
   if (isLoading && rows.length === 0) {
     return <div className="flex min-h-0 flex-1 flex-col">{loading ?? DefaultLoading}</div>;

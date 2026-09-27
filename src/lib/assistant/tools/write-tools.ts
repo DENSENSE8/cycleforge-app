@@ -39,7 +39,7 @@ export function buildWriteTools(
   > = {
     name: 'propose_mutation',
     description:
-      'Make ONE change to the operation, described as a mutation_kind + payload. The system decides how it lands by trust class: view-layer changes (dismiss/restore a rail item, set a feed item\'s state, record a signal, tune a node surface) apply immediately; workflow DRAFT edits (add/remove/wire/config a node in a draft graph) apply to the draft you can preview and revert; changes to masters (create staff, add a reason code, change a setting) are QUEUED FOR REVIEW — a human applies them. Tell the user which outcome happened using the returned status. ' +
+      'Make ONE change to the operation, described as a mutation_kind + payload. The system decides how it lands by trust class: view-layer changes (dismiss/restore a rail item, set a feed item\'s state, record a signal, tune a node surface) apply immediately; workflow DRAFT edits (add/remove/wire/config a node in a draft graph) apply to the draft you can preview and revert; changes to masters (create staff, add a reason code, change a setting, create or edit a brand, set the brand of a SKU) are QUEUED FOR REVIEW — a human applies them. Tell the user which outcome happened using the returned status. ' +
       `Valid mutation_kind values you may use: ${allowedKinds.join(', ') || '(none — you lack permission for every change kind)'}. ` +
       'workflow_draft.* kinds need { definitionId } in the payload (a DRAFT definition — create/switch to one first via the Studio if none exists).',
     // The FLOOR to see the tool at all.

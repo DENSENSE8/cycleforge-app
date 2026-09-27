@@ -118,7 +118,7 @@ import primitives by deep path there.
 **Next lever for `/signin`** (in order): fix the harness cookie scoping; then
 the remaining 365KB — 68KB react-dom, ~59KB engine still arriving via lazily
 loaded components that pull the top-level `@/design-system` barrel, 32KB of the
-`motion-framer` preset catalog, 29KB server actions.
+`motion-presets` preset catalog, 29KB server actions.
 
 ---
 

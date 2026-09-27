@@ -1,0 +1,31 @@
+-- 2026-09-26_perf_02_drop_sal_jsonb_order_grain_indexes.sql
+--
+-- WHAT
+--   Drop the two jsonb expression indexes from 2026-08-21e:
+--     idx_sal_org_type_order_row_id  (organization_id, activity_type, ((metadata->>'order_row_id')::int))
+--     idx_sal_org_type_order_id      (organization_id, activity_type, (metadata->>'order_id'))
+--
+-- WHY
+--   They served the metadata spelling of the order-grain probe, which
+--   src/lib/orders/order-grain-sql.ts no longer emits: it compares the typed
+--   generated columns from 2026-09-26_perf_01 (idx_sal_org_type_row_id /
+--   idx_sal_org_type_ext_order). They were never usable by app_tenant under RLS
+--   anyway (non-leakproof `->>` / `::int`), so they are pure write amplification
+--   now. No other query in src/ or scripts/ names these expressions.
+--
+-- SAFETY
+--   Apply AFTER the order-grain-sql.ts change is deployed: until then an
+--   owner-role reader of the old SQL still plans with them. DROP INDEX takes a
+--   brief ACCESS EXCLUSIVE lock; no data changes.
+--
+-- VERIFY
+--   SELECT indexrelid::regclass FROM pg_index
+--    WHERE indrelid = 'station_activity_logs'::regclass;   -- neither name listed
+--
+-- ROLLBACK
+--   Re-run the CREATE INDEX statements from
+--   src/lib/migrations/2026-08-21e_station_activity_logs_order_grain_indexes.sql
+--   (as a new migration file; applied files are immutable).
+
+DROP INDEX IF EXISTS idx_sal_org_type_order_row_id;
+DROP INDEX IF EXISTS idx_sal_org_type_order_id;

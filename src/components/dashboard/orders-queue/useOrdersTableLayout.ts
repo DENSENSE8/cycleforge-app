@@ -1,31 +1,29 @@
 'use client';
 
-/** The To-ship (orders) slot-layout hook — the orders CONFIG on the shared {@link useSlotTableLayout} engine (which owns the cascade… */
+/** The To-ship slot-layout hook — the INDEX face's config on the shared {@link useSlotTableLayout} engine (which owns the cascade… */
 
 import {
-  ORDERS_FIELD_CATALOG,
-  ORDERS_PRODUCT_LAYOUT,
-  ORDERS_TABLE_LAYOUT_ID,
+  ORDERS_INDEX_FIELD_CATALOG,
+  ORDERS_INDEX_LAYOUT,
+  ORDERS_INDEX_TABLE_LAYOUT_ID,
 } from '@/lib/tables/field-catalog/orders';
 import {
   useSlotTableLayout,
-  type SlotTableFieldsMenu,
   type SlotTableLayout,
 } from '@/components/tables/useSlotTableLayout';
 
-const ORDERS_ORG_LAYOUT_QUERY_KEY = ['table-layouts', ORDERS_TABLE_LAYOUT_ID] as const;
-
-/** Kept name — the orders mount's Fields-picker bag (structurally shared). */
-type OrdersFieldsMenu = SlotTableFieldsMenu;
-
-type OrdersTableLayout = SlotTableLayout;
-
-export function useOrdersTableLayout(): OrdersTableLayout {
+/**
+ * The desk's order list is the Shopify-style index (owner 2026-09-26): one
+ * line per ORDER, its own `orders-index` document, sheet morph only. The
+ * industrial line ledger is the floor face and reads no slot layout.
+ */
+export function useOrdersTableLayout(): SlotTableLayout {
   return useSlotTableLayout({
-    tableId: ORDERS_TABLE_LAYOUT_ID,
-    catalog: ORDERS_FIELD_CATALOG,
-    productLayout: ORDERS_PRODUCT_LAYOUT,
-    paintMorph: 'compound',
+    tableId: ORDERS_INDEX_TABLE_LAYOUT_ID,
+    catalog: ORDERS_INDEX_FIELD_CATALOG,
+    productLayout: ORDERS_INDEX_LAYOUT,
+    paintMorph: 'sheet',
     identityFallbackLabel: 'Order',
+    bandLabels: { status: 'Columns' },
   });
 }

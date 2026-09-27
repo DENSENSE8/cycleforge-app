@@ -10,7 +10,7 @@ export type SettingScope = 'org' | 'staff';
 export type SettingControl = 'toggle' | 'segmented' | 'select' | 'number' | 'text';
 
 /** Pages a setting can attach to. Extend as the registry grows to new surfaces. */
-export type SettingPage = 'receiving' | 'desk';
+export type SettingPage = 'receiving' | 'desk' | 'nav';
 
 export type SettingValue = string | number | boolean;
 
@@ -52,6 +52,12 @@ export interface SettingDef {
   comingSoon?: boolean;
   /** Collapse under an "Advanced" disclosure in the panel. */
   advanced?: boolean;
+  /**
+   * The key this setting was stored under before a rename. Read (through
+   * `read`, which maps the old shape; `undefined` = nothing usable) only while
+   * the current key holds no value; writes always go to `key`.
+   */
+  legacy?: { key: string; read: (raw: unknown) => unknown };
 }
 
 export type SettingSource = 'staff' | 'org' | 'default' | 'locked';

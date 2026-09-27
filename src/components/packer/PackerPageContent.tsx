@@ -8,11 +8,11 @@ import { Menu } from '@/components/Icons';
 import { IconButton } from '@/design-system/primitives';
 import { QuickAccessButton } from '@/components/layout/QuickAccessButton';
 import { useRealtimeToasts } from '@/hooks/useRealtimeToasts';
-import { framerPresence, framerTransition } from '@/design-system/foundations/motion-framer';
+import { motionPresence, motionTransition } from '@/design-system/foundations/motion-presets';
 import {
   useMotionPresence,
   useMotionTransition,
-} from '@/design-system/foundations/motion-framer-hooks';
+} from '@/design-system/foundations/motion-presets-hooks';
 
 interface PackerPageContentProps {
   packerId: string;
@@ -21,8 +21,8 @@ interface PackerPageContentProps {
 /** Responsive packer tree. */
 export function PackerPageContent({ packerId }: PackerPageContentProps) {
   useRealtimeToasts('packer');
-  const presence = useMotionPresence(framerPresence.routeHistory);
-  const transition = useMotionTransition(framerTransition.routeHistoryMount);
+  const presence = useMotionPresence(motionPresence.routeHistory);
+  const transition = useMotionTransition(motionTransition.routeHistoryMount);
 
   const openDrawer = useCallback(() => {
     window.dispatchEvent(new CustomEvent('open-mobile-drawer'));

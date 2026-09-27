@@ -35,20 +35,31 @@ export function handlingUnitLabelToFace(payload: HandlingUnitLabelPayload): Labe
   };
 }
 
-export function printHandlingUnitLabel(payload: HandlingUnitLabelPayload): void {
-  if (typeof window === 'undefined') return;
+/**
+ * Awaitable print of one handling-unit label — the chat `print_handling_unit_labels`
+ * tool needs the per-label outcome. Same face and print path as
+ * {@link printHandlingUnitLabel}.
+ */
+export async function printHandlingUnitLabelJob(
+  payload: HandlingUnitLabelPayload,
+): Promise<'usb' | 'iframe' | 'skipped'> {
+  if (typeof window === 'undefined') return 'skipped';
   const face = handlingUnitLabelToFace(payload);
+  if (!face.matrix.value) return 'skipped';
   const legacyPopup = reserveLegacyPrintPopup();
   // Deliberately dynamic, not static: printLabel drags the bwip-js barcode
   // engine, which no caller should pay for until it actually prints.
-  void import('@/lib/print/printLabel').then(({ printLabel }) => {
-    printLabel({
-      name: 'Box Label',
-      ...buildFaceInfoHtml(face),
-      dataMatrix: face.matrix,
-      hri: face.hri,
-      face,
-      legacyPopup,
-    });
+  const { printLabelJob } = await import('@/lib/print/printLabel');
+  return printLabelJob({
+    name: 'Box Label',
+    ...buildFaceInfoHtml(face),
+    dataMatrix: face.matrix,
+    hri: face.hri,
+    face,
+    legacyPopup,
   });
+}
+
+export function printHandlingUnitLabel(payload: HandlingUnitLabelPayload): void {
+  void printHandlingUnitLabelJob(payload);
 }

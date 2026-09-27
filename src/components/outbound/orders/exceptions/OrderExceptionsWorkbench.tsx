@@ -13,6 +13,7 @@ import { useToShipChrome } from '@/components/unshipped/useToShipChrome';
 import { exceptionRowToQueueRow } from '@/lib/queries/caged-orders-queries';
 import type { ShippedOrder } from '@/lib/neon/orders-queries';
 import { SHIPPING_EXCEPTIONS_PATH } from '@/lib/shipping/orders-desk';
+import { useDeskSearch } from '@/lib/outbound/desk-search-store';
 import {
   ORDER_EXCEPTION_CATEGORIES,
   sortExceptionQueueRows,
@@ -39,7 +40,9 @@ export function OrderExceptionsWorkbench() {
 
   const selectedParam = Number(searchParams.get('order'));
   const selectedId = Number.isFinite(selectedParam) && selectedParam > 0 ? selectedParam : null;
-  const search = searchParams.get('search') ?? '';
+  // Desk-local, like every Shipping view: the sidebar box writes the in-memory
+  // desk store for this path, never a URL param.
+  const [search, setSearch] = useDeskSearch(SHIPPING_EXCEPTIONS_PATH);
   const rawCategory = searchParams.get('category');
   const category: OrderExceptionCategory | null = ORDER_EXCEPTION_CATEGORIES.includes(
     rawCategory as OrderExceptionCategory,
@@ -53,7 +56,7 @@ export function OrderExceptionsWorkbench() {
     return () => clearTimeout(t);
   }, [search]);
 
-  /** One writer for the two URL bits this surface owns; sort has its own hook. */
+  /** One writer for the URL bits this surface owns; sort has its own hook. */
   const patchParams = useCallback(
     (delta: Record<string, string | null>) => {
       const params = new URLSearchParams(searchParams.toString());
@@ -123,11 +126,11 @@ export function OrderExceptionsWorkbench() {
       ...toShipChrome,
       search: {
         value: search,
-        onChange: (value: string) => patchParams({ search: value || null }),
+        onChange: setSearch,
         placeholder: 'Filter orders…',
       },
     }),
-    [patchParams, search, toShipChrome],
+    [search, setSearch, toShipChrome],
   );
 
   return (

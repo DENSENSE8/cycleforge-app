@@ -7,6 +7,8 @@ import { embedText } from '@/lib/ai/embed';
 import { EMBEDDING_DIMS } from '@/lib/ai/provider';
 import { resolveOrgAiConfig, type OrgAiConfig } from '@/lib/ai/org-provider';
 import { recordAiUsage, type RecordAiUsage } from '@/lib/ai/usage';
+import { sqlSkuBrandSearchText } from '@/lib/brands/lookup';
+import { SKU_BRAND_JOIN_ON_SQL, SKU_CATALOG_JOIN_ON_SQL } from '@/lib/sku/sku-identity-law';
 import {
   buildSearchText,
   isSearchEntityType,
@@ -59,6 +61,20 @@ export interface DrainResult {
 
 // ── Real implementations ────────────────────────────────────────────────────
 
+/**
+ * The FACT brand (id + searchable text) of the catalog row a carrier doc holds
+ * by sku string, matched inside the org — the identity-law key, and the exact
+ * key the migration's carrier fan-out (2026-09-26_brands_4) enqueues on. A
+ * LATERAL body: at most one row (sku_catalog_org_sku_key). Its `sc` is local
+ * to the subquery, so it shadows an outer `sc` rather than colliding.
+ */
+function carriedSkuBrandSql(skuExpr: string, orgExpr: string): string {
+  return `SELECT pb.id AS brand_id, ${sqlSkuBrandSearchText('sc')} AS brand_text
+      FROM sku_catalog sc
+      JOIN product_brands pb ON ${SKU_BRAND_JOIN_ON_SQL}
+     WHERE sc.sku = ${skuExpr} AND sc.organization_id = ${orgExpr}`;
+}
+
 const LOADER_SQL: Record<SearchEntityType, string> = {
   ORDER: `
     SELECT o.id, o.order_id, o.product_title, o.sku, o.account_source,
@@ -78,7 +94,8 @@ const LOADER_SQL: Record<SearchEntityType, string> = {
              FILTER (WHERE stn_link.tracking_number_raw IS NOT NULL
                AND stn_link.id IS DISTINCT FROM o.shipment_id), '') AS linked_trackings,
            COALESCE(MAX(NULLIF(stn.carrier, 'UNKNOWN')), MAX(NULLIF(stn_link.carrier, 'UNKNOWN'))) AS carrier,
-           notes_trail.note_trail
+           notes_trail.note_trail,
+           brand.brand_id, brand.brand_text
     FROM orders o
     LEFT JOIN tech_serial_numbers tsn       ON (
       tsn.organization_id = o.organization_id
@@ -141,9 +158,11 @@ const LOADER_SQL: Record<SearchEntityType, string> = {
         AND oua.organization_id = o.organization_id
         AND COALESCE(oua.state, '') <> 'RELEASED'
     ) alloc ON TRUE
+    LEFT JOIN LATERAL (${carriedSkuBrandSql('o.sku', 'o.organization_id')}) brand ON TRUE
     WHERE o.organization_id = $1 AND o.id = ANY($2::bigint[])
     GROUP BY o.id, c.display_name, c.customer_name, c.email, c.phone, c.mobile,
-             notes_trail.note_trail, alloc.allocated_serials`,
+             notes_trail.note_trail, alloc.allocated_serials,
+             brand.brand_id, brand.brand_text`,
   SERIAL_UNIT: `
     SELECT su.id, su.serial_number, su.unit_uid, su.sku,
            su.current_status::text  AS current_status,
@@ -154,12 +173,14 @@ const LOADER_SQL: Record<SearchEntityType, string> = {
            -- The tote a unit is physically in. Staff hold the H- code off the
            -- label (handling_units.code, 2026-06-08_handling_units_lpn.sql)
            -- and had no way to turn it into the units inside.
-           hu.code AS handling_unit_code
+           hu.code AS handling_unit_code,
+           brand.brand_id, brand.brand_text
     FROM serial_units su
     LEFT JOIN sku_catalog sc ON sc.id = su.sku_catalog_id
     LEFT JOIN items i        ON i.zoho_item_id = su.zoho_item_id
     LEFT JOIN handling_units hu
            ON hu.id = su.handling_unit_id AND hu.organization_id = su.organization_id
+    LEFT JOIN LATERAL (${carriedSkuBrandSql('su.sku', 'su.organization_id')}) brand ON TRUE
     WHERE su.organization_id = $1 AND su.id = ANY($2::bigint[])`,
   // Aggregate the only 1:many join (receiving_line) in a LATERAL so the outer SELECT needs no GROUP BY at all; stn is 1:1 on shipment_id.
   // `receiving` was a security_invoker compat view — and stays because it
@@ -175,11 +196,16 @@ const LOADER_SQL: Record<SearchEntityType, string> = {
            r.qa_status::text       AS qa_status,
            rt.door_received_at AS received_at, r.created_at,
            lines.line_item_names, lines.line_skus,
-           lines.line_count, lines.distinct_sku_count, lines.first_item_name
+           lines.line_count, lines.distinct_sku_count, lines.first_item_name,
+           lines.brand_id, lines.brand_text
     FROM receiving_carton r
     LEFT JOIN shipping_tracking_numbers stn ON stn.id = r.shipment_id
     LEFT JOIN receiving_triage rt
            ON rt.receiving_id = r.id AND rt.organization_id = r.organization_id
+    -- Every line's catalog row (at most one per line: sku_catalog_org_sku_key)
+    -- and its fact brand join inside the same aggregate, so neither can fan
+    -- out the counts. brand_id is the FIRST branded line's (deterministic by
+    -- rl.id); brand_text folds in every line's brand.
     LEFT JOIN LATERAL (
       SELECT COALESCE(STRING_AGG(DISTINCT rl.item_name, ' '), '') AS line_item_names,
              COALESCE(STRING_AGG(DISTINCT rl.sku, ' '), '')       AS line_skus,
@@ -187,25 +213,46 @@ const LOADER_SQL: Record<SearchEntityType, string> = {
              COUNT(DISTINCT COALESCE(NULLIF(TRIM(rl.sku), ''), NULLIF(TRIM(rl.item_name), ''), rl.id::text))::int
                AS distinct_sku_count,
              (ARRAY_AGG(rl.item_name ORDER BY rl.id)
-               FILTER (WHERE NULLIF(TRIM(rl.item_name), '') IS NOT NULL))[1] AS first_item_name
-      FROM receiving_line rl WHERE rl.receiving_id = r.id
+               FILTER (WHERE NULLIF(TRIM(rl.item_name), '') IS NOT NULL))[1] AS first_item_name,
+             (ARRAY_AGG(pb.id ORDER BY rl.id) FILTER (WHERE pb.id IS NOT NULL))[1] AS brand_id,
+             STRING_AGG(DISTINCT ${sqlSkuBrandSearchText('sc')}, ' ')
+               FILTER (WHERE pb.id IS NOT NULL) AS brand_text
+      FROM receiving_line rl
+      LEFT JOIN sku_catalog sc ON ${SKU_CATALOG_JOIN_ON_SQL}
+      LEFT JOIN product_brands pb ON ${SKU_BRAND_JOIN_ON_SQL}
+      WHERE rl.receiving_id = r.id
     ) lines ON TRUE
     WHERE r.organization_id = $1 AND r.id = ANY($2::bigint[])`,
   // Platform crosswalk + BOM folded in as LATERAL aggregates so the outer SELECT stays GROUP-BY-free.
+  // The Zoho twin is the SKU identity law's: the ACTIVE items row with the
+  // same sku in the same org (skuCatalogNoZohoTwinPredicateSql). Its name
+  // governs the title (resolveSkuIdentityTitle in buildSkuDoc) and its
+  // brand / manufacturer is Zoho's brand word. LATERAL + LIMIT 1 because
+  // items carries no (organization_id, sku) unique.
   SKU: `
     SELECT sc.id, sc.sku, sc.product_title, sc.category, sc.upc, sc.ean, sc.gtin, sc.notes,
            sc.lifecycle_status, sc.is_active, sc.created_at, sc.updated_at,
            sc.provider_item_id,
-           i.name AS item_name,
-           i.sku  AS item_sku,
-           i.upc  AS item_upc,
-           i.ean  AS item_ean,
+           zi.name         AS zoho_item_title,
+           zi.zoho_item_id AS zoho_item_id,
+           zi.upc          AS item_upc,
+           zi.ean          AS item_ean,
+           COALESCE(NULLIF(btrim(zi.brand), ''), NULLIF(btrim(zi.manufacturer), '')) AS zoho_item_brand,
+           pb.id AS brand_id,
+           ${sqlSkuBrandSearchText('sc')} AS brand_text,
            plat.platform_skus, plat.platform_item_ids, plat.platform_accounts,
            kit.kit_part_names, kit.kit_document_titles
     FROM sku_catalog sc
-    LEFT JOIN items i
-      ON i.zoho_item_id = sc.provider_item_id
-     AND i.organization_id = sc.organization_id
+    LEFT JOIN LATERAL (
+      SELECT i.name, i.zoho_item_id, i.upc, i.ean, i.brand, i.manufacturer
+      FROM items i
+      WHERE i.sku = sc.sku
+        AND i.organization_id = sc.organization_id
+        AND i.status = 'active'
+      ORDER BY i.zoho_item_id
+      LIMIT 1
+    ) zi ON TRUE
+    LEFT JOIN product_brands pb ON ${SKU_BRAND_JOIN_ON_SQL}
     LEFT JOIN LATERAL (
       SELECT LEFT(COALESCE(STRING_AGG(DISTINCT sp.platform_sku, ' '), ''), 300)     AS platform_skus,
              LEFT(COALESCE(STRING_AGG(DISTINCT sp.platform_item_id, ' '), ''), 300) AS platform_item_ids,
@@ -352,7 +399,7 @@ const defaultDeps: SearchOutboxDeps = {
          (organization_id, entity_type, entity_id, title, subtitle,
           search_text, embedding, embedded_at, embedded_model, status,
           condition_grade, source_platform, tracking_number, carrier,
-          serial_number, happened_at, updated_at)
+          serial_number, happened_at, brand_id, updated_at)
        SELECT $1,
               t.entity_type, t.entity_id, t.title, t.subtitle, t.search_text,
               t.embedding_text::vector(${EMBEDDING_DIMS}),
@@ -360,14 +407,15 @@ const defaultDeps: SearchOutboxDeps = {
               t.embedded_model,
               t.status, t.condition_grade, t.source_platform,
               t.tracking_number, t.carrier, t.serial_number, t.happened_at,
+              t.brand_id,
               now()
        FROM UNNEST(
          $2::text[], $3::bigint[], $4::text[], $5::text[], $6::text[],
          $7::text[], $8::text[], $9::text[], $10::text[], $11::timestamptz[],
-         $12::text[], $13::text[], $14::text[], $15::text[]
+         $12::text[], $13::text[], $14::text[], $15::text[], $16::int[]
        ) AS t(entity_type, entity_id, title, subtitle, search_text,
               embedding_text, status, condition_grade, source_platform, happened_at,
-              embedded_model, tracking_number, carrier, serial_number)
+              embedded_model, tracking_number, carrier, serial_number, brand_id)
        ON CONFLICT (organization_id, entity_type, entity_id)
        DO UPDATE SET
          title           = EXCLUDED.title,
@@ -386,6 +434,7 @@ const defaultDeps: SearchOutboxDeps = {
          carrier         = EXCLUDED.carrier,
          serial_number   = EXCLUDED.serial_number,
          happened_at     = EXCLUDED.happened_at,
+         brand_id        = EXCLUDED.brand_id,
          updated_at      = now()`,
       [
         orgId,
@@ -403,6 +452,7 @@ const defaultDeps: SearchOutboxDeps = {
         docs.map((d) => d.facets.trackingNumber),
         docs.map((d) => d.facets.carrier),
         docs.map((d) => d.facets.serialNumber),
+        docs.map((d) => d.facets.brandId),
       ],
     );
   },

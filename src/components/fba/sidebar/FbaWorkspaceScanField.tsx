@@ -16,7 +16,7 @@ import {
 import { fbaWorkspaceScanChrome } from '@/utils/staff-colors';
 import { useStationTheme } from '@/hooks/useStationTheme';
 import { FBA_SCAN_STATUS, FBA_ACTIVE_SHIPMENTS_REFRESH } from '@/lib/fba/events';
-import { framerTransition } from '@/design-system/foundations/motion-framer';
+import { motionTransition } from '@/design-system/foundations/motion-presets';
 import { Button, TextField } from '@/design-system/primitives';
 import { refreshDomain } from '@/lib/refresh/bus';
 
@@ -63,7 +63,7 @@ export function FbaWorkspaceScanField({
   const reduceMotion = useReducedMotion();
 
   const trackingTransition = useMemo(
-    () => (reduceMotion ? { duration: 0 } : framerTransition.stationSerialRow),
+    () => (reduceMotion ? { duration: 0 } : motionTransition.stationSerialRow),
     [reduceMotion]
   );
   const scanChrome = fbaWorkspaceScanChrome[stationTheme];

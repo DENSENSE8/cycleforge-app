@@ -5,8 +5,8 @@
 import { useEffect, useRef, useState } from 'react';
 import { AnimatePresence, motion } from '@/design-system/motion';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
-import { useMotionTransition } from '@/design-system/foundations/motion-framer-hooks';
-import { motionBezier } from '@/design-system/foundations/motion-framer';
+import { useMotionTransition } from '@/design-system/foundations/motion-presets-hooks';
+import { motionBezier } from '@/design-system/foundations/motion-presets';
 import type { TicketStatus } from '@/lib/master-plan/ticket-status';
 
 const STATUS_TONE: Record<TicketStatus, string> = {

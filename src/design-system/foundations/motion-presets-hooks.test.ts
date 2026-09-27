@@ -1,8 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { reducePresenceShape } from './motion-framer-hooks';
-import { framerPresence } from './motion-framer';
+import { reducePresenceShape } from './motion-presets-hooks';
+import { motionPresence } from './motion-presets';
 
 /** Pins the reduced form of a presence shape — the pure core of `useMotionPresence`. */
 
@@ -18,7 +18,7 @@ const TRANSFORM_KEYS = [
 
 test('height survives the reduction on the sanctioned height presets', () => {
   for (const name of ['collapseHeight', 'sidebarSection'] as const) {
-    const reduced = reducePresenceShape(framerPresence[name]);
+    const reduced = reducePresenceShape(motionPresence[name]);
     for (const phase of ['initial', 'animate', 'exit'] as const) {
       const shape = reduced[phase] as Record<string, unknown> | undefined;
       assert.ok(shape, `${name}.${phase} should still exist`);
@@ -34,7 +34,7 @@ test('height survives the reduction on the sanctioned height presets', () => {
 });
 
 test('no preset silently loses a height key when reduced', () => {
-  for (const [name, presence] of Object.entries(framerPresence)) {
+  for (const [name, presence] of Object.entries(motionPresence)) {
     if (!presence || typeof presence !== 'object' || !('initial' in presence)) continue;
     const reduced = reducePresenceShape(presence as Parameters<typeof reducePresenceShape>[0]);
     for (const phase of ['initial', 'animate', 'exit'] as const) {
@@ -42,7 +42,7 @@ test('no preset silently loses a height key when reduced', () => {
       if (!before || typeof before !== 'object' || !('height' in before)) continue;
       assert.ok(
         'height' in ((reduced as Record<string, unknown>)[phase] as object),
-        `framerPresence.${name}.${phase} lost its height key`,
+        `motionPresence.${name}.${phase} lost its height key`,
       );
     }
   }
@@ -74,10 +74,10 @@ test('a presence shape without an exit does not grow one', () => {
 });
 
 test('reduction does not mutate the shared preset objects', () => {
-  const before = JSON.stringify(framerPresence.collapseHeight);
-  reducePresenceShape(framerPresence.collapseHeight);
+  const before = JSON.stringify(motionPresence.collapseHeight);
+  reducePresenceShape(motionPresence.collapseHeight);
   assert.equal(
-    JSON.stringify(framerPresence.collapseHeight),
+    JSON.stringify(motionPresence.collapseHeight),
     before,
     'presets are module-level singletons shared by every consumer — reduction must be pure',
   );

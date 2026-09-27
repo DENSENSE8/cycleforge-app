@@ -3,6 +3,7 @@
 import { Suspense, type ReactNode } from 'react';
 import { RouteShell } from '@/design-system/components/RouteShell';
 import { ModeRegion } from '@/design-system/providers/ModeRegion';
+import { useDeskFloorActive } from '@/design-system/components/DeskStageContext';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import { RightPaneOverlayHost } from '@/components/ui/RightPaneOverlay';
 import { SurfaceGate } from '@/components/surfaces/SurfaceGate';
@@ -33,11 +34,17 @@ function ShippingFrame({ children }: { children: ReactNode }) {
   // entry, or the `?mode=` a legacy redirect carried in.
   useSurfaceParamHygiene();
 
+  // Floor (⌘/Ctrl+Shift+F on To ship) is the one industrial desktop view
+  // (BRIEF §12 Mode D): the PAGE region flips, so the ledger and whatever it
+  // portals (note editor, dialogs that re-declare triage) stay one level deep.
+  const floor = useDeskFloorActive();
+
   return (
     <SurfaceGate surfaceKey="outbound">
       {/* Triage on desktop (BRIEF §12): the To-ship desk, FBA and the scan-out station
-          all live under this frame. */}
-      <ModeRegion mode="triage" className="hidden h-full w-full overflow-hidden bg-surface-card md:flex">
+          all live under this frame. Rendered at every width (owner 2026-09-27,
+          mobile first): a `hidden md:flex` gate here blanked the page under 768px. */}
+      <ModeRegion mode={floor ? 'industrial' : 'triage'} className="flex h-full w-full overflow-hidden bg-surface-card">
         <RouteShell
           actions={null}
           history={(

@@ -116,8 +116,39 @@ work through the paired ChatGPT/Hermes agent can use strict JSON chat via
 
 Consumers:
 
-- `POST /api/ai/chat` + `/api/ai/chat/stream` — the assistant (rate-limited via
-  `AI_CHAT_RATE_LIMIT`, default 25/min).
+- `POST /api/assistant/chat` — the ONE assistant (UI: `/ai-chat`, sidebar "Chat").
+  OpenAI-wire tool loop over the org chat chain resolved `localAgent` +
+  `platformFirst`: the `AI_CHAT_*` platform leaf (Cloudflare AI Gateway;
+  `CF_AIG_TOKEN` rides as `cf-aig-authorization`) first, tenant providers
+  behind it — unless the env-selected local agent model (`local_mlx`, see
+  below) is switched on: `CYCLEFORGE_LOCAL_MLX=1` puts it at the head,
+  `=fallback` directly behind the platform leaf. The first REACHABLE candidate
+  answers and `meta.provider` names it. In-turn failover: if that endpoint
+  fails before the operator saw anything (Workers AI free-quota 429, 5xx, a
+  refused model id, network), it is demoted for 60 s and the turn replays on the
+  next reachable candidate; a second `meta` names it and the log line is
+  `ask-failover from=… to=…`.
+  Rate-limited via `ASSISTANT_CHAT_RATE_LIMIT` (default 25/min).
+  Location questions ("where is SKU/FNSKU/UPC …", "what's in bin …") run
+  `locate_product` / `list_location_contents` (`src/lib/assistant/tools/wms-tools.ts`);
+  those, `get_packing_kpi` and `list_support_followups` return a server-carried
+  table (`brandReportEnvelope`) that the loop emits as `ui_tool render_artifact`
+  with `producedBy`, so the right panel opens on the rows Postgres returned
+  without the model calling `render_artifact`. Panel honesty: an answer that
+  points at the panel in a turn that painted nothing gets a one-line correction
+  appended (`src/lib/assistant/panel-honesty.ts`).
+  SSE: `meta → step / delta / reasoning / tool / step_end / ui_tool* → done`.
+  `delta` is ANSWER text only: each round's raw text passes one filter
+  (`src/lib/ai/visible-text.ts`) that routes `<think>`, Harmony `analysis` and
+  `reasoning_content` to `reasoning`, and scrubs tool calls the model writes
+  as text (`[name(args)]`, `<tool_call>`, `<|python_tag|>`, bare JSON) before
+  they reach the chat. `step_end {toolRound:true}` moves that round's text
+  into a `note` step. One reducer (`src/lib/assistant/turn-trace.ts`) folds
+  the frames in the browser (the collapsed "Thought for Ns · …" row,
+  `ThinkingDisclosure`) and in the route, which persists the trace on the
+  assistant row as `ai_chat_messages.analysis = {kind:'turn_trace', …}`.
+- `POST /api/ai/transcribe` — chat mic dictation; `GET /api/home-board` — the
+  chat surface's ledger/telemetry read.
 - `POST /api/ai/search` — RAG over product manuals (`queryNemoClawRag`).
 - `GET /api/ai/health` / `/api/ai/chat-health` — `/models` probe.
 - `POST /api/sourcing/research` — runs the sourcing scour, then asks Hermes to
@@ -135,10 +166,54 @@ Embeddings are the one cloud dependency — Gemini `text-embedding-004` via
 | `HERMES_API_KEY` | Optional bearer for the gateway. |
 | `HERMES_MODEL` / `AI_MODEL` | Default model. Chat defaults to `hermes-agent`; forced tool calls default to `gemma-4-e4b` unless env overrides. |
 | `CLOUDFLARE_ACCESS_CLIENT_ID` / `CLOUDFLARE_ACCESS_CLIENT_SECRET` | Optional Cloudflare Access service-token headers for a protected tunnel. |
+| `AI_CHAT_BASE_URL` / `AI_CHAT_MODEL` / `AI_CHAT_API_KEY` | Platform chat leaf — the assistant's first rung (`platformFirst`). Prod lane: Cloudflare AI Gateway `/compat`; empty key = the gateway's stored BYOK key. |
+| `CF_AIG_TOKEN` | Cloudflare AI Gateway auth, sent as `cf-aig-authorization: Bearer …` on the chat leaf (`provider.ts`). |
 | `AI_CHAT_RATE_LIMIT` / `AI_SEARCH_RATE_LIMIT` | Per-minute caps (25 / 40). |
 | `OLLAMA_BASE_URL` / `OLLAMA_TUNNEL_URL` / `OLLAMA_MODEL` | Vault `OllamaCredentials` shape (catalog representation of the local-LLM connection). |
+| `CYCLEFORGE_LOCAL_MLX` / `LOCAL_MLX_BASE_URL` / `LOCAL_MLX_MODEL` | Local agent slot for the assistant chat chain only (`resolveLocalAgentConfig`, `provider.ts`): `1`/`first` = head of the chain, `fallback` = right behind the `AI_CHAT_*` leaf (catches gateway quota/outages), anything else = off. Model defaults to `default_model` (keeps the MLX LoRA). |
 | `GEMINI_API_KEY` | Embeddings fallback. |
 
 > Reconcile-if-touched: the catalog calls this `ollama` while the live code calls Hermes.
 > If you rename, update the provider enum, the registry entry, `OllamaCredentials`, and
 > the catalog card together.
+
+## Local agent model (Prometheus MLX) — free testing of `/api/assistant/chat`
+
+The tool-calling fine-tune on Prometheus (`gpt-oss-20b-MXFP4-Q8` + LoRA
+`~/CycleForgeAI/adapters/cycleforge-gpt-oss-v1-promoted`, unfused) serves the
+assistant loop in dev at zero cost. It answers in Harmony channels through
+`mlx_lm.server`; the loop salvages its `to=functions.*` calls
+(`src/lib/ai/harmony.ts`) and routes `analysis` to the thinking history.
+
+```text
+:3050 route ──► 127.0.0.1:18088 (cf-mlx-tunnel, ssh -L) ──► prometheus 127.0.0.1:8080 (mlx_lm.server)
+```
+
+Start (both sides loopback-only):
+
+```bash
+# 1. Model server on Prometheus (refuses to start if :8080 is taken; pid in ~/CycleForgeAI/logs/mlx-promoted-server.pid)
+ssh prometheus 'cd ~/CycleForgeAI && nohup scripts/serve_promoted.sh >/dev/null 2>&1 </dev/null &'
+# 2. Supervised tunnel on the workstation (systemd restarts it every 5s if it drops)
+systemd-run --user --unit=cf-mlx-tunnel -p Restart=always -p RestartSec=5 \
+  /usr/bin/ssh -N -o ExitOnForwardFailure=yes -o ServerAliveInterval=30 -o ServerAliveCountMax=3 -o BatchMode=yes \
+  -L 127.0.0.1:18088:127.0.0.1:8080 prometheus
+# 3. Worktree .env (1 = local answers first; fallback = gateway first, local catches its failures)
+CYCLEFORGE_LOCAL_MLX=1
+LOCAL_MLX_BASE_URL=http://127.0.0.1:18088/v1
+LOCAL_MLX_MODEL=default_model
+```
+
+Check: `curl -s 127.0.0.1:18088/v1/models`; the first SSE `meta` with a real
+provider reads `local_mlx`, and `journalctl --user -u cycleforge-lane@prod | grep ask-timing`
+shows `provider=local_mlx model=default_model`.
+
+Stop: `systemctl --user stop cf-mlx-tunnel` and
+`ssh prometheus 'kill $(cat ~/CycleForgeAI/logs/mlx-promoted-server.pid)'`; set
+`CYCLEFORGE_LOCAL_MLX=0` to send the assistant back to `AI_CHAT_*` alone. With
+the switch on but the tunnel down, the reachability probe skips the slot and the
+gateway answers (the `meta` frame says so).
+
+Never fuse the adapter, never bind the server beyond loopback, and keep the
+model id `default_model` (any other id loads base weights without the LoRA).
+

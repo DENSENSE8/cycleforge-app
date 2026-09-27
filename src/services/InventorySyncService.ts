@@ -38,6 +38,8 @@ function mapZohoItemToLocal(item: ZohoItem) {
     description: item.description ?? null,
     itemType: item.item_type ?? null,
     productType: item.product_type ?? null,
+    brand: (item.brand && String(item.brand).trim()) || null,
+    manufacturer: (item.manufacturer && String(item.manufacturer).trim()) || null,
     status: String(item.status || 'active').toLowerCase(),
     rate: toDecimal(item.rate),
     purchaseRate: toDecimal(item.purchase_rate),

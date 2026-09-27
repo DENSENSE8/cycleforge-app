@@ -10,7 +10,7 @@
 
 The "gold standard algorithm" you're describing — *scan, crossfade, display, with per-mode sidebar filters and a per-mode right-pane* — **already exists twice** in this codebase, and the refactor is to make the two converge:
 
-1. **The reference implementation:** the Receiving pipeline. A genuinely well-decomposed page (≈30 focused hooks + a `ReceivingRightPane` that crossfades table ⇄ scan-loader ⇄ workspace via `framer-motion`), but it is hard-wired to receiving's domain.
+1. **The reference implementation:** the Receiving pipeline. A genuinely well-decomposed page (≈30 focused hooks + a `ReceivingRightPane` that crossfades table ⇄ scan-loader ⇄ workspace via Motion (`motion/react`)), but it is hard-wired to receiving's domain.
 2. **The abstraction, already drafted:** `src/lib/stations` — a "blocks = code, composition = data" station-builder contract whose `SlotId = 'trigger' | 'queue' | 'workspace' | 'advance' | 'header'` is *exactly* the scan→crossfade→display anatomy, with data-source/action registries that wrap existing routes. It has an Incoming pilot and a `BlockConfigSheet`, but the real station pages don't run on it yet.
 
 **The refactor = extract a runtime "Station Chassis" out of the receiving pipeline, express it in the station-builder contract, and re-host every station as a configuration over that chassis.** Per-staff theming/rails then becomes a `staff_preferences` + station-override layer, not a new fork per person.
@@ -28,7 +28,7 @@ The receiving page at `src/app/receiving/page.tsx` is `Sidebar (modes + scan + r
 | **Mode switch** | `ReceivingModeSwitcher` (incoming/triage/receive/pickup/history) | `HorizontalButtonSlider` + `?mode=` URL | ✅ already generic |
 | **Trigger (scan)** | `ReceivingUnboxScanBar` / `TriageScanBand` → `useTrackingScan` | `StationScanBar` base + `scan-hotkey` store | ⚠️ base shared, orchestration domain-specific |
 | **Queue (rails/filters)** | `ReceivingRailBody`, `UnboxViewToggle`, `ReceivingRecent/Scanned/ViewedRail` | `SidebarRailShell`, `rail-edit-mode`, `StatusLegend` | ✅ rail skeleton already generic |
-| **Crossfade** | `ReceivingRightPane` (table ⇄ `ReceivingScanLoader` ⇄ workspace, `AnimatePresence`) | `framerPresence`/`framerTransition` in `motion-framer.ts`; **no named crossfade host** | ⚠️ pattern exists, not extracted |
+| **Crossfade** | `ReceivingRightPane` (table ⇄ `ReceivingScanLoader` ⇄ workspace, `AnimatePresence`) | `motionPresence`/`motionTransition` in `motion-presets.ts`; **no named crossfade host** | ⚠️ pattern exists, not extracted |
 | **Workspace (display)** | `ReceivingLineWorkspace` → `ReceivingProgressStepper` + `LineEditPanel` | accordion + stepper are receiving-specific | ⚠️ shell generic, body domain |
 | **Advance (commit)** | `LineReceiveActionBar` / `useReceiveAction` | sticky action bar pattern | ⚠️ per-domain action |
 | **Row display** | `ReceivingLineOrderRow` → `RowTitle`/`RowMetaColumns`/`ReceivingIdentityChips` | `RowMetaColumns`, `ChipColumns`, `CopyChip`+`CHIP_TONES` | ✅ already shared primitives |
@@ -75,7 +75,7 @@ Stations found: **Receiving** (gold), **Tech/Testing**, **Packer**, **FBA** (Kan
 
 **Display primitives:** `RowMetaColumns`/`RowTitle` (`META_COL` fixed virtual columns), `ChipColumns` (`CHIP_COL`), `CopyChip` + `CHIP_TONES` + `useCopyChip`/`useChipTooltip`, `StatusLegend` (dot-legend doubling as count filter), `EventTimeline` (+ `src/lib/timeline` adapters), `DateTimeValue`, status models `unshipped-state.ts`/`outbound-state.ts`, registries `conditions.ts`/`source-platform.ts`, `z-index.ts` token scale.
 
-**Animation:** `src/design-system/foundations/motion-framer.ts` centralizes `motionBezier`, `framerDuration`, `framerTransition`, `framerPresence`, `framerGesture` (incl. `tabPager` x-slide+opacity crossfade, `workOrderBodyCrossfade`). There is **no named "crossfade host" component** — that's the gap.
+**Animation:** `src/design-system/foundations/motion-presets.ts` centralizes `motionBezier`, `motionDuration`, `motionTransition`, `motionPresence`, `motionGesture` (incl. `tabPager` x-slide+opacity crossfade, `workOrderBodyCrossfade`). There is **no named "crossfade host" component** — that's the gap.
 
 **Studio:** `/studio` + `StudioWorkspaceContext` (semantic zoom L0–L3, 5 lenses, diagnostics gate) is the *authoring/observe* surface for `station_definitions`. The chassis refactor is its runtime counterpart — Studio designs the config, the chassis renders it.
 
@@ -113,7 +113,7 @@ Promote receiving's `CustomEvent` seam into a typed `StationEventBus` (or a smal
 Extract `ReceivingRightPane`'s logic into a domain-agnostic `CrossfadeHost`:
 - Always-mounted **base layer** (table/board), `visibility` toggled by mode.
 - **Loader layer** with the 300 ms grace delay + 500 ms linger (so fast/local scans never flash a skeleton) — driven by `scan:in-flight`/`scan:resolved`.
-- **Workspace layer** via `AnimatePresence` + `framerPresence` (fade+rise, reduced-motion aware).
+- **Workspace layer** via `AnimatePresence` + `motionPresence` (fade+rise, reduced-motion aware).
 - **Detail slide-over** layer.
 - Z-ordering from `z-index.ts`.
 
@@ -202,7 +202,7 @@ This mirrors the **already-working precedent**: mobile bottom-nav resolves role 
 - **Keep `'legacy'` escape hatch real.** Migrate station-by-station behind it; never a big-bang cutover. Receiving stays last (it's the parity oracle).
 - **Per-staff variation is config, never code.** If a personalization needs a new component, it belongs as a *block* in the registry, selectable by config — not a per-person branch.
 - **Preserve the event seam.** The loose coupling between scan/queue/crossfade/workspace is *why* receiving is maintainable; the chassis must keep that boundary, not collapse it into one mega-component.
-- **Respect existing SoTs:** `source-platform.ts`, `conditions.ts`, `CHIP_TONES`, `z-index.ts`, `motion-framer.ts`, `SIDEBAR_GUTTER`. The refactor *consumes* these; it must not spawn parallel copies.
+- **Respect existing SoTs:** `source-platform.ts`, `conditions.ts`, `CHIP_TONES`, `z-index.ts`, `motion-presets.ts`, `SIDEBAR_GUTTER`. The refactor *consumes* these; it must not spawn parallel copies.
 
 ---
 
@@ -222,7 +222,7 @@ This mirrors the **already-working precedent**: mobile bottom-nav resolves role 
 - Sidebar system: `src/components/sidebar/SidebarShell.tsx`, `SidebarContextPanel.tsx`, `SidebarRailShell.tsx`, `rail-edit-mode.tsx`, `ui/HorizontalButtonSlider.tsx`, `layout/header-shell.ts`.
 - Scan: `src/lib/scan-hotkey/store.ts`, `useScanHotkey.ts`, `components/scan/ScanHotkeyControl.tsx`, `components/station/StationScanBar.tsx`.
 - Display primitives: `ui/RowMetaColumns.tsx`, `ui/ChipColumns.tsx`, `ui/CopyChip.tsx`, `ui/StatusLegend.tsx`, `ui/EventTimeline.tsx`, `design-system/components/DateTimeValue.tsx`.
-- Status/registry SoT: `lib/unshipped-state.ts`, `lib/outbound-state.ts`, `lib/conditions.ts`, `lib/source-platform.ts`, `design-system/tokens/z-index.ts`, `design-system/foundations/motion-framer.ts`.
+- Status/registry SoT: `lib/unshipped-state.ts`, `lib/outbound-state.ts`, `lib/conditions.ts`, `lib/source-platform.ts`, `design-system/tokens/z-index.ts`, `design-system/foundations/motion-presets.ts`.
 - Preferences/identity: `lib/migrations/2026-06-21_staff_preferences.sql`, `api/staff-preferences/route.ts`, `lib/schemas/staff-preferences.ts`, `contexts/AuthContext.tsx` (`resolveMobileDisplayConfig`), `lib/auth/permission-registry.ts`, `role-store.ts`.
 - Duplication hotspots: `components/station/TechRecordRow.tsx` vs `PackerRecordRow.tsx`; forked scan bars (`TestingScanBar`, `FbaWorkspaceScanField`, `outbound/scan-out/ScanOutStationBar`).
 - Related prior plans: `docs/operations-studio/station-builder-ui-plan.md`, `docs/operations-studio/operations-studio-plan.md`; the earlier receiving workspace mode-primitives work shipped and its plan was deleted.

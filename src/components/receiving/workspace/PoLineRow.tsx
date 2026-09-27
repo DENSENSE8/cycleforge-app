@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { AnimatePresence, motion, motionRole } from '@/design-system/motion';
-import { useMotionTransition } from '@/design-system/foundations/motion-framer-hooks';
+import { useMotionTransition } from '@/design-system/foundations/motion-presets-hooks';
 import { ItemRecordRow, type ItemRecord } from '@/design-system/components/item-record';
 import {
   PoLineTitleMenu,

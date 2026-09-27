@@ -2,7 +2,7 @@
 
 /** Outbound orders desk body — Pending · Tested · Packed · Shipped. */
 
-import { Suspense, useCallback, useEffect, useMemo } from 'react';
+import { Suspense, useCallback, useEffect, useMemo, useState } from 'react';
 import dynamic from 'next/dynamic';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useQueryClient, type QueryClient } from '@tanstack/react-query';
@@ -19,11 +19,7 @@ import { useSupportOrderOpenParam } from '@/hooks/useSupportOrderOpenParam';
 import { DashboardOrdersView } from '@/components/dashboard/DashboardOrdersView';
 import { OrdersViewChromeProvider } from '@/components/outbound/orders/orders-view-chrome-context';
 import { OrderIntakeOverlay } from '@/components/outbound/orders/intake/OrderIntakeOverlay';
-import {
-  OrdersDeskAddAction,
-  type OrderIntakeMethod,
-} from '@/components/outbound/orders/OrdersDeskAddAction';
-import { OrdersDeskPastImportsAction } from '@/components/outbound/orders/OrdersDeskPastImportsAction';
+import { ToShipPlatformSyncDialog } from '@/components/outbound/orders/ToShipPlatformSyncDialog';
 import { OrderPasteIntake } from '@/components/outbound/orders/OrderPasteIntake';
 import { useTableImportParam } from '@/hooks/useTableImportParam';
 import { useTableImportFilePicker } from '@/components/tables/import/TableImportFileButton';
@@ -33,7 +29,6 @@ import {
   OrdersSyncRunProvider,
   type OrdersSyncRunSurface,
 } from '@/features/orders/sync/orders-sync-run-context';
-import { syncRunProgress, syncRunRowsSeen } from '@/lib/orders-sync/run-steps';
 import { useAuth } from '@/contexts/AuthContext';
 import { ORDER_IMPORT_DESCRIPTOR } from '@/lib/orders/order-import-descriptor';
 import { PAPERWORK_PARAM, parsePaperworkOrderId } from '@/lib/orders/print-packet';
@@ -55,6 +50,10 @@ import {
   insertUnshippedOrderIntoCache,
   invalidateUnshippedCounts,
 } from '@/lib/queries/dashboard-cache-patch';
+import { useNavIntent } from '@/lib/nav/use-nav-intent';
+
+/** What a sidebar intake verb runs on the desk (`orders-intake:*`). */
+type OrderIntakeMethod = 'file' | 'sync' | 'demo' | 'test';
 
 // Support › Inquiries only.
 const SupportOrdersFocusHost = dynamic(
@@ -84,13 +83,8 @@ function OutboundOrdersDeskContent({
     ingestLeaf,
     triageOrderId,
     closeIntakeForm,
-    openTriage,
     bindTriageOrder,
   } = useDashboardSearchController();
-
-  // Stable identity so `OrdersDeskAddAction` does not re-register its node on
-  // every desk render (the registrar keys on the node it is handed).
-  const openTriageForNewOrder = useCallback(() => openTriage(null), [openTriage]);
 
   // CSV staging takes over the desk; intake steps aside while it runs — the
   // same courtesy the ingest rail has always paid (`ingestEnabled`), now
@@ -98,8 +92,8 @@ function OutboundOrdersDeskContent({
   const { active: importActive } = useTableImportParam(ORDER_IMPORT_DESCRIPTOR);
 
   /**
-   * Ingest, run straight from the desk CTA.
-   * The Add-orders RAIL is gone (operator, 2026-08-31): every method it listed
+   * Ingest, run straight from the sidebar's To-ship verbs (`orders-intake:*`).
+   * The Add-orders RAIL is gone (operator, 2026-08-31).
    */
   const csv = useTableImportFilePicker(ORDER_IMPORT_DESCRIPTOR);
   const sync = useOrdersSync();
@@ -157,6 +151,25 @@ function OutboundOrdersDeskContent({
     [csv, demo, queryClient, sync],
   );
 
+  // The sidebar's To-ship verbs (TO_SHIP_ACTIONS, `src/lib/nav/context/pages.ts`).
+  // Support › Inquiries aliases this desk as a ticket surface, not the intake,
+  // so it owns none of them. `orders:past-imports` is not registered: the
+  // import-records view it opened no longer exists, so the sidebar paints it
+  // disabled.
+  const [platformSyncOpen, setPlatformSyncOpen] = useState(false);
+  const intake = !isSupportContext;
+  const canUploadCsv = intake && canImportOrders && csv.live;
+  // A run already in flight withholds Sync (the old CTA's loading face); the
+  // table's run surface reports its progress.
+  useNavIntent(
+    'orders-intake:sync',
+    intake && !sync.isTransferring ? () => void openIntakeMethod('sync') : null,
+  );
+  useNavIntent('orders-intake:platforms', intake ? () => setPlatformSyncOpen(true) : null);
+  useNavIntent('orders-intake:demo', intake ? () => void openIntakeMethod('demo') : null);
+  useNavIntent('orders-intake:test', intake ? () => void openIntakeMethod('test') : null);
+  useNavIntent('orders-intake:file', canUploadCsv ? () => void openIntakeMethod('file') : null);
+
   /** ONE run surface for the table to yield to. */
   const runSurface = useMemo<OrdersSyncRunSurface>(
     () =>
@@ -199,19 +212,7 @@ function OutboundOrdersDeskContent({
     ],
   );
 
-  /**
-   * The CTA face is the first place the operator looks after pressing, so it
-   * carries the ledger position rather than an indefinite "Syncing…".
-   */
-  const syncProgressLabel = useMemo(() => {
-    if (!sync.run || !sync.isTransferring) return null;
-    const progress = syncRunProgress(sync.run);
-    const rows = syncRunRowsSeen(sync.run);
-    const position = `${progress.completed}/${progress.total}`;
-    return rows > 0 ? `Syncing ${position} · ${rows} rows` : `Syncing ${position}`;
-  }, [sync.run, sync.isTransferring]);
-
-  const { selectionEnabled, selectMode, selectionOverlays } =
+  const { selectionEnabled, selectionOverlays } =
     useOrderRailSelection(orderView);
 
   // Keeps `?openOrderId=` and the open record in step (deep links, back/forward);
@@ -255,7 +256,6 @@ function OutboundOrdersDeskContent({
       <DashboardOrdersView
         orderView={orderView}
         onSelectView={setOrderView}
-        selectMode={selectMode}
         selectionEnabled={selectionEnabled}
         selectionOverlays={selectionOverlays}
         onPrimaryPainted={onPrimaryPainted}
@@ -277,27 +277,12 @@ function OutboundOrdersDeskContent({
           ) : null
         }
       />
-      {/*
-        The desk has no left column (its search · views live in the master nav);
-        desk owns Add / ingest / ?new=true so Band-1 Add always has a host.
-      */}
-      {/*
-        Support › Inquiries aliases this desk; it is a ticket surface, not the
-        intake, so it gets neither the Add CTA nor the ingest rail.
-      */}
       {!isSupportContext ? (
         <>
-          <OrdersDeskAddAction
-            onAdd={openTriageForNewOrder}
-            onMethod={openIntakeMethod}
-            canImport={canImportOrders && csv.live}
-            syncing={sync.isTransferring}
-            syncProgressLabel={syncProgressLabel}
-          />
-          <OrdersDeskPastImportsAction />
-          {/* The picker's hidden <input>; `csv.open()` above clicks it. */}
+          <ToShipPlatformSyncDialog open={platformSyncOpen} onOpenChange={setPlatformSyncOpen} />
+          {/* The picker's hidden <input>; `csv.open()` (orders-intake:file) clicks it. */}
           {csv.input}
-          {canImportOrders && csv.live ? <OrderPasteIntake /> : null}
+          {canUploadCsv ? <OrderPasteIntake /> : null}
         </>
       ) : null}
     </OrdersViewChromeProvider>

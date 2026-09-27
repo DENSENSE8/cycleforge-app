@@ -3,12 +3,22 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import type { ShippedOrder } from '@/types/orders';
-import { ORDERS_FIELD_CATALOG, ORDERS_PRODUCT_LAYOUT, omitShippedOnlyBindings } from './orders';
 import {
+  ORDERS_FIELD_CATALOG,
+  ORDERS_INDEX_FIELD_CATALOG,
+  ORDERS_INDEX_LAYOUT,
+  ORDERS_PRODUCT_LAYOUT,
+  omitShippedOnlyBindings,
+} from './orders';
+import {
+  ordersIndexValues,
   ordersSlotValues,
   ordersSubtitleParts,
+  resolveOrdersIndexValue,
   resolveOrdersSlotValue,
 } from './orders-resolve';
+import { resolveEffectiveLayout } from '../resolve-effective-layout';
+import { ordersIndexColumnsFor } from '@/lib/dashboard-order-row-layout';
 import { parseSlotLayout } from '../slot-layout';
 
 function row(overrides: Record<string, unknown> = {}): ShippedOrder {
@@ -336,5 +346,97 @@ describe('ordersSubtitleParts', () => {
       toneClass: 'text-text-faint',
       key: 'orders.condition',
     });
+  });
+});
+
+describe('orders INDEX face — one row per order', () => {
+  const ctx = { todayKey: '2026-09-26' };
+
+  it('the product default parses against the index catalog and survives the cascade untouched', () => {
+    const parsed = parseSlotLayout(ORDERS_INDEX_LAYOUT, ORDERS_INDEX_FIELD_CATALOG);
+    assert.equal(parsed.morph, 'sheet');
+    // No line-qty / line-money pin may inject Qty or Amount columns into the order list.
+    const effective = resolveEffectiveLayout({
+      productDefault: ORDERS_INDEX_LAYOUT,
+      catalog: ORDERS_INDEX_FIELD_CATALOG,
+    });
+    assert.deepEqual(effective.statusBindings, ORDERS_INDEX_LAYOUT.statusBindings);
+    assert.deepEqual(effective.subtitleBindings, []);
+  });
+
+  it('Order is the first column after the select gutter; Bin · Pick · Pack are offered but unbound', () => {
+    const columns = ordersIndexColumnsFor(ORDERS_INDEX_LAYOUT);
+    assert.deepEqual(
+      columns.map((c) => (c.key === 'select' || c.key === '_fill' ? c.key : c.label)),
+      ['select', 'Order', 'Date', 'Customer', 'Channel', 'Total', 'Fulfillment', 'Fulfill by', 'Items', 'Delivery', 'Tags', '_fill'],
+    );
+    const bound = new Set(ORDERS_INDEX_LAYOUT.statusBindings.map((b) => b.fieldId));
+    for (const id of ['orders.bin', 'orders.picked', 'orders.packed']) {
+      assert.ok(ORDERS_INDEX_FIELD_CATALOG.some((f) => f.id === id), `${id} not offered`);
+      assert.ok(!bound.has(id), `${id} bound by default`);
+    }
+  });
+
+  it('Total and Items are ORDER sums; a line with no sale falls back to its price as an estimate', () => {
+    const lines = [
+      row({ id: 1, sale_amount: '19.50', quantity: '2' }),
+      row({ id: 2, sale_amount: null, price_cents: 1050, price_is_estimate: true, quantity: null }),
+    ];
+    assert.deepEqual(resolveOrdersIndexValue(lines, 'orders.total', ctx), {
+      kind: 'money',
+      text: '$30.00',
+      estimate: true,
+    });
+    const items = resolveOrdersIndexValue(lines, 'orders.items', ctx);
+    if (items?.kind !== 'items') return assert.fail('expected items');
+    assert.equal(items.face, '3 items');
+    assert.deepEqual(items.lines, ['2 × Bose Wave Radio', '1 × Bose Wave Radio']);
+    assert.deepEqual(resolveOrdersIndexValue([row({ sale_amount: null })], 'orders.total', ctx), {
+      kind: 'money',
+      text: null,
+      estimate: false,
+    });
+  });
+
+  it('Fulfill by is the EARLIEST deadline across the lines', () => {
+    const value = resolveOrdersIndexValue(
+      [row({ id: 1, deadline_at: '2026-09-30T20:00:00Z' }), row({ id: 2, ship_by_date: '2026-09-20T20:00:00Z' })],
+      'orders.fulfill_by',
+      ctx,
+    );
+    if (value?.kind !== 'deadline') return assert.fail('expected deadline');
+    assert.equal(value.delay.dateKey, '2026-09-20');
+  });
+
+  it('Tags: urgent first, the row flag (never Hold — the badge says it), then sentence-case condition', () => {
+    const value = resolveOrdersIndexValue(
+      [
+        row({ id: 1, is_urgent: true, condition: 'USED', row_flag: { flag: 'priority', by: null, at: null } }),
+        row({ id: 2, condition: 'USED' }),
+      ],
+      'orders.tags',
+      ctx,
+    );
+    if (value?.kind !== 'tags') return assert.fail('expected tags');
+    assert.deepEqual(
+      value.tags.map((t) => t.label),
+      ['Urgent', 'Priority', 'Used'],
+    );
+    const held = resolveOrdersIndexValue([row({ row_flag: { flag: 'hold', by: null, at: null } })], 'orders.tags', ctx);
+    if (held?.kind !== 'tags') return assert.fail('expected tags');
+    assert.deepEqual(held.tags.map((t) => t.label), ['Used']);
+  });
+
+  it('a group resolves one fulfillment badge over all its lines', () => {
+    const columns = ordersIndexColumnsFor(ORDERS_INDEX_LAYOUT);
+    const values = ordersIndexValues(
+      [row({ id: 1, packed_at: '2026-09-25T10:00:00Z' }), row({ id: 2 })],
+      columns,
+      ctx,
+    );
+    const track = columns.find((c) => c.fieldId === 'orders.fulfillment')!.key;
+    const badge = values[track];
+    if (badge?.kind !== 'fulfillment') return assert.fail('expected fulfillment');
+    assert.equal(badge.badge.label, 'Partially packed 1/2');
   });
 });

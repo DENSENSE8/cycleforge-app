@@ -1,6 +1,6 @@
 import type { Variants } from '@/design-system/motion';
 import { motion } from '@/design-system/motion';
-import { motionBezier } from '@/design-system/foundations/motion-framer';
+import { motionBezier } from '@/design-system/foundations/motion-presets';
 import { ChevronDown } from '@/components/Icons';
 
 export function PkgGroupHeader({

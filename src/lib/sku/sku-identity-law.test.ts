@@ -5,8 +5,11 @@ import path from 'node:path';
 
 import {
   auditSkuIdentitySource,
+  resolveSkuIdentityBrand,
   resolveSkuIdentityTitle,
+  skuBrandJoinOnSql,
   skuCatalogNoZohoTwinPredicateSql,
+  SKU_BRAND_JOIN_ON_SQL,
   SKU_CATALOG_JOIN_ON_SQL,
   SKU_IDENTITY_TITLE_ORDER,
   type SkuIdentityViolation,
@@ -83,6 +86,36 @@ test('precedence is exactly the declared order', () => {
   assert.deepEqual(seen, ['z', 'c', 'i', 's', 'id']);
 });
 
+/* ── brand rides the law: Zoho governs, a guess never surfaces ─────────── */
+
+test('the Zoho item brand beats the catalog brand; manufacturer text is Zoho too', () => {
+  assert.equal(
+    resolveSkuIdentityBrand({ zoho_item_brand: 'BOSE', catalog_brand: 'Panasonic', catalog_brand_confidence: 1 }),
+    'BOSE',
+  );
+  assert.equal(resolveSkuIdentityBrand({ zoho_item_brand: '  ', catalog_brand: 'Bose', catalog_brand_confidence: '0.95' }), 'Bose');
+});
+
+test('a catalog brand below 0.90 (or with no confidence) is a proposal, not a brand', () => {
+  assert.equal(resolveSkuIdentityBrand({ catalog_brand: 'Sony', catalog_brand_confidence: 0.6 }), '');
+  assert.equal(resolveSkuIdentityBrand({ catalog_brand: 'Sony', catalog_brand_confidence: null }), '');
+  assert.equal(resolveSkuIdentityBrand({ catalog_brand: 'Sony', catalog_brand_confidence: 0.9 }), 'Sony');
+  assert.equal(resolveSkuIdentityBrand({}), '');
+});
+
+test('the brand join constant is org-scoped and carries the fact threshold; the builder matches it', () => {
+  assert.equal(skuBrandJoinOnSql(), SKU_BRAND_JOIN_ON_SQL);
+  assert.match(SKU_BRAND_JOIN_ON_SQL, /pb\.organization_id = sc\.organization_id/);
+  assert.match(SKU_BRAND_JOIN_ON_SQL, /brand_confidence >= 0\.90/);
+});
+
+test('a tenant-blind product_brands join is a violation; an org-scoped one is not', () => {
+  const blind = auditSkuIdentitySource('x.ts', `  LEFT JOIN product_brands pb ON pb.id = sc.brand_id\n  WHERE sc.id = $1`);
+  assert.deepEqual(blind.map((x) => x.kind), ['tenant-blind-brand-join']);
+  assert.deepEqual(auditSkuIdentitySource('x.ts', `  JOIN product_brands pb ON \${SKU_BRAND_JOIN_ON_SQL}`), []);
+  assert.deepEqual(auditSkuIdentitySource('x.ts', `  JOIN product_brands pb ON \${skuBrandJoinOnSql('s', 'pb')}`), []);
+});
+
 /* ── rule 1 + 4: the shapes the scan refuses ───────────────────────────── */
 
 test('a tenant-blind SKU-keyed catalog join is a violation', () => {
@@ -149,7 +182,7 @@ test('src/ contains no SKU identity violations', () => {
   const violations: SkuIdentityViolation[] = [];
   for (const full of walk(path.join(REPO, 'src'))) {
     const text = readFileSync(full, 'utf8');
-    if (!/sku_catalog|catalog_product_title/.test(text)) continue;
+    if (!/sku_catalog|catalog_product_title|product_brands/.test(text)) continue;
     violations.push(...auditSkuIdentitySource(path.relative(REPO, full), text));
   }
   assert.deepEqual(

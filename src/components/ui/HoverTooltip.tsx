@@ -26,11 +26,13 @@ import {
   useDeferredHoverMount,
   type DeferredHoverBridge,
 } from '@/components/ui/deferred-hover-mount';
+import { TooltipChipBody } from '@/design-system/primitives/TooltipChip';
 import { cn } from '@/utils/_cn';
 
 /** Lightweight hover/focus tooltip for plain meaning/help text. */
 export function HoverTooltip({
   label,
+  shortcut,
   children,
   className,
   focusable = true,
@@ -41,6 +43,11 @@ export function HoverTooltip({
   chrome = 'inverse',
 }: {
   label: ReactNode;
+  /**
+   * Chord that fires this control, as one display string (`'Shift + Tab'`).
+   * Painted as keycaps after the label — cursor chip and anchored bubble both.
+   */
+  shortcut?: string;
   children: ReactNode;
   className?: string;
   /** Set false when the trigger sits inside another focusable control (e.g. a row button). */
@@ -77,7 +84,7 @@ export function HoverTooltip({
 
   const onEnter = () => {
     if (disabled) return;
-    if (chrome === 'inverse' && cursor.enter(label, openDelayMs)) return;
+    if (chrome === 'inverse' && cursor.enter(label, openDelayMs, shortcut)) return;
     activate('hover', (h) => h.scheduleShow());
   };
   const onFocusTrigger = () => {
@@ -97,6 +104,7 @@ export function HoverTooltip({
       bridge={bridge}
       triggerRef={triggerRef}
       label={label}
+      shortcut={shortcut}
       placement={placement}
       openDelayMs={openDelayMs}
       disabled={disabled}
@@ -175,6 +183,7 @@ function HoverTooltipBubble({
   bridge,
   triggerRef,
   label,
+  shortcut,
   placement,
   openDelayMs,
   disabled,
@@ -183,6 +192,7 @@ function HoverTooltipBubble({
   bridge: DeferredHoverBridge<HoverTooltipHandle>;
   triggerRef: MutableRefObject<HTMLElement | null>;
   label: ReactNode;
+  shortcut?: string;
   placement: PortalTooltipPlacement;
   openDelayMs: number;
   disabled: boolean;
@@ -382,14 +392,19 @@ function HoverTooltipBubble({
         visibility: pos ? 'visible' : 'hidden',
       }}
       className={cn(
-        'pointer-events-none z-tooltip max-w-[15rem] bg-surface-inverse px-2 py-1 text-role-caption font-semibold leading-snug text-white shadow-lg whitespace-pre-line',
+        'pointer-events-none z-tooltip bg-surface-inverse px-2 py-1 text-role-caption font-semibold leading-snug text-white shadow-lg',
+        // A taught chord is one row at any width: a cap would push the
+        // sentence out past its own ground instead of shortening it.
+        shortcut
+          ? 'inline-flex max-w-none items-center gap-2 whitespace-nowrap'
+          : 'max-w-[15rem] whitespace-pre-line',
         // Same 8px popover rung as the cursor-follow chip — one corner for
         // the hover hint wherever it lands (operator 2026-09-15). The ROLE
         // ladder renders rounded-none in this theme's industrial wave.
         DROPDOWN_SHELL_CORNER,
       )}
     >
-      {label}
+      <TooltipChipBody label={label} chord={shortcut} />
     </span>,
     document.body,
   );

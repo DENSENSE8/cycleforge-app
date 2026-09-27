@@ -1,6 +1,6 @@
 /**
- * Shared Hermes chat enrichment — intent context blocks + hybrid search block.
- * Extracted so /api/ai/chat and /api/ai/chat/stream stay in parity (LE-004).
+ * Chat enrichment — intent context blocks + hybrid search block, used by the
+ * assistant turn enricher (`src/lib/assistant/enrich-turn.ts`).
  * Never throws: each sub-fetch is independently non-fatal.
  */
 

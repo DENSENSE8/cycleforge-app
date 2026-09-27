@@ -5,7 +5,7 @@ import { motion, useReducedMotion } from '@/design-system/motion';
 import { Flag, TrendingUp } from '@/components/Icons';
 import { AnimatedStat } from '@/design-system/components/AnimatedStat';
 import { MONITOR_SECTION_CARD_CLASS } from '@/design-system/components/monitor';
-import { motionBezier } from '@/design-system/foundations/motion-framer';
+import { motionBezier } from '@/design-system/foundations/motion-presets';
 import { cn } from '@/utils/_cn';
 import type { DashboardData } from '@/features/operations/types';
 

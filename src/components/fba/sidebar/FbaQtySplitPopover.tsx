@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { motion } from '@/design-system/motion';
 import { Button, DeferredQtyInput } from '@/design-system/primitives';
-import { framerPresence, framerTransition } from '@/design-system/foundations/motion-framer';
+import { motionPresence, motionTransition } from '@/design-system/foundations/motion-presets';
 import { microBadge } from '@/design-system/tokens/typography/presets';
 
 interface FbaQtySplitPopoverProps {
@@ -34,10 +34,10 @@ export function FbaQtySplitPopover({
   return (
     <motion.div
       ref={containerRef}
-      initial={framerPresence.dropdownPanel.initial}
-      animate={framerPresence.dropdownPanel.animate}
-      exit={framerPresence.dropdownPanel.exit}
-      transition={framerTransition.dropdownOpen}
+      initial={motionPresence.dropdownPanel.initial}
+      animate={motionPresence.dropdownPanel.animate}
+      exit={motionPresence.dropdownPanel.exit}
+      transition={motionTransition.dropdownOpen}
       className="absolute inset-x-0 top-0 z-dropdown mx-2 rounded-none border border-border-accent bg-surface-card p-3 shadow-none"
     >
       <p className={`${microBadge} mb-2 tracking-wider text-text-muted`}>

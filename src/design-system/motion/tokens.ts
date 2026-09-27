@@ -1,6 +1,19 @@
-/** WMS motion physics tokens — the shared spring / fade primitives every `framerTransition` spring and opacity-only flash resolves to. */
+/**
+ * WMS motion physics tokens — the shared spring / fade primitives every
+ * `motionTransition` spring and opacity-only flash resolves to.
+ *
+ * Utilitarian fluidity: springs feel organic, but high stiffness + heavy
+ * damping (critically damped at stiffness 500 / mass 0.8 / damping 40) snaps
+ * into place with no bounce — operator throughput stays high.
+ *
+ * Feature code never invents stiffness/damping/duration inline. Name a
+ * `motionTransition.*` / `motionRole.*` that points here, or compose a
+ * dense primitive (`DenseRowReveal` / `DenseList` / `ActionFlashRow`).
+ *
+ * Law: Spring vs cubic-bezier.
+ */
 
-import type { Transition } from './framer';
+import type { Transition } from './react';
 
 /**
  * Utilitarian spring — high tension, no bounce.

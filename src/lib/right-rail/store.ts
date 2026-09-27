@@ -5,20 +5,14 @@
 import type { ReactNode } from 'react';
 import { syncPanelOccupant } from '@/lib/right-rail/panel-store';
 
-/**
- * Precedence tiers for the right slot. A detail panel (a specific record the
- * operator just chose) outranks the ambient assistant chat, so opening one
- * crossfades the assistant out and the detail in.
- */
+/** Precedence tiers for the right slot. Higher wins; ties break to the most recently registered. */
 export const RIGHT_RAIL_PRIORITY = {
-  /** Ambient assistant chat / context rail. */
-  assistant: 10,
-  /** A picked record's detail panel — outranks the assistant. */
+  /** A picked record's detail panel. */
   detail: 100,
 } as const;
 
 interface RightRailPanel {
-  /** Stable identity of this occupant, e.g. `assistant`, `detail:shipment:123`.
+  /** Stable identity of this occupant, e.g. `detail:shipment:123`.
    *  Doubles as the `AnimatePresence` key, so it must change only when the slot
    *  content genuinely swaps to a different entity. */
   id: string;
@@ -206,8 +200,8 @@ export function getRightRailTop(): RightRailPanel | null {
 
 /**
  * Occupancy top excluding `skipId` — used when the operator dismissed a detail
- * via closeAndCachePanel so a lower-priority occupant (assistant) can paint
- * without unregistering the cached view.
+ * via closeAndCachePanel so a lower-priority occupant can paint without
+ * unregistering the cached view.
  */
 export function getRightRailTopSkipping(skipId: string | null): RightRailPanel | null {
   if (!skipId) return topSnapshot;

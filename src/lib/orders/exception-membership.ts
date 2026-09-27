@@ -28,6 +28,21 @@ export function liveWorkingSetSql(alias?: string): string {
   return `NOT ${exceptionHeldSql(alias)}`;
 }
 
+/**
+ * Order-exceptions desk queue membership (`actionable` scope) — the ONE
+ * predicate the desk list, its sidebar count and identify's stage read.
+ * Expects the order alias and its `shipping_tracking_numbers` join alias.
+ */
+export function sqlOrderInExceptionQueue(orderAlias = 'o', stnAlias = 'stn'): string {
+  const buyerNote = col(orderAlias, 'buyer_note');
+  return `(
+      ${exceptionHeldSql(orderAlias)}
+      OR ${col(orderAlias, 'is_out_of_stock')}
+      OR NULLIF(TRIM(COALESCE(${buyerNote}, '')), '') IS NOT NULL
+      OR COALESCE(${col(stnAlias, 'has_exception')}, false)
+    )`;
+}
+
 /** Pure twin of the SQL — unit-tested without a database. */
 export function isExceptionHeld(facts: {
   releaseState?: string | null;

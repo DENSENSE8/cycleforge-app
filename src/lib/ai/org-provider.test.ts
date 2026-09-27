@@ -5,6 +5,7 @@ import {
   resolveOrgAiChain,
   resolveOrgAiConfig,
   resolveOrgAnthropicBrain,
+  type AiProviderSource,
   type OrgAiDeps,
 } from './org-provider';
 import type { AiProviderOrder } from './provider-order';
@@ -20,7 +21,7 @@ function fakes(
   platform?: AiProviderConfig,
   opts: {
     order?: AiProviderOrder;
-    demoted?: IntegrationProvider[];
+    demoted?: AiProviderSource[];
     platformAnthropicKey?: string;
   } = {},
 ) {
@@ -36,7 +37,7 @@ function fakes(
       return platform;
     },
     resolveOrder: async () => opts.order ?? 'local-first',
-    isDemoted: (_orgId, source) => (opts.demoted ?? []).includes(source as IntegrationProvider),
+    isDemoted: (_orgId, source) => (opts.demoted ?? []).includes(source),
     resolvePlatformAnthropicKey: () => opts.platformAnthropicKey ?? '',
   };
   return { deps, asked };
@@ -148,7 +149,7 @@ test('the chain returns EVERY usable provider, preferred first', async () => {
   assert.deepEqual(chain.map((c) => c.source), ['ollama', 'openai', 'platform']);
 });
 
-test('the platform default is ALWAYS last — a tenant provider never loses to it', async () => {
+test('by default the platform is LAST — a tenant provider never loses to it', async () => {
   const { deps } = fakes(
     { openai: { apiKey: 'sk' } },
     { baseURL: 'https://gw/v1', apiKey: 'k', model: 'gw-m' },
@@ -158,6 +159,39 @@ test('the platform default is ALWAYS last — a tenant provider never loses to i
   const chain = await resolveOrgAiChain(ORG, 'chat', deps);
 
   assert.equal(chain.at(-1)?.source, 'platform');
+});
+
+test('platformFirst puts the platform default at the HEAD, tenant providers behind it as failover', async () => {
+  const { deps } = fakes(
+    { ollama: { baseUrl: 'http://local/v1', model: 'm' }, openai: { apiKey: 'sk' } },
+    { baseURL: 'https://gw/v1', apiKey: '', model: 'gw-m' },
+  );
+
+  const chain = await resolveOrgAiChain(ORG, 'chat', deps, { platformFirst: true });
+  const head = await resolveOrgAiConfig(ORG, 'chat', deps, { platformFirst: true });
+
+  assert.deepEqual(chain.map((c) => c.source), ['platform', 'ollama', 'openai']);
+  assert.equal(head?.baseURL, 'https://gw/v1');
+});
+
+test('platformFirst without a platform default leaves the tenant chain as-is', async () => {
+  const { deps } = fakes({ ollama: { baseUrl: 'http://local/v1', model: 'm' } });
+
+  const chain = await resolveOrgAiChain(ORG, 'chat', deps, { platformFirst: true });
+
+  assert.deepEqual(chain.map((c) => c.source), ['ollama']);
+});
+
+test('platformFirst does not shield a DEMOTED platform — it sinks like any provider', async () => {
+  const { deps } = fakes(
+    { ollama: { baseUrl: 'http://local/v1', model: 'm' } },
+    { baseURL: 'https://gw/v1', apiKey: '', model: 'gw-m' },
+    { demoted: ['platform'] },
+  );
+
+  const chain = await resolveOrgAiChain(ORG, 'chat', deps, { platformFirst: true });
+
+  assert.deepEqual(chain.map((c) => c.source), ['ollama', 'platform']);
 });
 
 test('a demoted provider SINKS to the back — it is never dropped', async () => {
@@ -314,4 +348,28 @@ test('a vault failure degrades to the platform key rather than throwing', async 
   const brain = await resolveOrgAnthropicBrain(ORG, deps);
 
   assert.equal(brain?.source, 'platform');
+});
+
+test('local agent: `first` heads the assistant chain; `fallback` sits right behind the platform leaf', async () => {
+  const platform = { baseURL: 'https://gateway.ai.cloudflare.com/v1/x/compat', apiKey: '', model: 'workers-ai/llama' };
+  const local = { baseURL: 'http://127.0.0.1:18088/v1', apiKey: '', model: 'default_model' };
+  const vault = { ollama: { baseUrl: 'http://127.0.0.1:18002/v1', model: 'cf-v2-base' } };
+  const sources = async (position: 'first' | 'fallback', demoted: AiProviderSource[] = []) => {
+    const { deps } = fakes(vault, platform, { demoted });
+    deps.resolveLocalAgent = () => ({ config: local, position });
+    const chain = await resolveOrgAiChain(ORG, 'chat', deps, { platformFirst: true, localAgent: true });
+    return chain.map((c) => c.source);
+  };
+  assert.deepEqual(await sources('first'), ['local_mlx', 'platform', 'ollama']);
+  assert.deepEqual(await sources('fallback'), ['platform', 'local_mlx', 'ollama']);
+  // A demoted gateway (quota 429 a moment ago) sinks: the local agent answers the next turn first.
+  assert.deepEqual(await sources('fallback', ['platform']), ['local_mlx', 'ollama', 'platform']);
+});
+
+test('local agent: only the caller that asks gets it, and never for embeddings', async () => {
+  const platform = { baseURL: 'https://gateway.ai.cloudflare.com/v1/x/compat', apiKey: '', model: 'm' };
+  const { deps } = fakes({}, platform);
+  deps.resolveLocalAgent = () => ({ config: { baseURL: 'http://127.0.0.1:18088/v1', apiKey: '', model: 'default_model' }, position: 'first' });
+  assert.deepEqual((await resolveOrgAiChain(ORG, 'chat', deps)).map((c) => c.source), ['platform']);
+  assert.deepEqual((await resolveOrgAiChain(ORG, 'embed', deps, { localAgent: true })).map((c) => c.source), ['platform']);
 });

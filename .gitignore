@@ -134,6 +134,8 @@ tests/visual/**/*-snapshots/
 # Eval snapshots are regenerated write-only output; the LEDGER.md per cohort is the record.
 docs/eval/cohorts/*/snapshots/
 docs/eval/stations/*/snapshots/
+# `pnpm ai:eval` run output (scripts/ai-eval/run.ts).
+evals/assistant/
 
 # Obsidian vault UI state
 .obsidian/

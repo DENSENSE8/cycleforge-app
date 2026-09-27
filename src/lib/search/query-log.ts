@@ -2,12 +2,12 @@
 
 import { tenantQuery, withTenantTransaction } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';
-import type { SearchByScope } from '@/lib/search/search-by';
+import type { SearchAxis } from '@/lib/search/brand-search';
 import { normalizeQuery } from '@/lib/search/query-expansion';
 
 /** Which surface issued the search. Their zero-result rates are not comparable
  *  to each other, so the column exists to keep them apart in any report. */
-export type SearchSurface = 'palette' | 'search-page';
+export type SearchSurface = 'palette' | 'search-page' | 'identify';
 
 interface SearchQueryLogEntry {
   orgId: OrgId;
@@ -15,7 +15,7 @@ interface SearchQueryLogEntry {
   staffId: number | null;
   /** Verbatim, as typed — the failure is often in the typing. */
   query: string;
-  axis?: SearchByScope | null;
+  axis?: SearchAxis | null;
   surface?: SearchSurface | null;
   resultCount: number;
   /** TRUE when these rows came from a relaxed retry, not the literal query. */
@@ -50,31 +50,52 @@ export async function recordSearchQuery(
   entry: SearchQueryLogEntry,
   deps: QueryLogDeps = defaultDeps,
 ): Promise<void> {
-  const normalized = normalizeQuery(entry.query);
-  if (!normalized) return;
+  return recordSearchQueries([entry], deps);
+}
 
-  try {
-    await deps.write(
+const LOG_COLUMNS = 10;
+
+/** Record several executed searches (identify's batch lines) — one multi-row INSERT per org. */
+export async function recordSearchQueries(
+  entries: readonly SearchQueryLogEntry[],
+  deps: QueryLogDeps = defaultDeps,
+): Promise<void> {
+  const byOrg = new Map<OrgId, unknown[][]>();
+  for (const entry of entries) {
+    const normalized = normalizeQuery(entry.query);
+    if (!normalized) continue;
+    const rows = byOrg.get(entry.orgId) ?? [];
+    rows.push([
       entry.orgId,
-      `INSERT INTO search_query_log
-         (organization_id, staff_id, query, normalized_query, axis, surface,
-          result_count, relaxed, used_semantic, latency_ms)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
-      [
-        entry.orgId,
-        entry.staffId,
-        entry.query,
-        normalized,
-        entry.axis ?? null,
-        entry.surface ?? null,
-        entry.resultCount,
-        entry.relaxed ?? false,
-        entry.usedSemantic ?? false,
-        entry.latencyMs ?? null,
-      ],
-    );
-  } catch {
-    // Blindness, not breakage. See the latency contract above.
+      entry.staffId,
+      entry.query,
+      normalized,
+      entry.axis ?? null,
+      entry.surface ?? null,
+      entry.resultCount,
+      entry.relaxed ?? false,
+      entry.usedSemantic ?? false,
+      entry.latencyMs ?? null,
+    ]);
+    byOrg.set(entry.orgId, rows);
+  }
+
+  for (const [orgId, rows] of byOrg) {
+    const values = rows
+      .map((_, r) => `(${Array.from({ length: LOG_COLUMNS }, (_, c) => `$${r * LOG_COLUMNS + c + 1}`).join(', ')})`)
+      .join(',\n              ');
+    try {
+      await deps.write(
+        orgId,
+        `INSERT INTO search_query_log
+           (organization_id, staff_id, query, normalized_query, axis, surface,
+            result_count, relaxed, used_semantic, latency_ms)
+         VALUES ${values}`,
+        rows.flat(),
+      );
+    } catch {
+      // Blindness, not breakage. See the latency contract above.
+    }
   }
 }
 

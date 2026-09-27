@@ -5,8 +5,8 @@
 import { startTransition, useCallback, useEffect, useMemo, useState } from 'react';
 import { useSearchParams, usePathname, useRouter } from 'next/navigation';
 import { AnimatePresence, motion } from '@/design-system/motion';
-import { useMotionPresence, useMotionTransition } from '@/design-system/foundations/motion-framer-hooks';
-import { framerPresence, framerTransition } from '@/design-system/foundations/motion-framer';
+import { useMotionPresence, useMotionTransition } from '@/design-system/foundations/motion-presets-hooks';
+import { motionPresence, motionTransition } from '@/design-system/foundations/motion-presets';
 import { zIndex } from '@/design-system/tokens/z-index';
 import { ClipboardList, Loader2 } from '@/components/Icons';
 import { ReviewPackingTable } from '@/features/review/ReviewPackingTable';
@@ -67,8 +67,8 @@ export function ReviewWorkspace() {
   const orderId = openSnap.orderId;
 
   const paneMotionProps = {
-    ...useMotionPresence(framerPresence.workbenchPaneSettle),
-    transition: useMotionTransition(framerTransition.workbenchPaneSettle),
+    ...useMotionPresence(motionPresence.workbenchPaneSettle),
+    transition: useMotionTransition(motionTransition.workbenchPaneSettle),
   };
 
   const replaceWithPaint = useCallback(

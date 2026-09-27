@@ -12,7 +12,7 @@ import { useReceivingPhotosRealtimeRefresh } from '@/hooks/useReceivingPhotosRea
 import { useScopedReceivingPhotos } from '@/hooks/useScopedReceivingPhotos';
 import { useAuth } from '@/contexts/AuthContext';
 import { notifyReceivingPhotoChanged } from '@/lib/queries/receiving-queries';
-import { framerTransitionMobile, motionBezier } from '@/design-system/foundations/motion-framer';
+import { motionTransitionMobile, motionBezier } from '@/design-system/foundations/motion-presets';
 import type { PhotoScope } from '@/components/mobile/receiving/PhotoUploadQueue';
 
 const VIEWER_BG = '#0a0a0b';
@@ -26,7 +26,7 @@ function GalleryShell({ children }: { children: React.ReactNode }) {
       initial={reduce ? false : { opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={reduce ? undefined : { opacity: 0 }}
-      transition={framerTransitionMobile.cameraEnter}
+      transition={motionTransitionMobile.cameraEnter}
     >
       {children}
     </motion.div>
@@ -130,7 +130,7 @@ export function MobileReceivingSwipeGallery({
             className="h-1 w-20 overflow-hidden rounded-full bg-glass/10"
             initial={reduce ? false : { opacity: 0, scaleX: 0.6 }}
             animate={{ opacity: 1, scaleX: 1 }}
-            transition={framerTransitionMobile.cameraEnter}
+            transition={motionTransitionMobile.cameraEnter}
           >
             <motion.div
               className="h-full w-1/2 rounded-full bg-surface-card/50"
