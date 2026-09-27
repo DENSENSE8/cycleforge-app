@@ -820,6 +820,7 @@ export function UnshippedTable({
           onCloseRecord={dispatchCloseShippedDetails}
           railSelection={railSelection}
           onLoadMore={onLoadMore}
+          queueTotal={cagedOnly ? undefined : stageTotal}
           banner={queueError ? <QueueStaleBand onRetry={retryQueue} /> : null}
           searchEmptyTitle={searchEmptyTitle}
           searchResultLabel={searchResultLabel}

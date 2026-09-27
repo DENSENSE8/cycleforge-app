@@ -16,10 +16,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ComponentProps, type ReactNode } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
 import type { ShippedOrder } from '@/lib/neon/orders-queries';
-import { X } from '@/components/Icons';
+import { ChevronLeft, ChevronRight, X } from '@/components/Icons';
 import { DataTableSortMenu } from '@/components/tables/DataTable';
 import { DataTableFullscreenToggle } from '@/components/tables/DataTableFullscreenToggle';
-import { TableStatusBar } from '@/components/tables/TableStatusBar';
 import { OrderSearchEmptyState } from '@/components/dashboard/OrderSearchEmptyState';
 import { useOrdersQueueFeed, queueRowStaff, type OrdersQueueCommits } from '@/components/dashboard/orders-queue/useOrdersQueueFeed';
 import type { QueueRowRecord } from '@/components/dashboard/orders-queue/helpers';
@@ -69,6 +68,11 @@ interface OrderCardListProps {
   onCloseRecord: () => void;
   railSelection: boolean;
   onLoadMore?: () => void;
+  /**
+   * Lines in the whole queue scope on the server (the desk's stage total) —
+   * more than `records` while "Load more" has pages left to read.
+   */
+  queueTotal?: number;
   /** Non-blocking band above the cards (refresh failed while cards are painted). */
   banner?: ReactNode;
   searchEmptyTitle: string;
@@ -87,6 +91,7 @@ export function OrderCardList({
   onCloseRecord,
   railSelection,
   onLoadMore,
+  queueTotal,
   banner,
   searchEmptyTitle,
   searchResultLabel,
@@ -289,6 +294,28 @@ export function OrderCardList({
     measureEdges();
     return () => observer.disconnect();
   }, [measureEdges]);
+
+  // ── Count + pager (top right) ─────────────────────────────────────────────
+  // Unfiltered, the count is the SERVER's scope total; a status filter or a
+  // search narrows to what is loaded, so it counts the cut.
+  const narrowed = statusFilter.size > 0 || Boolean(searchValue.trim());
+  const total = narrowed ? paged.total : Math.max(queueTotal ?? 0, paged.total);
+  const firstRow = paged.shown === 0 ? 0 : paged.pageIndex * pageSize + 1;
+  const lastLoadedPage = paged.pageIndex >= paged.pageCount - 1;
+  const pager: SelectBarPager | null =
+    total > paged.shown
+      ? {
+          label: `${firstRow}–${firstRow + paged.shown - 1} of ${total}`,
+          canPrev: paged.pageIndex > 0,
+          canNext: !lastLoadedPage || Boolean(onLoadMore),
+          onPrev: () => setPageIndex((i) => Math.max(0, i - 1)),
+          // Past the last loaded page: read the next chunk, then step onto it.
+          onNext: () => {
+            if (lastLoadedPage) onLoadMore?.();
+            setPageIndex(paged.pageIndex + 1);
+          },
+        }
+      : null;
   const list = (
     <div data-testid="pending-grid-body" className="flex min-h-0 min-w-0 flex-1 flex-col">
       {/* The list anchor: the select / bulk bar and, with a record open, its action strip. */}
@@ -301,7 +328,8 @@ export function OrderCardList({
             <SelectBar
               selectedCount={selectedCount}
               allSelected={allSelected}
-              total={paged.total}
+              total={total}
+              pager={pager}
               summary={
                 <OrderQueueSummaryChips
                   orders={queueOrders}
@@ -428,28 +456,6 @@ export function OrderCardList({
         className="pointer-events-none absolute inset-x-0 bottom-0 h-12 bg-gradient-to-t from-black/[0.11] via-black/[0.04] to-transparent"
       />
       </div>
-
-      {/* Counts live in the bar above the cards; the foot is only the pager. */}
-      {paged.pageCount > 1 || onLoadMore ? (
-        <TableStatusBar
-          selected={selectedCount}
-          pager={{
-            pageIndex: paged.pageIndex,
-            pageCount: paged.pageCount,
-            onPrev: () => setPageIndex((i) => Math.max(0, i - 1)),
-            onNext: () => {
-              if (paged.pageIndex < paged.pageCount - 1) {
-                setPageIndex(paged.pageIndex + 1);
-                return;
-              }
-              onLoadMore?.();
-              setPageIndex(paged.pageIndex + 1);
-            },
-            nextDisabled: paged.pageIndex >= paged.pageCount - 1 && !onLoadMore,
-          }}
-          onLoadMore={onLoadMore}
-        />
-      ) : null}
     </div>
   );
 
@@ -485,10 +491,25 @@ export function OrderCardList({
 
 // ── Select / bulk bar ─────────────────────────────────────────────────────────
 
+/** The top-right pager: `1–100 of 238` with previous / next. */
+interface SelectBarPager {
+  label: string;
+  canPrev: boolean;
+  canNext: boolean;
+  onPrev: () => void;
+  onNext: () => void;
+}
+
+const PAGER_BUTTON_CLASS = cn(
+  'flex size-8 items-center justify-center rounded-lg text-text-muted transition-colors hover:bg-surface-sunken hover:text-text-default disabled:pointer-events-none disabled:opacity-35',
+  focusRing('control'),
+);
+
 function SelectBar({
   selectedCount,
   allSelected,
   total,
+  pager,
   sortMenu,
   summary,
   onToggleAll,
@@ -497,8 +518,10 @@ function SelectBar({
 }: {
   selectedCount: number;
   allSelected: boolean;
-  /** Orders in the list (after status filters) — the number beside select-all. */
+  /** Orders in the list — the number beside select-all. */
   total: number;
+  /** Null when everything fits on one page. */
+  pager: SelectBarPager | null;
   sortMenu: ComponentProps<typeof DataTableSortMenu>;
   /** Status filter chips (out of stock, urgent, ready, packed, late, no bin) with their counts. */
   summary: ReactNode;
@@ -627,6 +650,17 @@ function SelectBar({
         </button>
       ) : (
         <span className="ml-auto flex shrink-0 items-center gap-1 @3xl:ml-0">
+          {pager ? (
+            <span className="mr-1 flex items-center gap-0.5" data-testid="order-card-pager">
+              <span className="px-1 text-xs tabular-nums text-text-muted">{pager.label}</span>
+              <button type="button" aria-label="Previous page" disabled={!pager.canPrev} onClick={pager.onPrev} className={PAGER_BUTTON_CLASS}>
+                <ChevronLeft className="size-4" />
+              </button>
+              <button type="button" aria-label="Next page" disabled={!pager.canNext} onClick={pager.onNext} className={PAGER_BUTTON_CLASS}>
+                <ChevronRight className="size-4" />
+              </button>
+            </span>
+          ) : null}
           <DataTableSortMenu {...sortMenu} />
           <DataTableFullscreenToggle />
         </span>

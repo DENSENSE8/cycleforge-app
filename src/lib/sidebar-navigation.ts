@@ -1056,10 +1056,6 @@ export const SIDEBAR_PAGE_NAV: SidebarPageNav[] = [
     deskChrome: true,
     // Rail-less, and now said out loud rather than derived from the line above (2026-08-31).
     railless: true,
-    // One flat row in the page map (operator 2026-09-27): the stages are
-    // child-level context and render only in Shipping's own contextual
-    // sidebar. Children stay live for ⌘K, deep links and that sidebar.
-    spineFlat: true,
     // Tab order (owner 2026-09-24): Exceptions · Picking · To ship · Shipped —
     // the same order the contextual sidebar paints from `DESK_VIEWS`.
     children: [

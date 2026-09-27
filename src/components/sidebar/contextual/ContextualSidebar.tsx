@@ -103,7 +103,10 @@ export function ContextualSidebar() {
           <NavGlobalSearch />
         </div>
         {nav?.scope === 'section' ? (
+          // Find sits ABOVE `‹` so it never moves: backing out to the page map
+          // drops the back row below it, not the field the eye is on.
           <div className="flex flex-col gap-1 px-2">
+            <NavFind search={nav.search} />
             {nav.back && !peekTop ? (
               <button
                 ref={backRowRef}
@@ -118,7 +121,6 @@ export function ContextualSidebar() {
                 <span className="min-w-0 flex-1 truncate">{nav.back.label}</span>
               </button>
             ) : null}
-            <NavFind search={nav.search} />
           </div>
         ) : null}
       </div>

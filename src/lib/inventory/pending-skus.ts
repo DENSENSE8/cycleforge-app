@@ -3,6 +3,8 @@
 import pool from '@/lib/db';
 import type { PoolClient } from 'pg';
 import { resolveSkuCatalogId } from '@/lib/neon/sku-catalog-queries';
+import type { OrgId } from '@/lib/tenancy/constants';
+import { tenantQuery } from '@/lib/tenancy/db';
 
 type PendingSkuStatus = 'PENDING' | 'CREATED' | 'IGNORED' | 'DUPLICATE';
 type PendingSkuSource = 'sku_stock' | 'orders' | 'receiving' | 'scan' | 'ledger' | (string & {});
@@ -78,10 +80,11 @@ interface ListPendingSkusOptions {
 }
 
 /** The to-do list — PENDING rows ordered by how often they block work. */
-export async function listPendingSkus(opts: ListPendingSkusOptions = {}): Promise<PendingSkuRow[]> {
+export async function listPendingSkus(orgId: OrgId, opts: ListPendingSkusOptions = {}): Promise<PendingSkuRow[]> {
   const status = opts.status ?? 'PENDING';
   const limit = Math.min(Math.max(opts.limit ?? 200, 1), 1000);
-  const result = await pool.query<PendingSkuRow>(
+  const result = await tenantQuery<PendingSkuRow>(
+    orgId,
     `SELECT * FROM pending_skus
       WHERE status = $1
       ORDER BY occurrences DESC, created_at ASC
@@ -92,8 +95,9 @@ export async function listPendingSkus(opts: ListPendingSkusOptions = {}): Promis
 }
 
 /** Steward action: drop a junk SKU from the to-do list (e.g. 'No data', typo). */
-export async function ignorePendingSku(id: number, notes?: string | null): Promise<PendingSkuRow | null> {
-  const result = await pool.query<PendingSkuRow>(
+export async function ignorePendingSku(orgId: OrgId, id: number, notes?: string | null): Promise<PendingSkuRow | null> {
+  const result = await tenantQuery<PendingSkuRow>(
+    orgId,
     `UPDATE pending_skus
         SET status = 'IGNORED', notes = COALESCE($2, notes), updated_at = now()
       WHERE id = $1 AND status = 'PENDING'

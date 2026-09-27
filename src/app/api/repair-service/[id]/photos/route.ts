@@ -23,8 +23,11 @@ export async function GET(
   }
 
   try {
-    const entity = { organizationId: orgId, entityType: 'REPAIR_SERVICE', entityId: repairId } as const;
-    const [rows, videos] = await Promise.all([listPhotosForEntity(entity), listReadyVideosForEntity(entity)]);
+    const entityType = 'REPAIR_SERVICE' as const;
+    const [rows, videos] = await Promise.all([
+      listPhotosForEntity({ organizationId: orgId, entityType, entityId: repairId }),
+      listReadyVideosForEntity({ organizationId: orgId, entityType, entityId: repairId }),
+    ]);
 
     const body: RepairPhotosResponse = {
       photos: rows.map((row) => ({

@@ -2,18 +2,18 @@
   "summary": {
     "total": 1100,
     "withAuth": 794,
-    "tenantWrapped": 835,
-    "delegatedTenantWrapped": 776,
-    "orgIdRef": 968,
-    "rawPool": 321,
+    "tenantWrapped": 838,
+    "delegatedTenantWrapped": 779,
+    "orgIdRef": 969,
+    "rawPool": 320,
     "drizzle": 19,
     "transitional": 6,
     "cron": 43,
     "byRisk": {
-      "critical": 21,
+      "critical": 20,
       "high": 27,
-      "medium": 67,
-      "low": 593,
+      "medium": 65,
+      "low": 596,
       "info": 392
     }
   },
@@ -425,29 +425,6 @@
       "mutates": true,
       "touched": [
         "photos"
-      ],
-      "risk": "critical"
-    },
-    {
-      "route": "/api/pending-skus",
-      "methods": [
-        "GET",
-        "PATCH"
-      ],
-      "withAuth": true,
-      "permission": "sku_stock.view",
-      "orgIdRef": false,
-      "tenantWrapped": false,
-      "delegatedTenantWrapped": false,
-      "rawPool": true,
-      "drizzle": false,
-      "transitional": false,
-      "isCron": false,
-      "isPathParam": false,
-      "mutates": true,
-      "touched": [
-        "sku_stock",
-        "sku"
       ],
       "risk": "critical"
     },
@@ -1763,29 +1740,6 @@
       "risk": "medium"
     },
     {
-      "route": "/api/orders/print-packet",
-      "methods": [
-        "POST"
-      ],
-      "withAuth": true,
-      "permission": "shipping.view",
-      "orgIdRef": true,
-      "tenantWrapped": false,
-      "delegatedTenantWrapped": false,
-      "rawPool": true,
-      "drizzle": false,
-      "transitional": false,
-      "isCron": false,
-      "isPathParam": false,
-      "mutates": true,
-      "touched": [
-        "documents",
-        "orders",
-        "items"
-      ],
-      "risk": "medium"
-    },
-    {
       "route": "/api/packerlogs/counts",
       "methods": [
         "GET"
@@ -2060,27 +2014,6 @@
       "touched": [
         "pending_skus",
         "sku"
-      ],
-      "risk": "medium"
-    },
-    {
-      "route": "/api/repair-service/[id]/photos",
-      "methods": [
-        "GET"
-      ],
-      "withAuth": false,
-      "permission": null,
-      "orgIdRef": true,
-      "tenantWrapped": false,
-      "delegatedTenantWrapped": false,
-      "rawPool": false,
-      "drizzle": false,
-      "transitional": false,
-      "isCron": false,
-      "isPathParam": true,
-      "mutates": false,
-      "touched": [
-        "photos"
       ],
       "risk": "medium"
     },
@@ -8295,6 +8228,29 @@
       "risk": "low"
     },
     {
+      "route": "/api/orders/print-packet",
+      "methods": [
+        "POST"
+      ],
+      "withAuth": true,
+      "permission": "shipping.view",
+      "orgIdRef": true,
+      "tenantWrapped": true,
+      "delegatedTenantWrapped": true,
+      "rawPool": false,
+      "drizzle": false,
+      "transitional": false,
+      "isCron": false,
+      "isPathParam": false,
+      "mutates": true,
+      "touched": [
+        "documents",
+        "orders",
+        "items"
+      ],
+      "risk": "low"
+    },
+    {
       "route": "/api/orders/queue-counts",
       "methods": [
         "GET"
@@ -8729,6 +8685,29 @@
       "mutates": true,
       "touched": [
         "payroll_settings"
+      ],
+      "risk": "low"
+    },
+    {
+      "route": "/api/pending-skus",
+      "methods": [
+        "GET",
+        "PATCH"
+      ],
+      "withAuth": true,
+      "permission": "sku_stock.view",
+      "orgIdRef": true,
+      "tenantWrapped": true,
+      "delegatedTenantWrapped": true,
+      "rawPool": true,
+      "drizzle": false,
+      "transitional": false,
+      "isCron": false,
+      "isPathParam": false,
+      "mutates": true,
+      "touched": [
+        "sku_stock",
+        "sku"
       ],
       "risk": "low"
     },
@@ -11495,6 +11474,27 @@
       "mutates": true,
       "touched": [
         "customers"
+      ],
+      "risk": "low"
+    },
+    {
+      "route": "/api/repair-service/[id]/photos",
+      "methods": [
+        "GET"
+      ],
+      "withAuth": false,
+      "permission": null,
+      "orgIdRef": true,
+      "tenantWrapped": true,
+      "delegatedTenantWrapped": true,
+      "rawPool": false,
+      "drizzle": false,
+      "transitional": false,
+      "isCron": false,
+      "isPathParam": true,
+      "mutates": false,
+      "touched": [
+        "photos"
       ],
       "risk": "low"
     },

@@ -1,5 +1,5 @@
 import type { PoolClient } from 'pg';
-import { withTenantTransaction } from '@/lib/tenancy/db';
+import { tenantQuery, withTenantTransaction } from '@/lib/tenancy/db';
 import {
   findPhotoByEntityLegacyUrl,
   insertPhotoCatalog,
@@ -11,6 +11,7 @@ import {
   buildListForEntityQuery,
   mapPhotoRow,
   PHOTO_SELECT,
+  type DbPhotoRow,
   type ListForEntityInput,
 } from './queries/list-for-entity';
 import { buildGcsObjectKey } from './storage/path-builder';
@@ -288,7 +289,8 @@ export async function linkPhoto(input: LinkPhotoInput): Promise<void> {
 
 export async function listPhotosForEntity(input: ListForEntityInput) {
   const { where, params, joins } = buildListForEntityQuery(input);
-  const res = await pool.query(
+  const res = await tenantQuery<DbPhotoRow>(
+    input.organizationId,
     `SELECT ${PHOTO_SELECT}
        FROM photos p
        ${joins}

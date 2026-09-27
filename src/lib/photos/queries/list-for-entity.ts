@@ -10,7 +10,7 @@ export interface ListForEntityInput {
   receivingId?: number;
 }
 
-interface DbPhotoRow {
+export type DbPhotoRow = {
   id: string;
   organization_id: string;
   photo_type: string | null;
@@ -19,7 +19,7 @@ interface DbPhotoRow {
   created_at: string;
   /** Device-reported shutter instant. */
   client_captured_at: string | null;
-}
+};
 
 export function mapPhotoRow(row: DbPhotoRow) {
   const id = Number(row.id);

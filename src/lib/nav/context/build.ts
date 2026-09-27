@@ -38,6 +38,7 @@ import {
   type SidebarPageNav,
 } from '@/lib/sidebar-navigation';
 import { applyOrgNavToPage, mergeOrgNav, type NavDefinition } from '@/lib/nav/org-nav';
+import { LANE_DOORS } from '@/lib/nav/lanes';
 import { NAV_FACET_GROUPS, NAV_FACET_PERMISSION, isNavFacetContext } from '@/lib/nav/facets/contexts';
 import { getNavRecentSurface } from '@/lib/nav/recents/surfaces';
 import {
@@ -210,9 +211,46 @@ function laneMap(input: PipelineInput, activePageId: string): NavSection[] {
       .map(toItem)
       .filter((item): item is NavItem => item !== null);
     if (items.length === 0) continue;
+    // A lane door is ONE row: the lane's name, opening its landing page, lit
+    // while you are on any page of the lane.
+    const door = items.find((item) => item.id === LANE_DOORS[lane.id]);
+    if (door) {
+      const active = items.some((item) => item.active);
+      sections.push({ id: lane.id, items: [{ ...door, label: lane.label, active }] });
+      continue;
+    }
     sections.push(items.length > 1 ? { id: lane.id, label: lane.label, items } : { id: lane.id, items });
   }
   return sections;
+}
+
+/**
+ * The door lane a landing page opens from, else null. Its page panel wears
+ * the lane's name and lists the lane's other pages (the map no longer does).
+ */
+function doorLaneOf(page: SidebarPageNav | null): (typeof SPINE_SECTIONS)[number] | null {
+  if (!page) return null;
+  const laneId = spineSectionIdForPage(page);
+  if (!laneId || LANE_DOORS[laneId] !== page.id) return null;
+  return SPINE_SECTIONS.find((lane) => lane.id === laneId) ?? null;
+}
+
+/** The door lane's other pages, as rows under the landing page's views. */
+function laneSiblingRows(
+  lane: (typeof SPINE_SECTIONS)[number],
+  landingId: string,
+  input: PipelineInput,
+): SectionRow[] {
+  const group = { id: `${lane.id}.pages`, label: `More in ${lane.label}` };
+  return mergeOrgNav(getSidebarNavItems({ permissions: input.permissions }), input.orgNav)
+    .filter((row) => row.id !== landingId && spineSectionIdForPage(row) === lane.id)
+    .map((row) => ({
+      id: row.id,
+      label: row.label,
+      href: row.href,
+      pathname: new URL(row.href, 'http://nav.local').pathname,
+      group,
+    }));
 }
 
 /** Every key the routes' param specs declare (owned or carried) — what hygiene keeps. */
@@ -261,7 +299,11 @@ export function buildNavContext(input: ResolveNavContextInput): NavContext {
   const resolvedActive = page ? activeRowId(page, pathname, params) : null;
   const activeId = rows.some((row) => row.id === resolvedActive) ? resolvedActive : null;
   const sectionScope = page !== null && hasSectionPanel(page, rows) && input.view !== 'top';
-  const label = pageLabel(pageId, page);
+  // A lane door's landing page wears the lane's name (the map shows no page
+  // rows for that lane) and its panel carries the lane's other pages.
+  const doorLane = doorLaneOf(page);
+  const label = doorLane ? doorLane.label : pageLabel(pageId, page);
+  const panelRows = doorLane ? [...rows, ...laneSiblingRows(doorLane, pageId, pipeline)] : rows;
 
   const viewPathnames = new Set<string>(rows.map((row) => row.pathname));
   if (registered) viewPathnames.add(new URL(registered.href, 'http://nav.local').pathname);
@@ -278,7 +320,7 @@ export function buildNavContext(input: ResolveNavContextInput): NavContext {
     page: { id: pageId, label },
     back: sectionScope ? { label, mode: 'local' } : null,
     search: searchFor(pageId, activeId, decl),
-    sections: sectionScope ? toSections(pageId, rows, activeId) : laneMap(pipeline, pageId),
+    sections: sectionScope ? toSections(pageId, panelRows, activeId) : laneMap(pipeline, pageId),
     params: declaredRouteParams(viewPathnames),
     // The REQUESTED switch; `resolveNavContext` clamps it against parity.
     rollout: input.rolloutOverrides?.[pageId] ?? NAV_CONTEXT_ROLLOUT[pageId] ?? 'legacy',

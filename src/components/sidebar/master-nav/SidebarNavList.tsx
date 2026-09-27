@@ -31,6 +31,7 @@ import {
   type SidebarIconComponent,
   type SidebarPageNav,
 } from '@/lib/sidebar-navigation';
+import { LANE_DOORS } from '@/lib/nav/lanes';
 import {
   Sidebar,
   SidebarContent,
@@ -431,6 +432,27 @@ export function SidebarNavList({
   const renderLane = (lane: (typeof DESK_SPINE_SECTIONS)[number]) => {
     const lanePages = deskPages.filter((page) => spineSectionIdForPage(page) === lane.id);
     if (lanePages.length === 0) return null;
+
+    // A lane DOOR is one row that opens its landing page — no dropdown of the
+    // lane's pages; the landing page's contextual sidebar holds them.
+    const door = lanePages.find((page) => page.id === LANE_DOORS[lane.id]);
+    if (door) {
+      return (
+        <SidebarGroup key={lane.id}>
+          <SidebarMenu>
+            <SortableMenuRow
+              id={lane.id}
+              label={lane.label}
+              icon={lane.icon}
+              active={lanePages.some((page) => page.id === activePage.id)}
+              ariaLabel={`Go to ${lane.label}`}
+              onActivate={() => onNavigate(door.id)}
+              onMouseEnter={onRowHover ? () => onRowHover(door) : undefined}
+            />
+          </SidebarMenu>
+        </SidebarGroup>
+      );
+    }
 
     if (lanePages.length === 1) {
       const page = lanePages[0]!;

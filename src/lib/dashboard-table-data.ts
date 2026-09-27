@@ -25,6 +25,9 @@ import {
 
 const FRESH_FETCH_OPTIONS: RequestInit = { cache: 'no-store' };
 
+/** One `/api/orders` request of the bounded To-ship queue — under the route's 500 clamp, stable so chunks cache. */
+const UNSHIPPED_FETCH_CHUNK = 200;
+
 export async function fetchPendingOrdersData({
   searchQuery = '',
   packedBy,
@@ -153,20 +156,37 @@ export async function fetchUnshippedOrdersData({
   // Phase 1: on the scoped, non-search fulfillment load, request the thin queue
   // projection and push the coarse stage facet to SQL. A search stays full-shape
   // (the route ignores listShape when `q` is present) for match highlighting.
+  const bounded = scoped && !searchQuery.trim();
   if (scoped && !searchQuery.trim()) {
     params.set('listShape', 'queue');
     if (stage) params.set('stage', stage);
-    // Phase 2: bounded page. "Load more" grows this; search stays unbounded.
-    if (limit != null && limit > 0) params.set('limit', String(limit));
+  }
+  if (!bounded || limit == null || limit <= 0) {
+    const res = await fetch(`/api/orders?${params.toString()}`, FRESH_FETCH_OPTIONS);
+    if (!res.ok) throw new Error('Failed to fetch unshipped orders');
+    const data = await res.json();
+    return normalizeUnshippedOrdersPayload(data.orders || []);
   }
 
-  const res = await fetch(`/api/orders?${params.toString()}`, FRESH_FETCH_OPTIONS);
-  if (!res.ok) {
-    throw new Error('Failed to fetch unshipped orders');
+  // Phase 2: bounded page, read in fixed CHUNKS along the server's keyset
+  // cursor. The route clamps `limit` to 500, so asking for "the first 600" in
+  // one request silently returned 500 and "Load more" could never pass them.
+  // Fixed chunk + cursor also keeps each chunk's server cache key stable: a
+  // "Load more" re-reads earlier chunks as cache HITs and pays only for the new one.
+  const rows: unknown[] = [];
+  let cursor: string | null = null;
+  while (rows.length < limit) {
+    const page = new URLSearchParams(params);
+    page.set('limit', String(Math.min(UNSHIPPED_FETCH_CHUNK, limit - rows.length)));
+    if (cursor) page.set('cursor', cursor);
+    const res = await fetch(`/api/orders?${page.toString()}`, FRESH_FETCH_OPTIONS);
+    if (!res.ok) throw new Error('Failed to fetch unshipped orders');
+    const data = (await res.json()) as { orders?: unknown[]; nextCursor?: string | null };
+    rows.push(...(data.orders ?? []));
+    cursor = data.nextCursor ?? null;
+    if (!cursor) break;
   }
-
-  const data = await res.json();
-  return normalizeUnshippedOrdersPayload(data.orders || []);
+  return normalizeUnshippedOrdersPayload(rows);
 }
 /** One in-warehouse queue row by DB id for URL deep links. */
 export async function fetchUnshippedOrderRowById({

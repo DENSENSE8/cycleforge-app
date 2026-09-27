@@ -9,7 +9,7 @@ import pool from '@/lib/db';
 
 /** GET /api/pending-skus — the "needs creating in Zoho" to-do list. */
 export const GET = withAuth(
-  async (req: NextRequest) => {
+  async (req: NextRequest, ctx) => {
     const { searchParams } = new URL(req.url);
     const parsed = parseBody(PendingSkuListQuery, {
       status: searchParams.get('status') ?? undefined,
@@ -17,7 +17,7 @@ export const GET = withAuth(
     });
     if (parsed instanceof NextResponse) return parsed;
 
-    const pending = await listPendingSkus({
+    const pending = await listPendingSkus(ctx.organizationId, {
       status: parsed.status,
       limit: parsed.limit,
     });
@@ -34,7 +34,7 @@ export const PATCH = withAuth(
     const parsed = parseBody(PendingSkuIgnoreBody, raw);
     if (parsed instanceof NextResponse) return parsed;
 
-    const pending = await ignorePendingSku(parsed.id, parsed.notes ?? null);
+    const pending = await ignorePendingSku(ctx.organizationId, parsed.id, parsed.notes ?? null);
     // The lib only flips PENDING → IGNORED, so a null return means the row is
     // absent OR already past PENDING (CREATED/IGNORED/DUPLICATE) — both 404.
     if (!pending) {

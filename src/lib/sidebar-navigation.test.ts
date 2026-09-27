@@ -944,8 +944,8 @@ test('every desk lane is expandable: 2+ pages, or one page that declares childre
     if (lane.pages.length > 1) continue; // header + page rows
 
     const page = lane.pages[0]!;
-    // `spineFlat` is the declared opt-out (Shipping claims it since 2026-09-27:
-    // its stages live in its contextual sidebar, not the page map).
+    // `spineFlat` is the declared opt-out. Nothing claims it since 2026-09-23,
+    // when Automations dropped it to paint its Rules child as a spine row.
     if (page.spineFlat) continue;
 
     assert.ok(

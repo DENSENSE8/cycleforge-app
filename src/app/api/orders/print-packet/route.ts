@@ -5,7 +5,7 @@ import { PaperworkPrintBody } from '@/lib/schemas/documents';
 import { recordAudit, AUDIT_ACTION } from '@/lib/audit-logs';
 import { buildPaperworkPackets } from '@/lib/documents/paperwork-packet';
 import type { OrgId } from '@/lib/tenancy/constants';
-import pool from '@/lib/db';
+import { withTenantTransaction } from '@/lib/tenancy/db';
 
 export const dynamic = 'force-dynamic';
 
@@ -22,19 +22,23 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
     actorStaffId: ctx.staffId ?? null,
   });
 
-  for (const packet of packets) {
-    if (packet.items.length === 0) continue;
-    await recordAudit(pool, ctx, req, {
-      source: 'api.orders.print-packet',
-      action: AUDIT_ACTION.ORDER_DOCUMENT_BUNDLE_PRINT,
-      entityType: 'ORDER',
-      entityId: String(packet.orderId),
-      extra: {
-        fallback: 'browser',
-        batch_id: parsed.batchId,
-        pages: packet.items.length,
-        missing_types: packet.missingTypes,
-      },
+  const printed = packets.filter((packet) => packet.items.length > 0);
+  if (printed.length > 0) {
+    await withTenantTransaction(orgId, async (client) => {
+      for (const packet of printed) {
+        await recordAudit(client, ctx, req, {
+          source: 'api.orders.print-packet',
+          action: AUDIT_ACTION.ORDER_DOCUMENT_BUNDLE_PRINT,
+          entityType: 'ORDER',
+          entityId: String(packet.orderId),
+          extra: {
+            fallback: 'browser',
+            batch_id: parsed.batchId,
+            pages: packet.items.length,
+            missing_types: packet.missingTypes,
+          },
+        });
+      }
     });
   }
 

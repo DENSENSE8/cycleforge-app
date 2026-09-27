@@ -33,6 +33,20 @@ export const DOMAIN_GROUPS = [
   icon: SidebarIconComponent;
 }>;
 
+/**
+ * LANE DOORS (operator 2026-09-27). A lane listed here is ONE row in every
+ * page map — the lane's own name and parent icon, no dropdown of its pages.
+ * The row opens the named landing page, and the landing page's contextual
+ * sidebar is where the lane's pages and views live. Value = landing page id.
+ *
+ * Outbound first: "on click of outbound takes the user to the page" — no
+ * Shipping / FBA / Label intake rows in the map. Add a lane here only when
+ * its landing page's contextual panel reaches every page of the lane.
+ */
+export const LANE_DOORS: Readonly<Partial<Record<string, string>>> = {
+  fulfillment: 'outbound',
+};
+
 /** Look a lane up BY ID. */
 export function domainLane<T extends DomainGroupId>(id: T) {
   const found = DOMAIN_GROUPS.find((group) => group.id === id);

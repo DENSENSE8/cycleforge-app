@@ -67,15 +67,24 @@ test('every SIDEBAR_PAGE_NAV page resolves to itself and survives the wire', () 
   assert.ok(LIVE_PAGES.length >= 20);
 });
 
+/** A door lane's other pages, listed under its landing page's views. */
+const isLanePageSection = (section: NavContext['sections'][number]): boolean => section.id.endsWith('.pages');
+
 test('every section item href round-trips: resolving it lights exactly that item', () => {
   for (const page of LIVE_PAGES) {
     const home = at(page.href);
     if (home.scope !== 'section') continue;
-    for (const item of items(home)) {
-      const ctx = at(item.href);
-      assert.equal(ctx.page.id, page.id, `${item.href} leaves ${page.id}`);
-      assert.equal(ctx.scope, 'section', item.href);
-      assert.deepEqual(activeIds(ctx), [item.id], item.href);
+    for (const section of home.sections) {
+      for (const item of section.items) {
+        const ctx = at(item.href);
+        if (isLanePageSection(section)) {
+          assert.equal(ctx.page.id, item.id, `${item.href} lands on its own page`);
+          continue;
+        }
+        assert.equal(ctx.page.id, page.id, `${item.href} leaves ${page.id}`);
+        assert.equal(ctx.scope, 'section', item.href);
+        assert.deepEqual(activeIds(ctx), [item.id], item.href);
+      }
     }
   }
 });
@@ -89,13 +98,33 @@ test('every lane-map row lands on its own page, and the peek lights it', () => {
   }
 });
 
-test('a section never lists another page — every row stays inside the drilled page', () => {
+test('a section lists its own views — and, on a door lane landing, the lane pages', () => {
   for (const { href, ctx } of everyContext()) {
     if (ctx.scope !== 'section') continue;
-    for (const item of items(ctx)) {
-      assert.equal(at(item.href).page.id, ctx.page.id, `${href}: ${item.id} → ${item.href}`);
+    for (const section of ctx.sections) {
+      for (const item of section.items) {
+        const landsOn = isLanePageSection(section) ? item.id : ctx.page.id;
+        assert.equal(at(item.href).page.id, landsOn, `${href}: ${item.id} → ${item.href}`);
+      }
     }
   }
+});
+
+test('Outbound is a lane door: one map row, the lane name on its panel, its pages under the views', () => {
+  const map = at('/unbox');
+  const outbound = map.sections.find((section) => section.id === 'fulfillment');
+  assert.deepEqual(outbound?.items.map((item) => [item.id, item.label]), [['outbound', 'Outbound']]);
+  assert.equal(outbound?.label, undefined);
+  for (const id of ['fba', 'label-intake']) assert.ok(!itemIds(map).includes(id), id);
+  // Lit from every page of the lane, not just the landing page.
+  assert.deepEqual(activeIds(at('/shipping/fba', { view: 'top' })), ['outbound']);
+
+  const landing = at('/shipping/orders');
+  assert.equal(landing.page.label, 'Outbound');
+  assert.equal(landing.back?.label, 'Outbound');
+  const pages = landing.sections.find(isLanePageSection);
+  assert.equal(pages?.label, 'More in Outbound');
+  assert.deepEqual(pages?.items.map((item) => item.id), ['fba', 'label-intake']);
 });
 
 test('back is null exactly at top, and never navigates', () => {
@@ -121,7 +150,14 @@ test('nav items carry no counts', () => {
 
 test('permission filtering removes the rows a role cannot reach', () => {
   const noPacking = new Set([...ALL].filter((p) => p !== 'packing.view'));
-  assert.deepEqual(itemIds(at('/shipping/orders', { permissions: noPacking })), ['exceptions', 'po', 'pick', 'triage']);
+  assert.deepEqual(itemIds(at('/shipping/orders', { permissions: noPacking })), [
+    'exceptions',
+    'po',
+    'pick',
+    'triage',
+    'fba',
+    'label-intake',
+  ]);
 
   // Only the Shipped archive door: still the Shipping section, one row.
   const shippedOnly = new Set(['shipping.view', 'packing.view']);
@@ -166,7 +202,7 @@ test('the org nav override shapes the section and the map — one pipeline with 
     ],
   };
   const shipping = at('/shipping/orders?queue=pick', { orgNav });
-  assert.deepEqual(itemIds(shipping), ['triage', 'exceptions', 'po', 'pick']);
+  assert.deepEqual(itemIds(shipping), ['triage', 'exceptions', 'po', 'pick', 'label-intake']);
   assert.equal(shipping.sections.find((s) => s.items.some((i) => i.id === 'pick'))?.label, 'Pick queue');
 
   const map = at('/', { orgNav });
@@ -288,7 +324,7 @@ test('every facet context names a real page or section view, and every recents s
 test('every desk view hangs under a Shipping child, so none can silently vanish', () => {
   const children = new Set(getSidebarPageNav('outbound')?.children?.map((child) => child.id));
   for (const view of DESK_VIEWS) assert.ok(children.has(view.navChild), view.id);
-  assert.deepEqual(itemIds(at('/shipping/orders')), ['exceptions', 'po', 'pick', 'triage', 'shipped']);
+  assert.deepEqual(itemIds(at('/shipping/orders')), ['exceptions', 'po', 'pick', 'triage', 'shipped', 'fba', 'label-intake']);
 });
 
 test('view=top is the ‹ peek: the lane map with the page lit, the page tools kept', () => {

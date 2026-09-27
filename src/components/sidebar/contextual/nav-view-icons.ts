@@ -1,5 +1,7 @@
 import {
   AlertTriangle,
+  Boxes,
+  FileText,
   PackageCheck,
   PackageSearch,
   Receipt,
@@ -25,4 +27,8 @@ export const NAV_VIEW_ICONS: Readonly<Record<string, NavViewIcon>> = {
   'outbound.pick': { icon: PackageSearch, tone: 'text-violet-600' },
   'outbound.triage': { icon: Truck, tone: 'text-blue-600' },
   'outbound.shipped': { icon: PackageCheck, tone: 'text-emerald-600' },
+  // The lane's other pages (lane door, `More in Outbound`): neutral ink —
+  // they are places, not states.
+  'outbound.fba': { icon: Boxes, tone: 'text-text-muted' },
+  'outbound.label-intake': { icon: FileText, tone: 'text-text-muted' },
 };
