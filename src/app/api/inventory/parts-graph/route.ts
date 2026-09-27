@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { readInventoryPositions } from '@/lib/inventory/inventory-position';
 import { withAuth } from '@/lib/auth/withAuth';
 import { tenantQuery } from '@/lib/tenancy/db';
 import { parsePartSku, normalizeBase } from '@/lib/inventory/part-sku';
@@ -50,23 +51,20 @@ interface PartsBase {
   parts: LogicalPart[];
 }
 
-function toNum(v: unknown): number {
-  const n = Number(v);
-  return Number.isFinite(n) ? n : 0;
-}
-
 export const GET = withAuth(
   async (_request: NextRequest, ctx) => {
     const orgId = ctx.organizationId;
 
     const result = await tenantQuery(
       orgId,
-      `SELECT id, sku, name, quantity_on_hand, quantity_available
-           FROM items
-          WHERE organization_id = $1
-            AND status = 'active'
-            AND sku IS NOT NULL
-            AND TRIM(sku) <> ''`,
+      `SELECT i.id, i.sku, i.name, x.sku_catalog_id
+           FROM items i
+           LEFT JOIN catalog_external_ids x
+             ON x.organization_id = i.organization_id AND x.provider = 'zoho' AND x.external_id = i.zoho_item_id
+          WHERE i.organization_id = $1
+            AND i.status = 'active'
+            AND i.sku IS NOT NULL
+            AND TRIM(i.sku) <> ''`,
       [orgId],
     );
 
@@ -74,9 +72,14 @@ export const GET = withAuth(
       id: string;
       sku: string;
       name: string | null;
-      quantity_on_hand: string | number | null;
-      quantity_available: string | number | null;
+      sku_catalog_id: number | null;
     }>;
+    // Stock is CycleForge's own position for the catalog item, never Zoho's count.
+    const positions = await readInventoryPositions(
+      (text, params) => tenantQuery(orgId, text, params),
+      orgId,
+      rows.flatMap((r) => (r.sku_catalog_id != null ? [Number(r.sku_catalog_id)] : [])),
+    );
 
     // Index non-part items by normalized base so we can attach a candidate
     // parent (leading-zero tolerant).
@@ -103,8 +106,9 @@ export const GET = withAuth(
       }
       partSkuCount += 1;
 
-      const onHand = toNum(r.quantity_on_hand);
-      const available = toNum(r.quantity_available);
+      const position = r.sku_catalog_id != null ? positions.get(Number(r.sku_catalog_id)) : undefined;
+      const onHand = position?.onHand ?? 0;
+      const available = position?.available ?? 0;
 
       let base = bases.get(parsed.base);
       if (!base) {

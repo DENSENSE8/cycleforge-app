@@ -65,11 +65,12 @@ export interface ShippedFifoRow {
   earliest_shipped_at: string;
   latest_shipped_at: string;
   avg_units_per_week: string;
-  zoho_item_id: string | null;
-  zoho_qty_available: string | null;
-  zoho_qty_on_hand: string | null;
+  /** The internal catalog item (null = the shipped SKU is not in the catalog). */
+  sku_catalog_id: number | null;
+  stock_available: number | null;
+  stock_on_hand: number | null;
   reorder_level: number | null;
-  zoho_incoming_qty: string | null;
+  stock_incoming: number | null;
   active_replenishment_id: string | null;
   replenishment_status: string | null;
   replenishment_qty_needed: string | null;

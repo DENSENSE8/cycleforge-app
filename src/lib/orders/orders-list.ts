@@ -636,7 +636,8 @@ export function buildOrdersListSql(
           CASE WHEN COALESCE(osl_link.is_primary, false) THEN 0 ELSE 1 END AS sort_key
         FROM shipment_links osl_link
         LEFT JOIN shipping_tracking_numbers stn_link ON stn_link.id = osl_link.shipment_id
-        WHERE osl_link.owner_type = 'ORDER' AND osl_link.owner_id = o.id
+        WHERE osl_link.organization_id = o.organization_id
+          AND osl_link.owner_type = 'ORDER' AND osl_link.owner_id = o.id
 
         UNION
 
@@ -658,7 +659,8 @@ export function buildOrdersListSql(
           2 AS sort_key
         FROM orders o_sibling
         LEFT JOIN shipping_tracking_numbers stn_sibling ON stn_sibling.id = o_sibling.shipment_id
-        WHERE o_sibling.order_id = o.order_id
+        WHERE o_sibling.organization_id = o.organization_id
+          AND o_sibling.order_id = o.order_id
       ) t
     ) order_trackings ON TRUE
     ${replenishmentJoin}

@@ -14,8 +14,7 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
   const sort = searchParams.get('sort') === 'newest' ? 'newest' as const : 'fifo' as const;
 
   // Tenant isolation: thread the caller's org so listNeedToOrder gates
-  // replenishment_requests by rr.organization_id and aligns the
-  // item_stock_cache string-key JOIN on org (Phase A shared-module path).
+  // replenishment_requests (and their inbound orders) by organization_id.
   const payload = await listNeedToOrder({ statuses, page, limit, skuSearch, sort }, ctx.organizationId);
   return NextResponse.json(payload);
 }, { permission: 'sku_stock.view' });

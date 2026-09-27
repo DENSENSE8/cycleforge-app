@@ -1,10 +1,10 @@
 {
   "version": 1,
-  "generatedAt": "2026-09-27T23:14:32Z",
-  "totalRoutes": 1097,
+  "generatedAt": "2026-09-27T23:47:56Z",
+  "totalRoutes": 1098,
   "summary": {
     "permissionGated": 892,
-    "authenticatedNoPermission": 122,
+    "authenticatedNoPermission": 123,
     "anonymousIntentional": 36,
     "serviceToService": 47,
     "ungatedRead": 0,
@@ -3971,6 +3971,15 @@
       "exemptReason": null
     },
     {
+      "path": "/api/nav/locate/route.ts",
+      "methods": [
+        "GET"
+      ],
+      "gate": "withAuth (no permission)",
+      "permission": null,
+      "exemptReason": null
+    },
+    {
       "path": "/api/nav/recents/route.ts",
       "methods": [
         "GET",
@@ -6248,15 +6257,6 @@
       "exemptReason": null
     },
     {
-      "path": "/api/receiving/inbound/confirm-po/route.ts",
-      "methods": [
-        "POST"
-      ],
-      "gate": "withAuth",
-      "permission": "receiving.view",
-      "exemptReason": null
-    },
-    {
       "path": "/api/receiving/inbound/extract-po/route.ts",
       "methods": [
         "POST"
@@ -6284,7 +6284,16 @@
       "exemptReason": null
     },
     {
-      "path": "/api/receiving/inbound/import-purchase/route.ts",
+      "path": "/api/receiving/inbound/ingest-health/route.ts",
+      "methods": [
+        "GET"
+      ],
+      "gate": "withAuth",
+      "permission": "receiving.view",
+      "exemptReason": null
+    },
+    {
+      "path": "/api/receiving/inbound/link/route.ts",
       "methods": [
         "POST"
       ],
@@ -6293,8 +6302,9 @@
       "exemptReason": null
     },
     {
-      "path": "/api/receiving/inbound/link/route.ts",
+      "path": "/api/receiving/inbound/orders/route.ts",
       "methods": [
+        "DELETE",
         "POST"
       ],
       "gate": "withAuth",

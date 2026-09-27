@@ -31,6 +31,7 @@ import {
 import { postInboundOrder, postInboundOrderPreview } from '@/lib/inbound/inbound-order-client';
 import type { InboundOrderPreview } from '@/lib/inbound/ingest-inbound-order';
 import { toast } from '@/lib/toast';
+import { safeRandomUUID } from '@/lib/safe-uuid';
 import { cn } from '@/utils/_cn';
 import { useInboundOrderSections } from './InboundOrderFields';
 import { InboundOrderOutcome } from './InboundOrderOutcome';
@@ -46,7 +47,7 @@ export function InboundOrderComposer({ initialType }: { initialType: InboundOrde
   const [preview, setPreview] = useState<InboundOrderPreview | null>(null);
   const [previewing, setPreviewing] = useState(false);
   const [previewNonce, setPreviewNonce] = useState(0);
-  const idempotencyKey = useRef(crypto.randomUUID());
+  const idempotencyKey = useRef(safeRandomUUID());
   const titleRef = useRef<HTMLHeadingElement>(null);
   const missing = useMemo(() => inboundOrderMissing(draft), [draft]);
   const debounced = useDebounce(draft, 350);

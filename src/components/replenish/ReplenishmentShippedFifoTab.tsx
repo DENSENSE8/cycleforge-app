@@ -76,7 +76,7 @@ export function ReplenishmentShippedFifoTab({ skuSearch }: ReplenishmentShippedF
               {rows.map((row) => {
                 const hasReplenishment = !!row.active_replenishment_id;
                 const needsAttention = !hasReplenishment && Number(row.avg_units_per_week) > 0;
-                const zohoLinked = !!row.zoho_item_id;
+                const inCatalog = row.sku_catalog_id != null;
 
                 return (
                   <div
@@ -94,8 +94,8 @@ export function ReplenishmentShippedFifoTab({ skuSearch }: ReplenishmentShippedF
                         <p className={`${fieldLabel} mt-0.5 truncate`}>
                           {row.sku}
                         </p>
-                        {!zohoLinked && (
-                          <p className="text-role-eyebrow text-amber-600 mt-0.5">Not linked to Zoho item</p>
+                        {!inCatalog && (
+                          <p className="text-role-eyebrow text-amber-600 mt-0.5">Not in the catalog</p>
                         )}
                       </div>
 
@@ -113,16 +113,16 @@ export function ReplenishmentShippedFifoTab({ skuSearch }: ReplenishmentShippedF
                         </p>
                       </div>
 
-                      {/* Zoho available */}
+                      {/* Available (own stock) */}
                       <div className="text-role-micro text-text-muted">
                         <p className={`uppercase tracking-widest text-text-soft ${tableHeader}`}>Avail</p>
-                        <p className="mt-1">{zohoLinked ? numText(row.zoho_qty_available) : '—'}</p>
+                        <p className="mt-1">{inCatalog ? numText(row.stock_available) : '—'}</p>
                       </div>
 
-                      {/* Zoho incoming */}
+                      {/* Incoming (open purchase orders) */}
                       <div className="text-role-micro text-text-muted">
                         <p className={`uppercase tracking-widest text-text-soft ${tableHeader}`}>Incoming</p>
-                        <p className="mt-1">{zohoLinked ? numText(row.zoho_incoming_qty) : '—'}</p>
+                        <p className="mt-1">{inCatalog ? numText(row.stock_incoming) : '—'}</p>
                       </div>
 
                       {/* Reorder level */}

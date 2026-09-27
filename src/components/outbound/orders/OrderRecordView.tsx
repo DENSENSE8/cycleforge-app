@@ -50,7 +50,8 @@ import {
 import { LIFECYCLE } from '@/design-system/tokens/lifecycle';
 import { focusRing } from '@/design-system/tokens/focus-ring';
 import { cn } from '@/utils/_cn';
-import { RECORD_ID_CLASS, RECORD_LABEL_CLASS } from '@/design-system/tokens/industrial-record';
+import { RECORD_ID_CLASS, RECORD_LABEL_CLASS, RECORD_PRICE_CLASS } from '@/design-system/tokens/industrial-record';
+import { formatCurrency } from '@/utils/_number';
 import { LifecycleCode } from '@/design-system/components/record-ledger/LifecycleCode';
 import { initials, recordState } from './outbound-orders-ledger-state';
 import {
@@ -199,6 +200,7 @@ export function OrderRecordView({
               key={line.id}
               {...lineProps(line)}
               assign={shows.has('assign')}
+              showPrice={!shows.has('price')}
               onOpenItemPaperwork={(itemNumber) => setPaperwork({ tab: 'manual', itemNumber, orderId: Number(line.id) })}
             />
           ))}
@@ -428,7 +430,8 @@ function lineTitle(line: ShippedOrder, todayKey: string): string {
 
 /**
  * One line in the Items group: photo · title · SKU + item # · one facts row
- * **Qty · Condition · Bin** (owner 2026-09-27). Price lives in the Price group;
+ * **Qty · Condition · Bin** (owner 2026-09-27). Price lives in the Price group
+ * — only a desk without one (Exceptions) keeps the line's sale price here;
  * who handled it lives in Fulfilment.
  */
 function OrderItem({
@@ -440,9 +443,12 @@ function OrderItem({
   commits,
   assign,
   onOpenItemPaperwork,
+  showPrice,
 }: OrderLineProps & {
   /** The item number's paperwork, inline in the record. */
   onOpenItemPaperwork: (itemNumber: string) => void;
+  /** The desk paints no Price group, so the line carries its sale price. */
+  showPrice: boolean;
 }) {
   const view = ordersCompoundView(line, { stateLabel: null, delayDays: null, todayKey });
   const title = lineTitle(line, todayKey);
@@ -538,6 +544,14 @@ function OrderItem({
               ) : null}
             </span>
           </div>
+          {showPrice ? (
+            <p className={cn(RECORD_LABEL_CLASS, 'text-mode-muted')} data-testid="evidence-item-price">
+              Price{' '}
+              <span className={cn(RECORD_PRICE_CLASS, 'normal-case tracking-normal')}>
+                {line.sale_amount != null && Number.isFinite(Number(line.sale_amount)) ? formatCurrency(Number(line.sale_amount)) : '—'}
+              </span>
+            </p>
+          ) : null}
         </div>
       </div>
     </article>
