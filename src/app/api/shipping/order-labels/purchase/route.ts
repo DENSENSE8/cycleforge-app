@@ -5,32 +5,20 @@ import { ApiError, errorResponse } from '@/lib/api';
 import type { OrgId } from '@/lib/tenancy/constants';
 import { tenantQuery } from '@/lib/tenancy/db';
 import { recordAudit, AUDIT_ACTION, AUDIT_ENTITY } from '@/lib/audit-logs';
-import { applyOrderTrackingOps } from '@/lib/neon/orders-tracking-queries';
-import { shipStationCarrierToStored } from '@/lib/shipping/carrier-resolution';
-import {
-  storeOutboundDocumentFromBytes,
-  OutboundDocumentValidationError,
-} from '@/lib/documents/outbound-documents';
-import { generatePackingSlipPdf } from '@/lib/documents/generate-packing-slip-pdf';
 import { publishOrderChanged, publishShipmentChanged } from '@/lib/realtime/publish';
 import { invalidateCacheTags } from '@/lib/cache/upstash-cache';
 import { sendEmailBestEffort } from '@/lib/email/send';
+import { getShipStationV2, ShipStationNotConnectedError } from '@/lib/shipping/shipstation/config';
+import { ShipStationApiError, type LabelPurchaseOptions } from '@/lib/shipping/shipstation/client';
+import { purchaseLabelOnce } from '@/lib/shipping/label-purchase-ledger';
 import {
-  getShipStationV1,
-  getShipStationV2,
-  ShipStationNotConnectedError,
-} from '@/lib/shipping/shipstation/config';
-import { ShipStationApiError, type LabelPurchaseOptions, type ShipStationV2Client } from '@/lib/shipping/shipstation/client';
-import {
-  attachLabelPurchaseFacts,
-  purchaseLabelOnce,
-  type LabelPurchaseRecord,
-} from '@/lib/shipping/label-purchase-ledger';
-import {
-  isShipStationOrder,
-  resolveOrderShipTo,
-  snapshotShipToOnShipment,
-} from '@/lib/shipping/shipstation/order-ship-to';
+  buildShipEmail,
+  finishLabelPurchase,
+  loadLabelOrder,
+  purchasedLabelFromRecord,
+  resolveCustomerEmail,
+  type PurchasedLabel,
+} from '@/lib/shipping/order-label-purchase';
 import { buyerNoteHoldBody, readBuyerNoteHold } from '@/lib/orders/buyer-note-interlock';
 import { createOrderNote } from '@/lib/orders/order-notes';
 import { isLabelPurpose, type LabelPurpose } from '@/lib/shipping/label-purpose';
@@ -41,28 +29,6 @@ import { OrderRateDimensionsSchema } from '@/lib/shipping/shipstation/order-parc
 export const dynamic = 'force-dynamic';
 
 /** POST /api/shipping/order-labels/purchase */
-
-// `type` (not `interface`) so it satisfies pg/tenantQuery's `QueryResultRow`
-// constraint — interfaces lack the implicit index signature.
-type OrderRow = {
-  id: number;
-  order_id: string | null;
-  account_source: string | null;
-  customer_id: number | null;
-  product_title: string | null;
-  sku: string | null;
-  quantity: string | null;
-};
-
-async function loadOrder(orgId: OrgId, orderId: number): Promise<OrderRow | null> {
-  const res = await tenantQuery<OrderRow>(
-    orgId,
-    `SELECT id, order_id, account_source, customer_id, product_title, sku, quantity
-       FROM orders WHERE id = $1 AND organization_id = $2 LIMIT 1`,
-    [orderId, orgId],
-  );
-  return res.rows[0] ?? null;
-}
 
 /** A prior successful purchase under this clientEventId (label doc sourceHash). */
 async function findLabelBySourceHash(
@@ -79,214 +45,6 @@ async function findLabelBySourceHash(
     [orgId, sourceHash],
   );
   return res.rows[0] ?? null;
-}
-
-async function resolveCustomerEmail(orgId: OrgId, order: OrderRow): Promise<string | null> {
-  if (order.customer_id) {
-    const res = await tenantQuery<{ email: string | null }>(
-      orgId,
-      `SELECT NULLIF(email, '') AS email FROM customers WHERE id = $1 AND organization_id = $2 LIMIT 1`,
-      [order.customer_id, orgId],
-    );
-    if (res.rows[0]?.email) return res.rows[0].email;
-  }
-  if (order.order_id && (await isShipStationOrder(orgId, order).catch(() => false))) {
-    const v1 = await getShipStationV1(orgId);
-    const ssOrder = v1 ? await v1.getOrderByNumber(order.order_id) : null;
-    return ssOrder?.customerEmail ?? null;
-  }
-  return null;
-}
-
-/** What the post-charge steps need — from a fresh label or a recorded purchase. */
-interface PurchasedLabel {
-  purchaseId: number;
-  labelId: string | null;
-  trackingNumber: string;
-  carrierCode: string | null;
-  serviceCode: string | null;
-  cost: number | null;
-  currency: string | null;
-  labelUrl: string | null;
-}
-
-function fromRecord(record: LabelPurchaseRecord): PurchasedLabel {
-  return {
-    purchaseId: record.id,
-    labelId: record.labelId,
-    trackingNumber: record.trackingNumber ?? '',
-    carrierCode: record.carrierCode,
-    serviceCode: record.serviceCode,
-    cost: record.cost,
-    currency: record.currency,
-    labelUrl: record.labelUrl,
-  };
-}
-
-function buildShipEmail(to: string, orderRef: string, label: PurchasedLabel) {
-  const carrier = label.carrierCode ? label.carrierCode.toUpperCase() : 'the carrier';
-  const text = [
-    `Good news — your order ${orderRef} is on its way.`,
-    '',
-    `Carrier: ${carrier}`,
-    `Tracking number: ${label.trackingNumber}`,
-    '',
-    'Thank you for your order.',
-  ].join('\n');
-  const html = `<p>Good news — your order <strong>${orderRef}</strong> is on its way.</p>
-<p><strong>Carrier:</strong> ${carrier}<br/><strong>Tracking number:</strong> ${label.trackingNumber}</p>
-<p>Thank you for your order.</p>`;
-  return { to, subject: `Your order ${orderRef} has shipped`, text, html };
-}
-
-/** Everything after the charge. */
-async function finishPurchase(input: {
-  orgId: OrgId;
-  order: OrderRow;
-  orderId: number;
-  orderRef: string;
-  clientEventId: string;
-  labelFormat: NonNullable<LabelPurchaseOptions['labelFormat']>;
-  staffId: number | null;
-  v2: ShipStationV2Client;
-  label: PurchasedLabel;
-  knownShipmentId: number | null;
-  knownDocumentId: number | null;
-  purpose: LabelPurpose;
-}): Promise<{ shipmentId: number | null; labelDocumentId: number | null; isFirstLabel: boolean; warning: string | null }> {
-  const { orgId, order, orderId, orderRef, clientEventId, labelFormat, staffId, v2, label, purpose } = input;
-
-  // 2. Register the tracking: the order's primary (outbound) or one more
-  // tracking on the order (replacement). A return's tracking is not the order's.
-  let primaryShipmentId: number | null = input.knownShipmentId;
-  if (primaryShipmentId == null && label.trackingNumber && purpose === 'replacement') {
-    try {
-      const trk = await applyOrderTrackingOps({
-        orderIds: [orderId],
-        organizationId: orgId,
-        creates: [{ trackingNumber: label.trackingNumber }],
-      });
-      primaryShipmentId = trk.createdShipmentIds[0] ?? null;
-    } catch (e) {
-      console.error('[buy-label] replacement tracking register failed', e);
-    }
-  }
-  if (primaryShipmentId == null && label.trackingNumber && purpose === 'outbound') {
-    try {
-      const trk = await applyOrderTrackingOps({
-        orderIds: [orderId],
-        organizationId: orgId,
-        primaryTrackingNumber: label.trackingNumber,
-        // The label names its carrier — store that, not a regex guess.
-        primaryCarrier: shipStationCarrierToStored(label.carrierCode),
-      });
-      primaryShipmentId = trk.primaryShipmentId;
-    } catch (e) {
-      console.error('[buy-label] tracking register failed', e);
-    }
-    // The primaryTrackingNumber path returns primaryShipmentId only when it
-    // CREATED a link row; upsertOrderTracking instead writes orders.shipment_id
-    // directly — read it back so the snapshot below targets the real STN row.
-    if (primaryShipmentId == null) {
-      try {
-        const refreshed = await tenantQuery<{ shipment_id: number | null }>(
-          orgId,
-          `SELECT shipment_id FROM orders WHERE id = $1 AND organization_id = $2 LIMIT 1`,
-          [orderId, orgId],
-        );
-        primaryShipmentId = refreshed.rows[0]?.shipment_id ?? null;
-      } catch (e) {
-        console.warn('[buy-label] shipment read-back failed', e);
-      }
-    }
-
-    // 2b. Snapshot the AS-SHIPPED ship-to onto the STN row.
-    try {
-      const { shipTo } = await resolveOrderShipTo(orgId, order);
-      if (shipTo && primaryShipmentId != null) {
-        await snapshotShipToOnShipment(orgId, primaryShipmentId, {
-          shipTo,
-          customerId: order.customer_id,
-          orderRef,
-          labelId: label.labelId,
-          service: label.serviceCode,
-          cost: label.cost,
-          currency: label.currency,
-          purchasedBy: staffId,
-        });
-      }
-    } catch (e) {
-      console.warn('[buy-label] ship_to snapshot failed', e);
-    }
-  }
-
-  // 3a. Store the label bytes (best-effort; GCS-gated). The v2 client carries
-  // the API key — the generic `href` download answers 401 without it.
-  let labelDocumentId: number | null = input.knownDocumentId;
-  let isFirstLabel = false;
-  let warning: string | null = null;
-  if (labelDocumentId == null && purpose !== 'return') {
-    try {
-      if (!label.labelUrl) throw new Error('ShipStation returned no label download URL.');
-      const { buffer, contentType } = await v2.downloadLabel(label.labelUrl);
-      const stored = await storeOutboundDocumentFromBytes(orgId, {
-        orderId,
-        orderRef,
-        documentType: 'shipping_label',
-        platform: 'shipstation',
-        source: 'shipstation_api',
-        buffer,
-        contentType,
-        tracking: label.trackingNumber,
-        carrier: label.carrierCode,
-        uploadedBy: staffId,
-        sourceHash: clientEventId,
-        filename: `label-${label.trackingNumber}.${labelFormat}`,
-      });
-      labelDocumentId = stored.document.id;
-      isFirstLabel = stored.isFirstLabel;
-    } catch (e) {
-      warning =
-        e instanceof OutboundDocumentValidationError
-          ? 'Label purchased, but document storage is not configured — open/print it from the label URL.'
-          : `Label purchased, but storing the label document failed: ${e instanceof Error ? e.message : String(e)}. Buying again under this purchase retries the download without a second charge.`;
-      console.warn('[buy-label] label document store failed', e);
-    }
-
-    // 3b. Generate + store the packing slip (best-effort; GCS-gated).
-    try {
-      const slip = generatePackingSlipPdf({
-        orderRef,
-        platform: 'shipstation',
-        lines: [{ sku: order.sku, title: order.product_title, quantity: order.quantity }],
-        tracking: label.trackingNumber,
-      });
-      await storeOutboundDocumentFromBytes(orgId, {
-        orderId,
-        orderRef,
-        documentType: 'packing_slip',
-        platform: 'shipstation',
-        source: 'generated',
-        buffer: slip,
-        contentType: 'application/pdf',
-        tracking: label.trackingNumber,
-        carrier: label.carrierCode,
-        uploadedBy: staffId,
-        sourceHash: `${clientEventId}:slip`,
-        filename: `packing-slip-${orderRef}.pdf`,
-      });
-    } catch (e) {
-      console.warn('[buy-label] packing slip store failed', e);
-    }
-  }
-
-  try {
-    await attachLabelPurchaseFacts(orgId, label.purchaseId, { labelDocumentId, shipmentId: primaryShipmentId });
-  } catch (e) {
-    console.warn('[buy-label] purchase ledger update failed', e);
-  }
-
-  return { shipmentId: primaryShipmentId, labelDocumentId, isFirstLabel, warning };
 }
 
 export const POST = withAuth(async (req: NextRequest, ctx) => {
@@ -314,7 +72,7 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
       throw ApiError.badRequest('A return label needs the chosen rate’s carrierId and serviceCode');
     }
 
-    const order = await loadOrder(orgId, orderId);
+    const order = await loadLabelOrder(orgId, orderId);
     if (!order) throw ApiError.notFound('order', orderId);
     const orderRef = order.order_id || `order-${orderId}`;
 
@@ -368,7 +126,7 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
           }
         : () => v2.purchaseLabelFromRate(rateId, { labelFormat });
     const outcome = await purchaseLabelOnce(
-      { orgId, orderId, clientEventId, rateId, labelFormat, staffId: ctx.staffId ?? null, purpose },
+      { orgId, orderId, clientEventId, rateId, labelFormat, staffId: ctx.staffId ?? null, purpose, isTest: v2.sandbox },
       buy,
     );
 
@@ -392,8 +150,8 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
       }
       // Bought on an earlier attempt — finish what that attempt may not have
       // (every step below dedupes), but never charge again.
-      const label = fromRecord(outcome.record);
-      const finished = await finishPurchase({ orgId, order, orderId, orderRef, clientEventId, labelFormat, staffId: ctx.staffId ?? null, v2, label, knownShipmentId: outcome.record.shipmentId, knownDocumentId: outcome.record.labelDocumentId, purpose: outcome.record.purpose });
+      const label = purchasedLabelFromRecord(outcome.record);
+      const finished = await finishLabelPurchase({ orgId, order, orderId, orderRef, clientEventId, labelFormat, staffId: ctx.staffId ?? null, v2, label, knownShipmentId: outcome.record.shipmentId, knownDocumentId: outcome.record.labelDocumentId, purpose: outcome.record.purpose });
       return NextResponse.json({
         ok: true,
         idempotent: true,
@@ -411,7 +169,7 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
     }
 
     const label: PurchasedLabel = {
-      ...fromRecord(outcome.record),
+      ...purchasedLabelFromRecord(outcome.record),
       labelId: outcome.label.labelId ?? null,
       trackingNumber: outcome.label.trackingNumber,
       carrierCode: outcome.label.carrierCode ?? null,
@@ -422,7 +180,7 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
     };
 
     // 2–3. Tracking, ship-to snapshot, label document, packing slip.
-    const { shipmentId: primaryShipmentId, labelDocumentId, isFirstLabel, warning } = await finishPurchase({
+    const { shipmentId: primaryShipmentId, labelDocumentId, isFirstLabel, warning } = await finishLabelPurchase({
       orgId,
       order,
       orderId,
@@ -502,8 +260,9 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
       } catch (e) {
         console.warn('[buy-label] realtime/cache failed', e);
       }
-      // The buyer gets tracking for a parcel coming to them — never for a return.
-      if (notifyCustomer && purpose !== 'return') {
+      // The buyer gets tracking for a parcel coming to them — never for a return,
+      // never for a sandbox test label.
+      if (notifyCustomer && purpose !== 'return' && !v2.sandbox) {
         try {
           const email = await resolveCustomerEmail(orgId, order);
           if (email) await sendEmailBestEffort(buildShipEmail(email, orderRef, label));

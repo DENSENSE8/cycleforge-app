@@ -45,6 +45,8 @@ import { getCustomer } from './customer-dossier-tool';
 import { getWorklist } from './worklist-tool';
 import { getStaffReport } from './staff-report-tool';
 import { getTrackingStatus } from './tracking-tools';
+import { quoteLabelRates } from './label-tools';
+import { listCapabilitiesTool } from './capability-tools';
 import { TOOL_FORGE_GATEWAY_TOOLS } from '@/lib/tool-forge/gateway-tools';
 
 const READ_TOOLS: ReadonlyArray<AssistantToolDef<any, unknown>> = [
@@ -100,6 +102,10 @@ const READ_TOOLS: ReadonlyArray<AssistantToolDef<any, unknown>> = [
   getWorklist,
   getStaffReport,
   getTrackingStatus,
+  // A live ShipStation label quote (rates only — buying is buy_label, a write).
+  quoteLabelRates,
+  // SIMPLE-FIRST: what the workspace can switch on (turning one on is enable_capability, a write).
+  listCapabilitiesTool,
 ];
 
 /** The four tool-forge gateway tools (search_tool_registry, submit_approval_decision, execute_build_sandbox, commit_to_git). */

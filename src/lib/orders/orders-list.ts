@@ -209,81 +209,64 @@ export function buildOrdersListSql(
       '[]'::json AS tracking_number_rows,`
     : `COALESCE(order_trackings.tracking_numbers, '[]'::json) AS tracking_numbers,
       COALESCE(order_trackings.tracking_number_rows, '[]'::json) AS tracking_number_rows,`;
-  // Shipment activity is precomputed in set-based CTEs. Assignment facts are
-  // per-order LATERAL probes on work_assignments (organization_id, entity_id):
-  // under forced RLS the enum quals cannot be index conditions and their row
-  // estimates collapse to defaults, so whole-table ROW_NUMBER() CTEs here were
-  // joined by nested loops that filtered 22M rows (6.9 s, phase0-findings §2.8).
-  // Single-row mode binds its pk at $2 (after the org at $1) so these
-  // shipment-keyed CTEs read that one order's carton, not the org's history.
-  const shipmentScope = (column: string) => singleOrderMode
-    ? `AND ${column} IN (SELECT so.shipment_id FROM orders so WHERE so.organization_id = $1 AND so.id = $2)`
-    : '';
-  const withSql = `
-    WITH pl_latest AS (
-      SELECT DISTINCT ON (pl.shipment_id)
-        pl.shipment_id,
-        pl.id AS packer_log_id,
-        pl.created_at AS packed_at,
-        pl.packed_by
+  // Pack facts are per-order LATERAL probes keyed by the order's shipment and
+  // organization (idx_packer_logs_completed_shipment,
+  // idx_station_activity_logs_shipment_id). They were whole-table CTEs with no
+  // organization filter — every list read aggregated every tenant's packer_logs
+  // and PACK scans, and pack_duration alone nested-looped for ~0.8 s of a 2.6 s
+  // read (2026-09-27). Assignment facts are per-order LATERAL probes on
+  // work_assignments for the same reason (phase0-findings §2.8).
+  const packLaterals = `
+    LEFT JOIN LATERAL (
+      SELECT pl.id AS packer_log_id, pl.created_at AS packed_at, pl.packed_by
       FROM packer_logs pl
-      WHERE pl.shipment_id IS NOT NULL
+      WHERE o.shipment_id IS NOT NULL
+        AND pl.organization_id = o.organization_id
+        AND pl.shipment_id = o.shipment_id
         AND pl.completion_state = 'COMPLETED'
-        ${shipmentScope('pl.shipment_id')}
-      ORDER BY pl.shipment_id, pl.created_at DESC NULLS LAST, pl.id DESC
-    ),
-    pack_activity AS (
-      SELECT DISTINCT ON (sal.shipment_id)
-        sal.shipment_id,
-        sal.created_at,
-        sal.staff_id
+      ORDER BY pl.created_at DESC NULLS LAST, pl.id DESC
+      LIMIT 1
+    ) pl_latest ON TRUE
+    LEFT JOIN LATERAL (
+      SELECT sal.created_at, sal.staff_id
       FROM station_activity_logs sal
-      WHERE sal.station = 'PACK'
-        AND sal.shipment_id IS NOT NULL
+      WHERE o.shipment_id IS NOT NULL
+        AND sal.shipment_id = o.shipment_id
+        AND sal.organization_id = o.organization_id
+        AND sal.station = 'PACK'
         AND sal.activity_type IN (${sqlInList(PACK_ACTIVITY_TYPES)})
-        ${shipmentScope('sal.shipment_id')}
-      ORDER BY sal.shipment_id, sal.created_at DESC NULLS LAST, sal.id DESC
-    ),
-    next_pack_activity AS (
-      SELECT
-        pa.shipment_id,
-        MIN(sal.created_at) AS created_at
-      FROM pack_activity pa
-      JOIN station_activity_logs sal
-        ON sal.shipment_id = pa.shipment_id
-       AND sal.station = 'PACK'
-       AND sal.activity_type IN (${sqlInList(PACK_ACTIVITY_TYPES)})
-       AND pa.staff_id IS NOT NULL
-       AND sal.staff_id = pa.staff_id
-       AND pa.created_at IS NOT NULL
-       AND sal.created_at > pa.created_at
-      GROUP BY pa.shipment_id
-    ),
-    pack_duration AS (
-      SELECT
-        pa.shipment_id,
-        CASE
+      ORDER BY sal.created_at DESC NULLS LAST, sal.id DESC
+      LIMIT 1
+    ) pack_activity ON TRUE`;
+  const packFollowLaterals = `
+    LEFT JOIN LATERAL (
+      SELECT MIN(sal.created_at) AS created_at
+      FROM station_activity_logs sal
+      WHERE pack_activity.staff_id IS NOT NULL
+        AND pack_activity.created_at IS NOT NULL
+        AND sal.shipment_id = o.shipment_id
+        AND sal.organization_id = o.organization_id
+        AND sal.station = 'PACK'
+        AND sal.activity_type IN (${sqlInList(PACK_ACTIVITY_TYPES)})
+        AND sal.staff_id = pack_activity.staff_id
+        AND sal.created_at > pack_activity.created_at
+    ) next_pack_activity ON TRUE
+    LEFT JOIN LATERAL (
+      SELECT CASE
           WHEN MIN(sal.created_at) IS NOT NULL AND MAX(sal.created_at) > MIN(sal.created_at)
           THEN LPAD((EXTRACT(EPOCH FROM (MAX(sal.created_at) - MIN(sal.created_at)))::int / 60)::text, 2, '0')
                || ':' ||
                LPAD((EXTRACT(EPOCH FROM (MAX(sal.created_at) - MIN(sal.created_at)))::int % 60)::text, 2, '0')
           ELSE NULL
         END AS duration
-      FROM pack_activity pa
-      JOIN station_activity_logs sal
-        ON sal.shipment_id = pa.shipment_id
-       AND sal.station = 'PACK'
-       AND sal.activity_type IN (${sqlInList(PACK_ACTIVITY_TYPES)})
-       AND (pa.staff_id IS NULL OR sal.staff_id = pa.staff_id)
-      GROUP BY pa.shipment_id
-    ),
-    sal_scan AS (
-      SELECT sal.shipment_id, COUNT(*)::int AS scan_count
       FROM station_activity_logs sal
-      WHERE sal.shipment_id IS NOT NULL
-        ${shipmentScope('sal.shipment_id')}
-      GROUP BY sal.shipment_id
-    )`;
+      WHERE pack_activity.created_at IS NOT NULL
+        AND sal.shipment_id = o.shipment_id
+        AND sal.organization_id = o.organization_id
+        AND sal.station = 'PACK'
+        AND sal.activity_type IN (${sqlInList(PACK_ACTIVITY_TYPES)})
+        AND (pack_activity.staff_id IS NULL OR sal.staff_id = pack_activity.staff_id)
+    ) pack_duration ON TRUE`;
   let sql = `
     SELECT
       o.id,
@@ -499,9 +482,8 @@ export function buildOrdersListSql(
        LIMIT 1
     ) wa_deadline ON TRUE
     ${WA_PACK_LATERAL}
-    LEFT JOIN pl_latest ON pl_latest.shipment_id = o.shipment_id
-    LEFT JOIN pack_activity ON pack_activity.shipment_id = o.shipment_id
-    LEFT JOIN next_pack_activity ON next_pack_activity.shipment_id = o.shipment_id
+    ${packLaterals}
+    ${packFollowLaterals}
     LEFT JOIN shipping_tracking_numbers stn ON stn.id = o.shipment_id
     LEFT JOIN customers cust
       ON cust.id = o.customer_id AND cust.organization_id = o.organization_id
@@ -664,13 +646,11 @@ export function buildOrdersListSql(
       ) t
     ) order_trackings ON TRUE
     ${replenishmentJoin}
-    LEFT JOIN pack_duration ON pack_duration.shipment_id = o.shipment_id
-    LEFT JOIN sal_scan ON sal_scan.shipment_id = o.shipment_id
     LEFT JOIN staff staff_packed_by ON staff_packed_by.id = COALESCE(pack_activity.staff_id, pl_latest.packed_by)
     LEFT JOIN staff staff_pack_assignee ON staff_pack_assignee.id = wa_p.assigned_packer_id
     WHERE 1=1
   `;
-  // $1 = org; $2 = the single-row pk, bound up front for `shipmentScope`.
+  // $1 = org; $2 = the single-row pk, bound up front (single-order mode).
   const params: unknown[] = singleOrderMode ? [orgId, orderIdFilter] : [orgId];
   let paramCount = params.length + 1;
 
@@ -1002,8 +982,7 @@ export function buildOrdersListSql(
   // Only the joins the predicate reads, evaluated once per org order; the
   // list's per-row laterals then run for the hits alone.
   const searchHitsCte = searchPredicate
-    ? `,
-    search_hits AS (
+    ? `WITH search_hits AS (
       SELECT o.id
       FROM orders o
       LEFT JOIN sku_catalog sc ON sc.id = o.sku_catalog_id
@@ -1012,8 +991,7 @@ export function buildOrdersListSql(
         ON cust.id = o.customer_id AND cust.organization_id = o.organization_id
       ${SS_REF_LATERAL}
       ${WA_PACK_LATERAL}
-      LEFT JOIN pl_latest ON pl_latest.shipment_id = o.shipment_id
-      LEFT JOIN pack_activity ON pack_activity.shipment_id = o.shipment_id
+      ${packLaterals}
       ${WA_PICK_LATERAL}
       LEFT JOIN staff staff_pack_assignee ON staff_pack_assignee.id = wa_p.assigned_packer_id
       LEFT JOIN staff staff_packed_by ON staff_packed_by.id = COALESCE(pack_activity.staff_id, pl_latest.packed_by)
@@ -1021,7 +999,7 @@ export function buildOrdersListSql(
         AND ${searchPredicate}
     )`
     : '';
-  return { sql: `${withSql}${searchHitsCte}${sql}`, params };
+  return { sql: `${searchHitsCte}${sql}`, params };
 }
 
 export interface OrdersListPayload {

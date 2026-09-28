@@ -16,6 +16,10 @@ import type { SessionArtifact } from './ui-artifacts';
 export const FOLLOW_UPS_MAX = 3;
 export const FOLLOW_UP_MAX_CHARS = 60;
 
+/** The reconcile chips that open a prefilled draft (`reconcile-follow-through.ts`). */
+export const RECONCILE_IMPORT_PO_CHIP = 'Import the missing ones as purchase orders';
+export const RECONCILE_ADD_ORDERS_CHIP = 'Add the missing ones as new orders';
+
 export interface FollowUpInput {
   /** The operator's message this turn — suggestions never repeat it. */
   question: string;
@@ -112,7 +116,7 @@ export function suggestFollowUps(input: FollowUpInput): string[] {
     const rows = tableRows(input.artifacts, 'reconcile_refs');
     const missing = rows.filter((r) => r.Group === 'Not in system');
     if (missing.length > 0) {
-      candidates.push('Import the missing ones as purchase orders', 'Add the missing ones as new orders');
+      candidates.push(RECONCILE_IMPORT_PO_CHIP, RECONCILE_ADD_ORDERS_CHIP);
     }
     const owed = column(rows.filter((r) => r.Group === 'Not received'), 'Ref');
     if (owed[0]) candidates.push(`Tell me when ${owed[0]} arrives`);

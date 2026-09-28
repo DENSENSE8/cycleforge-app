@@ -23,8 +23,11 @@ import { withAuth } from '@/lib/auth/withAuth';
 import { withTenantTransaction } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';
 
-/** Persisted SAL `metadata.source`, realtime source and idempotency route key — data, not the URL. */
-const ROUTE = 'tech.scan';
+/**
+ * Persisted SAL `metadata.source`, realtime source and idempotency route key —
+ * data, not the URL. Rows written before 2026-09-27 carry 'tech.scan'.
+ */
+const ROUTE = 'fba.fnsku-scan';
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -107,7 +110,7 @@ async function fnskuStageCounts(db: PoolClient, orgId: OrgId, fnsku: string) {
  * FNSKU_SCANNED anchor + its fba_fnsku_logs SCANNED row.
  */
 export const POST = withAuth(async (req: NextRequest, ctx) => {
-  const rate = await checkRateLimitForOrg({ headers: req.headers, routeKey: 'tech-scan', limit: 120, windowMs: 60_000, organizationId: ctx.organizationId });
+  const rate = await checkRateLimitForOrg({ headers: req.headers, routeKey: 'fba-fnsku-scan', limit: 120, windowMs: 60_000, organizationId: ctx.organizationId });
   if (!rate.ok) {
     return NextResponse.json({ success: false, found: false, error: 'Rate limit exceeded' }, { status: 429 });
   }

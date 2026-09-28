@@ -44,6 +44,7 @@ import type { ArtifactSummary } from './artifact-summary';
 import { ChartArtifact, RecordArtifact, ReportArtifact, TimelineArtifact, cellText, rowLookup } from './renderers';
 import { OrderDraftArtifact } from './OrderDraftArtifact';
 import { PoDraftArtifact } from './PoDraftArtifact';
+import { CapabilityArtifact } from './CapabilityArtifact';
 
 /** An identifier kind → the house chip tone that paints it (`CopyChip`'s registry). */
 const TONE_BY_KIND: Readonly<Record<AnswerIdKind, ChipTone>> = {
@@ -219,6 +220,8 @@ export function InlineArtifact({
           <OrderDraftArtifact artifact={artifact} />
         ) : artifact.kind === 'po_draft' ? (
           <PoDraftArtifact artifact={artifact} />
+        ) : artifact.kind === 'capability' ? (
+          <CapabilityArtifact artifact={artifact} />
         ) : (
           <div className="max-h-[28rem] min-w-0 overflow-auto">
             {artifact.kind === 'record' ? (

@@ -150,8 +150,10 @@ rail). `OrderRecordView` composes it; the order number reads once, in the header
 | Left | Timeline | its own card, titled "Timeline" |
 | Right | Customer | Name · Email (mailto + copy) · Phone (`tel:` + copy) · Bill to · Source — always open |
 | Right | Shipping | Ship to (copy + map) · Carrier + status (Shipped) · Tracking # · Ship by · Ordered · label history (Shipped) |
-| Right | Price | `OrderPriceEvidence` (the item no longer repeats the price) |
+| Right | Price | its own card: the `OrderPriceEvidence` disclosure (To-ship: "Price $132.52"). A desk with no `price` section (Exceptions) keeps the line's sale price on the item instead |
 | Right | Conversation · More actions | thread disclosure; the ⋮ verb list |
+
+Verified on :3050 2026-09-27: To-ship (triage + Floor rail) and Exceptions. The `shipped` section list (Carrier/Status, label history, Documents, Conversation) is not reachable from the Shipped desk, which opens its own package record — unverified in a browser.
 
 Open against `VERIFY-order-record-triage.md`: Shipping's single **Edit** (rows still carry their own
 ✎), Fulfilment **Photos** CTA, the timeline's staff · date · time line and the raw-JSON diff fix.

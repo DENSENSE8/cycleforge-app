@@ -10,6 +10,7 @@ import type {
   ShipmentSpec,
   ShippingRateOption,
 } from './types';
+import { isShipStationSandboxKey, TEST_MODE_BLOCKED_MESSAGE } from './test-mode';
 
 const DEFAULT_BASE_URL = process.env.SHIPSTATION_V2_BASE_URL ?? 'https://api.shipstation.com/v2';
 // Label creation calls the carrier synchronously and can be slow; give them room.
@@ -28,6 +29,15 @@ export class ShipStationApiError extends Error {
   /** 401/403 → the org's ShipStation key is missing/invalid, not a transient error. */
   get isNotConnected(): boolean {
     return this.httpStatus === 401 || this.httpStatus === 403;
+  }
+}
+
+/** A purchase / void refused by test-label mode before any request was sent (./test-mode.ts). */
+export class ShipStationTestModeError extends ShipStationApiError {
+  readonly code = 'LABEL_TEST_MODE_BLOCKED';
+  constructor() {
+    super(409, TEST_MODE_BLOCKED_MESSAGE);
+    this.name = 'ShipStationTestModeError';
   }
 }
 
@@ -291,6 +301,10 @@ export interface ShipStationLabelRecord extends LabelPurchaseResult {
 // ─── Client ─────────────────────────────────────────────────────────────────
 
 export interface ShipStationV2Client {
+  /** Test-label mode: purchases and voids require a sandbox key (./test-mode.ts). */
+  readonly testMode: boolean;
+  /** The key is a ShipStation sandbox key — every label it buys is a free test label. */
+  readonly sandbox: boolean;
   listCarriers(): Promise<EngineCarrier[]>;
   getRates(spec: ShipmentSpec): Promise<RateQuoteResult>;
   purchaseLabelFromRate(rateId: string, opts?: LabelPurchaseOptions): Promise<LabelPurchaseResult>;
@@ -318,9 +332,16 @@ export interface ShipStationV2Client {
 export function createShipStationV2Client(
   apiKey: string,
   baseUrl: string = DEFAULT_BASE_URL,
+  opts: { testMode?: boolean } = {},
 ): ShipStationV2Client {
+  const testMode = opts.testMode === true;
+  const sandbox = isShipStationSandboxKey(apiKey);
   const req = (method: 'GET' | 'POST' | 'PUT' | 'DELETE', path: string, body?: unknown) =>
     ssFetch(apiKey, baseUrl, method, path, body);
+  // Every call that moves postage passes here first — never a request on a live key in test mode.
+  const assertMayMovePostage = () => {
+    if (testMode && !sandbox) throw new ShipStationTestModeError();
+  };
 
   const listCarriers = async (): Promise<EngineCarrier[]> => {
     const json = (await req('GET', '/carriers')) as { carriers?: unknown[] } | null;
@@ -395,6 +416,7 @@ export function createShipStationV2Client(
     rateId: string,
     opts?: LabelPurchaseOptions,
   ): Promise<LabelPurchaseResult> => {
+    assertMayMovePostage();
     const json = await req('POST', `/labels/rates/${encodeURIComponent(rateId)}`, {
       label_format: opts?.labelFormat ?? 'pdf',
       label_layout: opts?.labelLayout ?? '4x6',
@@ -409,11 +431,13 @@ export function createShipStationV2Client(
     serviceCode: string,
     opts?: LabelPurchaseOptions,
   ): Promise<LabelPurchaseResult> => {
+    assertMayMovePostage();
     const json = await req('POST', '/labels', {
       shipment: toSsShipment(spec, { carrier_id: carrierId, service_code: serviceCode }),
       label_format: opts?.labelFormat ?? 'pdf',
       label_layout: opts?.labelLayout ?? '4x6',
       label_download_type: 'url',
+      ...(testMode ? { test_label: true } : {}),
       ...(opts?.returnLabel
         ? {
             is_return_label: true,
@@ -427,6 +451,7 @@ export function createShipStationV2Client(
   };
 
   const voidLabel = async (labelId: string): Promise<{ approved: boolean; message?: string | null }> => {
+    assertMayMovePostage();
     const json = (await req('PUT', `/labels/${encodeURIComponent(labelId)}/void`)) as {
       approved?: boolean;
       message?: string;
@@ -449,7 +474,7 @@ export function createShipStationV2Client(
     return { ...mapLabel(raw), voided: raw.voided === true, isReturnLabel: raw.is_return_label === true };
   };
 
-  return { listCarriers, getRates, purchaseLabelFromRate, purchaseLabelFromShipment, voidLabel, downloadLabel, getLabel };
+  return { testMode, sandbox, listCarriers, getRates, purchaseLabelFromRate, purchaseLabelFromShipment, voidLabel, downloadLabel, getLabel };
 }
 
 /** True when `url` is served by ShipStation / ShipEngine (or the configured v2 base). */

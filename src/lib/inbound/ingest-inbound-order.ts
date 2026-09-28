@@ -21,6 +21,7 @@ import { upsertReceivingLineTesting } from '@/lib/receiving/facts/narrow';
 import { ingestPurchase, type IngestPurchaseDeps } from './ingest-purchase';
 import { upsertInboundMirror } from './mirror';
 import { upsertPurchaseLink, type TxClient } from './purchase-links';
+import { registerShipmentPermissive } from '@/lib/shipping/sync-shipment';
 import {
   assignInboundLineKeys,
   canonicalInboundTracking,
@@ -180,9 +181,16 @@ async function recordLedger(
 
 export interface IngestInboundOrderDeps {
   ingestPurchase: typeof ingestPurchase;
+  registerShipment: (trackingNumber: string, sourceSystem: string, orgId: OrgId) => Promise<number | null>;
 }
 
-const defaultDeps: IngestInboundOrderDeps = { ingestPurchase };
+const defaultDeps: IngestInboundOrderDeps = {
+  ingestPurchase,
+  registerShipment: async (trackingNumber, sourceSystem, orgId) =>
+    (await registerShipmentPermissive({ trackingNumber, sourceSystem }, orgId))?.id ?? null,
+};
+
+const SHIPMENT_SOURCE: Record<string, string> = { ebay: 'ebay_purchase', amazon: 'amazon_purchase', manual: 'manual_inbound' };
 
 /**
  * Land one order on the caller's transaction client. Refusals throw
@@ -322,6 +330,14 @@ export async function ingestInboundOrderInTx(
     currency: draft.currency.toUpperCase(),
   };
 
+  // Every tracking number is registered ONCE, before any line touches its
+  // shipment row inside this transaction (see IngestPurchaseInput.shipmentId).
+  const shipmentIds = new Map<string, number | null>();
+  const shipmentSource = SHIPMENT_SOURCE[identity.sourceType];
+  if (shipmentSource) {
+    for (const t of tracking) shipmentIds.set(t.number, await deps.registerShipment(t.number, shipmentSource, orgId));
+  }
+
   const landed: IngestedInboundLine[] = [];
   let receivingId: number | null = null;
   for (const [i, line] of lines.entries()) {
@@ -340,6 +356,7 @@ export async function ingestInboundOrderInTx(
         listingUrl: line.listingUrl.trim() || null,
         trackingNumber: firstTracking?.number ?? null,
         carrierCode: firstTracking?.carrier || null,
+        shipmentId: firstTracking ? shipmentIds.get(firstTracking.number) ?? null : null,
       },
       ingestDeps,
     );
@@ -361,6 +378,7 @@ export async function ingestInboundOrderInTx(
         unitCostCents: lines[0].unitCostCents,
         trackingNumber: t.number,
         carrierCode: t.carrier || null,
+        shipmentId: shipmentIds.get(t.number) ?? null,
       },
       ingestDeps,
     );
@@ -630,10 +648,11 @@ export async function deleteInboundOrder(orgId: OrgId, inboundOrderId: number): 
       const gone = await client.query<{ id: number }>(
         `DELETE FROM receiving_carton rc
           WHERE rc.organization_id = $1 AND rc.id = $2
-            AND rc.receiving_date_time IS NULL
             AND NOT EXISTS (SELECT 1 FROM receiving_line rl WHERE rl.receiving_id = rc.id)
             AND NOT EXISTS (SELECT 1 FROM receiving_scans s WHERE s.receiving_id = rc.id)
             AND NOT EXISTS (SELECT 1 FROM receiving_unbox u WHERE u.receiving_id = rc.id)
+            AND NOT EXISTS (SELECT 1 FROM receiving_triage t
+                             WHERE t.receiving_id = rc.id AND t.door_received_at IS NOT NULL)
           RETURNING id`,
         [orgId, cartonId],
       );

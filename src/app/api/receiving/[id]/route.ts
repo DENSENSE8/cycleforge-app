@@ -28,6 +28,7 @@ import { ensureLineUnitsSafe, fetchLineUnits } from '@/lib/receiving/ensure-line
 import { RECEIVING_LINE_IMAGE_URL_SQL } from '@/lib/receiving/lines/sql-receiving-image';
 import { SKU_CATALOG_JOIN_ON_SQL } from '@/lib/sku/sku-identity-law';
 import { SOURCE_PLATFORMS as SOURCE_PLATFORM_REGISTRY } from '@/lib/source-platform';
+import { CARTON_ORDER_LINKS_SQL, toCartonOrderLinks } from '@/lib/orders/po-order-link';
 
 // Built-in allowlist = SoT registry values.
 const SOURCE_PLATFORMS = new Set([
@@ -336,6 +337,16 @@ export async function GET(
       { expected: 0, received: 0, lines: 0, lines_complete: 0 },
     );
 
+    // The outbound orders this carton's PO was bought for (receiving_order_link) —
+    // read alongside the timeline; non-fatal.
+    const orderLinks = tenantQuery(orgId, CARTON_ORDER_LINKS_SQL, [orgId, id]).then(
+      (r) => toCartonOrderLinks(r.rows),
+      (err: unknown) => {
+        console.warn('receiving/[id] GET: order links failed (omitted)', err);
+        return [];
+      },
+    );
+
     // Recent timeline for this carton — non-fatal if inventory_events is unavailable.
     let recentEvents: Awaited<ReturnType<typeof readTimeline>> = [];
     try {
@@ -419,6 +430,7 @@ export async function GET(
       lines: enrichedLines,
       totals,
       events,
+      order_links: await orderLinks,
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Failed to load package';

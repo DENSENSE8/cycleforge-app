@@ -1,3 +1,4 @@
+import { z } from 'zod';
 import { eBayApi } from 'ebay-api';
 import pool from '@/lib/db';
 import { logger } from '@/lib/observability/logger';
@@ -440,5 +441,58 @@ export class EbayClient {
       throw new Error(`Failed to fetch shipping fulfillments for ${orderId}: ${error.message}`);
     }
   }
+
+  /**
+   * One page of the seller's ACTIVE listings (Trading GetMyeBaySelling
+   * ActiveList) — every listing, Inventory-API or not. The chat's eBay product
+   * import (SIMPLE-FIRST) pages through it into the catalog.
+   */
+  async fetchActiveListingsPage(
+    page = 1,
+    perPage = 200,
+  ): Promise<{ listings: Array<{ itemId: string; title: string; sku: string | null; imageUrl: string | null }>; totalPages: number }> {
+    return this.withOAuthCredentials(async (api) =>
+      this.auditCall('POST', '/ws/api.dll GetMyeBaySelling', async () => {
+        const res: unknown = await api.trading.GetMyeBaySelling({
+          ActiveList: { Include: true, Pagination: { EntriesPerPage: Math.min(Math.max(perPage, 1), 200), PageNumber: page } },
+        });
+        const parsed = ActiveListResponse.parse(res ?? {});
+        const raw = parsed.ActiveList?.ItemArray?.Item;
+        const items = Array.isArray(raw) ? raw : raw ? [raw] : [];
+        return {
+          listings: items
+            .map((item) => ({
+              itemId: String(item.ItemID ?? '').trim(),
+              title: String(item.Title ?? '').trim(),
+              sku: item.SKU != null ? String(item.SKU).trim() || null : null,
+              imageUrl: item.PictureDetails?.GalleryURL ?? null,
+            }))
+            .filter((l) => l.itemId && l.title),
+          totalPages: Math.max(1, Number(parsed.ActiveList?.PaginationResult?.TotalNumberOfPages) || 1),
+        };
+      }),
+    );
+  }
 }
+
+/** The slice of a Trading GetMyeBaySelling response the product import reads (eBay's XML → JSON; a lone Item is not an array). */
+const ActiveListItem = z
+  .object({
+    ItemID: z.union([z.string(), z.number()]).optional(),
+    Title: z.union([z.string(), z.number()]).optional(),
+    SKU: z.union([z.string(), z.number()]).optional(),
+    PictureDetails: z.object({ GalleryURL: z.string().optional() }).passthrough().optional(),
+  })
+  .passthrough();
+const ActiveListResponse = z
+  .object({
+    ActiveList: z
+      .object({
+        ItemArray: z.object({ Item: z.union([z.array(ActiveListItem), ActiveListItem]).optional() }).passthrough().optional(),
+        PaginationResult: z.object({ TotalNumberOfPages: z.union([z.string(), z.number()]).optional() }).passthrough().optional(),
+      })
+      .passthrough()
+      .optional(),
+  })
+  .passthrough();
 

@@ -1,6 +1,7 @@
 # Carton order identity — Open · Open in search · Edit pairing
 
-Plan only. Nothing in P1–P5 is built yet; P0 is landed and verified.
+Plan only, except where marked. P0 is landed and verified; P4's table is landed for
+its first relation (PO ↔ outbound order, below). P1–P3 and the rest of P4 are not built.
 
 The desktop carton bar's `#` cell is the operator's handle on **which order this box
 is**. Today it can copy a number and (sometimes) open a Zoho PO. This plan makes it
@@ -206,6 +207,19 @@ the search dossier, the unbox bar and the incoming grid all read the same edge.
 
 **This phase needs the `/db-migrate` path and a decision on P3.3 first.** It is the largest
 step and should not start until P1/P2 have proven the verbs are what the operator wants.
+
+**Landed (2026-09-27): the table, relation `fulfills`.** `receiving_order_link`
+(`2026-09-27p_receiving_order_link.sql`) exists with a `relation` column: `fulfills` =
+a purchase order bought FOR an outbound order ("this PO is for order 1125"), anchored on
+`inbound_order_id` + the PO's carton, with `external_order_id` / `local_order_id` /
+`channel` on the order end; `identity` (the carton IS the order — this section) is
+reserved and has no writer yet. Writers: the chat PO import (draft card "For order",
+resolved identity-first through find_records) and `link_po_to_order` (the
+`receiving.link_order` agent mutation, link/unlink each other's inverse) —
+`src/lib/orders/po-order-link.ts`. Readers: the order timeline payload (`poLinks` →
+order record "For PO", search dossier related) and `GET /api/receiving/[id]`
+(`order_links` → carton record "For order"). Moving `linkCartonIdentifier` and the
+import paths onto `relation = 'identity'` is still the P4 work above.
 
 ---
 

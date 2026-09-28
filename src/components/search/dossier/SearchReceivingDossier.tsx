@@ -123,6 +123,15 @@ export function SearchReceivingDossier({
         ]
       : []),
     ...(po ? [{ id: `po:${po}`, label: 'PO', value: po, target: { query: po } }] : []),
+    // The outbound orders this PO was bought for (receiving_order_link).
+    ...(payload?.order_links ?? [])
+      .filter((o) => !(linkedOrder && Number(linkedOrder.id) === o.orderId))
+      .map((o) => ({
+        id: `for-order:${o.orderNumber}`,
+        label: 'For order',
+        value: o.channel ? `${o.orderNumber} · ${o.channel}` : o.orderNumber,
+        target: o.orderId != null ? { sel: { entityType: 'order' as const, id: o.orderId } } : { query: o.orderNumber },
+      })),
   ];
 
   const photos = [...cartonPhotos.photos].sort(

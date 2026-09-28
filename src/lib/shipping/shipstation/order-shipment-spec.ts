@@ -52,7 +52,10 @@ interface OrderShipmentSpec {
   orderRef: string | null;
 }
 
-/** Throws ApiError 404 (no order) / 400 (no ship-to, no parcel weight). */
+/** The `details` of the 400s below — what the chat turns into a "Still needed" ask. */
+export const ORDER_SPEC_MISSING = { shipTo: 'MISSING_SHIP_TO', weight: 'MISSING_PARCEL_WEIGHT' } as const;
+
+/** Throws ApiError 404 (no order) / 400 (no ship-to, no parcel weight; `details` from ORDER_SPEC_MISSING). */
 export async function buildOrderShipmentSpec(
   orgId: OrgId,
   input: OrderShipmentSpecInput,
@@ -74,6 +77,7 @@ export async function buildOrderShipmentSpec(
   if (!shipTo) {
     throw ApiError.badRequest(
       'No ship-to address on this order. Add a customer shipping address (or sync it from ShipStation).',
+      ORDER_SPEC_MISSING.shipTo,
     );
   }
 
@@ -101,6 +105,7 @@ export async function buildOrderShipmentSpec(
   if (!parcel) {
     throw ApiError.badRequest(
       'No parcel weight available. Provide weightOz, set the parcel on the order, or ensure the ShipStation order carries a weight.',
+      ORDER_SPEC_MISSING.weight,
     );
   }
 

@@ -9,6 +9,7 @@ import type {
   RmaTimelineRow,
   UnitTimelinePhotoRow,
 } from '@/lib/timeline';
+import type { OrderPoLink } from '@/lib/orders/po-order-link';
 
 /** Completed picking_sessions rows for FIND pick hops. */
 export interface OrderPickSessionRow {
@@ -55,6 +56,8 @@ export interface OrderTimelinePayload {
   pickSessions: OrderPickSessionRow[];
   /** PACK-station SAL — FIND only. Workplace timeline still uses audit PACK_COMPLETED. */
   packEvents: StationActivityRow[];
+  /** Purchase orders bought for this order (`receiving_order_link`), each with its carton. */
+  poLinks?: OrderPoLink[];
 }
 
 /** The one key. `OrderDocumentsSection` invalidates this exact shape. */
@@ -82,6 +85,7 @@ async function fetchOrderTimeline(orderId: number): Promise<OrderTimelinePayload
     unitPhotos: (json.unitPhotos ?? []) as UnitTimelinePhotoRow[],
     pickSessions: (json.pickSessions ?? []) as OrderPickSessionRow[],
     packEvents: (json.packEvents ?? []) as StationActivityRow[],
+    poLinks: (json.poLinks ?? []) as OrderPoLink[],
   };
 }
 

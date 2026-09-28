@@ -51,6 +51,7 @@ function record(overrides: Partial<LabelPurchaseRecord> = {}): LabelPurchaseReco
     labelDocumentId: null,
     shipmentId: null,
     purpose: 'return',
+    isTest: false,
     ...overrides,
   };
 }

@@ -39,11 +39,14 @@ import {
   type PoImportLine,
   type PoImportTracking,
 } from '@/lib/inbound/po-import-draft';
+import { CARTON_ORDER_LINKS_SQL, toCartonOrderLinks } from '@/lib/orders/po-order-link';
 import { parseListingUrl } from '@/lib/inventory/listing-candidate';
 import { invalidateReceivingViews } from '@/lib/receiving/invalidation';
 import { searchHitHref } from '@/lib/search/search-hit';
 import { resolveSkuIdentityTitle } from '@/lib/sku/sku-identity-law';
 import { resolveShipBy } from './manual-order-tools';
+import { realConfirmableDeps } from './confirmable-write';
+import { resolvePoOrderRefs } from './po-order-link-tools';
 import type { AssistantToolCtx, AssistantToolDef, AssistantToolDeps } from './types';
 
 export const DRAFT_PO_IMPORT_TOOL_NAME = 'draft_po_import';
@@ -62,7 +65,7 @@ const EXACT_SKU_SQL = `SELECT sc.id, sc.sku, i.name AS zoho_item_title, sc.produ
   FROM sku_catalog sc
   LEFT JOIN items i ON i.zoho_item_id = sc.provider_item_id
                    AND i.organization_id = sc.organization_id AND i.status = 'active'
- WHERE sc.organization_id = $1
+ WHERE sc.organization_id = $1 AND sc.is_active = true
    AND regexp_replace(UPPER(TRIM(sc.sku)), '[^A-Z0-9]', '', 'g') = regexp_replace(UPPER(TRIM($2::text)), '[^A-Z0-9]', '', 'g')
  ORDER BY sc.id
  LIMIT 1`;
@@ -73,7 +76,7 @@ const LISTING_SKU_SQL = `SELECT sc.id, sc.sku, i.name AS zoho_item_title, sc.pro
   JOIN sku_catalog sc ON sc.id = sp.sku_catalog_id AND sc.organization_id = sp.organization_id
   LEFT JOIN items i ON i.zoho_item_id = sc.provider_item_id
                    AND i.organization_id = sc.organization_id AND i.status = 'active'
- WHERE sp.organization_id = $1 AND sp.is_active IS NOT FALSE
+ WHERE sp.organization_id = $1 AND sp.is_active IS NOT FALSE AND sc.is_active = true
    AND UPPER(TRIM(sp.platform_item_id)) = UPPER(TRIM($2::text))
  ORDER BY sp.id
  LIMIT 1`;
@@ -174,13 +177,19 @@ const draftInput = z.object({
   trackingNumbers: z.array(z.string().trim().min(4).max(60)).max(10).nullish(),
   expectedDate: optionalText(40).describe('As written: "Oct 3", "Friday", "10/3" or YYYY-MM-DD.'),
   notes: optionalText(1000),
+  forOrders: z
+    .array(z.string().trim().min(1).max(120))
+    .max(10)
+    .nullish()
+    .describe('Outbound order #s this PO was bought FOR, as the user said them ("this PO is for order 1125"). Omit unless said.'),
+  noOrder: z.boolean().nullish().describe('true only when the user says the PO is NOT for an order.'),
 });
 
 /**
  * A bare reply ("EVPO12345678", "Acme Audio") answers the question the card
  * asked first — the loop's follow-up rarely repeats its label.
  */
-function bareAnswer(message: string, draft: PoImportDraft): { poNumber?: string; vendor?: string; tracking?: PoImportTracking } {
+function bareAnswer(message: string, draft: PoImportDraft): { poNumber?: string; vendor?: string; tracking?: PoImportTracking; orderRef?: string } {
   const t = message.trim();
   if (!t || t.length > 80 || /\n/.test(t)) return {};
   for (const need of poImportMissing(draft)) {
@@ -189,6 +198,8 @@ function bareAnswer(message: string, draft: PoImportDraft): { poNumber?: string;
       if (entry) return { tracking: entry };
     } else if (need.field === 'po_number' && !/\s/.test(t) && /\d/.test(t)) {
       return { poNumber: t };
+    } else if (need.field === 'order' && !/\s/.test(t) && /\d/.test(t)) {
+      return { orderRef: t.replace(/^#/, '') };
     } else if (need.field === 'vendor' && !/\d{5,}/.test(t)) {
       return { vendor: t.replace(/^(?:it'?s|the vendor is|vendor is)\s+/i, '') };
     }
@@ -215,11 +226,16 @@ export const draftPoImport: AssistantToolDef<typeof draftInput, unknown> = {
     const base = (input.newPo && open && saidPo && saidPo !== open.poNumber ? null : open) ?? emptyPoImportDraft();
     const notes: string[] = [];
 
-    // Items: what the model listed wins over the text's lines.
+    // Items: what the model listed wins over the text's lines — but a product
+    // the text LABELLED as a SKU ("SKU 00066-P-2"), or the open draft already
+    // carries as a SKU, stays a SKU, not a title.
+    const labelledSkus = [...x.items.filter((i) => i.sku).map((i) => i.product), ...base.lines.map((l) => l.sku)]
+      .filter(Boolean)
+      .map((s) => s.toUpperCase());
     const said: ExtractedPoItem[] = input.items?.length
       ? input.items.map((i) => ({
           product: str(i.product),
-          sku: false,
+          sku: labelledSkus.includes(str(i.product).toUpperCase()),
           quantity: i.quantity ?? null,
           unitCostCents: i.unitCost == null ? null : Math.round(i.unitCost * 100),
           listingUrl: str(i.listingUrl),
@@ -250,13 +266,21 @@ export const draftPoImport: AssistantToolDef<typeof draftInput, unknown> = {
       expectedDate,
       notes: input.notes ?? x.notes,
     });
+    const orderRefs = [...(input.forOrders ?? []), ...x.orderRefs];
     const nothingLifted =
       draft.poNumber === base.poNumber && draft.vendor === base.vendor && draft.tracking.length === base.tracking.length &&
-      resolved.length === 0 && listingLines.length === 0 && x.lineQuantities.length === 0;
+      resolved.length === 0 && listingLines.length === 0 && x.lineQuantities.length === 0 && orderRefs.length === 0 && !x.noOrder;
     if (nothingLifted) {
       const answer = bareAnswer(message, draft);
       draft = mergePoDraft(draft, { poNumber: answer.poNumber, vendor: answer.vendor, tracking: answer.tracking ? [answer.tracking] : null });
+      if (answer.orderRef) orderRefs.push(answer.orderRef);
     }
+    // "This PO is for order 1125": each ref resolved identity-first; a miss stays on the card and Still needed asks.
+    const clearOrders = Boolean(input.noOrder || x.noOrder);
+    const forOrders = clearOrders || orderRefs.length === 0
+      ? []
+      : await resolvePoOrderRefs(ctx, [...new Set(orderRefs)], { find: realConfirmableDeps.find, query });
+    draft = mergePoDraft(draft, { forOrders, clearOrders });
 
     const valid = poImportDraftSchema.safeParse(draft);
     if (!valid.success) {
@@ -293,18 +317,22 @@ export const draftPoImport: AssistantToolDef<typeof draftInput, unknown> = {
     const lineSentences = d.lines.map(
       (l) => `${l.quantity ?? '?'} × ${l.title || l.sku}${l.sku ? ` (${l.sku})` : ''}${l.unitCostCents != null ? ` at ${formatCostCents(l.unitCostCents, d.currency)} each` : ''}`,
     );
+    const linkedOrders = d.forOrders.filter((o) => o.orderId != null);
     const poTaken = duplicates.some((x) => x.field === 'po_number');
     const summary = [
       `Draft PO ${d.poNumber || '(no number yet)'} from ${d.vendor || 'an unnamed vendor'}.`,
       lineSentences.length ? `Items: ${lineSentences.join('; ')}.` : 'No items yet.',
       d.tracking.length ? `Tracking: ${d.tracking.map((t) => t.number).join(', ')}.` : '',
-      poTaken ? `PO ${d.poNumber} is ALREADY imported — tell the user it exists (the card links to it) and do not import it again.` : '',
+      linkedOrders.length ? `For order ${linkedOrders.map((o) => o.orderNumber).join(', ')} — the import writes this link itself; never call link_po_to_order for this draft.` : '',
+      poTaken ? `PO ${d.poNumber} is ALREADY imported — tell the user it exists (the card links to it) and do not import it again.${linkedOrders.length ? ` To tie it to order ${linkedOrders.map((o) => o.orderNumber).join(', ')}, call link_po_to_order {"po":"${d.poNumber}"}.` : ''}` : '',
       duplicates.filter((x) => x.field === 'tracking').map((x) => `Tracking ${x.value} is already on a receiving carton; this PO will join it.`).join(' '),
       !poTaken && missing.length > 0
         ? `Still needed: ${missing.map((m) => m.label).join(', ')}. The card is on screen — reply with exactly this and nothing else: "${missing.map((m) => m.question).join(' ')}"`
         : '',
       !poTaken && missing.length === 0
-        ? 'Nothing is missing. The card is on screen — tell the user to press Import (or say "import it"). Do not import it yourself.'
+        ? message.length <= 40 && /\bimport\s+(?:it|this|that|the)\b/i.test(message)
+          ? 'Nothing is missing and the user asked to import it: call import_purchase_order {"action":"propose"} now and reply with ONLY the question it returns.'
+          : 'Nothing is missing. The card is on screen — tell the user to press Import (or say "import it"). Do not import it yourself.'
         : '',
     ]
       .filter(Boolean)
@@ -411,7 +439,7 @@ export function buildImportPurchaseOrderTool(
       ok: true as const,
       status: 'needs_confirmation',
       mutationId: filed.mutationId,
-      summary: `Not imported yet — waiting for the user's yes. Reply with exactly this question and nothing else: "Import PO ${draft.poNumber} from ${draft.vendor} — ${draft.lines.length} line${draft.lines.length === 1 ? '' : 's'}, ${items} unit${items === 1 ? '' : 's'}, tracking ${draft.tracking.map((t) => t.number).join(', ')}? Reply yes or no."`,
+      summary: `Not imported yet — waiting for the user's yes. Reply with exactly this question and nothing else: "Import PO ${draft.poNumber} from ${draft.vendor} — ${draft.lines.length} line${draft.lines.length === 1 ? '' : 's'}, ${items} unit${items === 1 ? '' : 's'}, tracking ${draft.tracking.map((t) => t.number).join(', ')}${draft.forOrders.length ? `, for order ${draft.forOrders.map((o) => o.orderNumber).join(', ')}` : ''}? Reply yes or no."`,
     };
   };
 
@@ -449,6 +477,10 @@ export function buildImportPurchaseOrderTool(
     const cartonId = receivingId == null ? null : Number(receivingId);
     const units = rows.reduce((n, r) => n + Number(r.quantity_expected ?? 0), 0);
     const tracking = draft.tracking.map((t) => t.number).join(', ');
+    // The link as it landed (read back), not as the draft asked for it.
+    const forOrders = cartonId != null
+      ? toCartonOrderLinks((await deps.query(ctx.organizationId, CARTON_ORDER_LINKS_SQL, [ctx.organizationId, cartonId])).rows)
+      : [];
     const artifact: ArtifactRecord = {
       kind: 'record',
       title: `PO ${poNumber} imported${draft.vendor ? ` · ${draft.vendor}` : ''}`.slice(0, 120),
@@ -462,10 +494,15 @@ export function buildImportPurchaseOrderTool(
           value: `${Number(r.quantity_expected)} × ${str(r.item_name) || str(r.sku)}${str(r.sku) ? ` (${str(r.sku)})` : ''}`.slice(0, 300),
         })),
         { label: 'Tracking', value: tracking || '—' },
+        ...forOrders.slice(0, 4).map((o) => ({
+          label: 'For order',
+          value: `${o.orderNumber}${o.channel ? ` · ${o.channel}` : ''}`.slice(0, 300),
+          ...(o.orderId != null ? { href: searchHitHref('ORDER', o.orderId) } : {}),
+        })),
         ...(draft.expectedDate ? [{ label: 'Expected', value: draft.expectedDate }] : []),
         { label: 'Receiving', value: cartonId != null ? `Carton #${cartonId} · the arrival scan of the tracking opens it` : 'Waiting for a carton' },
         { label: 'Change', value: `#${mutationId}` },
-      ],
+      ].slice(0, 20),
       identity: {
         title: `PO ${poNumber}`,
         ...(draft.vendor ? { subtitle: draft.vendor } : {}),
@@ -473,14 +510,18 @@ export function buildImportPurchaseOrderTool(
         ...(cartonId != null ? { href: searchHitHref('RECEIVING', cartonId) } : {}),
       },
     };
-    const summary = `Imported PO ${poNumber} from ${draft.vendor || 'the vendor'} — ${rows.length} line${rows.length === 1 ? '' : 's'}, ${units} unit${units === 1 ? '' : 's'} expected on the Incoming list; tracking ${tracking} is linked, so scanning it at arrival opens this PO.`;
+    const lineList = rows
+      .slice(0, 8)
+      .map((r) => `${str(r.sku) || str(r.item_name)} × ${Number(r.quantity_expected)}`)
+      .join(', ');
+    const summary = `Imported PO ${poNumber} from ${draft.vendor || 'the vendor'} — ${lineList} (${rows.length} line${rows.length === 1 ? '' : 's'}, ${units} unit${units === 1 ? '' : 's'}) expected on the Incoming list; tracking ${tracking} is linked, so scanning it at arrival opens this PO.${forOrders.length ? ` Linked to order ${forOrders.map((o) => o.orderNumber).join(', ')} — each record shows the other.` : ''}`;
     return brandReportEnvelope({ artifact, summary }, IMPORT_PO_TOOL_NAME);
   };
 
   return {
     name: IMPORT_PO_TOOL_NAME,
     description:
-      'Import the purchase order drafted in this conversation (the PO card) onto the Incoming list with its tracking linked for receiving. Two steps: action "propose" (no other arguments — the draft card is used as is) returns needs_confirmation — then ASK the user to confirm and stop. On their next message, "confirm" (yes) or "cancel" (no). Never confirm in the same turn you proposed.',
+      'Import the purchase order ALREADY drafted in this conversation (the PO card) onto the Incoming list with its tracking linked for receiving — and the card\'s "For order" links, in the same write. Use only for the short command "Import this PO" / "import it" after a card exists; a pasted PO with details is draft_po_import. Two steps: action "propose" (no other arguments — the draft card is used as is) returns needs_confirmation — then ASK the user to confirm and stop (no link_po_to_order that turn). On their next message, "confirm" (yes) or "cancel" (no). Never confirm in the same turn you proposed.',
     permission: 'receiving.scan_po',
     inputSchema: importInput,
     run: async (input, ctx) => {

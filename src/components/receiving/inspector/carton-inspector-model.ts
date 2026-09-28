@@ -1,5 +1,7 @@
 /** Carton inspector — the pure read model. */
 
+import type { CartonOrderLink } from '@/lib/orders/po-order-link';
+
 /** Carton header as returned by `GET /api/receiving/[id]` (`receiving`). */
 export interface CartonInspectorReceiving {
   id: number;
@@ -167,6 +169,8 @@ export interface CartonInspectorPayload {
   lines?: CartonInspectorLine[];
   totals?: CartonInspectorTotals;
   events?: CartonInspectorEvent[];
+  /** Outbound orders this carton's PO was bought for (`receiving_order_link`). */
+  order_links?: CartonOrderLink[];
 }
 
 /** A displayable fact, with the presentation kind it must be resolved through. */

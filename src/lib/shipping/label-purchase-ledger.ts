@@ -24,6 +24,8 @@ export interface LabelPurchaseRecord {
   shipmentId: number | null;
   /** Why the label was bought (outbound / return / replacement). */
   purpose: LabelPurpose;
+  /** Bought on a ShipStation sandbox key — a free test label, never postage. */
+  isTest: boolean;
 }
 
 export interface ClaimInput {
@@ -40,6 +42,8 @@ export interface ClaimInput {
   orderRef?: string | null;
   /** The customer address a reference-only label was bought against. */
   shipTo?: ShipAddress | null;
+  /** The engine is on a sandbox key (`ShipStationV2Client.sandbox`). */
+  isTest?: boolean;
 }
 
 export interface RecordPurchasedInput {
@@ -120,10 +124,11 @@ type Row = {
   label_document_id: number | null;
   shipment_id: number | null;
   purpose: LabelPurpose;
+  is_test: boolean;
 };
 
 const RETURNING = `id, order_id, client_event_id, status, label_id, tracking_number, carrier_code,
-  service_code, cost, currency, label_format, label_url, label_document_id, shipment_id, purpose`;
+  service_code, cost, currency, label_format, label_url, label_document_id, shipment_id, purpose, is_test`;
 
 function toRecord(row: Row): LabelPurchaseRecord {
   return {
@@ -142,20 +147,21 @@ function toRecord(row: Row): LabelPurchaseRecord {
     labelDocumentId: row.label_document_id,
     shipmentId: row.shipment_id,
     purpose: row.purpose,
+    isTest: row.is_test === true,
   };
 }
 
 const defaultLedgerDeps: LabelPurchaseLedgerDeps = {
-  claim: async ({ orgId, orderId, clientEventId, rateId, labelFormat, staffId, purpose, orderRef, shipTo }) => {
+  claim: async ({ orgId, orderId, clientEventId, rateId, labelFormat, staffId, purpose, orderRef, shipTo, isTest }) => {
     const res = await tenantQuery<{ id: string }>(
       orgId,
       `INSERT INTO shipping_label_purchases
          (organization_id, order_id, client_event_id, status, rate_id, label_format, purchased_by, purpose,
-          order_ref, ship_to)
-       VALUES ($1, $2, $3, 'pending', $4, $5, $6, $7, $8, $9::jsonb)
+          order_ref, ship_to, is_test)
+       VALUES ($1, $2, $3, 'pending', $4, $5, $6, $7, $8, $9::jsonb, $10)
        ON CONFLICT (organization_id, client_event_id) DO NOTHING
        RETURNING id`,
-      [orgId, orderId, clientEventId, rateId, labelFormat, staffId, purpose, orderRef ?? null, shipTo ? JSON.stringify(shipTo) : null],
+      [orgId, orderId, clientEventId, rateId, labelFormat, staffId, purpose, orderRef ?? null, shipTo ? JSON.stringify(shipTo) : null, isTest === true],
     );
     return res.rows[0] ? { id: Number(res.rows[0].id) } : null;
   },

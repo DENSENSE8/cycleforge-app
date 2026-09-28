@@ -33,6 +33,7 @@ export function artifactPlacement(kind: SessionArtifact['kind']): ArtifactPlacem
     case 'report':
     case 'order_draft':
     case 'po_draft':
+    case 'capability':
       return 'inline';
     case 'document':
     case 'ticket_thread':
@@ -48,7 +49,7 @@ export function artifactPlacement(kind: SessionArtifact['kind']): ArtifactPlacem
 /** The data kinds that render inline — the narrowing twin of {@link artifactPlacement}. */
 export type InlineArtifactData = Extract<
   SessionArtifact,
-  { kind: 'table' | 'record' | 'chart' | 'timeline' | 'report' | 'order_draft' | 'po_draft' }
+  { kind: 'table' | 'record' | 'chart' | 'timeline' | 'report' | 'order_draft' | 'po_draft' | 'capability' }
 >;
 
 export function isInlineArtifact(artifact: SessionArtifact): artifact is InlineArtifactData {

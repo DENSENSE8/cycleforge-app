@@ -11,6 +11,7 @@
 
 import { Pool } from 'pg';
 import { loadChatReadsFixtures, type ChatReadsFixtures } from './chat-reads-fixture';
+import { LABEL_ORDER_SQL, type LabelBuyFixture } from './labelbuy-fixture';
 
 export interface BinQty {
   bin: string;
@@ -42,6 +43,8 @@ export interface EvalFixtures {
   corpus: CorpusFixtures;
   /** ChatReads: reconcile paste, delivered package, busiest pack day. */
   chatReads: ChatReadsFixtures;
+  /** LabelBuyChat: a one-row order with a stored ship-to, no weight, never labelled. */
+  labelOrder: LabelBuyFixture;
 }
 
 /** The bin-face shape the invented-bin guard recognises. */
@@ -307,6 +310,7 @@ export function loadFixtures(tenantSlug: string): Promise<EvalFixtures> {
       unprintedOrders: unprinted,
       corpus: await loadCorpus(q, orgId),
       chatReads: await loadChatReadsFixtures(q, orgId),
+      labelOrder: need((await q<LabelBuyFixture>(LABEL_ORDER_SQL, [orgId]))[0], 'order with a ship-to and no label'),
     };
   });
 }

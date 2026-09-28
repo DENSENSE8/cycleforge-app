@@ -31,6 +31,7 @@ import {
   NavRolloutProbe,
   useContextualSidebarActive,
 } from '@/components/sidebar/contextual/useNavContext';
+import { OrgCapabilitiesRealtime } from '@/hooks/useOrgCapabilities';
 import { useLocalStorage } from '@/hooks';
 
 // The sidebar is its own chunk:
@@ -299,6 +300,7 @@ export function DesktopRouteShell({ children }: DesktopRouteShellProps) {
           <ErrorBoundary label="sidebar-nav-column" fallback={() => null}>
             <Suspense fallback={null}>
               <NavRolloutProbe />
+              <OrgCapabilitiesRealtime />
               <SidebarNavColumn
                 open={columnOpen}
                 peeking={navPeek.isOpen}

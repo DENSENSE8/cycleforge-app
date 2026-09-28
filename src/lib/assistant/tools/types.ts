@@ -17,6 +17,12 @@ export interface AssistantToolCtx {
   sessionId?: string | null;
   /** This turn's user message (card numbers already redacted) — what a draft tool extracts fields from, so the model never retypes pasted data. */
   userMessage?: string | null;
+  /**
+   * Whether this caller has passed step-up (PIN) for a scope right now — the
+   * gate `withAuth` puts on stepUp permissions (admins are exempt). Absent =
+   * not satisfiable from this turn, so a step-up write refuses.
+   */
+  hasStepUp?: (scope: string) => Promise<boolean>;
 }
 
 export interface AssistantToolQueryResult {

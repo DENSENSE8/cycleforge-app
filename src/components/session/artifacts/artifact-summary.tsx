@@ -111,6 +111,13 @@ export function artifactSummary(entry: SessionArtifactEntry): ArtifactSummary {
         count: artifact.kpis.length > 0 ? plural(artifact.kpis.length, 'KPI') : plural(artifact.sections.length, 'section'),
         icon: <ClipboardList className={GLYPH} />,
       };
+    case 'capability':
+      return {
+        title: artifact.title,
+        kind: artifact.mode === 'proposal' ? 'Capability · confirm' : 'Capabilities',
+        count: artifact.items.length > 1 ? plural(artifact.items.length, 'capability', 'capabilities') : null,
+        icon: <Sparkles className={GLYPH} />,
+      };
     default:
       return assertNeverArtifactKind(artifact);
   }

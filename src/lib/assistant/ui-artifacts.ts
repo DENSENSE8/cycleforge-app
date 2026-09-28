@@ -243,7 +243,7 @@ export const artifactPoDraftSchema = z.object({
   missing: z
     .array(
       z.object({
-        field: z.enum(['po_number', 'vendor', 'items', 'quantity', 'tracking']),
+        field: z.enum(['po_number', 'vendor', 'items', 'quantity', 'tracking', 'order']),
         label: z.string().max(200),
         question: z.string().max(200),
         prompt: z.string().max(80),
@@ -262,6 +262,47 @@ export const artifactPoDraftSchema = z.object({
     .max(12),
   /** Plain notes, e.g. a SKU not in the catalog that imports by title. */
   notes: z.array(z.string().max(200)).max(20),
+});
+
+/**
+ * A capability card (SIMPLE-FIRST) — what an org can switch on, what each one
+ * gives it, its state, and what is still needed (a connection, or the
+ * operator's yes). Produced only by the capability tools (the envelope brand).
+ * `connectUrl` is the server-minted https OAuth start the `request_connection`
+ * pill may carry; the card itself only follows same-origin `href`s.
+ */
+export const artifactCapabilitySchema = z.object({
+  kind: z.literal('capability'),
+  title: artifactTitle,
+  /** list: what the org can unlock · proposal: awaiting yes · result: just changed. */
+  mode: z.enum(['list', 'proposal', 'result']),
+  items: z
+    .array(
+      z.object({
+        id: z.string().trim().min(1).max(60),
+        label: z.string().trim().min(1).max(80),
+        blurb: z.string().max(300),
+        state: z.enum(['locked', 'suggested', 'setting_up', 'active']),
+        /** What it adds: sidebar rows and chat abilities, in the operator's words. */
+        unlocks: z.array(z.string().max(80)).max(20),
+        stillNeeded: z
+          .array(
+            z.object({
+              label: z.string().max(200),
+              href: appPath.optional(),
+              connectUrl: z.string().max(500).regex(/^https:\/\//).optional(),
+              /** A chat turn the step's button sends. */
+              prompt: z.string().max(120).optional(),
+            }),
+          )
+          .max(10),
+        /** Where the capability starts once active. */
+        href: appPath.optional(),
+      }),
+    )
+    .min(1)
+    .max(20),
+  note: z.string().max(300).optional(),
 });
 
 /**
@@ -453,6 +494,7 @@ export const sessionArtifactUnion = z.discriminatedUnion('kind', [
   artifactOrderDraftSchema,
   artifactPoDraftSchema,
   artifactReportSchema,
+  artifactCapabilitySchema,
 ]);
 
 /**
@@ -495,6 +537,7 @@ export type ArtifactDocument = z.infer<typeof artifactDocumentSchema>;
 export type ArtifactPayment = z.infer<typeof artifactPaymentSchema>;
 export type ArtifactOrderDraft = z.infer<typeof artifactOrderDraftSchema>;
 export type ArtifactPoDraft = z.infer<typeof artifactPoDraftSchema>;
+export type ArtifactCapability = z.infer<typeof artifactCapabilitySchema>;
 export type ArtifactReport = z.infer<typeof artifactReportSchema>;
 export type ArtifactReportKpi = z.infer<typeof artifactReportKpiSchema>;
 export type ArtifactReportSection = z.infer<typeof artifactReportSectionSchema>;
@@ -515,6 +558,7 @@ export const SESSION_ARTIFACT_KINDS = [
   'order_draft',
   'po_draft',
   'report',
+  'capability',
 ] as const;
 
 // ─── Chat-side table interception ────────────────────────────────────────────

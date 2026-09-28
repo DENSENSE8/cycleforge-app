@@ -63,6 +63,17 @@ CONSUMER_KEY=           # USPS
 CONSUMER_SECRET=        # USPS
 ```
 
+## ShipStation (label engine, API v2)
+```
+# Test-label mode: outside production (NODE_ENV !== 'production') or for a sandbox
+# org, every label purchase / void is refused unless the engine key is a ShipStation
+# SANDBOX key (prefix TEST_) — no postage is ever charged
+# (src/lib/shipping/shipstation/test-mode.ts). Set this to run labels (desk + chat
+# buy_label / void_label) against the sandbox locally; ignored in production for
+# customer orgs. The org's own v2 key lives in the integrations vault.
+SHIPSTATION_SANDBOX_API_KEY=   # TEST_… (ShipStation API sandbox key)
+```
+
 ## Ecwid / Square
 ```
 ECWID_STORE_ID=

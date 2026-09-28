@@ -57,22 +57,29 @@ export function useHintActivity() {
 }
 
 /**
+ * One rolling phrase: plain words, or words led by the keys that do them
+ * (HOTKEY FIRST — `F` Find orders to ship, `⌘ K` Search everywhere), so a
+ * field that does two jobs teaches both in the same line.
+ */
+export type FindHint = string | { keys: readonly string[]; text: string };
+
+/**
  * The rolling phrase, absolutely filling its (relative) parent. `hints[0]` is
  * the rest face; `hints[1…]` roll while `active`.
  *
  * Motion: the whole phrase moves as ONE LINE — it drops in from above while
  * the outgoing phrase drops out below (critically damped spring, no
  * overshoot), both through a soft masked edge — so it reads in one glance,
- * never word by word. A hover shorter than the intent delay never rolls.
- * Reduced motion keeps the swap as a plain fade (`useMotionPresence` strips
- * the travel).
+ * never word by word. A keyed phrase rolls WITH its keys. A hover shorter
+ * than the intent delay never rolls. Reduced motion keeps the swap as a
+ * plain fade (`useMotionPresence` strips the travel).
  */
 export function RollingHint({
   hints,
   active,
   className,
 }: {
-  hints: readonly string[];
+  hints: readonly FindHint[];
   active: boolean;
   className?: string;
 }) {
@@ -83,7 +90,8 @@ export function RollingHint({
   const [turn, setTurn] = useState(0);
   const line = useMotionPresence(motionPresence.findHintRoll);
   const transition = useMotionTransition(motionTransition.findHintRoll);
-  const key = hints.join('|');
+  const key = hints.map((hint) => (typeof hint === 'string' ? hint : `${hint.keys.join('+')} ${hint.text}`)).join('|');
+  const hint = hints[showing] ?? hints[0] ?? '';
 
   useEffect(() => {
     setShowing(0);
@@ -122,7 +130,20 @@ export function RollingHint({
           transition={transition}
           className={cn('absolute inset-0 flex items-center overflow-hidden whitespace-pre', className)}
         >
-          {hints[showing] ?? hints[0] ?? ''}
+          {typeof hint === 'string' ? (
+            hint
+          ) : (
+            <>
+              <span className="mr-1.5 inline-flex shrink-0 items-center gap-0.5">
+                {hint.keys.map((k) => (
+                  <KeyboardKey key={k} size="xs">
+                    {k}
+                  </KeyboardKey>
+                ))}
+              </span>
+              <span className="min-w-0 truncate">{hint.text}</span>
+            </>
+          )}
         </motion.span>
       </AnimatePresence>
     </span>
@@ -221,6 +242,12 @@ export function FindField({
   }, [inputRef, interceptPaste]);
 
   const sized = FIELD_SIZE[size];
+  // A field that also escalates teaches both jobs in one roll: `F` finds on
+  // this page, ⌘K / Ctrl K searches everywhere. The keys ride in the phrase,
+  // so no separate keycap sits in front of it.
+  const rolled: readonly FindHint[] = escalate
+    ? [hints[0] ?? 'Find', { keys: ['F'], text: hints[1] ?? 'Find' }, { keys: chordKeys('mod+k', apple), text: 'Search everywhere' }, ...hints.slice(2)]
+    : hints;
   const query = look.focused ? draft.trim() : '';
   const panel = query && (below || escalate);
   const well = (
@@ -236,9 +263,9 @@ export function FindField({
       )}
     >
       <Search aria-hidden className="size-3.5 shrink-0 text-text-faint" />
-      <HoverKeycaps keys={['F']} shown={look.active} />
+      {escalate ? null : <HoverKeycaps keys={['F']} shown={look.active} />}
       <span className="relative flex h-full min-w-0 flex-1">
-        {draft ? null : <RollingHint hints={hints} active={look.active} className={cn(sized.text, findHintTone(look.active))} />}
+        {draft ? null : <RollingHint hints={rolled} active={look.active} className={cn(sized.text, findHintTone(look.active))} />}
         <input
           ref={inputRef}
           type="search"
@@ -392,6 +419,9 @@ export function PasteKey({ label, shown, onPaste }: { label: string; shown: bool
       aria-label={label}
       title={label}
       onClick={onPaste}
+      // Keep focus where it is: focusing the key would grow a `overflowRight`
+      // well mid-click and slide the key out from under the pointer.
+      onPointerDown={(event) => event.preventDefault()}
       className={cn(
         'ds-raw-button grid size-6 shrink-0 place-content-center text-text-faint transition-[color,background-color,transform,opacity]',
         'hover:bg-surface-card hover:text-text-default active:translate-y-px',

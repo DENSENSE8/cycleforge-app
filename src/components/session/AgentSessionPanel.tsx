@@ -112,6 +112,7 @@ import { ComposerDropzone } from './composer/ComposerAttachments';
 import { artifactSummary } from './artifacts/artifact-summary';
 import { AnswerIdChip, InlineArtifact } from './artifacts/InlineArtifact';
 import { DocumentArtifactCard } from './artifacts/DocumentArtifact';
+import { useCapabilityStarters } from '@/hooks/useOrgCapabilities';
 
 /**
  * The empty-state chips — each sentence lands on a tool this lane's registry
@@ -161,6 +162,8 @@ export function AgentSessionPanel({
   // Shared 'station' thread: one transcript, whichever surface commits. A
   // regenerate / edit drops the superseded answers' cards with them.
   const [accessMode, setAccessMode] = useAssistantAccessMode();
+  // SIMPLE-FIRST: a chat-only workspace sees what it can switch on instead.
+  const capabilityStarters = useCapabilityStarters();
   const attachments = useComposerAttachments();
   const clearAttachments = attachments.clear;
   const chat = useAssistantChat({ shared: 'station', onSupersede: artifacts.dropMessages, accessMode });
@@ -1103,7 +1106,7 @@ export function AgentSessionPanel({
                 className="mt-4 flex flex-wrap justify-center gap-2"
                 data-session-suggestions
               >
-                {suggestionsForToday(new Date().getDay()).map((s) => (
+                {(capabilityStarters ?? suggestionsForToday(new Date().getDay())).map((s) => (
                   <button
                     key={s}
                     type="button"

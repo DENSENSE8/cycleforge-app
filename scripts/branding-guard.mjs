@@ -14,7 +14,7 @@
  *   npm run branding:guard
  */
 import { readFileSync, readdirSync, statSync } from 'node:fs';
-import { join, dirname, relative, sep } from 'node:path';
+import { join, dirname, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const repoRoot = join(dirname(fileURLToPath(import.meta.url)), '..');

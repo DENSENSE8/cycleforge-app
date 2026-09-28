@@ -698,6 +698,21 @@ export async function publishAssistantMutation(payload: {
   });
 }
 
+/** SIMPLE-FIRST: an org capability changed state — every open sidebar in the
+ *  org refetches its nav (`useOrgCapabilitiesRealtime`). */
+export async function publishOrgCapabilitiesChanged(payload: {
+  organizationId: string;
+  capabilityId: string;
+  state: string;
+}) {
+  await publishEvent(getAiAssistChannelName(payload.organizationId), 'org.capabilities.changed', {
+    type: 'org.capabilities.changed',
+    capabilityId: payload.capabilityId,
+    state: payload.state,
+    timestamp: formatPSTTimestamp(),
+  });
+}
+
 export async function publishStaffScheduleChanged(payload: StaffScheduleChangedPayload) {
   await publishEvent(getStaffChannelName(payload.organizationId), 'staff.schedule.changed', {
     type: 'staff.schedule.changed',

@@ -5,16 +5,11 @@ import { ApiError, errorResponse } from '@/lib/api';
 import type { OrgId } from '@/lib/tenancy/constants';
 import { tenantQuery } from '@/lib/tenancy/db';
 import { recordAudit, AUDIT_ACTION, AUDIT_ENTITY } from '@/lib/audit-logs';
-import { applyOrderTrackingOps } from '@/lib/neon/orders-tracking-queries';
-import {
-  deleteOutboundDocument,
-  OutboundDocumentNotFoundError,
-} from '@/lib/documents/outbound-documents';
 import { publishOrderChanged } from '@/lib/realtime/publish';
 import { invalidateCacheTags } from '@/lib/cache/upstash-cache';
 import { getShipStationV2, ShipStationNotConnectedError } from '@/lib/shipping/shipstation/config';
 import { ShipStationApiError } from '@/lib/shipping/shipstation/client';
-import { markLabelPurchaseVoided } from '@/lib/shipping/label-purchase-ledger';
+import { voidOrderLabel } from '@/lib/shipping/order-label-purchase';
 
 export const dynamic = 'force-dynamic';
 
@@ -40,45 +35,18 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
     );
     if (owner.rows.length === 0) throw ApiError.notFound('order', orderId);
 
-    // Void at the carrier first — the carrier is the source of truth on whether
-    // a refund is even possible (usage/time-window dependent).
     const v2 = await getShipStationV2(orgId);
-    const result = await v2.voidLabel(labelId);
+    const result = await voidOrderLabel(orgId, v2, {
+      orderId,
+      labelId,
+      shipmentId: Number.isFinite(shipmentId) && shipmentId > 0 ? shipmentId : null,
+      documentId: Number.isFinite(documentId) && documentId > 0 ? documentId : null,
+    });
     if (!result.approved) {
       return NextResponse.json(
         { ok: false, approved: false, error: result.message || 'The carrier declined the void request.' },
         { status: 409 },
       );
-    }
-
-    // The purchase ledger stops replaying this label; the client mints a
-    // fresh idempotency key for the next buy.
-    try {
-      await markLabelPurchaseVoided(orgId, labelId);
-    } catch (e) {
-      console.warn('[void-label] purchase ledger stamp failed', e);
-    }
-
-    // Best-effort reversal of the local linkage/document.
-    if (Number.isFinite(shipmentId) && shipmentId > 0) {
-      try {
-        await applyOrderTrackingOps({
-          orderIds: [orderId],
-          organizationId: orgId,
-          deletes: [{ shipmentId }],
-        });
-      } catch (e) {
-        console.warn('[void-label] unlink shipment failed', e);
-      }
-    }
-    if (Number.isFinite(documentId) && documentId > 0) {
-      try {
-        await deleteOutboundDocument(orgId, documentId, { expectedDocumentType: 'shipping_label' });
-      } catch (e) {
-        if (!(e instanceof OutboundDocumentNotFoundError)) {
-          console.warn('[void-label] delete label document failed', e);
-        }
-      }
     }
 
     await recordAudit(pool, ctx, req, {

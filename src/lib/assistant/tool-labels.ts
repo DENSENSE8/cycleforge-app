@@ -42,6 +42,7 @@ const TOOL_LABELS: Readonly<Record<string, string>> = {
   create_manual_order: 'Order',
   draft_po_import: 'Purchase order',
   import_purchase_order: 'Purchase order',
+  link_po_to_order: 'PO ↔ order link',
   set_order_flag: 'Order flags',
   mark_out_of_stock: 'Out of stock',
   clear_out_of_stock: 'Back in stock',
@@ -53,6 +54,12 @@ const TOOL_LABELS: Readonly<Record<string, string>> = {
   get_staff_report: 'Staff report',
   get_tracking_status: 'Carrier tracking',
   watch_tracking: 'Tracking watch',
+  quote_label_rates: 'Label rates',
+  buy_label: 'Buy label',
+  void_label: 'Void label',
+  list_capabilities: 'Capabilities',
+  enable_capability: 'Capability',
+  import_products_from_ebay: 'eBay import',
   render_artifact: 'Result',
 };
 

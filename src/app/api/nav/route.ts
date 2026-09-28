@@ -5,21 +5,36 @@ import { withAuth } from '@/lib/auth/withAuth';
 import { errorResponse } from '@/lib/api';
 import { tenantQuery, withTenantTransaction } from '@/lib/tenancy/db';
 import { parseNavDefinition } from '@/lib/nav/org-nav';
+import { hiddenNavItemIds } from '@/lib/capabilities/catalog';
+import { ACTIVE_CAPABILITIES_SUBQUERY_SQL } from '@/lib/capabilities/nav-gate';
 import { recordAudit, AUDIT_ACTION, AUDIT_ENTITY } from '@/lib/audit-logs';
 
 export const dynamic = 'force-dynamic';
 
 export const GET = withAuth(async (_req: NextRequest, ctx) => {
   try {
-    const { rows } = await tenantQuery<{ config: unknown; version: number }>(
+    // The stored override and the capability gate in one round trip. The gate
+    // rides beside `definition` (never merged into it) so a reader that edits
+    // and re-publishes the override cannot persist capability hides.
+    const { rows } = await tenantQuery<{ config: unknown; version: number | null; active: string[] }>(
       ctx.organizationId,
-      `SELECT config, version FROM nav_definitions
-        WHERE organization_id = $1 AND is_active = TRUE
-        ORDER BY version DESC LIMIT 1`,
+      `SELECT nd.config, nd.version, ${ACTIVE_CAPABILITIES_SUBQUERY_SQL} AS active
+         FROM (SELECT 1) AS one
+         LEFT JOIN LATERAL (
+           SELECT config, version FROM nav_definitions
+            WHERE organization_id = $1 AND is_active = TRUE
+            ORDER BY version DESC LIMIT 1
+         ) nd ON TRUE`,
       [ctx.organizationId],
     );
-    const definition = rows[0] ? parseNavDefinition(rows[0].config) : null;
-    return NextResponse.json({ success: true, definition, version: rows[0]?.version ?? null });
+    const row = rows[0];
+    const definition = row?.config ? parseNavDefinition(row.config) : null;
+    return NextResponse.json({
+      success: true,
+      definition,
+      version: row?.version ?? null,
+      capabilityHidden: hiddenNavItemIds(row?.active ?? []),
+    });
   } catch (error) {
     return errorResponse(error, 'GET /api/nav');
   }

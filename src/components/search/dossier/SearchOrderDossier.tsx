@@ -142,9 +142,16 @@ export function SearchOrderDossier({
     ...(carrier ? [{ id: 'carrier', label: 'Carrier', value: carrier }] : []),
     ...(itemNumber ? [{ id: 'item-number', label: 'Item #', value: itemNumber, copy: true }] : []),
   ];
-  const related: SearchDossierLink[] = sku
-    ? [{ id: `sku:${sku}`, label: 'SKU', value: sku, target: { query: sku } }]
-    : [];
+  const related: SearchDossierLink[] = [
+    ...(sku ? [{ id: `sku:${sku}`, label: 'SKU', value: sku, target: { query: sku } }] : []),
+    // The purchase orders bought for this order (receiving_order_link) — each opens its carton.
+    ...(timelineQuery.data?.poLinks ?? []).map((po) => ({
+      id: `po:${po.poNumber}:${po.receivingId ?? ''}`,
+      label: 'For PO',
+      value: po.vendor ? `${po.poNumber} · ${po.vendor}` : po.poNumber,
+      target: po.receivingId != null ? { sel: { entityType: 'receiving' as const, id: po.receivingId } } : { query: po.poNumber },
+    })),
+  ];
   const unitPhotos = [...(timelineQuery.data?.unitPhotos ?? [])].sort(
     (a, b) => (b.at ? Date.parse(b.at) : 0) - (a.at ? Date.parse(a.at) : 0),
   );

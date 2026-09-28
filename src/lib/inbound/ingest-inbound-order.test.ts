@@ -41,13 +41,18 @@ function fakes(opts: { priorHash?: string | null } = {}) {
     }) as TxClient['query'],
   };
   const ingested: Array<Record<string, unknown>> = [];
+  const registered: string[] = [];
   const deps: IngestInboundOrderDeps = {
+    registerShipment: async (tracking) => {
+      registered.push(tracking);
+      return 77;
+    },
     ingestPurchase: (async (_org: OrgId, input: Record<string, unknown>) => {
       ingested.push(input);
       return { receivingLineId: 100 + ingested.length, receivingId: 12, created: true, platformAccountId: null, sourceType: 'manual', sourceOrderId: String(input.sourceOrderId) };
     }) as unknown as IngestInboundOrderDeps['ingestPurchase'],
   };
-  return { client, sql, ingested, deps };
+  return { client, sql, ingested, registered, deps };
 }
 
 test('a 3-line order with no typed line ids lands 3 distinct lines (L1..L3), one order', async () => {
@@ -59,6 +64,10 @@ test('a 3-line order with no typed line ids lands 3 distinct lines (L1..L3), one
   assert.deepEqual(f.ingested.map((i) => i.lineKey), ['L1', 'L2', 'L3']);
   assert.ok(f.ingested.every((i) => i.inboundOrderId === 5), 'every line hangs off the one header');
   assert.equal(f.ingested[1].unitCostCents, 1500);
+  // The tracking is registered once, before the lines, and every line reuses it
+  // (per-line registration on another connection deadlocks against this tx).
+  assert.deepEqual(f.registered, ['1Z999AA10123456784']);
+  assert.ok(f.ingested.every((i) => i.shipmentId === 77));
   // The order identity is platform-aware and normalized.
   assert.deepEqual(r.identity, {
     sourceType: 'manual', sourcePlatform: 'goodwill', paintPlatform: 'goodwill', externalOrderId: 'po 77', externalOrderIdNorm: 'PO77',

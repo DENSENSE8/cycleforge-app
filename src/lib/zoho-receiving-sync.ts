@@ -1,6 +1,7 @@
 /** Canonical Zoho inbound sync service. */
 
 // Wave 2 (tenancy):
+import { acknowledgeZohoPurchaseOrder } from '@/lib/inbound/zoho-inbound-adapter';
 import { tenantQuery, withTenantTransaction } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';
 import { transitionReceivingLine } from '@/lib/receiving/state-machine';
@@ -473,6 +474,18 @@ async function syncPurchaseOrderLines(
     }
   }
 
+  // Acknowledge the PO inside CycleForge (inbound_order + catalog-keyed lines + ledger) on this transaction.
+  await acknowledgeZohoPurchaseOrder(client, orgId, {
+    zohoPurchaseOrderId: normalizedPoId,
+    poNumber,
+    vendorName: asString(po.vendor_name) || null,
+    zohoVendorId: asString(po.vendor_id) || null,
+    orderDate: asString(po.date) || null,
+    expectedDate: asString(po.delivery_date, po.expected_delivery_date) || null,
+    currency: asString(po.currency_code) || null,
+    lastModifiedTime: lastModifiedTime ?? null,
+  });
+
   return {
     purchaseorder_id: normalizedPoId,
     purchaseorder_number: poNumber,
@@ -843,6 +856,16 @@ export async function importZohoPurchaseReceiveToReceiving(options: {
         await upsertReceivingLineZoho(orgId, newLineId, zohoFacts, txDeps);
       }
       synced++;
+    }
+
+    const receivePoId = asString(receive.purchaseorder_id);
+    if (receivePoId) {
+      await acknowledgeZohoPurchaseOrder(client, orgId, {
+        zohoPurchaseOrderId: receivePoId,
+        poNumber: asString(receive.purchaseorder_number),
+        vendorName: asString(receive.vendor_name) || null,
+        lastModifiedTime: lastModifiedTime ?? null,
+      });
     }
 
     return {

@@ -10,6 +10,8 @@
 import type { Entitlements } from '@/lib/billing/plans';
 import { getEntitlements } from '@/lib/billing/entitlements';
 import { parseNavDefinition } from '@/lib/nav/org-nav';
+import { hiddenNavItemIds } from '@/lib/capabilities/catalog';
+import { ACTIVE_CAPABILITIES_SUBQUERY_SQL, withCapabilityGate } from '@/lib/capabilities/nav-gate';
 import { settingByKey } from '@/lib/settings/registry';
 import { resolveSetting } from '@/lib/settings/resolve';
 import { getSidebarNavPageId } from '@/lib/sidebar-navigation';
@@ -25,6 +27,8 @@ export interface NavContextInputs {
   navConfig: unknown;
   /** The staffer's raw value for the page's switch key, or null. */
   staffSetting: unknown;
+  /** The org's ACTIVE capability ids (SIMPLE-FIRST gate); absent = no gate. */
+  activeCapabilities?: string[];
 }
 
 export interface NavContextDeps {
@@ -37,7 +41,7 @@ export interface NavContextDeps {
 
 const defaultDeps: NavContextDeps = {
   async loadInputs(orgId, staffId, settingKey) {
-    const { rows } = await tenantQueryOneTrip<{ nav_config: unknown; staff_setting: unknown }>(
+    const { rows } = await tenantQueryOneTrip<{ nav_config: unknown; staff_setting: unknown; active_capabilities: string[] }>(
       orgId,
       `SELECT
          (SELECT nd.config FROM nav_definitions nd
@@ -45,10 +49,15 @@ const defaultDeps: NavContextDeps = {
            ORDER BY nd.version DESC LIMIT 1) AS nav_config,
          (SELECT sp.prefs -> $3::text FROM staff_preferences sp
            WHERE sp.organization_id = $1 AND sp.staff_id = $2
-           LIMIT 1) AS staff_setting`,
+           LIMIT 1) AS staff_setting,
+         ${ACTIVE_CAPABILITIES_SUBQUERY_SQL} AS active_capabilities`,
       [orgId, staffId, settingKey],
     );
-    return { navConfig: rows[0]?.nav_config ?? null, staffSetting: rows[0]?.staff_setting ?? null };
+    return {
+      navConfig: rows[0]?.nav_config ?? null,
+      staffSetting: rows[0]?.staff_setting ?? null,
+      activeCapabilities: rows[0]?.active_capabilities ?? [],
+    };
   },
   async loadOrg(orgId) {
     const [org, entitlements] = await Promise.all([getOrganization(orgId), getEntitlements(orgId)]);
@@ -90,7 +99,10 @@ export async function getNavContextForStaff(
     pathname: url.pathname,
     params: url.searchParams,
     permissions: request.permissions,
-    orgNav: parseNavDefinition(inputs.navConfig),
+    orgNav: withCapabilityGate(
+      parseNavDefinition(inputs.navConfig),
+      inputs.activeCapabilities ? hiddenNavItemIds(inputs.activeCapabilities) : null,
+    ),
     rolloutOverrides: override ? { [pageId]: override } : undefined,
     view: request.view,
   });

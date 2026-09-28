@@ -45,6 +45,7 @@ import { sessionArtifactSchema } from '@/lib/assistant/ui-artifacts';
 import { generateSessionTitle } from '@/lib/ai/session-title';
 import type { AssistantToolCtx, AssistantToolRunResult } from '@/lib/assistant/tools/types';
 import { identifierTurnAnswer, identifierTurnMissed, planIdentifierTurn } from '@/lib/assistant/identifier-turn';
+import { reconcileFollowThroughKind, runReconcileFollowThrough } from '@/lib/assistant/reconcile-follow-through';
 import { resolveOrgAiChain, type OrgAiConfig } from '@/lib/ai/org-provider';
 import { isSelfHostedAiRuntime } from '@/lib/ai/provider';
 import { estimateCostMicrocents } from '@/lib/ai/model-pricing';
@@ -58,6 +59,8 @@ import { CARTON_ASK_SYSTEM } from '@/lib/assistant/carton-ask-brief';
 import { ORG_CHAT_SYSTEM } from '@/lib/assistant/org-chat-facts';
 import { logger } from '@/lib/observability/logger';
 import { CARD_NUMBER_PLACEHOLDER, CARD_NUMBER_REFUSAL, redactCardNumbers, scanCardNumbers } from '@/lib/assistant/pan-guard';
+import { hasStepUp } from '@/lib/auth/stepup';
+import { rolesIncludeAdmin } from '@/lib/auth/permissions';
 
 /** `done.mode` of a turn the PAN guard answered — the payment golden asserts it. */
 const CARD_REFUSED_MODE = 'card_refused';
@@ -237,6 +240,8 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
     accessMode: accessMode ?? 'full',
     sessionId,
     userMessage: message,
+    // The same step-up rule withAuth applies to stepUp permissions (admins exempt).
+    hasStepUp: async (scope) => rolesIncludeAdmin(ctx.user.roles) || hasStepUp(ctx.session.sid, scope),
   };
 
   // Stop / client gone: `req.signal` fires on a closed connection, `cancel()`
@@ -560,6 +565,21 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
             data && typeof data === 'object' && 'summary' in data && typeof data.summary === 'string' ? data.summary : null;
           const summary = carried?.modelData.summary ?? toolSummary ?? (result.ok ? 'Done.' : `Not done — ${result.error}`);
           await toolOnlyTurn(pendingWrite.toolName, input, result, summary, 'confirmation');
+          return;
+        }
+
+        // Reconcile chips that act ("Import the missing ones as purchase
+        // orders" / "Add the missing ones as new orders"): the refs come from
+        // this thread's persisted reconcile table, never the model, and the
+        // draft opens here prefilled (`reconcile-follow-through.ts`).
+        const followKind = reconcileFollowThroughKind(userText);
+        const followed = followKind
+          ? await runReconcileFollowThrough(followKind, orgId, sessionId, (tool, input) =>
+              dispatchToolCall(tool, input, toolCtx, new Map(), runAssistantTool),
+            ).catch(() => null)
+          : null;
+        if (followed) {
+          await toolOnlyTurn(followed.tool, followed.input, followed.result, followed.text, 'reconcile_follow_through');
           return;
         }
 

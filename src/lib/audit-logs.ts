@@ -153,6 +153,8 @@ export const AUDIT_ENTITY = {
   STATION_DEFINITION: 'station_definition',
   // Navigation as data (operator-surfaces refactor Phase 4)
   NAV_DEFINITION: 'nav_definition',
+  // SIMPLE-FIRST org capabilities (org_capabilities)
+  ORG_CAPABILITY: 'org_capability',
   // Workflow graphs (Operations Studio layer 1)
   WORKFLOW_DEFINITION: 'workflow_definition',
   // Curated template catalog (Template Platform Phase 4) — submitted/reviewed rows
@@ -653,6 +655,9 @@ export const AUDIT_ACTION = {
   STATION_PUBLISH:    'station.publish',
   // Navigation as data (operator-surfaces refactor Phase 4)
   NAV_PUBLISH:        'nav.publish',
+  // SIMPLE-FIRST: an org capability switched on / off from Settings
+  ORG_CAPABILITY_ENABLE:  'org_capability.enable',
+  ORG_CAPABILITY_DISABLE: 'org_capability.disable',
   // Workflow graphs (Operations Studio layer 1) — draft/publish lifecycle
   WORKFLOW_DRAFT_CREATE: 'workflow.draft.create',
   WORKFLOW_DRAFT_SAVE:   'workflow.draft.save',

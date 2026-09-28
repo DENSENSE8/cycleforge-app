@@ -233,6 +233,12 @@ export async function ensureReceivingForInboundOrder(params: {
   organizationId: string;
   /** Tenant-tx client when called from ingest — carton writes must share the GUC. */
   db?: SqlClient;
+  /**
+   * The internal order the carton is for. When set, the carton is found by
+   * the order's own lines — never by (source, order number), which two
+   * platforms' identical order numbers would share.
+   */
+  inboundOrderId?: number | null;
 }): Promise<number> {
   if (params.sourceType === 'ebay') {
     return ensureReceivingForEbayOrder(params);
@@ -245,15 +251,23 @@ export async function ensureReceivingForInboundOrder(params: {
   const source = params.sourceType;
   const db = params.db ?? (pool as unknown as SqlClient);
 
-  const existing = await db.query<{ id: number }>(
-    `SELECT id FROM receiving_carton
-      WHERE organization_id = $1::uuid
-        AND source = $2
-        AND source_order_id = $3
-      ORDER BY id
-      LIMIT 1`,
-    [params.organizationId, source, sourceOrderId],
-  );
+  const existing = params.inboundOrderId != null
+    ? await db.query<{ id: number }>(
+        `SELECT rl.receiving_id AS id FROM receiving_line rl
+          WHERE rl.organization_id = $1::uuid AND rl.inbound_order_id = $2 AND rl.receiving_id IS NOT NULL
+          ORDER BY rl.id
+          LIMIT 1`,
+        [params.organizationId, params.inboundOrderId],
+      )
+    : await db.query<{ id: number }>(
+        `SELECT id FROM receiving_carton
+          WHERE organization_id = $1::uuid
+            AND source = $2
+            AND source_order_id = $3
+          ORDER BY id
+          LIMIT 1`,
+        [params.organizationId, source, sourceOrderId],
+      );
   if (existing.rows[0]) {
     const id = Number(existing.rows[0].id);
     if (params.shipmentId != null) {

@@ -132,7 +132,7 @@ export const POST = withAuth(async (req: NextRequest) => {
       `INSERT INTO staff
          (name, role, active, organization_id, pin_hash, pin_set_at, status, default_home_path, email,
           account_id, membership_id, auth_method)
-       VALUES ($1, 'admin', true, $2, $3, CASE WHEN $3 IS NULL THEN NULL ELSE now() END,
+       VALUES ($1, 'admin', true, $2, $3::text, CASE WHEN $3::text IS NULL THEN NULL ELSE now() END,
                'active', '/', $4, $5, $6, 'password')
        RETURNING id`,
       [parsed.fullName, orgId, pinHash, parsed.email, accountId, membershipId],

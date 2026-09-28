@@ -427,6 +427,16 @@ export const MUTATION_KINDS = {
       'Import a purchase order drafted in chat onto the Incoming spine: PO number, vendor, every item (SKU or title, quantity, cost), tracking linked for the arrival scan, expected date. Payload: { draft } (the PO import field contract). Proposed by import_purchase_order — use that tool, not propose_mutation. Not revertable.',
     permission: 'receiving.scan_po',
   },
+  // review — "this PO is for order 1125" (`link_po_to_order`): the
+  // receiving_order_link edge between a purchase order and outbound orders.
+  'receiving.link_order': {
+    label: 'Link purchase order to order',
+    trust: 'review',
+    targetKind: 'receiving',
+    description:
+      'Link (or unlink) a purchase order to the outbound order(s) it was bought for. Payload: { op: link|unlink, po: { poNumber, inboundOrderId, receivingId }, orders: [{ orderNumber, localOrderId, channel }] }. Proposed by link_po_to_order — use that tool, not propose_mutation. Revertable (link and unlink are each other\'s inverse).',
+    permission: 'receiving.scan_po',
+  },
   // review — chat order-status writes (ChatWrites). Each is proposed by its
   // own tool and applied by the operator's next-turn "yes" (or any reviewer).
   'order.set_flag': {
@@ -468,6 +478,33 @@ export const MUTATION_KINDS = {
     description:
       'Create a task for one or more staff, optionally about an order and linked to a ticket, with a deadline and reminder. Payload: { task } or the inverse { cancelTaskId }. Proposed by create_task — use that tool, not propose_mutation. Revertable (cancels the task).',
     permission: 'work_orders.claim',
+  },
+  // review — SIMPLE-FIRST: turn on one org capability (its lanes appear in the
+  // sidebar). Proposed by enable_capability; the operator's next-turn "yes"
+  // (or any reviewer) approves it; approval writes the ledger row.
+  'org.enable_capability': {
+    label: 'Turn on capability',
+    trust: 'review',
+    targetKind: 'org_capability',
+    description:
+      'Turn on one org capability (its sidebar lanes and chat tools). Payload: { capabilityId, staffId } or the inverse { capabilityId, staffId, restoreState }. Proposed by enable_capability — use that tool, not propose_mutation. Revertable (restores the prior state).',
+    permission: 'admin.manage_features',
+  },
+  'shipping.buy_label': {
+    label: 'Buy shipping label',
+    trust: 'review',
+    targetKind: 'order',
+    description:
+      'Buy a ShipStation label for an order at a rate from a fresh server quote (tracking on the order, label PDF in documents, purchase ledger row). Payload built server-side by buy_label — use that tool, not propose_mutation. Not revertable (void_label voids it).',
+    permission: 'shipping.buy_label',
+  },
+  'shipping.void_label': {
+    label: 'Void shipping label',
+    trust: 'review',
+    targetKind: 'order',
+    description:
+      'Void a label bought in CycleForge (carrier refund request, tracking unlinked, label document removed). Payload built server-side by void_label — use that tool, not propose_mutation. Not revertable.',
+    permission: 'shipping.void_label',
   },
 } as const satisfies Record<string, MutationKindDef>;
 

@@ -10,7 +10,7 @@ const ORG = '11111111-2222-3333-4444-555555555555';
 function ctxWith(perms: string[]): AssistantToolCtx {
   return { organizationId: ORG, staffId: 7, permissions: new Set(perms) };
 }
-const FULL_CTX = ctxWith(['dashboard.view', 'studio.view', 'assistant.chat', 'sku_stock.view', 'orders.view', 'receiving.view', 'packing.complete_order']);
+const FULL_CTX = ctxWith(['dashboard.view', 'studio.view', 'assistant.chat', 'sku_stock.view', 'orders.view', 'receiving.view', 'packing.complete_order', 'shipping.buy_label']);
 
 const SEARCH_TOOL_NAMES = new Set([
   'find_records',
@@ -42,6 +42,8 @@ const DOMAIN_TOOL_NAMES = new Set([
   'get_worklist',
   'get_staff_report',
   'get_tracking_status',
+  // SIMPLE-FIRST: reads through the capability store (org-scoped tenantQuery).
+  'list_capabilities',
 ]);
 
 /** Tool-forge gateway tools. */
@@ -65,6 +67,8 @@ const ALLOWED_TOOL_PERMISSIONS = new Set([
   'orders.view',
   // Device tool (print_order_paperwork): the same permission the station's print route checks.
   'packing.complete_order',
+  // quote_label_rates: the same permission the desk's order-rates route checks.
+  'shipping.buy_label',
   // Tool forge — one permission per gateway tool, deliberately NOT assistant.chat
   // (see the header of src/lib/mcp/tool-server.ts for why that distinction is
   // what keeps a write-capable gateway safe behind a read-scoped route gate).
@@ -100,8 +104,8 @@ function fakes(rowsFor?: (text: string) => Array<Record<string, unknown>>) {
   return { deps, cap };
 }
 
-test('registry: 42 tools (37 read + 1 device + 4 gateway), unique names, model-grade descriptions, valid permissions', () => {
-  assert.equal(ASSISTANT_TOOLS.size, 42);
+test('registry: 44 tools (39 read + 1 device + 4 gateway), unique names, model-grade descriptions, valid permissions', () => {
+  assert.equal(ASSISTANT_TOOLS.size, 44);
   const expected = [
     'get_signals_by_node', 'get_top_reasons', 'get_unit_journey', 'get_feed_state',
     'get_graph', 'get_node_detail', 'get_benchmarks', 'get_kpis',
@@ -117,6 +121,7 @@ test('registry: 42 tools (37 read + 1 device + 4 gateway), unique names, model-g
     'draft_manual_order',
     'draft_po_import',
     'reconcile_refs', 'get_customer', 'get_worklist', 'get_staff_report', 'get_tracking_status',
+    'quote_label_rates', 'list_capabilities',
     // Device tool: resolves a print the operator's browser sends to their station.
     'print_order_paperwork',
     // The tool-forge gateway — exactly four, per the pipeline spec.
@@ -145,6 +150,7 @@ test('every SQL tool threads ctx.organizationId as $1 into every query (never mo
     draft_manual_order: { customerName: 'Jane Doe', phone: '555-123-4567', items: [{ product: 'Bose 151 bracket' }] },
     draft_po_import: { poNumber: 'PO-1', vendor: 'Acme', items: [{ product: 'A-1', quantity: 2 }], trackingNumbers: ['1Z999AA10123456784'] },
     print_order_paperwork: { orders: ['5083'] },
+    quote_label_rates: { order: '5083' },
   };
   for (const name of ASSISTANT_TOOLS.keys()) {
     if (SEARCH_TOOL_NAMES.has(name) || DOMAIN_TOOL_NAMES.has(name) || GATEWAY_TOOL_NAMES.has(name)) continue;

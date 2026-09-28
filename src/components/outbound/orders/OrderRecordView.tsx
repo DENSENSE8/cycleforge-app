@@ -74,6 +74,7 @@ import { OrderDocumentsSection } from '@/components/shipped/OrderDocumentsSectio
 import { OrderTimelineSection } from '@/components/shipped/OrderTimelineSection';
 import { ThreadPanel } from '@/components/threads/ThreadPanel';
 import { OrderPhotoPeek } from './OrderPhotoPeek';
+import { OrderPoLinksRow } from './OrderPoLinksRow';
 
 /** One column of the record: the industrial panel its sections stack in. */
 const COLUMN_CLASS = DESK_RECORD_COLUMN_CARD_CLASS;
@@ -231,6 +232,7 @@ export function OrderRecordView({
                   <LedgerCopyAction value={String(record.item_number ?? '').trim() || null} label="item number" />
                 </span>
               </EvidenceFactRow>
+              <OrderPoLinksRow orderId={Number(record.id)} />
             </div>
           ) : null}
         </RecordGroup>

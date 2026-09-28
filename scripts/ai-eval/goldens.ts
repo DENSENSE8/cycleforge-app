@@ -21,6 +21,8 @@ import { anyOrderGoldens } from './any-order-goldens';
 import { chatWritesGoldens } from './chat-writes-goldens';
 import { chatPrintGoldens } from './chat-print-goldens';
 import { chatReadsGoldens } from './chat-reads-goldens';
+import { poLinkGoldens } from './po-link-goldens';
+import { labelBuyGoldens } from './labelbuy-goldens';
 
 export interface TurnResult {
   providers: string[];
@@ -317,6 +319,8 @@ export function buildGoldens(
     ...chatWritesGoldens(f, run), // ChatWrites
     ...chatPrintGoldens(f, run), // ChatPrint
     ...chatReadsGoldens(f, run), // ChatReads
+    ...poLinkGoldens(f, run), // PoOrderLink
+    ...labelBuyGoldens(f, run), // LabelBuyChat
     ...corpusGoldens(f),
   ];
 }
@@ -375,7 +379,11 @@ function corpusGoldens(f: EvalFixtures): Golden[] {
     scan('email', c.customer.email, 'get_customer', (r) => [['text: the buyer', has(r.text, c.customer.name)]], false),
     scan('phone', phone, 'get_customer', (r) => [['text: the buyer', has(r.text, c.customer.name)]], false),
     scan('po', c.po.po, 'find_records', (r) => [['text: the PO', has(r.text, c.po.po)]]),
-    scan('bin', f.binContents.bin, 'list_location_contents', (r) => [['text: sku + qty', has(r.text, f.binContents.sku) && word(r.text, f.binContents.qty)]]),
+    // A bin is not a /search record (search-selection.ts): its link is the Bins desk filtered to it.
+    scan('bin', f.binContents.bin, 'list_location_contents', (r) => [
+      ['text: sku + qty', has(r.text, f.binContents.sku) && word(r.text, f.binContents.qty)],
+      ['links the bin on Locations ▸ Bins', r.artifacts.some((a) => a.identity?.href === `/inventory/locations?tab=bins&q=${encodeURIComponent(f.binContents.bin)}`)],
+    ], false),
     {
       id: 'scan-lpn',
       question: c.lpn.lpn,
@@ -590,7 +598,7 @@ function poImportGoldens(f: EvalFixtures, run: { startedAt: Date }): Golden[] {
           ['settled on the confirmation path', r.done?.mode === 'confirmation'],
           ['record card links to receiving', r.artifacts.some((x) => x.producedBy === 'import_purchase_order' && x.kind === 'record')],
           ['one EXPECTED PO line', rows.length === 1 && line.workflow_status === 'EXPECTED' && line.receiving_type === 'PO'],
-          [`${sku} × 2`, line?.sku?.toUpperCase() === sku.toUpperCase() && Number(line?.quantity_expected) === 2],
+          [`${sku} × 2 (got ${line?.sku ?? '∅'} × ${line?.quantity_expected ?? '∅'})`, line?.sku?.toUpperCase() === sku.toUpperCase() && Number(line?.quantity_expected) === 2],
           ['tracking linked to the PO carton', line?.receiving_id != null && line.carton_tracking_linked === true],
           ['vendor on the PO mirror', line?.mirror_vendor === vendor],
         ];

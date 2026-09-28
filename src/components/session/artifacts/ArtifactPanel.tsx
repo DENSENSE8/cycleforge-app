@@ -23,6 +23,7 @@ import { DocumentArtifact } from './DocumentArtifact';
 import { PaymentArtifact } from './PaymentArtifact';
 import { OrderDraftArtifact } from './OrderDraftArtifact';
 import { PoDraftArtifact } from './PoDraftArtifact';
+import { CapabilityArtifact } from './CapabilityArtifact';
 import {
   ChartArtifact,
   ImportTriageArtifact,
@@ -135,6 +136,8 @@ function renderArtifact(
       return <OrderDraftArtifact artifact={artifact} />;
     case 'po_draft':
       return <PoDraftArtifact artifact={artifact} />;
+    case 'capability':
+      return <CapabilityArtifact artifact={artifact} />;
     default:
       return assertNeverArtifactKind(artifact);
   }

@@ -16,20 +16,27 @@ import { buildManualLinkTool, type ManualLinkDeps } from './manual-link-tools';
 import { buildRequestPaymentTool, type RequestPaymentDeps } from './request-payment-tool';
 import { buildCreateManualOrderTool, type ManualOrderToolDeps } from './manual-order-tools';
 import { buildImportPurchaseOrderTool, type PoImportToolDeps } from './po-import-tools';
+import { buildLinkPoToOrderTool } from './po-order-link-tools';
 import { buildOrderStatusTools } from './order-status-tools';
 import { buildCreateTaskTool } from './task-tools';
 import { buildWatchTrackingTool } from './tracking-tools';
+import { buildLabelWriteTools } from './label-tools';
+import { buildEnableCapabilityTool, buildImportEbayProductsTool } from './capability-tools';
 
 /** Kinds a dedicated tool owns end to end (its own confirmation) — propose_mutation refuses them. */
 const DEDICATED_TOOL_KINDS: Record<string, string> = {
   'product_manual.link_sku': 'link_manual_to_sku',
   'order.create_manual': 'create_manual_order',
   'receiving.import_po': 'import_purchase_order',
+  'receiving.link_order': 'link_po_to_order',
   'order.set_flag': 'set_order_flag',
   'order.mark_out_of_stock': 'mark_out_of_stock',
   'order.clear_out_of_stock': 'clear_out_of_stock',
   'order.scan_out': 'bulk_scan_out',
   'task.create': 'create_task',
+  'shipping.buy_label': 'buy_label',
+  'shipping.void_label': 'void_label',
+  'org.enable_capability': 'enable_capability',
 };
 
 export interface AssistantWriteDeps {
@@ -153,8 +160,13 @@ export function buildWriteTools(
   if (turn) tools.push(buildRequestPaymentTool(turn.requestPaymentDeps) as WriteTool);
   if (turn) tools.push(buildCreateManualOrderTool(sessionId, turn.startedAt, turn.manualOrderDeps) as WriteTool);
   if (turn) tools.push(buildImportPurchaseOrderTool(sessionId, turn.startedAt, turn.poImportDeps) as WriteTool);
+  if (turn) tools.push(buildLinkPoToOrderTool(sessionId, turn.startedAt) as WriteTool);
   if (turn) tools.push(...(buildOrderStatusTools(sessionId, turn.startedAt) as WriteTool[]), buildCreateTaskTool(sessionId, turn.startedAt) as WriteTool);
   // Self-scoped, reversible watch — no confirmation turn, but still a write (Ask only refuses it).
   if (turn) tools.push(buildWatchTrackingTool() as WriteTool);
+  // Shipping labels: buy / void, each on the operator's yes (label-tools.ts).
+  if (turn) tools.push(...buildLabelWriteTools(sessionId, turn.startedAt));
+  // SIMPLE-FIRST: turn a capability on (on the operator's yes) and the eBay product import (capability-tools.ts).
+  if (turn) tools.push(buildEnableCapabilityTool(sessionId, turn.startedAt), buildImportEbayProductsTool() as WriteTool);
   return tools as ReadonlyArray<WriteTool>;
 }

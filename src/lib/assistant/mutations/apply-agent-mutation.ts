@@ -5,6 +5,7 @@ import type { OrgId } from '@/lib/tenancy/constants';
 import { recordAudit, AUDIT_ACTION, AUDIT_ENTITY } from '@/lib/audit-logs';
 import { recordOpsEvent } from '@/lib/ops-events';
 import { publishAssistantMutation } from '@/lib/realtime/publish';
+import { dispatchCapabilityEnable } from '@/lib/capabilities/apply';
 
 /** recordAudit's first param type (the local Queryable is unexported). */
 type AuditDb = Parameters<typeof recordAudit>[0];
@@ -61,6 +62,8 @@ import { PoImportRefused, importPurchaseOrderInTx } from '@/lib/inbound/import-p
 import { poImportDraftSchema } from '@/lib/inbound/po-import-draft';
 import type { TxClient } from '@/lib/inbound/purchase-links';
 import { dispatchChatWrite } from './chat-write-dispatch';
+import { dispatchLabelWrite } from './label-write-dispatch';
+import { applyPoOrderLinkInTx } from '@/lib/orders/po-order-link';
 
 type Client = FeedWriteClient & DraftGraphClient;
 type Payload = Record<string, unknown>;
@@ -219,12 +222,19 @@ async function dispatchApply(
       return dispatchManualOrder(client, orgId, payload);
     case 'receiving.import_po':
       return dispatchPoImport(client, orgId, payload);
+    case 'receiving.link_order':
+      return applyPoOrderLinkInTx(client as unknown as TxClient, orgId, payload);
     case 'order.set_flag':
     case 'order.mark_out_of_stock':
     case 'order.clear_out_of_stock':
     case 'order.scan_out':
     case 'task.create':
       return dispatchChatWrite(client as unknown as PoolClient, orgId, kind, payload);
+    case 'shipping.buy_label':
+    case 'shipping.void_label':
+      return dispatchLabelWrite(orgId, kind, payload);
+    case 'org.enable_capability':
+      return dispatchCapabilityEnable(client as unknown as PoolClient, orgId, payload);
     default:
       // review-class kinds never reach dispatchApply; anything else is a gap.
       return { ok: false, status: 400, error: `no apply path for mutation kind "${kind}"` };

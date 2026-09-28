@@ -6,6 +6,8 @@ import { getOrganization } from '@/lib/tenancy/organizations';
 import { createShipStationV2Client, type ShipStationV2Client } from './client';
 import { createShipStationV1Client, type ShipStationV1Client } from './orders-v1';
 import type { ShipAddress } from './types';
+import { labelTestModeRequired, sandboxKeyFromEnv } from './test-mode';
+import { loadOrgEnvironment } from '@/lib/qa/environment';
 
 export class ShipStationNotConnectedError extends Error {
   constructor(message = 'ShipStation is not connected for this organization.') {
@@ -32,11 +34,19 @@ async function isShipStationConnected(orgId: OrgId): Promise<boolean> {
   return Boolean(creds?.apiKey);
 }
 
-/** The v2 label engine (rates/labels/void). Throws NotConnected if no v2 key. */
+/**
+ * The v2 label engine (rates/labels/void). Throws NotConnected if no v2 key.
+ * Outside production, or for a sandbox org, the engine is in test-label mode
+ * (./test-mode.ts): a `SHIPSTATION_SANDBOX_API_KEY` replaces the org's key, and
+ * without a sandbox key every purchase / void is refused before it is sent.
+ */
 export async function getShipStationV2(orgId: OrgId): Promise<ShipStationV2Client> {
+  const testMode = labelTestModeRequired(process.env.NODE_ENV, (await loadOrgEnvironment(orgId)) === 'sandbox');
+  const sandboxKey = testMode ? sandboxKeyFromEnv() : null;
+  if (sandboxKey) return createShipStationV2Client(sandboxKey, undefined, { testMode });
   const creds = await resolveShipStationCreds(orgId);
   if (!creds?.apiKey) throw new ShipStationNotConnectedError();
-  return createShipStationV2Client(creds.apiKey);
+  return createShipStationV2Client(creds.apiKey, undefined, { testMode });
 }
 
 /** The legacy v1 order client — null when the v1 key/secret aren't configured

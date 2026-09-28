@@ -59,6 +59,13 @@ interface IngestPurchaseInput {
   receivingType?: string | null;
   unitCostCents?: number | null;
   currency?: string | null;
+  /**
+   * The tracking number's shipment, registered by the caller BEFORE its
+   * transaction. Registration runs on its own connection, so a multi-line
+   * order that re-registered per line would wait on its own transaction's
+   * lock on the same shipment row (a cross-connection deadlock).
+   */
+  shipmentId?: number | null;
 
   // Reconcile mirror snapshot (→ inbound_purchase_order_mirror)
   orderNumber?: string | null;
@@ -336,10 +343,9 @@ export async function ingestPurchase(
           : sourceType === 'amazon'
             ? 'amazon_purchase'
             : 'manual_inbound';
-      const shipment = await registerShipmentPermissive(
-        { trackingNumber: tracking, sourceSystem: shipmentSource },
-        orgId,
-      );
+      const shipment = input.shipmentId != null
+        ? { id: input.shipmentId }
+        : await registerShipmentPermissive({ trackingNumber: tracking, sourceSystem: shipmentSource }, orgId);
       if (shipment?.id) {
         const shipmentId = Number(shipment.id);
         const lineMeta = await client.query<{
@@ -426,6 +432,7 @@ export async function ingestPurchase(
             sourceOrderId,
             shipmentId,
             organizationId: orgId,
+            inboundOrderId,
             db: client as unknown as Parameters<typeof ensureReceivingForInboundOrder>[0]['db'],
           });
         }

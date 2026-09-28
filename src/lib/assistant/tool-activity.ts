@@ -39,12 +39,17 @@ export const WRITE_TOOL_NAMES = [
   'request_payment',
   'create_manual_order',
   'import_purchase_order',
+  'link_po_to_order',
   'set_order_flag',
   'mark_out_of_stock',
   'clear_out_of_stock',
   'bulk_scan_out',
   'create_task',
   'watch_tracking',
+  'buy_label',
+  'void_label',
+  'enable_capability',
+  'import_products_from_ebay',
 ] as const;
 
 /** Tool id → the line shown while it runs. The tripwire reads these keys. */
@@ -111,12 +116,19 @@ export const TOOL_ACTIVITY_PHRASES: Readonly<Record<string, string>> = {
   request_payment: 'Setting up the Square payment',
   create_manual_order: 'Creating the order',
   import_purchase_order: 'Importing the purchase order',
+  link_po_to_order: 'Linking the PO to the order',
   set_order_flag: 'Flagging the orders',
   mark_out_of_stock: 'Marking the lines out of stock',
   clear_out_of_stock: 'Clearing out of stock',
   bulk_scan_out: 'Scanning out the packed orders',
   create_task: 'Creating the task',
   watch_tracking: 'Setting your tracking watch',
+  buy_label: 'Buying the shipping label',
+  void_label: 'Voiding the shipping label',
+  quote_label_rates: 'Getting label rates',
+  enable_capability: 'Setting up the capability',
+  import_products_from_ebay: 'Importing your eBay products',
+  list_capabilities: 'Checking what you can turn on',
 
   // ── ChatReads: lists, people, reports, carriers ─────────────────────────
   reconcile_refs: 'Checking the pasted numbers',

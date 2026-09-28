@@ -168,7 +168,7 @@ function LineRow({
       </div>
       <div className="grid grid-cols-[1fr_10rem_10rem] gap-2">
         <TextField label="Listing URL" value={line.listingUrl} type="url" onChange={(listingUrl) => onChange({ listingUrl })} />
-        <TextField label="Item # (ASIN, eBay item)" value={line.itemNumber} mono onChange={(itemNumber) => onChange({ itemNumber })} />
+        <TextField label="Item # / ASIN" value={line.itemNumber} mono onChange={(itemNumber) => onChange({ itemNumber })} />
         <TextField label="Source line id" value={line.lineKey} mono onChange={(lk) => onChange({ lineKey: lk })} />
       </div>
     </li>

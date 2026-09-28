@@ -22,7 +22,7 @@ import { escapeLike } from '@/lib/sql-like';
 import { resolveSkuIdentityTitle, skuCatalogJoinOnSql } from '@/lib/sku/sku-identity-law';
 import { brandReportEnvelope, type ToolArtifactEnvelope } from '@/lib/assistant/tool-artifact';
 import { formatSearchSel } from '@/lib/search/search-selection';
-import { searchHitHref } from '@/lib/search/search-hit';
+import { searchHitHref, searchScopeHref } from '@/lib/search/search-hit';
 import type { ArtifactIdentity, ArtifactRecord, ArtifactTable } from '@/lib/assistant/ui-artifacts';
 import type { AssistantToolDef } from './types';
 
@@ -605,8 +605,9 @@ export const listLocationContents: AssistantToolDef<typeof locationInput> = {
       };
     }
 
-    // Bins are not a `/search` record; their home is Inventory ▸ Locations.
-    const binHref = searchHitHref('LOCATION', Number(loc.id));
+    // Bins are not a `/search` record (search-selection.ts); their home is
+    // Inventory ▸ Locations ▸ Bins, filtered to THIS bin.
+    const binHref = searchScopeHref('LOCATION', face) ?? searchHitHref('LOCATION', Number(loc.id));
 
     const artifact: ArtifactTable = {
       kind: 'table',

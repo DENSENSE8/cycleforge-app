@@ -733,8 +733,15 @@ export const partLinks = pgTable('part_links', {
 
 export const replenishmentRequests = pgTable('replenishment_requests', {
   id: uuid('id').primaryKey().defaultRandom(),
-  itemId: uuid('item_id').notNull().references(() => items.id),
-  zohoItemId: text('zoho_item_id').notNull(),
+  // Internal-first (2026-09-27i): the catalog item is the identity; Zoho ids are optional facts.
+  itemId: uuid('item_id').references(() => items.id),
+  zohoItemId: text('zoho_item_id'),
+  skuCatalogId: integer('sku_catalog_id'),
+  supplierId: integer('supplier_id'),
+  inboundOrderId: bigint('inbound_order_id', { mode: 'number' }),
+  stockAvailable: numeric('stock_available', { precision: 12, scale: 2 }),
+  stockOnHand: numeric('stock_on_hand', { precision: 12, scale: 2 }),
+  stockIncoming: numeric('stock_incoming', { precision: 12, scale: 2 }),
   sku: text('sku'),
   itemName: text('item_name').notNull(),
   quantityNeeded: numeric('quantity_needed', { precision: 12, scale: 2 }).notNull().default('0'),
@@ -757,7 +764,6 @@ export const replenishmentRequests = pgTable('replenishment_requests', {
   statusIdx: index('rr_status_idx').on(table.status),
   zohoItemIdx: index('rr_zoho_item_id_idx').on(table.zohoItemId),
   zohoPoIdx: index('rr_zoho_po_id_idx').on(table.zohoPoId),
-  zohoPoUnique: uniqueIndex('rr_zoho_po_unique').on(table.zohoPoId),
 }));
 
 export const replenishmentOrderLines = pgTable('replenishment_order_lines', {
@@ -810,6 +816,8 @@ export const shortageInboundLinks = pgTable('shortage_inbound_links', {
   zohoPoLineId: text('zoho_po_line_id'),
   receivingLineId: integer('receiving_line_id').references(() => receivingLines.id, { onDelete: 'set null' }),
   serialUnitId: integer('serial_unit_id'),
+  /** The internal order the earmark names (2026-09-27h). */
+  inboundOrderId: bigint('inbound_order_id', { mode: 'number' }),
   qty: numeric('qty', { precision: 12, scale: 2 }).notNull().default('1'),
   linkStatus: text('link_status').notNull().default('reserved'),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
@@ -1421,6 +1429,12 @@ export const receivingLines = pgTable('receiving_line', {
    *  workflow_status); PROBLEM is the orthogonal exception dimension. NULLABLE
    *  text, no enum/CHECK yet (cutover is a later migration). 2026-06-24. */
   receivingLineStatus: text('receiving_line_status'),
+  // ── Internal inbound identity (2026-09-27d/e): the line's order + its key
+  //    within it; (org, inbound_order_id, line_key) is unique. Typed line cost.
+  inboundOrderId: bigint('inbound_order_id', { mode: 'number' }),
+  lineKey: text('line_key'),
+  unitCostCents: bigint('unit_cost_cents', { mode: 'number' }),
+  currency: text('currency'),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 });
@@ -1768,6 +1782,105 @@ export const inboundPurchaseMergeLog = pgTable('inbound_purchase_merge_log', {
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 }, (table) => ({
   orgWinnerIdx: index('idx_inbound_purchase_merge_log_org_winner').on(table.organizationId, table.winnerLineId),
+}));
+
+/** Internal header of an inbound order (2026-09-27d). Identity = (org, source_type, source_platform, external_order_id_norm). */
+export const inboundOrder = pgTable('inbound_order', {
+  id: bigserial('id', { mode: 'number' }).primaryKey(),
+  organizationId: orgIdCol(),
+  sourceType: text('source_type').notNull(),
+  sourcePlatform: text('source_platform').notNull().default('none'),
+  externalOrderId: text('external_order_id').notNull(),
+  externalOrderIdNorm: text('external_order_id_norm').notNull(),
+  orderNumber: text('order_number'),
+  receivingType: text('receiving_type').notNull().default('PO'),
+  origin: text('origin').notNull(),
+  status: text('status').notNull().default('open'),
+  supplierId: integer('supplier_id'),
+  vendorName: text('vendor_name'),
+  platformAccountId: bigint('platform_account_id', { mode: 'number' }),
+  currency: text('currency').notNull().default('USD'),
+  orderDate: date('order_date'),
+  expectedDate: date('expected_date'),
+  priorityTier: smallint('priority_tier'),
+  notes: text('notes'),
+  replenishmentRequestId: uuid('replenishment_request_id'),
+  sourceModifiedAt: timestamp('source_modified_at', { withTimezone: true }),
+  contentHash: text('content_hash'),
+  createdBy: integer('created_by'),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+}, (table) => ({
+  identityUx: uniqueIndex('ux_inbound_order_identity').on(table.organizationId, table.sourceType, table.sourcePlatform, table.externalOrderIdNorm),
+}));
+
+/** A bulk inbound run (CSV / sync page) — its orders are inbound_ingest_event rows (2026-09-27f). */
+export const inboundImportBatch = pgTable('inbound_import_batch', {
+  id: bigserial('id', { mode: 'number' }).primaryKey(),
+  organizationId: orgIdCol(),
+  origin: text('origin').notNull(),
+  source: text('source').notNull(),
+  label: text('label'),
+  status: text('status').notNull().default('staged'),
+  total: integer('total').notNull().default(0),
+  valid: integer('valid').notNull().default(0),
+  landed: integer('landed').notNull().default(0),
+  failed: integer('failed').notNull().default(0),
+  createdBy: integer('created_by'),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  committedAt: timestamp('committed_at', { withTimezone: true }),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
+/** The inbound ingest ledger — one row per order landing attempt, idempotent on (org, source, source_event_id) (2026-09-27f). */
+export const inboundIngestEvent = pgTable('inbound_ingest_event', {
+  id: bigserial('id', { mode: 'number' }).primaryKey(),
+  organizationId: orgIdCol(),
+  batchId: bigint('batch_id', { mode: 'number' }),
+  origin: text('origin').notNull(),
+  source: text('source').notNull(),
+  sourceEventId: text('source_event_id').notNull(),
+  payload: jsonb('payload').notNull(),
+  payloadHash: text('payload_hash').notNull(),
+  status: text('status').notNull().default('pending'),
+  outcome: jsonb('outcome'),
+  error: text('error'),
+  attempts: integer('attempts').notNull().default(0),
+  inboundOrderId: bigint('inbound_order_id', { mode: 'number' }),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  landedAt: timestamp('landed_at', { withTimezone: true }),
+}, (table) => ({
+  sourceUx: uniqueIndex('ux_inbound_ingest_event_source').on(table.organizationId, table.source, table.sourceEventId),
+}));
+
+/** Internal catalog item ↔ external inventory ids (Zoho item id today) (2026-09-27h). */
+export const catalogExternalIds = pgTable('catalog_external_ids', {
+  id: bigserial('id', { mode: 'number' }).primaryKey(),
+  organizationId: orgIdCol(),
+  skuCatalogId: integer('sku_catalog_id').notNull(),
+  provider: text('provider').notNull(),
+  externalId: text('external_id').notNull(),
+  externalSku: text('external_sku'),
+  externalName: text('external_name'),
+  source: text('source').notNull().default('manual'),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+}, (table) => ({
+  providerUx: uniqueIndex('ux_catalog_external_ids_provider').on(table.organizationId, table.provider, table.externalId),
+}));
+
+/** A vendor's external ids (Zoho contact, eBay seller, …) (2026-09-27g). */
+export const supplierExternalIds = pgTable('supplier_external_ids', {
+  id: bigserial('id', { mode: 'number' }).primaryKey(),
+  organizationId: orgIdCol(),
+  supplierId: integer('supplier_id').notNull(),
+  provider: text('provider').notNull(),
+  externalId: text('external_id').notNull(),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+}, (table) => ({
+  providerUx: uniqueIndex('ux_supplier_external_ids_provider').on(table.organizationId, table.provider, table.externalId),
 }));
 
 /** work_assignments — unified assignment queue for orders, receiving, repairs, FBA. */
@@ -2665,6 +2778,7 @@ export const suppliers = pgTable('suppliers', {
   leadTimeDays: integer('lead_time_days'),
   notes: text('notes'),
   isActive: boolean('is_active').notNull().default(true),
+  organizationId: orgIdCol(),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 });

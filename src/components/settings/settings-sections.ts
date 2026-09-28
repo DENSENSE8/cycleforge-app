@@ -29,7 +29,9 @@ export type SettingsSection =
   | 'devices' | 'ai' | 'stations'
   // Absorbed from /admin on dissolution: org config and process master data
   // that no desk owns.
-  | 'photos' | 'repair-issues';
+  | 'photos' | 'repair-issues'
+  // SIMPLE-FIRST: what the org has switched on + its build history.
+  | 'capabilities';
 
 export type SettingsGroup = 'Personal' | 'Organization';
 
@@ -99,6 +101,7 @@ export const SETTINGS_SECTION_CATEGORY: Partial<Record<SettingsSection, Settings
   organization: 'workspace',
   billing: 'workspace',
   ai: 'workspace',
+  capabilities: 'workspace',
   integrations: 'apps',
   team: 'people',
   roles: 'people',
@@ -142,6 +145,7 @@ export const SETTINGS_SECTION_OPTIONS: SettingsSectionOption[] = [
   { id: 'organization',  label: 'Organization',  description: 'Timezone, locale, auth policies, warranty',        group: 'Organization', requires: 'admin.view', href: '/settings/organization', icon: Warehouse, tone: 'info' },
   { id: 'billing',       label: 'Billing',       description: 'Plan, entitlements & Stripe portal',               group: 'Organization', requires: 'admin.view', href: '/settings/billing', icon: Receipt, tone: 'success' },
   { id: 'ai',            label: 'AI & search',   description: 'AI provider, search usage & pricing',              group: 'Organization', requires: 'admin.view', href: '/settings/ai', icon: Sparkles, tone: 'accent' },
+  { id: 'capabilities',  label: 'Capabilities & history', description: 'What your workspace has switched on, and when', group: 'Organization', requires: 'admin.view', href: '/settings/capabilities', icon: Sparkles, tone: 'accent' },
   // This tree keeps integrations at /settings/integrations (no /apps marketplace yet).
   { id: 'integrations',  label: 'Apps & integrations', description: 'Connect inventory, sales channels, payments & more', group: 'Organization', requires: 'admin.view', href: '/settings/integrations', icon: Link2, tone: 'fulfillment' },
   { id: 'catalog',       label: 'Platforms & types', description: 'Sales channels & receiving flow types',          group: 'Organization', requires: 'admin.manage_features', icon: Tags, tone: 'warning' },

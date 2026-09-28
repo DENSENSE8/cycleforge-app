@@ -9,6 +9,7 @@ import {
   type UnitTimelinePhoto,
 } from '@/lib/photos/queries/unit-timeline-photos';
 import { listShipmentCarrierEvents } from '@/lib/shipments/carrier-events';
+import { ORDER_PO_LINKS_SQL, toOrderPoLinks } from '@/lib/orders/po-order-link';
 
 /** GET /api/orders/[id]/timeline — the order's event trail, newest first. */
 
@@ -274,7 +275,7 @@ export async function GET(
 
     // Trails keyed only on the order id start with the pre-flight; each is
     // org-predicated and discarded on a 404.
-    const [shipment, result, pickSessions, packerPhotos, threadMessages, rmaEvents, orderNotes, signals] =
+    const [shipment, result, pickSessions, packerPhotos, threadMessages, rmaEvents, orderNotes, signals, poLinkRows] =
       await Promise.all([
         shipmentTrails,
         read(
@@ -367,6 +368,8 @@ export async function GET(
             [orgId, id],
           ),
         ),
+        // PO ↔ order edge — the purchase orders bought for this order (`receiving_order_link`).
+        degradeSpine('po-links', read(ORDER_PO_LINKS_SQL, [orgId, id])),
       ]);
 
     if (shipment.notFound) {
@@ -415,6 +418,7 @@ export async function GET(
       unitPhotos,
       pickSessions: pickSessions.rows,
       packEvents: packEventRows,
+      poLinks: toOrderPoLinks(poLinkRows),
     });
   } catch (error: unknown) {
     console.error(`${LOG_PREFIX} error:`, error);

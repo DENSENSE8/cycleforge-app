@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { createShipStationV2Client, isShipStationHost } from './client';
+import { createShipStationV2Client, isShipStationHost, ShipStationTestModeError } from './client';
 import type { ShipAddress } from './types';
 
 /**
@@ -141,4 +141,43 @@ test('isShipStationHost: only https ShipStation / ShipEngine hosts carry the key
   assert.equal(isShipStationHost('http://api.shipstation.com/v2/downloads/1/x.pdf'), false);
   assert.equal(isShipStationHost('https://shipstation.com.evil.example/x.pdf'), false);
   assert.equal(isShipStationHost('not a url'), false);
+});
+
+test('test-label mode on a live key: purchases and voids are refused before any request, rates still quote', async () => {
+  const orig = globalThis.fetch;
+  const sent: string[] = [];
+  globalThis.fetch = (async (url: string | URL, init?: RequestInit) => {
+    sent.push(`${init?.method ?? 'GET'} ${String(url).replace(/^.*\/v2/, '')}`);
+    return new Response(JSON.stringify({ rate_response: { rates: [] } }), { status: 200, headers: { 'content-type': 'application/json' } });
+  }) as typeof fetch;
+  try {
+    const client = createShipStationV2Client('live-key', undefined, { testMode: true });
+    assert.equal(client.sandbox, false);
+    await assert.rejects(() => client.purchaseLabelFromRate('r-1'), ShipStationTestModeError);
+    await assert.rejects(() => client.purchaseLabelFromShipment({ shipTo: addr(), shipFrom: addr(), parcels: [{ weight: { value: 16, unit: 'ounce' } }] }, 'se-1', 'usps_priority_mail'), ShipStationTestModeError);
+    await assert.rejects(() => client.voidLabel('se-lbl-1'), ShipStationTestModeError);
+    assert.deepEqual(sent, [], 'nothing that moves postage left the process');
+    await client.getRates({ shipTo: addr(), shipFrom: addr(), parcels: [{ weight: { value: 16, unit: 'ounce' } }], carrierIds: ['se-1'] });
+    assert.deepEqual(sent, ['POST /rates']);
+  } finally {
+    globalThis.fetch = orig;
+  }
+});
+
+test('test-label mode on a sandbox key: buys, and POST /labels carries test_label', async () => {
+  const orig = globalThis.fetch;
+  const bodies: Array<Record<string, unknown>> = [];
+  globalThis.fetch = (async (_url: string | URL, init?: RequestInit) => {
+    bodies.push(JSON.parse(String(init?.body ?? '{}')));
+    return new Response(JSON.stringify({ label_id: 'se-t-1', tracking_number: '9400TEST', label_download: { pdf: 'https://api.shipstation.com/v2/downloads/t.pdf' } }), { status: 200, headers: { 'content-type': 'application/json' } });
+  }) as typeof fetch;
+  try {
+    const client = createShipStationV2Client('TEST_abc', undefined, { testMode: true });
+    assert.equal(client.sandbox, true);
+    const label = await client.purchaseLabelFromShipment({ shipTo: addr(), shipFrom: addr(), parcels: [{ weight: { value: 16, unit: 'ounce' } }] }, 'se-1', 'usps_priority_mail');
+    assert.equal(label.trackingNumber, '9400TEST');
+    assert.equal(bodies[0].test_label, true);
+  } finally {
+    globalThis.fetch = orig;
+  }
 });

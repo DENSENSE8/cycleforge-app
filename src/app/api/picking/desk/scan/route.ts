@@ -29,8 +29,11 @@ import {
 } from '@/lib/packing/pack-placement';
 import { recordAudit, AUDIT_ACTION, AUDIT_ENTITY } from '@/lib/audit-logs';
 
-/** Persisted SAL `metadata.source`, realtime source and idempotency route key — data, not the URL. */
-const ROUTE = 'tech.scan';
+/**
+ * Persisted SAL `metadata.source`, realtime source and idempotency route key —
+ * data, not the URL. Rows written before 2026-09-27 carry 'tech.scan'.
+ */
+const ROUTE = 'picking.desk.scan';
 
 /**
  * POST /api/picking/desk/scan — the Picker desk's tracking scan: loads the
@@ -39,7 +42,7 @@ const ROUTE = 'tech.scan';
  * FNSKU scans go to `POST /api/fba/fnsku-scan`.
  */
 export const POST = withAuth(async (req: NextRequest, ctx) => {
-  const rate = await checkRateLimitForOrg({ headers: req.headers, routeKey: 'tech-scan', limit: 120, windowMs: 60_000, organizationId: ctx.organizationId });
+  const rate = await checkRateLimitForOrg({ headers: req.headers, routeKey: 'picking-desk-scan', limit: 120, windowMs: 60_000, organizationId: ctx.organizationId });
   if (!rate.ok) {
     return NextResponse.json({ success: false, found: false, error: 'Rate limit exceeded' }, { status: 429 });
   }
@@ -228,7 +231,7 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
         });
         if (packPlacement) {
           await recordAudit(pool, ctx, req, {
-            source: 'tech-scan',
+            source: 'picking-desk-scan',
             action: AUDIT_ACTION.ORDER_PACK_PLACE,
             entityType: AUDIT_ENTITY.ORDER,
             entityId: Number(order.id),

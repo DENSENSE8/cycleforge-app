@@ -46,8 +46,8 @@ function scripted(byMarker: Array<[RegExp, Array<Record<string, unknown>>]>) {
 test('locate_product: stocked SKU → table with a product header, bins and qty in the model summary', async () => {
   const { deps, calls } = scripted([
     [/WITH q AS/, [
-      { sku: '00066-P-2', via: 'sku', catalog_id: 812, zoho_item_title: 'Bose Wave III Remote', catalog_product_title: 'marketplace title', fnsku: 'X00ABC1234', location_id: 338, location: 'C-03-12-3', room: 'Zone 3', qty: 41 },
-      { sku: '00066-P-2', via: 'sku', zoho_item_title: 'Bose Wave III Remote', fnsku: 'X00ABC1234', location_id: 402, location: 'C-03-16-3', room: 'Zone 3', qty: 1 },
+      { sku: '00066-P-2', via: 'sku', catalog_id: 812, zoho_item_title: 'BOSE WAVE REMOTE (zoho name)', catalog_product_title: 'Bose Wave III Remote', fnsku: 'X00ABC1234', location_id: 338, location: 'C-03-12-3', room: 'Zone 3', qty: 41 },
+      { sku: '00066-P-2', via: 'sku', zoho_item_title: 'BOSE WAVE REMOTE (zoho name)', fnsku: 'X00ABC1234', location_id: 402, location: 'C-03-16-3', room: 'Zone 3', qty: 1 },
     ]],
   ]);
   const res = await runAssistantTool('locate_product', { query: 'SKU 00066-P-2' }, ctx, deps);
@@ -57,7 +57,7 @@ test('locate_product: stocked SKU → table with a product header, bins and qty 
   assert.equal(carried.tool, 'locate_product');
   assert.equal(carried.artifact.kind, 'table');
   assert.equal(carried.artifact.kind === 'table' && carried.artifact.rows.length, 2);
-  // One SKU: it and its title (the Zoho item governs the marketplace title) head the table; rows are bins.
+  // One SKU: it and its title (the org's own catalog title governs; Zoho is a fallback) head the table; rows are bins.
   assert.equal(carried.artifact.title, 'Where is 00066-P-2 · Bose Wave III Remote');
   assert.deepEqual(carried.artifact.kind === 'table' && carried.artifact.columns, ['Bin', 'Room', 'Qty']);
   // The chat's header comes from the tool's data: the identity title, the ids

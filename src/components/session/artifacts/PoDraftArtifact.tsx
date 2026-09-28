@@ -21,6 +21,7 @@ import { Button } from '@/design-system/primitives';
 import { requestComposerSeed } from '@/lib/assistant/composer-seed-store';
 import type { ArtifactPoDraft } from '@/lib/assistant/ui-artifacts';
 import { formatCostCents } from '@/lib/inbound/po-import-draft';
+import { searchHitHref } from '@/lib/search/search-hit';
 import { cn } from '@/utils/_cn';
 
 const LABEL = 'text-ai-label text-ai-faint';
@@ -117,6 +118,42 @@ export function PoDraftArtifact({ artifact }: { artifact: ArtifactPoDraft }) {
         </dd>
         <dt className={LABEL}>Expected</dt>
         <dd>{draft.expectedDate ? civilDateFace(draft.expectedDate) : <span className="text-ai-faint">Not set</span>}</dd>
+        <dt className={LABEL}>For order</dt>
+        <dd className="flex min-w-0 flex-wrap items-center gap-1.5" data-po-orders>
+          {draft.forOrders.map((o) =>
+            o.orderId != null ? (
+              <button
+                key={o.ref}
+                type="button"
+                className="inline-flex items-center gap-1 rounded-full border border-ai-line px-2 py-0.5 font-mono text-ai-label hover:text-ai-ink"
+                title={o.title || undefined}
+                onClick={() => router.push(searchHitHref('ORDER', o.orderId!))}
+                data-po-order={o.orderNumber}
+              >
+                {o.orderNumber}
+                {o.channel ? <span className="font-sans text-ai-faint">{o.channel}</span> : null}
+              </button>
+            ) : (
+              <span key={o.ref} className="inline-flex items-center gap-1 text-text-warning" data-po-order-unresolved={o.ref}>
+                <AlertCircle className="h-3.5 w-3.5 shrink-0" />
+                {o.ref} · {o.why || 'no order matches'}
+              </span>
+            ),
+          )}
+          {draft.forOrders.length === 0 ? (
+            <Button
+              type="button"
+              variant="secondary"
+              size="sm"
+              radius="pill"
+              title="Which outbound order is this PO for?"
+              onClick={() => requestComposerSeed({ text: 'For order:', autoSend: false })}
+              data-po-add-order
+            >
+              Add order
+            </Button>
+          ) : null}
+        </dd>
         {draft.notes ? (
           <>
             <dt className={LABEL}>Notes</dt>

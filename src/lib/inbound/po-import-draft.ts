@@ -44,6 +44,25 @@ export const poImportTrackingSchema = z.object({
 });
 export type PoImportTracking = z.infer<typeof poImportTrackingSchema>;
 
+/**
+ * An outbound order this PO is FOR ("this PO is for order 1125"). Resolved
+ * server-side through find_records, identity-first; `orderId` null = the
+ * mention did not resolve to exactly one order, and Still needed asks.
+ */
+export const poImportOrderRefSchema = z.object({
+  /** As the operator said it. */
+  ref: text(120).min(1),
+  /** The resolved order number (`orders.order_id`); '' when unresolved. */
+  orderNumber: text(120),
+  /** The order's first line row (`orders.id`); `null` = unresolved. */
+  orderId: z.number().int().positive().nullable(),
+  channel: text(60),
+  title: text(300),
+  /** Why it did not resolve ("no order matches", "matches 2 orders"). */
+  why: text(120),
+});
+export type PoImportOrderRef = z.infer<typeof poImportOrderRefSchema>;
+
 export const poImportDraftSchema = z.object({
   poNumber: text(120),
   vendor: text(200),
@@ -53,16 +72,18 @@ export const poImportDraftSchema = z.object({
   expectedDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable(),
   notes: text(1000),
   currency: z.string().trim().length(3),
+  /** Outbound orders this PO is for — linked on import (`receiving_order_link`). */
+  forOrders: z.array(poImportOrderRefSchema).max(10).default([]),
 });
 export type PoImportDraft = z.infer<typeof poImportDraftSchema>;
 
 export function emptyPoImportDraft(): PoImportDraft {
-  return { poNumber: '', vendor: '', lines: [], tracking: [], expectedDate: null, notes: '', currency: 'USD' };
+  return { poNumber: '', vendor: '', lines: [], tracking: [], expectedDate: null, notes: '', currency: 'USD', forOrders: [] };
 }
 
 // ─── the "Still needed" checklist ────────────────────────────────────────────
 
-export type PoImportField = 'po_number' | 'vendor' | 'items' | 'quantity' | 'tracking';
+export type PoImportField = 'po_number' | 'vendor' | 'items' | 'quantity' | 'tracking' | 'order';
 
 export interface PoImportNeed {
   field: PoImportField;
@@ -105,6 +126,15 @@ export function poImportMissing(draft: PoImportDraft): PoImportNeed[] {
   if (draft.tracking.length === 0) {
     needs.push({ field: 'tracking', label: 'Tracking number', question: 'What is the tracking number?', prompt: 'Tracking number:' });
   }
+  for (const o of draft.forOrders) {
+    if (o.orderId != null) continue;
+    needs.push({
+      field: 'order',
+      label: `Order ${o.ref}`,
+      question: `${o.ref} does not match an order${o.why && o.why !== 'no order matches' ? ` (${o.why})` : ''} — which order is this PO for?`,
+      prompt: 'For order:',
+    });
+  }
   return needs;
 }
 
@@ -132,6 +162,46 @@ export interface ExtractedPo {
   carrier: string | null;
   /** 1-based line → quantity, from "quantity for line 2: 3". */
   lineQuantities: Array<{ line: number; quantity: number }>;
+  /** Outbound order #s the PO is said to be FOR ("for order 1125", a note naming an order). */
+  orderRefs: string[];
+  /** "not for an order" / "no order" — clear the draft's order refs. */
+  noOrder: boolean;
+}
+
+const ORDER_REF = String.raw`#?[A-Za-z0-9][A-Za-z0-9-]{1,40}`;
+/** "for order 1125", "is for orders 1125 and 1136", "linked to customer order #1125", "For order: 1125". */
+const FOR_ORDER = new RegExp(
+  String.raw`\b(?:for|fulfil+(?:s|ing)?|fill(?:s|ing)?|link(?:ed)?\s+(?:it\s+)?to|against|goes\s+(?:with|to))\s+(?:(?:our|customer'?s?|sales|outbound)\s+)*orders?\s*(?:#|no\.?|number|num)?\s*[:#=]?\s*(${ORDER_REF}(?:\s*(?:,|and|&|\/)\s*${ORDER_REF})*)`,
+  'gi',
+);
+/** An order a PO note names on its own: "Notes: customer order #1125". Never "purchase order". */
+const NOTE_ORDER = new RegExp(String.raw`(?<!purchase\s)\borders?\s*(?:#|no\.?|number|num)?\s*[:#=]?\s*(${ORDER_REF})`, 'gi');
+const NO_ORDER = /\b(?:not\s+for\s+(?:an?\s+|any\s+)?orders?|no\s+(?:linked\s+)?orders?|(?:remove|clear|drop)\s+(?:the\s+)?orders?(?:\s+link)?|unlink\s+(?:the\s+)?orders?)\b/i;
+
+function orderRefs(text: string, notes: string | null, poNumber: string | null): string[] {
+  const out: string[] = [];
+  const add = (token: string) => {
+    const ref = token.replace(/^#/, '').trim();
+    if (!/\d/.test(ref) || ref.length < 2 || ref.toUpperCase() === poNumber) return;
+    if (!out.some((r) => r.toUpperCase() === ref.toUpperCase())) out.push(ref);
+  };
+  for (const m of text.matchAll(FOR_ORDER)) {
+    for (const token of m[1].split(/\s*(?:,|\band\b|&|\/)\s*/i)) add(token);
+  }
+  for (const m of (notes ?? '').matchAll(NOTE_ORDER)) add(m[1]);
+  return out.slice(0, 10);
+}
+
+/** Every order # a message names ("link PO 7 to order 1125", "orders 1125 and 1136") — for the link tool. */
+export function mentionedOrderRefs(text: string, poNumber: string | null): string[] {
+  const said = orderRefs(text, text, poNumber?.toUpperCase() ?? null);
+  for (const m of text.matchAll(new RegExp(String.raw`(?<!purchase\s)\borders?\s*(?:#|no\.?|number|num)?\s*[:#=]?\s*${ORDER_REF}((?:\s*(?:,|and|&|\/)\s*${ORDER_REF})+)`, 'gi'))) {
+    for (const token of m[1].split(/\s*(?:,|\band\b|&|\/)\s*/i)) {
+      const ref = token.replace(/^#/, '').trim();
+      if (/\d/.test(ref) && !said.some((r) => r.toUpperCase() === ref.toUpperCase())) said.push(ref);
+    }
+  }
+  return said.slice(0, 10);
 }
 
 const CARRIER_WORDS: Array<[RegExp, string]> = [
@@ -178,6 +248,8 @@ export function extractPoFields(input: string): ExtractedPo {
     notes: null,
     carrier: null,
     lineQuantities: [],
+    orderRefs: [],
+    noOrder: false,
   };
   if (!raw.trim()) return out;
 
@@ -275,6 +347,8 @@ export function extractPoFields(input: string): ExtractedPo {
 
   const attached = new Set(out.items.map((i) => i.listingUrl).filter(Boolean));
   out.listingUrls = urls.filter((u) => parseListingUrl(u).ok && !attached.has(u));
+  out.noOrder = NO_ORDER.test(noUrls);
+  out.orderRefs = out.noOrder ? [] : orderRefs(noUrls, out.notes, out.poNumber);
   return out;
 }
 
@@ -292,6 +366,13 @@ export interface PoImportPatch {
   lineQuantities?: Array<{ line: number; quantity: number }> | null;
   expectedDate?: string | null;
   notes?: string | null;
+  /**
+   * Order refs this turn named, resolved or not: they replace the draft's
+   * unresolved refs (the answer to "which order?") and join its resolved ones.
+   */
+  forOrders?: PoImportOrderRef[] | null;
+  /** Clear every order ref ("not for an order"). */
+  clearOrders?: boolean;
 }
 
 export function mergePoDraft(base: PoImportDraft, patch: PoImportPatch): PoImportDraft {
@@ -325,7 +406,15 @@ export function mergePoDraft(base: PoImportDraft, patch: PoImportPatch): PoImpor
     }
   }
   if (patch.expectedDate) next.expectedDate = patch.expectedDate;
-  if (patch.notes) next.notes = next.notes ? `${next.notes}\n${patch.notes}`.slice(0, 1000) : patch.notes.slice(0, 1000);
+  if (patch.notes && !next.notes.includes(patch.notes.trim())) {
+    next.notes = next.notes ? `${next.notes}\n${patch.notes}`.slice(0, 1000) : patch.notes.slice(0, 1000);
+  }
+  if (patch.clearOrders) next.forOrders = [];
+  if (patch.forOrders && patch.forOrders.length > 0) {
+    const key = (o: PoImportOrderRef) => (o.orderNumber || o.ref).toUpperCase();
+    const incoming = new Set(patch.forOrders.map(key));
+    next.forOrders = [...next.forOrders.filter((o) => o.orderId != null && !incoming.has(key(o))), ...patch.forOrders].slice(0, 10);
+  }
   return next;
 }
 

@@ -93,4 +93,14 @@ async function cleanupPo(
   if (shipmentIds.length > 0) {
     await q(`DELETE FROM shipping_tracking_numbers WHERE organization_id = $1 AND id = ANY($2::bigint[])`, [orgId, shipmentIds]);
   }
+  // The internal PO header (`inbound_order`) and its ingest ledger rows.
+  const headers = await q<{ id: number }>(
+    `SELECT id FROM inbound_order WHERE organization_id = $1 AND external_order_id_norm = inbound_order_number_norm($2)`,
+    [orgId, poNumber],
+  );
+  const headerIds = headers.map((h) => h.id);
+  if (headerIds.length > 0) {
+    await q(`DELETE FROM inbound_ingest_event WHERE organization_id = $1 AND inbound_order_id = ANY($2::bigint[])`, [orgId, headerIds]);
+    await q(`DELETE FROM inbound_order WHERE organization_id = $1 AND id = ANY($2::bigint[])`, [orgId, headerIds]);
+  }
 }

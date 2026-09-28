@@ -1,10 +1,20 @@
-/** Activation gate — first-run funnel before empty operator desks. */
+/**
+ * Activation gate — first-run funnel before empty operator desks.
+ *
+ * SIMPLE-FIRST (docs/product/SIMPLE-FIRST.md): an org that has neither an
+ * active workflow nor a capability it switched on itself lands in the AI chat,
+ * where it tells the assistant what it needs. Backfilled capabilities do not
+ * count, so every org that existed before the capability ledger keeps the
+ * exact gate it had.
+ */
 
 import { cache } from 'react';
 import type { OrgId } from '@/lib/tenancy/constants';
 
 /** Paths that must stay reachable before a workflow template is chosen. */
 const EXEMPT_PREFIXES = [
+  // The base capability — reachable before anything else is unlocked.
+  '/ai-chat',
   '/onboarding',
   '/settings',
   '/api',
@@ -21,8 +31,9 @@ export function isActivationPathExempt(pathname: string): boolean {
 }
 
 /**
- * Probe for an active workflow. Throws on transport/DB failure so the gate
- * can fail-open — never conflate "query failed" with "no workflow."
+ * Probe for an active workflow or an org-enabled capability. Throws on
+ * transport/DB failure so the gate can fail-open — never conflate "query
+ * failed" with "not activated."
  * Request-scoped via `cache` so root layout + requirePermission share one read.
  */
 const probeHasActiveWorkflow = cache(async (orgId: OrgId): Promise<boolean> => {
@@ -32,6 +43,9 @@ const probeHasActiveWorkflow = cache(async (orgId: OrgId): Promise<boolean> => {
       `SELECT EXISTS (
          SELECT 1 FROM workflow_definitions
           WHERE organization_id = $1 AND is_active = TRUE
+       ) OR EXISTS (
+         SELECT 1 FROM org_capabilities
+          WHERE organization_id = $1 AND state = 'active' AND source <> 'backfill'
        ) AS ok`,
       [orgId],
     );
@@ -66,5 +80,8 @@ export async function isActivationBlocked(
   }
 }
 
-/** Destination for blocked tenants — template chooser (thin `/onboarding` forwards here). */
-export const ACTIVATION_REDIRECT_HREF = '/onboarding/template';
+/**
+ * Destination for blocked tenants — the chat-first home (SIMPLE-FIRST). The
+ * template chooser stays reachable at `/onboarding/template`.
+ */
+export const ACTIVATION_REDIRECT_HREF = '/ai-chat';

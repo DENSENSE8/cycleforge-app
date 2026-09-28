@@ -323,7 +323,22 @@ allocated unit has a `testing_results` row.
 ### Note for the card-list session
 - `OrderStage` gained `verdict: 'pass'|'fail'|'retest'|null` and `inherited: boolean` (QC only).
 - Pick assignee = `picker_id` / `picker_name` / `picker_color_hex` (ORDER/PICK). Order-level
-  `tester_*` are being removed (always null after the backfill).
+  `tester_*` are gone from `ShippedOrder` and every feed.
 - New row fields: `qc_verdict`, `qc_inherited`, `has_pick_scan` (was `has_tech_scan`).
   Removed: `next_test_activity_at`, `test_duration`.
 - Stage assign: `handleCommitStageAssign(row, 'orders.picked', …)` now writes PICK; the type is unchanged.
+
+## Scale pass — pick/pack read paths (2026-09-27)
+
+Measured on dev (43.7k `station_activity_logs`, 5.2k orders), EXPLAIN ANALYZE as owner:
+
+| Change | Before → after |
+|---|---|
+| `sqlPackerOrderMatchLateral` (`src/lib/neon/packer-order-match.ts`) replaces 4 copies of the OR-form order match; `idx_stn_tracking_raw_key18` (`2026-09-27d`) | `/api/packerlogs?testedBy=` unbounded: 93 s timeout → 9.7 s; week view 1.8 s → 0.76 s; identical order resolution on all 7,050 PACK rows |
+| `orders-list.ts`: `pl_latest` / `pack_activity` / `next_pack_activity` / `pack_duration` whole-table CTEs (no organization filter) → org-scoped per-order laterals; dead `sal_scan` deleted; `rr_ranked` CTE → `rol_order_idx` lateral | full list 2.58 s → 0.98 s; To-ship queue 0.72 s → 0.55 s; pack/replenishment/tracking fields identical on all 439 rows |
+| `shipment_links` / sibling-order lookups in the tracking lateral gained `organization_id` (index use + tenant scope) | 1.15 s of seq scans removed |
+| Desk scan / FNSKU scan write `metadata.source` `picking.desk.scan` / `fba.fnsku-scan` with their own rate-limit buckets | was shared `tech.scan` / `tech-scan` |
+
+Measured, not worth it: `pick_scan` OR → UNION ALL (132 ms → 117 ms over every order).
+Next: an `order_stage_facts` table written by the pick/pack/QC writers, replacing the per-order
+stage laterals and the `sqlOrderHasPickScan` / `sqlOrderHasPackScan` EXISTS in `queue-counts.ts`.

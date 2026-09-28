@@ -247,8 +247,10 @@ const TOOL_ALIASES: Record<string, readonly string[]> = {
     'tracking number is',
     'listing link',
     'expected',
+    'this po is for',
   ],
   import_purchase_order: ['import this po', 'import the po', 'import it', 'confirm', 'yes'],
+  link_po_to_order: ['link po', 'link the po', 'link this po', 'unlink', 'po is for order', 'bought for order', 'link it to order', 'confirm', 'yes'],
   set_order_flag: ['flag', 'priority', 'on hold', 'put on hold', 'damaged', 'discrepancy', 'awaiting customer', 'mark ready', 'unflag'],
   mark_out_of_stock: ['out of stock', 'oos', 'mark out of stock', 'no stock'],
   clear_out_of_stock: ['back in stock', 'clear out of stock', 'in stock', 'clear oos'],
@@ -260,6 +262,14 @@ const TOOL_ALIASES: Record<string, readonly string[]> = {
   get_staff_report: ['staff report', 'performance', 'time spent', 'task time', 'how much time', 'per staff', 'per day', 'packing pace'],
   get_tracking_status: ['carrier status', 'tracking status', 'delivered', 'in transit', 'out for delivery', 'where is my package', 'package'],
   watch_tracking: ['watch', 'tell me when', 'notify me', 'let me know when', 'stop watching', 'unwatch', 'arrives'],
+  quote_label_rates: ['label rates', 'shipping rates', 'rate shop', 'rates for order', 'how much to ship', 'quote a label', 'shipping cost', 'cheapest shipping', 'return label', 'replacement label'],
+  buy_label: ['buy a label', 'buy the label', 'buy label', 'purchase a label', 'buy the cheapest', 'buy the fastest', 'buy shipping', 'buy postage', 'return label', 'replacement label'],
+  void_label: ['void the label', 'void label', 'void a label', 'cancel the label', 'refund the label'],
+  // SIMPLE-FIRST: the workspace tells the chat what it needs.
+  list_capabilities: ['what can you do', 'what can i turn on', 'capabilities', 'features', 'what is set up', 'what is turned on'],
+  // No 'yes' / 'confirm': a bare yes is settled by the route's pending-confirmation path, never re-advertised here.
+  enable_capability: ['i need to record', 'we need to record', 'i need a', 'we need a', 'turn on', 'enable', 'unlock', 'set up', 'activate', 'intake counter'],
+  import_products_from_ebay: ['ebay', 'import products', 'import my products', 'my listings', 'connect ebay', 'ebay listings'],
 };
 
 /** Words too common to carry routing signal. */
@@ -369,14 +379,20 @@ const RECALL_FLOOR: readonly { shape: RegExp; tool: string; why: string }[] = [
     why: 'creating the drafted order is the confirm-before-write order tool',
   },
   {
-    shape: /\bpurchase\s+order\b|\bp\.?o\.?\s*(#|number|no\b|:)|\bpo[-\s]?\d{2,}|\b(vendor|supplier)\b|\btracking(\s+(number|#|no\.?))?\s*(is\b|:)|\bquantity\s+for\s+line\b/i,
+    shape: /\bpurchase\s+order\b|\bp\.?o\.?\s*(#|number|no\b|:)|\bpo[-\s]?\d{2,}|\b(vendor|supplier)\b|\btracking(\s+(number|#|no\.?))?\s*(is\b|:)|\bquantity\s+for\s+line\b|^\s*for\s+orders?\s*:/i,
     tool: 'draft_po_import',
     why: 'a pasted PO (and the answers that complete it) is the PO import draft, not a record search',
   },
   {
-    shape: /\bimport\s+(this|the|that)\s+(po|purchase\s+order)\b/i,
+    // The short command only — "Import this purchase order:\nPO number: …" is a paste (draft_po_import).
+    shape: /^\s*(?:please\s+)?import\s+(this|the|that|it)(\s+(po|purchase\s+order))?\s*[.!]?\s*$/i,
     tool: 'import_purchase_order',
-    why: 'importing the drafted PO is the confirm-before-write import tool',
+    why: 'importing the drafted PO is the confirm-before-write import tool; a pasted PO is the draft',
+  },
+  {
+    shape: /\b(un)?link\w*\b[^.?!]*\b(po|purchase\s+order)\b|\b(po|purchase\s+order)\b[^.?!]*\b(is|was)\s+(bought\s+)?for\s+(customer\s+)?orders?\b/i,
+    tool: 'link_po_to_order',
+    why: 'tying a purchase order to the outbound order it was bought for is the confirm-before-write link tool',
   },
   {
     shape: /\b(re)?print\w*\b(?![^.?!]*\b(totes?|handling\s+units?|h-\d+|stickers?)\b)[^.?!]*\b(labels?|slips?|paperwork|papers|orders?|receipts?|manuals?)\b/i,
@@ -438,6 +454,44 @@ const RECALL_FLOOR: readonly { shape: RegExp; tool: string; why: string }[] = [
     shape: /\b(watch|notify\s+me|tell\s+me\s+when|let\s+me\s+know\s+when)\b[^.?!]*\b(tracking|package|parcel|arrives?|lands?|delivered|1z\w+|\d{12,})\b|\b(stop\s+watching|unwatch)\b/i,
     tool: 'watch_tracking',
     why: 'watching a tracking number is the self-scoped watch',
+  },
+  {
+    shape: /\bvoid\w*\b[^.?!]*\blabels?\b|\b(cancel|refund)\b[^.?!]*\bshipping\s+label\b/i,
+    tool: 'void_label',
+    why: 'voiding a bought label is the confirm-before-write void',
+  },
+  {
+    shape: /\b(buy|purchase)\b[^.?!]*\b(labels?|postage|cheapest|fastest|priority|ground|express|overnight)\b/i,
+    tool: 'buy_label',
+    why: 'buying a label is the confirm-before-write purchase on a server quote',
+  },
+  {
+    shape: /\b(label|shipping)\s+(rates?|costs?|quotes?)\b|\brates?\s+(for|on)\s+(order|#|\d)|\bhow\s+much\b[^.?!]*\bto\s+ship\b|\bquote\b[^.?!]*\blabel\b|\b(return|replacement)\s+label\b/i,
+    tool: 'quote_label_rates',
+    why: 'label rates are the live ShipStation quote',
+  },
+  {
+    // The answer to its "Still needed": a parcel weight with a unit, or L×W×H.
+    shape: /^\s*(it'?s\s+|weighs\s+)?\d+(\.\d+)?\s*(lbs?|pounds?|oz|ounces?|kg)\b|\b\d+(\.\d+)?\s*[x×]\s*\d+(\.\d+)?\s*[x×]\s*\d+/i,
+    tool: 'quote_label_rates',
+    why: 'a parcel weight / box size answers the label quote\'s Still needed',
+  },
+  {
+    shape: /\bebay\b[^.?!]*\b(products?|listings?|import|connect|catalog)\b|\b(import|pull|connect|sync)\b[^.?!]*\bebay\b/i,
+    tool: 'import_products_from_ebay',
+    why: 'bringing eBay products in is the eBay product import, not a record search',
+  },
+  {
+    // A general "what my business needs" ask carries no identifiers; a
+    // specific PO / order with numbers stays with its draft tool.
+    shape: /^(?![\s\S]*\d)[\s\S]*(\b(i|we)\s+(need|want|would\s+like)\s+(to\s+(record|track|manage|start|run|handle|set\s*up|use)\b|an?\s+\w+)|\b(turn\s+on|enable|unlock|activate)\b)/i,
+    tool: 'enable_capability',
+    why: 'what the workspace needs is a capability to switch on',
+  },
+  {
+    shape: /\bwhat\s+can\s+(you|i|we)\s+(do|turn\s+on|set\s*up|unlock)\b|\bcapabilit(y|ies)\b/i,
+    tool: 'list_capabilities',
+    why: 'what the workspace can switch on is the capability list',
   },
 ];
 

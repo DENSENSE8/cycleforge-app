@@ -9,13 +9,16 @@ import {
   type SidebarNavItem,
 } from '@/lib/sidebar-navigation';
 import { mergeOrgNav, parseNavDefinition, type NavDefinition } from '@/lib/nav/org-nav';
+import { withCapabilityGate } from '@/lib/capabilities/nav-gate';
 
 async function fetchOrgNav(): Promise<NavDefinition | null> {
   try {
     const res = await fetch('/api/nav', { cache: 'no-store' });
     if (!res.ok) return null;
-    const json = (await res.json()) as { definition?: unknown };
-    return json?.definition ? parseNavDefinition(json.definition) : null;
+    const json = (await res.json()) as { definition?: unknown; capabilityHidden?: string[] };
+    const stored = json?.definition ? parseNavDefinition(json.definition) : null;
+    // SIMPLE-FIRST: rows of capabilities the org has not unlocked ride as hidden entries.
+    return withCapabilityGate(stored, json?.capabilityHidden);
   } catch {
     return null;
   }

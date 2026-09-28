@@ -280,6 +280,7 @@ export async function purchaseReferenceLabel(orgId: OrgId, input: ReferencePurch
       purpose: input.purpose,
       orderRef: ref,
       shipTo: input.customer,
+      isTest: v2.sandbox,
     },
     buy,
   );
