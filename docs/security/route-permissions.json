@@ -1,10 +1,10 @@
 {
   "version": 1,
-  "generatedAt": "2026-09-28T07:56:49Z",
-  "totalRoutes": 1121,
+  "generatedAt": "2026-09-28T16:41:55Z",
+  "totalRoutes": 1131,
   "summary": {
-    "permissionGated": 913,
-    "authenticatedNoPermission": 123,
+    "permissionGated": 921,
+    "authenticatedNoPermission": 125,
     "anonymousIntentional": 36,
     "serviceToService": 49,
     "ungatedRead": 0,
@@ -27,6 +27,15 @@
       ],
       "gate": "withAuth",
       "permission": "admin.view_logs",
+      "exemptReason": null
+    },
+    {
+      "path": "/api/admin/authorization-readiness/route.ts",
+      "methods": [
+        "GET"
+      ],
+      "gate": "withAuth",
+      "permission": "admin.manage_roles",
       "exemptReason": null
     },
     {
@@ -3227,6 +3236,15 @@
       "exemptReason": null
     },
     {
+      "path": "/api/inventory/qc-labels/unit/route.ts",
+      "methods": [
+        "GET"
+      ],
+      "gate": "withAuth",
+      "permission": "print.label",
+      "exemptReason": null
+    },
+    {
       "path": "/api/inventory/sku-search/route.ts",
       "methods": [
         "GET"
@@ -5868,6 +5886,36 @@
       "exemptReason": null
     },
     {
+      "path": "/api/qc/codes/route.ts",
+      "methods": [
+        "GET",
+        "POST"
+      ],
+      "gate": "withAuth",
+      "permission": "tech.view",
+      "exemptReason": null
+    },
+    {
+      "path": "/api/qc/procedures/route.ts",
+      "methods": [
+        "GET",
+        "POST"
+      ],
+      "gate": "withAuth",
+      "permission": "tech.view",
+      "exemptReason": null
+    },
+    {
+      "path": "/api/qc/readings/route.ts",
+      "methods": [
+        "GET",
+        "POST"
+      ],
+      "gate": "withAuth",
+      "permission": "tech.view",
+      "exemptReason": null
+    },
+    {
       "path": "/api/qc/receiving-lines/open/route.ts",
       "methods": [
         "POST"
@@ -5898,6 +5946,43 @@
       "path": "/api/qc/seller-claimed/route.ts",
       "methods": [
         "GET"
+      ],
+      "gate": "withAuth",
+      "permission": "tech.qc_pass",
+      "exemptReason": null
+    },
+    {
+      "path": "/api/qc/sessions/[id]/end/route.ts",
+      "methods": [
+        "POST"
+      ],
+      "gate": "requireRoutePerm",
+      "permission": "tech.qc_pass",
+      "exemptReason": null
+    },
+    {
+      "path": "/api/qc/sessions/route.ts",
+      "methods": [
+        "GET",
+        "POST"
+      ],
+      "gate": "withAuth",
+      "permission": "tech.view",
+      "exemptReason": null
+    },
+    {
+      "path": "/api/qc/triage/decisions/route.ts",
+      "methods": [
+        "POST"
+      ],
+      "gate": "withAuth",
+      "permission": "tech.qc_pass",
+      "exemptReason": null
+    },
+    {
+      "path": "/api/qc/triage/next/route.ts",
+      "methods": [
+        "POST"
       ],
       "gate": "withAuth",
       "permission": "tech.qc_pass",
@@ -6181,6 +6266,15 @@
       ],
       "gate": "re-export (inherits target)",
       "permission": null,
+      "exemptReason": null
+    },
+    {
+      "path": "/api/receiving-lines/qc-assignee/route.ts",
+      "methods": [
+        "PATCH"
+      ],
+      "gate": "withAuth",
+      "permission": "tech.qc_pass",
       "exemptReason": null
     },
     {
