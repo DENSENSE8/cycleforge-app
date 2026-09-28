@@ -23,6 +23,8 @@ import { motionPresence, motionTransition } from '@/design-system/foundations/mo
 import { useMotionPresence, useMotionTransition } from '@/design-system/foundations/motion-presets-hooks';
 import { AnchoredLayer, Button, ChordKeys, KeyboardKey, Layer } from '@/design-system/primitives';
 import Link from 'next/link';
+import { focusRing } from '@/design-system/tokens/focus-ring';
+import { useAuth } from '@/contexts/AuthContext';
 import { DROPDOWN_SHELL_CORNER } from '@/design-system/tokens/radius';
 import { elevationClass } from '@/design-system/tokens/shadows';
 import { invalidateDashboardOrderQueries } from '@/lib/dashboard-query-invalidation';
@@ -34,7 +36,13 @@ import { formatRelativeTime } from '@/lib/search/search-recents';
 import type { GlobalSyncDirection, GlobalSyncJob } from '@/lib/sync/global-sync';
 import { toast } from '@/lib/toast';
 import { cn } from '@/utils/_cn';
-import { HEADER_MENU_CAPTION_CLASS, HEADER_PILL_CLASS, TOP_CHROME_ICON_FACE } from './header-shell';
+import {
+  HEADER_ICON_BTN_CLASS,
+  HEADER_ICON_BTN_OPEN_CLASS,
+  HEADER_ICON_WRAP,
+  HEADER_MENU_CAPTION_CLASS,
+  TOP_CHROME_ICON_FACE,
+} from './header-shell';
 
 const LEADER = 'Y';
 const ARM_SETTLE_MS = GO_SCAN_BURST_MS + 20;
@@ -99,6 +107,8 @@ export function GlobalHeaderSync() {
   const pathname = usePathname();
   const queryClient = useQueryClient();
   const [open, setOpen] = useState(false);
+  // Operations › Sync (and its `/api/cron-runs` data) is admin-only; staff get no dead-end link.
+  const canSeeHistory = useAuth().has('admin.view');
   const [armed, setArmed] = useState(false);
   const [hintAt, setHintAt] = useState<KeyHintAt | null>(null);
   const [rows, setRows] = useState<Record<string, RowState>>({});
@@ -238,15 +248,25 @@ export function GlobalHeaderSync() {
     [],
   );
 
+  // One fixed-size key (owner 2026-09-28: no text, never changes width): the
+  // glyph spins while this session runs jobs; the dot is the record's state.
+  const dot = running || jobs.some((j) => j.lastRun?.status === 'running')
+    ? { tone: 'bg-blue-500 animate-pulse motion-reduce:animate-none', says: 'syncing' }
+    : latest.failed
+      ? { tone: 'bg-amber-500', says: 'a sync failed' }
+      : latest.at
+        ? { tone: 'bg-emerald-500', says: 'up to date' }
+        : null;
+
   return (
-    <div ref={anchorRef} className="flex h-full shrink-0 items-center px-1">
+    <div ref={anchorRef} className={HEADER_ICON_WRAP}>
       <button
         type="button"
         onClick={() => {
           setHintAt(null);
           setOpen((o) => !o);
         }}
-        // Hover TEACHES the keys, exactly like Add: a hint under the pill,
+        // Hover TEACHES the keys, exactly like Add: a hint under the key,
         // flush right — "Press [Y] then" over the scope rows. Never while open.
         onPointerEnter={(event) => {
           if (event.pointerType !== 'mouse' || open) return;
@@ -255,20 +275,29 @@ export function GlobalHeaderSync() {
         }}
         onPointerLeave={() => setHintAt(null)}
         onPointerDown={() => setHintAt(null)}
-        aria-label={latest.at ? `Sync — last synced ${formatRelativeTime(latest.at)}` : 'Sync'}
+        aria-label={[
+          'Sync',
+          dot?.says,
+          latest.at ? `last synced ${formatRelativeTime(latest.at)}` : null,
+        ].filter(Boolean).join(' — ')}
         aria-expanded={open}
         aria-keyshortcuts={LEADER}
-        data-state={open ? 'open' : 'closed'}
         data-testid="global-sync-button"
         data-syncing={running || undefined}
-        className={HEADER_PILL_CLASS}
+        className={cn(
+          'ds-raw-button relative inline-flex items-center justify-center',
+          HEADER_ICON_BTN_CLASS,
+          open && HEADER_ICON_BTN_OPEN_CLASS,
+          focusRing('control'),
+        )}
       >
-        <RefreshCw className={cn(TOP_CHROME_ICON_FACE, 'size-4', running && 'animate-spin motion-reduce:animate-none')} aria-hidden />
-        <span>{running ? 'Syncing…' : 'Sync'}</span>
-        {!running && latest.at ? (
-          <span className={cn('font-normal tabular-nums', latest.failed ? 'text-text-warning' : 'text-text-muted')} data-testid="global-sync-last">
-            {formatRelativeTime(latest.at)}
-          </span>
+        <RefreshCw className={cn(TOP_CHROME_ICON_FACE, running && 'animate-spin motion-reduce:animate-none')} aria-hidden />
+        {dot ? (
+          <span
+            aria-hidden
+            data-testid="global-sync-dot"
+            className={cn('pointer-events-none absolute right-1 top-1 size-2 rounded-full ring-2 ring-surface-card', dot.tone)}
+          />
         ) : null}
       </button>
       <KeyHintPopover id="sync" at={open ? null : hintAt} rows={HINT_ROWS} lead={HINT_LEAD} />
@@ -294,6 +323,7 @@ export function GlobalHeaderSync() {
           footer={
             // Every run — scheduled or pressed here — with its summary: the
             // past-imports record (owner 2026-09-28: it lives on the sync page).
+            canSeeHistory ? (
             <Link
               href="/operations?mode=sync"
               onClick={() => setOpen(false)}
@@ -302,6 +332,7 @@ export function GlobalHeaderSync() {
             >
               Sync history & past imports →
             </Link>
+            ) : undefined
           }
         >
           {jobsQuery.isLoading ? <p className="px-4 py-6 text-role-caption text-text-muted">Loading syncs…</p> : null}

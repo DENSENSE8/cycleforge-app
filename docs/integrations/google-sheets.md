@@ -40,11 +40,12 @@ channels → exceptions pass**. A failing step never stops the rest. Driven by:
 | Header **Sync** pill → *Orders — all linked platforms* (`POST /api/sync/global?job=pipeline:orders`, `Y` then `A`/`O`) — same lock + `cron_runs` ledger as the cron (`trigger: 'manual'`) | caller's org |
 | `/m/orders/sync` (`useOrdersSync`, same order client-side, live ledger) | caller's org |
 
-The header Sync pill (`GlobalHeaderSync`, right of Add · Inbox) reads each job's latest
-`cron_runs` row every minute and shows the newest as "Sync · 5m"; hover teaches its
-`Y` chord like Add's `C`; its panel lists every outbound/inbound sync with its own last
-run and a Run verb, and links **Sync history & past imports** (`/operations?mode=sync`,
-every run with its summary). The To-ship desk no longer carries sync verbs: its face is
+The header Sync key (`GlobalHeaderSync`, right of Add · Inbox) is a fixed-size icon with
+a status dot — blue syncing, amber a latest run failed, green up to date — read from each
+job's latest `cron_runs` row every minute. Hover teaches its `Y` chord like Add's `C`; its
+panel lists every outbound/inbound sync with its own last run and a Run verb, and (for
+`admin.view`) links **Sync history & past imports** (`/operations?mode=sync`, every run
+with its summary). The To-ship desk no longer carries sync verbs: its face is
 **Add manual order**, its chevron Upload / Export CSV.
 
 It replaced the separate `shipstation.orders_sync` cron. Removed on 2026-09-24 and not
