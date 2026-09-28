@@ -168,7 +168,7 @@ export function ReceivingAuditPanel({
           <div className="min-w-0">
             <p
               id="receiving-audit-title"
-              className="text-role-micro uppercase tracking-[0.16em] text-text-soft"
+              className="text-role-micro text-text-soft"
             >
               Audit log
             </p>

@@ -77,7 +77,7 @@ export function MobileDailyDetailSheet({
  * (operator 2026-09-15 — *"within the edit it can display the ID top
  */}
       <div className="flex shrink-0 items-baseline justify-between gap-3 px-1 pb-2">
-        <span className="text-role-micro uppercase tracking-wide text-text-faint">
+        <span className="text-role-micro text-text-faint">
           {canManage ? 'Edit task' : 'Task'}
         </span>
         {item ? (

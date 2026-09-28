@@ -46,7 +46,7 @@ export function ComposerStagedPhotoStrip({
             </div>
           ) : null}
           {s.status === 'error' ? (
-            <div className="absolute inset-0 flex items-center justify-center bg-rose-900/40 text-role-micro uppercase text-white">
+            <div className="absolute inset-0 flex items-center justify-center bg-rose-900/40 text-role-micro text-white">
               Failed
             </div>
           ) : null}

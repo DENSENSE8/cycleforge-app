@@ -141,6 +141,7 @@ export function CartonContextCard({
   onOpenPhotosDisplay,
   suppressPhotoHoverGallery = false,
   photosCell = null,
+  assigneeCell = null,
 }: {
   receivingId: number | null;
   staffId: string;
@@ -265,6 +266,8 @@ export function CartonContextCard({
   suppressPhotoHoverGallery?: boolean;
   /** Station-owned Photos track (e.g. */
   photosCell?: ReactNode;
+  /** Station-owned assignee cell (QC bench: the line's QC tech) — leads the right cluster. */
+  assigneeCell?: ReactNode;
 }) {
   // One classify menu at a time — chip-anchored dropdown; identity band stays put.
   const [openPicker, setOpenPicker] = useState<'urgency' | 'platform' | 'type' | null>(null);
@@ -787,6 +790,7 @@ export function CartonContextCard({
 
       {/* Right — quiet price + icon actions; ⋯ before wrap */}
       <div data-carton-bar-slot="actions" className="relative ml-auto flex shrink-0 items-stretch">
+        {assigneeCell ? <div className={STATION_CHROME_HOVER_CELL_CLASS}>{assigneeCell}</div> : null}
         {priceFace}
         {listingIconButton}
         {ticketInline ?? claimIconButton}

@@ -79,7 +79,7 @@ export function TriageScanBand({
               {filterSlot}
               {batchSortArmed ? (
                 <span
-                  className="flex h-full shrink-0 items-center justify-center px-2 text-role-caption font-semibold uppercase tracking-wide text-amber-800"
+                  className="flex h-full shrink-0 items-center justify-center px-2 text-role-caption font-semibold text-amber-800"
                   aria-live="polite"
                 >
                   Batch sort

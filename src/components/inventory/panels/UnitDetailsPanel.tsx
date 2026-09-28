@@ -69,7 +69,7 @@ export function UnitDetailsPanel({ ref, onClose }: UnitDetailsPanelProps) {
             {summary ? (
                 <div className="border-b border-border-soft bg-surface-canvas px-5 py-4 space-y-4">
                     {summary.condition_grade === 'PARTS' ? (
-                        <span className="inline-flex items-center gap-1.5 rounded-md bg-amber-50 px-2 py-1 text-role-eyebrow uppercase tracking-wide text-amber-800 ring-1 ring-inset ring-amber-200">
+                        <span className="inline-flex items-center gap-1.5 rounded-md bg-amber-50 px-2 py-1 text-role-eyebrow text-amber-800 ring-1 ring-inset ring-amber-200">
                             Parts · Tech Room
                         </span>
                     ) : null}
@@ -154,7 +154,7 @@ function GradeActionCard({ unitId, currentGrade, onMutated }: GradeActionCardPro
                                 type="button"
                                 onClick={() => setNewGrade(g)}
                                 className={[
-                                    'rounded-full border px-2.5 py-1 text-role-eyebrow font-semibold uppercase tracking-wide transition-colors',
+                                    'rounded-full border px-2.5 py-1 text-role-eyebrow font-semibold transition-colors',
                                     active
                                         ? 'border-blue-400 bg-blue-50 text-blue-700'
                                         : 'border-border-soft bg-surface-card text-text-muted hover:border-blue-200 hover:text-blue-600',

@@ -1,10 +1,12 @@
 /**
- * Order payments — the server half: request a Square payment link or invoice
- * for an order, read / refresh / cancel it, and apply Square webhooks.
+ * Order payments — the server half: request a Square payment link / invoice or
+ * a Stripe Checkout link for an order, read / refresh / cancel it, and apply
+ * Square and Stripe webhooks.
  *
  * Every statement is `organization_id = $1` through `tenantQuery`; the org is
  * always the caller's (route / tool ctx) or, for a webhook, the one resolved
- * from Square's own data and then matched against a row in that org.
+ * from the provider's own data (and, for Stripe, signature-verified with that
+ * org's secret) and then matched against a row in that org.
  *
  * Amounts come from the order's rows (`computeOrderCharge`) — never from a
  * model, never from the client.
@@ -24,6 +26,7 @@ import {
   buildInvoiceBody,
   buildPaymentLinkBody,
   buildSquareOrder,
+  buildStripeCheckoutSessionForm,
   computeOrderCharge,
   e164Phone,
   localDate,
@@ -31,6 +34,8 @@ import {
   squarePaymentEventEffect,
   statusForInvoice,
   statusForSquareOrder,
+  statusForStripeSession,
+  stripeCheckoutEventEffect,
   type OrderCharge,
   type OrderChargeRow,
   type OrderPaymentMethod,
@@ -39,9 +44,20 @@ import {
   type PaymentCustomer,
   type PaymentLine,
 } from './model';
+import {
+  createCheckoutSession,
+  expireCheckoutSession,
+  getCheckoutSession,
+  resolveOrderStripeCredentials,
+} from './stripe';
+import type { StripeCredentials } from '@/lib/integrations/credentials';
+import type { InPersonTender, TenderType } from './tender';
 
 /** The methods staff can request today (Terminal stays on the counter flow). */
-export type RequestableMethod = Extract<OrderPaymentMethod, 'square_link' | 'square_invoice'>;
+export type RequestableMethod = Extract<OrderPaymentMethod, 'square_link' | 'square_invoice' | 'stripe_link'>;
+
+const STRIPE_NOT_CONNECTED =
+  'Stripe is not connected for this workspace. Connect your own Stripe account in Settings → Integrations, or take payment through Square.';
 
 interface OrderPaymentRow {
   id: string | number;
@@ -59,6 +75,15 @@ interface OrderPaymentRow {
   square_invoice_version: number | null;
   square_customer_id: string | null;
   square_payment_id: string | null;
+  stripe_checkout_session_id: string | null;
+  stripe_payment_intent_id: string | null;
+  tender: TenderType | null;
+  card_brand: string | null;
+  card_last4: string | null;
+  card_entry_method: string | null;
+  payment_reference: string | null;
+  receipt_url: string | null;
+  created_by: number | null;
   url: string | null;
   last_error: string | null;
   paid_at: string | null;
@@ -79,6 +104,17 @@ export interface OrderPaymentView {
   url: string | null;
   /** The Square dashboard page for an invoice (staff side). */
   squareInvoiceUrl: string | null;
+  /** How it was paid, when known (in-person, or read back from Square). Card FACTS only — never a card number. */
+  tender: TenderType | null;
+  cardBrand: string | null;
+  cardLast4: string | null;
+  cardEntryMethod: string | null;
+  /** Reader authorization code / check number / Zelle confirmation. */
+  reference: string | null;
+  /** Square's hosted receipt, for a payment read back from Square. */
+  receiptUrl: string | null;
+  /** Staff who recorded it (`created_by`). */
+  recordedBy: number | null;
   lastError: string | null;
   paidAt: string | null;
   cancelledAt: string | null;
@@ -100,7 +136,9 @@ type Result<T> = ({ ok: true } & T) | { ok: false; error: string };
 
 const ROW_COLUMNS = `id, order_number, order_ids, customer_id, method, status, amount_cents, currency, lines,
   square_order_id, square_payment_link_id, square_invoice_id, square_invoice_version, square_customer_id,
-  square_payment_id, url, last_error, paid_at::text AS paid_at, cancelled_at::text AS cancelled_at,
+  square_payment_id, stripe_checkout_session_id, stripe_payment_intent_id,
+  tender, card_brand, card_last4, card_entry_method, payment_reference, receipt_url, created_by,
+  url, last_error, paid_at::text AS paid_at, cancelled_at::text AS cancelled_at,
   created_at::text AS created_at, updated_at::text AS updated_at`;
 
 const ORDER_ROWS_SQL = `
@@ -141,6 +179,13 @@ function toView(row: OrderPaymentRow, config: Pick<SquareConfig, 'baseUrl'> | nu
       ? `https://app.${sandbox ? 'squareupsandbox' : 'squareup'}.com/dashboard/invoices/${encodeURIComponent(row.square_invoice_id)}`
       : null,
     lastError: row.last_error,
+    tender: row.tender,
+    cardBrand: row.card_brand,
+    cardLast4: row.card_last4,
+    cardEntryMethod: row.card_entry_method,
+    reference: row.payment_reference,
+    receiptUrl: row.receipt_url,
+    recordedBy: row.created_by == null ? null : Number(row.created_by),
     paidAt: row.paid_at,
     cancelledAt: row.cancelled_at,
     createdAt: row.created_at,
@@ -227,7 +272,7 @@ async function transition(
   orgId: OrgId,
   id: number,
   to: OrderPaymentStatus,
-  patch: { squarePaymentId?: string | null; lastError?: string | null } = {},
+  patch: { squarePaymentId?: string | null; stripePaymentIntentId?: string | null; lastError?: string | null } = {},
 ): Promise<OrderPaymentRow | null> {
   const { rows } = await tenantQuery<OrderPaymentRow>(
     orgId,
@@ -235,12 +280,16 @@ async function transition(
         SET status = $3,
             square_payment_id = COALESCE($4, square_payment_id),
             last_error = COALESCE($5, last_error),
+            stripe_payment_intent_id = COALESCE($7, stripe_payment_intent_id),
             paid_at = CASE WHEN $3 = 'paid' THEN COALESCE(paid_at, now()) ELSE paid_at END,
             cancelled_at = CASE WHEN $3 = 'cancelled' THEN COALESCE(cancelled_at, now()) ELSE cancelled_at END,
             updated_at = now()
       WHERE organization_id = $1 AND id = $2 AND status = ANY($6::text[])
       RETURNING ${ROW_COLUMNS}`,
-    [orgId, id, to, patch.squarePaymentId ?? null, patch.lastError ?? null, PAYMENT_STATUS_FROM[to]],
+    [
+      orgId, id, to, patch.squarePaymentId ?? null, patch.lastError ?? null, PAYMENT_STATUS_FROM[to],
+      patch.stripePaymentIntentId ?? null,
+    ],
   );
   const row = rows[0] ?? null;
   if (row && (to === 'paid' || to === 'refunded')) {
@@ -323,6 +372,92 @@ function redirectUrl(orderNumber: string): string | null {
   return `${base}/pay/thanks?order=${encodeURIComponent(orderNumber)}`;
 }
 
+/** Stripe requires a return URL; http is accepted so test-mode keys work against a local app. */
+function stripeSuccessUrl(orderNumber: string): string | null {
+  const base = (process.env.NEXT_PUBLIC_APP_URL || '').trim().replace(/\/+$/, '');
+  if (!/^https?:\/\//.test(base)) return null;
+  return `${base}/pay/thanks?order=${encodeURIComponent(orderNumber)}&provider=stripe`;
+}
+
+/** Stripe's Idempotency-Key for one row's call — stable across retries of the same request row. */
+function stripeKey(orgId: OrgId, id: number, what: string): string {
+  return `cf-order-payment-${orgId}-${id}-${what}`;
+}
+
+// ─── Stripe helpers ─────────────────────────────────────────────────────────
+
+async function createStripeLink(
+  orgId: OrgId,
+  id: number,
+  c: OrderCharge,
+  customer: PaymentCustomer | null,
+  creds: StripeCredentials,
+  successUrl: string,
+): Promise<Result<{ payment: OrderPaymentView; existing: boolean }>> {
+  const res = await createCheckoutSession(
+    creds,
+    buildStripeCheckoutSessionForm({
+      orgId,
+      paymentId: id,
+      orderNumber: c.orderNumber,
+      currency: c.currency,
+      lines: c.lines,
+      customerEmail: customer?.email ?? null,
+      successUrl,
+    }),
+    stripeKey(orgId, id, 'session'),
+  );
+  const session = res.data;
+  if (!res.ok || !session.id || !session.url) {
+    const error = res.error ?? 'Stripe returned a checkout session without a payment URL.';
+    await failRow(orgId, id, error);
+    return { ok: false, error };
+  }
+  const { rows } = await tenantQuery<OrderPaymentRow>(
+    orgId,
+    `UPDATE order_payments
+        SET stripe_checkout_session_id = $3, url = $4, updated_at = now()
+      WHERE organization_id = $1 AND id = $2
+      RETURNING ${ROW_COLUMNS}`,
+    [orgId, id, session.id, session.url],
+  );
+  return { ok: true, payment: toView(rows[0], null), existing: false };
+}
+
+async function cancelStripeOrderPayment(orgId: OrgId, row: OrderPaymentRow): Promise<Result<{ payment: OrderPaymentView }>> {
+  const id = Number(row.id);
+  if (row.status === 'paid' || row.status === 'refunded') {
+    return { ok: false, error: 'This order is already paid — refunds are made in Stripe.' };
+  }
+  if (row.status === 'cancelled') return { ok: true, payment: toView(row, null) };
+
+  const sessionId = row.stripe_checkout_session_id;
+  if (sessionId) {
+    const creds = await resolveOrderStripeCredentials(orgId);
+    if (!creds) return { ok: false, error: STRIPE_NOT_CONNECTED };
+    const got = await getCheckoutSession(creds, sessionId);
+    if (got.ok) {
+      const next = statusForStripeSession(got.data);
+      if (next.status === 'paid') {
+        await transition(orgId, id, 'paid', { stripePaymentIntentId: next.paymentIntentId });
+        return { ok: false, error: 'The customer already paid — refunds are made in Stripe.' };
+      }
+      if (got.data.status === 'complete') {
+        // Submitted with a delayed method (e.g. bank debit): the outcome is still coming.
+        return { ok: false, error: 'The customer has submitted a payment that is still clearing — wait for it to settle before cancelling.' };
+      }
+      if (got.data.status === 'open') {
+        const expired = await expireCheckoutSession(creds, sessionId, stripeKey(orgId, id, 'expire'));
+        if (!expired.ok) return { ok: false, error: expired.error ?? 'Stripe could not expire the checkout session.' };
+      }
+    } else if (got.status !== 404) {
+      return { ok: false, error: got.error ?? 'Stripe could not read the checkout session.' };
+    }
+  }
+  const updated = await transition(orgId, id, 'cancelled');
+  return { ok: true, payment: toView(updated ?? (await rowById(orgId, id)) ?? row, null) };
+}
+
 // ─── Request ────────────────────────────────────────────────────────────────
 
 export async function requestOrderPayment(
@@ -330,17 +465,29 @@ export async function requestOrderPayment(
   args: { orderNumber: string; method: RequestableMethod; staffId: number | null; idempotencyKey?: string },
 ): Promise<Result<{ payment: OrderPaymentView; existing: boolean }>> {
   const orderNumber = args.orderNumber.trim();
-  const config = await resolveSquareConfig(orgId);
-  const charge = await loadCharge(orgId, orderNumber, config.currency);
+  let provider: { kind: 'stripe'; creds: StripeCredentials; successUrl: string } | { kind: 'square'; config: SquareConfig };
+  if (args.method === 'stripe_link') {
+    const creds = await resolveOrderStripeCredentials(orgId);
+    if (!creds) return { ok: false, error: STRIPE_NOT_CONNECTED };
+    const successUrl = stripeSuccessUrl(orderNumber);
+    if (!successUrl) {
+      return { ok: false, error: 'This app has no public URL (NEXT_PUBLIC_APP_URL), so Stripe has nowhere to send the customer after paying.' };
+    }
+    provider = { kind: 'stripe', creds, successUrl };
+  } else {
+    provider = { kind: 'square', config: await resolveSquareConfig(orgId) };
+  }
+  const viewConfig = provider.kind === 'square' ? provider.config : null;
+  const charge = await loadCharge(orgId, orderNumber, viewConfig?.currency ?? 'USD');
   if (!charge.ok) return charge;
   const c = charge.charge;
-  if (c.currency !== config.currency) {
-    return { ok: false, error: `Order ${orderNumber} is priced in ${c.currency}, but Square takes ${config.currency}.` };
+  if (viewConfig && c.currency !== viewConfig.currency) {
+    return { ok: false, error: `Order ${orderNumber} is priced in ${c.currency}, but Square takes ${viewConfig.currency}.` };
   }
 
   // A paid order is never asked to pay again: hand back the paid request instead.
   const latest = await latestRow(orgId, orderNumber);
-  if (latest?.status === 'paid') return { ok: true, payment: toView(latest, config), existing: true };
+  if (latest?.status === 'paid') return { ok: true, payment: toView(latest, viewConfig), existing: true };
 
   const customer = await loadCustomer(orgId, c.customerId);
   if (args.method === 'square_invoice') {
@@ -375,11 +522,15 @@ export async function requestOrderPayment(
       [orgId, idempotencyKey, orderNumber, OPEN_PAYMENT_STATUSES],
     );
     if (!rows[0]) return { ok: false, error: 'Another payment request for this order is being created — try again in a moment.' };
-    return { ok: true, payment: toView(rows[0], config), existing: true };
+    return { ok: true, payment: toView(rows[0], viewConfig), existing: true };
   }
 
   const id = Number(claimed.id);
   try {
+    if (provider.kind === 'stripe') {
+      return await createStripeLink(orgId, id, c, customer, provider.creds, provider.successUrl);
+    }
+    const { config } = provider;
     if (args.method === 'square_link') {
       const res = await squareFetch<{ payment_link?: { id?: string; url?: string; long_url?: string; order_id?: string } }>(
         '/online-checkout/payment-links',
@@ -505,11 +656,77 @@ export async function requestOrderPayment(
   }
 }
 
+// ─── In person ──────────────────────────────────────────────────────────────
+
+/**
+ * Record a payment the customer made at the counter — card on the reader,
+ * cash, or other (check, Zelle). The row lands already `paid`; the amount is
+ * the order's own rows (`computeOrderCharge`), never the client's. Only the
+ * tender FACTS are stored (./tender.ts) — the caller has already refused any
+ * PAN-shaped value, and the table's CHECKs refuse it again.
+ *
+ * A paid order is not paid twice: the paid row comes back (`existing`). An
+ * open link / invoice could still be paid by the customer, so it must be
+ * cancelled first — the same rule the Square invoice link follows.
+ */
+export async function recordInPersonPayment(
+  orgId: OrgId,
+  args: { orderNumber: string; tender: InPersonTender; staffId: number | null; idempotencyKey?: string },
+): Promise<Result<{ payment: OrderPaymentView; existing: boolean }>> {
+  const orderNumber = args.orderNumber.trim();
+  const config = await resolveSquareConfig(orgId).catch(() => null);
+  const charge = await loadCharge(orgId, orderNumber, config?.currency ?? 'USD');
+  if (!charge.ok) return charge;
+  const c = charge.charge;
+
+  const latest = await latestRow(orgId, orderNumber);
+  if (latest?.status === 'paid') return { ok: true, payment: toView(latest, config), existing: true };
+  if (latest && OPEN_PAYMENT_STATUSES.includes(latest.status)) {
+    return {
+      ok: false,
+      error: `Order ${orderNumber} has an open ${latest.method === 'square_invoice' ? 'invoice' : 'payment link'} the customer could still pay. Cancel it before recording an in-person payment.`,
+    };
+  }
+
+  const idempotencyKey = (args.idempotencyKey?.trim() || randomUUID()).slice(0, 100);
+  const t = args.tender;
+  const inserted = await tenantQuery<OrderPaymentRow>(
+    orgId,
+    `INSERT INTO order_payments
+       (organization_id, order_number, order_ids, customer_id, method, status, amount_cents, currency, lines,
+        tender, card_brand, card_last4, card_entry_method, payment_reference, paid_at, idempotency_key, created_by)
+     VALUES ($1, $2, $3::int[], $4, 'in_person', 'paid', $5, $6, $7::jsonb, $8, $9, $10, $11, $12, now(), $13, $14)
+     ON CONFLICT (organization_id, idempotency_key) DO NOTHING
+     RETURNING ${ROW_COLUMNS}`,
+    [
+      orgId, orderNumber, c.orderIds, c.customerId, c.totalCents, c.currency, JSON.stringify(c.lines),
+      t.tender, t.cardBrand, t.cardLast4, t.entryMethod, t.reference, idempotencyKey, args.staffId,
+    ],
+  );
+  const row = inserted.rows[0];
+  if (!row) {
+    const prior = await tenantQuery<OrderPaymentRow>(
+      orgId,
+      `SELECT ${ROW_COLUMNS} FROM order_payments WHERE organization_id = $1 AND idempotency_key = $2`,
+      [orgId, idempotencyKey],
+    );
+    if (!prior.rows[0] || prior.rows[0].order_number !== orderNumber) {
+      return { ok: false, error: 'That request key was already used for another payment.' };
+    }
+    return { ok: true, payment: toView(prior.rows[0], config), existing: true };
+  }
+  await publishOrderChanged({ organizationId: orgId, orderIds: row.order_ids, source: 'order-payment.in-person' }).catch((err) =>
+    console.error('[order-payments] order.changed publish failed', err),
+  );
+  return { ok: true, payment: toView(row, config), existing: false };
+}
+
 // ─── Cancel ─────────────────────────────────────────────────────────────────
 
 export async function cancelOrderPayment(orgId: OrgId, id: number): Promise<Result<{ payment: OrderPaymentView }>> {
   const row = await rowById(orgId, id);
   if (!row) return { ok: false, error: 'That payment request does not exist.' };
+  if (row.method === 'stripe_link') return cancelStripeOrderPayment(orgId, row);
   const config = await resolveSquareConfig(orgId);
   if (row.status === 'paid' || row.status === 'refunded') {
     return { ok: false, error: 'This order is already paid — refunds are made in Square.' };
@@ -557,8 +774,9 @@ export async function cancelOrderPayment(orgId: OrgId, id: number): Promise<Resu
 // ─── Poll fallback ──────────────────────────────────────────────────────────
 
 /**
- * Ask Square where an open request stands — the fallback when a webhook was
- * missed. Throttled per row (at most one Square round trip per 8 s).
+ * Ask the provider (Square / Stripe) where an open request stands — the
+ * fallback when a webhook was missed. Throttled per row (at most one provider
+ * round trip per 8 s).
  */
 export async function refreshOrderPayment(orgId: OrgId, id: number): Promise<OrderPaymentView | null> {
   const claimed = await tenantQuery<{ id: string }>(
@@ -569,9 +787,23 @@ export async function refreshOrderPayment(orgId: OrgId, id: number): Promise<Ord
       RETURNING id`,
     [orgId, id, OPEN_PAYMENT_STATUSES],
   );
-  const config = await resolveSquareConfig(orgId);
   const row = await rowById(orgId, id);
   if (!row) return null;
+
+  if (row.method === 'stripe_link') {
+    const creds = claimed.rows.length > 0 && row.stripe_checkout_session_id ? await resolveOrderStripeCredentials(orgId) : null;
+    if (creds && row.stripe_checkout_session_id) {
+      const got = await getCheckoutSession(creds, row.stripe_checkout_session_id);
+      const next = got.ok ? statusForStripeSession(got.data) : null;
+      if (next?.status && next.status !== row.status) {
+        await transition(orgId, id, next.status, { stripePaymentIntentId: next.paymentIntentId });
+      }
+    }
+    const after = await rowById(orgId, id);
+    return after ? toView(after, null) : null;
+  }
+
+  const config = await resolveSquareConfig(orgId);
   if (claimed.rows.length === 0) return toView(row, config);
 
   if (row.square_invoice_id) {
@@ -639,4 +871,51 @@ async function fetchSquareOrderMeta(squareOrderId: string): Promise<Record<strin
     { config: getSquareConfig() },
   );
   return res.ok ? res.data.order?.metadata ?? null : null;
+}
+
+/**
+ * Apply one Stripe Checkout event to its order payment, if it is ours.
+ *
+ * `verifiedOrg` is the org whose OWN webhook secret verified the event's
+ * signature (the route resolves it from our session metadata first). The
+ * event must name that same org, and the row must exist in it with that id
+ * AND that checkout session, or nothing is written. Replays are harmless:
+ * `transition` only moves a row from the statuses `PAYMENT_STATUS_FROM` allows.
+ */
+export async function applyStripePaymentWebhook(
+  event: unknown,
+  verifiedOrg: OrgId,
+): Promise<{ handled: false; reason: string } | { handled: true; paymentId: number; status: OrderPaymentStatus }> {
+  const effect = stripeCheckoutEventEffect(event);
+  if (!effect) return { handled: false, reason: 'not a checkout outcome for an order payment' };
+  if (effect.orgId !== verifiedOrg) return { handled: false, reason: 'event org does not match the verifying org' };
+
+  const { rows } = await tenantQuery<{ id: string }>(
+    verifiedOrg,
+    `SELECT id FROM order_payments
+      WHERE organization_id = $1 AND id = $2 AND method = 'stripe_link' AND stripe_checkout_session_id = $3`,
+    [verifiedOrg, effect.paymentId, effect.sessionId],
+  );
+  if (!rows[0]) return { handled: false, reason: 'no matching order payment' };
+  const moved = await transition(verifiedOrg, effect.paymentId, effect.status, {
+    stripePaymentIntentId: effect.paymentIntentId,
+    lastError: effect.lastError,
+  });
+  if (!moved) return { handled: false, reason: 'status already settled' };
+  return { handled: true, paymentId: effect.paymentId, status: moved.status };
+}
+
+// ─── Availability ───────────────────────────────────────────────────────────
+
+/**
+ * Which providers can take an order payment for this org right now — the same
+ * resolution `requestOrderPayment` uses, so a `true` here is a request that
+ * will reach the provider. Stripe is the org's own vault credential only.
+ */
+export async function getOrderPaymentMethods(orgId: OrgId): Promise<{ square: boolean; stripe: boolean }> {
+  const [square, stripe] = await Promise.all([
+    resolveSquareConfig(orgId).then((config) => Boolean(config.accessToken && config.locationId), () => false),
+    resolveOrderStripeCredentials(orgId).then(Boolean, () => false),
+  ]);
+  return { square, stripe };
 }

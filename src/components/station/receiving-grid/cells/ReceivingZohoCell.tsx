@@ -38,7 +38,7 @@ export function ZohoReceiptChip({
       <span className="min-w-0">
         <span
           className={cn(
-            'inset-chip rounded text-role-micro uppercase tracking-widest ring-1 ring-inset',
+            'inset-chip rounded text-role-micro ring-1 ring-inset',
             face.className,
           )}
         >

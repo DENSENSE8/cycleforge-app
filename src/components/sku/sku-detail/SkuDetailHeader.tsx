@@ -29,7 +29,7 @@ function SkuPriceBadge({ data }: { data: SkuDetailData }) {
     <div className="text-right">
       <p className="text-lg font-semibold text-text-default">${data.ecwid.price.toFixed(2)}</p>
       <p
-        className={`text-role-micro font-semibold uppercase tracking-wider ${data.ecwid.inStock ? 'text-emerald-600' : 'text-red-500'}`}
+        className={`text-role-micro font-semibold ${data.ecwid.inStock ? 'text-emerald-600' : 'text-red-500'}`}
       >
         {data.ecwid.inStock ? 'In Stock' : 'Out of Stock'}
       </p>

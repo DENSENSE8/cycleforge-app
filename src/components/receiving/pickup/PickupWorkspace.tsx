@@ -308,7 +308,7 @@ export function PickupWorkspace({ selectedOrderId = null }: PickupWorkspaceProps
             </DialogDescription>
           </DialogHeader>
           <label className="flex flex-col gap-1.5">
-            <span className="text-role-caption font-semibold uppercase tracking-widest text-text-soft">
+            <span className="text-role-caption font-semibold text-text-soft">
               Customer name
             </span>
             <input

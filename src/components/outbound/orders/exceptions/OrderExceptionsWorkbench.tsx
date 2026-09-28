@@ -146,7 +146,7 @@ export function OrderExceptionsWorkbench() {
 
       <div className="flex min-h-0 min-w-0 flex-1 flex-col" data-testid="exceptions-queue">
         <OutboundOrdersLedger
-          mode="exceptions"
+          viewKey="shipping.exceptions"
           chrome={chrome}
           searchPending={query.isFetching || search.trim() !== debounced.trim()}
           records={records}

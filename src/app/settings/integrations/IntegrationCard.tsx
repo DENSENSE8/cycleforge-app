@@ -254,7 +254,7 @@ export function IntegrationCard({
           {capabilities.length > 0 && (
             <div className="mt-1.5 flex flex-wrap gap-1">
               {capabilities.map((cap) => (
-                <span key={cap} className="rounded bg-surface-sunken px-1.5 py-0.5 text-role-micro uppercase tracking-wider text-text-faint">
+                <span key={cap} className="rounded bg-surface-sunken px-1.5 py-0.5 text-role-micro text-text-faint">
                   {cap}
                 </span>
               ))}
@@ -290,7 +290,7 @@ export function IntegrationCard({
                 <span className="min-w-0 flex-1 truncate text-role-caption font-medium text-text-default">{acct.label}</span>
               )}
               {def.connect === 'ebay' && acct.role === 'buyer' && (
-                <span className="shrink-0 rounded bg-indigo-50 px-1.5 py-0.5 text-role-micro uppercase tracking-widest text-indigo-700 ring-1 ring-inset ring-indigo-200">Purchasing</span>
+                <span className="shrink-0 rounded bg-indigo-50 px-1.5 py-0.5 text-role-micro text-indigo-700 ring-1 ring-inset ring-indigo-200">Purchasing</span>
               )}
               {acct.detail && def.connect !== 'ebay' && <span className="shrink-0 text-role-caption text-text-faint">{acct.detail}</span>}
               {canManage && def.connect === 'amazon' && acct.id != null && (

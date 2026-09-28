@@ -37,8 +37,8 @@ export function PkgGroupHeader({
         <motion.span animate={{ rotate: isCollapsed ? -90 : 0 }} transition={{ duration: 0.18, ease: motionBezier.easeOut }} className="inline-flex">
           <ChevronDown className="h-3 w-3" />
         </motion.span>
-        <span className="text-role-micro uppercase tracking-widest">PKG · {groupSize}</span>
-        <span className="ml-auto text-role-micro uppercase tracking-widest text-indigo-400">{groupSize} items</span>
+        <span className="text-role-micro">Pkg · {groupSize}</span>
+        <span className="ml-auto text-role-micro text-indigo-400">{groupSize} items</span>
       </button>
     </motion.li>
   );

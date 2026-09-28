@@ -38,7 +38,7 @@ import {
 
 /** Secondary categorical chips (reasons / velocity) — not lifecycle status. */
 const CHIP = cn(
-  'min-w-0 truncate px-1.5 py-0.5 text-role-micro uppercase tracking-widest ring-1 ring-inset',
+  'min-w-0 truncate px-1.5 py-0.5 text-role-micro ring-1 ring-inset',
   cornerClass('chip'),
 );
 
@@ -69,14 +69,14 @@ function readyHitMetaTokens(hit: AllocationHit): { value: string; kind: string }
 function ReadyHitMetaTrail({ hit }: { hit: AllocationHit }) {
   const tokens = readyHitMetaTokens(hit);
   return (
-    <span className="inline-flex min-w-0 max-w-full shrink items-center gap-1 overflow-hidden text-role-eyebrow text-text-faint industrial:uppercase industrial:tracking-widest">
+    <span className="inline-flex min-w-0 max-w-full shrink items-center gap-1 overflow-hidden text-role-eyebrow text-text-faint">
       {tokens.map((token, i) => (
         <span key={`${token.kind}:${token.value}`} className="inline-flex min-w-0 items-center gap-1">
           {i > 0 ? <span className="shrink-0" aria-hidden>·</span> : null}
           <CopyableCellValue
             value={token.value}
             historyKind={token.kind}
-            className="min-w-0 truncate font-sans text-role-eyebrow text-text-faint industrial:font-mono industrial:uppercase industrial:tracking-widest"
+            className="min-w-0 truncate font-sans text-role-eyebrow text-text-faint industrial:font-mono"
             dense
           />
         </span>
@@ -158,7 +158,7 @@ function renderReadySlotBody(fieldId: string | undefined, ctx: ReadyGridCellCtx)
       return hit.conditionGrade ? (
         <span
           className={cn(
-            'min-w-0 truncate text-role-eyebrow uppercase',
+            'min-w-0 truncate text-role-eyebrow',
             conditionGradeTextClass(condGrade),
           )}
         >
@@ -178,7 +178,7 @@ function renderReadySlotBody(fieldId: string | undefined, ctx: ReadyGridCellCtx)
             <GridCellDash />
           )}
           {hit.testedByName ? (
-            <span className="min-w-0 truncate text-role-eyebrow uppercase tracking-widest text-text-faint">
+            <span className="min-w-0 truncate text-role-eyebrow text-text-faint">
               {hit.testedByName}
             </span>
           ) : null}
@@ -255,11 +255,11 @@ export function renderReadyGridCell(
               Stage FBA
             </Link>
           ) : hit.allocationState === 'READY' && hit.disposition === 'PREBOX_STOCK' ? (
-            <span className="min-w-0 truncate text-role-eyebrow uppercase tracking-widest text-text-success">
+            <span className="min-w-0 truncate text-role-eyebrow text-text-success">
               Pre-box
             </span>
           ) : (
-            <span className="min-w-0 truncate text-role-eyebrow uppercase tracking-widest text-text-faint">
+            <span className="min-w-0 truncate text-role-eyebrow text-text-faint">
               History
             </span>
           )}

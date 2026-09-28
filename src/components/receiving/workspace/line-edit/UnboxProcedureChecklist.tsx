@@ -52,12 +52,12 @@ export function UnboxProcedureChecklist({
   return (
     <div className="space-y-2">
       <div className="flex items-center justify-between gap-2 px-1">
-        <p className="text-role-eyebrow uppercase tracking-widest text-text-soft">
+        <p className="text-role-eyebrow text-text-soft">
           {flowLabel}
         </p>
         {settled && steps.length > 0 ? (
           <span
-            className={`shrink-0 rounded-full px-2 py-0.5 text-role-micro uppercase tracking-wider tabular-nums ${
+            className={`shrink-0 rounded-full px-2 py-0.5 text-role-micro tabular-nums ${
               allDone ? 'bg-emerald-50 text-emerald-700' : 'bg-surface-sunken text-text-soft'
             }`}
           >

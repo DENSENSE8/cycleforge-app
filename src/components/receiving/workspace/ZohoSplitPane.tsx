@@ -75,7 +75,7 @@ export function ZohoSplitPane() {
               href={url}
               target="_blank"
               rel="noreferrer"
-              className="rounded-md bg-blue-600 px-3 py-1.5 text-role-caption font-semibold uppercase tracking-[0.16em] text-white hover:bg-blue-700"
+              className="rounded-md bg-blue-600 px-3 py-1.5 text-role-caption font-semibold text-white hover:bg-blue-700"
             >
               Open in {providerLabel}
             </a>

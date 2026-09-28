@@ -424,7 +424,7 @@ export function AppearanceSection() {
           Color paints Unbox, Arrival, Pack, Testing, Scan-out, and Search wells.
           Depth sets bevel and grain. One pair for every floor station.
         </p>
-        <p className="mb-2 text-role-eyebrow uppercase tracking-widest text-text-soft">
+        <p className="mb-2 text-role-eyebrow text-text-soft">
           Color
         </p>
         <div className="space-y-4">
@@ -435,7 +435,7 @@ export function AppearanceSection() {
             if (names.length === 0) return null;
             return (
               <div key={group}>
-                <p className="mb-2 text-role-eyebrow uppercase tracking-widest text-text-soft">
+                <p className="mb-2 text-role-eyebrow text-text-soft">
                   {STATION_SKIN_GROUP_LABEL[group]}
                 </p>
                 <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
@@ -472,7 +472,7 @@ export function AppearanceSection() {
             );
           })}
         </div>
-        <p className="mb-2 mt-5 text-role-eyebrow uppercase tracking-widest text-text-soft">
+        <p className="mb-2 mt-5 text-role-eyebrow text-text-soft">
           Depth
         </p>
         <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
@@ -517,7 +517,7 @@ export function AppearanceSection() {
             if (names.length === 0) return null;
             return (
               <div key={scheme}>
-                <p className="mb-2 text-role-eyebrow uppercase tracking-widest text-text-soft">
+                <p className="mb-2 text-role-eyebrow text-text-soft">
                   {scheme === 'light' ? 'Light themes' : 'Dark themes'}
                 </p>
                 <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">

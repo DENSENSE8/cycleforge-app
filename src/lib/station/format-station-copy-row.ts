@@ -1,5 +1,5 @@
 /** Grid / station-log → TSV copy formatters. */
-import type { TechRecord } from '@/hooks/useDeskPickLogs';
+import type { DeskPickRecord } from '@/hooks/useDeskPickLogs';
 import type { PackerRecord } from '@/hooks/usePackerLogs';
 import type { BinsOverviewRow } from '@/hooks/useBinsOverview';
 import type { CatalogListRow } from '@/components/products/catalog/types';
@@ -10,7 +10,7 @@ function tsv(cells: (string | number | null | undefined)[]): string {
 }
 
 export const TECH_COPY_HEADER = ['Date', 'Order', 'SKU', 'Serial', 'Tracking', 'Qty', 'Condition', 'Title'];
-export function formatTechCopyRow(r: TechRecord): string {
+export function formatTechCopyRow(r: DeskPickRecord): string {
   return tsv([
     r.created_at,
     r.order_id,

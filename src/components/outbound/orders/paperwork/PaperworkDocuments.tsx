@@ -4,7 +4,6 @@
 
 import { useEffect, useMemo, useRef, useState, type DragEvent, type ReactNode } from 'react';
 import {
-  ChevronLeft,
   Download,
   ExternalLink,
   FileText,
@@ -15,6 +14,7 @@ import {
   Trash2,
   Unlink,
   Upload,
+  X,
 } from '@/components/Icons';
 import { TYPE_OPTIONS } from '@/components/manuals/manual-crud/manual-crud-shared';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/design-system/components/Dialog';
@@ -64,11 +64,14 @@ const KIND_LABEL: Record<PaperworkKind, string> = {
 };
 
 const TAB_FACE: Record<PaperworkTab, string> = {
-  shipping_label: 'Label',
-  packing_slip: 'Slip',
-  manual: 'Manuals & docs',
+  packing_slip: 'Packing slip',
+  manual: 'Manual',
+  shipping_label: 'Shipping label',
   all: 'All',
 };
+
+/** Tab order (owner 2026-09-27): what the packer reaches for first. */
+const TAB_ORDER: readonly PaperworkTab[] = ['packing_slip', 'manual', 'shipping_label', 'all'];
 
 const UPLOAD_FACE: Record<PaperworkKind, string> = {
   shipping_label: 'Upload label',
@@ -176,6 +179,7 @@ export function PaperworkDocuments({
   onTabChange,
   onChanged,
   itemView = false,
+  onClose,
 }: {
   orderId: number;
   orderRef: string;
@@ -189,6 +193,8 @@ export function PaperworkDocuments({
    * uploads and library pairs pin the item number.
    */
   itemView?: boolean;
+  /** The ✕ at the toolbar's far right — closes the documents (the host's Back). */
+  onClose?: () => void;
 }) {
   const tab: PaperworkTab = itemView ? 'manual' : requestedTab;
   // The item view never lists the order's own label / slip (0 = query off).
@@ -225,11 +231,19 @@ export function PaperworkDocuments({
   const [replaceTarget, setReplaceTarget] = useState<PaperworkFile | null>(null);
   const [dragOver, setDragOver] = useState(false);
 
-  const uploadKind: PaperworkKind | null = tab === 'all' ? null : tab;
+  // "All" has no single kind: its empty state asks which kind the file is.
+  const [pickedKind, setPickedKind] = useState<PaperworkKind | null>(null);
+  const uploadKind: PaperworkKind | null = tab === 'all' ? pickedKind : tab;
   const busy =
     actions.upload.isPending ||
     actions.replaceDocument.isPending ||
     actions.replaceManual.isPending;
+
+  const chooseUpload = (kind: PaperworkKind) => {
+    setPickedKind(kind);
+    // The input's `accept` follows the kind on the next paint.
+    requestAnimationFrame(() => uploadRef.current?.click());
+  };
 
   const uploadFiles = (list: FileList | null) => {
     if (!uploadKind || !list) return;
@@ -358,7 +372,10 @@ export function PaperworkDocuments({
       aria-label={itemView ? 'Item number paperwork' : 'Order paperwork'}
       className="@container flex min-w-0 flex-col gap-3"
     >
-      <div className="flex flex-wrap items-center gap-2">
+      {/* The toolbar (owner 2026-09-27): kind tabs on the left; download /
+          export and the ✕ top right — ✕ always the far-right corner. In a
+          narrow pane the actions take the first row and the tabs wrap under. */}
+      <div className="@container/tools flex flex-wrap items-center gap-2">
         {itemView ? (
           <p className={CAPTION}>
             <span className="font-semibold text-text-default">{files.length}</span> paired to item #{' '}
@@ -367,10 +384,13 @@ export function PaperworkDocuments({
           </p>
         ) : (
           // The record's segmented face (same as In place / Split): a sunken
-          // track, the chosen tab lifted as a card — region corners, rounded on
-          // the desk record (owner 2026-09-26).
-          <div role="tablist" aria-label="Paperwork kind" className="inline-flex shrink-0 items-center gap-0.5 rounded-mode-control bg-surface-sunken p-0.5">
-            {(['shipping_label', 'packing_slip', 'manual', 'all'] as const).map((kind) => (
+          // track, the chosen tab lifted as a card.
+          <div
+            role="tablist"
+            aria-label="Document kind"
+            className="inline-flex max-w-full shrink-0 items-center gap-0.5 overflow-x-auto rounded-mode-control bg-surface-sunken p-0.5 scrollbar-hide"
+          >
+            {TAB_ORDER.map((kind) => (
               <button
                 key={kind}
                 type="button"
@@ -379,7 +399,7 @@ export function PaperworkDocuments({
                 data-testid={`paperwork-tab-${kind}`}
                 onClick={() => onTabChange(kind)}
                 className={cn(
-                  'ds-raw-button inline-flex h-8 items-center gap-1.5 rounded-mode-control px-3 text-role-caption font-medium transition-colors duration-mode-feedback',
+                  'ds-raw-button inline-flex h-8 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-mode-control px-3 text-role-caption font-medium transition-colors duration-mode-feedback',
                   tab === kind ? 'bg-surface-card text-text-default shadow-elev-soft' : 'text-text-muted hover:text-text-default',
                   focusRing('control'),
                 )}
@@ -390,39 +410,52 @@ export function PaperworkDocuments({
             ))}
           </div>
         )}
-        <span className="min-w-0 flex-1" />
-        {itemView ? null : (
-          <Button
-            variant="secondary"
-            size="md"
-            className={triagePanelControl()}
-            icon={<Printer />}
-            disabled={files.length === 0 || printingAll}
-            data-testid="paperwork-print-all"
-            onClick={() => void onPrintAll()}
-          >
-            {printingAll ? 'Preparing…' : 'Print all'}
-          </Button>
-        )}
-        {zipHref ? (
-          <a
-            href={zipHref}
-            download
-            data-testid="paperwork-download-all"
-            className={cn(
-              'inline-flex items-center gap-1.5 border border-border-soft bg-surface-card px-3 text-role-caption font-semibold text-text-default hover:bg-surface-sunken',
-              triagePanelControl(),
-              focusRing('control'),
-            )}
-          >
-            <Download className="h-3.5 w-3.5" aria-hidden />
-            Download all
-          </a>
-        ) : (
-          <Button variant="secondary" size="md" disabled className={triagePanelControl()} icon={<Download />}>
-            Download all
-          </Button>
-        )}
+        <div className="order-first ml-auto flex w-full shrink-0 items-center justify-end gap-1.5 @2xl/tools:order-none @2xl/tools:w-auto">
+          {itemView ? null : (
+            <Button
+              variant="secondary"
+              size="md"
+              className={triagePanelControl()}
+              icon={<Printer />}
+              disabled={files.length === 0 || printingAll}
+              data-testid="paperwork-print-all"
+              onClick={() => void onPrintAll()}
+            >
+              {printingAll ? 'Preparing…' : 'Print all'}
+            </Button>
+          )}
+          {zipHref ? (
+            <a
+              href={zipHref}
+              download
+              data-testid="paperwork-download-all"
+              title="Every document on this order, as one .zip"
+              className={cn(
+                'inline-flex items-center gap-1.5 border border-border-soft bg-surface-card px-3 text-role-caption font-semibold text-text-default hover:bg-surface-sunken',
+                triagePanelControl(),
+                focusRing('control'),
+              )}
+            >
+              <Download className="h-3.5 w-3.5" aria-hidden />
+              Download all
+            </a>
+          ) : (
+            <Button variant="secondary" size="md" disabled className={triagePanelControl()} icon={<Download />}>
+              Download all
+            </Button>
+          )}
+          {onClose ? (
+            <IconButton
+              type="button"
+              size="sm"
+              tone="neutral"
+              icon={<X className="h-4 w-4" />}
+              ariaLabel="Close documents"
+              data-testid="paperwork-close"
+              onClick={onClose}
+            />
+          ) : null}
+        </div>
       </div>
 
       {tab === 'manual' ? (
@@ -439,7 +472,7 @@ export function PaperworkDocuments({
         />
       ) : null}
 
-      {uploadKind ? (
+      {uploadKind && tab !== 'all' ? (
         <div className="flex flex-wrap items-center gap-2">
           <Button
             variant="secondary"
@@ -498,7 +531,7 @@ export function PaperworkDocuments({
           {loading ? (
             <p className={CAPTION}>Loading paperwork…</p>
           ) : visible.length === 0 ? (
-            <EmptyList tab={tab} onUpload={uploadKind ? () => uploadRef.current?.click() : undefined} />
+            <EmptyList tab={tab} onUpload={chooseUpload} />
           ) : grouped ? (
             <ul className="flex flex-col gap-3">
               {[...groups.entries()].map(([source, list]) => (
@@ -523,7 +556,7 @@ export function PaperworkDocuments({
         <div ref={previewRef} data-testid="paperwork-preview" className="flex min-w-0 flex-1 flex-col gap-3">
           {tab === 'all' ? (
             visible.length === 0 ? (
-              <PreviewEmpty title="Nothing on file for this order yet" hint="Upload or fetch a label, slip or manual." />
+              <PreviewEmpty title="Nothing on file for this order yet" hint="Upload a packing slip, manual or shipping label — or fetch one from the platform." />
             ) : (
               visible.map((file) => (
                 <PreviewCard key={file.key} file={file} />
@@ -766,23 +799,42 @@ function FileRow({
   );
 }
 
-function EmptyList({ tab, onUpload }: { tab: PaperworkTab; onUpload?: () => void }) {
-  const label = tab === 'all' ? 'paperwork' : KIND_LABEL[tab].toLowerCase();
+/**
+ * Nothing on file (owner 2026-09-27): a calm empty state that IS the upload —
+ * one drop zone for a kind tab; on "All", one button per kind, since a file
+ * needs a kind before it can be stored.
+ */
+function EmptyList({ tab, onUpload }: { tab: PaperworkTab; onUpload?: (kind: PaperworkKind) => void }) {
+  const zone = cn(
+    'ds-raw-button flex flex-col items-center justify-center gap-1.5 border border-dashed border-border-default px-3 text-center text-role-caption text-text-muted hover:border-border-strong hover:bg-surface-sunken hover:text-text-default',
+    TRIAGE_PANEL_INNER_CORNER,
+    focusRing('control'),
+  );
+  if (tab === 'all') {
+    return (
+      <div className="flex flex-col gap-2" data-testid="paperwork-empty">
+        <p className="text-role-caption font-medium text-text-default">No documents on file yet</p>
+        {onUpload ? (
+          <div className="grid grid-cols-1 gap-2 @xs:grid-cols-3">
+            {(['packing_slip', 'manual', 'shipping_label'] as const).map((kind) => (
+              <button key={kind} type="button" data-testid={`paperwork-empty-upload-${kind}`} onClick={() => onUpload(kind)} className={cn(zone, 'py-4')}>
+                <Upload className="h-4 w-4" aria-hidden />
+                Upload {TAB_FACE[kind].toLowerCase()}
+              </button>
+            ))}
+          </div>
+        ) : null}
+      </div>
+    );
+  }
   return (
-    <div className="flex flex-col gap-2">
-      <p className="text-role-caption font-semibold text-text-warning">No {label} on file</p>
+    <div className="flex flex-col gap-2" data-testid="paperwork-empty">
+      <p className="text-role-caption font-medium text-text-default">No {TAB_FACE[tab].toLowerCase()} on file</p>
       {onUpload ? (
-        <button
-          type="button"
-          onClick={onUpload}
-          className={cn(
-            'ds-raw-button flex flex-col items-center justify-center gap-1 border border-dashed border-border-default px-3 py-6 text-center text-role-caption text-text-muted hover:bg-surface-sunken hover:text-text-default',
-            TRIAGE_PANEL_INNER_CORNER,
-            focusRing('control'),
-          )}
-        >
-          <Upload className="h-4 w-4" aria-hidden />
-          Drop a file here, or tap to choose
+        <button type="button" data-testid={`paperwork-empty-upload-${tab}`} onClick={() => onUpload(tab)} className={cn(zone, 'py-8')}>
+          <Upload className="h-5 w-5" aria-hidden />
+          <span className="font-medium text-text-default">Upload a {TAB_FACE[tab].toLowerCase()}</span>
+          <span className="text-text-faint">Drop a PDF or image here, or click to choose</span>
         </button>
       ) : null}
     </div>
@@ -930,8 +982,10 @@ export function ItemPaperworkDialog({
 }
 
 /**
- * The order's paperwork INLINE in the record (owner 2026-09-26: never a popover):
- * Back returns to the details. `itemView` shows what the item number carries.
+ * The order's documents INLINE in the record (owner 2026-09-26: never a
+ * popover) — the split pane when opened from the triage bar's Documents. The
+ * ✕ at the toolbar's far right returns to the details. `itemNumber` shows
+ * what the item number carries.
  */
 export function PaperworkPanel({
   orderId,
@@ -950,23 +1004,7 @@ export function PaperworkPanel({
   onBack: () => void;
 }) {
   return (
-    <section className="flex min-w-0 flex-col gap-3" data-testid="order-paperwork-panel" aria-label="Paperwork">
-      <div className="flex items-center gap-3">
-        <Button variant="secondary" size="sm" className={TRIAGE_PANEL_INNER_CORNER} icon={<ChevronLeft />} onClick={onBack} data-testid="order-paperwork-back">
-          Back
-        </Button>
-        <p className="min-w-0 truncate text-role-body font-semibold text-text-default">
-          {itemNumber ? (
-            <>
-              Item # <span className="font-mono">{itemNumber}</span> paperwork
-            </>
-          ) : (
-            <>
-              Order <span className="font-mono">{orderRef}</span> paperwork
-            </>
-          )}
-        </p>
-      </div>
+    <section className="flex min-w-0 flex-col gap-3" data-testid="order-paperwork-panel" aria-label={itemNumber ? `Item # ${itemNumber} documents` : `Order ${orderRef} documents`}>
       <PaperworkDocuments
         orderId={orderId}
         orderRef={orderRef}
@@ -974,6 +1012,7 @@ export function PaperworkPanel({
         onTabChange={onTabChange}
         onChanged={() => undefined}
         itemView={Boolean(itemNumber)}
+        onClose={onBack}
       />
     </section>
   );

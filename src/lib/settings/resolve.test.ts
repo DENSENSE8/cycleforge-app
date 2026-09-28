@@ -125,3 +125,24 @@ test('renamed setting: the old key answers until the new key holds a value', () 
     'in-place',
   );
 });
+
+test('scan feedback: a stored receiving.* choice carries over to the station-wide scan.* key', () => {
+  const ctx = (orgSettings: Record<string, unknown>, staffPrefs: Record<string, unknown>) => ({
+    orgSettings,
+    staffPrefs,
+    features: ENTERPRISE,
+  });
+  // Org master switch an admin turned on under receiving stays on.
+  assert.equal(resolveSetting(def('scan.soundsEnabled'), ctx({ 'receiving.scanSoundsEnabled': true }, {})).value, true);
+  // A staffer who muted or switched off buzz under receiving stays that way (defaults are on).
+  assert.equal(resolveSetting(def('scan.sound'), ctx({}, { 'receiving.scanSound': false })).value, false);
+  assert.equal(resolveSetting(def('scan.haptics'), ctx({}, { 'receiving.scanHaptics': false })).value, false);
+  assert.equal(resolveSetting(def('scan.haptics'), ctx({}, {})).value, true);
+  // A staff value never leaks into the org master switch.
+  assert.equal(resolveSetting(def('scan.soundsEnabled'), ctx({}, { 'receiving.scanSoundsEnabled': true })).value, false);
+  // Once the new key is written the old one is ignored.
+  assert.equal(
+    resolveSetting(def('scan.haptics'), ctx({}, { 'receiving.scanHaptics': false, 'scan.haptics': true })).value,
+    true,
+  );
+});

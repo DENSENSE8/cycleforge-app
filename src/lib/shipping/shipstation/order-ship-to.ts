@@ -14,11 +14,15 @@ type ShipToOrderRow = {
   customer_id: number | null;
 };
 
-/** Load the buyer's stored ship-to from `customers` (the current-address cache). */
+/** The buyer's stored ship-to (the current-address cache) and when staff last corrected it. */
+export type CustomerShipToTier = { shipTo: ShipAddress | null; editedAt: Date | null; orderCreatedAt: Date | null };
+
+/** Load the buyer's stored ship-to from `customers`, plus the staff-correction stamp and the order's creation time. */
 async function loadCustomerShipTo(
   orgId: OrgId,
   customerId: number,
-): Promise<ShipAddress | null> {
+  orderRowId: number | null,
+): Promise<CustomerShipToTier> {
   const res = await tenantQuery<{
     name: string | null;
     phone: string | null;
@@ -28,6 +32,8 @@ async function loadCustomerShipTo(
     state: string | null;
     postal: string | null;
     country: string | null;
+    edited_at: Date | null;
+    order_created_at: Date | null;
   }>(
     orgId,
     `SELECT
@@ -39,24 +45,50 @@ async function loadCustomerShipTo(
        NULLIF(shipping_city, '')      AS city,
        NULLIF(shipping_state, '')     AS state,
        NULLIF(shipping_postal_code, '') AS postal,
-       NULLIF(shipping_country, '')   AS country
+       NULLIF(shipping_country, '')   AS country,
+       shipping_edited_at             AS edited_at,
+       (SELECT o.created_at FROM orders o WHERE o.id = $3 AND o.organization_id = $2) AS order_created_at
      FROM customers WHERE id = $1 AND organization_id = $2 LIMIT 1`,
-    [customerId, orgId],
+    [customerId, orgId, orderRowId],
   );
   const r = res.rows[0];
-  if (!r || !r.addr1 || !r.city) return null;
+  if (!r) return { shipTo: null, editedAt: null, orderCreatedAt: null };
   return {
-    name: r.name || 'Customer',
-    phone: r.phone,
-    company: null,
-    addressLine1: r.addr1,
-    addressLine2: r.addr2,
-    cityLocality: r.city,
-    stateProvince: r.state ?? '',
-    postalCode: r.postal ?? '',
-    countryCode: (r.country ?? 'US').toUpperCase(),
-    residential: true,
+    shipTo:
+      r.addr1 && r.city
+        ? {
+            name: r.name || 'Customer',
+            phone: r.phone,
+            company: null,
+            addressLine1: r.addr1,
+            addressLine2: r.addr2,
+            cityLocality: r.city,
+            stateProvince: r.state ?? '',
+            postalCode: r.postal ?? '',
+            countryCode: (r.country ?? 'US').toUpperCase(),
+            residential: true,
+          }
+        : null,
+    editedAt: r.edited_at,
+    orderCreatedAt: r.order_created_at,
   };
+}
+
+/**
+ * Which ship-to a label is bought to. ShipStation's own order ship-to wins,
+ * except over a staff CORRECTION (`customers.shipping_edited_at`) made at or
+ * after the order was created — a later order carries the buyer's newer
+ * address, so an old correction never overrides it. The customer tier is the
+ * fallback when ShipStation has nothing.
+ */
+export function pickOrderShipTo(
+  shipStation: ShipAddress | null,
+  customer: CustomerShipToTier,
+): ShipAddress | null {
+  const { shipTo, editedAt, orderCreatedAt } = customer;
+  const staffCorrected =
+    shipTo != null && editedAt != null && (orderCreatedAt == null || editedAt.getTime() >= orderCreatedAt.getTime());
+  return staffCorrected ? shipTo : (shipStation ?? shipTo);
 }
 
 /**
@@ -77,14 +109,14 @@ export async function isShipStationOrder(orgId: OrgId, order: ShipToOrderRow): P
   return res.rows.length > 0;
 }
 
-/** Resolve ship-to (+ the engine-stored weight when the v1 order carries one),
- * preferring ShipStation's own data. Never throws for a missing v1 connection —
+/** Resolve ship-to (+ the engine-stored weight when the v1 order carries one)
+ * per {@link pickOrderShipTo}. Never throws for a missing v1 connection —
  * falls through to the local customer tier. */
 export async function resolveOrderShipTo(
   orgId: OrgId,
   order: ShipToOrderRow,
 ): Promise<{ shipTo: ShipAddress | null; engineWeight: Parcel['weight'] | null }> {
-  let shipTo: ShipAddress | null = null;
+  let shipStationShipTo: ShipAddress | null = null;
   let engineWeight: Parcel['weight'] | null = null;
 
   if (order.order_id && (await isShipStationOrder(orgId, order).catch(() => false))) {
@@ -92,17 +124,18 @@ export async function resolveOrderShipTo(
     if (v1) {
       const ssOrder = await v1.getOrderByNumber(order.order_id).catch(() => null);
       if (ssOrder) {
-        shipTo = ssOrder.shipTo;
+        shipStationShipTo = ssOrder.shipTo;
         if (ssOrder.weight) engineWeight = ssOrder.weight;
       }
     }
   }
 
-  if (!shipTo && order.customer_id) {
-    shipTo = await loadCustomerShipTo(orgId, order.customer_id);
-  }
+  const orderRowId = Number(order.id);
+  const customer = order.customer_id
+    ? await loadCustomerShipTo(orgId, order.customer_id, Number.isFinite(orderRowId) && orderRowId > 0 ? orderRowId : null)
+    : { shipTo: null, editedAt: null, orderCreatedAt: null };
 
-  return { shipTo, engineWeight };
+  return { shipTo: pickOrderShipTo(shipStationShipTo, customer), engineWeight };
 }
 
 /** Facts snapshot onto the label's STN row — the as-shipped record. */

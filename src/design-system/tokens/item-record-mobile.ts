@@ -41,7 +41,7 @@ export const ITEM_RECORD_MOBILE_THUMB = {
   packageIcon: 'size-6',
   /** Missing catalog photo: explicit part marker + two-character item mark. */
   fallbackMark:
-    'pointer-events-none absolute inset-0 flex flex-col items-center justify-center gap-0.5 bg-surface-sunken font-mono text-role-eyebrow font-semibold uppercase tracking-wide text-text-default',
+    'pointer-events-none absolute inset-0 flex flex-col items-center justify-center gap-0.5 bg-surface-sunken font-mono text-role-eyebrow font-semibold text-text-default',
   fallbackLabel: 'text-text-muted',
 } as const;
 
@@ -49,17 +49,17 @@ export const ITEM_RECORD_MOBILE_TITLE = {
   // A three-line management record must compact upward beside the fixed 48px
   // thumbnail; centered content plus bottom padding creates a false blank gutter.
   band: 'flex min-h-0 min-w-0 flex-col justify-start gap-0 self-stretch pt-1 pb-0',
-  context: 'flex min-w-0 items-center gap-2 text-role-eyebrow font-semibold uppercase tracking-wide text-text-muted',
-  locationContext: 'shrink-0 font-mono text-role-eyebrow font-semibold uppercase tracking-wide text-text-default',
+  context: 'flex min-w-0 items-center gap-2 text-role-eyebrow font-semibold text-text-muted',
+  locationContext: 'shrink-0 font-mono text-role-eyebrow font-semibold text-text-default',
   face: 'line-clamp-1 min-w-0 truncate text-sm font-semibold leading-5 text-text-default',
   foot: 'flex min-w-0 items-center gap-1',
   /** Quiet Row 3 scan fallback: present on glass, never title-weight. */
   skuTertiary: 'shrink-0 font-mono text-role-caption font-normal normal-case leading-4 text-text-muted',
   quantityAnchor: 'ml-2 flex min-w-18 shrink-0 self-stretch flex-col items-end justify-center bg-surface-sunken px-2 text-right',
-  quantityLabel: 'text-role-eyebrow font-semibold uppercase tracking-wide text-text-muted',
+  quantityLabel: 'text-role-eyebrow font-semibold text-text-muted',
   quantityValue: 'text-base font-bold leading-5 tabular-nums text-text-default',
-  quantityStatus: 'text-role-eyebrow font-semibold uppercase tracking-wide text-text-success',
-  conditionPill: 'shrink-0 border border-border-default bg-surface-sunken px-1.5 py-0.5 font-mono text-role-eyebrow font-semibold uppercase tracking-wide text-text-default',
+  quantityStatus: 'text-role-eyebrow font-semibold text-text-success',
+  conditionPill: 'shrink-0 border border-border-default bg-surface-sunken px-1.5 py-0.5 font-mono text-role-eyebrow font-semibold text-text-default',
 } as const;
 
 export const ITEM_RECORD_MOBILE_META = {

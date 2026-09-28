@@ -27,7 +27,7 @@ export function NasWorkflowsPanel({ c }: { c: StationNasFoldersController }) {
           <div key={target.key} className="grid gap-2 py-3 first:pt-0 last:pb-0 md:grid-cols-[8.5rem_1fr]">
             <div>
               <p className="text-role-caption font-semibold text-text-default">{target.label}</p>
-              <p className="text-role-micro uppercase tracking-widest text-text-faint">{target.key}</p>
+              <p className="text-role-micro text-text-faint">{target.key}</p>
             </div>
             <div className="grid gap-2">
               <input
@@ -63,7 +63,7 @@ export function NasWorkflowsPanel({ c }: { c: StationNasFoldersController }) {
       </div>
 
       <div className="flex items-center justify-end gap-3">
-        {targetsDirty ? <span className="text-role-micro uppercase tracking-widest text-amber-600">Unsaved changes</span> : null}
+        {targetsDirty ? <span className="text-role-micro text-amber-600">Unsaved changes</span> : null}
         <Button
           type="button"
           variant="primary"

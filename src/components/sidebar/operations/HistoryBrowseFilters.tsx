@@ -75,7 +75,7 @@ function Chip({
     <button
       type="button"
       onClick={onClick}
-      className={`rounded px-2 py-0.5 text-role-eyebrow uppercase tracking-widest transition ${
+      className={`rounded px-2 py-0.5 text-role-eyebrow transition ${
         active
           ? 'bg-blue-50 text-blue-700 ring-1 ring-inset ring-blue-400'
           : 'bg-surface-sunken text-text-muted hover:bg-surface-strong'
@@ -89,7 +89,7 @@ function Chip({
 function Section({ label, children }: { label: string; children: ReactNode }) {
   return (
     <div className="space-y-1.5">
-      <p className="text-role-eyebrow uppercase tracking-widest text-text-faint">{label}</p>
+      <p className="text-role-eyebrow text-text-faint">{label}</p>
       <div className="flex flex-wrap gap-1">{children}</div>
     </div>
   );
@@ -180,7 +180,7 @@ export function HistoryBrowseFilters({ url }: { url: OperationsTimelineUrlState 
       </Section>
 
       <div className="space-y-1.5">
-        <p className="text-role-eyebrow uppercase tracking-widest text-text-faint">Staff</p>
+        <p className="text-role-eyebrow text-text-faint">Staff</p>
         <select
           value={url.staffId}
           onChange={(e) => url.setStaffId(e.target.value || null)}
@@ -197,7 +197,7 @@ export function HistoryBrowseFilters({ url }: { url: OperationsTimelineUrlState 
       </div>
 
       <div className="flex items-center justify-between border-t border-border-hairline pt-2">
-        <span className="text-role-eyebrow uppercase tracking-widest text-text-faint">
+        <span className="text-role-eyebrow text-text-faint">
           {url.activeFilterCount
             ? `${url.activeFilterCount} filter${url.activeFilterCount === 1 ? '' : 's'}`
             : 'No filters'}
@@ -207,7 +207,7 @@ export function HistoryBrowseFilters({ url }: { url: OperationsTimelineUrlState 
             type="button"
             onClick={saveCurrent}
             disabled={creating || url.activeFilterCount === 0}
-            className="text-role-eyebrow uppercase tracking-widest text-blue-600 hover:text-blue-700 disabled:cursor-not-allowed disabled:text-text-faint"
+            className="text-role-eyebrow text-blue-600 hover:text-blue-700 disabled:cursor-not-allowed disabled:text-text-faint"
           >
             Save view
           </button>
@@ -215,7 +215,7 @@ export function HistoryBrowseFilters({ url }: { url: OperationsTimelineUrlState 
             <button
               type="button"
               onClick={() => url.clearFilters()}
-              className="text-role-eyebrow uppercase tracking-widest text-text-faint hover:text-text-muted"
+              className="text-role-eyebrow text-text-faint hover:text-text-muted"
             >
               Clear
             </button>

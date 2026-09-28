@@ -167,7 +167,7 @@ export function PhotoAnalysisProviderPanel() {
                   <span className="flex items-center gap-2">
                     <span className="text-role-caption font-semibold text-text-default">{opt.label}</span>
                     <span
-                      className={`rounded inset-chip text-role-eyebrow uppercase tracking-widest ring-1 ring-inset ${
+                      className={`rounded inset-chip text-role-eyebrow ring-1 ring-inset ${
                         PRIVACY_CHIP[opt.privacy]
                       }`}
                     >
@@ -184,7 +184,7 @@ export function PhotoAnalysisProviderPanel() {
 
       {provider === 'local-vision' ? (
         <div className="mt-3 space-y-1">
-          <label className="text-role-eyebrow uppercase tracking-widest text-text-soft">
+          <label className="text-role-eyebrow text-text-soft">
             Vision box URL (server-reachable)
           </label>
           <input

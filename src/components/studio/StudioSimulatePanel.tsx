@@ -33,7 +33,7 @@ export function StudioSimulatePanel({ sim, nodes, edges, editing, onClose }: Pro
       <header className="flex shrink-0 items-center justify-between border-b border-border-hairline px-3 py-2">
         <div className="flex items-center gap-1.5">
           <Sparkles className="h-3.5 w-3.5 text-violet-500" />
-          <span className="text-role-micro uppercase tracking-wider text-text-soft">Simulate</span>
+          <span className="text-role-micro text-text-soft">Simulate</span>
         </div>
         <HoverTooltip label="Close Simulate" asChild>
           <IconButton
@@ -82,7 +82,7 @@ export function StudioSimulatePanel({ sim, nodes, edges, editing, onClose }: Pro
               </Button>
             </div>
             <div className="space-y-1">
-              <p className="text-role-micro font-semibold uppercase tracking-wide text-text-faint">Or start from</p>
+              <p className="text-role-micro font-semibold text-text-faint">Or start from</p>
               <div className="flex flex-wrap gap-1">
                 {nodes.map((n) => (
                   <HoverTooltip key={n.id} label={`Start the ghost at ${labelOf(n.id)}`} asChild>
@@ -126,7 +126,7 @@ export function StudioSimulatePanel({ sim, nodes, edges, editing, onClose }: Pro
                 </div>
               ) : (
                 <div className="space-y-1">
-                  <p className="text-role-micro font-semibold uppercase tracking-wide text-text-faint">Fire a port</p>
+                  <p className="text-role-micro font-semibold text-text-faint">Fire a port</p>
                   <div className="flex flex-wrap gap-1.5">
                     {sim.currentPorts.map((port) => {
                       const target = sim.currentNodeId
@@ -232,5 +232,5 @@ export function StudioSimulatePanel({ sim, nodes, edges, editing, onClose }: Pro
 }
 
 function PaneHeading({ text }: { text: string }) {
-  return <h3 className="text-role-micro uppercase tracking-wider text-text-faint">{text}</h3>;
+  return <h3 className="text-role-micro text-text-faint">{text}</h3>;
 }

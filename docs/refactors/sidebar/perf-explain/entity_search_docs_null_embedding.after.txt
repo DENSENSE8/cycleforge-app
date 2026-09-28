@@ -1,20 +1,20 @@
 -- entity_search_docs_null_embedding: AFTER
--- captured 2026-09-26T19:48:56Z as app_tenant (unpooled), app.current_org=00000000-0000-0000-0000-000000000001
+-- captured 2026-09-28T08:23:54Z as app_tenant bypassrls=false (unpooled), app.current_org=00000000-0000-0000-0000-000000000001
 -- SQL: docs/refactors/sidebar/perf-explain/entity_search_docs_null_embedding.after.sql
 
                                                                                    QUERY PLAN                                                                                   
 --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
- Limit  (cost=0.29..18.40 rows=100 width=40) (actual time=0.051..0.136 rows=100 loops=1)
-   Buffers: shared hit=20 read=2
-   ->  Result  (cost=0.29..2125.12 rows=11732 width=40) (actual time=0.050..0.127 rows=100 loops=1)
+ Limit  (cost=0.29..21.54 rows=100 width=40) (actual time=0.032..0.259 rows=100 loops=1)
+   Buffers: shared hit=42
+   ->  Result  (cost=0.29..2824.21 rows=13288 width=40) (actual time=0.032..0.249 rows=100 loops=1)
          One-Time Filter: ((NULLIF(current_setting('app.current_org'::text, true), ''::text))::uuid = '00000000-0000-0000-0000-000000000001'::uuid)
-         Buffers: shared hit=20 read=2
-         ->  Index Scan using idx_entity_search_docs_null_embedding on entity_search_docs  (cost=0.29..2125.12 rows=11732 width=40) (actual time=0.043..0.103 rows=100 loops=1)
+         Buffers: shared hit=42
+         ->  Index Scan using idx_entity_search_docs_null_embedding on entity_search_docs  (cost=0.29..2824.21 rows=13288 width=40) (actual time=0.025..0.210 rows=100 loops=1)
                Index Cond: ((organization_id = '00000000-0000-0000-0000-000000000001'::uuid) AND (updated_at < (now() - '00:30:00'::interval)))
-               Buffers: shared hit=20 read=2
+               Buffers: shared hit=42
  Planning:
-   Buffers: shared hit=290 read=1
- Planning Time: 1.288 ms
- Execution Time: 0.177 ms
+   Buffers: shared hit=287
+ Planning Time: 1.224 ms
+ Execution Time: 0.336 ms
 (12 rows)
 

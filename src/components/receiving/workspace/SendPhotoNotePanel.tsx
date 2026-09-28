@@ -132,7 +132,7 @@ export function SendPhotoNotePanel({
       {chrome === 'modal' ? (
         <div className="flex items-center justify-between border-b border-border-soft px-4 py-3">
           <div className="min-w-0">
-            <p className="text-role-micro uppercase tracking-[0.16em] text-text-soft">
+            <p className="text-role-micro text-text-soft">
               {lockTicket ? 'Add photos' : 'Send photos'}
             </p>
             <p className="truncate text-xs font-semibold text-text-default">
@@ -153,7 +153,7 @@ export function SendPhotoNotePanel({
       <div className="min-h-0 flex-1 overflow-y-auto px-0 py-0 text-role-data">
         {lockTicket && defaultTicket ? (
           <div className="border-b border-border-hairline bg-surface-sunken px-3 py-2.5">
-            <p className="text-role-micro uppercase tracking-widest text-text-faint">Ticket</p>
+            <p className="text-role-micro text-text-faint">Ticket</p>
             <p className="text-role-caption font-semibold text-text-default">#{defaultTicket.id}</p>
           </div>
         ) : (

@@ -5,7 +5,7 @@
  *
  *  - the assistant's `draft_manual_order` tool builds it from a conversation,
  *  - the chat's order card renders it and deep-links it into the intake form
- *    (`/shipping/orders?triage=new&prefill=<base64url json>`),
+ *    (`/orders/new?prefill=<base64url json>`),
  *  - the intake form reads the same `prefill` back into its draft.
  *
  * What an order needs depends on its channel ({@link orderChannelKind}): a
@@ -23,7 +23,9 @@ import { z } from 'zod';
 import { CONDITION_GRADES } from '@/lib/conditions';
 import type { CanonicalOrderIntake } from '@/lib/orders/canonical-order-intake';
 
-/** Query param the intake overlay reads a prefilled new order from. */
+/** The standalone new-sales-order page (header `+`, `C`). */
+export const NEW_SALES_ORDER_PATH = '/orders/new';
+/** Query param the intake form reads a prefilled new order from. */
 export const ORDER_PREFILL_PARAM = 'prefill';
 /** `orders.account_source` for a phone order. */
 export const PHONE_ORDER_CHANNEL = 'Phone';
@@ -250,7 +252,7 @@ export function decodeOrderPrefill(raw: string | null | undefined): ManualOrderD
 
 /** The intake form, opened on a new order prefilled with this draft. */
 export function orderPrefillHref(draft: ManualOrderDraft): string {
-  return `/shipping/orders?triage=new&${ORDER_PREFILL_PARAM}=${encodeOrderPrefill(draft)}`;
+  return `${NEW_SALES_ORDER_PATH}?${ORDER_PREFILL_PARAM}=${encodeOrderPrefill(draft)}`;
 }
 
 /**

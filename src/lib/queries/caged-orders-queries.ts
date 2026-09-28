@@ -133,5 +133,12 @@ export function exceptionRowToQueueRow(row: OrderExceptionRow): ShippedOrder {
     has_pick_scan: false,
     is_out_of_stock: row.routing.category === 'Out of Stock',
     is_urgent: false,
+    hold: {
+      category: row.routing.category,
+      owner: row.routing.owner,
+      action: row.routing.actionRequired,
+      blockers: row.blockers,
+      siblingUnpairedCount: row.siblingUnpairedCount,
+    },
   } as unknown as ShippedOrder;
 }

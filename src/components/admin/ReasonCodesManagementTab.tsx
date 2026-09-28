@@ -338,12 +338,12 @@ export function ReasonCodesManagementTab() {
                     key={row.id}
                     className={`${tableGridClass} items-center border-b border-border-hairline px-4 py-3 text-sm last:border-b-0`}
                   >
-                    <p className={`${tableCell} truncate font-mono uppercase`}>{row.code}</p>
+                    <p className={`${tableCell} truncate font-mono `}>{row.code}</p>
                     <p className={`${tableCell} truncate`}>{row.label}</p>
                     <p className={`${tableCell} truncate text-text-muted`}>
                       {flowContextLabel(row.flow_context)}
                     </p>
-                    <p className={`${tableCell} truncate uppercase tracking-[0.16em] text-text-muted`}>
+                    <p className={`${tableCell} truncate text-text-muted`}>
                       {row.category ?? '—'}
                     </p>
                     <p className={`${tableHeader} text-text-muted`}>{row.direction}</p>

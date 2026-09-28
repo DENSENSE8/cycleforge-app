@@ -66,7 +66,7 @@ export function ReplenishmentPlanRecord({
               {row.sku ? <RecordIdFact label="SKU" value={row.sku} /> : null}
             </>
           ),
-          right: <RecordStamp>{row.vendor_name || 'NO VENDOR'}</RecordStamp>,
+          right: <RecordStamp>{row.vendor_name || 'No vendor'}</RecordStamp>,
         },
         {
           main: <RecordTitle>{row.item_name || 'Unknown item'}</RecordTitle>,
@@ -75,10 +75,10 @@ export function ReplenishmentPlanRecord({
         {
           main: (
             <>
-              <RecordIdFact label="NEED" value={numText(row.quantity_needed)} />
-              <RecordIdFact label="STOCK" value={String(stock)} />
-              <RecordIdFact label="IN" value={String(incoming)} />
-              {waiting > 0 ? <RecordIdFact label="BLOCKED" value={String(waiting)} /> : null}
+              <RecordIdFact label="Need" value={numText(row.quantity_needed)} />
+              <RecordIdFact label="Stock" value={String(stock)} />
+              <RecordIdFact label="In" value={String(incoming)} />
+              {waiting > 0 ? <RecordIdFact label="Blocked" value={String(waiting)} /> : null}
             </>
           ),
           right: (

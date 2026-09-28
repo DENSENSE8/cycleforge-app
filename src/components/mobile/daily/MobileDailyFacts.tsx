@@ -7,7 +7,7 @@ import { formatDateTimePST } from '@/utils/date';
 import type { DailyCheckItem, DailyCheckItemLink, DailyCheckReport } from '@/lib/daily-checks/types';
 
 const FACT_ROW = 'flex items-baseline justify-between gap-3';
-const FACT_LABEL = 'text-role-micro uppercase tracking-wide text-text-faint';
+const FACT_LABEL = 'text-role-micro text-text-faint';
 const FACT_VALUE = 'min-w-0 truncate text-role-caption text-text-default';
 
 /** The house face per link kind — ticket chip, WO mono, last-8 tracking. */

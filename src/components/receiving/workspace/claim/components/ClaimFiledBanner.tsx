@@ -32,7 +32,7 @@ export function ClaimFiledBanner({ filedTicket, mode, linkCommitted, unlinking, 
           />
         </HoverTooltip>
       ) : null}
-      <p className="pr-8 text-role-micro uppercase tracking-[0.14em] text-text-soft">
+      <p className="pr-8 text-role-micro text-text-soft">
         {mode === 'link' && !linkCommitted
           ? 'Existing ticket selected'
           : mode === 'link'
@@ -45,7 +45,7 @@ export function ClaimFiledBanner({ filedTicket, mode, linkCommitted, unlinking, 
           href={filedTicket.url}
           target="_blank"
           rel="noopener noreferrer"
-          className="inline-block text-role-micro uppercase tracking-wider text-blue-700 hover:text-blue-900"
+          className="inline-block text-role-micro text-blue-700 hover:text-blue-900"
         >
           Open in helpdesk ↗
         </a>

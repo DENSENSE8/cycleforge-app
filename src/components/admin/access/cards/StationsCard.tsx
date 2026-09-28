@@ -31,7 +31,7 @@ export function StationsCard({ stations, borderClass, busy, onSave }: StationsCa
       <div className="space-y-3 px-5 py-4">
         {/* Primary station */}
         <label className="flex items-center gap-2.5">
-          <span className="w-20 shrink-0 text-role-micro font-semibold uppercase tracking-wider text-text-soft">Primary</span>
+          <span className="w-20 shrink-0 text-role-micro font-semibold text-text-soft">Primary</span>
           <select
             value={stations.primary ?? ''}
             onChange={(e) => {
@@ -41,7 +41,7 @@ export function StationsCard({ stations, borderClass, busy, onSave }: StationsCa
               onSave({ primary: p, secondary: stations.secondary.filter((s) => s !== p) });
             }}
             disabled={busy}
-            className="h-8 rounded-full bg-surface-sunken px-3 text-role-micro uppercase tracking-wider text-text-muted outline-none ring-1 ring-border-soft transition disabled:opacity-60"
+            className="h-8 rounded-full bg-surface-sunken px-3 text-role-micro text-text-muted outline-none ring-1 ring-border-soft transition disabled:opacity-60"
           >
             <option value="">— none (auto from employee code) —</option>
             {STATION_OPTIONS.map((st) => (
@@ -52,7 +52,7 @@ export function StationsCard({ stations, borderClass, busy, onSave }: StationsCa
 
         {/* Secondary stations */}
         <div className="flex items-start gap-2.5">
-          <span className="mt-1.5 w-20 shrink-0 text-role-micro font-semibold uppercase tracking-wider text-text-soft">Secondary</span>
+          <span className="mt-1.5 w-20 shrink-0 text-role-micro font-semibold text-text-soft">Secondary</span>
           <div className="flex flex-wrap gap-1.5">
             {STATION_OPTIONS.map((st) => {
               const isPrimary = stations.primary === st;
@@ -87,7 +87,7 @@ export function StationsCard({ stations, borderClass, busy, onSave }: StationsCa
                     }
                   >
                     {STATION_LABELS[st]}
-                    {isPrimary && <span className="text-role-eyebrow uppercase tracking-wider opacity-70">primary</span>}
+                    {isPrimary && <span className="text-role-eyebrow opacity-70">primary</span>}
                   </button>
                 </HoverTooltip>
               );

@@ -57,7 +57,7 @@ export function PhotoUploadOverlay({
     >
       <div className="flex shrink-0 items-center justify-between border-b border-border-hairline bg-surface-canvas px-4 py-3">
         <div>
-          <p className="text-role-micro uppercase tracking-[0.14em] text-blue-700">Photos</p>
+          <p className="text-role-micro text-blue-700">Photos</p>
           <p className="mt-0.5 text-sm font-semibold tracking-tight text-text-default">{title}</p>
         </div>
         <IconButton

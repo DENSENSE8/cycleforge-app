@@ -132,7 +132,7 @@ export function WorkOrderAssignPopover({
     >
       <div className="space-y-3">
         <div>
-          <p className="text-role-micro uppercase tracking-[0.18em] text-text-soft">
+          <p className="text-role-micro text-text-soft">
             Assign · {row.queueLabel}
           </p>
           <p className="mt-0.5 truncate text-role-caption font-semibold text-text-default">{row.title}</p>

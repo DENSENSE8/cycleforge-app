@@ -90,7 +90,7 @@ export function MobilePackingSheet({ row, open, onClose }: MobilePackingSheetPro
             keys={joinStackedIdentityKeys([
               <span
                 key="qty"
-                className={`shrink-0 text-role-caption font-semibold uppercase tracking-widest ${
+                className={`shrink-0 text-role-caption font-semibold ${
                   quantity > 1 ? 'text-text-warning' : 'text-text-muted'
                 }`}
               >

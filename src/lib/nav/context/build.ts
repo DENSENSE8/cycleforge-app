@@ -237,26 +237,27 @@ function laneMap(input: PipelineInput, activePageId: string): NavSection[] {
 }
 
 /**
- * The door lane a landing page opens from, else null. Its page panel wears
- * the lane's name and switches between the lane's pages as MODES.
+ * The door lane a page belongs to, else null. EVERY page of a lane that has a
+ * door (Shipping · FBA · Labels & docs; Deliveries · Sourcing) wears the
+ * lane's name on its `‹` row and leads its panel with the lane's MODES — the
+ * same parent tier on every mode, never a `‹ <Page>` back row (operator
+ * 2026-09-28). Derived from lane membership, so a new page in the lane gets it
+ * with no declaration.
  */
-function doorLaneOf(page: SidebarPageNav | null): (typeof SPINE_SECTIONS)[number] | null {
+function modeLaneOf(page: SidebarPageNav | null): (typeof SPINE_SECTIONS)[number] | null {
   if (!page) return null;
   const laneId = spineSectionIdForPage(page);
-  if (!laneId || LANE_DOORS[laneId] !== page.id) return null;
+  if (!laneId || !LANE_DOORS[laneId]) return null;
   return SPINE_SECTIONS.find((lane) => lane.id === laneId) ?? null;
 }
 
 /**
- * A door lane's pages as its MODES — the landing page first under its own
- * name (Shipping), then the rest (FBA, Label intake). One section, id
- * `<page>.<lane>.modes`, painted as the mode switcher under `‹ <Lane>`.
+ * A door lane's pages as its MODES — the door page first (Shipping), then the
+ * rest in registry order (FBA, Labels & docs), whichever mode is current. One
+ * section, id `<page>.<lane>.modes`, painted as the mode switcher under
+ * `‹ <Lane>`.
  */
-function laneModeRows(
-  lane: (typeof SPINE_SECTIONS)[number],
-  landing: SidebarPageNav,
-  input: PipelineInput,
-): SectionRow[] {
+function laneModeRows(lane: (typeof SPINE_SECTIONS)[number], input: PipelineInput): SectionRow[] {
   const group = { id: `${lane.id}.modes`, label: 'Mode' };
   const toRow = (row: { id: string; label: string; href: string }): SectionRow => ({
     id: row.id,
@@ -265,11 +266,13 @@ function laneModeRows(
     pathname: new URL(row.href, 'http://nav.local').pathname,
     group,
   });
-  const others = mergeOrgNav(getSidebarNavItems({ permissions: input.permissions }), input.orgNav)
-    .filter((row) => row.id !== landing.id && spineSectionIdForPage(row) === lane.id)
-    .map(toRow);
+  const doorId = LANE_DOORS[lane.id];
+  const pages = mergeOrgNav(getSidebarNavItems({ permissions: input.permissions }), input.orgNav).filter(
+    (row) => spineSectionIdForPage(row) === lane.id,
+  );
+  const ordered = [...pages.filter((row) => row.id === doorId), ...pages.filter((row) => row.id !== doorId)];
   // One page is no choice: a lane with a single reachable page has no switcher.
-  return others.length > 0 ? [toRow(landing), ...others] : [];
+  return ordered.length > 1 ? ordered.map(toRow) : [];
 }
 
 /** Every key the routes' param specs declare (owned or carried) — what hygiene keeps. */
@@ -332,11 +335,11 @@ export function buildNavContext(input: ResolveNavContextInput): NavContext {
   const resolvedActive = page ? activeRowId(page, pathname, params) : null;
   const activeId = rows.some((row) => row.id === resolvedActive) ? resolvedActive : null;
   const sectionScope = page !== null && hasSectionPanel(page, rows) && input.view !== 'top';
-  // A lane door's landing page wears the lane's name (the map shows no page
+  // Every page of a door lane wears the lane's name (the map shows no page
   // rows for that lane) and its panel leads with the lane's modes.
-  const doorLane = doorLaneOf(page);
-  const label = doorLane ? doorLane.label : pageLabel(pageId, page);
-  const panelRows = doorLane && page ? [...laneModeRows(doorLane, page, pipeline), ...rows] : rows;
+  const modeLane = modeLaneOf(page);
+  const label = modeLane ? modeLane.label : pageLabel(pageId, page);
+  const panelRows = modeLane && page ? [...laneModeRows(modeLane, pipeline), ...rows] : rows;
 
   const viewPathnames = new Set<string>(rows.map((row) => row.pathname));
   if (registered) viewPathnames.add(new URL(registered.href, 'http://nav.local').pathname);
@@ -385,5 +388,6 @@ export function buildNavContext(input: ResolveNavContextInput): NavContext {
   }
   if (actions.length > 0) context.actions = actions;
   if (decl.scanInput) context.scanInput = { ...decl.scanInput };
+  if (sectionScope && NAV_PAGE_DECLS[pageId]?.viewKeys) context.viewKeys = true;
   return NavContextSchema.parse(context);
 }

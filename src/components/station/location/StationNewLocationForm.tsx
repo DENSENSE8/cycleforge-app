@@ -45,7 +45,7 @@ function NumberField({
 }) {
   return (
     <label className="flex min-w-0 flex-col gap-1">
-      <span className="text-role-eyebrow uppercase tracking-widest text-text-soft">
+      <span className="text-role-eyebrow text-text-soft">
         {label}
       </span>
       <input
@@ -170,7 +170,7 @@ export function StationNewLocationForm({
       <div className={cn('min-h-0 flex-1 overflow-y-auto py-3', DISPLAYS_BODY_INSET)}>
         <div className="space-y-3">
           <label className="flex min-w-0 flex-col gap-1">
-            <span className="text-role-eyebrow uppercase tracking-widest text-text-soft">
+            <span className="text-role-eyebrow text-text-soft">
               Room
             </span>
             <select
@@ -215,7 +215,7 @@ export function StationNewLocationForm({
 
           {code ? (
             <div className="border border-border-soft bg-surface-sunken inset-card">
-              <p className="text-role-eyebrow uppercase tracking-widest text-text-soft">
+              <p className="text-role-eyebrow text-text-soft">
                 New location
               </p>
               <p className="mt-1 font-mono text-role-title tabular-nums text-text-default">

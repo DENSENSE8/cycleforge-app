@@ -8,12 +8,16 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   buildSquareOrder,
+  buildStripeCheckoutSessionForm,
   computeOrderCharge,
   e164Phone,
   orderPaymentState,
   squarePaymentEventEffect,
   statusForInvoice,
   statusForSquareOrder,
+  statusForStripeSession,
+  stripeCheckoutEventEffect,
+  stripeEventOrgId,
   type OrderChargeRow,
 } from './model';
 
@@ -94,4 +98,50 @@ test('order payment state follows the latest request', () => {
   assert.equal(orderPaymentState({ method: 'square_link', status: 'pending' }), 'link_sent');
   assert.equal(orderPaymentState({ method: 'square_link', status: 'paid' }), 'paid');
   assert.equal(orderPaymentState({ method: 'square_link', status: 'cancelled' }), 'unpaid');
+});
+
+const ORG = '0b7f3c2a-1d4e-4a5b-9c8d-7e6f5a4b3c2d';
+
+test('Stripe Checkout line items sum to the charge to the cent and carry our metadata on session + intent', () => {
+  const out = computeOrderCharge('PH-1', [row({ quantity: '3', sale_amount: '10.00' }), row({ id: 2, quantity: '2', sale_amount: '5.00' })], 'USD');
+  assert.ok(out.ok);
+  if (!out.ok) return;
+  const form = buildStripeCheckoutSessionForm({
+    orgId: ORG, paymentId: 9, orderNumber: 'PH-1', currency: 'USD', lines: out.charge.lines, customerEmail: 'not-an-email', successUrl: 'https://app/pay',
+  });
+  let total = 0;
+  for (let i = 0; form[`line_items[${i}][quantity]`]; i++) {
+    total += Number(form[`line_items[${i}][quantity]`]) * Number(form[`line_items[${i}][price_data][unit_amount]`]);
+    assert.equal(form[`line_items[${i}][price_data][currency]`], 'usd');
+  }
+  assert.equal(total, out.charge.totalCents);
+  assert.equal(form.mode, 'payment');
+  assert.equal(form['metadata[organizationId]'], ORG);
+  assert.equal(form['payment_intent_data[metadata][orderPaymentId]'], '9');
+  assert.equal(form.customer_email, undefined);
+});
+
+test('Stripe events: only a paid session is paid; async failure fails; expiry cancels; foreign sessions are ignored', () => {
+  const ev = (type: string, over: Record<string, unknown> = {}) => ({
+    type,
+    data: { object: { object: 'checkout.session', id: 'cs_1', payment_status: 'paid', payment_intent: 'pi_1', metadata: { organizationId: ORG, orderPaymentId: '9' }, ...over } },
+  });
+  assert.deepEqual(stripeCheckoutEventEffect(ev('checkout.session.completed')), {
+    status: 'paid', orgId: ORG, paymentId: 9, sessionId: 'cs_1', paymentIntentId: 'pi_1', lastError: null,
+  });
+  assert.equal(stripeCheckoutEventEffect(ev('checkout.session.completed', { payment_status: 'unpaid' })), null);
+  assert.equal(stripeCheckoutEventEffect(ev('checkout.session.async_payment_succeeded', { payment_status: 'unpaid' }))?.status, 'paid');
+  assert.equal(stripeCheckoutEventEffect(ev('checkout.session.async_payment_failed'))?.status, 'failed');
+  assert.equal(stripeCheckoutEventEffect(ev('checkout.session.expired', { payment_status: 'unpaid' }))?.status, 'cancelled');
+  assert.equal(stripeCheckoutEventEffect(ev('checkout.session.completed', { metadata: {} })), null);
+  assert.equal(stripeCheckoutEventEffect(ev('checkout.session.completed', { metadata: { organizationId: 'nope', orderPaymentId: '9' } })), null);
+  assert.equal(stripeCheckoutEventEffect({ type: 'payment_intent.succeeded', data: { object: { object: 'payment_intent', metadata: { organizationId: ORG, orderPaymentId: '9' } } } }), null);
+  assert.equal(stripeEventOrgId(ev('checkout.session.completed')), ORG);
+});
+
+test('Stripe poll fallback: paid session = paid; expired = cancelled; open = no change', () => {
+  assert.deepEqual(statusForStripeSession({ status: 'complete', payment_status: 'paid', payment_intent: { id: 'pi_1' } }), { status: 'paid', paymentIntentId: 'pi_1' });
+  assert.equal(statusForStripeSession({ status: 'expired', payment_status: 'unpaid' }).status, 'cancelled');
+  assert.equal(statusForStripeSession({ status: 'open', payment_status: 'unpaid' }).status, null);
+  assert.equal(orderPaymentState({ method: 'stripe_link', status: 'pending' }), 'link_sent');
 });

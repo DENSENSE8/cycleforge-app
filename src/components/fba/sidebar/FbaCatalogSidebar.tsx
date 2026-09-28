@@ -72,7 +72,7 @@ function FbaCatalogSidebar() {
   return (
     <div className="relative flex h-full w-full flex-col overflow-hidden bg-surface-card">
       <div className={`${sidebarSubBandClass} ${SIDEBAR_GUTTER} py-2.5`}>
-        <p className="mb-2 text-role-micro font-semibold uppercase tracking-widest text-text-soft">
+        <p className="mb-2 text-role-micro font-semibold text-text-soft">
           Catalog search
         </p>
         <SearchBar
@@ -86,7 +86,7 @@ function FbaCatalogSidebar() {
       </div>
 
       <div className={`min-h-0 flex-1 space-y-2 overflow-y-auto ${SIDEBAR_GUTTER} py-3`}>
-        <p className="text-role-micro font-semibold uppercase tracking-widest text-text-soft">Catalog actions</p>
+        <p className="text-role-micro font-semibold text-text-soft">Catalog actions</p>
 
         <Button variant="secondary" radius="flush" onClick={emitOpenAddFba} className={actionRowClass}>
           <span>
@@ -127,7 +127,7 @@ function FbaCatalogSidebar() {
       </div>
 
       <div className={`${sidebarSubBandClass} mt-auto ${SIDEBAR_GUTTER} py-3`}>
-        <p className="text-role-micro font-semibold uppercase tracking-widest text-text-soft">FBA Station</p>
+        <p className="text-role-micro font-semibold text-text-soft">FBA Station</p>
         <Link
           href="/fba"
           className="mt-2 flex w-full items-center justify-center rounded-none border border-border-accent bg-surface-accent px-3 py-2 text-xs font-semibold text-text-accent transition-colors hover:bg-surface-hover"

@@ -190,7 +190,7 @@ export function ReplenishmentNeedTable({ skuSearch, statusFilter }: Replenishmen
       navigation={navigation.available ? navigation : undefined}
       toolbar={
         <>
-          <span className="mode-label min-w-0 flex-1 truncate px-2 text-mode-muted first-letter:uppercase">
+          <span className="mode-label min-w-0 flex-1 truncate px-2 text-mode-muted">
             {statusFilter ? statusFilter.replaceAll('_', ' ').toLowerCase() : 'Active requests'}
           </span>
           <Button

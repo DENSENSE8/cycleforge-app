@@ -46,6 +46,20 @@ describe('remembered print station', () => {
     assert.equal(readRememberedPrintStationId(storage, ORG, 1), null);
   });
 
+  it('keeps a per-stock pick apart from the other stock and from the whole-station pick', () => {
+    const storage = memoryStorage();
+    rememberPrintStationId(storage, ORG, 1, 'ps_bench_a');
+    rememberPrintStationId(storage, ORG, 1, 'ps_thermal', 'label');
+    rememberPrintStationId(storage, ORG, 1, 'ps_office', 'paper');
+    assert.equal(readRememberedPrintStationId(storage, ORG, 1), 'ps_bench_a');
+    assert.equal(readRememberedPrintStationId(storage, ORG, 1, 'label'), 'ps_thermal');
+    assert.equal(readRememberedPrintStationId(storage, ORG, 1, 'paper'), 'ps_office');
+    rememberPrintStationId(storage, ORG, 1, null, 'label');
+    assert.equal(readRememberedPrintStationId(storage, ORG, 1, 'label'), null);
+    assert.equal(readRememberedPrintStationId(storage, ORG, 1, 'paper'), 'ps_office');
+    assert.equal(readRememberedPrintStationId(storage, ORG, 2, 'paper'), null);
+  });
+
   it('remembers nothing for a signed-out or unscoped owner', () => {
     const storage = memoryStorage();
     rememberPrintStationId(storage, ORG, 0, 'ps_bench_a');

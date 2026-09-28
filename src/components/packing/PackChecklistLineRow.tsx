@@ -138,19 +138,19 @@ function SubCheckRow({
           <span className="text-role-eyebrow tabular-nums text-text-soft">×{qty}</span>
         ) : null}
         {tag ? (
-          <span className="rounded-none bg-surface-sunken px-1 py-0.5 text-role-eyebrow uppercase text-text-soft">
+          <span className="rounded-none bg-surface-sunken px-1 py-0.5 text-role-eyebrow text-text-soft">
             {tag}
           </span>
         ) : null}
         {critical && !checked ? (
-          <span className="rounded-none bg-amber-100 px-1 py-0.5 text-role-eyebrow uppercase text-amber-700">
+          <span className="rounded-none bg-amber-100 px-1 py-0.5 text-role-eyebrow text-amber-700">
             Required
           </span>
         ) : null}
         {/* Document-bearing parts: the tap is the advisory override. Print on
             the strip below is the durable path — keep that class legible. */}
         {hasDocument && !checked ? (
-          <span className="rounded-none bg-surface-sunken px-1 py-0.5 text-role-eyebrow uppercase text-text-soft">
+          <span className="rounded-none bg-surface-sunken px-1 py-0.5 text-role-eyebrow text-text-soft">
             Confirm
           </span>
         ) : null}
@@ -232,7 +232,7 @@ export function PackChecklistLineRow({
                 {line.productTitle}
               </p>
               <div className="flex flex-wrap items-center gap-1.5 px-2 py-1">
-                <span className="text-role-eyebrow uppercase tracking-widest text-text-soft">
+                <span className="text-role-eyebrow text-text-soft">
                   ×{line.quantity}
                   <span className="px-1 text-text-faint">·</span>
                   {condLabel}
@@ -282,25 +282,25 @@ export function PackChecklistLineRow({
               )}
             </div>
             <div className="min-w-0 flex-1">
-              <div className="mb-1 inline-flex items-center rounded bg-blue-50 px-1.5 py-0.5 text-role-eyebrow uppercase tracking-widest text-blue-700 ring-1 ring-inset ring-blue-200">
+              <div className="mb-1 inline-flex items-center rounded bg-blue-50 px-1.5 py-0.5 text-role-eyebrow text-blue-700 ring-1 ring-inset ring-blue-200">
                 Visual match — confirm photo = physical item
               </div>
               <dl className="min-w-0 flex-1 space-y-1">
                 {line.catalog.category ? (
                   <div>
-                    <dt className="text-role-eyebrow uppercase tracking-widest text-text-faint">Category</dt>
+                    <dt className="text-role-eyebrow text-text-faint">Category</dt>
                     <dd className="text-role-caption font-semibold text-text-default">{line.catalog.category}</dd>
                   </div>
                 ) : null}
                 {line.catalog.upc ? (
                   <div>
-                    <dt className="text-role-eyebrow uppercase tracking-widest text-text-faint">UPC</dt>
+                    <dt className="text-role-eyebrow text-text-faint">UPC</dt>
                     <dd className="font-mono text-role-caption font-semibold text-text-muted">{line.catalog.upc}</dd>
                   </div>
                 ) : null}
                 {line.serials.length > 0 ? (
                   <div>
-                    <dt className="text-role-eyebrow uppercase tracking-widest text-text-faint">Serials</dt>
+                    <dt className="text-role-eyebrow text-text-faint">Serials</dt>
                     <dd className="font-mono text-role-micro text-text-default">{line.serials.join(', ')}</dd>
                   </div>
                 ) : null}
@@ -316,7 +316,7 @@ export function PackChecklistLineRow({
 
           {line.kitParts.length > 0 ? (
             <div>
-              <p className="mb-1.5 text-role-eyebrow uppercase tracking-wider text-text-faint">In the box</p>
+              <p className="mb-1.5 text-role-eyebrow text-text-faint">In the box</p>
               <ul className="space-y-1">
                 {line.kitParts.map((part: PackKitPartDto) => (
                   <SubCheckRow
@@ -343,7 +343,7 @@ export function PackChecklistLineRow({
 
           {line.qcFlags.length > 0 ? (
             <div>
-              <p className="mb-1.5 text-role-eyebrow uppercase tracking-wider text-text-faint">
+              <p className="mb-1.5 text-role-eyebrow text-text-faint">
                 Verify before sealing
               </p>
               <ul className="space-y-1">

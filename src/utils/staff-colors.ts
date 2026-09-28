@@ -404,7 +404,7 @@ export const printQueueTableUi: Record<
     rowSelected: 'bg-emerald-100/60 hover:bg-emerald-100/80',
     rowFocusRing: focusRing('control', 'success'),
     readyStatusPill:
-      'rounded-md bg-emerald-100 px-1.5 py-0.5 text-role-eyebrow uppercase tracking-wide text-emerald-900',
+      'rounded-md bg-emerald-100 px-1.5 py-0.5 text-role-eyebrow text-emerald-900',
     toolbarAccent: 'text-emerald-700',
     toolbarIconMuted: 'text-emerald-700',
     metaIconAccent: 'text-emerald-700',
@@ -419,7 +419,7 @@ export const printQueueTableUi: Record<
     rowSelected: 'bg-blue-100/60 hover:bg-blue-100/80',
     rowFocusRing: focusRing('control', 'accent'),
     readyStatusPill:
-      'rounded-md bg-blue-100 px-1.5 py-0.5 text-role-eyebrow uppercase tracking-wide text-blue-900',
+      'rounded-md bg-blue-100 px-1.5 py-0.5 text-role-eyebrow text-blue-900',
     toolbarAccent: 'text-blue-700',
     toolbarIconMuted: 'text-blue-700',
     metaIconAccent: 'text-blue-700',
@@ -434,7 +434,7 @@ export const printQueueTableUi: Record<
     rowSelected: 'bg-purple-100/60 hover:bg-purple-100/80',
     rowFocusRing: 'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-purple-400/40' /* ds-allow-focus: identity/one-off hue or ring-0 */,
     readyStatusPill:
-      'rounded-md bg-purple-100 px-1.5 py-0.5 text-role-eyebrow uppercase tracking-wide text-purple-900',
+      'rounded-md bg-purple-100 px-1.5 py-0.5 text-role-eyebrow text-purple-900',
     toolbarAccent: 'text-purple-700',
     toolbarIconMuted: 'text-purple-700',
     metaIconAccent: 'text-purple-700',
@@ -449,7 +449,7 @@ export const printQueueTableUi: Record<
     rowSelected: 'bg-amber-100/60 hover:bg-amber-100/80',
     rowFocusRing: focusRing('control', 'warning'),
     readyStatusPill:
-      'rounded-md bg-amber-100 px-1.5 py-0.5 text-role-eyebrow uppercase tracking-wide text-amber-950',
+      'rounded-md bg-amber-100 px-1.5 py-0.5 text-role-eyebrow text-amber-950',
     toolbarAccent: 'text-amber-800',
     toolbarIconMuted: 'text-amber-800',
     metaIconAccent: 'text-amber-800',
@@ -465,7 +465,7 @@ export const printQueueTableUi: Record<
     rowSelected: 'bg-surface-sunken/80 hover:bg-surface-sunken',
     rowFocusRing: focusRing('control', 'neutral'), // ds-allow-raw-neutral: identity hue — staff/label color vocabulary, not chrome
     readyStatusPill:
-      'rounded-md bg-surface-strong px-1.5 py-0.5 text-role-eyebrow uppercase tracking-wide text-text-default',
+      'rounded-md bg-surface-strong px-1.5 py-0.5 text-role-eyebrow text-text-default',
     toolbarAccent: 'text-text-default',
     toolbarIconMuted: 'text-text-default',
     metaIconAccent: 'text-text-default',
@@ -480,7 +480,7 @@ export const printQueueTableUi: Record<
     rowSelected: 'bg-red-100/60 hover:bg-red-100/80',
     rowFocusRing: focusRing('control', 'danger'),
     readyStatusPill:
-      'rounded-md bg-red-100 px-1.5 py-0.5 text-role-eyebrow uppercase tracking-wide text-red-900',
+      'rounded-md bg-red-100 px-1.5 py-0.5 text-role-eyebrow text-red-900',
     toolbarAccent: 'text-red-700',
     toolbarIconMuted: 'text-red-700',
     metaIconAccent: 'text-red-700',
@@ -495,7 +495,7 @@ export const printQueueTableUi: Record<
     rowSelected: 'bg-sky-100/60 hover:bg-sky-100/80',
     rowFocusRing: focusRing('control', 'accent'),
     readyStatusPill:
-      'rounded-md bg-sky-100 px-1.5 py-0.5 text-role-eyebrow uppercase tracking-wide text-sky-950',
+      'rounded-md bg-sky-100 px-1.5 py-0.5 text-role-eyebrow text-sky-950',
     toolbarAccent: 'text-sky-700',
     toolbarIconMuted: 'text-sky-700',
     metaIconAccent: 'text-sky-700',
@@ -510,7 +510,7 @@ export const printQueueTableUi: Record<
     rowSelected: 'bg-pink-100/60 hover:bg-pink-100/80',
     rowFocusRing: 'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-400/40' /* ds-allow-focus: identity/one-off hue or ring-0 */,
     readyStatusPill:
-      'rounded-md bg-pink-100 px-1.5 py-0.5 text-role-eyebrow uppercase tracking-wide text-pink-950',
+      'rounded-md bg-pink-100 px-1.5 py-0.5 text-role-eyebrow text-pink-950',
     toolbarAccent: 'text-pink-700',
     toolbarIconMuted: 'text-pink-700',
     metaIconAccent: 'text-pink-700',
@@ -541,9 +541,9 @@ export const fbaWorkspaceScanChrome: Record<
     trackingCard:
       'space-y-3 rounded-xl border-2 border-emerald-400/95 bg-gradient-to-b from-emerald-50/90 to-white px-3 py-3 shadow-sm shadow-emerald-100/35',
     trackingSectionBorder: 'border-t border-emerald-300',
-    selectedItemsLabel: 'text-role-eyebrow uppercase tracking-[0.14em] text-emerald-700',
+    selectedItemsLabel: 'text-role-eyebrow text-emerald-700',
     fnskuSubtext:
-      'font-mono text-role-micro font-semibold uppercase tracking-[0.12em] text-emerald-800/85',
+      'font-mono text-role-micro font-semibold text-emerald-800/85',
     fieldFocusRing: focusRing('field', 'success'),
     savingSpinner: 'text-emerald-500',
     fnskuScanIconClass: 'text-emerald-600',
@@ -554,9 +554,9 @@ export const fbaWorkspaceScanChrome: Record<
     trackingCard:
       'space-y-3 rounded-xl border-2 border-blue-400/95 bg-gradient-to-b from-blue-50/90 to-white px-3 py-3 shadow-sm shadow-blue-100/35',
     trackingSectionBorder: 'border-t border-blue-300',
-    selectedItemsLabel: 'text-role-eyebrow uppercase tracking-[0.14em] text-blue-700',
+    selectedItemsLabel: 'text-role-eyebrow text-blue-700',
     fnskuSubtext:
-      'font-mono text-role-micro font-semibold uppercase tracking-[0.12em] text-blue-800/85',
+      'font-mono text-role-micro font-semibold text-blue-800/85',
     fieldFocusRing: focusRing('field', 'accent'),
     savingSpinner: 'text-blue-500',
     fnskuScanIconClass: 'text-blue-600',
@@ -567,9 +567,9 @@ export const fbaWorkspaceScanChrome: Record<
     trackingCard:
       'space-y-3 rounded-xl border-2 border-purple-400/95 bg-gradient-to-b from-purple-50/90 to-white px-3 py-3 shadow-sm shadow-purple-100/35',
     trackingSectionBorder: 'border-t border-purple-300',
-    selectedItemsLabel: 'text-role-eyebrow uppercase tracking-[0.14em] text-purple-700',
+    selectedItemsLabel: 'text-role-eyebrow text-purple-700',
     fnskuSubtext:
-      'font-mono text-role-micro font-semibold uppercase tracking-[0.12em] text-purple-800/85',
+      'font-mono text-role-micro font-semibold text-purple-800/85',
     fieldFocusRing: 'focus:ring-purple-500' /* ds-allow-focus: identity/one-off hue or ring-0 */,
     savingSpinner: 'text-purple-500',
     fnskuScanIconClass: 'text-purple-600',
@@ -580,9 +580,9 @@ export const fbaWorkspaceScanChrome: Record<
     trackingCard:
       'space-y-3 rounded-xl border-2 border-amber-400/95 bg-gradient-to-b from-amber-50/90 to-white px-3 py-3 shadow-sm shadow-amber-100/35',
     trackingSectionBorder: 'border-t border-amber-300',
-    selectedItemsLabel: 'text-role-eyebrow uppercase tracking-[0.14em] text-amber-800',
+    selectedItemsLabel: 'text-role-eyebrow text-amber-800',
     fnskuSubtext:
-      'font-mono text-role-micro font-semibold uppercase tracking-[0.12em] text-amber-900/80',
+      'font-mono text-role-micro font-semibold text-amber-900/80',
     fieldFocusRing: focusRing('field', 'warning'),
     savingSpinner: 'text-amber-600',
     fnskuScanIconClass: 'text-amber-600',
@@ -594,9 +594,9 @@ export const fbaWorkspaceScanChrome: Record<
       // ds-allow-raw-neutral: identity hue — staff/label color vocabulary, not chrome
       'space-y-3 rounded-xl border-2 border-slate-500/90 bg-gradient-to-b from-slate-50/90 to-white px-3 py-3 shadow-sm shadow-slate-200/40',
     trackingSectionBorder: 'border-t border-border-emphasis',
-    selectedItemsLabel: 'text-role-eyebrow uppercase tracking-[0.14em] text-text-default',
+    selectedItemsLabel: 'text-role-eyebrow text-text-default',
     fnskuSubtext:
-      'font-mono text-role-micro font-semibold uppercase tracking-[0.12em] text-text-muted',
+      'font-mono text-role-micro font-semibold text-text-muted',
     fieldFocusRing: focusRing('field', 'neutral'), // ds-allow-raw-neutral: identity hue — staff/label color vocabulary, not chrome
     savingSpinner: 'text-text-soft',
     fnskuScanIconClass: 'text-text-muted',
@@ -608,9 +608,9 @@ export const fbaWorkspaceScanChrome: Record<
     trackingCard:
       'space-y-3 rounded-xl border-2 border-red-400/95 bg-gradient-to-b from-red-50/90 to-white px-3 py-3 shadow-sm shadow-red-100/35',
     trackingSectionBorder: 'border-t border-red-300',
-    selectedItemsLabel: 'text-role-eyebrow uppercase tracking-[0.14em] text-red-700',
+    selectedItemsLabel: 'text-role-eyebrow text-red-700',
     fnskuSubtext:
-      'font-mono text-role-micro font-semibold uppercase tracking-[0.12em] text-red-800/85',
+      'font-mono text-role-micro font-semibold text-red-800/85',
     fieldFocusRing: focusRing('field', 'danger'),
     savingSpinner: 'text-red-500',
     fnskuScanIconClass: 'text-red-600',
@@ -621,9 +621,9 @@ export const fbaWorkspaceScanChrome: Record<
     trackingCard:
       'space-y-3 rounded-xl border-2 border-sky-400/95 bg-gradient-to-b from-sky-50/90 to-white px-3 py-3 shadow-sm shadow-sky-100/35',
     trackingSectionBorder: 'border-t border-sky-300',
-    selectedItemsLabel: 'text-role-eyebrow uppercase tracking-[0.14em] text-sky-700',
+    selectedItemsLabel: 'text-role-eyebrow text-sky-700',
     fnskuSubtext:
-      'font-mono text-role-micro font-semibold uppercase tracking-[0.12em] text-sky-800/85',
+      'font-mono text-role-micro font-semibold text-sky-800/85',
     fieldFocusRing: focusRing('field', 'accent'),
     savingSpinner: 'text-sky-500',
     fnskuScanIconClass: 'text-sky-500',
@@ -634,9 +634,9 @@ export const fbaWorkspaceScanChrome: Record<
     trackingCard:
       'space-y-3 rounded-xl border-2 border-pink-400/95 bg-gradient-to-b from-pink-50/90 to-white px-3 py-3 shadow-sm shadow-pink-100/35',
     trackingSectionBorder: 'border-t border-pink-300',
-    selectedItemsLabel: 'text-role-eyebrow uppercase tracking-[0.14em] text-pink-700',
+    selectedItemsLabel: 'text-role-eyebrow text-pink-700',
     fnskuSubtext:
-      'font-mono text-role-micro font-semibold uppercase tracking-[0.12em] text-pink-800/85',
+      'font-mono text-role-micro font-semibold text-pink-800/85',
     fieldFocusRing: 'focus:ring-pink-500' /* ds-allow-focus: identity/one-off hue or ring-0 */,
     savingSpinner: 'text-pink-500',
     fnskuScanIconClass: 'text-pink-600',
@@ -689,7 +689,7 @@ export const fbaSidebarThemeChrome: Record<StationTheme, FbaSidebarThemeChrome> 
     cardFocusRing: focusRing('control', 'success'),
     cardDateText: 'text-sm font-semibold text-emerald-700',
     cardOpenPill:
-      'rounded-full bg-emerald-100 px-2 py-0.5 text-role-micro uppercase tracking-wide text-emerald-800',
+      'rounded-full bg-emerald-100 px-2 py-0.5 text-role-micro text-emerald-800',
     cardChevron:
       'inline-flex h-8 w-8 items-center justify-center rounded-full border border-emerald-200 text-emerald-500 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),inset_0_-1px_0_rgba(16,185,129,0.16)]',
     cardExpandedDivider: 'border-t border-emerald-100',
@@ -697,23 +697,23 @@ export const fbaSidebarThemeChrome: Record<StationTheme, FbaSidebarThemeChrome> 
       cn('w-14 rounded-md border border-border-soft bg-surface-card px-1.5 py-1 text-center text-role-micro tabular-nums text-text-default', focusRing('field', 'success')),
     cardProgress: 'h-full rounded-full bg-emerald-400',
     selectedRow: 'border-l-4 border-l-emerald-400 bg-emerald-100/60 hover:bg-emerald-100/80',
-    selectedCountText: 'text-role-eyebrow uppercase tracking-[0.16em] text-emerald-700',
+    selectedCountText: 'text-role-eyebrow text-emerald-700',
     scanResultsShell: 'rounded-xl border border-emerald-200 bg-emerald-50/60 px-2.5 py-2',
-    scanResultsTitle: 'text-role-micro font-semibold uppercase tracking-widest text-emerald-800',
+    scanResultsTitle: 'text-role-micro font-semibold text-emerald-800',
     scanResultsCount: 'text-role-micro font-semibold tabular-nums text-emerald-700',
     scanResultsQtyStepper:
       'flex w-8 flex-col items-center justify-center rounded-md border border-emerald-200 bg-emerald-50',
     scanResultsHint: 'text-role-micro text-emerald-700',
     secondaryButton:
-      'inline-flex items-center gap-1 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-role-micro uppercase tracking-wide text-emerald-700 transition-all hover:bg-emerald-100',
+      'inline-flex items-center gap-1 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-role-micro text-emerald-700 transition-all hover:bg-emerald-100',
     input:
       cn('w-full rounded-xl border-2 border-emerald-200 bg-surface-card px-4 py-3 text-sm font-semibold text-text-default transition-all placeholder:text-text-faint', focusRing('field', 'success')),
     monoInput:
       cn('w-full rounded-xl border-2 border-emerald-200 bg-surface-card px-4 py-3 text-sm font-semibold font-mono text-text-default transition-all placeholder:text-text-faint', focusRing('field', 'success')),
     primaryButton:
-      'w-full rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 px-4 py-3 text-xs font-semibold uppercase tracking-wide text-white transition-all shadow-lg shadow-emerald-500/20 hover:from-emerald-700 hover:to-teal-700 disabled:cursor-not-allowed disabled:bg-surface-strong',
+      'w-full rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 px-4 py-3 text-xs font-semibold text-white transition-all shadow-lg shadow-emerald-500/20 hover:from-emerald-700 hover:to-teal-700 disabled:cursor-not-allowed disabled:bg-surface-strong',
     lineItemShell: 'space-y-2 rounded-xl border border-emerald-100 bg-emerald-50/50 p-3',
-    lineItemLabel: 'text-role-micro uppercase tracking-widest text-emerald-700',
+    lineItemLabel: 'text-role-micro text-emerald-700',
   },
   blue: {
     sectionRule: 'bg-blue-200',
@@ -727,7 +727,7 @@ export const fbaSidebarThemeChrome: Record<StationTheme, FbaSidebarThemeChrome> 
     cardFocusRing: focusRing('control', 'accent'),
     cardDateText: 'text-sm font-semibold text-blue-700',
     cardOpenPill:
-      'rounded-full bg-blue-100 px-2 py-0.5 text-role-micro uppercase tracking-wide text-blue-800',
+      'rounded-full bg-blue-100 px-2 py-0.5 text-role-micro text-blue-800',
     cardChevron:
       'inline-flex h-8 w-8 items-center justify-center rounded-full border border-blue-200 text-blue-500 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),inset_0_-1px_0_rgba(37,99,235,0.16)]',
     cardExpandedDivider: 'border-t border-blue-100',
@@ -735,23 +735,23 @@ export const fbaSidebarThemeChrome: Record<StationTheme, FbaSidebarThemeChrome> 
       cn('w-14 rounded-md border border-border-soft bg-surface-card px-1.5 py-1 text-center text-role-micro tabular-nums text-text-default', focusRing('field', 'accent')),
     cardProgress: 'h-full rounded-full bg-blue-400',
     selectedRow: 'border-l-4 border-l-blue-400 bg-blue-100/60 hover:bg-blue-100/80',
-    selectedCountText: 'text-role-eyebrow uppercase tracking-[0.16em] text-blue-700',
+    selectedCountText: 'text-role-eyebrow text-blue-700',
     scanResultsShell: 'rounded-xl border border-blue-200 bg-blue-50/60 px-2.5 py-2',
-    scanResultsTitle: 'text-role-micro font-semibold uppercase tracking-widest text-blue-800',
+    scanResultsTitle: 'text-role-micro font-semibold text-blue-800',
     scanResultsCount: 'text-role-micro font-semibold tabular-nums text-blue-700',
     scanResultsQtyStepper:
       'flex w-8 flex-col items-center justify-center rounded-md border border-blue-200 bg-blue-50',
     scanResultsHint: 'text-role-micro text-blue-700',
     secondaryButton:
-      'inline-flex items-center gap-1 rounded-xl border border-blue-200 bg-blue-50 px-3 py-2 text-role-micro uppercase tracking-wide text-blue-700 transition-all hover:bg-blue-100',
+      'inline-flex items-center gap-1 rounded-xl border border-blue-200 bg-blue-50 px-3 py-2 text-role-micro text-blue-700 transition-all hover:bg-blue-100',
     input:
       cn('w-full rounded-xl border-2 border-blue-200 bg-surface-card px-4 py-3 text-sm font-semibold text-text-default transition-all placeholder:text-text-faint', focusRing('field', 'accent')),
     monoInput:
       cn('w-full rounded-xl border-2 border-blue-200 bg-surface-card px-4 py-3 text-sm font-semibold font-mono text-text-default transition-all placeholder:text-text-faint', focusRing('field', 'accent')),
     primaryButton:
-      'w-full rounded-xl bg-gradient-to-r from-blue-600 to-sky-600 px-4 py-3 text-xs font-semibold uppercase tracking-wide text-white transition-all shadow-lg shadow-blue-500/20 hover:from-blue-700 hover:to-sky-700 disabled:cursor-not-allowed disabled:bg-surface-strong',
+      'w-full rounded-xl bg-gradient-to-r from-blue-600 to-sky-600 px-4 py-3 text-xs font-semibold text-white transition-all shadow-lg shadow-blue-500/20 hover:from-blue-700 hover:to-sky-700 disabled:cursor-not-allowed disabled:bg-surface-strong',
     lineItemShell: 'space-y-2 rounded-xl border border-blue-100 bg-blue-50/50 p-3',
-    lineItemLabel: 'text-role-micro uppercase tracking-widest text-blue-700',
+    lineItemLabel: 'text-role-micro text-blue-700',
   },
   purple: {
     sectionRule: 'bg-purple-200',
@@ -765,7 +765,7 @@ export const fbaSidebarThemeChrome: Record<StationTheme, FbaSidebarThemeChrome> 
     cardFocusRing: 'focus-visible:ring-2 focus-visible:ring-purple-400/50' /* ds-allow-focus: identity/one-off hue or ring-0 */,
     cardDateText: 'text-sm font-semibold text-purple-700',
     cardOpenPill:
-      'rounded-full bg-purple-100 px-2 py-0.5 text-role-micro uppercase tracking-wide text-purple-800',
+      'rounded-full bg-purple-100 px-2 py-0.5 text-role-micro text-purple-800',
     cardChevron:
       'inline-flex h-8 w-8 items-center justify-center rounded-full border border-purple-200 text-purple-500 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),inset_0_-1px_0_rgba(147,51,234,0.16)]',
     cardExpandedDivider: 'border-t border-purple-100',
@@ -773,23 +773,23 @@ export const fbaSidebarThemeChrome: Record<StationTheme, FbaSidebarThemeChrome> 
       'w-14 rounded-md border border-border-soft bg-surface-card px-1.5 py-1 text-center text-role-micro tabular-nums text-text-default outline-none focus:border-purple-400' /* ds-allow-focus: identity/one-off hue or ring-0 */,
     cardProgress: 'h-full rounded-full bg-purple-400',
     selectedRow: 'border-l-4 border-l-purple-400 bg-purple-100/60 hover:bg-purple-100/80',
-    selectedCountText: 'text-role-eyebrow uppercase tracking-[0.16em] text-purple-700',
+    selectedCountText: 'text-role-eyebrow text-purple-700',
     scanResultsShell: 'rounded-xl border border-purple-200 bg-purple-50/60 px-2.5 py-2',
-    scanResultsTitle: 'text-role-micro font-semibold uppercase tracking-widest text-purple-800',
+    scanResultsTitle: 'text-role-micro font-semibold text-purple-800',
     scanResultsCount: 'text-role-micro font-semibold tabular-nums text-purple-700',
     scanResultsQtyStepper:
       'flex w-8 flex-col items-center justify-center rounded-md border border-purple-200 bg-purple-50',
     scanResultsHint: 'text-role-micro text-purple-700',
     secondaryButton:
-      'inline-flex items-center gap-1 rounded-xl border border-purple-200 bg-purple-50 px-3 py-2 text-role-micro uppercase tracking-wide text-purple-700 transition-all hover:bg-purple-100',
+      'inline-flex items-center gap-1 rounded-xl border border-purple-200 bg-purple-50 px-3 py-2 text-role-micro text-purple-700 transition-all hover:bg-purple-100',
     input:
       'w-full rounded-xl border-2 border-purple-200 bg-surface-card px-4 py-3 text-sm font-semibold text-text-default outline-none transition-all placeholder:text-text-faint focus:border-transparent focus:ring-2 focus:ring-purple-500' /* ds-allow-focus: identity/one-off hue or ring-0 */,
     monoInput:
       'w-full rounded-xl border-2 border-purple-200 bg-surface-card px-4 py-3 text-sm font-semibold font-mono text-text-default outline-none transition-all placeholder:text-text-faint focus:border-transparent focus:ring-2 focus:ring-purple-500' /* ds-allow-focus: identity/one-off hue or ring-0 */,
     primaryButton:
-      'w-full rounded-xl bg-gradient-to-r from-purple-600 to-fuchsia-600 px-4 py-3 text-xs font-semibold uppercase tracking-wide text-white transition-all shadow-lg shadow-purple-500/20 hover:from-purple-700 hover:to-fuchsia-700 disabled:cursor-not-allowed disabled:bg-surface-strong',
+      'w-full rounded-xl bg-gradient-to-r from-purple-600 to-fuchsia-600 px-4 py-3 text-xs font-semibold text-white transition-all shadow-lg shadow-purple-500/20 hover:from-purple-700 hover:to-fuchsia-700 disabled:cursor-not-allowed disabled:bg-surface-strong',
     lineItemShell: 'space-y-2 rounded-xl border border-purple-100 bg-purple-50/50 p-3',
-    lineItemLabel: 'text-role-micro uppercase tracking-widest text-purple-700',
+    lineItemLabel: 'text-role-micro text-purple-700',
   },
   yellow: {
     sectionRule: 'bg-amber-200',
@@ -803,7 +803,7 @@ export const fbaSidebarThemeChrome: Record<StationTheme, FbaSidebarThemeChrome> 
     cardFocusRing: focusRing('control', 'warning'),
     cardDateText: 'text-sm font-semibold text-amber-800',
     cardOpenPill:
-      'rounded-full bg-amber-100 px-2 py-0.5 text-role-micro uppercase tracking-wide text-amber-900',
+      'rounded-full bg-amber-100 px-2 py-0.5 text-role-micro text-amber-900',
     cardChevron:
       'inline-flex h-8 w-8 items-center justify-center rounded-full border border-amber-200 text-amber-600 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),inset_0_-1px_0_rgba(245,158,11,0.16)]',
     cardExpandedDivider: 'border-t border-amber-100',
@@ -811,23 +811,23 @@ export const fbaSidebarThemeChrome: Record<StationTheme, FbaSidebarThemeChrome> 
       cn('w-14 rounded-md border border-border-soft bg-surface-card px-1.5 py-1 text-center text-role-micro tabular-nums text-text-default', focusRing('field', 'warning')),
     cardProgress: 'h-full rounded-full bg-amber-400',
     selectedRow: 'border-l-4 border-l-amber-400 bg-amber-100/60 hover:bg-amber-100/80',
-    selectedCountText: 'text-role-eyebrow uppercase tracking-[0.16em] text-amber-800',
+    selectedCountText: 'text-role-eyebrow text-amber-800',
     scanResultsShell: 'rounded-xl border border-amber-200 bg-amber-50/60 px-2.5 py-2',
-    scanResultsTitle: 'text-role-micro font-semibold uppercase tracking-widest text-amber-900',
+    scanResultsTitle: 'text-role-micro font-semibold text-amber-900',
     scanResultsCount: 'text-role-micro font-semibold tabular-nums text-amber-800',
     scanResultsQtyStepper:
       'flex w-8 flex-col items-center justify-center rounded-md border border-amber-200 bg-amber-50',
     scanResultsHint: 'text-role-micro text-amber-800',
     secondaryButton:
-      'inline-flex items-center gap-1 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-role-micro uppercase tracking-wide text-amber-800 transition-all hover:bg-amber-100',
+      'inline-flex items-center gap-1 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-role-micro text-amber-800 transition-all hover:bg-amber-100',
     input:
       cn('w-full rounded-xl border-2 border-amber-200 bg-surface-card px-4 py-3 text-sm font-semibold text-text-default transition-all placeholder:text-text-faint', focusRing('field', 'warning')),
     monoInput:
       cn('w-full rounded-xl border-2 border-amber-200 bg-surface-card px-4 py-3 text-sm font-semibold font-mono text-text-default transition-all placeholder:text-text-faint', focusRing('field', 'warning')),
     primaryButton:
-      'w-full rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 px-4 py-3 text-xs font-semibold uppercase tracking-wide text-white transition-all shadow-lg shadow-amber-500/20 hover:from-amber-600 hover:to-orange-600 disabled:cursor-not-allowed disabled:bg-surface-strong',
+      'w-full rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 px-4 py-3 text-xs font-semibold text-white transition-all shadow-lg shadow-amber-500/20 hover:from-amber-600 hover:to-orange-600 disabled:cursor-not-allowed disabled:bg-surface-strong',
     lineItemShell: 'space-y-2 rounded-xl border border-amber-100 bg-amber-50/50 p-3',
-    lineItemLabel: 'text-role-micro uppercase tracking-widest text-amber-800',
+    lineItemLabel: 'text-role-micro text-amber-800',
   },
   black: {
     sectionRule: 'bg-surface-strong',
@@ -841,7 +841,7 @@ export const fbaSidebarThemeChrome: Record<StationTheme, FbaSidebarThemeChrome> 
     cardFocusRing: focusRing('control', 'neutral'), // ds-allow-raw-neutral: identity hue — staff/label color vocabulary, not chrome
     cardDateText: 'text-sm font-semibold text-text-default',
     cardOpenPill:
-      'rounded-full bg-surface-strong px-2 py-0.5 text-role-micro uppercase tracking-wide text-text-default',
+      'rounded-full bg-surface-strong px-2 py-0.5 text-role-micro text-text-default',
     cardChevron:
       'inline-flex h-8 w-8 items-center justify-center rounded-full border border-border-default text-text-muted shadow-[inset_0_1px_0_rgba(255,255,255,0.9),inset_0_-1px_0_rgba(71,85,105,0.16)]',
     cardExpandedDivider: 'border-t border-border-soft',
@@ -849,15 +849,15 @@ export const fbaSidebarThemeChrome: Record<StationTheme, FbaSidebarThemeChrome> 
       cn('w-14 rounded-md border border-border-soft bg-surface-card px-1.5 py-1 text-center text-role-micro tabular-nums text-text-default', focusRing('field', 'neutral')),
     cardProgress: 'h-full rounded-full bg-slate-500', // ds-allow-raw-neutral: identity hue — staff/label color vocabulary, not chrome
     selectedRow: 'border-l-4 border-l-border-emphasis bg-surface-sunken/80 hover:bg-surface-sunken',
-    selectedCountText: 'text-role-eyebrow uppercase tracking-[0.16em] text-text-muted',
+    selectedCountText: 'text-role-eyebrow text-text-muted',
     scanResultsShell: 'rounded-xl border border-border-soft bg-surface-canvas/80 px-2.5 py-2',
-    scanResultsTitle: 'text-role-micro font-semibold uppercase tracking-widest text-text-default',
+    scanResultsTitle: 'text-role-micro font-semibold text-text-default',
     scanResultsCount: 'text-role-micro font-semibold tabular-nums text-text-muted',
     scanResultsQtyStepper:
       'flex w-8 flex-col items-center justify-center rounded-md border border-border-default bg-surface-sunken',
     scanResultsHint: 'text-role-micro text-text-muted',
     secondaryButton:
-      'inline-flex items-center gap-1 rounded-xl border border-border-default bg-surface-sunken px-3 py-2 text-role-micro uppercase tracking-wide text-text-muted transition-all hover:bg-surface-strong',
+      'inline-flex items-center gap-1 rounded-xl border border-border-default bg-surface-sunken px-3 py-2 text-role-micro text-text-muted transition-all hover:bg-surface-strong',
     input:
       // ds-allow-raw-neutral: identity hue — staff/label color vocabulary, not chrome
       cn('w-full rounded-xl border-2 border-border-soft bg-surface-card px-4 py-3 text-sm font-semibold text-text-default transition-all placeholder:text-text-faint', focusRing('field', 'neutral')),
@@ -865,9 +865,9 @@ export const fbaSidebarThemeChrome: Record<StationTheme, FbaSidebarThemeChrome> 
       // ds-allow-raw-neutral: identity hue — staff/label color vocabulary, not chrome
       cn('w-full rounded-xl border-2 border-border-soft bg-surface-card px-4 py-3 text-sm font-semibold font-mono text-text-default transition-all placeholder:text-text-faint', focusRing('field', 'neutral')),
     primaryButton:
-      'w-full rounded-xl bg-gradient-to-r from-slate-700 to-slate-900 px-4 py-3 text-xs font-semibold uppercase tracking-wide text-white transition-all shadow-lg shadow-slate-500/20 hover:from-slate-800 hover:to-black disabled:cursor-not-allowed disabled:bg-surface-strong',
+      'w-full rounded-xl bg-gradient-to-r from-slate-700 to-slate-900 px-4 py-3 text-xs font-semibold text-white transition-all shadow-lg shadow-slate-500/20 hover:from-slate-800 hover:to-black disabled:cursor-not-allowed disabled:bg-surface-strong',
     lineItemShell: 'space-y-2 rounded-xl border border-border-soft bg-surface-canvas/80 p-3',
-    lineItemLabel: 'text-role-micro uppercase tracking-widest text-text-muted',
+    lineItemLabel: 'text-role-micro text-text-muted',
   },
   red: {
     sectionRule: 'bg-red-200',
@@ -881,7 +881,7 @@ export const fbaSidebarThemeChrome: Record<StationTheme, FbaSidebarThemeChrome> 
     cardFocusRing: focusRing('control', 'danger'),
     cardDateText: 'text-sm font-semibold text-red-700',
     cardOpenPill:
-      'rounded-full bg-red-100 px-2 py-0.5 text-role-micro uppercase tracking-wide text-red-800',
+      'rounded-full bg-red-100 px-2 py-0.5 text-role-micro text-red-800',
     cardChevron:
       'inline-flex h-8 w-8 items-center justify-center rounded-full border border-red-200 text-red-500 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),inset_0_-1px_0_rgba(220,38,38,0.16)]',
     cardExpandedDivider: 'border-t border-red-100',
@@ -889,23 +889,23 @@ export const fbaSidebarThemeChrome: Record<StationTheme, FbaSidebarThemeChrome> 
       cn('w-14 rounded-md border border-border-soft bg-surface-card px-1.5 py-1 text-center text-role-micro tabular-nums text-text-default', focusRing('field', 'danger')),
     cardProgress: 'h-full rounded-full bg-red-400',
     selectedRow: 'border-l-4 border-l-red-400 bg-red-100/60 hover:bg-red-100/80',
-    selectedCountText: 'text-role-eyebrow uppercase tracking-[0.16em] text-red-700',
+    selectedCountText: 'text-role-eyebrow text-red-700',
     scanResultsShell: 'rounded-xl border border-red-200 bg-red-50/60 px-2.5 py-2',
-    scanResultsTitle: 'text-role-micro font-semibold uppercase tracking-widest text-red-800',
+    scanResultsTitle: 'text-role-micro font-semibold text-red-800',
     scanResultsCount: 'text-role-micro font-semibold tabular-nums text-red-700',
     scanResultsQtyStepper:
       'flex w-8 flex-col items-center justify-center rounded-md border border-red-200 bg-red-50',
     scanResultsHint: 'text-role-micro text-red-700',
     secondaryButton:
-      'inline-flex items-center gap-1 rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-role-micro uppercase tracking-wide text-red-700 transition-all hover:bg-red-100',
+      'inline-flex items-center gap-1 rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-role-micro text-red-700 transition-all hover:bg-red-100',
     input:
       cn('w-full rounded-xl border-2 border-red-200 bg-surface-card px-4 py-3 text-sm font-semibold text-text-default transition-all placeholder:text-text-faint', focusRing('field', 'danger')),
     monoInput:
       cn('w-full rounded-xl border-2 border-red-200 bg-surface-card px-4 py-3 text-sm font-semibold font-mono text-text-default transition-all placeholder:text-text-faint', focusRing('field', 'danger')),
     primaryButton:
-      'w-full rounded-xl bg-gradient-to-r from-red-600 to-rose-600 px-4 py-3 text-xs font-semibold uppercase tracking-wide text-white transition-all shadow-lg shadow-red-500/20 hover:from-red-700 hover:to-rose-700 disabled:cursor-not-allowed disabled:bg-surface-strong',
+      'w-full rounded-xl bg-gradient-to-r from-red-600 to-rose-600 px-4 py-3 text-xs font-semibold text-white transition-all shadow-lg shadow-red-500/20 hover:from-red-700 hover:to-rose-700 disabled:cursor-not-allowed disabled:bg-surface-strong',
     lineItemShell: 'space-y-2 rounded-xl border border-red-100 bg-red-50/50 p-3',
-    lineItemLabel: 'text-role-micro uppercase tracking-widest text-red-700',
+    lineItemLabel: 'text-role-micro text-red-700',
   },
   lightblue: {
     sectionRule: 'bg-sky-200',
@@ -919,7 +919,7 @@ export const fbaSidebarThemeChrome: Record<StationTheme, FbaSidebarThemeChrome> 
     cardFocusRing: focusRing('control', 'accent'),
     cardDateText: 'text-sm font-semibold text-sky-700',
     cardOpenPill:
-      'rounded-full bg-sky-100 px-2 py-0.5 text-role-micro uppercase tracking-wide text-sky-800',
+      'rounded-full bg-sky-100 px-2 py-0.5 text-role-micro text-sky-800',
     cardChevron:
       'inline-flex h-8 w-8 items-center justify-center rounded-full border border-sky-200 text-sky-500 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),inset_0_-1px_0_rgba(14,165,233,0.16)]',
     cardExpandedDivider: 'border-t border-sky-100',
@@ -927,23 +927,23 @@ export const fbaSidebarThemeChrome: Record<StationTheme, FbaSidebarThemeChrome> 
       cn('w-14 rounded-md border border-border-soft bg-surface-card px-1.5 py-1 text-center text-role-micro tabular-nums text-text-default', focusRing('field', 'accent')),
     cardProgress: 'h-full rounded-full bg-sky-400',
     selectedRow: 'border-l-4 border-l-sky-400 bg-sky-100/60 hover:bg-sky-100/80',
-    selectedCountText: 'text-role-eyebrow uppercase tracking-[0.16em] text-sky-700',
+    selectedCountText: 'text-role-eyebrow text-sky-700',
     scanResultsShell: 'rounded-xl border border-sky-200 bg-sky-50/60 px-2.5 py-2',
-    scanResultsTitle: 'text-role-micro font-semibold uppercase tracking-widest text-sky-800',
+    scanResultsTitle: 'text-role-micro font-semibold text-sky-800',
     scanResultsCount: 'text-role-micro font-semibold tabular-nums text-sky-700',
     scanResultsQtyStepper:
       'flex w-8 flex-col items-center justify-center rounded-md border border-sky-200 bg-sky-50',
     scanResultsHint: 'text-role-micro text-sky-700',
     secondaryButton:
-      'inline-flex items-center gap-1 rounded-xl border border-sky-200 bg-sky-50 px-3 py-2 text-role-micro uppercase tracking-wide text-sky-700 transition-all hover:bg-sky-100',
+      'inline-flex items-center gap-1 rounded-xl border border-sky-200 bg-sky-50 px-3 py-2 text-role-micro text-sky-700 transition-all hover:bg-sky-100',
     input:
       cn('w-full rounded-xl border-2 border-sky-200 bg-surface-card px-4 py-3 text-sm font-semibold text-text-default transition-all placeholder:text-text-faint', focusRing('field', 'accent')),
     monoInput:
       cn('w-full rounded-xl border-2 border-sky-200 bg-surface-card px-4 py-3 text-sm font-semibold font-mono text-text-default transition-all placeholder:text-text-faint', focusRing('field', 'accent')),
     primaryButton:
-      'w-full rounded-xl bg-gradient-to-r from-sky-500 to-cyan-500 px-4 py-3 text-xs font-semibold uppercase tracking-wide text-white transition-all shadow-lg shadow-sky-500/20 hover:from-sky-600 hover:to-cyan-600 disabled:cursor-not-allowed disabled:bg-surface-strong',
+      'w-full rounded-xl bg-gradient-to-r from-sky-500 to-cyan-500 px-4 py-3 text-xs font-semibold text-white transition-all shadow-lg shadow-sky-500/20 hover:from-sky-600 hover:to-cyan-600 disabled:cursor-not-allowed disabled:bg-surface-strong',
     lineItemShell: 'space-y-2 rounded-xl border border-sky-100 bg-sky-50/50 p-3',
-    lineItemLabel: 'text-role-micro uppercase tracking-widest text-sky-700',
+    lineItemLabel: 'text-role-micro text-sky-700',
   },
   pink: {
     sectionRule: 'bg-pink-200',
@@ -957,7 +957,7 @@ export const fbaSidebarThemeChrome: Record<StationTheme, FbaSidebarThemeChrome> 
     cardFocusRing: 'focus-visible:ring-2 focus-visible:ring-pink-400/50' /* ds-allow-focus: identity/one-off hue or ring-0 */,
     cardDateText: 'text-sm font-semibold text-pink-700',
     cardOpenPill:
-      'rounded-full bg-pink-100 px-2 py-0.5 text-role-micro uppercase tracking-wide text-pink-800',
+      'rounded-full bg-pink-100 px-2 py-0.5 text-role-micro text-pink-800',
     cardChevron:
       'inline-flex h-8 w-8 items-center justify-center rounded-full border border-pink-200 text-pink-500 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),inset_0_-1px_0_rgba(236,72,153,0.16)]',
     cardExpandedDivider: 'border-t border-pink-100',
@@ -965,22 +965,22 @@ export const fbaSidebarThemeChrome: Record<StationTheme, FbaSidebarThemeChrome> 
       'w-14 rounded-md border border-border-soft bg-surface-card px-1.5 py-1 text-center text-role-micro tabular-nums text-text-default outline-none focus:border-pink-400' /* ds-allow-focus: identity/one-off hue or ring-0 */,
     cardProgress: 'h-full rounded-full bg-pink-400',
     selectedRow: 'border-l-4 border-l-pink-400 bg-pink-100/60 hover:bg-pink-100/80',
-    selectedCountText: 'text-role-eyebrow uppercase tracking-[0.16em] text-pink-700',
+    selectedCountText: 'text-role-eyebrow text-pink-700',
     scanResultsShell: 'rounded-xl border border-pink-200 bg-pink-50/60 px-2.5 py-2',
-    scanResultsTitle: 'text-role-micro font-semibold uppercase tracking-widest text-pink-800',
+    scanResultsTitle: 'text-role-micro font-semibold text-pink-800',
     scanResultsCount: 'text-role-micro font-semibold tabular-nums text-pink-700',
     scanResultsQtyStepper:
       'flex w-8 flex-col items-center justify-center rounded-md border border-pink-200 bg-pink-50',
     scanResultsHint: 'text-role-micro text-pink-700',
     secondaryButton:
-      'inline-flex items-center gap-1 rounded-xl border border-pink-200 bg-pink-50 px-3 py-2 text-role-micro uppercase tracking-wide text-pink-700 transition-all hover:bg-pink-100',
+      'inline-flex items-center gap-1 rounded-xl border border-pink-200 bg-pink-50 px-3 py-2 text-role-micro text-pink-700 transition-all hover:bg-pink-100',
     input:
       'w-full rounded-xl border-2 border-pink-200 bg-surface-card px-4 py-3 text-sm font-semibold text-text-default outline-none transition-all placeholder:text-text-faint focus:border-transparent focus:ring-2 focus:ring-pink-500' /* ds-allow-focus: identity/one-off hue or ring-0 */,
     monoInput:
       'w-full rounded-xl border-2 border-pink-200 bg-surface-card px-4 py-3 text-sm font-semibold font-mono text-text-default outline-none transition-all placeholder:text-text-faint focus:border-transparent focus:ring-2 focus:ring-pink-500' /* ds-allow-focus: identity/one-off hue or ring-0 */,
     primaryButton:
-      'w-full rounded-xl bg-gradient-to-r from-pink-500 to-rose-500 px-4 py-3 text-xs font-semibold uppercase tracking-wide text-white transition-all shadow-lg shadow-pink-500/20 hover:from-pink-600 hover:to-rose-600 disabled:cursor-not-allowed disabled:bg-surface-strong',
+      'w-full rounded-xl bg-gradient-to-r from-pink-500 to-rose-500 px-4 py-3 text-xs font-semibold text-white transition-all shadow-lg shadow-pink-500/20 hover:from-pink-600 hover:to-rose-600 disabled:cursor-not-allowed disabled:bg-surface-strong',
     lineItemShell: 'space-y-2 rounded-xl border border-pink-100 bg-pink-50/50 p-3',
-    lineItemLabel: 'text-role-micro uppercase tracking-widest text-pink-700',
+    lineItemLabel: 'text-role-micro text-pink-700',
   },
 };

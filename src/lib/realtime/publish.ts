@@ -19,7 +19,6 @@ import {
 } from '@/lib/realtime/channels';
 import { createStationActivityLog } from '@/lib/station-activity';
 import { getPrimaryTechStaffIds } from '@/lib/neon/staff-stations-queries';
-import { transitionalDogfoodOrgId } from '@/lib/tenancy/db';
 import { formatPSTTimestamp } from '@/utils/date';
 
 // Every payload carries `organizationId` so the channel it publishes to is
@@ -148,7 +147,16 @@ function getAblyRestClient() {
   return ablyRestClient;
 }
 
-async function publishEvent(channel: string, name: string, data: Record<string, unknown>) {
+/**
+ * `organizationId` is the publishing tenant. Only events that carry it are
+ * mirrored into that tenant's station_activity_logs feed (never another org's).
+ */
+async function publishEvent(
+  channel: string,
+  name: string,
+  data: Record<string, unknown>,
+  organizationId?: string,
+) {
   const client = getAblyRestClient();
   if (!client) return;
   const normalizedChannel = String(channel || '').trim().replace(/[\u0000-\u001F\u007F]/g, '');
@@ -156,7 +164,7 @@ async function publishEvent(channel: string, name: string, data: Record<string, 
 
   try {
     await client.channels.get(normalizedChannel).publish(name, data);
-    void logRealtimeEventToStationActivity(normalizedChannel, name, data);
+    if (organizationId) void logRealtimeEventToStationActivity(organizationId, normalizedChannel, name, data);
   } catch (error) {
     console.error(`[realtime] Failed to publish "${name}" on "${normalizedChannel}":`, error);
   }
@@ -247,6 +255,7 @@ function parseFiniteNumber(value: unknown): number | null {
 }
 
 async function logRealtimeEventToStationActivity(
+  selfOrgId: string,
   channel: string,
   eventName: string,
   payload: Record<string, unknown>,
@@ -272,10 +281,6 @@ async function logRealtimeEventToStationActivity(
   ) {
     return;
   }
-
-  // This self-derived station-activity feed has no request context; it stamps
-  // the transitional org (USAV) — it is single-tenant by construction today.
-  const selfOrgId = transitionalDogfoodOrgId();
 
   try {
     if (eventName === 'repair.changed') {
@@ -454,7 +459,7 @@ export async function publishRepairChanged(payload: RepairChangedPayload) {
     repairIds: normalizedIds,
     source: payload.source,
     timestamp: formatPSTTimestamp(),
-  });
+  }, payload.organizationId);
 }
 
 type PriorityUnboxPayload = {
@@ -825,7 +830,7 @@ export async function publishReceivingLogChanged(payload: ReceivingLogChangedPay
     row: payload.row,
     source: payload.source,
     timestamp: formatPSTTimestamp(),
-  });
+  }, payload.organizationId);
 }
 
 export async function publishReceivingPhotoChanged(payload: ReceivingPhotoChangedPayload) {
@@ -948,7 +953,7 @@ export async function publishFbaItemChanged(payload: FbaItemChangedPayload) {
     fnsku: payload.fnsku,
     source: payload.source,
     timestamp: formatPSTTimestamp(),
-  });
+  }, payload.organizationId);
 }
 
 export async function publishFbaShipmentChanged(payload: FbaShipmentChangedPayload) {

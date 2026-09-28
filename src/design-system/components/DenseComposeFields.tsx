@@ -10,7 +10,7 @@ import {
 import { cn } from '@/utils/_cn';
 
 const denseComposeLabelClass =
-  'mb-1 block text-role-eyebrow uppercase tracking-[0.14em] text-text-faint';
+  'mb-1 block text-role-eyebrow text-text-faint';
 
 /** Underline Subject face — short identity on a single scanning axis. */
 const denseComposeSubjectInputClass = cn(

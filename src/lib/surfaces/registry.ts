@@ -120,7 +120,7 @@ export function isFeedKey(v: unknown): v is FeedKey {
 // ─── feed_memberships.state / tone (mirror the DB CHECKs) ────────────────────
 
 // 'active'/'needs_match'/'done' are the generic membership states.
-export const FEED_MEMBERSHIP_STATES = ['active', 'needs_match', 'done', 'pending', 'tested', 'blocked'] as const;
+export const FEED_MEMBERSHIP_STATES = ['active', 'needs_match', 'done', 'pending', 'picked', 'blocked'] as const;
 export type FeedMembershipState = (typeof FEED_MEMBERSHIP_STATES)[number];
 
 /** Mirrors TimelineTone (src/lib/timeline/types.ts) — the house tone registry. */

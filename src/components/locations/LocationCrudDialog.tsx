@@ -61,7 +61,7 @@ function Field({
 }) {
   return (
     <label className="flex min-w-0 flex-col gap-1">
-      <span className="text-role-micro font-semibold uppercase tracking-wider text-text-muted">
+      <span className="text-role-micro font-semibold text-text-muted">
         {label}
       </span>
       <input
@@ -463,7 +463,7 @@ export function LocationCrudDialog({
         ) : (
           <div className="flex flex-col gap-3">
             <label className="flex min-w-0 flex-col gap-1">
-              <span className="text-role-micro font-semibold uppercase tracking-wider text-text-muted">
+              <span className="text-role-micro font-semibold text-text-muted">
                 Room
               </span>
               <select

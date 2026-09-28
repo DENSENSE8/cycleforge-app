@@ -85,7 +85,7 @@ export function LabelTypeSelect({
                       than weight (the micro role already bakes 600). */}
                   <span className="truncate">{opt.name}</span>
                   {opt.grain ? (
-                    <span className="ml-auto shrink-0 text-role-micro uppercase tracking-widest text-text-soft">
+                    <span className="ml-auto shrink-0 text-role-micro text-text-soft">
                       {opt.grain}
                     </span>
                   ) : null}

@@ -140,7 +140,7 @@ export function AiProviderOrderCard() {
               >
                 <span
                   className={
-                    'mt-0.5 shrink-0 rounded px-1.5 py-0.5 text-role-eyebrow uppercase tracking-widest ring-1 ring-inset ' +
+                    'mt-0.5 shrink-0 rounded px-1.5 py-0.5 text-role-eyebrow ring-1 ring-inset ' +
                     CHIP_CLASS[opt.chip]
                   }
                 >

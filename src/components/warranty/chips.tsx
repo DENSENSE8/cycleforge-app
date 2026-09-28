@@ -84,7 +84,7 @@ export function WarrantyClockChip({
         >
           <span
             className={cn(
-              'inline-flex items-center rounded px-1.5 py-0.5 text-role-micro font-medium uppercase tracking-wide',
+              'inline-flex items-center rounded px-1.5 py-0.5 text-role-micro font-medium',
               provisional
                 ? 'border border-dashed border-border-warning text-text-warning'
                 : 'bg-surface-success text-text-success',

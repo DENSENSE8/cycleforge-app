@@ -112,7 +112,7 @@ export function DateTimePickerField({
           />
 
           <div className="flex items-center justify-between gap-3 border-t border-border-hairline px-3 py-2">
-            <label className="flex items-center gap-2 text-role-eyebrow uppercase tracking-wider text-text-soft">
+            <label className="flex items-center gap-2 text-role-eyebrow text-text-soft">
               Time
               <input
                 type="time"
@@ -124,7 +124,7 @@ export function DateTimePickerField({
             <button
               type="button"
               onClick={() => setOpen(false)}
-              className="rounded-md bg-blue-600 px-3 py-1 text-role-caption font-semibold uppercase tracking-wider text-white shadow-sm transition-colors hover:bg-blue-700"
+              className="rounded-md bg-blue-600 px-3 py-1 text-role-caption font-semibold text-white shadow-sm transition-colors hover:bg-blue-700"
             >
               Done
             </button>

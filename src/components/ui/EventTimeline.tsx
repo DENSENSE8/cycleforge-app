@@ -2,7 +2,7 @@
 
 import { useMemo, useState, type ReactNode } from 'react';
 import Link from 'next/link';
-import { format, formatDistanceToNow, parseISO } from 'date-fns';
+import { formatDistanceToNow, parseISO } from 'date-fns';
 import { motion, useReducedMotion, type Variants } from '@/design-system/motion';
 import { motionBezier } from '@/design-system/foundations/motion-presets';
 import type {
@@ -29,7 +29,21 @@ import {
 } from '@/lib/timeline/timeline-media-strip';
 import { focusRing } from '@/design-system/tokens/focus-ring';
 import { STATE_TONE_CLASSES } from '@/design-system/tokens/lifecycle';
+import {
+  STEP_NODE_STATE_CLASS,
+  STEP_RAIL_LINE_CLASS,
+  STEP_RAIL_LINE_LEFT,
+  STEP_RAIL_NODE_CLASS,
+  STEP_RAIL_NODE_SIZE,
+} from '@/design-system/components/record-ledger/StepRail';
 import { cn } from '@/utils/_cn';
+import {
+  formatDateKeyMedium,
+  formatMonthDayTimePST,
+  formatTime12hPST,
+  getCurrentPSTDateKey,
+  toPSTDateKey,
+} from '@/utils/date';
 
 
 
@@ -53,6 +67,9 @@ const DENSITY: Record<Density, { pb: string; day: string; glyphTop: string }> = 
   comfortable: { pb: 'pb-4', day: 'mt-5 first:mt-0', glyphTop: 'top-0' },
   compact: { pb: 'pb-3', day: 'mt-4 first:mt-0', glyphTop: 'top-px' },
 };
+
+/** Older events' node face — the StepRail node, quiet (solid edge, not the "not yet" dashes). */
+const QUIET_NODE_CLASS = 'border border-mode-edge bg-mode-bar text-mode-muted';
 
 /** Inline timeline thumbs → shared photo-gallery SoT (never a new browser tab). */
 function TimelineMediaStrip({
@@ -123,7 +140,7 @@ function TimelineMediaStrip({
             key={m.photoId}
             type="button"
             // ds-raw-button: photo thumb open — not a DS Button surface
-            className="ds-raw-button block shrink-0 overflow-hidden rounded-md ring-1 ring-inset ring-border-hairline transition-opacity hover:opacity-90"
+            className="ds-raw-button block shrink-0 overflow-hidden rounded-mode-control ring-1 ring-inset ring-border-hairline transition-opacity hover:opacity-90"
             onClick={() => openAtMedia(m, index)}
             aria-label={m.caption ? `View ${m.caption} photo` : 'View photo'}
           >
@@ -140,7 +157,7 @@ function TimelineMediaStrip({
           <button
             type="button"
             // ds-raw-button: +N overflow open — not a DS Button surface
-            className="ds-raw-button flex h-12 w-12 shrink-0 items-center justify-center rounded-md bg-surface-sunken text-role-caption font-semibold tabular-nums text-text-muted ring-1 ring-inset ring-border-hairline transition-opacity hover:opacity-90"
+            className="ds-raw-button flex h-12 w-12 shrink-0 items-center justify-center rounded-mode-control bg-surface-sunken text-role-caption font-semibold tabular-nums text-text-muted ring-1 ring-inset ring-border-hairline transition-opacity hover:opacity-90"
             onClick={openOverflow}
             aria-label={`View ${overflowCount} more photos`}
           >
@@ -153,13 +170,12 @@ function TimelineMediaStrip({
   );
 }
 
-function fmt(value: string | null | undefined, pattern: string): string {
+/** One clock format for every row, warehouse (PST) time: `3:25 PM` today, `Sep 24, 3:25 PM` otherwise. */
+function clockLabel(value: string | null | undefined): string {
   if (!value) return '—';
-  try {
-    return format(typeof value === 'string' ? parseISO(value) : value, pattern);
-  } catch {
-    return value;
-  }
+  return toPSTDateKey(value) === getCurrentPSTDateKey()
+    ? formatTime12hPST(value)
+    : formatMonthDayTimePST(value);
 }
 
 /**
@@ -171,7 +187,7 @@ function relTime(value: string | null | undefined): string {
   try {
     return formatDistanceToNow(parseISO(value), { addSuffix: true });
   } catch {
-    return fmt(value, 'h:mma').toLowerCase();
+    return clockLabel(value);
   }
 }
 
@@ -348,13 +364,13 @@ function groupBySerial(
 function DefaultGroupHeader({ group }: { group: SerialGroup }) {
   return (
     <div className="flex items-center gap-2">
-      <span className="text-role-micro text-text-faint industrial:uppercase industrial:tracking-[0.12em]">
+      <span className="mode-label text-text-faint">
         {group.ref ? `${REF_KIND_LABEL[group.ref.kind]} ` : ''}
       </span>
       {group.ref ? (
         <TimelineRefChip refItem={group.ref} />
       ) : (
-        <span className="text-role-micro text-text-faint industrial:uppercase industrial:tracking-[0.12em]">
+        <span className="mode-label text-text-faint">
           {group.label}
         </span>
       )}
@@ -369,7 +385,7 @@ function DefaultGroupHeader({ group }: { group: SerialGroup }) {
 function GroupLatestPeek({ items, richTime }: { items: TimelineItem[]; richTime: boolean }) {
   const latest = items[0];
   if (!latest) return null;
-  const when = richTime ? relTime(latest.at) : fmt(latest.at, 'h:mma').toLowerCase();
+  const when = richTime ? relTime(latest.at) : clockLabel(latest.at);
   return (
     <span className="ml-auto hidden min-w-0 shrink items-center gap-1.5 truncate text-role-micro font-medium text-text-faint sm:flex">
       <span className="truncate">{latest.title}</span>
@@ -459,7 +475,7 @@ export function EventTimeline({
 
           // Collapsible: a chevron header row; the latest band opens by default, the rest collapse to a one-line "latest event" peek.
           return (
-            <div key={g.key} className="rounded-lg">
+            <div key={g.key} className="rounded-mode-control">
               <div
                 role="button"
                 tabIndex={0}
@@ -471,7 +487,7 @@ export function EventTimeline({
                   }
                 }}
                 aria-expanded={open}
-                className={cn("group flex w-full cursor-pointer items-center gap-2 rounded-lg px-1.5 py-1 text-left transition-colors hover:bg-surface-hover", focusRing('control', 'accent'))}
+                className={cn("group flex w-full cursor-pointer items-center gap-2 rounded-mode-control px-1.5 py-1 text-left transition-colors hover:bg-surface-hover", focusRing('control', 'accent'))}
               >
                 <ChevronRight
                   className={`h-3.5 w-3.5 shrink-0 text-text-faint transition-transform duration-150 ${open ? 'rotate-90' : ''}`}
@@ -505,11 +521,11 @@ export function EventTimeline({
       initial="hidden"
       animate="show"
     >
-      {/* Fading hairline rail — soft at both ends (Linear touch), so it never
-          hard-stops against the first/last glyph. */}
+      {/* StepRail hairline (same system as the Fulfilment ladder), soft at both
+          ends so it never hard-stops past the first/last node. */}
       <span
         aria-hidden
-        className="pointer-events-none absolute left-2 top-1 bottom-1 w-px bg-surface-strong"
+        className={cn(STEP_RAIL_LINE_CLASS, STEP_RAIL_LINE_LEFT.md, 'top-1 bottom-1')}
         style={{
           maskImage:
             'linear-gradient(to bottom, transparent, #000 14px, #000 calc(100% - 14px), transparent)',
@@ -519,9 +535,9 @@ export function EventTimeline({
       />
 
       {items.map((item, i) => {
-        const time = richTime ? relTime(item.at) : fmt(item.at, 'h:mma').toLowerCase();
-        const dayKey = fmt(item.at, 'EEE, MMM d');
-        const showDay = groupByDay && (i === 0 || dayKey !== fmt(items[i - 1]?.at, 'EEE, MMM d'));
+        const time = richTime ? relTime(item.at) : clockLabel(item.at);
+        const dateKey = toPSTDateKey(item.at);
+        const showDay = groupByDay && (i === 0 || dateKey !== toPSTDateKey(items[i - 1]?.at));
         const isLatest = highlightLatest && i === 0;
         // Station floor: title alone is primary; chip · time · actor is secondary.
         const stationAnatomy = metaTrail && refInline;
@@ -577,20 +593,24 @@ export function EventTimeline({
               <div
                 className={
                   stationAnatomy
-                    ? `${d.day} mb-1 pl-px text-role-micro font-medium text-text-faint industrial:uppercase industrial:tracking-[0.12em]`
-                    : `${d.day} mb-1.5 pl-px text-role-micro text-text-faint industrial:uppercase industrial:tracking-[0.12em]`
+                    ? `${d.day} mode-label mb-1 pl-px text-text-faint`
+                    : `${d.day} mode-label mb-1.5 pl-px text-text-faint`
                 }
               >
-                {dayKey}
+                {formatDateKeyMedium(dateKey) || '—'}
               </div>
             ) : null}
 
             <div className={`relative ${d.pb} last:pb-0`}>
-              {/* Mode glyph + tooltip — sharp house icons; link when href resolves. */}
+              {/* StepRail node (md) centred on the hairline — latest filled, older quiet; link when href resolves. */}
               <span
-                className={`absolute -left-5 ${d.glyphTop} flex h-4 w-4 items-center justify-center bg-surface-card text-text-muted ${
-                  isLatest && !stationAnatomy ? 'rounded-sm ring-1 ring-border-soft' : ''
-                }`}
+                className={cn(
+                  STEP_RAIL_NODE_CLASS,
+                  STEP_RAIL_NODE_SIZE.md,
+                  isLatest && !stationAnatomy ? STEP_NODE_STATE_CLASS.done : QUIET_NODE_CLASS,
+                  'absolute -left-5',
+                  d.glyphTop,
+                )}
               >
                 {item.icon ? (
                   item.icon
@@ -602,15 +622,15 @@ export function EventTimeline({
                     {glyphHref ? (
                       <Link
                         href={glyphHref}
-                        className="flex h-4 w-4 items-center justify-center text-text-muted transition-colors hover:text-text-default"
+                        className="flex size-4 items-center justify-center rounded-mode-pill transition-opacity hover:opacity-70"
                         aria-label={`${glyphSpec.tooltip} — open`}
                         onClick={(e) => e.stopPropagation()}
                       >
-                        <GlyphIcon className="h-4 w-4 shrink-0" aria-hidden />
+                        <GlyphIcon className="shrink-0" aria-hidden />
                       </Link>
                     ) : (
-                      <span className="flex h-4 w-4 items-center justify-center">
-                        <GlyphIcon className="h-4 w-4 shrink-0" aria-hidden />
+                      <span className="flex size-4 items-center justify-center">
+                        <GlyphIcon className="shrink-0" aria-hidden />
                       </span>
                     )}
                   </HoverTooltip>
@@ -619,7 +639,7 @@ export function EventTimeline({
 
               {/* Hover surface — bleeds slightly past the text, never under the glyph. */}
               <div
-                className={`-mx-2 rounded-lg px-2 py-0.5 transition-colors duration-150 hover:bg-surface-canvas/80${
+                className={`-mx-2 rounded-mode-control px-2 py-0.5 transition-colors duration-150 hover:bg-surface-canvas/80${
                   onSelectItem ? ' cursor-pointer' : ''
                 }`}
                 role={onSelectItem ? 'button' : undefined}
@@ -655,14 +675,8 @@ export function EventTimeline({
                     </div>
                     <div className="mt-0.5">{metaBits}</div>
                   </>
-                ) : (
-                  <div
-                    className={
-                      metaTrail
-                        ? 'flex min-w-0 flex-wrap items-baseline gap-x-2 gap-y-0.5'
-                        : 'flex items-baseline justify-between gap-3'
-                    }
-                  >
+                ) : metaTrail ? (
+                  <div className="flex min-w-0 flex-wrap items-baseline gap-x-2 gap-y-0.5">
                     <span
                       className={`text-role-caption tracking-tight ${
                         isLatest ? 'font-semibold text-text-default' : 'font-semibold text-text-muted'
@@ -683,6 +697,38 @@ export function EventTimeline({
                       {item.actor ? <ActorLabel item={item} /> : null}
                     </span>
                   </div>
+                ) : (
+                  <>
+                    {/* Default anatomy: the human sentence, then who · when on its own line. */}
+                    <div className="flex min-w-0 flex-wrap items-baseline gap-x-2 gap-y-0.5">
+                      <span
+                        className={`text-role-caption tracking-tight ${
+                          isLatest ? 'font-semibold text-text-default' : 'font-semibold text-text-muted'
+                        }`}
+                      >
+                        {item.title}
+                      </span>
+                      {refInline && identityRefs.length > 0 ? (
+                        <span className="-my-0.5 inline-flex shrink-0 flex-wrap items-center gap-1">
+                          {identityRefs.map((r, ri) => (
+                            <TimelineRefChip key={`${r.kind}:${r.value}:${ri}`} refItem={r} />
+                          ))}
+                        </span>
+                      ) : null}
+                    </div>
+                    <div
+                      className="mt-0.5 flex min-w-0 flex-wrap items-center gap-x-1 text-role-micro font-medium tabular-nums text-text-faint"
+                      data-timeline-meta
+                    >
+                      {item.actor ? (
+                        <>
+                          <ActorLabel item={item} />
+                          <span aria-hidden>·</span>
+                        </>
+                      ) : null}
+                      <span className="whitespace-nowrap">{timeNode}</span>
+                    </div>
+                  </>
                 )}
 
                 {footnote ? (
@@ -716,7 +762,7 @@ export function EventTimeline({
                     {item.badges.map((badge, bi) => (
                       <span
                         key={bi}
-                        className={`inline-flex items-center rounded px-1.5 py-0.5 text-role-eyebrow ${BADGE_TONE[badge.tone]}`}
+                        className={`inline-flex items-center rounded-mode-control px-1.5 py-0.5 text-role-eyebrow ${BADGE_TONE[badge.tone]}`}
                       >
                         {badge.label}
                       </span>

@@ -36,6 +36,10 @@ export interface IntakeProductHit {
   bin: string | null;
   /** What the query matched on (`sku`, `gtin`, `fnsku`, `item_number`, `keyword`…). */
   matchedOn: string;
+  /** Price each to pre-fill, cents: this org's last sale of the product, else the Zoho list rate. */
+  suggestedUnitCents: number | null;
+  /** Where {@link suggestedUnitCents} came from. */
+  priceSource: 'last_sale' | 'list' | null;
 }
 
 type Found = { id: number; matchedOn: string; itemNumber: string | null };
@@ -53,7 +57,12 @@ const PRODUCTS_SQL = `SELECT sc.id, sc.sku, sc.image_url,
        (SELECT p.platform_item_id FROM sku_platform_ids p
          WHERE p.organization_id = sc.organization_id AND p.sku_catalog_id = sc.id
            AND COALESCE(btrim(p.platform_item_id), '') <> ''
-         ORDER BY p.id LIMIT 1) AS item_number
+         ORDER BY p.id LIMIT 1) AS item_number,
+       (SELECT round(o.sale_amount * 100 / GREATEST(COALESCE(substring(o.quantity FROM '^\\d{1,6}')::int, 1), 1))::int
+          FROM orders o
+         WHERE o.organization_id = sc.organization_id AND o.sku_catalog_id = sc.id AND o.sale_amount > 0
+         ORDER BY o.created_at DESC, o.id DESC LIMIT 1) AS last_unit_cents,
+       round(i.rate * 100)::int AS list_unit_cents
   FROM sku_catalog sc
   LEFT JOIN items i ON i.zoho_item_id = sc.provider_item_id
                    AND i.organization_id = sc.organization_id AND i.status = 'active'
@@ -123,6 +132,11 @@ export async function searchIntakeProducts(orgId: OrgId, raw: string, limit = 8)
       onHand: Number(row.on_hand ?? 0),
       bin: str(row.bin) || null,
       matchedOn: hit.matchedOn,
+      ...(row.last_unit_cents != null && Number(row.last_unit_cents) > 0
+        ? { suggestedUnitCents: Number(row.last_unit_cents), priceSource: 'last_sale' as const }
+        : row.list_unit_cents != null && Number(row.list_unit_cents) > 0
+          ? { suggestedUnitCents: Number(row.list_unit_cents), priceSource: 'list' as const }
+          : { suggestedUnitCents: null, priceSource: null }),
     }];
   });
 }

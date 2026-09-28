@@ -207,7 +207,7 @@ test('outbound.shipped: the statement binds the list’s window (padded page + e
   const captured: Array<{ sql: string; params: readonly unknown[] }> = [];
   const deps = comboRunner([], captured);
   await facetsBody(new URLSearchParams({ dateFrom: '2026-08-03', dateTo: '2026-08-07', staff: '7', carrier: 'UPS' }), deps);
-  await facetsBody(new URLSearchParams({ allDates: '1', packedBy: '-2', testedBy: 'x' }), deps);
+  await facetsBody(new URLSearchParams({ allDates: '1', packedBy: '-2', pickedBy: 'x' }), deps);
   assert.equal(captured.length, 2, 'one statement per facet request');
   // Carrier is counted per option, never bound: the group must not narrow itself.
   assert.deepEqual(captured[0].params, [ORG, 7, '2026-08-03', '2026-08-07', '2026-08-03', '2026-08-07']);

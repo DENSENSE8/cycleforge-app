@@ -368,7 +368,7 @@ function Field({ label, required, children }: { label: string; required?: boolea
 }
 
 function RoleChip({ role }: { role: string }) {
-  return <span className="rounded-full bg-surface-sunken px-2 py-0.5 text-role-micro font-semibold uppercase tracking-wide text-text-muted">{role}</span>;
+  return <span className="rounded-full bg-surface-sunken px-2 py-0.5 text-role-micro font-semibold text-text-muted">{role}</span>;
 }
 
 function FitChip({ fit, oem }: { fit: string; oem: boolean }) {

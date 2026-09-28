@@ -99,7 +99,8 @@ function shortStamp(raw: string | null, todayKey: string): string | null {
  * (`tested_by` · `test_activity_at` · `qc_verdict`, testing_results). Named
  * from the staff directory, then the wire. Not done → the work assignment
  * (`picker_*` = the ORDER/PICK assignee, `packer_*` = the ORDER/PACK
- * assignee; QC has no assignee — it is a unit fact, not order work).
+ * assignee; `qc_assignee_*` = the QC tech assigned on the allocated unit's
+ * origin receiving line).
  */
 export function orderStage(row: ShippedOrder, kind: OrderStageKind, options: OrderStageOptions): OrderStage {
   const { todayKey, staffName, outOfStock = false } = options;
@@ -113,7 +114,7 @@ export function orderStage(row: ShippedOrder, kind: OrderStageKind, options: Ord
   }
   const done = at != null;
   const face = {
-    qc: { labels: ["QC'd", 'QC'], actor: [row.tested_by, row.tested_by_name], assignee: [null, null] },
+    qc: { labels: ["QC'd", 'QC'], actor: [row.tested_by, row.tested_by_name], assignee: [row.qc_assignee_id, row.qc_assignee_name] },
     pick: { labels: ['Picked', 'Pick'], actor: [row.picked_by, row.picked_by_name], assignee: [row.picker_id, row.picker_name] },
     pack: { labels: ['Packed', 'Pack'], actor: [row.packed_by, row.packed_by_name], assignee: [row.packer_id, row.packer_name] },
   }[kind];

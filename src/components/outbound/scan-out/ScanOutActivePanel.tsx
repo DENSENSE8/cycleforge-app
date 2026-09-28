@@ -262,7 +262,7 @@ export function ScanOutActivePanel({
   const statusChip = (
     <span
       className={cn(
-        'inline-flex max-w-[14rem] items-center gap-1 truncate px-1.5 py-0.5 text-role-micro font-semibold uppercase tracking-widest',
+        'inline-flex max-w-[14rem] items-center gap-1 truncate px-1.5 py-0.5 text-role-micro font-semibold',
         cornerClass('flush'),
         STATUS_TONE[pane.status],
       )}

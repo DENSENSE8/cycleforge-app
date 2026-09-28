@@ -3,6 +3,7 @@
 import {
   type ClipboardEvent,
   type FormEvent,
+  type InputHTMLAttributes,
   type KeyboardEvent,
   type ReactNode,
   type Ref,
@@ -103,6 +104,14 @@ export interface SearchFieldProps {
    * pinned 28px ops chrome host edge-to-edge.
    */
   fillHost?: boolean;
+  /**
+   * ARIA + probe attributes for the input itself — a caller that owns a result
+   * list wires it as a combobox (`role`, `aria-controls`, `aria-activedescendant`).
+   */
+  inputProps?: Pick<
+    InputHTMLAttributes<HTMLInputElement>,
+    'role' | 'aria-label' | 'aria-expanded' | 'aria-controls' | 'aria-activedescendant' | 'aria-autocomplete' | 'autoComplete'
+  > & { 'data-testid'?: string };
 }
 
 /** SearchField — decoupled draft architecture. */
@@ -129,6 +138,7 @@ export function SearchField({
   hideUnderline = false,
   hideClear = false,
   fillHost = false,
+  inputProps,
 }: SearchFieldProps) {
   // Internal draft — avoid churn from async parent updates during typing.
   const [draft, setDraft] = useState(value);
@@ -327,6 +337,7 @@ export function SearchField({
           className={`relative min-w-0 flex-1 ${fillHost ? 'h-full' : ''}`}
         >
           <input
+            {...inputProps}
             ref={setInputRef}
             type="text"
             value={draft}

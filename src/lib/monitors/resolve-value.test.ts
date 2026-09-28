@@ -12,11 +12,11 @@ import {
 /** A fixture bundle where the COARSE split and the LANE-accurate counts diverge, so the parity assertion (mapped facet == the aggregate's… */
 const BUNDLE: OutboundQueueCounts = {
   total: 15,
-  byStage: { pending: 9, tested: 6 },
+  byStage: { pending: 9, picked: 6 },
   urgent: 7,
   combos: [
     { hasPickScan: false, blocked: false, count: 6 }, // PENDING
-    { hasPickScan: true, blocked: false, count: 4 }, // TESTED
+    { hasPickScan: true, blocked: false, count: 4 }, // PICKED
     { hasPickScan: false, blocked: true, count: 3 }, // BLOCKED (exception-first)
     { hasPickScan: true, blocked: true, count: 2 }, // BLOCKED (exception-first)
   ],
@@ -63,9 +63,9 @@ test('parity — a Pending (stage=pending) monitor returns exactly byStage.pendi
   assert.equal(calls.boundedUnshippedCount.length, 0); // reused, not re-counted
 });
 
-test('stage=tested reads byStage.tested', async () => {
+test('stage=picked reads byStage.picked', async () => {
   const { deps } = fakeDeps();
-  assert.equal(await resolveMonitorValue(input('stage=tested'), deps), BUNDLE.byStage.tested);
+  assert.equal(await resolveMonitorValue(input('stage=picked'), deps), BUNDLE.byStage.picked);
 });
 
 // ── Lane-accurate (ustatus) diverges from the coarse split ───────────────────
@@ -75,9 +75,9 @@ test('ustatus=PENDING is lane-accurate (6), NOT the coarse byStage.pending (9)',
   assert.equal(await resolveMonitorValue(input('ustatus=PENDING'), deps), 6);
 });
 
-test('ustatus=TESTED counts only not-blocked tested rows (4)', async () => {
+test('ustatus=PICKED counts only not-blocked picked rows (4)', async () => {
   const { deps } = fakeDeps();
-  assert.equal(await resolveMonitorValue(input('ustatus=TESTED'), deps), 4);
+  assert.equal(await resolveMonitorValue(input('ustatus=PICKED'), deps), 4);
 });
 
 test('ustatus=BLOCKED counts every out-of-stock row, tested or not (3+2=5)', async () => {

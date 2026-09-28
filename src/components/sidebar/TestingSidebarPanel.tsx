@@ -420,7 +420,7 @@ export function TestingSidebarPanel({
               const meta = viaAckMeta(lastAck.via);
               return (
                 <div className="mt-2 flex items-center gap-1.5">
-                  <span className={`inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-role-eyebrow uppercase tracking-widest ring-1 ring-inset ${meta.chip}`}>
+                  <span className={`inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-role-eyebrow ring-1 ring-inset ${meta.chip}`}>
                     <meta.Icon className="h-3 w-3 shrink-0" />
                     {meta.label}
                   </span>

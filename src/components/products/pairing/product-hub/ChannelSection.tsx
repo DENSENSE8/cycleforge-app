@@ -101,7 +101,7 @@ export function ChannelSection({
           size="sm"
           onClick={() => setShowAll(true)}
           iconRight={<ChevronDown className="h-3 w-3" />}
-          className="mt-1.5 text-role-micro font-semibold uppercase tracking-wider text-blue-600 hover:text-blue-800"
+          className="mt-1.5 text-role-micro font-semibold text-blue-600 hover:text-blue-800"
         >
           See {moreCount} more
         </Button>

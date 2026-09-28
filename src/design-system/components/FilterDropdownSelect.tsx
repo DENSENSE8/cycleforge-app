@@ -13,7 +13,7 @@ export const FILTER_DROPDOWN_SELECT_CLASS =
   );
 
 export const FILTER_DROPDOWN_LABEL_CLASS =
-  'mb-1 block text-role-eyebrow uppercase tracking-wider text-text-soft';
+  'mb-1 block text-role-eyebrow text-text-soft';
 
 interface FilterDropdownSelectOption {
   value: string | number;

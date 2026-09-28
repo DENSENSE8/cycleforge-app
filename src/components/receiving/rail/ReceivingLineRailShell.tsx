@@ -74,7 +74,7 @@ function ReceivingRosterKeys({ row }: { row: ReceivingLineRow }) {
   ]);
   return (
     keys ?? (
-      <span className="text-role-eyebrow uppercase tracking-widest text-text-soft">—</span>
+      <span className="text-role-eyebrow text-text-soft">—</span>
     )
   );
 }

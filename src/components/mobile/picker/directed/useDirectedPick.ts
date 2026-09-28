@@ -10,6 +10,7 @@ import {
   directedPickScanLabel,
   directedPickStep,
   locationFace,
+  itemScanRefusal,
   matchItemScan,
   matchesLocationScan,
   type DirectedPickLine,
@@ -378,7 +379,7 @@ export function useDirectedPick(scanPaused = false): DirectedPickController {
         const allocationId = matchItemScan(value, line, picked);
         if (allocationId == null) {
           feedback('reject');
-          setMessage({ tone: 'error', text: `Scanned "${value}" — not ${line.title}` });
+          setMessage({ tone: 'error', text: itemScanRefusal(value, line, picked) ?? `Scanned "${value}" — not ${line.title}` });
           return;
         }
         void confirmUnit(allocationId);

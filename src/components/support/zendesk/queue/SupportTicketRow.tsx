@@ -54,13 +54,13 @@ export function SupportTicketRow({
         emptySubject="(no subject)"
         meta={
           <>
-            <span className="text-role-eyebrow uppercase tracking-widest text-text-soft">
+            <span className="text-role-eyebrow text-text-soft">
               {sb.label}
             </span>
             {pb ? (
               <span
                 className={cn(
-                  'rounded px-1 py-0.5 text-role-micro uppercase tracking-widest',
+                  'rounded px-1 py-0.5 text-role-micro',
                   pb.className,
                 )}
               >
@@ -70,7 +70,7 @@ export function SupportTicketRow({
           </>
         }
         trailing={
-          <span className="text-role-eyebrow uppercase tracking-widest text-text-soft">
+          <span className="text-role-eyebrow text-text-soft">
             {timeAgo(at)}
           </span>
         }

@@ -14,7 +14,7 @@ import { OrderStatusTrailStage } from '@/components/orders/OrderStatusTrailOverl
 import { DashboardScrollShell } from '@/components/dashboard/DashboardScrollShell';
 import { packedOrdersQuery } from '@/lib/queries/dashboard-queries';
 import { awaitingLabelsQuery } from '@/lib/queries/outbound-queries';
-import { parseStaffParam } from '@/hooks/useStaffFilter';
+import { parseStaffParam } from '@/lib/station/table-url-params';
 import { DASHBOARD_ORDERS_SELECTION_SCOPE } from '@/lib/selection/dashboard-scopes';
 import type { ShippedOrder } from '@/types/orders';
 

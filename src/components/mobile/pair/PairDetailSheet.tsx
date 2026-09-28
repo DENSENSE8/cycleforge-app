@@ -42,7 +42,7 @@ export function PairDetailSheet({
         <p className="font-mono text-role-caption text-text-soft">{sku}</p>
 
         <div>
-          <p className="text-role-eyebrow uppercase tracking-widest text-text-soft">
+          <p className="text-role-eyebrow text-text-soft">
             Where it is now
           </p>
           {isLoading ? (

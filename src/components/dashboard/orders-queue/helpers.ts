@@ -177,6 +177,7 @@ export function resolveRowStatus(
 export function resolveRowWorkflowStage(record: QueueRowRecord): OrderLifecycleStage {
   return resolveOutboundWorkflowFacts({
     shipmentId: record.shipment_id,
+    fulfillmentChannel: record.fulfillment_channel,
     hasPickScan: Boolean(record.has_pick_scan),
     packedAt:
       nonSentinelTimestamp(record.packed_at) ??

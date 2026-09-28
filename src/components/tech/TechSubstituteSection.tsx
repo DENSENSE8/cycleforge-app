@@ -20,7 +20,7 @@ export function TechSubstituteSection({
     // the hairline — border-border-soft is the theme-registry gray-200).
     <section className="mt-5 border-t border-border-soft pt-5" data-testid="tech-substitute-section">
       <div className="space-y-3">
-        <p className="flex items-center gap-1.5 text-role-eyebrow uppercase tracking-widest text-text-soft">
+        <p className="flex items-center gap-1.5 text-role-eyebrow text-text-soft">
           <RefreshCw className="h-3.5 w-3.5" />
           Substitute unit
         </p>

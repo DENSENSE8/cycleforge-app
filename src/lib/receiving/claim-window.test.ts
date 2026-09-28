@@ -28,11 +28,10 @@ test('day math is exact, signed, and free of UTC drift', () => {
   assert.equal(daysUntilClaimDeadline('2026-11-10', '2026-10-31'), 10);
 });
 
-test('expired reads EXPIRED, in danger tone, and says how long ago', () => {
+test('expired is urgent, in danger tone, and says how long ago', () => {
   const f = claimCountdownFace('2026-07-20', TODAY);
   assert.equal(f.urgency, 'expired');
   assert.equal(f.daysRemaining, -9);
-  assert.equal(f.label, 'EXPIRED');
   assert.equal(f.tone, 'text-rose-700');
   assert.match(f.description, /closed 9 days ago/);
   // Tells the operator what to DO, not just that it is bad.

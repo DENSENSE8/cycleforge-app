@@ -4,6 +4,7 @@ import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { withAuth } from '@/lib/auth/withAuth';
 import { withTenantTransaction } from '@/lib/tenancy/db';
+import { invalidateSessionUserCache } from '@/lib/auth/session-user-cache';
 
 const Body = z.object({
   id: z.number().int().positive(),
@@ -48,6 +49,7 @@ export const POST = withAuth(async (req, ctx) => {
   });
 
   if (!result) return NextResponse.json({ error: 'NOT_FOUND' }, { status: 404 });
+  invalidateSessionUserCache({ staffId: result.id });
   return NextResponse.json({ status: 'deactivated', staff: result });
 }, {
   permission: 'admin.manage_staff',

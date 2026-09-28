@@ -31,7 +31,7 @@ const CONFIDENCE_CHIP: Record<SupportSuggestionResult['confidence'], string> = {
 };
 
 const META_CHIP =
-  'rounded px-1.5 py-0.5 text-role-eyebrow uppercase tracking-widest ring-1 ring-inset';
+  'rounded px-1.5 py-0.5 text-role-eyebrow ring-1 ring-inset';
 
 const SOURCE_CHIP: Record<SuggestionSource['type'], string> = {
   thread: 'bg-surface-sunken text-text-soft ring-border-soft',
@@ -48,7 +48,7 @@ const LANE_LABEL: Record<SupportSuggestionResult['mode'], string> = {
 
 function SectionLabel({ children }: { children: React.ReactNode }) {
   return (
-    <p className="text-role-eyebrow uppercase tracking-widest text-text-soft">{children}</p>
+    <p className="text-role-eyebrow text-text-soft">{children}</p>
   );
 }
 
@@ -142,7 +142,7 @@ export function SupportAssistDisplay({
   return (
     <div className="stack-row">
       <div className="flex items-center justify-between gap-2">
-        <span className="inline-flex items-center gap-1.5 text-role-eyebrow uppercase tracking-widest text-text-soft">
+        <span className="inline-flex items-center gap-1.5 text-role-eyebrow text-text-soft">
           <Sparkles className="h-3.5 w-3.5 text-blue-500" />
           Suggested reply
         </span>
@@ -272,7 +272,7 @@ export function SupportAssistDisplay({
                     >
                       {hit.title}
                     </Link>
-                    <p className="truncate text-role-eyebrow uppercase tracking-widest text-text-soft">
+                    <p className="truncate text-role-eyebrow text-text-soft">
                       {hit.entityType}
                       {hit.subtitle ? ` · ${hit.subtitle}` : ''}
                     </p>

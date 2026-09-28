@@ -1,11 +1,15 @@
 'use client';
 
+import { useQueryClient } from '@tanstack/react-query';
 import { ScanBarcode } from '@/components/Icons';
 import { DetailSectionHeading } from '@/components/mobile/detail/DetailParts';
 import { DetailDock } from '@/design-system/components/DetailDock';
 import { DetailSummaryCard } from '@/design-system/components/DetailSummaryCard';
 import { useMobileUnit } from '@/components/mobile/unit/useMobileUnit';
+import { recordedProcedureVersionIds } from '@/lib/qc/bench-client';
+import { useQcProcedureVersion } from '@/lib/qc/use-qc-bench';
 import { summarizeUnitQc, unitQcEmptyReason, unitQcStamp, unitQcTally, unitQcVerdict } from '@/lib/qc/unit-qc';
+import { UnitQcBench } from './UnitQcBench';
 import { UnitQcStepRow } from './UnitQcStepRow';
 import { unitChecklistErrorText, useUnitChecklist } from './useUnitQc';
 
@@ -19,13 +23,15 @@ const VERDICT_CHIP = {
   open: { label: 'Open', className: 'border-mode-edge bg-mode-well text-mode-ink' },
 } as const;
 
-/** The QC runner body for one unit — the compact summary card (the repair hub's; it opens the unit hub for every fact), then the checklist… */
+/** The QC runner body for one unit — the compact summary card (the repair hub's; it opens the unit hub for every fact), the bench (session, readings, next steps — the same verbs as the `/test` Units display), then the checklist… */
 export function UnitQcRunner({ unitRef, onNext }: { unitRef: string; onNext?: () => void }) {
+  const queryClient = useQueryClient();
   const unitQuery = useMobileUnit(unitRef);
   const unit = unitQuery.data?.serial_unit ?? null;
   // Without a catalog row the route returns no steps; skip the round trip.
   const checklist = useUnitChecklist(unit?.sku_catalog_id != null ? unit.id : null);
   const steps = unit?.sku_catalog_id != null ? checklist.data : [];
+  const procedureVersion = useQcProcedureVersion(unit?.sku_catalog_id ?? null, recordedProcedureVersionIds(steps ?? []));
 
   const emptyReason = unit && steps ? unitQcEmptyReason(unit, steps) : null;
   const summary = steps && steps.length > 0 ? summarizeUnitQc(steps) : null;
@@ -59,8 +65,21 @@ export function UnitQcRunner({ unitRef, onNext }: { unitRef: string; onNext?: ()
               chip={summary ? VERDICT_CHIP[unitQcVerdict(summary)] : null}
             />
 
+            <UnitQcBench
+              unitId={unit.id}
+              unitStatus={unit.current_status}
+              onVerdictRecorded={() => void queryClient.invalidateQueries({ queryKey: ['serial-unit.mobile', unitRef] })}
+            />
+
             <section aria-labelledby="qc-steps" className="divide-y divide-mode-rule">
-              <DetailSectionHeading id="qc-steps">Checklist</DetailSectionHeading>
+              <DetailSectionHeading id="qc-steps">
+                Checklist
+                {procedureVersion ? (
+                  <span className="ml-auto" data-testid="qc-procedure-version">
+                    {procedureVersion}
+                  </span>
+                ) : null}
+              </DetailSectionHeading>
               {checklist.error ? (
                 <div role="alert" className={ERROR}>
                   {unitChecklistErrorText(checklist.error)}

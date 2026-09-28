@@ -106,10 +106,10 @@ export default function ReplenishmentPage() {
     <div className="mx-auto max-w-5xl px-4 py-6 sm:px-6">
       <header className="mb-6 flex items-center justify-between gap-3">
         <div>
-          <p className="text-xs font-semibold uppercase tracking-wider text-text-soft">Warehouse</p>
+          <p className="text-xs font-semibold text-text-soft">Warehouse</p>
           <h1 className="text-2xl font-semibold text-text-default">Replenishment</h1>
           <p className="mt-1 text-sm text-text-soft">
-            Move stock from RESERVE to PICK_FACE bins when forward stock runs low.
+            Move stock from reserve to pick-face bins when forward stock runs low.
           </p>
         </div>
         <div className="flex items-center gap-2 shrink-0">
@@ -191,7 +191,7 @@ function Section({ title, count, tone, tasks, actionLabel, onAction, onCancel, w
                 <div className="flex flex-wrap items-center gap-2">
                   <span className="font-mono text-sm font-semibold text-text-default">{t.sku}</span>
                   <span
-                    className={`inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-semibold uppercase tracking-wide ${replenishmentStatusBadgeClass(t.status)}`}
+                    className={`inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-semibold ${replenishmentStatusBadgeClass(t.status)}`}
                   >
                     {t.status.replace('_', ' ')}
                   </span>

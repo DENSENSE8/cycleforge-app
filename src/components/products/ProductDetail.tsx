@@ -123,7 +123,7 @@ export function ProductDetail({ sku }: ProductDetailProps) {
                         <span className="font-mono">{product.sku}</span>
                         {product.category ? <span>· {product.category}</span> : null}
                         {!product.is_active ? (
-                            <span className="rounded bg-surface-sunken px-1.5 py-0.5 font-medium uppercase tracking-wide text-text-soft">
+                            <span className="rounded bg-surface-sunken px-1.5 py-0.5 font-medium text-text-soft">
                                 Inactive
                             </span>
                         ) : null}
@@ -164,7 +164,7 @@ export function ProductDetail({ sku }: ProductDetailProps) {
                     <DetailRow label="Warehouse qty" value={String(stock.warehouse_qty)} />
                     {stock.units_by_status.length > 0 ? (
                         <div className="border-t border-border-hairline pt-2">
-                            <div className="mb-1 text-role-micro font-medium uppercase tracking-wide text-text-soft">
+                            <div className="mb-1 text-role-micro font-medium text-text-soft">
                                 Serial units by status
                             </div>
                             <div className="flex flex-wrap gap-1">

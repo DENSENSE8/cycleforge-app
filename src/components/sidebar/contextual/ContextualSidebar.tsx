@@ -49,8 +49,8 @@ import { useRememberLaneView } from './useLaneDoorHref';
  *   focused, and says where the text lives in the section (locate pills);
  *   "Search everywhere" hands the text to the ⌘K palette; the palette's face
  *   everywhere else — then `‹ <Lane>` — carrying a view-less page's verbs at
- *   its right end (Chat's `+`) — then, on a lane door's landing page, the
- *   MODE switcher (Shipping · FBA · Label intake), then the VIEW switcher
+ *   its right end (Chat's `+`) — then, on every page of a door lane, the
+ *   MODE switcher (Shipping · FBA · Labels & docs), then the VIEW switcher
  *   (Exceptions · PO paired · …). Modes and views are changed rarely, so
  *   each is one block that opens to the right of the sidebar on hover
  *   (`NavSwitcherMenu`). Pinned so search never scrolls away or hides while
@@ -156,7 +156,7 @@ export function ContextualSidebar() {
               </div>
             ) : null}
             {modeSection && !peekTop ? <NavModeSwitcher section={modeSection} currentPageId={nav.page.id} /> : null}
-            {!peekTop ? <NavViewSwitcher sections={viewSections} pageId={nav.page.id} /> : null}
+            {!peekTop ? <NavViewSwitcher sections={viewSections} pageId={nav.page.id} viewKeys={nav.viewKeys === true} /> : null}
           </div>
         ) : null}
       </div>

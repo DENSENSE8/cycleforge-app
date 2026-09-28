@@ -79,7 +79,7 @@ function LoopRow({ label, children }: { label: string; children: React.ReactNode
   if (!items.length) return null;
   return (
     <div className="flex min-w-0 items-baseline gap-2">
-      <span className="w-16 shrink-0 text-role-eyebrow uppercase tracking-widest text-text-faint">
+      <span className="w-16 shrink-0 text-role-eyebrow text-text-faint">
         {label}
       </span>
       <div className="flex min-w-0 flex-wrap items-center gap-1.5">{items}</div>
@@ -135,7 +135,7 @@ export function LinkedTicketsPanel({
     if (!flush || hideWhenEmpty || ticketsOnly) return null;
     return (
       <section className={className || undefined} aria-label="Pairing">
-        <p className="text-role-eyebrow uppercase tracking-widest text-text-soft">Pairing</p>
+        <p className="text-role-eyebrow text-text-soft">Pairing</p>
         <p className="mt-1.5 text-role-caption text-text-faint">
           No linked order or tracking yet.
         </p>
@@ -152,8 +152,8 @@ export function LinkedTicketsPanel({
   }
 
   const headerCls = dense
-    ? 'text-role-eyebrow uppercase tracking-widest text-text-soft'
-    : 'text-role-eyebrow uppercase tracking-widest text-text-soft';
+    ? 'text-role-eyebrow text-text-soft'
+    : 'text-role-eyebrow text-text-soft';
 
   // When order-linkage cannot resolve an order (common for ticket-only tracking
   // bridges), still surface identifiers we already know from the host anchor.

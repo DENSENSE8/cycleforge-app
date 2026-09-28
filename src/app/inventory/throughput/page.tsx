@@ -309,7 +309,7 @@ export default async function ThroughputPage({
 function Tile({ label, value, accent }: { label: string; value: string; accent: string }) {
   return (
     <Panel radius="lg" padding="none" className="px-6 py-4">
-      <p className="text-xs uppercase tracking-wide text-text-soft">{label}</p>
+      <p className="text-xs text-text-soft">{label}</p>
       <p className={`mt-1 text-3xl font-semibold ${accent}`}>{value}</p>
     </Panel>
   );

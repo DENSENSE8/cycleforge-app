@@ -25,17 +25,13 @@ import {
   type StaffPrintProgress,
   type StaffPrintStation,
 } from '@/lib/print/staff-print-bridge';
-import { readRememberedPrintStationId, rememberPrintStationId } from '@/lib/print/print-station';
+import {
+  printStationPickStorage,
+  readRememberedPrintStationId,
+  rememberPrintStationId,
+} from '@/lib/print/print-station';
 
 type StaffPrintPatch = Omit<StaffPrintOptionsPatch, 'type' | 'targetStationId'>;
-
-function pickStorage(): Storage | null {
-  try {
-    return typeof window === 'undefined' ? null : window.localStorage;
-  } catch {
-    return null;
-  }
-}
 
 /**
  * @param active poll the stations while true (a screen that only needs the
@@ -58,7 +54,7 @@ export function useStaffPrintBridgeClient({ active = true }: { active?: boolean 
 
   // The pick belongs to the staffer on this device; a staff switch reloads it.
   useEffect(() => {
-    setRememberedId(readRememberedPrintStationId(pickStorage(), orgId, staffId));
+    setRememberedId(readRememberedPrintStationId(printStationPickStorage(), orgId, staffId));
   }, [orgId, staffId]);
 
   useAblyChannel(
@@ -117,7 +113,7 @@ export function useStaffPrintBridgeClient({ active = true }: { active?: boolean 
   const pickStation = useCallback(
     (stationId: string | null) => {
       setRememberedId(stationId);
-      rememberPrintStationId(pickStorage(), orgId, staffId, stationId);
+      rememberPrintStationId(printStationPickStorage(), orgId, staffId, stationId);
     },
     [orgId, staffId],
   );

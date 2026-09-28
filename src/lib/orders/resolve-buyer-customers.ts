@@ -17,11 +17,18 @@ const CHANNEL_IDENTITY_COLUMNS: Record<string, string> = {
 const last10Sql = (col: string) =>
   `right(regexp_replace(coalesce(${col}, ''), '\\D', '', 'g'), 10)`;
 
+/** A staff ship-to correction that outranks the incoming order: stamped at or
+ * after `placedAtParam` (the source order's placed-at; NULL = unknown, kept). */
+const STAFF_SHIP_TO_KEPT = (placedAtParam: string) =>
+  `(shipping_edited_at IS NOT NULL AND (${placedAtParam}::timestamptz IS NULL OR shipping_edited_at >= ${placedAtParam}::timestamptz))`;
+
 export type BuyerBlock = NonNullable<CanonicalOrderLine['buyer']>;
 
 export interface BuyerEntry {
   accountSource: string;
   buyer: BuyerBlock;
+  /** When the source order was placed — a staff ship-to correction newer than this is kept. */
+  placedAt?: Date | null;
 }
 
 interface ResolveBuyerCustomersArgs {
@@ -221,7 +228,10 @@ async function upsertResolvedCustomer(
 
   if (customerId != null) {
     // Names/phone/email fill blanks only; the address is overwritten when the
-    // source carries one (Amazon connector convention).
+    // source carries one (Amazon connector convention) — except a staff
+    // correction (`shipping_edited_at`) made at or after this order was placed,
+    // which a re-sync of that order must not revert. An overwrite by a newer
+    // order clears the stamp: the stored address is the channel's again.
     await deps.runQuery(
       orgId,
       stampColumn
@@ -232,19 +242,20 @@ async function upsertResolvedCustomer(
              last_name     = COALESCE(NULLIF($4, ''), last_name),
              phone         = COALESCE(NULLIF($5, ''), phone),
              email         = COALESCE(NULLIF($6, ''), email),
-             shipping_address_1   = COALESCE($7,  shipping_address_1),
-             shipping_address_2   = COALESCE($8,  shipping_address_2),
-             shipping_city        = COALESCE($9,  shipping_city),
-             shipping_state       = COALESCE($10, shipping_state),
-             shipping_postal_code = COALESCE($11, shipping_postal_code),
-             shipping_country     = COALESCE($12, shipping_country),
+             shipping_address_1   = CASE WHEN ${STAFF_SHIP_TO_KEPT('$16')} THEN shipping_address_1   ELSE COALESCE($7,  shipping_address_1) END,
+             shipping_address_2   = CASE WHEN ${STAFF_SHIP_TO_KEPT('$16')} THEN shipping_address_2   ELSE COALESCE($8,  shipping_address_2) END,
+             shipping_city        = CASE WHEN ${STAFF_SHIP_TO_KEPT('$16')} THEN shipping_city        ELSE COALESCE($9,  shipping_city) END,
+             shipping_state       = CASE WHEN ${STAFF_SHIP_TO_KEPT('$16')} THEN shipping_state       ELSE COALESCE($10, shipping_state) END,
+             shipping_postal_code = CASE WHEN ${STAFF_SHIP_TO_KEPT('$16')} THEN shipping_postal_code ELSE COALESCE($11, shipping_postal_code) END,
+             shipping_country     = CASE WHEN ${STAFF_SHIP_TO_KEPT('$16')} THEN shipping_country     ELSE COALESCE($12, shipping_country) END,
+             shipping_edited_at   = CASE WHEN ${STAFF_SHIP_TO_KEPT('$16')} OR $7 IS NULL THEN shipping_edited_at ELSE NULL END,
              ${stampColumn} = COALESCE(${stampColumn}, $13),
              channel_refs = channel_refs || ($14::jsonb),
              billing_address = CASE
                WHEN $15::jsonb IS NOT NULL AND (billing_address IS NULL OR billing_address = '{}'::jsonb)
                THEN $15::jsonb ELSE billing_address END,
              updated_at = now()
-           WHERE id = $1 AND organization_id = $16`
+           WHERE id = $1 AND organization_id = $17`
         : `UPDATE customers SET
              customer_name = COALESCE(NULLIF($2, ''), customer_name),
              display_name  = COALESCE(NULLIF($2, ''), display_name),
@@ -252,30 +263,31 @@ async function upsertResolvedCustomer(
              last_name     = COALESCE(NULLIF($4, ''), last_name),
              phone         = COALESCE(NULLIF($5, ''), phone),
              email         = COALESCE(NULLIF($6, ''), email),
-             shipping_address_1   = COALESCE($7,  shipping_address_1),
-             shipping_address_2   = COALESCE($8,  shipping_address_2),
-             shipping_city        = COALESCE($9,  shipping_city),
-             shipping_state       = COALESCE($10, shipping_state),
-             shipping_postal_code = COALESCE($11, shipping_postal_code),
-             shipping_country     = COALESCE($12, shipping_country),
+             shipping_address_1   = CASE WHEN ${STAFF_SHIP_TO_KEPT('$15')} THEN shipping_address_1   ELSE COALESCE($7,  shipping_address_1) END,
+             shipping_address_2   = CASE WHEN ${STAFF_SHIP_TO_KEPT('$15')} THEN shipping_address_2   ELSE COALESCE($8,  shipping_address_2) END,
+             shipping_city        = CASE WHEN ${STAFF_SHIP_TO_KEPT('$15')} THEN shipping_city        ELSE COALESCE($9,  shipping_city) END,
+             shipping_state       = CASE WHEN ${STAFF_SHIP_TO_KEPT('$15')} THEN shipping_state       ELSE COALESCE($10, shipping_state) END,
+             shipping_postal_code = CASE WHEN ${STAFF_SHIP_TO_KEPT('$15')} THEN shipping_postal_code ELSE COALESCE($11, shipping_postal_code) END,
+             shipping_country     = CASE WHEN ${STAFF_SHIP_TO_KEPT('$15')} THEN shipping_country     ELSE COALESCE($12, shipping_country) END,
+             shipping_edited_at   = CASE WHEN ${STAFF_SHIP_TO_KEPT('$15')} OR $7 IS NULL THEN shipping_edited_at ELSE NULL END,
              channel_refs = channel_refs || ($13::jsonb),
              billing_address = CASE
                WHEN $14::jsonb IS NOT NULL AND (billing_address IS NULL OR billing_address = '{}'::jsonb)
                THEN $14::jsonb ELSE billing_address END,
              updated_at = now()
-           WHERE id = $1 AND organization_id = $15`,
+           WHERE id = $1 AND organization_id = $16`,
       stampColumn
         ? [
             customerId, name, first, last, buyer.phone.trim(), buyer.email.trim(),
             shipTo?.address1 ?? null, shipTo?.address2 ?? null, shipTo?.city ?? null,
             shipTo?.state ?? null, shipTo?.postalCode ?? null, shipTo?.country ?? null,
-            channelId, channelRefs, billingAddress, orgId,
+            channelId, channelRefs, billingAddress, entry.placedAt ?? null, orgId,
           ]
         : [
             customerId, name, first, last, buyer.phone.trim(), buyer.email.trim(),
             shipTo?.address1 ?? null, shipTo?.address2 ?? null, shipTo?.city ?? null,
             shipTo?.state ?? null, shipTo?.postalCode ?? null, shipTo?.country ?? null,
-            channelRefs, billingAddress, orgId,
+            channelRefs, billingAddress, entry.placedAt ?? null, orgId,
           ],
     );
     return customerId;

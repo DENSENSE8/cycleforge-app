@@ -154,7 +154,7 @@ export async function fetchUnshippedOrdersData({
   pickerId?: number;
   staffId?: number;
   strictSearchScope?: boolean;
-  stage?: 'pending' | 'tested' | 'packed';
+  stage?: 'pending' | 'picked' | 'packed';
   blockedOnly?: boolean;
   /** Shortage desk lens (`?pair=po`) — forwarded as `pair`; the server implies blockedOnly. */
   pair?: DeskPairFilter;
@@ -307,14 +307,12 @@ export interface DashboardShippedSearchResult {
 export async function fetchDashboardShippedSearch({
   searchQuery,
   packedBy,
-  testedBy,
   staffId,
   shippedFilter,
   searchField,
 }: {
   searchQuery: string;
   packedBy?: number;
-  testedBy?: number;
   staffId?: number;
   shippedFilter?: string;
   searchField?: ShippedSearchField;
@@ -323,7 +321,6 @@ export async function fetchDashboardShippedSearch({
   params.set('q', searchQuery.trim());
   if (searchField && searchField !== 'all') params.set('searchField', searchField);
   if (packedBy !== undefined) params.set('packedBy', String(packedBy));
-  if (testedBy !== undefined) params.set('testedBy', String(testedBy));
   if (staffId !== undefined) params.set('staff', String(staffId));
   if (shippedFilter) params.set('shippedFilter', shippedFilter);
 
@@ -359,7 +356,6 @@ export async function fetchDashboardShippedSearch({
 export async function fetchDashboardShippedData({
   searchQuery = '',
   packedBy,
-  testedBy,
   weekStart,
   weekEnd,
   shippedFilter,
@@ -367,7 +363,6 @@ export async function fetchDashboardShippedData({
 }: {
   searchQuery?: string;
   packedBy?: number;
-  testedBy?: number;
   weekStart?: string;
   weekEnd?: string;
   /** When provided the server filters by type; omit for backward-compat (client filters FBA). */
@@ -383,7 +378,6 @@ export async function fetchDashboardShippedData({
     if (weekEnd) params.set('weekEnd', weekEnd);
   }
   if (packedBy !== undefined) params.set('packedBy', String(packedBy));
-  if (testedBy !== undefined) params.set('testedBy', String(testedBy));
   if (shippedFilter) params.set('shippedFilter', shippedFilter);
 
   const url = `/api/shipped?${params.toString()}`;
@@ -408,7 +402,6 @@ export async function fetchDashboardShippedData({
 
 export async function fetchDashboardPackedRecords({
   packedBy,
-  testedBy,
   staffId,
   weekStart,
   weekEnd,
@@ -424,7 +417,6 @@ export async function fetchDashboardPackedRecords({
   phase = 'full',
 }: {
   packedBy?: number;
-  testedBy?: number;
   staffId?: number;
   weekStart?: string;
   weekEnd?: string;
@@ -450,7 +442,6 @@ export async function fetchDashboardPackedRecords({
   if (weekStart) params.set('weekStart', weekStart);
   if (weekEnd) params.set('weekEnd', weekEnd);
   if (packedBy !== undefined) params.set('packedBy', String(packedBy));
-  if (testedBy !== undefined) params.set('testedBy', String(testedBy));
   if (staffId !== undefined) params.set('staff', String(staffId));
   if (shippedFilter) params.set('shippedFilter', shippedFilter);
   if (carrier) params.set('carrier', carrier);

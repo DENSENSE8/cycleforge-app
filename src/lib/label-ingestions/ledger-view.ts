@@ -1,30 +1,26 @@
-/** The ONE status resolver for the label-intake ledger (desk and `/m` alike). */
+/** The ONE status resolver for a label-ingestion record (the Labels & documents desk). */
 import type { LabelIngestionState, LabelQuarantineReasonCode } from './types';
 
-export type LedgerTone = 'danger' | 'warning' | 'info' | 'fulfillment' | 'success';
 type LedgerAction = 'apply' | 'retry';
 
 interface LedgerStatus {
   /** Written state — the meaning. */
   label: string;
-  tone: LedgerTone;
-  /** 0 = act now. Lower ranks sort first in the "Needs action" view. */
-  rank: number;
   /** The single action the server lifecycle permits from this state. */
   action: LedgerAction | null;
 }
 
 const STATUS: Record<LabelIngestionState, LedgerStatus> = {
-  QUARANTINED: { label: 'Quarantined', tone: 'danger', rank: 0, action: 'retry' },
-  FAILED: { label: 'Failed', tone: 'danger', rank: 0, action: 'retry' },
-  MATCHED: { label: 'Ready to apply', tone: 'warning', rank: 1, action: 'apply' },
-  RECEIVED: { label: 'Received', tone: 'info', rank: 2, action: null },
-  STAGED: { label: 'Staged', tone: 'info', rank: 2, action: null },
-  PARSED: { label: 'Parsed', tone: 'info', rank: 2, action: null },
-  APPLYING: { label: 'Applying', tone: 'fulfillment', rank: 2, action: null },
-  APPLIED: { label: 'Applied', tone: 'success', rank: 3, action: null },
+  QUARANTINED: { label: 'Quarantined', action: 'retry' },
+  FAILED: { label: 'Failed', action: 'retry' },
+  MATCHED: { label: 'Ready to apply', action: 'apply' },
+  RECEIVED: { label: 'Received', action: null },
+  STAGED: { label: 'Staged', action: null },
+  PARSED: { label: 'Parsed', action: null },
+  APPLYING: { label: 'Applying', action: null },
+  APPLIED: { label: 'Applied', action: null },
   // Paired to an order by an operator (Link label) — resolved, nothing to do.
-  LINKED: { label: 'Linked', tone: 'success', rank: 3, action: null },
+  LINKED: { label: 'Linked', action: null },
 };
 
 export function ledgerStatus(state: LabelIngestionState): LedgerStatus {
@@ -59,29 +55,4 @@ export function quarantineCopy(code: string | null, trackingDetected: boolean): 
   if (!code) return null;
   if (code === 'TRACKING_ONLY' && !trackingDetected) return 'No tracking number was read from the label.';
   return (QUARANTINE_COPY as Record<string, string | undefined>)[code] ?? code;
-}
-
-export const LEDGER_VIEWS = ['needs-action', 'all', 'applied'] as const;
-export type LedgerView = (typeof LEDGER_VIEWS)[number];
-
-export const LEDGER_VIEW_LABEL: Record<LedgerView, string> = {
-  'needs-action': 'Needs action',
-  all: 'All labels',
-  applied: 'Applied',
-};
-
-/**
- * Which records a view shows, in what order. "Needs action" is every record
- * with a permitted action, worst first; the other views keep the server's
- * newest-first order.
- */
-export function ledgerViewRows<T extends { state: LabelIngestionState; id: number }>(
-  rows: readonly T[],
-  view: LedgerView,
-): T[] {
-  if (view === 'applied') return rows.filter((row) => row.state === 'APPLIED');
-  if (view === 'all') return [...rows];
-  return rows
-    .filter((row) => STATUS[row.state].action !== null)
-    .sort((a, b) => STATUS[a.state].rank - STATUS[b.state].rank || b.id - a.id);
 }

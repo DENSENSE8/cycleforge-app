@@ -42,7 +42,7 @@ export interface OrderManualsResponse {
   manuals: OrderManual[];
 }
 
-const orderDocumentsKey = (orderId: number) => ['order-documents', orderId] as const;
+export const orderDocumentsKey = (orderId: number) => ['order-documents', orderId] as const;
 const orderManualsKey = (orderId: number) => ['order-manuals', orderId] as const;
 export const orderLabelSummaryKey = (orderId: number) => ['order-label-summary', orderId] as const;
 
@@ -116,7 +116,8 @@ function formFor(file: File, fields: Record<string, string>): FormData {
   return form;
 }
 
-async function uploadDocument(orderId: number, orderRef: string, type: OutboundDocumentType, file: File) {
+/** One outbound document (a packing slip, an invoice) onto one order — the imperative write behind `upload`. */
+export async function uploadOrderDocument(orderId: number, orderRef: string, type: OutboundDocumentType, file: File) {
   const res = await fetch(`/api/orders/${orderId}/documents/upload`, {
     method: 'POST',
     credentials: 'same-origin',
@@ -170,7 +171,7 @@ export function useOrderPaperworkActions(orderId: number, orderRef: string, onCh
         await readJson(res, 'Upload failed.');
         return;
       }
-      await uploadDocument(orderId, orderRef, kind, file);
+      await uploadOrderDocument(orderId, orderRef, kind, file);
     },
     onSuccess: (_data, { file }) => {
       toast.success(`Uploaded ${file.name}`);
@@ -181,7 +182,7 @@ export function useOrderPaperworkActions(orderId: number, orderRef: string, onCh
 
   const replaceDocument = useMutation({
     mutationFn: async ({ doc, file }: { doc: OutboundDocument; file: File }) => {
-      const next = await uploadDocument(orderId, orderRef, doc.documentType, file);
+      const next = await uploadOrderDocument(orderId, orderRef, doc.documentType, file);
       if (next.document.id !== doc.id) await deleteDocument(doc.id);
     },
     onSuccess: (_data, { file }) => {

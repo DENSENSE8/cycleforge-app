@@ -179,7 +179,7 @@ export function ContextPanelLayout({ children }: { children: ReactNode }) {
           fallback={(_e, reset) => (
             <div className="m-3 rounded-lg border border-dashed border-rose-200 bg-rose-50 px-3 py-4 text-center">
               <p className="text-role-caption font-semibold text-rose-700">Sidebar unavailable</p>
-              <p className="mt-1 text-role-eyebrow uppercase tracking-widest text-rose-500">
+              <p className="mt-1 text-role-eyebrow text-rose-500">
                 The rest of the page still works
               </p>
               <button

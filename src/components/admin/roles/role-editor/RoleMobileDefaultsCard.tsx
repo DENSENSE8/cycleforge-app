@@ -85,7 +85,6 @@ export function RoleMobileDefaultsCard({ roleLabel, roleColor, mobileDefaults, b
               size="sm"
               onClick={onReset}
               disabled={busy}
-              className="uppercase tracking-wider"
             >
               Reset
             </Button>
@@ -147,7 +146,6 @@ export function RoleMobileDefaultsCard({ roleLabel, roleColor, mobileDefaults, b
             size="sm"
             onClick={save}
             disabled={busy || !dirty}
-            className="uppercase tracking-wider"
           >
             {busy ? 'Saving…' : dirty ? 'Save defaults' : 'Saved'}
           </Button>

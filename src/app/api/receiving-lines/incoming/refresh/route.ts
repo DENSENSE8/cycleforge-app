@@ -35,7 +35,7 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
     routeKey: 'incoming-tracking-refresh',
     limit: 6,
     windowMs: 60_000,
-    organizationId: ctx.organizationId,
+    organizationId: ctx.organizationId, staffId: ctx.staffId,
   });
   if (!rate.ok) {
     return NextResponse.json(

@@ -112,7 +112,7 @@ function AutomationRow({
 
       <dl className="mt-3 grid grid-cols-1 gap-x-6 gap-y-2 sm:grid-cols-3">
         <div className="min-w-0">
-          <dt className="text-role-eyebrow uppercase tracking-[0.14em] text-text-faint">Runs</dt>
+          <dt className="text-role-eyebrow text-text-faint">Runs</dt>
           <dd className="mt-0.5 text-role-caption text-text-muted">
             {automation.trigger.kind === 'cron'
               ? `${automation.trigger.cadence} · ${automation.trigger.jobKey}`
@@ -120,11 +120,11 @@ function AutomationRow({
           </dd>
         </div>
         <div className="min-w-0">
-          <dt className="text-role-eyebrow uppercase tracking-[0.14em] text-text-faint">Acts on</dt>
+          <dt className="text-role-eyebrow text-text-faint">Acts on</dt>
           <dd className="mt-0.5 text-role-caption text-text-muted">{automation.scope}</dd>
         </div>
         <div className="min-w-0">
-          <dt className="text-role-eyebrow uppercase tracking-[0.14em] text-text-faint">
+          <dt className="text-role-eyebrow text-text-faint">
             Turned on by
           </dt>
           <dd className="mt-0.5 text-role-caption text-text-muted">{automation.gate}</dd>

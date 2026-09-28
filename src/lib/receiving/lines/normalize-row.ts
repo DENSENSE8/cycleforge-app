@@ -1,5 +1,7 @@
 /** Shape a raw `receiving_line` SQL row into the API's wire row. */
 
+import type { TicketReason } from '../receiving-line-row';
+
 /**
  * Wire timestamps as strings. `SELECT rl.*` (and uncast street columns) arrive
  * from node-pg as `Date`; callers do `(stamp || '').trim()` and crash on Date.
@@ -109,6 +111,11 @@ export function normalizeRow(row: Record<string, unknown>) {
     receiving_zoho_notes:     (row.receiving_zoho_notes as string | null) ?? null,
     receiving_listing_url:    (row.receiving_listing_url as string | null) ?? null,
     listing_url:              (row.listing_url as string | null) ?? null,
+    // RETURN intake facts (receiving_line_return, 1:1) — reason falls back to
+    // the carton's `return_reason` in SQL. Null on PO lines / placeholder rows.
+    return_reason:            (row.return_reason as string | null) ?? null,
+    return_rma_ref:           (row.return_rma_ref as string | null) ?? null,
+    return_source_order_id:   (row.return_source_order_id as string | null) ?? null,
     // Purchasing-source PO receipt state, and how old that answer is.
     zoho_status:              (row.zoho_status as string | null) ?? null,
     zoho_status_synced_at:    (row.zoho_status_synced_at as string | null) ?? null,
@@ -189,6 +196,8 @@ export function normalizeRow(row: Record<string, unknown>) {
     receiving_source:         (row.receiving_source as string | null) ?? null,
     photo_count:              row.photo_count != null ? Number(row.photo_count) : 0,
     zendesk_ticket:           (row.zendesk_ticket as string | null) ?? null,
+    claim_ticket:             (row.claim_ticket as string | null) ?? null,
+    ticket_reasons:           asTicketReasons(row.ticket_reasons),
   };
 }
 
@@ -265,6 +274,19 @@ export function buildUnmatchedEmptyReceivingLine(pkg: Record<string, unknown>): 
     image_url: null,
     photo_count: pkg.photo_count,
     zendesk_ticket: pkg.zendesk_ticket ?? null,
+    claim_ticket: pkg.claim_ticket ?? null,
+    ticket_reasons: pkg.ticket_reasons ?? [],
     zoho_reference_number: null,
   };
+}
+
+/** `ticket_reasons` jsonb → typed pairs; anything malformed drops out. */
+function asTicketReasons(raw: unknown): TicketReason[] {
+  if (!Array.isArray(raw)) return [];
+  return raw.flatMap((item) => {
+    const code = typeof item?.code === 'string' ? item.code : '';
+    if (!code) return [];
+    const ticket = typeof item.ticket === 'string' && item.ticket.trim() ? item.ticket.trim() : null;
+    return [{ code, ticket }];
+  });
 }

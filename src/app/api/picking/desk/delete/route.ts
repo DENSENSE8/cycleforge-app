@@ -4,6 +4,7 @@ import { invalidateCacheTags } from '@/lib/cache/upstash-cache';
 import { publishTechLogChanged } from '@/lib/realtime/publish';
 import { withAuth } from '@/lib/auth/withAuth';
 import type { OrgId } from '@/lib/tenancy/constants';
+import { refreshOrderStageFacts } from '@/lib/orders/order-stage-facts';
 
 /**
  * Resolve the desk session anchor from a tech-log row reference:
@@ -90,7 +91,7 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
   // Verify SAL row exists (org-scoped) and get staff for cache invalidation
   const salRow = await tenantQuery(
     ctx.organizationId,
-    `SELECT id, staff_id, fnsku FROM station_activity_logs WHERE id = $1 AND organization_id = $2`,
+    `SELECT id, staff_id, fnsku, order_row_id, shipment_id FROM station_activity_logs WHERE id = $1 AND organization_id = $2`,
     [salId, ctx.organizationId],
   );
   if (salRow.rows.length === 0) {
@@ -127,6 +128,12 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
     await client.query(
       `DELETE FROM station_activity_logs WHERE id = $1 AND organization_id = $2`,
       [salId, ctx.organizationId],
+    );
+    // 5. The scan (and its serials) no longer mark the order picked.
+    await refreshOrderStageFacts(
+      ctx.organizationId,
+      { orderIds: [salRow.rows[0].order_row_id], shipmentIds: [salRow.rows[0].shipment_id] },
+      client,
     );
 
     return deletedTsn.rowCount ?? 0;

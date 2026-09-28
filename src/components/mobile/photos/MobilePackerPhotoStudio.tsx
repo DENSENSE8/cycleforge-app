@@ -339,7 +339,7 @@ function StagePaperworkButton({ onClick, className }: { onClick: () => void; cla
 function StudioHeader({ eyebrow, label, onPaperwork }: { eyebrow: string; label: string; onPaperwork?: () => void }) {
   return (
     <div className="min-w-0">
-      <p className="text-role-micro uppercase tracking-[0.22em] text-white/60">{eyebrow}</p>
+      <p className="text-role-micro text-white/60">{eyebrow}</p>
       <p className="truncate text-sm font-semibold text-white">{label}</p>
       {onPaperwork ? <StagePaperworkButton onClick={onPaperwork} className="mt-2" /> : null}
     </div>
@@ -376,7 +376,7 @@ function PackVerifyConfirm({
     <div className="flex min-h-[100dvh] flex-col justify-between bg-stage px-5 py-6 text-white">
       <div className="space-y-4">
         <div>
-          <p className="text-role-micro uppercase tracking-[0.22em] text-white/60">Verify & finish</p>
+          <p className="text-role-micro text-white/60">Verify & finish</p>
           <p className="truncate text-lg font-semibold text-white">
             {orderId.startsWith('PL-') ? `Pack ${orderId}` : `Order ${orderId}`}
           </p>
@@ -387,7 +387,7 @@ function PackVerifyConfirm({
           number from the slip to confirm it matches this order.
         </p>
         <label className="block space-y-1">
-          <span className="text-role-micro uppercase tracking-widest text-white/60">
+          <span className="text-role-micro text-white/60">
             Tracking on slip
           </span>
           <input

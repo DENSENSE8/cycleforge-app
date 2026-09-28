@@ -127,7 +127,7 @@ export function DocumentSlideOver({
       className={cn('min-w-0', className)}
     >
       <header className="flex shrink-0 items-center gap-2 border-b border-border-hairline bg-surface-canvas px-3 py-2">
-        <h2 className="min-w-0 flex-1 truncate text-role-caption font-semibold uppercase tracking-[0.16em] text-text-muted">
+        <h2 className="min-w-0 flex-1 truncate text-role-caption font-semibold text-text-muted">
           {title}
         </h2>
         <div className="flex shrink-0 items-center gap-0.5">

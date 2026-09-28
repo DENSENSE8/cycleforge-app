@@ -9,10 +9,10 @@ import { Button } from '@/components/ui/button';
 import { cn } from '@/utils/_cn';
 
 const LABEL_FACE =
-  'inline-flex min-w-0 items-center gap-1.5 text-role-eyebrow uppercase tracking-widest text-text-soft';
+  'inline-flex min-w-0 items-center gap-1.5 text-role-eyebrow text-text-soft';
 
 const HAIRLINE_FACE =
-  'inline-flex min-w-0 items-center gap-1.5 text-role-micro uppercase tracking-widest text-text-faint';
+  'inline-flex min-w-0 items-center gap-1.5 text-role-micro text-text-faint';
 
 export type StationBlockFace = 'label' | 'hairline';
 
@@ -75,7 +75,7 @@ export function StationBlockLabel({
   const trailingMeta = (
     <>
       {count != null ? (
-        <span className="text-role-micro uppercase tracking-widest tabular-nums text-text-faint">
+        <span className="text-role-micro tabular-nums text-text-faint">
           {count}
         </span>
       ) : null}

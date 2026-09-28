@@ -5,7 +5,7 @@ import { Printer } from '@/components/Icons';
 import { evidenceVerbClass } from '@/design-system/components/record-ledger/RecordEvidence';
 import { RECORD_ID_CLASS, RECORD_LABEL_CLASS, RECORD_TRAILING_CELL_CLASS } from '@/design-system/tokens/industrial-record';
 import { focusRing } from '@/design-system/tokens/focus-ring';
-import { LEDGER_HIT_CLASS } from '@/components/outbound/orders/outbound-orders-ledger-geometry';
+import { displayCarrierFromHint } from '@/lib/carrier-brand';
 import { printDocument, orderLabelSummaryKey } from '@/lib/orders/order-paperwork-client';
 import { LABEL_PURPOSE_FACE } from '@/lib/shipping/label-purpose';
 import { cn } from '@/utils/_cn';
@@ -46,7 +46,7 @@ export function LabelIntakeLabels({ lookup }: { lookup: IntakeLookup | null }) {
 
   return (
     <div className="flex min-h-full flex-col" data-testid="label-intake-labels">
-      <div className={cn('flex shrink-0 items-center border-b border-mode-ink pl-4', LEDGER_HIT_CLASS)}>
+      <div className="flex min-h-mode-hit shrink-0 items-center border-b border-mode-divide pl-4">
         <span className={cn(RECORD_LABEL_CLASS, 'flex-1 truncate text-mode-muted')}>
           Labels{lookup ? ` · ${lookup.ref}` : ''}
         </span>
@@ -84,23 +84,30 @@ export function LabelIntakeLabels({ lookup }: { lookup: IntakeLookup | null }) {
       {labels.length === 0 ? (
         <p className="px-4 py-3 text-role-data text-mode-muted">{lookup ? 'No labels yet.' : 'Type an order number.'}</p>
       ) : (
-        <ol className="flex flex-col">
+        <ol className="flex flex-col gap-1 p-2">
           {labels.map((label) => (
-            <li key={label.id} className="flex border-b border-mode-rule" data-testid="label-intake-label">
-              <div className="min-w-0 flex-1 py-2 pl-4">
+            <li
+              key={label.id}
+              className="flex rounded-mode-control border border-mode-rule bg-mode-panel"
+              data-testid="label-intake-label"
+            >
+              <div className="min-w-0 flex-1 py-2 pl-3">
                 <div className="flex items-center gap-2">
-                  <span className={cn(RECORD_LABEL_CLASS, 'w-9 shrink-0 bg-mode-ink px-1 text-center text-mode-bar')}>
-                    {LABEL_PURPOSE_FACE[label.purpose].code}
-                  </span>
-                  <span className={cn(RECORD_LABEL_CLASS, label.status === 'voided' ? 'text-mode-muted line-through' : 'text-mode-ink')}>
+                  <span
+                    className={cn(
+                      RECORD_LABEL_CLASS,
+                      'shrink-0 rounded-mode-pill bg-mode-well px-2 py-0.5',
+                      label.status === 'voided' ? 'text-mode-muted line-through' : 'text-mode-ink',
+                    )}
+                  >
                     {label.status === 'voided' ? 'Voided' : LABEL_PURPOSE_FACE[label.purpose].label}
                   </span>
-                  {!label.paired ? <span className={cn(RECORD_LABEL_CLASS, 'text-mode-warn')}>Ref only</span> : null}
+                  {!label.paired ? <span className={cn(RECORD_LABEL_CLASS, 'text-mode-warn')}>Reference only</span> : null}
                   <span className={cn(RECORD_ID_CLASS, 'ml-auto shrink-0')}>{formatMoney(label.cost, label.currency)}</span>
                 </div>
                 <p className={cn(RECORD_ID_CLASS, 'mt-1 select-all break-all')}>{label.trackingNumber ?? '—'}</p>
                 <p className="mt-0.5 truncate text-role-micro text-mode-muted">
-                  {[label.carrierCode?.toUpperCase(), label.serviceCode?.replaceAll('_', ' ')].filter(Boolean).join(' · ') || '—'}
+                  {[displayCarrierFromHint(label.carrierCode) ?? label.carrierCode, label.serviceCode?.replaceAll('_', ' ')].filter(Boolean).join(' · ') || '—'}
                   {' · '}
                   {stamp(label.at)}
                   {label.actorName ? ` · ${label.actorName}` : ''}
@@ -112,9 +119,10 @@ export function LabelIntakeLabels({ lookup }: { lookup: IntakeLookup | null }) {
                 disabled={!label.printable}
                 onClick={() => printDocument(intakeLabelPdfSrc(label.id))}
                 className={cn(
-                  'ds-raw-button self-stretch border-l border-mode-edge text-mode-muted enabled:hover:bg-mode-hover enabled:hover:text-mode-ink disabled:opacity-30',
+                  'ds-raw-button m-1 self-center rounded-mode-control text-mode-muted enabled:hover:bg-mode-hover enabled:hover:text-mode-ink disabled:opacity-30',
                   RECORD_TRAILING_CELL_CLASS,
-                  focusRing('cell'),
+                  'h-8',
+                  focusRing('control'),
                 )}
               >
                 <Printer className="h-3.5 w-3.5" aria-hidden />

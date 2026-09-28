@@ -253,14 +253,23 @@ export function dispatchOpenListingStaffRules(): void {
 
 const OPEN_ORDER_PAPERWORK_EVENT = 'open-order-paperwork';
 
-/** The record's Paperwork action (top strip ⋮ or below the details) → the open order record shows its paperwork inline. */
-export function dispatchOpenOrderPaperwork(orderId: number): void {
+/**
+ * The record's Paperwork action (top strip ⋮ or below the details) → the open
+ * order record shows its paperwork inline, on `tab` when given (Print packing
+ * slip with no slip on file opens the slip tab).
+ */
+export function dispatchOpenOrderPaperwork(orderId: number, tab?: 'packing_slip' | 'shipping_label' | 'manual'): void {
   if (typeof window === 'undefined') return;
-  window.dispatchEvent(new CustomEvent<{ orderId: number }>(OPEN_ORDER_PAPERWORK_EVENT, { detail: { orderId } }));
+  window.dispatchEvent(new CustomEvent<{ orderId: number; tab?: string }>(OPEN_ORDER_PAPERWORK_EVENT, { detail: { orderId, tab } }));
 }
 
-export function subscribeOpenOrderPaperwork(handler: (orderId: number) => void): () => void {
-  const listener = (event: Event) => handler((event as CustomEvent<{ orderId: number }>).detail.orderId);
+export function subscribeOpenOrderPaperwork(
+  handler: (orderId: number, tab?: 'packing_slip' | 'shipping_label' | 'manual') => void,
+): () => void {
+  const listener = (event: Event) => {
+    const detail = (event as CustomEvent<{ orderId: number; tab?: 'packing_slip' | 'shipping_label' | 'manual' }>).detail;
+    handler(detail.orderId, detail.tab);
+  };
   window.addEventListener(OPEN_ORDER_PAPERWORK_EVENT, listener);
   return () => window.removeEventListener(OPEN_ORDER_PAPERWORK_EVENT, listener);
 }

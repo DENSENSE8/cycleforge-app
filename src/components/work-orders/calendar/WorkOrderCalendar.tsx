@@ -75,7 +75,7 @@ export function WorkOrderCalendar() {
         {WEEKDAY_LABELS.map((label) => (
           <div
             key={label}
-            className="bg-surface-canvas px-2 py-1.5 text-center text-role-micro uppercase tracking-wider text-text-faint"
+            className="bg-surface-canvas px-2 py-1.5 text-center text-role-micro text-text-faint"
           >
             {label}
           </div>

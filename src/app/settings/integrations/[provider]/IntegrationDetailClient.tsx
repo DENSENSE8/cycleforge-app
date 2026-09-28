@@ -233,7 +233,7 @@ export function IntegrationDetailClient({ def, summary, nangoReady }: Integratio
 
       {/* Identity */}
       <section className="rounded-none border border-border-soft bg-surface-card p-4 space-y-2">
-        <p className="text-role-micro uppercase tracking-widest text-text-faint">Connection identity</p>
+        <p className="text-role-micro text-text-faint">Connection identity</p>
         {summary.displayLabel && (
           <p className="text-role-body font-semibold text-text-default">{summary.displayLabel}</p>
         )}
@@ -267,7 +267,7 @@ export function IntegrationDetailClient({ def, summary, nangoReady }: Integratio
                   <span className="font-medium text-text-default">{acct.label}</span>
                 )}
                 {acct.role === 'buyer' && (
-                  <span className="rounded bg-indigo-50 px-1.5 py-0.5 text-role-micro uppercase tracking-widest text-indigo-700">Purchasing</span>
+                  <span className="rounded bg-indigo-50 px-1.5 py-0.5 text-role-micro text-indigo-700">Purchasing</span>
                 )}
                 {acct.detail && def.connect !== 'ebay' && <span className="text-text-faint">{acct.detail}</span>}
               </div>
@@ -281,7 +281,7 @@ export function IntegrationDetailClient({ def, summary, nangoReady }: Integratio
 
       {/* Health */}
       <section className="rounded-none border border-border-soft bg-surface-card p-4 space-y-1">
-        <p className="text-role-micro uppercase tracking-widest text-text-faint">Health</p>
+        <p className="text-role-micro text-text-faint">Health</p>
         {summary.lastError && (
           <p className="rounded-md bg-red-50 px-2 py-1 text-role-caption text-red-700">{summary.lastError}</p>
         )}
@@ -305,7 +305,7 @@ export function IntegrationDetailClient({ def, summary, nangoReady }: Integratio
       {/* Webhook */}
       {summary.webhookUrl && (
         <section className="rounded-none border border-border-soft bg-surface-card p-4 space-y-2">
-          <p className="text-role-micro uppercase tracking-widest text-text-faint">Webhook URL</p>
+          <p className="text-role-micro text-text-faint">Webhook URL</p>
           <code className="block break-all rounded-lg bg-surface-canvas px-3 py-2 text-role-caption text-text-default">{summary.webhookUrl}</code>
           <p className="text-role-caption text-text-faint">Copy this URL into your provider&apos;s webhook settings.</p>
         </section>
@@ -313,7 +313,7 @@ export function IntegrationDetailClient({ def, summary, nangoReady }: Integratio
 
       {def.key === 'shipstation' && summary.connected && (
         <section className="rounded-none border border-border-soft bg-surface-card p-4 space-y-2">
-          <p className="text-role-micro uppercase tracking-widest text-text-faint">Stores</p>
+          <p className="text-role-micro text-text-faint">Stores</p>
           <p className="text-role-caption text-text-soft">
             Link each store to an existing platform (and account). Its orders import there; the sync
             never adds a platform or account for a linked store.

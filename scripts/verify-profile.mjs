@@ -169,6 +169,16 @@ export const ALL_GATES = [
     profiles: 'always',
   },
   {
+    name: 'Layer laws',
+    // Laws 3 · 4 · 5 of the screen layer order (HANDOFF-view-spec-layers.md §2):
+    // shared parts never branch on the page, jobs never hide through paint, one
+    // reader per fact. `always`: a source read (<1s). The allowlist in
+    // src/lib/views/layer-law.ts is the census burn-down — it only shrinks.
+    cmd: localBin('tsx'),
+    args: ['scripts/layer-law-guard.ts'],
+    profiles: 'always',
+  },
+  {
     name: 'Design tokens',
     // The committed platform artifacts (desktop tokens.css, iOS
     // DesignTokens.swift, design-mcp tokens.json) must be exactly what

@@ -62,7 +62,7 @@ describe('shipping-metrics', () => {
   it('resolves pending blocked + ready tiles and drops zeros', () => {
     const metrics = resolveShippingMetrics({
       mode: 'pending',
-      unshipped: { total: 10, pending: 0, tested: 4, blocked: 2 },
+      unshipped: { total: 10, pending: 0, picked: 4, blocked: 2 },
       history: ZERO_SHIPPING_HISTORY,
     });
     assert.deepEqual(

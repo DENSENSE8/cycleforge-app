@@ -78,7 +78,7 @@ export function MobileDetailTopBar({
       {lead}
       <div className="min-w-0 flex-1">
         {subtitle ? (
-          <p className="truncate text-role-micro uppercase tracking-[0.18em] text-text-soft">
+          <p className="truncate text-role-micro text-text-soft">
             {subtitle}
           </p>
         ) : null}

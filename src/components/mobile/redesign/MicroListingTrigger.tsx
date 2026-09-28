@@ -46,7 +46,7 @@ export function MicroListingTrigger({ listing }: { listing: GovernedListing }) {
         className="h-[min(72svh,34rem)] max-w-[calc(100vw-1rem)] gap-0 p-0"
       >
         <DialogHeader className="border-b border-border-hairline px-3 py-2 pr-10">
-          <DialogTitle className="font-mono text-role-caption font-semibold uppercase tracking-wide">
+          <DialogTitle className="font-mono text-role-caption font-semibold">
             {platform} listing
           </DialogTitle>
           <DialogDescription>

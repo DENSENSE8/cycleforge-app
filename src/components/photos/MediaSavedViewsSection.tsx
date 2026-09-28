@@ -76,7 +76,7 @@ export function MediaSavedViewsSection({
   return (
     <div className="mb-3 space-y-1 px-1">
       <div className="flex items-center justify-between">
-        <p className="text-role-eyebrow uppercase tracking-widest text-text-soft">Saved views</p>
+        <p className="text-role-eyebrow text-text-soft">Saved views</p>
         {savable && !saving ? (
           <HoverTooltip label="Save current filters as a view" focusable={false}>
             {/* ds-raw-button */}
@@ -84,7 +84,7 @@ export function MediaSavedViewsSection({
               type="button"
               onClick={() => setSaving(true)}
               className={cn(
-                '-my-0.5 flex items-center gap-1 px-1 py-0.5 text-role-micro uppercase tracking-widest text-blue-600 hover:bg-blue-50',
+                '-my-0.5 flex items-center gap-1 px-1 py-0.5 text-role-micro text-blue-600 hover:bg-blue-50',
                 cornerClass('flush'),
               )}
             >
@@ -116,7 +116,7 @@ export function MediaSavedViewsSection({
             )}
           />
           {canManage ? (
-            <label className="flex items-center gap-1.5 text-role-micro font-semibold uppercase tracking-widest text-text-soft">
+            <label className="flex items-center gap-1.5 text-role-micro font-semibold text-text-soft">
               <input
                 type="checkbox"
                 checked={shareWithOrg}
@@ -133,7 +133,7 @@ export function MediaSavedViewsSection({
               onClick={submit}
               disabled={!name.trim() || creating}
               className={cn(
-                'flex items-center gap-1 bg-blue-600 px-2 py-1 text-role-micro uppercase tracking-widest text-white disabled:opacity-50',
+                'flex items-center gap-1 bg-blue-600 px-2 py-1 text-role-micro text-white disabled:opacity-50',
                 cornerClass('flush'),
               )}
             >
@@ -145,7 +145,7 @@ export function MediaSavedViewsSection({
               type="button"
               onClick={() => setSaving(false)}
               className={cn(
-                'px-2 py-1 text-role-micro uppercase tracking-widest text-text-faint hover:text-text-muted',
+                'px-2 py-1 text-role-micro text-text-faint hover:text-text-muted',
                 cornerClass('flush'),
               )}
             >
@@ -179,7 +179,7 @@ export function MediaSavedViewsSection({
               {view.is_shared ? (
                 <span
                   className={cn(
-                    'shrink-0 bg-emerald-50 px-1.5 py-0.5 text-role-micro uppercase tracking-widest text-emerald-700 ring-1 ring-inset ring-emerald-200',
+                    'shrink-0 bg-emerald-50 px-1.5 py-0.5 text-role-micro text-emerald-700 ring-1 ring-inset ring-emerald-200',
                     cornerClass('chip'),
                   )}
                 >

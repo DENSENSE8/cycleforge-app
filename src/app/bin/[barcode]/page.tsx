@@ -83,7 +83,7 @@ function BinPageInner() {
       <header className="sticky top-0 z-10 bg-surface-card border-b border-border-soft px-4 py-3">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
-            <p className="text-role-micro uppercase tracking-[0.16em] text-text-soft">
+            <p className="text-role-micro text-text-soft">
               Bin
             </p>
             <h1 className="truncate text-lg font-semibold text-text-default">
@@ -123,7 +123,7 @@ function BinPageInner() {
         {!loading && bin && (
           <>
             <section>
-              <p className="px-1 mb-2 text-role-micro uppercase tracking-[0.16em] text-text-soft">
+              <p className="px-1 mb-2 text-role-micro text-text-soft">
                 Contents ({bin.contents.length})
               </p>
               {bin.contents.length === 0 ? (

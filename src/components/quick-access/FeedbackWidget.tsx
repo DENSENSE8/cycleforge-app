@@ -102,7 +102,7 @@ function FeedbackPopoverBody({
         </div>
 
         <div className="space-y-1">
-          <label htmlFor="issue-title" className="text-role-eyebrow uppercase tracking-widest text-text-faint">
+          <label htmlFor="issue-title" className="text-role-eyebrow text-text-faint">
             Title
           </label>
           <input
@@ -117,7 +117,7 @@ function FeedbackPopoverBody({
         </div>
 
         <div className="space-y-1">
-          <label htmlFor="issue-details" className="text-role-eyebrow uppercase tracking-widest text-text-faint">
+          <label htmlFor="issue-details" className="text-role-eyebrow text-text-faint">
             Details
           </label>
           <textarea
@@ -131,7 +131,7 @@ function FeedbackPopoverBody({
         </div>
 
         {pagePath ? (
-          <p className="text-role-eyebrow font-semibold uppercase tracking-widest text-text-faint">
+          <p className="text-role-eyebrow font-semibold text-text-faint">
             From {pagePath}
           </p>
         ) : null}

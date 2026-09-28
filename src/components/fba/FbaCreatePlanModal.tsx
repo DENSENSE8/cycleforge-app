@@ -107,7 +107,7 @@ export function FbaCreatePlanModal({ stationTheme = 'blue' }: { stationTheme?: S
       >
         <DialogHeader className="flex-row items-center justify-between space-y-0 border-b border-border-soft px-4 py-3">
           <div>
-            <p className={`text-role-micro uppercase tracking-[0.16em] ${chrome.sectionLabel}`}>
+            <p className={`text-role-micro ${chrome.sectionLabel}`}>
               New plan
             </p>
             <DialogTitle className="mt-1 text-sm font-semibold">

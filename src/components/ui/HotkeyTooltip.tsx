@@ -32,9 +32,9 @@ import type { PortalTooltipPlacement } from '@/lib/ui/portal-anchor';
  * - {@link HoverTooltip} owns WHERE the hint lands — the cursor chip on a desk
  *   (fine pointer, motion on), the anchored `role="tooltip"` bubble for focus,
  *   touch, reduced motion and long labels.
- * - {@link KeyboardChord} owns how a cap LOOKS — one keycap per key, `inverse`
- *   tone on the dark chip: darker than its ground, light hairline, no lift, so
- *   it reads as a hint and not as a target.
+ * - {@link KeyboardChord} owns how a cap LOOKS — one keycap per key, the SAME
+ *   keycap as everywhere else in its `inverse` tone: face, edge and lip mixed
+ *   from the chip's ink, so it reads as a key in every theme.
  *
  * @example
  * <HotkeyTooltip action="Switch mode" chord={STATION_COMPOSER_CYCLE_CHORD}>

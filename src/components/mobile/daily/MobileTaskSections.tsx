@@ -28,7 +28,7 @@ import { cn } from '@/utils/_cn';
 import type { TaskMediaLink } from '@/lib/tasks/media-links';
 
 export const TASK_SECTION_LABEL =
-  'pb-2 pt-5 text-role-micro font-semibold uppercase tracking-wide text-text-muted';
+  'pb-2 pt-5 text-role-micro font-semibold text-text-muted';
 const QUIET = 'text-role-caption text-text-muted';
 const ROW = cn(
   'flex min-h-14 w-full items-center gap-3 border border-border-hairline bg-surface-card px-3 py-2 text-left',
@@ -228,7 +228,7 @@ function RecordDoor({
   const body: ReactNode = (
     <>
       <span className="min-w-0 flex-1">
-        <span className="block text-role-micro uppercase tracking-wide text-text-faint">{noun}</span>
+        <span className="block text-role-micro text-text-faint">{noun}</span>
         <span className="block truncate font-mono text-role-data text-text-default">{label}</span>
         {context ? <span className="block truncate text-role-micro text-text-muted">{context}</span> : null}
       </span>
@@ -256,12 +256,18 @@ function RecordDoor({
   );
 }
 
+/** A raw status (`open`, `IN_TRANSIT`) as sentence case (`Open`, `In transit`). */
+function statusFace(status: string | null | undefined): string | null {
+  const s = status?.trim().replace(/_/g, ' ');
+  return s ? s.charAt(0).toUpperCase() + s.slice(1).toLowerCase() : null;
+}
+
 function linkContext(link: TaskLink): string | null {
   if (link.kind === 'ticket') {
-    return [link.ticket?.subject, link.ticket?.status?.toUpperCase()].filter(Boolean).join(' · ') || null;
+    return [link.ticket?.subject, statusFace(link.ticket?.status)].filter(Boolean).join(' · ') || null;
   }
   if (link.kind === 'tracking') {
-    const carrier = [link.tracking?.carrier, link.tracking?.status?.replace(/_/g, ' ')].filter(Boolean).join(' · ');
+    const carrier = [link.tracking?.carrier, statusFace(link.tracking?.status)].filter(Boolean).join(' · ');
     const order = link.order ? `→ Order ${link.order.orderNumber ?? link.order.id}` : 'No order matched';
     return [carrier, order].filter(Boolean).join(' · ');
   }
@@ -299,7 +305,7 @@ export function TaskLinkDoors({
   const anchorIsTicket = row.entityType === 'support_ticket';
   const anchorHref = anchorIsTicket && !canOpenTickets ? null : taskDeskRecordHref(row, 'phone');
   const anchorContext = anchorIsTicket
-    ? [row.ticket?.subject, row.ticket?.status?.toUpperCase()].filter(Boolean).join(' · ') || null
+    ? [row.ticket?.subject, statusFace(row.ticket?.status)].filter(Boolean).join(' · ') || null
     : null;
   // A ticket is named by the number the operator quotes, never the registry id.
   const anchorLabel = anchorIsTicket ? `#${taskDeskTicketNumber(row) ?? row.entityId}` : String(row.entityId);

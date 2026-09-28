@@ -1,9 +1,13 @@
 /** Directed (system-fed) picking — the pure half. */
 
+import { pickScanKey, unitForScan, wrongUnitLabelRefusal } from '@/lib/picking/pick-scan-unit';
+
 export interface DirectedPickUnit {
   allocationId: number;
   serialUnitId: number;
   serialNumber: string | null;
+  /** Minted unit id the QC / pre-box label encodes. */
+  unitUid: string | null;
 }
 
 export interface DirectedPickPlatformId {
@@ -144,7 +148,12 @@ export function groupDirectedPickLines(orderId: number, rows: readonly DirectedP
       };
       lines.set(key, line);
     }
-    line.units.push({ allocationId: row.allocationId, serialUnitId: row.serialUnitId, serialNumber: row.serialNumber });
+    line.units.push({
+      allocationId: row.allocationId,
+      serialUnitId: row.serialUnitId,
+      serialNumber: row.serialNumber,
+      unitUid: row.unitUid,
+    });
   }
   return [...lines.values()];
 }
@@ -172,9 +181,21 @@ export function matchesLocationScan(scan: string, location: DirectedPickLocation
   return [location.barcode, location.name].some((face) => normalizeScanCode(face ?? '') === code);
 }
 
-const INTERNAL_UNIT_QR = /\/m\/u\/(\d+)(?:[/?#]|$)/;
+function isProductScan(lower: string, line: DirectedPickLine): boolean {
+  return (
+    line.sku.trim().toLowerCase() === lower ||
+    line.platforms.some(
+      (p) => p.platformSku?.trim().toLowerCase() === lower || p.platformItemId?.trim().toLowerCase() === lower,
+    )
+  );
+}
 
-/** Which open unit of the line this item scan picks, or `null` when the scan is not this product. */
+/**
+ * Which open unit of the line this item scan picks, or `null`. A QC / pre-box
+ * unit label (or the unit's serial) picks exactly that unit — the pick then
+ * binds its serial to the order. A SKU / marketplace scan only picks a unit
+ * with no serial: it proves the product, not which serial leaves.
+ */
 export function matchItemScan(
   scan: string,
   line: DirectedPickLine,
@@ -184,23 +205,27 @@ export function matchItemScan(
   if (!raw) return null;
   const open = line.units.filter((u) => !done.has(u.allocationId));
   if (open.length === 0) return null;
-  const lower = raw.toLowerCase();
 
-  const bySerial = open.find((u) => u.serialNumber && u.serialNumber.trim().toLowerCase() === lower);
-  if (bySerial) return bySerial.allocationId;
+  const named = unitForScan(raw, open);
+  if (named) return named.allocationId;
+  if (pickScanKey(raw)?.kind === 'label') return null;
 
-  const qr = INTERNAL_UNIT_QR.exec(raw);
-  if (qr) {
-    const unit = open.find((u) => u.serialUnitId === Number(qr[1]));
-    return unit ? unit.allocationId : null;
+  if (!isProductScan(raw.toLowerCase(), line)) return null;
+  return open.find((u) => !u.serialNumber?.trim())?.allocationId ?? null;
+}
+
+/** Why an item scan that {@link matchItemScan} refused was refused, when it is not simply another product. */
+export function itemScanRefusal(scan: string, line: DirectedPickLine, done: ReadonlySet<number>): string | null {
+  const raw = scan.trim();
+  const open = line.units.filter((u) => !done.has(u.allocationId));
+  if (!raw || open.length === 0) return null;
+  const wrongUnit = wrongUnitLabelRefusal(raw, open);
+  if (wrongUnit) return wrongUnit;
+  if (isProductScan(raw.toLowerCase(), line)) {
+    const serials = open.map((u) => u.serialNumber?.trim()).filter(Boolean).join(' or ');
+    return `Scan the unit's QC label${serials ? ` (${serials})` : ''} — the product barcode doesn't say which serial ships.`;
   }
-
-  const isProduct =
-    line.sku.trim().toLowerCase() === lower ||
-    line.platforms.some(
-      (p) => p.platformSku?.trim().toLowerCase() === lower || p.platformItemId?.trim().toLowerCase() === lower,
-    );
-  return isProduct ? open[0].allocationId : null;
+  return null;
 }
 
 export type DirectedPickStep = 'tote' | 'location' | 'item' | 'done';

@@ -77,7 +77,7 @@ export function LabelIdentifyButton({
 
       {status === 'results' && (
         <Panel radius="lg" padding="none" className="mt-2 space-y-2 p-2">
-          <div className="px-1 text-xs font-medium uppercase tracking-wide text-text-soft">
+          <div className="px-1 text-xs font-medium text-text-soft">
             Confirm the product
           </div>
           {candidates.map((c, i) => (

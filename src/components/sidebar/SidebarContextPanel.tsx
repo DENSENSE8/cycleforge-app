@@ -15,7 +15,6 @@ const AccessSidebarPanel = dynamic(() => import('@/components/admin/AccessSideba
 const AuditLogSidebarPanel = dynamic(() => import('@/components/sidebar/AuditLogSidebarPanel').then((m) => m.AuditLogSidebarPanel));
 const ReceivingSidebarPanel = dynamic(() => import('@/components/sidebar/ReceivingSidebarPanel').then((m) => m.ReceivingSidebarPanel));
 const FbaSidebarPanel = dynamic(() => import('@/components/fba/sidebar').then((m) => m.FbaSidebarPanel));
-const SourcingSidebarPanel = dynamic(() => import('@/components/sidebar/SourcingSidebarPanel').then((m) => m.SourcingSidebarPanel));
 const ProductsSidebarPanel = dynamic(() => import('@/components/sidebar/ProductsSidebarPanel').then((m) => m.ProductsSidebarPanel));
 const WalkInSidebarPanel = dynamic(() => import('@/components/sidebar/WalkInSidebarPanel').then((m) => m.WalkInSidebarPanel));
 const TestingSidebarPanel = dynamic(() => import('@/components/sidebar/TestingSidebarPanel').then((m) => m.TestingSidebarPanel));
@@ -60,7 +59,6 @@ export function SidebarContextPanel() {
   // Inventory is rail-less (operator 2026-09-15) — ledger, locations, graph,
   // triage, pulse, replenish. The column key is dropped; do not remount
   // InventorySidebarPanel / WarehouseSidebarPanel here.
-  if (routeKey === 'sourcing') return <SourcingSidebarPanel />;
   if (routeKey === 'products') return <ProductsSidebarPanel />;
   if (routeKey === 'walk-in') return <WalkInSidebarPanel embedded hideSectionHeader />;
   // (No `repair` branch: `/repair` is a Receiving MODE and resolves to the

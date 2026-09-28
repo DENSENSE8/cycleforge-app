@@ -437,14 +437,14 @@ function CollapsedRow({
               {last8(serial.serial_number)}
             </span>
           ) : waived ? (
-            <span className="text-role-caption font-semibold uppercase tracking-widest text-emerald-700">
+            <span className="text-role-caption font-semibold text-emerald-700">
               No serial
               {waivedReason
                 ? ` · ${waivedReason.replace(/_/g, " ").toLowerCase()}`
                 : ""}
             </span>
           ) : (
-            <span className="text-role-caption font-semibold uppercase tracking-widest text-text-faint">
+            <span className="text-role-caption font-semibold text-text-faint">
               Empty · tap to scan
             </span>
           )

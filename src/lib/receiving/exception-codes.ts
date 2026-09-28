@@ -30,12 +30,20 @@ export const LOSS_EXCEPTION_CODES = [
 /** QA-fail sub-vocabulary — the two failure modes the OS&D block cannot express. */
 const QA_FAIL_ONLY_CODES = ['DEFECTIVE', 'INCOMPLETE'] as const;
 
-/** All four sub-vocabularies, in seed order. Order is the `sort_order` contract. */
+/**
+ * Claim-without-a-stated-reason (owner 2026-09-28): a ticket filed on an
+ * identified carton is a claim, but no fact names what for yet. It reads
+ * "Claim #…" until a person picks the reason (re-filing re-codes the row).
+ */
+const CLAIM_ONLY_CODES = ['CLAIM_UNSPECIFIED'] as const;
+
+/** All five sub-vocabularies, in seed order. Order is the `sort_order` contract — append only. */
 export const RECEIVING_EXCEPTION_CODES = [
   ...OSD_EXCEPTION_CODES,
   ...PHOTO_POLICY_OVERRIDE_CODES,
   ...LOSS_EXCEPTION_CODES,
   ...QA_FAIL_ONLY_CODES,
+  ...CLAIM_ONLY_CODES,
 ] as const;
 
 /** The ONLY codes a QA fail may be recorded under, and the `qa_status` each one means. */
@@ -74,6 +82,37 @@ export function isLossExceptionCode(v: string | null | undefined): v is LossExce
  */
 export function isQaFailExceptionCode(v: string | null | undefined): v is QaFailExceptionCode {
   return v != null && Object.prototype.hasOwnProperty.call(QA_FAIL_EXCEPTION_STATUS, v);
+}
+
+/**
+ * Investigation family (owner 2026-09-28) — we have the box, not its identity.
+ * Resolved by pairing the carton to a PO / order, or returning it.
+ */
+export const INVESTIGATION_EXCEPTION_CODES = ['NO_PO', 'RETURN_NO_ORDER', 'CARRIER_MISMATCH'] as const;
+
+/**
+ * Claim family — someone owes us: the vendor (goods known, goods wrong) or the
+ * carrier (the loss codes, filed through the write-off path only).
+ */
+export const CLAIM_EXCEPTION_CODES = [
+  'SHORT',
+  'OVER',
+  'DAMAGED',
+  'WRONG_ITEM',
+  ...QA_FAIL_ONLY_CODES,
+  ...LOSS_EXCEPTION_CODES,
+  ...CLAIM_ONLY_CODES,
+] as const;
+
+type InvestigationExceptionCode = (typeof INVESTIGATION_EXCEPTION_CODES)[number];
+type ClaimExceptionCode = (typeof CLAIM_EXCEPTION_CODES)[number];
+
+export function isInvestigationCode(v: string | null | undefined): v is InvestigationExceptionCode {
+  return v != null && (INVESTIGATION_EXCEPTION_CODES as readonly string[]).includes(v);
+}
+
+export function isClaimCode(v: string | null | undefined): v is ClaimExceptionCode {
+  return v != null && (CLAIM_EXCEPTION_CODES as readonly string[]).includes(v);
 }
 
 interface ExceptionMeta {
@@ -173,6 +212,11 @@ export const RECEIVING_EXCEPTION_META: Record<ReceivingExceptionCode, ExceptionM
     label: 'Missing parts',
     tone: 'bg-orange-100 text-orange-700 ring-orange-200',
     description: 'Unit arrived without accessories, cables, or parts it needs.',
+  },
+  CLAIM_UNSPECIFIED: {
+    label: 'Claim',
+    tone: 'bg-amber-100 text-amber-700 ring-amber-200',
+    description: 'A claim ticket on an identified carton — the reason is not recorded yet.',
   },
 };
 

@@ -170,7 +170,7 @@ export function OrderPackChecklist({
         className={`rounded-none border border-border-soft bg-surface-card overflow-hidden ${className ?? ''}`}
       >
         <div className="flex items-center justify-between gap-3 border-b border-border-hairline bg-surface-canvas px-3 py-2">
-          <p className="text-role-micro uppercase tracking-widest text-text-soft">Pack checklist</p>
+          <p className="text-role-micro text-text-soft">Pack checklist</p>
           <span
             className={`text-role-eyebrow tabular-nums ${
               doneCount === totalCount ? 'text-emerald-600' : 'text-text-soft'

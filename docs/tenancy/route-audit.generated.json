@@ -1719,27 +1719,6 @@
       "risk": "medium"
     },
     {
-      "route": "/api/orders/intake-suggestions",
-      "methods": [
-        "GET"
-      ],
-      "withAuth": true,
-      "permission": "orders.create",
-      "orgIdRef": true,
-      "tenantWrapped": false,
-      "delegatedTenantWrapped": false,
-      "rawPool": false,
-      "drizzle": false,
-      "transitional": false,
-      "isCron": false,
-      "isPathParam": false,
-      "mutates": false,
-      "touched": [
-        "orders"
-      ],
-      "risk": "medium"
-    },
-    {
       "route": "/api/packerlogs/counts",
       "methods": [
         "GET"

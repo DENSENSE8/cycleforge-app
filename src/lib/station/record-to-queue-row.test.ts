@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import type { TechRecord } from '@/hooks/useDeskPickLogs';
+import type { DeskPickRecord } from '@/hooks/useDeskPickLogs';
 import type { PackerRecord } from '@/hooks/usePackerLogs';
 import {
   getStationSourceKind,
@@ -9,7 +9,7 @@ import {
   techRecordToQueueRow,
 } from './record-to-queue-row';
 
-const techBase: TechRecord = {
+const techBase: DeskPickRecord = {
   id: 42,
   created_at: '2026-07-01T18:00:00Z',
   shipping_tracking_number: '9400100000000000000000',
@@ -57,7 +57,7 @@ test('techRecordToQueueRow maps identity + banding + tester and stashes the sour
   assert.equal(row.packed_by, null);
   // Source round-trips for detail-open / copy.
   assert.equal(getStationSourceKind(row), 'tech');
-  assert.deepEqual(getStationSourceRecord<TechRecord>(row), techBase);
+  assert.deepEqual(getStationSourceRecord<DeskPickRecord>(row), techBase);
 });
 
 test('techRecordToQueueRow falls back to safe defaults for absent fields', () => {

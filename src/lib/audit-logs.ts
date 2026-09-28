@@ -136,6 +136,11 @@ export const AUDIT_ENTITY = {
   /** A `customers` row (buyer contact shared by repairs, orders, counter visits). */
   CUSTOMER: 'customer',
   QC_CHECK_TEMPLATE: 'qc_check_template',
+  /** A `qc_sessions` row — bench time on a unit (TEST/REPAIR) or a repair ticket. */
+  QC_SESSION: 'qc_session',
+  /** A published, immutable snapshot of a SKU's / category's QC steps. */
+  QC_PROCEDURE_VERSION: 'qc_procedure_version',
+  DIAGNOSTIC_CODE: 'diagnostic_code',
   CHECKLIST_TEMPLATE: 'checklist_template',
   KIT_PART_TEMPLATE: 'kit_part_template',
   FAILURE_MODE: 'failure_mode',
@@ -191,6 +196,8 @@ export const AUDIT_ENTITY = {
   // A work_assignments row. Covers both bench assignments and the ad-hoc
   // FOLLOW_UP task one operator throws at another (WS-TASKS, 2026-08-08).
   WORK_ASSIGNMENT: 'work_assignment',
+  /** Permission a dogfood request would lack after restoring strict authorization. */
+  AUTHORIZATION_POLICY: 'authorization_policy',
   // ── Brands (sidebar Phase 1) — product_brands + aliases ──────────────────
   PRODUCT_BRAND: 'product_brand',
 } as const;
@@ -222,6 +229,8 @@ export const AUDIT_ACTION = {
   RECEIVING_UNBOX:           'receiving.unbox',
   RECEIVING_DISPOSITION_SET: 'receiving.disposition.set',
   RECEIVING_LINE_QTY_UPDATE: 'receiving_line.qty.update',
+  /** QC tech (re)assigned on the origin receiving line(s) of an order's allocated units. */
+  RECEIVING_LINE_QC_ASSIGN:  'receiving_line.qc.assign',
   RECEIVING_HEADER_UPDATE:   'receiving.header.update',
   /** An operator consciously received a carton that the `receiving.photoPolicy` evidence gate had blocked (WS-PHOTO §4 soft block). */
   RECEIVING_PHOTO_POLICY_OVERRIDE: 'receiving.photo_policy.override',
@@ -325,6 +334,11 @@ export const AUDIT_ACTION = {
   DAILY_CHECK_ITEM_UPDATE: 'daily_check_item.update',
   DAILY_CHECK_ITEM_RETIRE: 'daily_check_item.retire',
   QC_RESULT_RECORD: 'qc_result.record',
+  // QC workspace: bench sessions, procedure versions, diagnostic code catalog
+  QC_SESSION_START:       'qc_session.start',
+  QC_SESSION_END:         'qc_session.end',
+  QC_PROCEDURE_PUBLISH:   'qc_procedure.publish',
+  DIAGNOSTIC_CODE_UPSERT: 'diagnostic_code.upsert',
   // Kit-parts / BOM templates ("what's in the box" authoring CRUD)
   KIT_PART_CREATE: 'kit_part.create',
   KIT_PART_UPDATE: 'kit_part.update',
@@ -548,6 +562,8 @@ export const AUDIT_ACTION = {
    * label interlock for its current text (src/lib/orders/buyer-note-interlock.ts).
    */
   ORDER_BUYER_NOTE_ACKNOWLEDGED: 'order.buyer_note_acknowledged',
+  /** Staff corrected the order's buyer contact / ship-to (PATCH /api/orders/[id]/buyer). */
+  ORDER_BUYER_UPDATE: 'order.buyer_update',
   /** Ready-to-pack packing-station place / move / clear (order_pack_placements). */
   ORDER_PACK_PLACE: 'order.pack_place',
   ORDER_PACK_MOVE: 'order.pack_move',
@@ -560,6 +576,9 @@ export const AUDIT_ACTION = {
   // an order, and when its shipping label is printed/attached. Feed the order
   // timeline (EventTimeline) on the dashboard details panel.
   TRACKING_ADDED: 'orders.tracking.added',
+  // A manual edit swapped the order's primary tracking for another number; the
+  // old and new numbers ride in `after` so the history reads for every role.
+  TRACKING_REPLACED: 'orders.tracking.replaced',
   LABEL_PRINTED: 'orders.label.printed',
   // Carrier-API label lifecycle (ShipStation outbound station): buying a
   // rate-shopped label and voiding/refunding it. LABEL_PRINTED still fires on
@@ -701,6 +720,8 @@ export const AUDIT_ACTION = {
   BRAND_UPDATE: 'brand.update',
   // Approval-first review queue (LAWS T28): a human refuses a proposal.
   AGENT_MUTATION_REJECT: 'agent_mutation.reject',
+  /** Non-blocking rehearsal signal emitted when stored permissions would deny a dogfood request. */
+  AUTHORIZATION_PROSPECTIVE_DENIAL: 'authorization.prospective_denial',
 } as const;
 
 export type AuditEntity = (typeof AUDIT_ENTITY)[keyof typeof AUDIT_ENTITY];

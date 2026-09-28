@@ -5,6 +5,7 @@ import { tenantQuery, withTenantTransaction } from '@/lib/tenancy/db';
 import { recordAudit, AUDIT_ACTION, AUDIT_ENTITY } from '@/lib/audit-logs';
 import { parseBody } from '@/lib/schemas/parse';
 import { QcBulkBody } from '@/lib/schemas/qc-checks';
+import { ensureProcedureVersion, STEP_PROCEDURE_VERSION_SQL } from '@/lib/qc/procedures';
 
 /** Bulk "check all" / "clear all" for a unit's testing checklist. */
 
@@ -84,12 +85,17 @@ export const POST = withAuth(async (request, ctx) => {
       );
       count = del.rowCount ?? 0;
     } else {
-      // pass — update existing rows, then insert the missing ones. Two
+      // pass — record every step against its scope's current procedure version
+      // (cut first if the SKU's / category's steps drifted since the last publish).
+      await ensureProcedureVersion(client, orgId, { skuCatalogId });
+      if (category != null) await ensureProcedureVersion(client, orgId, { category });
+      // Update existing rows, then insert the missing ones. Two
       // set-based statements avoid depending on a specific unique-index name
       // for ON CONFLICT (mirrors the upsert seam in upsertVerification).
       const upd = await client.query(
         `UPDATE tech_verifications tv
-              SET passed = true, verified_by = $4, verified_at = NOW()
+              SET passed = true, verified_by = $4, verified_at = NOW(),
+                  procedure_version_id = ${STEP_PROCEDURE_VERSION_SQL}
              FROM qc_check_templates qc
             WHERE tv.source_kind   = '${SOURCE_KIND}'
               AND tv.step_type     = '${STEP_TYPE}'
@@ -103,8 +109,9 @@ export const POST = withAuth(async (request, ctx) => {
       );
       const ins = await client.query(
         `INSERT INTO tech_verifications
-             (source_kind, source_row_id, sku_catalog_id, step_type, step_id, passed, verified_by, organization_id)
-           SELECT '${SOURCE_KIND}', $1, $2, '${STEP_TYPE}', qc.id, true, $4, $5
+             (source_kind, source_row_id, sku_catalog_id, step_type, step_id, passed, verified_by, organization_id,
+              procedure_version_id)
+           SELECT '${SOURCE_KIND}', $1, $2, '${STEP_TYPE}', qc.id, true, $4, $5, ${STEP_PROCEDURE_VERSION_SQL}
              FROM qc_check_templates qc
             WHERE qc.organization_id = $5
               AND ${STEP_SCOPE}

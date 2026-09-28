@@ -4,6 +4,7 @@ import { NextResponse } from 'next/server';
 import pool from '@/lib/db';
 import { withAuth } from '@/lib/auth/withAuth';
 import { getOrganization, setOrgStatus, invalidateOrgCache } from '@/lib/tenancy/organizations';
+import { invalidateSessionUserCache } from '@/lib/auth/session-user-cache';
 
 export const POST = withAuth(async (req, ctx) => {
   const org = await getOrganization(ctx.organizationId);
@@ -35,6 +36,7 @@ export const POST = withAuth(async (req, ctx) => {
       WHERE organization_id = $1 AND revoked_at IS NULL`,
     [org.id],
   );
+  invalidateSessionUserCache();
 
   return NextResponse.json({
     status: 'deleted',

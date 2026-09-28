@@ -26,13 +26,13 @@ test('getDashboardOrderViewFromSearch always resolves to the in-warehouse desk',
   assert.equal(getDashboardOrderViewFromSearch(new URLSearchParams('search=abc')), 'unshipped');
 });
 
-test('getDashboardOrderViewFromSearch ignores ustatus=TESTED as a tab (facet only)', () => {
+test('getDashboardOrderViewFromSearch ignores ustatus=PICKED as a tab (facet only)', () => {
   assert.equal(
-    getDashboardOrderViewFromSearch(new URLSearchParams('unshipped=&ustatus=TESTED')),
+    getDashboardOrderViewFromSearch(new URLSearchParams('unshipped=&ustatus=PICKED')),
     'unshipped',
   );
   assert.equal(
-    getDashboardOrderViewFromSearch(new URLSearchParams('ustatus=TESTED')),
+    getDashboardOrderViewFromSearch(new URLSearchParams('ustatus=PICKED')),
     'unshipped',
   );
 });
@@ -66,22 +66,22 @@ test('normalizeDashboardOrderViewParams collapses every legacy tab onto unshippe
   assert.equal(params.get('search'), 'abc');
 });
 
-test('normalizeDashboardOrderViewParams for tested maps to ?stage=tested on the desk', () => {
+test('normalizeDashboardOrderViewParams for picked maps to ?stage=picked on the desk', () => {
   const params = new URLSearchParams('unshipped=&ustatus=PENDING&stage=pending');
-  const next = normalizeDashboardOrderViewParams(params, 'tested');
+  const next = normalizeDashboardOrderViewParams(params, 'picked');
   assert.equal(next, 'unshipped');
   assert.equal(params.has('tested'), false);
   assert.equal(params.has('unshipped'), true);
-  // Existing stage wins; when absent, tested → stage=tested (see other case below).
+  // Existing stage wins; when absent, picked → stage=picked (see other case below).
   assert.equal(params.get('stage'), 'pending');
   assert.equal(params.get('ustatus'), 'PENDING');
 });
 
-test('normalizeDashboardOrderViewParams sets stage=tested when legacy tested has no stage', () => {
+test('normalizeDashboardOrderViewParams sets stage=picked when picked has no stage', () => {
   const params = new URLSearchParams('ustatus=PENDING');
-  const next = normalizeDashboardOrderViewParams(params, 'tested');
+  const next = normalizeDashboardOrderViewParams(params, 'picked');
   assert.equal(next, 'unshipped');
-  assert.equal(params.get('stage'), 'tested');
+  assert.equal(params.get('stage'), 'picked');
   assert.equal(params.has('unshipped'), true);
 });
 

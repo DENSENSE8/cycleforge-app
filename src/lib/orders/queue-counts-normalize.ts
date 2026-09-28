@@ -21,7 +21,7 @@ export interface QueueCountsPackPlacement {
 
 export interface UnshippedQueueCounts {
   total: number;
-  byStage: { all: number; pending: number; tested: number; packed?: number };
+  byStage: { all: number; pending: number; picked: number; packed?: number };
   /** Operator-flagged urgent tally (orders.is_urgent) for the "Urgent" segment. */
   urgent: number;
   /** Ship-by today or past (PST) — Must-ship facet. */
@@ -41,7 +41,7 @@ export interface UnshippedQueueCounts {
 
 export const ZERO_QUEUE_COUNTS: UnshippedQueueCounts = {
   total: 0,
-  byStage: { all: 0, pending: 0, tested: 0, packed: 0 },
+  byStage: { all: 0, pending: 0, picked: 0, packed: 0 },
   urgent: 0,
   mustShip: 0,
   shippedToday: 0,

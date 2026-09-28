@@ -32,13 +32,56 @@ const PIPELINE_ONLY_PARAMS = [
   'po_to',
 ] as const;
 
+/**
+ * The Pipeline's purchasing-source filter (`?inbound=`) — the accounts the
+ * list endpoint narrows on (`useReceivingModeContext` honours only these).
+ * Absent = every source.
+ */
+export const INBOUND_SOURCE_PARAM = 'inbound';
+export const INBOUND_SOURCE_OPTIONS = [
+  { value: 'zoho', label: 'Zoho' },
+  { value: 'ebay', label: 'eBay' },
+] as const;
+
+/**
+ * The Inbound desk's Find text (the sidebar `NavFind`, both lanes) — narrows
+ * the loaded rows in place (`receivingLineMatchesQuery`). In the URL so a
+ * reload, a shared link and a saved view keep it. Distinct from `rh_q`, which
+ * is the SERVER search (PO-field on On the way) the list fetch sends.
+ */
+export const INBOUND_FIND_PARAM = 'find';
+
 /** A pasted list reconciles On the way; Exceptions and Docked never carry it. */
 const PASTE_PARAMS = ['ref_in', 'recon'] as const;
+
+/**
+ * Unboxed status pills (`dockedCartonStatuses(rows)`: UNFOUND · CLAIM · SHORT
+ * · UNBOXED, comma-separated) — narrow the loaded list to those cartons in
+ * place. In the URL so a saved view and a shared link keep the cut.
+ */
+export const DOCKED_FLAG_PARAM = 'dflag';
+
+/** Unboxed intake-kind filter (`dockedIntakeKind(row)`) — the sidebar's Kind row. */
+export const DOCKED_KIND_PARAM = 'dkind';
+export const DOCKED_KIND_VALUES = ['purchase', 'return', 'trade_in', 'repair'] as const;
+export type DockedKind = (typeof DOCKED_KIND_VALUES)[number];
+
+/**
+ * Docked activity-date window (civil day keys, inclusive) — the sidebar's
+ * date row. Set, it replaces the `?weekOffset=` week slice over the loaded
+ * history; unset, the history is all time (or the picked week).
+ */
+export const DOCKED_DATE_FROM_PARAM = 'dateFrom';
+export const DOCKED_DATE_TO_PARAM = 'dateTo';
 
 /** Params that belong only to the Docked (history) lane. */
 const DOCKED_ONLY_PARAMS = [
   RECEIVING_HISTORY_URL_PARAMS.field,
   RECEIVING_HISTORY_URL_PARAMS.scope,
+  DOCKED_FLAG_PARAM,
+  DOCKED_KIND_PARAM,
+  DOCKED_DATE_FROM_PARAM,
+  DOCKED_DATE_TO_PARAM,
 ] as const;
 
 export function parseInboundLane(raw: string | null | undefined): InboundLane {

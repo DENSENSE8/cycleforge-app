@@ -153,6 +153,10 @@
       "schedule": "0 5 * * *"
     },
     {
+      "path": "/api/cron/sessions-sweep",
+      "schedule": "15 5 * * *"
+    },
+    {
       "path": "/api/cron/photos/analyze?limit=15",
       "schedule": "*/10 * * * *"
     },

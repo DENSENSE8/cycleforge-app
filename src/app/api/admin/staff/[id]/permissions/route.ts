@@ -3,6 +3,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { withAuth } from '@/lib/auth/withAuth';
 import { audit } from '@/lib/auth/audit';
+import { invalidateSessionUserCache } from '@/lib/auth/session-user-cache';
 import { ALL_PERMISSIONS, isAdminRoleKey } from '@/lib/auth/permissions-shared';
 import { tenantQuery } from '@/lib/tenancy/db';
 
@@ -95,6 +96,7 @@ export const PATCH = withAuth(async (req: NextRequest, ctx) => {
      RETURNING id, permissions_added, permissions_removed`,
     params,
   );
+  invalidateSessionUserCache({ staffId: id });
 
   await audit({
     staffId: ctx.staffId, sid: ctx.session?.sid ?? null,

@@ -22,7 +22,7 @@ export default function CodeBlock({ language, children }: { language?: string; c
   return (
     <Panel radius="lg" padding="none" className="my-2 overflow-hidden">
       <div className="flex items-center justify-between border-b border-border-soft bg-surface-canvas px-3 py-1.5">
-        <span className="text-role-micro font-semibold uppercase tracking-wider text-text-soft">{language || 'code'}</span>
+        <span className="text-role-micro font-semibold text-text-soft">{language || 'code'}</span>
         <button
           type="button"
           onClick={copy}

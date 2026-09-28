@@ -126,7 +126,7 @@ export function QuickAccessSection() {
 
         <div className="rounded-none border border-border-soft bg-surface-card">
           <div className="border-b border-border-hairline px-4 pb-1 pt-3">
-            <h3 className="text-role-caption font-semibold uppercase tracking-wider text-text-soft">FAB appearance</h3>
+            <h3 className="text-role-caption font-semibold text-text-soft">FAB appearance</h3>
           </div>
           <div className="px-4">
             <ToggleRow
@@ -226,7 +226,7 @@ export function QuickAccessSection() {
         )}
 
         <div className="mt-4 space-y-2 border-t border-border-hairline pt-4">
-          <p className="text-role-caption font-semibold uppercase tracking-widest text-text-faint">Add manually</p>
+          <p className="text-role-caption font-semibold text-text-faint">Add manually</p>
           <div className="grid grid-cols-1 gap-2 sm:grid-cols-[1fr_1fr_auto]">
             <input
               type="text"

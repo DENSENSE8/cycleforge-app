@@ -217,7 +217,7 @@ export function TaskDocumentsSection({
       <ul className="flex flex-col" aria-label="Documents">
         {documents.map((doc) => (
           <li key={doc.id} className="flex min-w-0 items-center gap-2 border-b border-mode-rule py-1.5 last:border-b-0">
-            <span className={cn(RECORD_LABEL_CLASS, 'w-10 shrink-0 text-mode-muted')}>{doc.source === 'repo' ? 'PLAN' : 'DOC'}</span>
+            <span className={cn(RECORD_LABEL_CLASS, 'w-10 shrink-0 text-mode-muted')}>{doc.source === 'repo' ? 'Plan' : 'Doc'}</span>
             <button
               type="button"
               onClick={() => onOpen(doc)}

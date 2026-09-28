@@ -117,6 +117,7 @@ export interface TechVerificationRow {
   notes: string | null;
   value_num?: string | null;
   value_text?: string | null;
+  procedure_version_id?: string | null;
 }
 
 // ─── Normalize (same as product-manuals.ts) ──────────────────────────────────
@@ -987,6 +988,8 @@ export async function upsertVerification(params: {
   valueNum?: number | null;
   valueText?: string | null;
   failedModeId?: number | null;
+  /** qc_procedure_versions.id the step was answered against (unit checklist runs). */
+  procedureVersionId?: number | null;
 }, orgId?: OrgId): Promise<TechVerificationRow> {
   // One verification per (source_kind, source_row_id, step_type, step_id) — enforced by ux_tech_verifications_step (2026-05-29), so a…
   const values: unknown[] = [
@@ -1001,12 +1004,13 @@ export async function upsertVerification(params: {
     params.valueNum ?? null,
     params.valueText?.trim() || null,
     params.failedModeId ?? null,
+    params.procedureVersionId ?? null,
   ];
   if (orgId) values.push(orgId);
   const sql = `INSERT INTO tech_verifications
        (source_kind, source_row_id, sku_catalog_id, step_type, step_id,
-        passed, verified_by, notes, value_num, value_text, failed_mode_id${orgId ? ', organization_id' : ''})
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11${orgId ? ', $12' : ''})
+        passed, verified_by, notes, value_num, value_text, failed_mode_id, procedure_version_id${orgId ? ', organization_id' : ''})
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12${orgId ? ', $13' : ''})
      ON CONFLICT (source_kind, source_row_id, step_type, step_id) DO UPDATE
        SET passed     = EXCLUDED.passed,
            verified_by = EXCLUDED.verified_by,
@@ -1014,7 +1018,8 @@ export async function upsertVerification(params: {
            notes      = EXCLUDED.notes,
            value_num  = EXCLUDED.value_num,
            value_text = EXCLUDED.value_text,
-           failed_mode_id = EXCLUDED.failed_mode_id
+           failed_mode_id = EXCLUDED.failed_mode_id,
+           procedure_version_id = EXCLUDED.procedure_version_id
      RETURNING *`;
   const result = orgId
     ? await withTenantTransaction(orgId, (client) =>

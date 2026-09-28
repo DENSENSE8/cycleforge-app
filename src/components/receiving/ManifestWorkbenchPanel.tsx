@@ -10,6 +10,7 @@ import { getLast8 } from '@/components/ui/CopyChip';
 import { unwrapScannedSerial } from '@/lib/barcode-routing';
 import { unitStatusBadgeTone } from '@/lib/receiving/receiving-constants';
 import { conditionLabel } from '@/lib/conditions';
+import { sentenceCaseLabel } from '@/lib/text/sentence-case-label';
 import { printManifestLabel } from '@/lib/print/printManifestLabel';
 import { useManifestDetail } from '@/hooks/useManifestDetail';
 import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
@@ -174,9 +175,9 @@ export function ManifestWorkbenchPanel({
         </span>
         {manifest ? (
           <span
-            className={`rounded-full px-2 py-0.5 text-role-eyebrow uppercase tracking-widest ${MANIFEST_STATUS_TONE[status] ?? 'bg-surface-sunken text-text-muted'}`}
+            className={`rounded-full px-2 py-0.5 text-role-eyebrow ${MANIFEST_STATUS_TONE[status] ?? 'bg-surface-sunken text-text-muted'}`}
           >
-            {status}
+            {sentenceCaseLabel(status)}
           </span>
         ) : null}
         <IconButton
@@ -269,12 +270,12 @@ export function ManifestWorkbenchPanel({
                         …{getLast8(u.serial_number)}
                       </span>
                       <span
-                        className={`rounded inset-chip text-role-eyebrow uppercase tracking-widest ${unitStatusBadgeTone(u.current_status)}`}
+                        className={`rounded inset-chip text-role-eyebrow ${unitStatusBadgeTone(u.current_status)}`}
                       >
-                        {u.current_status}
+                        {sentenceCaseLabel(u.current_status)}
                       </span>
                     </div>
-                    <div className="mt-0.5 truncate text-role-eyebrow font-semibold uppercase tracking-widest text-text-soft">
+                    <div className="mt-0.5 truncate text-role-eyebrow font-semibold text-text-soft">
                       {u.sku || '—'}
                       {u.condition_grade ? ` · ${conditionLabel(u.condition_grade, 'compact')}` : ''}
                       {lineTitle ? ` · ${lineTitle}` : ''}

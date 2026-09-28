@@ -16,7 +16,7 @@ export function RepairStatusSection({ repair, c }: { repair: RSRecord; c: Repair
         value={repair.status || ''}
         onChange={(e) => c.handleStatusChange(e.target.value)}
         disabled={c.updatingStatus}
-        className={`w-full text-sm font-semibold uppercase tracking-wider px-4 py-3 rounded-lg border transition-all outline-none focus:ring-4 focus:ring-blue-500/10 ${
+        className={`w-full text-sm font-semibold px-4 py-3 rounded-lg border transition-all outline-none focus:ring-4 focus:ring-blue-500/10 ${
           repair.status === 'Done'
             ? 'bg-emerald-50 border-emerald-200 text-emerald-700'
             : repair.status?.includes('Awaiting')

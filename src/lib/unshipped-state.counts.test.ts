@@ -17,6 +17,6 @@ describe('fulfillmentCountsFromCombos', () => {
       { hasPickScan: true, blocked: true, count: 1 },
       { hasPickScan: false, blocked: true, count: 3 },
     ]);
-    assert.deepEqual(counts, { PENDING: 4, TESTED: 2, BLOCKED: 4 });
+    assert.deepEqual(counts, { PENDING: 4, PICKED: 2, BLOCKED: 4 });
   });
 });

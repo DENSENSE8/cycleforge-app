@@ -222,6 +222,28 @@ test('every provider demoted still yields a chain, not an empty one', async () =
   assert.equal(chain[0]!.source, 'ollama');
 });
 
+test('an ASYNC (shared-store) demotion answer sinks the provider the same way', async () => {
+  // The default dep reads Redis, so the answer is a promise; it must not be
+  // treated as truthy-by-being-a-promise (that would sink every provider).
+  const { deps } = fakes({ ollama: { baseUrl: 'http://local/v1', model: 'm' }, openai: { apiKey: 'sk' } });
+  deps.isDemoted = async (_orgId, source) => source === 'ollama';
+
+  const chain = await resolveOrgAiChain(ORG, 'chat', deps);
+
+  assert.deepEqual(chain.map((c) => c.source), ['openai', 'ollama']);
+});
+
+test('a REJECTED async demotion check degrades to the unsorted chain', async () => {
+  const { deps } = fakes({ ollama: { baseUrl: 'http://local/v1', model: 'm' }, openai: { apiKey: 'sk' } });
+  deps.isDemoted = async () => {
+    throw new Error('redis brownout');
+  };
+
+  const chain = await resolveOrgAiChain(ORG, 'chat', deps);
+
+  assert.deepEqual(chain.map((c) => c.source), ['ollama', 'openai']);
+});
+
 test('embed skips anthropic (no embeddings API) and can resolve ollama', async () => {
   const { deps, asked } = fakes({
     ollama: { baseUrl: 'http://x/v1', model: 'chat-m', embedModel: 'nomic-embed-text' },

@@ -98,7 +98,7 @@ export function ZohoInboundStatusBanner() {
             <div className="flex h-7 w-7 items-center justify-center">
               {tone.icon}
             </div>
-            <p className={`text-[var(--text-sm)] font-semibold uppercase tracking-[0.18em] ${tone.text}`}>
+            <p className={`text-[var(--text-sm)] font-semibold ${tone.text}`}>
               Inventory inbound sync
             </p>
             <StatusBadge
@@ -118,7 +118,7 @@ export function ZohoInboundStatusBanner() {
             loading={syncMutation.isPending}
             disabled={!!zoho?.circuit.isOpen}
             icon={<Zap />}
-            className="border-b border-[var(--color-neutral-900)] text-[var(--text-xs)] uppercase tracking-[0.18em] text-[var(--color-neutral-900)] hover:text-[var(--color-brand-primary)]"
+            className="border-b border-[var(--color-neutral-900)] text-[var(--text-xs)] text-[var(--color-neutral-900)] hover:text-[var(--color-brand-primary)]"
           >
             Sync Expected PO Lines
           </Button>

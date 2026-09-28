@@ -84,7 +84,7 @@ export function SidebarSectionList<TId extends string = string>({
             <div
               key={`group:${item.group}:${idx}`}
               className={cn(
-                'bg-surface-canvas text-role-micro font-semibold uppercase tracking-wide text-text-soft',
+                'bg-surface-canvas text-role-micro font-semibold text-text-soft',
                 gutterClassName,
                 'py-1.5',
                 // In `ops` the container owns the rules (`divide-y`).
@@ -100,7 +100,7 @@ export function SidebarSectionList<TId extends string = string>({
         const trailing =
           s.trailing ??
           (typeof s.count === 'number' ? (
-            <span className="ml-auto shrink-0 tabular-nums text-role-micro uppercase tracking-widest text-text-soft">
+            <span className="ml-auto shrink-0 tabular-nums text-role-micro text-text-soft">
               {s.count}
             </span>
           ) : null);
@@ -157,7 +157,7 @@ export function SidebarSectionList<TId extends string = string>({
                 <span
                   className={cn(
                     'block truncate font-medium text-text-soft',
-                    ops ? 'text-role-eyebrow uppercase tracking-widest' : 'text-role-caption',
+                    ops ? 'text-role-eyebrow' : 'text-role-caption',
                   )}
                 >
                   {s.description}

@@ -65,7 +65,7 @@ export interface RepairFormData {
 }
 
 const REPAIR_INTAKE_MAX_WIDTH = 'max-w-[720px]';
-const SECTION_LABEL = 'text-role-micro uppercase tracking-[0.16em] text-text-soft';
+const SECTION_LABEL = 'text-role-micro text-text-soft';
 
 export function RepairIntakeForm({ onClose, onSubmit, initialData, kioskMode = false }: RepairIntakeFormProps) {
     // The kiosk runs full-screen on a front-desk tablet, so the 720px staff-modal column left ~40% of the glass empty while the catalog…
@@ -315,7 +315,7 @@ export function RepairIntakeForm({ onClose, onSubmit, initialData, kioskMode = f
                                 <Check className="h-4 w-4" />
                             </span>
                             <div className="min-w-0">
-                                <p className="truncate text-role-eyebrow uppercase tracking-[0.18em] text-text-faint sm:text-role-micro">
+                                <p className="truncate text-role-eyebrow text-text-faint sm:text-role-micro">
                                     Repair submitted
                                 </p>
                                 <h1 className="truncate text-sm font-semibold tracking-tight text-text-default sm:text-role-body">
@@ -347,7 +347,7 @@ export function RepairIntakeForm({ onClose, onSubmit, initialData, kioskMode = f
                                 href={submitted.zendeskTicketUrl}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className="truncate text-role-micro uppercase tracking-[0.14em] text-text-soft underline-offset-2 hover:text-text-default hover:underline"
+                                className="truncate text-role-micro text-text-soft underline-offset-2 hover:text-text-default hover:underline"
                             >
                                 {submitted.zendeskTicketNumber ? `Ticket ${submitted.zendeskTicketNumber}` : 'View ticket'}
                             </a>
@@ -460,7 +460,7 @@ export function RepairIntakeForm({ onClose, onSubmit, initialData, kioskMode = f
                     {currentStep !== 'review' && currentStep !== 'contact' ? (
                         <div className="mb-6 flex items-start gap-3">
                             <div className="min-w-0 flex-1 space-y-1">
-                                <p className="text-role-eyebrow uppercase tracking-[0.18em] text-text-faint">
+                                <p className="text-role-eyebrow text-text-faint">
                                     Repair Intake
                                 </p>
                                 <h1
@@ -483,7 +483,7 @@ export function RepairIntakeForm({ onClose, onSubmit, initialData, kioskMode = f
                         </div>
                     ) : currentStep === 'contact' ? (
                         <div className="mb-6 space-y-1">
-                            <p className="text-role-eyebrow uppercase tracking-[0.18em] text-text-faint">
+                            <p className="text-role-eyebrow text-text-faint">
                                 Repair Intake
                             </p>
                             <h1
@@ -607,7 +607,7 @@ export function RepairIntakeForm({ onClose, onSubmit, initialData, kioskMode = f
                                         onChange={setCustomerQuery}
                                     />
                                     <div className="overflow-hidden rounded-xl border border-border-soft">
-                                        <div className="grid grid-cols-[1fr_1fr_0.55fr] gap-2 border-b border-border-hairline bg-surface-canvas px-3 py-2 text-role-eyebrow uppercase tracking-[0.12em] text-text-soft">
+                                        <div className="grid grid-cols-[1fr_1fr_0.55fr] gap-2 border-b border-border-hairline bg-surface-canvas px-3 py-2 text-role-eyebrow text-text-soft">
                                             <span>Name</span>
                                             <span>Phone</span>
                                             <span className="text-right">Action</span>
@@ -723,7 +723,7 @@ export function RepairIntakeForm({ onClose, onSubmit, initialData, kioskMode = f
                             </div>
 
                             {signatureData && (
-                                <div className="mt-3 flex items-center gap-2 text-role-micro uppercase tracking-[0.14em] text-text-muted">
+                                <div className="mt-3 flex items-center gap-2 text-role-micro text-text-muted">
                                     <span className="flex h-4 w-4 items-center justify-center rounded-full bg-surface-inverse">
                                         <Check className="h-2.5 w-2.5 text-white" />
                                     </span>

@@ -39,6 +39,7 @@ export async function fetchUnitChecklist(serialUnitId: number): Promise<Record<n
       verified_by_name: s.verified_by_name,
       value_num: s.value_num ?? null,
       value_text: s.value_text ?? null,
+      procedure_version_id: s.procedure_version_id ?? null,
     };
   }
   return map;

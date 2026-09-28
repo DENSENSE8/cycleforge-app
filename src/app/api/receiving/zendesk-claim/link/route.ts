@@ -11,6 +11,7 @@ import {
   listCandidatesForAnchor,
   unlinkTicketFromAnchor,
 } from '@/lib/support/ticket-link';
+import { recordTicketReason, resolveTicketReason } from '@/lib/receiving/exceptions';
 import {
   ClaimTicketLinkBody,
   ClaimTicketLinkSearchQuery,
@@ -84,6 +85,17 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
       },
       staffId: ctx.staffId,
     });
+    if (body.claimType) {
+      // Same request as the link (owner 2026-09-28): the ticket says why.
+      // Best-effort like the create path — the link already committed.
+      await recordTicketReason(ctx.organizationId, {
+        receivingId: body.receivingId,
+        lineId: body.lineId ?? null,
+        claimType: body.claimType,
+        ticketNumber: result.ticketNumber,
+        staffId: ctx.staffId,
+      }).catch((err) => console.warn('[POST /api/receiving/zendesk-claim/link] ticket reason write failed', err));
+    }
     return NextResponse.json({
       success: true,
       ticketNumber: result.ticketNumber,
@@ -117,6 +129,12 @@ export const DELETE = withAuth(async (req: NextRequest, ctx) => {
         lineId: parsed.data.lineId,
       },
     });
+    await resolveTicketReason(ctx.organizationId, {
+      receivingId: parsed.data.receivingId,
+      lineId: parsed.data.lineId ?? null,
+      ticketNumber: `#${parsed.data.ticketId}`,
+      resolvedBy: ctx.staffId,
+    }).catch((err) => console.warn('[DELETE /api/receiving/zendesk-claim/link] ticket reason close failed', err));
     return NextResponse.json({ success: true, removed, shipmentUnpairWarning });
   } catch (err) {
     if (isHelpdeskNotConnected(err)) return notConfigured(context);

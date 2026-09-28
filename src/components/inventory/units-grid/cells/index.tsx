@@ -10,6 +10,7 @@ import { gridCellAlignClass } from '@/design-system/components/grid';
 import { unitStatusBadgeClass, unitStatusDotClass } from '@/lib/unit-status';
 import { conditionGradeTextClass } from '@/lib/condition-tone';
 import { conditionGradeTableLabel } from '@/lib/conditions';
+import { sentenceCaseLabel } from '@/lib/text/sentence-case-label';
 import type { UnitsOverviewRow } from '@/hooks/useUnitsOverview';
 import { resolveUnitsSlotValue } from '@/lib/tables/field-catalog/units-resolve';
 import { isSlotTrackKey } from '@/lib/tables/materialize-tracks';
@@ -50,7 +51,7 @@ function renderUnitsSlotBody(fieldId: string | undefined, row: UnitsOverviewRow)
     case 'units.status':
       return (
         <GridStatusCellValue
-          label={row.current_status}
+          label={sentenceCaseLabel(row.current_status)}
           toneClass={unitStatusBadgeClass(row.current_status)}
           dotClass={unitStatusDotClass(row.current_status)}
         />
@@ -142,7 +143,7 @@ export function renderUnitsGridCell(
           <span className="min-w-0 truncate text-role-caption font-semibold text-text-default">
             {row.product_title || <span className="font-normal text-text-faint">Untitled unit</span>}
           </span>
-          <span className="min-w-0 truncate text-role-eyebrow uppercase tracking-widest text-text-faint">
+          <span className="min-w-0 truncate text-role-eyebrow text-text-faint">
             {row.sku || '—'}
           </span>
         </div>

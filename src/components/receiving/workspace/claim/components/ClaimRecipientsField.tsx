@@ -31,7 +31,7 @@ export function ClaimRecipientsField({
   return (
     <section className="space-y-0 border-t border-border-hairline px-0">
       <div className="flex items-center justify-between gap-0 py-0 pl-3 pr-0">
-        <p className="text-role-eyebrow uppercase tracking-[0.14em] text-text-faint">Recipients</p>
+        <p className="text-role-eyebrow text-text-faint">Recipients</p>
         <VisibilityToggle
           appearance="flush"
           value={notePublic}

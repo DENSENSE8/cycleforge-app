@@ -1,0 +1,31 @@
+-- 2026-09-28t_sal_created_at_brin.sql
+--
+-- WHAT
+--   CREATE INDEX idx_sal_created_at_brin
+--     ON station_activity_logs USING brin (created_at);
+--
+-- WHY
+--   station_activity_logs is the append-only scan journal (43.7k rows / 25 MB
+--   on dev 2026-09-28, every desk scan adds a row). Tenant reads already lead
+--   with organization_id (idx_sal_org_created, idx_sal_org_station_activity_created);
+--   what had no index is a created_at-only range — the archive / retention
+--   sweep and ops queries planned in HANDOFF-qc-pick-split.md "## SAL growth".
+--   Rows arrive in created_at order (pg_stats correlation 0.64 on dev, ~1 in
+--   prod-like append traffic), so a BRIN costs a few pages instead of a
+--   btree the size of the table.
+--
+-- SAFETY
+--   Plain CREATE INDEX inside the runner's transaction; brief SHARE lock on a
+--   25 MB table. No code depends on the index for correctness. Not
+--   tenant-scoped by design: an index, not a table.
+--
+-- VERIFY
+--   EXPLAIN SELECT count(*) FROM station_activity_logs
+--    WHERE created_at < now() - interval '90 days';
+--   -- expect Bitmap Index Scan on idx_sal_created_at_brin.
+--
+-- ROLLBACK
+--   DROP INDEX IF EXISTS idx_sal_created_at_brin;
+
+CREATE INDEX IF NOT EXISTS idx_sal_created_at_brin
+  ON station_activity_logs USING brin (created_at);

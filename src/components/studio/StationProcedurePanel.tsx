@@ -30,7 +30,7 @@ export function StationProcedurePanel({ map }: { map: StationProcedureMap }) {
   return (
     <section>
       <div className="mb-2 flex flex-wrap items-center gap-2">
-        <h3 className="text-role-micro uppercase tracking-wider text-text-faint">Procedure</h3>
+        <h3 className="text-role-micro text-text-faint">Procedure</h3>
         <span className="rounded bg-surface-sunken px-1.5 py-0.5 text-role-micro font-semibold tabular-nums text-text-muted">
           {map.counts.steps} steps
         </span>
@@ -166,7 +166,7 @@ function TableRow({
   const pill = `rounded px-1.5 py-0.5 font-mono text-role-micro font-semibold ${chip}`;
   return (
     <div className="flex flex-wrap items-center gap-1">
-      <span className="text-role-micro font-semibold uppercase tracking-wide text-text-faint">
+      <span className="text-role-micro font-semibold text-text-faint">
         {tone === 'read' ? '↓' : '↑'} {label}
       </span>
       {refs.map((r) =>

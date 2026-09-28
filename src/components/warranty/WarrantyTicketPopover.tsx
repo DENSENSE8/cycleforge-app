@@ -99,7 +99,7 @@ function TimelineRow({ entry }: { entry: WarrantyTimelineEntry }) {
         comment.public ? 'border-border-accent bg-surface-accent/60' : 'border-border-warning bg-surface-warning/60',
       )}
     >
-      <div className="mb-1 flex items-center justify-between gap-2 text-role-micro uppercase tracking-wide">
+      <div className="mb-1 flex items-center justify-between gap-2 text-role-micro">
         <span className={comment.public ? 'font-semibold text-text-accent' : 'font-semibold text-text-warning'}>
           {comment.public ? 'Public reply' : 'Internal note'}
         </span>
@@ -173,7 +173,7 @@ function WarrantyTicketPanel({ claimId }: { claimId: number }) {
         </div>
         <div className="flex shrink-0 items-center gap-1.5">
           {ticketQuery.data?.ticket && (
-            <span className="rounded-full bg-surface-sunken px-2 py-0.5 text-role-micro font-medium uppercase tracking-wide text-text-soft">
+            <span className="rounded-full bg-surface-sunken px-2 py-0.5 text-role-micro font-medium text-text-soft">
               {ticketQuery.data.ticket.status}
             </span>
           )}
@@ -383,7 +383,7 @@ function WarrantyTicketPanel({ claimId }: { claimId: number }) {
                               emptySubject="(no subject)"
                               subjectClassName="font-medium text-text-muted"
                               meta={
-                                <span className="text-role-micro uppercase tracking-wide text-text-faint">
+                                <span className="text-role-micro text-text-faint">
                                   {t.status}
                                 </span>
                               }

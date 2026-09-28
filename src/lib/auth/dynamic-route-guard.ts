@@ -8,9 +8,11 @@ import { getCurrentUserBySid } from '@/lib/auth/current-user';
 import { readSessionSid } from '@/lib/auth/session';
 import type { PermissionString } from '@/lib/auth/permissions-shared';
 import { requiresStepUp, rolesIncludeAdmin } from '@/lib/auth/permissions';
+import { shouldRequireStepUp } from '@/lib/auth/authorization-mode';
 import { hasStepUp } from '@/lib/auth/stepup';
 import { audit } from '@/lib/auth/audit';
 import { recordAudit } from '@/lib/audit-logs';
+import { recordProspectiveStrictDenial } from '@/lib/auth/strict-rehearsal';
 
 function clientIp(req: NextRequest): string | null {
   const xff = req.headers.get('x-forwarded-for');
@@ -37,6 +39,22 @@ export async function requireRoutePerm(
     };
   }
 
+  const ctx: AuthContext = {
+    user,
+    session: user.session,
+    staffId: user.staffId,
+    organizationId: user.organizationId,
+    role: user.role,
+    permissions: user.permissions,
+    authorizationMode: user.authorizationMode,
+    storedPermissions: user.storedPermissions,
+    can: (permission) => user.permissions.has(permission),
+    // Dynamic-param routes have no wrapper audit floor.
+    markAuditWritten: () => {},
+  };
+
+  await recordProspectiveStrictDenial(pool, ctx, req, perm);
+
   if (!user.permissions.has(perm)) {
     await audit({
       staffId: user.staffId,
@@ -57,7 +75,12 @@ export async function requireRoutePerm(
   }
 
   const isAdmin = rolesIncludeAdmin(user.roles);
-  if (!isAdmin && requiresStepUp(perm)) {
+  if (shouldRequireStepUp({
+    mode: user.authorizationMode,
+    isAdmin,
+    explicit: false,
+    permissionRequiresStepUp: requiresStepUp(perm),
+  })) {
     const granted = await hasStepUp(user.session.sid, perm);
     if (!granted) {
       return {
@@ -70,21 +93,7 @@ export async function requireRoutePerm(
     }
   }
 
-  return {
-    denied: null,
-    ctx: {
-      user,
-      session: user.session,
-      staffId: user.staffId,
-      organizationId: user.organizationId,
-      role: user.role,
-      permissions: user.permissions,
-      // markAuditWritten is a no-op for dynamic-param routes — there's no
-      // wrapper-level audit floor on this path. Call `recordRouteAudit()`
-      // explicitly when the handler wants to emit an audit row.
-      markAuditWritten: () => {},
-    },
-  };
+  return { denied: null, ctx };
 }
 
 /** Audit-floor for dynamic-param routes. */
@@ -131,7 +140,10 @@ export async function recordRouteAudit(
       entityType: opts.entityType,
       entityId,
       method: 'system',
-      extra: opts.extra ? opts.extra({ body, response: parsedResponse }) : undefined,
+      extra: {
+        authorizationMode: ctx.authorizationMode,
+        ...(opts.extra ? opts.extra({ body, response: parsedResponse }) : {}),
+      },
     });
   } catch (err) {
     console.warn(

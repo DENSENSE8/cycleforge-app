@@ -1120,7 +1120,7 @@ export const OrdersQueueTableRow = memo(function OrdersQueueTableRow({
   if (prev.record.ship_by_date !== next.record.ship_by_date) return false;
   if (prev.record.created_at !== next.record.created_at) return false;
   if (prev.record.item_number !== next.record.item_number) return false;
-  // TESTED-lane cells (tester + tested-at) render these — compare or go stale.
+  // PICKED-lane cells (tester + tested-at) render these — compare or go stale.
   if (prev.testerDisplay !== next.testerDisplay) return false;
   if (prev.packerDisplay !== next.packerDisplay) return false;
   if (prev.record.test_date_time !== next.record.test_date_time) return false;

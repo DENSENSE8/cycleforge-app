@@ -3,6 +3,7 @@ import type { PriceSource } from '@/lib/orders/price-resolve';
 import type { OutboundHandlingFact } from '@/lib/shipping/outbound-handling-facts';
 import type { OutboundStorageLocation } from '@/lib/shipping/outbound-storage-path';
 import type { CustomerBillTo, CustomerRecord } from '@/lib/customers/customer-display';
+import type { OrderExceptionBlocker } from '@/lib/orders/order-exception-types';
 
 export interface ShippedOrder {
   id: number;
@@ -38,6 +39,9 @@ export interface ShippedOrder {
   qc_verdict?: 'PASS' | 'TEST_AGAIN' | 'TESTING_FAILED' | null;
   /** The verdict predates the order (`testing_results.created_at < orders.created_at`): a pre-tested unit pulled from stock. */
   qc_inherited?: boolean;
+  /** QC assignee: assigned_tech_id of the origin receiving line of a unit allocated to this order (receiving_line_testing). */
+  qc_assignee_id?: number | null;
+  qc_assignee_name?: string | null;
   /** Staff ID assigned to the order's PICK work_assignment (`WA_PICK_LATERAL`). */
   picker_id?: number | null;
   picker_name?: string | null;
@@ -81,12 +85,10 @@ export interface ShippedOrder {
   pre_boxed_count?: number | null;
   pre_boxed_by_name?: string | null;
   pre_boxed_at?: string | null;
-  next_pack_activity_at?: string | null;
   /** Current packing-bench placement (`order_pack_placements` → `locations`), selected on EVERY orders row by `/api/orders`. */
   pack_location_id?: number | null;
   pack_location_name?: string | null;
   pack_location_kind?: string | null;
-  pack_duration?: string | null;
   packer_photos_url: any;
   tracking_type: string | null;
   account_source: string | null;
@@ -112,7 +114,7 @@ export interface ShippedOrder {
   price_cents?: number | null;
   /** ISO-4217; 'USD' when the row stored no currency. */
   price_currency?: string;
-  /** Which fact won: realised sale, allocated unit, channel listing, or none. */
+  /** Which fact won: realised sale, allocated unit, channel listing, or none. Full list shape only (absent on `listShape=queue`). */
   price_source?: PriceSource;
   /** The channel that priced it — null for a sold price and for a unit price. */
   price_platform?: string | null;
@@ -155,6 +157,9 @@ export interface ShippedOrder {
   carrier?: string | null;
   latest_event_at?: string | null;
   has_exception?: boolean | null;
+  /** Carrier ETA (primary shipment), null once delivered. */
+  estimated_delivery_at?: string | null;
+  delivered_at?: string | null;
   exception_at?: string | null;
   is_terminal?: boolean | null;
   created_at: string | null;
@@ -186,7 +191,7 @@ export interface ShippedOrder {
   shipstation_ship_to?: CustomerBillTo | null;
   /** Marketplace buyer checkout note (`orders.buyer_note`, migration 2026-07-03p). */
   buyer_note?: string | null;
-  /** Amazon fulfillment channel: 'AFN' (FBA) | 'MFN'. Null for non-Amazon. */
+  /** Who moves it out: Amazon 'AFN' (FBA) | 'MFN', or 'PICKUP' (counter pickup, no label). Null = we ship it. */
   fulfillment_channel?: string | null;
   row_source?: 'order' | 'exception';
   exception_reason?: string | null;
@@ -195,4 +200,16 @@ export interface ShippedOrder {
   fnsku_log_id?: number | null;
   /** SAL row id — single source of truth anchor for this scan session. */
   sal_id?: number | null;
+  /**
+   * A HELD order's release facts — set only by `exceptionRowToQueueRow` (the
+   * Exceptions desk); read through `resolveOrdersHoldValue`, never ad hoc.
+   */
+  hold?: {
+    category: string;
+    owner: string;
+    action: string;
+    blockers: readonly OrderExceptionBlocker[];
+    /** Other unpaired orders on this item number — one pairing releases them too. */
+    siblingUnpairedCount: number;
+  } | null;
 }

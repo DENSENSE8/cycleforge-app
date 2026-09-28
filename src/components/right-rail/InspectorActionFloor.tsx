@@ -5,7 +5,7 @@
 import type { MouseEvent, ReactNode } from 'react';
 import { Loader2, MoreHorizontal } from '@/components/Icons';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
-import { IconButton } from '@/design-system/primitives';
+import { IconButton, KeyboardKey } from '@/design-system/primitives';
 import {
   ICON_ACTION_FLOOR_CELL_ACTIVE_CLASS,
   ICON_ACTION_FLOOR_CELL_CLASS,
@@ -201,9 +201,9 @@ function FloorOverflowButton({
           >
             <span>{item.label}</span>
             {item.shortcut ? (
-              <kbd className="font-mono text-role-micro text-text-faint">
+              <KeyboardKey size="xs">
                 ⌥{item.shortcut}
-              </kbd>
+              </KeyboardKey>
             ) : null}
           </DropdownMenuItem>
         ))}

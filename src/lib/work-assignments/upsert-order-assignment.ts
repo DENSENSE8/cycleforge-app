@@ -6,6 +6,8 @@
 import type { PoolClient } from 'pg';
 import pool from '@/lib/db';
 import { WORK_ASSIGNMENTS_ACTIVE_ON_CONFLICT } from '@/lib/neon/work-assignments-conflict';
+import { refreshOrderStageFacts } from '@/lib/orders/order-stage-facts';
+import type { OrgId } from '@/lib/tenancy/constants';
 
 type OrderWorkType = 'PICK' | 'PACK';
 
@@ -37,39 +39,42 @@ export async function upsertOrderAssignment(
          AND status IN ('ASSIGNED', 'IN_PROGRESS')`,
       [orderId, workType, organizationId],
     );
-    return;
-  }
-
-  const existing = await client.query(
-    `SELECT id, ${col} AS assignee_id, status
-     FROM work_assignments
-     WHERE organization_id = $3
-       AND entity_type = 'ORDER'
-       AND entity_id   = $1
-       AND work_type   = $2
-       AND status IN ('ASSIGNED', 'IN_PROGRESS')
-     ORDER BY
-       CASE status WHEN 'ASSIGNED' THEN 1 WHEN 'IN_PROGRESS' THEN 2 END,
-       id DESC
-     LIMIT 1`,
-    [orderId, workType, organizationId],
-  );
-
-  if (existing.rows.length > 0) {
-    await client.query(
-      `UPDATE work_assignments
-       SET ${col} = $1, status = 'ASSIGNED', updated_at = NOW()
-       WHERE id = $2`,
-      [staffId, existing.rows[0].id],
-    );
   } else {
-    await client.query(
-      `INSERT INTO work_assignments (organization_id, entity_type, entity_id, work_type, ${col}, status, priority)
-       VALUES ($1, 'ORDER', $2, $3, $4, 'ASSIGNED', 100)
-       ON CONFLICT ${WORK_ASSIGNMENTS_ACTIVE_ON_CONFLICT} DO NOTHING`,
-      [organizationId, orderId, workType, staffId],
+    const existing = await client.query(
+      `SELECT id, ${col} AS assignee_id, status
+       FROM work_assignments
+       WHERE organization_id = $3
+         AND entity_type = 'ORDER'
+         AND entity_id   = $1
+         AND work_type   = $2
+         AND status IN ('ASSIGNED', 'IN_PROGRESS')
+       ORDER BY
+         CASE status WHEN 'ASSIGNED' THEN 1 WHEN 'IN_PROGRESS' THEN 2 END,
+         id DESC
+       LIMIT 1`,
+      [orderId, workType, organizationId],
     );
+
+    if (existing.rows.length > 0) {
+      await client.query(
+        `UPDATE work_assignments
+         SET ${col} = $1, status = 'ASSIGNED', updated_at = NOW()
+         WHERE id = $2`,
+        [staffId, existing.rows[0].id],
+      );
+    } else {
+      await client.query(
+        `INSERT INTO work_assignments (organization_id, entity_type, entity_id, work_type, ${col}, status, priority)
+         VALUES ($1, 'ORDER', $2, $3, $4, 'ASSIGNED', 100)
+         ON CONFLICT ${WORK_ASSIGNMENTS_ACTIVE_ON_CONFLICT} DO NOTHING`,
+        [organizationId, orderId, workType, staffId],
+      );
+    }
   }
+
+  // picker_id / packer_id on order_stage_facts. The bare pool has no org GUC,
+  // so without a caller transaction the refresh opens its own tenant one.
+  await refreshOrderStageFacts(organizationId as OrgId, { orderIds: [orderId] }, client === pool ? undefined : client);
 }
 
 /**

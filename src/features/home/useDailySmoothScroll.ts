@@ -11,6 +11,8 @@ import { usePointerFine, useReducedMotion } from '@/design-system/motion';
  * window: every other page, and every table outside this list, keeps native
  * scroll. It is off under reduced motion and on anything without a fine
  * pointer (touch keeps the platform's own momentum).
+ * Lenis also waits for the welcome entrance, so it cannot grab scroll while
+ * the page is in the air.
  *
  * The scroller is virtualized and its content element swaps between the
  * loading, empty and list states, so the scroll limit is read live
@@ -20,7 +22,7 @@ import { usePointerFine, useReducedMotion } from '@/design-system/motion';
  * pressed while a wheel glide is still in flight drops the glide first, so
  * that glide cannot overwrite the key's own scroll on its next frame.
  */
-export function useDailySmoothScroll(wrapperRef: RefObject<HTMLElement | null>): void {
+export function useDailySmoothScroll(wrapperRef: RefObject<HTMLElement | null>, enabled: boolean): void {
   const reduceMotion = useReducedMotion();
   const pointerFine = usePointerFine();
 
@@ -32,7 +34,7 @@ export function useDailySmoothScroll(wrapperRef: RefObject<HTMLElement | null>):
   });
 
   useEffect(() => {
-    if (!wrapper || reduceMotion || !pointerFine) return;
+    if (!enabled || !wrapper || reduceMotion || !pointerFine) return;
 
     const lenis = new Lenis({
       wrapper,
@@ -65,5 +67,5 @@ export function useDailySmoothScroll(wrapperRef: RefObject<HTMLElement | null>):
       cancelAnimationFrame(frame);
       lenis.destroy();
     };
-  }, [wrapper, reduceMotion, pointerFine]);
+  }, [enabled, wrapper, reduceMotion, pointerFine]);
 }

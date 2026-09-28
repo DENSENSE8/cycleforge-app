@@ -168,11 +168,11 @@ function DocumentTypeGroup({
   return (
     <div data-testid={`order-doc-${documentType.replace(/_/g, '-')}`}>
       <div className="mb-2 flex items-center justify-between">
-        <h3 className="text-role-eyebrow uppercase tracking-wider text-text-soft">{title}</h3>
+        <h3 className="text-role-eyebrow text-text-soft">{title}</h3>
         {documentType === 'packing_slip' && ingestState ? (
           <span
             className={cn(
-              'text-role-eyebrow font-semibold uppercase tracking-widest',
+              'text-role-eyebrow font-semibold',
               ingestState.status === 'available'
                 ? 'text-text-success'
                 : ingestState.status === 'failed'
@@ -272,7 +272,7 @@ function DocumentTypeGroup({
                 )}
                 <div className="flex shrink-0 items-center gap-2">
                   {shipmentLink ? (
-                    <span className="rounded bg-blue-50 px-1.5 py-0.5 text-role-eyebrow uppercase tracking-widest text-blue-700 ring-1 ring-inset ring-blue-200">
+                    <span className="rounded bg-blue-50 px-1.5 py-0.5 text-role-eyebrow text-blue-700 ring-1 ring-inset ring-blue-200">
                       Box
                     </span>
                   ) : null}
@@ -390,7 +390,7 @@ export function OrderDocumentsSection({
         mimeHint: outboundDocumentMimeHint(slip),
         count: slip ? slips.length : undefined,
         loading: isLoading,
-        emptyHint: 'The ECWID import worker is acquiring this packing slip',
+        emptyHint: 'The Ecwid import worker is acquiring this packing slip',
       },
     ];
   }, [labels, slips, isLoading]);

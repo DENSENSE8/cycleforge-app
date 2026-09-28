@@ -7,8 +7,7 @@ import { ChecklistStepRow } from './ChecklistStepRow';
 import { NoCatalogNotice } from './NoCatalogNotice';
 import { focusRing } from '@/design-system/tokens/focus-ring';
 import { cn } from '@/utils/_cn';
-
-
+import { QcProcedureVersion } from '@/components/qc/QcProcedureVersion';
 
 /** Testing checklist — template editing + per-unit recording for one line. */
 export function ChecklistSection({
@@ -48,12 +47,15 @@ export function ChecklistSection({
 
   return (
     <Wrapper className={embedded ? undefined : SECTION}>
-      <div className={`mb-3 flex items-center ${embedded ? 'justify-end' : 'justify-between'}`}>
-        {!embedded ? <h3 className={EYEBROW}>Testing checklist</h3> : null}
+      <div className="mb-3 flex items-center justify-between gap-2">
+        <div className="flex min-w-0 items-center gap-2">
+          {!embedded ? <h3 className={EYEBROW}>Testing checklist</h3> : null}
+          <QcProcedureVersion skuCatalogId={bundle.skuCatalogId} results={Object.values(results)} />
+        </div>
         <div className="flex items-center gap-2">
           {steps.length > 0 ? (
             <span
-              className={`rounded-md px-2 py-0.5 text-role-micro font-semibold uppercase tracking-wider ${
+              className={`rounded-md px-2 py-0.5 text-role-micro font-semibold ${
                 canRecord && ed.done === steps.length
                   ? 'bg-emerald-50 text-emerald-700'
                   : 'bg-surface-sunken text-text-muted'
@@ -73,7 +75,7 @@ export function ChecklistSection({
                   size="sm"
                   loading={ed.bulkBusy}
                   onClick={() => void ed.bulkSet(ed.allDone ? 'clear' : 'pass')}
-                  className="gap-1 rounded-md px-2 text-role-micro uppercase tracking-wider text-emerald-600 hover:bg-emerald-50"
+                  className="gap-1 rounded-md px-2 text-role-micro text-emerald-600 hover:bg-emerald-50"
                 >
                   {ed.allDone ? 'Clear all' : 'Check all'}
                 </Button>
@@ -89,7 +91,7 @@ export function ChecklistSection({
               ed.setAdding((v) => !v);
               ed.setDraft('');
             }}
-            className="gap-1 rounded-md px-2 text-role-micro uppercase tracking-wider text-blue-600 hover:bg-blue-50"
+            className="gap-1 rounded-md px-2 text-role-micro text-blue-600 hover:bg-blue-50"
           >
             Add
           </Button>
@@ -142,7 +144,7 @@ export function ChecklistSection({
       ) : null}
 
       {steps.length > 0 && !canRecord ? (
-        <p className="mt-2.5 text-role-micro font-medium uppercase tracking-wide text-text-faint">
+        <p className="mt-2.5 text-role-micro font-medium text-text-faint">
           Scan a serial to record results
         </p>
       ) : null}

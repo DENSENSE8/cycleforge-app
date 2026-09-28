@@ -16,7 +16,7 @@ export function OutcomeChip({ outcome, className }: { outcome: string; className
   return (
     <span
       className={cn(
-        'inline-flex shrink-0 items-center rounded px-1.5 py-0.5 text-role-micro uppercase tracking-widest ring-1 ring-inset',
+        'inline-flex shrink-0 items-center rounded px-1.5 py-0.5 text-role-micro ring-1 ring-inset',
         TONE_CHIP[meta.tone],
         className,
       )}

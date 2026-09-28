@@ -37,5 +37,5 @@ function useShippedOrderLine(lineId: number | null) {
 export function ShippedOrderActionStrip({ lineId }: { lineId: number | null }) {
   const { line } = useShippedOrderLine(lineId);
   if (!line) return null;
-  return <OrderRecordActionStrip key={line.id} record={line} mode="shipped" />;
+  return <OrderRecordActionStrip key={line.id} record={line} viewKey="shipping.shipped" />;
 }

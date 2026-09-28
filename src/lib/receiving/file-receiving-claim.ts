@@ -28,6 +28,7 @@ import { claimTicketLinkEntity } from '@/lib/support/tickets';
 import { pairTicketShipmentFromReceiving } from '@/lib/support/ticket-link';
 import { tenantQuery } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';
+import { recordTicketReason } from './exceptions';
 
 /** Loose email shape — Zendesk validates for real; this just drops obvious junk. */
 const CLAIM_CC_EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -88,6 +89,8 @@ export interface FileReceivingClaimDeps {
   createSharePack: typeof createSharePack;
   linkPhoto: typeof linkPhoto;
   query: typeof tenantQuery;
+  /** The ticket's recorded reason — the ONE receiving_exceptions writer. */
+  recordReason: typeof recordTicketReason;
 }
 
 async function resolveDefaultDeps(): Promise<FileReceivingClaimDeps> {
@@ -104,6 +107,7 @@ async function resolveDefaultDeps(): Promise<FileReceivingClaimDeps> {
     createSharePack,
     linkPhoto,
     query: tenantQuery,
+    recordReason: recordTicketReason,
   };
 }
 
@@ -188,6 +192,7 @@ export async function fileReceivingClaim(
           ].join('\n'),
       });
       const archiveFields = claimArchiveResponseFields(archived);
+      await recordReasonSafe(deps, input, lineId, existing.ticketNumber);
       return {
         success: true,
         ticketNumber: existing.ticketNumber,
@@ -344,6 +349,8 @@ export async function fileReceivingClaim(
     console.warn('[fileReceivingClaim] ticket link failed', linkErr);
   }
 
+  await recordReasonSafe(deps, input, lineId, ticketNumber);
+
   if (input.staffId) {
     try {
       const { recordStaffForPostedComment } = await import(
@@ -445,4 +452,24 @@ export async function fileReceivingClaim(
     archiveTotal: archiveFields.archiveTotal,
     archiveFolder: archiveFields.archiveFolder,
   };
+}
+
+/** Best-effort like every other post-ticket write here — the ticket exists either way. */
+async function recordReasonSafe(
+  deps: FileReceivingClaimDeps,
+  input: FileReceivingClaimInput,
+  lineId: number | null,
+  ticketNumber: string,
+): Promise<void> {
+  try {
+    await deps.recordReason(input.orgId, {
+      receivingId: Number(input.receivingId),
+      lineId,
+      claimType: input.claimType,
+      ticketNumber,
+      staffId: input.staffId,
+    });
+  } catch (err) {
+    console.warn('[fileReceivingClaim] ticket reason write failed', err);
+  }
 }

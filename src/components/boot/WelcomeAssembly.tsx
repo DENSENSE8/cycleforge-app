@@ -121,6 +121,7 @@ import {
   welcomeWeekday,
 } from '@/lib/boot-splash-script';
 import { readWelcomeThemeOverride } from '@/lib/boot-flag';
+import { releaseWelcome } from '@/components/boot/welcome/welcome-stage';
 import { dailyChecksQueryOptions } from '@/lib/daily-checks/use-daily-checks';
 import { readPaintMarks } from '@/lib/observability/paint-timing';
 import { paintMarkId } from '@/lib/observability/tier1-paint-order';
@@ -566,9 +567,11 @@ function useSelfStaffColor(staffId: number | null): string {
 export interface WelcomeAssemblyProps {
   /** Overlay exit animation finished (AnimatePresence onExitComplete): safe to unmount. */
   onExited: () => void;
+  /** The selected dynamic variant mounted and can replace the pre-hydration frame. */
+  onMounted: () => void;
 }
 
-export function WelcomeAssembly({ onExited }: WelcomeAssemblyProps) {
+export function WelcomeAssembly({ onExited, onMounted }: WelcomeAssemblyProps) {
   const { user } = useAuth();
   const staffId = user?.staffId ?? null;
   const name = user?.name ?? null;
@@ -629,12 +632,17 @@ export function WelcomeAssembly({ onExited }: WelcomeAssemblyProps) {
   /** When the running phase's REGION_LOCK beat ends (`performance.now()`). */
   const lockEndsAtRef = useRef(0);
 
+  useLayoutEffect(() => {
+    onMounted();
+  }, [onMounted]);
+
   /** Start the overlay's exit (the real UI is already live underneath). */
   const resolve = useCallback(() => setOpen(false), []);
 
   const handleExitComplete = useCallback(() => {
     if (exitedRef.current) return;
     exitedRef.current = true;
+    releaseWelcome();
     onExitedRef.current();
   }, []);
 
@@ -1089,6 +1097,7 @@ export function WelcomeAssembly({ onExited }: WelcomeAssemblyProps) {
           key="welcome-overlay"
           role="status"
           aria-live="polite"
+          data-welcome-variant="complex"
           className={WELCOME_ROOT_CLASS}
           initial={false}
           style={paletteStyle as CSSProperties}

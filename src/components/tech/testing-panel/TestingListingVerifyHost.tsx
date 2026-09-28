@@ -46,7 +46,7 @@ export function TestingListingVerifyHost({
       data-testing-listing-verify
     >
       <section className="space-y-1">
-        <p className="text-role-eyebrow uppercase tracking-widest text-text-soft">
+        <p className="text-role-eyebrow text-text-soft">
           Seller claimed
         </p>
         {resolved.label ? (
@@ -66,7 +66,7 @@ export function TestingListingVerifyHost({
       </section>
 
       <section className="space-y-1">
-        <p className="text-role-eyebrow uppercase tracking-widest text-text-soft">Listing</p>
+        <p className="text-role-eyebrow text-text-soft">Listing</p>
         {listingHref ? (
           <Button
             variant="secondary"

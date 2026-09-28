@@ -2,148 +2,114 @@
   "baseUrl": "http://localhost:3050",
   "tenant": "usav",
   "staff": "Michael",
-  "startedAt": "2026-09-26T20:54:54.430Z",
-  "finishedAt": "2026-09-26T21:02:32.564Z",
+  "startedAt": "2026-09-28T06:42:35.897Z",
+  "finishedAt": "2026-09-28T06:45:30.983Z",
   "summary": {
-    "PASS": 377,
-    "WARN": 20,
-    "INFO": 15,
-    "FAIL": 1
+    "PASS": 349,
+    "WARN": 18,
+    "FAIL": 44,
+    "INFO": 16
   },
   "latency": {
     "endpoints": {
       "context": {
-        "p50": 376,
-        "p95": 396,
+        "p50": 101,
+        "p95": 123,
         "n": 20,
         "unanswered": 0
       },
       "context(top)": {
-        "p50": 365,
-        "p95": 384,
+        "p50": 102,
+        "p95": 117,
         "n": 20,
         "unanswered": 0
       },
       "recents": {
-        "p50": 699,
-        "p95": 745,
+        "p50": 287,
+        "p95": 486,
         "n": 20,
         "unanswered": 0
       },
       "recents(adapter)": {
-        "p50": 701,
-        "p95": 980,
+        "p50": 292,
+        "p95": 358,
         "n": 20,
         "unanswered": 0
       },
       "facets": {
-        "p50": 744,
-        "p95": 982,
+        "p50": 352,
+        "p95": 509,
         "n": 20,
         "unanswered": 0
       },
       "facets(exceptions)": {
-        "p50": 719,
-        "p95": 752,
+        "p50": 304,
+        "p95": 458,
         "n": 20,
         "unanswered": 0
       },
       "identify(free)": {
-        "p50": 575,
-        "p95": 629,
+        "p50": 247,
+        "p95": 351,
         "n": 20,
         "unanswered": 0
       },
       "brands": {
-        "p50": 416,
-        "p95": 465,
+        "p50": 104,
+        "p95": 119,
         "n": 20,
         "unanswered": 0
       }
     },
     "identifyByClass": {
       "exact": {
-        "p50": 428,
-        "p95": 1111,
+        "p50": 144,
+        "p95": 332,
         "n": 220,
         "budgetP95": 150
       },
       "free": {
-        "p50": 551,
-        "p95": 726,
+        "p50": 196,
+        "p95": 320,
         "n": 80,
         "budgetP95": 400
       },
       "batch": {
-        "p50": 457,
-        "p95": 3284,
-        "n": 19,
+        "p50": 132,
+        "p95": 309,
+        "n": 20,
         "budgetP95": null
       }
     },
     "allCalls": {
       "context(crawl)": {
-        "p50": 399,
-        "p95": 464,
-        "n": 134
+        "p50": 108,
+        "p95": 201,
+        "n": 138
       },
       "recents": {
-        "p50": 783,
-        "p95": 1823,
+        "p50": 296,
+        "p95": 1225,
         "n": 14
       },
       "facets": {
-        "p50": 693,
-        "p95": 955,
+        "p50": 356,
+        "p95": 608,
         "n": 42
       },
       "identify": {
-        "p50": 455,
-        "p95": 873,
+        "p50": 160,
+        "p95": 332,
         "n": 300
       },
       "brands": {
-        "p50": 407,
-        "p95": 3492,
+        "p50": 117,
+        "p95": 204,
         "n": 30
       }
     }
   },
-  "transportErrors": [
-    {
-      "seq": 551,
-      "at": "2026-09-26T21:00:02.171Z",
-      "method": "POST",
-      "url": "/api/identify",
-      "urlLength": 13,
-      "bodyBytes": 63,
-      "cookieBytes": 71,
-      "elapsedMs": 249,
-      "phase": "awaiting response",
-      "cause": [
-        {
-          "name": "TypeError",
-          "message": "fetch failed"
-        },
-        {
-          "name": "SocketError",
-          "code": "UND_ERR_SOCKET",
-          "message": "other side closed",
-          "socket": {
-            "localPort": 38212,
-            "remotePort": 3050,
-            "bytesWritten": 84820,
-            "bytesRead": 708561
-          }
-        }
-      ],
-      "laneRecovery": {
-        "recovered": true,
-        "waitedMs": 5200,
-        "attempts": 3
-      }
-    }
-  ],
+  "transportErrors": [],
   "laneErrors": [],
   "checks": [
     {
@@ -214,10 +180,16 @@
       "evidence": {
         "page": "operations",
         "laneMapIds": [
+          "ai-chat",
+          "studio",
           "home",
           "ops-photos",
-          "ai-chat",
           "reports",
+          "incoming",
+          "outbound",
+          "inventory",
+          "products",
+          "sales",
           "triage",
           "receive",
           "pickup",
@@ -225,16 +197,7 @@
           "testing",
           "ready-to-pack",
           "packer",
-          "scan-out",
-          "incoming",
-          "sourcing",
-          "outbound",
-          "fba",
-          "label-intake",
-          "inventory",
-          "products",
-          "sales",
-          "studio"
+          "scan-out"
         ]
       }
     },
@@ -342,13 +305,13 @@
     },
     {
       "section": "context",
-      "name": "shape /test?view=testing",
+      "name": "shape /test",
       "status": "PASS",
       "detail": "scope=top page=testing"
     },
     {
       "section": "context",
-      "name": "view=top /test?view=testing",
+      "name": "view=top /test",
       "status": "PASS",
       "detail": "status 200 scope=top back=null"
     },
@@ -360,13 +323,13 @@
     },
     {
       "section": "context",
-      "name": "shape /test?ship=urgent",
+      "name": "shape /pick?ship=urgent",
       "status": "PASS",
       "detail": "scope=top page=ready-to-pack"
     },
     {
       "section": "context",
-      "name": "view=top /test?ship=urgent",
+      "name": "view=top /pick?ship=urgent",
       "status": "PASS",
       "detail": "status 200 scope=top back=null"
     },
@@ -379,20 +342,39 @@
     {
       "section": "context",
       "name": "shape /incoming",
-      "status": "PASS",
-      "detail": "scope=section page=incoming"
+      "status": "FAIL",
+      "detail": "ctx: unexpected key controls; ctx: unexpected key viewKeys; search: unexpected key locate",
+      "evidence": {
+        "errors": [
+          "ctx: unexpected key controls",
+          "ctx: unexpected key viewKeys",
+          "search: unexpected key locate"
+        ]
+      }
     },
     {
       "section": "context",
       "name": "section has no page items /incoming",
-      "status": "PASS",
-      "detail": ""
+      "status": "FAIL",
+      "detail": "sourcing",
+      "evidence": {
+        "leaked": [
+          {
+            "id": "sourcing",
+            "label": "Sourcing",
+            "href": "/sourcing",
+            "active": false,
+            "kind": "link"
+          }
+        ]
+      }
     },
     {
       "section": "context",
       "name": "view=top /incoming",
-      "status": "PASS",
-      "detail": "status 200 scope=top back=null"
+      "status": "FAIL",
+      "detail": "status 200 scope=top back=null",
+      "evidence": "{\"scope\":\"top\",\"page\":{\"id\":\"incoming\",\"label\":\"Inbound\"},\"back\":null,\"search\":{\"scope\":\"incoming.pipeline\",\"placeholder\":\"Search deliveries\",\"source\":\"url-param\",\"param\":\"find\",\"locate\":{\"locator\":\"inbound\",\"param\":\"ref_in\",\"statusParam\":\"recon\"}},\"sections\":[{\"id\":\"top\",\"items\":[{\"id\":\"ai-chat\",\"l"
     },
     {
       "section": "context",
@@ -439,8 +421,13 @@
     {
       "section": "context",
       "name": "shape /shipping/fba",
-      "status": "PASS",
-      "detail": "scope=section page=fba"
+      "status": "FAIL",
+      "detail": "ctx: unexpected key viewKeys",
+      "evidence": {
+        "errors": [
+          "ctx: unexpected key viewKeys"
+        ]
+      }
     },
     {
       "section": "context",
@@ -463,38 +450,78 @@
     {
       "section": "context",
       "name": "shape /shipping/label-intake",
-      "status": "PASS",
-      "detail": "scope=top page=label-intake"
+      "status": "FAIL",
+      "detail": "ctx: unexpected key viewKeys; actions[0]: unexpected key hotkey; actions[1]: unexpected key hotkey",
+      "evidence": {
+        "errors": [
+          "ctx: unexpected key viewKeys",
+          "actions[0]: unexpected key hotkey",
+          "actions[1]: unexpected key hotkey"
+        ]
+      }
     },
     {
       "section": "context",
-      "name": "view=top /shipping/label-intake",
-      "status": "PASS",
-      "detail": "status 200 scope=top back=null"
-    },
-    {
-      "section": "context",
-      "name": "round-trip page label-intake",
-      "status": "PASS",
-      "detail": "label-intake active=true in label-intake/top"
-    },
-    {
-      "section": "context",
-      "name": "shape /shipping/orders",
-      "status": "PASS",
-      "detail": "scope=section page=outbound"
-    },
-    {
-      "section": "context",
-      "name": "section has no page items /shipping/orders",
+      "name": "section has no page items /shipping/label-intake",
       "status": "PASS",
       "detail": ""
     },
     {
       "section": "context",
-      "name": "view=top /shipping/orders",
+      "name": "view=top /shipping/label-intake",
+      "status": "FAIL",
+      "detail": "status 200 scope=top back=null",
+      "evidence": "{\"scope\":\"top\",\"page\":{\"id\":\"label-intake\",\"label\":\"Labels & docs\"},\"back\":null,\"search\":{\"scope\":\"label-intake.pending\",\"placeholder\":\"Search labels\",\"source\":\"desk-store\"},\"sections\":[{\"id\":\"top\",\"items\":[{\"id\":\"ai-chat\",\"label\":\"Chat\",\"href\":\"/ai-chat\",\"active\":false,\"kind\":\"drill\"},{\"id\":\"studio"
+    },
+    {
+      "section": "context",
+      "name": "round-trip page label-intake",
       "status": "PASS",
-      "detail": "status 200 scope=top back=null"
+      "detail": "label-intake active=true in label-intake/section"
+    },
+    {
+      "section": "context",
+      "name": "shape /shipping/orders",
+      "status": "FAIL",
+      "detail": "ctx: unexpected key controls; ctx: unexpected key viewKeys; search: unexpected key locate",
+      "evidence": {
+        "errors": [
+          "ctx: unexpected key controls",
+          "ctx: unexpected key viewKeys",
+          "search: unexpected key locate"
+        ]
+      }
+    },
+    {
+      "section": "context",
+      "name": "section has no page items /shipping/orders",
+      "status": "FAIL",
+      "detail": "fba,label-intake",
+      "evidence": {
+        "leaked": [
+          {
+            "id": "fba",
+            "label": "FBA",
+            "href": "/shipping/fba",
+            "active": false,
+            "kind": "link"
+          },
+          {
+            "id": "label-intake",
+            "label": "Labels & docs",
+            "href": "/shipping/label-intake",
+            "active": false,
+            "kind": "link"
+          }
+        ]
+      }
+    },
+    {
+      "section": "context",
+      "name": "view=top /shipping/orders",
+      "status": "FAIL",
+      "detail": "status 200 scope=top back=null",
+      "evidence": "{\"scope\":\"top\",\"page\":{\"id\":\"outbound\",\"label\":\"Outbound\"},\"back\":null,\"search\":{\"scope\":\"outbound.triage\",\"placeholder\":\"Search orders to ship\",\"source\":\"desk-store\",\"locate\":{\"locator\":\"outbound\",\"param\":\"refs\",\"statusParam\":\"located\"}},\"sections\":[{\"id\":\"top\",\"items\":[{\"id\":\"ai-chat\",\"label\":\"Cha"
     },
     {
       "section": "context",
@@ -588,33 +615,6 @@
     },
     {
       "section": "context",
-      "name": "shape /test",
-      "status": "PASS",
-      "detail": "scope=top page=ready-to-pack"
-    },
-    {
-      "section": "context",
-      "name": "view=top /test",
-      "status": "PASS",
-      "detail": "status 200 scope=top back=null"
-    },
-    {
-      "section": "context",
-      "name": "page tech (/test)",
-      "status": "WARN",
-      "detail": "resolves to page ready-to-pack; registry page tech is not on the lane map",
-      "evidence": {
-        "resolved": "ready-to-pack"
-      }
-    },
-    {
-      "section": "context",
-      "name": "round-trip page tech",
-      "status": "PASS",
-      "detail": "ready-to-pack active=true in ready-to-pack/top"
-    },
-    {
-      "section": "context",
       "name": "shape /support",
       "status": "PASS",
       "detail": "scope=section page=support"
@@ -639,10 +639,16 @@
       "evidence": {
         "page": "support",
         "laneMapIds": [
+          "ai-chat",
+          "studio",
           "home",
           "ops-photos",
-          "ai-chat",
           "reports",
+          "incoming",
+          "outbound",
+          "inventory",
+          "products",
+          "sales",
           "triage",
           "receive",
           "pickup",
@@ -650,16 +656,7 @@
           "testing",
           "ready-to-pack",
           "packer",
-          "scan-out",
-          "incoming",
-          "sourcing",
-          "outbound",
-          "fba",
-          "label-intake",
-          "inventory",
-          "products",
-          "sales",
-          "studio"
+          "scan-out"
         ]
       }
     },
@@ -803,10 +800,16 @@
       "evidence": {
         "page": "operations",
         "laneMapIds": [
+          "ai-chat",
+          "studio",
           "home",
           "ops-photos",
-          "ai-chat",
           "reports",
+          "incoming",
+          "outbound",
+          "inventory",
+          "products",
+          "sales",
           "triage",
           "receive",
           "pickup",
@@ -814,16 +817,7 @@
           "testing",
           "ready-to-pack",
           "packer",
-          "scan-out",
-          "incoming",
-          "sourcing",
-          "outbound",
-          "fba",
-          "label-intake",
-          "inventory",
-          "products",
-          "sales",
-          "studio"
+          "scan-out"
         ]
       }
     },
@@ -859,10 +853,16 @@
       "evidence": {
         "page": "operations",
         "laneMapIds": [
+          "ai-chat",
+          "studio",
           "home",
           "ops-photos",
-          "ai-chat",
           "reports",
+          "incoming",
+          "outbound",
+          "inventory",
+          "products",
+          "sales",
           "triage",
           "receive",
           "pickup",
@@ -870,16 +870,7 @@
           "testing",
           "ready-to-pack",
           "packer",
-          "scan-out",
-          "incoming",
-          "sourcing",
-          "outbound",
-          "fba",
-          "label-intake",
-          "inventory",
-          "products",
-          "sales",
-          "studio"
+          "scan-out"
         ]
       }
     },
@@ -915,10 +906,16 @@
       "evidence": {
         "page": "operations",
         "laneMapIds": [
+          "ai-chat",
+          "studio",
           "home",
           "ops-photos",
-          "ai-chat",
           "reports",
+          "incoming",
+          "outbound",
+          "inventory",
+          "products",
+          "sales",
           "triage",
           "receive",
           "pickup",
@@ -926,16 +923,7 @@
           "testing",
           "ready-to-pack",
           "packer",
-          "scan-out",
-          "incoming",
-          "sourcing",
-          "outbound",
-          "fba",
-          "label-intake",
-          "inventory",
-          "products",
-          "sales",
-          "studio"
+          "scan-out"
         ]
       }
     },
@@ -971,10 +959,16 @@
       "evidence": {
         "page": "operations",
         "laneMapIds": [
+          "ai-chat",
+          "studio",
           "home",
           "ops-photos",
-          "ai-chat",
           "reports",
+          "incoming",
+          "outbound",
+          "inventory",
+          "products",
+          "sales",
           "triage",
           "receive",
           "pickup",
@@ -982,16 +976,7 @@
           "testing",
           "ready-to-pack",
           "packer",
-          "scan-out",
-          "incoming",
-          "sourcing",
-          "outbound",
-          "fba",
-          "label-intake",
-          "inventory",
-          "products",
-          "sales",
-          "studio"
+          "scan-out"
         ]
       }
     },
@@ -1027,10 +1012,16 @@
       "evidence": {
         "page": "operations",
         "laneMapIds": [
+          "ai-chat",
+          "studio",
           "home",
           "ops-photos",
-          "ai-chat",
           "reports",
+          "incoming",
+          "outbound",
+          "inventory",
+          "products",
+          "sales",
           "triage",
           "receive",
           "pickup",
@@ -1038,16 +1029,7 @@
           "testing",
           "ready-to-pack",
           "packer",
-          "scan-out",
-          "incoming",
-          "sourcing",
-          "outbound",
-          "fba",
-          "label-intake",
-          "inventory",
-          "products",
-          "sales",
-          "studio"
+          "scan-out"
         ]
       }
     },
@@ -1083,10 +1065,16 @@
       "evidence": {
         "page": "operations",
         "laneMapIds": [
+          "ai-chat",
+          "studio",
           "home",
           "ops-photos",
-          "ai-chat",
           "reports",
+          "incoming",
+          "outbound",
+          "inventory",
+          "products",
+          "sales",
           "triage",
           "receive",
           "pickup",
@@ -1094,16 +1082,7 @@
           "testing",
           "ready-to-pack",
           "packer",
-          "scan-out",
-          "incoming",
-          "sourcing",
-          "outbound",
-          "fba",
-          "label-intake",
-          "inventory",
-          "products",
-          "sales",
-          "studio"
+          "scan-out"
         ]
       }
     },
@@ -1139,10 +1118,16 @@
       "evidence": {
         "page": "operations",
         "laneMapIds": [
+          "ai-chat",
+          "studio",
           "home",
           "ops-photos",
-          "ai-chat",
           "reports",
+          "incoming",
+          "outbound",
+          "inventory",
+          "products",
+          "sales",
           "triage",
           "receive",
           "pickup",
@@ -1150,16 +1135,7 @@
           "testing",
           "ready-to-pack",
           "packer",
-          "scan-out",
-          "incoming",
-          "sourcing",
-          "outbound",
-          "fba",
-          "label-intake",
-          "inventory",
-          "products",
-          "sales",
-          "studio"
+          "scan-out"
         ]
       }
     },
@@ -1195,10 +1171,16 @@
       "evidence": {
         "page": "operations",
         "laneMapIds": [
+          "ai-chat",
+          "studio",
           "home",
           "ops-photos",
-          "ai-chat",
           "reports",
+          "incoming",
+          "outbound",
+          "inventory",
+          "products",
+          "sales",
           "triage",
           "receive",
           "pickup",
@@ -1206,16 +1188,7 @@
           "testing",
           "ready-to-pack",
           "packer",
-          "scan-out",
-          "incoming",
-          "sourcing",
-          "outbound",
-          "fba",
-          "label-intake",
-          "inventory",
-          "products",
-          "sales",
-          "studio"
+          "scan-out"
         ]
       }
     },
@@ -1251,10 +1224,16 @@
       "evidence": {
         "page": "operations",
         "laneMapIds": [
+          "ai-chat",
+          "studio",
           "home",
           "ops-photos",
-          "ai-chat",
           "reports",
+          "incoming",
+          "outbound",
+          "inventory",
+          "products",
+          "sales",
           "triage",
           "receive",
           "pickup",
@@ -1262,16 +1241,7 @@
           "testing",
           "ready-to-pack",
           "packer",
-          "scan-out",
-          "incoming",
-          "sourcing",
-          "outbound",
-          "fba",
-          "label-intake",
-          "inventory",
-          "products",
-          "sales",
-          "studio"
+          "scan-out"
         ]
       }
     },
@@ -1307,10 +1277,16 @@
       "evidence": {
         "page": "operations",
         "laneMapIds": [
+          "ai-chat",
+          "studio",
           "home",
           "ops-photos",
-          "ai-chat",
           "reports",
+          "incoming",
+          "outbound",
+          "inventory",
+          "products",
+          "sales",
           "triage",
           "receive",
           "pickup",
@@ -1318,16 +1294,7 @@
           "testing",
           "ready-to-pack",
           "packer",
-          "scan-out",
-          "incoming",
-          "sourcing",
-          "outbound",
-          "fba",
-          "label-intake",
-          "inventory",
-          "products",
-          "sales",
-          "studio"
+          "scan-out"
         ]
       }
     },
@@ -1489,6 +1456,18 @@
     },
     {
       "section": "context",
+      "name": "round-trip incoming.incoming (/incoming)",
+      "status": "PASS",
+      "detail": "incoming active=true in incoming/section"
+    },
+    {
+      "section": "context",
+      "name": "round-trip incoming.sourcing (/sourcing)",
+      "status": "PASS",
+      "detail": "sourcing active=true in sourcing/section"
+    },
+    {
+      "section": "context",
       "name": "round-trip incoming.pipeline (/incoming)",
       "status": "PASS",
       "detail": "pipeline active=true in incoming/section"
@@ -1496,20 +1475,38 @@
     {
       "section": "context",
       "name": "shape /incoming?lane=docked",
-      "status": "PASS",
-      "detail": "scope=section page=incoming"
+      "status": "FAIL",
+      "detail": "ctx: unexpected key controls; ctx: unexpected key viewKeys",
+      "evidence": {
+        "errors": [
+          "ctx: unexpected key controls",
+          "ctx: unexpected key viewKeys"
+        ]
+      }
     },
     {
       "section": "context",
       "name": "section has no page items /incoming?lane=docked",
-      "status": "PASS",
-      "detail": ""
+      "status": "FAIL",
+      "detail": "sourcing",
+      "evidence": {
+        "leaked": [
+          {
+            "id": "sourcing",
+            "label": "Sourcing",
+            "href": "/sourcing",
+            "active": false,
+            "kind": "link"
+          }
+        ]
+      }
     },
     {
       "section": "context",
       "name": "view=top /incoming?lane=docked",
-      "status": "PASS",
-      "detail": "status 200 scope=top back=null"
+      "status": "FAIL",
+      "detail": "status 200 scope=top back=null",
+      "evidence": "{\"scope\":\"top\",\"page\":{\"id\":\"incoming\",\"label\":\"Inbound\"},\"back\":null,\"search\":{\"scope\":\"incoming.docked\",\"placeholder\":\"Search unboxed\",\"source\":\"url-param\",\"param\":\"find\"},\"sections\":[{\"id\":\"top\",\"items\":[{\"id\":\"ai-chat\",\"label\":\"Chat\",\"href\":\"/ai-chat\",\"active\":false,\"kind\":\"drill\"},{\"id\":\"studio"
     },
     {
       "section": "context",
@@ -1669,9 +1666,43 @@
     },
     {
       "section": "context",
-      "name": "shape /shipping/fba?fbaMode=plan",
+      "name": "shape /shipping/fba?fbaMode=ready",
+      "status": "FAIL",
+      "detail": "ctx: unexpected key viewKeys",
+      "evidence": {
+        "errors": [
+          "ctx: unexpected key viewKeys"
+        ]
+      }
+    },
+    {
+      "section": "context",
+      "name": "section has no page items /shipping/fba?fbaMode=ready",
       "status": "PASS",
-      "detail": "scope=section page=fba"
+      "detail": ""
+    },
+    {
+      "section": "context",
+      "name": "view=top /shipping/fba?fbaMode=ready",
+      "status": "PASS",
+      "detail": "status 200 scope=top back=null"
+    },
+    {
+      "section": "context",
+      "name": "round-trip fba.ready (/shipping/fba?fbaMode=ready)",
+      "status": "PASS",
+      "detail": "ready active=true in fba/section"
+    },
+    {
+      "section": "context",
+      "name": "shape /shipping/fba?fbaMode=plan",
+      "status": "FAIL",
+      "detail": "ctx: unexpected key viewKeys",
+      "evidence": {
+        "errors": [
+          "ctx: unexpected key viewKeys"
+        ]
+      }
     },
     {
       "section": "context",
@@ -1700,8 +1731,13 @@
     {
       "section": "context",
       "name": "shape /shipping/fba?fbaMode=shipped",
-      "status": "PASS",
-      "detail": "scope=section page=fba"
+      "status": "FAIL",
+      "detail": "ctx: unexpected key viewKeys",
+      "evidence": {
+        "errors": [
+          "ctx: unexpected key viewKeys"
+        ]
+      }
     },
     {
       "section": "context",
@@ -1723,21 +1759,181 @@
     },
     {
       "section": "context",
-      "name": "shape /shipping/shortage?pair=po",
-      "status": "PASS",
-      "detail": "scope=section page=outbound"
+      "name": "shape /shipping/fba?fbaMode=catalog",
+      "status": "FAIL",
+      "detail": "ctx: unexpected key viewKeys",
+      "evidence": {
+        "errors": [
+          "ctx: unexpected key viewKeys"
+        ]
+      }
     },
     {
       "section": "context",
-      "name": "section has no page items /shipping/shortage?pair=po",
+      "name": "section has no page items /shipping/fba?fbaMode=catalog",
       "status": "PASS",
       "detail": ""
     },
     {
       "section": "context",
-      "name": "view=top /shipping/shortage?pair=po",
+      "name": "view=top /shipping/fba?fbaMode=catalog",
       "status": "PASS",
       "detail": "status 200 scope=top back=null"
+    },
+    {
+      "section": "context",
+      "name": "round-trip fba.catalog (/shipping/fba?fbaMode=catalog)",
+      "status": "PASS",
+      "detail": "catalog active=true in fba/section"
+    },
+    {
+      "section": "context",
+      "name": "round-trip label-intake.pending (/shipping/label-intake)",
+      "status": "PASS",
+      "detail": "pending active=true in label-intake/section"
+    },
+    {
+      "section": "context",
+      "name": "shape /shipping/label-intake?view=record",
+      "status": "FAIL",
+      "detail": "ctx: unexpected key viewKeys; actions[0]: unexpected key hotkey; actions[1]: unexpected key hotkey",
+      "evidence": {
+        "errors": [
+          "ctx: unexpected key viewKeys",
+          "actions[0]: unexpected key hotkey",
+          "actions[1]: unexpected key hotkey"
+        ]
+      }
+    },
+    {
+      "section": "context",
+      "name": "section has no page items /shipping/label-intake?view=record",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "section": "context",
+      "name": "view=top /shipping/label-intake?view=record",
+      "status": "FAIL",
+      "detail": "status 200 scope=top back=null",
+      "evidence": "{\"scope\":\"top\",\"page\":{\"id\":\"label-intake\",\"label\":\"Labels & docs\"},\"back\":null,\"search\":{\"scope\":\"label-intake.record\",\"placeholder\":\"Search labels\",\"source\":\"desk-store\"},\"sections\":[{\"id\":\"top\",\"items\":[{\"id\":\"ai-chat\",\"label\":\"Chat\",\"href\":\"/ai-chat\",\"active\":false,\"kind\":\"drill\"},{\"id\":\"studio\""
+    },
+    {
+      "section": "context",
+      "name": "round-trip label-intake.record (/shipping/label-intake?view=record)",
+      "status": "PASS",
+      "detail": "record active=true in label-intake/section"
+    },
+    {
+      "section": "context",
+      "name": "round-trip outbound.outbound (/shipping/orders)",
+      "status": "PASS",
+      "detail": "outbound active=true in outbound/section"
+    },
+    {
+      "section": "context",
+      "name": "round-trip outbound.fba (/shipping/fba)",
+      "status": "PASS",
+      "detail": "fba active=true in fba/section"
+    },
+    {
+      "section": "context",
+      "name": "round-trip outbound.label-intake (/shipping/label-intake)",
+      "status": "PASS",
+      "detail": "label-intake active=true in label-intake/section"
+    },
+    {
+      "section": "context",
+      "name": "shape /shipping/exceptions",
+      "status": "FAIL",
+      "detail": "ctx: unexpected key viewKeys; search: unexpected key locate",
+      "evidence": {
+        "errors": [
+          "ctx: unexpected key viewKeys",
+          "search: unexpected key locate"
+        ]
+      }
+    },
+    {
+      "section": "context",
+      "name": "section has no page items /shipping/exceptions",
+      "status": "FAIL",
+      "detail": "fba,label-intake",
+      "evidence": {
+        "leaked": [
+          {
+            "id": "fba",
+            "label": "FBA",
+            "href": "/shipping/fba",
+            "active": false,
+            "kind": "link"
+          },
+          {
+            "id": "label-intake",
+            "label": "Labels & docs",
+            "href": "/shipping/label-intake",
+            "active": false,
+            "kind": "link"
+          }
+        ]
+      }
+    },
+    {
+      "section": "context",
+      "name": "view=top /shipping/exceptions",
+      "status": "FAIL",
+      "detail": "status 200 scope=top back=null",
+      "evidence": "{\"scope\":\"top\",\"page\":{\"id\":\"outbound\",\"label\":\"Outbound\"},\"back\":null,\"search\":{\"scope\":\"outbound.exceptions\",\"placeholder\":\"Search exceptions\",\"source\":\"desk-store\",\"locate\":{\"locator\":\"outbound\",\"param\":\"refs\",\"statusParam\":\"located\"}},\"sections\":[{\"id\":\"top\",\"items\":[{\"id\":\"ai-chat\",\"label\":\"Cha"
+    },
+    {
+      "section": "context",
+      "name": "round-trip outbound.exceptions (/shipping/exceptions)",
+      "status": "PASS",
+      "detail": "exceptions active=true in outbound/section"
+    },
+    {
+      "section": "context",
+      "name": "shape /shipping/shortage?pair=po",
+      "status": "FAIL",
+      "detail": "ctx: unexpected key controls; ctx: unexpected key viewKeys; search: unexpected key locate",
+      "evidence": {
+        "errors": [
+          "ctx: unexpected key controls",
+          "ctx: unexpected key viewKeys",
+          "search: unexpected key locate"
+        ]
+      }
+    },
+    {
+      "section": "context",
+      "name": "section has no page items /shipping/shortage?pair=po",
+      "status": "FAIL",
+      "detail": "fba,label-intake",
+      "evidence": {
+        "leaked": [
+          {
+            "id": "fba",
+            "label": "FBA",
+            "href": "/shipping/fba",
+            "active": false,
+            "kind": "link"
+          },
+          {
+            "id": "label-intake",
+            "label": "Labels & docs",
+            "href": "/shipping/label-intake",
+            "active": false,
+            "kind": "link"
+          }
+        ]
+      }
+    },
+    {
+      "section": "context",
+      "name": "view=top /shipping/shortage?pair=po",
+      "status": "FAIL",
+      "detail": "status 200 scope=top back=null",
+      "evidence": "{\"scope\":\"top\",\"page\":{\"id\":\"outbound\",\"label\":\"Outbound\"},\"back\":null,\"search\":{\"scope\":\"outbound.po\",\"placeholder\":\"Search PO-paired orders\",\"source\":\"desk-store\",\"locate\":{\"locator\":\"outbound\",\"param\":\"refs\",\"statusParam\":\"located\"}},\"sections\":[{\"id\":\"top\",\"items\":[{\"id\":\"ai-chat\",\"label\":\"Chat\""
     },
     {
       "section": "context",
@@ -1748,20 +1944,46 @@
     {
       "section": "context",
       "name": "shape /shipping/orders?queue=pick",
-      "status": "PASS",
-      "detail": "scope=section page=outbound"
+      "status": "FAIL",
+      "detail": "ctx: unexpected key controls; ctx: unexpected key viewKeys; search: unexpected key locate",
+      "evidence": {
+        "errors": [
+          "ctx: unexpected key controls",
+          "ctx: unexpected key viewKeys",
+          "search: unexpected key locate"
+        ]
+      }
     },
     {
       "section": "context",
       "name": "section has no page items /shipping/orders?queue=pick",
-      "status": "PASS",
-      "detail": ""
+      "status": "FAIL",
+      "detail": "fba,label-intake",
+      "evidence": {
+        "leaked": [
+          {
+            "id": "fba",
+            "label": "FBA",
+            "href": "/shipping/fba",
+            "active": false,
+            "kind": "link"
+          },
+          {
+            "id": "label-intake",
+            "label": "Labels & docs",
+            "href": "/shipping/label-intake",
+            "active": false,
+            "kind": "link"
+          }
+        ]
+      }
     },
     {
       "section": "context",
       "name": "view=top /shipping/orders?queue=pick",
-      "status": "PASS",
-      "detail": "status 200 scope=top back=null"
+      "status": "FAIL",
+      "detail": "status 200 scope=top back=null",
+      "evidence": "{\"scope\":\"top\",\"page\":{\"id\":\"outbound\",\"label\":\"Outbound\"},\"back\":null,\"search\":{\"scope\":\"outbound.pick\",\"placeholder\":\"Search the pick list\",\"source\":\"desk-store\",\"locate\":{\"locator\":\"outbound\",\"param\":\"refs\",\"statusParam\":\"located\"}},\"sections\":[{\"id\":\"top\",\"items\":[{\"id\":\"ai-chat\",\"label\":\"Chat\","
     },
     {
       "section": "context",
@@ -1778,50 +2000,52 @@
     {
       "section": "context",
       "name": "shape /shipping/shipped",
-      "status": "PASS",
-      "detail": "scope=section page=outbound"
+      "status": "FAIL",
+      "detail": "ctx: unexpected key controls; ctx: unexpected key viewKeys; search: unexpected key locate",
+      "evidence": {
+        "errors": [
+          "ctx: unexpected key controls",
+          "ctx: unexpected key viewKeys",
+          "search: unexpected key locate"
+        ]
+      }
     },
     {
       "section": "context",
       "name": "section has no page items /shipping/shipped",
-      "status": "PASS",
-      "detail": ""
+      "status": "FAIL",
+      "detail": "fba,label-intake",
+      "evidence": {
+        "leaked": [
+          {
+            "id": "fba",
+            "label": "FBA",
+            "href": "/shipping/fba",
+            "active": false,
+            "kind": "link"
+          },
+          {
+            "id": "label-intake",
+            "label": "Labels & docs",
+            "href": "/shipping/label-intake",
+            "active": false,
+            "kind": "link"
+          }
+        ]
+      }
     },
     {
       "section": "context",
       "name": "view=top /shipping/shipped",
-      "status": "PASS",
-      "detail": "status 200 scope=top back=null"
+      "status": "FAIL",
+      "detail": "status 200 scope=top back=null",
+      "evidence": "{\"scope\":\"top\",\"page\":{\"id\":\"outbound\",\"label\":\"Outbound\"},\"back\":null,\"search\":{\"scope\":\"outbound.shipped\",\"placeholder\":\"Search shipments\",\"source\":\"desk-store\",\"locate\":{\"locator\":\"outbound\",\"param\":\"refs\",\"statusParam\":\"located\"}},\"sections\":[{\"id\":\"top\",\"items\":[{\"id\":\"ai-chat\",\"label\":\"Chat\",\""
     },
     {
       "section": "context",
       "name": "round-trip outbound.shipped (/shipping/shipped)",
       "status": "PASS",
       "detail": "shipped active=true in outbound/section"
-    },
-    {
-      "section": "context",
-      "name": "shape /shipping/exceptions",
-      "status": "PASS",
-      "detail": "scope=section page=outbound"
-    },
-    {
-      "section": "context",
-      "name": "section has no page items /shipping/exceptions",
-      "status": "PASS",
-      "detail": ""
-    },
-    {
-      "section": "context",
-      "name": "view=top /shipping/exceptions",
-      "status": "PASS",
-      "detail": "status 200 scope=top back=null"
-    },
-    {
-      "section": "context",
-      "name": "round-trip outbound.exceptions (/shipping/exceptions)",
-      "status": "PASS",
-      "detail": "exceptions active=true in outbound/section"
     },
     {
       "section": "context",
@@ -2035,10 +2259,16 @@
       "evidence": {
         "page": "support",
         "laneMapIds": [
+          "ai-chat",
+          "studio",
           "home",
           "ops-photos",
-          "ai-chat",
           "reports",
+          "incoming",
+          "outbound",
+          "inventory",
+          "products",
+          "sales",
           "triage",
           "receive",
           "pickup",
@@ -2046,16 +2276,7 @@
           "testing",
           "ready-to-pack",
           "packer",
-          "scan-out",
-          "incoming",
-          "sourcing",
-          "outbound",
-          "fba",
-          "label-intake",
-          "inventory",
-          "products",
-          "sales",
-          "studio"
+          "scan-out"
         ]
       }
     },
@@ -2091,10 +2312,16 @@
       "evidence": {
         "page": "support",
         "laneMapIds": [
+          "ai-chat",
+          "studio",
           "home",
           "ops-photos",
-          "ai-chat",
           "reports",
+          "incoming",
+          "outbound",
+          "inventory",
+          "products",
+          "sales",
           "triage",
           "receive",
           "pickup",
@@ -2102,16 +2329,7 @@
           "testing",
           "ready-to-pack",
           "packer",
-          "scan-out",
-          "incoming",
-          "sourcing",
-          "outbound",
-          "fba",
-          "label-intake",
-          "inventory",
-          "products",
-          "sales",
-          "studio"
+          "scan-out"
         ]
       }
     },
@@ -2147,10 +2365,16 @@
       "evidence": {
         "page": "support",
         "laneMapIds": [
+          "ai-chat",
+          "studio",
           "home",
           "ops-photos",
-          "ai-chat",
           "reports",
+          "incoming",
+          "outbound",
+          "inventory",
+          "products",
+          "sales",
           "triage",
           "receive",
           "pickup",
@@ -2158,16 +2382,7 @@
           "testing",
           "ready-to-pack",
           "packer",
-          "scan-out",
-          "incoming",
-          "sourcing",
-          "outbound",
-          "fba",
-          "label-intake",
-          "inventory",
-          "products",
-          "sales",
-          "studio"
+          "scan-out"
         ]
       }
     },
@@ -2203,10 +2418,16 @@
       "evidence": {
         "page": "support",
         "laneMapIds": [
+          "ai-chat",
+          "studio",
           "home",
           "ops-photos",
-          "ai-chat",
           "reports",
+          "incoming",
+          "outbound",
+          "inventory",
+          "products",
+          "sales",
           "triage",
           "receive",
           "pickup",
@@ -2214,16 +2435,7 @@
           "testing",
           "ready-to-pack",
           "packer",
-          "scan-out",
-          "incoming",
-          "sourcing",
-          "outbound",
-          "fba",
-          "label-intake",
-          "inventory",
-          "products",
-          "sales",
-          "studio"
+          "scan-out"
         ]
       }
     },
@@ -2297,91 +2509,161 @@
       "section": "context",
       "name": "coverage",
       "status": "INFO",
-      "detail": "67 distinct paths resolved (pages + section items)"
+      "detail": "69 distinct paths resolved (pages + section items)"
     },
     {
       "section": "recents",
       "name": "GET receiving.viewed [adapter]",
-      "status": "PASS",
-      "detail": "25 rows"
+      "status": "FAIL",
+      "detail": "body: unexpected key nextBefore",
+      "evidence": {
+        "errors": [
+          "body: unexpected key nextBefore"
+        ]
+      }
     },
     {
       "section": "recents",
       "name": "GET receiving.unbox_opened [adapter]",
-      "status": "PASS",
-      "detail": "25 rows"
+      "status": "FAIL",
+      "detail": "body: unexpected key nextBefore",
+      "evidence": {
+        "errors": [
+          "body: unexpected key nextBefore"
+        ]
+      }
     },
     {
       "section": "recents",
       "name": "GET receiving.scanned [adapter]",
-      "status": "PASS",
-      "detail": "23 rows"
+      "status": "FAIL",
+      "detail": "body: unexpected key nextBefore",
+      "evidence": {
+        "errors": [
+          "body: unexpected key nextBefore"
+        ]
+      }
     },
     {
       "section": "recents",
       "name": "GET testing.opened [adapter]",
-      "status": "PASS",
-      "detail": "21 rows"
+      "status": "FAIL",
+      "detail": "body: unexpected key nextBefore",
+      "evidence": {
+        "errors": [
+          "body: unexpected key nextBefore"
+        ]
+      }
     },
     {
       "section": "recents",
       "name": "GET tech.scans [adapter]",
-      "status": "PASS",
-      "detail": "25 rows"
+      "status": "FAIL",
+      "detail": "body: unexpected key nextBefore",
+      "evidence": {
+        "errors": [
+          "body: unexpected key nextBefore"
+        ]
+      }
     },
     {
       "section": "recents",
       "name": "GET packer.packs [adapter]",
-      "status": "PASS",
-      "detail": "7 rows"
+      "status": "FAIL",
+      "detail": "body: unexpected key nextBefore",
+      "evidence": {
+        "errors": [
+          "body: unexpected key nextBefore"
+        ]
+      }
     },
     {
       "section": "recents",
       "name": "GET labels.prints [adapter]",
-      "status": "PASS",
-      "detail": "25 rows"
+      "status": "FAIL",
+      "detail": "body: unexpected key nextBefore",
+      "evidence": {
+        "errors": [
+          "body: unexpected key nextBefore"
+        ]
+      }
     },
     {
       "section": "recents",
       "name": "GET pickup.orders [adapter]",
-      "status": "PASS",
-      "detail": "25 rows"
+      "status": "FAIL",
+      "detail": "body: unexpected key nextBefore",
+      "evidence": {
+        "errors": [
+          "body: unexpected key nextBefore"
+        ]
+      }
     },
     {
       "section": "recents",
       "name": "GET identify.opened [adapter]",
-      "status": "PASS",
-      "detail": "14 rows"
+      "status": "FAIL",
+      "detail": "body: unexpected key nextBefore",
+      "evidence": {
+        "errors": [
+          "body: unexpected key nextBefore"
+        ]
+      }
     },
     {
       "section": "recents",
       "name": "GET support.tickets [nav_recents]",
-      "status": "PASS",
-      "detail": "0 rows"
+      "status": "FAIL",
+      "detail": "body: unexpected key nextBefore",
+      "evidence": {
+        "errors": [
+          "body: unexpected key nextBefore"
+        ]
+      }
     },
     {
       "section": "recents",
       "name": "GET detail_stacks [nav_recents]",
-      "status": "PASS",
-      "detail": "0 rows"
+      "status": "FAIL",
+      "detail": "body: unexpected key nextBefore",
+      "evidence": {
+        "errors": [
+          "body: unexpected key nextBefore"
+        ]
+      }
     },
     {
       "section": "recents",
       "name": "GET audit_log.trace [nav_recents]",
-      "status": "PASS",
-      "detail": "0 rows"
+      "status": "FAIL",
+      "detail": "body: unexpected key nextBefore",
+      "evidence": {
+        "errors": [
+          "body: unexpected key nextBefore"
+        ]
+      }
     },
     {
       "section": "recents",
       "name": "GET labels.lookups [nav_recents]",
-      "status": "PASS",
-      "detail": "0 rows"
+      "status": "FAIL",
+      "detail": "body: unexpected key nextBefore",
+      "evidence": {
+        "errors": [
+          "body: unexpected key nextBefore"
+        ]
+      }
     },
     {
       "section": "recents",
       "name": "GET command_bar [nav_recents]",
-      "status": "PASS",
-      "detail": "2 rows"
+      "status": "FAIL",
+      "detail": "body: unexpected key nextBefore",
+      "evidence": {
+        "errors": [
+          "body: unexpected key nextBefore"
+        ]
+      }
     },
     {
       "section": "recents",
@@ -2411,37 +2693,37 @@
       "section": "facets",
       "name": "desk-counts",
       "status": "INFO",
-      "detail": "x-cache=MISS {\"exceptions\":382,\"po\":0,\"pick\":30,\"triage\":38,\"shippedToday\":0}"
+      "detail": "x-cache=MISS {\"exceptions\":408,\"po\":0,\"pick\":35,\"triage\":43,\"shippedToday\":0}"
     },
     {
       "section": "facets",
       "name": "shape outbound.exceptions",
       "status": "PASS",
-      "detail": "total=382"
+      "detail": "total=408"
     },
     {
       "section": "facets",
       "name": "list total == facet total outbound.exceptions",
       "status": "PASS",
-      "detail": "list 382 (x-cache -) vs facet 382"
+      "detail": "list 408 (x-cache -) vs facet 408"
     },
     {
       "section": "facets",
       "name": "facet total == desk-counts.exceptions",
       "status": "PASS",
-      "detail": "desk 382 vs facet 382"
+      "detail": "desk 408 vs facet 408"
     },
     {
       "section": "facets",
       "name": "outbound.exceptions category=SKU Mapping",
       "status": "PASS",
-      "detail": "option count 342 vs filtered total 342"
+      "detail": "option count 364 vs filtered total 364"
     },
     {
       "section": "facets",
       "name": "outbound.exceptions list category=SKU Mapping",
       "status": "PASS",
-      "detail": "list 342 (x-cache -) vs option 342"
+      "detail": "list 364 (x-cache -) vs option 364"
     },
     {
       "section": "facets",
@@ -2471,13 +2753,13 @@
       "section": "facets",
       "name": "outbound.exceptions category=Buyer Request",
       "status": "PASS",
-      "detail": "option count 0 vs filtered total 0"
+      "detail": "option count 4 vs filtered total 4"
     },
     {
       "section": "facets",
       "name": "outbound.exceptions list category=Buyer Request",
       "status": "PASS",
-      "detail": "list 0 (x-cache -) vs option 0"
+      "detail": "list 4 (x-cache -) vs option 4"
     },
     {
       "section": "facets",
@@ -2531,31 +2813,31 @@
       "section": "facets",
       "name": "shape outbound.triage",
       "status": "PASS",
-      "detail": "total=38"
+      "detail": "total=43"
     },
     {
       "section": "facets",
       "name": "list total == facet total outbound.triage",
       "status": "PASS",
-      "detail": "list 38 (x-cache MISS) vs facet 38"
+      "detail": "list 43 (x-cache MISS) vs facet 43"
     },
     {
       "section": "facets",
       "name": "facet total == desk-counts.triage",
       "status": "PASS",
-      "detail": "desk 38 vs facet 38"
+      "detail": "desk 43 vs facet 43"
     },
     {
       "section": "facets",
       "name": "outbound.triage stage=pending",
       "status": "PASS",
-      "detail": "option count 24 vs filtered total 24"
+      "detail": "option count 29 vs filtered total 29"
     },
     {
       "section": "facets",
       "name": "outbound.triage list stage=pending",
       "status": "PASS",
-      "detail": "list 24 (x-cache MISS) vs option 24"
+      "detail": "list 29 (x-cache MISS) vs option 29"
     },
     {
       "section": "facets",
@@ -2591,7 +2873,7 @@
       "section": "facets",
       "name": "outbound.triage aging=today",
       "status": "PASS",
-      "detail": "option count 0 vs filtered total 0"
+      "detail": "option count 4 vs filtered total 4"
     },
     {
       "section": "facets",
@@ -2603,13 +2885,13 @@
       "section": "facets",
       "name": "outbound.triage aging=unscheduled",
       "status": "PASS",
-      "detail": "option count 34 vs filtered total 34"
+      "detail": "option count 35 vs filtered total 35"
     },
     {
       "section": "facets",
       "name": "outbound.triage late=1",
       "status": "PASS",
-      "detail": "option count 4 vs filtered total 4"
+      "detail": "option count 8 vs filtered total 8"
     },
     {
       "section": "facets",
@@ -2627,31 +2909,31 @@
       "section": "facets",
       "name": "shape outbound.pick",
       "status": "PASS",
-      "detail": "total=30"
+      "detail": "total=35"
     },
     {
       "section": "facets",
       "name": "list total == facet total outbound.pick",
       "status": "PASS",
-      "detail": "list 30 (x-cache MISS) vs facet 30"
+      "detail": "list 35 (x-cache MISS) vs facet 35"
     },
     {
       "section": "facets",
       "name": "facet total == desk-counts.pick",
       "status": "PASS",
-      "detail": "desk 30 vs facet 30"
+      "detail": "desk 35 vs facet 35"
     },
     {
       "section": "facets",
       "name": "outbound.pick stage=pending",
       "status": "PASS",
-      "detail": "option count 24 vs filtered total 24"
+      "detail": "option count 29 vs filtered total 29"
     },
     {
       "section": "facets",
       "name": "outbound.pick list stage=pending",
       "status": "PASS",
-      "detail": "list 24 (x-cache MISS) vs option 24"
+      "detail": "list 29 (x-cache MISS) vs option 29"
     },
     {
       "section": "facets",
@@ -2687,7 +2969,7 @@
       "section": "facets",
       "name": "outbound.pick aging=today",
       "status": "PASS",
-      "detail": "option count 0 vs filtered total 0"
+      "detail": "option count 4 vs filtered total 4"
     },
     {
       "section": "facets",
@@ -2699,13 +2981,13 @@
       "section": "facets",
       "name": "outbound.pick aging=unscheduled",
       "status": "PASS",
-      "detail": "option count 27 vs filtered total 27"
+      "detail": "option count 28 vs filtered total 28"
     },
     {
       "section": "facets",
       "name": "outbound.pick late=1",
       "status": "PASS",
-      "detail": "option count 3 vs filtered total 3"
+      "detail": "option count 7 vs filtered total 7"
     },
     {
       "section": "facets",
@@ -2817,21 +3099,21 @@
     },
     {
       "section": "identify",
-      "name": "exact tracking \"1ZJ22B100324366661\"",
+      "name": "exact tracking \"1ZJ22B104212840785\"",
       "status": "PASS",
-      "detail": "mode=single top=order:19444 via tracking expected order:19444 (1 candidates)"
+      "detail": "mode=single top=order:19441 via tracking expected order:19441 (1 candidates)"
     },
     {
       "section": "identify",
-      "name": "exact amazon_order \"112-4537975-2438625\"",
+      "name": "exact amazon_order \"111-7721356-1349851\"",
       "status": "PASS",
-      "detail": "mode=single top=order:19456 via order_id expected order:19456 (1 candidates)"
+      "detail": "mode=single top=order:19526 via order_id expected order:19526 (1 candidates)"
     },
     {
       "section": "identify",
-      "name": "exact ebay_order \"05-15226-74526\"",
+      "name": "exact ebay_order \"79-05520-73758\"",
       "status": "PASS",
-      "detail": "mode=single top=order:19462 via order_id expected order:19462 (1 candidates)"
+      "detail": "mode=single top=order:19551 via order_id expected order:19551 (1 candidates)"
     },
     {
       "section": "identify",
@@ -2847,9 +3129,9 @@
     },
     {
       "section": "identify",
-      "name": "exact sku \"00364-WY\"",
+      "name": "exact sku \"04767\"",
       "status": "PASS",
-      "detail": "mode=single top=sku:2639 via sku expected sku:2639 (1 candidates)"
+      "detail": "mode=single top=sku:2956 via sku expected sku:2956 (1 candidates)"
     },
     {
       "section": "identify",
@@ -2859,15 +3141,15 @@
     },
     {
       "section": "identify",
-      "name": "exact po \"08-15215-13868\"",
+      "name": "exact po \"65648550\"",
       "status": "PASS",
-      "detail": "mode=single top=receiving:53351 via po expected receiving:53351 (1 candidates)"
+      "detail": "mode=single top=receiving:53399 via po expected receiving:53399 (1 candidates)"
     },
     {
       "section": "identify",
-      "name": "exact receiving_handle \"R-53351\"",
+      "name": "exact receiving_handle \"R-53399\"",
       "status": "PASS",
-      "detail": "mode=single top=receiving:53351 via handle expected receiving:53351 (1 candidates)"
+      "detail": "mode=single top=receiving:53399 via handle expected receiving:53399 (1 candidates)"
     },
     {
       "section": "identify",
@@ -3048,45 +3330,6 @@
     },
     {
       "section": "identify",
-      "name": "transport POST /api/identify",
-      "status": "FAIL",
-      "detail": "TypeError ← UND_ERR_SOCKET after 249 ms (awaiting response); lane back after 5200 ms",
-      "evidence": {
-        "seq": 551,
-        "at": "2026-09-26T21:00:02.171Z",
-        "method": "POST",
-        "url": "/api/identify",
-        "urlLength": 13,
-        "bodyBytes": 63,
-        "cookieBytes": 71,
-        "elapsedMs": 249,
-        "phase": "awaiting response",
-        "cause": [
-          {
-            "name": "TypeError",
-            "message": "fetch failed"
-          },
-          {
-            "name": "SocketError",
-            "code": "UND_ERR_SOCKET",
-            "message": "other side closed",
-            "socket": {
-              "localPort": 38212,
-              "remotePort": 3050,
-              "bytesWritten": 84820,
-              "bytesRead": 708561
-            }
-          }
-        ],
-        "laneRecovery": {
-          "recovered": true,
-          "waitedMs": 5200,
-          "attempts": 3
-        }
-      }
-    },
-    {
-      "section": "identify",
       "name": "empty q → 400",
       "status": "PASS",
       "detail": "status 400"
@@ -3095,19 +3338,19 @@
       "section": "identify",
       "name": "latency exact",
       "status": "WARN",
-      "detail": "p50 428 ms · p95 1111 ms · n=220 · budget p95 <150 ms"
+      "detail": "p50 144 ms · p95 332 ms · n=220 · budget p95 <150 ms"
     },
     {
       "section": "identify",
       "name": "latency free",
-      "status": "WARN",
-      "detail": "p50 551 ms · p95 726 ms · n=80 · budget p95 <400 ms"
+      "status": "INFO",
+      "detail": "p50 196 ms · p95 320 ms · n=80 · budget p95 <400 ms"
     },
     {
       "section": "identify",
       "name": "latency batch",
       "status": "INFO",
-      "detail": "p50 457 ms · p95 3284 ms · n=19"
+      "detail": "p50 132 ms · p95 309 ms · n=20"
     },
     {
       "section": "brands",
@@ -3125,7 +3368,7 @@
       "section": "brands",
       "name": "GET /api/brands/34 shape",
       "status": "PASS",
-      "detail": "counts {\"skuCount\":1148,\"activeSkuCount\":221,\"openOrderCount\":145,\"onHandUnits\":732}"
+      "detail": "counts {\"skuCount\":1148,\"activeSkuCount\":221,\"openOrderCount\":163,\"onHandUnits\":732}"
     },
     {
       "section": "brands",
@@ -3161,49 +3404,49 @@
       "section": "latency",
       "name": "context",
       "status": "INFO",
-      "detail": "p50 376 ms · p95 396 ms · n=20"
+      "detail": "p50 101 ms · p95 123 ms · n=20"
     },
     {
       "section": "latency",
       "name": "context(top)",
       "status": "INFO",
-      "detail": "p50 365 ms · p95 384 ms · n=20"
+      "detail": "p50 102 ms · p95 117 ms · n=20"
     },
     {
       "section": "latency",
       "name": "recents",
       "status": "INFO",
-      "detail": "p50 699 ms · p95 745 ms · n=20"
+      "detail": "p50 287 ms · p95 486 ms · n=20"
     },
     {
       "section": "latency",
       "name": "recents(adapter)",
       "status": "INFO",
-      "detail": "p50 701 ms · p95 980 ms · n=20"
+      "detail": "p50 292 ms · p95 358 ms · n=20"
     },
     {
       "section": "latency",
       "name": "facets",
       "status": "INFO",
-      "detail": "p50 744 ms · p95 982 ms · n=20"
+      "detail": "p50 352 ms · p95 509 ms · n=20"
     },
     {
       "section": "latency",
       "name": "facets(exceptions)",
       "status": "INFO",
-      "detail": "p50 719 ms · p95 752 ms · n=20"
+      "detail": "p50 304 ms · p95 458 ms · n=20"
     },
     {
       "section": "latency",
       "name": "identify(free)",
       "status": "INFO",
-      "detail": "p50 575 ms · p95 629 ms · n=20"
+      "detail": "p50 247 ms · p95 351 ms · n=20"
     },
     {
       "section": "latency",
       "name": "brands",
       "status": "INFO",
-      "detail": "p50 416 ms · p95 465 ms · n=20"
+      "detail": "p50 104 ms · p95 119 ms · n=20"
     }
   ]
 }

@@ -81,7 +81,7 @@ export function ComposerTicketCcStrip({
           onClick={() => inputRef.current?.focus()}
           className={cn(
             'ds-raw-button inline-flex h-5 shrink-0 items-center gap-0.5 rounded-sm px-1',
-            'text-role-micro font-semibold uppercase tracking-widest text-text-faint',
+            'text-role-micro font-semibold text-text-faint',
             'hover:bg-surface-sunken hover:text-text-muted',
             focusRing('control', 'accent'),
           )}

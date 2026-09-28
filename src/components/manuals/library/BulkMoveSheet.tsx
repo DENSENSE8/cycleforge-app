@@ -37,7 +37,7 @@ export function BulkMoveSheet({
       <DialogContent hideClose className="max-w-lg gap-0 overflow-hidden p-0">
         <DialogHeader className="flex-row items-center justify-between space-y-0 border-b border-border-soft px-4 py-3">
           <div>
-            <p className="text-role-micro uppercase tracking-[0.16em] text-text-soft">Bulk Move</p>
+            <p className="text-role-micro text-text-soft">Bulk Move</p>
             <DialogTitle className="mt-1 text-sm font-semibold">
               Move {count} manuals
             </DialogTitle>

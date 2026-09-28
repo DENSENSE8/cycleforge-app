@@ -89,7 +89,7 @@ function StagingRowLeaf({
   return (
     <div className="flex h-full min-h-0 flex-col">
       <div className="shrink-0 border-b border-border-hairline px-4 py-3">
-        <p className="text-role-eyebrow font-semibold uppercase tracking-widest text-text-soft">
+        <p className="text-role-eyebrow font-semibold text-text-soft">
           Staging row {index + 1}
         </p>
         <p className="mt-1 truncate text-role-caption font-semibold text-text-default">
@@ -97,7 +97,7 @@ function StagingRowLeaf({
         </p>
         <span
           className={cn(
-            'mt-2 inline-flex px-1.5 py-0.5 text-role-eyebrow font-semibold uppercase tracking-wider',
+            'mt-2 inline-flex px-1.5 py-0.5 text-role-eyebrow font-semibold',
             cornerClass('flush'),
             status === 'ready'
               ? 'bg-emerald-50 text-emerald-700'
@@ -119,7 +119,7 @@ function StagingRowLeaf({
           if (!header) {
             return (
               <div key={field.key} className="space-y-1">
-                <span className="text-role-eyebrow font-semibold uppercase tracking-widest text-text-soft">
+                <span className="text-role-eyebrow font-semibold text-text-soft">
                   {field.label}
                 </span>
                 <p className="text-role-micro text-text-faint">
@@ -131,7 +131,7 @@ function StagingRowLeaf({
           const isMissing = missing.includes(field.key);
           return (
             <label key={field.key} className="block space-y-1">
-              <span className="text-role-eyebrow font-semibold uppercase tracking-widest text-text-soft">
+              <span className="text-role-eyebrow font-semibold text-text-soft">
                 {field.label}
                 {field.required ? <span className="ml-1 text-rose-600">*</span> : null}
               </span>
@@ -180,7 +180,7 @@ function StagingMapLeaf({ draft }: { draft: TableImportDraft }) {
           const missingRequired = field.required && !selected;
           return (
             <div key={field.key} className="space-y-1 px-4 py-2.5">
-              <p className="text-role-eyebrow font-semibold uppercase tracking-widest text-text-soft">
+              <p className="text-role-eyebrow font-semibold text-text-soft">
                 {field.label}
                 {field.required ? <span className="ml-1 text-rose-600">*</span> : null}
               </p>
@@ -239,7 +239,7 @@ function StagingBatchLeaf({ draft }: { draft: TableImportDraft }) {
             key={fact.label}
             className="flex items-baseline justify-between gap-3 px-4 py-2"
           >
-            <span className="shrink-0 text-role-eyebrow font-semibold uppercase tracking-widest text-text-soft">
+            <span className="shrink-0 text-role-eyebrow font-semibold text-text-soft">
               {fact.label}
             </span>
             <span className="min-w-0 truncate text-role-caption tabular-nums text-text-default">

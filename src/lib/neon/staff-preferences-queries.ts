@@ -74,7 +74,7 @@ export interface StaffPreferences {
   lastSeenBuildSha?: string | null;
   /**
    * Unshipped · Shelf-board layout prefs (cross-device). Lanes are PENDING /
-   * TESTED / BLOCKED; see {@link BoardPrefs} for the shape. One board surface =
+   * PICKED / BLOCKED; see {@link BoardPrefs} for the shape. One board surface =
    * one key; the generic {@link SwimlaneBoard} reads/writes `prefs[prefsKey]`.
    */
   unshippedBoard?: BoardPrefs | null;

@@ -35,7 +35,8 @@ import { cn } from '@/utils/_cn';
  * weight is a call-site decision, which is why 500 is set here.
  *
  * Sentence case, always: "Switch mode", never shouted and never Title Case.
- * The keycaps follow (`Shift`, `Tab`) via the cap's own `inverse` tone.
+ * The keycaps follow (`Shift`, `Tab`) via the cap's own `inverse` tone, which
+ * is drawn from the chip's ink (`currentColor`), so it holds in every theme.
  *
  * ## Width — one row by default
  *
@@ -61,7 +62,7 @@ export function tooltipChipClass({
   wrap?: boolean;
 } = {}): string {
   return cn(
-    'bg-surface-inverse text-white shadow-lg',
+    'bg-surface-inverse text-text-inverse shadow-lg',
     'px-2 py-1 text-role-nav font-medium leading-snug',
     row && 'flex items-center gap-1.5',
     // `text-pretty` keeps an unavoidable wrap minimal — no orphan last word.

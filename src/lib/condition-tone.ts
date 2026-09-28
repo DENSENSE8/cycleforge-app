@@ -213,7 +213,7 @@ export function conditionPillClass(
   // Compact pill strip: horizontal label inset + uppercase abbreviation.
   // No stacking context here — the `scroll` density is Testing / Units /
   // shipped, which are out of scope for the Unbox-first border pass.
-  return `inline-flex h-11 shrink-0 items-center justify-center whitespace-nowrap rounded-none px-2.5 text-role-caption font-semibold uppercase tracking-[0.1em] ring-1 ring-inset transition-colors active:scale-[0.98] ${
+  return `inline-flex h-11 shrink-0 items-center justify-center whitespace-nowrap rounded-none px-2.5 text-role-caption font-semibold ring-1 ring-inset transition-colors active:scale-[0.98] ${
     isActive ? tone.active : tone.inactive
   }`;
 }

@@ -74,6 +74,7 @@ export const CRON_JOBS: CronJobDef[] = [
   { job: 'sku_catalog.refresh_suggestions', label: 'SKU pairing suggestions', category: 'System', schedule: 'nightly', expectedEveryMs: DAY },
   { job: 'refresh_reports', label: 'Refresh reports', category: 'System', schedule: 'daily 10:30', expectedEveryMs: DAY },
   { job: 'cleanup', label: 'Cleanup (idempotency + run history)', category: 'System', schedule: 'daily', expectedEveryMs: DAY },
+  { job: 'auth.sessions_sweep', label: 'Dead session sweep', category: 'System', schedule: 'daily 05:15', expectedEveryMs: DAY },
 ];
 
 export const CRON_JOBS_BY_KEY: Record<string, CronJobDef> = Object.fromEntries(

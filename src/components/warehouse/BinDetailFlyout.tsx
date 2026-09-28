@@ -178,7 +178,7 @@ export function BinDetailFlyout({ row, onClose, onDeleted }: Props) {
 
             {/* Contents */}
             <section>
-              <h3 className="mb-2 text-role-micro uppercase tracking-[0.16em] text-text-soft">
+              <h3 className="mb-2 text-role-micro text-text-soft">
                 Contents
               </h3>
               {loading && (
@@ -224,7 +224,7 @@ export function BinDetailFlyout({ row, onClose, onDeleted }: Props) {
 
             {/* History */}
             <section>
-              <h3 className="mb-2 text-role-micro uppercase tracking-[0.16em] text-text-soft">
+              <h3 className="mb-2 text-role-micro text-text-soft">
                 Recent history
               </h3>
               <AuditTimeline binId={row.id} limit={20} compact noHeader />
@@ -265,7 +265,7 @@ export function BinDetailFlyout({ row, onClose, onDeleted }: Props) {
 function Stat({ label, value }: { label: string; value: string }) {
   return (
     <div>
-      <div className="text-role-eyebrow font-semibold uppercase tracking-wider text-text-soft">
+      <div className="text-role-eyebrow font-semibold text-text-soft">
         {label}
       </div>
       <div className="mt-0.5 text-lg font-semibold tabular-nums text-text-default">

@@ -41,6 +41,7 @@ import type {
 import { kioskHistoryStamp } from './kiosk-history-stamp';
 import { kioskHistoryStatusTone } from './kiosk-history-status';
 import { cn } from '@/utils/_cn';
+import { sentenceCaseLabel } from '@/lib/text/sentence-case-label';
 
 /**
  * The phone handoff code. Loaded on demand and never on the server — the
@@ -121,7 +122,7 @@ const TECHNICIAN_PREFIX: Record<NonNullable<VisitRepairProvenance['technicianSou
 function Fact({ label, value }: { label: string; value: string }) {
   return (
     <div className="min-w-0">
-      <dt className="text-role-caption uppercase tracking-wide text-text-soft">{label}</dt>
+      <dt className="text-role-caption text-text-soft">{label}</dt>
       <dd className="mt-0.5 break-words text-role-body font-medium text-text-default">{value}</dd>
     </div>
   );
@@ -185,7 +186,7 @@ function SignatureFace({
   const signed = Boolean(url) || hasStrokes;
   return (
     <div className="py-2">
-      <p className="text-role-caption uppercase tracking-wide text-text-soft">{title}</p>
+      <p className="text-role-caption text-text-soft">{title}</p>
       {url ? (
         // eslint-disable-next-line @next/next/no-img-element -- a Blob signature PNG, not a product image
         <img src={url} alt={title} className="mt-1 h-16 w-auto max-w-full object-contain" />
@@ -386,10 +387,10 @@ export function KioskHistoryDetail({
             >
               <div className="min-w-0 flex-1">
                 <p className="text-role-body font-semibold text-text-default">
-                  {line.title || line.type}
+                  {line.title || sentenceCaseLabel(line.type)}
                 </p>
                 <p className="text-role-caption text-text-soft">
-                  {line.type} · ×{line.quantity}
+                  {sentenceCaseLabel(line.type)} · ×{line.quantity}
                 </p>
                 {line.adjustment ? (
                   <p className="text-role-caption text-text-soft" data-testid="kiosk-history-line-adjustment">

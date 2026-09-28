@@ -12,6 +12,7 @@ import { claimOrAbsorbZohoPoShell } from '@/lib/receiving/claim-zoho-po-shell';
 import { attachBoxToReceiving } from '@/lib/receiving/attach-box';
 import { reparentReceivingCartonPhotos } from '@/lib/receiving/reparent-carton-photos';
 import type { TxClient } from '@/lib/receiving/relink-po';
+import { resolveCartonInvestigations } from '@/lib/receiving/exceptions';
 import {
   canonicalizeTrackingKey,
   pickMirrorPoIdFromCandidates,
@@ -387,6 +388,14 @@ export async function reconcileUnmatchedReceiving(
   const exceptionsResolved = await withTenantTransaction(orgId, (client) =>
     resolveReceivingExceptionsByReceivingId(winningReceivingId, client),
   ).catch(() => 0);
+
+  // Paired: the unfound investigation is answered — on the orphan box and on
+  // the shell it may have been absorbed into.
+  for (const cartonId of new Set([receivingId, winningReceivingId])) {
+    await resolveCartonInvestigations(orgId, cartonId, null).catch((err) =>
+      console.warn(`[reconcile-unmatched] investigation close failed for receiving=${cartonId}:`, err),
+    );
+  }
 
   try {
     await tenantQuery(

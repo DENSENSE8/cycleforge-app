@@ -33,6 +33,13 @@ export interface AssistantToolQueryResult {
 export interface AssistantToolDeps {
   query: (orgId: OrgId, text: string, params?: ReadonlyArray<unknown>) => Promise<AssistantToolQueryResult>;
   /**
+   * Hand the tool round's batch connection back to the pool before a slow
+   * EXTERNAL call (carrier refresh, ShipStation quote), so no pooled client
+   * sits idle-in-transaction while a third party answers. The next `query`
+   * checks out a fresh one. Absent outside the chat route (nothing is held).
+   */
+  releaseBatch?: () => Promise<void>;
+  /**
    * Optional search / ticket collaborators for tools that wrap existing domain
    * helpers (serveFindRecords, resolveSupportTicketToReceiving). Defaults live
    * on each tool so callers that only fake `query` stay valid.

@@ -105,7 +105,7 @@ export function SetPinPad({ staff, onSubmit, onBack }: SetPinPadProps) {
     <div className="flex flex-col items-center">
       <PinPadStaffHeader staff={staff} theme={theme} onBack={onBack} />
 
-      <div className="mt-3 inline-flex items-center gap-2 rounded-full bg-scrim/95 px-3 py-1 text-role-micro font-semibold uppercase tracking-[0.18em] text-white">
+      <div className="mt-3 inline-flex items-center gap-2 rounded-full bg-scrim/95 px-3 py-1 text-role-micro font-semibold text-white">
         First-time setup
       </div>
 

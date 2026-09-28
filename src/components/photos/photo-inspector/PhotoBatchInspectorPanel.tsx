@@ -198,7 +198,7 @@ export function PhotoBatchInspectorPanel<T>({
           // position.
           headerRightSlot={
             <span
-              className="flex h-full items-center px-2 text-role-eyebrow uppercase tracking-widest tabular-nums text-text-soft"
+              className="flex h-full items-center px-2 text-role-eyebrow tabular-nums text-text-soft"
               data-testid="photo-batch-count"
             >
               {shownCount} selected

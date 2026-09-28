@@ -6,6 +6,7 @@ import { WORKFLOW_STAGES, workflowStageLabel } from '@/lib/receiving/workflow-st
 import { PackageCheck, Clock, Truck, Package } from '@/components/Icons';
 import { CONDITION_LABELS, conditionGradeTableLabel } from '@/lib/conditions';
 import { LIFECYCLE_CLASSES } from '@/design-system/tokens/lifecycle';
+import { sentenceCaseLabel } from '@/lib/text/sentence-case-label';
 
 // Condition-grade labels live in one place now — see src/lib/conditions.ts.
 // Re-exported here so existing `from '@/lib/receiving/receiving-constants'`
@@ -31,12 +32,12 @@ export const WORKFLOW_BADGE: Record<string, string> = Object.fromEntries(
 /** List-row / badge copy for inbound workflow; DB enums unchanged (`MATCHED`, `DONE`, …). */
 export function workflowStatusTableLabel(status: string | null | undefined): string {
   const raw = String(status ?? '').trim().toUpperCase();
-  if (!raw) return 'UNKNOWN';
-  // Both early receiving stages read as "SCANNED" on list rows:
-  if (raw === 'ARRIVED' || raw === 'MATCHED') return 'SCANNED';
+  if (!raw) return 'Unknown';
+  // Both early receiving stages read as "Scanned" on list rows:
+  if (raw === 'ARRIVED' || raw === 'MATCHED') return 'Scanned';
   // Terminal DONE reads as Received — same SoT as workflowStageLabel / History chips.
   if (raw === 'DONE') return workflowStageLabel('DONE');
-  return raw.replace(/_/g, ' ');
+  return sentenceCaseLabel(raw);
 }
 
 /** Compact grade→label map (New · Like New · Refurb · A · B · C · Parts). */

@@ -177,7 +177,7 @@ export function ClaimPhotoPicker({ photos, receivingId, mode = 'select' }: Props
               className="inline-flex h-7 w-7 shrink-0 items-center justify-center !rounded-none text-text-faint hover:bg-surface-sunken hover:text-text-muted"
             />
           </HoverTooltip>
-          <p className="truncate text-role-micro uppercase tracking-widest text-text-soft">
+          <p className="truncate text-role-micro text-text-soft">
             {selectable
               ? `Attach photos ${selectedPhotoIds.size}/${list.length}`
               : `Photos ${list.length}`}

@@ -13,6 +13,7 @@ import {
 } from '@/design-system/primitives';
 import { BUTTON_VARIANTS } from '@/design-system/primitives/button-variants';
 import { ChevronDown, RefreshCw } from '@/components/Icons';
+import { NAV_ACTION_ICONS } from '@/components/sidebar/contextual/nav-view-icons';
 import { focusRing } from '@/design-system/tokens/focus-ring';
 import { cornerClass } from '@/design-system/tokens/radius';
 import { cn } from '@/utils/_cn';
@@ -82,6 +83,8 @@ function useRunAction(action: NavAction) {
 
 function PrimaryAction({ action }: { action: NavAction }) {
   const { disabled, run } = useRunAction(action);
+  // The verb's own glyph when it declares one (Print), else ↻ — the Sync face.
+  const Glyph = NAV_ACTION_ICONS[action.id]?.icon ?? RefreshCw;
   return (
     <button
       type="button"
@@ -90,7 +93,7 @@ function PrimaryAction({ action }: { action: NavAction }) {
       onClick={run}
       className={cn(SEGMENT_CLASS, 'pl-3 pr-3 hover:bg-white/10')}
     >
-      <RefreshCw aria-hidden className="size-3.5 shrink-0" />
+      <Glyph aria-hidden className="size-3.5 shrink-0" />
       <span className="truncate">{action.label}</span>
     </button>
   );

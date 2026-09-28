@@ -30,7 +30,7 @@ export function OpenListingLinksPanel({
     <div className={cn('space-y-3', className)}>
       <div className="flex items-center justify-between gap-3">
         <div className="min-w-0">
-          <p className="text-role-eyebrow uppercase tracking-widest text-text-default">
+          <p className="text-role-eyebrow text-text-default">
             {links.length > 1 ? `${links.length} listing links` : 'Listing links'}
           </p>
           {!compact ? (

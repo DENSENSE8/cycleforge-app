@@ -332,7 +332,7 @@ export function MobilePackerSpamCamera({
     ctx.font = 'bold 48px system-ui, -apple-system, sans-serif';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.fillText('TEST PHOTO', canvas.width / 2, canvas.height / 2 - 24);
+    ctx.fillText('Test photo', canvas.width / 2, canvas.height / 2 - 24);
     ctx.font = '24px system-ui, -apple-system, sans-serif';
     ctx.fillText(new Date().toLocaleString(), canvas.width / 2, canvas.height / 2 + 32);
 
@@ -392,7 +392,7 @@ export function MobilePackerSpamCamera({
               variant="primary"
               onClick={attemptStart}
               whileTap={{ scale: 0.96 }}
-              className="h-11 px-5 rounded-none text-role-caption font-semibold uppercase tracking-wider"
+              className="h-11 px-5 rounded-none text-role-caption font-semibold"
             >
               Try Again
             </MotionButton>
@@ -403,7 +403,7 @@ export function MobilePackerSpamCamera({
                 variant="primary"
                 onClick={handleUseTestPhoto}
                 whileTap={{ scale: 0.96 }}
-                className="mt-3 h-11 px-5 rounded-none bg-amber-500 text-black text-role-caption font-semibold uppercase tracking-wider hover:bg-amber-600 active:bg-amber-600"
+                className="mt-3 h-11 px-5 rounded-none bg-amber-500 text-black text-role-caption font-semibold hover:bg-amber-600 active:bg-amber-600"
               >
                 Use Test Photo · Dev
               </MotionButton>
@@ -431,7 +431,7 @@ export function MobilePackerSpamCamera({
           <div className="flex-1 min-w-0">
             {header ?? (
               <>
-                <p className="text-role-micro uppercase tracking-[0.22em] text-white/60">
+                <p className="text-role-micro text-white/60">
                   Add photos
                 </p>
                 <p className="text-sm font-semibold text-white">
@@ -453,7 +453,7 @@ export function MobilePackerSpamCamera({
 
       {/* ── Cap reached banner ── */}
       {atCap && cameraLive && (
-        <div className="absolute top-[max(4.5rem,calc(env(safe-area-inset-top)+3.5rem))] left-1/2 z-10 -translate-x-1/2 px-3 py-1.5 rounded-full bg-amber-500/95 text-xs font-semibold uppercase tracking-wider text-white shadow-lg">
+        <div className="absolute top-[max(4.5rem,calc(env(safe-area-inset-top)+3.5rem))] left-1/2 z-10 -translate-x-1/2 px-3 py-1.5 rounded-full bg-amber-500/95 text-xs font-semibold text-white shadow-lg">
           Max {maxPhotos} photos
         </div>
       )}

@@ -128,7 +128,7 @@ export function PhoneHandoffQrDialog({
                 </DialogPrimitive.Close>
 
                 <div className="flex flex-col items-center gap-1.5 pr-6">
-                  <DialogPrimitive.Description className="text-role-micro uppercase tracking-widest text-text-soft">
+                  <DialogPrimitive.Description className="text-role-micro text-text-soft">
                     Sign in on your phone
                   </DialogPrimitive.Description>
                   <DialogPrimitive.Title className="text-sm font-semibold leading-snug text-text-default">
@@ -160,7 +160,7 @@ export function PhoneHandoffQrDialog({
 
                 {displayCode ? (
                   <div className="flex flex-col items-center gap-2">
-                    <p className="text-role-micro uppercase tracking-widest text-text-soft">
+                    <p className="text-role-micro text-text-soft">
                       Or type this code on your phone
                     </p>
                     {/* One tile per digit — the desk reads exactly like the

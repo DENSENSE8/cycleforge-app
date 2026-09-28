@@ -62,8 +62,9 @@ export function useComposerTicketClaim({
   const isClaim = !hasTicket && row != null && receivingId != null;
 
   // Same default the claim form derives — RETURNED → RTS, return intake →
-  // return, unmatched without a PO → unfound, else damage. Read from the row so
-  // the composer files the same claim type the form would have.
+  // return, unmatched without a PO → unfound, QC fail → its claim, short →
+  // missing, else damage. Read from the row so the composer files the same
+  // claim type (and so the same recorded reason) the form would have.
   const claimType = defaultReceivingClaimType({
     shipmentStatus: row?.shipment_status,
     receivingType: row?.receiving_type,
@@ -71,6 +72,9 @@ export function useComposerTicketClaim({
     intakeType: row?.intake_type,
     receivingSource: row?.receiving_source,
     hasPo: Boolean(row?.zoho_purchaseorder_number || row?.zoho_purchaseorder_id),
+    qaStatus: row?.qa_status,
+    quantityReceived: row && row.id > 0 ? row.quantity_received : null,
+    quantityExpected: row && row.id > 0 ? row.quantity_expected : null,
   });
 
   const template = useClaimTemplate({

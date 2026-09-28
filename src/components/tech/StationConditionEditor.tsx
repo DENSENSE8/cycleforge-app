@@ -69,7 +69,7 @@ export function StationConditionEditor({
     <div className="relative">
       {isSaving ? (
         <div className="absolute -top-4 right-0 flex justify-end">
-          <span className="text-role-micro uppercase tracking-wide text-text-info animate-pulse">Saving</span>
+          <span className="text-role-micro text-text-info animate-pulse">Saving</span>
         </div>
       ) : null}
       <ConditionPills

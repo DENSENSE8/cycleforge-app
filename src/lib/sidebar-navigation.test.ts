@@ -56,14 +56,16 @@ test('getSidebarNavItems applies the MOBILE-FIRST GATE, and nothing else, by def
   }
 });
 
-test('Chat leads the tops; Reports joined them; Operations in Monitor; Plans after Media', () => {
+test('Chat leads the tops, Automations right under it; Reports joined them; Plans after Media', () => {
   const items = getSidebarNavItems();
   const topIds = items.filter((item) => item.kind === 'top').map((item) => item.id);
   // `reports` joined on 2026-09-15 (operator:
   // (`/?mode=tasks`), not a sibling destination (operator 2026-09-22 —
-  // Chat moved to the top of the page map on 2026-09-27.
+  // Chat moved to the top of the page map on 2026-09-27, and Automations
+  // (`studio`) moved from the last lane to right under it the same day.
   assert.deepEqual(topIds, [
     'ai-chat',
+    'studio',
     'home',
     'search',
     'ops-photos',
@@ -112,14 +114,15 @@ test('Chat leads the tops; Reports joined them; Operations in Monitor; Plans aft
 
   const studioRow = APP_SIDEBAR_NAV.find((item) => item.id === 'studio');
   assert.ok(studioRow, 'studio must stay in the registry');
-  assert.equal(studioRow.kind === 'main' ? studioRow.mainGroup : null, 'studio');
+  // A top row since 2026-09-27 (right under Chat), no longer the last lane.
+  assert.equal(studioRow.kind, 'top');
   // UNPARKED 2026-09-23: *"the cron drop to assign tasks from designated tags
-  // should be included in the automations display in the sidebar"*. The lane is
-  // the door that display hangs from, so it ships again — Monitor above does not.
+  // should be included in the automations display in the sidebar"*. The row is
+  // the door that display hangs from, so it ships — Monitor above does not.
   assert.equal(
     items.some((item) => item.id === 'studio'),
     true,
-    'the Automations lane carries a door again (2026-09-23 ruling)',
+    'Automations carries a door (2026-09-23 ruling)',
   );
 
   // Admin is DISSOLVED: no map row — /admin is a redirect table and permission
@@ -162,11 +165,11 @@ test('plans-live pin requires operations.plans.view', () => {
   );
 });
 
-test('Chat leads the spine map; Search, Plans, and Settings stay off it', () => {
+test('Chat leads the spine map, Automations under it; Search, Plans, and Settings stay off it', () => {
   const items = getSidebarNavItems();
   const mapTopIds = items.filter(isSpineMapTopRow).map((item) => item.id);
   // The structural rows above the reorderable lane band:
-  assert.deepEqual(mapTopIds, ['ai-chat', 'home', 'ops-photos', 'reports']);
+  assert.deepEqual(mapTopIds, ['ai-chat', 'studio', 'home', 'ops-photos', 'reports']);
 
   const search = items.find((item) => item.id === 'search');
   const plans = items.find((item) => item.id === 'plans-live');
@@ -896,7 +899,6 @@ test('desk family helpers: domains + Operations are desks; Studio, benches, Home
   assert.equal(isDeskSpineSection('fulfillment'), true);
   assert.equal(isDeskSpineSection('monitor'), true);
   assert.equal(isDeskSpineSection('floor'), false);
-  assert.equal(isDeskSpineSection('studio'), false);
   assert.equal(DESK_GROUPS[0]?.id, 'desks');
   assert.equal(DESK_GROUPS[0]?.label, 'Workspaces');
 });

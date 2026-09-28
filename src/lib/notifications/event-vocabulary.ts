@@ -140,12 +140,19 @@ const ASSIGNMENT_EVENTS = {
     key: 'work_task.assigned',
     label: 'Handed to you',
   },
+  'order_note.mentioned': {
+    key: 'order_note.mentioned',
+    label: 'Mentioned you',
+  },
 } as const;
 
 type AssignmentEventKey = keyof typeof ASSIGNMENT_EVENTS;
 
 /** The event key a thrown task writes onto its inbox row. */
 export const WORK_TASK_ASSIGNED: AssignmentEventKey = 'work_task.assigned';
+
+/** The event key an order-note @mention writes onto its inbox row. */
+export const ORDER_NOTE_MENTIONED: AssignmentEventKey = 'order_note.mentioned';
 
 /** Label for any inbox row, from whichever registry owns its key. */
 export function eventLabelFor(key: string): string {

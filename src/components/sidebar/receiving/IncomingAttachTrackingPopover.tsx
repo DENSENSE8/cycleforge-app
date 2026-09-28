@@ -281,7 +281,7 @@ export function IncomingAttachTrackingPopover({
       >
               {/* Header */}
               <div className="mb-2 flex items-center justify-between">
-                <DialogTitle className="text-role-eyebrow uppercase tracking-wider text-text-soft">
+                <DialogTitle className="text-role-eyebrow text-text-soft">
                   {selected ? 'Attach tracking' : 'Find a PO'}
                 </DialogTitle>
                 <IconButton
@@ -353,7 +353,7 @@ export function IncomingAttachTrackingPopover({
                         type="button"
                         onClick={reset}
                         /* ds-raw-button: compact inline text link (text-mini) inside a chip row — Button height/padding would bloat it */
-                        className="ds-raw-button shrink-0 text-role-micro uppercase tracking-wide text-indigo-600 hover:text-indigo-800"
+                        className="ds-raw-button shrink-0 text-role-micro text-indigo-600 hover:text-indigo-800"
                       >
                         Change
                       </button>
@@ -402,7 +402,7 @@ export function IncomingAttachTrackingPopover({
                               {b.carrier ? <span className="ml-1 text-text-faint">{b.carrier}</span> : null}
                             </span>
                             <span
-                              className={`shrink-0 text-role-micro font-semibold uppercase tracking-wide ${
+                              className={`shrink-0 text-role-micro font-semibold ${
                                 b.is_delivered ? 'text-emerald-600' : 'text-text-faint'
                               }`}
                             >

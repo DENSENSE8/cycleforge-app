@@ -63,3 +63,32 @@ export function assignInboxItemParams(
     collapseKey,
   ];
 }
+
+/** The @mention twin of `ASSIGN_INBOX_ITEM_SQL` — same row shape, reason 'mentioned'. */
+export const MENTION_INBOX_ITEM_SQL = ASSIGN_INBOX_ITEM_SQL.replace("'assigned'", "'mentioned'");
+
+interface MentionInboxItemArgs {
+  staffId: number;
+  entityType: string;
+  entityId: number;
+  eventKey: string;
+  /** The mentioning row's id — one inbox row per (recipient, note). */
+  sourceKey: string;
+  actorStaffId: number | null;
+  note: string | null;
+}
+
+export function mentionInboxItemParams(organizationId: string, args: MentionInboxItemArgs): unknown[] {
+  const key = `mention:${args.sourceKey}`;
+  return [
+    organizationId,
+    args.staffId,
+    args.entityType,
+    args.entityId,
+    args.eventKey,
+    args.actorStaffId,
+    JSON.stringify({ note: args.note, urgent: false }),
+    key,
+    key,
+  ];
+}

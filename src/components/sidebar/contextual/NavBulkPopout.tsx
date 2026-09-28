@@ -27,6 +27,7 @@ import { focusRing } from '@/design-system/tokens/focus-ring';
 import { SIDEBAR_CHIP_CORNER } from '@/design-system/tokens/radius';
 import { cn } from '@/utils/_cn';
 import type { BulkEntry, BulkList } from './NavBulkList';
+import type { PageFind } from './NavFind';
 import { NAV_LOCATE_TONE_VAR } from './nav-locate-tone';
 
 type Tone = NavLocateBucket['tone'];
@@ -102,17 +103,22 @@ interface RowBucket {
  */
 export function NavBulkPopout({
   list,
+  find: pageFind,
   anchorRef,
   open,
   onClose,
 }: {
   list: BulkList;
+  /** The page list's Find; absent (the everywhere face) = the desk store at this path. */
+  find?: PageFind;
   anchorRef: React.RefObject<HTMLElement | null>;
   open: boolean;
   onClose: () => void;
 }) {
   const pathname = usePathname() || '/';
-  const [find, setFind] = useDeskSearch(pathname);
+  const [deskFind, setDeskFind] = useDeskSearch(pathname);
+  const find = pageFind ? pageFind.value : deskFind;
+  const setFind = pageFind ? pageFind.set : setDeskFind;
   const router = useRouter();
   const searchParams = useSearchParams();
   const [sort, setSort] = useState<SortMode>('pasted');
@@ -166,12 +172,16 @@ export function NavBulkPopout({
   const copy = async (text: string, what: string) => {
     if (await copyToClipboard(text)) toast.success(`Copied ${what}`);
   };
-  // The bucket's list, narrowed to this number by its desk Find. A push, so
+  // The bucket's list, narrowed to this number by its Find. A push, so
   // Back returns to the pasted list.
   const openBucket = (bucket: NavLocateBucket, entry: BulkEntry) => {
     if (!bucket.href) return;
-    setDeskSearch(new URL(bucket.href, 'http://local').pathname, entry.ref);
     onClose();
+    if (pageFind) {
+      pageFind.open(bucket.href, entry.ref);
+      return;
+    }
+    setDeskSearch(new URL(bucket.href, 'http://local').pathname, entry.ref);
     router.push(bucket.href, { scroll: false });
   };
   const openRecord = (entry: BulkEntry) => {

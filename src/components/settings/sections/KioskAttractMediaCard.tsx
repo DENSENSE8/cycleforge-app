@@ -84,7 +84,7 @@ export function KioskAttractMediaCard({
   return (
     <div className="space-y-3 rounded-none border border-border-hairline bg-surface-sunken/40 p-4">
       <div>
-        <h4 className="text-xs font-semibold uppercase tracking-wide text-text-muted">
+        <h4 className="text-xs font-semibold text-text-muted">
           Counter lock-screen media
         </h4>
         <p className="mt-1 text-role-caption text-text-soft">

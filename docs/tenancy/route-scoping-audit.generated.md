@@ -110,7 +110,6 @@
 | medium | `/api/nas-config` | GET | ✅ | ✅ | — | photos |
 | medium | `/api/nas-target/[target]/[[...path]]` | GET/PUT/DELETE | — | ✅ | — | orders |
 | medium | `/api/orders/import/suggest-mapping` | POST | ✅ | ✅ | — | orders |
-| medium | `/api/orders/intake-suggestions` | GET | ✅ | ✅ | — | orders |
 | medium | `/api/packerlogs/counts` | GET | ✅ | ✅ | — | staff |
 | medium | `/api/packing/policy` | GET | ✅ | ✅ | — | sku_stock |
 | medium | `/api/photos/analyze` | POST | ✅ | ✅ | — | photos |
@@ -1458,7 +1457,6 @@
 - ✅ `/api/orders/exceptions` (low)
 - ✅ `/api/orders/import-csv` (low)
 - ⛔ `/api/orders/import/suggest-mapping` (medium)
-- ⛔ `/api/orders/intake-suggestions` (medium)
 - ✅ `/api/orders/integrity-check` (low)
 - ✅ `/api/orders/lookup/[orderId]` (low)
 - ✅ `/api/orders/missing-parts` (low)
@@ -2998,3 +2996,4 @@
 - ✅ `/api/receiving/lookup-po` (low)
 - ✅ `/api/receiving/po-search` (low)
 - ✅ `/api/receiving/po/[poId]/attach-box` (low)
+

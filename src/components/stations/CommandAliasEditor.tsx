@@ -106,7 +106,7 @@ export function CommandAliasEditor() {
       {open ? (
         <div className="mt-3 flex flex-wrap items-end gap-3 border border-border-soft p-3 print:hidden">
           <label className="flex min-w-[12rem] flex-1 flex-col gap-1">
-            <span className="text-role-caption font-semibold uppercase tracking-wider text-text-soft">
+            <span className="text-role-caption font-semibold text-text-soft">
               Scan code
             </span>
             <input
@@ -117,7 +117,7 @@ export function CommandAliasEditor() {
             />
           </label>
           <label className="flex min-w-[12rem] flex-1 flex-col gap-1">
-            <span className="text-role-caption font-semibold uppercase tracking-wider text-text-soft">
+            <span className="text-role-caption font-semibold text-text-soft">
               Means
             </span>
             <select
@@ -133,7 +133,7 @@ export function CommandAliasEditor() {
             </select>
           </label>
           <label className="flex min-w-[10rem] flex-1 flex-col gap-1">
-            <span className="text-role-caption font-semibold uppercase tracking-wider text-text-soft">
+            <span className="text-role-caption font-semibold text-text-soft">
               Label
             </span>
             <input
@@ -172,7 +172,7 @@ export function CommandAliasEditor() {
                 className="flex items-center justify-between gap-6 break-inside-avoid border-b border-border-soft py-4"
               >
                 <div className="min-w-0 flex-1">
-                  <p className="font-mono text-role-body font-bold uppercase tracking-wide text-text-strong">
+                  <p className="font-mono text-role-body font-bold text-text-strong">
                     {alias.code}
                   </p>
                   <p className="mt-1 text-role-body font-semibold text-text-default">{alias.label}</p>

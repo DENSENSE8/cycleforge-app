@@ -18,7 +18,7 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
     routeKey: 'scan-tracking',
     limit: 120,
     windowMs: 60_000,
-    organizationId: ctx.organizationId,
+    organizationId: ctx.organizationId, staffId: ctx.staffId,
   });
   if (!rate.ok) {
     return NextResponse.json(

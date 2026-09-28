@@ -6,6 +6,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { AdminEmptyDetail } from './shared';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { FILTER_DROPDOWN_SELECT_CLASS } from '@/design-system/components/FilterDropdownSelect';
+import { sentenceCaseLabel } from '@/lib/text/sentence-case-label';
 
 type StationFilter = 'ALL' | 'TECH' | 'PACK';
 type RangeFilter = 7 | 14 | 30;
@@ -131,8 +132,8 @@ export function GoalsAnalyticsTab() {
     <section className="flex h-full min-h-0 w-full flex-col overflow-hidden bg-surface-canvas">
       <header className="flex flex-wrap items-center justify-between gap-3 border-b border-border-soft bg-surface-card px-6 py-4">
         <div className="min-w-0">
-          <p className="text-role-micro uppercase tracking-widest text-text-soft">
-            {staffSummary.role} · {staffSummary.station}
+          <p className="text-role-micro text-text-soft">
+            {staffSummary.role} · {sentenceCaseLabel(staffSummary.station)}
           </p>
           <h2 className="mt-0.5 truncate text-lg font-semibold text-text-default">{staffSummary.name}</h2>
         </div>
@@ -143,7 +144,7 @@ export function GoalsAnalyticsTab() {
               key={option.value}
               type="button"
               onClick={() => setRangeFilter(option.value)}
-              className={`rounded-md px-2.5 py-1 text-role-micro font-semibold uppercase tracking-wider transition ${
+              className={`rounded-md px-2.5 py-1 text-role-micro font-semibold transition ${
                 rangeFilter === option.value
                   ? 'bg-blue-600 text-white'
                   : 'bg-blue-50 text-blue-700 hover:bg-blue-100'
@@ -190,7 +191,7 @@ export function GoalsAnalyticsTab() {
           </div>
 
           <div className="rounded-none border border-border-soft bg-surface-card p-4">
-            <p className="text-role-micro uppercase tracking-widest text-text-soft">Trend</p>
+            <p className="text-role-micro text-text-soft">Trend</p>
             <div className="mt-3 flex items-end gap-2">
               {[...staffSummary.recent].reverse().map((entry) => {
                 const metrics = getProgress(entry.actual, entry.goal);
@@ -216,7 +217,7 @@ export function GoalsAnalyticsTab() {
           </div>
 
           <div className="rounded-none border border-border-soft bg-surface-card">
-            <div className="grid grid-cols-[1fr_80px_80px_100px] gap-x-3 border-b border-border-soft px-4 py-2.5 text-role-micro uppercase tracking-widest text-text-soft">
+            <div className="grid grid-cols-[1fr_80px_80px_100px] gap-x-3 border-b border-border-soft px-4 py-2.5 text-role-micro text-text-soft">
               <p>Date</p>
               <p className="text-right">Actual</p>
               <p className="text-right">Goal</p>
@@ -257,7 +258,7 @@ function DetailCard({
 }) {
   return (
     <div className="rounded-none border border-border-soft bg-surface-card p-3">
-      <p className="text-role-micro uppercase tracking-widest text-text-soft">{label}</p>
+      <p className="text-role-micro text-text-soft">{label}</p>
       <div className="mt-1 text-base font-semibold text-text-default">{value}</div>
       {hint ? <p className="mt-0.5 text-role-micro text-text-soft">{hint}</p> : null}
     </div>

@@ -55,7 +55,7 @@ export function MobileCurrentSession() {
   return (
     <section aria-labelledby="mobile-current-session" className="pb-5">
       <div className="flex items-baseline justify-between gap-3 pb-2">
-        <h2 id="mobile-current-session" className="text-role-eyebrow font-semibold uppercase tracking-wide text-text-muted">
+        <h2 id="mobile-current-session" className="text-role-eyebrow font-semibold text-text-muted">
           Current session
         </h2>
         <span className="text-role-micro tabular-nums text-text-faint">{entries.length}</span>
@@ -67,7 +67,7 @@ export function MobileCurrentSession() {
               <ItemRecordThumb imageUrl={null} plainEmpty iconClassName="h-5 w-5" className="h-10 w-10 shrink-0" />
               <span className="min-w-0 flex-1">
                 <span className="flex min-w-0 items-center gap-2">
-                  <span className="shrink-0 text-role-micro font-semibold uppercase tracking-wide text-accent-ink">
+                  <span className="shrink-0 text-role-micro font-semibold text-accent-ink">
                     {mobileSessionJobLabel(entry.job)}
                   </span>
                   <span className="truncate text-role-caption font-semibold text-text-default">

@@ -10,8 +10,14 @@ import { ReceivingRecordPlatform } from '@/components/receiving/ReceivingRecordI
 import type { CartonRecordCarton } from '@/lib/receiving/carton-record-status';
 import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
 import { receivingRecordIdentity } from '@/lib/receiving/record-identity';
+import { readReturnReason } from '@/lib/inbound/return-reason-codes';
+import { sentenceCaseLabel } from '@/lib/text/sentence-case-label';
 import { cn } from '@/utils/_cn';
-import { CartonColumnHead, CartonStampFact, TicketLink } from './carton-record-sections';
+import { RecordGroup } from '@/design-system/components/record-ledger/RecordGroup';
+import { CartonStampFact, TicketLink } from './carton-record-sections';
+
+/** A facts group's body: fact rows on the soft rule, the last one open. */
+const FACTS_BODY_CLASS = 'flex flex-col px-4 pb-1 [&>*:last-child]:border-b-0';
 
 const SOURCE_LABEL: Readonly<Record<string, string>> = {
   zoho_po: 'Zoho purchase order',
@@ -49,21 +55,21 @@ export function CartonRecordFacts({
 
   return (
     <>
-      <CartonColumnHead label="Purchase" />
-      <div className="flex flex-col border-b border-mode-ink px-4 [&>*:last-child]:border-b-0" data-testid="carton-record-purchase">
+      <RecordGroup title="Purchase" testId="carton-record-purchase">
+      <div className={FACTS_BODY_CLASS}>
         <EvidenceFactRow label="Platform">
           <span className="flex h-8 items-center">
             <ReceivingRecordPlatform row={live} />
           </span>
         </EvidenceFactRow>
         <EvidenceFactRow label="PO #">
-          <span className={cn(RECORD_ID_CLASS, 'select-all', !poNumber && 'text-mode-warn')}>{poNumber ?? 'NOT PAIRED'}</span>
+          <span className={cn(RECORD_ID_CLASS, 'select-all', !poNumber && 'text-mode-warn')}>{poNumber ?? 'Not paired'}</span>
         </EvidenceFactRow>
         {vendor ? <EvidenceFactRow label="Vendor">{vendor}</EvidenceFactRow> : null}
         {source ? (
           <EvidenceFactRow label="Source">
             {SOURCE_LABEL[source] ?? source}
-            {carton?.is_return ? ` · return${carton.return_reason ? ` (${carton.return_reason})` : ''}` : ''}
+            {carton?.is_return ? ` · return${carton.return_reason ? ` (${readReturnReason(carton.return_reason)?.label ?? carton.return_reason})` : ''}` : ''}
           </EvidenceFactRow>
         ) : null}
         <EvidenceFactRow label="Listing">
@@ -72,27 +78,28 @@ export function CartonRecordFacts({
           </span>
         </EvidenceFactRow>
         <EvidenceFactRow label="Carton">
-          <span className={cn(RECORD_ID_CLASS, 'select-all')}>#{receivingId}</span>
+          <span className={cn(RECORD_ID_CLASS, 'select-all')}>{receivingId}</span>
         </EvidenceFactRow>
       </div>
-      <CartonColumnHead label="Shipment" />
-      <div className="flex flex-col border-b border-mode-ink px-4 [&>*:last-child]:border-b-0" data-testid="carton-record-shipment">
+      </RecordGroup>
+      <RecordGroup title="Shipment" testId="carton-record-shipment">
+      <div className={FACTS_BODY_CLASS}>
         <EvidenceFactRow label="TRK#">
           {tracking ? (
             <TrackingIdentity tracking={tracking} carrierHint={carrier} />
           ) : (
-            <span className={cn(RECORD_ID_CLASS, 'text-mode-warn')}>NOT ATTACHED</span>
+            <span className={cn(RECORD_ID_CLASS, 'text-mode-warn')}>Not attached</span>
           )}
         </EvidenceFactRow>
         {carrier ? <EvidenceFactRow label="Carrier">{carrier}</EvidenceFactRow> : null}
-        {shipmentStatus ? <EvidenceFactRow label="Status">{shipmentStatus}</EvidenceFactRow> : null}
+        {shipmentStatus ? <EvidenceFactRow label="Status">{sentenceCaseLabel(shipmentStatus)}</EvidenceFactRow> : null}
         <CartonStampFact label="Delivered" at={live.delivered_at} />
         <CartonStampFact label="Last event" who={live.shipment_latest_event_city} at={live.shipment_latest_event_at} />
       </div>
+      </RecordGroup>
       {stagingLabel || bins.length > 0 || live.priority_lane ? (
-        <>
-          <CartonColumnHead label="Location" />
-          <div className="flex flex-col border-b border-mode-ink px-4 [&>*:last-child]:border-b-0" data-testid="carton-record-location">
+        <RecordGroup title="Location" testId="carton-record-location">
+          <div className={FACTS_BODY_CLASS}>
             {stagingLabel ? <EvidenceFactRow label="Staging">{stagingLabel}</EvidenceFactRow> : null}
             {live.priority_lane ? <EvidenceFactRow label="Lane">{live.priority_lane}</EvidenceFactRow> : null}
             {bins.length > 0 ? (
@@ -101,25 +108,24 @@ export function CartonRecordFacts({
               </EvidenceFactRow>
             ) : null}
           </div>
-        </>
+        </RecordGroup>
       ) : null}
       {tickets.length > 0 ? (
-        <>
-          <CartonColumnHead label="Claims" />
-          <div className="flex flex-wrap gap-x-3 border-b border-mode-ink px-4 py-2" data-testid="carton-record-tickets">
+        <RecordGroup title="Claims" testId="carton-record-tickets">
+          <div className="flex flex-wrap gap-x-3 px-4 pb-3">
             {tickets.map((ticket) => (
               <TicketLink key={ticket} ticket={ticket} />
             ))}
           </div>
-        </>
+        </RecordGroup>
       ) : null}
       {supportNote ? (
-        <>
-          <CartonColumnHead label="Carton note" />
-          <p className="whitespace-pre-wrap border-b border-mode-ink px-4 py-2 text-role-data">{supportNote}</p>
-        </>
+        <RecordGroup title="Carton note">
+          <p className="whitespace-pre-wrap px-4 pb-3 text-role-data">{supportNote}</p>
+        </RecordGroup>
       ) : null}
       {poNote ? (
+        <RecordGroup title="PO note" titleHidden>
         <EvidenceDisclosure
           label="PO note"
           testId="carton-record-po-note"
@@ -127,6 +133,7 @@ export function CartonRecordFacts({
         >
           <p className="whitespace-pre-wrap break-words px-4 py-2 text-role-data">{poNote}</p>
         </EvidenceDisclosure>
+        </RecordGroup>
       ) : null}
     </>
   );

@@ -49,7 +49,7 @@ export function getPackWorkspaceTabFromSearch(
 
 /**
  * Normalize URL for a pack workbench tab switch.
- * Queue defaults `ustatus=TESTED` (ready-to-pack). History clears fulfillment filters.
+ * Queue defaults `ustatus=PICKED` (ready-to-pack). History clears fulfillment filters.
  * Omits `packview` when queue (default) so the default URL stays clean.
  */
 export function normalizePackWorkspaceTabParams(
@@ -63,8 +63,8 @@ export function normalizePackWorkspaceTabParams(
     const ustatus = String(params.get('ustatus') || '')
       .trim()
       .toUpperCase();
-    if (ustatus !== 'PENDING' && ustatus !== 'TESTED' && ustatus !== 'BLOCKED') {
-      params.set('ustatus', 'TESTED');
+    if (ustatus !== 'PENDING' && ustatus !== 'PICKED' && ustatus !== 'BLOCKED') {
+      params.set('ustatus', 'PICKED');
     }
     params.delete('stage');
     params.delete('attention');

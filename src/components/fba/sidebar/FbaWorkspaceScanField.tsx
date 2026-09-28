@@ -231,7 +231,7 @@ export function FbaWorkspaceScanField({
                   <div className="flex items-start gap-2">
                     <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-text-accent" />
                     <div>
-                      <p className="text-role-micro uppercase tracking-[0.16em] text-text-default">Apply to selected plans</p>
+                      <p className="text-role-micro text-text-default">Apply to selected plans</p>
                       <p className="mt-1 text-role-caption leading-5 text-text-default">
                         Changes here will apply to all {trackingTargetPlanIds.length} selected plans.
                       </p>
@@ -262,7 +262,7 @@ export function FbaWorkspaceScanField({
                 onClick={() => void onSaveTracking()}
                 disabled={saving || !trackingReady}
                 radius="flush"
-                className="h-auto w-full px-3 py-2.5 text-role-caption font-semibold uppercase tracking-[0.12em]"
+                className="h-auto w-full px-3 py-2.5 text-role-caption font-semibold"
               >
                 {trackingReady ? 'Save tracking' : 'Enter valid FBA ID and UPS to save'}
               </Button>
@@ -276,7 +276,7 @@ export function FbaWorkspaceScanField({
 
             {/* Selection summary + clear */}
             <div className={`${scanChrome.trackingSectionBorder} flex items-center justify-between gap-2 pt-3`}>
-              <span className="text-role-micro uppercase tracking-[0.14em] text-text-soft">
+              <span className="text-role-micro text-text-soft">
                 {selectedCount} item{selectedCount !== 1 ? 's' : ''} selected
               </span>
               <Button
@@ -284,7 +284,7 @@ export function FbaWorkspaceScanField({
                 type="button"
                 onClick={() => clearSelection()}
                 radius="flush"
-                className="h-auto border border-border-soft px-2.5 py-1 text-role-eyebrow uppercase tracking-[0.14em] text-text-soft hover:bg-surface-hover hover:text-text-default"
+                className="h-auto border border-border-soft px-2.5 py-1 text-role-eyebrow text-text-soft hover:bg-surface-hover hover:text-text-default"
               >
                 Clear
               </Button>

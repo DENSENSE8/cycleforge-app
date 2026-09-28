@@ -171,7 +171,7 @@ export function DailyAgendaComposer({
         data-testid="agenda-composer-form"
         header={
           <div className="flex flex-wrap items-center gap-2 border-b border-border-hairline bg-surface-card px-4 py-1.5">
-            <p className="min-w-0 text-role-eyebrow font-semibold uppercase tracking-widest text-text-soft">
+            <p className="min-w-0 text-role-eyebrow font-semibold text-text-soft">
               New {TYPE_NOUN[type]}
             </p>
             <span className="ml-auto inline-flex shrink-0 items-center gap-1.5">

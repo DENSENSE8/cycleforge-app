@@ -3,7 +3,8 @@
 /** Every label on the open order, as the Label block lists it: */
 
 import { useState } from 'react';
-import { Printer, X } from '@/components/Icons';
+import { Printer, Trash2, X } from '@/components/Icons';
+import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { TrackingIdentity } from '@/components/ui/OrderIdentityChips';
 import { DESK_BAR_SEGMENT_CLASS, deskBarSegmentTone } from '@/design-system/components/DeskActionSlot';
 import {
@@ -32,6 +33,7 @@ import { cn } from '@/utils/_cn';
 import { EvidenceFactRow } from '@/design-system/components/record-ledger/EvidenceDisclosure';
 import { orderLabelPdfSrc, useOrderLabelActions } from './order-labels-client';
 import { printDocument } from '@/lib/orders/order-paperwork-client';
+import { isVoidableLabel, useVoidOrderLabel } from './tracking/useVoidOrderLabel';
 
 /** Purpose code tone — outbound reads as ink, the second stories stand out. */
 const PURPOSE_TONE: Record<OrderLabelEntry['purpose'], string> = {
@@ -64,6 +66,24 @@ export function OrderLabelEntries({
 }) {
   const actions = useOrderLabelActions(orderId);
   const [ticketFor, setTicketFor] = useState<OrderLabelEntry | null>(null);
+  const voidLabel = useVoidOrderLabel(orderId);
+
+  const voidEntry = async (label: OrderLabelEntry) => {
+    const ok = await requestConfirm({
+      title: 'Void this label?',
+      description: `ShipStation refunds ${label.trackingNumber ?? label.labelId ?? 'the label'} and it comes off ${orderRef}. This cannot be undone.`,
+      confirmLabel: 'Void label',
+      tone: 'danger',
+    });
+    if (!ok) return;
+    voidLabel.mutate(
+      { label, reason: 'voided_from_record' },
+      {
+        onSuccess: () => toast.success('Label voided'),
+        onError: (error) => toast.error(error.message),
+      },
+    );
+  };
 
   const unlink = async (label: OrderLabelEntry) => {
     const ok = await requestConfirm({
@@ -208,15 +228,34 @@ export function OrderLabelEntries({
                     canUnlink(label)
                       ? 'Take this label off the order'
                       : label.creationType === 'bought_in_app'
-                        ? 'Bought here — void it in the Labels walk'
+                        ? 'Bought here — void it instead'
                         : "The order's imported primary label — replace its tracking instead"
                   }
                   data-testid="evidence-label-entry-unlink"
-                  className={cn(DESK_BAR_SEGMENT_CLASS, 'flex-1 justify-center', deskBarSegmentTone(false))}
+                  className={cn(
+                    DESK_BAR_SEGMENT_CLASS,
+                    'flex-1 justify-center',
+                    isVoidableLabel(label) && 'border-r border-mode-edge',
+                    deskBarSegmentTone(false),
+                  )}
                   onClick={() => void unlink(label)}
                 >
                   Unlink
                 </button>
+                {isVoidableLabel(label) ? (
+                  <HoverTooltip label="Void label" asChild placement="above">
+                    <button
+                      type="button"
+                      aria-label="Void label"
+                      disabled={voidLabel.isPending}
+                      data-testid="evidence-label-entry-void"
+                      className={cn(DESK_BAR_SEGMENT_CLASS, 'justify-center px-3', deskBarSegmentTone(false))}
+                      onClick={() => void voidEntry(label)}
+                    >
+                      <Trash2 className="h-3.5 w-3.5" aria-hidden />
+                    </button>
+                  </HoverTooltip>
+                ) : null}
               </div>
             </li>
           );

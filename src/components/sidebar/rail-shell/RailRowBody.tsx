@@ -34,7 +34,7 @@ export function RailRowBody({
   return (
     <div className={`min-w-0 ${className ?? ''}`}>
       {hasEyebrow ? (
-        <div className="flex items-center justify-between gap-2 text-role-eyebrow uppercase text-text-soft">
+        <div className="flex items-center justify-between gap-2 text-role-eyebrow text-text-soft">
           <div className="flex min-w-0 items-center gap-1.5">{vm.eyebrow}</div>
           {vm.eyebrowTrailing != null ? <div className="shrink-0">{vm.eyebrowTrailing}</div> : null}
         </div>

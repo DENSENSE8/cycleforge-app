@@ -1,6 +1,6 @@
 'use client';
 
-/** Pack browse workbench — Queue (TESTED Unshipped SoT) · History (packer logs). */
+/** Pack browse workbench — Queue (PICKED Unshipped SoT) · History (packer logs). */
 
 import { Suspense } from 'react';
 import { AnimatePresence, motion, motionRole, useMotionRole } from '@/design-system/motion';

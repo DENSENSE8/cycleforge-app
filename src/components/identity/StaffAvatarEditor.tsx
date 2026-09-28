@@ -263,7 +263,7 @@ export function StaffAvatarEditor({
           </div>
 
           <div className="mb-2 border-t border-border-hairline pt-2">
-            <div className="mb-1 text-role-micro uppercase tracking-[0.08em] text-text-faint">
+            <div className="mb-1 text-role-micro text-text-faint">
               Color
             </div>
             <RoleColorPicker
@@ -274,7 +274,7 @@ export function StaffAvatarEditor({
           </div>
 
           <div className="border-t border-border-hairline pt-2">
-            <div className="mb-1.5 text-role-micro uppercase tracking-[0.08em] text-text-faint">
+            <div className="mb-1.5 text-role-micro text-text-faint">
               Photo
             </div>
             <input

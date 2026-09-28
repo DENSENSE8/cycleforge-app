@@ -13,7 +13,7 @@ import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
 import type { ScanIntakeSurface } from '@/lib/receiving/scan';
 import type { UnboxLookupScanDetail } from '@/components/receiving/receiving-events';
 import { useReceivingEvents } from '@/hooks/useReceivingEvents';
-import { parseStaffParam } from '@/hooks/useStaffFilter';
+import { parseStaffParam } from '@/lib/station/table-url-params';
 import {
   receivingSurfaceBasePath,
   UNBOX_SURFACE_ROUTE,

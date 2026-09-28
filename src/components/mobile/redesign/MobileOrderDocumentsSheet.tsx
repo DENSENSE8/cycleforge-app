@@ -11,6 +11,7 @@ import {
   outboundDocumentMimeHint,
 } from '@/lib/documents/outbound-document-display';
 import type { OutboundDocument, OutboundDocumentType } from '@/lib/documents/types';
+import { sourcePlatformMeta } from '@/lib/source-platform';
 
 const DOCUMENT_TABS = [
   { id: 'shipping_label', label: 'Shipping label' },
@@ -20,7 +21,10 @@ const DOCUMENT_TABS = [
 function sourceLabel(document: OutboundDocument | undefined): string {
   if (!document) return 'Not attached';
   const platform = document.data.platform?.trim();
-  if (platform) return `${platform.toUpperCase()} import`;
+  if (platform) {
+    const meta = sourcePlatformMeta(platform);
+    return `${meta.value ? meta.label : platform} import`;
+  }
   return document.data.source === 'manual_upload' ? 'Manual upload' : 'Attached document';
 }
 

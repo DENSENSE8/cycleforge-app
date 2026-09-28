@@ -22,7 +22,7 @@ export interface ShippingHistoryCounts {
 
 export interface ShippingMetricCtx {
   mode: ShippingWorkspaceTab;
-  unshipped: { total: number; pending: number; tested: number; blocked: number };
+  unshipped: { total: number; pending: number; picked: number; blocked: number };
   history: ShippingHistoryCounts;
   /** Org ROI rollup — Pending packed/stuck tiles; null when ungated / no data. */
   roi?: OperationsRoiData | null;
@@ -57,18 +57,18 @@ export const SHIPPING_METRICS: ShippingMetricDef[] = [
     label: 'Ready to pack',
     modes: ['pending', 'urgent', 'all'],
     compute: ({ unshipped }) => {
-      if (unshipped.tested <= 0) return null;
+      if (unshipped.picked <= 0) return null;
       return tile(
         'ready',
         'Ready to pack',
-        unshipped.tested.toLocaleString(),
-        share(unshipped.tested, unshipped.total),
+        unshipped.picked.toLocaleString(),
+        share(unshipped.picked, unshipped.total),
         'neutral',
         1,
         {
           status: 'In queue',
-          tooltip: `Tested / ready units awaiting pack (${unshipped.tested}). Click to filter the board.`,
-          filterUstatus: 'TESTED',
+          tooltip: `Picked / ready units awaiting pack (${unshipped.picked}). Click to filter the board.`,
+          filterUstatus: 'PICKED',
         },
       );
     },

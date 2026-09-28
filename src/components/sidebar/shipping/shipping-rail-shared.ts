@@ -1,5 +1,5 @@
 import type { Order } from '@/components/station/upnext/upnext-types';
-import type { TechRecord } from '@/hooks/useDeskPickLogs';
+import type { DeskPickRecord } from '@/hooks/useDeskPickLogs';
 import type { RefreshDomain } from '@/lib/refresh/domains';
 
 export const SHIPPING_RAIL_REFRESH_EVENTS = ['tech-log-added'] as const;
@@ -62,8 +62,8 @@ export function recentOrderToShippedRow(row: RecentOrderRow): ShippedHistoryRow 
   };
 }
 
-/** Map a History {@link TechRecord} → rail preview `Order` shape. */
-export function techRecordToPreviewOrder(record: TechRecord): Order {
+/** Map a History {@link DeskPickRecord} → rail preview `Order` shape. */
+export function techRecordToPreviewOrder(record: DeskPickRecord): Order {
   return {
     id: Number(record.order_db_id ?? record.id),
     ship_by_date: record.ship_by_date ?? null,
@@ -87,6 +87,6 @@ export function techRecordToPreviewOrder(record: TechRecord): Order {
 }
 
 /** Rail row id — aligns preview selection with order_db_id when present. */
-export function techRecordRailId(record: TechRecord): number {
+export function techRecordRailId(record: DeskPickRecord): number {
   return Number(record.order_db_id ?? record.id);
 }

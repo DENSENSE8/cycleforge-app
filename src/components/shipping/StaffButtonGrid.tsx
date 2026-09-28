@@ -39,7 +39,7 @@ export function StaffButtonGrid({
 
   return (
     <div className={className}>
-      <p className="mb-2 text-role-eyebrow uppercase tracking-[0.22em] text-text-soft">{label}</p>
+      <p className="mb-2 text-role-eyebrow text-text-soft">{label}</p>
       {roster.length > 0 ? (
         <div
           className="grid w-full gap-2"
@@ -60,7 +60,7 @@ export function StaffButtonGrid({
                   active ? `${cls.active} border-transparent` : cls.inactive,
                 )}
               >
-                <span className="w-full text-center text-role-micro uppercase leading-tight tracking-[0.04em]">
+                <span className="w-full text-center text-role-micro leading-tight">
                   {m.name}
                 </span>
               </motion.button>

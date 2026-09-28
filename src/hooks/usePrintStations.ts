@@ -1,0 +1,343 @@
+'use client';
+
+/**
+ * Every print station this staffer can send to — the org registry (HTTP; any
+ * staffer's station) ∪ the staffer's own roster (Ably) — and which one prints
+ * each stock: this device's per-stock pick › the org's assignment › this
+ * computer. When the target is this computer the desk prints locally; any
+ * other station gets a `documents` job over its org station channel.
+ */
+
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useAuth } from '@/contexts/AuthContext';
+import { useAblyClient } from '@/contexts/AblyContext';
+import { useStaffPrintBridgeClient } from '@/hooks/useStaffPrintBridgeClient';
+import { currentPrintRoute } from '@/lib/label-prints/current-print-route';
+import type { PrintStock } from '@/lib/label-prints/print-route';
+import {
+  PRINT_STATION_CHANGED_EVENT,
+  printStationPickStorage,
+  readPrintStation,
+  readRememberedPrintStationId,
+  rememberPrintStationId,
+} from '@/lib/print/print-station';
+import {
+  fetchPrintStations,
+  PRINT_STATIONS_QUERY_KEY,
+  putPrintStationAssignment,
+} from '@/lib/print/print-station-registry-client';
+import type { PrintStationAssignment, PrintStationRegistry } from '@/lib/print/print-station-registry-contracts';
+import { SILENT_PRINT_CHANGED_EVENT } from '@/lib/print/printMode';
+import {
+  STAFF_PRINT_JOB_EVENT,
+  STAFF_PRINT_PROGRESS_EVENT,
+  STAFF_PRINT_STATUS_POLL_MS,
+  UNNAMED_PRINT_STATION,
+  isStaffPrintStationLive,
+  roleReady,
+  type StaffPrintJob,
+  type StationDocumentRef,
+} from '@/lib/print/staff-print-bridge';
+import { getPrintStationChannelName, safeChannelName } from '@/lib/realtime/channels';
+import { sendToDevice } from '@/lib/realtime/device-handshake';
+import { safeRandomUUID } from '@/lib/safe-uuid';
+
+type StockFace = { ready: boolean; printer: string | null };
+
+export interface PrintStationEntry {
+  stationId: string;
+  stationName: string;
+  thisComputer: boolean;
+  /** Where this station was heard: the org registry, the staffer's own roster, or both. */
+  sources: Array<'org' | 'staff'>;
+  live: boolean;
+  lastSeenAt: number | null;
+  label: StockFace;
+  paper: StockFace;
+}
+
+const NO_ASSIGNMENT: PrintStationAssignment = { label: null, paper: null };
+const NO_PICKS: Record<PrintStock, string | null> = { label: null, paper: null };
+/** How long a sender keeps listening for a station's progress after it acked. */
+const PROGRESS_LISTEN_MS = 10 * 60_000;
+
+/** This computer prints locally, so each stock is always printable here (the dialog is the floor). */
+function localFaces(): Record<PrintStock, StockFace> {
+  return {
+    label: { ready: true, printer: currentPrintRoute('label').printerName },
+    paper: { ready: true, printer: currentPrintRoute('paper').printerName },
+  };
+}
+
+function isProgressFor(data: unknown, requestId: string): data is { done: number; total: number } {
+  return (
+    !!data &&
+    typeof data === 'object' &&
+    'request_id' in data &&
+    data.request_id === requestId &&
+    'done' in data &&
+    typeof data.done === 'number' &&
+    'total' in data &&
+    typeof data.total === 'number'
+  );
+}
+
+/** Where each stock prints, the roster to pick from, and the one way to send a station a batch. */
+export interface PrintStations {
+  /** This computer first, then the org registry ∪ the staffer's own roster, deduped by id. */
+  stations: PrintStationEntry[];
+  thisStationId: string;
+  /** Per stock: this staffer's pick on this device › the org assignment › this computer. */
+  target: Record<PrintStock, PrintStationEntry | null>;
+  orgAssignment: PrintStationAssignment;
+  pick: (stock: PrintStock, stationId: string | null) => void;
+  setOrgAssignment: (stock: PrintStock, stationId: string | null) => Promise<void>;
+  /** Why a stock cannot go to its target right now; null when it can. */
+  blockedReason: (stock: PrintStock) => string | null;
+  /** One bridge job to a named station; resolves true when that station acked it. */
+  sendDocuments: (
+    stationId: string,
+    stock: PrintStock,
+    batchId: string,
+    items: StationDocumentRef[],
+    onProgress?: (done: number, total: number) => void,
+  ) => Promise<boolean>;
+}
+
+/** @param active poll the org registry and the staff roster while true. */
+export function usePrintStations({ active = true }: { active?: boolean } = {}): PrintStations {
+  const { user, has } = useAuth();
+  const { getClient } = useAblyClient();
+  const queryClient = useQueryClient();
+  const orgId = user?.organizationId ?? '';
+  const staffId = user?.staffId ?? 0;
+  // The org registry and station channels share one grant (`print.label`).
+  const orgEnabled = staffId > 0 && has('print.label');
+
+  const bridge = useStaffPrintBridgeClient({ active });
+  const registryQuery = useQuery({
+    queryKey: PRINT_STATIONS_QUERY_KEY,
+    queryFn: fetchPrintStations,
+    enabled: active && orgEnabled,
+    refetchInterval: STAFF_PRINT_STATUS_POLL_MS,
+    refetchOnWindowFocus: true,
+  });
+  const registry = registryQuery.data;
+
+  // This computer's station + local routes are browser storage: read after mount, re-read on change.
+  const [self, setSelf] = useState<{ id: string; name: string }>({ id: '', name: UNNAMED_PRINT_STATION });
+  const [local, setLocal] = useState<Record<PrintStock, StockFace> | null>(null);
+  useEffect(() => {
+    const refresh = () => {
+      setSelf(readPrintStation());
+      setLocal(localFaces());
+    };
+    refresh();
+    window.addEventListener(PRINT_STATION_CHANGED_EVENT, refresh);
+    window.addEventListener(SILENT_PRINT_CHANGED_EVENT, refresh);
+    window.addEventListener('focus', refresh);
+    return () => {
+      window.removeEventListener(PRINT_STATION_CHANGED_EVENT, refresh);
+      window.removeEventListener(SILENT_PRINT_CHANGED_EVENT, refresh);
+      window.removeEventListener('focus', refresh);
+    };
+  }, []);
+
+  // The per-stock pick belongs to the staffer on this device; a staff switch reloads it.
+  const [picks, setPicks] = useState<Record<PrintStock, string | null>>(NO_PICKS);
+  useEffect(() => {
+    const storage = printStationPickStorage();
+    setPicks({
+      label: readRememberedPrintStationId(storage, orgId, staffId, 'label'),
+      paper: readRememberedPrintStationId(storage, orgId, staffId, 'paper'),
+    });
+  }, [orgId, staffId]);
+
+  const stations = useMemo<PrintStationEntry[]>(() => {
+    const byId = new Map<string, PrintStationEntry>();
+    for (const s of registry?.stations ?? []) {
+      byId.set(s.stationId, {
+        stationId: s.stationId,
+        stationName: s.name,
+        thisComputer: false,
+        sources: ['org'],
+        live: s.online,
+        lastSeenAt: Date.parse(s.lastSeenAt),
+        label: s.label,
+        paper: s.paper,
+      });
+    }
+    for (const s of bridge.stations) {
+      const { status } = s;
+      const heard: PrintStationEntry = {
+        stationId: status.stationId,
+        stationName: status.stationName,
+        thisComputer: false,
+        sources: ['staff'],
+        live: isStaffPrintStationLive(s, bridge.now),
+        lastSeenAt: s.lastSeenAt,
+        label: { ready: roleReady(status, 'label'), printer: status.label.name },
+        paper: { ready: roleReady(status, 'paper'), printer: status.paper.name },
+      };
+      const org = byId.get(status.stationId);
+      if (!org) {
+        byId.set(status.stationId, heard);
+        continue;
+      }
+      // Both heard it: the fresher report names it and says what it can print.
+      const fresher = s.lastSeenAt >= (org.lastSeenAt ?? 0) ? heard : org;
+      byId.set(status.stationId, {
+        ...fresher,
+        sources: ['org', 'staff'],
+        live: org.live || heard.live,
+        lastSeenAt: Math.max(org.lastSeenAt ?? 0, s.lastSeenAt),
+      });
+    }
+    const heardSelf = byId.get(self.id);
+    byId.delete(self.id);
+    const others = [...byId.values()].sort(
+      (a, b) => a.stationName.localeCompare(b.stationName) || a.stationId.localeCompare(b.stationId),
+    );
+    if (!self.id) return others;
+    const faces = local ?? { label: { ready: true, printer: null }, paper: { ready: true, printer: null } };
+    const me: PrintStationEntry = {
+      stationId: self.id,
+      stationName: self.name,
+      thisComputer: true,
+      sources: heardSelf?.sources ?? [],
+      live: true,
+      lastSeenAt: heardSelf?.lastSeenAt ?? null,
+      label: faces.label,
+      paper: faces.paper,
+    };
+    return [me, ...others];
+  }, [registry, bridge.stations, bridge.now, self, local]);
+
+  const orgAssignment = registry?.assignment ?? NO_ASSIGNMENT;
+
+  const target = useMemo<Record<PrintStock, PrintStationEntry | null>>(() => {
+    const byId = (id: string | null) => (id ? (stations.find((s) => s.stationId === id) ?? null) : null);
+    const thisComputer = stations.find((s) => s.thisComputer) ?? null;
+    return {
+      label: byId(picks.label) ?? byId(orgAssignment.label) ?? thisComputer,
+      paper: byId(picks.paper) ?? byId(orgAssignment.paper) ?? thisComputer,
+    };
+  }, [stations, picks, orgAssignment]);
+
+  const pick = useCallback(
+    (stock: PrintStock, stationId: string | null) => {
+      setPicks((prev) => ({ ...prev, [stock]: stationId?.trim() || null }));
+      rememberPrintStationId(printStationPickStorage(), orgId, staffId, stationId, stock);
+    },
+    [orgId, staffId],
+  );
+
+  const setOrgAssignment = useCallback(
+    async (stock: PrintStock, stationId: string | null) => {
+      const assignment = await putPrintStationAssignment(stock, stationId);
+      queryClient.setQueryData<PrintStationRegistry>(PRINT_STATIONS_QUERY_KEY, (prev) =>
+        prev ? { ...prev, assignment } : prev,
+      );
+    },
+    [queryClient],
+  );
+
+  const blockedReason = useCallback(
+    (stock: PrintStock): string | null => {
+      const station = target[stock];
+      if (!station) return 'Choose a print station.';
+      if (station.thisComputer) return null;
+      if (!orgEnabled) return 'You cannot send prints to another station.';
+      if (!station.live) return `${station.stationName} is offline.`;
+      if (!station[stock].ready) return `${station.stationName} has no ${stock} printer set up.`;
+      return null;
+    },
+    [target, orgEnabled],
+  );
+
+  // Progress listeners outlive the ack; the hook's unmount stops them all.
+  const progressStops = useRef(new Set<() => void>());
+  useEffect(() => {
+    const stops = progressStops.current;
+    return () => {
+      for (const stop of [...stops]) stop();
+    };
+  }, []);
+
+  const sendDocuments = useCallback(
+    async (
+      stationId: string,
+      stock: PrintStock,
+      batchId: string,
+      items: StationDocumentRef[],
+      onProgress?: (done: number, total: number) => void,
+    ): Promise<boolean> => {
+      const channelName = orgEnabled ? safeChannelName(() => getPrintStationChannelName(orgId, stationId)) : '';
+      const client = channelName ? await getClient() : null;
+      const channel = client?.channels.get(channelName);
+      if (!channel) return false;
+      const requestId = safeRandomUUID();
+      const job: StaffPrintJob = {
+        type: 'staff.print_job',
+        request_id: requestId,
+        targetStationId: stationId,
+        grain: 'documents',
+        role: stock,
+        documents: { stock, batchId, items },
+      };
+
+      let stopProgress = () => {};
+      if (onProgress) {
+        const handler = (message: { data?: unknown }) => {
+          const progress = message.data;
+          if (!isProgressFor(progress, requestId)) return;
+          onProgress(progress.done, progress.total);
+          if (progress.done >= progress.total) stopProgress();
+        };
+        const timer = window.setTimeout(() => stopProgress(), PROGRESS_LISTEN_MS);
+        stopProgress = () => {
+          window.clearTimeout(timer);
+          progressStops.current.delete(stopProgress);
+          try {
+            channel.unsubscribe(STAFF_PRINT_PROGRESS_EVENT, handler);
+          } catch {
+            /* channel already torn down */
+          }
+        };
+        progressStops.current.add(stopProgress);
+        // Listening before the job goes out: a fast station's first tick is never missed.
+        try {
+          await channel.subscribe(STAFF_PRINT_PROGRESS_EVENT, handler);
+        } catch {
+          /* progress is best-effort; the ack still decides */
+        }
+      }
+
+      try {
+        const acked = await sendToDevice({
+          channel,
+          requestId,
+          publish: () => channel.publish(STAFF_PRINT_JOB_EVENT, job),
+        });
+        if (!acked) stopProgress();
+        return acked;
+      } catch {
+        stopProgress();
+        return false;
+      }
+    },
+    [getClient, orgEnabled, orgId],
+  );
+
+  return {
+    stations,
+    thisStationId: self.id,
+    target,
+    orgAssignment,
+    pick,
+    setOrgAssignment,
+    blockedReason,
+    sendDocuments,
+  };
+}

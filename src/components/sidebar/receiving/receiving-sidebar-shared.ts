@@ -284,7 +284,7 @@ export const SELECT_CLASS =
 /** One source of truth for typography inside the receiving panel + workspace. */
 
 const TYPE_FIELD_LABEL_CLASS =
-  'block text-role-eyebrow uppercase tracking-[0.14em] text-text-soft';
+  'block text-role-eyebrow text-text-soft';
 
 // ── Flow-section class + tone tokens ────────────────────────────────────────
 

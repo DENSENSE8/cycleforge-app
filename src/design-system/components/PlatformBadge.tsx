@@ -8,7 +8,7 @@ interface PlatformBadgeProps {
   className?: string;
 }
 
-/** Renders the platform label (Amazon, eBay, ECWID, FBA, etc.) with the correct color. */
+/** Renders the platform label (Amazon, eBay, Ecwid, FBA, etc.) with the correct color. */
 function PlatformBadge({ orderId, accountSource, showBorder = false, className = '' }: PlatformBadgeProps) {
   const label = getOrderPlatformLabel(orderId, accountSource);
   if (!label) return null;
@@ -18,7 +18,7 @@ function PlatformBadge({ orderId, accountSource, showBorder = false, className =
 
   return (
     <span
-      className={`text-role-micro uppercase tracking-wider ${textColor} ${showBorder ? `border-l-2 pl-1.5 ${borderColor}` : ''} ${className}`.trim()}
+      className={`text-role-micro ${textColor} ${showBorder ? `border-l-2 pl-1.5 ${borderColor}` : ''} ${className}`.trim()}
     >
       {label}
     </span>

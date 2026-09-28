@@ -76,7 +76,7 @@ export function TicketPicker({
 
       <div className="mt-3 border-t border-border-hairline">
         <div className="flex items-center gap-2 px-3 pt-2 pb-1">
-          <p className="text-role-eyebrow uppercase tracking-[0.14em] text-text-faint">
+          <p className="text-role-eyebrow text-text-faint">
             {resultsEyebrow}
           </p>
           {searchLoading ? <Loader2 className="h-3 w-3 animate-spin text-text-faint" /> : null}
@@ -110,12 +110,12 @@ export function TicketPicker({
                       meta={
                         <>
                           <span
-                            className={`rounded-full inset-chip text-role-eyebrow uppercase tracking-wider ${badge.className}`}
+                            className={`rounded-full inset-chip text-role-eyebrow ${badge.className}`}
                           >
                             {badge.label}
                           </span>
                           {mode === 'reference' && t.anchoredElsewhere ? (
-                            <span className="rounded inset-chip text-role-eyebrow uppercase tracking-wider bg-surface-hover text-text-faint">
+                            <span className="rounded inset-chip text-role-eyebrow bg-surface-hover text-text-faint">
                               {t.anchoredElsewhere.type.replace(/_/g, ' ').toLowerCase()}
                             </span>
                           ) : null}

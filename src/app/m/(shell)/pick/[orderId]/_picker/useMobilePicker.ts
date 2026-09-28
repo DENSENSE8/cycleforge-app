@@ -6,6 +6,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useBarcodeScanner } from '@/hooks/useBarcodeScanner';
 import type { ShortPickResult } from '@/components/mobile/picker/ShortPickSheet';
 import { matchScanToTask, type PickOrder, type PickTask } from './picker-shared';
+import { wrongUnitLabelRefusal } from '@/lib/picking/pick-scan-unit';
 import { toteRefFromScan } from '@/lib/picking/tote-ref';
 import { setScanSubject } from '@/lib/stations/scan-subject-store';
 import { recordMobileSessionEntry } from '@/lib/mobile/mobile-session-feed';
@@ -228,10 +229,17 @@ export function useMobilePicker() {
   );
 
   // ── Scan-gate. Optional confirm: a matching scan arms the dock.
-  //    Serial-bearing units still require that match before confirm-pick.
+  //    A serial-bearing unit arms ONLY on its own QC label / serial — that scan
+  //    is what binds the serial to the order at confirm.
   const handleScanDecode = useCallback(
     (value: string) => {
       if (!currentTask || confirming) return;
+      const wrongUnit = wrongUnitLabelRefusal(value, [currentTask]);
+      if (wrongUnit) {
+        setScanMatched(false);
+        setScanError(wrongUnit);
+        return;
+      }
       const matched = matchScanToTask(value, currentTask);
       if (!matched) {
         // Not this pick — a tote plate arms the session container instead of
@@ -255,6 +263,11 @@ export function useMobilePicker() {
         return;
       }
       setScanError(null);
+      if (currentTask.serialNumber?.trim() && matched !== 'serial') {
+        // Bin / SKU confirm where the picker is, not which unit — keep waiting for the label.
+        setScanError(`Now scan the unit's QC label (${currentTask.serialNumber.trim()}).`);
+        return;
+      }
       setScanMatched(true);
     },
     [currentTask, confirming],

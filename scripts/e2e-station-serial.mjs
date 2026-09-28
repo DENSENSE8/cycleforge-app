@@ -136,7 +136,7 @@ async function installApiMocks(page, calls) {
       ]);
     }
 
-    // Desk logs (TechTable / StationHistory)
+    // Desk logs (DeskPickTable / StationHistory)
     if (pathname === '/api/picking/desk/logs') {
       return json(route, 200, { logs: [], total: 0 });
     }

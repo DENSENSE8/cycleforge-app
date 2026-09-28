@@ -70,7 +70,7 @@ const SHIPPING_COMMON = {
 } as const;
 
 /**
- * `/shipping/orders` — To-ship desk (Pending · Tested · Packed · Shipped).
+ * `/shipping/orders` — To-ship desk (Pending · Picked · Packed · Shipped).
  * Former `/dashboard` outbound board. Support › Inquiries aliases with
  * `?context=support` (+ `createTicket` for order-anchored ticket create).
  */
@@ -204,7 +204,6 @@ const SHIPPED_ROUTE_PARAMS = defineRouteParams({
     carrier: paramText,
     statusCategory: paramText,
     packedBy: paramPositiveInt,
-    testedBy: paramPositiveInt,
     /** Who ACTUALLY picked the shipped order (pick facts). */
     pickedBy: paramPositiveInt,
     /** Time of day at each end of the dateFrom/dateTo window (HH:mm, PT). */

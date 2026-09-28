@@ -19,6 +19,7 @@ import {
   useDeskActionSlotNode,
 } from '@/design-system/components/DeskActionSlot';
 import { useDeskPageChromeTabs } from '@/components/desk/useDeskPageChromeTabs';
+import { useNavDeskHeader } from '@/components/sidebar/contextual/NavKeyStrip';
 
 /** A tab row supplied without a handler answers no click — say so once, here. */
 const noop = () => undefined;
@@ -47,18 +48,38 @@ export interface DeskPageLayoutProps {
   /** Stage shape — see `DeskPageChromeProps.stage`. */
   stage?: 'card' | 'flush';
   /**
-   * No tab row — the views live in the contextual sidebar (Shipping, operator
-   * 2026-09-26). Header actions still paint (operator 2026-09-27).
+   * A CONTEXTUAL-SIDEBAR desk: no tab row — the page's views live in the
+   * sidebar's view switcher — and the header is built from the same
+   * `NavContext` the sidebar paints (`useNavDeskHeader`): the active view as
+   * the title (hover-to-unfold pills when the page declares `viewKeys`) and
+   * the key strip between title and actions. Page agnostic: a page opts in by
+   * mounting `bare`, nothing else. Header actions still paint.
    */
   bare?: boolean;
   className?: string;
 }
 
+/** What a bare desk's header draws beyond a plain frame. */
+type DeskHeaderFaces = { titleSlot?: ReactNode; headerCenter?: ReactNode };
+
 export function DeskPageLayout(props: DeskPageLayoutProps) {
   return (
     <DeskActionSlotProvider>
-      <DeskPageFrame {...props} />
+      {props.bare ? <BareDeskFrame {...props} /> : <DeskPageFrame {...props} />}
     </DeskActionSlotProvider>
+  );
+}
+
+/** A contextual-sidebar desk: title and key strip come from the page's `NavContext`. */
+function BareDeskFrame(props: DeskPageLayoutProps) {
+  const header = useNavDeskHeader();
+  return (
+    <DeskPageFrame
+      {...props}
+      title={props.title ?? header.title}
+      titleSlot={header.titleSlot}
+      headerCenter={header.headerCenter}
+    />
   );
 }
 
@@ -66,16 +87,18 @@ export function DeskPageLayout(props: DeskPageLayoutProps) {
 function DeskPageFrame({
   children,
   title: titleOverride,
+  titleSlot,
   subtitle,
   decorateTabs,
   tabs: tabsOverride,
   activeTab: activeTabOverride,
   onTabChange: onTabChangeOverride,
   tabsLead,
+  headerCenter,
   stage,
   className,
   bare = false,
-}: DeskPageLayoutProps) {
+}: DeskPageLayoutProps & DeskHeaderFaces) {
   const nav = useDeskPageChromeTabs();
   const title = titleOverride ?? nav.title;
   const tabs = tabsOverride ?? nav.tabs;
@@ -92,11 +115,13 @@ function DeskPageFrame({
   return (
     <DeskPageChrome
       title={title}
+      titleSlot={titleSlot}
       subtitle={subtitle}
       tabs={bare ? NO_TABS : decorated}
       activeTab={activeTab}
       onTabChange={onTabChange}
       addSlot={addSlot}
+      headerCenter={headerCenter}
       tabsLead={tabsLead}
       view={view}
       onViewChange={setView}

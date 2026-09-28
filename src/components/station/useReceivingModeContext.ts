@@ -21,11 +21,11 @@ import {
 } from '@/lib/receiving-history-search';
 import type { ReceivingActivityAxis } from '@/components/station/receiving-lines-table-helpers';
 import { resolveLiveReceivingMode } from '@/lib/surface-isolation';
-import { WEEK_OFFSET_PARAM } from '@/lib/station/table-url-params';
+import { parseStaffParam, WEEK_OFFSET_PARAM } from '@/lib/station/table-url-params';
 import { INCOMING_SURFACE_ROUTE, UNBOX_SURFACE_ROUTE } from '@/lib/receiving/surface-path';
-import { parseInboundLane } from '@/lib/receiving/inbound-lane';
+import { DOCKED_DATE_FROM_PARAM, DOCKED_DATE_TO_PARAM, parseInboundLane } from '@/lib/receiving/inbound-lane';
+import { parseDateKey } from '@/utils/date';
 import { getUnboxWorkspaceTabFromSearch } from '@/utils/unbox-workspace-state';
-import { parseStaffParam } from '@/hooks/useStaffFilter';
 import { parseTrackingInParam, TRACKING_IN_PARAM } from '@/lib/receiving/tracking-paste';
 import { parseRefInParam, REF_IN_PARAM } from '@/lib/receiving/reconcile';
 
@@ -106,6 +106,15 @@ export function useReceivingModeContext(): ReceivingModeState {
   // History reuses the shared `?sort=` param (modes are exclusive).
   // (operator 2026-09-14 — the entire product/PO history is the default view;
   const historyWeekExplicit = isHistoryMode && searchParams.has(WEEK_OFFSET_PARAM);
+  // Inbound History's sidebar date row: an explicit activity window (either
+  // end open). Only valid civil day keys count; the Unbox History tab's route
+  // never keeps these params, so there it is always the week pill.
+  const historyDateFrom = isHistoryMode && parseDateKey(searchParams.get(DOCKED_DATE_FROM_PARAM))
+    ? searchParams.get(DOCKED_DATE_FROM_PARAM)!.trim()
+    : '';
+  const historyDateTo = isHistoryMode && parseDateKey(searchParams.get(DOCKED_DATE_TO_PARAM))
+    ? searchParams.get(DOCKED_DATE_TO_PARAM)!.trim()
+    : '';
   const historySort = isHistoryMode ? (searchParams.get('sort') || '').trim() : '';
   const historyAxis: ReceivingActivityAxis = isHistoryMode
     ? historySortGroupAxis(historySort)
@@ -172,6 +181,7 @@ export function useReceivingModeContext(): ReceivingModeState {
       historySearchScope,
       historySort,
       historyWeekExplicit,
+      historyDateRange: historyDateFrom || historyDateTo ? { from: historyDateFrom, to: historyDateTo } : null,
       incomingSearch,
       incomingState,
       incomingSort,
@@ -196,6 +206,8 @@ export function useReceivingModeContext(): ReceivingModeState {
       historySearchScope,
       historySort,
       historyWeekExplicit,
+      historyDateFrom,
+      historyDateTo,
       incomingSearch,
       incomingSort,
       incomingPoFrom,

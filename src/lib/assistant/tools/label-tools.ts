@@ -150,7 +150,8 @@ export const quoteLabelRates: AssistantToolDef<typeof quoteInput> = {
     if (!order.ok) return { quoted: false, order: input.order, summary: order.message };
     const words = readParcelWords(input);
     if (words.unreadable.length > 0) return stillNeeded(order.orderRef, null, words.unreadable);
-
+    // A live ShipStation quote: hand the round's batch connection back first.
+    await deps.releaseBatch?.();
     const q = await (await shipping()).quoteChatLabel(ctx.organizationId, {
       orderId: order.orderId,
       purpose: input.purpose,

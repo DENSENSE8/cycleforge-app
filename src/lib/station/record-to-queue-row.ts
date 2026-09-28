@@ -1,7 +1,7 @@
 /** Station record → queue-row mappers (station-table-unification-plan §5.5). */
 
 import type { QueueRowRecord } from '@/components/dashboard/orders-queue/helpers';
-import type { TechRecord } from '@/hooks/useDeskPickLogs';
+import type { DeskPickRecord } from '@/hooks/useDeskPickLogs';
 import type { PackerRecord } from '@/hooks/usePackerLogs';
 
 /** Key under which the original domain record rides along on the mapped row. */
@@ -11,7 +11,7 @@ const STATION_SOURCE_KIND_KEY = '__stationSourceKind';
 
 export type StationSourceKind = 'tech' | 'packer';
 
-export function techRecordToQueueRow(record: TechRecord): QueueRowRecord {
+export function techRecordToQueueRow(record: DeskPickRecord): QueueRowRecord {
   return {
     id: record.id,
     order_id: record.order_id ?? '',

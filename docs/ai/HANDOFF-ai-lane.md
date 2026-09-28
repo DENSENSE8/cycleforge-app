@@ -1,7 +1,27 @@
-# HANDOFF — AI lane (written 2026-09-28)
+# HANDOFF — AI lane (written 2026-09-27)
 
 Paste the prompt at the bottom into a fresh session. Everything above it is the
 state that prompt relies on.
+
+## PAUSED (2026-09-27, operator decision)
+
+The AI lane is paused until the product foundations are built (the product is still in
+dogfood). Don't restart the subagents or the prompt below until the operator says so.
+
+The second restart (DbScale-2, AiServing-2, PlatformSafety-2, GexV3-2, OrdersWeight) ran for
+a few minutes and was then stopped. It left partial, untested, uncommitted edits in auth hot
+paths (`withAuth.ts`, `session.ts`, `current-user.ts`, `role-store.ts`, `server-session.ts`,
+`pin.ts`, `api-guard.ts`, `src/app/api/auth/*`), in `src/lib/db.ts`,
+`src/lib/tenancy/db.ts` and `scripts/run-pending-migrations.mjs`, and in `src/lib/ai/*`
+provider/failover/usage. New files: `turn-limits.ts`, `org-spend-cap.ts`,
+`response-usage.ts`, `session-user-cache.ts`, `session-sweep.ts`, the migration
+`2026-09-28_ai_usage_estimated.sql` (unapplied), and throwaway `scripts/.dbscale-t*.tmp.ts`
+plus `scripts/tmp-ai-chaos-drill.mts`. No reports were written. Review or revert these
+before committing.
+Typecheck after the stop has one error, from the half-done PIN lockout: `src/lib/auth/pin.ts:159`, TS2344.
+
+Nothing is running: no rsync, training or :8001 candidate, and there's no vllm drop-in on
+gex45. The tunnels are idle.
 
 ## Where things stand
 
@@ -51,7 +71,7 @@ transcripts stay on disk (the `agent://` links end with the session):
 Nothing is running: no training, rsync or candidate server. The 5070 Ti is idle.
 
 **Tree at stop:**
-- Commit `781259cf0` (these docs) is local and NOT pushed. The pre-push typecheck is red on
+- Commits `781259cf0` (these docs) and `fe7366338` (handoff update + signup-tenant import/caller fix) are local and NOT pushed. The pre-push typecheck is red on
   other sessions' in-flight work: `RecordCard.tsx` is missing Popover imports, and
   `PaymentArtifact.tsx` doesn't know the `stripe_link` method.
 - Unknown-owner Stripe work is uncommitted and not ours. Leave it alone:
@@ -185,8 +205,8 @@ Nothing is running: no training, rsync or candidate server. The 5070 Ti is idle.
 >    don't edit their files). Run one serialized full eval
 >    (`LH_COOKIE="$(cat /tmp/cf-staff1-cookie.txt)" pnpm ai:eval`) and fix real
 >    regressions at the root; don't loosen fact checks. Commit and push (the operator
->    has approved committing all changes in the worktree; local commit `781259cf0` is
->    unpushed). If v3 meets the adoption rule, confirm the switch with Prometheus as
+>    has approved committing all changes in the worktree; local commits `781259cf0` and
+>    `fe7366338` are unpushed). If v3 meets the adoption rule, confirm the switch with Prometheus as
 >    failover and a full eval on the switched config.
 > 3. **Next ROI**, in order:
 >    - `docs/ai/SCALE-ROI.md`: A6 (ai:eval in CI against a preview build with a p95

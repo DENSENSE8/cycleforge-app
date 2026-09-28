@@ -15,6 +15,7 @@ import {
   conditionBadgeTone,
 } from '@/lib/receiving/receiving-constants';
 import { workflowStageBadge } from '@/lib/receiving/workflow-stages';
+import { sentenceCaseLabel } from '@/lib/text/sentence-case-label';
 
 interface PhotoRow {
   id: number;
@@ -113,7 +114,7 @@ export default function MobilePurchaseOrderItemDetailPage(
                 {item.image_url ? (
                   <Image src={item.image_url} alt="" fill sizes="64px" className="object-cover" unoptimized />
                 ) : (
-                  <span className="absolute inset-0 grid place-items-center text-role-micro uppercase tracking-wider text-text-faint">
+                  <span className="absolute inset-0 grid place-items-center text-role-micro text-text-faint">
                     {item.sku?.slice(0, 4) || 'SKU'}
                   </span>
                 )}
@@ -122,20 +123,20 @@ export default function MobilePurchaseOrderItemDetailPage(
                 <p className="text-base font-semibold tracking-tight text-text-default">
                   {item.item_name || 'Untitled item'}
                 </p>
-                <p className="mt-0.5 text-role-caption font-semibold uppercase tracking-wider text-text-soft">
+                <p className="mt-0.5 text-role-caption font-semibold text-text-soft">
                   {item.sku ? `SKU ${item.sku}` : 'No SKU'}
                 </p>
                 <p className="mt-1 flex flex-wrap gap-x-2 gap-y-1 text-role-caption font-semibold text-text-muted">
                   <span>{item.quantity_received}/{item.quantity_expected ?? '?'}</span>
                   {item.workflow_status ? (
                     <span
-                      className={`inline-flex items-center rounded px-1.5 py-0.5 text-role-eyebrow uppercase tracking-wider ${workflowStageBadge(item.workflow_status)}`}
+                      className={`inline-flex items-center rounded px-1.5 py-0.5 text-role-eyebrow ${workflowStageBadge(item.workflow_status)}`}
                     >
                       {workflowStatusTableLabel(item.workflow_status)}
                     </span>
                   ) : null}
                   {item.condition_grade ? (
-                    <span className={`inline-flex items-center rounded px-1.5 py-0.5 text-role-eyebrow uppercase tracking-wider ${conditionBadgeTone(item.condition_grade)}`}>
+                    <span className={`inline-flex items-center rounded px-1.5 py-0.5 text-role-eyebrow ${conditionBadgeTone(item.condition_grade)}`}>
                       {conditionGradeTableLabel(item.condition_grade)}
                     </span>
                   ) : null}
@@ -149,14 +150,14 @@ export default function MobilePurchaseOrderItemDetailPage(
       {/* Photos block */}
       <section className="px-4 py-4">
         <div className="mb-2 flex items-center justify-between">
-          <p className="text-role-caption font-semibold uppercase tracking-[0.18em] text-text-muted">
+          <p className="text-role-caption font-semibold text-text-muted">
             Photos ({photos.length})
           </p>
           {photos.length > 0 ? (
             <Link
               href={galleryHref}
               prefetch={false}
-              className="text-role-caption font-semibold uppercase tracking-wider text-text-muted active:text-text-default"
+              className="text-role-caption font-semibold text-text-muted active:text-text-default"
             >
               View all
             </Link>
@@ -166,7 +167,7 @@ export default function MobilePurchaseOrderItemDetailPage(
           <Link
             href={captureHref}
             prefetch={false}
-            className="flex h-24 items-center justify-center gap-2 rounded-none border-2 border-dashed border-border-soft bg-surface-canvas text-role-caption font-semibold uppercase tracking-[0.18em] text-text-soft active:bg-surface-sunken"
+            className="flex h-24 items-center justify-center gap-2 rounded-none border-2 border-dashed border-border-soft bg-surface-canvas text-role-caption font-semibold text-text-soft active:bg-surface-sunken"
           >
             <Camera className="h-5 w-5" /> Take first photo
           </Link>
@@ -196,13 +197,13 @@ export default function MobilePurchaseOrderItemDetailPage(
       {/* Details block */}
       {item ? (
         <section className="border-t border-border-hairline px-4 py-4 text-role-caption font-semibold">
-          <p className="mb-2 text-role-caption font-semibold uppercase tracking-[0.18em] text-text-muted">
+          <p className="mb-2 text-role-caption font-semibold text-text-muted">
             Details
           </p>
           <dl className="space-y-1.5">
             <Row label="Quantity" value={`${item.quantity_received}/${item.quantity_expected ?? '?'}`} />
-            <Row label="Workflow" value={item.workflow_status ?? '—'} />
-            <Row label="QA" value={item.qa_status ?? 'PENDING'} />
+            <Row label="Workflow" value={item.workflow_status ? sentenceCaseLabel(item.workflow_status) : '—'} />
+            <Row label="QA" value={sentenceCaseLabel(item.qa_status ?? 'Pending')} />
             <Row label="Condition" value={item.condition_grade ?? '—'} />
             {item.notes ? <Row label="Notes" value={item.notes} /> : null}
           </dl>
@@ -225,7 +226,7 @@ export default function MobilePurchaseOrderItemDetailPage(
 function Row({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex items-baseline justify-between gap-2">
-      <dt className="text-role-micro uppercase tracking-wider text-text-soft">
+      <dt className="text-role-micro text-text-soft">
         {label}
       </dt>
       <dd className="truncate text-right text-role-caption font-semibold text-text-default">{value}</dd>

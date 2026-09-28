@@ -183,6 +183,300 @@
         }
       }
     },
+    "/api/v1/label-prints": {
+      "get": {
+        "parameters": [
+          {
+            "name": "view",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/LabelPrintView"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 500
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Print queue by view: labels (unprinted labels, paired or not), paperwork (one row per paired order with unprinted slips / manuals), printed (printed labels + paperwork orders); true counts for all three views"
+          },
+          "400": {
+            "description": "Invalid query",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "batchId",
+                  "channel",
+                  "ingestionIds"
+                ],
+                "properties": {
+                  "batchId": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
+                  "channel": {
+                    "$ref": "#/components/schemas/LabelPrintChannel"
+                  },
+                  "printerName": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "maxLength": 120
+                  },
+                  "stationId": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "minLength": 1,
+                    "maxLength": 100
+                  },
+                  "stationName": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "minLength": 1,
+                    "maxLength": 120
+                  },
+                  "ingestionIds": {
+                    "type": "array",
+                    "minItems": 1,
+                    "maxItems": 500,
+                    "uniqueItems": true,
+                    "items": {
+                      "type": "integer",
+                      "minimum": 1
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Print batch logged; a replayed batch logs nothing twice"
+          },
+          "400": {
+            "description": "Rejected",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/paperwork-prints": {
+      "post": {
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "batchId",
+                  "channel",
+                  "items"
+                ],
+                "properties": {
+                  "batchId": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
+                  "channel": {
+                    "$ref": "#/components/schemas/LabelPrintChannel"
+                  },
+                  "printerName": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "maxLength": 120
+                  },
+                  "stationId": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "minLength": 1,
+                    "maxLength": 100
+                  },
+                  "stationName": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "minLength": 1,
+                    "maxLength": 120
+                  },
+                  "items": {
+                    "type": "array",
+                    "minItems": 1,
+                    "maxItems": 2000,
+                    "items": {
+                      "type": "object",
+                      "required": [
+                        "orderId",
+                        "kind"
+                      ],
+                      "properties": {
+                        "orderId": {
+                          "type": "integer",
+                          "minimum": 1
+                        },
+                        "kind": {
+                          "$ref": "#/components/schemas/PaperworkDocKind"
+                        },
+                        "documentId": {
+                          "type": [
+                            "integer",
+                            "null"
+                          ],
+                          "minimum": 1,
+                          "description": "Packing slip `documents.id`"
+                        },
+                        "manualId": {
+                          "type": [
+                            "integer",
+                            "null"
+                          ],
+                          "minimum": 1,
+                          "description": "Manual `product_manuals.id`"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Paperwork print batch logged ({ batchId, recorded }); documents that do not resolve for the order log nothing; a replayed batch logs nothing twice"
+          },
+          "400": {
+            "description": "Rejected",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/label-ingestions/{id}/pdf": {
+      "get": {
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The stored label PDF",
+            "content": {
+              "application/pdf": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "No stored PDF yet",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/label-ingestions/{id}/prints": {
+      "get": {
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The label print log, newest first"
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/outbound/work": {
       "get": {
         "parameters": [
@@ -862,6 +1156,30 @@
           "UNSUPPORTED_CARRIER",
           "MULTI_PACKAGE_EVIDENCE",
           "STAGING_FAILED"
+        ]
+      },
+      "LabelPrintChannel": {
+        "type": "string",
+        "enum": [
+          "THERMAL_USB",
+          "THERMAL_SERIAL",
+          "DESKTOP_HOST",
+          "BROWSER_DIALOG"
+        ]
+      },
+      "LabelPrintView": {
+        "type": "string",
+        "enum": [
+          "labels",
+          "paperwork",
+          "printed"
+        ]
+      },
+      "PaperworkDocKind": {
+        "type": "string",
+        "enum": [
+          "packing_slip",
+          "manual"
         ]
       },
       "OutboundWorkItem": {
@@ -2067,12 +2385,23 @@
                               "type": "null"
                             }
                           ]
+                        },
+                        "unitUid": {
+                          "anyOf": [
+                            {
+                              "type": "string"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
                         }
                       },
                       "required": [
                         "allocationId",
                         "serialUnitId",
-                        "serialNumber"
+                        "serialNumber",
+                        "unitUid"
                       ],
                       "additionalProperties": false
                     }

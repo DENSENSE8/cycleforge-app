@@ -318,7 +318,7 @@ function RepairPhotosInner() {
           priorPhotos={priorPhotos}
           header={
             <div className="min-w-0">
-              <p className="text-role-micro uppercase tracking-[0.22em] text-white/60">Repair photos</p>
+              <p className="text-role-micro text-white/60">Repair photos</p>
               <p className="truncate text-sm font-semibold text-white">
                 {rsCode}
                 {repair?.product_title ? ` · ${repair.product_title}` : ''}

@@ -138,7 +138,7 @@ export function NumericStep({
                 </span>
                 {tag && (
                   <span
-                    className={`mt-0.5 text-role-eyebrow font-semibold uppercase tracking-wider ${
+                    className={`mt-0.5 text-role-eyebrow font-semibold ${
                       isSelected ? 'text-white/80' : 'text-text-faint'
                     }`}
                   >

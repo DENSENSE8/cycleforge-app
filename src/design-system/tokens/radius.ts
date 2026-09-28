@@ -137,6 +137,15 @@ export const SIDEBAR_CONTROL_CORNER = 'rounded-mode-control';
 export const SIDEBAR_CHIP_CORNER = DROPDOWN_ROW_HALF_CONTROL;
 
 /**
+ * The search well (FindField, the ⌘K face) — the one control that INVITES a
+ * click: soft 12px at rest, then it firms up to the region's control corner
+ * the moment it is pressed or holds focus, so the change of shape reads as
+ * "you are in it now" (operator 2026-09-27).
+ */
+export const SEARCH_WELL_CORNER =
+  'rounded-xl transition-[border-radius] duration-150 active:rounded-mode-control focus-within:rounded-mode-control';
+
+/**
  * DataTable find-row tokens — search, filter, sort, views, date, fields,
  * zoom, fullscreen, the export glyph. The region's control corner (triage
  * 8px, square on the Floor).

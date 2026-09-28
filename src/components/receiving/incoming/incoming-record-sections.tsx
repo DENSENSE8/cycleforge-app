@@ -6,15 +6,11 @@ import type { ReactNode } from 'react';
 import { ExternalLink } from '@/components/Icons';
 import { EvidenceFactRow } from '@/design-system/components/record-ledger/EvidenceDisclosure';
 import { RecordPhoto, recordInitials } from '@/design-system/components/record-ledger/IndustrialRecord';
-import { RECORD_ID_CLASS, RECORD_LABEL_CLASS, RECORD_PRICE_CLASS } from '@/design-system/tokens/industrial-record';
+import { RecordGroup } from '@/design-system/components/record-ledger/RecordGroup';
+import { RECORD_FACT_KEY_CLASS, RECORD_ID_CLASS, RECORD_PRICE_CLASS } from '@/design-system/tokens/industrial-record';
 import { focusRing } from '@/design-system/tokens/focus-ring';
 import { TrackingIdentity } from '@/components/ui/OrderIdentityChips';
-import {
-  CARTON_COLUMN_CLASS,
-  CartonColumnHead,
-  CartonStampFact,
-  TicketLink,
-} from '@/components/receiving/history/carton-record-sections';
+import { CartonStampFact, TicketLink } from '@/components/receiving/history/carton-record-sections';
 import { EbayTab } from '@/components/sidebar/receiving/incoming-details/EbayTab';
 import { NotesTab } from '@/components/sidebar/receiving/incoming-details/NotesTab';
 import {
@@ -24,6 +20,8 @@ import {
 } from '@/components/sidebar/receiving/incoming-details/incoming-details-shared';
 import { conditionLabel } from '@/lib/conditions';
 import { receivingRecordSerials } from '@/lib/receiving/record-identity';
+import { sourcePlatformMeta } from '@/lib/source-platform';
+import { sentenceCaseLabel } from '@/lib/text/sentence-case-label';
 import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
 import { formatMonthDayTimePST } from '@/utils/date';
 import { cn } from '@/utils/_cn';
@@ -36,6 +34,14 @@ const positiveId = (value: unknown): number | null => {
 /** The carton a delivery landed in — from the details read, else the row. */
 export function cartonIdOf(row: ReceivingLineRow, data: DetailsResponse | undefined): number | null {
   return positiveId(data?.receiving?.id) ?? positiveId(row.receiving_id);
+}
+
+/** Inbound source token (`zoho`, `ebay`, `manual_entry`) → its sentence-case face. */
+export function inboundSourceLabel(raw: string): string {
+  const meta = sourcePlatformMeta(raw);
+  if (meta.value) return meta.label;
+  const spaced = raw.trim().replace(/_+/g, ' ').toLowerCase();
+  return spaced.charAt(0).toUpperCase() + spaced.slice(1);
 }
 
 function Muted({ children }: { children: ReactNode }) {
@@ -88,10 +94,10 @@ export function IncomingItem({
       data-testid="incoming-record-item"
       data-current={current ? '' : undefined}
       aria-label={title}
-      className={cn('border-b border-mode-ink last:border-b-0', current ? 'bg-mode-panel' : 'bg-mode-bar')}
+      className={cn('border-b border-mode-fact last:border-b-0', current ? 'bg-mode-panel' : 'bg-mode-bar')}
     >
-      <div className="flex gap-3 p-3">
-        <span className="relative h-16 w-16 shrink-0 overflow-hidden border border-mode-rule bg-mode-well">
+      <div className="flex gap-3 px-4 py-3">
+        <span className="relative h-20 w-20 shrink-0 overflow-hidden rounded-mode-control border border-mode-frame bg-mode-well">
           <RecordPhoto src={row?.image_url ?? null} fallback={recordInitials(title)} />
         </span>
         <div className="flex min-w-0 flex-1 flex-col gap-1">
@@ -107,19 +113,22 @@ export function IncomingItem({
               {received}/{expected}
             </span>
           </div>
-          <p className={cn(RECORD_LABEL_CLASS, 'flex flex-wrap items-baseline gap-x-3 gap-y-0.5 text-mode-muted')}>
+          <p className="flex flex-wrap items-baseline gap-x-3 gap-y-0.5 text-role-data">
             <span>
-              SKU <span className={cn(RECORD_ID_CLASS, 'select-all normal-case tracking-normal text-mode-ink')}>{sku || '—'}</span>
+              <span className={RECORD_FACT_KEY_CLASS}>SKU </span>
+              <span className={cn(RECORD_ID_CLASS, 'select-all text-mode-ink')}>{sku || '—'}</span>
             </span>
             <span>
-              UNIT <span className={cn(RECORD_PRICE_CLASS, 'normal-case tracking-normal')}>{unitCost}</span>
+              <span className={RECORD_FACT_KEY_CLASS}>Unit </span>
+              <span className={RECORD_PRICE_CLASS}>{unitCost}</span>
             </span>
             {lineTotal ? (
               <span>
-                TOTAL <span className={cn(RECORD_ID_CLASS, 'normal-case tracking-normal text-mode-ink')}>{lineTotal}</span>
+                <span className={RECORD_FACT_KEY_CLASS}>Total </span>
+                <span className={cn(RECORD_ID_CLASS, 'text-mode-ink')}>{lineTotal}</span>
               </span>
             ) : null}
-            {workflow ? <span>{workflow.replaceAll('_', ' ')}</span> : null}
+            {workflow ? <span className="text-mode-muted">{workflow.replaceAll('_', ' ').toLowerCase()}</span> : null}
             {listing ? (
               <a
                 href={listing}
@@ -127,19 +136,14 @@ export function IncomingItem({
                 rel="noopener noreferrer"
                 className={cn('inline-flex items-center gap-1 text-mode-ink underline decoration-mode-edge underline-offset-2', focusRing('control'))}
               >
-                LISTING <ExternalLink aria-hidden className="h-3 w-3" />
+                Listing <ExternalLink aria-hidden className="h-3 w-3" />
               </a>
             ) : null}
           </p>
         </div>
       </div>
-      {row && (row.received_at || row.unboxed_at || row.condition_graded_at || serials.length || tested || row.needs_test || row.label_printed_at || row.received_done_at || bin || ticket || note) ? (
-        <div className="flex flex-col px-4 pb-2" data-testid="incoming-item-chain">
-          {row.unboxed_at ? (
-            <EvidenceFactRow label="Unboxed">
-              {[row.unboxed_by_name, stamp(row.unboxed_at)].filter(Boolean).join(' · ')}
-            </EvidenceFactRow>
-          ) : null}
+      {row && (row.condition_graded_at || serials.length || tested || row.needs_test || row.label_printed_at || bin || ticket || note) ? (
+        <div className="flex flex-col px-4 pb-2 [&>*:last-child]:border-b-0" data-testid="incoming-item-facts">
           {row.condition_graded_at ? (
             <EvidenceFactRow label="Condition">
               <span>
@@ -171,7 +175,6 @@ export function IncomingItem({
             </EvidenceFactRow>
           ) : null}
           {row.label_printed_at ? <EvidenceFactRow label="Label">Printed {stamp(row.label_printed_at)}</EvidenceFactRow> : null}
-          {row.received_done_at ? <EvidenceFactRow label="Received">{stamp(row.received_done_at)}</EvidenceFactRow> : null}
           {bin ? (
             <EvidenceFactRow label="Put away">
               <span>
@@ -204,11 +207,11 @@ export function IncomingRecordAside({ row, data }: { row: ReceivingLineRow; data
   const ticket = (row.zendesk_ticket || '').trim() || null;
 
   return (
-    <div className={CARTON_COLUMN_CLASS}>
-      <CartonColumnHead label="Purchase" />
-      <div className="flex flex-col px-4" data-testid="incoming-record-purchase">
+    <>
+      <RecordGroup title="Purchase" testId="incoming-record-purchase">
+      <div className="flex flex-col px-4 pb-1 [&>*:last-child]:border-b-0">
         <EvidenceFactRow label="Source">
-          <span className={RECORD_ID_CLASS}>{(data.inbound?.source_type || row.inbound_source_type || row.source_platform || 'zoho').toUpperCase()}</span>
+          <span className={RECORD_ID_CLASS}>{inboundSourceLabel(data.inbound?.source_type || row.inbound_source_type || row.source_platform || 'zoho')}</span>
         </EvidenceFactRow>
         {po ? (
           <EvidenceFactRow label="PO">
@@ -227,7 +230,7 @@ export function IncomingRecordAside({ row, data }: { row: ReceivingLineRow; data
           <EvidenceFactRow label="Account">{data.inbound?.account_label || row.platform_account_label}</EvidenceFactRow>
         ) : null}
         {data.po?.status || data.inbound?.status ? (
-          <EvidenceFactRow label="Status">{data.po?.status || data.inbound?.status}</EvidenceFactRow>
+          <EvidenceFactRow label="Status">{sentenceCaseLabel(data.po?.status || data.inbound?.status || '')}</EvidenceFactRow>
         ) : null}
         {data.po?.reference_number ? (
           <EvidenceFactRow label="Reference">
@@ -260,29 +263,29 @@ export function IncomingRecordAside({ row, data }: { row: ReceivingLineRow; data
           ? data.inbound.links.map((link) => (
               <EvidenceFactRow key={`${link.source_type}:${link.source_order_id}`} label={link.is_primary ? 'Primary' : 'Linked'}>
                 <span className={RECORD_ID_CLASS}>
-                  {link.source_type.toUpperCase()} · {link.source_order_id}
+                  {inboundSourceLabel(link.source_type)} · {link.source_order_id}
                 </span>
               </EvidenceFactRow>
             ))
           : null}
       </div>
+      </RecordGroup>
 
       {data.inbound ? (
-        <>
-          <CartonColumnHead label="Marketplace" />
-          <div className="px-4 py-3">
+        <RecordGroup title="Marketplace">
+          <div className="px-4 pb-3">
             <EbayTab data={data} />
           </div>
-        </>
+        </RecordGroup>
       ) : null}
 
-      <CartonColumnHead label="Shipment" />
-      <div className="flex flex-col px-4" data-testid="incoming-record-shipment">
+      <RecordGroup title="Shipment" testId="incoming-record-shipment">
+      <div className="flex flex-col px-4 pb-1 [&>*:last-child]:border-b-0">
         <EvidenceFactRow label="TRK#">
           {tracking ? (
             <TrackingIdentity tracking={tracking} carrierHint={carrier} />
           ) : (
-            <span className={cn(RECORD_ID_CLASS, 'text-mode-warn')}>NOT ATTACHED</span>
+            <span className={cn(RECORD_ID_CLASS, 'text-mode-warn')}>Not attached</span>
           )}
         </EvidenceFactRow>
         {data.shipment?.latest_status_category || row.shipment_status ? (
@@ -304,13 +307,15 @@ export function IncomingRecordAside({ row, data }: { row: ReceivingLineRow; data
           </EvidenceFactRow>
         ) : null}
       </div>
+      </RecordGroup>
 
-      <CartonColumnHead label="Notes" />
-      <div className="flex flex-col gap-2 px-4 py-3" data-testid="incoming-record-notes">
+      <RecordGroup title="Notes" testId="incoming-record-notes">
+      <div className="flex flex-col gap-2 px-4 pb-3">
         {row.notes ? <p className="whitespace-pre-wrap text-role-data">Line note: {row.notes}</p> : null}
         {data.po_notes ? <p className="whitespace-pre-wrap text-role-data text-mode-muted">PO: {data.po_notes}</p> : null}
         <NotesTab receivingId={data.receiving?.id ?? null} initialValue={data.notes ?? ''} />
       </div>
-    </div>
+      </RecordGroup>
+    </>
   );
 }

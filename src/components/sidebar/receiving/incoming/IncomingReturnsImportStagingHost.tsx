@@ -237,7 +237,7 @@ export function IncomingReturnsImportStagingHost() {
           aria-label="CSV import staging rows"
         >
           <thead className="sticky top-0 z-10 bg-surface-card">
-            <tr className="border-b border-border-hairline text-role-eyebrow font-semibold uppercase tracking-widest text-text-soft">
+            <tr className="border-b border-border-hairline text-role-eyebrow font-semibold text-text-soft">
               <th className="px-2 py-2">#</th>
               {COLUMNS.map((c) => (
                 <th key={c.key} className="px-2 py-2">
@@ -267,7 +267,7 @@ export function IncomingReturnsImportStagingHost() {
                       <td key={col.key} className="px-2 py-1.5">
                         <span
                           className={cn(
-                            'inline-flex px-1.5 py-0.5 text-role-eyebrow font-semibold uppercase tracking-wider',
+                            'inline-flex px-1.5 py-0.5 text-role-eyebrow font-semibold',
                             view.status === 'ready'
                               ? 'bg-emerald-50 text-emerald-700'
                               : 'bg-amber-50 text-amber-800',

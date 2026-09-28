@@ -49,6 +49,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useStaffSwitcher } from '@/contexts/StaffSwitcherContext';
 import { openKioskShellPreview } from '@/lib/kiosk/preview-url';
 import { cn } from '@/utils/_cn';
+import { KeyboardKey } from '@/design-system/primitives';
 
 type OpenMenu = 'none' | 'more' | 'feedback';
 
@@ -180,6 +181,11 @@ export function StaffAccountFooter({ className }: { className?: string }) {
                       {' · '}
                       {user.role.replace(/_/g, ' ')}
                     </div>
+                    {user.authorizationMode === 'authenticated-only' ? (
+                      <div className="mt-1 text-role-micro font-semibold text-amber-700">
+                        Access: Dogfood full access
+                      </div>
+                    ) : null}
                   </div>
                   {otherOrgs.length > 0 ? (
                     <div className="space-y-0.5 border-b border-border-hairline p-1">
@@ -262,9 +268,9 @@ export function StaffAccountFooter({ className }: { className?: string }) {
                       >
                         Clipboard history
                       </span>
-                      <kbd className="shrink-0 rounded border border-border-soft bg-surface-canvas px-1 py-0.5 font-mono text-role-micro font-semibold text-text-soft">
+                      <KeyboardKey size="xs">
                         {CLIPBOARD_HISTORY_HOTKEY_LABEL}
-                      </kbd>
+                      </KeyboardKey>
                     </button>
                     <button
                       type="button"

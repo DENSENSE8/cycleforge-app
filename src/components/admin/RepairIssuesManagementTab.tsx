@@ -235,7 +235,7 @@ export function RepairIssuesManagementTab() {
                   <div key={row.id} className={`${tableGridClass} items-center border-b border-border-hairline px-4 py-3 text-sm last:border-b-0`}>
                     {/* ds-allow-title: truncation-only title on a non-interactive <p> */}
                     <p className={`${tableCell} truncate`} title={row.label}>{row.label}</p>
-                    <p className={`${tableCell} truncate uppercase tracking-[0.16em] text-text-muted`}>{row.category || '-'}</p>
+                    <p className={`${tableCell} truncate text-text-muted`}>{row.category || '-'}</p>
                     <p className={`${tableCell} text-text-muted`}>{row.sort_order}</p>
                     <p className={`${tableHeader} ${row.active ? 'text-emerald-700' : 'text-text-faint'}`}>
                       {row.active ? 'Active' : 'Hidden'}

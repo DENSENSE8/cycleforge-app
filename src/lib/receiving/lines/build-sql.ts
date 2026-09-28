@@ -217,6 +217,9 @@ export function buildReceivingLineByIdSql(id: number, orgId: string): BuiltSql {
                 r.support_notes              AS receiving_support_notes,
                 r.zoho_notes                 AS receiving_zoho_notes,
                 r.listing_url                AS receiving_listing_url,
+                COALESCE(NULLIF(BTRIM(rl_ret.return_reason), ''), NULLIF(BTRIM(r.return_reason), '')) AS return_reason,
+                rl_ret.rma_ref               AS return_rma_ref,
+                rl_ret.source_order_id       AS return_source_order_id,
                 rt.door_received_at::text          AS receiving_received_at,
                 ru.unboxed_at::text           AS receiving_unboxed_at,
                 rt.door_received_by                AS receiving_received_by,
@@ -252,6 +255,7 @@ export function buildReceivingLineByIdSql(id: number, orgId: string): BuiltSql {
          LEFT JOIN receiving_line_testing rlt ON rlt.receiving_line_id = rl.id AND rlt.organization_id = rl.organization_id
          LEFT JOIN receiving_line_zoho rz     ON rz.receiving_line_id = rl.id AND rz.organization_id = rl.organization_id
          ${PUTAWAY_STAGED_JOIN_SQL}
+         LEFT JOIN receiving_line_return rl_ret ON rl_ret.receiving_line_id = rl.id AND rl_ret.organization_id = rl.organization_id
          LEFT JOIN zoho_po_mirror mirror
            ON mirror.zoho_purchaseorder_id = rz.zoho_purchaseorder_id
           AND mirror.organization_id = rl.organization_id
@@ -382,6 +386,9 @@ export function buildReceivingLinesByReceivingIdSql(
                   r.support_notes              AS receiving_support_notes,
                   r.zoho_notes                 AS receiving_zoho_notes,
                   r.listing_url                AS receiving_listing_url,
+                  COALESCE(NULLIF(BTRIM(rl_ret.return_reason), ''), NULLIF(BTRIM(r.return_reason), '')) AS return_reason,
+                  rl_ret.rma_ref               AS return_rma_ref,
+                  rl_ret.source_order_id       AS return_source_order_id,
                   COALESCE(rt.triage_complete, false) AS triage_complete,
                   rt.triage_completed_at::text    AS triage_completed_at,
                   COALESCE(ru.intake_path = 'unbox_only', false) AS unbox_only_intake,
@@ -421,6 +428,7 @@ export function buildReceivingLinesByReceivingIdSql(
            LEFT JOIN receiving_line_testing rlt ON rlt.receiving_line_id = rl.id AND rlt.organization_id = rl.organization_id
            LEFT JOIN receiving_line_zoho rz     ON rz.receiving_line_id = rl.id AND rz.organization_id = rl.organization_id
            ${PUTAWAY_STAGED_JOIN_SQL}
+           LEFT JOIN receiving_line_return rl_ret ON rl_ret.receiving_line_id = rl.id AND rl_ret.organization_id = rl.organization_id
            LEFT JOIN zoho_po_mirror mirror
              ON mirror.zoho_purchaseorder_id = rz.zoho_purchaseorder_id
             AND mirror.organization_id = rl.organization_id
@@ -804,13 +812,17 @@ export function buildReceivingLinesListSql(input: ReceivingLinesListSqlInput): B
       `(rl.workflow_status IS NULL OR rl.workflow_status IN ('EXPECTED','ARRIVED','MATCHED','UNBOXED','AWAITING_TEST','IN_TEST','PASSED','FAILED','RTV','SCRAP','DONE'))`,
     );
   } else if (view === 'activity') {
-    // "Activity" = Unbox History membership:
+    // "Activity" = Unboxed membership: a received line whose carton was
+    // actually opened on the Unbox surface. A line marked received with no
+    // unbox / open stamp (Zoho receive, "mark received") is not unboxed and
+    // stays out (owner 2026-09-28).
     conditions.push(
       `(
            rl.workflow_status IN ('UNBOXED','AWAITING_TEST','IN_TEST','PASSED','DONE')
            OR COALESCE(rl.quantity_received, 0) > 0
            OR ru.unboxed_at IS NOT NULL
-         )`,
+         )
+         AND (ru.unboxed_at IS NOT NULL OR ru.opened_at IS NOT NULL)`,
     );
   } else if (view === 'scanned') {
     // "Scanned" = door-scanned and physically in, but NOT yet unboxed — the triage to-do between the door scan and the unbox step.
@@ -1318,8 +1330,10 @@ export function buildReceivingLinesListSql(input: ReceivingLinesListSqlInput): B
     || view === 'activity'
     || view === 'all'
     || view === 'unbox_opened';
+  // History cards name who sold the carton (line 1: platform · vendor); the
+  // incoming views already carry `vendor_name` in their extras.
   const zohoStatusSelect = needsZohoMirror
-    ? `, mirror.status AS zoho_status, mirror.last_synced_at::text AS zoho_status_synced_at`
+    ? `, mirror.status AS zoho_status, mirror.last_synced_at::text AS zoho_status_synced_at${view === 'activity' ? ', mirror.vendor_name::text AS vendor_name' : ''}`
     : '';
   /** The two removal signals the row shape does not already carry. */
   const removedSignalsSelect =
@@ -1456,6 +1470,9 @@ export function buildReceivingLinesListSql(input: ReceivingLinesListSqlInput): B
                 r.support_notes              AS receiving_support_notes,
                 r.zoho_notes                 AS receiving_zoho_notes,
                 r.listing_url                AS receiving_listing_url,
+                COALESCE(NULLIF(BTRIM(rl_ret.return_reason), ''), NULLIF(BTRIM(r.return_reason), '')) AS return_reason,
+                rl_ret.rma_ref               AS return_rma_ref,
+                rl_ret.source_order_id       AS return_source_order_id,
                 stn.tracking_number_raw      AS shipment_tracking_number,
                 stn.carrier                  AS shipment_carrier,
                 stn.latest_status_category   AS shipment_status_category,
@@ -1485,6 +1502,7 @@ export function buildReceivingLinesListSql(input: ReceivingLinesListSqlInput): B
          LEFT JOIN receiving_line_testing rlt ON rlt.receiving_line_id = rl.id AND rlt.organization_id = rl.organization_id
          LEFT JOIN receiving_line_zoho rz     ON rz.receiving_line_id = rl.id AND rz.organization_id = rl.organization_id
          ${PUTAWAY_STAGED_JOIN_SQL}
+         LEFT JOIN receiving_line_return rl_ret ON rl_ret.receiving_line_id = rl.id AND rl_ret.organization_id = rl.organization_id
          -- Soft JOIN: direct FK when set, else PO#-based fallback (see note above).
          -- D1 wrong-shipment guard: a direct receiving FK, else a PO#-based
          -- fallback. When a line has no FK and its PO has multiple zoho_po

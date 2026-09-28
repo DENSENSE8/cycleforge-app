@@ -7,6 +7,7 @@ import { PageHeader } from '@/components/ui/pane-header';
 import { Button } from '@/design-system/primitives';
 import type { PulseEventRow } from '@/components/inventory/types';
 import { EventsExplorerTable } from './EventsExplorerTable';
+import { sentenceCaseLabel } from '@/lib/text/sentence-case-label';
 
 export const dynamic = 'force-dynamic';
 
@@ -297,14 +298,14 @@ export default async function EventsExplorerPage({
             <label htmlFor="event_type" className="block text-xs font-medium text-text-muted">Event type</label>
             <select id="event_type" name="event_type" defaultValue={eventType ?? ''} className="mt-1 block w-full rounded-md border border-border-default px-2 py-1.5 text-sm">
               <option value="">any</option>
-              {EVENT_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
+              {EVENT_TYPES.map((t) => <option key={t} value={t}>{sentenceCaseLabel(t)}</option>)}
             </select>
           </div>
           <div>
             <label htmlFor="station" className="block text-xs font-medium text-text-muted">Station</label>
             <select id="station" name="station" defaultValue={station ?? ''} className="mt-1 block w-full rounded-md border border-border-default px-2 py-1.5 text-sm">
               <option value="">any</option>
-              {STATIONS.map((s) => <option key={s} value={s}>{s}</option>)}
+              {STATIONS.map((s) => <option key={s} value={s}>{sentenceCaseLabel(s)}</option>)}
             </select>
           </div>
           <div>

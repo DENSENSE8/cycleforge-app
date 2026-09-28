@@ -9,11 +9,12 @@ import type { ReactNode } from 'react';
 import { SkeletonList } from '@/design-system/components/Skeletons';
 import { DeskRecordLayout } from '@/design-system/components/DeskRecordPlane';
 import { EvidenceNotice } from '@/design-system/components/record-ledger/RecordEvidence';
+import { RecordGroup } from '@/design-system/components/record-ledger/RecordGroup';
 import type { RecordLedgerSummary } from '@/design-system/components/record-ledger/RecordLedgerSummary';
+import { DESK_RECORD_COLUMN_CARD_CLASS } from '@/design-system/tokens/desk-stage';
 import { RECORD_LABEL_CLASS, type RecordStateFace } from '@/design-system/tokens/industrial-record';
 import { Button } from '@/design-system/primitives';
-import { ReceivingStatusStrip } from '@/components/receiving/record/ReceivingStatusStrip';
-import { CARTON_COLUMN_CLASS, CartonColumnHead } from '@/components/receiving/history/carton-record-sections';
+import { ReceivingFulfilment, ReceivingStatusStrip } from '@/components/receiving/record/ReceivingStatusStrip';
 import { ReceivingPhotosSection } from '@/components/station/receiving/ReceivingPhotosSection';
 import { useIncomingDetails, type IncomingDetailsController } from '@/components/sidebar/receiving/incoming-details/useIncomingDetails';
 import { PairingTab } from '@/components/sidebar/receiving/incoming-details/PairingTab';
@@ -28,6 +29,7 @@ import {
 import { incomingDetailsTargetFromRow, type IncomingDetailsFromRowResult } from '@/lib/receiving/incoming-details-target';
 import { deriveIncomingAlerts, deriveIncomingSteps } from '@/lib/receiving/incoming-record-status';
 import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
+import type { ReceivingStatusStep } from '@/lib/receiving/receiving-status-strip';
 import { resolveSkuIdentityTitle } from '@/lib/sku/sku-identity-law';
 import { cn } from '@/utils/_cn';
 import { cartonIdOf, IncomingItem, IncomingRecordAside } from './incoming-record-sections';
@@ -109,7 +111,6 @@ export function IncomingDeliveryEvidence({ row, lines, state, delivery }: Incomi
       state={state}
       next={incomingDeliveryNextAction(state.id)}
       count={`${itemCount} ${itemCount === 1 ? 'item' : 'items'}`}
-      steps={steps}
       alerts={alerts}
       testId="incoming-record-status"
     />
@@ -128,19 +129,19 @@ export function IncomingDeliveryEvidence({ row, lines, state, delivery }: Incomi
   let body: ReactNode;
   if (resolved && !resolved.ok) {
     body = (
-      <div className={CARTON_COLUMN_CLASS}>
+      <div className={DESK_RECORD_COLUMN_CARD_CLASS}>
         <EvidenceNotice tone="warn">{resolved.toast || 'This delivery has no resolvable purchase identity.'}</EvidenceNotice>
       </div>
     );
   } else if (controller.isLoading) {
     body = (
-      <div className={cn(CARTON_COLUMN_CLASS, 'p-4')}>
+      <div className={cn(DESK_RECORD_COLUMN_CARD_CLASS, 'p-4')}>
         <SkeletonList count={7} />
       </div>
     );
   } else if (!data) {
     body = (
-      <div className={cn(CARTON_COLUMN_CLASS, 'gap-3 p-4')}>
+      <div className={cn(DESK_RECORD_COLUMN_CARD_CLASS, 'gap-3 p-4')}>
         <EvidenceNotice tone="warn">Could not load delivery details.</EvidenceNotice>
         <Button type="button" variant="secondary" size="sm" onClick={() => void controller.refetch()}>
           Retry
@@ -150,8 +151,13 @@ export function IncomingDeliveryEvidence({ row, lines, state, delivery }: Incomi
   } else {
     body = (
       <DeskRecordLayout
-        main={<IncomingRecordMain row={row} lines={lines} data={data} delivery={delivery} />}
-        aside={<IncomingRecordAside row={row} data={data} />}
+        main={<IncomingRecordMain row={row} lines={lines} data={data} delivery={delivery} steps={steps} />}
+        aside={
+          <div className="flex min-w-0 flex-col gap-4">
+            <IncomingRecordPhotos row={row} lines={lines} data={data} />
+            <IncomingRecordAside row={row} data={data} />
+          </div>
+        }
       />
     );
   }
@@ -165,36 +171,63 @@ export function IncomingDeliveryEvidence({ row, lines, state, delivery }: Incomi
   );
 }
 
+/** Photos top-right, above the Purchase facts — where the carton record keeps them. */
+function IncomingRecordPhotos({
+  row,
+  lines,
+  data,
+}: {
+  row: ReceivingLineRow;
+  lines: readonly ReceivingLineRow[];
+  data: DetailsResponse;
+}) {
+  const cartonId = cartonIdOf(row, data);
+  const photoCount = lines.reduce((max, line) => Math.max(max, line.photo_count ?? 0), 0);
+  if (!cartonId || photoCount === 0) return null;
+  return (
+    <RecordGroup title={`Photos · ${photoCount}`} testId="incoming-record-photos">
+      <div className="px-4 pb-3 pt-1">
+        <ReceivingPhotosSection
+          receivingId={String(cartonId)}
+          poRef={data.po?.zoho_purchaseorder_number ?? row.zoho_purchaseorder_number ?? null}
+          readOnly
+          hideHeader
+        />
+      </div>
+    </RecordGroup>
+  );
+}
+
 function IncomingRecordMain({
   row,
   lines,
   data,
   delivery,
+  steps,
 }: {
   row: ReceivingLineRow;
   lines: readonly ReceivingLineRow[];
   data: DetailsResponse;
   delivery: IncomingDelivery;
+  steps: readonly ReceivingStatusStep[];
 }) {
   const controller = delivery.controller;
   const target = delivery.resolved?.ok ? delivery.resolved.target : null;
   const byLineId = new Map(lines.map((line) => [line.id, line] as const));
   const ordered = data.line_items.reduce((sum, line) => sum + (line.quantity_expected || 0), 0);
   const received = data.line_items.reduce((sum, line) => sum + (line.quantity_received || 0), 0);
-  const cartonId = cartonIdOf(row, data);
-  const photoCount = lines.reduce((max, line) => Math.max(max, line.photo_count ?? 0), 0);
   const currency = data.po?.currency ?? null;
 
   return (
     <div className="flex min-w-0 flex-col gap-4">
-      <div className={CARTON_COLUMN_CLASS} data-testid="incoming-record-items">
-        <CartonColumnHead
-          label={
-            data.line_items.length
-              ? `Items · ${data.line_items.length} · received ${received}/${ordered}`
-              : `Items · ${lines.length}`
-          }
-        />
+      <RecordGroup
+        testId="incoming-record-items"
+        title={
+          data.line_items.length
+            ? `Items · ${data.line_items.length} · received ${received}/${ordered}`
+            : `Items · ${lines.length}`
+        }
+      >
         {data.line_items.length
           ? data.line_items.map((line, index) => (
               <IncomingItem
@@ -233,12 +266,13 @@ function IncomingRecordMain({
                 current={line.id === row.id}
               />
             ))}
-      </div>
+      </RecordGroup>
+
+      <ReceivingFulfilment steps={steps} testId="incoming-record-fulfilment" />
 
       {!data.po?.zoho_purchaseorder_id && !data.inbound ? (
-        <div className={CARTON_COLUMN_CLASS} data-testid="incoming-record-pairing">
-          <CartonColumnHead label="Pair to a purchase order" />
-          <div className="p-4">
+        <RecordGroup title="Pair to a purchase order" testId="incoming-record-pairing">
+          <div className="px-4 pb-4">
             <PairingTab
               data={data}
               seedRow={row}
@@ -247,38 +281,22 @@ function IncomingRecordMain({
               onPaired={controller.invalidateIncoming}
             />
           </div>
-        </div>
+        </RecordGroup>
       ) : null}
 
-      <div className={CARTON_COLUMN_CLASS} data-testid="incoming-record-carrier">
-        <CartonColumnHead label="Carrier trail" />
-        <div className="p-4">
+      <RecordGroup title="Carrier trail" testId="incoming-record-carrier">
+        <div className="px-4 pb-4">
           <ShipmentTab data={data} />
         </div>
-      </div>
+      </RecordGroup>
 
-      {cartonId && photoCount > 0 ? (
-        <div className={CARTON_COLUMN_CLASS} data-testid="incoming-record-photos">
-          <CartonColumnHead label={`Photos · ${photoCount}`} />
-          <div className="p-4">
-            <ReceivingPhotosSection
-              receivingId={String(cartonId)}
-              poRef={data.po?.zoho_purchaseorder_number ?? row.zoho_purchaseorder_number ?? null}
-              readOnly
-              hideHeader
-            />
-          </div>
-        </div>
-      ) : null}
-
-      <div className={CARTON_COLUMN_CLASS} data-testid="incoming-record-activity">
-        <CartonColumnHead label="Activity" />
-        <div className="p-4">
+      <RecordGroup title="Activity" testId="incoming-record-activity">
+        <div className="px-4 pb-4">
           <ActivityTab data={data} />
           {data.zoho_activity.length ? (
-            <ol className="mt-3 flex flex-col border-t border-mode-rule">
+            <ol className="mt-3 flex flex-col border-t border-mode-fact">
               {data.zoho_activity.map((event, index) => (
-                <li key={`${event.timestamp}:${index}`} className="border-b border-mode-rule py-2 text-role-data last:border-b-0">
+                <li key={`${event.timestamp}:${index}`} className="border-b border-mode-fact py-2 text-role-data last:border-b-0">
                   <p className={RECORD_LABEL_CLASS}>
                     {fmtDateTime(event.timestamp)} · {event.label}
                   </p>
@@ -288,15 +306,14 @@ function IncomingRecordMain({
             </ol>
           ) : null}
         </div>
-      </div>
+      </RecordGroup>
 
       {data.po ? (
-        <div className={CARTON_COLUMN_CLASS} data-testid="incoming-record-email">
-          <CartonColumnHead label="Email" />
-          <div className="p-4">
+        <RecordGroup title="Email" testId="incoming-record-email">
+          <div className="px-4 pb-4">
             <EmailTab data={data} />
           </div>
-        </div>
+        </RecordGroup>
       ) : null}
     </div>
   );

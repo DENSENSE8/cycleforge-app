@@ -61,7 +61,7 @@ export interface QueueFacetCombo {
   n: number;
 }
 
-const STAGE_LABEL: Record<DeskStage, string> = { pending: 'Not tested', tested: 'Tested', packed: 'Packed' };
+const STAGE_LABEL: Record<DeskStage, string> = { pending: 'Not picked', picked: 'Picked', packed: 'Packed' };
 const AGING_LABEL: Record<DeskAgingBucket, string> = {
   overdue: 'Overdue',
   today: 'Due today',
@@ -153,7 +153,7 @@ export function buildQueueFacetSql(
         SELECT
           CASE
             WHEN ${sqlOrderDeskStage('packed')} THEN 'packed'
-            WHEN ${sqlOrderDeskStage('tested')} THEN 'tested'
+            WHEN ${sqlOrderDeskStage('picked')} THEN 'picked'
             ELSE 'pending'
           END AS stage,
           ${sqlDeskAgingBucket('dl.deadline_at')} AS aging,

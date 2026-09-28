@@ -76,7 +76,7 @@ function CollapseStripTextPeek({ pin }: { pin: CollapseStripPin }) {
         </span>
       ) : null}
       {pin.statusLabel || pin.age ? (
-        <span className="truncate text-role-micro font-semibold uppercase tracking-widest text-white/65">
+        <span className="truncate text-role-micro font-semibold text-white/65">
           {[
             pin.statusLabel,
             pin.age

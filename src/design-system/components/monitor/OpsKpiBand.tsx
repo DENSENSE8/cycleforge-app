@@ -103,7 +103,7 @@ export function OpsKpiBandEmpty({
         </p>
         <p
           className={cn(
-            'font-semibold uppercase tracking-widest text-text-faint',
+            'font-semibold text-text-faint',
             band ? 'mt-0 text-role-micro' : 'mt-0.5 text-role-eyebrow',
           )}
         >

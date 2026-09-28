@@ -77,7 +77,7 @@ export const sidebarNavOverlayBandClass = cn(
   PRIMARY_CHROME_ROW_FACE,
   SIDEBAR_GUTTER,
 );
-const sidebarHeaderControlClass =`h-full min-h-[44px] w-full appearance-none ${appChromeClass} px-3 py-1 pr-8 text-left text-role-micro uppercase tracking-wider text-text-muted outline-none transition-colors hover:bg-surface-hover`;
+const sidebarHeaderControlClass =`h-full min-h-[44px] w-full appearance-none ${appChromeClass} px-3 py-1 pr-8 text-left text-role-micro text-text-muted outline-none transition-colors hover:bg-surface-hover`;
 
 export const mainStickyHeaderClass = `shrink-0 sticky top-0 z-header border-b border-border-hairline ${appChromeMutedClass} backdrop-blur-sm`;
 export const mainStickyHeaderRowClass = 'flex min-h-[44px] items-center justify-between gap-4 px-4 py-1';
@@ -201,6 +201,6 @@ export const HEADER_MENU_ROW_CORNER = DROPDOWN_ITEM_CORNER;
 /**
  * A section caption inside a header dropdown — the region's label VOICE
  * (`mode-label`: sentence case in triage, mono caps only on a touch floor),
- * never a hand-set `uppercase tracking-widest` eyebrow.
+ * never a hand-set caps eyebrow.
  */
 export const HEADER_MENU_CAPTION_CLASS = 'mode-label text-text-muted';

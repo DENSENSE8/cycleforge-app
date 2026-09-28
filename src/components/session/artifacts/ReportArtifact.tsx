@@ -80,7 +80,7 @@ export function ReportArtifact({ artifact }: { artifact: ArtifactReport }) {
         <header className="min-w-0">
           <h2 className="text-role-title text-text-default">{artifact.title}</h2>
           <p className="mt-0.5 text-role-caption text-text-muted">{artifact.question}</p>
-          <p className="mt-1 text-role-eyebrow uppercase tracking-widest text-text-faint">
+          <p className="mt-1 text-role-eyebrow text-text-faint">
             {artifact.scope} · as of {artifact.asOf}
           </p>
         </header>
@@ -129,7 +129,7 @@ export function ReportArtifact({ artifact }: { artifact: ArtifactReport }) {
             <dl className="mt-1 divide-y divide-border-hairline border-t border-border-hairline">
               {artifact.standards.map((standard, i) => (
                 <div key={`${standard.label}-${i}`} className="flex gap-3 py-1.5">
-                  <dt className="w-40 shrink-0 text-role-eyebrow uppercase tracking-widest text-text-faint">
+                  <dt className="w-40 shrink-0 text-role-eyebrow text-text-faint">
                     {standard.label}
                   </dt>
                   <dd className="min-w-0 text-role-caption text-text-default">
@@ -168,7 +168,7 @@ export function ReportArtifact({ artifact }: { artifact: ArtifactReport }) {
       {/* ── follow-ups: seed the composer with the next sentence ── */}
       {artifact.followUps.length > 0 ? (
         <div className="shrink-0 border-t border-border-hairline px-3 py-1.5">
-          <p className="text-role-eyebrow uppercase tracking-widest text-text-faint">Ask next</p>
+          <p className="text-role-eyebrow text-text-faint">Ask next</p>
           <div className="mt-1 flex flex-wrap gap-1.5">
             {artifact.followUps.map((followUp, i) => (
               <Button
@@ -206,7 +206,7 @@ function KpiCell({ kpi }: { kpi: ArtifactReportKpi }) {
         cornerClass('row'),
       )}
     >
-      <p className="text-role-eyebrow uppercase tracking-widest text-text-faint">{kpi.label}</p>
+      <p className="text-role-eyebrow text-text-faint">{kpi.label}</p>
       <p className="mt-0.5 flex flex-wrap items-baseline gap-1">
         <span className="text-role-data tabular-nums text-text-default">{kpi.value}</span>
         {kpi.unit ? <span className="text-role-micro text-text-muted">{kpi.unit}</span> : null}
@@ -252,7 +252,7 @@ function ReportSection({ section }: { section: ArtifactReportSection }) {
                   key={col.key}
                   scope="col"
                   className={cn(
-                    'border-b border-border-hairline px-2.5 py-1.5 text-role-eyebrow uppercase tracking-widest text-text-faint',
+                    'border-b border-border-hairline px-2.5 py-1.5 text-role-eyebrow text-text-faint',
                     col.align === 'right' && 'text-right',
                   )}
                 >

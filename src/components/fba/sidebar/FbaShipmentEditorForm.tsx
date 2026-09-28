@@ -27,8 +27,8 @@ export function FbaShipmentEditorForm(props: FbaShipmentEditorFormProps) {
         <div className="flex items-center gap-2">
           <IconButton type="button" radius="flush" onClick={onClose} ariaLabel="Close editor" icon={<X className="h-3.5 w-3.5 text-text-muted" />} className="flex h-7 w-7 items-center justify-center bg-surface-sunken hover:bg-surface-strong" />
           <div>
-            <h2 className="text-role-caption font-semibold uppercase tracking-tight text-text-default">Edit Shipment</h2>
-            <p className="text-role-eyebrow uppercase tracking-widest text-text-accent">{shipment.shipment_ref}</p>
+            <h2 className="text-role-caption font-semibold tracking-tight text-text-default">Edit Shipment</h2>
+            <p className="text-role-eyebrow text-text-accent">{shipment.shipment_ref}</p>
           </div>
         </div>
         <div className="text-right">
@@ -40,7 +40,7 @@ export function FbaShipmentEditorForm(props: FbaShipmentEditorFormProps) {
       <Collapse open={c.selectionCount > 0} appear className="border-b border-border-accent bg-surface-accent">
         <div className="px-3 py-2">
           <div className="mb-1.5 flex items-center justify-between">
-            <p className="text-role-eyebrow uppercase tracking-wider text-text-accent">
+            <p className="text-role-eyebrow text-text-accent">
               {c.selectionCount} selected
             </p>
             <Button type="button" variant="ghost" size="sm" radius="flush" onClick={c.clearSelection} className="h-auto px-0 text-role-micro text-text-accent hover:bg-transparent hover:text-text-default">
@@ -70,7 +70,7 @@ export function FbaShipmentEditorForm(props: FbaShipmentEditorFormProps) {
                   ) : (
                     <>
                       <Package className="h-3 w-3 shrink-0 text-text-soft" />
-                      <span className="text-role-eyebrow uppercase tracking-wider text-text-muted">
+                      <span className="text-role-eyebrow text-text-muted">
                         Box {idx + 1}
                       </span>
                     </>
@@ -84,7 +84,7 @@ export function FbaShipmentEditorForm(props: FbaShipmentEditorFormProps) {
               size="sm"
               onClick={() => c.moveSelectedTo(UNALLOCATED_ID)}
               radius="flush"
-              className="h-auto border border-border-warning bg-surface-card px-2 py-1 text-role-eyebrow uppercase tracking-wider text-text-warning hover:bg-surface-warning"
+              className="h-auto border border-border-warning bg-surface-card px-2 py-1 text-role-eyebrow text-text-warning hover:bg-surface-warning"
             >
               Unallocated
             </Button>
@@ -110,7 +110,7 @@ export function FbaShipmentEditorForm(props: FbaShipmentEditorFormProps) {
             <Button type="button" variant="ghost" size="sm" onClick={c.addBundle}
               icon={<Plus className="h-2.5 w-2.5" />}
               radius="flush"
-              className="h-auto w-full justify-center gap-1 border border-dashed border-border-default bg-surface-canvas/50 px-2 py-1.5 text-role-eyebrow uppercase tracking-wider text-text-soft hover:border-border-accent hover:bg-surface-accent hover:text-text-accent"
+              className="h-auto w-full justify-center gap-1 border border-dashed border-border-default bg-surface-canvas/50 px-2 py-1.5 text-role-eyebrow text-text-soft hover:border-border-accent hover:bg-surface-accent hover:text-text-accent"
             >
               UPS Tracking{c.bundles.length > 0 ? ` (${c.bundles.length})` : ''}
             </Button>
@@ -171,7 +171,7 @@ export function FbaShipmentEditorForm(props: FbaShipmentEditorFormProps) {
                   <p className="truncate text-role-eyebrow text-text-muted">{entry.display_title || entry.fnsku}</p>
                   <p className="font-mono text-role-micro text-text-faint">{entry.fnsku} · {entry.expected_qty} qty</p>
                 </div>
-                <Button type="button" variant="ghost" size="sm" radius="flush" onClick={() => c.popUndo(entry.item_id)} className="h-auto shrink-0 bg-surface-card px-2 py-0.5 text-role-micro uppercase tracking-wider text-text-warning hover:bg-surface-hover">Undo</Button>
+                <Button type="button" variant="ghost" size="sm" radius="flush" onClick={() => c.popUndo(entry.item_id)} className="h-auto shrink-0 bg-surface-card px-2 py-0.5 text-role-micro text-text-warning hover:bg-surface-hover">Undo</Button>
                 <IconButton type="button" radius="flush" onClick={() => c.dismissUndo(entry.item_id)} ariaLabel="Dismiss" icon={<X className="h-2.5 w-2.5" />} className="flex h-4 w-4 shrink-0 items-center justify-center text-text-warning hover:bg-surface-warning hover:text-text-default" />
               </div>
             ))}

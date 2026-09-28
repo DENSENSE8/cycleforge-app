@@ -7,6 +7,7 @@ import {
   buildLabelIngestionOpenApi,
   LABEL_INGESTION_ERROR_CODES,
 } from '@/lib/label-ingestions/contracts';
+import { buildLabelPrintComponents, buildLabelPrintOpenApi } from '@/lib/label-prints/contracts';
 import { buildOutboundWorkComponents, buildOutboundWorkOpenApi } from '@/lib/outbound/work-contract';
 import { buildPickingV1Components, buildPickingV1OpenApi } from '@/lib/picking/picking-v1-contract';
 import { buildReminderFeedComponents, buildReminderFeedOpenApi } from '@/lib/reminders/reminder-openapi';
@@ -20,6 +21,7 @@ export function buildV1OpenApi(): Record<string, unknown> {
     info: { title: 'CycleForge V1', version: '1.0.0' },
     paths: {
       ...buildLabelIngestionOpenApi(),
+      ...buildLabelPrintOpenApi(),
       ...buildOutboundWorkOpenApi(),
       ...buildReminderFeedOpenApi(),
       ...buildV1SessionOpenApi(),
@@ -44,6 +46,7 @@ export function buildV1OpenApi(): Record<string, unknown> {
           },
         },
         ...buildLabelIngestionComponents(),
+        ...buildLabelPrintComponents(),
         ...buildOutboundWorkComponents(),
         ...buildReminderFeedComponents(),
         ...buildV1SessionComponents(),

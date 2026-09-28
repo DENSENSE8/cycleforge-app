@@ -54,7 +54,7 @@ export function LocationQtyStrip({
             {isProvisionalSku(content.sku) && (
               <span
                 className={cn(
-                  'shrink-0 bg-amber-100 px-1.5 text-role-micro font-semibold uppercase tracking-wider text-amber-800',
+                  'shrink-0 bg-amber-100 px-1.5 text-role-micro font-semibold text-amber-800',
                   cornerClass('chip'),
                 )}
               >

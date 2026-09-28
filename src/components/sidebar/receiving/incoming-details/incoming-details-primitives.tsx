@@ -7,7 +7,7 @@ import { copyValue } from './incoming-details-shared';
 export function Row({ label, value, copyValue: cv }: { label: string; value: React.ReactNode; copyValue?: string | null }) {
   return (
     <div className="flex items-start gap-3 border-b border-border-hairline py-2 last:border-b-0">
-      <span className="w-36 shrink-0 text-role-eyebrow uppercase tracking-wider text-text-soft">
+      <span className="w-36 shrink-0 text-role-eyebrow text-text-soft">
         {label}
       </span>
       <div className="min-w-0 flex-1 break-words text-role-caption font-semibold text-text-default">

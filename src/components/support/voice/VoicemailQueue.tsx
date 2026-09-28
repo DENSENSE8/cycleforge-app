@@ -122,7 +122,7 @@ export function VoicemailQueue() {
         )}
       </div>
 
-      <div className="flex shrink-0 items-center gap-1.5 border-t border-border-hairline px-3 py-2 text-role-micro uppercase tracking-widest text-text-faint">
+      <div className="flex shrink-0 items-center gap-1.5 border-t border-border-hairline px-3 py-2 text-role-micro text-text-faint">
         <Voicemail className="h-3 w-3" />
         {openCount > 0 ? `${openCount} open follow-up${openCount === 1 ? '' : 's'}` : 'Follow-up queue'}
       </div>
@@ -178,12 +178,12 @@ function VoicemailRow({
               {name}
             </span>
             {vm.linkedTicketId ? (
-              <span className="inline-flex shrink-0 items-center gap-0.5 rounded bg-violet-50 px-1 py-0.5 text-role-micro uppercase tracking-widest text-violet-700 ring-1 ring-inset ring-violet-200">
+              <span className="inline-flex shrink-0 items-center gap-0.5 rounded bg-violet-50 px-1 py-0.5 text-role-micro text-violet-700 ring-1 ring-inset ring-violet-200">
                 <Link2 className="h-2.5 w-2.5" />#{vm.linkedTicketId}
               </span>
             ) : null}
           </span>
-          <span className="mt-0.5 flex items-center gap-1 truncate text-role-micro font-semibold uppercase tracking-widest text-text-soft">
+          <span className="mt-0.5 flex items-center gap-1 truncate text-role-micro font-semibold text-text-soft">
             <Clock className="h-2.5 w-2.5 shrink-0 text-text-faint" />
             {meta}
             {number ? <span className="text-text-faint">· {number}</span> : null}
@@ -194,7 +194,7 @@ function VoicemailRow({
             </span>
           ) : null}
           {vm.assignedStaffName ? (
-            <span className={cn('mt-1 inline-block rounded px-1 py-0.5 text-role-micro uppercase tracking-widest ring-1 ring-inset', tone.chip)}>
+            <span className={cn('mt-1 inline-block rounded px-1 py-0.5 text-role-micro ring-1 ring-inset', tone.chip)}>
               {vm.assignedStaffName}
             </span>
           ) : null}

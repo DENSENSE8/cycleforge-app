@@ -2,7 +2,7 @@
 
 /** Receiving-lines table — thin composition layer. */
 
-import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore, type ReactNode } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { ModeRegion } from '@/design-system/providers/ModeRegion';
 import { useSurfacePaintMark } from '@/lib/observability/paint-timing';
 import { useUnboxPrimaryPaintOptional } from '@/components/receiving/unbox/unbox-primary-paint-context';
@@ -13,11 +13,6 @@ import { IncomingReturnsImportStagingRail } from '@/components/sidebar/receiving
 import { IncomingDeliveriesLedger } from '@/components/receiving/incoming/IncomingDeliveriesLedger';
 import { useIncomingStatusChips } from '@/components/receiving/incoming/IncomingStatusChips';
 import { DockedReceiptsLedger } from '@/components/receiving/history/DockedReceiptsLedger';
-import { InboundOrderComposer } from '@/components/receiving/incoming/order-composer/InboundOrderComposer';
-import {
-  getReceivingOrderComposerKind,
-  subscribeReceivingOrderComposer,
-} from '@/lib/inbound/receiving-order-composer-store';
 import { useTableImportParam } from '@/hooks/useTableImportParam';
 import { INBOUND_RETURNS_IMPORT_DESCRIPTOR } from '@/lib/inbound/inbound-returns-import-descriptor';
 import {
@@ -55,7 +50,6 @@ import { useIncomingTableChrome } from '@/components/station/incoming-grid/useIn
 import { useReceivingTableChrome } from '@/components/station/receiving-grid/useReceivingTableChrome';
 import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
 import { INCOMING_PAGE_SIZE } from '@/lib/receiving/receiving-modes';
-import { useDeskSearch } from '@/lib/outbound/desk-search-store';
 import {
   filterRowsByRecon,
   parseReconParam,
@@ -87,7 +81,7 @@ import {
   type ReceivingHistoryLane,
   type ReceivingLaneIconKey,
 } from '@/lib/receiving/receiving-board-lanes';
-import { parseInboundLane } from '@/lib/receiving/inbound-lane';
+import { INBOUND_FIND_PARAM, parseInboundLane } from '@/lib/receiving/inbound-lane';
 import { getUnboxWorkspaceTabFromSearch } from '@/utils/unbox-workspace-state';
 import { unboxKpiRowFilter, UNBOX_KPI_FILTER_PARAM } from '@/lib/receiving/unbox-metrics';
 
@@ -167,10 +161,22 @@ export default function ReceivingLinesTable({
 
   // History week is a query facet (`?weekOffset=`); other modes keep session-local.
   const [localWeekOffset, setLocalWeekOffset] = useState(0);
-  // `/incoming` searches from the contextual sidebar's Find (the desk store,
-  // keyed by the desk path); the Unbox embeds keep their own ledger field.
+  // `/incoming` searches from the contextual sidebar's Find (`?find=`, so a
+  // reload / link / saved view keeps it); the Unbox embeds keep their own field.
   const [localSearchValue, setLocalSearchValue] = useState('');
-  const [deskSearchValue, setDeskSearchValue] = useDeskSearch(INCOMING_SURFACE_ROUTE);
+  const urlFindValue = searchParams.get(INBOUND_FIND_PARAM) ?? '';
+  // History API like the sidebar's writer (`useReplaceSearchParams`): Next syncs
+  // `useSearchParams` from it, and the live query string keeps the other params.
+  const setUrlFindValue = useCallback(
+    (next: string) => {
+      const params = new URLSearchParams(window.location.search);
+      if (next.trim()) params.set(INBOUND_FIND_PARAM, next);
+      else params.delete(INBOUND_FIND_PARAM);
+      const qs = params.toString();
+      window.history.replaceState(null, '', qs ? `${pathname}?${qs}` : pathname || '/');
+    },
+    [pathname],
+  );
   const weekOffsetFromUrl = Math.max(0, parseWeekOffset(searchParams.get(WEEK_OFFSET_PARAM)));
   const weekOffset = isHistoryMode ? weekOffsetFromUrl : localWeekOffset;
   const weekExplicit = isHistoryMode ? searchParams.has(WEEK_OFFSET_PARAM) : true;
@@ -190,7 +196,17 @@ export default function ReceivingLinesTable({
     },
     [isHistoryMode, weekOffset, searchParams, pathname, router],
   );
-  const weekRange = computeWeekRange(weekOffset);
+  // Inbound History's sidebar date row (`?dateFrom=`/`?dateTo=`) replaces the
+  // week as the day slice while set; an open end reaches every loaded day.
+  const historyDateRange = modeContext.historyDateRange ?? null;
+  const computedWeek = computeWeekRange(weekOffset);
+  const weekRange = historyDateRange
+    ? {
+        ...computedWeek,
+        startStr: historyDateRange.from || '0000-01-01',
+        endStr: historyDateRange.to || '9999-12-31',
+      }
+    : computedWeek;
 
   const isUnboxTableMode = mode.id === 'unbox_queue' || mode.id === 'unbox_viewed';
 
@@ -199,8 +215,8 @@ export default function ReceivingLinesTable({
   // records on DeskRecordPlane) — never the History sheet chrome.
   const isInboundDeskHost = pathname.startsWith(INCOMING_SURFACE_ROUTE);
   const isInboundDocked = isInboundDeskHost && parseInboundLane(searchParams.get('lane')) === 'docked';
-  const receivingSearchValue = isInboundDeskHost ? deskSearchValue : localSearchValue;
-  const setReceivingSearchValue = isInboundDeskHost ? setDeskSearchValue : setLocalSearchValue;
+  const receivingSearchValue = isInboundDeskHost ? urlFindValue : localSearchValue;
+  const setReceivingSearchValue = isInboundDeskHost ? setUrlFindValue : setLocalSearchValue;
   // Inbound reconciliation: a pasted list (`?ref_in=`) swaps On the way for
   // every line it names; the Check says which bucket each number is in and
   // `?recon=` keeps one bucket. Same query key as the sidebar — one Check.
@@ -208,13 +224,6 @@ export default function ReceivingLinesTable({
   const reconciling = refSelection.refs.length > 0;
   const recon = reconciling ? parseReconParam(searchParams.get(RECON_PARAM)) : null;
   const inboundCheck = useInboundCheck(refSelection);
-  // Add swaps the ledger for the inbound-order form — either lane of the
-  // Inbound desk, and the Unbox Inbound tab (its header's Add purchase order).
-  const composerKind = useSyncExternalStore(
-    subscribeReceivingOrderComposer,
-    getReceivingOrderComposerKind,
-    () => null,
-  );
 
   // Returns CSV/TSV staging — session draft + `?import=csv` (Orders golden path).
   const returnsImportDraft = useTableImportDraft(
@@ -405,6 +414,7 @@ export default function ReceivingLinesTable({
 
   useReceivingAutoWeek({
     isHistoryMode,
+    explicitRange: historyDateRange != null,
     skipWeekFilter,
     weekOffset,
     setWeekOffset,
@@ -674,9 +684,6 @@ export default function ReceivingLinesTable({
     // not, so its History / Inbound tabs carry the same region here.
     const inTriageRegion = (body: ReactNode) =>
       isInboundDeskHost ? body : <ModeRegion mode="triage" className="contents">{body}</ModeRegion>;
-    if (composerKind && (isInboundDeskHost || isIncomingMode)) {
-      return inTriageRegion(<InboundOrderComposer initialType={composerKind} />);
-    }
     return inTriageRegion(
       <>
         {showReturnsImportStaging ? <IncomingReturnsImportStagingRail /> : null}
@@ -696,7 +703,9 @@ export default function ReceivingLinesTable({
                   emptyMessage={emptyMessage}
                   query={isInboundDeskHost ? undefined : receivingSearchValue}
                   onQueryChange={isInboundDeskHost ? undefined : setReceivingSearchValue}
+                  findValue={receivingSearchValue}
                   filter={incomingChrome.filter}
+                  sidebarOwnsControls={isInboundDeskHost}
                   statusChips={incomingStatusChips}
                   notice={reconcileCapped ? RECONCILE_CAP_NOTE : null}
                   lane={isInboundExceptions ? 'exceptions' : 'pipeline'}
@@ -728,7 +737,8 @@ export default function ReceivingLinesTable({
                 query={receivingSearchValue}
                 onQueryChange={isInboundDeskHost ? undefined : setReceivingSearchValue}
                 activityAxis={historyAxis}
-                toolbarExtra={chromePill}
+                toolbarExtra={isInboundDeskHost ? null : chromePill}
+                sidebarOwnsControls={isInboundDeskHost}
                 selectedId={openLineId}
                 selectedIds={selectedIds}
                 onOpenRow={openLedgerRow}

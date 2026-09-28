@@ -13,7 +13,6 @@ interface UseShippedWeekBucketsParams {
   /** Effective window end (YYYY-MM-DD). */
   rangeEnd: string;
   packedBy?: number;
-  testedBy?: number;
   staffId?: number;
   shippedFilter: ShippedTypeFilter;
   /** Carrier / status / exceptions-only — answered in SQL like the type filter. */
@@ -49,7 +48,6 @@ export function useShippedWeekBuckets({
   rangeStart,
   rangeEnd,
   packedBy,
-  testedBy,
   staffId,
   shippedFilter,
   carrier,
@@ -69,7 +67,7 @@ export function useShippedWeekBuckets({
       // Key + fetch + TTLs come from the shared factory (SoT) so the warm-up
       // prefetch and this live query can never drift apart.
       ...dashboardShippedWeekQuery({
-        weekStart, weekEnd, packedBy, testedBy, staffId, shippedFilter, carrier, statusCategory, exceptionsOnly, shippedTime, pickedBy, searchTerm, limit, phase,
+        weekStart, weekEnd, packedBy, staffId, shippedFilter, carrier, statusCategory, exceptionsOnly, shippedTime, pickedBy, searchTerm, limit, phase,
       }),
       placeholderData: (prev: PackerRecord[] | undefined) => prev,
       enabled,

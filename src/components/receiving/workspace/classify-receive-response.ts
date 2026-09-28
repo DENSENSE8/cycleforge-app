@@ -152,7 +152,7 @@ export function classifyReceiveResponse(
   if (zoho.skip_reason === 'inventory_not_connected') {
     return {
       verdict: 'skipped',
-      headline: 'Inventory NOT updated — reconnect Zoho',
+      headline: 'Inventory not updated — reconnect Zoho',
       tone: 'amber',
       detail:
         'Lines were saved locally but no active inventory connection is available. Open Settings → Integrations, reconnect Zoho, then retry Receive on the PO.',
@@ -161,7 +161,7 @@ export function classifyReceiveResponse(
   if (zoho.skip_reason === 'no_zoho_link') {
     return {
       verdict: 'skipped',
-      headline: 'Inventory NOT updated — no PO link',
+      headline: 'Inventory not updated — no PO link',
       tone: 'amber',
       detail:
         'No purchase-order link is attached to this package. Click the refresh icon to sync purchase orders first, then try again.',
@@ -196,7 +196,7 @@ export function classifyReceiveResponse(
   if (!zoho.attempted) {
     return {
       verdict: 'skipped',
-      headline: 'Inventory NOT updated — no PO link',
+      headline: 'Inventory not updated — no PO link',
       tone: 'amber',
       detail:
         'Lines were saved locally but no purchase-order link is attached to this package. Click the refresh icon to sync purchase orders first, then try again.',

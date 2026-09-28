@@ -13,7 +13,7 @@ import { cn } from '@/utils/_cn';
 const MD_COMPONENTS: React.ComponentProps<typeof ReactMarkdown>['components'] = {
   h1: (props) => <h2 className="text-base font-semibold text-text-default" {...props} />,
   h2: (props) => (
-    <h3 className="mt-4 text-role-eyebrow uppercase tracking-[0.18em] text-text-faint" {...props} />
+    <h3 className="mt-4 text-role-eyebrow text-text-faint" {...props} />
   ),
   h3: (props) => <h4 className="mt-3 text-role-caption font-semibold text-text-default" {...props} />,
   p: (props) => <p className="text-role-caption leading-relaxed text-text-muted" {...props} />,
@@ -31,7 +31,7 @@ const MD_COMPONENTS: React.ComponentProps<typeof ReactMarkdown>['components'] = 
 function AgentLogChip({ runUid, stage }: { runUid: string; stage?: string }) {
   return (
     <HoverTooltip label={`Forge run ${runUid}${stage ? ` — ${stage} stage` : ''}`} focusable={false}>
-      <span className="my-0.5 inline-flex items-center gap-1.5 rounded bg-surface-sunken px-1.5 py-0.5 text-role-micro uppercase tracking-widest text-text-muted ring-1 ring-inset ring-border-soft">
+      <span className="my-0.5 inline-flex items-center gap-1.5 rounded bg-surface-sunken px-1.5 py-0.5 text-role-micro text-text-muted ring-1 ring-inset ring-border-soft">
         <span className="h-2 w-2 rounded-full bg-blue-500" />
         run {runUid.slice(0, 18)}
         {stage && <span className="font-semibold normal-case tracking-normal">{stage}</span>}

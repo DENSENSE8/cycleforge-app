@@ -21,6 +21,13 @@ export const ArrowLeft = ({ className = "w-6 h-6" }: { className?: string }) => 
     </svg>
 );
 
+/** Plain right arrow — "goes to next" (a record card's next workflow step). */
+export const ArrowRight = ({ className = "w-6 h-6" }: { className?: string }) => (
+    <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 12h14m0 0-6-6m6 6-6 6" />
+    </svg>
+);
+
 /**
  * Double chevron — "enter / drill in", not disclose-in-place.
  * Distinct from a rotated `ChevronDown` (looks like a single › when collapsed).
@@ -61,6 +68,16 @@ export const ChevronsUpDown = ({ className = "w-6 h-6" }: { className?: string }
 export const RotateCcw = ({ className = "w-6 h-6" }: { className?: string }) => (
     <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" />
+    </svg>
+);
+
+/** Two looping arrows (lucide `repeat`) — send it again: a replacement. */
+export const Repeat = ({ className = "w-6 h-6" }: { className?: string }) => (
+    <svg className={className} fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
+        <path d="m17 2 4 4-4 4" />
+        <path d="M3 11v-1a4 4 0 0 1 4-4h14" />
+        <path d="m7 22-4-4 4-4" />
+        <path d="M21 13v1a4 4 0 0 1-4 4H3" />
     </svg>
 );
 

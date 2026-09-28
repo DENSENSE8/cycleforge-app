@@ -127,7 +127,7 @@ export const WarrantyGridRow = memo(function WarrantyGridRow({
               <CopyableCellValue
                 value={claim.sku}
                 historyKind="sku"
-                className="min-w-0 shrink truncate font-mono text-role-eyebrow uppercase tracking-widest text-text-faint"
+                className="min-w-0 shrink truncate font-mono text-role-eyebrow text-text-faint"
                 dense
               />
             ) : null}

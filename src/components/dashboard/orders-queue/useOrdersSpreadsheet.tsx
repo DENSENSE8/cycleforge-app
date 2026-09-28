@@ -156,7 +156,7 @@ export function useOrdersSpreadsheet({
 }: UseOrdersSpreadsheetOptions): OrdersSpreadsheetFeed {
   const { isMobile } = useUIModeOptional();
 
-  // ONE Orders binding (Wave-1 hand-model kill). `?ustatus=TESTED` narrows
+  // ONE Orders binding (Wave-1 hand-model kill). `?ustatus=PICKED` narrows
   // ROWS (`UnshippedTable`'s lane predicate) — it never swaps column models;
   // "show who + when for pick" is the `orders.picked` slot binding.
   const binding = ORDERS_DEFAULT_TABLE_BINDING;
@@ -254,7 +254,7 @@ export function useOrdersSpreadsheet({
     () => ({ record: openRecord, close: closeRecord, records: displayedRecords, todayKey, getStaffName, commits }),
     [openRecord, closeRecord, displayedRecords, todayKey, getStaffName, commits],
   );
-  const stripMode = queueMode === 'shipped' ? 'shipped' : 'to-ship';
+  const stripView = queueMode === 'shipped' ? 'shipping.shipped' : 'shipping.to-ship';
 
   const shellRef = useRef<HTMLDivElement>(null);
 
@@ -434,13 +434,13 @@ export function useOrdersSpreadsheet({
         placement="action-row"
         records={displayedRecords}
         selectedIds={selectedIds}
-        mode={stripMode}
+        viewKey={stripView}
         openRecordStrip={
           openRecord ? (
             <OrderRecordActionStrip
               key={openRecord.id}
               record={openRecord}
-              mode={stripMode}
+              viewKey={stripView}
               checked={selectedIds.has(Number(openRecord.id))}
               onToggleSelect={handleToggleSelect}
               onOpenLabels={onOpenLabels}
@@ -455,7 +455,7 @@ export function useOrdersSpreadsheet({
         placement="header"
         records={displayedRecords}
         selectedIds={selectedIds}
-        mode={stripMode}
+        viewKey={stripView}
       />
     ),
     // A header key on the compound row is a TRACK; the sort vocabulary is in

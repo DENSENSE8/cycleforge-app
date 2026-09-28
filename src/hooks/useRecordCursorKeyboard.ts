@@ -103,6 +103,10 @@ export function useRecordCursorKeyboard({
       }
 
       if (code === 'Enter') {
+        // A scanner's terminating Enter: the wedge listener (window capture,
+        // bound first) committed the scan and prevented it — the scan decides
+        // what opens, not "open the first record".
+        if (e.defaultPrevented) return;
         // Don't steal Enter from buttons/links.
         if (e.target instanceof HTMLButtonElement || e.target instanceof HTMLAnchorElement) return;
         // …or from a focused row, which opens its OWN record (see docblock).

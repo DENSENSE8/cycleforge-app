@@ -145,7 +145,7 @@ export function MobileUnitPhotoStudio({
       onDeletePrior={handleDeletePrior}
       header={
         <div className="min-w-0">
-          <p className="text-role-micro uppercase tracking-[0.22em] text-white/60">
+          <p className="text-role-micro text-white/60">
             {stage === 'packing' ? 'Add packing photos' : 'Add testing photos'}
           </p>
           <p className="truncate text-sm font-semibold text-white">{headerLabel}</p>

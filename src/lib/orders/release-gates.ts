@@ -16,6 +16,13 @@ const RELEASE_GATE_LABEL: Record<ReleaseGateId, string> = {
 };
 
 /**
+ * `orders.fulfillment_channel` value for a walk-in / counter pickup. The column
+ * already answers "who moves this order out of the building" (Amazon's
+ * `AFN` / `MFN`); `PICKUP` = the customer collects it at the counter.
+ */
+export const PICKUP_FULFILLMENT_CHANNEL = 'PICKUP';
+
+/**
  * The facts a gate evaluation needs. Deliberately flat and primitive — the
  * caller shapes its row into this, so the rule never learns the DB's column
  * names or the wire payload's casing.
@@ -40,6 +47,12 @@ export interface ReleaseGateFacts {
    * reads as unpaired (G4 red), same absence-is-failure posture as the rest.
    */
   skuCatalogId?: number | null;
+  /**
+   * `orders.fulfillment_channel = 'PICKUP'` — a walk-in / counter pickup. It
+   * never gets a label or a tracking number, so G1 does not ask for tracking
+   * and G3 is satisfied by the handover itself.
+   */
+  pickup?: boolean | null;
 }
 
 export interface EvaluatedReleaseGate {
@@ -67,6 +80,7 @@ function present(value: string | null | undefined): boolean {
 export function evaluateReleaseGates(facts: ReleaseGateFacts): EvaluatedReleaseGates {
   const hasOrderNumber = present(facts.orderNumber);
   const hasTracking = present(facts.trackingNumber);
+  const pickup = facts.pickup === true;
   const paired =
     typeof facts.skuCatalogId === 'number' && Number.isFinite(facts.skuCatalogId);
   // The product half of the triangle: a listing's item number, or — for an
@@ -76,7 +90,7 @@ export function evaluateReleaseGates(facts: ReleaseGateFacts): EvaluatedReleaseG
   const g1Missing: string[] = [];
   if (!hasProduct) g1Missing.push('item number (or a catalog SKU)');
   if (!hasOrderNumber) g1Missing.push('order number');
-  if (!hasTracking) g1Missing.push('tracking number');
+  if (!hasTracking && !pickup) g1Missing.push('tracking number');
 
   const docCount = Number(facts.linkedDocumentCount ?? 0);
   const docsExempt = facts.docsNotRequired === true;
@@ -108,10 +122,11 @@ export function evaluateReleaseGates(facts: ReleaseGateFacts): EvaluatedReleaseG
       id: 'G3',
       label: RELEASE_GATE_LABEL.G3,
       // `hasTracking` is the operator's ruling, not a shortcut: a linked
-      // tracking number IS the label as far as this floor is concerned.
-      passed: labelLinked || labelPurchased || hasTracking,
+      // tracking number IS the label as far as this floor is concerned. A
+      // pickup leaves over the counter — there is no label to have.
+      passed: pickup || labelLinked || labelPurchased || hasTracking,
       reason:
-        labelLinked || labelPurchased || hasTracking
+        pickup || labelLinked || labelPurchased || hasTracking
           ? null
           : 'Link a tracking number or an existing shipping label, or buy one.',
     },

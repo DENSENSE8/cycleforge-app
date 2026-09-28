@@ -171,7 +171,7 @@ export function MultiSeriesLineChart({
           {series.map((s) => (
             <div key={s.key} className="flex items-center gap-1.5">
               <span className="h-2 w-2 rounded-full" style={{ backgroundColor: s.color }} aria-hidden />
-              <span className="text-role-eyebrow uppercase tracking-widest text-text-soft">{s.label}</span>
+              <span className="text-role-eyebrow text-text-soft">{s.label}</span>
             </div>
           ))}
         </div>

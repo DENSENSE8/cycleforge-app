@@ -33,7 +33,9 @@ async function execute() {
 
   for (const view of ['mv_bin_utilization', 'mv_sku_velocity_30d', 'mv_dead_stock']) {
     try {
-      await pool.query(`REFRESH MATERIALIZED VIEW CONCURRENTLY ${view}`);
+      // Owner role default statement_timeout is 120s; a refresh may legitimately run longer.
+      // SET LOCAL + REFRESH in one simple-protocol message = one implicit transaction.
+      await pool.query(`SET LOCAL statement_timeout = '280s'; REFRESH MATERIALIZED VIEW CONCURRENTLY ${view}`);
       refreshed.push(view);
     } catch (err) {
       failed.push({ view, error: err instanceof Error ? err.message : 'refresh failed' });

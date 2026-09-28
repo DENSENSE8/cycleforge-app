@@ -18,8 +18,8 @@ export interface MonitorValueInput {
  */
 export interface OutboundQueueCounts {
   readonly total: number;
-  /** Coarse `has_pick_scan` split: `pending = total − tested` (double-counts blocked). */
-  readonly byStage: { readonly pending: number; readonly tested: number };
+  /** Coarse `has_pick_scan` split: `pending = total − picked` (double-counts blocked). */
+  readonly byStage: { readonly pending: number; readonly picked: number };
   /** `orders.is_urgent` tally over the same scope. */
   readonly urgent: number;
   /** Raw facts; lane-accurate tallies derive from these via resolveFulfillmentLane. */
@@ -41,7 +41,7 @@ export interface BoundedUnshippedCountSpec {
   /** Exact fulfillment lane (`ustatus`). */
   readonly lane?: FulfillmentLane;
   /** Coarse `stage` facet when no exact lane was chosen. */
-  readonly coarseStage?: 'pending' | 'tested';
+  readonly coarseStage?: 'pending' | 'picked';
   readonly urgentOnly?: boolean;
   readonly packPlaced?: boolean;
   readonly packStationId?: number;
@@ -60,7 +60,7 @@ export interface ResolveValueDeps {
 interface UnshippedFacets {
   staffId?: number;
   lane?: FulfillmentLane;
-  coarseStage?: 'pending' | 'tested';
+  coarseStage?: 'pending' | 'picked';
   urgentOnly: boolean;
   packPlaced: boolean;
   packStationId?: number;
@@ -90,14 +90,14 @@ function parseMonitorParams(monitorParams: unknown): URLSearchParams {
 function extractUnshippedFacets(p: URLSearchParams): UnshippedFacets {
   const ustatus = (p.get('ustatus') ?? '').toUpperCase();
   const lane =
-    ustatus === 'PENDING' || ustatus === 'TESTED' || ustatus === 'BLOCKED'
+    ustatus === 'PENDING' || ustatus === 'PICKED' || ustatus === 'BLOCKED'
       ? (ustatus as FulfillmentLane)
       : undefined;
   const stageRaw = (p.get('stage') ?? '').toLowerCase();
   // `ustatus` (exact lane) wins over the coarse `stage` — the board clears
   // `stage` when `ustatus` is set (outbound-sidebar), so they never truly co-occur.
   const coarseStage =
-    !lane && (stageRaw === 'pending' || stageRaw === 'tested') ? (stageRaw as 'pending' | 'tested') : undefined;
+    !lane && (stageRaw === 'pending' || stageRaw === 'picked') ? (stageRaw as 'pending' | 'picked') : undefined;
   const staffRaw = Number(p.get('staff'));
   const staffId = Number.isFinite(staffRaw) && staffRaw > 0 ? staffRaw : undefined;
   const stationRaw = Number(p.get('packStation'));
@@ -144,7 +144,7 @@ function laneCount(counts: OutboundQueueCounts, lane: FulfillmentLane): number {
 function selectBundleValue(counts: OutboundQueueCounts, f: UnshippedFacets): number {
   if (f.lane) return laneCount(counts, f.lane);
   if (f.coarseStage === 'pending') return counts.byStage.pending;
-  if (f.coarseStage === 'tested') return counts.byStage.tested;
+  if (f.coarseStage === 'picked') return counts.byStage.picked;
   if (f.urgentOnly) return counts.urgent;
   if (f.packStationId != null) {
     return counts.packPlacement.counts.find((c) => c.locationId === f.packStationId)?.count ?? 0;

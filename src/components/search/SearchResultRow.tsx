@@ -155,7 +155,12 @@ function TitleOnlyDropdownRow({
   // their subtitle as the second line.
   const detail =
     primaryIsId && hit.entityType !== 'order'
-      ? [String(hit.subtitle ?? '').trim()].find((s) => s && s !== title) || ''
+      ? String(hit.subtitle ?? '')
+          .split(' · ')
+          .map((part) => part.trim())
+          // The row's number already leads; never read it twice.
+          .filter((part) => part && part !== title)
+          .join(' · ')
       : '';
 
   const Glyph = ENTITY_ICONS[hit.entityType] || Search;
@@ -270,7 +275,7 @@ function AlignedRow({
           />
         </span>
         {packout && packout.photoCount > 0 ? (
-          <span className="inline-flex shrink-0 items-center gap-0.5 tabular-nums text-role-micro uppercase text-emerald-600">
+          <span className="inline-flex shrink-0 items-center gap-0.5 tabular-nums text-role-micro text-emerald-600">
             <Camera className="h-3 w-3" />
             {packout.photoCount}
             {packout.packerName ? ` · ${packout.packerName}` : ''}
@@ -330,7 +335,7 @@ function CompactRowShell({
         {lead}
         <span className="min-w-0 flex-1">{title}</span>
       </span>
-      <span className="flex min-w-0 items-center gap-2 text-role-eyebrow uppercase text-text-soft">
+      <span className="flex min-w-0 items-center gap-2 text-role-eyebrow text-text-soft">
         {meta}
       </span>
     </Link>
@@ -377,7 +382,7 @@ function OrderRow({
           {/* Packout proof (rail only) — density-gated, not viewport md:. */}
           {packout && packout.photoCount > 0 && (
             <HoverTooltip label={`Photos ${packout.photoCount}`} focusable={false}>
-              <span className="inline-flex shrink-0 items-center gap-0.5 tabular-nums text-role-micro uppercase text-emerald-600">
+              <span className="inline-flex shrink-0 items-center gap-0.5 tabular-nums text-role-micro text-emerald-600">
                 <Camera className="h-3 w-3" />
                 {packout.photoCount}
               </span>

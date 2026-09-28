@@ -4,6 +4,7 @@ import { Check } from '@/components/Icons';
 import { evidenceVerbClass } from '@/design-system/components/record-ledger/RecordEvidence';
 import { RECORD_ID_CLASS, RECORD_LABEL_CLASS } from '@/design-system/tokens/industrial-record';
 import { focusRing } from '@/design-system/tokens/focus-ring';
+import { displayCarrierFromHint } from '@/lib/carrier-brand';
 import { LABEL_PURPOSE_FACE } from '@/lib/shipping/label-purpose';
 import type { ShippingRateOption } from '@/lib/shipping/shipstation/types';
 import { cn } from '@/utils/_cn';
@@ -125,7 +126,7 @@ export function LabelIntakeBuyBar({
         </span>
         <span className={cn(RECORD_ID_CLASS, 'select-all')}>{bought.tracking ?? '—'}</span>
         <span className="text-role-data text-mode-muted">
-          {[bought.carrier?.toUpperCase(), formatMoney(bought.cost, bought.currency)].filter(Boolean).join(' · ')}
+          {[displayCarrierFromHint(bought.carrier) ?? bought.carrier, formatMoney(bought.cost, bought.currency)].filter(Boolean).join(' · ')}
         </span>
         <span className="ml-auto flex gap-2">
           {onPrint ? (

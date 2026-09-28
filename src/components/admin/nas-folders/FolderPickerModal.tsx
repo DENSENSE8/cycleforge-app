@@ -56,7 +56,7 @@ export function FolderPickerModal({
       >
         <DialogHeader className="flex-row items-center justify-between gap-3 space-y-0 border-b border-border-hairline px-4 py-3">
           <div className="min-w-0">
-            <p className="text-role-micro uppercase tracking-[0.18em] text-text-soft">Pick folder · {station}</p>
+            <p className="text-role-micro text-text-soft">Pick folder · {station}</p>
             <DialogTitle className="truncate text-sm font-semibold">/{dir || 'Root'}</DialogTitle>
           </div>
           <Button variant="secondary" size="sm" type="button" onClick={onCancel}>
@@ -85,7 +85,7 @@ export function FolderPickerModal({
               </Button>
             </div>
           ) : folders.length === 0 ? (
-            <p className="py-10 text-center text-role-caption font-semibold uppercase tracking-widest text-text-faint">No subfolders here.</p>
+            <p className="py-10 text-center text-role-caption font-semibold text-text-faint">No subfolders here.</p>
           ) : (
             <div className="space-y-1.5">
               <NasSectionLabel>Folders · {folders.length}</NasSectionLabel>
@@ -97,7 +97,7 @@ export function FolderPickerModal({
         </div>
 
         <div className="flex items-center justify-between gap-3 border-t border-border-hairline px-4 py-3">
-          <span className="truncate text-role-micro uppercase tracking-widest text-text-faint">
+          <span className="truncate text-role-micro text-text-faint">
             {dir ? `Selecting: /${dir}` : 'At root — pick a subfolder or use root'}
           </span>
           <Button variant="primary" size="md" type="button" onClick={() => onPick(dir)} className="shrink-0">

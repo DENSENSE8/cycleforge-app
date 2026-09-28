@@ -7,6 +7,7 @@ import { useParams, useRouter } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '@/contexts/AuthContext';
 import { unitStatusBadgeTone } from '@/lib/receiving/receiving-constants';
+import { sentenceCaseLabel } from '@/lib/text/sentence-case-label';
 import { conditionLabel } from '@/lib/conditions';
 import { handlingUnitStatusChipClass } from '@/lib/handling-unit-status';
 import { getLast8 } from '@/components/ui/CopyChip';
@@ -284,7 +285,7 @@ export default function MobileHandlingUnitPage() {
                       …{getLast8(u.serial_number)}
                     </span>
                     <span className={`rounded px-1.5 py-0.5 text-role-micro ${unitStatusBadgeTone(u.current_status)}`}>
-                      {u.current_status}
+                      {sentenceCaseLabel(u.current_status)}
                     </span>
                   </div>
                   <div className="mt-0.5 truncate text-xs text-text-soft">

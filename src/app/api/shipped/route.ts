@@ -22,7 +22,6 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
     const weekStart = searchParams.get('weekStart') || '';
     const weekEnd = searchParams.get('weekEnd') || '';
     const packedBy = searchParams.get('packedBy') || '';
-    const testedBy = searchParams.get('testedBy') || '';
     // Universal staff filter (P1-WORK-02): packed OR tested by this staff.
     const staffFilter = searchParams.get('staff') || '';
     const missingTrackingOnly = searchParams.get('missingTrackingOnly') === 'true';
@@ -33,6 +32,15 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
       : rawShippedFilter === 'sku' ? 'sku'
       : 'all';
     const searchField = normalizeShippedSearchField(searchParams.get('searchField'));
+    // A staff filter matches the derived packed_by / tested_by columns; unbounded
+    // it reads every shipped order in the tenant. The list requires a week (search is bounded
+    // by its match set, so `q` is exempt).
+    if (!query && staffFilter && !(weekStart && weekEnd)) {
+      return NextResponse.json(
+        { error: 'The staff filter needs a date window: pass weekStart and weekEnd (YYYY-MM-DD).' },
+        { status: 400 },
+      );
+    }
     // Cache namespace bumped to v3 — the search CTE now gates on a packer scan
     // (pack_sal / packer_logs) instead of just a shipment assignment. Serving v2
     // entries would keep surfacing never-shipped rows with order-created_at dates.
@@ -46,7 +54,6 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
       weekStart,
       weekEnd,
       packedBy,
-      testedBy,
       staffFilter,
       missingTrackingOnly,
       shippedFilter,
@@ -63,13 +70,9 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
       const applyScopeFilters = (rows: ShippedOrder[]): ShippedOrder[] => {
         let filtered = rows;
         const packedById = packedBy ? Number(packedBy) : null;
-        const testedById = testedBy ? Number(testedBy) : null;
         const staffId = staffFilter ? Number(staffFilter) : null;
         if (packedById != null && Number.isFinite(packedById)) {
           filtered = filtered.filter((record) => Number(record.packed_by) === packedById);
-        }
-        if (testedById != null && Number.isFinite(testedById)) {
-          filtered = filtered.filter((record) => Number(record.tested_by) === testedById);
         }
         if (staffId != null && Number.isFinite(staffId) && staffId > 0) {
           filtered = filtered.filter(
@@ -137,7 +140,6 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
 
     const offset = (page - 1) * limit;
     const packedById = packedBy ? Number(packedBy) : null;
-    const testedById = testedBy ? Number(testedBy) : null;
     const staffFilterId = staffFilter ? Number(staffFilter) : null;
     // Universal staff filter (P1-WORK-02): packed OR tested by this staff.
     // Pushed into SQL (PERF) — the default (no `?staff=`) path passes a null
@@ -152,7 +154,6 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
       weekStart: weekStart || undefined,
       weekEnd: weekEnd || undefined,
       packedBy: Number.isFinite(packedById) ? packedById : null,
-      testedBy: Number.isFinite(testedById) ? testedById : null,
       staffFilterId: staffFilterIdEffective,
       missingTrackingOnly,
       shippedFilter,

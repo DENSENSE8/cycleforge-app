@@ -10,6 +10,8 @@ import {
   RecordActionStrip,
   type RecordActionVerb,
 } from '@/design-system/components/record-action-strip/RecordActionStrip';
+import { scopeRecordVerbs } from '@/design-system/components/record-action-strip/record-verb-scope';
+import { ORDER_NOUN } from '@/lib/orders/order-card-model';
 import { useDeskRecordPlaneOptional } from '@/design-system/components/DeskRecordPlane';
 import {
   AlertTriangle,
@@ -17,6 +19,8 @@ import {
   Copy,
   FileText,
   Printer,
+  Repeat,
+  RotateCcw,
   Tag,
   Trash2,
   Truck,
@@ -26,6 +30,7 @@ import { useOrderAssignment } from '@/hooks/useOrderAssignment';
 import { bustFulfillmentCaches, bustScanOutCaches } from '@/lib/outbound/outbound-cache-keys';
 import { useQueryClient } from '@tanstack/react-query';
 import { toast } from '@/lib/toast';
+import { deleteOrdersWithUndo } from '@/lib/orders/deferred-order-delete';
 import {
   applyMorphingGutterClick,
   isMorphingMobileUrl,
@@ -74,9 +79,10 @@ import {
   morphingOosStaysPacked,
   type MorphingOosRow,
 } from '@/lib/outbound/morphing-oos';
-import type { OrderShortageIdentity } from '@/lib/orders/order-shortage-identity';
+import { shortageIdentityFromRow, type OrderShortageIdentity } from '@/lib/orders/order-shortage-identity';
+import { PRINT_SLIP_HOTKEY, usePrintPackingSlip } from '@/components/outbound/orders/record-keys/print-slip';
 import type { KitComposition } from '@/lib/orders/order-kit-composition';
-import type { OrderRecordMode } from '@/lib/selection-context/order-inspector-context';
+import { viewOffersVerb, type OrderViewKey } from '@/lib/views/view-specs';
 import { OosProductCombobox } from '@/components/outbound/orders/oos/OosProductCombobox';
 import { buildRecordTaskVerbs } from '@/components/tasks/RecordTaskActions';
 
@@ -179,13 +185,41 @@ function bulkStripVerbs(verbs: readonly RecordActionVerb[]): RecordActionVerb[] 
     );
 }
 
+/**
+ * The triage list's selection bar (Law 5, owner 2026-09-27): ONE list in ONE
+ * order at 1 or N checked — the triage verbs as buttons, the check-set catalog
+ * and the record links behind ⋮, Delete far right. A verb that cannot take
+ * the check-set stays in place, disabled with its reason ({@link scopeRecordVerbs}).
+ * Documents (label · slip · manuals, in the split pane) replaces Label and
+ * Paperwork; Notes are written on the card's own line 1; More information is
+ * the quick look (Space) and the open record — none of those has a seat here.
+ */
+const TRIAGE_BAR_PRIMARY_IDS: readonly string[] = ['paste', 'resolve', 'out-of-stock', 'urgent', 'scan-out', 'documents'];
+const TRIAGE_BAR_DROPPED_IDS: ReadonlySet<string> = new Set(['more-info', 'select', 'notes', 'label']);
+
+function triageBarVerbs(record: ShippedOrder, verbs: readonly RecordActionVerb[]): RecordActionVerb[] {
+  const byId = new Map(verbs.map((verb) => [verb.id, verb]));
+  const primary = TRIAGE_BAR_PRIMARY_IDS.flatMap((id) => {
+    const verb = byId.get(id);
+    return verb ? [{ ...verb, placement: 'primary' as const }] : [];
+  });
+  const overflow = [
+    ...verbs.filter(
+      (verb) =>
+        !TRIAGE_BAR_PRIMARY_IDS.includes(verb.id) &&
+        !TRIAGE_BAR_DROPPED_IDS.has(verb.id) &&
+        verb.placement !== 'isolated',
+    ),
+    ...recordLinkVerbs(record),
+  ].map((verb) => ({ ...verb, placement: 'overflow' as const }));
+  return [...primary, ...overflow, ...verbs.filter((verb) => verb.placement === 'isolated')];
+}
+
 /** The open record's own controls, when the strip is armed for it. */
 interface OrderOpenRecordControls {
   /** The open order is in the bulk check-set. */
   checked: boolean;
   onToggleSelect?: (record: ShippedOrder, event: { shiftKey: boolean }) => void;
-  /** To Ship: the paperwork walk on this order. */
-  onOpenLabels?: (record: ShippedOrder) => void;
 }
 
 interface OrderActionVerbsOptions {
@@ -195,22 +229,31 @@ interface OrderActionVerbsOptions {
   rows: readonly ShippedOrder[];
   /** The freshest copies of `rows` — state labels read these. */
   stateRows: readonly ShippedOrder[];
-  mode: OrderRecordMode;
-  /** Present when armed for the open record (adds Select, the Labels walk, tasks). */
+  viewKey: OrderViewKey;
+  /** Present when armed for the open record (adds Select, drops Resolve / More information). */
   openRecord?: OrderOpenRecordControls;
+  /** To Ship: the paperwork walk on the lead order (Label). */
+  onOpenLabels?: (record: ShippedOrder) => void;
+  /**
+   * The triage list: Documents opens the lead order's label · slip · manuals
+   * in the split pane. Present ⇒ a `documents` verb stands where Label does.
+   */
+  onOpenDocuments?: (record: ShippedOrder) => void;
   /** Mobile URL: Notes opens the sheet instead of morphing the strip. */
   onOpenNotesSheet?: () => void;
   /** A verb that ends the strip's job (Delete, Resolve, More information). */
   onFinished: () => void;
 }
 
-/** Every order verb for the strip, mode-aware, over `rows`. */
+/** Every order verb for the strip the view offers (`VIEW_SPECS[viewKey].verbs`), over `rows`. */
 function useOrderActionVerbs({
   record,
   rows,
   stateRows,
-  mode,
+  viewKey,
   openRecord,
+  onOpenLabels,
+  onOpenDocuments,
   onOpenNotesSheet,
   onFinished,
 }: OrderActionVerbsOptions): RecordActionVerb[] {
@@ -227,9 +270,8 @@ function useOrderActionVerbs({
   const actionRows = rows as ShippedOrder[];
   const orderId = Number(record.id);
   const actionIds = actionRows.map(orderIdOf).filter((id): id is number => id != null);
-  const shipped = mode === 'shipped';
-  const single = actionRows.length <= 1;
-  const orderRef = String(record.order_id ?? '').trim() || `#${record.id}`;
+  const orderRef = String(record.order_id ?? '').trim() || String(record.id);
+  const slip = usePrintPackingSlip(orderId);
 
   const resolved = new Map(
     catalog.map((action) => [action.key, resolveSelectionAction(action, actionRows)] as const),
@@ -276,10 +318,28 @@ function useOrderActionVerbs({
       return;
     }
     const next = !selectionIsUrgent;
+    // Undo flips back only the orders this press changed.
+    const changedIds = actionRows
+      .filter((row) => isUrgentRow(row) !== next)
+      .map(orderIdOf)
+      .filter((id): id is number => id != null);
     assign.mutate(
       { orderIds: actionIds, isUrgent: next },
       {
-        onSuccess: () => toast.success(next ? 'Marked urgent — pinned to top' : 'Urgent cleared'),
+        onSuccess: () => {
+          const message = next ? 'Marked urgent — pinned to top' : 'Urgent cleared';
+          if (changedIds.length === 0) {
+            toast.success(message);
+            return;
+          }
+          toast.undo(message, {
+            onUndo: () =>
+              assign.mutate(
+                { orderIds: changedIds, isUrgent: !next },
+                { onError: (err) => toast.error(err instanceof Error ? err.message : 'Could not undo urgent') },
+              ),
+          });
+        },
         onError: (err) => toast.error(err instanceof Error ? err.message : 'Could not update urgent'),
       },
     );
@@ -287,11 +347,27 @@ function useOrderActionVerbs({
 
   const selectionIsOutOfStock = stateRows.length > 0 && stateRows.every(isOutOfStockRow);
   const clearOutOfStock = () => {
+    // Undo re-reports each order with the shortage it carried before the clear.
+    const cleared = actionRows
+      .filter(isOutOfStockRow)
+      .map((row) => ({
+        id: orderIdOf(row),
+        identity: shortageIdentityFromRow(row) ?? morphingListingIdentity(row as MorphingOosRow),
+      }))
+      .filter((entry): entry is { id: number; identity: OrderShortageIdentity } => entry.id != null);
     assign.mutate(
       { orderIds: actionIds, isOutOfStock: false },
       {
         onSuccess: () =>
-          toast.success(actionIds.length === 1 ? 'Out of stock cleared' : 'Cleared out of stock on selected orders'),
+          toast.undo(actionIds.length === 1 ? 'Out of stock cleared' : 'Cleared out of stock on selected orders', {
+            onUndo: () => {
+              for (const entry of cleared) {
+                assign.mutate(morphingOosAssignPayload([entry.id], entry.identity), {
+                  onError: (err) => toast.error(err instanceof Error ? err.message : 'Could not undo the clear'),
+                });
+              }
+            },
+          }),
         onError: (err) =>
           toast.error(err instanceof Error ? err.message : 'Could not clear out of stock'),
       },
@@ -337,30 +413,18 @@ function useOrderActionVerbs({
     router.replace(`${SHIPPING_EXCEPTIONS_PATH}?${params.toString()}`, { scroll: false });
   };
 
-  const deleteOrder = async () => {
+  /**
+   * Delete every checked order (one order → that order), with Undo: they
+   * swipe left off the list now; the ONE delete route (permission + step-up
+   * there) hears about it when the Undo window ends.
+   */
+  const deleteOrder = () => {
+    const ids = actionIds.length > 0 ? actionIds : [orderId];
     onFinished();
-    try {
-      const res = await fetch(`/api/orders/${orderId}`, { method: 'DELETE' });
-      if (res.status === 403) {
-        const body = (await res.json().catch(() => ({}))) as { error?: string };
-        toast.error(
-          body.error === 'STEPUP_REQUIRED'
-            ? 'Deleting an order needs a PIN step-up first'
-            : 'You do not have permission to delete an order',
-        );
-        return;
-      }
-      if (!res.ok) {
-        const body = (await res.json().catch(() => ({}))) as { error?: string; details?: string };
-        toast.error(body.error ?? body.details ?? 'Could not delete the order');
-        return;
-      }
+    void deleteOrdersWithUndo(ids, () => {
       bustFulfillmentCaches(queryClient);
-      await queryClient.invalidateQueries({ queryKey: ['order-exceptions'] });
-      toast.success('Order deleted');
-    } catch {
-      toast.error('Could not delete the order');
-    }
+      void queryClient.invalidateQueries({ queryKey: ['order-exceptions'] });
+    });
   };
 
   const catalogVerb = (key: string, label: string, icon: ReactNode, hotkey?: string): RecordActionVerb[] => {
@@ -381,19 +445,22 @@ function useOrderActionVerbs({
 
   const verbs: RecordActionVerb[] = [];
 
-  if (mode === 'exceptions') {
+  if (viewOffersVerb(viewKey, 'paste')) {
     verbs.push({
       id: 'paste',
       label: 'Paste item #',
       hotkey: 'v',
+      scope: 'single',
       display: (done) => (
         <ExceptionPasteDisplay record={record} onAmbiguous={openExceptionResolve} done={done} />
       ),
     });
-    // The record's own Resolve section is the open record's pairing form.
-    if (!openRecord) verbs.push({ id: 'resolve', label: 'Resolve', hotkey: 'r', run: openExceptionResolve });
   }
-  if (!shipped) {
+  // The record's own Resolve section is the open record's pairing form.
+  if (viewOffersVerb(viewKey, 'resolve') && !openRecord) {
+    verbs.push({ id: 'resolve', label: 'Resolve', hotkey: 'r', scope: 'single', run: openExceptionResolve });
+  }
+  if (viewOffersVerb(viewKey, 'out-of-stock')) {
     verbs.push({
       id: 'out-of-stock',
       label: selectionIsOutOfStock ? 'Clear out of stock' : 'Report out of stock',
@@ -407,6 +474,8 @@ function useOrderActionVerbs({
           ? { run: commitOosEach }
           : { display: (done: () => void) => <OosDisplay rows={oosRows} done={done} /> }),
     });
+  }
+  if (viewOffersVerb(viewKey, 'urgent')) {
     verbs.push({
       id: 'urgent',
       label: selectionIsUrgent ? 'Clear urgent' : 'Mark urgent',
@@ -416,20 +485,34 @@ function useOrderActionVerbs({
       run: markUrgent,
     });
   }
-  verbs.push({
-    id: 'label',
-    label: 'Label',
-    icon: <FileText />,
-    hotkey: 'l',
-    display: (done) => (
-      <LabelDisplay record={record} onOpenLabels={openRecord?.onOpenLabels} done={done} />
-    ),
-  });
+  verbs.push(
+    onOpenDocuments
+      ? {
+          id: 'documents',
+          label: 'Documents',
+          icon: <FileText />,
+          hotkey: 'l',
+          scope: 'single',
+          run: () => {
+            onFinished();
+            onOpenDocuments(record);
+          },
+        }
+      : {
+          id: 'label',
+          label: 'Label',
+          icon: <FileText />,
+          hotkey: 'l',
+          scope: 'single',
+          display: (done) => <LabelDisplay record={record} onOpenLabels={onOpenLabels} done={done} />,
+        },
+  );
   verbs.push({
     id: 'scan-out',
     label: scanOut?.label ?? 'Mark scanned out',
     icon: <Truck />,
-    hotkey: 'x',
+    // S, not X: X checks the record under the cursor on every list (Law 5).
+    hotkey: 's',
     disabled: scanOut?.disabled,
     disabledReason: scanOut?.reason,
     ...(scanOut?.direction === 'undo'
@@ -438,11 +521,12 @@ function useOrderActionVerbs({
   });
   verbs.push(
     onOpenNotesSheet
-      ? { id: 'notes', label: 'Notes', hotkey: MORPHING_NOTES_HOTKEY, run: onOpenNotesSheet }
+      ? { id: 'notes', label: 'Notes', hotkey: MORPHING_NOTES_HOTKEY, scope: 'single', run: onOpenNotesSheet }
       : {
           id: 'notes',
           label: 'Notes',
           hotkey: MORPHING_NOTES_HOTKEY,
+          scope: 'single',
           display: () => (
             <OrderNotesTrail
               orderId={orderId}
@@ -460,6 +544,7 @@ function useOrderActionVerbs({
       id: 'select',
       label: openRecord.checked ? 'Selected' : 'Select',
       pressed: openRecord.checked,
+      scope: 'single',
       run: () => toggle(record, { shiftKey: false }),
     });
   }
@@ -467,12 +552,12 @@ function useOrderActionVerbs({
   verbs.push(...catalogVerb('print', 'Print', <Printer />, 'p'));
 
   // ── ⋮ overflow ──
-  if (!shipped) {
+  if (viewOffersVerb(viewKey, 'create-rule')) {
     verbs.push({
       id: 'create-rule',
       label: 'Create rule',
       icon: <Bookmark />,
-      hotkey: mode === 'exceptions' ? undefined : 'r',
+      hotkey: viewOffersVerb(viewKey, 'resolve') ? undefined : 'r',
       placement: 'overflow',
       run: () => {
         const rule = catalog.find((action) => action.key === 'listing-rule');
@@ -493,11 +578,42 @@ function useOrderActionVerbs({
       run: () => r.action.run(actionRows, r.direction ? { direction: r.direction } : undefined),
     });
   }
-  if (single) {
-    verbs.push(
-      ...buildRecordTaskVerbs({ entityType: 'order', entityId: orderId, label: `Order ${orderRef}` }),
-    );
-  }
+  // Return / replacement labels open the label desk, looked up on this order.
+  const labelDeskHref = `/search?entry=label&q=${encodeURIComponent(orderRef)}&purpose=`;
+  verbs.push(
+    {
+      id: 'print-slip',
+      label: 'Print packing slip',
+      icon: <Printer />,
+      hotkey: PRINT_SLIP_HOTKEY,
+      placement: 'overflow',
+      scope: 'single',
+      disabled: slip.pending,
+      run: slip.print,
+    },
+    {
+      id: 'return-label',
+      label: 'Return label',
+      icon: <RotateCcw />,
+      placement: 'overflow',
+      scope: 'single',
+      run: () => router.push(`${labelDeskHref}return`),
+    },
+    {
+      id: 'replacement-label',
+      label: 'Replacement label',
+      icon: <Repeat />,
+      placement: 'overflow',
+      scope: 'single',
+      run: () => router.push(`${labelDeskHref}replacement`),
+    },
+  );
+  verbs.push(
+    ...buildRecordTaskVerbs({ entityType: 'order', entityId: orderId, label: `Order ${orderRef}` }).map((verb) => ({
+      ...verb,
+      scope: 'single' as const,
+    })),
+  );
   if (!openRecord) {
     verbs.push({
       id: 'more-info',
@@ -505,23 +621,23 @@ function useOrderActionVerbs({
       icon: <Tag />,
       hotkey: MORPHING_MORE_INFO_HOTKEY,
       placement: 'overflow',
+      scope: 'single',
       run: () => {
         onFinished();
         dispatchOpenShippedDetails(record, 'queue', { force: true });
       },
     });
   }
-  if (single) {
-    verbs.push({
-      id: 'delete',
-      label: 'Delete',
-      icon: <Trash2 />,
-      hotkey: 'd',
-      tone: 'danger',
-      placement: 'isolated',
-      run: deleteOrder,
-    });
-  }
+  verbs.push({
+    id: 'delete',
+    label: actionIds.length > 1 ? `Delete ${actionIds.length}` : 'Delete',
+    icon: <Trash2 />,
+    hotkey: 'd',
+    tone: 'danger',
+    placement: 'isolated',
+    scope: 'both',
+    run: deleteOrder,
+  });
   return verbs;
 }
 
@@ -879,41 +995,58 @@ function ExceptionPasteDisplay({
  */
 export function OrderRecordActionStrip({
   record,
-  mode,
+  viewKey,
   checked = false,
   onToggleSelect,
   onOpenLabels,
 }: {
   record: ShippedOrder;
-  mode: OrderRecordMode;
+  viewKey: OrderViewKey;
+  onOpenLabels?: (record: ShippedOrder) => void;
 } & Partial<OrderOpenRecordControls>) {
   const allVerbs = useOrderActionVerbs({
     record,
     rows: [record],
     stateRows: [record],
-    mode,
-    openRecord: { checked, onToggleSelect, onOpenLabels },
+    viewKey,
+    openRecord: { checked, onToggleSelect },
+    onOpenLabels,
     onFinished: () => undefined,
   });
   // Ledger desks: the quick triage verbs as buttons, the record's other
   // actions behind ⋮ (the same list the record repeats below its details).
   // The Shipped package record keeps its full strip.
   const verbs =
-    mode === 'shipped'
+    viewKey === 'shipping.shipped'
       ? allVerbs
       : [
           ...allVerbs.filter((verb) => ORDER_BULK_VERB_IDS.has(verb.id)),
           ...recordMoreVerbs(record, allVerbs).map((verb) => ({ ...verb, placement: 'overflow' as const })),
         ];
-  const orderRef = String(record.order_id ?? '').trim() || `#${record.id}`;
+  const orderRef = String(record.order_id ?? '').trim() || String(record.id);
   return <RecordActionStrip verbs={verbs} label={`Order ${orderRef} actions`} testId="order-record-actions" />;
+}
+
+/** Paperwork — label · slip · manuals for the lead order, in one dialog. */
+function paperworkVerb(record: ShippedOrder): RecordActionVerb {
+  return { id: 'paperwork', label: 'Paperwork', icon: <FileText />, scope: 'single', run: () => dispatchOpenOrderPaperwork(Number(record.id)) };
+}
+
+/** The record's links out — the lead SKU's stock, the listing rules. */
+function recordLinkVerbs(record: ShippedOrder): RecordActionVerb[] {
+  const sku = String(record.sku ?? '').trim();
+  return [
+    ...(sku
+      ? [{ id: 'sku-stock', label: 'SKU stock', icon: <Tag />, scope: 'single' as const, run: () => void window.open(`/inventory?sku=${encodeURIComponent(sku)}`, '_blank', 'noopener,noreferrer') }]
+      : []),
+    { id: 'rules', label: 'Rules', icon: <Bookmark />, run: () => dispatchOpenListingStaffRules() },
+  ];
 }
 
 /** The record's non-triage actions, deduped against what it answers inline — Paperwork first. */
 function recordMoreVerbs(record: ShippedOrder, verbs: readonly RecordActionVerb[]): RecordActionVerb[] {
-  const sku = String(record.sku ?? '').trim();
   return [
-    { id: 'paperwork', label: 'Paperwork', icon: <FileText />, run: () => dispatchOpenOrderPaperwork(Number(record.id)) },
+    paperworkVerb(record),
     ...verbs.filter(
       (verb) =>
         (verb.run || verb.display) &&
@@ -921,62 +1054,21 @@ function recordMoreVerbs(record: ShippedOrder, verbs: readonly RecordActionVerb[
         !ORDER_BULK_VERB_IDS.has(verb.id) &&
         !RECORD_INLINE_VERB_IDS.has(verb.id),
     ),
-    ...(sku
-      ? [{ id: 'sku-stock', label: 'SKU stock', icon: <Tag />, run: () => void window.open(`/inventory?sku=${encodeURIComponent(sku)}`, '_blank', 'noopener,noreferrer') }]
-      : []),
-    { id: 'rules', label: 'Rules', icon: <Bookmark />, run: () => dispatchOpenListingStaffRules() },
+    ...recordLinkVerbs(record),
   ];
 }
 
 /** The open record's "More actions" (below its details) — the same list as the strip's ⋮. */
-export function useOrderRecordMoreVerbs(record: ShippedOrder, mode: OrderRecordMode): RecordActionVerb[] {
+export function useOrderRecordMoreVerbs(record: ShippedOrder, viewKey: OrderViewKey): RecordActionVerb[] {
   const verbs = useOrderActionVerbs({
     record,
     rows: [record],
     stateRows: [record],
-    mode,
+    viewKey,
     openRecord: { checked: false },
     onFinished: () => undefined,
   });
   return recordMoreVerbs(record, verbs);
-}
-
-/** One checked order card's verbs, grouped for its drop-down (owner 2026-09-27). */
-export interface OrderCardVerbs {
-  /** Triage verbs — out of stock, urgent, scan out — plus Label and Notes. */
-  quick: RecordActionVerb[];
-  /** The record's other actions (Paperwork first), the same list as its ⋮. */
-  more: RecordActionVerb[];
-  /** Delete — armed by the first press, run by the second. */
-  danger: RecordActionVerb | null;
-}
-
-const CARD_QUICK_EXTRA_IDS: Readonly<Record<string, true>> = { label: true, notes: true };
-
-export function useOrderCardVerbs(
-  record: ShippedOrder,
-  mode: OrderRecordMode,
-  onOpenLabels: ((record: ShippedOrder) => void) | undefined,
-  onFinished: () => void,
-): OrderCardVerbs {
-  const verbs = useOrderActionVerbs({
-    record,
-    rows: [record],
-    stateRows: [record],
-    mode,
-    openRecord: { checked: true, onOpenLabels },
-    onFinished,
-  });
-  return {
-    quick: verbs.filter(
-      (verb) =>
-        (ORDER_BULK_VERB_IDS.has(verb.id) || CARD_QUICK_EXTRA_IDS[verb.id]) &&
-        verb.id !== 'select' &&
-        verb.id !== 'delete',
-    ),
-    more: recordMoreVerbs(record, verbs),
-    danger: verbs.find((verb) => verb.id === 'delete') ?? null,
-  };
 }
 
 /**
@@ -996,8 +1088,10 @@ function MorphingRowActionMenu({
   anchorRef,
   inline = false,
   liveRecords,
-  mode,
+  viewKey = 'shipping.to-ship',
   face = 'strip',
+  verbSet = 'check-set',
+  onOpenDocuments,
 }: {
   record: ShippedOrder;
   open: boolean;
@@ -1011,13 +1105,17 @@ function MorphingRowActionMenu({
    * the live row by id and fall back to the snapshot.
    */
   liveRecords?: readonly ShippedOrder[];
-  /** The desk; defaults from the route (Exceptions) else To Ship. */
-  mode?: OrderRecordMode;
+  /** The view the strip acts for; the engine's gutter plane (`OrdersRowPlane`) is To ship's. */
+  viewKey?: OrderViewKey;
   /**
    * `header`: painted inside the table header that became the bulk bar —
    * bare strip, and Escape clears the check-set before anything else closes.
    */
   face?: 'strip' | 'header';
+  /** `triage`: the triage list's selection bar (Law 5) — {@link triageBarVerbs}. */
+  verbSet?: 'check-set' | 'triage';
+  /** The triage list's Documents verb — the lead order's documents in the split pane. */
+  onOpenDocuments?: (record: ShippedOrder) => void;
 }) {
   const [notesOpen, setNotesOpen] = useState(false);
   const [overlayHost, setOverlayHost] = useState<HTMLElement | null>(null);
@@ -1037,12 +1135,16 @@ function MorphingRowActionMenu({
     record,
     rows: actionRows,
     stateRows,
-    mode: mode ?? (pathname === SHIPPING_EXCEPTIONS_PATH ? 'exceptions' : 'to-ship'),
+    viewKey,
+    onOpenDocuments,
     onOpenNotesSheet: onMobileUrl ? () => setNotesOpen(true) : undefined,
     onFinished: close,
   });
-  // Phones keep the whole strip (no record rail there); the desk shows bulk buttons.
-  const verbs = onMobileUrl ? allVerbs : bulkStripVerbs(allVerbs);
+  // Triage bar: its one list. Phones keep the whole strip (no record rail
+  // there); the desk's check-set strip shows bulk buttons.
+  const listed =
+    verbSet === 'triage' ? triageBarVerbs(record, allVerbs) : onMobileUrl ? allVerbs : bulkStripVerbs(allVerbs);
+  const verbs = scopeRecordVerbs(listed, actionRows.length, ORDER_NOUN);
 
   useEffect(() => {
     if (!open) return;
@@ -1109,9 +1211,9 @@ function MorphingRowActionMenu({
 
 /**
  * The slot-table host of the order strip — ONE verbs source, two placements:
- * - `header` (`DataTable` `bulkBar`, and the floor ledger's check-set bar):
- *   the check-set strip while rows are checked, else nothing. Escape clears
- *   the check-set.
+ * - `header` (`DataTable` `bulkBar`, the floor ledger's check-set bar, and the
+ *   triage list's selection bar with `verbSet="triage"`): the check-set strip
+ *   while rows are checked, else nothing. Escape clears the check-set.
  * - `action-row` (`DataTable` `actionStrip`): the open record's strip when the
  *   list sits in a record plane with a record open and nothing is checked —
  *   a live check-set owns the verbs in the header instead.
@@ -1119,16 +1221,21 @@ function MorphingRowActionMenu({
 export function OrdersMorphingHost({
   records,
   selectedIds,
-  mode,
+  viewKey,
   placement,
   openRecordStrip,
+  verbSet,
+  onOpenDocuments,
 }: {
   records: ShippedOrder[];
   selectedIds: ReadonlySet<number>;
-  mode: OrderRecordMode;
+  viewKey: OrderViewKey;
   placement: 'header' | 'action-row';
   /** The open record's strip, from the desk that owns the open record (`action-row` only). */
   openRecordStrip?: ReactNode;
+  /** `header` only — which verb list the check-set strip paints. */
+  verbSet?: 'check-set' | 'triage';
+  onOpenDocuments?: (record: ShippedOrder) => void;
 }) {
   const anchorRef = useRef<HTMLElement | null>(null);
   const { rows, scope } = useRailActionSnapshot();
@@ -1146,7 +1253,9 @@ export function OrdersMorphingHost({
       open
       inline
       face="header"
-      mode={mode}
+      viewKey={viewKey}
+      verbSet={verbSet}
+      onOpenDocuments={onOpenDocuments}
       liveRecords={records}
       onClose={() => {
         if (scope) emitToggleAll(scope, 'none');

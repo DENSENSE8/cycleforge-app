@@ -55,7 +55,7 @@ export function StaffAccessDetail({ staffId }: StaffAccessDetailProps) {
   const confirmRevokeSession = useConfirmedAction(
     (sid: string) => { revokeSession.mutate(sid); }, 'Revoke this session?');
   const confirmRevokeAll = useConfirmedAction(
-    () => { revokeAllSessions.mutate(); }, 'Revoke ALL active sessions for this staff?');
+    () => { revokeAllSessions.mutate(); }, 'Revoke all active sessions for this staff?');
 
   const env = detail.data;
   const isAdmin = useMemo(() => {

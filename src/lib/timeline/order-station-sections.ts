@@ -103,6 +103,7 @@ const AUDIT_STATION: Record<string, OrderStationSectionId> = {
   'shipment.scan_out': 'shipping',
   'orders.label.printed': 'shipping',
   'orders.tracking.added': 'shipping',
+  'orders.tracking.replaced': 'shipping',
 };
 
 /**

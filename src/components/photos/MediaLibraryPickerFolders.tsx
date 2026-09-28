@@ -79,7 +79,7 @@ export function MediaLibraryPickerFolders({
     }
     return (
       <div className="space-y-3">
-        <p className="text-role-eyebrow uppercase tracking-widest text-text-soft">
+        <p className="text-role-eyebrow text-text-soft">
           {leafTitle ?? 'Photos'}
           <span className="ml-2 font-semibold text-text-faint">{leafVisible.length}</span>
           {hasMorePhotos ? (
@@ -150,7 +150,7 @@ export function MediaLibraryPickerFolders({
 
   return (
     <div className="space-y-3">
-      <p className="text-role-eyebrow uppercase tracking-widest text-text-soft">
+      <p className="text-role-eyebrow text-text-soft">
         {eyebrow}
         <span className="ml-2 font-semibold text-text-faint">{folderCount}</span>
       </p>

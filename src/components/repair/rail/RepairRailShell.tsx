@@ -72,7 +72,7 @@ export function RepairRailShell() {
                 <span className="truncate text-role-caption font-semibold text-text-default">
                   {rosterTitle(row)}
                 </span>
-                <span className="ml-auto shrink-0 truncate text-role-eyebrow uppercase tracking-widest text-text-soft">
+                <span className="ml-auto shrink-0 truncate text-role-eyebrow text-text-soft">
                   {rosterMeta(row)}
                 </span>
               </li>

@@ -192,7 +192,6 @@ export async function hermesToolCall<T = unknown>(
   const { res, served } = await postToAiProvider(input.orgId, 'chat', {
     path: '/chat/completions',
     body: requestBody,
-    headers: { 'content-type': 'application/json' },
     buildBody: (config) => ({
       ...requestBody,
       model: config.model || DEFAULT_AI_MODEL,

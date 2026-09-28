@@ -11,6 +11,7 @@ import { PhotoFab } from '@/components/mobile/receiving/PhotoFab';
 import { MobileReceivingPhotoStrip } from '@/components/mobile/receiving/MobileReceivingPhotoStrip';
 import { poHeaderStatusChipClass } from '@/lib/po-header-status';
 import { workflowStatusTableLabel } from '@/lib/receiving/receiving-constants';
+import { sentenceCaseLabel } from '@/lib/text/sentence-case-label';
 import { workflowStageBadge } from '@/lib/receiving/workflow-stages';
 import { receivingPhotosGalleryUrl } from '@/lib/photos/mobile-gallery-url';
 
@@ -103,11 +104,11 @@ export default function MobilePoDetailPage(props: { params: Promise<{ poId: stri
                 PO {header.po_number || header.po_id}
               </p>
               <span
-                className={`inline-flex items-center rounded-full px-2 py-0.5 text-role-micro uppercase tracking-wide ${poHeaderStatusChipClass(
+                className={`inline-flex items-center rounded-full px-2 py-0.5 text-role-micro ${poHeaderStatusChipClass(
                   header.status,
                 )}`}
               >
-                {header.status}
+                {sentenceCaseLabel(header.status)}
               </span>
             </div>
             <p className="mt-1 text-role-caption font-semibold text-text-muted">
@@ -132,7 +133,7 @@ export default function MobilePoDetailPage(props: { params: Promise<{ poId: stri
               key={t}
               type="button"
               onClick={() => setTab(t)}
-              className={`h-12 flex-1 text-role-caption font-semibold uppercase tracking-[0.18em] transition-colors ${
+              className={`h-12 flex-1 text-role-caption font-semibold transition-colors ${
                 active ? 'text-text-default' : 'text-text-faint'
               }`}
             >
@@ -196,7 +197,7 @@ function ItemsList({ poId, items }: { poId: string; items: PoItem[] }) {
                     unoptimized
                   />
                 ) : (
-                  <span className="absolute inset-0 grid place-items-center text-role-micro uppercase tracking-wider text-text-faint">
+                  <span className="absolute inset-0 grid place-items-center text-role-micro text-text-faint">
                     {it.sku?.slice(0, 4) || 'SKU'}
                   </span>
                 )}
@@ -210,7 +211,7 @@ function ItemsList({ poId, items }: { poId: string; items: PoItem[] }) {
                   {it.quantity_received}/{it.quantity_expected ?? '?'}
                   {' · '}
                   <span
-                    className={`inline-flex items-center rounded px-1.5 py-0.5 text-role-eyebrow uppercase tracking-wider ${workflowStageBadge(status)}`}
+                    className={`inline-flex items-center rounded px-1.5 py-0.5 text-role-eyebrow ${workflowStageBadge(status)}`}
                   >
                     {workflowStatusTableLabel(status)}
                   </span>

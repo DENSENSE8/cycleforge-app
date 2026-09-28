@@ -1,39 +1,208 @@
 'use client';
 
+import { useEffect, useId, useRef, useState, type KeyboardEvent as ReactKeyboardEvent } from 'react';
+import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 import type { NavSection } from '@/lib/nav/context/schema';
-import { navGoLetter } from '@/lib/nav/go-keys';
 import { getSidebarPageNav } from '@/lib/sidebar-navigation';
-import { NavSwitcherMenu } from './NavSwitcherMenu';
+import { AnimatePresence, motion } from '@/design-system/motion';
+import { aiPresence, aiTransition } from '@/design-system/ai';
+import { useMotionPresence, useMotionTransition } from '@/design-system/foundations/motion-presets-hooks';
+import { elevationClass } from '@/design-system/tokens/shadows';
+import { SIDEBAR_CONTROL_CORNER } from '@/design-system/tokens/radius';
+import { focusRing } from '@/design-system/tokens/focus-ring';
+import { ChevronsUpDown } from '@/components/Icons';
+import { navIconStrokeClass } from '@/components/icons/nav-weight';
+import { cn } from '@/utils/_cn';
+import { LIST_KEY_OWNER_ATTR } from '@/lib/keyboard/list-key-scope';
+import { GO_HINT_LEAD, goHintRows, KeyHintPopover, useKeyHintAnchor } from './NavGoKeys';
+import { useGoKeys } from './go-keys-store';
 
 /** A lane door's modes section (`<page>.<lane>.modes`, built by the resolver). */
 export function isNavModeSection(section: NavSection): boolean {
   return section.id.endsWith('.modes');
 }
 
+/** One row of the parent card — the trigger and every mode share it, so icons and labels stack in one column. */
+const MODE_ROW_CLASS = cn(
+  'ds-raw-button flex w-full min-w-0 items-center gap-2 px-2 text-left text-role-body text-text-default',
+  'transition-[background-color,transform] duration-100 ease-out active:translate-y-px',
+  focusRing('control', 'accent'),
+);
+
 /**
- * The lane's MODE — the PARENT tier. Under `‹ <Lane>`, one raised block
- * naming the mode you are in (Shipping); hover or Enter opens the lane's
- * other modes (FBA, Label intake) to the right of the sidebar
- * (`NavSwitcherMenu`), each with its `G` then letter keys (`NavGoKeys`
- * binds them). Each mode is a page with its own panel below this switcher.
+ * The lane's MODE — the PARENT tier (Shipping · FBA · Label intake), its own
+ * dropdown, never the view's (operator 2026-09-27). One raised card under
+ * `‹ <Lane>`: the current mode in its colour, semibold, ⇅.
+ *
+ * - HOVER teaches the keys: instantly, a card beside the sidebar reads
+ *   `[G] then` over `[S] Shipping · [F] FBA · [L] Label intake`, each in its
+ *   mode colour. The page never shades.
+ * - CLICK (Enter / Space / ↓) hangs an OVERLAY under the card — the card
+ *   keeps its height, nothing below moves — listing the OTHER modes: the one
+ *   you are in is already the card, so it is never listed twice. Rows sit in
+ *   the card's column (icon under icon, label under label), coloured, text
+ *   only (the keys were taught on hover). ↑/↓ move; Esc ALWAYS closes it
+ *   (wherever focus is) and a press outside or a URL change closes it too.
  */
 export function NavModeSwitcher({ section, currentPageId }: { section: NavSection; currentPageId: string }) {
-  const entries = section.items.map((item) => {
-    const icon = getSidebarPageNav(item.id)?.icon;
-    const letter = navGoLetter(item.id);
-    return {
-      item,
-      glyph: icon ? { icon, tone: 'text-text-muted' } : null,
-      keys: letter ? ['G', letter.toUpperCase()] : undefined,
+  const pathname = usePathname();
+  const listId = useId();
+  const { targets } = useGoKeys();
+  const [open, setOpen] = useState(false);
+  const focusFirst = useRef(false);
+  const cardRef = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const modeIds = new Set(section.items.map((item) => item.id));
+  const currentId = modeIds.has(currentPageId) ? currentPageId : section.items[0]?.id;
+  const hint = goHintRows(targets.filter((target) => modeIds.has(target.id))).map((row) => ({ ...row, current: row.id === currentId }));
+  const hintAnchor = useKeyHintAnchor(!open && hint.length > 0);
+  const presence = useMotionPresence(aiPresence.fade);
+  const transition = useMotionTransition(aiTransition.fade);
+
+  useEffect(() => {
+    setOpen(false);
+  }, [pathname]);
+  useEffect(() => {
+    if (!open || !focusFirst.current) return;
+    focusFirst.current = false;
+    cardRef.current?.querySelector<HTMLAnchorElement>('a[data-nav-mode-item]')?.focus();
+  }, [open]);
+  // Esc closes the overlay from anywhere; a press outside the card does too.
+  useEffect(() => {
+    if (!open) return undefined;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape' || event.defaultPrevented) return;
+      event.preventDefault();
+      const inside = cardRef.current?.contains(document.activeElement) ?? false;
+      setOpen(false);
+      if (inside) triggerRef.current?.focus({ preventScroll: true });
     };
-  });
-  if (entries.length === 0) return null;
+    const onPointerDown = (event: PointerEvent) => {
+      if (event.target instanceof Node && !cardRef.current?.contains(event.target)) setOpen(false);
+    };
+    // Capture: the overlay is the innermost thing open, so its Esc goes first.
+    window.addEventListener('keydown', onKeyDown, true);
+    window.addEventListener('pointerdown', onPointerDown);
+    return () => {
+      window.removeEventListener('keydown', onKeyDown, true);
+      window.removeEventListener('pointerdown', onPointerDown);
+    };
+  }, [open]);
+
+  if (section.items.length === 0) return null;
+  const current = section.items.find((item) => item.id === currentId);
+  const others = section.items.filter((item) => item.id !== currentId);
+  const CurrentIcon = current ? getSidebarPageNav(current.id)?.icon : undefined;
+
+  const moveFocus = (step: number) => {
+    const links = Array.from(cardRef.current?.querySelectorAll<HTMLAnchorElement>('a[data-nav-mode-item]') ?? []);
+    if (links.length === 0) return;
+    const at = links.indexOf(document.activeElement as HTMLAnchorElement);
+    links[(at + step + links.length) % links.length]?.focus();
+  };
+  const onListKeyDown = (event: ReactKeyboardEvent<HTMLDivElement>) => {
+    if (event.key === 'ArrowDown') moveFocus(1);
+    else if (event.key === 'ArrowUp') moveFocus(-1);
+    else if (event.key === 'Escape') {
+      setOpen(false);
+      triggerRef.current?.focus({ preventScroll: true });
+    } else return;
+    event.preventDefault();
+  };
+
   return (
-    <NavSwitcherMenu
-      kind="mode"
-      name={section.label ?? 'Mode'}
-      groups={[{ id: section.id, entries }]}
-      currentId={section.items.some((item) => item.id === currentPageId) ? currentPageId : section.items[0]?.id}
-    />
+    <div
+      ref={cardRef}
+      data-nav-mode-card
+      data-open={open ? '' : undefined}
+      // Owns ↑/↓ while focus is inside, so the desk's record cursor stands down.
+      {...{ [LIST_KEY_OWNER_ATTR]: '' }}
+      className={cn(
+        'relative flex flex-col bg-surface-card shadow-sm ring-1 ring-border-soft',
+        SIDEBAR_CONTROL_CORNER,
+        open && others.length > 0 && 'rounded-b-none',
+      )}
+    >
+      <button
+        ref={triggerRef}
+        type="button"
+        data-nav-switcher="mode"
+        aria-expanded={open}
+        aria-controls={listId}
+        aria-label={`${section.label ?? 'Mode'}: ${current?.label ?? ''}`}
+        onClick={() => {
+          hintAnchor.hide();
+          setOpen((value) => !value);
+        }}
+        onKeyDown={(event) => {
+          if (event.key === 'ArrowDown') {
+            event.preventDefault();
+            focusFirst.current = true;
+            if (open) moveFocus(1);
+            else setOpen(true);
+          } else if (event.key === 'Escape' && open) {
+            event.preventDefault();
+            setOpen(false);
+          }
+        }}
+        onPointerEnter={hintAnchor.onPointerEnter}
+        onPointerLeave={hintAnchor.onPointerLeave}
+        className={cn(MODE_ROW_CLASS, 'h-9 font-semibold hover:bg-surface-sunken/60', SIDEBAR_CONTROL_CORNER, open && 'rounded-b-none')}
+      >
+        {CurrentIcon ? (
+          <CurrentIcon aria-hidden className={navIconStrokeClass(cn('size-4 shrink-0', (currentId ? getSidebarPageNav(currentId)?.tone : undefined) ?? 'text-text-default'))} />
+        ) : null}
+        <span className="min-w-0 flex-1 truncate">{current?.label ?? section.label ?? 'Mode'}</span>
+        <ChevronsUpDown aria-hidden className={cn('size-3.5 shrink-0', open ? 'text-text-default' : 'text-text-muted')} />
+      </button>
+      <AnimatePresence>
+        {open && others.length > 0 ? (
+          <motion.div
+            key="modes"
+            id={listId}
+            role="group"
+            aria-label={section.label ?? 'Mode'}
+            data-nav-switcher-list="parent"
+            onKeyDown={onListKeyDown}
+            initial={presence.initial}
+            animate={presence.animate}
+            exit={presence.exit}
+            transition={transition}
+            // An OVERLAY welded to the card: no gap, the card's square bottom
+            // meets its square top on ONE shared hairline (1px down, so the
+            // two rings coincide), and the pair reads as one surface. Ring,
+            // not border, so each row's icon sits at the head icon's x.
+            // Nothing below moves.
+            className={cn(
+              'absolute inset-x-0 top-[calc(100%+1px)] z-dropdown flex flex-col gap-px bg-surface-card ring-1 ring-border-soft',
+              SIDEBAR_CONTROL_CORNER,
+              'rounded-t-none',
+              elevationClass('overlay'),
+            )}
+          >
+            {others.map((item) => {
+              const Icon = getSidebarPageNav(item.id)?.icon;
+              return (
+                <Link
+                  key={item.id}
+                  href={item.href}
+                  prefetch={false}
+                  data-nav-mode-item={item.id}
+                  onClick={() => setOpen(false)}
+                  className={cn(MODE_ROW_CLASS, 'h-8 font-medium hover:bg-surface-sunken', SIDEBAR_CONTROL_CORNER)}
+                >
+                  {Icon ? (
+                    <Icon aria-hidden className={navIconStrokeClass(cn('size-4 shrink-0', getSidebarPageNav(item.id)?.tone ?? 'text-text-muted'))} />
+                  ) : null}
+                  <span className="min-w-0 flex-1 truncate">{item.label}</span>
+                </Link>
+              );
+            })}
+          </motion.div>
+        ) : null}
+      </AnimatePresence>
+      <KeyHintPopover id="parent" at={hintAnchor.at} rows={hint} lead={GO_HINT_LEAD} />
+    </div>
   );
 }

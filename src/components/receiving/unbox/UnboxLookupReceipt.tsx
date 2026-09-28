@@ -31,7 +31,7 @@ function Fact({ label, children }: { label: string; children: React.ReactNode })
     // its siblings out; `whitespace-nowrap` keeps each fact on a single line so
     // the row stays one band deep.
     <div className="min-w-0 space-y-1">
-      <p className="text-role-micro uppercase tracking-widest text-text-soft">{label}</p>
+      <p className="text-role-micro text-text-soft">{label}</p>
       <div className="whitespace-nowrap text-role-caption font-semibold text-text-default">
         {children}
       </div>
@@ -87,7 +87,7 @@ export function UnboxLookupReceipt({
               <PackageOpen className="h-5 w-5" />
             </span>
             <div className="min-w-0 space-y-1">
-              <p className="text-role-eyebrow uppercase tracking-widest text-text-soft">
+              <p className="text-role-eyebrow text-text-soft">
                 Already unboxed
               </p>
               <p className="text-role-title text-text-default">

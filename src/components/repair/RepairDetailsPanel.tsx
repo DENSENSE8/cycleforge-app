@@ -93,7 +93,7 @@ export function RepairDetailsPanel({
                     c.setIsEditingTicket(false);
                   }
                 }}
-                className={"w-full border-none bg-transparent p-0 text-sm font-semibold uppercase tracking-tight text-text-default focus:ring-0" /* ds-allow-focus: identity/one-off hue or ring-0 */}
+                className={"w-full border-none bg-transparent p-0 text-sm font-semibold tracking-tight text-text-default focus:ring-0" /* ds-allow-focus: identity/one-off hue or ring-0 */}
                 placeholder="TK Number"
                 disabled={c.isSavingTicket}
               />
@@ -119,7 +119,7 @@ export function RepairDetailsPanel({
           pulse
           className={
             repair.status === 'Repaired, Contact Customer'
-              ? 'text-role-micro tracking-[0.14em]'
+              ? 'text-role-micro'
               : undefined
           }
         >

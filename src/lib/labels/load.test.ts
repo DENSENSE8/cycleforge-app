@@ -25,10 +25,10 @@ test('maps flow_context rows into the per-kind overrides bag', async () => {
 });
 
 test('the loaded overrides actually drive resolveLabel', async () => {
-  const db = fakeDb([{ flow_context: 'lifecycle_unshipped', code: 'TESTED', label: 'Passed QC', tone: 'emerald' }]);
+  const db = fakeDb([{ flow_context: 'lifecycle_unshipped', code: 'PICKED', label: 'Pulled', tone: 'emerald' }]);
   const ov = await loadLabelOverrides('org-1', db);
-  const r = resolveLabel('unshipped', 'TESTED', { overrides: ov });
-  assert.equal(r.label, 'Passed QC');
+  const r = resolveLabel('unshipped', 'PICKED', { overrides: ov });
+  assert.equal(r.label, 'Pulled');
   assert.equal(r.dot, 'bg-emerald-500');
   assert.equal(r.source, 'org');
 });

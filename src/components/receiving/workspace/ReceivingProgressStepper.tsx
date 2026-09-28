@@ -34,8 +34,8 @@ export function LinearWorkflowStepper({
   const connectorPt = compact ? 'pt-1.5' : 'pt-2';
   const stepGap = compact ? 'gap-0.5' : 'gap-1';
   const labelClass = compact
-    ? 'text-role-eyebrow uppercase leading-none tracking-[0.1em]'
-    : 'text-role-micro uppercase leading-none tracking-[0.12em]';
+    ? 'text-role-eyebrow leading-none'
+    : 'text-role-micro leading-none';
 
   return (
     <nav aria-label={ariaLabel} aria-description={ariaDescription} className={className}>

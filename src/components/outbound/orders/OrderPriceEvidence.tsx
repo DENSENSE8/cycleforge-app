@@ -1,6 +1,6 @@
 'use client';
 
-/** Price — the open order's money in the Selected-order column: */
+/** Payment — the open order's money detail, one disclosure under the items: the paid amount collapsed; items, tax, shipping, label costs and net open. Line prices read on the items themselves. */
 
 import { useState } from 'react';
 import { ChevronRight } from '@/components/Icons';
@@ -40,14 +40,20 @@ export function OrderPriceEvidence({ orderId }: { orderId: number }) {
 
   return (
     <EvidenceDisclosure
-      label="Price"
+      label="Payment"
       testId="evidence-price"
       summary={
-        <span
-          data-testid="evidence-price-value"
-          className={cn(RECORD_ID_CLASS, query.isError ? 'text-mode-warn' : price == null ? 'text-mode-muted' : STATE_TONE_CLASSES.success.text)}
-        >
-          {query.isError ? 'Unreadable' : b == null ? '…' : dash(price)}
+        <span className="inline-flex min-w-0 items-baseline gap-1.5">
+          <span
+            data-testid="evidence-price-value"
+            className={cn(
+              RECORD_ID_CLASS,
+              query.isError ? 'text-mode-warn' : price == null ? 'text-mode-muted' : STATE_TONE_CLASSES.success.text,
+            )}
+          >
+            {query.isError ? 'Unreadable' : b == null ? '—' : dash(price)}
+          </span>
+          {b?.amountPaid != null ? <span className="text-role-caption text-mode-muted">paid</span> : null}
         </span>
       }
     >

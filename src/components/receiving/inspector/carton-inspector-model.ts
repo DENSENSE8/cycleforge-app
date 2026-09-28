@@ -1,6 +1,7 @@
 /** Carton inspector — the pure read model. */
 
 import type { CartonOrderLink } from '@/lib/orders/po-order-link';
+import { readReturnReason } from '@/lib/inbound/return-reason-codes';
 
 /** Carton header as returned by `GET /api/receiving/[id]` (`receiving`). */
 export interface CartonInspectorReceiving {
@@ -294,7 +295,7 @@ export function cartonFacts(receiving: CartonInspectorReceiving): CartonFact[] {
   add('lane', 'Priority lane', present(receiving.priority_lane));
   add('targetChannel', 'Target channel', present(receiving.target_channel));
   add('returnPlatform', 'Return platform', present(receiving.return_platform), 'platform');
-  add('returnReason', 'Return reason', present(receiving.return_reason));
+  add('returnReason', 'Return reason', readReturnReason(receiving.return_reason)?.label ?? null);
 
   return out;
 }

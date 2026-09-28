@@ -145,9 +145,8 @@ export const PICK_FACTS_LATERALS = `
   ) pick_sess ON true
   /*
    * The Picker desk's scan, at ORDER grain: a scan attributed to this order
-   * (\`order_row_id\`), else an unattributed scan on this order's shipment only
-   * when no sibling order shares that shipment — the sole-shipment rule of
-   * order-grain-sql.ts, so one carton's scan never marks its siblings picked.
+   * (\`order_row_id\`). The desk writes it on every order-found scan; legacy
+   * sole-shipment rows were stamped by 2026-09-28w.
    */
   LEFT JOIN LATERAL (
     SELECT sal.staff_id  AS picked_by,
@@ -156,20 +155,7 @@ export const PICK_FACTS_LATERALS = `
     WHERE sal.organization_id = o.organization_id
       AND sal.station         = 'PICK'
       AND sal.activity_type   = 'PICK_SCANNED'
-      AND (
-        sal.order_row_id = o.id
-        OR (
-          sal.shipment_id IS NOT NULL
-          AND sal.shipment_id = o.shipment_id
-          AND (sal.metadata->>'order_row_id') IS NULL
-          AND NOT EXISTS (
-            SELECT 1 FROM orders o2
-            WHERE o2.shipment_id = o.shipment_id
-              AND o2.organization_id = o.organization_id
-              AND o2.id <> o.id
-          )
-        )
-      )
+      AND sal.order_row_id    = o.id
     ORDER BY sal.created_at DESC, sal.id DESC
     LIMIT 1
   ) pick_scan ON true
@@ -521,7 +507,6 @@ interface GetAllShippedOrdersOptions {
   weekStart?: string;
   weekEnd?: string;
   packedBy?: number | null;
-  testedBy?: number | null;
   /** Universal staff filter (P1-WORK-02): */
   staffFilterId?: number | null;
   missingTrackingOnly?: boolean;
@@ -569,10 +554,6 @@ export async function getAllShippedOrders(
     if (options.packedBy != null && Number.isFinite(Number(options.packedBy))) {
       params.push(Number(options.packedBy));
       conditions.push(`os.packed_by = $${params.length}`);
-    }
-    if (options.testedBy != null && Number.isFinite(Number(options.testedBy))) {
-      params.push(Number(options.testedBy));
-      conditions.push(`os.tested_by = $${params.length}`);
     }
     if (options.staffFilterId != null && Number.isFinite(Number(options.staffFilterId))) {
       params.push(Number(options.staffFilterId));
@@ -1624,7 +1605,18 @@ export async function deleteOrder(id: number, orgId?: OrgId): Promise<boolean> {
       'DELETE FROM orders WHERE id = $1 AND organization_id = $2',
       [id, orgId],
     );
-    return (result.rowCount ?? 0) > 0;
+    if ((result.rowCount ?? 0) === 0) return false;
+    // The order's pick / pack / test assignments and its To-ship feed row go
+    // with it — nothing polymorphic points at a deleted order afterwards.
+    await client.query(
+      `DELETE FROM work_assignments WHERE organization_id = $2 AND entity_type = 'ORDER' AND entity_id = $1`,
+      [id, orgId],
+    );
+    await client.query(
+      `DELETE FROM feed_memberships WHERE organization_id = $2::uuid AND entity_type = 'ORDER' AND entity_id = $1::bigint`,
+      [id, orgId],
+    );
+    return true;
   });
 }
 

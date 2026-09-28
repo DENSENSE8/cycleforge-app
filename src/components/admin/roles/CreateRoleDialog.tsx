@@ -82,7 +82,7 @@ export function CreateRoleDialog({ open, onClose, onCreated }: CreateRoleDialogP
 
         <div className="space-y-3">
           <label className="block">
-            <span className="block text-role-caption font-semibold uppercase tracking-wider text-text-soft">Label</span>
+            <span className="block text-role-caption font-semibold text-text-soft">Label</span>
             <input
               autoFocus
               value={label}
@@ -96,7 +96,7 @@ export function CreateRoleDialog({ open, onClose, onCreated }: CreateRoleDialogP
             />
           </label>
           <label className="block">
-            <span className="block text-role-caption font-semibold uppercase tracking-wider text-text-soft">Key (slug)</span>
+            <span className="block text-role-caption font-semibold text-text-soft">Key (slug)</span>
             <input
               value={key}
               onChange={(e) => setKey(e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, '').slice(0, 40))}
@@ -106,7 +106,7 @@ export function CreateRoleDialog({ open, onClose, onCreated }: CreateRoleDialogP
             <span className="mt-0.5 block text-role-micro text-text-faint">Stable identifier; cannot be changed later.</span>
           </label>
           <label className="block">
-            <span className="block text-role-caption font-semibold uppercase tracking-wider text-text-soft">Color</span>
+            <span className="block text-role-caption font-semibold text-text-soft">Color</span>
             <div className="mt-1 flex items-center gap-2">
               <input
                 type="color"

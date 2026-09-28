@@ -100,7 +100,7 @@ export const TechAllGridRow = memo(function TechAllGridRow({
             {row.subtitle ? (
               <CopyableCellValue
                 value={row.subtitle}
-                className="min-w-0 shrink truncate text-role-eyebrow uppercase tracking-widest text-text-faint"
+                className="min-w-0 shrink truncate text-role-eyebrow text-text-faint"
                 dense
               />
             ) : null}

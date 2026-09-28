@@ -33,7 +33,7 @@ function AppTopBar({ title, onOpenDrawer, trailing, className }: AppTopBarProps)
         </button>
 
         <div className="flex h-full min-w-0 items-center justify-center bg-surface-card px-3">
-          <span className="truncate text-role-micro uppercase tracking-[0.18em] text-text-muted">
+          <span className="truncate text-role-micro text-text-muted">
             {title}
           </span>
         </div>

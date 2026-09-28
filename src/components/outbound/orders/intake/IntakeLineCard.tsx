@@ -14,7 +14,7 @@ import { TextField } from '@/design-system/primitives/TextField';
 import type { ConditionGrade } from '@/lib/conditions';
 import { formatCents } from '@/lib/orders/manual-order-draft';
 import { IntakeProductSearch } from './IntakeProductSearch';
-import { priceCents, type IntakeLine } from './intake-model';
+import { priceCents, type IntakeLine } from '@/lib/orders/intake/intake-model';
 
 export function IntakeLineCard({
   line,

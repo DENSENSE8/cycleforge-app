@@ -9,7 +9,8 @@
  * SKU · bin · price), its lifecycle state and what it means, the SLA as the
  * top-right status, the channel and buyer, the Urgent / SKU-batch chips, and
  * the orders-owned slots — the order number with its admin-link menu, the
- * listing link (or its editor), the quick look and the checked-card menu.
+ * listing link (or its editor) and the quick look. A checked card's verbs
+ * live only in the selection bar (Law 5).
  */
 
 import { memo, useMemo } from 'react';
@@ -19,7 +20,7 @@ import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { OrderIdChip } from '@/components/ui/CopyChip';
 import { RecordCard, type RecordOpenEvent } from '@/design-system/components/record-card/RecordCard';
 import type { RecordCardChip, RecordCardLine, RecordCardModel } from '@/design-system/components/record-card/record-card-types';
-import type { RecordFactColumn } from '@/design-system/components/record-card/record-fact';
+import { OUTBOUND_TRIAGE_VIEW } from '@/lib/triage/views';
 import { LIFECYCLE_GLYPH } from '@/design-system/components/record-ledger/LifecycleCode';
 import { LIFECYCLE, lifecycleRecordState, type LifecycleState } from '@/design-system/tokens/lifecycle';
 import { focusRing } from '@/design-system/tokens/focus-ring';
@@ -27,27 +28,11 @@ import { CARD_DISCLOSE, CARD_FACT_BOX_CLASS } from '@/design-system/tokens/desk-
 import { useOrderChannel } from '@/hooks/useCatalog';
 import { platformMetaBrandDot } from '@/lib/source-platform';
 import type { ShippedOrder } from '@/lib/neon/orders-queries';
-import type { OrderRecordMode } from '@/lib/selection-context/order-inspector-context';
 import type { OrderCardLine, OrderCardModel } from '@/lib/orders/order-card-model';
-import type { QueueRowClickEvent } from '@/components/dashboard/orders-queue/queue-row-click';
+import type { TriageCardSlotProps } from '@/design-system/components/triage-card-list/TriageCardList';
 import { ListingLinkEditor, OrderAdminLinkAction } from '../order-link-editors';
 import { cn } from '@/utils/_cn';
-import { OrderCardActionMenu } from './OrderCardActionMenu';
 import { OrderCardPeek } from './OrderCardPeek';
-
-/**
- * An order line's facts, in the one order the lead sentence and the unfolded
- * columns share. SKU and price give way in the unfolded columns below the
- * `label` tier (the quick look keeps them).
- */
-const ORDER_FACT_COLUMNS: readonly RecordFactColumn[] = [
-  { id: 'qty', tier: 'always' },
-  { id: 'condition', tier: 'always' },
-  { id: 'stock', tier: 'always' },
-  { id: 'sku', tier: 'label' },
-  { id: 'bin', tier: 'always' },
-  { id: 'price', tier: 'label' },
-];
 
 /** What each status icon means — the plain tooltip on every icon but out of stock. */
 const STATUS_MEANING: Readonly<Record<LifecycleState, string>> = {
@@ -79,36 +64,15 @@ function orderRecordLine(line: OrderCardLine): RecordCardLine {
 
 const moreOutOfStock = (count: number) => `${count} more out of stock`;
 
-export interface OrderCardProps {
-  model: OrderCardModel;
-  /** Every line checked → true; some → 'mixed'. */
-  checked: boolean | 'mixed';
-  /** This order is the open record. */
-  open: boolean;
-  expanded: boolean;
-  /** Exactly this card is checked — its actions drop down from the right edge. */
-  menuOpen: boolean;
-  /** Position in the first paint — staggers the arrival; null = no entrance. */
-  enterIndex: number | null;
-  mode: OrderRecordMode;
-  /**
-   * The card body: opens the order's record — never checks it, even with a
-   * check-set live (owner 2026-09-27). Only the checkbox checks.
-   */
-  onOpen: (record: ShippedOrder, event?: QueueRowClickEvent) => void;
-  onToggleSelect: (record: ShippedOrder, event: { shiftKey: boolean }) => void;
-  onToggleGroup: (ids: readonly number[], checked: boolean) => void;
-  onToggleExpand: (key: string) => void;
-  onMenuDone: () => void;
-  onOpenLabels?: (record: ShippedOrder) => void;
-  /** Quick look (Space) is unfolded under this card. */
-  peekOpen: boolean;
-  onTogglePeek: (key: string) => void;
+/** The face's slot props (state + its handlers) plus what only an order card reads. */
+export interface OrderCardProps extends TriageCardSlotProps<ShippedOrder, OrderCardModel> {
   todayKey: string;
   /** Loaded orders whose lines carry the lead line's SKU (this one included); ≥ 2 shows the batch chip. */
   skuShared: number;
   /** Check every loaded order carrying this SKU — one pick trip. */
   onSelectSku: (sku: string) => void;
+  /** Save the order's staff note from line 1 (appends to the notes trail). */
+  onSaveNote: (record: ShippedOrder, text: string) => void;
 }
 
 export const OrderCard = memo(function OrderCard({
@@ -116,20 +80,16 @@ export const OrderCard = memo(function OrderCard({
   checked,
   open,
   expanded,
-  menuOpen,
   enterIndex,
-  mode,
   onOpen,
-  onToggleSelect,
-  onToggleGroup,
+  onToggleCheck,
   onToggleExpand,
-  onMenuDone,
-  onOpenLabels,
   peekOpen,
   onTogglePeek,
   todayKey,
   skuShared,
   onSelectSku,
+  onSaveNote,
 }: OrderCardProps) {
   const channel = useOrderChannel()(model.orderId, model.accountSource);
   const lead = model.lines[0];
@@ -174,13 +134,18 @@ export const OrderCard = memo(function OrderCard({
             label: channel.label,
             tooltip: channel.connectionName ?? channel.label,
             dot: <BrandIdentityDot {...platformMetaBrandDot(channel.meta)} />,
-            badge: model.fba ? 'FBA' : null,
+            badge: model.fba ? 'FBA' : model.pickup ? 'Pickup' : null,
           }
-        : null,
+          : null,
       person: model.buyerName,
       chips,
-      note: model.buyerNote ? { text: model.buyerNote, label: 'Buyer note' } : null,
-      status: model.sla,
+      // The buyer's words read-only; the team's latest note edited in line (the notes trail keeps history).
+      notes: {
+        fixed: model.buyerNote ? { label: 'Buyer note', text: model.buyerNote } : null,
+        own: model.staffNote,
+      },
+      status: { kind: 'deadline', ...model.sla },
+      next: model.next,
       lines: model.lines.map(orderRecordLine),
       hiddenAlertLabel: moreOutOfStock,
     };
@@ -189,10 +154,7 @@ export const OrderCard = memo(function OrderCard({
   if (!lead) return null;
 
   const openRecord = (event: RecordOpenEvent) => onOpen(model.lead, event);
-  const toggleCheck = (event: { shiftKey: boolean }) => {
-    if (model.lines.length <= 1) onToggleSelect(model.lead, event);
-    else onToggleGroup(model.ids, checked !== true);
-  };
+  const toggleCheck = (event: { shiftKey: boolean }) => onToggleCheck(model, event);
 
   // Hovering the order number flies out "Edit admin link" (opens the link popover); click copies; the ↗ only opens.
   const identity = (
@@ -235,8 +197,8 @@ export const OrderCard = memo(function OrderCard({
   return (
     <RecordCard
       model={record}
-      factColumns={ORDER_FACT_COLUMNS}
-      testIdPrefix="order-card"
+      factColumns={OUTBOUND_TRIAGE_VIEW.facts}
+      testIdPrefix={OUTBOUND_TRIAGE_VIEW.testIdPrefix}
       rowAttrs={{ 'data-order-row-id': model.lead.id }}
       checked={checked}
       open={open}
@@ -254,14 +216,9 @@ export const OrderCard = memo(function OrderCard({
           key="peek"
           model={model}
           todayKey={todayKey}
-          platformLabel={channel.connectionName ? `${channel.label} · ${channel.connectionName}` : channel.label}
         />
       }
-      menu={{
-        open: menuOpen,
-        onDone: onMenuDone,
-        content: <OrderCardActionMenu record={model.lead} mode={mode} onOpenLabels={onOpenLabels} onDone={onMenuDone} />,
-      }}
+      onSaveNote={(text) => onSaveNote(model.lead, text)}
     />
   );
 });

@@ -14,6 +14,9 @@ const DesktopRouteShell = dynamic(() =>
 const MobileRouteShell = dynamic(() =>
   import('@/components/layout/MobileRouteShell').then((m) => m.MobileRouteShell),
 );
+const WelcomeReplayButton = dynamic(() =>
+  import('@/components/boot/WelcomeReplayButton').then((module) => module.WelcomeReplayButton),
+);
 import { HeaderProvider } from '@/contexts/HeaderContext';
 import { FbaWorkspaceProvider } from '@/contexts/FbaWorkspaceContext';
 import { StudioWorkspaceProvider } from '@/components/studio/StudioWorkspaceContext';
@@ -41,7 +44,6 @@ import { WatchedArrivalToaster } from '@/components/providers/WatchedArrivalToas
 import { PostHogProvider } from '@/components/analytics/PostHogProvider';
 import { ShellQuerySeed } from '@/components/providers/ShellQuerySeed';
 import { WelcomeHost } from '@/components/boot/WelcomeHost';
-import { WelcomeReplayButton } from '@/components/boot/WelcomeReplayButton';
 
 export function WarehouseShell({
   initialUser,
@@ -99,7 +101,7 @@ export function WarehouseShell({
                       <QuickAccessSync />
                       {/* Desktop only: the welcome plays over any desktop page (sign-in, staff switch, dev replay). */}
                       {!mobileTree && <WelcomeHost />}
-                      {!mobileTree && <WelcomeReplayButton />}
+                      {process.env.NODE_ENV !== 'production' && !mobileTree ? <WelcomeReplayButton /> : null}
                     </StaffSwitcherProvider>
                   </StaffColorsProvider>
                 </ActivityInboxProvider>

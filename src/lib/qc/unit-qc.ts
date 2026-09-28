@@ -18,6 +18,8 @@ export interface UnitQcStep {
   verified_by_name: string | null;
   verified_at: string | null;
   notes: string | null;
+  /** `qc_procedure_versions.id` the answer was recorded against (BIGINT → string); null before versioning. */
+  procedure_version_id: string | number | null;
 }
 
 interface UnitQcSummary {

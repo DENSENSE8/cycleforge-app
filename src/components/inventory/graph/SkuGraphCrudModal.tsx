@@ -168,7 +168,7 @@ export function SkuGraphCrudModal({ focused, onClose }: SkuGraphCrudModalProps) 
               { title: 'Children', items: children },
             ].map(({ title, items }) => (
               <div key={title}>
-                <h3 className="mb-1.5 text-role-caption font-semibold uppercase tracking-wide text-text-faint">{title}</h3>
+                <h3 className="mb-1.5 text-role-caption font-semibold text-text-faint">{title}</h3>
                 {items.length === 0 ? (
                   <p className="text-role-caption text-text-faint">None</p>
                 ) : (

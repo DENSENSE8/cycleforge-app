@@ -90,7 +90,7 @@ function ConversationCard({ serialUnitId }: { serialUnitId: number }) {
         className="flex w-full items-center justify-between px-5 py-4 text-left"
         aria-expanded={open}
       >
-        <span className="flex items-center gap-2 text-role-eyebrow uppercase tracking-[0.14em] text-text-soft">
+        <span className="flex items-center gap-2 text-role-eyebrow text-text-soft">
           <MessageSquare className="h-3.5 w-3.5" /> Conversation
         </span>
         {open ? (

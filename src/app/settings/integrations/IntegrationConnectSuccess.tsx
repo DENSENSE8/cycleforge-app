@@ -57,7 +57,7 @@ export function IntegrationConnectSuccess({
         <Check className="h-4 w-4" />
       </motion.span>
       <div className="min-w-0 flex-1 pt-0.5">
-        <p className="text-role-caption font-semibold uppercase tracking-[0.14em] text-emerald-700">Connected</p>
+        <p className="text-role-caption font-semibold text-emerald-700">Connected</p>
         <p className="mt-0.5 text-role-body font-medium text-emerald-900">{message}</p>
         {href && linkLabel ? (
           <Link

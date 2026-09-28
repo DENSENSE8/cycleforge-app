@@ -66,7 +66,7 @@ export function ShippingCapturedUnits({
   return (
     <div className="min-w-0 border-b border-border-soft bg-surface-card">
       <div className="border-b border-border-hairline px-3 py-2">
-        <p className="text-role-eyebrow uppercase tracking-wider text-emerald-700">
+        <p className="text-role-eyebrow text-emerald-700">
           {activeOrder.serialNumbers.length}
           {quantity > 1 ? ` / ${quantity}` : ''} captured
         </p>
@@ -97,7 +97,7 @@ export function ShippingCapturedUnits({
                           animate={motionPresence.stationAddedBadge.animate}
                           exit={motionPresence.stationAddedBadge.exit}
                           transition={motionTransition.stationAddedBadge}
-                          className="text-role-eyebrow uppercase tracking-wider text-emerald-600"
+                          className="text-role-eyebrow text-emerald-600"
                         >
                           ✓ Added
                         </motion.span>

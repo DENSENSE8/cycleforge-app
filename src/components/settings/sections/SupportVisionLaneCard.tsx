@@ -144,7 +144,7 @@ export function SupportVisionLaneCard() {
               >
                 <span
                   className={
-                    'mt-0.5 shrink-0 rounded px-1.5 py-0.5 text-role-eyebrow uppercase tracking-widest ring-1 ring-inset ' +
+                    'mt-0.5 shrink-0 rounded px-1.5 py-0.5 text-role-eyebrow ring-1 ring-inset ' +
                     PRIVACY_CHIP[opt.privacy]
                   }
                 >

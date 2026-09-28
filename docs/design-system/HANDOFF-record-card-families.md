@@ -138,11 +138,12 @@ kinds rather than special cases.
 
 ## Not done yet (do not assume it exists)
 
-- **Action registry + Law 5 selection bar.** Today the bar shows verbs only at 2+ checked and a
-  checked card opens a drop-down (`RecordCard` `menu` slot). The registry (ordered verbs: id, key,
-  scope, `unavailable(reason)`, `run` / `display`) and the unified bar are pending an owner decision
-  on hotkey conflicts (ledger "O1 progress"). Until it lands, a new family mounts without a menu and
-  with its bulk verbs in the bar's `bulk` slot, exactly like orders.
+- ~~Action registry + Law 5 selection bar~~ — **landed 2026-09-27** (ledger "O1 progress", key map
+  there). A family builds `RecordActionVerb[]` with `scope` on every lead-only verb, runs it through
+  `scopeRecordVerbs(verbs, checkedCount, noun)` and paints it in the bar's `bulk` slot, which
+  `TriageSelectBar` shows at 1 **and** N checked. `RecordCard` has no `menu` slot. Mount
+  `useTriageCardKeys` so X checks, Space folds the quick look and Enter opens the focused card (else the card under the pointer; X falls back to the open record), and keep verb letters off `x`, `f`,
+  `j`, `k`, `[`, `]`.
 - The hierarchy (`SlotLayout` `lead` / `lines` / `rail` / `priority`) is not driving cards yet:
   adapters own the fact list. Keep it that way until the owner schedules the layout extension.
 

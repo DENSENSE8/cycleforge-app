@@ -106,8 +106,8 @@ export function PaymentArtifact({ artifact }: { artifact: ArtifactPayment }) {
     return () => window.clearInterval(timer);
   }, [open, load]);
 
-  // The open request's method is the tab the panel shows.
-  const openMethod = open && payment && payment.method !== 'square_terminal' ? payment.method : null;
+  // The open request's method is the tab the panel shows (the chat card offers Square only).
+  const openMethod = open && payment && (payment.method === 'square_link' || payment.method === 'square_invoice') ? payment.method : null;
   useEffect(() => {
     if (openMethod) setTab(openMethod);
   }, [openMethod]);

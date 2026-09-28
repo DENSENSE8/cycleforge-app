@@ -2,7 +2,7 @@
 
 /** Inventory › Locations workspace — Receiving Sheets flush recipe: */
 
-import { useCallback, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { DashboardScrollShell } from '@/components/dashboard/DashboardScrollShell';
 
@@ -21,85 +21,17 @@ import { RackDetailView } from './RackDetailView';
 import { TotePlateWorkspace } from './TotePlateWorkspace';
 import { WarehouseMap, type MapViewMode } from './WarehouseMap';
 import { WarehouseFloorPlan } from './WarehouseFloorPlan';
-import {
-  LOCATIONS_TABS,
-  parseLocationsTab,
-  type LocationsTab,
-} from '@/lib/inventory/locations-path';
+import { parseLocationsTab } from '@/lib/inventory/locations-path';
 import { LocationsManagementTab } from '@/components/admin/LocationsManagementTab';
-import { LOCATION_BAY_LABEL_PLURAL } from '@/lib/barcode-routing';
-import { LABEL_BUILDER } from '@/components/barcode/label-builder-layout';
-import { ChevronDown } from '@/components/Icons';
-import { Button } from '@/design-system/primitives';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/design-system/primitives/DropdownMenu';
-import { cn } from '@/utils/_cn';
 
-/** Visible Locations facets — same set the old TableTabs painted. */
-const LOCATIONS_FACET_TABS = LOCATIONS_TABS.filter((id) => id !== 'bins');
-
-function locationsFacetLabel(id: LocationsTab): string {
-  if (id === 'bays') return LOCATION_BAY_LABEL_PLURAL;
-  if (id === 'totes') return 'Totes';
-  if (id === 'manage') return 'Manage';
-  return id.charAt(0).toUpperCase() + id.slice(1);
-}
-
+/** The tool (`?tab=`) is chosen in the sidebar — Inventory › Locations › Tool (2026-09-28). */
 export function LocationsWorkspace() {
   const searchParams = useSearchParams();
   const tab = parseLocationsTab(searchParams.get('tab'));
-  const pathname = usePathname();
-  const router = useRouter();
-  const setTab = useCallback(
-    (next: LocationsTab) => {
-      const params = new URLSearchParams(searchParams.toString());
-      params.set('tab', next);
-      router.replace(`${pathname}?${params.toString()}`, { scroll: false });
-    },
-    [pathname, router, searchParams],
-  );
   const rackCodeParam = searchParams.get('code');
-  const faceTab: LocationsTab = tab === 'bins' ? 'labels' : tab;
 
   return (
     <div className="relative flex h-full min-h-0 w-full flex-col">
-      {/*
-        Second-level Locations modes — centered dropdown under DeskPageChrome.
-        Width matches the Labels/Bays builder column (`LABEL_BUILDER.contentShell`
-        + page pad) so it lines up with the step-pill track below.
-      */}
-      <div className={cn('flex-none', LABEL_BUILDER.pagePad, 'pb-0')}>
-        <div className={LABEL_BUILDER.contentShell}>
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button
-                variant="secondary"
-                size="sm"
-                className="h-9 w-full justify-between"
-                ariaLabel="Locations tool"
-                iconRight={<ChevronDown className="h-3.5 w-3.5" />}
-              >
-                {locationsFacetLabel(faceTab)}
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="center" className="w-[var(--radix-dropdown-menu-trigger-width)] min-w-0">
-              {LOCATIONS_FACET_TABS.map((id) => (
-                <DropdownMenuItem
-                  key={id}
-                  onSelect={() => setTab(id)}
-                  className={cn(id === faceTab && 'font-semibold text-text-default')}
-                >
-                  {locationsFacetLabel(id)}
-                </DropdownMenuItem>
-              ))}
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </div>
-      </div>
       <DashboardScrollShell className="h-full bg-transparent">
         <div className="relative flex min-h-0 min-w-0 flex-1 flex-col">
           {tab === 'rooms' ? <RoomDetailForm /> : null}

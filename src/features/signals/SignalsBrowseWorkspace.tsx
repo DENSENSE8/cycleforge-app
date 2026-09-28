@@ -142,12 +142,12 @@ export function SignalsBrowseWorkspace() {
                 )}
               >
                 <span className="truncate text-role-caption font-semibold text-text-default">{kindLabel(s.signal_kind)}</span>
-                <span className="truncate text-role-eyebrow font-semibold uppercase tracking-widest text-text-soft">
+                <span className="truncate text-role-eyebrow font-semibold text-text-soft">
                   {entityLabel(s.entity_type)} #{s.entity_id}
                   {shortTime(s.occurred_at) ? ` · ${shortTime(s.occurred_at)}` : ''}
                 </span>
                 {s.reason_code ? (
-                  <span className="rounded bg-surface-canvas px-1.5 text-role-micro uppercase tracking-widest text-text-muted ring-1 ring-inset ring-border-soft">
+                  <span className="rounded bg-surface-canvas px-1.5 text-role-micro text-text-muted ring-1 ring-inset ring-border-soft">
                     {s.reason_code}
                   </span>
                 ) : null}
@@ -180,7 +180,7 @@ export function SignalsBrowseWorkspace() {
                 <button
                   type="button"
                   onClick={() => select(null)}
-                  className="text-role-eyebrow uppercase tracking-widest text-blue-600 md:hidden"
+                  className="text-role-eyebrow text-blue-600 md:hidden"
                 >
                   ← Back
                 </button>
@@ -235,12 +235,12 @@ function SignalIdentityChrome({
   return (
     <div className="space-y-1">
       <p className="text-lg font-semibold tracking-tight text-text-default">{kindLabel(signalKind)}</p>
-      <p className="text-role-eyebrow font-semibold uppercase tracking-widest text-text-soft">
+      <p className="text-role-eyebrow font-semibold text-text-soft">
         {entityLabel(entityType)} #{entityId}
         {shortTime(occurredAt) ? ` · ${shortTime(occurredAt)}` : ''}
       </p>
       {reasonCode ? (
-        <span className="inline-block rounded bg-surface-canvas px-1.5 text-role-micro uppercase tracking-widest text-text-muted ring-1 ring-inset ring-border-soft">
+        <span className="inline-block rounded bg-surface-canvas px-1.5 text-role-micro text-text-muted ring-1 ring-inset ring-border-soft">
           {reasonCode}
         </span>
       ) : null}
@@ -266,7 +266,7 @@ function SignalDetailBody({ detail }: { detail: EntitySignalDetail }) {
       {detail.source_ref ? <Field label="Source ref">{detail.source_ref}</Field> : null}
       {detail.meta && Object.keys(detail.meta).length > 0 ? (
         <div className="space-y-1">
-          <p className="text-role-eyebrow uppercase tracking-widest text-text-soft">Meta</p>
+          <p className="text-role-eyebrow text-text-soft">Meta</p>
           <pre className="overflow-x-auto rounded-md bg-surface-canvas p-2 text-role-micro text-text-muted ring-1 ring-inset ring-border-soft">
             {JSON.stringify(detail.meta, null, 2)}
           </pre>
@@ -279,7 +279,7 @@ function SignalDetailBody({ detail }: { detail: EntitySignalDetail }) {
               dim: detail.entity_dim,
               value: detail.entity_ref,
             })}
-            className="inline-flex items-center gap-1 text-role-eyebrow uppercase tracking-widest text-blue-600 transition hover:text-blue-700"
+            className="inline-flex items-center gap-1 text-role-eyebrow text-blue-600 transition hover:text-blue-700"
           >
             Full event trace →
           </Link>
@@ -292,7 +292,7 @@ function SignalDetailBody({ detail }: { detail: EntitySignalDetail }) {
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div className="space-y-1">
-      <p className="text-role-eyebrow uppercase tracking-widest text-text-soft">{label}</p>
+      <p className="text-role-eyebrow text-text-soft">{label}</p>
       <p className="text-role-caption text-text-default">{children}</p>
     </div>
   );

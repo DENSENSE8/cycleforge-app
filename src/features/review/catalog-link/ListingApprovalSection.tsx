@@ -127,7 +127,7 @@ export function ListingApprovalSection({
         {candidate ? (
           <div className="space-y-3 rounded-xl border border-border-soft bg-surface-canvas p-3">
             <div className="flex items-center justify-between gap-2">
-              <span className="text-role-eyebrow uppercase tracking-widest text-text-soft">
+              <span className="text-role-eyebrow text-text-soft">
                 From listing URL
               </span>
               {candidateMeta.value ? (
@@ -140,7 +140,7 @@ export function ListingApprovalSection({
             </div>
 
             <div className="flex min-w-0 items-baseline justify-between gap-3">
-              <span className="shrink-0 text-role-eyebrow uppercase tracking-widest text-text-soft">
+              <span className="shrink-0 text-role-eyebrow text-text-soft">
                 Item number
               </span>
               <OrderIdChip

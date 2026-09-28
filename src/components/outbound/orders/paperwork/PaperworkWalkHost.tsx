@@ -6,6 +6,7 @@ import { useCallback, useMemo } from 'react';
 import { PaperworkRecentRail } from './PaperworkRecentRail';
 import { PaperworkEditor } from './PaperworkEditor';
 import { ModeRegion } from '@/design-system/providers/ModeRegion';
+import { DESK_TRIAGE_RAIL_CLASS } from '@/design-system/tokens/desk-stage';
 import { singleBand } from '@/lib/group-rows';
 import { RECORD_CURSOR_PRIORITY } from '@/lib/record-cursor/store';
 import { usePublishRecordCursor } from '@/lib/record-cursor/useRecordCursor';
@@ -63,10 +64,7 @@ export function PaperworkWalkHost({
 
   return (
     <ModeRegion mode="triage" className={WALK_PLANE_CLASS} data-testid="paperwork-walk">
-      <aside
-        className="flex w-[22rem] shrink-0 flex-col border-r border-border-soft bg-mode-bar"
-        aria-label="Labels queue"
-      >
+      <aside className={cn(DESK_TRIAGE_RAIL_CLASS, 'border-r border-mode-divide')} aria-label="Labels queue">
         <PaperworkRecentRail
           rows={rows}
           selectedId={selected.id}

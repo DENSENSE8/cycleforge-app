@@ -120,7 +120,7 @@ export function PhotoAttachGrid({
     <>
       <div className="flex shrink-0 items-center justify-between gap-0 border-b border-border-hairline px-0 py-0">
         <div className="flex min-w-0 items-center gap-0 px-2">
-          <p className="truncate text-role-micro uppercase tracking-widest text-text-soft">
+          <p className="truncate text-role-micro text-text-soft">
             {countLabel}
           </p>
         </div>

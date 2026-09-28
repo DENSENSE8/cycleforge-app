@@ -79,7 +79,7 @@ export function UnitSlotsManageOverlay({
     >
       <div className="flex items-center justify-between border-b border-border-soft px-4 py-3">
         <div className="min-w-0">
-          <p className="text-role-micro uppercase tracking-[0.16em] text-text-soft">
+          <p className="text-role-micro text-text-soft">
             Units
           </p>
           <p className="truncate text-xs font-semibold text-text-default">

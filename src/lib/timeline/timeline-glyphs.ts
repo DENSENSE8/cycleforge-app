@@ -47,6 +47,7 @@ const EXACT: Record<string, TimelineGlyphSpec> = {
   LABEL_PRINTED: { id: 'labeling', tooltip: 'Labels' },
   'orders.label.printed': { id: 'labeling', tooltip: 'Labels' },
   'orders.tracking.added': { id: 'tracking-scan', tooltip: 'Tracking scan' },
+  'orders.tracking.replaced': { id: 'tracking-scan', tooltip: 'Tracking replaced' },
   'shipment.scan_out': { id: 'shipping', tooltip: 'Shipping' },
 
   // Inventory lifecycle

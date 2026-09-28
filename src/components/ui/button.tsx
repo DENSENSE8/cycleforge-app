@@ -23,7 +23,7 @@ const buttonVariants = cva(
         ghost: 'text-text-muted hover:bg-surface-hover hover:text-text-default',
         /** Even quieter: an eyebrow-weight control (band labels, Collapse all). */
         eyebrow:
-          'text-role-micro font-semibold uppercase tracking-widest text-text-faint hover:text-text-muted',
+          'text-role-micro font-semibold text-text-faint hover:text-text-muted',
         /** A chrome control that has to read as a distinct cell — a band chip. */
         outline:
           'border border-border-soft bg-surface-card text-text-muted hover:bg-surface-hover hover:text-text-default',

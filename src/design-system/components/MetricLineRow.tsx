@@ -26,7 +26,7 @@ export function MetricLineRow({
       ].join(' ').trim()}
     >
       <div className="min-w-0">
-        <p className="text-role-eyebrow uppercase tracking-[0.10rem] leading-none text-text-soft">
+        <p className="text-role-eyebrow leading-none text-text-soft">
           {label}
         </p>
         <div className="mt-1 text-sm font-semibold text-text-default">{value}</div>

@@ -11,10 +11,11 @@ export function modeDeviceOf(pathname: string | null | undefined, coarsePointer:
 
 /**
  * The mode a region paints. `triage` is the desktop system and collapses to
- * `industrial` on a phone. An explicit `industrial` is never lifted: on a phone
+ * `industrial` on a phone — unless the region is a `form` (a job that fills
+ * something in rather than executes on the floor), which keeps `triage`. An explicit `industrial` is never lifted: on a phone
  * it is the floor, on a desk it is Mode C — a hardware mirror of a live phone,
  * rendered 1:1. `counter` / `assistant` keep their own identity everywhere.
  */
-export function resolveRegionMode(requested: ModeName, device: ModeDevice): ModeName {
-  return requested === 'triage' && device === 'phone' ? 'industrial' : requested;
+export function resolveRegionMode(requested: ModeName, device: ModeDevice, opts: { form?: boolean } = {}): ModeName {
+  return requested === 'triage' && device === 'phone' && !opts.form ? 'industrial' : requested;
 }

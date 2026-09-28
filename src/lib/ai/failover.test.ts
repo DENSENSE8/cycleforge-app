@@ -46,7 +46,7 @@ test('the local box answers → cloud is never contacted', async () => {
     'local': () => new Response('{"ok":true}', { status: 200 }),
   });
 
-  const out = await postToAiProvider(ORG, 'chat', { path: '/chat/completions', body: {} }, LOCAL_THEN_CLOUD, fetchImpl);
+  const out = await postToAiProvider(ORG, 'chat', { path: '/chat/completions', body: {} }, LOCAL_THEN_CLOUD, fetchImpl, noMeter);
 
   assert.equal(out.served.source, 'ollama');
   assert.deepEqual(hits, ['local']);
@@ -60,7 +60,7 @@ test('local 500 → falls forward to cloud AND the answer is still served', asyn
     'api.openai.com': () => new Response('{"ok":true}', { status: 200 }),
   });
 
-  const out = await postToAiProvider(ORG, 'chat', { path: '/chat/completions', body: {} }, LOCAL_THEN_CLOUD, fetchImpl);
+  const out = await postToAiProvider(ORG, 'chat', { path: '/chat/completions', body: {} }, LOCAL_THEN_CLOUD, fetchImpl, noMeter);
 
   assert.equal(out.served.source, 'openai');
   assert.deepEqual(hits, ['local', 'api.openai.com']);
@@ -75,7 +75,7 @@ test('a Cloudflare Access 403 demotes and falls forward', async () => {
     'api.openai.com': () => new Response('{"ok":true}', { status: 200 }),
   });
 
-  const out = await postToAiProvider(ORG, 'chat', { path: '/chat/completions', body: {} }, LOCAL_THEN_CLOUD, fetchImpl);
+  const out = await postToAiProvider(ORG, 'chat', { path: '/chat/completions', body: {} }, LOCAL_THEN_CLOUD, fetchImpl, noMeter);
 
   assert.equal(out.served.source, 'openai');
 });
@@ -89,7 +89,7 @@ test('a timeout demotes and falls forward', async () => {
     'api.openai.com': () => new Response('{"ok":true}', { status: 200 }),
   });
 
-  const out = await postToAiProvider(ORG, 'chat', { path: '/chat/completions', body: {} }, LOCAL_THEN_CLOUD, fetchImpl);
+  const out = await postToAiProvider(ORG, 'chat', { path: '/chat/completions', body: {} }, LOCAL_THEN_CLOUD, fetchImpl, noMeter);
 
   assert.equal(out.served.source, 'openai');
 });
@@ -100,7 +100,7 @@ test('a 400 is RETURNED, not retried — a bad body is not an outage', async () 
     'local': () => new Response('bad request', { status: 400 }),
   });
 
-  const out = await postToAiProvider(ORG, 'chat', { path: '/chat/completions', body: {} }, LOCAL_THEN_CLOUD, fetchImpl);
+  const out = await postToAiProvider(ORG, 'chat', { path: '/chat/completions', body: {} }, LOCAL_THEN_CLOUD, fetchImpl, noMeter);
 
   assert.equal(out.res.status, 400);
   assert.equal(out.served.source, 'ollama');
@@ -114,7 +114,7 @@ test('a failed provider is demoted so the NEXT request skips the timeout', async
     'api.openai.com': () => new Response('{"ok":true}', { status: 200 }),
   });
 
-  await postToAiProvider(ORG, 'chat', { path: '/chat/completions', body: {} }, LOCAL_THEN_CLOUD, fetchImpl);
+  await postToAiProvider(ORG, 'chat', { path: '/chat/completions', body: {} }, LOCAL_THEN_CLOUD, fetchImpl, noMeter);
 
   assert.equal(isProviderDemoted(ORG, 'ollama', 'chat'), true);
   assert.equal(isProviderDemoted(ORG, 'openai', 'chat'), false);
@@ -127,7 +127,7 @@ test('demotion is per-capability — a broken embed model does not sideline chat
     'api.openai.com': () => new Response('{"ok":true}', { status: 200 }),
   });
 
-  await postToAiProvider(ORG, 'chat', { path: '/chat/completions', body: {} }, LOCAL_THEN_CLOUD, fetchImpl);
+  await postToAiProvider(ORG, 'chat', { path: '/chat/completions', body: {} }, LOCAL_THEN_CLOUD, fetchImpl, noMeter);
 
   assert.equal(isProviderDemoted(ORG, 'ollama', 'chat'), true);
   assert.equal(isProviderDemoted(ORG, 'ollama', 'embed'), false);
@@ -139,14 +139,14 @@ test('a provider that answers is trusted again immediately', async () => {
     'local': () => new Response('boom', { status: 500 }),
     'api.openai.com': () => new Response('ok', { status: 200 }),
   });
-  await postToAiProvider(ORG, 'chat', { path: '/chat/completions', body: {} }, LOCAL_THEN_CLOUD, fail.fetchImpl);
+  await postToAiProvider(ORG, 'chat', { path: '/chat/completions', body: {} }, LOCAL_THEN_CLOUD, fail.fetchImpl, noMeter);
   assert.equal(isProviderDemoted(ORG, 'ollama', 'chat'), true);
 
   const ok = responder({ 'local': () => new Response('ok', { status: 200 }) });
   // The chain still contains ollama (demoted sinks, never drops), so a direct
   // recovery is observable without waiting out the TTL.
   const demotedDeps: OrgAiDeps = { ...LOCAL_THEN_CLOUD, isDemoted: () => false };
-  await postToAiProvider(ORG, 'chat', { path: '/chat/completions', body: {} }, demotedDeps, ok.fetchImpl);
+  await postToAiProvider(ORG, 'chat', { path: '/chat/completions', body: {} }, demotedDeps, ok.fetchImpl, noMeter);
 
   assert.equal(isProviderDemoted(ORG, 'ollama', 'chat'), false);
 });
@@ -159,7 +159,7 @@ test('every provider failing throws AiFailoverError naming each attempt', async 
   });
 
   await assert.rejects(
-    () => postToAiProvider(ORG, 'chat', { path: '/chat/completions', body: {} }, LOCAL_THEN_CLOUD, fetchImpl),
+    () => postToAiProvider(ORG, 'chat', { path: '/chat/completions', body: {} }, LOCAL_THEN_CLOUD, fetchImpl, noMeter),
     (err: AiFailoverError) => {
       assert.equal(err.name, 'AiFailoverError');
       assert.deepEqual(err.attempts.map((a) => a.source), ['ollama', 'openai']);

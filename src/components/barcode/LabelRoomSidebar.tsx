@@ -81,7 +81,7 @@ export function LabelRoomSidebar({
                       {room}
                     </p>
                     {!letter && (
-                      <p className="mt-0.5 text-role-micro font-medium uppercase tracking-wider text-amber-600">
+                      <p className="mt-0.5 text-role-micro font-medium text-amber-600">
                         No zone letter
                       </p>
                     )}

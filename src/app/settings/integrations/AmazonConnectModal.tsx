@@ -76,7 +76,7 @@ export function AmazonConnectModal({ onClose }: { onClose: () => void }) {
         </DialogHeader>
 
         <label className="block">
-          <span className="text-role-caption font-semibold uppercase tracking-wide text-text-soft">Region</span>
+          <span className="text-role-caption font-semibold text-text-soft">Region</span>
           <div className="relative mt-1">
             <select
               value={region}
@@ -97,7 +97,7 @@ export function AmazonConnectModal({ onClose }: { onClose: () => void }) {
           </Button>
         </div>
 
-        <div className="flex items-center gap-3 text-role-caption font-medium uppercase tracking-wide text-text-faint">
+        <div className="flex items-center gap-3 text-role-caption font-medium text-text-faint">
           <span className="h-px flex-1 bg-surface-strong" /> or paste a refresh token <span className="h-px flex-1 bg-surface-strong" />
         </div>
 

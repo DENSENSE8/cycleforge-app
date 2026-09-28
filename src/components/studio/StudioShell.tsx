@@ -169,7 +169,7 @@ export function StudioShell() {
               </Button>
             ) : (
               <>
-                <span className="rounded-md bg-amber-100 px-2 py-1 text-role-caption font-semibold uppercase tracking-wide text-amber-700">
+                <span className="rounded-md bg-amber-100 px-2 py-1 text-role-caption font-semibold text-amber-700">
                   Draft v{graph.definition.version}
                 </span>
                 {/* Add a sticky-note (Phase E3) — only on a draft (the active
@@ -329,7 +329,7 @@ export function StudioShell() {
         {inspectorOpen ? (
           <aside className="hidden w-72 shrink-0 flex-col border-l border-border-soft bg-surface-card md:flex">
             <div className="flex shrink-0 items-center justify-between border-b border-border-hairline px-3 py-2">
-              <span className="text-role-micro uppercase tracking-wider text-text-faint">Inspector</span>
+              <span className="text-role-micro text-text-faint">Inspector</span>
               <HoverTooltip label="Hide inspector" asChild>
                 <IconButton
                   type="button"
@@ -375,7 +375,7 @@ export function StudioShell() {
               className="relative hidden w-8 shrink-0 flex-col items-center gap-2 border-l border-border-soft bg-surface-card py-3 text-text-faint transition-colors hover:bg-surface-hover hover:text-text-muted md:flex"
             >
               <ChevronLeft className="h-4 w-4" />
-              <span className="text-role-micro font-semibold uppercase tracking-wider [writing-mode:vertical-rl]">
+              <span className="text-role-micro font-semibold [writing-mode:vertical-rl]">
                 Inspector
               </span>
               {/* A node is selected but its detail is tucked away — hint it. */}

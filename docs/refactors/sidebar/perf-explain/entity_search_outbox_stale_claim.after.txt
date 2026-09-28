@@ -1,19 +1,20 @@
 -- entity_search_outbox_stale_claim: AFTER
--- captured 2026-09-26T19:48:57Z as app_tenant (unpooled), app.current_org=00000000-0000-0000-0000-000000000001
+-- captured 2026-09-28T08:23:55Z as app_tenant bypassrls=false (unpooled), app.current_org=00000000-0000-0000-0000-000000000001
 -- SQL: docs/refactors/sidebar/perf-explain/entity_search_outbox_stale_claim.after.sql
 
-                                                                   QUERY PLAN                                                                   
-------------------------------------------------------------------------------------------------------------------------------------------------
- Bitmap Heap Scan on entity_search_outbox  (cost=4.54..222.00 rows=1624 width=8) (actual time=0.006..0.007 rows=0 loops=1)
+                                                                 QUERY PLAN                                                                  
+---------------------------------------------------------------------------------------------------------------------------------------------
+ Bitmap Heap Scan on entity_search_outbox  (cost=4.14..31.58 rows=8 width=8) (actual time=0.034..0.034 rows=0 loops=1)
    Recheck Cond: ((claimed_at < (now() - '00:15:00'::interval)) AND (processed_at IS NULL))
    Filter: (organization_id = (NULLIF(current_setting('app.current_org'::text, true), ''::text))::uuid)
-   Buffers: shared hit=1
-   ->  Bitmap Index Scan on idx_entity_search_outbox_stale_claim  (cost=0.00..4.14 rows=1682 width=0) (actual time=0.003..0.003 rows=0 loops=1)
+   Heap Blocks: exact=7
+   Buffers: shared hit=8
+   ->  Bitmap Index Scan on idx_entity_search_outbox_stale_claim  (cost=0.00..4.14 rows=8 width=0) (actual time=0.012..0.013 rows=7 loops=1)
          Index Cond: (claimed_at < (now() - '00:15:00'::interval))
          Buffers: shared hit=1
  Planning:
-   Buffers: shared hit=178 read=1
- Planning Time: 0.705 ms
- Execution Time: 0.310 ms
-(11 rows)
+   Buffers: shared hit=177
+ Planning Time: 0.537 ms
+ Execution Time: 0.330 ms
+(12 rows)
 

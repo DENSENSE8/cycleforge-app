@@ -6,9 +6,9 @@ import {
   fulfillmentLaneTotals,
 } from '@/lib/unshipped-state';
 
-/** The grid's own rule: Pending hides only TESTED, so it shows PENDING+BLOCKED. */
+/** The grid's own rule: Pending hides only PICKED, so it shows PENDING+BLOCKED. */
 function rowsOnPendingTab(rows: { hasPickScan: boolean; isOutOfStock: boolean }[]) {
-  return rows.filter((r) => deriveFulfillmentState(r) !== 'TESTED').length;
+  return rows.filter((r) => deriveFulfillmentState(r) !== 'PICKED').length;
 }
 
 /** Build the `/api/orders/queue-counts` payload those rows would produce. */
@@ -20,8 +20,8 @@ function countsFor(rows: { hasPickScan: boolean; isOutOfStock: boolean }[]) {
     else combos.push({ hasPickScan: r.hasPickScan, blocked: r.isOutOfStock, count: 1 });
   }
   const total = rows.length;
-  const tested = rows.filter((r) => r.hasPickScan).length;
-  return { combos, byStage: { all: total, pending: total - tested, tested } };
+  const picked = rows.filter((r) => r.hasPickScan).length;
+  return { combos, byStage: { all: total, pending: total - picked, picked } };
 }
 
 describe('fulfillmentLaneTotals', () => {
@@ -44,7 +44,7 @@ describe('fulfillmentLaneTotals', () => {
       { hasPickScan: false, isOutOfStock: false }, // PENDING
       { hasPickScan: false, isOutOfStock: true }, // BLOCKED (untested)
       { hasPickScan: true, isOutOfStock: true }, // BLOCKED (tested — blocked wins)
-      { hasPickScan: true, isOutOfStock: false }, // TESTED
+      { hasPickScan: true, isOutOfStock: false }, // PICKED
     ];
     const totals = fulfillmentLaneTotals(countsFor(rows));
 
@@ -52,16 +52,16 @@ describe('fulfillmentLaneTotals', () => {
     // 2 PENDING + 2 BLOCKED (blocked wins over a pick scan, so the blocked+tested
     // row is on the Pending grid too — and must be in its total exactly once).
     assert.equal(totals.pending, 4);
-    // A blocked+tested order belongs to BLOCKED, so the Tested tab must NOT
-    // count it — `byStage.tested` (raw) would have said 2.
-    assert.equal(totals.tested, 1);
+    // A blocked+tested order belongs to BLOCKED, so the Picked tab must NOT
+    // count it — `byStage.picked` (raw) would have said 2.
+    assert.equal(totals.picked, 1);
     assert.equal(totals.blocked, 2);
   });
 
   it('falls back to the raw split ONLY when no combos are present, and never adds blocked there', () => {
-    const degraded = { combos: [], byStage: { all: 4, pending: 3, tested: 1 } };
-    assert.deepEqual(fulfillmentLaneTotals(degraded), { pending: 3, tested: 1, blocked: 0 });
-    assert.deepEqual(fulfillmentLaneTotals(null), { pending: 0, tested: 0, blocked: 0 });
+    const degraded = { combos: [], byStage: { all: 4, pending: 3, picked: 1 } };
+    assert.deepEqual(fulfillmentLaneTotals(degraded), { pending: 3, picked: 1, blocked: 0 });
+    assert.deepEqual(fulfillmentLaneTotals(null), { pending: 0, picked: 0, blocked: 0 });
   });
 
   it('a legitimate zero lane is not treated as a missing value', () => {

@@ -11,6 +11,7 @@ import { PRIMARY_CHROME_ROW_FACE } from '@/components/layout/header-shell';
 import { cornerClass, DROPDOWN_ITEM_CORNER, DROPDOWN_SHELL_CORNER } from '@/design-system/tokens/radius';
 import { focusRing } from '@/design-system/tokens/focus-ring';
 import { cn } from '@/utils/_cn';
+import { KeyboardKey } from '@/design-system/primitives';
 
 interface FilterMenuProps {
   open: boolean;
@@ -126,7 +127,7 @@ export function FilterHotChip({ label, onClear }: { label: string; onClear: () =
 export function FilterMenuGroupLabel({ children }: { children: ReactNode }) {
   return (
     // px-2.5 aligns the eyebrow with the row label gutter below it.
-    <p className="px-2.5 pb-1 pt-1.5 text-role-eyebrow uppercase tracking-widest text-text-faint">
+    <p className="px-2.5 pb-1 pt-1.5 text-role-eyebrow text-text-faint">
       {children}
     </p>
   );
@@ -183,9 +184,9 @@ export function FilterMenuRow({
               </span>
             ) : null}
             {shortcut ? (
-              <kbd className="hidden rounded bg-surface-sunken px-1 text-role-micro text-text-faint sm:inline">
+              <KeyboardKey size="xs" className="hidden sm:inline-flex">
                 {shortcut}
-              </kbd>
+              </KeyboardKey>
             ) : null}
           </span>
         )

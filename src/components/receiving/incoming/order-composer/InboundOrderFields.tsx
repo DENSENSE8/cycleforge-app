@@ -1,6 +1,11 @@
 'use client';
 
-/** The left two thirds of the inbound-order form — its triage sections, top to bottom. */
+/**
+ * The left two thirds of the inbound-order form — its triage sections, top to
+ * bottom. A purchase order reads as a PO (vendor, PO #, dates, costed items);
+ * a return opens on its own Return section — the reason the unboxer checks
+ * for, RMA, the original sale — then the one returned item and its listing.
+ */
 
 import { useMemo } from 'react';
 import { Plus, Trash2 } from '@/components/Icons';
@@ -11,15 +16,18 @@ import { SearchableSelectField } from '@/design-system/components/SearchableSele
 import type { TriageSectionSpec } from '@/design-system/components/TriageSections';
 import { triagePanelControl, TRIAGE_PANEL_INNER_CORNER } from '@/design-system/tokens/triage-panel';
 import {
+  composeInboundReturnReason,
   INBOUND_ORDER_TYPES,
   INBOUND_ORDER_TYPE_LABELS,
+  parseInboundReturnReason,
   type InboundOrderDraft,
   type InboundOrderNeed,
+  type InboundReturnReason,
 } from '@/lib/inbound/inbound-order-draft';
 import type { InboundOrderPreview } from '@/lib/inbound/ingest-inbound-order';
 import { cn } from '@/utils/_cn';
 import { dateKeyToLocalDate, localDateToDateKey } from '@/utils/date';
-import { orderNumberLabel, usePlatformChoices, usePriorityChoices } from './composer-choices';
+import { orderNumberLabel, RETURN_REASON_CHOICES, usePlatformChoices, usePriorityChoices } from './composer-choices';
 import { InboundOrderLines } from './InboundOrderLines';
 import { OrderDocumentFill } from './OrderDocumentFill';
 
@@ -59,61 +67,85 @@ export function useInboundOrderSections({ draft, missing, preview, onChange, onR
   const priorities = usePriorityChoices();
   // Zoho orders arrive by sync; a hand-entered order names the seller platform.
   const platformOptions = useMemo(() => platforms.filter((p) => p.value !== 'zoho'), [platforms]);
+  const isReturn = draft.type === 'RETURN';
+  const isPo = draft.type === 'PO';
+
+  const typeSwitch = (
+    <div role="radiogroup" aria-label="Order type" className="grid grid-cols-4 gap-1">
+      {INBOUND_ORDER_TYPES.map((type) => {
+        const selected = draft.type === type;
+        return (
+          <button
+            key={type}
+            type="button"
+            role="radio"
+            aria-checked={selected}
+            onClick={() => onChange({ type })}
+            className={triagePanelControl(
+              'border px-3 text-role-caption',
+              selected ? 'border-border-strong bg-surface-selected text-text-default' : 'border-border-soft text-text-muted hover:bg-surface-canvas',
+            )}
+          >
+            {INBOUND_ORDER_TYPE_LABELS[type]}
+          </button>
+        );
+      })}
+    </div>
+  );
+
+  const platformField = (
+    <FormField label={isReturn ? 'Sold on' : 'Platform'} required>
+      <SearchableSelectField
+        value={draft.platform || null}
+        onChange={(value) => onChange({ platform: value == null ? '' : String(value) })}
+        options={platformOptions}
+        placeholder={isReturn ? 'Where the buyer bought it' : 'Who sold it'}
+        ariaLabel="Platform"
+        className={cn(needs(missing, 'platform') && 'ring-1 ring-amber-400', TRIAGE_PANEL_INNER_CORNER)}
+      />
+    </FormField>
+  );
+  const orderNumberField = (
+    <TextField
+      label={`${orderNumberLabel(draft.type, draft.platform)} *`}
+      value={draft.orderNumber}
+      onChange={(orderNumber) => onChange({ orderNumber })}
+      mono
+      aria-invalid={needs(missing, 'order_number') || undefined}
+    />
+  );
+  const accountField = (
+    <TextField label={isReturn ? 'Buyer / account' : 'Buyer account'} value={draft.accountName} onChange={(accountName) => onChange({ accountName })} />
+  );
+  const priorityField = (
+    <FormField label="Priority">
+      <SearchableSelectField
+        value={draft.priority}
+        onChange={(value) => onChange({ priority: (value == null ? 'auto' : String(value)) as InboundOrderDraft['priority'] })}
+        options={priorities}
+        ariaLabel="Priority"
+        className={TRIAGE_PANEL_INNER_CORNER}
+      />
+    </FormField>
+  );
+  const expectedField = (
+    <DateField label={isPo || isReturn ? 'Expected arrival' : 'Expected'} value={draft.expectedDate} onChange={(expectedDate) => onChange({ expectedDate })} />
+  );
 
   const order: TriageSectionSpec = {
     id: 'inbound-order',
     label: 'Order',
-    children: (
+    children: isReturn ? (
+      typeSwitch
+    ) : (
       <div className="flex flex-col gap-4">
-        <div role="radiogroup" aria-label="Order type" className="grid grid-cols-4 gap-1">
-          {INBOUND_ORDER_TYPES.map((type) => {
-            const selected = draft.type === type;
-            return (
-              <button
-                key={type}
-                type="button"
-                role="radio"
-                aria-checked={selected}
-                onClick={() => onChange({ type })}
-                className={triagePanelControl(
-                  'border px-3 text-role-caption',
-                  selected ? 'border-border-strong bg-surface-selected text-text-default' : 'border-border-soft text-text-muted hover:bg-surface-canvas',
-                )}
-              >
-                {INBOUND_ORDER_TYPE_LABELS[type]}
-              </button>
-            );
-          })}
-        </div>
+        {typeSwitch}
         <div className="grid grid-cols-2 gap-3">
-          <FormField label="Platform" required>
-            <SearchableSelectField
-              value={draft.platform || null}
-              onChange={(value) => onChange({ platform: value == null ? '' : String(value) })}
-              options={platformOptions}
-              placeholder="Who sold it"
-              ariaLabel="Platform"
-              className={cn(needs(missing, 'platform') && 'ring-1 ring-amber-400', TRIAGE_PANEL_INNER_CORNER)}
-            />
-          </FormField>
-          <TextField
-            label={`${orderNumberLabel(draft.platform)} *`}
-            value={draft.orderNumber}
-            onChange={(orderNumber) => onChange({ orderNumber })}
-            mono
-            aria-invalid={needs(missing, 'order_number') || undefined}
-          />
+          {platformField}
+          {orderNumberField}
           <TextField label="Vendor / seller" value={draft.vendor} onChange={(vendor) => onChange({ vendor })} />
-          <TextField label="Buyer account" value={draft.accountName} onChange={(accountName) => onChange({ accountName })} />
-          <FormField label="Priority">
-            <SearchableSelectField
-              value={draft.priority}
-              onChange={(value) => onChange({ priority: (value == null ? 'auto' : String(value)) as InboundOrderDraft['priority'] })}
-              options={priorities}
-              ariaLabel="Priority"
-              className={TRIAGE_PANEL_INNER_CORNER}
-            />
-          </FormField>
+          {accountField}
+          {priorityField}
           <TextField
             label="Currency"
             value={draft.currency}
@@ -122,11 +154,61 @@ export function useInboundOrderSections({ draft, missing, preview, onChange, onR
             mono
           />
           <DateField label="Order date" value={draft.orderDate} onChange={(orderDate) => onChange({ orderDate })} />
-          <DateField label="Expected" value={draft.expectedDate} onChange={(expectedDate) => onChange({ expectedDate })} />
+          {expectedField}
         </div>
       </div>
     ),
   };
+
+  // One stored string, two controls: the picked reason and the buyer's own words.
+  const reason = parseInboundReturnReason(draft.returnReason);
+  const unboxerChecks = draft.returnReason.trim();
+  const returnFacts: TriageSectionSpec | null = isReturn
+    ? {
+        id: 'inbound-return',
+        label: 'Return',
+        children: (
+          <div className="flex flex-col gap-3">
+            <div className="grid grid-cols-[16rem_1fr] gap-3">
+              <FormField label="Return reason" required>
+                <SearchableSelectField
+                  value={reason.reason}
+                  onChange={(value) =>
+                    onChange({ returnReason: composeInboundReturnReason(value == null ? null : (String(value) as InboundReturnReason), reason.detail) })
+                  }
+                  options={RETURN_REASON_CHOICES}
+                  placeholder="Why it came back"
+                  ariaLabel="Return reason"
+                  className={cn(needs(missing, 'return_reason') && 'ring-1 ring-amber-400', TRIAGE_PANEL_INNER_CORNER)}
+                />
+              </FormField>
+              <TextField
+                label="Detail — what the buyer said"
+                value={reason.detail}
+                onChange={(detail) => onChange({ returnReason: composeInboundReturnReason(reason.reason, detail) })}
+              />
+            </div>
+            <p className="text-role-caption text-text-muted" data-testid="inbound-return-unboxer-checks">
+              {unboxerChecks ? (
+                <>
+                  Unboxer checks: <span className="text-text-default">{unboxerChecks}</span>
+                </>
+              ) : (
+                'Pick the reason — the unboxer sees it when the box is opened.'
+              )}
+            </p>
+            <div className="grid grid-cols-2 gap-3">
+              {platformField}
+              {orderNumberField}
+              <TextField label="RMA #" value={draft.rmaId} mono onChange={(rmaId) => onChange({ rmaId })} />
+              {accountField}
+              {priorityField}
+              {expectedField}
+            </div>
+          </div>
+        ),
+      }
+    : null;
 
   const shipment: TriageSectionSpec = {
     id: 'inbound-shipment',
@@ -136,7 +218,7 @@ export function useInboundOrderSections({ draft, missing, preview, onChange, onR
         {draft.tracking.map((t, index) => (
           <div key={index} className="grid grid-cols-[1fr_12rem_2.25rem] items-center gap-2">
             <TextField
-              label={index === 0 ? `Tracking number${draft.type === 'RETURN' ? ' *' : ''}` : `Tracking number ${index + 1}`}
+              label={index === 0 ? (isReturn ? 'Return tracking number *' : 'Tracking number') : `Tracking number ${index + 1}`}
               value={t.number}
               mono
               aria-invalid={(index === 0 && needs(missing, 'tracking')) || undefined}
@@ -174,23 +256,9 @@ export function useInboundOrderSections({ draft, missing, preview, onChange, onR
 
   const items: TriageSectionSpec = {
     id: 'inbound-items',
-    label: `Items · ${draft.lines.length}`,
+    label: isReturn ? 'Returned item' : `Items · ${draft.lines.length}`,
     children: <InboundOrderLines draft={draft} missing={missing} preview={preview} onChange={(lines) => onChange({ lines })} />,
   };
-
-  const returnFacts: TriageSectionSpec | null =
-    draft.type === 'RETURN'
-      ? {
-          id: 'inbound-return',
-          label: 'Return',
-          children: (
-            <div className="grid grid-cols-[1fr_12rem] gap-3">
-              <TextField label="Return reason" value={draft.returnReason} onChange={(returnReason) => onChange({ returnReason })} />
-              <TextField label="RMA #" value={draft.rmaId} mono onChange={(rmaId) => onChange({ rmaId })} />
-            </div>
-          ),
-        }
-      : null;
 
   const notes: TriageSectionSpec = {
     id: 'inbound-notes',
@@ -204,5 +272,6 @@ export function useInboundOrderSections({ draft, missing, preview, onChange, onR
     children: <OrderDocumentFill currentType={draft.type} onFilled={onReplace} />,
   };
 
-  return [order, shipment, items, ...(returnFacts ? [returnFacts] : []), notes, fill];
+  // A return leads with its own facts, then the one item, then the parcel it comes back in.
+  return returnFacts ? [order, returnFacts, items, shipment, notes, fill] : [order, shipment, items, notes, fill];
 }

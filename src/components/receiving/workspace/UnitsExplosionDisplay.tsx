@@ -130,7 +130,7 @@ export function UnitsExplosionDisplay({
 
       {siblingLines.length > 0 ? (
         <div className="min-w-0">
-          <p className="border-b border-border-hairline px-3 py-2 text-role-eyebrow uppercase tracking-widest text-text-soft">
+          <p className="border-b border-border-hairline px-3 py-2 text-role-eyebrow text-text-soft">
             Other lines on carton
           </p>
           <ul className="divide-y divide-border-hairline border-b border-border-hairline">
@@ -212,7 +212,7 @@ function ActiveLineExplosion({
           <p className="truncate text-role-caption font-semibold text-text-default">
             {receivingWorkspaceLineTitle(line)}
           </p>
-          <p className="text-role-eyebrow uppercase tracking-widest text-text-soft">
+          <p className="text-role-eyebrow text-text-soft">
             Active line · unit explosion
           </p>
         </div>

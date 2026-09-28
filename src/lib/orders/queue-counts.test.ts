@@ -13,11 +13,11 @@ const ORG = '00000000-0000-0000-0000-000000000001' as OrgId;
 
 const TALLIES: QueueCountsTallies = {
   groups: [
-    // pre-pack: 5 untested (1 urgent), 3 tested (2 must-ship), 2 blocked untested
+    // pre-pack: 5 unpicked (1 urgent), 3 picked (2 must-ship), 2 blocked unpicked
     { has_pick_scan: false, has_pack_scan: false, blocked: false, n: 5, urgent_n: 1, must_ship_n: 0 },
     { has_pick_scan: true, has_pack_scan: false, blocked: false, n: 3, urgent_n: 0, must_ship_n: 2 },
     { has_pick_scan: false, has_pack_scan: false, blocked: true, n: 2, urgent_n: 0, must_ship_n: 0 },
-    // packed-staged, tested or not
+    // packed-staged, picked or not
     { has_pick_scan: true, has_pack_scan: true, blocked: false, n: 4, urgent_n: 1, must_ship_n: 1 },
     { has_pick_scan: false, has_pack_scan: true, blocked: false, n: 1, urgent_n: 0, must_ship_n: 0 },
   ],
@@ -76,7 +76,7 @@ test('a miss partitions the To-ship scope into stages and caches the payload', a
 
   assert.equal(cache, 'MISS');
   assert.equal(payload.total, 15);
-  assert.deepEqual(payload.byStage, { all: 15, tested: 3, pending: 7, packed: 5 });
+  assert.deepEqual(payload.byStage, { all: 15, picked: 3, pending: 7, packed: 5 });
   // Lane combos are pre-pack only; packed rows are their own stage.
   assert.deepEqual(payload.combos, [
     { hasPickScan: false, blocked: false, count: 5 },

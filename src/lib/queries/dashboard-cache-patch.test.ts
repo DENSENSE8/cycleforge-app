@@ -44,7 +44,7 @@ test('remove drops the row from every variant', () => {
 
 test('list-prefix helpers never touch the separate counts key', () => {
   const qc = new QueryClient();
-  const counts = { total: 5, byStage: { all: 5, pending: 5, tested: 0 }, combos: [] };
+  const counts = { total: 5, byStage: { all: 5, pending: 5, picked: 0 }, combos: [] };
   qc.setQueryData(['dashboard-table', 'unshipped-counts', { staffId: null }], counts);
   qc.setQueryData(listKey({ stage: null }), [{ id: 1 }]);
 

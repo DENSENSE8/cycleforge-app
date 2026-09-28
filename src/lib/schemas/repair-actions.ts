@@ -3,7 +3,7 @@ import { REPAIR_DONOR_SOURCES } from '@/lib/repair/repair-actions';
 
 /**
  * Validation for the bench log (`repair_actions`) and bench timer
- * (`repair_bench_sessions`). `staff_id`, `organization_id` and every
+ * (`qc_sessions`, kind REPAIR_SERVICE). `staff_id`, `organization_id` and every
  * timestamp come from the server — none of them is accepted here.
  */
 

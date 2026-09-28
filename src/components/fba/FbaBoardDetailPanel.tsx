@@ -155,7 +155,7 @@ export function FbaBoardDetailPanel({
                     className="flex items-center justify-between gap-3 rounded-none border border-border-hairline bg-surface-canvas/60 px-2.5 py-1.5"
                   >
                     <div className="flex min-w-0 items-center gap-2">
-                      <span className="shrink-0 rounded-none bg-surface-accent px-1.5 py-0.5 text-role-eyebrow uppercase tracking-wider text-text-accent">
+                      <span className="shrink-0 rounded-none bg-surface-accent px-1.5 py-0.5 text-role-eyebrow text-text-accent">
                         {scanActionLabel(log.source_stage, log.event_type)}
                       </span>
                       <span className="truncate text-role-caption font-semibold text-text-muted">

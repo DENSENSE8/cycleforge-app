@@ -7,11 +7,9 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { Button } from '@/design-system/primitives';
 import { useNetworkOnline } from '@/hooks/useConnectionHealth';
 import { useScanFeedback } from '@/lib/scan-feedback/useScanFeedback';
-import { vibrateScan } from '@/lib/scan-feedback/play';
 import { useRegisterNewScan } from '@/components/mobile/redesign/mobile-scan-cta';
 import { MobileCaptureWindow } from '@/components/mobile/station/MobileCaptureWindow';
 import { MobileStationShell } from '@/components/mobile/station/MobileStationShell';
-import { STATION_EYEBROW_CLASS } from '@/components/mobile/station/station-chrome';
 import {
   pushStationTape,
   stationDedupeId,
@@ -33,7 +31,6 @@ import { landOutboundTracking } from '@/components/mobile/shipping/shipment/outb
 import { landScanIdentify } from '@/lib/scan/identify-land';
 import { QC_SCAN_SESSION } from '@/lib/scan/dispatch-table';
 import { useScanDispatch } from '@/hooks/useScanDispatch';
-import { cn } from '@/utils/_cn';
 import { recordMobileSessionEntry } from '@/lib/mobile/mobile-session-feed';
 import { MobileArrivalClassifyFlow } from '@/components/mobile/receiving/MobileArrivalClassifyFlow';
 import { ARRIVAL_DEDUPE_KIND, arrivalTapeEntry, type SettledArrival } from '@/components/mobile/receiving/arrival-station-tape';
@@ -93,7 +90,7 @@ function MobileScanIdentifyInner() {
   const [armRequest, setArmRequest] = useState(0);
   useRegisterNewScan(() => setArmRequest((n) => n + 1));
 
-  const { playScanFeedback, hapticOn } = useScanFeedback();
+  const { playScanFeedback } = useScanFeedback();
   const online = useNetworkOnline();
 
   const onSettled = useCallback(
@@ -111,11 +108,9 @@ function MobileScanIdentifyInner() {
         dedupeKey: settled.receivingId == null ? null : `unbox:${settled.receivingId}`,
       });
       if (settled.status === 'arrived') setArrived((n) => n + 1);
-      const kind = settled.status === 'arrived' ? 'success' : 'reject';
-      playScanFeedback(kind);
-      if (!hapticOn) vibrateScan(kind);
+      playScanFeedback(settled.status === 'arrived' ? 'success' : 'reject');
     },
-    [playScanFeedback, hapticOn],
+    [playScanFeedback],
   );
 
   const { submitRaw, inFlight } = useArrivalStation({ onSettled });
@@ -188,7 +183,6 @@ function MobileScanIdentifyInner() {
             const href = locationHubHref(code);
             applyLocationTape(locationTapeEntry(code, ++locationSeqRef.current), href);
             playScanFeedback('success');
-            if (!hapticOn) vibrateScan('success');
             router.push(href);
           }
         } finally {
@@ -196,7 +190,7 @@ function MobileScanIdentifyInner() {
         }
       })();
     },
-    [resolve, qcArmed, router, searchParams, submitRaw, playScanFeedback, hapticOn, applyLocationTape],
+    [resolve, qcArmed, router, searchParams, submitRaw, playScanFeedback, applyLocationTape],
   );
 
   // The kernel owns hardware scans on this screen.
@@ -265,7 +259,7 @@ function MobileScanIdentifyInner() {
         <div className="flex flex-col items-center gap-3 px-8 pb-6 text-center">
           {historyFailed ? (
             <>
-              <p className={cn('text-role-eyebrow text-text-danger', STATION_EYEBROW_CLASS)}>
+              <p className="text-role-eyebrow text-text-danger">
                 Could not load earlier packages
               </p>
               <Button
@@ -279,11 +273,11 @@ function MobileScanIdentifyInner() {
               </Button>
             </>
           ) : qcArmed ? (
-            <p className={cn('text-role-eyebrow text-text-soft', STATION_EYEBROW_CLASS)}>
+            <p className="text-role-eyebrow text-text-soft">
               Quality control — scan the unit label unbox put on the unit
             </p>
           ) : (
-            <p className={cn('text-role-eyebrow text-text-soft', STATION_EYEBROW_CLASS)}>
+            <p className="text-role-eyebrow text-text-soft">
               Scan a tracking number or location code
             </p>
           )}

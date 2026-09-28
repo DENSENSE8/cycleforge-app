@@ -51,7 +51,7 @@ export function FulfillmentPickupPill({
 
   return (
     <span
-      className={`inline-flex shrink-0 items-center justify-center rounded font-semibold uppercase tracking-widest text-emerald-700 ring-1 ring-inset ring-emerald-200 bg-emerald-50 ${
+      className={`inline-flex shrink-0 items-center justify-center rounded font-semibold text-emerald-700 ring-1 ring-inset ring-emerald-200 bg-emerald-50 ${
         dense ? 'px-1 py-px text-role-micro' : 'inset-chip text-role-eyebrow'
       }`}
     >

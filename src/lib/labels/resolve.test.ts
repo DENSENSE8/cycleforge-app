@@ -23,9 +23,9 @@ test('org override wins over the default and flips source to org', () => {
 });
 
 test('a partial override keeps the unset fields at their default', () => {
-  const ctx = { overrides: { unshipped: { TESTED: { label: 'Passed QC' } } } };
-  const r = resolveLabel('unshipped', 'TESTED', ctx);
-  assert.equal(r.label, 'Passed QC');
+  const ctx = { overrides: { unshipped: { PICKED: { label: 'Pulled' } } } };
+  const r = resolveLabel('unshipped', 'PICKED', ctx);
+  assert.equal(r.label, 'Pulled');
   assert.equal(r.tone, 'teal'); // untouched default
 });
 

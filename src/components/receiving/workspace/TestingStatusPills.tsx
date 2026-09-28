@@ -215,45 +215,6 @@ export function TestingStatusPills({
   );
 }
 
-/** Translate a {@link TestingVerdict} into the receiving-lines PATCH body. */
-function verdictToReceivingLinePatch(verdict: TestingVerdict): {
-  workflow_status: string;
-  qa_status: string;
-  disposition_code: string;
-} {
-  switch (verdict) {
-    case 'PASS':
-      return {
-        workflow_status: 'PASSED',
-        qa_status: 'PASSED',
-        disposition_code: 'ACCEPT',
-      };
-    case 'TEST_AGAIN':
-      return {
-        workflow_status: 'IN_TEST',
-        qa_status: 'PENDING',
-        disposition_code: 'HOLD',
-      };
-    case 'TESTING_FAILED':
-      return {
-        workflow_status: 'FAILED',
-        qa_status: 'FAILED_FUNCTIONAL',
-        disposition_code: 'REJECT',
-      };
-  }
-}
-
-/** Best-effort reverse mapping for the initial verdict shown to the tech. */
-function workflowToVerdict(
-  workflow: string | null | undefined,
-): TestingVerdict | null {
-  const v = String(workflow ?? '').trim().toUpperCase();
-  if (v === 'PASSED' || v === 'DONE') return 'PASS';
-  if (v === 'IN_TEST' || v === 'AWAITING_TEST') return 'TEST_AGAIN';
-  if (v === 'FAILED' || v.startsWith('FAILED_')) return 'TESTING_FAILED';
-  return null;
-}
-
 /** Derive the per-unit verdict from a `serial_units.current_status` value. */
 export function unitStatusToVerdict(
   status: string | null | undefined,

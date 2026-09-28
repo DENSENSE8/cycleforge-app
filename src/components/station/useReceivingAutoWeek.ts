@@ -8,6 +8,8 @@ import type { ReceivingPoGroup } from '@/components/station/receiving-lines-tabl
 
 interface UseReceivingAutoWeekArgs {
   isHistoryMode: boolean;
+  /** An explicit date window is set (`?dateFrom=`/`?dateTo=`) — an empty window is the answer, never a week to jump from. */
+  explicitRange: boolean;
   skipWeekFilter: boolean;
   weekOffset: number;
   setWeekOffset: (offset: number) => void;
@@ -18,6 +20,7 @@ interface UseReceivingAutoWeekArgs {
 
 export function useReceivingAutoWeek({
   isHistoryMode,
+  explicitRange,
   skipWeekFilter,
   weekOffset,
   setWeekOffset,
@@ -28,7 +31,7 @@ export function useReceivingAutoWeek({
   const autoWeekAppliedRef = useRef(false);
 
   useEffect(() => {
-    if (!isHistoryMode || skipWeekFilter) return;
+    if (!isHistoryMode || skipWeekFilter || explicitRange) return;
     if (autoWeekAppliedRef.current || weekOffset !== 0) return;
     // Current week already has rows → nothing to do; lock the one-shot.
     if (Object.keys(filteredGroupedRecords).length > 0) {
@@ -46,6 +49,7 @@ export function useReceivingAutoWeek({
   }, [
     isHistoryMode,
     skipWeekFilter,
+    explicitRange,
     weekOffset,
     filteredGroupedRecords,
     groupedRecords,

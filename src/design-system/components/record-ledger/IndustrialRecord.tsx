@@ -115,7 +115,7 @@ export function RecordStateCode({ state }: { state: RecordStateFace }) {
 }
 
 /**
- * WHERE the thing is — every location `|`-joined, `BIN UNASSIGNED` in the warn
+ * WHERE the thing is — every location `|`-joined, `Bin Unassigned` in the warn
  * ink when there is none (location is the first fact a floor hand needs).
  */
 export function RecordBin({ faces, className }: { faces: readonly string[]; className?: string }) {

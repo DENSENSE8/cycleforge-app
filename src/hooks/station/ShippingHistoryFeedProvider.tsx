@@ -11,9 +11,10 @@ import {
 import { useSearchParams } from 'next/navigation';
 import { computeWeekRange, type WeekRange } from '@/utils/date';
 import { useDeskPickLogs, type DeskPickLogsScope } from '@/hooks/useDeskPickLogs';
-import { STAFF_FILTER_PARAM, useStaffFilter } from '@/hooks/useStaffFilter';
-import { dedupeTechRecords, getTechRecordRowKey } from '@/lib/station/dedupe-tech-records';
-import type { TechRecord } from '@/hooks/useDeskPickLogs';
+import { useStaffFilter } from '@/hooks/useStaffFilter';
+import { STAFF_FILTER_PARAM } from '@/lib/station/table-url-params';
+import { dedupeDeskPickRecords, getDeskPickRecordRowKey } from '@/lib/station/dedupe-tech-records';
+import type { DeskPickRecord } from '@/hooks/useDeskPickLogs';
 
 interface ShippingHistoryFeedContextValue {
   /** Resolved staff scope — session tech by default, `all` when `?staff=all`. */
@@ -21,10 +22,10 @@ interface ShippingHistoryFeedContextValue {
   weekOffset: number;
   setWeekOffset: (next: number | ((prev: number) => number)) => void;
   weekRange: WeekRange;
-  records: TechRecord[];
+  records: DeskPickRecord[];
   loading: boolean;
   isRefreshing: boolean;
-  getRowKey: (record: TechRecord) => string;
+  getRowKey: (record: DeskPickRecord) => string;
   /** The find box text, shared for the same reason `weekOffset` is: */
   query: string;
   setQuery: (next: string) => void;
@@ -40,7 +41,7 @@ interface ShippingHistoryFeedProviderProps {
 
 /**
  * Shared History feed scope for Shipping mode — one week offset + staff filter
- * drives both the sidebar rail and the History tab (`TechTable`).
+ * drives both the sidebar rail and the History tab (`DeskPickTable`).
  */
 export function ShippingHistoryFeedProvider({ techId, children }: ShippingHistoryFeedProviderProps) {
   const [weekOffset, setWeekOffset] = useState(0);
@@ -63,11 +64,11 @@ export function ShippingHistoryFeedProvider({ techId, children }: ShippingHistor
     search: query,
   });
 
-  const records = useMemo(() => dedupeTechRecords(rawRecords), [rawRecords]);
+  const records = useMemo(() => dedupeDeskPickRecords(rawRecords), [rawRecords]);
   const loading = isLoading && records.length === 0;
   const isRefreshing = isFetching && !isLoading;
 
-  const getRowKey = useCallback((record: TechRecord) => getTechRecordRowKey(record), []);
+  const getRowKey = useCallback((record: DeskPickRecord) => getDeskPickRecordRowKey(record), []);
 
   const value = useMemo<ShippingHistoryFeedContextValue>(
     () => ({

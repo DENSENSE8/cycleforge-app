@@ -30,8 +30,8 @@ async function handleGet(request: NextRequest, ctx: AuthContext) {
     try {
         const { searchParams } = new URL(request.url);
 
-        // Lightweight single-id lookup — used by useStaffRole() and any other
-        // caller that just needs role/name for one person. Bypasses the
+        // Lightweight single-id lookup — for callers that just need
+        // role/name for one person. Bypasses the
         // schedule join below.
         const idParam = searchParams.get('id');
         if (idParam) {

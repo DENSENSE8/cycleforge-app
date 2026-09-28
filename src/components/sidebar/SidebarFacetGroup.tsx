@@ -28,7 +28,7 @@ export function SidebarFacetGroup<TId extends string>({
   return (
     <div className="shrink-0 border-b border-border-hairline">
       <div className={cn(SIDEBAR_GUTTER, 'flex items-center justify-between gap-2 pt-2')}>
-        <p className="text-role-eyebrow uppercase tracking-widest text-text-soft">{label}</p>
+        <p className="text-role-eyebrow text-text-soft">{label}</p>
         {action}
       </div>
       <SidebarSectionList

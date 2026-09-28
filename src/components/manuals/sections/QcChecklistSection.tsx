@@ -241,7 +241,7 @@ export function QcChecklistSection({ catalogId, qcChecks, onRefresh }: QcCheckli
                 variant="ghost"
                 onClick={() => togglePublish(check)}
                 disabled={publishing === check.id}
-                className={`shrink-0 h-auto rounded-lg px-1.5 py-0.5 text-role-micro uppercase tracking-wider opacity-0 group-hover:opacity-100 ${
+                className={`shrink-0 h-auto rounded-lg px-1.5 py-0.5 text-role-micro opacity-0 group-hover:opacity-100 ${
                   isDraft
                     ? 'text-emerald-600 hover:bg-emerald-50'
                     : 'text-text-faint hover:bg-surface-sunken hover:text-text-muted'
@@ -396,7 +396,7 @@ export function QcChecklistSection({ catalogId, qcChecks, onRefresh }: QcCheckli
           size="sm"
           icon={<Plus className="h-3 w-3" />}
           onClick={() => { resetForm(); setShowAdd(true); }}
-          className="text-role-micro uppercase tracking-wider text-blue-600 hover:bg-blue-50"
+          className="text-role-micro text-blue-600 hover:bg-blue-50"
         >
           Add Step
         </Button>

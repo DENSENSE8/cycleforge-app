@@ -14,9 +14,7 @@ import { TextField } from '@/design-system/primitives/TextField';
 import { Check, Type, X } from '@/components/Icons';
 import { useBarcodeScanner } from '@/hooks/useBarcodeScanner';
 import { useKeyboard } from '@/hooks/useKeyboard';
-import { cn } from '@/utils/_cn';
 import { MobileCameraPanel } from './MobileCameraPanel';
-import { STATION_EYEBROW_CLASS } from './station-chrome';
 
 /** How long the same code is ignored after a read. */
 const DEDUP_MS = 6000;
@@ -245,7 +243,7 @@ export function MobileCaptureWindow({
             role="status"
             className="absolute inset-0 flex flex-col items-center justify-center gap-2 px-8 pt-9 text-center"
           >
-            <span className={cn('text-role-eyebrow text-white', STATION_EYEBROW_CLASS)}>
+            <span className="text-role-eyebrow text-white">
               Starting camera
             </span>
             <p className="text-role-caption text-white/85">

@@ -220,7 +220,7 @@ export function BinAddSkuSheet({
           className="h-10 w-10 rounded-md border border-border-default bg-surface-card text-sm font-semibold text-text-muted active:bg-surface-hover"
         />
         <div className="min-w-0 flex-1">
-          <p className="text-role-micro uppercase tracking-[0.16em] text-text-soft">
+          <p className="text-role-micro text-text-soft">
             Add to bin
           </p>
           <p className="truncate font-mono text-sm font-semibold text-text-default">
@@ -260,7 +260,7 @@ export function BinAddSkuSheet({
               </p>
             )}
             {!debounced.trim() && (
-              <p className="px-2 py-8 text-center text-role-caption font-semibold uppercase tracking-widest text-text-faint">
+              <p className="px-2 py-8 text-center text-role-caption font-semibold text-text-faint">
                 Type a few characters to search
               </p>
             )}
@@ -319,13 +319,13 @@ export function BinAddSkuSheet({
                 {selected.product_title}
               </p>
             )}
-            <p className="mt-2 text-role-micro uppercase tracking-widest text-text-faint">
+            <p className="mt-2 text-role-micro text-text-faint">
               Currently {selected.stock ?? 0} total on hand
             </p>
           </Panel>
 
           <label className="mt-6 block">
-            <span className="text-role-micro uppercase tracking-[0.16em] text-text-soft">
+            <span className="text-role-micro text-text-soft">
               Add to this bin
             </span>
             <input

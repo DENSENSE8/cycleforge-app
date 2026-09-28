@@ -85,7 +85,7 @@ export function LiveFeedCard({ feed, isLoading, ablyStatus = 'connected' }: Live
               ablyStatus === 'connecting' ? 'bg-amber-500' : 'bg-rose-500'
             }`} />
           </span>
-          <span className="text-role-micro uppercase tracking-[0.16em] text-text-muted">
+          <span className="text-role-micro text-text-muted">
             {ablyStatus === 'connected' ? 'Live' : ablyStatus}
           </span>
         </div>
@@ -128,11 +128,11 @@ export function LiveFeedCard({ feed, isLoading, ablyStatus = 'connected' }: Live
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2">
-                        <span className="text-role-micro uppercase tracking-[0.14em] text-text-muted">
+                        <span className="text-role-micro text-text-muted">
                           {label}
                         </span>
                         {row.source && (
-                          <span className="text-role-micro text-text-soft uppercase">
+                          <span className="text-role-micro text-text-soft">
                             · {row.source}
                           </span>
                         )}

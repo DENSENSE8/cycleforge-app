@@ -18,7 +18,7 @@ export function SkuStockCard({ c, data }: { c: SkuDetailController; data: SkuDet
           variant="ghost"
           size="sm"
           onClick={() => c.setShowSetMode(!c.showSetMode)}
-          className="text-role-micro uppercase tracking-wider text-blue-600 hover:text-blue-800"
+          className="text-role-micro text-blue-600 hover:text-blue-800"
         >
           {c.showSetMode ? 'Quick Adjust' : 'Set Exact'}
         </Button>

@@ -13,6 +13,12 @@ describe('sentenceCaseLabel', () => {
     assert.equal(sentenceCaseLabel('CUSTOM FLOW'), 'Custom flow');
   });
 
+  it('keeps acronym tokens upper-case while sentence-casing words', () => {
+    assert.equal(sentenceCaseLabel('FBA'), 'FBA');
+    assert.equal(sentenceCaseLabel('AWAITING_FBA_PREP'), 'Awaiting FBA prep');
+    assert.equal(sentenceCaseLabel('NEW'), 'New');
+  });
+
   it('leaves hyphenated codes alone', () => {
     assert.equal(sentenceCaseLabel('ECWID-RS'), 'ECWID-RS');
   });

@@ -10,6 +10,7 @@ import {
 } from '@/lib/auth/webauthn';
 import { grantStepUp } from '@/lib/auth/stepup';
 import { audit } from '@/lib/auth/audit';
+import { checkRateLimitAsync } from '@/lib/api-guard';
 import type { AuthenticationResponseJSON } from '@simplewebauthn/types';
 
 export const runtime = 'nodejs';
@@ -28,6 +29,23 @@ export async function POST(req: NextRequest) {
     const me = await getCurrentUser();
     if (!me) return NextResponse.json({ error: 'UNAUTHENTICATED' }, { status: 401 });
 
+    // Per-staff throttle (IP-agnostic): bounds PIN guessing on a hijacked
+    // session and the scrypt cost per staff, without a shared-NAT bucket.
+    const rl = await checkRateLimitAsync({
+      headers: req.headers,
+      routeKey: 'auth-step-up',
+      scope: `${me.organizationId}:${me.staffId}`,
+      ipAgnostic: true,
+      limit: 10,
+      windowMs: 10 * 60 * 1000,
+    });
+    if (!rl.ok) {
+      return NextResponse.json(
+        { error: 'RATE_LIMITED' },
+        { status: 429, headers: rl.retryAfterSec ? { 'retry-after': String(rl.retryAfterSec) } : undefined },
+      );
+    }
+
     const body = await req.json().catch(() => ({} as Record<string, unknown>));
     const scope = String((body as { scope?: unknown }).scope ?? '').trim();
     const method = String((body as { method?: unknown }).method ?? '').trim();
@@ -36,7 +54,7 @@ export async function POST(req: NextRequest) {
     if (method === 'pin') {
       const pin = String((body as { pin?: unknown }).pin ?? '');
       try {
-        await verifyStaffPin(me.staffId, pin, undefined, { recordLogin: false });
+        await verifyStaffPin(me.staffId, pin, me.organizationId, { recordLogin: false });
       } catch (err) {
         await audit({
           staffId: me.staffId, sid: me.session.sid,
@@ -44,7 +62,7 @@ export async function POST(req: NextRequest) {
           detail: { scope, method, reason: err instanceof PinError ? err.code : 'error' },
         });
         if (err instanceof PinError) {
-          return NextResponse.json({ error: err.code }, { status: 401 });
+          return NextResponse.json({ error: err.code }, { status: err.code === 'LOCKED' ? 423 : 401 });
         }
         throw err;
       }

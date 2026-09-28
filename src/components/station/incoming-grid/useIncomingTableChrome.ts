@@ -9,11 +9,7 @@ import { useCallback, useMemo } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import type { DataTableFilterOption } from '@/components/tables/DataTable';
 import { receivingSurfaceBasePath } from '@/lib/receiving/surface-path';
-
-const SOURCE_OPTIONS = [
-  { id: 'zoho', label: 'Zoho' },
-  { id: 'ebay', label: 'eBay' },
-] as const;
+import { INBOUND_SOURCE_OPTIONS, INBOUND_SOURCE_PARAM } from '@/lib/receiving/inbound-lane';
 
 export function useIncomingTableChrome(): {
   filter: {
@@ -27,7 +23,7 @@ export function useIncomingTableChrome(): {
   const searchParams = useSearchParams();
   const base = receivingSurfaceBasePath(pathname);
 
-  const inbound = (searchParams.get('inbound') || '').trim().toLowerCase();
+  const inbound = (searchParams.get(INBOUND_SOURCE_PARAM) || '').trim().toLowerCase();
 
   const replaceParams = useCallback(
     (mutate: (params: URLSearchParams) => void) => {
@@ -42,11 +38,11 @@ export function useIncomingTableChrome(): {
 
   const filterOptions = useMemo<DataTableFilterOption[]>(
     () =>
-      SOURCE_OPTIONS.map((option) => ({
-        id: `source:${option.id}`,
+      INBOUND_SOURCE_OPTIONS.map((option) => ({
+        id: `source:${option.value}`,
         group: 'Source',
         label: option.label,
-        active: inbound === option.id,
+        active: inbound === option.value,
       })),
     [inbound],
   );
@@ -55,8 +51,8 @@ export function useIncomingTableChrome(): {
     (id: string) => {
       const src = id.slice('source:'.length);
       replaceParams((params) => {
-        if (params.get('inbound') === src) params.delete('inbound');
-        else params.set('inbound', src);
+        if (params.get(INBOUND_SOURCE_PARAM) === src) params.delete(INBOUND_SOURCE_PARAM);
+        else params.set(INBOUND_SOURCE_PARAM, src);
       });
     },
     [replaceParams],
@@ -64,7 +60,7 @@ export function useIncomingTableChrome(): {
 
   const onClearAll = useCallback(() => {
     replaceParams((params) => {
-      params.delete('inbound');
+      params.delete(INBOUND_SOURCE_PARAM);
     });
   }, [replaceParams]);
 

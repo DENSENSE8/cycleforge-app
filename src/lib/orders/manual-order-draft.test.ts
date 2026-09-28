@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { intakeFromCanonical } from '@/components/outbound/orders/intake/intake-model';
+import { intakeFromCanonical } from '@/lib/orders/intake/intake-model';
 import {
   decodeOrderPrefill,
   emptyManualOrderDraft,

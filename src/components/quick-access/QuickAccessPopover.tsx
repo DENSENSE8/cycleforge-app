@@ -65,13 +65,13 @@ export function QuickAccessPopover({
         <div className="flex shrink-0 items-center gap-3 border-t border-border-hairline bg-surface-canvas/60 px-4 py-3">
           <StaffAvatar staffId={user.staffId} name={staffName} size="md" />
           <div className="min-w-0 flex-1">
-            <div className="truncate text-role-eyebrow uppercase tracking-[0.14em] text-text-faint">
+            <div className="truncate text-role-eyebrow text-text-faint">
               {user.organizationName}
             </div>
             <div className="truncate text-sm font-semibold text-text-default">
               {staffName || `Staff #${user.staffId}`}
             </div>
-            <div className="truncate text-role-micro font-medium uppercase tracking-[0.14em] text-text-soft">
+            <div className="truncate text-role-micro font-medium text-text-soft">
               {user.role.replace(/_/g, ' ')}
             </div>
           </div>

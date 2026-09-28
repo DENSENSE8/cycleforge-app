@@ -224,3 +224,33 @@ test('only an explicit caged stamp cages a row', () => {
   assert.equal(isCaged('CAGED'), true, 'case is not a semantic');
   assert.equal(isReleased('caged'), false);
 });
+
+// ── Pickup / walk-in (fulfillment_channel = 'PICKUP') ───────────────────────
+
+test('a counter pickup releases with no tracking and no label — G1 stops asking for tracking, G3 is the handover', () => {
+  const walkIn: ReleaseGateFacts = {
+    ...GREEN,
+    trackingNumber: null,
+    shippingLabelLinked: false,
+    shippingLabelPurchased: false,
+    pickup: true,
+  };
+  const result = evaluateReleaseGates(walkIn);
+  assert.equal(result.canRelease, true);
+  assert.deepEqual(result.failing, []);
+});
+
+test('pickup waives only tracking + label: product, order number, documents and pairing still gate', () => {
+  const base: ReleaseGateFacts = { ...GREEN, trackingNumber: null, shippingLabelLinked: false, pickup: true };
+  assert.deepEqual(evaluateReleaseGates({ ...base, orderNumber: null }).failing.map((g) => g.id), ['G1']);
+  assert.match(gate({ ...base, orderNumber: null }, 'G1').reason ?? '', /order number/);
+  assert.doesNotMatch(gate({ ...base, orderNumber: null }, 'G1').reason ?? '', /tracking/);
+  assert.deepEqual(evaluateReleaseGates({ ...base, linkedDocumentCount: 0 }).failing.map((g) => g.id), ['G2']);
+  assert.deepEqual(evaluateReleaseGates({ ...base, skuCatalogId: null }).failing.map((g) => g.id), ['G4']);
+});
+
+test('the same order shipped (pickup false / absent) is still blocked on tracking and label', () => {
+  const shipped: ReleaseGateFacts = { ...GREEN, trackingNumber: null, shippingLabelLinked: false, shippingLabelPurchased: false };
+  assert.deepEqual(evaluateReleaseGates(shipped).failing.map((g) => g.id), ['G1', 'G3']);
+  assert.deepEqual(evaluateReleaseGates({ ...shipped, pickup: false }).failing.map((g) => g.id), ['G1', 'G3']);
+});

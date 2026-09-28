@@ -101,7 +101,7 @@ function PartRow({ part, modelId }: { part: CompatiblePart; modelId: number }) {
           <p className="truncate text-sm font-semibold text-text-default">{part.product_title}</p>
           <p className="truncate text-role-caption text-text-soft">{part.sku}</p>
         </div>
-        <span className="rounded-full bg-surface-sunken px-2 py-0.5 text-role-micro font-semibold uppercase tracking-wide text-text-muted">{part.part_role}</span>
+        <span className="rounded-full bg-surface-sunken px-2 py-0.5 text-role-micro font-semibold text-text-muted">{part.part_role}</span>
         <span className={`rounded-full px-2 py-0.5 text-role-micro font-semibold ${out || (eol && part.on_hand < 2) ? 'bg-red-50 text-red-700' : eol ? 'bg-amber-50 text-amber-700' : 'bg-surface-sunken text-text-muted'}`}>
           {out ? '0 in stock' : `${part.on_hand} in stock`}{eol ? ` · ${part.lifecycle_status}` : ''}
         </span>

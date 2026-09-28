@@ -44,5 +44,12 @@ export const toast = Object.assign(
     dismiss: sonnerToast.dismiss.bind(sonnerToast),
     getHistory: sonnerToast.getHistory.bind(sonnerToast),
     getToasts: sonnerToast.getToasts.bind(sonnerToast),
+    /** A done-and-reversible write: the message plus one "Undo" action (6 s by default). */
+    undo: (message: string, opts: { onUndo: () => void; duration?: number }): string | number =>
+      sonnerToast.success(message, {
+        ...mergeOptions('success'),
+        duration: opts.duration ?? 6000,
+        action: { label: 'Undo', onClick: () => opts.onUndo() },
+      }),
   },
 );

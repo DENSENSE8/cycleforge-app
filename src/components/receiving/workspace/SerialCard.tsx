@@ -279,7 +279,7 @@ export function SerialCard({
         <div className="mt-3 border-t border-border-hairline pt-3">
           <label
             htmlFor={notesId}
-            className="block text-role-micro uppercase tracking-[0.14em] text-text-soft"
+            className="block text-role-micro text-text-soft"
           >
             Notes
           </label>
@@ -422,7 +422,7 @@ export function SerialChipWithMenu({
           >
             {onSetCondition ? (
               <div className="border-b border-border-hairline px-2 py-1.5">
-                <p className="mb-1 text-role-micro uppercase tracking-widest text-text-faint">
+                <p className="mb-1 text-role-micro text-text-faint">
                   Condition
                 </p>
                 <ConditionPills
@@ -440,7 +440,7 @@ export function SerialChipWithMenu({
                   onEdit(serial);
                   closeNow();
                 }}
-                className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-role-caption font-semibold uppercase tracking-widest text-text-muted hover:bg-surface-hover"
+                className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-role-caption font-semibold text-text-muted hover:bg-surface-hover"
               >
                 <Pencil className="h-3.5 w-3.5 shrink-0 text-text-soft" />
                 Edit
@@ -455,7 +455,7 @@ export function SerialChipWithMenu({
                   onDelete(serial);
                   closeNow();
                 }}
-                className="flex w-full items-center gap-2 border-t border-border-hairline px-3 py-1.5 text-left text-role-caption font-semibold uppercase tracking-widest text-rose-600 hover:bg-rose-50"
+                className="flex w-full items-center gap-2 border-t border-border-hairline px-3 py-1.5 text-left text-role-caption font-semibold text-rose-600 hover:bg-rose-50"
               >
                 <X className="h-3.5 w-3.5 shrink-0" />
                 Delete

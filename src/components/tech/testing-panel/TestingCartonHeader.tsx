@@ -6,6 +6,7 @@ import { dispatchLineUpdated } from '@/components/station/receiving-lines-table-
 import { isLocalPickupFulfillment } from '@/lib/receiving/fulfillment-mode';
 import { useCartonPoTotal } from '@/components/receiving/workspace/line-edit/hooks/useCartonPoTotal';
 import type { TestingController } from './testing-panel-types';
+import { TestingQcAssignee } from './TestingQcAssignee';
 
 /** Testing adapter for the station entity-context header SoT (`CartonContextCard` via `@/components/station/entity-context`). */
 export function TestingCartonHeader({
@@ -90,6 +91,10 @@ export function TestingCartonHeader({
       // has necessarily already been opened, so its carton photos are
       // unbox-stage evidence, never arrival.
       photoStage="unbox_carton"
+      // The open line's QC tech — Mine / All on the bench reads it.
+      assigneeCell={
+        row.id > 0 ? <TestingQcAssignee lineId={row.id} assignedTechId={row.assigned_tech_id ?? null} /> : null
+      }
     />
   );
 }

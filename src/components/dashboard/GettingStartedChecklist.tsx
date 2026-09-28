@@ -12,7 +12,7 @@ import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { Check, ChevronRight, ClipboardList, X } from '@/components/Icons';
 import { completedStepCount, stepsForEntitlements } from '@/lib/onboarding/steps';
 
-const EYEBROW = 'text-role-eyebrow uppercase tracking-widest text-text-accent';
+const EYEBROW = 'text-role-eyebrow text-text-accent';
 
 /**
  * Permission gate. The data-owning inner component mounts only behind
@@ -71,7 +71,7 @@ function GettingStartedChecklistInner({ variant }: { variant: ChecklistVariant }
             <span className={EYEBROW}>Getting started</span>
           </span>
           <span className="inline-flex items-center gap-1">
-            <span className="text-role-eyebrow uppercase tracking-widest leading-none text-text-soft tabular-nums">
+            <span className="text-role-eyebrow leading-none text-text-soft tabular-nums">
               {completed}/{steps.length}
             </span>
             <HoverTooltip label="Skip for now" focusable={false}>
@@ -122,7 +122,7 @@ function GettingStartedChecklistInner({ variant }: { variant: ChecklistVariant }
                   <span className="block truncate text-role-caption font-semibold text-text-default">
                     {step.label}
                   </span>
-                  <span className="block truncate text-role-eyebrow font-semibold uppercase tracking-widest text-text-soft">
+                  <span className="block truncate text-role-eyebrow font-semibold text-text-soft">
                     {step.description}
                   </span>
                 </span>

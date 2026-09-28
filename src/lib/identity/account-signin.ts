@@ -3,7 +3,7 @@
 import pool from '@/lib/db';
 import { audit } from '@/lib/auth/audit';
 import type { SessionRow } from '@/lib/auth/session';
-import { checkRateLimitAsync } from '@/lib/api-guard';
+import { AUTH_PER_IP_LIMIT_PER_10_MIN, checkRateLimitAsync } from '@/lib/api-guard';
 import { getAccountByEmail, type AccountRecord } from '@/lib/identity/accounts';
 import { verifyPassword } from '@/lib/identity/password';
 import { listMembershipsForAccount, logAuthEvent, type MembershipRow } from '@/lib/identity/memberships';
@@ -58,20 +58,23 @@ export async function authenticateAccountPassword(
   input: AccountSigninInput,
   deps: AccountSigninDeps = defaultDeps,
 ): Promise<AccountSigninResult> {
-  // Per-IP throttle against credential stuffing.
+  // Per-IP throttle against credential stuffing. Sized for a shared warehouse
+  // NAT (a whole shift signing in); the per-email bucket below is the tight one.
   const rl = await deps.checkRateLimit({
     headers: input.headers,
     routeKey: 'auth-account-signin',
-    limit: 20,
+    limit: AUTH_PER_IP_LIMIT_PER_10_MIN,
     windowMs: WINDOW_MS,
   });
   if (!rl.ok) return { kind: 'rate_limited', retryAfterSec: rl.retryAfterSec };
 
-  // Per-email throttle so one targeted account can't be brute-forced across IPs.
+  // Per-email throttle, keyed on the email alone, so one targeted account can't
+  // be brute-forced across IPs.
   const emailRl = await deps.checkRateLimit({
     headers: input.headers,
     routeKey: 'auth-account-signin-email',
     scope: input.email.toLowerCase(),
+    ipAgnostic: true,
     limit: 10,
     windowMs: WINDOW_MS,
   });

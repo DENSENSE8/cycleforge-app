@@ -152,7 +152,7 @@ function SignInQrScanDialog({
         )}
       >
         <DialogHeader className="space-y-1 pr-8">
-          <DialogDescription className="text-role-micro uppercase tracking-widest text-text-soft">
+          <DialogDescription className="text-role-micro text-text-soft">
             Desk pairing
           </DialogDescription>
           <DialogTitle className="text-sm font-semibold text-text-default">

@@ -85,7 +85,7 @@ export function PhotosPlatformPanel() {
             key={card.label}
             className="rounded-none border border-border-soft bg-surface-card px-4 py-3 shadow-sm"
           >
-            <p className="text-role-micro uppercase tracking-wider text-text-faint">
+            <p className="text-role-micro text-text-faint">
               {card.label}
             </p>
             <p className="mt-1 text-2xl font-semibold tabular-nums text-text-default">{card.value}</p>

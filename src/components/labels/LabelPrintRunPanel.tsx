@@ -314,7 +314,7 @@ export function LabelPrintRunPanel({
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-2">
       <div className="shrink-0 stack-tight">
-        <p className="text-role-micro font-semibold uppercase tracking-[0.16em] text-text-faint">
+        <p className="text-role-micro font-semibold text-text-faint">
           Print run · live faces
         </p>
         <p className="text-role-micro tabular-nums text-text-soft">{freezeTitle(freeze)}</p>
@@ -466,7 +466,7 @@ export function LabelPrintRunPanel({
           <div className="flex flex-wrap items-end gap-2">
             {!freeze.rack && varyOptions.length > 1 ? (
               <div className="min-w-[10rem] flex-1">
-                <span className="text-role-micro font-semibold uppercase tracking-wider text-text-soft">
+                <span className="text-role-micro font-semibold text-text-soft">
                   Vary
                 </span>
                 <div className="mt-0.5 flex flex-wrap gap-1">

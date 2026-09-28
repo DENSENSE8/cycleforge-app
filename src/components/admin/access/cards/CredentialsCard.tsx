@@ -153,7 +153,7 @@ export function CredentialsCard({
                 <li key={s.sid} className="flex items-center justify-between gap-3 inset-field">
                   <div className="min-w-0">
                     <div className="truncate text-xs font-semibold text-text-default">
-                      <span className="rounded-full bg-surface-sunken inset-chip text-role-eyebrow uppercase tracking-wider text-text-muted mr-1.5">{s.device_kind}</span>
+                      <span className="rounded-full bg-surface-sunken inset-chip text-role-eyebrow text-text-muted mr-1.5">{s.device_kind}</span>
                       {s.device_label || 'Unlabeled'}
                     </div>
                     <div className="truncate text-role-micro text-text-soft">

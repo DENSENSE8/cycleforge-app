@@ -87,9 +87,12 @@ export function isDeskFloorChord(
   return event.code === 'KeyF' || event.key.toLowerCase() === 'f';
 }
 
-/** Cheat-sheet row and tooltip text — one spelling of the chord. */
-export const DESK_FLOOR_SHORTCUT = { keys: ['⌘/Ctrl', '⇧', 'F'], label: 'Floor view on / off' } as const;
-export const DESK_FLOOR_SHORTCUT_HINT = '⌘/Ctrl+Shift+F';
+/**
+ * Cheat-sheet row and tooltip chord — one spelling, platform-neutral: `mod`
+ * paints ⌘ on Apple and Ctrl elsewhere (`KeyboardKey` → `platformKeyFace`).
+ */
+export const DESK_FLOOR_SHORTCUT = { keys: ['mod', 'Shift', 'F'], label: 'Floor view on / off' } as const;
+export const DESK_FLOOR_SHORTCUT_HINT = 'mod + Shift + F';
 
 /**
  * ⌘/Ctrl+Shift+S — In place ⇄ Split. The Floor chord's sibling: same
@@ -102,8 +105,8 @@ export function isDeskSplitChord(
   return event.code === 'KeyS' || event.key.toLowerCase() === 's';
 }
 
-export const DESK_SPLIT_SHORTCUT = { keys: ['⌘/Ctrl', '⇧', 'S'], label: 'Split view on / off' } as const;
-export const DESK_SPLIT_SHORTCUT_HINT = '⌘/Ctrl+Shift+S';
+export const DESK_SPLIT_SHORTCUT = { keys: ['mod', 'Shift', 'S'], label: 'Split view on / off' } as const;
+export const DESK_SPLIT_SHORTCUT_HINT = 'mod + Shift + S';
 
 // ── Floor, published ACROSS the tree ───────────────────────────────────────
 // The app shell's sidebar column and the route's mode region sit above the

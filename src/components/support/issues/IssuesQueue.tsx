@@ -103,7 +103,7 @@ export function IssuesQueue() {
   const renderFilters = (onClose: () => void) => (
     <div className="space-y-3">
       <div>
-        <p className="mb-1.5 text-role-caption font-semibold uppercase tracking-wide text-text-faint">
+        <p className="mb-1.5 text-role-caption font-semibold text-text-faint">
           Type
         </p>
         <div className="flex flex-wrap gap-1.5">
@@ -231,7 +231,7 @@ export function IssuesQueue() {
                       />
                       <span
                         className={cn(
-                          'rounded px-1.5 py-0.5 text-role-micro uppercase tracking-widest ring-1 ring-inset',
+                          'rounded px-1.5 py-0.5 text-role-micro ring-1 ring-inset',
                           USER_ISSUE_TYPE_CHIP,
                         )}
                       >
@@ -239,7 +239,7 @@ export function IssuesQueue() {
                       </span>
                     </span>
                   </span>
-                  <span className="truncate text-role-eyebrow font-semibold uppercase tracking-widest text-text-soft">
+                  <span className="truncate text-role-eyebrow font-semibold text-text-soft">
                     {meta}
                   </span>
                 </button>

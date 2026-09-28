@@ -45,7 +45,7 @@ export function ClaimTicketPicker({
           meta={
             <span
               className={cn(
-                'rounded px-1.5 py-0.5 text-role-eyebrow uppercase tracking-widest',
+                'rounded px-1.5 py-0.5 text-role-eyebrow',
                 sb.className,
               )}
             >
@@ -113,7 +113,7 @@ export function ClaimTicketPicker({
                       {pb ? (
                         <span
                           className={cn(
-                            'rounded px-1.5 py-0.5 text-role-eyebrow uppercase tracking-widest',
+                            'rounded px-1.5 py-0.5 text-role-eyebrow',
                             pb.className,
                           )}
                         >
@@ -122,7 +122,7 @@ export function ClaimTicketPicker({
                       ) : null}
                       <span
                         className={cn(
-                          'rounded px-1.5 py-0.5 text-role-eyebrow uppercase tracking-widest',
+                          'rounded px-1.5 py-0.5 text-role-eyebrow',
                           sb.className,
                         )}
                       >

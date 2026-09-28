@@ -92,13 +92,14 @@ export function usePublishRecordCursor<T>(args: PublishRecordCursorArgs<T>): Rec
 
   const open = useCallback<RecordCursorOpen>((id, ctx) => {
     const key = recordIdKey(id);
-    if (key === null) return;
+    if (key === null) return false;
     const row = rowsByIdRef.current.get(key);
     // The order moved under an in-flight step (a refetch landed between the
     // panel's click and this call). Dropping it is right: opening a record this
     // surface no longer lists is how a queue ends up highlighting nothing.
-    if (row === undefined) return;
+    if (row === undefined) return false;
     onOpenRef.current(row, ctx);
+    return true;
   }, []);
 
   const closeStable = useCallback(() => {

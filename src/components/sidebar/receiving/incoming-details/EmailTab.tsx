@@ -35,13 +35,13 @@ export function EmailTab({ data }: { data: DetailsResponse }) {
       {worklist.length > 0 ? (
         <div className="space-y-2 pt-1">
           {delivered.length > 0 ? (
-            <div className="text-role-eyebrow uppercase tracking-wide text-text-faint">PO mailbox</div>
+            <div className="text-role-eyebrow text-text-faint">PO mailbox</div>
           ) : null}
           {worklist.map((e) => (
             <div key={`w-${e.gmail_msg_id}`} className="border-l-2 border-border-soft pl-3">
               <div className="flex items-center gap-2">
                 {e.status ? (
-                  <span className="text-role-eyebrow uppercase tracking-wide text-text-soft">{e.status}</span>
+                  <span className="text-role-eyebrow text-text-soft">{e.status}</span>
                 ) : null}
                 <span className="ml-auto whitespace-nowrap text-role-eyebrow font-semibold text-text-faint">
                   {fmtDateTime(e.email_received)}

@@ -25,7 +25,7 @@ interface BlockConfigSheetProps {
 
 const selectClass =
   cn('h-8 w-full cursor-pointer appearance-none rounded-md border border-border-soft bg-surface-card px-2 text-role-caption font-semibold text-text-default', focusRing('field', 'accent'));
-const labelClass = 'mb-1 block text-role-eyebrow uppercase tracking-wider text-text-soft';
+const labelClass = 'mb-1 block text-role-eyebrow text-text-soft';
 
 /** Pre-fill role→field mapping by kind match, falling back to the first field. */
 function autoMapping(blockType: string, source: DataSourceMeta): Record<string, string> {
@@ -126,7 +126,7 @@ export function BlockConfigSheet({ open, instance, onClose, onApply }: BlockConf
             <span className="flex h-7 w-7 items-center justify-center rounded-md bg-surface-sunken text-text-muted">
               <StationIcon name={block.icon} className="h-4 w-4" />
             </span>
-            <h2 className="text-role-caption font-semibold uppercase tracking-wider text-text-muted">{block.label}</h2>
+            <h2 className="text-role-caption font-semibold text-text-muted">{block.label}</h2>
           </div>
           <div className="mt-2 flex gap-1">
             {tabs.map((t) => (

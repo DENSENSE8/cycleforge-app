@@ -193,7 +193,7 @@ export function StationSlot({ pageKey, modeKey, slot, stationLabel }: StationSlo
           when there's nothing to show. */}
       {(editing || instances.length > 0 || canManage) && (
         <div className="flex items-center justify-between px-2.5 pt-2">
-          <span className="text-role-eyebrow uppercase tracking-wider text-text-faint">
+          <span className="text-role-eyebrow text-text-faint">
             {editing ? `Blocks · editing (${slot})` : instances.length > 0 ? 'Blocks' : ''}
           </span>
           {canManage && !editing ? (

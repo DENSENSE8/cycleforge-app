@@ -37,7 +37,7 @@ export function SkuDetailCards({ c, data }: { c: SkuDetailController; data: SkuD
             )}
             <div>
               <p className={fieldLabel}>Status</p>
-              <span className={`inline-block rounded-full px-2 py-0.5 text-role-micro font-semibold uppercase ${data.catalog.isActive ? 'bg-emerald-50 text-emerald-700' : 'bg-red-50 text-red-600'}`}>
+              <span className={`inline-block rounded-full px-2 py-0.5 text-role-micro font-semibold ${data.catalog.isActive ? 'bg-emerald-50 text-emerald-700' : 'bg-red-50 text-red-600'}`}>
                 {data.catalog.isActive ? 'Active' : 'Inactive'}
               </span>
             </div>
@@ -54,7 +54,7 @@ export function SkuDetailCards({ c, data }: { c: SkuDetailController; data: SkuD
               href={`https://my.ecwid.com/store/${process.env.NEXT_PUBLIC_ECWID_STORE_ID || ''}#product:id=${data.ecwid.id}`}
               target="_blank"
               rel="noopener noreferrer"
-              className="flex items-center gap-1 text-role-micro uppercase tracking-wider text-blue-600 hover:text-blue-800"
+              className="flex items-center gap-1 text-role-micro text-blue-600 hover:text-blue-800"
             >
               Open in Ecwid
               <ExternalLink className="h-3 w-3" />
@@ -82,7 +82,7 @@ export function SkuDetailCards({ c, data }: { c: SkuDetailController; data: SkuD
               >
                 <img src={photo.url} alt={`SKU photo ${photo.id}`} className="h-full w-full object-cover" loading="lazy" decoding="async" />
                 {photo.photoType && (
-                  <span className="absolute bottom-1 left-1 rounded bg-scrim/60 px-1.5 py-0.5 text-role-micro uppercase text-white">{photo.photoType}</span>
+                  <span className="absolute bottom-1 left-1 rounded bg-scrim/60 px-1.5 py-0.5 text-role-micro text-white">{photo.photoType}</span>
                 )}
               </button>
             ))}
@@ -120,7 +120,7 @@ export function SkuDetailCards({ c, data }: { c: SkuDetailController; data: SkuD
                   </div>
                   <div className="text-right flex-shrink-0">
                     {row.location && (
-                      <span className="inline-flex items-center rounded-full bg-blue-50 px-2 py-0.5 text-role-eyebrow uppercase tracking-wider text-blue-700">{row.location}</span>
+                      <span className="inline-flex items-center rounded-full bg-blue-50 px-2 py-0.5 text-role-eyebrow text-blue-700">{row.location}</span>
                     )}
                     <p className="text-role-micro text-text-faint mt-1">{formatDate(row.updated_at || row.created_at)}</p>
                   </div>
@@ -147,7 +147,7 @@ export function SkuDetailCards({ c, data }: { c: SkuDetailController; data: SkuD
                   <span className={`text-sm font-semibold ${entry.delta > 0 ? 'text-emerald-600' : 'text-red-600'}`}>
                     {entry.delta > 0 ? `+${entry.delta}` : entry.delta}
                   </span>
-                  <span className="rounded-full bg-surface-strong px-2 py-0.5 text-role-eyebrow uppercase tracking-wider text-text-muted">{takeReasonLedgerLabel(entry.reason)}</span>
+                  <span className="rounded-full bg-surface-strong px-2 py-0.5 text-role-eyebrow text-text-muted">{takeReasonLedgerLabel(entry.reason)}</span>
                   {entry.notes?.trim() && (
                     <span className="truncate text-role-caption text-text-soft">{entry.notes.trim()}</span>
                   )}

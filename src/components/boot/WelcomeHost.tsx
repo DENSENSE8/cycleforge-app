@@ -1,10 +1,56 @@
 'use client';
 
-import { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { WelcomeAssembly } from '@/components/boot/WelcomeAssembly';
-import { WELCOME_REPLAY_EVENT } from '@/components/boot/WelcomeReplayButton';
+import dynamic from 'next/dynamic';
+import { WELCOME_REPLAY_EVENT } from '@/components/boot/welcome/welcome-events';
+import {
+  loadWelcomeAssembly,
+  loadWelcomeSimple,
+} from '@/components/boot/welcome/welcome-loader';
+import { holdWelcome, releaseWelcome } from '@/components/boot/welcome/welcome-stage';
+import {
+  DEFAULT_WELCOME_VARIANT,
+  WELCOME_VARIANT_STORAGE_KEY,
+  resolveWelcomeVariant,
+  type WelcomeVariant,
+} from '@/components/boot/welcome/welcome-variant';
 import { WELCOME_PLAY_EVENT, consumeBootSplash } from '@/lib/boot-flag';
+
+type WelcomeLoadFallbackProps = {
+  onMounted: () => void;
+  onExited: () => void;
+};
+
+function WelcomeLoadFallback({ onMounted, onExited }: WelcomeLoadFallbackProps) {
+  useLayoutEffect(() => {
+    onMounted();
+    releaseWelcome({ skipped: true });
+    onExited();
+  }, [onExited, onMounted]);
+  return null;
+}
+
+const WelcomeAssembly = dynamic(
+  async () => {
+    try {
+      return (await loadWelcomeAssembly()).WelcomeAssembly;
+    } catch {
+      return WelcomeLoadFallback;
+    }
+  },
+  { ssr: false },
+);
+const WelcomeSimple = dynamic(
+  async () => {
+    try {
+      return (await loadWelcomeSimple()).WelcomeSimple;
+    } catch {
+      return WelcomeLoadFallback;
+    }
+  },
+  { ssr: false },
+);
 
 // useLayoutEffect warns during SSR; fall back to useEffect there. On the client
 // the layout variant is what we want — it runs before the browser paints, so the
@@ -33,6 +79,16 @@ function takeWelcomeParam(): boolean {
   return true;
 }
 
+function resolveVariantForPlay(): WelcomeVariant {
+  const resolution = resolveWelcomeVariant(
+    window.location.search,
+    window.localStorage.getItem(WELCOME_VARIANT_STORAGE_KEY),
+    process.env.NODE_ENV !== 'production',
+  );
+  if (resolution.persist) window.localStorage.setItem(WELCOME_VARIANT_STORAGE_KEY, resolution.persist);
+  return resolution.variant;
+}
+
 /**
  * Plays the WelcomeAssembly over whatever desktop page is live. Mounted once by
  * the desktop shell. Plays on mount for a fresh sign-in (the one-shot
@@ -49,6 +105,16 @@ export function WelcomeHost() {
   const arrivalDecisionRef = useRef<boolean | null>(null);
   const [playing, setPlaying] = useState(false);
   const [playNonce, setPlayNonce] = useState(0);
+  const [variant, setVariant] = useState<WelcomeVariant>(DEFAULT_WELCOME_VARIANT);
+  const [overlayMounted, setOverlayMounted] = useState(false);
+  const holdOnMountRef = useRef<WelcomeVariant | null>(null);
+  const markOverlayMounted = useCallback(() => {
+    const pendingVariant = holdOnMountRef.current;
+    holdOnMountRef.current = null;
+    if (pendingVariant) holdWelcome(pendingVariant);
+    setOverlayMounted(true);
+  }, []);
+  const finishPlay = useCallback(() => setPlaying(false), []);
 
   useIsoLayoutEffect(() => {
     setPortalEl(document.body);
@@ -58,17 +124,30 @@ export function WelcomeHost() {
       const param = takeWelcomeParam();
       arrivalDecisionRef.current = armed || param;
     }
-    if (arrivalDecisionRef.current) setPlaying(true);
+    if (arrivalDecisionRef.current) {
+      const nextVariant = resolveVariantForPlay();
+      setVariant(nextVariant);
+      setOverlayMounted(false);
+      holdOnMountRef.current = null;
+      holdWelcome(nextVariant);
+      setPlaying(true);
+    }
   }, []);
 
-  // The pre-hydration bridge hands over once our portal (and, when playing, the overlay) is mounted.
+  // Keep the pre-hydration bridge until the selected dynamic variant has
+  // mounted. Saved-session arrivals must never expose a blank frame while the
+  // variant chunk is fetched and parsed.
   useEffect(() => {
-    if (!portalEl) return;
+    if (!portalEl || (playing && !overlayMounted)) return;
     document.getElementById('__boot_splash_pre')?.remove();
-  }, [portalEl]);
+  }, [overlayMounted, playing, portalEl]);
 
   useEffect(() => {
     const play = () => {
+      const nextVariant = resolveVariantForPlay();
+      setVariant(nextVariant);
+      setOverlayMounted(false);
+      holdOnMountRef.current = nextVariant;
       setPlayNonce((n) => n + 1);
       setPlaying(true);
     };
@@ -90,5 +169,20 @@ export function WelcomeHost() {
   }, []);
 
   if (!portalEl || !playing) return null;
-  return createPortal(<WelcomeAssembly key={playNonce} onExited={() => setPlaying(false)} />, portalEl);
+  const welcome =
+    variant === 'complex' ? (
+      <WelcomeAssembly
+        key={playNonce}
+        onMounted={markOverlayMounted}
+        onExited={finishPlay}
+      />
+    ) : (
+      <WelcomeSimple
+        key={playNonce}
+        mode={variant === 'elevation' ? 'minimal' : 'full'}
+        onMounted={markOverlayMounted}
+        onExited={finishPlay}
+      />
+    );
+  return createPortal(welcome, portalEl);
 }

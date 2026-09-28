@@ -21,7 +21,7 @@ import {
 } from '@/lib/packing/review-packing-tabs';
 import { getWeekRangeForOffset } from '@/lib/dashboard-week-range';
 import { toDetailRecord } from '@/components/shipped/shipped-record-mappers';
-import { parseStaffParam } from '@/hooks/useStaffFilter';
+import { parseStaffParam } from '@/lib/station/table-url-params';
 import { DASHBOARD_ORDERS_SELECTION_SCOPE } from '@/lib/selection/dashboard-scopes';
 import type { ShippedOrder } from '@/types/orders';
 import type { PackerRecord } from '@/hooks/usePackerLogs';

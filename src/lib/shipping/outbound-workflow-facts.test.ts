@@ -27,7 +27,7 @@ test('mobile and desktop-shaped inputs receive the same workflow verdict', () =>
   );
 
   assert.deepEqual(mobile, desktop);
-  assert.equal(desktop.stage, 'TESTED');
+  assert.equal(desktop.stage, 'PICKED');
   assert.equal(desktop.stateRail, 'ready');
   assert.equal(desktop.deadlineBand, 'overdue');
   assert.equal(desktop.nextStep.label, '→ Pack');
@@ -80,4 +80,15 @@ test('out-of-stock resolves to one blocked clear-hold verdict', () => {
   assert.equal(facts.exception.kind, 'out_of_stock');
   assert.equal(facts.stateRail, 'exception');
   assert.equal(facts.actions.clear_hold.state, 'primary');
+});
+
+test('a counter pickup is never awaiting a label: pick is open, label is not owed', () => {
+  const pickup = resolveOutboundWorkflowFacts({ shipmentId: null, fulfillmentChannel: 'PICKUP', hasPickScan: false }, { todayKey: TODAY });
+  assert.equal(pickup.stage, 'PENDING');
+  assert.equal(pickup.actions.pick.enabled, true);
+  assert.equal(pickup.actions.label.enabled, false);
+
+  const shipped = resolveOutboundWorkflowFacts({ shipmentId: null, fulfillmentChannel: null, hasPickScan: false }, { todayKey: TODAY });
+  assert.equal(shipped.stage, 'AWAITING_LABEL');
+  assert.equal(shipped.actions.pick.enabled, false, 'a shipped order still waits on its label');
 });

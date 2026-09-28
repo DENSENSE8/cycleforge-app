@@ -12,6 +12,8 @@ import { isNavModeSection } from './NavModeSwitcher';
  */
 const LANE_DOOR_FIRST_VIEW: Readonly<Record<string, string>> = {
   outbound: '/shipping/exceptions',
+  // Inbound: On the way (bare `/incoming`); History is `?lane=docked`.
+  incoming: '/incoming',
 };
 
 const storageKey = (pageId: string, staffKey: string) => `nav.lastView.${pageId}.${staffKey}`;

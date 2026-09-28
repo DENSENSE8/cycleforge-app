@@ -79,14 +79,14 @@ export function TrackingExceptionEditDialog({ row, onClose, onSave, onDelete }: 
     >
       <DialogContent hideClose className="max-w-lg gap-0 overflow-hidden p-0 sm:rounded-xl">
         <DialogHeader className="space-y-0 border-b border-border-soft px-5 py-3">
-          <DialogTitle className="text-role-caption font-semibold uppercase tracking-widest text-text-default">
+          <DialogTitle className="text-role-caption font-semibold text-text-default">
             Edit exception #{row.id}
           </DialogTitle>
         </DialogHeader>
 
         <div className="space-y-3 px-5 py-4">
           <label className="block">
-            <span className="text-role-eyebrow uppercase tracking-widest text-text-soft">
+            <span className="text-role-eyebrow text-text-soft">
               Tracking number
             </span>
             <input
@@ -97,7 +97,7 @@ export function TrackingExceptionEditDialog({ row, onClose, onSave, onDelete }: 
             />
           </label>
           <label className="block">
-            <span className="text-role-eyebrow uppercase tracking-widest text-text-soft">
+            <span className="text-role-eyebrow text-text-soft">
               Reason
             </span>
             <input
@@ -108,7 +108,7 @@ export function TrackingExceptionEditDialog({ row, onClose, onSave, onDelete }: 
             />
           </label>
           <label className="block">
-            <span className="text-role-eyebrow uppercase tracking-widest text-text-soft">
+            <span className="text-role-eyebrow text-text-soft">
               Status
             </span>
             <select
@@ -122,7 +122,7 @@ export function TrackingExceptionEditDialog({ row, onClose, onSave, onDelete }: 
             </select>
           </label>
           <label className="block">
-            <span className="text-role-eyebrow uppercase tracking-widest text-text-soft">
+            <span className="text-role-eyebrow text-text-soft">
               Notes
             </span>
             <textarea
@@ -145,13 +145,13 @@ export function TrackingExceptionEditDialog({ row, onClose, onSave, onDelete }: 
               type="button"
               onClick={() => setConfirmingDelete(true)}
               disabled={saving}
-              className="rounded-md px-2.5 py-1.5 text-role-micro uppercase tracking-widest text-red-600 hover:bg-red-50 disabled:opacity-50"
+              className="rounded-md px-2.5 py-1.5 text-role-micro text-red-600 hover:bg-red-50 disabled:opacity-50"
             >
               Delete
             </button>
           ) : (
             <div className="flex items-center gap-2">
-              <span className="text-role-micro uppercase tracking-widest text-red-700">
+              <span className="text-role-micro text-red-700">
                 Confirm delete?
               </span>
               <Button

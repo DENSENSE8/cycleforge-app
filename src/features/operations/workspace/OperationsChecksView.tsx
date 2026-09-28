@@ -57,7 +57,7 @@ export function OperationsChecksView() {
           aria-label="Previous day"
         />
         <div className="min-w-0 flex-1">
-          <p className="text-role-eyebrow uppercase tracking-widest text-text-soft">Daily checks</p>
+          <p className="text-role-eyebrow text-text-soft">Daily checks</p>
           <h1 className="truncate text-lg font-semibold text-text-strong">
             {isToday ? "Today's roster" : formatDateKeyShort(dateKey)}
           </h1>

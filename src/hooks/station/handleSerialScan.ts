@@ -2,6 +2,7 @@ import confetti from 'canvas-confetti';
 import { classifyInput, findSerialInCatalog, looksLikeFnsku } from '@/lib/scan-resolver';
 import { unwrapScannedSerial } from '@/lib/barcode-routing';
 import { appendSerialToSkuGroups, initSkuSerialGroups } from '@/lib/tech/sku-serial-groups';
+import { toast } from '@/lib/toast';
 import type { ScanHandlerContext } from './types';
 
 export async function handleSerialScan(input: string, ctx: ScanHandlerContext): Promise<void> {
@@ -72,6 +73,8 @@ export async function handleSerialScan(input: string, ctx: ScanHandlerContext): 
           ? `Serial ${scanned.toUpperCase()} added ✓ (${restoredSerials.length} total)`
           : `Serial ${scanned.toUpperCase()} held on exception (${restoredSerials.length} total)`,
       );
+      // Non-blocking: the serial is saved; its unit just wasn't picked.
+      if (typeof data.pickWarning === 'string') toast.warning(data.pickWarning);
       // Fire-and-forget: if the raw scan is a printed unit label, request phone
       // photos for that unit. Gated + resolved by the host; no-op otherwise.
       ctx.onUnitLabelScanned?.(input);
@@ -161,6 +164,8 @@ export async function handleSerialScan(input: string, ctx: ScanHandlerContext): 
         ? `Serial ${finalSerial} added ✓ (${data.serialNumbers.length} total)`
         : `Serial ${finalSerial} held on exception (${data.serialNumbers.length} total)`,
     );
+    // Non-blocking: the serial is saved; its unit just wasn't picked.
+    if (typeof data.pickWarning === 'string') toast.warning(data.pickWarning);
     // Fire-and-forget: if the raw scan is a printed unit label, request phone
     // photos for that unit. Gated + resolved by the host; no-op otherwise.
     ctx.onUnitLabelScanned?.(input);

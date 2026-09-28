@@ -20,7 +20,7 @@ export function TakeReasonChooser({
 }) {
   return (
     <div className="space-y-2" data-testid="take-reason">
-      <p className="text-role-eyebrow uppercase tracking-widest text-text-soft">{label}</p>
+      <p className="text-role-eyebrow text-text-soft">{label}</p>
       <div className="grid grid-cols-3 gap-2">
         {TAKE_REASONS.map((option) => {
           const selected = value?.code === option.code;

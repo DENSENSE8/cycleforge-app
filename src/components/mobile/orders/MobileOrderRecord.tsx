@@ -124,7 +124,7 @@ export const MobileOrderRecord = memo(function MobileOrderRecord({
           </button>
           <span className={cn(RECORD_TITLE_CLASS, 'flex-1')}>{row.title || '—'}</span>
           <span className={cn(LANE, 'justify-end gap-1.5')}>
-            <span className={cn(RECORD_LABEL_CLASS, 'text-mode-muted')}>QTY</span>
+            <span className={cn(RECORD_LABEL_CLASS, 'text-mode-muted')}>Qty</span>
             <span className={RECORD_QTY_BADGE_CLASS}>{facts.qty}</span>
           </span>
         </div>
@@ -136,8 +136,8 @@ export const MobileOrderRecord = memo(function MobileOrderRecord({
           <span
             className={cn(RECORD_LABEL_CLASS, 'min-w-0 flex-1 truncate', location ? 'text-mode-ink' : 'text-mode-warn')}
           >
-            <span className="text-mode-muted">BIN </span>
-            {location ?? 'UNASSIGNED'}
+            <span className="text-mode-muted">Bin </span>
+            {location ?? 'Unassigned'}
           </span>
           <span className={cn(RECORD_ID_CLASS, 'max-w-[6rem] shrink-0 truncate')}>{row.sku || '—'}</span>
           <span

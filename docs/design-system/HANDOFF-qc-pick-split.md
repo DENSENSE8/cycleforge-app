@@ -342,3 +342,73 @@ Measured on dev (43.7k `station_activity_logs`, 5.2k orders), EXPLAIN ANALYZE as
 Measured, not worth it: `pick_scan` OR → UNION ALL (132 ms → 117 ms over every order).
 Next: an `order_stage_facts` table written by the pick/pack/QC writers, replacing the per-order
 stage laterals and the `sqlOrderHasPickScan` / `sqlOrderHasPackScan` EXISTS in `queue-counts.ts`.
+
+## SAL growth (2026-09-28)
+
+Measured on dev: `station_activity_logs` = 43,719 rows, 15 MB heap + 11 MB indexes. Rows per
+month: Feb 1.1k, Mar 1.5k, Apr 2.4k, May 5.2k, Jun 7.0k, Jul 7.5k, Aug 12.0k, Sep 7.1k (to the
+28th). By station: RECEIVING 22.7k, PACK 7.1k, OUTBOUND 4.8k, TECH 4.7k, PICK 3.8k, other 0.7k.
+Every tenant read leads with `organization_id` (`idx_sal_org_created`,
+`idx_sal_org_station_activity_created`), so size is not yet a read-path problem.
+
+**BRIN (applied, `2026-09-28t_sal_created_at_brin.sql`):** `idx_sal_created_at_brin` on
+`created_at`, 24 kB (the `(organization_id, created_at)` btree is 1.75 MB). It serves the
+created_at-only reads an archive job makes: `SELECT * … WHERE created_at < now() - 180 days`
+(2,632 rows) went from a seq scan, 11.3 ms / 1,887 buffers, to a bitmap scan on the BRIN, 6.8 ms /
+901 buffers. 18,037 rows are rechecked because `created_at` correlation is only 0.64 (backfills
+and reclassifications insert old timestamps). Tenant reads still pick the btree.
+
+**Why not native partitioning now.** A partitioned table's PRIMARY KEY / UNIQUE must include the
+partition key, so `id` alone can no longer be unique; the PK becomes `(id, created_at)`, and an FK
+must reference a unique key. Four FKs reference `station_activity_logs(id)` (pg_constraint,
+2026-09-28), and each would need a `created_at` copy on the child and a composite FK:
+
+| Child column | On delete | Rows set on dev |
+|---|---|---|
+| `packer_log_enrichment.sal_id` | CASCADE | 6,859 |
+| `audit_logs.station_activity_log_id` | SET NULL | 5,120 |
+| `tech_serial_numbers.context_station_activity_log_id` | SET NULL | 2,436 |
+| `fba_fnsku_logs.station_activity_log_id` | SET NULL | 176 |
+
+References with no FK: the view `operations_events_unified_v1.station_activity_log_id`, and every
+`sqlPackerOrderMatchLateral` / `sqlOrderPickedByStaffId` reader that joins by `id` without the date.
+Partitions would also each need `enforce_tenant_isolation()` (RLS on the parent does not cover a
+partition queried directly) and a job to create next month's partition. At 26 MB, none of that pays.
+
+**Plan, in order. Each step starts only when its trigger fires:**
+
+1. **Watch (now).** Revisit when the table passes ~5M rows / ~2 GB, or when the Shipped week
+   read or `orders-list` p95 regresses because of SAL. At Aug's rate (12k/month) that is years off.
+2. **Archive before partitioning.** Add `station_activity_logs_archive` with the same columns,
+   tenant-from-birth (`organization_id NOT NULL`, FORCE RLS), plus a monthly job that moves rows
+   older than a cutoff (proposed 18 months) in batches of 5,000: `INSERT … SELECT … WHERE created_at
+   < $cutoff ORDER BY id LIMIT 5000` (BRIN range) then `DELETE … WHERE id = ANY(moved)`. The job
+   must skip rows any FK child still points at (`NOT EXISTS` over the four tables above):
+   deleting them would null the historical links on `audit_logs` / `tech_serial_numbers` /
+   `fba_fnsku_logs` and cascade-delete enrichment. Readers that span all history (Shipped
+   "All dates", nav locate, packing KPIs) either accept the cutoff or read `UNION ALL` over the
+   archive. Decide which before the first move.
+3. **Partition only if the archive is not enough.** Build `station_activity_logs_p` PARTITION BY
+   RANGE (`created_at`), monthly, PK `(id, created_at)`, keeping the same `id` sequence. Add
+   `sal_created_at` to the four children (backfill from the parent) and swap each FK to the
+   composite key, or drop those FKs and replace them with a trigger. Copy the data, then swap names
+   in one migration in a maintenance window. Run `enforce_tenant_isolation()` on the parent and on
+   every partition. A monthly migration or pg_partman pre-creates the next partition. Old
+   partitions then detach to cold storage instead of batch deletes.
+
+The QC/Pick housekeeping from the same day: `2026-09-28v_drop_order_test_to_pick_backfill.sql`
+dropped `order_test_to_pick_backfill_2026_09_27` (746 rows) after the owner signed off, so the
+rollback in `2026-09-27b`'s header can no longer run exactly.
+
+## QC assignment (2026-09-28)
+
+QC is assigned on the UNIT's receiving line: `receiving_line_testing.assigned_tech_id` is the
+one column. The QC bench (`/test`) paints the open line's QC tech in the carton identity row
+(`TestingQcAssignee` via `CartonContextCard assigneeCell`, full-roster `StageStaffAssignPopover`)
+and writes `PATCH /api/receiving-lines {id, assigned_tech_id}` (assign-only accepts `tech.qc_pass`);
+bulk "Assign to…" on the browse writes the same. An order's QC assignee is that column on the
+origin receiving line (`serial_unit_provenance` RECEIVING_LINE) of a unit live-allocated to it:
+feed fields `qc_assignee_id` / `qc_assignee_name`, read by `orderStage('qc')` as `who` while not
+done. The order record's QC step assigns it through `PATCH /api/receiving-lines/qc-assignee
+{order_id, assigned_tech_id}` (`tech.qc_pass`; 409 when no allocated unit came from a receiving
+line), which writes every origin line of the order's live allocations and busts the orders cache.

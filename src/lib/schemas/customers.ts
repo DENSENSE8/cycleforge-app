@@ -69,6 +69,24 @@ export const CustomerCreateBody = z
   .strict();
 export type CustomerCreate = z.infer<typeof CustomerCreateBody>;
 
+/**
+ * `PATCH /api/orders/[id]/buyer` — staff correct an order's buyer. `shipTo` is
+ * the COMPLETE corrected address (blank lines clear), and needs the street and
+ * city a label cannot be bought without. Blank phone/email clears the column.
+ */
+export const OrderBuyerPatchBody = z
+  .object({
+    name: name.optional(),
+    email: email.nullable().optional(),
+    phone: phone.nullable().optional(),
+    shipTo: CustomerShipToBody.refine((s) => s.address1 !== '' && s.city !== '', {
+      message: 'Ship-to needs a street address and a city',
+    }).optional(),
+  })
+  .strict()
+  .refine((b) => Object.values(b).some((v) => v !== undefined), { message: 'Nothing to change' });
+export type OrderBuyerPatch = z.infer<typeof OrderBuyerPatchBody>;
+
 /** The contact columns of a `customers` row this module reads and writes. */
 export interface CustomerContactColumns {
   customer_name: string | null;

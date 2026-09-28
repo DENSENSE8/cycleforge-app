@@ -21,7 +21,7 @@ export function ReceivingConditionCell({ col, rule, ctx }: ReceivingGridCellProp
       ) : (
         <span
           className={cn(
-            'min-w-0 truncate text-role-eyebrow uppercase',
+            'min-w-0 truncate text-role-eyebrow',
             conditionGradeTextClass(condGrade),
           )}
         >

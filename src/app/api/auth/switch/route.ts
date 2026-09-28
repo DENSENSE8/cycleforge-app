@@ -15,6 +15,16 @@ import {
 } from '@/lib/auth/session';
 import { audit } from '@/lib/auth/audit';
 import { resolveOrgIdFromRequest } from '@/lib/tenancy/resolve-org-from-request';
+import { AUTH_PER_IP_LIMIT_PER_10_MIN, checkRateLimitAsync } from '@/lib/api-guard';
+
+const WINDOW_MS = 10 * 60 * 1000;
+
+function rateLimited(retryAfterSec: number | undefined): NextResponse {
+  return NextResponse.json(
+    { error: 'RATE_LIMITED' },
+    { status: 429, headers: retryAfterSec ? { 'retry-after': String(retryAfterSec) } : undefined },
+  );
+}
 
 export const runtime = 'nodejs';
 
@@ -35,6 +45,15 @@ export async function POST(req: NextRequest) {
   let staffIdForAudit: number | null = null;
 
   try {
+    // Per-IP ceiling sized for a shared warehouse NAT (a switch is a sign-in).
+    const ipRl = await checkRateLimitAsync({
+      headers: req.headers,
+      routeKey: 'auth-switch',
+      limit: AUTH_PER_IP_LIMIT_PER_10_MIN,
+      windowMs: WINDOW_MS,
+    });
+    if (!ipRl.ok) return rateLimited(ipRl.retryAfterSec);
+
     const body = await req.json().catch(() => ({} as Record<string, unknown>));
     const staffId = Number((body as { staffId?: unknown }).staffId);
     const pin = String((body as { pin?: unknown }).pin ?? '');
@@ -57,6 +76,16 @@ export async function POST(req: NextRequest) {
 
     // Tenant scope:
     const targetOrgId = prev?.organizationId ?? (await resolveOrgIdFromRequest(req));
+    // Per-target-staff throttle, independent of IP.
+    const staffRl = await checkRateLimitAsync({
+      headers: req.headers,
+      routeKey: 'auth-switch-staff',
+      scope: `${targetOrgId}:${staffId}`,
+      ipAgnostic: true,
+      limit: 10,
+      windowMs: WINDOW_MS,
+    });
+    if (!staffRl.ok) return rateLimited(staffRl.retryAfterSec);
     // A staff switch IS a sign-in — it stamps last_login_at.
     const row = await verifyStaffPin(staffId, pin, targetOrgId, { recordLogin: true });
     if (row.status !== 'active') {
@@ -124,6 +153,7 @@ export async function POST(req: NextRequest) {
       });
       const status = err.code === 'NOT_FOUND' ? 404
         : err.code === 'NO_PIN' ? 409
+        : err.code === 'LOCKED' ? 423
         : 401;
       return NextResponse.json({ error: err.code }, { status });
     }

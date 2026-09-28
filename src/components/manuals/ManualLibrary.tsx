@@ -297,7 +297,7 @@ function ManualViewer({
               href={href}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center gap-1.5 rounded-lg bg-surface-inverse px-3 py-1.5 text-role-micro uppercase tracking-wider text-white hover:bg-surface-inverse-hover"
+              className="inline-flex items-center gap-1.5 rounded-lg bg-surface-inverse px-3 py-1.5 text-role-micro text-white hover:bg-surface-inverse-hover"
             >
               <ExternalLink className="h-3 w-3" />
               Open
@@ -332,7 +332,7 @@ function ManualViewer({
               href={href}
               target="_blank"
               rel="noopener noreferrer"
-              className="mt-4 inline-flex items-center gap-1.5 rounded-lg bg-surface-inverse px-3 py-1.5 text-role-micro uppercase tracking-wider text-white hover:bg-surface-inverse-hover"
+              className="mt-4 inline-flex items-center gap-1.5 rounded-lg bg-surface-inverse px-3 py-1.5 text-role-micro text-white hover:bg-surface-inverse-hover"
             >
               <ExternalLink className="h-3 w-3" /> Open in new tab
             </a>

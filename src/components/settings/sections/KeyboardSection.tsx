@@ -75,7 +75,7 @@ export function KeyboardSection() {
         <h3 className="text-base font-semibold text-text-default">Focus-scan hotkey</h3>
         <p className="mt-1 text-xs text-text-soft">
           Reclaims focus on the active station scan field without clearing typed text.
-          Next scan (clear + focus) is the fixed house chord <span className="font-mono">⌘.</span>
+          Next scan (clear + focus) is the fixed house chord <Kbd inline>⌘.</Kbd>
           — presets below are wedge-safe mid-field; any other key binds but yields while typing.
         </p>
         <div

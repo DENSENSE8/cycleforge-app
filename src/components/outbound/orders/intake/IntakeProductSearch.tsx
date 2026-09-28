@@ -11,19 +11,11 @@ import { useEffect, useState } from 'react';
 import { Package } from '@/components/Icons';
 import { SearchableSelectField } from '@/design-system/components/SearchableSelectField';
 import type { IntakeProductHit } from '@/lib/orders/intake-product-search';
+import { searchProducts } from '@/lib/orders/intake/intake-product-client';
 import { cn } from '@/utils/_cn';
 
 /** Debounce between keystrokes and the search call. */
 const SEARCH_DEBOUNCE_MS = 200;
-
-export async function searchProducts(q: string, signal?: AbortSignal): Promise<IntakeProductHit[]> {
-  const res = await fetch(`/api/orders/intake/products?q=${encodeURIComponent(q)}&limit=8`, {
-    credentials: 'same-origin',
-    signal,
-  });
-  const data = (await res.json().catch(() => null)) as { products?: IntakeProductHit[] } | null;
-  return data?.products ?? [];
-}
 
 export function IntakeProductSearch({
   onPick,

@@ -50,7 +50,7 @@ export function Row({
           {label}
         </span>
         {subLabel ? (
-          <span className="block truncate text-role-eyebrow font-semibold uppercase tracking-widest text-text-soft">
+          <span className="block truncate text-role-eyebrow font-semibold text-text-soft">
             {subLabel}
           </span>
         ) : null}

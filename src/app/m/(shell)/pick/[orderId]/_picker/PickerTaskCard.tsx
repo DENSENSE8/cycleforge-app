@@ -38,7 +38,7 @@ export function PickerTaskCard({
         className="rounded-none border border-border-soft bg-surface-card p-5"
       >
         {/* Bin chip — the thing the worker looks for. */}
-        <p className="text-xs font-semibold uppercase tracking-wider text-text-soft">Pick from bin</p>
+        <p className="text-xs font-semibold text-text-soft">Pick from bin</p>
         <p className="mt-1 font-mono text-3xl font-semibold tabular-nums tracking-tight text-text-default">
           {currentTask.bin ?? '—'}
         </p>
@@ -67,7 +67,7 @@ export function PickerTaskCard({
         <Collapse open={detailsExpanded} className="pt-2">
           <dl className="grid grid-cols-2 gap-2 text-xs">
             <div className="rounded-none bg-surface-canvas px-3 py-2">
-              <dt className="font-semibold uppercase tracking-wider text-text-soft">Allocation</dt>
+              <dt className="font-semibold text-text-soft">Allocation</dt>
               <dd className="mt-0.5 font-mono font-semibold text-text-default">#{currentTask.allocationId}</dd>
             </div>
           </dl>

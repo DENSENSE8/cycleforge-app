@@ -97,7 +97,7 @@ export function NextWeekScheduleTable({
                     className="inline-block h-3 w-3 flex-shrink-0 rounded-full ring-1 ring-black/5"
                     style={{ backgroundColor: getStaffColorHex(member) }}
                   />
-                  <p className={`${dataValue} truncate uppercase tracking-[0.02em] ${member.active ? 'text-text-default' : 'text-text-soft'}`}>
+                  <p className={`${dataValue} truncate ${member.active ? 'text-text-default' : 'text-text-soft'}`}>
                     {member.name}
                   </p>
                 </div>

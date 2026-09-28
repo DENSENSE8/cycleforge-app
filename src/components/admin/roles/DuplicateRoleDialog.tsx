@@ -73,7 +73,7 @@ export function DuplicateRoleDialog({ open, sourceRoleId, sourceLabel, onClose, 
 
         <div className="space-y-3">
           <label className="block">
-            <span className="block text-role-caption font-semibold uppercase tracking-wider text-text-soft">New label</span>
+            <span className="block text-role-caption font-semibold text-text-soft">New label</span>
             <input
               autoFocus
               value={label}
@@ -83,7 +83,7 @@ export function DuplicateRoleDialog({ open, sourceRoleId, sourceLabel, onClose, 
             />
           </label>
           <label className="block">
-            <span className="block text-role-caption font-semibold uppercase tracking-wider text-text-soft">New key</span>
+            <span className="block text-role-caption font-semibold text-text-soft">New key</span>
             <input
               value={key}
               onChange={(e) => setKey(e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, '').slice(0, 40))}

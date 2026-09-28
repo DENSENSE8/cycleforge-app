@@ -75,7 +75,7 @@ export function buildScanVerdict(
     return {
       ...base,
       tone: 'error',
-      headline: 'NOT CONNECTED',
+      headline: 'Not connected',
       detail: 'PO matched but its items could not load — reconnect the inventory integration.',
       feedback: 'reject',
     };
@@ -85,7 +85,7 @@ export function buildScanVerdict(
     return {
       ...base,
       tone: 'miss',
-      headline: 'NO MATCH',
+      headline: 'No match',
       // The server's own reason names WHICH identity missed (order#, ticket#,
       // carrier) — strictly better than a generic client sentence.
       detail: readString(data, 'error') ?? 'Nothing in the system matches this label.',
@@ -98,7 +98,7 @@ export function buildScanVerdict(
     return {
       ...base,
       tone: 'unfound',
-      headline: 'UNFOUND',
+      headline: 'Unfound',
       // An unmatched door scan is NOT a failure — a carton was created and is
       // now queued for triage. Say so, or the operator re-scans it forever.
       detail: reason
@@ -122,7 +122,7 @@ export function buildScanVerdict(
   return {
     ...base,
     tone: expedited ? 'expedited' : 'matched',
-    headline: expedited ? 'RUSH' : 'MATCHED',
+    headline: expedited ? 'Rush' : 'Matched',
     detail: parts.length ? parts.join(' · ') : null,
     feedback: 'success',
   };
@@ -133,7 +133,7 @@ export function scanFailureVerdict(scanned: string, error: unknown): MobileScanV
   const message = error instanceof Error ? error.message : '';
   return {
     tone: 'error',
-    headline: 'SCAN FAILED',
+    headline: 'Scan failed',
     scanned,
     detail: message || 'Could not reach the server. Scan again once you have signal.',
     poIds: [],

@@ -18,6 +18,14 @@ export interface ReceivingLineUnitView {
   condition_grade: string | null;
 }
 
+/** One open investigation / claim exception a filed ticket recorded (`ticket_reasons`). */
+export interface TicketReason {
+  /** A `RECEIVING_EXCEPTION_CODES` value (investigation or claim family). */
+  code: string;
+  /** The ticket that recorded it ("#<id>"); null = flagged without a ticket. */
+  ticket: string | null;
+}
+
 export interface ReceivingLineRow {
   id: number;
   receiving_id: number | null;
@@ -87,6 +95,12 @@ export interface ReceivingLineRow {
   receiving_listing_url?: string | null;
   /** Line-level listing URL from `receiving_line.listing_url`. */
   listing_url?: string | null;
+  /** RETURN "check for" reason: `receiving_line_return.return_reason`, else carton `receiving.return_reason`. */
+  return_reason?: string | null;
+  /** Marketplace RMA / return id (`receiving_line_return.rma_ref`). */
+  return_rma_ref?: string | null;
+  /** Original sale order # the return came back against (`receiving_line_return.source_order_id`). */
+  return_source_order_id?: string | null;
   /** Derived faceted bucket for `view=incoming` — computed on read from the carrier status on shipping_tracking_numbers (DELIVERED_UNOPENED,… */
   delivery_state?:
     | 'DELIVERED_UNOPENED'
@@ -122,7 +136,7 @@ export interface ReceivingLineRow {
   po_date?: string | null;
   /** Vendor-promised delivery date from zoho_po_mirror (Incoming view only). */
   expected_delivery_date?: string | null;
-  /** Vendor name from zoho_po_mirror (Incoming view only). */
+  /** Vendor name from zoho_po_mirror (Incoming views + History `view=activity`). */
   vendor_name?: string | null;
   /** `view=exceptions` — why the line needs a person (`IncomingExceptionCode`). */
   exception_code?: string | null;
@@ -212,8 +226,16 @@ export interface ReceivingLineRow {
   units?: ReceivingLineUnitView[] | null;
   /** Count of photos attached to this line's carton (from photos table, entity_type='RECEIVING'). */
   photo_count?: number;
-  /** Filed Zendesk ticket # for this line (receiving_lines.zendesk_ticket), stored as "#<id>". */
+  /** Any support ticket on the line, its carton or its shipment, stored as "#<id>". */
   zendesk_ticket?: string | null;
+  /** A ticket FILED on this line or carton (`sqlReceivingZendeskTicketColumn`); a shipment mention is not. */
+  claim_ticket?: string | null;
+  /**
+   * What the filed tickets mean: the OPEN investigation / claim exceptions on
+   * this line or its carton, oldest first (`ticket_reasons`). Empty = the
+   * ticket (if any) carries no reason.
+   */
+  ticket_reasons?: TicketReason[];
   /** Triage staging shelf/lane — `receiving_triage.staging_location_id`, FK into `locations`. */
   staging_location_id?: number | null;
   /** Joined shelf label (`room · name` or `name`) for Unbox Queue Location column. */

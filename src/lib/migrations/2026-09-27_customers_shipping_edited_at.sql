@@ -1,0 +1,22 @@
+-- customers.shipping_edited_at — when staff last corrected this buyer's ship-to (owner 2026-09-27).
+--
+-- What: staff correct a buyer's ship-to from the order record
+-- (PATCH /api/orders/[id]/buyer) and the corrected address must be what labels
+-- are bought to. `resolveOrderShipTo` prefers ShipStation's own ship-to for
+-- ShipStation orders, so a plain `customers.shipping_*` edit would never reach
+-- the label. This stamp marks the stored address as a staff correction: the
+-- resolver prefers the customer tier for orders created at or before it, and
+-- the channel buyer sync (`resolve-buyer-customers.ts`) stops overwriting the
+-- address with an order placed before it.
+--
+-- Safety: additive, nullable, no default, no backfill — every existing reader
+-- ignores it and NULL keeps today's precedence exactly. `customers` is already
+-- tenant-scoped (organization_id + RLS); a column add changes nothing there.
+--
+-- Rollback: ALTER TABLE customers DROP COLUMN IF EXISTS shipping_edited_at;
+--
+-- Verify:
+--   SELECT column_name, data_type FROM information_schema.columns
+--    WHERE table_name = 'customers' AND column_name = 'shipping_edited_at';
+
+ALTER TABLE customers ADD COLUMN IF NOT EXISTS shipping_edited_at TIMESTAMPTZ;

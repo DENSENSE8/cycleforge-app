@@ -65,7 +65,7 @@ export const POST = withAuth(
       routeKey: 'tool-forge-submit',
       limit: 20,
       windowMs: 60_000,
-      organizationId: ctx.organizationId,
+      organizationId: ctx.organizationId, staffId: ctx.staffId,
     });
     if (!rate.ok) {
       return NextResponse.json(

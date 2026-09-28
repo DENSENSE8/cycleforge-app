@@ -30,7 +30,7 @@ function TransactionRow({ row }: { row: WalkInTransaction }) {
         {/* Meta indents by the RowTitle dot-track width so it lines up under the
             title text, not under the dot (the META_COL invariant). */}
         <div
-          className="mt-0.5 flex min-w-0 items-center gap-1.5 text-role-eyebrow uppercase text-text-soft"
+          className="mt-0.5 flex min-w-0 items-center gap-1.5 text-role-eyebrow text-text-soft"
           style={{ paddingLeft: META_COL.indent }}
         >
           <span className="shrink-0 font-semibold tracking-widest">{kind.label}</span>
@@ -43,7 +43,7 @@ function TransactionRow({ row }: { row: WalkInTransaction }) {
 
       <div className="flex shrink-0 items-center gap-3">
         <LedgerValue value={row.amountLabel} variant="number" />
-        <span className="w-24 truncate text-right text-role-eyebrow font-semibold uppercase tracking-widest text-text-soft">
+        <span className="w-24 truncate text-right text-role-eyebrow font-semibold text-text-soft">
           {row.status}
         </span>
       </div>

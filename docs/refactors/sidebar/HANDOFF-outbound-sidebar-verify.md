@@ -92,9 +92,10 @@ the sidebar clipped to x 0–420, and an API number where the row has one.
 | 4 | Find narrows the list | Type a known order number and read the list count before and after |
 | 5 | Back hover and press depth | Hover and mouse-down `[data-nav-back]`: computed box-shadow and ring change, translateY(1px) on press |
 | 6 | `‹` keeps Find in place | Find's box is identical before and after clicking `[data-nav-back]`, and the map uses block rows |
-| 7 | Mode switcher | Hover `[data-nav-switcher="mode"]`: `[data-nav-switcher-menu="mode"]` opens right of the sidebar (its x ≥ the column's right edge) and lists Shipping ✓ · FBA · Label intake; each goes to its page |
-| 8 | View switcher, glyphs, digits | Hover `[data-nav-switcher="view"]`: each menu row reads glyph → digit keycap → label → count; no digit on the closed block; keys 1–5 land on the matching view with the menu closed |
-| 9 | Counts equal the API | For each view, the menu's `[data-nav-view-count]` equals `GET /api/nav/facets?context=outbound.<view>`'s `total` with the view's own params; off Exceptions, the closed block's `[data-nav-view-alert]` shows the Exceptions total |
+| 7 | Mode switcher | The mode icon is in its mode colour (Shipping blue, FBA purple, Label intake teal). Hover `[data-nav-switcher="mode"]`: `[data-nav-key-hint="parent"]` appears at once right of the column (x ≥ its right edge), leads with `[G] then`, rows `[S] Shipping · [F] FBA · [L] Label intake` in colour; no `[data-nav-go-shade]`. Click: `[data-nav-switcher-list="parent"]` hangs as an overlay welded to `[data-nav-mode-card]` (no gap: one shared hairline, square corners at the seam) — the card's box and the view block's y are unchanged — listing the OTHER modes only, no `kbd`, each row's icon at the card icon's x; ↓ focuses the first row; Esc closes it from anywhere (focus back on the card when it was inside); a press outside closes it |
+| 7b | Same parent tier on every mode | On EVERY page of a door lane — Shipping, FBA, Labels & docs; Deliveries, Sourcing — `[data-nav-back]` reads the lane (`Outbound` / `Inbound`), never the page, and `[data-nav-switcher="mode"]` is present with that page current, listing the lane's other modes (door first). Pinned by `resolve.test` "every mode of a door lane…"; a page added to the lane inherits it with no declaration |
+| 8 | View switcher, glyphs, digits | Hover `[data-nav-switcher="view"]`: `[data-nav-key-hint="child"]` rows read digit → glyph (flush) → label. Click: `[data-nav-switcher-list="child"]` (a different component from the mode card) hangs as an overlay card welded to the block (no gap: one shared hairline, square corners at the seam) — same left/right edges, row icons at the block icon's x, the block's box and everything below unchanged — the OTHER views as text with their counts (never the current one); Esc closes it from anywhere; a press outside closes it; keys 1–5 land on the matching view with nothing open. Hover the header title `[data-nav-view-title]` (`To ship ›`): grey bubble, `[data-nav-key-strip-view]` pills start 12px right of it, ring fully visible; they stay after hover-off and fold on Esc, a press outside, or a pill chosen |
+| 9 | Counts equal the API | For each view, the overlay's `[data-nav-view-count]` equals `GET /api/nav/facets?context=outbound.<view>`'s `total` with the view's own params; off Exceptions, the closed block's `[data-nav-view-alert]` shows the Exceptions total |
 | 10 | Filters | Open a row, pick an option: the URL param is set, the chip shows the value, the count badge and Reset appear; Reset clears it |
 | 11 | Zero options | Zero-count options are dimmed and last; a selected zero option returns to its slot |
 | 12 | Saved-view presets | Presets sit at the top of the body, ABOVE the filter hairline; `Save view` appears only while unsaved filters are on. Save with a name, apply, clear, delete; confirm against `/api/saved-views` |
@@ -108,12 +109,62 @@ Pages to run:
 - `/shipping/exceptions`
 - `/shipping/shortage?pair=po`
 - `/shipping/orders?queue=pick`
-- `/shipping/orders` (To ship)
+- `/shipping/orders` (To ship): no sort anywhere in the list — not the select bar
+  (`[data-testid=data-table-sort]` absent, cards and floor), not the ship-by
+  section headers. The sidebar Sort lists every order the retired ⇅ menu had
+  (view + column orders, no platform / carrier pins) and writes `?sort=`/`?dir=`.
+  The status chips stay above the list.
 - `/shipping/shipped`, which also has the **Date** row and the Carrier, Type,
   Tracking status and Needs attention filters
-- `/shipping/fba` and `/shipping/label-intake`: these are still on the OLD sidebar
-  (see known gaps). There, check only that the page map shows Outbound as one lit
-  row, that global search is the same well, and that Scan Stations is last.
+- `/shipping/fba` (contextual since 2026-09-27): views **Ready · Plan · Combine · Shipped ·
+  Catalog** in the view block, each on its `?fbaMode=` (Combine = bare `/shipping/fba`),
+  glyphs in the purple family. No tab row in the stage, no mode options in Ready's table
+  filter. Bare `1`–`5` land on those URLs in that order; reload and back/forward change
+  nothing; the child overlay lists the other four. `G S` / `G L` leave, `G F` stays.
+- `/shipping/label-intake` (contextual, ported by the Labels session): views To print ·
+  Printed (`?view=record`), header Print all (⌘P) · Upload (⌘O); row 7b holds (`‹ Outbound`,
+  mode card on Labels & docs).
+- `/sourcing` (contextual since 2026-09-28): views Queue · Scout · Watchlist · Searches ·
+  Suppliers · Models · Compatibility on `?mode=` (Queue bare), keys `1`–`7`, no tab row, no
+  old context panel. Filters: Queue **Status** (Resolved · Dismissed; unset = Open),
+  Watchlist **Status** (Watching · Ordered · Imported), Suppliers **Type**, Scout **Look up by**
+  (Model · Serial). Find: Scout / Suppliers `?q=`, Models / Compatibility `?search=`; Queue ·
+  Watchlist · Searches read no text, so they show the ⌘K face. Models: header **Add model**
+  (`?model=new`); the model picker is in the stage, left of the record (`BoseModelPickerPane`).
+  `G D` / `G S` from Sourcing. Phones never reach `/sourcing` (not in `isMobileAllowedPath`).
+- `/incoming` (On the way): the ledger toolbar has no Filter funnel and no Sort; the
+  status chips stay above the list. The body has **Save view**, **Sort**
+  (`?colsort=`/`?coldir=`) and **Source** (`?inbound=`; picking one drops `?page=`).
+- Both Inbound views: bare `1` lands on On the way and `2` on History (`viewKeys`); the header
+  title carries `›` and its pills.
+- `/incoming?lane=docked` (Inbound History): the toolbar has no State menu, Sort or
+  week pill. The body has **Save view**, **Sort** (`?colsort=`/`?coldir=`),
+  **Handled by** (`?staff=`), **Activity date** (`?dateFrom=`/`?dateTo=`, clears
+  `?weekOffset=`), **Activity** (`?sort=` Unboxed / Scanned at the door) and **State**
+  (`?dstate=`); each survives a reload and a saved view
+  (`receiving_history_saved_views`). The Unbox History tab keeps its own toolbar
+  (it has no contextual sidebar).
+- Both Inbound views, **Find**: typing writes `?find=` (not `rh_q`, the server search);
+  reload, a fresh tab on the URL and a saved view keep it. Find naming exactly one card
+  (PO / order number, carton, full tracking) opens it at once (`?openLine=`) — the card
+  faces' `exactFind`; a partial only narrows.
+- **Inbound door memory:** visit History, go to Sourcing, `G D` lands on History; from a
+  Shipping page the map's Inbound row points at `/incoming?lane=docked`.
+- `/inventory/*` (contextual since 2026-09-28; lane door `inventory`, `G I` / `G Q`): the
+  landing mode is named **Warehouse** (the lane is Inventory — nav-name law), tone emerald.
+  Views Stock · SKU Exceptions (`/inventory/stock?status=on-hold`, where the old redirect
+  lands) · Ledger · Replenish · Locations bind `1`–`5`; the parked views (Tracking
+  Exceptions, Pulse, Graph, Reason Codes, Quick Picks, Health) stay off the block. No tab
+  row. Filters: Stock / SKU Exceptions **State** (`?status=` Catalog paired · On hold) and
+  Find `?q=`; Replenish **List** (`?rtab=`) · **Status** (`?rstatus=`) and Find `?rsku=`
+  (all three were stripped by hygiene since the rail left on 2026-09-15); Locations
+  **Tool** (`?tab=`, bare = Bin Tags) replaces the stage dropdown. Stock's Rooms stay in the
+  toolbar (per-tenant facet with counts). Ledger shows the ⌘K face.
+- `/inventory/qc-labels` (**QC labels** mode, amber): views All labels · In stock
+  (`?view=stock`) · On orders (`?view=order`), Find `?q=` (serial, unit id, SKU, title,
+  order), header **Print QC label** (scan a serial or old label → prints + writes
+  `label_print_jobs`, `UNIT` or `REPRINT`). A record (`?open=<serial_unit_id>`) shows the
+  label, QC tester, the order it is held for and **Serial on order** — the pick closes it.
 
 ## Known gaps (do not "fix" silently; report)
 
@@ -121,12 +172,23 @@ Pages to run:
   `src/lib/nav/recents/surfaces.ts`. Closing it needs two things: a surface
   (`nav_recents`-backed), and a `POST /api/nav/recents` writer where a record
   opens. The writer lives in the data table, which is off-limits for this session.
-- **FBA and Label intake** have no contextual panels yet. Choosing them in the
-  mode switcher drops you onto the old sidebar. Each needs a port: its
-  `NAV_PAGE_DECLS` entry, parity rows in `PARITY.md` (the parity checklist in
-  `docs/refactors/sidebar/`), then `rollout`. Do that as separate PRs.
+- **Label intake** has no contextual panel yet (its rebuild is in flight in another
+  session). Choosing it in the mode switcher drops you onto the old sidebar. It needs
+  its `NAV_PAGE_DECLS` entry, parity rows, then `rollout`.
+- **FBA's FNSKU scan field:** `NAV_PAGE_DECLS.fba.scanInput` is declared (the parity
+  row passes) but no contextual component paints `scanInput` yet, so the FNSKU bar of
+  the legacy panel (`FbaWorkspaceScanField`, mounted only by the `/fba` redirect's route
+  key) is still not on the live page.
+- **Shipping Find** stays desk-local (operator ruling in `outbound-routes.ts`): no URL
+  param. Only Inbound carries `?find=`.
 - **Paste a list** (multi-line identify in ⌘K and Find) is specified in
   `HANDOFF-paste-a-list.md`.
+- **Find hydration (foreign, 2026-09-28):** on a second load of any page whose view
+  declares a url-param Find (`/sourcing?mode=scout`, `/incoming`, `/inventory/stock`,
+  `/inventory/qc-labels`), `GlobalHeaderSearch` → `NavFind` renders the page face on the
+  client and the "everywhere" face on the server → `Hydration failed`. Pages whose view
+  has no Find (`/inventory`, `/shipping/fba`, `/sourcing`) are clean. `NavFind.tsx` /
+  `GlobalHeaderSearch.tsx` are another session's live edits.
 - **Hard reload onto a contextual page:** the sidebar resolves its rollout after
   the first paint, so the map-to-contextual morph can play once. Confirm whether it
   reads as a flash. If it does, gate the first mount (`initial={false}` already

@@ -13,7 +13,6 @@ const SHIPPED_DESK_CARRIED_PARAMS = [
   'carrier',
   'statusCategory',
   'packedBy',
-  'testedBy',
   'dateFrom',
   'dateTo',
   'allDates',

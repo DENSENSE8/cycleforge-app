@@ -136,7 +136,7 @@ export function RepairStatusStrip({ repair, zendeskUrl }: { repair: RSRecord; ze
           <span aria-hidden className={cn('h-2.5 w-2.5 shrink-0', tone ? STATE_TONE_CLASSES[tone].dot : 'bg-mode-muted')} />
           <span
             className={cn(
-              'font-sans text-role-body font-bold industrial:font-mono industrial:font-black industrial:uppercase industrial:tracking-tight',
+              'font-sans text-role-body font-bold industrial:font-mono industrial:font-black industrial:tracking-tight',
               tone ? STATE_TONE_CLASSES[tone].text : 'text-mode-ink',
             )}
           >

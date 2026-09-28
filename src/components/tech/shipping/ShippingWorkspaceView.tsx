@@ -21,8 +21,8 @@ function TableFallback() {
   return <div className="min-h-[240px] flex-1 bg-surface-canvas" aria-hidden />;
 }
 
-const TechTable = dynamic(
-  () => import('@/components/TechTable').then((m) => m.TechTable),
+const DeskPickTable = dynamic(
+  () => import('@/components/DeskPickTable').then((m) => m.DeskPickTable),
   // SSR allowed — shipping history is not `/pick` LCP (the Pending grid is).
   // Loading fallback is the stand-in while the chunk resolves.
   { loading: TableFallback },
@@ -87,7 +87,7 @@ export function ShippingWorkspaceView({ techId }: ShippingWorkspaceViewProps) {
             >
               <Suspense fallback={<div className="min-h-[240px] bg-surface-canvas" aria-hidden />}>
                 {shipTab === 'history' ? (
-                  <TechTable
+                  <DeskPickTable
                     testedBy={Number.isFinite(parsedTechId) ? parsedTechId : 0}
                     staffScope="url-or-self"
                   />

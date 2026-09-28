@@ -5,8 +5,10 @@ import { transition } from '@/lib/inventory/state-machine';
 import { recordInventoryEvent } from '@/lib/inventory/events';
 import { tenantQuery, withTenantTransaction } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';
+import { refreshOrderStageFacts } from '@/lib/orders/order-stage-facts';
 import type { Queryable } from '@/lib/neon/serial-units-queries';
 import { parseToteScan, toteBindRefusal } from '@/lib/picking/tote-scan';
+import { linkPickedSerialToOrder } from '@/lib/picking/pick-serial-link';
 import { resolveSkuIdentityTitle } from '@/lib/sku/sku-identity-law';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
@@ -24,6 +26,8 @@ export interface PickTaskRow {
    *  picker's scan-gate to validate the right unit was scanned before
    *  confirming the pick. May be null for legacy units without a serial. */
   serialNumber: string | null;
+  /** Minted unit id the QC / pre-box label encodes (`{SKU}-{YYWW}-{SEQ6}`). */
+  unitUid: string | null;
   lineId: number;
   sku: string;
   productTitle: string | null;
@@ -158,6 +162,7 @@ export async function loadPickTasks(orderId: number, orgId?: OrgId): Promise<Pic
         allocation_id: number;
         serial_unit_id: number;
         serial_number: string | null;
+        unit_uid: string | null;
         sku: string;
         product_title: string | null;
         zoho_item_title?: string | null;
@@ -170,6 +175,7 @@ export async function loadPickTasks(orderId: number, orgId?: OrgId): Promise<Pic
         `SELECT oua.id            AS allocation_id,
                 oua.serial_unit_id,
                 su.serial_number,
+                su.unit_uid,
                 su.sku,
                 sc.product_title,
                 (SELECT i.name FROM items i
@@ -215,6 +221,7 @@ export async function loadPickTasks(orderId: number, orgId?: OrgId): Promise<Pic
         allocation_id: number;
         serial_unit_id: number;
         serial_number: string | null;
+        unit_uid: string | null;
         sku: string;
         product_title: string | null;
         zoho_item_title?: string | null;
@@ -226,6 +233,7 @@ export async function loadPickTasks(orderId: number, orgId?: OrgId): Promise<Pic
         `SELECT oua.id            AS allocation_id,
                 oua.serial_unit_id,
                 su.serial_number,
+                su.unit_uid,
                 su.sku,
                 sc.product_title,
                 -- Prefer the human-readable barcode (e.g. 'UNSORTED', 'A-12');
@@ -269,6 +277,7 @@ export async function loadPickTasks(orderId: number, orgId?: OrgId): Promise<Pic
       allocationId: r.allocation_id,
       serialUnitId: r.serial_unit_id,
       serialNumber: r.serial_number,
+      unitUid: r.unit_uid,
       lineId: i + 1,
       sku: r.sku,
       productTitle:
@@ -324,6 +333,7 @@ export async function openPickingSessionOn(
      RETURNING id`,
     [input.orderId, input.pickerStaffId, input.deviceId ?? null],
   );
+  await refreshOrderStageFacts(orgId, { orderIds: [input.orderId] }, client);
   return { ok: true, sessionId: Number(insertQ.rows[0].id), reopen: false };
 }
 
@@ -348,6 +358,7 @@ export async function releaseOrderSessions(
           AND ps.ended_at IS NULL`,
       [orgId, input.orderId, input.pickerStaffId],
     );
+    await refreshOrderStageFacts(orgId, { orderIds: [input.orderId] }, client);
     return q.rowCount ?? 0;
   });
 }
@@ -629,6 +640,12 @@ export async function confirmPick(input: ConfirmPickInput, orgId: OrgId): Promis
         await bindToteForPick(client, orgId, tote, alloc.order_id, alloc.serial_unit_id, input.actorStaffId);
       }
 
+      // The order learns the serial its QC label named (outbound ← pick).
+      await linkPickedSerialToOrder(client, orgId, {
+        serialUnitId: alloc.serial_unit_id,
+        orderId: alloc.order_id,
+      });
+
       // The first picker of a SKU owns it from now on: its future picks route
       // to them, with auto-selected backups (`pick-ownership.ts`). An existing
       // owner is never replaced by a pick — a Pass is the override.
@@ -644,6 +661,7 @@ export async function confirmPick(input: ConfirmPickInput, orgId: OrgId): Promis
           [orgId, alloc.serial_unit_id, input.actorStaffId],
         );
       }
+      await refreshOrderStageFacts(orgId, { orderIds: [alloc.order_id] }, client);
 
       // Pick time = state-transition timestamp on the inventory_event we just wrote.
       return {
@@ -837,6 +855,7 @@ export async function recordShortPick(input: RecordShortPickInput, orgId: OrgId)
             AND organization_id = $3`,
         [alloc.id, `SHORT_PICK_${input.reason}`, orgId],
       );
+      await refreshOrderStageFacts(orgId, { serialUnitIds: [alloc.serial_unit_id] }, client);
 
       return { ok: true, releasedUnitId: alloc.serial_unit_id };
     });
@@ -1031,6 +1050,7 @@ export async function completeSession(
         client,
         orgId,
       );
+      await refreshOrderStageFacts(orgId, { orderIds: [orderId] }, client);
       return { ok: true, stagedTotes: stagedQ.rows.map((r) => r.code) };
     });
   }

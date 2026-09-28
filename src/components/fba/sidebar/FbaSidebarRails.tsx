@@ -109,7 +109,7 @@ function FbaItemRail({ statuses, eyebrowTitle }: { statuses: string[]; eyebrowTi
           <p className="truncate text-role-caption font-semibold text-text-default" title={title}>
             {title}
           </p>
-          <p className="truncate text-role-eyebrow font-semibold uppercase tracking-widest text-text-soft">
+          <p className="truncate text-role-eyebrow font-semibold text-text-soft">
             {r.actual_qty}/{r.expected_qty} units · {FBA_STATUS_LABEL[r.item_status] ?? r.item_status}
           </p>
           </>
@@ -121,10 +121,10 @@ function FbaItemRail({ statuses, eyebrowTitle }: { statuses: string[]; eyebrowTi
           <div className="space-y-2 p-3.5">
           <p className="text-sm font-semibold leading-snug text-text-default">{title}</p>
           <div className="flex flex-wrap items-center gap-1.5">
-            <span className="rounded-none border border-border-accent bg-surface-accent px-1.5 py-0.5 text-role-eyebrow uppercase tracking-widest text-text-accent">
+            <span className="rounded-none border border-border-accent bg-surface-accent px-1.5 py-0.5 text-role-eyebrow text-text-accent">
               {FBA_STATUS_LABEL[r.item_status] ?? r.item_status}
             </span>
-            <span className="rounded-none bg-surface-sunken px-1.5 py-0.5 text-role-eyebrow uppercase tracking-widest text-text-muted tabular-nums">
+            <span className="rounded-none bg-surface-sunken px-1.5 py-0.5 text-role-eyebrow text-text-muted tabular-nums">
               {r.actual_qty}/{r.expected_qty} units
             </span>
           </div>

@@ -240,8 +240,11 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
     accessMode: accessMode ?? 'full',
     sessionId,
     userMessage: message,
-    // The same step-up rule withAuth applies to stepUp permissions (admins exempt).
-    hasStepUp: async (scope) => rolesIncludeAdmin(ctx.user.roles) || hasStepUp(ctx.session.sid, scope),
+    // Permission-derived step-up follows the same runtime policy as withAuth.
+    hasStepUp: async (scope) =>
+      ctx.authorizationMode === 'authenticated-only' ||
+      rolesIncludeAdmin(ctx.user.roles) ||
+      hasStepUp(ctx.session.sid, scope),
   };
 
   // Stop / client gone: `req.signal` fires on a closed connection, `cancel()`
@@ -675,7 +678,7 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
         // Permissions narrow the advertised kind list; enforcement is per-kind
         // inside the tools themselves.
         const writeTools = buildWriteTools(sessionId, undefined, ctx.permissions, { startedAt: turnStartedAt });
-        const toolDeps = { query: session.query };
+        const toolDeps = { query: session.query, releaseBatch: session.release };
         const turnArgs = {
           ctx: toolCtx,
           history,

@@ -18,6 +18,11 @@ test('triage paints triage on the desk and industrial on the phone', () => {
   assert.equal(resolveRegionMode('triage', 'phone'), 'industrial');
 });
 
+test('a form region keeps triage on the phone; an operation still collapses', () => {
+  assert.equal(resolveRegionMode('triage', 'phone', { form: true }), 'triage');
+  assert.equal(resolveRegionMode('triage', 'phone', { form: false }), 'industrial');
+});
+
 test('an explicit industrial region is never lifted to triage (Mode C hardware mirror)', () => {
   assert.equal(resolveRegionMode('industrial', 'desktop'), 'industrial');
   assert.equal(resolveRegionMode('industrial', 'phone'), 'industrial');

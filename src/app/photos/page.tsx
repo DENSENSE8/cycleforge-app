@@ -51,7 +51,7 @@ export default function NasPhotosPreviewPage() {
       <header className="sticky top-0 z-10 border-b border-glass/10 bg-scrim/90 px-4 py-3 backdrop-blur">
         <div className="flex items-center justify-between gap-3">
           <div className="min-w-0">
-            <p className="text-role-micro uppercase tracking-[0.22em] text-amber-400">
+            <p className="text-role-micro text-amber-400">
               NAS Photos · Preview (read-only, no attach)
             </p>
             <p className="truncate text-sm font-semibold">/{dir || 'Photos'}</p>
@@ -93,7 +93,7 @@ export default function NasPhotosPreviewPage() {
           <button
             type="button"
             onClick={() => void load(dir)}
-            className="mt-4 rounded-full bg-glass/10 px-4 py-2 text-role-caption font-semibold uppercase tracking-widest active:bg-glass/20"
+            className="mt-4 rounded-full bg-glass/10 px-4 py-2 text-role-caption font-semibold active:bg-glass/20"
           >
             Retry
           </button>

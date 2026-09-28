@@ -64,7 +64,7 @@ export const LABEL_DEFAULTS: Record<LabelKind, Record<string, LabelPresentation>
     // 'Needs label', not 'Awaiting Label':
     AWAITING_LABEL: { label: 'Needs label', description: 'Sold — no tracking or label attached yet. Buy or link a label to move it into the queue.', tone: 'slate' },
     PENDING: { label: 'Pending', description: 'Labeled and queued — waiting for test/pack.', tone: 'yellow' },
-    TESTED: { label: 'Tested', description: 'Passed the tech scan — ready to pack.', tone: 'teal' },
+    PICKED: { label: 'Picked', description: 'Picked at the desk — ready to pack.', tone: 'teal' },
     PACKED_STAGED: { label: 'Packed', description: 'Packed and staged at the dock — awaiting scan‑out.', tone: PACKED_TONE },
     BLOCKED: { label: 'Out of stock', description: 'Can’t fulfill until restocked — needs attention.', tone: 'red' },
   },

@@ -100,7 +100,7 @@ export function RailSelectionBand({
         className,
       )}
     >
-      <p className="min-w-0 flex-1 truncate text-role-eyebrow uppercase tracking-widest text-text-soft">
+      <p className="min-w-0 flex-1 truncate text-role-eyebrow text-text-soft">
         {total > 0 ? `${count} of ${total} selected` : `${count} selected`}
       </p>
       <div className="flex shrink-0 items-center gap-1">
@@ -174,7 +174,7 @@ export function RailActionRegion({ className }: { className?: string }) {
       {ordinaryBands.map((band) => (
         <div key={band.key || 'ungrouped'} className={band.key ? 'mt-2 first:mt-0' : undefined}>
           {band.key ? (
-            <p className="pb-1 text-role-micro font-semibold uppercase tracking-widest text-text-faint">
+            <p className="pb-1 text-role-micro font-semibold text-text-faint">
               {band.key}
             </p>
           ) : null}

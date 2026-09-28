@@ -76,7 +76,12 @@ export const directedPickNextSchema: z.ZodType<DirectedPickNext> = z.object({
       imageUrl: z.string().nullable(),
       location: location.nullable(),
       units: z.array(
-        z.object({ allocationId: z.number().int(), serialUnitId: z.number().int(), serialNumber: z.string().nullable() }),
+        z.object({
+          allocationId: z.number().int(),
+          serialUnitId: z.number().int(),
+          serialNumber: z.string().nullable(),
+          unitUid: z.string().nullable(),
+        }),
       ),
       platforms: z.array(z.object({ platformSku: z.string().nullable(), platformItemId: z.string().nullable() })),
     })

@@ -23,6 +23,7 @@ import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { IconButton } from '@/design-system/primitives';
 import { conditionLabel } from '@/lib/conditions';
 import { unitStatusBadgeTone } from '@/lib/receiving/receiving-constants';
+import { sentenceCaseLabel } from '@/lib/text/sentence-case-label';
 import { useAuth } from '@/contexts/AuthContext';
 import { useStationTheme } from '@/hooks/useStationTheme';
 import { focusRing } from '@/design-system/tokens/focus-ring';
@@ -42,7 +43,7 @@ const DISPOSITIONS: Array<{
   {
     code: 'ACCEPT',
     label: 'Accept',
-    hint: 'Sellable — restocks the unit (RETURNED → STOCKED)',
+    hint: 'Sellable — restocks the unit (returned → stocked)',
     icon: Check,
     activeClass: 'bg-emerald-600 hover:bg-emerald-700',
   },
@@ -195,7 +196,7 @@ function DispositionStationInner() {
         <div>
           <Link
             href="/warehouse/rma"
-            className="inline-flex items-center gap-1 text-xs font-semibold uppercase tracking-wider text-text-soft hover:text-text-muted"
+            className="inline-flex items-center gap-1 text-xs font-semibold text-text-soft hover:text-text-muted"
           >
             <ChevronLeft className="h-3.5 w-3.5" />
             RMA queue
@@ -253,21 +254,21 @@ function DispositionStationInner() {
                     </div>
                     <div className="flex shrink-0 items-center gap-2">
                       {unit.condition_grade && (
-                        <span className="rounded bg-surface-canvas px-1.5 py-0.5 text-role-eyebrow uppercase tracking-widest text-text-muted ring-1 ring-inset ring-border-soft">
+                        <span className="rounded bg-surface-canvas px-1.5 py-0.5 text-role-eyebrow text-text-muted ring-1 ring-inset ring-border-soft">
                           {conditionLabel(unit.condition_grade, 'compact')}
                         </span>
                       )}
                       <span
-                        className={`rounded-full px-2 py-0.5 text-role-eyebrow uppercase tracking-widest ${unitStatusBadgeTone(unit.current_status)}`}
+                        className={`rounded-full px-2 py-0.5 text-role-eyebrow ${unitStatusBadgeTone(unit.current_status)}`}
                       >
-                        {unit.current_status}
+                        {sentenceCaseLabel(unit.current_status)}
                       </span>
                     </div>
                   </div>
 
                   {notReturned && (
                     <div className="mt-3 rounded-xl border border-dashed border-amber-200 bg-amber-50 px-3 py-2 text-xs font-semibold text-amber-800">
-                      This unit isn't currently RETURNED — Accept will record the decision but won't restock it.
+                      This unit isn't currently marked returned — Accept will record the decision but won't restock it.
                     </div>
                   )}
 
@@ -294,7 +295,7 @@ function DispositionStationInner() {
                           ) : (
                             <d.icon className="h-4 w-4" />
                           )}
-                          <span className="text-role-micro uppercase tracking-wide">{d.label}</span>
+                          <span className="text-role-micro">{d.label}</span>
                         </button>
                       </HoverTooltip>
                     ))}
@@ -343,7 +344,7 @@ function ResultBanner({ result, onDismiss }: { result: DispositionResult; onDism
             {result.code === 'ACCEPT'
               ? result.restocked
                 ? 'Unit restocked — back in sellable inventory.'
-                : 'Decision recorded — not restocked (unit was not RETURNED).'
+                : 'Decision recorded — not restocked (unit was not marked returned).'
               : 'Decision recorded.'}
           </p>
         </div>

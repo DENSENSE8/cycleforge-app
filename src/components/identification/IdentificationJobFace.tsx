@@ -64,7 +64,7 @@ export function IdentificationJobFace({
           <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
         )}
         <div className="min-w-0 flex-1">
-          <p className="text-role-micro font-semibold uppercase tracking-widest">{face.title}</p>
+          <p className="text-role-micro font-semibold">{face.title}</p>
           {heading && heading !== face.title ? (
             <p className="mt-1 text-role-body font-semibold">{heading}</p>
           ) : null}

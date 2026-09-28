@@ -51,7 +51,7 @@ export function useDeskHeaderFace(): DeskHeaderFace {
  */
 export const DESK_BAR_SEGMENT_CLASS = cn(
   'ds-raw-button inline-flex min-h-mode-hit shrink-0 items-center gap-2 px-4',
-  'font-sans text-role-eyebrow font-semibold industrial:font-mono industrial:font-extrabold industrial:uppercase industrial:tracking-[0.08em]',
+  'font-sans text-role-eyebrow font-semibold industrial:font-mono industrial:font-extrabold',
   'disabled:cursor-not-allowed disabled:opacity-40',
   'rounded-mode-control',
   focusRing('cell'),

@@ -29,7 +29,8 @@ import {
   type TestingLaneIconKey,
 } from '@/lib/station/testing-board-lanes';
 import { QC_RECEIVING_LINES_API } from '@/lib/surface-isolation';
-import { STAFF_FILTER_PARAM, useStaffFilter } from '@/hooks/useStaffFilter';
+import { useStaffFilter } from '@/hooks/useStaffFilter';
+import { STAFF_FILTER_PARAM } from '@/lib/station/table-url-params';
 import type { TestingWorkspaceTab } from '@/utils/testing-workspace-state';
 import {
   buildTestingWorkspaceSearchParams,

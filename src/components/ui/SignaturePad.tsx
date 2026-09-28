@@ -195,7 +195,7 @@ export function SignaturePad({
   const labelRow = (
     <div className="flex items-center justify-between gap-3">
       <label
-        className={`block uppercase tracking-[0.15em] text-text-soft ${
+        className={`block text-text-soft ${
           isDropoff || expanded ? 'text-role-micro' : 'text-role-eyebrow'
         }`}
       >
@@ -203,7 +203,7 @@ export function SignaturePad({
       </label>
       <div className="flex items-center gap-2 sm:gap-3">
         <span
-          className={`flex items-center gap-1.5 border uppercase tracking-wide transition-opacity ${
+          className={`flex items-center gap-1.5 border transition-opacity ${
             isDropoff || expanded ? 'rounded-none px-2 py-1 text-role-micro' : 'px-2 py-1 text-role-eyebrow'
           } ${signed ? 'border-border-soft bg-surface-sunken text-text-default' : 'border-transparent opacity-0'}`}
         >
@@ -227,7 +227,7 @@ export function SignaturePad({
           variant="ghost"
           type="button"
           onClick={handleClear}
-          className={`h-auto rounded px-2 py-1 uppercase tracking-wide text-red-500 hover:bg-red-50 hover:text-red-700 ${
+          className={`h-auto rounded px-2 py-1 text-red-500 hover:bg-red-50 hover:text-red-700 ${
             isDropoff || expanded ? 'text-role-micro' : 'text-role-eyebrow'
           }`}
         >
@@ -263,7 +263,7 @@ export function SignaturePad({
       <canvas ref={canvasRef} className="h-full w-full touch-none select-none" />
       <div className={REPAIR_SIGNATURE_GUIDE_CLASS} />
       {!signed && (
-        <span className="pointer-events-none absolute right-3 top-3 text-role-micro uppercase tracking-wide text-text-faint">
+        <span className="pointer-events-none absolute right-3 top-3 text-role-micro text-text-faint">
           Touch to sign
         </span>
       )}

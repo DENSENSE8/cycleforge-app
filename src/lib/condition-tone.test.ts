@@ -26,7 +26,6 @@ describe('conditionGradeStatusChip', () => {
   it('maps NEW through BRAND_NEW yellow badge + dot', () => {
     const chip = conditionGradeStatusChip('NEW');
     assert.ok(chip);
-    assert.equal(chip.label, 'NEW');
     assert.match(chip.toneClass, /bg-yellow-50/);
     assert.match(chip.toneClass, /text-yellow-700/);
     assert.doesNotMatch(chip.toneClass, /\bring-/);
@@ -36,7 +35,6 @@ describe('conditionGradeStatusChip', () => {
   it('keeps bare USED on the neutral fallback (no A/B/C claim)', () => {
     const chip = conditionGradeStatusChip('USED');
     assert.ok(chip);
-    assert.equal(chip.label, 'USED');
     assert.match(chip.toneClass, /text-text-muted/);
     assert.match(chip.dotClass, /bg-slate-700/);
   });

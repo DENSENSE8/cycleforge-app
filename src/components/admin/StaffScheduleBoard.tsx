@@ -105,7 +105,7 @@ export function StaffScheduleBoard({
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border-hairline px-5 py-3.5">
         <div className="flex items-center gap-2.5">
           <h2 className="text-base font-semibold tracking-tight text-text-default">Work calendar</h2>
-          <span className="rounded-full bg-surface-inverse px-2.5 py-0.5 text-role-micro font-semibold uppercase tracking-[0.14em] text-white">
+          <span className="rounded-full bg-surface-inverse px-2.5 py-0.5 text-role-micro font-semibold text-white">
             9 AM – 5 PM
           </span>
           <span className="text-role-caption font-medium text-text-soft">{timezoneLabel}</span>
@@ -130,7 +130,7 @@ export function StaffScheduleBoard({
                 }`}
               >
                 <div>
-                  <p className={`text-role-eyebrow uppercase tracking-widest ${isToday ? 'text-amber-700' : 'text-text-soft'}`}>
+                  <p className={`text-role-eyebrow ${isToday ? 'text-amber-700' : 'text-text-soft'}`}>
                     {day.label}
                   </p>
                   <p className={`mt-0.5 text-base font-semibold tracking-tight ${isToday ? 'text-amber-900' : 'text-text-default'}`}>
@@ -145,12 +145,12 @@ export function StaffScheduleBoard({
               {/* Avatar pills */}
               <div className="flex flex-col gap-1 px-2 py-1.5">
                 {isLoading && dayShifts.length === 0 && (
-                  <p className="px-1 py-2 text-role-eyebrow uppercase tracking-widest text-text-faint">
+                  <p className="px-1 py-2 text-role-eyebrow text-text-faint">
                     Loading…
                   </p>
                 )}
                 {!isLoading && dayShifts.length === 0 && (
-                  <p className="px-1 py-2 text-role-eyebrow uppercase tracking-widest text-text-faint">
+                  <p className="px-1 py-2 text-role-eyebrow text-text-faint">
                     No one in
                   </p>
                 )}
@@ -177,7 +177,7 @@ function WeekToggle({ label, active, onClick }: { label: string; active: boolean
     <button
       type="button"
       onClick={onClick}
-      className={`rounded-full px-3 py-1.5 text-role-caption font-semibold uppercase tracking-[0.14em] transition ${
+      className={`rounded-full px-3 py-1.5 text-role-caption font-semibold transition ${
         active ? 'bg-surface-card text-text-default shadow-sm' : 'text-text-soft hover:text-text-muted'
       }`}
     >
@@ -220,7 +220,7 @@ function ShiftAvatarPill({
         </span>
         <span className="truncate text-role-caption font-semibold text-text-default">{shift.staff_name.split(/\s+/)[0]}</span>
         {isCovering && (
-          <span className="rounded-full bg-amber-100 inset-chip text-role-micro uppercase text-amber-800">
+          <span className="rounded-full bg-amber-100 inset-chip text-role-micro text-amber-800">
             Cover
           </span>
         )}

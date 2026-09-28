@@ -345,7 +345,7 @@ export function FolderPathPicker({ value, onChange }: FolderPathPickerProps) {
             onClick={handleCreate}
             disabled={!newSeg.trim()}
             icon={<Check className="h-3 w-3" />}
-            className="h-7 gap-1 rounded-md px-2 text-role-micro uppercase tracking-wider"
+            className="h-7 gap-1 rounded-md px-2 text-role-micro"
           >
             Add
           </Button>
@@ -373,7 +373,7 @@ function CrumbPill({
     <button
       type="button"
       onClick={onClick}
-      className={`ds-raw-button inline-flex items-center rounded-full border px-2 py-0.5 text-role-micro uppercase tracking-wider transition-colors ${tone}`}
+      className={`ds-raw-button inline-flex items-center rounded-full border px-2 py-0.5 text-role-micro transition-colors ${tone}`}
     >
       {label}
     </button>

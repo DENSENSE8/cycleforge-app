@@ -44,10 +44,6 @@ const getReceivingAutoPrintLabel = (s: OrgSettings): boolean =>
 const getReceivingConfirmSerialRemoval = (s: OrgSettings): boolean =>
   readOrg<boolean>(s, 'receiving.confirmSerialRemoval', true);
 
-/** Org master switch for scan confirmation tones (per-staff opt-out applies on top). */
-const getReceivingScanSoundsEnabled = (s: OrgSettings): boolean =>
-  readOrg<boolean>(s, 'receiving.scanSoundsEnabled', false);
-
 /** When true, Receive is gated on a captured serial OR an explicit no-serial waiver. */
 const getReceivingRequireSerialConfirmation = (s: OrgSettings): boolean =>
   readOrg<boolean>(s, 'receiving.requireSerialConfirmation', false);

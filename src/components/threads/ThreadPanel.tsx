@@ -227,7 +227,7 @@ function StatusControl({
   const pill = (
     <span
       className={cn(
-        'inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-role-eyebrow uppercase tracking-widest ring-1 ring-inset',
+        'inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-role-eyebrow ring-1 ring-inset',
         tone.bg, tone.text, tone.ring,
       )}
     >
@@ -294,7 +294,7 @@ function AssigneeControl({
 
   const name = assignment?.assignedStaffName?.trim() || (assignment ? 'Assigned' : null);
   const chip = name ? (
-    <span className="inline-flex items-center gap-1.5 rounded-full bg-surface-strong px-2 py-0.5 text-role-eyebrow uppercase tracking-widest text-text-muted">
+    <span className="inline-flex items-center gap-1.5 rounded-full bg-surface-strong px-2 py-0.5 text-role-eyebrow text-text-muted">
       <StaffAvatar
         staffId={assignment?.assignedStaffId ?? null}
         name={name}
@@ -305,7 +305,7 @@ function AssigneeControl({
       {name}
     </span>
   ) : (
-    <span className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-role-eyebrow uppercase tracking-widest text-text-faint ring-1 ring-inset ring-border-soft">
+    <span className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-role-eyebrow text-text-faint ring-1 ring-inset ring-border-soft">
       <User className="h-3 w-3" /> Unassigned
     </span>
   );
@@ -414,7 +414,7 @@ function ConnectionChip({ connection: c }: { connection: ThreadConnectionRow }) 
   } else {
     const Icon = CONNECTION_ICON[c.entityType] ?? Tag;
     chip = (
-      <span className="inline-flex shrink-0 items-center gap-1 rounded-md px-1.5 py-0.5 text-role-eyebrow uppercase tracking-wide text-text-muted ring-1 ring-inset ring-border-soft">
+      <span className="inline-flex shrink-0 items-center gap-1 rounded-md px-1.5 py-0.5 text-role-eyebrow text-text-muted ring-1 ring-inset ring-border-soft">
         <Icon className="h-3 w-3" />
         <span className="max-w-[9rem] truncate normal-case tracking-normal font-mono">
           {getLast8(c.label)}

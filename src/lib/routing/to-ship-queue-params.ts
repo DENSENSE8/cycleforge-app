@@ -9,7 +9,7 @@ import { ORDER_ROW_FLAG_IDS } from '@/lib/orders/order-row-flags';
 import { paramEnum, paramFlag, paramText } from './route-params';
 
 export const TO_SHIP_QUEUE_FACET_PARAMS = {
-  /** Coarse lifecycle stage (`pending` · `tested` · `packed`). */
+  /** Coarse lifecycle stage (`pending` · `picked` · `packed`). */
   stage: paramText,
   /** Ship-by aging bucket: overdue, today, upcoming, or unscheduled. */
   aging: paramEnum(['overdue', 'today', 'upcoming', 'unscheduled'] as const),

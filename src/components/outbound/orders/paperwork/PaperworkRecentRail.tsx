@@ -1,6 +1,6 @@
 'use client';
 
-/** Paperwork walk rail — the run's orders as industrial records. */
+/** Paperwork walk rail — the Labels queue, the run's orders in the triage face (the walk is a triage region). */
 
 import { useEffect, useMemo, useRef } from 'react';
 import type { ShippedOrder } from '@/types/orders';
@@ -10,20 +10,10 @@ import { BrandIdentityDot } from '@/components/ui/grid-cells';
 import { platformMetaBrandDot } from '@/lib/source-platform';
 import { NAV_KEY_HINT_CLASS, useNavRegion } from '@/lib/keyboard/nav-keys';
 import { LIFECYCLE, LIFECYCLE_CLASSES } from '@/design-system/tokens/lifecycle';
-import {
-  RECORD_ID_CLASS,
-  RECORD_LABEL_CLASS,
-  RECORD_TITLE_CLASS,
-  recordStateCodeClass,
-} from '@/design-system/tokens/industrial-record';
+import { RECORD_ID_CLASS, RECORD_LABEL_CLASS, RECORD_OPEN_CLASS, RECORD_TITLE_CLASS } from '@/design-system/tokens/industrial-record';
 import { focusRing } from '@/design-system/tokens/focus-ring';
 import { cn } from '@/utils/_cn';
 import { recordState } from '../outbound-orders-ledger-state';
-import {
-  LEDGER_BAND_CLASS,
-  LEDGER_SPINE_CLASS,
-  LEDGER_SPINE_HATCH_CLASS,
-} from '../outbound-orders-ledger-geometry';
 
 export function PaperworkRecentRail({
   rows,
@@ -56,7 +46,7 @@ export function PaperworkRecentRail({
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
-      <div className="box-content flex min-h-mode-hit shrink-0 items-center gap-2 border-b-2 border-mode-ink px-4">
+      <div className="flex min-h-mode-hit shrink-0 items-center gap-2 border-b border-mode-divide px-4">
         <span className={cn(RECORD_LABEL_CLASS, 'flex-1 text-mode-muted')}>Labels queue</span>
         <span className={cn(RECORD_LABEL_CLASS, 'tabular-nums text-mode-ink')}>{rows.length}</span>
       </div>
@@ -69,7 +59,7 @@ export function PaperworkRecentRail({
           ref={listRef}
           aria-label="Labels queue records"
           aria-busy={loading || undefined}
-          className="min-h-0 flex-1 overflow-y-auto overscroll-contain"
+          className="flex min-h-0 flex-1 flex-col gap-px overflow-y-auto overscroll-contain p-2"
         >
           {rows.map((row) => (
             <li key={row.id}>
@@ -105,7 +95,7 @@ function PaperworkRailRecord({
   const spec = LIFECYCLE[state];
   const orderId = String(row.order_id ?? '').trim();
   const channel = channelOf(orderId, row.account_source);
-  const title = row.product_title || orderId || `#${row.id}`;
+  const title = row.product_title || orderId || String(row.id);
   const tracked = String(row.shipping_tracking_number || '').trim() !== '';
 
   return (
@@ -117,35 +107,26 @@ function PaperworkRailRecord({
       aria-label={`Order ${orderId || row.id}, ${spec.label}, ${tracked ? 'tracking linked' : 'needs a label'}, ${title}`}
       onClick={() => onSelect(row.id)}
       className={cn(
-        'ds-raw-button relative flex w-full border-b border-mode-ink bg-mode-panel text-left text-mode-ink hover:bg-mode-hover',
-        open && 'outline outline-2 -outline-offset-2 outline-mode-ink',
-        focusRing('cell'),
+        'ds-raw-button relative flex w-full flex-col gap-0.5 rounded-mode-control px-3 py-2 text-left text-mode-ink hover:bg-mode-hover',
+        open && RECORD_OPEN_CLASS,
+        focusRing('control'),
       )}
     >
-      <span
-        className={cn(
-          LEDGER_SPINE_CLASS,
-          LIFECYCLE_CLASSES[state].dot,
-          state === 'outOfStock' && LEDGER_SPINE_HATCH_CLASS,
-        )}
-        aria-hidden
-      />
-      <span className="flex min-w-0 flex-1 flex-col" aria-hidden>
-        {/* Band 1 — state · platform · order # ··· label state */}
-        <span className={cn('flex min-w-0 items-center gap-2 border-b border-mode-rule pl-2 pr-3', LEDGER_BAND_CLASS.M)}>
-          <span className={cn(RECORD_LABEL_CLASS, 'w-9 shrink-0', recordStateCodeClass(spec))}>{spec.code}</span>
-          <span className="inline-flex w-14 shrink-0 items-center gap-1.5">
-            <BrandIdentityDot {...platformMetaBrandDot(channel.meta)} />
-            <span className={cn(RECORD_LABEL_CLASS, 'truncate text-mode-muted')}>{channel.shortLabel || '—'}</span>
-          </span>
-          <span className={cn(RECORD_ID_CLASS, 'min-w-0 flex-1 truncate')}>{orderId || `#${row.id}`}</span>
-          <span className={cn(RECORD_LABEL_CLASS, 'shrink-0', tracked ? 'text-mode-muted' : 'text-mode-warn')}>
-            {tracked ? 'Tracked' : 'No label'}
-          </span>
+      <span className="flex min-w-0 items-center gap-2" aria-hidden>
+        <span className={cn(RECORD_ID_CLASS, 'min-w-0 flex-1 truncate')}>{orderId || String(row.id)}</span>
+        <span className="inline-flex min-w-0 shrink-0 items-center gap-1.5">
+          <BrandIdentityDot {...platformMetaBrandDot(channel.meta)} />
+          <span className={cn(RECORD_LABEL_CLASS, 'truncate text-mode-muted')}>{channel.shortLabel || '—'}</span>
         </span>
-        {/* Band 2 — what it is */}
-        <span className={cn('flex min-w-0 items-center pl-2 pr-3', LEDGER_BAND_CLASS.M)}>
-          <span className={RECORD_TITLE_CLASS}>{title}</span>
+      </span>
+      <span className={RECORD_TITLE_CLASS} aria-hidden>
+        {title}
+      </span>
+      <span className="flex min-w-0 items-center gap-1.5 text-role-caption" aria-hidden>
+        <span className={cn('size-2 shrink-0 rounded-mode-pill', LIFECYCLE_CLASSES[state].dot)} />
+        <span className="min-w-0 flex-1 truncate text-mode-muted">{spec.label}</span>
+        <span className={cn('shrink-0', tracked ? 'text-mode-muted' : 'font-medium text-mode-warn')}>
+          {tracked ? 'Tracked' : 'No label'}
         </span>
       </span>
       {navKey ? (

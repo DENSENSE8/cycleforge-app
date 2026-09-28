@@ -32,7 +32,7 @@ export function TicketFact({ repair }: { repair: RSRecord }) {
         data-testid="repair-record-ticket"
         className={cn(RECORD_ID_CLASS, 'block truncate select-all', ticket ? 'text-mode-ink' : 'text-mode-warn')}
       >
-        {ticket || 'NONE'}
+        {ticket || 'None'}
       </span>
     </EvidenceFactRow>
   );
@@ -79,7 +79,7 @@ export function LinkFacts({ repair, zendeskUrl }: { repair: RSRecord; zendeskUrl
             <OrderNumberIdentity orderId={order} platformLabel={repair.source_system ?? null} openHref={marketplaceOrderUrl(order, repair.source_system)} />
           </span>
         ) : (
-          <span className={cn(RECORD_ID_CLASS, 'text-mode-muted')}>WALK-IN</span>
+          <span className={cn(RECORD_ID_CLASS, 'text-mode-muted')}>Walk-in</span>
         )}
       </EvidenceFactRow>
       <EvidenceFactRow label="Inbound TRK#">

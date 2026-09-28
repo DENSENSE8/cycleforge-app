@@ -21,6 +21,7 @@ function step(id: number, result: Partial<UnitQcStep> = {}): UnitQcStep {
     verified_by_name: null,
     verified_at: null,
     notes: null,
+    procedure_version_id: null,
     ...result,
   };
 }

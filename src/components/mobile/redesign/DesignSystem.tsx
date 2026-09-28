@@ -76,7 +76,7 @@ const BentoItem = ({
     {title && (
       <div className="flex items-center gap-2 px-1">
         {Icon && <Icon className="h-3.5 w-3.5 text-text-faint" />}
-        <span className="text-role-micro uppercase tracking-[0.15em] text-text-soft">{title}</span>
+        <span className="text-role-micro text-text-soft">{title}</span>
       </div>
     )}
     <MobileCard variant={variant} className="flex-1">
@@ -96,14 +96,14 @@ const SectionHeader = ({
   onAction?: () => void;
 }) => (
   <div className="mb-3 flex items-center justify-between px-1">
-    <span className="text-role-caption font-semibold uppercase tracking-[0.2em] text-text-soft">
+    <span className="text-role-caption font-semibold text-text-soft">
       {title}
     </span>
     {actionLabel && (
       <Button
         variant="ghost"
         onClick={onAction}
-        className="h-auto px-0 text-role-caption font-semibold uppercase tracking-wider"
+        className="h-auto px-0 text-role-caption font-semibold"
       >
         {actionLabel}
       </Button>
@@ -130,7 +130,7 @@ const GlassButton = ({
     onClick={onClick}
     icon={Icon ? <Icon className="h-5 w-5" /> : undefined}
     // ds-allow-control-size — full-width mobile commit, sized for a gloved thumb.
-    className={cn('h-14 w-full justify-center px-6 text-sm font-semibold uppercase tracking-wider', className)}
+    className={cn('h-14 w-full justify-center px-6 text-sm font-semibold', className)}
   >
     {children}
   </Button>

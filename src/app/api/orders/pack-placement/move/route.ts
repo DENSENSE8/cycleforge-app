@@ -23,7 +23,7 @@ const ROUTE = 'orders.pack-placement.move';
 
 /**
  * POST /api/orders/pack-placement/move — move a ready-to-pack order between
- * packing DESK / STAGING locations. Does not change TESTED lifecycle.
+ * packing DESK / STAGING locations. Does not change PICKED lifecycle.
  */
 export const POST = withAuth(async (req: NextRequest, ctx) => {
   try {

@@ -34,14 +34,14 @@ const WORKFLOW_ICONS = {
 
 function ProvenanceLabel({ children }: { children: React.ReactNode }) {
   return (
-    <p className="text-role-micro uppercase tracking-widest text-text-faint">{children}</p>
+    <p className="text-role-micro text-text-faint">{children}</p>
   );
 }
 
 function Field({ icon, label, children }: { icon: React.ReactNode; label: string; children: React.ReactNode }) {
   return (
     <div className="space-y-1">
-      <p className="flex items-center gap-1.5 text-role-micro uppercase tracking-widest text-text-faint">
+      <p className="flex items-center gap-1.5 text-role-micro text-text-faint">
         <span className="text-text-soft">{icon}</span>
         {label}
       </p>
@@ -116,7 +116,7 @@ export function PhotoContextPanel({
     >
       <div className="flex h-full w-80 max-w-[85vw] flex-col gap-5 overflow-y-auto border-l border-glass/10 bg-scrim/60 px-5 pb-5 pt-6 backdrop-blur-xl">
       <div className="flex items-center justify-between gap-2">
-        <p className="text-role-micro uppercase tracking-widest text-text-faint">Details</p>
+        <p className="text-role-micro text-text-faint">Details</p>
         <HoverTooltip label="Hide details (i)" asChild>
           <IconButton
             onClick={(e) => {
@@ -140,7 +140,7 @@ export function PhotoContextPanel({
           <div className="flex flex-wrap items-center gap-1.5">
             <span
               id="photo-provenance-type"
-              className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold uppercase tracking-wider ring-1 ring-inset ${workflow.tone}`}
+              className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold ring-1 ring-inset ${workflow.tone}`}
             >
               <WorkflowIcon className="h-3.5 w-3.5" />
               {workflow.label}
@@ -148,7 +148,7 @@ export function PhotoContextPanel({
             {stage ? (
               <span
                 data-testid="photo-context-stage"
-                className="inline-flex items-center rounded-full bg-surface-sunken px-2.5 py-1 text-xs font-semibold uppercase tracking-wider text-text-soft ring-1 ring-inset ring-border-soft"
+                className="inline-flex items-center rounded-full bg-surface-sunken px-2.5 py-1 text-xs font-semibold text-text-soft ring-1 ring-inset ring-border-soft"
               >
                 {photoStageLabel(stage)}
               </span>

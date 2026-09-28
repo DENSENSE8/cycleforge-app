@@ -65,7 +65,7 @@ export function PairingUnmatchedSection({ query, onPairIdentifier, onAddSku }: P
   return (
     <div className="shrink-0 border-b border-border-soft bg-surface-canvas/60">
       <div className={`flex items-center justify-between ${SIDEBAR_GUTTER} py-1.5`}>
-        <span className="text-role-micro uppercase tracking-wider text-text-soft">
+        <span className="text-role-micro text-text-soft">
           Not in the queue
         </span>
         {loading && <Loader2 className="h-3 w-3 animate-spin text-text-faint" />}
@@ -98,7 +98,7 @@ export function PairingUnmatchedSection({ query, onPairIdentifier, onAddSku }: P
                     <div className="flex items-center gap-1.5">
                       <span className="truncate font-mono text-xs font-semibold text-text-default">{value}</span>
                       {id.orderCount > 0 && (
-                        <span className="shrink-0 text-role-eyebrow uppercase tracking-wider text-amber-700">
+                        <span className="shrink-0 text-role-eyebrow text-amber-700">
                           {id.orderCount} ord
                         </span>
                       )}

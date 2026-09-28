@@ -16,7 +16,7 @@ import type { PackPlaceableLocation } from '@/lib/packing/pack-placement';
 
 const PRINT_BTN_CLS = cn(
   'shrink-0 rounded-none border border-border-soft inset-chip',
-  'text-role-micro uppercase tracking-widest text-text-muted',
+  'text-role-micro text-text-muted',
   'hover:bg-surface-sunken',
   focusRing('control', 'accent'),
 );
@@ -146,7 +146,7 @@ export function StationsSection() {
       {!benchQuery.isPending && !benchQuery.isError && groups.length === 0 && (
         <div className="rounded-xl border border-dashed border-border-soft bg-surface-sunken inset-empty text-center">
           <p className="text-role-caption text-text-soft">
-            No stations yet. Add a DESK or STAGING location to create one.
+            No stations yet. Add a desk or staging location to create one.
           </p>
           <Link
             href={inventoryLocationsHref({ tab: 'bins' })}
@@ -163,7 +163,7 @@ export function StationsSection() {
 
       {groups.map(([title, rows]) => (
         <section key={title} className="space-y-2">
-          <h3 className="text-role-eyebrow uppercase tracking-widest text-text-soft">
+          <h3 className="text-role-eyebrow text-text-soft">
             {title}
           </h3>
           <ul className="divide-y divide-border-hairline rounded-xl border border-border-soft bg-surface-card">

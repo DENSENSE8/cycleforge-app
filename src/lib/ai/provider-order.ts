@@ -5,8 +5,10 @@ import type { IntegrationProvider } from '@/lib/integrations/credentials';
 /** The order vocabulary. */
 export type AiProviderOrder = 'local-first' | 'cloud-first';
 
-/** Local-first: with nothing configured anywhere, ask the tenant's own box first. */
+/** Local-first: with nothing configured anywhere, ask the tenant's own box first (dev default). */
 const DEFAULT_AI_PROVIDER_ORDER: AiProviderOrder = 'local-first';
+/** Production default: a funded cloud vendor serves; a tenant's own box is failover. */
+const PRODUCTION_AI_PROVIDER_ORDER: AiProviderOrder = 'cloud-first';
 
 /** The vault providers that can serve a capability, in each order. */
 const CLOUD_SEQUENCE: readonly IntegrationProvider[] = ['ai_gateway', 'openai', 'anthropic'];
@@ -29,11 +31,13 @@ export function resolveAiProviderOrder(input: {
   orgOrder: string | null | undefined;
   /** The raw AI_PROVIDER_ORDER value. */
   envOrder: string | null | undefined;
+  /** NODE_ENV === 'production' — flips the unset default to cloud-first. */
+  production?: boolean;
 }): AiProviderOrder {
   return (
     normalizeAiProviderOrder(input.orgOrder) ??
     normalizeAiProviderOrder(input.envOrder) ??
-    DEFAULT_AI_PROVIDER_ORDER
+    (input.production ? PRODUCTION_AI_PROVIDER_ORDER : DEFAULT_AI_PROVIDER_ORDER)
   );
 }
 

@@ -8,8 +8,11 @@
  */
 
 import { Suspense } from 'react';
+import { useRouter } from 'next/navigation';
+import { Plus } from '@/components/Icons';
 import { Inset } from '@/design-system/primitives';
 import { TOKENS } from '@/components/mobile/redesign/DesignSystem';
+import { MobileActionSlotRegistrar, MobileTopBarAction } from '@/components/mobile/redesign/MobileActionSlot';
 import { MobileToShipQueue } from '@/components/mobile/redesign/MobileToShipQueue';
 
 /**
@@ -17,8 +20,15 @@ import { MobileToShipQueue } from '@/components/mobile/redesign/MobileToShipQueu
  * `/m/orders` and `/m/work`).
  */
 export default function RedesignedMobileAssignedOrders() {
+  const router = useRouter();
   return (
     <div className={`h-full overflow-hidden ${TOKENS.colors.background}`}>
+      {/* The page's one action: take a new sales order (call or walk-in) from the phone. */}
+      <MobileActionSlotRegistrar>
+        <MobileTopBarAction icon={<Plus className="size-4" />} onClick={() => router.push('/m/orders/new')} data-testid="m-orders-new">
+          New
+        </MobileTopBarAction>
+      </MobileActionSlotRegistrar>
       <Suspense
         fallback={
           <Inset space="field">

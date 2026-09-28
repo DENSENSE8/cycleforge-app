@@ -2,7 +2,6 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  STATION_EYEBROW_CLASS,
   STATION_TONE_INK,
 } from '@/components/mobile/station/station-chrome';
 
@@ -47,9 +46,3 @@ describe('ink stays in the semantic token families', () => {
   });
 });
 
-describe('eyebrow face is a modifier, not a face', () => {
-  it('carries no size, weight, or letterspacing — the house scale owns tracking per size', () => {
-    assert.equal(STATION_EYEBROW_CLASS, 'uppercase');
-    assert.doesNotMatch(STATION_EYEBROW_CLASS, /(text-|font-|tracking-)/);
-  });
-});

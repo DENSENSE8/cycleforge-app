@@ -20,7 +20,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Bookmark, Calendar, Check, ChevronRight, Clock, Plus, User, X } from '@/components/Icons';
 import { focusRing } from '@/design-system/tokens/focus-ring';
 import { SIDEBAR_CHIP_CORNER, SIDEBAR_CONTROL_CORNER } from '@/design-system/tokens/radius';
-import { parseStaffParam } from '@/hooks/useStaffFilter';
+import { parseStaffParam } from '@/lib/station/table-url-params';
 import { parseISODate, toISODate } from '@/lib/shipping/shipped-filter/shipped-filter-params';
 import { peekActiveStaff } from '@/lib/staffCache';
 import { cn } from '@/utils/_cn';
@@ -156,6 +156,9 @@ export function NavFilters({
         ) : null}
         {controls?.staff?.map((row) => <StaffRow key={row.id} id={row.id} param={row.param} label={row.label} />)}
         {controls?.dateRanges?.map((range) => <DateRow key={range.id} spec={range} />)}
+        {controls?.choices?.map((choice) => (
+          <ChoiceRow key={choice.id} spec={choice} open={open.has(choice.id)} onToggle={toggleOpen} />
+        ))}
         {filters
           ? filters.groups.map((declared) => {
               const group = facets.data?.groups.find((g) => g.id === declared.id);
@@ -603,6 +606,7 @@ function SortRow({
                 replace((params) => {
                   if (option.value === spec.defaultValue) params.delete(spec.param);
                   else params.set(spec.param, option.value);
+                  if (!spec.dirParam) return;
                   if (option.dir) params.set(spec.dirParam, option.dir);
                   else params.delete(spec.dirParam);
                 })
@@ -615,6 +619,64 @@ function SortRow({
                 focusRing('control', 'accent'),
               )}
             >
+              <span className="min-w-0 flex-1 truncate">{option.label}</span>
+            </button>
+          );
+        })}
+      </div>
+    </Disclosure>
+  );
+}
+
+/**
+ * A single-choice filter with no counts (`controls.choices`): the facet
+ * group's face — a check per option — over a fixed vocabulary. The lit
+ * option pressed again clears the param.
+ */
+function ChoiceRow({
+  spec,
+  open,
+  onToggle,
+}: {
+  spec: NonNullable<NavControls['choices']>[number];
+  open: boolean;
+  onToggle: (id: string) => void;
+}) {
+  const searchParams = useSearchParams();
+  const replace = useReplaceSearchParams();
+  const value = searchParams?.get(spec.param) ?? null;
+  const current = spec.options.find((option) => option.value === value) ?? null;
+  return (
+    <Disclosure id={spec.id} label={spec.label} summary={current?.label ?? value} open={open} onToggle={onToggle}>
+      <div
+        role="group"
+        aria-label={spec.label}
+        className={cn('divide-y divide-border-hairline border border-border-soft bg-surface-card', SIDEBAR_CONTROL_CORNER)}
+      >
+        {spec.options.map((option) => {
+          const selected = option.value === value;
+          return (
+            <button
+              key={option.value}
+              type="button"
+              role="checkbox"
+              aria-checked={selected}
+              data-nav-choice-option={option.value}
+              onClick={() =>
+                replace((params) => {
+                  if (selected) params.delete(spec.param);
+                  else params.set(spec.param, option.value);
+                  for (const key of spec.clearParams) params.delete(key);
+                })
+              }
+              className={cn(
+                'ds-raw-button flex h-8 w-full items-center gap-2 px-2 text-left text-role-caption',
+                'transition-colors hover:bg-surface-hover',
+                selected ? 'text-text-default' : 'text-text-muted',
+                focusRing('control', 'accent'),
+              )}
+            >
+              <CheckFace checked={selected} />
               <span className="min-w-0 flex-1 truncate">{option.label}</span>
             </button>
           );

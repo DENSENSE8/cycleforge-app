@@ -7,6 +7,7 @@ Related:
 - `HANDOFF-sidebar-next-phase.md`: switchers, `G` keys, NavFilters.
 - `HANDOFF-search-and-triage.md` §1: the one search field (page, contextual, global).
 - `HANDOFF-outbound-sidebar-verify.md`: the per-page check matrix. Extend it; don't fork it.
+- `HANDOFF-contextual-page-port.md`: porting any other page onto this sidebar (declarations only).
 - `AGENTS.md`: probe only `:3050`.
 
 ---
@@ -25,7 +26,7 @@ every page, every time, whether done with the mouse or the keyboard.
 
 Run `node tools/design-mcp/ds.mjs contract "<intent>"` for each of these:
 - `ContextualSidebar` (head order, one host, lane doors, account footer);
-- `NavSwitcherMenu` (two tiers, hover-right menus, pressed-in choice);
+- `NavSwitcherMenu` (two tiers; hover teaches keys, click opens inline; pressed-in choice);
 - `NavModeSwitcher`, `NavSectionList`, `NavFilters`, `NavGoKeys`, `NavFind`, `KeyboardKey`.
 
 The source is `src/design-system/pinned.json`. When code and law disagree, fix the code, or
@@ -41,22 +42,29 @@ Each rule needs one pure test and one `:3050` probe row.
 | P2 | **A control goes where its label says.** Every mode, view, saved-view and page-map row's `href` is built by one function per kind (`deskViewHref`, lane door `useLaneDoorHref`, `NAV_PAGE_DECLS`). No component builds a URL by hand. | `lib/nav/context/build.ts`, `lib/outbound/desk-views.ts`, `useLaneDoorHref.ts` |
 | P3 | **Switching views starts clean.** Only the view's defining params travel. Filters, open record and paste list stay with the view being left. The one exception is the desk Find text: the locate pills carry it on purpose. | `deskViewHref`, `NavViewSwitcher` |
 | P4 | **Exactly one lit item per tier.** Mode: one. View: one (the most specific href match wins; `/shipping/orders` must not light on `?queue=pick`). Page map: one. Never zero while a page is showing. | `NavSwitcherMenu currentId`, `NavSectionList`, resolver `active` |
-| P5 | **The head never moves.** The field, `‹`, mode and view stay at fixed y whatever loads: skeletons hold height, a missing slot collapses without reordering, and nothing reflows on hover or focus. | `ContextualSidebar` head, `NAV_BLOCK_CLASS` |
+| P5 | **The head never moves on its own.** The field, `‹`, mode and view stay at fixed y whatever loads: skeletons hold height, a missing slot collapses without reordering, and nothing reflows on hover or focus. Only a CLICK-opened inline list may push what is below it down. | `ContextualSidebar` head, `NAV_BLOCK_CLASS`, `NavSwitcherMenu` |
 | P6 | **`‹` peek is reversible and local.** `‹` shows the page map with this page lit and focus on the lit row. Pressing Esc or activating the lit row returns to the panel with focus on `‹`. It never changes the URL. A URL change always closes it. | `ContextualSidebar` `peekTop`, `returnFocusToBack` |
 | P7 | **Keyboard = mouse.** `G`+letter, digits 1–9 (views), `B`, `F`, `?` land on the same URL as the click, and are refused inside text fields, on key repeat, and for scanner bursts. | `NavGoKeys`, `useViewHotkeys`, `go-keys.ts` |
 | P8 | **Lane doors remember, predictably.** A lane row opens the last view you used in that lane, else its landing view. The memory is per staff and per lane. It is shown in the row's tooltip or title, so it is never a surprise. | `useLaneDoorHref`, `useRememberLaneView` |
-| P9 | **Permissions shape, never break.** A mode, view or letter the staffer lacks is absent, not dimmed and not a 403 click. The resolver gate and the client agree. | `resolve.ts` gate, `NAV_GO_PAGES` |
+| P9 | **Permissions shape, never break.** A mode, view or letter the staffer lacks is absent, not dimmed and not a 403 click. The resolver gate and the client agree. | `resolve.ts` gate, `NAV_GO_KEYS` |
 | P10 | **Focus lands somewhere named.** After every navigation the focus target is declared: the list for view changes, the lit row for `‹`, `‹` for return. No focus left on a removed node or on `body`. | host effects in `ContextualSidebar` |
 
 ## 2. Display pass (after P1–P10 hold)
 
 - **Tier look.** Parent (mode: raised card, bold, ⇅, plain icon) and child (view: lighter, view
-  glyph, count, `›`) must be distinguishable in a 1-second glance. Check against the
+  glyph, count, `⌄`) must be distinguishable in a 1-second glance. Check against the
   `NavSwitcherMenu` TWO TIERS law and screenshot both tiers side by side.
 - **Counts.** A view count is the unfiltered total from `/api/nav/facets`, and nothing else.
-  The count on the view block equals the count in the open menu for the same view.
-- **Hover menus open to the right** starting at the column edge. Pointer travel up and down
-  the column never opens or closes the wrong menu (`useHoverSurface`, 0ms open / 150ms close).
+  The count on the view block equals the count in its inline list for the same view.
+- **Hover teaches, click chooses** (operator 2026-09-27). Hovering a switcher shows its keys
+  in a card beside the column (`KeyHintPopover`, instant, no page shade); sweeping up and down
+  the head moves the card between parent and child. Clicking either tier welds an overlay
+  card to its block (one shared hairline, no gap; the block keeps its height; Esc always closes it): the parent its own
+  coloured card with the other modes, the child a separate card with the other views (neither lists the current one) — two
+  different dropdowns. The Shipping header title (`To ship ›`, grey bubble on hover) unfolds
+  the views as pills right beside it; they stick after hover-off until Esc, a press outside,
+  or a choice.
+  `G` swaps the header strip to the next keys with a light shade over the list.
 - **Page map order** is Chat, top rows, lanes, Automations, then Scan Stations last. Hairlines
   separate the groups; there are no text headings.
 - **Account footer** appears only at the parent level (the page map and the `‹` peek).
@@ -77,6 +85,13 @@ Each rule needs one pure test and one `:3050` probe row.
   match); keep all three on one helper.
 - **Wait for hydration in probes.** The `‹` / map swap and the search field render from the
   persisted `NavContext` snapshot before hydration. Wait before interacting, or events are lost.
+- **Closed sidebar overlap (open question).** With the sidebar closed, a probe hovering the header's
+  search well was intercepted by the "Show navigation" toggle's container. Settle whether that is
+  the inert collapsed-column stub (expected) or a real overlap in the header cluster (fix it).
+- **Already landed, don't redo:** the paste key no longer takes focus on pointerdown (the grown
+  well used to slide it out from under the click). The field rolls `F` Find … / `⌘ K` Search
+  everywhere. Keycaps are raised square caps everywhere (`KeyboardKey`). The well is white with
+  a shaded rim and a soft-to-firm corner (`SEARCH_WELL_CORNER`). The operator is verifying these by hand.
 - **Foreign churn.** Another session is mid-flight in: `orders-list.ts`, `desk-view-sql.ts`,
   `pages.ts`, `outbound-routes.ts`, `OutboundOrdersLedger.tsx`, `OrderCardList.tsx`,
   `OrderRecordView.tsx`, and the search dossier. Keep edits additive and list every foreign

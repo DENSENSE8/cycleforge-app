@@ -67,7 +67,7 @@ export function WarrantyClaimActions({ claim }: { claim: WarrantyClaimDetail }) 
 
       {mode === 'deny' ? (
         <div className="space-y-2">
-          <label className="block text-role-caption font-medium uppercase tracking-wide text-text-faint">Denial reason</label>
+          <label className="block text-role-caption font-medium text-text-faint">Denial reason</label>
           <select
             value={reasonCode}
             onChange={(e) => setReasonCode(e.target.value)}
@@ -109,7 +109,7 @@ export function WarrantyClaimActions({ claim }: { claim: WarrantyClaimDetail }) 
         </div>
       ) : mode === 'repair' ? (
         <div className="space-y-2">
-          <label className="block text-role-caption font-medium uppercase tracking-wide text-text-faint">Repair attempt</label>
+          <label className="block text-role-caption font-medium text-text-faint">Repair attempt</label>
           <textarea
             value={diagnosis}
             onChange={(e) => setDiagnosis(e.target.value)}
@@ -163,7 +163,7 @@ export function WarrantyClaimActions({ claim }: { claim: WarrantyClaimDetail }) 
         </div>
       ) : mode === 'quote' ? (
         <div className="space-y-2">
-          <label className="block text-role-caption font-medium uppercase tracking-wide text-text-faint">Paid-repair quote</label>
+          <label className="block text-role-caption font-medium text-text-faint">Paid-repair quote</label>
           <input
             value={quoteLabel}
             onChange={(e) => setQuoteLabel(e.target.value)}
@@ -203,7 +203,7 @@ export function WarrantyClaimActions({ claim }: { claim: WarrantyClaimDetail }) 
       ) : mode === 'ebay' ? (
         <div className="space-y-2">
           <div className="flex items-center justify-between">
-            <label className="text-role-caption font-medium uppercase tracking-wide text-text-faint">eBay refurb draft</label>
+            <label className="text-role-caption font-medium text-text-faint">eBay refurb draft</label>
             <Button variant="secondary" size="sm" type="button" onClick={reset}>Close</Button>
           </div>
           {ebayDraft.isPending ? (

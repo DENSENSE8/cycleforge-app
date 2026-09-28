@@ -326,21 +326,21 @@ export default async function SkuDetailPage({ params }: { params: Promise<{ sku:
           </header>
           <dl className="grid grid-cols-2 gap-x-6 gap-y-3 px-6 py-4 text-sm md:grid-cols-3">
             <div>
-              <dt className="text-xs uppercase tracking-wide text-text-soft">Warehouse</dt>
+              <dt className="text-xs text-text-soft">Warehouse</dt>
               <dd className="mt-1 text-2xl font-semibold text-green-700">{stock?.stock ?? 0}</dd>
             </div>
             <div>
-              <dt className="text-xs uppercase tracking-wide text-text-soft">Boxed</dt>
+              <dt className="text-xs text-text-soft">Boxed</dt>
               <dd className="mt-1 text-2xl font-semibold text-teal-700">{stock?.boxed_stock ?? 0}</dd>
             </div>
             <div>
-              <dt className="text-xs uppercase tracking-wide text-text-soft">Serial units (any state)</dt>
+              <dt className="text-xs text-text-soft">Serial units (any state)</dt>
               <dd className="mt-1 text-2xl font-semibold text-text-default">{totalUnits}</dd>
             </div>
           </dl>
           {statusCounts.length > 0 ? (
             <div className="border-t border-border-hairline px-6 py-3">
-              <p className="mb-2 text-xs uppercase tracking-wide text-text-soft">Units by status</p>
+              <p className="mb-2 text-xs text-text-soft">Units by status</p>
               <div className="flex flex-wrap gap-2">
                 {statusCounts.map((s) => (
                   <span key={s.current_status} className="inline-flex items-center gap-2 rounded-md bg-surface-canvas px-3 py-1 text-xs">
@@ -420,7 +420,7 @@ export default async function SkuDetailPage({ params }: { params: Promise<{ sku:
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div>
-      <dt className="text-xs uppercase tracking-wide text-text-soft">{label}</dt>
+      <dt className="text-xs text-text-soft">{label}</dt>
       <dd className="mt-0.5 text-sm text-text-default">{children}</dd>
     </div>
   );

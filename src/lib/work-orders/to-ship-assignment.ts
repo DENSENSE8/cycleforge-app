@@ -56,7 +56,7 @@ export function filterToShipByOrderView(
     }
     if (view === 'urgent') return row.isUrgent === true;
     if (view === 'blocked') return facts.blocked;
-    if (view === 'ready-to-pack') return facts.stage === 'TESTED';
+    if (view === 'ready-to-pack') return facts.stage === 'PICKED';
     return facts.stage === 'PACKED_STAGED';
   });
 }

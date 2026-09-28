@@ -76,7 +76,7 @@ export function MobileTicketThread({
         title={subject || (ticket.isLoading ? 'Loading…' : 'Untitled ticket')}
         right={
           status ? (
-            <span className="text-role-micro uppercase tracking-wide text-text-soft">{status}</span>
+            <span className="text-role-micro text-text-soft">{status}</span>
           ) : null
         }
       />

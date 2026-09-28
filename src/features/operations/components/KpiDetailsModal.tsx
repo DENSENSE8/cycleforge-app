@@ -115,9 +115,9 @@ function ActivityList({ rows, emptyHint }: { rows: ActivityRow[]; emptyHint: str
             <span className={`mt-1.5 h-2 w-2 shrink-0 rounded-full ${dot}`} />
             <div className="min-w-0 flex-1">
               <div className="flex items-center gap-2">
-                <span className="text-role-caption font-semibold uppercase tracking-wide text-text-default">{label}</span>
+                <span className="text-role-caption font-semibold text-text-default">{label}</span>
                 {row.source ? (
-                  <span className="rounded-full bg-surface-card inset-chip text-role-eyebrow uppercase tracking-wider text-text-muted">
+                  <span className="rounded-full bg-surface-card inset-chip text-role-eyebrow text-text-muted">
                     {row.source}
                   </span>
                 ) : null}
@@ -176,7 +176,7 @@ function RepairList({ emptyHint }: { emptyHint: string }) {
                 <span className="rounded-md bg-surface-card px-2 py-0.5 font-mono text-role-micro text-text-default">
                   #{r.ticket_number}
                 </span>
-                <span className={`rounded-full px-2 py-0.5 text-role-eyebrow uppercase tracking-wider ${statusTone}`}>
+                <span className={`rounded-full px-2 py-0.5 text-role-eyebrow ${statusTone}`}>
                   {r.status}
                 </span>
               </div>
@@ -235,7 +235,7 @@ export function KpiDetailsModal({ kind, value, activityFeed, onClose }: KpiDetai
               )}
             </div>
 
-            <div className="border-t border-border-soft px-5 py-2.5 text-center text-role-micro font-semibold uppercase tracking-wider text-text-muted">
+            <div className="border-t border-border-soft px-5 py-2.5 text-center text-role-micro font-semibold text-text-muted">
               {kind === 'repair'
                 ? 'Live queue · updates as tickets close'
                 : 'Most recent activity · refreshes every minute'}

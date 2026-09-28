@@ -6,6 +6,7 @@ import type {
   CompoundStateTone,
 } from '@/components/tables/compound/compound-row-model';
 import type { UnitAllocationTableRow } from '@/lib/inventory/unit-allocation-row';
+import { sentenceCaseLabel } from '@/lib/text/sentence-case-label';
 
 /** Allocation state → lifecycle tone. */
 const STATE_TONE: Readonly<Record<string, CompoundStateTone>> = {
@@ -48,7 +49,7 @@ export function unitAllocationsCompoundView(row: UnitAllocationTableRow): Compou
     tracking: null,
     platformValue: null,
     carrier: null,
-    stateLabel: state,
+    stateLabel: sentenceCaseLabel(state),
     stateTone: STATE_TONE[state] ?? 'neutral',
     stateTip: released ? `Released ${released.label}` : undefined,
     orderedAt: allocated

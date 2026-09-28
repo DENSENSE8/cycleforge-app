@@ -16,12 +16,15 @@ import { cn } from '@/utils/_cn';
  */
 export function RecordGroup({
   title,
+  titleHidden = false,
   action,
   testId,
   className,
   children,
 }: {
   title: string;
+  /** The body already says what the group is (one item's photo + title): the name stays for assistive tech only. */
+  titleHidden?: boolean;
   /** The group's single action (Edit, Photos …), top-right. */
   action?: ReactNode;
   testId?: string;
@@ -30,10 +33,12 @@ export function RecordGroup({
 }) {
   return (
     <section aria-label={title} data-testid={testId} className={cn(DESK_RECORD_COLUMN_CARD_CLASS, className)}>
-      <header className="flex min-h-mode-hit items-center gap-2 px-4 pt-2">
-        <h3 className={cn(RECORD_LABEL_CLASS, 'min-w-0 flex-1 truncate text-mode-muted')}>{title}</h3>
-        {action ? <div className="flex shrink-0 items-center">{action}</div> : null}
-      </header>
+      {titleHidden && !action ? null : (
+        <header className="flex min-h-mode-hit items-center gap-2 px-4 pt-2">
+          <h3 className={cn(RECORD_LABEL_CLASS, 'min-w-0 flex-1 truncate text-mode-muted', titleHidden && 'sr-only')}>{title}</h3>
+          {action ? <div className="ml-auto flex shrink-0 items-center">{action}</div> : null}
+        </header>
+      )}
       {children}
     </section>
   );

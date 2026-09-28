@@ -112,11 +112,11 @@ export default function StationFbaInput(props: StationFbaInputProps) {
       {showLabels ? (
         <>
           {fbaScanOnly ? (
-            <p className="text-role-micro uppercase tracking-widest text-text-muted">
+            <p className="text-role-micro text-text-muted">
               Adding To Today Current Plan
             </p>
           ) : (
-            <p className="text-role-micro font-semibold uppercase tracking-widest text-text-soft">Station scan</p>
+            <p className="text-role-micro font-semibold text-text-soft">Station scan</p>
           )}
           <p className="text-role-caption leading-snug text-text-soft">
             {fbaScanOnly ? c.fbaOnlyHint : c.routingHint}
@@ -142,7 +142,7 @@ export default function StationFbaInput(props: StationFbaInputProps) {
             <Loader2 className="h-3 w-3 shrink-0 animate-spin text-text-faint" />
           ) : null}
           <p
-            className={`text-role-micro font-semibold uppercase tracking-widest ${
+            className={`text-role-micro font-semibold ${
               c.planHint
                 ? 'text-text-success'
                 : c.selectedCount > 0

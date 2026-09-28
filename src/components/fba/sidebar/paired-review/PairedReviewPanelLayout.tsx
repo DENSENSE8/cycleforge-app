@@ -28,7 +28,7 @@ export function PairedReviewPanelLayout({
     <div className="border-b border-border-hairline">
       {onToggleExpanded ? (
         <div className="flex items-center justify-between px-3 pt-2.5 pb-1">
-          <p className="text-role-micro uppercase tracking-widest text-text-soft">Combine review</p>
+          <p className="text-role-micro text-text-soft">Combine review</p>
           <HoverTooltip label="Collapse" asChild>
             <IconButton
               type="button"

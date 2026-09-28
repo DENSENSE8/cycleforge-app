@@ -125,7 +125,7 @@ function ResetInner() {
             }}
           >
             <div className="space-y-1">
-              <label htmlFor="reset-email" className="text-role-micro uppercase tracking-widest text-text-soft">
+              <label htmlFor="reset-email" className="text-role-micro text-text-soft">
                 Email
               </label>
               <input
@@ -152,7 +152,7 @@ function ResetInner() {
             }}
           >
             <div className="space-y-1">
-              <label htmlFor="reset-pw" className="text-role-micro uppercase tracking-widest text-text-soft">
+              <label htmlFor="reset-pw" className="text-role-micro text-text-soft">
                 New password
               </label>
               <input
@@ -168,7 +168,7 @@ function ResetInner() {
               />
             </div>
             <div className="space-y-1">
-              <label htmlFor="reset-pw2" className="text-role-micro uppercase tracking-widest text-text-soft">
+              <label htmlFor="reset-pw2" className="text-role-micro text-text-soft">
                 Confirm password
               </label>
               <input

@@ -6,8 +6,8 @@ import { tenantQuery } from '@/lib/tenancy/db';
 
 export const dynamic = 'force-dynamic';
 
-/** A channel prefix: 1–6 letters/digits and a dash (`PH-`, `WI-`). */
-const PREFIX_RE = /^[A-Z0-9]{1,6}-$/;
+/** A channel prefix: 1–6 letters/digits and a dash (`PH-`, `WI-`), optionally under test mode's `CF-TEST-`. */
+const PREFIX_RE = /^(CF-TEST-)?[A-Z0-9]{1,6}-$/;
 
 /**
  * GET /api/orders/intake/order-number?prefix=PH-  → `{ next: 'PH-000124' }`

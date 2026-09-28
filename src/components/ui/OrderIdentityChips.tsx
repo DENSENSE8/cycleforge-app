@@ -175,7 +175,7 @@ function useOrderIdentityCellNodes({
               e.stopPropagation();
               onPasteTracking(lastTracking.value);
             }}
-            className="ds-raw-button inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-role-caption font-semibold uppercase tracking-widest text-blue-700 hover:bg-blue-50"
+            className="ds-raw-button inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-role-caption font-semibold text-blue-700 hover:bg-blue-50"
           >
             <Clipboard className="h-3.5 w-3.5" />
             {last4}

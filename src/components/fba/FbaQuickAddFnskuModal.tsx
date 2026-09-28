@@ -95,7 +95,7 @@ export function FbaQuickAddFnskuModal({ stationTheme = 'blue' }: { stationTheme?
       <Panel radius="none" padding="none" elevation="none" className="relative z-panelPopover w-full max-w-lg overflow-hidden">
         <div className="flex items-center justify-between border-b border-border-soft px-4 py-3">
           <div>
-            <p className={`text-role-micro uppercase tracking-[0.16em] ${chrome.sectionLabel}`}>Quick add</p>
+            <p className={`text-role-micro ${chrome.sectionLabel}`}>Quick add</p>
             <h2 className="mt-1 text-sm font-semibold text-text-default">Add Amazon SKU details</h2>
           </div>
           <IconButton

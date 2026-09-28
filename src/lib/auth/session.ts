@@ -4,6 +4,7 @@ import { randomBytes } from 'node:crypto';
 import pool from '@/lib/db';
 import { parseOrgSettings } from '@/lib/tenancy/settings';
 import { enforceMaxConcurrentSessions, type ConcurrencyDeps } from '@/lib/auth/session-concurrency';
+import { invalidateSessionUserCache } from '@/lib/auth/session-user-cache';
 
 /** Canonical session cookie. */
 export const SESSION_COOKIE_NAME = 'cf_sid';
@@ -194,6 +195,7 @@ const defaultConcurrencyDeps: ConcurrencyDeps = {
   async revokeSids(sids) {
     if (!sids.length) return;
     await pool.query(`UPDATE staff_sessions SET revoked_at = NOW() WHERE sid = ANY($1) AND revoked_at IS NULL`, [sids]);
+    for (const sid of sids) invalidateSessionUserCache({ sid });
   },
 };
 
@@ -306,6 +308,7 @@ export async function validateSessionRow(
   const idleFor = Date.now() - row.last_seen_at.getTime();
   if (Number.isFinite(window.idleMs) && idleFor > window.idleMs) {
     await pool.query(`UPDATE staff_sessions SET revoked_at = NOW() WHERE sid = $1`, [sid]);
+    invalidateSessionUserCache({ sid });
     return { session: null, reason: 'idle-timed-out' };
   }
 
@@ -387,7 +390,15 @@ export async function loadSessionWithReason(
   return validateSessionRow(sid, r.rows[0] as SessionQueryRow | undefined);
 }
 
-/** Bump last_seen_at and return the session's (possibly slid) expires_at so the caller can refresh the cookie's max-age to match. */
+/** Skip the write while last_seen_at is fresher than this; the shortest idle window is 4h. */
+export const TOUCH_SESSION_MIN_INTERVAL_SECONDS = 300;
+
+/**
+ * Bump last_seen_at and return the session's (possibly slid) expires_at so the
+ * caller can refresh the cookie's max-age to match. At most one write per
+ * session per TOUCH_SESSION_MIN_INTERVAL_SECONDS: a fresher session is left
+ * alone and null is returned (callers keep the expires_at they already hold).
+ */
 export async function touchSession(sid: string): Promise<Date | null> {
   try {
     // For a persistent session — whether from the staff's policy or from "Keep me signed in" on this device — slide expires_at forward so it…
@@ -405,8 +416,9 @@ export async function touchSession(sid: string): Promise<Date | null> {
         WHERE s.sid = $1
           AND s.revoked_at IS NULL
           AND st.id = s.staff_id
+          AND s.last_seen_at < NOW() - make_interval(secs => $3)
       RETURNING s.expires_at`,
-      [sid, String(persistentMs)],
+      [sid, String(persistentMs), TOUCH_SESSION_MIN_INTERVAL_SECONDS],
     );
     return (r.rows[0] as { expires_at: Date } | undefined)?.expires_at ?? null;
   } catch {
@@ -417,6 +429,7 @@ export async function touchSession(sid: string): Promise<Date | null> {
 
 export async function revokeSession(sid: string): Promise<void> {
   await pool.query(`UPDATE staff_sessions SET revoked_at = NOW() WHERE sid = $1 AND revoked_at IS NULL`, [sid]);
+  invalidateSessionUserCache({ sid });
 }
 
 export async function revokeAllSessionsForStaff(staffId: number): Promise<number> {
@@ -424,6 +437,7 @@ export async function revokeAllSessionsForStaff(staffId: number): Promise<number
     `UPDATE staff_sessions SET revoked_at = NOW() WHERE staff_id = $1 AND revoked_at IS NULL`,
     [staffId],
   );
+  invalidateSessionUserCache({ staffId });
   return r.rowCount ?? 0;
 }
 

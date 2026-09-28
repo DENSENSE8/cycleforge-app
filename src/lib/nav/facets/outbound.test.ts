@@ -32,7 +32,7 @@ interface FixtureOrder {
   shipByDay: string | null;
 }
 
-const STAGES: DeskStage[] = ['pending', 'tested', 'packed'];
+const STAGES: DeskStage[] = ['pending', 'picked', 'packed'];
 const AGINGS: DeskAgingBucket[] = ['overdue', 'today', 'upcoming', 'unscheduled'];
 
 function fixtureOrders(): FixtureOrder[] {
@@ -43,7 +43,7 @@ function fixtureOrders(): FixtureOrder[] {
       for (const urgent of [false, true]) {
         for (const blocked of [false, true]) {
           // Uneven multiplicities so a wrong sum cannot pass by symmetry.
-          const copies = (i++ % 4) + (stage === 'tested' ? 2 : 0);
+          const copies = (i++ % 4) + (stage === 'picked' ? 2 : 0);
           for (let k = 0; k < copies; k++) {
             const j = out.length;
             out.push({
@@ -152,7 +152,7 @@ function comboRunner(orders: FixtureOrder[], captured: Array<{ sql: string; para
 const REFINEMENT_CASES: Array<Record<string, string>> = [
   { staff: '11' },
   { packedBy: '11' },
-  { pickerId: '20', stage: 'tested' },
+  { pickerId: '20', stage: 'picked' },
   { pickedBy: '31' },
   { pickedBy: '32', late: '1' },
   { orderFrom: '2026-09-12' },
@@ -166,7 +166,7 @@ const REFINEMENT_CASES: Array<Record<string, string>> = [
 
 const PARAM_CASES: Array<Record<string, string>> = [
   {},
-  { stage: 'tested' },
+  { stage: 'picked' },
   { stage: 'PACKED', aging: 'overdue' },
   { late: '1' },
   { late: 'true', attention: '1' },
@@ -220,19 +220,19 @@ test('partition groups (stage, ship-by) sum to the list total while their own pa
 test('a group never narrows its own options: picking a stage keeps the sibling stage counts', async () => {
   const orders = fixtureOrders();
   const unfiltered = await facetsBody('outbound.triage', new URLSearchParams(), comboRunner(orders));
-  const picked = await facetsBody('outbound.triage', new URLSearchParams({ stage: 'tested' }), comboRunner(orders));
+  const picked = await facetsBody('outbound.triage', new URLSearchParams({ stage: 'picked' }), comboRunner(orders));
   assert.deepEqual(
     picked.groups.find((g) => g.id === 'stage')?.options,
     unfiltered.groups.find((g) => g.id === 'stage')?.options,
   );
-  assert.equal(picked.total, unfiltered.groups.find((g) => g.id === 'stage')?.options.find((o) => o.value === 'tested')?.count);
+  assert.equal(picked.total, unfiltered.groups.find((g) => g.id === 'stage')?.options.find((o) => o.value === 'picked')?.count);
 });
 
 test('PO paired returns only its declared groups, yet an undeclared list param still narrows the total', async () => {
   const orders = fixtureOrders();
-  const res = await facetsBody('outbound.po', new URLSearchParams({ stage: 'tested' }), comboRunner(orders));
+  const res = await facetsBody('outbound.po', new URLSearchParams({ stage: 'picked' }), comboRunner(orders));
   assert.deepEqual(res.groups.map((g) => g.id), NAV_FACET_GROUPS['outbound.po'].map((g) => g.id));
-  assert.equal(res.total, listRows(orders, { stage: 'tested' }).length);
+  assert.equal(res.total, listRows(orders, { stage: 'picked' }).length);
 });
 
 test('queue facets read the list predicates: the view scope fragment, and ?staff= bound as a parameter', async () => {

@@ -51,8 +51,9 @@ import { PACK_PLACED_PARAM, PACK_STATION_PARAM } from '@/lib/packing/pack-statio
 import { OutboundOrdersLedger } from '@/components/outbound/orders/OutboundOrdersLedger';
 import { useDeskFloorFace, useDeskStageOptional } from '@/design-system/components/DeskStageContext';
 import { OrderCardList } from '@/components/outbound/orders/cards/OrderCardList';
+import { useToShipScanOpen } from '@/components/unshipped/useToShipScanOpen';
 
-/** Pre-pack fulfillment queue — Dashboard Pending / Tested tabs (and pack/shipping stations that embed the same table without a lane scope). */
+/** Pre-pack fulfillment queue — Dashboard Pending / Picked tabs (and pack/shipping stations that embed the same table without a lane scope). */
 interface UnshippedTableProps extends DashboardSearchSectionProps {
   packedBy?: number;
   pickerId?: number;
@@ -65,10 +66,10 @@ interface UnshippedTableProps extends DashboardSearchSectionProps {
    */
   onOpenRecord?: (record: ShippedOrder) => void;
   /**
-   * Dashboard lifecycle lane. `pending` = PENDING + BLOCKED (exclude TESTED);
-   * `tested` = TESTED only. Omit for station embeds (all lanes + `?ustatus`).
+   * Dashboard lifecycle lane. `pending` = PENDING + BLOCKED (exclude PICKED);
+   * `picked` = PICKED only. Omit for station embeds (all lanes + `?ustatus`).
    */
-  fulfillmentLane?: 'pending' | 'tested';
+  fulfillmentLane?: 'pending' | 'picked';
   /** Pin this desk to ONE derived pre-dock state, whatever the URL says. */
   lockedFulfillmentState?: FulfillmentState;
   /**
@@ -165,7 +166,7 @@ export function UnshippedTable({
   const orgId = user?.organizationId;
   useDeskFloorFace(floor);
   const floorView = useDeskStageOptional()?.view === 'floor';
-  // Fulfillment queue stages: pending (not tested) and tested (packing now).
+  // Fulfillment queue stages: pending (not picked) and picked (packing now).
   const stageParam = String(searchParams.get('stage') || 'all').toLowerCase();
 
   // Legacy `?stage=awaiting` → Outbound · Labels (awaiting moved off Unshipped).
@@ -174,9 +175,9 @@ export function UnshippedTable({
     router.replace(SHIPPING_PATH, { scroll: false });
   }, [stageParam, router]);
 
-  const stageFilter: 'all' | 'pending' | 'tested' | 'packed' =
+  const stageFilter: 'all' | 'pending' | 'picked' | 'packed' =
     stageParam === 'pending' ? 'pending'
-      : stageParam === 'tested' ? 'tested'
+      : stageParam === 'picked' ? 'picked'
         : stageParam === 'packed' ? 'packed'
           : 'all';
   // Click-to-filter from the status legend (`?ustatus`) — exact derived pre-dock
@@ -517,12 +518,12 @@ export function UnshippedTable({
           isOutOfStock: Boolean(row.is_out_of_stock),
         });
 
-        if (fulfillmentLane === 'tested') {
+        if (fulfillmentLane === 'picked') {
           if (lifecycle === 'PACKED_STAGED') return false;
-          if (state !== 'TESTED') return false;
+          if (state !== 'PICKED') return false;
         } else if (fulfillmentLane === 'pending') {
           if (lifecycle === 'PACKED_STAGED') return false;
-          if (state === 'TESTED') return false;
+          if (state === 'PICKED') return false;
           if (statusFilter === 'BLOCKED' && state !== 'BLOCKED') return false;
           if (statusFilter && statusFilter !== 'BLOCKED' && state !== statusFilter) return false;
         } else if (statusFilter) {
@@ -535,9 +536,9 @@ export function UnshippedTable({
           }
         } else if (stageFilter === 'pending') {
           if (lifecycle === 'PACKED_STAGED') return false;
-          if (state === 'TESTED') return false;
-        } else if (stageFilter === 'tested') {
-          if (state !== 'TESTED') return false;
+          if (state === 'PICKED') return false;
+        } else if (stageFilter === 'picked') {
+          if (state !== 'PICKED') return false;
         } else if (stageFilter === 'packed') {
           if (lifecycle !== 'PACKED_STAGED') return false;
         }
@@ -759,6 +760,9 @@ export function UnshippedTable({
     disabled: nothingToWalk,
     onToggle: toggleLabelsWalk,
   });
+  // A wedge scan of an order # / tracking # opens its record in place (L3).
+  // The walk owns the screen while it runs.
+  useToShipScanOpen({ enabled: onToShipDesk && !walkOpen, records, onOpenRecord: handleOpenRecord });
 
   if (awaitingMessage && (isIdleEmpty || (query.isError && allRecords.length === 0))) {
     return (
@@ -798,12 +802,12 @@ export function UnshippedTable({
       ? laneTotals.blocked
       : fulfillmentLane === 'pending'
       ? laneTotals.pending
-      : fulfillmentLane === 'tested'
-        ? laneTotals.tested
+      : fulfillmentLane === 'picked'
+        ? laneTotals.picked
         : stageFilter === 'pending'
           ? (queueCounts?.byStage.pending ?? 0)
-          : stageFilter === 'tested'
-            ? (queueCounts?.byStage.tested ?? 0)
+          : stageFilter === 'picked'
+            ? (queueCounts?.byStage.picked ?? 0)
             : stageFilter === 'packed'
               ? (queueCounts?.byStage as { packed?: number } | undefined)?.packed ??
                 records.length
@@ -818,7 +822,7 @@ export function UnshippedTable({
       <OrderStatusTrailStage>
         {ledger || (floor && floorView) ? (
           <OutboundOrdersLedger
-            mode={lockedFulfillmentState === 'BLOCKED' ? 'pending' : 'to-ship'}
+            viewKey={lockedFulfillmentState === 'BLOCKED' ? 'shipping.pending' : 'shipping.to-ship'}
             chrome={chrome}
             searchPending={!cagedOnly && query.isFetching}
             records={records}
@@ -835,7 +839,7 @@ export function UnshippedTable({
           />
         ) : (
         <OrderCardList
-          mode={lockedFulfillmentState === 'BLOCKED' ? 'pending' : 'to-ship'}
+          viewKey={lockedFulfillmentState === 'BLOCKED' ? 'shipping.pending' : 'shipping.to-ship'}
           chrome={chrome}
           searchPending={!cagedOnly && query.isFetching}
           records={records}

@@ -32,13 +32,13 @@ function roi(over: Partial<OperationsRoiData> = {}): OperationsRoiData {
 test('pending lane metrics carry filterUstatus for click-to-filter', () => {
   const metrics = resolveShippingMetrics({
     mode: 'pending',
-    unshipped: { total: 70, pending: 53, tested: 16, blocked: 1 },
+    unshipped: { total: 70, pending: 53, picked: 16, blocked: 1 },
     fba: ZERO_SHIPPING_FBA,
     history: ZERO_SHIPPING_HISTORY,
     roi: null,
   });
   const byId = Object.fromEntries(metrics.map((m) => [m.id, m]));
-  assert.equal(byId.ready?.filterUstatus, 'TESTED');
+  assert.equal(byId.ready?.filterUstatus, 'PICKED');
   assert.equal(byId.awaiting?.filterUstatus, 'PENDING');
   assert.equal(byId.blocked?.filterUstatus, 'BLOCKED');
   assert.equal(byId.blocked?.severity, 3);
@@ -49,7 +49,7 @@ test('pending lane metrics carry filterUstatus for click-to-filter', () => {
 test('pending ROI tiles: packed trend + stuck attention', () => {
   const metrics = resolveShippingMetrics({
     mode: 'pending',
-    unshipped: { total: 70, pending: 53, tested: 16, blocked: 1 },
+    unshipped: { total: 70, pending: 53, picked: 16, blocked: 1 },
     fba: ZERO_SHIPPING_FBA,
     history: ZERO_SHIPPING_HISTORY,
     roi: roi(),
@@ -74,7 +74,7 @@ test('pending ROI tiles: packed trend + stuck attention', () => {
 test('pending metrics drop when counts are zero', () => {
   const metrics = resolveShippingMetrics({
     mode: 'pending',
-    unshipped: { total: 0, pending: 0, tested: 0, blocked: 0 },
+    unshipped: { total: 0, pending: 0, picked: 0, blocked: 0 },
     fba: ZERO_SHIPPING_FBA,
     history: ZERO_SHIPPING_HISTORY,
     roi: null,

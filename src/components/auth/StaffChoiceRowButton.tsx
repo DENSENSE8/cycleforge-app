@@ -65,7 +65,7 @@ export function StaffChoiceRowButton({
       <span className="min-w-0 flex-1">
         <span className="block truncate text-role-body font-semibold text-text-default">{name}</span>
         {role != null && (
-          <span className="block truncate text-role-eyebrow uppercase text-text-soft">
+          <span className="block truncate text-role-eyebrow text-text-soft">
             {role.replace(/_/g, ' ')}
             {pill}
           </span>

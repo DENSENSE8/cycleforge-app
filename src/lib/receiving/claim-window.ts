@@ -45,7 +45,7 @@ export function claimCountdownFace(claimByDate: string, todayKey: string): Claim
     return {
       urgency: 'expired',
       daysRemaining,
-      label: 'EXPIRED',
+      label: 'Expired',
       tip: 'eBay claim expired · write off',
       description: `eBay claim window closed ${ago} day${ago === 1 ? '' : 's'} ago (${claimByDate}) — this purchase can no longer be claimed. Write the carton off with a loss reason so it leaves the queue with a record.`,
       tone: 'text-rose-700',

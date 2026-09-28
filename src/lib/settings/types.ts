@@ -10,7 +10,7 @@ export type SettingScope = 'org' | 'staff';
 export type SettingControl = 'toggle' | 'segmented' | 'select' | 'number' | 'text';
 
 /** Pages a setting can attach to. Extend as the registry grows to new surfaces. */
-export type SettingPage = 'receiving' | 'desk' | 'nav';
+export type SettingPage = 'receiving' | 'scan' | 'desk' | 'nav';
 
 export type SettingValue = string | number | boolean;
 

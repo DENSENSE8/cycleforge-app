@@ -34,7 +34,6 @@ export type ShippedLayout = 'board' | 'all';
 
 export interface UseShippedTableFiltersOptions {
   packedBy?: number;
-  testedBy?: number;
   /**
    * When set (Packed tab), only rows in this outbound state are shown and
    * `?ostatus` is ignored so the list stays exact for that lifecycle stage.
@@ -45,7 +44,6 @@ export interface UseShippedTableFiltersOptions {
 /** Derives every filter / week / staff / search value the shipped table reads from the URL search params (plus the persisted type-filter… */
 export function useShippedTableFilters({
   packedBy,
-  testedBy,
   lockedOutboundStatus = null,
 }: UseShippedTableFiltersOptions) {
   const pathname = usePathname();
@@ -87,7 +85,6 @@ export function useShippedTableFilters({
     return Number.isFinite(n) && n > 0 ? n : undefined;
   };
   const effPackedBy = packedBy ?? parseStaffParam(searchParams.get('packedBy'));
-  const effTestedBy = testedBy ?? parseStaffParam(searchParams.get('testedBy'));
   // Universal staff filter (P1-WORK-02): one `?staff=` → packed OR tested by.
   const effStaffId = parseStaffParam(searchParams.get('staff'));
   // `?pickedBy` — the order's picker; answered in SQL like the staff filters.
@@ -237,7 +234,6 @@ export function useShippedTableFilters({
     obStatus,
     matchesOutbound,
     effPackedBy,
-    effTestedBy,
     effStaffId,
     effPickedBy,
     dateFrom,

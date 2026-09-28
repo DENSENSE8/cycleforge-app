@@ -5,13 +5,18 @@
  * catalog item (the internal item master — sku_catalog, no external mirror)
  * or free SKU / title text, an explicit quantity, its cost, its listing, and
  * an optional source line id. Lines without an id land as L1..Ln.
+ *
+ * A purchase order adds each line's total and the order subtotal (a missing
+ * cost stays a dash, never guessed). A return is exactly one catalog item and
+ * its listing link — the listing the buyer bought, which the unboxer opens.
  */
 
 import { useMemo, useState } from 'react';
-import { Plus, Trash2 } from '@/components/Icons';
+import { ExternalLink, Plus, Trash2 } from '@/components/Icons';
 import { Button, IconButton, TextField } from '@/design-system/primitives';
 import { FormField } from '@/design-system/components/FormField';
 import { SearchableSelectField } from '@/design-system/components/SearchableSelectField';
+import { focusRing } from '@/design-system/tokens/focus-ring';
 import { RECORD_ID_CLASS } from '@/design-system/tokens/industrial-record';
 import { TRIAGE_PANEL_INNER_CORNER } from '@/design-system/tokens/triage-panel';
 import { useDebounce } from '@/hooks';
@@ -22,9 +27,11 @@ import {
   type InboundOrderDraft,
   type InboundOrderLine,
   type InboundOrderNeed,
+  type InboundOrderType,
 } from '@/lib/inbound/inbound-order-draft';
 import type { InboundOrderPreview } from '@/lib/inbound/ingest-inbound-order';
 import { cn } from '@/utils/_cn';
+import { formatInboundMoney, inboundLineTotalCents, inboundOrderCostTotal, openableListingUrl } from './composer-choices';
 
 interface LinesProps {
   draft: InboundOrderDraft;
@@ -41,6 +48,9 @@ export function InboundOrderLines({ draft, missing, preview, onChange }: LinesPr
   const keys = assignInboundLineKeys(draft.lines);
   const flagged = (field: InboundOrderNeed['field'], index: number) =>
     missing.some((m) => m.field === field && m.lines?.includes(index));
+  const isReturn = draft.type === 'RETURN';
+  const returnItemMissing = isReturn && missing.some((m) => m.field === 'return_item');
+  const cost = draft.type === 'PO' ? inboundOrderCostTotal(draft) : null;
 
   return (
     <div className="flex flex-col gap-4">
@@ -51,25 +61,43 @@ export function InboundOrderLines({ draft, missing, preview, onChange }: LinesPr
             index={index}
             line={line}
             lineKey={keys[index]}
+            type={draft.type}
+            currency={draft.currency}
             action={preview?.lines.find((l) => l.index === index)?.action ?? null}
-            identityMissing={flagged('line_identity', index)}
+            identityMissing={flagged('line_identity', index) || returnItemMissing}
             quantityMissing={flagged('quantity', index)}
+            listingMissing={flagged('listing_url', index)}
             removable={draft.lines.length > 1}
             onRemove={() => onChange(draft.lines.filter((_, i) => i !== index))}
             onChange={(next) => onChange(draft.lines.map((l, i) => (i === index ? { ...l, ...next } : l)))}
           />
         ))}
       </ol>
-      <div>
-        <Button
-          variant="ghost"
-          size="sm"
-          icon={<Plus />}
-          disabled={draft.lines.length >= 200}
-          onClick={() => onChange([...draft.lines, emptyInboundOrderLine()])}
-        >
-          Add item
-        </Button>
+      <div className="flex items-center gap-3">
+        {/* A return is exactly one item — the claim ticket and the unboxer both read one listing. */}
+        {isReturn ? null : (
+          <Button
+            variant="ghost"
+            size="sm"
+            icon={<Plus />}
+            disabled={draft.lines.length >= 200}
+            onClick={() => onChange([...draft.lines, emptyInboundOrderLine()])}
+          >
+            Add item
+          </Button>
+        )}
+        <span className="flex-1" />
+        {cost ? (
+          <p className="flex items-baseline gap-2 text-role-caption" data-testid="inbound-order-subtotal">
+            <span className="text-text-muted">Subtotal</span>
+            <span className={cn(RECORD_ID_CLASS, 'text-text-default')}>{formatInboundMoney(cost.subtotalCents, draft.currency)}</span>
+            {cost.missingCost ? (
+              <span className="text-amber-700">
+                · {cost.missingCost} line{cost.missingCost === 1 ? '' : 's'} missing cost
+              </span>
+            ) : null}
+          </p>
+        ) : null}
       </div>
     </div>
   );
@@ -79,9 +107,12 @@ function LineRow({
   index,
   line,
   lineKey,
+  type,
+  currency,
   action,
   identityMissing,
   quantityMissing,
+  listingMissing,
   removable,
   onRemove,
   onChange,
@@ -89,9 +120,12 @@ function LineRow({
   index: number;
   line: InboundOrderLine;
   lineKey: string;
+  type: InboundOrderType;
+  currency: string;
   action: 'create' | 'update' | null;
   identityMissing: boolean;
   quantityMissing: boolean;
+  listingMissing: boolean;
   removable: boolean;
   onRemove: () => void;
   onChange: (patch: Partial<InboundOrderLine>) => void;
@@ -107,20 +141,29 @@ function LineRow({
     return rows;
   }, [search.data, line.skuCatalogId, line.title, line.sku]);
   const [costText, setCostText] = useState(() => centsToText(line.unitCostCents));
+  const isReturn = type === 'RETURN';
+  const listingHref = openableListingUrl(line.listingUrl);
+  const listingLabel = isReturn ? 'Listing link (the listing the buyer bought) *' : 'Listing link';
 
   return (
     <li className="flex flex-col gap-3 border-b border-border-hairline pb-4 last:border-b-0 last:pb-0">
       <div className="flex items-center gap-2">
         <span className={cn(RECORD_ID_CLASS, 'text-text-muted')}>{lineKey}</span>
         {action ? (
-          <span className={cn('px-1.5 text-role-micro uppercase tracking-wide', TRIAGE_PANEL_INNER_CORNER, action === 'create' ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-700')}>
+          <span className={cn('px-1.5 text-role-micro', TRIAGE_PANEL_INNER_CORNER, action === 'create' ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-700')}>
             {action === 'create' ? 'New line' : 'Updates existing line'}
           </span>
         ) : null}
         <span className="flex-1" />
+        {type === 'PO' ? (
+          <span className="flex items-baseline gap-1.5 text-role-caption">
+            <span className="text-text-muted">Line total</span>
+            <span className={cn(RECORD_ID_CLASS, 'text-text-default')}>{formatInboundMoney(inboundLineTotalCents(line), currency)}</span>
+          </span>
+        ) : null}
         <IconButton icon={<Trash2 className="h-4 w-4" />} ariaLabel={`Remove item ${index + 1}`} disabled={!removable} onClick={onRemove} />
       </div>
-      <FormField label="Catalog item">
+      <FormField label="Catalog item" required={isReturn}>
         <SearchableSelectField
           value={line.skuCatalogId}
           onChange={(value, option) => {
@@ -166,8 +209,28 @@ function LineRow({
           }}
         />
       </div>
-      <div className="grid grid-cols-[1fr_10rem_10rem] gap-2">
-        <TextField label="Listing URL" value={line.listingUrl} type="url" onChange={(listingUrl) => onChange({ listingUrl })} />
+      <TextField
+        label={listingLabel}
+        value={line.listingUrl}
+        type="url"
+        aria-invalid={listingMissing || undefined}
+        onChange={(listingUrl) => onChange({ listingUrl })}
+        trailing={
+          listingHref ? (
+            <a
+              href={listingHref}
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label="Open listing in a new tab"
+              title="Open listing"
+              className={cn('inline-flex h-8 w-8 items-center justify-center text-text-muted hover:text-text-default', TRIAGE_PANEL_INNER_CORNER, focusRing('control'))}
+            >
+              <ExternalLink aria-hidden className="h-3.5 w-3.5" />
+            </a>
+          ) : null
+        }
+      />
+      <div className="grid grid-cols-2 gap-2">
         <TextField label="Item # / ASIN" value={line.itemNumber} mono onChange={(itemNumber) => onChange({ itemNumber })} />
         <TextField label="Source line id" value={line.lineKey} mono onChange={(lk) => onChange({ lineKey: lk })} />
       </div>

@@ -45,6 +45,8 @@ export interface DeskPageTab {
 interface DeskPageChromeProps {
   /** Page title, top-left. */
   title: string;
+  /** Rich title face (Shipping's hover-to-unfold view title); `title` stays the accessible name. */
+  titleSlot?: ReactNode;
   /**
    * Optional line under the title — a count, a scope. Omit it when there is
    * nothing true to say; a placeholder subtitle is worse than none.
@@ -60,6 +62,12 @@ interface DeskPageChromeProps {
    * than an `onAdd` callback so a desk can hand over whatever its intake needs.
    */
   addSlot?: ReactNode;
+  /**
+   * The header's middle, between the title and the actions — Shipping's key
+   * strip (the next key to press; the `G` sequence while armed). Grows to
+   * fill, so the title and the actions never move.
+   */
+  headerCenter?: ReactNode;
   /** A control at the START of the tab row, on the SAME axis as the tabs. */
   tabsLead?: ReactNode;
   /** The stage's ONE state — see {@link DeskStageView}. */
@@ -79,11 +87,13 @@ interface DeskPageChromeProps {
 
 export function DeskPageChrome({
   title,
+  titleSlot,
   subtitle,
   tabs,
   activeTab,
   onTabChange,
   addSlot,
+  headerCenter,
   tabsLead,
   view,
   onViewChange,
@@ -222,12 +232,20 @@ export function DeskPageChrome({
                 DESK_PAGE_HEADER_ROW_CLASS,
               )}
             >
-              <div className="min-w-0">
-                <h1 className="truncate text-role-title text-text-default">{title}</h1>
+              {/* A rich title face keeps its width (the middle slot flexes instead)
+                  and truncates itself; `truncate` here would clip its hover bubble. */}
+              <div className={cn('min-w-0', titleSlot && 'shrink-0')}>
+                <h1
+                  aria-label={titleSlot ? title : undefined}
+                  className={cn('text-role-title text-text-default', titleSlot ? 'min-w-0' : 'truncate')}
+                >
+                  {titleSlot ?? title}
+                </h1>
                 {subtitle ? (
                   <p className="truncate text-role-caption text-text-soft">{subtitle}</p>
                 ) : null}
               </div>
+              {headerCenter}
               {/* Overall actions (Export) then the primary CTA. */}
               {addSlot}
             </div>

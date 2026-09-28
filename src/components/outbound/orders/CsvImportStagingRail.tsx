@@ -233,7 +233,7 @@ function StagingMapLeaf({ draft }: { draft: TableImportDraft }) {
           const missingRequired = field.required && !selected;
           return (
             <div key={field.key} className="space-y-1 px-4 py-2.5">
-              <p className="text-role-eyebrow font-semibold uppercase tracking-widest text-text-soft">
+              <p className="text-role-eyebrow font-semibold text-text-soft">
                 {field.label}
                 {field.required ? <span className="ml-1 text-text-danger">*</span> : null}
               </p>
@@ -292,7 +292,7 @@ function StagingBatchLeaf({ draft }: { draft: TableImportDraft }) {
             key={fact.label}
             className="flex items-baseline justify-between gap-3 px-4 py-2"
           >
-            <span className="shrink-0 text-role-eyebrow font-semibold uppercase tracking-widest text-text-soft">
+            <span className="shrink-0 text-role-eyebrow font-semibold text-text-soft">
               {fact.label}
             </span>
             <span className="min-w-0 truncate text-role-caption tabular-nums text-text-default">

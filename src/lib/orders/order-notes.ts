@@ -2,6 +2,10 @@ import 'server-only';
 
 import { withTenantTransaction } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';
+import { MENTION_INBOX_ITEM_SQL, mentionInboxItemParams } from '@/lib/notifications/assign-inbox-item';
+import { ORDER_NOTE_MENTIONED } from '@/lib/notifications/event-vocabulary';
+import { publishInboxItem } from '@/lib/realtime/publish';
+import { noteMentionsToPlain, parseNoteMentions } from './note-mentions';
 
 /** Internal ops annotations on an order (`order_notes`) — the append-only trail of "box arrived damaged", "packer forgot the cable". */
 
@@ -11,6 +15,8 @@ interface OrderNote {
   authorStaffId: number | null;
   /** Resolved at read time — `null` when the author row was deleted. */
   authorName: string | null;
+  /** Validated staff ids this note @mentions (token format: note-mentions.ts). */
+  mentionedStaffIds: number[];
   createdAt: string;
 }
 
@@ -25,12 +31,14 @@ export async function listOrderNotes(
       note_text: string;
       author_staff_id: number | null;
       author_name: string | null;
+      mentioned_staff_ids: number[] | null;
       created_at: string;
     }>(
       `SELECT n.id,
               n.note_text,
               n.author_staff_id,
               s.name AS author_name,
+              n.mentioned_staff_ids,
               n.created_at
          FROM order_notes n
          LEFT JOIN staff s ON s.id = n.author_staff_id
@@ -43,6 +51,7 @@ export async function listOrderNotes(
       noteText: r.note_text,
       authorStaffId: r.author_staff_id === null ? null : Number(r.author_staff_id),
       authorName: r.author_name?.trim() || null,
+      mentionedStaffIds: (r.mentioned_staff_ids ?? []).map(Number),
       createdAt: new Date(r.created_at).toISOString(),
     }));
   });
@@ -70,20 +79,38 @@ export async function createOrderNote({
   const body = noteText.trim();
   if (!body) return { ok: false, reason: 'empty' };
 
-  return withTenantTransaction<CreateOrderNoteResult>(organizationId, async (client) => {
+  const requested = parseNoteMentions(body);
+  let inboxRows: Array<{ itemId: number; staffId: number }> = [];
+
+  const result = await withTenantTransaction<CreateOrderNoteResult>(organizationId, async (client) => {
     const exists = await client.query('SELECT 1 FROM orders WHERE id = $1 LIMIT 1', [orderId]);
     if (exists.rowCount === 0) return { ok: false, reason: 'not_found' };
+
+    // Mentions are only honoured for active staff in THIS org (RLS scopes staff).
+    let mentioned: number[] = [];
+    if (requested.length > 0) {
+      const valid = await client.query<{ id: number }>(
+        `SELECT id FROM staff
+          WHERE id = ANY($1::int[])
+            AND COALESCE(status, 'active') IN ('active', 'invited')
+            AND COALESCE(active, true) = true`,
+        [requested],
+      );
+      const ok = new Set(valid.rows.map((r) => Number(r.id)));
+      mentioned = requested.filter((id) => ok.has(id));
+    }
 
     const { rows } = await client.query<{
       id: string;
       note_text: string;
       author_staff_id: number | null;
+      mentioned_staff_ids: number[];
       created_at: string;
     }>(
-      `INSERT INTO order_notes (order_id, note_text, author_staff_id)
-       VALUES ($1, $2, $3)
-       RETURNING id, note_text, author_staff_id, created_at`,
-      [orderId, body, staffId],
+      `INSERT INTO order_notes (order_id, note_text, author_staff_id, mentioned_staff_ids)
+       VALUES ($1, $2, $3, $4::int[])
+       RETURNING id, note_text, author_staff_id, mentioned_staff_ids, created_at`,
+      [orderId, body, staffId, mentioned],
     );
     const row = rows[0];
 
@@ -102,6 +129,26 @@ export async function createOrderNote({
       authorName = staffRow.rows[0]?.name?.trim() || null;
     }
 
+    const preview = noteMentionsToPlain(body).slice(0, 280);
+    inboxRows = [];
+    for (const recipient of mentioned) {
+      if (recipient === staffId) continue; // never notify the author of their own note
+      const inserted = await client.query<{ id: number }>(
+        MENTION_INBOX_ITEM_SQL,
+        mentionInboxItemParams(organizationId, {
+          staffId: recipient,
+          entityType: 'order',
+          entityId: orderId,
+          eventKey: ORDER_NOTE_MENTIONED,
+          sourceKey: `order_note:${row.id}`,
+          actorStaffId: staffId,
+          note: preview,
+        }),
+      );
+      const itemId = inserted.rows[0]?.id;
+      if (itemId != null) inboxRows.push({ itemId: Number(itemId), staffId: recipient });
+    }
+
     return {
       ok: true,
       note: {
@@ -109,10 +156,32 @@ export async function createOrderNote({
         noteText: row.note_text,
         authorStaffId: row.author_staff_id === null ? null : Number(row.author_staff_id),
         authorName,
+        mentionedStaffIds: (row.mentioned_staff_ids ?? []).map(Number),
         createdAt: new Date(row.created_at).toISOString(),
       },
     };
   });
+
+  // Push only after commit — a rolled-back note must not ring anyone's inbox.
+  if (result.ok && inboxRows.length > 0) {
+    const preview = noteMentionsToPlain(result.note.noteText).slice(0, 280);
+    await Promise.all(
+      inboxRows.map(({ itemId, staffId: recipientId }) =>
+        publishInboxItem({
+          organizationId,
+          recipientId,
+          itemId,
+          entityType: 'order',
+          entityId: orderId,
+          eventKey: ORDER_NOTE_MENTIONED,
+          actorStaffId: staffId,
+          actorName: result.note.authorName,
+          note: preview,
+        }).catch((err) => console.error('[order-notes] mention push failed', err)),
+      ),
+    );
+  }
+  return result;
 }
 
 /** Append the SAME note onto many orders in one tenant transaction. */

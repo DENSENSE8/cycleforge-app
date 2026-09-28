@@ -114,6 +114,40 @@ export function grammar(reduced: boolean) {
     : { enter, exit, move, settle };
 }
 
+/** Simple welcome: calm word entry, readable hold, then a quick departure. */
+export const SIMPLE = {
+  /** Nonzero first paint keeps a saved-session greeting eligible as visible content. */
+  INITIAL_OPACITY: 0.1,
+  ENTER_S: 0.34,
+  HOLD_S: 0.72,
+  LEAVE_S: 0.24,
+  WORD_STAGGER_S: 0.05,
+  RISE_PX: 10,
+  LEAVE_Y_PX: -6,
+  LEAVE_SCALE: 0.985,
+} as const;
+
+/** Elevation greeting: intentionally minimal and finished before the page rises. */
+export const ELEVATION = {
+  /** Nonzero first paint keeps the minimal saved-session greeting visible before hydration settles. */
+  INITIAL_OPACITY: 0.1,
+  GREET_IN_S: 0.2,
+  GREET_HOLD_S: 0.8,
+  GREET_OUT_S: 0.15,
+} as const;
+
+/** Daily elevation drop: one shared spring grammar for the plate, page, and rows. */
+export const DROP = {
+  SPRING: { type: 'spring', stiffness: 300, damping: 25, mass: 1 } as Transition,
+  ROW: { type: 'spring', stiffness: 500, damping: 35 } as Transition,
+  HOLD_S: 0.18,
+  ROW_SETTLE_S: 0.25,
+  STAGGER_S: 0.05,
+  STAGGER_CAP: 12,
+  ROW_RISE_PX: 10,
+  LIFT_SCALE: 1.05,
+} as const;
+
 /**
  * Phase timings (seconds). Tuning table — each value is the length of a beat
  * or the gap before one; the sequence always waits on real readiness too.

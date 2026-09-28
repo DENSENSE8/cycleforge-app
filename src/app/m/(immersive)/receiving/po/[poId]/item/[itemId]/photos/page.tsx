@@ -47,7 +47,7 @@ function ItemPhotoPageInner(
 
   if (isLoading) {
     return (
-      <div className="grid min-h-[100dvh] place-items-center text-role-caption font-semibold uppercase tracking-widest text-white/60">
+      <div className="grid min-h-[100dvh] place-items-center text-role-caption font-semibold text-white/60">
         Opening camera…
       </div>
     );

@@ -80,7 +80,7 @@ interface OneTimeCodeInputProps {
 }
 
 const BOX_CLASS =
-  'h-14 border bg-surface-card text-center font-mono text-xl font-semibold uppercase text-text-default transition-[border-color,box-shadow] duration-150 disabled:cursor-not-allowed disabled:bg-surface-canvas disabled:text-text-faint';
+  'h-14 border bg-surface-card text-center font-mono text-xl font-semibold text-text-default transition-[border-color,box-shadow] duration-150 disabled:cursor-not-allowed disabled:bg-surface-canvas disabled:text-text-faint';
 
 /** Six boxes still have to fit a 320px phone dialog — tighten past four. */
 const WIDE_BOX = 'w-12';

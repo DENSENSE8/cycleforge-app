@@ -2,7 +2,8 @@
 
 /** `RecordActionStrip` — the ONE place a desk record's verbs paint (owner 2026-09-25, supersedes "actions in the record header / right… */
 
-import { useState, type ReactNode } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
+import { claimOverlay } from '@/lib/overlay-stack/store';
 import { Button } from '@/design-system/primitives/Button';
 import { IconButton } from '@/design-system/primitives/IconButton';
 import { KeyboardKey } from '@/design-system/primitives/KeyboardKey';
@@ -12,7 +13,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/design-system/primitives/DropdownMenu';
-import { MoreHorizontal } from '@/components/Icons';
+import { MoreVertical } from '@/components/Icons';
 import { useSelectionInlineHotkeysRevealed } from '@/hooks/useSelectionStatusBarHotkeys';
 import { useRecordActionStripKeys } from './useRecordActionStripKeys';
 import { cn } from '@/utils/_cn';
@@ -31,11 +32,20 @@ export interface RecordActionVerb {
   disabledReason?: string;
   /** A toggle verb's current state (Select, Mark urgent) — `aria-pressed`. */
   pressed?: boolean;
+  /**
+   * Which check-sets the verb acts on (Law 5 — the selection bar paints the
+   * same verbs in the same order at 1 or N checked): `single` = one record
+   * (the lead), `bulk` = two or more, `both` (default) = any. Out of scope, the
+   * verb stays in its place, disabled with the reason ({@link scopeRecordVerbs}).
+   */
+  scope?: RecordVerbScope;
   /** Immediate verb. */
   run?: () => void | Promise<void>;
   /** OR morph the strip into this display; `done()` morphs it back. */
   display?: (done: () => void) => ReactNode;
 }
+
+export type RecordVerbScope = 'single' | 'bulk' | 'both';
 
 interface RecordActionStripProps {
   verbs: readonly RecordActionVerb[];
@@ -57,7 +67,8 @@ interface RecordActionStripProps {
 }
 
 const STRIP_CLASS = 'flex w-full min-w-0 items-center gap-1 border-b border-border-soft bg-surface-card px-2 py-1.5';
-const HEADER_FACE_CLASS = 'flex min-w-0 items-center gap-1';
+// Fills its slot, so ⋮ and the isolated verb (Delete) sit at the far right of the verbs.
+const HEADER_FACE_CLASS = 'flex w-full min-w-0 flex-1 items-center gap-1';
 
 export function RecordActionStrip({
   verbs,
@@ -69,6 +80,14 @@ export function RecordActionStrip({
   const shellClass = face === 'header' ? HEADER_FACE_CLASS : STRIP_CLASS;
   const [activeId, setActiveId] = useState<string | null>(null);
   const [armedId, setArmedId] = useState<string | null>(null);
+  // The ⋮ menu holds the keyboard while open, like any overlay: its Escape
+  // closes the menu — not this strip, and not the host's check-set.
+  const [moreOpen, setMoreOpen] = useState(false);
+  useEffect(() => {
+    if (!moreOpen) return;
+    const claim = claimOverlay();
+    return () => claim.release();
+  }, [moreOpen]);
   const showHotkeys = useSelectionInlineHotkeysRevealed();
 
   const active = activeId == null ? null : (verbs.find((verb) => verb.id === activeId && verb.display) ?? null);
@@ -138,8 +157,9 @@ export function RecordActionStrip({
         aria-haspopup={verb.display ? 'true' : undefined}
         data-testid={`${testId}-${verb.id}`}
         data-armed={armed ? '' : undefined}
-        // The header face sits in a 28px chrome row: 24px pills, not 32px.
-        className={face === 'header' ? 'h-6' : undefined}
+        // The header face sits in a 28px chrome row: 24px pills, not 32px, one
+        // line each — a narrow bar scrolls the row sideways instead of wrapping labels.
+        className={face === 'header' ? 'h-6 shrink-0 whitespace-nowrap' : undefined}
         onClick={() => press(verb)}
       >
         {armed ? `${verb.label} — press again` : verb.label}
@@ -160,19 +180,25 @@ export function RecordActionStrip({
       data-view="verbs"
       className={cn(shellClass, face === 'header' ? 'flex-nowrap' : 'flex-wrap')}
     >
-      <div className={cn('flex min-w-0 flex-1 items-center gap-1', face === 'header' ? 'flex-nowrap' : 'flex-wrap')}>
+      <div
+        className={cn(
+          'flex min-w-0 flex-1 items-center gap-1',
+          // Scrolls sideways; the pad (cancelled by the negative margin) keeps the pills' rings unclipped.
+          face === 'header' ? '-m-1 flex-nowrap overflow-x-auto p-1 scrollbar-hide' : 'flex-wrap',
+        )}
+      >
         {primary.map(verbButton)}
       </div>
       <div className="flex shrink-0 items-center gap-1">
         {overflow.length > 0 ? (
-          <DropdownMenu modal={false}>
+          <DropdownMenu modal={false} open={moreOpen} onOpenChange={setMoreOpen}>
             <DropdownMenuTrigger asChild>
               <IconButton
                 type="button"
                 size={face === 'header' ? 'xs' : 'sm'}
                 radius="pill"
                 tone="neutral"
-                icon={<MoreHorizontal className="h-3.5 w-3.5" />}
+                icon={<MoreVertical className="h-3.5 w-3.5" />}
                 ariaLabel="More actions"
                 data-testid={`${testId}-more`}
               />

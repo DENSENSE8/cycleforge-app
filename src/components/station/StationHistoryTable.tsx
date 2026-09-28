@@ -37,7 +37,7 @@ interface StationHistoryTableProps<T> {
   /** Which registered bench family paints — selects binding · columns · resolver. */
   family: BenchFamily;
   /**
-   * The caller's own slot layout (`useTechTableLayout` / `usePackerTableLayout`).
+   * The caller's own slot layout (`useDeskPickTableLayout` / `usePackerTableLayout`).
    * Passed in rather than resolved here so each desk pays for one prefs read
    * and this component branches on data, never on hooks.
    */
@@ -111,7 +111,7 @@ export function StationHistoryTable<T>({
 
   /**
    * The domain record behind a mapped row, by row id — how copy and row-open
-   * recover the `TechRecord` / `PackerRecord` without a second fetch.
+   * recover the `DeskPickRecord` / `PackerRecord` without a second fetch.
    */
   const sourceById = useMemo(() => {
     const map = new Map<string, T>();

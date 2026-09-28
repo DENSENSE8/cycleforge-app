@@ -171,7 +171,7 @@ export function DataTableExportMenu<Row>({
               {band.key ? (
                 <p
                   className={cn(
-                    'px-2 pb-0.5 text-role-micro font-semibold uppercase tracking-widest text-text-faint',
+                    'px-2 pb-0.5 text-role-micro font-semibold text-text-faint',
                     bandIndex === 0 ? 'pt-1' : 'pt-2',
                   )}
                 >
@@ -213,7 +213,7 @@ export function DataTableExportMenu<Row>({
           argument rather than having a `toTsv` twin.
         */}
         <div className="flex items-center justify-between gap-2 px-2 py-1">
-          <span className="text-role-micro font-semibold uppercase tracking-widest text-text-faint">
+          <span className="text-role-micro font-semibold text-text-faint">
             Format
           </span>
           <div role="radiogroup" aria-label="Export format" className="inline-flex items-center gap-1">

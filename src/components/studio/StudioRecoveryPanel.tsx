@@ -67,7 +67,7 @@ export function StudioRecoveryPanel({ definitionId }: { definitionId: number }) 
 
   return (
     <section>
-      <h3 className="mb-1.5 text-role-micro uppercase tracking-wider text-text-faint">
+      <h3 className="mb-1.5 text-role-micro text-text-faint">
         Stuck items{items ? ` · ${items.length}` : ''}
       </h3>
 
@@ -86,7 +86,7 @@ export function StudioRecoveryPanel({ definitionId }: { definitionId: number }) 
               </span>
               <span
                 className={[
-                  'shrink-0 rounded px-1.5 py-0.5 text-role-micro uppercase tracking-wide',
+                  'shrink-0 rounded px-1.5 py-0.5 text-role-micro',
                   it.status === 'error'
                     ? 'bg-rose-50 text-rose-600'
                     : 'bg-amber-50 text-amber-700',

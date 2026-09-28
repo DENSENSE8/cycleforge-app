@@ -13,6 +13,7 @@ import { parseHomeModeWire } from '@/features/home/home-modes';
 import { parseReviewModeWire } from '@/features/review/review-mode';
 import { parseDashboardModeWire } from '@/lib/dashboard/dashboard-domains';
 import { parseLocationsTabWire } from '@/lib/inventory/locations-path';
+import { parseQcLabelViewWire } from '@/lib/labels/qc-label-views';
 import { parseLabelCopiesWire } from '@/lib/print/labelCopies';
 import {
   RECEIVING_HISTORY_URL_PARAMS,
@@ -261,7 +262,7 @@ export const SOURCING_ROUTE_PARAMS = defineRouteParams({
     supplier: paramText,
     /** Models CRUD editor door (`<id>` or `new`) — the Models mode's twin of `supplier`, read by `BoseModelsManagementTab` (admin dissolution). */
     model: paramText,
-    /** Models / Compatibility picker filter (`BoseModelsSidebarPanel`, `CompatibilitySidebarPanel`). */
+    /** Models / Compatibility list filter — the sidebar Find on those views (`BoseModelPickerPane` reads it). */
     search: paramText,
     /** Compatibility picker selection — a `bose_models` row id. */
     boseModelId: paramPositiveInt,
@@ -359,6 +360,12 @@ export const INVENTORY_ROUTE_PARAMS = defineRouteParams({
     condition: paramText,
     /** SKU-graph direction. */
     view: paramEnum(['parents', 'children', 'tree', 'parts'] as const),
+    /** Replenish (`section=replenish`): Need to order (bare or `need`) · Shipped FIFO. */
+    rtab: paramEnum(['need', 'fifo'] as const),
+    /** Replenish SKU filter. */
+    rsku: paramText,
+    /** Replenish request status (one of the active statuses). */
+    rstatus: paramEnum(['detected', 'pending_review', 'planned_for_po', 'po_created', 'waiting_for_receipt'] as const),
   },
   carries: WORKBENCH_CARRIES,
 });
@@ -409,6 +416,20 @@ export const INVENTORY_SKU_EXCEPTIONS_ROUTE_PARAMS = defineRouteParams({
     q: paramText,
     /** The open placeholder SKU (`TMP-…`) — opens it in the evidence column. */
     sku: paramText,
+  },
+  carries: WORKBENCH_CARRIES,
+});
+
+/** `/inventory/qc-labels` — one record per labelled serial unit (the QC / pre-box sticker). */
+const INVENTORY_QC_LABELS_ROUTE_PARAMS = defineRouteParams({
+  route: '/inventory/qc-labels',
+  owns: {
+    /** All labels (bare) · In stock · On orders. */
+    view: paramCanonical(parseQcLabelViewWire),
+    /** Serial, unit id, SKU, title or order — server-side. */
+    q: paramText,
+    /** The open labelled unit (`serial_units.id`). */
+    open: paramText,
   },
   carries: WORKBENCH_CARRIES,
 });
@@ -605,6 +626,7 @@ export const QUERY_MODE_ROUTE_PARAMS: readonly RouteParamsSpec[] = [
   INVENTORY_LOCATIONS_ROUTE_PARAMS,
   INVENTORY_STOCK_ROUTE_PARAMS,
   INVENTORY_SKU_EXCEPTIONS_ROUTE_PARAMS,
+  INVENTORY_QC_LABELS_ROUTE_PARAMS,
   // Ex-/admin/inventory desks, re-homed under the Inventory desk.
   INVENTORY_HEALTH_ROUTE_PARAMS,
   INVENTORY_CYCLE_COUNTS_ROUTE_PARAMS,

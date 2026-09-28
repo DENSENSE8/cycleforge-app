@@ -55,7 +55,7 @@ export function ManualPairForm({ skuCatalogId, onAdded }: { skuCatalogId: number
         size="sm"
         onClick={() => setOpen(true)}
         icon={<Plus className="h-3.5 w-3.5" />}
-        className="mb-3 rounded-md border border-dashed border-border-default text-role-micro uppercase tracking-wider text-text-muted hover:border-blue-300 hover:bg-blue-50 hover:text-blue-700"
+        className="mb-3 rounded-md border border-dashed border-border-default text-role-micro text-text-muted hover:border-blue-300 hover:bg-blue-50 hover:text-blue-700"
       >
         Pair a SKU manually
       </Button>
@@ -65,7 +65,7 @@ export function ManualPairForm({ skuCatalogId, onAdded }: { skuCatalogId: number
   return (
     <div className="mb-3 rounded-none border border-blue-200 bg-blue-50/40 p-3">
       <div className="mb-2 flex items-center justify-between">
-        <span className="text-role-micro uppercase tracking-wider text-blue-700">Manual pairing</span>
+        <span className="text-role-micro text-blue-700">Manual pairing</span>
         <IconButton
           onClick={() => {
             reset();
@@ -78,7 +78,7 @@ export function ManualPairForm({ skuCatalogId, onAdded }: { skuCatalogId: number
       </div>
       <div className="flex flex-wrap items-end gap-2">
         <label className="flex flex-col gap-0.5">
-          <span className="text-role-eyebrow font-semibold uppercase tracking-wider text-text-soft">Platform</span>
+          <span className="text-role-eyebrow font-semibold text-text-soft">Platform</span>
           <select
             value={platform}
             onChange={(e) => setPlatform(e.target.value)}
@@ -92,7 +92,7 @@ export function ManualPairForm({ skuCatalogId, onAdded }: { skuCatalogId: number
           </select>
         </label>
         <label className="flex min-w-[8rem] flex-1 flex-col gap-0.5">
-          <span className="text-role-eyebrow font-semibold uppercase tracking-wider text-text-soft">SKU / identifier</span>
+          <span className="text-role-eyebrow font-semibold text-text-soft">SKU / identifier</span>
           <input
             value={sku}
             onChange={(e) => setSku(e.target.value)}
@@ -107,7 +107,7 @@ export function ManualPairForm({ skuCatalogId, onAdded }: { skuCatalogId: number
           />
         </label>
         <label className="flex min-w-[7rem] flex-1 flex-col gap-0.5">
-          <span className="text-role-eyebrow font-semibold uppercase tracking-wider text-text-soft">
+          <span className="text-role-eyebrow font-semibold text-text-soft">
             Account <span className="font-normal normal-case text-text-faint">(optional)</span>
           </span>
           <input

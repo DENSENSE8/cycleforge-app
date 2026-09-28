@@ -1,0 +1,31 @@
+-- 2026-09-28v_drop_order_test_to_pick_backfill.sql
+--
+-- WHAT
+--   DROP TABLE order_test_to_pick_backfill_2026_09_27;
+--
+-- WHY
+--   The table was a migration artifact of 2026-09-27b_order_pick_assignments_from_test.sql
+--   (746 rows on dev): no application reader, kept only to make that
+--   migration's rollback exact. The owner signed off the QC / Picking split
+--   on 2026-09-28, so the artifact goes.
+--
+-- CONSEQUENCE FOR 2026-09-27b's ROLLBACK
+--   The rollback written in 2026-09-27b's header reads this table and is NO
+--   LONGER EXACT (it cannot run at all once the table is gone). Undoing the
+--   TEST→PICK move after this point means a forward migration that copies
+--   ORDER/PICK assignees back onto ORDER/TEST rows; the per-row mapping
+--   (test_wa_id ↔ pick_wa_id, original status) is lost.
+--
+-- SAFETY
+--   No code references the table (grep: only the 2026-09-27b migration, the
+--   HANDOFF-qc-pick-split.md history and the generated tenancy coverage files).
+--   Idempotent via IF EXISTS.
+--
+-- VERIFY
+--   SELECT to_regclass('order_test_to_pick_backfill_2026_09_27');  -- expect NULL
+--
+-- ROLLBACK
+--   None exact. Recreate the table from a pre-2026-09-28 backup/branch if the
+--   per-row mapping is ever needed.
+
+DROP TABLE IF EXISTS order_test_to_pick_backfill_2026_09_27;

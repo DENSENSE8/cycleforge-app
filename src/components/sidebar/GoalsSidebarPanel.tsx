@@ -11,6 +11,7 @@ import { getAllStaffGoals, invalidateStaffGoalsCache, type GoalRow } from '@/lib
 import { getStaffThemeById, stationThemeColors } from '@/utils/staff-colors';
 import { SearchBar } from '@/components/ui/SearchBar';
 import { SIDEBAR_GUTTER } from '@/components/layout/header-shell';
+import { sentenceCaseLabel } from '@/lib/text/sentence-case-label';
 
 /** Ex-Admin › Goals home after the dissolution: the monitor desk's Goals mode. */
 const OPERATIONS_GOALS_PATH = '/operations';
@@ -150,12 +151,12 @@ function CurrentGoalEntry({
           </div>
           <div className="min-w-0">
             <p className="truncate text-role-caption font-semibold text-text-default">{row.name}</p>
-            <p className="truncate text-role-eyebrow font-medium uppercase tracking-[0.12em] text-text-faint">
-              {row.station}
+            <p className="truncate text-role-eyebrow font-medium text-text-faint">
+              {sentenceCaseLabel(row.station)}
             </p>
           </div>
         </div>
-        <span className={`text-role-eyebrow uppercase tracking-widest ${statusDisplay.className}`}>
+        <span className={`text-role-eyebrow ${statusDisplay.className}`}>
           {statusDisplay.label}
         </span>
       </div>
@@ -349,7 +350,7 @@ export function GoalsSidebarPanel() {
         <section className="space-y-2">
           <div className="flex items-center justify-between px-1">
             <p className={sectionLabel}>Current Goals</p>
-            <span className="text-role-micro font-semibold uppercase tracking-[0.12em] text-text-faint">
+            <span className="text-role-micro font-semibold text-text-faint">
               {filteredRows.length}
             </span>
           </div>

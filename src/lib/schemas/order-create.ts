@@ -60,6 +60,16 @@ export const OrderCreateLine = z.object({
 });
 export type OrderCreateLine = z.infer<typeof OrderCreateLine>;
 
+/**
+ * `POST /api/orders/[id]/cage-release { action: 'set-line', line }` — a held
+ * row's line rewritten after the intake draft save: the create line's fields
+ * and coercions, plus the listing it sold from.
+ */
+export const HeldOrderLineBody = OrderCreateLine.extend({
+  itemNumber: optionalText(100),
+});
+export type HeldOrderLineBody = z.infer<typeof HeldOrderLineBody>;
+
 export const OrderCreateCustomer = z.union([
   z.object({ id: z.number().int().positive(), shipTo: CustomerShipToBody.optional() }),
   z.object({
@@ -98,6 +108,8 @@ export const OrderCreateBody = z.object({
   /** Civil date → the order's ship-by deadline (`work_assignments.deadline_at`). */
   shipBy: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'shipBy must be YYYY-MM-DD').nullish(),
   buyerNote: optionalText(1000),
+  /** `pickup` = walk-in / counter pickup → `orders.fulfillment_channel = 'PICKUP'` (no label, no tracking). */
+  fulfillment: z.enum(['ship', 'pickup']).optional(),
 });
 
 export interface OrderCreateInput {
@@ -112,6 +124,8 @@ export interface OrderCreateInput {
   customer: OrderCreateCustomer | null;
   shipBy: string | null;
   buyerNote: string | null;
+  /** The customer collects it at the counter. */
+  pickup: boolean;
 }
 
 /**
@@ -161,6 +175,7 @@ export function parseOrderCreateBody(
       customer: b.customer ?? null,
       shipBy: b.shipBy ?? null,
       buyerNote: b.buyerNote,
+      pickup: b.fulfillment === 'pickup',
     },
   };
 }

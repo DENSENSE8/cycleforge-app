@@ -9,6 +9,7 @@ import { createCacheLookupKey, getCachedJson, invalidateCacheTags, setCachedJson
 import { normalizePSTTimestamp, getCurrentPSTDateKey } from '@/utils/date';
 import { resolveShipmentId } from '@/lib/shipping/resolve';
 import { createStationActivityLog } from '@/lib/station-activity';
+import { refreshOrderStageFacts } from '@/lib/orders/order-stage-facts';
 import { recordAudit, AUDIT_ACTION } from '@/lib/audit-logs';
 import { publishActivityLogged, publishOrderChanged, publishPackerLogChanged, publishPackerScanReady } from '@/lib/realtime/publish';
 import { ensureReplenishmentForOrder } from '@/lib/replenishment';
@@ -339,6 +340,7 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
                         },
                         createdAt: fbaCreatedAt,
                     });
+                    await refreshOrderStageFacts(ctx.organizationId, { shipmentIds: [fbaShipId] }, client);
 
                     const productTitle = String(
                         fba.first_product_title ||
@@ -506,6 +508,7 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
                     },
                     createdAt: notFoundCreatedAt,
                 });
+                await refreshOrderStageFacts(ctx.organizationId, { shipmentIds: [nfShipmentId] }, client);
                 await recordAudit(client, ctx, req, {
                     source: 'api.packing-logs',
                     action: AUDIT_ACTION.PACK_COMPLETED,
@@ -683,6 +686,7 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
                 },
                 createdAt: foundCreatedAt,
             });
+            await refreshOrderStageFacts(ctx.organizationId, { orderIds: [order.id], shipmentIds: [orderShipmentId] }, client);
             await recordAudit(client, ctx, req, {
                 source: 'api.packing-logs',
                 action: AUDIT_ACTION.PACK_COMPLETED,

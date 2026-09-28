@@ -5,6 +5,7 @@ import {
   type OrderLifecycleStage,
 } from '@/lib/order-lifecycle';
 import { nextStepForLifecycleStage } from '@/lib/orders/orders-next-step';
+import { PICKUP_FULFILLMENT_CHANNEL } from '@/lib/orders/release-gates';
 import {
   classifyDeadlineBand,
   type DeadlineBand,
@@ -18,6 +19,8 @@ import {
 
 interface OutboundWorkflowFactInput {
   shipmentId?: number | string | null;
+  /** `orders.fulfillment_channel` — `'PICKUP'` = counter pickup (no label, ever). */
+  fulfillmentChannel?: string | null;
   hasPickScan?: boolean | null;
   packedAt?: string | null;
   /** `station_activity_logs.DO​​CK_STAGED.created_at`; physical dock proof. */
@@ -61,11 +64,13 @@ export function resolveOutboundWorkflowFacts(
   options: { todayKey?: string } = {},
 ): OutboundWorkflowFacts {
   const hasLabel = input.shipmentId != null && String(input.shipmentId) !== '';
+  const pickup = input.fulfillmentChannel === PICKUP_FULFILLMENT_CHANNEL;
   const hasPickScan = Boolean(input.hasPickScan);
   const packed = Boolean(input.packedAt);
   const staged = Boolean(input.dockStagedAt);
   const stage = resolveOrderLifecycleStage({
     shipmentId: input.shipmentId ?? null,
+    pickup,
     hasPickScan,
     packedAt: input.packedAt ?? null,
     isOutOfStock: normalizeOutOfStock(input.isOutOfStock),
@@ -74,6 +79,7 @@ export function resolveOutboundWorkflowFacts(
   const actions = resolveOutboundWorkflowActions({
     stage,
     hasLabel,
+    pickup,
     hasPickScan,
     packed,
     staged,

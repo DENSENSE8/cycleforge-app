@@ -159,7 +159,7 @@ export function ListingResizePanel({
 
       {/* Title strip — outside the drag region so buttons stay clickable. */}
       <div className="flex items-center justify-between gap-2 border-b border-border-hairline px-4 py-1.5">
-        <div className="flex min-w-0 items-center gap-1.5 text-role-micro uppercase tracking-widest text-text-soft">
+        <div className="flex min-w-0 items-center gap-1.5 text-role-micro text-text-soft">
           <ExternalLink className="h-3 w-3 shrink-0 text-blue-500" />
           <span className="truncate">{title}</span>
         </div>

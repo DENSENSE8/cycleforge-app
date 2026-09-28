@@ -1,6 +1,6 @@
 'use client';
 
-import { useLayoutEffect, useState, type ComponentPropsWithoutRef, type ReactNode, type RefObject } from 'react';
+import { useLayoutEffect, useRef, useState, type ComponentPropsWithoutRef, type ReactNode, type RefObject } from 'react';
 import { AnimatePresence, motion } from '@/design-system/motion';
 import { cn } from '@/utils/_cn';
 import { AnchoredLayer, type AnchoredPlacement } from './AnchoredLayer';
@@ -63,10 +63,26 @@ export function Popover({
   // AnchoredLayer unmounts on `open=false` and AnimatePresence never plays.
   // useLayoutEffect so the open path mounts before paint (no missed first frame).
   const [layerOpen, setLayerOpen] = useState(open);
+  const panelRef = useRef<HTMLDivElement>(null);
+  const openerRef = useRef<HTMLElement | null>(null);
 
   useLayoutEffect(() => {
-    if (open) setLayerOpen(true);
-  }, [open]);
+    if (open) {
+      setLayerOpen(true);
+      const active = document.activeElement;
+      openerRef.current = active instanceof HTMLElement && active !== document.body ? active : anchorRef.current;
+      return;
+    }
+    // Esc hatch: the layer stays mounted through the exit motion, so
+    // AnchoredLayer never sees `open=false` — hand focus back here, unless the
+    // close moved it somewhere else on purpose (a click outside).
+    const opener = openerRef.current;
+    openerRef.current = null;
+    if (!opener?.isConnected) return;
+    const active = document.activeElement;
+    const dropped = !active || active === document.body || Boolean(panelRef.current?.contains(active));
+    if (dropped) opener.focus({ preventScroll: true });
+  }, [open, anchorRef]);
 
   if (!layerOpen) return null;
 
@@ -89,6 +105,7 @@ export function Popover({
         {open ? (
           <motion.div
             key="popover-panel"
+            ref={panelRef}
             initial={presence.initial}
             animate={presence.animate}
             exit={presence.exit}

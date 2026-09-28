@@ -246,7 +246,7 @@ export function MobileToShipSheet({
               </div>
 
               <div className={cn('overflow-hidden border border-border-soft', cornerClass('card'))}>
-                <p className="px-3 pt-2 text-role-eyebrow font-semibold uppercase tracking-widest text-text-muted">
+                <p className="px-3 pt-2 text-role-eyebrow font-semibold text-text-muted">
                   Operations
                 </p>
                 <div className="grid grid-cols-1">
@@ -258,7 +258,7 @@ export function MobileToShipSheet({
                     onClick={() => listingHref && openHref(listingHref)}
                   />
                 </div>
-                <p className="px-3 pt-1 text-role-eyebrow font-semibold uppercase tracking-widest text-text-muted">
+                <p className="px-3 pt-1 text-role-eyebrow font-semibold text-text-muted">
                   Documentation
                 </p>
                 <div className="grid grid-cols-2">
@@ -326,7 +326,7 @@ export function MobileToShipSheet({
                     {uploadShippingLabel.error.message}
                   </p>
                 ) : null}
-                <p className="px-3 pt-1 text-role-eyebrow font-semibold uppercase tracking-widest text-text-muted">
+                <p className="px-3 pt-1 text-role-eyebrow font-semibold text-text-muted">
                   Details
                 </p>
                 <OpButton

@@ -88,9 +88,9 @@ export function ShippedFilterDropdown({
       </label>
 
       <FilterDropdownSelect
-        label="Tested by"
-        value={state.testedBy}
-        onChange={(next) => actions.setTestedBy(next ? Number(next) : null)}
+        label="Picked by"
+        value={state.pickedBy}
+        onChange={(next) => actions.setPickedBy(next ? Number(next) : null)}
         emptyOption={{ value: '', label: 'Any staff' }}
         options={staffOptions}
       />

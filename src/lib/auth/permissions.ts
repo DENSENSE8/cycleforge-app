@@ -9,6 +9,7 @@ import {
   type PermissionString,
   type StaffRole,
 } from './permissions-shared';
+import { resolveAuthorizationMode } from './authorization-mode';
 
 export * from './permissions-shared';
 
@@ -59,16 +60,29 @@ export async function assertPermission(
     throw new PermissionDeniedError(action, role, null);
   }
   // Look up staff overrides so the check matches the DB-backed effective set.
-  const overrides = await pool
-    .query<{ permissions_added: string[] | null; permissions_removed: string[] | null }>(
-      `SELECT permissions_added, permissions_removed FROM staff WHERE id = $1 LIMIT 1`,
+  const staff = await pool
+    .query<{
+      organization_id: string;
+      permissions_added: string[] | null;
+      permissions_removed: string[] | null;
+    }>(
+      `SELECT organization_id, permissions_added, permissions_removed
+         FROM staff
+        WHERE id = $1
+        LIMIT 1`,
       [validId],
     )
     .then((r) => r.rows[0])
     .catch(() => undefined);
+  if (!staff) {
+    throw new PermissionDeniedError(action, role, validId);
+  }
+  if (resolveAuthorizationMode(staff.organization_id) === 'authenticated-only') {
+    return { role };
+  }
   const effective = await effectivePermissionsForStaff(validId, {
-    added: overrides?.permissions_added ?? [],
-    removed: overrides?.permissions_removed ?? [],
+    added: staff.permissions_added ?? [],
+    removed: staff.permissions_removed ?? [],
   });
   if (!effective.has(action as PermissionString)) {
     throw new PermissionDeniedError(action, role, validId);

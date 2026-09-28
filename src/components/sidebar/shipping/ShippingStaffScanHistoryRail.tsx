@@ -2,7 +2,7 @@
 
 /**
  * Shipping-mode sidebar rail — the signed-in staffer's 25 most recent TECH
- * station scans, regardless of week. It uses the same TechRecord anatomy as
+ * station scans, regardless of week. It uses the same DeskPickRecord anatomy as
  * the History tab; selecting a row opens Shipping preview for serial edits.
  */
 
@@ -12,12 +12,12 @@ import { RailRowBody } from '@/components/sidebar/rail-shell/RailRowBody';
 import type { SidebarRailRowContext } from '@/components/sidebar/SidebarRailShell';
 import { dispatchUpNextPreview, type UpNextPreviewPayload } from '@/utils/events';
 import type { ActiveStationOrder } from '@/hooks/useDeskPickController';
-import { useDeskPickLogs, type TechRecord } from '@/hooks/useDeskPickLogs';
-import { dedupeTechRecords, getTechRecordRowKey } from '@/lib/station/dedupe-tech-records';
+import { useDeskPickLogs, type DeskPickRecord } from '@/hooks/useDeskPickLogs';
+import { dedupeDeskPickRecords, getDeskPickRecordRowKey } from '@/lib/station/dedupe-tech-records';
 import {
-  filterTechRecordRailRows,
-  getTechRecordStatusDot,
-  getTechRecordStatusDotLabel,
+  filterDeskPickRecordRailRows,
+  getDeskPickRecordStatusDot,
+  getDeskPickRecordStatusDotLabel,
   techRecordRailTitle,
   techRecordToRailVM,
 } from '@/components/station/tech-record-rail-vm';
@@ -46,7 +46,7 @@ const SHIPPING_HISTORY_LIMIT = 25;
 // History merges repeat scans for the same tracking key. Fetch a bounded 4×
 // candidate window so the rail can still fill 25 distinct display rows.
 const SHIPPING_HISTORY_FETCH_LIMIT = SHIPPING_HISTORY_LIMIT * 4;
-const getRowActivityAt = (row: TechRecord) => row.created_at;
+const getRowActivityAt = (row: DeskPickRecord) => row.created_at;
 
 function useScanHistorySelection(): number | null {
   const [selectedOrderId, setSelectedOrderId] = useState<number | null>(null);
@@ -81,7 +81,7 @@ function useScanHistorySelection(): number | null {
 function HistoryRowMain({
   row,
 }: {
-  row: TechRecord;
+  row: DeskPickRecord;
   ctx: SidebarRailRowContext;
 }) {
   return <RailRowBody className="flex-1" vm={techRecordToRailVM(row)} />;
@@ -101,18 +101,18 @@ export function ShippingStaffScanHistoryRail({
     limit: SHIPPING_HISTORY_FETCH_LIMIT,
   });
   const records = useMemo(
-    () => dedupeTechRecords(rawRecords).slice(0, SHIPPING_HISTORY_LIMIT),
+    () => dedupeDeskPickRecords(rawRecords).slice(0, SHIPPING_HISTORY_LIMIT),
     [rawRecords],
   );
   const filteredRecords = useMemo(
     () =>
-      filterTechRecordRailRows(records, trimmedFilter).filter((row) =>
+      filterDeskPickRecordRailRows(records, trimmedFilter).filter((row) =>
         matchesStationHistoryRailFacets(row.account_source, facets),
       ),
     [records, trimmedFilter, facets],
   );
   const recordsVersion = useMemo(
-    () => records.map((row) => `${getTechRecordRowKey(row)}:${row.updated_at ?? row.created_at}`).join('|'),
+    () => records.map((row) => `${getDeskPickRecordRowKey(row)}:${row.updated_at ?? row.created_at}`).join('|'),
     [records],
   );
 
@@ -121,7 +121,7 @@ export function ShippingStaffScanHistoryRail({
     [sessionStaffId, trimmedFilter, recordsVersion],
   );
 
-  const fetchFn = useCallback(async (): Promise<TechRecord[]> => filteredRecords, [filteredRecords]);
+  const fetchFn = useCallback(async (): Promise<DeskPickRecord[]> => filteredRecords, [filteredRecords]);
 
   if (sessionStaffId <= 0) {
     return (
@@ -132,7 +132,7 @@ export function ShippingStaffScanHistoryRail({
   }
 
   return (
-    <SidebarRecentRailBase<TechRecord>
+    <SidebarRecentRailBase<DeskPickRecord>
       queryKey={queryKey}
       fetchFn={fetchFn}
       refreshEvents={[...SHIPPING_RAIL_REFRESH_EVENTS]}
@@ -149,8 +149,8 @@ export function ShippingStaffScanHistoryRail({
           selectedOrderId === order.id ? null : { kind: 'find', sel: { entityType: 'order', id: order.id } },
         );
       }}
-      getStatusDot={getTechRecordStatusDot}
-      getStatusDotLabel={getTechRecordStatusDotLabel}
+      getStatusDot={getDeskPickRecordStatusDot}
+      getStatusDotLabel={getDeskPickRecordStatusDotLabel}
       getCollapsePinLabel={techRecordRailTitle}
       getCollapsePinMeta={(row) => {
         const trk = String(row.shipping_tracking_number || '').trim();

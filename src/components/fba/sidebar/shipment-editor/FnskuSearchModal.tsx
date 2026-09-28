@@ -56,7 +56,7 @@ export function FnskuSearchModal({
         <DialogHeader className="space-y-0 border-b border-border-soft px-4 py-3 text-left">
           <div className="mb-2 flex items-center justify-between">
             <div>
-              <p className="text-role-micro uppercase tracking-[0.16em] text-text-accent">Add Amazon SKU</p>
+              <p className="text-role-micro text-text-accent">Add Amazon SKU</p>
               <DialogTitle className="mt-0.5 text-sm font-semibold">Search shipment catalog</DialogTitle>
               <DialogDescription className="sr-only">
                 Search the shipment catalog by Amazon SKU (FNSKU), ASIN, SKU, or product title.

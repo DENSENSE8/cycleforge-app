@@ -207,7 +207,7 @@ export function KioskDevicesSection({ view = 'devices' }: { view?: KioskDevicesP
 
       {isFleet ? (
         <div className="shrink-0 rounded-none border border-border-soft bg-surface-card p-4">
-          <p className="text-role-caption font-semibold uppercase tracking-widest text-text-soft">
+          <p className="text-role-caption font-semibold text-text-soft">
             Enroll a tablet
           </p>
           <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:items-center">
@@ -232,7 +232,7 @@ export function KioskDevicesSection({ view = 'devices' }: { view?: KioskDevicesP
 
           {freshCode && (
             <div className="mt-3 rounded-lg border border-border-success bg-surface-success px-3 py-3">
-              <p className="text-role-caption font-semibold uppercase tracking-widest text-text-success">
+              <p className="text-role-caption font-semibold text-text-success">
                 Pairing code — shown once
               </p>
               <p className="mt-1 select-all font-mono text-xl font-semibold tracking-widest text-text-success">
@@ -279,7 +279,7 @@ export function KioskDevicesSection({ view = 'devices' }: { view?: KioskDevicesP
                         <p className="truncate font-semibold text-text-default">{row.label}</p>
                         <p className="text-role-caption text-text-soft">Device {row.id}</p>
                       </div>
-                      <span className="shrink-0 text-role-caption font-semibold uppercase tracking-wide text-text-soft">
+                      <span className="shrink-0 text-role-caption font-semibold text-text-soft">
                         {STATUS_LABEL[row.status]}
                       </span>
                     </header>

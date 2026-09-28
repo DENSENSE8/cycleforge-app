@@ -6,18 +6,17 @@ import { NavPageActions } from '@/components/desk/NavPageActions';
 import { useCurrentNavPath, useNavContext } from '@/components/sidebar/contextual/useNavContext';
 
 /**
- * The Shipping **desk** frame — Exceptions · Picking · To ship · Shipped.
+ * The Shipping **desk** frame — Exceptions · Picking · To ship · Shipped, and FBA.
  *
- * No tab row (operator 2026-09-26): views, Find and filters live in the
- * contextual sidebar. The header names the view you are on and carries its
- * verbs top-right, over the list they act on (operator 2026-09-27). Both read
- * the same `NavContext` the sidebar paints.
+ * A contextual-sidebar desk (`bare`): the views live in the sidebar, and the
+ * header's title, hover-to-unfold view pills and key strip come from the
+ * page's `NavContext` (`DeskPageLayout` → `useNavDeskHeader`). This layout
+ * adds only the view's declared verbs, top-right over the list they act on.
  */
 export default function ShippingDeskLayout({ children }: { children: ReactNode }) {
   const nav = useNavContext(useCurrentNavPath()).data;
-  const view = nav?.sections.flatMap((section) => section.items).find((item) => item.active);
   return (
-    <DeskPageLayout bare stage="card" title={view?.label}>
+    <DeskPageLayout bare stage="card">
       <NavPageActions actions={nav?.actions} />
       {children}
     </DeskPageLayout>

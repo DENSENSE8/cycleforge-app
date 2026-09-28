@@ -30,7 +30,7 @@ const KEYS: ReadonlyArray<string | number> = [1, 2, 3, 4, 5, 6, 7, 8, 9, 'clear'
 const CELL = 'h-auto w-full justify-center shadow-none ring-0 transition-none enabled:active:scale-100';
 
 /** The tally's mono micro-label — the same face as `DetailFact`. */
-const TALLY_LABEL = 'font-mono text-role-eyebrow uppercase text-mode-muted';
+const TALLY_LABEL = 'font-mono text-role-eyebrow text-mode-muted';
 
 interface LocationContents {
   sku: string;
@@ -258,7 +258,7 @@ export function MobilePairQty({
             onClick={() => setMode('minus')}
             className={cn(
               CELL,
-              'min-h-14 font-mono text-base uppercase',
+              'min-h-14 font-mono text-base',
               mode === 'minus' ? 'bg-rose-600 text-white active:bg-rose-700' : 'bg-mode-panel text-mode-muted active:bg-mode-ink active:text-mode-panel',
             )}
           >
@@ -271,7 +271,7 @@ export function MobilePairQty({
             onClick={() => setMode('plus')}
             className={cn(
               CELL,
-              'min-h-14 font-mono text-base uppercase',
+              'min-h-14 font-mono text-base',
               mode === 'plus' ? 'bg-emerald-600 text-white active:bg-emerald-700' : 'bg-mode-panel text-mode-muted active:bg-mode-ink active:text-mode-panel',
             )}
           >

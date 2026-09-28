@@ -163,7 +163,7 @@ export function PhotoLabelEditor({
                     onClick={() => toggle(lbl.id)}
                     aria-pressed={checked}
                     className={cn(
-                      'inline-flex items-center gap-1 px-1.5 py-0.5 text-role-micro uppercase tracking-widest transition',
+                      'inline-flex items-center gap-1 px-1.5 py-0.5 text-role-micro transition',
                       cornerClass('chip'),
                       labelChipClasses(lbl.color),
                       checked

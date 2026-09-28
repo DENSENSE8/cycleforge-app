@@ -34,7 +34,7 @@ export function LegalSection() {
 
       {/* Draft disclaimer — these are pre-counsel working drafts. */}
       <div className="rounded-xl border border-dashed border-amber-300 bg-amber-50 px-4 py-3">
-        <p className="text-xs font-semibold uppercase tracking-widest text-amber-700">
+        <p className="text-xs font-semibold text-amber-700">
           Draft — pending legal review
         </p>
         <p className="mt-1 text-xs leading-5 text-amber-800">

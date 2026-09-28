@@ -144,7 +144,7 @@ export function RepairPickupFlow({ repair, onUpdate, onClose }: RepairPickupFlow
           <div className="flex items-center gap-3">
             <Camera className="h-5 w-5 text-emerald-600" />
             <div>
-              <h2 className="text-sm font-semibold uppercase tracking-tight text-text-default">
+              <h2 className="text-sm font-semibold tracking-tight text-text-default">
                 Take a photo of this receipt to keep a copy
               </h2>
               <p className="mt-0.5 text-role-micro text-text-soft">
@@ -156,7 +156,7 @@ export function RepairPickupFlow({ repair, onUpdate, onClose }: RepairPickupFlow
             variant="brand"
             onClick={onClose}
             icon={<X className="h-3 w-3" />}
-            className="bg-surface-inverse bg-none text-role-micro uppercase tracking-wide hover:bg-surface-inverse-hover"
+            className="bg-surface-inverse bg-none text-role-micro hover:bg-surface-inverse-hover"
           >
             Done
           </Button>

@@ -163,7 +163,7 @@ export function LabelPrintRunNumField({
   if (editing && !disabled) {
     return (
       <div className="w-[4.75rem]">
-        <span className="text-role-micro font-semibold uppercase tracking-wider text-text-soft">
+        <span className="text-role-micro font-semibold text-text-soft">
           {label}
         </span>
         <input
@@ -196,7 +196,7 @@ export function LabelPrintRunNumField({
 
   return (
     <div className="w-[4.75rem]">
-      <span className="text-role-micro font-semibold uppercase tracking-wider text-text-soft">
+      <span className="text-role-micro font-semibold text-text-soft">
         {label}
       </span>
       <div

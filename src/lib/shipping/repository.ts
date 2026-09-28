@@ -390,6 +390,9 @@ export async function updateShipmentSummary(
          last_error_message       = NULL,
          -- C1: a successful sync clears any prior carrier-blocked marker.
          tracking_blocked_reason  = NULL,
+         -- Carrier ETA: newest promise wins; a delivered parcel has no ETA.
+         estimated_delivery_at    = CASE WHEN (is_delivered OR $9::boolean) THEN NULL
+                                         ELSE COALESCE($31::timestamptz, estimated_delivery_at) END,
          latest_payload           = $21::jsonb,
          metadata                 = COALESCE(metadata, '{}'::jsonb) || $22::jsonb,
          updated_at               = now()
@@ -429,6 +432,7 @@ export async function updateShipmentSummary(
         log?.last_exception_at ?? null,                // $28 exception_at from the log
         log?.last_event_at ?? null,                    // $29 latest_event_at from the log
         result.deliveredAt ?? null,                    // $30 carrier-declared delivered instant (no log scan)
+        result.estimatedDelivery ?? null,              // $31 estimated_delivery_at
       ]
     );
 

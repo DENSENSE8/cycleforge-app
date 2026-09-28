@@ -16,9 +16,8 @@ export interface ResolvedShippedParams {
   carrierFilter: string | null;
   statusFilter: string | null;
   hasDateRange: boolean;
-  /** URL packedBy/testedBy (component props may override). */
+  /** URL packedBy (component props may override). */
   packedBy?: number;
-  testedBy?: number;
   anyCarrierFilter: boolean;
   effectiveWeekStart: string;
   effectiveWeekEnd: string;
@@ -49,7 +48,6 @@ export function resolveShippedQueryArgs(searchParams: ParamsLike): ResolvedShipp
   const statusFilter = readShippedStatusFilter(searchParams);
 
   const packedBy = parseStaffParam(searchParams.get('packedBy'));
-  const testedBy = parseStaffParam(searchParams.get('testedBy'));
 
   const dateFrom = (searchParams.get('dateFrom') || '').trim();
   const dateTo = (searchParams.get('dateTo') || '').trim();
@@ -68,7 +66,6 @@ export function resolveShippedQueryArgs(searchParams: ParamsLike): ResolvedShipp
     statusFilter: statusFilter ?? null,
     hasDateRange,
     packedBy,
-    testedBy,
     anyCarrierFilter,
     effectiveWeekStart,
     effectiveWeekEnd,

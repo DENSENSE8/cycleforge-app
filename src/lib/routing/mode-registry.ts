@@ -13,7 +13,7 @@
  * command palette) keep their own `ModeRegion` — they are not pages.
  */
 
-import type { ModeName } from '@/design-system/modes/registry';
+import type { ModeLookName, ModeName } from '@/design-system/modes/registry';
 
 export type RouteMode = ModeName | 'runtime';
 
@@ -23,6 +23,20 @@ export interface ModeRouteEntry {
   mode: RouteMode;
   /** Match `route` itself only, never its children. */
   exact?: true;
+  /**
+   * TRIAGE ONLY (owner 2026-09-27): the declared `triage` holds on a phone and
+   * a touch screen too instead of collapsing to `industrial` — a form (the new
+   * sales order) or a one-job desk that never offers Floor (Labels & docs).
+   * The lane-policy pass (`HANDOFF-lane-mode-policy.md`) turns this into the
+   * `triage` policy.
+   */
+  form?: true;
+  /**
+   * A job LOOK over the declared mode (`MODE_LOOKS`): the region stamps it
+   * where the mode resolves. A `runtime` route's layout applies it, and a
+   * look route never takes the layout's Floor.
+   */
+  look?: ModeLookName;
 }
 
 const DESK_TRIAGE_ROUTES = [
@@ -55,12 +69,21 @@ const DECLARED_ROUTES: readonly ModeRouteEntry[] = [
   { route: '/', mode: 'triage', exact: true },
   ...DESK_TRIAGE_ROUTES.map((route): ModeRouteEntry => ({ route, mode: 'triage' })),
   { route: '/shipping', mode: 'runtime' },
+  // Labels & docs — one job (show labels, print them): triage only, its own
+  // look, never Floor even inside the dual Outbound lane (owner 2026-09-27).
+  { route: '/shipping/label-intake', mode: 'runtime', look: 'labels-documents', form: true },
+  // The desk's new-sales-order form — triage on a touch screen too.
+  { route: '/orders/new', mode: 'triage', form: true },
+  // The desk's new-inbound-order form (PO · Return · Trade-in · Pickup).
+  { route: '/incoming/new', mode: 'triage', form: true },
   { route: '/ai-chat', mode: 'assistant' },
   // The phone tree asks for triage; `resolveRegionMode` paints it industrial on
   // a phone (BRIEF §12). The scan floor and the orders queue are industrial by job.
   { route: '/m', mode: 'triage' },
   { route: '/m/scan', mode: 'industrial' },
   { route: '/m/orders', mode: 'industrial', exact: true },
+  // Taking a sales order on the phone is a form, not floor execution.
+  { route: '/m/orders/new', mode: 'triage', form: true },
   { route: '/m/work', mode: 'industrial' },
   ...KIOSK_ROUTES,
 ];

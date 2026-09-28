@@ -49,7 +49,7 @@ function StepRowContent({ step }: { step: ProcedureStepRow }) {
         {step.label}
       </span>
       {trailing ? (
-        <span className="ml-auto truncate text-role-eyebrow uppercase tracking-widest text-text-soft">
+        <span className="ml-auto truncate text-role-eyebrow text-text-soft">
           {trailing}
         </span>
       ) : null}
@@ -249,7 +249,7 @@ export function ProcedureChecklist({
       data-procedure-checklist
     >
       {title ? (
-        <p className="inset-field pb-1 text-role-eyebrow uppercase tracking-widest text-text-soft">
+        <p className="inset-field pb-1 text-role-eyebrow text-text-soft">
           {title}
         </p>
       ) : null}

@@ -18,6 +18,7 @@ import { RECORD_LABEL_CLASS, type RecordStateFace } from '@/design-system/tokens
 import { resolveInboundDeliveryRecordState } from '@/design-system/tokens/inbound-delivery';
 import { IncomingAttachTrackingButton } from '@/components/station/IncomingAttachTrackingButton';
 import { displayReceivingProductTitle } from '@/components/station/receiving-grid/cells';
+import { inboundSourceLabel } from '@/components/receiving/incoming/incoming-record-sections';
 import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
 import {
   INCOMING_EXCEPTION_VERB,
@@ -89,7 +90,7 @@ export function purchaseIdentity(row: ReceivingLineRow): string {
 }
 
 function sourceFace(row: ReceivingLineRow): string {
-  return (row.inbound_source_type || row.source_platform || 'unknown').trim().toUpperCase();
+  return inboundSourceLabel(row.inbound_source_type || row.source_platform || 'unknown');
 }
 
 export function incomingDeliveryNextAction(state: string | null | undefined): string {
@@ -190,7 +191,7 @@ export function IncomingDeliveryRecord({
           {
             main: (
               <>
-                <span className={cn(RECORD_LABEL_CLASS, 'text-mode-muted')}>{entry.group.rows.length} LINES</span>
+                <span className={cn(RECORD_LABEL_CLASS, 'text-mode-muted')}>{entry.group.rows.length} lines</span>
                 <RecordIdFact label="TRK" value={entry.group.rows.filter((row) => row.tracking_number).length.toString()} />
               </>
             ),
@@ -205,7 +206,7 @@ export function IncomingDeliveryRecord({
   const state = incomingDeliveryRecordState(row);
   const title = displayReceivingProductTitle(row);
   const poId = (row.zoho_purchaseorder_id || '').trim();
-  const tracking = (row.tracking_number || '').trim() || 'NO TRACKING';
+  const tracking = (row.tracking_number || '').trim() || 'No tracking';
   return (
     <IndustrialRecord
       state={state}

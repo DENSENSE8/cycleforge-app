@@ -95,7 +95,7 @@ export const MobileReceivingPhotoStrip = memo(function MobileReceivingPhotoStrip
 
   if (error) {
     return (
-      <p className="text-center text-role-micro uppercase tracking-widest text-rose-500">
+      <p className="text-center text-role-micro text-rose-500">
         Couldn&apos;t load photos
       </p>
     );

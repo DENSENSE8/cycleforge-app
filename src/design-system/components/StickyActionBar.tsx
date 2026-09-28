@@ -133,7 +133,7 @@ export function StickyActionBar({
   const primaryHeight = isCompact ? 'h-9' : 'h-12';
   const primaryPadding = isCompact ? 'px-3' : 'px-6';
   const primaryText = isCompact
-    ? 'text-role-caption font-semibold uppercase tracking-wider'
+    ? 'text-role-caption font-semibold'
     : 'text-sm font-semibold';
   const primaryMinWidth = isCompact ? '' : 'sm:flex-initial sm:min-w-[220px]';
   const primaryRadius = isCompact ? 'rounded-md' : 'rounded-xl';
@@ -250,7 +250,7 @@ export function StickyActionBar({
                     item.onClick();
                     closeMenu();
                   }}
-                  className="flex w-full items-center gap-2.5 px-3 py-2.5 text-left text-role-caption font-semibold uppercase tracking-wider text-text-default transition-colors hover:bg-surface-hover disabled:cursor-not-allowed disabled:opacity-35"
+                  className="flex w-full items-center gap-2.5 px-3 py-2.5 text-left text-role-caption font-semibold text-text-default transition-colors hover:bg-surface-hover disabled:cursor-not-allowed disabled:opacity-35"
                 >
                   {item.icon}
                   <span className="min-w-0 flex-1 truncate">{item.label}</span>
@@ -365,7 +365,7 @@ export function StickyActionBar({
                       className="inline-flex items-center gap-1.5"
                     >
                       <KeyboardKey size="md">{h.key}</KeyboardKey>
-                      <span className="font-semibold uppercase tracking-[0.14em]">
+                      <span className="font-semibold">
                         {h.label}
                       </span>
                     </span>

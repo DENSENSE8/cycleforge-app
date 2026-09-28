@@ -33,7 +33,7 @@ export const TECH_HISTORY_STATE_META: Record<TechHistoryLane, TechLaneMeta> = {
   FBA: { label: 'Amazon Prep', description: 'Amazon Prep / FNSKU tech scans.', tone: 'orange', dot: TONE_CLASSES.orange.dot },
 };
 
-/** Minimal structural input — the fields the bucket reads (decoupled from TechRecord). */
+/** Minimal structural input — the fields the bucket reads (decoupled from DeskPickRecord). */
 interface TechLaneInput {
   created_at?: string | null;
   account_source?: string | null;
@@ -42,7 +42,7 @@ interface TechLaneInput {
   fnsku?: string | null;
 }
 
-/** Mirrors `isFbaTechRecord` (useTechTableController) — an FBA / FNSKU tech scan. */
+/** Mirrors `isFbaDeskPickRecord` (useDeskPickTableController) — an FBA / FNSKU tech scan. */
 export function isFbaTechLaneRow(r: TechLaneInput): boolean {
   return (
     r.account_source === 'fba' ||

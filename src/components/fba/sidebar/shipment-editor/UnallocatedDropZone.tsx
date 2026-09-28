@@ -57,7 +57,7 @@ export function UnallocatedDropZone({
             />
           ) : null}
         </div>
-        <p className="text-role-micro uppercase tracking-wider text-text-warning">
+        <p className="text-role-micro text-text-warning">
           Unallocated
         </p>
         {items.length > 0 && (
@@ -99,7 +99,7 @@ export function UnallocatedDropZone({
                           radius="flush"
                           icon={<RotateCcw className="h-2.5 w-2.5" />}
                           onClick={() => onRestoreToBundle(item.item_id)}
-                          className="h-5 gap-0.5 border border-border-warning bg-surface-warning px-1.5 text-role-micro uppercase tracking-wider text-text-warning hover:bg-surface-hover"
+                          className="h-5 gap-0.5 border border-border-warning bg-surface-warning px-1.5 text-role-micro text-text-warning hover:bg-surface-hover"
                           ariaLabel="Undo move — return to previous box"
                         >
                           Undo

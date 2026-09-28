@@ -50,7 +50,7 @@ function RunHistoryAdvanced({
         className="flex w-full items-center justify-between gap-2 px-3 py-2 text-left hover:bg-surface-sunken/50"
         aria-expanded={open}
       >
-        <span className="text-role-eyebrow uppercase tracking-[0.18em] text-text-faint">
+        <span className="text-role-eyebrow text-text-faint">
           Advanced · Run history
           {runs.length > 0 ? (
             <span className="ml-1.5 tabular-nums text-text-soft">{runs.length}</span>
@@ -86,14 +86,14 @@ function RunHistoryAdvanced({
                   <p className="truncate text-role-caption font-semibold text-text-default">
                     {run.feature_request}
                   </p>
-                  <p className="mt-0.5 truncate text-role-eyebrow font-semibold uppercase tracking-widest text-text-faint">
+                  <p className="mt-0.5 truncate text-role-eyebrow font-semibold text-text-faint">
                     {run.run_uid}
                     {run.branch ? ` · ${run.branch}` : ''}
                   </p>
                 </div>
                 <span
                   className={cn(
-                    'shrink-0 rounded px-1.5 py-0.5 text-role-micro uppercase tracking-widest',
+                    'shrink-0 rounded px-1.5 py-0.5 text-role-micro',
                     STATUS_BADGE[run.status] ?? 'bg-surface-sunken text-text-muted',
                   )}
                 >

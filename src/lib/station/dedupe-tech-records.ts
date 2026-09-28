@@ -1,5 +1,5 @@
 import { normalizeTrackingKey } from '@/lib/tracking-format';
-import type { TechRecord } from '@/hooks/useDeskPickLogs';
+import type { DeskPickRecord } from '@/hooks/useDeskPickLogs';
 
 function normalizeProductTitle(value: string | null | undefined): string {
   return String(value || '').trim();
@@ -14,7 +14,7 @@ function hasSerialValue(value: string | null | undefined): boolean {
   return Boolean(String(value || '').trim());
 }
 
-export function isFbaTechRecord(record: TechRecord): boolean {
+export function isFbaDeskPickRecord(record: DeskPickRecord): boolean {
   return (
     record.source_kind === 'fba_scan' ||
     record.account_source === 'fba' ||
@@ -40,15 +40,15 @@ function mergeSerialNumbers(a: string | null | undefined, b: string | null | und
 }
 
 /** Stable dedup key shared by History table + shipping sidebar rail. */
-export function getTechRecordRowKey(record: TechRecord): string {
+export function getDeskPickRecordRowKey(record: DeskPickRecord): string {
   return `${record.source_kind || 'tech'}:${record.source_row_id ?? record.id}`;
 }
 
 /**
  * Newest-first deduped tech-log feed — tracking-key merge matches
- * {@link useTechTableController}'s History table contract.
+ * {@link useDeskPickTableController}'s History table contract.
  */
-export function dedupeTechRecords(records: TechRecord[]): TechRecord[] {
+export function dedupeDeskPickRecords(records: DeskPickRecord[]): DeskPickRecord[] {
   const sorted = [...records].sort((a, b) => {
     const timeA = new Date(a.created_at || 0).getTime();
     const timeB = new Date(b.created_at || 0).getTime();
@@ -56,9 +56,9 @@ export function dedupeTechRecords(records: TechRecord[]): TechRecord[] {
   });
 
   const trackingIndexByKey = new Map<string, number>();
-  const unique: TechRecord[] = [];
+  const unique: DeskPickRecord[] = [];
   for (const record of sorted) {
-    if (isFbaTechRecord(record)) {
+    if (isFbaDeskPickRecord(record)) {
       unique.push(record);
       continue;
     }

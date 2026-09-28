@@ -123,7 +123,7 @@ export function InlineActionFeedbackCard({
       <div className="flex items-start gap-2 px-3 py-2.5">
         <div className="min-w-0 flex-1">
           <div className="flex items-baseline justify-between gap-2">
-            <p className={`text-role-eyebrow uppercase tracking-widest ${palette.title}`}>
+            <p className={`text-role-eyebrow ${palette.title}`}>
               {headline}
             </p>
             {timestamp ? (

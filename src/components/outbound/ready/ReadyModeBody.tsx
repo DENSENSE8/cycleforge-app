@@ -11,7 +11,7 @@ import Link from 'next/link';
 export function ReadyModeBody() {
   return (
     <div className={`${SIDEBAR_GUTTER} space-y-3 py-3`}>
-      <p className="text-role-eyebrow uppercase tracking-widest text-text-soft">
+      <p className="text-role-eyebrow text-text-soft">
         Recently tested
       </p>
       <p className="text-role-caption leading-relaxed text-text-soft">
@@ -20,7 +20,7 @@ export function ReadyModeBody() {
       </p>
       <Link
         href={fbaOutboundHref({ fbaMode: 'plan' })}
-        className="inline-flex text-role-caption font-semibold uppercase tracking-widest text-text-accent hover:underline"
+        className="inline-flex text-role-caption font-semibold text-text-accent hover:underline"
       >
         Open Plan →
       </Link>

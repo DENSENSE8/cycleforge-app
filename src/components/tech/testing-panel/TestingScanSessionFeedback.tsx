@@ -33,24 +33,24 @@ export function TestingScanSessionFeedback({
     >
       <div className="flex flex-wrap items-center gap-1.5">
         {tracking ? (
-          <span className="inline-flex items-center gap-1 rounded-md bg-blue-50 px-2 py-1 text-role-eyebrow uppercase tracking-widest text-blue-700 ring-1 ring-inset ring-blue-200">
+          <span className="inline-flex items-center gap-1 rounded-md bg-blue-50 px-2 py-1 text-role-eyebrow text-blue-700 ring-1 ring-inset ring-blue-200">
             <MapPin className="h-3 w-3 shrink-0" />
             TRK …{getLast8(tracking)}
           </span>
         ) : null}
         {sku ? (
-          <span className="inline-flex items-center gap-1 rounded-md bg-yellow-50 px-2 py-1 text-role-eyebrow uppercase tracking-widest text-yellow-800 ring-1 ring-inset ring-yellow-200">
+          <span className="inline-flex items-center gap-1 rounded-md bg-yellow-50 px-2 py-1 text-role-eyebrow text-yellow-800 ring-1 ring-inset ring-yellow-200">
             <Pencil className="h-3 w-3 shrink-0" />
             {sku}
           </span>
         ) : null}
         {session.unitKey ? (
-          <span className="inline-flex items-center gap-1 rounded-md bg-emerald-50 px-2 py-1 text-role-eyebrow uppercase tracking-widest text-emerald-700 ring-1 ring-inset ring-emerald-200">
+          <span className="inline-flex items-center gap-1 rounded-md bg-emerald-50 px-2 py-1 text-role-eyebrow text-emerald-700 ring-1 ring-inset ring-emerald-200">
             <Barcode className="h-3 w-3 shrink-0" />
             Unit …{getLast8(session.unitKey)}
           </span>
         ) : (
-          <span className="text-role-eyebrow uppercase tracking-widest text-blue-600">
+          <span className="text-role-eyebrow text-blue-600">
             Scan unit label to confirm
           </span>
         )}
@@ -61,7 +61,7 @@ export function TestingScanSessionFeedback({
       </p>
       {serials.length > 0 ? (
         <div className="mt-1.5 flex flex-wrap items-center gap-1">
-          <span className="text-role-eyebrow uppercase tracking-widest text-text-faint">
+          <span className="text-role-eyebrow text-text-faint">
             Serials
           </span>
           <SerialPreviewStrip serials={serials} max={8} />

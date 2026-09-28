@@ -28,7 +28,7 @@ function parseDollars(raw: string): number | null {
   return Math.round(Number(cleaned) * 100);
 }
 
-const SECTION_LABEL = 'text-role-eyebrow uppercase tracking-wide text-text-muted';
+const SECTION_LABEL = 'text-role-eyebrow text-text-muted';
 
 /**
  * Session status → what a staffer (and the customer beside them) should read.
@@ -408,7 +408,7 @@ function LedgerRow({
       )}
     >
       <span className={cn('flex-1 text-role-body', voided && 'line-through')}>{line.title}</span>
-      <span className="text-role-caption uppercase text-text-muted">{line.type}</span>
+      <span className="text-role-caption text-text-muted">{line.type}</span>
 
       <div className="flex items-center gap-1">
         <Button

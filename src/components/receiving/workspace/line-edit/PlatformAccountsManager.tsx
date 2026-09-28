@@ -106,7 +106,7 @@ export function PlatformAccountsManager() {
         return (
           <div key={p.id}>
             <div className="mb-1.5 flex items-center justify-between">
-              <span className="text-role-eyebrow uppercase tracking-widest text-text-faint">{p.label}</span>
+              <span className="text-role-eyebrow text-text-faint">{p.label}</span>
               <Button
                 variant="ghost"
                 size="sm"
@@ -153,7 +153,7 @@ export function PlatformAccountsManager() {
                             if (ev.key === 'Enter') void saveRename(a.id);
                             if (ev.key === 'Escape') setEditingId(null);
                           }}
-                          className={`${TEXT_INPUT} w-24 shrink-0 font-mono uppercase`}
+                          className={`${TEXT_INPUT} w-24 shrink-0 font-mono `}
                         />
                       </>
                     ) : (
@@ -240,7 +240,7 @@ export function PlatformAccountsManager() {
 
       {hiddenList.length > 0 ? (
         <details>
-          <summary className="cursor-pointer text-role-eyebrow uppercase tracking-widest text-text-faint">
+          <summary className="cursor-pointer text-role-eyebrow text-text-faint">
             Hidden ({hiddenList.length})
           </summary>
           <ul className="mt-1.5 space-y-1.5">

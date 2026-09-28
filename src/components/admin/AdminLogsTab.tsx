@@ -116,8 +116,8 @@ export function AdminLogsTab(_props: AdminLogsTabProps = {}) {
         <div className="mx-auto max-w-3xl space-y-5">
           <header className="flex items-start justify-between gap-3">
             <div className="min-w-0">
-              <p className="text-role-micro uppercase tracking-widest text-text-soft">
-                {event.kind} event
+              <p className="text-role-micro text-text-soft">
+                {event.kind === 'AUDIT' ? 'Audit' : event.kind} event
               </p>
               <h2 className="mt-0.5 break-words text-lg font-semibold text-text-default">
                 {event.action}
@@ -127,13 +127,13 @@ export function AdminLogsTab(_props: AdminLogsTabProps = {}) {
               </p>
             </div>
             <span
-              className={`inline-flex flex-shrink-0 rounded-full px-2.5 py-1 text-role-micro font-semibold uppercase tracking-wider ${
+              className={`inline-flex flex-shrink-0 rounded-full px-2.5 py-1 text-role-micro font-semibold ${
                 event.kind === 'AUDIT'
                   ? 'bg-blue-50 text-blue-700'
                   : 'bg-purple-50 text-purple-700'
               }`}
             >
-              {event.kind}
+              {event.kind === 'AUDIT' ? 'Audit' : event.kind}
             </span>
           </header>
 
@@ -151,7 +151,7 @@ export function AdminLogsTab(_props: AdminLogsTabProps = {}) {
 
           {(event.detail_value || event.detail_route) && (
             <div className="rounded-none border border-border-soft bg-surface-card p-4">
-              <p className="text-role-micro uppercase tracking-widest text-text-soft">Detail</p>
+              <p className="text-role-micro text-text-soft">Detail</p>
               {event.detail_value ? (
                 <p className="mt-1 break-words text-sm text-text-default">{event.detail_value}</p>
               ) : null}
@@ -168,7 +168,7 @@ export function AdminLogsTab(_props: AdminLogsTabProps = {}) {
 
           {event.notes ? (
             <div className="rounded-none border border-border-soft bg-surface-card p-4">
-              <p className="text-role-micro uppercase tracking-widest text-text-soft">Notes</p>
+              <p className="text-role-micro text-text-soft">Notes</p>
               <p className="mt-1 whitespace-pre-wrap break-words text-sm text-text-default">
                 {event.notes}
               </p>
@@ -184,7 +184,7 @@ export function AdminLogsTab(_props: AdminLogsTabProps = {}) {
 
           {event.metadata && Object.keys(event.metadata).length > 0 ? (
             <div className="rounded-none border border-border-soft bg-surface-card p-4">
-              <p className="text-role-micro uppercase tracking-widest text-text-soft">Metadata</p>
+              <p className="text-role-micro text-text-soft">Metadata</p>
               <pre className="mt-2 overflow-x-auto rounded-lg bg-surface-canvas p-3 text-role-caption text-text-default">
                 {JSON.stringify(event.metadata, null, 2)}
               </pre>
@@ -199,7 +199,7 @@ export function AdminLogsTab(_props: AdminLogsTabProps = {}) {
 function DetailCard({ label, value }: { label: string; value: React.ReactNode }) {
   return (
     <div className="rounded-none border border-border-soft bg-surface-card p-3">
-      <p className="text-role-micro uppercase tracking-widest text-text-soft">{label}</p>
+      <p className="text-role-micro text-text-soft">{label}</p>
       <div className="mt-1 break-words text-sm font-semibold text-text-default">{value}</div>
     </div>
   );

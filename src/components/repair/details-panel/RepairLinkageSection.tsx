@@ -21,7 +21,7 @@ export function RepairLinkageSection({ c }: { c: RepairDetailsController }) {
               size="sm"
               onClick={c.handleClearLinks}
               disabled={c.savingLink}
-              className="h-auto px-0 text-role-eyebrow uppercase tracking-widest text-rose-600 hover:bg-transparent hover:text-rose-700"
+              className="h-auto px-0 text-role-eyebrow text-rose-600 hover:bg-transparent hover:text-rose-700"
             >
               Unlink All
             </Button>
@@ -60,7 +60,7 @@ export function RepairLinkageSection({ c }: { c: RepairDetailsController }) {
           variant="secondary"
           onClick={c.handleSaveLinks}
           disabled={!c.linksDirty || c.savingLink}
-          className="w-full border border-blue-200 bg-blue-50 text-blue-700 ring-0 text-sm font-semibold uppercase tracking-wider hover:border-blue-300 hover:bg-blue-100"
+          className="w-full border border-blue-200 bg-blue-50 text-blue-700 ring-0 text-sm font-semibold hover:border-blue-300 hover:bg-blue-100"
         >
           {c.savingLink ? 'Saving…' : 'Save Links'}
         </Button>

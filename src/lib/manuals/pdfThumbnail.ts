@@ -11,12 +11,29 @@ interface PdfThumbnailResult {
 
 let pdfjsModulePromise: Promise<typeof import('pdfjs-dist')> | null = null;
 
+/**
+ * pdf.js's metric-exact stand-ins for the 14 standard PDF fonts, served from
+ * this origin (`public/pdfjs/standard_fonts/`, copied from
+ * `node_modules/pdfjs-dist/standard_fonts`). Carrier labels use NON-embedded
+ * Helvetica; without these pdf.js paints it in a fallback face with the wrong
+ * metrics and baselines — the USPS service "G" dropped onto the "GROUND
+ * ADVANTAGE" line. Pass as `standardFontDataUrl`.
+ */
+export const PDFJS_STANDARD_FONT_DATA_URL = '/pdfjs/standard_fonts/';
+
+/**
+ * The pdf.js worker, served from this origin (`public/pdfjs/`, copied from
+ * `node_modules/pdfjs-dist/build/`) so a LAN-only workstation renders PDFs
+ * without a CDN. `pdfjs-assets.test.ts` fails when a pdfjs-dist upgrade leaves
+ * either copy stale — recopy both then.
+ */
+export const PDFJS_WORKER_URL = '/pdfjs/pdf.worker.min.mjs';
+
 export async function loadPdfjs() {
   if (!pdfjsModulePromise) {
     pdfjsModulePromise = (async () => {
       const mod = await import('pdfjs-dist');
-      // Worker source:
-      mod.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${mod.version}/pdf.worker.min.mjs`;
+      mod.GlobalWorkerOptions.workerSrc = PDFJS_WORKER_URL;
       return mod;
     })();
   }

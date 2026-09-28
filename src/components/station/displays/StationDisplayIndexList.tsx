@@ -243,7 +243,7 @@ export const StationDisplayIndexList = forwardRef<
                   type="button"
                   onClick={onClearFilter}
                   className={cn(
-                    'ds-raw-button mt-2 text-role-eyebrow font-semibold uppercase tracking-widest',
+                    'ds-raw-button mt-2 text-role-eyebrow font-semibold',
                     'text-accent-bg hover:text-text-default',
                     focusRing('control', 'accent'),
                     cornerClass('flush'),
@@ -279,14 +279,14 @@ export const StationDisplayIndexList = forwardRef<
             >
               <h3
                 id={headingId}
-                className="min-w-0 flex-1 truncate text-role-eyebrow font-semibold uppercase tracking-widest text-text-faint"
+                className="min-w-0 flex-1 truncate text-role-eyebrow font-semibold text-text-faint"
               >
                 {section.label}
               </h3>
               {summary.label ? (
                 <span
                   className={cn(
-                    'shrink-0 text-role-eyebrow font-semibold uppercase tracking-widest',
+                    'shrink-0 text-role-eyebrow font-semibold',
                     SUMMARY_TONE[summary.tone],
                   )}
                   data-testid={`station-displays-index-summary-${section.group}`}

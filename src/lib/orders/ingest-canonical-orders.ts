@@ -581,7 +581,7 @@ export async function ingestCanonicalOrders(
       orgId: effectiveOrgId,
       buyers: canonicalOrders
         .filter((order) => order.buyer && buyerIdentityKey(buyerChannel(order), order.buyer))
-        .map((order) => ({ accountSource: buyerChannel(order), buyer: order.buyer! })),
+        .map((order) => ({ accountSource: buyerChannel(order), buyer: order.buyer!, placedAt: order.orderDate })),
     },
     {
       runQuery: (org, sql, params) =>

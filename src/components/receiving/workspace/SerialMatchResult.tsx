@@ -62,7 +62,7 @@ function prettyEnum(value: string): string {
  */
 function MetaPill({ label, value }: { label: string; value: string }) {
   return (
-    <span className="inline-flex items-center gap-1 rounded-full bg-surface-card px-2 py-0.5 text-role-micro uppercase tracking-[0.1em] text-emerald-800 ring-1 ring-inset ring-emerald-200">
+    <span className="inline-flex items-center gap-1 rounded-full bg-surface-card px-2 py-0.5 text-role-micro text-emerald-800 ring-1 ring-inset ring-emerald-200">
       <span className="text-emerald-500/70">{label}</span>
       <span>{value}</span>
     </span>
@@ -147,7 +147,7 @@ export function SerialMatchResult({
         <span className="flex items-center gap-2">
           Match found
           {isReturn ? (
-            <span className="inline-flex items-center rounded-full bg-emerald-500/15 inset-chip text-role-micro uppercase tracking-[0.1em] text-emerald-700 ring-1 ring-inset ring-emerald-500/25">
+            <span className="inline-flex items-center rounded-full bg-emerald-500/15 inset-chip text-role-micro text-emerald-700 ring-1 ring-inset ring-emerald-500/25">
               Returned item
             </span>
           ) : null}
@@ -215,7 +215,7 @@ export function SerialMatchResult({
                   size="sm"
                   onClick={() => onFileClaim(matchedOrder ?? null)}
                   iconRight={<span aria-hidden>→</span>}
-                  className="bg-emerald-600 text-role-micro uppercase tracking-wider text-white hover:bg-emerald-700 active:bg-emerald-700"
+                  className="bg-emerald-600 text-role-micro text-white hover:bg-emerald-700 active:bg-emerald-700"
                 >
                   File return claim
                 </Button>
@@ -226,7 +226,7 @@ export function SerialMatchResult({
                   variant="secondary"
                   onClick={onOpenHistory}
                   icon={<History aria-hidden />}
-                  className="text-role-micro uppercase tracking-wider"
+                  className="text-role-micro"
                 >
                   Full history
                 </Button>

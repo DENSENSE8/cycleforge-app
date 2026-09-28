@@ -175,4 +175,12 @@ export const qk = {
     /** One staffer's station assignment (header goal chip). */
     stations: (staffId: number) => ['staff-access', 'stations', staffId] as const,
   },
+  qc: {
+    /** One unit's bench reads (`sessions`, `readings`) — the /test Units display and `/m/u/[id]/qc` share them. */
+    unit: (unitId: number, facet: 'sessions' | 'readings') => ['qc', 'unit', unitId, facet] as const,
+    /** The org's diagnostic code catalog (`GET /api/qc/codes`). */
+    codes: ['qc', 'codes'] as const,
+    /** A SKU's procedure versions (`GET /api/qc/procedures?skuCatalogId=`). */
+    procedures: (skuCatalogId: number) => ['qc', 'procedures', skuCatalogId] as const,
+  },
 } as const;

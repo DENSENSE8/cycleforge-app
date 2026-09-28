@@ -45,7 +45,7 @@ export function PackTimeSlider({
         <span className="font-mono text-lg font-semibold tabular-nums text-text-default">
           {formatPackMinutes(snapped)}
         </span>
-        <span className="text-role-eyebrow uppercase tracking-widest text-text-soft">
+        <span className="text-role-eyebrow text-text-soft">
           {TIER_LABEL[tier]}
         </span>
       </div>

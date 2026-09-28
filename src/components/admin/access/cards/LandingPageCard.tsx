@@ -69,7 +69,7 @@ export function LandingPageCard({
       <div className="grid grid-cols-1 gap-4 px-5 py-4 sm:grid-cols-2">
         {/* Desktop */}
         <label className="flex flex-col gap-1.5">
-          <span className="text-role-micro font-semibold uppercase tracking-wider text-text-soft">Desktop</span>
+          <span className="text-role-micro font-semibold text-text-soft">Desktop</span>
           <select
             value={desktopPath ?? ''}
             onChange={(e) => onSave({ defaultHomePath: e.target.value === '' ? null : e.target.value })}
@@ -88,7 +88,7 @@ export function LandingPageCard({
 
         {/* Mobile */}
         <label className="flex flex-col gap-1.5">
-          <span className="text-role-micro font-semibold uppercase tracking-wider text-text-soft">Mobile</span>
+          <span className="text-role-micro font-semibold text-text-soft">Mobile</span>
           <select
             value={mobilePath ?? ''}
             onChange={(e) => onSave({ defaultHomePathMobile: e.target.value === '' ? null : e.target.value })}

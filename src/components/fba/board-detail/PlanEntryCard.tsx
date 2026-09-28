@@ -196,7 +196,7 @@ export function PlanEntryCard({
                   size="sm"
                   radius="flush"
                   onClick={() => { setConfirmDelete(false); setDeleteError(null); }}
-                  className="w-full text-role-eyebrow uppercase tracking-wider text-text-muted"
+                  className="w-full text-role-eyebrow text-text-muted"
                 >
                   Cancel
                 </Button>
@@ -207,7 +207,7 @@ export function PlanEntryCard({
                   icon={<Trash2 className="h-2.5 w-2.5" />}
                   loading={deleting}
                   onClick={() => void handleDelete()}
-                  className="w-full gap-1 text-role-eyebrow uppercase tracking-wider"
+                  className="w-full gap-1 text-role-eyebrow"
                 >
                   {deleting ? 'Removing...' : 'Remove'}
                 </Button>

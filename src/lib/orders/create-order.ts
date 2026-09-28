@@ -189,6 +189,8 @@ export interface OrderRowsPlan {
   /** Insert held in the cage (`release_state = 'caged'`) — the phone-order path. */
   caged: boolean;
   parcel: { weightOz: number | null; lengthIn: number | null; widthIn: number | null; heightIn: number | null } | null;
+  /** `orders.fulfillment_channel` — `'PICKUP'` for a walk-in / counter pickup, else null. */
+  fulfillmentChannel: 'PICKUP' | null;
 }
 
 /**
@@ -214,9 +216,9 @@ export async function insertOrderRowsInTx(
           sku_catalog_id, sale_amount, currency, organization_id, shipment_id,
           condition, type_id, is_urgent, quantity, external_line_id,
           customer_id, buyer_note, release_state,
-          parcel_weight_oz, parcel_length_in, parcel_width_in, parcel_height_in, item_number
+          parcel_weight_oz, parcel_length_in, parcel_width_in, parcel_height_in, item_number, fulfillment_channel
         ) VALUES ($1, $2, $3, $4, $5, NOW(), $6, $7, $8, $9::uuid, $10, $11, $12, $13, $14, $15,
-                  $16, $17, $18, $19, $20, $21, $22, $23)
+                  $16, $17, $18, $19, $20, $21, $22, $23, $24)
         RETURNING id, order_id, product_title, sku, shipment_id, condition, quantity, created_at`,
       [
         plan.orderId,
@@ -242,6 +244,7 @@ export async function insertOrderRowsInTx(
         plan.parcel?.widthIn ?? null,
         plan.parcel?.heightIn ?? null,
         line.itemNumber || null,
+        plan.fulfillmentChannel,
       ],
     );
     const row = inserted.rows[0] as Row;
@@ -418,6 +421,7 @@ export async function createOrder(
         buyerNote: input.buyerNote,
         caged: false,
         parcel: null,
+        fulfillmentChannel: input.pickup ? 'PICKUP' : null,
       },
       deps.linkShipment,
       actor.source,
@@ -618,6 +622,7 @@ export async function createManualOrderInTx(
       buyerNote: draft.buyerNote || null,
       caged: true,
       parcel: draft.parcel,
+      fulfillmentChannel: null,
     },
     link,
     'assistant.manual_order',

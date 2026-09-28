@@ -12,22 +12,12 @@ import {
   RecordStateCode,
   RecordTitle,
 } from '@/design-system/components/record-ledger/IndustrialRecord';
-import { dockedReceivedQuantity, dockedReceivingState } from '@/lib/receiving/docked-record-state';
+import { dockedNextStep, dockedReceivedQuantity, dockedRecordFace } from '@/lib/receiving/docked-record-state';
 import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
+import { conditionSentenceLabel } from '@/lib/conditions';
 import { displayReceivingProductTitle } from '@/components/station/receiving-grid/cells';
 import { fmtDate } from '@/components/sidebar/receiving/incoming-details/incoming-details-shared';
 import { resolveReceivingRowStageStamp, type ReceivingActivityAxis } from '@/components/station/receiving-lines-table-helpers';
-
-function nextAction(state: string): string {
-  switch (state) {
-    case 'SCANNED': return 'Unbox';
-    case 'UNBOXED': return 'Complete';
-    case 'ON_HOLD': return 'Continue';
-    case 'EXCEPTION': return 'Resolve';
-    case 'RECEIVED': return 'Review';
-    default: return 'Inspect';
-  }
-}
 
 export function DockedReceivingRecord({
   row,
@@ -44,7 +34,9 @@ export function DockedReceivingRecord({
   onOpen: (row: ReceivingLineRow) => void;
   onToggle: (row: ReceivingLineRow) => void;
 }) {
-  const state = dockedReceivingState(row);
+  // Same face and next step as the cards (`dockedRecordFace` / `dockedNextStep`).
+  const state = dockedRecordFace(row);
+  const next = dockedNextStep(row);
   const title = displayReceivingProductTitle(row);
   const stamp = resolveReceivingRowStageStamp(row, activityAxis);
   const activityAt = stamp?.instant;
@@ -86,19 +78,14 @@ export function DockedReceivingRecord({
         {
           main: (
             <>
-              <RecordIdFact label="COND" value={row.condition_grade || '—'} />
-              <RecordIdFact label="BIN" value={row.staged_location_code || row.staged_location_name || row.staging_location_label || 'UNASSIGNED'} />
+              <RecordIdFact label="Cond" value={row.condition_grade ? conditionSentenceLabel(row.condition_grade) : '—'} />
+              <RecordIdFact label="Bin" value={row.staged_location_code || row.staged_location_name || row.staging_location_label || 'Unassigned'} />
               {row.tracking_number ? <RecordIdFact label="TRK" value={row.tracking_number} /> : null}
               {row.sku ? <RecordIdFact label="SKU" value={row.sku} /> : null}
               <RecordIdFact label="CTN" value={String(row.receiving_id ?? '—')} />
             </>
           ),
-          right: (
-            <RecordNext
-              label={nextAction(state.id)}
-              warn={state.tone === 'danger' || state.tone === 'warning'}
-            />
-          ),
+          right: next ? <RecordNext label={next} warn={state.tone === 'danger' || state.tone === 'warning'} /> : null,
         },
       ]}
     />

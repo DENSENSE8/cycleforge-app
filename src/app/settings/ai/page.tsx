@@ -82,7 +82,7 @@ function ProviderCard({ title, chain, note }: { title: string; chain: OrgAiConfi
   const fallbacks = chain.slice(1);
   return (
     <div className="space-y-1 rounded-none border border-border-soft bg-surface-card p-4">
-      <p className="text-role-micro uppercase tracking-widest text-text-soft">{title}</p>
+      <p className="text-role-micro text-text-soft">{title}</p>
       {config ? (
         <>
           <p className="text-sm font-semibold text-text-default">{sourceLabel(config.source)}</p>
@@ -138,7 +138,7 @@ export default async function AiSettingsPage() {
         {/* Active providers */}
         <section className="space-y-3">
           <div className="flex items-center justify-between">
-            <p className="text-role-eyebrow uppercase tracking-widest text-text-soft">
+            <p className="text-role-eyebrow text-text-soft">
               Active providers ·{' '}
               {providerOrder === 'local-first' ? 'self-hosted first' : 'cloud first'}
             </p>
@@ -176,22 +176,22 @@ export default async function AiSettingsPage() {
 
         {/* Price breakdown */}
         <section className="space-y-3">
-          <p className="text-role-eyebrow uppercase tracking-widest text-text-soft">
+          <p className="text-role-eyebrow text-text-soft">
             Usage &amp; pricing · last {days} days
           </p>
           <div className="grid gap-3 md:grid-cols-3">
             <div className="space-y-1 rounded-none border border-border-soft bg-surface-card p-4">
-              <p className="text-role-micro uppercase tracking-widest text-text-soft">AI calls</p>
+              <p className="text-role-micro text-text-soft">AI calls</p>
               <p className="text-xl font-semibold text-text-default">{totalCalls.toLocaleString()}</p>
             </div>
             <div className="space-y-1 rounded-none border border-border-soft bg-surface-card p-4">
-              <p className="text-role-micro uppercase tracking-widest text-text-soft">
+              <p className="text-role-micro text-text-soft">
                 Estimated provider cost
               </p>
               <p className="text-xl font-semibold text-text-default">{microcentsToUsd(estimated)}</p>
             </div>
             <div className="space-y-1 rounded-none border border-border-soft bg-surface-card p-4">
-              <p className="text-role-micro uppercase tracking-widest text-text-soft">
+              <p className="text-role-micro text-text-soft">
                 Billed{marginPercent > 0 ? ` (cost + ${marginPercent}%)` : ''}
               </p>
               <p className="text-xl font-semibold text-text-default">{microcentsToUsd(billed)}</p>

@@ -39,7 +39,7 @@ export function pickupOrderToRailVM(group: PickupOrderGroup): RailRowVM {
     title,
     titleAttr: title,
     meta: (
-      <span className="flex min-w-0 items-center gap-1 font-semibold uppercase tracking-widest text-text-soft">
+      <span className="flex min-w-0 items-center gap-1 font-semibold text-text-soft">
         <span className="truncate">
           {customer}
           <span className="text-text-faint"> · {count}</span>

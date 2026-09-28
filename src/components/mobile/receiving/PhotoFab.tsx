@@ -52,7 +52,7 @@ export function PhotoFab({ href, label = 'Add Photo', hideOnScroll = true }: Pho
       }`}
     >
       <Camera className="h-6 w-6" />
-      <span className="text-sm font-semibold uppercase tracking-[0.14em]">{label}</span>
+      <span className="text-sm font-semibold">{label}</span>
     </Link>
   );
 }

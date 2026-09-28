@@ -18,6 +18,7 @@ export interface OrderAuditRow {
 
 const ACTION_MAP: Record<string, { title: string; tone: TimelineTone }> = {
   'orders.tracking.added': { title: 'Tracking added', tone: 'info' },
+  'orders.tracking.replaced': { title: 'Tracking replaced', tone: 'warning' },
   'orders.label.printed': { title: 'Label printed', tone: 'success' },
   PACK_COMPLETED: { title: 'Packed', tone: LIFECYCLE.packed.tone },
   'shipment.scan_out': { title: 'Shipped — scanned out', tone: LIFECYCLE.shipped.tone },
@@ -78,6 +79,12 @@ export function orderAuditToTimeline(rows: OrderAuditRow[]): TimelineItem[] {
     if (r.action === 'orders.tracking.added') {
       const t = String((r.after_data?.trackingNumber as string | undefined) ?? '').trim();
       if (t) ref = { value: t, kind: 'tracking' }; // last-8 CopyChip, copy-on-click
+    } else if (r.action === 'orders.tracking.replaced') {
+      const prev = String((r.after_data?.previousTrackingNumber as string | undefined) ?? '').trim();
+      const next = String((r.after_data?.trackingNumber as string | undefined) ?? '').trim();
+      if (!next) title = 'Tracking removed';
+      // Both numbers read in full on the subtitle; a last-8 ref chip would repeat the new one.
+      subtitle = `${prev || '—'} → ${next || 'none'}`;
     } else if (r.action === 'ORDER_ASSIGNMENT_UPDATED' && changedKeys.length > 0) {
       if (
         changedKeys.length === 1 &&

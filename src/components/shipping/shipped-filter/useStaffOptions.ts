@@ -3,7 +3,7 @@
 import { useQuery } from '@tanstack/react-query';
 import type { StaffOption } from './shipped-filter-constants';
 
-/** Active staff for tester / packed-by dropdowns (10min cache). */
+/** Active staff for picked-by / packed-by dropdowns (10min cache). */
 export function useStaffOptions() {
   const { data: allStaff = [] } = useQuery<StaffOption[]>({
     queryKey: ['staff', 'active'],
@@ -14,5 +14,5 @@ export function useStaffOptions() {
     },
     staleTime: 10 * 60 * 1000,
   });
-  return { allStaff, techs: allStaff, packers: allStaff };
+  return { allStaff, pickers: allStaff, packers: allStaff };
 }

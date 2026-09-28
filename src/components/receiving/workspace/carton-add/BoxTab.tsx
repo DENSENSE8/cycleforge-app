@@ -159,7 +159,7 @@ export function BoxTab({
         ) : null}
       </div>
       <div className="min-h-0 flex-1 overflow-y-auto px-3 py-3">
-        <p className="mb-1.5 text-role-eyebrow uppercase tracking-widest text-text-faint">Or add to an open box</p>
+        <p className="mb-1.5 text-role-eyebrow text-text-faint">Or add to an open box</p>
         {loading ? (
           <UniversalLoader isLoading label="Loading open boxes" className="min-h-20" />
         ) : error ? (
@@ -178,7 +178,7 @@ export function BoxTab({
                 >
                   <Package className="h-4 w-4 shrink-0 text-teal-600" />
                   <span className="flex-1 truncate text-role-caption font-semibold text-text-default">{b.code}</span>
-                  <span className="text-role-micro font-semibold uppercase tracking-wider text-text-soft">
+                  <span className="text-role-micro font-semibold text-text-soft">
                     {b.unit_count} units
                     {b.location_name ? ` · ${b.location_name}` : ''}
                   </span>

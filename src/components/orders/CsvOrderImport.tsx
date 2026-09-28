@@ -95,28 +95,28 @@ export function CsvOrderImport() {
         </div>
         <div className="divide-y divide-border-hairline rounded-xl border border-border-soft">
           <div className="flex items-center justify-between px-4 py-2.5">
-            <span className="text-role-eyebrow font-semibold uppercase tracking-widest text-text-soft">Inserted</span>
+            <span className="text-role-eyebrow font-semibold text-text-soft">Inserted</span>
             <span className="text-role-caption font-semibold text-emerald-700">{result.inserted}</span>
           </div>
           <div className="flex items-center justify-between px-4 py-2.5">
             {/* Backfill is additive — it filled blanks on orders this org
                 already had, and never overwrote a value someone typed. */}
-            <span className="text-role-eyebrow font-semibold uppercase tracking-widest text-text-soft">Updated (backfilled)</span>
+            <span className="text-role-eyebrow font-semibold text-text-soft">Updated (backfilled)</span>
             <span className="text-role-caption font-semibold text-text-muted">{result.updated}</span>
           </div>
           <div className="flex items-center justify-between px-4 py-2.5">
-            <span className="text-role-eyebrow font-semibold uppercase tracking-widest text-text-soft">Skipped (duplicates)</span>
+            <span className="text-role-eyebrow font-semibold text-text-soft">Skipped (duplicates)</span>
             <span className="text-role-caption font-semibold text-text-muted">{result.skipped}</span>
           </div>
           <div className="flex items-center justify-between px-4 py-2.5">
-            <span className="text-role-eyebrow font-semibold uppercase tracking-widest text-text-soft">Errors</span>
+            <span className="text-role-eyebrow font-semibold text-text-soft">Errors</span>
             <span className="text-role-caption font-semibold text-rose-700">{result.errors.length}</span>
           </div>
         </div>
 
         {result.errors.length > 0 && (
           <div className="rounded-xl border border-dashed border-rose-200 bg-rose-50 px-4 py-3">
-            <div className="mb-1.5 flex items-center gap-1.5 text-role-eyebrow uppercase tracking-widest text-rose-700">
+            <div className="mb-1.5 flex items-center gap-1.5 text-role-eyebrow text-rose-700">
               <AlertTriangle className="h-3.5 w-3.5" /> Row errors
             </div>
             <ul className="max-h-40 space-y-0.5 overflow-y-auto text-role-micro text-rose-700">
@@ -174,7 +174,7 @@ export function CsvOrderImport() {
         <div className="flex min-w-0 items-center gap-2">
           <FileText className="h-4 w-4 shrink-0 text-text-soft" />
           <span className="truncate text-role-caption font-semibold text-text-default">{fileName}</span>
-          <span className="shrink-0 text-role-eyebrow font-semibold uppercase tracking-widest text-text-soft">
+          <span className="shrink-0 text-role-eyebrow font-semibold text-text-soft">
             {rows.length} rows
           </span>
         </div>
@@ -182,7 +182,7 @@ export function CsvOrderImport() {
       </div>
 
       <div className="space-y-3">
-        <p className="text-role-eyebrow uppercase tracking-widest text-text-soft">Map columns</p>
+        <p className="text-role-eyebrow text-text-soft">Map columns</p>
         <div className="divide-y divide-border-hairline rounded-xl border border-border-soft">
           {CSV_ORDER_CANONICAL_FIELDS.map((field) => {
             const selected = mapping[field.key] ?? '';
@@ -194,7 +194,7 @@ export function CsvOrderImport() {
                     {field.label}
                     {field.required && <span className="ml-1 text-rose-600">*</span>}
                   </p>
-                  <p className="text-role-eyebrow font-semibold uppercase tracking-widest text-text-soft">{field.key}</p>
+                  <p className="text-role-eyebrow font-semibold text-text-soft">{field.key}</p>
                 </div>
                 <div className="flex items-center gap-2">
                   {selected && !missingRequired && <Check className="h-3.5 w-3.5 text-emerald-600" />}

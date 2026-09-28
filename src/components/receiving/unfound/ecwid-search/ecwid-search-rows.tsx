@@ -94,7 +94,7 @@ export function ResultRow({
         meta={meta}
         action={
           isSubmitting ? (
-            <span className="text-role-micro uppercase tracking-wider text-blue-600">
+            <span className="text-role-micro text-blue-600">
               Adding…
             </span>
           ) : null

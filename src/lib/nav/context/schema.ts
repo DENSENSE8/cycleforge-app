@@ -138,11 +138,15 @@ export const NavControlsSchema = z
           .strict(),
       )
       .optional(),
-    /** The list's order: one choice writes `param` (and `dirParam` when the option names a direction). */
+    /**
+     * The list's order: one choice writes `param` (and `dirParam` when the
+     * option names a direction). A vocabulary whose ids already encode the
+     * direction (`unboxed_newest`) omits `dirParam` and every option's `dir`.
+     */
     sort: z
       .object({
         param: z.string().min(1),
-        dirParam: z.string().min(1),
+        dirParam: z.string().min(1).optional(),
         /** The order the list shows with `param` unset. */
         defaultValue: z.string().min(1),
         options: z
@@ -154,6 +158,26 @@ export const NavControlsSchema = z
           .min(2),
       })
       .strict()
+      .optional(),
+    /**
+     * Single-choice filters over a fixed vocabulary, with no counts — the
+     * list narrows on the value itself (a client-side predicate, or a param
+     * the list endpoint takes without a facet query). Picking an option
+     * writes `param`; picking it again clears it (the list's "all"). Either
+     * way every `clearParams` key goes too (a page number past the new end).
+     */
+    choices: z
+      .array(
+        z
+          .object({
+            id: z.string().min(1),
+            label: z.string().min(1),
+            param: z.string().min(1),
+            options: z.array(z.object({ value: z.string().min(1), label: z.string().min(1) }).strict()).min(2),
+            clearParams: z.array(z.string().min(1)),
+          })
+          .strict(),
+      )
       .optional(),
   })
   .strict();
@@ -171,7 +195,9 @@ export function navControlParams(controls: NavControls | undefined): string[] {
       ...(range.fromTimeParam ? [range.fromTimeParam] : []),
       ...(range.toTimeParam ? [range.toTimeParam] : []),
     ]),
-    ...(controls.sort ? [controls.sort.param, controls.sort.dirParam] : []),
+    ...(controls.sort ? [controls.sort.param, ...(controls.sort.dirParam ? [controls.sort.dirParam] : [])] : []),
+    // A choice's `clearParams` (a page number) are side effects, not filters: not counted, not reset.
+    ...(controls.choices ?? []).map((choice) => choice.param),
   ];
 }
 
@@ -272,6 +298,8 @@ export const NavContextSchema = z
     /** Page / active-view verbs the old desk chrome hosted. */
     actions: z.array(NavActionSchema).optional(),
     scanInput: NavScanInputSchema.optional(),
+    /** The page's views answer bare `1`–`9` (`NAV_PAGE_DECLS[page].viewKeys`); painted only when bound. */
+    viewKeys: z.literal(true).optional(),
     rollout: z.enum(NAV_ROLLOUT_STATES),
   })
   .strict();

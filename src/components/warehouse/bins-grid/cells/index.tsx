@@ -60,7 +60,7 @@ function renderBinsSlotBody(fieldId: string | undefined, row: BinsOverviewRow): 
               </span>
             ) : null}
           </span>
-          <span className="min-w-0 truncate text-role-eyebrow uppercase tracking-widest text-text-faint">
+          <span className="min-w-0 truncate text-role-eyebrow text-text-faint">
             {row.row_label != null && row.col_label != null
               ? `${row.row_label} · ${row.col_label}`
               : (row.name || 'Special bin')}

@@ -41,6 +41,8 @@ interface CacheEntry {
 }
 
 const cache = new Map<string, CacheEntry>();
+/** Probes in flight per base URL: concurrent cold callers share one round-trip. */
+const inflight = new Map<string, Promise<boolean>>();
 
 /** How long a FAILED probe is trusted. Shorter than a success on purpose. */
 export const REACHABILITY_FAILURE_TTL_MS = 5_000;
@@ -110,6 +112,8 @@ export async function isProviderAlive(
 /**
  * `isProviderReachable` with a per-base-URL TTL memo. Call this from request
  * paths; call the raw probe only when a caller genuinely needs a fresh answer.
+ * Single-flight: callers arriving while a probe for the same URL is running
+ * await that probe instead of starting their own.
  */
 export async function isProviderReachableCached(
   config: AiProviderConfig,
@@ -130,12 +134,23 @@ export async function isProviderReachableCached(
     if (at - hit.at < ttl) return hit.ok;
   }
 
-  const ok = await isProviderReachable(config, deps.fetchImpl ?? fetch);
-  cache.set(key, { ok, at: now() });
-  return ok;
+  const pending = inflight.get(key);
+  if (pending) return pending;
+
+  const probe = isProviderReachable(config, deps.fetchImpl ?? fetch)
+    .then((ok) => {
+      cache.set(key, { ok, at: now() });
+      return ok;
+    })
+    .finally(() => {
+      if (inflight.get(key) === probe) inflight.delete(key);
+    });
+  inflight.set(key, probe);
+  return probe;
 }
 
 /** Test seam: drop every memoized answer. */
 export function resetProviderReachabilityCache(): void {
   cache.clear();
+  inflight.clear();
 }

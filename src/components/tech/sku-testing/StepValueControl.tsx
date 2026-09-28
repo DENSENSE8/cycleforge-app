@@ -80,7 +80,7 @@ export function StepValueControl({
         </>
       )}
       {band ? (
-        <span className="text-role-micro font-medium uppercase tracking-wide text-text-faint">pass {band}</span>
+        <span className="text-role-micro font-medium text-text-faint">pass {band}</span>
       ) : null}
       {busy ? <Loader2 className="h-3 w-3 animate-spin text-text-faint" /> : null}
     </div>

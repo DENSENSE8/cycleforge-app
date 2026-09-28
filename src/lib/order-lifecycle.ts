@@ -7,17 +7,19 @@ import type { OutboundWarehouseStage } from '@/lib/outbound/work-contract';
 export type OrderLifecycleStage =
   | 'AWAITING_LABEL' // sold, no tracking/label yet (shipment_id is null)
   | 'PENDING' // labeled, waiting for pick/pack
-  | 'TESTED' // picked (desk pick scan / serial taken) — ready to pack. Lane id kept; it is a pick fact, not QC.
+  | 'PICKED' // picked (desk pick scan / serial taken) — ready to pack. A pick fact, not QC.
   | 'PACKED_STAGED' // packed + staged, awaiting dock scan‑out (shared seam state)
   | 'BLOCKED'; // out of stock / can't fulfill — needs attention
 
 /** The narrowed lane vocabulary the Dashboard · Unshipped board renders. */
-export type FulfillmentLane = 'PENDING' | 'TESTED' | 'BLOCKED';
+export type FulfillmentLane = 'PENDING' | 'PICKED' | 'BLOCKED';
 
 /** The canonical lifecycle signals — the inputs every derivation reads. */
 export interface OrderLifecycleSignals {
   /** orders.shipment_id — null means no tracking/label has been attached yet. */
   shipmentId?: number | string | null;
+  /** Walk-in / counter pickup (`orders.fulfillment_channel = 'PICKUP'`) — never labeled, never awaiting one. */
+  pickup?: boolean | null;
   /** The order has been picked (order-grain pick scan or serial taken — `sqlOrderHasPickScan`). Not QC. */
   hasPickScan?: boolean | null;
   /** PACK event timestamp (pack completed, not merely a packer assigned). */
@@ -54,8 +56,8 @@ interface OrderLifecycleRule {
 export const UNSHIPPED_LIFECYCLE_RULES: readonly OrderLifecycleRule[] = [
   { id: 'packed_staged', stage: 'PACKED_STAGED', test: (s) => Boolean(s.packedAt) },
   { id: 'out_of_stock', stage: 'BLOCKED', test: isOutOfStock },
-  { id: 'picked', stage: 'TESTED', test: (s) => Boolean(s.hasPickScan) },
-  { id: 'labeled', stage: 'PENDING', test: hasLabel },
+  { id: 'picked', stage: 'PICKED', test: (s) => Boolean(s.hasPickScan) },
+  { id: 'labeled', stage: 'PENDING', test: (s) => hasLabel(s) || s.pickup === true },
 ];
 
 /** Stage when no rule matches: sold but not yet labeled. */
@@ -72,7 +74,7 @@ export function resolveOrderLifecycleStage(signals: OrderLifecycleSignals): Orde
 /** Resolve the fulfillment LANE for orders already in the labeled‑not‑packed scope (Dashboard · Unshipped board). */
 export function resolveFulfillmentLane(signals: OrderLifecycleSignals): FulfillmentLane {
   if (isOutOfStock(signals)) return 'BLOCKED';
-  if (signals.hasPickScan) return 'TESTED';
+  if (signals.hasPickScan) return 'PICKED';
   return 'PENDING';
 }
 
@@ -111,7 +113,7 @@ interface FulfillmentLaneDescriptor {
 /** Lane order (top → bottom = progress; Blocked/exception last) + per‑lane icon binding for the Unshipped board. */
 export const FULFILLMENT_BOARD_LANES: readonly FulfillmentLaneDescriptor[] = [
   { id: 'PENDING', iconKey: 'clock', iconClass: 'text-yellow-500' },
-  { id: 'TESTED', iconKey: 'check', iconClass: 'text-green-500' },
+  { id: 'PICKED', iconKey: 'check', iconClass: 'text-green-500' },
   { id: 'BLOCKED', iconKey: 'alert', iconClass: 'text-red-500' },
 ];
 

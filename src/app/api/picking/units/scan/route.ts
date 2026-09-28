@@ -1,9 +1,10 @@
 import { NextResponse, after } from 'next/server';
 import { withTenantTransaction } from '@/lib/tenancy/db';
 import { withAuth } from '@/lib/auth/withAuth';
-import { parseScannedUrl } from '@/lib/scan-resolver';
+import { lockUnitForPickScan, linkPickedSerialToOrder } from '@/lib/picking/pick-serial-link';
 import { publishOrderChanged } from '@/lib/realtime/publish';
 import { transition, type SerialState } from '@/lib/inventory/state-machine';
+import { refreshOrderStageFacts } from '@/lib/orders/order-stage-facts';
 
 /** POST /api/picking/units/scan */
 export const POST = withAuth(async (request, ctx) => {
@@ -27,38 +28,28 @@ export const POST = withAuth(async (request, ctx) => {
     );
   }
 
-  // Resolve the scan input → normalized serial. Accepts GS1 Digital Link
-  // URLs via the Phase 1 parser.
-  let resolvedSerial: string | null = null;
-  if (scan) {
-    const url = parseScannedUrl(scan);
-    if (url && url.type === 'unit') {
-      resolvedSerial = url.unitSerial.toUpperCase();
-    } else {
-      resolvedSerial = scan.toUpperCase();
-    }
-  }
-
   const actorStaffId: number | null =
     typeof ctx.staffId === 'number' && ctx.staffId > 0 ? ctx.staffId : null;
   const orgId = ctx.organizationId;
 
   const result = await withTenantTransaction(orgId, async (client) => {
-    // 1. Resolve the unit by id or normalized serial.
-    const unitQ = serialUnitIdInput
-      ? await client.query<{ id: number; sku: string | null; current_status: string }>(
-          `SELECT id, sku, current_status::text AS current_status
-              FROM serial_units WHERE id = $1 AND organization_id = $2 LIMIT 1
-              FOR UPDATE`,
-          [serialUnitIdInput, orgId],
-        )
-      : await client.query<{ id: number; sku: string | null; current_status: string }>(
-          `SELECT id, sku, current_status::text AS current_status
-              FROM serial_units WHERE normalized_serial = $1 AND organization_id = $2 LIMIT 1
-              FOR UPDATE`,
-          [resolvedSerial, orgId],
-        );
-    const unit = unitQ.rows[0];
+    // 1. Resolve the unit by id, or by the scanned QC / pre-box label (unit_uid,
+    //    GS1 (01)(21), Digital Link, U- handle) or a typed serial.
+    let resolvedSerial: string | null = null;
+    let unit: { id: number; sku: string | null; current_status: string } | undefined;
+    if (serialUnitIdInput) {
+      const unitQ = await client.query<{ id: number; sku: string | null; current_status: string }>(
+        `SELECT id, sku, current_status::text AS current_status
+            FROM serial_units WHERE id = $1 AND organization_id = $2 LIMIT 1
+            FOR UPDATE`,
+        [serialUnitIdInput, orgId],
+      );
+      unit = unitQ.rows[0];
+    } else {
+      const locked = await lockUnitForPickScan(client, orgId, scan);
+      unit = locked?.unit;
+      resolvedSerial = locked?.scanToken ?? null;
+    }
     if (!unit) {
       return { ok: false as const, status: 404, error: 'serial_units row not found' };
     }
@@ -227,6 +218,16 @@ export const POST = withAuth(async (request, ctx) => {
         [allocation.id, orgId],
       );
     }
+    // The order learns the serial its QC label named (outbound ← pick).
+    const pickedOrderId = allocation?.order_id ?? orderIdInput;
+    if (pickedOrderId != null) {
+      await linkPickedSerialToOrder(client, orgId, { serialUnitId: unit.id, orderId: pickedOrderId });
+    }
+    await refreshOrderStageFacts(
+      orgId,
+      { orderIds: [allocation?.order_id ?? orderIdInput], serialUnitIds: [unit.id] },
+      client,
+    );
 
     return {
       ok: true as const,

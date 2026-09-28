@@ -197,7 +197,7 @@ function MediaLinkRow({
       ) : (
         <div className="flex items-center gap-1 pl-3">
           <span className="min-w-0 flex-1 py-2">
-            <span className="block text-role-micro uppercase tracking-wide text-text-faint">{noun} {link.kind}</span>
+            <span className="block text-role-micro text-text-faint">{noun} {link.kind}</span>
             {link.title ? <span className="block truncate text-role-caption text-text-default">{link.title}</span> : null}
           </span>
           <a href={link.url} target="_blank" rel="noopener noreferrer" aria-label={`Open on ${noun}`} className="flex h-11 w-11 shrink-0 items-center justify-center text-text-muted">

@@ -84,7 +84,7 @@ export function QualityDashboardTab() {
         <section className="rounded-none bg-surface-card shadow-sm ring-1 ring-border-soft/60">
           <header className="flex items-center gap-2 px-5 py-4">
             <AlertTriangle className="h-4 w-4 text-rose-500" />
-            <h3 className="text-role-eyebrow uppercase tracking-[0.14em] text-text-soft">Top open failures</h3>
+            <h3 className="text-role-eyebrow text-text-soft">Top open failures</h3>
           </header>
           {data.top_failures.length === 0 ? (
             <p className="border-t border-border-hairline px-5 py-3 text-role-caption text-text-faint">No open failures. 🎉</p>
@@ -93,7 +93,7 @@ export function QualityDashboardTab() {
               {data.top_failures.map((f) => (
                 <li key={f.id} className="flex items-center gap-2 px-5 py-2.5">
                   <span className="min-w-0 flex-1 truncate text-role-caption font-semibold text-text-default">{f.label}</span>
-                  <span className={`rounded-full border inset-chip text-role-micro uppercase ${qualitySeverityToneClass(f.severity)}`}>
+                  <span className={`rounded-full border inset-chip text-role-micro ${qualitySeverityToneClass(f.severity)}`}>
                     {f.severity}
                   </span>
                   <span className="w-8 text-right text-role-caption font-semibold tabular-nums text-text-default">{f.open_count}</span>
@@ -107,7 +107,7 @@ export function QualityDashboardTab() {
         <section className="rounded-none bg-surface-card shadow-sm ring-1 ring-border-soft/60">
           <header className="flex items-center gap-2 px-5 py-4">
             <Wrench className="h-4 w-4 text-blue-500" />
-            <h3 className="text-role-eyebrow uppercase tracking-[0.14em] text-text-soft">Repairs</h3>
+            <h3 className="text-role-eyebrow text-text-soft">Repairs</h3>
           </header>
           <div className="grid grid-cols-3 gap-px border-t border-border-hairline bg-surface-sunken">
             <MiniStat label="Open" value={openRepairs} />
@@ -132,7 +132,7 @@ export function QualityDashboardTab() {
       {/* High-risk worklist */}
       <section className="rounded-none bg-surface-card shadow-sm ring-1 ring-border-soft/60">
         <header className="px-5 py-4">
-          <h3 className="text-role-eyebrow uppercase tracking-[0.14em] text-text-soft">Highest-risk units</h3>
+          <h3 className="text-role-eyebrow text-text-soft">Highest-risk units</h3>
         </header>
         {data.high_risk_units.length === 0 ? (
           <p className="border-t border-border-hairline px-5 py-3 text-role-caption text-text-faint">No high-risk units.</p>
@@ -168,7 +168,7 @@ function Tile({ label, value, accent, icon }: { label: string; value: number | s
   return (
     <div className="rounded-none bg-surface-card p-4 shadow-sm ring-1 ring-border-soft/60">
       <div className="flex items-center justify-between">
-        <span className="text-role-micro uppercase tracking-wider text-text-faint">{label}</span>
+        <span className="text-role-micro text-text-faint">{label}</span>
         {icon}
       </div>
       <div className={`mt-1 text-2xl font-semibold tabular-nums ${accent}`}>{value}</div>
@@ -180,7 +180,7 @@ function MiniStat({ label, value }: { label: string; value: number | string }) {
   return (
     <div className="bg-surface-card px-4 py-3 text-center">
       <div className="text-lg font-semibold tabular-nums text-text-default">{value}</div>
-      <div className="text-role-micro uppercase tracking-wider text-text-faint">{label}</div>
+      <div className="text-role-micro text-text-faint">{label}</div>
     </div>
   );
 }

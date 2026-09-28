@@ -131,6 +131,20 @@ export function printBridgeStaffId(staffId: number): number {
   return Number.isInteger(pinned) && pinned > 0 ? pinned : staffId;
 }
 
+const PRINT_STATION_CHANNEL_SEGMENT = 'printstation';
+
+/**
+ * Org-wide per-station print channel: ANY staffer reaches one named print
+ * station (`readPrintStation().id`) — not per-staff like `:print:{staffId}`.
+ * Its own segment, so neither the `:print:` nor the `:station:` grants widen to it.
+ */
+export const getPrintStationChannelName = (orgId: string, stationId: string) =>
+  `${orgChannelPrefix(orgId)}:${PRINT_STATION_CHANNEL_SEGMENT}:${normalizeChannelName(stationId, 'none')}`;
+
+/** The token grant covering every station channel of THIS org only. */
+export const getPrintStationChannelPattern = (orgId: string) =>
+  `${orgChannelPrefix(orgId)}:${PRINT_STATION_CHANNEL_SEGMENT}:*`;
+
 /**
  * Per-staff desktop↔phone lookup echo bridge. Was the raw `station:{staffId}`,
  * renamed to `staffstation:` so the org's `:station:*` broadcast grant can never

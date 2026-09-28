@@ -1,6 +1,6 @@
 'use client';
 
-/** Outbound orders desk body — Pending · Tested · Packed · Shipped. */
+/** Outbound orders desk body — Pending · Picked · Packed · Shipped. */
 
 import { Suspense, useCallback, useEffect, useMemo, useState } from 'react';
 import dynamic from 'next/dynamic';

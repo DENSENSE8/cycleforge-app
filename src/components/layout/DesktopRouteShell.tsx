@@ -87,7 +87,7 @@ function SidebarFallback({ reset }: { reset: () => void }) {
       <div className="m-3 rounded-lg border border-dashed border-rose-200 bg-rose-50 px-3 py-4 text-center">
         <AlertTriangle className="mx-auto h-5 w-5 text-rose-500" />
         <p className="mt-2 text-role-caption font-semibold text-rose-700">Sidebar unavailable</p>
-        <p className="mt-1 text-role-eyebrow font-semibold uppercase tracking-widest text-rose-500">
+        <p className="mt-1 text-role-eyebrow font-semibold text-rose-500">
           The rest of the page still works
         </p>
         <Button

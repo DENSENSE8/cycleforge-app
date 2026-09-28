@@ -50,7 +50,7 @@ export function TicketStnLinkPopover({
     >
       <div className="flex items-start justify-between gap-3 border-b border-border-soft inset-field">
         <div className="min-w-0">
-          <p className="text-role-eyebrow uppercase tracking-widest text-text-soft">
+          <p className="text-role-eyebrow text-text-soft">
             Add tracking number
           </p>
           <p className="truncate text-role-caption font-semibold text-text-default">
@@ -77,7 +77,7 @@ export function TicketStnLinkPopover({
       >
         <label
           htmlFor={inputId}
-          className="block text-role-micro uppercase tracking-wider text-text-muted"
+          className="block text-role-micro text-text-muted"
         >
           Tracking number
         </label>

@@ -187,7 +187,7 @@ export const RepairGridRow = memo(function RepairGridRow({
             <div className="flex min-w-0 flex-col">
               <span className="min-w-0 truncate text-role-data text-text-default">{productTitle}</span>
               {issue ? (
-                <span className="min-w-0 truncate text-role-eyebrow uppercase tracking-wide text-text-muted">
+                <span className="min-w-0 truncate text-role-eyebrow text-text-muted">
                   {issue}
                 </span>
               ) : null}

@@ -233,7 +233,7 @@ export function SupportContextHub({
           aria-expanded={expanded}
           className="ds-raw-button flex w-full items-center gap-2 border-t border-border-hairline px-3 py-2 text-left hover:bg-surface-hover"
         >
-          <span className="flex-1 text-role-eyebrow uppercase tracking-widest text-text-soft">
+          <span className="flex-1 text-role-eyebrow text-text-soft">
             Support context
             {ticketLabel ? ` · ${ticketLabel}` : ''}
           </span>

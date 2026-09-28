@@ -8,6 +8,7 @@ import { ModeRegion } from '@/design-system/providers/ModeRegion';
 import { unwrapScannedLocation } from '@/lib/barcode-routing';
 import { safeRandomUUID } from '@/lib/safe-uuid';
 import { postUnitVerb, SheetAlerts, UnitRefSheet } from './UnitSheetParts';
+import type { TestVerdict } from '@/lib/tech/recordTestVerdict';
 
 interface UnitLineSheetProps {
   open: boolean;
@@ -35,18 +36,23 @@ function lineWriteStamp(unitId: number, staffId: number, note: string) {
   };
 }
 
-const LINE_TEST_VERBS = [
-  { eventType: 'TEST_START', label: 'Start', variant: 'primary', ack: 'Test started' },
-  { eventType: 'TEST_PASS', label: 'Pass', variant: 'success', ack: 'Test passed' },
-  { eventType: 'TEST_FAIL', label: 'Fail', variant: 'danger', ack: 'Test failed' },
-] as const;
+const UNIT_TEST_VERBS = [
+  { verdict: 'TEST_AGAIN', label: 'Start', variant: 'primary', ack: 'Test started' },
+  { verdict: 'PASS', label: 'Pass', variant: 'success', ack: 'Test passed' },
+  { verdict: 'TESTING_FAILED', label: 'Fail', variant: 'danger', ack: 'Test failed' },
+] as const satisfies ReadonlyArray<{ verdict: TestVerdict; label: string; variant: string; ack: string }>;
 
-type LineTestEvent = (typeof LINE_TEST_VERBS)[number]['eventType'];
+interface UnitTestSheetProps {
+  open: boolean;
+  unitId: number;
+  onClose: () => void;
+  onDone: (ack: string) => void;
+}
 
-/** Line test — Start / Pass / Fail on the unit's receiving line, one tap each. */
-export function UnitLineTestSheet({ open, unitId, lineId, staffId, onClose, onDone }: UnitLineSheetProps) {
+/** Unit test — Start / Pass / Fail for this unit, one tap each, through the unit verdict route (recordTestVerdict). */
+export function UnitLineTestSheet({ open, unitId, onClose, onDone }: UnitTestSheetProps) {
   const [note, setNote] = useState('');
-  const [busy, setBusy] = useState<LineTestEvent | null>(null);
+  const [busy, setBusy] = useState<TestVerdict | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -55,17 +61,19 @@ export function UnitLineTestSheet({ open, unitId, lineId, staffId, onClose, onDo
     setError(null);
   }, [open]);
 
-  const record = async (verb: (typeof LINE_TEST_VERBS)[number]) => {
+  const record = async (verb: (typeof UNIT_TEST_VERBS)[number]) => {
     if (busy) return;
-    setBusy(verb.eventType);
+    setBusy(verb.verdict);
     setError(null);
     try {
-      const { res, json } = await postUnitVerb(`/api/receiving/lines/${lineId}/status`, {
-        event_type: verb.eventType,
-        ...lineWriteStamp(unitId, staffId, note),
+      const { res, json } = await postUnitVerb(`/api/serial-units/${unitId}/test`, {
+        verdict: verb.verdict,
+        notes: note.trim() || null,
+        client_event_id: safeRandomUUID(),
       });
-      if (!res.ok || !json?.success) throw new Error(json?.error || `HTTP ${res.status}`);
-      onDone(json.serial_status ? `${verb.ack} — unit ${json.serial_status}` : verb.ack);
+      if (!res.ok || !json?.ok) throw new Error(json?.error || `HTTP ${res.status}`);
+      const status = json.unit?.current_status;
+      onDone(status ? `${verb.ack} — unit ${status}` : verb.ack);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Not recorded');
     } finally {
@@ -80,13 +88,13 @@ export function UnitLineTestSheet({ open, unitId, lineId, staffId, onClose, onDo
         <TextField label="Note (optional)" value={note} onChange={setNote} multiline rows={2} disabled={!!busy} />
         <SheetAlerts notice={null} error={error} />
         <div className="grid grid-cols-3 gap-2">
-          {LINE_TEST_VERBS.map((verb) => (
+          {UNIT_TEST_VERBS.map((verb) => (
             <Button
-              key={verb.eventType}
+              key={verb.verdict}
               variant={verb.variant}
               size="lg"
               className="w-full rounded-mode"
-              loading={busy === verb.eventType}
+              loading={busy === verb.verdict}
               disabled={!!busy}
               onClick={() => void record(verb)}
             >

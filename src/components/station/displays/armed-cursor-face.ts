@@ -2,7 +2,7 @@
 
 /** Shared width budget for tone chip — tabular, no layout expand. */
 export const ARMED_CURSOR_CHIP_FACE_CLASS =
-  'min-w-10 shrink-0 truncate rounded-none px-1.5 py-0.5 text-center text-role-micro font-semibold uppercase tracking-widest tabular-nums';
+  'min-w-10 shrink-0 truncate rounded-none px-1.5 py-0.5 text-center text-role-micro font-semibold tabular-nums';
 
 /** Armed chevron ink — operator accent (pulse applied separately). */
 export const ARMED_CURSOR_CHEVRON_CLASS = 'h-4 w-4 shrink-0 text-accent-bg';

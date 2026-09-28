@@ -7,19 +7,16 @@ import { toPSTDateKey } from '@/utils/date';
 export const GET = withAuth(async (req: NextRequest, ctx) => {
   const { searchParams } = new URL(req.url);
   const packerIdParam = searchParams.get('packerId') || searchParams.get('packedBy');
-  const testedByParam = searchParams.get('testedBy');
   const staffParam = searchParams.get('staff');
   const weekStart = searchParams.get('weekStart') || '';
   const weekEnd = searchParams.get('weekEnd') || '';
 
   const packerIdNum = packerIdParam ? parseInt(packerIdParam) : null;
-  const testedByNum = testedByParam ? parseInt(testedByParam) : null;
   const staffNum = staffParam ? parseInt(staffParam) : null;
 
   const { rows } = await fetchPackerLogRows({
     organizationId: ctx.organizationId,
     packerId: packerIdNum != null && !Number.isNaN(packerIdNum) ? packerIdNum : null,
-    testedBy: testedByNum != null && !Number.isNaN(testedByNum) ? testedByNum : null,
     staffId: staffNum != null && !Number.isNaN(staffNum) ? staffNum : null,
     limit: 500,
     offset: 0,

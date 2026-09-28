@@ -1,9 +1,11 @@
 'use client';
 
 /**
- * The carton record's sections — the per-item card (identity + the item's own
- * status chain) and the right column's fact blocks. Composed by
- * {@link CartonRecordView}; each reads only the carton / line fields it paints.
+ * The carton record's leaf sections — the per-item card (identity + what the
+ * item carries: serials, claim, notes) and the right column's fact rows. The
+ * item's receiving steps (graded, tested, label printed, received, put away)
+ * live in the record's Fulfilment group, below the items (owner 2026-09-28).
+ * Composed by {@link CartonRecordView}.
  */
 
 import type { ReactNode } from 'react';
@@ -12,6 +14,7 @@ import { EvidenceFactRow } from '@/design-system/components/record-ledger/Eviden
 import { RecordListingLink } from '@/design-system/components/record-ledger/RecordIdentity';
 import { RecordPhoto, recordInitials } from '@/design-system/components/record-ledger/IndustrialRecord';
 import {
+  RECORD_FACT_KEY_CLASS,
   RECORD_ID_CLASS,
   RECORD_LABEL_CLASS,
   RECORD_PRICE_CLASS,
@@ -31,20 +34,6 @@ import { zendeskTicketUrl } from '@/lib/zendesk-ticket-url';
 import { formatMonthDayTimePST } from '@/utils/date';
 import { formatCurrency } from '@/utils/_number';
 import { cn } from '@/utils/_cn';
-import { DESK_RECORD_COLUMN_CARD_CLASS } from '@/design-system/tokens/desk-stage';
-
-/** One column of the record: the industrial panel its sections stack in. */
-export const CARTON_COLUMN_CLASS = DESK_RECORD_COLUMN_CARD_CLASS;
-
-/** A column's section head — mono label on the ink rule. */
-export function CartonColumnHead({ label, action }: { label: string; action?: ReactNode }) {
-  return (
-    <div className="flex min-h-mode-hit items-center gap-2 border-b border-mode-ink px-4">
-      <h3 className={cn(RECORD_LABEL_CLASS, 'flex-1 text-mode-muted')}>{label}</h3>
-      {action}
-    </div>
-  );
-}
 
 const stamp = (value: string | null | undefined): string | null =>
   value && value.trim() ? formatMonthDayTimePST(value) : null;
@@ -79,8 +68,8 @@ export function TicketLink({ ticket }: { ticket: string }) {
 
 /**
  * One item (receiving line) of the carton: what it is — the Zoho-governed title,
- * SKU, listing, price, qty — then its own status chain: condition graded,
- * serials, test, label printed, received, put away, claim ticket, notes.
+ * SKU, qty, condition, price, listing — then what the item carries: serials,
+ * claim ticket, notes.
  */
 export function CartonItem({
   line,
@@ -108,8 +97,6 @@ export function CartonItem({
   const short = expected != null && received < expected;
   const sku = (line.sku || '').trim() || null;
   const ticket = (line.zendesk_ticket || '').trim() || null;
-  const tested = Boolean(line.tested_at) || (line.tested_count ?? 0) > 0;
-  const stagedBin = (line.staged_location_code || line.staged_location_name || '').trim() || null;
   const note = (line.notes || '').trim() || null;
   const labelNote = (line.label_note || '').trim() || null;
   const zohoNote = (line.zoho_notes || '').trim() || null;
@@ -120,10 +107,10 @@ export function CartonItem({
       data-line-id={line.id}
       data-current={current ? '' : undefined}
       aria-label={title}
-      className={cn('border-b border-mode-ink', current ? 'bg-mode-panel' : 'bg-mode-bar')}
+      className={cn('border-b border-mode-fact last:border-b-0', current ? 'bg-mode-panel' : 'bg-mode-bar')}
     >
-      <div className="flex gap-3 p-3">
-        <span className="relative h-20 w-20 shrink-0 overflow-hidden border border-mode-rule bg-mode-well">
+      <div className="flex gap-3 px-4 py-3">
+        <span className="relative h-28 w-28 shrink-0 overflow-hidden rounded-mode-control border border-mode-frame bg-mode-well">
           <RecordPhoto src={line.image_url} fallback={recordInitials(title)} />
         </span>
         <div className="flex min-w-0 flex-1 flex-col gap-1">
@@ -135,43 +122,35 @@ export function CartonItem({
               {state.code} · {state.label}
             </span>
           </div>
-          <p className={cn(RECORD_LABEL_CLASS, 'flex flex-wrap items-baseline gap-x-3 gap-y-0.5 text-mode-muted')}>
+          <p className="flex flex-wrap items-baseline gap-x-3 gap-y-0.5 text-role-data">
             <span>
-              SKU <span className={cn(RECORD_ID_CLASS, 'select-all normal-case tracking-normal text-mode-ink')}>{sku ?? '—'}</span>
+              <span className={RECORD_FACT_KEY_CLASS}>SKU </span>
+              <span className={cn(RECORD_ID_CLASS, 'select-all text-mode-ink')}>{sku ?? '—'}</span>
             </span>
             <span data-testid="carton-item-qty">
-              QTY{' '}
-              <span className={cn(RECORD_ID_CLASS, 'normal-case tracking-normal', short ? 'text-mode-warn' : 'text-mode-ink')}>
+              <span className={RECORD_FACT_KEY_CLASS}>Qty </span>
+              <span className={cn(RECORD_ID_CLASS, short ? 'text-mode-warn' : 'text-mode-ink')}>
                 {received}/{expected ?? '?'}
               </span>
             </span>
             <span>
-              COND <span className={cn(RECORD_ID_CLASS, 'normal-case tracking-normal text-mode-ink')}>{conditionLabel(line.condition_grade, 'compact')}</span>
+              <span className={RECORD_FACT_KEY_CLASS}>Condition </span>
+              <span className="text-mode-ink">{conditionLabel(line.condition_grade, 'label')}</span>
             </span>
             <span>
-              PRICE{' '}
-              <span className={cn(RECORD_PRICE_CLASS, 'normal-case tracking-normal')}>
-                {Number.isFinite(price) && price > 0 ? formatCurrency(price) : '—'}
-              </span>
+              <span className={RECORD_FACT_KEY_CLASS}>Price </span>
+              <span className={RECORD_PRICE_CLASS}>{Number.isFinite(price) && price > 0 ? formatCurrency(price) : '—'}</span>
             </span>
             {identity.itemNumber ? (
               <span className="inline-flex items-center gap-1">
-                ITEM <RecordListingLink href={identity.listingHref} itemNumber={identity.itemNumber} face="value" />
+                <span className={RECORD_FACT_KEY_CLASS}>Listing</span>
+                <RecordListingLink href={identity.listingHref} itemNumber={identity.itemNumber} face="value" />
               </span>
             ) : null}
           </p>
         </div>
       </div>
-      <div className="flex flex-col px-4 pb-2" data-testid="carton-item-chain">
-        <EvidenceFactRow label="Condition">
-          {line.condition_graded_at ? (
-            <span>
-              {conditionLabel(line.condition_grade, 'label')} <Muted>· graded {stamp(line.condition_graded_at)}</Muted>
-            </span>
-          ) : (
-            <Muted>Not graded</Muted>
-          )}
-        </EvidenceFactRow>
+      <div className="flex flex-col px-4 pb-2 [&>*:last-child]:border-b-0" data-testid="carton-item-facts">
         <EvidenceFactRow label="Serials" wide={serials.length > 1}>
           {serials.length ? (
             <ul className="flex flex-wrap gap-x-3 gap-y-0.5 py-1" data-testid="carton-item-serials">
@@ -192,33 +171,6 @@ export function CartonItem({
             </p>
           ) : null}
         </EvidenceFactRow>
-        {line.needs_test || tested ? (
-          <EvidenceFactRow label="Test">
-            {tested ? (
-              <span>
-                Tested{(line.tested_count ?? 0) > 1 ? ` ×${line.tested_count}` : ''}
-                {line.qa_status ? <Muted> · QA {line.qa_status.toLowerCase()}</Muted> : null}
-                {line.tested_at ? <Muted> · {stamp(line.tested_at)}</Muted> : null}
-              </span>
-            ) : (
-              <span className="text-mode-warn">Needs test</span>
-            )}
-          </EvidenceFactRow>
-        ) : null}
-        <EvidenceFactRow label="Label">
-          {line.label_printed_at ? `Printed ${stamp(line.label_printed_at)}` : <Muted>Not printed</Muted>}
-        </EvidenceFactRow>
-        <EvidenceFactRow label="Received">
-          {line.received_done_at ? stamp(line.received_done_at) : <Muted>Not received</Muted>}
-        </EvidenceFactRow>
-        {line.staged_at || stagedBin ? (
-          <EvidenceFactRow label="Put away">
-            <span>
-              {stagedBin ? <span className={RECORD_ID_CLASS}>{stagedBin}</span> : null}
-              {line.staged_at || line.staged_by_name ? <Muted> · {byAt(line.staged_by_name, line.staged_at)}</Muted> : null}
-            </span>
-          </EvidenceFactRow>
-        ) : null}
         <EvidenceFactRow label="Claim">
           {ticket ? <TicketLink ticket={ticket} /> : <Muted>No ticket</Muted>}
         </EvidenceFactRow>

@@ -4,6 +4,7 @@ import { Fragment, useRef, type ReactNode } from 'react';
 import { X } from '@/components/Icons';
 import { Button } from '@/design-system/primitives';
 import { usePressHaptic } from '@/lib/scan-feedback/useScanFeedback';
+import { useMode } from '@/design-system/providers/ModeRegion';
 
 export interface DetailDockVerb<Id extends string = string> {
   id: Id;
@@ -28,7 +29,9 @@ const DETAIL_DOCK_LOCK_MS = 500;
 
 /**
  * The phone's ONE touch verb band (the exoskeleton dock, operator 2026-09-24; the industrial terminal block, 2026-09-25):
- * flush cells, 1 px rules, radius 0, double-tap lock, press haptic.
+ * flush cells, 1 px rules, radius 0, double-tap lock, press haptic. In a TRIAGE region (a phone
+ * form, owner 2026-09-27) the same verbs paint as separate design-system buttons on the bar,
+ * with the region's control corner — same verbs, same lock, same haptic.
  *
  * `placement="dock"` — the sticky bottom execution bar, up to three verbs.
  * `placement="inline"` — the same band in-flow under a record (a board row, an
@@ -69,6 +72,8 @@ export function DetailDock<Id extends string>({
   const lockedUntil = useRef(0);
   const inFlight = useRef(false);
   const haptic = usePressHaptic();
+  // Industrial (and outside every region) keeps the terminal block byte for byte.
+  const triage = useMode() === 'triage';
 
   const fire = (run: () => void | Promise<unknown>) => {
     const now = Date.now();
@@ -122,12 +127,12 @@ export function DetailDock<Id extends string>({
           variant="ink"
           size="lg"
           radius="flush"
-          className={`${cell} ${clearSpan} ${still} active:bg-mode-panel active:text-mode-ink font-mono uppercase`}
+          className={`${cell} ${clearSpan} ${still} active:bg-mode-panel active:text-mode-ink font-mono `}
           icon={<X />}
           ariaLabel={`Clear selection (${selection.count} selected)`}
           onClick={() => clear(selection.onClear)}
         >
-          {`${selection.count} SEL`}
+          {`${selection.count} selected`}
         </Button>
       ) : null}
       {shown.map((verb, i) => (
@@ -149,6 +154,40 @@ export function DetailDock<Id extends string>({
       ))}
     </>
   );
+
+  // Triage region (a FORM on the phone — `/m/orders/new`): mobile-first buttons
+  // with the region's control corner on the bar, not the terminal block. The
+  // selection state (`N SEL` clear cell) is industrial-only and keeps the block.
+  if (triage && !selection) {
+    const buttons = shown.map((verb, i) => (
+      <Fragment key={verb.id}>
+        {centred && i === 1 ? center : null}
+        <Button
+          variant={verb.primary ? 'primary' : 'secondary'}
+          size="lg"
+          className={inline ? 'h-auto min-h-mode-hit w-full whitespace-normal leading-tight' : 'min-h-mode-hit-cta w-full'}
+          icon={verb.icon}
+          disabled={verb.disabled}
+          loading={verb.loading}
+          onClick={() => fire(() => onVerb(verb.id))}
+        >
+          {verb.label}
+        </Button>
+      </Fragment>
+    ));
+    if (inline) {
+      return (
+        <div role="group" aria-label={label} className={`grid gap-2 px-mode-page py-2 ${grid}`}>
+          {buttons}
+        </div>
+      );
+    }
+    return (
+      <nav aria-label={label} className="pb-safe sticky bottom-0 z-sticky border-t border-mode-rule bg-mode-bar px-mode-page py-2">
+        <div className={`grid gap-2 ${grid}`}>{buttons}</div>
+      </nav>
+    );
+  }
 
   if (inline) {
     // Rules between cells in both directions come from the 1 px gap over the rule colour.

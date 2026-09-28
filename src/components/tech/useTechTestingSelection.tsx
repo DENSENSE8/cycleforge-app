@@ -12,6 +12,7 @@ import type { SelectionAction } from '@/lib/selection/selection-actions';
 import { User, Check } from '@/components/Icons';
 import { toast } from '@/lib/toast';
 import { emitToggleAll } from '@/lib/selection/table-selection';
+import { patchLineQcAssignee } from '@/lib/qc/qc-assignee-client';
 
 /** Copy line for a tested unit: SKU • serials • PO. */
 function formatTestingCopyRow(r: ReceivingLineRow): string {
@@ -24,18 +25,6 @@ function formatTestingCopyRow(r: ReceivingLineRow): string {
   return [sku && `SKU ${sku}`, serials && `SN ${serials}`, po && `PO ${po}`]
     .filter(Boolean)
     .join(' • ');
-}
-
-async function patchAssignedTech(lineId: number, assignedTechId: number): Promise<void> {
-  const res = await fetch('/api/receiving-lines', {
-    method: 'PATCH',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ id: lineId, assigned_tech_id: assignedTechId }),
-  });
-  if (!res.ok) {
-    const json = (await res.json().catch(() => null)) as { error?: string } | null;
-    throw new Error(json?.error || `Assign failed (${res.status})`);
-  }
 }
 
 interface TechTestingSelection {
@@ -84,7 +73,7 @@ export function useTechTestingSelection(
       );
 
       const results = await Promise.allSettled(
-        rows.map((row) => patchAssignedTech(row.id, techId)),
+        rows.map((row) => patchLineQcAssignee(row.id, techId)),
       );
       const failed = results.filter((r) => r.status === 'rejected').length;
       const ok = results.length - failed;

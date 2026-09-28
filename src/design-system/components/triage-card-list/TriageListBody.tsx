@@ -31,15 +31,26 @@ export type TriageSectionTone = 'danger' | 'warning' | 'muted';
  * 2026-09-27: the header text slid sideways and down with the cards): key it
  * by the section's first card, so a re-cut list (filter, page, sort) mounts a
  * fresh header that waits for the cards to land, then rises from below.
+ * The list's order is the sidebar's Sort; a section carries none of its own.
  */
-export function TriageSectionHeader({ label, count, tone, testId }: { label: string; count: number | undefined; tone: TriageSectionTone; testId: string }) {
+export function TriageSectionHeader({
+  label,
+  count,
+  tone,
+  testId,
+}: {
+  label: string;
+  count: number | undefined;
+  tone: TriageSectionTone;
+  testId: string;
+}) {
   return (
     <motion.li
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ ...SPRING, delay: CARD_LIST_SETTLE_S }}
       data-testid={testId}
-      className="sticky top-0 z-20 -mx-1 flex items-center gap-2 bg-surface-card/90 px-5 pb-1.5 pt-3 backdrop-blur-sm"
+      className="sticky top-0 z-20 -mx-1 flex items-center gap-2 bg-surface-card/90 pb-1.5 pl-5 pr-4 pt-3 backdrop-blur-sm"
     >
       <span className={cn('text-xs font-semibold', SECTION_TONE_CLASS[tone])}>{label}</span>
       <span className="rounded-full bg-surface-sunken px-1.5 text-[11px] font-semibold tabular-nums text-text-muted">{count}</span>
@@ -259,7 +270,10 @@ export function TriageListBody({
               allClear
             )
           ) : (
-            <ul role="list" aria-label={listLabel} aria-busy={busy} className="flex flex-col">
+            // Cards divide themselves with a hairline above (`[&+&]:before`), so
+            // the list closes with its own hairline under the last card — the
+            // table's bottom edge, the same inset as the dividers.
+            <ul role="list" aria-label={listLabel} aria-busy={busy} className="flex flex-col after:mx-4 after:block after:h-px after:bg-border-hairline after:content-['']">
               <AnimatePresence initial={false}>{items}</AnimatePresence>
             </ul>
           )}
@@ -283,7 +297,8 @@ export function TriageListBody({
           ) : null}
         </div>
       </div>
-      {/* The page's bottom edge: a soft shadow while more cards sit below the fold. */}
+      {/* The page's bottom edge while more cards sit below the fold: a hairline
+          where the list is cut, over a soft shadow. */}
       <motion.div
         aria-hidden
         data-testid={`${testIdPrefix}-scroll-shadow`}
@@ -292,7 +307,9 @@ export function TriageListBody({
         animate={{ opacity: moreBelow ? 1 : 0 }}
         transition={{ duration: 0.25 }}
         className="pointer-events-none absolute inset-x-0 bottom-0 h-12 bg-gradient-to-t from-black/[0.11] via-black/[0.04] to-transparent"
-      />
+      >
+        <span className="absolute inset-x-0 bottom-0 h-px bg-border-hairline" />
+      </motion.div>
     </div>
   );
 }

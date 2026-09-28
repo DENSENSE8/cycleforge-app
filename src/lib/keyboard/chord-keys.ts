@@ -6,7 +6,7 @@
  * elsewhere; `alt` is ⌥ / Alt; `shift` is ⇧ / Shift. Keys paint uppercase.
  */
 
-import { useEffect, useState } from 'react';
+import { useSyncExternalStore } from 'react';
 
 const APPLE: Readonly<Record<string, string>> = { mod: '⌘', shift: '⇧', alt: '⌥' };
 const OTHER: Readonly<Record<string, string>> = { mod: 'Ctrl', shift: 'Shift', alt: 'Alt' };
@@ -36,11 +36,38 @@ export function altDigitChord(slot: number): string {
   return `alt+${(slot + 1) % 10}`;
 }
 
-/** Apple keyboard? `true` until mounted (SSR paints ⌘), then the real answer. */
+/** The device's keyboard family, read once — `navigator` never changes under a page. */
+let appleCache: boolean | null = null;
+export function isApplePlatform(): boolean {
+  if (typeof navigator === 'undefined') return true;
+  if (appleCache == null) {
+    const uaPlatform = (navigator as Navigator & { userAgentData?: { platform?: string } }).userAgentData?.platform;
+    appleCache = uaPlatform === 'macOS' || /Mac|iPhone|iPad|iPod/i.test(navigator.platform || navigator.userAgent);
+  }
+  return appleCache;
+}
+
+const noSubscribe = () => () => {};
+
+/** Apple keyboard? `true` on the server (SSR paints ⌘), the device's answer once hydrated. */
 export function useApplePlatform(): boolean {
-  const [apple, setApple] = useState(true);
-  useEffect(() => {
-    setApple(/Mac|iPhone|iPad|iPod/i.test(navigator.platform || navigator.userAgent));
-  }, []);
-  return apple;
+  return useSyncExternalStore(noSubscribe, isApplePlatform, () => true);
+}
+
+/**
+ * One keycap's face on THIS device. A chord is authored platform-neutral
+ * (`mod`, `Shift`, `Alt`) and each cap names the key this keyboard has —
+ * ⌘ on Apple, Ctrl elsewhere; ⇧ / Shift; ⌥ / Alt. Never both in one cap:
+ * the legacy `⌘/Ctrl` spelling resolves the same way. Any other key paints
+ * as written (a literal `Ctrl` is the Control key on every keyboard).
+ */
+const MOD_TOKENS = new Set(['mod', '⌘/ctrl', 'cmd/ctrl', 'ctrl/⌘', 'ctrl/cmd']);
+const SHIFT_TOKENS = new Set(['shift', '⇧']);
+const ALT_TOKENS = new Set(['alt', '⌥', 'option']);
+export function platformKeyFace(key: string, apple: boolean): string {
+  const token = key.trim().toLowerCase().replace(/\s+/g, '');
+  if (MOD_TOKENS.has(token)) return apple ? '⌘' : 'Ctrl';
+  if (SHIFT_TOKENS.has(token)) return apple ? '⇧' : 'Shift';
+  if (ALT_TOKENS.has(token)) return apple ? '⌥' : 'Alt';
+  return key;
 }

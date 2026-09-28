@@ -178,7 +178,7 @@ export function WorkstationSection() {
               : benchQuery.isError
                 ? "Couldn't load packing benches. The saved bench is unchanged."
                 : benches.length === 0
-                  ? 'No packing benches exist yet. Add a DESK or STAGING location under Inventory → Locations.'
+                  ? 'No packing benches exist yet. Add a desk or staging location under Inventory → Locations.'
                   : 'Ready to Pack arms this bench automatically when nothing is armed. Clearing the bench there wins for the rest of that session.'}
           </span>
         </label>

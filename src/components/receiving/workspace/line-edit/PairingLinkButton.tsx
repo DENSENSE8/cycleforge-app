@@ -67,7 +67,7 @@ export function PairingCandidateRow({
   const content = (
     <div className="min-w-0 flex-1">
       {suggested ? (
-        <div className="mb-0.5 flex items-center gap-1 text-role-eyebrow uppercase tracking-widest text-violet-700">
+        <div className="mb-0.5 flex items-center gap-1 text-role-eyebrow text-violet-700">
           <Star className="h-3 w-3" aria-hidden />
           {suggestedLabel}
         </div>
@@ -145,7 +145,7 @@ export function PairingLinkButton({
       loading={loading}
       disabled={disabled}
       onClick={onClick}
-      className="h-7 shrink-0 px-2.5 uppercase tracking-wider"
+      className="h-7 shrink-0 px-2.5"
     >
       {label}
     </Button>
@@ -155,7 +155,7 @@ export function PairingLinkButton({
 /** Done-state pill shown in place of {@link PairingLinkButton} for the linked row. */
 export function PairingLinkedBadge({ label = 'Linked' }: { label?: string }) {
   return (
-    <span className="flex shrink-0 items-center gap-1 text-role-eyebrow uppercase tracking-widest text-emerald-600">
+    <span className="flex shrink-0 items-center gap-1 text-role-eyebrow text-emerald-600">
       <Check className="h-3.5 w-3.5" /> {label}
     </span>
   );

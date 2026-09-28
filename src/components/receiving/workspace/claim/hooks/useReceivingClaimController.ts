@@ -5,7 +5,7 @@ import {
   randomId,
   type ClaimType,
 } from '@/components/sidebar/receiving/receiving-sidebar-shared';
-import { defaultReceivingClaimType } from '@/lib/receiving-claim-type';
+import { CLAIM_TYPE_FAMILY, defaultReceivingClaimType } from '@/lib/receiving-claim-type';
 import type { HorizontalSliderItem } from '@/components/ui/HorizontalButtonSlider';
 import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
 import {
@@ -107,8 +107,9 @@ export function useReceivingClaimController({
   // offered, even if the carton came in as an unmatched scan.
   const hasPo = !!(row.zoho_purchaseorder_number || row.zoho_purchaseorder_id);
   // Default: carrier RETURNED → RTS; return intake → 'return'; unmatched w/o PO
-  // → 'unfound'; otherwise 'damage'. (`shipment_status` is the line-row alias of
-  // STN `latest_status_category`.)
+  // → 'unfound'; a QC fail → its claim; a short line → 'missing'; otherwise
+  // 'damage'. (`shipment_status` is the line-row alias of STN
+  // `latest_status_category`.) The type is the ticket's recorded reason.
   const initialClaimType: ClaimType = defaultReceivingClaimType({
     shipmentStatus: row.shipment_status,
     receivingType: row.receiving_type,
@@ -116,6 +117,9 @@ export function useReceivingClaimController({
     intakeType: row.intake_type,
     receivingSource: row.receiving_source,
     hasPo,
+    qaStatus: row.qa_status,
+    quantityReceived: row.id > 0 ? row.quantity_received : null,
+    quantityExpected: row.id > 0 ? row.quantity_expected : null,
   });
 
   // ── Wizard / mode state ──────────────────────────────────────────────────
@@ -267,14 +271,15 @@ export function useReceivingClaimController({
     }
   }, [ccEmails, open]);
 
-  // ── Derived view-model ───────────────────────────────────────────────────
   // Hide 'unfound' once a real PO# is present — an order with a PO can't be
-  // "unfound". Every other claim type (incl. 'return') stays available.
-  const claimTypeItems = useMemo<HorizontalSliderItem[]>(
+  // "unfound". Every other claim type (incl. 'return') stays available. Each
+  // carries its family (Investigation · Vendor claim · Other) as its group.
+  const claimTypeItems = useMemo<Array<HorizontalSliderItem & { group: string }>>(
     () =>
       CLAIM_TYPE_OPTIONS.filter((opt) => opt.value !== 'unfound' || !hasPo).map((opt) => ({
         id: opt.value,
         label: opt.label,
+        group: CLAIM_TYPE_FAMILY[opt.value],
       })),
     [hasPo],
   );
@@ -607,7 +612,7 @@ export function useReceivingClaimController({
       const res = await fetch('/api/receiving/zendesk-claim/link', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ receivingId, lineId, ticketId: selected.id }),
+        body: JSON.stringify({ receivingId, lineId, ticketId: selected.id, claimType }),
       });
       const data = await res.json().catch(() => null);
       if (!res.ok || !data?.success) {

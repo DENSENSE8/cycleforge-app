@@ -24,7 +24,7 @@ function Badge({ tone, children }: { tone: 'amber' | 'gray'; children: React.Rea
       ? 'bg-amber-50 text-amber-700 ring-amber-200'
       : 'bg-surface-sunken text-text-muted ring-border-soft';
   return (
-    <span className={`rounded px-1.5 py-0.5 text-role-eyebrow uppercase tracking-widest ring-1 ring-inset ${cls}`}>
+    <span className={`rounded px-1.5 py-0.5 text-role-eyebrow ring-1 ring-inset ${cls}`}>
       {children}
     </span>
   );
@@ -105,14 +105,14 @@ function PanelSection({ title, subtitle, defs, byKey, variant, onChange }: Secti
   return (
     <section className="space-y-3">
       <header>
-        <h3 className="text-sm font-semibold uppercase tracking-widest text-text-soft">{title}</h3>
+        <h3 className="text-sm font-semibold text-text-soft">{title}</h3>
         <p className="mt-0.5 text-role-caption text-text-soft">{subtitle}</p>
       </header>
       <div className="space-y-4">
         {groups.map(({ group, defs: groupDefsList }) => (
           <Panel radius="2xl" padding="none" className="px-5" key={group}>
             <div className="border-b border-border-hairline py-2.5">
-              <span className="text-role-eyebrow uppercase tracking-widest text-text-faint">{group}</span>
+              <span className="text-role-eyebrow text-text-faint">{group}</span>
             </div>
             <div className="divide-y divide-border-hairline">
               {groupDefsList.map((def) => {

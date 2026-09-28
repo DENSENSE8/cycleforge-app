@@ -94,7 +94,7 @@ export function ProductGtinField({ catalogId, gtin, onSaved }: ProductGtinFieldP
           </span>
           {isInternal ? (
             <HoverTooltip label="Assigned by Cycle Forge for internal labels — not a GS1 key you licensed, and never sent to a trading partner.">
-              <span className="inset-chip shrink-0 rounded bg-surface-sunken text-role-micro uppercase tracking-widest text-text-soft ring-1 ring-inset ring-border-soft">
+              <span className="inset-chip shrink-0 rounded bg-surface-sunken text-role-micro text-text-soft ring-1 ring-inset ring-border-soft">
                 Internal
               </span>
             </HoverTooltip>

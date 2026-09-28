@@ -14,6 +14,7 @@ import { HandlingUnitChip } from '@/components/receiving/HandlingUnitChip';
 import { handlingUnitStatusChipClass } from '@/lib/handling-unit-status';
 import { unitStatusBadgeTone } from '@/lib/receiving/receiving-constants';
 import { conditionLabel } from '@/lib/conditions';
+import { sentenceCaseLabel } from '@/lib/text/sentence-case-label';
 import { printHandlingUnitLabel } from '@/lib/print/printHandlingUnitLabel';
 import { safeRandomUUID } from '@/lib/safe-uuid';
 import { useHandlingUnitDetail } from '@/hooks/useHandlingUnitDetail';
@@ -121,11 +122,11 @@ export function BoxWorkbenchPanel({
                   the hand-rolled header used to paint here. */}
               <span
                 className={cn(
-                  'inset-chip text-role-eyebrow uppercase tracking-widest',
+                  'inset-chip text-role-eyebrow',
                   handlingUnitStatusChipClass(box.status),
                 )}
               >
-                {box.status}
+                {sentenceCaseLabel(box.status)}
               </span>
             </span>
           ) : null
@@ -209,12 +210,12 @@ export function BoxWorkbenchPanel({
                           …{getLast8(u.serial_number)}
                         </span>
                         <span
-                          className={`rounded inset-chip text-role-eyebrow uppercase tracking-widest ${unitStatusBadgeTone(u.current_status)}`}
+                          className={`rounded inset-chip text-role-eyebrow ${unitStatusBadgeTone(u.current_status)}`}
                         >
-                          {u.current_status}
+                          {sentenceCaseLabel(u.current_status)}
                         </span>
                       </div>
-                      <div className="mt-0.5 truncate text-role-eyebrow font-semibold uppercase tracking-widest text-text-soft">
+                      <div className="mt-0.5 truncate text-role-eyebrow font-semibold text-text-soft">
                         {u.sku || '—'}
                         {u.condition_grade ? ` · ${conditionLabel(u.condition_grade, 'compact')}` : ''}
                         {lineTitle ? ` · ${lineTitle}` : ''}

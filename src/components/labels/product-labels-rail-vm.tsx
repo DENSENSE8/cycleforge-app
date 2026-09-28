@@ -6,6 +6,7 @@
 import type { RailRowVM } from '@/components/sidebar/rail-shell/RailRowBody';
 import type { LabelPrintFeedItem } from '@/hooks/useLabelPrintFeed';
 import { LIFECYCLE_CLASSES } from '@/design-system/tokens/lifecycle';
+import { sentenceCaseLabel } from '@/lib/text/sentence-case-label';
 
 /** Coarse unit lifecycle → Unbox-style rail status dot. */
 const STATUS_DOT: Record<string, string> = {
@@ -38,7 +39,7 @@ export function labelPrintFeedToRailVM(row: LabelPrintFeedItem): RailRowVM {
     title,
     titleAttr: title,
     meta: (
-      <span className="block truncate font-semibold uppercase tracking-widest text-text-soft">
+      <span className="block truncate font-semibold text-text-soft">
         <span className="font-mono normal-case tracking-normal">{unitRef}</span>
         {location ? (
           <>
@@ -60,6 +61,6 @@ export function getLabelPrintStatusDot(row: LabelPrintFeedItem): string {
 
 export function getLabelPrintStatusDotLabel(row: LabelPrintFeedItem): string {
   const status = row.current_status?.trim();
-  if (status) return status;
+  if (status) return sentenceCaseLabel(status);
   return 'Label printed';
 }

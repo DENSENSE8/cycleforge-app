@@ -100,7 +100,7 @@ export function SystemSyncActivityTab() {
       {/* Run history */}
       <section className="rounded-none bg-surface-card shadow-sm ring-1 ring-border-soft/60">
         <header className="flex items-center justify-between px-5 py-4">
-          <h3 className="text-role-eyebrow uppercase tracking-[0.14em] text-text-soft">
+          <h3 className="text-role-eyebrow text-text-soft">
             Run history {jobFilter ? `· ${jobFilter}` : ''}
           </h3>
           {jobFilter && (
@@ -204,7 +204,7 @@ function RunRow({ run }: { run: CronRunRow }) {
       </button>
       {open && hasDetail && (
         <pre className="mt-2 max-h-48 overflow-auto rounded-lg bg-surface-canvas p-2.5 text-role-micro text-text-muted">
-          {run.error ? `ERROR: ${run.error}\n` : ''}
+          {run.error ? `Error: ${run.error}\n` : ''}
           {run.summary && typeof run.summary === 'object' ? JSON.stringify(run.summary, null, 2) : ''}
         </pre>
       )}

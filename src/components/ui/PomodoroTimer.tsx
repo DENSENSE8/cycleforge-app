@@ -47,7 +47,7 @@ export function PomodoroTimer({
   return (
     <section aria-label="Pomodoro timer" data-testid="pomodoro-timer" className={cn('flex flex-wrap items-center gap-x-4 gap-y-2 border-b border-mode-rule px-4 py-2', className)}>
       <div className="flex min-w-0 flex-1 items-baseline gap-3">
-        <span className="text-role-micro font-semibold uppercase tracking-wide text-mode-muted">Focus</span>
+        <span className="text-role-micro font-semibold text-mode-muted">Focus</span>
         <span className="font-mono text-role-body font-bold tabular-nums text-mode-ink" aria-label={`${clock(remaining)} remaining`}>{clock(remaining)}</span>
         <span className="text-role-caption text-mode-muted">Spent <span className="font-mono tabular-nums text-mode-ink">{clock(spent)}</span></span>
       </div>

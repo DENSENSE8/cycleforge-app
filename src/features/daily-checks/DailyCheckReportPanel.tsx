@@ -53,7 +53,7 @@ export function DailyCheckReportPanel({
   return (
     <Panel radius="2xl" padding="none" data-testid="daily-report">
       <div className="flex items-center justify-between border-b border-border-hairline px-4 py-2">
-        <p className="text-role-eyebrow uppercase tracking-widest text-text-soft">{heading}</p>
+        <p className="text-role-eyebrow text-text-soft">{heading}</p>
         <span className="text-role-caption tabular-nums text-text-muted">
           {report.totalDone} of {report.totalPossible} checks done
         </span>

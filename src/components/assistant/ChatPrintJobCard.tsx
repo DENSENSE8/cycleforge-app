@@ -95,7 +95,7 @@ function CardShell({
         tone === 'neutral' && 'border-border-soft bg-surface-sunken',
       )}
     >
-      <p className="text-role-micro font-semibold uppercase tracking-wide text-text-muted">{chatPrintTitle(job.request)}</p>
+      <p className="text-role-micro font-semibold text-text-muted">{chatPrintTitle(job.request)}</p>
       {job.request.kind === 'papers' ? <PaperOrders request={job.request} /> : null}
       {children}
     </div>

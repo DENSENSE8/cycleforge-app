@@ -44,6 +44,23 @@ export const DESK_FLOOR_LIST_CLASS = 'flex min-h-0 min-w-0 flex-1 flex-col';
 export const DESK_FLOOR_RAIL_CLASS = 'flex w-[30rem] shrink-0 flex-col';
 
 /**
+ * A TRIAGE rail — the fixed-width queue or evidence column a triage desk keeps
+ * beside its work (the Labels walk's queue, the label intake desk's labels):
+ * 22rem, never a share of the viewport, so the work column beside it is the
+ * only thing that grows. It borrows nothing from the Floor ledger's industrial
+ * rows; callers add the one `border-mode-divide` seam on the side it touches.
+ */
+export const DESK_TRIAGE_RAIL_CLASS = 'flex w-[22rem] shrink-0 flex-col bg-mode-bar';
+
+/**
+ * The record beside a {@link DESK_TRIAGE_RAIL_CLASS} list — a rail desk
+ * (`DeskRecordPlane` `listRail`, Labels & docs): the record is the work, so it
+ * takes every pixel the rail leaves, in place (the fixed stage) and split
+ * (the full canvas) alike.
+ */
+export const DESK_RAIL_RECORD_CLASS = 'flex min-w-0 flex-1 flex-col';
+
+/**
  * The pane surface inside {@link DESK_SPLIT_RECORD_CLASS} — PLANTED on the one
  * white page (owner 2026-09-26): only the record's columns lift, never the
  * pane or its header. One hairline seam separates it from the list.

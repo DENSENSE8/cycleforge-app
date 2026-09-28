@@ -35,17 +35,17 @@ export function ShippedCarrierFilters({
   const popoverRef = useRef<HTMLDivElement>(null);
 
   const a = useShippedFilterActions(basePath);
-  const { techs, packers } = useStaffOptions();
-  const techName = useMemo(() => new Map(techs.map((t) => [t.id, t.name])), [techs]);
+  const { pickers, packers } = useStaffOptions();
+  const pickerName = useMemo(() => new Map(pickers.map((t) => [t.id, t.name])), [pickers]);
   const packerName = useMemo(() => new Map(packers.map((p) => [p.id, p.name])), [packers]);
 
-  const { exceptionsOnly, carrier, statusCategory, typeFilter, testedBy, packedBy, dateFrom, dateTo, dateRange, clearAll } = a;
+  const { exceptionsOnly, carrier, statusCategory, typeFilter, pickedBy, packedBy, dateFrom, dateTo, dateRange, clearAll } = a;
 
   // Active refinements — Type now lives in the popover, so it counts too.
   const activeCount =
     (typeFilter !== 'all' ? 1 : 0) +
     (exceptionsOnly ? 1 : 0) + (carrier ? 1 : 0) + (statusCategory ? 1 : 0) +
-    (testedBy ? 1 : 0) + (packedBy ? 1 : 0) + (dateFrom ? 1 : 0);
+    (pickedBy ? 1 : 0) + (packedBy ? 1 : 0) + (dateFrom ? 1 : 0);
 
   const chips = useMemo(() => {
     const out: Array<{ key: string; label: string; onRemove: () => void }> = [];
@@ -53,7 +53,7 @@ export function ShippedCarrierFilters({
     if (exceptionsOnly) out.push({ key: 'ex', label: 'Needs attention', onRemove: a.toggleExceptions });
     if (carrier) out.push({ key: 'carrier', label: CARRIER_LABEL.get(carrier) ?? carrier, onRemove: () => a.setCarrier(null) });
     if (statusCategory) out.push({ key: 'status', label: STATUS_LABEL.get(statusCategory) ?? statusCategory, onRemove: () => a.setStatus(null) });
-    if (testedBy) out.push({ key: 'tester', label: `Tech: ${techName.get(testedBy) ?? `#${testedBy}`}`, onRemove: () => a.setTestedBy(null) });
+    if (pickedBy) out.push({ key: 'picker', label: `Picker: ${pickerName.get(pickedBy) ?? `#${pickedBy}`}`, onRemove: () => a.setPickedBy(null) });
     if (packedBy) out.push({ key: 'packer', label: `Packer: ${packerName.get(packedBy) ?? `#${packedBy}`}`, onRemove: () => a.setPackedBy(null) });
     if (dateFrom) {
       const label = dateTo && toISODate(dateTo) !== toISODate(dateFrom)
@@ -62,7 +62,7 @@ export function ShippedCarrierFilters({
       out.push({ key: 'date', label, onRemove: () => a.setDateRange(undefined) });
     }
     return out;
-  }, [typeFilter, exceptionsOnly, carrier, statusCategory, testedBy, packedBy, dateFrom, dateTo, techName, packerName, a]);
+  }, [typeFilter, exceptionsOnly, carrier, statusCategory, pickedBy, packedBy, dateFrom, dateTo, pickerName, packerName, a]);
 
   /** Inline layout — the RAIL-LESS well. */
   if (layout === 'inline') {
@@ -156,11 +156,11 @@ export function ShippedCarrierFilters({
             </label>
 
             <label className="block">
-              <span className={labelClass}>Tested by</span>
+              <span className={labelClass}>Picked by</span>
               <div className="relative">
-                <select value={testedBy ?? ''} onChange={(e) => a.setTestedBy(e.target.value ? Number(e.target.value) : null)} className={selectClass} aria-label="Filter by tester">
-                  <option value="">Any tech</option>
-                  {techs.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
+                <select value={pickedBy ?? ''} onChange={(e) => a.setPickedBy(e.target.value ? Number(e.target.value) : null)} className={selectClass} aria-label="Filter by picker">
+                  <option value="">Any picker</option>
+                  {pickers.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
                 </select>
                 <ChevronDown className="pointer-events-none absolute right-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-text-faint" />
               </div>

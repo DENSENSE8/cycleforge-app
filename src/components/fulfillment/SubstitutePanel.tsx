@@ -35,7 +35,7 @@ interface SubstitutePanelProps {
   className?: string;
 }
 
-const FIELD_LABEL = 'text-role-micro uppercase tracking-widest text-text-soft';
+const FIELD_LABEL = 'text-role-micro text-text-soft';
 
 export function SubstitutePanel({
   orderLabel,
@@ -78,10 +78,10 @@ export function SubstitutePanel({
     >
       {/* Eyebrow header */}
       <div className="flex items-center justify-between">
-        <span className="inline-flex items-center gap-1.5 text-role-eyebrow uppercase tracking-widest text-text-soft">
+        <span className="inline-flex items-center gap-1.5 text-role-eyebrow text-text-soft">
           <RefreshCw className="h-3.5 w-3.5" /> Substitute unit
         </span>
-        <span className="truncate text-role-eyebrow font-semibold uppercase tracking-widest text-text-faint">{orderLabel}</span>
+        <span className="truncate text-role-eyebrow font-semibold text-text-faint">{orderLabel}</span>
       </div>
 
       {/* Ordered → Substitute */}
@@ -95,7 +95,7 @@ export function SubstitutePanel({
           )}
           {original.serial ? <SerialChip value={original.serial} /> : null}
           {original.condition ? (
-            <span className="rounded bg-surface-canvas px-1.5 py-0.5 text-role-eyebrow uppercase tracking-widest text-text-muted ring-1 ring-inset ring-border-soft">
+            <span className="rounded bg-surface-canvas px-1.5 py-0.5 text-role-eyebrow text-text-muted ring-1 ring-inset ring-border-soft">
               {original.condition}
             </span>
           ) : null}
@@ -114,7 +114,7 @@ export function SubstitutePanel({
           placeholder="Scan or enter serial"
           autoCapitalize="characters"
           spellCheck={false}
-          className={cn("w-full rounded-lg border border-border-soft px-3 py-2 font-mono text-sm uppercase tracking-wider placeholder:text-text-faint", focusRing('field', 'accent'))}
+          className={cn("w-full rounded-lg border border-border-soft px-3 py-2 font-mono text-sm placeholder:text-text-faint", focusRing('field', 'accent'))}
         />
       </div>
 

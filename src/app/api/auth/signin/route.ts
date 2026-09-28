@@ -16,7 +16,7 @@ import { audit } from '@/lib/auth/audit';
 import { findActiveShift, clockIn } from '@/lib/auth/shift-clock';
 import { getStaffAuthMethod } from '@/lib/auth/auth-policy';
 import { resolveOrgIdFromRequest, NIL_ORG_ID } from '@/lib/tenancy/resolve-org-from-request';
-import { checkRateLimitAsync } from '@/lib/api-guard';
+import { AUTH_PER_IP_LIMIT_PER_10_MIN, checkRateLimitAsync } from '@/lib/api-guard';
 
 export const runtime = 'nodejs';
 
@@ -42,13 +42,12 @@ export async function POST(req: NextRequest) {
   let staffIdForAudit: number | null = null;
 
   try {
-    // Per-IP throttle: this route verifies PINs by staffId, so it must resist
-    // credential-stuffing bursts. Warns (does not hard-fail) when Upstash is
-    // unset — see api-guard boot warning.
+    // Per-IP ceiling sized for a shared warehouse NAT; the tight limits are the
+    // per-staff bucket below and the PIN lockout in verifyStaffPin.
     const rl = await checkRateLimitAsync({
       headers: req.headers,
       routeKey: 'auth-signin',
-      limit: 20,
+      limit: AUTH_PER_IP_LIMIT_PER_10_MIN,
       windowMs: 10 * 60 * 1000,
     });
     if (!rl.ok) {
@@ -80,6 +79,22 @@ export async function POST(req: NextRequest) {
         detail: { reason: 'tenant_required' },
       });
       return NextResponse.json({ error: 'TENANT_REQUIRED' }, { status: 404 });
+    }
+
+    // Per-staff throttle, independent of IP: one target can't be hammered from many IPs.
+    const staffRl = await checkRateLimitAsync({
+      headers: req.headers,
+      routeKey: 'auth-signin-staff',
+      scope: `${orgId}:${staffId}`,
+      ipAgnostic: true,
+      limit: 10,
+      windowMs: 10 * 60 * 1000,
+    });
+    if (!staffRl.ok) {
+      return NextResponse.json(
+        { error: 'RATE_LIMITED' },
+        { status: 429, headers: staffRl.retryAfterSec ? { 'retry-after': String(staffRl.retryAfterSec) } : undefined },
+      );
     }
 
     // WS6.1: staff forced onto password auth must use the account (email + password) entry point — refuse the station PIN/pinless path.
@@ -205,6 +220,7 @@ export async function POST(req: NextRequest) {
       });
       const status = err.code === 'NOT_FOUND' ? 404
         : err.code === 'NO_PIN' ? 409
+        : err.code === 'LOCKED' ? 423
         : 401;
       return NextResponse.json({ error: err.code }, { status });
     }

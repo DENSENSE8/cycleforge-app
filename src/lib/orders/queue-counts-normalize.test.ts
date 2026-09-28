@@ -18,7 +18,7 @@ const BENCH = {
 test('packPlacement survives normalization — the field the seed dropped', () => {
   const out = normalizeQueueCountsPayload({
     total: 27,
-    byStage: { all: 27, pending: 26, tested: 1 },
+    byStage: { all: 27, pending: 26, picked: 1 },
     urgent: 3,
     combos: [{ hasPickScan: true, blocked: false, count: 1 }],
     packPlacement: { counts: [BENCH], totalPlaced: 2 },
@@ -28,7 +28,7 @@ test('packPlacement survives normalization — the field the seed dropped', () =
   assert.equal(out.packPlacement?.totalPlaced, 2);
   assert.equal(out.total, 27);
   assert.equal(out.urgent, 3);
-  assert.deepEqual(out.byStage, { all: 27, pending: 26, tested: 1 });
+  assert.deepEqual(out.byStage, { all: 27, pending: 26, picked: 1 });
 });
 
 test('a payload with no packPlacement block falls back to an empty bench list', () => {

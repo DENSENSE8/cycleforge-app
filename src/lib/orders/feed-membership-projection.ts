@@ -3,14 +3,16 @@
 import { sql, type SQL } from 'drizzle-orm';
 import { db } from '@/lib/drizzle/db';
 import { SHIPPED_BY_CARRIER_SQL } from '@/lib/sql-fragments';
-import { ORDER_PICK_SCAN_ACTIVITY_TYPES, PACK_ACTIVITY_TYPES, sqlInList } from '@/lib/station-activity';
+import { PACK_ACTIVITY_TYPES, sqlInList } from '@/lib/station-activity';
+import { ORDER_STAGE_FACTS_JOIN, ORDER_STAGE_FACTS_SIGNALS } from '@/lib/orders/order-stage-facts';
 import { deriveFulfillmentState, type FulfillmentState } from '@/lib/unshipped-state';
 import { sqlOrderHasShipConfirm } from '@/lib/orders/order-grain-sql';
+import { PICKUP_FULFILLMENT_CHANNEL } from '@/lib/orders/release-gates';
 
 /** Lane → feed tone (FeedMembershipTone / TimelineTone). */
 const LANE_TONE: Record<FulfillmentState, 'default' | 'success' | 'danger'> = {
   PENDING: 'default',
-  TESTED: 'success',
+  PICKED: 'success',
   BLOCKED: 'danger',
 };
 
@@ -118,38 +120,13 @@ export async function projectOrdersUnshippedMemberships(
     SELECT o.id,
            o.organization_id,
            o.shipment_id,
-           (EXISTS (
-             SELECT 1 FROM tech_serial_numbers tsn
-             WHERE tsn.order_id = o.id
-               AND tsn.organization_id = o.organization_id
-           ) OR EXISTS (
-             SELECT 1 FROM station_activity_logs sal
-             WHERE sal.organization_id = o.organization_id
-               AND sal.activity_type IN (${sql.raw(sqlInList(ORDER_PICK_SCAN_ACTIVITY_TYPES))})
-               AND (
-                 sal.order_row_id = o.id
-                 OR sal.ext_order_id = o.order_id
-               )
-           ) OR (
-             o.shipment_id IS NOT NULL
-             AND NOT EXISTS (
-               SELECT 1 FROM orders o2
-               WHERE o2.shipment_id = o.shipment_id
-                 AND o2.organization_id = o.organization_id
-                 AND o2.id <> o.id
-             )
-             AND EXISTS (
-               SELECT 1 FROM station_activity_logs sal
-               WHERE sal.shipment_id IS NOT NULL AND sal.shipment_id = o.shipment_id
-                 AND sal.organization_id = o.organization_id
-                 AND sal.activity_type IN (${sql.raw(sqlInList(ORDER_PICK_SCAN_ACTIVITY_TYPES))})
-             )
-           )) AS has_pick_scan,
+           ${sql.raw(ORDER_STAGE_FACTS_SIGNALS.hasPickScan)} AS has_pick_scan,
            o.is_out_of_stock,
            COALESCE(wa.deadline_at, o.created_at) AS occurred_at,
            COALESCE(NULLIF(o.product_title, ''), 'Order ' || COALESCE(o.order_id, o.id::text)) AS title
       FROM orders o
       LEFT JOIN shipping_tracking_numbers stn ON stn.id = o.shipment_id
+      ${sql.raw(ORDER_STAGE_FACTS_JOIN)}
       LEFT JOIN LATERAL (
         SELECT w.deadline_at
           FROM work_assignments w
@@ -160,36 +137,18 @@ export async function projectOrdersUnshippedMemberships(
                   w.updated_at DESC, w.id DESC
          LIMIT 1
       ) wa ON TRUE
-     WHERE o.shipment_id IS NOT NULL
+     WHERE (o.shipment_id IS NOT NULL OR o.fulfillment_channel = ${PICKUP_FULFILLMENT_CHANNEL})
        AND NOT ${sql.raw(SHIPPED_BY_CARRIER_SQL)}
        AND COALESCE(o.fulfillment_channel, '') <> 'AFN'
        AND NOT ${sql.raw(sqlOrderHasShipConfirm('o'))}
-       AND NOT EXISTS (
-         SELECT 1 FROM station_activity_logs sal
-         WHERE sal.organization_id = o.organization_id
-           AND sal.activity_type IN (${sql.raw(sqlInList(PACK_ACTIVITY_TYPES))})
-           AND (
-             sal.order_row_id = o.id
-             OR sal.ext_order_id = o.order_id
-             OR (
-               sal.shipment_id IS NOT NULL AND sal.shipment_id = o.shipment_id
-               AND (sal.metadata->>'order_row_id') IS NULL
-               AND NOT EXISTS (
-                 SELECT 1 FROM orders o2
-                 WHERE o2.shipment_id = o.shipment_id
-                   AND o2.organization_id = o.organization_id
-                   AND o2.id <> o.id
-               )
-             )
-           )
-       )
+       AND NOT ${sql.raw(ORDER_STAGE_FACTS_SIGNALS.hasPackScan)}
        AND COALESCE(wa.deadline_at, o.created_at) >= NOW() - make_interval(days => ${days})
   `);
   const rows = fetched.rows as RawOrderRow[];
 
   // 2. NODE: compute each order's lane through the TS SoT. This is the whole
   //    point — the lane rule lives once, in deriveFulfillmentState.
-  const byLane: Record<LaneState, number> = { pending: 0, tested: 0, blocked: 0 };
+  const byLane: Record<LaneState, number> = { pending: 0, picked: 0, blocked: 0 };
   const memberships = rows.map((r) => {
     const lane = deriveFulfillmentState({
       shipmentId: r.shipment_id,
@@ -235,7 +194,15 @@ export async function projectOrdersUnshippedMemberships(
            LEFT JOIN shipping_tracking_numbers stn ON stn.id = o.shipment_id
           WHERE o.id = fm.entity_id
             AND o.organization_id = fm.organization_id
-            AND o.shipment_id IS NOT NULL
+            AND (o.shipment_id IS NOT NULL OR o.fulfillment_channel = ${PICKUP_FULFILLMENT_CHANNEL})
+            -- A pickup's pack fact is order-grain (no shipment to key on).
+            AND NOT EXISTS (
+              SELECT 1 FROM station_activity_logs sal
+              WHERE sal.organization_id = o.organization_id
+                AND sal.order_row_id = o.id
+                AND o.shipment_id IS NULL
+                AND sal.activity_type IN (${sql.raw(sqlInList(PACK_ACTIVITY_TYPES))})
+            )
             AND NOT ${sql.raw(SHIPPED_BY_CARRIER_SQL)}
             AND COALESCE(o.fulfillment_channel, '') <> 'AFN'
             AND NOT EXISTS (

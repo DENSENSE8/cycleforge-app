@@ -13,7 +13,7 @@ interface StatusTextProps {
 export function StatusText({ label, colorVar, className = '' }: StatusTextProps) {
   return (
     <span
-      className={`inline-flex items-center text-role-eyebrow uppercase tracking-[0.08em] leading-none ${className}`.trim()}
+      className={`inline-flex items-center text-role-eyebrow leading-none ${className}`.trim()}
       style={{ color: `var(${colorVar})` }}
     >
       {label}

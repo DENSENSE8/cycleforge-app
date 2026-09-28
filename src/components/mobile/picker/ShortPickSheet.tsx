@@ -79,7 +79,7 @@ export function ShortPickSheet({
     <BottomSheet open={open} onClose={onClose} title="Short pick — confirm reason">
       {/* Quantity headline */}
       <div className="mb-4 rounded-none border border-amber-200 bg-amber-50/70 px-4 py-3">
-        <p className="text-xs font-semibold uppercase tracking-wider text-amber-700">
+        <p className="text-xs font-semibold text-amber-700">
           Picking {pickedQty} of {plannedQty}
         </p>
         <p className="mt-0.5 text-sm font-medium text-amber-900">
@@ -90,7 +90,7 @@ export function ShortPickSheet({
 
       {/* Reason list — large tap targets, single-select */}
       <fieldset className="space-y-2">
-        <legend className="mb-2 text-xs font-semibold uppercase tracking-wider text-text-soft">
+        <legend className="mb-2 text-xs font-semibold text-text-soft">
           Why are you short?
         </legend>
         {options.map((opt) => {
@@ -139,7 +139,7 @@ export function ShortPickSheet({
 
       {/* Note */}
       <label className="mt-4 block">
-        <span className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-text-soft">
+        <span className="mb-1.5 block text-xs font-semibold text-text-soft">
           Note {noteRequired ? <span className="text-red-600">· required</span> : <span className="text-text-faint">· optional</span>}
         </span>
         <textarea

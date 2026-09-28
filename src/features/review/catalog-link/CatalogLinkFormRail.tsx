@@ -43,7 +43,7 @@ interface CatalogSearchRow {
 function FieldRow({ label, children }: { label: string; children: ReactNode }) {
   return (
     <div className="flex min-w-0 items-baseline justify-between gap-3">
-      <span className="shrink-0 text-role-eyebrow uppercase tracking-widest text-text-soft">
+      <span className="shrink-0 text-role-eyebrow text-text-soft">
         {label}
       </span>
       <span className="min-w-0 truncate text-right text-role-caption text-text-default">
@@ -64,7 +64,7 @@ function RailError({ message }: { message: string }) {
 
 function SeenLine({ firstSeenAt, lastSeenAt }: { firstSeenAt: string; lastSeenAt: string }) {
   return (
-    <p className="text-role-micro uppercase tracking-widest text-text-faint">
+    <p className="text-role-micro text-text-faint">
       First {formatDateTimePST(firstSeenAt)} · Last {formatDateTimePST(lastSeenAt)}
     </p>
   );

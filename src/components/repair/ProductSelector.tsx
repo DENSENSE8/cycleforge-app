@@ -129,8 +129,6 @@ interface ProductSelectorProps {
    */
   searchQuery?: string;
   onSearchQueryChange?: (value: string) => void;
-  /** Hide the browse-stage search when the expanded spine hosts it. */
-  hideBrowseSearch?: boolean;
   /**
    * Hide the left-rail cart tray (v2 shell owns a persistent right ledger).
    * Default false so staff stacked + legacy split keep the tray.
@@ -282,7 +280,6 @@ export function ProductSelector({
   browseHeader: _browseHeader,
   searchQuery,
   onSearchQueryChange,
-  hideBrowseSearch: _hideBrowseSearch,
   hideCartTray = false,
   catalogSearchMode = 'client',
   favoritesWorkspace,
@@ -855,7 +852,7 @@ export function ProductSelector({
     <div className={flush ? 'gap-0' : 'space-y-1.5'}>
       <p
         className={cn(
-          'text-role-eyebrow uppercase tracking-[0.15em] text-text-faint',
+          'text-role-eyebrow text-text-faint',
           flush && 'border-b border-border-hairline px-4 py-2',
         )}
       >
@@ -971,7 +968,7 @@ export function ProductSelector({
           {!pos && (
             <p
               className={cn(
-                'text-role-eyebrow uppercase tracking-[0.15em] text-text-faint',
+                'text-role-eyebrow text-text-faint',
                 flush && 'border-b border-border-hairline px-4 py-2',
               )}
             >
@@ -1081,7 +1078,7 @@ export function ProductSelector({
                       ) : (
                         <div
                           className={cn(
-                            'flex h-full w-full items-center justify-center uppercase tracking-widest',
+                            'flex h-full w-full items-center justify-center',
                             KIOSK_META,
                             'text-text-faint',
                           )}
@@ -1438,7 +1435,7 @@ export function ProductSelector({
                 ),
           )}
         >
-          <div className="text-xs font-semibold uppercase tracking-wide">Other -- Manual Entry</div>
+          <div className="text-xs font-semibold">Other -- Manual Entry</div>
           {selectedProduct?.type === 'Other' && (
             <div className="mt-1 truncate text-role-micro font-semibold opacity-90">{selectedProduct.model}</div>
           )}
@@ -1475,7 +1472,7 @@ export function ProductSelector({
     return (
       <div
         className={cn(
-          'flex flex-wrap items-center gap-1 text-role-eyebrow uppercase tracking-wide text-text-soft',
+          'flex flex-wrap items-center gap-1 text-role-eyebrow text-text-soft',
           flush && 'border-b border-border-hairline px-4 py-2',
         )}
       >
@@ -1699,7 +1696,7 @@ export function ProductSelector({
           )}
         >
           {loading && !categoriesHydratedRef.current && (
-            <div className="px-4 py-3.5 text-xs font-semibold uppercase tracking-wide text-text-faint">
+            <div className="px-4 py-3.5 text-xs font-semibold text-text-faint">
               Loading...
             </div>
           )}
@@ -1764,7 +1761,7 @@ export function ProductSelector({
       {loading && (
         <div
           className={cn(
-            'text-xs font-semibold uppercase tracking-wide text-text-faint',
+            'text-xs font-semibold text-text-faint',
             flush
               ? 'border-b border-border-hairline px-4 py-3.5'
               : 'rounded-xl border border-border-soft bg-surface-canvas p-4',

@@ -75,7 +75,7 @@ export function useSupportTicketDisplays(
           <div className="flex flex-col gap-0">
             {liveTicket ? (
               <section className="border-b border-border-hairline px-3 py-2.5">
-                <p className="text-role-eyebrow uppercase tracking-widest text-text-soft">
+                <p className="text-role-eyebrow text-text-soft">
                   Assigned
                 </p>
                 <div className="mt-1.5">

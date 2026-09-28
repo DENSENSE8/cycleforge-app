@@ -7,7 +7,7 @@
  * and a **Still needed** checklist for the order's channel.
  *
  * Every action is a request, never a write from here:
- *  - Open in form  → `/shipping/orders?triage=new&prefill=…`, the SAME field
+ *  - Open in form  → `/orders/new?prefill=…`, the SAME field
  *    contract, so the intake form opens with these exact values;
  *  - Create        → a chat turn ("Create this order"), which proposes and
  *    then waits for the operator's yes (confirm-before-write);

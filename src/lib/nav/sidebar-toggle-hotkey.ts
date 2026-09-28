@@ -1,9 +1,9 @@
 'use client';
 
 /**
- * Left nav column open / close keys (owner 2026-09-27):
- *   - `\` or `/` alone — when not typing in a field;
- *   - ⌘ / Ctrl + `\` or `/` — anywhere, text fields included.
+ * Left nav column open / close: ⌘ / Ctrl + `\` or `/`, anywhere (text fields
+ * included), or the header button. No bare key (owner 2026-09-27: bare `/`
+ * and `\` toggled the column by accident; `/` is typed in Find and notes).
  * Distinct from ⌘/Ctrl+B, which parks the route's context rail
  * (`context-panel-toggle-hotkey.ts`) and is the browser's bookmarks bar on
  * Windows / Linux. A page that owns one of these first keeps it: the AI
@@ -15,7 +15,6 @@
 
 import { useEffect, useRef } from 'react';
 import { hasOpenOverlay } from '@/lib/overlay-stack/store';
-import { isEditableKeyTarget } from '@/lib/keyboard/is-editable-key-target';
 
 /** Physical keys, so the binding holds on layouts where the glyphs move. */
 const TOGGLE_CODES: ReadonlySet<string> = new Set(['Backslash', 'Slash']);
@@ -25,23 +24,18 @@ function isAppleModPlatform(): boolean {
   return /Mac|iPhone|iPad|iPod/i.test(navigator.platform) || /Mac OS|iPhone|iPad|iPod/i.test(navigator.userAgent);
 }
 
-/** Tooltip sentence tail naming the bare keys: `\ or /`. */
-export const SIDEBAR_TOGGLE_BARE_KEYS = '\\ or /';
-
-/** Tooltip chord (`HoverTooltip shortcut`, split on `+` into keycaps): `⌘+\` or `Ctrl+\`. */
+/** Tooltip chord (`HoverTooltip shortcut`; `+` splits keycaps, ` or ` splits alternatives): `⌘+\ or ⌘+/`. */
 export function sidebarToggleHotkeyLabel(): string {
-  return `${isAppleModPlatform() ? '⌘' : 'Ctrl'}+\\`;
+  const mod = isAppleModPlatform() ? '⌘' : 'Ctrl';
+  return `${mod}+\\ or ${mod}+/`;
 }
 
 /** `aria-keyshortcuts` value for the toggle control. */
-export const SIDEBAR_TOGGLE_ARIA_KEYSHORTCUTS =
-  'Backslash Slash Meta+Backslash Control+Backslash Meta+Slash Control+Slash';
+export const SIDEBAR_TOGGLE_ARIA_KEYSHORTCUTS = 'Meta+Backslash Control+Backslash Meta+Slash Control+Slash';
 
-/** Which binding this event is, if any. */
-function sidebarToggleKind(e: KeyboardEvent): 'bare' | 'mod' | null {
-  if (!TOGGLE_CODES.has(e.code) || e.shiftKey || e.altKey) return null;
-  if (e.metaKey || e.ctrlKey) return 'mod';
-  return 'bare';
+/** ⌘ / Ctrl + `\` or `/`, no Shift / Alt (⌘⇧/ is the cheat sheet). */
+function isSidebarToggleChord(e: KeyboardEvent): boolean {
+  return TOGGLE_CODES.has(e.code) && (e.metaKey || e.ctrlKey) && !e.shiftKey && !e.altKey;
 }
 
 export function useSidebarToggleHotkey(onToggle: () => void, enabled = true): void {
@@ -51,10 +45,7 @@ export function useSidebarToggleHotkey(onToggle: () => void, enabled = true): vo
     if (!enabled) return;
     const onKeyDown = (e: KeyboardEvent) => {
       if (e.repeat || e.defaultPrevented || e.isComposing || hasOpenOverlay()) return;
-      const kind = sidebarToggleKind(e);
-      if (!kind) return;
-      // Bare `\` / `/` type characters — never steal them from a field.
-      if (kind === 'bare' && isEditableKeyTarget(e.target)) return;
+      if (!isSidebarToggleChord(e)) return;
       e.preventDefault();
       onToggleRef.current();
     };

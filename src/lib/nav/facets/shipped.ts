@@ -24,7 +24,7 @@ import { NAV_FACET_GROUPS } from '@/lib/nav/facets/contexts';
 import type { FacetSqlRunner } from '@/lib/nav/facets/outbound';
 import type { NavFacetsResponse } from '@/lib/nav/context/schema';
 import { isPackerLogEnrichmentRead } from '@/lib/feature-flags';
-import { PACKER_LOG_ORDER_JOINS, buildPackerLogBaseWhere } from '@/lib/neon/packer-logs-week';
+import { buildPackerLogBaseWhere, packerLogOrderJoins } from '@/lib/neon/packer-logs-week';
 import {
   CARRIERS,
   STATUS_CATEGORIES,
@@ -56,7 +56,7 @@ export interface ShippedFacetCombo {
   n: number;
 }
 
-/** `?packedBy` / `?testedBy` / `?staff` — positive numbers, else unset (the desk's `parseStaffParam`). */
+/** `?packedBy` / `?staff` — positive numbers, else unset (the desk's `parseStaffParam`). */
 function staffParam(params: ParamReader, key: string): number | null {
   const n = Number(params.get(key));
   return Number.isFinite(n) && n > 0 ? n : null;
@@ -71,7 +71,6 @@ export function buildShippedFacetSql(orgId: OrgId, params: ParamReader, enriched
     {
       organizationId: orgId,
       packerId: staffParam(params, 'packedBy'),
-      testedBy: staffParam(params, 'testedBy'),
       staffId: staffParam(params, 'staff'),
       weekStart: window.start,
       weekEnd: window.end,
@@ -99,7 +98,7 @@ export function buildShippedFacetSql(orgId: OrgId, params: ParamReader, enriched
           MAX(${SHIPPED_STATUS_SQL}) AS status,
           bool_or(${SHIPPED_EXCEPTION_SQL}) AS exception
         FROM station_activity_logs sal
-        LEFT JOIN packer_logs pl ON pl.id = sal.packer_log_id${needsOrderJoins ? PACKER_LOG_ORDER_JOINS : ''}${shippedFilterJoins(enriched)}
+        LEFT JOIN packer_logs pl ON pl.id = sal.packer_log_id${needsOrderJoins ? packerLogOrderJoins(enriched) : ''}${shippedFilterJoins(enriched)}
         WHERE ${conditions.join(' AND ')}
         GROUP BY sal.shipment_id
       ) p

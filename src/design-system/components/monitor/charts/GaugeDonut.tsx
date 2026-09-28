@@ -151,7 +151,7 @@ export function GaugeDonut({
                 </text>
               </g>
               <g className="text-text-faint">
-                <text x={cx} y={cy + 4} textAnchor="middle" fill="currentColor" className="text-role-micro uppercase tracking-[0.14em]">
+                <text x={cx} y={cy + 4} textAnchor="middle" fill="currentColor" className="text-role-micro">
                   {subText}
                 </text>
               </g>

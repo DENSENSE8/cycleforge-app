@@ -10,6 +10,7 @@ import {
   serialLast8,
 } from '@/components/receiving/SerialPreviewStrip';
 import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
+import { workflowStageLabel } from '@/lib/receiving/workflow-stages';
 import type { TestingScanPick } from '@/lib/testing/testing-scan-session-bridge';
 
 /** Amber, because an ambiguous scan is an exception state — not a failure. */
@@ -34,7 +35,7 @@ export function TestingScanPickPanel({ pick, onPick, onCancel }: Props) {
       aria-label="Select the line to test"
     >
       <header className="shrink-0 border-b border-amber-200 bg-amber-50 px-6 py-4">
-        <p className="text-role-eyebrow uppercase tracking-widest text-amber-700">
+        <p className="text-role-eyebrow text-amber-700">
           Select this first
         </p>
         <h2 className="mt-1 text-lg font-semibold text-text-default">
@@ -58,9 +59,9 @@ export function TestingScanPickPanel({ pick, onPick, onCancel }: Props) {
                 <span className="block truncate text-role-body font-semibold text-text-default">
                   {row.item_name || row.sku || `Line #${row.id}`}
                 </span>
-                <span className="block text-role-eyebrow font-semibold uppercase tracking-widest text-text-soft">
+                <span className="block text-role-eyebrow font-semibold text-text-soft">
                   {row.quantity_received}/{row.quantity_expected ?? '?'} ·{' '}
-                  {row.workflow_status || 'EXPECTED'}
+                  {workflowStageLabel(row.workflow_status || 'EXPECTED')}
                   {row.tracking_number
                     ? ` · TRK …${serialLast8(String(row.tracking_number))}`
                     : ''}
@@ -82,7 +83,7 @@ export function TestingScanPickPanel({ pick, onPick, onCancel }: Props) {
           variant="ghost"
           size="sm"
           onClick={onCancel}
-          className="h-auto px-0 text-role-eyebrow uppercase tracking-widest text-amber-600 hover:bg-transparent hover:text-amber-800"
+          className="h-auto px-0 text-role-eyebrow text-amber-600 hover:bg-transparent hover:text-amber-800"
         >
           Cancel — scan again
         </Button>

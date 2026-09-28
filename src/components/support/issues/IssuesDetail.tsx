@@ -29,7 +29,7 @@ import { focusRing } from '@/design-system/tokens/focus-ring';
 function Field({ label, children }: { label: string; children: ReactNode }) {
   return (
     <div className="min-w-0 space-y-0.5">
-      <p className="text-role-eyebrow uppercase tracking-widest text-text-soft">{label}</p>
+      <p className="text-role-eyebrow text-text-soft">{label}</p>
       <div className="text-role-caption font-semibold text-text-default">{children}</div>
     </div>
   );
@@ -40,7 +40,7 @@ function StatusChip({ status }: { status: ReportedIssue['status'] }) {
   return (
     <span
       className={cn(
-        'inline-flex items-center gap-1.5 rounded px-1.5 py-0.5 text-role-micro uppercase tracking-widest ring-1 ring-inset',
+        'inline-flex items-center gap-1.5 rounded px-1.5 py-0.5 text-role-micro ring-1 ring-inset',
         tone.chip,
       )}
     >
@@ -184,7 +184,7 @@ function IssueActions({
             rows={4}
           />
           <label className="block space-y-1">
-            <span className="text-role-eyebrow uppercase tracking-widest text-text-soft">Type</span>
+            <span className="text-role-eyebrow text-text-soft">Type</span>
             <select
               value={draftType}
               onChange={(e) => setDraftType(e.target.value as UserIssueType)}
@@ -281,7 +281,7 @@ export function IssuesDetail({
           <button
             type="button"
             onClick={onBack}
-            className="text-role-eyebrow uppercase tracking-widest text-blue-600 md:hidden"
+            className="text-role-eyebrow text-blue-600 md:hidden"
           >
             ← Back
           </button>
@@ -292,7 +292,7 @@ export function IssuesDetail({
             <StatusChip status={issue.status} />
             <span
               className={cn(
-                'rounded px-1.5 py-0.5 text-role-micro uppercase tracking-widest ring-1 ring-inset',
+                'rounded px-1.5 py-0.5 text-role-micro ring-1 ring-inset',
                 USER_ISSUE_TYPE_CHIP,
               )}
             >

@@ -222,7 +222,7 @@ export function ItemCardRow({
   const tacticalRoster = Boolean(orderContext);
   const skuIdentity = reference ?? itemNumber;
   // Row tap remains the physical-work selection door.
-  const storageContext = location ? `BIN: ${location}` : 'BIN: Unassigned';
+  const storageContext = location ? `Bin: ${location}` : 'Bin: Unassigned';
   const x = useMotionValue(0);
   const dragging = useRef(false);
 
@@ -414,17 +414,17 @@ export function ItemCardRow({
                         </span>
                       ) : null}
                       {managementStatus ? (
-                        <span data-testid="item-card-management-status" className="shrink-0 font-mono text-role-eyebrow font-semibold uppercase tracking-wide text-text-default">
+                        <span data-testid="item-card-management-status" className="shrink-0 font-mono text-role-eyebrow font-semibold text-text-default">
                           {managementStatus}
                         </span>
                       ) : null}
                       {managementAction ? (
-                        <span data-testid="item-card-management-action" className="min-w-0 flex-1 truncate font-mono text-role-eyebrow font-semibold uppercase tracking-wide text-text-muted">
+                        <span data-testid="item-card-management-action" className="min-w-0 flex-1 truncate font-mono text-role-eyebrow font-semibold text-text-muted">
                           Next: {managementAction}
                         </span>
                       ) : null}
                       {managementOwner ? (
-                        <span data-testid="item-card-management-owner" className="min-w-0 shrink truncate font-mono text-role-eyebrow font-semibold uppercase tracking-wide text-text-muted">
+                        <span data-testid="item-card-management-owner" className="min-w-0 shrink truncate font-mono text-role-eyebrow font-semibold text-text-muted">
                           Owner: {managementOwner}
                         </span>
                       ) : null}

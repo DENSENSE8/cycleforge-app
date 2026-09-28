@@ -1,5 +1,5 @@
-import { type TechRecord } from '@/hooks/useDeskPickLogs';
-import { hasUsableProductTitle } from '@/hooks/station/useTechTableController';
+import { type DeskPickRecord } from '@/hooks/useDeskPickLogs';
+import { hasUsableProductTitle } from '@/hooks/station/useDeskPickTableController';
 
 /** Trim a product title to a clean string (empty when missing). */
 export function normalizeProductTitle(value: string | null | undefined): string {
@@ -10,7 +10,7 @@ export function normalizeProductTitle(value: string | null | undefined): string 
  * Map a tech-log record into the shared shipped-details payload shape consumed
  * by the details panel (`open-shipped-details` event detail).
  */
-export function techRecordToDetail(record: TechRecord) {
+export function techRecordToDetail(record: DeskPickRecord) {
   // Normalize deadline to YYYY-MM-DD — field is sourced from work_assignments.deadline_at (TIMESTAMPTZ)
   const shipByDate = record.ship_by_date
     ? String(record.ship_by_date).split('T')[0]
@@ -57,7 +57,7 @@ export function techRecordToDetail(record: TechRecord) {
 }
 
 /** Stable detail id for a tech record (matches the dispatched payload's id). */
-export function getTechDetailId(record: TechRecord): number {
+export function getTechDetailId(record: DeskPickRecord): number {
   const detail = techRecordToDetail(record);
   return Number(detail.id ?? detail.shipment_id ?? record.id);
 }

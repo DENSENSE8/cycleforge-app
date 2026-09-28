@@ -71,7 +71,7 @@ export function DistributionTable({
                 <span className="min-w-0">
                   <span className="block truncate text-role-caption font-semibold text-text-default">{row.label}</span>
                   {row.sublabel && (
-                    <span className="block truncate text-role-eyebrow font-semibold uppercase tracking-widest text-text-faint">
+                    <span className="block truncate text-role-eyebrow font-semibold text-text-faint">
                       {row.sublabel}
                     </span>
                   )}

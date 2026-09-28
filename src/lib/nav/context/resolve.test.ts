@@ -12,12 +12,16 @@ import {
   SIDEBAR_PAGE_NAV,
   getSidebarPageNav,
   resolveSidebarChild,
+  spineSectionIdForPage,
 } from '@/lib/sidebar-navigation';
+import { LANE_DOORS } from '@/lib/nav/lanes';
+import { NAV_PAGE_DECLS } from './pages';
 import { NAV_PARITY, pageStops, parityGaps, uncoveredRows } from './parity';
 import { declaredRouteParams, type ResolveNavContextInput } from './build';
 import { resolveNavContext } from './resolve';
 import { NAV_CONTEXT_PINNED_LEGACY, NAV_CONTEXT_ROLLOUT } from './rollout';
 import { NavContextSchema, NavItemSchema, navControlParams, type NavContext, type NavItem } from './schema';
+import { isIncomingGridSortable, isReceivingGridSortable } from '@/lib/receiving/receiving-grid-layout';
 
 const ALL = new Set<string>(ALL_PERMISSIONS);
 
@@ -67,7 +71,7 @@ test('every SIDEBAR_PAGE_NAV page resolves to itself and survives the wire', () 
   assert.ok(LIVE_PAGES.length >= 20);
 });
 
-/** A door lane's pages, painted as its landing page's mode switcher. */
+/** A door lane's pages, painted as the mode switcher on every page of that lane. */
 const isLanePageSection = (section: NavContext['sections'][number]): boolean => section.id.endsWith('.modes');
 
 test('every section item href round-trips: resolving it lights exactly that item', () => {
@@ -127,7 +131,7 @@ test('Outbound is a lane door: one map row, the lane name on its panel, its page
   assert.deepEqual(modes?.items.map((item) => [item.id, item.label]), [
     ['outbound', 'Shipping'],
     ['fba', 'FBA'],
-    ['label-intake', 'Label intake'],
+    ['label-intake', 'Labels & docs'],
   ]);
   assert.ok(modes?.items.every((item) => !item.active), 'a mode row never lights a view');
 
@@ -135,11 +139,45 @@ test('Outbound is a lane door: one map row, the lane name on its panel, its page
   assert.equal(map.sections.at(-1)?.id, 'floor');
 });
 
+test('every mode of a door lane wears the lane on ‹ and the SAME mode card, itself current — never a ‹ <Page> row', () => {
+  // Derived from lane membership (`LANE_DOORS`), so a page added to a door
+  // lane gets the parent tier with no declaration (operator 2026-09-28:
+  // Labels & docs and Sourcing are modes, like Shipping, not back rows).
+  for (const [laneId, doorId] of Object.entries(LANE_DOORS)) {
+    const door = getSidebarPageNav(doorId!);
+    assert.ok(door, laneId);
+    const lanePages = SIDEBAR_PAGE_NAV.filter(
+      (page) => spineSectionIdForPage(page) === laneId && APP_SIDEBAR_NAV.some((item) => item.id === page.id),
+    );
+    const doorModes = at(door.href).sections.find(isLanePageSection)?.items.map((item) => item.id);
+    assert.deepEqual(doorModes?.[0], doorId, `${laneId}: the door leads its modes`);
+    for (const page of lanePages) {
+      const ctx = at(page.href);
+      if (ctx.scope !== 'section') continue;
+      const laneLabel = at(door.href).page.label;
+      assert.equal(ctx.back?.label, laneLabel, `${page.id}: ‹ names the lane`);
+      const modes = ctx.sections.find(isLanePageSection);
+      assert.equal(ctx.sections[0], modes, `${page.id}: modes lead the panel`);
+      assert.deepEqual(modes?.items.map((item) => item.id), doorModes, `${page.id}: same modes, same order`);
+      assert.ok(modes?.items.some((item) => item.id === page.id), `${page.id} is one of its lane's modes`);
+    }
+  }
+});
+
 test('back is null exactly at top, and never navigates', () => {
   for (const { href, ctx } of everyContext()) {
     assert.equal(ctx.back === null, ctx.scope === 'top', href);
     if (ctx.back) assert.deepEqual(ctx.back, { label: ctx.page.label, mode: 'local' }, href);
   }
+});
+
+test('view digits are bound only on a declared page panel — never on the ‹ peek or an undeclared page', () => {
+  for (const { href, ctx } of everyContext()) {
+    const declared = NAV_PAGE_DECLS[ctx.page.id]?.viewKeys === true;
+    assert.equal(ctx.viewKeys === true, declared && ctx.scope === 'section', href);
+  }
+  assert.equal(at('/shipping/orders').viewKeys, true);
+  assert.equal(at('/shipping/orders', { view: 'top' }).viewKeys, undefined);
 });
 
 test('nav items carry no counts', () => {
@@ -338,7 +376,7 @@ test('each Shipping view carries the filters and controls its own list reads', (
   );
   // Who touched it, and when — each a button in the body, each a param the list reads.
   const shippedControls = navControlParams(shipped.controls);
-  for (const key of ['staff', 'pickedBy', 'packedBy', 'testedBy', 'dateFrom', 'dateTo', 'timeFrom', 'timeTo']) {
+  for (const key of ['staff', 'pickedBy', 'packedBy', 'dateFrom', 'dateTo', 'timeFrom', 'timeTo']) {
     assert.ok(shippedControls.includes(key), `shipped control ${key}`);
   }
   for (const href of ['/shipping/orders', '/shipping/orders?queue=pick', '/shipping/shortage?pair=po']) {
@@ -352,6 +390,53 @@ test('each Shipping view carries the filters and controls its own list reads', (
   }
   // The Exceptions workbench reads no staff or date param.
   assert.equal(at('/shipping/exceptions').controls, undefined);
+});
+
+test('each Inbound view carries the filters and controls its own list reads, and its saved views keep them', () => {
+  const pipeline = at('/incoming');
+  const docked = at('/incoming?lane=docked');
+  const cases = [
+    // On the way: the purchasing source the list endpoint takes, the ledger's column order.
+    { href: '/incoming', ctx: pipeline, reads: ['inbound', 'colsort', 'coldir'], isColumn: isIncomingGridSortable },
+    // Unboxed: who handled it, the activity window, the intake kind, the column order.
+    {
+      href: '/incoming?lane=docked',
+      ctx: docked,
+      reads: ['staff', 'dateFrom', 'dateTo', 'dkind', 'colsort', 'coldir'],
+      isColumn: isReceivingGridSortable,
+    },
+  ];
+  for (const { href, ctx, reads, isColumn } of cases) {
+    const keys = navControlParams(ctx.controls);
+    for (const key of reads) {
+      assert.ok(keys.includes(key), `${href} control ${key}`);
+      assert.ok(ctx.savedViews?.paramKeys.includes(key), `${href}: a saved view drops ${key}`);
+    }
+    // Every non-default order is a column the ledger actually sorts by.
+    const sort = ctx.controls?.sort;
+    assert.ok(sort, href);
+    for (const option of sort.options) {
+      if (option.value !== sort.defaultValue) assert.ok(isColumn(option.value), `${href}: sort ${option.value} is no column`);
+    }
+    // Every choice value survives the route's hygiene.
+    const spec = routeParamsFor('/incoming');
+    assert.ok(spec);
+    for (const choice of ctx.controls?.choices ?? []) {
+      for (const option of choice.options) {
+        const kept = parseRouteParams(spec, new URLSearchParams({ [choice.param]: option.value }));
+        assert.equal(kept.get(choice.param), option.value, `${href} strips ${choice.param}=${option.value}`);
+      }
+    }
+  }
+  // Picking a History window replaces the old week pill.
+  assert.deepEqual(docked.controls?.dateRanges?.[0]?.clearParams, ['weekOffset']);
+  // One param, one control: the attention pills own `?dflag=`, so no sidebar row
+  // writes it — but a saved view still keeps the pills' cut.
+  assert.ok(!navControlParams(docked.controls).includes('dflag'));
+  assert.ok(docked.savedViews?.paramKeys.includes('dflag'));
+  // Neither lane advertises the other's filters.
+  assert.ok(!navControlParams(pipeline.controls).includes('dflag'));
+  assert.ok(!navControlParams(docked.controls).includes('inbound'));
 });
 
 test('every facet context names a real page or section view, and every recents surface exists', () => {

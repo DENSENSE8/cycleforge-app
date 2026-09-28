@@ -9,7 +9,7 @@ export const SHIPPING_ORDERS_PATH = '/shipping/orders';
 export const SHIPPING_SHORTAGE_PATH = '/shipping/shortage';
 /** The order-exception workbench. */
 export const SHIPPING_EXCEPTIONS_PATH = '/shipping/exceptions';
-/** Label intake — the V1 label-ingestion ledger (upload/watch a carrier label PDF → exact order match or quarantine → apply to packed units). */
+/** Labels & docs — label printing + document intake over the label ledger (every stored label, paired or not; the paired order's packing slips and manuals). Path kept from Label intake. */
 export const SHIPPING_LABEL_INTAKE_PATH = '/shipping/label-intake';
 
 /** Wire value that selects Support Inquiries context on the shared desk. */

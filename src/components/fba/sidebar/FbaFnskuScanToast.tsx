@@ -106,7 +106,7 @@ export function FbaFnskuScanToast({ pendingPlans, stationTheme }: FbaFnskuScanTo
           <div className="flex items-start gap-2">
             <Package className="mt-0.5 h-4 w-4 shrink-0 text-text-accent" />
             <div className="min-w-0 flex-1">
-              <p className="text-role-micro uppercase tracking-[0.14em] text-text-accent">
+              <p className="text-role-micro text-text-accent">
                 Station Amazon SKU scan
               </p>
               <p className="mt-0.5 truncate font-mono text-role-caption font-semibold text-text-default">
@@ -128,7 +128,7 @@ export function FbaFnskuScanToast({ pendingPlans, stationTheme }: FbaFnskuScanTo
                   radius="flush"
                   onClick={handleAdd}
                   loading={adding}
-                  className={`mt-1.5 border border-border-accent bg-surface-card px-2.5 text-role-eyebrow uppercase tracking-[0.14em] text-text-accent hover:bg-surface-accent ${chrome.cardFocusRing}`}
+                  className={`mt-1.5 border border-border-accent bg-surface-card px-2.5 text-role-eyebrow text-text-accent hover:bg-surface-accent ${chrome.cardFocusRing}`}
                 >
                   Add to {pendingPlans[0].shipment_ref || 'plan'}
                 </Button>
@@ -153,7 +153,7 @@ export function FbaFnskuScanToast({ pendingPlans, stationTheme }: FbaFnskuScanTo
                     radius="flush"
                     onClick={handleAdd}
                     disabled={adding || !selectedPlanId}
-                    className={`border border-border-accent bg-surface-card px-2.5 text-role-eyebrow uppercase tracking-[0.14em] text-text-accent hover:bg-surface-accent ${chrome.cardFocusRing}`}
+                    className={`border border-border-accent bg-surface-card px-2.5 text-role-eyebrow text-text-accent hover:bg-surface-accent ${chrome.cardFocusRing}`}
                   >
                     {adding ? <Loader2 className="h-3 w-3 animate-spin" /> : 'Add'}
                   </Button>

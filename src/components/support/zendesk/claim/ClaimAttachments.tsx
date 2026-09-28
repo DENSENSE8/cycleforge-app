@@ -19,7 +19,7 @@ export function ClaimAttachments({ c }: { c: ZendeskClaimController }) {
   return (
     <section className="space-y-2.5">
       <div className="flex items-center justify-between">
-        <p className="text-role-micro uppercase tracking-widest text-text-soft">Attachments</p>
+        <p className="text-role-micro text-text-soft">Attachments</p>
         <span className="text-role-caption font-semibold text-text-faint">{c.totalAttach} selected</span>
       </div>
 

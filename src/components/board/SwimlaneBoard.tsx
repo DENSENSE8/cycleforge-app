@@ -190,7 +190,7 @@ function LaneSortMenu<SortId extends string>({
         <button
           type="button"
           aria-label={`Sort: ${activeLabel}`}
-          className="inline-flex h-7 shrink-0 items-center gap-1 rounded-md border border-border-soft bg-surface-card px-2 text-role-eyebrow uppercase tracking-widest text-text-muted transition-colors hover:border-blue-300 hover:bg-blue-50/40"
+          className="inline-flex h-7 shrink-0 items-center gap-1 rounded-md border border-border-soft bg-surface-card px-2 text-role-eyebrow text-text-muted transition-colors hover:border-blue-300 hover:bg-blue-50/40"
         >
           <ArrowUpDown className="h-3 w-3 text-text-faint" />
           {activeLabel}
@@ -399,8 +399,8 @@ function SwimlaneBubble<Row, LaneId extends string, SortId extends string>({
           <span className={`h-2 w-2 shrink-0 rounded-full ${lane.dot}`} />
         </HoverTooltip>
         <Icon className={`h-3.5 w-3.5 shrink-0 ${lane.iconClass ?? 'text-text-faint'}`} />
-        <h3 className="truncate text-role-eyebrow uppercase tracking-widest text-text-soft">{lane.label}</h3>
-        <span className="shrink-0 text-role-eyebrow uppercase tracking-widest text-text-faint">{rows.length}</span>
+        <h3 className="truncate text-role-eyebrow text-text-soft">{lane.label}</h3>
+        <span className="shrink-0 text-role-eyebrow text-text-faint">{rows.length}</span>
         {showSortMenu || showDateFilter || laneHeaderSlot ? (
           <div className="ml-auto flex shrink-0 items-center gap-1.5">
             {laneHeaderSlot}
@@ -452,7 +452,7 @@ function SwimlaneBubble<Row, LaneId extends string, SortId extends string>({
         <button
           type="button"
           onClick={onToggleExpanded}
-          className="flex w-full items-center justify-center gap-1.5 border-t border-border-hairline py-1 text-role-eyebrow uppercase tracking-widest text-text-soft transition hover:bg-surface-hover"
+          className="flex w-full items-center justify-center gap-1.5 border-t border-border-hairline py-1 text-role-eyebrow text-text-soft transition hover:bg-surface-hover"
         >
           {expanded ? (
             <>

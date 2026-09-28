@@ -2,8 +2,10 @@
 
 /** One Daily agenda row as an {@link IndustrialRecord} — the checklist item and the handed-over task in the SAME anatomy, so the eye reads… */
 
-import { memo } from 'react';
+import { memo, useContext } from 'react';
 import { format } from 'date-fns';
+import { motion } from 'motion/react';
+import { DROP, grammar } from '@/components/boot/welcome/motion-grammar';
 import { StaffAvatar } from '@/components/identity/StaffAvatar';
 import { GridRowCheckbox } from '@/components/ui/GridRowCheckbox';
 import {
@@ -14,6 +16,7 @@ import {
   RecordTitle,
 } from '@/design-system/components/record-ledger/IndustrialRecord';
 import { RECORD_HIT_CLASS } from '@/design-system/components/record-ledger/record-ledger-geometry';
+import { useReducedMotion } from '@/design-system/motion';
 import { RECORD_ID_CLASS, RECORD_LABEL_CLASS } from '@/design-system/tokens/industrial-record';
 import { lifecycleRecordState } from '@/design-system/tokens/lifecycle';
 import { photoContentUrl } from '@/lib/photos/display-url';
@@ -21,6 +24,10 @@ import { agendaRecordState } from '@/lib/daily/agenda-record-state';
 import { DAILY_AGENDA_TYPE_LABEL, type DailyAgendaRow } from '@/lib/daily/daily-agenda-row';
 import type { TaskLinkKind } from '@/lib/tasks/task-links-shared';
 import { cn } from '@/utils/_cn';
+import { DailyEntranceContext } from './DailyEntrance';
+
+const ROW_HIDDEN_TRANSFORM = `translate3d(0, ${DROP.ROW_RISE_PX}px, 0)`;
+const ROW_VISIBLE_TRANSFORM = 'translate3d(0, 0, 0)';
 
 /** Band-1 kind stamp — three letters, one per store face. */
 const KIND_CODE: Readonly<Record<DailyAgendaRow['type'], string>> = {
@@ -48,7 +55,7 @@ function dueFace(row: DailyAgendaRow): { face: string | null; title?: string } {
   if (row.type === 'checklist') return { face: row.dueTime ? civilTimeFace(row.dueTime) : null };
   if (row.deadlineAtMs == null) return { face: null };
   const due = new Date(row.deadlineAtMs);
-  return { face: format(due, 'MMM d · h:mm a').toUpperCase(), title: format(due, 'EEE MMM d, yyyy · h:mm a') };
+  return { face: format(due, 'MMM d · h:mm a'), title: format(due, 'EEE MMM d, yyyy · h:mm a') };
 }
 
 function reminderFace(row: DailyAgendaRow): string | null {
@@ -56,7 +63,7 @@ function reminderFace(row: DailyAgendaRow): string | null {
     if (row.dueTime == null || row.remindOffsetMinutes == null) return null;
     return row.remindOffsetMinutes === 0 ? 'At due' : `${row.remindOffsetMinutes}m before`;
   }
-  return row.remindAtMs == null ? null : format(new Date(row.remindAtMs), 'MMM d · h:mm a').toUpperCase();
+  return row.remindAtMs == null ? null : format(new Date(row.remindAtMs), 'MMM d · h:mm a');
 }
 
 export const AgendaRecord = memo(function AgendaRecord({
@@ -67,6 +74,7 @@ export const AgendaRecord = memo(function AgendaRecord({
   tickable,
   onOpen,
   onToggle,
+  entranceIndex,
 }: {
   row: DailyAgendaRow;
   open: boolean;
@@ -75,22 +83,51 @@ export const AgendaRecord = memo(function AgendaRecord({
   tickable: boolean;
   onOpen: (key: string) => void;
   onToggle: (row: DailyAgendaRow) => void;
+  entranceIndex?: number;
 }) {
+  const reduceMotion = useReducedMotion() ?? false;
+  const { phase } = useContext(DailyEntranceContext);
   const state = agendaRecordState(row, nowMs, isToday);
   const due = dueFace(row);
   const reminder = reminderFace(row);
   const links = linkSummary(row);
   const who = row.type === 'checklist' ? row.ownerName : row.assigneeName;
   const media = [
-    row.photoCount > 0 ? `PHOTO ${row.photoCount}` : null,
-    row.videoCount > 0 ? `VIDEO ${row.videoCount}` : null,
-    row.docCount > 0 ? `DOCS ${row.docCount}` : null,
+    row.photoCount > 0 ? `Photo ${row.photoCount}` : null,
+    row.videoCount > 0 ? `Video ${row.videoCount}` : null,
+    row.docCount > 0 ? `Docs ${row.docCount}` : null,
   ]
     .filter(Boolean)
     .join(' · ');
 
   return (
-    <IndustrialRecord
+    <motion.div
+      initial={
+        phase === 'revealed'
+          ? false
+          : reduceMotion
+            ? { opacity: 0 }
+            : { opacity: 0, transform: ROW_HIDDEN_TRANSFORM }
+      }
+      animate={
+        phase === 'rows' || phase === 'revealed'
+          ? reduceMotion
+            ? { opacity: 1 }
+            : { opacity: 1, transform: ROW_VISIBLE_TRANSFORM }
+          : reduceMotion
+            ? { opacity: 0 }
+            : { opacity: 0, transform: ROW_HIDDEN_TRANSFORM }
+      }
+      transition={{
+        ...(reduceMotion ? grammar(true).move : DROP.ROW),
+        delay:
+          phase === 'rows'
+            ? Math.min(entranceIndex ?? 0, DROP.STAGGER_CAP) * DROP.STAGGER_S
+            : 0,
+      }}
+      style={{ willChange: phase === 'revealed' ? 'auto' : 'transform, opacity' }}
+    >
+      <IndustrialRecord
       recordKey={row.key}
       state={lifecycleRecordState(state.lifecycle)}
       open={open}
@@ -146,7 +183,7 @@ export const AgendaRecord = memo(function AgendaRecord({
           main: <RecordTitle>{row.title}</RecordTitle>,
           right: reminder ? (
             <span className={cn(RECORD_LABEL_CLASS, 'w-full truncate text-left text-mode-ink')} title="Reminder">
-              <span className="text-mode-muted">RMD </span>
+              <span className="text-mode-muted">Remind </span>
               {reminder}
             </span>
           ) : null,
@@ -182,6 +219,7 @@ export const AgendaRecord = memo(function AgendaRecord({
           right: <RecordNext label={state.next} warn={state.late} />,
         },
       ]}
-    />
+      />
+    </motion.div>
   );
 });

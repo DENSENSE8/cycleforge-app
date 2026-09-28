@@ -102,7 +102,7 @@ export function OperationsReconciliationView() {
         actions={
           <Link
             href="/tracking-exceptions"
-            className="text-role-eyebrow font-semibold uppercase tracking-widest text-blue-700 hover:text-blue-800"
+            className="text-role-eyebrow font-semibold text-blue-700 hover:text-blue-800"
           >
             Open queue
           </Link>

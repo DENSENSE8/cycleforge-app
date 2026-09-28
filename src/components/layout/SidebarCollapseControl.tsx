@@ -9,11 +9,7 @@ import { useCallback } from 'react';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { IconButton } from '@/design-system/primitives';
 import { warmSpineChunk } from '@/components/sidebar/preload-spine';
-import {
-  SIDEBAR_TOGGLE_ARIA_KEYSHORTCUTS,
-  SIDEBAR_TOGGLE_BARE_KEYS,
-  sidebarToggleHotkeyLabel,
-} from '@/lib/nav/sidebar-toggle-hotkey';
+import { SIDEBAR_TOGGLE_ARIA_KEYSHORTCUTS, sidebarToggleHotkeyLabel } from '@/lib/nav/sidebar-toggle-hotkey';
 import {
   HEADER_ICON_BTN_CLASS,
   HEADER_ICON_WRAP,
@@ -63,10 +59,9 @@ export function SidebarCollapseControl({
       data-testid={navOpen ? undefined : 'sidebar-collapse-control'}
       onMouseLeave={onMouseLeave}
     >
-      {/* Every binding is visible on hover / focus: the bare keys in the
-          sentence (`\ or /`), the ⌘ / Ctrl chord as keycaps. */}
+      {/* Every binding is visible on hover / focus as keycaps: ⌘ / Ctrl + `\` or `/`. */}
       <HoverTooltip
-        label={`${label} · ${SIDEBAR_TOGGLE_BARE_KEYS}`}
+        label={label}
         shortcut={sidebarToggleHotkeyLabel()}
         asChild
         disabled={peeking}

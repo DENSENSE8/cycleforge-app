@@ -86,7 +86,7 @@ export function PackPapersStatusCard({ orderRowId }: { orderRowId: number | null
         >
           <div className="flex items-start justify-between gap-2">
             <div className="min-w-0">
-              <p className="text-role-eyebrow uppercase tracking-widest text-text-soft">
+              <p className="text-role-eyebrow text-text-soft">
                 Pack papers
               </p>
               <p className="mt-1 text-role-caption font-semibold text-text-default">

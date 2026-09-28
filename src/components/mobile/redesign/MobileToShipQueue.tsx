@@ -509,7 +509,7 @@ export function MobileToShipQueue({
               {groups.map((group) => (
                 <section key={group.band + group.label}>
                   {group.label ? (
-                    <h2 className="mb-1.5 px-3 text-role-eyebrow font-semibold uppercase tracking-widest text-text-warning">
+                    <h2 className="mb-1.5 px-3 text-role-eyebrow font-semibold text-text-warning">
                       {group.label}
                     </h2>
                   ) : null}

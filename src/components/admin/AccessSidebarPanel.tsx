@@ -183,7 +183,7 @@ export function AccessSidebarPanel({ basePath = '/settings/access' }: { basePath
             onClick={() => setParam((p) => {
               if (s === 'all') p.delete('accessStatus'); else p.set('accessStatus', s);
             })}
-            className={`flex-1 rounded-lg px-2 py-1 text-role-micro font-semibold uppercase tracking-wider transition ${
+            className={`flex-1 rounded-lg px-2 py-1 text-role-micro font-semibold transition ${
               statusFilter === s ? 'bg-blue-600 text-white shadow-sm shadow-blue-200' : 'bg-surface-sunken text-text-muted hover:bg-surface-strong'
             }`}
           >
@@ -313,7 +313,7 @@ function StaffSidebarRow({ row, selected, onPick }: StaffSidebarRowProps) {
             <span className="truncate text-sm font-semibold text-text-default">{row.name}</span>
             <span className="text-role-eyebrow text-text-faint">#{row.id}</span>
           </div>
-          <div className="truncate text-role-micro font-medium uppercase tracking-wider text-text-soft">
+          <div className="truncate text-role-micro font-medium text-text-soft">
             {row.role.replace(/_/g, ' ')}
           </div>
         </div>
@@ -386,7 +386,7 @@ function SortableStaffSidebarRow({ row, selected, onPick }: StaffSidebarRowProps
               <span className="truncate text-sm font-semibold text-text-default">{row.name}</span>
               <span className="text-role-eyebrow text-text-faint">#{row.id}</span>
             </div>
-            <div className="truncate text-role-micro font-medium uppercase tracking-wider text-text-soft">
+            <div className="truncate text-role-micro font-medium text-text-soft">
               {row.role.replace(/_/g, ' ')}
             </div>
           </div>

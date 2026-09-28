@@ -54,7 +54,7 @@ const NEXT_BY_STAGE: Readonly<
 > = {
   AWAITING_LABEL: { label: 'Label', tip: 'Next: buy or attach a shipping label' },
   PENDING: { label: 'Pick', tip: 'Next: pick at the order desk' },
-  TESTED: { label: 'Pack', tip: 'Next: pack station' },
+  PICKED: { label: 'Pack', tip: 'Next: pack station' },
   PACKED_STAGED: { label: 'Scan out', tip: 'Next: dock scan-out' },
   // Not a station — a hold. The row moves when a human clears it, which is why
   // this is the one next-step face that carries the alert tone.

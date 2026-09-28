@@ -19,8 +19,8 @@ export function FlagsSection({ flags, allFlagsOff }: { flags: FlagRow[]; allFlag
           }`}
         >
           {allFlagsOff
-            ? 'All OFF — legacy paths active'
-            : `${flags.filter((f) => f.on).length} of ${flags.length} ON`}
+            ? 'All off — legacy paths active'
+            : `${flags.filter((f) => f.on).length} of ${flags.length} on`}
         </span>
       </header>
       <dl className="divide-y divide-border-hairline">
@@ -33,7 +33,7 @@ export function FlagsSection({ flags, allFlagsOff }: { flags: FlagRow[]; allFlag
                 f.on ? 'bg-green-100 text-green-700' : 'bg-surface-sunken text-text-muted'
               }`}
             >
-              {f.on ? 'ON' : 'OFF'}
+              {f.on ? 'On' : 'Off'}
             </dd>
           </div>
         ))}
@@ -59,16 +59,16 @@ export function PreflightSection({ preflight, preflightAllOk }: { preflight: Pre
             c.status === 'warn' ? 'bg-amber-500' :
             'bg-red-500';
           const label =
-            c.status === 'pass' ? 'PASS' :
-            c.status === 'warn' ? 'WARN' :
-            'FAIL';
+            c.status === 'pass' ? 'Pass' :
+            c.status === 'warn' ? 'Warn' :
+            'Fail';
           return (
             <li key={c.label} className="flex items-start gap-3 px-6 py-3">
               <span className={`mt-1 inline-block h-2.5 w-2.5 shrink-0 rounded-full ${dot}`} />
               <div className="min-w-0 flex-1">
                 <div className="flex items-baseline gap-3">
                   <span className="text-sm font-medium text-text-default">{c.label}</span>
-                  <span className={`text-role-micro font-semibold uppercase tracking-wider ${
+                  <span className={`text-role-micro font-semibold ${
                     c.status === 'pass' ? 'text-green-700' :
                     c.status === 'warn' ? 'text-amber-700' :
                     'text-red-700'
@@ -85,7 +85,7 @@ export function PreflightSection({ preflight, preflightAllOk }: { preflight: Pre
       <footer className="border-t border-border-hairline bg-surface-canvas px-6 py-3 text-xs text-text-muted">
         Phase-specific data preconditions:
         <span className="ml-1">
-          Phase 5 (PACKING) requires Phase 4 (ALLOCATION) flipped first so
+          Phase 5 (packing) requires Phase 4 (allocation) flipped first so
           <code className="mx-1 rounded bg-surface-sunken px-1 py-0.5">order_unit_allocations</code>
           rows exist for /api/pack/ship to accept.
         </span>
@@ -152,21 +152,21 @@ export function BackfillSection({ backfill }: { backfill: BackfillRow | null }) 
       {backfill ? (
         <dl className="grid grid-cols-2 gap-x-6 gap-y-3 px-6 py-4 text-sm md:grid-cols-4">
           <div>
-            <dt className="text-xs uppercase tracking-wide text-text-soft">tech_serial_numbers total</dt>
+            <dt className="text-xs text-text-soft">tech_serial_numbers total</dt>
             <dd className="mt-1 text-2xl font-semibold text-text-default">{backfill.total_tsn}</dd>
           </div>
           <div>
-            <dt className="text-xs uppercase tracking-wide text-text-soft">linked to serial_units</dt>
+            <dt className="text-xs text-text-soft">linked to serial_units</dt>
             <dd className="mt-1 text-2xl font-semibold text-green-700">{backfill.linked_tsn}</dd>
           </div>
           <div>
-            <dt className="text-xs uppercase tracking-wide text-text-soft">unlinked (eligible)</dt>
+            <dt className="text-xs text-text-soft">unlinked (eligible)</dt>
             <dd className={`mt-1 text-2xl font-semibold ${backfill.unlinked_eligible === 0 ? 'text-text-faint' : 'text-amber-600'}`}>
               {backfill.unlinked_eligible}
             </dd>
           </div>
           <div>
-            <dt className="text-xs uppercase tracking-wide text-text-soft">serial_units rows</dt>
+            <dt className="text-xs text-text-soft">serial_units rows</dt>
             <dd className="mt-1 text-2xl font-semibold text-text-default">{backfill.serial_units_total}</dd>
           </div>
         </dl>

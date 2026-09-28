@@ -233,7 +233,7 @@ function PreboxWizardBody({
       <FlushTerminalFooter
         layout="cluster"
         leading={
-          <span className="flex min-h-9 min-w-0 flex-1 items-center bg-surface-sunken px-3 text-role-eyebrow font-semibold uppercase tracking-widest text-text-muted">
+          <span className="flex min-h-9 min-w-0 flex-1 items-center bg-surface-sunken px-3 text-role-eyebrow font-semibold text-text-muted">
             {chosen.length} selected
           </span>
         }

@@ -393,7 +393,7 @@ test('/shipping/orders declares the params its own components read', () => {
   assert.equal(parse('search=widget'), 'widget');
   // OutboundFilterStrip's two facets.
   assert.equal(parse('attention=1'), '1');
-  assert.equal(parse('ustatus=TESTED'), 'TESTED');
+  assert.equal(parse('ustatus=PICKED'), 'PICKED');
   assert.equal(parse('context=support'), 'support');
   assert.equal(parse('dateFrom=2026-08-01'), '2026-08-01');
   assert.equal(parse('dateTo=2026-08-27'), '2026-08-27');
@@ -561,7 +561,7 @@ test('every To-ship triage facet survives hygiene on each route that mounts the 
     }
     const parse = (qs: string) => parseRouteParams(spec, new URLSearchParams(qs)).toString();
     assert.equal(parse('aging=overdue'), 'aging=overdue', `${route} strips aging`);
-    assert.equal(parse('stage=tested'), 'stage=tested', `${route} strips stage`);
+    assert.equal(parse('stage=picked'), 'stage=picked', `${route} strips stage`);
     // Closed vocabularies still refuse junk.
     assert.equal(parse('rowFlag=bogus'), '');
     assert.equal(parse('aging=someday'), '');

@@ -285,7 +285,7 @@ export const SerialScanField = forwardRef<
       onClick={submit}
       disabled={!scan.trim() || disabled}
       className={cn(
-        'ds-raw-button inline-flex h-11 shrink-0 items-center justify-center text-role-caption font-semibold uppercase tracking-wider text-white transition-colors hover:bg-emerald-700 disabled:cursor-not-allowed disabled:bg-surface-strong',
+        'ds-raw-button inline-flex h-11 shrink-0 items-center justify-center text-role-caption font-semibold text-white transition-colors hover:bg-emerald-700 disabled:cursor-not-allowed disabled:bg-surface-strong',
         embedded
           ? cn(cornerClass('flush'), 'bg-emerald-600')
           : 'rounded-xl bg-emerald-600 shadow-sm',

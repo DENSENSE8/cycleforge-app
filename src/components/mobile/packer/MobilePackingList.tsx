@@ -105,7 +105,7 @@ export function MobilePackingList({ packerId, limit = 8 }: { packerId: string; l
           freshIds={freshIds}
           empty={
             <div className="flex h-full flex-col items-center justify-center gap-2 bg-surface-card px-6 text-center">
-              <p className="text-sm font-semibold uppercase tracking-[0.18em] text-text-muted">No pack history yet</p>
+              <p className="text-sm font-semibold text-text-muted">No pack history yet</p>
               <p className="max-w-[260px] text-role-caption font-semibold text-text-soft">
                 Scan a staged tote above to start packing its order.
               </p>

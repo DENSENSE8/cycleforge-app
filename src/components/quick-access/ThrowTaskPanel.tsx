@@ -110,7 +110,7 @@ export function ThrowTaskPanel({ onClose }: ThrowTaskPanelProps) {
       <div className="space-y-3">
         {/* ── What ─────────────────────────────────────────────────────── */}
         <section className="space-y-1">
-          <p className="px-1 text-role-micro uppercase tracking-widest text-text-soft">Record</p>
+          <p className="px-1 text-role-micro text-text-soft">Record</p>
           {resolve.status === 'idle' ? (
             <p className="px-1 py-2 text-role-caption text-text-faint">
               Scan a carton label, or paste a tracking number, PO or order id.
@@ -177,7 +177,7 @@ export function ThrowTaskPanel({ onClose }: ThrowTaskPanelProps) {
 
         {/* ── Who ──────────────────────────────────────────────────────── */}
         <section className="space-y-1 border-t border-border-hairline pt-2">
-          <p className="px-1 text-role-micro uppercase tracking-widest text-text-soft">
+          <p className="px-1 text-role-micro text-text-soft">
             Assign to {assignees.length ? `· ${assignees.length} selected` : ''}
           </p>
           {staff === null ? (
@@ -208,7 +208,7 @@ export function ThrowTaskPanel({ onClose }: ThrowTaskPanelProps) {
         <section className="space-y-1 border-t border-border-hairline pt-2">
           <label
             htmlFor="throw-task-note"
-            className="block px-1 text-role-micro uppercase tracking-widest text-text-soft"
+            className="block px-1 text-role-micro text-text-soft"
           >
             Note <span className="normal-case tracking-normal text-text-faint">(optional)</span>
           </label>

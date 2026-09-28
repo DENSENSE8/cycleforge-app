@@ -2,7 +2,7 @@
 
 /** FBA inbound workbench — composed under `/shipping/fba`. */
 
-import { useCallback, useEffect, useMemo, useRef } from 'react';
+import { useEffect, useRef } from 'react';
 import { AnimatePresence, motion, useReducedMotion } from '@/design-system/motion';
 import { FbaQuickAddFnskuModal } from '@/components/fba/FbaQuickAddFnskuModal';
 import { FbaCreatePlanModal } from '@/components/fba/FbaCreatePlanModal';
@@ -12,7 +12,7 @@ import { FbaCombineWorkspace } from '@/components/fba/sidebar/FbaCombineWorkspac
 import { FbaActiveShipments } from '@/components/fba/sidebar/FbaActiveShipments';
 import { FbaCombineRailBody, FbaPlanRailBody } from '@/components/fba/sidebar/FbaSidebarRails';
 import { ReadyWorkspaceBody } from '@/components/outbound/ready/ReadyWorkspaceBody';
-import { Button, SlicedActionDock } from '@/design-system/primitives';
+import { SlicedActionDock } from '@/design-system/primitives';
 import { Package, X } from '@/components/Icons';
 import { motionPresence, motionTransition, motionBezier } from '@/design-system/foundations/motion-presets';
 import { useMotionPresence, useMotionTransition } from '@/design-system/foundations/motion-presets-hooks';
@@ -21,33 +21,25 @@ import { stationThemeColors } from '@/utils/staff-colors';
 import { useStationTheme } from '@/hooks/useStationTheme';
 import { useAuth } from '@/contexts/AuthContext';
 import { useFbaRealtimeInvalidation } from '@/hooks/useFbaRealtimeInvalidation';
-import { resolveFbaModeFromSearchParams, type FbaMode } from '@/lib/fba/fba-modes';
+import { resolveFbaModeFromSearchParams } from '@/lib/fba/fba-modes';
 import { FBA_BOARD_TOGGLE_ALL } from '@/lib/fba/events';
 import { useSearchParams } from 'next/navigation';
 import { useFbaBoard } from '@/app/fba/useFbaBoard';
 import { useFbaWeekFilter } from '@/app/fba/useFbaWeekFilter';
 import { useFbaCombine } from '@/app/fba/useFbaCombine';
 import { useFbaDetailPanel } from '@/app/fba/useFbaDetailPanel';
-import { useFbaWorkspaceUrlState } from '@/components/fba/sidebar/fba-workspace-hooks';
-import { cn } from '@/utils/_cn';
 import { FBAManagementTab } from '@/components/admin/FBAManagementTab';
 
-/** The desk MODES, as filter-option vocabulary (`mode:*` ids so Ready's merged menu can route them). */
-const FBA_MODE_OPTIONS = [
-  { id: 'mode:ready', mode: 'ready', label: 'Ready' },
-  { id: 'mode:plan', mode: 'plan', label: 'Plan' },
-  { id: 'mode:shipped', mode: 'shipped', label: 'Shipped' },
-  // Ex-Admin › Amazon Prep FNSKU catalog (admin dissolution): rows + CSV
-  // imports. A collection swap, not a status facet — same band.
-  { id: 'mode:catalog', mode: 'catalog', label: 'Catalog' },
-] as const;
-
+/**
+ * The FBA modes (Ready · Plan · Combine · Shipped · Catalog) are the page's
+ * views: the contextual sidebar paints them from `SIDEBAR_PAGE_NAV.fba` and
+ * writes `?fbaMode=`; this body only reads it.
+ */
 export function FbaOutboundWorkspace() {
   const searchParams = useSearchParams();
   useFbaRealtimeInvalidation();
 
   const activeMode = resolveFbaModeFromSearchParams(searchParams);
-  const { updateFbaParams } = useFbaWorkspaceUrlState();
   const { user } = useAuth();
   const staffId = user?.staffId ?? 0;
   const { theme: stationTheme } = useStationTheme({ staffId });
@@ -59,42 +51,6 @@ export function FbaOutboundWorkspace() {
   const combine = useFbaCombine(activeMode);
   const { detailItem, setDetailItem, handleDetailNavigate } = useFbaDetailPanel(
     weekFilter.filteredPendingItems,
-  );
-
-  const handleSelectTab = useCallback(
-    (tab: FbaMode) => {
-      updateFbaParams({ mode: tab, q: '' });
-    },
-    [updateFbaParams],
-  );
-
-  const modeFilter = useMemo(
-    () => ({
-      // Banded, because these three are not peers of the status facets they merge with:
-      options: FBA_MODE_OPTIONS.map((o) => ({
-        id: o.id,
-        group: 'Board',
-        label: o.label,
-        active: activeMode === o.mode,
-      })),
-      onToggle: (id: string) => {
-        const picked = FBA_MODE_OPTIONS.find((o) => o.id === id)?.mode;
-        if (!picked) return;
-        handleSelectTab(picked === activeMode ? 'combine' : (picked as FbaMode));
-      },
-      onClear: () => {
-        if (activeMode !== 'combine') handleSelectTab('combine');
-      },
-    }),
-    [activeMode, handleSelectTab],
-  );
-  const modeFilterBag = useMemo(
-    () => ({
-      options: modeFilter.options,
-      onToggle: modeFilter.onToggle,
-      onClearAll: modeFilter.onClear,
-    }),
-    [modeFilter],
   );
 
   const detailIdx = detailItem
@@ -125,24 +81,6 @@ export function FbaOutboundWorkspace() {
 
   return (
     <div className="relative flex h-full min-h-0 w-full flex-col">
-      {!isReady ? (
-        <div className="flex min-w-0 shrink-0 items-center gap-1 border-b border-border-soft bg-surface-card px-2 py-1">
-          {FBA_MODE_OPTIONS.map((o) => (
-            <Button
-              key={o.id}
-              type="button"
-              variant="ghost"
-              size="sm"
-              onClick={() => handleSelectTab(o.mode === activeMode ? 'combine' : o.mode)}
-              className={cn(
-                activeMode === o.mode ? 'font-medium text-text-primary' : 'text-text-muted',
-              )}
-            >
-              {o.label}
-            </Button>
-          ))}
-        </div>
-      ) : null}
       <AnimatePresence mode="wait" initial={false}>
         <motion.div
           key={activeMode}
@@ -150,7 +88,7 @@ export function FbaOutboundWorkspace() {
           className="relative flex min-h-0 min-w-0 flex-1 flex-col"
         >
           {isReady ? (
-            <ReadyWorkspaceBody modeFilter={modeFilterBag} />
+            <ReadyWorkspaceBody />
           ) : activeMode === 'catalog' ? (
             // Catalog owns its own data + sticky header; the board's
             // error/empty states do not apply to it.

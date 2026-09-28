@@ -45,7 +45,12 @@ import {
   useDeskRecordView,
 } from '@/design-system/components/DeskRecordPlane';
 import { useRecordCursor } from '@/lib/record-cursor/useRecordCursor';
-import type { OrderRecordMode } from '@/lib/selection-context/order-inspector-context';
+import {
+  VIEW_SPECS,
+  rowFactsAt,
+  type OrderListViewKey,
+} from '@/lib/views/view-specs';
+import type { OrdersFactId } from '@/lib/tables/field-catalog/orders';
 import { useRecordCursorKeyboard } from '@/hooks/useRecordCursorKeyboard';
 import { emitSelectionTotal } from '@/lib/selection/table-selection';
 import { DASHBOARD_ORDERS_SELECTION_SCOPE } from '@/lib/selection/dashboard-scopes';
@@ -64,7 +69,7 @@ import { slotTableFindHighlightId } from '@/lib/tables/slot-table-find';
 import { flattenRenderOrder, type RowGroup } from '@/lib/group-rows';
 import { ordersCompoundView } from '@/lib/orders/orders-compound-view';
 import { ordersNextStep } from '@/lib/orders/orders-next-step';
-import { resolveOrdersSlotValue } from '@/lib/tables/field-catalog/orders-resolve';
+import { resolveOrdersHoldValue, resolveOrdersSlotValue } from '@/lib/tables/field-catalog/orders-resolve';
 import { useOrderChannel } from '@/hooks/useCatalog';
 import { orderAdminUrl } from '@/utils/order-platform';
 import { orderRowQtyTone } from '@/lib/condition-tone';
@@ -88,11 +93,13 @@ import {
 } from '@/design-system/tokens/industrial-record';
 import { RecordNoteSlot } from '@/design-system/components/RecordNoteSlot';
 import { LifecycleCode } from '@/design-system/components/record-ledger/LifecycleCode';
-import { useLedgerRowZoom } from './useLedgerRowZoom';
+import { useViewDensity } from './useViewDensity';
+import { VIEW_SORT_ARRANGE } from './view-sort';
 import { OutboundOrdersLedgerToolbar } from './OutboundOrdersLedgerToolbar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/design-system/primitives/radix-popover';
 import { ModeRegion } from '@/design-system/providers/ModeRegion';
 import { OrderRecordTitle, OrderRecordView } from './OrderRecordView';
+import { OrderRecordHeaderActions } from './record-keys/OrderRecordHeaderActions';
 import { OrderRecordActionStrip, OrdersMorphingHost } from './to-ship/MorphingRowActionMenu';
 import { OrderQueueSummary, OrderQueueSummaryLine } from './OrderQueueSummary';
 import { LedgerPhotoViewer } from './outbound-orders-ledger-photos';
@@ -139,8 +146,8 @@ type LedgerItem =
     };
 
 interface OutboundOrdersLedgerProps {
-  /** The desk this ledger is — decides the open record's sections (`ORDER_RECORD_SECTIONS`). */
-  mode: OrderRecordMode;
+  /** The list view this ledger is — its spec decides the row facts, sort, empty state and the open record's sections. */
+  viewKey: OrderListViewKey;
   chrome: ToShipChrome;
   /** The queue fetch for the CURRENT find text is still running. */
   searchPending: boolean;
@@ -174,7 +181,7 @@ interface OutboundOrdersLedgerProps {
 }
 
 export function OutboundOrdersLedger({
-  mode,
+  viewKey,
   chrome,
   searchPending,
   records,
@@ -192,6 +199,7 @@ export function OutboundOrdersLedger({
   resolveRecord,
   openRecordId = null,
 }: OutboundOrdersLedgerProps) {
+  const viewSpec = VIEW_SPECS[viewKey];
   const searchValue = chrome.search.value;
   const feed = useOrdersQueueFeed({
     records,
@@ -205,9 +213,10 @@ export function OutboundOrdersLedger({
     queueMode: 'fulfillment',
     tableId: 'orders',
     surfaceId: 'pending-grid-body',
+    arrangeGroups: VIEW_SORT_ARRANGE[viewSpec.sort],
   });
   const { plane, orderGroupsByDate, displayedRecords, painted } = feed;
-  const { zoom } = useLedgerRowZoom('orders');
+  const { density: zoom } = useViewDensity(viewKey);
   // One note overlay across the whole ledger: opening a row's note closes any other.
   const [noteOpenId, setNoteOpenId] = useState<number | null>(null);
   const openNote = useCallback((orderId: number) => setNoteOpenId(orderId), []);
@@ -379,7 +388,7 @@ export function OutboundOrdersLedger({
     ],
   );
 
-  const openOrderRef = openRecord ? String(openRecord.order_id ?? '').trim() || `#${openRecord.id}` : '';
+  const openOrderRef = openRecord ? String(openRecord.order_id ?? '').trim() || String(openRecord.id) : '';
 
   return (
     <div
@@ -390,6 +399,7 @@ export function OutboundOrdersLedger({
       open={openRecord != null}
       onClose={plane.closeRecord}
       title={openRecord ? <OrderRecordTitle record={openRecord} records={displayedRecords} /> : 'Order'}
+      actions={openRecord ? <OrderRecordHeaderActions record={openRecord} records={displayedRecords} /> : undefined}
       indexLabel={cursor.available && cursor.position != null ? `${cursor.position} of ${cursor.total}` : undefined}
       recordNoun="order"
       recordKey={openId != null ? String(openId) : null}
@@ -398,12 +408,12 @@ export function OutboundOrdersLedger({
       list={
     <div data-testid="pending-grid-body" className="flex min-h-0 min-w-0 flex-1 flex-col">
       {/* ── The list anchor: the table toolbar + the open record's action strip.
-          Table-level controls only (operator 2026-09-26): search, filters,
+          Table-level controls only (operator 2026-09-26): search, sort, filters,
           views and category are view-level and live in the contextual sidebar. ── */}
       <div {...{ [DESK_RECORD_ANCHOR_ATTR]: '' }} className="flex min-w-0 shrink-0 flex-col">
       <OutboundOrdersLedgerToolbar
+        viewKey={viewKey}
         selectedCount={selectedCount}
-        sortMenu={feed.sortMenu}
         pageSize={pageSize}
         onPageSizeChange={setPageSize}
       />
@@ -414,13 +424,13 @@ export function OutboundOrdersLedger({
           placement="header"
           records={displayedRecords}
           selectedIds={plane.selectedIds}
-          mode={mode}
+          viewKey={viewKey}
         />
       ) : openRecord ? (
         <OrderRecordActionStrip
           key={openRecord.id}
           record={openRecord}
-          mode={mode}
+          viewKey={viewKey}
           checked={plane.selectedIds.has(Number(openRecord.id))}
           onToggleSelect={plane.handleToggleSelect}
           onOpenLabels={onOpenLabels}
@@ -448,8 +458,8 @@ export function OutboundOrdersLedger({
                   />
                 ) : (
                   <>
-                    <b className="text-role-body font-bold text-mode-ink">No orders to ship</b>
-                    <span className={cn(RECORD_LABEL_CLASS, 'text-mode-muted')}>Queue clear</span>
+                    <b className="text-role-body font-bold text-mode-ink">{viewSpec.empty.title}</b>
+                    <span className={cn(RECORD_LABEL_CLASS, 'text-mode-muted')}>{viewSpec.empty.detail}</span>
                   </>
                 )}
               </div>
@@ -474,6 +484,7 @@ export function OutboundOrdersLedger({
                   >
                     {item.kind === 'group' ? (
                       <LedgerGroupRecord
+                        viewKey={viewKey}
                         group={item.group}
                         state={item.state}
                         folded={item.folded}
@@ -486,6 +497,7 @@ export function OutboundOrdersLedger({
                       />
                     ) : (
                       <LedgerRecord
+                        viewKey={viewKey}
                         record={item.record}
                         state={item.state}
                         zoom={zoom}
@@ -536,7 +548,7 @@ export function OutboundOrdersLedger({
     >
       {openRecord ? (
         <OrderRecordView
-          mode={mode}
+          viewKey={viewKey}
           record={openRecord}
           records={displayedRecords}
           todayKey={feed.todayKey}
@@ -583,6 +595,7 @@ function groupStage(
 }
 
 const LedgerGroupRecord = memo(function LedgerGroupRecord({
+  viewKey,
   group,
   state,
   folded,
@@ -593,6 +606,7 @@ const LedgerGroupRecord = memo(function LedgerGroupRecord({
   getStaffName,
   commits,
 }: {
+  viewKey: OrderListViewKey;
   group: RowGroup<ShippedOrder>;
   state: LifecycleState;
   folded: boolean;
@@ -619,6 +633,9 @@ const LedgerGroupRecord = memo(function LedgerGroupRecord({
   const next = ordersNextStep(worst);
   const pick = groupStage(group.rows, 'orders.picked', getStaffName);
   const pack = groupStage(group.rows, 'orders.packed', getStaffName);
+  const shows = new Set<OrdersFactId>(rowFactsAt(viewKey, zoom));
+  // A view whose primary verb is Resolve works line by line; the order band carries no next step.
+  const paintsNextStep = VIEW_SPECS[viewKey].verbs.primary !== 'resolve';
 
   return (
     <div
@@ -689,6 +706,7 @@ const LedgerGroupRecord = memo(function LedgerGroupRecord({
         <span className="flex min-w-0 flex-1 items-center overflow-hidden">
           <LedgerCustomerFace customer={lead.customer ?? null} />
         </span>
+        {shows.has('orders.picked') ? (
         <span className="h-full w-32 shrink-0">
           <LedgerStageAssign
             verb="Pick"
@@ -703,6 +721,8 @@ const LedgerGroupRecord = memo(function LedgerGroupRecord({
             }}
           />
         </span>
+        ) : null}
+        {shows.has('orders.packed') ? (
         <span className="h-full w-32 shrink-0">
           <LedgerStageAssign
             verb="Pack"
@@ -717,7 +737,8 @@ const LedgerGroupRecord = memo(function LedgerGroupRecord({
             }}
           />
         </span>
-        <LedgerNextStep next={next} />
+        ) : null}
+        {paintsNextStep ? <LedgerNextStep next={next} /> : null}
       </div>
     </div>
   );
@@ -735,6 +756,75 @@ function LedgerNextStep({ next }: { next: { label: string; tip?: string; blocked
       )}
     >
       {next?.label ?? ''}
+    </span>
+  );
+}
+
+/** The Exceptions row's primary verb: open the record, whose main column leads with the pairing form. */
+function LedgerResolve({ onResolve }: { onResolve: () => void }) {
+  return (
+    <button
+      type="button"
+      data-testid="ledger-resolve"
+      onClick={(event) => {
+        event.stopPropagation();
+        onResolve();
+      }}
+      onPointerDown={stop}
+      className={cn(
+        'ds-raw-button pointer-events-auto flex h-full w-32 shrink-0 items-center border-l border-mode-seam px-2 text-mode-ink hover:bg-mode-hover',
+        RECORD_LABEL_CLASS,
+        focusRing('cell'),
+      )}
+    >
+      → Resolve
+    </button>
+  );
+}
+
+/** Why the order is held (`orders.hold_reason`) — the lead cell of a held row. */
+function LedgerHoldReason({ record }: { record: ShippedOrder }) {
+  const value = resolveOrdersHoldValue(record, 'orders.hold_reason');
+  if (value?.kind !== 'hold-reason') return null;
+  return (
+    <span
+      data-testid="ledger-hold-reason"
+      title={`${value.category} · ${value.owner}`}
+      className={cn(RECORD_LABEL_CLASS, 'flex h-full min-w-0 items-center truncate px-2 text-mode-warn')}
+    >
+      {value.category}
+    </span>
+  );
+}
+
+/** What is missing and the one action that releases it (`orders.hold_fix`). */
+function LedgerHoldFix({ record, className }: { record: ShippedOrder; className?: string }) {
+  const value = resolveOrdersHoldValue(record, 'orders.hold_fix');
+  if (value?.kind !== 'hold-fix') return null;
+  const missing = value.missing.join(' · ');
+  return (
+    <span
+      data-testid="ledger-hold-fix"
+      title={[missing, value.action].filter(Boolean).join(' — ')}
+      className={cn('flex min-w-0 items-baseline gap-2 overflow-hidden', className)}
+    >
+      {missing ? <span className="min-w-0 truncate text-role-data text-mode-ink">{missing}</span> : null}
+      <span className={cn(RECORD_LABEL_CLASS, 'min-w-0 shrink-[2] truncate text-mode-muted')}>{value.action}</span>
+    </span>
+  );
+}
+
+/** How many held orders the one fix releases (`orders.hold_releases`). */
+function LedgerHoldReleases({ record }: { record: ShippedOrder }) {
+  const value = resolveOrdersHoldValue(record, 'orders.hold_releases');
+  if (value?.kind !== 'hold-releases') return null;
+  return (
+    <span
+      data-testid="ledger-hold-releases"
+      className={cn(RECORD_LABEL_CLASS, 'w-32 shrink-0 truncate', value.count > 1 ? 'text-mode-ink' : 'text-mode-muted')}
+    >
+      <span className={RECORD_FACT_KEY_CLASS}>Releases </span>
+      {value.face}
     </span>
   );
 }
@@ -841,6 +931,7 @@ function LedgerNoteEditor({
 // ── One record ──────────────────────────────────────────────────────────────
 
 interface LedgerRecordProps {
+  viewKey: OrderListViewKey;
   record: ShippedOrder;
   state: LifecycleState;
   zoom: LedgerRowZoom;
@@ -858,6 +949,7 @@ interface LedgerRecordProps {
 }
 
 const LedgerRecord = memo(function LedgerRecord({
+  viewKey,
   record,
   state,
   zoom,
@@ -980,6 +1072,17 @@ const LedgerRecord = memo(function LedgerRecord({
   // The buyer, from the customer book (`/api/orders` joins it), in band 1's free span; S has no free span, so it reads in the order record only.
   const customerFace = <LedgerCustomerFace customer={record.customer ?? null} />;
 
+  // The view spec picks the facts; the bands below only place them.
+  const viewSpec = VIEW_SPECS[viewKey];
+  const shows = new Set<OrdersFactId>(rowFactsAt(viewKey, zoom));
+  const leadCells: Partial<Record<OrdersFactId, ReactNode>> = {
+    'orders.fulfill_by': shipBy,
+    'orders.hold_reason': <LedgerHoldReason record={record} />,
+  };
+  const leadCell = leadCells[viewSpec.lead] ?? null;
+  const primaryCell =
+    viewSpec.verbs.primary === 'resolve' ? <LedgerResolve onResolve={() => onRowAction(record)} /> : <LedgerNextStep next={next} />;
+
   return (
     <div
       data-order-row-id={record.id}
@@ -1078,18 +1181,22 @@ const LedgerRecord = memo(function LedgerRecord({
           )}
         >
           <span className="pointer-events-auto">{check}</span>
-          <span className="pointer-events-auto w-20 shrink-0">{condition}</span>
+          {shows.has('orders.condition') ? <span className="pointer-events-auto w-20 shrink-0">{condition}</span> : null}
           {code}
           {noteSlot}
-          {locationFace}
+          {shows.has('orders.bin') ? locationFace : null}
           <span className="pointer-events-auto">{orderChip}</span>
           <span className={cn(RECORD_TITLE_CLASS, 'flex-1')}>{view.title || '—'}</span>
-          <span className={cn(RECORD_LABEL_CLASS, 'w-14 shrink-0 text-right', orderRowQtyTone(qtyFace))}>
-            Qty {qtyFace}
-          </span>
-          <span className="pointer-events-auto w-28 shrink-0">{shipBy}</span>
-          <span className="pointer-events-auto w-32 shrink-0">{pick}</span>
-          <span className="pointer-events-auto w-32 shrink-0">{pack}</span>
+          {shows.has('orders.qty') ? (
+            <span className={cn(RECORD_LABEL_CLASS, 'w-14 shrink-0 text-right', orderRowQtyTone(qtyFace))}>
+              Qty {qtyFace}
+            </span>
+          ) : null}
+          <span className="pointer-events-auto w-28 shrink-0">{leadCell}</span>
+          {shows.has('orders.hold_fix') ? <LedgerHoldFix record={record} className="w-56 shrink-0" /> : null}
+          {shows.has('orders.hold_releases') ? <LedgerHoldReleases record={record} /> : null}
+          {shows.has('orders.picked') ? <span className="pointer-events-auto w-32 shrink-0">{pick}</span> : null}
+          {shows.has('orders.packed') ? <span className="pointer-events-auto w-32 shrink-0">{pack}</span> : null}
         </div>
       ) : (
         <div className="pointer-events-none relative z-10 flex min-w-0 flex-1 flex-col">
@@ -1108,23 +1215,27 @@ const LedgerRecord = memo(function LedgerRecord({
               <RecordPlatformFace channel={channel} />
               <span className="pointer-events-auto">{orderChip}</span>
             </span>
-            <span className="flex min-w-0 flex-1 items-center">{customerFace}</span>
-            <span className="pointer-events-auto h-full shrink-0">
-              <LedgerListingLink href={view.titleHref ?? null} itemNumber={record.item_number ?? null} />
-            </span>
-            <span className="cf-section-rule pointer-events-auto h-full w-32 shrink-0 border-l border-mode-seam">{shipBy}</span>
+            <span className="flex min-w-0 flex-1 items-center">{shows.has('orders.customer') ? customerFace : null}</span>
+            {shows.has('orders.item_number') ? (
+              <span className="pointer-events-auto h-full shrink-0">
+                <LedgerListingLink href={view.titleHref ?? null} itemNumber={record.item_number ?? null} />
+              </span>
+            ) : null}
+            <span className="cf-section-rule pointer-events-auto h-full w-32 shrink-0 border-l border-mode-seam">{leadCell}</span>
           </div>
           {/* Band 2 — identity: what it is ··· how many (the labour multiplier). */}
           <div className={cn('flex min-w-0 items-center gap-3 border-b border-mode-rule pl-2', LEDGER_BAND_CLASS[zoom])}>
             <span className={cn(RECORD_TITLE_CLASS, 'flex-1')} title={view.title || undefined}>
               {view.title || '—'}
             </span>
-            <span className="cf-section-rule pointer-events-auto h-full w-32 shrink-0 border-l border-mode-seam">
-              <LedgerQty
-                value={qtyFace}
-                onCommit={(value) => commits.handleCommitSubtitleField(record, 'orders.qty', value)}
-              />
-            </span>
+            {shows.has('orders.qty') ? (
+              <span className="cf-section-rule pointer-events-auto h-full w-32 shrink-0 border-l border-mode-seam">
+                <LedgerQty
+                  value={qtyFace}
+                  onCommit={(value) => commits.handleCommitSubtitleField(record, 'orders.qty', value)}
+                />
+              </span>
+            ) : null}
           </div>
           {/*
  * Band 3 — execution:
@@ -1132,8 +1243,12 @@ const LedgerRecord = memo(function LedgerRecord({
  */}
           <div className={cn('flex min-w-0 items-center gap-3', LEDGER_BAND_CLASS[zoom])}>
             <span className={cn(LEDGER_LEAD_CLASS, 'pl-2')}>
-              <span className="pointer-events-auto w-20 shrink-0">{condition}</span>
-              <LedgerLocation path={bin.path} source={bin.source} className="min-w-0 flex-1" />
+              {shows.has('orders.condition') ? <span className="pointer-events-auto w-20 shrink-0">{condition}</span> : null}
+              {shows.has('orders.bin') ? (
+                <LedgerLocation path={bin.path} source={bin.source} className="min-w-0 flex-1" />
+              ) : null}
+              {/* A held row's execution lead is its fix — on the column condition · bin hold on a work row. */}
+              {shows.has('orders.hold_fix') ? <LedgerHoldFix record={record} className="flex-1" /> : null}
             </span>
             <span
               className={cn(RECORD_ID_CLASS, 'w-44 min-w-0 shrink truncate text-mode-ink')}
@@ -1143,9 +1258,10 @@ const LedgerRecord = memo(function LedgerRecord({
               {view.detail?.sku ?? '—'}
             </span>
             <span className="min-w-0 flex-1" aria-hidden />
-            <span className="pointer-events-auto w-32 shrink-0">{pick}</span>
-            <span className="pointer-events-auto w-32 shrink-0">{pack}</span>
-            <LedgerNextStep next={next} />
+            {shows.has('orders.hold_releases') ? <LedgerHoldReleases record={record} /> : null}
+            {shows.has('orders.picked') ? <span className="pointer-events-auto w-32 shrink-0">{pick}</span> : null}
+            {shows.has('orders.packed') ? <span className="pointer-events-auto w-32 shrink-0">{pack}</span> : null}
+            {primaryCell}
           </div>
         </div>
       )}

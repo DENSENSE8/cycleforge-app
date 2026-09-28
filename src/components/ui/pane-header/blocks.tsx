@@ -39,7 +39,7 @@ interface PaneHeaderLabelProps {
 }
 
 export const paneHeaderLabelEyebrowClass =
-  'text-role-eyebrow uppercase tracking-widest text-text-faint';
+  'text-role-eyebrow text-text-faint';
 
 export const paneHeaderLabelValueClass =
   'truncate text-sm font-semibold tracking-tight text-text-default';
@@ -66,7 +66,7 @@ export function PaneHeaderLabel({
 // Single bold title — matches the WeekHeader "today" / sticky-date display.
 
 const paneHeaderHighContrastTitleClass =
-  'text-sm font-semibold uppercase tracking-widest text-text-default';
+  'text-sm font-semibold text-text-default';
 
 interface PaneHeaderTitleProps {
   children: ReactNode;
@@ -206,7 +206,7 @@ export function PaneHeaderStatusPill({
   return (
     <span
       className={cn(
-        'inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-role-micro uppercase tracking-widest ring-1 ring-inset',
+        'inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-role-micro ring-1 ring-inset',
         STATUS_TONE_CLASS[tone],
         className,
       )}
@@ -357,7 +357,7 @@ interface PaneHeaderActionBarProps {
 }
 
 const PANE_HEADER_ACTION_BTN_CLASS =
-  'inline-flex h-7 items-center gap-1 rounded-md px-1.5 text-role-micro uppercase tracking-widest text-text-soft transition-colors hover:bg-surface-hover hover:text-text-default disabled:cursor-not-allowed disabled:opacity-40';
+  'inline-flex h-7 items-center gap-1 rounded-md px-1.5 text-role-micro text-text-soft transition-colors hover:bg-surface-hover hover:text-text-default disabled:cursor-not-allowed disabled:opacity-40';
 
 const PANE_HEADER_ACTION_NAV_CLASS =
   'inline-flex h-7 w-7 items-center justify-center rounded-md text-text-soft transition-colors hover:bg-surface-hover hover:text-text-default disabled:cursor-not-allowed disabled:opacity-40';
@@ -422,7 +422,7 @@ export function PaneHeaderActionBar({
       ))}
       {status != null ? (
         <span
-          className="text-role-eyebrow uppercase tracking-[0.18em] text-blue-600"
+          className="text-role-eyebrow text-blue-600"
           aria-live="polite"
         >
           {status}
@@ -556,7 +556,7 @@ export function PaneHeaderPagination({
         className={TOOLBAR_LISTBOX_PANEL_CLASS}
       >
         <div className="min-w-[11rem] px-2.5 py-2">
-          <p className="text-role-eyebrow uppercase tracking-widest text-text-faint">Showing</p>
+          <p className="text-role-eyebrow text-text-faint">Showing</p>
           <p className="mt-0.5 tabular-nums text-role-caption font-semibold text-text-default">
             {total > 0 ? (
               <>
@@ -578,7 +578,7 @@ export function PaneHeaderPagination({
                 icon={<ChevronLeft className="h-3.5 w-3.5" />}
               />
             </HoverTooltip>
-            <span className="tabular-nums text-role-eyebrow uppercase tracking-wider text-text-soft">
+            <span className="tabular-nums text-role-eyebrow text-text-soft">
               <span className="text-text-default">{safePage}</span>
               <span className="text-text-faint"> / {totalPages}</span>
             </span>

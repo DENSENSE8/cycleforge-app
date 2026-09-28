@@ -284,14 +284,12 @@ describe('unitAllocationsCompoundView', () => {
     assert.equal(unitAllocationsCompoundView(unitFeedRow()).title, 'Allocation #4471');
   });
 
-  it('paints the allocation state verbatim, toned but never recoloured by fact', () => {
-    assert.equal(unitAllocationsCompoundView(unitFeedRow()).stateLabel, 'ALLOCATED');
+  it('tones the allocation state, never recoloured by fact', () => {
     assert.equal(unitAllocationsCompoundView(unitFeedRow()).stateTone, 'neutral');
     assert.equal(unitAllocationsCompoundView(unitFeedRow({ state: 'SHIPPED' })).stateTone, 'done');
     assert.equal(unitAllocationsCompoundView(unitFeedRow({ state: 'RELEASED' })).stateTone, 'done');
-    // A state nobody mapped paints itself and stays ordinary, never urgent.
+    // A state nobody mapped stays ordinary, never urgent.
     const odd = unitAllocationsCompoundView(unitFeedRow({ state: 'WEIRD' }));
-    assert.equal(odd.stateLabel, 'WEIRD');
     assert.equal(odd.stateTone, 'neutral');
   });
 

@@ -79,7 +79,7 @@ function RelatedSignalsStrip({
   return (
     <Link
       href={operationsSignalsBrowseHref({ entityType, entityId })}
-      className="inline-flex items-center gap-1 rounded bg-amber-50 px-2 py-0.5 text-role-eyebrow uppercase tracking-widest text-amber-700 ring-1 ring-inset ring-amber-200 transition hover:bg-amber-100"
+      className="inline-flex items-center gap-1 rounded bg-amber-50 px-2 py-0.5 text-role-eyebrow text-amber-700 ring-1 ring-inset ring-amber-200 transition hover:bg-amber-100"
     >
       {count === 20 ? '20+' : count} signal{count === 1 ? '' : 's'} →
     </Link>
@@ -173,13 +173,13 @@ export function OperationsHistoryView() {
                       icon={<X />}
                       onClick={() => url.setEntity('')}
                       ariaLabel="Clear record"
-                      className="text-role-eyebrow uppercase tracking-widest text-text-faint hover:text-text-muted"
+                      className="text-role-eyebrow text-text-faint hover:text-text-muted"
                     >
                       Clear
                     </Button>
                   </>
                 ) : (
-                  <p className="text-role-eyebrow uppercase tracking-widest text-text-soft">
+                  <p className="text-role-eyebrow text-text-soft">
                     {region === 'browse'
                       ? 'Recent operations — filter in the sidebar or open a record'
                       : 'Paste a record number to begin'}

@@ -240,7 +240,7 @@ export function ClaimTemplateEditor({
                 variant="ghost"
                 size="sm"
                 onClick={handleResetTemplate}
-                className="h-auto shrink-0 rounded-none px-0 py-0 text-role-eyebrow font-semibold uppercase tracking-[0.14em] text-text-faint hover:bg-transparent hover:text-text-default"
+                className="h-auto shrink-0 rounded-none px-0 py-0 text-role-eyebrow font-semibold text-text-faint hover:bg-transparent hover:text-text-default"
               >
                 Reset to template
               </Button>

@@ -12,7 +12,7 @@ import {
 import { unwrapScannedSerial } from '@/lib/barcode-routing';
 import { safeRandomUUID } from '@/lib/safe-uuid';
 import { refreshDomains } from '@/lib/refresh/bus';
-import { playVerdictCue } from '@/lib/scan-feedback/play';
+import { useScanFeedback } from '@/lib/scan-feedback/useScanFeedback';
 // Type-only — the SoT enum lives in a server module (`'server-only'`).
 import type { WipeMethod } from '@/lib/tech/recordDataWipe';
 
@@ -48,6 +48,8 @@ export function useDataWipeController() {
   const [wipeMethod, setWipeMethod] = useState<WipeMethod>(DEFAULT_METHOD);
   const [outcome, setOutcome] = useState<WipeOutcome | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  // The verdict's non-visual cue (station.md §6), behind the station-wide scan-feedback switches.
+  const { playScanFeedback } = useScanFeedback();
 
   const inputRef = useRef<HTMLInputElement>(null);
   // One idempotency key per scanned unit; the verdict POST reuses it so a
@@ -168,7 +170,7 @@ export function useDataWipeController() {
 
         const kind: WipeOutcome['kind'] = success ? 'wiped' : 'failed';
         setOutcome({ kind, method: wipeMethod, idempotent: Boolean(data.idempotent), unit });
-        playVerdictCue(kind === 'wiped' ? 'pass' : 'fail');
+        playScanFeedback(kind === 'wiped' ? 'success' : 'reject');
         refreshDomains(['receiving.lines']);
       } catch {
         setErrorMessage('Network error recording the wipe. Try again.');
@@ -177,7 +179,7 @@ export function useDataWipeController() {
         focusInput();
       }
     },
-    [activeUnit, submittingVerdict, wipeMethod, focusInput],
+    [activeUnit, submittingVerdict, wipeMethod, focusInput, playScanFeedback],
   );
 
   return {

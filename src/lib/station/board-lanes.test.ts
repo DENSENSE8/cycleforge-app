@@ -30,7 +30,7 @@ test('tech lanes: FBA wins over day banding; else today vs this-week', () => {
   assert.equal(bucketTechHistoryLane({ created_at: EARLIER, account_source: 'ebay' }, TODAY), 'THIS_WEEK');
 });
 
-test('tech FBA predicate matches isFbaTechRecord shape', () => {
+test('tech FBA predicate matches isFbaDeskPickRecord shape', () => {
   assert.equal(isFbaTechLaneRow({ source_kind: 'fba_scan' }), true);
   assert.equal(isFbaTechLaneRow({ account_source: 'fba' }), true);
   assert.equal(isFbaTechLaneRow({ fnsku: ' X001 ' }), true);

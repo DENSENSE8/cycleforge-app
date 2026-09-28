@@ -15,25 +15,20 @@ import {
   ordersSearchTrackingKey18,
 } from '@/lib/orders/orders-search';
 import { SHIPPED_BY_CARRIER_SQL } from '@/lib/sql-fragments';
+import { PICKUP_FULFILLMENT_CHANNEL } from '@/lib/orders/release-gates';
 import { listingCoverThumbUrlSql } from '@/lib/photos/listing-photos';
 import { customerDisplayJsonSql } from '@/lib/customers/customer-display';
 import {
   DOCK_STAGING_LATERAL,
-  PICK_FACTS_LATERALS,
   PREBOX_FACTS_LATERAL,
   PREBOX_FACTS_SELECT,
   PRICE_FACTS_LATERALS,
   SHIP_OUT_LATERAL,
-  WA_PICK_LATERAL,
-  WA_PICK_SELECT,
 } from '@/lib/neon/orders-queries';
 import { resolveLinePrice } from '@/lib/orders/price-resolve';
 import { PACK_ACTIVITY_TYPES, sqlInList } from '@/lib/station-activity';
-import {
-  sqlOrderHasPackScan,
-  sqlOrderHasShipConfirm,
-  sqlOrderHasPickScan,
-} from '@/lib/orders/order-grain-sql';
+import { sqlOrderHasShipConfirm } from '@/lib/orders/order-grain-sql';
+import { ORDER_STAGE_FACTS_JOIN, ORDER_STAGE_FACTS_SIGNALS } from '@/lib/orders/order-stage-facts';
 import { WAREHOUSE_TIME_ZONE } from '@/utils/date';
 import {
   WA_TEST_DEADLINE_RANK_ORDER_SQL,
@@ -122,20 +117,16 @@ export interface OrdersListSchema {
   hasReplenishment: boolean;
 }
 
-/* Laterals the list projection AND the search prefilter (`search_hits`) join:
- * the search predicate reads their aliases, so both sides must see one text. */
-const WA_PACK_LATERAL = `LEFT JOIN LATERAL (
-      SELECT wa.assigned_packer_id
-        FROM work_assignments wa
-       WHERE wa.organization_id = o.organization_id
-         AND wa.entity_type = 'ORDER'
-         AND wa.entity_id = o.id
-         AND wa.work_type = 'PACK'
-         AND wa.assigned_packer_id IS NOT NULL
-         AND wa.status <> 'CANCELED'
-       ORDER BY wa.updated_at DESC, wa.id DESC
-       LIMIT 1
-    ) wa_p ON TRUE`;
+/* Joins the list projection AND the search prefilter (`search_hits`) share:
+ * the search predicate reads their aliases, so both sides must see one text.
+ * Stage facts (pick / QC / pack actors and assignees) are one primary-key row
+ * of `order_stage_facts`, kept by refreshOrderStageFacts. */
+const STAGE_STAFF_JOINS = `${ORDER_STAGE_FACTS_JOIN}
+    LEFT JOIN staff staff_picker
+      ON staff_picker.id = osf.picker_id
+     AND staff_picker.organization_id = o.organization_id
+    LEFT JOIN staff staff_packed_by ON staff_packed_by.id = osf.packed_by
+    LEFT JOIN staff staff_pack_assignee ON staff_pack_assignee.id = osf.packer_id`;
 const SS_REF_LATERAL = `LEFT JOIN LATERAL (
       SELECT ssr.ship_to
         FROM shipstation_order_refs ssr
@@ -209,64 +200,12 @@ export function buildOrdersListSql(
       '[]'::json AS tracking_number_rows,`
     : `COALESCE(order_trackings.tracking_numbers, '[]'::json) AS tracking_numbers,
       COALESCE(order_trackings.tracking_number_rows, '[]'::json) AS tracking_number_rows,`;
-  // Pack facts are per-order LATERAL probes keyed by the order's shipment and
-  // organization (idx_packer_logs_completed_shipment,
-  // idx_station_activity_logs_shipment_id). They were whole-table CTEs with no
-  // organization filter — every list read aggregated every tenant's packer_logs
-  // and PACK scans, and pack_duration alone nested-looped for ~0.8 s of a 2.6 s
-  // read (2026-09-27). Assignment facts are per-order LATERAL probes on
-  // work_assignments for the same reason (phase0-findings §2.8).
-  const packLaterals = `
-    LEFT JOIN LATERAL (
-      SELECT pl.id AS packer_log_id, pl.created_at AS packed_at, pl.packed_by
-      FROM packer_logs pl
-      WHERE o.shipment_id IS NOT NULL
-        AND pl.organization_id = o.organization_id
-        AND pl.shipment_id = o.shipment_id
-        AND pl.completion_state = 'COMPLETED'
-      ORDER BY pl.created_at DESC NULLS LAST, pl.id DESC
-      LIMIT 1
-    ) pl_latest ON TRUE
-    LEFT JOIN LATERAL (
-      SELECT sal.created_at, sal.staff_id
-      FROM station_activity_logs sal
-      WHERE o.shipment_id IS NOT NULL
-        AND sal.shipment_id = o.shipment_id
-        AND sal.organization_id = o.organization_id
-        AND sal.station = 'PACK'
-        AND sal.activity_type IN (${sqlInList(PACK_ACTIVITY_TYPES)})
-      ORDER BY sal.created_at DESC NULLS LAST, sal.id DESC
-      LIMIT 1
-    ) pack_activity ON TRUE`;
-  const packFollowLaterals = `
-    LEFT JOIN LATERAL (
-      SELECT MIN(sal.created_at) AS created_at
-      FROM station_activity_logs sal
-      WHERE pack_activity.staff_id IS NOT NULL
-        AND pack_activity.created_at IS NOT NULL
-        AND sal.shipment_id = o.shipment_id
-        AND sal.organization_id = o.organization_id
-        AND sal.station = 'PACK'
-        AND sal.activity_type IN (${sqlInList(PACK_ACTIVITY_TYPES)})
-        AND sal.staff_id = pack_activity.staff_id
-        AND sal.created_at > pack_activity.created_at
-    ) next_pack_activity ON TRUE
-    LEFT JOIN LATERAL (
-      SELECT CASE
-          WHEN MIN(sal.created_at) IS NOT NULL AND MAX(sal.created_at) > MIN(sal.created_at)
-          THEN LPAD((EXTRACT(EPOCH FROM (MAX(sal.created_at) - MIN(sal.created_at)))::int / 60)::text, 2, '0')
-               || ':' ||
-               LPAD((EXTRACT(EPOCH FROM (MAX(sal.created_at) - MIN(sal.created_at)))::int % 60)::text, 2, '0')
-          ELSE NULL
-        END AS duration
-      FROM station_activity_logs sal
-      WHERE pack_activity.created_at IS NOT NULL
-        AND sal.shipment_id = o.shipment_id
-        AND sal.organization_id = o.organization_id
-        AND sal.station = 'PACK'
-        AND sal.activity_type IN (${sqlInList(PACK_ACTIVITY_TYPES)})
-        AND (pack_activity.staff_id IS NULL OR sal.staff_id = pack_activity.staff_id)
-    ) pack_duration ON TRUE`;
+  // Full shape only: columns no queue surface (To-ship cards, quick look,
+  // record, /m/pick) reads — the single-row / full-list readers keep them.
+  const fullShapeOnlySelect = queueShape
+    ? ''
+    : `stn.estimated_delivery_at::text AS estimated_delivery_at,
+      o.tracking_added_at::text AS tracking_added_at,`;
   let sql = `
     SELECT
       o.id,
@@ -337,35 +276,38 @@ export function buildOrdersListSql(
       stn.carrier,
       stn.latest_event_at::text AS latest_event_at,
       stn.has_exception,
+      ${fullShapeOnlySelect}
+      stn.delivered_at::text AS delivered_at,
       stn.exception_at::text AS exception_at,
       stn.is_terminal,
       ${shippedByCarrierOrLatestStatusSql} AS is_shipped,
       to_char(timezone('America/Los_Angeles', o.created_at), 'YYYY-MM-DD HH24:MI:SS') AS created_at,
-      o.tracking_added_at::text AS tracking_added_at,
       o.label_printed_at::text  AS label_printed_at,
-      ${WA_PICK_SELECT},
-      wa_p.assigned_packer_id AS packer_id,
-      pl_latest.packer_log_id,
-      pl_latest.packed_at,
-      COALESCE(pack_activity.staff_id, pl_latest.packed_by) AS packed_by,
-      to_char(pack_activity.created_at, 'YYYY-MM-DD HH24:MI:SS') AS pack_activity_at,
-      to_char(next_pack_activity.created_at, 'YYYY-MM-DD HH24:MI:SS') AS next_pack_activity_at,
+      osf.picker_id            AS picker_id,
+      staff_picker.name        AS picker_name,
+      staff_picker.color_hex   AS picker_color_hex,
+      osf.packer_id            AS packer_id,
+      osf.packer_log_id,
+      osf.packed_at,
+      osf.packed_by,
+      to_char(osf.pack_activity_at, 'YYYY-MM-DD HH24:MI:SS') AS pack_activity_at,
       to_char(dock_stage.dock_staged_at, 'YYYY-MM-DD HH24:MI:SS') AS dock_staged_at,
       allocation_facts.storage_locations,
       allocation_facts.allocated_unit_count,
       allocation_facts.picked_unit_count,
       sku_home.location AS sku_home_location,
       sku_on_hand.on_hand AS sku_stock_on_hand,
-      pack_duration.duration AS pack_duration,
       /*
        * QC is a UNIT fact: the latest bench verdict (testing_results) on a
        * unit allocated to this order. Never a station scan — the Picker
        * desk's scan is the pick below, and no row feeds both stages.
        */
-      qc.tested_by AS tested_by,
-      to_char(qc.created_at, 'YYYY-MM-DD HH24:MI:SS') AS test_activity_at,
-      qc.verdict AS qc_verdict,
-      COALESCE(qc.created_at < o.created_at, false) AS qc_inherited,
+      osf.qc_by AS tested_by,
+      to_char(osf.qc_at, 'YYYY-MM-DD HH24:MI:SS') AS test_activity_at,
+      osf.qc_verdict AS qc_verdict,
+      COALESCE(osf.qc_inherited, false) AS qc_inherited,
+      qc_assign.assigned_tech_id AS qc_assignee_id,
+      staff_qc_assignee.name     AS qc_assignee_name,
       COALESCE((
         SELECT STRING_AGG(tsn.serial_number, ',' ORDER BY tsn.created_at)
         FROM tech_serial_numbers tsn
@@ -390,19 +332,11 @@ export function buildOrdersListSql(
       staff_qc.name            AS tested_by_name,
       staff_pack_assignee.name AS packer_name,
       staff_packed_by.name     AS packed_by_name,
-      /*
-       * Pick facts — THIRD copy of this projection, for the reason stated at
-       * the row-flag block above: this is the live path the To-ship / Pending
-       * grid fetches, and a fact added only to ORDER_SERIALS_CTE never reaches
-       * it. The laterals themselves are imported, not re-typed, so the three
-       * readers cannot disagree about what a pick is.
-       */
-      COALESCE(pick_alloc.picked_by, pick_sess.picked_by, pick_scan.picked_by) AS picked_by,
+      /* Pick facts: allocation pick event › picking session › Picker-desk scan
+       * (PICK_FACTS_LATERALS, materialized on the facts row). */
+      osf.picked_by AS picked_by,
       s_picked.name AS picked_by_name,
-      to_char(
-        COALESCE(pick_alloc.picked_at, pick_sess.picked_at, pick_scan.picked_at),
-        'YYYY-MM-DD HH24:MI:SS'
-      ) AS picked_at,
+      to_char(osf.picked_at, 'YYYY-MM-DD HH24:MI:SS') AS picked_at,
       /*
        * Dock scan-out. The field catalog documented this column as "dashes
        * honestly on a feed that does not stamp it yet" — this is that feed,
@@ -414,7 +348,7 @@ export function buildOrdersListSql(
       shipped_out_staff.name  AS shipped_out_by_name,
       ${PREBOX_FACTS_SELECT},
       staff_pack_assignee.color_hex AS packer_color_hex,
-      ${sqlOrderHasPickScan('o')} AS has_pick_scan,
+      ${ORDER_STAGE_FACTS_SIGNALS.hasPickScan} AS has_pick_scan,
       opp.location_id AS pack_location_id,
       COALESCE(NULLIF(BTRIM(loc_pack.display_name), ''), loc_pack.name) AS pack_location_name,
       loc_pack.location_kind AS pack_location_kind,
@@ -481,9 +415,7 @@ export function buildOrdersListSql(
        ORDER BY ${WA_TEST_DEADLINE_RANK_ORDER_SQL('wa')}
        LIMIT 1
     ) wa_deadline ON TRUE
-    ${WA_PACK_LATERAL}
-    ${packLaterals}
-    ${packFollowLaterals}
+    ${STAGE_STAFF_JOINS}
     LEFT JOIN shipping_tracking_numbers stn ON stn.id = o.shipment_id
     LEFT JOIN customers cust
       ON cust.id = o.customer_id AND cust.organization_id = o.organization_id
@@ -570,24 +502,34 @@ export function buildOrdersListSql(
        WHERE stock.organization_id = o.organization_id
          AND stock.sku = CASE WHEN sc.sku IS NOT NULL THEN sc.sku ELSE o.sku END
     ) sku_on_hand ON TRUE
-    ${PICK_FACTS_LATERALS}
-    ${WA_PICK_LATERAL}
-    /* Latest bench verdict on any unit allocated to this order (org-scoped). */
-    LEFT JOIN LATERAL (
-      SELECT tr.tested_by, tr.verdict, tr.created_at
-        FROM order_unit_allocations qc_oua
-        JOIN testing_results tr
-          ON tr.serial_unit_id  = qc_oua.serial_unit_id
-         AND tr.organization_id = qc_oua.organization_id
-       WHERE qc_oua.order_id        = o.id
-         AND qc_oua.organization_id = o.organization_id
-         AND qc_oua.state <> 'RELEASED'
-       ORDER BY tr.created_at DESC, tr.id DESC
-       LIMIT 1
-    ) qc ON TRUE
+    LEFT JOIN staff s_picked ON s_picked.id = osf.picked_by
     LEFT JOIN staff staff_qc
-      ON staff_qc.id = qc.tested_by
+      ON staff_qc.id = osf.qc_by
      AND staff_qc.organization_id = o.organization_id
+    /* QC assignee: receiving_line_testing.assigned_tech_id of the ORIGIN receiving
+     * line of a unit live-allocated to this order (org-scoped). QC is unit work,
+     * assigned on the line the unit was received on. */
+    LEFT JOIN LATERAL (
+      SELECT rlt.assigned_tech_id
+        FROM order_unit_allocations qa_oua
+        JOIN serial_unit_provenance qa_p
+          ON qa_p.serial_unit_id  = qa_oua.serial_unit_id
+         AND qa_p.organization_id = qa_oua.organization_id
+         AND qa_p.origin_type     = 'RECEIVING_LINE'
+         AND qa_p.origin_id IS NOT NULL
+        JOIN receiving_line_testing rlt
+          ON rlt.receiving_line_id = qa_p.origin_id
+         AND rlt.organization_id   = qa_oua.organization_id
+       WHERE qa_oua.order_id        = o.id
+         AND qa_oua.organization_id = o.organization_id
+         AND qa_oua.state NOT IN ('RELEASED', 'RETURNED')
+         AND rlt.assigned_tech_id IS NOT NULL
+       ORDER BY qa_oua.allocated_at DESC, qa_oua.id DESC
+       LIMIT 1
+    ) qc_assign ON TRUE
+    LEFT JOIN staff staff_qc_assignee
+      ON staff_qc_assignee.id = qc_assign.assigned_tech_id
+     AND staff_qc_assignee.organization_id = o.organization_id
     ${SHIP_OUT_LATERAL}
     ${PREBOX_FACTS_LATERAL}
     ${DOCK_STAGING_LATERAL}
@@ -646,8 +588,6 @@ export function buildOrdersListSql(
       ) t
     ) order_trackings ON TRUE
     ${replenishmentJoin}
-    LEFT JOIN staff staff_packed_by ON staff_packed_by.id = COALESCE(pack_activity.staff_id, pl_latest.packed_by)
-    LEFT JOIN staff staff_pack_assignee ON staff_pack_assignee.id = wa_p.assigned_packer_id
     WHERE 1=1
   `;
   // $1 = org; $2 = the single-row pk, bound up front (single-order mode).
@@ -681,20 +621,21 @@ export function buildOrdersListSql(
 
   if (packedOnly) {
     // CF-04: order-grain pack fact (not any SAL on the shared shipment).
-    sql += ` AND ${sqlOrderHasPackScan('o')}`;
+    sql += ` AND ${ORDER_STAGE_FACTS_SIGNALS.hasPackScan}`;
   } else if (excludePacked) {
-    sql += ` AND NOT ${sqlOrderHasPackScan('o')}`;
+    sql += ` AND NOT ${ORDER_STAGE_FACTS_SIGNALS.hasPackScan}`;
   }
 
   if (awaitingOnly) {
-    sql += ` AND o.shipment_id IS NULL`;
+    // Awaiting a label — a counter pickup never gets one.
+    sql += ` AND o.shipment_id IS NULL AND COALESCE(o.fulfillment_channel, '') <> '${PICKUP_FULFILLMENT_CHANNEL}'`;
   }
 
   if (fulfillmentScope) {
     /* Pre-pack board = every order that has not been packed yet, INCLUDING the ones with no label (2026-08-30 operator ruling). */
     // CF-04: exclude only when THIS order has a pack fact — not when a sibling
     // sharing the carton was packed (shipment-grain NOT EXISTS was the vanish bug).
-    sql += ` AND NOT ${sqlOrderHasPackScan('o')}`;
+    sql += ` AND NOT ${ORDER_STAGE_FACTS_SIGNALS.hasPackScan}`;
     // Operator 2026-09-09: exception-held (caged ∩ unpaired) stays ON
     // To-ship so staff see pending work here, not only on Exceptions.
     sql += ` AND NOT ${sqlOrderHasShipConfirm('o')}`;
@@ -715,7 +656,7 @@ export function buildOrdersListSql(
   // To-ship · Pick list: not packed, not every allocated unit picked (same
   // fragment the desk-counts `pick` badge reads).
   if (pickQueue) {
-    sql += ` AND ${sqlOrderAwaitingPick('o')}`;
+    sql += ` AND ${sqlOrderAwaitingPick('o', ORDER_STAGE_FACTS_SIGNALS)}`;
   }
 
   if (stagedOnly) {
@@ -729,7 +670,7 @@ export function buildOrdersListSql(
     sql += ` AND NOT ${shippedByCarrierOrLatestStatusSql}`;
     sql += ` AND COALESCE(o.fulfillment_channel, '') <> 'AFN'`;
     if (packedDateFrom || packedDateTo) {
-      const packedDaySql = `timezone('${WAREHOUSE_TIME_ZONE}', COALESCE(pl_latest.packed_at, pack_activity.created_at))::date`;
+      const packedDaySql = `timezone('${WAREHOUSE_TIME_ZONE}', COALESCE(osf.packed_at, osf.pack_activity_at))::date`;
       if (packedDateFrom) {
         sql += ` AND ${packedDaySql} >= $${paramCount++}::date`;
         params.push(packedDateFrom);
@@ -754,7 +695,7 @@ export function buildOrdersListSql(
   // CF-04 / CF-03: stage facet is order-grain (not any SAL on the shared carton).
   // `packed` is only meaningful under inWarehouse (packed-staged still here).
   if (stageFilter) {
-    sql += ` AND ${sqlOrderDeskStage(stageFilter, 'o')}`;
+    sql += ` AND ${sqlOrderDeskStage(stageFilter, 'o', ORDER_STAGE_FACTS_SIGNALS)}`;
   }
 
   if (exceptionsOnly) {
@@ -780,7 +721,7 @@ export function buildOrdersListSql(
 
   if (assignedTo) {
     // legacy: assignedTo maps to packer assignment
-    sql += ` AND wa_p.assigned_packer_id = $${paramCount++}`;
+    sql += ` AND osf.packer_id = $${paramCount++}`;
     params.push(Number(assignedTo));
   }
 
@@ -794,6 +735,7 @@ export function buildOrdersListSql(
     },
     'o',
     'wa_deadline.deadline_at',
+    ORDER_STAGE_FACTS_SIGNALS,
   )) {
     sql += ` AND ${clause}`;
   }
@@ -990,11 +932,7 @@ export function buildOrdersListSql(
       LEFT JOIN customers cust
         ON cust.id = o.customer_id AND cust.organization_id = o.organization_id
       ${SS_REF_LATERAL}
-      ${WA_PACK_LATERAL}
-      ${packLaterals}
-      ${WA_PICK_LATERAL}
-      LEFT JOIN staff staff_pack_assignee ON staff_pack_assignee.id = wa_p.assigned_packer_id
-      LEFT JOIN staff staff_packed_by ON staff_packed_by.id = COALESCE(pack_activity.staff_id, pl_latest.packed_by)
+      ${STAGE_STAFF_JOINS}
       WHERE o.organization_id = $1${singleOrderMode ? ' AND o.id = $2' : ''}
         AND ${searchPredicate}
     )`
@@ -1098,9 +1036,9 @@ export async function listOrders(
       ...rest,
       price_cents:       price.cents,
       price_currency:    price.currency,
-      price_source:      price.source,
-      price_platform:    price.platform,
       price_is_estimate: price.isEstimate,
+      // Provenance of the estimate: full shape only (no queue surface reads it).
+      ...(q.queueShape ? {} : { price_source: price.source, price_platform: price.platform }),
     };
   });
 

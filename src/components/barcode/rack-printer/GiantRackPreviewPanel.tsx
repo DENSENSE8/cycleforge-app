@@ -32,7 +32,7 @@ export function GiantRackPreviewPanel({
 
   return (
     <Panel radius="2xl" padding="sm" className="stack-tight">
-      <p className="text-role-micro font-semibold uppercase tracking-[0.16em] text-text-faint">
+      <p className="text-role-micro font-semibold text-text-faint">
         Live preview · prints at 2″ × 1″
         {rack ? ` · ${rackCode(rack)}` : ''}
       </p>

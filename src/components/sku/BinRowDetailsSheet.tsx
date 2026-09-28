@@ -4,7 +4,6 @@ import { useCallback, useEffect, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { Panel, Button, IconButton } from '@/design-system/primitives';
 import { useAuth } from '@/contexts/AuthContext';
-import { useStaffRole } from '@/hooks/useStaffRole';
 import { safeRandomUUID } from '@/lib/safe-uuid';
 import { focusRing } from '@/design-system/tokens/focus-ring';
 import { cn } from '@/utils/_cn';
@@ -50,7 +49,9 @@ export function BinRowDetailsSheet({
 }: BinRowDetailsSheetProps) {
   const { user } = useAuth();
   const staffId = user?.staffId ?? 0;
-  const { isAdmin, role } = useStaffRole();
+  // Mirrors the server gates: PATCH /api/sku-stock/[sku] rename → bin.rename, /api/locations/[barcode]/swap → bin.swap.
+  const canRename = user?.permissions.includes('bin.rename') ?? false;
+  const canSwap = user?.permissions.includes('bin.swap') ?? false;
   const queryClient = useQueryClient();
 
   const [titleDraft, setTitleDraft] = useState('');
@@ -293,7 +294,7 @@ export function BinRowDetailsSheet({
           className="h-11 w-11 rounded-md border border-border-default bg-surface-card text-text-muted active:bg-surface-hover"
         />
         <div className="min-w-0 flex-1 text-center">
-          <p className="text-role-micro uppercase tracking-[0.18em] text-text-soft">
+          <p className="text-role-micro text-text-soft">
             Row details
           </p>
           <p className="truncate font-mono text-sm font-semibold text-text-default">
@@ -304,21 +305,25 @@ export function BinRowDetailsSheet({
       </header>
 
       <main className="flex-1 overflow-auto px-4 py-4 space-y-5 pb-32">
-        {!isAdmin && (
+        {!(canRename && canSwap) && (
           <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-role-caption font-semibold text-amber-800">
-            Product title and SKU swap require <span className="uppercase">admin</span> role.
-            You&apos;re signed in as <span className="uppercase">{role}</span>. Limits + counts are still editable.
+            {!canRename && !canSwap
+              ? 'Product title and SKU swap need the bin rename and bin swap permissions.'
+              : !canRename
+                ? 'Product title needs the bin rename permission.'
+                : 'SKU swap needs the bin swap permission.'}{' '}
+            Limits + counts are still editable.
           </div>
         )}
 
         {/* Title override */}
         <section
-          aria-disabled={!isAdmin}
+          aria-disabled={!canRename}
           className={`rounded-lg border border-border-soft bg-surface-card p-3 shadow-sm space-y-2 ${
-            isAdmin ? '' : 'opacity-50 pointer-events-none'
+            canRename ? '' : 'opacity-50 pointer-events-none'
           }`}
         >
-          <p className="text-role-micro uppercase tracking-[0.16em] text-text-soft">
+          <p className="text-role-micro text-text-soft">
             Product title
           </p>
           {row.productTitle && (
@@ -346,19 +351,19 @@ export function BinRowDetailsSheet({
               {titleDraft.trim() === '' ? 'Clear override' : 'Save title'}
             </Button>
           </div>
-          <p className="text-role-micro uppercase tracking-widest text-text-faint">
+          <p className="text-role-micro text-text-faint">
             Stored in sku_stock.display_name_override · wins over the storefront title
           </p>
         </section>
 
         {/* SKU swap */}
         <section
-          aria-disabled={!isAdmin}
+          aria-disabled={!canSwap}
           className={`rounded-lg border border-border-soft bg-surface-card p-3 shadow-sm space-y-2 ${
-            isAdmin ? '' : 'opacity-50 pointer-events-none'
+            canSwap ? '' : 'opacity-50 pointer-events-none'
           }`}
         >
-          <p className="text-role-micro uppercase tracking-[0.16em] text-text-soft">
+          <p className="text-role-micro text-text-soft">
             Change SKU
           </p>
           <p className="text-role-micro leading-snug text-text-soft">
@@ -389,7 +394,7 @@ export function BinRowDetailsSheet({
 
         {/* Transfer to another bin */}
         <Panel radius="lg" padding="sm" className="space-y-2">
-          <p className="text-role-micro uppercase tracking-[0.16em] text-text-soft">
+          <p className="text-role-micro text-text-soft">
             Move to another bin
           </p>
           <p className="text-role-micro leading-snug text-text-soft">
@@ -432,12 +437,12 @@ export function BinRowDetailsSheet({
 
         {/* Min / max */}
         <Panel radius="lg" padding="sm" className="space-y-2">
-          <p className="text-role-micro uppercase tracking-[0.16em] text-text-soft">
+          <p className="text-role-micro text-text-soft">
             Min / max
           </p>
           <div className="grid grid-cols-2 gap-2">
             <label className="block">
-              <span className="text-role-eyebrow uppercase tracking-widest text-text-soft">
+              <span className="text-role-eyebrow text-text-soft">
                 Min
               </span>
               <input
@@ -450,7 +455,7 @@ export function BinRowDetailsSheet({
               />
             </label>
             <label className="block">
-              <span className="text-role-eyebrow uppercase tracking-widest text-text-soft">
+              <span className="text-role-eyebrow text-text-soft">
                 Max
               </span>
               <input

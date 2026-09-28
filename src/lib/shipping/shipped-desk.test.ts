@@ -65,7 +65,7 @@ describe('shipped-desk', () => {
       params(
         'shipped=&carrier=UPS&statusCategory=IN_TRANSIT&exceptions=1&shippedFilter=orders'
           + '&shippedWeekOffset=2&dateFrom=2026-08-01&dateTo=2026-08-07&search=1Z999'
-          + '&packedBy=3&testedBy=4',
+          + '&packedBy=3',
       ),
     );
     const parsed = parseRouteParams(spec!, new URLSearchParams(carried.toString()));

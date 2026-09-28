@@ -6,7 +6,8 @@ import * as Popover from '@radix-ui/react-popover';
 import { Check, ChevronDown, User } from '@/components/Icons';
 import { ToolbarButton } from '@/components/ui/ToolbarButton';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
-import { STAFF_FILTER_PARAM, useStaffFilter } from '@/hooks/useStaffFilter';
+import { useStaffFilter } from '@/hooks/useStaffFilter';
+import { STAFF_FILTER_PARAM } from '@/lib/station/table-url-params';
 import {
   FilterMenuGroupLabel,
   FilterMenuRow,

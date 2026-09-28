@@ -1,22 +1,17 @@
 /**
- * `G` then a letter → a lane's MODE (the parent level). Keyed by letter so
- * two pages can never claim the same one. A page's views keep bare `1`–`9`
- * (child level); modes get the "go somewhere" sequence (Linear, GitHub,
- * Gmail). A letter only works where the resolver emitted that page as a
- * mode the staffer can reach (the `<page>.<lane>.modes` section), so the
- * sequence never offers a page the permissions filter removed.
+ * `G` then a letter → one of the CURRENT lane's modes (the parent level).
+ * Scoped per lane (owner 2026-09-27): a lane's letters never leak onto another
+ * lane's pages, so two lanes may reuse a letter (Shipping and Sourcing are
+ * both `S`). Keyed by letter inside each lane so two modes of one lane can
+ * never claim the same one. A page's views keep bare `1`–`9` (child level);
+ * modes get the "go somewhere" sequence (Linear, GitHub, Gmail). Off a lane
+ * with modes, `G` does nothing.
  */
-export const NAV_GO_PAGES: Readonly<Record<string, string>> = {
-  s: 'outbound',
-  f: 'fba',
-  l: 'label-intake',
+
+import type { SpineSectionId } from '@/lib/sidebar-navigation';
+
+export const NAV_GO_KEYS: Readonly<Partial<Record<SpineSectionId, Readonly<Record<string, string>>>>> = {
+  fulfillment: { s: 'outbound', f: 'fba', l: 'label-intake' },
+  inbound: { d: 'incoming', s: 'sourcing' },
+  inventory: { i: 'inventory', q: 'qc-labels' },
 };
-
-const LETTER_BY_PAGE: ReadonlyMap<string, string> = new Map(
-  Object.entries(NAV_GO_PAGES).map(([letter, pageId]) => [pageId, letter]),
-);
-
-/** The page's go letter, if it has one. */
-export function navGoLetter(pageId: string): string | undefined {
-  return LETTER_BY_PAGE.get(pageId);
-}

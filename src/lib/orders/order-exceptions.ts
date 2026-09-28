@@ -5,7 +5,7 @@
 
 import { tenantQuery } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';
-import { evaluateReleaseGates } from './release-gates';
+import { PICKUP_FULFILLMENT_CHANNEL, evaluateReleaseGates } from './release-gates';
 import { exceptionHeldSql, sqlOrderInExceptionQueue } from './exception-membership';
 import {
   ORDER_EXCEPTION_CATEGORIES,
@@ -40,6 +40,7 @@ interface RawExceptionRow {
   account_source: string | null;
   release_state: string | null;
   docs_not_required: boolean | null;
+  fulfillment_channel: string | null;
   tracking_number: string | null;
   sku_catalog_id: number | string | null;
   catalog_title: string | null;
@@ -153,6 +154,7 @@ function mapRow(row: RawExceptionRow): OrderExceptionRow {
       shippingLabelLinked: row.shipping_label_linked === true,
       shippingLabelPurchased: row.shipping_label_purchased === true,
       skuCatalogId,
+      pickup: row.fulfillment_channel === PICKUP_FULFILLMENT_CHANNEL,
     }),
   };
 }
@@ -183,6 +185,7 @@ const EXCEPTION_SELECT = `
     o.account_source,
     o.release_state,
     o.docs_not_required,
+    o.fulfillment_channel,
     o.sku_catalog_id,
     sc.product_title AS catalog_title,
     sc.sku           AS catalog_sku,

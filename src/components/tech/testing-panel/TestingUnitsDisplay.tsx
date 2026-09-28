@@ -3,6 +3,11 @@
 /** Testing Units display — the per-unit **verdict** surface on the right-edge push column ({@link StationDisplaysPushStack}), sibling of… */
 
 import type { ActiveRowSerial } from '@/components/receiving/workspace/PoLinesAccordion';
+import {
+  TestingStatusPills,
+  unitStatusToVerdict,
+} from '@/components/receiving/workspace/TestingStatusPills';
+import { QcUnitBench } from '@/components/qc/QcUnitBench';
 import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
 import { receivingWorkspaceLineTitle } from '@/lib/receiving/po-group-title';
 import type { UnitSlotSerial } from '@/components/tech/TestingUnitSlots';
@@ -39,6 +44,8 @@ export function TestingUnitsDisplay({
     );
   }
 
+  const active = c.activeSerial?.id != null && c.activeSerial.id > 0 ? c.activeSerial : null;
+
   return (
     <div className="flex h-full min-h-0 flex-col gap-0 px-0" data-testid="testing-units-display">
       <header
@@ -50,7 +57,7 @@ export function TestingUnitsDisplay({
           <p className="truncate text-role-caption font-semibold text-text-default">
             {receivingWorkspaceLineTitle(row)}
           </p>
-          <p className="text-role-eyebrow uppercase tracking-widest text-text-soft">
+          <p className="text-role-eyebrow text-text-soft">
             Active line · unit verdict
           </p>
         </div>
@@ -59,7 +66,7 @@ export function TestingUnitsDisplay({
         </span>
       </header>
 
-      <div className="min-w-0 flex-1">
+      <div className="min-w-0 shrink-0">
         <TestingLineSlot
           c={c}
           lineId={row.id}
@@ -79,6 +86,28 @@ export function TestingUnitsDisplay({
           onEditingSerialChange={c.setHeaderSerialEdit}
         />
       </div>
+
+      {active ? (
+        // The selected unit's bench — session, readings, next steps. Keyed so a
+        // unit switch drops the last unit's triage list and form drafts.
+        <div className="min-h-0 flex-1 overflow-y-auto border-t border-mode-rule">
+          <p className="px-3 pt-2.5 font-mono text-role-caption font-semibold text-mode-ink">
+            SN {active.serial_number}
+          </p>
+          <QcUnitBench
+            key={active.id}
+            unitId={active.id}
+            unitStatus={active.current_status}
+            verdictActions={
+              <TestingStatusPills
+                value={unitStatusToVerdict(active.current_status)}
+                onChange={(next) => c.requestSlotVerdict(row.id, active, next)}
+                disabled={c.saving}
+              />
+            }
+          />
+        </div>
+      ) : null}
     </div>
   );
 }

@@ -10,7 +10,7 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
     routeKey: 'shipping-register',
     limit: 60,
     windowMs: 60_000,
-    organizationId: ctx.organizationId,
+    organizationId: ctx.organizationId, staffId: ctx.staffId,
   });
   if (!rate.ok) {
     return NextResponse.json(

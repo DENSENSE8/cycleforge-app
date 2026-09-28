@@ -243,7 +243,7 @@ function InviteModal({ open, onClose, onInvited }: InviteModalProps) {
           <div className="space-y-3">
             <div className="rounded-xl bg-emerald-50 px-3 py-2 text-role-caption text-emerald-700">Invite created.</div>
             <label className="block">
-              <span className="mb-1 block text-role-caption font-medium uppercase tracking-[0.08em] text-text-soft">Enrollment link</span>
+              <span className="mb-1 block text-role-caption font-medium text-text-soft">Enrollment link</span>
               <input
                 readOnly
                 value={enrollmentUrl}
@@ -260,7 +260,7 @@ function InviteModal({ open, onClose, onInvited }: InviteModalProps) {
         ) : (
           <div className="space-y-3">
             <label className="block">
-              <span className="mb-1 block text-role-caption font-medium uppercase tracking-[0.08em] text-text-soft">Name</span>
+              <span className="mb-1 block text-role-caption font-medium text-text-soft">Name</span>
               <input
                 value={form.name}
                 onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
@@ -270,7 +270,7 @@ function InviteModal({ open, onClose, onInvited }: InviteModalProps) {
               />
             </label>
             <label className="block">
-              <span className="mb-1 block text-role-caption font-medium uppercase tracking-[0.08em] text-text-soft">Role</span>
+              <span className="mb-1 block text-role-caption font-medium text-text-soft">Role</span>
               <select
                 value={form.role}
                 onChange={(e) => setForm((f) => ({ ...f, role: e.target.value }))}
@@ -280,7 +280,7 @@ function InviteModal({ open, onClose, onInvited }: InviteModalProps) {
               </select>
             </label>
             <label className="block">
-              <span className="mb-1 block text-role-caption font-medium uppercase tracking-[0.08em] text-text-soft">Email (optional)</span>
+              <span className="mb-1 block text-role-caption font-medium text-text-soft">Email (optional)</span>
               <input
                 value={form.email}
                 onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))}

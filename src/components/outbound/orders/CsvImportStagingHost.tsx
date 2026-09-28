@@ -257,7 +257,7 @@ export function CsvImportStagingHost() {
           <span className="truncate text-role-caption font-semibold text-text-default">
             {draft.fileName}
           </span>
-          <span className="shrink-0 text-role-eyebrow font-semibold uppercase tracking-widest text-text-soft">
+          <span className="shrink-0 text-role-eyebrow font-semibold text-text-soft">
             {draft.rows.length} rows
           </span>
         </div>
@@ -285,7 +285,7 @@ export function CsvImportStagingHost() {
               )
             }
             onClick={() => void handleConfirm()}
-            className={cn(cornerClass('flush'), 'font-semibold uppercase tracking-widest')}
+            className={cn(cornerClass('flush'), 'font-semibold')}
             data-testid="csv-import-staging-confirm"
           >
             {submitting ? 'Importing…' : `Confirm ${confirmCount} ready`}

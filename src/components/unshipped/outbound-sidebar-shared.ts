@@ -23,6 +23,8 @@ const UNSHIPPED_VIEW_PARAMS = [
   'packStation',
   'sort',
   'dir',
+  // The triage face's status chips (`outbound.triage`, `?cardStatus=`) — a saved view keeps the cut.
+  'cardStatus',
 ] as const;
 
 /** Shipped board saved views — matches the Shipped ledger's feed (`useShippedTableFilters`). */
@@ -33,7 +35,6 @@ const SHIPPED_VIEW_PARAMS = [
   'staff',
   'pickedBy',
   'packedBy',
-  'testedBy',
   'exceptions',
 ] as const;
 

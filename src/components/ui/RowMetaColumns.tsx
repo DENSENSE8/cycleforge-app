@@ -219,7 +219,7 @@ export function RowMetaColumns({
   return (
     <div
       className={cn(
-        'mt-0.5 grid min-w-0 items-center gap-x-0.5 text-role-eyebrow uppercase text-text-muted',
+        'mt-0.5 grid min-w-0 items-center gap-x-0.5 text-role-eyebrow text-text-muted',
         className,
       )}
       style={{ paddingLeft: indent, gridTemplateColumns: tracks.join(' ') }}

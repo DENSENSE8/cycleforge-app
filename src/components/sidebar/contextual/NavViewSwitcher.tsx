@@ -8,18 +8,17 @@ import { fetchNavFacets, NavHttpError } from '@/lib/nav/context/http-client';
 import { isNavFacetContext } from '@/lib/nav/facets/contexts';
 import { isEditableKeyTarget } from '@/lib/keyboard/is-editable-key-target';
 import { registerShortcutOverviewGroup } from '@/lib/keyboard/shortcut-overview';
-import { navRowGlyph } from './NavSectionList';
-import { NavSwitcherMenu, type NavSwitcherGroup } from './NavSwitcherMenu';
+import { hasOpenOverlay } from '@/lib/overlay-stack/store';
+import { AnimatedStat } from '@/design-system/components/AnimatedStat';
+import { SIDEBAR_CHIP_CORNER } from '@/design-system/tokens/radius';
+import { navIconStrokeClass } from '@/components/icons/nav-weight';
+import { cn } from '@/utils/_cn';
+import { navRowGlyph, type Glyph } from './NavSectionList';
+import { NavSwitcherMenu } from './NavSwitcherMenu';
+import { publishKeyPressed } from './go-keys-store';
 
 /** A view's unfiltered count revalidates at most this often. */
 const VIEW_COUNT_STALE_MS = 20_000;
-
-/**
- * Page panels whose views answer bare `1`–`9`, in painted order. Opt-in per
- * page because a record's decision bar (`EvidenceDecisionBar`) owns bare 1–4
- * on the pages that mount it; the Shipping desk binds no bare digit.
- */
-const VIEW_HOTKEY_PAGES: Readonly<Record<string, true>> = { outbound: true };
 
 /**
  * Each view's unfiltered total — `GET /api/nav/facets?context=<pageId.itemId>`
@@ -56,62 +55,155 @@ function useViewCounts(pageId: string, items: readonly NavItem[]) {
 function useViewHotkeys(items: readonly NavItem[], enabled: boolean) {
   const router = useRouter();
   useEffect(() => {
-    if (!enabled) return;
+    if (!enabled || items.length < 2) return undefined;
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.defaultPrevented || event.repeat) return;
       if (event.metaKey || event.ctrlKey || event.altKey || event.shiftKey) return;
-      if (isEditableKeyTarget(event.target)) return;
+      // An open overlay (a record, a popover) owns the keyboard.
+      if (isEditableKeyTarget(event.target) || hasOpenOverlay()) return;
       const item = /^[1-9]$/.test(event.key) ? items[Number(event.key) - 1] : undefined;
       if (!item) return;
       event.preventDefault();
+      publishKeyPressed(`view:${item.id}`);
       if (!item.active) router.push(item.href);
     };
     window.addEventListener('keydown', onKeyDown);
-    return () => window.removeEventListener('keydown', onKeyDown);
+    // The `?` / ⌘⇧? sheet lists this page's view keys while they are bound.
+    const unregister = registerShortcutOverviewGroup({
+      id: 'sidebar-views',
+      title: 'Views on this page',
+      rows: items.slice(0, 9).map((item, index) => ({ keys: [String(index + 1)], label: item.label })),
+    });
+    return () => {
+      window.removeEventListener('keydown', onKeyDown);
+      unregister();
+    };
   }, [items, enabled, router]);
 }
 
 /**
- * The page's VIEW (Exceptions · PO paired · Pick list · To ship · Shipped) —
- * pinned in the head under the mode switcher. A view is changed rarely, so at
- * rest it is one block naming the view you are on, with its count; hover or
- * Enter opens every view to the right of the sidebar (`NavSwitcherMenu`),
- * each led by its state glyph, then its digit key on opted-in pages, then its
- * unfiltered total. Bare `1`–`9` work whether or not the menu is open.
- * One view is no choice: nothing renders.
+ * The page's VIEW (Exceptions · PO paired · Pick list · To ship · Shipped on
+ * Shipping; any page's views elsewhere) — the CHILD tier, pinned in the
+ * sidebar head under the mode. At rest one block naming the view you are on
+ * and its count (an alerting view beacons on it). Hover shows every view's
+ * digit beside the sidebar when the page binds them (`viewKeys`, from its
+ * `NAV_PAGE_DECLS` entry — a digit is painted only where bound); click hangs
+ * the OTHER views in an overlay (`NavSwitcherMenu`). One view is no choice:
+ * nothing renders.
  */
-export function NavViewSwitcher({ sections, pageId }: { sections: readonly NavSection[]; pageId: string }) {
+export function NavViewSwitcher({
+  sections,
+  pageId,
+  viewKeys,
+}: {
+  sections: readonly NavSection[];
+  pageId: string;
+  /** `NavContext.viewKeys` — bind and paint bare `1`–`9`. */
+  viewKeys: boolean;
+}) {
   const painted = useMemo(() => sections.flatMap((section) => section.items), [sections]);
-  const hotkeys = VIEW_HOTKEY_PAGES[pageId] === true;
-  useViewHotkeys(painted, hotkeys);
-  // The `?` / ⌘⇧? sheet lists this page's view keys while it is mounted.
-  useEffect(() => {
-    if (!hotkeys || painted.length < 2) return undefined;
-    return registerShortcutOverviewGroup({
-      id: 'sidebar-views',
-      title: 'Views on this page',
-      rows: painted.slice(0, 9).map((item, index) => ({ keys: [String(index + 1)], label: item.label })),
-    });
-  }, [hotkeys, painted]);
+  useViewHotkeys(painted, viewKeys);
   const counts = useViewCounts(pageId, painted);
   if (painted.length < 2) return null;
-  const groups: NavSwitcherGroup[] = sections
-    .filter((section) => section.items.length > 0)
-    .map((section) => ({
-      id: section.id,
-      label: section.label,
-      entries: section.items.map((item) => {
-        const order = painted.indexOf(item);
-        const digit = hotkeys && order < 9 ? String(order + 1) : undefined;
-        return {
-          item,
-          glyph: navRowGlyph(item, pageId),
-          keys: digit ? [digit] : undefined,
-          ariaKeys: digit,
-          countSlot: item.id in counts,
-          count: counts[item.id],
-        };
-      }),
-    }));
-  return <NavSwitcherMenu kind="view" name="View" groups={groups} currentId={painted.find((item) => item.active)?.id} />;
+  const current = painted.find((item) => item.active);
+  const currentGlyph = current ? navRowGlyph(current, pageId) : null;
+  const alerts = painted.filter((item) => {
+    const count = counts[item.id];
+    return item !== current && navRowGlyph(item, pageId)?.alertCount && count !== undefined && count > 0;
+  });
+  return (
+    <NavSwitcherMenu
+      current={{
+        label: current?.label ?? 'View',
+        icon: currentGlyph?.icon,
+        iconTone: currentGlyph?.tone,
+        trailing: (
+          <>
+            {alerts.map((item) => (
+              <AlertBeacon key={item.id} id={item.id} glyph={navRowGlyph(item, pageId)} count={counts[item.id] ?? 0} />
+            ))}
+            {current && current.id in counts ? <CountChip id={current.id} count={counts[current.id]} alert={currentGlyph?.alertCount} /> : null}
+          </>
+        ),
+      }}
+      // The view you are on is the block itself — never listed twice (the
+      // parent card follows the same rule).
+      rows={painted
+        .filter((item) => item !== current)
+        .map((item) => {
+          const glyph = navRowGlyph(item, pageId);
+          return {
+            id: item.id,
+            href: item.href,
+            label: item.label,
+            icon: glyph?.icon,
+            iconTone: glyph?.tone,
+            trailing: item.id in counts ? <CountChip id={item.id} count={counts[item.id]} alert={glyph?.alertCount} /> : null,
+            selected: false,
+          };
+        })}
+      hint={
+        viewKeys
+          ? painted.slice(0, 9).map((item, index) => {
+              const glyph = navRowGlyph(item, pageId);
+              return {
+                id: item.id,
+                keys: [String(index + 1)],
+                pressedId: `view:${item.id}`,
+                label: item.label,
+                icon: glyph?.icon,
+                iconTone: glyph?.tone,
+                current: item === current,
+              };
+            })
+          : []
+      }
+    />
+  );
+}
+
+/**
+ * A view's unfiltered total, right-aligned; amber only for a view flagged
+ * `alertCount` (Exceptions) while > 0. The slot's width is held while loading.
+ */
+function CountChip({ id, count, alert }: { id: string; count: number | undefined; alert?: boolean }) {
+  return (
+    <span className="flex min-w-7 shrink-0 justify-end">
+      {count !== undefined ? (
+        <span
+          data-nav-view-count={id}
+          className={cn(
+            'px-1.5 py-0.5 text-role-micro font-medium tabular-nums',
+            SIDEBAR_CHIP_CORNER,
+            alert && count > 0
+              ? 'bg-amber-50 text-amber-700 ring-1 ring-inset ring-amber-200'
+              : 'bg-surface-sunken text-text-muted',
+          )}
+        >
+          <AnimatedStat value={count} speed="fast" />
+        </span>
+      ) : null}
+    </span>
+  );
+}
+
+/**
+ * Another view's alert, on the closed block: its glyph and count in amber,
+ * so "Exceptions: 12" is seen without opening anything.
+ */
+function AlertBeacon({ id, glyph, count }: { id: string; glyph: Glyph | null; count: number }) {
+  const Icon = glyph?.icon;
+  return (
+    <span
+      aria-hidden
+      data-nav-view-alert={id}
+      className={cn(
+        'flex shrink-0 items-center gap-0.5 bg-amber-50 px-1 py-0.5 text-role-micro font-medium tabular-nums text-amber-700 ring-1 ring-inset ring-amber-200',
+        SIDEBAR_CHIP_CORNER,
+      )}
+    >
+      {Icon ? <Icon className={navIconStrokeClass('size-3')} /> : null}
+      <AnimatedStat value={count} speed="fast" />
+    </span>
+  );
 }

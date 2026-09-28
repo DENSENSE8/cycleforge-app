@@ -46,7 +46,7 @@ function ActiveWorkspaceCard() {
             {user.organizationPlan ? ` · ${user.organizationPlan} plan` : ''}
           </div>
         </div>
-        <span className="shrink-0 rounded-full bg-emerald-50 px-2 py-0.5 text-role-eyebrow uppercase tracking-wide text-emerald-700">
+        <span className="shrink-0 rounded-full bg-emerald-50 px-2 py-0.5 text-role-eyebrow text-emerald-700">
           Current
         </span>
       </div>

@@ -37,12 +37,12 @@ const defaultGetId = <T,>(row: T): FeedId => (row as { id: FeedId }).id;
 
 const DefaultEmpty = (
   <div className="flex h-full flex-col items-center justify-center gap-2 bg-surface-card px-6 text-center">
-    <p className="text-sm font-semibold uppercase tracking-[0.18em] text-text-muted">Nothing here yet</p>
+    <p className="text-sm font-semibold text-text-muted">Nothing here yet</p>
   </div>
 );
 
 const DefaultLoading = (
-  <div className="flex h-full items-center justify-center bg-surface-card text-role-caption font-semibold uppercase tracking-widest text-text-faint">
+  <div className="flex h-full items-center justify-center bg-surface-card text-role-caption font-semibold text-text-faint">
     Loading…
   </div>
 );

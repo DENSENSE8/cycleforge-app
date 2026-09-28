@@ -1,8 +1,9 @@
 import { NextResponse, after } from 'next/server';
 import { withTenantTransaction } from '@/lib/tenancy/db';
 import { withAuth } from '@/lib/auth/withAuth';
-import { parseScannedUrl } from '@/lib/scan-resolver';
+import { lockUnitForPickScan, unlinkPickedSerialFromOrder } from '@/lib/picking/pick-serial-link';
 import { publishOrderChanged } from '@/lib/realtime/publish';
+import { refreshOrderStageFacts } from '@/lib/orders/order-stage-facts';
 import { transition } from '@/lib/inventory/state-machine';
 
 /** POST /api/picking/units/unscan — clean inverse of /api/picking/units/scan. */
@@ -20,11 +21,6 @@ export const POST = withAuth(async (request, ctx) => {
     return NextResponse.json({ ok: false, error: 'scan or serial_unit_id is required' }, { status: 400 });
   }
 
-  let resolvedSerial: string | null = null;
-  if (scan) {
-    const url = parseScannedUrl(scan);
-    resolvedSerial = url && url.type === 'unit' ? url.unitSerial.toUpperCase() : scan.toUpperCase();
-  }
   const actorStaffId: number | null =
     typeof ctx.staffId === 'number' && ctx.staffId > 0 ? ctx.staffId : null;
   const orgId = ctx.organizationId;
@@ -33,16 +29,12 @@ export const POST = withAuth(async (request, ctx) => {
     // 1. Resolve + lock the unit. serial_units is tenant-owned — scope to
     //    this org so a cross-tenant id/serial reads as not-found (and the
     //    normalized_serial string key can't collide across tenants).
-    const unitQ = serialUnitIdInput
-      ? await client.query<{ id: number; current_status: string }>(
+    const unit = serialUnitIdInput
+      ? (await client.query<{ id: number; current_status: string }>(
           `SELECT id, current_status::text AS current_status FROM serial_units WHERE id = $1 AND organization_id = $2 LIMIT 1 FOR UPDATE`,
           [serialUnitIdInput, orgId],
-        )
-      : await client.query<{ id: number; current_status: string }>(
-          `SELECT id, current_status::text AS current_status FROM serial_units WHERE normalized_serial = $1 AND organization_id = $2 LIMIT 1 FOR UPDATE`,
-          [resolvedSerial, orgId],
-        );
-    const unit = unitQ.rows[0];
+        )).rows[0]
+      : (await lockUnitForPickScan(client, orgId, scan))?.unit;
     if (!unit) return { ok: false as const, status: 404, error: 'serial_units row not found' };
 
     // 2. Find the PICKED allocation for this unit (optionally scoped to order).
@@ -88,6 +80,8 @@ export const POST = withAuth(async (request, ctx) => {
 
     // 4. Roll the allocation back PICKED → ALLOCATED (stays reserved, not released).
     await client.query(`UPDATE order_unit_allocations SET state = 'ALLOCATED' WHERE id = $1 AND organization_id = $2`, [allocation.id, orgId]);
+    await unlinkPickedSerialFromOrder(client, orgId, { serialUnitId: unit.id, orderId: allocation.order_id });
+    await refreshOrderStageFacts(orgId, { orderIds: [allocation.order_id] }, client);
 
     return {
       ok: true as const,

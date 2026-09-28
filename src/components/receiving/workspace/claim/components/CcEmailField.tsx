@@ -47,7 +47,7 @@ export function CcEmailField({
 
   return (
     <div className="flex flex-wrap items-center gap-1.5 border-0 border-b-2 border-border-soft bg-transparent px-0 py-1.5">
-      <span className="inline-flex items-center gap-1 text-role-micro uppercase tracking-widest text-text-faint">
+      <span className="inline-flex items-center gap-1 text-role-micro text-text-faint">
         <Mail className="h-3 w-3" /> {label}
       </span>
       {emails.map((email) => (

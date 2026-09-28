@@ -237,7 +237,7 @@ function Group({ label, flat, children }: { label?: string; flat?: boolean; chil
   return (
     <div>
       {label && (
-        <div className="mb-2 px-1 text-role-micro font-semibold uppercase tracking-[0.18em] text-text-faint">
+        <div className="mb-2 px-1 text-role-micro font-semibold text-text-faint">
           {label}
         </div>
       )}

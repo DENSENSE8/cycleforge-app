@@ -92,7 +92,7 @@ export function MobileDailyComposerSheet({
 
         {draft.kind === 'once' ? (
           <div className="flex flex-col gap-1.5">
-            <p className="text-role-micro uppercase tracking-wide text-text-faint">Assign to</p>
+            <p className="text-role-micro text-text-faint">Assign to</p>
             <OwnerStep
               selectedStaffId={draft.ownerId}
               onPick={(member) =>

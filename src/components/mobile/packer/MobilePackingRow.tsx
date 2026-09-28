@@ -77,18 +77,18 @@ export function MobilePackingRow({ row, variant, fresh = false, onTap, photosHre
       {(hasSlip || hasBox || outcome || (!isExpanded && photoCount > 0)) && (
         <div className="pointer-events-none mt-1 flex flex-wrap items-center gap-1.5 pl-[calc(0.5rem+0.5rem)]">
           {hasSlip ? (
-            <span className="rounded-none bg-surface-sunken px-1.5 py-0.5 text-role-micro uppercase tracking-widest text-text-muted ring-1 ring-inset ring-border-soft">
+            <span className="rounded-none bg-surface-sunken px-1.5 py-0.5 text-role-micro text-text-muted ring-1 ring-inset ring-border-soft">
               Slip
             </span>
           ) : null}
           {hasBox ? (
-            <span className="rounded-none bg-surface-sunken px-1.5 py-0.5 text-role-micro uppercase tracking-widest text-text-muted ring-1 ring-inset ring-border-soft">
+            <span className="rounded-none bg-surface-sunken px-1.5 py-0.5 text-role-micro text-text-muted ring-1 ring-inset ring-border-soft">
               Box
             </span>
           ) : null}
           {outcome ? <OutcomeChip outcome={outcome} /> : null}
           {!isExpanded && !hasSlip && !hasBox && photoCount > 0 ? (
-            <span className="rounded-none bg-surface-sunken px-1.5 py-0.5 text-role-micro uppercase tracking-widest text-text-muted ring-1 ring-inset ring-border-soft tabular-nums">
+            <span className="rounded-none bg-surface-sunken px-1.5 py-0.5 text-role-micro text-text-muted ring-1 ring-inset ring-border-soft tabular-nums">
               ×{photoCount}
             </span>
           ) : null}
@@ -103,7 +103,7 @@ export function MobilePackingRow({ row, variant, fresh = false, onTap, photosHre
           radius="flush"
           onClick={() => router.replace(photosHref)}
           ariaLabel="Take photos"
-          className="pointer-events-auto mt-3 h-12 w-full text-role-caption uppercase tracking-[0.18em]"
+          className="pointer-events-auto mt-3 h-12 w-full text-role-caption"
         >
           <Camera className="h-5 w-5" />
           {photoCount > 0 ? (

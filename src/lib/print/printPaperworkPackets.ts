@@ -1,6 +1,6 @@
 /** Print order paperwork from the desk when the packer print station is down — one order (the Labels walk's Print all) or many (the orders… */
 
-import { loadPdfjs } from '@/lib/manuals/pdfThumbnail';
+import { loadPdfjs, PDFJS_STANDARD_FONT_DATA_URL } from '@/lib/manuals/pdfThumbnail';
 import { printHtmlInIframe } from '@/lib/print/iframePrint';
 import { safeRandomUUID } from '@/lib/safe-uuid';
 import type { PaperworkPacket, PaperworkPacketItem } from '@/lib/documents/paperwork-packet';
@@ -55,7 +55,8 @@ function blobToDataUrl(blob: Blob): Promise<string> {
 
 async function renderPdfPages(bytes: Uint8Array): Promise<string[]> {
   const pdfjs = await loadPdfjs();
-  const task = pdfjs.getDocument({ data: bytes });
+  // Glyphs as paths, not FontFace text — see `label-raster.ts` (the USPS "G").
+  const task = pdfjs.getDocument({ data: bytes, standardFontDataUrl: PDFJS_STANDARD_FONT_DATA_URL, useSystemFonts: false, disableFontFace: true });
   const doc = await task.promise;
   const pages: string[] = [];
   try {

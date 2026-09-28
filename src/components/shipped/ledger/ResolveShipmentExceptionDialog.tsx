@@ -185,7 +185,7 @@ export function ResolveShipmentExceptionDialog({
                               <span
                                 className={cn(RECORD_LABEL_CLASS, 'truncate', selected ? 'text-mode-bar' : 'text-mode-muted')}
                               >
-                                {[line.channel, line.sku ? `SKU ${line.sku}` : null, line.quantity != null ? `QTY ${line.quantity}` : null]
+                                {[line.channel, line.sku ? `SKU ${line.sku}` : null, line.quantity != null ? `Qty ${line.quantity}` : null]
                                   .filter(Boolean)
                                   .join(' · ') || '—'}
                               </span>

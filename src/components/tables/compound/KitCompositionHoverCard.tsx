@@ -21,7 +21,7 @@ export function KitCompositionHoverCard({ face }: KitCompositionHoverCardProps) 
       )}
       data-testid="kit-composition-hover-card"
     >
-      <div className="text-role-micro font-semibold uppercase tracking-wide text-text-muted">
+      <div className="text-role-micro font-semibold text-text-muted">
         {heading}
       </div>
       <ul className="flex max-h-48 flex-col gap-1.5 overflow-y-auto">

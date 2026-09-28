@@ -44,7 +44,7 @@ function LeafBody({ children }: { children: React.ReactNode }) {
 function Group({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <section className="mb-5 last:mb-0">
-      <h3 className="mb-2 text-role-eyebrow uppercase tracking-widest text-text-soft">{title}</h3>
+      <h3 className="mb-2 text-role-eyebrow text-text-soft">{title}</h3>
       {children}
     </section>
   );
@@ -236,7 +236,7 @@ export function WarrantyClaimDetailPanel({ claimId, onClose }: WarrantyClaimDeta
                             Attempt #{a.attemptNo}
                           </span>
                           {a.outcome && (
-                            <span className="text-role-micro uppercase tracking-widest text-text-soft">
+                            <span className="text-role-micro text-text-soft">
                               {a.outcome}
                             </span>
                           )}

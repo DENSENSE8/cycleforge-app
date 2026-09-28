@@ -4,12 +4,14 @@ import { Suspense, useCallback, useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { unitStatusBadgeTone } from '@/lib/receiving/receiving-constants';
+import { sentenceCaseLabel } from '@/lib/text/sentence-case-label';
 import { ScanAgainBar } from '@/components/mobile/receiving/ScanAgainBar';
 import { safeRandomUUID } from '@/lib/safe-uuid';
 import { unwrapScannedLocation } from '@/lib/barcode-routing';
 import { Panel, Button } from '@/design-system/primitives';
 import { focusRing } from '@/design-system/tokens/focus-ring';
 import { cn } from '@/utils/_cn';
+import type { TestingVerdict } from '@/components/receiving/workspace/TestingStatusPills';
 
 
 
@@ -68,9 +70,9 @@ function StatusPill({ status }: { status: string | null }) {
   const v = (status || 'UNKNOWN').toUpperCase();
   return (
     <span
-      className={`inline-flex items-center rounded-full px-2 py-0.5 text-role-micro uppercase tracking-wide ${unitStatusBadgeTone(v)}`}
+      className={`inline-flex items-center rounded-full px-2 py-0.5 text-role-micro ${unitStatusBadgeTone(v)}`}
     >
-      {v}
+      {sentenceCaseLabel(v)}
     </span>
   );
 }
@@ -126,30 +128,24 @@ function UnitPageInner() {
     return () => clearTimeout(t);
   }, [flash]);
 
-  const postStatus = useCallback(
-    async (eventType: string) => {
-      if (busy || !unit?.current_receiving_line_id) return;
-      setBusy(eventType);
+  // The unit verdict's one writer: POST /api/serial-units/[id]/test (recordTestVerdict).
+  const postVerdict = useCallback(
+    async (verdict: TestingVerdict, ack: string) => {
+      if (busy || !unit) return;
+      setBusy(verdict);
       try {
-        const res = await fetch(
-          `/api/receiving/lines/${unit.current_receiving_line_id}/status`,
-          {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              event_type: eventType,
-              serial_unit_id: unit.id,
-              staff_id: staffId,
-              station: 'MOBILE',
-              notes: noteInput.trim() || null,
-              client_event_id: randomId(),
-              scan_token: typeof window !== 'undefined' ? window.location.pathname : null,
-            }),
-          },
-        );
-        const data = await res.json();
-        if (!res.ok || !data?.success) throw new Error(data?.error || `HTTP ${res.status}`);
-        setFlash({ kind: 'ok', msg: `${eventType.replace(/_/g, ' ')} recorded` });
+        const res = await fetch(`/api/serial-units/${unit.id}/test`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            verdict,
+            notes: noteInput.trim() || null,
+            client_event_id: randomId(),
+          }),
+        });
+        const data = await res.json().catch(() => null);
+        if (!res.ok || !data?.ok) throw new Error(data?.error || `HTTP ${res.status}`);
+        setFlash({ kind: 'ok', msg: ack });
         setNoteInput('');
         await load();
       } catch (err) {
@@ -158,7 +154,7 @@ function UnitPageInner() {
         setBusy(null);
       }
     },
-    [busy, unit, staffId, noteInput, load],
+    [busy, unit, noteInput, load],
   );
 
   const submitPutaway = useCallback(async () => {
@@ -274,14 +270,14 @@ function UnitPageInner() {
         {unit && (
           <>
             <Panel radius="lg" padding="sm">
-              <p className="mb-2 text-role-micro uppercase tracking-[0.16em] text-text-soft">
+              <p className="mb-2 text-role-micro text-text-soft">
                 Test status
               </p>
               <div className="grid grid-cols-3 gap-2">
                 <Button
                   variant="primary"
-                  disabled={!!busy || !unit.current_receiving_line_id}
-                  onClick={() => postStatus('TEST_START')}
+                  disabled={!!busy}
+                  onClick={() => postVerdict('TEST_AGAIN', 'Test started')}
                   className="h-full w-full"
                 >
                   Start
@@ -289,16 +285,16 @@ function UnitPageInner() {
                 {/* ds-raw-button: solid-emerald CTA (no green Button variant) */}
                 <button
                   type="button"
-                  disabled={!!busy || !unit.current_receiving_line_id}
-                  onClick={() => postStatus('TEST_PASS')}
+                  disabled={!!busy}
+                  onClick={() => postVerdict('PASS', 'Test passed')}
                   className="rounded-md bg-emerald-600 px-3 py-3 text-sm font-semibold text-white active:bg-emerald-700 disabled:opacity-50"
                 >
                   Pass
                 </button>
                 <Button
                   variant="danger"
-                  disabled={!!busy || !unit.current_receiving_line_id}
-                  onClick={() => postStatus('TEST_FAIL')}
+                  disabled={!!busy}
+                  onClick={() => postVerdict('TESTING_FAILED', 'Test failed')}
                   className="h-full w-full"
                 >
                   Fail
@@ -307,7 +303,7 @@ function UnitPageInner() {
             </Panel>
 
             <Panel radius="lg" padding="sm">
-              <p className="mb-2 text-role-micro uppercase tracking-[0.16em] text-text-soft">
+              <p className="mb-2 text-role-micro text-text-soft">
                 Stash in bin
               </p>
               <div className="flex gap-2">
@@ -334,7 +330,7 @@ function UnitPageInner() {
             </Panel>
 
             <Panel radius="lg" padding="sm">
-              <p className="mb-2 text-role-micro uppercase tracking-[0.16em] text-text-soft">
+              <p className="mb-2 text-role-micro text-text-soft">
                 Note (optional)
               </p>
               <textarea
@@ -347,7 +343,7 @@ function UnitPageInner() {
             </Panel>
 
             <Panel radius="lg" padding="sm">
-              <p className="mb-2 text-role-micro uppercase tracking-[0.16em] text-text-soft">
+              <p className="mb-2 text-role-micro text-text-soft">
                 Lifecycle
               </p>
               {events.length === 0 ? (
@@ -366,7 +362,7 @@ function UnitPageInner() {
                         </p>
                         <p className="text-text-soft">
                           {formatAgo(ev.occurred_at)} ago
-                          {ev.station ? ` · ${ev.station}` : ''}
+                          {ev.station ? ` · ${sentenceCaseLabel(ev.station)}` : ''}
                         </p>
                         {ev.notes && (
                           <p className="mt-0.5 text-text-soft italic">{ev.notes}</p>

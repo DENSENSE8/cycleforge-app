@@ -29,13 +29,13 @@ function BookRow({ entry }: { entry: CommandBookEntry }) {
       )}
     >
       <div className="min-w-0 flex-1">
-        <p className="font-mono text-role-body font-bold uppercase tracking-wide text-text-strong">
+        <p className="font-mono text-role-body font-bold text-text-strong">
           {entry.code}
         </p>
         <p className="mt-1 text-role-body font-semibold text-text-default">{entry.label}</p>
         <p className="mt-0.5 text-role-caption text-text-soft">{entry.effect}</p>
         {entry.writes ? (
-          <p className="mt-1 text-role-caption font-semibold uppercase tracking-wider text-amber-700">
+          <p className="mt-1 text-role-caption font-semibold text-amber-700">
             Scan the unit first · this is written to the audit log
           </p>
         ) : null}

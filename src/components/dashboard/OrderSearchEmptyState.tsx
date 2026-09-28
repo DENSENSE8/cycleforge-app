@@ -45,8 +45,8 @@ export function OrderSearchEmptyState({
       >
         <Search className="h-5 w-5 text-text-faint" />
       </div>
-      <h3 className="mb-1 text-sm font-semibold uppercase tracking-tight text-text-default">{title}</h3>
-      <p className="text-role-micro uppercase leading-relaxed tracking-widest text-text-muted">
+      <h3 className="mb-1 text-sm font-semibold tracking-tight text-text-default">{title}</h3>
+      <p className="text-role-micro leading-relaxed text-text-muted">
         No {resultLabel} match &quot;{query}&quot;
       </p>
       <Button

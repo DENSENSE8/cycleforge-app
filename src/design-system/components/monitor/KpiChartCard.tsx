@@ -212,11 +212,7 @@ export function KpiChartCard({
       <p
         className={cn(
           'min-w-0 font-semibold text-text-faint',
-          compact
-            ? 'tracking-wide text-role-micro'
-            : 'tracking-widest text-text-soft text-role-eyebrow',
-          // Metric labels stay uppercase; hover dates keep title case (`Jul 11, 2026`).
-          !hoveredPoint && 'uppercase',
+          compact ? 'text-role-micro' : 'text-text-soft text-role-eyebrow',
         )}
       >
         {topLine}

@@ -9,7 +9,10 @@ import {
   releaseOrder,
   setDocsNotRequired,
   setOrderParcel,
+  setOrderPickup,
+  setHeldOrderLine,
 } from '@/lib/orders/caged-orders';
+import { HeldOrderLineBody } from '@/lib/schemas/order-create';
 import { invalidateOrderViews } from '@/lib/orders/invalidation';
 import type { OrgId } from '@/lib/tenancy/constants';
 
@@ -71,6 +74,7 @@ export async function POST(
       lengthIn?: unknown;
       widthIn?: unknown;
       heightIn?: unknown;
+      line?: unknown;
     };
     const action = String(body?.action || 'release').trim().toLowerCase();
     const orgId = gate.ctx.organizationId as OrgId;
@@ -80,6 +84,16 @@ export async function POST(
     if (action === 'docs-not-required') {
       const value = body?.value !== false;
       const updated = await setDocsNotRequired(orgId, orderId, value);
+      if (!updated) {
+        return NextResponse.json({ success: false, error: 'Not found' }, { status: 404 });
+      }
+      return NextResponse.json({ success: true, order: updated });
+    }
+
+    if (action === 'set-pickup') {
+      // Walk-in / counter pickup ↔ shipped: G1 + G3 stop asking for tracking /
+      // a label. Only a held order moves (the domain refuses a released one).
+      const updated = await setOrderPickup(orgId, orderId, body?.value === true);
       if (!updated) {
         return NextResponse.json({ success: false, error: 'Not found' }, { status: 404 });
       }
@@ -102,6 +116,49 @@ export async function POST(
       if (!updated) {
         return NextResponse.json({ success: false, error: 'Not found' }, { status: 404 });
       }
+      return NextResponse.json({ success: true, order: updated });
+    }
+
+    if (action === 'set-line') {
+      // The intake form's cart edit after its draft save. Only a held row moves.
+      const parsed = HeldOrderLineBody.safeParse((body as { line?: unknown }).line);
+      if (!parsed.success) {
+        return NextResponse.json(
+          { success: false, error: parsed.error.issues[0]?.message ?? 'Invalid line' },
+          { status: 400 },
+        );
+      }
+      const before = await getOrderReleaseRecord(orgId, orderId);
+      if (!before) {
+        return NextResponse.json({ success: false, error: 'Not found' }, { status: 404 });
+      }
+      if (before.releaseState === 'released') {
+        return NextResponse.json({ success: false, error: 'ALREADY_RELEASED', order: before }, { status: 409 });
+      }
+      const line = parsed.data;
+      const updated = await setHeldOrderLine(orgId, orderId, {
+        productTitle: line.productTitle,
+        sku: line.sku,
+        skuCatalogId: line.skuCatalogId ?? null,
+        quantity: line.quantity ?? '1',
+        condition: line.condition,
+        saleAmount: line.saleAmount,
+        itemNumber: line.itemNumber,
+      });
+      if (!updated) {
+        return NextResponse.json({ success: false, error: 'ALREADY_RELEASED' }, { status: 409 });
+      }
+      await recordAudit(pool, gate.ctx, req, {
+        source: 'orders-cage-api',
+        action: AUDIT_ACTION.ORDER_UPDATE,
+        entityType: AUDIT_ENTITY.ORDER,
+        entityId: orderId,
+        before: null,
+        after: { line },
+      });
+      await invalidateOrderViews({ organizationId: orgId, orderIds: [orderId], source: 'orders.cage-set-line' }).catch((error) => {
+        console.error('cage-release set-line: order view invalidation failed', error);
+      });
       return NextResponse.json({ success: true, order: updated });
     }
 

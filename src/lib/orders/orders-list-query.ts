@@ -17,7 +17,7 @@ import {
   type DeskRefinements,
 } from '@/lib/orders/desk-view-filters';
 
-export type OrdersListStage = 'pending' | 'tested' | 'packed';
+export type OrdersListStage = 'pending' | 'picked' | 'packed';
 
 /** Keyset cursor over the list ORDER BY (`deadline_at`, `id`). */
 export interface OrdersListCursor {
@@ -149,7 +149,7 @@ export function parseOrdersListQuery(searchParams: URLSearchParams): OrdersListQ
       : '',
     // Every param below is ABSENT for non-queue callers, so their query and payload are unchanged.
     queueShape: searchParams.get('listShape') === 'queue' && !hasSearchQuery && !singleOrderMode,
-    stageFilter: stageRaw === 'pending' || stageRaw === 'tested' || stageRaw === 'packed' ? stageRaw : '',
+    stageFilter: stageRaw === 'pending' || stageRaw === 'picked' || stageRaw === 'packed' ? stageRaw : '',
     pageLimit: Number.isFinite(limitRaw) && limitRaw > 0 ? Math.min(Math.floor(limitRaw), 500) : null,
     cursor: parseCursor(searchParams.get('cursor')),
   };

@@ -117,7 +117,7 @@ export function OrderAssignDisplayHost({
         emptyMessage="No packers"
       />
       <div className="flex items-center justify-between gap-3 border-t border-border-hairline pt-3">
-        <span className="text-role-eyebrow uppercase tracking-widest text-text-soft">Deadline</span>
+        <span className="text-role-eyebrow text-text-soft">Deadline</span>
         <input
           type="date"
           value={deadline}

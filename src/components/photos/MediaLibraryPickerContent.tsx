@@ -442,7 +442,7 @@ export function MediaLibraryPickerContent({
       <div className="min-h-0 flex-1 overflow-y-auto p-4">
         {onTypeList ? (
           <div className="space-y-2">
-            <p className="px-1 text-role-eyebrow uppercase tracking-widest text-text-soft">Media type</p>
+            <p className="px-1 text-role-eyebrow text-text-soft">Media type</p>
             <ul className="space-y-1">
               {builtIn.map((type) => {
                 const Icon = BUILTIN_ICON_OVERRIDE[type.key] ?? ICONS[type.icon] ?? Folder;

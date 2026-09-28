@@ -7,15 +7,21 @@ import type { ReceivingClaimController } from '../hooks/useReceivingClaimControl
 import { ClaimTemplateEditor } from './ClaimTemplateEditor';
 import { ClaimRecipientsField } from './ClaimRecipientsField';
 
-/** Ticket details — Claim, then Subject, then Body · recipients. */
+const FAMILY_ORDER = ['Investigation', 'Vendor claim', 'Other'];
+
+/** Ticket details — Reason, then Subject, then Body · recipients. */
 export function ClaimComposeStep({ c }: { c: ReceivingClaimController }) {
+  // Grouped by family so the operator says investigation vs claim; the pick
+  // is the ticket's recorded reason (a receiving_exceptions row).
   const claimTypeOptions = useMemo(
     () =>
-      c.claimTypeItems.map((item) => ({
-        value: item.id,
-        label: item.label,
-        group: 'Claim types',
-      })),
+      [...c.claimTypeItems]
+        .sort((a, b) => FAMILY_ORDER.indexOf(a.group) - FAMILY_ORDER.indexOf(b.group))
+        .map((item) => ({
+          value: item.id,
+          label: item.label,
+          group: item.group,
+        })),
     [c.claimTypeItems],
   );
 
@@ -23,8 +29,8 @@ export function ClaimComposeStep({ c }: { c: ReceivingClaimController }) {
     <div className="border-t border-border-hairline">
       {/* Flush select owns the bottom hairline — label gutter only, no pb. */}
       <div className="space-y-1 pt-3" data-testid="claim-compose-claim-field">
-        <p className="px-3 text-role-eyebrow uppercase tracking-[0.14em] text-text-faint">
-          Claim
+        <p className="px-3 text-role-eyebrow text-text-faint">
+          Reason
         </p>
         <SearchableSelectField
           appearance="flush"
@@ -34,10 +40,10 @@ export function ClaimComposeStep({ c }: { c: ReceivingClaimController }) {
             c.setClaimType(id as ClaimType);
           }}
           options={claimTypeOptions}
-          placeholder="Search or select claim…"
+          placeholder="Search or select reason…"
           searchPlaceholder="Type to filter…"
-          emptyMessage="No claim types match"
-          ariaLabel="Claim"
+          emptyMessage="No reasons match"
+          ariaLabel="Reason"
         />
       </div>
     </div>
@@ -47,7 +53,7 @@ export function ClaimComposeStep({ c }: { c: ReceivingClaimController }) {
     <div className="space-y-0 pt-2">
       {c.reason.trim() ? (
         <div className="space-y-1 border-b border-border-hairline px-3 pb-3" data-claim-issue>
-          <p className="text-role-eyebrow uppercase tracking-[0.14em] text-text-faint">
+          <p className="text-role-eyebrow text-text-faint">
             Issue
           </p>
           <p className="text-role-caption text-text-default">{c.reason}</p>

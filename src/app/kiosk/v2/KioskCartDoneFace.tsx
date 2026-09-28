@@ -106,12 +106,12 @@ function DoneDeviceRow({ repair }: { repair: CounterRepairOutcome }) {
             (law: src/components/search/search-result-faces.tsx:154-158). */}
         <p className={KIOSK_TILE_TITLE}>{repair.productTitle || 'Device'}</p>
         <p className={cn('mt-0.5', KIOSK_META)}>
-          <span className="uppercase tracking-widest">Serial</span>{' '}
+          <span>Serial</span>{' '}
           <span className="font-mono normal-case tabular-nums">{serial || '—'}</span>
           {repair.ticketNumber ? (
             <>
               {' · '}
-              <span className="uppercase tracking-widest">Ticket</span>{' '}
+              <span>Ticket</span>{' '}
               <span className="font-mono normal-case tabular-nums">{repair.ticketNumber}</span>
             </>
           ) : null}

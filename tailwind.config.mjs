@@ -270,8 +270,11 @@ const config = {
                 // because this role is the only one whose weight is a state.
                 'role-nav': ['calc(0.8125rem * var(--cf-density, 1))', { lineHeight: '1.4', letterSpacing: '0' }],
                 'role-caption': ['calc(0.75rem * var(--cf-density, 1))', { lineHeight: '1.35', letterSpacing: '0.01em', fontWeight: '500' }],
-                'role-eyebrow': ['calc(0.6875rem * var(--cf-density, 1))', { lineHeight: '1.2', letterSpacing: '0.08em', fontWeight: '600' }],
-                'role-micro': ['calc(0.625rem * var(--cf-density, 1))', { lineHeight: '1.2', letterSpacing: '0.04em', fontWeight: '600' }],
+                // Eyebrow / micro tracking is the region's LABEL VOICE
+                // (`--mode-label-tracking`, modes.ts); the fallback is the
+                // unwrapped-route value. An explicit `tracking-*` still wins.
+                'role-eyebrow': ['calc(0.6875rem * var(--cf-density, 1))', { lineHeight: '1.2', letterSpacing: 'var(--mode-label-tracking, 0.08em)', fontWeight: '600' }],
+                'role-micro': ['calc(0.625rem * var(--cf-density, 1))', { lineHeight: '1.2', letterSpacing: 'var(--mode-label-tracking, 0.04em)', fontWeight: '600' }],
                 // ── role-field: the TOUCH TEXT-ENTRY role ────────────────────
                 //
                 // 1rem = 16px, and it is the ONE role that deliberately does
@@ -427,8 +430,11 @@ const config = {
         // Tailwind's own `proportional-nums`, which wins on specificity order.
         plugin(({ addUtilities }) => {
             addUtilities({
-                ".text-role-eyebrow": { fontFamily: "var(--ds-font-condensed)" },
-                ".text-role-micro": { fontFamily: "var(--ds-font-condensed)" },
+                // Case is the region's LABEL VOICE (`--mode-label-case`): a
+                // label never hard-codes caps — the mode decides. Codes that are
+                // caps by identity (SKU, lifecycle code) add `uppercase`.
+                ".text-role-eyebrow": { fontFamily: "var(--ds-font-condensed)", textTransform: "var(--mode-label-case, none)" },
+                ".text-role-micro": { fontFamily: "var(--ds-font-condensed)", textTransform: "var(--mode-label-case, none)" },
                 // Spine-local: intrinsic eyebrow/micro family would otherwise
                 // keep Plex Condensed on search-result context inside the map.
                 ".font-spine .text-role-eyebrow": { fontFamily: "var(--ds-font-sans)" },
@@ -437,18 +443,18 @@ const config = {
                 ".text-role-title": { fontVariantNumeric: "tabular-nums" },
                 ".text-role-data": { fontVariantNumeric: "tabular-nums" },
                 // The fact-label VOICE follows the region's mode (modes.ts
-                // `labelVoice`): mono heavy caps on the floor, sans sentence
-                // case on a desk. Fallbacks are the floor voice.
+                // `labelVoice`): mono heavy on the floor, sans on a desk; the
+                // case comes from `--mode-label-case`. Fallbacks are the floor voice.
                 ".mode-label": {
                     fontFamily: "var(--mode-label-font, var(--ds-font-mono))",
                     fontSize: "calc(var(--mode-label-size, 0.625rem) * var(--cf-density, 1))",
                     fontWeight: "var(--mode-label-weight, 700)",
-                    textTransform: "var(--mode-label-case, uppercase)",
+                    textTransform: "var(--mode-label-case, none)",
                     letterSpacing: "var(--mode-label-tracking, 0.08em)",
                     lineHeight: "1.2",
                 },
                 ".mode-label-case": {
-                    textTransform: "var(--mode-label-case, uppercase)",
+                    textTransform: "var(--mode-label-case, none)",
                     letterSpacing: "var(--mode-label-tracking, 0.04em)",
                 },
             });

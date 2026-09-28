@@ -36,6 +36,8 @@ export interface CarrierTrackingResult {
   latestStatusDescription?: string | null;
   latestEventAt?: string | null;
   deliveredAt?: string | null;
+  /** Carrier's promised delivery instant (ISO), when the payload carries one. */
+  estimatedDelivery?: string | null;
   metadata?: Record<string, unknown>;
   events: CarrierTrackingEvent[];
   payload: unknown;

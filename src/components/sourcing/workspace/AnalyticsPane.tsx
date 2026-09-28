@@ -31,7 +31,7 @@ function formatDays(days: number | null): string {
 function StatTile({ label, value, sub }: { label: string; value: string; sub?: string }) {
   return (
     <Panel radius="xl" padding="sm">
-      <p className="text-role-eyebrow uppercase tracking-widest text-text-soft">{label}</p>
+      <p className="text-role-eyebrow text-text-soft">{label}</p>
       <p className="mt-1 text-lg font-semibold text-text-default">{value}</p>
       {sub ? <p className="text-role-caption text-text-faint">{sub}</p> : null}
     </Panel>
@@ -41,7 +41,7 @@ function StatTile({ label, value, sub }: { label: string; value: string; sub?: s
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <Panel radius="xl" padding="sm">
-      <p className="mb-3 text-role-eyebrow uppercase tracking-widest text-text-soft">{title}</p>
+      <p className="mb-3 text-role-eyebrow text-text-soft">{title}</p>
       {children}
     </Panel>
   );

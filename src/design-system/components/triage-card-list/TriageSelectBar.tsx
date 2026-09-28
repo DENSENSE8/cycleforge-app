@@ -1,20 +1,22 @@
 'use client';
 
 /**
- * The bar above a TriageCardList (owner 2026-09-27): select-all · Find (when
- * the sidebar is closed) · status chips (or the bulk verbs while 2+ are
- * checked) · pager · record count · per-page · sort · Floor · ⤢ (always last).
- * Mobile first: under @3xl the chips / bulk verbs take their own full-width
- * row and scroll sideways. Family-agnostic: the family names its records
- * (`noun`) and prefixes the test ids.
+ * The bar above a TriageCardList (owner 2026-09-27): select-all · record count
+ * (or "N selected") · status chips (or, with anything checked, the
+ * selection's verbs) · pager · per-page · view switch (In place · Split ·
+ * Floor) (always last). No Find: the page has ONE field — the sidebar's, or
+ * the global header's while the sidebar is closed (owner 2026-09-28). Law 5:
+ * the verbs live ONLY here, the same list in the same order at 1 or N checked.
+ * Mobile first: under @3xl the chips / verbs take their own full-width row and
+ * scroll sideways. Family-agnostic: the family names its records (`noun`) and
+ * prefixes the test ids.
  */
 
-import { useEffect, useRef, useState, type ComponentProps, type ReactNode, type RefObject } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
 import { ChevronLeft, ChevronRight, X } from '@/components/Icons';
-import { DataTableSortMenu } from '@/components/tables/DataTable';
-import { DataTableFullscreenToggle } from '@/components/tables/DataTableFullscreenToggle';
-import { FindField, findHints } from '@/design-system/components/FindField';
+import { DeskRecordViewSwitch } from '@/design-system/components/DeskRecordViewSwitch';
+import { DeskFullscreenToggle } from '@/design-system/components/DeskFullscreenToggle';
 import { Popover, PopoverContent, PopoverTrigger } from '@/design-system/primitives/radix-popover';
 import { focusRing } from '@/design-system/tokens/focus-ring';
 import { SLOT_TABLE_PAGE_SIZES } from '@/lib/tables/slot-table-page';
@@ -23,11 +25,6 @@ import type { TriagePageMode } from './triage-list-state';
 import { CARD_LIST_SETTLE_S } from '../record-card/RecordCard';
 
 const SPRING = { type: 'spring', stiffness: 480, damping: 36, mass: 0.8 } as const;
-/**
- * The sidebar-close handoff: the Find field and the status pills move as ONE
- * motion, slow enough to read (owner 2026-09-27) — ease-out, no bounce.
- */
-const FIND_SLIDE = { type: 'tween', duration: 0.45, ease: [0.22, 1, 0.36, 1] } as const;
 
 /** The top-right pager: `1–100 of 238` with previous / next. */
 export interface TriagePager {
@@ -108,39 +105,6 @@ function PageModeMenu({
   );
 }
 
-/**
- * The bar's Find — on screen whenever the sidebar (and its Find) is closed,
- * between select-all and the status chips (owner 2026-09-27). Types into the
- * same desk query the sidebar's Find does; F focuses it. Same `FindField` as
- * the sidebar: rest "Find", hints roll while you look at it, paste key right.
- */
-function BarFind({
-  value,
-  onChange,
-  inputRef,
-  label,
-  testId,
-}: {
-  value: string;
-  onChange: (value: string) => void;
-  inputRef: RefObject<HTMLInputElement>;
-  label: string;
-  testId: string;
-}) {
-  return (
-    <FindField
-      value={value}
-      onChange={onChange}
-      label={label}
-      hints={findHints(label)}
-      inputRef={inputRef}
-      debounceMs={200}
-      size="bar"
-      testId={testId}
-    />
-  );
-}
-
 export function TriageSelectBar({
   noun,
   testIdPrefix,
@@ -150,57 +114,61 @@ export function TriageSelectBar({
   pager,
   pageMode,
   onPageModeChange,
-  sortMenu,
   summary,
   onToggleAll,
   onClear,
   bulk,
-  find,
+  viewControls = true,
 }: {
-  /** What the list holds ("order" / "orders") — aria labels and Find. */
+  /** What the list holds ("order" / "orders") — aria labels. */
   noun: { one: string; many: string };
   /** Test id prefix (`order-card` → `order-card-select-bar`, `order-card-pager`, …). */
   testIdPrefix: string;
   selectedCount: number;
   allSelected: boolean;
-  /** Records in the list — left of the view controls (owner 2026-09-27). */
+  /** Records in the list — beside select-all, before the status chips (owner 2026-09-27). */
   total: number;
   /** Null when everything fits on one page (or in scroll mode). */
   pager: TriagePager | null;
-  pageMode: TriagePageMode;
+  /** Null when the host pages on the server — the size is its own; no per-page menu. */
+  pageMode: TriagePageMode | null;
   onPageModeChange: (mode: TriagePageMode) => void;
-  sortMenu: ComponentProps<typeof DataTableSortMenu>;
   /** Status filter chips with their counts. */
   summary: ReactNode;
   onToggleAll: () => void;
   onClear: () => void;
-  /** The check-set's verbs (two or more checked). */
+  /** The selection's verbs — painted while one or more are checked (Law 5). */
   bulk: ReactNode;
   /**
-   * The bar's own Find — non-null ONLY while the sidebar is closed (owner
-   * 2026-09-27). Sidebar open: the bar shows no Find at all; the sidebar owns it.
+   * The view switch + fullscreen toggle. Off on a rail desk (Labels & docs):
+   * its one view is the fixed-width rail + record, so there is nothing to pick.
    */
-  find: { value: string; onChange: (value: string) => void; inputRef: RefObject<HTMLInputElement> } | null;
+  viewControls?: boolean;
 }) {
   const active = selectedCount > 0;
-  const bulkMode = selectedCount > 1;
   // True only for the bar's first render — the chips' entrance delay reads it.
   const firstPaint = useRef(true);
   useEffect(() => {
     firstPaint.current = false;
   }, []);
   // @3xl+: the chips take the LEFTOVER width (basis-0) and scroll sideways, so
-  // Find + chips never push per-page · sort · Floor · count onto a second row.
+  // chips never push pager · per-page · view switch onto a second row. Find is
+  // never here — it is the page's one field, in the sidebar or (closed) the
+  // global header (owner 2026-09-28).
   const middleClass = 'order-last flex min-w-0 basis-full items-center @3xl:order-none @3xl:flex-1 @3xl:basis-0';
   return (
-    <div className="@container">
+    // The desk stage clips its overflow, and the list below paints after the
+    // bar: px-1 keeps the raised shadow's sides inside the stage, and the z
+    // layer (above the list's sticky section headers, z-20) lets its bottom
+    // shadow fall over the cards instead of under them.
+    <div className="@container relative z-30 px-1">
       {/* No `layout` on the bar: a size tween scales its text (owner
           2026-09-27 — the chips' labels stretched while the list resized). */}
       <div
         data-testid={`${testIdPrefix}-select-bar`}
         className={cn(
-          // pl-4 + a 28px box column = the cards' check axis; gap-x-3 = the cards' ml-3.
-          'flex min-h-11 min-w-0 flex-wrap items-center gap-x-3 gap-y-1 rounded-xl py-1.5 pl-4 pr-1.5 transition-[background-color,box-shadow] duration-200',
+          // px-1 + pl-3 + a 28px box column = the cards' check axis; gap-x-3 = the cards' ml-3.
+          'flex min-h-11 min-w-0 flex-wrap items-center gap-x-3 gap-y-1 rounded-xl py-1.5 pl-3 pr-0.5 transition-[background-color,box-shadow] duration-200',
           active ? 'bg-surface-card shadow-elev-raised ring-1 ring-border-soft' : 'bg-transparent',
         )}
       >
@@ -227,6 +195,9 @@ export function TriageSelectBar({
           </span>
         </button>
 
+        {/* The list's size sits between select-all and the status chips (owner
+            2026-09-27) — the same slot the check-set's "N selected" takes, so
+            the number beside the checkbox is always "how many this box acts on". */}
         <AnimatePresence mode="popLayout" initial={false}>
           {active ? (
             <motion.span
@@ -242,38 +213,29 @@ export function TriageSelectBar({
               </motion.span>
               selected
             </motion.span>
-          ) : null}
-        </AnimatePresence>
-
-        {/* Sidebar closed: its Find slides out of the checkbox into a narrow
-            slot before the chips, and the chips glide right to make room (and
-            back left when it leaves). Hidden under the bulk verbs, which need
-            the width. No entrance on first paint (`initial={false}`);
-            `popLayout` lets the chips start moving the moment it exits. */}
-        <AnimatePresence mode="popLayout" initial={false}>
-          {find && !bulkMode ? (
-            <motion.div
-              key="bar-find"
-              initial={{ opacity: 0, x: -24, clipPath: 'inset(0 100% 0 0 round 8px)' }}
-              animate={{ opacity: 1, x: 0, clipPath: 'inset(0 0% 0 0 round 8px)' }}
-              exit={{ opacity: 0, x: -24, clipPath: 'inset(0 100% 0 0 round 8px)' }}
-              transition={FIND_SLIDE}
-              className="w-48 min-w-0 flex-none"
+          ) : (
+            <motion.span
+              key="count"
+              data-testid={`${testIdPrefix}-count`}
+              aria-label={`${total} ${total === 1 ? noun.one : noun.many}`}
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -8 }}
+              transition={SPRING}
+              className="shrink-0 text-sm font-semibold tabular-nums text-text-muted"
             >
-              <BarFind {...find} label={`Find ${noun.many}`} testId={`${testIdPrefix}-inline-find`} />
-            </motion.div>
-          ) : null}
+              <motion.span key={total} initial={{ y: -6, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={SPRING} className="inline-block">
+                {total}
+              </motion.span>
+            </motion.span>
+          )}
         </AnimatePresence>
 
-        <motion.div
-          layout="position"
-          transition={FIND_SLIDE}
-          className={cn(middleClass, active && !bulkMode && 'hidden')}
-        >
+        <motion.div className={middleClass}>
           {/* The chips' first paint waits for the cards to land, then rises
-              from below (owner 2026-09-27); later swaps (bulk ⇄ chips) are immediate. */}
+              from below (owner 2026-09-27); later swaps (verbs ⇄ chips) are immediate. */}
           <AnimatePresence mode="popLayout" initial>
-            {bulkMode ? (
+            {active ? (
               <motion.div
                 key="bulk"
                 initial={{ opacity: 0, x: -10 }}
@@ -284,7 +246,7 @@ export function TriageSelectBar({
               >
                 {bulk}
               </motion.div>
-            ) : active ? null : (
+            ) : (
               <motion.div
                 key="summary"
                 initial={{ opacity: 0, y: 6 }}
@@ -309,25 +271,20 @@ export function TriageSelectBar({
               <X className="size-4" />
             </button>
           ) : (
-            // Numbers first, view controls after, the ⤢ fullscreen toggle always last (owner 2026-09-27).
+            // View controls, the view switch always last (owner 2026-09-27). The count lives beside select-all.
             <>
-              <span
-                data-testid={`${testIdPrefix}-count`}
-                aria-label={`${total} ${total === 1 ? noun.one : noun.many}`}
-                className="pl-1 pr-1.5 text-sm font-semibold tabular-nums text-text-muted"
-              >
-                <motion.span key={total} initial={{ y: -6, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={SPRING} className="inline-block">
-                  {total}
-                </motion.span>
-              </span>
-              <PageModeMenu
-                mode={pageMode}
-                onChange={onPageModeChange}
-                label={`${noun.many.charAt(0).toUpperCase()}${noun.many.slice(1)} per page`}
-                testId={`${testIdPrefix}-page-mode`}
-              />
-              <DataTableSortMenu {...sortMenu} />
-              <DataTableFullscreenToggle />
+              {pageMode ? (
+                <PageModeMenu
+                  mode={pageMode}
+                  onChange={onPageModeChange}
+                  label={`${noun.many.charAt(0).toUpperCase()}${noun.many.slice(1)} per page`}
+                  testId={`${testIdPrefix}-page-mode`}
+                />
+              ) : null}
+              {/* How a record opens — In place, Split or Floor — seen and switched before one is open. */}
+              {viewControls ? <DeskRecordViewSwitch labels="wide" /> : null}
+              {/* ⤢ always the bar's last, top-right-most control (owner 2026-09-27). */}
+              {viewControls ? <DeskFullscreenToggle /> : null}
             </>
           )}
         </span>

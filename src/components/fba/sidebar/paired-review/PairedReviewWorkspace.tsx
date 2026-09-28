@@ -59,7 +59,7 @@ export function PairedReviewWorkspace({
         </div>
 
         {c.hasItems ? (
-          <span className="shrink-0 text-role-micro uppercase tracking-wider tabular-nums text-text-soft">
+          <span className="shrink-0 text-role-micro tabular-nums text-text-soft">
             {selectedItems.length} line{selectedItems.length === 1 ? '' : 's'} · {c.totalQty} units
           </span>
         ) : null}
@@ -122,7 +122,7 @@ export function PairedReviewWorkspace({
                 radius="flush"
                 onClick={c.addBucket}
                 disabled={c.saving}
-                className="h-auto w-44 shrink-0 flex-col justify-center gap-1.5 self-stretch border border-dashed border-border-default py-6 text-role-micro uppercase tracking-wider text-text-soft hover:border-border-accent hover:bg-surface-accent hover:text-text-accent disabled:opacity-40"
+                className="h-auto w-44 shrink-0 flex-col justify-center gap-1.5 self-stretch border border-dashed border-border-default py-6 text-role-micro text-text-soft hover:border-border-accent hover:bg-surface-accent hover:text-text-accent disabled:opacity-40"
               >
                 <Plus className="h-4 w-4" />
                 Add UPS Box

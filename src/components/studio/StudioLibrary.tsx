@@ -52,14 +52,14 @@ export function StudioLibrary({
   return (
     <div className="space-y-5 p-4">
       <section>
-        <h3 className="mb-2 text-role-micro uppercase tracking-wider text-text-faint">Node types</h3>
+        <h3 className="mb-2 text-role-micro text-text-faint">Node types</h3>
         {palette.length === 0 ? (
           <p className="text-xs text-text-faint">No node types registered.</p>
         ) : (
           <div className="space-y-3">
             {CATEGORY_ORDER.filter((cat) => palette.some((p) => p.category === cat)).map((cat) => (
               <div key={cat}>
-                <p className="mb-1 text-role-micro font-semibold uppercase tracking-wide text-text-faint">
+                <p className="mb-1 text-role-micro font-semibold text-text-faint">
                   {CATEGORY_LABELS[cat]}
                 </p>
                 <ul className="space-y-1">
@@ -107,7 +107,7 @@ export function StudioLibrary({
       </section>
 
       <section>
-        <h3 className="mb-2 text-role-micro uppercase tracking-wider text-text-faint">Stations</h3>
+        <h3 className="mb-2 text-role-micro text-text-faint">Stations</h3>
         <ul className="space-y-1">
           {STATIONS.map((s) => (
             <HoverTooltip key={s.key} label={s.blurb} asChild>
@@ -123,7 +123,7 @@ export function StudioLibrary({
       {/* ─── Templates (ST6 / Phase E4) — system blueprints to clone ─── */}
       {templates.length > 0 && (
         <section className="border-t border-border-hairline pt-4">
-          <h3 className="mb-2 text-role-micro uppercase tracking-wider text-text-faint">Templates</h3>
+          <h3 className="mb-2 text-role-micro text-text-faint">Templates</h3>
           <ul className="space-y-1.5">
             {templates.map((t) => {
               const importing = importingTemplateId === t.id;
@@ -175,7 +175,7 @@ export function StudioLibrary({
 
       {/* ─── Issues rail (ST3) — the operation's linter output ─── */}
       <section className="border-t border-border-hairline pt-4">
-        <h3 className="mb-2 flex items-center gap-1.5 text-role-micro uppercase tracking-wider text-text-faint">
+        <h3 className="mb-2 flex items-center gap-1.5 text-role-micro text-text-faint">
           Issues
           <span
             className={[

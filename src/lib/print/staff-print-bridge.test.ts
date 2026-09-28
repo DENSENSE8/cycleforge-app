@@ -161,6 +161,71 @@ describe('parseStaffPrintJob', () => {
     assert.equal(copiesOf(undefined), 1);
     assert.equal(copiesOf('lots'), 1);
   });
+
+  describe('documents grain', () => {
+    const base = { request_id: 'req-doc', targetStationId: BENCH, grain: 'documents' };
+    const BATCH = '0b8e2c4a-7d1f-4c55-9b0e-3a1f5d6c7e80';
+    const paper = (items: unknown[], over: Record<string, unknown> = {}) =>
+      parseStaffPrintJob({ ...base, documents: { stock: 'paper', batchId: BATCH, items, ...over } });
+
+    it('takes its role from the stock and keeps only the id its kind is keyed by', () => {
+      const job = parseStaffPrintJob({
+        ...base,
+        role: 'paper',
+        documents: {
+          stock: 'label',
+          batchId: BATCH,
+          items: [{ kind: 'label', orderId: 7, title: ' ORD-7 label ', ingestionId: 12, documentId: 99, src: 'https://evil.test/x.pdf' }],
+        },
+      });
+      assert.equal(job?.role, 'label');
+      assert.deepEqual(job?.documents, {
+        stock: 'label',
+        batchId: BATCH,
+        items: [{ kind: 'label', orderId: 7, title: 'ORD-7 label', ingestionId: 12 }],
+      });
+      const slips = paper([
+        { kind: 'packing_slip', orderId: null, title: 'Slip', documentId: 88 },
+        { kind: 'manual', title: 'Manual', manualId: '4' },
+        { kind: 'packing_slip', orderId: 3, title: 'Slip again', documentId: 88 },
+      ]);
+      assert.equal(slips?.role, 'paper');
+      assert.deepEqual(slips?.documents?.items, [
+        { kind: 'packing_slip', orderId: null, title: 'Slip', documentId: 88 },
+        { kind: 'manual', orderId: null, title: 'Manual', manualId: 4 },
+      ]);
+    });
+
+    it('requires the id each kind is keyed by', () => {
+      assert.equal(paper([{ kind: 'packing_slip', title: 'Slip', manualId: 4 }]), null);
+      assert.equal(paper([{ kind: 'manual', title: 'Manual', documentId: 88 }]), null);
+      assert.equal(paper([{ kind: 'manual', title: 'Manual', manualId: 0 }]), null);
+      assert.equal(paper([{ kind: 'packing_slip', title: 'Slip', documentId: 1.5 }]), null);
+      assert.equal(
+        parseStaffPrintJob({ ...base, documents: { stock: 'label', batchId: BATCH, items: [{ kind: 'label', title: 'L', documentId: 12 }] } }),
+        null,
+      );
+    });
+
+    it('rejects junk: one bad item sinks the job, never a partial print', () => {
+      const slip = { kind: 'packing_slip', title: 'Slip', documentId: 88 };
+      assert.equal(parseStaffPrintJob(base), null);
+      assert.equal(paper([]), null);
+      assert.equal(paper([slip, 'junk']), null);
+      assert.equal(paper([slip, { ...slip, documentId: 89, kind: 'invoice' }]), null);
+      assert.equal(paper([{ ...slip, title: '   ' }]), null);
+      assert.equal(paper([{ ...slip, orderId: -3 }]), null);
+      // A label never rides a paper job, nor a slip a label job.
+      assert.equal(paper([{ kind: 'label', title: 'L', ingestionId: 12 }]), null);
+      assert.equal(
+        parseStaffPrintJob({ ...base, documents: { stock: 'label', batchId: BATCH, items: [slip] } }),
+        null,
+      );
+      assert.equal(paper([slip], { stock: 'roll' }), null);
+      assert.equal(paper([slip], { batchId: 'short' }), null);
+      assert.equal(paper(Array.from({ length: 201 }, (_, i) => ({ ...slip, documentId: i + 1 }))), null);
+    });
+  });
 });
 
 describe('parseStaffPrintStatus', () => {
@@ -216,6 +281,9 @@ describe('thisDeviceCanFulfillPrintJob', () => {
       thisDeviceCanFulfillPrintJob({ grain: 'repair', role: 'paper', targetStationId: BENCH }, bench),
       false,
     );
+    // A documents job needs the printer of its stock.
+    assert.equal(thisDeviceCanFulfillPrintJob({ grain: 'documents', role: 'label', targetStationId: BENCH }, bench), true);
+    assert.equal(thisDeviceCanFulfillPrintJob({ grain: 'documents', role: 'paper', targetStationId: BENCH }, bench), false);
   });
 });
 

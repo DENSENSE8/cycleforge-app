@@ -116,6 +116,9 @@ jobs:
       - name: Cross-organization IDOR regressions
         run: pnpm test:tenancy-idor
 
+      - name: Signup provisions per-org roles (rolled back)
+        run: pnpm test:signup-tenant
+
       - name: Application model to live-schema parity
         run: pnpm schema:model-parity:check
 

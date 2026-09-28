@@ -11,6 +11,7 @@ import { clearOrderPackPlacement } from '@/lib/packing/pack-placement';
 import { clearUnitPackPlacement } from '@/lib/packing/unit-pack-placement';
 import { createPackerLog } from '@/lib/packing/packer-log-writer';
 import { createStationActivityLog } from '@/lib/station-activity';
+import { refreshOrderStageFacts } from '@/lib/orders/order-stage-facts';
 import { buyerNoteHoldBody, readBuyerNoteHold } from '@/lib/orders/buyer-note-interlock';
 
 /** Thrown when a unit's guarded SHIPPED transition is rejected (it isn't in a shippable state). */
@@ -329,6 +330,7 @@ export const POST = withAuth(async (request, ctx) => {
         `UPDATE orders SET status = 'shipped' WHERE id = $1 AND organization_id = $2`,
         [orderId, orgId],
       );
+      await refreshOrderStageFacts(orgId, { orderIds: [orderId], shipmentIds: [order.shipment_id] }, client);
 
       // 9. Clear packing-station placement — order left the ready-to-pack board.
       await clearOrderPackPlacement(

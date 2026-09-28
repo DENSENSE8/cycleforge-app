@@ -1,11 +1,11 @@
 /**
- * Adapter: a History {@link TechRecord} → shared `RailRowVM` slots for the
+ * Adapter: a History {@link DeskPickRecord} → shared `RailRowVM` slots for the
  * Shipping sidebar personal recent rail. Matches the station history row's
  * identity (title / qty·condition) — not the old order ship-out chrome.
  */
 
-import type { TechRecord } from '@/hooks/useDeskPickLogs';
-import { hasUsableProductTitle } from '@/hooks/station/useTechTableController';
+import type { DeskPickRecord } from '@/hooks/useDeskPickLogs';
+import { hasUsableProductTitle } from '@/hooks/station/useDeskPickTableController';
 import { normalizeProductTitle } from '@/components/station/tech-record-mappers';
 import type { RailRowVM } from '@/components/sidebar/rail-shell/RailRowBody';
 import {
@@ -15,13 +15,13 @@ import {
 } from '@/utils/source-dot';
 import { orderRowConditionLabel } from '@/lib/conditions';
 
-export function techRecordRailTitle(record: TechRecord): string {
+export function techRecordRailTitle(record: DeskPickRecord): string {
   return hasUsableProductTitle(record.product_title)
     ? normalizeProductTitle(record.product_title)
     : 'Unknown Product';
 }
 
-export function getTechRecordStatusDot(record: TechRecord): string {
+export function getDeskPickRecordStatusDot(record: DeskPickRecord): string {
   const { dotType } = resolveStationSource({
     orderId: record.order_id,
     accountSource: record.account_source,
@@ -31,7 +31,7 @@ export function getTechRecordStatusDot(record: TechRecord): string {
   return SOURCE_DOT_BG[dotType];
 }
 
-export function getTechRecordStatusDotLabel(record: TechRecord): string {
+export function getDeskPickRecordStatusDotLabel(record: DeskPickRecord): string {
   const { dotType } = resolveStationSource({
     orderId: record.order_id,
     accountSource: record.account_source,
@@ -41,7 +41,7 @@ export function getTechRecordStatusDotLabel(record: TechRecord): string {
   return SOURCE_DOT_LABEL[dotType];
 }
 
-function conditionLabel(record: TechRecord): string {
+function conditionLabel(record: DeskPickRecord): string {
   const isFbaRow =
     record.account_source === 'fba' ||
     record.source_kind === 'fba_scan' ||
@@ -54,7 +54,7 @@ function conditionLabel(record: TechRecord): string {
   return orderRowConditionLabel(raw);
 }
 
-export function techRecordToRailVM(record: TechRecord): RailRowVM {
+export function techRecordToRailVM(record: DeskPickRecord): RailRowVM {
   const title = techRecordRailTitle(record);
   const qty = Math.max(1, parseInt(String(record.quantity || '1'), 10) || 1);
   const condition = conditionLabel(record);
@@ -62,7 +62,7 @@ export function techRecordToRailVM(record: TechRecord): RailRowVM {
   return {
     title,
     meta: (
-      <span className="block truncate font-semibold uppercase tracking-widest text-text-soft">
+      <span className="block truncate font-semibold text-text-soft">
         {qty} · {condition}
       </span>
     ),
@@ -70,7 +70,7 @@ export function techRecordToRailVM(record: TechRecord): RailRowVM {
 }
 
 /** Client-side filter for the shipping tech-log rail. */
-export function filterTechRecordRailRows(rows: TechRecord[], query: string): TechRecord[] {
+export function filterDeskPickRecordRailRows(rows: DeskPickRecord[], query: string): DeskPickRecord[] {
   const trimmed = query.trim();
   if (!trimmed) return rows;
   const tokens = trimmed.toLowerCase().split(/\s+/);

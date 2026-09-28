@@ -13,6 +13,7 @@ import {
   getStatusDotBg,
 } from '@/lib/receiving/receiving-constants';
 import { workflowStageBadge } from '@/lib/receiving/workflow-stages';
+import { sentenceCaseLabel } from '@/lib/text/sentence-case-label';
 import { getLast8 } from '@/components/ui/CopyChip';
 import { ReceivingIdentityChips } from '@/components/receiving/ReceivingIdentityChips';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
@@ -68,7 +69,7 @@ function randomId(): string {
 function StatusPill({ status }: { status: string | null }) {
   const v = status || 'EXPECTED';
   return (
-    <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-role-micro uppercase tracking-wide ${workflowStageBadge(v)}`}>
+    <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-role-micro ${workflowStageBadge(v)}`}>
       {workflowStatusTableLabel(v)}
     </span>
   );
@@ -151,40 +152,6 @@ function LinePageInner() {
   }, [flash]);
 
   // ─── Actions ──────────────────────────────────────────────────────────────
-
-  const postStatus = useCallback(
-    async (eventType: string) => {
-      if (busy) return;
-      setBusy(eventType);
-      try {
-        const res = await fetch(`/api/receiving/lines/${lineId}/status`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            event_type: eventType,
-            staff_id: staffId,
-            station: 'MOBILE',
-            notes: noteInput.trim() || null,
-            client_event_id: randomId(),
-            scan_token: typeof window !== 'undefined' ? window.location.pathname : null,
-          }),
-        });
-        const data = await res.json();
-        if (!res.ok || !data?.success) throw new Error(data?.error || `HTTP ${res.status}`);
-        setFlash({ kind: 'ok', msg: `${eventType.replace(/_/g, ' ')} recorded` });
-        setNoteInput('');
-        await loadAll();
-      } catch (err) {
-        setFlash({
-          kind: 'err',
-          msg: err instanceof Error ? err.message : 'Failed',
-        });
-      } finally {
-        setBusy(null);
-      }
-    },
-    [busy, lineId, staffId, noteInput, loadAll],
-  );
 
   const submitSerial = useCallback(async () => {
     const serial = unwrapScannedSerial(serialInput);
@@ -302,12 +269,12 @@ function LinePageInner() {
         <div className="mt-1 flex flex-wrap items-center gap-1.5 pl-4">
           <StatusPill status={line?.workflow_status ?? null} />
           {line?.condition_grade && (
-            <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-role-micro uppercase tracking-wide ${conditionBadgeTone(line.condition_grade)}`}>
+            <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-role-micro ${conditionBadgeTone(line.condition_grade)}`}>
               {conditionGradeTableLabel(line.condition_grade)}
             </span>
           )}
           <span
-            className={`text-role-caption font-semibold uppercase tracking-widest ${isComplete ? 'text-emerald-600' : 'text-text-muted'}`}
+            className={`text-role-caption font-semibold ${isComplete ? 'text-emerald-600' : 'text-text-muted'}`}
           >
             {received}/{expected ?? '?'}
           </span>
@@ -349,45 +316,9 @@ function LinePageInner() {
           </div>
         )}
 
-        {/* Test actions */}
-        <Panel radius="lg" padding="sm">
-          <p className="mb-2 text-role-micro uppercase tracking-[0.16em] text-text-soft">
-            Test status
-          </p>
-          <div className="grid grid-cols-3 gap-2">
-            <Button
-              variant="primary"
-              size="lg"
-              disabled={!!busy}
-              onClick={() => postStatus('TEST_START')}
-              className="h-12 w-full"
-            >
-              Start
-            </Button>
-            <Button
-              variant="primary"
-              size="lg"
-              disabled={!!busy}
-              onClick={() => postStatus('TEST_PASS')}
-              className="h-12 w-full bg-emerald-600 shadow-emerald-600/25 hover:bg-emerald-500 active:bg-emerald-700"
-            >
-              Pass
-            </Button>
-            <Button
-              variant="danger"
-              size="lg"
-              disabled={!!busy}
-              onClick={() => postStatus('TEST_FAIL')}
-              className="h-12 w-full"
-            >
-              Fail
-            </Button>
-          </div>
-        </Panel>
-
         {/* Serial scan */}
         <Panel radius="lg" padding="sm">
-          <p className="mb-2 text-role-micro uppercase tracking-[0.16em] text-text-soft">
+          <p className="mb-2 text-role-micro text-text-soft">
             Scan serial
           </p>
           <div className="flex gap-2">
@@ -425,7 +356,7 @@ function LinePageInner() {
                 >
                   …{getLast8(s.serial_number)}
                   <span className="opacity-50">·</span>
-                  <span className="opacity-80">{s.current_status}</span>
+                  <span className="opacity-80">{sentenceCaseLabel(s.current_status)}</span>
                 </span>
               ))}
             </div>
@@ -434,7 +365,7 @@ function LinePageInner() {
 
         {/* Putaway */}
         <Panel radius="lg" padding="sm">
-          <p className="mb-2 text-role-micro uppercase tracking-[0.16em] text-text-soft">
+          <p className="mb-2 text-role-micro text-text-soft">
             Stash in bin
           </p>
           <div className="flex gap-2">
@@ -464,7 +395,7 @@ function LinePageInner() {
 
         {/* Note (optional, applied to next action) */}
         <Panel radius="lg" padding="sm">
-          <p className="mb-2 text-role-micro uppercase tracking-[0.16em] text-text-soft">
+          <p className="mb-2 text-role-micro text-text-soft">
             Note (optional, attached to next action)
           </p>
           <textarea
@@ -478,7 +409,7 @@ function LinePageInner() {
 
         {/* Timeline */}
         <Panel radius="lg" padding="sm">
-          <p className="mb-2 text-role-micro uppercase tracking-[0.16em] text-text-soft">
+          <p className="mb-2 text-role-micro text-text-soft">
             Recent activity
           </p>
           {events.length === 0 ? (
@@ -504,7 +435,7 @@ function LinePageInner() {
                     </p>
                     <p className="text-text-soft">
                       {ev.actor_name || 'Unknown'} · {formatAgo(ev.occurred_at)} ago
-                      {ev.station ? ` · ${ev.station}` : ''}
+                      {ev.station ? ` · ${sentenceCaseLabel(ev.station)}` : ''}
                     </p>
                     {ev.notes && (
                       <p className="mt-0.5 text-text-soft italic">{ev.notes}</p>

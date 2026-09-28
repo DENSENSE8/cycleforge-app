@@ -12,6 +12,7 @@ import { SearchField } from '@/design-system/primitives/SearchField';
 import { readRecentSignins, writeRecentSignin } from '@/lib/auth/recent-signins';
 import { isMobileFirstPath } from '@/lib/mobile/mobile-first-surface';
 import { armBootSplash, readWelcomeThemeOverride, WELCOME_PLAY_EVENT } from '@/lib/boot-flag';
+import { preloadSelectedWelcomeVariant } from '@/components/boot/welcome/welcome-loader';
 import { resolveWelcomeTheme } from '@/components/boot/welcome/welcome-theme';
 import { getStaffColorHex } from '@/utils/staff-colors';
 import { staffInitials } from '@/design-system/components/StaffBadge';
@@ -89,6 +90,7 @@ export function SwitchStaffSheet() {
           initials: staffInitials(row.name),
           themeId: resolveWelcomeTheme(new Date(), readWelcomeThemeOverride()).id,
         });
+        await preloadSelectedWelcomeVariant();
       }
       await refresh();
       router.refresh();

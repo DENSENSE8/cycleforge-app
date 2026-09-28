@@ -62,7 +62,7 @@ export function PlacementSummary({
 
   return (
     <div className={`${WORKSPACE_NESTED_FIELD} ${WORKSPACE_NESTED_FIELD_PAD}`} data-placement-summary>
-      <p className="text-role-eyebrow uppercase tracking-widest text-text-soft">{eyebrow}</p>
+      <p className="text-role-eyebrow text-text-soft">{eyebrow}</p>
       <p className="mt-1.5 text-role-body font-semibold text-text-default">
         {spokenPath || location.name}
       </p>
@@ -94,7 +94,7 @@ export function PlacementSummary({
         {binType ? (
           <div>
             <dt className="text-text-faint">Bin type</dt>
-            <dd className="font-medium uppercase tracking-wide text-text-muted">{binType}</dd>
+            <dd className="font-medium text-text-muted">{binType}</dd>
           </div>
         ) : null}
         {laneLabel ? (

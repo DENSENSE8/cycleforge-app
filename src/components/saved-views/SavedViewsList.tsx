@@ -13,7 +13,7 @@ import { focusRing } from '@/design-system/tokens/focus-ring';
 import { cornerClass } from '@/design-system/tokens/radius';
 
 
-const EYEBROW = 'text-role-eyebrow uppercase tracking-widest text-text-soft';
+const EYEBROW = 'text-role-eyebrow text-text-soft';
 
 interface SavedViewsListProps {
   /** Resolves to a `saved_views.surface` via `src/lib/saved-views/surfaces.ts`. */
@@ -264,7 +264,7 @@ function SavedViewsListView({
                 Save
               </button>
             </form>
-            <label className="flex items-center gap-1.5 px-0.5 text-role-micro font-semibold uppercase tracking-widest text-text-soft">
+            <label className="flex items-center gap-1.5 px-0.5 text-role-micro font-semibold text-text-soft">
               <input
                 type="checkbox"
                 checked={shareWithOrg}

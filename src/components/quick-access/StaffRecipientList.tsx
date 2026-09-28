@@ -37,7 +37,7 @@ export function StaffRecipientList({
 
   return (
     <div className={cn('max-h-[180px] overflow-y-auto', className)}>
-      <p className="px-1 pb-1 text-role-micro uppercase tracking-widest text-text-soft">
+      <p className="px-1 pb-1 text-role-micro text-text-soft">
         {title}
       </p>
       <ul className="space-y-1">
@@ -65,7 +65,7 @@ export function StaffRecipientList({
                 <span className="min-w-0 flex-1 truncate text-role-caption font-semibold text-text-default">
                   {s.name}
                 </span>
-                <span className="shrink-0 text-role-micro uppercase tracking-wide text-text-faint">
+                <span className="shrink-0 text-role-micro text-text-faint">
                   {s.role}
                 </span>
                 {active ? <Check className="h-3.5 w-3.5 shrink-0 text-blue-600" /> : null}

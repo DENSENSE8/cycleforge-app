@@ -36,7 +36,7 @@ interface UseAdminDriftAlertsSpreadsheetOptions {
 export function useAdminDriftAlertsSpreadsheet({
   rows,
   loading = false,
-  emptyMessage = 'No open DRIFT alerts. The drift-check cron resolves an alert the run after its SKU reconciles.',
+  emptyMessage = 'No open drift alerts. The drift-check cron resolves an alert the run after its SKU reconciles.',
   searchPlaceholder = 'Filter alerts…',
   onOpenRow,
 }: UseAdminDriftAlertsSpreadsheetOptions): CompoundSpreadsheetFeed<

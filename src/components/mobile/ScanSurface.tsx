@@ -134,7 +134,7 @@ export function ScanSurface({
 
         {/* Status pill — top right */}
         <span
-          className={`absolute top-3 right-3 rounded-full px-2.5 py-1 text-xs font-semibold uppercase tracking-wider backdrop-blur ${
+          className={`absolute top-3 right-3 rounded-full px-2.5 py-1 text-xs font-semibold backdrop-blur ${
             isScanError
               ? 'bg-red-500/85 text-white'
               : scanner.isScanning

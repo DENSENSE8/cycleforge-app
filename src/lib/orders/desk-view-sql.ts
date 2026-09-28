@@ -3,6 +3,7 @@
 import type { DeskRefinements } from '@/lib/orders/desk-view-filters';
 import { sqlOrderHasPackScan, sqlOrderHasShipConfirm, sqlOrderHasPickScan } from '@/lib/orders/order-grain-sql';
 import { SHIPPED_BY_CARRIER_SQL } from '@/lib/sql-fragments';
+import { PICKUP_FULFILLMENT_CHANNEL } from '@/lib/orders/release-gates';
 import { WAREHOUSE_TIME_ZONE } from '@/utils/date';
 
 const SQL_ALIAS = /^[A-Za-z_][A-Za-z0-9_]*$/;
@@ -53,23 +54,45 @@ function sqlOrderFullyPicked(orderAlias: string): string {
 }
 
 /**
+ * Where an order's stage signals are read from, as SQL expressions over the
+ * order alias. Omitted: the live source probes (`sqlOrderHasPickScan`,
+ * `sqlOrderPickedByStaffId`, …). `/api/orders` passes the
+ * `order_stage_facts` columns it has joined.
+ */
+export interface OrderStageSignals {
+  hasPickScan: string;
+  hasPackScan: string;
+  /** Who actually picked (`?pickedBy=`). */
+  pickedBy: string;
+  /** Live ORDER/PICK assignee (`?pickerId=`). */
+  pickerId: string;
+  /** Live ORDER/PACK assignee (`?packedBy=`). */
+  packerId: string;
+}
+
+/**
  * `queue=pick` refinement ON TOP of the in-warehouse To-ship scope: no pack
  * scan on this order (order-grain) and not every allocated unit picked.
  */
-export function sqlOrderAwaitingPick(orderAlias = 'o'): string {
+export function sqlOrderAwaitingPick(orderAlias = 'o', signals?: Pick<OrderStageSignals, 'hasPackScan'>): string {
   const o = alias(orderAlias);
-  return `(NOT ${sqlOrderHasPackScan(o)} AND NOT ${sqlOrderFullyPicked(o)})`;
+  return `(NOT ${signals?.hasPackScan ?? sqlOrderHasPackScan(o)} AND NOT ${sqlOrderFullyPicked(o)})`;
 }
 
-/** In-warehouse To-ship membership — `/api/orders?inWarehouse=true` (the To-ship desk's row feed) spelled as one predicate for the counts feed. */
+/**
+ * In-warehouse To-ship membership — `/api/orders?inWarehouse=true` (the To-ship desk's row feed) spelled as one predicate for the counts feed.
+ * A counter pickup (`fulfillment_channel = 'PICKUP'`) never gets a label or tracking, so it belongs without them.
+ */
 export function sqlOrderInWarehouseToShip(orderAlias = 'o'): string {
   const o = alias(orderAlias);
   return `(
       NOT ${SHIPPED_BY_CARRIER_SQL}
       AND NOT ${sqlOrderHasShipConfirm(o)}
       AND COALESCE(${o}.fulfillment_channel, '') <> 'AFN'
-      AND ${o}.shipment_id IS NOT NULL
-      AND COALESCE(TRIM(stn.tracking_number_raw), '') <> ''
+      AND (
+        ${o}.fulfillment_channel = '${PICKUP_FULFILLMENT_CHANNEL}'
+        OR (${o}.shipment_id IS NOT NULL AND COALESCE(TRIM(stn.tracking_number_raw), '') <> '')
+      )
     )`;
 }
 
@@ -102,20 +125,26 @@ export function sqlDeskQueueScope(view: DeskQueueView, orderAlias = 'o'): string
   return sqlOrderInWarehouseToShip(o);
 }
 
-export const DESK_STAGES = ['pending', 'tested', 'packed'] as const;
+export const DESK_STAGES = ['pending', 'picked', 'packed'] as const;
 export type DeskStage = (typeof DESK_STAGES)[number];
 
 /**
- * `?stage=` on the To-ship desk, order-grain (CF-03 / CF-04): tested = picked
- * (pick scan) and no pack; pending = neither; packed = pack scan (only meaningful
+ * `?stage=` on the To-ship desk, order-grain (CF-03 / CF-04): picked = pick
+ * scan and no pack; pending = neither; packed = pack scan (only meaningful
  * under inWarehouse, where packed-staged rows still sit). The three are a
  * partition of any row set.
  */
-export function sqlOrderDeskStage(stage: DeskStage, orderAlias = 'o'): string {
+export function sqlOrderDeskStage(
+  stage: DeskStage,
+  orderAlias = 'o',
+  signals?: Pick<OrderStageSignals, 'hasPickScan' | 'hasPackScan'>,
+): string {
   const o = alias(orderAlias);
-  if (stage === 'packed') return sqlOrderHasPackScan(o);
-  if (stage === 'tested') return `(${sqlOrderHasPickScan(o)} AND NOT ${sqlOrderHasPackScan(o)})`;
-  return `(NOT ${sqlOrderHasPickScan(o)} AND NOT ${sqlOrderHasPackScan(o)})`;
+  const pick = signals?.hasPickScan ?? sqlOrderHasPickScan(o);
+  const pack = signals?.hasPackScan ?? sqlOrderHasPackScan(o);
+  if (stage === 'packed') return pack;
+  if (stage === 'picked') return `(${pick} AND NOT ${pack})`;
+  return `(NOT ${pick} AND NOT ${pack})`;
 }
 
 const SQL_PARAM_REF = /^\$[1-9][0-9]*$/;
@@ -180,7 +209,7 @@ export function sqlOrderPickAssigneeId(orderAlias = 'o'): string {
  * Who actually picked the order, as a scalar: the same three sources, in the
  * same priority, as `PICK_FACTS_LATERALS` (`picked_by` on the list rows) —
  * allocation pick event › picking session › Picker-desk pick scan (PICK /
- * PICK_SCANNED, order grain, else sole-shipment). Keep the two in step.
+ * PICK_SCANNED attributed by `order_row_id`). Keep the two in step.
  */
 export function sqlOrderPickedByStaffId(orderAlias = 'o'): string {
   const o = alias(orderAlias);
@@ -214,20 +243,7 @@ export function sqlOrderPickedByStaffId(orderAlias = 'o'): string {
          WHERE pk_sal.organization_id = ${o}.organization_id
            AND pk_sal.station = 'PICK'
            AND pk_sal.activity_type = 'PICK_SCANNED'
-           AND (
-             pk_sal.order_row_id = ${o}.id
-             OR (
-               pk_sal.shipment_id IS NOT NULL
-               AND pk_sal.shipment_id = ${o}.shipment_id
-               AND (pk_sal.metadata->>'order_row_id') IS NULL
-               AND NOT EXISTS (
-                 SELECT 1 FROM orders pk_o2
-                  WHERE pk_o2.shipment_id = ${o}.shipment_id
-                    AND pk_o2.organization_id = ${o}.organization_id
-                    AND pk_o2.id <> ${o}.id
-               )
-             )
-           )
+           AND pk_sal.order_row_id = ${o}.id
          ORDER BY pk_sal.created_at DESC, pk_sal.id DESC
          LIMIT 1
       )
@@ -259,19 +275,21 @@ export function sqlWarehouseDayOnOrBefore(timestampSql: string, dayParam: string
  * spelling `/api/orders` and the outbound nav facets both bind, so a facet
  * total equals the list total. `bind` pushes a value and returns its
  * placeholder. `deadlineSql` is the order's ship-by instant (a lateral column
- * where the caller already has one, else `sqlOrderTestDeadlineAt`).
+ * where the caller already has one, else `sqlOrderTestDeadlineAt`); `signals`
+ * the assignee / picker subjects (live probes unless the caller joined facts).
  */
 export function sqlDeskRefinementClauses(
   r: DeskRefinements,
   bind: (value: unknown) => string,
   orderAlias = 'o',
   deadlineSql = sqlOrderTestDeadlineAt(orderAlias),
+  signals?: Pick<OrderStageSignals, 'pickedBy' | 'pickerId' | 'packerId'>,
 ): string[] {
   const o = alias(orderAlias);
   const out: string[] = [];
-  if (r.packedBy != null) out.push(`${sqlOrderPackAssigneeId(o)} = ${paramRef(bind(r.packedBy))}`);
-  if (r.pickerId != null) out.push(`${sqlOrderPickAssigneeId(o)} = ${paramRef(bind(r.pickerId))}`);
-  if (r.pickedBy != null) out.push(sqlOrderPickedByStaff(o, bind(r.pickedBy)));
+  if (r.packedBy != null) out.push(`${signals?.packerId ?? sqlOrderPackAssigneeId(o)} = ${paramRef(bind(r.packedBy))}`);
+  if (r.pickerId != null) out.push(`${signals?.pickerId ?? sqlOrderPickAssigneeId(o)} = ${paramRef(bind(r.pickerId))}`);
+  if (r.pickedBy != null) out.push(`${signals?.pickedBy ?? sqlOrderPickedByStaffId(o)} = ${paramRef(bind(r.pickedBy))}`);
   if (r.orderFrom) out.push(sqlWarehouseDayOnOrAfter(`${o}.order_date`, bind(r.orderFrom)));
   if (r.orderTo) out.push(sqlWarehouseDayOnOrBefore(`${o}.order_date`, bind(r.orderTo)));
   // A NULL ship-by fails both comparisons, so either bound drops unscheduled orders.

@@ -43,7 +43,7 @@ export function SupportTicketsRecentRail() {
   return (
     <div className="flex h-full min-h-0 flex-col bg-surface-card">
       <div className={cn(SIDEBAR_GUTTER, 'flex shrink-0 items-center justify-between gap-2 py-2')}>
-        <p className="flex items-center gap-1 text-role-micro uppercase tracking-widest text-text-faint">
+        <p className="flex items-center gap-1 text-role-micro text-text-faint">
           <History className="h-3 w-3" />
           Recent · {filtered.length}
         </p>

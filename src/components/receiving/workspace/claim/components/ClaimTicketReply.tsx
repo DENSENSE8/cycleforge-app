@@ -51,11 +51,11 @@ export function ClaimTicketReply({
   return (
     <section className="space-y-2">
       <div className="flex items-center justify-between gap-3">
-        <p className="min-w-0 truncate text-role-micro uppercase tracking-widest text-text-soft">
+        <p className="min-w-0 truncate text-role-micro text-text-soft">
           {isPublic ? (
             requesterEmail ? (
               <span className="normal-case tracking-normal">
-                <span className="uppercase tracking-widest text-text-faint">To </span>
+                <span className="text-text-faint">To </span>
                 <span className="font-semibold text-text-muted">{requesterEmail}</span>
               </span>
             ) : (

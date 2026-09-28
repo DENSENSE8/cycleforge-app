@@ -61,7 +61,7 @@ export function FbaQtySplitPopover({
           size="sm"
           radius="flush"
           onClick={() => onConfirm(moveQty)}
-          className="flex-1 text-role-micro uppercase tracking-wider"
+          className="flex-1 text-role-micro"
         >
           Move
         </Button>
@@ -70,7 +70,7 @@ export function FbaQtySplitPopover({
           size="sm"
           radius="flush"
           onClick={onCancel}
-          className="flex-1 text-role-micro uppercase tracking-wider text-text-muted"
+          className="flex-1 text-role-micro text-text-muted"
         >
           Cancel
         </Button>

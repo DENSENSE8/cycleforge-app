@@ -55,7 +55,7 @@ function ScanTrail({ scans }: { scans: MilestoneScan[] }) {
                 outerPad="flush"
               />
             ) : (
-              <span className="block text-role-eyebrow uppercase tracking-widest text-text-faint">
+              <span className="block text-role-eyebrow text-text-faint">
                 {scan.value}
               </span>
             )}

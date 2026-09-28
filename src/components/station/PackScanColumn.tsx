@@ -59,7 +59,7 @@ type PackMode = 'standard' | 'fragile' | 'multi';
 const PACK_MODE_LABELS: Record<PackMode, string> = {
   standard: 'Standard',
   fragile: 'Fragile — extra bubble wrap, double-box if needed',
-  multi: 'Multi-Item — verify ALL items before sealing',
+  multi: 'Multi-item — verify all items before sealing',
 };
 
 interface PackScanColumnProps {

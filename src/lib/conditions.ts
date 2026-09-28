@@ -13,6 +13,8 @@ export const CONDITION_GRADES = [
 export type ConditionGrade = (typeof CONDITION_GRADES)[number];
 
 /** Marketplace / display strings → canonical grade codes. */
+
+import { sentenceCaseLabel } from '@/lib/text/sentence-case-label';
 const CONDITION_GRADE_ALIASES: Record<string, ConditionGrade> = {
   NEW: 'BRAND_NEW',
   'BRAND NEW': 'BRAND_NEW',
@@ -58,12 +60,12 @@ export type ConditionLabelVariant =
   | 'option';
 
 export const CONDITION_LABELS: Record<ConditionLabelVariant, Record<string, string>> = {
-  pill:    { BRAND_NEW: 'NEW',       LIKE_NEW: 'L-New',    REFURBISHED: 'REFURB',      USED_A: 'A',        USED_B: 'B',        USED_C: 'C',        PARTS: 'PARTS' },
-  table:   { BRAND_NEW: 'NEW',       LIKE_NEW: 'L-NEW',    REFURBISHED: 'REF',         USED_A: 'A',        USED_B: 'B',        USED_C: 'C',        PARTS: 'PARTS' },
+  pill:    { BRAND_NEW: 'New',       LIKE_NEW: 'L-new',    REFURBISHED: 'Refurb',      USED_A: 'A',        USED_B: 'B',        USED_C: 'C',        PARTS: 'Parts' },
+  table:   { BRAND_NEW: 'New',       LIKE_NEW: 'L-new',    REFURBISHED: 'Ref',         USED_A: 'A',        USED_B: 'B',        USED_C: 'C',        PARTS: 'Parts' },
   compact: { BRAND_NEW: 'New',       LIKE_NEW: 'Like New', REFURBISHED: 'Refurb',      USED_A: 'A',        USED_B: 'B',        USED_C: 'C',        PARTS: 'Parts' },
   label:   { BRAND_NEW: 'New',       LIKE_NEW: 'Like New', REFURBISHED: 'Refurbished', USED_A: 'Used - A', USED_B: 'Used - B', USED_C: 'Used - C', PARTS: 'Parts' },
   full:    { BRAND_NEW: 'Brand New', LIKE_NEW: 'Like New', REFURBISHED: 'Refurbished', USED_A: 'Used — A', USED_B: 'Used — B', USED_C: 'Used — C', PARTS: 'For Parts' },
-  option:  { BRAND_NEW: 'BRAND NEW', LIKE_NEW: 'LIKE NEW', REFURBISHED: 'REFURBISHED', USED_A: 'USED A',   USED_B: 'USED B',   USED_C: 'USED C',   PARTS: 'PARTS' },
+  option:  { BRAND_NEW: 'Brand new', LIKE_NEW: 'Like new', REFURBISHED: 'Refurbished', USED_A: 'Used A',   USED_B: 'Used B',   USED_C: 'Used C',   PARTS: 'Parts' },
 };
 
 /** Human-readable label for a condition grade in the requested {@link ConditionLabelVariant}. */
@@ -72,7 +74,20 @@ export function conditionLabel(
   variant: ConditionLabelVariant = 'label',
 ): string {
   const c = resolveConditionGrade(String(code || 'BRAND_NEW'));
-  return CONDITION_LABELS[variant][c] ?? c.replace(/_/g, ' ');
+  // Outside the grade vocabulary (a marketplace word like "USED"): sentence case, never caps.
+  return CONDITION_LABELS[variant][c] ?? sentenceCaseLabel(c);
+}
+
+/**
+ * The triage cards' condition face, sentence case ("Like new", "Used - A",
+ * "New") — one reader for every family. A marketplace word outside the grade
+ * vocabulary ("USED") comes back sentence-cased too; lone grade letters stay.
+ */
+export function conditionSentenceLabel(code: string): string {
+  return conditionLabel(code, 'label')
+    .split(' ')
+    .map((word, index) => (word.length === 1 ? word : index === 0 ? word[0]!.toUpperCase() + word.slice(1).toLowerCase() : word.toLowerCase()))
+    .join(' ');
 }
 
 /**

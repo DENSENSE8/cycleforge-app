@@ -179,7 +179,7 @@ export function ItemTab({
             setManualMode((m) => !m);
             setManualTitle('');
           }}
-          className="ds-raw-button text-role-micro uppercase tracking-wider text-blue-700 hover:text-blue-900"
+          className="ds-raw-button text-role-micro text-blue-700 hover:text-blue-900"
         >
           {manualMode ? '← Back to catalog search' : 'Product not in catalog? Add by title'}
         </button>

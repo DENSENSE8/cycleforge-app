@@ -138,7 +138,7 @@ export function ListingPhotoCompareHost({ row }: { row: ReceivingLineRow }) {
 
       <section className="space-y-1.5" data-unbox-listing-compare-listing>
         <div className="flex min-w-0 items-center justify-between gap-2">
-          <p className="text-role-eyebrow uppercase tracking-widest text-text-soft">Listing</p>
+          <p className="text-role-eyebrow text-text-soft">Listing</p>
           {listingHref ? (
             <Button
               variant="ghost"
@@ -168,7 +168,7 @@ export function ListingPhotoCompareHost({ row }: { row: ReceivingLineRow }) {
       </section>
 
       <section className="space-y-1.5" data-unbox-listing-compare-evidence>
-        <p className="text-role-eyebrow uppercase tracking-widest text-text-soft">Bench evidence</p>
+        <p className="text-role-eyebrow text-text-soft">Bench evidence</p>
         <ThumbGrid
           urls={evidenceUrls}
           empty="No carton or item photos yet — shoot from the dock."

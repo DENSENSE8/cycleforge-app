@@ -29,7 +29,7 @@ export function useShippedFilterActions(basePath?: string) {
   const carrier = readShippedCarrierFilter(searchParams);
   const statusCategory = readShippedStatusFilter(searchParams);
   const typeFilter = readShippedTypeFilter(searchParams);
-  const testedBy = parseStaffId(searchParams.get('testedBy'));
+  const pickedBy = parseStaffId(searchParams.get('pickedBy'));
   const packedBy = parseStaffId(searchParams.get('packedBy'));
   const dateFrom = parseISODate(searchParams.get('dateFrom'));
   const dateTo = parseISODate(searchParams.get('dateTo'));
@@ -63,8 +63,8 @@ export function useShippedFilterActions(basePath?: string) {
     replaceWith((p) => { next ? p.set('statusCategory', next) : p.delete('statusCategory'); });
   }, [replaceWith]);
 
-  const setTestedBy = useCallback((next: number | null) => {
-    replaceWith((p) => { next ? p.set('testedBy', String(next)) : p.delete('testedBy'); });
+  const setPickedBy = useCallback((next: number | null) => {
+    replaceWith((p) => { next ? p.set('pickedBy', String(next)) : p.delete('pickedBy'); });
   }, [replaceWith]);
 
   const setPackedBy = useCallback((next: number | null) => {
@@ -96,14 +96,14 @@ export function useShippedFilterActions(basePath?: string) {
 
   const clearAll = useCallback(() => {
     replaceWith((p) => {
-      ['exceptions', 'carrier', 'statusCategory', 'testedBy', 'packedBy', 'dateFrom', 'dateTo', 'staff'].forEach((k) => p.delete(k));
+      ['exceptions', 'carrier', 'statusCategory', 'pickedBy', 'packedBy', 'dateFrom', 'dateTo', 'staff'].forEach((k) => p.delete(k));
       p.set('allDates', '1');
       p.delete('shippedWeekOffset');
     });
   }, [replaceWith]);
 
   return {
-    exceptionsOnly, carrier, statusCategory, typeFilter, testedBy, packedBy, dateFrom, dateTo, dateRange,
-    toggleExceptions, setCarrier, setStatus, setTestedBy, setPackedBy, setDateRange, setTypeFilter, clearAll,
+    exceptionsOnly, carrier, statusCategory, typeFilter, pickedBy, packedBy, dateFrom, dateTo, dateRange,
+    toggleExceptions, setCarrier, setStatus, setPickedBy, setPackedBy, setDateRange, setTypeFilter, clearAll,
   };
 }

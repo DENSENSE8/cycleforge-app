@@ -77,7 +77,7 @@ export function FbaPendingPlanQueue({
           type="button"
           disabled={isLoading}
           onClick={() => onCancel()}
-          className="shrink-0 px-0 text-role-eyebrow uppercase tracking-[0.12em] text-text-soft hover:bg-transparent hover:text-text-default"
+          className="shrink-0 px-0 text-role-eyebrow text-text-soft hover:bg-transparent hover:text-text-default"
         >
           Cancel
         </Button>
@@ -97,7 +97,7 @@ export function FbaPendingPlanQueue({
             onCancel();
             onSubmit(submitRows);
           }}
-          className="shrink-0 text-role-eyebrow uppercase tracking-[0.12em]"
+          className="shrink-0 text-role-eyebrow"
         >
           {touchesExistingLine ? 'Update plan' : 'Add to plan'}
         </Button>

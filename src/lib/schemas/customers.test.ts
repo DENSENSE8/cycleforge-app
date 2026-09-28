@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { CustomerContactPatchBody, customerContactColumns, type CustomerContactColumns } from './customers';
+import { CustomerContactPatchBody, OrderBuyerPatchBody, customerContactColumns, type CustomerContactColumns } from './customers';
 
 const row: CustomerContactColumns = {
   customer_name: 'Jane Doe',
@@ -45,4 +45,26 @@ test('the body refuses an empty patch, unknown keys and a too-short phone', () =
   assert.equal(CustomerContactPatchBody.safeParse({ address: 'x' }).success, false);
   assert.equal(CustomerContactPatchBody.safeParse({ phone: '12345' }).success, false);
   assert.equal(CustomerContactPatchBody.safeParse({ phone: '(555) 123-4567' }).success, true);
+});
+
+test('an order buyer patch needs a field, refuses unknown keys, and a ship-to needs street + city', () => {
+  assert.equal(OrderBuyerPatchBody.safeParse({}).success, false);
+  assert.equal(OrderBuyerPatchBody.safeParse({ firstName: 'Jane' }).success, false);
+  assert.equal(OrderBuyerPatchBody.safeParse({ shipTo: { address1: '1 Main St' } }).success, false);
+  assert.equal(OrderBuyerPatchBody.safeParse({ shipTo: { city: 'Reno' } }).success, false);
+  assert.equal(OrderBuyerPatchBody.safeParse({ shipTo: { address1: '1 Main St', city: 'Reno', zip: '1' } }).success, false);
+  const ok = OrderBuyerPatchBody.safeParse({ shipTo: { address1: ' 1 Main St ', city: 'Reno' } });
+  assert.deepEqual(ok.success && ok.data.shipTo, {
+    address1: '1 Main St',
+    address2: '',
+    city: 'Reno',
+    state: '',
+    postalCode: '',
+    country: '',
+  });
+});
+
+test('an order buyer patch accepts a lone blank email (clears it) but not a blank name', () => {
+  assert.equal(OrderBuyerPatchBody.safeParse({ email: '' }).success, true);
+  assert.equal(OrderBuyerPatchBody.safeParse({ name: '  ' }).success, false);
 });

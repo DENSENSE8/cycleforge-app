@@ -184,7 +184,7 @@ export function StudioNodeStationEditor({
             {station ? 'Edit station' : 'Bind a station'}
           </Button>
         ) : (
-          <span className="ml-auto rounded-full bg-amber-100 px-2 py-0.5 text-role-micro uppercase tracking-wide text-amber-700">
+          <span className="ml-auto rounded-full bg-amber-100 px-2 py-0.5 text-role-micro text-amber-700">
             Editing draft
           </span>
         )}
@@ -206,7 +206,7 @@ export function StudioNodeStationEditor({
             }
           >
             <div className="mb-1.5 flex items-center justify-between px-1">
-              <h3 className="text-role-micro uppercase tracking-wider text-text-faint">
+              <h3 className="text-role-micro text-text-faint">
                 Queue{e.editing ? ' · editing' : ''}
               </h3>
               {e.editing ? (

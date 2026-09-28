@@ -337,7 +337,7 @@ export function PoLinkTab({
         <p
           className={cn(
             cornerClass('flush'),
-            'border border-accent-border bg-surface-sunken inset-field text-role-eyebrow font-semibold uppercase tracking-widest text-accent-bg',
+            'border border-accent-border bg-surface-sunken inset-field text-role-eyebrow font-semibold text-accent-bg',
           )}
         >
           {`${(row.inbound_source_type || 'eBay')} order · pick its purchase order to merge`}
@@ -382,7 +382,7 @@ export function PoLinkTab({
               media={<ItemRecordThumb imageUrl={null} />}
               title={trimmed}
               meta={
-                <p className="truncate text-role-eyebrow font-semibold uppercase tracking-widest text-text-soft">
+                <p className="truncate text-role-eyebrow font-semibold text-text-soft">
                   Not in the system
                 </p>
               }
@@ -430,7 +430,7 @@ export function PoLinkTab({
                 media={<ItemRecordThumb imageUrl={null} />}
                 title={po.zoho_purchaseorder_number || `PO ${po.zoho_purchaseorder_id}`}
                 meta={
-                  <p className="truncate text-role-eyebrow font-semibold uppercase tracking-widest text-text-soft">
+                  <p className="truncate text-role-eyebrow font-semibold text-text-soft">
                     {po.vendor_name || 'Unknown vendor'}
                   </p>
                 }

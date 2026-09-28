@@ -13,9 +13,9 @@ test('getDashboardPendingLayoutFromSearch: always grid (board|grid retired)', ()
 });
 
 test('normalizeDashboardOrderViewParams: strips stale ?view=; desk stays unshipped', () => {
-  for (const view of ['unshipped', 'tested', 'packed', 'shipped', 'fba'] as const) {
+  for (const view of ['unshipped', 'picked', 'packed', 'shipped', 'fba'] as const) {
     const params = new URLSearchParams('view=grid');
-    const next = normalizeDashboardOrderViewParams(params, view as 'unshipped' | 'tested' | 'packed' | 'shipped');
+    const next = normalizeDashboardOrderViewParams(params, view as 'unshipped' | 'picked' | 'packed' | 'shipped');
     assert.equal(params.has('view'), false, `view should be cleared for ${view}`);
     assert.equal(next, 'unshipped');
     assert.equal(params.has('unshipped'), true);

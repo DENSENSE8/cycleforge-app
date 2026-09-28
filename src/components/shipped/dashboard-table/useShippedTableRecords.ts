@@ -27,7 +27,6 @@ export function useShippedTableRecords(filters: ShippedTableFilters) {
     effectiveWeekStart,
     effectiveWeekEnd,
     effPackedBy,
-    effTestedBy,
     effStaffId,
     effPickedBy,
     shippedTime,
@@ -54,7 +53,6 @@ export function useShippedTableRecords(filters: ShippedTableFilters) {
     effectiveWeekStart,
     effectiveWeekEnd,
     effPackedBy,
-    effTestedBy,
     effStaffId,
     shippedFilter,
     carrierFilter,
@@ -70,7 +68,6 @@ export function useShippedTableRecords(filters: ShippedTableFilters) {
     rangeStart: effectiveWeekStart,
     rangeEnd: effectiveWeekEnd,
     packedBy: effPackedBy,
-    testedBy: effTestedBy,
     staffId: effStaffId ?? undefined,
     shippedFilter,
     carrier: carrierFilter,
@@ -89,7 +86,6 @@ export function useShippedTableRecords(filters: ShippedTableFilters) {
       weekStart: '',
       weekEnd: '',
       packedBy: effPackedBy,
-      testedBy: effTestedBy,
       staffId: effStaffId ?? undefined,
       shippedFilter,
       carrier: carrierFilter,
@@ -121,7 +117,6 @@ export function useShippedTableRecords(filters: ShippedTableFilters) {
             weekStart,
             weekEnd,
             packedBy: effPackedBy,
-            testedBy: effTestedBy,
             staffId: effStaffId ?? undefined,
             shippedFilter,
             carrier: carrierFilter,
@@ -143,7 +138,7 @@ export function useShippedTableRecords(filters: ShippedTableFilters) {
     }
     const id = window.setTimeout(warm, 300);
     return () => window.clearTimeout(id);
-  }, [effPackedBy, effTestedBy, effStaffId, effPickedBy, shippedFilter, carrierFilter, statusFilter, exceptionsOnly, queryClient]);
+  }, [effPackedBy, effStaffId, effPickedBy, shippedFilter, carrierFilter, statusFilter, exceptionsOnly, queryClient]);
 
 
 

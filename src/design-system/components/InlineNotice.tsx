@@ -41,8 +41,8 @@ const toneClasses: Record<InlineNoticeTone, string> = {
 };
 
 const titleSizeClasses: Record<InlineNoticeSize, string> = {
-  sm: 'text-role-eyebrow tracking-[0.14em]',
-  md: 'text-role-micro tracking-[0.16em]',
+  sm: 'text-role-eyebrow',
+  md: 'text-role-micro',
 };
 
 const bodySizeClasses: Record<InlineNoticeSize, string> = {
@@ -107,7 +107,7 @@ export function InlineNotice({
       >
         <div className="min-w-0 flex-1">
           {title ? (
-            <p className={`font-semibold uppercase ${titleSizeClasses[size]}`}>
+            <p className={`font-semibold ${titleSizeClasses[size]}`}>
               {title}
             </p>
           ) : null}

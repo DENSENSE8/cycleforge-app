@@ -154,7 +154,7 @@ export function ActiveShipmentCard({
                 {unallocatedItems.length > 0 && (
                   <div className="divide-y divide-border-hairline">
                     {hasBundles && (
-                      <p className="px-2.5 py-1.5 text-role-eyebrow uppercase tracking-widest text-text-faint">
+                      <p className="px-2.5 py-1.5 text-role-eyebrow text-text-faint">
                         Unallocated
                       </p>
                     )}

@@ -13,6 +13,35 @@ import { walkInStationHref } from '@/lib/walk-in/jobs';
 import type { NavRecentSurfaceId } from '@/lib/nav/recents/surfaces';
 import type { NavAction, NavControls, NavSearch } from './schema';
 import { RECON_PARAM, REF_IN_PARAM } from '@/lib/receiving/reconcile';
+import {
+  SAVED_VIEW_PARAM_KEYS,
+  SAVED_VIEW_STORAGE_KEY,
+  STAFF_FILTER_PARAM,
+  WEEK_OFFSET_PARAM,
+} from '@/lib/station/table-url-params';
+import { GRID_COLUMN_DIR_PARAM, GRID_COLUMN_SORT_PARAM } from '@/lib/tables/grid-column-sort-params';
+import {
+  DOCKED_DATE_FROM_PARAM,
+  DOCKED_DATE_TO_PARAM,
+  DOCKED_KIND_PARAM,
+  INBOUND_FIND_PARAM,
+  INBOUND_SOURCE_OPTIONS,
+  INBOUND_SOURCE_PARAM,
+} from '@/lib/receiving/inbound-lane';
+import { HISTORY_ACTIVITY_OPTIONS } from '@/lib/receiving/receiving-modes';
+import { DOCKED_KIND_OPTIONS } from '@/lib/receiving/docked-record-state';
+import {
+  SOURCING_ALERT_STATUS_OPTIONS,
+  SOURCING_SCOUT_BY_OPTIONS,
+  SOURCING_SUPPLIER_TYPE_OPTIONS,
+  SOURCING_WATCH_STATUS_OPTIONS,
+} from '@/components/sourcing/sourcing-shared';
+import {
+  LOCATIONS_TAB_OPTIONS,
+  REPLENISH_STATUS_OPTIONS,
+  REPLENISH_TAB_OPTIONS,
+  STOCK_STATE_OPTIONS,
+} from '@/lib/inventory/inventory-nav-choices';
 
 /** A page-level verb plus the permission its door needs (never on the wire). */
 export interface NavActionDecl {
@@ -43,6 +72,13 @@ export interface NavPageDecl extends NavSurfaceDecl {
    * with no view rows.
    */
   recentsPanel?: true;
+  /**
+   * Bare `1`–`9` open the page's views in painted order, and the keys are
+   * taught everywhere the views are painted (the view block's hover card,
+   * the desk header's pills). Opt-in: a page must first prove no other bare
+   * digit is bound there (a record's `EvidenceDecisionBar` owns 1–4).
+   */
+  viewKeys?: true;
 }
 
 /**
@@ -73,13 +109,101 @@ export type NavScanGrammar = (typeof NAV_SCAN_GRAMMARS)[number];
 const UNSHIPPED_VIEWS = outboundSavedViewsConfig('unshipped');
 const SHIPPED_VIEWS = outboundSavedViewsConfig('shipped');
 
+const DOCKED_VIEWS = {
+  storageKey: SAVED_VIEW_STORAGE_KEY.receiving_history,
+  paramKeys: SAVED_VIEW_PARAM_KEYS.receiving_history,
+};
+
+/**
+ * Inbound › Unboxed (`/incoming?lane=docked`). Staff: `?staff=` — who received,
+ * unboxed or scanned the carton (`build-sql.ts` staff clause). Activity: the
+ * server's history axis (`?sort=` `unboxed_newest` | `scanned_newest`) —
+ * which stamp orders the list, bands its days and bounds the date row; unset
+ * = Unboxed. Date: the activity window over the loaded history
+ * (`?dateFrom=`/`?dateTo=`), formerly the toolbar week pill (`?weekOffset=`,
+ * which picking a range clears); unset = all time. The attention cut
+ * (`?dflag=` Claim · Short · Unfound) has ONE control, the pills above the
+ * list (they write it; a saved view keeps it) — so no sidebar row. Kind:
+ * what intake it was (`?dkind=`, `dockedIntakeKind`). Sort: the ledger's column order (`useUrlColumnSort`,
+ * `?colsort=`/`?coldir=`), formerly its toolbar Sort menu; unset = latest
+ * activity first.
+ */
+const DOCKED_CONTROLS: NavControls = {
+  staff: [{ id: 'handled-by', param: STAFF_FILTER_PARAM, label: 'Handled by' }],
+  dateRanges: [
+    {
+      id: 'activity',
+      label: 'Activity date',
+      fromParam: DOCKED_DATE_FROM_PARAM,
+      toParam: DOCKED_DATE_TO_PARAM,
+      clearParams: [WEEK_OFFSET_PARAM],
+      placeholder: 'All time',
+    },
+  ],
+  choices: [
+    { id: 'activity-axis', label: 'Activity', param: 'sort', options: [...HISTORY_ACTIVITY_OPTIONS], clearParams: [] },
+    { id: 'kind', label: 'Kind', param: DOCKED_KIND_PARAM, options: [...DOCKED_KIND_OPTIONS], clearParams: [] },
+  ],
+  sort: {
+    param: GRID_COLUMN_SORT_PARAM,
+    dirParam: GRID_COLUMN_DIR_PARAM,
+    defaultValue: 'date',
+    options: [
+      { value: 'date', label: 'Latest activity first' },
+      { value: 'order', label: 'Purchase order, A to Z', dir: 'asc' },
+      { value: 'title', label: 'Product, A to Z', dir: 'asc' },
+      { value: 'qty', label: 'Largest quantity first', dir: 'desc' },
+      { value: 'tracking', label: 'Tracking, A to Z', dir: 'asc' },
+    ],
+  },
+};
+
+const PIPELINE_VIEWS = {
+  storageKey: SAVED_VIEW_STORAGE_KEY.receiving_incoming,
+  paramKeys: SAVED_VIEW_PARAM_KEYS.receiving_incoming,
+};
+
+/**
+ * Inbound On the way (`/incoming`), formerly its ledger toolbar. Source: the
+ * Filter funnel's purchasing-source group (`?inbound=`, the list endpoint's
+ * facet). Sort: the Sort icon — the ledger's column order over the page
+ * (`useUrlColumnSort`, `?colsort=`/`?coldir=`); unset = the urgency sections
+ * the server pages by.
+ */
+const PIPELINE_CONTROLS: NavControls = {
+  // A narrower list from page 3 would land past its end: the old funnel dropped `page` too.
+  choices: [
+    { id: 'source', label: 'Source', param: INBOUND_SOURCE_PARAM, options: [...INBOUND_SOURCE_OPTIONS], clearParams: ['page'] },
+  ],
+  sort: {
+    param: GRID_COLUMN_SORT_PARAM,
+    dirParam: GRID_COLUMN_DIR_PARAM,
+    defaultValue: 'urgency',
+    options: [
+      { value: 'urgency', label: 'Most urgent first' },
+      { value: 'date', label: 'Expected date, soonest first', dir: 'asc' },
+      { value: 'age', label: 'Oldest first', dir: 'desc' },
+      { value: 'status', label: 'Delivery state', dir: 'asc' },
+      { value: 'order', label: 'Purchase order, A to Z', dir: 'asc' },
+      { value: 'title', label: 'Product, A to Z', dir: 'asc' },
+      { value: 'tracking', label: 'Tracking, A to Z', dir: 'asc' },
+      { value: 'qty', label: 'Largest quantity first', dir: 'desc' },
+      { value: 'condition', label: 'Condition', dir: 'asc' },
+      { value: 'platform', label: 'Source, A to Z', dir: 'asc' },
+      { value: 'zoho', label: 'Zoho status', dir: 'asc' },
+    ],
+  },
+};
+
 /**
  * Shipping's queue lists (To ship · Pick list · PO paired). Staff roles: the
  * universal `?staff=` assignee filter (`STAFF_FILTER_PARAM`, `sqlOrderAssignedToStaff`)
  * and `?pickedBy=` — who ACTUALLY picked (`PICK_FACTS_LATERALS`), plus the
  * pick / pack assignees the list already reads (`?pickerId=` / `?packedBy=`). Dates: order date and ship-by
  * (PT civil days). Sort: the queue's own `?sort=`/`?dir=` alphabet
- * (`queue-display-sort.ts`), ship-by soonest first by default.
+ * (`queue-display-sort.ts`), ship-by soonest first by default — every view
+ * and column order the list header's retired ⇅ menu offered (2026-09-27);
+ * platform / carrier name pins stay out (filters in disguise).
  */
 const QUEUE_CONTROLS: NavControls = {
   staff: [
@@ -100,9 +224,17 @@ const QUEUE_CONTROLS: NavControls = {
       { value: 'deadline', label: 'Ship by, soonest first' },
       { value: 'age', label: 'Most overdue first', dir: 'desc' },
       { value: 'newest', label: 'Newest orders first' },
+      { value: 'order', label: 'Order number, A to Z', dir: 'asc' },
+      { value: 'title', label: 'Product title, A to Z', dir: 'asc' },
+      { value: 'status', label: 'Status', dir: 'asc' },
       { value: 'picked', label: 'Picked, most recent first', dir: 'desc' },
       { value: 'picker', label: 'Picker, A to Z', dir: 'asc' },
+      { value: 'packed', label: 'Packed, most recent first', dir: 'desc' },
+      { value: 'scanned_out', label: 'Scanned out, latest first', dir: 'desc' },
+      { value: 'qty', label: 'Largest quantity first', dir: 'desc' },
       { value: 'amount', label: 'Highest value first', dir: 'desc' },
+      { value: 'tracking', label: 'Tracking number, A to Z', dir: 'asc' },
+      { value: 'carrier', label: 'Carrier, A to Z', dir: 'asc' },
     ],
   },
 };
@@ -110,14 +242,13 @@ const QUEUE_CONTROLS: NavControls = {
 /**
  * Shipped's period picker (`useShippedTableFilters.setPeriodRange`), now with
  * a time of day at each end (`timeFrom`/`timeTo`, PT), plus who shipped it:
- * `?staff=` (`effStaffId`), `?pickedBy=`, `?packedBy=`, `?testedBy=`.
+ * `?staff=` (`effStaffId`), `?pickedBy=`, `?packedBy=`.
  */
 const SHIPPED_CONTROLS: NavControls = {
   staff: [
     { id: 'any', param: 'staff', label: 'Staff' },
     { id: 'picked-by', param: 'pickedBy', label: 'Picked by' },
     { id: 'packed-by', param: 'packedBy', label: 'Packed by' },
-    { id: 'tested-by', param: 'testedBy', label: 'Tested by' },
   ],
   dateRanges: [
     {
@@ -142,12 +273,31 @@ const TO_SHIP_ACTIONS: readonly NavActionDecl[] = [
     requires: 'orders.import',
   },
   { action: { id: 'orders.export-csv', label: 'Export to CSV', intent: 'desk-export:csv' } },
-  { action: { id: 'orders.add', label: 'Add one order (review first)', href: '/shipping/orders?triage=new' } },
+  { action: { id: 'orders.add', label: 'New sales order', href: '/orders/new' } },
   { action: { id: 'orders.add-test', label: 'Add test order', intent: 'orders-intake:test' } },
   { action: { id: 'orders.demo-sync', label: 'Demo sync (sample data)', intent: 'orders-intake:demo' } },
   { action: { id: 'orders.past-imports', label: 'Past imports', intent: 'orders:past-imports' } },
   { action: { id: 'orders.labels', label: 'Labels', intent: 'orders:labels-walk' } },
 ];
+
+/**
+ * The Labels & docs header split CTA (handoff print-stations §3.2): three bulk
+ * prints by stock, then the two bulk uploads. A print view's face is its own
+ * stock and carries ⌘P (the desk binds ⌘P to "print all of this view's
+ * stock"); Printed has no stock of its own, so no verb there wears ⌘P.
+ */
+function labelsDocsActions(view: 'labels' | 'paperwork' | 'printed'): readonly NavActionDecl[] {
+  const printKey = (stock: 'labels' | 'paperwork') => (view === stock ? { hotkey: 'mod+p' } : {});
+  const printLabels: NavAction = { id: 'labels-docs.print-labels', label: 'Print all labels', intent: 'labels-docs:print-labels', ...printKey('labels') };
+  const printPaperwork: NavAction = { id: 'labels-docs.print-paperwork', label: 'Print all paperwork', intent: 'labels-docs:print-paperwork', ...printKey('paperwork') };
+  const printAll: NavAction = { id: 'labels-docs.print-all', label: 'Print all (labels + paperwork)', intent: 'labels-docs:print-all' };
+  const upload: NavAction = { id: 'labels-docs.upload', label: 'Upload label PDFs', intent: 'labels-docs:upload', hotkey: 'mod+o' };
+  const uploadSlips: NavAction = { id: 'labels-docs.upload-slips', label: 'Upload packing slips', intent: 'labels-docs:upload-slips' };
+  const order = view === 'paperwork'
+    ? [printPaperwork, printLabels, printAll, uploadSlips, upload]
+    : [printLabels, printPaperwork, printAll, upload, uploadSlips];
+  return order.map((action) => ({ action }));
+}
 
 export const NAV_PAGE_DECLS: Readonly<Record<string, NavPageDecl>> = {
   // The MasterNav Chat row's `+` and its thread list (`SidebarNavList.tsx`
@@ -163,6 +313,7 @@ export const NAV_PAGE_DECLS: Readonly<Record<string, NavPageDecl>> = {
   },
   // Search for the Shipping views comes from `DESK_VIEWS` (the desk store).
   outbound: {
+    viewKeys: true,
     items: {
       po: { savedViews: UNSHIPPED_VIEWS, controls: QUEUE_CONTROLS },
       pick: { savedViews: UNSHIPPED_VIEWS, actions: TO_SHIP_ACTIONS, controls: QUEUE_CONTROLS },
@@ -171,19 +322,32 @@ export const NAV_PAGE_DECLS: Readonly<Record<string, NavPageDecl>> = {
     },
   },
   // Header split action `IncomingDeskAddAction` — the Global Add inbound leaves.
-  // Find narrows the ledger through the desk store (the ledger toolbar's old
-  // "Filter incoming…" field); On the way also takes a pasted vendor list,
-  // located per number by `GET /api/nav/locate` (the inbound locator).
+  // Find narrows the ledger in place through `?find=` (`INBOUND_FIND_PARAM`;
+  // the ledger toolbar's old "Filter incoming…" field), so a reload, a shared
+  // link and a saved view keep it; the card faces open an exact hit
+  // (`receiptExactFind` / `cartonExactFind`).
+  // On the way also takes a pasted vendor list, located per number by
+  // `GET /api/nav/locate` (the inbound locator).
+  // `viewKeys`: 1 On the way · 2 Unboxed. No bare digit is bound on /incoming
+  // (the status chips are ⌥1–⌥N, `segment-chords.ts`; no EvidenceDecisionBar).
   incoming: {
+    viewKeys: true,
     items: {
       pipeline: {
         search: {
           placeholder: 'Search deliveries',
-          source: 'desk-store',
+          source: 'url-param',
+          param: INBOUND_FIND_PARAM,
           locate: { locator: 'inbound', param: REF_IN_PARAM, statusParam: RECON_PARAM },
         },
+        savedViews: PIPELINE_VIEWS,
+        controls: PIPELINE_CONTROLS,
       },
-      docked: { search: { placeholder: 'Search received history', source: 'desk-store' } },
+      docked: {
+        search: { placeholder: 'Search unboxed', source: 'url-param', param: INBOUND_FIND_PARAM },
+        savedViews: DOCKED_VIEWS,
+        controls: DOCKED_CONTROLS,
+      },
     },
     actions: [
       { action: { id: 'incoming.add-po', label: 'Add purchase order', intent: 'global-add:incoming-po' } },
@@ -198,11 +362,44 @@ export const NAV_PAGE_DECLS: Readonly<Record<string, NavPageDecl>> = {
       },
     ],
   },
+  // Sourcing (Inbound lane, `G S`): the views were the desk tab row, the
+  // filters were the old context panel's pill sliders (`SourcingSidebarPanel`,
+  // deleted) — each is one `choices` row on the view whose list reads it
+  // (`sourcing-shared.ts` holds the vocabularies and why each omits its
+  // default). The Models / Compatibility picker is in the stage
+  // (`BoseModelPickerPane`). `viewKeys`: no other bare digit is bound here.
+  // Find is per view: only Scout and Suppliers read `?q=` and Models /
+  // Compatibility `?search=`; Queue · Watchlist · Searches have no list
+  // filter, so they show the ⌘K face rather than a field that does nothing.
   sourcing: {
-    search: { placeholder: 'Search sourcing', source: 'url-param', param: 'q' },
+    viewKeys: true,
     items: {
-      scout: { search: { placeholder: 'Model number or serial…', source: 'url-param', param: 'q' } },
-      suppliers: { search: { placeholder: 'Filter suppliers…', source: 'url-param', param: 'q' } },
+      queue: {
+        controls: {
+          choices: [
+            { id: 'status', label: 'Status', param: 'status', options: [...SOURCING_ALERT_STATUS_OPTIONS], clearParams: [] },
+          ],
+        },
+      },
+      scout: {
+        search: { placeholder: 'Model number or serial…', source: 'url-param', param: 'q' },
+        controls: {
+          choices: [{ id: 'by', label: 'Look up by', param: 'by', options: [...SOURCING_SCOUT_BY_OPTIONS], clearParams: [] }],
+        },
+      },
+      watchlist: {
+        controls: {
+          choices: [
+            { id: 'status', label: 'Status', param: 'status', options: [...SOURCING_WATCH_STATUS_OPTIONS], clearParams: [] },
+          ],
+        },
+      },
+      suppliers: {
+        search: { placeholder: 'Filter suppliers…', source: 'url-param', param: 'q' },
+        controls: {
+          choices: [{ id: 'type', label: 'Type', param: 'type', options: [...SOURCING_SUPPLIER_TYPE_OPTIONS], clearParams: [] }],
+        },
+      },
       models: {
         search: { placeholder: 'Filter models…', source: 'url-param', param: 'search' },
         actions: [{ action: { id: 'sourcing.add-model', label: 'Add model', href: '/sourcing?mode=models&model=new' } }],
@@ -226,6 +423,55 @@ export const NAV_PAGE_DECLS: Readonly<Record<string, NavPageDecl>> = {
       },
       qc: { search: { placeholder: 'Filter products…', source: 'url-param', param: 'q' } },
     },
+  },
+  // Inventory (lane door, `G I`): the painted views are Stock · SKU Exceptions ·
+  // Ledger · Replenish · Locations (the rest are parked, `parked-tabs.ts`), so
+  // digits bind 1–5. Their filters moved out of the stage: Stock's find box
+  // and state segment, Replenish's lost rail controls (`rtab`/`rsku`/`rstatus`,
+  // stripped by hygiene since the rail left on 2026-09-15), and the Locations
+  // tool dropdown. Stock's Rooms stay in the stage: a per-tenant facet with
+  // counts, which `choices` (fixed vocabulary, no counts) cannot carry. Ledger
+  // reads no `q` — its face is ⌘K.
+  inventory: {
+    viewKeys: true,
+    items: {
+      stock: {
+        search: { placeholder: 'Title, SKU, location, room or qty…', source: 'url-param', param: 'q' },
+        controls: {
+          choices: [{ id: 'status', label: 'State', param: 'status', options: [...STOCK_STATE_OPTIONS], clearParams: ['open', 'sku'] }],
+        },
+      },
+      'sku-exceptions': {
+        search: { placeholder: 'Title, SKU, location, room or qty…', source: 'url-param', param: 'q' },
+        controls: {
+          choices: [{ id: 'status', label: 'State', param: 'status', options: [...STOCK_STATE_OPTIONS], clearParams: ['open', 'sku'] }],
+        },
+      },
+      replenish: {
+        search: { placeholder: 'Filter SKU…', source: 'url-param', param: 'rsku' },
+        controls: {
+          choices: [
+            { id: 'rtab', label: 'List', param: 'rtab', options: [...REPLENISH_TAB_OPTIONS], clearParams: [] },
+            { id: 'rstatus', label: 'Status', param: 'rstatus', options: [...REPLENISH_STATUS_OPTIONS], clearParams: [] },
+          ],
+        },
+      },
+      locations: {
+        controls: {
+          choices: [{ id: 'tab', label: 'Tool', param: 'tab', options: [...LOCATIONS_TAB_OPTIONS], clearParams: ['code', 'edit', 'new'] }],
+        },
+      },
+    },
+  },
+  // QC labels (Inventory lane mode, `G Q`): one record per labelled unit. Find
+  // narrows the server list (`?q=`); Print is the desk's primary verb (the
+  // ledger registers the intent while it is mounted).
+  'qc-labels': {
+    viewKeys: true,
+    search: { placeholder: 'Serial, unit id, SKU or order…', source: 'url-param', param: 'q' },
+    actions: [
+      { action: { id: 'qc-labels.print', label: 'Print QC label', intent: 'qc-labels:print' }, requires: 'print.label' },
+    ],
   },
   support: {
     items: { tickets: { recents: 'support.tickets' } },
@@ -283,6 +529,21 @@ export const NAV_PAGE_DECLS: Readonly<Record<string, NavPageDecl>> = {
   },
   // Restores the FNSKU field the live `/shipping/fba` route lost (PARITY §fba).
   fba: {
+    viewKeys: true,
     scanInput: { grammar: 'fnsku', endpoint: '/api/fba/fnskus/validate' },
+  },
+  // Labels & docs: Labels · Paperwork · Printed are sidebar views, one per
+  // print job (bare keys 1 · 2 · 3); Find narrows the queue through the desk
+  // store. The header split CTA's face is the view's own stock — ⌘P prints
+  // all of it, ⌘O uploads label PDFs (`LabelsDocsDesk` registers the intents).
+  'label-intake': {
+    viewKeys: true,
+    search: { placeholder: 'Search labels', source: 'desk-store' },
+    actions: labelsDocsActions('labels'),
+    items: {
+      labels: {},
+      paperwork: { actions: labelsDocsActions('paperwork') },
+      printed: { actions: labelsDocsActions('printed') },
+    },
   },
 };

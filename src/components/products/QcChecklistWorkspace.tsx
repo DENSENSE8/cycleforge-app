@@ -28,7 +28,7 @@ export function QcChecklistWorkspace() {
         <span className="flex h-14 w-14 items-center justify-center rounded-2xl bg-blue-50 text-blue-500">
           <Check className="h-7 w-7" />
         </span>
-        <p className="mt-4 text-role-eyebrow uppercase tracking-[0.18em] text-text-faint">
+        <p className="mt-4 text-role-eyebrow text-text-faint">
           QC Checklist
         </p>
         <p className="mt-2 max-w-[280px] text-role-caption font-medium text-text-soft">
@@ -85,14 +85,14 @@ export function QcChecklistWorkspace() {
           <div className="mt-1 flex items-center gap-2">
             <span className="font-mono text-role-caption text-text-soft">{catalog.sku}</span>
             {catalog.category && (
-              <span className="rounded-full bg-surface-sunken px-2 py-0.5 text-role-micro uppercase tracking-wider text-text-soft">
+              <span className="rounded-full bg-surface-sunken px-2 py-0.5 text-role-micro text-text-soft">
                 {catalog.category}
               </span>
             )}
           </div>
         </div>
         <SourceThisButton skuId={catalog.id} label="Source" variant="secondary" />
-        <span className="shrink-0 rounded-full bg-blue-50 px-3 py-1 text-role-micro uppercase tracking-wider text-blue-600">
+        <span className="shrink-0 rounded-full bg-blue-50 px-3 py-1 text-role-micro text-blue-600">
           {checks.length} steps
         </span>
       </div>

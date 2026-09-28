@@ -4,6 +4,8 @@ import { withCronRun } from '@/lib/cron/run-log';
 import { withCronLock } from '@/lib/cron/lock';
 import { projectReceivingTriageMemberships } from '@/lib/receiving/feed-membership-projection';
 import { projectOrdersUnshippedMemberships } from '@/lib/orders/feed-membership-projection';
+import { refreshAllOrderStageFacts } from '@/lib/orders/order-stage-facts';
+import { forEachActiveOrg } from '@/lib/cron/for-each-org';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 60;
@@ -19,9 +21,17 @@ export async function GET(request: NextRequest) {
   try {
     const locked = await withCronLock(JOB, () =>
       withCronRun(JOB, async () => {
+        // Stage facts first: the orders projection reads their pick / pack flags.
+        // The sweep catches writers that move a fact indirectly (label → shipment,
+        // allocation changes, automation-written assignments).
+        const facts = await forEachActiveOrg((orgId, client) => refreshAllOrderStageFacts(orgId, client));
+        const orderStageFacts = {
+          changed: facts.reduce((n, r) => n + (r.result ?? 0), 0),
+          failedOrgs: facts.filter((r) => !r.ok).map((r) => r.orgId),
+        };
         const receiving = await projectReceivingTriageMemberships(windowDays);
         const orders = await projectOrdersUnshippedMemberships(windowDays);
-        return { receiving, orders };
+        return { orderStageFacts, receiving, orders };
       }),
     );
     if (!locked.ran) return NextResponse.json({ success: true, skipped: 'locked' });

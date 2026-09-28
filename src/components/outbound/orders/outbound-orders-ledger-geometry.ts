@@ -4,22 +4,16 @@
  */
 
 import type { CSSProperties } from 'react';
+import type { Density } from '@/lib/views/view-specs';
 
-export type LedgerRowZoom = 'S' | 'M' | 'L';
-
-export const LEDGER_ROW_ZOOMS: readonly LedgerRowZoom[] = ['S', 'M', 'L'];
-
-export const LEDGER_DEFAULT_ZOOM: LedgerRowZoom = 'M';
+/** The ledger's row zoom IS the view's density (`VIEW_SPECS[viewKey].density`). */
+export type LedgerRowZoom = Density;
 
 export const LEDGER_ZOOM_LABEL: Readonly<Record<LedgerRowZoom, string>> = {
   S: 'Small rows',
   M: 'Medium rows',
   L: 'Large rows',
 };
-
-export function isLedgerRowZoom(value: unknown): value is LedgerRowZoom {
-  return value === 'S' || value === 'M' || value === 'L';
-}
 
 /** Full virtual-item height of one record, bottom rule included. */
 export const LEDGER_ROW_PX: Readonly<Record<LedgerRowZoom, number>> = { S: 33, M: 97, L: 109 };
@@ -105,10 +99,6 @@ export const LEDGER_LEAD_CLASS = 'flex w-106 shrink-0 items-center gap-3';
  */
 export const LEDGER_ORDER_NUMBER_SLOT_CLASS =
   'flex w-40 min-w-0 shrink-0 items-center [&>*]:max-w-full [&>*]:shrink [&_button>span:last-child]:shrink [&_button>span:last-child]:whitespace-normal [&_button>span:last-child]:[overflow-wrap:anywhere]';
-
-/** A reference column beside an industrial form — the desktop terminal's `.evidence-panel` (`minmax(288px, 24vw)`). */
-export const LEDGER_EVIDENCE_CLASS =
-  'flex w-[max(18rem,24vw)] shrink-0 flex-col overflow-y-auto overscroll-contain border-l border-mode-ink bg-mode-bar';
 
 /**
  * Toolbar strip. Shared with the SSR stand-in so the first data row lands on

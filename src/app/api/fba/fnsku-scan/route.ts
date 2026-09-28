@@ -20,6 +20,8 @@ import {
 import { createFbaLog } from '@/lib/fba/createFbaLog';
 import { buildFbaPlanRefFromIsoDate } from '@/lib/fba/plan-ref';
 import { withAuth } from '@/lib/auth/withAuth';
+import { audit } from '@/lib/auth/audit';
+import { recordProspectiveStrictDenial } from '@/lib/auth/strict-rehearsal';
 import { withTenantTransaction } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';
 
@@ -28,6 +30,8 @@ import type { OrgId } from '@/lib/tenancy/constants';
  * data, not the URL. Rows written before 2026-09-27 carry 'tech.scan'.
  */
 const ROUTE = 'fba.fnsku-scan';
+/** The Picker desk and the QC bench both scan FNSKUs; withAuth can't express the OR. */
+const SCAN_PERMISSIONS = ['picking.scan', 'tech.scan_serial'] as const;
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -110,7 +114,26 @@ async function fnskuStageCounts(db: PoolClient, orgId: OrgId, fnsku: string) {
  * FNSKU_SCANNED anchor + its fba_fnsku_logs SCANNED row.
  */
 export const POST = withAuth(async (req: NextRequest, ctx) => {
-  const rate = await checkRateLimitForOrg({ headers: req.headers, routeKey: 'fba-fnsku-scan', limit: 120, windowMs: 60_000, organizationId: ctx.organizationId });
+  if (!SCAN_PERMISSIONS.some((p) => ctx.storedPermissions.has(p))) {
+    for (const p of SCAN_PERMISSIONS) await recordProspectiveStrictDenial(pool, ctx, req, p);
+  }
+  if (!SCAN_PERMISSIONS.some((p) => ctx.permissions.has(p))) {
+    await audit({
+      staffId: ctx.staffId,
+      event: 'permission.denied',
+      result: 'denied',
+      sid: ctx.session.sid,
+      ip: req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || null,
+      userAgent: req.headers.get('user-agent'),
+      detail: { permission: SCAN_PERMISSIONS.join('|'), api: true, path: req.nextUrl.pathname },
+    });
+    return NextResponse.json(
+      { success: false, error: 'FORBIDDEN', permission: SCAN_PERMISSIONS.join('|') },
+      { status: 403 },
+    );
+  }
+
+  const rate = await checkRateLimitForOrg({ headers: req.headers, routeKey: 'fba-fnsku-scan', limit: 120, windowMs: 60_000, organizationId: ctx.organizationId, staffId: ctx.staffId });
   if (!rate.ok) {
     return NextResponse.json({ success: false, found: false, error: 'Rate limit exceeded' }, { status: 429 });
   }
@@ -309,4 +332,4 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
     console.error('Error in FNSKU scan:', error);
     return NextResponse.json({ success: false, found: false, error: 'Scan failed', details: message }, { status: 500 });
   }
-}, { permission: 'tech.scan_serial' });
+});

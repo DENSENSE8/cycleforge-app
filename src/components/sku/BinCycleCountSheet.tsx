@@ -154,7 +154,7 @@ export function BinCycleCountSheet({
           className="flex h-11 w-11 items-center justify-center rounded-md border border-border-default bg-surface-card active:bg-surface-hover"
         />
         <div className="min-w-0 flex-1">
-          <p className="text-role-micro uppercase tracking-[0.18em] text-text-soft">
+          <p className="text-role-micro text-text-soft">
             Cycle count
           </p>
           <h1 className="truncate text-sm font-semibold text-text-default">{campaignName}</h1>
@@ -165,12 +165,12 @@ export function BinCycleCountSheet({
       </header>
 
       {flash && (
-        <div className="bg-emerald-50 px-4 py-1.5 text-center text-role-caption font-semibold uppercase tracking-widest text-emerald-700">
+        <div className="bg-emerald-50 px-4 py-1.5 text-center text-role-caption font-semibold text-emerald-700">
           {flash}
         </div>
       )}
       {error && (
-        <div className="bg-rose-50 px-4 py-1.5 text-center text-role-caption font-semibold uppercase tracking-widest text-rose-700">
+        <div className="bg-rose-50 px-4 py-1.5 text-center text-role-caption font-semibold text-rose-700">
           {error}
         </div>
       )}
@@ -199,7 +199,7 @@ export function BinCycleCountSheet({
                   {line.product_title}
                 </p>
               )}
-              <p className="mt-1 text-role-micro uppercase tracking-widest text-text-faint">
+              <p className="mt-1 text-role-micro text-text-faint">
                 Expected {line.expected_qty} · {line.status}
               </p>
 

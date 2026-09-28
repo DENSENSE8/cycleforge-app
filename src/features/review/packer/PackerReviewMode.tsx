@@ -212,7 +212,7 @@ export function PackerReviewMode({
                           loading="lazy"
                         />
                         {kind ? (
-                          <span className="absolute bottom-1 left-1 rounded-none bg-scrim/70 px-1 py-0.5 text-role-micro uppercase tracking-widest text-white">
+                          <span className="absolute bottom-1 left-1 rounded-none bg-scrim/70 px-1 py-0.5 text-role-micro text-white">
                             {kind}
                           </span>
                         ) : null}
@@ -368,7 +368,7 @@ export function PackerReviewMode({
               moreDetails={
                 <StationMoreDetails>
                   {packTierLabel ? (
-                    <span className="inline-flex items-center gap-1 rounded-none bg-surface-sunken px-1.5 py-0.5 text-role-micro uppercase tracking-widest text-text-muted ring-1 ring-inset ring-border-soft">
+                    <span className="inline-flex items-center gap-1 rounded-none bg-surface-sunken px-1.5 py-0.5 text-role-micro text-text-muted ring-1 ring-inset ring-border-soft">
                       Pack {packTierLabel}
                       {row.estimatedPackMinutes != null
                         ? ` · ${row.estimatedPackMinutes}m`
@@ -377,7 +377,7 @@ export function PackerReviewMode({
                           : ''}
                     </span>
                   ) : (
-                    <span className="inline-flex items-center rounded-none bg-surface-sunken px-1.5 py-0.5 text-role-micro uppercase tracking-widest text-text-faint ring-1 ring-inset ring-border-soft">
+                    <span className="inline-flex items-center rounded-none bg-surface-sunken px-1.5 py-0.5 text-role-micro text-text-faint ring-1 ring-inset ring-border-soft">
                       Pack size unknown
                     </span>
                   )}
@@ -406,7 +406,7 @@ export function PackerReviewMode({
               <motion.div initial="hidden" animate="show" variants={revealContainer}>
                 <motion.div variants={revealItem}>
                   <div className="border-b border-border-hairline bg-surface-card px-3 py-2">
-                    <p className="text-role-eyebrow uppercase tracking-widest text-text-faint">
+                    <p className="text-role-eyebrow text-text-faint">
                       Review note
                     </p>
                     <p className="mt-0.5 text-role-caption text-text-muted">
@@ -477,14 +477,14 @@ function VerifyBadge({
   }
   if (found === true) {
     return (
-      <span className="rounded-none bg-emerald-50 px-1.5 py-0.5 text-role-micro font-semibold uppercase tracking-widest text-emerald-700 ring-1 ring-inset ring-emerald-200">
+      <span className="rounded-none bg-emerald-50 px-1.5 py-0.5 text-role-micro font-semibold text-emerald-700 ring-1 ring-inset ring-emerald-200">
         Matched
       </span>
     );
   }
   if (found === false) {
     return (
-      <span className="rounded-none bg-amber-50 px-1.5 py-0.5 text-role-micro font-semibold uppercase tracking-widest text-amber-700 ring-1 ring-inset ring-amber-200">
+      <span className="rounded-none bg-amber-50 px-1.5 py-0.5 text-role-micro font-semibold text-amber-700 ring-1 ring-inset ring-amber-200">
         No order
       </span>
     );

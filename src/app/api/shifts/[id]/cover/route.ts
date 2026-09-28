@@ -2,6 +2,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { audit } from '@/lib/auth/audit';
+import { invalidateSessionUserCache } from '@/lib/auth/session-user-cache';
 import { requireRoutePerm } from '@/lib/auth/dynamic-route-guard';
 import { withTenantTransaction } from '@/lib/tenancy/db';
 
@@ -142,6 +143,7 @@ export async function POST(req: NextRequest, routeCtx: { params: Promise<{ id: s
     if (outcome.kind === 'response') {
       return outcome.response;
     }
+    invalidateSessionUserCache({ staffId: outcome.coveredStaffId });
 
     await audit({
       staffId: me.staffId,

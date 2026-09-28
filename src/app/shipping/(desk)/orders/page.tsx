@@ -6,7 +6,7 @@ import { seedUnshippedQueue } from '@/lib/queries/unshipped-queue-seed.server';
 import { parseDeskQueueParam } from '@/lib/orders/desk-view-filters';
 import { DESK_QUEUE_PARAM } from '@/lib/outbound/desk-views';
 
-/** `/shipping/orders` — Fulfillment To-ship desk (Pending · Tested · Packed · Shipped). */
+/** `/shipping/orders` — Fulfillment To-ship desk (Pending · Picked · Packed · Shipped). */
 export default async function ShippingOrdersPage({
   searchParams,
 }: {

@@ -56,14 +56,14 @@ export function SuggestionRow({
               </>
             ) : null}
             {candidate.accountName && (
-              <span className="shrink-0 truncate text-role-micro font-medium uppercase tracking-wider text-text-soft">
+              <span className="shrink-0 truncate text-role-micro font-medium text-text-soft">
                 {candidate.accountName}
               </span>
             )}
             <span className="ml-auto shrink-0 text-role-micro text-text-muted">{candidate.confidence}</span>
           </div>
           {rowTitle && <p className="truncate text-role-micro text-text-muted">{rowTitle}</p>}
-          <p className="truncate text-role-eyebrow font-medium uppercase tracking-wider text-text-faint">{candidate.reason}</p>
+          <p className="truncate text-role-eyebrow font-medium text-text-faint">{candidate.reason}</p>
         </div>
         <div className="flex shrink-0 items-center gap-1">
           {candidate.listingUrl && (

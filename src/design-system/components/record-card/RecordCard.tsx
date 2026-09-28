@@ -15,12 +15,13 @@
  * · "+N items" unfolding the other lines as aligned columns · the quick look.
  * Nothing here knows the family (Law 1): what differs arrives as model data,
  * fact faces (`record-fact.tsx`) or the three family slots — `identity`,
- * `trailing` and `quickLook` — plus the single-card `menu`.
+ * `trailing` and `quickLook`. A checked card's verbs live only in the
+ * selection bar (Law 5), never on the card.
  */
 
 import { useEffect, useRef, useState, type MouseEvent, type PointerEvent, type ReactNode } from 'react';
 import { AnimatePresence, motion, type Variants } from 'motion/react';
-import { ChevronDown, MessageSquare, Package } from '@/components/Icons';
+import { ArrowRight, ChevronDown, MessageSquare, Package, Pencil, Plus } from '@/components/Icons';
 import { Popover, PopoverAnchor, PopoverContent } from '@/design-system/primitives/radix-popover';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { CollapseItem } from '@/design-system/components/Collapse';
@@ -284,15 +285,23 @@ function MoreLineRow({
   line,
   columns,
   testId,
+  current,
   onOpen,
 }: {
   line: RecordCardLine;
   columns: readonly RecordFactColumn[];
   testId: string;
+  /** This line is the open record (a family whose lines open on their own). */
+  current: boolean;
   onOpen: (event: MouseEvent) => void;
 }) {
   return (
-    <div role="listitem" data-testid={testId} className="col-span-full grid min-h-9 grid-cols-subgrid items-center text-[13px] text-text-muted">
+    <div
+      role="listitem"
+      aria-current={current || undefined}
+      data-testid={testId}
+      className={cn('col-span-full grid min-h-9 grid-cols-subgrid items-center text-[13px] text-text-muted', current && 'rounded-lg bg-surface-sunken')}
+    >
       <span className="pointer-events-auto">
         <CardPhoto line={line} size="sm" />
       </span>
@@ -409,11 +418,21 @@ function StatusGlyph({ model, columns, testId }: { model: RecordCardModel; colum
               </motion.li>
             ))}
           </ul>
-          {model.note ? (
-            <p className="flex gap-2 border-t border-border-hairline px-3.5 py-2.5 text-xs text-text-muted">
-              <MessageSquare className="mt-px size-3.5 shrink-0" aria-hidden />
-              <span className="line-clamp-3">{model.note.text}</span>
-            </p>
+          {model.notes.fixed || model.notes.own ? (
+            <div className="flex flex-col gap-1 border-t border-border-hairline px-3.5 py-2.5 text-xs text-text-muted">
+              {model.notes.fixed ? (
+                <p className="flex gap-2">
+                  <MessageSquare className="mt-px size-3.5 shrink-0" aria-hidden />
+                  <span className="line-clamp-3">{model.notes.fixed.text}</span>
+                </p>
+              ) : null}
+              {model.notes.own ? (
+                <p className="flex gap-2">
+                  <Pencil className="mt-px size-3.5 shrink-0" aria-hidden />
+                  <span className="line-clamp-3">{model.notes.own}</span>
+                </p>
+              ) : null}
+            </div>
           ) : null}
         </motion.div>
       </PopoverContent>
@@ -423,10 +442,131 @@ function StatusGlyph({ model, columns, testId }: { model: RecordCardModel; colum
 
 // ── Line 1 pieces ───────────────────────────────────────────────────────────
 
+/**
+ * Line 1's notes — read and written in line, calm muted ink (owner 2026-09-27:
+ * "triageable and readable, easy on your eyes"; never orange, never a
+ * drop-down). Takes only the room line 1 has left (flex basis 0), so it never
+ * pushes the identity; full text on hover.
+ * - `fixed` (orders: the buyer's words): speech icon + text, read-only.
+ * - `own` (the team's note): pencil + text; a click edits it in place.
+ *   Empty → "Add note", shown on hover / focus so 40 empty cards stay quiet.
+ * Enter or leaving the field saves; Escape cancels. Saves append (the notes
+ * trail keeps history), so a blank save is a cancel.
+ */
+function CardNotes({
+  notes,
+  onSave,
+  testId,
+}: {
+  notes: RecordCardModel['notes'];
+  onSave: ((text: string) => void) | undefined;
+  testId: (part: string) => string;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState('');
+  // The saved text shows at once; the next read of the record replaces it.
+  const [saved, setSaved] = useState<string | null>(null);
+  useEffect(() => setSaved(null), [notes.own]);
+  const own = saved ?? notes.own;
+  if (!notes.fixed && !own && !onSave) return null;
+
+  const begin = () => {
+    setDraft(own ?? '');
+    setEditing(true);
+  };
+  const finish = (commit: boolean) => {
+    setEditing(false);
+    const text = draft.trim();
+    if (!commit || !text || text === (own ?? '').trim() || !onSave) return;
+    setSaved(text);
+    onSave(text);
+  };
+
+  return (
+    <span className="pointer-events-auto flex h-6 min-w-4 flex-1 items-center gap-2 text-[13px] text-text-muted" onClick={stop} onPointerDown={stop}>
+      {notes.fixed ? (
+        <HoverTooltip label={`${notes.fixed.label}: ${notes.fixed.text}`} asChild>
+          <span data-testid={testId('note-fixed')} className="inline-flex min-w-4 max-w-full shrink items-center gap-1">
+            <MessageSquare className="size-3.5 shrink-0 text-text-faint" aria-label={notes.fixed.label} />
+            <span className="min-w-0 truncate">{notes.fixed.text}</span>
+          </span>
+        </HoverTooltip>
+      ) : null}
+      {editing ? (
+        <input
+          // eslint-disable-next-line jsx-a11y/no-autofocus -- the field replaces the text the operator just clicked
+          autoFocus
+          value={draft}
+          onChange={(event) => setDraft(event.target.value)}
+          onKeyDown={(event) => {
+            if (event.key === 'Enter') {
+              event.preventDefault();
+              finish(true);
+            } else if (event.key === 'Escape') {
+              event.preventDefault();
+              event.stopPropagation();
+              finish(false);
+            }
+          }}
+          onBlur={() => finish(true)}
+          placeholder="Write a note — Enter saves, Esc cancels"
+          aria-label="Note"
+          data-testid={testId('note-input')}
+          className={cn(
+            'h-6 min-w-40 flex-1 rounded-md bg-surface-card px-1.5 text-[13px] text-text-default ring-1 ring-border-default placeholder:text-text-faint',
+            focusRing('field'),
+          )}
+        />
+      ) : own ? (
+        <HoverTooltip label={onSave ? `${own} — click to edit` : own} asChild>
+          <button
+            type="button"
+            tabIndex={onSave ? 0 : -1}
+            disabled={!onSave}
+            data-testid={testId('note')}
+            onClick={begin}
+            className={cn(
+              'ds-raw-button inline-flex h-6 min-w-4 shrink items-center gap-1 rounded-md px-1 text-left hover:bg-surface-sunken hover:text-text-default disabled:hover:bg-transparent',
+              focusRing('control'),
+            )}
+          >
+            <Pencil className="size-3.5 shrink-0 text-text-faint" aria-hidden />
+            <span className="min-w-0 truncate">{own}</span>
+          </button>
+        </HoverTooltip>
+      ) : onSave ? (
+        <button
+          type="button"
+          data-testid={testId('note-add')}
+          onClick={begin}
+          className={cn(
+            'ds-raw-button inline-flex h-6 shrink-0 items-center gap-1 rounded-md px-1 text-text-faint transition-opacity hover:bg-surface-sunken hover:text-text-default',
+            'opacity-0 focus-visible:opacity-100 group-focus-within/card:opacity-100 group-hover/card:opacity-100',
+            focusRing('control'),
+          )}
+        >
+          <Plus className="size-3.5" aria-hidden />
+          Add note
+        </button>
+      ) : null}
+    </span>
+  );
+}
+
+function ChipFace({ chip }: { chip: RecordCardChip }) {
+  return chip.long ? (
+    <>
+      <span className={CARD_DISCLOSE.label.hideAt}>{chip.short}</span>
+      <span className={CARD_DISCLOSE.label.show}>{chip.long}</span>
+    </>
+  ) : (
+    chip.short
+  );
+}
+
 function Chip({ chip }: { chip: RecordCardChip }) {
-  if (!chip.onPress) return <span className={cn(CARD_CHIP, CHIP_TONE_CLASS[chip.tone])}>{chip.short}</span>;
   const onPress = chip.onPress;
-  const button = (
+  const face = onPress ? (
     <button
       type="button"
       data-testid={chip.testId}
@@ -437,22 +577,20 @@ function Chip({ chip }: { chip: RecordCardChip }) {
       }}
       className={cn('pointer-events-auto transition-transform hover:scale-105', CHIP_TONE_CLASS[chip.tone], CARD_CHIP, focusRing('control'))}
     >
-      {chip.long ? (
-        <>
-          <span className={CARD_DISCLOSE.label.hideAt}>{chip.short}</span>
-          <span className={CARD_DISCLOSE.label.show}>{chip.long}</span>
-        </>
-      ) : (
-        chip.short
-      )}
+      <ChipFace chip={chip} />
     </button>
+  ) : (
+    // A static chip is read, not pressed — the pointer only needs it for its tooltip.
+    <span data-testid={chip.testId} className={cn(chip.tooltip && 'pointer-events-auto', CARD_CHIP, CHIP_TONE_CLASS[chip.tone])}>
+      <ChipFace chip={chip} />
+    </span>
   );
   return chip.tooltip ? (
     <HoverTooltip label={chip.tooltip} asChild>
-      {button}
+      {face}
     </HoverTooltip>
   ) : (
-    button
+    face
   );
 }
 
@@ -487,8 +625,15 @@ export interface RecordCardProps {
   trailing: ReactNode;
   /** Family slot under the lines while `peekOpen` — a `CollapseItem`. */
   quickLook: ReactNode;
-  /** The single-card menu, anchored at the card's bottom-right. */
-  menu: { open: boolean; onDone: () => void; content: ReactNode } | null;
+  /** Saves the team's note from line 1 (`notes.own`); absent = notes are read-only. */
+  onSaveNote?: (text: string) => void;
+  /**
+   * A family whose lines are records of their own (receiving: each line opens
+   * alone): an unfolded line opens ITSELF instead of the card's record, and
+   * `openLineId` marks the one that is open. Absent = a line opens the card.
+   */
+  onOpenLine?: (lineId: number, event: RecordOpenEvent) => void;
+  openLineId?: number | null;
 }
 
 export function RecordCard({
@@ -508,8 +653,13 @@ export function RecordCard({
   identity,
   trailing,
   quickLook,
-  menu,
+  onSaveNote,
+  onOpenLine,
+  openLineId = null,
 }: RecordCardProps) {
+  // The whole-card open target. Inner controls hand focus back to it after a
+  // click, so the card's keys stay the card's: Enter opens, Space = quick look.
+  const openRef = useRef<HTMLButtonElement>(null);
   const lead = model.lines[0];
   if (!lead) return null;
   const tone = STATE_TONE_CLASSES[model.state.tone];
@@ -522,38 +672,67 @@ export function RecordCard({
     onOpen({ shiftKey: event.shiftKey, metaKey: event.metaKey, ctrlKey: event.ctrlKey, detail: event.detail, target: event.target });
 
   const status = model.status;
-  const statusNode: ReactNode = (
-    <HoverTooltip label={status.tip} disabled={!status.tip} asChild>
-      <span
-        onClick={openRecord}
-        className={cn(CARD_FACT_BOX_CLASS, 'pointer-events-auto cursor-pointer gap-1.5 text-[13px] tabular-nums', DEADLINE_TONE_CLASS[status.tone])}
-      >
-        <span className="relative flex size-2">
-          {status.tone === 'late' ? (
-            <motion.span
-              aria-hidden
-              className="absolute inset-0 rounded-full bg-fill-danger"
-              animate={{ scale: [1, 2.2], opacity: [0.55, 0] }}
-              transition={{ duration: 1.6, repeat: Infinity, ease: 'easeOut' }}
-            />
-          ) : null}
-          <span className={cn('relative size-2 rounded-full', DEADLINE_DOT_CLASS[status.tone])} />
+  const statusNode: ReactNode =
+    status.kind === 'deadline' ? (
+      <HoverTooltip label={status.tip} disabled={!status.tip} asChild>
+        <span
+          onClick={openRecord}
+          className={cn(CARD_FACT_BOX_CLASS, 'pointer-events-auto cursor-pointer gap-1.5 text-[13px] tabular-nums', DEADLINE_TONE_CLASS[status.tone])}
+        >
+          <span className="relative flex size-2">
+            {status.tone === 'late' ? (
+              <motion.span
+                aria-hidden
+                className="absolute inset-0 rounded-full bg-fill-danger"
+                animate={{ scale: [1, 2.2], opacity: [0.55, 0] }}
+                transition={{ duration: 1.6, repeat: Infinity, ease: 'easeOut' }}
+              />
+            ) : null}
+            <span className={cn('relative size-2 rounded-full', DEADLINE_DOT_CLASS[status.tone])} />
+          </span>
+          {status.face}
         </span>
-        {status.face}
-      </span>
-    </HoverTooltip>
-  );
+      </HoverTooltip>
+    ) : status.kind === 'date' ? (
+      <HoverTooltip label={status.tip} disabled={!status.tip} asChild>
+        <span
+          data-testid={id('date')}
+          onClick={openRecord}
+          className={cn(
+            CARD_FACT_BOX_CLASS,
+            'pointer-events-auto cursor-pointer whitespace-nowrap text-[13px] tabular-nums',
+            status.alert ? 'font-semibold text-text-danger' : 'text-text-muted',
+          )}
+        >
+          {status.face}
+        </span>
+      </HoverTooltip>
+    ) : (
+      <HoverTooltip label={status.tip} disabled={!status.tip} asChild>
+        <span
+          data-testid={id('state')}
+          onClick={openRecord}
+          className={cn(CARD_FACT_BOX_CLASS, 'pointer-events-auto cursor-pointer gap-1.5 whitespace-nowrap text-[13px] font-medium', STATE_TONE_CLASSES[status.tone].text)}
+        >
+          <span aria-hidden className={cn('size-2 shrink-0 rounded-full', STATE_TONE_CLASSES[status.tone].dot)} />
+          {status.face}
+        </span>
+      </HoverTooltip>
+    );
 
   // 2+ lines: the lead line is the face; "+N items" unfolds the rest (alert lines already first).
   const moreLines = model.lines.slice(1);
   const moreCount = moreLines.length;
   const moreAlerts = moreLines.filter((line) => line.alert).length;
+  const refocusCard = () => openRef.current?.focus({ preventScroll: true });
   // Quick look, findable by pointer: the same toggle as Space, shown on hover / focus —
-  // always at the far right of the lead's facts row, on every card.
+  // always at the far right of the lead's facts row, on every card. Not a tab stop:
+  // keyboard reaches it as Space on the card, so Enter never lands on it.
   const detailsToggle = (
     <HoverTooltip label="Quick look" shortcut="Space" asChild>
       <button
         type="button"
+        tabIndex={-1}
         aria-expanded={peekOpen}
         aria-label={peekOpen ? 'Close quick look' : 'Quick look'}
         data-testid={id('peek-toggle')}
@@ -561,6 +740,7 @@ export function RecordCard({
         onClick={(event) => {
           event.stopPropagation();
           onTogglePeek();
+          refocusCard();
         }}
         className={cn(
           CARD_FACT_BOX_CLASS,
@@ -577,7 +757,29 @@ export function RecordCard({
     </HoverTooltip>
   );
 
-  const article = (
+  // The next workflow step — "→ Pack" — always the card's bottom-right corner: the
+  // end of the lead's facts row on a one-line card, the end of the "+N items" row otherwise.
+  const next = model.next;
+  const nextNode = next ? (
+    <HoverTooltip label={next.tip} asChild>
+      <span
+        data-testid={id('next')}
+        aria-label={`Next step: ${next.label}`}
+        onClick={openRecord}
+        className={cn(
+          CARD_FACT_BOX_CLASS,
+          'pointer-events-auto shrink-0 cursor-pointer gap-1 whitespace-nowrap text-[13px]',
+          next.blocked ? 'text-text-danger' : 'text-text-faint',
+        )}
+      >
+        <ArrowRight className="size-3.5" aria-hidden />
+        <span aria-hidden className={cn('size-2 shrink-0 rounded-full', STATE_TONE_CLASSES[next.tone].dot)} />
+        <span className={cn('font-semibold', next.blocked ? 'text-text-danger' : 'text-text-default')}>{next.label}</span>
+      </span>
+    </HoverTooltip>
+  ) : null;
+
+  return (
     <motion.article
       {...rowAttrs}
       data-desk-record-key={model.leadId}
@@ -590,13 +792,23 @@ export function RecordCard({
       whileHover="hover"
       variants={{ rest: {}, hover: {} }}
       className={cn(
-        'group/card @container/card relative isolate flex rounded-2xl py-3 pl-4 pr-4 transition-colors duration-150 [contain-intrinsic-size:auto_92px] [content-visibility:auto]',
-        selected ? 'bg-surface-info/60' : open ? 'bg-surface-sunken' : 'hover:bg-surface-sunken/70',
-        open && 'ring-1 ring-inset ring-border-strong',
+        // Always a white card (owner 2026-09-27): state reads as an OUTLINE only —
+        // checked = the info ring, open = the strong hairline, hover = a soft hairline.
+        // `content-visibility` skips off-screen cards — but not inside a height
+        // that is animating (`CollapseItem`): its clip hides the card, and a
+        // skipped card measures as the 92px placeholder, so the height would
+        // grow to the guess and snap to the real size at the end.
+        'group/card @container/card relative isolate flex rounded-2xl bg-surface-card py-3 pl-4 pr-4 transition-shadow duration-150 [contain-intrinsic-size:auto_92px] [content-visibility:auto] [[data-collapse-clip]_&]:[content-visibility:visible]',
+        selected
+          ? 'ring-2 ring-inset ring-fill-info'
+          : open
+            ? 'ring-1 ring-inset ring-border-strong'
+            : 'hover:ring-1 hover:ring-inset hover:ring-border-soft',
       )}
     >
       {/* The open target — the whole card. */}
       <button
+        ref={openRef}
         type="button"
         aria-label={model.aria.open}
         aria-current={open || undefined}
@@ -630,8 +842,10 @@ export function RecordCard({
 
       {/* Record facts */}
       <div className="pointer-events-none relative z-10 ml-3 flex min-w-0 flex-1 flex-col gap-2">
-        {/* Line 1 — identity · channel · person · chips · note …… trailing · status */}
-        <div className="flex min-w-0 items-center gap-2">
+        {/* Line 1 — identity · channel · person · chips · note …… trailing · status. On a
+            very narrow card (the split's list on a small screen) the right end wraps under
+            instead of the order number running into the channel. */}
+        <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
           <span className={cn(CARD_FACT_BOX_CLASS, 'pointer-events-auto min-w-0 shrink gap-0.5 text-sm font-semibold tabular-nums text-text-default')} onClick={stop} onPointerDown={stop}>
             {identity}
           </span>
@@ -667,13 +881,7 @@ export function RecordCard({
           {model.chips.map((chip) => (
             <Chip key={chip.id} chip={chip} />
           ))}
-          {model.note ? (
-            <HoverTooltip label={model.note.text} asChild>
-              <span className={cn(CARD_FACT_BOX_CLASS, 'pointer-events-auto text-text-muted')}>
-                <MessageSquare className="size-3.5" aria-label={model.note.label} />
-              </span>
-            </HoverTooltip>
-          ) : null}
+          <CardNotes notes={model.notes} onSave={onSaveNote} testId={id} />
           <span className="ml-auto" />
           {trailing}
           {statusNode}
@@ -688,9 +896,15 @@ export function RecordCard({
             <p className="line-clamp-2 break-words text-[15px] font-medium leading-snug text-text-default @xl/card:line-clamp-1" title={lead.title}>
               {lead.title}
             </p>
-            <div className="flex min-w-0 items-center gap-3">
-              <LineFacts line={lead} columns={factColumns} className="min-w-0 flex-1" />
-              {detailsToggle}
+            {/* items-end: Details and the next step sit on the facts' last line — the card's
+                bottom-right. The facts keep ≥ 8rem; with less room the next step wraps under
+                them (still right-aligned) instead of crushing them one per line. */}
+            <div className="flex min-w-0 flex-wrap items-end gap-x-3 gap-y-1">
+              <LineFacts line={lead} columns={factColumns} className="min-w-32 flex-1" />
+              <span className="ml-auto flex shrink-0 items-center gap-3">
+                {detailsToggle}
+                {moreCount ? null : nextNode}
+              </span>
             </div>
           </div>
         </div>
@@ -702,7 +916,18 @@ export function RecordCard({
               {expanded
                 ? moreLines.map((line, i) => (
                     <CollapseItem key={line.id} subgrid delay={0.04 * i}>
-                      <MoreLineRow line={line} columns={factColumns} testId={id('line')} onOpen={openRecord} />
+                      <MoreLineRow
+                        line={line}
+                        columns={factColumns}
+                        testId={id('line')}
+                        current={openLineId === line.id}
+                        onOpen={
+                          onOpenLine
+                            ? (event) =>
+                                onOpenLine(line.id, { shiftKey: event.shiftKey, metaKey: event.metaKey, ctrlKey: event.ctrlKey, detail: event.detail, target: event.target })
+                            : openRecord
+                        }
+                      />
                     </CollapseItem>
                   ))
                 : null}
@@ -717,6 +942,8 @@ export function RecordCard({
                 onClick={(event) => {
                   event.stopPropagation();
                   onToggleExpand();
+                  // A click leaves the card's keys on the card (Enter opens); a keyboard press keeps focus here.
+                  if (event.detail > 0) refocusCard();
                 }}
                 className={cn(
                   CARD_FACT_BOX_CLASS,
@@ -735,44 +962,12 @@ export function RecordCard({
                   <span className="font-medium text-text-danger">{model.hiddenAlertLabel(moreAlerts)}</span>
                 </>
               ) : null}
+              {nextNode ? <span className="ml-auto flex">{nextNode}</span> : null}
             </div>
           </div>
         ) : null}
         <AnimatePresence initial={false}>{peekOpen ? quickLook : null}</AnimatePresence>
       </div>
-
-      {/* The single-card menu drops down from the right edge. */}
-      {menu ? (
-        <PopoverAnchor asChild>
-          <span aria-hidden className="pointer-events-none absolute bottom-0 right-3 size-px" />
-        </PopoverAnchor>
-      ) : null}
     </motion.article>
-  );
-
-  if (!menu) return article;
-  return (
-    <Popover open={menu.open} modal={false}>
-      {article}
-      <PopoverContent
-        side="bottom"
-        align="end"
-        sideOffset={6}
-        onOpenAutoFocus={(event) => event.preventDefault()}
-        onInteractOutside={(event) => event.preventDefault()}
-        onEscapeKeyDown={menu.onDone}
-        className="w-64 overflow-hidden rounded-2xl p-0"
-        data-testid={id('menu')}
-      >
-        <motion.div
-          initial={{ opacity: 0, y: -8, scale: 0.96 }}
-          animate={{ opacity: 1, y: 0, scale: 1 }}
-          transition={SPRING}
-          style={{ transformOrigin: 'var(--radix-popover-content-transform-origin)' }}
-        >
-          {menu.content}
-        </motion.div>
-      </PopoverContent>
-    </Popover>
   );
 }

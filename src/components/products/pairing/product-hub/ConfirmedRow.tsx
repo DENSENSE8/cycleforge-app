@@ -47,7 +47,7 @@ export function ConfirmedRow({
             </>
           ) : null}
           {confirmed.accountName && (
-            <span className="shrink-0 truncate text-role-micro font-medium uppercase tracking-wider text-text-soft">
+            <span className="shrink-0 truncate text-role-micro font-medium text-text-soft">
               {confirmed.accountName}
             </span>
           )}

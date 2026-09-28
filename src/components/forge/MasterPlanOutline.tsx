@@ -39,7 +39,7 @@ export function MasterPlanOutline({
     <nav aria-label="Master plan tickets" className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
       {sections.map((sec) => (
         <div key={sec.heading} className="border-b border-border-hairline last:border-b-0">
-          <p className="sticky top-0 z-10 truncate bg-surface-card px-3 py-1.5 text-role-eyebrow uppercase tracking-[0.18em] text-text-faint">
+          <p className="sticky top-0 z-10 truncate bg-surface-card px-3 py-1.5 text-role-eyebrow text-text-faint">
             {sec.heading}
             <span className="ml-1.5 tabular-nums text-text-soft">{sec.tickets.length}</span>
           </p>
@@ -68,7 +68,7 @@ export function MasterPlanOutline({
                     <span className="min-w-0 flex-1 truncate text-role-caption font-semibold text-text-default">
                       {t.ticketId}
                     </span>
-                    <span className="shrink-0 text-role-micro uppercase tracking-widest text-text-faint">
+                    <span className="shrink-0 text-role-micro text-text-faint">
                       {label === 'in-progress' ? 'active' : label}
                     </span>
                   </button>

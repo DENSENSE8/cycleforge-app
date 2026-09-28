@@ -48,7 +48,7 @@ the law, including the 2026-09-24 "Changed" note under §11. Do not commit; the 
 | Order → `LIFECYCLE` key (one place) | `orderLifecycleState` in `src/lib/order-lifecycle.ts`; row stage `resolveRowWorkflowStage` in `src/components/dashboard/orders-queue/helpers.ts` |
 | Location breadcrumb (shared with `/m/work`) | `formatOutboundStoragePath` in `src/lib/shipping/outbound-storage-path.ts` |
 | Data/behaviour feed (shared with the slot table) | `src/components/dashboard/orders-queue/useOrdersQueueFeed.ts` |
-| Row zoom per staff | `useLedgerRowZoom` → `staff_preferences.tableColumns.orders.rowZoom` |
+| Row zoom per staff, per view | `useViewDensity(viewKey)` → Settings Registry `desk.<viewKey>.density`, bounded by `VIEW_SPECS[viewKey].density.allowed` (`src/lib/views/view-specs.ts`) |
 | Industrial desk bar + flush stage | `DeskPageChrome` `stage="flush"` (`src/design-system/components/DeskPageChrome.tsx`), set per route in `src/app/shipping/(desk)/layout.tsx` |
 | SSR stand-in at the same geometry | `OrdersLedgerStandIn` in `src/components/dashboard/OrdersQueueFirstPaint.tsx` |
 

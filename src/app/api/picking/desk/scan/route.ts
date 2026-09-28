@@ -28,6 +28,7 @@ import {
   placeOrderAtLocation,
 } from '@/lib/packing/pack-placement';
 import { recordAudit, AUDIT_ACTION, AUDIT_ENTITY } from '@/lib/audit-logs';
+import { refreshOrderStageFacts } from '@/lib/orders/order-stage-facts';
 
 /**
  * Persisted SAL `metadata.source`, realtime source and idempotency route key —
@@ -42,7 +43,7 @@ const ROUTE = 'picking.desk.scan';
  * FNSKU scans go to `POST /api/fba/fnsku-scan`.
  */
 export const POST = withAuth(async (req: NextRequest, ctx) => {
-  const rate = await checkRateLimitForOrg({ headers: req.headers, routeKey: 'picking-desk-scan', limit: 120, windowMs: 60_000, organizationId: ctx.organizationId });
+  const rate = await checkRateLimitForOrg({ headers: req.headers, routeKey: 'picking-desk-scan', limit: 120, windowMs: 60_000, organizationId: ctx.organizationId, staffId: ctx.staffId });
   if (!rate.ok) {
     return NextResponse.json({ success: false, found: false, error: 'Rate limit exceeded' }, { status: 429 });
   }
@@ -125,7 +126,7 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
           metadata: { source: stationSource, order_found: false, tracking: value },
           createdAt: testDateTime,
         });
-
+        await refreshOrderStageFacts(ctx.organizationId, { shipmentIds: [resolved.shipmentId] }, client);
         await client.query('COMMIT');
         await invalidateCacheTags(isFbaSource ? ['fba-stage-counts'] : ['orders', 'orders-next', 'desk-pick-logs']);
       await invalidateCacheTags(ctx.organizationId, isFbaSource ? [CACHE_TAGS.fbaStageCounts] : [CACHE_TAGS.orders, CACHE_TAGS.ordersNext, CACHE_TAGS.deskPickLogs, CACHE_TAGS.orderDetail]);
@@ -212,7 +213,7 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
         shipmentId: matchedShipmentId,
         trackingValue,
       });
-
+      await refreshOrderStageFacts(ctx.organizationId, { orderIds: [Number(order.id)] }, client);
       await client.query('COMMIT');
       await invalidateCacheTags(isFbaSource ? ['fba-stage-counts'] : ['orders', 'orders-next', 'desk-pick-logs']);
       await invalidateCacheTags(ctx.organizationId, isFbaSource ? [CACHE_TAGS.fbaStageCounts] : [CACHE_TAGS.orders, CACHE_TAGS.ordersNext, CACHE_TAGS.deskPickLogs, CACHE_TAGS.orderDetail]);

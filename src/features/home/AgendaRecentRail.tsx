@@ -101,7 +101,7 @@ export function AgendaRecentRail({
                 titleAttr: row.title,
                 titleAccessory: ctx.pkgChip,
                 meta: (
-                  <span className="flex min-w-0 items-center gap-1 font-semibold uppercase tracking-widest text-text-soft">
+                  <span className="flex min-w-0 items-center gap-1 font-semibold text-text-soft">
                     <span className="truncate text-text-muted">
                       {DAILY_AGENDA_TYPE_LABEL[row.type]}
                     </span>

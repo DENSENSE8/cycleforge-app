@@ -113,16 +113,16 @@ test('a dock-stage signal completes staging and unlocks scan-out', () => {
 });
 
 test('missing-label data cannot create two primary commands', () => {
-  const testedWithoutLabel = resolveOutboundWorkflowActions({
-    stage: 'TESTED',
+  const pickedWithoutLabel = resolveOutboundWorkflowActions({
+    stage: 'PICKED',
     hasLabel: false,
     hasPickScan: true,
     packed: false,
     staged: false,
   });
-  const primary = Object.values(testedWithoutLabel).filter((action) => action.state === 'primary');
+  const primary = Object.values(pickedWithoutLabel).filter((action) => action.state === 'primary');
 
   assert.deepEqual(primary.map((action) => action.id), ['label']);
-  assert.equal(testedWithoutLabel.pick.state, 'complete');
-  assert.equal(testedWithoutLabel.pack.state, 'blocked');
+  assert.equal(pickedWithoutLabel.pick.state, 'complete');
+  assert.equal(pickedWithoutLabel.pack.state, 'blocked');
 });

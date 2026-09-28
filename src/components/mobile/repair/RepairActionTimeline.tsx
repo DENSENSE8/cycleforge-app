@@ -202,7 +202,7 @@ function TicketPostLine({
 function FactLine({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div className="mt-1.5 flex flex-wrap items-center gap-1.5 text-role-caption">
-      <span className="w-12 shrink-0 font-semibold uppercase tracking-[0.12em] text-text-soft">{label}</span>
+      <span className="w-12 shrink-0 font-semibold text-text-soft">{label}</span>
       {children}
     </div>
   );
@@ -222,7 +222,7 @@ function PartLine({
 }) {
   return (
     <div className="mt-1.5 flex flex-wrap items-center gap-1.5 text-role-caption">
-      <span className="w-12 shrink-0 font-semibold uppercase tracking-[0.12em] text-text-soft">{label}</span>
+      <span className="w-12 shrink-0 font-semibold text-text-soft">{label}</span>
       {sku ? (
         <span
           className={`rounded px-1.5 py-0.5 font-mono ${tone === 'out' ? 'bg-rose-100 text-rose-700' : 'bg-emerald-100 text-emerald-700'}`}

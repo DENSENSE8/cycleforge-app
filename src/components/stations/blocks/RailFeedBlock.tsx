@@ -72,7 +72,7 @@ export function RailFeedBlock({ rows, isLoading, mapping, fieldKinds, display }:
   return (
     <div>
       {showCount ? (
-        <p className="px-2.5 pb-1 pt-2 text-role-eyebrow uppercase tracking-widest text-text-faint">
+        <p className="px-2.5 pb-1 pt-2 text-role-eyebrow text-text-faint">
           {sorted.length} in queue
         </p>
       ) : null}

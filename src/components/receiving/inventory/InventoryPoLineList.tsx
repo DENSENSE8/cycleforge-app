@@ -213,7 +213,7 @@ export function InventoryPoLineList({
                       {label}
                     </span>
                     {isActive ? (
-                      <span className="shrink-0 text-role-eyebrow font-semibold uppercase tracking-wider text-accent-bg">
+                      <span className="shrink-0 text-role-eyebrow font-semibold text-accent-bg">
                         Active
                       </span>
                     ) : null}
@@ -239,7 +239,7 @@ export function InventoryPoLineList({
                       line.quantity_received,
                     );
                     return trust ? (
-                      <span className="mt-0.5 block text-role-eyebrow uppercase tracking-wider text-text-soft">
+                      <span className="mt-0.5 block text-role-eyebrow text-text-soft">
                         {trust}
                       </span>
                     ) : null;

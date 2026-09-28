@@ -65,6 +65,8 @@ type AssigneeComboboxPanelProps = {
    * works whether or not the search holds focus.
    */
   numbered?: boolean;
+  /** Put the cursor in search as the panel mounts — set by the popover shell, never the inline mobile panel. */
+  autoFocusSearch?: boolean;
 };
 
 export function AssigneeComboboxPanel({
@@ -85,6 +87,7 @@ export function AssigneeComboboxPanel({
   onEscape,
   heading,
   numbered = false,
+  autoFocusSearch = false,
 }: AssigneeComboboxPanelProps) {
   const generatedId = useId();
   const commandId = listId ?? generatedId;
@@ -125,6 +128,7 @@ export function AssigneeComboboxPanel({
         onValueChange={onQueryChange}
         placeholder="Search staff…"
         disabled={disabled}
+        autoFocus={autoFocusSearch}
         className="text-role-micro text-text-default"
         trailing={
           onEditRoster ? (
@@ -155,7 +159,7 @@ export function AssigneeComboboxPanel({
 
       <CommandList className={ASSIGNEE_COMBOBOX_LIST_CLASS} aria-busy={loading || undefined}>
         {!loading && rows.length === 0 ? (
-          <CommandEmpty className="px-3 py-4 text-center text-role-eyebrow uppercase tracking-wider text-text-faint">
+          <CommandEmpty className="px-3 py-4 text-center text-role-eyebrow text-text-faint">
             {emptyMessage}
           </CommandEmpty>
         ) : null}
@@ -191,7 +195,7 @@ export function AssigneeComboboxPanel({
                       onPointerDown={(event) => event.stopPropagation()}
                       onClick={(event) => event.stopPropagation()}
                     >
-                      <span className="text-role-eyebrow font-semibold uppercase tracking-wider text-text-muted">
+                      <span className="text-role-eyebrow font-semibold text-text-muted">
                         {face.label}
                       </span>
                       <Switch
@@ -257,7 +261,7 @@ export function AssigneeCombobox({
       className={cn('w-[280px]', cornerClass('flush'))}
       data-testid={testId}
     >
-      <AssigneeComboboxPanel {...panel} flushRows onEscape={onClose} />
+      <AssigneeComboboxPanel {...panel} flushRows autoFocusSearch onEscape={onClose} />
     </Popover>
   );
 }

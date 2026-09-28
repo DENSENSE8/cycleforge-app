@@ -259,7 +259,7 @@ export function StudioCanvas({
       <MiniMap pannable zoomable className="!bg-surface-sunken" />
       {lens === 'static' && zoom === 1 && staticFlow && (
         <div className="absolute left-3 top-3 z-10 flex items-center gap-3 rounded-lg border border-border-soft bg-surface-card/90 px-3 py-1.5 text-role-micro font-semibold text-text-muted shadow-sm">
-          <span className="uppercase tracking-wide text-text-faint">Data flow</span>
+          <span className="text-text-faint">Data flow</span>
           {(
             [
               [STATIC_ROLE.source.color, 'Sources', staticFlow.counts.sources],
@@ -276,7 +276,7 @@ export function StudioCanvas({
       )}
       {lens === 'procedure' && zoom === 1 && procedureByNode && (
         <div className="absolute left-3 top-3 z-10 flex items-center gap-3 rounded-lg border border-border-soft bg-surface-card/90 px-3 py-1.5 text-role-micro font-semibold text-text-muted shadow-sm">
-          <span className="uppercase tracking-wide text-text-faint">Procedure</span>
+          <span className="text-text-faint">Procedure</span>
           {procedureByNode.size === 0 ? (
             <span className="text-text-faint">No step sequence declared for these node types yet</span>
           ) : (

@@ -4,6 +4,7 @@ import { useMemo } from 'react';
 import { formatDistanceToNowStrict } from 'date-fns';
 import { AlertTriangle, Truck, Package, PackageCheck, RotateCcw, Clock } from '@/components/Icons';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
+import { displayCarrierFromHint } from '@/lib/carrier-brand';
 import { isStalled } from '@/lib/shipping/shipment-status';
 
 export type ShipmentStatusCategory =
@@ -71,7 +72,7 @@ export function ShipmentStatusBadge({
     [isTerminal, normalizedCategory, latestEventAt, stallHours],
   );
 
-  const carrierLabel = carrier ? String(carrier).toUpperCase() : null;
+  const carrierLabel = carrier ? (displayCarrierFromHint(String(carrier)) ?? String(carrier)) : null;
   const relative = useMemo(() => {
     if (!latestEventAt) return null;
     const d = new Date(latestEventAt);
@@ -86,7 +87,7 @@ export function ShipmentStatusBadge({
     <div className={`inline-flex flex-wrap items-center gap-1.5 ${className ?? ''}`}>
       <HoverTooltip label={description ?? style.label} asChild>
         <span
-          className={`inline-flex items-center gap-1 rounded-none px-2 py-0.5 text-role-micro font-medium uppercase tracking-wide ${style.cls}`}
+          className={`inline-flex items-center gap-1 rounded-none px-2 py-0.5 text-role-micro font-medium ${style.cls}`}
         >
           <Icon className="h-3 w-3" />
           {carrierLabel ? `${carrierLabel} · ` : ''}
@@ -104,7 +105,7 @@ export function ShipmentStatusBadge({
           asChild
         >
           <span
-            className="inline-flex items-center gap-1 rounded-none bg-fill-danger px-2 py-0.5 text-role-micro font-semibold uppercase tracking-wide text-text-inverse"
+            className="inline-flex items-center gap-1 rounded-none bg-fill-danger px-2 py-0.5 text-role-micro font-semibold text-text-inverse"
           >
             <AlertTriangle className="h-3 w-3" />
             {exceptionShown ? 'Exception' : 'Stalled'}

@@ -288,7 +288,7 @@ export function BinStockNumpadSheet({
           className="h-11 w-11 rounded-md border border-border-default bg-surface-card active:bg-surface-hover"
         />
         <div className="min-w-0 flex-1 text-center">
-          <p className="text-role-micro uppercase tracking-[0.18em] text-text-soft">
+          <p className="text-role-micro text-text-soft">
             Edit stock
           </p>
           <p className="truncate font-mono text-sm font-semibold text-text-default">
@@ -325,7 +325,7 @@ export function BinStockNumpadSheet({
                 : 'bg-surface-card text-text-muted'
             }`}
           >
-            − TAKE
+            − Take
           </Button>
           <Button
             type="button"
@@ -338,14 +338,14 @@ export function BinStockNumpadSheet({
                 : 'bg-surface-card text-text-muted'
             }`}
           >
-            + PUT
+            + Put
           </Button>
         </div>
 
         {/* Current vs projected */}
         <Panel radius="lg" padding="none" className="mx-auto grid w-full max-w-sm grid-cols-3 items-center gap-2 px-4 py-4">
           <div className="text-center">
-            <p className="text-role-eyebrow uppercase tracking-widest text-text-soft">
+            <p className="text-role-eyebrow text-text-soft">
               On hand
             </p>
             <p className="mt-1 font-mono text-3xl font-semibold text-text-default">
@@ -353,7 +353,7 @@ export function BinStockNumpadSheet({
             </p>
           </div>
           <div className="text-center">
-            <p className="text-role-eyebrow uppercase tracking-widest text-text-soft">
+            <p className="text-role-eyebrow text-text-soft">
               Change
             </p>
             <p
@@ -366,7 +366,7 @@ export function BinStockNumpadSheet({
             </p>
           </div>
           <div className="text-center">
-            <p className="text-role-eyebrow uppercase tracking-widest text-text-soft">
+            <p className="text-role-eyebrow text-text-soft">
               After
             </p>
             <p className="mt-1 font-mono text-3xl font-semibold text-text-default">
@@ -399,7 +399,7 @@ export function BinStockNumpadSheet({
                 type="button"
                 variant="ghost"
                 onClick={() => setCameraOpen(true)}
-                className={`h-auto flex-1 justify-center rounded-md px-2 py-2 text-role-caption font-semibold uppercase tracking-widest ${
+                className={`h-auto flex-1 justify-center rounded-md px-2 py-2 text-role-caption font-semibold ${
                   pendingShots.length > 0
                     ? 'bg-emerald-600 text-white'
                     : 'border border-amber-400 bg-amber-100 text-amber-800'
@@ -504,7 +504,7 @@ export function BinStockNumpadSheet({
           maxPhotos={3}
           header={
             <div className="min-w-0">
-              <p className="text-role-eyebrow uppercase tracking-[0.2em] text-white/60">
+              <p className="text-role-eyebrow text-white/60">
                 Evidence
               </p>
               <p className="truncate text-sm font-semibold text-white">{row.sku}</p>

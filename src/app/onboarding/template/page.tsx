@@ -109,7 +109,7 @@ export default function OnboardingTemplatePage() {
       <div className="mx-auto flex min-h-full max-w-2xl flex-col px-5 py-10">
         {/* Header */}
         <header className="space-y-1.5">
-          <span className="inline-flex items-center gap-1.5 text-role-eyebrow uppercase tracking-widest text-text-accent">
+          <span className="inline-flex items-center gap-1.5 text-role-eyebrow text-text-accent">
             <Sparkles className="h-3.5 w-3.5" />
             Get started
           </span>
@@ -124,7 +124,7 @@ export default function OnboardingTemplatePage() {
             never installs or activates (the CTA below is the sole install path). */}
         <section className="mt-5 space-y-2.5 rounded-xl border border-border-hairline bg-surface-card p-4">
           <div className="space-y-1">
-            <span className="inline-flex items-center gap-1.5 text-role-eyebrow uppercase tracking-widest text-text-accent">
+            <span className="inline-flex items-center gap-1.5 text-role-eyebrow text-text-accent">
               <Sparkles className="h-3.5 w-3.5" />
               Not sure which one?
             </span>
@@ -176,7 +176,7 @@ export default function OnboardingTemplatePage() {
               <p className="mt-1 text-role-caption font-semibold text-rose-700">
                 Could not load the template library.
               </p>
-              <p className="mt-0.5 text-role-eyebrow uppercase tracking-widest text-rose-400">
+              <p className="mt-0.5 text-role-eyebrow text-rose-400">
                 Reload the page to try again.
               </p>
             </div>
@@ -222,7 +222,7 @@ export default function OnboardingTemplatePage() {
                           {rec ? (
                             // AI reason takes precedence over the default badge.
                             <span className="inline-flex min-w-0 items-center gap-1 rounded bg-violet-50 px-1.5 py-0.5 ring-1 ring-inset ring-violet-200">
-                              <span className="text-role-eyebrow uppercase tracking-widest text-violet-700">
+                              <span className="text-role-eyebrow text-violet-700">
                                 Recommended
                               </span>
                               {rec.reason && (
@@ -233,7 +233,7 @@ export default function OnboardingTemplatePage() {
                             </span>
                           ) : (
                             t.isDefault && (
-                              <span className="rounded bg-violet-50 px-1.5 py-0.5 text-role-eyebrow uppercase tracking-widest text-violet-700 ring-1 ring-inset ring-violet-200">
+                              <span className="rounded bg-violet-50 px-1.5 py-0.5 text-role-eyebrow text-violet-700 ring-1 ring-inset ring-violet-200">
                                 Recommended
                               </span>
                             )
@@ -244,7 +244,7 @@ export default function OnboardingTemplatePage() {
                             {t.description}
                           </span>
                         )}
-                        <span className="mt-1 block font-mono text-role-eyebrow uppercase tracking-widest text-text-faint">
+                        <span className="mt-1 block font-mono text-role-eyebrow text-text-faint">
                           {t.nodeCount} step{t.nodeCount === 1 ? '' : 's'} · {t.edgeCount} link
                           {t.edgeCount === 1 ? '' : 's'}
                           {t.category ? ` · ${t.category}` : ''}

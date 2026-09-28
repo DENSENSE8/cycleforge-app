@@ -75,7 +75,7 @@ export function StatusMark({
     <span
       className={cn(
         'inline-flex min-w-0 shrink-0 items-center gap-1.5 rounded px-1.5 py-0.5 ring-1 ring-inset',
-        'text-role-micro uppercase',
+        'text-role-micro',
         CHIP_TONE_CLASSES[tone.tone] ?? CHIP_TONE_CLASSES.gray,
       )}
     >
@@ -150,7 +150,7 @@ export function AgeStamp({
     <HoverTooltip label={exact} focusable={false}>
       <span
         className={cn(
-          'shrink-0 truncate text-role-eyebrow uppercase tabular-nums text-text-faint',
+          'shrink-0 truncate text-role-eyebrow tabular-nums text-text-faint',
           className,
         )}
         // Native title as the floor: the tooltip is pointer-only, and an exact

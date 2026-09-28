@@ -123,7 +123,7 @@ const ROWS: Readonly<Record<string, readonly Row[]>> = {
     ['param', 'staff', 'src/components/sidebar/receiving/ReceivingFeedRail.tsx:78-80'],
     ['action', 'unbox.resume', 'src/components/receiving/unbox/UnboxDeskActions.tsx:42-60,87-95'],
     ['action', 'unbox.check', 'src/components/receiving/unbox/UnboxDeskActions.tsx:31-35,77-86'],
-    ['action', 'unbox.add-po', 'src/components/receiving/unbox/UnboxDeskActions.tsx:37-40,65-76'],
+    ['action', 'unbox.add-po', 'src/components/receiving/unbox/UnboxDeskActions.tsx:38-40,65-75'],
   ],
   pickup: [
     ['scanInput', 'pickup', 'src/components/sidebar/receiving/ReceivingScanBands.tsx:166-193; src/components/sidebar/ReceivingSidebarPanel.tsx:463-481'],
@@ -144,11 +144,25 @@ const ROWS: Readonly<Record<string, readonly Row[]>> = {
     ['view', 'pipeline', 'src/lib/sidebar-navigation.ts:964'],
     ['view', 'docked', 'src/lib/sidebar-navigation.ts:965'],
     ['param', 'lane', 'src/lib/routing/receiving-routes.ts:174', 'docked'],
-    ['action', 'incoming.add-po', 'src/components/receiving/incoming/IncomingDeskAddAction.tsx:69-71,144-150'],
-    ['action', 'incoming.add-return', 'src/components/receiving/incoming/IncomingDeskAddAction.tsx:73-75,153-157'],
+    ['action', 'incoming.add-po', 'src/components/receiving/incoming/IncomingDeskAddAction.tsx:67-69,140-147'],
+    ['action', 'incoming.add-return', 'src/components/receiving/incoming/IncomingDeskAddAction.tsx:71-73,149-153'],
     ['action', 'incoming.import-returns', 'src/components/receiving/incoming/IncomingDeskAddAction.tsx:77-79,158-166'],
     ['action', 'incoming.import-zoho', 'src/components/receiving/incoming/IncomingDeskAddAction.tsx:81-83,167-172'],
     ['action', 'incoming.import-ebay', 'src/components/receiving/incoming/IncomingDeskAddAction.tsx:85-87,173-179'],
+    ['savedViews', 'receiving_history_saved_views', 'src/lib/station/table-url-params.ts (receiving_history; the Docked ledger lost its Views menu in the RecordLedger move)'],
+    ['param', 'colsort', 'src/components/receiving/history/DockedReceiptsLedger.tsx (toolbar Sort menu)', 'docked'],
+    ['param', 'staff', 'src/lib/receiving/receiving-modes.ts applyStaffParam', 'docked'],
+    // The toolbar State menu's cut is the Claim · Short · Unfound pills now (owner 2026-09-28: one state, Unboxed).
+    ['param', 'dflag', 'src/components/receiving/history/DockedReceiptsLedger.tsx (toolbar State menu → attention pills)', 'docked'],
+    ['param', 'dateFrom', 'src/components/station/ReceivingLinesTable.tsx chromePill (toolbar week pill, `?weekOffset=`)', 'docked'],
+    ['param', 'dateTo', 'src/components/station/ReceivingLinesTable.tsx chromePill (toolbar week pill, `?weekOffset=`)', 'docked'],
+    ['param', 'weekOffset', 'src/components/station/ReceivingLinesTable.tsx chromePill (toolbar week pill)', 'docked'],
+    // Server history axis — wire ids existed (`HISTORY_SORT_WIRE_IDS`) with no writer on /incoming until the sidebar's Activity row.
+    ['param', 'sort', 'src/lib/receiving/receiving-modes.ts HISTORY_SORT_WIRE_IDS (scanned_newest had no writer)', 'docked'],
+    ['savedViews', 'receiving_incoming_saved_views', 'src/lib/station/table-url-params.ts (receiving_incoming; On the way had no Views menu on the RecordLedger)'],
+    ['param', 'inbound', 'src/components/station/incoming-grid/useIncomingTableChrome.ts (ledger toolbar Filter funnel, Source)', 'pipeline'],
+    ['param', 'colsort', 'src/components/receiving/incoming/IncomingDeliveriesLedger.tsx (ledger toolbar Sort icon)', 'pipeline'],
+    ['param', 'coldir', 'src/components/receiving/incoming/IncomingDeliveriesLedger.tsx (ledger toolbar Sort icon)', 'pipeline'],
   ],
   // Compatibility entry — no path resolves to it (PARITY.md §receiving, finding 1).
   receiving: [],
@@ -160,25 +174,38 @@ const ROWS: Readonly<Record<string, readonly Row[]>> = {
     ['view', 'suppliers', 'src/lib/sidebar-navigation.ts:1012'],
     ['view', 'models', 'src/lib/sidebar-navigation.ts:1015'],
     ['view', 'compatibility', 'src/lib/sidebar-navigation.ts:1016'],
-    ['param', 'q', 'src/components/sidebar/SourcingSidebarPanel.tsx:44-71', 'scout'],
-    ['param', 'by', 'src/components/sidebar/SourcingSidebarPanel.tsx:16-19,78-88', 'scout'],
-    ['param', 'status', 'src/components/sidebar/SourcingSidebarPanel.tsx:20-30,148-166', 'queue'],
-    ['param', 'type', 'src/components/sidebar/SourcingSidebarPanel.tsx:31-37,118-135', 'suppliers'],
-    ['param', 'search', 'src/components/admin/sourcing/BoseModelsSidebarPanel.tsx:27,64-77; CompatibilitySidebarPanel.tsx:25,44-57', 'models'],
-    ['param', 'model', 'src/components/admin/sourcing/BoseModelsSidebarPanel.tsx:50,89', 'models'],
-    ['param', 'boseModelId', 'src/components/admin/sourcing/CompatibilitySidebarPanel.tsx:26,60-83', 'compatibility'],
-    ['action', 'sourcing.add-model', 'src/components/admin/sourcing/BoseModelsSidebarPanel.tsx:44-61'],
+    // The old context panel (`SourcingSidebarPanel`, BoseModels/Compatibility pickers) — deleted in the port; cited at HEAD~.
+    ['param', 'q', 'SourcingSidebarPanel.tsx:44-71 (search bar)', 'scout'],
+    ['param', 'by', 'SourcingSidebarPanel.tsx:16-19,78-88 (Model | Serial slider)', 'scout'],
+    ['param', 'status', 'SourcingSidebarPanel.tsx:20-24,148-166 (Queue status slider)', 'queue'],
+    ['param', 'status', 'SourcingSidebarPanel.tsx:25-30,148-166 (Watchlist status slider)', 'watchlist'],
+    ['param', 'type', 'SourcingSidebarPanel.tsx:31-37,118-135 (Suppliers type slider)', 'suppliers'],
+    ['param', 'search', 'BoseModelsSidebarPanel.tsx:27,64-77; CompatibilitySidebarPanel.tsx:25,44-57 (picker filter)', 'models'],
+    ['param', 'model', 'BoseModelsSidebarPanel.tsx:50,89 (picker; now BoseModelPickerPane in the stage)', 'models'],
+    ['param', 'boseModelId', 'CompatibilitySidebarPanel.tsx:26,60-83 (picker; now BoseModelPickerPane in the stage)', 'compatibility'],
+    ['action', 'sourcing.add-model', 'BoseModelsSidebarPanel.tsx:44-61 (Add model button)'],
   ],
   fba: [
-    ['view', 'plan', 'src/lib/sidebar-navigation.ts:1034'],
-    ['view', 'combine', 'src/lib/sidebar-navigation.ts:1035'],
-    ['view', 'shipped', 'src/lib/sidebar-navigation.ts:1036'],
+    ['view', 'ready', 'src/components/fba/FbaOutboundWorkspace.tsx:36-43 (tab row + Ready filter menu)'],
+    ['view', 'plan', 'src/components/fba/FbaOutboundWorkspace.tsx:36-43 (tab row)'],
+    ['view', 'combine', 'src/lib/fba/fba-modes.ts:35-39 (bare /shipping/fba)'],
+    ['view', 'shipped', 'src/components/fba/FbaOutboundWorkspace.tsx:36-43 (tab row)'],
+    ['view', 'catalog', 'src/components/fba/FbaOutboundWorkspace.tsx:36-43 (tab row)'],
     ['param', 'fbaMode', 'src/components/fba/sidebar/fba-workspace-hooks.ts:44-55', 'plan'],
     // Orphaned on the live route today (only `/fba`, which redirects, mounts it).
     ['scanInput', 'fnsku', 'src/components/fba/sidebar/FbaWorkspaceScanField.tsx:42-48; src/components/fba/StationFbaInput.tsx:55-83'],
   ],
-  // Rail-less ledger; its view tabs and upload live in the stage.
-  'label-intake': [],
+  // Rail-less triage desk: its view tab row and header verbs (uploads, bulk prints by stock) moved to the sidebar / header split CTA.
+  'label-intake': [
+    ['view', 'labels', 'src/features/labels-docs/LabelsDocsDesk.tsx (desk view, bare route)'],
+    ['view', 'paperwork', 'src/features/labels-docs/LabelsDocsDesk.tsx (desk view, `?view=paperwork`)'],
+    ['view', 'printed', 'src/features/labels-docs/LabelsDocsDesk.tsx (desk view, `?view=printed`)'],
+    ['action', 'labels-docs.print-labels', 'src/features/labels-docs/LabelsDocsDesk.tsx (header Print all labels, ⌘P on Labels)'],
+    ['action', 'labels-docs.print-paperwork', 'src/features/labels-docs/LabelsDocsDesk.tsx (header Print all paperwork, ⌘P on Paperwork)'],
+    ['action', 'labels-docs.print-all', 'src/features/labels-docs/LabelsDocsDesk.tsx (header Print all (labels + paperwork))'],
+    ['action', 'labels-docs.upload', 'src/features/labels-docs/LabelsDocsDesk.tsx (header Upload label PDFs, ⌘O)'],
+    ['action', 'labels-docs.upload-slips', 'src/features/labels-docs/LabelsDocsDesk.tsx (header Upload packing slips)'],
+  ],
   outbound: [
     ['view', 'exceptions', 'src/lib/outbound/desk-views.ts; e7dc59d^:src/design-system/components/DeskPageChrome.tsx:298-320'],
     ['view', 'po', 'src/lib/outbound/desk-views.ts (Picking › PO paired)'],
@@ -204,7 +231,7 @@ const ROWS: Readonly<Record<string, readonly Row[]>> = {
     ['param', 'shippedWeekOffset', 'src/components/shipped/dashboard-table/useShippedTableFilters.ts:61-64', 'shipped'],
     ['param', 'ostatus', 'src/components/shipped/dashboard-table/useShippedTableFilters.ts:76', 'shipped'],
     ['param', 'packedBy', 'src/components/shipping/shipped-filter/useShippedFilterActions.ts:70-72', 'shipped'],
-    ['param', 'testedBy', 'src/components/shipping/shipped-filter/useShippedFilterActions.ts:66-68', 'shipped'],
+    ['param', 'pickedBy', 'src/components/shipping/shipped-filter/useShippedFilterActions.ts:66-68', 'shipped'],
     ['param', 'dateFrom', 'src/components/shipping/shipped-filter/useShippedFilterActions.ts:74-91', 'shipped'],
     ['param', 'dateTo', 'src/components/shipping/shipped-filter/useShippedFilterActions.ts:74-91', 'shipped'],
     ['param', 'allDates', 'src/components/shipping/shipped-filter/useShippedFilterActions.ts:74-91', 'shipped'],
@@ -246,11 +273,25 @@ const ROWS: Readonly<Record<string, readonly Row[]>> = {
     ['action', 'pairing.add-sku', 'src/components/sidebar/ProductsSidebarPanel.tsx:166'],
   ],
   inventory: [
-    ['view', 'stock', 'src/lib/sidebar-navigation.ts:1168'],
-    ['view', 'sku-exceptions', 'src/lib/sidebar-navigation.ts:1169'],
-    ['view', 'ledger', 'src/lib/sidebar-navigation.ts:1170'],
-    ['view', 'replenish', 'src/lib/sidebar-navigation.ts:1174'],
-    ['view', 'locations', 'src/lib/sidebar-navigation.ts:1176'],
+    ['view', 'stock', 'src/lib/sidebar-navigation.ts:1216'],
+    ['view', 'sku-exceptions', 'src/lib/sidebar-navigation.ts:1219; src/app/inventory/sku-exceptions/page.tsx (redirect → stock?status=on-hold)'],
+    ['view', 'ledger', 'src/lib/sidebar-navigation.ts:1220'],
+    ['view', 'replenish', 'src/lib/sidebar-navigation.ts:1224'],
+    ['view', 'locations', 'src/lib/sidebar-navigation.ts:1226'],
+    ['param', 'q', 'src/components/inventory/stock/StockLedger.tsx:252-261 (toolbar SearchField)', 'stock'],
+    ['param', 'status', 'src/components/inventory/stock/StockLedger.tsx:292-316 (Stock state segment)', 'stock'],
+    ['param', 'status', 'src/components/inventory/stock/StockLedger.tsx:292-316 (On hold)', 'sku-exceptions'],
+    ['param', 'rtab', 'src/components/replenish/ReplenishWorkspace.tsx:12 (rail control gone 2026-09-15)', 'replenish'],
+    ['param', 'rsku', 'src/components/replenish/ReplenishWorkspace.tsx:13', 'replenish'],
+    ['param', 'rstatus', 'src/components/replenish/ReplenishWorkspace.tsx:14', 'replenish'],
+    ['param', 'tab', 'src/components/warehouse/LocationsWorkspace.tsx:75-102 (Locations tool dropdown)', 'locations'],
+  ],
+  'qc-labels': [
+    ['view', 'all', 'src/lib/sidebar-navigation.ts (qc-labels children)'],
+    ['view', 'stock', 'src/lib/sidebar-navigation.ts (qc-labels children)'],
+    ['view', 'order', 'src/lib/sidebar-navigation.ts (qc-labels children)'],
+    ['param', 'q', 'src/app/inventory/qc-labels/page.tsx (server list filter)'],
+    ['action', 'qc-labels.print', 'src/components/inventory/qc-labels/QcLabelsLedger.tsx (print a unit\'s QC label)'],
   ],
   support: [
     ['view', 'tickets', 'src/lib/sidebar-navigation.ts:1240-1248'],
@@ -342,7 +383,11 @@ export function pageStops(pageId: string): PageStop[] {
   };
   const home = at(null, page.href);
   if (home.context.page.id !== pageId) return [];
-  const views = home.context.scope === 'section' ? home.context.sections.flatMap((section) => section.items) : [];
+  // The lane's MODES section names other pages, not this page's views.
+  const views =
+    home.context.scope === 'section'
+      ? home.context.sections.filter((section) => !section.id.endsWith('.modes')).flatMap((section) => section.items)
+      : [];
   return [home, ...views.map((item) => at(item.id, item.href))];
 }
 

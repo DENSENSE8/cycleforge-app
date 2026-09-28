@@ -50,7 +50,7 @@ export function MonitorListRow({ title, meta, trailing, className, onClick }: Mo
       <span className="min-w-0 flex-1">
         <span className="block truncate text-role-caption font-semibold text-text-default">{title}</span>
         {meta != null ? (
-          <span className="block truncate text-role-eyebrow font-semibold uppercase tracking-widest text-text-soft">
+          <span className="block truncate text-role-eyebrow font-semibold text-text-soft">
             {meta}
           </span>
         ) : null}

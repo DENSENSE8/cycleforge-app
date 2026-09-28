@@ -15,7 +15,7 @@ import {
   type ToShipTriageFacet,
 } from '@/utils/dashboard-search-state';
 import { useDashboardSearchController } from '@/hooks/useDashboardSearchController';
-import { parseStaffParam } from '@/hooks/useStaffFilter';
+import { parseStaffParam } from '@/lib/station/table-url-params';
 import { unshippedQueueCountsQuery } from '@/lib/queries/dashboard-queries';
 import { cagedOrdersCountQuery } from '@/lib/queries/caged-orders-queries';
 import { fulfillmentLaneTotals } from '@/lib/unshipped-state';
@@ -32,7 +32,7 @@ const TRIAGE_FACETS = [
 
 const STAGE_OPTIONS = [
   { id: 'pending', label: 'Pending' },
-  { id: 'tested', label: 'Tested' },
+  { id: 'picked', label: 'Picked' },
   { id: 'packed', label: 'Packed' },
 ] as const;
 const AGING_OPTIONS = [
@@ -104,8 +104,8 @@ export function useToShipChrome(_opts?: { blockedQueue?: boolean }): ToShipChrom
         count:
           option.id === 'pending'
             ? laneTotals.pending || undefined
-            : option.id === 'tested'
-              ? laneTotals.tested || undefined
+            : option.id === 'picked'
+              ? laneTotals.picked || undefined
               : (queueCounts?.byStage as { packed?: number } | undefined)?.packed || undefined,
         active: stage === option.id,
       })),
@@ -124,7 +124,7 @@ export function useToShipChrome(_opts?: { blockedQueue?: boolean }): ToShipChrom
       queueCounts?.byStage,
       laneTotals.blocked,
       laneTotals.pending,
-      laneTotals.tested,
+      laneTotals.picked,
       cagedCount,
       stage,
     ],

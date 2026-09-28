@@ -40,7 +40,6 @@ export default function GlobalError({
                 fontSize: '0.6875rem',
                 fontWeight: 900,
                 letterSpacing: '0.22em',
-                textTransform: 'uppercase',
                 color: '#f43f5e',
               }}
             >
@@ -76,7 +75,6 @@ export default function GlobalError({
                 color: '#fff',
                 fontSize: '0.875rem',
                 fontWeight: 900,
-                textTransform: 'uppercase',
                 letterSpacing: '0.05em',
                 cursor: 'pointer',
               }}
@@ -98,7 +96,6 @@ export default function GlobalError({
                 color: '#334155',
                 fontSize: '0.875rem',
                 fontWeight: 900,
-                textTransform: 'uppercase',
                 letterSpacing: '0.05em',
                 cursor: 'pointer',
               }}

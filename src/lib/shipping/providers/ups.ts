@@ -1,3 +1,4 @@
+import { estimatedDeliveryInstant } from './estimated-delivery';
 import { normalizeUPSStatus, normalizeTrackingNumber } from '../normalize';
 import type { CarrierTrackingEvent, CarrierTrackingResult } from '../types';
 import { upsActivityInstant, upsActivityLegacyStamp } from '../carrier-event-instant';
@@ -177,6 +178,12 @@ function buildUPSResultFromPayload(payload: any, shipment: any, pkg: any): Carri
     latestStatusDescription: currentStatus?.description ?? null,
     latestEventAt,
     deliveredAt: deliveredEvent?.eventOccurredAt ?? null,
+    // SDD = scheduled, RDD = rescheduled delivery date (`YYYYMMDD`).
+    estimatedDelivery: estimatedDeliveryInstant(
+      (Array.isArray(pkg?.deliveryDate) ? pkg.deliveryDate : []).find(
+        (d: { type?: string; date?: string }) => d?.type === 'RDD' || d?.type === 'SDD',
+      )?.date,
+    ),
     metadata: extractUPSMetadata(payload, shipment, pkg, events),
     events,
     payload,

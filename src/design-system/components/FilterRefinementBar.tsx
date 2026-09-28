@@ -89,7 +89,7 @@ export function FilterRefinementBar({
           <Filter className={isSidebar ? 'h-4 w-4' : 'h-3.5 w-3.5'} />
         </div>
         
-        <span className={`flex-1 text-left ${isSidebar ? 'text-role-micro uppercase tracking-wider' : 'uppercase tracking-wider text-role-caption'}`}>
+        <span className={`flex-1 text-left ${isSidebar ? 'text-role-micro ' : ' text-role-caption'}`}>
           {label}
         </span>
 
@@ -189,7 +189,7 @@ export function FilterRefinementBar({
                 layout
                 type="button"
                 onClick={onClearAll}
-                className="ml-1 text-role-caption font-semibold uppercase tracking-widest text-text-faint hover:text-red-500 transition-colors"
+                className="ml-1 text-role-caption font-semibold text-text-faint hover:text-red-500 transition-colors"
               >
                 Clear all
               </motion.button>

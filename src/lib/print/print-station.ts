@@ -3,7 +3,7 @@
  * `targetStationId` (operator 2026-09-24: "pick one named print station").
  */
 
-import { UNNAMED_PRINT_STATION } from './staff-print-bridge';
+import { UNNAMED_PRINT_STATION, type StaffPrintRole } from './staff-print-bridge';
 
 const ID_KEY = 'cf.printStation.id';
 const NAME_KEY = 'cf.printStation.name';
@@ -64,22 +64,33 @@ export function setPrintStationName(raw: string): void {
 /** The storage calls the remembered-pick helpers need (localStorage in the app). */
 export type PrintStationPickStorage = Pick<Storage, 'getItem' | 'setItem' | 'removeItem'>;
 
-/**
- * One key per org + staffer: a shared phone handed to another staffer never
- * sends their paper to the previous staffer's station.
- */
-function rememberedPrintStationKey(orgId: string, staffId: number): string | null {
-  if (!orgId.trim() || !Number.isInteger(staffId) || staffId <= 0) return null;
-  return `cf.printStation.pick:${orgId}:${staffId}`;
+/** This browser's localStorage for the pick, or null (server render, storage blocked). */
+export function printStationPickStorage(): PrintStationPickStorage | null {
+  try {
+    return typeof window === 'undefined' ? null : window.localStorage;
+  } catch {
+    return null;
+  }
 }
 
-/** The station this staffer last picked on this device, or null. */
+/**
+ * One key per org + staffer: a shared phone handed to another staffer never
+ * sends their paper to the previous staffer's station. A `stock` keys the
+ * Labels & docs desk's pick per stock (labels to one station, paper to another).
+ */
+function rememberedPrintStationKey(orgId: string, staffId: number, stock?: StaffPrintRole): string | null {
+  if (!orgId.trim() || !Number.isInteger(staffId) || staffId <= 0) return null;
+  return `cf.printStation.pick:${orgId}:${staffId}${stock ? `:${stock}` : ''}`;
+}
+
+/** The station this staffer last picked on this device (for `stock`, when given), or null. */
 export function readRememberedPrintStationId(
   storage: PrintStationPickStorage | null,
   orgId: string,
   staffId: number,
+  stock?: StaffPrintRole,
 ): string | null {
-  const key = rememberedPrintStationKey(orgId, staffId);
+  const key = rememberedPrintStationKey(orgId, staffId, stock);
   if (!storage || !key) return null;
   try {
     return storage.getItem(key)?.trim() || null;
@@ -88,14 +99,15 @@ export function readRememberedPrintStationId(
   }
 }
 
-/** Remember (or with null / blank, forget) this staffer's pick on this device. */
+/** Remember (or with null / blank, forget) this staffer's pick on this device, per `stock` when given. */
 export function rememberPrintStationId(
   storage: PrintStationPickStorage | null,
   orgId: string,
   staffId: number,
   stationId: string | null,
+  stock?: StaffPrintRole,
 ): void {
-  const key = rememberedPrintStationKey(orgId, staffId);
+  const key = rememberedPrintStationKey(orgId, staffId, stock);
   if (!storage || !key) return;
   const id = stationId?.trim() ?? '';
   try {

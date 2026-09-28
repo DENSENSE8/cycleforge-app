@@ -125,7 +125,7 @@ export function TableArtifact({ artifact }: { artifact: ArtifactTable }) {
 export function TimelineArtifact({ artifact }: { artifact: ArtifactTimeline }) {
   return (
     <div className="min-h-0 flex-1 overflow-auto px-3 py-2.5" aria-label={artifact.title}>
-      <p className="mb-2 text-role-eyebrow uppercase tracking-widest text-text-faint">{artifact.subject}</p>
+      <p className="mb-2 text-role-eyebrow text-text-faint">{artifact.subject}</p>
       <ol className="space-y-2">
         {artifact.items.map((item, i) => (
           <li key={i} className="flex gap-3 text-role-caption leading-5">
@@ -148,7 +148,7 @@ export function TicketThreadArtifact({ artifact }: { artifact: ArtifactTicketThr
   return (
     <div className="min-h-0 flex-1 overflow-auto px-3 py-2.5" aria-label={artifact.title}>
       {artifact.status ? (
-        <p className="mb-2 text-role-eyebrow uppercase tracking-widest text-text-faint">Status: {artifact.status}</p>
+        <p className="mb-2 text-role-eyebrow text-text-faint">Status: {artifact.status}</p>
       ) : null}
       <ol className="space-y-3">
         {artifact.messages.map((msg, i) => (
@@ -160,7 +160,7 @@ export function TicketThreadArtifact({ artifact }: { artifact: ArtifactTicketThr
                 : 'mr-8 rounded-lg bg-surface-warning px-3 py-2 ring-1 ring-inset ring-border-warning'
             }
           >
-            <p className="text-role-eyebrow uppercase tracking-widest text-text-faint">
+            <p className="text-role-eyebrow text-text-faint">
               {msg.author}
               {msg.public ? ' · public' : ' · internal'}
               {msg.at ? ` · ${msg.at}` : ''}
@@ -202,7 +202,7 @@ export function TicketReplyDraftArtifact({ artifact, onSent }: { artifact: Artif
         <p className="whitespace-pre-wrap text-role-caption leading-5 text-text-default">{artifact.body}</p>
       </div>
       <div className="flex shrink-0 items-center justify-between border-t border-border-hairline px-3 py-1">
-        <p className="text-role-eyebrow uppercase tracking-widest text-text-faint">
+        <p className="text-role-eyebrow text-text-faint">
           {artifact.public ? 'Public reply' : 'Internal note'} · Enter to send
         </p>
         {state === 'sent' ? (
@@ -422,7 +422,7 @@ export function ImportTriageArtifact({ artifact }: { artifact: ArtifactImportTri
         </table>
       </div>
       <div className="flex shrink-0 items-center justify-between border-t border-border-hairline px-3 py-1.5">
-        <p className="text-role-eyebrow uppercase tracking-widest text-text-faint">
+        <p className="text-role-eyebrow text-text-faint">
           {state === 'imported'
             ? result
             : state === 'failed'

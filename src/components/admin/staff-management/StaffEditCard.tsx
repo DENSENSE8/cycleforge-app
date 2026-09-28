@@ -15,7 +15,7 @@ import { cn } from '@/utils/_cn';
 function FieldGroup({ label, children }: { label: string; children: ReactNode }) {
   return (
     <label className="block space-y-1.5">
-      <span className="block text-role-eyebrow uppercase tracking-widest text-text-soft">{label}</span>
+      <span className="block text-role-eyebrow text-text-soft">{label}</span>
       {children}
     </label>
   );
@@ -94,11 +94,11 @@ export function StaffEditCard({
           <div className="min-w-0 flex-1">
             <h3 className="truncate text-xl font-semibold tracking-tight text-text-default">{member.name}</h3>
             <div className="mt-1 flex flex-wrap items-center gap-1.5">
-              <span className="inline-flex items-center rounded-full bg-surface-sunken px-2.5 py-0.5 text-role-micro font-semibold uppercase tracking-[0.14em] text-text-muted">{member.role}</span>
+              <span className="inline-flex items-center rounded-full bg-surface-sunken px-2.5 py-0.5 text-role-micro font-semibold text-text-muted">{member.role}</span>
               {member.employee_id ? (
-                <span className="inline-flex items-center rounded-full bg-surface-sunken px-2.5 py-0.5 text-role-micro font-semibold uppercase tracking-[0.14em] text-text-muted">ID {member.employee_id}</span>
+                <span className="inline-flex items-center rounded-full bg-surface-sunken px-2.5 py-0.5 text-role-micro font-semibold text-text-muted">ID {member.employee_id}</span>
               ) : null}
-              <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-role-micro font-semibold uppercase tracking-[0.14em] ${member.active ? 'bg-emerald-100 text-emerald-800' : 'bg-surface-strong text-text-muted'}`}>
+              <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-role-micro font-semibold ${member.active ? 'bg-emerald-100 text-emerald-800' : 'bg-surface-strong text-text-muted'}`}>
                 {member.active ? 'Active' : 'Inactive'}
               </span>
             </div>
@@ -147,7 +147,7 @@ export function StaffEditCard({
             lands on it immediately. */}
         <Panel radius="2xl" padding="none" className="mt-5 flex items-center gap-4 px-5 py-4">
           <div className="min-w-0 flex-1">
-            <p className="text-role-eyebrow uppercase tracking-widest text-text-soft">Identity color</p>
+            <p className="text-role-eyebrow text-text-soft">Identity color</p>
             <p className="mt-1 text-role-caption text-text-soft">Tap the wheel — picks up on the sidebar, sign-in picker, and FAB.</p>
           </div>
           <StaffColorWheel value={editColorHex} onChange={setEditColorHex} />
@@ -158,7 +158,7 @@ export function StaffEditCard({
             STAFF_HOME_OPTIONS so admins can't typo a 404 path. */}
         <Panel radius="2xl" padding="none" className="mt-4 flex items-center gap-4 px-5 py-4">
           <div className="min-w-0 flex-1">
-            <p className="text-role-eyebrow uppercase tracking-widest text-text-soft">Default home page</p>
+            <p className="text-role-eyebrow text-text-soft">Default home page</p>
             <p className="mt-1 text-role-caption text-text-soft">
               Where this staffer lands after sign-in. Use role default keeps the current behavior.
             </p>
@@ -175,7 +175,7 @@ export function StaffEditCard({
           </select>
         </Panel>
 
-        <label className="mt-5 inline-flex cursor-pointer items-center gap-2.5 rounded-full bg-surface-card px-3.5 py-2 text-role-caption font-semibold uppercase tracking-[0.16em] text-text-muted ring-1 ring-border-soft transition hover:bg-surface-hover">
+        <label className="mt-5 inline-flex cursor-pointer items-center gap-2.5 rounded-full bg-surface-card px-3.5 py-2 text-role-caption font-semibold text-text-muted ring-1 ring-border-soft transition hover:bg-surface-hover">
           <input
             type="checkbox"
             checked={editActive}

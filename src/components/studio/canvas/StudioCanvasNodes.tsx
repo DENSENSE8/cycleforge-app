@@ -172,7 +172,7 @@ function ProcessNode({ data }: NodeProps) {
         </div>
         {staticRole ? (
           <span
-            className={`ml-auto shrink-0 rounded px-1.5 py-0.5 text-role-micro font-semibold uppercase tracking-wide ${STATIC_ROLE[staticRole].pill}`}
+            className={`ml-auto shrink-0 rounded px-1.5 py-0.5 text-role-micro font-semibold ${STATIC_ROLE[staticRole].pill}`}
           >
             {STATIC_ROLE[staticRole].label}
           </span>
@@ -202,7 +202,7 @@ function ProcessNode({ data }: NodeProps) {
       )}
       {station && (
         <div className="border-t border-border-hairline px-3 py-1.5">
-          <span className="text-role-micro font-semibold uppercase tracking-wide" style={{ color: station.color }}>
+          <span className="text-role-micro font-semibold" style={{ color: station.color }}>
             {station.label}
           </span>
         </div>
@@ -213,7 +213,7 @@ function ProcessNode({ data }: NodeProps) {
       {procedure && (
         <div className="space-y-1 border-t border-border-hairline px-3 py-1.5">
           <div className="flex items-center gap-1.5">
-            <span className="text-role-micro font-semibold uppercase tracking-wide text-text-faint">
+            <span className="text-role-micro font-semibold text-text-faint">
               {procedure.label}
             </span>
             <span className="rounded bg-surface-sunken px-1.5 py-0.5 text-role-micro font-semibold tabular-nums text-text-muted">
@@ -367,7 +367,7 @@ function ProcessNode({ data }: NodeProps) {
               {people.coverage > 5 && (
                 <span className="text-role-micro font-semibold text-violet-600">+{people.coverage - 5}</span>
               )}
-              <span className="ml-auto text-role-micro font-semibold uppercase tracking-wide text-violet-600">
+              <span className="ml-auto text-role-micro font-semibold text-violet-600">
                 {people.station}
               </span>
             </>

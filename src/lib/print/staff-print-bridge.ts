@@ -18,7 +18,7 @@ export const STAFF_PRINT_STATUS_REQUEST_EVENT = 'staff_print_status_request';
 export const STAFF_PRINT_PROGRESS_EVENT = 'staff_print_progress';
 export const STAFF_PRINT_OPTIONS_PATCH_EVENT = 'staff_print_options_patch';
 
-export type StaffPrintGrain = 'rack' | 'bin' | 'papers' | 'tote' | 'repair' | 'fnsku';
+export type StaffPrintGrain = 'rack' | 'bin' | 'papers' | 'tote' | 'repair' | 'fnsku' | 'documents';
 export type StaffPrintRole = 'label' | 'paper';
 
 export type StaffPrintLocationPayload = {
@@ -83,6 +83,31 @@ export type StaffPrintFnskuPayload = { fnsku: string; copies: number };
 /** A catalog key the station may look up: A-Z/0-9, as `fba_fnskus.fnsku` stores it. */
 const FNSKU_WIRE_RE = /^[A-Z0-9]{1,40}$/;
 
+/**
+ * One desk document a station prints, by id only: the station rebuilds its
+ * same-origin bytes URL from the id and never trusts a sender's URL.
+ * Label → `ingestionId`, packing slip → `documentId`, manual → `manualId`.
+ */
+export type StationDocumentRef = {
+  kind: 'label' | 'packing_slip' | 'manual';
+  orderId: number | null;
+  title: string;
+  ingestionId?: number;
+  documentId?: number;
+  manualId?: number;
+};
+
+/** A Labels & docs press sent to a named station: one stock, one batch. */
+export type StaffPrintDocumentsPayload = {
+  stock: StaffPrintRole;
+  batchId: string;
+  items: StationDocumentRef[];
+};
+
+/** Most documents one station job carries — well under one Ably message. */
+export const MAX_STATION_DOCUMENTS = 200;
+const STATION_DOCUMENT_TITLE_MAX = 200;
+
 // The tote run's ceiling lives in `labelCopies` (dependency-free print
 // constants) because the server's zod schema must read the same number
 // without importing this wire module.
@@ -99,6 +124,7 @@ export type StaffPrintJob = {
   tote?: StaffPrintTotePayload;
   repair?: StaffPrintRepairPayload;
   fnsku?: StaffPrintFnskuPayload;
+  documents?: StaffPrintDocumentsPayload;
 };
 
 /**
@@ -169,6 +195,59 @@ function parseSegments(raw: unknown): LocationSegments[] | null {
   return out;
 }
 
+function positiveId(value: unknown): number | null {
+  const n = asInt(value);
+  return n != null && Number.isInteger(n) && n > 0 ? n : null;
+}
+
+const STATION_DOCUMENT_ID_FIELD = {
+  label: 'ingestionId',
+  packing_slip: 'documentId',
+  manual: 'manualId',
+} as const satisfies Record<StationDocumentRef['kind'], keyof StationDocumentRef>;
+
+/** One station document ref, or null when its kind, id or title is junk. */
+function parseStationDocumentRef(raw: unknown, stock: StaffPrintRole): StationDocumentRef | null {
+  if (!raw || typeof raw !== 'object') return null;
+  const rec = raw as Record<string, unknown>;
+  const kind = rec.kind;
+  if (kind !== 'label' && kind !== 'packing_slip' && kind !== 'manual') return null;
+  // One job is one stock: a label never rides a paper job, nor a slip a label job.
+  if ((kind === 'label') !== (stock === 'label')) return null;
+  const title = typeof rec.title === 'string' ? rec.title.trim().slice(0, STATION_DOCUMENT_TITLE_MAX) : '';
+  if (!title) return null;
+  let orderId: number | null = null;
+  if (rec.orderId != null) {
+    orderId = positiveId(rec.orderId);
+    if (orderId == null) return null;
+  }
+  const id = positiveId(rec[STATION_DOCUMENT_ID_FIELD[kind]]);
+  if (id == null) return null;
+  if (kind === 'label') return { kind, orderId, title, ingestionId: id };
+  if (kind === 'packing_slip') return { kind, orderId, title, documentId: id };
+  return { kind, orderId, title, manualId: id };
+}
+
+function parseStationDocuments(raw: unknown): StaffPrintDocumentsPayload | null {
+  if (!raw || typeof raw !== 'object') return null;
+  const rec = raw as Record<string, unknown>;
+  const stock = rec.stock;
+  if (stock !== 'label' && stock !== 'paper') return null;
+  if (typeof rec.batchId !== 'string' || !BATCH_ID_RE.test(rec.batchId)) return null;
+  if (!Array.isArray(rec.items) || rec.items.length === 0 || rec.items.length > MAX_STATION_DOCUMENTS) return null;
+  const items: StationDocumentRef[] = [];
+  const seen = new Set<string>();
+  for (const row of rec.items) {
+    const item = parseStationDocumentRef(row, stock);
+    if (!item) return null;
+    const key = `${item.kind}:${item.ingestionId ?? item.documentId ?? item.manualId}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    items.push(item);
+  }
+  return { stock, batchId: rec.batchId, items };
+}
+
 /** Returns a typed job or null — never throws on junk wire data. */
 export function parseStaffPrintJob(raw: unknown): StaffPrintJob | null {
   if (!raw || typeof raw !== 'object') return null;
@@ -186,11 +265,18 @@ export function parseStaffPrintJob(raw: unknown): StaffPrintJob | null {
     grain !== 'papers' &&
     grain !== 'tote' &&
     grain !== 'repair' &&
-    grain !== 'fnsku'
+    grain !== 'fnsku' &&
+    grain !== 'documents'
   ) {
     return null;
   }
   const role = rec.role === 'paper' ? 'paper' : 'label';
+
+  if (grain === 'documents') {
+    const documents = parseStationDocuments(rec.documents);
+    if (!documents) return null;
+    return { type: 'staff.print_job', request_id: requestId, targetStationId, grain, role: documents.stock, documents };
+  }
 
   if (grain === 'fnsku') {
     const payload = rec.fnsku;
@@ -400,7 +486,8 @@ export function thisDeviceCanFulfillPrintJob(
   status: StaffPrintStatus,
 ): boolean {
   if (job.targetStationId !== status.stationId) return false;
-  const paper = job.grain === 'papers' || (job.grain === 'repair' && job.role === 'paper');
+  const paper =
+    job.grain === 'papers' || ((job.grain === 'repair' || job.grain === 'documents') && job.role === 'paper');
   return paper ? status.paper.ready : status.label.ready;
 }
 

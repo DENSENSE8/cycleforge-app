@@ -24,7 +24,7 @@ const REVIEW_BADGE: Record<PartReviewState, { label: string; cls: string }> = {
 function StatTile({ label, value }: { label: string; value: number | string }) {
   return (
     <div className="rounded-xl bg-surface-canvas p-3">
-      <div className="text-role-caption uppercase tracking-wide text-text-faint">{label}</div>
+      <div className="text-role-caption text-text-faint">{label}</div>
       <div className="text-2xl font-semibold tabular-nums text-text-default">{value}</div>
     </div>
   );
@@ -88,7 +88,7 @@ export function PartsDetailPanel({ meta }: { meta: PartsNodeMeta | null }) {
     return (
       <aside className="flex w-80 shrink-0 flex-col gap-4 overflow-y-auto border-l border-border-soft bg-surface-card p-4">
         <div>
-          <span className={cn('rounded-md px-1.5 py-0.5 text-role-micro font-semibold uppercase ring-1', TIER_BADGE.base)}>
+          <span className={cn('rounded-md px-1.5 py-0.5 text-role-micro font-semibold ring-1', TIER_BADGE.base)}>
             Base unit
           </span>
           <h2 className="mt-1.5 text-role-body font-semibold text-text-default">{base.base}</h2>
@@ -107,7 +107,7 @@ export function PartsDetailPanel({ meta }: { meta: PartsNodeMeta | null }) {
         </div>
 
         <div>
-          <h3 className="mb-1.5 text-role-caption font-semibold uppercase tracking-wide text-text-faint">
+          <h3 className="mb-1.5 text-role-caption font-semibold text-text-faint">
             Logical parts ({base.parts.length})
           </h3>
           <ul className="space-y-1">
@@ -141,10 +141,10 @@ export function PartsDetailPanel({ meta }: { meta: PartsNodeMeta | null }) {
     <aside className="flex w-80 shrink-0 flex-col gap-4 overflow-y-auto border-l border-border-soft bg-surface-card p-4">
       <div>
         <div className="flex items-center gap-1.5">
-          <span className={cn('rounded-md px-1.5 py-0.5 text-role-micro font-semibold uppercase ring-1', TIER_BADGE.part)}>
+          <span className={cn('rounded-md px-1.5 py-0.5 text-role-micro font-semibold ring-1', TIER_BADGE.part)}>
             Part
           </span>
-          <span className={cn('rounded-md px-1.5 py-0.5 text-role-micro font-semibold uppercase ring-1', review.cls)}>
+          <span className={cn('rounded-md px-1.5 py-0.5 text-role-micro font-semibold ring-1', review.cls)}>
             {review.label}
           </span>
         </div>
@@ -154,7 +154,7 @@ export function PartsDetailPanel({ meta }: { meta: PartsNodeMeta | null }) {
 
       {/* ── Pairing ─────────────────────────────────────────────────── */}
       <div className="space-y-2">
-        <h3 className="text-role-caption font-semibold uppercase tracking-wide text-text-faint">Parent pairing</h3>
+        <h3 className="text-role-caption font-semibold text-text-faint">Parent pairing</h3>
 
         {part.reviewState === 'not_a_part' ? (
           <div className="space-y-2 rounded-lg border border-dashed border-border-soft bg-surface-canvas p-3">
@@ -200,7 +200,7 @@ export function PartsDetailPanel({ meta }: { meta: PartsNodeMeta | null }) {
             {suggested && !suggestedAssigned && (
               <div className="flex items-center justify-between gap-2 rounded-lg border border-border-soft px-2 py-1.5">
                 <span className="min-w-0">
-                  <span className="block text-role-micro uppercase tracking-wide text-text-faint">Suggested</span>
+                  <span className="block text-role-micro text-text-faint">Suggested</span>
                   <span className="block truncate text-role-caption font-medium text-text-default">{suggested.sku}</span>
                   <span className="block truncate text-role-caption text-text-soft">{suggested.name}</span>
                 </span>

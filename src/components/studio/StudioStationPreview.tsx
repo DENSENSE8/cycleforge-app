@@ -62,7 +62,7 @@ export function StudioStationPreview({
               : `bound to “${nodeLabel}”`}
           </p>
         </div>
-        <span className="ml-auto rounded-full bg-surface-sunken px-2 py-0.5 text-role-micro uppercase tracking-wide text-text-soft">
+        <span className="ml-auto rounded-full bg-surface-sunken px-2 py-0.5 text-role-micro text-text-soft">
           Read-only
         </span>
       </div>
@@ -103,7 +103,7 @@ export function StudioStationPreview({
           <div className="mx-auto max-w-2xl space-y-4">
             {station.slots.map((slot) => (
               <section key={slot.slot}>
-                <h3 className="mb-1.5 text-role-micro uppercase tracking-wider text-text-faint">
+                <h3 className="mb-1.5 text-role-micro text-text-faint">
                   {SLOT_LABELS[slot.slot] ?? slot.slot}
                 </h3>
                 <div className="space-y-2">

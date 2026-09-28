@@ -96,7 +96,7 @@ export function StationDenseFactStrip({
             className="flex min-w-0 items-baseline justify-between gap-3 px-2 py-1.5"
             data-station-dense-fact-row=""
           >
-            <dt className="shrink-0 text-role-eyebrow uppercase tracking-wider text-text-soft">
+            <dt className="shrink-0 text-role-eyebrow text-text-soft">
               {fact.label}
             </dt>
             <FactValue fact={fact} align="end" />
@@ -128,7 +128,7 @@ export function StationDenseFactStrip({
     >
       {facts.map((fact) => (
         <div key={fact.label} className="min-w-0">
-          <dt className="text-role-eyebrow uppercase tracking-wider text-text-soft">
+          <dt className="text-role-eyebrow text-text-soft">
             {fact.label}
           </dt>
           <FactValue fact={fact} align="start" />

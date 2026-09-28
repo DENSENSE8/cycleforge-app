@@ -11,6 +11,7 @@ import type {
   ShippingRateOption,
 } from './types';
 import { isShipStationSandboxKey, TEST_MODE_BLOCKED_MESSAGE } from './test-mode';
+import { mapValidateAddressesResponse, type AddressCheckResult } from './address-validation';
 
 const DEFAULT_BASE_URL = process.env.SHIPSTATION_V2_BASE_URL ?? 'https://api.shipstation.com/v2';
 // Label creation calls the carrier synchronously and can be slow; give them room.
@@ -327,6 +328,8 @@ export interface ShipStationV2Client {
    * shipment is `se-<shipmentId>` (verified live 2026-09-24, 62/62).
    */
   getLabel(labelId: string): Promise<ShipStationLabelRecord | null>;
+  /** Check postal deliverability; one result per address, in request order. Moves no postage. */
+  validateAddresses(addresses: ShipAddress[]): Promise<AddressCheckResult[]>;
 }
 
 export function createShipStationV2Client(
@@ -474,7 +477,13 @@ export function createShipStationV2Client(
     return { ...mapLabel(raw), voided: raw.voided === true, isReturnLabel: raw.is_return_label === true };
   };
 
-  return { testMode, sandbox, listCarriers, getRates, purchaseLabelFromRate, purchaseLabelFromShipment, voidLabel, downloadLabel, getLabel };
+  const validateAddresses = async (addresses: ShipAddress[]): Promise<AddressCheckResult[]> => {
+    if (addresses.length === 0) return [];
+    const json = await req('POST', '/addresses/validate', addresses.map(toSsAddress));
+    return mapValidateAddressesResponse(json, addresses);
+  };
+
+  return { testMode, sandbox, listCarriers, getRates, purchaseLabelFromRate, purchaseLabelFromShipment, voidLabel, downloadLabel, getLabel, validateAddresses };
 }
 
 /** True when `url` is served by ShipStation / ShipEngine (or the configured v2 base). */

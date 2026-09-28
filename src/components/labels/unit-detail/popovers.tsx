@@ -6,6 +6,7 @@ import { useSkuParents, useSkuChildren } from '@/components/inventory/graph/useS
 import type { SkuRelationshipEdgeView } from '@/components/inventory/graph/types';
 import { Package, MapPin, ShoppingCart, Link2, Sparkles, Box } from '@/components/Icons';
 import { timeAgo } from '@/utils/_date';
+import { sentenceCaseLabel } from '@/lib/text/sentence-case-label';
 import { useSimilarProducts, type SimilarProduct } from './types';
 import type { Allocation, LocationDetail, StockSummary, UnitDetail } from './types';
 
@@ -46,7 +47,7 @@ function PopoverShell({
       >
         <div className="flex h-9 items-center gap-2 border-b border-border-hairline bg-surface-canvas/70 px-3">
           <span className="text-text-faint">{icon}</span>
-          <span className="text-role-eyebrow uppercase tracking-[0.16em] text-text-soft">
+          <span className="text-role-eyebrow text-text-soft">
             {title}
           </span>
         </div>
@@ -94,7 +95,7 @@ export function InventoryLinkagePopover({
       <div className="divide-y divide-border-hairline">
         {/* On-hand */}
         <div className="px-3 py-3">
-          <p className="text-role-eyebrow uppercase tracking-[0.16em] text-text-faint">
+          <p className="text-role-eyebrow text-text-faint">
             On hand · {unit.sku ?? '—'}
           </p>
           <div className="mt-2 flex gap-2">
@@ -126,7 +127,7 @@ export function InventoryLinkagePopover({
           title={allocation?.order_id ?? 'Unallocated'}
           sub={
             allocation
-              ? `${allocation.state} · ${timeAgo(allocation.allocated_at)}`
+              ? `${sentenceCaseLabel(allocation.state)} · ${timeAgo(allocation.allocated_at)}`
               : 'No open order allocation'
           }
         />
@@ -141,7 +142,7 @@ function StatTile({ label, value, icon }: { label: string; value: number; icon: 
       <span className="text-text-faint">{icon}</span>
       <div className="min-w-0">
         <p className="text-lg font-semibold leading-none text-text-default tabular-nums">{value}</p>
-        <p className="mt-0.5 text-role-micro font-semibold uppercase tracking-wider text-text-faint">{label}</p>
+        <p className="mt-0.5 text-role-micro font-semibold text-text-faint">{label}</p>
       </div>
     </div>
   );
@@ -223,7 +224,7 @@ function EdgeSection({
 }) {
   return (
     <div className="py-1">
-      <p className="px-3 pb-1 pt-2 text-role-eyebrow uppercase tracking-[0.16em] text-text-faint">
+      <p className="px-3 pb-1 pt-2 text-role-eyebrow text-text-faint">
         {label} · {rows.length}
       </p>
       {rows.length === 0 ? (
@@ -268,7 +269,7 @@ export function SimilarProductsPopover({
         <PopoverEmpty>No other products in “{data.category}”.</PopoverEmpty>
       ) : (
         <div className="py-1">
-          <p className="px-3 pb-1 pt-2 text-role-eyebrow uppercase tracking-[0.16em] text-text-faint">
+          <p className="px-3 pb-1 pt-2 text-role-eyebrow text-text-faint">
             Category · {data.category}
           </p>
           <ul>

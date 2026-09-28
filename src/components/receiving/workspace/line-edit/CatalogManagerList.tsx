@@ -335,7 +335,7 @@ export function CatalogManagerList({
                           if (ev.key === 'Enter') void saveRow(e.id);
                           if (ev.key === 'Escape') setEditingId(null);
                         }}
-                        className={`${TEXT_INPUT} w-24 shrink-0 font-mono uppercase`}
+                        className={`${TEXT_INPUT} w-24 shrink-0 font-mono `}
                       />
                     ) : null}
                   </>
@@ -350,7 +350,7 @@ export function CatalogManagerList({
                       </HoverTooltip>
                     ) : null}
                     {e.isSystem ? (
-                      <span className="shrink-0 rounded-full bg-surface-sunken inset-chip text-role-eyebrow uppercase tracking-wider text-text-soft">
+                      <span className="shrink-0 rounded-full bg-surface-sunken inset-chip text-role-eyebrow text-text-soft">
                         Default
                       </span>
                     ) : null}
@@ -493,7 +493,7 @@ export function CatalogManagerList({
 
       {hidden.length > 0 ? (
         <div className="mt-4">
-          <p className="mb-1.5 text-role-eyebrow uppercase tracking-widest text-text-faint">Hidden</p>
+          <p className="mb-1.5 text-role-eyebrow text-text-faint">Hidden</p>
           <ul className="space-y-1.5">
             {hidden.map((e) => (
               <li
@@ -509,7 +509,7 @@ export function CatalogManagerList({
                     variant="ghost"
                     size="sm"
                     onClick={() => void setActive(e, true)}
-                    className="h-auto rounded px-2 py-0.5 text-role-micro uppercase tracking-wider text-blue-600 hover:bg-blue-50"
+                    className="h-auto rounded px-2 py-0.5 text-role-micro text-blue-600 hover:bg-blue-50"
                   >
                     Restore
                   </Button>
@@ -542,7 +542,7 @@ export function CatalogManagerList({
           disabled={loading || !adding.trim() || busyId != null}
           loading={busyId === 'new'}
           icon={<Plus className="h-3.5 w-3.5" />}
-          className="text-role-micro uppercase tracking-wider"
+          className="text-role-micro"
         >
           Add
         </Button>

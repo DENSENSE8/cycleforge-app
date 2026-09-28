@@ -23,6 +23,7 @@ import {
   getOpsPlansChannelName,
   getForgeRunsChannelName,
   printBridgeStaffId,
+  getPrintStationChannelPattern,
 } from '@/lib/realtime/channels';
 import { withAuth, type AuthContext } from '@/lib/auth/withAuth';
 import { deskKioskCapability } from '@/lib/realtime/kiosk-capability';
@@ -127,6 +128,12 @@ async function createTokenRequest(req: NextRequest, ctx: AuthContext) {
   // Forge run feed — read-only, mirrors the GET /api/forge/runs permission.
   if (ctx.permissions.has('assistant.chat')) {
     capability[getForgeRunsChannelName(orgId)] = ['subscribe'];
+  }
+
+  // Org print stations — any staffer who may print reaches a named station,
+  // and a station hears the jobs addressed to it. Scoped to this org's prefix.
+  if (ctx.permissions.has('print.label')) {
+    capability[getPrintStationChannelPattern(orgId)] = ['subscribe', 'publish'];
   }
 
   // Defense in depth: assert every granted resource is inside this org's prefix.

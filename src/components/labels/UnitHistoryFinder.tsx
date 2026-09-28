@@ -144,7 +144,7 @@ export function UnitHistoryFinder() {
         {!hasRecents ? (
           <div className="flex flex-1 flex-col items-center justify-center px-6 py-12 text-center">
             <Clock className="mb-3 h-8 w-8 text-text-faint" />
-            <p className="text-role-eyebrow uppercase tracking-[0.18em] text-text-faint">
+            <p className="text-role-eyebrow text-text-faint">
               No history yet
             </p>
             <p className="mt-2 max-w-[240px] text-role-caption font-medium text-text-soft">
@@ -154,7 +154,7 @@ export function UnitHistoryFinder() {
         ) : (
           <>
             <div className={`flex items-center justify-between bg-surface-canvas ${SIDEBAR_GUTTER} py-1.5`}>
-              <span className="text-role-eyebrow uppercase tracking-[0.18em] text-text-soft">
+              <span className="text-role-eyebrow text-text-soft">
                 {recentsLabel}
               </span>
               <Button

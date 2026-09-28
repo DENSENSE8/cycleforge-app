@@ -4,7 +4,7 @@ import { FLOW_SECTION_LABEL } from '@/components/sidebar/receiving/receiving-sid
 
 /** Card-level section eyebrow inside the unbox workspace (Label, Auto-match, PO items). */
 export const WORKSPACE_SECTION_TITLE_CLASS =
-  'text-role-eyebrow uppercase tracking-widest text-text-faint';
+  'text-role-eyebrow text-text-faint';
 
 /** Field label above inline editors (PO number, tracking, listing URL). */
 const WORKSPACE_FIELD_LABEL_CLASS = FLOW_SECTION_LABEL;

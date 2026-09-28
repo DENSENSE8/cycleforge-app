@@ -33,7 +33,7 @@ export function OrderFactRow({
   if (omitWhenEmpty && empty) return null;
   return (
     <div className={cn('flex min-w-0 flex-col gap-0.5', span && 'sm:col-span-2')}>
-      <dt className="text-role-eyebrow font-semibold uppercase tracking-widest text-text-faint">
+      <dt className="text-role-eyebrow font-semibold text-text-faint">
         {label}
       </dt>
       <dd

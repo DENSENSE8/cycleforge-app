@@ -11,12 +11,22 @@ import {
   type SessionQueryRow,
   type SessionRow,
 } from './session';
-import { computeEffectivePermissions, type PermissionString, type StaffRole } from './permissions-shared';
-import { getRolesSnapshot, pickRoles, type RoleRow } from './role-store';
+import {
+  computeEffectivePermissions,
+  type PermissionString,
+  type StaffRole,
+} from './permissions-shared';
+import {
+  effectivePermissionsForAuthorizationMode,
+  resolveAuthorizationMode,
+  type AuthorizationMode,
+} from './authorization-mode';
+import { ROLE_JSON_SQL, toRoleRow, type RoleRow } from './role-store';
 import {
   resolveMobileDisplayConfig,
   type MobileDisplayConfig,
 } from './mobile-display-config';
+import { sessionUserCache } from './session-user-cache';
 
 export interface CurrentUser {
   session: SessionRow;
@@ -29,6 +39,10 @@ export interface CurrentUser {
   /** Every role assigned to this staff, ordered by position ascending. */
   roles: ReadonlyArray<RoleRow>;
   permissions: Set<PermissionString>;
+  /** Runtime policy selected for this organization. Strict is the default. */
+  authorizationMode: AuthorizationMode;
+  /** Role-derived source of truth, unchanged by the dogfood runtime policy. */
+  storedPermissions: Set<PermissionString>;
   permissionsAdded: ReadonlyArray<string>;
   permissionsRemoved: ReadonlyArray<string>;
   /** Resolved mobile UI config (role defaults + per-staff override). */
@@ -48,14 +62,16 @@ interface SessionUserRow extends SessionQueryRow {
   mobile_display_config: unknown;
   avatar_photo_id: number | null;
   account_email: string | null;
-  /** `staff_roles` assignments, position-ordered. */
-  role_ids: number[];
+  /** `staff_roles` assignments as role rows, position-ordered. */
+  roles: RoleRow[];
 }
 
 /**
  * Session, staff overrides, account email and role assignments in ONE round
- * trip — the auth floor under every request. Read fresh each time, so a
- * permission/role/override revocation applies on the very next request.
+ * trip — the auth floor under every request. Held briefly in
+ * `sessionUserCache` (session-user-cache.ts): a revocation or role/permission
+ * write applies on the next request on the writing instance, and within the
+ * cache TTL (10s default) everywhere else.
  *
  * Email lives in account_emails (verified, unique per address) —
  * accounts.primary_email is an unpopulated denormalized pointer. A staffer with
@@ -68,13 +84,12 @@ const SESSION_USER_SQL = `
          st.name, st.role, st.permissions_added, st.permissions_removed,
          st.mobile_display_config, st.avatar_photo_id,
          COALESCE(ae.email, umbrella.email) AS account_email,
-         ARRAY(
-           SELECT sr.role_id
+         COALESCE((
+           SELECT json_agg(${ROLE_JSON_SQL} ORDER BY r.position ASC, r.id ASC)
              FROM staff_roles sr
              JOIN roles r ON r.id = sr.role_id
             WHERE sr.staff_id = s.staff_id
-            ORDER BY r.position ASC, r.id ASC
-         ) AS role_ids
+         ), '[]'::json) AS roles
     FROM staff_sessions s
     LEFT JOIN staff st ON st.id = s.staff_id
     LEFT JOIN LATERAL (
@@ -132,6 +147,8 @@ function buildCurrentUser(
   const role = normalizeRoleKey(primary);
   const added = staff.permissions_added ?? [];
   const removed = staff.permissions_removed ?? [];
+  const authorizationMode = resolveAuthorizationMode(session.organizationId);
+  const storedPermissions = mergePermissions(roles, added, removed);
 
   const mobileDisplayConfig = resolveMobileDisplayConfig({
     roles: roles.map((r) => ({ key: r.key, mobile_defaults: r.mobileDefaults })),
@@ -146,7 +163,12 @@ function buildCurrentUser(
     organizationId: session.organizationId,
     role,
     roles,
-    permissions: mergePermissions(roles, added, removed),
+    authorizationMode,
+    storedPermissions,
+    permissions: effectivePermissionsForAuthorizationMode(
+      authorizationMode,
+      storedPermissions,
+    ),
     permissionsAdded: added,
     permissionsRemoved: removed,
     mobileDisplayConfig,
@@ -165,10 +187,11 @@ export async function getCurrentUserBySid(
   credential: SessionCredential = 'cookie',
 ): Promise<CurrentUser | null> {
   if (!isPlausibleSid(sid)) return null;
-  // The roles table is an in-process 60s snapshot; on a miss it loads alongside the session trip.
-  const [r, snap] = await Promise.all([pool.query(SESSION_USER_SQL, [sid, credential]), getRolesSnapshot()]);
-  const row = r.rows[0] as SessionUserRow | undefined;
+  const row = (await sessionUserCache.get(sid, credential, async () =>
+    (await pool.query(SESSION_USER_SQL, [sid, credential])).rows[0] as SessionUserRow | undefined,
+  )) as SessionUserRow | undefined;
+  // Validity (revoked / expired / idle) is re-decided on every call, cached row or not.
   const { session } = await validateSessionRow(sid, row);
   if (!session || !row) return null;
-  return buildCurrentUser(session, row, pickRoles(snap, row.role_ids));
+  return buildCurrentUser(session, row, row.roles.map(toRoleRow));
 }

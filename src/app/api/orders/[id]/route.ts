@@ -106,10 +106,12 @@ export async function DELETE(
     const gate = await requireRoutePerm(req, 'orders.void');
     if (gate.denied) return gate.denied;
 
-    // orders.void is step-up-protected. requireRoutePerm checks the permission
-    // but not the fresh step-up grant, so enforce that grant here too — except
-    // for admins, who are exempt from step-up (PIN / passkey) prompts.
-    if (!rolesIncludeAdmin(gate.ctx.user.roles)) {
+    // orders.void is permission-derived step-up. Auth-only dogfood mode bypasses
+    // that authorization prompt; strict mode keeps the existing admin exemption.
+    if (
+      gate.ctx.authorizationMode === 'strict' &&
+      !rolesIncludeAdmin(gate.ctx.user.roles)
+    ) {
       const granted = await hasStepUp(gate.ctx.session.sid, 'orders.void');
       if (!granted) {
         return NextResponse.json(

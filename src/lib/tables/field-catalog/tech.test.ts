@@ -3,7 +3,7 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import { COMPOUND_COLUMN_KEYS, COMPOUND_TRACKS } from '@/components/tables/compound/compound-columns';
-import type { TechRecord } from '@/hooks/useDeskPickLogs';
+import type { DeskPickRecord } from '@/hooks/useDeskPickLogs';
 import { techRecordToQueueRow } from '@/lib/station/record-to-queue-row';
 import { materializeTracks } from '../materialize-tracks';
 import { parseSlotLayout } from '../slot-layout';
@@ -11,7 +11,7 @@ import { PACKER_FIELD_CATALOG } from './packer';
 import { TECH_FIELD_CATALOG, TECH_PRODUCT_LAYOUT, TECH_TABLE_LAYOUT_ID } from './tech';
 import { resolveTechSlotValue, techSlotValuesFor } from './tech-resolve';
 
-function techRecord(overrides: Partial<TechRecord> = {}): TechRecord {
+function techRecord(overrides: Partial<DeskPickRecord> = {}): DeskPickRecord {
   return {
     id: 4411,
     created_at: '2026-09-08T17:04:00.000Z',
@@ -30,7 +30,7 @@ function techRecord(overrides: Partial<TechRecord> = {}): TechRecord {
 }
 
 /** The bench row the grid actually paints — mapper output, never a hand shape. */
-function row(overrides: Partial<TechRecord> = {}) {
+function row(overrides: Partial<DeskPickRecord> = {}) {
   return techRecordToQueueRow(techRecord(overrides));
 }
 

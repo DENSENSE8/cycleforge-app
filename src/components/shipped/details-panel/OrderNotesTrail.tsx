@@ -114,7 +114,7 @@ export function OrderNotesTrail({
 
   return (
     <div className={cn('space-y-1', className)}>
-      <p className="text-role-eyebrow uppercase tracking-widest text-text-soft">
+      <p className="text-role-eyebrow text-text-soft">
         Notes{notes.length > 0 ? ` · ${notes.length}` : ''}
       </p>
       <p className="text-role-micro normal-case tracking-normal text-text-faint">
@@ -174,7 +174,7 @@ export function OrderNotesTrail({
               <p className="whitespace-pre-wrap break-words text-role-caption text-text-default">
                 {note.noteText}
               </p>
-              <p className="mt-0.5 truncate text-role-eyebrow uppercase tracking-widest text-text-soft">
+              <p className="mt-0.5 truncate text-role-eyebrow text-text-soft">
                 {/* An author the staff table no longer has is honest absence,
                     not a reason to drop a note that is still true. */}
                 {note.authorName ?? 'Unknown staff'} · {formatDateTimePST(note.createdAt)}
@@ -186,7 +186,7 @@ export function OrderNotesTrail({
 
       {legacy ? (
         <div className="rounded-xl border border-dashed border-border-soft bg-surface-canvas inset-cozy">
-          <p className="text-role-eyebrow uppercase tracking-widest text-text-soft">
+          <p className="text-role-eyebrow text-text-soft">
             Legacy note · read-only
           </p>
           <p className="mt-0.5 whitespace-pre-wrap break-words text-role-caption text-text-muted">

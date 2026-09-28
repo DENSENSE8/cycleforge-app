@@ -478,7 +478,7 @@ function Choice({
 function Group({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <fieldset className="space-y-3 rounded-mode border border-mode-edge bg-mode-panel p-mode-page">
-      <legend className="px-1 text-role-caption font-semibold uppercase tracking-[0.16em] text-mode-muted">
+      <legend className="px-1 text-role-caption font-semibold text-mode-muted">
         {title}
       </legend>
       {children}

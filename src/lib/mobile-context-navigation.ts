@@ -38,7 +38,7 @@ export function getMobileAppTitle(
   if (pathname === '/m/home' || pathname.startsWith('/m/home/')) return 'Daily';
   if (pathname === '/m/settings' || pathname.startsWith('/m/settings/')) return 'Settings';
   if (pathname === '/m/work' || pathname.startsWith('/m/work/')) return 'Order management';
-  if (pathname === '/m/orders/new' || pathname.startsWith('/m/orders/new/')) return 'Add order';
+  if (pathname === '/m/orders/new' || pathname.startsWith('/m/orders/new/')) return 'New order';
   if (pathname === '/m/orders' || pathname.startsWith('/m/orders/')) return 'Order management';
   if (pathname === '/m/exceptions' || pathname.startsWith('/m/exceptions/')) return 'Exceptions';
   if (pathname === '/m/pick' || pathname.startsWith('/m/pick/')) return 'Picks';
@@ -61,7 +61,7 @@ interface MobileContextRowConfig {
 
 const DASHBOARD_VIEW_OPTIONS: MobileContextOption[] = [
   { id: 'unshipped', label: 'Pending' },
-  { id: 'tested', label: 'Tested' },
+  { id: 'picked', label: 'Picked' },
   { id: 'packed', label: 'Packed' },
   { id: 'shipped', label: 'Shipped' },
   { id: 'fba', label: 'Amazon Prep' },

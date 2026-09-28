@@ -29,7 +29,7 @@ function Stat({
 }) {
   return (
     <div className="flex min-w-0 flex-col gap-0.5">
-      <span className="text-role-eyebrow uppercase tracking-widest text-text-soft">{label}</span>
+      <span className="text-role-eyebrow text-text-soft">{label}</span>
       <span
         className={cn(
           'text-role-caption font-semibold tabular-nums',
@@ -131,7 +131,7 @@ export function RequesterDetailBand({
               <HoverTooltip label="Open the carton record" asChild>
                 <Link
                   href={cartonReadHref(receivingId)}
-                  className="inline-flex items-center gap-1 rounded bg-surface-sunken px-1.5 py-0.5 text-role-micro font-semibold uppercase tracking-widest text-text-muted ring-1 ring-inset ring-border-soft transition-colors hover:text-text-default"
+                  className="inline-flex items-center gap-1 rounded bg-surface-sunken px-1.5 py-0.5 text-role-micro font-semibold text-text-muted ring-1 ring-inset ring-border-soft transition-colors hover:text-text-default"
                 >
                   <Box className="h-3 w-3" />
                   Carton {receivingId}

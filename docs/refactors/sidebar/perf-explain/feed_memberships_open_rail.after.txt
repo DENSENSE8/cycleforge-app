@@ -1,42 +1,42 @@
 -- feed_memberships_open_rail: AFTER
--- captured 2026-09-26T19:48:59Z as app_tenant (unpooled), app.current_org=00000000-0000-0000-0000-000000000001
+-- captured 2026-09-28T08:23:57Z as app_tenant bypassrls=false (unpooled), app.current_org=00000000-0000-0000-0000-000000000001
 -- SQL: docs/refactors/sidebar/perf-explain/feed_memberships_open_rail.after.sql
 
                                                                                                          QUERY PLAN                                                                                                          
 -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
- Limit  (cost=123.39..123.39 rows=2 width=187) (actual time=0.376..0.380 rows=20 loops=1)
-   Buffers: shared hit=59 read=3
-   ->  Sort  (cost=123.39..123.39 rows=2 width=187) (actual time=0.375..0.377 rows=20 loops=1)
+ Limit  (cost=123.35..123.36 rows=2 width=187) (actual time=0.335..0.339 rows=20 loops=1)
+   Buffers: shared hit=63
+   ->  Sort  (cost=123.35..123.36 rows=2 width=187) (actual time=0.334..0.336 rows=20 loops=1)
          Sort Key: m.occurred_at DESC
          Sort Method: top-N heapsort  Memory: 32kB
-         Buffers: shared hit=59 read=3
-         ->  Result  (cost=31.86..123.38 rows=2 width=187) (actual time=0.139..0.308 rows=114 loops=1)
+         Buffers: shared hit=63
+         ->  Result  (cost=31.85..123.34 rows=2 width=187) (actual time=0.104..0.275 rows=114 loops=1)
                One-Time Filter: ((NULLIF(current_setting('app.current_org'::text, true), ''::text))::uuid = '00000000-0000-0000-0000-000000000001'::uuid)
-               Buffers: shared hit=56 read=3
-               ->  Hash Left Join  (cost=31.86..123.37 rows=2 width=155) (actual time=0.129..0.270 rows=114 loops=1)
+               Buffers: shared hit=60
+               ->  Hash Left Join  (cost=31.85..123.33 rows=2 width=155) (actual time=0.094..0.236 rows=114 loops=1)
                      Hash Cond: ((m.entity_type = x.entity_type) AND (m.entity_id = x.entity_id))
                      Filter: (x.id IS NULL)
                      Rows Removed by Filter: 27
-                     Buffers: shared hit=56 read=3
-                     ->  Bitmap Heap Scan on feed_memberships m  (cost=23.66..113.43 rows=330 width=188) (actual time=0.075..0.175 rows=141 loops=1)
+                     Buffers: shared hit=60
+                     ->  Bitmap Heap Scan on feed_memberships m  (cost=23.65..113.40 rows=329 width=188) (actual time=0.042..0.144 rows=141 loops=1)
                            Recheck Cond: ((organization_id = '00000000-0000-0000-0000-000000000001'::uuid) AND (feed_key = 'receiving_triage'::text) AND (state <> 'done'::text))
-                           Heap Blocks: exact=54
-                           Buffers: shared hit=54 read=3
-                           ->  Bitmap Index Scan on idx_feed_memberships_open  (cost=0.00..23.57 rows=330 width=0) (actual time=0.059..0.059 rows=141 loops=1)
+                           Heap Blocks: exact=55
+                           Buffers: shared hit=58
+                           ->  Bitmap Index Scan on idx_feed_memberships_open  (cost=0.00..23.56 rows=329 width=0) (actual time=0.027..0.027 rows=141 loops=1)
                                  Index Cond: ((organization_id = '00000000-0000-0000-0000-000000000001'::uuid) AND (feed_key = 'receiving_triage'::text))
-                                 Buffers: shared read=3
-                     ->  Hash  (cost=8.17..8.17 rows=1 width=96) (actual time=0.045..0.046 rows=31 loops=1)
+                                 Buffers: shared hit=3
+                     ->  Hash  (cost=8.17..8.17 rows=1 width=96) (actual time=0.042..0.043 rows=31 loops=1)
                            Buckets: 1024  Batches: 1  Memory Usage: 11kB
                            Buffers: shared hit=2
-                           ->  Result  (cost=0.15..8.17 rows=1 width=96) (actual time=0.025..0.035 rows=31 loops=1)
+                           ->  Result  (cost=0.15..8.17 rows=1 width=96) (actual time=0.020..0.031 rows=31 loops=1)
                                  One-Time Filter: ((NULLIF(current_setting('app.current_org'::text, true), ''::text))::uuid = '00000000-0000-0000-0000-000000000001'::uuid)
                                  Buffers: shared hit=2
-                                 ->  Index Scan using ux_staff_rail_exclusions_natural on staff_rail_exclusions x  (cost=0.15..8.17 rows=1 width=96) (actual time=0.022..0.028 rows=31 loops=1)
+                                 ->  Index Scan using ux_staff_rail_exclusions_natural on staff_rail_exclusions x  (cost=0.15..8.17 rows=1 width=96) (actual time=0.018..0.024 rows=31 loops=1)
                                        Index Cond: ((organization_id = '00000000-0000-0000-0000-000000000001'::uuid) AND (staff_id = 1) AND ((station)::text = 'RECEIVING'::text) AND (feed_key = 'receiving_triage'::text))
                                        Buffers: shared hit=2
  Planning:
-   Buffers: shared hit=645 read=1
- Planning Time: 1.336 ms
- Execution Time: 0.703 ms
+   Buffers: shared hit=644
+ Planning Time: 1.181 ms
+ Execution Time: 0.671 ms
 (34 rows)
 

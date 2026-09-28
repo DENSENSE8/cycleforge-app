@@ -27,7 +27,7 @@ export function OrderAmendmentsSection({
       emptyMessage="No substitutions on this order."
       headerRight={
         pending > 0 ? (
-          <span className="rounded-full bg-amber-50 px-1.5 py-0.5 text-role-eyebrow uppercase tracking-widest text-amber-700 ring-1 ring-inset ring-amber-200">
+          <span className="rounded-full bg-amber-50 px-1.5 py-0.5 text-role-eyebrow text-amber-700 ring-1 ring-inset ring-amber-200">
             {pending} pending
           </span>
         ) : undefined

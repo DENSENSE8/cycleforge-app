@@ -21,7 +21,7 @@ import { motionPresence, motionTransition } from '@/design-system/foundations/mo
 import { useMotionPresence, useMotionTransition } from '@/design-system/foundations/motion-presets-hooks';
 import { KeyboardKey } from '@/design-system/primitives';
 import { focusRing } from '@/design-system/tokens/focus-ring';
-import { SIDEBAR_CONTROL_CORNER } from '@/design-system/tokens/radius';
+import { SEARCH_WELL_CORNER, SIDEBAR_CONTROL_CORNER } from '@/design-system/tokens/radius';
 import { ClipboardPaste, Search, X } from '@/components/Icons';
 import { chordKeys, useApplePlatform } from '@/lib/keyboard/chord-keys';
 import { toast } from '@/lib/toast';
@@ -151,10 +151,10 @@ export function RollingHint({
 }
 
 const FIELD_SIZE = {
-  /** Sidebar well: 32px, 6px corner, caption type. */
-  sidebar: { well: cn('px-2', SIDEBAR_CONTROL_CORNER), text: 'text-role-caption font-medium' },
-  /** Data-table bar: 32px, 8px corner, body type. */
-  bar: { well: 'rounded-lg px-2.5', text: 'text-sm' },
+  /** Sidebar well: 32px, 13px nav type — the operator reads it all day. */
+  sidebar: { well: 'px-2.5', text: 'text-role-nav font-medium' },
+  /** Data-table bar: 32px, body type. */
+  bar: { well: 'px-2.5', text: 'text-role-body font-medium' },
 } as const;
 
 /**
@@ -246,7 +246,7 @@ export function FindField({
   // this page, ⌘K / Ctrl K searches everywhere. The keys ride in the phrase,
   // so no separate keycap sits in front of it.
   const rolled: readonly FindHint[] = escalate
-    ? [hints[0] ?? 'Find', { keys: ['F'], text: hints[1] ?? 'Find' }, { keys: chordKeys('mod+k', apple), text: 'Search everywhere' }, ...hints.slice(2)]
+    ? [hints[0] ?? 'Find', { keys: ['F'], text: hints[1] ?? 'Find' }, { keys: chordKeys('mod+k', apple), text: 'Everywhere' }, ...hints.slice(2)]
     : hints;
   const query = look.focused ? draft.trim() : '';
   const panel = query && (below || escalate);
@@ -259,10 +259,10 @@ export function FindField({
         findWellClass(size),
         'relative',
         overflowRight &&
-          'absolute inset-y-0 left-0 transition-[width,box-shadow] duration-150 focus-within:z-50 focus-within:w-[max(100%,28rem)] focus-within:shadow-lg',
+          'absolute inset-y-0 left-0 transition-[width,border-radius,box-shadow,filter] duration-150 focus-within:z-50 focus-within:w-[max(100%,28rem)] focus-within:drop-shadow-lg',
       )}
     >
-      <Search aria-hidden className="size-3.5 shrink-0 text-text-faint" />
+      <Search aria-hidden className="size-3.5 shrink-0 text-text-muted" />
       {escalate ? null : <HoverKeycaps keys={['F']} shown={look.active} />}
       <span className="relative flex h-full min-w-0 flex-1">
         {draft ? null : <RollingHint hints={rolled} active={look.active} className={cn(sized.text, findHintTone(look.active))} />}
@@ -292,7 +292,8 @@ export function FindField({
             else event.currentTarget.blur();
           }}
           className={cn(
-            'relative h-full min-w-0 flex-1 border-0 bg-transparent p-0 text-text-default outline-none [&::-webkit-search-cancel-button]:hidden',
+            'relative h-full min-w-0 flex-1 cursor-pointer border-0 bg-transparent p-0 text-text-default caret-text-default outline-none focus:cursor-text [&::-webkit-search-cancel-button]:hidden',
+            'selection:bg-[var(--ds-color-accent-light)] selection:text-text-default',
             sized.text,
           )}
         />
@@ -364,22 +365,31 @@ export function findHints(label: string): readonly string[] {
 }
 
 /**
- * The sunken find well — FindField's and the everywhere face's (NavFind with
- * no page scope: the page map, the header while the sidebar is closed):
- * below the plane, hairline inset ring, a fixed 32px.
+ * The find well — FindField's and the everywhere face's (NavFind with no page
+ * list: the page map, the header while the sidebar is closed). A fixed 32px.
+ *
+ * Depth lives ONLY at the rim (operator 2026-09-27): the inner edges gray
+ * into the well while the middle stays white, so black words sit on white
+ * and read at a glance. At rest it is a soft, pointer-cursor target that
+ * invites the click ({@link SEARCH_WELL_CORNER}); pressed or focused it firms
+ * up — tighter corner, darker rim.
  */
 export function findWellClass(size: keyof typeof FIELD_SIZE = 'sidebar'): string {
+  // The rim is mixed from the well's own ink (`text-text-default` →
+  // currentColor), so it shades inward in light, dark and every palette theme.
   return cn(
-    'flex h-8 w-full min-w-0 shrink-0 items-center gap-1.5 bg-surface-sunken',
-    'shadow-[inset_0_1px_2px_rgba(0,0,0,0.06)] ring-1 ring-inset ring-border-hairline',
-    'transition-shadow hover:ring-border-soft focus-within:ring-border-strong',
+    'flex h-8 w-full min-w-0 shrink-0 cursor-pointer items-center gap-1.5 bg-surface-card text-text-default',
+    'shadow-[inset_0_0_0_1px_color-mix(in_oklab,currentColor_12%,transparent),inset_0_1px_2px_color-mix(in_oklab,currentColor_9%,transparent),inset_0_0_10px_color-mix(in_oklab,currentColor_7%,transparent)]',
+    'hover:shadow-[inset_0_0_0_1px_color-mix(in_oklab,currentColor_24%,transparent),inset_0_1px_2px_color-mix(in_oklab,currentColor_9%,transparent),inset_0_0_10px_color-mix(in_oklab,currentColor_8%,transparent)]',
+    'focus-within:cursor-text focus-within:shadow-[inset_0_0_0_1.5px_color-mix(in_oklab,currentColor_60%,transparent),inset_0_1px_2px_color-mix(in_oklab,currentColor_7%,transparent)]',
+    SEARCH_WELL_CORNER,
     FIELD_SIZE[size].well,
   );
 }
 
-/** Hint ink: soft gray at rest, full black while the operator looks at the well (hover / focus). */
+/** Hint ink: dark enough to read at rest, full black while the operator looks at the well (hover / focus). */
 export function findHintTone(active: boolean): string {
-  return cn('transition-colors duration-150', active ? 'text-text-default' : 'text-text-faint');
+  return cn('transition-colors duration-150', active ? 'text-text-default' : 'text-text-muted');
 }
 
 /**

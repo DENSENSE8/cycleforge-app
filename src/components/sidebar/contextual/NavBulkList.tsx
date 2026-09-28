@@ -12,6 +12,7 @@ import { focusRing } from '@/design-system/tokens/focus-ring';
 import { SIDEBAR_CONTROL_CORNER } from '@/design-system/tokens/radius';
 import { cn } from '@/utils/_cn';
 import { NavBulkPopout } from './NavBulkPopout';
+import type { PageFind } from './NavFind';
 import { useNavLocate } from './useNavLocate';
 import { useReplaceSearchParams } from './useReplaceSearchParams';
 
@@ -163,11 +164,14 @@ export function NavBulkToggle({
   anchorRef,
   open,
   onOpenChange,
+  find,
 }: {
   list: BulkList;
   anchorRef: React.RefObject<HTMLElement | null>;
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  /** The page list's Find, when the paste sits over one (else the desk store at this path). */
+  find?: PageFind;
 }) {
   const count = list.selection.refs.length;
   const buttonRef = useRef<HTMLButtonElement>(null);
@@ -214,6 +218,7 @@ export function NavBulkToggle({
       </button>
       <NavBulkPopout
         list={list}
+        find={find}
         anchorRef={anchorRef}
         open={open}
         onClose={() => {

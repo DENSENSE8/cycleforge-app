@@ -29,7 +29,7 @@ export function FbaCombineWorkspace({
   return (
     <div className="flex h-full min-h-0 flex-col bg-surface-card">
       <header className="flex shrink-0 items-center justify-between gap-3 border-b border-border-hairline px-4 py-2.5">
-        <p className="text-role-micro uppercase tracking-widest text-text-soft">Combine</p>
+        <p className="text-role-micro text-text-soft">Combine</p>
         <HoverTooltip label="Back to board" asChild>
           <IconButton
             icon={<X className="h-4 w-4" />}

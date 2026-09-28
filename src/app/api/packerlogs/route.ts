@@ -17,11 +17,11 @@ import { attachPhotoWithLegacyUrl } from '@/lib/photos/service';
 import { PACKER_BOX_LABEL_PHOTO_TYPE } from '@/lib/photos/types';
 import { withTenantTransaction } from '@/lib/tenancy/db';
 import { createPackerLog } from '@/lib/packing/packer-log-writer';
+import { refreshOrderStageFacts } from '@/lib/orders/order-stage-facts';
 
 export const GET = withAuth(async (req: NextRequest, ctx) => {
     const { searchParams } = new URL(req.url);
     const packerIdParam = searchParams.get('packerId') || searchParams.get('packedBy');
-    const testedByParam = searchParams.get('testedBy');
     const limit = parseInt(searchParams.get('limit') || '500');
     const offset = parseInt(searchParams.get('offset') || '0');
     const weekStart = searchParams.get('weekStart') || '';
@@ -37,7 +37,6 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
     const pickedBy = readShippedPickedBy(searchParams);
 
     const packerIdNum = packerIdParam ? parseInt(packerIdParam) : null;
-    const testedByNum = testedByParam ? parseInt(testedByParam) : null;
     // Universal staff filter (P1-WORK-02): packed OR tested by this staff.
     const staffParam = searchParams.get('staff');
     const staffNum = staffParam ? parseInt(staffParam) : null;
@@ -50,7 +49,6 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
     const { rows, cacheTTL, cacheHit } = await fetchPackerLogRows({
         organizationId: ctx.organizationId,
         packerId: packerIdNum != null && !Number.isNaN(packerIdNum) ? packerIdNum : null,
-        testedBy: testedByNum != null && !Number.isNaN(testedByNum) ? testedByNum : null,
         staffId: staffNum != null && !Number.isNaN(staffNum) ? staffNum : null,
         limit,
         offset,
@@ -120,6 +118,7 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
                 tracking_type: trackingType,
             },
         });
+        await refreshOrderStageFacts(ctx.organizationId, { shipmentIds: [shipmentId] });
         if (trackingType === 'ORDERS') {
             await recordAudit(pool, ctx, req, {
                 source: 'api.packerlogs.post',
@@ -243,7 +242,7 @@ export const DELETE = withAuth(async (req: NextRequest, ctx) => {
                 return NextResponse.json({ error: 'Invalid activityLogId' }, { status: 400 });
             }
             const sel = await client.query(
-                'SELECT packer_log_id FROM station_activity_logs WHERE id = $1 AND organization_id = $2',
+                'SELECT packer_log_id, shipment_id FROM station_activity_logs WHERE id = $1 AND organization_id = $2',
                 [salId, orgId]
             );
             if (!sel.rows[0]) {
@@ -254,6 +253,7 @@ export const DELETE = withAuth(async (req: NextRequest, ctx) => {
             if (plId != null) {
                 await client.query('DELETE FROM packer_logs WHERE id = $1 AND organization_id = $2', [plId, orgId]);
             }
+            await refreshOrderStageFacts(orgId, { shipmentIds: [sel.rows[0].shipment_id] }, client);
             await invalidateCacheTags(orgId, ['packing-logs', 'orders', 'shipped']);
             return NextResponse.json({ success: true });
         }
@@ -267,13 +267,14 @@ export const DELETE = withAuth(async (req: NextRequest, ctx) => {
             return NextResponse.json({ error: 'Invalid id' }, { status: 400 });
         }
 
-        const plCheck = await client.query('SELECT id FROM packer_logs WHERE id = $1 AND organization_id = $2', [plId, orgId]);
+        const plCheck = await client.query('SELECT id, shipment_id FROM packer_logs WHERE id = $1 AND organization_id = $2', [plId, orgId]);
         if (!plCheck.rows[0]) {
             return NextResponse.json({ error: 'Log not found' }, { status: 404 });
         }
 
         await client.query('DELETE FROM station_activity_logs WHERE packer_log_id = $1 AND organization_id = $2', [plId, orgId]);
         await client.query('DELETE FROM packer_logs WHERE id = $1 AND organization_id = $2', [plId, orgId]);
+        await refreshOrderStageFacts(orgId, { shipmentIds: [plCheck.rows[0].shipment_id] }, client);
         await invalidateCacheTags(orgId, ['packing-logs', 'orders', 'shipped']);
         return NextResponse.json({ success: true, deletedLog: { id: plId } });
     });

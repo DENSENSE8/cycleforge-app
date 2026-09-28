@@ -108,11 +108,12 @@ export interface ModeSpec {
   /** Padding / gap per intent. */
   spacing: ModeSpacing;
   /**
-   * How a fact LABEL speaks (`BIN`, `Ship by`): `caps` — mono heavy caps, the
-   * floor voice; `sentence` — sans sentence case, the desk voice (owner
-   * 2026-09-26: sentence case reads faster when triaging).
+   * How a fact LABEL speaks (`Bin`, `Ship by`): `mono` — mono heavy, the floor
+   * voice; `sentence` — sans, the desk voice. BOTH are sentence case: no voice
+   * uppercases text (owner 2026-09-26: sentence case reads faster; 2026-09-28:
+   * every display, the floor included).
    */
-  labelVoice: 'caps' | 'sentence';
+  labelVoice: 'mono' | 'sentence';
   motion: {
     /** State-change feedback (step, enter, scan-status spot). */
     feedback: string;
@@ -286,7 +287,7 @@ export const MODE_REGISTRY = {
     hit: { base: '32px', coarse: '48px' },
     bodyText: { base: '13px', coarse: '13px' },
     spacing: DESK_SPACING,
-    labelVoice: 'caps',
+    labelVoice: 'mono',
     // 150ms is the scan-status spot only; nothing else on the floor moves.
     motion: { feedback: '150ms' },
   },
@@ -344,6 +345,118 @@ export const MODE_REGISTRY = {
 } satisfies Record<ModeName, ModeSpec>;
 
 export const MODE_NAMES = Object.keys(MODE_REGISTRY) as ModeName[];
+
+// ── Looks ───────────────────────────────────────────────────────────────────
+
+/**
+ * A LOOK is one job's refinement of the modes — never a fifth mode. The
+ * region still requests a mode (`mode`) and still resolves by device
+ * (`data-mode`: triage on a desk, industrial on a phone / touch screen), and
+ * the look re-declares, PER RESOLVED MODE, only the planes, corners, padding
+ * and body size that job needs. Hit targets and label voice stay the mode's.
+ * A mode the look does not refine paints as that mode, untouched.
+ */
+export type ModeLookName = 'labels-documents';
+
+/** What a look changes inside one resolved mode. */
+export interface ModeLookRefinement {
+  surfaces?: Partial<ModeSurfaces>;
+  radius?: string;
+  radiusControl?: string;
+  radiusPill?: string;
+  pagePad?: ModeMeasure;
+  bodyText?: ModeMeasure;
+  spacing?: ModeSpacing;
+}
+
+export interface ModeLookSpec {
+  name: ModeLookName;
+  /** The mode the region requests; it resolves by device like any region. */
+  mode: ModeName;
+  label: string;
+  /** The job this look serves — one line. */
+  hint: string;
+  refines: Partial<Record<ModeName, ModeLookRefinement>>;
+}
+
+/**
+ * Labels & documents spacing — micro padding for a print triage desk (owner
+ * 2026-09-27): rows sized for scanning 100+ labels in one column, the hit
+ * target (32px desk / 48px touch) left to the mode.
+ */
+const LABELS_DOCUMENTS_SPACING: ModeSpacing = {
+  inset: {
+    chip: { x: '6px', y: '1px' },
+    field: { x: '8px', y: '4px' },
+    cozy: { x: '8px', y: '4px' },
+    card: { x: '12px', y: '8px' },
+    empty: { x: '16px', y: '16px' },
+  },
+  stack: { tight: '4px', row: '6px', section: '16px' },
+  row: { gap: '6px', tight: '4px' },
+};
+
+export const MODE_LOOKS = {
+  'labels-documents': {
+    name: 'labels-documents',
+    mode: 'triage',
+    label: 'Labels & documents',
+    hint: 'Label printing and document intake — a triage-only desk: white cards on a high-contrast off-white canvas, micro padding. Never Floor.',
+    refines: {
+      // Desk: triage's floating cards (10px corner, 8px controls, 12px page
+      // gutter) on an off-white canvas, so a white 4×6 label reads as paper;
+      // rows inside a card are divided by drawn seams. `faint` #5c5c58 holds
+      // 6.5:1 on the canvas.
+      triage: {
+        surfaces: {
+          canvas: '#f3f3ef',
+          bar: '#ffffff',
+          panel: '#ffffff',
+          well: '#f1f1ec',
+          hover: '#efefea',
+          ink: '#0a0a0a',
+          muted: '#3d3d3a',
+          faint: '#5c5c58',
+          rule: '#e1e1db',
+          edge: '#d6d6cf',
+          control: '#7a7a74',
+          divide: '#e1e1db',
+          seam: '#e1e1db',
+          frame: '#c7c7c0',
+          mark: '#0a0a0a',
+        },
+        bodyText: { base: '13px', coarse: '14px' },
+        spacing: LABELS_DOCUMENTS_SPACING,
+      },
+      // Triage only (owner 2026-09-27): one job — show labels, print them —
+      // so no industrial refinement; the region never resolves industrial.
+    },
+  },
+} satisfies Record<ModeLookName, ModeLookSpec>;
+
+export const MODE_LOOK_NAMES = Object.keys(MODE_LOOKS) as ModeLookName[];
+
+/** Every (look, resolved mode) pair a look refines. */
+function lookRefinements(name: ModeLookName): [ModeName, ModeLookRefinement][] {
+  const look: ModeLookSpec = MODE_LOOKS[name];
+  return (Object.entries(look.refines) as [ModeName, ModeLookRefinement][]).filter(([, refinement]) => refinement != null);
+}
+
+/** The full spec a look paints inside `mode`: that mode's spec with the look's refinement laid over it. */
+function resolveModeLook(name: ModeLookName, mode: ModeName): ModeSpec {
+  const base = MODE_REGISTRY[mode];
+  const look = (MODE_LOOKS[name] as ModeLookSpec).refines[mode] ?? {};
+  return {
+    ...base,
+    surfaces: { ...base.surfaces, ...look.surfaces },
+    radius: look.radius ?? base.radius,
+    radiusControl: look.radiusControl ?? base.radiusControl,
+    radiusPill: look.radiusPill ?? base.radiusPill,
+    pagePad: look.pagePad ?? base.pagePad,
+    bodyText: look.bodyText ?? base.bodyText,
+    spacing: look.spacing ?? base.spacing,
+  };
+}
 
 /**
  * Neutral theme var (`--ds-color-<key>`) → the mode surface that replaces it
@@ -404,6 +517,11 @@ function modeSelector(name: ModeName): string {
   return `[data-mode='${name}']`;
 }
 
+/** A look inside one resolved mode: `[data-mode='industrial'][data-look='…']`. */
+function lookSelector(name: ModeLookName, mode: ModeName): string {
+  return `${modeSelector(mode)}[data-look='${name}']`;
+}
+
 /** The grain layers, deepest first — the order the stylesheet and guard walk. */
 export const GRAIN_DEPTHS = ['well', 'canvas', 'bar', 'inverse'] as const satisfies readonly (keyof ModeGrain)[];
 
@@ -429,13 +547,13 @@ export function grainImage({ opacity, frequency }: GrainLayer): string {
 
 /** The label voice as CSS — consumed by the `mode-label` / `mode-label-case` utilities (tailwind.config.mjs). */
 function labelVoiceDeclarations(voice: ModeSpec['labelVoice'], indent: string): string[] {
-  const caps = voice === 'caps';
+  const mono = voice === 'mono';
   return [
-    `${indent}--mode-label-case: ${caps ? 'uppercase' : 'none'};`,
-    `${indent}--mode-label-tracking: ${caps ? '0.08em' : '0'};`,
-    `${indent}--mode-label-font: ${caps ? 'var(--ds-font-mono)' : 'var(--ds-font-sans)'};`,
-    `${indent}--mode-label-weight: ${caps ? '700' : '500'};`,
-    `${indent}--mode-label-size: ${caps ? '0.625rem' : '0.75rem'};`,
+    `${indent}--mode-label-case: none;`,
+    `${indent}--mode-label-tracking: 0;`,
+    `${indent}--mode-label-font: ${mono ? 'var(--ds-font-mono)' : 'var(--ds-font-sans)'};`,
+    `${indent}--mode-label-weight: ${mono ? '700' : '500'};`,
+    `${indent}--mode-label-size: ${mono ? '0.6875rem' : '0.75rem'};`,
   ];
 }
 
@@ -544,10 +662,23 @@ export function modeRegistryCssText(): string {
     (name) => `  ${modeSelector(name)} {\n${coarseDeclarations(MODE_REGISTRY[name]).join('\n')}\n  }`,
   );
   blocks.push(`@media (pointer: coarse) {\n${coarse.join('\n')}\n}`);
+  // Looks after their modes: `[data-mode][data-look]` outranks `[data-mode]`
+  // at every scheme and pointer, so a look re-declares, never fights, its mode.
+  for (const name of MODE_LOOK_NAMES) {
+    for (const [mode] of lookRefinements(name)) {
+      const spec = resolveModeLook(name, mode);
+      const selector = lookSelector(name, mode);
+      blocks.push(
+        `${selector} {\n${baseDeclarations(spec).join('\n')}\n}`,
+        `html:not([data-color-scheme='dark']) ${selector} {\n${lightDeclarations(spec).join('\n')}\n}`,
+        `@media (pointer: coarse) {\n  ${selector} {\n${coarseDeclarations(spec).join('\n')}\n  }\n}`,
+      );
+    }
+  }
   // Outside every region (sign-in, app shell chrome, any route no layout wraps)
   // the page renders as triage: every `--mode-*` var resolves, so no
   // `bg-mode-*` / `text-mode-*` / `border-mode-*` utility paints nothing.
-  // Corners + label voice still follow the device: square caps on a touch
+  // Corners + label voice still follow the device: square mono labels on a touch
   // screen (owner 2026-09-26); hit / pad / body text follow the pointer.
   const desk = MODE_REGISTRY.triage;
   const floor = MODE_REGISTRY.industrial;

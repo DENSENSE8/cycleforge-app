@@ -13,7 +13,7 @@ function StateCode({ code, label, tone }: { code: string; label: string; tone: S
   return (
     <span
       className={cn(
-        'inline-flex shrink-0 items-center rounded-mode border px-1 font-mono text-role-eyebrow font-bold uppercase',
+        'inline-flex shrink-0 items-center rounded-mode border px-1 font-mono text-role-eyebrow font-bold',
         tone ? cn(STATE_TONE_CLASSES[tone].pill, STATE_TONE_CLASSES[tone].border) : 'border-border-subtle text-text-default',
       )}
     >

@@ -42,7 +42,7 @@ export const CONVERSATION_STREAM = cn(CONVERSATION_INSET, 'stack-tight font-sans
 export const CONVERSATION_DAY_HEADER = 'flex justify-center py-2';
 
 export const CONVERSATION_DAY_LABEL =
-  'font-sans text-role-micro font-semibold uppercase tracking-wide text-text-muted';
+  'font-sans text-role-micro font-semibold text-text-muted';
 
 /** One row: node left, body right — never `flex-row-reverse`. */
 export const CONVERSATION_ROW =

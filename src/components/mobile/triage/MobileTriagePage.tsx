@@ -9,7 +9,6 @@ import type { ReactNode } from 'react';
 import { SearchField } from '@/design-system/primitives/SearchField';
 import { MobileDetailTopBar } from '@/components/mobile/redesign/MobileDetailTopBar';
 import { appMobilePageGroundClass } from '@/design-system/tokens/app-surface';
-import { STATION_EYEBROW_CLASS } from '@/components/mobile/station/station-chrome';
 import { cn } from '@/utils/_cn';
 
 export interface TriageSection {
@@ -82,7 +81,6 @@ export function MobileTriagePage({
                     // there read as a gap between two lists.
                     appMobilePageGroundClass,
                     'px-3 pb-1 pt-3 text-role-eyebrow text-text-soft',
-                    STATION_EYEBROW_CLASS,
                   )}
                 >
                   {section.heading}

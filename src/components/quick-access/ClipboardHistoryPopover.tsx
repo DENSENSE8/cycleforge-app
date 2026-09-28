@@ -171,7 +171,7 @@ export function ClipboardHistoryPopover({ onClose }: ClipboardHistoryPopoverProp
                         {value}
                       </span>
                       {meta.tags.length > 0 || meta.time ? (
-                        <span className="mt-0.5 flex flex-wrap items-center gap-1.5 text-role-eyebrow font-semibold uppercase tracking-widest">
+                        <span className="mt-0.5 flex flex-wrap items-center gap-1.5 text-role-eyebrow font-semibold">
                           <span className="shrink-0 text-text-faint">{meta.time}</span>
                           {meta.tags.map((tag) => (
                             <span key={tag} className="text-text-soft">

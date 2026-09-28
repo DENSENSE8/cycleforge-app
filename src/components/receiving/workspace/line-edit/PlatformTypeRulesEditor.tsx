@@ -91,7 +91,7 @@ export function PlatformTypeRulesEditor({
       const go = await requestConfirm({
         title: `Remove the last rule on ${platform.label}?`,
         description:
-          `${platform.label} will go back to accepting EVERY receiving type — not none. ` +
+          `${platform.label} will go back to accepting every receiving type — not none. ` +
           `Removing "${label}" reopens the platform rather than closing it.`,
         confirmLabel: 'Reopen platform',
         tone: 'danger',
@@ -135,7 +135,7 @@ export function PlatformTypeRulesEditor({
                 {r.typeLabel ?? r.type}
               </span>
               {r.isDefault ? (
-                <span className="shrink-0 rounded bg-blue-50 px-1.5 py-0.5 text-role-micro font-semibold uppercase tracking-wider text-blue-700">
+                <span className="shrink-0 rounded bg-blue-50 px-1.5 py-0.5 text-role-micro font-semibold text-blue-700">
                   Default
                 </span>
               ) : (
@@ -144,7 +144,7 @@ export function PlatformTypeRulesEditor({
                   onClick={() => void makeDefault(r.id!)}
                   disabled={busy != null}
                   className={cn(
-                    'ds-raw-button shrink-0 rounded px-1.5 py-0.5 text-role-micro font-semibold uppercase tracking-wider text-text-faint hover:bg-surface-hover hover:text-text-muted disabled:opacity-50',
+                    'ds-raw-button shrink-0 rounded px-1.5 py-0.5 text-role-micro font-semibold text-text-faint hover:bg-surface-hover hover:text-text-muted disabled:opacity-50',
                     focusRing('control', 'accent'),
                   )}
                 >

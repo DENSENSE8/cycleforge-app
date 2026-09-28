@@ -198,12 +198,12 @@ function SortableRoleRow({ role, selected, onPick }: SortableRoleRowProps) {
           <div className="flex items-center gap-1.5">
             <span className="truncate text-sm font-semibold text-text-default">{role.label}</span>
             {role.is_system && (
-              <span className="rounded-full bg-surface-sunken inset-chip text-role-micro uppercase tracking-wider text-text-soft">
+              <span className="rounded-full bg-surface-sunken inset-chip text-role-micro text-text-soft">
                 System
               </span>
             )}
           </div>
-          <div className="truncate text-role-micro font-medium uppercase tracking-wider text-text-soft">
+          <div className="truncate text-role-micro font-medium text-text-soft">
             {role.key}
           </div>
         </button>

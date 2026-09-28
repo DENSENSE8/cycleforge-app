@@ -49,7 +49,7 @@ export function BlockPaletteOverlay({ open, slot, onClose, onPick }: BlockPalett
     <RightPaneOverlay open={open} onClose={onClose} align="right" width={340} aria-label="Block palette">
       <div className="flex h-full flex-col bg-surface-card">
         <div className="border-b border-border-soft px-3 py-2.5">
-          <h2 className="text-role-caption font-semibold uppercase tracking-wider text-text-muted">Add a block</h2>
+          <h2 className="text-role-caption font-semibold text-text-muted">Add a block</h2>
           <p className="mt-0.5 text-role-micro font-semibold text-text-faint">
             Into the <span className="font-mono">{slot}</span> slot — blocks are generic; the data source you bind next decides what they show.
           </p>
@@ -70,7 +70,7 @@ export function BlockPaletteOverlay({ open, slot, onClose, onPick }: BlockPalett
           ) : (
             groups.map(([category, blocks]) => (
               <div key={category} className="mb-3">
-                <p className="mb-1.5 text-role-eyebrow uppercase tracking-wider text-text-faint">
+                <p className="mb-1.5 text-role-eyebrow text-text-faint">
                   {CATEGORY_LABELS[category]}
                 </p>
                 <div className="space-y-1.5">

@@ -42,7 +42,7 @@ interface ShortcutRow {
 function ShortcutList({ title, rows }: { title: string; rows: ShortcutRow[] }) {
   return (
     <div className="space-y-1">
-      <p className="text-role-eyebrow uppercase tracking-widest text-text-soft">
+      <p className="text-role-eyebrow text-text-soft">
         {title}
       </p>
       <ul className="divide-y divide-border-hairline">

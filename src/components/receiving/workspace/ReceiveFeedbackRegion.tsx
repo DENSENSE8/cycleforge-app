@@ -211,7 +211,7 @@ function ReceiveSuccessPanel({
       <dl className="mt-1.5 grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 rounded border border-border-soft bg-surface-card/70 px-2 py-1.5">
         {detailRows.map(([k, v]) => (
           <div key={k} className="contents">
-            <dt className="text-role-micro font-semibold uppercase tracking-wide text-text-faint">
+            <dt className="text-role-micro font-semibold text-text-faint">
               {k}
             </dt>
             <dd

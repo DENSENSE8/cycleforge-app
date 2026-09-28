@@ -134,7 +134,7 @@ export function AgenticLoopLiveConsole({ showRuns = true }: { showRuns?: boolean
     <div className="flex min-h-0 flex-1 flex-col gap-3">
       {/* Chrome — live status */}
       <div className="flex shrink-0 flex-wrap items-center gap-3">
-        <p className="text-role-eyebrow uppercase tracking-[0.18em] text-text-faint">Plans live</p>
+        <p className="text-role-eyebrow text-text-faint">Plans live</p>
         <HoverTooltip label={planDot.label} focusable={false}>
           <span className="inline-flex h-2 w-2 rounded-full align-middle">
             <span className={`h-2 w-2 rounded-full ${planDot.dot}`} />
@@ -142,17 +142,17 @@ export function AgenticLoopLiveConsole({ showRuns = true }: { showRuns?: boolean
         </HoverTooltip>
         {rollup.total > 0 && (
           <span className="flex flex-wrap items-center gap-1.5">
-            <span className="rounded bg-amber-50 px-1.5 py-0.5 text-role-micro uppercase tracking-widest text-amber-700 ring-1 ring-inset ring-amber-200">
+            <span className="rounded bg-amber-50 px-1.5 py-0.5 text-role-micro text-amber-700 ring-1 ring-inset ring-amber-200">
               {rollup.pending} pending
             </span>
-            <span className="rounded bg-blue-50 px-1.5 py-0.5 text-role-micro uppercase tracking-widest text-blue-700 ring-1 ring-inset ring-blue-200">
+            <span className="rounded bg-blue-50 px-1.5 py-0.5 text-role-micro text-blue-700 ring-1 ring-inset ring-blue-200">
               {rollup.inProgress} active
             </span>
-            <span className="rounded bg-emerald-50 px-1.5 py-0.5 text-role-micro uppercase tracking-widest text-emerald-700 ring-1 ring-inset ring-emerald-200">
+            <span className="rounded bg-emerald-50 px-1.5 py-0.5 text-role-micro text-emerald-700 ring-1 ring-inset ring-emerald-200">
               {rollup.deployed} deployed
             </span>
             {rollup.invalid > 0 && (
-              <span className="rounded bg-rose-50 px-1.5 py-0.5 text-role-micro uppercase tracking-widest text-rose-700 ring-1 ring-inset ring-rose-200">
+              <span className="rounded bg-rose-50 px-1.5 py-0.5 text-role-micro text-rose-700 ring-1 ring-inset ring-rose-200">
                 {rollup.invalid} invalid
               </span>
             )}
@@ -173,7 +173,7 @@ export function AgenticLoopLiveConsole({ showRuns = true }: { showRuns?: boolean
             'max-lg:hidden',
           )}
         >
-          <p className="shrink-0 border-b border-border-hairline px-3 py-2 text-role-eyebrow uppercase tracking-[0.18em] text-text-faint">
+          <p className="shrink-0 border-b border-border-hairline px-3 py-2 text-role-eyebrow text-text-faint">
             Tickets
           </p>
           <MasterPlanOutline

@@ -1,19 +1,39 @@
 'use client';
 
 /**
- * The receiving record's AT-A-GLANCE head — the first thing a staffer reads on
- * a carton or incoming delivery record (owner 2026-09-25: "triage information
+ * The receiving record's AT-A-GLANCE head and its Fulfilment group — shared by
+ * the carton record (Unboxed) and the incoming delivery record (owner
+ * 2026-09-25: "triage information at a glance").
+ *
+ * Same grammar as the order record (owner 2026-09-28): the head is one lifted
+ * card (state · count · next, then alerts); the pipeline is NOT a grid of
+ * hairline cells but the Fulfilment group below the items, on the shared
+ * `StepRail` — a filled node is done, the ringed node is where the record is
+ * now, dashed is not yet.
  */
 
-import type { ComponentType, ReactNode } from 'react';
-import { AlertTriangle, Check, CircleDot, Minus } from '@/components/Icons';
-import { STATE_TONE_CLASSES } from '@/design-system/tokens/lifecycle';
+import type { ReactNode } from 'react';
 import {
-  RECORD_ID_CLASS,
-  RECORD_LABEL_CLASS,
-  stateBadgeClass,
-  type RecordStateFace,
-} from '@/design-system/tokens/industrial-record';
+  AlertTriangle,
+  Barcode,
+  Boxes,
+  Check,
+  DoorOpen,
+  ListChecks,
+  MapPin,
+  PackageOpen,
+  Printer,
+  Receipt,
+  ShieldCheck,
+  Star,
+  Truck,
+  Warehouse,
+} from '@/components/Icons';
+import { RecordGroup } from '@/design-system/components/record-ledger/RecordGroup';
+import { StepRail, type RailStep, type StepState } from '@/design-system/components/record-ledger/StepRail';
+import { DESK_RECORD_COLUMN_CARD_CLASS } from '@/design-system/tokens/desk-stage';
+import { STATE_TONE_CLASSES } from '@/design-system/tokens/lifecycle';
+import { RECORD_LABEL_CLASS, stateBadgeClass, type RecordStateFace } from '@/design-system/tokens/industrial-record';
 import type {
   ReceivingStatusAlert,
   ReceivingStatusStep,
@@ -22,21 +42,10 @@ import type {
 import { formatMonthDayTimePST } from '@/utils/date';
 import { cn } from '@/utils/_cn';
 
-/** Each step state's glyph (shape is the second carrier after colour) and spoken word. */
-const STEP_FACE: Readonly<
-  Record<ReceivingStepState, { Glyph: ComponentType<{ className?: string }> | null; word: string; className: string }>
-> = {
-  done: { Glyph: Check, word: 'Done', className: STATE_TONE_CLASSES.success.text },
-  partial: { Glyph: CircleDot, word: 'Partly done', className: STATE_TONE_CLASSES.warning.text },
-  todo: { Glyph: null, word: 'Not yet', className: 'text-mode-muted' },
-  unrecorded: { Glyph: Minus, word: 'Not recorded', className: 'text-mode-muted' },
-};
-
 export function ReceivingStatusStrip({
   state,
   next,
   count,
-  steps,
   alerts,
   testId = 'receiving-status-strip',
 }: {
@@ -46,18 +55,12 @@ export function ReceivingStatusStrip({
   next?: string | null;
   /** A quiet count beside the state (`3 items`). */
   count?: ReactNode;
-  steps: readonly ReceivingStatusStep[];
   alerts: readonly ReceivingStatusAlert[];
   testId?: string;
 }) {
   return (
-    <section
-      aria-label="Status"
-      data-testid={testId}
-      data-state={state.id}
-      className="flex flex-col border border-mode-ink bg-mode-bar"
-    >
-      <div className="flex min-h-mode-hit flex-wrap items-center gap-x-3 gap-y-1 border-b border-mode-ink px-4 py-2">
+    <section aria-label="Status" data-testid={testId} data-state={state.id} className={DESK_RECORD_COLUMN_CARD_CLASS}>
+      <div className="flex min-h-mode-hit flex-wrap items-center gap-x-3 gap-y-1 px-4 py-2">
         <span className={cn(RECORD_LABEL_CLASS, 'inline-flex items-center', stateBadgeClass(state.tone))} data-testid={`${testId}-state`}>
           {state.code} · {state.label}
         </span>
@@ -76,7 +79,7 @@ export function ReceivingStatusStrip({
               role="alert"
               data-alert={alert.key}
               className={cn(
-                'flex items-center gap-2 border-b border-mode-ink px-4 py-1.5 text-role-data font-bold',
+                'flex items-center gap-2 border-t border-mode-fact px-4 py-1.5 text-role-data font-semibold',
                 STATE_TONE_CLASSES[alert.tone].pill,
               )}
             >
@@ -86,35 +89,70 @@ export function ReceivingStatusStrip({
           ))}
         </ul>
       ) : null}
-      <ol aria-label="Pipeline" className="grid grid-cols-2 @xl:grid-cols-3 @4xl:grid-cols-5">
-        {steps.map((step) => {
-          const face = STEP_FACE[step.state];
-          const at = step.at ? formatMonthDayTimePST(step.at) : null;
-          return (
-            <li
-              key={step.key}
-              data-step={step.key}
-              data-step-state={step.state}
-              className="flex min-w-0 flex-col gap-0.5 border-b border-r border-mode-rule px-3 py-2"
-            >
-              <span className={cn(RECORD_LABEL_CLASS, 'flex items-center gap-1.5', face.className)}>
-                {face.Glyph ? (
-                  <face.Glyph aria-hidden className="h-3 w-3 shrink-0" />
-                ) : (
-                  <span aria-hidden className="h-3 w-3 shrink-0 rounded-full border border-current" />
-                )}
-                <span className="truncate text-mode-ink">{step.label}</span>
-                <span className="sr-only">{face.word}</span>
-                {step.detail ? <span className="ml-auto shrink-0 normal-case tracking-normal">{step.detail}</span> : null}
-              </span>
-              <span className={cn('truncate text-role-caption', step.who ? 'text-mode-ink' : 'text-mode-muted')} title={step.who ?? undefined}>
-                {step.who ?? (step.state === 'todo' || step.state === 'unrecorded' ? face.word : '\u00a0')}
-              </span>
-              <span className={cn(RECORD_ID_CLASS, 'truncate font-normal text-mode-muted')}>{at ?? '\u00a0'}</span>
-            </li>
-          );
-        })}
-      </ol>
     </section>
+  );
+}
+
+/** Each pipeline step's glyph — the same icon-per-step grammar as the order's Fulfilment ladder. */
+const STEP_ICON: Readonly<Record<string, ReactNode>> = {
+  ordered: <Receipt aria-hidden />,
+  tracking: <Barcode aria-hidden />,
+  carrier: <Truck aria-hidden />,
+  delivered: <Truck aria-hidden />,
+  scanned: <DoorOpen aria-hidden />,
+  staged: <MapPin aria-hidden />,
+  unboxed: <PackageOpen aria-hidden />,
+  contents: <ListChecks aria-hidden />,
+  graded: <Star aria-hidden />,
+  tested: <ShieldCheck aria-hidden />,
+  labels: <Printer aria-hidden />,
+  received: <Check aria-hidden />,
+  putaway: <Warehouse aria-hidden />,
+};
+
+/** A step that was never stamped, but the record is past it. */
+const UNSTAMPED_META: Readonly<Record<Exclude<ReceivingStepState, 'done' | 'partial'>, string>> = {
+  todo: 'Not yet',
+  unrecorded: 'Not recorded',
+};
+
+/**
+ * The receiving pipeline as rail steps. "Now" is the first step after the
+ * furthest one stamped (a partly done step is itself "now"); a skipped step
+ * behind it stays dashed, never ringed.
+ */
+export function receivingRailSteps(steps: readonly ReceivingStatusStep[]): RailStep[] {
+  const lastDone = steps.reduce((last, step, i) => (step.state === 'done' || step.state === 'partial' ? i : last), -1);
+  const partialAt = steps.findIndex((step) => step.state === 'partial');
+  const currentIndex = partialAt >= 0 ? partialAt : lastDone + 1;
+  return steps.map((step, i): RailStep => {
+    const state: StepState = step.state === 'done' ? 'done' : i === currentIndex ? 'current' : 'pending';
+    const at = step.at ? formatMonthDayTimePST(step.at) : null;
+    const stamped = [step.who, at].filter(Boolean).join(' · ');
+    // A done step with no stamp reads its detail alone (`Ordered · 2026-09-28`), never "Done · …".
+    const meta =
+      step.state === 'done' || step.state === 'partial'
+        ? [stamped || (step.detail ? null : step.state === 'done' ? 'Done' : 'Partly done'), step.detail].filter(Boolean).join(' · ')
+        : [UNSTAMPED_META[step.state], step.detail].filter(Boolean).join(' · ');
+    return {
+      id: step.key,
+      icon: STEP_ICON[step.key] ?? <Boxes aria-hidden />,
+      state,
+      title: step.label,
+      meta,
+      testId: `receiving-step-${step.key}`,
+    };
+  });
+}
+
+/** The Fulfilment group — below the items, like the order record's. */
+export function ReceivingFulfilment({ steps, testId }: { steps: readonly ReceivingStatusStep[]; testId: string }) {
+  if (steps.length === 0) return null;
+  return (
+    <RecordGroup title="Fulfilment" testId={testId}>
+      <div className="px-4 py-3">
+        <StepRail steps={receivingRailSteps(steps)} size="lg" label="Receiving steps" />
+      </div>
+    </RecordGroup>
   );
 }

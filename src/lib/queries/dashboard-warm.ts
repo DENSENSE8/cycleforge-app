@@ -24,7 +24,7 @@ export function warmActiveView(
   const staffRaw = Number(sp.get('staff'));
   const staffId = Number.isFinite(staffRaw) && staffRaw > 0 ? staffRaw : undefined;
 
-  if (view === 'unshipped' || view === 'tested') {
+  if (view === 'unshipped' || view === 'picked') {
     return queryClient.prefetchQuery(unshippedOrdersQuery(unshippedWarmArgs(searchQuery, staffId)));
   }
   // Packed uses the first-class stagedOnly orders path (not week packerlogs).

@@ -1,12 +1,12 @@
 {
   "version": 1,
-  "generatedAt": "2026-09-28T00:36:55Z",
-  "totalRoutes": 1100,
+  "generatedAt": "2026-09-28T07:56:49Z",
+  "totalRoutes": 1121,
   "summary": {
-    "permissionGated": 894,
+    "permissionGated": 913,
     "authenticatedNoPermission": 123,
     "anonymousIntentional": 36,
-    "serviceToService": 47,
+    "serviceToService": 49,
     "ungatedRead": 0,
     "ungatedWrite": 0
   },
@@ -1899,6 +1899,15 @@
       "exemptReason": null
     },
     {
+      "path": "/api/cron/sessions-sweep/route.ts",
+      "methods": [
+        "GET"
+      ],
+      "gate": "cron bearer secret",
+      "permission": null,
+      "exemptReason": null
+    },
+    {
       "path": "/api/cron/shipping/metrics/route.ts",
       "methods": [
         "GET"
@@ -2122,6 +2131,15 @@
         "PATCH"
       ],
       "gate": "withAuth",
+      "permission": "orders.view",
+      "exemptReason": null
+    },
+    {
+      "path": "/api/customers/[id]/stats/route.ts",
+      "methods": [
+        "GET"
+      ],
+      "gate": "requireRoutePerm",
       "permission": "orders.view",
       "exemptReason": null
     },
@@ -2478,8 +2496,8 @@
       "methods": [
         "POST"
       ],
-      "gate": "withAuth",
-      "permission": "tech.scan_serial",
+      "gate": "withAuth (no permission)",
+      "permission": null,
       "exemptReason": null
     },
     {
@@ -4371,6 +4389,15 @@
       "exemptReason": null
     },
     {
+      "path": "/api/orders/[id]/buyer/route.ts",
+      "methods": [
+        "PATCH"
+      ],
+      "gate": "requireRoutePerm",
+      "permission": "orders.create",
+      "exemptReason": null
+    },
+    {
       "path": "/api/orders/[id]/cage-release/route.ts",
       "methods": [
         "GET",
@@ -4531,6 +4558,15 @@
       "exemptReason": null
     },
     {
+      "path": "/api/orders/[id]/possible-duplicates/route.ts",
+      "methods": [
+        "GET"
+      ],
+      "gate": "requireRoutePerm",
+      "permission": "orders.view",
+      "exemptReason": null
+    },
+    {
       "path": "/api/orders/[id]/price-breakdown/route.ts",
       "methods": [
         "GET"
@@ -4570,6 +4606,15 @@
     },
     {
       "path": "/api/orders/[id]/timeline/route.ts",
+      "methods": [
+        "GET"
+      ],
+      "gate": "requireRoutePerm",
+      "permission": "orders.view",
+      "exemptReason": null
+    },
+    {
+      "path": "/api/orders/[id]/tracking-history/route.ts",
       "methods": [
         "GET"
       ],
@@ -4724,7 +4769,44 @@
       "exemptReason": null
     },
     {
-      "path": "/api/orders/intake-suggestions/route.ts",
+      "path": "/api/orders/intake/assignees/route.ts",
+      "methods": [
+        "POST"
+      ],
+      "gate": "withAuth",
+      "permission": "orders.create",
+      "exemptReason": null
+    },
+    {
+      "path": "/api/orders/intake/catalog/ecwid-categories/route.ts",
+      "methods": [
+        "GET"
+      ],
+      "gate": "withAuth",
+      "permission": "orders.create",
+      "exemptReason": null
+    },
+    {
+      "path": "/api/orders/intake/catalog/ecwid-products/route.ts",
+      "methods": [
+        "GET"
+      ],
+      "gate": "withAuth",
+      "permission": "orders.create",
+      "exemptReason": null
+    },
+    {
+      "path": "/api/orders/intake/catalog/favorites/route.ts",
+      "methods": [
+        "GET",
+        "PUT"
+      ],
+      "gate": "withAuth",
+      "permission": "orders.create",
+      "exemptReason": null
+    },
+    {
+      "path": "/api/orders/intake/ecwid-orders/route.ts",
       "methods": [
         "GET"
       ],
@@ -4743,6 +4825,33 @@
     },
     {
       "path": "/api/orders/intake/products/route.ts",
+      "methods": [
+        "GET"
+      ],
+      "gate": "withAuth",
+      "permission": "orders.create",
+      "exemptReason": null
+    },
+    {
+      "path": "/api/orders/intake/square-invoices/link/route.ts",
+      "methods": [
+        "POST"
+      ],
+      "gate": "withAuth",
+      "permission": "orders.create",
+      "exemptReason": null
+    },
+    {
+      "path": "/api/orders/intake/square-invoices/payment/route.ts",
+      "methods": [
+        "GET"
+      ],
+      "gate": "withAuth",
+      "permission": "orders.create",
+      "exemptReason": null
+    },
+    {
+      "path": "/api/orders/intake/square-invoices/route.ts",
       "methods": [
         "GET"
       ],
@@ -4820,6 +4929,15 @@
       ],
       "gate": "withAuth",
       "permission": "orders.create",
+      "exemptReason": null
+    },
+    {
+      "path": "/api/orders/payments/methods/route.ts",
+      "methods": [
+        "GET"
+      ],
+      "gate": "withAuth",
+      "permission": "orders.view",
       "exemptReason": null
     },
     {
@@ -7182,8 +7300,8 @@
       "methods": [
         "POST"
       ],
-      "gate": "withAuth",
-      "permission": "tech.scan_serial",
+      "gate": "withAuth (no permission)",
+      "permission": null,
       "exemptReason": null
     },
     {
@@ -7825,6 +7943,15 @@
       ],
       "gate": "withAuth",
       "permission": "shipping.mark_shipped",
+      "exemptReason": null
+    },
+    {
+      "path": "/api/shipping/addresses/validate/route.ts",
+      "methods": [
+        "POST"
+      ],
+      "gate": "withAuth",
+      "permission": "orders.create",
       "exemptReason": null
     },
     {
@@ -9370,6 +9497,24 @@
       "exemptReason": null
     },
     {
+      "path": "/api/v1/label-ingestions/[id]/pdf/route.ts",
+      "methods": [
+        "GET"
+      ],
+      "gate": "withAuth",
+      "permission": "packing.review",
+      "exemptReason": null
+    },
+    {
+      "path": "/api/v1/label-ingestions/[id]/prints/route.ts",
+      "methods": [
+        "GET"
+      ],
+      "gate": "withAuth",
+      "permission": "packing.review",
+      "exemptReason": null
+    },
+    {
       "path": "/api/v1/label-ingestions/[id]/retry/route.ts",
       "methods": [
         "POST"
@@ -9398,12 +9543,31 @@
       "exemptReason": null
     },
     {
+      "path": "/api/v1/label-prints/route.ts",
+      "methods": [
+        "GET",
+        "POST"
+      ],
+      "gate": "withAuth",
+      "permission": "packing.review",
+      "exemptReason": null
+    },
+    {
       "path": "/api/v1/outbound/work/route.ts",
       "methods": [
         "GET"
       ],
       "gate": "withAuth",
       "permission": "orders.view",
+      "exemptReason": null
+    },
+    {
+      "path": "/api/v1/paperwork-prints/route.ts",
+      "methods": [
+        "POST"
+      ],
+      "gate": "withAuth",
+      "permission": "print.label",
       "exemptReason": null
     },
     {
@@ -9458,6 +9622,26 @@
       ],
       "gate": "withAuth",
       "permission": "orders.view",
+      "exemptReason": null
+    },
+    {
+      "path": "/api/v1/print-stations/assignment/route.ts",
+      "methods": [
+        "GET",
+        "PUT"
+      ],
+      "gate": "withAuth",
+      "permission": "print.label",
+      "exemptReason": null
+    },
+    {
+      "path": "/api/v1/print-stations/route.ts",
+      "methods": [
+        "GET",
+        "POST"
+      ],
+      "gate": "withAuth",
+      "permission": "print.label",
       "exemptReason": null
     },
     {
@@ -9868,6 +10052,15 @@
       "path": "/api/webhooks/square/route.ts",
       "methods": [
         "GET",
+        "POST"
+      ],
+      "gate": "webhook signature",
+      "permission": null,
+      "exemptReason": null
+    },
+    {
+      "path": "/api/webhooks/stripe/orders/route.ts",
+      "methods": [
         "POST"
       ],
       "gate": "webhook signature",

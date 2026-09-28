@@ -59,7 +59,7 @@ export function MobileTaskSheet({
         <MobileTaskBody key={row.id} row={row} nowMs={nowMs} canOpenTickets={canOpenTickets} onClose={onClose} />
       ) : (
         <div className="flex min-h-0 flex-1 flex-col">
-          <SheetHeader title={`TASK ${taskId}`} sub={null} onClose={onClose} />
+          <SheetHeader title={`Task ${taskId}`} sub={null} onClose={onClose} />
           <div className="flex flex-1 flex-col gap-2 px-1 pt-6">
             {loading ? (
               <p className={QUIET}>Loading the task…</p>
@@ -90,7 +90,7 @@ function SheetHeader({ title, sub, onClose }: { title: string; sub: string | nul
   return (
     <div className="flex shrink-0 items-start gap-2 px-1 pt-2">
       <div className="min-w-0 flex-1 pt-1">
-        <p className="font-mono text-role-micro uppercase tracking-wide tabular-nums text-text-faint">{title}</p>
+        <p className="font-mono text-role-micro tabular-nums text-text-faint">{title}</p>
         {sub ? <p className="truncate text-role-data font-semibold text-text-default">{sub}</p> : null}
       </div>
       <IconButton
@@ -179,7 +179,7 @@ function MobileTaskBody({
       }`
     : 'Add photo / video';
 
-  const reminder = row.remindAtMs == null ? null : format(new Date(row.remindAtMs), 'MMM d · h:mm a').toUpperCase();
+  const reminder = row.remindAtMs == null ? null : format(new Date(row.remindAtMs), 'MMM d · h:mm a');
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
@@ -198,14 +198,14 @@ function MobileTaskBody({
         }}
       />
 
-      <SheetHeader title={`TASK ${row.id}`} sub={row.projectName ?? taskRecordLabel(row)} onClose={onClose} />
+      <SheetHeader title={`Task ${row.id}`} sub={row.projectName ?? taskRecordLabel(row)} onClose={onClose} />
       <PomodoroTimer kind="task" id={row.id} canRun={open} className="px-1" />
       <div className="flex shrink-0 flex-wrap items-center gap-x-3 gap-y-1 border-b border-border-hairline px-1 pb-2 pt-1">
         <span className="flex items-center gap-1.5">
           <span aria-hidden className={cn('h-2 w-2 shrink-0', LIFECYCLE_CLASSES[state.lifecycle].dot)} />
           <span
             className={cn(
-              'font-mono text-role-micro font-semibold uppercase tracking-wide',
+              'font-mono text-role-micro font-semibold',
               state.late ? 'text-text-danger' : 'text-text-default',
             )}
           >

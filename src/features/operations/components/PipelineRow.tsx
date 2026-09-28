@@ -85,7 +85,7 @@ function StageBar({ title, href, stages, isLoading, empty }: StageBarProps) {
             {stages.map((s) => (
               <div key={s.label} className="flex items-center gap-2 min-w-0">
                 <span className={`w-2 h-2 rounded-full shrink-0 ${s.color}`} />
-                <span className="text-role-micro uppercase tracking-[0.12em] text-text-muted truncate">
+                <span className="text-role-micro text-text-muted truncate">
                   {s.label}
                 </span>
                 <span className="ml-auto text-role-caption font-semibold text-text-default tabular-nums">

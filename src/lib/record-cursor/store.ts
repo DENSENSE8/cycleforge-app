@@ -17,11 +17,15 @@ export const RECORD_CURSOR_PRIORITY = {
   grid: 100,
 } as const;
 
-/** How a surface opens a record on the cursor's behalf. */
+/**
+ * How a surface opens a record on the cursor's behalf. Returns `false` when the
+ * surface does not list that id (a refetch moved it, a filter hides it) — the
+ * caller that named it (a scan) then decides what else to do.
+ */
 export type RecordCursorOpen = (
   id: RecordId,
   ctx: { intent: CursorIntent; revealFoldKey: string | null },
-) => void;
+) => boolean;
 
 export interface RecordCursorPublication {
   /** Stable identity of the publishing surface, e.g. `orders-grid`,

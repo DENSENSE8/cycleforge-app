@@ -550,7 +550,7 @@ function OrderSearchRow({
         />
       ) : null}
       {suggesting && !showList && state.status === 'idle' && trimmedOrder.length >= 2 ? (
-        <p className="px-1 text-role-eyebrow font-semibold uppercase tracking-widest text-text-faint">
+        <p className="px-1 text-role-eyebrow font-semibold text-text-faint">
           Searching orders…
         </p>
       ) : null}
@@ -649,7 +649,7 @@ function buildTicketPrefill(result: ShippedOrderCompare, receivedSerial: string 
     result.serial_match === 'match'
       ? 'serials match'
       : result.serial_match === 'mismatch'
-        ? 'SERIAL MISMATCH'
+        ? 'serial mismatch'
         : result.serial_match === 'no_shipped_serial'
           ? 'no serial on record for this order'
           : 'no received serial to compare';
@@ -737,7 +737,7 @@ function CompareResult({
           <button
             type="button"
             onClick={onClear}
-            className="ds-raw-button text-role-eyebrow uppercase tracking-widest text-text-faint hover:text-text-muted"
+            className="ds-raw-button text-role-eyebrow text-text-faint hover:text-text-muted"
           >
             Clear
           </button>
@@ -800,7 +800,7 @@ function SerialContrastRow({
   const trimmed = (serial ?? '').trim();
   return (
     <div className="flex items-center gap-2">
-      <span className="w-14 shrink-0 text-role-eyebrow uppercase tracking-widest text-text-faint">
+      <span className="w-14 shrink-0 text-role-eyebrow text-text-faint">
         {label}
       </span>
       {trimmed ? (

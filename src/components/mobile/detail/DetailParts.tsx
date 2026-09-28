@@ -69,7 +69,7 @@ export function DetailFact({
       }`}
     >
       <dt
-        className={`shrink-0 font-mono text-role-caption uppercase ${
+        className={`shrink-0 font-mono text-role-caption ${
           copied ? 'text-mode-ink' : 'text-mode-muted'
         } group-has-[button:active]:text-mode-panel`}
       >
@@ -107,7 +107,7 @@ export function DetailSectionHeading({ id, children }: { id?: string; children: 
   return (
     <h2
       id={id}
-      className="flex min-h-8 items-center bg-mode-well px-mode-page font-mono text-role-eyebrow uppercase text-mode-muted"
+      className="flex min-h-8 items-center bg-mode-well px-mode-page font-mono text-role-eyebrow text-mode-muted"
     >
       {children}
     </h2>

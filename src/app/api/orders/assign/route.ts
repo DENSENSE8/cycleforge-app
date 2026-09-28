@@ -30,6 +30,7 @@ import {
   type OrderShortageIdentity,
 } from '@/lib/orders/order-shortage-identity';
 import { clearOrderLineShortages, upsertOrderLineShortage } from '@/lib/orders/order-line-shortage';
+import { refreshOrderStageFacts } from '@/lib/orders/order-stage-facts';
 
 /** POST /api/orders/assign Assigns picker (ORDER/PICK) and/or packer (ORDER/PACK) to one or more orders via work_assignments. */
 export const POST = withAuth(async (req: NextRequest, ctx) => {
@@ -113,14 +114,24 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
       // ── 2b. Update carrier tracking through shipment backbone ────────────── Capture which orders had NO tracking yet (shipment_id IS NULL)…
       let newlyTrackedIds: number[] = [];
       const trimmedTracking = String(shippingTrackingNumber ?? '').trim();
-      if (shippingTrackingNumber !== undefined && trimmedTracking) {
-        const priorNull = await client.query(
-          `SELECT id FROM orders WHERE id = ANY($1::int[]) AND shipment_id IS NULL`,
+      // The number each order carried before this write — a swap overwrites the
+      // STN row in place, so the audit row is the only record of the old one.
+      let replacedTracking: Array<{ id: number; previous: string }> = [];
+      if (shippingTrackingNumber !== undefined) {
+        const prior = await client.query<{ id: number; shipment_id: number | null; tracking: string | null }>(
+          `SELECT o.id, o.shipment_id, stn.tracking_number_raw AS tracking
+             FROM orders o
+             LEFT JOIN shipping_tracking_numbers stn ON stn.id = o.shipment_id
+            WHERE o.id = ANY($1::int[])`,
           [idsToUpdate]
         );
-        newlyTrackedIds = priorNull.rows.map((r: { id: number }) => Number(r.id));
-        await upsertOrderTracking(idsToUpdate, shippingTrackingNumber, client, ctx.organizationId);
-      } else if (shippingTrackingNumber !== undefined) {
+        const key = (v: string) => v.replace(/\s+/g, '').toUpperCase();
+        replacedTracking = prior.rows
+          .filter((r) => r.tracking && key(r.tracking) !== key(trimmedTracking))
+          .map((r) => ({ id: Number(r.id), previous: String(r.tracking).trim() }));
+        if (trimmedTracking) {
+          newlyTrackedIds = prior.rows.filter((r) => r.shipment_id == null).map((r) => Number(r.id));
+        }
         await upsertOrderTracking(idsToUpdate, shippingTrackingNumber, client, ctx.organizationId);
       }
 
@@ -395,6 +406,24 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
         ),
       );
 
+      // Tracking swapped or cleared: keep the old number readable to every role
+      // (after/extra, never before_data — that one is admin-only on the timeline).
+      if (replacedTracking.length > 0) {
+        await Promise.all(
+          replacedTracking.map(({ id, previous }) =>
+            recordAudit(client, ctx, req, {
+              source: 'api.orders.assign',
+              action: AUDIT_ACTION.TRACKING_REPLACED,
+              entityType: 'ORDER',
+              entityId: String(id),
+              after: { trackingNumber: trimmedTracking || null, previousTrackingNumber: previous },
+              actorStaffIdOverride: actorId,
+              extra: { orderId: id, previousTrackingNumber: previous, trackingNumber: trimmedTracking || null },
+            }),
+          ),
+        );
+      }
+
       // One-time "tracking added" event + first-time stamp for orders that had
       // no tracking before. The column is a fast read projection; audit_logs is SoT.
       if (newlyTrackedIds.length > 0) {
@@ -418,6 +447,9 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
         );
       }
 
+      // Tracking / order-number edits move the shipment- and order-id-keyed
+      // stage facts (pack scans, sole-shipment scans).
+      await refreshOrderStageFacts(ctx.organizationId, { orderIds: idsToUpdate }, client);
       });
     } catch (txError) {
       if (txError === DUPLICATE_ORDER_ID) {

@@ -1,6 +1,6 @@
 /** POST /api/auth/signup */
 
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest, NextResponse, after } from 'next/server';
 import { z } from 'zod';
 import pool from '@/lib/db';
 import { withAuth } from '@/lib/auth/withAuth';
@@ -14,6 +14,7 @@ import { sendEmailBestEffort } from '@/lib/email/send';
 import { createStripeCustomer } from '@/lib/billing/stripe';
 import { seedOrgCatalog } from '@/lib/neon/catalog-queries';
 import { provisionSignupTenant } from '@/lib/auth/signup-tenant';
+import { captureError } from '@/lib/observability/errors';
 import {
   mintEmailVerificationToken,
   buildVerifyEmailLink,
@@ -93,11 +94,8 @@ export const POST = withAuth(async (req: NextRequest) => {
     await client.query('COMMIT');
   } catch (err) {
     try { await client.query('ROLLBACK'); } catch { /* swallow */ }
-    console.error('[signup] db error:', err);
-    return NextResponse.json(
-      { error: 'INTERNAL', message: err instanceof Error ? err.message : String(err) },
-      { status: 500 },
-    );
+    // withAuth's error floor reports it (captureError) and answers 500 with the request id.
+    throw err;
   } finally {
     client.release();
   }
@@ -125,14 +123,14 @@ export const POST = withAuth(async (req: NextRequest) => {
     after: { slug, name: parsed.companyName, plan: 'trial', adminStaffId: staffId, ownerAccountId: accountId },
   });
 
-  // 5. Side-effects (best-effort, must not break the signup) Seed the org's editable platform/account/type catalog so a fresh tenant isn't…
-  void seedOrgCatalog(orgId).catch((err) =>
-    console.error('[signup] seedOrgCatalog failed for new org', orgId, err),
-  );
-  // Template Platform Phase 1:
+  // 5. Post-response side effects: best effort, never break signup, but every
+  // failure is reported (captureError) instead of vanishing in a detached promise.
+  const report = (step: string) => (err: unknown) =>
+    captureError(err, { route: 'POST /api/auth/signup', step, orgId, staffId });
+  after(() => seedOrgCatalog(orgId).catch(report('seedOrgCatalog')));
 
   // WS6.3 — welcome email + email verification.
-  void (async () => {
+  after(async () => {
     let verifyLine = '';
     try {
       const { token } = await mintEmailVerificationToken({ organizationId: orgId, staffId });
@@ -140,9 +138,9 @@ export const POST = withAuth(async (req: NextRequest) => {
         `Confirm your email — this link also signs you in, valid for ${EMAIL_VERIFY_TTL_MINUTES} minutes:\n` +
         `  ${buildVerifyEmailLink(token)}\n\n`;
     } catch (err) {
-      console.error('[signup] verification token mint failed for new org', orgId, err);
+      report('mintEmailVerificationToken')(err);
     }
-    void sendEmailBestEffort({
+    await sendEmailBestEffort({
       to: parsed.email,
       subject: `Welcome to ${parsed.companyName}`,
       text:
@@ -151,25 +149,27 @@ export const POST = withAuth(async (req: NextRequest) => {
         `  ${process.env.NEXT_PUBLIC_APP_URL || 'https://app.example.com'}/\n\n` +
         verifyLine +
         `You're on a 14-day trial. Invite teammates from the admin panel.\n`,
-    });
-  })();
+    }); // sendEmailBestEffort never rejects; it logs its own send failures.
+  });
 
   if (process.env.STRIPE_SECRET_KEY) {
-    // Provision the Stripe customer up front so the first upgrade attempt
-    // doesn't have to wait on a round-trip. Best effort — billing still
-    // works if this fails.
-    createStripeCustomer({
-      email: parsed.email,
-      name: parsed.companyName,
-      metadata: { organization_id: orgId, slug },
-    })
-      .then(async ({ id }) => {
+    // Provision the Stripe customer so the first upgrade attempt doesn't wait
+    // on a round-trip. Best effort — billing still works if this fails.
+    after(async () => {
+      try {
+        const { id } = await createStripeCustomer({
+          email: parsed.email,
+          name: parsed.companyName,
+          metadata: { organization_id: orgId, slug },
+        });
         await pool.query(
           `UPDATE organizations SET stripe_customer_id = $1, updated_at = now() WHERE id = $2`,
           [id, orgId],
         );
-      })
-      .catch((err) => console.warn('[signup] stripe customer create failed:', err));
+      } catch (err) {
+        report('createStripeCustomer')(err);
+      }
+    });
   }
 
   // The owner's very first sign-in: stamps last_login_at and lands on Daily

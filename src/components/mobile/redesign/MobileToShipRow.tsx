@@ -54,7 +54,7 @@ export const MobileToShipRow = memo(function MobileToShipRow({
       ? expectedUnits
       : null;
   const progress = progressTotal != null
-    ? `PICKED ${row.pickedUnitCount ?? 0}/${progressTotal}`
+    ? `Picked ${row.pickedUnitCount ?? 0}/${progressTotal}`
     : null;
   const orderReference = row.orderId ?? row.recordLabel;
   const listingItemKey = row.itemNumber || row.sku;
@@ -82,7 +82,7 @@ export const MobileToShipRow = memo(function MobileToShipRow({
   const managementStatus = UNSHIPPED_STATE_META[workflow.stage].label;
   const managementOwner = workflow.stage === 'PENDING' || workflow.stage === 'AWAITING_LABEL'
     ? row.techName || 'Warehouse'
-    : workflow.stage === 'TESTED'
+    : workflow.stage === 'PICKED'
       ? row.packerName || 'Packing'
       : workflow.stage === 'PACKED_STAGED'
         ? 'Shipping'

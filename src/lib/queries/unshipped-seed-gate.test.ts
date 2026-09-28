@@ -19,7 +19,7 @@ test('tabs that swap the table out do not seed', () => {
 test('a facet that changes the query key does not seed', () => {
   assert.equal(shouldSeedReadyToPackQueue({ search: 'bose' }), false);
   assert.equal(shouldSeedReadyToPackQueue({ staff: '7' }), false);
-  assert.equal(shouldSeedReadyToPackQueue({ stage: 'tested' }), false);
+  assert.equal(shouldSeedReadyToPackQueue({ stage: 'picked' }), false);
   // `stage=all` IS the default — it resolves to the seeded `stage: null` key.
   assert.equal(shouldSeedReadyToPackQueue({ stage: 'all' }), true);
 });

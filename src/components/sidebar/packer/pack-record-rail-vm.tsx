@@ -43,7 +43,7 @@ export function packerRecordToRailVM(record: PackerRecord): RailRowVM {
     title,
     titleAttr: title,
     meta: (
-      <span className="block truncate font-semibold uppercase tracking-widest text-text-soft">
+      <span className="block truncate font-semibold text-text-soft">
         {qty} · {condition}
       </span>
     ),

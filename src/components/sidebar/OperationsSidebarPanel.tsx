@@ -118,7 +118,7 @@ function LiveSidebar() {
             const cell = data?.summary?.[k.key];
             return (
               <div key={k.key} className="rounded-none border border-border-soft bg-surface-card p-2.5">
-                <p className="text-role-eyebrow uppercase tracking-widest text-text-soft">{k.label}</p>
+                <p className="text-role-eyebrow text-text-soft">{k.label}</p>
                 <p className={cn('mt-0.5 text-xl font-semibold tabular-nums leading-none', k.tone)}>
                   {cell ? cell.value.toLocaleString() : isLoading ? '·' : '0'}
                 </p>
@@ -136,7 +136,7 @@ function LiveSidebar() {
                 <span className="mt-1 h-2 w-2 shrink-0 rounded-full bg-blue-400" aria-hidden />
                 <div className="min-w-0">
                   <p className="truncate text-role-caption font-semibold text-text-default">{r.summary || r.type}</p>
-                  <p className="truncate text-role-eyebrow font-semibold uppercase tracking-widest text-text-soft">
+                  <p className="truncate text-role-eyebrow font-semibold text-text-soft">
                     {r.source} · {r.actor_name ?? 'system'}
                   </p>
                 </div>

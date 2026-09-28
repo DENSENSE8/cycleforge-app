@@ -8,7 +8,7 @@ import { getStationChannelName, safeChannelName } from '@/lib/realtime/channels'
 import { useAblyChannel } from './useAblyChannel';
 import { useAuth } from '@/contexts/AuthContext';
 
-export interface TechRecord {
+export interface DeskPickRecord {
   id: number;
   source_row_id?: number;
   source_kind?: 'tech_serial' | 'fba_scan' | 'tech_scan';
@@ -62,19 +62,19 @@ interface UseDeskPickLogsOptions {
 
 export type DeskPickLogsScope = number | 'all';
 
-function prependTechRecordToMatchingWeekCaches(
+function prependDeskPickRecordToMatchingWeekCaches(
   queryClient: QueryClient,
   techId: DeskPickLogsScope,
-  record: TechRecord,
+  record: DeskPickRecord,
 ) {
   const createdAt = record.created_at || new Date().toISOString();
   const recordDate = toPSTDateKey(createdAt);
-  const recordForCache: TechRecord = {
+  const recordForCache: DeskPickRecord = {
     ...record,
     created_at: record.created_at || createdAt,
   };
 
-  const queries = queryClient.getQueriesData<TechRecord[]>({
+  const queries = queryClient.getQueriesData<DeskPickRecord[]>({
     queryKey: ['desk-pick-logs', techId],
   });
   /** `q: ''` — the FEED caches, the only ones a fresh scan may be spliced into. */
@@ -100,7 +100,7 @@ function prependTechRecordToMatchingWeekCaches(
       continue;
     }
     if (prev.some((r) => r.id === recordForCache.id)) continue;
-    queryClient.setQueryData<TechRecord[]>(queryKey, (old) => {
+    queryClient.setQueryData<DeskPickRecord[]>(queryKey, (old) => {
       if (!old) return old;
       if (old.some((r) => r.id === recordForCache.id)) return old;
       return [recordForCache, ...old];
@@ -134,7 +134,7 @@ export function useDeskPickLogs(techId: DeskPickLogsScope, options: UseDeskPickL
     },
   ] as const;
 
-  const query = useQuery<TechRecord[]>({
+  const query = useQuery<DeskPickRecord[]>({
     queryKey,
     queryFn: async () => {
       const params = new URLSearchParams({
@@ -175,7 +175,7 @@ export function useDeskPickLogs(techId: DeskPickLogsScope, options: UseDeskPickL
       if (!matchesScope) return;
 
       if (action === 'insert' && row) {
-        prependTechRecordToMatchingWeekCaches(queryClient, techId, row as TechRecord);
+        prependDeskPickRecordToMatchingWeekCaches(queryClient, techId, row as DeskPickRecord);
       } else if (action === 'insert' || action === 'update' || action === 'delete') {
         // Covers: insert without full row data, updates to existing rows,
         // and deletions (e.g. undo-last) from any client or device.
@@ -193,13 +193,13 @@ export function useDeskPickLogs(techId: DeskPickLogsScope, options: UseDeskPickL
   // new tracking number creates a new row — serial additions do NOT fire this.
   useEffect(() => {
     const handleNewLog = (e: any) => {
-      const record = e?.detail as TechRecord | null;
+      const record = e?.detail as DeskPickRecord | null;
       if (!record) return;
       if (techId !== 'all' && Number(record.tested_by) !== techId) return;
       const rid = record.id;
       if (rid == null || (typeof rid === 'number' && !Number.isFinite(rid))) return;
 
-      prependTechRecordToMatchingWeekCaches(queryClient, techId, record);
+      prependDeskPickRecordToMatchingWeekCaches(queryClient, techId, record);
       invalidateDeskPickCounts(queryClient);
     };
     window.addEventListener('tech-log-added', handleNewLog);

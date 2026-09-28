@@ -97,7 +97,7 @@ export function ThreadNoteComposer({
   return (
     <div className="space-y-2">
       <div className="flex items-center justify-between gap-2">
-        <p className="text-role-eyebrow uppercase tracking-widest text-violet-600/80">
+        <p className="text-role-eyebrow text-violet-600/80">
           Warehouse thread
         </p>
         <ThreadRecordToggle value={isOnRecord} onChange={onIsOnRecordChange} />

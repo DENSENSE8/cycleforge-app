@@ -41,10 +41,10 @@ export function WorkOrderAssignmentCard(props: WorkOrderAssignmentCardProps) {
       </button>
 
       <div className="min-w-0 text-center leading-tight">
-        <p className="text-role-eyebrow uppercase tracking-[0.22em] text-text-soft">
+        <p className="text-role-eyebrow text-text-soft">
           {remaining} remaining
         </p>
-        <p className="mt-0.5 text-role-micro uppercase tracking-[0.16em] text-text-soft">
+        <p className="mt-0.5 text-role-micro text-text-soft">
           {todayUnassignedCount} unassigned · {todayTotalCount} total today
         </p>
       </div>
@@ -64,7 +64,7 @@ export function WorkOrderAssignmentCard(props: WorkOrderAssignmentCardProps) {
   const headerEyebrow = (
     <div className="flex w-full min-w-0 items-center justify-between gap-3">
       <div className="flex min-h-[26px] min-w-0 flex-1 items-center">
-        <span className="truncate text-sm font-semibold uppercase tracking-[0.08em] leading-none text-text-soft">
+        <span className="truncate text-sm font-semibold leading-none text-text-soft">
           {assignmentHeaderContextText(row)}
         </span>
       </div>
@@ -151,7 +151,7 @@ export function WorkOrderAssignmentCard(props: WorkOrderAssignmentCardProps) {
           </div>
 
           <div className="flex items-center justify-between gap-3 border-t border-border-hairline pt-3">
-            <span className="text-role-eyebrow uppercase tracking-[0.22em] text-text-soft">
+            <span className="text-role-eyebrow text-text-soft">
               Deadline
             </span>
             <input
@@ -170,7 +170,7 @@ export function WorkOrderAssignmentCard(props: WorkOrderAssignmentCardProps) {
             <button
               type="button"
               onClick={handleMarkDone}
-              className="h-8 rounded-lg border border-border-soft bg-surface-canvas text-role-eyebrow uppercase tracking-[0.18em] text-text-muted transition-colors hover:border-border-default hover:bg-surface-sunken"
+              className="h-8 rounded-lg border border-border-soft bg-surface-canvas text-role-eyebrow text-text-muted transition-colors hover:border-border-default hover:bg-surface-sunken"
             >
               Mark as Done
             </button>
@@ -178,7 +178,7 @@ export function WorkOrderAssignmentCard(props: WorkOrderAssignmentCardProps) {
               <button
                 type="button"
                 onClick={handleMarkShipped}
-                className="h-8 rounded-lg bg-emerald-600 text-role-eyebrow uppercase tracking-[0.18em] text-white transition-colors hover:bg-emerald-700 shadow-sm"
+                className="h-8 rounded-lg bg-emerald-600 text-role-eyebrow text-white transition-colors hover:bg-emerald-700 shadow-sm"
               >
                 Mark as Shipped
               </button>

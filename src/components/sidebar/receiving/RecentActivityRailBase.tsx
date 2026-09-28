@@ -362,7 +362,7 @@ function ReceivingRowMain({
         // title clean. The flag itself is boxed to the qty line's own height
         // (see TicketRailFlag) so a ticketed row is not taller than its peers.
         meta: (
-          <span className="flex min-w-0 items-center gap-1 font-semibold uppercase tracking-widest text-text-soft">
+          <span className="flex min-w-0 items-center gap-1 font-semibold text-text-soft">
             <span className="truncate">
               {renderQuantity(row)}
               {techId ? <span className={`ml-1 ${techColor}`}>· {getStaffName(techId)}</span> : null}
@@ -425,21 +425,21 @@ function ReceivingPopoverContent({
         <div className="flex items-start gap-2">
           <p className="flex-1 text-sm font-semibold leading-snug text-text-default">{title}</p>
           {groupSize > 1 ? (
-            <span className="shrink-0 rounded bg-indigo-100 inset-chip text-role-micro uppercase tracking-widest text-indigo-700">PKG · {groupSize}</span>
+            <span className="shrink-0 rounded bg-indigo-100 inset-chip text-role-micro text-indigo-700">Pkg · {groupSize}</span>
           ) : null}
         </div>
         <div className="mt-1.5 flex flex-wrap items-center gap-1">
           <span className={`shrink-0 text-role-caption font-semibold tabular-nums ${isComplete ? 'text-emerald-600' : 'text-text-muted'}`}>
             {qtyCurrent}<span className="text-text-faint mx-0.5">/</span><span className="text-text-faint">{qtyTotal ?? '?'}</span>
           </span>
-          <span className={`rounded inset-chip text-role-eyebrow uppercase tracking-widest ring-1 ring-inset ${conditionTone}`}>{conditionLabel}</span>
-          <span className={`rounded inset-chip text-role-eyebrow uppercase tracking-widest ${workflowTone}`}>{workflowLabel}</span>
+          <span className={`rounded inset-chip text-role-eyebrow ring-1 ring-inset ${conditionTone}`}>{conditionLabel}</span>
+          <span className={`rounded inset-chip text-role-eyebrow ${workflowTone}`}>{workflowLabel}</span>
           {/* Unfound cartons have no Zoho PO — their RECEIVED state is local-only
               (no Zoho receive). The "No PO" tag marks that the website↔Zoho gap
               is intentional, not a failed sync. */}
           {row.receiving_source === 'unmatched' ? (
             <HoverTooltip label="No matching PO — received locally only" asChild>
-              <span className="rounded bg-surface-sunken inset-chip text-role-eyebrow uppercase tracking-widest text-text-soft ring-1 ring-inset ring-border-soft">No PO</span>
+              <span className="rounded bg-surface-sunken inset-chip text-role-eyebrow text-text-soft ring-1 ring-inset ring-border-soft">No PO</span>
             </HoverTooltip>
           ) : null}
           {/* Phase 2: a physically-present box whose Zoho PO already reads billed/closed stays in the queue (not hidden) with this badge, surfacing… */}
@@ -447,14 +447,14 @@ function ReceivingPopoverContent({
             String(row.zoho_status || '').toLowerCase(),
           ) ? (
             <HoverTooltip label={`The inventory system marks this PO "${row.zoho_status}" — already received/closed upstream, but the box is still here to unbox`} asChild>
-              <span className="rounded bg-amber-100 inset-chip text-role-eyebrow uppercase tracking-widest text-amber-700 ring-1 ring-inset ring-amber-200">PO: {String(row.zoho_status)}</span>
+              <span className="rounded bg-amber-100 inset-chip text-role-eyebrow text-amber-700 ring-1 ring-inset ring-amber-200">PO: {String(row.zoho_status)}</span>
             </HoverTooltip>
           ) : null}
           {row.needs_test ? (
-            <span className="rounded bg-orange-100 inset-chip text-role-eyebrow uppercase tracking-widest text-orange-700">Test</span>
+            <span className="rounded bg-orange-100 inset-chip text-role-eyebrow text-orange-700">Test</span>
           ) : null}
           {pickupLabel ? (
-            <span className="rounded bg-emerald-50 inset-chip text-role-eyebrow uppercase tracking-widest text-emerald-700 ring-1 ring-inset ring-emerald-200">
+            <span className="rounded bg-emerald-50 inset-chip text-role-eyebrow text-emerald-700 ring-1 ring-inset ring-emerald-200">
               {pickupLabel}
             </span>
           ) : null}
@@ -463,7 +463,7 @@ function ReceivingPopoverContent({
             asChild
           >
             <span
-              className={`ml-auto inline-flex items-center gap-1 rounded inset-chip text-role-eyebrow uppercase tracking-widest ${
+              className={`ml-auto inline-flex items-center gap-1 rounded inset-chip text-role-eyebrow ${
                 (row.photo_count ?? 0) > 0 ? 'bg-blue-50 text-blue-700 ring-1 ring-inset ring-blue-200' : 'bg-surface-canvas text-text-faint ring-1 ring-inset ring-border-soft'
               }`}
             >

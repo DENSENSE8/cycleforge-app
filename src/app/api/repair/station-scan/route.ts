@@ -6,9 +6,13 @@ import { appendRepairStatusHistory, getRepairById } from '@/lib/neon/repair-serv
 import { invalidateCacheTags } from '@/lib/cache/upstash-cache';
 import { publishRepairChanged } from '@/lib/realtime/publish';
 import { withAuth } from '@/lib/auth/withAuth';
+import { audit } from '@/lib/auth/audit';
+import { recordProspectiveStrictDenial } from '@/lib/auth/strict-rehearsal';
 
 const ROUTE = 'tech.scan-repair-station';
 const REPAIR_TAGS = ['repair-service'];
+/** The Picker desk and the QC bench both scan RS- tickets; withAuth can't express the OR. */
+const SCAN_PERMISSIONS = ['picking.scan', 'tech.scan_serial'] as const;
 
 function parseRepairId(repairScan: string): number | null {
   const m = String(repairScan || '').trim().toUpperCase().match(/^RS-(\d+)$/);
@@ -18,6 +22,25 @@ function parseRepairId(repairScan: string): number | null {
 }
 
 export const POST = withAuth(async (req: NextRequest, ctx) => {
+  if (!SCAN_PERMISSIONS.some((p) => ctx.storedPermissions.has(p))) {
+    for (const p of SCAN_PERMISSIONS) await recordProspectiveStrictDenial(pool, ctx, req, p);
+  }
+  if (!SCAN_PERMISSIONS.some((p) => ctx.permissions.has(p))) {
+    await audit({
+      staffId: ctx.staffId,
+      event: 'permission.denied',
+      result: 'denied',
+      sid: ctx.session.sid,
+      ip: req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || null,
+      userAgent: req.headers.get('user-agent'),
+      detail: { permission: SCAN_PERMISSIONS.join('|'), api: true, path: req.nextUrl.pathname },
+    });
+    return NextResponse.json(
+      { success: false, error: 'FORBIDDEN', permission: SCAN_PERMISSIONS.join('|') },
+      { status: 403 },
+    );
+  }
+
   const body = await req.json();
   const idemKey = readIdempotencyKey(req, body?.idempotencyKey);
   if (idemKey) {
@@ -86,4 +109,4 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
   }
 
   return NextResponse.json(out);
-}, { permission: 'tech.scan_serial' });
+});

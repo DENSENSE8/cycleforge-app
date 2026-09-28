@@ -14,9 +14,10 @@ export interface RecordStateFace {
 
 /**
  * Fact label face — the region's label VOICE (`mode-label`, modes.ts
- * `labelVoice`): 10px mono bold caps at 0.08em on the floor (BRIEF §4
- * industrial; 700 is the heaviest mono cut loaded), 12px sans medium sentence
- * case on a desk (owner 2026-09-26). Write labels in sentence case in source.
+ * `labelVoice`): 11px mono bold on the floor (BRIEF §4 industrial; 700 is
+ * the heaviest mono cut loaded), 12px sans medium on a desk. Sentence case in
+ * every mode — no voice uppercases (owner 2026-09-26, extended to the floor
+ * 2026-09-28). Write labels in sentence case in source.
  */
 export const RECORD_LABEL_CLASS = 'mode-label';
 
@@ -58,8 +59,8 @@ export const RECORD_QTY_BADGE_CLASS = `inline-flex min-w-7 items-center justify-
 
 /**
  * Micro code voice — note badge, `+ Note`, condition chip. The region's label
- * voice (`--mode-label-*`, modes.ts): mono · caps · tracked on industrial,
- * sans · sentence case in triage. Write the text in sentence case in source.
+ * voice (`--mode-label-*`, modes.ts): mono on industrial, sans in triage —
+ * sentence case in both. Write the text in sentence case in source.
  */
 const RECORD_MICRO_CODE_CLASS =
   'rounded-mode-control font-[family-name:var(--mode-label-font)] text-role-micro font-bold mode-label-case leading-none';

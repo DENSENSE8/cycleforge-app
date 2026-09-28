@@ -27,7 +27,7 @@ export function NasAddressPanel({ c }: { c: StationNasFoldersController }) {
                 key={slot}
                 type="button"
                 onClick={() => setServers((p) => ({ ...p, active: slot }))}
-                className={`px-3 py-1.5 text-role-micro uppercase tracking-widest transition-colors ${
+                className={`px-3 py-1.5 text-role-micro transition-colors ${
                   servers.active === slot ? 'bg-blue-600 text-white' : 'bg-surface-card text-text-soft hover:bg-surface-hover'
                 }`}
               >
@@ -42,7 +42,7 @@ export function NasAddressPanel({ c }: { c: StationNasFoldersController }) {
             <div className="w-24 shrink-0">
               <p className="text-role-caption font-semibold text-text-default">{slot === 'prod' ? 'Production' : 'Testing'}</p>
               {servers.active === slot ? (
-                <span className="text-role-micro uppercase tracking-widest text-emerald-600">● Active</span>
+                <span className="text-role-micro text-emerald-600">● Active</span>
               ) : null}
             </div>
             <input
@@ -57,7 +57,7 @@ export function NasAddressPanel({ c }: { c: StationNasFoldersController }) {
         ))}
 
         <div className="flex items-center justify-end gap-3">
-          {serversDirty ? <span className="text-role-micro uppercase tracking-widest text-amber-600">Unsaved changes</span> : null}
+          {serversDirty ? <span className="text-role-micro text-amber-600">Unsaved changes</span> : null}
           <Button
             type="button"
             variant="primary"

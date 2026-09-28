@@ -59,7 +59,6 @@ describe('labelPrintFeedToRailVM', () => {
   it('maps status to rail dots', () => {
     assert.equal(getLabelPrintStatusDot(feedItem({ current_status: 'STOCKED' })), 'bg-emerald-500');
     assert.equal(getLabelPrintStatusDot(feedItem({ current_status: null })), 'bg-emerald-500');
-    assert.equal(getLabelPrintStatusDotLabel(feedItem({ current_status: 'TESTED' })), 'TESTED');
     assert.equal(getLabelPrintStatusDotLabel(feedItem({})), 'Label printed');
   });
 });

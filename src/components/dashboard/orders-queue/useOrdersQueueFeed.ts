@@ -35,6 +35,7 @@ import { useOrderAssignment } from '@/hooks/useOrderAssignment';
 import { refreshDomain } from '@/lib/refresh/bus';
 import { toast } from '@/lib/toast';
 import { useRecentImportedOrders } from '@/lib/orders/recent-imports';
+import { useHiddenRecords } from '@/design-system/components/triage-card-list/dismiss';
 
 /** `getDaysLateNullable`, memoized on `(today, deadline)`. */
 const DAYS_LATE_CACHE = new Map<string, number | null>();
@@ -119,7 +120,8 @@ interface UseOrdersQueueFeedOptions {
 /** Inline-edit commit targets — one waist for every presenter. */
 export interface OrdersQueueCommits {
   handleCommitCondition: (record: ShippedOrder, condition: string | null) => void;
-  handleCommitShipBy: (record: ShippedOrder, dateKey: string | null) => void;
+  /** `onCommitted` runs once the server accepted the write — an Undo offered before that would race it. */
+  handleCommitShipBy: (record: ShippedOrder, dateKey: string | null, onCommitted?: () => void) => void;
   handleCommitStageAssign: (
     record: ShippedOrder,
     fieldId: 'orders.picked' | 'orders.packed',
@@ -132,7 +134,7 @@ export interface OrdersQueueCommits {
   /** Set the SKU's home bin (`sku_stock.location`) — where this SKU is picked from. */
   handleCommitSkuBin: (record: ShippedOrder, locationBarcode: string) => void;
   /** Replace the order's primary carrier tracking # (assign waist → upsertOrderTracking). */
-  handleCommitTracking: (record: ShippedOrder, tracking: string) => void;
+  handleCommitTracking: (record: ShippedOrder, tracking: string, onCommitted?: () => void) => void;
 }
 
 interface OrdersQueueSortMenu {
@@ -187,13 +189,13 @@ export function useOrdersQueueFeed({
 
   // `'server'` ⇒ the fetch already ran the match over the WHOLE scope; running
   // it again here could only drop rows the server deliberately returned.
-  const painted = useMemo(
-    () =>
-      searchAnsweredBy === 'server'
-        ? records
-        : filterShippedOrdersByQuery(records, searchValue),
-    [records, searchValue, searchAnsweredBy],
-  );
+  // Orders a deferred Delete removed (Undo still open) leave here, at the
+  // source, so counts, pages and J / K skip them on every face of the feed.
+  const hidden = useHiddenRecords();
+  const painted = useMemo(() => {
+    const found = searchAnsweredBy === 'server' ? records : filterShippedOrdersByQuery(records, searchValue);
+    return hidden.size === 0 ? found : found.filter((row) => !hidden.has(Number(row.id)));
+  }, [records, searchValue, searchAnsweredBy, hidden]);
   const { orderGroupsByDate: allOrderGroupsByDate, displayedRecords } = useOrdersQueueRows({
     records: painted,
     sort,
@@ -328,11 +330,11 @@ export function useOrdersQueueCommits(): OrdersQueueCommits {
   );
 
   const handleCommitShipBy = useCallback(
-    (record: ShippedOrder, dateKey: string | null) => {
+    (record: ShippedOrder, dateKey: string | null, onCommitted?: () => void) => {
       const id = Number(record.id);
       if (!Number.isFinite(id)) return;
       if (!dateKey) return;
-      assignMutate({ orderId: id, shipByDate: dateKey });
+      assignMutate({ orderId: id, shipByDate: dateKey }, onCommitted ? { onSuccess: () => onCommitted() } : undefined);
     },
     [assignMutate],
   );
@@ -422,11 +424,11 @@ export function useOrdersQueueCommits(): OrdersQueueCommits {
   }, []);
 
   const handleCommitTracking = useCallback(
-    (record: ShippedOrder, tracking: string) => {
+    (record: ShippedOrder, tracking: string, onCommitted?: () => void) => {
       const id = Number(record.id);
       const next = tracking.trim();
       if (!Number.isFinite(id) || !next) return;
-      assignMutate({ orderId: id, shippingTrackingNumber: next });
+      assignMutate({ orderId: id, shippingTrackingNumber: next }, onCommitted ? { onSuccess: () => onCommitted() } : undefined);
     },
     [assignMutate],
   );

@@ -43,7 +43,13 @@ const inputSchema = z.object({
 });
 
 const METHOD = { payment_link: 'square_link', invoice: 'square_invoice' } as const;
-const METHOD_FACE = { square_link: 'payment link', square_invoice: 'invoice', square_terminal: 'Terminal checkout' } as const;
+const METHOD_FACE = {
+  square_link: 'payment link',
+  square_invoice: 'invoice',
+  square_terminal: 'Terminal checkout',
+  stripe_link: 'Stripe checkout link',
+  in_person: 'in-person payment',
+} as const;
 
 export function buildRequestPaymentTool(
   deps: RequestPaymentDeps = realDeps,

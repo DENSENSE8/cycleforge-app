@@ -88,7 +88,7 @@ function SpecialBinPrintBody() {
   return (
     <div className="mx-auto flex w-full max-w-lg flex-col gap-6 p-6">
       <div>
-        <p className="text-role-eyebrow uppercase tracking-widest text-text-soft">Special bin label</p>
+        <p className="text-role-eyebrow text-text-soft">Special bin label</p>
         <h1 className="mt-1 font-mono text-role-title font-semibold text-text-default">{barcode}</h1>
         <p className="mt-1 text-role-caption text-text-muted">
           2″ × 1″ stock — silent print sends the count below as one job. Print at 100% / actual size.

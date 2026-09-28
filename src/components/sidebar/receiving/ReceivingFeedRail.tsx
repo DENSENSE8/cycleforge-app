@@ -8,7 +8,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { railSnapshotFeedParam } from '@/lib/receiving/rail/rail-snapshot-cache';
 import { fetchRailSnapshot, persistRailSnapshot } from '@/lib/receiving/rail/rail-snapshot-client';
 import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
-import { parseStaffParam } from '@/hooks/useStaffFilter';
+import { parseStaffParam } from '@/lib/station/table-url-params';
 import { RecentActivityRailBase, type ApiResponse } from './RecentActivityRailBase';
 import { useHydrateVisibleSerials } from './useHydrateVisibleSerials';
 import { useRailExclusions } from './useRailExclusions';

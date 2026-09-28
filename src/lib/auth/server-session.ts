@@ -1,4 +1,5 @@
 import { cache } from 'react';
+import { after } from 'next/server';
 import { getCurrentUser } from './current-user';
 import { touchSession } from './session';
 import { getOrganization } from '@/lib/tenancy/organizations';
@@ -9,7 +10,10 @@ export const getInitialAuthUser = cache(async (): Promise<AuthSessionUser | null
   const current = await getCurrentUser();
   if (!current || current.role === 'unknown') return null;
 
-  void touchSession(current.session.sid);
+  // After the response: slides the idle window, but touchSession writes at
+  // most once per session per 5 minutes, not once per render.
+  const sid = current.session.sid;
+  after(() => touchSession(sid));
 
   // Active tenant identity for the passive "which workspace" signal. Cached
   // in-process (30s); best-effort so a miss never blocks SSR hydration.
@@ -34,6 +38,8 @@ export const getInitialAuthUser = cache(async (): Promise<AuthSessionUser | null
     email: current.email,
     role: current.role,
     permissions: Array.from(current.permissions),
+    authorizationMode: current.authorizationMode,
+    storedPermissions: Array.from(current.storedPermissions),
     mobileDisplayConfig: current.mobileDisplayConfig,
     avatarPhotoId: current.avatarPhotoId,
     session: {

@@ -3,6 +3,7 @@
 import crypto from 'node:crypto';
 import pool from '@/lib/db';
 import type { OrgId } from '@/lib/tenancy/constants';
+import { estimatedDeliveryInstant } from '@/lib/shipping/providers/estimated-delivery';
 import { getShipmentByTracking, updateShipmentSummary, upsertTrackingEvents } from '@/lib/shipping/repository';
 import { publishShipmentStatusChange } from '@/lib/shipping/publish-on-status-change';
 import { normalizeTrackingNumber } from '@/lib/shipping/normalize';
@@ -142,6 +143,7 @@ export interface ShipStationTrackData {
   carrier_status_code?: string;
   carrier_status_description?: string;
   actual_delivery_date?: string | null;
+  estimated_delivery_date?: string | null;
   exception_description?: string | null;
   events?: ShipStationTrackEvent[];
 }
@@ -208,6 +210,7 @@ export async function applyShipStationTrackEvent(
     latestStatusDescription: data.carrier_status_description ?? data.exception_description ?? null,
     latestEventAt: events[0]?.eventOccurredAt ?? null,
     deliveredAt: data.actual_delivery_date ?? null,
+    estimatedDelivery: estimatedDeliveryInstant(data.estimated_delivery_date),
     metadata: { source: 'shipstation.webhook' },
     events,
     payload: data,

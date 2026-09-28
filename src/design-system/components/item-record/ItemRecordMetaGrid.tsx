@@ -27,7 +27,7 @@ export function ItemRecordMetaGrid({
         'grid min-w-0 items-stretch',
         'grid-cols-[auto_auto_auto_minmax(2.5rem,1fr)_auto]',
         'gap-x-3',
-        'text-role-eyebrow uppercase tracking-widest leading-none',
+        'text-role-eyebrow leading-none',
         className,
       )}
     >

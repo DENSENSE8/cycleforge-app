@@ -60,7 +60,7 @@ export function ConfigSheet({ open, onClose, config, onSave }: ConfigSheetProps)
 
       {/* Read-only on purpose. */}
       <div className="mt-4">
-        <span className="text-role-micro font-semibold uppercase tracking-wider text-text-soft">
+        <span className="text-role-micro font-semibold text-text-soft">
           GLN (Global Location Number)
         </span>
         <p className="mt-1 font-mono text-sm font-semibold text-text-default">
@@ -109,7 +109,7 @@ function NumField({
 }) {
   return (
     <div>
-      <label className="text-role-micro font-semibold uppercase tracking-wider text-text-soft">
+      <label className="text-role-micro font-semibold text-text-soft">
         {label}
       </label>
       <input

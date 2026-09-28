@@ -20,6 +20,7 @@ import { useScanHotkey } from '@/lib/scan-hotkey/useScanHotkey';
 import type { StationScanStance } from '@/components/station/scan-bar/scan-stance';
 import { cn } from '@/utils/_cn';
 import { focusRing } from '@/design-system/tokens/focus-ring';
+import { KeyboardKey } from '@/design-system/primitives';
 
 interface ScanHotkeyControlProps {
   /** Current left-icon stance — decides the trigger glyph and the checked row. */
@@ -169,9 +170,9 @@ export function ScanHotkeyControl({
           className="justify-between"
         >
           <span className="text-role-caption font-semibold">Focus scan bar</span>
-          <kbd className="rounded-none border border-border-soft bg-surface-canvas px-1.5 py-0.5 font-mono text-role-micro font-semibold text-text-muted">
+          <KeyboardKey size="xs">
             {hotkey}
-          </kbd>
+          </KeyboardKey>
         </DropdownMenuItem>
 
         <DropdownMenuItem
@@ -207,9 +208,9 @@ export function ScanHotkeyControl({
           className="justify-between"
         >
           <span className="text-role-caption font-semibold">Next scan</span>
-          <kbd className="rounded-none border border-blue-200 bg-blue-50 px-1.5 py-0.5 font-mono text-role-micro font-semibold text-blue-700">
+          <KeyboardKey size="xs">
             {NEXT_SCAN_CHORD_LABEL}
-          </kbd>
+          </KeyboardKey>
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>

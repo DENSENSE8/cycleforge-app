@@ -6,6 +6,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { Panel } from '@/design-system/primitives';
 import { takeReasonLedgerLabel } from '@/lib/inventory/take-reason';
+import { sentenceCaseLabel } from '@/lib/text/sentence-case-label';
 
 
 interface EntityAuditEvent {
@@ -48,9 +49,9 @@ const SOURCE_BADGE: Record<EntityAuditEvent['source'], string> = {
 };
 
 const SOURCE_LABEL: Record<EntityAuditEvent['source'], string> = {
-  audit_log:        'EDIT',
-  inventory_event:  'LIFECYCLE',
-  sku_stock_ledger: 'LEDGER',
+  audit_log:        'Edit',
+  inventory_event:  'Lifecycle',
+  sku_stock_ledger: 'Ledger',
 };
 
 function fmtTime(iso: string): string {
@@ -154,7 +155,7 @@ export function AuditTimeline(props: Props) {
     <section className={compact ? 'space-y-2' : 'space-y-3'}>
       {!noHeader && (
         <header className="flex items-baseline justify-between">
-          <h2 className="text-xs font-semibold uppercase tracking-[0.16em] text-text-soft">
+          <h2 className="text-xs font-semibold text-text-soft">
             History
           </h2>
           {!loading && events.length > 0 && (
@@ -193,7 +194,7 @@ export function AuditTimeline(props: Props) {
                 <div className="min-w-0">
                   <HoverTooltip label={ev.source} asChild>
                     <span
-                      className={`inline-block rounded-sm px-1.5 py-px text-role-eyebrow uppercase tracking-wider ${SOURCE_BADGE[ev.source]}`}
+                      className={`inline-block rounded-sm px-1.5 py-px text-role-eyebrow ${SOURCE_BADGE[ev.source]}`}
                     >
                       {SOURCE_LABEL[ev.source]}
                     </span>
@@ -246,7 +247,7 @@ export function AuditTimeline(props: Props) {
                       </span>
                     </HoverTooltip>
                     {ev.station && (
-                      <span className="font-mono">· {ev.station}</span>
+                      <span className="font-mono">· {sentenceCaseLabel(ev.station)}</span>
                     )}
                     {ev.scan_ref && (
                       <span className="font-mono">· scan {ev.scan_ref}</span>

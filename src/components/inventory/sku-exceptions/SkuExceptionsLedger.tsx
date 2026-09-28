@@ -255,7 +255,7 @@ const SkuExceptionRecord = memo(function SkuExceptionRecord({
           ),
           right: (
             <RecordStamp title={createdValid ? format(createdValid, 'MMM d, yyyy · h:mm a') : undefined}>
-              {createdValid ? format(createdValid, 'MMM d').toUpperCase() : null}
+              {createdValid ? format(createdValid, 'MMM d') : null}
             </RecordStamp>
           ),
         },

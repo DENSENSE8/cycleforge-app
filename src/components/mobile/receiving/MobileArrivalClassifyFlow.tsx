@@ -253,7 +253,7 @@ export function MobileArrivalClassifyFlow({
           className="flex aspect-square min-h-mode-hit shrink-0 items-center justify-center rounded-mode border border-border-soft bg-surface-card text-text-soft"
         />
         <div className="min-w-0 flex-1">
-          <p className="text-role-micro uppercase tracking-widest text-text-muted">
+          <p className="text-role-micro text-text-muted">
             Classify
           </p>
           <p className="truncate text-mode-body font-semibold text-text-primary">
@@ -314,11 +314,11 @@ export function MobileArrivalClassifyFlow({
             })}
           </div>
           {nextArrivalClassifyStep(step) ? (
-            <p className="text-center text-role-micro uppercase tracking-wider text-text-faint">
+            <p className="text-center text-role-micro text-text-faint">
               Next · {STEP_TITLE[nextArrivalClassifyStep(step)!]}
             </p>
           ) : (
-            <p className="text-center text-role-micro uppercase tracking-wider text-text-faint">
+            <p className="text-center text-role-micro text-text-faint">
               Finishes arrival for this carton
             </p>
           )}

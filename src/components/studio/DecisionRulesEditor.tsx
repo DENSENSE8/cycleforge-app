@@ -128,7 +128,7 @@ export function DecisionRulesEditor({ nodeId, config, onChange }: DecisionRulesE
       {/* Output ports */}
       <div className="space-y-1.5">
         <div className="flex items-center justify-between">
-          <span className="text-role-micro uppercase tracking-wider text-text-faint">
+          <span className="text-role-micro text-text-faint">
             Output ports
           </span>
           <Button
@@ -180,7 +180,7 @@ export function DecisionRulesEditor({ nodeId, config, onChange }: DecisionRulesE
       {/* Rules */}
       <div className="space-y-1.5">
         <div className="flex items-center justify-between">
-          <span className="flex items-center gap-1 text-role-micro uppercase tracking-wider text-text-faint">
+          <span className="flex items-center gap-1 text-role-micro text-text-faint">
             Rules · first match wins
             <HoverTooltip
               label="Rules are tested top-to-bottom; the first whose when-conditions all match routes the item to its port. Reorder with the arrows. An empty when matches any item."
@@ -209,7 +209,7 @@ export function DecisionRulesEditor({ nodeId, config, onChange }: DecisionRulesE
             {rules.map((r, i) => (
               <li key={r.id} className="rounded-md border border-border-soft bg-surface-canvas p-2">
                 <div className="mb-1 flex items-center justify-between">
-                  <span className="text-role-eyebrow uppercase tracking-wider text-text-faint">
+                  <span className="text-role-eyebrow text-text-faint">
                     #{i + 1} When
                   </span>
                   <div className="flex items-center gap-0.5">
@@ -254,7 +254,7 @@ export function DecisionRulesEditor({ nodeId, config, onChange }: DecisionRulesE
                   ))}
                 </div>
                 <div className="mt-1.5 flex items-center gap-1.5">
-                  <span className="w-20 shrink-0 text-role-micro uppercase tracking-wider text-text-faint">
+                  <span className="w-20 shrink-0 text-role-micro text-text-faint">
                     → Then
                   </span>
                   <select
@@ -274,7 +274,7 @@ export function DecisionRulesEditor({ nodeId, config, onChange }: DecisionRulesE
                 {/* Placement directive (optional) — the action layer moves the unit
                     to this bin / files it under this category. Blank = route-only. */}
                 <div className="mt-1.5 flex items-center gap-1.5">
-                  <span className="flex w-20 shrink-0 items-center gap-1 text-role-micro uppercase tracking-wider text-text-faint">
+                  <span className="flex w-20 shrink-0 items-center gap-1 text-role-micro text-text-faint">
                     <MapPin className="h-3 w-3" />
                     Place
                     <HoverTooltip
@@ -313,7 +313,7 @@ export function DecisionRulesEditor({ nodeId, config, onChange }: DecisionRulesE
       <div className="space-y-1">
         <label
           htmlFor={`decision-default-${nodeId}`}
-          className="block text-role-micro uppercase tracking-wider text-text-faint"
+          className="block text-role-micro text-text-faint"
         >
           Default port
         </label>

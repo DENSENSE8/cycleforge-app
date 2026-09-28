@@ -68,6 +68,19 @@ export const HISTORY_SORT_WIRE_IDS = [
 
 export type HistorySortWireId = (typeof HISTORY_SORT_WIRE_IDS)[number];
 
+const HISTORY_ACTIVITY_LABEL: Readonly<Record<HistorySortWireId, string>> = {
+  unboxed_newest: 'Unboxed',
+  scanned_newest: 'Scanned at the door',
+};
+
+/**
+ * Inbound History's activity axis as the sidebar's Activity row: which
+ * stamp orders the list, bands its days and bounds its Activity date
+ * (`historySortGroupAxis`). Every wire id, so none is unreachable.
+ */
+export const HISTORY_ACTIVITY_OPTIONS: readonly { value: HistorySortWireId; label: string }[] =
+  HISTORY_SORT_WIRE_IDS.map((value) => ({ value, label: HISTORY_ACTIVITY_LABEL[value] }));
+
 /**
  * Unbox History filter "Sort by" options — Unbox-touched axis only.
  * Door-scan / triage ordering stays on Incoming Docked · Triage
@@ -110,6 +123,12 @@ export interface ReceivingModeContext {
   historySort: string;
   /** TRUE only when `?weekOffset` is EXPLICITLY in the URL (operator 2026-09-14: */
   historyWeekExplicit?: boolean;
+  /**
+   * An explicit activity window (`?dateFrom=`/`?dateTo=`, civil day keys,
+   * either end open) — the Inbound History sidebar's date row. Set, it is
+   * the client day slice in place of the week.
+   */
+  historyDateRange?: { from: string; to: string } | null;
   // Incoming facets
   incomingSearch: string;
   incomingState: string | null;
@@ -365,6 +384,8 @@ const historyMode: ReceivingModeDescriptor = {
   skipWeekFilter(ctx) {
     // ALL TIME by default (operator 2026-09-14:
     // ALL TIME by default (operator 2026-09-14: "the inbound history displays
+    // A picked activity window is the operator's own slice: always applied.
+    if (ctx.historyDateRange) return false;
     return (
       ctx.historyWeekExplicit !== true
       || ctx.historySearch.length > 0

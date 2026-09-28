@@ -39,7 +39,7 @@ function PoPhotoPageInner(props: { params: Promise<{ poId: string }> }) {
 
   if (isLoading) {
     return (
-      <div className="grid min-h-[100dvh] place-items-center text-role-caption font-semibold uppercase tracking-widest text-white/60">
+      <div className="grid min-h-[100dvh] place-items-center text-role-caption font-semibold text-white/60">
         Opening camera…
       </div>
     );
@@ -48,7 +48,7 @@ function PoPhotoPageInner(props: { params: Promise<{ poId: string }> }) {
   if (error || !receivingId) {
     return (
       <div className="grid min-h-[100dvh] place-items-center px-6 text-center">
-        <p className="text-sm font-semibold uppercase tracking-wider text-white/80">
+        <p className="text-sm font-semibold text-white/80">
           No receiving package yet
         </p>
         <p className="mt-1 text-role-caption font-semibold text-white/50">

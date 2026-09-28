@@ -49,7 +49,7 @@ export function WalkInHistorySidebar() {
       </div>
 
       <div className={`min-h-0 flex-1 space-y-2 overflow-y-auto ${SIDEBAR_GUTTER} py-3`}>
-        <p className="text-role-eyebrow uppercase tracking-widest text-text-faint">
+        <p className="text-role-eyebrow text-text-faint">
           Station
         </p>
         {STATION_LINKS.map(({ job, label, hint, icon: Icon }) => (

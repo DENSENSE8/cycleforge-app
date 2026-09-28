@@ -34,7 +34,7 @@ export function PairingQueueList({ query, sort, selectedSku, onSelect }: Pairing
   return (
     <div className="flex h-full min-h-0 flex-col bg-surface-card">
       {/* Count bar */}
-      <div className={`flex items-center justify-between gap-2 border-b border-border-hairline ${SIDEBAR_GUTTER} py-1.5 text-role-micro uppercase tracking-wider text-text-soft`}>
+      <div className={`flex items-center justify-between gap-2 border-b border-border-hairline ${SIDEBAR_GUTTER} py-1.5 text-role-micro text-text-soft`}>
         <span>
           {loading ? 'Loading…' : total === null ? '' : `${total} need review`}
         </span>
@@ -115,7 +115,7 @@ function PairingQueueRow({
             <span className="truncate font-mono text-xs font-semibold text-text-default">{item.sku}</span>
             {item.isActive === false && (
               <HoverTooltip label="This canonical SKU is inactive in the catalog" asChild focusable={false}>
-                <span className="inline-flex shrink-0 items-center rounded bg-surface-sunken px-1 text-role-eyebrow uppercase tracking-wider text-text-soft ring-1 ring-border-soft">
+                <span className="inline-flex shrink-0 items-center rounded bg-surface-sunken px-1 text-role-eyebrow text-text-soft ring-1 ring-border-soft">
                   inactive
                 </span>
               </HoverTooltip>
@@ -127,7 +127,7 @@ function PairingQueueRow({
                 asChild
                 focusable={false}
               >
-                <span className="inline-flex items-center rounded bg-amber-50 px-1 text-role-eyebrow uppercase tracking-wider text-amber-700 ring-1 ring-amber-200">
+                <span className="inline-flex items-center rounded bg-amber-50 px-1 text-role-eyebrow text-amber-700 ring-1 ring-amber-200">
                   {formatVolume(item.orderCount)} ord
                 </span>
               </HoverTooltip>
@@ -140,7 +140,7 @@ function PairingQueueRow({
             {item.productTitle || '—'}
           </p>
           {item.matchedVia && (
-            <p className="mt-0.5 truncate text-role-eyebrow font-semibold uppercase tracking-wider text-blue-600">
+            <p className="mt-0.5 truncate text-role-eyebrow font-semibold text-blue-600">
               matched {sourcePlatformLabel(item.matchedVia.platform)}:{' '}
               <span className="font-mono normal-case tracking-normal text-text-muted">
                 {item.matchedVia.platform === 'ecwid'
@@ -161,7 +161,7 @@ function PairingQueueRow({
               );
             })}
             {item.confirmedCount > 0 && (
-              <span className="inline-flex items-center rounded border border-emerald-200 bg-emerald-50 px-1.5 py-0 text-role-eyebrow font-semibold uppercase tracking-wider text-emerald-700">
+              <span className="inline-flex items-center rounded border border-emerald-200 bg-emerald-50 px-1.5 py-0 text-role-eyebrow font-semibold text-emerald-700">
                 ✓ {item.confirmedCount}
               </span>
             )}

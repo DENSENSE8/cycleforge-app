@@ -48,6 +48,7 @@ import { buildDailyTaskRows } from './grid/daily-task-row';
 import { DailyAgendaComposer } from './DailyAgendaComposer';
 import { AgendaRecentRail } from './AgendaRecentRail';
 import { AgendaRecord } from './AgendaRecord';
+import { DailyEntrance, type EntrancePhase } from './DailyEntrance';
 import { ChecklistEvidence, type ChecklistSchedulePatch } from './ChecklistEvidence';
 import { parseDailyStatusFilter, type DailyStatusFilter } from './daily-check-filter';
 import { useSurfacePaintMark } from '@/lib/observability/paint-timing';
@@ -85,6 +86,7 @@ export function DailyAgenda() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { has } = useAuth();
+  const [entrance, setEntrance] = useState<EntrancePhase>('revealed');
   /** The checklist LIST is org-managed — adding to it (or moving its due time) changes what every future report measures — so it gates on… */
   const canManage = has('admin.manage_staff');
 
@@ -136,7 +138,7 @@ export function DailyAgenda() {
   useSurfacePaintMark(DAILY_PRIMARY_PAINT_MARK, !loading);
   /** The ledger's own list scroller — the ONLY element Lenis drives (never the window). */
   const ledgerScrollRef = useRef<HTMLDivElement>(null);
-  useDailySmoothScroll(ledgerScrollRef);
+  useDailySmoothScroll(ledgerScrollRef, entrance === 'rows' || entrance === 'revealed');
 
   const doneSet = useMemo(() => new Set(checksData?.mine?.doneItemIds ?? []), [checksData]);
 
@@ -184,6 +186,18 @@ export function DailyAgenda() {
   const visible = useMemo(
     () => (status === 'all' ? lensed : lensed.filter((row) => (status === 'done' ? row.done : !row.done))),
     [lensed, status],
+  );
+  // Let query hydration and virtualization mount rows while the page is hidden,
+  // then freeze that row set during the full-viewport spring. Late data joins
+  // once the container is flush, outside the expensive transform.
+  const [prewarmedVisible, setPrewarmedVisible] = useState(visible);
+  useEffect(() => {
+    if (entrance !== 'rising') setPrewarmedVisible(visible);
+  }, [entrance, visible]);
+  const renderedVisible = entrance === 'rising' ? prewarmedVisible : visible;
+  const indexByKey = useMemo(
+    () => new Map(renderedVisible.map((row, index) => [row.key, index])),
+    [renderedVisible],
   );
 
   const setParam = useCallback(
@@ -279,9 +293,10 @@ export function DailyAgenda() {
         tickable={row.type === 'checklist' ? isToday : row.status !== 'CANCELED'}
         onOpen={openRecord}
         onToggle={toggleRow}
+        entranceIndex={indexByKey.get(row.key) ?? 0}
       />
     ),
-    [isToday, openRecord, tasks.nowMs, toggleRow],
+    [indexByKey, isToday, openRecord, tasks.nowMs, toggleRow],
   );
 
   /** The page frame, with the LENS tabs in the desk chrome — top left, on the same row as Add — exactly where Shipping's desk tabs sit. */
@@ -355,12 +370,18 @@ export function DailyAgenda() {
   // `loading` is computed above the composer branch (it gates the paint mark).
   const error = !hydrated ? null : checks.isError ? 'Could not load the checklist.' : tasks.error;
 
-  return frame(
-    <div data-welcome-focus="Daily agenda" data-welcome-focus-mark={DAILY_PRIMARY_PAINT_MARK} className="flex min-h-0 min-w-0 flex-1">
+  return (
+    <DailyEntrance ready={!loading} onPhase={setEntrance}>
+      {frame(
+        <div
+          data-welcome-focus="Daily agenda"
+          data-welcome-focus-mark={DAILY_PRIMARY_PAINT_MARK}
+          className="flex min-h-0 min-w-0 flex-1"
+        >
       <RecordLedger
         testId={DAILY_LEDGER_TEST_ID}
         label="Daily agenda"
-        records={visible}
+        records={renderedVisible}
         recordKey={recordKey}
         renderRecord={renderRecord}
         openKey={ledgerOpenKey}
@@ -469,7 +490,9 @@ export function DailyAgenda() {
           )
         }
       />
-    </div>
+        </div>,
+      )}
+    </DailyEntrance>
   );
 }
 

@@ -27,7 +27,7 @@ interface PoCandidate {
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div className="space-y-1">
-      <p className="text-role-micro uppercase tracking-widest text-text-soft">{label}</p>
+      <p className="text-role-micro text-text-soft">{label}</p>
       <div className="text-role-caption font-semibold text-text-default">{children}</div>
     </div>
   );
@@ -229,7 +229,7 @@ export function EbayTab({ data }: { data: DetailsResponse }) {
 
       {canEditIdentity ? (
         <div className="space-y-3 border-t border-border-soft pt-3">
-          <p className="text-role-micro uppercase tracking-widest text-text-soft">
+          <p className="text-role-micro text-text-soft">
             Edit identity
           </p>
           <TextField
@@ -260,7 +260,7 @@ export function EbayTab({ data }: { data: DetailsResponse }) {
 
       {/* Link to Zoho PO — the merge affordance. */}
       <div className="space-y-2 border-t border-border-soft pt-3">
-        <p className="text-role-micro uppercase tracking-widest text-text-soft">Purchase order</p>
+        <p className="text-role-micro text-text-soft">Purchase order</p>
         {zohoLinked ? (
           <div className="flex items-center gap-2 rounded-none border border-emerald-200 bg-emerald-50 inset-field">
             <Check className="h-3.5 w-3.5 text-emerald-600" />
@@ -293,7 +293,7 @@ export function EbayTab({ data }: { data: DetailsResponse }) {
                 <div className="flex items-center gap-2 rounded-none border border-border-soft bg-surface-card inset-field">
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-role-caption font-semibold text-text-default">{trimmed}</p>
-                    <p className="truncate text-role-eyebrow font-semibold uppercase tracking-widest text-text-soft">
+                    <p className="truncate text-role-eyebrow font-semibold text-text-soft">
                       Not in the system yet · links now, imports when the order arrives
                     </p>
                   </div>
@@ -320,7 +320,7 @@ export function EbayTab({ data }: { data: DetailsResponse }) {
                       <p className="truncate text-role-caption font-semibold text-text-default">
                         {po.zoho_purchaseorder_number || `PO ${po.zoho_purchaseorder_id}`}
                       </p>
-                      <p className="truncate text-role-eyebrow font-semibold uppercase tracking-widest text-text-soft">
+                      <p className="truncate text-role-eyebrow font-semibold text-text-soft">
                         {po.vendor_name || 'Unknown vendor'}
                         {po.reference_number ? ` · ref ${po.reference_number}` : ''}
                       </p>

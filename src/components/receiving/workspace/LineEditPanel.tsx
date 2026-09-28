@@ -92,6 +92,7 @@ import {
   StationTicketPane,
   useStationComposerMode,
 } from '@/components/composer';
+import { UnboxReturnCallout } from '@/components/receiving/unbox/UnboxReturnCallout';
 
 export function LineEditPanel({
   row,
@@ -1034,6 +1035,8 @@ export function LineEditPanel({
                   </div>
                 }
               >
+                {/* RETURN lines only: what to check for + listing, above the line record. */}
+                <UnboxReturnCallout row={row} />
                 <motion.div initial={false} animate="show" variants={revealContainer}>
                   <motion.div variants={revealItem}>{unboxOverview}</motion.div>
                 </motion.div>

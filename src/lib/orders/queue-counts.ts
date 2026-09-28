@@ -10,8 +10,8 @@
  * (`awaitingOnly`), not To-ship's.
  *
  * Per-count predicate (all ∩ the To-ship scope, ∩ `sqlOrderAssignedToStaff` when `?staff=`):
- *   byStage.tested / pending / packed — `sqlOrderHasPickScan` / `sqlOrderHasPackScan`
- *     (the partition `sqlOrderDeskStage` filters the list with);
+ *   byStage.picked / pending / packed — `order_stage_facts.has_pick_scan` / `has_pack_scan`
+ *     (the partition `sqlOrderDeskStage` filters the list with, off the same facts row);
  *   combos.blocked — `orders.is_out_of_stock`; urgent — `orders.is_urgent`;
  *   mustShip — ship-by (`sqlOrderTestDeadlineAt`, the list's `deadline_at`) is
  *     today or overdue (`sqlDeskAgingBucket`), i.e. the list's `late=1`;
@@ -22,7 +22,7 @@
 
 import { createCacheLookupKey, getCachedJson, setCachedJson } from '@/lib/cache/upstash-cache';
 import { createSingleFlight, type SingleFlight } from '@/lib/cache/single-flight';
-import { sqlOrderHasPackScan, sqlOrderHasPickScan } from '@/lib/orders/order-grain-sql';
+import { ORDER_STAGE_FACTS_JOIN, ORDER_STAGE_FACTS_SIGNALS } from '@/lib/orders/order-stage-facts';
 import { PRINT_PACKET_INCOMPLETE_SQL } from '@/lib/orders/print-packet';
 import {
   sqlDeskAgingBucket,
@@ -75,11 +75,12 @@ export function buildQueueCountsSql(orgId: string, staffId: number | null): { sq
         o.docs_not_required,
         o.is_out_of_stock,
         o.is_urgent,
-        ${sqlOrderHasPickScan('o')} AS has_pick_scan,
-        ${sqlOrderHasPackScan('o')} AS has_pack_scan,
+        ${ORDER_STAGE_FACTS_SIGNALS.hasPickScan} AS has_pick_scan,
+        ${ORDER_STAGE_FACTS_SIGNALS.hasPackScan} AS has_pack_scan,
         ${sqlOrderTestDeadlineAt('o')} AS deadline_at
       FROM orders o
       LEFT JOIN shipping_tracking_numbers stn ON stn.id = o.shipment_id
+      ${ORDER_STAGE_FACTS_JOIN}
       WHERE o.organization_id = $1
         AND ${sqlOrderInWarehouseToShip('o')}${staffClause}
     ),
@@ -109,7 +110,7 @@ export function assembleQueueCounts(
   tallies: QueueCountsTallies,
   placements: PackPlacementCountRow[],
 ): UnshippedQueueCounts {
-  // Lane combos stay pre-pack only (PENDING/TESTED/BLOCKED); packed-staged is
+  // Lane combos stay pre-pack only (PENDING/PICKED/BLOCKED); packed-staged is
   // its own stage (byStage.packed).
   const combos: QueueCountsCombo[] = tallies.groups
     .filter((r) => !r.has_pack_scan)
@@ -122,11 +123,11 @@ export function assembleQueueCounts(
     .filter((r) => r.has_pack_scan)
     .reduce((s, r) => s + (Number(r.n) || 0), 0);
   const prePack = combos.reduce((s, c) => s + c.count, 0);
-  const tested = combos.filter((c) => c.hasPickScan).reduce((s, c) => s + c.count, 0);
+  const picked = combos.filter((c) => c.hasPickScan).reduce((s, c) => s + c.count, 0);
   const total = prePack + packed;
   return {
     total,
-    byStage: { all: total, tested, pending: prePack - tested, packed },
+    byStage: { all: total, picked, pending: prePack - picked, packed },
     urgent: tallies.groups.reduce((s, r) => s + (Number(r.urgent_n) || 0), 0),
     mustShip: tallies.groups.reduce((s, r) => s + (Number(r.must_ship_n) || 0), 0),
     shippedToday: Number(tallies.shipped_today) || 0,
@@ -140,7 +141,7 @@ export function assembleQueueCounts(
 }
 
 /** Bump when the membership SQL or payload shape changes so stale tallies cannot outlive the fix. */
-const QUEUE_COUNTS_CACHE_VERSION = 'to_ship_in_warehouse_v2';
+const QUEUE_COUNTS_CACHE_VERSION = 'to_ship_in_warehouse_v3';
 const QUEUE_COUNTS_CACHE_NAMESPACE = 'api:orders-queue-counts';
 const QUEUE_COUNTS_TTL_SECONDS = 60;
 

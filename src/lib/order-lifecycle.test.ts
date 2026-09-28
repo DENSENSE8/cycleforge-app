@@ -25,13 +25,13 @@ import {
 function legacyUnshipped(input: OrderLifecycleSignals): string {
   if (input.packedAt) return 'PACKED_STAGED';
   if (String(input.outOfStock ?? '').trim() !== '') return 'BLOCKED';
-  if (input.hasPickScan) return 'TESTED';
+  if (input.hasPickScan) return 'PICKED';
   if (input.shipmentId != null && String(input.shipmentId) !== '') return 'PENDING';
   return 'AWAITING_LABEL';
 }
 function legacyFulfillment(input: OrderLifecycleSignals): string {
   if (String(input.outOfStock ?? '').trim() !== '') return 'BLOCKED';
-  if (input.hasPickScan) return 'TESTED';
+  if (input.hasPickScan) return 'PICKED';
   return 'PENDING';
 }
 
@@ -61,10 +61,10 @@ test('resolveFulfillmentLane matches the legacy deriveFulfillmentState for every
   }
 });
 
-test('the bug fixture: a labeled, picked order resolves to TESTED', () => {
+test('the bug fixture: a labeled, picked order resolves to PICKED', () => {
   const tested: OrderLifecycleSignals = { shipmentId: 12247, hasPickScan: true, packedAt: null, outOfStock: null };
-  assert.equal(resolveOrderLifecycleStage(tested), 'TESTED');
-  assert.equal(resolveFulfillmentLane(tested), 'TESTED');
+  assert.equal(resolveOrderLifecycleStage(tested), 'PICKED');
+  assert.equal(resolveFulfillmentLane(tested), 'PICKED');
 });
 
 test('a labeled order with no pick scan sits in PENDING', () => {
@@ -75,12 +75,12 @@ test('a labeled order with no pick scan sits in PENDING', () => {
 test('rule set is ordered, first-match-wins, and covers exactly the non-default stages', () => {
   assert.deepEqual(
     UNSHIPPED_LIFECYCLE_RULES.map((r) => r.stage),
-    ['PACKED_STAGED', 'BLOCKED', 'TESTED', 'PENDING'],
+    ['PACKED_STAGED', 'BLOCKED', 'PICKED', 'PENDING'],
   );
 });
 
 test('board descriptor renders the three fulfillment lanes in pipeline order', () => {
-  assert.deepEqual(FULFILLMENT_BOARD_LANES.map((l) => l.id), ['PENDING', 'TESTED', 'BLOCKED']);
+  assert.deepEqual(FULFILLMENT_BOARD_LANES.map((l) => l.id), ['PENDING', 'PICKED', 'BLOCKED']);
   // every lane binds a known icon key
   for (const lane of FULFILLMENT_BOARD_LANES) {
     assert.ok(['clock', 'check', 'alert'].includes(lane.iconKey));

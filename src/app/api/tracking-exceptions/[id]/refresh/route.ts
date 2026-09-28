@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse, after } from 'next/server';
 import { tenantQuery, withTenantTransaction } from '@/lib/tenancy/db';
+import { resolveCartonInvestigations } from '@/lib/receiving/exceptions';
 import { normalizeTrackingNumber } from '@/lib/tracking-format';
 import {
   searchPurchaseOrdersByTracking,
@@ -175,6 +176,10 @@ export async function POST(
       });
       if (promotedId != null) {
         promotedReceivingId = promotedId;
+        // Paired: the unfound investigation on this carton is answered.
+        await resolveCartonInvestigations(orgId, promotedId, null).catch((err) =>
+          console.warn(`tracking-exceptions/refresh: investigation close failed for ${promotedId}`, err),
+        );
       }
     } catch (err) {
       console.warn(`tracking-exceptions/refresh: promote receiving ${row.receiving_id} failed`, err);

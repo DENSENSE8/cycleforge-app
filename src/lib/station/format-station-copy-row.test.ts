@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import type { TechRecord } from '@/hooks/useDeskPickLogs';
+import type { DeskPickRecord } from '@/hooks/useDeskPickLogs';
 import type { PackerRecord } from '@/hooks/usePackerLogs';
 import {
   formatTechCopyRow,
@@ -28,7 +28,7 @@ test('formatTechCopyRow emits tab-separated, whitespace-normalized cells', () =>
     condition: 'USED',
     product_title: 'Bose\nQC45',
     tested_by: 7,
-  } as unknown as TechRecord;
+  } as unknown as DeskPickRecord;
   const line = formatTechCopyRow(rec);
   const cells = line.split('\t');
   assert.equal(cells.length, TECH_COPY_HEADER.length);

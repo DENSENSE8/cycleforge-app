@@ -18,6 +18,13 @@ type RateLimitEntry = {
 
 const rateLimitStore = new Map<string, RateLimitEntry>();
 
+/**
+ * Per-IP ceiling for sign-in style routes over a 10-minute window. Sized so a
+ * whole warehouse shift behind one NAT can sign in; the tight limits on these
+ * routes are per identity (`ipAgnostic` + staff/email scope) and the PIN lockout.
+ */
+export const AUTH_PER_IP_LIMIT_PER_10_MIN = 300;
+
 function getClientIp(headers: Headers): string {
   const forwardedFor = headers.get('x-forwarded-for');
   if (forwardedFor) {
@@ -34,6 +41,13 @@ interface RateLimitOptions {
   windowMs: number;
   /** Optional extra identifier (e.g. orgId, staffId) to scope the limit. */
   scope?: string | number | null;
+  /**
+   * Key on `scope` alone instead of `scope` + client IP. Use for per-identity
+   * limits (`${orgId}:${staffId}`, an email): a warehouse behind one NAT no
+   * longer shares one bucket, and an attacker rotating IPs gets no fresh one.
+   * Ignored when `scope` is null.
+   */
+  ipAgnostic?: boolean;
 }
 
 interface RateLimitResult {
@@ -42,6 +56,7 @@ interface RateLimitResult {
 }
 
 function buildKey(opts: RateLimitOptions): string {
+  if (opts.ipAgnostic && opts.scope != null) return `${opts.routeKey}:id:${opts.scope}`;
   const ip = getClientIp(opts.headers);
   const scope = opts.scope == null ? '' : `:${opts.scope}`;
   return `${opts.routeKey}${scope}:${ip}`;
@@ -100,9 +115,18 @@ export async function checkRateLimitAsync(opts: RateLimitOptions): Promise<RateL
   }
 }
 
-/** Org-scoped rate limit for authed routes. */
+/**
+ * Rate limit for authed routes. With `staffId` the bucket is that staff member
+ * in that org, whatever their IP (a shared warehouse NAT no longer pools a
+ * whole shift into one bucket); without it, the legacy org + IP bucket.
+ */
 export function checkRateLimitForOrg(
-  opts: Omit<RateLimitOptions, 'scope'> & { organizationId: string },
+  opts: Omit<RateLimitOptions, 'scope' | 'ipAgnostic'> & { organizationId: string; staffId?: number | null },
 ): Promise<RateLimitResult> {
-  return checkRateLimitAsync({ ...opts, scope: opts.organizationId });
+  const { organizationId, staffId, ...rest } = opts;
+  return checkRateLimitAsync(
+    staffId == null
+      ? { ...rest, scope: organizationId }
+      : { ...rest, scope: `${organizationId}:${staffId}`, ipAgnostic: true },
+  );
 }

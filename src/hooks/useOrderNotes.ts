@@ -10,6 +10,8 @@ interface OrderNoteDto {
   noteText: string;
   authorStaffId: number | null;
   authorName: string | null;
+  /** Validated staff ids the note @mentions (token format: `@/lib/orders/note-mentions`). */
+  mentionedStaffIds?: number[];
   createdAt: string;
 }
 

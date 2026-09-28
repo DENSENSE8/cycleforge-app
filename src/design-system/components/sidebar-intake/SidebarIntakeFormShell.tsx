@@ -53,7 +53,7 @@ export function SidebarIntakeFormShell({
               <X className="h-4 w-4 text-text-muted" />
             </button>
             <div>
-              <h2 className="text-sm font-semibold uppercase tracking-tight text-text-default">{title}</h2>
+              <h2 className="text-sm font-semibold tracking-tight text-text-default">{title}</h2>
               <p className={SIDEBAR_INTAKE_SUBTITLE_ACCENT[subtitleAccent]}>{subtitle}</p>
             </div>
           </div>

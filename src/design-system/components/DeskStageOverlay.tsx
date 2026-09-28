@@ -197,6 +197,14 @@ interface DeskStageRecordHeaderProps {
   actions?: ReactNode;
   /** The record-view switch — after the verbs, before n of N / ‹ › / ✕. */
   viewSwitch?: ReactNode;
+  /**
+   * A rail desk (`DeskRecordPlane listRail`, owner 2026-09-27): the rail always
+   * has an open record, so there is nothing to close to — no ✕, and the verbs
+   * sit AFTER n of N so the record's CTA is the right-most control. `onClose`
+   * stays wired for the keyboard (Esc) only. Default off: other desks keep
+   * verbs · n of N · ✕.
+   */
+  rail?: boolean;
 }
 
 /**
@@ -216,7 +224,9 @@ export function DeskStageRecordHeader({
   dismiss = 'close',
   actions,
   viewSwitch,
+  rail = false,
 }: DeskStageRecordHeaderProps) {
+  const verbs = actions ? <div className="flex shrink-0 items-center gap-1.5">{actions}</div> : null;
   return (
     // A container, so the band sheds its secondary pieces (n of N, then the
     // view switch) as the record column narrows instead of crushing the title.
@@ -241,7 +251,7 @@ export function DeskStageRecordHeader({
           <p className="mt-0.5 truncate text-role-caption text-text-soft">{subtitle}</p>
         ) : null}
       </div>
-      {actions ? <div className="flex shrink-0 items-center gap-1.5">{actions}</div> : null}
+      {rail ? null : verbs}
       {/* Hierarchy: where you are (n of N), then how you view it, then ✕. */}
       {indexLabel ? (
         <span className="hidden shrink-0 tabular-nums text-role-caption text-text-muted @sm/record-head:inline">
@@ -277,7 +287,8 @@ export function DeskStageRecordHeader({
           ) : null}
         </div>
       )}
-      {onClose && dismiss === 'close' ? (
+      {rail ? verbs : null}
+      {onClose && dismiss === 'close' && !rail ? (
         <Button
           type="button"
           variant="ghost"

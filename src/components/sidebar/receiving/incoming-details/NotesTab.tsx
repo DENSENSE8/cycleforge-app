@@ -70,7 +70,7 @@ export function NotesTab({
 
   return (
     <div>
-      <label className="block text-role-eyebrow uppercase tracking-wider text-text-soft">
+      <label className="block text-role-eyebrow text-text-soft">
         Carton notes
       </label>
       <textarea

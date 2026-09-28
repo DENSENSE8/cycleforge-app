@@ -777,7 +777,7 @@ export function PhotoLibraryPage() {
               autoLoad={!searchQuery.trim()}
             />
           ) : !query.isLoading && visiblePhotos.length > 0 ? (
-            <p className="mt-6 text-center text-role-micro uppercase tracking-widest text-text-faint">
+            <p className="mt-6 text-center text-role-micro text-text-faint">
               {`End of results · ${photoCountLabel(visiblePhotos.length)}`}
             </p>
           ) : null}
@@ -874,7 +874,7 @@ function PhotoLibraryLoadMoreSentinel({
   return (
     <div
       ref={sentinelRef}
-      className="flex items-center justify-center py-6 text-role-micro uppercase tracking-widest text-text-faint"
+      className="flex items-center justify-center py-6 text-role-micro text-text-faint"
     >
       {isFetchingNextPage ? (
         <>
@@ -885,7 +885,7 @@ function PhotoLibraryLoadMoreSentinel({
           type="button"
           onClick={onLoadMore}
           className={cn(
-            'ds-raw-button px-3 py-1.5 text-role-micro uppercase tracking-widest text-text-soft hover:text-text-default',
+            'ds-raw-button px-3 py-1.5 text-role-micro text-text-soft hover:text-text-default',
             cornerClass('flush'),
             focusRing('control'),
           )}

@@ -247,7 +247,7 @@ npm run start
 npm run lint
 npm run db:studio
 npm run db:generate
-npm run db:push
+npm run db:migrate          # db:push removed: it bypasses the migration ledger
 ```
 
 Notes:

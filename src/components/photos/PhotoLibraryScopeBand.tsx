@@ -224,7 +224,7 @@ function PhotoMediaTypePopover({
                   onClick={() => void submit()}
                   disabled={!name.trim() || saving}
                   className={cn(
-                    'flex items-center gap-1 bg-blue-600 px-2 py-1 text-role-micro uppercase tracking-widest text-white disabled:opacity-50',
+                    'flex items-center gap-1 bg-blue-600 px-2 py-1 text-role-micro text-white disabled:opacity-50',
                     cornerClass('flush'),
                   )}
                 >
@@ -240,7 +240,7 @@ function PhotoMediaTypePopover({
                   type="button"
                   onClick={() => setAdding(false)}
                   className={cn(
-                    'px-2 py-1 text-role-micro uppercase tracking-widest text-text-faint hover:text-text-muted',
+                    'px-2 py-1 text-role-micro text-text-faint hover:text-text-muted',
                     cornerClass('flush'),
                   )}
                 >

@@ -6,6 +6,7 @@ import { ALL_ROLES } from '@/lib/auth/permissions-shared';
 import { SIDEBAR_PAGE_NAV } from '@/lib/sidebar-navigation';
 import { NAV_ROLLOUT_SETTING_VALUES, navRolloutSettingKey } from '@/lib/nav/context/rollout';
 import type { SettingDef, SettingPage } from './types';
+import { ORDER_LIST_VIEW_KEYS, VIEW_SPECS, type Density, type OrderListViewKey } from '@/lib/views/view-specs';
 
 /** Per-role override of the Unbox Inbound pin default (Gemini D9). */
 const UNBOX_ROLE_DEFAULT_SETTINGS: readonly SettingDef[] = ALL_ROLES.map((role) => ({
@@ -57,7 +58,7 @@ const DESK_VIEW_SETTINGS: readonly SettingDef[] = DESK_VIEW_DESKS.map((desk) => 
   scope: 'staff' as const,
   label: `${desk.label}: record view`,
   description:
-    'Remembered from the In place / Split switch and the table-row toggle. In place: a record opens where the list is. Split: list left, record right.',
+    'Remembered from the one In place · Split · Floor view switch (Floor is never remembered). In place: a record opens where the list is. Split: list left, record right.',
   control: 'segmented' as const,
   schema: z.enum(['in-place', 'split']).default('in-place'),
   options: [
@@ -70,6 +71,29 @@ const DESK_VIEW_SETTINGS: readonly SettingDef[] = DESK_VIEW_DESKS.map((desk) => 
     read: (raw: unknown) => (raw === true ? 'split' : raw === false ? 'in-place' : undefined),
   },
 }));
+
+/** Storage key of one list view's remembered row density (`VIEW_SPECS[viewKey].density`). */
+export function viewDensitySettingKey(viewKey: OrderListViewKey): string {
+  return `desk.${viewKey}.density`;
+}
+
+const DENSITY_LABEL: Record<Density, string> = { S: 'Small', M: 'Medium', L: 'Large' };
+
+/** One row-density setting per list view, bounded by the view's allowed range. */
+const VIEW_DENSITY_SETTINGS: readonly SettingDef[] = ORDER_LIST_VIEW_KEYS.map((viewKey) => {
+  const { density, job } = VIEW_SPECS[viewKey];
+  return {
+    key: viewDensitySettingKey(viewKey),
+    page: 'desk' as const,
+    group: 'Row density',
+    scope: 'staff' as const,
+    label: `${viewKey}: row density`,
+    description: `${job} — the row size this view opens at.`,
+    control: 'segmented' as const,
+    schema: z.enum(density.allowed as [Density, ...Density[]]).default(density.default),
+    options: density.allowed.map((value) => ({ value, label: DENSITY_LABEL[value] })),
+  };
+});
 
 /**
  * The contextual-sidebar switch, one per `SIDEBAR_PAGE_NAV` page — the org
@@ -96,6 +120,7 @@ const NAV_CONTEXTUAL_SETTINGS: readonly SettingDef[] = SIDEBAR_PAGE_NAV.map((pag
 
 export const SETTING_PAGES = [
   { id: 'receiving', label: 'Receiving', description: 'Unboxing & intake behavior' },
+  { id: 'scan', label: 'Scan feedback', description: 'Tones and buzzes on a scan, at every station' },
   { id: 'desk', label: 'Desks', description: 'How each desk shows its records' },
   { id: 'nav', label: 'Sidebar', description: 'Which pages use the contextual sidebar' },
 ] as const satisfies readonly { id: SettingPage; label: string; description: string }[];
@@ -385,39 +410,43 @@ export const SETTINGS: readonly SettingDef[] = [
     schema: z.boolean().default(true),
   },
 
-  // ─── Organization · Feedback ────────────────────────────────────────────
+  // ─── Scan feedback — every station (useScanFeedback) ────────────────────
+  // Moved off the receiving page (Phase E): the stored receiving.* values keep
+  // resolving through `legacy` until the first write lands on the new key.
   {
-    key: 'receiving.scanSoundsEnabled',
-    page: 'receiving',
-    group: 'Feedback',
+    key: 'scan.soundsEnabled',
+    page: 'scan',
+    group: 'Sound',
     scope: 'org',
     label: 'Scan sounds',
-    description: 'Master switch for scan confirmation tones across the org. Operators can still opt out individually.',
+    description: 'Master switch for scan tones at every station. Operators can still opt out individually.',
     control: 'toggle',
     schema: z.boolean().default(false),
     permission: 'admin.manage_features',
+    legacy: { key: 'receiving.scanSoundsEnabled', read: (raw) => raw },
   },
-
-  // ─── Personal · Feedback ────────────────────────────────────────────────
   {
-    key: 'receiving.scanSound',
-    page: 'receiving',
-    group: 'Feedback',
+    key: 'scan.sound',
+    page: 'scan',
+    group: 'Sound',
     scope: 'staff',
     label: 'Scan sound',
-    description: 'Play a confirmation tone on scan success and failure.',
+    description: 'Play a tone when a scan lands or is refused, at every station (needs the org switch on).',
     control: 'toggle',
     schema: z.boolean().default(true),
+    legacy: { key: 'receiving.scanSound', read: (raw) => raw },
   },
   {
-    key: 'receiving.scanHaptics',
-    page: 'receiving',
-    group: 'Feedback',
+    key: 'scan.haptics',
+    page: 'scan',
+    group: 'Haptics',
     scope: 'staff',
     label: 'Scan haptics',
-    description: 'Vibrate on scan (supported devices only).',
+    description: 'Buzz the phone on a scan and on a dock press (supported devices only).',
     control: 'toggle',
-    schema: z.boolean().default(false),
+    // On by default: phone stations buzzed unconditionally before the switch applied to them.
+    schema: z.boolean().default(true),
+    legacy: { key: 'receiving.scanHaptics', read: (raw) => raw },
   },
 
   // ─── Personal · Layout ──────────────────────────────────────────────────
@@ -453,6 +482,7 @@ export const SETTINGS: readonly SettingDef[] = [
     ],
   },
   ...DESK_VIEW_SETTINGS,
+  ...VIEW_DENSITY_SETTINGS,
   ...NAV_CONTEXTUAL_SETTINGS,
 ];
 

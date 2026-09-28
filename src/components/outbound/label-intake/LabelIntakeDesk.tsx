@@ -9,10 +9,7 @@ import { ModeRegion } from '@/design-system/providers/ModeRegion';
 import { DESK_BAR_SEGMENT_CLASS, deskBarSegmentTone } from '@/design-system/components/DeskActionSlot';
 import { EVIDENCE_CONTROL_CLASS, evidenceVerbClass } from '@/design-system/components/record-ledger/RecordEvidence';
 import { RECORD_ID_CLASS, RECORD_LABEL_CLASS } from '@/design-system/tokens/industrial-record';
-import {
-  LEDGER_EVIDENCE_CLASS,
-  LEDGER_TOOLBAR_CLASS,
-} from '@/components/outbound/orders/outbound-orders-ledger-geometry';
+import { DESK_TRIAGE_RAIL_CLASS } from '@/design-system/tokens/desk-stage';
 import { orderLabelSummaryKey, printDocument } from '@/lib/orders/order-paperwork-client';
 import { LABEL_PURPOSE_FACE } from '@/lib/shipping/label-purpose';
 import type { ShipAddress } from '@/lib/shipping/shipstation/types';
@@ -154,7 +151,7 @@ export function LabelIntakeDesk() {
       data-testid="label-intake"
     >
       <div className="flex min-w-0 flex-1 flex-col overflow-y-auto">
-        <div className={cn(LEDGER_TOOLBAR_CLASS, 'pl-4')}>
+        <div className="flex min-h-mode-hit shrink-0 items-center border-b border-mode-divide bg-mode-bar pl-4">
           <h1 className={cn(RECORD_LABEL_CLASS, 'flex-1 text-mode-ink')}>Add shipping label</h1>
         </div>
 
@@ -210,7 +207,10 @@ export function LabelIntakeDesk() {
         ) : null}
       </div>
 
-      <aside className={LEDGER_EVIDENCE_CLASS} aria-label="Labels on this order">
+      <aside
+        className={cn(DESK_TRIAGE_RAIL_CLASS, 'overflow-y-auto overscroll-contain border-l border-mode-divide')}
+        aria-label="Labels on this order"
+      >
         <LabelIntakeLabels lookup={data} />
       </aside>
     </ModeRegion>
@@ -222,7 +222,9 @@ export function LabelIntakeDesk() {
 function IntakeWorkbench({ lookup }: { lookup: IntakeLookup }) {
   const queryClient = useQueryClient();
   const order = lookup.order;
-  const [purpose, setPurpose] = useState<IntakePurpose>('replacement');
+  // `?purpose=return|replacement` — the order record's Return / Replacement label verbs.
+  const purposeParam = useSearchParams().get('purpose');
+  const [purpose, setPurpose] = useState<IntakePurpose>(purposeParam === 'return' ? 'return' : 'replacement');
   const [address, setAddress] = useState<AddressDraft>(() => addressDraftFrom(lookup.shipTo));
   const [parcel, setParcel] = useState<ParcelDraft>(() => ({
     weightOz: lookup.parcel?.weightOz != null ? String(lookup.parcel.weightOz) : '',
@@ -313,7 +315,7 @@ function IntakeWorkbench({ lookup }: { lookup: IntakeLookup }) {
           <div className="flex min-h-mode-hit items-center gap-3">
             <span className="min-w-0 flex-1 truncate text-role-body font-bold text-mode-ink">{order.title ?? '—'}</span>
             {order.sku ? <span className={cn(RECORD_ID_CLASS, 'shrink-0')}>SKU {order.sku}</span> : null}
-            {order.quantity != null ? <span className={cn(RECORD_ID_CLASS, 'shrink-0')}>QTY {order.quantity}</span> : null}
+            {order.quantity != null ? <span className={cn(RECORD_ID_CLASS, 'shrink-0')}>Qty {order.quantity}</span> : null}
           </div>
         </IntakeRow>
       ) : null}
@@ -378,13 +380,13 @@ function IntakeWorkbench({ lookup }: { lookup: IntakeLookup }) {
                 <input value={address.cityLocality} onChange={setAddr('cityLocality')} className={EVIDENCE_CONTROL_CLASS} autoComplete="off" />
               </Field>
               <Field label="State" className="w-20">
-                <input value={address.stateProvince} onChange={setAddr('stateProvince')} className={cn(EVIDENCE_CONTROL_CLASS, 'uppercase')} maxLength={3} autoComplete="off" />
+                <input value={address.stateProvince} onChange={setAddr('stateProvince')} className={EVIDENCE_CONTROL_CLASS} maxLength={3} autoComplete="off" />
               </Field>
               <Field label="ZIP" className="w-28">
                 <input value={address.postalCode} onChange={setAddr('postalCode')} className={cn(EVIDENCE_CONTROL_CLASS, RECORD_ID_CLASS)} autoComplete="off" />
               </Field>
               <Field label="Country" className="w-20">
-                <input value={address.countryCode} onChange={setAddr('countryCode')} className={cn(EVIDENCE_CONTROL_CLASS, 'uppercase')} maxLength={2} autoComplete="off" />
+                <input value={address.countryCode} onChange={setAddr('countryCode')} className={EVIDENCE_CONTROL_CLASS} maxLength={2} autoComplete="off" />
               </Field>
             </div>
             {purpose === 'return' ? (

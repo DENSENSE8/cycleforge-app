@@ -53,7 +53,7 @@ function DrillHeader({ title, onBack }: { title: string; onBack: () => void }) {
       >
         <ChevronLeft className="h-3.5 w-3.5" />
       </button>
-      <span className="min-w-0 flex-1 truncate text-role-micro font-semibold uppercase tracking-widest text-text-faint">
+      <span className="min-w-0 flex-1 truncate text-role-micro font-semibold text-text-faint">
         {title}
       </span>
     </div>

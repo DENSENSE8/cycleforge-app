@@ -31,7 +31,7 @@ export function PhotoLauncher({ g }: { g: PhotoGalleryController }) {
             <button
               type="button"
               onClick={() => g.openViewer(index)}
-              className="relative h-14 w-14 shrink-0 overflow-hidden rounded-lg border border-blue-200 bg-blue-50 transition-all hover:ring-2 hover:ring-blue-300 active:scale-95"
+              className="relative h-14 w-14 shrink-0 overflow-hidden rounded-mode-control border border-mode-edge bg-mode-well transition-colors hover:ring-2 hover:ring-mode-control"
               aria-label={`View photo ${index + 1} fullscreen`}
             >
               {photo.status === 'loaded' ? (
@@ -158,7 +158,7 @@ export function PhotoLauncher({ g }: { g: PhotoGalleryController }) {
             aria-label={hasPhotos ? 'View photos fullscreen' : 'No photos yet'}
           >
             <div className="flex min-w-0 flex-col">
-              <span className="text-role-micro uppercase tracking-wider text-blue-600">
+              <span className="text-role-micro text-blue-600">
                 {photoItems.length} {photoItems.length === 1 ? 'photo' : 'photos'}
               </span>
               <div className="flex flex-wrap items-center gap-x-2 gap-y-0 text-role-micro font-semibold">
@@ -203,7 +203,7 @@ export function PhotoLauncher({ g }: { g: PhotoGalleryController }) {
           <div className="flex flex-col items-start">
             <span className="text-sm font-semibold text-text-default">{g.launcherTitle}</span>
             <div className="mt-0.5 flex items-center gap-2">
-              <span className="text-role-micro uppercase tracking-wider text-blue-600">
+              <span className="text-role-micro text-blue-600">
                 {photoItems.length} {photoItems.length === 1 ? 'Photo' : 'Photos'}
               </span>
               {loadedCount < photoItems.length && errorCount === 0 && (

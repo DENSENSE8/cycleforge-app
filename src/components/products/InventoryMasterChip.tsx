@@ -28,7 +28,7 @@ export function InventoryMasterChip({
   const chip = (
     <span
       className={cn(
-        'inline-flex shrink-0 items-center rounded-md border border-red-200 bg-red-50 px-1.5 py-0.5 text-role-eyebrow font-semibold uppercase tracking-wider text-red-700',
+        'inline-flex shrink-0 items-center rounded-md border border-red-200 bg-red-50 px-1.5 py-0.5 text-role-eyebrow font-semibold text-red-700',
         className,
       )}
     >

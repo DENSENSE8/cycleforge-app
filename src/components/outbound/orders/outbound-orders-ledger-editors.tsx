@@ -28,8 +28,8 @@ import { ExternalLinkActionIcon } from '@/design-system/components/ExternalLinkA
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { StaffAvatar } from '@/components/identity';
 import { StageStaffAssignPopover } from '@/components/tables/compound/StageStaffAssignPopover';
+import type { StageStaffLane } from '@/components/tables/compound/staff-stage-lane';
 import {
-  canAssignCompoundStage,
   formatCompoundStageStepLine,
   type CompoundSlotValue,
   type CompoundStageStepFacts,
@@ -142,7 +142,8 @@ export function LedgerStageAssign({
 }: {
   verb: string;
   doneVerb: string;
-  role: 'technician' | 'packer';
+  /** Staff list lane: Pick / Pack functional roles, or `all` (QC — no floor role). */
+  role: StageStaffLane;
   facts: CompoundStageStepFacts | null;
   selectedStaffId: number | null;
   /** Assignee face (`---` = nobody) — shown until the step is stamped. */
@@ -158,9 +159,8 @@ export function LedgerStageAssign({
   const [open, setOpen] = useState(false);
   const triggerRef = useRef<HTMLButtonElement>(null);
   const done = Boolean(facts?.at);
-  const assignable = onCommit
-    ? canAssignCompoundStage({ selectedStaffId, label: verb, role, onCommit }, facts?.at)
-    : false;
+  // Assign chrome only while armed and unstamped (`canAssignCompoundStage`).
+  const assignable = Boolean(onCommit) && !done;
   const actorId = facts?.whoStaffId ?? selectedStaffId;
   const actorName =
     (facts?.who ?? '').trim() ||
@@ -615,25 +615,23 @@ const NOTE_MAX_PX = 480;
 
 type NoteSaveStatus = 'idle' | 'saving' | 'saved' | 'error';
 
+/** Only a save in flight or its result speaks; an idle field says nothing (owner 2026-09-27: no "Autosaves"). */
 const NOTE_STATUS_FACE: Readonly<Record<NoteSaveStatus, string>> = {
-  idle: 'Autosaves',
+  idle: '',
   saving: 'Saving…',
   saved: 'Saved',
   error: 'Not saved',
 };
 
-/** The order note, edited in place — one field for the row's NOTE overlay and the evidence column, so both write the same way. */
+/** The order note, edited in place — one field for the row's NOTE overlay and the record's Notes group, so both write the same way. Its host titles it; the field carries no caption of its own. */
 export function LedgerNoteField({
   orderId,
   note,
-  label,
   onSaved,
   onDone,
 }: {
   orderId: number;
   note: string | null;
-  /** Header label; the save status reads to its right. */
-  label?: string;
   onSaved?: (note: string) => void;
   /**
    * Enter / Escape finished the edit (already saved). An overlay host closes
@@ -729,12 +727,6 @@ export function LedgerNoteField({
 
   return (
     <span className="flex w-full flex-col gap-1" onClick={stop} onPointerDown={stop}>
-      {label ? (
-        <span className="flex items-center justify-between gap-2">
-          <span className={cn(RECORD_LABEL_CLASS, 'text-mode-muted')}>{label}</span>
-          {statusFace}
-        </span>
-      ) : null}
       <span className="relative block w-full">
         <textarea
           ref={areaRef}
@@ -754,7 +746,7 @@ export function LedgerNoteField({
           }}
           rows={2}
           placeholder="Add a note"
-          aria-label={label ?? 'Order note'}
+          aria-label="Order note"
           aria-describedby={statusId}
           data-testid="ledger-note-field"
           style={height == null ? undefined : { height }}
@@ -775,7 +767,8 @@ export function LedgerNoteField({
           <ResizeCorner className="h-3.5 w-3.5" />
         </span>
       </span>
-      {label ? null : <span className="flex justify-end">{statusFace}</span>}
+      {/* Idle says nothing; the status id stays in the DOM for aria-describedby. */}
+      {status === 'idle' ? <span id={statusId} hidden /> : <span className="flex justify-end">{statusFace}</span>}
     </span>
   );
 }

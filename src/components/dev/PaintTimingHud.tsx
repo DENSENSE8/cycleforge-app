@@ -70,7 +70,7 @@ export function PaintTimingHud() {
       aria-live="polite"
       aria-label="Paint timing debug HUD"
     >
-      <p className="mb-1 text-role-eyebrow uppercase tracking-widest text-text-faint">
+      <p className="mb-1 text-role-eyebrow text-text-faint">
         Paint timing
       </p>
       {vitals.length > 0 ? (
@@ -84,7 +84,7 @@ export function PaintTimingHud() {
       )}
       {marks.length > 0 ? (
         <>
-          <p className="mb-1 mt-2 text-role-eyebrow uppercase tracking-widest text-text-faint">
+          <p className="mb-1 mt-2 text-role-eyebrow text-text-faint">
             Surfaces (P0→P3)
           </p>
           <ul className="space-y-0.5 text-text-muted">
@@ -99,7 +99,7 @@ export function PaintTimingHud() {
       ) : null}
       {orderIssues.length > 0 ? (
         <>
-          <p className="mb-1 mt-2 text-role-eyebrow uppercase tracking-widest text-intent-danger">
+          <p className="mb-1 mt-2 text-role-eyebrow text-intent-danger">
             Order violations
           </p>
           <ul className="space-y-0.5 text-intent-danger">

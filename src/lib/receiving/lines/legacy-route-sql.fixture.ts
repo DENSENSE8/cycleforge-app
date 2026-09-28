@@ -134,6 +134,9 @@ export function legacyBuildLineByIdSql(id: number, orgId: string) {
                 r.support_notes              AS receiving_support_notes,
                 r.zoho_notes                 AS receiving_zoho_notes,
                 r.listing_url                AS receiving_listing_url,
+                COALESCE(NULLIF(BTRIM(rl_ret.return_reason), ''), NULLIF(BTRIM(r.return_reason), '')) AS return_reason,
+                rl_ret.rma_ref               AS return_rma_ref,
+                rl_ret.source_order_id       AS return_source_order_id,
                 rt.door_received_at::text          AS receiving_received_at,
                 ru.unboxed_at::text           AS receiving_unboxed_at,
                 rt.door_received_by                AS receiving_received_by,
@@ -172,6 +175,7 @@ export function legacyBuildLineByIdSql(id: number, orgId: string) {
            ON rlp.receiving_line_id = rl.id AND rlp.organization_id = rl.organization_id
          LEFT JOIN locations stg_loc ON stg_loc.id = rlp.staged_location_id
          LEFT JOIN staff staff_stg ON staff_stg.id = rlp.staged_by
+         LEFT JOIN receiving_line_return rl_ret ON rl_ret.receiving_line_id = rl.id AND rl_ret.organization_id = rl.organization_id
          LEFT JOIN zoho_po_mirror mirror
            ON mirror.zoho_purchaseorder_id = rz.zoho_purchaseorder_id
           AND mirror.organization_id = rl.organization_id
@@ -305,6 +309,9 @@ export function legacyBuildLinesByReceivingIdSql(receivingId: number, orgId: str
                   r.support_notes              AS receiving_support_notes,
                   r.zoho_notes                 AS receiving_zoho_notes,
                   r.listing_url                AS receiving_listing_url,
+                  COALESCE(NULLIF(BTRIM(rl_ret.return_reason), ''), NULLIF(BTRIM(r.return_reason), '')) AS return_reason,
+                  rl_ret.rma_ref               AS return_rma_ref,
+                  rl_ret.source_order_id       AS return_source_order_id,
                   COALESCE(rt.triage_complete, false) AS triage_complete,
                   rt.triage_completed_at::text    AS triage_completed_at,
                   COALESCE(ru.intake_path = 'unbox_only', false) AS unbox_only_intake,
@@ -347,6 +354,7 @@ export function legacyBuildLinesByReceivingIdSql(receivingId: number, orgId: str
            ON rlp.receiving_line_id = rl.id AND rlp.organization_id = rl.organization_id
          LEFT JOIN locations stg_loc ON stg_loc.id = rlp.staged_location_id
          LEFT JOIN staff staff_stg ON staff_stg.id = rlp.staged_by
+           LEFT JOIN receiving_line_return rl_ret ON rl_ret.receiving_line_id = rl.id AND rl_ret.organization_id = rl.organization_id
            LEFT JOIN zoho_po_mirror mirror
              ON mirror.zoho_purchaseorder_id = rz.zoho_purchaseorder_id
             AND mirror.organization_id = rl.organization_id
@@ -623,7 +631,8 @@ export function legacyBuildListSql(searchParams: URLSearchParams, opts: LegacySq
            rl.workflow_status IN ('UNBOXED','AWAITING_TEST','IN_TEST','PASSED','DONE')
            OR COALESCE(rl.quantity_received, 0) > 0
            OR ru.unboxed_at IS NOT NULL
-         )`,
+         )
+         AND (ru.unboxed_at IS NOT NULL OR ru.opened_at IS NOT NULL)`,
       );
     } else if (view === 'scanned') {
       // "Scanned" = door-scanned and physically in, but NOT yet unboxed — the triage to-do between the door scan and the unbox step.
@@ -1034,7 +1043,7 @@ export function legacyBuildListSql(searchParams: URLSearchParams, opts: LegacySq
       || view === 'all'
       || view === 'unbox_opened';
     const zohoStatusSelect = needsZohoMirror
-      ? `, mirror.status AS zoho_status, mirror.last_synced_at::text AS zoho_status_synced_at`
+      ? `, mirror.status AS zoho_status, mirror.last_synced_at::text AS zoho_status_synced_at${view === 'activity' ? ', mirror.vendor_name::text AS vendor_name' : ''}`
       : '';
     // view=viewed only: surface the viewer's own viewed_at so the rail labels
     // each row with "when you opened it" (mapRow folds it into last_activity_at)
@@ -1145,6 +1154,9 @@ export function legacyBuildListSql(searchParams: URLSearchParams, opts: LegacySq
                 r.support_notes              AS receiving_support_notes,
                 r.zoho_notes                 AS receiving_zoho_notes,
                 r.listing_url                AS receiving_listing_url,
+                COALESCE(NULLIF(BTRIM(rl_ret.return_reason), ''), NULLIF(BTRIM(r.return_reason), '')) AS return_reason,
+                rl_ret.rma_ref               AS return_rma_ref,
+                rl_ret.source_order_id       AS return_source_order_id,
                 stn.tracking_number_raw      AS shipment_tracking_number,
                 stn.carrier                  AS shipment_carrier,
                 stn.latest_status_category   AS shipment_status_category,
@@ -1177,6 +1189,7 @@ export function legacyBuildListSql(searchParams: URLSearchParams, opts: LegacySq
            ON rlp.receiving_line_id = rl.id AND rlp.organization_id = rl.organization_id
          LEFT JOIN locations stg_loc ON stg_loc.id = rlp.staged_location_id
          LEFT JOIN staff staff_stg ON staff_stg.id = rlp.staged_by
+         LEFT JOIN receiving_line_return rl_ret ON rl_ret.receiving_line_id = rl.id AND rl_ret.organization_id = rl.organization_id
          -- Soft JOIN: direct FK when set, else PO#-based fallback (see note above).
          -- D1 wrong-shipment guard: a direct receiving FK, else a PO#-based
          -- fallback. When a line has no FK and its PO has multiple zoho_po

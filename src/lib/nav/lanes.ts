@@ -48,6 +48,9 @@ export const LANE_DOORS: Readonly<Partial<Record<string, string>>> = {
   // Inbound (operator 2026-09-27): Deliveries is the landing page; its mode
   // switcher reaches Sourcing.
   inbound: 'incoming',
+  // Inventory (owner 2026-09-28): Inventory is the landing page; its mode
+  // switcher reaches QC labels.
+  inventory: 'inventory',
 };
 
 /** Look a lane up BY ID. */
@@ -69,7 +72,7 @@ type LaneMobileFirstStatus =
   /** Not mobile-friendly and not in daily use: **no nav row on any surface.** */
   | 'hidden';
 /** The lanes the gate can hide: */
-type GatedLaneId = DomainGroupId | 'monitor' | 'studio';
+type GatedLaneId = DomainGroupId | 'monitor';
 
 export const LANE_MOBILE_FIRST: Readonly<Record<GatedLaneId, LaneMobileFirstStatus>> = {
   // Kept by name (operator 2026-09-14) — in daily desktop use, port next.
@@ -83,8 +86,6 @@ export const LANE_MOBILE_FIRST: Readonly<Record<GatedLaneId, LaneMobileFirstStat
   support: 'hidden',
   /* PARKED 2026-09-16, operator ruling: */
   monitor: 'hidden',
-  /* UNPARKED 2026-09-23, operator ruling: */
-  studio: 'desk-only',
 };
 
 /** False when this lane has no door on any surface (the mobile-first gate). */

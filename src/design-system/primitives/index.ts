@@ -22,6 +22,7 @@ export * from './SlicedActionDock';
 export * from './OmnichannelComposerDock';
 export * from './IconButton';
 export * from './KeyboardKey';
+export * from './ChordKeys';
 export * from './Layer';
 export * from './OneTimeCodeInput';
 export * from './Panel';

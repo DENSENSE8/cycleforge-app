@@ -7,15 +7,15 @@ import type {
 } from '@/lib/repair/bench-session';
 
 /**
- * Bench timer queries (`repair_bench_sessions`) behind
+ * Repair-ticket bench timer queries (`qc_sessions`, kind REPAIR_SERVICE) behind
  * `/api/repair/bench-sessions`. Start and Stop stamp `NOW()` in the database;
  * nothing here accepts a client time. Org-scoped explicitly on every statement.
  */
 
 const SESSION_SELECT = `
-  SELECT b.id::int AS id, b.repair_id, b.staff_id, s.name AS staff_name,
+  SELECT b.id::int AS id, b.repair_service_id AS repair_id, b.staff_id, s.name AS staff_name,
          b.started_at, b.ended_at
-    FROM repair_bench_sessions b
+    FROM qc_sessions b
     LEFT JOIN staff s ON s.id = b.staff_id`;
 
 /** Transaction-start `NOW()` — the same instant any Start/Stop in this transaction stamps. */
@@ -41,7 +41,7 @@ export async function listBenchSessions(
   return withTenantTransaction(orgId, async (client) => {
     const rows = await client.query<RepairBenchSessionRecord>(
       `${SESSION_SELECT}
-        WHERE b.organization_id = $1 AND b.repair_id = $2
+        WHERE b.organization_id = $1 AND b.kind = 'REPAIR_SERVICE' AND b.repair_service_id = $2
         ORDER BY b.started_at DESC, b.id DESC`,
       [orgId, repairId],
     );
@@ -72,15 +72,16 @@ export async function startBenchSession(
       return { ok: false, status: 404, error: 'Repair not found' };
     }
     const inserted = await client.query<{ id: string }>(
-      `INSERT INTO repair_bench_sessions (organization_id, repair_id, staff_id)
-       VALUES ($1, $2, $3)
-       ON CONFLICT (organization_id, repair_id, staff_id) WHERE ended_at IS NULL DO NOTHING
+      `INSERT INTO qc_sessions (organization_id, kind, repair_service_id, staff_id)
+       VALUES ($1, 'REPAIR_SERVICE', $2, $3)
+       ON CONFLICT (organization_id, repair_service_id, staff_id) WHERE ended_at IS NULL DO NOTHING
        RETURNING id`,
       [orgId, repairId, staffId],
     );
     const row = await client.query<RepairBenchSessionRecord>(
       `${SESSION_SELECT}
-        WHERE b.organization_id = $1 AND b.repair_id = $2 AND b.staff_id = $3 AND b.ended_at IS NULL`,
+        WHERE b.organization_id = $1 AND b.kind = 'REPAIR_SERVICE' AND b.repair_service_id = $2
+          AND b.staff_id = $3 AND b.ended_at IS NULL`,
       [orgId, repairId, staffId],
     );
     return {
@@ -103,8 +104,9 @@ export async function stopBenchSession(
       return { ok: false, status: 404, error: 'Repair not found' };
     }
     const stopped = await client.query<{ id: string }>(
-      `UPDATE repair_bench_sessions SET ended_at = NOW()
-        WHERE organization_id = $1 AND repair_id = $2 AND staff_id = $3 AND ended_at IS NULL
+      `UPDATE qc_sessions SET ended_at = NOW()
+        WHERE organization_id = $1 AND kind = 'REPAIR_SERVICE' AND repair_service_id = $2
+          AND staff_id = $3 AND ended_at IS NULL
         RETURNING id`,
       [orgId, repairId, staffId],
     );

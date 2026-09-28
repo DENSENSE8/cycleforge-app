@@ -34,7 +34,7 @@ const row = (id: number, hasPickScan: boolean, isOutOfStock: boolean) => ({
 test('computes the fulfillment lane in NODE (deriveFulfillmentState) and buckets by lane', async () => {
   const fetchRows = [
     row(1, false, false),   // PENDING (untested, in stock)
-    row(2, true, false),    // TESTED
+    row(2, true, false),    // PICKED
     row(3, true, true),     // BLOCKED — is_out_of_stock wins over pick scan
     row(4, false, false),   // PENDING — not out of stock
     row(5, false, true),    // BLOCKED — out of stock
@@ -44,7 +44,7 @@ test('computes the fulfillment lane in NODE (deriveFulfillmentState) and buckets
 
   assert.equal(res.success, true);
   assert.equal(res.upserted, 5);
-  assert.deepEqual(res.byLane, { pending: 2, tested: 1, blocked: 2 });
+  assert.deepEqual(res.byLane, { pending: 2, picked: 1, blocked: 2 });
   assert.equal(res.doneFlipped, 2);
 });
 
@@ -52,7 +52,7 @@ test('empty queue: skips the upsert chunk, still runs the fetch + done-flip', as
   const { deps, calls } = fakeDeps([], 0);
   const res = await projectOrdersUnshippedMemberships(90, deps);
   assert.equal(res.upserted, 0);
-  assert.deepEqual(res.byLane, { pending: 0, tested: 0, blocked: 0 });
+  assert.deepEqual(res.byLane, { pending: 0, picked: 0, blocked: 0 });
   assert.equal(calls(), 2, 'fetch + flip only — no upsert call when there is nothing to upsert');
 });
 

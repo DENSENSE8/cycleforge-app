@@ -129,7 +129,7 @@ export interface SettingsSectionOption {
 }
 
 export const SETTINGS_SECTION_OPTIONS: SettingsSectionOption[] = [
-  { id: 'hardware',      label: 'Hardware',      description: 'Printer, scanner, scale',                          group: 'Personal', icon: Printer, tone: 'info' },
+  { id: 'hardware',      label: 'Hardware',      description: 'Printer, scanner, scan feedback, scale',           group: 'Personal', icon: Printer, tone: 'info' },
   { id: 'workstation',   label: 'Workstation',   description: 'Station, role, this device',                       group: 'Personal', icon: Monitor, tone: 'fulfillment' },
   { id: 'quick-access',  label: 'Quick access',  description: 'Bottom-right shortcuts & pins',                    group: 'Personal', icon: Zap, tone: 'warning' },
   { id: 'appearance',    label: 'Appearance',    description: 'Density, text size, pointer',                     group: 'Personal', icon: PaintBucket, tone: 'accent' },

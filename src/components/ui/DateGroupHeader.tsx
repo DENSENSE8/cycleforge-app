@@ -29,7 +29,7 @@ const dayGroupChipRowSolidClass = cn(
 /** Quiet micro date + qty — no border/shadow pill; sticky row is enough chrome.
  *  `whitespace-nowrap` keeps WED/JUN intact (no mid-weekday clip under tight parents). */
 const dayGroupChipClass =
-  'inline-flex items-center gap-1.5 whitespace-nowrap text-role-micro font-semibold uppercase tracking-wide text-text-muted';
+  'inline-flex items-center gap-1.5 whitespace-nowrap text-role-micro font-semibold text-text-muted';
 
 interface DateGroupHeaderProps {
   date: string;

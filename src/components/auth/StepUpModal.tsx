@@ -170,6 +170,7 @@ export function StepUpModal({ scope, open, onResolved, onCancel, reason }: StepU
 function humanError(code: string | undefined): string {
   switch (code) {
     case 'WRONG':        return 'PIN incorrect. Try again.';
+    case 'LOCKED':       return 'Too many wrong PINs. Try again in 15 minutes.';
     case 'NO_PIN':       return 'No PIN on this account.';
     case 'NOT_FOUND':    return 'Account not found.';
     case 'VERIFY_FAILED': return 'Passkey verification failed.';

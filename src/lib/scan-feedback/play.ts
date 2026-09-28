@@ -1,6 +1,7 @@
-/** Scan-feedback playback primitives — a short WebAudio confirmation tone and an optional haptic pulse for the receiving station's… */
+/** Scan-feedback playback primitives — the one WebAudio context and Vibration API caller. Stations fire these through `useScanFeedback` so the org master switch and per-staff toggles apply. */
 
-export type ScanFeedbackKind = 'success' | 'reject';
+/** success = landed · warn = landed, but look (e.g. a serial already on another unit) · reject = refused. */
+export type ScanFeedbackKind = 'success' | 'warn' | 'reject';
 
 let audioCtx: AudioContext | null = null;
 
@@ -37,7 +38,7 @@ function beep(ctx: AudioContext, freq: number, startAt: number, durationMs: numb
   osc.stop(t0 + dur);
 }
 
-/** Play the success/reject confirmation tone (no-op if WebAudio is unavailable). */
+/** Play the scan confirmation tone (no-op if WebAudio is unavailable). */
 export function playScanTone(kind: ScanFeedbackKind): void {
   const ctx = getCtx();
   if (!ctx) return;
@@ -45,6 +46,10 @@ export function playScanTone(kind: ScanFeedbackKind): void {
     // Rising two-note chirp.
     beep(ctx, 880, 0, 70);
     beep(ctx, 1320, 0.08, 90);
+  } else if (kind === 'warn') {
+    // Level double mid note — landed, but look.
+    beep(ctx, 660, 0, 80);
+    beep(ctx, 660, 0.12, 80);
   } else {
     // Low double buzz.
     beep(ctx, 220, 0, 120);
@@ -52,32 +57,17 @@ export function playScanTone(kind: ScanFeedbackKind): void {
   }
 }
 
-/**
- * One-note pass / fail cue for an eyes-down verdict (the wipe bench,
- * station.md §6 — "pair the visual pass/fail with an audio confirmation").
- * Best-effort: an autoplay-blocked browser silently no-ops.
- */
-export function playVerdictCue(kind: 'pass' | 'fail'): void {
-  const ctx = getCtx();
-  if (!ctx) return;
-  const osc = ctx.createOscillator();
-  const gain = ctx.createGain();
-  osc.connect(gain).connect(ctx.destination);
-  osc.type = 'sine';
-  osc.frequency.value = kind === 'pass' ? 880 : 220;
-  const now = ctx.currentTime;
-  gain.gain.setValueAtTime(0.0001, now);
-  gain.gain.exponentialRampToValueAtTime(0.16, now + 0.01);
-  gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.22);
-  osc.start(now);
-  osc.stop(now + 0.24);
-}
+const SCAN_BUZZ: Record<ScanFeedbackKind, number | number[]> = {
+  success: 16,
+  warn: [16, 80, 16],
+  reject: [24, 40, 24],
+};
 
 /** Fire a best-effort haptic pulse (no-op where the Vibration API is unsupported). */
 export function vibrateScan(kind: ScanFeedbackKind): void {
   if (typeof navigator === 'undefined' || typeof navigator.vibrate !== 'function') return;
   try {
-    navigator.vibrate(kind === 'success' ? 16 : [24, 40, 24]);
+    navigator.vibrate(SCAN_BUZZ[kind]);
   } catch {
     /* vibrate is best-effort; ignore unsupported hardware */
   }
@@ -92,22 +82,6 @@ export function vibratePress(): void {
   if (typeof navigator === 'undefined' || typeof navigator.vibrate !== 'function') return;
   try {
     navigator.vibrate(40);
-  } catch {
-    /* vibrate is best-effort; ignore unsupported hardware */
-  }
-}
-
-/** Read-outcome buzz for a phone serial read (repair scan companion): saved · duplicate · refused. */
-const READ_BUZZ: Record<'saved' | 'duplicate' | 'refused', number | number[]> = {
-  saved: 40,
-  duplicate: [60, 80, 60],
-  refused: [180],
-};
-
-export function vibrateRead(kind: keyof typeof READ_BUZZ): void {
-  if (typeof navigator === 'undefined' || typeof navigator.vibrate !== 'function') return;
-  try {
-    navigator.vibrate(READ_BUZZ[kind]);
   } catch {
     /* vibrate is best-effort; ignore unsupported hardware */
   }

@@ -58,7 +58,7 @@ function StatusMicroLabel({ status, label, className = '' }: StatusMicroLabelPro
 
   return (
     <UnderlineValue
-      value={<span className="text-role-eyebrow uppercase tracking-[0.08em] leading-none">{resolvedLabel}</span>}
+      value={<span className="text-role-eyebrow leading-none">{resolvedLabel}</span>}
       tone={tone}
       className={className}
       truncate={false}

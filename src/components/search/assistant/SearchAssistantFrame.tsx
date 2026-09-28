@@ -57,6 +57,7 @@ import {
   searchAssistantPrompt,
   type SearchAssistantRecord,
 } from './search-assistant-context';
+import { KeyboardKey } from '@/design-system/primitives';
 
 /** Shared-layout id: the pill, the floating composer and the pane's composer are ONE node. */
 const COMPOSER_LAYOUT_ID = 'search-ai-composer';
@@ -291,7 +292,7 @@ export function SearchAssistantFrame({
                     {reduced ? prompt : <Typewriter speed="fast">{prompt}</Typewriter>}
                   </span>
                   {chat.messages.length > 0 ? <span className={AI_LABEL_CLASS}>Resume</span> : null}
-                  <kbd className={cn(AI_LABEL_CLASS, 'shrink-0 rounded-ai-control border border-ai-line px-1.5 py-0.5 font-sans')}>⌘J</kbd>
+                  <KeyboardKey size="xs">⌘J</KeyboardKey>
                 </motion.button>
               )}
             </div>

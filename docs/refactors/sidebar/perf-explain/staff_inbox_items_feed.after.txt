@@ -1,35 +1,38 @@
 -- staff_inbox_items_feed: AFTER
--- captured 2026-09-26T19:49:11Z as app_tenant (unpooled), app.current_org=00000000-0000-0000-0000-000000000001
+-- captured 2026-09-28T08:24:07Z as app_tenant bypassrls=false (unpooled), app.current_org=00000000-0000-0000-0000-000000000001
 -- SQL: docs/refactors/sidebar/perf-explain/staff_inbox_items_feed.after.sql
 
                                                                                                                                                                                                         QUERY PLAN                                                                                                                                                                                                         
 ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
- Limit  (cost=13.80..13.81 rows=1 width=225) (actual time=0.158..0.160 rows=10 loops=1)
-   Buffers: shared hit=31
-   ->  Sort  (cost=13.80..13.81 rows=1 width=225) (actual time=0.157..0.158 rows=10 loops=1)
+ Limit  (cost=7.04..7.06 rows=8 width=262) (actual time=0.095..0.097 rows=10 loops=1)
+   Buffers: shared hit=12
+   ->  Sort  (cost=7.04..7.06 rows=8 width=262) (actual time=0.094..0.095 rows=10 loops=1)
          Sort Key: i.last_event_at DESC, i.id DESC
          Sort Method: quicksort  Memory: 30kB
-         Buffers: shared hit=31
-         ->  Result  (cost=0.18..13.79 rows=1 width=225) (actual time=0.070..0.093 rows=10 loops=1)
+         Buffers: shared hit=12
+         ->  Result  (cost=0.05..6.92 rows=8 width=262) (actual time=0.050..0.059 rows=10 loops=1)
                One-Time Filter: ((NULLIF(current_setting('app.current_org'::text, true), ''::text))::uuid = '00000000-0000-0000-0000-000000000001'::uuid)
-               Buffers: shared hit=25
-               ->  Nested Loop Left Join  (cost=0.18..13.79 rows=1 width=225) (actual time=0.062..0.083 rows=10 loops=1)
+               Buffers: shared hit=6
+               ->  Nested Loop Left Join  (cost=0.05..6.92 rows=8 width=262) (actual time=0.044..0.052 rows=10 loops=1)
                      Join Filter: ((sub.entity_type = i.entity_type) AND (sub.entity_id = i.entity_id))
                      Rows Removed by Join Filter: 10
-                     Buffers: shared hit=25
-                     ->  Seq Scan on staff_inbox_items i  (cost=0.02..5.60 rows=1 width=213) (actual time=0.040..0.044 rows=10 loops=1)
+                     Buffers: shared hit=6
+                     ->  Seq Scan on staff_inbox_items i  (cost=0.02..5.60 rows=8 width=276) (actual time=0.026..0.029 rows=10 loops=1)
                            Filter: ((organization_id = '00000000-0000-0000-0000-000000000001'::uuid) AND (staff_id = 1) AND (entity_type = ANY ('{receiving,receiving_line,serial_unit,order,fba_shipment,repair,warranty_claim,support_ticket,task}'::text[])) AND ((state = ANY ('{unread,read}'::text[])) OR ((state = 'snoozed'::text) AND (snoozed_until <= '2026-09-26 19:40:12.34+00'::timestamp with time zone))))
                            Rows Removed by Filter: 11
                            Buffers: shared hit=5
-                     ->  Result  (cost=0.14..8.16 rows=1 width=92) (actual time=0.003..0.003 rows=1 loops=10)
-                           One-Time Filter: ((NULLIF(current_setting('app.current_org'::text, true), ''::text))::uuid = '00000000-0000-0000-0000-000000000001'::uuid)
-                           Buffers: shared hit=20
-                           ->  Index Scan using ux_staff_subscriptions_entity on staff_subscriptions sub  (cost=0.14..8.16 rows=1 width=92) (actual time=0.002..0.002 rows=1 loops=10)
-                                 Index Cond: ((organization_id = '00000000-0000-0000-0000-000000000001'::uuid) AND (staff_id = 1))
-                                 Buffers: shared hit=20
+                     ->  Materialize  (cost=0.01..1.17 rows=1 width=44) (actual time=0.002..0.002 rows=1 loops=10)
+                           Buffers: shared hit=1
+                           ->  Result  (cost=0.01..1.17 rows=1 width=44) (actual time=0.013..0.014 rows=1 loops=1)
+                                 One-Time Filter: ((NULLIF(current_setting('app.current_org'::text, true), ''::text))::uuid = '00000000-0000-0000-0000-000000000001'::uuid)
+                                 Buffers: shared hit=1
+                                 ->  Seq Scan on staff_subscriptions sub  (cost=0.01..1.17 rows=1 width=44) (actual time=0.012..0.012 rows=1 loops=1)
+                                       Filter: ((organization_id = '00000000-0000-0000-0000-000000000001'::uuid) AND (subscription_kind = 'entity'::text) AND (staff_id = 1))
+                                       Rows Removed by Filter: 2
+                                       Buffers: shared hit=1
  Planning:
-   Buffers: shared hit=831 read=1
- Planning Time: 2.500 ms
- Execution Time: 0.255 ms
-(27 rows)
+   Buffers: shared hit=798
+ Planning Time: 1.751 ms
+ Execution Time: 0.160 ms
+(30 rows)
 

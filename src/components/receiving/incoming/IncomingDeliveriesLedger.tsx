@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useRef, useState, type RefObject } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode, type RefObject } from 'react';
 import {
   DataTableFilterMenu,
   DataTableSortMenu,
@@ -10,7 +10,16 @@ import {
 import { SearchField, Button } from '@/design-system/primitives';
 import { RecordLedger } from '@/design-system/components/record-ledger/RecordLedger';
 import { useDeskFloorFace, useDeskStageOptional } from '@/design-system/components/DeskStageContext';
-import { IncomingDeliveryCardList } from './cards/IncomingDeliveryCardList';
+import { TriageCardList, type TriageFeed, type TriageRecordSlot, type TriageServerPages } from '@/design-system/components/triage-card-list/TriageCardList';
+import { triageFamily } from '@/design-system/components/triage-card-list/triage-view';
+import { TriageAllClear } from '@/design-system/components/triage-card-list/TriageListBody';
+import { useTriageCut, type TriageCut } from '@/design-system/components/triage-card-list/triage-list-state';
+import { RecordLedgerSummaryPane } from '@/design-system/components/record-ledger/RecordLedgerSummary';
+import { useReceivingSelectionPort } from '@/components/receiving/use-receiving-selection-port';
+import { ReceivingSelectionVerbs } from '@/components/receiving/ReceivingSelectionVerbs';
+import { INCOMING_PIPELINE_VIEW } from '@/lib/triage/views';
+import { IncomingDeliveryCard } from './cards/IncomingDeliveryCard';
+import { receiptCardKey, receiptCardModel, type ReceiptCardModel } from './cards/receipt-card-model';
 import { IncomingStatusChips, type IncomingStatusChipSet } from './IncomingStatusChips';
 import { RecordActionStrip } from '@/design-system/components/record-action-strip/RecordActionStrip';
 import { useRouter } from 'next/navigation';
@@ -38,6 +47,14 @@ const receivingLineId = (row: ReceivingLineRow): number => row.id;
 const purchaseKey = (row: ReceivingLineRow): string =>
   (row.zoho_purchaseorder_id || row.zoho_purchaseorder_number || row.source_order_id || '').trim();
 
+const VIEW = INCOMING_PIPELINE_VIEW;
+/** Inbound's status chips are its own (`IncomingStatusChips`, server buckets) — the face's cut filters none. */
+const NO_FACE_CHIPS: readonly never[] = [];
+const noFaceChipsOf = (): readonly never[] => NO_FACE_CHIPS;
+/** A Find naming exactly one PO (or its full tracking number) opens it. */
+const receiptExactFind = (query: string, card: ReceiptCardModel) =>
+  card.identity.toLowerCase() === query || card.rows.some((row) => (row.tracking_number ?? '').toLowerCase() === query);
+
 const SORT_OPTIONS: readonly DataTableSortOption[] = [
   { id: 'order', label: 'Purchase order', group: 'Record' },
   { id: 'title', label: 'Product title', group: 'Record' },
@@ -59,7 +76,14 @@ interface IncomingDeliveriesLedgerProps {
   /** The ledger's own search field — omitted on `/incoming`, where the sidebar Find owns search. */
   query?: string;
   onQueryChange?: (value: string) => void;
+  /** The page's Find text (sidebar or global header) — the cards face reads it. */
+  findValue: string;
   filter: DataTableFilterChrome;
+  /**
+   * The contextual sidebar owns Source and Sort (`/incoming`): the toolbar
+   * drops its Filter funnel and Sort icon. The Unbox embed has no sidebar.
+   */
+  sidebarOwnsControls: boolean;
   /** Status chips top-left (delivery state, or the pasted list's buckets). */
   statusChips?: IncomingStatusChipSet | null;
   /** One line above the list (e.g. the pasted list hit the row cap). */
@@ -90,7 +114,9 @@ export function IncomingDeliveriesLedger({
   emptyMessage,
   query,
   onQueryChange,
+  findValue,
   filter,
+  sidebarOwnsControls,
   statusChips,
   notice,
   lane = 'pipeline',
@@ -207,11 +233,25 @@ export function IncomingDeliveriesLedger({
     onOpenRow(row);
   }, [onOpenRow]);
 
+  // Two faces over one state (owner 2026-09-27, the To-ship pattern): on a
+  // desk stage, In place / Split paint the triage cards and Floor
+  // (⌘/Ctrl+Shift+F) the industrial ledger. Off a stage (the Unbox embed) the
+  // ledger is the only face.
+  const stage = useDeskStageOptional();
+  useDeskFloorFace(stage != null);
+  const cardsFace = stage != null && stage.view !== 'floor';
+
+  // The triage face's cut (new deliveries held behind the pill) — applied
+  // BEFORE the record cursor, so J / K walk exactly the cards on screen.
+  const cut = useTriageCut({ statusKeys: NO_FACE_CHIPS, recordParams: VIEW.recordParams });
+  const { filterBands } = cut;
+  const cardBands = useMemo(() => filterBands(groups, receiptCardKey, noFaceChipsOf), [filterBands, groups]);
+
   usePublishRecordCursor({
     surfaceId: 'incoming-deliveries-ledger',
     scope: 'record',
     enabled: true,
-    order: groups,
+    order: cardsFace ? cardBands : groups,
     folds: { mode: 'default-expanded', collapsed: folded },
     openId: openRow?.id ?? null,
     getId: receivingLineId,
@@ -250,14 +290,6 @@ export function IncomingDeliveriesLedger({
 
   const summary = useMemo(() => incomingDeliverySummary(rows, lane), [lane, rows]);
 
-  // Two faces over one state (owner 2026-09-27, the To-ship pattern): on a
-  // desk stage, In place / Split paint the triage cards and Floor
-  // (⌘/Ctrl+Shift+F) the industrial ledger. Off a stage (the Unbox embed) the
-  // ledger is the only face.
-  const stage = useDeskStageOptional();
-  useDeskFloorFace(stage != null);
-  const cardsFace = stage != null && stage.view !== 'floor';
-
   const recordTitle = openRow ? `PO ${purchaseIdentity(openRow)}` : 'Delivery';
   const actionStrip = openRow ? (
     <RecordActionStrip
@@ -276,7 +308,7 @@ export function IncomingDeliveriesLedger({
       delivery={delivery}
     />
   ) : null;
-  const tableControls = (
+  const tableControls = sidebarOwnsControls ? null : (
     <>
       <DataTableFilterMenu {...filter} />
       <DataTableSortMenu
@@ -300,29 +332,38 @@ export function IncomingDeliveriesLedger({
   );
 
   if (cardsFace) {
-    const position = recordNavigation.available ? recordNavigation.position : null;
     return (
-      <IncomingDeliveryCardList
-        groups={groups}
-        loading={loading}
-        empty={emptyMessage}
-        openKey={openKey}
-        onOpenKey={handleOpen}
-        onClose={close}
-        selectedIds={selectedIds}
-        onToggleRow={onToggleRow}
-        toolbar={tableControls}
-        statusChips={statusChips ? <IncomingStatusChips set={statusChips} face="cards" /> : null}
-        notice={notice ?? null}
-        sectioned={sectioned}
-        recordTitle={recordTitle}
-        record={record}
-        actionStrip={actionStrip}
-        indexLabel={openKey != null && position != null ? `${position} of ${recordNavigation.total}` : undefined}
-        summary={summary}
-        footer={footer}
-        scrollRef={scrollRef}
-      />
+      <div data-testid="incoming-deliveries-ledger" data-face="cards" className="flex min-h-0 min-w-0 flex-1">
+        <IncomingDeliveryCards
+          cut={cut}
+          bands={cardBands}
+          allBands={groups}
+          rows={rows}
+          entries={entries}
+          loading={loading}
+          sectioned={sectioned}
+          lane={lane}
+          emptyMessage={emptyMessage}
+          findValue={findValue}
+          openRowId={openRow?.id ?? null}
+          onOpenKey={handleOpen}
+          onClose={close}
+          selectedIds={selectedIds}
+          onToggleRow={onToggleRow}
+          serverPages={{ page, pageCount, pageSize, onPage }}
+          total={total}
+          statusChips={statusChips ? <IncomingStatusChips set={statusChips} face="cards" /> : null}
+          notice={notice ?? null}
+          record={{
+            title: recordTitle,
+            noun: VIEW.noun.one,
+            testId: 'incoming-deliveries-ledger-record',
+            summary: <RecordLedgerSummaryPane summary={summary} />,
+            view: record,
+            strip: actionStrip,
+          }}
+        />
+      </div>
     );
   }
 
@@ -376,6 +417,120 @@ export function IncomingDeliveriesLedger({
       summary={summary}
       record={record}
       footer={footer}
+    />
+  );
+}
+
+/**
+ * The Inbound cards face: the shared {@link TriageCardList} fed by the
+ * receiving family — the same face, bar, keys and record plane as To ship,
+ * over this host's rows, selection, open record and server pages.
+ */
+function IncomingDeliveryCards({
+  cut,
+  bands,
+  allBands,
+  rows,
+  entries,
+  loading,
+  sectioned,
+  lane,
+  emptyMessage,
+  findValue,
+  openRowId,
+  onOpenKey,
+  onClose,
+  selectedIds,
+  onToggleRow,
+  serverPages,
+  total,
+  statusChips,
+  notice,
+  record,
+}: {
+  cut: TriageCut<never>;
+  bands: readonly [string, RowGroup<ReceivingLineRow>[]][];
+  allBands: readonly [string, RowGroup<ReceivingLineRow>[]][];
+  rows: readonly ReceivingLineRow[];
+  entries: readonly IncomingLedgerEntry[];
+  loading: boolean;
+  sectioned: boolean;
+  lane: 'pipeline' | 'exceptions';
+  emptyMessage: string;
+  findValue: string;
+  openRowId: number | null;
+  onOpenKey: (key: string) => void;
+  onClose: () => void;
+  selectedIds: Set<number>;
+  onToggleRow: (row: ReceivingLineRow) => void;
+  serverPages: TriageServerPages;
+  total: number;
+  statusChips: ReactNode;
+  notice: string | null;
+  record: TriageRecordSlot;
+}) {
+  const family = useMemo(() => {
+    const base = triageFamily(VIEW, {
+      rowId: receivingLineId,
+      groupKey: receiptCardKey,
+      cardModel: receiptCardModel,
+      exactFind: receiptExactFind,
+      renderCard: (props) => <IncomingDeliveryCard {...props} />,
+    });
+    // The Exceptions lane wears this view until it is a nav view of its own.
+    return lane === 'exceptions' ? { ...base, listLabel: 'Deliveries that need a person' } : base;
+  }, [lane]);
+
+  // The ledger's entry keys, so the open delivery survives a switch to Floor:
+  // a line opens as its line entry; a folded purchase opens as its group.
+  const openRow = useCallback(
+    (row: ReceivingLineRow) => {
+      const lineKey = `line:${row.id}`;
+      if (entries.some((entry) => entry.key === lineKey)) onOpenKey(lineKey);
+      else {
+        const group = entries.find((entry) => entry.kind === 'group' && entry.group.rows.some((r) => r.id === row.id));
+        if (group) onOpenKey(group.key);
+      }
+    },
+    [entries, onOpenKey],
+  );
+
+  const selection = useReceivingSelectionPort(selectedIds, onToggleRow, rows);
+
+  const painted = useMemo(() => bands.flatMap(([, groups]) => groups.flatMap((group) => group.rows)), [bands]);
+  const feed: TriageFeed<ReceivingLineRow> = {
+    bands,
+    allBands,
+    painted,
+    sectioned,
+    total,
+    loading,
+    fetching: loading,
+    serverPages,
+    search: { value: findValue, pending: false },
+    selection,
+    open: { id: openRowId, open: openRow, close: onClose },
+  };
+
+  return (
+    <TriageCardList
+      family={family}
+      feed={feed}
+      cut={cut}
+      record={record}
+      summary={statusChips}
+      bulk={<ReceivingSelectionVerbs noun="deliveries" />}
+      banner={
+        notice ? (
+          <p role="status" data-testid="incoming-notice" className="px-4 pb-1 text-xs font-semibold text-text-warning">
+            {notice}
+          </p>
+        ) : null
+      }
+      searchEmpty={null}
+      allClear={
+        <TriageAllClear title={emptyMessage} detail={lane === 'exceptions' ? 'Nothing needs a person.' : 'Nothing on the way.'} />
+      }
     />
   );
 }

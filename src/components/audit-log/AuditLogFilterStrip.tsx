@@ -159,7 +159,7 @@ export function AuditLogFilterDropdown({ onClose }: { onClose: () => void }) {
   return (
     <div className="space-y-6">
       <div>
-        <p className="mb-3 text-role-caption font-semibold uppercase tracking-[0.2em] text-text-faint">Date Range</p>
+        <p className="mb-3 text-role-caption font-semibold text-text-faint">Date Range</p>
         <div className="grid grid-cols-3 gap-2">
           {/* ds-raw-button: segmented date-preset toggle with custom active fill (bg-blue-500) */}
           {presetOptions.map((opt) => (
@@ -167,7 +167,7 @@ export function AuditLogFilterDropdown({ onClose }: { onClose: () => void }) {
               key={opt.id}
               type="button"
               onClick={() => actions.applyPreset(opt.id)}
-              className={`rounded-xl border px-3 py-2 text-role-micro font-semibold uppercase tracking-wider transition-all ${
+              className={`rounded-xl border px-3 py-2 text-role-micro font-semibold transition-all ${
                 state.preset === opt.id
                   ? 'border-blue-500 bg-blue-500 text-white shadow-md shadow-blue-500/20'
                   : 'border-border-hairline bg-surface-canvas/50 text-text-muted hover:border-border-soft hover:bg-surface-card'
@@ -197,7 +197,7 @@ export function AuditLogFilterDropdown({ onClose }: { onClose: () => void }) {
       )}
 
       <div>
-        <p className="mb-3 text-role-caption font-semibold uppercase tracking-[0.2em] text-text-faint">Staff Member</p>
+        <p className="mb-3 text-role-caption font-semibold text-text-faint">Staff Member</p>
         <StaffCombobox value={state.staffId} onChange={actions.setStaffId} />
       </div>
 
@@ -206,7 +206,7 @@ export function AuditLogFilterDropdown({ onClose }: { onClose: () => void }) {
           variant="brand"
           size="lg"
           onClick={onClose}
-          className="h-auto w-full rounded-2xl py-3.5 text-sm font-semibold uppercase tracking-widest"
+          className="h-auto w-full rounded-2xl py-3.5 text-sm font-semibold"
         >
           Done
         </Button>
@@ -317,7 +317,7 @@ function AuditLogFilterStrip() {
 
   return (
     <div className="border-b border-border-hairline bg-surface-card/60 px-3 py-2.5">
-      <p className="px-1 pb-1 text-role-eyebrow uppercase tracking-widest text-emerald-700/80">
+      <p className="px-1 pb-1 text-role-eyebrow text-emerald-700/80">
         Filters
       </p>
 
@@ -329,7 +329,7 @@ function AuditLogFilterStrip() {
             key={opt.id}
             type="button"
             onClick={() => applyPreset(opt.id)}
-            className={`flex-1 rounded-md px-1.5 py-1 text-role-micro font-semibold uppercase tracking-wider transition ${
+            className={`flex-1 rounded-md px-1.5 py-1 text-role-micro font-semibold transition ${
               preset === opt.id
                 ? 'bg-emerald-600 text-white shadow-sm shadow-emerald-200'
                 : 'bg-surface-sunken text-text-muted hover:bg-surface-strong'

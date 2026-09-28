@@ -29,7 +29,7 @@ Route key: `receiving` (`src/lib/sidebar-navigation.ts:480`). Page id: `incoming
 | View/tab | Pipeline body | `IncomingDeliveriesLedger` (RecordLedger) | — | `src/components/station/ReceivingLinesTable.tsx:627-651` |
 | View/tab | Docked body | `DockedReceiptsLedger` (RecordLedger) | — | `src/components/station/ReceivingLinesTable.tsx:654-668` |
 | View/tab | Board layout | `?layout=board`, only when env `NEXT_PUBLIC_STATION_PIPELINE_BOARDS==='1'`. Uses `StationPipelineBoard` | `prefsKey receivingIncomingBoard` / `receivingHistoryBoard` in server staff prefs (`src/lib/neon/staff-preferences-queries.ts:29-36,93-94`) | `src/components/station/ReceivingLinesTable.tsx:460-525`; `src/lib/station/flags.ts:2` |
-| View/tab | Composer takeover | Add purchase / return replaces the ledger with `ReceivingOrderComposer` on either lane | Module store `receiving-order-composer-store` (not URL) | `src/components/station/ReceivingLinesTable.tsx:188-192,612-614` |
+| View/tab | Inbound order form | Add purchase / return navigates to its own page (the ledger is not replaced) | URL `/incoming/new?type=PO\|RETURN\|TRADE_IN\|PICKUP` | `src/app/incoming/new/page.tsx`; `src/lib/inbound/new-inbound-order-path.ts` |
 | View/tab | Returns CSV staging takeover | `?import=csv` + session draft → `IncomingReturnsImportStagingHost` | URL `import=csv` + in-memory `staging-store` (`src/lib/tables/import/staging-store.ts:8-9,46-61`) | `src/components/station/ReceivingLinesTable.tsx:194-233,617-620`; route `src/lib/routing/receiving-routes.ts:190` |
 | View/tab | First-paint stand-in | SSR shows `IncomingFirstPaint` until mount | — | `src/components/receiving/incoming/IncomingBrowseShell.tsx:15-17` |
 | Filter | `lane` | `pipeline` (omitted) \| `docked` | URL | `src/lib/routing/receiving-routes.ts:174` |
@@ -285,27 +285,24 @@ Governed by `SIDEBAR_PAGE_NAV:1030-1043`, `src/app/shipping/(desk)/fba/page.tsx:
 
 ---
 
-### label-intake — Label intake
+### label-intake — Labels & docs (contextual since 2026-09-27)
 
-Governed by `SIDEBAR_PAGE_NAV:1044-1047`, `src/app/shipping/label-intake/page.tsx:1-12`, and `src/features/label-intake/LabelIntakeLedger.tsx:1-394`.
+Governed by `SIDEBAR_PAGE_NAV` (`label-intake`, children `labels` / `paperwork` / `printed`, bare keys 1 · 2 · 3), `NAV_PAGE_DECLS['label-intake']`, `src/app/shipping/(desk)/label-intake/page.tsx` and `src/features/labels-docs/LabelsDocsDesk.tsx`. The old `LabelIntakeLedger` is deleted; the machine-checked rows live in `parity.ts` (`'label-intake'`).
 
-| Element Type | Name / Key | URL Param / Store / Target | Allowed / Expected Values | Source file:line |
+| Element Type | Name / Key | URL Param / Store / Target | Allowed / Expected Values | Source |
 |---|---|---|---|---|
-| **View / Tab** | Needs Action *(Default)* | React `useState<LedgerView>` (`view`) | `needs-action` | `src/features/label-intake/LabelIntakeLedger.tsx:64, 184-201`<br>`src/lib/label-ingestions/ledger-view.ts:12-25` |
-| **View / Tab** | Quarantine | React `useState<LedgerView>` (`view`) | `quarantine` | `src/features/label-intake/LabelIntakeLedger.tsx:184-201` |
-| **View / Tab** | Applied | React `useState<LedgerView>` (`view`) | `applied` | `src/features/label-intake/LabelIntakeLedger.tsx:184-201` |
-| **View / Tab** | All | React `useState<LedgerView>` (`view`) | `all` | `src/features/label-intake/LabelIntakeLedger.tsx:184-201` |
-| **Filter** | Ingestion State Refinement | In-memory filter via `ledgerViewRows` | `needs-action` \| `quarantine` \| `applied` \| `all` | `src/lib/label-ingestions/ledger-view.ts:35-65` |
-| **Action** | Upload Label PDF | Hidden `<input type="file">` | accepts `application/pdf` | `src/features/label-intake/LabelIntakeLedger.tsx:145-166` |
-| **Action** | Refresh Ledger Feed | button onClick `query.refetch()` | invalidates `LABEL_INGESTIONS_QUERY_KEY` | `src/features/label-intake/LabelIntakeLedger.tsx:167-175` |
-| **Action** | Drag-and-Drop Ingestion | `<section onDrop={onDrop}>` | accepts dropped PDF File object | `src/features/label-intake/LabelIntakeLedger.tsx:135-154` |
-| **Action** | Apply Label to Packed Unit | mutation `applyLabelIngestionHttp` | POST `/api/shipping/label-intake` | `src/features/label-intake/LabelIntakeLedger.tsx:109-118, 330-350` |
-| **Action** | Retry Reprocessing | mutation `retryLabelIngestionHttp` | POST `/api/shipping/label-intake` | `src/features/label-intake/LabelIntakeLedger.tsx:104-108, 351-370` |
-| **Action** | Preview Carrier PDF | `window.open(previewUrl, '_blank')` | GET `/api/shipping/label-intake/labels/[id]/pdf` | `src/features/label-intake/LabelIntakeLedger.tsx:371-385` |
-| **Recents List** | Recent Label Ingestion Feed | TanStack Query `LABEL_INGESTIONS_QUERY_KEY` | Array of `LabelIngestionDto` (refetches every 15s) | `src/features/label-intake/LabelIntakeLedger.tsx:69-74`<br>`src/lib/label-ingestions/http-client.ts:30-60` |
-| **Scan Input** | PDF Document Drop Zone | Full-canvas drag-over & drop listener | PDF binary blob | `src/features/label-intake/LabelIntakeLedger.tsx:135-154` |
-| **Saved Views** | Preset Ledger Views | `LEDGER_VIEWS` constants | `needs-action`, `quarantine`, `applied`, `all` | `src/lib/label-ingestions/ledger-view.ts:15-20` |
-| **Count / Badge** | View Tab Badges | `counts[id]` | 2-digit tabular-nums count per view | `src/features/label-intake/LabelIntakeLedger.tsx:76-79, 198` |
+| **View** | Labels *(Default)* | sidebar child `labels`, bare route | 4×6 labels with no print row | `src/lib/sidebar-navigation.ts` (`label-intake` children) |
+| **View** | Paperwork | sidebar child `paperwork`, `?view=paperwork` | paired orders with a packing slip or manual not yet printed | same |
+| **View** | Printed | sidebar child `printed`, `?view=printed` | printed labels and paperwork, newest print first | same |
+| **Search** | Find labels | desk store (`useDeskSearch`) — sidebar Find, or the global header's Find while the sidebar is closed | tracking / order / file / carrier | `src/lib/label-prints/queue-filter.ts` `findLabelRows` |
+| **Filter** | Pairing chips | `?pairing=` (triage cut) | `unpaired` · `paired` (All = none) | `src/lib/triage/views/label-intake.ts` |
+| **Action** | Print all labels (⌘P on Labels) | nav intent `labels-docs:print-labels` | prints every label in the cut to the label station | `LabelsDocsDesk.tsx` |
+| **Action** | Print all paperwork (⌘P on Paperwork) | nav intent `labels-docs:print-paperwork` | prints every slip + manual in the cut to the paperwork station | `LabelsDocsDesk.tsx` |
+| **Action** | Print all (labels + paperwork) | nav intent `labels-docs:print-all` | both stocks, each to its own station | `LabelsDocsDesk.tsx` |
+| **Action** | Upload label PDFs (⌘O) + drag-drop | nav intent `labels-docs:upload` | POST multipart `/api/v1/label-ingestions` | `LabelsDocsDesk.tsx` |
+| **Action** | Upload packing slips | nav intent `labels-docs:upload-slips` | matched to orders, then the per-order slip upload | `LabelsDocsDesk.tsx` |
+| **Record** | Print (Enter) · Pair to order / Order paperwork · Printers · Label record (Apply / Reprocess) | the open label in the rail plane | — | `src/features/labels-docs/*` |
+| **Count** | View counts | `GET /api/v1/label-prints` `counts` | per view | `src/lib/label-prints/contracts.ts` |
 
 ---
 
@@ -343,7 +340,7 @@ On 2026-09-26, all above-table controls were removed from the Shipping desk tabl
 
 ### Open questions / risks
 
-1. **Client-only `LabelIntakeLedger` view state**: Unlike `/shipping/orders` and `/shipping/shipped`, `/shipping/label-intake` holds view tab selection (`needs-action`, `quarantine`, `applied`, `all`) in React `useState` rather than URL searchParams. When moving view tabs to the contextual sidebar, a route parameter (e.g. `?view=quarantine`) or pure nav context binding must be established so Tauri and deep links can target specific ingestion states.
+1. ~~Client-only `LabelIntakeLedger` view state~~ — resolved 2026-09-27: Labels & docs views are sidebar children bound to `?view=`.
 2. **Double source of truth for desk badge counts**: The Shipping desk currently consumes `GET /api/orders/queue-counts` for live pre-pack lane numbers (`byStage`, `urgent`, `mustShip`) and `GET /api/orders/desk-counts` for the 5-view desk counts (`exceptions`, `po`, `pick`, `triage`, `shippedToday`). These should be unified under the Phase 3 facets endpoint to avoid divergent numbers (noted in handoff: triage count 38 vs queue-counts total 406).
 3. **Pending tab re-labeled to Picking**: The old `shortage` tab (`/shipping/shortage`), historically labeled "Pending", was officially renamed "Picking" on 2026-09-26. Any legacy documentation or bookmarks expecting `pending` must map to `shortage` / `pair=po` / "Picking".
 4. **Shipped filters are server-side (operator ruling 2026-09-26).** Shipped's type (`shippedFilter`), carrier (`carrier`), status (`statusCategory`) and exceptions-only (`exceptions=1`) filters — the params the list reads today, not the pre-removal toolbar's `shipped` / `exceptionsOnly` / `start` / `end` / `period` cited above — are answered in `fetchPackerLogRows`' page WHERE (`src/lib/shipping/shipped-filter/shipped-filter-sql.ts`). They now span every row of the date range, not just the loaded page, and they narrow within the window instead of widening it to all-time. `GET /api/nav/facets?context=outbound.shipped` counts packages from the same fragments, so a count equals the list total for that pick (desk-store search and `?ostatus` are not reflected).
@@ -809,7 +806,7 @@ Route `/unbox` (sidebar-navigation.ts:933-935). Page: src/app/unbox/page.tsx:10-
 | Recents write | Recent tab stamp | POST `/api/receiving-lines/view` | receiving/workspace/ReceivingLineWorkspace.tsx:55 |
 | Action | Unbox (resume MRU → Recent tab) | `fetchUnboxOpenedRows` | src/components/receiving/unbox/UnboxDeskActions.tsx:42-60,87-95 |
 | Action | Check (unreceived-orders rail) | IncomingDeskRightRail | UnboxDeskActions.tsx:31-35,77-86,104 |
-| Action | Add purchase order (Inbound tab only) | `openReceivingOrderComposer('purchase')` | UnboxDeskActions.tsx:37-40,65-76 |
+| Action | Add purchase order (Inbound tab only) | `router.push(newInboundOrderHref('PO'))` → `/incoming/new?type=PO` | UnboxDeskActions.tsx |
 | Action | Rail row menu + bulk Dismiss | See shared | ReceivingSidebarPanel.tsx:399-413,597-603 |
 | Action | Claim modal (from select mode) | | UnboxWorkspaceView.tsx:97-108 |
 | Saved views | Receiving lines grid: none (tableId `receiving` has no SHEET config). `all` tab → `tech_all` views (keys status, staff, colsort, coldir). | `/api/saved-views` surface tech_all | receiving-table-definition.ts:22; DataTable.tsx:1505-1568; src/lib/saved-views/surfaces.ts:136-139 |
@@ -975,17 +972,6 @@ Route `/shipping/fba` (sidebar-navigation.ts:1030-1042). Page: src/app/shipping/
 | Client storage | `fba:pending_catalog`, `fba:today_plan`, `fba-editor-undo-{id}` | | fba/hooks/usePendingCatalog.ts:3; useTodayPlan.ts:8; shipment-editor-helpers.ts:6 |
 | Doc drift | The inventory doc says `routeKey 'fba'` mounts FbaSidebarPanel with a scan field. That is true only for `/fba`, which redirects. | | current-sidebar-inventory.md:90-97 |
 
-### label-intake — Label intake (Outbound lane, railless)
+### label-intake — Labels & docs (Outbound lane, railless, contextual)
 
-Route `/shipping/label-intake`, permission `packing.review` (sidebar-navigation.ts:1044-1047; orders-desk.ts:13). Page: src/app/shipping/label-intake/page.tsx:8-11. **No route param spec** (outbound-routes.ts:212-218). All state is local, so nothing is deep-linkable.
-
-| Kind | Item | Values / endpoint | Ref |
-|---|---|---|---|
-| View | Ledger views (local `useState`) | `needs-action`(default)\|`all`\|`applied` | src/features/label-intake/LabelIntakeLedger.tsx:64,211-228; src/lib/label-ingestions/ledger-view.ts:64-71 |
-| Recents / list | Ledger rows, 15 s poll | GET `/api/v1/label-ingestions?limit=100`. Row fields: id, state, carrier, source, observedAt, marketplaceOrderId, accountSource, fileBasename, trackingNumberNormalized, quarantineReasonCode, matchMethod, sha256. | LabelIntakeLedger.tsx:70-75,241-300; lib/label-ingestions/http-client.ts:11-39 |
-| Input | Upload label PDF (file picker + drag-drop) — no scan bar | POST multipart `/api/v1/label-ingestions` | LabelIntakeLedger.tsx:97-123,139-156,177-195; http-client.ts:41-53 |
-| Action | Refresh | refetch | LabelIntakeLedger.tsx:197-203 |
-| Action | Apply to packed units / Reprocess label | POST `/api/v1/label-ingestions/{id}/apply` (row version) · `/retry` | LabelIntakeLedger.tsx:368-378; ledger-view.ts:34-37; http-client.ts:56-62 |
-| Action | Evidence sheet open/close (Esc), keyboard listbox nav | | LabelIntakeLedger.tsx:238,316-390 |
-| Count / badge | Per-view counts (zero-padded) | | LabelIntakeLedger.tsx:78-81,226 |
-| Saved views | None | | — |
+Route `/shipping/label-intake` (under the `(desk)` frame since 2026-09-27), permission `packing.review`. Views, Find, chips and verbs: see the stage-0 table in §label-intake above; the old ledger inventory that stood here described the deleted `LabelIntakeLedger`.

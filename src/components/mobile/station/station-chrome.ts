@@ -2,9 +2,6 @@
 
 import type { StationTone } from './station-tape';
 
-/** The uppercase micro-label face — outcome verbs, station titles, counters. */
-export const STATION_EYEBROW_CLASS = 'uppercase';
-
 /**
  * Ink, for the one place tone still speaks in words: the server's own message.
  *

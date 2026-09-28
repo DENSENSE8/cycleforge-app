@@ -81,7 +81,7 @@ export function IdentityMark({
       className={cn(
         'relative flex shrink-0 items-center justify-center overflow-hidden text-white',
         record
-          ? 'rounded-mode-control font-[family-name:var(--mode-label-font,var(--ds-font-mono))] font-bold tracking-[0.04em] [text-transform:var(--mode-label-case,uppercase)]'
+          ? 'rounded-mode-control font-[family-name:var(--mode-label-font,var(--ds-font-mono))] font-bold tracking-[0.04em] [text-transform:var(--mode-label-case,none)]'
           : 'rounded-full font-semibold',
         SIZE_CLASS[size],
         ring && !record && 'ring-1 ring-border-soft',

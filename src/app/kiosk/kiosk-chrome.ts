@@ -27,7 +27,7 @@ export const KIOSK_PANE_FOOTER_BAND = cn(
 /** In-body section label row — the `KIOSK_SECTION_LABEL` + divider + inset triple, which was hand-composed at eight sites (one of them at… */
 export const KIOSK_SECTION_LABEL_ROW = cn(
   'border-b border-border-hairline px-4 py-2',
-  'text-role-micro uppercase tracking-[0.16em] text-text-soft',
+  'text-role-micro text-text-soft',
 );
 /**
  * Dense meta chrome — SKU, category row labels, quiet status (not form fields).
@@ -44,7 +44,7 @@ export const KIOSK_TILE_TITLE =
  * Hairline border lives on the host when the section needs a divider.
  */
 export const KIOSK_SECTION_LABEL =
-  'text-role-micro uppercase tracking-[0.16em] text-text-soft';
+  'text-role-micro text-text-soft';
 
 /** Selectable pill chrome (repair issue chips). */
 export const KIOSK_PILL = cn(

@@ -5,6 +5,7 @@ import { publishPackerLogChanged, publishOrderChanged } from '@/lib/realtime/pub
 import { resolveShipmentId } from '@/lib/shipping/resolve';
 import { normalizePSTTimestamp } from '@/utils/date';
 import { createStationActivityLog } from '@/lib/station-activity';
+import { refreshOrderStageFacts } from '@/lib/orders/order-stage-facts';
 import { recordAudit, AUDIT_ACTION } from '@/lib/audit-logs';
 import { publishStockLedgerEvent } from '@/lib/realtime/publish';
 import { withAuth } from '@/lib/auth/withAuth';
@@ -237,6 +238,7 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
         },
         createdAt: canonicalPackDate,
       });
+      await refreshOrderStageFacts(ctx.organizationId, { shipmentIds: [resolvedShipmentId] }, client);
       // Server-trusted audit: actor/org/ip come from ctx + request headers.
       // Entity-type literals are kept as-is — dashboards key off them.
       await recordAudit(client, ctx, req, {

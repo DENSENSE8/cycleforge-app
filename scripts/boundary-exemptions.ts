@@ -12,7 +12,6 @@ export const BOUNDARY_EXEMPTIONS: readonly string[] = [
   "src/app/serial/[id]/page.tsx => src/components/mobile/receiving/ScanAgainBar.tsx",
   "src/components/auth/SignInQrScanDialog.tsx => src/components/mobile/ScanSurface.tsx",
   "src/components/layout/MobileRouteShell.tsx => src/components/mobile/receiving/ReceivingPhoneBridgeMount.tsx",
-  "src/components/mobile/orders/MobileOrderIntakeForm.tsx => src/components/outbound/orders/intake/IntakeCombobox.tsx",
   "src/components/mobile/packer/MobilePackingRow.tsx => src/components/receiving/ReceivingIdentityChips.tsx",
   "src/components/mobile/packer/MobilePackingSheet.tsx => src/components/packing/OrderPackChecklist.tsx",
   "src/components/mobile/packer/MobilePackingSheet.tsx => src/components/shipped/PhotoGallery.tsx",

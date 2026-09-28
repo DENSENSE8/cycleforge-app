@@ -55,7 +55,7 @@ export interface OutboundMetricCtx {
   unshipped: {
     total: number;
     pending: number;
-    tested: number;
+    picked: number;
     blocked: number;
     /** Operator-flagged expedited rows (`orders.is_urgent`). */
     urgent: number;
@@ -366,20 +366,20 @@ export const OUTBOUND_METRICS: OutboundMetricDef[] = [
     label: 'Ready to pack',
     modes: ['unshipped'],
     compute: ({ unshipped }) => {
-      if (unshipped.tested <= 0) return null;
-      const denom = unshipped.pending + unshipped.tested;
+      if (unshipped.picked <= 0) return null;
+      const denom = unshipped.pending + unshipped.picked;
       return {
         id: 'ready',
         label: 'Ready to pack',
-        value: unshipped.tested.toLocaleString(),
-        fraction: share(unshipped.tested, denom),
+        value: unshipped.picked.toLocaleString(),
+        fraction: share(unshipped.picked, denom),
         intent: 'neutral',
         // Packable work — stays in the attention zone (not the pinned queue
         // cluster) so Pending / Urgent / OOS stay leftmost.
         severity: 1,
         status: 'In queue',
-        tooltip: `Tested & ready to pack ÷ open queue · ${unshipped.tested}/${denom}. Click to filter Ready (?ustatus=TESTED).`,
-        filterUstatus: 'TESTED',
+        tooltip: `Picked & ready to pack ÷ open queue · ${unshipped.picked}/${denom}. Click to filter Ready (?ustatus=PICKED).`,
+        filterUstatus: 'PICKED',
       };
     },
   },
@@ -394,7 +394,7 @@ export const OUTBOUND_METRICS: OutboundMetricDef[] = [
         id: 'atStations',
         label: 'At stations',
         value: n.toLocaleString(),
-        fraction: share(n, unshipped.tested || n),
+        fraction: share(n, unshipped.picked || n),
         intent: 'neutral',
         severity: 1,
         status: 'Placed',

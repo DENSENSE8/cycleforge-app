@@ -92,7 +92,7 @@ export function WarrantyCoverageCard({ query }: { query: string }) {
                   label="Provisional — based on packed date + delivery estimate; confirms when the carrier delivered date lands."
                   asChild
                 >
-                  <span className="rounded border border-dashed border-border-warning px-1.5 py-0.5 text-role-micro font-medium uppercase tracking-wide text-text-warning">
+                  <span className="rounded border border-dashed border-border-warning px-1.5 py-0.5 text-role-micro font-medium text-text-warning">
                     Est.
                   </span>
                 </HoverTooltip>
@@ -159,7 +159,7 @@ export function WarrantyCoverageCard({ query }: { query: string }) {
 function Fact({ label, value, mono }: { label: string; value: string | null | undefined; mono?: boolean }) {
   return (
     <div className="min-w-0">
-      <dt className="text-role-micro font-medium uppercase tracking-wide text-text-faint">{label}</dt>
+      <dt className="text-role-micro font-medium text-text-faint">{label}</dt>
       <dd className={cn('truncate text-text-muted', mono && 'font-mono text-role-caption')}>
         {value || <span className="text-text-faint">—</span>}
       </dd>

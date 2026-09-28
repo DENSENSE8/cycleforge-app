@@ -12,7 +12,7 @@ import type { ZendeskClaimController } from './useZendeskClaimController';
 import { focusRing } from '@/design-system/tokens/focus-ring';
 
 
-const labelCls = 'text-role-micro uppercase tracking-widest text-text-soft';
+const labelCls = 'text-role-micro text-text-soft';
 const inputCls =
   cn('w-full rounded-xl border border-border-default bg-surface-card px-3 py-2.5 text-role-data text-text-default transition placeholder:text-text-faint', focusRing('field', 'accent'));
 

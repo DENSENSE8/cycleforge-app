@@ -4,6 +4,7 @@ import type { PoolClient } from 'pg';
 import { tenantQuery, withTenantTransaction } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';
 import {
+  PICKUP_FULFILLMENT_CHANNEL,
   evaluateReleaseGates,
   type EvaluatedReleaseGates,
   type ReleaseGateFacts,
@@ -91,6 +92,7 @@ interface RawGateRow {
   released_at: string | null;
   released_by: number | string | null;
   docs_not_required: boolean | null;
+  fulfillment_channel: string | null;
   tracking_number: string | null;
   linked_document_count: number | string | null;
   shipping_label_linked: boolean | null;
@@ -124,6 +126,8 @@ export interface CagedOrderRecord {
   releasedAt: string | null;
   releasedBy: number | null;
   docsNotRequired: boolean;
+  /** `fulfillment_channel = 'PICKUP'` — walk-in / counter pickup: no label, no tracking. */
+  pickup: boolean;
   trackingNumber: string | null;
   linkedDocumentCount: number;
   shippingLabelLinked: boolean;
@@ -168,6 +172,7 @@ const GATE_SELECT = `
     o.released_at::text            AS released_at,
     o.released_by,
     o.docs_not_required,
+    o.fulfillment_channel,
     to_char(o.created_at AT TIME ZONE 'America/Los_Angeles', 'YYYY-MM-DD HH24:MI:SS') AS created_at,
     o.parcel_weight_oz,
     o.parcel_length_in,
@@ -197,6 +202,7 @@ function factsFromRow(row: RawGateRow): ReleaseGateFacts {
     shippingLabelLinked: row.shipping_label_linked === true,
     shippingLabelPurchased: row.shipping_label_purchased === true,
     skuCatalogId: row.sku_catalog_id == null ? null : Number(row.sku_catalog_id),
+    pickup: row.fulfillment_channel === PICKUP_FULFILLMENT_CHANNEL,
   };
 }
 
@@ -226,6 +232,7 @@ function mapRow(row: RawGateRowWithParcel): CagedOrderRecord {
     releasedAt: row.released_at,
     releasedBy: row.released_by == null ? null : Number(row.released_by),
     docsNotRequired: row.docs_not_required === true,
+    pickup: row.fulfillment_channel === PICKUP_FULFILLMENT_CHANNEL,
     trackingNumber: row.tracking_number,
     linkedDocumentCount: Number(row.linked_document_count ?? 0),
     shippingLabelLinked: row.shipping_label_linked === true,
@@ -348,6 +355,80 @@ export async function setDocsNotRequired(
           SET docs_not_required = $3
         WHERE organization_id = $1 AND id = $2`,
       [orgId, orderId, value],
+    );
+    return getOrderReleaseRecord(orgId, orderId, client);
+  });
+}
+
+/**
+ * Mark a caged order as a counter pickup (or back to shipping). Only a held
+ * order moves — a released one is working stock — and an Amazon channel
+ * (`AFN` / `MFN`) is never overwritten.
+ */
+export async function setOrderPickup(
+  orgId: OrgId,
+  orderId: number,
+  pickup: boolean,
+): Promise<CagedOrderRecord | null> {
+  return withTenantTransaction<CagedOrderRecord | null>(orgId, async (client) => {
+    await client.query(
+      `UPDATE orders
+          SET fulfillment_channel = $3
+        WHERE organization_id = $1 AND id = $2
+          AND COALESCE(release_state, '') <> 'released'
+          AND COALESCE(fulfillment_channel, '') IN ('', $4)`,
+      [orgId, orderId, pickup ? PICKUP_FULFILLMENT_CHANNEL : null, PICKUP_FULFILLMENT_CHANNEL],
+    );
+    return getOrderReleaseRecord(orgId, orderId, client);
+  });
+}
+
+/** One order row's line facts — the same shape `/api/orders/add` writes per line. */
+export interface HeldOrderLine {
+  productTitle: string;
+  sku: string | null;
+  skuCatalogId: number | null;
+  quantity: string;
+  condition: string | null;
+  /** Line total, dollars (`orders.sale_amount`). */
+  saleAmount: number | null;
+  itemNumber: string | null;
+}
+
+/**
+ * Rewrite a HELD order row's line after the intake form's draft save — the cart
+ * edit (quantity, price, condition, pairing, item #) lands on the saved row, so
+ * the payment amount and the floor read what the operator last set. A released
+ * row is working stock and never moves (`null`); the To-ship feed's title
+ * follows the row.
+ */
+export async function setHeldOrderLine(
+  orgId: OrgId,
+  orderId: number,
+  line: HeldOrderLine,
+): Promise<CagedOrderRecord | null> {
+  return withTenantTransaction<CagedOrderRecord | null>(orgId, async (client) => {
+    const updated = await client.query(
+      `UPDATE orders
+          SET product_title = $3,
+              sku = $4,
+              -- Only ever this org's catalog row; any other id writes NULL.
+              sku_catalog_id = (SELECT sc.id FROM sku_catalog sc WHERE sc.organization_id = $1 AND sc.id = $5),
+              quantity = $6,
+              condition = $7,
+              sale_amount = $8,
+              item_number = $9
+        WHERE organization_id = $1 AND id = $2
+          AND COALESCE(release_state, '') <> 'released'`,
+      [orgId, orderId, line.productTitle, line.sku, line.skuCatalogId ?? null, line.quantity, line.condition, line.saleAmount, line.itemNumber],
+    );
+    if ((updated.rowCount ?? 0) === 0) return null;
+    await client.query(
+      `UPDATE feed_memberships
+          SET title = $3, updated_at = NOW()
+        WHERE organization_id = $1::uuid AND feed_key = 'orders_unshipped'
+          AND entity_type = 'ORDER' AND entity_id = $2::bigint`,
+      [orgId, orderId, line.productTitle],
     );
     return getOrderReleaseRecord(orgId, orderId, client);
   });

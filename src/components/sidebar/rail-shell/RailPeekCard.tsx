@@ -43,7 +43,7 @@ export function RailPeekCard({
       <div>
         <p className="text-sm font-semibold leading-snug text-text-default">{title}</p>
         {statusLabel ? (
-          <span className="mt-1.5 inline-flex items-center gap-1.5 rounded bg-surface-sunken inset-chip text-role-eyebrow uppercase tracking-widest text-text-soft ring-1 ring-inset ring-border-soft">
+          <span className="mt-1.5 inline-flex items-center gap-1.5 rounded bg-surface-sunken inset-chip text-role-eyebrow text-text-soft ring-1 ring-inset ring-border-soft">
             {statusDotClass ? (
               <span aria-hidden className={`block h-1.5 w-1.5 rounded-full ${statusDotClass}`} />
             ) : null}
@@ -61,14 +61,14 @@ export function RailPeekCard({
       ) : null}
 
       <div className={`flex items-center justify-between ${RAIL_PEEK_SECTION_CLASS}`}>
-        <span className="text-role-eyebrow uppercase tracking-widest text-text-faint">
+        <span className="text-role-eyebrow text-text-faint">
           {age ? (/\bago\b/i.test(age) ? age : `${age} ago`) : '—'}
         </span>
         <Button
           variant="primary"
           size="sm"
           onClick={onOpen}
-          className="h-auto rounded-md px-2.5 py-1 text-role-micro uppercase tracking-widest"
+          className="h-auto rounded-md px-2.5 py-1 text-role-micro"
         >
           Open →
         </Button>

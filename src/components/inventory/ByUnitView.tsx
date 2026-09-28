@@ -18,6 +18,7 @@ import type {
     UnitPhotoRow,
 } from './types';
 import { Panel } from '@/design-system/primitives';
+import { sentenceCaseLabel } from '@/lib/text/sentence-case-label';
 
 /** Stable identity for a unit with no rows — a fresh `[]` refetches the feed. */
 const NO_ALLOCATIONS: readonly UnitAllocationTableRow[] = [];
@@ -175,7 +176,7 @@ export function ByUnitView({ ref }: ByUnitViewProps) {
                 </dl>
                 {unit.notes ? (
                     <div className="border-t border-border-hairline px-6 py-3 text-sm text-text-muted">
-                        <span className="text-xs uppercase tracking-wide text-text-soft">Notes</span>
+                        <span className="text-xs text-text-soft">Notes</span>
                         <p className="mt-1 whitespace-pre-wrap">{unit.notes}</p>
                     </div>
                 ) : null}
@@ -212,7 +213,7 @@ export function ByUnitView({ ref }: ByUnitViewProps) {
                                         {new Date(e.occurred_at).toLocaleString()}
                                     </span>
                                     {e.station ? (
-                                        <span className="text-xs text-text-muted">{e.station}</span>
+                                        <span className="text-xs text-text-muted">{sentenceCaseLabel(e.station)}</span>
                                     ) : null}
                                     {e.prev_status || e.next_status ? (
                                         <span className="text-xs">
@@ -326,7 +327,7 @@ interface FieldProps {
 function Field({ label, children }: FieldProps) {
     return (
         <div>
-            <dt className="text-xs uppercase tracking-wide text-text-soft">{label}</dt>
+            <dt className="text-xs text-text-soft">{label}</dt>
             <dd className="mt-0.5 text-sm text-text-default">{children}</dd>
         </div>
     );

@@ -8,6 +8,7 @@ import { MONITOR_SECTION_CARD_CLASS } from '@/design-system/components/monitor';
 import { motionBezier } from '@/design-system/foundations/motion-presets';
 import { cn } from '@/utils/_cn';
 import type { DashboardData } from '@/features/operations/types';
+import { sentenceCaseLabel } from '@/lib/text/sentence-case-label';
 
 /** OperationsGoalHero — the goal-first TOP section of the Operations page (roadmap P3-ADM-01 acceptance A). */
 
@@ -61,7 +62,7 @@ function BigGoalRing({ percent, toneClass }: { percent: number; toneClass: strin
         <span className="text-3xl font-semibold leading-none tabular-nums tracking-tight text-text-default">
           {clamped}%
         </span>
-        <span className="mt-0.5 text-role-eyebrow uppercase tracking-[0.18em] text-text-muted">
+        <span className="mt-0.5 text-role-eyebrow text-text-muted">
           of goal
         </span>
       </div>
@@ -116,7 +117,7 @@ export function OperationsGoalHero({ staffProgress, isLoading }: OperationsGoalH
         <div className="flex items-center gap-5">
           <BigGoalRing percent={totals.percent} toneClass={tone.toneClass} />
           <div className="min-w-0">
-            <span className="inline-flex items-center gap-1.5 text-role-micro uppercase tracking-[0.2em] text-text-muted">
+            <span className="inline-flex items-center gap-1.5 text-role-micro text-text-muted">
               <Flag className="h-3 w-3" /> Today’s goal
             </span>
             <h1 className="mt-1.5 text-2xl font-semibold leading-none tracking-tight text-text-default sm:text-3xl">
@@ -129,7 +130,7 @@ export function OperationsGoalHero({ staffProgress, isLoading }: OperationsGoalH
             </h1>
             <div className="mt-2.5 flex flex-wrap items-center gap-2">
               <span
-                className={`rounded-full px-2 py-0.5 text-role-micro uppercase tracking-wider ${tone.chip}`}
+                className={`rounded-full px-2 py-0.5 text-role-micro ${tone.chip}`}
               >
                 {tone.label}
               </span>
@@ -163,8 +164,8 @@ export function OperationsGoalHero({ staffProgress, isLoading }: OperationsGoalH
               return (
                 <div key={s.station} className="min-w-0">
                   <div className="flex items-baseline justify-between gap-2">
-                    <span className="truncate text-role-micro uppercase tracking-[0.12em] text-text-muted">
-                      {s.station}
+                    <span className="truncate text-role-micro text-text-muted">
+                      {sentenceCaseLabel(s.station)}
                     </span>
                     <span className="text-role-micro tabular-nums text-text-muted">
                       <AnimatedStat value={s.current} className="inline" />/

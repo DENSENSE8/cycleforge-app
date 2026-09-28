@@ -44,12 +44,12 @@ export function TestingFailReasonSheet({
     <BottomSheet open={open} onClose={close} title={`Fail ${unitLabel}`} dragDisabled>
       <div className="stack-section">
         <p className="text-role-caption text-text-muted">
-          The unit goes ON HOLD and the fault is tagged against it. A later PASS on
+          The unit goes on hold and the fault is tagged against it. A later pass on
           the same fault resolves the tag, so this is reversible.
         </p>
 
         <div className="stack-tight">
-          <p className="text-role-eyebrow uppercase tracking-widest text-text-soft">
+          <p className="text-role-eyebrow text-text-soft">
             What is wrong with it?
           </p>
           {modes != null && options.length === 0 ? (

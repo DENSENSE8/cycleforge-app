@@ -6,6 +6,7 @@
 
 import type { ComponentType, ReactNode } from 'react';
 import type { RecordStateFace } from '@/design-system/tokens/industrial-record';
+import type { StateName } from '@/design-system/tokens/lifecycle';
 import type { RecordFactFace } from './record-fact';
 
 /** `CARD_DISCLOSE` tiers (`tokens/desk-stage.ts`); `always` = no tier. */
@@ -26,13 +27,24 @@ export interface RecordCardLine {
 /** Deadline tones, earliest first: the top-right status of a record with a due date. */
 export type RecordDeadlineTone = 'late' | 'today' | 'soon' | 'later' | 'none';
 
-/** The top-right status — the family's most important state (Law 3). */
+/** A due date's face (orders: the SLA). */
 export interface RecordCardDeadline {
   face: string;
   tone: RecordDeadlineTone;
   /** Hover text; null = no tooltip. */
   tip: string | null;
 }
+
+/**
+ * The top-right status — the family's most important state (Law 3), one
+ * painter per kind: a DEADLINE (orders' ship-by), a STATE with no due date
+ * (receiving's delivery / dock state, inked by its lifecycle tone), or a
+ * DATE the record last moved (history's activity stamp; danger while `alert`).
+ */
+export type RecordCardStatus =
+  | ({ kind: 'deadline' } & RecordCardDeadline)
+  | { kind: 'state'; face: string; tone: StateName; tip: string | null }
+  | { kind: 'date'; face: string; tip: string | null; alert: boolean };
 
 /** A pill on line 1. With `onPress` it is a button; without, a static label. */
 export interface RecordCardChip {
@@ -54,6 +66,22 @@ export interface RecordCardAlert {
   summary: string;
   /** The icon button's aria label. */
   ariaLabel: string;
+}
+
+/**
+ * The record's NEXT workflow step, as a present-tense verb (orders: Pick →
+ * Pack → Scan out), painted as "→ Pack" at the card's bottom-right so the
+ * operator reads "what happens to this next" without opening it.
+ */
+export interface RecordCardNextStep {
+  /** The next verb, present tense ("Pack", "Scan out"). */
+  label: string;
+  /** That state's tone (its dot). */
+  tone: StateName;
+  /** Hover text ("Next: pack it — assigned to Ana"). */
+  tip: string;
+  /** The step cannot run yet (orders: a line is out of stock) — danger ink. */
+  blocked: boolean;
 }
 
 export interface RecordCardModel {
@@ -80,9 +108,16 @@ export interface RecordCardModel {
   /** The person on the record (buyer): from the `detail` tier, the first thing line 1 gives up. */
   person: string | null;
   chips: readonly RecordCardChip[];
-  /** A free-text note: an icon on line 1 (tooltip) and the status popover's footer. */
-  note: { text: string; label: string } | null;
-  status: RecordCardDeadline;
+  /**
+   * Notes, read (and written) in line on line 1 — calm muted ink, never a
+   * drop-down (owner 2026-09-27). `fixed` is someone else's words, read-only
+   * (orders: the buyer's note); `own` is the team's latest note, edited in
+   * place when the card gets `onSaveNote` — null shows the "Add note" state.
+   */
+  notes: { fixed: { label: string; text: string } | null; own: string | null };
+  status: RecordCardStatus;
+  /** Bottom-right: the next workflow step; null = nothing left (shipped). */
+  next: RecordCardNextStep | null;
   /** Every line; [0] is the lead (the adapter puts alert lines first). */
   lines: readonly RecordCardLine[];
   /** Folded-row hint for hidden alert lines ("2 more out of stock"). */

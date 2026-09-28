@@ -17,12 +17,13 @@ import { RepairScanDock } from './RepairScanDock';
 import { RepairScanReadNotice, type ReadNotice, type UnitName } from './RepairScanReadNotice';
 import { RepairScanVisitCard } from './RepairScanVisitCard';
 import { repairScanInfoHref, useRepairScanVisit } from './useRepairScanVisit';
-import { vibrateRead } from '@/lib/scan-feedback/play';
+import { useScanFeedback } from '@/lib/scan-feedback/useScanFeedback';
 
 const serialCount = (n: number) => `${n} ${n === 1 ? 'serial' : 'serials'}`;
 
 export function RepairScanCompanion({ token }: { token: string }) {
   const { visit, ended, loading, error, reload, writeSerial } = useRepairScanVisit(token);
+  const { playScanFeedback } = useScanFeedback();
   /** The unit the staffer tapped; reads stay aimed at it until Release. */
   const [picked, setPicked] = useState<string | null>(null);
   /** The unit the last read went to — the aim once every unit has a serial. */
@@ -84,32 +85,32 @@ export function RepairScanCompanion({ token }: { token: string }) {
       const { status, serialNumber } = await writeSerial(focus.lineId, (current) => appendSerial(current, serial));
       setPending((n) => n - 1);
       if (status === 'saved') {
-        vibrateRead(duplicateOf ? 'duplicate' : 'saved');
+        playScanFeedback(duplicateOf ? 'warn' : 'success');
         setLastWrite({ target: focus, serial, echo: true });
         setNotice({ kind: 'saved', target: focus, serial, duplicateOf, via, count: splitSerials(serialNumber).length });
       } else if (status === 'failed') {
-        vibrateRead('refused');
+        playScanFeedback('reject');
         setPicked(focus.lineId);
         setNotice({ kind: 'failed', target: focus });
       }
     },
-    [devices, fallback, focus, lastWrite, names, notice, writeSerial],
+    [devices, fallback, focus, lastWrite, names, notice, playScanFeedback, writeSerial],
   );
 
   const onDecode = useCallback(
     (raw: string) => {
       const read = classifySerialRead(raw);
       if (read.kind === 'reject') {
-        vibrateRead('refused');
+        playScanFeedback('reject');
         setNotice({ kind: 'rejected', value: raw.trim().slice(0, 40), reason: read.reason });
       } else if (read.kind === 'url') {
-        vibrateRead('refused');
+        playScanFeedback('reject');
         setNotice({ kind: 'link', url: read.url });
       } else {
         void commit(read.serial, read.kind === 'url-serial' ? 'link' : 'scan');
       }
     },
-    [commit],
+    [commit, playScanFeedback],
   );
 
   const undo = useCallback(async () => {

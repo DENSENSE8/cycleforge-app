@@ -120,7 +120,7 @@ function MatchHubHeader({
             focusRing('control', 'accent'),
           )}
         >
-          <h3 className="min-w-0 shrink text-role-caption font-semibold uppercase tracking-[0.14em] text-text-soft">
+          <h3 className="min-w-0 shrink text-role-caption font-semibold text-text-soft">
             Package Pairing
           </h3>
           <ChevronRight

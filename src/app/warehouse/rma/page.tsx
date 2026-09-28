@@ -130,7 +130,7 @@ export default function RmaPage() {
     <div className="mx-auto max-w-5xl px-4 py-6 sm:px-6">
       <header className="mb-6 flex flex-wrap items-end justify-between gap-3">
         <div>
-          <p className="text-xs font-semibold uppercase tracking-wider text-text-soft">Warehouse</p>
+          <p className="text-xs font-semibold text-text-soft">Warehouse</p>
           <h1 className="text-2xl font-semibold text-text-default">RMA queue</h1>
           <p className="mt-1 text-sm text-text-soft">
             Issued return authorizations awaiting receipt, inspection, or closure.
@@ -190,7 +190,7 @@ export default function RmaPage() {
                 <div className="min-w-0">
                   <div className="flex flex-wrap items-center gap-2">
                     <span className="font-mono text-sm font-semibold text-text-default">{rma.rmaNumber}</span>
-                    <span className={`inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-semibold uppercase tracking-wide ${rmaStatusBadgeClass(rma.status)}`}>
+                    <span className={`inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-semibold ${rmaStatusBadgeClass(rma.status)}`}>
                       {rma.status}
                     </span>
                     <span className="rounded-full bg-surface-sunken px-2 py-0.5 text-xs font-semibold text-text-muted">
@@ -305,7 +305,7 @@ function CreateRmaForm({ onCreated, onError }: CreateFormProps) {
 
       <div className="mt-4 grid gap-3 sm:grid-cols-2">
         <label className="block">
-          <span className="mb-1 block text-xs font-semibold uppercase tracking-wider text-text-soft">Direction</span>
+          <span className="mb-1 block text-xs font-semibold text-text-soft">Direction</span>
           <select
             value={direction}
             onChange={(e) => setDirection(e.target.value as RmaDirection)}
@@ -316,7 +316,7 @@ function CreateRmaForm({ onCreated, onError }: CreateFormProps) {
           </select>
         </label>
         <label className="block">
-          <span className="mb-1 block text-xs font-semibold uppercase tracking-wider text-text-soft">Order # (optional)</span>
+          <span className="mb-1 block text-xs font-semibold text-text-soft">Order # (optional)</span>
           <input
             value={orderId}
             onChange={(e) => setOrderId(e.target.value.replace(/[^0-9]/g, ''))}
@@ -326,7 +326,7 @@ function CreateRmaForm({ onCreated, onError }: CreateFormProps) {
           />
         </label>
         <label className="block">
-          <span className="mb-1 block text-xs font-semibold uppercase tracking-wider text-text-soft">Expected carrier</span>
+          <span className="mb-1 block text-xs font-semibold text-text-soft">Expected carrier</span>
           <input
             value={carrier}
             onChange={(e) => setCarrier(e.target.value)}
@@ -335,7 +335,7 @@ function CreateRmaForm({ onCreated, onError }: CreateFormProps) {
           />
         </label>
         <label className="block sm:col-span-2">
-          <span className="mb-1 block text-xs font-semibold uppercase tracking-wider text-text-soft">Notes</span>
+          <span className="mb-1 block text-xs font-semibold text-text-soft">Notes</span>
           <textarea
             value={notes}
             onChange={(e) => setNotes(e.target.value)}
@@ -364,7 +364,7 @@ function DispositionBacklogSection({ rows }: { rows: DispositionBacklogRow[] }) 
       <div className="flex items-center justify-between gap-2 px-5 py-3">
         <div className="flex items-center gap-2">
           <Clock className="h-3.5 w-3.5 text-amber-700" />
-          <p className="text-xs font-semibold uppercase tracking-widest text-amber-800">
+          <p className="text-xs font-semibold text-amber-800">
             Disposition backlog · {rows.length}
           </p>
         </div>
@@ -381,7 +381,7 @@ function DispositionBacklogSection({ rows }: { rows: DispositionBacklogRow[] }) 
                 <div className="flex flex-wrap items-center gap-2">
                   <span className="truncate font-mono text-sm font-semibold text-text-default">{row.serialNumber}</span>
                   {row.conditionGrade && (
-                    <span className="rounded bg-surface-sunken px-1.5 py-0.5 text-role-eyebrow uppercase tracking-widest text-text-muted">
+                    <span className="rounded bg-surface-sunken px-1.5 py-0.5 text-role-eyebrow text-text-muted">
                       {conditionLabel(row.conditionGrade, 'compact')}
                     </span>
                   )}

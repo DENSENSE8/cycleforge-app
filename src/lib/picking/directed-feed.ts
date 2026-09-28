@@ -18,6 +18,7 @@ interface UnitDbRow {
   allocation_id: number;
   serial_unit_id: number;
   serial_number: string | null;
+  unit_uid: string | null;
   sku: string;
   zoho_item_title: string | null;
   catalog_product_title: string | null;
@@ -36,6 +37,7 @@ const UNITS_SQL = `
   SELECT oua.id                   AS allocation_id,
          su.id                    AS serial_unit_id,
          su.serial_number,
+         su.unit_uid,
          su.sku,
          zi.name                  AS zoho_item_title,
          sc.product_title         AS catalog_product_title,
@@ -89,6 +91,7 @@ function toUnitRow(row: UnitDbRow): DirectedPickUnitRow {
     allocationId: Number(row.allocation_id),
     serialUnitId: Number(row.serial_unit_id),
     serialNumber: row.serial_number?.trim() || null,
+    unitUid: row.unit_uid?.trim() || null,
     sku: row.sku,
     title: resolveSkuIdentityTitle({
       zoho_item_title: row.zoho_item_title,

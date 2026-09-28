@@ -4,6 +4,7 @@ import { describe, it } from 'node:test';
 import {
   directedPickStep,
   groupDirectedPickLines,
+  itemScanRefusal,
   matchItemScan,
   matchesLocationScan,
   type DirectedPickUnitRow,
@@ -13,6 +14,7 @@ const row = (over: Partial<DirectedPickUnitRow>): DirectedPickUnitRow => ({
   allocationId: 1,
   serialUnitId: 10,
   serialNumber: null,
+  unitUid: null,
   sku: '00114-P-1',
   title: 'Bose Solo & Cinemate - Remote Control',
   imageUrl: null,
@@ -67,25 +69,44 @@ describe('matchesLocationScan', () => {
 describe('matchItemScan', () => {
   // Marketplace ids belong to the SKU, so every row of it carries them.
   const platforms = [{ platformSku: 'AMZ-1', platformItemId: null }];
+  const GTIN = '00012345678905';
   const [line] = groupDirectedPickLines(7, [
-    row({ allocationId: 1, serialUnitId: 10, serialNumber: 'SN-A', platforms }),
-    row({ allocationId: 2, serialUnitId: 11, serialNumber: 'SN-B', platforms }),
+    row({ allocationId: 1, serialUnitId: 10, serialNumber: 'SN-A', unitUid: '00114-P-2636-000001', platforms }),
+    row({ allocationId: 2, serialUnitId: 11, serialNumber: 'SN-B', unitUid: '00114-P-2636-000002', platforms }),
   ]);
+  const [bulk] = groupDirectedPickLines(8, [row({ allocationId: 5, serialUnitId: 50, platforms })]);
 
   it('a serial picks that unit; a repeat of a picked serial is refused', () => {
     assert.equal(matchItemScan('sn-b', line, new Set()), 2);
     assert.equal(matchItemScan('SN-B', line, new Set([2])), null);
   });
 
-  it('a SKU, marketplace id or unit QR picks an open unit', () => {
-    assert.equal(matchItemScan('00114-p-1', line, new Set([1])), 2);
-    assert.equal(matchItemScan('AMZ-1', line, new Set()), 1);
+  it('every face of the QC / pre-box label picks exactly its unit', () => {
+    assert.equal(matchItemScan('00114-P-2636-000002', line, new Set()), 2);
+    assert.equal(matchItemScan(`(01)${GTIN}(21)SN-B`, line, new Set()), 2);
+    assert.equal(matchItemScan(`https://usav.app.cycleforge.ai/01/${GTIN}/21/SN-A`, line, new Set()), 1);
+    assert.equal(matchItemScan('U-SN-B', line, new Set()), 2);
     assert.equal(matchItemScan('https://x.test/m/u/11', line, new Set()), 2);
+  });
+
+  it('a label for a unit the order does not hold is refused with both identities', () => {
+    assert.equal(matchItemScan('00114-P-2636-000099', line, new Set()), null);
+    assert.equal(
+      itemScanRefusal('00114-P-2636-000099', line, new Set([1])),
+      'Wrong unit — this label is 00114-P-2636-000099; the order holds SN-B.',
+    );
+  });
+
+  it('a SKU or marketplace id picks only a unit without a serial', () => {
+    assert.equal(matchItemScan('00114-p-1', line, new Set()), null);
+    assert.match(itemScanRefusal('AMZ-1', line, new Set()) ?? '', /QC label \(SN-A or SN-B\)/);
+    assert.equal(matchItemScan('AMZ-1', bulk, new Set()), 5);
   });
 
   it('refuses another product and a full line', () => {
     assert.equal(matchItemScan('00080-P-1', line, new Set()), null);
-    assert.equal(matchItemScan('00114-P-1', line, new Set([1, 2])), null);
+    assert.equal(itemScanRefusal('00080-P-1', line, new Set()), null);
+    assert.equal(matchItemScan('00114-P-1', bulk, new Set([5])), null);
   });
 });
 

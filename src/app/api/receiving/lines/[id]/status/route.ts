@@ -16,31 +16,24 @@ import type { SerialState } from '@/lib/inventory/state-machine';
 import { requireRoutePerm } from '@/lib/auth/dynamic-route-guard';
 import { recordAudit, AUDIT_ACTION, AUDIT_ENTITY } from '@/lib/audit-logs';
 
+// Unit test verdicts (TEST_START/TEST_PASS/TEST_FAIL) are NOT accepted here:
+// their one writer is recordTestVerdict via POST /api/serial-units/[id]/test,
+// which also writes testing_results and rolls the line up from unit verdicts.
 const ALLOWED_EVENT_TYPES: ReadonlySet<InventoryEventType> = new Set([
-  'TEST_START',
-  'TEST_PASS',
-  'TEST_FAIL',
   'NOTE',
   'SCRAPPED',
   'RETURNED',
 ]);
 
-// Map event_type → receiving_lines.workflow_status when the lifecycle
-// of the line should advance. Lines that aren't being tested (e.g. NOTE)
-// stay where they are.
+// Map event_type → receiving_lines.workflow_status when the lifecycle of the
+// line should advance. NOTE leaves the line where it is.
 const WORKFLOW_FOR_EVENT: Partial<Record<InventoryEventType, string>> = {
-  TEST_START: 'IN_TEST',
-  TEST_PASS:  'PASSED',
-  TEST_FAIL:  'FAILED',
   SCRAPPED:   'SCRAP',
   RETURNED:   'RTV',
 };
 
 // Map event_type → serial_units.current_status when a serial is in scope.
 const SERIAL_STATUS_FOR_EVENT: Partial<Record<InventoryEventType, string>> = {
-  TEST_START: 'RECEIVED',  // testing has begun; lifecycle technically RECEIVED until passed
-  TEST_PASS:  'TESTED',
-  TEST_FAIL:  'TESTED',    // tested-and-failed is still "tested" — disposition decides RMA/SCRAP
   SCRAPPED:   'SCRAPPED',
   RETURNED:   'RETURNED',
 };
@@ -199,7 +192,7 @@ export async function POST(
         receivingId: line.receiving_id,
         receivingLineId: lineId,
         scanToken,
-        binId: null, // a line-status verdict moves no bin — keep the event bin_id null
+        binId: null, // a line-status disposition moves no bin — keep the event bin_id null
         sku: line.sku,
         orgId,
         skipTap: true,

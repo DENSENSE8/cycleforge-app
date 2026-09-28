@@ -1,6 +1,7 @@
 import { MarkerType, type Edge, type Node } from '@xyflow/react';
 import { STATIONS } from '@/components/admin/workflow/operations-catalog';
 import type { StaticFlowGraph } from '@/lib/studio/static-flow-graph';
+import { sentenceCaseLabel } from '@/lib/text/sentence-case-label';
 import type {
   Diagnostic,
   PeopleNodeCoverage,
@@ -169,7 +170,7 @@ export function buildBusinessMap(
       type: 'department',
       position: { x: cx, y: cy },
       data: {
-        label: station?.label ?? key,
+        label: station?.label ?? sentenceCaseLabel(key),
         color: station?.color ?? '#94a3b8',
         stepCount: members.length,
         stepLabels: members.map((m) => m.meta?.label ?? m.type),

@@ -95,7 +95,7 @@ function DashboardRecentsList({ entries }: { entries: DetailStackEntry[] }) {
                 <p className="truncate text-role-eyebrow font-semibold text-text-default">
                   {entry.label}
                 </p>
-                <p className="truncate text-role-micro font-semibold uppercase tracking-widest text-text-faint">
+                <p className="truncate text-role-micro font-semibold text-text-faint">
                   {when ? `${noun} · opened ${when}` : `${noun} · ${entry.id}`}
                 </p>
               </Link>
@@ -171,7 +171,7 @@ export function DashboardRecentsPanel() {
     <SidebarShell
       headerAbove={
         <div className="shrink-0 border-b border-border-hairline px-3 py-2">
-          <p className="text-role-eyebrow uppercase tracking-widest text-text-soft">Recents</p>
+          <p className="text-role-eyebrow text-text-soft">Recents</p>
         </div>
       }
       scrollMoreBelow

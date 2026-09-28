@@ -294,8 +294,8 @@ export async function loadInventoryAdminData(orgId: OrgId): Promise<InventoryAdm
       status: driftClean && openDriftCount === 0 ? 'pass' : driftClean ? 'warn' : 'fail',
       detail: driftClean
         ? openDriftCount === 0
-          ? 'v_sku_stock_drift is empty; no open DRIFT alerts.'
-          : `v_sku_stock_drift is empty but ${openDriftCount} open DRIFT alert(s) — next drift-check run will resolve.`
+          ? 'v_sku_stock_drift is empty; no open drift alerts.'
+          : `v_sku_stock_drift is empty but ${openDriftCount} open drift alert(s) — next drift-check run will resolve.`
         : `${drift.length} SKU(s) currently drifting — fix before flipping any inventory v2 flag.`,
     },
   ];

@@ -139,7 +139,7 @@ export function ShipStationStoreLinks({ canEdit = true }: { canEdit?: boolean })
       <ul className="space-y-1.5">{stores.filter((s) => s.active).map(renderStore)}</ul>
       {retired.length > 0 ? (
         <details>
-          <summary className="cursor-pointer text-role-eyebrow uppercase tracking-widest text-text-faint">
+          <summary className="cursor-pointer text-role-eyebrow text-text-faint">
             Retired stores ({retired.length})
           </summary>
           <ul className="mt-1.5 space-y-1.5">{retired.map(renderStore)}</ul>

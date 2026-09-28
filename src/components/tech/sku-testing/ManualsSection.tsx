@@ -70,7 +70,7 @@ export function ManualsSection({
         emptyTitle: 'Manual file unavailable',
         emptyHint: 'Re-pair from the library or open the Products manuals library.',
         meta: m.type ? (
-          <span className="text-role-eyebrow uppercase tracking-widest text-text-faint">
+          <span className="text-role-eyebrow text-text-faint">
             {m.type}
           </span>
         ) : null,
@@ -144,7 +144,7 @@ export function ManualsSection({
                 <div className="min-w-0 flex-1">
                   <span className="block truncate text-role-caption font-semibold text-text-default">{name}</span>
                   {m.type ? (
-                    <span className="block text-role-micro font-medium uppercase tracking-wide text-text-faint">{m.type}</span>
+                    <span className="block text-role-micro font-medium text-text-faint">{m.type}</span>
                   ) : null}
                 </div>
                 <div className="flex shrink-0 items-center gap-0.5">

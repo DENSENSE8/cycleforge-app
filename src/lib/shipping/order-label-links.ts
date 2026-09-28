@@ -40,6 +40,8 @@ export interface OrderLabelEntry {
   creationType: LabelCreationType;
   labelId: string | null;
   shipstationShipmentId: number | null;
+  /** The order's `shipping_tracking_numbers` row this label registered (void unlinks it). */
+  shipmentId: number | null;
   trackingNumber: string | null;
   carrierCode: string | null;
   serviceCode: string | null;
@@ -611,6 +613,7 @@ export async function listOrderLabels(orgId: OrgId, orderId: number): Promise<Or
     creationType: r.creation_type,
     labelId: r.label_id,
     shipstationShipmentId: num(r.shipstation_shipment_id),
+    shipmentId: r.shipment_id == null ? null : Number(r.shipment_id),
     trackingNumber: r.tracking_number,
     carrierCode: r.carrier_code,
     serviceCode: r.service_code,

@@ -16,6 +16,7 @@ import { hasOpenOverlay } from '@/lib/overlay-stack/store';
 import { motion, motionRole, useMotionRole } from '@/design-system/motion';
 import { cn } from '@/utils/_cn';
 import {
+  DESK_RAIL_RECORD_CLASS,
   DESK_RECORD_ASIDE_COLUMN_CLASS,
   DESK_RECORD_COLUMNS_CLASS,
   DESK_RECORD_MAIN_COLUMN_CLASS,
@@ -26,6 +27,7 @@ import {
   DESK_SPLIT_LIST_CLASS,
   DESK_SPLIT_RECORD_CARD_CLASS,
   DESK_SPLIT_RECORD_CLASS,
+  DESK_TRIAGE_RAIL_CLASS,
 } from '../tokens/desk-stage';
 import { DeskRecordViewSwitch } from './DeskRecordViewSwitch';
 import { useDeskStageOptional, type DeskStageView } from './DeskStageContext';
@@ -99,6 +101,13 @@ interface DeskRecordPlaneProps {
   actions?: ReactNode;
   /** Open record's key — matched against {@link DESK_RECORD_KEY_ATTR} for focus return. */
   recordKey?: string | null;
+  /**
+   * A RAIL desk (Labels & docs, owner 2026-09-27): the list is a fixed-width
+   * triage rail at the left in EVERY view and the record always sits beside
+   * it, taking the rest — In place only fixes the stage's width, Split gives
+   * it the canvas. Nothing is ever covered.
+   */
+  listRail?: boolean;
   /** On the record container in both views; `data-desk-record-view` says which. */
   testId?: string;
   className?: string;
@@ -117,13 +126,14 @@ export function DeskRecordPlane({
   footer,
   actions,
   recordKey = null,
+  listRail = false,
   testId = 'desk-record-plane',
   className,
 }: DeskRecordPlaneProps) {
   const view = useDeskRecordView();
-  const split = view === 'split';
-  const floor = view === 'floor';
-  const beside = deskRecordBesideList(view);
+  const split = view === 'split' && !listRail;
+  const floor = view === 'floor' && !listRail;
+  const beside = listRail || deskRecordBesideList(view);
   const listRef = useRef<HTMLDivElement>(null);
 
   // Motion: the split pane springs in beside the list; the record body swaps
@@ -142,7 +152,7 @@ export function DeskRecordPlane({
 
   // Split and floor: the first Esc closes the record. On `document`, so it
   // runs before the stage's own Esc (leave floor / split) on `window`.
-  const ownsFirstEscape = view !== 'in-place';
+  const ownsFirstEscape = beside;
   useEffect(() => {
     if (!ownsFirstEscape || !open) return;
     const onKeyDown = (event: KeyboardEvent) => {
@@ -251,7 +261,16 @@ export function DeskRecordPlane({
           ref={listRef}
           // Split (owner 2026-09-26): the list takes two thirds, the record
           // the right third. Floor: the list fills to the rail, edge to edge.
-          className={split ? DESK_SPLIT_LIST_CLASS : floor ? DESK_FLOOR_LIST_CLASS : 'flex min-h-0 min-w-0 flex-1 flex-col'}
+          // A rail desk: the list is the fixed triage rail in every view.
+          className={
+            listRail
+              ? DESK_TRIAGE_RAIL_CLASS
+              : split
+                ? DESK_SPLIT_LIST_CLASS
+                : floor
+                  ? DESK_FLOOR_LIST_CLASS
+                  : 'flex min-h-0 min-w-0 flex-1 flex-col'
+          }
         >
           {/* Split: the list is one lifted card at a fixed, centred measure
               (operator 2026-09-26). Always mounted, so toggling the view
@@ -267,7 +286,7 @@ export function DeskRecordPlane({
             data-testid={testId}
             data-desk-record-view={view}
             data-desk-record-open={open ? '' : undefined}
-            className={floor ? DESK_FLOOR_RAIL_CLASS : DESK_SPLIT_RECORD_CLASS}
+            className={listRail ? DESK_RAIL_RECORD_CLASS : floor ? DESK_FLOOR_RAIL_CLASS : DESK_SPLIT_RECORD_CLASS}
           >
             <motion.div
               className={DESK_SPLIT_RECORD_CARD_CLASS}
@@ -283,7 +302,10 @@ export function DeskRecordPlane({
                     indexLabel={indexLabel}
                     onClose={onClose}
                     actions={actions}
-                    viewSwitch={floor ? undefined : <DeskRecordViewSwitch />}
+                    // The split pane is narrow: the drawings alone (words in the tooltip), so the order's title keeps its room.
+                    // A rail desk has one view — no switch.
+                    viewSwitch={listRail ? undefined : <DeskRecordViewSwitch labels="wide" />}
+                    rail={listRail}
                   />
                   <motion.div
                     key={swapKey}

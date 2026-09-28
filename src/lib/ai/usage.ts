@@ -5,6 +5,13 @@ import { estimateCostMicrocents } from '@/lib/ai/model-pricing';
 import { getOrganization } from '@/lib/tenancy/organizations';
 import type { OrgId } from '@/lib/tenancy/constants';
 
+export type AiUsageContext =
+  | 'query_embed'
+  | 'doc_embed'
+  | 'ask_ai'
+  | 'assistant_turn'
+  | 'assistant_aux';
+
 export interface AiUsageInput {
   orgId: OrgId;
   capability: 'chat' | 'embed';
@@ -12,9 +19,11 @@ export interface AiUsageInput {
   source: string;
   model: string;
   /** `assistant_turn`: one row per chat turn (all rounds summed); `assistant_aux`: its side calls. */
-  context: 'query_embed' | 'doc_embed' | 'ask_ai' | 'assistant_turn' | 'assistant_aux';
+  context: AiUsageContext;
   inputTokens: number;
   outputTokens?: number;
+  /** Token counts are a bytes/4 estimate — the provider reported no usage, or the call failed mid-flight. */
+  estimated?: boolean;
   /** Overrides the rate-table estimate — e.g. 0 for a self-hosted model. */
   costMicrocents?: number | null;
   staffId?: number | null;
@@ -41,8 +50,8 @@ export function recordAiUsage(input: AiUsageInput): void {
       `INSERT INTO ai_usage_events
          (organization_id, capability, provider, model, context,
           input_tokens, output_tokens, cost_microcents,
-          staff_id, session_id, latency_ms, gateway_log_id)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)`,
+          staff_id, session_id, latency_ms, gateway_log_id, estimated)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)`,
       [
         input.orgId,
         input.capability,
@@ -56,6 +65,7 @@ export function recordAiUsage(input: AiUsageInput): void {
         input.sessionId ?? null,
         input.latencyMs ?? null,
         input.gatewayLogId ?? null,
+        input.estimated ?? false,
       ],
     )
     .catch((err) => {

@@ -30,7 +30,7 @@ export function PhotoLabelChips({
         <span
           key={lbl.id}
           className={cn(
-            'inline-flex items-center gap-0.5 px-1 py-0.5 text-role-micro uppercase tracking-widest',
+            'inline-flex items-center gap-0.5 px-1 py-0.5 text-role-micro',
             cornerClass('chip'),
             labelChipClasses(lbl.color),
           )}
@@ -42,7 +42,7 @@ export function PhotoLabelChips({
       {overflow > 0 ? (
         <span
           className={cn(
-            'inline-flex items-center bg-surface-sunken px-1 py-0.5 text-role-micro uppercase tracking-widest text-text-soft',
+            'inline-flex items-center bg-surface-sunken px-1 py-0.5 text-role-micro text-text-soft',
             cornerClass('chip'),
           )}
         >

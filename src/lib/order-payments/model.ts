@@ -1,13 +1,14 @@
 /**
  * Order payments — the pure half: what an order costs (computed from its own
- * rows, never from a model), the Square request bodies, and how Square's
- * payment / invoice / refund states move an `order_payments` row.
+ * rows, never from a model), the Square / Stripe request bodies, and how each
+ * provider's payment / invoice / refund states move an `order_payments` row.
  *
- * Card details never pass through CycleForge: every method here hands the
- * customer (or staff keying for them) a Square-hosted page.
+ * Card details never pass through CycleForge: every provider method hands the
+ * customer (or staff keying for them) a provider-hosted page, and `in_person`
+ * records only the tender FACTS of a counter payment (./tender.ts).
  */
 
-export const ORDER_PAYMENT_METHODS = ['square_link', 'square_invoice', 'square_terminal'] as const;
+export const ORDER_PAYMENT_METHODS = ['square_link', 'square_invoice', 'square_terminal', 'stripe_link', 'in_person'] as const;
 export type OrderPaymentMethod = (typeof ORDER_PAYMENT_METHODS)[number];
 
 export const ORDER_PAYMENT_STATUSES = ['pending', 'sent', 'paid', 'failed', 'cancelled', 'refunded'] as const;
@@ -351,6 +352,128 @@ export function squarePaymentEventEffect(event: unknown): SquarePaymentEventEffe
   }
 
   return null;
+}
+
+// ─── Stripe (the tenant's own account) ──────────────────────────────────────
+
+/** Metadata keys stamped on every Stripe Checkout Session (and its PaymentIntent). */
+export const STRIPE_SESSION_META = { org: 'organizationId', order: 'orderNumber', payment: 'orderPaymentId' } as const;
+
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/**
+ * The form body for `POST /v1/checkout/sessions` (payment mode). Lines mirror
+ * `buildSquareOrder`: an uneven unit price is one line at the exact line total,
+ * so Stripe's sum equals ours to the cent.
+ */
+export function buildStripeCheckoutSessionForm(args: {
+  orgId: string;
+  paymentId: number;
+  orderNumber: string;
+  currency: string;
+  lines: ReadonlyArray<PaymentLine>;
+  customerEmail: string | null;
+  successUrl: string;
+}): Record<string, string> {
+  const form: Record<string, string> = {
+    mode: 'payment',
+    success_url: args.successUrl,
+    client_reference_id: String(args.paymentId),
+    'payment_intent_data[description]': `Order ${args.orderNumber}`.slice(0, 1000),
+  };
+  const meta = {
+    [STRIPE_SESSION_META.org]: args.orgId,
+    [STRIPE_SESSION_META.order]: args.orderNumber.slice(0, 500),
+    [STRIPE_SESSION_META.payment]: String(args.paymentId),
+  };
+  for (const [k, v] of Object.entries(meta)) {
+    form[`metadata[${k}]`] = v;
+    form[`payment_intent_data[metadata][${k}]`] = v;
+  }
+  const currency = args.currency.toLowerCase();
+  args.lines.forEach((line, i) => {
+    const even = line.unitPriceCents * line.qty === line.lineCents;
+    const p = `line_items[${i}]`;
+    form[`${p}[quantity]`] = String(even ? line.qty : 1);
+    form[`${p}[price_data][currency]`] = currency;
+    form[`${p}[price_data][unit_amount]`] = String(even ? line.unitPriceCents : line.lineCents);
+    form[`${p}[price_data][product_data][name]`] = (even ? line.title : `${line.title} × ${line.qty}`).slice(0, 250);
+    if (line.sku) form[`${p}[price_data][product_data][description]`] = `SKU ${line.sku}`.slice(0, 250);
+  });
+  const email = args.customerEmail?.trim();
+  if (email && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) form.customer_email = email;
+  return form;
+}
+
+interface StripeSessionLike {
+  id?: unknown;
+  status?: unknown;
+  payment_status?: unknown;
+  payment_intent?: unknown;
+  metadata?: unknown;
+}
+
+function stripeId(v: unknown): string | null {
+  if (typeof v === 'string' && v.trim()) return v.trim();
+  if (v && typeof v === 'object' && typeof (v as { id?: unknown }).id === 'string') return (v as { id: string }).id;
+  return null;
+}
+
+/** A Checkout Session's collection state (poll fallback): paid, expired → cancelled, else no change. */
+export function statusForStripeSession(
+  session: StripeSessionLike | null | undefined,
+): { status: OrderPaymentStatus | null; paymentIntentId: string | null } {
+  if (!session) return { status: null, paymentIntentId: null };
+  const paymentIntentId = stripeId(session.payment_intent);
+  if (session.payment_status === 'paid') return { status: 'paid', paymentIntentId };
+  if (session.status === 'expired') return { status: 'cancelled', paymentIntentId: null };
+  return { status: null, paymentIntentId };
+}
+
+/** The org a Stripe event claims (our session metadata) — untrusted until its signature verifies with that org's secret. */
+export function stripeEventOrgId(event: unknown): string | null {
+  const obj = (event as { data?: { object?: StripeSessionLike } } | null)?.data?.object;
+  const meta = obj?.metadata as Record<string, unknown> | undefined;
+  const org = meta?.[STRIPE_SESSION_META.org];
+  return typeof org === 'string' && UUID_RE.test(org) ? org : null;
+}
+
+/** What one Stripe webhook event means for an order payment, if anything. */
+export interface StripePaymentEventEffect {
+  status: OrderPaymentStatus;
+  orgId: string;
+  paymentId: number;
+  sessionId: string;
+  paymentIntentId: string | null;
+  lastError: string | null;
+}
+
+export function stripeCheckoutEventEffect(event: unknown): StripePaymentEventEffect | null {
+  if (!event || typeof event !== 'object') return null;
+  const e = event as { type?: unknown; data?: { object?: StripeSessionLike & { object?: unknown } } };
+  const obj = e.data?.object;
+  if (!obj || obj.object !== 'checkout.session') return null;
+  const orgId = stripeEventOrgId(event);
+  const sessionId = stripeId(obj.id);
+  const rawPayment = (obj.metadata as Record<string, unknown> | undefined)?.[STRIPE_SESSION_META.payment];
+  const paymentId = typeof rawPayment === 'string' && /^\d{1,15}$/.test(rawPayment) ? Number(rawPayment) : 0;
+  if (!orgId || !sessionId || paymentId <= 0) return null;
+
+  const paymentIntentId = stripeId(obj.payment_intent);
+  const base = { orgId, paymentId, sessionId, paymentIntentId, lastError: null };
+  switch (e.type) {
+    case 'checkout.session.completed':
+      // An async method (ACH, …) completes the session `unpaid`; the outcome follows as async_payment_*.
+      return obj.payment_status === 'paid' ? { ...base, status: 'paid' } : null;
+    case 'checkout.session.async_payment_succeeded':
+      return { ...base, status: 'paid' };
+    case 'checkout.session.async_payment_failed':
+      return { ...base, status: 'failed', lastError: 'Stripe: the customer\'s delayed payment failed.' };
+    case 'checkout.session.expired':
+      return { ...base, status: 'cancelled', paymentIntentId: null };
+    default:
+      return null;
+  }
 }
 
 /** The order-level payment state the order surfaces show. */

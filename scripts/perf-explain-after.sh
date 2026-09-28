@@ -1,10 +1,11 @@
 #!/usr/bin/env bash
-# AFTER half of docs/refactors/sidebar/perf-explain: run once the
-# 2026-09-26_perf_* migrations are applied.
+# AFTER half of docs/refactors/sidebar/perf-explain.
 #
-# For every <name>.after.sql it runs, as app_tenant on the UNPOOLED compute
-# (TENANT_APP_DATABASE_URL minus "-pooler") inside a read-only transaction with
-# a transaction-local org GUC:
+# For every <name>.after.sql it runs EXPLAIN exactly as the app's tenant reads
+# run (withTenantConnection / tenantQueryOneTrip): logged in as the runtime role
+# (TENANT_APP_DATABASE_URL = app_tenant, no BYPASSRLS, so every FORCE'd table's
+# tenant_isolation policy is in the plan) on the UNPOOLED compute, inside a
+# read-only transaction with a transaction-local org GUC:
 #   BEGIN READ ONLY;
 #   SELECT set_config('app.current_org', '<org>', true);
 #   EXPLAIN (ANALYZE, BUFFERS) <sql>;
@@ -13,6 +14,13 @@
 # before/after Execution Time table. Nothing is written to the database and no
 # session-level SET is issued (a session SET through the pooler once put the
 # lane read-only).
+#
+# The run aborts if the login role bypasses RLS: an owner plan skips the
+# policies and misreports the app's cost. There is no owner fallback — on Neon
+# neondb_owner may not SET ROLE app_tenant ("permission denied to set role").
+#
+# Code-built fixtures (orders_list_*) are re-rendered from the current builders
+# by scripts/perf-explain-render.ts; run it first.
 #
 # Usage: scripts/perf-explain-after.sh [org-uuid]   (default: the usav org)
 set -euo pipefail
@@ -36,6 +44,13 @@ if [[ -z "$TENANT_URL" ]]; then
 fi
 UNPOOLED="${TENANT_URL/-pooler./.}"
 
+role="$(psql "$UNPOOLED" -X -q -t -A -v ON_ERROR_STOP=1 \
+  -c "SELECT current_user || ' bypassrls=' || rolbypassrls FROM pg_roles WHERE rolname = current_user")"
+if [[ "$role" != *"bypassrls=false" ]]; then
+  echo "refusing to explain as '$role': the role bypasses RLS, so its plans skip the tenant policies" >&2
+  exit 2
+fi
+
 shopt -s nullglob
 files=("$DIR"/*.after.sql)
 if [[ ${#files[@]} -eq 0 ]]; then
@@ -50,7 +65,7 @@ for sql_file in "${files[@]}"; do
   out="$DIR/$name.after.txt"
   {
     echo "-- $name: AFTER"
-    echo "-- captured $(date -u +%Y-%m-%dT%H:%M:%SZ) as app_tenant (unpooled), app.current_org=$ORG"
+    echo "-- captured $(date -u +%Y-%m-%dT%H:%M:%SZ) as $role (unpooled), app.current_org=$ORG"
     echo "-- SQL: $sql_file"
     echo
   } > "$out"

@@ -30,10 +30,9 @@ interface FetchPackerLogRowsOptions {
    */
   organizationId: OrgId;
   packerId?: number | null;
-  testedBy?: number | null;
   /**
    * Universal staff filter (P1-WORK-02): narrow to rows this staff packed OR
-   * tested. Null/absent = ALL staff (default). Independent of packerId/testedBy.
+   * tested. Null/absent = ALL staff (default). Independent of packerId.
    */
   staffId?: number | null;
   limit?: number;
@@ -80,7 +79,6 @@ let enrichmentTableMissing = false;
 export interface PackerLogBaseFilter {
   organizationId: OrgId;
   packerId?: number | null;
-  testedBy?: number | null;
   staffId?: number | null;
   weekStart?: string;
   weekEnd?: string;
@@ -95,11 +93,55 @@ export interface PackerLogBaseFilter {
   pickedBy?: number | null;
 }
 
-/** Page-selection joins a testedBy / staff filter reads (the order-derived test laterals). */
-export const PACKER_LOG_ORDER_JOINS = `
-        LEFT JOIN shipping_tracking_numbers stn ON stn.id = sal.shipment_id
+/**
+ * The order that owns a scan-out row's package: an ORDER shipment_link, else the
+ * order whose own shipment it is — two index probes. Scan-out-only rows have no
+ * enrichment (the projection is PACK-only) but always a package, so the enriched
+ * read resolves them here, not through the key18 order-match arm. The guard sits
+ * in each arm so PACK rows skip the probes.
+ */
+const PACKAGE_OWNER_LATERAL = `LEFT JOIN LATERAL (
+        SELECT owner.id
+        FROM (
+            SELECT sl_own.owner_id AS id, 0 AS rank, COALESCE(sl_own.is_primary, false) AS is_primary
+            FROM shipment_links sl_own
+            WHERE sal.station <> 'PACK'
+              AND sl_own.owner_type = 'ORDER'
+              AND sl_own.shipment_id = sal.shipment_id
+              AND sl_own.organization_id = sal.organization_id
+            UNION ALL
+            SELECT o_own.id, 1, true
+            FROM orders o_own
+            WHERE sal.station <> 'PACK'
+              AND o_own.shipment_id = sal.shipment_id
+              AND o_own.organization_id = sal.organization_id
+        ) owner
+        ORDER BY owner.rank, owner.is_primary DESC, owner.id DESC
+        LIMIT 1
+    ) package_owner ON TRUE`;
+
+/**
+ * Page-selection joins a staff / pickedBy filter reads: the row's order and its
+ * test laterals. On the enriched read path the order resolves exactly as the
+ * enriched list query projects it — `packer_log_enrichment.order_row_id`, the
+ * live order match only for a PACK scan not yet enriched, and the package owner
+ * for a scan-out row — so the filter tests the order the row displays. Before
+ * this, an all-dates staff / picker filter ran the three-arm order match for
+ * every row in the tenant (~9 s at 43.7k rows).
+ */
+export function packerLogOrderJoins(enriched: boolean): string {
+  const orderJoin = enriched
+    ? `
+        LEFT JOIN packer_log_enrichment enr_o ON enr_o.sal_id = sal.id
+        ${sqlPackerOrderMatchLateral('order_match', "enr_o.sal_id IS NULL AND sal.station = 'PACK'")} ON TRUE
+        ${PACKAGE_OWNER_LATERAL}
+        LEFT JOIN orders o ON o.id = COALESCE(enr_o.order_row_id, order_match.id, package_owner.id)
+          AND o.organization_id = sal.organization_id`
+    : `
         ${sqlPackerOrderMatchLateral('order_match')} ON TRUE
-        LEFT JOIN orders o ON o.id = order_match.id AND o.organization_id = sal.organization_id
+        LEFT JOIN orders o ON o.id = order_match.id AND o.organization_id = sal.organization_id`;
+  return `
+        LEFT JOIN shipping_tracking_numbers stn ON stn.id = sal.shipment_id${orderJoin}
         LEFT JOIN LATERAL (
             SELECT MIN(tsn.tested_by)::int AS tested_by
             FROM tech_serial_numbers tsn
@@ -119,12 +161,13 @@ export const PACKER_LOG_ORDER_JOINS = `
                 )
               )
         ) test_data ON TRUE`;
+}
 
 /**
  * The packer-log population every read shares — tenant, row population, the
  * Shipped-desk membership (a dock scan-out), staff and the padded date window —
  * over `station_activity_logs sal` + `packer_logs pl`. Appends its bind values
- * to `params`. `needsOrderJoins` = the query must add {@link PACKER_LOG_ORDER_JOINS}.
+ * to `params`. `needsOrderJoins` = the query must add {@link packerLogOrderJoins}.
  */
 export function buildPackerLogBaseWhere(
   opts: PackerLogBaseFilter,
@@ -179,11 +222,6 @@ export function buildPackerLogBaseWhere(
     conditions.push(`(sal.station = 'PACK' AND sal.staff_id = $${params.length})`);
   }
 
-  if (opts.testedBy != null && !Number.isNaN(opts.testedBy)) {
-    params.push(opts.testedBy);
-    conditions.push(`test_data.tested_by = $${params.length}`);
-  }
-
   // Universal staff filter: this person packed OR tested the row. References the
   // order-derived test laterals, so it forces the page-filter joins on (below).
   if (staffFilterId != null) {
@@ -218,8 +256,7 @@ export function buildPackerLogBaseWhere(
 
   return {
     conditions,
-    needsOrderJoins:
-      (opts.testedBy != null && !Number.isNaN(opts.testedBy)) || staffFilterId != null || pickedBy != null,
+    needsOrderJoins: staffFilterId != null || pickedBy != null,
   };
 }
 
@@ -303,7 +340,6 @@ export async function fetchPackerLogRows(
     // across organizations.
     organizationId: orgId,
     packerId: opts.packerId ?? '',
-    testedBy: opts.testedBy ?? '',
     staffId: staffFilterId ?? '',
     limit,
     offset,
@@ -366,9 +402,8 @@ export async function fetchPackerLogRows(
   const offsetIdx = params.length;
 
   // Page-selection joins. Almost every filter touches only sal/pl, but a
-  // testedBy / staff filter references the order-derived laterals, and a
+  // staff / pickedBy filter references the order-derived laterals, and a
   // Shipped desk filter reads the package — pulled in only when active.
-  const pageFilterJoins = needsOrderJoins ? PACKER_LOG_ORDER_JOINS : '';
   const shippedJoins = hasShippedDeskFilter(shippedFilters);
 
   // The PACKAGE a row is about:
@@ -397,7 +432,7 @@ export async function fetchPackerLogRows(
     WITH page AS MATERIALIZED (
         SELECT sal.id
         FROM station_activity_logs sal
-        LEFT JOIN packer_logs pl ON pl.id = sal.packer_log_id${pageFilterJoins}${shippedJoins ? shippedFilterJoins(enriched) : ''}
+        LEFT JOIN packer_logs pl ON pl.id = sal.packer_log_id${needsOrderJoins ? packerLogOrderJoins(enriched) : ''}${shippedJoins ? shippedFilterJoins(enriched) : ''}
         ${enriched ? enrichedWhere : legacyWhere}
         ORDER BY sal.created_at DESC NULLS LAST
         LIMIT $${limitIdx} OFFSET $${offsetIdx}
@@ -840,25 +875,7 @@ export async function fetchPackerLogRows(
     LEFT JOIN packer_log_enrichment enr ON enr.sal_id = sal.id
     LEFT JOIN shipping_tracking_numbers stn ON stn.id = sal.shipment_id
     ${sqlPackerOrderMatchLateral('order_match_fallback', "enr.sal_id IS NULL AND sal.station = 'PACK'")} ON TRUE
-    -- Scan-out-only rows have no enrichment (PACK-only projection) but always a
-    -- package: its owning order is two index probes, not the key18 fallback scan.
-    LEFT JOIN LATERAL (
-        SELECT owner.id
-        FROM (
-            SELECT sl_own.owner_id AS id, 0 AS rank, COALESCE(sl_own.is_primary, false) AS is_primary
-            FROM shipment_links sl_own
-            WHERE sl_own.owner_type = 'ORDER'
-              AND sl_own.shipment_id = sal.shipment_id
-              AND sl_own.organization_id = sal.organization_id
-            UNION ALL
-            SELECT o_own.id, 1, true
-            FROM orders o_own
-            WHERE o_own.shipment_id = sal.shipment_id
-              AND o_own.organization_id = sal.organization_id
-        ) owner
-        ORDER BY owner.rank, owner.is_primary DESC, owner.id DESC
-        LIMIT 1
-    ) package_owner ON sal.station <> 'PACK' AND sal.shipment_id IS NOT NULL
+    ${PACKAGE_OWNER_LATERAL}
     LEFT JOIN LATERAL (
         SELECT
             MAX(so.created_at) AS ship_confirmed_at,

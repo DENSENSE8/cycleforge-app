@@ -4,6 +4,7 @@ import pool from '@/lib/db';
 import { tenantQuery } from '@/lib/tenancy/db';
 import { upsertVerification } from '@/lib/neon/sku-catalog-queries';
 import { deriveStepPassed } from '@/lib/qc/qc-step';
+import { currentProcedureVersionId } from '@/lib/qc/procedures';
 import { tagUnitFailure, resolveOpenUnitFailureTagByMode } from '@/lib/neon/failure-modes-queries';
 import { recomputeUnitQualitySafe } from '@/lib/neon/quality-queries';
 import { parseBody } from '@/lib/schemas/parse';
@@ -70,7 +71,8 @@ export const GET = withAuth(async (request, ctx) => {
               tv.verified_by,
               s.name           AS verified_by_name,
               tv.verified_at,
-              tv.notes
+              tv.notes,
+              tv.procedure_version_id
          FROM qc_check_templates qc
     LEFT JOIN tech_verifications tv
            ON tv.step_id       = qc.id
@@ -136,17 +138,27 @@ export const POST = withAuth(async (request, ctx) => {
     pass_min: string | null;
     pass_max: string | null;
     failure_mode_id: number | null;
+    sku_catalog_id: number | null;
+    category: string | null;
   }>(
     orgId,
-    `SELECT pass_min, pass_max, failure_mode_id FROM qc_check_templates WHERE id = $1 AND organization_id = $2`,
+    `SELECT pass_min, pass_max, failure_mode_id, sku_catalog_id, category
+       FROM qc_check_templates WHERE id = $1 AND organization_id = $2`,
     [parsed.stepId, orgId],
   );
   if (stepRow.rows.length === 0) {
     return NextResponse.json({ ok: false, error: 'step not found' }, { status: 404 });
   }
-  const failureModeId = stepRow.rows[0].failure_mode_id;
+  const step = stepRow.rows[0];
+  const failureModeId = step.failure_mode_id;
+  // The procedure version this answer is recorded against (a new version is cut
+  // first when the step's scope was edited since its last publish).
+  const procedureVersionId = await currentProcedureVersionId(
+    orgId,
+    step.sku_catalog_id != null ? { skuCatalogId: step.sku_catalog_id } : { category: step.category ?? '' },
+  );
 
-  const passed = deriveStepPassed(stepRow.rows[0], {
+  const passed = deriveStepPassed(step, {
     passed: parsed.passed ?? (parsed.valueNum == null && parsed.valueText == null ? true : undefined),
     valueNum: parsed.valueNum ?? null,
   });
@@ -166,6 +178,7 @@ export const POST = withAuth(async (request, ctx) => {
     valueNum: parsed.valueNum ?? null,
     valueText: parsed.valueText ?? null,
     failedModeId: passed === false ? failureModeId : null,
+    procedureVersionId,
   }, orgId);
 
   // Auto-tag-on-fail: a failed step that names a failure mode opens a tag on

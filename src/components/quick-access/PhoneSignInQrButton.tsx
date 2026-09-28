@@ -41,7 +41,7 @@ export function PhoneSignInQrDialog({
         )}
       >
         <DialogHeader className="items-center space-y-1 text-center">
-          <DialogDescription className="text-role-micro uppercase tracking-widest text-text-soft">
+          <DialogDescription className="text-role-micro text-text-soft">
             Scan to open on your phone
           </DialogDescription>
           <DialogTitle className="text-sm font-semibold text-text-default">

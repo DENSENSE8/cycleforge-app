@@ -175,7 +175,7 @@ export function SupportCreateTicketModal({
     >
       <div className="flex shrink-0 items-center justify-between border-b border-border-hairline bg-surface-canvas px-4 py-3">
         <div>
-          <p className="text-role-micro uppercase tracking-[0.14em] text-emerald-700">New ticket</p>
+          <p className="text-role-micro text-emerald-700">New ticket</p>
           <p className="mt-0.5 text-sm font-semibold tracking-tight text-text-default">
             Support station entry
           </p>
@@ -198,7 +198,7 @@ export function SupportCreateTicketModal({
       >
         <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-4 py-3 text-role-data">
           <label className="block space-y-1">
-            <span className="text-role-eyebrow uppercase tracking-widest text-text-soft">
+            <span className="text-role-eyebrow text-text-soft">
               Subject
             </span>
             <input
@@ -214,7 +214,7 @@ export function SupportCreateTicketModal({
           </label>
 
           <label className="flex min-h-[8rem] flex-col space-y-1">
-            <span className="text-role-eyebrow uppercase tracking-widest text-text-soft">
+            <span className="text-role-eyebrow text-text-soft">
               First note (optional)
             </span>
             <textarea
@@ -227,7 +227,7 @@ export function SupportCreateTicketModal({
 
           <div className="space-y-2.5 rounded-xl border border-border-hairline bg-surface-sunken/40 p-3">
             <div>
-              <p className="text-role-eyebrow uppercase tracking-widest text-text-soft">
+              <p className="text-role-eyebrow text-text-soft">
                 Linkages
               </p>
               <p className="mt-0.5 text-role-micro text-text-faint">
@@ -237,7 +237,7 @@ export function SupportCreateTicketModal({
 
             <div className="grid gap-2 sm:grid-cols-3">
               <label className="space-y-1">
-                <span className="text-role-micro font-semibold uppercase tracking-wider text-text-soft">
+                <span className="text-role-micro font-semibold text-text-soft">
                   Order #
                 </span>
                 <input
@@ -249,7 +249,7 @@ export function SupportCreateTicketModal({
                 />
               </label>
               <label className="space-y-1">
-                <span className="text-role-micro font-semibold uppercase tracking-wider text-text-soft">
+                <span className="text-role-micro font-semibold text-text-soft">
                   Tracking #
                 </span>
                 <input
@@ -260,7 +260,7 @@ export function SupportCreateTicketModal({
                 />
               </label>
               <label className="space-y-1">
-                <span className="text-role-micro font-semibold uppercase tracking-wider text-text-soft">
+                <span className="text-role-micro font-semibold text-text-soft">
                   Serial #
                 </span>
                 <input

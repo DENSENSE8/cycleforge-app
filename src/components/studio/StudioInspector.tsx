@@ -135,7 +135,7 @@ export function StudioInspector({
         <p className="text-sm font-semibold text-text-default">{node.meta?.label ?? node.type}</p>
         <p className="font-mono text-role-caption text-text-faint">{node.type}</p>
         {node.meta && (
-          <span className="mt-1 inline-block rounded bg-surface-sunken px-1.5 py-0.5 text-role-micro font-semibold uppercase tracking-wide text-text-soft">
+          <span className="mt-1 inline-block rounded bg-surface-sunken px-1.5 py-0.5 text-role-micro font-semibold text-text-soft">
             {node.meta.category}
           </span>
         )}
@@ -319,7 +319,7 @@ export function StudioInspector({
 }
 
 function PaneHeading({ text }: { text: string }) {
-  return <h3 className="mb-1.5 text-role-micro uppercase tracking-wider text-text-faint">{text}</h3>;
+  return <h3 className="mb-1.5 text-role-micro text-text-faint">{text}</h3>;
 }
 
 function PaneHint({ text }: { text: string }) {
@@ -421,7 +421,7 @@ function CoverageSection({ people }: { people: PeopleNodeCoverage }) {
                     )}
                   </span>
                   {s.isPrimary && (
-                    <span className="shrink-0 rounded bg-violet-50 px-1.5 py-0.5 text-role-eyebrow uppercase tracking-wide text-violet-700 ring-1 ring-inset ring-violet-200">
+                    <span className="shrink-0 rounded bg-violet-50 px-1.5 py-0.5 text-role-eyebrow text-violet-700 ring-1 ring-inset ring-violet-200">
                       Primary
                     </span>
                   )}
@@ -453,21 +453,21 @@ function FlowMetricsSection({
       <PaneHeading text={`Throughput · last ${windowDays}d`} />
       <div className="grid grid-cols-2 gap-x-3 gap-y-1.5 text-xs">
         <div>
-          <p className="text-role-micro font-semibold uppercase tracking-wide text-text-faint">In queue</p>
+          <p className="text-role-micro font-semibold text-text-faint">In queue</p>
           <p className="font-semibold text-text-default tabular-nums">{metrics.currentWip}</p>
         </div>
         <div>
-          <p className="text-role-micro font-semibold uppercase tracking-wide text-text-faint">Runs</p>
+          <p className="text-role-micro font-semibold text-text-faint">Runs</p>
           <p className="font-semibold text-text-default tabular-nums">{metrics.runCount}</p>
         </div>
         <div>
-          <p className="text-role-micro font-semibold uppercase tracking-wide text-text-faint">Median dwell</p>
+          <p className="text-role-micro font-semibold text-text-faint">Median dwell</p>
           <p className="font-semibold text-text-default tabular-nums">
             {metrics.dwellMedianS != null ? formatDuration(metrics.dwellMedianS) : '—'}
           </p>
         </div>
         <div>
-          <p className="text-role-micro font-semibold uppercase tracking-wide text-text-faint">p90 dwell</p>
+          <p className="text-role-micro font-semibold text-text-faint">p90 dwell</p>
           <p className="font-semibold text-text-default tabular-nums">
             {metrics.dwellP90S != null ? formatDuration(metrics.dwellP90S) : '—'}
           </p>
@@ -480,7 +480,7 @@ function FlowMetricsSection({
       )}
       {ports.length > 0 && (
         <div className="mt-2">
-          <p className="mb-1 text-role-micro font-semibold uppercase tracking-wide text-text-faint">Port split</p>
+          <p className="mb-1 text-role-micro font-semibold text-text-faint">Port split</p>
           <ul className="space-y-1">
             {ports.map(([port, n]) => (
               <li key={port} className="flex items-center gap-1.5 text-xs">

@@ -36,7 +36,7 @@ export function InventoryActivityPanel({ data }: { data: DetailsResponse }) {
     <div className="space-y-0" data-testid="inventory-activity-panel">
       {receives.length > 0 ? (
         <section>
-          <p className="border-b border-border-hairline px-2 py-1.5 text-role-eyebrow uppercase tracking-wider text-text-soft">
+          <p className="border-b border-border-hairline px-2 py-1.5 text-role-eyebrow text-text-soft">
             Receive events
           </p>
           <ul className="divide-y divide-border-hairline">
@@ -64,7 +64,7 @@ export function InventoryActivityPanel({ data }: { data: DetailsResponse }) {
 
       {zohoActivity.length > 0 ? (
         <section className={cn(receives.length > 0 && 'border-t border-border-hairline')}>
-          <p className="border-b border-border-hairline px-2 py-1.5 text-role-eyebrow uppercase tracking-wider text-text-soft">
+          <p className="border-b border-border-hairline px-2 py-1.5 text-role-eyebrow text-text-soft">
             Inventory activity
           </p>
           <ul className="divide-y divide-border-hairline">

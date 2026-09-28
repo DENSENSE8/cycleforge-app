@@ -34,7 +34,7 @@ export function SkuLocationCard({ c, data }: { c: SkuDetailController; data: Sku
               c.setEditingLocation(true);
               c.setSelectedLocation(data.locations[0] || '');
             }}
-            className="text-role-micro uppercase tracking-wider text-blue-600 hover:text-blue-800"
+            className="text-role-micro text-blue-600 hover:text-blue-800"
           >
             Change
           </Button>

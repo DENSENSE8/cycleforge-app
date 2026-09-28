@@ -21,7 +21,7 @@ export function UnboxPreviewLock({ onDismiss }: UnboxPreviewLockProps) {
       )}
     >
       <Lock className="h-3.5 w-3.5 shrink-0 text-amber-700" aria-hidden />
-      <span className="shrink-0 text-role-eyebrow uppercase tracking-widest text-amber-700">
+      <span className="shrink-0 text-role-eyebrow text-amber-700">
         Read only
       </span>
       <span className="min-w-0 flex-1 truncate text-role-caption text-text-soft">

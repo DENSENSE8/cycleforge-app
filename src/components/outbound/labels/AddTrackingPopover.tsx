@@ -193,7 +193,7 @@ export function AddTrackingPopover({ record }: { record: ShippedOrder }) {
 
           <div className={cn('mb-3 bg-surface-canvas px-3 py-2', cornerClass('field'))}>
             <p className="truncate text-role-caption font-semibold text-text-default">{record.product_title || 'Unknown product'}</p>
-            <div className="mt-0.5 flex flex-wrap items-center gap-1.5 text-role-eyebrow font-semibold uppercase tracking-wide text-text-faint">
+            <div className="mt-0.5 flex flex-wrap items-center gap-1.5 text-role-eyebrow font-semibold text-text-faint">
               {platformMeta.value ? (
                 <HoverTooltip label={platformMeta.label} asChild focusable={false}>
                   <span className="inline-flex shrink-0" aria-label={platformMeta.label}>
@@ -215,7 +215,7 @@ export function AddTrackingPopover({ record }: { record: ShippedOrder }) {
             </div>
           </div>
 
-          <label className="mb-1 block text-role-eyebrow uppercase tracking-wider text-text-soft">Tracking #</label>
+          <label className="mb-1 block text-role-eyebrow text-text-soft">Tracking #</label>
           <div className="mb-3 flex items-center gap-1.5">
             <input
               ref={trackingRef}
@@ -234,7 +234,7 @@ export function AddTrackingPopover({ record }: { record: ShippedOrder }) {
             </HoverTooltip>
           </div>
 
-          <label className="mb-1 block text-role-eyebrow uppercase tracking-wider text-text-soft">SKU</label>
+          <label className="mb-1 block text-role-eyebrow text-text-soft">SKU</label>
           <input
             value={sku}
             onChange={(e) => setSku(e.target.value)}
@@ -255,7 +255,7 @@ export function AddTrackingPopover({ record }: { record: ShippedOrder }) {
             </p>
           ) : null}
 
-          <label className="mb-1 block text-role-eyebrow uppercase tracking-wider text-text-soft">Item #</label>
+          <label className="mb-1 block text-role-eyebrow text-text-soft">Item #</label>
           <input
             value={itemNumber}
             onChange={(e) => setItemNumber(e.target.value)}
@@ -299,7 +299,7 @@ export function AddTrackingPopover({ record }: { record: ShippedOrder }) {
 
           {nav && nav.recentlyAdded.length > 0 ? (
             <div className="mt-3 border-t border-border-hairline pt-2">
-              <p className="mb-1 text-role-eyebrow uppercase tracking-wider text-text-faint">Recently added</p>
+              <p className="mb-1 text-role-eyebrow text-text-faint">Recently added</p>
               <ul className="space-y-0.5">
                 {nav.recentlyAdded.slice(0, 5).map((e) => (
                   <li key={e.orderId} className="flex items-center justify-between gap-2 text-role-eyebrow">

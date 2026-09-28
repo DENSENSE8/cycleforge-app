@@ -285,7 +285,7 @@ function CompoundSubtitleSelectMenu({
             title={option.description}
             onSelect={() => select.onCommit(option.value)}
             className={cn(
-              'font-semibold uppercase tracking-wide',
+              'font-semibold',
               option.toneClass,
               option.current && option.currentClass,
             )}
@@ -977,7 +977,7 @@ export function CompoundState({
     <span
       className={cn(
         // Flush-square: ops chrome carries no radius (kinetic-ledger law).
-        'inline-flex min-w-0 items-center gap-1 px-1.5 py-0.5 text-[11px] font-semibold uppercase tracking-wide',
+        'inline-flex min-w-0 items-center gap-1 px-1.5 py-0.5 text-[11px] font-semibold',
         tone.pill,
       )}
     >
@@ -1083,13 +1083,13 @@ function CompoundStageStep({
       className="flex-1"
       primary={
         filled ? (
-          <span className="inline-flex min-w-0 items-center gap-1 text-[11px] font-semibold uppercase tracking-wide text-text-default">
+          <span className="inline-flex min-w-0 items-center gap-1 text-[11px] font-semibold text-text-default">
             <Icon className="h-3.5 w-3.5 shrink-0" aria-hidden />
             <CompoundLine>{labels.done}</CompoundLine>
           </span>
         ) : showAssigned ? (
           // Claimed but not stamped: keep the column verb (PICK / PACK), not a dash.
-          <span className="inline-flex min-w-0 items-center gap-1 text-[11px] font-semibold uppercase tracking-wide text-text-muted">
+          <span className="inline-flex min-w-0 items-center gap-1 text-[11px] font-semibold text-text-muted">
             <Icon className="h-3.5 w-3.5 shrink-0" aria-hidden />
             <CompoundLine>{labels.pending}</CompoundLine>
           </span>
@@ -1261,7 +1261,7 @@ function compoundSlotPrimary(
     case 'tag':
       return (
         <HoverTooltip label={text} asChild>
-          <span className="inline-flex min-w-0 max-w-full items-center truncate rounded-mode-control bg-surface-sunken px-1.5 py-0.5 font-sans text-role-micro text-text-muted industrial:font-mono industrial:uppercase industrial:tracking-wide">
+          <span className="inline-flex min-w-0 max-w-full items-center truncate rounded-mode-control bg-surface-sunken px-1.5 py-0.5 font-sans text-role-micro text-text-muted industrial:font-mono">
             {text}
           </span>
         </HoverTooltip>

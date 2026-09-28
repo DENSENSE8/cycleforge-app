@@ -17,7 +17,7 @@ describe('pack-workspace-state', () => {
     );
   });
 
-  it('queue normalize defaults ustatus=TESTED and omits packview', () => {
+  it('queue normalize defaults ustatus=PICKED and omits packview', () => {
     const params = new URLSearchParams('packview=history&ustatus=PENDING');
     const tab = normalizePackWorkspaceTabParams(params, 'queue');
     assert.equal(tab, 'queue');
@@ -26,14 +26,14 @@ describe('pack-workspace-state', () => {
     assert.equal(params.get('ustatus'), 'PENDING');
   });
 
-  it('queue normalize sets TESTED when ustatus absent', () => {
+  it('queue normalize sets PICKED when ustatus absent', () => {
     const params = new URLSearchParams();
     normalizePackWorkspaceTabParams(params, 'queue');
-    assert.equal(params.get('ustatus'), 'TESTED');
+    assert.equal(params.get('ustatus'), 'PICKED');
   });
 
   it('history normalize clears fulfillment filters', () => {
-    const params = new URLSearchParams('ustatus=TESTED&stage=tested&attention=1');
+    const params = new URLSearchParams('ustatus=PICKED&stage=picked&attention=1');
     const tab = normalizePackWorkspaceTabParams(params, 'history');
     assert.equal(tab, 'history');
     assert.equal(params.get('packview'), 'history');

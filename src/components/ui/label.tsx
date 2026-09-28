@@ -6,7 +6,7 @@ import * as React from 'react';
 import { cn } from '@/utils/_cn';
 
 /**
- * **Sentence case, not an eyebrow.** The house `typography/presets.ts` defines `fieldLabel` as `uppercase tracking-[0.16em]`, and this…
+ * **Sentence case, not an eyebrow.** The house `typography/presets.ts` defines `fieldLabel` as caps, and this…
  * (Operator direction, 2026-08-31: "a more breathable font instead of caps
  */
 function Label({ className, ...props }: React.ComponentProps<'label'>) {

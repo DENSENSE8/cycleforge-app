@@ -100,6 +100,8 @@ export async function GET() {
         email: user.email,
         role: user.role,
         permissions: Array.from(user.permissions),
+        authorizationMode: user.authorizationMode,
+        storedPermissions: Array.from(user.storedPermissions),
         mobileDisplayConfig: user.mobileDisplayConfig,
         avatarPhotoId: user.avatarPhotoId,
         session: {

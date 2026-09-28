@@ -273,7 +273,7 @@ function RackFace({ loading, positions, level, onCellClick }: RackFaceProps) {
   return (
     <div className="rounded-none border border-border-soft bg-surface-card p-3 shadow-sm">
       <div className="mb-2 flex items-center justify-between px-1">
-        <p className="text-role-micro uppercase tracking-[0.16em] text-text-soft">
+        <p className="text-role-micro text-text-soft">
           Level {noPad(level)} · {positions.length} position{positions.length === 1 ? '' : 's'}
         </p>
         <FillLegend />
@@ -290,7 +290,7 @@ function RackFace({ loading, positions, level, onCellClick }: RackFaceProps) {
 
 function FillLegend() {
   return (
-    <div className="flex items-center gap-1.5 text-role-eyebrow font-semibold uppercase tracking-wider text-text-faint">
+    <div className="flex items-center gap-1.5 text-role-eyebrow font-semibold text-text-faint">
       <span className="flex items-center gap-1">
         <span className="h-2 w-2 rounded-full bg-surface-strong" /> Empty
       </span>
@@ -336,7 +336,7 @@ function PositionCell({ row, onClick }: { row: BinsOverviewRow; onClick: () => v
           {pos}
         </span>
         {row.is_over_capacity && (
-          <span className="rounded-full bg-red-500 px-1.5 py-0.5 text-role-micro uppercase tracking-wider text-white">
+          <span className="rounded-full bg-red-500 px-1.5 py-0.5 text-role-micro text-white">
             !
           </span>
         )}
@@ -344,7 +344,7 @@ function PositionCell({ row, onClick }: { row: BinsOverviewRow; onClick: () => v
 
       <div className="mt-1 flex-1 px-2.5">
         {row.is_empty ? (
-          <p className="text-role-micro font-semibold uppercase tracking-wider text-text-faint">
+          <p className="text-role-micro font-semibold text-text-faint">
             Empty
           </p>
         ) : (
@@ -383,7 +383,7 @@ function NeighborLevel({
 }) {
   return (
     <div>
-      <p className="mb-1.5 text-role-micro uppercase tracking-[0.16em] text-text-soft">
+      <p className="mb-1.5 text-role-micro text-text-soft">
         Level {noPad(level)} · {positions.length}
       </p>
       <div className="flex gap-1.5 overflow-x-auto pb-1 [scrollbar-width:thin]">
@@ -436,7 +436,7 @@ function RackList({
             </span>
             <div className="min-w-0 flex-1">
               {row.is_empty ? (
-                <p className="text-role-caption font-semibold uppercase tracking-wider text-text-faint">
+                <p className="text-role-caption font-semibold text-text-faint">
                   Empty
                 </p>
               ) : (
@@ -452,7 +452,7 @@ function RackList({
               )}
             </div>
             {hasIssue && (
-              <span className="shrink-0 rounded-full bg-amber-100 px-2 py-0.5 text-role-micro uppercase tracking-wider text-amber-800">
+              <span className="shrink-0 rounded-full bg-amber-100 px-2 py-0.5 text-role-micro text-amber-800">
                 Issue
               </span>
             )}

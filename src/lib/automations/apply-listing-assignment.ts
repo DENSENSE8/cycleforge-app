@@ -427,3 +427,38 @@ export async function loadOrderListingFacts(
     account_source: row.account_source,
   };
 }
+
+/** Who a listing rule would put on one order line's PICK / PACK today — read-only. */
+export type ListingAssigneePreview = {
+  ruleId: number;
+  ruleName: string;
+  pick: ResolvedAssignee | null;
+  pack: ResolvedAssignee | null;
+} | null;
+
+/**
+ * The same first-match + out-today resolution {@link applyListingAssignment}
+ * runs on import, for facts that are not an order yet (the new-order form
+ * shows the rule's picker / packer before save). One rules read, one
+ * out-today read for the whole batch.
+ */
+export async function previewListingAssignees(
+  organizationId: OrgId,
+  factsList: readonly ListingAutomationFacts[],
+): Promise<ListingAssigneePreview[]> {
+  if (factsList.length === 0) return [];
+  const rules = await loadEnabledListingRules(organizationId);
+  const matches = factsList.map((facts) => matchListingRule(rules, 'order.imported', facts));
+  const outToday = await listStaffOutOnDate(
+    organizationId,
+    matches.flatMap((m) => (m ? collectActionStaffIds(m.actions) : [])),
+  );
+  return matches.map((m) => {
+    if (!m) return null;
+    const resolve = (workType: AssignWorkAction['work_type']) => {
+      const action = m.actions.find((a) => a.work_type === workType);
+      return action ? resolveActionAssignee(action, outToday) : null;
+    };
+    return { ruleId: m.rule.id, ruleName: m.rule.name, pick: resolve('PICK'), pack: resolve('PACK') };
+  });
+}

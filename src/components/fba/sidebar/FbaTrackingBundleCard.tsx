@@ -124,7 +124,7 @@ export function FbaTrackingBundleCard({
 
         {/* Col 3: actions */}
         <div className="flex shrink-0 items-center gap-1">
-          <span className="text-role-micro uppercase tracking-widest text-text-faint">
+          <span className="text-role-micro text-text-faint">
             {bundle.allocations.length > 0
               ? `${bundle.allocations.length} · ${totalUnits}`
               : ''}
@@ -154,7 +154,7 @@ export function FbaTrackingBundleCard({
       <Collapse open={!bundle.collapsed}>
         {bundle.allocations.length === 0 ? (
           <div className="border-t border-border-hairline px-3 py-2">
-            <p className="text-center text-role-eyebrow uppercase tracking-wider text-text-faint">
+            <p className="text-center text-role-eyebrow text-text-faint">
               Drag items here
             </p>
           </div>

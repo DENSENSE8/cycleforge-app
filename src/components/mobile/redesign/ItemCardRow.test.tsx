@@ -54,14 +54,14 @@ test('the tactical roster starts with location context, anchors the SKU and list
   const html = render({
     managementStatus: 'Ready to pick',
     managementAction: 'Pick',
-    quantityStatus: 'PICKED 0/2',
+    quantityStatus: 'Picked 0/2',
     managementOwner: 'Warehouse',
     listing: { href: 'https://www.amazon.com/dp/B00143', platform: 'Amazon' },
     price: '$149.99',
   });
   assert.match(html, /sku: SHI-810-CRK-172/);
   assert.ok(
-    html.indexOf('BIN: B-01-S4') < html.indexOf("ORD-8821")
+    html.indexOf('Bin: B-01-S4') < html.indexOf("ORD-8821")
       && html.indexOf("ORD-8821") < html.lastIndexOf("Shimano GRX Crankset")
       && html.lastIndexOf("Shimano GRX Crankset") < html.lastIndexOf("sku: SHI-810-CRK-172"),
     'location and order context lead the row; title leads Row 2 and the scan fallback remains in Row 3',

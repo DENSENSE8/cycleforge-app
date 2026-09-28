@@ -4,6 +4,7 @@ import { tenantQuery, withTenantConnection, withTenantTransaction } from '@/lib/
 import type { OrgId } from '@/lib/tenancy/constants';
 import { publishReceivingLogChanged } from '@/lib/realtime/publish';
 import { invalidateReceivingViews } from '@/lib/receiving/invalidation';
+import { invalidateAllOrdersApiCaches } from '@/lib/orders/invalidation';
 import {
   fetchSerialsForLines,
   refreshLineSerialProjectionSafe,
@@ -742,6 +743,8 @@ export const PATCH = withAuth(async (request: NextRequest, ctx) => {
 
     await invalidateReceivingViews(ctx.organizationId);
     await publishReceivingLogChanged({ organizationId: ctx.organizationId, action: 'update', rowId: String(id), source: 'receiving-lines.update' });
+    // The line's QC tech is the QC assignee of any order its units are allocated to.
+    if (testingPatch.assignedTechId !== undefined) await invalidateAllOrdersApiCaches([], ctx.organizationId);
 
     // Re-fetch with the shipment JOIN so the response carries the just-attached shipment's tracking/carrier/status fields.
     const fresh = await tenantQuery(

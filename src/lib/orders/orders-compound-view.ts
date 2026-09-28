@@ -33,7 +33,7 @@ export function ordersStateTone(stateLabel: string | null | undefined): Compound
     return 'alert';
   }
   if (
-    s.includes('TESTED') ||
+    s.includes('PICKED') ||
     s.includes('PACKED') ||
     s.includes('SHIPPED') ||
     s.includes('SCANNED') ||

@@ -31,7 +31,7 @@ function cursor(overrides: Partial<RecordCursor> = {}): RecordCursor {
   };
 }
 
-const noopOpen: RecordCursorOpen = () => {};
+const noopOpen: RecordCursorOpen = () => true;
 
 test('a published surface owns its scope, and withdrawing empties it', () => {
   assert.equal(getRecordCursorTop('record'), null, 'the store starts empty');
@@ -519,6 +519,7 @@ test('the published open callback carries intent and revealFoldKey through untou
     cursor: cursor(),
     open: (id, ctx) => {
       calls.push({ id, intent: ctx.intent, revealFoldKey: ctx.revealFoldKey });
+      return true;
     },
   });
 

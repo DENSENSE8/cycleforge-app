@@ -33,7 +33,7 @@ export function WorkspaceCard({ label, children, actions }: WorkspaceCardProps) 
       {(label || actions) && (
         <div className="mb-3 flex items-center justify-between">
           {label && (
-            <h3 className="text-xs font-semibold uppercase tracking-[0.14em] text-text-soft">{label}</h3>
+            <h3 className="text-xs font-semibold text-text-soft">{label}</h3>
           )}
           {actions}
         </div>
@@ -192,7 +192,7 @@ export function ProductContextCard({ title, stock, imageUrl, isLoading }: Produc
       </div>
 
       <span className={`shrink-0 rounded-lg px-2.5 py-1 text-sm font-semibold tabular-nums ring-1 ${stockClass}`}>
-        {stock || '0'} <span className="text-role-micro font-semibold uppercase tracking-wider">stock</span>
+        {stock || '0'} <span className="text-role-micro font-semibold">stock</span>
       </span>
     </section>
   );
@@ -214,7 +214,7 @@ export function NotesCard({ notes, showNotes, accent, onToggleNotes, onNotesChan
       <button
         type="button"
         onClick={onToggleNotes}
-        className="flex w-full items-center justify-between text-xs font-semibold uppercase tracking-[0.14em] text-text-soft hover:text-text-muted"
+        className="flex w-full items-center justify-between text-xs font-semibold text-text-soft hover:text-text-muted"
       >
         <span>
           Notes{' '}
@@ -288,22 +288,22 @@ export function PreviewCardModern({
   return (
     <section className="rounded-2xl bg-surface-card p-5 shadow-sm ring-1 ring-border-soft/60">
       <div className="mb-3 flex items-center justify-between">
-        <h3 className="text-xs font-semibold uppercase tracking-[0.14em] text-text-soft">Review</h3>
+        <h3 className="text-xs font-semibold text-text-soft">Review</h3>
       </div>
       <div className="space-y-2 rounded-xl bg-surface-canvas p-5 ring-1 ring-border-soft/50">
         <div>
-          <p className="text-role-micro font-semibold uppercase tracking-[0.14em] text-text-soft">SKU</p>
+          <p className="text-role-micro font-semibold text-text-soft">SKU</p>
           <p className="font-mono text-base font-semibold text-text-default">{uniqueSku}</p>
         </div>
         <div>
-          <p className="text-role-micro font-semibold uppercase tracking-[0.14em] text-text-soft">
+          <p className="text-role-micro font-semibold text-text-soft">
             Serials ({serialNumbers.length})
           </p>
           <p className="break-all font-mono text-xs text-text-muted">{serialNumbers.join(', ') || '—'}</p>
         </div>
         {location && (
           <div>
-            <p className="text-role-micro font-semibold uppercase tracking-[0.14em] text-text-soft">Location</p>
+            <p className="text-role-micro font-semibold text-text-soft">Location</p>
             <p className="font-mono text-xs text-text-muted">{location}</p>
           </div>
         )}

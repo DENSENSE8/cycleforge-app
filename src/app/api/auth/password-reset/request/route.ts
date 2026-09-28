@@ -45,6 +45,7 @@ export async function POST(req: NextRequest) {
     headers: req.headers,
     routeKey: 'auth-password-reset-request-email',
     scope: email,
+    ipAgnostic: true,
     limit: 3,
     windowMs: 15 * 60 * 1000,
   });

@@ -22,7 +22,7 @@ export function GoalPanelHomeCta({ onNavigate }: { onNavigate?: () => void }) {
         <span className="min-w-0 flex-1 truncate text-role-caption font-semibold text-text-default">
           Open Home
         </span>
-        <span className="shrink-0 text-role-micro uppercase tracking-widest text-text-soft">
+        <span className="shrink-0 text-role-micro text-text-soft">
           Daily
         </span>
         <ChevronRight className="h-3.5 w-3.5 shrink-0 text-text-faint" />

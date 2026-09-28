@@ -33,7 +33,7 @@ export function Calendar({ className, classNames, components, ...props }: Calend
         month_grid: 'w-full border-collapse',
         weekdays: 'flex',
         weekday:
-          'w-9 text-center text-role-eyebrow font-normal uppercase tracking-wider text-text-faint',
+          'w-9 text-center text-role-eyebrow font-normal text-text-faint',
         weeks: '',
         week: 'mt-1 flex w-full',
         week_number: 'w-9 text-center text-role-eyebrow text-text-faint',

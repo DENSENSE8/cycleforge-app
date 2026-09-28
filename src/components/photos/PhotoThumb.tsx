@@ -94,7 +94,7 @@ export function PhotoThumb({
       {status === 'error' ? (
         <div className="absolute inset-0 flex flex-col items-center justify-center gap-1 bg-surface-canvas text-text-faint">
           <ImageIcon className="h-5 w-5" />
-          <span className="text-role-micro uppercase tracking-widest">Unavailable</span>
+          <span className="text-role-micro">Unavailable</span>
         </div>
       ) : shouldLoad ? (
         /* eslint-disable-next-line @next/next/no-img-element */

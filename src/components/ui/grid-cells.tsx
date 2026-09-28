@@ -59,7 +59,7 @@ export function GridStatusCellValue({
       ref={chipRef}
       className={cn(
         'relative inline-flex min-w-0 items-center gap-1.5 rounded ring-1 ring-inset ring-current/20',
-        'inset-chip text-role-micro uppercase tracking-widest',
+        'inset-chip text-role-micro',
         // The colour half of the morph. The pulse animates transform+opacity;
         // the fill/ink swap is a plain class change, so without this it snaps
         // a frame before the pulse is over.

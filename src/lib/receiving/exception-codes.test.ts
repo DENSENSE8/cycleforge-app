@@ -21,6 +21,7 @@ const SEED_MIGRATIONS = [
   '2026-07-29b_reason_codes_photo_policy_override_seed.sql',
   '2026-07-29i_reason_codes_loss_seed.sql',
   '2026-08-01a_reason_codes_qa_fail_seed.sql',
+  '2026-09-28c_reason_codes_claim_unspecified_seed.sql',
 ];
 
 /** `('CODE', 'Label', 120)` tuples out of a VALUES block. */

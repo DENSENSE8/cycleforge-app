@@ -6,6 +6,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { unitStatusBadgeTone } from '@/lib/receiving/receiving-constants';
+import { sentenceCaseLabel } from '@/lib/text/sentence-case-label';
 import { conditionLabel } from '@/lib/conditions';
 import { Button } from '@/design-system/primitives';
 import { MobileDetailTopBar } from '@/components/mobile/redesign/MobileDetailTopBar';
@@ -183,8 +184,6 @@ export default function MobileUnitPage() {
               <UnitLineTestSheet
                 open={sheet === 'line-test'}
                 unitId={unit.id}
-                lineId={unit.current_receiving_line_id}
-                staffId={user.staffId ?? 0}
                 onClose={closeSheet}
                 onDone={handleDone}
               />
@@ -208,9 +207,9 @@ function StatusPill({ status }: { status: string | null }) {
   const v = (status || 'UNKNOWN').toUpperCase();
   return (
     <span
-      className={`shrink-0 inline-flex items-center rounded-full px-2.5 py-0.5 text-role-micro uppercase tracking-wide ${unitStatusBadgeTone(v)}`}
+      className={`shrink-0 inline-flex items-center rounded-full px-2.5 py-0.5 text-role-micro ${unitStatusBadgeTone(v)}`}
     >
-      {v}
+      {sentenceCaseLabel(v)}
     </span>
   );
 }

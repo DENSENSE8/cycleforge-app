@@ -278,7 +278,7 @@ export function MobileDailyChecklist() {
       <ul className="flex flex-col gap-2 pt-3">{recurring.map(renderRow)}</ul>
       {onceItems.length > 0 ? (
         <>
-          <p className="pb-2 pt-5 text-role-micro font-semibold uppercase tracking-wide text-text-muted">
+          <p className="pb-2 pt-5 text-role-micro font-semibold text-text-muted">
             Today only
           </p>
           <ul className="flex flex-col gap-2">{onceItems.map(renderRow)}</ul>
@@ -288,7 +288,7 @@ export function MobileDailyChecklist() {
   );
   const assignedSection = (
     <>
-      <p className="pb-2 pt-5 text-role-micro font-semibold uppercase tracking-wide text-text-muted">
+      <p className="pb-2 pt-5 text-role-micro font-semibold text-text-muted">
         Assigned to me
       </p>
       <ul className="flex flex-col gap-2">{taskRows.map(renderTaskRow)}</ul>

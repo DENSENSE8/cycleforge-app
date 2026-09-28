@@ -71,7 +71,7 @@ export function VoicemailDetail({ voicemailId, onBack }: { voicemailId: number; 
             variant="ghost"
             size="sm"
             onClick={onBack}
-            className="mt-2 h-auto px-0 text-role-eyebrow uppercase tracking-widest text-rose-600 hover:text-rose-700"
+            className="mt-2 h-auto px-0 text-role-eyebrow text-rose-600 hover:text-rose-700"
           >
             Back to the list
           </Button>
@@ -97,12 +97,12 @@ export function VoicemailDetail({ voicemailId, onBack }: { voicemailId: number; 
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
             <h1 className="truncate text-lg font-semibold tracking-tight text-text-default">{name}</h1>
-            <span className={cn('inline-flex shrink-0 items-center gap-1 rounded px-1.5 py-0.5 text-role-eyebrow uppercase tracking-widest ring-1 ring-inset', tone.chip)}>
+            <span className={cn('inline-flex shrink-0 items-center gap-1 rounded px-1.5 py-0.5 text-role-eyebrow ring-1 ring-inset', tone.chip)}>
               <span className={cn('h-1.5 w-1.5 rounded-full', tone.dot)} aria-hidden />
               {VOICEMAIL_STATUS_LABEL[data.followupStatus]}
             </span>
           </div>
-          <p className="mt-0.5 flex items-center gap-1.5 text-role-eyebrow font-semibold uppercase tracking-widest text-text-soft">
+          <p className="mt-0.5 flex items-center gap-1.5 text-role-eyebrow font-semibold text-text-soft">
             {number ? formatPhoneNumber(number) : 'Unknown number'}
             <span className="text-text-faint">·</span>
             {timeAgo(data.leftAt, nowMs)}
@@ -123,7 +123,7 @@ export function VoicemailDetail({ voicemailId, onBack }: { voicemailId: number; 
           ) : (
             <p className="text-role-caption text-text-faint">No recording available.</p>
           )}
-          <p className="text-role-eyebrow font-semibold uppercase tracking-widest text-text-faint">
+          <p className="text-role-eyebrow font-semibold text-text-faint">
             {formatDuration(data.durationSeconds)} long
           </p>
         </section>
@@ -146,7 +146,7 @@ export function VoicemailDetail({ voicemailId, onBack }: { voicemailId: number; 
               </span>
               <div className="min-w-0">
                 <p className="truncate text-role-caption font-semibold text-text-default">{data.matchedCustomerName}</p>
-                {number ? <p className="truncate text-role-eyebrow font-semibold uppercase tracking-widest text-text-soft">{formatPhoneNumber(number)}</p> : null}
+                {number ? <p className="truncate text-role-eyebrow font-semibold text-text-soft">{formatPhoneNumber(number)}</p> : null}
               </div>
             </div>
           ) : (

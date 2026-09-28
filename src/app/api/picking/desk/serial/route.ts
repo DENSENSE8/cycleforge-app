@@ -1,8 +1,8 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest, NextResponse, after } from 'next/server';
 import pool from '@/lib/db';
 import { tenantQuery, withTenantConnection, withTenantTransaction } from '@/lib/tenancy/db';
 import { invalidateCacheTags } from '@/lib/cache/upstash-cache';
-import { publishTechLogChanged } from '@/lib/realtime/publish';
+import { publishOrderChanged, publishTechLogChanged } from '@/lib/realtime/publish';
 import {
   getApiIdempotencyResponse,
   readIdempotencyKey,
@@ -17,6 +17,8 @@ import {
 import { normalizeTrackingKey18, normalizeTrackingLast8 } from '@/lib/tracking-format';
 import { buildOrderPayload, findOrderByShipment } from '@/lib/tech/order-card';
 import { sqlDeskSessionAnchor } from '@/lib/station-activity';
+import { pickDeskSerialUnit, type DeskSerialPickResult } from '@/lib/picking/desk-serial-pick';
+import { refreshOrderStageFacts } from '@/lib/orders/order-stage-facts';
 import { withAuth } from '@/lib/auth/withAuth';
 
 /**
@@ -31,6 +33,9 @@ import { withAuth } from '@/lib/auth/withAuth';
  * - `update`      `{ serials | serialNumbers }` — replace the set; `salId`, else
  *                 resolved from `fnskuLogId` or `tracking`.
  * - `remove`      `{ salId, tsnId }` — drop one serial row.
+ * `add` / `add-to-last` also pick the serial's unit when it holds an open
+ * allocation on the desk order (`pickDeskSerialUnit`, same transaction); a
+ * unit that can't be picked for this order comes back as `pickWarning`.
  * Actor is server-derived from the verified session; body.techId is ignored.
  */
 
@@ -61,6 +66,8 @@ type HandlerOutcome =
       /** Non-null when the scan matched no order — serial held on an exception. */
       ordersExceptionId: number | null;
       attachedToOrder: boolean;
+      /** The serial's allocated unit, picked for the desk order in the same transaction. */
+      pick: DeskSerialPickResult;
     }
   | { kind: 'ok'; serialNumbers: string[] }
   | { kind: 'undo'; serialNumbers: string[]; removedSerial: string };
@@ -163,6 +170,8 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
           throw new HandlerError(salCtxResult.status, salCtxResult.error);
         }
         const salCtx = salCtxResult.ctx;
+        // Serials (tech_serial_numbers.order_id) and unit picks move the order's pick facts.
+        const factsTarget = { orderIds: [salCtx.orderId], shipmentIds: [salCtx.shipmentId] };
 
         if (isAdd) {
           const ins = await insertTechSerialForSalContext(client, {
@@ -177,6 +186,18 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
             throw new HandlerError(ins.status, ins.error);
           }
 
+          // The serial's unit, when allocated to this desk order, is picked in
+          // the same transaction — never blocking the serial add itself.
+          const pick = await pickDeskSerialUnit(client, {
+            orgId,
+            serial: ins.serial,
+            orderId: salCtx.orderId,
+            shipmentId: salCtx.shipmentId,
+            ordersExceptionId: salCtx.ordersExceptionId,
+            actorStaffId: staffId,
+          });
+
+          await refreshOrderStageFacts(orgId, factsTarget, client);
           const serialNumbers = await getTechSerialsBySalId(client, resolvedSalId);
           logAction = 'insert';
           // Tell the caller WHERE the serial landed.
@@ -186,6 +207,7 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
             tsnId: ins.techSerialId,
             ordersExceptionId: salCtx.ordersExceptionId,
             attachedToOrder: salCtx.ordersExceptionId == null,
+            pick,
           };
         }
 
@@ -204,6 +226,7 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
             [tsnId, resolvedSalId, orgId],
           );
 
+          await refreshOrderStageFacts(orgId, factsTarget, client);
           const serialNumbers = await getTechSerialsBySalId(client, resolvedSalId);
           return { kind: 'ok', serialNumbers };
         }
@@ -252,6 +275,7 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
             }
           }
 
+          await refreshOrderStageFacts(orgId, factsTarget, client);
           const serialNumbers = await getTechSerialsBySalId(client, resolvedSalId);
           return { kind: 'ok', serialNumbers };
         }
@@ -275,6 +299,7 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
           [lastRow.id, orgId],
         );
 
+        await refreshOrderStageFacts(orgId, factsTarget, client);
         const serialNumbers = await getTechSerialsBySalId(client, resolvedSalId);
         return { kind: 'undo', serialNumbers, removedSerial: lastRow.serial_number };
       });
@@ -298,6 +323,17 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
 
     await invalidateCacheTags(['desk-pick-logs', 'orders-next']);
     await publishTechLogChanged({ organizationId: orgId, techId: staffId, action: logAction, source: 'tech.serial' });
+    if (outcome.kind === 'add' && outcome.pick.kind === 'picked') {
+      // A committed pick repaints the To-ship Pick column — same event as the unit scan.
+      const pickedOrderId = outcome.pick.orderId;
+      after(() =>
+        publishOrderChanged({
+          organizationId: orgId,
+          orderIds: [pickedOrderId],
+          source: 'pick.desk.serial',
+        }).catch(() => {}),
+      );
+    }
 
     let okBody: Record<string, unknown>;
     if (outcome.kind === 'add') {
@@ -313,6 +349,7 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
               warning:
                 'Serial recorded against an open exception — the scanned tracking number matched no order.',
             }),
+        ...(outcome.pick.kind === 'warning' ? { pickWarning: outcome.pick.warning } : {}),
       };
     } else if (outcome.kind === 'undo') {
       okBody = { success: true, serialNumbers: outcome.serialNumbers, removedSerial: outcome.removedSerial };
@@ -373,6 +410,7 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
     attachedToOrder,
     ordersExceptionId: data.ordersExceptionId ?? null,
     warning: data.warning,
+    pickWarning: data.pickWarning,
     // Never celebrate "complete" for an exception hold session.
     isComplete: orderFound && serialNumbers.length >= quantity,
   });

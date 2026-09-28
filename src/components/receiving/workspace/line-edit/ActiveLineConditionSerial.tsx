@@ -235,7 +235,7 @@ export function ActiveLineConditionSerial({
           className="flex min-w-0 items-center justify-between gap-2"
           data-unbox-item-photos
         >
-          <p className="truncate text-role-eyebrow uppercase tracking-widest text-text-soft">
+          <p className="truncate text-role-eyebrow text-text-soft">
             Item photos
           </p>
           {/* Bleed the pill's hit-box so it cannot grow the row. */}

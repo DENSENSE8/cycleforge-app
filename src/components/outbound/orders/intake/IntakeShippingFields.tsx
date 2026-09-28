@@ -1,14 +1,17 @@
 'use client';
 
 /**
- * Shipping: the parcel, then one of two ways the label happens —
- * **Buy with ShipStation** (the existing `BuyLabelSection` rate-shop; it needs
- * the saved order) or **Bought elsewhere** (a tracking number, carrier read off
- * its shape, and the label PDF / image, uploaded on save).
+ * Shipping: the parcel, then how the order leaves —
+ * **Buy with ShipStation** (the existing `BuyLabelSection` rate-shop; it rates
+ * the saved order — with `onEnsureSaved`, "Open ShipStation" saves the held
+ * draft itself, so the operator never saves first), **Bought elsewhere** (a tracking
+ * number, carrier read off its shape, and the label PDF / image, uploaded on
+ * save), or **Pickup / walk-in** (handed over at the counter: no parcel, no
+ * label, no tracking — the order saves with `fulfillment: 'pickup'`).
  */
 
-import { useRef } from 'react';
-import { FileText, X } from '@/components/Icons';
+import { useRef, useState } from 'react';
+import { FileText, Truck, X } from '@/components/Icons';
 import { BuyLabelSection } from '@/components/outbound/labels/BuyLabelSection';
 import { IconButton } from '@/design-system/primitives';
 import { Button } from '@/design-system/primitives/Button';
@@ -16,12 +19,13 @@ import { TextField } from '@/design-system/primitives/TextField';
 import { focusRing } from '@/design-system/tokens/focus-ring';
 import { detectCarrierFromTracking, toDisplayCarrier } from '@/utils/carrier-patterns';
 import { cn } from '@/utils/_cn';
-import type { IntakeShippingMode, IntakeState } from './intake-model';
-import { parcelFromText } from './useOrderTriage';
+import type { IntakeShippingMode, IntakeState } from '@/lib/orders/intake/intake-model';
+import { parcelFromText } from '@/hooks/orders/useOrderTriage';
 
 const MODES: ReadonlyArray<{ value: IntakeShippingMode; label: string }> = [
   { value: 'elsewhere', label: 'Bought elsewhere' },
   { value: 'buy', label: 'Buy with ShipStation' },
+  { value: 'pickup', label: 'Pickup / walk-in' },
 ];
 
 export function IntakeShippingFields({
@@ -30,6 +34,7 @@ export function IntakeShippingFields({
   labelFile,
   onLabelFile,
   bound,
+  onEnsureSaved,
 }: {
   state: IntakeState;
   onChange: (patch: Partial<IntakeState>) => void;
@@ -37,7 +42,10 @@ export function IntakeShippingFields({
   onLabelFile: (file: File | null) => void;
   /** The saved order — Buy needs it; `null` before save. */
   bound: { orderId: number; orderRef: string; onLabelChanged: () => void } | null;
+  /** Save the order as a held draft (returns its number) — lets Buy rate before a manual save. */
+  onEnsureSaved?: () => Promise<string | null>;
 }) {
+  const [saving, setSaving] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
   const tracking = state.trackingNumber.trim();
   const carrier = tracking ? detectCarrierFromTracking(tracking) : null;
@@ -47,12 +55,14 @@ export function IntakeShippingFields({
 
   return (
     <div className="space-y-3" data-testid="intake-shipping">
-      <div className="grid grid-cols-4 gap-3">
-        <TextField label="Weight oz" value={state.parcel.weightOz} onChange={setParcel('weightOz')} inputMode="decimal" data-testid="intake-weight" />
-        <TextField label="Length in" value={state.parcel.lengthIn} onChange={setParcel('lengthIn')} inputMode="decimal" />
-        <TextField label="Width in" value={state.parcel.widthIn} onChange={setParcel('widthIn')} inputMode="decimal" />
-        <TextField label="Height in" value={state.parcel.heightIn} onChange={setParcel('heightIn')} inputMode="decimal" />
-      </div>
+      {state.shippingMode === 'pickup' ? null : (
+        <div className="grid grid-cols-4 gap-3">
+          <TextField label="Weight oz" value={state.parcel.weightOz} onChange={setParcel('weightOz')} inputMode="decimal" data-testid="intake-weight" />
+          <TextField label="Length in" value={state.parcel.lengthIn} onChange={setParcel('lengthIn')} inputMode="decimal" />
+          <TextField label="Width in" value={state.parcel.widthIn} onChange={setParcel('widthIn')} inputMode="decimal" />
+          <TextField label="Height in" value={state.parcel.heightIn} onChange={setParcel('heightIn')} inputMode="decimal" />
+        </div>
+      )}
 
       <div
         role="radiogroup"
@@ -129,6 +139,10 @@ export function IntakeShippingFields({
             )}
           </div>
         </div>
+      ) : state.shippingMode === 'pickup' ? (
+        <p className="text-role-caption text-text-muted" data-testid="intake-pickup-note">
+          The customer collects it at the counter — no label, no tracking. The floor still picks and packs it.
+        </p>
       ) : bound ? (
         <div className="rounded-mode-control border border-border-hairline p-3" data-testid="intake-label-buy">
           <BuyLabelSection
@@ -142,6 +156,30 @@ export function IntakeShippingFields({
             }
             onChange={bound.onLabelChanged}
           />
+        </div>
+      ) : onEnsureSaved ? (
+        <div className="flex items-center gap-3 rounded-mode-control border border-border-hairline p-3" data-testid="intake-label-rate">
+          <p className="min-w-0 flex-1 text-role-caption text-text-muted">
+            ShipStation rates this parcel to the ship-to above — the order is held as a draft first, no Save needed.
+          </p>
+          <Button
+            variant="secondary"
+            size="sm"
+            icon={<Truck className="size-4" />}
+            loading={saving}
+            disabled={saving}
+            onClick={async () => {
+              setSaving(true);
+              try {
+                await onEnsureSaved();
+              } finally {
+                setSaving(false);
+              }
+            }}
+            data-testid="intake-label-get-rates"
+          >
+            Open ShipStation
+          </Button>
         </div>
       ) : (
         <p className="text-role-caption text-text-muted">

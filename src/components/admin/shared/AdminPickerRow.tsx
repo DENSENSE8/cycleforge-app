@@ -35,7 +35,7 @@ export function AdminPickerRow({
       <div className="min-w-0 flex-1">
         <div className="truncate text-sm font-semibold text-text-default">{title}</div>
         {subtitle ? (
-          <div className="truncate text-role-micro font-medium uppercase tracking-wider text-text-soft">
+          <div className="truncate text-role-micro font-medium text-text-soft">
             {subtitle}
           </div>
         ) : null}

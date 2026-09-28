@@ -9,7 +9,7 @@ import { SearchField } from '@/design-system/primitives';
 import { DATA_TABLE_TOOLBAR_CORNER, DROPDOWN_ITEM_CORNER, DROPDOWN_SHELL_CORNER, cornerClass } from '@/design-system/tokens/radius';
 import { PRIMARY_CHROME_ROW_FACE } from '@/components/layout/header-shell';
 import { FilterMenu } from '@/components/ui/FilterMenu';
-import { DataTableFullscreenToggle } from '@/components/tables/DataTableFullscreenToggle';
+import { DeskRecordViewSwitch } from '@/design-system/components/DeskRecordViewSwitch';
 import type { StaffRecipient } from '@/lib/staff/staff-recipient';
 import type { MediaViewPayload } from '@/hooks/useMediaLibrarySavedViews';
 import {
@@ -202,7 +202,7 @@ export function PhotoLibraryFindRow({
           isRefreshing={isRefreshing}
         />
         <span className={cn('inline-flex items-center px-1', cornerClass('flush'))}>
-          <DataTableFullscreenToggle />
+          <DeskRecordViewSwitch labels="wide" />
         </span>
       </span>
     </div>

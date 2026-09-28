@@ -140,7 +140,7 @@ export function ReceiveResponsePanel({
 
   const rawBlock = (
     <>
-      <p className="mb-1 text-role-micro uppercase tracking-widest text-text-soft">
+      <p className="mb-1 text-role-micro text-text-soft">
         Raw response · /api/receiving/mark-received-po
       </p>
       <pre className="max-h-56 overflow-auto rounded border border-border-soft bg-surface-card p-1.5 font-mono text-role-eyebrow leading-relaxed text-text-muted">
@@ -168,7 +168,7 @@ export function ReceiveResponsePanel({
         ) : null}
         {showApiErrorCallout ? (
           <div className="rounded border border-rose-200 bg-rose-50/90 px-1.5 py-1">
-            <p className="text-role-micro uppercase tracking-wide text-rose-800">API response</p>
+            <p className="text-role-micro text-rose-800">API response</p>
             <p className="break-words font-mono text-role-micro leading-snug text-rose-950">
               {String(body.error)}
             </p>
@@ -188,7 +188,7 @@ export function ReceiveResponsePanel({
           <span className={`mt-1 inline-block h-1.5 w-1.5 shrink-0 rounded-full ${toneStyles.dot}`} aria-hidden />
           <div className="min-w-0 flex-1">
             <div className="flex items-baseline gap-2">
-              <p className={`text-role-micro uppercase tracking-wider ${toneStyles.title}`}>
+              <p className={`text-role-micro ${toneStyles.title}`}>
                 {classification.headline}
               </p>
               {classification.verdict !== 'success' ? (
@@ -212,7 +212,7 @@ export function ReceiveResponsePanel({
             ) : null}
             {showApiErrorCallout ? (
               <div className="mt-1.5 rounded border border-rose-200 bg-rose-50/90 px-1.5 py-1">
-                <p className="text-role-micro uppercase tracking-wide text-rose-800">API response</p>
+                <p className="text-role-micro text-rose-800">API response</p>
                 <p className="break-words font-mono text-role-micro leading-snug text-rose-950">
                   {String(body.error)}
                 </p>

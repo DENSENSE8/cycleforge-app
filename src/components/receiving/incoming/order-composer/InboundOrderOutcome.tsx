@@ -3,15 +3,20 @@
 /**
  * Right third of the inbound-order form: the order's CycleForge identity and
  * what landing it will do, from the server's dry run of the exact draft — plus
- * the submit, and delete for an order already entered by mistake.
+ * the submit, and delete for an order already entered by mistake. A return
+ * shows what the unboxer will see (reason, RMA, listing); a purchase order its
+ * cost total.
  */
 
 import { useState, type ReactNode } from 'react';
+import { ExternalLink } from '@/components/Icons';
 import { Button } from '@/design-system/primitives';
+import { focusRing } from '@/design-system/tokens/focus-ring';
 import { RECORD_ID_CLASS, RECORD_LABEL_CLASS } from '@/design-system/tokens/industrial-record';
 import { INBOUND_SOURCE_LABELS, type InboundSourceType } from '@/lib/inbound/source-registry';
 import {
   canonicalInboundTracking,
+  filledInboundLines,
   inboundOrderIdentity,
   INBOUND_ORDER_TYPE_LABELS,
   type InboundOrderDraft,
@@ -21,6 +26,7 @@ import { deleteInboundOrderRequest } from '@/lib/inbound/inbound-order-client';
 import type { InboundOrderPreview } from '@/lib/inbound/ingest-inbound-order';
 import { toast } from '@/lib/toast';
 import { cn } from '@/utils/_cn';
+import { formatInboundMoney, inboundOrderCostTotal, openableListingUrl } from './composer-choices';
 
 interface OutcomeProps {
   draft: InboundOrderDraft;
@@ -68,6 +74,9 @@ export function InboundOrderOutcome({ draft, missing, preview, previewing, submi
   const created = preview?.lines.filter((l) => l.action === 'create').length ?? 0;
   const updated = preview?.lines.filter((l) => l.action === 'update').length ?? 0;
   const typeLabel = INBOUND_ORDER_TYPE_LABELS[draft.type];
+  const cost = draft.type === 'PO' ? inboundOrderCostTotal(draft) : null;
+  const returnedListing = draft.type === 'RETURN' ? (filledInboundLines(draft)[0] ?? draft.lines[0]).listingUrl.trim() : '';
+  const returnedListingHref = openableListingUrl(returnedListing);
 
   const remove = async () => {
     if (!existing) return;
@@ -101,6 +110,53 @@ export function InboundOrderOutcome({ draft, missing, preview, previewing, submi
           <Note tone="info">Platform and order number make the order&apos;s identity.</Note>
         )}
       </Block>
+
+      {draft.type === 'RETURN' ? (
+        <Block label="At unbox">
+          <Note tone="info">What staff see when they open the box — confirm it before adding.</Note>
+          <Fact name="Reason" value={draft.returnReason.trim() || <span className="text-amber-700">No return reason yet</span>} />
+          <Fact name="RMA" value={draft.rmaId.trim() || '—'} mono={Boolean(draft.rmaId.trim())} />
+          <Fact
+            name="Listing"
+            value={
+              returnedListingHref ? (
+                <a
+                  href={returnedListingHref}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className={cn('inline-flex max-w-full items-center gap-1 underline underline-offset-2', focusRing('control'))}
+                >
+                  <span className="truncate">{new URL(returnedListingHref).host}</span>
+                  <ExternalLink aria-hidden className="h-3 w-3 shrink-0" />
+                </a>
+              ) : returnedListing ? (
+                <span className="text-amber-700">Not a web link — {returnedListing}</span>
+              ) : (
+                <span className="text-amber-700">No listing link yet</span>
+              )
+            }
+          />
+        </Block>
+      ) : null}
+
+      {cost ? (
+        <Block label="Cost">
+          <Fact
+            name="Total"
+            value={
+              <>
+                <span className={RECORD_ID_CLASS}>{formatInboundMoney(cost.subtotalCents, draft.currency)}</span>
+                {cost.missingCost ? (
+                  <span className="text-amber-700">
+                    {' '}
+                    · {cost.missingCost} line{cost.missingCost === 1 ? '' : 's'} missing cost
+                  </span>
+                ) : null}
+              </>
+            }
+          />
+        </Block>
+      ) : null}
 
       <Block label={missing.length ? 'Still needed' : 'Ready'}>
         {missing.length === 0 ? (

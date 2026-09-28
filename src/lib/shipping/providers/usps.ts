@@ -1,3 +1,4 @@
+import { estimatedDeliveryInstant } from './estimated-delivery';
 import { normalizeUSPSStatus, normalizeTrackingNumber } from '../normalize';
 import type { CarrierTrackingEvent, CarrierTrackingResult } from '../types';
 import { uspsEventInstant } from '../carrier-event-instant';
@@ -192,6 +193,9 @@ export function parseUSPSTrackingPayload(
     latestStatusDescription: summary?.event ?? summary?.Event ?? events[0]?.externalStatusDescription ?? null,
     latestEventAt,
     deliveredAt: deliveredEvent?.eventOccurredAt ?? null,
+    estimatedDelivery: estimatedDeliveryInstant(
+      payload?.expectedDeliveryDate ?? payload?.ExpectedDeliveryDate ?? summary?.expectedDeliveryDate ?? summary?.ExpectedDeliveryDate,
+    ),
     metadata: extractUSPSMetadata(payload, summary, events),
     events,
     payload,

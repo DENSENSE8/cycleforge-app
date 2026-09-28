@@ -98,7 +98,7 @@ export function ReasonSelector({
     <div className={flush ? 'flex flex-col gap-0' : 'space-y-4'}>
       {flush ? (
         <>
-          <p className="border-b border-border-hairline px-4 py-2 text-role-micro uppercase tracking-[0.16em] text-text-muted">
+          <p className="border-b border-border-hairline px-4 py-2 text-role-micro text-text-muted">
             Reason for Repair
           </p>
           <div className="divide-y divide-border-hairline border-b border-border-hairline">
@@ -129,7 +129,7 @@ export function ReasonSelector({
                   >
                     {isSelected && <Check className="h-3 w-3 text-text-default" />}
                   </div>
-                  <span className="text-xs font-semibold uppercase tracking-wide">{reason}</span>
+                  <span className="text-xs font-semibold">{reason}</span>
                 </button>
               );
             })}
@@ -171,7 +171,7 @@ export function ReasonSelector({
                     >
                       {isSelected && <Check className="h-3 w-3 text-text-default" />}
                     </div>
-                    <span className="text-xs font-semibold uppercase tracking-wide">{reason}</span>
+                    <span className="text-xs font-semibold">{reason}</span>
                   </button>
                 );
               })}

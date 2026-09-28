@@ -25,7 +25,7 @@ type Tab = 'details' | 'tags';
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div className="space-y-0.5">
-      <p className="text-role-eyebrow uppercase tracking-widest text-text-faint">{label}</p>
+      <p className="text-role-eyebrow text-text-faint">{label}</p>
       <div className="text-role-caption text-text-muted">{children}</div>
     </div>
   );
@@ -85,7 +85,7 @@ export function SupportDetailsStack({
                 type="button"
                 onClick={() => setTab(t)}
                 className={cn(
-                  'ds-raw-button flex-1 px-3 py-2 text-role-micro uppercase tracking-widest transition',
+                  'ds-raw-button flex-1 px-3 py-2 text-role-micro transition',
                   tab === t
                     ? 'border-b-2 border-blue-500 text-blue-700'
                     : 'text-text-faint hover:text-text-muted',
@@ -127,13 +127,13 @@ export function SupportDetailsStack({
                 ) : (
                   <div className="flex gap-6">
                     <Field label="Status">
-                      <span className={cn('inline-block rounded px-1.5 py-0.5 text-role-eyebrow uppercase tracking-widest', sb.className)}>
+                      <span className={cn('inline-block rounded px-1.5 py-0.5 text-role-eyebrow', sb.className)}>
                         {sb.label}
                       </span>
                     </Field>
                     <Field label="Priority">
                       {pb ? (
-                        <span className={cn('inline-block rounded px-1.5 py-0.5 text-role-eyebrow uppercase tracking-widest', pb.className)}>
+                        <span className={cn('inline-block rounded px-1.5 py-0.5 text-role-eyebrow', pb.className)}>
                           {pb.label}
                         </span>
                       ) : (

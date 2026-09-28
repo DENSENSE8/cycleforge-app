@@ -18,7 +18,7 @@ export function LibraryBreadcrumb({
         variant="ghost"
         icon={<ChevronLeft className="h-3 w-3" />}
         onClick={() => onCrumb(0)}
-        className="shrink-0 rounded-lg px-2 py-1 text-role-micro uppercase tracking-wider text-text-soft hover:bg-surface-sunken hover:text-text-muted"
+        className="shrink-0 rounded-lg px-2 py-1 text-role-micro text-text-soft hover:bg-surface-sunken hover:text-text-muted"
       >
         All
       </Button>
@@ -29,7 +29,7 @@ export function LibraryBreadcrumb({
           <button
             type="button"
             onClick={() => onCrumb(i + 1)}
-            className={`shrink-0 rounded-lg px-2 py-1 text-role-micro uppercase tracking-wider transition-colors ${
+            className={`shrink-0 rounded-lg px-2 py-1 text-role-micro transition-colors ${
               i === currentPath.length - 1
                 ? 'bg-surface-inverse text-white'
                 : 'text-text-soft hover:bg-surface-sunken hover:text-text-muted'
@@ -46,7 +46,7 @@ export function LibraryBreadcrumb({
           icon={<Pencil className="h-3 w-3" />}
           onClick={onRenameCurrent}
           ariaLabel="Rename or move this folder"
-          className="ml-auto shrink-0 rounded-lg px-2 py-1 text-role-micro uppercase tracking-wider text-text-soft hover:text-text-muted"
+          className="ml-auto shrink-0 rounded-lg px-2 py-1 text-role-micro text-text-soft hover:text-text-muted"
         >
           Rename
         </Button>
@@ -67,14 +67,14 @@ export function BulkActionsBar({
 }) {
   return (
     <div className="absolute inset-x-3 bottom-3 z-20 flex items-center gap-2 rounded-2xl border border-border-inverse bg-surface-inverse px-3 py-2 text-white shadow-xl shadow-zinc-900/30">
-      <span className="text-role-micro uppercase tracking-[0.16em]">{count} selected</span>
+      <span className="text-role-micro">{count} selected</span>
       <span className="mx-1 h-4 w-px bg-border-inverse" />
       <Button
         variant="ghost"
         icon={<Pencil className="h-3 w-3" />}
         onClick={onMove}
         disabled={busy}
-        className="rounded-lg bg-surface-inverse-raised px-2 py-1 text-role-micro uppercase tracking-wider text-white hover:bg-surface-inverse-soft hover:text-white"
+        className="rounded-lg bg-surface-inverse-raised px-2 py-1 text-role-micro text-white hover:bg-surface-inverse-soft hover:text-white"
       >
         Move
       </Button>
@@ -83,7 +83,7 @@ export function BulkActionsBar({
         icon={<Trash2 className="h-3 w-3" />}
         loading={busy}
         onClick={onDelete}
-        className="rounded-lg bg-red-600 px-2 py-1 text-role-micro uppercase tracking-wider hover:bg-red-500"
+        className="rounded-lg bg-red-600 px-2 py-1 text-role-micro hover:bg-red-500"
       >
         Delete
       </Button>

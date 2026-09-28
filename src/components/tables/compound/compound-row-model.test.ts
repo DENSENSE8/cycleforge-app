@@ -262,7 +262,7 @@ describe('state tone is neutral-by-default on every family', () => {
 
   it('marks completed progress as done', () => {
     assert.equal(receivingStateTone('COMPLETE'), 'done');
-    assert.equal(ordersStateTone('Tested'), 'done');
+    assert.equal(ordersStateTone('Picked'), 'done');
   });
 
   it('leaves ordinary movement neutral', () => {

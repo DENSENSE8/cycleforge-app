@@ -50,6 +50,11 @@ export function GlobalHeader({
         TOP_CHROME_ZONE_GAP,
         HEADER_INSET_X,
         appChromeMutedClass,
+        // While the search field is engaged (grown over the header), every
+        // header zone recedes — fades and blurs out of focus — so the only
+        // sharp thing at the top of the screen is the search.
+        '[&>*]:transition-[opacity,filter,transform] [&>*]:duration-200 [&>*]:ease-out motion-reduce:[&>*]:transition-none',
+        '[:root:has([data-find-expanded])_&>*]:pointer-events-none [:root:has([data-find-expanded])_&>*]:scale-[0.985] [:root:has([data-find-expanded])_&>*]:opacity-30 [:root:has([data-find-expanded])_&>*]:blur-[3px]',
       )}
     >
       <div className={HEADER_ICON_CLUSTER} data-header-zone="nav">

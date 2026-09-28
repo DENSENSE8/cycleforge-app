@@ -95,7 +95,7 @@ export function ChecklistStepRow({
               />
             ) : null}
             {result?.verified_by_name && (checked || isValueStep) ? (
-              <span className="mt-0.5 block text-role-micro font-medium uppercase tracking-wide text-emerald-700">
+              <span className="mt-0.5 block text-role-micro font-medium text-emerald-700">
                 {result.verified_by_name}
               </span>
             ) : null}

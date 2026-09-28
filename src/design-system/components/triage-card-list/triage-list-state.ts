@@ -19,10 +19,12 @@ import {
 } from '@/lib/tables/slot-table-page';
 import { hasOpenOverlay } from '@/lib/overlay-stack/store';
 import { isEditableKeyTarget } from '@/lib/keyboard/is-editable-key-target';
+import type { RowGroup } from '@/lib/group-rows';
+import { DESK_RECORD_KEY_ATTR } from '@/design-system/components/DeskRecordPlane';
 
 // ── URL: status chips + page ─────────────────────────────────────────────────
 
-const STATUS_PARAM = 'cardStatus';
+const DEFAULT_STATUS_PARAM = 'cardStatus';
 const PAGE_PARAM = 'page';
 
 /**
@@ -38,16 +40,23 @@ const PAGE_PARAM = 'page';
 export function useTriageUrlState<K extends string>({
   statusKeys,
   recordParams,
+  statusParam = DEFAULT_STATUS_PARAM,
 }: {
   /** The family's status chips, in URL order; anything else in the param is ignored. */
   statusKeys: readonly K[];
   /** URL params that name the open record — they move within one list, so they are not part of its scope. */
   recordParams: readonly string[];
-}) {
+  /**
+   * The param the chips write — default `cardStatus`. A family whose page
+   * already owns a state param (History: `dstate`) names it, so one cut
+   * lives in ONE param (comma-separated), never two.
+   */
+  statusParam?: string;
+}): TriageUrlState<K> {
   const pathname = usePathname();
   const searchParams = useSearchParams();
 
-  const statusRaw = searchParams.get(STATUS_PARAM) ?? '';
+  const statusRaw = searchParams.get(statusParam) ?? '';
   const statusFilter = useMemo<ReadonlySet<K>>(
     () => new Set(statusRaw.split(',').filter((k): k is K => (statusKeys as readonly string[]).includes(k))),
     [statusRaw, statusKeys],
@@ -63,8 +72,8 @@ export function useTriageUrlState<K extends string>({
       const next = new URLSearchParams(current);
       if (patch.status) {
         const list = statusKeys.filter((k) => patch.status!.has(k));
-        if (list.length) next.set(STATUS_PARAM, list.join(','));
-        else next.delete(STATUS_PARAM);
+        if (list.length) next.set(statusParam, list.join(','));
+        else next.delete(statusParam);
         // A new cut starts on its first page.
         next.delete(PAGE_PARAM);
       }
@@ -76,7 +85,7 @@ export function useTriageUrlState<K extends string>({
       if (qs === current.toString()) return;
       window.history.replaceState(null, '', qs ? `${pathname}?${qs}` : pathname);
     },
-    [pathname, searchParams, statusKeys],
+    [pathname, searchParams, statusKeys, statusParam],
   );
 
   const toggleStatus = useCallback(
@@ -98,7 +107,68 @@ export function useTriageUrlState<K extends string>({
     return scope.toString();
   }, [searchParams, recordParams]);
 
-  return { statusFilter, toggleStatus, resetStatus, pageIndex, setPageIndex, scopeKey };
+  return useMemo(
+    () => ({ statusFilter, toggleStatus, resetStatus, pageIndex, setPageIndex, scopeKey }),
+    [statusFilter, toggleStatus, resetStatus, pageIndex, setPageIndex, scopeKey],
+  );
+}
+
+export interface TriageUrlState<K extends string> {
+  statusFilter: ReadonlySet<K>;
+  toggleStatus: (key: K) => void;
+  resetStatus: () => void;
+  pageIndex: number;
+  setPageIndex: (index: number) => void;
+  /** The URL minus page + the open record — the scope the rows answer to. */
+  scopeKey: string;
+}
+
+// ── The face's cut: status chips + held-new records → the host's feed ───────
+
+/**
+ * What the triage face hides from the host's rows: groups outside the status
+ * chips, and new groups held behind the "N new" pill. The HOST calls this
+ * before its data hook and applies `filterBands` where it arranges its bands
+ * (before the record cursor), so J / K walk only what the screen shows. The
+ * face ({@link TriageCardList}) reads the same handle for pages, Esc-reset and
+ * the hold.
+ */
+export interface TriageCut<K extends string> {
+  url: TriageUrlState<K>;
+  heldKeys: ReadonlySet<string>;
+  setHeldKeys: (keys: ReadonlySet<string>) => void;
+  /** Drops held groups and groups with no row in the status filter; drops bands left empty. */
+  filterBands: <Row>(
+    bands: readonly (readonly [string, readonly RowGroup<Row>[]])[],
+    groupKey: (group: RowGroup<Row>) => string,
+    rowStatusKeys: (row: Row) => readonly K[],
+  ) => [string, RowGroup<Row>[]][];
+}
+
+export function useTriageCut<K extends string>(opts: {
+  statusKeys: readonly K[];
+  recordParams: readonly string[];
+  statusParam?: string;
+}): TriageCut<K> {
+  const url: TriageUrlState<K> = useTriageUrlState(opts);
+  const { statusFilter } = url;
+  const [heldKeys, setHeldKeys] = useState<ReadonlySet<string>>(() => new Set());
+  const filterBands = useCallback(
+    <Row,>(
+      bands: readonly (readonly [string, readonly RowGroup<Row>[]])[],
+      groupKey: (group: RowGroup<Row>) => string,
+      rowStatusKeys: (row: Row) => readonly K[],
+    ): [string, RowGroup<Row>[]][] => {
+      const keep = (group: RowGroup<Row>) =>
+        !heldKeys.has(groupKey(group)) &&
+        (statusFilter.size === 0 || group.rows.some((row) => rowStatusKeys(row).some((key) => statusFilter.has(key))));
+      return bands
+        .map(([band, groups]) => [band, groups.filter(keep)] as [string, RowGroup<Row>[]])
+        .filter(([, groups]) => groups.length > 0);
+    },
+    [statusFilter, heldKeys],
+  );
+  return useMemo(() => ({ url, heldKeys, setHeldKeys, filterBands }), [url, heldKeys, filterBands]);
 }
 
 // ── Per-person display prefs ─────────────────────────────────────────────────
@@ -216,8 +286,20 @@ export function useHeldNewRecords({
   const trustNextBatch = useCallback(() => {
     trustNext.current = true;
   }, []);
+  /**
+   * Read at render: a card key that has just arrived live (not a first paint,
+   * not a new question, not a Load more) and lands in view — it swipes in
+   * (`SwipeListItem enter="swipe"`). The effect above marks it seen after this
+   * commit, so only its mounting render answers true.
+   */
+  const isArrival = (key: string): boolean =>
+    seen.current != null &&
+    lastReset.current === resetKey &&
+    !trustNext.current &&
+    !seen.current.has(key) &&
+    (scrollRef.current?.scrollTop ?? 0) <= 40;
 
-  return { held, release, trustNextBatch };
+  return { held, release, trustNextBatch, isArrival };
 }
 
 // ── Hotkeys ──────────────────────────────────────────────────────────────────
@@ -263,4 +345,83 @@ export function useTriagePageKeys({
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
   }, [enabled]);
+}
+
+const INTERACTIVE_SELECTOR =
+  'button, a[href], input, select, textarea, [role="button"], [role="checkbox"], [role="menuitem"], [role="option"], [role="tab"]';
+
+/** The card a key acts on: the one holding focus, else the one under the pointer (inside `root`). */
+function cardUnderCursor(target: EventTarget | null, root: HTMLElement | null): string | null {
+  const focused = target instanceof Element ? target.closest(`[${DESK_RECORD_KEY_ATTR}]`) : null;
+  if (focused) return focused.getAttribute(DESK_RECORD_KEY_ATTR);
+  const hovered = root?.querySelectorAll(`[${DESK_RECORD_KEY_ATTR}]:hover`);
+  return hovered && hovered.length > 0 ? hovered[hovered.length - 1]!.getAttribute(DESK_RECORD_KEY_ATTR) : null;
+}
+
+/**
+ * The card keys (Law 5 + the quick look), acting on the card under the
+ * cursor — the focused card, else the card under the pointer:
+ * - **X** checks it (else the open record's card); Shift+X extends a range
+ *   like a shift-click on the checkbox.
+ * - **Space** unfolds / folds its quick look. A focused card handles its own
+ *   Space; this covers the pointer. A focused button elsewhere keeps Space.
+ * - **Enter** opens it — only with nothing focused (a focused control keeps
+ *   its own Enter; a focused card's Enter is its open button's).
+ *
+ * Never while typing, with an overlay up, with Ctrl / ⌘ / Alt held, or after
+ * another surface took the key — the selection bar's verb letters bind in
+ * capture, so a verb on X would win.
+ */
+export function useTriageCardKeys({
+  enabled,
+  rootRef,
+  openKey,
+  onCheck,
+  onPeek,
+  onOpen,
+}: {
+  enabled: boolean;
+  /** The list's scroll box — the pointer's card is looked up inside it. */
+  rootRef: RefObject<HTMLElement | null>;
+  /** The open record's `data-desk-record-key`, or null. */
+  openKey: string | null;
+  onCheck: (recordKey: string, event: { shiftKey: boolean }) => void;
+  onPeek: (recordKey: string) => void;
+  onOpen: (recordKey: string) => void;
+}) {
+  const latest = useRef({ openKey, onCheck, onPeek, onOpen });
+  latest.current = { openKey, onCheck, onPeek, onOpen };
+  useEffect(() => {
+    if (!enabled) return;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.repeat || event.defaultPrevented || event.metaKey || event.ctrlKey || event.altKey) return;
+      if (hasOpenOverlay() || isEditableKeyTarget(event.target)) return;
+      const root = rootRef.current;
+      const onControl = event.target instanceof Element && event.target.closest(INTERACTIVE_SELECTOR) != null;
+      if (event.key.toLowerCase() === 'x') {
+        const key = cardUnderCursor(event.target, root) || latest.current.openKey;
+        if (!key) return;
+        event.preventDefault();
+        latest.current.onCheck(key, { shiftKey: event.shiftKey });
+        return;
+      }
+      if (event.key === ' ') {
+        if (onControl) return;
+        const key = cardUnderCursor(event.target, root);
+        if (!key) return;
+        event.preventDefault();
+        latest.current.onPeek(key);
+        return;
+      }
+      if (event.key === 'Enter') {
+        if (event.target !== document.body) return;
+        const key = cardUnderCursor(null, root);
+        if (!key) return;
+        event.preventDefault();
+        latest.current.onOpen(key);
+      }
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [enabled, rootRef]);
 }

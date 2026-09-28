@@ -109,10 +109,10 @@ export function deriveShippedHeaderMeta(shipped: ShippedOrder): ShippedHeaderMet
   const hasPickScan = Boolean((shipped as any).has_pick_scan);
   // State decision flows through the canonical fulfillment projection so this header pill can never disagree with the order's board lane…
   const lane = resolveFulfillmentLane({ hasPickScan, isOutOfStock: hasOutOfStock });
-  const statusTone: StatusTone = lane === 'TESTED' ? 'emerald' : lane === 'BLOCKED' ? 'red' : 'yellow';
-  // The TESTED lane is the picked lane (a pick fact, not QC) — name the picker, not the unit tester.
+  const statusTone: StatusTone = lane === 'PICKED' ? 'emerald' : lane === 'BLOCKED' ? 'red' : 'yellow';
+  // The PICKED lane is a pick fact, not QC — name the picker, not the unit tester.
   const statusLabel =
-    lane === 'TESTED'
+    lane === 'PICKED'
       ? `Picked by ${String(shipped.picked_by_name || '').trim() || getStaffName(shipped.picked_by ?? null)}`
       : lane === 'BLOCKED'
         ? 'Out of stock'

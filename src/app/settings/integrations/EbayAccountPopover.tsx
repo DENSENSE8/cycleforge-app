@@ -135,7 +135,7 @@ function EbayAccountDetailPopover({
     <Popover open={open} onClose={onClose} anchorRef={anchorRef} placement="bottom-start" className="w-72" role="dialog" aria-label={`eBay account ${account.label}`}>
       <div className="space-y-3 p-1">
         <div>
-          <p className="text-role-micro uppercase tracking-widest text-text-faint">{roleLabel}</p>
+          <p className="text-role-micro text-text-faint">{roleLabel}</p>
           <p className="mt-1 text-role-body font-semibold text-text-default">{account.label}</p>
           {account.ebayUserId && (
             <p className="mt-0.5 text-role-caption text-text-soft">

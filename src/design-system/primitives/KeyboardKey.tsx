@@ -3,58 +3,63 @@
 /**
  * KeyboardKey — ONE physical keycap face for teaching chords.
  *
- * Quiet sunken face + muted, sentence-case letters. Overlay it on a Button (absolute right) or
- * place it inline in a cheat sheet — same paint either way. Do not fork a
+ * It must read as a KEY you can press, not a letter in a sentence
+ * (operator 2026-09-27): a square white cap with a hairline edge and a
+ * bottom lip — the shadow a real keycap casts — and dark, sentence-case
+ * letters. Overlay it on a Button (absolute right) or place it inline in a
+ * hint, a menu or a cheat sheet — same paint everywhere. Do not fork a
  * second `<kbd>` recipe for hotkey teaching.
  */
 
 import type { HTMLAttributes, ReactNode } from 'react';
 import { SEGMENTED_CONTROL_FACE_CORNER } from '@/design-system/tokens/radius';
 import { cn } from '@/utils/_cn';
+import { platformKeyFace, useApplePlatform } from '@/lib/keyboard/chord-keys';
 
 export type KeyboardKeySize = 'xs' | 'sm' | 'md';
 
 /**
- * Which ground the cap is sitting on.
+ * Which ground the cap is sitting on. Both tones are the SAME keycap —
+ * square face, hairline edge, 1px bottom lip — and both are theme-agnostic:
+ * the lip is mixed from the cap's own ink (`currentColor`), so it reads in
+ * light, dark and every palette theme without a per-theme value.
  *
- * `default` — page chrome: quiet sunken face, muted sentence-case letters, no lift.
- * `inverse` — an inverse surface (the hover tooltip chip). The cap must READ
- * as a hint, not as a target: it is darker than the chip it sits on, outlined
- * with a light hairline, and carries no lift. A light face here (the default
- * tone) grabs the eye harder than the sentence it is explaining
- * (operator 2026-09-05).
+ * `default` — page chrome: card face, soft border, default ink.
+ * `inverse` — a tooltip chip or any inverse surface: the face, edge and lip
+ * are all mixed from the chip's ink, so the cap follows whatever colour the
+ * chip paints its sentence in.
  */
 export type KeyboardKeyTone = 'default' | 'inverse';
 
 const SIZE_CLASS: Record<KeyboardKeySize, string> = {
-  /** Inline inside a tooltip chip — the smallest cap there is. */
-  xs: 'h-4 min-w-4 px-1',
+  /** Inline in a search well, a menu row or a tooltip — square, readable at 32px. */
+  xs: 'h-[18px] min-w-[18px] px-1',
   /** Selection CTA overlay — square face inside the Button. */
   sm: 'h-5 min-w-5 px-1',
   /** Cheat-sheet / hint row — slightly wider reading chip. */
-  md: 'min-h-5 min-w-[1.5rem] px-1.5 py-0.5',
+  md: 'min-h-6 min-w-6 px-1.5 py-0.5',
 };
 
 /**
  * Geometry every cap shares: sans, sentence case ("Ctrl", "Shift", "Alt"; a
  * letter key reads as printed), normal tracking — a key is READ, never
- * announced (operator 2026-09-27: "softer, not all caps, not loud").
+ * announced (operator 2026-09-27: "softer, not all caps, not loud"). The
+ * cap is at least as wide as it is tall, so a single letter is a SQUARE key.
  */
 const KEYBOARD_KEY_STRUCTURE = cn(
-  'inline-flex shrink-0 items-center justify-center',
-  'text-role-micro font-sans font-medium normal-case tracking-normal tabular-nums',
+  'inline-flex shrink-0 items-center justify-center leading-none',
+  'text-role-micro font-sans font-semibold normal-case tracking-normal tabular-nums',
   SEGMENTED_CONTROL_FACE_CORNER,
 );
 
 const TONE_CLASS: Record<KeyboardKeyTone, string> = {
-  // Page chrome: a quiet sunken face with a hairline inset and muted ink — no
-  // border, no lift — so the cap sits beside its words instead of over them.
-  default: cn('bg-surface-sunken ring-1 ring-inset ring-border-hairline', 'text-text-muted'),
-  // Darker than the chip, light hairline, dimmed letter, no shadow. Sentence
-  // case and normal tracking: the cap is read, not announced.
+  default: cn(
+    'border border-border-soft bg-surface-card text-text-default',
+    'shadow-[0_1px_0_0_color-mix(in_oklab,currentColor_22%,transparent)]',
+  ),
   inverse: cn(
-    'border border-glass/20 bg-scrim/40',
-    'font-medium normal-case tracking-normal text-text-inverse-soft',
+    'border border-current/30 bg-current/12 text-current',
+    'shadow-[0_1px_0_0_color-mix(in_oklab,currentColor_40%,transparent)]',
   ),
 };
 
@@ -78,6 +83,8 @@ export function KeyboardKey({
   className,
   ...rest
 }: KeyboardKeyProps) {
+  // Every cap names the key THIS device has (⌘ vs Ctrl, ⇧ vs Shift) — never "⌘/Ctrl".
+  const apple = useApplePlatform();
   return (
     <kbd
       data-testid="keyboard-key"
@@ -85,7 +92,7 @@ export function KeyboardKey({
       className={cn(KEYBOARD_KEY_STRUCTURE, TONE_CLASS[tone], SIZE_CLASS[size], className)}
       {...rest}
     >
-      {children}
+      {typeof children === 'string' ? platformKeyFace(children, apple) : children}
     </kbd>
   );
 }
@@ -109,10 +116,12 @@ export function chordKeys(chord: string): string[] {
  * cap reading "Shift + Tab". Used by the hover tooltip (cursor chip and
  * anchored bubble both) so a taught chord looks the same wherever it lands.
  *
+ * Alternatives are written ` or `-separated (`'\ or / or Ctrl + \'`) and
+ * paint as cap groups with a quiet "or" between them — a key is never left
+ * as plain text inside the sentence.
+ *
  * Defaults are the tooltip's: `sm` on the `inverse` ground. The cap is sized
- * to sit beside a 13px `role-nav` sentence without looking stranded under it —
- * `xs` reads as a speck next to readable text. Tone, not size, is what keeps a
- * cap from out-shouting the sentence it explains.
+ * to sit beside a 13px `role-nav` sentence without looking stranded under it.
  */
 export function KeyboardChord({
   chord,
@@ -125,14 +134,22 @@ export function KeyboardChord({
   tone?: KeyboardKeyTone;
   className?: string;
 }) {
-  const keys = chordKeys(chord);
-  if (keys.length === 0) return null;
+  const groups = chord
+    .split(/\s+or\s+/)
+    .map(chordKeys)
+    .filter((keys) => keys.length > 0);
+  if (groups.length === 0) return null;
   return (
     <span className={cn('inline-flex shrink-0 items-center gap-1', className)} aria-hidden>
-      {keys.map((key) => (
-        <KeyboardKey key={key} size={size} tone={tone}>
-          {key}
-        </KeyboardKey>
+      {groups.map((keys, group) => (
+        <span key={group} className="inline-flex items-center gap-1">
+          {group > 0 ? <span className="px-0.5 text-role-micro opacity-70">or</span> : null}
+          {keys.map((key) => (
+            <KeyboardKey key={key} size={size} tone={tone}>
+              {key}
+            </KeyboardKey>
+          ))}
+        </span>
       ))}
     </span>
   );

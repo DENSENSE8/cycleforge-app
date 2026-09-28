@@ -131,7 +131,7 @@ test('type guards accept members and reject strangers', () => {
 });
 
 test('small stable sets are what the code expects', () => {
-  assert.deepEqual([...FEED_MEMBERSHIP_STATES], ['active', 'needs_match', 'done', 'pending', 'tested', 'blocked']);
+  assert.deepEqual([...FEED_MEMBERSHIP_STATES], ['active', 'needs_match', 'done', 'pending', 'picked', 'blocked']);
   assert.deepEqual([...FEED_MEMBERSHIP_TONES], ['default', 'info', 'success', 'warning', 'danger', 'muted']);
   assert.deepEqual([...AGENT_MUTATION_STATUSES], ['proposed', 'under_review', 'approved', 'applied', 'rejected', 'reverted']);
   assert.deepEqual([...INSIGHT_SUBJECT_KINDS], ['node_type', 'feed_key', 'signal_kind']);
@@ -174,9 +174,9 @@ test('every entity type has a delete trigger on its parent in each polymorphic c
 
 test('membership state/tone + mutation status CHECKs mirror the registry', () => {
   const feedSql = migrationSql('2026-07-03j_feed_memberships.sql');
-  // The state CHECK was widened for the orders_unshipped lanes — pin against the
-  // latest redefinition (2026-07-04a), which re-affirms the full union.
-  const stateSql = migrationSql('2026-07-04a_feed_memberships_order_lane_states.sql');
+  // The state CHECK was widened for the orders_unshipped lanes (2026-07-04a) and
+  // its picked lane renamed (2026-09-28x) — pin against the latest redefinition.
+  const stateSql = migrationSql('2026-09-28x_order_lane_tested_to_picked.sql');
   assert.deepEqual(extractCheckValues(stateSql, 'feed_memberships_state_chk'), [...FEED_MEMBERSHIP_STATES]);
   assert.deepEqual(extractCheckValues(feedSql, 'feed_memberships_tone_chk'), [...FEED_MEMBERSHIP_TONES]);
   const mutSql = migrationSql('2026-07-03o_agent_mutations.sql');

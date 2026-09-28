@@ -31,7 +31,7 @@ export function ClaimNasBackupCard({
       <section className="space-y-1.5">
         <div className="flex items-center gap-1.5">
           <Folder className="h-3.5 w-3.5 text-text-faint" />
-          <p className="text-role-micro uppercase tracking-[0.14em] text-text-soft">
+          <p className="text-role-micro text-text-soft">
             Local backup
           </p>
           <span className="h-1.5 w-1.5 rounded-full bg-text-faint" aria-hidden />
@@ -73,7 +73,7 @@ export function ClaimNasBackupCard({
         ) : (
           <AlertTriangle className="h-3.5 w-3.5 text-amber-600" />
         )}
-        <p className="text-role-micro uppercase tracking-[0.14em] text-text-soft">
+        <p className="text-role-micro text-text-soft">
           {backupOk ? 'Local backup' : 'Backup incomplete'}
         </p>
         <span className={`h-1.5 w-1.5 rounded-full ${dotClass}`} aria-hidden />

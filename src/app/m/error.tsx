@@ -24,7 +24,7 @@ export default function MobileError({
   return (
     <div className="flex min-h-screen flex-col items-center justify-center gap-4 bg-surface-canvas px-6 text-center">
       <div className="flex flex-col items-center gap-2">
-        <p className="text-role-micro uppercase tracking-[0.22em] text-rose-500">
+        <p className="text-role-micro text-rose-500">
           Something broke
         </p>
         <h1 className="text-lg font-semibold text-text-default">This screen hit an error</h1>

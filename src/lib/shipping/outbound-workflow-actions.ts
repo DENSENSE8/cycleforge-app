@@ -115,6 +115,8 @@ export type OutboundWorkflowException =
 interface OutboundWorkflowActionInput {
   stage: OrderLifecycleStage;
   hasLabel: boolean;
+  /** Counter pickup: no label exists or is needed — pick and pack proceed without one. */
+  pickup?: boolean;
   hasPickScan: boolean;
   packed: boolean;
   staged: boolean;
@@ -177,19 +179,24 @@ export function resolveOutboundWorkflowActions(
   const blockedByHold = input.stage === 'BLOCKED';
   const holdReason = 'Clear the out-of-stock hold first.';
 
+  // A counter pickup has no label to attach — pick and pack go ahead without one.
+  const labelReady = input.hasLabel || input.pickup === true;
+
   const label = input.hasLabel
     ? disabled('label', 'complete', 'Shipping label attached.', 'direct_signal')
-    : input.packed
-      ? disabled('label', 'unavailable', 'Packed order has no label signal; reconcile its shipment.')
-      : blockedByHold
-        ? disabled('label', 'blocked', holdReason)
-        : enabled('label', 'primary');
+    : input.pickup
+      ? disabled('label', 'unavailable', 'Pickup — the customer collects it at the counter; no label.')
+      : input.packed
+        ? disabled('label', 'unavailable', 'Packed order has no label signal; reconcile its shipment.')
+        : blockedByHold
+          ? disabled('label', 'blocked', holdReason)
+          : enabled('label', 'primary');
 
   const pick = input.hasPickScan
     ? disabled('pick', 'complete', 'Pick scan recorded.', 'direct_signal')
     : blockedByHold
       ? disabled('pick', 'blocked', holdReason)
-      : !input.hasLabel
+      : !labelReady
         ? disabled('pick', 'blocked', 'Attach the shipping label first.')
         : enabled('pick', 'primary');
 
@@ -197,7 +204,7 @@ export function resolveOutboundWorkflowActions(
     ? disabled('pack', 'complete', 'Pack event recorded.', 'direct_signal')
     : blockedByHold
       ? disabled('pack', 'blocked', holdReason)
-      : !input.hasLabel
+      : !labelReady
         ? disabled('pack', 'blocked', 'Attach the shipping label first.')
         : !input.hasPickScan
           ? disabled('pack', 'blocked', 'Complete the pick first.')

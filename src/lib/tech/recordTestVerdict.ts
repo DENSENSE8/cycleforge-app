@@ -13,6 +13,7 @@ import { getPrimarySupportTicketForReceiving } from '@/lib/support/tickets';
 import { isUnifiedEngineApplyTransition, isUnifiedEngineVerdictConfig, isTestingAutoLinkTicket } from '@/lib/feature-flags';
 import { parseOrgSettings } from '@/lib/tenancy/settings';
 import type { SerialState } from '@/lib/inventory/state-machine';
+import { refreshOrderStageFacts } from '@/lib/orders/order-stage-facts';
 
 /** Thrown when the unified-engine chokepoint refuses a verdict's status transition (the guarded allow-list rejected it — e.g. */
 export class GuardRejectedError extends Error {
@@ -452,6 +453,14 @@ export async function recordTestVerdict(
     } catch (err) {
       console.warn('[recordTestVerdict] pass-allocate skipped (non-fatal):', err);
     }
+  }
+  // 8. Order QC reads this verdict off order_stage_facts: refresh every order
+  //    the unit is allocated to (including one pass-allocate just chose).
+  //    After commit, like the steps above — a failure leaves the cron sweep to fix it.
+  try {
+    await refreshOrderStageFacts(unit.organization_id as OrgId, { serialUnitIds: [unit.id] });
+  } catch (err) {
+    console.warn('[recordTestVerdict] order stage facts refresh failed (non-fatal):', err);
   }
 
   return {

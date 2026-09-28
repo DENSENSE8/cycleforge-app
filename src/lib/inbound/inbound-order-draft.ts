@@ -11,7 +11,8 @@
  *
  * The order type (PO · Return · Trade-in · Pickup) is a classifier on the
  * order, not a separate form. Returns add their return facts and require a
- * tracking number + catalog item (the claim ticket needs both).
+ * reason, tracking number, catalog item and its listing link (the claim ticket
+ * and the unboxer need all four).
  *
  * Client-safe: no server imports. Money is integer cents.
  */
@@ -103,6 +104,42 @@ export function emptyInboundOrderDraft(type: InboundOrderType = 'PO'): InboundOr
   };
 }
 
+// ─── the return reason ───────────────────────────────────────────────────────
+
+/** The common reasons a buyer sends an item back — what the unboxer checks for. */
+export const INBOUND_RETURN_REASONS = [
+  'Damaged in transit',
+  "Defective / doesn't work",
+  'Not as described',
+  'Wrong item sent',
+  'Missing parts / accessories',
+  'Changed mind / no longer needed',
+  'Other',
+] as const;
+export type InboundReturnReason = (typeof INBOUND_RETURN_REASONS)[number];
+
+const RETURN_REASON_DETAIL_SEPARATOR = ' — ';
+
+/**
+ * `draft.returnReason` is one string: `"<reason>"` or `"<reason> — <detail>"`;
+ * with no reason picked the detail alone stands.
+ */
+export function composeInboundReturnReason(reason: InboundReturnReason | null, detail: string): string {
+  if (!detail.trim()) return reason ?? '';
+  return reason ? `${reason}${RETURN_REASON_DETAIL_SEPARATOR}${detail}` : detail;
+}
+
+/** Inverse of `composeInboundReturnReason`; text naming no known reason is all detail. */
+export function parseInboundReturnReason(raw: string): { reason: InboundReturnReason | null; detail: string } {
+  for (const reason of INBOUND_RETURN_REASONS) {
+    if (raw === reason) return { reason, detail: '' };
+    if (raw.startsWith(`${reason}${RETURN_REASON_DETAIL_SEPARATOR}`)) {
+      return { reason, detail: raw.slice(reason.length + RETURN_REASON_DETAIL_SEPARATOR.length) };
+    }
+  }
+  return { reason: null, detail: raw };
+}
+
 // ─── identity ────────────────────────────────────────────────────────────────
 
 /** Mirror of the SQL `inbound_order_number_norm()` — trimmed, no whitespace, upper-case. */
@@ -177,6 +214,8 @@ export type InboundOrderField =
   | 'quantity'
   | 'tracking'
   | 'return_item'
+  | 'return_reason'
+  | 'listing_url'
   | 'zoho_source';
 
 export interface InboundOrderNeed {
@@ -189,8 +228,8 @@ export interface InboundOrderNeed {
 /**
  * What still blocks landing the order, in form order. Empty = ready.
  * `returnClaim` (default on — the form files a claim ticket for a return)
- * requires the return's tracking + catalog item; a CSV / sync return that
- * files no ticket lands without them.
+ * requires the return's reason, tracking, catalog item and the listing the
+ * buyer bought; a CSV / sync return that files no ticket lands without them.
  */
 export function inboundOrderMissing(draft: InboundOrderDraft, opts: { returnClaim?: boolean } = {}): InboundOrderNeed[] {
   const needs: InboundOrderNeed[] = [];
@@ -212,10 +251,15 @@ export function inboundOrderMissing(draft: InboundOrderDraft, opts: { returnClai
   }
 
   if (draft.type === 'RETURN' && opts.returnClaim !== false) {
+    if (!draft.returnReason.trim()) needs.push({ field: 'return_reason', label: 'Return reason' });
     if (canonicalInboundTracking(draft).length === 0) needs.push({ field: 'tracking', label: 'Return tracking number' });
     if (filled.length !== 1 || filled[0].line.skuCatalogId == null) {
       needs.push({ field: 'return_item', label: 'One catalog item being returned' });
     }
+    // The unboxer opens the listing the buyer bought to check the item against it.
+    const returned = filled.length ? filled : indexed.slice(0, 1);
+    const noListing = returned.filter(({ line }) => !line.listingUrl.trim()).map(({ index }) => index);
+    if (noListing.length) needs.push({ field: 'listing_url', label: 'Listing link on the returned item', lines: noListing });
   }
   return needs;
 }

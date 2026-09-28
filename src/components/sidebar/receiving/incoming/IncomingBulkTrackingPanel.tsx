@@ -121,7 +121,7 @@ const VERDICT_CHIP: Partial<
 };
 
 const CHIP_CLASS =
-  'inset-chip rounded text-role-micro uppercase tracking-widest ring-1 ring-inset';
+  'inset-chip rounded text-role-micro ring-1 ring-inset';
 
 /** A residual / check row's identity: */
 function RowIdentity({

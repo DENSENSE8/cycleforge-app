@@ -1,6 +1,7 @@
 /** The inventory diagnostics dashboard's row sections — SECTION CHROME ONLY. */
 
 import Link from 'next/link';
+import { sentenceCaseLabel } from '@/lib/text/sentence-case-label';
 import {
   KpiTile,
   OpsKpiBand,
@@ -15,13 +16,13 @@ import {
   SkuDriftTable,
 } from './InventoryAdminTables';
 
-/** Open DRIFT alerts — surfaced by /api/cron/inventory/drift-check. */
+/** Open drift alerts — surfaced by /api/cron/inventory/drift-check. */
 export function DriftAlertsSection({ openDriftAlerts }: { openDriftAlerts: DriftAlertRow[] }) {
   if (openDriftAlerts.length === 0) return null;
   return (
     <section className="space-y-3">
       <header className="flex items-center justify-between rounded-xl border border-red-200 bg-red-50 px-6 py-4">
-        <h2 className="text-lg font-medium text-red-900">Open DRIFT alerts</h2>
+        <h2 className="text-lg font-medium text-red-900">Open drift alerts</h2>
         <span className="rounded-full bg-red-200 px-3 py-1 text-xs font-medium text-red-800">
           {openDriftAlerts.length} open
         </span>
@@ -66,14 +67,14 @@ export function AllocationsSection({ allocations }: { allocations: AllocationRow
       {allocations.length === 0 ? (
         <OpsKpiBandEmpty
           title="No allocations yet."
-          description="Orders auto-allocate against STOCKED units on intake."
+          description="Orders auto-allocate against stocked units on intake."
         />
       ) : (
         <OpsKpiBand aria-label="Open allocations by state">
           {allocations.map((a) => (
             <OpsKpiBandCell key={`state:${a.state}`}>
               <KpiTile
-                label={a.state}
+                label={sentenceCaseLabel(a.state)}
                 labelClassName="normal-case tracking-normal truncate"
                 value={
                   <>

@@ -31,7 +31,7 @@ function RelationList({
 }) {
   return (
     <div>
-      <h3 className="mb-1.5 text-role-caption font-semibold uppercase tracking-wide text-text-faint">
+      <h3 className="mb-1.5 text-role-caption font-semibold text-text-faint">
         {title} ({items.length})
       </h3>
       {items.length === 0 ? (
@@ -83,7 +83,7 @@ export function SkuGraphDetailPanel({ node, onSelectRelated, onEditConnections }
     <aside className="flex w-80 shrink-0 flex-col gap-4 overflow-y-auto border-l border-border-soft bg-surface-card p-4">
       <div>
         <div className="flex items-center gap-2">
-          <span className={cn('rounded-md px-1.5 py-0.5 text-role-micro font-semibold uppercase ring-1', TIER_BADGE[node.tier])}>
+          <span className={cn('rounded-md px-1.5 py-0.5 text-role-micro font-semibold ring-1', TIER_BADGE[node.tier])}>
             {node.tier}
           </span>
         </div>
@@ -92,7 +92,7 @@ export function SkuGraphDetailPanel({ node, onSelectRelated, onEditConnections }
       </div>
 
       <div className="rounded-xl bg-surface-canvas p-3">
-        <div className="text-role-caption uppercase tracking-wide text-text-faint">In stock</div>
+        <div className="text-role-caption text-text-faint">In stock</div>
         <div className="text-2xl font-semibold tabular-nums text-text-default">{node.stock}</div>
       </div>
 

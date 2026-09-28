@@ -340,36 +340,87 @@ export async function updateCustomerContact(
   patch: CustomerContactPatch,
   orgId: OrgId,
 ): Promise<CustomerContactUpdateResult> {
-  return withTenantTransaction(orgId, async (client) => {
-    const found = await client.query<CustomerContactColumns>(
-      `SELECT customer_name, display_name, first_name, last_name, phone, email
-         FROM customers
-        WHERE id = $1 AND organization_id = $2
-        FOR UPDATE`,
-      [customerId, orgId],
+  return withTenantTransaction(orgId, (client) => updateCustomerContactInTx(client, orgId, customerId, patch));
+}
+
+/** {@link updateCustomerContact} on the caller's transaction (row locked FOR UPDATE). */
+export async function updateCustomerContactInTx(
+  client: CustomerDb,
+  orgId: OrgId,
+  customerId: number,
+  patch: CustomerContactPatch,
+): Promise<CustomerContactUpdateResult> {
+  const found = await client.query<CustomerContactColumns>(
+    `SELECT customer_name, display_name, first_name, last_name, phone, email
+       FROM customers
+      WHERE id = $1 AND organization_id = $2
+      FOR UPDATE`,
+    [customerId, orgId],
+  );
+  const before = found.rows[0];
+  if (!before) return { ok: false, status: 404, error: 'Customer not found' };
+
+  const plan = customerContactColumns(before, patch);
+  if (!plan.ok) return { ok: false, status: 400, error: plan.error };
+
+  const entries = Object.entries(plan.columns);
+  if (entries.length > 0) {
+    await client.query(
+      `UPDATE customers
+          SET ${entries.map(([col], i) => `${col} = $${i + 3}`).join(', ')}, updated_at = NOW()
+        WHERE id = $1 AND organization_id = $2`,
+      [customerId, orgId, ...entries.map(([, value]) => value)],
     );
-    const before = found.rows[0];
-    if (!before) return { ok: false as const, status: 404 as const, error: 'Customer not found' };
+  }
 
-    const plan = customerContactColumns(before, patch);
-    if (!plan.ok) return { ok: false as const, status: 400 as const, error: plan.error };
+  const repairs = await client.query<{ id: number }>(
+    `SELECT id FROM repair_service WHERE customer_id = $1 AND organization_id = $2`,
+    [customerId, orgId],
+  );
+  return { ok: true, before, columns: plan.columns, repairIds: repairs.rows.map((r) => Number(r.id)) };
+}
 
-    const entries = Object.entries(plan.columns);
-    if (entries.length > 0) {
-      await client.query(
-        `UPDATE customers
-            SET ${entries.map(([col], i) => `${col} = $${i + 3}`).join(', ')}, updated_at = NOW()
-          WHERE id = $1 AND organization_id = $2`,
-        [customerId, orgId, ...entries.map(([, value]) => value)],
-      );
-    }
+/** A customer's `shipping_*` columns, as stored. */
+export interface CustomerShipToColumns {
+  shipping_address_1: string | null;
+  shipping_address_2: string | null;
+  shipping_city: string | null;
+  shipping_state: string | null;
+  shipping_postal_code: string | null;
+  shipping_country: string | null;
+}
 
-    const repairs = await client.query<{ id: number }>(
-      `SELECT id FROM repair_service WHERE customer_id = $1 AND organization_id = $2`,
-      [customerId, orgId],
-    );
-    return { ok: true as const, before, columns: plan.columns, repairIds: repairs.rows.map((r) => Number(r.id)) };
-  });
+/**
+ * Replace a customer's ship-to with a staff CORRECTION — every line, blanks
+ * clear — and stamp `shipping_edited_at`, the marker that makes the label
+ * resolver (`order-ship-to.ts`) prefer this address over ShipStation's.
+ * Returns the address it replaced; `null` when the customer is not in this org.
+ */
+export async function replaceCustomerShipToInTx(
+  client: CustomerDb,
+  orgId: OrgId,
+  customerId: number,
+  shipTo: CustomerShipTo,
+): Promise<CustomerShipToColumns | null> {
+  const result = await client.query<CustomerShipToColumns>(
+    `UPDATE customers c
+        SET shipping_address_1   = NULLIF($3, ''),
+            shipping_address_2   = NULLIF($4, ''),
+            shipping_city        = NULLIF($5, ''),
+            shipping_state       = NULLIF($6, ''),
+            shipping_postal_code = NULLIF($7, ''),
+            shipping_country     = NULLIF($8, ''),
+            shipping_edited_at   = NOW(),
+            updated_at           = NOW()
+       FROM (SELECT id, shipping_address_1, shipping_address_2, shipping_city, shipping_state,
+                    shipping_postal_code, shipping_country
+               FROM customers WHERE id = $1 AND organization_id = $2 FOR UPDATE) prev
+      WHERE c.id = prev.id AND c.organization_id = $2
+      RETURNING prev.shipping_address_1, prev.shipping_address_2, prev.shipping_city,
+                prev.shipping_state, prev.shipping_postal_code, prev.shipping_country`,
+    [customerId, orgId, shipTo.address1, shipTo.address2, shipTo.city, shipTo.state, shipTo.postalCode, shipTo.country],
+  );
+  return result.rows[0] ?? null;
 }
 
 export type RepairCustomerLinkResult =

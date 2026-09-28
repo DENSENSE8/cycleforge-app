@@ -88,8 +88,8 @@ export async function createRepairAction(
 
       if (input.sessionId != null) {
         const session = await client.query(
-          `SELECT 1 FROM repair_bench_sessions
-            WHERE id = $1 AND organization_id = $2 AND repair_id = $3
+          `SELECT 1 FROM qc_sessions
+            WHERE id = $1 AND organization_id = $2 AND kind = 'REPAIR_SERVICE' AND repair_service_id = $3
               AND staff_id = $4 AND ended_at IS NULL`,
           [input.sessionId, orgId, input.repairId, staffId],
         );

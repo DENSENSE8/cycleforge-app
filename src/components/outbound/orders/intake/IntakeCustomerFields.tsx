@@ -7,76 +7,26 @@
  * contact fields reopen for a new customer with "New customer".
  */
 
-import { useEffect, useState } from 'react';
+import { customerCleared, customerFromHit, useCustomerSearch, type CustomerHit } from '@/hooks/orders/useCustomerSearch';
 import { SearchableSelectField } from '@/design-system/components/SearchableSelectField';
 import { TextField } from '@/design-system/primitives/TextField';
 import { Button } from '@/design-system/primitives/Button';
-import type { IntakeState } from './intake-model';
+import type { IntakeState } from '@/lib/orders/intake/intake-model';
 
 type Customer = IntakeState['customer'];
-
-interface CustomerHit {
-  id: number;
-  name: string;
-  phone: string | null;
-  email: string | null;
-  shippingAddress: Record<'address1' | 'address2' | 'city' | 'state' | 'postalCode' | 'country', string | null>;
-}
-
-/** Debounce between keystrokes and the customer search. */
-const SEARCH_DEBOUNCE_MS = 200;
 
 export function IntakeCustomerFields({
   customer,
   onChange,
+  autoFocus = false,
 }: {
   customer: Customer;
   onChange: (next: Customer) => void;
+  /** Land the cursor on "Find a customer" as the surface opens (the new-order page). */
+  autoFocus?: boolean;
 }) {
-  const [query, setQuery] = useState('');
-  const [hits, setHits] = useState<CustomerHit[]>([]);
-  const [loading, setLoading] = useState(false);
+  const { setQuery, hits, loading, searched } = useCustomerSearch();
 
-  useEffect(() => {
-    const q = query.trim();
-    if (q.length < 2) {
-      setHits([]);
-      return;
-    }
-    const ctrl = new AbortController();
-    setLoading(true);
-    const timer = window.setTimeout(() => {
-      fetch(`/api/customers/search?q=${encodeURIComponent(q)}&limit=8`, { credentials: 'same-origin', signal: ctrl.signal })
-        .then((r) => r.json())
-        .then((data: { customers?: CustomerHit[] }) => setHits(data.customers ?? []))
-        .catch(() => {})
-        .finally(() => {
-          if (!ctrl.signal.aborted) setLoading(false);
-        });
-    }, SEARCH_DEBOUNCE_MS);
-    return () => {
-      ctrl.abort();
-      window.clearTimeout(timer);
-    };
-  }, [query]);
-
-  const pick = (hit: CustomerHit) => {
-    const a = hit.shippingAddress;
-    onChange({
-      id: hit.id,
-      name: hit.name,
-      phone: hit.phone ?? '',
-      email: hit.email ?? '',
-      shipTo: {
-        address1: a.address1 ?? '',
-        address2: a.address2 ?? '',
-        city: a.city ?? '',
-        state: a.state ?? '',
-        postalCode: a.postalCode ?? '',
-        country: a.country ?? 'US',
-      },
-    });
-  };
   const set = (patch: Partial<Customer>) => onChange({ ...customer, ...patch });
   const setShip = (key: keyof Customer['shipTo']) => (value: string) =>
     onChange({ ...customer, shipTo: { ...customer.shipTo, [key]: value } });
@@ -87,7 +37,7 @@ export function IntakeCustomerFields({
         <>
           <SearchableSelectField<CustomerHit>
             value={null}
-            onChange={(_v, option) => option?.data && pick(option.data)}
+            onChange={(_v, option) => option?.data && onChange(customerFromHit(option.data))}
             options={hits.map((h) => ({
               value: h.id,
               label: h.name,
@@ -98,8 +48,9 @@ export function IntakeCustomerFields({
             loading={loading}
             placeholder="Find a customer — name, phone or email"
             searchPlaceholder="Name, phone or email"
-            emptyMessage={query.trim().length < 2 ? 'Type at least two characters' : 'No customer matches — type a new one below'}
+            emptyMessage={searched ? 'No customer matches — type a new one below' : 'Type at least two characters'}
             ariaLabel="Find a customer"
+            autoFocus={autoFocus}
             testId="intake-customer-search"
             className="h-11 rounded-mode-control px-3.5 text-sm"
           />
@@ -120,7 +71,7 @@ export function IntakeCustomerFields({
           <Button
             variant="ghost"
             size="sm"
-            onClick={() => onChange({ ...customer, id: null, name: '', phone: '', email: '' })}
+            onClick={() => onChange(customerCleared(customer))}
             data-testid="intake-customer-change"
           >
             New customer

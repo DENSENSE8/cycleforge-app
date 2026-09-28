@@ -149,7 +149,7 @@ export default async function HoldsAdminPage({
       <PageHeader backHref="/inventory/health" title="Holds" />
       <div className="space-y-6 p-8">
         <p className="text-sm text-text-muted">
-          Quarantine units mid-flow. Held units keep their previous lifecycle state in the HELD event payload so a release rolls back automatically.
+          Quarantine units mid-flow. Held units keep their previous lifecycle state in the hold event payload so a release rolls back automatically.
         </p>
 
         {errorCode ? (

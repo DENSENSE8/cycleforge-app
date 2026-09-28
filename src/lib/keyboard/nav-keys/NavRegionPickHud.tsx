@@ -39,7 +39,7 @@ export function NavRegionPickHud() {
           elevationClass('overlay'),
         )}
       >
-        <span className="text-role-micro font-semibold uppercase tracking-widest text-text-muted">
+        <span className="text-role-micro font-semibold text-text-muted">
           Jump to
         </span>
         {NAV_REGIONS.map((r) => (

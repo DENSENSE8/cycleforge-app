@@ -3,7 +3,7 @@
 import { randomBytes, scrypt as scryptCb, timingSafeEqual } from 'node:crypto';
 import { promisify } from 'node:util';
 import pool from '@/lib/db';
-import { tenantQuery, withTenantTransaction } from '@/lib/tenancy/db';
+import { tenantQuery, tenantQueryOneTrip } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';
 import { recordStaffLogin } from '@/lib/auth/record-staff-login';
 
@@ -26,7 +26,7 @@ const MIN_PIN_LEN = 4;
 const MAX_PIN_LEN = 12;
 
 export class PinError extends Error {
-  constructor(public readonly code: 'TOO_SHORT' | 'TOO_LONG' | 'NOT_NUMERIC' | 'NO_PIN' | 'WRONG' | 'NOT_FOUND' | 'WEAK_PIN' | 'PIN_ALREADY_SET') {
+  constructor(public readonly code: 'TOO_SHORT' | 'TOO_LONG' | 'NOT_NUMERIC' | 'NO_PIN' | 'WRONG' | 'NOT_FOUND' | 'WEAK_PIN' | 'PIN_ALREADY_SET' | 'LOCKED') {
     super(code);
     this.name = 'PinError';
   }
@@ -105,6 +105,11 @@ export async function setStaffPin(staffId: number, pin: string, orgId?: OrgId): 
   );
 }
 
+/** Consecutive wrong PINs before the staff member's PIN is locked. */
+export const PIN_MAX_FAILURES = 5;
+/** Lock duration after PIN_MAX_FAILURES wrong PINs. */
+export const PIN_LOCK_MINUTES = 15;
+
 interface StaffPinRow {
   id: number;
   name: string;
@@ -127,7 +132,15 @@ export interface VerifyStaffPinOptions {
   recordLogin: boolean;
 }
 
-/** Look up by ID and verify PIN. */
+/**
+ * Look up by ID and verify PIN, with a per-staff lockout: PIN_MAX_FAILURES
+ * consecutive wrong PINs lock the PIN for PIN_LOCK_MINUTES regardless of the
+ * caller's IP (a lock that has expired restarts the count). While locked, even
+ * the right PIN is refused with LOCKED. Each statement is one short round trip
+ * — no pooled connection is held across the ~32 MB scrypt.
+ *
+ * `orgId` scopes every statement (staff has no RLS; the predicate is the guard).
+ */
 export async function verifyStaffPin(
   staffId: number,
   pin: string,
@@ -135,45 +148,56 @@ export async function verifyStaffPin(
   options: VerifyStaffPinOptions,
 ): Promise<VerifiedStaffPin> {
   assertPinShape(pin);
+  // One-trip read; writes (rare: failures, counter reset, login stamp) take the transactional path.
+  const read = <R extends Record<string, unknown>>(text: string, params: unknown[]) =>
+    orgId ? tenantQueryOneTrip<R>(orgId, text, params) : pool.query<R>(text, params);
+  const write = <R extends Record<string, unknown>>(text: string, params: unknown[]) =>
+    orgId ? tenantQuery<R>(orgId, text, params) : pool.query<R>(text, params);
+  const orgPredicate = orgId ? 'AND organization_id = $2' : '';
+  const scopeParams = orgId ? [staffId, orgId] : [staffId];
 
-  if (orgId) {
-    return withTenantTransaction(orgId, async (client) => {
-      const result = await client.query(
-        `SELECT id, name, role, status, pin_hash,
-                default_home_path, default_home_path_mobile
-           FROM staff
-          WHERE id = $1
-            AND organization_id = $2
-          LIMIT 1`,
-        [staffId, orgId],
-      );
-      const row = result.rows[0] as StaffPinRow | undefined;
-      if (!row) throw new PinError('NOT_FOUND');
-      if (!row.pin_hash) throw new PinError('NO_PIN');
+  const result = await read<StaffPinRow & { locked: boolean; pin_failed_count: number }>(
+    `SELECT id, name, role, status, pin_hash,
+            default_home_path, default_home_path_mobile,
+            COALESCE(pin_locked_until > now(), false) AS locked,
+            pin_failed_count
+       FROM staff
+      WHERE id = $1 ${orgPredicate}
+      LIMIT 1`,
+    scopeParams,
+  );
+  const found = result.rows[0];
+  if (!found) throw new PinError('NOT_FOUND');
+  const { locked, pin_failed_count: failedCount, ...row } = found;
+  if (!row.pin_hash) throw new PinError('NO_PIN');
+  if (locked) throw new PinError('LOCKED');
 
-      const ok = await verifyHash(pin, row.pin_hash);
-      if (!ok) throw new PinError('WRONG');
-
-      if (options.recordLogin) await recordStaffLogin(client, staffId);
-      return row;
-    });
+  if (!(await verifyHash(pin, row.pin_hash))) {
+    const n = scopeParams.length;
+    const fail = await write<{ locked: boolean }>(
+      `UPDATE staff
+          SET pin_failed_count = CASE WHEN pin_locked_until <= now() THEN 1
+                                      ELSE COALESCE(pin_failed_count, 0) + 1 END,
+              pin_locked_until = CASE
+                WHEN (CASE WHEN pin_locked_until <= now() THEN 1
+                           ELSE COALESCE(pin_failed_count, 0) + 1 END) >= $${n + 1}
+                THEN now() + make_interval(mins => $${n + 2}::int)
+                ELSE pin_locked_until END
+        WHERE id = $1 ${orgPredicate}
+        RETURNING COALESCE(pin_locked_until > now(), false) AS locked`,
+      [...scopeParams, PIN_MAX_FAILURES, PIN_LOCK_MINUTES],
+    );
+    throw new PinError(fail.rows[0]?.locked ? 'LOCKED' : 'WRONG');
   }
 
-  const result = await pool.query(
-    `SELECT id, name, role, status, pin_hash,
-            default_home_path, default_home_path_mobile
-       FROM staff
-      WHERE id = $1
-      LIMIT 1`,
-    [staffId],
-  );
-  const row = result.rows[0] as StaffPinRow | undefined;
-  if (!row) throw new PinError('NOT_FOUND');
-  if (!row.pin_hash) throw new PinError('NO_PIN');
-
-  const ok = await verifyHash(pin, row.pin_hash);
-  if (!ok) throw new PinError('WRONG');
-
-  if (options.recordLogin) await recordStaffLogin(pool, staffId);
+  if (failedCount > 0) {
+    await write(
+      `UPDATE staff SET pin_failed_count = 0, pin_locked_until = NULL WHERE id = $1 ${orgPredicate}`,
+      scopeParams,
+    );
+  }
+  if (options.recordLogin) {
+    await recordStaffLogin({ query: (text, params) => write(text, params ?? []) }, staffId);
+  }
   return row;
 }

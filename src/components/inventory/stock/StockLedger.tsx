@@ -7,7 +7,6 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { format } from 'date-fns';
 import { Plus } from '@/components/Icons';
 import { DeskActionSlotRegistrar, DeskHeaderAction } from '@/design-system/components/DeskActionSlot';
-import { SearchField } from '@/design-system/primitives';
 import { RecordLedger } from '@/design-system/components/record-ledger/RecordLedger';
 import { DeskRecordLayout } from '@/design-system/components/DeskRecordPlane';
 import {
@@ -27,7 +26,6 @@ import { RECORD_LABEL_CLASS } from '@/design-system/tokens/industrial-record';
 import { lifecycleRecordState } from '@/design-system/tokens/lifecycle';
 import { useAuth } from '@/contexts/AuthContext';
 import { useAblyChannel } from '@/hooks/useAblyChannel';
-import { useOptimisticUrlParam } from '@/hooks/useOptimisticUrlParam';
 import { getStationChannelName, safeChannelName } from '@/lib/realtime/channels';
 import { isStockDeltaActivity } from '@/lib/inventory/stock-live-refresh';
 import {
@@ -130,15 +128,6 @@ export function StockLedger({ rows, rooms, selectedRooms, selectedStates, totalC
     [replace],
   );
 
-  const { value: query, setValue: setQuery } = useOptimisticUrlParam<string>({
-    urlValue: searchParams.get('q') ?? '',
-    replace,
-    write: (params, next) => {
-      if (next.trim()) params.set('q', next);
-      else params.delete('q');
-    },
-  });
-
   const toggleRoom = useCallback(
     (room: string | null) =>
       replace((params) => {
@@ -153,22 +142,6 @@ export function StockLedger({ rows, rooms, selectedRooms, selectedStates, totalC
         else params.delete('room');
       }),
     [replace, selectedRooms],
-  );
-
-  const toggleState = useCallback(
-    (state: LocationStockStateFilter | null) =>
-      replace((params) => {
-        if (state == null) {
-          params.delete('status');
-          return;
-        }
-        const next = selectedStates.includes(state)
-          ? selectedStates.filter((item) => item !== state)
-          : [...selectedStates, state];
-        if (next.length) params.set('status', next.join(','));
-        else params.delete('status');
-      }),
-    [replace, selectedStates],
   );
 
   const toggleCreate = useCallback(() => {
@@ -230,7 +203,7 @@ export function StockLedger({ rows, rooms, selectedRooms, selectedStates, totalC
     [openRow],
   );
 
-  const narrowed = Boolean(query.trim()) || selectedRooms.length > 0 || selectedStates.length > 0;
+  const narrowed = Boolean(searchParams.get('q')?.trim()) || selectedRooms.length > 0 || selectedStates.length > 0;
   const ledgerOpenKey = creating ? CREATE_KEY : resolvedOpenKey;
   const summary = useMemo(() => stockSummary(rows, rooms), [rows, rooms]);
 
@@ -248,73 +221,38 @@ export function StockLedger({ rows, rooms, selectedRooms, selectedStates, totalC
       onClose={closeRecord}
       loading={pending && rows.length === 0}
       toolbar={
-        <>
-          <SearchField
-            value={query}
-            onChange={setQuery}
-            placeholder="Search title, SKU, location, room or qty…"
-            isSearching={pending}
-            className="min-w-0 max-w-[28rem] flex-1 overflow-hidden rounded-mode-control pl-2"
-            tone="neutral"
-            hideUnderline
-            fillHost
-          />
-          <div
-            role="group"
-            aria-label="Rooms"
-            className="flex min-w-0 items-stretch overflow-x-auto border-l border-mode-edge"
-            data-testid="stock-rooms"
+        // Find and the State funnel live in the sidebar (Inventory contextual
+        // port, 2026-09-28); Rooms stays here — a per-tenant facet with counts.
+        <div
+          role="group"
+          aria-label="Rooms"
+          className="flex min-w-0 items-stretch overflow-x-auto"
+          data-testid="stock-rooms"
+        >
+          <button
+            type="button"
+            aria-pressed={selectedRooms.length === 0}
+            onClick={() => toggleRoom(null)}
+            className={cn(DESK_BAR_SEGMENT_CLASS, 'border-r border-mode-edge', deskBarSegmentTone(selectedRooms.length === 0))}
           >
-            <button
-              type="button"
-              aria-pressed={selectedRooms.length === 0}
-              onClick={() => toggleRoom(null)}
-              className={cn(DESK_BAR_SEGMENT_CLASS, 'border-r border-mode-edge', deskBarSegmentTone(selectedRooms.length === 0))}
-            >
-              All rooms
-            </button>
-            {rooms.map((room) => {
-              const active = selectedRooms.includes(room.id);
-              return (
-                <button
-                  key={room.id}
-                  type="button"
-                  aria-pressed={active}
-                  onClick={() => toggleRoom(room.id)}
-                  className={cn(DESK_BAR_SEGMENT_CLASS, 'border-r border-mode-edge', deskBarSegmentTone(active))}
-                >
-                  <span className="truncate">{room.label}</span>
-                  <span className="tabular-nums">{room.count}</span>
-                </button>
-              );
-            })}
-          </div>
-          <div
-            role="group"
-            aria-label="Stock state"
-            className="flex min-w-0 items-stretch overflow-x-auto border-l border-mode-edge"
-            data-testid="stock-states"
-          >
-            {([
-              [null, 'All stock'],
-              ['on-hold', 'On hold'],
-              ['catalog', 'Catalog paired'],
-            ] as const).map(([state, label]) => {
-              const active = state == null ? selectedStates.length === 0 : selectedStates.includes(state);
-              return (
-                <button
-                  key={state ?? 'all'}
-                  type="button"
-                  aria-pressed={active}
-                  onClick={() => toggleState(state)}
-                  className={cn(DESK_BAR_SEGMENT_CLASS, 'border-r border-mode-edge', deskBarSegmentTone(active))}
-                >
-                  {label}
-                </button>
-              );
-            })}
-          </div>
-        </>
+            All rooms
+          </button>
+          {rooms.map((room) => {
+            const active = selectedRooms.includes(room.id);
+            return (
+              <button
+                key={room.id}
+                type="button"
+                aria-pressed={active}
+                onClick={() => toggleRoom(room.id)}
+                className={cn(DESK_BAR_SEGMENT_CLASS, 'border-r border-mode-edge', deskBarSegmentTone(active))}
+              >
+                <span className="truncate">{room.label}</span>
+                <span className="tabular-nums">{room.count}</span>
+              </button>
+            );
+          })}
+        </div>
       }
       empty={
         narrowed ? (
@@ -429,7 +367,7 @@ const StockRecord = memo(function StockRecord({
           ),
           right: (
             <RecordStamp title={movedValid ? `Last moved ${format(movedValid, 'MMM d, yyyy · h:mm a')}` : undefined}>
-              {movedValid ? format(movedValid, 'MMM d').toUpperCase() : null}
+              {movedValid ? format(movedValid, 'MMM d') : null}
             </RecordStamp>
           ),
         },

@@ -69,7 +69,7 @@ export function StepPills({
                     : LABEL_BUILDER_STEP.chipIdle
               }`}
             >
-              <span className="text-role-micro uppercase tracking-wider opacity-80">{label}</span>
+              <span className="text-role-micro opacity-80">{label}</span>
               <span className="font-mono text-role-micro font-semibold tabular-nums">{value ?? '—'}</span>
             </button>
           );

@@ -42,7 +42,7 @@ export function PublicQrInterstitial({
             </div>
           )}
           <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-text-soft">
+            <p className="text-xs font-semibold text-text-soft">
               {scanLabel}
             </p>
             <h1 className="mt-1 text-lg font-semibold text-text-default">{brandName}</h1>
@@ -73,7 +73,7 @@ export function PublicQrInterstitial({
           </p>
         )}
 
-        <p className="text-center text-role-eyebrow uppercase tracking-wide text-text-faint">
+        <p className="text-center text-role-eyebrow text-text-faint">
           Powered by Cycle Forge
         </p>
       </Panel>

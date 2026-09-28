@@ -44,7 +44,7 @@ export function ZendeskClaimModal(props: ZendeskClaimModalProps) {
             {onPickStep ? <ImageIcon className="h-5 w-5" /> : <TicketHelp className="h-5 w-5" />}
           </span>
           <div>
-            <p className="text-role-micro uppercase tracking-widest text-rose-500">
+            <p className="text-role-micro text-rose-500">
               {onPickStep ? 'Step 1 · Photos' : 'Support'}
             </p>
             <h2 className="text-role-body font-semibold tracking-tight text-text-default">

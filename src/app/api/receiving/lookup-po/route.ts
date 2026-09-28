@@ -2,6 +2,7 @@ import { NextRequest, NextResponse, after } from 'next/server';
 import { tenantQuery, withTenantTransaction } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';
 import { ensurePoLinesOnReceiving } from '@/lib/receiving/adopt-po-lines';
+import { resolveCartonInvestigations } from '@/lib/receiving/exceptions';
 import { upsertReceivingTriage } from '@/lib/receiving/streets/carton-street-write';
 import { upsertReceivingLineTesting, upsertReceivingLineZoho } from '@/lib/receiving/facts/narrow';
 import { isTestTrackingShortcutAllowed } from '@/lib/tenancy/test-tracking';
@@ -1380,6 +1381,10 @@ export const POST = withAuth(async (request: NextRequest, ctx) => {
         if (promoted.rows[0]) {
           primaryReceivingId = Number(promoted.rows[0].id);
           preexisting = true;
+          // Paired: the unfound investigation on this carton is answered.
+          await resolveCartonInvestigations(ctx.organizationId, primaryReceivingId, staffId ?? null).catch((err) =>
+            console.warn('lookup-po: investigation close failed', err),
+          );
         } else {
           ({ receivingId: primaryReceivingId, preexisting } =
             await upsertMatchedReceiving(primaryPoId, carrier, staffId, ctx.organizationId, intakeSurface));

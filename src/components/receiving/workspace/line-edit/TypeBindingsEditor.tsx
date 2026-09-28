@@ -51,7 +51,7 @@ export function TypeBindingsEditor({
   return (
     <div className="mt-1.5 grid grid-cols-1 gap-2 rounded-lg border border-dashed border-border-soft bg-surface-canvas p-2.5 sm:grid-cols-2">
       <label className="flex flex-col gap-1">
-        <span className="flex items-center gap-1.5 text-role-eyebrow uppercase tracking-widest text-text-faint">
+        <span className="flex items-center gap-1.5 text-role-eyebrow text-text-faint">
           Storefront account
           {busy === 'account' ? <Loader2 className="h-3 w-3 animate-spin" /> : null}
         </span>
@@ -73,7 +73,7 @@ export function TypeBindingsEditor({
       </label>
 
       <label className="flex flex-col gap-1">
-        <span className="flex items-center gap-1.5 text-role-eyebrow uppercase tracking-widest text-text-faint">
+        <span className="flex items-center gap-1.5 text-role-eyebrow text-text-faint">
           Workflow node
           {busy === 'workflow' ? <Loader2 className="h-3 w-3 animate-spin" /> : null}
         </span>

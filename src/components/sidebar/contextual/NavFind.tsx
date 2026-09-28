@@ -61,14 +61,22 @@ export function NavFind({ search }: { search?: NavSearch }) {
 
   useEffect(() => {
     if (!list) return;
+    // Two NavFinds can be mounted at once: the collapsed sidebar keeps its
+    // field (zero width) while the header shows its own. Only the one on
+    // screen answers `F` / desk focus — the hidden one lets the event pass.
+    const visible = () => {
+      const input = inputRef.current;
+      return input != null && input.offsetWidth > 0 && input.getClientRects().length > 0;
+    };
     const focus = () => {
+      if (!visible()) return;
       inputRef.current?.focus();
       inputRef.current?.select();
     };
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key.toLowerCase() !== FIND_KEY || event.repeat) return;
       if (event.metaKey || event.ctrlKey || event.altKey || event.shiftKey) return;
-      if (event.defaultPrevented || isEditableKeyTarget(event.target)) return;
+      if (event.defaultPrevented || isEditableKeyTarget(event.target) || !visible()) return;
       event.preventDefault();
       focus();
     };
@@ -101,29 +109,51 @@ export function NavFind({ search }: { search?: NavSearch }) {
 
 type PageFieldProps = { search: NavSearch; label: string; inputRef: RefObject<HTMLInputElement> };
 
-/** The list's query: the in-memory desk store (per pathname), or the declared URL param. */
-function usePageQuery(search: NavSearch): [string, (next: string) => void, number] {
+/**
+ * The list's Find: its text, its setter, and how to open another list with
+ * the text kept — the in-memory desk store (per pathname), or the declared
+ * URL param (carried in the target href).
+ */
+export interface PageFind {
+  value: string;
+  set: (next: string) => void;
+  open: (href: string, text: string) => void;
+}
+
+function usePageFind(search: NavSearch): [PageFind, number] {
+  const router = useRouter();
   const pathname = usePathname() || '/';
   const [deskValue, setDeskValue] = useDeskSearch(pathname);
   const param = search.param ?? 'q';
   const urlValue = useSearchParams()?.get(param) ?? '';
   const replace = useReplaceSearchParams();
-  if (search.source === 'desk-store') return [deskValue, setDeskValue, 150];
-  const setUrl = (next: string) =>
+  if (search.source === 'desk-store') {
+    const open = (href: string, text: string) => {
+      setDeskSearch(new URL(href, 'http://local').pathname, text);
+      router.push(href, { scroll: false });
+    };
+    return [{ value: deskValue, set: setDeskValue, open }, 150];
+  }
+  const set = (next: string) =>
     replace((params) => {
       if (next.trim()) params.set(param, next);
       else params.delete(param);
     });
-  return [urlValue, setUrl, 250];
+  const open = (href: string, text: string) => {
+    const url = new URL(href, 'http://local');
+    if (text.trim()) url.searchParams.set(param, text);
+    router.push(`${url.pathname}${url.search}`, { scroll: false });
+  };
+  return [{ value: urlValue, set, open }, 250];
 }
 
 function PlainFind({ search, label, inputRef }: PageFieldProps) {
-  const [value, setValue, debounceMs] = usePageQuery(search);
+  const [find, debounceMs] = usePageFind(search);
   return (
     <div data-nav-search-well data-nav-find>
       <FindField
-        value={value}
-        onChange={setValue}
+        value={find.value}
+        onChange={find.set}
         label={label}
         hints={findHints(label)}
         inputRef={inputRef}
@@ -142,7 +172,7 @@ function PlainFind({ search, label, inputRef }: PageFieldProps) {
  * Find over the list on screen.
  */
 function LocatedFind({ search, locate, label, inputRef }: PageFieldProps & { locate: NonNullable<NavSearch['locate']> }) {
-  const [value, setValue, debounceMs] = usePageQuery(search);
+  const [find, debounceMs] = usePageFind(search);
   const list = useNavBulkList(locate);
   const rowRef = useRef<HTMLDivElement>(null);
   const [open, setOpen] = useState(false);
@@ -152,8 +182,8 @@ function LocatedFind({ search, locate, label, inputRef }: PageFieldProps & { loc
     <div ref={rowRef} data-nav-find-row className="flex min-w-0 items-center gap-1">
       <div data-nav-search-well data-nav-find className="min-w-0 flex-1">
         <FindField
-          value={value}
-          onChange={setValue}
+          value={find.value}
+          onChange={find.set}
           label={fieldLabel}
           hints={findHints(fieldLabel)}
           inputRef={inputRef}
@@ -166,7 +196,7 @@ function LocatedFind({ search, locate, label, inputRef }: PageFieldProps & { loc
           debounceMs={debounceMs}
           escalate={searchEverywhere}
           overflowRight
-          below={<NavLocatePills scope={locate.locator} query={value} />}
+          below={<NavLocatePills scope={locate.locator} query={find.value} find={find} />}
           onKeyDown={(event, draft, clear) => {
             // A typed "A, B, C" + Enter is a list too.
             if (event.key === 'Enter' && !event.metaKey && !event.ctrlKey && list.paste(draft)) {
@@ -180,7 +210,7 @@ function LocatedFind({ search, locate, label, inputRef }: PageFieldProps & { loc
           }}
         />
       </div>
-      <BulkKey list={list} anchorRef={rowRef} open={open} setOpen={setOpen} />
+      <BulkKey list={list} anchorRef={rowRef} open={open} setOpen={setOpen} find={find} />
     </div>
   );
 }
@@ -190,14 +220,16 @@ function BulkKey({
   anchorRef,
   open,
   setOpen,
+  find,
 }: {
   list: BulkList;
   anchorRef: RefObject<HTMLDivElement>;
   open: boolean;
   setOpen: (open: boolean) => void;
+  find?: PageFind;
 }) {
   const hasList = list.selection.refs.length > 0;
-  return <NavBulkToggle list={list} anchorRef={anchorRef} open={open && hasList} onOpenChange={setOpen} />;
+  return <NavBulkToggle list={list} anchorRef={anchorRef} open={open && hasList} onOpenChange={setOpen} find={find} />;
 }
 
 /**
@@ -205,8 +237,7 @@ function BulkKey({
  * holds matches (glyph dot · label · count), the list on screen pressed in.
  * A click opens that bucket's list with the text kept as its Find.
  */
-function NavLocatePills({ scope, query }: { scope: NavLocateScope; query: string }) {
-  const router = useRouter();
+function NavLocatePills({ scope, query, find }: { scope: NavLocateScope; query: string; find: PageFind }) {
   const pathname = usePathname() || '/';
   const params = useSearchParams();
   const text = query.trim();
@@ -229,9 +260,7 @@ function NavLocatePills({ scope, query }: { scope: NavLocateScope; query: string
             disabled={!bucket.href}
             aria-current={bucket.id === current ? 'true' : undefined}
             onClick={() => {
-              if (!bucket.href) return;
-              setDeskSearch(bucket.href.split('?')[0] ?? bucket.href, text);
-              router.push(bucket.href, { scroll: false });
+              if (bucket.href) find.open(bucket.href, text);
             }}
             className={cn(
               'ds-raw-button inline-flex h-6 min-w-0 items-center gap-1.5 bg-surface-card px-2 text-role-caption font-medium text-text-default ring-1 ring-inset ring-border-hairline',
@@ -333,7 +362,7 @@ function EverywhereFace() {
             focusRing('control', 'accent'),
           )}
         >
-          <Search aria-hidden className="size-3.5 shrink-0 text-text-faint" />
+          <Search aria-hidden className="size-3.5 shrink-0 text-text-muted" />
           <HoverKeycaps keys={chordKeys('mod+k', apple)} shown={look.active} />
           <span className="relative h-full min-w-0 flex-1">
             <RollingHint

@@ -264,7 +264,7 @@ export function LocationDetailView({ barcode }: LocationDetailViewProps) {
             className="ds-raw-button mb-3 flex w-full items-center justify-between gap-3 rounded-none border border-blue-200 bg-blue-50 px-4 py-3 text-left active:bg-blue-100"
           >
             <div className="min-w-0">
-              <p className="text-role-micro uppercase tracking-[0.16em] text-blue-700">
+              <p className="text-role-micro text-blue-700">
                 Cycle count active
               </p>
               <p className="mt-0.5 truncate text-sm font-semibold text-blue-900">
@@ -284,7 +284,7 @@ export function LocationDetailView({ barcode }: LocationDetailViewProps) {
         )}
 
         <div className="mb-2 flex items-center justify-between">
-          <p className="text-role-micro uppercase tracking-[0.16em] text-text-soft">
+          <p className="text-role-micro text-text-soft">
             Contents ({contents.length})
           </p>
           <Button
@@ -320,19 +320,19 @@ export function LocationDetailView({ barcode }: LocationDetailViewProps) {
                           {row.productTitle}
                         </p>
                       )}
-                      <p className="mt-1 text-role-micro uppercase tracking-widest text-text-faint">
+                      <p className="mt-1 text-role-micro text-text-faint">
                         Counted {formatAgo(row.lastCounted)} ago
                         {row.minQty != null && row.maxQty != null
                           ? ` · ${row.minQty}–${row.maxQty}`
                           : ''}
-                        {lowStock ? ' · LOW' : ''}
+                        {lowStock ? ' · Low' : ''}
                       </p>
                     </div>
                     <div className="text-right shrink-0">
                       <p className="text-2xl font-semibold tabular-nums text-text-default">
                         {row.qty}
                       </p>
-                      <p className="mt-0.5 text-role-eyebrow uppercase tracking-widest text-text-faint">
+                      <p className="mt-0.5 text-role-eyebrow text-text-faint">
                         tap to edit
                       </p>
                     </div>

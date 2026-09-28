@@ -53,7 +53,7 @@ test('every spine section with pages emits a band whose label + icon come from t
   }
 });
 
-test('pin contains Chat Home Search Media Plans Settings Reports; Monitor is parked, Studio is back, Admin is dissolved', () => {
+test('pin contains Chat Automations Home Search Media Plans Settings Reports; Monitor is parked, Admin is dissolved', () => {
   const groups = buildCommandBarNavGroups();
   const pin = groups.find((g) => g.id === 'pin');
   const footer = groups.find((g) => g.id === 'footer');
@@ -63,7 +63,7 @@ test('pin contains Chat Home Search Media Plans Settings Reports; Monitor is par
   // `reports` arrived 2026-09-15 with its promotion out of the Monitor lane to a parent-level spine row; the palette pin follows the…
   assert.deepEqual(
     pin!.rows.filter((r) => r.type === 'page').map((r) => r.id),
-    ['ai-chat', 'home', 'search', 'ops-photos', 'plans-live', 'settings', 'reports'],
+    ['ai-chat', 'studio', 'home', 'search', 'ops-photos', 'plans-live', 'settings', 'reports'],
   );
   // Monitor (Operations) stays PARKED 2026-09-16 — the door is withdrawn on every surface, so the palette emits no band.
   assert.equal(
@@ -71,11 +71,11 @@ test('pin contains Chat Home Search Media Plans Settings Reports; Monitor is par
     false,
     'parked lane "monitor" must not emit a ⌘K band',
   );
-  // Studio (Automations) was UNPARKED 2026-09-23 — *"the cron drop to assign tasks from designated tags should be included in the…
+  // Automations (`studio`) is a top row under Chat since 2026-09-27, so it rides the pin — no lane band of its own.
   assert.equal(
     groups.some((g) => g.id === 'studio'),
-    true,
-    'the Automations lane emits its ⌘K band again',
+    false,
+    'Automations is a pin row, not a ⌘K lane band',
   );
   // Admin is DISSOLVED — `/admin` is a redirect table and permission is `requires` on rows, not a destination.
   assert.equal(

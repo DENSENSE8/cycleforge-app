@@ -33,7 +33,8 @@ import { cn } from '@/utils/_cn';
 import { IntakeCustomerFields } from './IntakeCustomerFields';
 import { IntakeLineCard } from './IntakeLineCard';
 import { IntakePaymentFields } from './IntakePaymentFields';
-import { IntakeProductSearch, searchProducts } from './IntakeProductSearch';
+import { IntakeProductSearch } from './IntakeProductSearch';
+import { searchProducts } from '@/lib/orders/intake/intake-product-client';
 import { IntakeSection } from './IntakeSection';
 import { IntakeShippingFields } from './IntakeShippingFields';
 import {
@@ -47,11 +48,12 @@ import {
   isDirty,
   newIntakeLine,
   shipToComplete,
+  shipToRequired,
   type IntakeIntent,
   type IntakeLine,
   type IntakeState,
-} from './intake-model';
-import { findOrderByNumber, nextOrderNumber, useOrderTriage } from './useOrderTriage';
+} from '@/lib/orders/intake/intake-model';
+import { findOrderByNumber, nextOrderNumber, useOrderTriage } from '@/hooks/orders/useOrderTriage';
 
 type SectionId = 'customer' | 'items' | 'order' | 'payment' | 'shipping';
 const SECTION_ORDER: readonly SectionId[] = ['customer', 'items', 'order', 'payment', 'shipping'];
@@ -202,14 +204,16 @@ export function OrderIntakeForm({
 
   /* ── Sections: filled ones fold to a summary; the one being worked stays open ── */
   const complete: Record<SectionId, boolean> = {
-    customer: !manual || ((state.customer.id != null || Boolean(state.customer.name.trim())) && shipToComplete(state.customer.shipTo)),
+    customer: !manual || ((state.customer.id != null || Boolean(state.customer.name.trim())) && (!shipToRequired(state) || shipToComplete(state.customer.shipTo))),
     items: state.lines.length > 0 && state.lines.every((l) => l.title.trim() && (l.skuCatalogId != null || l.itemNumber.trim())),
     order: Boolean(state.orderNumber.trim() && state.channel.trim()) && taken == null,
     payment: !manual || totals.priced,
     shipping:
-      state.shippingMode === 'elsewhere'
-        ? Boolean(state.trackingNumber.trim())
-        : Boolean(record?.shippingLabelPurchased || record?.shippingLabelLinked),
+      state.shippingMode === 'pickup'
+        ? true
+        : state.shippingMode === 'elsewhere'
+          ? Boolean(state.trackingNumber.trim())
+          : Boolean(record?.shippingLabelPurchased || record?.shippingLabelLinked),
   };
   const firstIncomplete = SECTION_ORDER.find((id) => !complete[id]) ?? null;
   const [active, setActive] = useState<SectionId | null>(() => firstIncomplete);
@@ -514,7 +518,7 @@ export function OrderIntakeForm({
           onDone={() => done('payment')}
           summary={totals.subtotalCents > 0 ? `${formatCents(totals.totalCents, state.currency)} total` : 'No prices yet'}
         >
-          <IntakePaymentFields totals={totals} currency={state.currency} orderNumber={bound ? state.orderNumber : null} />
+          <IntakePaymentFields totals={totals} currency={state.currency} orderNumber={bound ? state.orderNumber : null} shippingMode={state.shippingMode} />
         </IntakeSection>
 
         <IntakeSection
@@ -525,14 +529,22 @@ export function OrderIntakeForm({
           onOpen={() => setActive('shipping')}
           onDone={() => done('shipping')}
           summary={
-            state.shippingMode === 'elsewhere'
-              ? state.trackingNumber ? `Tracking ${state.trackingNumber}${labelFile ? ' · label attached' : ''}` : 'Bought elsewhere — no tracking yet'
-              : record?.shippingLabelPurchased ? 'Label bought with ShipStation' : 'Buy with ShipStation'
+            state.shippingMode === 'pickup'
+              ? 'Pickup / walk-in — no label'
+              : state.shippingMode === 'elsewhere'
+                ? state.trackingNumber ? `Tracking ${state.trackingNumber}${labelFile ? ' · label attached' : ''}` : 'Bought elsewhere — no tracking yet'
+                : record?.shippingLabelPurchased ? 'Label bought with ShipStation' : 'Buy with ShipStation'
           }
         >
           <IntakeShippingFields
             state={state}
-            onChange={patch}
+            onChange={(p) => {
+              patch(p);
+              // A saved order carries the pickup fact server-side — the release gates read it.
+              if (bound && p.shippingMode && (p.shippingMode === 'pickup') !== (state.shippingMode === 'pickup')) {
+                void triage.setPickup(sessionIds, p.shippingMode === 'pickup');
+              }
+            }}
             labelFile={labelFile}
             onLabelFile={setLabelFile}
             bound={boundId != null ? { orderId: boundId, orderRef: state.orderNumber, onLabelChanged: triage.refresh } : null}

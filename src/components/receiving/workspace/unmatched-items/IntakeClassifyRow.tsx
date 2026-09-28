@@ -10,7 +10,7 @@ import {
 // Door-classification pill tones — desktop mirror of the mobile /m/receive
 // "Receiving as" selector. Same semantic shades, paired active/inactive.
 const INTAKE_PILL_BASE =
-  'inline-flex h-7 shrink-0 items-center whitespace-nowrap rounded-full border px-2.5 text-role-eyebrow uppercase tracking-widest transition-colors';
+  'inline-flex h-7 shrink-0 items-center whitespace-nowrap rounded-full border px-2.5 text-role-eyebrow transition-colors';
 const INTAKE_ACTIVE: Record<IntakeTone, string> = {
   // ds-allow-raw-neutral: identity/tone hue — slate IS the IntakeTone key among colored siblings, not chrome
   slate: 'border-slate-600 bg-slate-600 text-white',
@@ -37,7 +37,7 @@ export function IntakeClassifyRow({
 }) {
   return (
     <div className="space-y-1">
-      <p className="text-role-eyebrow uppercase tracking-widest text-text-soft">Receiving as</p>
+      <p className="text-role-eyebrow text-text-soft">Receiving as</p>
       <div
         role="radiogroup"
         aria-label="Receiving as"

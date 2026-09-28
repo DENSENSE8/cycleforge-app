@@ -3,8 +3,8 @@
 /**
  * Inbound desk header CTA — **Add** (primary) plus Import menu.
  *
- * Add / Add return open the one inbound-order form (2/3 | 1/3 triage stage)
- * on either lane — Add return only pre-picks the Return type.
+ * Add / Add return navigate to the one inbound-order form, `/incoming/new`
+ * (`?type=PO` / `?type=RETURN` — Add return only pre-picks the Return type).
  * Also consumes Global Header Add intents for Incoming.
  */
 
@@ -18,10 +18,7 @@ import {
   consumeGlobalAddIntent,
   type GlobalAddIntent,
 } from '@/lib/global-add/catalog';
-import {
-  closeReceivingOrderComposer,
-  openReceivingOrderComposer,
-} from '@/lib/inbound/receiving-order-composer-store';
+import { newInboundOrderHref } from '@/lib/inbound/new-inbound-order-path';
 import { useIncomingSyncActions } from '@/components/sidebar/receiving/incoming/useIncomingSyncActions';
 import { IncomingSyncDialog } from '@/components/sidebar/receiving/IncomingSyncDialog';
 import { INBOUND_RETURNS_IMPORT_DESCRIPTOR } from '@/lib/inbound/inbound-returns-import-descriptor';
@@ -68,12 +65,12 @@ export function IncomingDeskAddAction() {
   const returnsCsv = useTableImportFilePicker(INBOUND_RETURNS_IMPORT_DESCRIPTOR);
 
   const openIntake = useCallback(() => {
-    openReceivingOrderComposer('PO');
-  }, []);
+    router.push(newInboundOrderHref('PO'));
+  }, [router]);
 
   const openReturn = useCallback(() => {
-    openReceivingOrderComposer('RETURN');
-  }, []);
+    router.push(newInboundOrderHref('RETURN'));
+  }, [router]);
 
   const armReturnsImport = useCallback(() => {
     returnsCsv.open();
@@ -86,10 +83,6 @@ export function IncomingDeskAddAction() {
   const importEbay = useCallback(() => {
     void sync.refreshMarketplace();
   }, [sync]);
-
-  // The composer's open state is module-scoped; leaving the desk discards it
-  // so returning to /incoming lands on the ledger, not a stale draft sheet.
-  useEffect(() => closeReceivingOrderComposer, []);
 
   useEffect(() => {
     const parked = consumeGlobalAddIntent();
@@ -123,7 +116,9 @@ export function IncomingDeskAddAction() {
         importZoho,
         importEbay,
       });
-      if (pathname && !pathname.startsWith('/incoming')) {
+      // The form doors navigate on their own; the rest act on the desk.
+      const opensForm = intent.kind === 'incoming-add' && intent.leaf !== 'import-returns';
+      if (!opensForm && pathname && !pathname.startsWith('/incoming')) {
         router.push('/incoming');
       }
     };

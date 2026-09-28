@@ -273,7 +273,7 @@ export function BulkQuantityPanel({
         >
           <span
             className={cn(
-              'text-role-micro font-semibold uppercase tracking-widest text-text-soft',
+              'text-role-micro font-semibold text-text-soft',
               progressive && 'flex h-11 items-center px-3',
             )}
           >

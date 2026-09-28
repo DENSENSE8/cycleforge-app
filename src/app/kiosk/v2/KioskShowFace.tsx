@@ -37,7 +37,7 @@ export function KioskShowFace() {
             COUNTER_RHYTHM.field,
           )}
         >
-          <p className={cn('uppercase tracking-widest text-text-soft', COUNTER_TEXT.label)}>
+          <p className={cn('text-text-soft', COUNTER_TEXT.label)}>
             {lineTypeLabel(proposal.lineType)}
           </p>
           {/* The customer reads THIS. */}

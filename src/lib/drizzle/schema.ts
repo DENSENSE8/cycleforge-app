@@ -625,6 +625,9 @@ export const customers = pgTable('customers', {
   shippingState: text('shipping_state'),
   shippingPostalCode: text('shipping_postal_code'),
   shippingCountry: text('shipping_country'),
+  /** When staff last corrected the ship-to (PATCH /api/orders/[id]/buyer) — the
+   * label resolver's staff-wins marker (migration 2026-09-27_customers_shipping_edited_at). */
+  shippingEditedAt: timestamp('shipping_edited_at', { withTimezone: true }),
   status: text('status').default('active'),
   billingAddress: jsonb('billing_address').default({}),
   shippingAddress: jsonb('shipping_address').default({}),
@@ -1083,7 +1086,7 @@ export const orders = pgTable('orders', {
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
   /** FK to sku_catalog — central product hub */
   skuCatalogId: integer('sku_catalog_id'),
-  /** Amazon fulfillment channel: 'AFN' (FBA, read-only) | 'MFN' (we ship). Null for non-Amazon. */
+  /** Who moves it out: Amazon 'AFN' (FBA, read-only) | 'MFN' (we ship), or 'PICKUP' (counter pickup, no label). Null = we ship. */
   fulfillmentChannel: text('fulfillment_channel'),
   /** Catalog flow type (org `types` row). */
   typeId: bigint('type_id', { mode: 'number' }),
@@ -1463,7 +1466,8 @@ export const receivingListingLinks = pgTable('receiving_listing_links', {
 export const receivingExceptions = pgTable('receiving_exceptions', {
   id: bigserial('id', { mode: 'number' }).primaryKey(),
   organizationId: orgIdCol(),
-  receivingLineId: integer('receiving_line_id').notNull().references(() => receivingLines.id, { onDelete: 'cascade' }),
+  /** NULL = carton-level (2026-09-28_receiving_exceptions_carton_scope); then receivingId anchors it. */
+  receivingLineId: integer('receiving_line_id').references(() => receivingLines.id, { onDelete: 'cascade' }),
   receivingId: integer('receiving_id').references(() => receiving.id, { onDelete: 'cascade' }),
   exceptionCode: text('exception_code').notNull(),
   reason: text('reason'),
@@ -4964,6 +4968,28 @@ export const labelIngestionOrders = pgTable('label_ingestion_orders', {
 
 export type LabelIngestionOrder = typeof labelIngestionOrders.$inferSelect;
 export type NewLabelIngestionOrder = typeof labelIngestionOrders.$inferInsert;
+
+// label_print_events — the label ledger's print log (migration 2026-09-27r).
+// Pending = no row; a reprint is a new row. Printing never touches label_ingestions.
+export const labelPrintEvents = pgTable('label_print_events', {
+  id: bigserial('id', { mode: 'number' }).primaryKey(),
+  organizationId: orgIdCol(),
+  labelIngestionId: bigint('label_ingestion_id', { mode: 'number' }).notNull(),
+  batchId: uuid('batch_id').notNull(),
+  /** THERMAL_USB | THERMAL_SERIAL | DESKTOP_HOST | BROWSER_DIALOG */
+  channel: text('channel').notNull(),
+  printerName: text('printer_name'),
+  isReprint: boolean('is_reprint').notNull().default(false),
+  printedByStaffId: integer('printed_by_staff_id'),
+  printedAt: timestamp('printed_at', { withTimezone: true }).notNull().defaultNow(),
+}, (table) => ({
+  batchLabelUniq: uniqueIndex('label_print_events_batch_label_uniq')
+    .on(table.organizationId, table.batchId, table.labelIngestionId),
+  orgIngestionIdx: index('idx_label_print_events_org_ingestion')
+    .on(table.organizationId, table.labelIngestionId, table.printedAt.desc(), table.id.desc()),
+  orgPrintedIdx: index('idx_label_print_events_org_printed')
+    .on(table.organizationId, table.printedAt.desc(), table.id.desc()),
+}));
 
 // search_recents — per-staff "most recently searched" history (Dashboard Search mode).
 export const searchRecents = pgTable('search_recents', {

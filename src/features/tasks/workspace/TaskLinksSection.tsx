@@ -13,6 +13,7 @@ import {
 import { RECORD_ID_CLASS, RECORD_LABEL_CLASS } from '@/design-system/tokens/industrial-record';
 import { focusRing } from '@/design-system/tokens/focus-ring';
 import { resolveThrowTargets, type ThrowTarget } from '@/lib/tasks/throw-targets';
+import { sentenceCaseLabel } from '@/lib/text/sentence-case-label';
 import {
   TASK_LINK_KINDS,
   TASK_LINK_NOUN,
@@ -37,10 +38,12 @@ const KIND_CODE: Readonly<Record<TaskLinkKind, string>> = { order: 'ORD', tracki
 /** The record's context line, from the link's own enrichment. */
 function linkContext(link: TaskLink): string | null {
   if (link.kind === 'ticket') {
-    return [link.ticket?.subject, link.ticket?.status?.toUpperCase()].filter(Boolean).join(' · ') || null;
+    const status = link.ticket?.status ? sentenceCaseLabel(link.ticket.status.toUpperCase()) : null;
+    return [link.ticket?.subject, status].filter(Boolean).join(' · ') || null;
   }
   if (link.kind === 'tracking') {
-    const carrier = [link.tracking?.carrier, link.tracking?.status?.replace(/_/g, ' ')].filter(Boolean).join(' · ');
+    const status = link.tracking?.status ? sentenceCaseLabel(link.tracking.status.toUpperCase()) : null;
+    const carrier = [link.tracking?.carrier, status].filter(Boolean).join(' · ');
     const order = link.order ? `→ Order ${link.order.orderNumber ?? link.order.id}` : 'No order matched';
     return [carrier, order].filter(Boolean).join(' · ');
   }

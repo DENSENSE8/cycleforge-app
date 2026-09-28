@@ -1,5 +1,29 @@
 /** SQL fragments for resolving a receiving line's filed support ticket label. */
 
+import { CLAIM_EXCEPTION_CODES, INVESTIGATION_EXCEPTION_CODES } from '../exception-codes';
+
+const TICKET_REASON_CODES_SQL = [...INVESTIGATION_EXCEPTION_CODES, ...CLAIM_EXCEPTION_CODES]
+  .map((c) => `'${c}'`)
+  .join(',');
+
+/**
+ * `ticket_reasons`: the OPEN investigation / claim exceptions (code + the
+ * ticket that recorded it, oldest first) on `anchorSql`. A JSON array, `[]`
+ * when none — what a filed ticket MEANS (owner 2026-09-28), beside
+ * `claim_ticket`, which only says a ticket exists.
+ */
+function sqlTicketReasonsColumn(orgSql: string, anchorSql: string): string {
+  return `COALESCE((
+                  SELECT jsonb_agg(jsonb_build_object('code', rx_tr.exception_code, 'ticket', rx_tr.zendesk_ticket)
+                                   ORDER BY rx_tr.created_at, rx_tr.id)
+                    FROM receiving_exceptions rx_tr
+                   WHERE rx_tr.organization_id = ${orgSql}
+                     AND rx_tr.status = 'OPEN'
+                     AND rx_tr.exception_code IN (${TICKET_REASON_CODES_SQL})
+                     AND (${anchorSql})
+                ), '[]'::jsonb) AS ticket_reasons`;
+}
+
 /** LATERAL join — requires `rl` + `r` (receiving_carton) aliases in scope. */
 export function sqlLinkedSupportTicketLateralJoin(): string {
   return `LEFT JOIN LATERAL (
@@ -12,7 +36,8 @@ export function sqlLinkedSupportTicketLateralJoin(): string {
         WHEN tl.zendesk_ticket_id IS NOT NULL
           THEN '#' || tl.zendesk_ticket_id::text
         ELSE NULL
-      END AS ticket_label
+      END AS ticket_label,
+      tl.entity_type AS link_entity
     FROM ticket_links tl
     LEFT JOIN support_tickets st
       ON st.id = tl.support_ticket_id
@@ -45,9 +70,25 @@ export function sqlLinkedSupportTicketLateralJoin(): string {
   ) linked_ticket ON TRUE`;
 }
 
-/** SELECT-list column — pair with {@link sqlLinkedSupportTicketLateralJoin}. */
+/**
+ * SELECT-list columns — pair with {@link sqlLinkedSupportTicketLateralJoin}.
+ * `zendesk_ticket`: any ticket on the line, its carton, or its shipment.
+ * `claim_ticket`: only a ticket FILED on the line or carton (the Claim verb's
+ * anchor, or the legacy line / carton column) — a ticket that merely mentions
+ * the shipment's tracking is not a claim.
+ */
 export function sqlReceivingZendeskTicketColumn(): string {
-  return `NULLIF(TRIM(COALESCE(linked_ticket.ticket_label, rl.zendesk_ticket, r.zendesk_ticket)), '') AS zendesk_ticket`;
+  return `NULLIF(TRIM(COALESCE(linked_ticket.ticket_label, rl.zendesk_ticket, r.zendesk_ticket)), '') AS zendesk_ticket,
+                NULLIF(TRIM(CASE WHEN linked_ticket.link_entity = 'SHIPMENT'
+                  THEN COALESCE(rl.zendesk_ticket, r.zendesk_ticket)
+                  ELSE COALESCE(linked_ticket.ticket_label, rl.zendesk_ticket, r.zendesk_ticket) END), '') AS claim_ticket,
+                ${sqlTicketReasonsColumn(
+                  'rl.organization_id',
+                  // The line's own rows, plus its carton's carton-level rows.
+                  `rx_tr.receiving_line_id = rl.id
+                     OR (rx_tr.receiving_line_id IS NULL
+                         AND rx_tr.receiving_id = CASE WHEN rl.receiving_id IS NOT NULL THEN rl.receiving_id ELSE r.id END)`,
+                )}`;
 }
 
 /**
@@ -66,7 +107,8 @@ export function sqlCartonLinkedSupportTicketLateralJoin(): string {
         WHEN tl.zendesk_ticket_id IS NOT NULL
           THEN '#' || tl.zendesk_ticket_id::text
         ELSE NULL
-      END AS ticket_label
+      END AS ticket_label,
+      tl.entity_type AS link_entity
     FROM ticket_links tl
     LEFT JOIN support_tickets st
       ON st.id = tl.support_ticket_id
@@ -89,7 +131,11 @@ export function sqlCartonLinkedSupportTicketLateralJoin(): string {
   ) linked_ticket ON TRUE`;
 }
 
-/** SELECT-list column — pair with {@link sqlCartonLinkedSupportTicketLateralJoin}. */
+/** SELECT-list columns — pair with {@link sqlCartonLinkedSupportTicketLateralJoin}; see {@link sqlReceivingZendeskTicketColumn}. */
 export function sqlReceivingCartonZendeskTicketColumn(): string {
-  return `NULLIF(TRIM(COALESCE(linked_ticket.ticket_label, r.zendesk_ticket)), '') AS zendesk_ticket`;
+  return `NULLIF(TRIM(COALESCE(linked_ticket.ticket_label, r.zendesk_ticket)), '') AS zendesk_ticket,
+                NULLIF(TRIM(CASE WHEN linked_ticket.link_entity = 'SHIPMENT'
+                  THEN r.zendesk_ticket
+                  ELSE COALESCE(linked_ticket.ticket_label, r.zendesk_ticket) END), '') AS claim_ticket,
+                ${sqlTicketReasonsColumn('r.organization_id', 'rx_tr.receiving_id = r.id')}`;
 }

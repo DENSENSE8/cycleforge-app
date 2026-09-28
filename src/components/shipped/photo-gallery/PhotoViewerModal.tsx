@@ -229,7 +229,7 @@ export function PhotoViewerModal({ g }: { g: PhotoGalleryController }) {
             className="pointer-events-none absolute inset-3 z-40 flex flex-col items-center justify-center gap-3 rounded-3xl border-2 border-dashed border-white/70 bg-scrim/70 backdrop-blur-md"
           >
             <Upload className="h-10 w-10 text-white" />
-            <p className="text-sm font-semibold uppercase tracking-widest text-white">Drop to upload</p>
+            <p className="text-sm font-semibold text-white">Drop to upload</p>
           </motion.div>
         ) : null}
       </AnimatePresence>
@@ -494,7 +494,7 @@ export function PhotoViewerModal({ g }: { g: PhotoGalleryController }) {
               >
                 <Trash2 className="h-5 w-5" />
                 {g.deleteArmed && (
-                  <span className="text-xs font-semibold uppercase tracking-wider">
+                  <span className="text-xs font-semibold">
                     {g.deletingPhoto ? 'Deleting…' : 'Confirm'}
                   </span>
                 )}

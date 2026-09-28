@@ -21,6 +21,7 @@ import { formatDateKeyShort, formatTime12hPST } from '@/utils/date';
 import type { TvBoard, TvBoardPlan, TvBoardStation, TvBoardTask, TvPlanSource } from '@/lib/ops-plans/tv-board';
 import { useOperationsTvBoard } from './useOperationsTvBoard';
 import { Panel } from '@/design-system/primitives';
+import { sentenceCaseLabel } from '@/lib/text/sentence-case-label';
 
 
 const SOURCE_LABEL: Record<TvPlanSource, string> = {
@@ -125,9 +126,9 @@ function StatusPill({
     <div className="flex items-center gap-3">
       <span className="inline-flex items-center gap-2 rounded-full border border-border-soft bg-surface-card px-3 py-1.5">
         <span className={cn('h-2.5 w-2.5 rounded-full', tone.dot, !degraded && online && 'animate-pulse')} aria-hidden />
-        <span className={cn('text-role-caption font-semibold uppercase tracking-widest', tone.text)}>{tone.label}</span>
+        <span className={cn('text-role-caption font-semibold', tone.text)}>{tone.label}</span>
       </span>
-      <span className="text-role-caption font-semibold uppercase tracking-widest text-text-faint">
+      <span className="text-role-caption font-semibold text-text-faint">
         Updated {formatTime12hPST(updatedAt)}
       </span>
     </div>
@@ -156,7 +157,7 @@ function TvBoardBody({
         </span>
         <div>
           <h1 className="text-3xl font-semibold leading-none tracking-tight text-text-default">On-time board</h1>
-          <p className="mt-1.5 text-role-caption font-semibold uppercase tracking-widest text-text-soft">
+          <p className="mt-1.5 text-role-caption font-semibold text-text-soft">
             Operations · {formatDateKeyShort(board.dateKey)}
           </p>
         </div>
@@ -194,7 +195,7 @@ function TvBoardBody({
             overdue
           />
           {board.overdue.length > 0 ? (
-            <p className="mt-2 text-role-micro font-semibold uppercase tracking-widest text-text-faint">
+            <p className="mt-2 text-role-micro font-semibold text-text-faint">
               A first-class “blocked” signal arrives with collab (Phase D); overdue is today’s stuck proxy.
             </p>
           ) : null}
@@ -264,18 +265,18 @@ function TaskLane({
           key={t.id}
           title={<span className="text-lg font-semibold text-text-default">{t.title}</span>}
           meta={
-            <span className="text-role-caption font-semibold uppercase tracking-widest text-text-soft">
-              {t.station} · {t.planTitle}
+            <span className="text-role-caption font-semibold text-text-soft">
+              {sentenceCaseLabel(t.station)} · {t.planTitle}
               {t.assigneeName ? ` · ${t.assigneeName}` : ' · Unassigned'}
             </span>
           }
           trailing={
             overdue ? (
-              <span className="rounded-full border border-border-danger bg-surface-danger px-2.5 py-1 text-role-caption font-semibold uppercase tracking-widest text-text-danger">
+              <span className="rounded-full border border-border-danger bg-surface-danger px-2.5 py-1 text-role-caption font-semibold text-text-danger">
                 {t.daysLate}d late
               </span>
             ) : (
-              <span className="text-role-caption font-semibold uppercase tracking-widest text-text-info">
+              <span className="text-role-caption font-semibold text-text-info">
                 {t.dueAt ? formatTime12hPST(t.dueAt) : 'Today'}
               </span>
             )
@@ -290,7 +291,7 @@ function StationTile({ station }: { station: TvBoardStation }) {
   const hasOverdue = station.overdue > 0;
   return (
     <Panel radius="2xl" padding="sm">
-      <p className="text-role-caption font-semibold uppercase tracking-widest text-text-soft">{station.station}</p>
+      <p className="text-role-caption font-semibold text-text-soft">{sentenceCaseLabel(station.station)}</p>
       <p
         className={cn(
           'mt-1.5 text-4xl font-semibold tabular-nums leading-none',
@@ -301,17 +302,17 @@ function StationTile({ station }: { station: TvBoardStation }) {
       </p>
       <div className="mt-2 flex min-h-[1.25rem] flex-wrap items-center gap-1.5">
         {hasOverdue ? (
-          <span className="rounded border border-border-danger bg-surface-danger inset-chip text-role-micro uppercase tracking-widest text-text-danger">
+          <span className="rounded border border-border-danger bg-surface-danger inset-chip text-role-micro text-text-danger">
             {station.overdue} overdue
           </span>
         ) : null}
         {station.inProgress > 0 ? (
-          <span className="rounded border border-border-warning bg-surface-warning inset-chip text-role-micro uppercase tracking-widest text-text-warning">
+          <span className="rounded border border-border-warning bg-surface-warning inset-chip text-role-micro text-text-warning">
             {station.inProgress} active
           </span>
         ) : null}
         {station.agentic > 0 ? (
-          <span className="text-role-micro font-semibold uppercase tracking-widest text-text-faint">
+          <span className="text-role-micro font-semibold text-text-faint">
             {station.agentic} plan
           </span>
         ) : null}
@@ -328,7 +329,7 @@ function PlanProgressRow({ plan }: { plan: TvBoardPlan }) {
       <div className="flex items-center justify-between gap-3">
         <div className="min-w-0">
           <p className="truncate text-base font-semibold text-text-default">{plan.title}</p>
-          <p className="mt-0.5 text-role-micro font-semibold uppercase tracking-widest text-text-faint">
+          <p className="mt-0.5 text-role-micro font-semibold text-text-faint">
             {SOURCE_LABEL[plan.source]} · {plan.done}/{plan.total} done
           </p>
         </div>

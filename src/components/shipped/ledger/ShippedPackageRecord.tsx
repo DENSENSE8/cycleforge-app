@@ -13,6 +13,7 @@ import {
   RecordTitle,
 } from '@/design-system/components/record-ledger/IndustrialRecord';
 import { RECORD_LABEL_CLASS } from '@/design-system/tokens/industrial-record';
+import { displayCarrierFromHint } from '@/lib/carrier-brand';
 import type { DerivedPackerRecord } from '@/lib/shipped-records';
 import { formatMonthDayTimePST } from '@/utils/date';
 import { cn } from '@/utils/_cn';
@@ -66,7 +67,7 @@ export function ShippedPackageRecord({
             <>
               <RecordStateCode state={state} />
               <span className={cn(RECORD_LABEL_CLASS, 'w-12 shrink-0 truncate text-mode-ink')}>
-                {(row.carrier || '—').toUpperCase()}
+                {displayCarrierFromHint(row.carrier) ?? (row.carrier || '—')}
               </span>
               <RecordIdFact label="TRK" value={tracking || null} className="min-w-0 shrink" />
               {carrierStatus ? (
@@ -101,13 +102,13 @@ export function ShippedPackageRecord({
           main: (
             <>
               <span className={cn(RECORD_LABEL_CLASS, 'shrink-0 truncate', packed ? 'text-mode-ink' : 'text-mode-warn')}>
-                <span className="text-mode-muted">PACKED </span>
+                <span className="text-mode-muted">Packed </span>
                 {packed ? `${packer} · ${formatMonthDayTimePST(row.created_at)}` : 'Never pack-scanned'}
               </span>
-              {row.order_id ? <RecordIdFact label="ORD" value={row.order_id} /> : null}
+              {row.order_id ? <RecordIdFact label="Order" value={row.order_id} /> : null}
               {openException ? (
                 <span className={cn(RECORD_LABEL_CLASS, 'truncate text-mode-warn')}>
-                  EXC {(row.exception_reason || 'unmatched').replace(/_/g, ' ')}
+                  Exception {(row.exception_reason || 'unmatched').replace(/_/g, ' ')}
                 </span>
               ) : null}
             </>
@@ -116,7 +117,7 @@ export function ShippedPackageRecord({
             <RecordNext label="Resolve" warn />
           ) : (
             <RecordStamp title={row.latest_status_description || state.label}>
-              {(row.latest_status_label || state.label).toUpperCase()}
+              {row.latest_status_label || state.label}
             </RecordStamp>
           ),
         },

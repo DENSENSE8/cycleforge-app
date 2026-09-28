@@ -1,3 +1,4 @@
+import { estimatedDeliveryInstant } from './estimated-delivery';
 import { normalizeFedExStatus, normalizeTrackingNumber } from '../normalize';
 import type { CarrierTrackingEvent, CarrierTrackingResult } from '../types';
 import { isoStampInstant } from '../carrier-event-instant';
@@ -153,6 +154,10 @@ function buildFedExResultFromTrackResult(
     latestStatusDescription: latestStatus.description ?? null,
     latestEventAt,
     deliveredAt,
+    estimatedDelivery: estimatedDeliveryInstant(
+      trackResult.estimatedDeliveryTimeWindow?.window?.ends ??
+        trackResult.estimatedDeliveryTimeWindow?.window?.begins,
+    ),
     metadata: {
       source: 'fedex-track-v1',
       environment: process.env.FEDEX_ENV === 'production' ? 'production' : 'sandbox',

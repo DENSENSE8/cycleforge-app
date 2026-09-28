@@ -80,7 +80,7 @@ export function DateRangePickerPill({
           className,
         )}
       >
-        <span className="text-role-caption font-semibold uppercase tracking-widest text-text-default">
+        <span className="text-role-caption font-semibold text-text-default">
           {label}
         </span>
         {count != null ? (
@@ -139,7 +139,7 @@ export function DateRangePickerPill({
           {!hasPicker ? (
             <div className="flex items-center justify-between gap-2 px-3 py-2">
               <div className="min-w-0">
-                <p className="truncate text-role-caption font-semibold uppercase tracking-widest text-text-default">
+                <p className="truncate text-role-caption font-semibold text-text-default">
                   {label}
                 </p>
                 {count != null ? (
@@ -183,7 +183,7 @@ export function DateRangePickerPill({
                     onClear?.();
                     setOpen(false);
                   }}
-                  className="text-role-eyebrow uppercase tracking-wider text-text-soft hover:text-text-default"
+                  className="text-role-eyebrow text-text-soft hover:text-text-default"
                 >
                   {onClear ? 'Reset' : 'Cancel'}
                 </button>
@@ -199,7 +199,7 @@ export function DateRangePickerPill({
                     });
                     setOpen(false);
                   }}
-                  className="rounded-md bg-blue-600 px-3 py-1 text-role-caption font-semibold uppercase tracking-wider text-white shadow-sm transition-colors hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-surface-strong"
+                  className="rounded-md bg-blue-600 px-3 py-1 text-role-caption font-semibold text-white shadow-sm transition-colors hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-surface-strong"
                 >
                   Apply
                 </button>
@@ -214,7 +214,7 @@ export function DateRangePickerPill({
                   onClear();
                   setOpen(false);
                 }}
-                className="text-role-eyebrow uppercase tracking-wider text-text-soft hover:text-text-default"
+                className="text-role-eyebrow text-text-soft hover:text-text-default"
               >
                 Reset to this week
               </button>

@@ -26,7 +26,7 @@ interface OrderQueryParams {
   strictSearchScope?: boolean;
   /** Coarse stage facet (?stage), filtered SERVER-side; absent = all
    *  in-warehouse stages. Fulfillment STATE / lane (?ustatus) stays a client filter. */
-  stage?: 'pending' | 'tested' | 'packed';
+  stage?: 'pending' | 'picked' | 'packed';
   /** Shortage desk: only operator-blocked rows. */
   blockedOnly?: boolean;
   /** Shortage desk lens — `?pair=po` (PO / receiving-line paired shortages). */
@@ -64,7 +64,6 @@ interface ShippedQueryParams extends ShippedViewFilterParams {
   weekStart?: string;
   weekEnd?: string;
   packedBy?: number;
-  testedBy?: number;
   /** Universal staff filter (P1-WORK-02): packed_by OR tested_by this staff. */
   staffId?: number;
   shippedFilter?: string;
@@ -220,7 +219,6 @@ export function dashboardShippedQuery({
   weekStart,
   weekEnd,
   packedBy,
-  testedBy,
   staffId,
   shippedFilter,
   carrier = null,
@@ -237,11 +235,11 @@ export function dashboardShippedQuery({
       'dashboard-table',
       'shipped',
       // New lenses ride as `undefined` when off (dropped from the hashed key).
-      { weekStart, weekEnd, packedBy, testedBy, staffId, shippedFilter, carrier, statusCategory, exceptionsOnly, searchTerm, limit, phase, shippedTime: shippedTime ?? undefined, pickedBy },
+      { weekStart, weekEnd, packedBy, staffId, shippedFilter, carrier, statusCategory, exceptionsOnly, searchTerm, limit, phase, shippedTime: shippedTime ?? undefined, pickedBy },
     ],
     queryFn: () =>
       fetchDashboardPackedRecords({
-        packedBy, testedBy, staffId, weekStart, weekEnd, shippedFilter, carrier, statusCategory, exceptionsOnly, searchTerm, limit, phase, shippedTime, pickedBy,
+        packedBy, staffId, weekStart, weekEnd, shippedFilter, carrier, statusCategory, exceptionsOnly, searchTerm, limit, phase, shippedTime, pickedBy,
       }),
     staleTime: 5 * 60 * 1000,
     gcTime: 15 * 60 * 1000,
@@ -254,7 +252,6 @@ interface ShippedWeekQueryParams extends ShippedViewFilterParams {
   /** Canonical Sunday (YYYY-MM-DD). */
   weekEnd: string;
   packedBy?: number;
-  testedBy?: number;
   staffId?: number;
   shippedFilter?: string;
   /** Desk find text (see {@link ShippedQueryParams.searchTerm}). Part of the key. */
@@ -271,7 +268,6 @@ export function dashboardShippedWeekQuery({
   weekStart,
   weekEnd,
   packedBy,
-  testedBy,
   staffId,
   shippedFilter,
   carrier = null,
@@ -292,11 +288,11 @@ export function dashboardShippedWeekQuery({
       'shipped',
       'week',
       weekStart,
-      { packedBy, testedBy, staffId, shippedFilter, carrier, statusCategory, exceptionsOnly, searchTerm, limit, phase, shippedTime: shippedTime ?? undefined, pickedBy },
+      { packedBy, staffId, shippedFilter, carrier, statusCategory, exceptionsOnly, searchTerm, limit, phase, shippedTime: shippedTime ?? undefined, pickedBy },
     ],
     queryFn: () =>
       fetchDashboardPackedRecords({
-        weekStart, weekEnd, packedBy, testedBy, staffId, shippedFilter, carrier, statusCategory, exceptionsOnly, searchTerm, limit, phase, shippedTime, pickedBy,
+        weekStart, weekEnd, packedBy, staffId, shippedFilter, carrier, statusCategory, exceptionsOnly, searchTerm, limit, phase, shippedTime, pickedBy,
       }),
     staleTime: immutable ? Infinity : 5 * 60 * 1000,
     gcTime: immutable ? 24 * 60 * 60 * 1000 : 15 * 60 * 1000,

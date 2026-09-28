@@ -1,26 +1,31 @@
 'use client';
 
 /**
- * Quick look — Space on a focused card unfolds the order's facts under it
- * (owner 2026-09-27): who, where, when ordered, tracking, the buyer's note and
- * the Pick → QC → Pack names + stamps (per line when the order has several).
- * Enter opens the full record.
+ * Quick look — Space on a card (focused, or under the pointer) unfolds what
+ * the card face does NOT already say (owner 2026-09-27: no duplicates, more
+ * detail): the full ship-to address and contact, the exact order and ship-by
+ * stamps, carrier + tracking, the listing number, serials, the order total,
+ * and who did Pick → QC → Pack and when (per line when the order has
+ * several). Buyer, channel, notes, SLA and the lead line's facts live on the
+ * face. Enter opens the full record; Space folds this away.
  */
 
 import type { ReactNode } from 'react';
 import { CollapseItem } from '@/design-system/components/Collapse';
-import { MapPin, MessageSquare, Truck } from '@/components/Icons';
-import { customerPlace } from '@/lib/customers/customer-display';
+import { MapPin, Truck } from '@/components/Icons';
+import { displayCarrierFromHint } from '@/lib/carrier-brand';
+import { customerAddressLines, customerPhone } from '@/lib/customers/customer-display';
 import { resolveOrdersIndexValue } from '@/lib/tables/field-catalog/orders-resolve';
 import type { OrderCardModel } from '@/lib/orders/order-card-model';
 import type { OrderStage } from '@/lib/orders/order-stages';
+import { formatCurrency } from '@/utils/_number';
 import { cn } from '@/utils/_cn';
 
-function Fact({ label, children }: { label: string; children: ReactNode }) {
+function Fact({ label, children, wide = false }: { label: string; children: ReactNode; wide?: boolean }) {
   return (
-    <div className="min-w-0">
+    <div className={cn('min-w-0', wide && 'col-span-2')}>
       <dt className="text-[11px] font-medium text-text-faint">{label}</dt>
-      <dd className="truncate text-[13px] text-text-default">{children}</dd>
+      <dd className="text-[13px] text-text-default">{children}</dd>
     </div>
   );
 }
@@ -39,40 +44,79 @@ function StageFact({ stage }: { stage: OrderStage }) {
   return <span className="text-text-faint">{stage.who ? `Assigned · ${stage.who}` : 'Not yet'}</span>;
 }
 
-export function OrderCardPeek({ model, todayKey, platformLabel }: { model: OrderCardModel; todayKey: string; platformLabel: string }) {
+const clean = (value: unknown) => String(value ?? '').trim();
+
+export function OrderCardPeek({ model, todayKey }: { model: OrderCardModel; todayKey: string }) {
   const lead = model.lead;
   const multi = model.lines.length > 1;
   const rows = model.lines.map((line) => line.record);
   const shipTo = lead.shipstation_ship_to;
-  const name = model.buyerName;
-  const place = lead.customer
-    ? customerPlace(lead.customer)
-    : [shipTo?.city, shipTo?.state].map((v) => String(v ?? '').trim()).filter(Boolean).join(', ');
+
+  // Full address — the card face only names the buyer.
+  const address = lead.customer
+    ? customerAddressLines(lead.customer)
+    : [
+        [clean(shipTo?.address1), clean(shipTo?.address2)].filter(Boolean).join(', '),
+        [clean(shipTo?.city), clean(shipTo?.state), clean(shipTo?.postalCode)].filter(Boolean).join(' '),
+        clean(shipTo?.country),
+      ].filter(Boolean);
+  const company = clean(shipTo?.company);
+  const phone = lead.customer ? customerPhone(lead.customer) : clean(shipTo?.phone);
+  const email = clean(lead.customer?.email);
+
   const placed = resolveOrdersIndexValue(rows, 'orders.order_date', { todayKey });
-  const tracking = String(lead.shipping_tracking_number ?? '').trim();
-  const note = String(lead.buyer_note ?? '').trim() || String(lead.notes ?? '').trim();
+  const tracking = clean(lead.shipping_tracking_number);
+  const carrier = clean(lead.carrier);
+  const serials = [...new Set(rows.flatMap((row) => clean(row.serial_number).split(',').map((s) => s.trim())).filter(Boolean))];
+  const total = rows.reduce((sum, row) => {
+    const amount = Number(row.sale_amount);
+    return sum + (Number.isFinite(amount) ? amount : 0);
+  }, 0);
 
   return (
     // A child of the card's AnimatePresence; Collapse moves the card body's gap inside the animated height.
     <CollapseItem data-testid="order-card-peek" className="pt-1">
       <div className="rounded-xl bg-surface-sunken/70 p-3">
-        {/* Everything line 1 and the staff corner drop at narrow widths is here in full. */}
-        <dl className="grid grid-cols-2 gap-x-4 gap-y-2 @xl/card:grid-cols-3">
-          <Fact label="Customer">{name || '—'}</Fact>
-          <Fact label="Platform">{platformLabel || '—'}</Fact>
-          <Fact label="Ship to">
-            <span className="inline-flex items-center gap-1">
-              <MapPin className="size-3 shrink-0 text-text-faint" aria-hidden />
-              {place || '—'}
+        <dl className="grid grid-cols-2 gap-x-4 gap-y-2.5 @xl/card:grid-cols-4">
+          <Fact label="Ship to" wide>
+            <span className="flex gap-1">
+              <MapPin className="mt-0.5 size-3 shrink-0 text-text-faint" aria-hidden />
+              <span className="min-w-0">
+                {company ? <span className="block truncate">{company}</span> : null}
+                {address.length > 0 ? address.map((line) => <span key={line} className="block truncate">{line}</span>) : <span className="text-text-faint">No address on file</span>}
+              </span>
             </span>
+          </Fact>
+          <Fact label="Contact" wide>
+            {phone || email ? (
+              <span className="block truncate">{[phone, email].filter(Boolean).join(' · ')}</span>
+            ) : (
+              <span className="text-text-faint">None on file</span>
+            )}
           </Fact>
           <Fact label="Ordered">{placed?.kind === 'placed' ? placed.face : '—'}</Fact>
-          <Fact label="Tracking">
-            <span className={cn('inline-flex items-center gap-1 font-mono text-xs', !tracking && 'font-sans text-text-faint')}>
+          <Fact label="Ship by">{model.sla.tip ?? model.sla.face}</Fact>
+          <Fact label="Tracking" wide>
+            <span className={cn('inline-flex min-w-0 items-center gap-1', tracking ? 'font-mono text-xs' : 'text-text-faint')}>
               <Truck className="size-3 shrink-0 text-text-faint" aria-hidden />
-              {tracking || 'No label yet'}
+              <span className="truncate">
+                {tracking ? [displayCarrierFromHint(carrier) ?? carrier, tracking].filter(Boolean).join(' · ') : model.pickup ? 'Pickup — no label' : 'No label yet'}
+              </span>
             </span>
           </Fact>
+          <Fact label="Listing #">{model.listingItem ?? '—'}</Fact>
+          {multi ? (
+            <Fact label="Order total">
+              <span className="tabular-nums">
+                {total > 0 ? formatCurrency(total, clean(lead.currency) || 'USD') : '—'} · {model.units} units
+              </span>
+            </Fact>
+          ) : null}
+          {serials.length > 0 ? (
+            <Fact label={serials.length === 1 ? 'Serial' : 'Serials'} wide>
+              <span className="block truncate font-mono text-xs">{serials.join(', ')}</span>
+            </Fact>
+          ) : null}
           {multi ? (
             <Fact label={`${model.pack.label} (order)`}>
               <StageFact stage={model.pack} />
@@ -101,12 +145,6 @@ export function OrderCardPeek({ model, todayKey, platformLabel }: { model: Order
               </li>
             ))}
           </ul>
-        ) : null}
-        {note ? (
-          <p className="mt-2.5 flex gap-2 border-t border-border-hairline pt-2.5 text-[13px] text-text-muted">
-            <MessageSquare className="mt-0.5 size-3.5 shrink-0" aria-hidden />
-            <span className="line-clamp-3">{note}</span>
-          </p>
         ) : null}
         <p className="mt-2.5 border-t border-border-hairline pt-2 text-[11px] text-text-faint">
           Enter opens the order · Space closes

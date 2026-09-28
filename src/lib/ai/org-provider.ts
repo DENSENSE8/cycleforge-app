@@ -18,7 +18,7 @@ import {
 } from '@/lib/ai/provider';
 import type { OrgId } from '@/lib/tenancy/constants';
 import { aiProviderSequence, type AiProviderOrder } from '@/lib/ai/provider-order';
-import { isProviderDemoted } from '@/lib/ai/provider-health';
+import { isProviderDemotedShared } from '@/lib/ai/provider-health';
 
 /**
  * Who serves a capability: a vault provider, the platform env default, or the
@@ -38,8 +38,8 @@ export interface OrgAiDeps {
   resolveAiConfig: (capability: AiCapability) => AiProviderConfig;
   /** This org's stored order preference (local-first by default). */
   resolveOrder: (orgId: OrgId) => Promise<AiProviderOrder>;
-  /** Whether a provider is in its short post-failure demotion window. */
-  isDemoted: (orgId: OrgId, source: AiProviderSource, capability: AiCapability) => boolean;
+  /** Whether a provider is in its short post-failure demotion window (shared across instances when Redis is on). */
+  isDemoted: (orgId: OrgId, source: AiProviderSource, capability: AiCapability) => boolean | Promise<boolean>;
   /** The platform's Anthropic key (agent loop only — native tool-use protocol). */
   resolvePlatformAnthropicKey: () => string;
   /** The env-selected local agent model (`CYCLEFORGE_LOCAL_MLX`), or null. */
@@ -57,7 +57,7 @@ const defaultDeps: OrgAiDeps = {
     const mod = await import('@/lib/ai/provider-order-deps');
     return mod.resolveAiProviderOrderForOrg(orgId);
   },
-  isDemoted: (orgId, source, capability) => isProviderDemoted(orgId, source, capability),
+  isDemoted: (orgId, source, capability) => isProviderDemotedShared(orgId, source, capability),
   resolvePlatformAnthropicKey: () => resolvePlatformAnthropicKey(),
   resolveLocalAgent: () => resolveLocalAgentConfig(),
 };
@@ -203,10 +203,10 @@ export async function resolveOrgAiChain(
   }
 
   // Demoted providers keep their relative order but sink below healthy ones.
+  // One concurrent check per entry: the shared read is a network hop.
   try {
-    const healthy = chain.filter((c) => !deps.isDemoted(orgId, c.source, capability));
-    const demoted = chain.filter((c) => deps.isDemoted(orgId, c.source, capability));
-    return [...healthy, ...demoted];
+    const demoted = await Promise.all(chain.map((c) => deps.isDemoted(orgId, c.source, capability)));
+    return [...chain.filter((_, i) => !demoted[i]), ...chain.filter((_, i) => demoted[i])];
   } catch {
     return chain;
   }

@@ -3,7 +3,7 @@
 import { createContext, useContext, useMemo, useSyncExternalStore, type ComponentPropsWithoutRef } from 'react';
 import { usePathname } from 'next/navigation';
 import { Slot } from '@radix-ui/react-slot';
-import type { ModeName } from '@/design-system/modes/registry';
+import { MODE_LOOKS, type ModeLookName, type ModeName } from '@/design-system/modes/registry';
 import { modeDeviceOf, resolveRegionMode } from './resolve-region-mode';
 
 /** ModeRegion — the ONE way a region declares its task mode. */
@@ -41,24 +41,44 @@ interface ModeContextValue {
 
 const ModeContext = createContext<ModeContextValue | null>(null);
 
-interface ModeRegionProps extends ComponentPropsWithoutRef<'div'> {
-  /**
-   * The job's mode. `triage` resolves by device — triage on desktop,
-   * industrial on `/m/*` and touch screens. `industrial` is explicit and never
-   * lifted (the phone floor, or Mode C: a desktop mirror of a live phone).
-   */
-  mode: ModeName;
+interface ModeRegionBaseProps extends ComponentPropsWithoutRef<'div'> {
   /**
    * Stamp `data-mode` on the single child instead of a wrapping div — for a
    * portalled surface (dialog, palette) whose own box must read the mode's
    * corner and planes.
    */
   asChild?: boolean;
+  /** A form job: a requested `triage` holds on a phone instead of collapsing to `industrial`. */
+  form?: boolean;
 }
 
-export function ModeRegion({ mode: requested, asChild = false, children, ...rest }: ModeRegionProps) {
+type ModeRegionProps = ModeRegionBaseProps &
+  (
+    | {
+        /**
+         * The job's mode. `triage` resolves by device — triage on desktop,
+         * industrial on `/m/*` and touch screens. `industrial` is explicit and never
+         * lifted (the phone floor, or Mode C: a desktop mirror of a live phone).
+         */
+        mode: ModeName;
+        look?: never;
+      }
+    | {
+        /**
+         * A job LOOK (`packages/design-tokens/src/modes.ts` `MODE_LOOKS`): requests
+         * the look's own mode, resolves by device like any region, and stamps
+         * `data-look`, which refines the resolved mode where the look declares a
+         * refinement for it.
+         */
+        look: ModeLookName;
+        mode?: never;
+      }
+  );
+
+export function ModeRegion({ mode: requestedMode, look, asChild = false, form = false, children, ...rest }: ModeRegionProps) {
+  const requested = look ? MODE_LOOKS[look].mode : requestedMode;
   const parent = useContext(ModeContext);
-  const mode = resolveRegionMode(requested, modeDeviceOf(usePathname(), useCoarsePointer()));
+  const mode = resolveRegionMode(requested, modeDeviceOf(usePathname(), useCoarsePointer()), { form });
   const redeclared = parent !== null && parent.mode === mode;
   const depth = redeclared ? parent.depth : (parent?.depth ?? 0) + 1;
   if (parent && depth > MAX_MODE_DEPTH && process.env.NODE_ENV !== 'production') {
@@ -72,7 +92,7 @@ export function ModeRegion({ mode: requested, asChild = false, children, ...rest
   const Host = asChild ? Slot : 'div';
   return (
     <ModeContext.Provider value={value}>
-      <Host data-mode={mode} {...rest}>
+      <Host data-mode={mode} data-look={look} {...rest}>
         {children}
       </Host>
     </ModeContext.Provider>

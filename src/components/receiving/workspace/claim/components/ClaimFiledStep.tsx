@@ -47,7 +47,7 @@ function CreatedFiledBody({ c }: { c: ReceivingClaimController }) {
       <section className="space-y-1">
         <div className="flex items-center gap-1.5">
           <AnimatedCheck size={14} />
-          <p className="text-role-micro uppercase tracking-[0.14em] text-emerald-800">
+          <p className="text-role-micro text-emerald-800">
             Internal ticket filed
           </p>
         </div>
@@ -63,7 +63,7 @@ function CreatedFiledBody({ c }: { c: ReceivingClaimController }) {
             href={filedTicket.url}
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex items-center gap-1 text-role-micro uppercase tracking-wider text-blue-700 hover:text-blue-900"
+            className="inline-flex items-center gap-1 text-role-micro text-blue-700 hover:text-blue-900"
           >
             Open in helpdesk <ExternalLink className="h-3 w-3" />
           </a>

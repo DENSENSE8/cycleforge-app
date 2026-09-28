@@ -102,7 +102,7 @@ export function KpiTile({
       <div className={cn('flex items-start justify-between', band ? 'gap-1' : 'gap-3')}>
         <p
           className={cn(
-            'min-w-0 font-semibold uppercase tracking-widest text-text-soft',
+            'min-w-0 font-semibold text-text-soft',
             wall && !band ? 'text-role-caption' : band ? 'text-role-micro tracking-wide leading-none' : 'text-role-eyebrow',
             labelClassName,
           )}

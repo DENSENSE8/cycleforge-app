@@ -89,7 +89,7 @@ export function WeeklyScheduleTable({
                   />
                 </HoverTooltip>
                 <div className="min-w-0">
-                  <p className={`${dataValue} truncate uppercase tracking-[0.02em]`}>
+                  <p className={`${dataValue} truncate `}>
                     {member.name}
                   </p>
                   <div className={`${tableHeader} mt-0.5 flex items-center gap-2`}>

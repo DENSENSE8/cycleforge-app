@@ -253,7 +253,7 @@ export function MobileOrderEvidenceSheet({
         <dl className="flex flex-col px-4 pb-4">
           <Fact label="Location">
             <span className={cn(RECORD_ID_CLASS, 'block break-words', location ? 'text-mode-ink' : 'text-mode-warn')}>
-              {location ? location.split(' | ').map((path) => <span key={path} className="block">{path}</span>) : 'UNASSIGNED'}
+              {location ? location.split(' | ').map((path) => <span key={path} className="block">{path}</span>) : 'Unassigned'}
             </span>
             {allocated > 0 ? (
               <span className={cn(RECORD_LABEL_CLASS, 'text-mode-muted')}>

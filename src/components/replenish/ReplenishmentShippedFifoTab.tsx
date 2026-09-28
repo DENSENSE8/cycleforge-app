@@ -47,7 +47,7 @@ export function ReplenishmentShippedFifoTab({ skuSearch }: ReplenishmentShippedF
         <div className={mainStickyHeaderClass}>
           <div className={mainStickyHeaderRowClass}>
             <div>
-              <p className={`${sectionLabel} text-emerald-700`}>FIFO Restock · Shipped Depletion</p>
+              <p className={`${sectionLabel} text-emerald-700`}>FIFO restock · Shipped depletion</p>
               <p className={`${fieldLabel} mt-0.5`}>
                 {rows.length} SKU{rows.length !== 1 ? 's' : ''} shipped in last 30 days · sorted by depletion
               </p>
@@ -101,13 +101,13 @@ export function ReplenishmentShippedFifoTab({ skuSearch }: ReplenishmentShippedF
 
                       {/* Shipped qty */}
                       <div className="text-role-micro text-text-muted">
-                        <p className={`uppercase tracking-widest text-text-soft ${tableHeader}`}>Shipped</p>
+                        <p className={` text-text-soft ${tableHeader}`}>Shipped</p>
                         <p className="mt-1">{row.shipped_qty}</p>
                       </div>
 
                       {/* Units/week */}
                       <div className="text-role-micro text-text-muted">
-                        <p className={`uppercase tracking-widest text-text-soft ${tableHeader}`}>Units/Wk</p>
+                        <p className={` text-text-soft ${tableHeader}`}>Units/Wk</p>
                         <p className={`mt-1 ${Number(row.avg_units_per_week) >= 3 ? 'text-red-600' : ''}`}>
                           {row.avg_units_per_week}
                         </p>
@@ -115,19 +115,19 @@ export function ReplenishmentShippedFifoTab({ skuSearch }: ReplenishmentShippedF
 
                       {/* Available (own stock) */}
                       <div className="text-role-micro text-text-muted">
-                        <p className={`uppercase tracking-widest text-text-soft ${tableHeader}`}>Avail</p>
+                        <p className={` text-text-soft ${tableHeader}`}>Avail</p>
                         <p className="mt-1">{inCatalog ? numText(row.stock_available) : '—'}</p>
                       </div>
 
                       {/* Incoming (open purchase orders) */}
                       <div className="text-role-micro text-text-muted">
-                        <p className={`uppercase tracking-widest text-text-soft ${tableHeader}`}>Incoming</p>
+                        <p className={` text-text-soft ${tableHeader}`}>Incoming</p>
                         <p className="mt-1">{inCatalog ? numText(row.stock_incoming) : '—'}</p>
                       </div>
 
                       {/* Reorder level */}
                       <div className="text-role-micro text-text-muted">
-                        <p className={`uppercase tracking-widest text-text-soft ${tableHeader}`}>Reorder Lvl</p>
+                        <p className={` text-text-soft ${tableHeader}`}>Reorder Lvl</p>
                         <p className="mt-1">{row.reorder_level != null ? row.reorder_level : '—'}</p>
                       </div>
 
@@ -135,7 +135,7 @@ export function ReplenishmentShippedFifoTab({ skuSearch }: ReplenishmentShippedF
                       <div>
                         {hasReplenishment ? (
                           <div>
-                            <span className={`inline-flex items-center rounded-full border px-2 py-1 text-role-eyebrow uppercase tracking-wider ${statusPillClass(row.replenishment_status || '')}`}>
+                            <span className={`inline-flex items-center rounded-full border px-2 py-1 text-role-eyebrow ${statusPillClass(row.replenishment_status || '')}`}>
                               {(row.replenishment_status || '').replace(/_/g, ' ')}
                             </span>
                             {row.zoho_po_number && (
@@ -143,7 +143,7 @@ export function ReplenishmentShippedFifoTab({ skuSearch }: ReplenishmentShippedF
                             )}
                           </div>
                         ) : (
-                          <span className={`inline-flex items-center rounded-full border px-2 py-1 text-role-eyebrow uppercase tracking-wider ${
+                          <span className={`inline-flex items-center rounded-full border px-2 py-1 text-role-eyebrow ${
                             needsAttention
                               ? 'bg-red-100 text-red-700 border-red-200'
                               : 'bg-surface-sunken text-text-soft border-border-soft'

@@ -1,11 +1,14 @@
 import type { RecordStateFace } from './industrial-record';
 
-type ReceivingLifecycleState =
-  | 'SCANNED'
-  | 'UNBOXED'
-  | 'RECEIVED'
-  | 'ON_HOLD'
-  | 'EXCEPTION';
+/**
+ * Inbound's Unboxed view lifecycle — the receiving of inbound orders and
+ * boxes only (owner 2026-09-28): scanned at the door → unboxed. The unboxed
+ * face keeps the id `RECEIVED` (the `?dstate=` vocabulary) but reads
+ * "Unboxed": "Received" already means the door scan (`received_at`), the
+ * Zoho receive (`DONE`) and a carrier delivery. Exception = needs a person.
+ * What comes after (quality control) is the next step, never a state here.
+ */
+type ReceivingLifecycleState = 'SCANNED' | 'RECEIVED' | 'EXCEPTION';
 
 export const RECEIVING_LIFECYCLE: Readonly<Record<ReceivingLifecycleState, RecordStateFace>> = {
   SCANNED: {
@@ -15,26 +18,12 @@ export const RECEIVING_LIFECYCLE: Readonly<Record<ReceivingLifecycleState, Recor
     tone: 'info',
     icon: 'circle-dot',
   },
-  UNBOXED: {
-    id: 'UNBOXED',
-    code: 'UNB',
-    label: 'Unboxed',
-    tone: 'fulfillment',
-    icon: 'package-open',
-  },
   RECEIVED: {
     id: 'RECEIVED',
-    code: 'RCV',
-    label: 'Received',
+    code: 'UNB',
+    label: 'Unboxed',
     tone: 'success',
     icon: 'package-check',
-  },
-  ON_HOLD: {
-    id: 'ON_HOLD',
-    code: 'HLD',
-    label: 'On hold',
-    tone: 'warning',
-    icon: 'circle-pause',
   },
   EXCEPTION: {
     id: 'EXCEPTION',

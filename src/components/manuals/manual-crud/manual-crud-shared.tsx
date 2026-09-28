@@ -51,7 +51,7 @@ export function ModalShell({
       <DialogContent hideClose className={`${widthClass} gap-0 overflow-hidden p-0`}>
         <DialogHeader className="flex-row items-center justify-between space-y-0 border-b border-border-soft px-4 py-3">
           <div>
-            <p className="text-role-micro uppercase tracking-[0.16em] text-text-soft">{eyebrow}</p>
+            <p className="text-role-micro text-text-soft">{eyebrow}</p>
             <DialogTitle className="mt-1 text-sm font-semibold">{title}</DialogTitle>
             <DialogDescription className="sr-only">
               {eyebrow}: {title}
@@ -76,7 +76,7 @@ export function ModalShell({
 
 export function FieldLabel({ children }: { children: React.ReactNode }) {
   return (
-    <span className="mb-1 block text-role-micro uppercase tracking-[0.14em] text-text-soft">
+    <span className="mb-1 block text-role-micro text-text-soft">
       {children}
     </span>
   );

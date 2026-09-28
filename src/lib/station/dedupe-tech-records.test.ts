@@ -1,13 +1,13 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
-import type { TechRecord } from '@/hooks/useDeskPickLogs';
-import { dedupeTechRecords, getTechRecordRowKey } from '@/lib/station/dedupe-tech-records';
+import type { DeskPickRecord } from '@/hooks/useDeskPickLogs';
+import { dedupeDeskPickRecords, getDeskPickRecordRowKey } from '@/lib/station/dedupe-tech-records';
 import {
   techRecordRailId,
   techRecordToPreviewOrder,
 } from '@/components/sidebar/shipping/shipping-rail-shared';
 
-function baseRecord(overrides: Partial<TechRecord> = {}): TechRecord {
+function baseRecord(overrides: Partial<DeskPickRecord> = {}): DeskPickRecord {
   return {
     id: 1,
     created_at: '2026-07-15T12:00:00Z',
@@ -22,7 +22,7 @@ function baseRecord(overrides: Partial<TechRecord> = {}): TechRecord {
   };
 }
 
-describe('dedupeTechRecords', () => {
+describe('dedupeDeskPickRecords', () => {
   it('merges duplicate tracking keys preferring rows with serials', () => {
     const stub = baseRecord({
       id: 10,
@@ -40,7 +40,7 @@ describe('dedupeTechRecords', () => {
       product_title: 'Widget Pro',
       created_at: '2026-07-15T12:00:00Z',
     });
-    const merged = dedupeTechRecords([stub, serial]);
+    const merged = dedupeDeskPickRecords([stub, serial]);
     assert.equal(merged.length, 1);
     assert.equal(merged[0]?.serial_number, 'SN-ABC');
     assert.equal(merged[0]?.product_title, 'Widget Pro');
@@ -55,15 +55,15 @@ describe('dedupeTechRecords', () => {
       order_id: 'FBA',
     });
     const order = baseRecord({ id: 21, shipping_tracking_number: '1Z999' });
-    const merged = dedupeTechRecords([fba, order]);
+    const merged = dedupeDeskPickRecords([fba, order]);
     assert.equal(merged.length, 2);
   });
 });
 
-describe('getTechRecordRowKey', () => {
+describe('getDeskPickRecordRowKey', () => {
   it('uses source_kind + source_row_id', () => {
     assert.equal(
-      getTechRecordRowKey(baseRecord({ source_kind: 'tech_serial', source_row_id: 42, id: 99 })),
+      getDeskPickRecordRowKey(baseRecord({ source_kind: 'tech_serial', source_row_id: 42, id: 99 })),
       'tech_serial:42',
     );
   });

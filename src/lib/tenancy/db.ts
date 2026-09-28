@@ -1,10 +1,14 @@
 /** Tenant-scoped DB helper. */
 
-import type { PoolClient, QueryResult, QueryResultRow } from 'pg';
+import type { Pool as PgPool, PoolClient, QueryResult, QueryResultRow } from 'pg';
 import pool, { tenantPool as configuredTenantPool } from '@/lib/db';
 import { inlineSqlParams } from './inline-params';
 import { resolveTenantAppDatabaseUrl } from '@/lib/env-utils';
 import { DOGFOOD_ORG_ID, type OrgId } from './constants';
+import { TX_TIMEOUT_SELECT_LIST } from './tx-timeouts';
+
+/** Dedicated chat-assistant pool; pass as the `via` arg of the helpers below. */
+export { assistantPool } from '@/lib/db';
 
 /** Tenant-runtime pool, but only when TENANT_APP_DATABASE_URL is the same Neon compute as DATABASE_URL. */
 const tenantPool = resolveTenantAppDatabaseUrl(
@@ -28,18 +32,23 @@ function assertOrgId(orgId: OrgId): void {
 export async function withTenantConnection<T>(
   orgId: OrgId,
   fn: (client: PoolClient) => Promise<T>,
+  via: PgPool = tenantPool,
 ): Promise<T> {
   assertOrgId(orgId);
   // Use the tenant pool: once TENANT_APP_DATABASE_URL points at the non-bypass
   // app_tenant role (Phase E1), these GUC-scoped paths become RLS-subject and
   // per-table FORCE can be enabled. Until then tenantPool aliases the owner pool.
-  const client = await tenantPool.connect();
+  // `via` lets the chat assistant use its own pool (`assistantPool`, same DSN).
+  const client = await via.connect();
   try {
     // Run the work inside a transaction and set the org GUC with SET LOCAL (is_local=true).
     // BEGIN and the GUC travel as one simple-protocol message (one round trip, not two):
     // the explicit BEGIN keeps the block open past the message, so the setting holds for
     // `fn` and dies at COMMIT/ROLLBACK. orgId is UUID-checked above, so inlining it is safe.
-    await client.query(`BEGIN; SELECT set_config('app.current_org', '${orgId}', true)`);
+    // The same SELECT arms server-side statement/lock/idle-in-tx timeouts (tx-timeouts.ts).
+    await client.query(
+      `BEGIN; SELECT set_config('app.current_org', '${orgId}', true), ${TX_TIMEOUT_SELECT_LIST}`,
+    );
     const result = await fn(client);
     await client.query('COMMIT');
     return result;
@@ -79,13 +88,14 @@ export async function tenantQueryOneTrip<T extends QueryResultRow = QueryResultR
   orgId: OrgId,
   text: string,
   params: ReadonlyArray<unknown> = [],
+  via: PgPool = tenantPool,
 ): Promise<QueryResult<T>> {
   assertOrgId(orgId);
   const statement = inlineSqlParams(text, params);
-  const client = await tenantPool.connect();
+  const client = await via.connect();
   try {
     const results = (await client.query(
-      `SELECT set_config('app.current_org', '${orgId}', true);\n${statement}`,
+      `SELECT set_config('app.current_org', '${orgId}', true), ${TX_TIMEOUT_SELECT_LIST};\n${statement}`,
     )) as unknown as Array<QueryResult<T>>;
     return results[results.length - 1];
   } finally {

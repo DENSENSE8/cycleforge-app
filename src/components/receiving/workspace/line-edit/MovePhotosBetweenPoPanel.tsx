@@ -473,7 +473,7 @@ export function MovePhotosBetweenPoPanel({
                   {(matchedExcludedSelf || !poSearchNeedle(search)) &&
                   targetRows.length > 0 ? (
                     <p
-                      className="px-3 text-role-eyebrow font-semibold uppercase tracking-widest text-text-soft"
+                      className="px-3 text-role-eyebrow font-semibold text-text-soft"
                       data-testid="photo-move-recent-eyebrow"
                     >
                       Recent cartons

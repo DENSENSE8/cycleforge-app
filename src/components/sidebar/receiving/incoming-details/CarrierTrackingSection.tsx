@@ -114,7 +114,7 @@ export function CarrierTrackingSection({
         <div className={`rounded-xl border p-3 ${tone.wrap} ${showEvents && parts === 'all' ? 'mb-3' : ''}`}>
           <div className="flex items-start justify-between gap-2">
             <div className="min-w-0">
-              <div className="flex items-center gap-1 text-role-eyebrow uppercase tracking-wider text-text-soft">
+              <div className="flex items-center gap-1 text-role-eyebrow text-text-soft">
                 <span>{shortCarrier(shipment.carrier) || shipment.carrier || 'Carrier'}</span>
                 {shipment.tracking_number ? (
                   <>

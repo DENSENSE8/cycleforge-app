@@ -27,7 +27,7 @@ import type { SlotFieldOption } from '@/lib/tables/layout-edit';
 import { Button, SearchField } from '@/design-system/primitives';
 import { DateRangePickerField } from '@/design-system/components/DateRangePickerField';
 import type { DateRange } from 'react-day-picker';
-import { DataTableFullscreenToggle } from '@/components/tables/DataTableFullscreenToggle';
+import { DeskRecordViewSwitch } from '@/design-system/components/DeskRecordViewSwitch';
 import { DataTableZoomToggle } from '@/components/tables/DataTableZoomToggle';
 import { DeskActionSlotRegistrar, DeskHeaderAction } from '@/design-system/components/DeskActionSlot';
 import { useDeskStageOptional } from '@/design-system/components/DeskStageContext';
@@ -316,6 +316,10 @@ export interface DataTableProps<Row, K extends string, C extends LedgerGridColum
      * list can check Pick / Status — never only name them on the trigger.
      */
     activeFace?: Pick<DataTableSortOption, 'label' | 'shortLabel' | 'identity'>;
+    /** Trigger test id — two sort menus on one page (the bar and a section header) need their own. */
+    testId?: string;
+    /** Menu alignment to the trigger; `end` for a trigger at a row's right edge. */
+    align?: 'start' | 'end';
   };
 
   /** Named saved views for this surface — data, never a ReactNode slot. */
@@ -526,7 +530,7 @@ export function DataTableFilterMenu({
               {grouped && band.key ? (
                 <p
                   className={cn(
-                    'px-2 pb-0.5 text-role-micro font-semibold uppercase tracking-widest text-text-faint',
+                    'px-2 pb-0.5 text-role-micro font-semibold text-text-faint',
                     // Same heading treatment the fields menu next door already
                     // uses — one banded-popover grammar, not two.
                     bandIndex === 0 ? 'pt-1' : 'pt-2',
@@ -683,6 +687,8 @@ export function DataTableSortMenu({
   hot: hotProp,
   onSelect,
   activeFace,
+  testId = 'data-table-sort',
+  align = 'start',
 }: NonNullable<DataTableProps<unknown, string, LedgerGridColumnModel>['sortMenu']>) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState('');
@@ -751,7 +757,7 @@ export function DataTableSortMenu({
       <PopoverTrigger asChild>
         <button
           type="button"
-          data-testid="data-table-sort"
+          data-testid={testId}
           aria-haspopup="listbox"
           aria-controls={open ? listId : undefined}
           aria-label={
@@ -782,9 +788,9 @@ export function DataTableSortMenu({
         </button>
       </PopoverTrigger>
       <PopoverContent
-        align="start"
+        align={align}
         sideOffset={2}
-        data-testid="data-table-sort-menu"
+        data-testid={`${testId}-menu`}
         className={cn(
           DROPDOWN_SHELL_CORNER,
           'flex w-64 flex-col overflow-hidden p-0',
@@ -859,7 +865,7 @@ export function DataTableSortMenu({
                         id={headingId}
                         data-testid={`data-table-sort-group-${band.key.replace(/\s+/g, '-')}`}
                         className={cn(
-                          'px-2.5 pb-0.5 text-role-micro font-semibold uppercase tracking-widest text-text-faint',
+                          'px-2.5 pb-0.5 text-role-micro font-semibold text-text-faint',
                           bandIndex === 0 ? 'pt-1' : 'pt-2',
                         )}
                       >
@@ -1026,7 +1032,7 @@ function DataTableFieldsMenu({
   };
 
   const bandHeading = (label: string) => (
-    <p className="px-2 pb-0.5 pt-1.5 text-role-micro font-semibold uppercase tracking-widest text-text-faint">
+    <p className="px-2 pb-0.5 pt-1.5 text-role-micro font-semibold text-text-faint">
       {label}
     </p>
   );
@@ -1594,7 +1600,7 @@ export function DataTable<Row, K extends string, C extends LedgerGridColumnModel
           ) : null}
           <DataTableZoomToggle />
           {/* Renders nothing at all off a desk stage — see the component. */}
-          <DataTableFullscreenToggle />
+          <DeskRecordViewSwitch labels="wide" />
         </span>
       </div> : null}
         <div

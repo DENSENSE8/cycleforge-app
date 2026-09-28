@@ -3,25 +3,26 @@
 /**
  * Unbox page-header CTAs — **Unbox** (resume last carton), **Check**
  * (unreceived-orders rail), and on the Inbound tab **Add purchase order**
- * (the same receiving-order composer the Inbound desk's Add opens).
+ * (navigates to `/incoming/new?type=PO`, the form the Inbound desk's Add opens).
  */
 
 import { useCallback, useMemo, useState } from 'react';
-import { useSearchParams } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { ClipboardList, Package, ReceivingModeUnbox } from '@/components/Icons';
 import { DeskActionSlotRegistrar, DeskHeaderAction } from '@/design-system/components/DeskActionSlot';
 import {
   IncomingDeskRightRail,
   type IncomingDeskRailTool,
 } from '@/components/sidebar/receiving/incoming/IncomingDeskRightRail';
-import { parseStaffParam } from '@/hooks/useStaffFilter';
+import { parseStaffParam } from '@/lib/station/table-url-params';
 import { useUnboxWorkspaceTab } from '@/hooks/useUnboxWorkspaceTab';
 import { emitReceiving } from '@/components/receiving/receiving-events';
 import { fetchUnboxOpenedRows } from '@/lib/receiving/rail/feeds';
 import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
-import { openReceivingOrderComposer } from '@/lib/inbound/receiving-order-composer-store';
+import { newInboundOrderHref } from '@/lib/inbound/new-inbound-order-path';
 
 export function UnboxDeskActions() {
+  const router = useRouter();
   const searchParams = useSearchParams();
   const staffId = parseStaffParam(searchParams.get('staff') ?? searchParams.get('staffId'));
   const { unboxView, setUnboxView } = useUnboxWorkspaceTab();
@@ -35,9 +36,8 @@ export function UnboxDeskActions() {
   }, []);
 
   const handleAddPo = useCallback(() => {
-    setUnboxView('incoming', { clearLine: false });
-    openReceivingOrderComposer('PO');
-  }, [setUnboxView]);
+    router.push(newInboundOrderHref('PO'));
+  }, [router]);
 
   const handleUnbox = useCallback(() => {
     void (async () => {

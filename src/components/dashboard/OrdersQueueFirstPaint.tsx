@@ -179,8 +179,8 @@ export function OrdersLedgerStandIn({
                       location ? 'text-mode-ink' : 'text-mode-warn',
                     )}
                   >
-                    <span className={RECORD_FACT_KEY_CLASS}>BIN </span>
-                    {location ?? 'UNASSIGNED'}
+                    <span className={RECORD_FACT_KEY_CLASS}>Bin </span>
+                    {location ?? 'Unassigned'}
                   </span>
                 )}
                 <span className={cn(RECORD_ID_CLASS, 'truncate')}>{orderId || '—'}</span>
@@ -196,8 +196,8 @@ export function OrdersLedgerStandIn({
                     <span className={cn(LEDGER_LEAD_CLASS, 'pl-2')}>
                       <span className="w-20 shrink-0" aria-hidden />
                       <span className={cn(RECORD_ID_CLASS, 'min-w-0 flex-1 truncate', location ? 'text-mode-ink' : 'text-mode-warn')}>
-                        <span className={RECORD_FACT_KEY_CLASS}>BIN </span>
-                        {location ?? 'UNASSIGNED'}
+                        <span className={RECORD_FACT_KEY_CLASS}>Bin </span>
+                        {location ?? 'Unassigned'}
                       </span>
                     </span>
                     <span className={cn(RECORD_ID_CLASS, 'w-44 min-w-0 shrink truncate text-mode-ink')}>

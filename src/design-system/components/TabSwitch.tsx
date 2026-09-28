@@ -2,14 +2,17 @@
 
 /**
  * TabSwitch — the segmented tab box (one face only).
- * INDUSTRIAL (operator 2026-09-23): *"box it off, no corner radius, industrial
+ * The corner follows the region (owner 2026-09-27): boxed and square where
+ * the floor runs (industrial, `radiusControl: 0` — operator 2026-09-23 "box it
+ * off, no corner radius"), the concentric segmented pair in triage. Never
+ * hard-flush a face.
  */
 
 import type { ReactNode } from 'react';
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { motion, useReducedMotion } from '@/design-system/motion';
 import { motionBezier } from '@/design-system/foundations/motion-presets';
-import { cornerClass } from '@/design-system/tokens/radius';
+import { SEGMENTED_CONTROL_CORNER, SEGMENTED_CONTROL_FACE_CORNER } from '@/design-system/tokens/radius';
 import { navIconStrokeClass } from '@/components/icons/nav-weight';
 import { cn } from '@/utils/_cn';
 
@@ -82,7 +85,7 @@ export function TabSwitch({
   const hug = fit === 'hug';
   const compact = size === 'sm';
   const defaultRailClass = cn(
-    cornerClass('flush'),
+    SEGMENTED_CONTROL_CORNER,
     'border border-border-soft bg-surface-sunken',
     compact ? 'h-8 p-0.5' : 'p-1',
   );
@@ -99,7 +102,8 @@ export function TabSwitch({
   // {left:0,width:0}. Snap once, then spring on every later tab change.
   const hasPlacedPillRef = useRef(false);
   const prefersReducedMotion = useReducedMotion();
-  const faceCorner = cornerClass('flush');
+  // The corner follows the region: square on industrial (`radiusControl: 0`), the concentric pair in triage.
+  const faceCorner = SEGMENTED_CONTROL_FACE_CORNER;
 
   const measurePill = useCallback(() => {
     const track = trackRef.current;

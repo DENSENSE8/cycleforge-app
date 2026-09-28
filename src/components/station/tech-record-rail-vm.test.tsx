@@ -1,9 +1,9 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
-import type { TechRecord } from '@/hooks/useDeskPickLogs';
+import type { DeskPickRecord } from '@/hooks/useDeskPickLogs';
 import { techRecordToRailVM } from './tech-record-rail-vm';
 
-const record: TechRecord = {
+const record: DeskPickRecord = {
   id: 1,
   created_at: '2026-07-17T07:00:00Z',
   shipping_tracking_number: '1Z123',

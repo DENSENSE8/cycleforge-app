@@ -28,7 +28,7 @@ const baseCtx = (over: Partial<OutboundMetricCtx> = {}): OutboundMetricCtx => ({
   mode: 'shipped',
   total: 100,
   shipped: { ...ZERO_OUTBOUND_METRICS },
-  unshipped: { total: 0, pending: 0, tested: 0, blocked: 0, urgent: 0 },
+  unshipped: { total: 0, pending: 0, picked: 0, blocked: 0, urgent: 0 },
   roi: null,
   ...over,
 });
@@ -82,7 +82,7 @@ test('unshipped queue metrics: Pending / Urgent / Out of stock click targets', (
   const unshipped = resolveOutboundMetrics(
     baseCtx({
       mode: 'unshipped',
-      unshipped: { total: 33, pending: 12, tested: 21, blocked: 3, urgent: 5 },
+      unshipped: { total: 33, pending: 12, picked: 21, blocked: 3, urgent: 5 },
       roi: roi(),
     }),
   );
@@ -96,7 +96,7 @@ test('unshipped queue metrics: Pending / Urgent / Out of stock click targets', (
   assert.equal(byId.urgent?.filterAttention, true);
   assert.equal(byId.blocked?.label, 'Out of stock');
   assert.equal(byId.blocked?.filterUstatus, 'BLOCKED');
-  assert.equal(byId.ready?.filterUstatus, 'TESTED');
+  assert.equal(byId.ready?.filterUstatus, 'PICKED');
   assert.equal(byId.ready?.filterState, undefined);
   assert.equal(byId.awaiting, undefined);
 });
@@ -112,7 +112,7 @@ test('mode filters the registry (no unshipped ids leak into shipped)', () => {
   const unshipped = resolveOutboundMetrics(
     baseCtx({
       mode: 'unshipped',
-      unshipped: { total: 33, pending: 12, tested: 21, blocked: 3, urgent: 2 },
+      unshipped: { total: 33, pending: 12, picked: 21, blocked: 3, urgent: 2 },
       roi: roi(),
     }),
   );
@@ -177,7 +177,7 @@ test('splitOutboundAttention caps the attention zone', () => {
 test('queue zone pins Pending → Urgent → Out of stock left of attention/trend', () => {
   const ctx = baseCtx({
     mode: 'unshipped',
-    unshipped: { total: 200, pending: 120, tested: 79, blocked: 1, urgent: 4 },
+    unshipped: { total: 200, pending: 120, picked: 79, blocked: 1, urgent: 4 },
     roi: roi({ unitsStuck: 16, pctChange: -13 }),
   });
   const { queue, attention, trend } = splitOutboundAttention(resolveOutboundMetrics(ctx));

@@ -127,7 +127,7 @@ function NavItemRow({
           {item.label}
         </span>
         {item.badge === 'beta' ? (
-          <span className="shrink-0 text-role-micro font-semibold uppercase tracking-wider text-text-faint">Beta</span>
+          <span className="shrink-0 text-role-micro font-semibold text-text-faint">Beta</span>
         ) : null}
         {item.kind === 'drill' ? <ChevronRight aria-hidden className="size-3.5 shrink-0 text-text-faint" /> : null}
       </Link>

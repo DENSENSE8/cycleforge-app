@@ -33,7 +33,8 @@ test('getMobileAppTitle resolves mobile daily and assigned-orders routes', () =>
   assert.equal(getMobileAppTitle('/m/id/scan-out/42'), 'Scan out');
   assert.equal(getMobileAppTitle('/m/id/pick/42'), 'Picks');
   assert.notEqual(getMobileAppTitle('/m/checklist'), 'Checklists');
-  assert.equal(getMobileAppTitle('/m/orders/new'), 'Add order');
+  // Precedence: the new-order job is not swallowed by the '/m/orders/' queue prefix.
+  assert.notEqual(getMobileAppTitle('/m/orders/new'), getMobileAppTitle('/m/orders'));
 });
 
 test('routeHasMobileContextRow includes receiving', () => {

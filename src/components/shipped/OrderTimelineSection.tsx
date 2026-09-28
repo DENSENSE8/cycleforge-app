@@ -19,6 +19,7 @@ import {
   type TimelineItem,
   type UnitTimelinePhotoRow,
 } from '@/lib/timeline';
+import { orderNotesToTimeline } from '@/lib/timeline/order-note-events';
 import { orderTimelineQuery } from '@/lib/queries/order-timeline-query';
 
 /** Order activity timeline — merges every spine the order touches, newest-first, through the shared {@link EventTimeline}. */
@@ -69,7 +70,7 @@ export function OrderTimelineSection({
   const [showPhotos, setShowPhotos] = useState(false);
   const [showAll, setShowAll] = useState(false);
 
-  const { data, isLoading } = useQuery(orderTimelineQuery(orderId));
+  const { data } = useQuery(orderTimelineQuery(orderId));
 
   // Serial-grouped photo stage rows: bucket the flat photo payload by the
   // serial each row carries, run each unit through the shared stage adapter,
@@ -116,7 +117,9 @@ export function OrderTimelineSection({
         ...tag(inventoryEventsToTimeline(data?.lifecycle ?? []), 'ops'),
         ...tag(rmaEventsToTimeline(data?.rmaEvents ?? []), 'ops'),
         ...tag(threadMessagesToTimeline(data?.threadMessages ?? []), 'notes'),
-        ...tag(orderAuditToTimeline(data?.events ?? []), 'system'),
+        ...tag(orderNotesToTimeline(data?.orderNotes ?? []), 'notes'),
+        // A note-append audit row (orders.update carrying only `note`, source 'orders-queue-note') duplicates its `orderNotes` row.
+        ...tag(orderAuditToTimeline((data?.events ?? []).filter((e) => !(e.action === 'orders.update' && e.after_data != null && Object.keys(e.after_data).length === 1 && 'note' in e.after_data))), 'system'),
       ].sort((a, b) => {
         const ta = a.item.at ? new Date(a.item.at).getTime() : 0;
         const tb = b.item.at ? new Date(b.item.at).getTime() : 0;
@@ -127,6 +130,7 @@ export function OrderTimelineSection({
       data?.lifecycle,
       data?.stationEvents,
       data?.threadMessages,
+      data?.orderNotes,
       data?.carrierEvents,
       data?.rmaEvents,
       photoRows,
@@ -156,12 +160,17 @@ export function OrderTimelineSection({
 
   const hiddenCount = !showAll && initialLimit != null ? Math.max(0, items.length - initialLimit) : 0;
 
+  // No loading state (owner 2026-09-27): the timeline is history, not work —
+  // nothing paints until the events land, then the whole card appears at once.
+  // (The order record's photo strips read the same query, so it is usually
+  // in flight before this mounts.)
+  if (!data) return null;
+
   return (
     <>
     <TimelineSection
       title="Timeline"
       items={hiddenCount > 0 ? items.slice(0, initialLimit) : items}
-      loading={isLoading}
       groupMode={groupMode}
       className={
         flush
@@ -172,14 +181,14 @@ export function OrderTimelineSection({
         lens === 'all' ? undefined : 'No events in this lens — switch back to All.'
       }
       headerRight={
-        !isLoading && (tagged.length > 0 || photoCount > 0) ? (
+        tagged.length > 0 || photoCount > 0 ? (
           <div className="flex items-center gap-3">
             {photoCount > 0 ? (
               <Button
                 variant="ghost"
                 size="sm"
                 onClick={() => setShowPhotos((v) => !v)}
-                className="-my-1 h-auto gap-1 px-1.5 py-0.5 text-role-eyebrow uppercase tracking-widest text-text-faint hover:text-text-muted"
+                className="-my-1 h-auto gap-1 px-1.5 py-0.5 text-role-eyebrow text-text-faint hover:text-text-muted"
               >
                 <Camera className="h-3.5 w-3.5" />
                 {showPhotos ? 'Hide photos' : `Photos (${photoCount})`}

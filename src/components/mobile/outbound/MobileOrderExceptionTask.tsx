@@ -233,7 +233,7 @@ export function MobileOrderExceptionTask({ orderId }: { orderId: number }) {
         </nav>
 
         <section aria-labelledby="exception-identity-heading" className="border-b border-border-hairline">
-          <h2 id="exception-identity-heading" className="px-3 py-2 text-role-eyebrow font-semibold uppercase tracking-widest text-text-muted">
+          <h2 id="exception-identity-heading" className="px-3 py-2 text-role-eyebrow font-semibold text-text-muted">
             Order identity
           </h2>
           <div className="border-y border-border-hairline">
@@ -248,7 +248,7 @@ export function MobileOrderExceptionTask({ orderId }: { orderId: number }) {
         </section>
 
         <section aria-labelledby="exception-pair-heading" className="px-3 py-4">
-          <h2 id="exception-pair-heading" className="mb-2 text-role-eyebrow font-semibold uppercase tracking-widest text-text-muted">
+          <h2 id="exception-pair-heading" className="mb-2 text-role-eyebrow font-semibold text-text-muted">
             Catalog pairing
           </h2>
           {!canPair ? (

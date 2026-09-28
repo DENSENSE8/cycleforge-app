@@ -83,6 +83,13 @@ Coarse pointers raise hit floors to 48px, and page padding and body text where t
   declaring its own scale — one edit re-pads every intent in that mode and
   nothing outside it. Components pick the intent, never a literal `p-*` for
   a recurring job, and never override an intent's value locally.
+- **Label voice follows the mode:** every mode declares a `labelVoice` (`mono` on
+  the floor, `sentence` on the desks) → `--mode-label-case` / `-tracking` / `-font`
+  / `-weight` / `-size`. `text-role-eyebrow` / `text-role-micro` read the case and
+  tracking intrinsically, `mode-label` / `mode-label-case` read the rest; labels
+  never add `uppercase tracking-widest` — today every voice is sentence case
+  (owner 2026-09-28, the floor included). Caps-by-identity codes (SKU, lifecycle
+  code) keep an explicit `uppercase`.
 
 Density still applies inside a mode: `--cf-density` (`[data-density='compact']`
 0.92, the DataTable zoom) multiplies every intent and the stock spacing scale.
@@ -120,6 +127,12 @@ closed by Esc back to the layer above:
    innermost layer and returns focus to the element that opened it
    (`DeskRecordPlane` → the record's row; `AnchoredLayer` → its opener). Only
    L4 traps focus; L2 / L3 are non-modal so J/K keep walking the list.
+5. **A scan is a drill-down.** On To ship (`/shipping/orders`) a wedge scan of
+   an order # or tracking # opens that order's L3 in place through the record
+   cursor (intent `'scan'`) — `useToShipScanOpen` claims the global wedge's
+   `wedge-scan` event; `matchScannedOrder` (`src/lib/orders/scan-order-match.ts`)
+   resolves loaded rows, `/api/orders/lookup` the rest. Known but off the list
+   → a toast with Open; unknown → a toast. A scan never re-filters the list.
 
 Runtime focus behaviour has no DOM test stack yet (`skill://add-guard` Tier 4)
 — it is enforced by the two primitives above, not by a source regex.
@@ -167,7 +180,7 @@ usage: [`ai/README.md`](./ai/README.md) (values in `ai/tokens.ts`).
   - `tokens/typography/families.ts`
   - `tokens/typography/sizes.ts`
   - `tokens/typography/weights.ts`
-  - `tokens/typography/presets.ts` — composed Tailwind class presets (`sectionLabel`, `fieldLabel`, `dataValue`, `monoValue`, `chipText`, `cardTitle`, `tableHeader`, `tableCell`, `microBadge`). `tableHeader` is Sentence case (no CSS `uppercase`); eyebrows / chips / field·section labels stay uppercase micro chrome.
+  - `tokens/typography/presets.ts` — composed Tailwind class presets (`sectionLabel`, `fieldLabel`, `dataValue`, `monoValue`, `chipText`, `cardTitle`, `tableHeader`, `tableCell`, `microBadge`). Every preset is sentence case — no CSS `uppercase` anywhere on screen (owner 2026-09-28); eyebrows / chips / field·section labels stay small micro chrome, not caps.
 - Density and structure:
   - `tokens/spacing.ts` — includes `density` presets (compact/standard/spacious)
   - `tokens/borders.ts`
@@ -229,7 +242,7 @@ usage: [`ai/README.md`](./ai/README.md) (values in `ai/tokens.ts`).
 - `SearchField.tsx` — decoupled draft architecture, debounced, tone-colored; hover-reveal paste glyph (smaller than the leading Search icon)
 - ~~`ToolbarSearchToggle.tsx`~~ — **deleted 2026-08-03.** Workbench / rail scoped search SoT is `TechRailSearchBar` (`@/components/sidebar/tech/TechRailSearchBar`): always-open field + paste; `variant="chrome"` for headers (in-field Search glyph in a sunken bordered well), `variant="rail"` for footers.
 - `DeferredQtyInput.tsx` — number input with internal draft, clamped on blur
-- `StatusText.tsx` — uppercase label with colored underline
+- `StatusText.tsx` — sentence-case label with colored underline
 - `StickyHeader.tsx` — sticky top/bottom with optional frosted-glass backdrop
 - `ConditionText.tsx` — inline condition+qty+title with color mapping; exports `getConditionColor`, `formatConditionLabel`
 - `ActionButtonGroup.tsx` — row of icon action buttons with consistent spacing
@@ -371,9 +384,9 @@ keeps its gutter because an inverse face genuinely needs to read as inset.
 
 | `variant` | Rail | Active pill | Active text | Labels | Use for |
 |---|---|---|---|---|---|
-| `default` | `bg-surface-sunken` sunken track | light `bg-surface-card` pill | per-tab semantic hue (`color`) | uppercase, `font-semibold`, tracked | most in-app tab rows |
+| `default` | `bg-surface-sunken` sunken track | light `bg-surface-card` pill | per-tab semantic hue (`color`) | sentence case, `font-semibold` | most in-app tab rows |
 | `solid` | light `bg-surface-card` + `border-border-default` | **dark `bg-surface-inverse` pill** | `text-text-inverse` (white) | title-case, `font-semibold` | headline lifecycle switchers (Dashboard · Outbound) — high-contrast Linear-style control **(legacy)** |
-| `upNext` | tinted station rail (`bg-surface-strong`) | light pill + station outline | semantic hue | uppercase | station up-next queue |
+| `upNext` | tinted station rail (`bg-surface-strong`) | light pill + station outline | semantic hue | sentence case | station up-next queue |
 
 - `TabSwitch` `countStyle`: `badge` (mini pill bubble, default) or `plain` (inline — preferred for dense ops headers). `TabDisplay` always uses plain tabular counts.
 - `solid` / `TabDisplay` labels come from the source string as-is (no CSS uppercasing) — store them title-case. All treatments are token-only so they flip under `data-theme` dark mode.
@@ -429,7 +442,7 @@ the dark-mode flip of these tones is **T2**.
 - Prefer **rows + dividers** for ordinary collections — not nested card grids as list items.
 - Named rollup zones (`SectionCard`, `KpiStrip`) and pipeline boards are first-class when data shape requires them.
 - Primary separation through ghost borders and tonal shifts.
-- Labels: 9px, uppercase, heavy weight, tracked (see typography presets).
+- Labels: 9px, sentence case, heavy weight (see typography presets).
 - Values: 13px bold, with monospace for technical identifiers.
 - **Status / identifiers:** resolve via presentation SoTs — `StatusText` / lifecycle tones / typed `CopyChip` / condition chips as appropriate. Do not invent a parallel badge system.
 - Interaction micro-motion: 100–150ms; named Motion presets only (`foundations/motion-presets.ts` + reduced-motion hooks).
@@ -481,6 +494,13 @@ Detection priority:
 | Inline success/error feedback (ring + shake) | Viewfinder ring color + success checkmark / error X |
 | Results appear inline below input | Results appear as cards, camera closes on success |
 
+Tone + buzz on a scan go through `useScanFeedback()` (`src/lib/scan-feedback`):
+`playScanFeedback('success' | 'warn' | 'reject')` — `warn` = landed, but look (a duplicate
+serial). It reads the station-wide settings page `scan`: org master switch `scan.soundsEnabled`
+plus per-staff `scan.sound` / `scan.haptics` (Settings › Your setup › Hardware). Dock presses use
+`usePressHaptic()` behind the same haptics toggle. Never call `playScanTone` / `vibrateScan`
+directly from a station — that skips the switches.
+
 ### Buttons & Actions
 
 | Desktop | Mobile |
@@ -513,7 +533,7 @@ Mobile-specific additions to the existing motion system:
 ### Mobile Icon UX Rules
 
 - **Primary actions** = icon + optional short label
-- **Bottom nav** = icon + 9px uppercase label (always visible, per iOS HIG)
+- **Bottom nav** = icon + 9px sentence-case label (always visible, per iOS HIG)
 - **Secondary actions** = overflow menu (`...` icon) on mobile, inline on desktop
 - **Toolbar** = max 2 trailing icon buttons (`IconButton size="touch"`)
 - **Accessibility**: all icon-only buttons require `ariaLabel`; desktop adds `title` for tooltip hover
@@ -562,7 +582,7 @@ Desktop framing is `ResponsiveLayout` + the MasterNav spine.
 Migrate existing components to consume new design system primitives:
 
 1. **OrderCard / FbaItemCard / RepairCard** — replace inline `getConditionColor` helpers with `ConditionText` primitive
-2. **TechTable / PackerTable** — replace inline sticky date headers with `DateGroupHeader` component
+2. **DeskPickTable / PackerTable** — replace inline sticky date headers with `DateGroupHeader` component
 3. **UpNextFilterBar** — replace inline AnimatePresence toggle with `OverlaySearch` component
 4. **Sidebar form sections** — replace inline label styling with `FormField` component
 5. **All expand/collapse patterns** — `<Collapse open>` / `<CollapseItem>` (`components/Collapse.tsx`); a hand-rolled `height` animation is a lint error (the `ExpandableSection` primitive was deleted 2026-07-31; the `collapseHeight` preset was retired 2026-09-27)

@@ -196,7 +196,6 @@ UI, storage, validation, audit, permission gating, and plan-gating are automatic
 |---|---|---|---|
 | `receiving.defaultScanMode` | segmented (tracking / order) | org+personalizable | `ReceivingUnboxScanBar` |
 | `receiving.defaultLandingMode` | select | staff | `useReceivingDashboardMode` |
-| `receiving.scanSound` / `scanHaptics` | toggle | staff | scan handlers |
 | `receiving.autoFocusSerial` | toggle | staff | `useTrackingScan` |
 | `receiving.autoPushPhoneCamera` | toggle | org+personalizable | `useTrackingScan` |
 | `receiving.accordionExpand` | segmented (active / all) | staff | `useReceivingWorkspacePane` |
@@ -204,6 +203,21 @@ UI, storage, validation, audit, permission gating, and plan-gating are automatic
 
 `receiving.autoTicket` is the one item that is genuinely new behavior (there is no auto-trigger to
 gate today), so its trigger is built separately from this framework.
+
+## Scan feedback catalog (every station)
+
+Page `scan` — rendered on Settings › Your setup › Hardware (`HardwareSection`), read by
+`useScanFeedback` / `usePressHaptic` (`src/lib/scan-feedback`) at every station: receiving, the
+`/m` scan + repair companion, the `/wipe` bench, the mobile dock press.
+
+| key | control | scope | default | legacy key (read until first write) |
+|---|---|---|---|---|
+| `scan.soundsEnabled` | toggle | org (admin) | off | `receiving.scanSoundsEnabled` |
+| `scan.sound` | toggle | staff | on | `receiving.scanSound` |
+| `scan.haptics` | toggle | staff | on | `receiving.scanHaptics` |
+
+A tone plays only with the org switch AND the staff toggle on; a buzz needs only the staff toggle.
+`scan.haptics` defaults on because phone stations buzzed unconditionally before they read it.
 
 ## Desk catalog
 
@@ -249,7 +263,6 @@ value; writes always land on `key`. `desk.<deskId>.view` reads the old boolean
   receive preflight — WS-PHOTO Wave 2).
 - **Deferred (need a product call, not just plumbing):** `defaultScanMode` (arming a mode would
   override the dash→PO# auto-detect), `defaultLandingMode` (sync-hook would flicker — wants a
-  server-resolve/redirect), `autoPrintLabel` (touches the blocking print path), `scanSound` /
-  `scanHaptics` (no existing audio to gate).
+  server-resolve/redirect), `autoPrintLabel` (touches the blocking print path).
 - **Phase 2:** in-context ⚙ gears per archetype; push more pages' behaviors into the registry.
 - **Phase 3:** the `receiving.autoTicket` trigger (net-new behavior) + upgrade-prompt polish.

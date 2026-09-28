@@ -36,7 +36,6 @@ export const ROUTE_TENANCY_EXEMPTIONS: Record<string, { reason: string; category
   '/api/auth/qr/authorize': { category: 'preauth-identity', reason: "one-time QR authorization must resolve a staff identity before an org context exists; PIN/passkey proof is verified before the QR session is bound to that staff row's organization" },
   '/api/auth/staff-choice': { category: 'preauth-identity', reason: "loads a verified umbrella session first, then scopes the shared-account staff choice to that session's organization and staff id" },
   '/api/orders/import/suggest-mapping': { category: 'no-db-false-positive', reason: "AI-assisted header mapping only; orders appears in module and permission names, not a database query" },
-  '/api/orders/intake-suggestions': { category: 'helper-safe-delegation', reason: "passes ctx.organizationId to the Ecwid credential resolver; remaining work is provider fetch and pure canonical-order mapping" },
   '/api/realtime/wms-ticket': { category: 'no-db-false-positive', reason: "signs a short-lived ticket from authenticated context only; orders appears in the permission name, not a database query" },
   '/api/receiving/inbound/extract-po': { category: 'helper-safe-delegation', reason: "passes ctx.organizationId to the tenant-scoped AI provider resolver; the extraction path performs no warehouse database query" },
   '/api/sku-catalog/composition/batch': { category: 'helper-safe-delegation', reason: "threads ctx.organizationId into batch loaders whose relationship and kit queries use tenantQuery" },

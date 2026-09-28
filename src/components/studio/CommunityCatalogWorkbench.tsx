@@ -103,7 +103,7 @@ export function CommunityCatalogWorkbench() {
       <header className="flex items-center gap-2 border-b border-border-hairline px-5 py-3">
         <Globe className="h-4 w-4 text-text-accent" />
         <h1 className="text-role-caption font-semibold text-text-default">Community catalog</h1>
-        <span className="ml-auto rounded-full bg-surface-sunken px-2 py-0.5 text-role-eyebrow uppercase tracking-widest text-text-soft">
+        <span className="ml-auto rounded-full bg-surface-sunken px-2 py-0.5 text-role-eyebrow text-text-soft">
           {templates?.length ?? 0} template{templates?.length === 1 ? '' : 's'}
         </span>
       </header>
@@ -139,7 +139,7 @@ export function CommunityCatalogWorkbench() {
                 <p className="mt-1 text-role-caption font-semibold text-text-soft">
                   No community templates published yet.
                 </p>
-                <p className="mt-0.5 text-role-eyebrow uppercase tracking-widest text-text-faint">
+                <p className="mt-0.5 text-role-eyebrow text-text-faint">
                   Curator-approved blueprints appear here to clone.
                 </p>
               </Panel>
@@ -159,7 +159,7 @@ export function CommunityCatalogWorkbench() {
                         ].join(' ')}
                       >
                         <span className="truncate text-role-caption font-semibold text-text-default">{t.name}</span>
-                        <span className="truncate text-role-eyebrow font-semibold uppercase tracking-widest text-text-faint">
+                        <span className="truncate text-role-eyebrow font-semibold text-text-faint">
                           {t.category ?? 'Uncategorized'} · {t.nodeCount} step{t.nodeCount === 1 ? '' : 's'}
                         </span>
                       </button>
@@ -184,11 +184,11 @@ export function CommunityCatalogWorkbench() {
                 className="mx-auto max-w-2xl space-y-5 px-6 py-6"
               >
                 <div className="space-y-1">
-                  <span className="inline-flex items-center gap-1.5 text-role-eyebrow uppercase tracking-widest text-text-accent">
+                  <span className="inline-flex items-center gap-1.5 text-role-eyebrow text-text-accent">
                     <Globe className="h-3.5 w-3.5" /> {selected.category ?? 'Uncategorized'}
                   </span>
                   <h2 className="text-lg font-semibold text-text-default">{selected.name}</h2>
-                  <p className="font-mono text-role-eyebrow uppercase tracking-widest text-text-faint">{selected.slug}</p>
+                  <p className="font-mono text-role-eyebrow text-text-faint">{selected.slug}</p>
                 </div>
 
                 {selected.description && (
@@ -197,7 +197,7 @@ export function CommunityCatalogWorkbench() {
 
                 <dl className="grid grid-cols-2 gap-3">
                   <div className="space-y-1">
-                    <dt className="text-role-eyebrow uppercase tracking-widest text-text-faint">Shape</dt>
+                    <dt className="text-role-eyebrow text-text-faint">Shape</dt>
                     <dd className="flex items-center gap-1.5 text-role-caption font-semibold text-text-muted">
                       <Boxes className="h-3.5 w-3.5 text-text-soft" />
                       {selected.nodeCount} step{selected.nodeCount === 1 ? '' : 's'} · {selected.edgeCount} link
@@ -205,7 +205,7 @@ export function CommunityCatalogWorkbench() {
                     </dd>
                   </div>
                   <div className="space-y-1">
-                    <dt className="text-role-eyebrow uppercase tracking-widest text-text-faint">Category</dt>
+                    <dt className="text-role-eyebrow text-text-faint">Category</dt>
                     <dd className="text-role-caption font-semibold text-text-muted">{selected.category ?? '—'}</dd>
                   </div>
                 </dl>
@@ -248,7 +248,7 @@ export function CommunityCatalogWorkbench() {
                   <p className="mt-2 text-role-caption font-semibold text-text-soft">
                     Select a template to preview it.
                   </p>
-                  <p className="mt-0.5 text-role-eyebrow uppercase tracking-widest text-text-faint">
+                  <p className="mt-0.5 text-role-eyebrow text-text-faint">
                     Clone a community blueprint into your Studio as an editable draft.
                   </p>
                 </div>

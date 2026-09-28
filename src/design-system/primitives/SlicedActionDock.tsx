@@ -195,7 +195,7 @@ const SEGMENT_INK = {
 } as const;
 
 /** Segment label: the bar's mono 10 heavy uppercase — the modes' own face. */
-const SEGMENT_LABEL_FACE = 'font-mono text-role-micro font-extrabold uppercase tracking-[0.08em]';
+const SEGMENT_LABEL_FACE = 'font-mono text-role-micro font-extrabold';
 
 function isEmbeddedSoftTrack(
   embedded: boolean | undefined,
@@ -486,7 +486,7 @@ export function SlicedActionDock({
                 if (!item.keepOpen) closeMenu();
               }}
               className={cn(
-                'flex w-full items-center gap-2.5 px-3 py-2.5 text-left text-role-caption font-semibold uppercase tracking-wider transition-colors hover:bg-surface-hover disabled:cursor-not-allowed disabled:opacity-35',
+                'flex w-full items-center gap-2.5 px-3 py-2.5 text-left text-role-caption font-semibold transition-colors hover:bg-surface-hover disabled:cursor-not-allowed disabled:opacity-35',
                 item.selected ? 'bg-surface-hover text-text-default' : 'text-text-default',
               )}
             >

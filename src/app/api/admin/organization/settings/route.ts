@@ -14,6 +14,8 @@ import { syncAgentRootsFromSettings } from '@/lib/nas-agent-client';
 import { normalizeProvider } from '@/lib/photos/analyze-provider';
 import { normalizeVisionLane } from '@/lib/support/vision-lane';
 import { normalizeAiProviderOrder } from '@/lib/ai/provider-order';
+import { invalidateAiProviderOrder } from '@/lib/ai/provider-order-deps';
+import { invalidateOrgSpendCap } from '@/lib/ai/org-spend-cap';
 import {
   isLicensedGln,
   isPlaceholderGs1Prefix,
@@ -66,7 +68,7 @@ export const GET = withAuth(async (_req: NextRequest, ctx) => {
         },
         // Raw org request — null means "inherit env / local-first". Never
         // return the resolved order; provider-order.ts owns that precedence.
-        ai: { providerOrder: aiSettings.providerOrder ?? null },
+        ai: { providerOrder: aiSettings.providerOrder ?? null, monthlyCostCapUsd: aiSettings.monthlyCostCapUsd ?? null },
   });
 }, { permission: 'admin.view' });
 
@@ -371,12 +373,12 @@ export const PATCH = withAuth(async (req: NextRequest, ctx) => {
     patch.support = next;
   }
 
-  // ── ai (provider order preference) ───────────────────────────────────────
+  // ── ai (provider order preference, monthly platform AI budget) ───────────
   if ('ai' in body) {
     const raw = (body as Record<string, unknown>).ai;
     if (raw == null || typeof raw !== 'object' || Array.isArray(raw)) {
       return NextResponse.json(
-        { error: 'ai must be an object of { providerOrder }' },
+        { error: 'ai must be an object of { providerOrder, monthlyCostCapUsd }' },
         { status: 400 },
       );
     }
@@ -405,6 +407,22 @@ export const PATCH = withAuth(async (req: NextRequest, ctx) => {
       }
     }
 
+    // USD per calendar month of platform-carried AI cost (org-spend-cap.ts).
+    // 0 = no cap for this org; null = inherit AI_ORG_MONTHLY_COST_CAP_USD.
+    if ('monthlyCostCapUsd' in r) {
+      const cap = r.monthlyCostCapUsd;
+      if (cap === null || cap === '') {
+        delete next.monthlyCostCapUsd;
+      } else if (typeof cap === 'number' && Number.isFinite(cap) && cap >= 0 && cap <= 1_000_000) {
+        next.monthlyCostCapUsd = cap;
+      } else {
+        return NextResponse.json(
+          { error: 'monthlyCostCapUsd must be a number of dollars from 0 to 1000000, or null' },
+          { status: 400 },
+        );
+      }
+    }
+
     patch.ai = next;
   }
 
@@ -419,6 +437,10 @@ export const PATCH = withAuth(async (req: NextRequest, ctx) => {
   }
 
   await updateOrgSettings(ctx.organizationId as OrgId, patch as Partial<OrgSettings>);
+  if ('ai' in patch) {
+    await invalidateAiProviderOrder(ctx.organizationId as OrgId);
+    invalidateOrgSpendCap(ctx.organizationId as OrgId);
+  }
 
   let agentSync: { ok: boolean; error?: string } | undefined;
   if ('nasStorageTargets' in patch) {

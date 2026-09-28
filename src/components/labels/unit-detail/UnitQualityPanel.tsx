@@ -9,6 +9,7 @@ import { timeAgo } from '@/utils/_date';
 import { qualityRiskToneClass } from '@/lib/quality-risk-tone';
 import { qualitySeverityToneClass } from '@/lib/quality-severity-tone';
 import { repairOutcomeToneClass } from '@/lib/repair-outcome-tone';
+import { conditionSentenceLabel } from '@/lib/conditions';
 
 /** Quality + failures + repairs for one serial unit — the QC system's read+act surface in the detail pane. */
 
@@ -61,7 +62,7 @@ interface FailureMode {
 }
 
 const CARD = 'rounded-none bg-surface-card shadow-sm ring-1 ring-border-soft/60';
-const HEAD = 'text-role-eyebrow uppercase tracking-[0.14em] text-text-soft';
+const HEAD = 'text-role-eyebrow text-text-soft';
 
 function prettyReason(r: string): string {
   return r.replace(/_/g, ' ');
@@ -133,7 +134,7 @@ function QualityCard({ quality, grade }: { quality: QualityScore | null; grade: 
     <section className={`${CARD} p-5`}>
       <div className="mb-3 flex items-center justify-between">
         <h3 className={HEAD}>Quality</h3>
-        <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-role-micro uppercase tracking-wider ring-1 ${tone}`}>
+        <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-role-micro ring-1 ${tone}`}>
           <ShieldCheck className="h-3 w-3" /> {quality.risk_level} risk
         </span>
       </div>
@@ -141,7 +142,7 @@ function QualityCard({ quality, grade }: { quality: QualityScore | null; grade: 
         <span className="text-4xl font-semibold tabular-nums text-text-default">{quality.quality_score}</span>
         <span className="pb-1 text-role-caption font-semibold text-text-faint">/ 100</span>
         <div className="ml-auto text-right text-role-micro text-text-faint">
-          {grade ? <div className="font-semibold text-text-muted">{grade}</div> : null}
+          {grade ? <div className="font-semibold text-text-muted">{conditionSentenceLabel(grade)}</div> : null}
           {quality.ebay_condition_id ? <div>eBay cond {quality.ebay_condition_id}</div> : null}
         </div>
       </div>
@@ -282,12 +283,12 @@ function FailureTagsCard({
                       {t.label ?? t.code ?? `Mode #${t.failure_mode_id}`}
                     </span>
                     {t.severity && (
-                      <span className={`rounded-full border px-1.5 py-0.5 text-role-micro uppercase ${qualitySeverityToneClass(t.severity)}`}>
+                      <span className={`rounded-full border px-1.5 py-0.5 text-role-micro ${qualitySeverityToneClass(t.severity)}`}>
                         {t.severity}
                       </span>
                     )}
                     {!isOpen && (
-                      <span className="text-role-micro uppercase tracking-wider text-emerald-600">{t.resolution_status}</span>
+                      <span className="text-role-micro text-emerald-600">{t.resolution_status}</span>
                     )}
                   </div>
                   <div className="mt-0.5 text-role-micro text-text-soft">
@@ -448,7 +449,7 @@ function RepairRowItem({
   return (
     <li className="px-5 py-3">
       <div className="flex items-center gap-2">
-        <span className={`rounded-md px-1.5 py-0.5 text-role-micro uppercase tracking-wider ${repairOutcomeToneClass(repair.status)}`}>
+        <span className={`rounded-md px-1.5 py-0.5 text-role-micro ${repairOutcomeToneClass(repair.status)}`}>
           {repair.status.replace(/_/g, ' ')}
         </span>
         <span className="min-w-0 flex-1 truncate text-role-caption font-semibold text-text-default">{repair.summary}</span>

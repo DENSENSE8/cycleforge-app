@@ -9,7 +9,7 @@ import {
   DeskInspectorIndexShell,
 } from '@/components/right-rail/DeskInspectorIndexShell';
 import { MoreHorizontal } from '@/components/Icons';
-import { IconButton } from '@/design-system/primitives';
+import { IconButton, KeyboardKey } from '@/design-system/primitives';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -272,7 +272,7 @@ export function ShippedDetailsPanel({
             >
               <span>{item.label}</span>
               {item.shortcut ? (
-                <kbd className="font-mono text-role-micro text-text-faint">{item.shortcut}</kbd>
+                <KeyboardKey size="xs">{item.shortcut}</KeyboardKey>
               ) : null}
             </DropdownMenuItem>
           ))}

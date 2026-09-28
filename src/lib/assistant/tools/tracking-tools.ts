@@ -181,6 +181,8 @@ export const getTrackingStatus: AssistantToolDef<typeof trackingInput> = {
       };
     }
     let syncNote: string | null = null;
+    // The carrier call can take the whole 6 s budget: no batch connection may wait on it.
+    await deps.releaseBatch?.();
     const synced = await withBudget(syncShipment({ shipmentId: known.id }, org), CARRIER_SYNC_BUDGET_MS).catch(
       (err: unknown) => ({ ok: false as const, error: err instanceof Error ? err.message : String(err) }),
     );

@@ -49,7 +49,7 @@ function StageThumbRow({
 
   return (
     <div className="min-w-0">
-      <p className="mb-1 text-role-micro font-semibold uppercase tracking-widest text-emerald-700/80">
+      <p className="mb-1 text-role-micro font-semibold text-emerald-700/80">
         {label}
         <span className="ml-1 tabular-nums text-emerald-600/60">{rows.length}</span>
       </p>

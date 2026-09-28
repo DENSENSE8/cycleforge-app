@@ -14,7 +14,16 @@ import {
   parseReceivingHistorySearchScopeWire,
 } from '@/lib/receiving-history-search';
 import { HISTORY_SORT_WIRE_IDS } from '@/lib/receiving/receiving-modes';
-import { INBOUND_LANE_PARAM_VALUES, parseInboundDeskSort } from '@/lib/receiving/inbound-lane';
+import {
+  DOCKED_DATE_FROM_PARAM,
+  DOCKED_DATE_TO_PARAM,
+  DOCKED_FLAG_PARAM,
+  DOCKED_KIND_PARAM,
+  DOCKED_KIND_VALUES,
+  INBOUND_FIND_PARAM,
+  INBOUND_LANE_PARAM_VALUES,
+  parseInboundDeskSort,
+} from '@/lib/receiving/inbound-lane';
 import { parseIncomingViewWire } from '@/lib/receiving/incoming-view';
 import { parseIncomingDeliveryStateWire } from '@/lib/receiving/incoming-delivery-state-face';
 import { parseUnboxKpiFilterWire } from '@/lib/receiving/unbox-metrics';
@@ -130,6 +139,10 @@ export const UNBOX_ROUTE_PARAMS = defineRouteParams({
     [RECEIVING_HISTORY_URL_PARAMS.q]: paramText,
     [RECEIVING_HISTORY_URL_PARAMS.field]: historySearchFieldParam(),
     [RECEIVING_HISTORY_URL_PARAMS.scope]: historySearchScopeParam(),
+    /** History tab "needs attention" pills (`DockedReceiptsLedger`). */
+    [DOCKED_FLAG_PARAM]: paramText,
+    /** History tab intake kind (sidebar Kind row). */
+    [DOCKED_KIND_PARAM]: paramEnum(DOCKED_KIND_VALUES),
     /**
      * Station composer destination — `label` (default, omitted) · `ticket`.
      * Shared with Testing (`SHARED_OWNED_KEYS.composerMode`).
@@ -213,9 +226,18 @@ export const INCOMING_ROUTE_PARAMS = defineRouteParams({
     page: paramPositiveInt,
     /** Shared receiving search box. */
     [RECEIVING_HISTORY_URL_PARAMS.q]: paramText,
+    /** Sidebar Find over the loaded rows (`INBOUND_FIND_PARAM`), both lanes. */
+    [INBOUND_FIND_PARAM]: paramText,
     /** Docked (history) search field / carton-source scope. */
     [RECEIVING_HISTORY_URL_PARAMS.field]: historySearchFieldParam(),
     [RECEIVING_HISTORY_URL_PARAMS.scope]: historySearchScopeParam(),
+    /** Unboxed "needs attention" pills (`DockedReceiptsLedger`) — a saved view keeps them. */
+    [DOCKED_FLAG_PARAM]: paramText,
+    /** Unboxed intake kind (sidebar Kind row) — a saved view keeps it. */
+    [DOCKED_KIND_PARAM]: paramEnum(DOCKED_KIND_VALUES),
+    /** Docked activity-date window (sidebar date row) — replaces the week slice while set. */
+    [DOCKED_DATE_FROM_PARAM]: paramDateKey,
+    [DOCKED_DATE_TO_PARAM]: paramDateKey,
     /**
      * Record plane — the open row's `receiving_line` id on either lane.
      * `DeskRecordPlane` shows it in place of the list, or beside it when the

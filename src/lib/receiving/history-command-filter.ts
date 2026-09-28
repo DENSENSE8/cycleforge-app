@@ -1,6 +1,5 @@
 /** Unbox History Band 3 command-row filter bag — URL SoT for find + exact-match refine (`?rh_q=` / `?rh_field=` / `?rh_scope=` / `?sort=` /… */
 
-import { parseStaffParam, STAFF_FILTER_PARAM } from '@/hooks/useStaffFilter';
 import {
   HISTORY_DEFAULT_SORT,
   normalizeHistorySort,
@@ -15,7 +14,9 @@ import {
   type ReceivingHistorySearchScope,
 } from '@/lib/receiving-history-search';
 import {
+  parseStaffParam,
   parseWeekOffset,
+  STAFF_FILTER_PARAM,
   WEEK_OFFSET_PARAM,
 } from '@/lib/station/table-url-params';
 

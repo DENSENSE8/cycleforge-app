@@ -33,6 +33,8 @@ export interface UnitResult {
   /** Recorded structured values for value-kind steps. */
   value_num?: string | number | null;
   value_text?: string | null;
+  /** `qc_procedure_versions.id` the answer was recorded against (BIGINT → string). */
+  procedure_version_id?: string | number | null;
 }
 
 export interface Bundle {

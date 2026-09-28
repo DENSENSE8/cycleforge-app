@@ -9,9 +9,9 @@
  */
 
 import type { ShippedOrder } from '@/types/orders';
-import type { LifecycleState } from '@/design-system/tokens/lifecycle';
+import { LIFECYCLE, type LifecycleState, type StateName } from '@/design-system/tokens/lifecycle';
 import { recordState, worstState } from '@/components/outbound/orders/outbound-orders-ledger-state';
-import { conditionLabel } from '@/lib/conditions';
+import { conditionSentenceLabel } from '@/lib/conditions';
 import { resolveOrderBin, type OrderBinFace } from '@/lib/shipping/outbound-storage-path';
 import { ordersLineTitle, resolveOrdersIndexValue } from '@/lib/tables/field-catalog/orders-resolve';
 import type { CompoundDelay } from '@/components/tables/compound/compound-row-model';
@@ -20,6 +20,7 @@ import { getExternalUrlByItemNumber } from '@/utils/external-item-url';
 import { orderAdminUrl } from '@/utils/order-platform';
 import { orderStage, type OrderStage } from '@/lib/orders/order-stages';
 import { customerFullName } from '@/lib/customers/customer-display';
+import { PICKUP_FULFILLMENT_CHANNEL } from '@/lib/orders/release-gates';
 
 export interface OrderCardLine {
   record: ShippedOrder;
@@ -70,12 +71,16 @@ export interface OrderCardModel {
   /** Where the order's ↗ goes: {@link adminUrl}, else the derived marketplace URL. Null → the card offers "Add link". */
   orderHref: string | null;
   fba: boolean;
+  /** Counter pickup (`fulfillment_channel = 'PICKUP'`) — no label is coming, and none is owed. */
+  pickup: boolean;
   sla: OrderCardSla;
   /** Units across every line. */
   units: number;
   outOfStockCount: number;
   urgent: boolean;
   buyerNote: string | null;
+  /** The staff note on the order (`orders.notes`), when one is written. */
+  staffNote: string | null;
   /** Linked customer's name, else the ShipStation ship-to name / company. Null when neither. */
   buyerName: string | null;
   /** The shown product's marketplace listing — item number, else SKU (the To-ship listing rule). */
@@ -90,6 +95,18 @@ export interface OrderCardModel {
    * shown line's), Pack is {@link pack}. Always all three, in that order.
    */
   stages: readonly OrderStage[];
+  /** The next workflow step (Pick → Pack → Scan out); null once shipped. */
+  next: OrderNextStep | null;
+}
+
+/** Where the order goes next — the card's bottom-right. */
+export interface OrderNextStep {
+  /** The next verb, present tense: "Pick" · "Pack" · "Scan out" (pickup: "Hand over"). */
+  label: string;
+  tone: StateName;
+  tip: string;
+  /** Pick cannot run: a line is out of stock. */
+  blocked: boolean;
 }
 
 function linePrice(line: ShippedOrder): { text: string | null; estimate: boolean } {
@@ -114,9 +131,7 @@ function linePrice(line: ShippedOrder): { text: string | null; estimate: boolean
 function lineCondition(line: ShippedOrder): { label: string | null; code: string | null } {
   const code = String(line.condition ?? '').trim().toUpperCase();
   if (!code || code === 'N/A') return { label: null, code: null }; // ds-allow-na: marketplace empty-vocab reader
-  // A marketplace word outside the grade vocabulary comes back raw ("USED").
-  const label = conditionLabel(code, 'label');
-  return { label: label === label.toUpperCase() ? label[0] + label.slice(1).toLowerCase() : label, code };
+  return { label: conditionSentenceLabel(code), code };
 }
 
 function shortNote(line: ShippedOrder): string | null {
@@ -185,6 +200,39 @@ export function orderSla(rows: readonly ShippedOrder[], todayKey: string): Order
 export const ORDER_SLA_SECTIONS: readonly OrderCardSlaTone[] = ['late', 'today', 'soon', 'later', 'none'];
 
 /**
+ * The order's next step on the floor: Pick → Pack → Scan out (a counter pickup
+ * is handed over instead). QC is a unit fact, not order work, so it never
+ * stands between Picked and Packed here. The latest done stage wins — a packed
+ * order is waiting on its scan-out even when its pick went unrecorded.
+ */
+export function orderNextStep(
+  state: LifecycleState,
+  stages: { pick: OrderStage; pack: OrderStage },
+  pickup: boolean,
+): OrderNextStep | null {
+  if (state === 'shipped') return null;
+  const assigned = (stage: OrderStage) => (stage.who ? ` — assigned to ${stage.who}` : '');
+  if (stages.pack.done) {
+    return pickup
+      ? { label: 'Hand over', tone: LIFECYCLE.shipped.tone, tip: 'Next: hand it to the customer at the counter', blocked: false }
+      : { label: 'Scan out', tone: LIFECYCLE.shipped.tone, tip: 'Next: scan it out at the dock', blocked: false };
+  }
+  if (stages.pick.done) {
+    return { label: 'Pack', tone: LIFECYCLE.packed.tone, tip: `Next: pack it${assigned(stages.pack)}`, blocked: false };
+  }
+  const blocked = stages.pick.blocked != null;
+  return {
+    label: 'Pick',
+    tone: LIFECYCLE.ready.tone,
+    tip: blocked ? 'Next: pick it — blocked, a line is out of stock' : `Next: pick it${assigned(stages.pick)}`,
+    blocked,
+  };
+}
+
+/** How the triage chrome and the verb reasons name an order. */
+export const ORDER_NOUN = { one: 'order', many: 'orders' } as const;
+
+/**
  * One order's card. `rows` is every line of the order, in display order.
  * `staffName` names a pick / pack actor the wire sent only as an id.
  */
@@ -200,6 +248,7 @@ export function orderCardModel(
   const lines = [...built.filter((l) => l.outOfStock), ...built.filter((l) => !l.outOfStock)];
   const sla = orderSla(rows, todayKey);
   const buyerNote = rows.map((r) => String(r.buyer_note ?? '').trim()).find(Boolean) ?? null;
+  const staffNote = rows.map((r) => String(r.notes ?? '').trim()).find(Boolean) ?? null;
   const shipTo = lead.shipstation_ship_to;
   const buyerName =
     (lead.customer ? customerFullName(lead.customer) : String(shipTo?.name || shipTo?.company || '').trim()) || null;
@@ -209,28 +258,35 @@ export function orderCardModel(
   const lineStage = (kind: 'pick' | 'qc') =>
     lines.find((l) => !l.stages[kind].done)?.stages[kind] ?? shownLine.stages[kind];
   const listingItem = String(shown.item_number || shown.sku || '').trim() || null;
-  const orderId = String(lead.order_id || '').trim() || `#${lead.id}`;
+  // Bare like every platform's id (owner 2026-09-28: no "#" on an id-less record).
+  const orderId = String(lead.order_id || '').trim() || String(lead.id);
   const adminUrl = rows.map((r) => String(r.admin_url ?? '').trim()).find(Boolean) ?? null;
+  const state = worstState(built.map((l) => l.state));
+  const pickup = lead.fulfillment_channel === PICKUP_FULFILLMENT_CHANNEL;
+  const pick = lineStage('pick');
   return {
     key,
     ids: built.map((l) => l.id),
     lead,
     lines,
-    state: worstState(built.map((l) => l.state)),
+    state,
     orderId,
     accountSource: lead.account_source ?? null,
     adminUrl,
     orderHref: orderAdminUrl(orderId, lead.account_source, adminUrl),
     fba: String(lead.fulfillment_channel ?? '').trim().toUpperCase() === 'AFN',
+    pickup,
     sla,
     units: built.reduce((sum, l) => sum + l.qty, 0),
     outOfStockCount: built.filter((l) => l.outOfStock).length,
     urgent: rows.some((r) => r.is_urgent === true),
     buyerNote,
+    staffNote,
     buyerName,
     listingHref: getExternalUrlByItemNumber(listingItem),
     listingItem,
     pack,
-    stages: [lineStage('pick'), lineStage('qc'), pack],
+    stages: [pick, lineStage('qc'), pack],
+    next: orderNextStep(state, { pick, pack }, pickup),
   };
 }

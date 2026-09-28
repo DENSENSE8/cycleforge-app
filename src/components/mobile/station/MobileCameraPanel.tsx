@@ -11,7 +11,6 @@ import { Button } from '@/design-system/primitives/Button';
 import { ChevronUp } from '@/components/Icons';
 import { MOBILE_SCAN_WINDOW_CORNER } from '@/design-system/tokens/radius';
 import { cn } from '@/utils/_cn';
-import { STATION_EYEBROW_CLASS } from './station-chrome';
 import {
   STATION_CAMERA_HEADER_HEIGHT_CLASS,
   STATION_CAMERA_PANEL_HEIGHT_CLASS,
@@ -105,7 +104,7 @@ export function MobileCameraPanel({
             : 'min-h-11',
         )}
       >
-        <span className={cn('text-role-caption', STATION_EYEBROW_CLASS)}>
+        <span className="text-role-caption">
           {collapsedLabel}
         </span>
       </Button>
@@ -143,7 +142,6 @@ export function MobileCameraPanel({
         role="status"
         className={cn(
           'relative min-w-0 flex-1 truncate text-center text-role-eyebrow tabular-nums',
-          STATION_EYEBROW_CLASS,
           fitContent
             ? statusAlert
               ? 'text-text-danger'

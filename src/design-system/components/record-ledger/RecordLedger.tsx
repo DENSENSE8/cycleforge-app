@@ -4,7 +4,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, type ReactNode, type RefObject } from 'react';
 import { useVirtualizer } from '@tanstack/react-virtual';
-import { DataTableFullscreenToggle } from '@/components/tables/DataTableFullscreenToggle';
+import { DeskRecordViewSwitch } from '@/design-system/components/DeskRecordViewSwitch';
 import { RECORD_LABEL_CLASS } from '../../tokens/industrial-record';
 import { isEditableKeyTarget } from '@/lib/keyboard/is-editable-key-target';
 import { cn } from '@/utils/_cn';
@@ -167,7 +167,7 @@ export function RecordLedger<T>({
             {inPlace ? <RecordLedgerTally summary={summary} /> : null}
             {onStage ? (
               <span className="flex shrink-0 items-center border-l border-mode-seam px-1.5">
-                <DataTableFullscreenToggle />
+                <DeskRecordViewSwitch labels="wide" />
               </span>
             ) : null}
           </div>

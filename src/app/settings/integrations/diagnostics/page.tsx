@@ -72,14 +72,14 @@ function EmptyBox({ children }: { children: React.ReactNode }) {
 
 function Eyebrow({ children }: { children: React.ReactNode }) {
   return (
-    <h2 className="text-role-caption font-semibold uppercase tracking-[0.18em] text-text-faint">{children}</h2>
+    <h2 className="text-role-caption font-semibold text-text-faint">{children}</h2>
   );
 }
 
 function Chip({ tone, children }: { tone: string; children: React.ReactNode }) {
   return (
     <span
-      className={`rounded ${tone} px-1.5 py-0.5 text-role-micro uppercase tracking-widest ring-1 ring-inset`}
+      className={`rounded ${tone} px-1.5 py-0.5 text-role-micro ring-1 ring-inset`}
     >
       {children}
     </span>
@@ -196,7 +196,7 @@ export default async function IntegrationsDiagnosticsPage() {
                     {providerLabel(c.provider)}
                     {c.scope ? <span className="font-normal text-text-faint"> · {c.scope}</span> : null}
                   </p>
-                  <p className="truncate text-role-eyebrow font-semibold uppercase tracking-widest text-text-faint">
+                  <p className="truncate text-role-eyebrow font-semibold text-text-faint">
                     {c.state}
                     {c.displayLabel ? ` · ${c.displayLabel}` : ''}
                     {c.lastError ? ` · ${c.lastError}` : ''}
@@ -270,7 +270,7 @@ export default async function IntegrationsDiagnosticsPage() {
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-role-caption font-semibold text-text-default">{r.job}</p>
                   {r.error ? (
-                    <p className="truncate text-role-eyebrow font-semibold uppercase tracking-widest text-rose-700">
+                    <p className="truncate text-role-eyebrow font-semibold text-rose-700">
                       {r.error}
                     </p>
                   ) : null}

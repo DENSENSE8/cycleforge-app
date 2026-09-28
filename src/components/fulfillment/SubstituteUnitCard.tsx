@@ -23,7 +23,7 @@ interface SubstituteUnitCardProps {
 }
 
 const ALLOC_CHIP =
-  'rounded-full px-2.5 py-1 text-role-micro uppercase tracking-widest ring-1 ring-inset transition-colors';
+  'rounded-full px-2.5 py-1 text-role-micro ring-1 ring-inset transition-colors';
 
 export function SubstituteUnitCard({
   orderId,

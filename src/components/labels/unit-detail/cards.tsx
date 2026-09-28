@@ -3,6 +3,7 @@
 import React, { useMemo } from 'react';
 import { timeAgo } from '@/utils/_date';
 import { unitStatusBadgeClass } from '@/lib/unit-status';
+import { sentenceCaseLabel } from '@/lib/text/sentence-case-label';
 import { LIFECYCLE_CLASSES } from '@/design-system/tokens/lifecycle';
 import { conditionBadgeTone } from '@/lib/receiving/receiving-constants';
 import { SerialChip, SkuSerialChip } from '@/components/ui/CopyChip';
@@ -42,9 +43,9 @@ function StatusPill({ status }: { status: string | null }) {
   const v = (status || 'UNKNOWN').toUpperCase();
   return (
     <span
-      className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-role-micro uppercase tracking-wide ${unitStatusBadgeClass(v)}`}
+      className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-role-micro ${unitStatusBadgeClass(v)}`}
     >
-      {v}
+      {sentenceCaseLabel(v)}
     </span>
   );
 }
@@ -53,7 +54,7 @@ function ConditionPill({ grade }: { grade: string | null }) {
   if (!grade) return null;
   return (
     <span
-      className={`inline-flex items-center rounded-full px-2 py-0.5 text-role-micro uppercase tracking-wide ${conditionBadgeTone(grade)}`}
+      className={`inline-flex items-center rounded-full px-2 py-0.5 text-role-micro ${conditionBadgeTone(grade)}`}
     >
       {prettyLabel(grade)}
     </span>
@@ -63,7 +64,7 @@ function ConditionPill({ grade }: { grade: string | null }) {
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div className="min-w-0">
-      <dt className="text-role-eyebrow uppercase tracking-[0.14em] text-text-faint">{label}</dt>
+      <dt className="text-role-eyebrow text-text-faint">{label}</dt>
       <dd className="mt-0.5 truncate text-role-caption font-semibold text-text-default">{children}</dd>
     </div>
   );
@@ -75,7 +76,7 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
 function ChipRow({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div className="flex items-center gap-2">
-      <span className="w-12 shrink-0 text-role-eyebrow uppercase tracking-[0.14em] text-text-faint">
+      <span className="w-12 shrink-0 text-role-eyebrow text-text-faint">
         {label}
       </span>
       {children}
@@ -144,7 +145,7 @@ export function LocationCard({
 
   return (
     <section className="rounded-none bg-surface-card p-4 shadow-sm ring-1 ring-border-soft/60">
-      <p className="text-role-eyebrow uppercase tracking-[0.18em] text-text-faint">Location</p>
+      <p className="text-role-eyebrow text-text-faint">Location</p>
       <div className="mt-2 flex items-center gap-3">
         <span
           className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg ${
@@ -167,7 +168,7 @@ export function LocationCard({
 export function OrderCard({ allocation }: { allocation: Allocation | null }) {
   return (
     <section className="rounded-none bg-surface-card p-4 shadow-sm ring-1 ring-border-soft/60">
-      <p className="text-role-eyebrow uppercase tracking-[0.18em] text-text-faint">Order</p>
+      <p className="text-role-eyebrow text-text-faint">Order</p>
       <div className="mt-2 flex items-center gap-3">
         <span
           className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg ${
@@ -182,7 +183,7 @@ export function OrderCard({ allocation }: { allocation: Allocation | null }) {
           </p>
           <p className="truncate text-role-micro font-medium text-text-soft">
             {allocation
-              ? `${allocation.state} · ${timeAgo(allocation.allocated_at)}`
+              ? `${sentenceCaseLabel(allocation.state)} · ${timeAgo(allocation.allocated_at)}`
               : 'No open allocation'}
           </p>
         </div>
@@ -224,7 +225,7 @@ export function TimelineCard({
   return (
     <section className="rounded-none bg-surface-card shadow-sm ring-1 ring-border-soft/60">
       <header className="flex items-center justify-between px-5 py-4">
-        <h3 className="text-role-eyebrow uppercase tracking-[0.14em] text-text-soft">
+        <h3 className="text-role-eyebrow text-text-soft">
           Timeline
         </h3>
         <span className="text-role-micro font-semibold text-text-faint">
@@ -280,7 +281,7 @@ function TimelineRow({
           <span className="text-role-caption font-semibold text-text-default">{prettyLabel(event.event_type)}</span>
           <span className="text-role-micro text-text-faint">{timeAgo(event.occurred_at)}</span>
           {event.station ? (
-            <span className="rounded bg-surface-sunken px-1.5 py-0.5 text-role-micro uppercase tracking-wider text-text-soft">
+            <span className="rounded bg-surface-sunken px-1.5 py-0.5 text-role-micro text-text-soft">
               {event.station}
             </span>
           ) : null}
@@ -289,9 +290,9 @@ function TimelineRow({
           {event.actor_name ? <span>{event.actor_name}</span> : null}
           {statusChanged ? (
             <span className="flex items-center gap-1 font-mono">
-              {event.prev_status}
+              {sentenceCaseLabel(event.prev_status ?? '')}
               <ChevronRight className="h-3 w-3" />
-              {event.next_status}
+              {sentenceCaseLabel(event.next_status ?? '')}
             </span>
           ) : null}
           {event.bin_name ? <span className="font-mono">@ {event.bin_name}</span> : null}
@@ -315,7 +316,7 @@ export function AllocationsCard({ rows }: { rows: Allocation[] }) {
   return (
     <section className="rounded-none bg-surface-card shadow-sm ring-1 ring-border-soft/60">
       <header className="px-5 py-4">
-        <h3 className="text-role-eyebrow uppercase tracking-[0.14em] text-text-soft">
+        <h3 className="text-role-eyebrow text-text-soft">
           Order allocations
         </h3>
       </header>
@@ -325,13 +326,13 @@ export function AllocationsCard({ rows }: { rows: Allocation[] }) {
             <div className="flex items-baseline justify-between gap-3">
               <span className="font-mono text-role-caption font-semibold text-text-default">{a.order_id}</span>
               <span
-                className={`rounded px-1.5 py-0.5 text-role-micro font-semibold uppercase tracking-wider ${
+                className={`rounded px-1.5 py-0.5 text-role-micro font-semibold ${
                   a.state === 'RELEASED'
                     ? 'bg-surface-sunken text-text-soft'
                     : 'bg-emerald-100 text-emerald-700'
                 }`}
               >
-                {a.state}
+                {sentenceCaseLabel(a.state)}
               </span>
             </div>
             <div className="mt-0.5 text-role-micro text-text-soft">
@@ -350,7 +351,7 @@ export function ConditionsCard({ rows }: { rows: ConditionRow[] }) {
   return (
     <section className="rounded-none bg-surface-card shadow-sm ring-1 ring-border-soft/60">
       <header className="px-5 py-4">
-        <h3 className="text-role-eyebrow uppercase tracking-[0.14em] text-text-soft">
+        <h3 className="text-role-eyebrow text-text-soft">
           Condition history
         </h3>
       </header>
@@ -381,7 +382,7 @@ export function TsnLinksCard({ rows }: { rows: TsnLink[] }) {
   return (
     <section className="rounded-none bg-surface-card shadow-sm ring-1 ring-border-soft/60">
       <header className="px-5 py-4">
-        <h3 className="text-role-eyebrow uppercase tracking-[0.14em] text-text-soft">
+        <h3 className="text-role-eyebrow text-text-soft">
           Tech / station scans
         </h3>
       </header>
@@ -414,7 +415,7 @@ export function DetailEmptyState({ fromRecent = false }: { fromRecent?: boolean 
   return (
     <div className="flex h-full flex-col items-center justify-center px-6 py-12 text-center">
       <Icon className="mb-3 h-10 w-10 text-text-faint" />
-      <p className="text-role-eyebrow uppercase tracking-[0.18em] text-text-faint">
+      <p className="text-role-eyebrow text-text-faint">
         {fromRecent ? 'Recently printed' : 'Unit history'}
       </p>
       <p className="mt-3 max-w-[420px] text-sm font-medium text-text-soft">
@@ -438,7 +439,7 @@ export function DetailErrorState({ message }: { message: string }) {
   return (
     <div className="flex h-full flex-col items-center justify-center px-6 py-12 text-center">
       <AlertTriangle className="mb-3 h-10 w-10 text-amber-400" />
-      <p className="text-role-eyebrow uppercase tracking-[0.18em] text-amber-600">
+      <p className="text-role-eyebrow text-amber-600">
         Couldn't load unit
       </p>
       <p className="mt-3 max-w-[420px] text-sm font-medium text-text-soft">{message}</p>

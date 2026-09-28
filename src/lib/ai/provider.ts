@@ -195,12 +195,20 @@ export interface LocalAgentConfig {
 /**
  * The env-selected LOCAL AGENT model, or null when it is not switched on.
  *
- *   CYCLEFORGE_LOCAL_MLX=1 | first            local model answers first
+ *   CYCLEFORGE_LOCAL_MLX=1 | first            local model answers first (dev/test only —
+ *                                             see below)
  *   CYCLEFORGE_LOCAL_MLX=fallback             platform (`AI_CHAT_*`) first, local
  *                                             model catches its failures (quota 429, 5xx)
+ *   CYCLEFORGE_LOCAL_MLX=force-first          local first even in production (explicit opt-in)
  *   (anything else)                           off
  *   LOCAL_MLX_BASE_URL=http://127.0.0.1:18088/v1   loopback / ssh -L tunnel
  *   LOCAL_MLX_MODEL=default_model             optional; keep the default for a LoRA
+ *
+ * PROD-SAFE DEFAULT: under NODE_ENV=production `1`/`first` is served as
+ * `fallback`. A single-request self-hosted box at the head of every tenant's
+ * chain is an outage the first time it wedges, and `.env` is copied to
+ * production as-is; the dev lane keeps local-first. With no platform leaf the
+ * fallback slot IS the head, so a local-only deployment still works.
  *
  * This is a slot for the assistant TOOL LOOP only (a tool-calling fine-tune
  * such as the gpt-oss CycleForge adapter on Prometheus): it rides
@@ -212,8 +220,17 @@ export interface LocalAgentConfig {
  */
 export function resolveLocalAgentConfig(env: ProviderEnv = process.env): LocalAgentConfig | null {
   const flag = readEnv(env, 'CYCLEFORGE_LOCAL_MLX').toLowerCase();
+  const production = readEnv(env, 'NODE_ENV') === 'production';
   const position: LocalAgentPosition | null =
-    flag === '1' || flag === 'first' ? 'first' : flag === 'fallback' ? 'fallback' : null;
+    flag === 'force-first'
+      ? 'first'
+      : flag === '1' || flag === 'first'
+        ? production
+          ? 'fallback'
+          : 'first'
+        : flag === 'fallback'
+          ? 'fallback'
+          : null;
   const baseURL = readEnv(env, 'LOCAL_MLX_BASE_URL');
   if (!position || !baseURL) return null;
   return {
@@ -223,6 +240,23 @@ export function resolveLocalAgentConfig(env: ProviderEnv = process.env): LocalAg
       apiKey: '',
       model: readEnv(env, 'LOCAL_MLX_MODEL') || LOCAL_AGENT_DEFAULT_MODEL,
     },
+  };
+}
+
+/**
+ * A SECOND platform chat vendor (`AI_CHAT_SECONDARY_BASE_URL` + `_API_KEY` +
+ * `_MODEL`), or null. It sits directly behind the primary platform leaf so a
+ * quota (429), exhausted balance (402) or outage on the primary fails over to
+ * a different vendor before any self-hosted box is asked.
+ */
+export function resolveSecondaryChatConfig(env: ProviderEnv = process.env): AiProviderConfig | null {
+  const baseURL = readEnv(env, 'AI_CHAT_SECONDARY_BASE_URL');
+  const model = readEnv(env, 'AI_CHAT_SECONDARY_MODEL');
+  if (!baseURL || !model) return null;
+  return {
+    baseURL: stripTrailingSlash(baseURL),
+    apiKey: readEnv(env, 'AI_CHAT_SECONDARY_API_KEY'),
+    model,
   };
 }
 

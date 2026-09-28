@@ -199,7 +199,7 @@ export function LogsSidebarPanel() {
         <>
           {grouped.map((group) => (
             <div key={group.key} className="mb-2">
-              <p className="px-1 pb-1.5 pt-2 text-role-eyebrow uppercase tracking-widest text-text-faint">
+              <p className="px-1 pb-1.5 pt-2 text-role-eyebrow text-text-faint">
                 {group.label}
               </p>
               <ul className="space-y-1.5">

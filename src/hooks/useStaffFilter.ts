@@ -4,18 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { getActiveStaff, type StaffMember } from '@/lib/staffCache';
 import type { StaffOption } from '@/components/shipping/StaffButtonGrid';
-
-/**
- * Canonical URL param for the universal all-staff ↔ single-staff filter
- * (P1-WORK-02). One key, one convention, every mode. Absent / blank / 0 = ALL
- * staff (the default behavior of every mode). A positive integer = one staff.
- */
-export const STAFF_FILTER_PARAM = 'staff';
-
-export function parseStaffParam(raw: string | null | undefined): number | null {
-  const n = Number(raw);
-  return Number.isFinite(n) && n > 0 ? n : null;
-}
+import { parseStaffParam, STAFF_FILTER_PARAM } from '@/lib/station/table-url-params';
 
 interface UseStaffFilterResult {
   /** The currently selected staff id, or null for ALL staff (default). */

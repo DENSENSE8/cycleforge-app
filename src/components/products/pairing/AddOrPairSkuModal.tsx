@@ -206,7 +206,7 @@ export function AddOrPairSkuModal({ open, onClose, query, pending, onDone }: Pro
         className="max-h-[84vh] max-w-lg gap-0 overflow-hidden p-0 sm:rounded-xl"
       >
         <DialogHeader className="shrink-0 space-y-0 border-b border-border-soft px-4 py-3">
-          <DialogTitle className="text-role-micro uppercase tracking-[0.16em] text-text-soft">
+          <DialogTitle className="text-role-micro text-text-soft">
             {headerLabel}
           </DialogTitle>
           <DialogDescription className="sr-only">
@@ -372,7 +372,7 @@ export function AddOrPairSkuModal({ open, onClose, query, pending, onDone }: Pro
 function Field({ label, required, children }: { label: string; required?: boolean; children: ReactNode }) {
   return (
     <label className="block">
-      <span className="mb-1 block text-role-micro uppercase tracking-wider text-text-soft">
+      <span className="mb-1 block text-role-micro text-text-soft">
         {label}{required && <span className="text-red-400"> *</span>}
       </span>
       {children}

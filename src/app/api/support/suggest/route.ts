@@ -43,7 +43,7 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
     routeKey: 'support-suggest',
     limit: Number(process.env.AI_CHAT_RATE_LIMIT || 25),
     windowMs: 60 * 1000,
-    organizationId: ctx.organizationId,
+    organizationId: ctx.organizationId, staffId: ctx.staffId,
   });
   if (!rate.ok) {
     return NextResponse.json(

@@ -32,8 +32,8 @@ describe('ordersStateTone', () => {
     assert.equal(ordersStateTone('Out of stock'), 'alert');
     assert.equal(ordersStateTone('Hold'), 'alert');
   });
-  it('marks tested / packed / ready as done', () => {
-    assert.equal(ordersStateTone('Tested'), 'done');
+  it('marks picked / packed / ready as done', () => {
+    assert.equal(ordersStateTone('Picked'), 'done');
     assert.equal(ordersStateTone('Packed'), 'done');
   });
   it('keeps ordinary queue states neutral', () => {
@@ -100,7 +100,7 @@ describe('ordersCompoundView', () => {
         pack_location_kind: 'STAGING',
       }),
       {
-        stateLabel: 'Tested',
+        stateLabel: 'Picked',
         delayDays: 0,
         testerDisplay: 'Alex',
         packerDisplay: '---',
@@ -116,7 +116,7 @@ describe('ordersCompoundView', () => {
     const record = baseOrder({ picked_by_name: 'Alex', picked_at: '2026-08-20 18:00:00' });
     const picked = resolveOrdersSlotValue(record, 'orders.picked')!;
     const view = ordersCompoundView(record, {
-      stateLabel: 'Tested',
+      stateLabel: 'Picked',
       delayDays: 0,
       testerDisplay: 'Alex',
       packerDisplay: '---',
@@ -133,7 +133,7 @@ describe('ordersCompoundView', () => {
     const view = ordersCompoundView(
       baseOrder({ pack_location_name: 'Staging A', pack_location_kind: 'STAGING' }),
       {
-        stateLabel: 'Tested',
+        stateLabel: 'Picked',
         delayDays: 0,
         testerDisplay: 'Alex',
         packerDisplay: '---',

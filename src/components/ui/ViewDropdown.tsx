@@ -21,8 +21,6 @@ interface ViewDropdownProps<T extends string> {
   variant?: 'default' | 'boxy';
   /** Control height/text density. `sm` is a compact pill; defaults to `md`. */
   size?: 'sm' | 'md';
-  /** Text casing for the button + menu. Defaults to `uppercase` (legacy). */
-  textTransform?: 'uppercase' | 'lowercase' | 'capitalize' | 'none';
   borderRadius?: string;
   backgroundColor?: string;
   fontSize?: string;
@@ -37,7 +35,6 @@ export function ViewDropdown<T extends string>({
   optionClassName = '',
   variant = 'default',
   size = 'md',
-  textTransform = 'uppercase',
   borderRadius,
   backgroundColor,
   fontSize,
@@ -47,14 +44,6 @@ export function ViewDropdown<T extends string>({
   const listRef = React.useRef<HTMLDivElement>(null);
   const isBoxy = variant === 'boxy';
   const isSm = size === 'sm';
-  const caseClass =
-    textTransform === 'lowercase'
-      ? 'lowercase'
-      : textTransform === 'capitalize'
-        ? 'capitalize'
-        : textTransform === 'none'
-          ? 'normal-case'
-          : 'uppercase';
   const selectedIndex = Math.max(
     0,
     options.findIndex((option) => option.value === value),
@@ -125,7 +114,7 @@ export function ViewDropdown<T extends string>({
           }}
           className={`ds-raw-button ${
             buttonClassName ||
-            `flex items-center ${isSm ? 'h-10 text-xs' : 'h-14 text-sm'} w-full border-b border-border-emphasis bg-surface-card px-4 pr-12 text-left ${caseClass} tracking-wide text-text-default outline-none transition-colors hover:bg-surface-hover ${cfSans.className} font-semibold`
+            `flex items-center ${isSm ? 'h-10 text-xs' : 'h-14 text-sm'} w-full border-b border-border-emphasis bg-surface-card px-4 pr-12 text-left text-text-default outline-none transition-colors hover:bg-surface-hover ${cfSans.className} font-semibold`
           }`}
         >
           {SelectedIcon ? <SelectedIcon className="mr-2 h-4 w-4 shrink-0 text-blue-600" /> : null}
@@ -180,7 +169,7 @@ export function ViewDropdown<T extends string>({
                         isBoxy ? 'px-3' : 'px-4'
                       } text-left ${
                         optionClassName || (isSm ? 'text-xs font-semibold tracking-wide' : 'text-sm font-semibold tracking-wide')
-                      } ${caseClass} transition-colors ${cfSans.className} text-text-default hover:bg-surface-hover`}
+                      } transition-colors ${cfSans.className} text-text-default hover:bg-surface-hover`}
                     >
                       {OptionIcon ? <OptionIcon className="h-4 w-4 shrink-0 text-blue-600" /> : null}
                       <span className="truncate">{option.label}</span>

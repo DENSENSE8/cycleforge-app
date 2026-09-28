@@ -163,12 +163,9 @@ export function resolveOrderInspectorContext({
 // ── Desk order record (DeskRecordPlane) ─────────────────────────────────────
 
 /**
- * The outbound desk an order record opens on.
- * sections paint, in both views (owner 2026-09-25, desk-surface handoff Step 2).
+ * Every section the order record can paint. WHICH sections a view paints, and
+ * in what order, is that view's job — `VIEW_SPECS[key].record` (`src/lib/views/view-specs.ts`).
  */
-export type OrderRecordMode = 'to-ship' | 'pending' | 'exceptions' | 'shipped' | 'search';
-
-/** Every section the order record can paint. */
 export type OrderRecordSectionId =
   /** Lifecycle code and where the order goes next. */
   | 'state'
@@ -198,57 +195,3 @@ export type OrderRecordSectionId =
   | 'conversation'
   /** Every event the order touched (audit, station scans, carrier, messages, photos), below the items — `OrderTimelineSection`. */
   | 'timeline';
-
-/**
- * What a mode may never paint — listing it in {@link ORDER_RECORD_SECTIONS} is a type error.
- * (owner 2026-09-25); the pairing form is the Exceptions desk's job alone; a
- */
-interface OrderRecordForbiddenSections {
-  'to-ship': 'label-entries' | 'resolve';
-  pending: 'label-entries' | 'resolve';
-  exceptions: 'label-entries';
-  shipped: 'resolve' | 'assign';
-  search: 'resolve';
-}
-
-/** The order record's sections per desk, in paint order within each column. */
-export const ORDER_RECORD_SECTIONS: {
-  readonly [M in OrderRecordMode]: readonly Exclude<OrderRecordSectionId, OrderRecordForbiddenSections[M]>[];
-} = {
-  'to-ship': ['state', 'buyer-note', 'item', 'stages', 'assign', 'timeline', 'price', 'note', 'customer', 'facts'],
-  pending: ['state', 'buyer-note', 'item', 'stages', 'assign', 'timeline', 'price', 'note', 'customer', 'facts'],
-  // A held order's job is the pairing; its notes field carries the routing
-  // text (`exceptionRowToQueueRow`), so the note editor stays off.
-  exceptions: ['state', 'buyer-note', 'resolve', 'item', 'stages', 'assign', 'timeline', 'customer', 'facts'],
-  // The shipped archive: what left, who handled each step, where it is now.
-  shipped: [
-    'state',
-    'buyer-note',
-    'item',
-    'stages',
-    'shipment',
-    'label-entries',
-    'documents',
-    'timeline',
-    'customer',
-    'facts',
-    'price',
-    'note',
-    'conversation',
-  ],
-  // The on-the-phone lookup: returns and replacements are why the caller rang.
-  search: [
-    'state',
-    'buyer-note',
-    'item',
-    'stages',
-    'assign',
-    'shipment',
-    'label-entries',
-    'timeline',
-    'customer',
-    'facts',
-    'price',
-    'note',
-  ],
-};

@@ -25,7 +25,7 @@ export function ClaimSellerMessagePanel({ seller, filedTicket }: Props) {
         <div className="flex min-w-0 items-center gap-2">
           <MessageSquare className="h-3.5 w-3.5 shrink-0 text-text-faint" />
           <div>
-            <p className="text-role-eyebrow uppercase tracking-[0.14em] text-text-faint">
+            <p className="text-role-eyebrow text-text-faint">
               Seller message
             </p>
             {aiModel ? (

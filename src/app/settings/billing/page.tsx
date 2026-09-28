@@ -50,7 +50,7 @@ export default async function BillingPage() {
       <Card>
         <div className="flex items-start justify-between gap-6">
           <div>
-            <div className="text-role-caption font-medium uppercase tracking-[0.12em] text-text-soft">Current plan</div>
+            <div className="text-role-caption font-medium text-text-soft">Current plan</div>
             <div className="mt-1 text-2xl font-semibold text-text-default">{PLAN_LABELS[org.plan].label}</div>
             <p className="mt-1 text-role-caption text-text-soft">{PLAN_LABELS[org.plan].tagline}</p>
             <dl className="mt-4 grid grid-cols-2 gap-x-8 gap-y-1.5 text-role-caption">
@@ -73,7 +73,7 @@ export default async function BillingPage() {
       </Card>
 
       <Card>
-        <div className="text-role-caption font-medium uppercase tracking-[0.12em] text-text-soft">Entitlements</div>
+        <div className="text-role-caption font-medium text-text-soft">Entitlements</div>
         <ul className="mt-3 grid grid-cols-2 gap-y-1.5 text-role-caption text-text-muted sm:grid-cols-3">
           {Object.entries(ent.features).map(([key, on]) => (
             <li key={key} className="flex items-center gap-2">
@@ -89,7 +89,7 @@ export default async function BillingPage() {
       </Card>
 
       <Card>
-        <div className="text-role-caption font-medium uppercase tracking-[0.12em] text-text-soft">Change plan</div>
+        <div className="text-role-caption font-medium text-text-soft">Change plan</div>
         <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-3">
           {UPGRADABLE.map((plan) => {
             const labels = PLAN_LABELS[plan];

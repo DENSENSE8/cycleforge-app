@@ -52,6 +52,7 @@ const MobileSignInQrChooser = dynamic(
   { ssr: false },
 );
 import { WelcomeBridge } from '@/components/boot/WelcomeBridge';
+import { preloadSelectedWelcomeVariant } from '@/components/boot/welcome/welcome-loader';
 import { armBootSplash, readWelcomeThemeOverride, type WelcomeStaff } from '@/lib/boot-flag';
 import { resolveWelcomeTheme } from '@/components/boot/welcome/welcome-theme';
 import { getStaffAvatarPhotoId, getStaffColorHex } from '@/utils/staff-colors';
@@ -96,6 +97,7 @@ function isMobileDevice(): boolean {
 function humanError(code: string | undefined): string {
   switch (code) {
     case 'WRONG':              return 'PIN incorrect. Try again.';
+    case 'LOCKED':             return 'Too many wrong PINs. Try again in 15 minutes or ask an admin to reset it.';
     case 'NO_PIN':             return 'This account has no PIN. Ask an admin for an enrollment QR.';
     case 'NOT_FOUND':          return 'Account not found.';
     case 'TOO_SHORT':          return 'PIN is too short.';
@@ -298,6 +300,10 @@ export default function SignInPage() {
     // Every desktop sign-in plays the welcome wherever it lands.
     if (!onMobile && !opts?.resumed) {
       armBootSplash(welcome.name ? { ...welcome, name: welcome.name } : undefined);
+      if (typeof window !== 'undefined') {
+        void preloadSelectedWelcomeVariant().finally(() => window.location.assign(target));
+        return;
+      }
     }
     if (typeof window !== 'undefined') window.location.assign(target);
     else router.replace(target);
@@ -844,7 +850,7 @@ export default function SignInPage() {
               <div className="max-h-[22rem] space-y-4 overflow-y-auto p-px">
                 {recentStaff.length > 0 && (
                   <div className="space-y-1.5">
-                    <p className="px-1 text-role-caption uppercase text-text-soft">Recent</p>
+                    <p className="px-1 text-role-caption text-text-soft">Recent</p>
                     {recentStaff.map((s) => (
                       <StaffChoiceRowButton key={s.id} staffId={s.id} name={s.name} role={s.role} colorHex={s.color_hex} disabled={busy} onPick={() => actAsStaff(s)} isRecent />
                     ))}
@@ -854,7 +860,7 @@ export default function SignInPage() {
                 {(recentStaff.length === 0 || showAllStaff) && otherStaff.length > 0 && (
                   <div className="space-y-1.5">
                     {recentStaff.length > 0 && (
-                      <p className="px-1 text-role-caption uppercase text-text-soft">All staff</p>
+                      <p className="px-1 text-role-caption text-text-soft">All staff</p>
                     )}
                     {otherStaff.map((s) => (
                       <StaffChoiceRowButton key={s.id} staffId={s.id} name={s.name} role={s.role} colorHex={s.color_hex} disabled={busy} onPick={() => actAsStaff(s)} />
@@ -1235,7 +1241,7 @@ interface AuthHeaderProps {
 function AuthHeader({ eyebrow, title, subtitle }: AuthHeaderProps) {
   return (
     <div className="space-y-1">
-      {eyebrow && <p className="text-role-eyebrow uppercase text-text-soft">{eyebrow}</p>}
+      {eyebrow && <p className="text-role-eyebrow text-text-soft">{eyebrow}</p>}
       <h1 className="text-role-title text-text-default">{title}</h1>
       {subtitle && <p className="text-role-caption text-text-soft">{subtitle}</p>}
     </div>
@@ -1246,7 +1252,7 @@ function Divider({ children }: { children: React.ReactNode }) {
   return (
     <div className="flex items-center gap-3 pt-1">
       <div className="h-px flex-1 bg-border-hairline" />
-      <span className="text-role-caption uppercase text-text-soft">{children}</span>
+      <span className="text-role-caption text-text-soft">{children}</span>
       <div className="h-px flex-1 bg-border-hairline" />
     </div>
   );

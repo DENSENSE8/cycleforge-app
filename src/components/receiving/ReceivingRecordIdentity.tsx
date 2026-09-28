@@ -17,7 +17,7 @@ export function ReceivingRecordItem({ row }: { row: ReceivingLineRow }) {
   const { listingHref, itemNumber } = receivingRecordIdentity(row);
   return (
     <span className="pointer-events-auto ml-auto inline-flex h-full shrink-0 items-center" data-testid="receiving-item-number">
-      <span className={cn(RECORD_LABEL_CLASS, 'text-mode-muted')}>ITEM</span>
+      <span className={cn(RECORD_LABEL_CLASS, 'text-mode-muted')}>Item</span>
       <RecordListingLink href={listingHref} itemNumber={itemNumber} face="value" />
     </span>
   );

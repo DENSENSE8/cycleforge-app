@@ -69,6 +69,32 @@ export const SUPPLIER_TYPE_LABEL: Record<string, string> = {
   other: 'Other',
 };
 
+/**
+ * The sidebar filter rows (`NAV_PAGE_DECLS.sourcing`, ex-`SourcingSidebarPanel`
+ * pill sliders). Each list omits its param's default — Queue's `live`,
+ * Watchlist's and Suppliers' `all` — because an absent param IS the default;
+ * Scout's `by` has two values, so both are listed (`model` equals absent).
+ */
+export const SOURCING_ALERT_STATUS_OPTIONS = [
+  { value: 'resolved', label: 'Resolved' },
+  { value: 'dismissed', label: 'Dismissed' },
+] as const;
+export const SOURCING_WATCH_STATUS_OPTIONS = [
+  { value: 'watching', label: 'Watching' },
+  { value: 'ordered', label: 'Ordered' },
+  { value: 'imported', label: 'Imported' },
+] as const;
+export const SOURCING_SUPPLIER_TYPE_OPTIONS = [
+  { value: 'ebay_seller', label: 'eBay' },
+  { value: 'distributor', label: 'Distributor' },
+  { value: 'salvage', label: 'Salvage' },
+  { value: 'oem', label: 'OEM' },
+] as const;
+export const SOURCING_SCOUT_BY_OPTIONS = [
+  { value: 'model', label: 'Model' },
+  { value: 'serial', label: 'Serial' },
+] as const;
+
 /** Cadence label + tone for standing searches. */
 export const CADENCE_LABEL: Record<string, string> = {
   off: 'Manual',

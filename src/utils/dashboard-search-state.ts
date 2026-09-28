@@ -4,7 +4,7 @@ import type { ShippedOrder } from '@/types/orders';
 import type { ShippedDetailsContext } from '@/utils/events';
 
 /** To-ship desk view. */
-export type DashboardOrderView = 'unshipped' | 'tested' | 'packed' | 'shipped';
+export type DashboardOrderView = 'unshipped' | 'picked' | 'packed' | 'shipped';
 type DashboardCacheEntry = readonly [unknown, unknown];
 
 /** Band-1 / Band-3 triage facets on the in-warehouse desk. */
@@ -89,14 +89,14 @@ export function getDashboardPendingLayoutFromSearch(
 /** Display labels — legacy tab names kept for saved-view copy / tests. */
 const DASHBOARD_ORDER_VIEW_LABEL: Record<DashboardOrderView, string> = {
   unshipped: 'To ship',
-  tested: 'Tested',
+  picked: 'Picked',
   packed: 'Packed',
   shipped: 'Shipped',
 };
 
 /** The in-warehouse desk is always the To-ship surface. */
 function isPrePackOrderView(view: DashboardOrderView): boolean {
-  return view === 'unshipped' || view === 'tested' || view === 'packed';
+  return view === 'unshipped' || view === 'picked' || view === 'packed';
 }
 
 /**
@@ -167,16 +167,16 @@ export function applyToShipTriageFacet(
   return params;
 }
 
-/** After marking out of stock, land on the Pending stage — BLOCKED belongs there with unlabeled / untested work, not on Tested. */
+/** After marking out of stock, land on the Pending stage — BLOCKED belongs there with unlabeled / unpicked work, not on Picked. */
 function applyToShipStageAfterOutOfStock(params: URLSearchParams): boolean {
   const stage = String(params.get('stage') || '').trim().toLowerCase();
   const ustatus = String(params.get('ustatus') || '').trim().toUpperCase();
   let changed = false;
-  if (stage === 'tested') {
+  if (stage === 'picked') {
     params.set('stage', 'pending');
     changed = true;
   }
-  if (ustatus === 'TESTED') {
+  if (ustatus === 'PICKED') {
     params.delete('ustatus');
     changed = true;
   }
@@ -195,7 +195,7 @@ export function normalizeDashboardOrderViewParams(
       : params.has('packed')
         ? 'packed'
         : params.has('tested')
-          ? 'tested'
+          ? 'picked'
           : 'unshipped');
 
   params.delete('unshipped');
@@ -214,8 +214,8 @@ export function normalizeDashboardOrderViewParams(
   params.delete('exceptions');
 
   // Map retired tabs onto stage refine (not a second list).
-  if (fromLegacy === 'tested' && !params.get('stage')) {
-    params.set('stage', 'tested');
+  if (fromLegacy === 'picked' && !params.get('stage')) {
+    params.set('stage', 'picked');
   } else if (fromLegacy === 'packed' && !params.get('stage')) {
     params.set('stage', 'packed');
   }

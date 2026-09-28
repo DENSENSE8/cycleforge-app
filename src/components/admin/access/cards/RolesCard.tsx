@@ -40,7 +40,7 @@ export function RolesCard({ roles, availableRoles, borderClass, busyRoles, onSet
             {idx === 0 && roles.length > 1 && (
               <HoverTooltip label="Primary role (highest position). Shown in the Identity card." asChild>
                 <span
-                  className="ml-0.5 rounded-sm px-1 py-px text-role-eyebrow uppercase tracking-wider opacity-70"
+                  className="ml-0.5 rounded-sm px-1 py-px text-role-eyebrow opacity-70"
                   style={{ backgroundColor: `${r.color}26` }}
                 >
                   primary

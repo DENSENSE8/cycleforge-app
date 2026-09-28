@@ -284,7 +284,7 @@ export function MobileReceivingPhotoStudio({
 function StudioHeader({ eyebrow, label }: { eyebrow: string; label: string }) {
   return (
     <div className="min-w-0">
-      <p className="text-role-micro uppercase tracking-[0.22em] text-white/60">{eyebrow}</p>
+      <p className="text-role-micro text-white/60">{eyebrow}</p>
       <p className="truncate text-sm font-semibold text-white">{label}</p>
     </div>
   );

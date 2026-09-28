@@ -66,7 +66,7 @@ export function TraceSerialPicker({ query }: { query: string }) {
       </div>
       {recents.length > 0 ? (
         <>
-          <p className={`${SIDEBAR_GUTTER} pb-1 text-role-eyebrow uppercase tracking-[0.14em] text-text-faint`}>
+          <p className={`${SIDEBAR_GUTTER} pb-1 text-role-eyebrow text-text-faint`}>
             Recently traced
           </p>
           <div className="min-h-0 flex-1">

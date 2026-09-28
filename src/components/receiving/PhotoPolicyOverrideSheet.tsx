@@ -63,7 +63,7 @@ export function PhotoPolicyOverrideSheet({
     >
       <div className="stack-section">
         <div className="rounded-xl bg-amber-50 inset-card ring-1 ring-inset ring-amber-200">
-          <p className="text-role-eyebrow uppercase tracking-widest text-amber-700">
+          <p className="text-role-eyebrow text-amber-700">
             Photo policy not met
           </p>
           <ul className="mt-1.5 space-y-1">
@@ -82,7 +82,7 @@ export function PhotoPolicyOverrideSheet({
         </div>
 
         <div className="stack-tight">
-          <p className="text-role-eyebrow uppercase tracking-widest text-text-soft">
+          <p className="text-role-eyebrow text-text-soft">
             Why are you receiving it anyway?
           </p>
           <ReasonChipPicker

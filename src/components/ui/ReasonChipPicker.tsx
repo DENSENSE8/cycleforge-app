@@ -65,7 +65,7 @@ export function ReasonChipPicker({
               'rounded-full ring-1 ring-inset transition-colors',
               size === 'touch'
                 ? 'min-h-11 px-3.5 py-2 text-role-caption font-semibold'
-                : 'px-2.5 py-1 text-role-micro uppercase tracking-widest',
+                : 'px-2.5 py-1 text-role-micro',
               tone.base,
               selected ? cn(tone.selected, 'ring-2') : 'opacity-80 hover:opacity-100',
             )}

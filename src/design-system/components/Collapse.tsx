@@ -106,6 +106,11 @@ interface CollapseItemProps {
   rowRule?: boolean;
   /** Stagger for rows unfolding together (seconds). */
   delay?: number;
+  /**
+   * Seconds the height collapse waits on exit — a row whose content leaves
+   * first (a swipe-dismissed card sliding off) closes its gap after it.
+   */
+  exitDelay?: number;
   'data-testid'?: string;
 }
 
@@ -121,6 +126,7 @@ export function CollapseItem({
   enter = true,
   rowRule = false,
   delay,
+  exitDelay,
   'data-testid': testId,
 }: CollapseItemProps) {
   const frameRef = useRef<HTMLElement | null>(null);
@@ -143,9 +149,13 @@ export function CollapseItem({
         frameRef.current = node;
       }}
       data-testid={testId}
+      // While the height moves: descendants that skip rendering off-screen
+      // (`content-visibility: auto`) opt back in, so `height: auto` is measured
+      // from their real size, not their placeholder.
+      data-collapse-clip={clip ? '' : undefined}
       initial={enter ? HIDDEN : false}
       animate={SHOWN}
-      exit={HIDDEN}
+      exit={exitDelay ? { ...HIDDEN, transition: { ...TRANSITION, delay: exitDelay } } : HIDDEN}
       transition={delay ? { ...TRANSITION, opacity: { ...fadeInstant, delay } } : TRANSITION}
       onAnimationStart={() => setClip(true)}
       onAnimationComplete={(definition) => {

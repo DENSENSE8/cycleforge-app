@@ -202,7 +202,7 @@ export function TicketLinkPopover({
   return (
     <Panel radius="xl" padding="sm" elevation="md">
       <div className="mb-2 flex items-center justify-between gap-2">
-        <p className="text-role-eyebrow uppercase tracking-widest text-text-soft">{title}</p>
+        <p className="text-role-eyebrow text-text-soft">{title}</p>
         <button
           type="button"
           onClick={onClose}
@@ -264,7 +264,7 @@ export function TicketLinkPopover({
                       subject={t.subject}
                       emptySubject="Untitled"
                       trailing={
-                        <span className="text-role-eyebrow uppercase text-text-faint">
+                        <span className="text-role-eyebrow text-text-faint">
                           {t.linkedToThis ? 'linked' : t.status}
                         </span>
                       }

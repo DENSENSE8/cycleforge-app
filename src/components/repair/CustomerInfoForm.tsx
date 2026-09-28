@@ -162,7 +162,7 @@ export function CustomerInfoForm(props: CustomerInfoFormProps) {
 
     return (
         <div className="space-y-4">
-            <p className="text-role-micro uppercase tracking-[0.16em] text-text-faint">
+            <p className="text-role-micro text-text-faint">
                 {fieldIndex + 1} of {fieldCount} · {fieldLabelFor(activeField)}
             </p>
 
