@@ -3,35 +3,17 @@
 import { useEffect, useRef, useState } from 'react';
 import { usePathname } from 'next/navigation';
 import { Inbox } from '@/components/Icons';
-import {
-  AnchoredLayer,
-  IconButton,
-  type AnchoredPlacement,
-  type IconButtonSize,
-} from '@/design-system/primitives';
-import { HoverTooltip } from '@/components/ui/HoverTooltip';
+import { AnchoredLayer } from '@/design-system/primitives';
 import { ActivityInboxPopover } from '@/components/quick-access/ActivityInboxPopover';
 import { useActivityInboxOptional } from '@/contexts/ActivityInboxContext';
-import {
-  HEADER_ICON_BTN_CLASS,
-  HEADER_ICON_BTN_OPEN_CLASS,
-  HEADER_ICON_WRAP,
-  TOP_CHROME_ICON_FACE,
-} from '@/components/layout/header-shell';
+import { HEADER_PILL_CLASS, TOP_CHROME_ICON_FACE } from '@/components/layout/header-shell';
 import { cn } from '@/utils/_cn';
 
-/** The notifications button — glyph, unread corner count, and the panel it opens. */
-export function ActivityInboxButton({
-  placement = 'bottom-end',
-  size = 'md',
-  iconClassName = TOP_CHROME_ICON_FACE,
-  wrapClassName = HEADER_ICON_WRAP,
-}: {
-  placement?: AnchoredPlacement;
-  size?: IconButtonSize;
-  iconClassName?: string;
-  wrapClassName?: string;
-} = {}) {
+/**
+ * The header's Inbox CTA — `[inbox] Inbox 3` on the shared pill face (owner
+ * 2026-09-28: Add · Inbox · Sync are all labelled CTAs), and the panel it opens.
+ */
+export function ActivityInboxButton() {
   const pathname = usePathname();
   const inbox = useActivityInboxOptional();
   const count = inbox?.items.length ?? 0;
@@ -43,32 +25,29 @@ export function ActivityInboxButton({
   }, [pathname]);
 
   return (
-    <div ref={anchorRef} className={wrapClassName}>
-      <HoverTooltip label="Notifications" asChild>
-        <IconButton
-          type="button"
-          size={size}
-          onClick={() => setOpen((o) => !o)}
-          ariaLabel="Notifications"
-          aria-expanded={open}
-          className={cn(HEADER_ICON_BTN_CLASS, open && HEADER_ICON_BTN_OPEN_CLASS)}
-          icon={
-            <span className={cn('relative inline-flex shrink-0 items-center justify-center', iconClassName)}>
-              <Inbox className={iconClassName} />
-              {count > 0 && (
-                <span className="pointer-events-none absolute -right-1.5 -top-1.5 flex h-3 min-w-[12px] items-center justify-center rounded-full bg-rose-600 px-0.5 text-role-micro leading-none tabular-nums text-white ring-1 ring-white">
-                  {count > 9 ? '9+' : count}
-                </span>
-              )}
-            </span>
-          }
-        />
-      </HoverTooltip>
+    <div ref={anchorRef} className="flex h-full shrink-0 items-center px-1">
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        aria-label={count > 0 ? `Inbox — ${count} new` : 'Inbox'}
+        aria-expanded={open}
+        data-state={open ? 'open' : 'closed'}
+        data-testid="global-inbox-button"
+        className={HEADER_PILL_CLASS}
+      >
+        <Inbox className={cn(TOP_CHROME_ICON_FACE, 'size-4')} aria-hidden />
+        <span>Inbox</span>
+        {count > 0 ? (
+          <span className="flex h-4 min-w-4 items-center justify-center rounded-mode-pill bg-rose-600 px-1 text-role-micro leading-none tabular-nums text-white">
+            {count > 9 ? '9+' : count}
+          </span>
+        ) : null}
+      </button>
       <AnchoredLayer
         open={open}
         onClose={() => setOpen(false)}
         anchorRef={anchorRef}
-        placement={placement}
+        placement="bottom-end"
         gap={0}
         /**
          * The panel reaches the SCREEN edge, not the button's.

@@ -38,11 +38,15 @@ channels → exceptions pass**. A failing step never stops the rest. Driven by:
 |---|---|
 | `orders.backfill_pipeline` cron — `/api/cron/orders/backfill`, 08:00 + 14:00 + 18:30 PT (`?sheetsFull=1` for a history run) | every org |
 | Header **Sync** pill → *Orders — all linked platforms* (`POST /api/sync/global?job=pipeline:orders`, `Y` then `A`/`O`) — same lock + `cron_runs` ledger as the cron (`trigger: 'manual'`) | caller's org |
-| To-ship chevron **Sync all platforms** / **Choose platforms…** (`useOrdersSync`, same order client-side, live ledger). The To-ship face is **Add manual order**. | caller's org |
+| `/m/orders/sync` (`useOrdersSync`, same order client-side, live ledger) | caller's org |
 
-The header pill (`GlobalHeaderSync`, right of the inbox) reads each job's latest
-`cron_runs` row every minute and shows the newest as "Sync · 5m"; its panel lists
-every outbound/inbound sync with its own last run and a Run verb.
+The header Sync pill (`GlobalHeaderSync`, right of Add · Inbox) reads each job's latest
+`cron_runs` row every minute and shows the newest as "Sync · 5m"; hover teaches its
+`Y` chord like Add's `C`; its panel lists every outbound/inbound sync with its own last
+run and a Run verb, and links **Sync history & past imports** (`/operations?mode=sync`,
+every run with its summary). The To-ship desk no longer carries sync verbs: its face is
+**Add manual order**, its chevron Upload / Export CSV.
+
 It replaced the separate `shipstation.orders_sync` cron. Removed on 2026-09-24 and not
 restored: `/api/google-sheets/transfer-orders`, `/api/google-sheets/sync-shipstation-orders`
 (ShipStation CSV upload), the `google_sheets.transfer_orders` cron.

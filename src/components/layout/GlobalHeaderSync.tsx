@@ -16,13 +16,13 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { usePathname } from 'next/navigation';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { AlertCircle, Check, Loader2, RefreshCw } from '@/components/Icons';
-import { HoverTooltip } from '@/components/ui/HoverTooltip';
+import { KeyHintPopover, type KeyHintAt, type KeyHintRow } from '@/components/sidebar/contextual/NavGoKeys';
 import { QuickAccessPanelShell } from '@/components/quick-access/QuickAccessPanelShell';
 import { AnimatePresence, motion } from '@/design-system/motion';
 import { motionPresence, motionTransition } from '@/design-system/foundations/motion-presets';
 import { useMotionPresence, useMotionTransition } from '@/design-system/foundations/motion-presets-hooks';
 import { AnchoredLayer, Button, ChordKeys, KeyboardKey, Layer } from '@/design-system/primitives';
-import { focusRing } from '@/design-system/tokens/focus-ring';
+import Link from 'next/link';
 import { DROPDOWN_SHELL_CORNER } from '@/design-system/tokens/radius';
 import { elevationClass } from '@/design-system/tokens/shadows';
 import { invalidateDashboardOrderQueries } from '@/lib/dashboard-query-invalidation';
@@ -34,7 +34,7 @@ import { formatRelativeTime } from '@/lib/search/search-recents';
 import type { GlobalSyncDirection, GlobalSyncJob } from '@/lib/sync/global-sync';
 import { toast } from '@/lib/toast';
 import { cn } from '@/utils/_cn';
-import { HEADER_MENU_CAPTION_CLASS, TOP_CHROME_ICON_FACE } from './header-shell';
+import { HEADER_MENU_CAPTION_CLASS, HEADER_PILL_CLASS, TOP_CHROME_ICON_FACE } from './header-shell';
 
 const LEADER = 'Y';
 const ARM_SETTLE_MS = GO_SCAN_BURST_MS + 20;
@@ -58,6 +58,21 @@ const GROUPS: ReadonlyArray<{ direction: GlobalSyncDirection; title: string }> =
   { direction: 'outbound', title: 'Outbound' },
   { direction: 'inbound', title: 'Inbound' },
 ];
+
+/** The hover hint's rows — hotkey first, the leader said once in the lead line (Add's grammar). */
+const HINT_ROWS: KeyHintRow[] = SCOPE_KEYS.map((s) => ({
+  id: s.key,
+  keys: [s.key.toUpperCase()],
+  pressedId: `sync:${s.key}`,
+  label: s.label,
+  icon: RefreshCw,
+}));
+
+const HINT_LEAD = (
+  <>
+    Press <KeyboardKey size="xs">{LEADER}</KeyboardKey> then
+  </>
+);
 
 type RowState = { status: 'running' } | { status: 'done'; message: string } | { status: 'error'; message: string };
 
@@ -85,6 +100,7 @@ export function GlobalHeaderSync() {
   const queryClient = useQueryClient();
   const [open, setOpen] = useState(false);
   const [armed, setArmed] = useState(false);
+  const [hintAt, setHintAt] = useState<KeyHintAt | null>(null);
   const [rows, setRows] = useState<Record<string, RowState>>({});
   const runningRef = useRef(false);
   const armedRef = useRef(false);
@@ -224,32 +240,38 @@ export function GlobalHeaderSync() {
 
   return (
     <div ref={anchorRef} className="flex h-full shrink-0 items-center px-1">
-      <HoverTooltip label={`Sync — press ${LEADER}, then A / O / I`} asChild>
-        <button
-          type="button"
-          onClick={() => setOpen((o) => !o)}
-          aria-label={latest.at ? `Sync — last synced ${formatRelativeTime(latest.at)}` : 'Sync'}
-          aria-expanded={open}
-          aria-keyshortcuts={LEADER}
-          data-testid="global-sync-button"
-          data-syncing={running || undefined}
-          className={cn(
-            'ds-raw-button inline-flex h-8 cursor-pointer items-center gap-1.5 rounded-mode-pill border border-border-soft bg-surface-card pl-2.5 pr-3',
-            'text-role-caption font-semibold text-text-default transition-[border-color,background-color,box-shadow] duration-150',
-            'hover:border-border-default hover:bg-surface-hover hover:shadow-elev-soft active:translate-y-px',
-            open && 'border-border-default bg-surface-hover',
-            focusRing('control'),
-          )}
-        >
-          <RefreshCw className={cn(TOP_CHROME_ICON_FACE, 'size-4', running && 'animate-spin motion-reduce:animate-none')} aria-hidden />
-          <span>{running ? 'Syncing…' : 'Sync'}</span>
-          {!running && latest.at ? (
-            <span className={cn('font-normal tabular-nums', latest.failed ? 'text-text-warning' : 'text-text-muted')} data-testid="global-sync-last">
-              {formatRelativeTime(latest.at)}
-            </span>
-          ) : null}
-        </button>
-      </HoverTooltip>
+      <button
+        type="button"
+        onClick={() => {
+          setHintAt(null);
+          setOpen((o) => !o);
+        }}
+        // Hover TEACHES the keys, exactly like Add: a hint under the pill,
+        // flush right — "Press [Y] then" over the scope rows. Never while open.
+        onPointerEnter={(event) => {
+          if (event.pointerType !== 'mouse' || open) return;
+          const rect = event.currentTarget.getBoundingClientRect();
+          setHintAt({ right: window.innerWidth - rect.right, top: rect.bottom + 4 });
+        }}
+        onPointerLeave={() => setHintAt(null)}
+        onPointerDown={() => setHintAt(null)}
+        aria-label={latest.at ? `Sync — last synced ${formatRelativeTime(latest.at)}` : 'Sync'}
+        aria-expanded={open}
+        aria-keyshortcuts={LEADER}
+        data-state={open ? 'open' : 'closed'}
+        data-testid="global-sync-button"
+        data-syncing={running || undefined}
+        className={HEADER_PILL_CLASS}
+      >
+        <RefreshCw className={cn(TOP_CHROME_ICON_FACE, 'size-4', running && 'animate-spin motion-reduce:animate-none')} aria-hidden />
+        <span>{running ? 'Syncing…' : 'Sync'}</span>
+        {!running && latest.at ? (
+          <span className={cn('font-normal tabular-nums', latest.failed ? 'text-text-warning' : 'text-text-muted')} data-testid="global-sync-last">
+            {formatRelativeTime(latest.at)}
+          </span>
+        ) : null}
+      </button>
+      <KeyHintPopover id="sync" at={open ? null : hintAt} rows={HINT_ROWS} lead={HINT_LEAD} />
       <AnchoredLayer open={open} onClose={() => setOpen(false)} anchorRef={anchorRef} placement="bottom-end" gap={0} edgeAlign="viewport">
         <QuickAccessPanelShell
           title="Sync"
@@ -270,10 +292,16 @@ export function GlobalHeaderSync() {
             </Button>
           }
           footer={
-            <p className="flex items-center gap-1.5 px-4 py-2 text-role-micro text-text-muted">
-              <KeyboardKey size="xs">{LEADER}</KeyboardKey> then <KeyboardKey size="xs">A</KeyboardKey> all ·
-              <KeyboardKey size="xs">O</KeyboardKey> outbound · <KeyboardKey size="xs">I</KeyboardKey> inbound
-            </p>
+            // Every run — scheduled or pressed here — with its summary: the
+            // past-imports record (owner 2026-09-28: it lives on the sync page).
+            <Link
+              href="/operations?mode=sync"
+              onClick={() => setOpen(false)}
+              className="block px-4 py-2 text-role-caption font-semibold text-text-soft hover:text-text-default"
+              data-testid="global-sync-history"
+            >
+              Sync history & past imports →
+            </Link>
           }
         >
           {jobsQuery.isLoading ? <p className="px-4 py-6 text-role-caption text-text-muted">Loading syncs…</p> : null}

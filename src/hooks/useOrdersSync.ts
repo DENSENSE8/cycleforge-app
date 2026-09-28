@@ -28,7 +28,7 @@ import {
   fetchOrderSyncSources,
   ORDER_SYNC_SOURCES_STALE_MS,
   type OrderSyncSource,
-} from '@/hooks/useOrderSyncSources';
+} from '@/lib/integrations/order-sync-sources-client';
 
 /** The "Import Latest Orders" sync orchestration — ShipStation, the org's ONE order import, through the connection-driven sync API (`POST… */
 interface OrdersSyncStatus {
@@ -181,13 +181,13 @@ export function useOrdersSync() {
   };
 
   /**
-   * Sync every linked platform — or just `providers` when the To-ship form
-   * narrowed the set. ShipStation imports, the Google Sheets backup attaches
-   * tracking for labels bought outside ShipStation, any other linked channel
-   * syncs after, and the exceptions pass runs last against what they landed.
+   * Sync every linked platform in pipeline order (`/m/orders/sync`): ShipStation
+   * imports, the Google Sheets backup fills blanks and adds what ShipStation
+   * never saw, any other linked channel syncs after, and the exceptions pass
+   * runs last against what they landed.
    */
-  const handleTransfer = async (opts: { providers?: readonly string[] } = {}) => {
-    // One run at a time: the face, the form and the hotkey all land here.
+  const handleTransfer = async () => {
+    // One run at a time.
     if (abortRef.current) return;
     const controller = new AbortController();
     abortRef.current = controller;
@@ -204,12 +204,9 @@ export function useOrdersSync() {
     } catch {
       // The list is a convenience; ShipStation below is still the floor.
     }
-    const selected = sources.filter(
-      (source) => source.canSync && (!opts.providers || opts.providers.includes(source.provider)),
-    );
+    const selected = sources.filter((source) => source.canSync);
     // No list (fetch failed / nothing linked yet) → the order import of record.
-    const runShipStation =
-      selected.some((s) => s.provider === 'shipstation') || (sources.length === 0 && !opts.providers);
+    const runShipStation = selected.some((s) => s.provider === 'shipstation') || sources.length === 0;
     const sheetSource = selected.find((s) => s.provider === 'google_sheets');
     const platformSources = selected.filter((s) => s.provider !== 'shipstation' && s.provider !== 'google_sheets');
 

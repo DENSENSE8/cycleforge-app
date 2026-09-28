@@ -2,10 +2,10 @@
 
 /** Outbound orders desk body — Pending · Picked · Packed · Shipped. */
 
-import { Suspense, useCallback, useEffect, useMemo, useState } from 'react';
+import { Suspense, useEffect } from 'react';
 import dynamic from 'next/dynamic';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { useQueryClient } from '@tanstack/react-query';
+
 import { useDashboardSearchController } from '@/hooks/useDashboardSearchController';
 import { useDashboardSelectedOrder } from '@/hooks/useDashboardSelectedOrder';
 import { useOrderRailSelection } from '@/hooks/useOrderRailSelection';
@@ -16,16 +16,11 @@ import { DashboardOrdersView } from '@/components/dashboard/DashboardOrdersView'
 import { OrdersViewChromeProvider } from '@/components/outbound/orders/orders-view-chrome-context';
 import { OrderIntakeEntry } from '@/components/outbound/orders/intake/OrderIntakeEntry';
 import { OrderListLeadProvider } from '@/components/outbound/orders/intake/order-list-lead';
-import { ToShipPlatformSyncDialog } from '@/components/outbound/orders/ToShipPlatformSyncDialog';
+
 import { OrderPasteIntake } from '@/components/outbound/orders/OrderPasteIntake';
 import { useTableImportParam } from '@/hooks/useTableImportParam';
 import { useTableImportFilePicker } from '@/components/tables/import/TableImportFileButton';
-import { useOrdersSync } from '@/hooks/useOrdersSync';
-import { useOrdersSyncDemo } from '@/hooks/useOrdersSyncDemo';
-import {
-  OrdersSyncRunProvider,
-  type OrdersSyncRunSurface,
-} from '@/features/orders/sync/orders-sync-run-context';
+
 import { useAuth } from '@/contexts/AuthContext';
 import { ORDER_IMPORT_DESCRIPTOR } from '@/lib/orders/order-import-descriptor';
 import { PAPERWORK_PARAM, parsePaperworkOrderId } from '@/lib/orders/print-packet';
@@ -39,18 +34,8 @@ import {
   type OrdersDeskContext,
   SHIPPING_ORDERS_PATH,
 } from '@/lib/shipping/orders-desk';
-import { refreshDomain } from '@/lib/refresh/bus';
 import { getOpenShippedDetailsPayload } from '@/utils/events';
-import { safeRandomUUID } from '@/lib/safe-uuid';
-import { toast } from '@/lib/toast';
-import {
-  insertUnshippedOrderIntoCache,
-  invalidateUnshippedCounts,
-} from '@/lib/queries/dashboard-cache-patch';
 import { useNavIntent } from '@/lib/nav/use-nav-intent';
-
-/** What a sidebar intake verb runs on the desk (`orders-intake:*`). */
-type OrderIntakeMethod = 'file' | 'sync' | 'demo' | 'test';
 
 // Support › Inquiries only.
 const SupportOrdersFocusHost = dynamic(
@@ -89,125 +74,15 @@ function OutboundOrdersDeskContent({
   const { active: importActive } = useTableImportParam(ORDER_IMPORT_DESCRIPTOR);
 
   /**
-   * Ingest, run straight from the sidebar's To-ship verbs (`orders-intake:*`).
-   * The Add-orders RAIL is gone (operator, 2026-08-31).
+   * The one intake verb left on the desk's chevron: Upload orders CSV. Sync,
+   * demo and test orders moved out (owner 2026-09-28) — syncing is the global
+   * header Sync; its history is Operations › Sync.
    */
   const csv = useTableImportFilePicker(ORDER_IMPORT_DESCRIPTOR);
-  const sync = useOrdersSync();
-  const demo = useOrdersSyncDemo();
-  const queryClient = useQueryClient();
   const { has } = useAuth();
-  const canImportOrders = has('orders.import');
-
-  const openIntakeMethod = useCallback(
-    async (method: OrderIntakeMethod) => {
-      if (method === 'sync') {
-        void sync.handleTransfer();
-        return;
-      }
-      if (method === 'demo') {
-        demo.start();
-        return;
-      }
-      if (method === 'test') {
-        const idempotencyKey = safeRandomUUID();
-        const testToken = safeRandomUUID().replaceAll('-', '').slice(0, 10).toUpperCase();
-        const orderId = `CF-TEST-${Date.now()}-${testToken.slice(0, 6)}`;
-        // The To ship query is intentionally label-scoped:
-        const trackingNumber = `1Z999AA1${testToken}`;
-        const response = await fetch('/api/orders/add', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Idempotency-Key': idempotencyKey,
-          },
-          body: JSON.stringify({
-            orderId,
-            productTitle: 'CycleForge test order',
-            sku: 'CF-TEST',
-            accountSource: 'Manual',
-            condition: 'USED_A',
-            quantity: '1',
-            shippingTrackingNumber: trackingNumber,
-            idempotencyKey,
-          }),
-        });
-        const result = await response.json().catch(() => ({}));
-        if (!response.ok || !result.success) {
-          toast.error(result.error || 'Could not add test order');
-          return;
-        }
-        if (result.order) insertUnshippedOrderIntoCache(queryClient, result.order);
-        invalidateUnshippedCounts(queryClient);
-        refreshDomain('orders.outbound');
-        toast.success(`Added test order ${orderId}`);
-        return;
-      }
-      csv.open();
-    },
-    [csv, demo, queryClient, sync],
-  );
-
-  // The sidebar's To-ship verbs (TO_SHIP_ACTIONS, `src/lib/nav/context/pages.ts`).
-  // Support › Inquiries aliases this desk as a ticket surface, not the intake,
-  // so it owns none of them. `orders:past-imports` is not registered: the
-  // import-records view it opened no longer exists, so the sidebar paints it
-  // disabled.
-  const [platformSyncOpen, setPlatformSyncOpen] = useState(false);
   const intake = !isSupportContext;
-  const canUploadCsv = intake && canImportOrders && csv.live;
-  // A run already in flight withholds Sync (the old CTA's loading face); the
-  // table's run surface reports its progress.
-  useNavIntent(
-    'orders-intake:sync',
-    intake && !sync.isTransferring ? () => void openIntakeMethod('sync') : null,
-  );
-  useNavIntent('orders-intake:platforms', intake ? () => setPlatformSyncOpen(true) : null);
-  useNavIntent('orders-intake:demo', intake ? () => void openIntakeMethod('demo') : null);
-  useNavIntent('orders-intake:test', intake ? () => void openIntakeMethod('test') : null);
-  useNavIntent('orders-intake:file', canUploadCsv ? () => void openIntakeMethod('file') : null);
-
-  /** ONE run surface for the table to yield to. */
-  const runSurface = useMemo<OrdersSyncRunSurface>(
-    () =>
-      demo.run
-        ? {
-            run: demo.run,
-            elapsedMs: demo.elapsedMs,
-            isRunning: demo.isRunning,
-            outcome: demo.outcome,
-            detail: demo.detail,
-            demo: true,
-            cancel: demo.cancel,
-            dismiss: demo.dismiss,
-          }
-        : {
-            run: sync.run,
-            elapsedMs: sync.elapsedMs,
-            isRunning: sync.isTransferring,
-            outcome: sync.status,
-            detail: sync.runDetail,
-            demo: false,
-            cancel: sync.handleCancelTransfer,
-            dismiss: sync.dismissRun,
-          },
-    [
-      demo.run,
-      demo.elapsedMs,
-      demo.isRunning,
-      demo.outcome,
-      demo.detail,
-      demo.cancel,
-      demo.dismiss,
-      sync.run,
-      sync.elapsedMs,
-      sync.isTransferring,
-      sync.status,
-      sync.runDetail,
-      sync.handleCancelTransfer,
-      sync.dismissRun,
-    ],
-  );
+  const canUploadCsv = intake && has('orders.import') && csv.live;
+  useNavIntent('orders-intake:file', canUploadCsv ? csv.open : null);
 
   const { selectionEnabled, selectionOverlays } =
     useOrderRailSelection(orderView);
@@ -248,7 +123,6 @@ function OutboundOrdersDeskContent({
   }
 
   return (
-    <OrdersSyncRunProvider value={runSurface}>
     <OrdersViewChromeProvider>
     <OrderListLeadProvider
       lead={
@@ -273,19 +147,12 @@ function OutboundOrdersDeskContent({
     </OrderListLeadProvider>
       {!isSupportContext ? (
         <>
-          <ToShipPlatformSyncDialog
-            open={platformSyncOpen}
-            onOpenChange={setPlatformSyncOpen}
-            onSync={(providers) => void sync.handleTransfer({ providers })}
-            busy={sync.isTransferring}
-          />
           {/* The picker's hidden <input>; `csv.open()` (orders-intake:file) clicks it. */}
           {csv.input}
           {canUploadCsv ? <OrderPasteIntake /> : null}
         </>
       ) : null}
     </OrdersViewChromeProvider>
-    </OrdersSyncRunProvider>
   );
 }
 

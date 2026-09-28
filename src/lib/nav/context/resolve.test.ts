@@ -224,7 +224,7 @@ test('permission filtering removes the rows a role cannot reach', () => {
 
   const noImport = new Set([...ALL].filter((p) => p !== 'orders.import'));
   const verbs = (at('/shipping/orders', { permissions: noImport }).actions ?? []).map((a) => a.id);
-  assert.ok(verbs.includes('orders.sync'));
+  assert.ok(verbs.includes('orders.add'));
   assert.ok(!verbs.includes('orders.upload-csv'));
 
   // Facet groups follow the facets endpoint's gate, not just the page door.

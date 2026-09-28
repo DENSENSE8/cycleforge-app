@@ -48,7 +48,7 @@ import { registerShortcutOverviewGroup } from '@/lib/keyboard/shortcut-overview'
 import { NEW_SALES_ORDER_PATH } from '@/lib/orders/manual-order-draft';
 import { hasOpenOverlay } from '@/lib/overlay-stack/store';
 import { cn } from '@/utils/_cn';
-import { TOP_CHROME_ICON_FACE } from './header-shell';
+import { HEADER_PILL_CLASS, TOP_CHROME_ICON_FACE } from './header-shell';
 
 /** `C` waits this long before arming: a scanner burst's next key arrives sooner and cancels it. */
 const ARM_SETTLE_MS = GO_SCAN_BURST_MS + 20;
@@ -208,12 +208,7 @@ export function GlobalHeaderAdd() {
             }}
             onPointerLeave={() => setHintAt(null)}
             onPointerDown={() => setHintAt(null)}
-            className={cn(
-              'ds-raw-button group relative inline-flex h-8 cursor-pointer items-center gap-1.5 overflow-hidden rounded-mode-pill border border-border-soft bg-surface-card pl-2.5 pr-3.5',
-              'text-role-caption font-semibold text-text-default transition-[border-color,background-color,box-shadow] duration-150',
-              'hover:border-border-default hover:bg-surface-hover hover:shadow-elev-soft active:translate-y-px data-[state=open]:border-border-default data-[state=open]:bg-surface-hover',
-              focusRing('control'),
-            )}
+            className={cn(HEADER_PILL_CLASS, 'group overflow-hidden pr-3.5')}
           >
             {/* Hover sheen: one light sweep across the pill; off under reduced motion. */}
             <span

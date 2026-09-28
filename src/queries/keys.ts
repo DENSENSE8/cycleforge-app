@@ -8,7 +8,7 @@ export const qk = {
   },
   ebayAccounts: ['ebay-accounts'] as const,
   amazonAccounts: ['amazon-accounts'] as const,
-  /** Connected order sources for the To-ship Sync Google Sheet chevron. */
+  /** Linked order platforms the orders sync runs (`/m/orders/sync`). */
   orderSyncSources: ['order-sync-sources'] as const,
   adminFbaFnskus: {
     /** Broad invalidation prefix — matches every admin FNSKU directory query. */

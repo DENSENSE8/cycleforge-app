@@ -16,8 +16,6 @@ import {
   useTableImportDraft,
 } from '@/lib/tables/import/staging-store';
 import { useTableImportParam } from '@/hooks/useTableImportParam';
-import { OrderSyncRunView } from '@/features/orders/sync/OrderSyncRunView';
-import { useOrdersSyncRunOptional } from '@/features/orders/sync/orders-sync-run-context';
 import {
   ORDERS_DESK_CONTEXT_KEY,
   ORDERS_DESK_SUPPORT_CONTEXT,
@@ -77,25 +75,7 @@ export function DashboardOrdersView({
     }
   }, [searchParams, rows.length, setViewShellOpen]);
 
-  /**
-   * A sync TAKES THE STAGE (operator 2026-09-15).
-   * A sync TAKES THE STAGE (operator 2026-09-15). Same seam the CSV staging
-   */
-  const syncRun = useOrdersSyncRunOptional();
-  const showSyncRun = Boolean(syncRun?.run);
-
-  const body = showSyncRun && syncRun?.run ? (
-    <OrderSyncRunView
-      run={syncRun.run}
-      elapsedMs={syncRun.elapsedMs}
-      isRunning={syncRun.isRunning}
-      onCancel={syncRun.cancel}
-      onDismiss={syncRun.dismiss}
-      outcome={syncRun.outcome}
-      detail={syncRun.detail}
-      demo={syncRun.demo}
-    />
-  ) : showCsvStaging ? (
+  const body = showCsvStaging ? (
     <CsvImportStagingHost />
   ) : (
     <UnshippedTable
@@ -109,7 +89,7 @@ export function DashboardOrdersView({
     />
   );
 
-  const overlays = showSyncRun || showCsvStaging ? null : selectionEnabled ? (
+  const overlays = showCsvStaging ? null : selectionEnabled ? (
     <>
       <OrdersViewControlsRail />
       {selectionOverlays}

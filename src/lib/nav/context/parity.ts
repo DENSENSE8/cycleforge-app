@@ -238,15 +238,12 @@ const ROWS: Readonly<Record<string, readonly Row[]>> = {
     ['param', 'exceptions', 'src/components/shipping/shipped-filter/useShippedFilterActions.ts:52-56', 'shipped'],
     ['param', 'carrier', 'src/components/shipping/shipped-filter/useShippedFilterActions.ts:58-60', 'shipped'],
     ['param', 'statusCategory', 'src/components/shipping/shipped-filter/useShippedFilterActions.ts:62-64', 'shipped'],
-    ['action', 'orders.sync', 'e7dc59d^:src/components/outbound/orders/OrdersDeskAddAction.tsx:115-120'],
-    ['action', 'orders.sync-platforms', 'e7dc59d^:src/components/outbound/orders/OrdersDeskAddAction.tsx:125-136; src/components/outbound/orders/ToShipPlatformSyncDialog.tsx'],
+    // orders.sync / sync-platforms / add-test / demo-sync / past-imports / labels
+    // left the To-ship menu (owner 2026-09-28): sync → global header Sync
+    // (history on Operations › Sync); Labels walk keeps its `L` key.
     ['action', 'orders.upload-csv', 'e7dc59d^:src/components/outbound/orders/OrdersDeskAddAction.tsx:137-146'],
     ['action', 'orders.export-csv', 'e7dc59d^:src/components/outbound/orders/OrdersDeskAddAction.tsx:147-159'],
     ['action', 'orders.add', 'e7dc59d^:src/components/outbound/orders/OrdersDeskAddAction.tsx:160-165 (?triage=new)'],
-    ['action', 'orders.add-test', 'e7dc59d^:src/components/outbound/orders/OrdersDeskAddAction.tsx:166-171'],
-    ['action', 'orders.demo-sync', 'e7dc59d^:src/components/outbound/orders/OrdersDeskAddAction.tsx:172-177'],
-    ['action', 'orders.past-imports', 'e7dc59d^:src/components/outbound/orders/OrdersDeskPastImportsAction.tsx'],
-    ['action', 'orders.labels', 'e7dc59d^:src/components/outbound/orders/paperwork/OrdersDeskLabelsAction.tsx'],
     ['savedViews', 'unshipped_saved_views', 'e7dc59d^:src/components/outbound/orders/OutboundOrdersLedger.tsx:482-488; src/components/dashboard/orders-queue/useOrdersQueueFeed.ts:253-256'],
     ['savedViews', 'shipped_saved_views', 'src/components/dashboard/orders-queue/useOrdersQueueFeed.ts:257-261'],
   ],

@@ -7,6 +7,7 @@ import {
 } from '@/design-system/tokens/app-surface';
 import { NAV_ICON_STROKE_CLASS } from '@/components/icons/nav-weight';
 import { DROPDOWN_ITEM_CORNER, DROPDOWN_SHELL_CORNER } from '@/design-system/tokens/radius';
+import { focusRing } from '@/design-system/tokens/focus-ring';
 import { cn } from '@/utils/_cn';
 
 /** Inner bottom hairline shared by receiving sidebar + workspace chrome (not outer border-b). */
@@ -187,6 +188,19 @@ export const HEADER_ICON_BTN_CLASS = cn(
 
 /** Pressed / open fill for header icon toggles. */
 export const HEADER_ICON_BTN_OPEN_CLASS = 'bg-surface-sunken';
+
+/**
+ * The header's labelled CTA pill — Add · Inbox · Sync wear one face (owner
+ * 2026-09-28: every header action is a clickable CTA with text). Open state
+ * reads `data-state="open"` (Radix triggers set it; hand-rolled ones pass it).
+ */
+export const HEADER_PILL_CLASS = cn(
+  'ds-raw-button relative inline-flex h-8 cursor-pointer items-center gap-1.5 rounded-mode-pill border border-border-soft bg-surface-card pl-2.5 pr-3',
+  'text-role-caption font-semibold text-text-default transition-[border-color,background-color,box-shadow] duration-150',
+  'hover:border-border-default hover:bg-surface-hover hover:shadow-elev-soft active:translate-y-px',
+  'data-[state=open]:border-border-default data-[state=open]:bg-surface-hover',
+  focusRing('control'),
+);
 
 /**
  * Header dropdowns (Pins · Daily tasks · page switcher · inbox) — the triage

@@ -1,9 +1,6 @@
 'use client';
 
-import { useQuery } from '@tanstack/react-query';
-import { qk } from '@/queries/keys';
-
-/** One linked platform the To-ship Sync can run (`GET /api/integrations/order-sources`). */
+/** One linked platform the orders sync can run (`GET /api/integrations/order-sources`). */
 export type OrderSyncSource = {
   provider: string;
   label: string;
@@ -18,13 +15,4 @@ export async function fetchOrderSyncSources(): Promise<OrderSyncSource[]> {
   if (!res.ok) throw new Error('Failed to fetch order sources');
   const data = (await res.json().catch(() => ({}))) as { sources?: OrderSyncSource[] };
   return data.sources ?? [];
-}
-
-export function useOrderSyncSources() {
-  return useQuery({
-    queryKey: qk.orderSyncSources,
-    queryFn: fetchOrderSyncSources,
-    staleTime: ORDER_SYNC_SOURCES_STALE_MS,
-    retry: false,
-  });
 }
