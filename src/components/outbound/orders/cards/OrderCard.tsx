@@ -5,8 +5,8 @@
  * the orders family's adapter over the shared {@link RecordCard}.
  *
  * The card's anatomy, motion and disclosure live in RecordCard; this file
- * only says what an order puts in it: its facts (qty · condition · stock ·
- * SKU · bin · price), its lifecycle state and what it means, the SLA as the
+ * only says what an order puts in it: its facts (qty · condition · price),
+ * its lifecycle state and what it means, the SLA as the
  * top-right status, the channel and buyer, the Urgent / SKU-batch chips, and
  * the orders-owned slots — the order number with its admin-link menu, the
  * listing link (or its editor) and the quick look. A checked card's verbs
@@ -36,7 +36,8 @@ import { OrderCardPeek } from './OrderCardPeek';
 
 /** What each status icon means — the plain tooltip on every icon but out of stock. */
 const STATUS_MEANING: Readonly<Record<LifecycleState, string>> = {
-  ready: 'Ready — waiting to be picked',
+  toPick: 'To pick — nobody has picked it yet',
+  picked: 'Picked — waiting to be packed',
   urgent: 'Urgent — ship this one first',
   packed: 'Packed — needs a label and scan out',
   outOfStock: 'Out of stock — an item on this order is short',
@@ -54,9 +55,6 @@ function orderRecordLine(line: OrderCardLine): RecordCardLine {
     facts: {
       qty: { kind: 'qty', value: line.qty },
       condition: line.condition ? { kind: 'grade', label: line.condition, code: line.conditionCode } : null,
-      stock: { kind: 'stock', onHand: line.stock, need: line.qty, out: line.outOfStock, missingTitle: 'No stock record for this SKU' },
-      sku: line.sku ? { kind: 'code', text: line.sku, title: 'SKU' } : null,
-      bin: { kind: 'place', path: line.bin.path, empty: 'No bin' },
       price: line.price ? { kind: 'money', text: line.price, estimate: line.priceEstimate, estimateTitle: 'Estimate from the listing price' } : null,
     },
   };
@@ -67,10 +65,6 @@ const moreOutOfStock = (count: number) => `${count} more out of stock`;
 /** The face's slot props (state + its handlers) plus what only an order card reads. */
 export interface OrderCardProps extends TriageCardSlotProps<ShippedOrder, OrderCardModel> {
   todayKey: string;
-  /** Loaded orders whose lines carry the lead line's SKU (this one included); ≥ 2 shows the batch chip. */
-  skuShared: number;
-  /** Check every loaded order carrying this SKU — one pick trip. */
-  onSelectSku: (sku: string) => void;
   /** Save the order's staff note from line 1 (appends to the notes trail). */
   onSaveNote: (record: ShippedOrder, text: string) => void;
 }
@@ -87,8 +81,6 @@ export const OrderCard = memo(function OrderCard({
   peekOpen,
   onTogglePeek,
   todayKey,
-  skuShared,
-  onSelectSku,
   onSaveNote,
 }: OrderCardProps) {
   const channel = useOrderChannel()(model.orderId, model.accountSource);
@@ -96,20 +88,8 @@ export const OrderCard = memo(function OrderCard({
 
   const record = useMemo<RecordCardModel>(() => {
     const spec = LIFECYCLE[model.state];
-    const leadSku = model.lines[0]?.sku ?? null;
     const chips: RecordCardChip[] = [];
     if (model.urgent && model.state !== 'urgent') chips.push({ id: 'urgent', tone: 'warning', short: 'Urgent' });
-    if (skuShared > 1 && leadSku) {
-      chips.push({
-        id: 'sku-batch',
-        tone: 'info',
-        short: `SKU ×${skuShared}`,
-        long: `SKU in ${skuShared} orders`,
-        tooltip: `Check all ${skuShared} orders with SKU ${leadSku} — one pick trip`,
-        onPress: () => onSelectSku(leadSku),
-        testId: 'order-card-sku-batch',
-      });
-    }
     return {
       key: model.key,
       leadId: model.lead.id,
@@ -149,7 +129,7 @@ export const OrderCard = memo(function OrderCard({
       lines: model.lines.map(orderRecordLine),
       hiddenAlertLabel: moreOutOfStock,
     };
-  }, [model, channel, skuShared, onSelectSku]);
+  }, [model, channel]);
 
   if (!lead) return null;
 

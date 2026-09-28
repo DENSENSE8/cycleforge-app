@@ -2,6 +2,7 @@
 
 import type { NavFacetsResponse } from '@/lib/nav/context/schema';
 import { NAV_FACET_PERMISSION, type NavFacetContext } from '@/lib/nav/facets/contexts';
+import { importFacets } from '@/lib/nav/facets/imports';
 import { outboundFacets, type FacetSqlRunner } from '@/lib/nav/facets/outbound';
 import { pickupFacets } from '@/lib/nav/facets/pickup';
 import { shippedFacets } from '@/lib/nav/facets/shipped';
@@ -33,5 +34,8 @@ export async function getNavFacets(
   }
   const run: FacetSqlRunner = (sql, bind) => deps.run(caller.orgId, sql, bind);
   if (context === 'outbound.shipped') return { ok: true, body: await shippedFacets(caller.orgId, params, run) };
+  if (context === 'imports.runs' || context === 'imports.rows') {
+    return { ok: true, body: await importFacets(context, caller.orgId, params, run) };
+  }
   return { ok: true, body: await outboundFacets(context, caller.orgId, params, run) };
 }

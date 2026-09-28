@@ -4,6 +4,7 @@ import type { ShipStationV1Shipment } from '@/lib/shipping/shipstation/orders-v1
 import { shipStationCarrierToStored } from '@/lib/shipping/carrier-resolution';
 import { normalizeTrackingNumber } from '@/lib/tracking-format';
 import { matchAggregatorOrderRows, type PlatformOf } from '@/lib/orders/order-source-match';
+import type { ImportRowRecord } from '@/lib/imports/types';
 
 /** The tracking one order should carry as its primary. */
 interface ShipmentTrackingPlan {
@@ -211,4 +212,50 @@ export async function attachShipStationTracking(
     }),
   );
   return result;
+}
+
+/**
+ * The import record for one applied label pass: a label that became an
+ * order's primary is `tracking_filled` on every row it attached to, an attach
+ * that threw is `failed` there, and a number whose rows span platforms is one
+ * `ambiguous` row. Unmatched labels and already-current tracking touch no
+ * order and record nothing.
+ */
+export function shipStationTrackingImportRows(
+  shipments: readonly ShipStationV1Shipment[],
+  outcomes: ShipStationTrackingResult['outcomes'],
+  rowsById: ReadonlyMap<number, { accountSource: string | null; shipmentId: number | null }>,
+  platformOf: PlatformOf,
+): ImportRowRecord[] {
+  const shipmentById = new Map(shipments.map((s) => [s.shipmentId, s]));
+  return outcomes.flatMap((o): ImportRowRecord[] => {
+    const s = shipmentById.get(o.shipmentId);
+    if (!s) return [];
+    const base = {
+      externalOrderId: s.orderNumber?.trim() ?? '',
+      trackingNumber: s.trackingNumber?.trim() || null,
+      shipstationShipmentId: s.shipmentId,
+      shipstationOrderId: s.orderId,
+    };
+    if (o.status === 'ambiguous') {
+      return [
+        { ...base, orderRowId: null, accountSource: null, platform: null, outcome: 'ambiguous', reason: 'shipstation_ambiguous_match' },
+      ];
+    }
+    if (o.status !== 'attached' && o.status !== 'failed') return [];
+    return o.orderRowIds.map((orderRowId) => {
+      const row = rowsById.get(orderRowId);
+      const accountSource = row?.accountSource ?? null;
+      return {
+        ...base,
+        orderRowId,
+        accountSource,
+        platform: platformOf(accountSource),
+        outcome: o.status === 'attached' ? 'tracking_filled' : 'failed',
+        reason: o.status === 'failed' ? 'tracking_attach_failed' : null,
+        filledFields: o.status === 'attached' ? ['shipment_id'] : [],
+        shipmentId: o.status === 'attached' ? row?.shipmentId ?? null : null,
+      };
+    });
+  });
 }

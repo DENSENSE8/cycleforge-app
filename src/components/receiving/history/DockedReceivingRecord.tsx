@@ -17,7 +17,10 @@ import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
 import { conditionSentenceLabel } from '@/lib/conditions';
 import { displayReceivingProductTitle } from '@/components/station/receiving-grid/cells';
 import { fmtDate } from '@/components/sidebar/receiving/incoming-details/incoming-details-shared';
-import { resolveReceivingRowStageStamp, type ReceivingActivityAxis } from '@/components/station/receiving-lines-table-helpers';
+import {
+  resolveReceivingRowStageStamp,
+  type ReceivingActivityAxis,
+} from '@/lib/receiving/receiving-stage-stamp';
 
 export function DockedReceivingRecord({
   row,

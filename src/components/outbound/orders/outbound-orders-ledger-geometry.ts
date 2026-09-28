@@ -73,17 +73,6 @@ export const LEDGER_SPINE_HATCH_CLASS =
   '[background-image:repeating-linear-gradient(135deg,transparent_0_3px,var(--mode-panel)_3px_5px)]';
 
 /**
- * Location lane in the context band — between the state code and the
- * platform, because the first thing a floor hand needs is WHERE the item is.
- * Wide enough for a `ZONE-F // BIN-TECH-PARTS` breadcrumb before it clips.
- */
-export const LEDGER_LOCATION_CLASS: Readonly<Record<LedgerRowZoom, string>> = {
-  S: 'w-44 shrink-0',
-  M: 'w-60 shrink-0',
-  L: 'w-60 shrink-0',
-};
-
-/**
  * The record's LEAD column on bands 1 and 3 — one box, so the fact that
  * follows it starts on the same x on both bands (owner 2026-09-25: the SKU
  */

@@ -1,86 +1,64 @@
 'use client';
 
-/** The painted queue read as the floor reads it — what needs hands: */
+/**
+ * The painted queue read as the floor reads it — ORDER STATUS only (owner
+ * 2026-09-28): Urgent · To pick · Picked · Packed · Out of stock. Late reads
+ * off the card's ship-by corner and the Late section; No bin was dropped
+ * (measured: it held for 173 of 173 orders — nothing is allocated, so it
+ * carried no information).
+ */
 
-import { useMemo } from 'react';
+import { useMemo, useRef } from 'react';
+import { useHorizontalWheelScroll } from '@/hooks/useHorizontalWheelScroll';
 import type { ShippedOrder } from '@/lib/neon/orders-queries';
-import { daysLateOn } from '@/components/dashboard/orders-queue/useOrdersQueueFeed';
-import type { QueueRowRecord } from '@/components/dashboard/orders-queue/helpers';
-import { formatOutboundStoragePath } from '@/lib/shipping/outbound-storage-path';
 import { EvidenceFactRow } from '@/design-system/components/record-ledger/EvidenceDisclosure';
-import { LIFECYCLE, STATE_TONE_CLASSES, type LifecycleState, type StateName } from '@/design-system/tokens/lifecycle';
+import { LIFECYCLE, LIFECYCLE_STATES, STATE_TONE_CLASSES, type LifecycleState } from '@/design-system/tokens/lifecycle';
 import { AnimatePresence, motion } from 'motion/react';
 import { focusRing } from '@/design-system/tokens/focus-ring';
 import { RECORD_ID_CLASS, RECORD_LABEL_CLASS, recordStateCodeClass } from '@/design-system/tokens/industrial-record';
 import { cn } from '@/utils/_cn';
 import { recordState } from './outbound-orders-ledger-state';
 
-/** Summary order: the states that need hands first. */
-const SUMMARY_STATES: readonly LifecycleState[] = ['outOfStock', 'urgent', 'ready', 'packed'];
+/**
+ * The statuses the desk counts and filters by (owner 2026-09-28): Urgent first,
+ * then the floor walk To pick → Picked → Packed, Out of stock last. Every order
+ * answers to one.
+ */
+export const QUEUE_STATUS_CHIPS: readonly LifecycleState[] = ['urgent', 'toPick', 'picked', 'packed', 'outOfStock'];
 
-interface QueueSummaryProps {
-  records: readonly ShippedOrder[];
-  todayKey: string;
+/** The status one row answers to — for the triage cut's `rowStatusKeys`. */
+export function queueRowStatusKeys(record: ShippedOrder): LifecycleState[] {
+  return [recordState(record)];
 }
 
-/** A queue status a chip counts and filters by — a lifecycle state, or a fact (late, no bin). */
-export type QueueStatusKey = LifecycleState | 'late' | 'no-bin';
-
-/** The chip order on the triage list: the states that need hands first, then the two facts. */
-export const QUEUE_STATUS_CHIPS: readonly QueueStatusKey[] = [...SUMMARY_STATES, 'late', 'no-bin'];
-
-/** Every status one row answers to — its lifecycle state, plus late / no bin when they hold. */
-export function queueRowStatusKeys(record: ShippedOrder, todayKey: string): QueueStatusKey[] {
-  const keys: QueueStatusKey[] = [recordState(record)];
-  const r = record as QueueRowRecord;
-  const days = daysLateOn(
-    todayKey,
-    (r.deadline_at as string | null | undefined) || (r.ship_by_date as string | null | undefined),
-  );
-  if (days != null && days > 0) keys.push('late');
-  if (!formatOutboundStoragePath(record.storage_locations)) keys.push('no-bin');
-  return keys;
+/** A zero for every lifecycle state. */
+function emptyQueueCounts(): Record<LifecycleState, number> {
+  return Object.fromEntries(LIFECYCLE_STATES.map((state) => [state, 0])) as Record<LifecycleState, number>;
 }
 
-function useQueueSummary({ records, todayKey }: QueueSummaryProps) {
+function useQueueCounts(records: readonly ShippedOrder[]): Record<LifecycleState, number> {
   return useMemo(() => {
-    const counts: Record<QueueStatusKey, number> = {
-      ready: 0, urgent: 0, packed: 0, outOfStock: 0, shipped: 0, onHold: 0, late: 0, 'no-bin': 0,
-    };
-    for (const record of records) {
-      for (const key of queueRowStatusKeys(record, todayKey)) counts[key] += 1;
-    }
-    return { byState: counts, late: counts.late, unlocated: counts['no-bin'] };
-  }, [records, todayKey]);
+    const counts = emptyQueueCounts();
+    for (const record of records) counts[recordState(record)] += 1;
+    return counts;
+  }, [records]);
 }
 
-/** The empty split pane: one fact row per count. */
-export function OrderQueueSummary(props: QueueSummaryProps) {
-  const summary = useQueueSummary(props);
+/** The empty split pane: one fact row per status. */
+export function OrderQueueSummary({ records }: { records: readonly ShippedOrder[] }) {
+  const counts = useQueueCounts(records);
   return (
     <div className="flex flex-1 flex-col bg-mode-bar text-mode-ink" data-testid="order-queue-summary">
       <p className={cn(RECORD_LABEL_CLASS, 'border-b border-mode-ink px-4 py-2 text-mode-muted')}>No order selected</p>
       <div className="flex flex-col px-4">
-        {SUMMARY_STATES.map((state) => (
+        {QUEUE_STATUS_CHIPS.map((state) => (
           <EvidenceFactRow key={state} label={LIFECYCLE[state].code}>
             <span className="flex items-center justify-between">
               <span className={cn(RECORD_LABEL_CLASS, recordStateCodeClass(LIFECYCLE[state]))}>{LIFECYCLE[state].label}</span>
-              <span className={cn(RECORD_ID_CLASS, 'tabular-nums')}>{summary.byState[state]}</span>
+              <span className={cn(RECORD_ID_CLASS, 'tabular-nums')}>{counts[state]}</span>
             </span>
           </EvidenceFactRow>
         ))}
-        <EvidenceFactRow label="Late">
-          <span className="flex items-center justify-between">
-            <span className={cn(RECORD_LABEL_CLASS, STATE_TONE_CLASSES.danger.text)}>Past ship-by</span>
-            <span className={cn(RECORD_ID_CLASS, 'tabular-nums')}>{summary.late}</span>
-          </span>
-        </EvidenceFactRow>
-        <EvidenceFactRow label="No bin">
-          <span className="flex items-center justify-between">
-            <span className={cn(RECORD_LABEL_CLASS, 'text-mode-warn')}>Unassigned location</span>
-            <span className={cn(RECORD_ID_CLASS, 'tabular-nums')}>{summary.unlocated}</span>
-          </span>
-        </EvidenceFactRow>
       </div>
       <p className={cn(RECORD_LABEL_CLASS, 'mt-auto border-t border-mode-edge p-4 text-mode-muted')}>
         Open a record · J / K to step · Esc to close
@@ -90,32 +68,18 @@ export function OrderQueueSummary(props: QueueSummaryProps) {
 }
 
 /** In place: the same counts as one status-bar readout. */
-export function OrderQueueSummaryLine(props: QueueSummaryProps) {
-  const summary = useQueueSummary(props);
+export function OrderQueueSummaryLine({ records }: { records: readonly ShippedOrder[] }) {
+  const counts = useQueueCounts(records);
   return (
     <span className={cn(RECORD_LABEL_CLASS, 'flex min-w-0 items-center gap-3 truncate')} data-testid="order-queue-summary-line">
-      {SUMMARY_STATES.map((state) => (
+      {QUEUE_STATUS_CHIPS.map((state) => (
         <span key={state} className={recordStateCodeClass(LIFECYCLE[state])} title={LIFECYCLE[state].label}>
-          {LIFECYCLE[state].code} <span className="tabular-nums">{summary.byState[state]}</span>
+          {LIFECYCLE[state].code} <span className="tabular-nums">{counts[state]}</span>
         </span>
       ))}
-      <span className={STATE_TONE_CLASSES.danger.text} title="Past ship-by">
-        Late <span className="tabular-nums">{summary.late}</span>
-      </span>
-      <span className="text-mode-warn" title="Unassigned location">
-        No bin <span className="tabular-nums">{summary.unlocated}</span>
-      </span>
     </span>
   );
 }
-
-const CHIP_FACE: Readonly<Record<QueueStatusKey, { label: string; tone: StateName }>> = {
-  ...(Object.fromEntries(
-    Object.entries(LIFECYCLE).map(([state, spec]) => [state, { label: spec.label, tone: spec.tone }]),
-  ) as Record<LifecycleState, { label: string; tone: StateName }>),
-  late: { label: 'Late', tone: 'danger' },
-  'no-bin': { label: 'No bin', tone: 'warning' },
-};
 
 const CHIP_SPRING = { type: 'spring', stiffness: 520, damping: 34 } as const;
 
@@ -127,39 +91,37 @@ const CHIP_SPRING = { type: 'spring', stiffness: 520, damping: 34 } as const;
  */
 export function OrderQueueSummaryChips({
   orders,
-  todayKey,
   active,
   onToggle,
   onReset,
 }: {
   /** One entry per card: that order's lines. */
   orders: readonly (readonly ShippedOrder[])[];
-  todayKey: string;
-  active: ReadonlySet<QueueStatusKey>;
-  onToggle: (key: QueueStatusKey) => void;
+  active: ReadonlySet<LifecycleState>;
+  onToggle: (key: LifecycleState) => void;
   onReset: () => void;
 }) {
+  const railRef = useRef<HTMLSpanElement>(null);
+  useHorizontalWheelScroll(railRef);
   const counts = useMemo(() => {
-    const tally: Record<QueueStatusKey, number> = {
-      ready: 0, urgent: 0, packed: 0, outOfStock: 0, shipped: 0, onHold: 0, late: 0, 'no-bin': 0,
-    };
+    const tally = emptyQueueCounts();
     for (const lines of orders) {
-      const keys = new Set(lines.flatMap((line) => queueRowStatusKeys(line, todayKey)));
-      for (const key of keys) tally[key] += 1;
+      for (const state of new Set(lines.map(recordState))) tally[state] += 1;
     }
     return tally;
-  }, [orders, todayKey]);
+  }, [orders]);
   return (
     <span
+      ref={railRef}
       role="group"
       aria-label="Filter by status"
       data-testid="order-queue-summary-chips"
       // One sideways-scrolling rail on any width (mobile first): snap per chip,
-      // no scrollbar, a soft fade at the right edge says there is more.
+      // plain wheel scrolls it, no scrollbar, a right-edge fade says there is more.
       className="flex w-full min-w-0 snap-x snap-proximity items-center gap-1.5 overflow-x-auto overscroll-x-contain py-0.5 pr-6 [mask-image:linear-gradient(to_right,black_calc(100%-24px),transparent)] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
     >
       {QUEUE_STATUS_CHIPS.map((key) => {
-        const face = CHIP_FACE[key];
+        const face = LIFECYCLE[key];
         const tone = STATE_TONE_CLASSES[face.tone];
         const on = active.has(key);
         const count = counts[key];

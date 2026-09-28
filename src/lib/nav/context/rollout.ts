@@ -49,6 +49,8 @@ export const NAV_CONTEXT_ROLLOUT: Readonly<Record<string, NavRolloutState>> = {
   'qc-labels': 'contextual',
   support: 'legacy',
   studio: 'legacy',
+  // Born contextual (2026-09-28): no old panel to retire; its filters were never anywhere else.
+  imports: 'contextual',
 };
 
 /** Settings value set of `nav.contextual.<pageId>`; `inherit` defers to the next level. */

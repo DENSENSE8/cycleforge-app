@@ -5,6 +5,7 @@ import type { ShipStationV1Shipment } from '@/lib/shipping/shipstation/orders-v1
 import {
   attachShipStationTracking,
   planShipStationTracking,
+  shipStationTrackingImportRows,
   type ShipStationOrderRow,
   type ShipStationTrackingDeps,
 } from './shipstation-tracking';
@@ -236,6 +237,54 @@ test('attach: every row of a multi-row order gets the tracking in one call; one 
   assert.equal(result.failed, 1);
   assert.deepEqual(errors, ['BAD']);
   assert.deepEqual(result.attachedOrderIds, [3, 9, 5]);
+});
+
+test('import record: an attached label is tracking_filled on every row, a failed attach is failed, cross-platform is one ambiguous row', async () => {
+  const multi = shipment({ orderNumber: 'MULTI', orderId: 71, trackingNumber: 'T-MULTI' });
+  const bad = shipment({ orderNumber: 'BAD', orderId: 72, trackingNumber: 'T-BAD' });
+  const split = shipment({ orderNumber: 'SPLIT', orderId: 73, trackingNumber: 'T-SPLIT' });
+  const current = shipment({ orderNumber: 'CUR', orderId: 74, trackingNumber: 'T-CUR' });
+  const ghost = shipment({ orderNumber: 'GHOST', orderId: 75, trackingNumber: 'T-GHOST' });
+  const shipments = [multi, bad, split, current, ghost];
+  const { deps } = fakeDeps(
+    [
+      { orderNumber: 'MULTI', orderRowId: 9, accountSource: 'eBay', currentTracking: null },
+      { orderNumber: 'MULTI', orderRowId: 3, accountSource: 'eBay', currentTracking: null },
+      { orderNumber: 'BAD', orderRowId: 4, accountSource: 'Amazon', currentTracking: null },
+      { orderNumber: 'SPLIT', orderRowId: 5, accountSource: 'eBay', currentTracking: null },
+      { orderNumber: 'SPLIT', orderRowId: 6, accountSource: 'Walmart', currentTracking: null },
+      { orderNumber: 'CUR', orderRowId: 8, accountSource: 'eBay', currentTracking: 'T-CUR' },
+    ],
+    new Set(['T-BAD']),
+  );
+  const result = await attachShipStationTracking(ORG, planShipStationTracking(shipments).plans, deps);
+  const rowsById = new Map([
+    [3, { accountSource: 'eBay', shipmentId: 300 }],
+    [9, { accountSource: 'eBay', shipmentId: 300 }],
+    [4, { accountSource: 'Amazon', shipmentId: null }],
+  ]);
+  const rows = shipStationTrackingImportRows(shipments, result.outcomes, rowsById, deps.platformOf);
+  const key = (r: (typeof rows)[number]) => `${r.externalOrderId}:${r.orderRowId}`;
+  assert.deepEqual(
+    rows.sort((a, b) => key(a).localeCompare(key(b))).map((r) => [
+      r.externalOrderId,
+      r.orderRowId,
+      r.outcome,
+      r.reason ?? null,
+      r.trackingNumber,
+      r.shipmentId ?? null,
+      r.shipstationShipmentId,
+      r.shipstationOrderId,
+      r.platform,
+    ]),
+    [
+      ['BAD', 4, 'failed', 'tracking_attach_failed', 'T-BAD', null, bad.shipmentId, 72, 'amazon'],
+      ['MULTI', 3, 'tracking_filled', null, 'T-MULTI', 300, multi.shipmentId, 71, 'ebay'],
+      ['MULTI', 9, 'tracking_filled', null, 'T-MULTI', 300, multi.shipmentId, 71, 'ebay'],
+      ['SPLIT', null, 'ambiguous', 'shipstation_ambiguous_match', 'T-SPLIT', null, split.shipmentId, 73, null],
+    ],
+    'already-current and unmatched labels touched no order',
+  );
 });
 
 test('attach: no plans → no lookup at all', async () => {

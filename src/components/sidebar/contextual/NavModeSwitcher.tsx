@@ -190,12 +190,19 @@ export function NavModeSwitcher({ section, currentPageId }: { section: NavSectio
                   prefetch={false}
                   data-nav-mode-item={item.id}
                   onClick={() => setOpen(false)}
-                  className={cn(MODE_ROW_CLASS, 'h-8 font-medium hover:bg-surface-sunken', SIDEBAR_CONTROL_CORNER)}
+                  className={cn(MODE_ROW_CLASS, item.description ? 'min-h-8 py-1' : 'h-8', 'font-medium hover:bg-surface-sunken', SIDEBAR_CONTROL_CORNER)}
                 >
                   {Icon ? (
                     <Icon aria-hidden className={navIconStrokeClass(cn('size-4 shrink-0', getSidebarPageNav(item.id)?.tone ?? 'text-text-muted'))} />
                   ) : null}
-                  <span className="min-w-0 flex-1 truncate">{item.label}</span>
+                  {item.description ? (
+                    <span className="flex min-w-0 flex-1 flex-col">
+                      <span className="truncate">{item.label}</span>
+                      <span className="truncate text-role-caption font-normal text-text-muted">{item.description}</span>
+                    </span>
+                  ) : (
+                    <span className="min-w-0 flex-1 truncate">{item.label}</span>
+                  )}
                 </Link>
               );
             })}

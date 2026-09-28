@@ -1,6 +1,7 @@
 'use client';
 
-import { useEffect, useSyncExternalStore, type ReactNode } from 'react';
+import { useEffect, useRef, useSyncExternalStore, type ReactNode } from 'react';
+import { useHorizontalWheelScroll } from '@/hooks/useHorizontalWheelScroll';
 import Link from 'next/link';
 import type { NavItem } from '@/lib/nav/context/schema';
 import { getSidebarPageNav } from '@/lib/sidebar-navigation';
@@ -123,6 +124,8 @@ export function NavKeyStrip({ views, pageId }: { views: readonly NavItem[]; page
 
   const showGo = armed && targets.length > 0;
   const showViews = !showGo && peek && views.length > 1;
+  const viewsRef = useRef<HTMLElement>(null);
+  useHorizontalWheelScroll(viewsRef, showViews);
   // Unfolded views stick until Esc or a press outside the title and pills.
   useEffect(() => {
     if (!peek) return undefined;
@@ -187,6 +190,7 @@ export function NavKeyStrip({ views, pageId }: { views: readonly NavItem[]; page
         ) : showViews ? (
           <motion.nav
             key="views"
+            ref={viewsRef}
             aria-label="Views"
             initial={presence.initial}
             animate={presence.animate}

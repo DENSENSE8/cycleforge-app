@@ -33,7 +33,7 @@ import {
 import {
   resolveReceivingRowStageStamp,
   type ReceivingActivityAxis,
-} from '@/components/station/receiving-lines-table-helpers';
+} from '@/lib/receiving/receiving-stage-stamp';
 import { IncomingAttachTrackingButton } from '@/components/station/IncomingAttachTrackingButton';
 import { RowStageTimeMeta } from '@/components/ui/RowStageTimeMeta';
 import { formatDateTimePST } from '@/utils/date';

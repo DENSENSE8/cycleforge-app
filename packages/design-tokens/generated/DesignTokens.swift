@@ -324,6 +324,15 @@ public enum DesignTokens {
     /// State colours — what a thing IS; mode- and platform-independent.
     /// Shipped is `success`, never `fulfillment`.
     public enum State {
+        public static let neutral = Tone(
+            text: Color(red: 71.0 / 255.0, green: 85.0 / 255.0, blue: 105.0 / 255.0), // #475569
+            fill: Color(red: 148.0 / 255.0, green: 163.0 / 255.0, blue: 184.0 / 255.0), // #94a3b8
+            tint: Color(red: 241.0 / 255.0, green: 245.0 / 255.0, blue: 249.0 / 255.0), // #f1f5f9
+            edge: Color(red: 203.0 / 255.0, green: 213.0 / 255.0, blue: 225.0 / 255.0), // #cbd5e1
+            code: Color(red: 71.0 / 255.0, green: 85.0 / 255.0, blue: 105.0 / 255.0), // #475569
+            codeInk: Color(red: 255.0 / 255.0, green: 255.0 / 255.0, blue: 255.0 / 255.0) // #ffffff
+        )
+
         public static let info = Tone(
             text: Color(red: 37.0 / 255.0, green: 99.0 / 255.0, blue: 235.0 / 255.0), // #2563eb
             fill: Color(red: 37.0 / 255.0, green: 99.0 / 255.0, blue: 235.0 / 255.0), // #2563eb
@@ -383,7 +392,8 @@ public enum DesignTokens {
     /// Lifecycle states — one meaning, code and colour on every platform.
     /// Packed is `fulfillment`; shipped is `success`.
     public enum Lifecycle {
-        public static let ready = LifecycleState(code: "RDY", label: "Ready", tone: State.info, icon: "circle-dot")
+        public static let toPick = LifecycleState(code: "TPK", label: "To pick", tone: State.neutral, icon: "circle-dot")
+        public static let picked = LifecycleState(code: "PIK", label: "Picked", tone: State.info, icon: "package-search")
         public static let urgent = LifecycleState(code: "URG", label: "Urgent", tone: State.warning, icon: "alarm-clock")
         public static let packed = LifecycleState(code: "PKD", label: "Packed", tone: State.fulfillment, icon: "package")
         public static let outOfStock = LifecycleState(code: "OOS", label: "Out of stock", tone: State.danger, icon: "package-x")

@@ -214,6 +214,7 @@ export async function shopifySync(orgId: OrgId): Promise<SyncOutcome> {
       imported: counts.imported,
       updated: counts.updated,
       cursor: new Date(maxUpdatedAt).toISOString(),
+      importRows: counts.importRows,
     };
   } catch (e) {
     return { ok: false, error: `shopify: ${msg(e)}` };

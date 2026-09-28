@@ -1,14 +1,20 @@
 import type { OperationalStateSpec } from './state';
 
 /** Lifecycle states — the one meaning, code, word and colour of each outbound lifecycle state, on every platform. */
-export type LifecycleIcon = 'circle-dot' | 'alarm-clock' | 'package' | 'package-x' | 'truck' | 'circle-pause';
+export type LifecycleIcon = 'circle-dot' | 'package-search' | 'alarm-clock' | 'package' | 'package-x' | 'truck' | 'circle-pause';
 
 export interface LifecycleSpec extends OperationalStateSpec {
   icon: LifecycleIcon;
 }
 
 export const LIFECYCLE = {
-  ready: { tone: 'info', code: 'RDY', label: 'Ready', icon: 'circle-dot' },
+  // Nobody has picked it yet — owner 2026-09-28: the WMS "awaiting pick" state,
+  // named for the floor verb (To pick) and grey, because nothing has happened.
+  toPick: { tone: 'neutral', code: 'TPK', label: 'To pick', icon: 'circle-dot' },
+  // Picked (pick scan or serial taken), not packed yet — owner 2026-09-28: a
+  // picked order no longer reads "Ready" like one nobody has touched, and the
+  // picker's stage wears blue so it never reads as the packer's purple.
+  picked: { tone: 'info', code: 'PIK', label: 'Picked', icon: 'package-search' },
   urgent: { tone: 'warning', code: 'URG', label: 'Urgent', icon: 'alarm-clock' },
   packed: { tone: 'fulfillment', code: 'PKD', label: 'Packed', icon: 'package' },
   outOfStock: { tone: 'danger', code: 'OOS', label: 'Out of stock', icon: 'package-x', hatched: true },

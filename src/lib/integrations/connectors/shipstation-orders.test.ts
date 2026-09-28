@@ -7,6 +7,7 @@ import {
   backfillWindows,
   buildStoreAttributions,
   planShipStationOrders,
+  shipStationPlanImportRows,
   resumeFrom,
   toCanonicalLine,
   type AttributionCatalog,
@@ -314,6 +315,22 @@ test('plan: unknown store and cross-platform numbers are quarantined with the ev
   assert.equal(get('P1').plan.outcome === 'skip' && get('P1').plan.reason, 'awaiting_payment', 'unpaid never reaches To-ship');
   assert.equal(counts.quarantined, 2);
   assert.equal(counts.skipped, 3);
+});
+
+test('import record: quarantines carry their exception and reason, skips their reason; written plans record nothing here', () => {
+  const u1 = order({ orderNumber: 'U1', storeId: 6 });
+  const x1 = order({ orderNumber: 'X1', storeId: 1 });
+  const c1 = order({ orderNumber: 'C1', storeId: 1, orderStatus: 'cancelled' });
+  const { planned } = plan([u1, x1, c1, order({ orderNumber: 'N1', storeId: 1 })], [existing(30, 'X1', 'eBay'), existing(31, 'X1', 'Walmart')]);
+  const rows = shipStationPlanImportRows(planned, new Map([['X1', 501]]));
+  assert.deepEqual(
+    rows.map((r) => [r.externalOrderId, r.outcome, r.reason, r.orderRowId, r.importExceptionId, r.shipstationOrderId, r.platform]),
+    [
+      ['U1', 'quarantined', 'shipstation_unknown_store', null, null, u1.orderId, null],
+      ['X1', 'ambiguous', 'shipstation_ambiguous_match', null, 501, x1.orderId, 'amazon'],
+      ['C1', 'skipped', 'cancelled', null, null, c1.orderId, 'amazon'],
+    ],
+  );
 });
 
 test('backfill windows cover the span once, oldest first', () => {

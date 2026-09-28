@@ -22,6 +22,8 @@ import type { CanonicalOrderLine } from '@/lib/orders/canonical-order';
 import { cleanText } from '@/lib/orders/canonical-order';
 import type { PlatformOf } from '@/lib/orders/order-source-match';
 import type { IngestCanonicalOrdersResult } from '@/lib/orders/ingest-canonical-orders';
+import type { ImportRowRecord } from '@/lib/imports/types';
+import { importRowsFromTransferDetails } from '@/lib/imports/from-transfer-details';
 import {
   bindSheetColumns,
   mapSheetRowsToCanonicalLines,
@@ -81,43 +83,114 @@ export interface SheetSkipCounts {
   duplicate: number;
 }
 
+/** Where a line sits in the spreadsheet: the `Sheet_MM_DD_YYYY` tab and its 1-based row. */
+export interface SheetLinePlace {
+  sheetTab: string;
+  sheetRow: number;
+}
+
+/** One refused line that names an order (a line with no order number is only counted). */
+export interface SheetSkippedLine extends SheetLinePlace {
+  reason: Exclude<keyof SheetSkipCounts, 'noOrderId'>;
+  externalOrderId: string;
+  accountSource: string | null;
+}
+
 /**
  * Gate + dedupe rows from every tab in scope into one list of eligible rows.
  * A row needs an order number and a tracking — a trackless row used to land as
- * a label-less order waiting on nothing.
+ * a label-less order waiting on nothing. Each tab's `rows` are its data rows,
+ * the header (sheet row 1) already dropped, so `rows[i]` is sheet row `i + 2`.
  */
 export function collectEligibleRows(
-  tabs: ReadonlyArray<{ rows: readonly SheetRow[]; cols: SheetColumnIndices }>,
-): { rows: Array<{ row: SheetRow; cols: SheetColumnIndices }>; skips: SheetSkipCounts; rowsRead: number } {
+  tabs: ReadonlyArray<{ title: string; rows: readonly SheetRow[]; cols: SheetColumnIndices }>,
+): {
+  rows: Array<{ row: SheetRow; cols: SheetColumnIndices } & SheetLinePlace>;
+  skips: SheetSkipCounts;
+  skipped: SheetSkippedLine[];
+  rowsRead: number;
+} {
   const skips: SheetSkipCounts = { fbaShipment: 0, noOrderId: 0, noTracking: 0, duplicate: 0 };
-  const byKey = new Map<string, { row: SheetRow; cols: SheetColumnIndices }>();
+  const skipped: SheetSkippedLine[] = [];
+  const byKey = new Map<string, { row: SheetRow; cols: SheetColumnIndices } & SheetLinePlace>();
   let rowsRead = 0;
-  for (const { rows, cols } of tabs) {
-    for (const row of rows) {
+  for (const { title, rows, cols } of tabs) {
+    rows.forEach((row, index) => {
       const at = (i: number) => (i >= 0 ? cleanText(row[i]) : '');
-      if (!row.some((v) => cleanText(v) !== '')) continue; // padding
+      if (!row.some((v) => cleanText(v) !== '')) return; // padding
       rowsRead += 1;
+      const place: SheetLinePlace = { sheetTab: title, sheetRow: index + 2 };
       const orderNumber = at(cols.orderNumber);
+      const skip = (reason: SheetSkippedLine['reason'], where: SheetLinePlace = place) =>
+        skipped.push({ reason, externalOrderId: orderNumber, accountSource: at(cols.platform) || null, ...where });
       if (FBA_SHIPMENT_ID.test(orderNumber)) {
         skips.fbaShipment += 1;
-        continue;
+        skip('fbaShipment');
+        return;
       }
       if (!orderNumber) {
         skips.noOrderId += 1;
-        continue;
+        return;
       }
       if (!at(cols.tracking)) {
         skips.noTracking += 1;
-        continue;
+        skip('noTracking');
+        return;
       }
       // One line per (order, listing, title, tracking): a re-paste must not
-      // become a second unit of the same order.
+      // become a second unit of the same order. The later paste wins; the
+      // earlier one is the skipped duplicate.
       const key = [orderNumber, at(cols.itemNumber), at(cols.itemTitle).toLowerCase(), at(cols.tracking).toUpperCase()].join('\u0000');
-      if (byKey.has(key)) skips.duplicate += 1;
-      byKey.set(key, { row, cols });
-    }
+      const earlier = byKey.get(key);
+      if (earlier) {
+        skips.duplicate += 1;
+        skip('duplicate', { sheetTab: earlier.sheetTab, sheetRow: earlier.sheetRow });
+      }
+      byKey.set(key, { row, cols, ...place });
+    });
   }
-  return { rows: [...byKey.values()], skips, rowsRead };
+  return { rows: [...byKey.values()], skips, skipped, rowsRead };
+}
+
+/**
+ * The import record for one run: the writer's rows, each stamped with the
+ * sheet line it came from (the order's line in the LATEST tab that carries
+ * it; tabs arrive oldest first), plus one `skipped` row per refused line.
+ */
+export function sheetImportRows(
+  result: Pick<IngestCanonicalOrdersResult, 'details'>,
+  eligible: ReadonlyArray<{ row: SheetRow; cols: SheetColumnIndices } & SheetLinePlace>,
+  skipped: readonly SheetSkippedLine[],
+  tabOrder: readonly string[],
+  platformOf: PlatformOf,
+): ImportRowRecord[] {
+  const placeByOrder = new Map<string, SheetLinePlace>();
+  for (const line of eligible) {
+    const orderNumber = line.cols.orderNumber >= 0 ? cleanText(line.row[line.cols.orderNumber]) : '';
+    const known = placeByOrder.get(orderNumber);
+    const newer =
+      !known ||
+      tabOrder.indexOf(line.sheetTab) > tabOrder.indexOf(known.sheetTab) ||
+      (known.sheetTab === line.sheetTab && line.sheetRow < known.sheetRow);
+    if (newer) placeByOrder.set(orderNumber, { sheetTab: line.sheetTab, sheetRow: line.sheetRow });
+  }
+  const written = importRowsFromTransferDetails(result.details, {
+    platformOf,
+    decorate: (d) => placeByOrder.get(d.orderId) ?? {},
+  });
+  const refused = skipped.map(
+    (s): ImportRowRecord => ({
+      orderRowId: null,
+      externalOrderId: s.externalOrderId,
+      accountSource: s.accountSource,
+      platform: platformOf(s.accountSource),
+      outcome: 'skipped',
+      reason: s.reason,
+      sheetTab: s.sheetTab,
+      sheetRow: s.sheetRow,
+    }),
+  );
+  return [...written, ...refused];
 }
 
 export interface SheetBackfillDeps {
@@ -150,7 +223,7 @@ export async function runSheetBackfill(
       };
     }
     const raw = await deps.readTabs(orgId, titles);
-    const tabs: Array<{ rows: SheetRow[]; cols: SheetColumnIndices }> = [];
+    const tabs: Array<{ title: string; rows: SheetRow[]; cols: SheetColumnIndices }> = [];
     const unreadable: string[] = [];
     raw.forEach((rows, i) => {
       if (rows.length === 0) return;
@@ -159,9 +232,9 @@ export async function runSheetBackfill(
         unreadable.push(`${titles[i]}: needs ${missing.map((m) => `"${m.expectedLabels[0]}"`).join(' and ')}`);
         return;
       }
-      tabs.push({ rows: rows.slice(1), cols: colIndices });
+      tabs.push({ title: titles[i], rows: rows.slice(1), cols: colIndices });
     });
-    const { rows, skips, rowsRead } = collectEligibleRows(tabs);
+    const { rows, skips, skipped, rowsRead } = collectEligibleRows(tabs);
     progress({ type: 'phase', phase: 'fetching_sheet', count: rowsRead, message: `${titles.length} tab(s)` });
     if (tabs.length === 0 && unreadable.length > 0) throw new SheetBackfillError(`No readable tab — ${unreadable.join('; ')}`);
 
@@ -193,6 +266,7 @@ export async function runSheetBackfill(
         unreadableTabs: unreadable,
         ambiguousOrderIds: result.ambiguousOrderIds.slice(0, 50),
       },
+      importRows: sheetImportRows(result, rows, skipped, titles, platformOf),
     };
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Google Sheets backfill failed';
@@ -205,16 +279,14 @@ export async function runSheetBackfill(
 
 /** Connector entrypoint (`registry.google_sheets.sync`) — Google + DB IO wired. */
 export async function googleSheetsOrdersSync(orgId: OrgId, opts?: SyncOpts): Promise<SyncOutcome> {
-  const [{ sheets: googleSheets }, { getGoogleAuth }, creds, catalog, { buildAccountSourceLookup }, ingest, alloc] =
-    await Promise.all([
-      import('@googleapis/sheets'),
-      import('@/lib/google-auth'),
-      import('@/lib/integrations/credentials'),
-      import('@/lib/neon/catalog-queries'),
-      import('@/lib/platform-display'),
-      import('@/lib/orders/ingest-canonical-orders'),
-      import('@/lib/allocation/auto-allocate'),
-    ]);
+  const [{ sheets: googleSheets }, { getGoogleAuth }, creds, { loadOrgPlatformOf }, ingest, alloc] = await Promise.all([
+    import('@googleapis/sheets'),
+    import('@/lib/google-auth'),
+    import('@/lib/integrations/credentials'),
+    import('./ingest-connector-orders'),
+    import('@/lib/orders/ingest-canonical-orders'),
+    import('@/lib/allocation/auto-allocate'),
+  ]);
 
   let client: { api: sheets_v4.Sheets; spreadsheetId: string } | null = null;
   const connect = async () => {
@@ -242,14 +314,7 @@ export async function googleSheetsOrdersSync(orgId: OrgId, opts?: SyncOpts): Pro
       });
       return (res.data.valueRanges ?? []).map((r) => (r.values ?? []) as SheetRow[]);
     },
-    platformOf: async (org) => {
-      const [platforms, accounts] = await Promise.all([
-        catalog.listPlatforms(org, { includeInactive: true }),
-        catalog.listPlatformAccounts(org, { includeInactive: true }),
-      ]);
-      const lookup = buildAccountSourceLookup(platforms, accounts);
-      return (source) => lookup(source).platform?.slug.trim().toLowerCase() ?? null;
-    },
+    platformOf: loadOrgPlatformOf,
     ingest: (lines, org, platformOf, progress) =>
       ingest.ingestCanonicalOrders(lines, {
         orgId: org,

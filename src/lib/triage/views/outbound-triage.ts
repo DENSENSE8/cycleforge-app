@@ -1,8 +1,8 @@
 /**
  * Outbound › Shipping › To ship — `outbound.triage`. Goal: pick and ship fast.
- * The eye reads order → stock → bin → Pick: facts lead with what blocks a
- * pick (condition, stock) and where it lives (bin); the top-right is the
- * ship-by deadline; sections are the SLA under the default sort.
+ * A line reads ×qty · condition · price (owner 2026-09-28: no stock, item #
+ * or bin on the list — easy viewing; the open record carries them). The
+ * top-right is the ship-by deadline; sections are the SLA under the default sort.
  */
 
 import type { TriageViewDecl } from '@/design-system/components/triage-card-list/triage-view';
@@ -21,14 +21,10 @@ export const OUTBOUND_TRIAGE_VIEW: TriageViewDecl = {
   chips: { owner: 'face', param: 'cardStatus' },
   paging: 'client',
   status: 'deadline',
-  // SKU and price give way in the unfolded columns below the `label` tier (the quick look keeps them).
   facts: [
     { id: 'qty', tier: 'always' },
     { id: 'condition', tier: 'always' },
-    { id: 'stock', tier: 'always' },
-    { id: 'sku', tier: 'label' },
-    { id: 'bin', tier: 'always' },
-    { id: 'price', tier: 'label' },
+    { id: 'price', tier: 'always' },
   ],
   sections: {
     order: ORDER_SLA_SECTIONS,

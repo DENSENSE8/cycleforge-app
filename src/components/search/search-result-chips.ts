@@ -106,6 +106,7 @@ export function searchMethodTone(scope: SearchByScope): { dot: string; selected:
 
 /** Functional state tone → this vocabulary's chip tone (lifecycle states resolve here). */
 const CHIP_TONE_FOR_STATE: Record<StateName, ChipTone> = {
+  neutral: 'gray',
   info: 'blue',
   warning: 'amber',
   fulfillment: 'purple',

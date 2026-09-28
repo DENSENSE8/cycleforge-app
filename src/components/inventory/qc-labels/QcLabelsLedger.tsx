@@ -26,30 +26,38 @@ import {
   RecordStateCode,
   RecordTitle,
 } from '@/design-system/components/record-ledger/IndustrialRecord';
-import {
-  EVIDENCE_CONTROL_CLASS,
-  EvidenceDecisionBar,
-  EvidenceFact,
-  EvidenceFacts,
-  EvidenceNotice,
-  EvidenceSection,
-  EvidenceStateStrip,
-  EvidenceTitle,
-} from '@/design-system/components/record-ledger/RecordEvidence';
+import { EvidenceFactRow } from '@/design-system/components/record-ledger/EvidenceDisclosure';
+import { LifecycleCode } from '@/design-system/components/record-ledger/LifecycleCode';
+import { EVIDENCE_CONTROL_CLASS, EvidenceNotice } from '@/design-system/components/record-ledger/RecordEvidence';
+import { RecordGroup } from '@/design-system/components/record-ledger/RecordGroup';
+import { Button } from '@/design-system/primitives';
 import type { RecordLedgerSummary } from '@/design-system/components/record-ledger/RecordLedgerSummary';
 import { RECORD_LOCATION_CLASS } from '@/design-system/components/record-ledger/record-ledger-geometry';
-import { RECORD_LABEL_CLASS } from '@/design-system/tokens/industrial-record';
+import { RECORD_FACT_KEY_CLASS, RECORD_ID_CLASS, RECORD_LABEL_CLASS } from '@/design-system/tokens/industrial-record';
 import { QC_LABEL_LIFECYCLE } from '@/design-system/tokens/qc-label-lifecycle';
-import { qcLabelHandle, qcLabelStage, type QcLabelRow } from '@/lib/labels/qc-label-row';
+import { qcLabelHandle, qcLabelStage, type QcLabelRow, type QcLabelStage } from '@/lib/labels/qc-label-row';
 import { QC_LABELS_PATH } from '@/lib/labels/qc-label-views';
 import { printProductLabel } from '@/lib/print/printProductLabel';
 import { useNavIntent } from '@/lib/nav/use-nav-intent';
 import { toast } from '@/lib/toast';
 import { conditionLabel } from '@/lib/conditions';
+import { sentenceCaseLabel } from '@/lib/text/sentence-case-label';
 import { cn } from '@/utils/_cn';
 
 /** Record key while the record plane holds the Print form. */
 const PRINT_KEY = 'print-qc-label';
+
+/** Fact rows inside a group — the carton record's facts body. */
+const FACTS_BODY_CLASS = 'flex flex-col px-4 pb-1 [&>*:last-child]:border-b-0';
+
+/** The record body on the stage canvas — groups lift as cards in triage, run edge to edge on the Floor rail. */
+const RECORD_ROOT_CLASS = 'flex-1 bg-mode-canvas p-4 text-mode-ink industrial:p-0';
+
+/** Where the labelled unit goes next in the outbound loop (none once it rests or ships). */
+const QC_LABEL_NEXT: Readonly<Partial<Record<QcLabelStage, string>>> = {
+  allocated: 'Pick',
+  picked: 'Pack',
+};
 
 interface PrintableUnit {
   serial_unit_id: number;
@@ -167,27 +175,27 @@ export function QcLabelsLedger({ rows, totalCount, capped }: { rows: QcLabelRow[
           {capped ? ` · first ${rows.length} of ${totalCount} — narrow the search` : ''}
         </span>
       }
-      recordTitle={printing ? 'Print QC label' : openRecord ? openRecord.title : 'Not in this list'}
-      recordSubtitle={!printing && openRecord ? qcLabelHandle(openRecord) : undefined}
+      // The record is the LABEL: its sticker identity heads it; the product reads on the item card.
+      recordTitle={printing ? 'Print QC label' : openRecord ? qcLabelHandle(openRecord) : 'Not in this list'}
+      recordSubtitle={!printing && openRecord?.serial_number ? `SN ${openRecord.serial_number}` : undefined}
       recordNoun={printing ? 'print form' : 'QC label'}
+      recordActions={!printing && openRecord ? <QcLabelRecordStatus row={openRecord} /> : undefined}
       summary={summary}
       record={
-        <DeskRecordLayout
-          main={
-            printing ? (
-              <QcLabelPrintForm
-                onPrinted={() => {
-                  setPrinting(false);
-                  router.refresh();
-                }}
-              />
-            ) : openRecord ? (
-              <QcLabelEvidence key={openRecord.serial_unit_id} row={openRecord} onPrinted={() => router.refresh()} />
-            ) : (
-              <EvidenceNotice>This label is not in the current list.</EvidenceNotice>
-            )
-          }
-        />
+        printing ? (
+          <QcLabelPrintForm
+            onPrinted={() => {
+              setPrinting(false);
+              router.refresh();
+            }}
+          />
+        ) : openRecord ? (
+          <QcLabelEvidence key={openRecord.serial_unit_id} row={openRecord} onPrinted={() => router.refresh()} />
+        ) : (
+          <div className={RECORD_ROOT_CLASS}>
+            <DeskRecordLayout main={<EvidenceNotice>This label is not in the current list.</EvidenceNotice>} />
+          </div>
+        )
       }
     />
   );
@@ -256,9 +264,32 @@ const QcLabelRecord = memo(function QcLabelRecord({ row, open, onOpen }: { row: 
   );
 });
 
+/** The label's ONE status, top-right of the record header: where the unit is in the outbound loop, and what comes next. */
+function QcLabelRecordStatus({ row }: { row: QcLabelRow }) {
+  const stage = qcLabelStage(row);
+  const state = QC_LABEL_LIFECYCLE[stage];
+  const next = QC_LABEL_NEXT[stage] ?? null;
+  return (
+    <span className="flex min-w-0 items-center gap-2" data-testid="qc-label-record-status">
+      <LifecycleCode state={state} srLabel={null}>
+        {state.code} · {state.label}
+      </LifecycleCode>
+      {next ? (
+        <span className={cn(RECORD_LABEL_CLASS, 'hidden truncate text-mode-muted @md/record-head:inline')} data-testid="qc-label-record-next">
+          {next}
+        </span>
+      ) : null}
+    </span>
+  );
+}
+
+/**
+ * The open label, on the order record's shape (owner 2026-09-28,
+ * `remake-in-style`): left, the work — the Item (identity only), the Label
+ * (Reprint top-right), Quality control; right, the facts — Location, Outbound.
+ */
 function QcLabelEvidence({ row, onPrinted }: { row: QcLabelRow; onPrinted: () => void }) {
   const [busy, setBusy] = useState(false);
-  const state = QC_LABEL_LIFECYCLE[qcLabelStage(row)];
   const reprint = async () => {
     setBusy(true);
     try {
@@ -271,54 +302,115 @@ function QcLabelEvidence({ row, onPrinted }: { row: QcLabelRow; onPrinted: () =>
       setBusy(false);
     }
   };
-  return (
-    <div className="flex min-h-0 flex-col" data-testid="qc-label-evidence">
-      <EvidenceTitle sub={row.title}>{row.serial_number ?? qcLabelHandle(row)}</EvidenceTitle>
-      <EvidenceStateStrip state={state} />
-      {row.order_id != null && !row.serial_on_order ? (
-        <EvidenceNotice tone="warn">
-          Held for order #{row.order_label ?? row.order_id}; the serial joins the order when the picker scans this label.
-        </EvidenceNotice>
-      ) : null}
-      <EvidenceSection label="Label">
-        <EvidenceFacts>
-          <EvidenceFact label="Unit id" mono>{qcLabelHandle(row)}</EvidenceFact>
-          <EvidenceFact label="Serial" mono>{row.serial_number ?? '—'}</EvidenceFact>
-          <EvidenceFact label="SKU" mono>{row.sku ?? '—'}</EvidenceFact>
-          <EvidenceFact label="Condition">{row.condition_grade ? conditionLabel(row.condition_grade) : '—'}</EvidenceFact>
-          <EvidenceFact label="Printed">
-            {stamp(row.first_printed_at)}
-            {row.print_count > 1 ? ` · ${row.print_count} prints, last ${stamp(row.last_printed_at)}` : ''}
-            {row.last_printed_by_name ? ` · ${row.last_printed_by_name}` : ''}
-          </EvidenceFact>
-        </EvidenceFacts>
-      </EvidenceSection>
-      <EvidenceSection label="Quality control">
-        <EvidenceFacts>
-          <EvidenceFact label="Tested by">{row.tested_by_name ?? '—'}</EvidenceFact>
-          <EvidenceFact label="Tested">{stamp(row.tested_at) ?? '—'}</EvidenceFact>
-          <EvidenceFact label="Unit status">{row.current_status}</EvidenceFact>
-          <EvidenceFact label="Location">{row.location ?? '—'}</EvidenceFact>
-        </EvidenceFacts>
-      </EvidenceSection>
-      <EvidenceSection label="Outbound">
-        <EvidenceFacts>
-          <EvidenceFact label="Order">
-            {row.order_id != null ? (
+  const onOrder = row.order_id != null;
+
+  const main = (
+    <div className="flex min-w-0 flex-col gap-4 industrial:gap-0">
+      <RecordGroup title="Item" titleHidden testId="qc-label-record-item">
+        <article aria-label={row.title} className="flex gap-3 px-4 py-3">
+          <span className="relative h-28 w-28 shrink-0 overflow-hidden rounded-mode-control border border-mode-frame bg-mode-well">
+            <RecordPhoto src={null} fallback={row.title} />
+          </span>
+          <div className="flex min-w-0 flex-1 flex-col gap-1">
+            <p className="line-clamp-2 min-w-0 text-role-body font-bold" title={row.title}>
+              {row.title}
+            </p>
+            <p className="flex flex-wrap items-baseline gap-x-3 gap-y-0.5 text-role-data">
+              <span>
+                <span className={RECORD_FACT_KEY_CLASS}>SN </span>
+                <span className={cn(RECORD_ID_CLASS, 'select-all text-mode-ink')}>{row.serial_number ?? '—'}</span>
+              </span>
+              <span>
+                <span className={RECORD_FACT_KEY_CLASS}>SKU </span>
+                <span className={cn(RECORD_ID_CLASS, 'select-all text-mode-ink')}>{row.sku ?? '—'}</span>
+              </span>
+              <span>
+                <span className={RECORD_FACT_KEY_CLASS}>Condition </span>
+                <span className="text-mode-ink">{row.condition_grade ? conditionLabel(row.condition_grade) : '—'}</span>
+              </span>
+            </p>
+          </div>
+        </article>
+      </RecordGroup>
+      <RecordGroup
+        title="Label"
+        testId="qc-label-record-label"
+        action={
+          <Button
+            variant="ghost"
+            size="sm"
+            icon={<Printer aria-hidden />}
+            loading={busy}
+            onClick={() => void reprint()}
+            data-testid="qc-label-reprint"
+          >
+            Reprint
+          </Button>
+        }
+      >
+        <div className={FACTS_BODY_CLASS}>
+          <EvidenceFactRow label="Unit id">
+            <span className={cn(RECORD_ID_CLASS, 'select-all')}>{qcLabelHandle(row)}</span>
+          </EvidenceFactRow>
+          <EvidenceFactRow label="Printed">
+            {stamp(row.first_printed_at) ?? '—'}
+            {row.print_count <= 1 && row.last_printed_by_name ? ` · ${row.last_printed_by_name}` : ''}
+          </EvidenceFactRow>
+          {row.print_count > 1 ? (
+            <EvidenceFactRow label="Reprinted">
+              {row.print_count - 1}×, last {stamp(row.last_printed_at) ?? '—'}
+              {row.last_printed_by_name ? ` · ${row.last_printed_by_name}` : ''}
+            </EvidenceFactRow>
+          ) : null}
+        </div>
+      </RecordGroup>
+      <RecordGroup title="Quality control" testId="qc-label-record-qc">
+        <div className={FACTS_BODY_CLASS}>
+          <EvidenceFactRow label="Tested by">{row.tested_by_name ?? '—'}</EvidenceFactRow>
+          <EvidenceFactRow label="Tested">{stamp(row.tested_at) ?? '—'}</EvidenceFactRow>
+        </div>
+      </RecordGroup>
+    </div>
+  );
+
+  const aside = (
+    <div className="flex min-w-0 flex-col gap-4 industrial:gap-0">
+      <RecordGroup title="Location" testId="qc-label-record-location">
+        <div className={FACTS_BODY_CLASS}>
+          <EvidenceFactRow label="Bin">
+            <span className={cn(RECORD_ID_CLASS, !row.location && 'text-mode-warn')}>{row.location ?? 'No location'}</span>
+          </EvidenceFactRow>
+          <EvidenceFactRow label="Unit status">{sentenceCaseLabel(row.current_status)}</EvidenceFactRow>
+        </div>
+      </RecordGroup>
+      <RecordGroup title="Outbound" testId="qc-label-record-outbound">
+        <div className={FACTS_BODY_CLASS}>
+          <EvidenceFactRow label="Order">
+            {onOrder ? (
               <Link className="underline underline-offset-2" href={`/shipping/orders?openOrderId=${row.order_id}`}>
                 #{row.order_label ?? row.order_id}
               </Link>
             ) : (
-              'Not on an order'
+              <span className="text-mode-muted">Not on an order</span>
             )}
-          </EvidenceFact>
-          <EvidenceFact label="Allocation">{row.allocation_state ?? '—'}</EvidenceFact>
-          <EvidenceFact label="Serial on order">{row.order_id == null ? '—' : row.serial_on_order ? 'Yes' : 'Not yet — picks on scan'}</EvidenceFact>
-        </EvidenceFacts>
-      </EvidenceSection>
-      <EvidenceDecisionBar
-        verbs={[{ label: 'Reprint', onPress: () => void reprint(), primary: true, disabled: busy, icon: <Printer aria-hidden />, testId: 'qc-label-reprint' }]}
-      />
+          </EvidenceFactRow>
+          {onOrder ? (
+            <>
+              <EvidenceFactRow label="Allocation">{row.allocation_state ? sentenceCaseLabel(row.allocation_state) : '—'}</EvidenceFactRow>
+              {/* Held for the order, serial not bound yet: the pick scan of THIS label closes the loop. */}
+              <EvidenceFactRow label="Serial">
+                {row.serial_on_order ? 'On the order' : <span className="text-mode-warn">Joins the order when the picker scans this label</span>}
+              </EvidenceFactRow>
+            </>
+          ) : null}
+        </div>
+      </RecordGroup>
+    </div>
+  );
+
+  return (
+    <div className={RECORD_ROOT_CLASS} data-testid="qc-label-evidence">
+      <DeskRecordLayout main={main} aside={aside} />
     </div>
   );
 }
@@ -350,28 +442,47 @@ function QcLabelPrintForm({ onPrinted }: { onPrinted: () => void }) {
     }
   };
   return (
-    <div className="flex min-h-0 flex-col" data-testid="qc-label-print-form">
-      <EvidenceTitle sub="Scan the unit's serial or its old label">Print QC label</EvidenceTitle>
-      {error ? <EvidenceNotice tone="warn">{error}</EvidenceNotice> : null}
-      <EvidenceSection label="Unit">
-        <input
-          autoFocus
-          value={scan}
-          onChange={(event) => setScan(event.target.value)}
-          onKeyDown={(event) => {
-            if (event.key === 'Enter') {
-              event.preventDefault();
-              void submit();
-            }
-          }}
-          placeholder="Serial, unit id or scanned label"
-          aria-label="Serial, unit id or scanned label"
-          className={cn(EVIDENCE_CONTROL_CLASS, 'w-full font-mono')}
-          data-testid="qc-label-print-scan"
-        />
-      </EvidenceSection>
-      <EvidenceDecisionBar
-        verbs={[{ label: 'Print', onPress: () => void submit(), primary: true, disabled: busy || !scan.trim(), icon: <Printer aria-hidden />, testId: 'qc-label-print' }]}
+    <div className={RECORD_ROOT_CLASS} data-testid="qc-label-print-form">
+      <DeskRecordLayout
+        main={
+          <div className="flex min-w-0 flex-col gap-4 industrial:gap-0">
+            {error ? <EvidenceNotice tone="warn">{error}</EvidenceNotice> : null}
+            <RecordGroup
+              title="Scan the unit's serial or its old label"
+              action={
+                <Button
+                  variant="primary"
+                  size="sm"
+                  icon={<Printer aria-hidden />}
+                  loading={busy}
+                  disabled={!scan.trim()}
+                  onClick={() => void submit()}
+                  data-testid="qc-label-print"
+                >
+                  Print
+                </Button>
+              }
+            >
+              <div className="px-4 pb-3">
+                <input
+                  autoFocus
+                  value={scan}
+                  onChange={(event) => setScan(event.target.value)}
+                  onKeyDown={(event) => {
+                    if (event.key === 'Enter') {
+                      event.preventDefault();
+                      void submit();
+                    }
+                  }}
+                  placeholder="Serial, unit id or scanned label"
+                  aria-label="Serial, unit id or scanned label"
+                  className={cn(EVIDENCE_CONTROL_CLASS, 'w-full font-mono')}
+                  data-testid="qc-label-print-scan"
+                />
+              </div>
+            </RecordGroup>
+          </div>
+        }
       />
     </div>
   );

@@ -890,3 +890,12 @@ test('regression: assistant.chat gates every chat-sessions route (per-staff thre
   }
   assert.equal(routeByPath('/api/ai/chat-sessions/[sessionId]/messages/route.ts'), null);
 });
+
+test('regression: orders.view gates the import record reads (not admin.view, unlike /api/cron-runs)', () => {
+  // Handoff import-history acceptance 4: staff with orders.view but not admin.view open the page.
+  const paths = routesGatedBy('orders.view').map((r) => r.path);
+  for (const path of ['/api/imports/runs/route.ts', '/api/imports/runs/[id]/route.ts', '/api/imports/rows/route.ts']) {
+    assert.ok(paths.includes(path), `orders.view should gate ${path}`);
+  }
+  assert.equal(routeByPath('/api/imports/runs/[id]/route.ts')?.gate, 'requireRoutePerm');
+});

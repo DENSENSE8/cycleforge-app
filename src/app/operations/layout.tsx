@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react';
-import { DeskPageLayout } from '@/components/desk/DeskPageLayout';
+import { OperationsDeskFrame } from '@/features/operations/OperationsDeskFrame';
 
-/** `/operations` — the Operations **desk** frame (2026-08-31). */
+/** `/operations` — the Operations **desk** frame (2026-08-31); Imports runs on the contextual sidebar. */
 export default function OperationsLayout({ children }: { children: ReactNode }) {
-  return <DeskPageLayout className="h-full">{children}</DeskPageLayout>;
+  return <OperationsDeskFrame>{children}</OperationsDeskFrame>;
 }

@@ -12,8 +12,8 @@
  *   and open record — the same ones the floor ledger uses;
  * - ship-by sections (Late · Due today · Tomorrow · Later · No ship-by) under
  *   the default sort — re-cut BEFORE the record cursor so J / K follow them;
- * - the order card (`OrderCard`), "SKU in N orders", the notes writer, a Find
- *   that types an exact order number, and the record's Documents request.
+ * - the order card (`OrderCard`), the notes writer, a Find that types an
+ *   exact order number, and the record's Documents request.
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
@@ -131,7 +131,7 @@ export function OrderCardList({
   const arrangeGroups = useCallback(
     (bands: [string, RowGroup<ShippedOrder>[]][], sort: string): [string, RowGroup<ShippedOrder>[]][] => {
       const todayKey = getCurrentPSTDateKey();
-      const kept = filterBands(bands, cardKeyOf, (row) => queueRowStatusKeys(row, todayKey));
+      const kept = filterBands(bands, cardKeyOf, queueRowStatusKeys);
       // The list's one sort is the sidebar's `?sort=`; only its default cuts sections.
       return sort === 'deadline' ? bandBySla(kept, todayKey) : kept;
     },
@@ -174,33 +174,6 @@ export function OrderCardList({
       plane.openRecord(record);
     },
     [setStageView, plane],
-  );
-
-  // "SKU in N orders": each SKU → the ids of every loaded order carrying it.
-  const skuOrders = useMemo(() => {
-    const bySku = new Map<string, { cards: Set<string>; ids: number[] }>();
-    for (const [, groups] of allOrderGroupsByDate) {
-      for (const group of groups) {
-        const key = cardKeyOf(group);
-        for (const row of group.rows) {
-          const sku = String(row.sku ?? '').trim();
-          if (!sku) continue;
-          const entry = bySku.get(sku) ?? { cards: new Set(), ids: [] };
-          entry.cards.add(key);
-          entry.ids.push(...group.rows.map((r) => Number(r.id)));
-          bySku.set(sku, entry);
-        }
-      }
-    }
-    return bySku;
-  }, [allOrderGroupsByDate]);
-  const handleToggleGroup = plane.handleToggleGroup;
-  const selectSku = useCallback(
-    (sku: string) => {
-      const entry = skuOrders.get(sku);
-      if (entry) handleToggleGroup([...new Set(entry.ids)], true);
-    },
-    [skuOrders, handleToggleGroup],
   );
 
   // ── Selection + open ports ────────────────────────────────────────────────
@@ -295,20 +268,9 @@ export function OrderCardList({
         groupKey: cardKeyOf,
         cardModel,
         exactFind: orderExactFind,
-        renderCard: (props) => {
-          const leadSku = props.model.lines[0]?.sku;
-          return (
-            <OrderCard
-              {...props}
-              todayKey={todayKey}
-              skuShared={leadSku ? (skuOrders.get(leadSku)?.cards.size ?? 0) : 0}
-              onSelectSku={selectSku}
-              onSaveNote={saveNote}
-            />
-          );
-        },
+        renderCard: (props) => <OrderCard {...props} todayKey={todayKey} onSaveNote={saveNote} />,
       }),
-    [cardModel, todayKey, skuOrders, selectSku, saveNote],
+    [cardModel, todayKey, saveNote],
   );
 
   const triageFeed: TriageFeed<ShippedOrder> = {
@@ -336,7 +298,6 @@ export function OrderCardList({
       summary={
         <OrderQueueSummaryChips
           orders={queueOrders}
-          todayKey={todayKey}
           active={cut.url.statusFilter}
           onToggle={cut.url.toggleStatus}
           onReset={cut.url.resetStatus}
@@ -371,7 +332,7 @@ export function OrderCardList({
         actions: openRecord ? <OrderRecordHeaderActions record={openRecord} records={displayedRecords} /> : undefined,
         noun: VIEW.noun.one,
         testId: 'order-record',
-        summary: <OrderQueueSummary records={displayedRecords} todayKey={todayKey} />,
+        summary: <OrderQueueSummary records={displayedRecords} />,
         view: openRecord ? (
           <OrderRecordView
             viewKey={viewKey}

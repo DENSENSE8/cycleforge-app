@@ -46,8 +46,9 @@ test('modes are first-class destinations, not just parents', () => {
 });
 
 test('an exact page name outranks every page that merely contains it', () => {
-  const hits = top('shipping', 5);
-  assert.equal(hits[0], 'Shipping');
+  assert.equal(top('fbm', 5)[0], 'FBM');
+  // The desk's former name still lands on it first (owner 2026-09-28: Shipping → FBM).
+  assert.equal(top('shipping', 5)[0], 'FBM');
 });
 
 test('a section name finds the pages inside it, not just a category button', () => {

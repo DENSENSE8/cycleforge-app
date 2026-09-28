@@ -122,3 +122,22 @@ export function planOrderRowBackfill(
 
   return { values, primaryShipmentId, filledShipment };
 }
+
+/** `orders` column for a {@link planOrderRowBackfill} `values` key (`itemNumber` → `item_number`). */
+function orderColumnName(key: string): string {
+  return key.replace(/[A-Z]/g, (c) => `_${c.toLowerCase()}`);
+}
+
+/**
+ * The snake_case `orders` columns a backfill write actually CHANGES — the
+ * import record's `filled_fields`. A key whose value equals the row's current
+ * one (an authoritative title re-sent unchanged) is not a fill, so a re-sync
+ * over current data records nothing.
+ */
+export function filledOrderColumns(row: BackfillRow, values: Record<string, unknown>): string[] {
+  const current = row as unknown as Record<string, unknown>;
+  return Object.keys(values)
+    .filter((key) => values[key] !== undefined)
+    .filter((key) => String(current[key] ?? '').trim() !== String(values[key] ?? '').trim())
+    .map(orderColumnName);
+}

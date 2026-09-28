@@ -41,11 +41,14 @@ export function getMobileAppTitle(
   if (pathname === '/m/orders/new' || pathname.startsWith('/m/orders/new/')) return 'New order';
   if (pathname === '/m/orders' || pathname.startsWith('/m/orders/')) return 'Order management';
   if (pathname === '/m/exceptions' || pathname.startsWith('/m/exceptions/')) return 'Exceptions';
+  if (pathname === '/m/imports' || pathname.startsWith('/m/imports/')) return 'Imports';
   if (pathname === '/m/pick' || pathname.startsWith('/m/pick/')) return 'Picks';
   if (pathname === '/m/pack' || pathname.startsWith('/m/pack/')) return 'Packing';
   if (pathname === '/m/scan' || pathname.startsWith('/m/scan/')) return 'Scan';
   if (pathname === '/m/id/pick' || pathname.startsWith('/m/id/pick/')) return 'Picks';
   if (pathname === '/m/id' || pathname.startsWith('/m/id/')) return 'Scan out';
+  // The Unbox photo feed and its `View all` search; the drawer row is "Photo feed".
+  if (pathname === '/m/receiving' || pathname === '/m/receiving/history') return 'Photo feed';
   const pageId = getSidebarNavPageId(pathname, searchParams);
   const nav = APP_SIDEBAR_NAV.find((item) => item.id === pageId);
   return nav?.label || PRODUCT_NAME;

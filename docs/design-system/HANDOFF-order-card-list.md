@@ -15,8 +15,8 @@ Floor (Ctrl/⌘+Shift+F) keeps the industrial ledger. BRIEF §13 records the own
 
 | File | Role |
 |---|---|
-| `src/components/outbound/orders/cards/OrderCardList.tsx` | list: feed, `arrangeGroups` (chips · held orders · SLA sections), pager/scroll, find, peek, SKU batch, held new orders, record plane; card body → `openCard` |
-| `src/components/outbound/orders/cards/OrderCard.tsx` | one card: status rail, check (18 px hit box = the visible square), status icon, lines, expand, Space quick look, "SKU in N orders" chip, single-check action drop-down; body = `onOpen` |
+| `src/components/outbound/orders/cards/OrderCardList.tsx` | list: feed, `arrangeGroups` (chips · held orders · SLA sections), pager/scroll, find, peek, held new orders, record plane; card body → `openCard` |
+| `src/components/outbound/orders/cards/OrderCard.tsx` | one card: status rail, check (18 px hit box = the visible square), status icon, lines (×qty · condition · price), expand, Space quick look, single-check action drop-down; body = `onOpen`. The "SKU in N orders" chip was removed 2026-09-28 (owner: simpler) |
 | `src/components/outbound/orders/cards/OrderCardSelectBar.tsx` | top bar: select-all · `BarFind` (sidebar closed) · status chips / bulk verbs · Find button (sidebar open) · pager · per-page · sort · Floor · order count (far right) |
 | `src/components/outbound/orders/cards/order-card-list-state.ts` | URL state (`?cardStatus=`, `?page=`) via History API, page mode pref (+ `resolved`), kept scroll, held new orders, `[` `]` Home End |
 | `src/components/outbound/orders/cards/OrderCardPeek.tsx`, `OrderCardActionMenu.tsx` | quick look; one-card verbs |

@@ -64,6 +64,8 @@ interface RecordLedgerProps<T> {
   recordSubtitle?: ReactNode;
   /** `Select a <noun>`; names the record region when the title is not a string. */
   recordNoun: string;
+  /** The open record's header band, top-right: its ONE status (and at most a verb) — the order record's `OrderRecordStatus` slot. */
+  recordActions?: ReactNode;
   /** The open record's view — the same component in place and in the split pane. */
   record: ReactNode;
   summary: RecordLedgerSummary;
@@ -93,6 +95,7 @@ export function RecordLedger<T>({
   recordTitle,
   recordSubtitle,
   recordNoun,
+  recordActions,
   record,
   summary,
   loading = false,
@@ -248,6 +251,7 @@ export function RecordLedger<T>({
         list={list}
         summary={<RecordLedgerSummaryPane summary={summary} />}
         recordNoun={recordNoun}
+        actions={recordActions}
         recordKey={openKey}
         testId={testId ? `${testId}-record` : undefined}
       >

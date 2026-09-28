@@ -23,7 +23,7 @@ import {
 import { RECORD_LOCATION_CLASS } from '@/design-system/components/record-ledger/record-ledger-geometry';
 import { DESK_BAR_SEGMENT_CLASS, deskBarSegmentTone } from '@/design-system/components/DeskActionSlot';
 import { RECORD_LABEL_CLASS } from '@/design-system/tokens/industrial-record';
-import { lifecycleRecordState } from '@/design-system/tokens/lifecycle';
+import { STOCK_LIFECYCLE } from '@/design-system/tokens/stock-lifecycle';
 import { useAuth } from '@/contexts/AuthContext';
 import { useAblyChannel } from '@/hooks/useAblyChannel';
 import { getStationChannelName, safeChannelName } from '@/lib/realtime/channels';
@@ -41,7 +41,7 @@ import { useProvisionalSku, useSkuExceptionsRealtime } from '@/hooks/useProvisio
 import { SkuExceptionCreateForm } from '@/components/inventory/sku-exceptions/SkuExceptionCreateForm';
 import { SkuExceptionEvidence } from '@/components/inventory/sku-exceptions/SkuExceptionEvidence';
 import { stockLocationFace, stockRecordCountable, stockRecordState, stockRecordTitle } from './stock-record';
-import { StockEvidence, stockSummary } from './StockEvidence';
+import { StockEvidence, StockRecordStatus, stockSummary } from './StockEvidence';
 
 const STOCK_PATH = '/inventory/stock';
 /** Record key while the shared ledger holds the new on-hold SKU form. */
@@ -290,11 +290,12 @@ export function StockLedger({ rows, rooms, selectedRooms, selectedStates, totalC
         !creating && openRecord ? [openRecord.sku, stockLocationFace(openRecord)].filter(Boolean).join(' · ') : undefined
       }
       recordNoun={openRecord?.is_provisional || creating ? 'SKU exception' : 'stock pair'}
+      recordActions={!creating && openRecord && !openRecord.is_provisional ? <StockRecordStatus record={openRecord} /> : undefined}
       summary={summary}
       record={
-        <DeskRecordLayout
-          main={
-            creating ? (
+        creating ? (
+          <DeskRecordLayout
+            main={
               <SkuExceptionCreateForm
                 onCreated={(sku) => {
                   setCreating(false);
@@ -307,7 +308,11 @@ export function StockLedger({ rows, rooms, selectedRooms, selectedStates, totalC
                 }}
                 onCancel={closeRecord}
               />
-            ) : openRecord?.is_provisional ? (
+            }
+          />
+        ) : openRecord?.is_provisional ? (
+          <DeskRecordLayout
+            main={
               <SkuExceptionEvidence
                 sku={openRecord.sku}
                 item={provisionalRecord.data}
@@ -319,11 +324,12 @@ export function StockLedger({ rows, rooms, selectedRooms, selectedStates, totalC
                   router.refresh();
                 }}
               />
-            ) : (
-              <StockEvidence record={openRecord} onCounted={() => router.refresh()} />
-            )
-          }
-        />
+            }
+          />
+        ) : (
+          // The stock pair lays out its own main / aside (order-record shape).
+          <StockEvidence record={openRecord} onCounted={() => router.refresh()} />
+        )
       }
       />
     </>
@@ -341,7 +347,7 @@ const StockRecord = memo(function StockRecord({
 }) {
   const key = locationStockRowId(row);
   const state = stockRecordState(row);
-  const stateFace = lifecycleRecordState(state);
+  const stateFace = STOCK_LIFECYCLE[state];
   const title = stockRecordTitle(row);
   const face = stockLocationFace(row);
   const moved = row.last_moved ? new Date(row.last_moved) : null;

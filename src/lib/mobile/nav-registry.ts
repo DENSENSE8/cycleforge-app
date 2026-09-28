@@ -43,6 +43,7 @@ type MobileNavGroup = {
 type MobileNavItem = MobileNavLeaf | MobileNavGroup;
 
 // Lane faces come from `@/lib/nav/lanes` — the SAME registry the desk spine groups by.
+const INBOUND = domainLane('inbound');
 const OUTBOUND = domainLane('fulfillment');
 
 // Single source of truth for the drawer's destinations.
@@ -57,13 +58,26 @@ export const MOBILE_NAV_DESTINATIONS: readonly MobileNavItem[] = [
     // `matchPrefixes` describes ROUTES, not rows: `/m/orders/[orderId]` and
     // `/m/shipping/shipments/[id]` resolve and belong to this lane, so a
     // deep-link there marks Outbound active even though no row points at it.
-    matchPrefixes: ['/m/work', '/m/pick', '/m/pack', '/m/orders', '/m/shipping', '/m/exceptions'],
+    matchPrefixes: ['/m/work', '/m/pick', '/m/pack', '/m/orders', '/m/shipping', '/m/exceptions', '/m/imports'],
     children: [
       { kind: 'leaf', id: 'orders', label: 'Order management', href: '/m/orders' },
       { kind: 'leaf', id: 'picks', label: 'Picks', href: '/m/pick' },
       { kind: 'leaf', id: 'packing', label: 'Packing', href: '/m/pack' },
       { kind: 'leaf', id: 'exceptions', label: 'Exceptions', href: '/m/exceptions' },
+      // The import record's phone twin (desk: `/operations/imports`) — what each import brought in.
+      { kind: 'leaf', id: 'imports', label: 'Imports', href: '/m/imports', requires: 'orders.view' },
     ],
+  },
+  {
+    kind: 'group',
+    id: 'inbound',
+    label: INBOUND.label,
+    icon: INBOUND.icon,
+    // The phone Unbox photo feed. `/m/r/` is the receiving detail hub a feed
+    // row's carton sheet opens into; `/m/receiving/history` is the feed's
+    // "View all" search — both resolve inside this lane.
+    matchPrefixes: ['/m/receiving', '/m/r/'],
+    children: [{ kind: 'leaf', id: 'photos', label: 'Photo feed', href: '/m/receiving' }],
   },
   // An L0 row, the phone twin of the desk's Quality Control station row (same
   // glyph). QC is its own scan TYPE (operator 2026-09-24), run on the one scan

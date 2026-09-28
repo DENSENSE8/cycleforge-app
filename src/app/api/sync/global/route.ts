@@ -43,8 +43,8 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
         const locked = await withCronLock(ORDERS_PIPELINE_RUN_JOB, async () => {
           await withCronRun(
             ORDERS_PIPELINE_RUN_JOB,
-            async () => {
-              finished = await loadOrdersBackfillPipeline(orgId);
+            async (cronRunId) => {
+              finished = await loadOrdersBackfillPipeline(orgId, { trigger: 'manual', staffId: ctx.staffId, cronRunId });
               if (!finished.ok) throw new Error(pipelineFailure(finished));
               return finished;
             },

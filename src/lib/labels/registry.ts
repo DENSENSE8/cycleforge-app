@@ -46,6 +46,7 @@ export const TONE_SVG_HEX: Record<LabelTone, string> = {
 
 /** Functional state tone → this palette's token (lifecycle states resolve here). */
 const LABEL_TONE_FOR_STATE: Record<StateName, LabelTone> = {
+  neutral: 'slate',
   info: 'blue',
   warning: 'orange',
   fulfillment: 'purple',

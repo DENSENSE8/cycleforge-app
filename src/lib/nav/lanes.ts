@@ -20,9 +20,12 @@ export type DomainGroupId =
  * Lane faces (N4, operator 2026-09-14). The spine used to draw
  * **The `icon` here is a PARENT icon** (operator 2026-09-14: *"icon at the
  */
+// Order-agnostic lane names (owner 2026-09-28): Receiving takes stock in,
+// Fulfillment sends it out — whatever the source document. `keywords`: the
+// lane's former names, so ⌘K still finds it by them.
 export const DOMAIN_GROUPS = [
-  { id: 'inbound', label: 'Inbound', icon: Inbox },
-  { id: 'fulfillment', label: 'Outbound', icon: STATION_PAGE_ICONS.outbound },
+  { id: 'inbound', label: 'Receiving', icon: Inbox, keywords: ['inbound'] },
+  { id: 'fulfillment', label: 'Fulfillment', icon: STATION_PAGE_ICONS.outbound, keywords: ['outbound'] },
   { id: 'inventory', label: 'Inventory', icon: ShelvingUnit },
   { id: 'catalog', label: 'Products', icon: Tags },
   { id: 'sales', label: 'Sales', icon: SalesPrice },
@@ -31,6 +34,7 @@ export const DOMAIN_GROUPS = [
   id: DomainGroupId;
   label: string;
   icon: SidebarIconComponent;
+  keywords?: readonly string[];
 }>;
 
 /**

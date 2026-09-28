@@ -28,6 +28,14 @@ interface StateToneClasses {
 }
 
 export const STATE_TONE_CLASSES: Readonly<Record<StateName, StateToneClasses>> = {
+  neutral: {
+    text: 'text-text-secondary',
+    dot: 'bg-text-faint',
+    pill: 'bg-surface-sunken text-text-secondary',
+    border: 'border-border-default',
+    ring: 'ring-border-default',
+    spine: 'border-text-faint',
+  },
   info: {
     text: 'text-text-info',
     dot: 'bg-fill-info',

@@ -5,7 +5,7 @@ import { baseColors } from './primitives';
  * (3.56:1) fail the 4.5:1 text floor on white (BRIEF §8), so their TEXT ink is
  * industrial row (owner 2026-09-25): a fill dark enough that its `codeInk`
  */
-export type StateName = 'info' | 'warning' | 'fulfillment' | 'danger' | 'success';
+export type StateName = 'neutral' | 'info' | 'warning' | 'fulfillment' | 'danger' | 'success';
 
 /**
  * One named operational state as painted by an industrial record. Registries
@@ -39,6 +39,8 @@ export interface StateTone {
 const { blue, orange, purple, red, green, gray, white } = baseColors;
 
 export const STATE_TONES = {
+  // Not started — nobody has touched it yet (owner 2026-09-28: "To pick" is grey).
+  neutral: { text: gray[600], fill: gray[400], tint: gray[100], edge: gray[300], code: gray[600], codeInk: white },
   info: { text: blue[600], fill: blue[600], tint: blue[50], edge: blue[400], code: blue[700], codeInk: white },
   warning: { text: orange[700], fill: orange[500], tint: orange[50], edge: orange[400], code: orange[500], codeInk: gray[900] },
   fulfillment: { text: purple[600], fill: purple[500], tint: purple[50], edge: purple[400], code: purple[700], codeInk: white },
@@ -58,6 +60,7 @@ export const STATE_NAMES = Object.keys(STATE_TONES) as StateName[];
  */
 export function stateCodeCssText(): string {
   const ink: Record<StateName, string> = {
+    neutral: 'var(--ds-color-text-secondary)',
     info: 'var(--ds-color-text-info)',
     warning: 'var(--mode-warn-text)',
     fulfillment: 'var(--ds-color-text-fulfillment)',

@@ -7,12 +7,15 @@
 import type { TriageViewDecl, TriageViewId } from '@/design-system/components/triage-card-list/triage-view';
 import { INCOMING_DOCKED_VIEW } from './incoming-docked';
 import { INCOMING_PIPELINE_VIEW } from './incoming-pipeline';
+import { IMPORT_ROWS_VIEW, IMPORT_RUNS_VIEW } from './imports';
 import { LABEL_INTAKE_LABELS_VIEW, LABEL_INTAKE_PAPERWORK_VIEW, LABEL_INTAKE_PRINTED_VIEW } from './label-intake';
 import { OUTBOUND_TRIAGE_VIEW } from './outbound-triage';
 
 export {
   INCOMING_DOCKED_VIEW,
   INCOMING_PIPELINE_VIEW,
+  IMPORT_ROWS_VIEW,
+  IMPORT_RUNS_VIEW,
   LABEL_INTAKE_LABELS_VIEW,
   LABEL_INTAKE_PAPERWORK_VIEW,
   LABEL_INTAKE_PRINTED_VIEW,
@@ -27,5 +30,7 @@ export const TRIAGE_VIEWS: Readonly<Record<TriageViewId, TriageViewDecl>> = Obje
     LABEL_INTAKE_LABELS_VIEW,
     LABEL_INTAKE_PAPERWORK_VIEW,
     LABEL_INTAKE_PRINTED_VIEW,
+    IMPORT_RUNS_VIEW,
+    IMPORT_ROWS_VIEW,
   ].map((view) => [view.id, view]),
 );

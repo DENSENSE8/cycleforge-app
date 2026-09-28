@@ -2,7 +2,7 @@ import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
 import {
   resolveReceivingRowStageStamp,
   type ReceivingActivityAxis,
-} from '@/components/station/receiving-lines-table-helpers';
+} from '@/lib/receiving/receiving-stage-stamp';
 import { receivingUnboxedSyncTooltip } from '@/lib/receiving/unboxed-sync-tooltip';
 import { formatDateTimePST } from '@/utils/date';
 import { resolveSkuIdentityTitle } from '@/lib/sku/sku-identity-law';

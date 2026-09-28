@@ -5,7 +5,7 @@ import type { RowGroup } from '@/lib/group-rows';
 import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
 import type { GridSelectGutterChrome } from '@/components/ui/GridRowCheckbox';
 import type { ReceivingGridColumn } from '@/lib/receiving/receiving-grid-layout';
-import type { ReceivingActivityAxis } from '@/components/station/receiving-lines-table-helpers';
+import type { ReceivingActivityAxis } from '@/lib/receiving/receiving-stage-stamp';
 import type { CustomFieldDef } from '@/lib/custom-fields/types';
 import { ReceivingGridRow } from './ReceivingGridRow';
 import {

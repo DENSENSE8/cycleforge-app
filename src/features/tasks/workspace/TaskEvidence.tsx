@@ -13,7 +13,7 @@ import {
   type EvidenceVerb,
 } from '@/design-system/components/record-ledger/RecordEvidence';
 import { RECORD_LABEL_CLASS } from '@/design-system/tokens/industrial-record';
-import { LIFECYCLE_CLASSES } from '@/design-system/tokens/lifecycle';
+import { STATE_TONE_CLASSES } from '@/design-system/tokens/lifecycle';
 import { RECORD_HIT_CLASS } from '@/design-system/components/record-ledger/record-ledger-geometry';
 import { agendaRecordState } from '@/lib/daily/agenda-record-state';
 import { dailyAgendaFromTask } from '@/lib/daily/daily-agenda-row';
@@ -168,7 +168,7 @@ export function TaskEvidence({
       <EvidenceTitle sub={recordLabel}>TASK {row.id}</EvidenceTitle>
       <PomodoroTimer kind="task" id={row.id} canRun={row.status !== 'DONE' && row.status !== 'CANCELED'} />
       <div className={cn('flex items-center gap-2 border-b border-mode-ink px-4', RECORD_HIT_CLASS)}>
-        <span aria-hidden className={cn('h-2 w-2 shrink-0', LIFECYCLE_CLASSES[state.lifecycle].dot)} />
+        <span aria-hidden className={cn('h-2 w-2 shrink-0', STATE_TONE_CLASSES[state.face.tone].dot)} />
         <span className={cn(RECORD_LABEL_CLASS, state.late ? 'text-mode-warn' : 'text-mode-ink')}>
           {state.code} · {state.word}
         </span>

@@ -6,6 +6,8 @@ import { buildRankedSearchSql, buildTextSearchVariants, type RankedSearchVariant
 import { tenantQuery, withTenantTransaction } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';
 import { WORK_ASSIGNMENTS_ACTIVE_ON_CONFLICT } from '@/lib/neon/work-assignments-conflict';
+import { sqlStationActivityMatchesOrder } from '@/lib/orders/order-grain-sql';
+import { ORDER_PICK_SCAN_ACTIVITY_TYPES, sqlInList } from '@/lib/station-activity';
 
 // Order record with shipping information.
 import type { ShippedOrder } from '@/types/orders';
@@ -111,11 +113,15 @@ export const WA_PICK_SELECT = `
       staff_picker.color_hex   AS picker_color_hex`;
 
 /**
- * Pick facts for one order — who picked it and when. Three arms, first wins:
+ * Pick facts for one order — who picked it and when. Four arms, first wins:
  * an allocation pick (inventory_events PICKED / FORCE_PICK), a picking
- * session, then the Picker desk's own scan (`/pick?ship=urgent` →
- * /api/picking/desk/scan → station PICK / PICK_SCANNED). Nothing here reads QC: the
- * bench verdict lives on testing_results.
+ * session, a pick scan, then a serial taken for the order. The scan and
+ * serial arms read EXACTLY what `sqlOrderHasPickScan` reads (same activity
+ * types, same `sqlStationActivityMatchesOrder` — row id, external order id or
+ * sole shipment), so an order that reads Picked always has its who / when
+ * (2026-09-28: a scan attributed by shipment only showed Picked in the
+ * timeline and the state, but "Not yet" on the Pick cell). Nothing here reads
+ * QC: the bench verdict lives on testing_results.
  */
 export const PICK_FACTS_LATERALS = `
   LEFT JOIN LATERAL (
@@ -143,24 +149,36 @@ export const PICK_FACTS_LATERALS = `
     ORDER BY COALESCE(ps.ended_at, ps.started_at) DESC, ps.id DESC
     LIMIT 1
   ) pick_sess ON true
-  /*
-   * The Picker desk's scan, at ORDER grain: a scan attributed to this order
-   * (\`order_row_id\`). The desk writes it on every order-found scan; legacy
-   * sole-shipment rows were stamped by 2026-09-28w.
-   */
   LEFT JOIN LATERAL (
     SELECT sal.staff_id  AS picked_by,
            sal.created_at AS picked_at
     FROM station_activity_logs sal
-    WHERE sal.organization_id = o.organization_id
-      AND sal.station         = 'PICK'
-      AND sal.activity_type   = 'PICK_SCANNED'
-      AND sal.order_row_id    = o.id
+    WHERE sal.activity_type IN (${sqlInList(ORDER_PICK_SCAN_ACTIVITY_TYPES)})
+      AND ${sqlStationActivityMatchesOrder('sal', 'o')}
     ORDER BY sal.created_at DESC, sal.id DESC
     LIMIT 1
   ) pick_scan ON true
+  LEFT JOIN LATERAL (
+    SELECT tsn_pick.tested_by  AS picked_by,
+           tsn_pick.created_at AS picked_at
+    FROM tech_serial_numbers tsn_pick
+    WHERE tsn_pick.order_id        = o.id
+      AND tsn_pick.organization_id = o.organization_id
+    ORDER BY tsn_pick.created_at DESC, tsn_pick.id DESC
+    LIMIT 1
+  ) pick_serial ON true
   LEFT JOIN staff s_picked
-    ON s_picked.id = COALESCE(pick_alloc.picked_by, pick_sess.picked_by, pick_scan.picked_by)`;
+    ON s_picked.id = COALESCE(pick_alloc.picked_by, pick_sess.picked_by, pick_scan.picked_by, pick_serial.picked_by)`;
+
+/** Who picked, over {@link PICK_FACTS_LATERALS} — the one priority every select reads. */
+export const PICKED_BY_SQL = 'COALESCE(pick_alloc.picked_by, pick_sess.picked_by, pick_scan.picked_by, pick_serial.picked_by)';
+/** When it was picked, over {@link PICK_FACTS_LATERALS}. */
+export const PICKED_AT_SQL = 'COALESCE(pick_alloc.picked_at, pick_sess.picked_at, pick_scan.picked_at, pick_serial.picked_at)';
+/** The lateral columns a GROUP BY over {@link PICK_FACTS_LATERALS} must list. */
+const PICK_FACTS_GROUP_BY = `pick_alloc.picked_by, pick_alloc.picked_at,
+             pick_sess.picked_by, pick_sess.picked_at,
+             pick_scan.picked_by, pick_scan.picked_at,
+             pick_serial.picked_by, pick_serial.picked_at, s_picked.name`;
 
 /** Dock scan-out (SHIP_CONFIRM) for this order's shipment — the "left the warehouse" stamp plus who scanned it. */
 export const SHIP_OUT_LATERAL = `
@@ -336,9 +354,9 @@ const ORDER_SERIALS_CTE = `
       shipped_out_staff.name                 AS shipped_out_by_name,
       pl.packer_photos_url,
       pl.tracking_type,
-      COALESCE(pick_alloc.picked_by, pick_sess.picked_by, pick_scan.picked_by) AS picked_by,
+      ${PICKED_BY_SQL} AS picked_by,
       s_picked.name AS picked_by_name,
-      to_char(COALESCE(pick_alloc.picked_at, pick_sess.picked_at, pick_scan.picked_at), 'YYYY-MM-DD HH24:MI:SS') AS picked_at,
+      to_char(${PICKED_AT_SQL}, 'YYYY-MM-DD HH24:MI:SS') AS picked_at,
       COALESCE(STRING_AGG(tsn.serial_number, ',' ORDER BY tsn.created_at), '') AS serial_number,
       MIN(tsn.tested_by)::int AS tested_by,
       to_char(MIN(tsn.created_at) AT TIME ZONE 'America/Los_Angeles', 'YYYY-MM-DD HH24:MI:SS') AS test_date_time,
@@ -481,9 +499,7 @@ const ORDER_SERIALS_CTE = `
              pl.packed_by, pl.packed_at, pl.packer_photos_url, pl.tracking_type,
              pack_sal.created_at, test_sal.created_at,
              ship_out.ship_confirmed_at, ship_out.shipped_out_by, shipped_out_staff.name,
-             pick_alloc.picked_by, pick_alloc.picked_at,
-             pick_sess.picked_by, pick_sess.picked_at,
-             pick_scan.picked_by, pick_scan.picked_at, s_picked.name,
+             ${PICK_FACTS_GROUP_BY},
              wa_pick.picker_id, staff_picker.name, staff_picker.color_hex
   )`;
 
@@ -752,9 +768,9 @@ export async function getShippedOrderById(id: number, orgId?: OrgId): Promise<Sh
           to_char(pack_sal.created_at, 'YYYY-MM-DD HH24:MI:SS') AS pack_activity_at,
           pl.packer_photos_url,
           pl.tracking_type,
-          COALESCE(pick_alloc.picked_by, pick_sess.picked_by, pick_scan.picked_by) AS picked_by,
+          ${PICKED_BY_SQL} AS picked_by,
           s_picked.name AS picked_by_name,
-          to_char(COALESCE(pick_alloc.picked_at, pick_sess.picked_at, pick_scan.picked_at), 'YYYY-MM-DD HH24:MI:SS') AS picked_at,
+          to_char(${PICKED_AT_SQL}, 'YYYY-MM-DD HH24:MI:SS') AS picked_at,
           COALESCE(STRING_AGG(tsn.serial_number, ',' ORDER BY tsn.created_at), '') AS serial_number,
           MIN(tsn.tested_by)::int AS tested_by,
           to_char(MIN(tsn.created_at) AT TIME ZONE 'America/Los_Angeles', 'YYYY-MM-DD HH24:MI:SS') AS test_date_time,
@@ -898,9 +914,7 @@ export async function getShippedOrderById(id: number, orgId?: OrgId): Promise<Sh
                  wa_p.assigned_packer_id,
                  pl.packed_by, pl.packed_at, pl.packer_photos_url, pl.tracking_type,
                  pack_sal.created_at, test_sal.created_at,
-                 pick_alloc.picked_by, pick_alloc.picked_at,
-                 pick_sess.picked_by, pick_sess.picked_at,
-                 pick_scan.picked_by, pick_scan.picked_at, s_picked.name,
+                 ${PICK_FACTS_GROUP_BY},
                  wa_pick.picker_id, staff_picker.name, staff_picker.color_hex
       )
       SELECT os.*,

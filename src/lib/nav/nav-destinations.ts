@@ -2,6 +2,7 @@
 
 import {
   SPINE_SECTIONS,
+  getMasterNavItem,
   spineSectionIdForPage,
   type SidebarIconComponent,
   type SidebarPageNav,
@@ -33,6 +34,13 @@ function sectionLabel(id: SpineSectionId | null): string | null {
   return SPINE_SECTIONS.find((s) => s.id === id)?.label ?? null;
 }
 
+/** A lane's former names (`DOMAIN_GROUPS[].keywords`) — renamed lanes stay findable by them. */
+function sectionKeywords(id: SpineSectionId | null): readonly string[] {
+  if (!id) return [];
+  const section = SPINE_SECTIONS.find((s) => s.id === id);
+  return section && 'keywords' in section && section.keywords ? section.keywords : [];
+}
+
 /** Context is metadata, so it must SAY something the label does not. */
 function contextFor(label: string, parent: string | null): string | null {
   if (!parent) return null;
@@ -57,10 +65,15 @@ export function buildNavDestinations(pages: readonly SidebarPageNav[]): NavDesti
       sectionId,
       // The href makes a URL fragment findable ("/ops/photos" → Media) without
       // letting it outrank a label; the section makes "fulfillment labels" work.
-      // Inbound desk also answers "incoming" (former L2 mode name).
-      keywords: [page.href, section, page.id === 'incoming' ? 'incoming' : null].filter(
-        (v): v is string => Boolean(v),
-      ),
+      // Inbound desk also answers "incoming" (former L2 mode name); the page's
+      // own catalog keywords carry former names ("shipping" → FBM).
+      keywords: [
+        page.href,
+        section,
+        ...sectionKeywords(sectionId),
+        ...(getMasterNavItem(page.id)?.keywords ?? []),
+        page.id === 'incoming' ? 'incoming' : null,
+      ].filter((v): v is string => Boolean(v)),
     });
 
     for (const child of page.children ?? []) {

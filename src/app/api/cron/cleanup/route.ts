@@ -5,6 +5,7 @@ import { withCronRun } from '@/lib/cron/run-log';
 import { withCronLock } from '@/lib/cron/lock';
 import { runIdempotencyCleanup } from '@/lib/jobs/idempotency-cleanup';
 import { logger } from '@/lib/observability/logger';
+import { pruneImportRuns } from '@/lib/sync/import-record-load';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 60;
@@ -21,6 +22,9 @@ export async function GET(request: NextRequest) {
     const locked = await withCronLock('cleanup', () =>
       withCronRun('cleanup', async () => {
         const idempotency = await runIdempotencyCleanup();
+        // The import record ages out with the run ledger it links to (steps
+        // and per-order rows cascade from order_import_runs).
+        const importRunsDeleted = await pruneImportRuns(CRON_RUNS_RETENTION_DAYS);
         const runs = await pool.query(
           `DELETE FROM cron_runs WHERE started_at < NOW() - ($1::int * INTERVAL '1 day')`,
           [CRON_RUNS_RETENTION_DAYS],
@@ -58,6 +62,7 @@ export async function GET(request: NextRequest) {
         return {
           idempotency_deleted: idempotency.deletedRows,
           cron_runs_deleted: runs.rowCount ?? 0,
+          import_runs_deleted: importRunsDeleted,
           search_outbox_deleted: outboxDeleted,
           ...(aiMeter ? { ai_meter: aiMeter } : {}),
         };

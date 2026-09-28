@@ -11,9 +11,9 @@ import {
   poGroupAnchorMs,
   receivingRowActivityMs,
   receivingRowActivityTs,
-  type ReceivingActivityAxis,
   type ReceivingPoGroup,
 } from '@/components/station/receiving-lines-table-helpers';
+import type { ReceivingActivityAxis } from '@/lib/receiving/receiving-stage-stamp';
 import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
 
 interface UseReceivingGroupingArgs {

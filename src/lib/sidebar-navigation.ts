@@ -13,6 +13,8 @@ import {
   Clock,
   FileText,
   History,
+  Download,
+  List,
   Inbox,
   Layers,
   LayoutDashboard,
@@ -227,6 +229,11 @@ type SidebarNavItemFields = {
    * Not a synonym dump: every entry is a word someone would really type.
    */
   keywords?: string[];
+  /**
+   * One secondary line under the label where the name alone misleads — e.g.
+   * FBM is Amazon's acronym but covers every channel we ship ourselves.
+   */
+  description?: string;
   /** `kind: 'top'` only. */
   spineBand?: boolean;
   /**
@@ -308,6 +315,9 @@ export const APP_SIDEBAR_NAV: SidebarNavItem[] = [
   { id: 'settings',          label: 'Settings',    href: '/settings',           icon: Settings,        kind: 'top', spineBand: false },
   // Monitor — TV / observe-only Operations Live (+ Analytics / History / …).
   { id: 'operations',        label: 'Operations',  href: '/operations',         icon: Monitor,         kind: 'main', mainGroup: 'monitor', requires: 'operations.view' },
+  // The import record (`/operations/imports`): what each import brought in, order by order.
+  // Its own gate — orders.view, the list endpoints' — so order staff reach it without operations.view.
+  { id: 'imports',           label: 'Imports',     href: '/operations/imports', icon: Download,        kind: 'main', mainGroup: 'monitor', requires: 'orders.view' },
   // Reports — DATED, per-entity, exportable tables (Staff day · Bin utilization · Velocity · Dead stock).
   // **A PARENT-LEVEL row, not a Monitor member** (operator 2026-09-15:
   { id: 'reports',            label: 'Reports',     href: '/reports',            icon: BarChart3,       kind: 'top', requires: 'operations.view' },
@@ -346,10 +356,12 @@ export const APP_SIDEBAR_NAV: SidebarNavItem[] = [
   // out of *Inventory*; the row itself is unchanged.
   { id: 'sourcing',          label: 'Sourcing',    href: '/sourcing',           icon: ShoppingCart,    kind: 'domain', domainGroup: 'inbound', requires: 'sourcing.view' },
   // Locations folded under Inventory L2 (`/inventory/locations`) — P4 condensation.
-  { id: 'outbound',          label: 'Shipping',    href: SHIPPING_ORDERS_PATH, icon: STATION_PAGE_ICONS.outbound,  kind: 'domain', domainGroup: 'fulfillment', requires: 'shipping.view' },
-  // FBA rides the Outbound lane beside Shipping (operator 2026-09-14).
-  // FBA rides the Outbound lane beside Shipping (operator 2026-09-14). The href
-  { id: 'fba',               label: 'FBA',         href: OUTBOUND_MODE_PATHS.fba, icon: SHIPPING_NAV_ICONS.fba, kind: 'domain', domainGroup: 'fulfillment', requires: 'fba.view' },
+  // FBM (owner 2026-09-28): every order WE store, pack and ship, on any channel —
+  // the clean split from FBA, where Amazon ships. Same page id / routes as the
+  // old "Shipping" desk; the old name still finds it in ⌘K.
+  { id: 'outbound',          label: 'FBM',         href: SHIPPING_ORDERS_PATH, icon: STATION_PAGE_ICONS.outbound,  kind: 'domain', domainGroup: 'fulfillment', requires: 'shipping.view', description: 'Fulfilled by merchant · all channels', keywords: ['shipping', 'ship', 'fulfilled by merchant', 'merchant fulfilled', 'mfn', 'to ship', 'allocate'] },
+  // FBA rides the Fulfillment lane beside FBM (operator 2026-09-14).
+  { id: 'fba',               label: 'FBA',         href: OUTBOUND_MODE_PATHS.fba, icon: SHIPPING_NAV_ICONS.fba, kind: 'domain', domainGroup: 'fulfillment', requires: 'fba.view', description: 'Fulfilled by Amazon' },
   // Labels & docs rides the Outbound lane beside Shipping and FBA: label printing + document intake (renamed from Label intake 2026-09-27).
   { id: 'label-intake',      label: 'Labels & docs', href: SHIPPING_LABEL_INTAKE_PATH, icon: SHIPPING_NAV_ICONS.labels, kind: 'domain', domainGroup: 'fulfillment', requires: 'packing.review', keywords: ['labels', 'label intake', 'label pdf', 'print labels', 'print all', 'reprint', 'packing slip', 'manual', 'documents', 'paperwork', 'quarantine', 'tracking', 'ingestion'] },
   // ── Sales ───────────────────────────────────────────────────────────────── Own root (D4) — front-desk history, not a fulfillment lane.
@@ -595,6 +607,7 @@ export function getSidebarNavPageId(
     return 'testing';
   }
   if (pathname === QC_LABELS_PATH || pathname.startsWith(`${QC_LABELS_PATH}/`)) return 'qc-labels';
+  if (pathname === IMPORTS || pathname.startsWith(`${IMPORTS}/`)) return 'imports';
   if (pathname === '/pick' || pathname.startsWith('/pick/')) return 'ready-to-pack';
   return getSidebarRouteKey(pathname);
 }
@@ -713,6 +726,8 @@ export const ROUTE_PERMISSIONS: ReadonlyArray<{ prefix: string; permission: stri
   { prefix: '/audit-log',          permission: 'admin.view_logs' },
   { prefix: '/admin',              permission: 'admin.view' },
   { prefix: '/ops/photos',           permission: 'photos.view' },
+  // The import record is order data: the list endpoints' gate, not Operations'. Must beat `/operations`.
+  { prefix: '/operations/imports', permission: 'orders.view' },
   { prefix: '/operations',         permission: 'operations.view' },
   { prefix: '/signals',            permission: 'operations.view' },
   { prefix: '/dashboard',          permission: 'dashboard.view' },
@@ -850,6 +865,8 @@ const SUPPORT = '/support';
 // `/packer` still resolves (proxy redirect + shared page).
 const PACK = '/pack';
 const REVIEW = '/review';
+// The import record (`src/lib/imports/params.ts` IMPORTS_PATH).
+const IMPORTS = '/operations/imports';
 
 export const SIDEBAR_PAGE_NAV: SidebarPageNav[] = [
   // ── Daily (was Home) ──────────────────────────────────────────────────────
@@ -928,6 +945,20 @@ export const SIDEBAR_PAGE_NAV: SidebarPageNav[] = [
       if (m === 'checks') return 'checks';
       return 'live';
     },
+  },
+  // ── Imports ─────────────────────────────────────────────────────────────── The import record (handoff import-history §5):
+  // Runs (bare) · Orders (`?view=rows`, one row per order an import touched). `?run=` opens a run's record.
+  {
+    id: 'imports', label: 'Imports', href: IMPORTS, icon: Download, kind: 'main', mainGroup: 'monitor', requires: 'orders.view',
+    deskChrome: true,
+    // Rail-less (owner 2026-09-28): the contextual sidebar is its one left
+    // column — never the Operations live-feed panel beside it.
+    railless: true,
+    children: [
+      { id: 'runs', label: 'Runs',   icon: History, to: () => ({ pathname: IMPORTS, params: { view: null } }) },
+      { id: 'rows', label: 'Orders', icon: List,    to: () => ({ pathname: IMPORTS, params: { view: 'rows' } }) },
+    ],
+    resolveChild: ({ params }) => (params.get('view') === 'rows' ? 'rows' : 'runs'),
   },
   // ── Reports ──────────────────────────────────────────────────────────────── `?tab=` — the seven tabs `src/app/reports/page.tsx` renders (`REPORT_TABS`); Staff day is the bare URL.
   {
@@ -1091,14 +1122,14 @@ export const SIDEBAR_PAGE_NAV: SidebarPageNav[] = [
       return view === 'paperwork' || view === 'printed' ? view : 'labels';
     },
   },
-  // ── Shipping (Manage Shipping — Fulfillment) ────────────────────────────── Exceptions · Picking · To ship · Shipped.
+  // ── FBM (Fulfilled by merchant — Fulfillment lane) ────────────────────────── Exceptions · Picking · Allocate · Shipped.
   {
-    id: 'outbound', label: 'Shipping', href: SHIPPING_ORDERS_PATH, icon: STATION_PAGE_ICONS.outbound, tone: 'text-blue-600', kind: 'domain', domainGroup: 'fulfillment', requires: 'shipping.view',
+    id: 'outbound', label: 'FBM', href: SHIPPING_ORDERS_PATH, icon: STATION_PAGE_ICONS.outbound, tone: 'text-blue-600', kind: 'domain', domainGroup: 'fulfillment', requires: 'shipping.view',
     // First adopter of desk page chrome (plan §2.2):
     deskChrome: true,
     // Rail-less, and now said out loud rather than derived from the line above (2026-08-31).
     railless: true,
-    // Tab order (owner 2026-09-24): Exceptions · Picking · To ship · Shipped —
+    // Tab order (owner 2026-09-24): Exceptions · Picking · Allocate · Shipped —
     // the same order the contextual sidebar paints from `DESK_VIEWS`.
     children: [
       // Exceptions is a PEER by the same test FBA passes:
@@ -1106,7 +1137,7 @@ export const SIDEBAR_PAGE_NAV: SidebarPageNav[] = [
       // "Picking", not "Pending" (operator 2026-09-26): these orders are not in
       // limbo — they are waiting to be picked (PO paired · pick list).
       { id: 'shortage', label: 'Picking',   icon: AlertCircle,                  requires: 'orders.view', to: () => ({ pathname: SHIPPING_SHORTAGE_PATH, params: {} }) },
-      { id: 'orders',   label: 'To ship',   icon: LayoutDashboard,              requires: 'orders.view', to: () => ({ pathname: SHIPPING_ORDERS_PATH, params: {} }) },
+      { id: 'orders',   label: 'Allocate',  icon: LayoutDashboard,              requires: 'orders.view', to: () => ({ pathname: SHIPPING_ORDERS_PATH, params: {} }) },
       // No `fba` child — FBA is a lane row now (see the docblock above).
       // `packing.view` because the archive IS the packer log: `/api/packerlogs`
       // already enforces it, and a tab that 403s is worse than an absent one.

@@ -2,12 +2,11 @@
 
 import type { ShippedOrder } from '@/lib/neon/orders-queries';
 import { LIFECYCLE_CLASSES } from '@/design-system/tokens/lifecycle';
-import { formatOutboundStoragePath } from '@/lib/shipping/outbound-storage-path';
+import { linePrice } from '@/lib/orders/order-card-model';
 import { recordState } from '@/components/outbound/orders/outbound-orders-ledger-state';
 import {
   LEDGER_BAND_CLASS,
   LEDGER_LEAD_CLASS,
-  LEDGER_LOCATION_CLASS,
   LEDGER_PHOTO_CLASS,
   LEDGER_ROW_CLASS,
   LEDGER_SPINE_CLASS,
@@ -17,7 +16,6 @@ import {
 import { cn } from '@/utils/_cn';
 import { RecordNoteSlot } from '@/design-system/components/RecordNoteSlot';
 import {
-  RECORD_FACT_KEY_CLASS,
   RECORD_ID_CLASS,
   RECORD_TITLE_CLASS,
 } from '@/design-system/tokens/industrial-record';
@@ -146,7 +144,7 @@ export function OrdersLedgerStandIn({
     <ul>
       {rows.map((row) => {
         const state = recordState(row);
-        const location = formatOutboundStoragePath(row.storage_locations);
+        const price = linePrice(row).text ?? '—';
         const orderId = String(row.order_id || row.id || '').trim();
         const title = String(row.product_title || row.sku || 'Order').trim();
         return (
@@ -171,17 +169,7 @@ export function OrdersLedgerStandIn({
                 {/* Same rigid slot as the live record, so the swap never shifts. */}
                 <RecordNoteSlot note={String(row.buyer_note ?? '').trim() || null} empty="add" />
                 {bands.length > 1 ? null : (
-                  <span
-                    className={cn(
-                      RECORD_ID_CLASS,
-                      LEDGER_LOCATION_CLASS[zoom],
-                      'truncate',
-                      location ? 'text-mode-ink' : 'text-mode-warn',
-                    )}
-                  >
-                    <span className={RECORD_FACT_KEY_CLASS}>Bin </span>
-                    {location ?? 'Unassigned'}
-                  </span>
+                  <span className={cn(RECORD_ID_CLASS, 'w-24 shrink-0 tabular-nums text-mode-ink')}>{price}</span>
                 )}
                 <span className={cn(RECORD_ID_CLASS, 'truncate')}>{orderId || '—'}</span>
               </span>
@@ -190,20 +178,13 @@ export function OrdersLedgerStandIn({
                   <span className={cn('flex min-w-0 items-center border-b border-mode-rule pl-2', LEDGER_BAND_CLASS[zoom])}>
                     <span className={RECORD_TITLE_CLASS}>{title}</span>
                   </span>
-                  {/* Band 3 — execution: BIN · SKU, the physical lookup pair, as on the live record
-                      (same lead column, so the SKU lands on the live row's x). */}
+                  {/* Band 3 — execution: condition · price, as on the live record (same lead
+                      column, so nothing shifts when the live row swaps in). */}
                   <span className={cn('flex min-w-0 items-center gap-3', LEDGER_BAND_CLASS[zoom])}>
                     <span className={cn(LEDGER_LEAD_CLASS, 'pl-2')}>
                       <span className="w-20 shrink-0" aria-hidden />
-                      <span className={cn(RECORD_ID_CLASS, 'min-w-0 flex-1 truncate', location ? 'text-mode-ink' : 'text-mode-warn')}>
-                        <span className={RECORD_FACT_KEY_CLASS}>Bin </span>
-                        {location ?? 'Unassigned'}
-                      </span>
                     </span>
-                    <span className={cn(RECORD_ID_CLASS, 'w-44 min-w-0 shrink truncate text-mode-ink')}>
-                      <span className={RECORD_FACT_KEY_CLASS}>SKU </span>
-                      {String(row.sku || '—')}
-                    </span>
+                    <span className={cn(RECORD_ID_CLASS, 'w-24 shrink-0 tabular-nums text-mode-ink')}>{price}</span>
                   </span>
                 </>
               ) : null}

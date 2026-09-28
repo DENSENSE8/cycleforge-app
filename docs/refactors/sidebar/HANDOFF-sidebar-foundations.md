@@ -154,24 +154,33 @@ Add each to `src/lib/nav/context/resolve.test.ts` unless noted:
   `text-role-body font-semibold`, chevron `text-text-muted`, same
   `NAV_BLOCK_CLASS` hover and press. No centring.
 
-### 2.5 FBM naming (from §0)
+### 2.5 FBM naming (from §0) — **built 2026-09-28**
 
-- **Rename in code.**
-  - Change the `outbound` page `label` in `src/lib/sidebar-navigation.ts` from
-    `'Shipping'` to `'FBM'`.
-  - Then run `pnpm verify:fast`, whose **Nav names** gate checks the parent/child
-    name law.
-  - Update the resolver tests that pin `'Shipping'` (the modes test expects
-    `['outbound','FBM']`).
-  - Check ⌘K: `command-bar-nav-groups` tests; and the top tab strip label.
-- **Subtitle.** Add an optional `description` to the `.modes` items. This is a
-  **contract change**: add `description?: string` to the nav item schema (`NavItemSchema`)
-  with a resolver test, and keep the "no counts on nav items" test. Resolve FBM →
-  "Fulfilled by merchant · all channels". `NavModeSwitcher` paints it as a second
-  line in the menu.
-- **Shipped under FBM** defaults to `shippedFilter=orders` (§0). Do it in the
-  resolver's view href for `shipped` when the page is the FBM landing page, so
-  the list, the counts and the URL agree.
+Validated against the tree on 2026-09-28 before building:
+
+| Plan claim | Evidence | Verdict |
+|---|---|---|
+| FBM = every channel we ship, not only Amazon | `SOURCE_PLATFORMS` (`src/lib/source-platform.ts:57`) still lists eBay, Amazon, Ecwid, Walmart, Shopify, Square… | holds |
+| Shipped mixes in FBA unless the Type filter excludes it | `orders-queries.ts:581-584` (list) and `:975-978` (count): `orders` = `account_source != 'fba' AND order_id NOT ILIKE 'FBA%'`; `useShippedTableFilters` defaults to the saved preference, else `all` | holds — fixed below |
+| FBA has its own Shipped | `SIDEBAR_PAGE_NAV` `fba` child `shipped` (`sidebar-navigation.ts`) | holds |
+| `NavItemSchema` has no `description` | `schema.ts` had `id · label · href · active · kind · badge` only | holds — added |
+| Lane name in the head (`‹ Outbound`, §2.4/§3) | the lane is now **Fulfillment** (owner 2026-09-28: order-agnostic names; Inbound → Receiving) | stale — read `‹ Fulfillment` |
+| "Shipped count under FBM excludes FBA" (§4.6) | the view badge is `shippedToday` = today's `PACK` station events (`sqlShippedTodayCount`, `desk-view-sql.ts:372`), not the Shipped list's predicate | **gap** — the badge does not read `shippedFilter`; the list and its facet counts do |
+
+Built:
+
+- `outbound` page label `'FBM'` in both `APP_SIDEBAR_NAV` and `SIDEBAR_PAGE_NAV`
+  (`src/lib/sidebar-navigation.ts`), plus `sidebar-titles`, `search-scope-labels`,
+  `settings/registry` desk list and `stations/surface-keys`. Page id and routes unchanged.
+- `description?: string` on `SidebarNavItemFields` and `NavItemSchema`; the resolver's
+  `laneModeRows` carries it; `NavModeSwitcher` paints it as a second line. FBM →
+  "Fulfilled by merchant · all channels", FBA → "Fulfilled by Amazon" (the split).
+- FBM › Shipped view params `{ shippedFilter: 'orders' }` (`src/lib/outbound/desk-views.ts`).
+- ⌘K: the page's catalog `keywords` (`shipping`, `mfn`, `fulfilled by merchant`, `to ship`,
+  `allocate`) and the lanes' former names (`DOMAIN_GROUPS[].keywords`: `inbound`, `outbound`)
+  feed `buildNavDestinations`; "shipping" ranks FBM first.
+- Tests: `resolve.test.ts` (modes + descriptions, allowed keys), `nav-destinations.test.ts`,
+  `sidebar-navigation.test.ts`.
 
 ## 3. Head and body after this session
 

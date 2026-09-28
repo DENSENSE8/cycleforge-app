@@ -32,7 +32,7 @@ interface ReceivingLinePhotoLinkInput {
 }
 
 /** Capture + gallery URLs for a receiving line (mobile list, sheet, rows). */
-function receivingLinePhotoHrefs(input: ReceivingLinePhotoLinkInput) {
+export function receivingLinePhotoHrefs(input: ReceivingLinePhotoLinkInput) {
   const receivingId = input.receivingId;
   if (!receivingId) {
     return { captureHref: '#', galleryHref: '#' };

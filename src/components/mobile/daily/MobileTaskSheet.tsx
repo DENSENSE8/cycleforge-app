@@ -10,7 +10,7 @@ import { PomodoroTimer } from '@/components/ui/PomodoroTimer';
 import { Bell, Camera, Check, Play, X } from '@/components/Icons';
 import { Button } from '@/design-system/primitives';
 import { IconButton } from '@/design-system/primitives/IconButton';
-import { LIFECYCLE_CLASSES } from '@/design-system/tokens/lifecycle';
+import { STATE_TONE_CLASSES } from '@/design-system/tokens/lifecycle';
 import {
   MobileSwipePhotoViewer,
   type SwipePhotoSlide,
@@ -202,7 +202,7 @@ function MobileTaskBody({
       <PomodoroTimer kind="task" id={row.id} canRun={open} className="px-1" />
       <div className="flex shrink-0 flex-wrap items-center gap-x-3 gap-y-1 border-b border-border-hairline px-1 pb-2 pt-1">
         <span className="flex items-center gap-1.5">
-          <span aria-hidden className={cn('h-2 w-2 shrink-0', LIFECYCLE_CLASSES[state.lifecycle].dot)} />
+          <span aria-hidden className={cn('h-2 w-2 shrink-0', STATE_TONE_CLASSES[state.face.tone].dot)} />
           <span
             className={cn(
               'font-mono text-role-micro font-semibold',

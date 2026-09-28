@@ -1,9 +1,13 @@
 import pool from '@/lib/db';
 
-/** Wraps a cron/job body so every invocation is persisted to `cron_runs`. */
+/**
+ * Wraps a cron/job body so every invocation is persisted to `cron_runs`. The
+ * body receives the ledger row id (null when the ledger insert failed) so it
+ * can link its own records — e.g. `order_import_runs.cron_run_id`.
+ */
 export async function withCronRun<T>(
   job: string,
-  fn: () => Promise<T>,
+  fn: (runId: number | null) => Promise<T>,
   opts?: { trigger?: 'cron' | 'manual' },
 ): Promise<T> {
   const trigger = opts?.trigger ?? 'cron';
@@ -11,19 +15,21 @@ export async function withCronRun<T>(
 
   let runId: number | null = null;
   try {
-    const ins = await pool.query<{ id: number }>(
+    const ins = await pool.query<{ id: string | number }>(
       `INSERT INTO cron_runs (job, status, trigger, started_at)
        VALUES ($1, 'running', $2, NOW())
        RETURNING id`,
       [job, trigger],
     );
-    runId = ins.rows[0]?.id ?? null;
+    // BIGSERIAL arrives as a string (no int8 parser); ids stay < 2^53.
+    const id = ins.rows[0]?.id;
+    runId = id != null ? Number(id) : null;
   } catch {
     /* observability must never break the job */
   }
 
   try {
-    const result = await fn();
+    const result = await fn(runId);
     const durationMs = Date.now() - startedAt;
     if (runId != null) {
       const summary =

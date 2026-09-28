@@ -197,6 +197,14 @@ function LocatedFind({ search, locate, label, inputRef }: PageFieldProps & { loc
           escalate={searchEverywhere}
           overflowRight
           below={<NavLocatePills scope={locate.locator} query={find.value} find={find} />}
+          onClear={
+            hasList
+              ? () => {
+                  list.clear();
+                  setOpen(false);
+                }
+              : undefined
+          }
           onKeyDown={(event, draft, clear) => {
             // A typed "A, B, C" + Enter is a list too.
             if (event.key === 'Enter' && !event.metaKey && !event.ctrlKey && list.paste(draft)) {

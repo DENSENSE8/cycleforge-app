@@ -176,12 +176,16 @@ export function useTriageCut<K extends string>(opts: {
 /** `scroll` = every loaded card on one page, the next chunk loading as you near the end. */
 export type TriagePageMode = SlotTablePageSize | 'scroll';
 
+/** Every mounted `useTriagePageMode` — a change in one (the face's menu) re-reads in all (a host that fetches by it). */
+const pageModeReaders = new Set<() => void>();
+
 /**
  * Page size (shared with the slot tables) or infinite scroll, remembered in
  * this browser under `storageKey`. `resolved` turns true once the remembered
  * choice is read — until then the mode is the SSR default, and a page clamp
  * must not act on it (at 100 / page a reload's `?page=2` looks past the end
- * and was stripped).
+ * and was stripped). A host that loads by the page size reads the same mode
+ * as its face: every instance follows a change made in any of them.
  */
 export function useTriagePageMode(storageKey: string): {
   mode: TriagePageMode;
@@ -191,8 +195,13 @@ export function useTriagePageMode(storageKey: string): {
   const [mode, setModeState] = useState<TriagePageMode>(SLOT_TABLE_PAGE_SIZE);
   const [resolved, setResolved] = useState(false);
   useEffect(() => {
-    setModeState(window.localStorage.getItem(storageKey) === '1' ? 'scroll' : readSlotTablePageSize());
+    const read = () => setModeState(window.localStorage.getItem(storageKey) === '1' ? 'scroll' : readSlotTablePageSize());
+    read();
     setResolved(true);
+    pageModeReaders.add(read);
+    return () => {
+      pageModeReaders.delete(read);
+    };
   }, [storageKey]);
   const setMode = useCallback(
     (next: TriagePageMode) => {
@@ -201,7 +210,7 @@ export function useTriagePageMode(storageKey: string): {
         window.localStorage.removeItem(storageKey);
         if (isSlotTablePageSize(next)) writeSlotTablePageSize(next);
       }
-      setModeState(next);
+      for (const read of pageModeReaders) read();
     },
     [storageKey],
   );

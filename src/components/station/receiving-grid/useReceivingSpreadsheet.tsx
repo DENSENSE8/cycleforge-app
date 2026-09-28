@@ -15,9 +15,9 @@ import { groupRowsBy, type RowGroup } from '@/lib/group-rows';
 import {
   poGroupAnchorMs,
   RECEIVING_SELECTION_SCOPE,
-  type ReceivingActivityAxis,
   type ReceivingPoGroup,
 } from '@/components/station/receiving-lines-table-helpers';
+import type { ReceivingActivityAxis } from '@/lib/receiving/receiving-stage-stamp';
 import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
 import { compareReceivingGridRows } from '@/lib/receiving/receiving-grid-compare';
 import {

@@ -114,24 +114,30 @@ test('a section lists its own views — and, on a door lane landing, the lane mo
   }
 });
 
-test('Outbound is a lane door: one map row, the lane name on its panel, its pages as modes', () => {
+test('Fulfillment is a lane door: one map row, the lane name on its panel, its pages as modes', () => {
   const map = at('/unbox');
   const outbound = map.sections.find((section) => section.id === 'fulfillment');
-  assert.deepEqual(outbound?.items.map((item) => [item.id, item.label]), [['outbound', 'Outbound']]);
+  assert.deepEqual(outbound?.items.map((item) => [item.id, item.label]), [['outbound', 'Fulfillment']]);
   assert.equal(outbound?.label, undefined);
   for (const id of ['fba', 'label-intake']) assert.ok(!itemIds(map).includes(id), id);
   // Lit from every page of the lane, not just the landing page.
   assert.deepEqual(activeIds(at('/shipping/fba', { view: 'top' })), ['outbound']);
 
   const landing = at('/shipping/orders');
-  assert.equal(landing.page.label, 'Outbound');
-  assert.equal(landing.back?.label, 'Outbound');
+  assert.equal(landing.page.label, 'Fulfillment');
+  assert.equal(landing.back?.label, 'Fulfillment');
   const modes = landing.sections.find(isLanePageSection);
   assert.equal(landing.sections[0], modes, 'modes lead the panel');
   assert.deepEqual(modes?.items.map((item) => [item.id, item.label]), [
-    ['outbound', 'Shipping'],
+    ['outbound', 'FBM'],
     ['fba', 'FBA'],
     ['label-intake', 'Labels & docs'],
+  ]);
+  // FBM is Amazon's acronym for every channel we ship ourselves — the mode says so; FBA is the split.
+  assert.deepEqual(modes?.items.map((item) => item.description), [
+    'Fulfilled by merchant · all channels',
+    'Fulfilled by Amazon',
+    undefined,
   ]);
   assert.ok(modes?.items.every((item) => !item.active), 'a mode row never lights a view');
 
@@ -181,7 +187,7 @@ test('view digits are bound only on a declared page panel — never on the ‹ p
 });
 
 test('nav items carry no counts', () => {
-  const allowed = new Set(['id', 'label', 'href', 'active', 'kind', 'badge']);
+  const allowed = new Set(['id', 'label', 'href', 'active', 'kind', 'badge', 'description']);
   for (const { href, ctx } of everyContext()) {
     for (const item of items(ctx)) {
       for (const key of Object.keys(item)) assert.ok(allowed.has(key), `${href}: ${item.id}.${key}`);
@@ -273,7 +279,7 @@ test('Picking replaces Pending everywhere the sidebar paints a word', () => {
   const shipping = at('/shipping/orders');
   const picking = shipping.sections.find((section) => section.label === 'Picking');
   assert.deepEqual(picking?.items.map((item) => item.label), ['PO paired', 'Pick list']);
-  assert.equal(items(shipping).find((item) => item.id === 'triage')?.label, 'To ship');
+  assert.equal(items(shipping).find((item) => item.id === 'triage')?.label, 'Allocate');
   // The old nav agrees: the pick list lights Picking, not To ship.
   const pick = new URL('http://t/shipping/orders?queue=pick');
   assert.equal(resolveSidebarChild('outbound', { pathname: pick.pathname, params: pick.searchParams }), 'shortage');

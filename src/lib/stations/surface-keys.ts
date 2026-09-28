@@ -199,7 +199,7 @@ export const SURFACE_REGISTRY: Record<SurfaceKey, SurfaceDefinition> = {
   },
   outbound: {
     key: 'outbound',
-    label: 'Shipping',
+    label: 'FBM',
     route: '/shipping',
     archetype: 'station',
     workbenchBranch: null,

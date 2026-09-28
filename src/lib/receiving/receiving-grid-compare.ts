@@ -18,7 +18,7 @@ import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
 import {
   resolveReceivingRowStageStamp,
   type ReceivingActivityAxis,
-} from '@/components/station/receiving-lines-table-helpers';
+} from '@/lib/receiving/receiving-stage-stamp';
 import { resolveReceivingLineSerialsCsv } from '@/components/station/receiving-line-serials';
 import type { GridSortDir } from '@/design-system/components/grid/grid-sort-dir';
 import { compareGridValues, type GridSortValue } from '@/design-system/components/grid';

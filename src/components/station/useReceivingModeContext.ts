@@ -19,7 +19,7 @@ import {
   normalizeReceivingHistorySearchField,
   normalizeReceivingHistorySearchScope,
 } from '@/lib/receiving-history-search';
-import type { ReceivingActivityAxis } from '@/components/station/receiving-lines-table-helpers';
+import type { ReceivingActivityAxis } from '@/lib/receiving/receiving-stage-stamp';
 import { resolveLiveReceivingMode } from '@/lib/surface-isolation';
 import { parseStaffParam, WEEK_OFFSET_PARAM } from '@/lib/station/table-url-params';
 import { INCOMING_SURFACE_ROUTE, UNBOX_SURFACE_ROUTE } from '@/lib/receiving/surface-path';

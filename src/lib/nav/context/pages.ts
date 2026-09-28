@@ -43,6 +43,63 @@ import {
   STOCK_STATE_OPTIONS,
 } from '@/lib/inventory/inventory-nav-choices';
 
+/**
+ * The import record (`/operations/imports`, `src/lib/imports/params.ts`) —
+ * handoff import-history §6. Both views: the window (PT, with times; unset =
+ * the last 7 days) and the trigger. Runs adds who ran it; status and the
+ * multi-value facets (source · platform · account · outcome) are the facet
+ * contexts `imports.runs` / `imports.rows`, counted. A narrower list from
+ * page 3 would land past its end, so every filter drops `page`.
+ */
+const IMPORTS_WINDOW: NonNullable<NavControls['dateRanges']> = [
+  {
+    id: 'imported',
+    label: 'Imported',
+    fromParam: 'dateFrom',
+    toParam: 'dateTo',
+    clearParams: ['page'],
+    placeholder: 'Last 7 days',
+    fromTimeParam: 'timeFrom',
+    toTimeParam: 'timeTo',
+  },
+];
+const IMPORTS_TRIGGER: NonNullable<NavControls['choices']>[number] = {
+  id: 'trigger',
+  label: 'Trigger',
+  param: 'trigger',
+  options: [
+    { value: 'cron', label: 'Scheduled' },
+    { value: 'manual', label: 'Manual' },
+  ],
+  clearParams: ['page'],
+};
+const IMPORT_RUNS_CONTROLS: NavControls = {
+  staff: [{ id: 'run-by', param: 'staff', label: 'Run by' }],
+  dateRanges: IMPORTS_WINDOW,
+  choices: [IMPORTS_TRIGGER],
+  sort: {
+    param: 'sort',
+    defaultValue: 'newest',
+    options: [
+      { value: 'newest', label: 'Newest first' },
+      { value: 'inserted', label: 'Most inserted first' },
+      { value: 'failed', label: 'Most failed first' },
+    ],
+  },
+};
+const IMPORT_ROWS_CONTROLS: NavControls = {
+  dateRanges: IMPORTS_WINDOW,
+  choices: [IMPORTS_TRIGGER],
+  sort: {
+    param: 'sort',
+    defaultValue: 'newest',
+    options: [
+      { value: 'newest', label: 'Newest first' },
+      { value: 'order', label: 'Order number, A to Z' },
+    ],
+  },
+};
+
 /** A page-level verb plus the permission its door needs (never on the wire). */
 export interface NavActionDecl {
   action: NavAction;
@@ -541,6 +598,15 @@ export const NAV_PAGE_DECLS: Readonly<Record<string, NavPageDecl>> = {
       labels: {},
       paperwork: { actions: labelsDocsActions('paperwork') },
       printed: { actions: labelsDocsActions('printed') },
+    },
+  },
+  // The import record: Runs (bare) · Orders (`?view=rows`). Find narrows the
+  // list server-side through `?q=` (order number, tracking, run id, sheet tab).
+  imports: {
+    search: { placeholder: 'Order, tracking, run or sheet tab…', source: 'url-param', param: 'q' },
+    items: {
+      runs: { controls: IMPORT_RUNS_CONTROLS },
+      rows: { controls: IMPORT_ROWS_CONTROLS },
     },
   },
 };

@@ -1,6 +1,7 @@
 'use client';
 
-import { Fragment, useCallback, useId, useRef, type RefObject, type WheelEvent } from 'react';
+import { Fragment, useId, useRef } from 'react';
+import { useHorizontalWheelScroll } from '@/hooks/useHorizontalWheelScroll';
 import { motion, useReducedMotion } from '@/design-system/motion';
 import { navIconStrokeClass } from '@/components/icons/nav-weight';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
@@ -84,19 +85,6 @@ const SLIDER_PRESETS = {
   receiving:  { id: 'all',      label: 'All',       tone: 'emerald' } as HorizontalSliderItem,
 } as const;
 
-function useHorizontalWheelScroll(ref: RefObject<HTMLDivElement | null>) {
-  return useCallback(
-    (e: WheelEvent<HTMLDivElement>) => {
-      const el = ref.current;
-      if (!el) return;
-      if (Math.abs(e.deltaY) <= Math.abs(e.deltaX)) return;
-      el.scrollLeft += e.deltaY;
-      e.preventDefault();
-    },
-    [ref]
-  );
-}
-
 type HorizontalButtonSliderProps = {
   items: HorizontalSliderItem[];
   value: string;
@@ -150,7 +138,6 @@ export function HorizontalButtonSlider({
   'aria-label': ariaLabel,
 }: HorizontalButtonSliderProps) {
   const scrollerRef = useRef<HTMLDivElement | null>(null);
-  const onWheel = useHorizontalWheelScroll(scrollerRef);
   const prefersReducedMotion = useReducedMotion();
   // Mount motion (opt-in) for `segmented` / `nav` tabs — React only mounts a
   // newly-appended item, so a tab added at runtime animates itself in.
@@ -176,6 +163,7 @@ export function HorizontalButtonSlider({
   const isSegmented = variant === 'segmented';
   const isOverlayNav = overlay && variant === 'nav';
   const useScroller = variant !== 'floating' && !isSegmented && !(isOverlayNav && !dense);
+  useHorizontalWheelScroll(scrollerRef, useScroller);
   const containerClass = isSegmented
     ? segmentedFlush
       ? // Full-bleed chrome band: no bottom hairline (join is the desktop
@@ -200,7 +188,6 @@ export function HorizontalButtonSlider({
         ref={scrollerRef}
         role="tablist"
         aria-label={ariaLabel || legend || 'Filter'}
-        onWheel={useScroller ? onWheel : undefined}
         className={containerClass}
       >
         <div

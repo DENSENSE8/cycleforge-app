@@ -13,6 +13,21 @@ export interface TransferOrderDetail {
   platform?: string | null;
   /** Quarantined rows: why the import refused to guess. */
   quarantineReason?: string | null;
+  // ── Import record ids (`order_import_run_rows`, `src/lib/imports/types.ts`) ──
+  /** `orders.id` the writer inserted or backfilled; null for refused / ambiguous rows. */
+  orderRowId?: number | null;
+  /** What the writer did to the row: a plain backfill of the same source's row, or
+   *  a cross-source ADOPT / CLAIM (`order-source-match.ts`). */
+  outcome?: 'inserted' | 'backfilled' | 'adopted' | 'claimed' | 'ambiguous' | 'quarantined';
+  /** Snake_case `orders` columns whose value this write changed (`item_number`, `sku`, …). */
+  filledFields?: string[];
+  /** The account_source the incoming order carried. */
+  accountSource?: string | null;
+  skuCatalogId?: number | null;
+  /** Primary `shipping_tracking_numbers.id` on the row after the write. */
+  shipmentId?: number | null;
+  /** `order_import_exceptions.id` when the row was parked for review. */
+  importExceptionId?: number | null;
 }
 
 export interface TransferOrderDetails {
@@ -33,6 +48,9 @@ export interface TransferOrderDetails {
    * Missing item number (`order_import_exceptions`) instead.
    */
   quarantined?: TransferOrderDetail[];
+  /** Orders the writer left untouched because their number matched rows it
+   *  would have had to guess between (`ambiguousOrderIds`). */
+  ambiguous?: TransferOrderDetail[];
 }
 
 export interface OrderExceptionResolutionDetail {

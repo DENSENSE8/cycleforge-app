@@ -10,6 +10,7 @@ import {
   type PlatformOf,
 } from '@/lib/orders/order-source-match';
 import { planOrderRowBackfill, type BackfillPolicy, type BackfillRow } from '@/lib/orders/order-row-backfill';
+import type { ImportRowRecord } from '@/lib/imports/types';
 
 // ─── Store → platform ────────────────────────────────────────────────────────
 
@@ -445,6 +446,39 @@ export function planShipStationOrders(
     );
   }
   return { planned, counts };
+}
+
+/**
+ * The import record for the orders the plan refused: a quarantine is
+ * `ambiguous` (number under several platforms) or `quarantined` (unknown
+ * store), with the exception it was parked on; a skip is `skipped` with its
+ * reason. `unchanged` plans write nothing and record nothing.
+ */
+export function shipStationPlanImportRows(
+  planned: readonly PlannedOrder[],
+  exceptionIdByNumber: ReadonlyMap<string, number>,
+): ImportRowRecord[] {
+  return planned.flatMap((p): ImportRowRecord[] => {
+    if (p.plan.outcome !== 'quarantine' && p.plan.outcome !== 'skip') return [];
+    const attributed = p.attribution.kind === 'platform' ? p.attribution : null;
+    return [
+      {
+        orderRowId: null,
+        externalOrderId: p.orderNumber,
+        accountSource: attributed?.accountSource ?? null,
+        platform: attributed?.platform ?? null,
+        outcome:
+          p.plan.outcome === 'skip'
+            ? 'skipped'
+            : p.plan.reason === 'shipstation_ambiguous_match'
+              ? 'ambiguous'
+              : 'quarantined',
+        reason: p.plan.reason,
+        shipstationOrderId: p.orders[0]?.orderId ?? null,
+        importExceptionId: p.plan.outcome === 'quarantine' ? exceptionIdByNumber.get(p.orderNumber) ?? null : null,
+      },
+    ];
+  });
 }
 
 // ─── Historical backfill windows ─────────────────────────────────────────────

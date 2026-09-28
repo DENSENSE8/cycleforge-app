@@ -86,7 +86,8 @@ export function orderLifecycleState(
   if (stage === 'BLOCKED') return 'outOfStock';
   if (flags.urgent) return 'urgent';
   if (stage === 'PACKED_STAGED') return 'packed';
-  return 'ready';
+  if (stage === 'PICKED') return 'picked';
+  return 'toPick';
 }
 
 /** The server's outbound warehouse stage (`OutboundWorkItem.warehouseStage`, `/api/v1/outbound/work`) + the order's expedite flag → the… */
@@ -98,7 +99,8 @@ export function workStageLifecycleState(
   if (stage === 'OUT_OF_STOCK') return 'outOfStock';
   if (flags.urgent) return 'urgent';
   if (stage === 'PACKED' || stage === 'LABELED') return 'packed';
-  return 'ready';
+  if (stage === 'PICKED') return 'picked';
+  return 'toPick';
 }
 
 // ─── Board descriptor (lane order + icon binding, as data — no React) ───────────

@@ -30,6 +30,8 @@ const OWN_TOP_BAR_PREFIXES = [
   // The phone companion to a counter tablet's repair visit wears the
   // exoskeleton (DetailHubScreen) and its /info; both own MobileDetailTopBar.
   '/m/repair-scan',
+  // An import run's record owns MobileDetailTopBar (X back to /m/imports); the list keeps the host bar.
+  '/m/imports/',
 ] as const;
 
 /**

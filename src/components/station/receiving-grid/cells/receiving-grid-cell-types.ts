@@ -6,7 +6,7 @@
 import { gridDataCellClass } from '@/design-system/components/grid';
 import type { CSSProperties } from 'react';
 import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
-import type { ReceivingActivityAxis } from '@/components/station/receiving-lines-table-helpers';
+import type { ReceivingActivityAxis } from '@/lib/receiving/receiving-stage-stamp';
 import type { GridSelectGutterChrome } from '@/components/ui/GridRowCheckbox';
 import { gridFrozenLeft } from '@/design-system/components/grid/grid-column-geometry';
 import {

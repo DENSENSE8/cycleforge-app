@@ -26,11 +26,11 @@ export async function GET(req: NextRequest) {
   // run `failed` (the header pill reads that) without losing the summary.
   let summary: { orgs: number; imported: number; updated: number; failures: number; perOrg: unknown[] } | null = null;
   const locked = await withCronLock('orders.backfill_pipeline', () =>
-    withCronRun('orders.backfill_pipeline', async () => {
+    withCronRun('orders.backfill_pipeline', async (cronRunId) => {
       const perOrg: Array<{ orgId: string; result?: OrdersBackfillResult; error?: string }> = [];
       for (const orgId of await listSweepOrgIds()) {
         try {
-          const result = await loadOrdersBackfillPipeline(orgId, { sheetsFull });
+          const result = await loadOrdersBackfillPipeline(orgId, { sheetsFull, trigger: 'cron', cronRunId });
           if (result.steps.length > 0) perOrg.push({ orgId, result });
         } catch (error) {
           perOrg.push({ orgId, error: error instanceof Error ? error.message : String(error) });

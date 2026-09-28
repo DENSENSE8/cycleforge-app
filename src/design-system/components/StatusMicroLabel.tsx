@@ -7,6 +7,7 @@ type StatusTone = 'neutral' | 'blue' | 'orange' | 'red' | 'green' | 'purple' | '
 
 /** Functional state tone → this vocabulary's hue (lifecycle states resolve here). */
 const STATUS_TONE_FOR_STATE: Record<StateName, StatusTone> = {
+  neutral: 'neutral',
   info: 'blue',
   warning: 'orange',
   fulfillment: 'purple',

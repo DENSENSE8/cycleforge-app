@@ -9,7 +9,13 @@ import { syncConnection } from '@/lib/integrations/connectors/orchestrator';
 import { listOrderSyncMenuSources } from '@/lib/integrations/order-sync-menu';
 import { syncOrderExceptionsToOrders } from '@/lib/orders-exceptions';
 import { invalidateAllOrdersApiCaches } from '@/lib/orders/invalidation';
-import { runOrdersBackfillPipeline, type OrdersBackfillDeps } from './orders-backfill-pipeline';
+import { startImportRun } from './import-record';
+import { importRecordDeps } from './import-record-load';
+import {
+  runOrdersBackfillPipeline,
+  type OrdersBackfillDeps,
+  type OrdersBackfillOpts,
+} from './orders-backfill-pipeline';
 
 const deps: OrdersBackfillDeps = {
   // The To-ship menu's list IS the run order; permissions are the caller's
@@ -23,8 +29,9 @@ const deps: OrdersBackfillDeps = {
     if (result.matched > 0) await invalidateAllOrdersApiCaches([], orgId);
     return result;
   },
+  startImportRun: (orgId, meta) => startImportRun(orgId, meta, importRecordDeps),
 };
 
-export function loadOrdersBackfillPipeline(orgId: OrgId, opts?: { sheetsFull?: boolean }) {
+export function loadOrdersBackfillPipeline(orgId: OrgId, opts?: OrdersBackfillOpts) {
   return runOrdersBackfillPipeline(orgId, deps, opts);
 }

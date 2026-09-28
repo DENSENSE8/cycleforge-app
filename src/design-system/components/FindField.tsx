@@ -158,8 +158,8 @@ const FIELD_SIZE = {
 } as const;
 
 /**
- * Search icon · `F` keycap · field (rolling hint while empty) · clear ·
- * paste key (far right). The field keeps a local draft and commits after
+ * Search icon · `F` keycap · field (rolling hint while empty) · paste key ·
+ * clear (far right, expanded or not). The field keeps a local draft and commits after
  * `debounceMs`; a committed value coming back never overwrites keys typed
  * since.
  *
@@ -172,6 +172,10 @@ const FIELD_SIZE = {
  * While it has focus and text, a panel hangs under the well: `below` (the
  * caller's answer, e.g. where the text lives) then, with `escalate`, the
  * "Search everywhere" row (⌘↵ / Ctrl+↵).
+ *
+ * `onClear`: the caller holds something the field's text does not (a pasted
+ * list), so the clear key shows without text. One click clears both: the
+ * text and whatever `onClear` drops.
  */
 export function FindField({
   value,
@@ -186,6 +190,7 @@ export function FindField({
   testId,
   escalate,
   below,
+  onClear,
   overflowRight = false,
 }: {
   value: string;
@@ -208,6 +213,8 @@ export function FindField({
   below?: ReactNode;
   /** Grow right past the slot while focused (see above). */
   overflowRight?: boolean;
+  /** The caller has something to clear beyond the text (see above). */
+  onClear?: () => void;
 }) {
   const apple = useApplePlatform();
   const [draft, setDraft] = useState(value);
@@ -298,20 +305,30 @@ export function FindField({
           )}
         />
       </span>
-      {draft ? (
+      <PasteKey label="Paste to find" shown={look.active} onPaste={() => void pasteClipboard()} />
+      {draft || onClear ? (
         <button
           type="button"
-          aria-label="Clear find"
+          data-find-clear
+          aria-label="Clear"
+          title="Clear"
+          // Same rule as the paste key: taking focus would grow a collapsed
+          // `overflowRight` well mid-click and slide the key out from under the pointer.
+          onPointerDown={(event) => event.preventDefault()}
           onClick={() => {
             setDraft('');
+            onClear?.();
             inputRef.current?.focus();
           }}
-          className={cn('ds-raw-button grid size-5 shrink-0 place-content-center text-text-faint hover:text-text-default', SIDEBAR_CONTROL_CORNER)}
+          className={cn(
+            'ds-raw-button grid size-6 shrink-0 place-content-center text-text-faint hover:bg-surface-card hover:text-text-default active:translate-y-px',
+            SIDEBAR_CONTROL_CORNER,
+            focusRing('control', 'accent'),
+          )}
         >
           <X aria-hidden className="size-3.5" />
         </button>
       ) : null}
-      <PasteKey label="Paste to find" shown={look.active} onPaste={() => void pasteClipboard()} />
       {panel ? (
         <div
           data-find-panel
@@ -418,8 +435,9 @@ export function HoverKeycaps({ keys, shown }: { keys: readonly string[]; shown: 
 }
 
 /**
- * The well's paste key, far right — shown while the operator looks at the
- * well. Still in the tab order: focusing it is looking, so it shows.
+ * The well's paste key, just left of the clear key (far right when there is
+ * nothing to clear) — shown while the operator looks at the well. Still in
+ * the tab order: focusing it is looking, so it shows.
  */
 export function PasteKey({ label, shown, onPaste }: { label: string; shown: boolean; onPaste: () => void }) {
   return (
@@ -432,10 +450,12 @@ export function PasteKey({ label, shown, onPaste }: { label: string; shown: bool
       // Keep focus where it is: focusing the key would grow a `overflowRight`
       // well mid-click and slide the key out from under the pointer.
       onPointerDown={(event) => event.preventDefault()}
+      // Hidden at rest it takes no room (like `HoverKeycaps`): the narrow
+      // sidebar well keeps its words, and the clear key stays far right.
       className={cn(
-        'ds-raw-button grid size-6 shrink-0 place-content-center text-text-faint transition-[color,background-color,transform,opacity]',
+        'ds-raw-button grid h-6 shrink-0 place-content-center overflow-hidden text-text-faint transition-[width,margin,color,background-color,transform,opacity]',
         'hover:bg-surface-card hover:text-text-default active:translate-y-px',
-        shown ? 'opacity-100' : 'pointer-events-none opacity-0',
+        shown ? 'ml-0 w-6 opacity-100' : 'pointer-events-none -ml-1.5 w-0 opacity-0',
         SIDEBAR_CONTROL_CORNER,
         focusRing('control', 'accent'),
       )}

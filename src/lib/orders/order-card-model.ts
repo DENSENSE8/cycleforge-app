@@ -12,7 +12,6 @@ import type { ShippedOrder } from '@/types/orders';
 import { LIFECYCLE, type LifecycleState, type StateName } from '@/design-system/tokens/lifecycle';
 import { recordState, worstState } from '@/components/outbound/orders/outbound-orders-ledger-state';
 import { conditionSentenceLabel } from '@/lib/conditions';
-import { resolveOrderBin, type OrderBinFace } from '@/lib/shipping/outbound-storage-path';
 import { ordersLineTitle, resolveOrdersIndexValue } from '@/lib/tables/field-catalog/orders-resolve';
 import type { CompoundDelay } from '@/components/tables/compound/compound-row-model';
 import { formatCurrency } from '@/utils/_number';
@@ -32,15 +31,11 @@ export interface OrderCardLine {
   condition: string | null;
   /** Raw grade code — the tone reads it. */
   conditionCode: string | null;
-  /** On-hand count for the SKU; null when there is no stock row. */
-  stock: number | null;
-  bin: OrderBinFace;
   price: string | null;
   priceEstimate: boolean;
   outOfStock: boolean;
   /** Why it is short ("2 short · Brake lever"), when the report named it. */
   shortNote: string | null;
-  sku: string | null;
   state: LifecycleState;
   /**
    * This line's own Pick and QC, read from its own row (Pick is
@@ -109,7 +104,8 @@ export interface OrderNextStep {
   blocked: boolean;
 }
 
-function linePrice(line: ShippedOrder): { text: string | null; estimate: boolean } {
+/** A line's price in its currency; `estimate` when it came from the listing, not the sale. Cards and the ledger share it. */
+export function linePrice(line: ShippedOrder): { text: string | null; estimate: boolean } {
   const currency = String(line.currency || line.price_currency || 'USD').trim().toUpperCase();
   const format = (amount: number) => {
     try {
@@ -147,7 +143,6 @@ function shortNote(line: ShippedOrder): string | null {
 export function orderCardLine(line: ShippedOrder, todayKey: string, staffName?: (id: number) => string): OrderCardLine {
   const condition = lineCondition(line);
   const price = linePrice(line);
-  const stock = Number(line.sku_stock_on_hand);
   const qty = Number(line.quantity);
   const outOfStock = line.is_out_of_stock === true;
   return {
@@ -158,13 +153,10 @@ export function orderCardLine(line: ShippedOrder, todayKey: string, staffName?: 
     qty: Number.isFinite(qty) && qty > 0 ? qty : 1,
     condition: condition.label,
     conditionCode: condition.code,
-    stock: line.sku_stock_on_hand != null && Number.isFinite(stock) ? stock : null,
-    bin: resolveOrderBin(line.storage_locations, line.sku_home_location),
     price: price.text,
     priceEstimate: price.estimate,
     outOfStock,
     shortNote: shortNote(line),
-    sku: String(line.sku ?? '').trim() || null,
     state: recordState(line),
     stages: {
       pick: orderStage(line, 'pick', { todayKey, staffName, outOfStock }),
@@ -223,7 +215,7 @@ export function orderNextStep(
   const blocked = stages.pick.blocked != null;
   return {
     label: 'Pick',
-    tone: LIFECYCLE.ready.tone,
+    tone: LIFECYCLE.picked.tone,
     tip: blocked ? 'Next: pick it — blocked, a line is out of stock' : `Next: pick it${assigned(stages.pick)}`,
     blocked,
   };

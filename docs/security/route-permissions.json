@@ -1,9 +1,9 @@
 {
   "version": 1,
-  "generatedAt": "2026-09-28T18:10:47Z",
-  "totalRoutes": 1133,
+  "generatedAt": "2026-09-28T19:35:13Z",
+  "totalRoutes": 1136,
   "summary": {
-    "permissionGated": 922,
+    "permissionGated": 925,
     "authenticatedNoPermission": 126,
     "anonymousIntentional": 36,
     "serviceToService": 49,
@@ -2954,6 +2954,33 @@
       ],
       "gate": "withAuth",
       "permission": "sku_stock.view",
+      "exemptReason": null
+    },
+    {
+      "path": "/api/imports/rows/route.ts",
+      "methods": [
+        "GET"
+      ],
+      "gate": "withAuth",
+      "permission": "orders.view",
+      "exemptReason": null
+    },
+    {
+      "path": "/api/imports/runs/[id]/route.ts",
+      "methods": [
+        "GET"
+      ],
+      "gate": "requireRoutePerm",
+      "permission": "orders.view",
+      "exemptReason": null
+    },
+    {
+      "path": "/api/imports/runs/route.ts",
+      "methods": [
+        "GET"
+      ],
+      "gate": "withAuth",
+      "permission": "orders.view",
       "exemptReason": null
     },
     {

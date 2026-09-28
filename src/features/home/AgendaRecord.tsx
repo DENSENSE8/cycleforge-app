@@ -18,7 +18,6 @@ import {
 import { RECORD_HIT_CLASS } from '@/design-system/components/record-ledger/record-ledger-geometry';
 import { useReducedMotion } from '@/design-system/motion';
 import { RECORD_ID_CLASS, RECORD_LABEL_CLASS } from '@/design-system/tokens/industrial-record';
-import { lifecycleRecordState } from '@/design-system/tokens/lifecycle';
 import { photoContentUrl } from '@/lib/photos/display-url';
 import { agendaRecordState } from '@/lib/daily/agenda-record-state';
 import { DAILY_AGENDA_TYPE_LABEL, type DailyAgendaRow } from '@/lib/daily/daily-agenda-row';
@@ -129,7 +128,7 @@ export const AgendaRecord = memo(function AgendaRecord({
     >
       <IndustrialRecord
       recordKey={row.key}
-      state={lifecycleRecordState(state.lifecycle)}
+      state={state.face}
       open={open}
       openLabel={`${DAILY_AGENDA_TYPE_LABEL[row.type]} ${row.id}, ${state.word}, ${row.title}`}
       onOpen={() => onOpen(row.key)}

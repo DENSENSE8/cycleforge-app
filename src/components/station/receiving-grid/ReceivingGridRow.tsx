@@ -10,7 +10,7 @@ import { resolveReceivingLineSerialsCsv } from '@/components/station/receiving-l
 import {
   resolveReceivingRowStageStamp,
   type ReceivingActivityAxis,
-} from '@/components/station/receiving-lines-table-helpers';
+} from '@/lib/receiving/receiving-stage-stamp';
 import { ReceivingLineOrderRow } from '@/components/station/ReceivingLineOrderRow';
 import { ledgerRowFillClass } from '@/components/ui/queue-row-chrome';
 import { RECEIVING_GRID_CAPABILITIES } from '@/components/station/receiving-grid/receiving-grid-descriptor';

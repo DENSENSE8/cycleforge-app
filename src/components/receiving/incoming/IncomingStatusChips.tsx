@@ -14,7 +14,8 @@
  * clears it.
  */
 
-import { useCallback, useMemo } from 'react';
+import { useCallback, useMemo, useRef } from 'react';
+import { useHorizontalWheelScroll } from '@/hooks/useHorizontalWheelScroll';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
 import { motion } from 'motion/react';
@@ -164,8 +165,11 @@ const CHIP_RAIL_CLASS =
 export function IncomingStatusChips({ set, face }: { set: IncomingStatusChipSet; face: 'cards' | 'floor' }) {
   const disabled = set.disabledReason != null;
   const floor = face === 'floor';
+  const railRef = useRef<HTMLSpanElement>(null);
+  useHorizontalWheelScroll(railRef);
   return (
     <span
+      ref={railRef}
       role="group"
       aria-label={set.label}
       title={set.disabledReason ?? undefined}

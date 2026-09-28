@@ -1,14 +1,19 @@
 'use client';
 
 import { useState } from 'react';
+import Link from 'next/link';
 import { useQueryClient } from '@tanstack/react-query';
 import { formatDistanceToNowStrict } from 'date-fns';
 import { Loader2, RefreshCw, Play, Activity } from '@/components/Icons';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
+import { useAuth } from '@/contexts/AuthContext';
 import { useCronRunsSummary, useCronRunsList } from '@/hooks/useCronRuns';
 import { cronRunsKeys, type JobHealth, type CronJobStatus, type CronRunRow } from '@/lib/queries/cron-runs-queries';
 import { syncRunStatusChipClass } from '@/lib/sync-run-status';
 import { Button, IconButton } from '@/design-system/primitives';
+
+/** The cron job that drives the orders import (`ORDERS_PIPELINE_RUN_JOB`); each of its runs has an import record. */
+const ORDERS_PIPELINE_JOB = 'orders.backfill_pipeline';
 
 /**
  * Admin → System sync activity: every cron/job's health, last run, and a
@@ -184,24 +189,39 @@ function JobCard({
 function RunRow({ run }: { run: CronRunRow }) {
   const [open, setOpen] = useState(false);
   const hasDetail = !!run.error || (!!run.summary && typeof run.summary === 'object');
+  const canSeeImports = useAuth().has('orders.view');
+  // Job health stays here; what the run brought in, order by order, is the import record.
+  const importsHref =
+    run.job === ORDERS_PIPELINE_JOB && canSeeImports ? `/operations/imports?cronRun=${run.id}` : null;
   return (
     <li className="px-5 py-2.5">
-      {/* ds-raw-button: text-left master-detail expander row (status chip + job + meta) */}
-      <button
-        type="button"
-        onClick={() => hasDetail && setOpen((o) => !o)}
-        className="flex w-full items-center gap-3 text-left"
-      >
-        <span className={`rounded-full inset-chip text-role-micro ${syncRunStatusChipClass(run.status)}`}>
-          {run.status}
-        </span>
-        <span className="min-w-0 flex-1 truncate text-role-caption font-semibold text-text-default">{run.job}</span>
-        {run.trigger === 'manual' && (
-          <span className="shrink-0 rounded bg-surface-sunken inset-chip text-role-micro text-text-soft">manual</span>
-        )}
-        <span className="shrink-0 text-role-micro tabular-nums text-text-faint">{dur(run.duration_ms)}</span>
-        <span className="shrink-0 text-role-micro tabular-nums text-text-faint">{rel(run.started_at)}</span>
-      </button>
+      <div className="flex items-center gap-3">
+        {/* ds-raw-button: text-left master-detail expander row (status chip + job + meta) */}
+        <button
+          type="button"
+          onClick={() => hasDetail && setOpen((o) => !o)}
+          className="flex min-w-0 flex-1 items-center gap-3 text-left"
+        >
+          <span className={`rounded-full inset-chip text-role-micro ${syncRunStatusChipClass(run.status)}`}>
+            {run.status}
+          </span>
+          <span className="min-w-0 flex-1 truncate text-role-caption font-semibold text-text-default">{run.job}</span>
+          {run.trigger === 'manual' && (
+            <span className="shrink-0 rounded bg-surface-sunken inset-chip text-role-micro text-text-soft">manual</span>
+          )}
+          <span className="shrink-0 text-role-micro tabular-nums text-text-faint">{dur(run.duration_ms)}</span>
+          <span className="shrink-0 text-role-micro tabular-nums text-text-faint">{rel(run.started_at)}</span>
+        </button>
+        {importsHref ? (
+          <Link
+            href={importsHref}
+            className="shrink-0 text-role-micro font-semibold text-text-soft hover:text-text-default"
+            data-testid="sync-run-imports-link"
+          >
+            Imports →
+          </Link>
+        ) : null}
+      </div>
       {open && hasDetail && (
         <pre className="mt-2 max-h-48 overflow-auto rounded-lg bg-surface-canvas p-2.5 text-role-micro text-text-muted">
           {run.error ? `Error: ${run.error}\n` : ''}

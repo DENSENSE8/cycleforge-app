@@ -88,7 +88,7 @@ export const Sparkles = ({ className = "w-6 h-6" }: { className?: string }) => (
 );
 
 // Lifecycle state glyphs — drawn before the state code (`LIFECYCLE[state].icon`).
-/** Ready — `RDY`. */
+/** To pick — `TPK`. */
 export const CircleDot = ({ className = "w-6 h-6" }: { className?: string }) => (
     <LucideCircleDot className={className} />
 );

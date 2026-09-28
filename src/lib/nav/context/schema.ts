@@ -27,6 +27,8 @@ export const NavItemSchema = z
     active: z.boolean(),
     kind: z.enum(NAV_ITEM_KINDS),
     badge: z.literal('beta').optional(),
+    /** One secondary line (mode switcher): what the name means when it alone misleads (FBM). */
+    description: z.string().min(1).optional(),
   })
   .strict();
 export type NavItem = z.infer<typeof NavItemSchema>;

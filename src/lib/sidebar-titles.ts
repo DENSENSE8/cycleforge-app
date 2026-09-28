@@ -25,7 +25,7 @@ const SIDEBAR_TITLES: Record<string, string> = {
   tech: 'Quality Control',
   pick: 'Picker',
   packer: 'Packing',
-  outbound: 'Shipping',
+  outbound: 'FBM',
   support: 'Support',
   'ai-chat': 'Chat',
   admin: 'Admin',

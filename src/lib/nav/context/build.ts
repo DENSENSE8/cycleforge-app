@@ -100,6 +100,8 @@ interface SectionRow {
   pathname: string;
   /** Group heading (desk-view group / child `group`), if any. */
   group?: { id: string; label: string };
+  /** Secondary line, carried to the {@link NavItem}. */
+  description?: string;
 }
 
 /**
@@ -177,7 +179,7 @@ function activeRowId(page: SidebarPageNav, pathname: string, params: URLSearchPa
 function toSections(pageId: string, rows: readonly SectionRow[], activeId: string | null): NavSection[] {
   const runs: Array<{ group?: SectionRow['group']; section: NavSection }> = [];
   for (const row of rows) {
-    const item: NavItem = { id: row.id, label: row.label, href: row.href, active: row.id === activeId, kind: 'link' };
+    const item: NavItem = { id: row.id, label: row.label, href: row.href, active: row.id === activeId, kind: 'link', ...(row.description ? { description: row.description } : {}) };
     const last = runs.at(-1);
     if (last && last.group?.id === row.group?.id) {
       last.section.items.push(item);
@@ -259,12 +261,13 @@ function modeLaneOf(page: SidebarPageNav | null): (typeof SPINE_SECTIONS)[number
  */
 function laneModeRows(lane: (typeof SPINE_SECTIONS)[number], input: PipelineInput): SectionRow[] {
   const group = { id: `${lane.id}.modes`, label: 'Mode' };
-  const toRow = (row: { id: string; label: string; href: string }): SectionRow => ({
+  const toRow = (row: { id: string; label: string; href: string; description?: string }): SectionRow => ({
     id: row.id,
     label: row.label,
     href: row.href,
     pathname: new URL(row.href, 'http://nav.local').pathname,
     group,
+    ...(row.description ? { description: row.description } : {}),
   });
   const doorId = LANE_DOORS[lane.id];
   const pages = mergeOrgNav(getSidebarNavItems({ permissions: input.permissions }), input.orgNav).filter(

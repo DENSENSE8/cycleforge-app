@@ -21,7 +21,7 @@
  * automation-written assignments).
  */
 import 'server-only';
-import { PICK_FACTS_LATERALS, WA_PICK_LATERAL } from '@/lib/neon/orders-queries';
+import { PICK_FACTS_LATERALS, PICKED_AT_SQL, PICKED_BY_SQL, WA_PICK_LATERAL } from '@/lib/neon/orders-queries';
 import type { OrderStageSignals } from '@/lib/orders/desk-view-sql';
 import { sqlOrderHasPackScan, sqlOrderHasPickScan } from '@/lib/orders/order-grain-sql';
 import { PACK_ACTIVITY_TYPES, sqlInList } from '@/lib/station-activity';
@@ -109,8 +109,8 @@ export function buildOrderStageFactsRefreshSql(targetSql: string): string {
       qc.created_at,
       qc.tested_by,
       COALESCE(qc.created_at < o.created_at, false),
-      COALESCE(pick_alloc.picked_at, pick_sess.picked_at, pick_scan.picked_at),
-      COALESCE(pick_alloc.picked_by, pick_sess.picked_by, pick_scan.picked_by),
+      ${PICKED_AT_SQL},
+      ${PICKED_BY_SQL},
       pl_latest.packer_log_id,
       pl_latest.packed_at,
       COALESCE(pack_activity.staff_id, pl_latest.packed_by),

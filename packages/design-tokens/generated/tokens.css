@@ -591,6 +591,14 @@ html:not([data-color-scheme='dark']) {
   }
 }
 
+.state-code-neutral {
+  color: var(--ds-color-text-secondary);
+}
+.state-badge-neutral {
+  color: #ffffff;
+  background-color: #475569;
+  border-radius: var(--mode-radius-control);
+}
 .state-code-info {
   color: var(--ds-color-text-info);
 }

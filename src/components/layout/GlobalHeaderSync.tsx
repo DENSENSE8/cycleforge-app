@@ -100,8 +100,8 @@ export function GlobalHeaderSync() {
   const pathname = usePathname();
   const queryClient = useQueryClient();
   const [open, setOpen] = useState(false);
-  // Operations › Sync (and its `/api/cron-runs` data) is admin-only; staff get no dead-end link.
-  const canSeeHistory = useAuth().has('admin.view');
+  // The import record (`/operations/imports`) is gated on `orders.view`, so every staffer who reads orders gets the door.
+  const canSeeHistory = useAuth().has('orders.view');
   const [armed, setArmed] = useState(false);
   const [hintAt, setHintAt] = useState<KeyHintAt | null>(null);
   const [rows, setRows] = useState<Record<string, RowState>>({});
@@ -311,11 +311,11 @@ export function GlobalHeaderSync() {
             </Button>
           }
           footer={
-            // Every run — scheduled or pressed here — with its summary: the
-            // past-imports record (owner 2026-09-28: it lives on the sync page).
+            // Every run — scheduled or pressed here — order by order: the
+            // import record (owner 2026-09-28: its own page).
             canSeeHistory ? (
             <Link
-              href="/operations?mode=sync"
+              href="/operations/imports"
               onClick={() => setOpen(false)}
               className="block px-4 py-2 text-role-caption font-semibold text-text-soft hover:text-text-default"
               data-testid="global-sync-history"

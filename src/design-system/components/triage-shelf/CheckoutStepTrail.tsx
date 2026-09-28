@@ -11,6 +11,7 @@
  */
 
 import { Fragment, useEffect, useRef } from 'react';
+import { useHorizontalWheelScroll } from '@/hooks/useHorizontalWheelScroll';
 import { Check, ChevronRight } from '@/components/Icons';
 import { focusRing } from '@/design-system/tokens/focus-ring';
 import { CHECKOUT_STEPS, type CheckoutStepId } from '@/lib/orders/intake/checkout-model';
@@ -37,9 +38,12 @@ export function CheckoutStepTrail({
   useEffect(() => {
     currentRef.current?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
   }, [current]);
+  const trailRef = useRef<HTMLElement>(null);
+  useHorizontalWheelScroll(trailRef);
 
   return (
     <nav
+      ref={trailRef}
       aria-label="Order steps"
       className={cn('overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden', className)}
       data-testid={`${testIdPrefix}trail`}

@@ -3,7 +3,7 @@
  * evidence column so both read one state and one location face.
  */
 
-import type { LifecycleState } from '@/design-system/tokens/lifecycle';
+import type { StockStage } from '@/design-system/tokens/stock-lifecycle';
 import { isProvisionalSku } from '@/lib/inventory/provisional-sku';
 import { skuExceptionLocationFace } from '@/lib/inventory/sku-exception-links';
 import type { LocationStockTableRow } from '@/lib/inventory/location-stock-row';
@@ -11,11 +11,17 @@ import type { LocationStockTableRow } from '@/lib/inventory/location-stock-row';
 /**
  * `HLD` for a floor-minted placeholder (it cannot be sold or picked by name
  * until paired) — whatever its count; otherwise `OOS` at or below zero and
- * `RDY` while the shelf holds something.
+ * `STK` while the shelf holds something.
  */
-export function stockRecordState(row: Pick<LocationStockTableRow, 'sku' | 'is_provisional' | 'qty'>): LifecycleState {
+export function stockRecordState(row: Pick<LocationStockTableRow, 'sku' | 'is_provisional' | 'qty'>): StockStage {
   if (row.is_provisional || isProvisionalSku(row.sku)) return 'onHold';
-  return row.qty > 0 ? 'ready' : 'outOfStock';
+  return row.qty > 0 ? 'inStock' : 'outOfStock';
+}
+
+/** Where the pair goes next: a loose bin takes a desk count; a placeholder waits to be paired. */
+export function stockRecordNext(row: Pick<LocationStockTableRow, 'sku' | 'is_provisional' | 'qty' | 'source' | 'location_barcode'>): string | null {
+  if (stockRecordCountable(row)) return 'Count';
+  return stockRecordState(row) === 'onHold' ? 'Pair' : null;
 }
 
 /** The shelf as the floor reads it: the segmented bin code, else the written handle. */

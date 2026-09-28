@@ -44,7 +44,7 @@ import {
   shouldRekeyToIncomingSource,
   type PlatformOf,
 } from '@/lib/orders/order-source-match';
-import { isBlank, planOrderRowBackfill } from '@/lib/orders/order-row-backfill';
+import { filledOrderColumns, isBlank, planOrderRowBackfill } from '@/lib/orders/order-row-backfill';
 import type { BackfillPolicy } from '@/lib/orders/order-row-backfill';
 
 /** Whose customer id the buyer block carries: its own `channel` (an aggregator
@@ -101,12 +101,17 @@ export interface IngestCanonicalOrdersResult {
   matchedCustomers: number;
   unmatchedCustomers: number;
   details: {
+    /** Each carries its `orders.id` (from INSERT … RETURNING). */
     inserted: TransferOrderDetail[];
+    /** One per backfilled row (an adopt of two rows = two), each with its
+     *  `orders.id`, `outcome` and the columns it changed (`filledFields`). */
     updated: TransferOrderDetail[];
     deleted: TransferOrderDetail[];
     unknownTitle: TransferOrderDetail[];
     unresolvedTracking: TransferOrderDetail[];
     unmatchedCatalog: TransferOrderDetail[];
+    /** One per `ambiguousOrderIds` entry. */
+    ambiguous: TransferOrderDetail[];
   };
 }
 
@@ -129,6 +134,7 @@ function emptyIngestResult(): IngestCanonicalOrdersResult {
       unknownTitle: [],
       unresolvedTracking: [],
       unmatchedCatalog: [],
+      ambiguous: [],
     },
   };
 }
@@ -772,6 +778,7 @@ export async function ingestCanonicalOrders(
   let matchedCustomers = 0;
   let unmatchedCustomers = 0;
   const ambiguousOrderIds: string[] = [];
+  const detailsAmbiguous: TransferOrderDetail[] = [];
 
   for (const order of canonicalOrders) {
     const orderId = order.externalOrderId;
@@ -789,6 +796,20 @@ export async function ingestCanonicalOrders(
           : matchMarketplaceOrderRows(order.accountSource, rowsForNumber);
     if (crossSource?.kind === 'ambiguous') {
       ambiguousOrderIds.push(orderId);
+      detailsAmbiguous.push({
+        orderId,
+        productTitle: catalogLink.productTitle,
+        sku: catalogLink.sku,
+        itemNumber: catalogLink.itemNumber,
+        tracking: order.trackings[0] || '',
+        titleSource: catalogLink.titleSource,
+        accountSource: order.accountSource || null,
+        skuCatalogId: catalogLink.skuCatalogId,
+        orderRowId: null,
+        outcome: 'ambiguous',
+        quarantineReason: 'ambiguous_match',
+        filledFields: [],
+      });
       continue;
     }
     const existingForDetail = existingOrder ?? crossSource?.rows[0];
@@ -800,6 +821,8 @@ export async function ingestCanonicalOrders(
       itemNumber: catalogLink.itemNumber,
       tracking: order.trackings[0] || '',
       titleSource: catalogLink.titleSource,
+      accountSource: order.accountSource || null,
+      skuCatalogId: catalogLink.skuCatalogId,
       existingAccountSource: existingForDetail?.accountSource ?? null,
       existingCreatedAt:
         existingForDetail?.createdAt instanceof Date
@@ -863,6 +886,7 @@ export async function ingestCanonicalOrders(
     const planBackfill = (
       row: OrderProjection,
       policy: Pick<BackfillPolicy, 'titleAuthoritative' | 'sourceWrite'>,
+      outcome: 'backfilled' | 'adopted' | 'claimed',
     ) => {
       // Read at call time: the collapse branch adds losers' ids before calling.
       const shipmentIdList = Array.from(shipmentIds.values());
@@ -889,7 +913,17 @@ export async function ingestCanonicalOrders(
       if (plan.filledShipment) updatedOrdersTracking++;
       const compacted = compactUpdateValues(plan.values);
       if (Object.keys(compacted).length > 0) {
-        ordersToBackfill.push({ id: row.id, values: compacted, detail: detailRow });
+        ordersToBackfill.push({
+          id: row.id,
+          values: compacted,
+          detail: {
+            ...detailRow,
+            orderRowId: row.id,
+            outcome,
+            filledFields: filledOrderColumns(row, compacted),
+            shipmentId: plan.primaryShipmentId,
+          },
+        });
       }
       if (shipmentIdList.length > 0) {
         shipmentLinksToUpsert.set(row.id, { primaryShipmentId: plan.primaryShipmentId, shipmentIds: shipmentIdList });
@@ -930,10 +964,11 @@ export async function ingestCanonicalOrders(
       const rekey =
         shouldRekeyToIncomingSource(orderToKeep.accountSource, order.accountSource) &&
         !survivors.some((o) => String(o.accountSource ?? '').trim() === incomingSource);
-      planBackfill(orderToKeep, {
-        titleAuthoritative: !!authoritative.productTitle,
-        sourceWrite: rekey ? 'rekey' : 'fill',
-      });
+      planBackfill(
+        orderToKeep,
+        { titleAuthoritative: !!authoritative.productTitle, sourceWrite: rekey ? 'rekey' : 'fill' },
+        'backfilled',
+      );
     } else if (crossSource && (crossSource.kind === 'adopt' || crossSource.kind === 'claim')) {
       // Adopt (aggregator → marketplace rows) or claim (marketplace → the
       // aggregator's row). Every matched row is backfilled; none is deleted.
@@ -943,15 +978,22 @@ export async function ingestCanonicalOrders(
         crossSource.kind === 'adopt' && aggregator
           ? placeholderRowsToRekey(order.accountSource, crossSource.rows, aggregator.platformOf)
           : new Set<OrderProjection>();
+      const outcome = crossSource.kind === 'adopt' ? 'adopted' : 'claimed';
       for (const row of crossSource.rows) {
-        planBackfill(row, rekey.has(row) ? { ...policy, sourceWrite: 'rekey' } : policy);
+        planBackfill(row, rekey.has(row) ? { ...policy, sourceWrite: 'rekey' } : policy, outcome);
       }
     } else {
       const shipmentIdList = Array.from(shipmentIds.values());
       ordersToInsert.push({
         shipByDate: order.shipByDate,
         shipmentIds: shipmentIdList,
-        detail: detailRow,
+        detail: {
+          ...detailRow,
+          orderRowId: null,
+          outcome: 'inserted',
+          filledFields: [],
+          shipmentId: shipmentIdList[0] ?? null,
+        },
         values: {
           // Explicit stamp: Drizzle's neon-http client can't carry the GUC, so
           // orders.organization_id (NOT NULL) must be set here.
@@ -1028,11 +1070,10 @@ export async function ingestCanonicalOrders(
           tx.insert(ordersTable).values(insertValues).returning({ id: ordersTable.id }),
         )
       : await db.insert(ordersTable).values(insertValues).returning({ id: ordersTable.id });
-    for (const entry of ordersToInsert) progress({ type: 'detail', kind: 'inserted', row: entry.detail });
-
     insertedOrderIds = insertedOrders.map((o) => o.id);
     insertedOrders.forEach((inserted, index) => {
       const planned = ordersToInsert[index];
+      if (planned) planned.detail.orderRowId = Number(inserted.id);
       if (manageDeadlines && planned?.shipByDate) {
         orderDeadlinesToUpsert.push({ id: inserted.id, shipByDate: planned.shipByDate });
       }
@@ -1043,6 +1084,7 @@ export async function ingestCanonicalOrders(
         });
       }
     });
+    for (const entry of ordersToInsert) progress({ type: 'detail', kind: 'inserted', row: entry.detail });
   }
 
   if (shipmentLinksToUpsert.size > 0) {
@@ -1185,6 +1227,7 @@ export async function ingestCanonicalOrders(
       unknownTitle: detailsUnknownTitle,
       unresolvedTracking: detailsUnresolvedTracking,
       unmatchedCatalog: detailsUnmatchedCatalog,
+      ambiguous: detailsAmbiguous,
     },
   };
 }

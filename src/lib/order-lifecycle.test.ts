@@ -165,6 +165,6 @@ test('workStageLifecycleState: shipped is terminal, OOS beats urgent, urgent bea
   assert.equal(workStageLifecycleState('READY', { urgent: true }), 'urgent');
   assert.equal(workStageLifecycleState('PACKED'), 'packed');
   assert.equal(workStageLifecycleState('LABELED'), 'packed');
-  assert.equal(workStageLifecycleState('PICKED'), 'ready');
-  assert.equal(workStageLifecycleState('READY', { urgent: null }), 'ready');
+  assert.equal(workStageLifecycleState('PICKED'), 'picked');
+  assert.equal(workStageLifecycleState('READY', { urgent: null }), 'toPick');
 });

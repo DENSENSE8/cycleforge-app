@@ -67,25 +67,28 @@ export const DESK_VIEWS: readonly DeskView[] = [
   },
   {
     id: 'triage',
-    label: 'To ship',
+    label: 'Allocate',
     navChild: 'orders',
     pathname: SHIPPING_ORDERS_PATH,
     params: {},
     countKey: 'triage',
-    searchScope: 'Search orders to ship',
+    searchScope: 'Search orders to allocate',
   },
   {
     id: 'shipped',
     label: 'Shipped',
     navChild: 'shipped',
     pathname: SHIPPING_SHIPPED_PATH,
-    params: {},
+    // FBM's Shipped is merchant-fulfilled only (owner 2026-09-28): FBA prep
+    // shipments live in FBA › Shipped, so the list, its counts and the URL all
+    // carry `shippedFilter=orders` (the `orders-queries` non-FBA predicate).
+    params: { shippedFilter: 'orders' },
     countKey: 'shippedToday',
     searchScope: 'Search shipments',
   },
 ];
 
-/** Paint order: Exceptions · Picking (PO paired · Pick list) · To ship · Shipped. */
+/** Paint order: Exceptions · Picking (PO paired · Pick list) · Allocate · Shipped. */
 export const DESK_VIEW_ORDER: readonly DeskViewId[] = ['exceptions', 'po', 'pick', 'triage', 'shipped'];
 
 export function getDeskView(id: DeskViewId): DeskView {

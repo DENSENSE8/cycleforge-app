@@ -15,9 +15,15 @@
  * Driven by `/api/cron/orders/backfill` (every org) and the header Sync
  * (caller's org). The To-ship CTA runs the same order client-side for its
  * live ledger (`useOrdersSync`).
+ *
+ * Every run is recorded as one import run (`order_import_runs` → steps →
+ * per-order rows, `import-record.ts`). The rows go to the record only — the
+ * returned result (and so `cron_runs.summary`) stays counts-only.
  */
 import type { OrgId } from '@/lib/tenancy/constants';
 import type { SyncOpts, SyncOutcome } from '@/lib/integrations/connectors/types';
+import type { ImportRunTrigger } from '@/lib/imports/types';
+import { failedStepsLine, type ImportRunMeta, type ImportRunRecorder } from './import-record';
 
 export interface PipelineStep {
   /** Provider id, or `exceptions`. */
@@ -40,36 +46,76 @@ export interface OrdersBackfillDeps {
   listOrderProviders(orgId: OrgId): Promise<string[]>;
   syncProvider(orgId: OrgId, provider: string, opts?: SyncOpts): Promise<SyncOutcome>;
   resolveExceptions(orgId: OrgId): Promise<{ matched: number }>;
+  /** Open the run's import record (never throws). */
+  startImportRun(orgId: OrgId, meta: ImportRunMeta): Promise<ImportRunRecorder>;
+}
+
+export interface OrdersBackfillOpts {
+  /** Google Sheets reads every tab (the history backfill). */
+  sheetsFull?: boolean;
+  /** Default `cron`. */
+  trigger?: ImportRunTrigger;
+  /** Manual runs: the operator. */
+  staffId?: number | null;
+  /** The `cron_runs` row driving this run. */
+  cronRunId?: number | null;
+}
+
+function errorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
 }
 
 export async function runOrdersBackfillPipeline(
   orgId: OrgId,
   deps: OrdersBackfillDeps,
-  opts: { sheetsFull?: boolean } = {},
+  opts: OrdersBackfillOpts = {},
 ): Promise<OrdersBackfillResult> {
   const steps: PipelineStep[] = [];
   const providers = await deps.listOrderProviders(orgId);
   if (providers.length === 0) return { ok: true, steps, imported: 0, updated: 0 };
 
+  const record = await deps.startImportRun(orgId, {
+    kind: opts.sheetsFull ? 'sheets_full' : 'pipeline',
+    trigger: opts.trigger ?? 'cron',
+    staffId: opts.staffId ?? null,
+    cronRunId: opts.cronRunId ?? null,
+  });
+
+  // Each step lands in the result (counts only) and the import record (+ rows).
+  const land = async (step: PipelineStep, startedAt: Date, rows?: SyncOutcome['importRows']) => {
+    steps.push(step);
+    await record.step({ ...step, rows, startedAt, finishedAt: new Date() });
+  };
+
   for (const provider of providers) {
+    const startedAt = new Date();
+    let outcome: SyncOutcome;
     try {
-      const outcome = await deps.syncProvider(
+      outcome = await deps.syncProvider(
         orgId,
         provider,
         provider === 'google_sheets' && opts.sheetsFull ? { full: true } : undefined,
       );
-      steps.push({ step: provider, ok: outcome.ok, imported: outcome.imported, updated: outcome.updated, error: outcome.error });
     } catch (error) {
-      steps.push({ step: provider, ok: false, error: error instanceof Error ? error.message : String(error) });
+      outcome = { ok: false, error: errorMessage(error) };
     }
+    await land(
+      { step: provider, ok: outcome.ok, imported: outcome.imported, updated: outcome.updated, error: outcome.error },
+      startedAt,
+      outcome.importRows,
+    );
   }
 
+  const startedAt = new Date();
+  let exceptions: PipelineStep;
   try {
     const { matched } = await deps.resolveExceptions(orgId);
-    steps.push({ step: 'exceptions', ok: true, updated: matched });
+    exceptions = { step: 'exceptions', ok: true, updated: matched };
   } catch (error) {
-    steps.push({ step: 'exceptions', ok: false, error: error instanceof Error ? error.message : String(error) });
+    exceptions = { step: 'exceptions', ok: false, error: errorMessage(error) };
   }
+  await land(exceptions, startedAt);
+  await record.finish();
 
   return {
     ok: steps.every((s) => s.ok),
@@ -81,8 +127,5 @@ export async function runOrdersBackfillPipeline(
 
 /** One line naming every failed step — the run ledger's `error`, the header's message. */
 export function pipelineFailure(result: OrdersBackfillResult): string {
-  return result.steps
-    .filter((s) => !s.ok)
-    .map((s) => `${s.step}: ${s.error || 'failed'}`)
-    .join(' · ');
+  return failedStepsLine(result.steps);
 }

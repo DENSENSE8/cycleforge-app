@@ -33,7 +33,7 @@ const UNBOX_ROLE_DEFAULT_SETTINGS: readonly SettingDef[] = ALL_ROLES.map((role) 
  */
 const DESK_VIEW_DESKS = [
   { id: 'home', label: 'Daily' },
-  { id: 'outbound', label: 'Shipping' },
+  { id: 'outbound', label: 'FBM' },
   { id: 'fba', label: 'FBA' },
   { id: 'incoming', label: 'Deliveries' },
   { id: 'receive', label: 'Unbox' },

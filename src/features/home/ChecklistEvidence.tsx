@@ -18,7 +18,7 @@ import {
 import { RECORD_HIT_CLASS } from '@/design-system/components/record-ledger/record-ledger-geometry';
 import { RECORD_LABEL_CLASS } from '@/design-system/tokens/industrial-record';
 import { cornerClass } from '@/design-system/tokens/radius';
-import { LIFECYCLE_CLASSES } from '@/design-system/tokens/lifecycle';
+import { STATE_TONE_CLASSES } from '@/design-system/tokens/lifecycle';
 import { agendaRecordState } from '@/lib/daily/agenda-record-state';
 import type { DailyAgendaRow } from '@/lib/daily/daily-agenda-row';
 import { CIVIL_TIME_RE } from '@/lib/reminders/reminder-contract';
@@ -89,7 +89,7 @@ export function ChecklistEvidence({
       </EvidenceTitle>
       <PomodoroTimer kind="checklist" id={row.id} date={dateKey} canRun={isToday && !row.done} />
       <div className={cn('flex items-center gap-2 border-b border-mode-ink px-4', RECORD_HIT_CLASS)}>
-        <span aria-hidden className={cn('h-2 w-2 shrink-0', LIFECYCLE_CLASSES[state.lifecycle].dot)} />
+        <span aria-hidden className={cn('h-2 w-2 shrink-0', STATE_TONE_CLASSES[state.face.tone].dot)} />
         <span className={cn(RECORD_LABEL_CLASS, state.late ? 'text-mode-warn' : 'text-mode-ink')}>
           {state.code} · {state.word}
         </span>

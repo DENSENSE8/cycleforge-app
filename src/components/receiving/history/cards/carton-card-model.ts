@@ -18,7 +18,10 @@ import type { RecordStateFace } from '@/design-system/tokens/industrial-record';
 import { displayReceivingProductTitle } from '@/components/station/receiving-grid/cells';
 import { fmtMoney } from '@/components/sidebar/receiving/incoming-details/incoming-details-shared';
 import { formatDateTimePST, formatMonthDayTimePST } from '@/utils/date';
-import { resolveReceivingRowStageStamp, type ReceivingActivityAxis } from '@/components/station/receiving-lines-table-helpers';
+import {
+  resolveReceivingRowStageStamp,
+  type ReceivingActivityAxis,
+} from '@/lib/receiving/receiving-stage-stamp';
 import { conditionSentenceLabel, resolveConditionGrade } from '@/lib/conditions';
 import { workflowStageLabel } from '@/lib/receiving/workflow-stages';
 

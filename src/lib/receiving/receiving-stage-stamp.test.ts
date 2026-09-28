@@ -1,6 +1,6 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { resolveReceivingRowStageStamp } from '@/components/station/receiving-lines-table-helpers';
+import { resolveReceivingRowStageStamp } from '@/lib/receiving/receiving-stage-stamp';
 
 describe('resolveReceivingRowStageStamp', () => {
   it('unboxed axis prefers first-open, then unboxed_at; falls back to scan when never opened', () => {

@@ -43,7 +43,7 @@ import { DOCKED_KIND_PARAM } from '@/lib/receiving/inbound-lane';
 import { useUrlColumnSort } from '@/hooks/useUrlColumnSort';
 import { defaultDirForReceivingGridSort, isReceivingGridSortable, type ReceivingGridColumnKey } from '@/lib/receiving/receiving-grid-layout';
 import { compareReceivingGridRows } from '@/lib/receiving/receiving-grid-compare';
-import type { ReceivingActivityAxis } from '@/components/station/receiving-lines-table-helpers';
+import type { ReceivingActivityAxis } from '@/lib/receiving/receiving-stage-stamp';
 import { INCOMING_DOCKED_VIEW } from '@/lib/triage/views';
 import { CartonCard } from './cards/CartonCard';
 import { cartonBands, cartonCardKey, cartonCardModel, groupCartons, type CartonCardModel } from './cards/carton-card-model';

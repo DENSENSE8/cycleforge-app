@@ -88,7 +88,7 @@ export function getDashboardPendingLayoutFromSearch(
 
 /** Display labels — legacy tab names kept for saved-view copy / tests. */
 const DASHBOARD_ORDER_VIEW_LABEL: Record<DashboardOrderView, string> = {
-  unshipped: 'To ship',
+  unshipped: 'Allocate',
   picked: 'Picked',
   packed: 'Packed',
   shipped: 'Shipped',

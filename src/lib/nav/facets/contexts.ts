@@ -20,6 +20,8 @@ export const NAV_FACET_CONTEXTS = [
   'outbound.po',
   'outbound.shipped',
   'pickup',
+  'imports.runs',
+  'imports.rows',
 ] as const;
 export type NavFacetContext = (typeof NAV_FACET_CONTEXTS)[number];
 
@@ -36,6 +38,7 @@ const AGING: NavFacetGroupDecl = { id: 'aging', label: 'Ship by', param: 'aging'
 const LATE: NavFacetGroupDecl = { id: 'late', label: 'Must ship', param: 'late', multi: false };
 const URGENT: NavFacetGroupDecl = { id: 'attention', label: 'Urgent', param: 'attention', multi: false };
 const OUT_OF_STOCK: NavFacetGroupDecl = { id: 'ustatus', label: 'Stock', param: 'ustatus', multi: false };
+const IMPORT_SOURCE: NavFacetGroupDecl = { id: 'source', label: 'Source', param: 'source', multi: true };
 
 export const NAV_FACET_GROUPS: Readonly<Record<NavFacetContext, readonly NavFacetGroupDecl[]>> = {
   'outbound.exceptions': [{ id: 'category', label: 'Category', param: 'category', multi: false }],
@@ -51,6 +54,16 @@ export const NAV_FACET_GROUPS: Readonly<Record<NavFacetContext, readonly NavFace
     { id: 'exceptions', label: 'Needs attention', param: 'exceptions', multi: false },
   ],
   pickup: [{ id: 'status', label: 'Status', param: 'status', multi: false }],
+  // The import record's lists (`/api/imports/runs|rows`, `src/lib/imports/params.ts`):
+  // source · platform · account · outcome are multi-value, comma-joined (a
+  // run's source is any step it ran); a run's status is one value.
+  'imports.runs': [{ id: 'status', label: 'Status', param: 'status', multi: false }, IMPORT_SOURCE],
+  'imports.rows': [
+    IMPORT_SOURCE,
+    { id: 'platform', label: 'Platform', param: 'platform', multi: true },
+    { id: 'account', label: 'Account', param: 'account', multi: true },
+    { id: 'outcome', label: 'Outcome', param: 'outcome', multi: true },
+  ],
 };
 
 /**
@@ -65,6 +78,8 @@ export const NAV_FACET_PERMISSION: Readonly<Record<NavFacetContext, string>> = {
   'outbound.po': 'orders.view',
   'outbound.shipped': 'packing.view',
   pickup: 'walk_in.view',
+  'imports.runs': 'orders.view',
+  'imports.rows': 'orders.view',
 };
 
 export function isNavFacetContext(value: string): value is NavFacetContext {

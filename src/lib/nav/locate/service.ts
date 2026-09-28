@@ -86,8 +86,8 @@ const LOCATOR_PERMISSION: Readonly<Record<NavLocator, string>> = {
 
 /** The section a bucket belongs to, under `everywhere`. */
 const LOCATOR_LABEL: Readonly<Record<NavLocator, string>> = {
-  outbound: 'Outbound',
-  inbound: 'Inbound',
+  outbound: 'Fulfillment',
+  inbound: 'Receiving',
 };
 
 interface Selection {

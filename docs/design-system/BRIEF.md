@@ -121,8 +121,8 @@ State colours = **prod's existing tokens** (owner: "keep all of the production t
 … but for shipped, keep it as just green"): info `#2563eb`, warning `#ea580c`, fulfillment
 `#9333ea`, danger `#dc2626`, success `#16a34a`. **Shipped = success/green everywhere** (done).
 **Lifecycle source of truth — Approved (2026-09-24):** one `LIFECYCLE` map in
-`packages/design-tokens/src/lifecycle.ts` (ready → info `RDY` · urgent → warning `URG` ·
-**packed → fulfillment/purple `PKD`** · out of stock → danger `OOS` · **shipped → success/green
+`packages/design-tokens/src/lifecycle.ts` (to pick → neutral/grey `TPK` · picked → info/blue `PIK` ·
+urgent → warning `URG` · **packed → fulfillment/purple `PKD`** · out of stock → danger `OOS` · **shipped → success/green
 `SHP`**), generated into Swift + JSON; every packed/shipped tone map in `src/` reads it (guard
 test). **Text vs fill split — Approved:** success text `#15803d`, warning text `#c2410c` (≥4.5:1);
 fills, spines, dots and tints keep `#16a34a` / `#ea580c`.
@@ -370,8 +370,8 @@ SKU and price give way below the `label` width tier.
 (`@container/card`); line 1 and the stage disclose by the card's OWN width, through the
 `CARD_DISCLOSE` tiers in `tokens/desk-stage.ts` — `brand` (@md: platform name; below it the brand
 dot only, *pending owner* — phase 1 asked for the full name at every desktop width), `label` (@xl:
-"Listing", "SKU in N orders", the stage word), `detail` (@2xl: buyer name, stage time). Hidden
-facts stay reachable: a `HoverTooltip` on each (platform, buyer, SLA, note, SKU chip, Listing,
+"Listing", the stage word), `detail` (@2xl: buyer name, stage time). Hidden
+facts stay reachable: a `HoverTooltip` on each (platform, buyer, SLA, note, Listing,
 admin ↗), the stage popover, and the Space quick look (Customer, Platform, Ship to, Ordered,
 Tracking, QC, Pick, Pack — with names).
 

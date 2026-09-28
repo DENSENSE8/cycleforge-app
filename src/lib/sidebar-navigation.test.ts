@@ -31,9 +31,9 @@ import {
 } from '@/lib/sidebar-navigation';
 import { routeParamsFor } from '@/lib/routing/registry';
 
-test('incoming has only On the way and History, including retired mailbox deep links', () => {
+test('incoming has only On the way and Unboxed, including retired mailbox deep links', () => {
   const page = getSidebarPageNav('incoming');
-  assert.deepEqual(page?.children?.map((child) => child.label), ['On the way', 'History']);
+  assert.deepEqual(page?.children?.map((child) => child.label), ['On the way', 'Unboxed']);
   assert.equal(resolveSidebarChild('incoming', { pathname: '/incoming', params: new URLSearchParams('view=mailbox') }), 'pipeline');
   assert.equal(resolveSidebarChild('incoming', { pathname: '/incoming', params: new URLSearchParams('lane=docked') }), 'docked');
 });
@@ -41,7 +41,7 @@ test('incoming has only On the way and History, including retired mailbox deep l
 test('getSidebarNavItems applies the MOBILE-FIRST GATE, and nothing else, by default', () => {
   // Dogfood parking is retired, so no rows are filtered for that reason any
   // more. What IS filtered (operator 2026-09-14) is every row in a lane the
-  const hidden = new Set(['operations', 'support']);
+  const hidden = new Set(['operations', 'imports', 'support']);
   assert.deepEqual(
     getSidebarNavItems(),
     APP_SIDEBAR_NAV.filter((item) => !hidden.has(item.id)),
@@ -904,7 +904,7 @@ test('desk family helpers: domains + Operations are desks; Studio, benches, Home
 });
 
 test('masterNavLabelForPath uses APP_SIDEBAR_NAV L1, never desk tabs', () => {
-  assert.equal(masterNavLabelForPath('/shipping/orders'), 'Shipping');
+  assert.equal(masterNavLabelForPath('/shipping/orders'), 'FBM');
   assert.equal(masterNavLabelForPath('/shipping/scan-out'), 'Scan out');
   assert.equal(masterNavLabelForPath('/ops/photos'), 'Media Library');
   assert.equal(
@@ -915,7 +915,7 @@ test('masterNavLabelForPath uses APP_SIDEBAR_NAV L1, never desk tabs', () => {
   assert.equal(masterNavLabelForPath('/pick'), 'Picker');
   assert.equal(masterNavLabelForPath('/unbox'), 'Unbox');
   assert.equal(masterNavLabelForPath('/studio'), 'Automations');
-  assert.equal(getMasterNavItem('outbound')?.label, 'Shipping');
+  assert.equal(getMasterNavItem('outbound')?.label, 'FBM');
   assert.equal(getMasterNavItem('scan-out')?.label, 'Scan out');
   // Faced Deliveries since 2026-09-14 — a child never wears its parent's name,
   // and this row lives inside the *Inbound* lane.

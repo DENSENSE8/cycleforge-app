@@ -23,6 +23,7 @@ import { matchAggregatorOrderRows, type PlatformOf } from '@/lib/orders/order-so
 import {
   attachShipStationTracking,
   planShipStationTracking,
+  shipStationTrackingImportRows,
   type ShipStationOrderRow,
   type ShipStationTrackingDeps,
 } from './shipstation-tracking';
@@ -34,6 +35,7 @@ import {
   mergeCounts,
   planShipStationOrders,
   resumeFrom,
+  shipStationPlanImportRows,
   type AttributionCatalog,
   type BackfillCheckpoint,
   type ExistingOrderRow,
@@ -43,6 +45,8 @@ import {
   type StoreAttribution,
 } from './shipstation-orders';
 import type { SyncOpts, SyncOutcome } from './types';
+import type { ImportRowRecord } from '@/lib/imports/types';
+import { importRowsFromTransferDetails } from '@/lib/imports/from-transfer-details';
 
 /** Provenance recorded on shipment links and the refs. */
 const SOURCE = 'shipstation';
@@ -227,7 +231,8 @@ function quarantineDetail(p: PlannedOrder): TransferOrderDetail {
   };
 }
 
-async function upsertQuarantine(orgId: OrgId, planned: readonly PlannedOrder[]): Promise<void> {
+/** Park the plan's quarantines on Review; returns the OPEN exception id per order number. */
+async function upsertQuarantine(orgId: OrgId, planned: readonly PlannedOrder[]): Promise<Map<string, number>> {
   const rows = planned.flatMap((p) =>
     p.plan.outcome === 'quarantine'
       ? [
@@ -248,8 +253,8 @@ async function upsertQuarantine(orgId: OrgId, planned: readonly PlannedOrder[]):
         ]
       : [],
   );
-  if (rows.length === 0) return;
-  await tenantQuery(
+  if (rows.length === 0) return new Map();
+  const res = await tenantQuery<{ id: string; account_order_id: string }>(
     orgId,
     `INSERT INTO order_import_exceptions
        (organization_id, account_order_id, account_source, product_title, reason, raw_row, col_indices)
@@ -262,9 +267,11 @@ async function upsertQuarantine(orgId: OrgId, planned: readonly PlannedOrder[]):
        seen_count   = order_import_exceptions.seen_count + 1,
        last_seen_at = now(),
        updated_at   = now()
-     WHERE order_import_exceptions.status = 'open'`,
+     WHERE order_import_exceptions.status = 'open'
+     RETURNING id, account_order_id`,
     [orgId, SOURCE, JSON.stringify(rows)],
   );
+  return new Map(res.rows.map((r) => [r.account_order_id, Number(r.id)]));
 }
 
 /** A quarantined order that now imported: close its exception. */
@@ -572,6 +579,8 @@ interface PageResult {
   counts: ReconcileCounts;
   details: Pick<TransferOrderDetails, 'inserted' | 'updated'> & { quarantined: TransferOrderDetail[] };
   insertedOrderIds: number[];
+  /** Every order the page wrote, parked or skipped — never truncated (applied runs only). */
+  importRows: ImportRowRecord[];
 }
 
 async function processOrderPage(ctx: SyncContext, orders: readonly ShipStationV1Order[], apply: boolean): Promise<PageResult> {
@@ -585,16 +594,25 @@ async function processOrderPage(ctx: SyncContext, orders: readonly ShipStationV1
     ignored,
   });
   const quarantinedDetails = planned.filter((p) => p.plan.outcome === 'quarantine').map(quarantineDetail);
-  const empty: PageResult = {
-    counts,
-    details: { inserted: [], updated: [], quarantined: quarantinedDetails },
-    insertedOrderIds: [],
-  };
-  if (!apply) return empty;
+  if (!apply) {
+    return {
+      counts,
+      details: { inserted: [], updated: [], quarantined: quarantinedDetails },
+      insertedOrderIds: [],
+      importRows: [],
+    };
+  }
 
-  await upsertQuarantine(orgId, planned);
+  const exceptionIdByNumber = await upsertQuarantine(orgId, planned);
   const toWrite = planned.filter((p) => p.line);
-  if (toWrite.length === 0) return empty;
+  if (toWrite.length === 0) {
+    return {
+      counts,
+      details: { inserted: [], updated: [], quarantined: quarantinedDetails },
+      insertedOrderIds: [],
+      importRows: shipStationPlanImportRows(planned, exceptionIdByNumber),
+    };
+  }
   await clearPlaceholderTitles(orgId, toWrite);
 
   const result = await ingestCanonicalOrders(toWrite.map((p) => p.line as CanonicalOrderLine), {
@@ -626,10 +644,11 @@ async function processOrderPage(ctx: SyncContext, orders: readonly ShipStationV1
           candidateSources: [],
         },
       }));
-    await upsertQuarantine(orgId, latePlanned);
+    for (const [number, id] of await upsertQuarantine(orgId, latePlanned)) exceptionIdByNumber.set(number, id);
     counts.quarantined += latePlanned.length;
     bump(counts, 'quarantined.shipstation_ambiguous_match', latePlanned.length);
     quarantinedDetails.push(...latePlanned.map(quarantineDetail));
+    planned.push(...latePlanned);
   }
 
   // Durable pairing: every ShipStation order → the rows it landed on.
@@ -661,6 +680,23 @@ async function processOrderPage(ctx: SyncContext, orders: readonly ShipStationV1
   applied.quarantined = counts.quarantined;
   applied.skipped = counts.skipped - (counts.reasons['skipped.unchanged'] ?? 0)
     + Math.max(0, toWrite.length - result.ambiguousOrderIds.length - result.insertedOrders - enrichedNumbers.size);
+  // The ShipStation order behind each written row (the refs just upserted).
+  const shipstationOrderIdByRow = new Map<number, number>();
+  for (const ref of refs) {
+    if (!shipstationOrderIdByRow.has(ref.rowId)) shipstationOrderIdByRow.set(ref.rowId, ref.order.orderId);
+  }
+  // Inserted / backfilled rows, each with the ShipStation order behind it
+  // (the refs just upserted); the writer's own ambiguous bucket is the late
+  // quarantine above, recorded from its plan.
+  const written = importRowsFromTransferDetails(
+    { inserted: result.details.inserted, updated: result.details.updated },
+    {
+      platformOf: ctx.platformOf,
+      decorate: (d) => ({
+        shipstationOrderId: d.orderRowId != null ? shipstationOrderIdByRow.get(d.orderRowId) ?? null : null,
+      }),
+    },
+  );
   return {
     counts: applied,
     details: {
@@ -669,6 +705,7 @@ async function processOrderPage(ctx: SyncContext, orders: readonly ShipStationV1
       quarantined: quarantinedDetails,
     },
     insertedOrderIds: result.insertedOrderIds,
+    importRows: [...written, ...shipStationPlanImportRows(planned, exceptionIdByNumber)],
   };
 }
 
@@ -676,12 +713,13 @@ async function processShipmentPage(
   ctx: SyncContext,
   shipments: readonly ShipStationV1Shipment[],
   apply: boolean,
-): Promise<Record<string, number>> {
+): Promise<{ tracking: Record<string, number>; importRows: ImportRowRecord[] }> {
   const plan = planShipStationTracking(shipments);
   const tracking = await attachShipStationTracking(ctx.orgId, plan.plans, makeTrackingDeps(ctx.platformOf), {
     dryRun: !apply,
     concurrency: 6,
   });
+  let importRows: ImportRowRecord[] = [];
   if (apply) {
     const byShipment = new Map(tracking.outcomes.map((o) => [o.shipmentId, o]));
     await upsertShipmentRefs(
@@ -704,15 +742,37 @@ async function processShipmentPage(
       source: 'shipstation.tracking',
       extraTags: ['shipped'],
     });
+    // The rows the labels touched, read back for the import record: their
+    // account and the shipment the attach linked.
+    const touchedIds = Array.from(
+      new Set(tracking.outcomes.filter((o) => o.status === 'attached' || o.status === 'failed').flatMap((o) => o.orderRowIds)),
+    );
+    const touched = touchedIds.length
+      ? await tenantQuery<{ id: number; account_source: string | null; shipment_id: string | null }>(
+          ctx.orgId,
+          `SELECT id, account_source, shipment_id FROM orders WHERE organization_id = $1 AND id = ANY($2::int[])`,
+          [ctx.orgId, touchedIds],
+        )
+      : { rows: [] };
+    const rowsById = new Map(
+      touched.rows.map((r) => [
+        Number(r.id),
+        { accountSource: r.account_source, shipmentId: r.shipment_id == null ? null : Number(r.shipment_id) },
+      ]),
+    );
+    importRows = shipStationTrackingImportRows(shipments, tracking.outcomes, rowsById, ctx.platformOf);
   }
   return {
-    trackingAttached: tracking.attached,
-    trackingAlreadyCurrent: tracking.alreadyCurrent,
-    trackingUnmatched: tracking.unmatched,
-    trackingAmbiguous: tracking.ambiguous,
-    trackingFailed: tracking.failed,
-    shipmentsVoided: plan.voided,
-    shipmentsSkipped: plan.skipped,
+    tracking: {
+      trackingAttached: tracking.attached,
+      trackingAlreadyCurrent: tracking.alreadyCurrent,
+      trackingUnmatched: tracking.unmatched,
+      trackingAmbiguous: tracking.ambiguous,
+      trackingFailed: tracking.failed,
+      shipmentsVoided: plan.voided,
+      shipmentsSkipped: plan.skipped,
+    },
+    importRows,
   };
 }
 
@@ -725,7 +785,7 @@ function outcome(
   counts: ReconcileCounts,
   tracking: Record<string, number>,
   details: PageResult['details'],
-  extra: { cursor?: string; runId?: number; dryRun?: boolean },
+  extra: { cursor?: string; runId?: number; dryRun?: boolean; importRows: ImportRowRecord[] },
 ): SyncOutcome {
   const reasons = Object.fromEntries(Object.entries(counts.reasons).map(([k, v]) => [`reason.${k}`, v]));
   const fullDetails: TransferOrderDetails = {
@@ -753,6 +813,7 @@ function outcome(
       ...(extra.runId != null ? { runId: extra.runId } : {}),
       ...(extra.dryRun ? { dryRun: 1 } : {}),
     },
+    importRows: extra.importRows,
   };
 }
 
@@ -793,6 +854,7 @@ async function reattributeLegacyShipStationRows(
   if (!client) return { ok: false, error: 'shipstation: v1 credentials not configured' };
   const counts = emptyCounts();
   const details: PageResult['details'] = { inserted: [], updated: [], quarantined: [] };
+  const importRows: ImportRowRecord[] = [];
   try {
     const legacy = await tenantQuery<{ order_id: string }>(
       orgId,
@@ -814,14 +876,15 @@ async function reattributeLegacyShipStationRows(
       const page = await processOrderPage(ctx, orders, apply);
       mergeCounts(counts, page.counts);
       mergeDetails(details, page.details);
+      importRows.push(...page.importRows);
       progress({ type: 'phase', phase: 'updating', count: page.counts.enriched });
     }
     counts.skipped += notInShipStation.length;
     bump(counts, 'skipped.not_in_shipstation', notInShipStation.length);
   } catch (e) {
-    return { ok: false, error: `shipstation re-attribution: ${e instanceof Error ? e.message : String(e)}` };
+    return { ok: false, error: `shipstation re-attribution: ${e instanceof Error ? e.message : String(e)}`, importRows };
   }
-  return outcome(counts, {}, details, { dryRun: !apply });
+  return outcome(counts, {}, details, { dryRun: !apply, importRows });
 }
 
 async function incremental(orgId: OrgId, client: ShipStationV1Client, progress: SyncProgress): Promise<SyncOutcome> {
@@ -831,6 +894,7 @@ async function incremental(orgId: OrgId, client: ShipStationV1Client, progress: 
   const counts = emptyCounts();
   const tracking: Record<string, number> = {};
   const details: PageResult['details'] = { inserted: [], updated: [], quarantined: [] };
+  const importRows: ImportRowRecord[] = [];
   let maxModified = since.getTime();
 
   try {
@@ -866,20 +930,23 @@ async function incremental(orgId: OrgId, client: ShipStationV1Client, progress: 
     const page = await processOrderPage(ctx, orders, true);
     mergeCounts(counts, page.counts);
     mergeDetails(details, page.details);
+    importRows.push(...page.importRows);
     progress({ type: 'phase', phase: 'updating', count: counts.enriched });
     progress({ type: 'phase', phase: 'inserting', count: counts.imported });
 
     // After ingest, so a label on an order first seen this run finds its row.
-    addTracking(tracking, await processShipmentPage(ctx, shipments, true));
+    const labels = await processShipmentPage(ctx, shipments, true);
+    addTracking(tracking, labels.tracking);
+    importRows.push(...labels.importRows);
 
     if (maxModified > since.getTime()) await updateSyncCursor(cursorKey, new Date(maxModified), orgId);
     await finishRun(orgId, runId, 'done', counts, tracking);
   } catch (e) {
     const message = e instanceof Error ? e.message : String(e);
     await finishRun(orgId, runId, 'failed', counts, tracking, message).catch(() => {});
-    return { ok: false, error: `shipstation: ${message}` };
+    return { ok: false, error: `shipstation: ${message}`, importRows };
   }
-  return outcome(counts, tracking, details, { cursor: new Date(maxModified).toISOString(), runId });
+  return outcome(counts, tracking, details, { cursor: new Date(maxModified).toISOString(), runId, importRows });
 }
 
 async function backfill(
@@ -893,6 +960,7 @@ async function backfill(
   const counts = emptyCounts();
   const tracking: Record<string, number> = {};
   const details: PageResult['details'] = { inserted: [], updated: [], quarantined: [] };
+  const importRows: ImportRowRecord[] = [];
 
   // Resume an interrupted applied run on its own window; else start fresh.
   const resumable = apply && !options.restart ? await findResumableBackfill(orgId) : null;
@@ -947,6 +1015,7 @@ async function backfill(
         const result = await processOrderPage(ctx, res.orders, apply);
         mergeCounts(counts, result.counts);
         mergeDetails(details, result.details);
+        importRows.push(...result.importRows);
         const next = page >= res.pages ? null : page + 1;
         if (runId != null) {
           const cp: BackfillCheckpoint = next
@@ -976,7 +1045,9 @@ async function backfill(
           pageSize: PAGE_SIZE,
         });
         plansSeen += res.shipments.length;
-        addTracking(tracking, await processShipmentPage(ctx, res.shipments, apply));
+        const labels = await processShipmentPage(ctx, res.shipments, apply);
+        addTracking(tracking, labels.tracking);
+        importRows.push(...labels.importRows);
         const next = page >= res.pages ? null : page + 1;
         if (runId != null) {
           const cp: BackfillCheckpoint = next
@@ -994,7 +1065,7 @@ async function backfill(
   } catch (e) {
     const message = e instanceof Error ? e.message : String(e);
     if (runId != null) await finishRun(orgId, runId, 'failed', counts, tracking, message).catch(() => {});
-    return { ok: false, error: `shipstation backfill: ${message}`, stats: { ...countsJson(counts, tracking) } };
+    return { ok: false, error: `shipstation backfill: ${message}`, stats: { ...countsJson(counts, tracking) }, importRows };
   }
-  return outcome(counts, tracking, details, { runId, dryRun: !apply });
+  return outcome(counts, tracking, details, { runId, dryRun: !apply, importRows });
 }

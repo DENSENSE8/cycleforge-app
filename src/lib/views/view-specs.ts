@@ -85,16 +85,19 @@ type OrderViewSpecs = {
     : RecordViewSpec<SectionsFor<K>, OrderVerbId>;
 };
 
-/** The work queue's row — shared by To ship and Pending (same desk, different lock). */
+/**
+ * The work queue's row — shared by To ship and Pending (same desk, different
+ * lock). Qty · condition · price (owner 2026-09-28: no stock, item # or bin on
+ * the list — the open record carries them).
+ */
 const WORK_QUEUE_ROW = [
   { fact: 'orders.fulfill_by', tier: 'rest' },
   { fact: 'orders.condition', tier: 'rest' },
-  { fact: 'orders.bin', tier: 'rest' },
   { fact: 'orders.qty', tier: 'rest' },
+  { fact: 'orders.amount', tier: 'rest' },
   { fact: 'orders.picked', tier: 'rest' },
   { fact: 'orders.packed', tier: 'rest' },
   { fact: 'orders.customer', tier: 'label' },
-  { fact: 'orders.item_number', tier: 'label' },
 ] as const satisfies ViewSpec<OrdersFactId, string, string>['rowFacts'];
 
 const WORK_QUEUE_RECORD = [

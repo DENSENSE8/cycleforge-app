@@ -19,7 +19,7 @@ const SURFACE_LABELS: Record<string, string> = {
   photos: 'Media',
   warranty: 'Warranty',
   goals: 'Goals',
-  outbound: 'Shipping',
+  outbound: 'FBM',
   labels: 'Labels',
   admin: 'Admin',
 };

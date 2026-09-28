@@ -100,8 +100,7 @@ export const CARD_FACT_BOX_CLASS = 'inline-flex h-6 shrink-0 items-center';
  * a hover tooltip and in the quick look (Space).
  *
  * - `brand` (@md) — the platform NAME beside its brand dot.
- * - `label` (@xl) — words beside icons: "Listing", the stage word,
- *   "SKU in N orders" (under it: "SKU ×N").
+ * - `label` (@xl) — words beside icons: "Listing", the stage word.
  * - `detail` (@2xl) — the buyer name, the stage's PST time.
  *
  * `show*` = hidden below the tier, painted from it (one per display type);

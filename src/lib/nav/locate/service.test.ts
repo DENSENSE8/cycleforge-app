@@ -129,7 +129,7 @@ test('outbound text: one bucket per desk view in DESK_VIEW_ORDER, each counted b
   }
   const shippedUrl = new URL(body.buckets.find((b) => b.id === 'shipped')?.href ?? '', 'http://t');
   assert.deepEqual(readShippedDateWindow(shippedUrl.searchParams), { start: '', end: '' });
-  assert.deepEqual(body.buckets.map((b) => b.label), ['Exceptions', 'PO paired', 'Pick list', 'To ship', 'Shipped']);
+  assert.deepEqual(body.buckets.map((b) => b.label), ['Exceptions', 'PO paired', 'Pick list', 'Allocate', 'Shipped']);
   assert.deepEqual(counts(body), { exceptions: 3, po: 1, pick: 2, triage: 4, shipped: 5 });
   assert.deepEqual(body.entries, []);
   assert.equal(body.truncated, 0);
@@ -261,8 +261,8 @@ test('everywhere: every permitted locator, ids and labels prefixed, entries merg
     'inbound:not_received',
     'inbound:exceptions',
   ]);
-  assert.equal(body.buckets.find((b) => b.id === 'outbound:triage')?.label, 'Outbound · To ship');
-  assert.equal(body.buckets.find((b) => b.id === 'inbound:received')?.label, 'Inbound · Received');
+  assert.equal(body.buckets.find((b) => b.id === 'outbound:triage')?.label, 'Fulfillment · Allocate');
+  assert.equal(body.buckets.find((b) => b.id === 'inbound:received')?.label, 'Receiving · Received');
   assert.deepEqual(body.entries.map((e) => [e.ref, e.buckets, e.title]), [
     ['02-15212-00001', ['outbound:pick', 'outbound:triage'], '02-15212-00001 · Bose QC45'],
     ['PO-1', ['inbound:received'], 'PO PO-1 · Acme'],

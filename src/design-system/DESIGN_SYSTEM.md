@@ -166,8 +166,9 @@ usage: [`ai/README.md`](./ai/README.md) (values in `ai/tokens.ts`).
   `generated/DesignTokens.swift` (iOS) and `generated/tokens.json` (design-mcp);
   verify gate `Design tokens` (`pnpm tokens:check`) fails on any drift.
 - **Lifecycle states:** `LIFECYCLE` (package `lifecycle.ts`) is the one meaning,
-  code, word and tone of ready · urgent · packed · out of stock · shipped —
-  packed is `fulfillment` purple, shipped `success` green, everywhere. Web class
+  code, word and tone of to pick · picked · urgent · packed · out of stock ·
+  shipped — to pick is `neutral` grey, picked `info` blue, packed `fulfillment`
+  purple, shipped `success` green, everywhere. Web class
   maps read `LIFECYCLE_CLASSES` / `STATE_TONE_CLASSES`
   (`tokens/lifecycle.ts`); tone vocabularies read `LIFECYCLE[state].tone`.
   `tokens/lifecycle.guard.test.ts` fails any packed/shipped entry that picks

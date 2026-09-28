@@ -2,6 +2,7 @@
 import type { OrgId } from '@/lib/tenancy/constants';
 import type { IntegrationProvider } from '@/lib/integrations/credentials';
 import type { SyncProgress } from '@/lib/orders-sync/types';
+import type { ImportRowRecord } from '@/lib/imports/types';
 
 /** How a tenant authenticates the connection. */
 export type AuthKind = 'oauth' | 'nango' | 'vault';
@@ -90,6 +91,11 @@ export interface SyncOutcome {
    * tracking updates, duplicates removed, unresolved tracking).
    */
   stats?: Record<string, number>;
+  /**
+   * Every order this sync touched, with its ids and outcome — the import
+   * record (`order_import_run_rows`, `src/lib/imports/types.ts`).
+   */
+  importRows?: ImportRowRecord[];
 }
 
 /** One channel-listing stock/price push (bidirectional sync — Hub → Spoke). */

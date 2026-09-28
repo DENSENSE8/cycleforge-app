@@ -73,8 +73,8 @@ import { resolveOrdersHoldValue, resolveOrdersSlotValue } from '@/lib/tables/fie
 import { useOrderChannel } from '@/hooks/useCatalog';
 import { orderAdminUrl } from '@/utils/order-platform';
 import { orderRowQtyTone } from '@/lib/condition-tone';
-import { resolveOrderBin, type OrderBinFace } from '@/lib/shipping/outbound-storage-path';
 import { customerFullName, customerPlace } from '@/lib/customers/customer-display';
+import { linePrice } from '@/lib/orders/order-card-model';
 import {
   LIFECYCLE,
   LIFECYCLE_CLASSES,
@@ -122,7 +122,6 @@ import {
   LEDGER_GROUP_PX,
   LEDGER_HIT_CLASS,
   LEDGER_LEAD_CLASS,
-  LEDGER_LOCATION_CLASS,
   LEDGER_PHOTO_CLASS,
   LEDGER_PHOTO_LANE_CLASS,
   LEDGER_ROW_CLASS,
@@ -403,7 +402,7 @@ export function OutboundOrdersLedger({
       indexLabel={cursor.available && cursor.position != null ? `${cursor.position} of ${cursor.total}` : undefined}
       recordNoun="order"
       recordKey={openId != null ? String(openId) : null}
-      summary={<OrderQueueSummary records={displayedRecords} todayKey={feed.todayKey} />}
+      summary={<OrderQueueSummary records={displayedRecords} />}
       testId="order-record"
       list={
     <div data-testid="pending-grid-body" className="flex min-h-0 min-w-0 flex-1 flex-col">
@@ -523,7 +522,7 @@ export function OutboundOrdersLedger({
 
       <TableStatusBar
         // In place the queue summary rides the list's foot; split / floor, the empty pane or rail shows it.
-        lead={deskRecordBesideList(recordView) ? undefined : <OrderQueueSummaryLine records={displayedRecords} todayKey={feed.todayKey} />}
+        lead={deskRecordBesideList(recordView) ? undefined : <OrderQueueSummaryLine records={displayedRecords} />}
         shown={paged.shown}
         total={paged.total}
         selected={selectedCount}
@@ -983,10 +982,6 @@ const LedgerRecord = memo(function LedgerRecord({
   const next = view.nextStep ?? null;
   const [photosOpen, setPhotosOpen] = useState(false);
   const closePhotos = useCallback(() => setPhotosOpen(false), []);
-  const bin = resolveOrderBin(record.storage_locations, record.sku_home_location);
-  const locationFace = (
-    <LedgerLocation path={bin.path} source={bin.source} className={LEDGER_LOCATION_CLASS[zoom]} />
-  );
 
   const pickFacts = stageFacts(resolveOrdersSlotValue(record, 'orders.picked', staff));
   const packFacts = stageFacts(resolveOrdersSlotValue(record, 'orders.packed', staff));
@@ -1075,6 +1070,7 @@ const LedgerRecord = memo(function LedgerRecord({
   // The view spec picks the facts; the bands below only place them.
   const viewSpec = VIEW_SPECS[viewKey];
   const shows = new Set<OrdersFactId>(rowFactsAt(viewKey, zoom));
+  const price = shows.has('orders.amount') ? <LedgerPrice record={record} /> : null;
   const leadCells: Partial<Record<OrdersFactId, ReactNode>> = {
     'orders.fulfill_by': shipBy,
     'orders.hold_reason': <LedgerHoldReason record={record} />,
@@ -1184,7 +1180,7 @@ const LedgerRecord = memo(function LedgerRecord({
           {shows.has('orders.condition') ? <span className="pointer-events-auto w-20 shrink-0">{condition}</span> : null}
           {code}
           {noteSlot}
-          {shows.has('orders.bin') ? locationFace : null}
+          {price}
           <span className="pointer-events-auto">{orderChip}</span>
           <span className={cn(RECORD_TITLE_CLASS, 'flex-1')}>{view.title || '—'}</span>
           {shows.has('orders.qty') ? (
@@ -1238,25 +1234,17 @@ const LedgerRecord = memo(function LedgerRecord({
             ) : null}
           </div>
           {/*
- * Band 3 — execution:
- * side (owner 2026-09-25). Price is not here: it is noise on the floor and
- */}
+           * Band 3 — execution: condition (the grade the hand checks) · price.
+           * No bin or SKU on the row (owner 2026-09-28: simpler; the open
+           * record carries them).
+           */}
           <div className={cn('flex min-w-0 items-center gap-3', LEDGER_BAND_CLASS[zoom])}>
             <span className={cn(LEDGER_LEAD_CLASS, 'pl-2')}>
               {shows.has('orders.condition') ? <span className="pointer-events-auto w-20 shrink-0">{condition}</span> : null}
-              {shows.has('orders.bin') ? (
-                <LedgerLocation path={bin.path} source={bin.source} className="min-w-0 flex-1" />
-              ) : null}
-              {/* A held row's execution lead is its fix — on the column condition · bin hold on a work row. */}
+              {/* A held row's execution lead is its fix. */}
               {shows.has('orders.hold_fix') ? <LedgerHoldFix record={record} className="flex-1" /> : null}
             </span>
-            <span
-              className={cn(RECORD_ID_CLASS, 'w-44 min-w-0 shrink truncate text-mode-ink')}
-              title={view.detail?.sku ?? undefined}
-            >
-              <span className={RECORD_FACT_KEY_CLASS}>SKU </span>
-              {view.detail?.sku ?? '—'}
-            </span>
+            {price}
             <span className="min-w-0 flex-1" aria-hidden />
             {shows.has('orders.hold_releases') ? <LedgerHoldReleases record={record} /> : null}
             {shows.has('orders.picked') ? <span className="pointer-events-auto w-32 shrink-0">{pick}</span> : null}
@@ -1269,24 +1257,15 @@ const LedgerRecord = memo(function LedgerRecord({
   );
 });
 
-/** The order's WHERE — every live allocation's warehouse breadcrumb, from the server (`storage_locations`) through the formatter `/m/work`… */
-function LedgerLocation({
-  path,
-  source = path ? 'allocation' : null,
-  className,
-}: {
-  path: string | null;
-  source?: OrderBinFace['source'];
-  className?: string;
-}) {
-  const home = source === 'sku_home';
+/** The line's price (`orders.amount`, the cards' `linePrice`), or a dash when the channel sent none. */
+function LedgerPrice({ record }: { record: ShippedOrder }) {
+  const { text, estimate } = linePrice(record);
   return (
     <span
-      className={cn(RECORD_ID_CLASS, 'truncate', path ? 'text-mode-ink' : 'text-mode-warn', className)}
-      title={path ? (home ? `${path} — SKU home bin, no unit allocated yet` : path) : 'No allocated location'}
+      className={cn(RECORD_ID_CLASS, 'w-24 shrink-0 tabular-nums text-mode-ink')}
+      title={estimate ? 'Estimate from the listing price' : undefined}
     >
-      <span className={RECORD_FACT_KEY_CLASS}>{home ? 'Bin home ' : 'Bin '}</span>
-      {path ?? 'Unassigned'}
+      {text ?? '—'}
     </span>
   );
 }
