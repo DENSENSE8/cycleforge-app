@@ -224,7 +224,7 @@ async function ensureAdminStaff(pool: Pool, orgId: string): Promise<number> {
       staffId = staffRes.rows[0]!.id;
     }
 
-    await ensureAdminRoleWired(staffId, client);
+    await ensureAdminRoleWired(staffId, orgId, client);
     await client.query('COMMIT');
   } catch (err) {
     await client.query('ROLLBACK').catch(() => {});
