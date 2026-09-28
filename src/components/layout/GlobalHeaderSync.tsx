@@ -23,7 +23,6 @@ import { motionPresence, motionTransition } from '@/design-system/foundations/mo
 import { useMotionPresence, useMotionTransition } from '@/design-system/foundations/motion-presets-hooks';
 import { AnchoredLayer, Button, ChordKeys, KeyboardKey, Layer } from '@/design-system/primitives';
 import Link from 'next/link';
-import { focusRing } from '@/design-system/tokens/focus-ring';
 import { useAuth } from '@/contexts/AuthContext';
 import { DROPDOWN_SHELL_CORNER } from '@/design-system/tokens/radius';
 import { elevationClass } from '@/design-system/tokens/shadows';
@@ -36,13 +35,7 @@ import { formatRelativeTime } from '@/lib/search/search-recents';
 import type { GlobalSyncDirection, GlobalSyncJob } from '@/lib/sync/global-sync';
 import { toast } from '@/lib/toast';
 import { cn } from '@/utils/_cn';
-import {
-  HEADER_ICON_BTN_CLASS,
-  HEADER_ICON_BTN_OPEN_CLASS,
-  HEADER_ICON_WRAP,
-  HEADER_MENU_CAPTION_CLASS,
-  TOP_CHROME_ICON_FACE,
-} from './header-shell';
+import { HEADER_MENU_CAPTION_CLASS, HEADER_PILL_CLASS, TOP_CHROME_ICON_FACE } from './header-shell';
 
 const LEADER = 'Y';
 const ARM_SETTLE_MS = GO_SCAN_BURST_MS + 20;
@@ -259,7 +252,7 @@ export function GlobalHeaderSync() {
         : null;
 
   return (
-    <div ref={anchorRef} className={HEADER_ICON_WRAP}>
+    <div ref={anchorRef} className="flex h-full shrink-0 items-center px-1">
       <button
         type="button"
         onClick={() => {
@@ -282,21 +275,18 @@ export function GlobalHeaderSync() {
         ].filter(Boolean).join(' — ')}
         aria-expanded={open}
         aria-keyshortcuts={LEADER}
+        data-state={open ? 'open' : 'closed'}
         data-testid="global-sync-button"
         data-syncing={running || undefined}
-        className={cn(
-          'ds-raw-button relative inline-flex items-center justify-center',
-          HEADER_ICON_BTN_CLASS,
-          open && HEADER_ICON_BTN_OPEN_CLASS,
-          focusRing('control'),
-        )}
+        // Add/Inbox's outline, fill and hover — as a fixed 32px square (no text).
+        className={cn(HEADER_PILL_CLASS, 'w-8 justify-center p-0')}
       >
         <RefreshCw className={cn(TOP_CHROME_ICON_FACE, running && 'animate-spin motion-reduce:animate-none')} aria-hidden />
         {dot ? (
           <span
             aria-hidden
             data-testid="global-sync-dot"
-            className={cn('pointer-events-none absolute right-1 top-1 size-2 rounded-full ring-2 ring-surface-card', dot.tone)}
+            className={cn('pointer-events-none absolute right-0.5 top-0.5 size-2 rounded-full ring-2 ring-surface-card', dot.tone)}
           />
         ) : null}
       </button>

@@ -191,8 +191,8 @@ export const HEADER_ICON_BTN_OPEN_CLASS = 'bg-surface-sunken';
 
 /**
  * The header's labelled CTA pill — Add · Inbox wear one face (owner
- * 2026-09-28: header actions are clickable CTAs with text; Sync alone is an
- * icon key with a status dot, so its width never moves).
+ * 2026-09-28: header actions are clickable CTAs with text). Sync wears the same
+ * outline and fill as a fixed 32px square — icon + status dot, width never moves.
  * Open state reads `data-state="open"` (Radix triggers set it; hand-rolled ones pass it).
  */
 export const HEADER_PILL_CLASS = cn(
