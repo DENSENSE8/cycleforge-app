@@ -110,7 +110,7 @@ export const PIN_MAX_FAILURES = 5;
 /** Lock duration after PIN_MAX_FAILURES wrong PINs. */
 export const PIN_LOCK_MINUTES = 15;
 
-interface StaffPinRow {
+type StaffPinRow = {
   id: number;
   name: string;
   role: string;
@@ -118,7 +118,7 @@ interface StaffPinRow {
   pin_hash: string | null;
   default_home_path: string | null;
   default_home_path_mobile: string | null;
-}
+};
 
 /** Verified PIN row. */
 export type VerifiedStaffPin = StaffPinRow;
