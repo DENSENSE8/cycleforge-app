@@ -7,6 +7,9 @@
  * arguments. Local-only — posts to HERMES_API_URL with the model named in
  * AI_MODEL (default `gemma-4-e4b`). No cloud fallback: if the gateway is
  * down or the model returns invalid output, the caller gets a clear error.
+ * A runtime that refuses `tools` outright (vLLM without a tool-call parser)
+ * gets one retry in JSON mode: the tool schema as a `json_schema` response
+ * format, the arguments read from the message content.
  *
  * Every "agent does work" feature (PO extraction, claim drafting, …) should
  * route through here so the gateway plumbing lives in exactly one place. The
@@ -150,20 +153,35 @@ export function recoverToolArgsFromContent(content: string): string | null {
   return null;
 }
 
+/**
+ * The runtime refused the `tools` request itself — vLLM started without
+ * `--tool-call-parser` / `--enable-auto-tool-choice` 400s on `tool_choice`
+ * "required" and "auto" alike (measured 2026-09-28 on the org's local
+ * Qwen3-4B: `tool_choice="required" requires --tool-call-parser to be set`).
+ * Only that refusal falls back to JSON mode; any other error surfaces.
+ */
+export function isToolCallUnsupported(status: number, text: string): boolean {
+  return status === 400 && /tool[-_ ]call[-_ ]parser|auto-tool-choice|tool[_ ]choice/i.test(text);
+}
+
 export async function hermesToolCall<T = unknown>(
   input: HermesToolCallInput,
 ): Promise<HermesToolCallResult<T>> {
-  const requestBody = {
+  const messages = [
+    { role: 'system', content: input.systemPrompt },
+    { role: 'user', content: input.userText },
+  ];
+  const base = {
     // The model is filled in per attempt by the failover loop below, because a
     // fall-forward to a different provider is also a fall-forward to a
     // different model name.
     model: DEFAULT_AI_MODEL,
     temperature: input.temperature ?? 0,
     max_tokens: input.maxTokens ?? 1024,
-    messages: [
-      { role: 'system', content: input.systemPrompt },
-      { role: 'user', content: input.userText },
-    ],
+  };
+  const toolBody = {
+    ...base,
+    messages,
     tools: [
       {
         type: 'function',
@@ -188,34 +206,62 @@ export async function hermesToolCall<T = unknown>(
     // this path rather than decorate it.
     tool_choice: 'required',
   };
+  // JSON mode for runtimes that refuse `tools` (see isToolCallUnsupported): the
+  // tool's parameter schema becomes a `json_schema` response format, which vLLM
+  // enforces by guided decoding (enums included), and the prompt names the
+  // schema for runtimes that only honor it loosely. The caller still validates.
+  const jsonBody = {
+    ...base,
+    messages: [
+      {
+        role: 'system',
+        content: `${input.systemPrompt}\n\nReply with ONLY a JSON object (the ${input.tool.name} arguments) matching this JSON Schema:\n${JSON.stringify(input.tool.parameters)}`,
+      },
+      messages[1]!,
+    ],
+    response_format: {
+      type: 'json_schema',
+      json_schema: { name: input.tool.name, schema: input.tool.parameters },
+    },
+  };
 
-  const { res, served } = await postToAiProvider(input.orgId, 'chat', {
-    path: '/chat/completions',
-    body: requestBody,
-    buildBody: (config) => ({
-      ...requestBody,
-      model: config.model || DEFAULT_AI_MODEL,
-      // Turn the think phase OFF on self-hosted runtimes.
-      //
-      // A reasoning model (Qwen3.x, DeepSeek-R1, …) charges its think phase
-      // against `max_tokens`. Inside a forced single tool call that is fatal
-      // rather than merely slow: the model reasons its way through the whole
-      // budget and the response comes back `finish_reason: "length"` with no
-      // tool call, which every caller here reads as "the model refused". On the
-      // real claim-draft payload the think phase burned 1206 tokens and emitted
-      // nothing; with thinking off the same call answers in 172 and preserves
-      // the facts. Managed endpoints 400 on unknown body params, so this rides
-      // only where it is understood (`isSelfHostedAiRuntime`).
-      ...(isSelfHostedAiRuntime(config)
-        ? { chat_template_kwargs: { enable_thinking: false } }
-        : {}),
-    }),
-  });
-  const model = served.model || DEFAULT_AI_MODEL;
+  const post = (requestBody: typeof toolBody | typeof jsonBody) =>
+    postToAiProvider(input.orgId, 'chat', {
+      path: '/chat/completions',
+      body: requestBody,
+      buildBody: (config) => ({
+        ...requestBody,
+        model: config.model || DEFAULT_AI_MODEL,
+        // Turn the think phase OFF on self-hosted runtimes.
+        //
+        // A reasoning model (Qwen3.x, DeepSeek-R1, …) charges its think phase
+        // against `max_tokens`. Inside a forced single tool call that is fatal
+        // rather than merely slow: the model reasons its way through the whole
+        // budget and the response comes back `finish_reason: "length"` with no
+        // tool call, which every caller here reads as "the model refused". On the
+        // real claim-draft payload the think phase burned 1206 tokens and emitted
+        // nothing; with thinking off the same call answers in 172 and preserves
+        // the facts. Managed endpoints 400 on unknown body params, so this rides
+        // only where it is understood (`isSelfHostedAiRuntime`).
+        ...(isSelfHostedAiRuntime(config)
+          ? { chat_template_kwargs: { enable_thinking: false } }
+          : {}),
+      }),
+    });
+
+  let { res, served } = await post(toolBody);
   if (!res.ok) {
     const text = (await res.text()).slice(0, 500);
-    throw new Error(`AI provider ${served.source} returned ${res.status}: ${text}`);
+    if (!isToolCallUnsupported(res.status, text)) {
+      throw new Error(`AI provider ${served.source} returned ${res.status}: ${text}`);
+    }
+    ({ res, served } = await post(jsonBody));
+    if (!res.ok) {
+      const retryText = (await res.text()).slice(0, 500);
+      throw new Error(`AI provider ${served.source} returned ${res.status} (JSON mode): ${retryText}`);
+    }
   }
+  const model = served.model || DEFAULT_AI_MODEL;
   const data = (await res.json()) as OpenAiChatResponse;
 
   const choice = data.choices?.[0];

@@ -6,7 +6,7 @@ import { and, eq } from 'drizzle-orm';
 import { invalidateCacheTags } from '@/lib/cache/upstash-cache';
 import { resolveShipmentId } from '@/lib/shipping/resolve';
 import { createStationActivityLog } from '@/lib/station-activity';
-import { recordAudit, AUDIT_ACTION } from '@/lib/audit-logs';
+import { recordAudit, AUDIT_ACTION, AUDIT_ENTITY } from '@/lib/audit-logs';
 import { withAuth } from '@/lib/auth/withAuth';
 import { readIdempotencyKey, withIdempotencyClaim } from '@/lib/api-idempotency';
 import { fetchPackerLogRows } from '@/lib/neon/packer-logs-week';
@@ -18,6 +18,8 @@ import { PACKER_BOX_LABEL_PHOTO_TYPE } from '@/lib/photos/types';
 import { withTenantTransaction } from '@/lib/tenancy/db';
 import { createPackerLog } from '@/lib/packing/packer-log-writer';
 import { refreshOrderStageFacts } from '@/lib/orders/order-stage-facts';
+import { reversePack } from '@/lib/packing/pack-reverse';
+import { publishOrderChanged, publishPackerLogChanged } from '@/lib/realtime/publish';
 
 export const GET = withAuth(async (req: NextRequest, ctx) => {
     const { searchParams } = new URL(req.url);
@@ -226,56 +228,77 @@ export const PUT = withAuth(async (req: NextRequest, ctx) => {
     return NextResponse.json(updatedLog[0]);
 }, { permission: 'packing.complete_order' });
 
+/**
+ * DELETE /api/packerlogs?activityLogId= | ?id= — un-pack. Reverses one pack
+ * (`reversePack`): its PACK activity rows and packer_log are removed, units
+ * the pack moved to PACKED return to their prior state, BOXED ledger deltas
+ * are compensated, and `order_stage_facts` refreshes in the same
+ * transaction. The pack's own audit row stays; this appends `pack.reverse`
+ * with the removed rows. A repeat answers 404 (nothing left to reverse).
+ */
 export const DELETE = withAuth(async (req: NextRequest, ctx) => {
     const { searchParams } = new URL(req.url);
     const id = searchParams.get('id');
     const activityLogId = searchParams.get('activityLogId');
     const orgId = ctx.organizationId;
+    const actorStaffId = typeof ctx.staffId === 'number' && ctx.staffId > 0 ? ctx.staffId : null;
 
-    // Tenant-scoped transaction: SET LOCAL app.current_org so RLS isolates
-    // the station_activity_logs / packer_logs deletes; explicit
-    // organization_id predicates are kept as defense-in-depth alongside the GUC.
-    return await withTenantTransaction(orgId, async (client) => {
-        if (activityLogId) {
-            const salId = parseInt(activityLogId, 10);
-            if (Number.isNaN(salId)) {
-                return NextResponse.json({ error: 'Invalid activityLogId' }, { status: 400 });
-            }
-            const sel = await client.query(
-                'SELECT packer_log_id, shipment_id FROM station_activity_logs WHERE id = $1 AND organization_id = $2',
-                [salId, orgId]
-            );
-            if (!sel.rows[0]) {
-                return NextResponse.json({ error: 'Log not found' }, { status: 404 });
-            }
-            const plId: number | null = sel.rows[0].packer_log_id ?? null;
-            await client.query('DELETE FROM station_activity_logs WHERE id = $1 AND organization_id = $2', [salId, orgId]);
-            if (plId != null) {
-                await client.query('DELETE FROM packer_logs WHERE id = $1 AND organization_id = $2', [plId, orgId]);
-            }
-            await refreshOrderStageFacts(orgId, { shipmentIds: [sel.rows[0].shipment_id] }, client);
-            await invalidateCacheTags(orgId, ['packing-logs', 'orders', 'shipped']);
-            return NextResponse.json({ success: true });
+    const salId = activityLogId ? parseInt(activityLogId, 10) : null;
+    const plId = !activityLogId && id ? parseInt(id, 10) : null;
+    if (salId != null && Number.isNaN(salId)) {
+        return NextResponse.json({ error: 'Invalid activityLogId' }, { status: 400 });
+    }
+    if (salId == null) {
+        if (!id) return NextResponse.json({ error: 'ID is required' }, { status: 400 });
+        if (plId == null || Number.isNaN(plId)) return NextResponse.json({ error: 'Invalid id' }, { status: 400 });
+    }
+
+    const reversed = await withTenantTransaction(orgId, async (client) => {
+        const r = await reversePack(client, orgId, { salId, packerLogId: plId, actorStaffId });
+        if (r) {
+            await refreshOrderStageFacts(orgId, { shipmentIds: [r.shipmentId], orderIds: r.orderIds }, client);
         }
+        return r;
+    });
+    if (!reversed) return NextResponse.json({ error: 'Log not found' }, { status: 404 });
 
-        if (!id) {
-            return NextResponse.json({ error: 'ID is required' }, { status: 400 });
+    await recordAudit(pool, ctx, req, {
+        source: 'api.packerlogs.delete',
+        action: AUDIT_ACTION.PACK_REVERSE,
+        entityType: reversed.shipmentId != null ? AUDIT_ENTITY.SHIPMENT : AUDIT_ENTITY.PACKER_LOG,
+        entityId: String(reversed.shipmentId ?? reversed.packerLog?.id ?? salId ?? plId),
+        stationActivityLogId: reversed.activities[0]?.id ?? null,
+        before: { packer_log: reversed.packerLog, activities: reversed.activities },
+        after: {
+            order_ids: reversed.orderIds,
+            units: reversed.units,
+            unit_warnings: reversed.unitWarnings,
+            ledger_reversals: reversed.ledgerReversals,
+        },
+    });
+    // `/api/orders` caches under the global scope, the pack feeds per org.
+    await invalidateCacheTags(['orders', 'orders-next', 'shipped']);
+    await invalidateCacheTags(orgId, ['packing-logs', 'orders', 'shipped']);
+    const packedBy = reversed.packerLog?.packedBy ?? reversed.activities[0]?.staffId ?? null;
+    after(async () => {
+        if (packedBy != null && reversed.packerLog) {
+            await publishPackerLogChanged({
+                organizationId: orgId,
+                packerId: packedBy,
+                action: 'delete',
+                packerLogId: reversed.packerLog.id,
+                source: 'pack.reverse',
+            }).catch(() => {});
         }
+        await publishOrderChanged({ organizationId: orgId, orderIds: reversed.orderIds, source: 'pack.reverse' }).catch(() => {});
+    });
 
-        const plId = parseInt(id, 10);
-        if (Number.isNaN(plId)) {
-            return NextResponse.json({ error: 'Invalid id' }, { status: 400 });
-        }
-
-        const plCheck = await client.query('SELECT id, shipment_id FROM packer_logs WHERE id = $1 AND organization_id = $2', [plId, orgId]);
-        if (!plCheck.rows[0]) {
-            return NextResponse.json({ error: 'Log not found' }, { status: 404 });
-        }
-
-        await client.query('DELETE FROM station_activity_logs WHERE packer_log_id = $1 AND organization_id = $2', [plId, orgId]);
-        await client.query('DELETE FROM packer_logs WHERE id = $1 AND organization_id = $2', [plId, orgId]);
-        await refreshOrderStageFacts(orgId, { shipmentIds: [plCheck.rows[0].shipment_id] }, client);
-        await invalidateCacheTags(orgId, ['packing-logs', 'orders', 'shipped']);
-        return NextResponse.json({ success: true, deletedLog: { id: plId } });
+    return NextResponse.json({
+        success: true,
+        ...(reversed.packerLog ? { deletedLog: { id: reversed.packerLog.id } } : {}),
+        reversedActivityIds: reversed.activities.map((a) => a.id),
+        orderIds: reversed.orderIds,
+        unpackedUnits: reversed.units.length,
+        ...(reversed.unitWarnings.length ? { warnings: reversed.unitWarnings } : {}),
     });
 }, { permission: 'packing.complete_order' });

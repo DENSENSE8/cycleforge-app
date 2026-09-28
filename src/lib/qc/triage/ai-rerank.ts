@@ -26,7 +26,7 @@ const SYSTEM_PROMPT = [
   '- For each step write one short, concrete reason (≤ 140 chars) grounded in the',
   '  evidence shown. Do not restate the confidence number.',
   '',
-  `Call the \`${TOOL_NAME}\` tool exactly once with every key, and stop.`,
+  `Answer with the \`${TOOL_NAME}\` arguments exactly once, listing every key, and stop.`,
 ].join('\n');
 
 interface RerankArgs {

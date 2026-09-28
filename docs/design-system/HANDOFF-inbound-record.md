@@ -1,7 +1,9 @@
 # HANDOFF — the inbound record: bring Unboxed + Deliveries up to the order record (written 2026-09-28)
 
-Paste the **Prompt** block at the bottom into a fresh session. Everything above it is verified ground
-truth from the working tree on 2026-09-28 (other sessions edit concurrently — re-read before every edit).
+**Short way:** `remake /incoming?lane=docked&openLine=32624 like the order record` — the
+`remake-in-style` skill (`.claude/skills/remake-in-style/SKILL.md`) runs the loop. This file is the
+ground truth that run uses for the inbound records (verified on the working tree 2026-09-28; other
+sessions edit concurrently — re-read before every edit).
 
 Read first: `AGENTS.md` (dev origin `http://localhost:3050` only), `docs/design-system/HANDOFF-view-spec-layers.md`
 (the six-layer order + Layer-laws gate), `docs/design-system/MODE-SPLIT-INVENTORY.md` (Layer census →
@@ -25,7 +27,7 @@ Verified on :3050: `/incoming?lane=docked&openLine=32624` (Unboxed) and `/incomi
 | # | Ask | Today (evidence) | Root cause |
 |---|---|---|---|
 | A | PO note is its own section, **expanded**, no one-line preview | `carton-record-facts.tsx:126-134`: `EvidenceDisclosure` collapsed, `summary` = first line of `poNote`. Deliveries: `incoming-record-sections.tsx` Notes group prints `PO: {data.po_notes}` as a muted line under the line note | presentation picked disclosure for a fact the job needs at rest |
-| B | Claim is per **purchase order / carton**, not per item | Carton: every `CartonItem` paints a `Claim` row (`carton-record-sections.tsx:174`) **and** the aside paints a `Claims` group (`carton-record-facts.tsx:113`) **and** an alert `Claim ticket #…` (`carton-record-status.ts:204`). Deliveries: `IncomingItem` `Claim` row (`incoming-record-sections.tsx:187`) + `Ticket` row in Shipment | the fact is carton-level — `receiving.zendesk_ticket`, mirrored onto each line row (`2026-06-24_receiving_exceptions.sql:34` "mirrors receiving.zendesk_ticket"; universal map `ticket_links`, `src/lib/zendesk-links.ts#getTicketEntity`). One fact painted three times at the wrong grain |
+| B | Claim is per **purchase order / carton**, not per item | Carton: every `CartonItem` paints a `Claim` row (`carton-record-sections.tsx:174`) **and** the aside paints a `Claims` group (`carton-record-facts.tsx:113`) **and** an alert `Claim ticket #…` (`carton-record-status.ts:204`). Deliveries: `IncomingItem` `Claim` row (`incoming-record-sections.tsx:187`) + `Ticket` row in Shipment | the fact is carton-level — `receiving.zendesk_ticket`, mirrored onto each line row (`2026-06-24_receiving_exceptions.sql:34` "mirrors receiving.zendesk_ticket"). The owner map is `ticket_links` (migration `2026-06-01_ticket_links.sql`: one ticket → one primary entity, read via `src/lib/zendesk-links.ts#getTicketEntity`) — read the per-PO claim from there, not by deduping line rows. One fact painted three times at the wrong grain |
 | C | Tracking number and carrier on **one row** | `TRK#` row + separate `Carrier` row (`carton-record-facts.tsx:86-93`; `incoming-record-sections.tsx:284-292`, where "Carrier" is actually the carrier *status*) | two rows for one identity; `TrackingIdentity` already accepts `carrierHint` |
 | D | PO line note displayed **correctly** | `CartonItem` paints `zoho_notes` raw under "PO line note" (`carton-record-sections.tsx:179`) — on carton 53336 it is the serial dump `SNs: 0191…AC, 0341…BC · Used — A`, duplicating the Serials row and the condition | the Zoho line note is a machine-written trail, not prose; needs parsing (serials / condition split out, remainder as the note) or a quiet disclosure — decide against real rows (sample several cartons) |
 | E | **One** badge per purchase order; no solid state badges | Solid `stateBadgeClass` badge in the status head (`ReceivingStatusStrip.tsx:64`) **and** on every item (`carton-record-sections.tsx:121`, `carton-item-state`) — "UNB · Unboxed" twice on a one-item carton | the order record already fixed this (`OrderRecordStatus`, `OrderRecordView.tsx` ~l.150: ONE status top-right of the record header, "item groups carry no state badge of their own") |
@@ -94,30 +96,8 @@ MODE-SPLIT-INVENTORY → Owner decisions 14.
 ## Prompt
 
 ```
-You are improving the CycleForge INBOUND record in /home/michaelgarisek/Projects/cycleforge-lanes/prod.
-Read docs/design-system/HANDOFF-inbound-record.md fully first — it is the verified ground truth and plan.
-
-Goal: the Unboxed carton record (CartonRecordView) and the Deliveries record (IncomingDeliveryEvidence)
-read like the order record (OrderRecordView): one status, one grain per fact, triage paint.
-
-Do, in order, each step green and screenshotted on :3050 (deep links: /incoming?lane=docked&openLine=<id>,
-/incoming?openLine=<id>; In place, Split AND Floor):
-1. PO note → its own RecordGroup, expanded at rest, no preview line (both records).
-2. Claim → one Claim group per carton/PO (the fact is receiving.zendesk_ticket); delete the per-item
-   Claim rows and the duplicate claim alert.
-3. Tracking + carrier on one row (TrackingIdentity with the carrier), carrier status stays its own fact.
-4. PO line note: sample real zoho_notes, parse out serials/condition that other rows already show, paint
-   the remainder as the note; unit-test the parser.
-5. One status per record in the record header top-right (as OrderRecordStatus); delete the item state
-   badges and the status head card; alerts become one deduped notice atop the main column.
-6. ASK THE OWNER before code: the triage badge face (§2 F — mode-aware .state-badge token vs solid
-   everywhere). Record the answer as Owner decision 14 in MODE-SPLIT-INVENTORY.md, then implement at
-   the token only.
-7. Propose §3 items 2–7 to the owner as a batch; implement the ones accepted.
-8. Add the `uppercase` ban to the Layer-laws gate (§6).
-
-Rules: :3050 only (AGENTS.md §1); re-read before each edit, touch only your lines; RecordGroup / StepRail /
-tokens only — no hand-painted hairlines or new badge components; stored data is never re-cased. Verify with
-pnpm verify:fast (attribute every red per file), unit tests for new logic, screenshots. Report per step:
-files changed, evidence, what is left.
+remake /incoming?lane=docked&openLine=32624 like the order record
 ```
+
+Then the same for `/incoming?openLine=<id>` (the Deliveries record). The skill's checklist covers §2 A–E
+and §3; §2 F (triage badge face) and §3 items 2–7 are owner questions — the skill asks before building.

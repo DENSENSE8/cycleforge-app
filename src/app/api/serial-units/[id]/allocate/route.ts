@@ -6,6 +6,7 @@ import type { OrderUnitAllocation } from '@/lib/drizzle/schema';
 import { findByNormalizedSerial } from '@/lib/neon/serial-units-queries';
 import { recordInventoryEvent } from '@/lib/inventory/events';
 import { transition } from '@/lib/inventory/state-machine';
+import { refreshOrderStageFacts } from '@/lib/orders/order-stage-facts';
 
 /** POST /api/serial-units/[id]/allocate — pair a unit with an order. */
 export const POST = withAuth(
@@ -162,6 +163,15 @@ export const POST = withAuth(
       } catch (err) {
         console.warn('[allocate] ALLOCATED event failed (non-fatal)', err);
       }
+    }
+
+    // The order's QC reads the allocated unit's latest verdict off order_stage_facts
+    // (inherited when it predates the order); a transfer also clears the old order's.
+    // After commit — a failure leaves the cron sweep to fix it.
+    try {
+      await refreshOrderStageFacts(orgId, { orderIds: [order.id, prior?.orderId] });
+    } catch (err) {
+      console.warn('[allocate] order stage facts refresh failed (non-fatal)', err);
     }
 
     return NextResponse.json({

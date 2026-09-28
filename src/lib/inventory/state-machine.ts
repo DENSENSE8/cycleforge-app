@@ -51,7 +51,7 @@ const TRANSITIONS: Readonly<Record<SerialState, ReadonlySet<SerialState>>> = {
   PICKING:     new Set<SerialState>(['PICKED', 'PACKED' /* legacy pack-log completion can arrive after the floor scan but before a PICKED event */, 'ALLOCATED' /* abandon */]),
   PICKED:      new Set<SerialState>(['PACKING', 'PACKED', 'ALLOCATED' /* re-pick */, 'SHIPPED' /* Phase-5 collapsed pick/pack/label/ship */, 'STOCKED' /* order-release rewind: cancel before ship returns the unit to stock */]),
   PACKING:     new Set<SerialState>(['PACKED', 'PICKED' /* abandon */]),
-  PACKED:      new Set<SerialState>(['LABELED', 'LOADING', 'SHIPPED', 'STOCKED' /* order-release rewind */]),
+  PACKED:      new Set<SerialState>(['LABELED', 'LOADING', 'SHIPPED', 'STOCKED' /* order-release rewind */, 'PICKED', 'ALLOCATED' /* un-pack (pack-reverse.ts): back to the pre-pack state the PACKED event recorded */]),
   LABELED:     new Set<SerialState>(['STAGED', 'LOADING', 'SHIPPED', 'STOCKED' /* order-release rewind */]),
   STAGED:      new Set<SerialState>(['LOADING', 'SHIPPED', 'LABELED' /* re-stage */, 'STOCKED' /* order-release rewind */]),
   LOADING:     new Set<SerialState>(['SHIPPED', 'STAGED' /* unload */]),

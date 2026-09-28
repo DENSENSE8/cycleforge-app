@@ -88,7 +88,8 @@ export const PROVIDER_CATALOG: ProviderDef[] = [
   {
     key: 'google_sheets',
     label: 'Google Sheets',
-    description: 'Technician serial and packer log sheet import.',
+    description:
+      'Legacy backup order source — the daily Sheet_MM_DD_YYYY tabs backfill orders after ShipStation (fill blanks, insert orders ShipStation never saw). Also the technician serial and packer log import.',
     category: 'Sales channels',
     connect: 'vault',
     badge: 'bg-green-100 text-green-700',

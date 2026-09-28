@@ -5,17 +5,20 @@
 import type { SyncPhase, SyncStreamEvent } from './types';
 
 /**
- * One stream of the import. Each posts its own request: ShipStation first, the
- * exceptions pass after it, against the rows it just landed.
+ * One stream of the import. Each posts its own request: ShipStation first,
+ * then the Google Sheets tracking backup, then any other linked platform, and
+ * the exceptions pass last, against the rows they just landed.
  */
-export type SyncRunLane = 'shipstation' | 'exceptions';
+export type SyncRunLane = 'shipstation' | 'google_sheets' | 'platforms' | 'exceptions';
 
 export type SyncRunStepId =
   | 'read_shipstation'
+  | 'read_sheet'
   | 'resolve_tracking'
   | 'update'
   | 'insert'
   | 'publish'
+  | 'sync_platforms'
   | 'exceptions';
 
 export type SyncRunStepState = 'pending' | 'running' | 'done' | 'skipped' | 'error';
@@ -39,10 +42,12 @@ export interface SyncRunStep {
  */
 const STEP_ORDER: readonly SyncRunStepId[] = [
   'read_shipstation',
+  'read_sheet',
   'resolve_tracking',
   'update',
   'insert',
   'publish',
+  'sync_platforms',
   'exceptions',
 ] as const;
 
@@ -51,6 +56,7 @@ const STEP_META: Record<
   { label: string; unit: string; measured: boolean }
 > = {
   read_shipstation: { label: 'Read ShipStation orders', unit: 'order', measured: true },
+  read_sheet: { label: 'Read Google Sheets tabs', unit: 'row', measured: true },
   resolve_tracking: {
     label: 'Resolve tracking numbers',
     unit: 'tracking number',
@@ -61,17 +67,22 @@ const STEP_META: Record<
   // The emitters carry no count for publishing: it is a fan-out. A check mark
   // is the whole report.
   publish: { label: 'Publish to the desk', unit: '', measured: false },
+  sync_platforms: { label: 'Sync other linked platforms', unit: 'platform', measured: true },
   exceptions: { label: 'Resolve open exceptions', unit: 'exception', measured: true },
 };
 
 /** Which steps a lane can ever reach. Drives skipped-vs-empty. */
 const LANE_STEPS: Record<SyncRunLane, readonly SyncRunStepId[]> = {
   shipstation: ['read_shipstation', 'resolve_tracking', 'update', 'insert', 'publish'],
+  google_sheets: ['read_sheet', 'resolve_tracking', 'update', 'insert', 'publish'],
+  platforms: ['sync_platforms'],
   exceptions: ['exceptions'],
 };
 
 const PHASE_STEP: Partial<Record<SyncPhase, SyncRunStepId>> = {
   fetching_shipstation: 'read_shipstation',
+  fetching_sheet: 'read_sheet',
+  syncing_platforms: 'sync_platforms',
   resolving_tracking: 'resolve_tracking',
   updating: 'update',
   inserting: 'insert',

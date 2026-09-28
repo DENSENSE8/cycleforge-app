@@ -3,6 +3,7 @@ import { withAuth } from '@/lib/auth/withAuth';
 import { withTenantTransaction } from '@/lib/tenancy/db';
 import { transition } from '@/lib/inventory/state-machine';
 import { recordInventoryEvent } from '@/lib/inventory/events';
+import { refreshOrderStageFacts } from '@/lib/orders/order-stage-facts';
 
 /** POST /api/orders/[id]/release */
 export const POST = withAuth(async (request, ctx) => {
@@ -123,6 +124,8 @@ export const POST = withAuth(async (request, ctx) => {
       });
     }
 
+    // The released units' verdicts no longer count as the order's QC.
+    await refreshOrderStageFacts(ctx.organizationId, { orderIds: [orderId] }, client);
     return { ok: true as const, orderId, released: released.length, units: released };
   });
 

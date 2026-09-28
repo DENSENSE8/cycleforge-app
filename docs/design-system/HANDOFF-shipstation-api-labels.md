@@ -81,6 +81,11 @@ When `status.active`:
    `integrations.orders_sync` provider list.
 5. The desk and `/m/orders/sync` always sync ShipStation; there is no sheet fallback.
 
+> **Superseded 2026-09-28** (owner): the daily sheet is back as a *backup* order source
+> behind ShipStation (aggregator-mode backfill, fill blanks + insert true misses), and
+> `shipstation.orders_sync` is replaced by the chained `orders.backfill_pipeline` cron.
+> See `docs/integrations/google-sheets.md`.
+
 ## 2. Close the tracking gap before retiring the sheet (~2 h) — REQUIRED
 
 `shipstationSync` writes `trackings: []`: the v1 order pull never attaches tracking. The sheet

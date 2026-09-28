@@ -97,7 +97,8 @@ interface RecordTestVerdictArgs {
 interface RecordTestVerdictResult {
   unit: TestedUnit;
   prevStatus: string;
-  nextStatus: VerdictMapping['nextStatus'];
+  /** The unit's status after the verdict — the mapped status, or unchanged for a unit on an order. */
+  nextStatus: string;
   line: TestLineRollup | null;
   eventId: number;
   /** Present when PASS triggered listing→pending allocate (best-effort). */
@@ -110,7 +111,28 @@ interface RecordTestVerdictResult {
   } | null;
 }
 
-/** Returns null when the serial unit doesn't exist. */
+/**
+ * Unit statuses that mean "on an order": the allocation (and any pick) stands.
+ * A verdict here is a QC fact on the order (ordered → picked → QC'd → packed),
+ * not a unit move — the transition allow-list has no ALLOCATED/PICKING/PICKED →
+ * TESTED/ON_HOLD/IN_TEST edge, and taking one would strand the allocation row.
+ */
+const ON_ORDER_STATUSES: Record<string, true> = { ALLOCATED: true, PICKING: true, PICKED: true };
+
+/**
+ * Returns null when the serial unit doesn't exist.
+ *
+ * A unit on an order (ALLOCATED / PICKING / PICKED) records the verdict — the
+ * testing_results row and the TEST_PASS / TEST_FAIL / TEST_START inventory
+ * event — without a status transition, so its allocation and pick stand. The
+ * receiving-line rollup (it tallies TESTED / ON_HOLD / IN_TEST units, so it
+ * would miscount a unit that is still ALLOCATED), the workflow tap and the
+ * pass→pending-order allocate are skipped; order_stage_facts is refreshed, so the
+ * order reads the new verdict (qc_inherited false). A TESTING_FAILED leaves the
+ * allocation in place and the order shows qc_verdict = TESTING_FAILED: whether a
+ * fail releases the unit or holds the order is the owner's open question 5 —
+ * nothing auto-releases here.
+ */
 export async function recordTestVerdict(
   args: RecordTestVerdictArgs,
 ): Promise<RecordTestVerdictResult | null> {
@@ -140,15 +162,19 @@ export async function recordTestVerdict(
   if (existing.rows.length === 0) return null;
   const prev = existing.rows[0];
   const lineId = prev.origin_receiving_line_id;
+  const onOrder = ON_ORDER_STATUSES[prev.current_status] === true;
+  const statusAfter: string = onOrder ? prev.current_status : mapping.nextStatus;
 
-  // 2. Apply the unit's new status.
+  // 2. Apply the unit's new status (none for a unit on an order — see the doc comment).
   const useChokepoint = isUnifiedEngineApplyTransition();
   let unit = prev;
   let eventId!: number;
   // True when THIS call produced a brand-new inventory_event; false when the event already existed (a retry with the same clientEventId —…
   let eventCreated = true;
 
-  if (useChokepoint) {
+  if (onOrder) {
+    // No transition; the event is written at step 4.
+  } else if (useChokepoint) {
     const applied = await applyTransition({
       unitId: serialUnitId,
       to: mapping.nextStatus as SerialState,
@@ -217,8 +243,8 @@ export async function recordTestVerdict(
     }
   }
 
-  // 4. inventory_events row for the unit timeline (LEGACY path only — the chokepoint already wrote the event inside applyTransition at step 2).
-  if (!useChokepoint) {
+  // 4. inventory_events row for the unit timeline (LEGACY path and units on an order — the chokepoint already wrote the event inside applyTransition at step 2).
+  if (!useChokepoint || onOrder) {
     const { event, created } = await appendInventoryEvent({
       eventType: mapping.eventType,
       organizationId: args.organizationId,
@@ -229,7 +255,7 @@ export async function recordTestVerdict(
       receivingLineId: lineId,
       sku: unit.sku,
       prevStatus: prev.current_status,
-      nextStatus: mapping.nextStatus,
+      nextStatus: statusAfter,
       notes,
       payload: { verdict },
     });
@@ -247,7 +273,7 @@ export async function recordTestVerdict(
          VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
         // org from the unit we already fetched — not a re-SELECT subquery (which
         // would race a concurrent delete to NULL → wrong fallback org).
-        [unit.id, lineId, verdict, mapping.nextStatus, actorStaffId, notes, eventId, unit.organization_id],
+        [unit.id, lineId, verdict, statusAfter, actorStaffId, notes, eventId, unit.organization_id],
       );
     } catch (err) {
       console.warn('[recordTestVerdict] testing_results insert failed (non-fatal):', err);
@@ -265,7 +291,7 @@ export async function recordTestVerdict(
         actorStaffId,
         meta: {
           verdict,
-          nextStatus: mapping.nextStatus,
+          nextStatus: statusAfter,
           eventType: mapping.eventType,
           receivingLineId: lineId,
           inventoryEventId: eventId,
@@ -293,10 +319,11 @@ export async function recordTestVerdict(
     }
   }
 
-  // 5. Line rollup. Only runs when the unit has a parent line.
+  // 5. Line rollup. Only runs when the unit has a parent line and is not on an
+  //    order (the tally counts TESTED / ON_HOLD / IN_TEST units only).
   let lineRollup: TestLineRollup | null = null;
 
-  if (lineId != null) {
+  if (lineId != null && !onOrder) {
     // Run the count-then-write rollup inside ONE transaction that locks the receiving_line FOR UPDATE *before* counting.
     const rollupOrg = unit.organization_id;
     lineRollup = await withTenantTransaction(rollupOrg, async (client) => {
@@ -419,7 +446,8 @@ export async function recordTestVerdict(
   // 6. Workflow-engine tap (LEGACY path only — fire-and-forget, never throws).
   //    The chokepoint path already tapped inside applyTransition at step 2. The
   //    inspection node maps PASS → pass, TESTING_FAILED → fail; TEST_AGAIN re-parks.
-  if (!useChokepoint) {
+  //    A unit on an order is past inspection: no tap.
+  if (!useChokepoint && !onOrder) {
     await tapWorkflow({
       serialUnitId: unit.id,
       event: 'test_verdict',
@@ -438,6 +466,7 @@ export async function recordTestVerdict(
     verdict === 'PASS' &&
     eventCreated &&
     orgId &&
+    !onOrder &&
     mapping.nextStatus === 'TESTED'
   ) {
     try {
@@ -466,7 +495,7 @@ export async function recordTestVerdict(
   return {
     unit,
     prevStatus: prev.current_status,
-    nextStatus: mapping.nextStatus,
+    nextStatus: statusAfter,
     line: lineRollup,
     eventId,
     passAllocate,

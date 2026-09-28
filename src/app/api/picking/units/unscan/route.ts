@@ -1,10 +1,10 @@
 import { NextResponse, after } from 'next/server';
 import { withTenantTransaction } from '@/lib/tenancy/db';
 import { withAuth } from '@/lib/auth/withAuth';
-import { lockUnitForPickScan, unlinkPickedSerialFromOrder } from '@/lib/picking/pick-serial-link';
-import { publishOrderChanged } from '@/lib/realtime/publish';
+import { lockUnitForPickScan } from '@/lib/picking/pick-serial-link';
+import { revertUnitPick } from '@/lib/picking/unpick';
+import { publishOrderPickFacts } from '@/lib/picking/pick-facts-publish';
 import { refreshOrderStageFacts } from '@/lib/orders/order-stage-facts';
-import { transition } from '@/lib/inventory/state-machine';
 
 /** POST /api/picking/units/unscan — clean inverse of /api/picking/units/scan. */
 export const POST = withAuth(async (request, ctx) => {
@@ -26,85 +26,37 @@ export const POST = withAuth(async (request, ctx) => {
   const orgId = ctx.organizationId;
 
   const result = await withTenantTransaction(orgId, async (client) => {
-    // 1. Resolve + lock the unit. serial_units is tenant-owned — scope to
-    //    this org so a cross-tenant id/serial reads as not-found (and the
-    //    normalized_serial string key can't collide across tenants).
-    const unit = serialUnitIdInput
-      ? (await client.query<{ id: number; current_status: string }>(
-          `SELECT id, current_status::text AS current_status FROM serial_units WHERE id = $1 AND organization_id = $2 LIMIT 1 FOR UPDATE`,
-          [serialUnitIdInput, orgId],
-        )).rows[0]
-      : (await lockUnitForPickScan(client, orgId, scan))?.unit;
-    if (!unit) return { ok: false as const, status: 404, error: 'serial_units row not found' };
+    // Resolve the unit a scan names (serial_units is tenant-owned — a
+    // cross-tenant id/serial reads as not-found).
+    const unitId = serialUnitIdInput ?? (await lockUnitForPickScan(client, orgId, scan))?.unit.id;
+    if (unitId == null) return { ok: false as const, status: 404, error: 'serial_units row not found' };
 
-    // 2. Find the PICKED allocation for this unit (optionally scoped to order).
-    //    order_unit_allocations is tenant-owned — scope to this org.
-    const allocParams: Array<number | string> = [unit.id, orgId];
-    if (orderIdInput) allocParams.push(orderIdInput);
-    const allocQ = await client.query<{ id: number; order_id: number; state: string }>(
-      `SELECT id, order_id, state::text AS state
-           FROM order_unit_allocations
-          WHERE serial_unit_id = $1 AND organization_id = $2 AND state <> 'RELEASED'
-            ${orderIdInput ? 'AND order_id = $3' : ''}
-          ORDER BY allocated_at DESC LIMIT 1 FOR UPDATE`,
-      allocParams,
-    );
-    const allocation = allocQ.rows[0];
-    if (!allocation) {
-      return { ok: false as const, status: 409, error: 'no open allocation for this unit' };
-    }
-    if (allocation.state !== 'PICKED') {
-      return {
-        ok: false as const,
-        status: 409,
-        error: `allocation is ${allocation.state}, not PICKED — cannot un-pick`,
-      };
-    }
-
-    // 3. serial_units PICKED → ALLOCATED via the state machine (shares this tx,
-    //    guards + emits the inventory_event). A non-PICKED unit fails the guard.
-    const t = await transition(
-      {
-        unitId: unit.id,
-        to: 'ALLOCATED',
-        eventType: 'ALLOCATED',
-        actorStaffId,
-        station: 'PACK',
-        clientEventId: clientEventId ? `${clientEventId}:unpick` : null,
-        payload: { source: 'pick.unscan', allocation_id: allocation.id, order_id: allocation.order_id },
-      },
-      client,
-      orgId,
-    );
-    if (!t.ok) return { ok: false as const, status: t.status, error: t.error };
-
-    // 4. Roll the allocation back PICKED → ALLOCATED (stays reserved, not released).
-    await client.query(`UPDATE order_unit_allocations SET state = 'ALLOCATED' WHERE id = $1 AND organization_id = $2`, [allocation.id, orgId]);
-    await unlinkPickedSerialFromOrder(client, orgId, { serialUnitId: unit.id, orderId: allocation.order_id });
-    await refreshOrderStageFacts(orgId, { orderIds: [allocation.order_id] }, client);
+    // serial_units PICKED → ALLOCATED via the state machine, the allocation
+    // back to ALLOCATED (stays reserved, not released), the serial unlinked.
+    const r = await revertUnitPick(client, orgId, {
+      serialUnitId: unitId,
+      orderId: orderIdInput,
+      actorStaffId,
+      source: 'pick.unscan',
+      clientEventId: clientEventId ? `${clientEventId}:unpick` : null,
+    });
+    if (!r.ok) return r;
+    await refreshOrderStageFacts(orgId, { orderIds: [r.orderId] }, client);
 
     return {
       ok: true as const,
-      unitId: unit.id,
+      unitId: r.unitId,
       prevStatus: 'PICKED',
       nextStatus: 'ALLOCATED',
-      allocationId: allocation.id,
-      orderId: allocation.order_id,
-      inventoryEventId: t.eventId,
+      allocationId: r.allocationId,
+      orderId: r.orderId,
+      inventoryEventId: r.inventoryEventId,
     };
   });
 
   if (!result.ok) return NextResponse.json(result, { status: result.status });
-  // Un-picking rolls the Pick column back, so it is as much a desk repaint as the forward scan — publish the same event with its own source…
+  // Un-picking rolls the Pick column back — re-state the order's pick fact.
   const changedOrderId = result.orderId;
-  if (changedOrderId != null) {
-    after(() =>
-      publishOrderChanged({
-        organizationId: orgId,
-        orderIds: [changedOrderId],
-        source: 'pick.unscan',
-      }).catch(() => {}),
-    );
-  }
+  after(() => publishOrderPickFacts(orgId, [changedOrderId], 'pick.unscan'));
   return NextResponse.json(result);
 }, { permission: 'picking.scan' });

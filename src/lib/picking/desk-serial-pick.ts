@@ -16,6 +16,9 @@ import type { PoolClient } from 'pg';
 import { transition, type SerialState } from '@/lib/inventory/state-machine';
 import type { OrgId } from '@/lib/tenancy/constants';
 
+/** Source tag on the PICKED event — `revertDeskSerialPick` matches it to undo only this pick. */
+export const DESK_SERIAL_PICK_SOURCE = 'pick.desk.serial';
+
 /** States a unit can be picked from via its open allocation. */
 const PICKABLE_STATE: Record<string, true> = { ALLOCATED: true, PICKING: true };
 /** Sellable states the unit scan route would only force-pick under override. */
@@ -163,7 +166,7 @@ async function pickWithinSavepoint(
       expectedFrom: unit.current_status as SerialState,
       scanToken: serial,
       payload: {
-        source: 'pick.desk.serial',
+        source: DESK_SERIAL_PICK_SOURCE,
         order_id: allocation.order_id,
         allocation_id: allocation.id,
       },

@@ -3,6 +3,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { withAuth } from '@/lib/auth/withAuth';
 import { CRON_JOB_TRIGGER_PATH } from '@/lib/cron/registry';
+import { triggerCronPath } from '@/lib/cron/trigger';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 300;
@@ -14,25 +15,11 @@ export const POST = withAuth(
     if (!path) {
       return NextResponse.json({ ok: false, error: `Unknown or non-triggerable job: ${job}` }, { status: 400 });
     }
-    const secret = process.env.CRON_SECRET;
-    if (!secret) {
-      return NextResponse.json({ ok: false, error: 'CRON_SECRET not configured' }, { status: 503 });
+    const run = await triggerCronPath(new URL(req.url).origin, path);
+    if (run.error) {
+      return NextResponse.json({ ok: false, error: run.error }, { status: run.status });
     }
-
-    // Hit our own cron route (same origin) so it runs through withCronRun().
-    const target = `${new URL(req.url).origin}${path}`;
-    try {
-      const res = await fetch(target, {
-        method: 'GET',
-        headers: { Authorization: `Bearer ${secret}` },
-        cache: 'no-store',
-      });
-      const body = await res.json().catch(() => null);
-      return NextResponse.json({ ok: res.ok, status: res.status, result: body });
-    } catch (error) {
-      const message = error instanceof Error ? error.message : 'trigger failed';
-      return NextResponse.json({ ok: false, error: message }, { status: 502 });
-    }
+    return NextResponse.json({ ok: run.ok, status: run.status, result: run.result });
   },
   { permission: 'admin.view' },
 );

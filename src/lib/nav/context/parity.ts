@@ -239,7 +239,7 @@ const ROWS: Readonly<Record<string, readonly Row[]>> = {
     ['param', 'carrier', 'src/components/shipping/shipped-filter/useShippedFilterActions.ts:58-60', 'shipped'],
     ['param', 'statusCategory', 'src/components/shipping/shipped-filter/useShippedFilterActions.ts:62-64', 'shipped'],
     ['action', 'orders.sync', 'e7dc59d^:src/components/outbound/orders/OrdersDeskAddAction.tsx:115-120'],
-    ['action', 'orders.sync-platforms', 'e7dc59d^:src/components/outbound/orders/OrdersDeskAddAction.tsx:125-136; src/components/outbound/orders/useToShipPlatformSyncMenu.ts'],
+    ['action', 'orders.sync-platforms', 'e7dc59d^:src/components/outbound/orders/OrdersDeskAddAction.tsx:125-136; src/components/outbound/orders/ToShipPlatformSyncDialog.tsx'],
     ['action', 'orders.upload-csv', 'e7dc59d^:src/components/outbound/orders/OrdersDeskAddAction.tsx:137-146'],
     ['action', 'orders.export-csv', 'e7dc59d^:src/components/outbound/orders/OrdersDeskAddAction.tsx:147-159'],
     ['action', 'orders.add', 'e7dc59d^:src/components/outbound/orders/OrdersDeskAddAction.tsx:160-165 (?triage=new)'],

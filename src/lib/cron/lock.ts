@@ -1,5 +1,5 @@
 /** Distributed cron lock (Wave 4). */
-import pool from '@/lib/db';
+import { lockPool } from '@/lib/db';
 
 interface CronLockResult<T> {
   /** False when another invocation already held the lock (this run was skipped). */
@@ -17,8 +17,9 @@ export async function withCronLock<T>(
   fn: () => Promise<T>,
 ): Promise<CronLockResult<T>> {
   // One dedicated client for the whole critical section: session-level advisory
-  // locks are per-connection, so lock + work + unlock must share it.
-  const client = await pool.connect();
+  // locks are per-connection, so lock + work + unlock must share it — hence the
+  // direct (non-pgbouncer) pool; see `lockPool`.
+  const client = await lockPool.connect();
   try {
     const lockRes = await client.query<{ locked: boolean }>(
       `SELECT pg_try_advisory_lock(hashtext($1)) AS locked`,

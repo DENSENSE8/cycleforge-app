@@ -2,6 +2,7 @@
 
 import pool from '@/lib/db';
 import { transition } from '@/lib/inventory/state-machine';
+import { refreshOrderStageFacts } from '@/lib/orders/order-stage-facts';
 import { tenantQuery } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';
 
@@ -149,6 +150,8 @@ async function mirrorLegacyShipmentToAllocations(
             : `UPDATE order_unit_allocations SET state = $2 WHERE id = $1`,
           orgId ? [alloc.id, target, orgId] : [alloc.id, target],
         );
+        // The order's pick facts read the allocation state (PACKED / SHIPPED count as picked).
+        await refreshOrderStageFacts(orgId, { orderIds: [alloc.order_id] }, client);
         await client.query('COMMIT');
         mirrored++;
       } catch (err) {

@@ -33,10 +33,18 @@ const CONNECTORS: Record<IntegrationProvider, IntegrationConnector> = {
     healthPath: '/api/zoho/health',
     validate: (orgId, _scope, opts) => import('./zoho').then((m) => m.zohoValidate(orgId, opts)),
   },
-  // Credentials only: the technician / packer sheet import
-  // (`/api/google-sheets/execute-script`) reads the org's sheet with them.
-  // Sheet ORDER import was removed 2026-09-24 — orders come from ShipStation.
-  google_sheets: { provider: 'google_sheets', authKind: 'vault', capabilities: [] },
+  // Legacy daily sheet, kept as the BACKUP order source beside ShipStation:
+  // staff log every sale — incl. labels bought outside ShipStation — in the
+  // day's `Sheet_MM_DD_YYYY` tab. Sync backfills orders through ShipStation's
+  // writer (adopt + fill blanks, insert a true miss; owner 2026-09-28). Runs in
+  // the orders backfill pipeline cron + manual Sync. The same credentials serve
+  // the technician / packer import (`execute-script`).
+  google_sheets: {
+    provider: 'google_sheets',
+    authKind: 'vault',
+    capabilities: ['orders', 'tracking'],
+    sync: (orgId, opts) => import('./google-sheets-orders').then((m) => m.googleSheetsOrdersSync(orgId, opts)),
+  },
   // Storage backup — tenant connects their own Google Drive (Sign in with Google, scope drive.file) so photo originals back up to / offload…
   google_drive: {
     provider: 'google_drive',

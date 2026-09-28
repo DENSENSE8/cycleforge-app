@@ -94,6 +94,20 @@ export const adminPool: PgPool = adminConnectionString === connectionString
         ...basePoolOptions,
     }) as unknown as PgPool);
 
+// Session advisory locks (`withCronLock`) need lock AND unlock on ONE server
+// backend. The `-pooler` DSN is pgbouncer in transaction mode: it may route the
+// two to different backends, leaking the lock until that backend recycles and
+// silently skipping the cron meanwhile (seen 2026-09-28). The direct DSN pins a
+// session. Falls back to the default pool where no direct DSN is set.
+const lockConnectionString = process.env.DATABASE_URL_UNPOOLED || connectionString;
+export const lockPool: PgPool = lockConnectionString === connectionString
+    ? pool
+    : (new NeonPool({
+        connectionString: lockConnectionString,
+        ...basePoolOptions,
+        max: readPositiveInt(process.env.PG_LOCK_POOL_MAX, 4),
+    }) as unknown as PgPool);
+
 // The server now ends backends on its own (idle_in_transaction_session_timeout
 // 25P03, admin terminate, compute restart). Such a FATAL arrives as an async
 // 'error' event — on a checked-out client with no query in flight, or on the
@@ -110,6 +124,7 @@ for (const [p, name] of new Map<PgPool, string>([
     [tenantPool, 'tenant'],
     [assistantPool, 'assistant'],
     [adminPool, 'admin'],
+    [lockPool, 'lock'],
 ])) guardPoolErrors(p, name);
 
 export default pool;

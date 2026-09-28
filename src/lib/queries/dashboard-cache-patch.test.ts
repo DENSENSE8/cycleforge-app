@@ -132,6 +132,28 @@ test('order.picked patch never clobbers an existing picker with a null', () => {
   assert.equal(rows[0].picked_by_name, 'Sam');
 });
 
+test('order.picked with picked:false moves the row back to pending and clears the picker', () => {
+  const qc = new QueryClient();
+  qc.setQueryData(listKey({ stage: null }), [
+    { id: 42, has_pick_scan: true, picked_by: 3, picked_by_name: 'Sam', picked_at: '2026-09-28T08:00:00.000Z', tested_by: 5 },
+  ]);
+  qc.setQueryData(['dashboard-table', 'unshipped-counts', { staffId: null }], { total: 1 });
+
+  const applied = patchUnshippedOrderPicked(qc, { orderId: 42, picked: false, pickedBy: null, pickedAt: null });
+
+  assert.equal(applied, true);
+  const rows = qc.getQueryData(listKey({ stage: null })) as Array<Record<string, unknown>>;
+  assert.equal(rows[0].has_pick_scan, false, 'un-pick — PICKED becomes PENDING');
+  assert.equal(rows[0].picked_by, null);
+  assert.equal(rows[0].picked_by_name, null);
+  assert.equal(rows[0].picked_at, null);
+  assert.equal(rows[0].tested_by, 5, 'QC is a unit fact — an un-pick leaves it');
+  assert.equal(
+    qc.getQueryState(['dashboard-table', 'unshipped-counts', { staffId: null }])?.isInvalidated,
+    true,
+  );
+});
+
 test('order.picked patch ignores a payload with no usable order id', () => {
   const qc = new QueryClient();
   const rows = [{ id: 42, has_pick_scan: false }];

@@ -160,7 +160,7 @@ Canonical phone entrypoints (non-exhaustive; grow this table, don’t fork):
 
 | Verb area | Mobile SoT |
 |---|---|
-| Pick session (system-fed, one line at a time; no queue, no start button — opening it starts picking) | `/m/pick` |
+| Pick session (system-fed, one line at a time; no queue, no start button — opening it starts picking) | `/m/pick` · `?mode=label` scans a printed shipping label and picks that order through the desk's own flow (`src/lib/picking/desk-scan-client.ts`: label → card, serial / SKU, Undo last step, Unpick order) |
 | Pick one named order | `/m/pick/[orderId]` · claim `/m/id/pick/[orderId]` |
 | Orders / to-ship | `/m/orders` (canonical) · `/m/work` (compatibility alias; never a second nav door) |
 | Unbox / receive / location scan | `/m/unbox`, `/m/receive`, `/m/receiving`, `/m/scan` |

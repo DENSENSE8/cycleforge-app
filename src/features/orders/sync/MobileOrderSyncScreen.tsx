@@ -106,7 +106,8 @@ export function MobileOrderSyncScreen() {
           Bring in the latest orders
         </h2>
         <p className="mt-2 max-w-prose text-role-caption leading-relaxed text-text-muted">
-          Reads ShipStation, attaches tracking, then resolves open
+          Reads ShipStation, attaches tracking from the Google Sheets backup
+          and every other linked platform, then resolves open
           scan exceptions against whatever just landed. You will see each step
           and its count as it runs, and the result stays on screen until you
           close it.

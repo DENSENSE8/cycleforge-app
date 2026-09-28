@@ -60,7 +60,7 @@ const RUN_CHIP: Record<CronRunRow['status'], string> = {
 };
 
 /** Jobs on the cron registry that belong to the integrations layer. */
-const INTEGRATION_JOB_RE = String.raw`^(ebay|zoho|google_sheets|amazon|square|shipstation|nextiva|shipping|integrations)([._]|$)`;
+const INTEGRATION_JOB_RE = String.raw`^(ebay|zoho|google_sheets|amazon|square|shipstation|nextiva|shipping|integrations|orders)([._]|$)`;
 
 function EmptyBox({ children }: { children: React.ReactNode }) {
   return (

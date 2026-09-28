@@ -273,7 +273,12 @@ function OutboundOrdersDeskContent({
     </OrderListLeadProvider>
       {!isSupportContext ? (
         <>
-          <ToShipPlatformSyncDialog open={platformSyncOpen} onOpenChange={setPlatformSyncOpen} />
+          <ToShipPlatformSyncDialog
+            open={platformSyncOpen}
+            onOpenChange={setPlatformSyncOpen}
+            onSync={(providers) => void sync.handleTransfer({ providers })}
+            busy={sync.isTransferring}
+          />
           {/* The picker's hidden <input>; `csv.open()` (orders-intake:file) clicks it. */}
           {csv.input}
           {canUploadCsv ? <OrderPasteIntake /> : null}

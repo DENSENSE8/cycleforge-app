@@ -155,6 +155,7 @@ export function useRealtimeInvalidation({
       publishOutboundRealtimePaintReceipt(data.orderId);
       patchUnshippedOrderPicked(queryClient, {
         orderId: data.orderId,
+        picked: data.picked,
         pickedBy: data.pickedBy,
         pickedByName: data.pickedByName,
         pickedAt: data.pickedAt,

@@ -29,22 +29,32 @@ const SQL_SHIPMENT_IS_SOLE_ORDER = `(
  * rows the shipment_id probe returns.
  */
 function sqlOrderHasStationActivity(alias: string, activityTypes: readonly string[]): string {
-  const a = alias;
   return `EXISTS (
       SELECT 1 FROM station_activity_logs sal
-      WHERE sal.organization_id = ${a}.organization_id
-        AND sal.activity_type IN (${sqlInList(activityTypes)})
+      WHERE sal.activity_type IN (${sqlInList(activityTypes)})
+        AND ${sqlStationActivityMatchesOrder('sal', alias)}
+    )`;
+}
+
+/**
+ * `station_activity_logs` row (`salAlias`) is attributed to order
+ * (`orderAlias`): the predicate behind every order-grain station fact, so a
+ * writer reversing those facts (un-pick) removes exactly the rows they read.
+ */
+export function sqlStationActivityMatchesOrder(salAlias: string, orderAlias = 'o'): string {
+  const s = salAlias;
+  const a = orderAlias;
+  return `${s}.organization_id = ${a}.organization_id
         AND (
-          sal.order_row_id = ${a}.id
-          OR sal.ext_order_id = ${a}.order_id
+          ${s}.order_row_id = ${a}.id
+          OR ${s}.ext_order_id = ${a}.order_id
           OR (
-            sal.shipment_id IS NOT NULL
-            AND sal.shipment_id = ${a}.shipment_id
-            AND (sal.metadata->>'order_row_id') IS NULL
+            ${s}.shipment_id IS NOT NULL
+            AND ${s}.shipment_id = ${a}.shipment_id
+            AND (${s}.metadata->>'order_row_id') IS NULL
             AND ${SQL_SHIPMENT_IS_SOLE_ORDER.replace(/\bo\./g, `${a}.`)}
           )
-        )
-    )`;
+        )`;
 }
 
 /**

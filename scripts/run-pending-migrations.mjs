@@ -9,11 +9,12 @@
  * rather than re-applying it (Postgres would have already returned an
  * error in practice; this just makes the message clearer).
  *
- * Usage:
+ * Usage (unknown flags are rejected with exit 2; --help applies nothing):
  *   node scripts/run-pending-migrations.mjs                    # apply all pending
  *   node scripts/run-pending-migrations.mjs --dry              # list pending, don't apply
  *   node scripts/run-pending-migrations.mjs --only <file.sql>  # apply just one
  *   node scripts/run-pending-migrations.mjs --dry --fail-on-pending  # deploy gate: exit 4 if any pending
+ *   node scripts/run-pending-migrations.mjs --help             # print usage, apply nothing
  *
  * Locking: every transactional file runs with SET LOCAL lock_timeout (default
  * 5s, MIGRATION_LOCK_TIMEOUT overrides) so a migration waiting behind a hot
@@ -56,6 +57,45 @@ try {
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const MIGRATIONS_DIR = join(__dirname, '..', 'src', 'lib', 'migrations');
+const isMain = import.meta.url === `file://${process.argv[1]}`;
+
+const USAGE = `Usage: node scripts/run-pending-migrations.mjs [options]
+
+Applies pending src/lib/migrations/*.sql files to DATABASE_URL (all of them unless --only).
+
+Options:
+  --dry               List pending migrations; apply nothing.
+  --only <file.sql>   Apply just this pending file (refuses if an earlier file is pending).
+  --fail-on-pending   With --dry: exit 4 when anything is pending.
+  --deploy-gate       Build gate: --dry --fail-on-pending on production deploys, else a no-op.
+  -h, --help          Print this message; apply nothing.`;
+
+/** Rejects anything but the known flags (and --only's filename), so a typo never falls through to "apply all". */
+export function checkArgs(args) {
+  if (args.includes('--help') || args.includes('-h')) return { help: true };
+  const known = new Set(['--dry', '--deploy-gate', '--fail-on-pending', '--only']);
+  for (let i = 0; i < args.length; i++) {
+    if (args[i] === '--only') {
+      i++;
+      continue;
+    }
+    if (!known.has(args[i])) return { error: `Unknown argument: ${args[i]}` };
+  }
+  return {};
+}
+
+if (isMain) {
+  const checked = checkArgs(process.argv.slice(2));
+  if (checked.help) {
+    console.log(USAGE);
+    process.exit(0);
+  }
+  if (checked.error) {
+    console.error(`${checked.error}\n\n${USAGE}`);
+    process.exit(2);
+  }
+}
+
 const isDry = process.argv.includes('--dry') || process.argv.includes('--deploy-gate');
 // --deploy-gate: used by `pnpm build`. On Vercel production builds (or when
 // MIGRATION_GATE=1) it is --dry --fail-on-pending against the deploy's own
@@ -259,7 +299,7 @@ async function main() {
   await pool.end();
 }
 
-if (import.meta.url === `file://${process.argv[1]}`) {
+if (isMain) {
   main().catch((err) => {
     console.error(err);
     process.exit(1);

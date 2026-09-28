@@ -34,10 +34,16 @@ type OrderChangedPayload = {
 type OrderPickedPayload = {
   organizationId: string;
   orderId: number;
+  /**
+   * The order's pick fact after the write (`order_stage_facts.has_pick_scan`).
+   * Reversals (un-pick, desk undo / delete, unit unscan) publish it; `false`
+   * means the order left the picked lane. Absent = a forward pick (true).
+   */
+  picked?: boolean;
   pickedBy: number | null;
   pickedByName: string | null;
-  /** ISO timestamp of the pick scan. */
-  pickedAt: string;
+  /** ISO timestamp of the pick scan; null once un-picked. */
+  pickedAt: string | null;
   source: string;
   packLocationId?: number | null;
   packLocationName?: string | null;
@@ -427,7 +433,7 @@ export async function publishQueueAssignmentsUpdated(payload: QueueAssignmentsBr
   });
 }
 
-/** The picker desk scanned this order's tracking: units taken, order enters the picked lane. */
+/** The order's pick fact moved: the picker desk scanned its tracking (order enters the picked lane), or a reversal re-states it (`picked`). */
 export async function publishOrderPicked(payload: OrderPickedPayload) {
   const orderId = Number(payload.orderId);
   if (!Number.isFinite(orderId)) return;
@@ -437,6 +443,7 @@ export async function publishOrderPicked(payload: OrderPickedPayload) {
   await publishEvent(getOrdersChannelName(payload.organizationId), 'order.picked', {
     type: 'order.picked',
     orderId,
+    picked: payload.picked ?? true,
     pickedBy,
     pickedByName: payload.pickedByName ?? null,
     pickedAt: payload.pickedAt,

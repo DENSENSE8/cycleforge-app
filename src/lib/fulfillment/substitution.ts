@@ -2,6 +2,7 @@
 
 import type { PoolClient } from 'pg';
 import { transition as defaultTransition } from '@/lib/inventory/state-machine';
+import { refreshOrderStageFacts } from '@/lib/orders/order-stage-facts';
 import { withTenantTransaction } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';
 
@@ -292,9 +293,12 @@ export async function substituteOrderUnit(
   orgId: OrgId,
   deps: SubstituteDeps = defaultDeps,
 ): Promise<SubstituteOrderUnitResult> {
-  return withTenantTransaction<SubstituteOrderUnitResult>(orgId, (client) =>
-    runSubstituteOrderUnit(input, client, orgId, deps),
-  );
+  return withTenantTransaction<SubstituteOrderUnitResult>(orgId, async (client) => {
+    const result = await runSubstituteOrderUnit(input, client, orgId, deps);
+    // The order's QC / pick facts now read the substitute unit.
+    if (result.ok) await refreshOrderStageFacts(orgId, { orderIds: [result.orderId] }, client);
+    return result;
+  });
 }
 
 // ─── Approve / reject a PENDING amendment ────────────────────────────────────
@@ -441,7 +445,10 @@ export async function decideAmendment(
   orgId: OrgId,
   deps: SubstituteDeps = defaultDeps,
 ): Promise<DecideAmendmentResult> {
-  return withTenantTransaction<DecideAmendmentResult>(orgId, (client) =>
-    runDecideAmendment(input, client, orgId, deps),
-  );
+  return withTenantTransaction<DecideAmendmentResult>(orgId, async (client) => {
+    const result = await runDecideAmendment(input, client, orgId, deps);
+    // A REJECT releases the substitute and may re-allocate the original.
+    if (result.ok) await refreshOrderStageFacts(orgId, { orderIds: [result.orderId] }, client);
+    return result;
+  });
 }

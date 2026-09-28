@@ -9,6 +9,7 @@ import {
 } from '@/lib/inventory/pickability';
 import { transition } from '@/lib/inventory/state-machine';
 import { allocateShortageUnits } from '@/lib/orders/shortage-inbound';
+import { refreshOrderStageFacts } from '@/lib/orders/order-stage-facts';
 
 const VALID_GRADES = ['BRAND_NEW', 'LIKE_NEW', 'REFURBISHED', 'USED_A', 'USED_B', 'USED_C', 'PARTS'] as const;
 type ConditionGrade = (typeof VALID_GRADES)[number];
@@ -194,6 +195,9 @@ async function allocateOrderInTx(
     orderId: input.orderId,
     units: allocated.map((row) => ({ unitId: row.unitId })),
   });
+
+  // An allocated unit's verdict is the order's (inherited) QC.
+  await refreshOrderStageFacts(orgId, { orderIds: [input.orderId] }, client);
 
   return {
     ok: true,

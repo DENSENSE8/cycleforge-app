@@ -18,6 +18,7 @@ import type { Order } from '@/components/station/upnext/upnext-types';
 import { ShippingScanBar } from '@/components/sidebar/tech/ShippingScanBar';
 import { useArmedPackStation } from '@/hooks/useArmedPackStation';
 import { unitPackPlacementQuery } from '@/lib/queries/unit-pack-placement-queries';
+import { Button } from '@/design-system/primitives/Button';
 import { IconButton } from '@/design-system/primitives/IconButton';
 import { X } from '@/components/Icons';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
@@ -74,6 +75,8 @@ export function ShippingScanBand({
     setActiveOrder,
     handleSubmit,
     clearFeedback,
+    undoLastStep,
+    unpickActiveOrder,
   } = useDeskPickController({
     userId,
     userName,
@@ -216,10 +219,31 @@ export function ShippingScanBand({
     </div>
   ) : null;
 
+  // Every pick is reversible from the band that made it (owner 2026-09-28):
+  // Undo drops the last serial (or the label scan itself); Unpick reverts the
+  // whole order. Same verbs as the phone (`desk-scan-client`).
+  const reversalStrip = activeOrder ? (
+    <div className="flex items-center gap-1 border-b border-border-soft bg-surface-sunken px-2 py-1">
+      <span className="min-w-0 flex-1 truncate text-role-micro font-semibold text-text-soft">
+        {activeOrder.orderId} · {activeOrder.serialNumbers.length} serial
+        {activeOrder.serialNumbers.length === 1 ? '' : 's'}
+      </span>
+      <Button type="button" variant="secondary" size="sm" disabled={isLoading} onClick={() => void undoLastStep()}>
+        Undo
+      </Button>
+      {activeOrder.id ? (
+        <Button type="button" variant="secondary" size="sm" disabled={isLoading} onClick={() => void unpickActiveOrder()}>
+          Unpick
+        </Button>
+      ) : null}
+    </div>
+  ) : null;
+
   if (scanOnly) {
     return (
       <div className="min-w-0 shrink-0">
         {armedChip}
+        {reversalStrip}
         <ScanBandShell themeColor={themeColor}>{scanBar}</ScanBandShell>
       </div>
     );
@@ -228,6 +252,7 @@ export function ShippingScanBand({
   return (
     <div className="shrink-0 min-w-0">
       {armedChip}
+      {reversalStrip}
       <ScanBandShell themeColor={themeColor}>{scanBar}</ScanBandShell>
     </div>
   );

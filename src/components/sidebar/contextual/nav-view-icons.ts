@@ -87,6 +87,7 @@ export const NAV_VIEW_ICONS: Readonly<Record<string, NavViewIcon>> = {
  */
 export const NAV_ACTION_ICONS: Readonly<Record<string, NavViewIcon>> = {
   'chat.new': { icon: Plus, tone: 'text-text-muted' },
+  'orders.add': { icon: Plus, tone: 'text-text-muted' },
   'labels-docs.print-labels': { icon: Printer, tone: 'text-text-muted' },
   'labels-docs.print-paperwork': { icon: Printer, tone: 'text-text-muted' },
   'labels-docs.print-all': { icon: Printer, tone: 'text-text-muted' },

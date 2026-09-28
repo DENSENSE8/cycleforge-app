@@ -54,3 +54,18 @@ export async function withCronRun<T>(
     throw err;
   }
 }
+
+/** Latest run per job key (finished, or started while still running). */
+export async function latestCronRuns(
+  jobKeys: readonly string[],
+): Promise<Record<string, { status: 'running' | 'success' | 'failed'; at: string }>> {
+  if (jobKeys.length === 0) return {};
+  const { rows } = await pool.query<{ job: string; status: 'running' | 'success' | 'failed'; at: string }>(
+    `SELECT DISTINCT ON (job) job, status, COALESCE(finished_at, started_at) AS at
+       FROM cron_runs
+      WHERE job = ANY($1::text[])
+      ORDER BY job, started_at DESC`,
+    [jobKeys],
+  );
+  return Object.fromEntries(rows.map((r) => [r.job, { status: r.status, at: new Date(r.at).toISOString() }]));
+}

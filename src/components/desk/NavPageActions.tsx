@@ -28,7 +28,7 @@ const SEGMENT_CLASS = cn(
 /**
  * `NavContext.actions` as the desk header's split CTA, top-right over the list
  * it acts on (operator 2026-09-27: the verbs left the sidebar). The first
- * action is the face — `[↻] Sync ShipStation`, no keycap (operator
+ * action is the face — the page's manual verb (To-ship: `[+] Add manual order`), no keycap (operator
  * 2026-09-27) — then a hairline and a chevron that opens the rest. An `href`
  * action navigates; an `intent` action runs the handler the mounted page body
  * registered (`useNavIntent`) and stays disabled until one exists.
@@ -83,7 +83,7 @@ function useRunAction(action: NavAction) {
 
 function PrimaryAction({ action }: { action: NavAction }) {
   const { disabled, run } = useRunAction(action);
-  // The verb's own glyph when it declares one (Print), else ↻ — the Sync face.
+  // The verb's own glyph when it declares one (Print, Add manual order), else ↻.
   const Glyph = NAV_ACTION_ICONS[action.id]?.icon ?? RefreshCw;
   return (
     <button

@@ -1,4 +1,4 @@
-/** Connected order-ingestion sources for the To-ship Sync ShipStation chevron. */
+/** Linked order platforms the To-ship Sync runs: ShipStation, the Google Sheets backup, then every other channel. */
 import type { OrgId } from '@/lib/tenancy/constants';
 import type { PermissionString } from '@/lib/auth/permissions';
 import { getConnector } from '@/lib/integrations/connectors/registry';
@@ -6,8 +6,13 @@ import type { ConnectionStatus } from '@/lib/integrations/connectors/types';
 import { providerCatalogLabel } from '@/lib/integrations/capability-labels';
 import { syncPermissionForProvider } from '@/lib/integrations/sync-permission';
 
-/** Face of the To-ship sliced dock — not a chevron row. */
-const TO_SHIP_SYNC_FACE_PROVIDER = 'shipstation';
+/**
+ * Paint order = run order: the order importer of record, then its sheet
+ * backup, then every other linked channel alphabetically.
+ */
+const PINNED_ORDER: Record<string, number> = { shipstation: 0, google_sheets: 1 };
+/** The legacy sheet is a backup source, and says so wherever it is listed. */
+const FACE_SUFFIX: Record<string, string> = { google_sheets: ' (backup)' };
 
 type OrderSyncMenuSource = {
   provider: string;
@@ -21,13 +26,14 @@ export interface OrderSyncMenuDeps {
 }
 
 function isSyncableOrderSource(connection: ConnectionStatus): boolean {
-  if (!connection.connected) return false;
-  if (connection.provider === TO_SHIP_SYNC_FACE_PROVIDER) return false;
-  if (!connection.capabilities.includes('orders')) return false;
-  return Boolean(getConnector(connection.provider)?.sync);
+  return (
+    connection.connected
+    && connection.capabilities.includes('orders')
+    && Boolean(getConnector(connection.provider)?.sync)
+  );
 }
 
-/** Build the chevron's connected-platform rows (caller appends Sync more). */
+/** Build the linked-platform rows (caller appends Link more). */
 function buildOrderSyncMenuSources(input: {
   connections: ConnectionStatus[];
   hasPermission: (perm: PermissionString) => boolean;
@@ -36,14 +42,20 @@ function buildOrderSyncMenuSources(input: {
   return input.connections
     .filter(isSyncableOrderSource)
     .map((connection) => ({ connection, catalog: providerCatalogLabel(connection.provider) }))
-    .sort((a, b) => a.catalog.localeCompare(b.catalog))
+    .sort(
+      (a, b) =>
+        (PINNED_ORDER[a.connection.provider] ?? 2) - (PINNED_ORDER[b.connection.provider] ?? 2)
+        || a.catalog.localeCompare(b.catalog),
+    )
     .map(({ connection, catalog }) => {
-      // A display label that just repeats the catalog name adds nothing.
-      const name = (connection.displayLabel ?? '').trim();
+      // A display label that repeats the catalog name — whole, or as a
+      // `Google Sheets · …` prefix — adds nothing; keep only what follows.
+      const raw = (connection.displayLabel ?? '').trim();
+      const prefix = `${catalog.toLowerCase()} · `;
+      const name = raw.toLowerCase().startsWith(prefix) ? raw.slice(prefix.length).trim() : raw;
+      const face = `${catalog}${FACE_SUFFIX[connection.provider] ?? ''}`;
       const base =
-        name && name.toLowerCase() !== catalog.toLowerCase()
-          ? `Sync ${catalog} · ${name}`
-          : `Sync ${catalog}`;
+        name && name.toLowerCase() !== catalog.toLowerCase() ? `Sync ${face} · ${name}` : `Sync ${face}`;
       const n = (seen.get(base) ?? 0) + 1;
       seen.set(base, n);
       return {

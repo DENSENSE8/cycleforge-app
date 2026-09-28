@@ -266,14 +266,17 @@ const SHIPPED_CONTROLS: NavControls = {
 
 /** The To-ship desk header (OrdersDeskAddAction · Past imports · Labels walk), removed 2026-09-26. */
 const TO_SHIP_ACTIONS: readonly NavActionDecl[] = [
-  { action: { id: 'orders.sync', label: 'Sync ShipStation', intent: 'orders-intake:sync' } },
-  { action: { id: 'orders.sync-platforms', label: 'Sync a platform…', intent: 'orders-intake:platforms' } },
+  // Face = the page's manual verb (owner 2026-09-28): syncing lives in the
+  // global header Sync (always running, with its last-run record); the
+  // chevron keeps an on-demand sync of this desk's platforms.
+  { action: { id: 'orders.add', label: 'Add manual order', href: '/orders/new' } },
+  { action: { id: 'orders.sync', label: 'Sync all platforms', intent: 'orders-intake:sync' } },
+  { action: { id: 'orders.sync-platforms', label: 'Choose platforms…', intent: 'orders-intake:platforms' } },
   {
     action: { id: 'orders.upload-csv', label: 'Upload orders CSV', intent: 'orders-intake:file' },
     requires: 'orders.import',
   },
   { action: { id: 'orders.export-csv', label: 'Export to CSV', intent: 'desk-export:csv' } },
-  { action: { id: 'orders.add', label: 'New sales order', href: '/orders/new' } },
   { action: { id: 'orders.add-test', label: 'Add test order', intent: 'orders-intake:test' } },
   { action: { id: 'orders.demo-sync', label: 'Demo sync (sample data)', intent: 'orders-intake:demo' } },
   { action: { id: 'orders.past-imports', label: 'Past imports', intent: 'orders:past-imports' } },

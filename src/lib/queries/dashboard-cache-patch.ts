@@ -37,11 +37,13 @@ export function patchUnshippedOrderCache(
   });
 }
 
-/** The pick patch — one shape for the ONE event that flips an order out of the pending lane (`order.picked`, published by the picker desk's tracking scan in `/api/picking/desk/scan`). Writes only pick facts; QC (`tested_*`) is a unit fact from the bench and is never touched here. Pack placement rides along when the scan was made at an armed bench. Returns false when the payload has no usable order id. */
+/** The pick patch — one shape for the ONE event that moves an order in or out of the picked lane (`order.picked`: the picker desk's tracking scan in `/api/picking/desk/scan`, and every pick reversal, which re-states the fact with `picked`). A forward pick writes only pick facts; QC (`tested_*`) is a unit fact from the bench and is never touched here. Pack placement rides along when the scan was made at an armed bench. `picked: false` clears the pick facts — the row moves back to pending. Returns false when the payload has no usable order id. */
 export function patchUnshippedOrderPicked(
   queryClient: QueryClient,
   event: {
     orderId: unknown;
+    /** Absent on a forward pick; a reversal sends the order's fact after the write. */
+    picked?: unknown;
     pickedBy?: unknown;
     pickedByName?: unknown;
     pickedAt?: unknown;
@@ -51,6 +53,17 @@ export function patchUnshippedOrderPicked(
 ): boolean {
   const orderId = Number(event?.orderId);
   if (!Number.isFinite(orderId)) return false;
+
+  if (event?.picked === false) {
+    patchUnshippedOrderCache(queryClient, orderId, {
+      has_pick_scan: false,
+      picked_by: null,
+      picked_by_name: null,
+      picked_at: null,
+    });
+    invalidateUnshippedCounts(queryClient);
+    return true;
+  }
 
   const pickedByRaw = event?.pickedBy == null ? null : Number(event.pickedBy);
   const pickedBy = pickedByRaw != null && Number.isFinite(pickedByRaw) ? pickedByRaw : null;

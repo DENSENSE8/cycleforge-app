@@ -11,6 +11,7 @@ import {
   type AllocationShortfall,
   type AllocationSupplyUnit,
 } from './plan-allocations';
+import { refreshOrderStageFacts } from '@/lib/orders/order-stage-facts';
 
 interface DemandRow {
   id: number;
@@ -137,14 +138,17 @@ export async function autoAllocateForOrders(
       return `($${params.length - 1}, $${params.length}, $2, 'ALLOCATED', $1)`;
     });
 
-    const res = await client.query(
+    const res = await client.query<{ order_id: number }>(
       `INSERT INTO order_unit_allocations
          (order_id, serial_unit_id, allocated_by_staff_id, state, organization_id)
        VALUES ${rows.join(', ')}
        ON CONFLICT (serial_unit_id) WHERE state <> ALL (ARRAY['RELEASED'::text, 'RETURNED'::text])
-       DO NOTHING`,
+       DO NOTHING
+       RETURNING order_id`,
       params,
     );
+    // An allocated unit's verdict is the order's (inherited) QC.
+    await refreshOrderStageFacts(opts.orgId, { orderIds: res.rows.map((r) => r.order_id) }, client);
 
     return { inserted: res.rowCount ?? 0, shortfalls: plan.shortfalls };
   });

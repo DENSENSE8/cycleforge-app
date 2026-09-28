@@ -1,5 +1,4 @@
-import { normalizeTrackingNumber } from '@/lib/tracking-format';
-import { initSkuSerialGroups } from '@/lib/tech/sku-serial-groups';
+import { scanDeskTracking } from '@/lib/picking/desk-scan-client';
 import type { ScanHandlerContext } from './types';
 
 interface TrackingCallbacks {
@@ -18,68 +17,22 @@ export async function handleTrackingScan(
   ctx.setIsLoading(true);
 
   try {
-    const normalizedInput = normalizeTrackingNumber(input);
     // Armed bench → place on that desk; no arm → plain tracking (order load +
     // serials). Placement is earned by arming, never required to scan.
-    const packLocationId = ctx.getArmedPackLocationId?.() ?? null;
-
-    const res = await fetch('/api/picking/desk/scan', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        type: 'TRACKING',
-        value: normalizedInput,
-        techId: ctx.userId,
-        idempotencyKey: ctx.newIdempotencyKey(),
-        ...(packLocationId != null ? { packLocationId } : {}),
-      }),
+    const result = await scanDeskTracking(input, {
+      idempotencyKey: ctx.newIdempotencyKey(),
+      packLocationId: ctx.getArmedPackLocationId?.() ?? null,
     });
-    const data = await res.json();
 
-    if (!res.ok || !data.found) {
-      const msg = data?.error
-        ? `Scan error: ${data.error}`
-        : 'Tracking number not found — logged to exceptions queue.';
-      ctx.setErrorMessage(msg);
+    if (!result.ok) {
+      ctx.setErrorMessage(result.error);
       ctx.syncActiveOrderState(null);
       ctx.clearManuals();
       return;
     }
+    const { data } = result;
 
-    const trackingMicrocopy =
-      data.orderFound === false && !data.fnskuLogId
-        ? (data.warning || 'Order not in system — tracking logged for reconciliation.')
-        : null;
-
-    ctx.syncActiveOrderState({
-      id: data.order.id,
-      orderId: data.order.orderId,
-      salId: data.salId ?? null,
-      productTitle: data.order.productTitle,
-      itemNumber: data.order.itemNumber ?? null,
-      sku: data.order.sku,
-      condition: data.order.condition,
-      notes: data.order.notes,
-      tracking: data.order.tracking,
-      serialNumbers: data.order.serialNumbers || [],
-      scannedSkuCodes: Array.isArray(data.order.scannedSkuCodes) ? data.order.scannedSkuCodes : [],
-      skuSerialGroups: initSkuSerialGroups(
-        data.order.sku,
-        data.order.serialNumbers || [],
-      ),
-      testDateTime: data.order.testDateTime,
-      testedBy: data.order.testedBy,
-      quantity: parseInt(String(data.order.quantity || 1), 10) || 1,
-      shipByDate: data.order.shipByDate || null,
-      createdAt: data.order.createdAt || null,
-      orderFound: data.orderFound !== false,
-      /** Tracks `orders_exceptions` flow — Undo + UI use same SAL as matched orders; label differs. */
-      sourceType: data.orderFound === false ? 'exception' : undefined,
-      scanSessionId: typeof data.scanSessionId === 'string' ? data.scanSessionId : null,
-      inlineMicrocopy: trackingMicrocopy,
-      packLocationId: data.packPlacement?.locationId ?? null,
-      packLocationName: data.packPlacement?.locationName ?? null,
-    });
+    ctx.syncActiveOrderState(result.order);
     if (data.packPlacement) {
       void ctx.queryClient.invalidateQueries({ queryKey: ['orders', 'pack-placement'] });
       void ctx.queryClient.invalidateQueries({ queryKey: ['orders', 'queue-counts'] });
@@ -87,19 +40,11 @@ export async function handleTrackingScan(
 
     // Exception sessions are amber-card honesty — never a success flash that
     // reads as "order loaded" (Station §6 / CF-02). Matched orders may whisper.
-    if (data.orderFound === false) {
-      ctx.clearManuals();
-    } else {
-      const serialCount = data.order.serialNumbers?.length || 0;
-      const placeHint = data.packPlacement?.locationName
-        ? ` · at ${data.packPlacement.locationName}`
-        : '';
-      ctx.setSuccessMessage(
-        serialCount > 0
-          ? `Order loaded: ${serialCount} serial${serialCount !== 1 ? 's' : ''} already scanned${placeHint}`
-          : `Order loaded - ready to scan serials${placeHint}`,
-      );
+    if (result.message) {
+      ctx.setSuccessMessage(result.message);
       void ctx.resolveManual(data.order.sku, data.order.itemNumber ?? null);
+    } else {
+      ctx.clearManuals();
     }
 
     onTrackingOrderLoaded?.();

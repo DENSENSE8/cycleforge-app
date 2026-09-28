@@ -1,10 +1,10 @@
 {
   "version": 1,
-  "generatedAt": "2026-09-28T16:41:55Z",
-  "totalRoutes": 1131,
+  "generatedAt": "2026-09-28T18:10:47Z",
+  "totalRoutes": 1133,
   "summary": {
-    "permissionGated": 921,
-    "authenticatedNoPermission": 125,
+    "permissionGated": 922,
+    "authenticatedNoPermission": 126,
     "anonymousIntentional": 36,
     "serviceToService": 49,
     "ungatedRead": 0,
@@ -1844,6 +1844,15 @@
       "exemptReason": null
     },
     {
+      "path": "/api/cron/orders/backfill/route.ts",
+      "methods": [
+        "GET"
+      ],
+      "gate": "cron bearer secret",
+      "permission": null,
+      "exemptReason": null
+    },
+    {
       "path": "/api/cron/photos/analyze/route.ts",
       "methods": [
         "GET",
@@ -1936,15 +1945,6 @@
     },
     {
       "path": "/api/cron/shipping/sync-due/route.ts",
-      "methods": [
-        "GET"
-      ],
-      "gate": "cron bearer secret",
-      "permission": null,
-      "exemptReason": null
-    },
-    {
-      "path": "/api/cron/shipstation/orders-sync/route.ts",
       "methods": [
         "GET"
       ],
@@ -5657,6 +5657,15 @@
       "exemptReason": null
     },
     {
+      "path": "/api/picking/desk/unpick/route.ts",
+      "methods": [
+        "POST"
+      ],
+      "gate": "withAuth",
+      "permission": "picking.scan",
+      "exemptReason": null
+    },
+    {
       "path": "/api/picking/queue/route.ts",
       "methods": [
         "GET"
@@ -9242,6 +9251,16 @@
       ],
       "gate": "requireRoutePerm",
       "permission": "dashboard.view",
+      "exemptReason": null
+    },
+    {
+      "path": "/api/sync/global/route.ts",
+      "methods": [
+        "GET",
+        "POST"
+      ],
+      "gate": "withAuth (no permission)",
+      "permission": null,
       "exemptReason": null
     },
     {

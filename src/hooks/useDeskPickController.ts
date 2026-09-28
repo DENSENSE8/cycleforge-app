@@ -2,8 +2,8 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
-import { classifyInput } from '@/lib/scan-resolver';
-import { detectStationScanType, type StationInputMode, type StationScanType } from '@/lib/station-scan-routing';
+import type { StationInputMode, StationScanType } from '@/lib/station-scan-routing';
+import { resolveDeskScanType, undoLastDeskStep, unpickDeskOrder } from '@/lib/picking/desk-scan-client';
 import { stationThemeColors, type StationTheme } from '@/utils/staff-colors';
 import type { ActiveStationOrder, ResolvedProductManual, ScanHandlerContext } from './station/types';
 import { handleTrackingScan } from './station/handleTrackingScan';
@@ -13,8 +13,6 @@ import { handleSerialScan } from './station/handleSerialScan';
 import { safeRandomUUID } from '@/lib/safe-uuid';
 import { handleRepairScan } from './station/handleRepairScan';
 import { handleCommand } from './station/handleCommand';
-import { normalizeTrackingKey } from '@/lib/tracking-format';
-import { rebuildSkuSerialGroups } from '@/lib/tech/sku-serial-groups';
 import { refreshDomains } from '@/lib/refresh/bus';
 import { REFRESH_BUNDLES } from '@/lib/refresh/domains';
 import {
@@ -37,21 +35,6 @@ const LAST_MANUAL_STORAGE_PREFIX = 'cf:last-manual:tech:';
 
 function newStationIdempotencyKey(): string {
   return safeRandomUUID();
-}
-
-/** When an order is still short on serials, barcodes that look like "generic" tracking (carrier: */
-function resolveScanType(val: string, contextOrder: ActiveStationOrder | null): StationScanType {
-  const base = detectStationScanType(val);
-  if (!contextOrder) return base;
-
-  const qty = Math.max(1, Number(contextOrder.quantity) || 1);
-  const incomplete = contextOrder.serialNumbers.length < qty;
-  if (!incomplete || base !== 'TRACKING') return base;
-
-  const { carrier } = classifyInput(val);
-  if (carrier) return 'TRACKING';
-
-  return 'SERIAL';
 }
 
 export function getOrderIdLast8(orderId: string) {
@@ -233,44 +216,46 @@ export function useDeskPickController({
     return () => window.removeEventListener(TECH_CLOSE_ACTIVE_ORDER_EVENT, close);
   }, []);
 
-  useEffect(() => {
-    const handleUndoApplied = (e: any) => {
-      const detailSal = e?.detail?.salId != null ? Number(e.detail.salId) : NaN;
-      const activeSal = activeOrder?.salId != null ? Number(activeOrder.salId) : NaN;
-      const salMatch =
-        Number.isFinite(detailSal) &&
-        detailSal > 0 &&
-        Number.isFinite(activeSal) &&
-        activeSal > 0 &&
-        detailSal === activeSal;
-
-      const eventKey = normalizeTrackingKey(String(e?.detail?.tracking || ''));
-      const activeKey = normalizeTrackingKey(String(activeOrder?.tracking || ''));
-      const trackingMatch =
-        eventKey.length > 0 && activeKey.length > 0 && eventKey === activeKey;
-
-      const serialNumbers = Array.isArray(e?.detail?.serialNumbers) ? e.detail.serialNumbers : [];
-      const removedSerial = e?.detail?.removedSerial;
-      if (!activeOrder) return;
-      if (!salMatch && !trackingMatch) return;
-      syncActiveOrderState({
-        ...activeOrder,
-        serialNumbers,
-        skuSerialGroups: rebuildSkuSerialGroups(
-          activeOrder.skuSerialGroups,
-          serialNumbers,
-          activeOrder.sku,
-        ),
-      });
-      if (removedSerial) {
-        setSuccessMessage(`Undo successful: removed ${removedSerial}`);
-      } else {
-        setSuccessMessage('Undo successful');
+  // ── reversal: Undo last step · Unpick order (shared with the phone) ─────────
+  const undoLastStep = async () => {
+    const order = getScanContextOrder();
+    if (!order || isLoading) return;
+    clearFeedback();
+    setIsLoading(true);
+    try {
+      const result = await undoLastDeskStep({ order, idempotencyKey: newStationIdempotencyKey() });
+      if (!result.ok) {
+        setErrorMessage(result.error);
+        return;
       }
-    };
-    window.addEventListener('tech-undo-applied' as any, handleUndoApplied as any);
-    return () => window.removeEventListener('tech-undo-applied' as any, handleUndoApplied as any);
-  }, [activeOrder]);
+      syncActiveOrderState(result.order);
+      setSuccessMessage(result.message);
+      void queryClient.invalidateQueries({ queryKey: ['desk-pick-logs'] });
+      triggerGlobalRefresh();
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const unpickActiveOrder = async () => {
+    const order = getScanContextOrder();
+    if (!order?.id || isLoading) return;
+    clearFeedback();
+    setIsLoading(true);
+    try {
+      const result = await unpickDeskOrder({ orderId: order.id, orderLabel: order.orderId });
+      if (!result.ok) {
+        setErrorMessage(result.error);
+        return;
+      }
+      syncActiveOrderState(null);
+      setSuccessMessage(result.message);
+      void queryClient.invalidateQueries({ queryKey: ['desk-pick-logs'] });
+      triggerGlobalRefresh();
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   useEffect(() => {
     const handleTechLogRemoved = (e: any) => {
@@ -395,7 +380,7 @@ export function useDeskPickController({
     const type: StationScanType =
       forcedType === 'TRACKING' || forcedType === 'SERIAL' || forcedType === 'FNSKU' || forcedType === 'REPAIR'
         ? forcedType
-        : resolveScanType(input, contextOrder);
+        : resolveDeskScanType(input, contextOrder);
 
     const ctx = buildCtx();
 
@@ -425,5 +410,7 @@ export function useDeskPickController({
     handleSubmit,
     triggerGlobalRefresh,
     clearFeedback,
+    undoLastStep,
+    unpickActiveOrder,
   };
 }

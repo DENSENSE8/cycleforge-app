@@ -29,9 +29,13 @@ export const POST = withAuth(async (req, ctx) => {
     return NextResponse.json(planLimitResponseBody('maxMonthlyOrders'), { status: 403 });
   }
 
+  // `?full=1`: the connector's full pass (Google Sheets: every tab, the
+  // one-time history backfill) instead of its rolling window.
+  const full = req.nextUrl.searchParams.get('full') === '1' || undefined;
+
   // Non-streaming caller (Settings "Sync now", cron): one JSON object, as before.
   if (!req.headers.get('accept')?.includes('application/x-ndjson')) {
-    const outcome = await syncConnection(ctx.organizationId, provider);
+    const outcome = await syncConnection(ctx.organizationId, provider, { full });
     return NextResponse.json(outcome, { status: outcome.ok ? 200 : 502 });
   }
 
@@ -39,7 +43,7 @@ export const POST = withAuth(async (req, ctx) => {
   const stream = createNdjsonStream();
   void (async () => {
     try {
-      const outcome = await syncConnection(ctx.organizationId, provider, { onProgress: stream.emit });
+      const outcome = await syncConnection(ctx.organizationId, provider, { onProgress: stream.emit, full });
       stream.emit({ type: 'result', result: outcome as unknown as Record<string, unknown> });
     } catch (error: unknown) {
       stream.emit({

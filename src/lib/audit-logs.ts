@@ -638,6 +638,12 @@ export const AUDIT_ACTION = {
   REPAIR_SERVICE_DOCUMENT_PRINTED: 'repair_service.document_printed',
   // Pack / order (existing callers — keep their literals stable)
   PACK_COMPLETED: 'PACK_COMPLETED',
+  /** Un-pack: the PACK activity row is reversed (deleted) and its packer_log removed; before = the snapshot. */
+  PACK_REVERSE: 'pack.reverse',
+  /** Un-pick an order (POST /api/picking/desk/unpick): units back to ALLOCATED, pick scans voided, sessions abandoned. */
+  ORDER_UNPICK: 'order.unpick',
+  /** A Picker desk scan session deleted (POST /api/picking/desk/delete); before = the removed scan + serials. */
+  PICK_SCAN_VOID: 'pick_scan.void',
   // Packer Review Station — verification capture + manager review decision
   PACK_VERIFICATION: 'packing.verification',
   PACK_REVIEW_DECISION: 'packing.review_decision',

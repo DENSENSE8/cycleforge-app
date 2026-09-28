@@ -11,6 +11,7 @@ import { HeaderPinsSwitcher } from './HeaderPinsSwitcher';
 import { SidebarCollapseControl } from './SidebarCollapseControl';
 import { ActivityInboxButton } from '@/components/quick-access/ActivityInboxButton';
 import { GlobalHeaderAdd } from './GlobalHeaderAdd';
+import { GlobalHeaderSync } from './GlobalHeaderSync';
 import { LiveSyncIndicator } from './LiveSyncIndicator';
 import {
   HEADER_ICON_CLUSTER,
@@ -80,6 +81,7 @@ export function GlobalHeader({
         <LiveSyncIndicator />
         <GlobalHeaderAdd />
         <ActivityInboxButton />
+        <GlobalHeaderSync />
       </div>
     </header>
   );

@@ -412,3 +412,162 @@ feed fields `qc_assignee_id` / `qc_assignee_name`, read by `orderStage('qc')` as
 done. The order record's QC step assigns it through `PATCH /api/receiving-lines/qc-assignee
 {order_id, assigned_tech_id}` (`tech.qc_pass`; 409 when no allocated unit came from a receiving
 line), which writes every origin line of the order's live allocations and busts the orders cache.
+
+## QC verdict on an order-bound unit (2026-09-28)
+
+Before this change, `POST /api/serial-units/[id]/test` returned 409 on any unit on an order.
+`UNIFIED_ENGINE_APPLY_TRANSITION` is on, and the allow-list has no ALLOCATED / PICKING / PICKED →
+TESTED / ON_HOLD / IN_TEST edge. So `recordTestVerdict`'s stage-facts refresh never reached an
+allocated unit, and an order only ever showed inherited QC. That contradicts the owner's order of
+stages: ordered → picked → QC'd → packed.
+
+`recordTestVerdict` now treats an ALLOCATED / PICKING / PICKED unit as on an order. For such a unit
+it:
+
+- writes the `testing_results` row (`unit_status` = the unchanged status) and the TEST_PASS /
+  TEST_FAIL / TEST_START `inventory_events` row (prev = next status);
+- makes no status transition, so the allocation and any pick stand;
+- skips the receiving-line rollup, which tallies TESTED / ON_HOLD / IN_TEST units and would
+  miscount an ALLOCATED one;
+- skips the workflow tap and the pass → pending-order allocate;
+- refreshes `order_stage_facts`, so the order reads the new verdict with `qc_inherited` = false.
+
+A TESTING_FAILED leaves the allocation in place, and the order shows `qc_verdict = TESTING_FAILED`.
+Whether a fail releases the unit or holds the order is still **open question 5**. Nothing
+auto-releases.
+
+`POST /api/serial-units/[id]/allocate` and `POST /api/orders/[id]/release` now refresh the
+order's stage facts. Before, only the 10-minute cron sweep did, and that sweep never runs locally.
+Every other allocation writer now refreshes too, so the sweep is only a safety net:
+
+- `autoAllocateForOrders` (in its transaction, for the orders `RETURNING` names);
+- `allocateOrder`;
+- `substituteOrderUnit` / `decideAmendment`;
+- the legacy pack mirror (per-unit transaction).
+
+The pass → pending allocate is covered by `recordTestVerdict`'s refresh right after it.
+SHIPPED ↔ RETURNED flips (returns intake, the returned-serial link, RMA disposition and returns
+undo) don't refresh, because every fact reads both states the same way. The pick lateral counts
+PICKED / PACKED / SHIPPED / RETURNED, and QC excludes only RELEASED.
+
+Live run at :3050 on unit 1272 (TESTED, PASS on 2026-06-02) and order 13628 (`5026`, unassigned),
+reading `GET /api/orders?orderId=13628`:
+
+| Step | `qc_verdict` | `qc_inherited` | `tested_by` | `test_activity_at` | Unit |
+|---|---|---|---|---|---|
+| before | null | false | null | null | TESTED |
+| allocate (allocation 61, event 9002) | PASS | **true** | 1 | 2026-06-02 16:36 | ALLOCATED |
+| `POST /test` PASS → 200 (testing_results 270, event 9003 ALLOCATED→ALLOCATED) | PASS | **false** | 1 | 2026-09-28 11:15 | ALLOCATED |
+| release (event 9004 ALLOCATED→STOCKED) | null | false | null | null | STOCKED |
+| `POST /test` PASS to restore status (testing_results 271, event 9005 STOCKED→TESTED) | null | false | null | null | TESTED |
+
+After the run, the facts row for 13628 matches the original on every fact column; only
+`updated_at` moved. Receiving line 3452 is still DONE / PASSED / ACCEPT.
+
+## Enrichment rebuild audit
+
+The 2026-09-28 `packer_log_enrichment` rebuild changed `order_row_id` on 368 of the 6,859
+existing rows. To classify them, I diffed the before/after snapshots (`/tmp/enr_before.csv`,
+`/tmp/enr_after.csv`). For each changed row, I then re-resolved the order against today's data
+with both lookups: the old OR-form lateral (from `18e2f5c9a^`) and `sqlPackerOrderMatchLateral`.
+
+| Class | Rows |
+|---|---|
+| Old and new lookups agree today and equal the rebuilt value, so the links changed after `computed_at` | **368** |
+| Old lookup still gives the pre-rebuild value but the new one differs (a resolver difference) | **0** |
+
+What changed in the data:
+
+- **null → order (357 rows, scans from 2026-07-09 to 09-18).** 352 of the resolved orders own the
+  scan's shipment (`orders.shipment_id`). 233 of those orders were created after the scan, and 195
+  got their ORDER `shipment_links` row after the scan. The remaining rows are orders whose
+  `shipment_id` was set later; that column has no timestamp, but the old lookup resolves them
+  today too.
+- **order → null (8 rows, 2026-09-02, sal 37698–37705).** Old order 13405 no longer exists.
+- **order → other order (3 rows).** The old orders no longer exist, and a newer order on the same
+  shipment replaced each one: sal 38482 13394 → 13614 (`5023`), sal 41799 14070 → 14874 (`5062`),
+  sal 42836 14212 → 15462 (`5075`). All three replacements were created after the scan.
+
+No resolver fix is needed. The old lateral also had no org scope on `orders` / `shipment_links`,
+but none of the 368 pre-rebuild values pointed at another org's order. The rebuild corrected
+enrichment that had gone stale. `recomputeEnrichmentForOrders` refreshes a scan's enrichment only
+from the order create / assign / delete / tracking routes. Links written any other way, such as
+order imports that set `orders.shipment_id`, `shipment_links` rows from label flows, or orders
+removed outside `/api/orders/delete` (13405, 13394, 14070 and 14212 are gone, yet their scans
+kept pointing at them), leave enrichment stale until the next rebuild.
+
+## Reversible pick and un-pack (2026-09-28)
+
+Every pick step now has an inverse. Each one runs in the writer's transaction, refreshes
+`order_stage_facts` in that transaction, and leaves a trail. The pick side lives in
+`src/lib/picking/unpick.ts`, the pack side in `src/lib/packing/pack-reverse.ts`.
+
+| Verb | Reverses | Trail |
+|---|---|---|
+| `POST /api/picking/units/unscan` | one unit pick (`revertUnitPick`, the one unit inverse) | inventory_events `ALLOCATED`, `payload.reverses_event_id` → the PICKED event |
+| `POST /api/picking/desk/serial` `undo` / `remove` / `update` | the desk-serial pick of each dropped serial (`revertDeskSerialPick`: only a pick whose event says `pick.desk.serial` for that allocation) | same event; response `unpicked` (`unpickedUnits` for `update`) |
+| `POST /api/picking/desk/delete` | the scan session, its serials, their unit picks, its SKU-pick stock (`PICK_UNDO` ledger rows) | audit `pick_scan.void` |
+| `POST /api/picking/desk/unpick {orderId}` (new) | the whole order: PICKED units → ALLOCATED, pick scans voided, picking sessions abandoned (a completed session is a pick fact too), totes unpaired, the pick scan's bench placement cleared. Idempotent (`alreadyUnpicked`). 409 on a packed order. | audit `order.unpick` |
+| `DELETE /api/packerlogs?activityLogId=` / `?id=` | one pack: PACK rows and packer_log removed, mirrored PACKED units back to their prior state (`PACKED → PICKED/ALLOCATED` added to the state machine), BOXED ledger compensated (`PACK_UNDO`) | audit `pack.reverse`, ops_event `pack_reversed` |
+
+Every pick reversal publishes `order.picked` with the order's fact after the write:
+`picked` = `has_pick_scan`, plus `pickedBy` / `pickedAt` from the facts row
+(`publishOrderPickFacts`). `patchUnshippedOrderPicked` treats `picked: false` as "back to
+pending" and clears the picker. A forward scan still omits `picked`, which reads as true.
+
+**Why un-pack deletes instead of voiding.** Deleting the SAL row fired
+`audit_logs_station_activity_log_id_fkey ON DELETE SET NULL`. That is an UPDATE of an
+append-only row, so `guard_evidence_no_update` refused it. The same FK also broke scan-out undo,
+because 217 SHIP_CONFIRM rows are audited. No FK action works with an append-only child: SET NULL
+and CASCADE write to it, and NO ACTION / RESTRICT make the parent undeletable.
+
+Voiding would need a `voided_at` predicate in about 56 files that read PACK activity and about 50
+that read `packer_logs`, and any one that missed it would bring the pack back. So migration
+`2026-09-28z_audit_logs_sal_ref_historical.sql` drops the FK instead. The audit guard is
+unchanged, and the column stays as a historical pointer (every reader LEFT JOINs it). The reversal
+is recorded, not erased: the pack's `PACK_COMPLETED` audit row keeps its id, and `pack.reverse`
+stores the removed rows.
+
+The un-pack leaves three things as written, because each has no recorded prior value:
+`orders.status = 'packed'` from the mobile pack, the auto-completed PACK work_assignment, and
+totes the pack released. None of them feeds a pack fact.
+
+Live run at :3050 on order 14031 (`12-15163-86133`, shipment 169598), reading
+`GET /api/orders?orderId=14031&inWarehouse=true&stage=…`:
+
+| Step | Stage | has_pick_scan · picked_by | has_pack_scan · packer_log |
+|---|---|---|---|
+| before (earlier smoke pack 7070 / SAL 44209) | packed | f · — | t · 7070 |
+| `DELETE /api/packerlogs?activityLogId=44209` (audit 27495 `pack.reverse`; 27451 keeps SAL 44209) | **pending** | f · — | f · — |
+| desk scan (SAL 44277) | picked | t · 1 | f · — |
+| serial add → `undo` (`unpicked: null`, scan still live) | picked | t · 1 | f · — |
+| serial add → `unpick` (voidedScans 1; audit 27500) | pending | f · — | f · — |
+| `unpick` again | pending (`alreadyUnpicked: true`) | f · — | f · — |
+| `POST /api/packerlogs` (7097 / SAL 44280) → `DELETE` | packed → pending | f · — | t · 7097 → f · — |
+
+Ably history showed `order.picked {picked:true}` after the scan and after the undo, then
+`{picked:false, pickedBy:null, pickedAt:null}` after the unpick.
+
+The allocation path, live at :3050, using only the app's own verbs. Unit 1272 (TESTED,
+`069234P80255755AE`) was allocated to order 14031, whose tracking label the desk can scan. Unit 1272
+has no platform item number, so the pass → pending allocate cannot fire on the restore.
+
+| Step | Unit | Allocation 63 | inventory_events | Feed `has_pick_scan` · `picked_by` · `picked_at` |
+|---|---|---|---|---|
+| start | TESTED | — (61 → 13628 RELEASED) | — | f · — · — |
+| `POST /api/serial-units/1272/allocate {order_pk:14031}` | ALLOCATED | ALLOCATED | 9010 ALLOCATED TESTED→ALLOCATED | f · — · — (qc PASS) |
+| desk scan (SAL 44283) | ALLOCATED | ALLOCATED | — | t · 1 · 11:29:46 |
+| desk serial add | PICKED | PICKED | 9011 PICKED ALLOCATED→PICKED | t · 1 · 11:29:49 |
+| desk serial `undo` (`unpicked` names 9011) | ALLOCATED | ALLOCATED | 9012 ALLOCATED PICKED→ALLOCATED | t · 1 · 11:29:46 (scan live) |
+| add again → `unpick` (unpickedUnits 1, voidedScans 1) | ALLOCATED | ALLOCATED | 9013 PICKED, 9014 ALLOCATED | f · — · — |
+| `POST /api/orders/14031/release` | STOCKED | RELEASED | 9015 RELEASED ALLOCATED→STOCKED | f · — · — (qc null) |
+| `POST /api/serial-units/1272/test {PASS}` (testing_results 272) | TESTED | RELEASED | 9016 TEST_PASS STOCKED→TESTED | f · — · — |
+
+The end state equals the start. Unit 1272 is TESTED with no tote and no location, and it has no
+order-bound serial row. Its allocations are all RELEASED. The 14031 facts row is empty again, with no
+SAL, serial, session or placement rows, and 14031 is back on To-ship as pending. Receiving line 3452 is
+still DONE / PASSED / ACCEPT. The trail is append-only: events 9010–9016, testing_results 272, and
+audit 27506 `order.unpick`.
+
+The same steps plus pack → `reversePack` were first run in BEGIN…ROLLBACK on allocation 2 / unit 2074.
+Both the pre-pick and the pre-pack snapshots matched exactly.

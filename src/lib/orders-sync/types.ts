@@ -84,6 +84,8 @@ export interface ExceptionsTabState {
 export type SyncPhase =
   | 'starting'
   | 'fetching_shipstation'
+  | 'fetching_sheet'
+  | 'syncing_platforms'
   | 'resolving_tracking'
   | 'matching_orders'
   | 'inserting'

@@ -1,10 +1,14 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest, NextResponse, after } from 'next/server';
+import pool from '@/lib/db';
 import { tenantQuery, withTenantTransaction } from '@/lib/tenancy/db';
 import { invalidateCacheTags } from '@/lib/cache/upstash-cache';
 import { publishTechLogChanged } from '@/lib/realtime/publish';
 import { withAuth } from '@/lib/auth/withAuth';
 import type { OrgId } from '@/lib/tenancy/constants';
 import { refreshOrderStageFacts } from '@/lib/orders/order-stage-facts';
+import { recordAudit, AUDIT_ACTION, AUDIT_ENTITY } from '@/lib/audit-logs';
+import { UnpickError, voidDeskScanSessions } from '@/lib/picking/unpick';
+import { publishOrderPickFacts } from '@/lib/picking/pick-facts-publish';
 
 /**
  * Resolve the desk session anchor from a tech-log row reference:
@@ -63,7 +67,9 @@ async function resolveSalIdFromRow(
 
 /**
  * POST /api/picking/desk/delete — delete one desk scan session. SAL is SoT,
- * cascade to TSN + fba_fnsku_logs.
+ * cascade to TSN + fba_fnsku_logs; every unit its serials picked goes back
+ * to ALLOCATED and its SKU picks' stock is put back (`voidDeskScanSessions`),
+ * so the scan no longer marks the order picked. Audited as `pick_scan.void`.
  * Body: `{ salId }`, or a tech-log row reference `{ sourceRowId, sourceKind }` / `{ rowId }`.
  */
 export const POST = withAuth(async (req: NextRequest, ctx) => {
@@ -99,50 +105,55 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
   }
   const staffId = salRow.rows[0].staff_id;
 
-  const deletedSerialCount = await withTenantTransaction(ctx.organizationId, async (client) => {
-    // 1. Delete SERIAL_ADDED SAL rows that reference TSN rows for this session
-    await client.query(
-      `DELETE FROM station_activity_logs
-         WHERE activity_type = 'SERIAL_ADDED'
-           AND organization_id = $2
-           AND tech_serial_number_id IN (
-             SELECT id FROM tech_serial_numbers
-             WHERE context_station_activity_log_id = $1 AND organization_id = $2
-           )`,
-      [salId, ctx.organizationId],
-    );
-
-    // 2. Delete TSN rows linked to this SAL
-    const deletedTsn = await client.query(
-      `DELETE FROM tech_serial_numbers WHERE context_station_activity_log_id = $1 AND organization_id = $2`,
-      [salId, ctx.organizationId],
-    );
-
-    // 3. Delete fba_fnsku_logs linked to this SAL
-    await client.query(
-      `DELETE FROM fba_fnsku_logs WHERE station_activity_log_id = $1 AND organization_id = $2`,
-      [salId, ctx.organizationId],
-    );
-
-    // 4. Delete the anchor SAL row itself
-    await client.query(
-      `DELETE FROM station_activity_logs WHERE id = $1 AND organization_id = $2`,
-      [salId, ctx.organizationId],
-    );
-    // 5. The scan (and its serials) no longer mark the order picked.
-    await refreshOrderStageFacts(
-      ctx.organizationId,
-      { orderIds: [salRow.rows[0].order_row_id], shipmentIds: [salRow.rows[0].shipment_id] },
-      client,
-    );
-
-    return deletedTsn.rowCount ?? 0;
-  });
-
-  await invalidateCacheTags(['desk-pick-logs', 'orders-next', 'shipped', 'orders']);
-  if (staffId) {
-    await publishTechLogChanged({ organizationId: ctx.organizationId, techId: staffId, action: 'delete', source: 'tech.delete' });
+  const orgId = ctx.organizationId;
+  const actorStaffId = typeof ctx.staffId === 'number' && ctx.staffId > 0 ? ctx.staffId : null;
+  let voided;
+  try {
+    voided = await withTenantTransaction(orgId, async (client) => {
+      const v = await voidDeskScanSessions(client, orgId, {
+        salIds: [salId],
+        actorStaffId,
+        source: 'pick.desk.delete',
+      });
+      // The scan (and its serials) no longer mark the order picked.
+      await refreshOrderStageFacts(
+        orgId,
+        {
+          orderIds: [salRow.rows[0].order_row_id, ...v.unpicked.map((u) => u.orderId)],
+          shipmentIds: [salRow.rows[0].shipment_id],
+        },
+        client,
+      );
+      return v;
+    });
+  } catch (err) {
+    if (err instanceof UnpickError) {
+      return NextResponse.json({ success: false, error: err.message }, { status: err.status });
+    }
+    throw err;
   }
 
-  return NextResponse.json({ success: true, deletedSerials: deletedSerialCount });
+  await recordAudit(pool, ctx, req, {
+    source: 'api.picking.desk.delete',
+    action: AUDIT_ACTION.PICK_SCAN_VOID,
+    entityType: salRow.rows[0].order_row_id ? AUDIT_ENTITY.ORDER : AUDIT_ENTITY.SHIPMENT,
+    entityId: String(salRow.rows[0].order_row_id ?? salRow.rows[0].shipment_id ?? salId),
+    stationActivityLogId: salId,
+    before: { scans: voided.scans, serials: voided.serials },
+    after: { unpicked: voided.unpicked, stock_reversals: voided.stockReversals },
+  });
+  // `/api/orders` caches under the global scope, the station feeds per org.
+  await invalidateCacheTags(['desk-pick-logs', 'orders-next', 'shipped', 'orders']);
+  await invalidateCacheTags(orgId, ['desk-pick-logs', 'orders-next', 'shipped', 'orders']);
+  if (staffId) {
+    await publishTechLogChanged({ organizationId: orgId, techId: staffId, action: 'delete', source: 'tech.delete' });
+  }
+  const touchedOrderIds = [salRow.rows[0].order_row_id, ...voided.unpicked.map((u) => u.orderId)];
+  after(() => publishOrderPickFacts(orgId, touchedOrderIds, 'pick.desk.delete'));
+
+  return NextResponse.json({
+    success: true,
+    deletedSerials: voided.serials.length,
+    unpickedUnits: voided.unpicked,
+  });
 }, { permission: 'picking.scan' });

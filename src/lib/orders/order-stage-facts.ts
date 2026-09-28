@@ -9,11 +9,16 @@
  * orders' facts from the source tables with the laterals below — the same
  * fragments the feed evaluated per row before (and the shipped feeds in
  * orders-queries.ts still do), so a fact cannot mean two things. Every stage
- * writer calls it: the Picker desk scan / delete, unit pick scan / unscan,
- * picking sessions, pack scans, the QC verdict, and order assignment. The
- * feed-membership cron re-sweeps every org ({@link refreshAllOrderStageFacts})
- * for writers that move a fact indirectly (a label changing the order's
- * shipment, allocation changes, automation-written assignments).
+ * writer calls it: the Picker desk scan / serial / delete / unpick, unit pick
+ * scan / unscan, picking sessions, pack scans / ship / reverse, the QC verdict
+ * (and the pass→pending allocate it triggers), order assignment, and every
+ * allocation writer (unit allocate, order allocate, auto-allocate,
+ * substitution + amendment decision, order release, the legacy pack mirror).
+ * Return flips (SHIPPED ↔ RETURNED) skip it: both states read the same in
+ * every fact. The feed-membership cron re-sweeps every org
+ * ({@link refreshAllOrderStageFacts}) as a safety net and for writers that move
+ * a fact indirectly (a label changing the order's shipment,
+ * automation-written assignments).
  */
 import 'server-only';
 import { PICK_FACTS_LATERALS, WA_PICK_LATERAL } from '@/lib/neon/orders-queries';

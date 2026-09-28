@@ -50,6 +50,48 @@ export const FIXED_COL_INDICES_DEFAULT: SheetColumnIndices = {
   currency: -1,
 };
 
+/** Row-1 titles that bind each field (case-insensitive, exact). */
+const SHEET_HEADER_CANDIDATES: Record<SheetField, readonly string[]> = {
+  shipByDate: ['Ship by date', 'Ship Date', 'Due Date'],
+  orderDate: ['Order date', 'Order Date', 'Sale date', 'Sale Date', 'Date sold'],
+  orderNumber: ['Order Number', 'Order - Number', 'Order #', 'Order ID'],
+  itemNumber: ['Item Number', 'Item ID', 'Listing ID'],
+  itemTitle: ['Item title', 'Item Title', 'Product Title', 'Product', 'Title', 'Description'],
+  quantity: ['Quantity', 'Qty'],
+  usavSku: ['USAV SKU', 'SKU', 'Internal SKU'],
+  condition: ['Condition'],
+  tracking: ['Tracking', 'Tracking Number', 'Tracking #', 'Shipment - Tracking Number'],
+  note: ['Note', 'Notes'],
+  platform: ['Platform', 'Account Source', 'Channel'],
+  salePrice: ['Sale Price', 'Price', 'Amount', 'Order Total', 'Item Total', 'Sale Amount'],
+  currency: ['Currency', 'Currency Code'],
+};
+
+/** Fields a sheet MUST title in row 1 to be read at all. */
+const REQUIRED_SHEET_FIELDS: readonly SheetField[] = ['orderNumber', 'tracking'];
+
+/**
+ * Bind row-1 headers to fields; an untitled optional field stays -1 (reads '').
+ * `missing` names each required field with the titles that would bind it.
+ */
+export function bindSheetColumns(headerRow: readonly unknown[]): {
+  colIndices: SheetColumnIndices;
+  missing: Array<{ field: SheetField; expectedLabels: readonly string[] }>;
+} {
+  const headers = headerRow.map((h) => cleanText(h).toLowerCase());
+  const colIndices = Object.fromEntries(
+    (Object.keys(SHEET_HEADER_CANDIDATES) as SheetField[]).map((field) => {
+      const wanted = SHEET_HEADER_CANDIDATES[field].map((c) => c.toLowerCase());
+      return [field, headers.findIndex((h) => wanted.includes(h))];
+    }),
+  ) as SheetColumnIndices;
+  const missing = REQUIRED_SHEET_FIELDS.filter((f) => colIndices[f] < 0).map((field) => ({
+    field,
+    expectedLabels: SHEET_HEADER_CANDIDATES[field],
+  }));
+  return { colIndices, missing };
+}
+
 /** Read a bound cell; an unbound column (-1) reads as ''. */
 function cell(row: SheetRow, index: number): string {
   return index >= 0 ? cleanText(row[index]) : '';

@@ -84,7 +84,7 @@ type OrderProjection = {
   currency?: string | null;
 };
 
-interface IngestCanonicalOrdersResult {
+export interface IngestCanonicalOrdersResult {
   processedOrders: number;
   insertedOrders: number;
   /** DB ids of the rows actually inserted this call — empty when every canonical order matched an existing row. */

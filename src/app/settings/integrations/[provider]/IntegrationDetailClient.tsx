@@ -77,10 +77,11 @@ export function IntegrationDetailClient({ def, summary, nangoReady }: Integratio
     }
   }, [summary.healthPath, def.label]);
 
-  const runSync = useCallback(async () => {
+  /** `full`: the connector's full pass — for Google Sheets, every tab (the one-time history backfill). */
+  const runSync = useCallback(async (full = false) => {
     setBusy(true);
     try {
-      const res = await fetch(`/api/integrations/${def.key}/sync`, { method: 'POST' });
+      const res = await fetch(`/api/integrations/${def.key}/sync${full ? '?full=1' : ''}`, { method: 'POST' });
       const data = await res.json().catch(() => ({}));
       if (res.ok && data.ok) {
         const bits = [data.imported ? `${data.imported} imported` : null, data.updated ? `${data.updated} updated` : null].filter(Boolean).join(', ');
@@ -364,7 +365,20 @@ export function IntegrationDetailClient({ def, summary, nangoReady }: Integratio
             <Button variant="secondary" size="sm" icon={<RefreshCw />} loading={busy} onClick={runHealth}>Check</Button>
           )}
           {summary.canSync && (
-            <Button variant="secondary" size="sm" icon={<RefreshCw />} loading={busy} onClick={runSync}>Sync now</Button>
+            <Button variant="secondary" size="sm" icon={<RefreshCw />} loading={busy} onClick={() => void runSync()}>Sync now</Button>
+          )}
+          {summary.canSync && def.key === 'google_sheets' && (
+            <Button
+              variant="secondary"
+              size="sm"
+              icon={<RefreshCw />}
+              loading={busy}
+              onClick={() => {
+                if (confirm('Backfill orders from EVERY Sheet_MM_DD_YYYY tab? Existing orders only gain blank fields; orders nobody has yet are inserted.')) void runSync(true);
+              }}
+            >
+              Backfill every tab
+            </Button>
           )}
           {summary.connected && (def.connect === 'vault' || def.connect === 'oauth' || def.connect === 'nango') && (
             <Button variant="ghost" size="sm" onClick={disconnect} disabled={busy} className="text-text-soft hover:text-red-600">

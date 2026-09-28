@@ -39,8 +39,9 @@ function fakes(connections: ConnectionStatus[]) {
 
 const canAll = () => true;
 
-test('syncPermissionForProvider: ShipStation is operator import, every other sync is admin', () => {
+test('syncPermissionForProvider: ShipStation and the sheet backup are operator import, every other sync is admin', () => {
   assert.equal(syncPermissionForProvider('shipstation'), 'orders.import');
+  assert.equal(syncPermissionForProvider('google_sheets'), 'orders.import');
   assert.equal(syncPermissionForProvider('square'), 'admin.manage_features');
   assert.equal(syncPermissionForProvider('shopify'), 'admin.manage_features');
 });
@@ -56,16 +57,22 @@ test('lists a wired order sync by connection name, gated by its permission', asy
   assert.deepEqual(out, [{ provider: 'square', label: 'Sync Square · Main store', canSync: false }]);
 });
 
-test('omits ShipStation (dock face), channels without a connector sync, and non-order rows', async () => {
+test('lists ShipStation first, the sheet backup second; omits syncless and non-order rows', async () => {
   const { deps } = fakes([
-    conn('shipstation', { displayLabel: 'USAV ShipStation' }),
+    conn('square', { displayLabel: 'Store' }),
+    conn('google_sheets', { capabilities: ['orders', 'tracking'], displayLabel: 'Google Sheets · Order List Sep 2026' }),
+    conn('shipstation', { displayLabel: 'ShipStation', capabilities: ['orders', 'tracking', 'labels'] }),
+    conn('ups', { capabilities: ['tracking'] }),
     conn('ebay', { displayLabel: 'USAV', scope: 'seller:USAV' }),
-    conn('amazon', { displayLabel: 'FBA NA' }),
-    conn('ecwid', { displayLabel: 'Ecwid store 16593703', capabilities: ['orders', 'catalog'] }),
     conn('zoho', { displayLabel: 'Connected · USAV', capabilities: ['inventory'] }),
-    conn('square', { connected: false }),
+    conn('shopify', { connected: false }),
   ]);
-  assert.deepEqual(await listOrderSyncMenuSources(ORG, canAll, deps), []);
+  const out = await listOrderSyncMenuSources(ORG, (perm) => perm === 'orders.import', deps);
+  assert.deepEqual(out, [
+    { provider: 'shipstation', label: 'Sync ShipStation', canSync: true },
+    { provider: 'google_sheets', label: 'Sync Google Sheets (backup) · Order List Sep 2026', canSync: true },
+    { provider: 'square', label: 'Sync Square · Store', canSync: false },
+  ]);
 });
 
 test('sorts by catalog label and suffixes duplicate names', async () => {

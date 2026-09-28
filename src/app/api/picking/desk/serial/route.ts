@@ -2,7 +2,7 @@ import { NextRequest, NextResponse, after } from 'next/server';
 import pool from '@/lib/db';
 import { tenantQuery, withTenantConnection, withTenantTransaction } from '@/lib/tenancy/db';
 import { invalidateCacheTags } from '@/lib/cache/upstash-cache';
-import { publishOrderChanged, publishTechLogChanged } from '@/lib/realtime/publish';
+import { publishTechLogChanged } from '@/lib/realtime/publish';
 import {
   getApiIdempotencyResponse,
   readIdempotencyKey,
@@ -18,6 +18,8 @@ import { normalizeTrackingKey18, normalizeTrackingLast8 } from '@/lib/tracking-f
 import { buildOrderPayload, findOrderByShipment } from '@/lib/tech/order-card';
 import { sqlDeskSessionAnchor } from '@/lib/station-activity';
 import { pickDeskSerialUnit, type DeskSerialPickResult } from '@/lib/picking/desk-serial-pick';
+import { revertDeskSerialPick, UnpickError, type RevertedUnitPick } from '@/lib/picking/unpick';
+import { publishOrderPickFacts } from '@/lib/picking/pick-facts-publish';
 import { refreshOrderStageFacts } from '@/lib/orders/order-stage-facts';
 import { withAuth } from '@/lib/auth/withAuth';
 
@@ -36,6 +38,9 @@ import { withAuth } from '@/lib/auth/withAuth';
  * `add` / `add-to-last` also pick the serial's unit when it holds an open
  * allocation on the desk order (`pickDeskSerialUnit`, same transaction); a
  * unit that can't be picked for this order comes back as `pickWarning`.
+ * `undo` / `remove` / `update` reverse that pick for every serial they drop
+ * (`revertDeskSerialPick`: unit + allocation back to ALLOCATED, inventory
+ * event recorded) and answer `unpicked` (`unpickedUnits` for `update`).
  * Actor is server-derived from the verified session; body.techId is ignored.
  */
 
@@ -69,8 +74,15 @@ type HandlerOutcome =
       /** The serial's allocated unit, picked for the desk order in the same transaction. */
       pick: DeskSerialPickResult;
     }
-  | { kind: 'ok'; serialNumbers: string[] }
-  | { kind: 'undo'; serialNumbers: string[]; removedSerial: string };
+  /** `remove` / `update`: the units whose desk pick the dropped serials reverted. */
+  | { kind: 'ok'; serialNumbers: string[]; orderId: number | null; unpicked: RevertedUnitPick[] }
+  | {
+      kind: 'undo';
+      serialNumbers: string[];
+      removedSerial: string;
+      orderId: number | null;
+      unpicked: RevertedUnitPick | null;
+    };
 
 export const POST = withAuth(async (req: NextRequest, ctx) => {
   const body = await req.json().catch(() => null);
@@ -172,6 +184,17 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
         const salCtx = salCtxResult.ctx;
         // Serials (tech_serial_numbers.order_id) and unit picks move the order's pick facts.
         const factsTarget = { orderIds: [salCtx.orderId], shipmentIds: [salCtx.shipmentId] };
+        // A dropped serial takes its desk pick with it (unit + allocation back
+        // to ALLOCATED); a unit the phone picked, or one the serial only
+        // re-scanned, stays picked.
+        const revertSerialPick = (droppedSerial: string, source: string) =>
+          revertDeskSerialPick(client, orgId, {
+            serial: droppedSerial,
+            orderId: salCtx.orderId,
+            shipmentId: salCtx.shipmentId,
+            actorStaffId: staffId,
+            source,
+          });
 
         if (isAdd) {
           const ins = await insertTechSerialForSalContext(client, {
@@ -217,6 +240,15 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
             throw new HandlerError(400, 'tsnId is required for remove');
           }
 
+          const tsnQ = await client.query<{ serial_number: string | null }>(
+            `SELECT serial_number FROM tech_serial_numbers
+              WHERE id = $1 AND context_station_activity_log_id = $2 AND organization_id = $3`,
+            [tsnId, resolvedSalId, orgId],
+          );
+          const removed = tsnQ.rows[0]
+            ? await revertSerialPick(String(tsnQ.rows[0].serial_number ?? ''), 'pick.desk.remove')
+            : null;
+
           await client.query(
             `DELETE FROM station_activity_logs WHERE tech_serial_number_id = $1 AND activity_type = 'SERIAL_ADDED' AND organization_id = $2`,
             [tsnId, orgId],
@@ -228,7 +260,7 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
 
           await refreshOrderStageFacts(orgId, factsTarget, client);
           const serialNumbers = await getTechSerialsBySalId(client, resolvedSalId);
-          return { kind: 'ok', serialNumbers };
+          return { kind: 'ok', serialNumbers, orderId: salCtx.orderId, unpicked: removed ? [removed] : [] };
         }
 
         if (action === 'update') {
@@ -247,8 +279,11 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
 
           const desiredSet = new Set(desired);
 
+          const unpicked: RevertedUnitPick[] = [];
           for (const [existingSerial, id] of existingMap) {
             if (!desiredSet.has(existingSerial)) {
+              const reverted = await revertSerialPick(existingSerial, 'pick.desk.update');
+              if (reverted) unpicked.push(reverted);
               await client.query(
                 `DELETE FROM station_activity_logs WHERE tech_serial_number_id = $1 AND activity_type = 'SERIAL_ADDED' AND organization_id = $2`,
                 [id, orgId],
@@ -277,7 +312,7 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
 
           await refreshOrderStageFacts(orgId, factsTarget, client);
           const serialNumbers = await getTechSerialsBySalId(client, resolvedSalId);
-          return { kind: 'ok', serialNumbers };
+          return { kind: 'ok', serialNumbers, orderId: salCtx.orderId, unpicked };
         }
 
         // undo
@@ -290,6 +325,7 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
           throw new HandlerError(400, 'No serials to undo');
         }
         const lastRow = last.rows[0];
+        const unpicked = await revertSerialPick(String(lastRow.serial_number ?? ''), 'pick.desk.undo');
         await client.query(
           `DELETE FROM station_activity_logs WHERE tech_serial_number_id = $1 AND activity_type = 'SERIAL_ADDED' AND organization_id = $2`,
           [lastRow.id, orgId],
@@ -301,10 +337,16 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
 
         await refreshOrderStageFacts(orgId, factsTarget, client);
         const serialNumbers = await getTechSerialsBySalId(client, resolvedSalId);
-        return { kind: 'undo', serialNumbers, removedSerial: lastRow.serial_number };
+        return {
+          kind: 'undo',
+          serialNumbers,
+          removedSerial: lastRow.serial_number,
+          orderId: salCtx.orderId,
+          unpicked,
+        };
       });
     } catch (err) {
-      if (err instanceof HandlerError) {
+      if (err instanceof HandlerError || err instanceof UnpickError) {
         const failBody = { success: false, error: err.message };
         if (idemKey && err.status < 500) {
           await saveApiIdempotencyResponse(pool, {
@@ -321,18 +363,19 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
       throw err;
     }
 
-    await invalidateCacheTags(['desk-pick-logs', 'orders-next']);
+    await invalidateCacheTags(['desk-pick-logs', 'orders-next', 'orders']);
     await publishTechLogChanged({ organizationId: orgId, techId: staffId, action: logAction, source: 'tech.serial' });
     if (outcome.kind === 'add' && outcome.pick.kind === 'picked') {
       // A committed pick repaints the To-ship Pick column — same event as the unit scan.
       const pickedOrderId = outcome.pick.orderId;
-      after(() =>
-        publishOrderChanged({
-          organizationId: orgId,
-          orderIds: [pickedOrderId],
-          source: 'pick.desk.serial',
-        }).catch(() => {}),
-      );
+      after(() => publishOrderPickFacts(orgId, [pickedOrderId], 'pick.desk.serial'));
+    } else if (outcome.kind !== 'add') {
+      // A dropped serial can move the order's pick fact (a serial is a pick
+      // signal; its unit may have been un-picked) — re-state it.
+      const units = outcome.kind === 'undo' ? (outcome.unpicked ? [outcome.unpicked] : []) : outcome.unpicked;
+      const orderIds = [outcome.orderId, ...units.map((u) => u.orderId)];
+      const source = outcome.kind === 'undo' ? 'pick.desk.undo' : `pick.desk.${action}`;
+      after(() => publishOrderPickFacts(orgId, orderIds, source));
     }
 
     let okBody: Record<string, unknown>;
@@ -352,9 +395,16 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
         ...(outcome.pick.kind === 'warning' ? { pickWarning: outcome.pick.warning } : {}),
       };
     } else if (outcome.kind === 'undo') {
-      okBody = { success: true, serialNumbers: outcome.serialNumbers, removedSerial: outcome.removedSerial };
+      okBody = {
+        success: true,
+        serialNumbers: outcome.serialNumbers,
+        removedSerial: outcome.removedSerial,
+        unpicked: outcome.unpicked,
+      };
+    } else if (action === 'remove') {
+      okBody = { success: true, serialNumbers: outcome.serialNumbers, unpicked: outcome.unpicked[0] ?? null };
     } else {
-      okBody = { success: true, serialNumbers: outcome.serialNumbers };
+      okBody = { success: true, serialNumbers: outcome.serialNumbers, unpickedUnits: outcome.unpicked };
     }
 
     if (idemKey) {

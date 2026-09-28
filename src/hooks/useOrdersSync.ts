@@ -23,6 +23,12 @@ import {
   type SyncRunState,
 } from '@/lib/orders-sync/run-steps';
 import { buildSyncRunDetail } from '@/lib/orders-sync/run-detail';
+import { qk } from '@/queries/keys';
+import {
+  fetchOrderSyncSources,
+  ORDER_SYNC_SOURCES_STALE_MS,
+  type OrderSyncSource,
+} from '@/hooks/useOrderSyncSources';
 
 /** The "Import Latest Orders" sync orchestration — ShipStation, the org's ONE order import, through the connection-driven sync API (`POST… */
 interface OrdersSyncStatus {
@@ -149,8 +155,12 @@ export function useOrdersSync() {
     setRun(null);
   }, []);
 
+  // The run ledger is the whole truth once it exists: a sheet-only or
+  // platform-only run never flips the ShipStation task to running.
   const isTransferring =
-    shipStationTask.status === 'running' || exceptionsTask.status === 'running';
+    shipStationTask.status === 'running' ||
+    exceptionsTask.status === 'running' ||
+    (run !== null && !run.settled);
 
   const handleCancelTransfer = () => {
     abortRef.current?.abort();
@@ -170,16 +180,52 @@ export function useOrdersSync() {
     toast.info('Order import cancelled', { id: SYNC_TOAST_ID });
   };
 
-  const handleTransfer = async () => {
+  /**
+   * Sync every linked platform — or just `providers` when the To-ship form
+   * narrowed the set. ShipStation imports, the Google Sheets backup attaches
+   * tracking for labels bought outside ShipStation, any other linked channel
+   * syncs after, and the exceptions pass runs last against what they landed.
+   */
+  const handleTransfer = async (opts: { providers?: readonly string[] } = {}) => {
+    // One run at a time: the face, the form and the hotkey all land here.
+    if (abortRef.current) return;
     const controller = new AbortController();
     abortRef.current = controller;
-    setShipStationTask({ status: 'running', details: emptyTransferDetails() });
-    // Exceptions sync runs AFTER ShipStation finishes so that rows just
-    // inserted are visible to the matcher. Keep it idle/queued until then.
-    setExceptionsTask({ status: 'idle', summary: 'Queued' });
     setStatus(null);
     setElapsedMs(0);
-    const freshRun = createSyncRun(['shipstation', 'exceptions']);
+
+    let sources: OrderSyncSource[] = [];
+    try {
+      sources = await queryClient.fetchQuery({
+        queryKey: qk.orderSyncSources,
+        queryFn: fetchOrderSyncSources,
+        staleTime: ORDER_SYNC_SOURCES_STALE_MS,
+      });
+    } catch {
+      // The list is a convenience; ShipStation below is still the floor.
+    }
+    const selected = sources.filter(
+      (source) => source.canSync && (!opts.providers || opts.providers.includes(source.provider)),
+    );
+    // No list (fetch failed / nothing linked yet) → the order import of record.
+    const runShipStation =
+      selected.some((s) => s.provider === 'shipstation') || (sources.length === 0 && !opts.providers);
+    const sheetSource = selected.find((s) => s.provider === 'google_sheets');
+    const platformSources = selected.filter((s) => s.provider !== 'shipstation' && s.provider !== 'google_sheets');
+
+    setShipStationTask(
+      runShipStation ? { status: 'running', details: emptyTransferDetails() } : { status: 'idle', summary: 'Not selected' },
+    );
+    // Exceptions sync runs AFTER the platforms finish so that rows just
+    // inserted are visible to the matcher. Keep it idle/queued until then.
+    setExceptionsTask({ status: 'idle', summary: 'Queued' });
+    const lanes: SyncRunLane[] = [
+      ...(runShipStation ? (['shipstation'] as const) : []),
+      ...(sheetSource ? (['google_sheets'] as const) : []),
+      ...(platformSources.length > 0 ? (['platforms'] as const) : []),
+      'exceptions',
+    ];
+    const freshRun = createSyncRun(lanes);
     runRef.current = freshRun;
     setRun(freshRun);
     const t0 = Date.now();
@@ -354,9 +400,63 @@ export function useOrdersSync() {
       return { payload: data, error: lastError };
     };
 
+    /** Google Sheets backup: backfills orders (fill blanks) and inserts the ones nobody has. */
+    const runSheetSync = async (): Promise<{ imported: number; updated: number; ambiguous: number; error?: string }> => {
+      let data: Record<string, unknown> = {};
+      let lastError: string | undefined;
+      try {
+        await streamNdjson(
+          '/api/integrations/google_sheets/sync',
+          { method: 'POST', headers: { Accept: NDJSON_ACCEPT }, signal: controller.signal },
+          {
+            onBatch: (events) => {
+              foldRun('google_sheets', events);
+              for (const event of events) {
+                if (event.type === 'result') data = event.result;
+                else if (event.type === 'error') lastError = readStreamError(event.error);
+              }
+            },
+          },
+        );
+      } catch (err: unknown) {
+        if (err instanceof Error && err.name === 'AbortError') throw err;
+        lastError = err instanceof Error ? err.message : 'Network error';
+      }
+      if (!lastError && data.ok === false) lastError = String(data.error || 'Failed');
+      completeRunLane('google_sheets', { ok: !lastError, error: lastError });
+      const imported = Number(data.imported ?? 0);
+      const updated = Number(data.updated ?? 0);
+      if (imported > 0 || updated > 0) void refreshDashboard();
+      const ambiguous = Number((data.stats as Record<string, number> | undefined)?.ambiguous ?? 0);
+      return { imported, updated, ambiguous, error: lastError };
+    };
+
+    /** Every other linked channel, one after another (each is its own round trip). */
+    const runPlatformSyncs = async (): Promise<{ imported: number; failures: string[] }> => {
+      let imported = 0;
+      const failures: string[] = [];
+      for (const source of platformSources) {
+        const res = await fetch(`/api/integrations/${source.provider}/sync`, {
+          method: 'POST',
+          signal: controller.signal,
+        });
+        const data = (await res.json().catch(() => ({}))) as { ok?: boolean; error?: string; imported?: number; updated?: number };
+        if (!res.ok || data.ok === false) failures.push(`${source.label.replace(/^Sync /, '')}: ${data.error || 'failed'}`);
+        else imported += Number(data.imported ?? 0) + Number(data.updated ?? 0);
+        foldRun('platforms', [{ type: 'phase', phase: 'syncing_platforms', count: 1 }]);
+      }
+      completeRunLane('platforms', { ok: failures.length === 0, error: failures[0] });
+      if (imported > 0) void refreshDashboard();
+      return { imported, failures };
+    };
+
     try {
-      const shipStationR = await runShipStationSync();
+      const shipStationR: { payload: Record<string, unknown> | null; error?: string } = runShipStation
+        ? await runShipStationSync()
+        : { payload: null };
       shipStationResultPayload = shipStationR.payload;
+      const sheetR = sheetSource ? await runSheetSync() : null;
+      const platformsR = platformSources.length > 0 ? await runPlatformSyncs() : null;
 
       setExceptionsTask({ status: 'running', phase: 'starting' });
       const exceptionsR = await consumeExceptionsStream('/api/orders-exceptions/sync', {
@@ -374,7 +474,7 @@ export function useOrdersSync() {
       });
       exceptionsResultPayload = exceptionsR.payload;
 
-      const totalInserted = Number(shipStationResultPayload?.insertedOrders || 0);
+      const totalInserted = Number(shipStationResultPayload?.insertedOrders || 0) + (platformsR?.imported ?? 0);
       const totalUpdated = Number(shipStationResultPayload?.updatedOrdersFields || 0);
       const totalTracking = Number(shipStationResultPayload?.updatedOrdersTracking || 0);
       const totalUnresolved = Number(shipStationResultPayload?.unresolvedTrackingCount || 0);
@@ -383,13 +483,18 @@ export function useOrdersSync() {
       await invalidateDashboardOrderQueries(queryClient);
       dispatchUsavRefreshData();
 
-      const anyFailed = [shipStationR, exceptionsR].some(
-        (r) => Boolean(r.error) || (r.payload && (r.payload as any).success === false),
-      );
+      const anyFailed =
+        [shipStationR, exceptionsR].some((r) => Boolean(r.error) || r.payload?.success === false) ||
+        Boolean(sheetR?.error) ||
+        (platformsR?.failures.length ?? 0) > 0;
       const parts = [];
       if (totalInserted > 0) parts.push(`${totalInserted} inserted`);
       if (totalUpdated > 0) parts.push(`${totalUpdated} updated${totalTracking ? ` (${totalTracking} tracking)` : ''}`);
+      if (sheetR && sheetR.imported + sheetR.updated > 0) {
+        parts.push(`Google Sheets ${sheetR.imported} inserted, ${sheetR.updated} backfilled`);
+      }
       if (totalUnresolved > 0) parts.push(`⚠ ${totalUnresolved} tracking not recognized`);
+      if (sheetR && sheetR.ambiguous > 0) parts.push(`⚠ ${sheetR.ambiguous} sheet orders on two platforms`);
 
       // Rows that arrived but resolved no exception still count as work done;
       // an import that inserted nothing and fixed nothing is "already up to
@@ -401,8 +506,8 @@ export function useOrdersSync() {
         type: anyFailed ? 'error' : 'success',
         message: summary,
         details: {
-          inserted: totalInserted,
-          updated: totalUpdated,
+          inserted: totalInserted + (sheetR?.imported ?? 0),
+          updated: totalUpdated + (sheetR?.updated ?? 0),
           trackingAttached: totalTracking,
           unresolvedTracking: totalUnresolved,
           processedRows: Number(shipStationResultPayload?.processedRows || 0),
@@ -416,6 +521,8 @@ export function useOrdersSync() {
       if (anyFailed) {
         const failures = [
           shipStationR.error && `ShipStation: ${shipStationR.error}`,
+          sheetR?.error && `Google Sheets: ${sheetR.error}`,
+          ...(platformsR?.failures ?? []),
           exceptionsR.error && `Exceptions: ${exceptionsR.error}`,
         ].filter(Boolean);
         toast.error(failures.length > 0 ? failures.join(' · ') : summary, {
