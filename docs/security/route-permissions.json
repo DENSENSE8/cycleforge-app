@@ -1,9 +1,9 @@
 {
   "version": 1,
-  "generatedAt": "2026-09-29T15:52:07Z",
-  "totalRoutes": 1148,
+  "generatedAt": "2026-09-29T16:30:54Z",
+  "totalRoutes": 1149,
   "summary": {
-    "permissionGated": 932,
+    "permissionGated": 933,
     "authenticatedNoPermission": 131,
     "anonymousIntentional": 36,
     "serviceToService": 49,
@@ -6649,6 +6649,15 @@
       ],
       "gate": "withAuth",
       "permission": "receiving.mark_received",
+      "exemptReason": null
+    },
+    {
+      "path": "/api/receiving/inbound/ocr-health/route.ts",
+      "methods": [
+        "GET"
+      ],
+      "gate": "withAuth",
+      "permission": "receiving.view",
       "exemptReason": null
     },
     {
