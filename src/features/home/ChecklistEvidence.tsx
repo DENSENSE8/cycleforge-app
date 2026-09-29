@@ -1,10 +1,9 @@
 'use client';
 
-/** The open DAILY CHECKLIST item in the Daily ledger's evidence column. */
+/** The open DAILY CHECKLIST item in Daily's compact record rail. */
 
 import { useEffect, useState } from 'react';
 import { SupportTicketDetail } from '@/components/support/zendesk/chat/SupportTicketDetail';
-import { PomodoroTimer } from '@/components/ui/PomodoroTimer';
 import { TabSwitch } from '@/design-system/components/TabSwitch';
 import {
   EVIDENCE_CONTROL_CLASS,
@@ -12,14 +11,9 @@ import {
   EvidenceFact,
   EvidenceFacts,
   EvidenceSection,
-  EvidenceTitle,
   evidenceVerbClass,
 } from '@/design-system/components/record-ledger/RecordEvidence';
-import { RECORD_HIT_CLASS } from '@/design-system/components/record-ledger/record-ledger-geometry';
-import { RECORD_LABEL_CLASS } from '@/design-system/tokens/industrial-record';
 import { cornerClass } from '@/design-system/tokens/radius';
-import { STATE_TONE_CLASSES } from '@/design-system/tokens/lifecycle';
-import { agendaRecordState } from '@/lib/daily/agenda-record-state';
 import type { DailyAgendaRow } from '@/lib/daily/daily-agenda-row';
 import { CIVIL_TIME_RE } from '@/lib/reminders/reminder-contract';
 import { useRecordView } from '@/lib/pomodoro/use-record-view';
@@ -42,8 +36,6 @@ export function ChecklistEvidence({
   row,
   ticketId,
   dateKey,
-  nowMs,
-  isToday,
   canTick,
   canManage,
   pending,
@@ -54,8 +46,6 @@ export function ChecklistEvidence({
   dateKey: string;
   /** The paired Zendesk ticket's PROVIDER number, or null. */
   ticketId: number | null;
-  nowMs: number;
-  isToday: boolean;
   canTick: boolean;
   canManage: boolean;
   pending: boolean;
@@ -63,7 +53,6 @@ export function ChecklistEvidence({
   onSchedule: (patch: ChecklistSchedulePatch) => void;
 }) {
   useRecordView('checklist', row.id, dateKey);
-  const state = agendaRecordState(row, nowMs, isToday);
   const [face, setFace] = useState<'item' | 'ticket'>('item');
   useEffect(() => setFace('item'), [row.key]);
   const [timeDraft, setTimeDraft] = useState<string | null>(null);
@@ -84,17 +73,6 @@ export function ChecklistEvidence({
 
   return (
     <div className="flex min-h-0 flex-1 flex-col" data-testid="checklist-evidence">
-      <EvidenceTitle sub={row.cadence === 'once' ? 'One-off checklist item' : 'Daily checklist · every day'}>
-        CHECK {row.id}
-      </EvidenceTitle>
-      <PomodoroTimer kind="checklist" id={row.id} date={dateKey} canRun={isToday && !row.done} />
-      <div className={cn('flex items-center gap-2 border-b border-mode-ink px-4', RECORD_HIT_CLASS)}>
-        <span aria-hidden className={cn('h-2 w-2 shrink-0', STATE_TONE_CLASSES[state.face.tone].dot)} />
-        <span className={cn(RECORD_LABEL_CLASS, state.late ? 'text-mode-warn' : 'text-mode-ink')}>
-          {state.code} · {state.word}
-        </span>
-        {state.next ? <span className={cn(RECORD_LABEL_CLASS, 'ml-auto text-mode-ink')}>→ {state.next}</span> : null}
-      </div>
 
       {ticketId != null ? (
         <div className="border-b border-mode-rule px-4 py-2">
@@ -116,12 +94,11 @@ export function ChecklistEvidence({
         </div>
       ) : (
         <>
-          <EvidenceSection label="What to do">
-            <p className="whitespace-pre-wrap text-role-body font-bold text-mode-ink">{row.title}</p>
-            {row.description ? (
-              <p className="mt-1 whitespace-pre-wrap text-role-data text-mode-muted">{row.description}</p>
-            ) : null}
-          </EvidenceSection>
+          {row.description ? (
+            <EvidenceSection label="Instructions">
+              <p className="whitespace-pre-wrap text-role-data text-mode-muted">{row.description}</p>
+            </EvidenceSection>
+          ) : null}
 
           <EvidenceSection label="Due & reminder" testId="checklist-schedule">
             <div className="flex flex-col gap-2">

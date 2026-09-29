@@ -3,10 +3,10 @@
 /**
  * Daily (`/`) — the whole agenda as ONE triage list (owner 2026-09-28: the
  * Daily page is a readable, triageable task list, never an industrial
- * ledger): `TriageCardList density="row"`, one `AgendaListRow` per record.
+ * ledger): one multi-row `RecordCard` per record inside `TriageCardList`.
  * ## Three stores, one display (operator 2026-09-25)
  * The daily checklist, handed-over tasks and helpdesk tickets read in the same
- * row. The sidebar owns the lens (`?tab=`), status (`?filter=`), and scope
+ * card list. The sidebar owns the lens (`?tab=`), status (`?filter=`), and scope
  * (`?scope=`); the header Find owns `?q=`. The open record (`?task=` /
  * `?check=`) reads in the record plane and J / K walk the list.
  */
@@ -63,8 +63,8 @@ import { TaskEvidence } from '@/features/tasks/workspace/TaskEvidence';
 import { buildDailyTaskRows } from './grid/daily-task-row';
 import { DailyAgendaComposer } from './DailyAgendaComposer';
 import { AgendaRecentRail } from './AgendaRecentRail';
-import { AgendaListRow, AgendaRecordStatus, type AgendaRowModel } from './AgendaRow';
-import { DailyEntrance, type EntrancePhase } from './DailyEntrance';
+import { AgendaCard, AgendaRecordStatus, type AgendaRowModel } from './AgendaRow';
+import { DailyEntrance } from './DailyEntrance';
 import { ChecklistEvidence, type ChecklistSchedulePatch } from './ChecklistEvidence';
 import { parseDailyStatusFilter } from './daily-check-filter';
 import { useSurfacePaintMark } from '@/lib/observability/paint-timing';
@@ -117,7 +117,7 @@ const NO_TASK_ROWS: readonly TaskDeskRow[] = [];
 /** Stable no-op subscription: the hydration snapshot below never changes after mount. */
 const subscribeNothing = () => () => {};
 
-/** Stamped once the agenda's first real rows (or its empty/error state) render — the welcome assembly reveals the agenda on it. */
+/** Stamped once the agenda's first real rows (or its empty/error state) render. */
 export const DAILY_PRIMARY_PAINT_MARK = paintMarkId('daily', 'primary');
 /** The list's DOM hook (`data-testid`). */
 export const DAILY_LEDGER_TEST_ID = VIEW.bodyTestId;
@@ -126,7 +126,6 @@ export function DailyAgenda() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { has } = useAuth();
-  const [entrance, setEntrance] = useState<EntrancePhase>('revealed');
   /** The checklist LIST is org-managed — adding to it (or moving its due time) changes what every future report measures — so it gates on… */
   const canManage = has('admin.manage_staff');
 
@@ -216,19 +215,10 @@ export function DailyAgenda() {
     () => (status === 'all' ? lensed : lensed.filter((row) => (status === 'done' ? row.done : !row.done))),
     [lensed, status],
   );
-  // Let query hydration mount rows while the page is hidden, then freeze that
-  // row set during the full-viewport spring. Late data joins once the
-  // container is flush, outside the expensive transform.
-  const [prewarmedVisible, setPrewarmedVisible] = useState(visible);
-  useEffect(() => {
-    if (entrance !== 'rising') setPrewarmedVisible(visible);
-  }, [entrance, visible]);
-  const renderedVisible = entrance === 'rising' ? prewarmedVisible : visible;
-
   // ── the list's bands, through the face's cut (held-new) ──────────────────
   const cut = useTriageCut({ statusKeys: NO_CHIPS, recordParams: VIEW.recordParams, statusParam: VIEW.chips.param });
   const { filterBands } = cut;
-  const allBands = useMemo(() => agendaBands(renderedVisible), [renderedVisible]);
+  const allBands = useMemo(() => agendaBands(visible), [visible]);
   const bands = useMemo(() => filterBands(allBands, agendaGroupKey, noChips), [filterBands, allBands]);
   const painted = useMemo(() => bands.flatMap(([, groups]) => groups.flatMap((group) => group.rows)), [bands]);
 
@@ -359,7 +349,7 @@ export function DailyAgenda() {
         // A Find naming exactly one record's handle (order #, carton, ticket #) opens it.
         exactFind: (q: string, model: AgendaRowModel) => model.lead.recordLabel?.toLowerCase() === q,
         renderCard: (props: TriageCardSlotProps<DailyAgendaRow, AgendaRowModel>) => (
-          <AgendaListRow {...props} nowMs={nowMs} isToday={isToday} />
+          <AgendaCard {...props} nowMs={nowMs} isToday={isToday} />
         ),
       }),
     [nowMs, isToday],
@@ -439,15 +429,12 @@ export function DailyAgenda() {
   };
 
   return (
-    <DailyEntrance ready={!loading} onPhase={setEntrance}>
+    <DailyEntrance>
       {frame(
         <div
-          data-welcome-focus="Daily agenda"
-          data-welcome-focus-mark={DAILY_PRIMARY_PAINT_MARK}
           className="flex min-h-0 min-w-0 flex-1"
         >
           <TriageCardList
-            density="row"
             family={family}
             feed={feed}
             cut={cut}
@@ -520,8 +507,6 @@ export function DailyAgenda() {
                           row={openRow}
                           dateKey={dateKey}
                           ticketId={openCheckTicket}
-                          nowMs={nowMs}
-                          isToday={isToday}
                           canTick={isToday}
                           canManage={canManage}
                           pending={updateItem.isPending}

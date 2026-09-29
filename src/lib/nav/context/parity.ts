@@ -10,7 +10,9 @@
  * `parityGaps(pageId)` resolves the page's own context plus one context per
  * section view (all permissions, no org override) and lists every row none of
  * them covers. The resolver test fails if a `contextual` page has a gap; the
- * sidebar probe prints the gaps for the rest.
+ * sidebar probe prints the gaps for the rest. Operational record feeds are
+ * intentionally not parity rows: data belongs in the central workspace, not
+ * in the contextual sidebar.
  */
 
 import { ALL_PERMISSIONS } from '@/lib/auth/permissions-shared';
@@ -62,12 +64,12 @@ const ROWS: Readonly<Record<string, readonly Row[]>> = {
     ['view', 'pickup', 'src/lib/sidebar-navigation.ts:846'],
     ['view', 'repairs', 'src/lib/sidebar-navigation.ts:847'],
     ['param', 'mode', 'src/lib/routing/query-mode-routes.ts:94', 'sales'],
-    ['param', 'tab', 'src/components/walk-in/WalkInHistoryHub.tsx:56-73'],
+    ['param', 'tab', 'src/components/walk-in/WalkInHistoryHub.tsx'],
     ['param', 'sq', 'src/components/walk-in/SalesHistoryTable.tsx', 'sales'],
     ['param', 'search', 'src/components/repair/RepairTable.tsx', 'repairs'],
-    ['action', 'walk-in.new-sale', 'src/components/walk-in/WalkInHistorySidebar.tsx:18-23,55-64'],
-    ['action', 'walk-in.local-pickup', 'src/components/walk-in/WalkInHistorySidebar.tsx:24-29,55-64'],
-    ['action', 'walk-in.repair-intake', 'src/components/walk-in/WalkInHistorySidebar.tsx:30-35,55-64'],
+    ['action', 'walk-in.new-sale', 'src/lib/nav/context/pages.ts NAV_PAGE_DECLS.sales.actions'],
+    ['action', 'walk-in.local-pickup', 'src/lib/nav/context/pages.ts NAV_PAGE_DECLS.sales.actions'],
+    ['action', 'walk-in.repair-intake', 'src/lib/nav/context/pages.ts NAV_PAGE_DECLS.sales.actions'],
   ],
   operations: [
     ['view', 'live', 'src/lib/sidebar-navigation.ts:866'],
@@ -139,7 +141,6 @@ const ROWS: Readonly<Record<string, readonly Row[]>> = {
     ['view', 'done', 'src/components/receiving/triage/TriageWorkspaceView.tsx'],
     ['param', 'triview', 'src/utils/triage-workspace-state.ts'],
     ['scanInput', 'arrival', 'src/components/sidebar/receiving/ReceivingScanBands.tsx:41-94; src/components/sidebar/ReceivingSidebarPanel.tsx:502'],
-    ['recents', 'receiving.scanned', 'src/components/sidebar/receiving/ReceivingRailBody.tsx:51-63; src/lib/receiving/rail/feeds.ts:424-437'],
     ['param', 'triq', 'src/components/sidebar/ReceivingSidebarPanel.tsx:174-193'],
     ['param', 'staff', 'src/components/sidebar/receiving/ReceivingFeedRail.tsx:78-80'],
   ],
@@ -151,7 +152,6 @@ const ROWS: Readonly<Record<string, readonly Row[]>> = {
     ['view', 'all', 'src/components/receiving/unbox/UnboxWorkspaceView.tsx'],
     ['param', 'unboxview', 'src/utils/unbox-workspace-state.ts'],
     ['scanInput', 'unbox', 'src/components/sidebar/receiving/ReceivingScanBands.tsx:119-148; src/components/sidebar/ReceivingSidebarPanel.tsx:526'],
-    ['recents', 'receiving.unbox_opened', 'src/components/sidebar/receiving/ReceivingRailBody.tsx:66-75; src/lib/receiving/rail/feeds.ts:342-368'],
     ['param', 'staff', 'src/components/sidebar/receiving/ReceivingFeedRail.tsx:78-80'],
     ['action', 'unbox.resume', 'src/components/receiving/unbox/UnboxDeskActions.tsx:42-60,87-95'],
     ['action', 'unbox.check', 'src/components/receiving/unbox/UnboxDeskActions.tsx:31-35,77-86'],
@@ -159,7 +159,6 @@ const ROWS: Readonly<Record<string, readonly Row[]>> = {
   ],
   pickup: [
     ['scanInput', 'pickup', 'src/components/sidebar/receiving/ReceivingScanBands.tsx:166-193; src/components/sidebar/ReceivingSidebarPanel.tsx:463-481'],
-    ['recents', 'pickup.orders', 'src/components/receiving/pickup/PickupSidebarRail.tsx:27-32,63-130'],
     ['param', 'lcpu', 'src/components/receiving/pickup/PickupSidebarRail.tsx:61,93-102'],
     ['param', 'q', 'src/components/receiving/pickup/PickupWorkspace.tsx'],
     ['param', 'sort', 'src/components/receiving/pickup/PickupWorkspace.tsx'],
@@ -182,7 +181,6 @@ const ROWS: Readonly<Record<string, readonly Row[]>> = {
     ['param', 'testTab', 'src/utils/testing-workspace-state.ts'],
     ['param', 'search', 'src/components/tech/TestingHistoryList.tsx'],
     ['scanInput', 'testing', 'src/components/sidebar/receiving/TestingScanBar.tsx:27-149'],
-    ['recents', 'testing.opened', 'src/components/sidebar/receiving/TestingRecentRail.tsx:20-35'],
   ],
   'ready-to-pack': [
     ['view', 'pending', 'src/components/tech/ShippingWorkspaceView.tsx'],
@@ -192,7 +190,6 @@ const ROWS: Readonly<Record<string, readonly Row[]>> = {
     ['param', 'ship', 'src/utils/shipping-workspace-state.ts'],
     ['param', 'q', 'src/components/outbound/ready/ReadyWorkspaceBody.tsx'],
     ['scanInput', 'station', 'src/components/sidebar/tech/ShippingScanBand.tsx:46-234'],
-    ['recents', 'tech.scans', 'src/components/sidebar/shipping/ShippingStaffScanHistoryRail.tsx:45-174'],
   ],
   incoming: [
     ['view', 'pipeline', 'src/lib/sidebar-navigation.ts:964'],
@@ -314,7 +311,6 @@ const ROWS: Readonly<Record<string, readonly Row[]>> = {
     ['view', 'history', 'src/components/packer/PackWorkspaceView.tsx'],
     ['param', 'packview', 'src/utils/pack-workspace-state.ts'],
     ['scanInput', 'pack', 'src/components/station/PackScanColumn.tsx:391-420'],
-    ['recents', 'packer.packs', 'src/components/sidebar/packer/PackRecentPacksRail.tsx:39-168'],
   ],
   products: [
     ['view', 'catalog', 'src/lib/sidebar-navigation.ts (products children)'],
@@ -328,7 +324,6 @@ const ROWS: Readonly<Record<string, readonly Row[]>> = {
     ['param', 'sort', 'src/components/sidebar/ProductsSidebarPanel.tsx parsePairingSort', 'pairing'],
     ['param', 'sku', 'src/components/sidebar/ProductsSidebarPanel.tsx PairingSidebarQueue', 'pairing'],
     ['param', 'skuId', 'src/hooks/useProductsSkuIdParam.ts', 'qc'],
-    ['recents', 'labels.prints', 'src/lib/nav/context/recents/adapters.ts labelPrintRecentRow'],
     ['action', 'pairing.pair-identifier', 'src/lib/nav/context/pages.ts NAV_PAGE_DECLS.products.items.pairing'],
     ['action', 'pairing.add-sku', 'src/lib/nav/context/pages.ts NAV_PAGE_DECLS.products.items.pairing'],
   ],
@@ -360,7 +355,6 @@ const ROWS: Readonly<Record<string, readonly Row[]>> = {
     ['view', 'calls', 'src/lib/sidebar-navigation.ts:1258-1266'],
     ['view', 'warranty', 'src/lib/sidebar-navigation.ts:1267-1276'],
     ['view', 'issues', 'src/lib/sidebar-navigation.ts:1277-1286'],
-    ['recents', 'support.tickets', 'src/components/support/zendesk/queue/SupportTicketsRecentRail.tsx:22; src/hooks/useRecentTickets.ts:18'],
   ],
   // New page (no old UI): the rows are the handoff's §6 contract, one per control.
   imports: [

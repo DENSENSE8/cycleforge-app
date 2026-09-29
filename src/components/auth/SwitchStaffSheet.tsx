@@ -10,13 +10,6 @@ import { StaffPickerList, type StaffPickerRow } from '@/components/auth/StaffPic
 import { BottomSheet } from '@/components/ui/BottomSheet';
 import { SearchField } from '@/design-system/primitives/SearchField';
 import { readRecentSignins, writeRecentSignin } from '@/lib/auth/recent-signins';
-import { isMobileFirstPath } from '@/lib/mobile/mobile-first-surface';
-import { armBootSplash, readWelcomeThemeOverride, WELCOME_PLAY_EVENT } from '@/lib/boot-flag';
-import { preloadSelectedWelcomeVariant } from '@/components/boot/welcome/welcome-loader';
-import { resolveWelcomeTheme } from '@/components/boot/welcome/welcome-theme';
-import { getStaffColorHex } from '@/utils/staff-colors';
-import { staffInitials } from '@/design-system/components/StaffBadge';
-import { photoContentUrl } from '@/lib/photos/display-url';
 
 function humanError(code: string | undefined): string {
   switch (code) {
@@ -78,26 +71,9 @@ export function SwitchStaffSheet() {
         return;
       }
       writeRecentSignin(row.id);
-      // Desktop only: the mobile tree hosts no welcome, so a stash there would
-      // linger and replay on the next desktop load.
-      const desktop = !isMobileFirstPath(window.location.pathname);
-      if (desktop) {
-        const photoId = row.avatar_photo_id ?? null;
-        armBootSplash({
-          name: row.name,
-          colorHex: getStaffColorHex({ id: row.id, color_hex: row.color_hex }),
-          avatarUrl: photoId && photoId > 0 ? photoContentUrl(photoId, 'thumb') : undefined,
-          initials: staffInitials(row.name),
-          themeId: resolveWelcomeTheme(new Date(), readWelcomeThemeOverride()).id,
-        });
-        await preloadSelectedWelcomeVariant();
-      }
       await refresh();
       router.refresh();
       closeSwitcher();
-      // In-place switch (no navigation): the shell host plays the welcome once
-      // AuthContext carries the new staffer (refresh() committed it above).
-      if (desktop) window.dispatchEvent(new Event(WELCOME_PLAY_EVENT));
     } catch {
       setPickerMessage('Switch failed. Try again.');
       setPicked(null);

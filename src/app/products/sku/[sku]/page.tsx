@@ -24,7 +24,7 @@ export default async function ProductDetailPage({ params }: ProductDetailPagePro
     }
 
     return (
-        <div className="min-h-full bg-surface-canvas">
+        <div className="h-full min-h-0 bg-surface-canvas">
             <Suspense fallback={<div className="p-6 text-sm text-text-faint">Loading {sku}…</div>}>
                 <ProductDetail sku={sku} />
             </Suspense>

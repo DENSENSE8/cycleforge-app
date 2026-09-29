@@ -1,22 +1,15 @@
 'use client';
 
-/** The open TASK in the Daily ledger's evidence column — everything a staffer needs to finish it without leaving the list: */
+/** The open TASK in Daily's compact record rail — the work needed to finish it without leaving the list. */
 
 import { useEffect, useRef, useState, type DragEvent } from 'react';
 import { useRouter } from 'next/navigation';
 import { SupportTicketDetail } from '@/components/support/zendesk/chat/SupportTicketDetail';
-import { PomodoroTimer } from '@/components/ui/PomodoroTimer';
 import { TabSwitch } from '@/design-system/components/TabSwitch';
 import {
   EvidenceDecisionBar,
-  EvidenceTitle,
   type EvidenceVerb,
 } from '@/design-system/components/record-ledger/RecordEvidence';
-import { RECORD_LABEL_CLASS } from '@/design-system/tokens/industrial-record';
-import { STATE_TONE_CLASSES } from '@/design-system/tokens/lifecycle';
-import { RECORD_HIT_CLASS } from '@/design-system/components/record-ledger/record-ledger-geometry';
-import { agendaRecordState } from '@/lib/daily/agenda-record-state';
-import { dailyAgendaFromTask } from '@/lib/daily/daily-agenda-row';
 import {
   isTaskDeskOpen,
   taskDeskRecordHref,
@@ -109,7 +102,6 @@ export function TaskEvidence({
     return () => window.removeEventListener('paste', onPaste);
   }, [upload, addLink]);
 
-  const state = agendaRecordState(dailyAgendaFromTask(row), nowMs, true);
   const open = isTaskDeskOpen(row.status);
   const recordHref = taskDeskRecordHref(row, 'desk');
   const recordLabel = taskDeskRecordLabel(row);
@@ -165,15 +157,6 @@ export function TaskEvidence({
         data-testid="task-media-input"
       />
 
-      <EvidenceTitle sub={recordLabel}>TASK {row.id}</EvidenceTitle>
-      <PomodoroTimer kind="task" id={row.id} canRun={row.status !== 'DONE' && row.status !== 'CANCELED'} />
-      <div className={cn('flex items-center gap-2 border-b border-mode-ink px-4', RECORD_HIT_CLASS)}>
-        <span aria-hidden className={cn('h-2 w-2 shrink-0', STATE_TONE_CLASSES[state.face.tone].dot)} />
-        <span className={cn(RECORD_LABEL_CLASS, state.late ? 'text-mode-warn' : 'text-mode-ink')}>
-          {state.code} · {state.word}
-        </span>
-        {state.next ? <span className={cn(RECORD_LABEL_CLASS, 'ml-auto text-mode-ink')}>→ {state.next}</span> : null}
-      </div>
 
       {faceTabs.length > 1 ? (
         <div className="border-b border-mode-rule px-4 py-2">

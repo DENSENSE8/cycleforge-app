@@ -4,7 +4,6 @@ import { AppShellSwitch } from "@/components/layout/AppShellSwitch";
 import { THEME_BOOT_SCRIPT } from "@/lib/theme/theme";
 import { STATION_SKIN_BOOT_SCRIPT } from "@/lib/theme/station-skin";
 import { STATION_DEPTH_BOOT_SCRIPT } from "@/lib/theme/station-depth";
-import { BOOT_SPLASH_SCRIPT } from "@/lib/boot-splash-script";
 import { designTokenStyleText } from '@/styles/tokens';
 import { themePaletteStyleText } from '@/design-system/themes/registry';
 import { stationSkinStyleText } from '@/design-system/themes/station-skins';
@@ -120,8 +119,6 @@ export default async function RootLayout({
                       "(function(){try{if(!('serviceWorker' in navigator))return;navigator.serviceWorker.getRegistrations().then(function(rs){rs.forEach(function(r){r.unregister();});});if(window.caches){caches.keys().then(function(ks){ks.forEach(function(k){caches.delete(k);});});}}catch(e){}})();",
                   }}
                 />
-                {/* Paints the static welcome greeting before hydration on a fresh sign-in (one-shot flag or ?welcome=1), bridging the white gap until <WelcomeGate> mounts the animated overlay. */}
-                <script dangerouslySetInnerHTML={{ __html: BOOT_SPLASH_SCRIPT }} />
             </head>
             <body className={`${cfSans.className} antialiased m-0 overflow-hidden ${appChromeClass}`}>
                 {/* Pin the app to the visual viewport. */}

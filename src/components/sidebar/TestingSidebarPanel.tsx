@@ -8,11 +8,6 @@ import { SIDEBAR_GUTTER } from '@/components/layout/header-shell';
 import { appChromeClass } from '@/design-system/tokens/app-surface';
 import { TestingScanBar } from '@/components/sidebar/receiving/TestingScanBar';
 import { ScanBandShell, isScanPreview, useScanModeRelease } from '@/components/station/scan-bar';
-import { TestingRecentRail } from '@/components/sidebar/receiving/TestingRecentRail';
-import { SearchField } from '@/design-system/primitives/SearchField';
-import { SidebarRailScrollport } from '@/components/sidebar/rail-shell/SidebarRailScrollport';
-import { ReceivingRecentRailFilters } from '@/components/sidebar/rail-shell/ReceivingRecentRailFilters';
-import { useReceivingRailFacets } from '@/components/sidebar/rail-shell/useReceivingRailFacets';
 import { useIsMobile } from '@/hooks';
 import { useStationTheme } from '@/hooks/useStationTheme';
 import {
@@ -32,10 +27,6 @@ import {
 import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
 import { dispatchSelectLine } from '@/components/station/receiving-lines-table-helpers';
 import { seedReceivingSiblingsCache } from '@/lib/queries/receiving-queries';
-import {
-  readSelectLineDetail,
-  type ReceivingSelectLineDetail,
-} from '@/components/sidebar/receiving/receiving-sidebar-shared';
 import { DetailStackRailRegistrar } from '@/components/right-rail/DetailStackRailRegistrar';
 import { BoxWorkbenchPanel } from '@/components/receiving/BoxWorkbenchPanel';
 import { ManifestWorkbenchPanel } from '@/components/receiving/ManifestWorkbenchPanel';
@@ -112,19 +103,15 @@ function seedTestingOpenLine(
 }
 
 /**
- * Tech sidebar for Testing mode — Pass+Print / unit-label creation surface.
- * Scan band + To Test / Tested rail. STN anchors a line; unit-label scan
- * confirms prepack identity (TRK↔SKU + serials feedback).
+ * Tech sidebar for Testing mode — Pass+Print / unit-label creation intake.
+ * Persisted To Test / Tested rows stay in the central workspace.
  */
 export function TestingSidebarPanel({
-  selectedLineId: selectedLineIdProp,
   staffId,
 }: Props) {
   const queryClient = useQueryClient();
   const isMobile = useIsMobile();
   const { theme: themeColor } = useStationTheme({ staffId: staffId ? Number(staffId) : 0 });
-  const [railFilter, setRailFilter] = useState('');
-  const receivingRailFacets = useReceivingRailFacets();
   const [scanValue, setScanValue] = useState('');
   const [isResolving, setIsResolving] = useState(false);
   const [armedMode, setArmedMode] = useState<ForcedTestingType | null>(null);
@@ -152,14 +139,10 @@ export function TestingSidebarPanel({
   const [pendingVia, setPendingVia] = useState<ResolvedVia | null>(null);
   const [boxPanel, setBoxPanel] = useState<{ id: number; lines: ReceivingLineRow[] } | null>(null);
   const [manifestPanel, setManifestPanel] = useState<{ ref: string } | null>(null);
-  const [internalSelectedRow, setInternalSelectedRow] =
-    useState<ReceivingLineRow | null>(null);
   const [lastUnitPhotoRequest, setLastUnitPhotoRequest] = useState<{
     serialUnitId: number;
     unitKey: string | null;
   } | null>(null);
-  const internalSelectedId = internalSelectedRow?.id ?? null;
-  const selectedLineId = selectedLineIdProp ?? internalSelectedId;
 
   const { user } = useAuth();
   const authOrgId = user?.organizationId;
@@ -194,17 +177,6 @@ export function TestingSidebarPanel({
     },
     [publishUnitPhotoRequest],
   );
-
-  useEffect(() => {
-    if (selectedLineIdProp !== undefined) return;
-    const handler = (event: Event) => {
-      const detail = (event as CustomEvent<ReceivingSelectLineDetail>).detail;
-      const { row } = readSelectLineDetail(detail);
-      setInternalSelectedRow(row ?? null);
-    };
-    window.addEventListener('receiving-select-line', handler);
-    return () => window.removeEventListener('receiving-select-line', handler);
-  }, [selectedLineIdProp]);
 
   const inFlightRef = useRef(false);
 
@@ -441,29 +413,6 @@ export function TestingSidebarPanel({
           </div>
         </>
       ) : null}
-
-
-      <SidebarRailScrollport>
-        <TestingRecentRail
-          selectedLineId={selectedLineId}
-          selectedRow={internalSelectedRow}
-          testerId={staffId ? Number(staffId) : null}
-          filterText={railFilter}
-          includeRow={receivingRailFacets.includeRow}
-        />
-      </SidebarRailScrollport>
-
-      <SearchField
-        value={railFilter}
-        onChange={setRailFilter}
-        placeholder="Filter recent…"
-        rightElement={
-          <ReceivingRecentRailFilters
-            facets={receivingRailFacets.facets}
-            onChange={receivingRailFacets.setFacets}
-          />
-        }
-        />
 
       {isMobile ? (
         <div className="flex-shrink-0 border-t border-border-hairline bg-surface-card pb-[max(0.5rem,env(safe-area-inset-bottom))]">

@@ -1,16 +1,13 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
-import { DataTable } from '@/components/tables/DataTable';
-import { productDetailHref } from '@/components/products/products-view';
+import { useSearchParams } from 'next/navigation';
 import type { CatalogListRow } from './types';
-import { useCatalogSpreadsheet } from './catalog-grid/useCatalogSpreadsheet';
+import { ProductCatalogList } from './ProductCatalogList';
 
 type CatalogResponse = { success?: boolean; items?: CatalogListRow[]; total?: number; error?: string };
 
 export function ProductCatalogWorkspace() {
-  const router = useRouter();
   const searchParams = useSearchParams();
   const find = searchParams.get('q') ?? '';
   const [rows, setRows] = useState<CatalogListRow[]>([]);
@@ -49,17 +46,10 @@ export function ProductCatalogWorkspace() {
     return () => controller.abort();
   }, [find]);
 
-  const sheet = useCatalogSpreadsheet({
-    rows,
-    loading,
-    find,
-    onOpenRow: (row) => router.push(productDetailHref(row.sku)),
-  });
-
   return (
-    <main className="flex h-full min-h-0 min-w-0 flex-1 flex-col p-3">
+    <main className="flex h-full min-h-0 min-w-0 flex-1 flex-col">
       {error ? <p className="px-3 py-6 text-center text-sm font-semibold text-rose-600">{error}</p> : null}
-      {!error ? <DataTable {...sheet} totalCount={rows.length} /> : null}
+      {!error ? <ProductCatalogList rows={rows} loading={loading} /> : null}
     </main>
   );
 }

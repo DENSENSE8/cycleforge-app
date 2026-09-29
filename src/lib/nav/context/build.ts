@@ -18,7 +18,7 @@
  *   sidebar up a level (`mode: 'local'`);
  * - every other page resolves to `top`: the lane map with the page lit, no back;
  * - `view: 'top'` is the frontend's ‹ peek: the lane map with the page's drill
- *   row lit, while the page's own surfaces (search, scan, recents) stay;
+ *   row lit, while the page's own search and scan contract stays;
  * - nav items carry no counts — only facet groups do, fetched separately.
  */
 
@@ -52,7 +52,12 @@ import {
   type DeskView,
 } from '@/lib/outbound/desk-views';
 import { routeParamsFor } from '@/lib/routing/registry';
-import { NAV_PAGE_DECLS, type NavPageDecl, type NavSurfaceDecl } from './pages';
+import {
+  NAV_PAGE_DECLS,
+  NAV_SIDEBAR_NAVIGATION_SURFACE,
+  type NavPageDecl,
+  type NavSurfaceDecl,
+} from './pages';
 import { NAV_CONTEXT_ROLLOUT } from './rollout';
 import {
   NavContextSchema,
@@ -164,7 +169,7 @@ function sectionRows(page: SidebarPageNav): SectionRow[] {
 
 /**
  * A page draws a section panel when it has ≥2 views to switch between
- * (Shipping: any), or when its recents list is its panel (`recentsPanel`, Chat).
+ * (Shipping: any), or when its navigation list is its panel (`recentsPanel`, Chat).
  */
 function hasSectionPanel(page: SidebarPageNav, rows: readonly SectionRow[]): boolean {
   if (NAV_PAGE_DECLS[page.id]?.recentsPanel) return true;
@@ -409,14 +414,23 @@ export function buildNavContext(input: ResolveNavContextInput): NavContext {
     // The REQUESTED switch; `resolveNavContext` clamps it against parity.
     rollout: input.rolloutOverrides?.[pageId] ?? NAV_CONTEXT_ROLLOUT[pageId] ?? 'legacy',
   };
-  // Facet groups and recents are offered only when the caller can read the
-  // endpoint behind them (the facets / recents registries own the gates).
+  // Facet groups are offered only when the caller can read their endpoint.
   if (isNavFacetContext(facetContext) && mayReadNavFacet(permissions, facetContext)) {
     context.filters = { facetContext, groups: NAV_FACET_GROUPS[facetContext].map((group) => ({ ...group })) };
   }
   if (decl.controls) {
     // A deep copy — the declaration is shared module state, the context goes on the wire.
     context.controls = structuredClone(decl.controls);
+  }
+  // The left contextual sidebar is navigation and controls, never a second
+  // data plane. Only Chat's thread destinations may use the generic recents
+  // transport here; operational adapters (cartons, orders, packs, tickets,
+  // scans, print jobs) stay in the central workspace.
+  if (
+    decl.recents
+    && (decl.recents !== NAV_SIDEBAR_NAVIGATION_SURFACE || !NAV_PAGE_DECLS[pageId]?.recentsPanel)
+  ) {
+    throw new Error(`Operational data list ${decl.recents} cannot render in contextual sidebar ${pageId}`);
   }
   const recents = decl.recents ? getNavRecentSurface(decl.recents) : null;
   if (recents && (!recents.permission || permissions.has(recents.permission))) {

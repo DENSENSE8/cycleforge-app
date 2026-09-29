@@ -1,11 +1,10 @@
 /**
- * Daily (`/`) — the agenda as the one-row triage list (`TriageCardList
- * density="row"`, owner 2026-09-28: the Daily page is a readable, triageable
- * task list). Goal: see what needs doing today and tick it off. One row per
- * checklist item, task or ticket: state (`AGENDA_LIFECYCLE`) → handle → title
- * → due · who · team / from · links → "→ Check off" / "→ Start" / "→ Finish".
- * Sections are the three stores, shown on the All lens only (a lens tab names
- * its store already). No face chips: All / Open / Done is the host's own
+ * Daily (`/`) — the agenda as a triage card list (owner 2026-09-28: the Daily
+ * page is a readable, triageable task list). Goal: see what needs doing today
+ * and tick it off. One multi-row card per checklist item, task or ticket:
+ * state rail + handle, title, then due · who · team / from · links and the next
+ * action. Sections are the three stores, shown on the All lens only (a lens tab
+ * names its store already). No face chips: All / Open / Done is the host's own
  * `?filter=` switch, the lens (`?tab=`) and scope (`?scope=`) are the page's.
  *
  * Not in `TRIAGE_VIEWS`: `home` is a page with no nav views, so there is no

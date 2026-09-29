@@ -4,7 +4,7 @@
  * `resolveLandingPath` without a second read. A missing staff row yields nulls.
  */
 
-import { resolveLandingPath, withWelcomeHandoff } from '@/lib/auth/landing-path';
+import { resolveLandingPath } from '@/lib/auth/landing-path';
 
 export interface StaffLoginQueryable {
   query: (
@@ -41,9 +41,7 @@ export async function recordStaffLogin(
 
 /**
  * For server-redirect sign-ins: stamp the login, then resolve where the
- * redirect lands (`resolveLandingPath`) with the sign-in welcome handed to the
- * desktop shell as `?welcome=1` (mobile sign-ins land unchanged). Returns an
- * app-relative path.
+ * redirect lands (`resolveLandingPath`). Returns an app-relative path.
  */
 export async function recordStaffLoginRedirect(
   queryable: StaffLoginQueryable,
@@ -58,5 +56,5 @@ export async function recordStaffLoginRedirect(
     defaultHomePathMobile: login.defaultHomePathMobile,
     mobile: opts.mobile,
   });
-  return opts.mobile ? landing : withWelcomeHandoff(landing);
+  return landing;
 }

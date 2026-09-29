@@ -57,7 +57,9 @@ import { useRememberLaneView } from './useLaneDoorHref';
  *   rarely, so each is one block that opens on click (`NavSwitcherMenu`).
  *   Pinned so search never scrolls away or hides while a record is open;
  * - scrolling body: what you change often, as buttons — the saved views,
- *   then the closed filter rows. The view's verbs live in the page header,
+ *   then the closed filter rows. Raw operational records and queues never
+ *   render here; those stay in the central workspace. Chat threads are the
+ *   sole list exception because each row is a navigation destination. The view's verbs live in the page header,
  *   over the list they act on (`NavPageActions`). After `‹` the body shows
  *   the lane map (`?view=top`) with this page lit. `‹` is LOCAL state and
  *   never touches the URL; any URL change (links, back/forward) rebuilds
@@ -253,7 +255,7 @@ function TopBody({
 }
 
 /**
- * A VIEW-LESS panel (Chat) is its recents list; with no desk header over that
+ * A VIEW-LESS panel (Chat) is its navigation list; with no desk header over that
  * list, the page's verbs ride the `‹` back row (`NavPanelActions`).
  */
 function viewlessPanelVerbs(nav: NavContext): readonly NavAction[] {
@@ -279,6 +281,8 @@ function SectionBody({ nav }: { nav: NavContext }) {
         />
       ) : null}
       {nav.actionsPlacement === 'sidebar' && nav.actions ? <NavSidebarActions actions={nav.actions} /> : null}
+      {/* Navigation destinations only. The resolver rejects operational data
+          surfaces before they can reach this generic list host. */}
       {nav.recents ? (
         <NavRecentsList
           key={nav.recents.surface}

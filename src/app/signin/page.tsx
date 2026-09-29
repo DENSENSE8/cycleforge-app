@@ -17,7 +17,6 @@ const startRegistration: StartRegistration = async (...args) => {
   return mod.startRegistration(...args);
 };
 import { toast } from '@/lib/toast';
-import { flushSync } from 'react-dom';
 // Deliberately NO `@/design-system/motion` import here.
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { SignInAuthStepPanels } from '@/components/auth/SignInAuthStepPanels';
@@ -51,13 +50,6 @@ const MobileSignInQrChooser = dynamic(
   () => import('@/components/auth/SignInQrScanDialog').then((m) => m.MobileSignInQrChooser),
   { ssr: false },
 );
-import { WelcomeBridge } from '@/components/boot/WelcomeBridge';
-import { preloadSelectedWelcomeVariant } from '@/components/boot/welcome/welcome-loader';
-import { armBootSplash, readWelcomeThemeOverride, type WelcomeStaff } from '@/lib/boot-flag';
-import { resolveWelcomeTheme } from '@/components/boot/welcome/welcome-theme';
-import { getStaffAvatarPhotoId, getStaffColorHex } from '@/utils/staff-colors';
-import { staffInitials } from '@/design-system/components/StaffBadge';
-import { photoContentUrl } from '@/lib/photos/display-url';
 import { resolveLandingPath } from '@/lib/auth/landing-path';
 // Deep paths, NOT the `@/design-system/primitives` barrel.
 import { CheckCircle2, Fingerprint } from 'lucide-react';
@@ -262,7 +254,6 @@ export default function SignInPage() {
     setMobileSignInFace(mobile);
     setShowDeskQr(!mobile);
   }, []);
-  const [signingIn, setSigningIn] = useState<(Omit<WelcomeStaff, 'name'> & { name: string | null }) | null>(null);
 
   useEffect(() => { setRecent(readRecentSignins()); setRecentReady(true); }, []);
   useEffect(() => { setLastMethod(readLastSigninMethod()); }, []);
@@ -278,33 +269,10 @@ export default function SignInPage() {
     role: string | null | undefined,
     defaultHomePath: string | null | undefined,
     defaultHomePathMobile: string | null | undefined,
-    /** Resuming an existing session (not a new sign-in) — no welcome. */
-    opts?: { resumed?: boolean },
   ) => {
-    const pickedRow = staffId != null && picked?.id === staffId ? picked : null;
-    const known = pickedRow ?? (staffId == null ? null : staffChoices?.find((s) => s.id === staffId) ?? null);
-    const name = known?.name ?? null;
-    // The picker row carries the photo id; other paths fall back to the identity cache.
-    const photoId = pickedRow ? pickedRow.avatar_photo_id ?? null : getStaffAvatarPhotoId(staffId);
-    const welcome = {
-      name,
-      colorHex: getStaffColorHex({ id: staffId, color_hex: known?.color_hex }),
-      avatarUrl: photoId && photoId > 0 ? photoContentUrl(photoId, 'thumb') : undefined,
-      initials: staffInitials(name),
-      themeId: resolveWelcomeTheme(new Date(), readWelcomeThemeOverride()).id,
-    };
-    flushSync(() => setSigningIn(welcome));
     if (staffId != null) writeRecentSignin(staffId);
     const onMobile = isMobileDevice();
     const target = resolveLandingPath({ next, role, defaultHomePath, defaultHomePathMobile, mobile: onMobile });
-    // Every desktop sign-in plays the welcome wherever it lands.
-    if (!onMobile && !opts?.resumed) {
-      armBootSplash(welcome.name ? { ...welcome, name: welcome.name } : undefined);
-      if (typeof window !== 'undefined') {
-        void preloadSelectedWelcomeVariant().finally(() => window.location.assign(target));
-        return;
-      }
-    }
     if (typeof window !== 'undefined') window.location.assign(target);
     else router.replace(target);
   }, [router, next, picked, staffChoices]);
@@ -755,8 +723,6 @@ export default function SignInPage() {
   const sso = workspace?.sso ?? null;
   const hasFederated = providers.length > 0 || sso != null;
 
-  if (signingIn) return <WelcomeBridge {...signingIn} />;
-
   if (isMobileSigninPath && mobileSession === undefined) {
     return <MobileSigninSessionCheck />;
   }
@@ -766,8 +732,7 @@ export default function SignInPage() {
       <MobileSigninWelcome
         name={mobileSession.name}
         onContinue={() =>
-          // Resuming an existing session — not a fresh sign-in.
-          finish(mobileSession.staffId, mobileSession.role, null, null, { resumed: true })
+          finish(mobileSession.staffId, mobileSession.role, null, null)
         }
         onSignOut={() => void signOutMobileSession()}
       />

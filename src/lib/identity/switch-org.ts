@@ -4,7 +4,7 @@
  */
 
 import { isMobileFirstPath } from '@/lib/mobile/mobile-first-surface';
-import { resolveLandingPath, withWelcomeHandoff } from '@/lib/auth/landing-path';
+import { resolveLandingPath } from '@/lib/auth/landing-path';
 
 export function orgInitials(name: string): string {
   return (
@@ -38,8 +38,7 @@ type SwitchOrgResult =
 /**
  * POST /api/auth/switch-org. On success, hard-navigates (does not return) to
  * the target profile's SURFACE-AWARE landing (`resolveLandingPath`, mobile when
- * the switch started on a phone route); a desktop landing plays the welcome
- * for the new profile via `?welcome=1`. On failure, returns a friendly error
+ * the switch started on a phone route). On failure, returns a friendly error
  * string.
  */
 export async function requestSwitchOrg(organizationId: string): Promise<SwitchOrgResult> {
@@ -67,7 +66,7 @@ export async function requestSwitchOrg(organizationId: string): Promise<SwitchOr
       mobile,
     });
     // Hard reload — NOT router.push.
-    window.location.assign(mobile ? landing : withWelcomeHandoff(landing));
+    window.location.assign(landing);
     return { ok: true };
   } catch {
     return { ok: false, error: switchOrgErrorMessage(undefined) };

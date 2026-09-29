@@ -247,6 +247,9 @@ export const PRODUCTS_ROUTE_PARAMS = defineRouteParams({
     view: paramRoundTrip(parseProductsView),
     /** Sidebar filter box — the same "narrow this list" question everywhere. */
     q: paramText,
+    /** Catalog-list controls live in the contextual sidebar. */
+    catalogStatus: paramEnum(['active', 'inactive', 'attention', 'unlinked'] as const),
+    catalogSort: paramEnum(['title', 'sku', 'channels', 'attention'] as const),
     /** Pairing backlog ordering. */
     sort: paramEnum(PAIRING_SORTS),
     /** Selected catalog row on QC Checklist. */

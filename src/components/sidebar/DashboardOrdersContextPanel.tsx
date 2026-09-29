@@ -2,13 +2,9 @@
 
 import { useSearchParams } from 'next/navigation';
 import { DashboardRecentsPanel } from '@/components/sidebar/dashboard/DashboardRecentsPanel';
-import { WalkInHistorySidebar } from '@/components/walk-in/WalkInHistorySidebar';
 import { OrderIngestRail } from '@/components/outbound/orders/OrderIngestRail';
 import { useDashboardSearchController } from '@/hooks/useDashboardSearchController';
-import {
-  getDashboardDomainFromSearch,
-  isDashboardRepairsMode,
-} from '@/lib/dashboard/dashboard-domains';
+import { getDashboardDomainFromSearch } from '@/lib/dashboard/dashboard-domains';
 
 /** The Dashboard route's context panel — the stable sidebar picker/scope for the dashboard Workbench. */
 // TODO(daily-triage F0→F1):
@@ -22,15 +18,7 @@ export function DashboardOrdersContextPanel() {
     return <DashboardRecentsPanel />;
   }
 
-  if (domain === 'sales') {
-    // Repair Service is a table-only Sales child. In particular, do not mount
-    // the repair Favorites rail here: favorites remain an intake convenience
-    // on the dedicated repair station, not a Sales-history sidebar.
-    if (isDashboardRepairsMode(searchParams)) {
-      return null;
-    }
-    return <WalkInHistorySidebar />;
-  }
+  if (domain === 'sales') return null;
 
   // Outbound: `/dashboard` is a redirect shell onto `/shipping/orders`. Only
   // the `?new=true` intake overlay survives so a legacy intake link still opens.

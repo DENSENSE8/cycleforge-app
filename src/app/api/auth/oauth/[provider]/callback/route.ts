@@ -30,7 +30,7 @@ import { oauthOrigin } from '@/lib/auth/oauth-origin';
 import { loadSharedStaffChoices } from '@/lib/identity/shared-staff-choice';
 import { resolveOAuthPostLoginPath } from '@/lib/identity/oauth-post-login-path';
 import { recordStaffLogin } from '@/lib/auth/record-staff-login';
-import { resolveLandingPath, withWelcomeHandoff } from '@/lib/auth/landing-path';
+import { resolveLandingPath } from '@/lib/auth/landing-path';
 import pool from '@/lib/db';
 
 export const runtime = 'nodejs';
@@ -246,9 +246,7 @@ async function handleCallback(req: NextRequest, provider: string): Promise<NextR
     signinPath: payload.signinPath,
     home,
   });
-  // Server redirect can't arm the client welcome flag; the desktop shell reads
-  // `?welcome=1`. The shared-org picker arms it itself when a staffer is picked.
-  const dest = shared == null && !mobile ? withWelcomeHandoff(postLogin) : postLogin;
+  const dest = postLogin;
   const res = NextResponse.redirect(new URL(dest, oauthOrigin(req)));
   res.cookies.set(SESSION_COOKIE_NAME, session.sid, {
     httpOnly: true, secure: process.env.NODE_ENV === 'production', sameSite: 'lax', path: '/',

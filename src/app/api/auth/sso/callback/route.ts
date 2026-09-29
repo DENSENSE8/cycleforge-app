@@ -20,7 +20,7 @@ import { logAuthEvent } from '@/lib/identity/memberships';
 import { canonicalRole, ALL_ROLES, type StaffRole } from '@/lib/auth/permissions';
 import { invalidateStaffRolesCache } from '@/lib/auth/role-store';
 import { recordStaffLogin, type StaffLogin } from '@/lib/auth/record-staff-login';
-import { resolveLandingPath, withWelcomeHandoff } from '@/lib/auth/landing-path';
+import { resolveLandingPath } from '@/lib/auth/landing-path';
 
 /** Internal sentinel: thrown to roll back the tx when an un-provisionable
  *  subject signs in under auto_provision=false. */
@@ -289,15 +289,14 @@ export const GET = withAuth(async (req) => {
   });
 
   // Server redirect bypasses the sign-in page's finish(); apply the same
-  // landing precedence (desktop) and hand the sign-in welcome to the shell
-  // via `?welcome=1` (sessionStorage can't be armed from here).
+  // landing precedence (desktop).
   const landing = resolveLandingPath({
     next: stateRow.next_path,
     role: login.role,
     defaultHomePath: login.defaultHomePath,
     mobile: false,
   });
-  const target = new URL(withWelcomeHandoff(landing), origin(req));
+  const target = new URL(landing, origin(req));
   const res = NextResponse.redirect(target);
   res.cookies.set({
     name: SESSION_COOKIE_NAME,

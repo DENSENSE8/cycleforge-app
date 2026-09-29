@@ -173,15 +173,16 @@ export function RecordActionStrip({
           aria-haspopup={verb.display ? 'true' : undefined}
           data-testid={`${testId}-${verb.id}`}
           data-armed={armed ? '' : undefined}
-          // The header face sits in a 28px chrome row: 24px pills, not 32px, one
-          // line each — a narrow bar scrolls the row sideways instead of wrapping labels.
-          className={face === 'header' ? 'h-6 shrink-0 whitespace-nowrap px-2 @xl/record-head:px-3' : undefined}
+          // A record header spends its width on identity. Keep every action a
+          // 24px icon target at every container width; the tooltip and
+          // accessible name carry the verb instead of expanding over the ID.
+          className={face === 'header' ? 'h-6 w-6 shrink-0 whitespace-nowrap !px-0' : undefined}
           onClick={() => press(verb)}
         >
-          <span className={face === 'header' ? 'hidden @xl/record-head:inline' : undefined}>
+          <span className={face === 'header' ? 'sr-only' : undefined}>
             {armed ? `${verb.label} — press again` : verb.label}
           </span>
-          {showHotkeys && verb.hotkey ? (
+          {face !== 'header' && showHotkeys && verb.hotkey ? (
             <KeyboardKey aria-hidden size="sm" className="ml-1">
               {verb.hotkey.toUpperCase()}
             </KeyboardKey>

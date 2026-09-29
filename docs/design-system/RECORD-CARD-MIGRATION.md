@@ -84,7 +84,7 @@ verification per wave = create one on the route, reload, confirm it applies.
 | 40 | `/tracking-exceptions` | `tracking-exceptions/TrackingExceptionsTable.tsx` | `tracking-exceptions` | sheet | Resolve failed tracking numbers | — | **port** |
 | 41 | `/dashboard?mode=sales|pickup` | `walk-in/SalesHistoryTable.tsx` | `walk-in-sales` | compound | Completed walk-in sales → open repair/pickup | — | **port** |
 | 42 | `/search?q=` | `search/SearchResultsSurface.tsx` | `search-hits` | compound | Cross-entity hits → open | — | **port** |
-| 43 | `/` (home) | `features/home/DailyAgenda.tsx` (`TriageCardList density="row"`, `AgendaRow.tsx`; view `DAILY_AGENDA_VIEW`) | `daily` (binding unused) | — | Shift checklist + handed-over tasks + tickets | `/m/home` | **ported** 2026-09-28 |
+| 43 | `/` (home) | `features/home/DailyAgenda.tsx` (`TriageCardList` + multi-row `RecordCard`, `AgendaRow.tsx`; view `DAILY_AGENDA_VIEW`) | `daily` (binding unused) | — | Shift checklist + handed-over tasks + tickets | `/m/home` | **ported** 2026-09-28; card face 2026-10-01 |
 | 44 | `/reports?tab=utilization|velocity|dead|tasks|staff|packer` | `app/reports/page.tsx` (6 mounts) | `report-*` | compound | Reports | — | **keep-sheet** |
 | 45 | `/settings/audit` | `app/settings/audit/AuditLogTable.tsx` | `audit-log` | compound | Audit log | — | **keep-sheet** |
 | 46 | `/settings/staff` | `app/settings/staff/StaffTable.tsx` | `staff-directory` | compound | Team directory / auth policy | — | **keep-sheet** |
@@ -97,7 +97,7 @@ verification per wave = create one on the route, reload, confirm it applies.
 
 | Layout id | Binding | Note |
 |---|---|---|
-| `daily` | `DAILY_TABLE_BINDING` | Home paints `DailyAgenda` on the one-row triage list (#43), not this binding |
+| `daily` | `DAILY_TABLE_BINDING` | Home paints `DailyAgenda` as a multi-row triage card list (#43), not this binding |
 | `tasks` | `TASKS_TABLE_BINDING` | No page mounts it |
 | `my-day` | `MY_DAY_TABLE_BINDING` | `useMyDayFeed` feeds `InboxQueueLinks` only |
 | `catalog` | `CATALOG_TABLE_BINDING` | `useCatalogTableLayout.ts` itself unimported |

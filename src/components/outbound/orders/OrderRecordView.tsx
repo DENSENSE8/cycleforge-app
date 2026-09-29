@@ -523,6 +523,7 @@ export function OrderRecordView({
       }
       action={fulfillmentDeadline}
       testId="order-record-chain"
+      singleLineHeader
     >
       {allocateDetail ? (
         <div className="min-w-0">

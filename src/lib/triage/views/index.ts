@@ -22,6 +22,7 @@ import { OUTBOUND_SHIPPED_VIEW } from './outbound-shipped';
 import { OUTBOUND_TRIAGE_VIEW } from './outbound-triage';
 import { PICKUP_HISTORY_VIEW } from './pickup-history';
 import { PRINT_STATION_FNSKU_VIEW } from './print-station-fnsku';
+import { PRODUCTS_CATALOG_VIEW } from './products-catalog';
 import { QC_LABELS_VIEW } from './qc-labels';
 
 export {
@@ -41,6 +42,7 @@ export {
   OUTBOUND_TRIAGE_VIEW,
   PICKUP_HISTORY_VIEW,
   PRINT_STATION_FNSKU_VIEW,
+  PRODUCTS_CATALOG_VIEW,
   QC_LABELS_VIEW,
 };
 
@@ -58,5 +60,6 @@ export const TRIAGE_VIEWS: Readonly<Record<TriageViewId, TriageViewDecl>> = Obje
     INVENTORY_STOCK_VIEW,
     INVENTORY_REPLENISH_VIEW,
     OUTBOUND_SHIPPED_VIEW,
+    PRODUCTS_CATALOG_VIEW,
   ].map((view) => [view.id, view]),
 );

@@ -1,7 +1,8 @@
 /**
  * Per-page sidebar surfaces — what the old context panel / desk chrome hosted
- * beside the tab row: the page search box, a recents list, a station scan
- * input, saved views and page-level verbs. `resolveNavContext` stamps the
+ * beside the tab row: the page search box, station scan input, saved views
+ * and page-level verbs. Raw operational rows never belong in this declaration:
+ * they stay in the central workspace. `resolveNavContext` stamps the
  * active page's (and active view's) declaration onto the `NavContext`.
  *
  * Pure data. Every entry cites the old UI it replaces (PARITY.md rows); the
@@ -109,9 +110,16 @@ export interface NavActionDecl {
 /** A page search box — the list it narrows reads `param` (url-param) or the desk store. */
 export type NavSearchDecl = Omit<NavSearch, 'scope'>;
 
+/**
+ * A contextual sidebar may list navigation destinations, never operational
+ * records. Chat threads are navigation; cartons, orders, packs, tickets,
+ * scans and print jobs are data and remain in the central workspace.
+ */
+export const NAV_SIDEBAR_NAVIGATION_SURFACE = 'assistant.sessions' as const satisfies NavRecentSurfaceId;
+
 export interface NavSurfaceDecl {
   search?: NavSearchDecl;
-  recents?: NavRecentSurfaceId;
+  recents?: typeof NAV_SIDEBAR_NAVIGATION_SURFACE;
   scanInput?: { grammar: NavScanGrammar; endpoint: string };
   savedViews?: { storageKey: string; paramKeys: readonly string[] };
   actions?: readonly NavActionDecl[];
@@ -125,7 +133,7 @@ export interface NavPageDecl extends NavSurfaceDecl {
   /** Overrides for one section item (child / desk view id); item fields win. */
   items?: Readonly<Record<string, NavSurfaceDecl>>;
   /**
-   * The page has no views: its `recents` list IS its panel (Chat's threads).
+   * The page has no views: its navigation list IS its panel (Chat's threads).
    * There is no desk header over that list, so its `actions` ride the `‹`
    * back row as glyph buttons (`NAV_ACTION_ICONS`). Resolves `section` scope
    * with no view rows.
@@ -492,11 +500,38 @@ export const NAV_PAGE_DECLS: Readonly<Record<string, NavPageDecl>> = {
     viewKeys: true,
     search: { placeholder: 'Search SKU, item number, product or platform…', source: 'url-param', param: 'q' },
     items: {
-      catalog: { search: { placeholder: 'Search SKU, item number, product or platform…', source: 'url-param', param: 'q' } },
+      catalog: {
+        search: { placeholder: 'Search SKU, item number, product or platform…', source: 'url-param', param: 'q' },
+        controls: {
+          choices: [
+            {
+              id: 'catalog-status',
+              label: 'Status',
+              param: 'catalogStatus',
+              options: [
+                { value: 'active', label: 'Active' },
+                { value: 'inactive', label: 'Inactive' },
+                { value: 'attention', label: 'Needs attention' },
+                { value: 'unlinked', label: 'Inventory unlinked' },
+              ],
+              clearParams: [],
+            },
+          ],
+          sort: {
+            param: 'catalogSort',
+            defaultValue: 'title',
+            options: [
+              { value: 'title', label: 'Product title, A to Z' },
+              { value: 'sku', label: 'SKU, A to Z' },
+              { value: 'channels', label: 'Most channels first' },
+              { value: 'attention', label: 'Needs attention first' },
+            ],
+          },
+        },
+      },
       manuals: { search: { placeholder: 'Search manuals', source: 'url-param', param: 'q' } },
       labels: {
         search: { placeholder: 'Search the catalog', source: 'url-param', param: 'q' },
-        recents: 'labels.prints',
       },
       pairing: {
         search: { placeholder: 'Filter SKU, title, or any platform ID…', source: 'url-param', param: 'q' },
@@ -566,7 +601,6 @@ export const NAV_PAGE_DECLS: Readonly<Record<string, NavPageDecl>> = {
     items: {
       tickets: {
         search: { placeholder: 'Search tickets…', source: 'url-param', param: 'tq' },
-        recents: 'support.tickets',
       },
       calls: {
         search: { placeholder: 'Search caller or number…', source: 'url-param', param: 'q' },
@@ -654,13 +688,11 @@ export const NAV_PAGE_DECLS: Readonly<Record<string, NavPageDecl>> = {
   triage: {
     viewKeys: true,
     search: { placeholder: 'Filter scanned cartons…', source: 'url-param', param: 'triq' },
-    recents: 'receiving.scanned',
     scanInput: { grammar: 'arrival', endpoint: '/api/receiving/lookup-po' },
   },
   receive: {
     viewKeys: true,
     search: { placeholder: 'Filter cartons or incoming…', source: 'url-param', param: INBOUND_FIND_PARAM },
-    recents: 'receiving.unbox_opened',
     scanInput: { grammar: 'unbox', endpoint: '/api/receiving/lookup-po' },
     actions: [
       { action: { id: 'unbox.resume', label: 'Unbox', intent: 'unbox:resume' } },
@@ -669,8 +701,6 @@ export const NAV_PAGE_DECLS: Readonly<Record<string, NavPageDecl>> = {
     ],
   },
   pickup: {
-    recents: 'pickup.orders',
-    recentsPanel: true,
     search: { placeholder: 'Order, seller, SKU or item…', source: 'url-param', param: 'q' },
     controls: {
       sort: {
@@ -704,18 +734,15 @@ export const NAV_PAGE_DECLS: Readonly<Record<string, NavPageDecl>> = {
   testing: {
     viewKeys: true,
     search: { placeholder: 'Filter tests…', source: 'url-param', param: 'search' },
-    recents: 'testing.opened',
     scanInput: { grammar: 'testing', endpoint: '/api/receiving-lines' },
   },
   'ready-to-pack': {
     viewKeys: true,
     search: { placeholder: 'Filter tested units…', source: 'url-param', param: 'q' },
-    recents: 'tech.scans',
     scanInput: { grammar: 'station', endpoint: '/api/picking/desk/scan' },
   },
   packer: {
     viewKeys: true,
-    recents: 'packer.packs',
     scanInput: { grammar: 'pack', endpoint: '/api/packing-logs' },
   },
   'scan-out': {

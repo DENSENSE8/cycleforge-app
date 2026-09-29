@@ -13,15 +13,15 @@ iPad, taking the next action on a warehouse task. The **Daily** page is triage o
 |---|---|
 | Stage | `DeskStageView = 'in-place' \| 'split'`. Floor view, ⌘/Ctrl+Shift+F, `useDeskFloorFace`, `publish/useDeskFloorActive`, `DESK_FLOOR_*` tokens, the `flush` industrial desk frame (`DeskIndustrialBar`), the header `segment` face and `SlicedActionDock` `segment` chrome are deleted. The split chord tests replace the floor chord tests (`DeskStageContext.test.ts`) |
 | Modes | `resolveRegionMode(requested, routeMode, {form})`: the route decides, with no device or coarse-pointer collapse. `runtime` is gone (`/shipping`, `/shipping/label-intake` → triage). `/m/*` operation flows are `industrial` (scan, pack, scan-out, unbox, unit, location count/pair, FNSKU, repair-scan); reading flows are triage (`/m/home`, `/m/orders`, `/m/work`, `/m/pick`, forms). The table is in `mode-registry.ts` / `mode-registry.test.ts` |
-| Desk lists | To ship and Picking use `OrderCardList` (cards). Unboxed, Deliveries and Imports use cards. Stock, QC labels, Replenish, Shipped and **Daily** use `TriageCardList density="row"` (`TriageRow`) |
+| Desk lists | To ship, Picking and **Daily** use multi-row `RecordCard` lists. Unboxed, Deliveries and Imports use cards. Stock, QC labels, Replenish and Shipped use `TriageCardList density="row"` (`TriageRow`) |
 | Deleted | `DockedReceivingRecord`, `IncomingDeliveryRecord`, `ReplenishmentPlanRecord`, `ShippedPackageRecord`, `AgendaRecord`, `useDailySmoothScroll` |
 | Orphaned (delete once another session's diff lands) | `OutboundOrdersLedger.tsx`, `OutboundOrdersLedgerToolbar.tsx`, `OrdersLedgerStandIn` |
 | Guard | `eslint.config.mjs` "Desk industrial-ledger guard": `RecordLedger` and the `IndustrialRecord` component are banned in `src/app` / `src/components` / `src/features` outside `src/app/m/**` and `src/components/mobile/**`. The burn-down list is empty |
 | Laws | BRIEF §14 (Mode D struck in §12, the Floor line struck in §13), `HANDOFF-lane-mode-policy.md` §0, `MODE-SPLIT-INVENTORY.md` Floor rail withdrawn, `RECORD-CARD-MIGRATION.md` floor verdict withdrawn, `DESIGN_SYSTEM.md` task modes, `pinned.json` DeskStageContext |
 
-Behaviour change to confirm with the owner: on Daily's row face, the checkbox now **selects** the row
-like every triage row. Ticking an item done is select → **Mark done** in the select bar, or the
-record's own Check off; previously the row's circle ticked it directly.
+Behaviour change to confirm with the owner: on Daily's card face, the checkbox **selects** the
+record like every triage card. Ticking an item done is select → **Mark done** in the select bar, or
+the record's own Check off; previously the row's circle ticked it directly.
 
 ## 1. Owner ruling (2026-09-28, verbatim intent) — supersedes `HANDOFF-lane-mode-policy.md` §1
 

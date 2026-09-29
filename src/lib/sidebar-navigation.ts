@@ -447,15 +447,13 @@ function hasChildDoor(pageId: string, permissions: ReadonlySet<string>): boolean
   return !page || isSidebarPageReachable(filterPageChildren(page, permissions));
 }
 
-/** Route keys that render the **two-card station column** (nav card on top, recents + scan bar card below) instead of the classic single… */
+/** Route keys that render a station intake column. Operational rows stay in the workspace. */
 const STATION_SURFACE_ROUTE_KEYS = new Set<SidebarRouteKey>([
   'receiving',
-  'outbound',
   'tech',
   'pick',
   'packer',
   'review',
-  'support',
 ]);
 
 export function isStationSurfaceRoute(pathname: string | null): boolean {
@@ -483,17 +481,10 @@ export function isRaillessSurface(
   if (pathname === '/studio/automations' || pathname.startsWith('/studio/automations/')) {
     return true;
   }
-  // Support keeps ONE left column: Tickets recents. Voicemail / Calls /
-  // Warranty / Issues pick from the stage itself (same as the <md path).
+  // Support is always rail-less. Ticket and order records belong in the
+  // workspace; the contextual navigation already owns its views and controls.
   if (pathname === '/support' || pathname.startsWith('/support/')) {
-    const mode = String(searchParams?.get('mode') ?? '').trim().toLowerCase();
-    return (
-      mode === 'voicemail' ||
-      mode === 'calls' ||
-      mode === 'warranty' ||
-      mode === 'issues' ||
-      mode === 'orders'
-    );
+    return true;
   }
   // Support's ticket alias (`?context=support`) claims this URL for the spine pin / desk title, but the stage is still the Shipping To-ship…
   // already retired (operator 2026-08-31).
@@ -512,19 +503,16 @@ export const isDeskStageSurface = isRaillessSurface;
 /** Route keys whose sidebar spine carries a per-route **context panel** — a picker / rail that is the route's primary navigator (Products'… */
 const CONTEXT_PANEL_ROUTE_KEYS = new Set<SidebarRouteKey>([
   // `home` dropped 2026-08-12 — Today is rail-less (Pattern E).
-  'dashboard',
-  'operations',
   'studio',
   // `settings` DROPPED 2026-09-10 — Pattern E card landing + /settings/me.
   // Roles/Access still need their picker rails; those paths are special-cased
   // in hasSidebarContextPanel below (the route key stays `settings`).
-  'audit-log',
-  'fba',
+  // Audit and FBA records render in their central workspaces. FBA scan intake
+  // is declared through NAV_PAGE_DECLS and painted by ContextualSidebar.
   // `inventory` DROPPED 2026-09-15 — operator:
   // `sourcing` DROPPED 2026-09-28 — its filters and views live in the contextual
   // sidebar; the Models / Compatibility picker moved into the stage.
-  'products',
-  // `walk-in` dropped — `/walk-in` is a redirect shell; sales context rides the dashboard panel (`WalkInHistorySidebar` when domain === sales).
+  // `walk-in` dropped — `/walk-in` is a redirect shell; Sales owns one contextual sidebar on `/dashboard`.
 ]);
 
 /** True when this route's spine holds a context panel — see {@link CONTEXT_PANEL_ROUTE_KEYS}. */

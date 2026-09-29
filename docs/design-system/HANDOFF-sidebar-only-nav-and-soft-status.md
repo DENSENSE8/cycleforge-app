@@ -23,7 +23,7 @@ per staff member.
 | Deleted: `useDeskPageChromeTabs.ts`, `PhotoLibraryScopeBand.tsx`, the nav `deskChrome` flag and `hasDeskPageChrome` | `lib/sidebar-navigation.ts` (+ test) |
 | Tab props removed from 8 callers (table below). Their URL params still parse, so deep links still work | — |
 | Pinned law: `DeskPageChrome`, `TableStatusBar` and `ContextualSidebar` now say views live in the left sidebar and never in a tab row | `src/design-system/pinned.json` |
-| Earlier today: the desktop is triage-only with no Floor, and Daily, Stock, QC labels, Replenish and Shipped use `TriageCardList density="row"` | `HANDOFF-remove-desk-floor.md` §0 |
+| Earlier today: the desktop is triage-only with no Floor. Daily uses multi-row `RecordCard`; Stock, QC labels, Replenish and Shipped use `TriageCardList density="row"` | `HANDOFF-remove-desk-floor.md` §0 |
 
 Verified: `pnpm exec tsc` is clean project-wide. eslint is clean on the touched files. The
 `sidebar-navigation`, `railless-surface` and `triage-workspace-state` tests give 56/56. On :3050, `/`,

@@ -13,13 +13,9 @@ import {
   getStaffStationBridgeChannelName,
 } from '@/lib/realtime/channels';
 
-import { RailEditModeProvider } from '@/components/sidebar/rail-edit-mode';
 import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
-import { buildPendingScanStubRow } from '@/components/sidebar/receiving/receiving-sidebar-shared';
-import type { TrackingScanResult } from '@/components/sidebar/receiving/useTrackingScan';
 import { ReceivingReturnBanner } from '@/components/sidebar/ReceivingReturnBanner';
 import { ReceivingLinePicker } from '@/components/sidebar/receiving/ReceivingLinePicker';
-import { SidebarRailScrollport } from '@/components/sidebar/rail-shell/SidebarRailScrollport';
 
 import { TriageScanBand, UnboxScanBand, PickupScanBand } from '@/components/sidebar/receiving/ReceivingScanBands';
 import {
@@ -27,18 +23,7 @@ import {
   setScanStance,
   useScanModeRelease,
 } from '@/components/station/scan-bar';
-import { useScanPreviewRailFilter } from '@/components/station/scan-bar/station-scan-preview-rail';
 import { useUnboxPreviewOpen } from '@/components/sidebar/receiving/useUnboxPreviewOpen';
-import { ReceivingRailBody } from '@/components/sidebar/receiving/ReceivingRailBody';
-import { ReceivingRecentRailFilters } from '@/components/sidebar/rail-shell/ReceivingRecentRailFilters';
-import { useReceivingRailFacets } from '@/components/sidebar/rail-shell/useReceivingRailFacets';
-import {
-  EMPTY_PICKUP_RAIL_FACETS,
-  PickupRailFilters,
-  type PickupRailFacets,
-} from '@/components/sidebar/rail-shell/PickupRailFilters';
-import { ReceivingBulkActionBar } from '@/components/sidebar/receiving/ReceivingBulkActionBar';
-import { PickupSidebarRail } from '@/components/receiving/pickup/PickupSidebarRail';
 import type { PickupLine, PickupOrderGroup } from '@/components/receiving/pickup/pickup-lines';
 import { emitReceiving } from '@/components/receiving/receiving-events';
 import { resolvePickupScan } from '@/lib/local-pickup/resolve-pickup-scan';
@@ -54,7 +39,6 @@ import { useReceivingWorkspaceBridge } from '@/components/sidebar/receiving/useR
 import { useTrackingScan } from '@/components/sidebar/receiving/useTrackingScan';
 import { usePhoneScanBridge } from '@/components/sidebar/receiving/usePhoneScanBridge';
 import { usePhotoRequestPublisher } from '@/components/sidebar/receiving/usePhotoRequestPublisher';
-import { useRailEditMode } from '@/components/sidebar/receiving/useRailEditMode';
 import { useArrivalBatchSortSession } from '@/components/sidebar/receiving/useArrivalBatchSortSession';
 import { ArrivalBatchCaptureStrip } from '@/components/sidebar/receiving/ArrivalBatchCaptureStrip';
 import { useReceivingEvents } from '@/hooks/useReceivingEvents';
@@ -92,10 +76,7 @@ export function ReceivingSidebarPanel() {
   const {
     mode,
     unboxView,
-    triageQuery: triageListQuery,
-    isScanSurface,
     updateUnboxView,
-    updateTriageQuery,
   } = useReceivingMode();
 
   // ── Unbox session:
@@ -153,60 +134,9 @@ export function ReceivingSidebarPanel() {
 
   // ── Triage scan input (scan-only — NOT a list filter) ──
   const [triageQuery, setTriageQuery] = useState('');
-  /** Pre-resolve row pinned at the top of the Triage list (tracking # title). */
-  const [triageLeadingRow, setTriageLeadingRow] = useState<ReceivingLineRow | null>(null);
-  /** Client-side Unboxed / Triage rail text filter + shared facet SoT. */
-  const [unboxRailFilter, setUnboxRailFilter] = useState('');
-  const receivingRailFacets = useReceivingRailFacets();
-
-  // Preview stance turns the scan bar into the rail's find field:
-  const { previewFiltering } = useScanPreviewRailFilter();
-  const receivingFacetSlot = previewFiltering ? (
-    <ReceivingRecentRailFilters
-      facets={receivingRailFacets.facets}
-      onChange={receivingRailFacets.setFacets}
-    />
-  ) : null;
-
   /** Local Pickup scan wedge — open/match an LCPU order (not create). */
   const [pickupScanQuery, setPickupScanQuery] = useState('');
-  const [pickupRailFilter, setPickupRailFilter] = useState('');
-  // Arrival filters instantly off local state and syncs `?triq=` on a debounce.
-  // `updateTriageQuery` is a bare `router.replace`, so driving it per keystroke
-  // would push one history entry per character typed into the bar.
-  const [triageRailFilter, setTriageRailFilter] = useState(triageListQuery);
-  const updateTriageQueryRef = useRef(updateTriageQuery);
-  updateTriageQueryRef.current = updateTriageQuery;
-  useEffect(() => {
-    if (!previewFiltering) return;
-    const t = setTimeout(() => updateTriageQueryRef.current(triageRailFilter), 250);
-    return () => clearTimeout(t);
-  }, [triageRailFilter, previewFiltering]);
-  // Leaving Preview drops the filter — otherwise a stale query keeps the rail
-  // narrowed while the bar is back to arming scans, with nothing on screen
-  // saying why rows are missing.
-  useEffect(() => {
-    if (previewFiltering) return;
-    setUnboxRailFilter('');
-    setPickupRailFilter('');
-    setTriageRailFilter('');
-  }, [previewFiltering]);
-  const [pickupRailFacets, setPickupRailFacets] = useState<PickupRailFacets>(
-    EMPTY_PICKUP_RAIL_FACETS,
-  );
   const scanInputRef = useRef<HTMLInputElement>(null);
-
-  useEffect(() => {
-    if (mode !== 'triage') setTriageLeadingRow(null);
-  }, [mode]);
-
-  const onTriageScanStart = useCallback((tracking: string) => {
-    setTriageLeadingRow(buildPendingScanStubRow(tracking));
-  }, []);
-
-  const onTriageScanResult = useCallback((_result: TrackingScanResult) => {
-    setTriageLeadingRow(null);
-  }, []);
 
   const submitPickupScan = useCallback(() => {
     const raw = pickupScanQuery.trim();
@@ -276,7 +206,6 @@ export function ReceivingSidebarPanel() {
     setPoContext,
     setArmedLineId,
     receivingMode: mode,
-    onTriageScanStart,
   });
 
   const releaseUnboxScanMode = useCallback(() => setUnboxScanMode(null), [setUnboxScanMode]);
@@ -364,16 +293,12 @@ export function ReceivingSidebarPanel() {
       return;
     }
 
-    submitTrackingScan(classified.raw, {
-      mode: 'tracking',
-      onResult: onTriageScanResult,
-    });
+    submitTrackingScan(classified.raw, { mode: 'tracking' });
   }, [
     triageQuery,
     batchSort,
     submitTrackingScan,
     findCachedRowByReceivingId,
-    onTriageScanResult,
   ]);
 
   // Procedure → ingest hand-back.
@@ -391,29 +316,9 @@ export function ReceivingSidebarPanel() {
       // Gated to Arrival: the only mounted procedure waist that hands back
       // today. Unbox's dock keeps its own submit meaning per step.
       if (!raw || mode !== 'triage') return;
-      submitTrackingScan(raw, { mode: 'tracking', onResult: onTriageScanResult });
+      submitTrackingScan(raw, { mode: 'tracking' });
     },
   });
-
-  // ── Rail edit mode (row-menu "Select" bulk select / dismiss) — Unbox Unboxed dock + thin combined Triage rail.
-  const {
-    railEditMode,
-    railSelectedIds,
-    railSelectedIdList,
-    railBulkDismissing,
-    toggleRailEditMode,
-    toggleRailSelected,
-    setManyRailSelected,
-    handleRailBulkDismiss,
-  } = useRailEditMode({
-    isScanSurface,
-    mode,
-    unboxView,
-    triageView: 'triage',
-  });
-
-  /** The scan band's right rail — the rail's controls, one band ABOVE the list. */
-  const receivingRailBandSlot = receivingFacetSlot;
 
   // External focus trigger — Quick Access chips dispatch `receiving-focus-scan` after navigating so the input is hot even when the panel was…
   useEffect(() => {
@@ -438,15 +343,7 @@ export function ReceivingSidebarPanel() {
   // The focus-scan quick-key is now the app-wide shared hotkey (default Insert, reassignable via the gear in any StationScanBar).
 
   return (
-    // `relative` anchors the edit-mode SelectionActionBar pinned at the bottom.
     <div className="relative flex h-full min-w-0 flex-col overflow-hidden">
-      <RailEditModeProvider
-        active={railEditMode && isScanSurface}
-        selectedIds={railSelectedIds}
-        toggle={toggleRailSelected}
-        setMany={setManyRailSelected}
-        toggleActive={toggleRailEditMode}
-      >
         {/* L2 Mode + Recents live in GlobalHeader house-wide
             (HeaderPageSwitcher). Do not remount ReceivingModeSwitcher. */}
 
@@ -457,34 +354,17 @@ export function ReceivingSidebarPanel() {
           // Repair desk is rail-less too (`railless:
           null
         ) : mode === 'pickup' ? (
-          // Local Pickup — station scan bar (open/match LCPU) + orders rail.
+          // Local Pickup — station scan bar only. Order rows stay in the table.
           // Selecting an order writes `?lcpu=` to highlight products in the table.
           <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
             <PickupScanBand
               themeColor={themeColor}
               value={pickupScanQuery}
-              onChange={(next) => {
-                setPickupScanQuery(next);
-                if (previewFiltering) setPickupRailFilter(next);
-              }}
-              filterSlot={
-                previewFiltering ? (
-                  <PickupRailFilters
-                    facets={pickupRailFacets}
-                    onChange={setPickupRailFacets}
-                  />
-                ) : null
-              }
+              onChange={setPickupScanQuery}
               onSubmit={submitPickupScan}
               inputRef={scanInputRef}
               staffId={staffId}
             />
-            <SidebarRailScrollport>
-              <PickupSidebarRail
-                filterText={pickupRailFilter}
-                facets={pickupRailFacets}
-              />
-            </SidebarRailScrollport>
           </div>
         ) : mode === 'history' ? (
           // History has no scan session and no rail — the right-pane table is
@@ -502,13 +382,7 @@ export function ReceivingSidebarPanel() {
                 <TriageScanBand
                   themeColor={themeColor}
                   value={triageQuery}
-                  onChange={(next) => {
-                    setTriageQuery(next);
-                    // Preview: the bar IS the rail's find field (local now,
-                    // `?triq=` on a debounce so the view stays deep-linkable).
-                    if (previewFiltering) setTriageRailFilter(next);
-                  }}
-                  filterSlot={receivingRailBandSlot}
+                  onChange={setTriageQuery}
                   onSubmit={submitTriageScan}
                   inputRef={scanInputRef}
                   staffId={staffId}
@@ -526,11 +400,7 @@ export function ReceivingSidebarPanel() {
               <UnboxScanBand
                 themeColor={themeColor}
                 value={bulkTracking}
-                onChange={(next) => {
-                  setBulkTracking(next);
-                  if (previewFiltering) setUnboxRailFilter(next);
-                }}
-                filterSlot={receivingRailBandSlot}
+                onChange={setBulkTracking}
                 previewLookup={(raw, m) => openUnboxPreview(raw, m)}
                 onSubmit={(m) => {
                   // Preview stance resolves + opens READ-ONLY through the
@@ -572,38 +442,8 @@ export function ReceivingSidebarPanel() {
               />
             ) : null}
 
-            {/* Scan-surface rail. Unbox keeps a fixed Unboxed rail; Triage keeps
-                a fixed combined Triage rail — browse tabs live in the right-pane
-                workbench (UnboxWorkspaceView / TriageWorkspaceView). */}
-            <SidebarRailScrollport>
-              <ReceivingRailBody
-                mode={mode}
-                selectedLine={selectedLine}
-                triageLeadingRow={triageLeadingRow}
-                triageFilterText={mode === 'triage' ? triageRailFilter : ''}
-                triageIncludeRow={
-                  mode === 'triage' ? receivingRailFacets.includeRow : undefined
-                }
-                unboxFilterText={mode === 'receive' ? unboxRailFilter : ''}
-                unboxIncludeRow={
-                  mode === 'receive' ? receivingRailFacets.includeRow : undefined
-                }
-              />
-            </SidebarRailScrollport>
-
-            {/* No footer filter bar. */}
-
-            {/* Edit-mode bulk dismiss — rides at the very bottom of the rail. */}
-            {railEditMode ? (
-              <ReceivingBulkActionBar
-                selectedIds={railSelectedIdList}
-                onDismiss={handleRailBulkDismiss}
-                busy={railBulkDismissing}
-              />
-            ) : null}
           </>
         )}
-      </RailEditModeProvider>
     </div>
   );
 }

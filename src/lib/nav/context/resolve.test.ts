@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { ALL_PERMISSIONS } from '@/lib/auth/permissions-shared';
 import { NAV_FACET_CONTEXTS } from '@/lib/nav/facets/contexts';
 import { NAV_RECENT_SURFACE_IDS } from '@/lib/nav/recents/surfaces';
+import { NAV_PAGE_DECLS, NAV_SIDEBAR_NAVIGATION_SURFACE } from '@/lib/nav/context/pages';
 import type { NavDefinition } from '@/lib/nav/org-nav';
 import { DESK_VIEWS } from '@/lib/outbound/desk-views';
 import { routeParamsFor } from '@/lib/routing/registry';
@@ -657,6 +658,22 @@ test('/ai-chat is a contextual page panel: its threads, New chat, Find over the 
   const noChat = at('/ai-chat', { permissions: new Set([...ALL].filter((p) => p !== 'assistant.chat')) });
   assert.equal(noChat.scope, 'top');
   assert.equal(noChat.recents, undefined);
+});
+
+test('contextual sidebars never declare raw operational data lists', () => {
+  const declared: Array<{ pageId: string; itemId?: string; surface: string }> = [];
+  for (const [pageId, page] of Object.entries(NAV_PAGE_DECLS)) {
+    if (page.recents) declared.push({ pageId, surface: page.recents });
+    for (const [itemId, item] of Object.entries(page.items ?? {})) {
+      if (item.recents) declared.push({ pageId, itemId, surface: item.recents });
+    }
+  }
+
+  assert.deepEqual(declared, [
+    { pageId: 'ai-chat', surface: NAV_SIDEBAR_NAVIGATION_SURFACE },
+  ]);
+  assert.equal(NAV_PAGE_DECLS['ai-chat']?.recentsPanel, true);
+  assert.equal(at('/unbox').recents, undefined, 'Unbox queue rows stay in the central workspace');
 });
 
 test('the gate has teeth for recents verbs: a surface without them leaves the row uncovered', () => {

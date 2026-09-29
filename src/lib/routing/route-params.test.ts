@@ -355,6 +355,11 @@ test('/products validates each view vocabulary through its own parser', () => {
   assert.equal(parse('labelsView=nope').get('labelsView'), null);
   assert.equal(parse('sort=title').get('sort'), 'title');
   assert.equal(parse('sort=zoho_oldest').get('sort'), null);
+  // Catalog list filters and ordering are owned by the contextual sidebar.
+  assert.equal(parse('catalogStatus=attention').get('catalogStatus'), 'attention');
+  assert.equal(parse('catalogStatus=nope').get('catalogStatus'), null);
+  assert.equal(parse('catalogSort=channels').get('catalogSort'), 'channels');
+  assert.equal(parse('catalogSort=nope').get('catalogSort'), null);
   // The Reference chrome's own keys went with it — undeclared is stripped.
   assert.equal(parse('linkFilter=unlinked_pending').get('linkFilter'), null);
   assert.equal(parse('platform=amazon').get('platform'), null);

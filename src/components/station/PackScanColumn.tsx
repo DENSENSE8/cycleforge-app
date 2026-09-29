@@ -453,8 +453,8 @@ export default function PackScanColumn({
         {/* Recent-activity rail — the single scroll port of this column. Its
             bottom-anchored filter band rides in `railFooter` (below the scroll
             port, same anatomy as the Testing / Shipping sidebars). */}
-        <SidebarRailScrollport>{railSlot}</SidebarRailScrollport>
-        {railFooter}
+        {railSlot ? <SidebarRailScrollport>{railSlot}</SidebarRailScrollport> : null}
+        {railSlot ? railFooter : null}
       </div>
     </div>
   );

@@ -1,6 +1,10 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { hasSidebarContextPanel, isRaillessSurface } from '@/lib/sidebar-navigation';
+import {
+  hasSidebarContextPanel,
+  isRaillessSurface,
+  isStationSurfaceRoute,
+} from '@/lib/sidebar-navigation';
 
 /**
  * The rail-less contract, as behaviour.
@@ -43,15 +47,12 @@ test('Support ticket alias of To ship stays rail-less', () => {
   );
 });
 
-test('Support keeps a rail only on Tickets recents', () => {
-  assert.equal(isRaillessSurface('/support', params()), false);
-  assert.equal(isRaillessSurface('/support', params('mode=tickets')), false);
-  assert.equal(isRaillessSurface('/support', params('ticket=12')), false);
-  for (const mode of ['voicemail', 'calls', 'warranty', 'issues', 'orders']) {
+test('Support never mounts a ticket or order list rail', () => {
+  for (const mode of ['', 'tickets', 'voicemail', 'calls', 'warranty', 'issues', 'orders']) {
     assert.equal(
       isRaillessSurface('/support', params(`mode=${mode}`)),
       true,
-      `/support?mode=${mode} must collapse the left column`,
+      `/support?mode=${mode || 'default'} must collapse the legacy left column`,
     );
   }
 });
@@ -64,7 +65,7 @@ test('scan-out is rail-less — mobile-first composer, no left recent rail', () 
   );
 });
 
-test('other scan stations keep their rail', () => {
+test('scan stations keep an intake-only rail', () => {
   for (const path of ['/unbox', '/pack', '/test', '/triage']) {
     assert.equal(isRaillessSurface(path, params()), false, `${path} keeps its rail`);
   }
@@ -92,16 +93,23 @@ test('no pathname is not a desk stage', () => {
   assert.equal(isRaillessSurface('', params()), false);
 });
 
-test('wearing the desk chrome does NOT cost a desk its rail', () => {
-  // The 2026-08-31 decoupling, as behaviour.
-  // Inventory is the exception that *did* take `railless` (operator 2026-09-15).
+test('desk chrome and route-owned context panels are independent', () => {
   for (const path of ['/products', '/sourcing', '/operations']) {
     assert.equal(
       isRaillessSurface(path, params()),
       false,
-      `${path} wears the chrome and KEEPS its rail`,
+      `${path} does not need a railless route declaration`,
     );
   }
+  assert.equal(hasSidebarContextPanel('/products'), false);
+  assert.equal(hasSidebarContextPanel('/operations'), false);
+  assert.equal(hasSidebarContextPanel('/dashboard'), false);
+  assert.equal(hasSidebarContextPanel('/audit-log/packing'), false);
+  assert.equal(hasSidebarContextPanel('/settings/audit'), false);
+  assert.equal(hasSidebarContextPanel('/shipping/fba'), false);
+  assert.equal(hasSidebarContextPanel('/fba'), false);
+  assert.equal(isStationSurfaceRoute('/support'), false);
+  assert.equal(isStationSurfaceRoute('/shipping/orders'), false);
 });
 
 test('the Inventory desk is rail-less on every mount', () => {
