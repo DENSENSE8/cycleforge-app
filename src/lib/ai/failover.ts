@@ -38,6 +38,8 @@ interface AiFailoverRequest {
   sessionId?: string | null;
   /** Keep private/on-prem workloads off paid managed providers. */
   selfHostedOnly?: boolean;
+  /** Prefer the explicitly configured platform endpoint over tenant vault order. */
+  platformFirst?: boolean;
 }
 
 interface AiFailoverResult {
@@ -156,7 +158,12 @@ export async function postToAiProvider(
   /** Injected in tests so metering is observed without a database. */
   record: RecordAiUsage = recordAiUsage,
 ): Promise<AiFailoverResult> {
-  const resolvedChain = await resolveOrgAiChain(orgId, capability, deps);
+  const resolvedChain = await resolveOrgAiChain(
+    orgId,
+    capability,
+    deps,
+    request.platformFirst ? { platformFirst: true } : {},
+  );
   const chain = request.selfHostedOnly
     ? resolvedChain.filter((config) => isSelfHostedAiRuntime(config))
     : resolvedChain;

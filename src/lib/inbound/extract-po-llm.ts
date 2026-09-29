@@ -16,6 +16,9 @@ type ExtractConfidence = 'high' | 'medium' | 'low';
 
 const DEFAULT_AI_MODEL = 'gemma-4-e4b';
 const TOOL_NAME = 'report_po_intake_fields';
+// Explicit, temporary dogfood scope: the operator requested speed over tenant
+// generalization for this intake path.
+const ORG_ONE = '00000000-0000-0000-0000-000000000001';
 
 const ORDER_SYSTEM_PROMPT = [
   'You extract purchase-order / marketplace order fields from text and/or image(s) into a strict schema.',
@@ -204,6 +207,62 @@ type ExtractPoIntakeResult = {
   usage: { input_tokens: number; output_tokens: number };
 };
 
+/**
+ * Org 1 is the live dogfood lane. Its pickup forms often omit the year and do
+ * not carry an order number even though both are required by the inbound
+ * spine. Complete only those mechanical fields here so a phone photo can land
+ * in one pass. The OCR facts (seller, products, payment, totals) remain the
+ * source of truth.
+ */
+export function completeDogfoodPickupDraft(
+  draft: InboundOrderDraft,
+  evidenceText: string,
+  now = new Date(),
+): InboundOrderDraft {
+  if (draft.type !== 'PICKUP') return draft;
+
+  let orderDate = draft.orderDate;
+  if (!orderDate) {
+    const plainEvidence = decodeOcrCell(evidenceText);
+    const match = plainEvidence.match(/\b(?:date\s*[:#-]?\s*)?(1[0-2]|0?[1-9])\s*[\/-]\s*(3[01]|[12]\d|0?[1-9])(?:\s*[\/-]\s*(\d{2}|\d{4}))?\b/i);
+    if (match) {
+      const month = Number(match[1]);
+      const day = Number(match[2]);
+      let year = match[3]
+        ? Number(match[3].length === 2 ? `20${match[3]}` : match[3])
+        : now.getUTCFullYear();
+      let candidate = new Date(Date.UTC(year, month - 1, day));
+      // A yearless form photographed near New Year should resolve to the most
+      // recent plausible occurrence, not a future pickup.
+      if (!match[3] && candidate.getTime() > now.getTime() + 7 * 86_400_000) {
+        year -= 1;
+        candidate = new Date(Date.UTC(year, month - 1, day));
+      }
+      if (
+        candidate.getUTCFullYear() === year
+        && candidate.getUTCMonth() === month - 1
+        && candidate.getUTCDate() === day
+      ) {
+        orderDate = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+      }
+    }
+  }
+
+  const lines = draft.lines.map((line) =>
+    (line.sku.trim() || line.title.trim()) && line.quantity == null
+      ? { ...line, quantity: 1 }
+      : line,
+  );
+  let orderNumber = draft.orderNumber;
+  if (!orderNumber && orderDate) {
+    const seller = draft.vendor.toUpperCase().replace(/[^A-Z0-9]+/g, '').slice(0, 12) || 'PICKUP';
+    const [year, month, day] = orderDate.split('-');
+    orderNumber = `LCPU-${seller}-${month}${day}${year.slice(-2)}`;
+  }
+
+  return { ...draft, orderDate, orderNumber, lines };
+}
+
 function fieldValue(f: ConfField | string | undefined): string {
   return String(typeof f === 'string' ? f : f?.value ?? '').trim();
 }
@@ -220,6 +279,83 @@ function evidenceHasMoney(evidence: string, cents: number): boolean {
   const marked = Number.isInteger(dollars) ? [`$${dollars}`, `$${fixed}`] : [`$${fixed}`];
   return marked.some((value) => evidence.includes(value))
     || new RegExp(`(?:^|[^0-9])${fixed.replace('.', '\\.')}(?:[^0-9]|$)`).test(evidence);
+}
+
+function decodeOcrCell(value: string): string {
+  return value
+    .replace(/<br\s*\/?\s*>/gi, ' ')
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/&amp;/gi, '&')
+    .replace(/&quot;/gi, '"')
+    .replace(/&#39;|&apos;/gi, "'")
+    .replace(/&nbsp;/gi, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function moneyToCents(value: string): number | null {
+  const amount = Number(value.replace(/[^0-9.-]+/g, ''));
+  return Number.isFinite(amount) && amount >= 0 ? Math.round(amount * 100) : null;
+}
+
+/** Fast path for Unlimited OCR's table output. Avoids a second model guessing at rows. */
+export function draftFromUnlimitedOcrPickup(evidenceText: string): InboundOrderDraft | null {
+  const rows = [...evidenceText.matchAll(/<tr[^>]*>([\s\S]*?)<\/tr>/gi)]
+    .map((row) => [...row[1].matchAll(/<td[^>]*>([\s\S]*?)<\/td>/gi)].map((cell) => decodeOcrCell(cell[1])));
+  if (rows.length === 0) return null;
+
+  const draft = emptyInboundOrderDraft('PICKUP');
+  draft.platform = 'manual';
+  const sellerRow = rows.find((row) => row.some((cell) => /^seller\s*:?$/i.test(cell)));
+  const paymentRow = rows.find((row) => row.some((cell) => /^payment\s*:?$/i.test(cell)));
+  const headerAt = rows.findIndex((row) => row.some((cell) => /^product name$/i.test(cell)));
+  if (sellerRow) {
+    const sellerAt = sellerRow.findIndex((cell) => /^seller\s*:?$/i.test(cell));
+    draft.vendor = sellerRow[sellerAt + 1] ?? '';
+  }
+  if (paymentRow) {
+    const paymentAt = paymentRow.findIndex((cell) => /^payment\s*:?$/i.test(cell));
+    const paidAt = paymentRow.findIndex((cell) => /^total paid\s*:?$/i.test(cell));
+    draft.pickup = {
+      paymentMethod: String(paymentRow[paymentAt + 1] ?? '').toUpperCase(),
+      paidCents: paidAt >= 0 ? moneyToCents(paymentRow[paidAt + 1] ?? '') : null,
+    };
+  }
+
+  const itemRows = headerAt >= 0 ? rows.slice(headerAt + 1) : [];
+  draft.lines = itemRows.flatMap((row, index) => {
+    if (row.length < 3) return [];
+    const [grade, title, quantityRaw, partsNote = '', conditionNote = '', offer = ''] = row;
+    const quantity = Number(quantityRaw);
+    if (!title || !Number.isInteger(quantity) || quantity <= 0) return [];
+    const normalizedParts = partsNote.toLowerCase();
+    const partsStatus = /\bcomplete\b/.test(normalizedParts)
+      ? 'COMPLETE' as const
+      : /\bonly\b|\bmissing\b/.test(normalizedParts)
+        ? 'MISSING_PARTS' as const
+        : null;
+    const gradeCode = grade.trim().toUpperCase();
+    const conditionGrade = gradeCode === 'A'
+      ? 'USED_A' as const
+      : gradeCode === 'B'
+        ? 'USED_B' as const
+        : gradeCode === 'C'
+          ? 'USED_C' as const
+          : null;
+    return [{
+      ...emptyInboundOrderLine(),
+      lineKey: `L${index + 1}`,
+      title,
+      quantity,
+      unitCostCents: moneyToCents(offer),
+      conditionGrade,
+      partsStatus,
+      missingPartsNote: partsStatus === 'MISSING_PARTS' ? partsNote : '',
+      conditionNote,
+    }];
+  });
+  if (draft.lines.length === 0) return null;
+  return draft;
 }
 
 export function parseInboundExtractJson(raw: string): unknown {
@@ -313,6 +449,22 @@ export async function extractPoIntake(
     : null;
   const localOcrText = localOcr?.text ?? '';
 
+  // Unlimited OCR already emits a lossless table for the standard LCPU form.
+  // Parse that table deterministically: this is faster and more faithful than
+  // asking a general chat model to reproduce every row.
+  if (type === 'PICKUP' && localOcrText) {
+    const tableDraft = draftFromUnlimitedOcrPickup(localOcrText);
+    if (tableDraft) {
+      return {
+        draft: orgId === ORG_ONE
+          ? completeDogfoodPickupDraft(tableDraft, localOcrText)
+          : tableDraft,
+        model: 'unlimited-ocr:latest',
+        usage: { input_tokens: 0, output_tokens: 0 },
+      };
+    }
+  }
+
   const userContent: Array<
     | { type: 'text'; text: string }
     | { type: 'image_url'; image_url: { url: string } }
@@ -363,6 +515,10 @@ export async function extractPoIntake(
     // self-hosted chat model after Unlimited OCR. Never spill the transcript
     // to a paid managed model when the local runtime is unavailable.
     selfHostedOnly: type === 'PICKUP',
+    // The dedicated structured-document endpoint is the AI_CHAT_* platform
+    // leaf. Org 1 also has a general Ollama chat model in its vault; letting
+    // that win here silently drops handwritten product rows.
+    platformFirst: type === 'PICKUP',
     // Cold local extraction may include model loading and must outlive the
     // platform provider's intentionally short default failover budget.
     ...(type === 'PICKUP' ? { timeoutMs: 180_000 } : {}),
@@ -383,7 +539,15 @@ export async function extractPoIntake(
             role: 'system',
             content: `${type === 'PICKUP' ? PICKUP_SYSTEM_PROMPT : ORDER_SYSTEM_PROMPT}\n\nThis runtime has no tool-call parser. Return exactly one JSON object and no prose. Use the report_po_intake_fields parameter names. platform, order_id, and seller use {"value":"...","confidence":"high|medium|low"}; line_items use the direct field names.`,
           },
-          { role: 'user', content: userContent },
+          {
+            role: 'user',
+            // Pickup has already been OCRed and is text-only. A plain string
+            // works on both native Ollama and OpenAI-compatible runtimes;
+            // Ollama rejects the otherwise-valid multipart text array.
+            content: type === 'PICKUP'
+              ? userContent.map((part) => part.type === 'text' ? part.text : '').filter(Boolean).join('\n\n')
+              : userContent,
+          },
         ],
         response_format: {
           type: 'json_schema',
@@ -416,8 +580,14 @@ export async function extractPoIntake(
     );
   }
 
+  const evidenceText = [text, localOcrText].filter(Boolean).join('\n');
+  const extractedDraft = draftFromExtractArgs(parsed as RawExtract, type, evidenceText);
+  const draft = orgId === ORG_ONE && type === 'PICKUP'
+    ? completeDogfoodPickupDraft(extractedDraft, evidenceText)
+    : extractedDraft;
+
   return {
-    draft: draftFromExtractArgs(parsed as RawExtract, type, [text, localOcrText].filter(Boolean).join('\n')),
+    draft,
     model: data.model ?? model,
     usage: {
       input_tokens: data.usage?.prompt_tokens ?? 0,
