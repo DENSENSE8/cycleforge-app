@@ -334,6 +334,7 @@ function RecentRow({
         aria-current={lit ? 'page' : undefined}
         aria-keyshortcuts={chord ? chord.join('+') : undefined}
         data-nav-recent={row.entityId}
+        data-sidebar-nav-item
         onClick={onOpen}
         className={cn(NAV_BLOCK_CLASS, 'h-8 text-role-body', lit && 'font-medium', menu && 'pr-8')}
       >

@@ -16,6 +16,8 @@ import {
 import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
 import { ReceivingReturnBanner } from '@/components/sidebar/ReceivingReturnBanner';
 import { ReceivingLinePicker } from '@/components/sidebar/receiving/ReceivingLinePicker';
+import { ReceivingRailBody } from '@/components/sidebar/receiving/ReceivingRailBody';
+import { SidebarRailScrollport } from '@/components/sidebar/rail-shell/SidebarRailScrollport';
 
 import { TriageScanBand, UnboxScanBand, PickupScanBand } from '@/components/sidebar/receiving/ReceivingScanBands';
 import {
@@ -440,6 +442,16 @@ export function ReceivingSidebarPanel() {
                   clearScanSession();
                 }}
               />
+            ) : null}
+
+            {mode === 'receive' ? (
+              <SidebarRailScrollport>
+                <ReceivingRailBody
+                  mode={mode}
+                  selectedLine={selectedLine}
+                  triageFilterText=""
+                />
+              </SidebarRailScrollport>
             ) : null}
 
           </>

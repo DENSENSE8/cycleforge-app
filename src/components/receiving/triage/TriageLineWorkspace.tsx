@@ -1,8 +1,7 @@
 'use client';
 
-/** Triage right-pane shell — browse workbench always mounted; focused carton workspace crossfades over it (UnboxLineWorkspace pattern). */
+/** Arrival right-pane shell — idle stage until a scanned/recent carton opens. */
 
-import dynamic from 'next/dynamic';
 import {
   AnimatePresence,
   motion,
@@ -11,16 +10,8 @@ import {
   useOverlaySwapHardCut,
 } from '@/design-system/motion';
 import { TriageWorkspaceSkeleton } from '@/components/receiving/triage/TriageWorkspaceSkeleton';
-
-// Phase 2 (lazy carton graph):
-const ReceivingLineWorkspace = dynamic(
-  () =>
-    import('@/components/receiving/workspace/ReceivingLineWorkspace').then(
-      (m) => m.ReceivingLineWorkspace,
-    ),
-  { ssr: false, loading: () => <TriageWorkspaceSkeleton /> },
-);
-import { TriageWorkspaceView } from '@/components/receiving/triage/TriageWorkspaceView';
+import { ReceivingLineWorkspace } from '@/components/receiving/workspace/ReceivingLineWorkspace';
+import { ScanStationIdleCanvas } from '@/components/station/ScanStationIdleCanvas';
 import { zIndex } from '@/design-system/tokens/z-index';
 import { appWorkCanvasLayoutClass } from '@/design-system/tokens/app-surface';
 import { appSurfaceFillClass } from '@/design-system/components/AppSurfaceFill';
@@ -73,7 +64,7 @@ export function TriageLineWorkspace({
         {showScanLoader ? (
           <TriageWorkspaceSkeleton />
         ) : (
-          <TriageWorkspaceView selectedLine={row} />
+          <ScanStationIdleCanvas />
         )}
       </div>
 

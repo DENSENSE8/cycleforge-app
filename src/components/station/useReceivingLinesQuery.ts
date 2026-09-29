@@ -15,6 +15,7 @@ import type {
 
 /** Modes that paint spine-first. */
 const SPINE_FIRST_MODES: ReadonlySet<ReceivingTableMode> = new Set([
+  'docked',
   'unbox_queue',
   'unbox_viewed',
   'history',

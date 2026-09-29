@@ -29,7 +29,6 @@ import {
   INBOUND_SOURCE_OPTIONS,
   INBOUND_SOURCE_PARAM,
 } from '@/lib/receiving/inbound-lane';
-import { HISTORY_ACTIVITY_OPTIONS } from '@/lib/receiving/receiving-modes';
 import { DOCKED_KIND_OPTIONS } from '@/lib/receiving/docked-record-state';
 import {
   SOURCING_ALERT_STATUS_OPTIONS,
@@ -196,41 +195,53 @@ const DOCKED_VIEWS = {
 };
 
 /**
- * Inbound › Unboxed (`/incoming?lane=docked`). Staff: `?staff=` — who received,
- * unboxed or scanned the carton (`build-sql.ts` staff clause). Activity: the
- * server's history axis (`?sort=` `unboxed_newest` | `scanned_newest`) —
- * which stamp orders the list, bands its days and bounds the date row; unset
- * = Unboxed. Date: the activity window over the loaded history
- * (`?dateFrom=`/`?dateTo=`), formerly the toolbar week pill (`?weekOffset=`,
- * which picking a range clears); unset = all time. The attention cut
- * (`?dflag=` Claim · Short · Unfound) has ONE control, the pills above the
- * list (they write it; a saved view keeps it) — so no sidebar row. Kind:
- * what intake it was (`?dkind=`, `dockedIntakeKind`). Sort: the ledger's column order (`useUrlColumnSort`,
- * `?colsort=`/`?coldir=`), formerly its toolbar Sort menu; unset = latest
- * activity first.
+ * Deliveries › Docked is package-first: arrival scanned, not yet opened on
+ * Unbox. Deliveries › Unboxed is the separate opened-carton history. Their
+ * controls live here in the contextual sidebar, never over either list.
  */
 const DOCKED_CONTROLS: NavControls = {
   staff: [{ id: 'handled-by', param: STAFF_FILTER_PARAM, label: 'Handled by' }],
   dateRanges: [
     {
-      id: 'activity',
-      label: 'Activity date',
+      id: 'arrival',
+      label: 'Arrival date',
       fromParam: DOCKED_DATE_FROM_PARAM,
       toParam: DOCKED_DATE_TO_PARAM,
       clearParams: [WEEK_OFFSET_PARAM],
       placeholder: 'All time',
     },
   ],
-  choices: [
-    { id: 'activity-axis', label: 'Activity', param: 'sort', options: [...HISTORY_ACTIVITY_OPTIONS], clearParams: [] },
-    { id: 'kind', label: 'Kind', param: DOCKED_KIND_PARAM, options: [...DOCKED_KIND_OPTIONS], clearParams: [] },
-  ],
+  choices: [{ id: 'kind', label: 'Kind', param: DOCKED_KIND_PARAM, options: [...DOCKED_KIND_OPTIONS], clearParams: [] }],
   sort: {
     param: GRID_COLUMN_SORT_PARAM,
     dirParam: GRID_COLUMN_DIR_PARAM,
     defaultValue: 'date',
     options: [
-      { value: 'date', label: 'Latest activity first' },
+      { value: 'date', label: 'Latest arrival scan first' },
+      { value: 'order', label: 'Purchase order, A to Z', dir: 'asc' },
+      { value: 'title', label: 'Product, A to Z', dir: 'asc' },
+      { value: 'qty', label: 'Largest quantity first', dir: 'desc' },
+      { value: 'tracking', label: 'Tracking, A to Z', dir: 'asc' },
+    ],
+  },
+};
+
+const UNBOXED_CONTROLS: NavControls = {
+  ...DOCKED_CONTROLS,
+  dateRanges: [
+    {
+      id: 'unboxed',
+      label: 'Unboxed date',
+      fromParam: DOCKED_DATE_FROM_PARAM,
+      toParam: DOCKED_DATE_TO_PARAM,
+      clearParams: [WEEK_OFFSET_PARAM],
+      placeholder: 'All time',
+    },
+  ],
+  sort: {
+    ...DOCKED_CONTROLS.sort!,
+    options: [
+      { value: 'date', label: 'Latest unboxed first' },
       { value: 'order', label: 'Purchase order, A to Z', dir: 'asc' },
       { value: 'title', label: 'Product, A to Z', dir: 'asc' },
       { value: 'qty', label: 'Largest quantity first', dir: 'desc' },
@@ -245,7 +256,7 @@ const PIPELINE_VIEWS = {
 };
 
 /**
- * Inbound On the way (`/incoming`), formerly its ledger toolbar. Source: the
+ * Inbound (`/incoming`), formerly its ledger toolbar. Source: the
  * Filter funnel's purchasing-source group (`?inbound=`, the list endpoint's
  * facet). Sort: the Sort icon — the ledger's column order over the page
  * (`useUrlColumnSort`, `?colsort=`/`?coldir=`); unset = the urgency sections
@@ -409,16 +420,16 @@ export const NAV_PAGE_DECLS: Readonly<Record<string, NavPageDecl>> = {
   // the ledger toolbar's old "Filter incoming…" field), so a reload, a shared
   // link and a saved view keep it; the card faces open an exact hit
   // (`receiptExactFind` / `cartonExactFind`).
-  // On the way also takes a pasted vendor list, located per number by
+  // Inbound also takes a pasted vendor list, located per number by
   // `GET /api/nav/locate` (the inbound locator).
-  // `viewKeys`: 1 On the way · 2 Unboxed. No bare digit is bound on /incoming
+  // `viewKeys`: 1 Inbound · 2 Docked · 3 Unboxed. No bare digit is bound on /incoming
   // (the status chips are ⌥1–⌥N, `segment-chords.ts`; no EvidenceDecisionBar).
   incoming: {
     viewKeys: true,
     items: {
       pipeline: {
         search: {
-          placeholder: 'Search deliveries',
+          placeholder: 'Search inbound deliveries',
           source: 'url-param',
           param: INBOUND_FIND_PARAM,
           locate: { locator: 'inbound', param: REF_IN_PARAM, statusParam: RECON_PARAM, facetParam: RECON_REASON_PARAM },
@@ -428,14 +439,23 @@ export const NAV_PAGE_DECLS: Readonly<Record<string, NavPageDecl>> = {
       },
       docked: {
         search: {
-          placeholder: 'Search unboxed',
+          placeholder: 'Find tracking or last digits',
           source: 'url-param',
           param: INBOUND_FIND_PARAM,
-          // A pasted list narrows Unboxed to those numbers; the popout says where each one is.
           locate: { locator: 'inbound', param: REF_IN_PARAM, statusParam: RECON_PARAM, facetParam: RECON_REASON_PARAM },
         },
         savedViews: DOCKED_VIEWS,
         controls: DOCKED_CONTROLS,
+      },
+      unboxed: {
+        search: {
+          placeholder: 'Search unboxed cartons',
+          source: 'url-param',
+          param: INBOUND_FIND_PARAM,
+          locate: { locator: 'inbound', param: REF_IN_PARAM, statusParam: RECON_PARAM, facetParam: RECON_REASON_PARAM },
+        },
+        savedViews: DOCKED_VIEWS,
+        controls: UNBOXED_CONTROLS,
       },
     },
     actions: [
@@ -686,12 +706,10 @@ export const NAV_PAGE_DECLS: Readonly<Record<string, NavPageDecl>> = {
   },
   // ── Scan Stations ───────────────────────────────────────────────────────
   triage: {
-    viewKeys: true,
     search: { placeholder: 'Filter scanned cartons…', source: 'url-param', param: 'triq' },
     scanInput: { grammar: 'arrival', endpoint: '/api/receiving/lookup-po' },
   },
   receive: {
-    viewKeys: true,
     search: { placeholder: 'Filter cartons or incoming…', source: 'url-param', param: INBOUND_FIND_PARAM },
     scanInput: { grammar: 'unbox', endpoint: '/api/receiving/lookup-po' },
     actions: [
@@ -732,17 +750,14 @@ export const NAV_PAGE_DECLS: Readonly<Record<string, NavPageDecl>> = {
     search: { placeholder: 'Filter repairs…', source: 'url-param', param: 'search' },
   },
   testing: {
-    viewKeys: true,
     search: { placeholder: 'Filter tests…', source: 'url-param', param: 'search' },
     scanInput: { grammar: 'testing', endpoint: '/api/receiving-lines' },
   },
   'ready-to-pack': {
-    viewKeys: true,
     search: { placeholder: 'Filter tested units…', source: 'url-param', param: 'q' },
     scanInput: { grammar: 'station', endpoint: '/api/picking/desk/scan' },
   },
   packer: {
-    viewKeys: true,
     scanInput: { grammar: 'pack', endpoint: '/api/packing-logs' },
   },
   'scan-out': {

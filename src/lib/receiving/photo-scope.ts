@@ -152,6 +152,17 @@ interface NormalizedReceivingPhotoRequest {
   requestId: string | null;
 }
 
+/** The only implicit landing page after an Unbox photo capture. */
+export const MOBILE_UNBOX_PHOTO_FEED_HREF = '/m/receiving';
+
+/**
+ * Resolve the post-capture route. Record/list screens are opt-in via an
+ * explicit `back`; a bare camera deep link always returns to the photo feed.
+ */
+export function mobileUnboxPhotoReturnHref(back: string | null | undefined): string {
+  return String(back ?? '').trim() || MOBILE_UNBOX_PHOTO_FEED_HREF;
+}
+
 /** Normalize an incoming phone-bridge request. */
 export function normalizeReceivingPhotoRequest(
   msg: ReceivingPhotoRequestMessage | null | undefined,
@@ -189,6 +200,10 @@ export function mobileCaptureHrefForRequest(req: NormalizedReceivingPhotoRequest
         'back',
         `/m/scan?rid=${req.receivingId}&step=platform`,
       );
+    } else {
+      // Unbox requests originate from the photo feed / station bridge. Never
+      // let a missing query parameter fall through to the carton rows screen.
+      params.set('back', MOBILE_UNBOX_PHOTO_FEED_HREF);
     }
     return `?${params.toString()}`;
   };

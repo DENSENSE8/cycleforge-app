@@ -102,7 +102,7 @@
   },
   "Button": {
     "useWhen": "ops CTA, action, submit, confirm, cancel, toolbar action, execute, success intent, anything an operator would call a button, big friendly job CTA, Duolingo-style start button, chunky sticky bottom CTA (size=\"xl\" + depth)",
-    "doNot": "Do not hand-roll a <button> for an operator action. Do not use this for 21st.dev / shadcn-lane chrome — that is `button` from @/components/ui/button. Solid CTAs render flush: cornerClass('flush'), not a rounded-* literal. The ONE big job CTA of a triage screen (e.g. /m/pick Start picking) is `size=\"xl\"` (56px phone) + `depth` (TACTILE_DEPTH_CLASS: hard 4px ledge in BUTTON_DEPTH_EDGE ink, press sinks onto it) with radius=\"pill\" or \"mode\" — never hand-roll a shadow-[…] ledge or translate, and never put depth on toolbar, row or dock-cell buttons (one per screen).",
+    "doNot": "Do not hand-roll a <button> for an operator action. Do not use this for 21st.dev / shadcn-lane chrome — that is `button` from @/components/ui/button. Solid CTAs render flush: cornerClass('flush'), not a rounded-* literal. The ONE big job CTA of a triage screen (e.g. /m/pick Start picking) is `size=\"xl\"` (56px phone) + `depth` (TACTILE_DEPTH_CLASS: hard 4px ledge in BUTTON_DEPTH_EDGE ink, press sinks onto it) with radius=\"pill\" or \"mode\" — never hand-roll an arbitrary shadow ledge or translate, and never put depth on toolbar, row or dock-cell buttons (one per screen).",
     "law": "docs/roadmap/MASTER.md · docs/roadmap/LOOP_PROMPT.md · docs/operations-studio/Full Code Base Upgrade/03-DESIGN-LANGUAGE-2026.md — 'canonical Button ... never hand-roll'. Operator 2026-08-31: two Buttons, two jobs."
   },
   "button": {
@@ -312,8 +312,8 @@
   },
   "TriageCardList": {
     "useWhen": "new orders watcher pill, n new orders pill, live arrivals held above the list, card list chrome, select bar above cards, per page, scroll mode, held new records pill, kept scroll, status chips in the URL, [ ] paging keys, section headers, load more",
-    "doNot": "Status sections use sections=\"by-state\" with family.state; see docs/design-system/HANDOFF-sidebar-only-nav-and-soft-status.md §6. Do not copy this chrome, watcher or new-items pill into a family.",
-    "law": "src/design-system/components/triage-card-list/{TriageSelectBar.tsx,TriageListBody.tsx,triage-list-state.ts}. First consumer: src/components/outbound/orders/cards/OrderCardList.tsx."
+    "doNot": "Status sections use sections=\"by-state\" with family.state; see docs/design-system/HANDOFF-sidebar-only-nav-and-soft-status.md §6. Do not copy this chrome, watcher or new-items pill into a family. Never automatically choose density=\"row\" or TriageRow for a data table: the default is the multi-height RecordCard face, and a compact single-height row is permitted only when the owning surface contract explicitly requires it. Docked and Unboxed require the multi-height carton face so product lines and package facts remain readable.",
+    "law": "src/design-system/components/triage-card-list/{TriageSelectBar.tsx,TriageListBody.tsx,triage-list-state.ts} + src/design-system/components/record-card/RecordCard.tsx. First consumer: src/components/outbound/orders/cards/OrderCardList.tsx. Inbound consumers: src/components/receiving/docked/DockedPackagesLedger.tsx and src/components/receiving/history/DockedReceiptsLedger.tsx share the multi-height carton face while retaining separate Docked (arrival-scanned, not opened) and Unboxed memberships."
   },
   "MorphingRowActionMenu": {
     "useWhen": "row actions, packing slip, shipping label, mark urgent, scan out, selection manifold, checkbox menu",

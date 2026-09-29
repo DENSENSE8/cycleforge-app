@@ -1,9 +1,14 @@
 'use client';
 
-/** Evidence-column facts that DISCLOSE — the Selected-order column of the industrial record ledger (To-ship). */
+/** Evidence-column facts that disclose in ledger rows or softer triage-record cards. */
 import { useState, type ReactNode } from 'react';
 import { Minus, Plus } from '@/components/Icons';
-import { RECORD_LABEL_CLASS, RECORD_TRAILING_CELL_CLASS } from '@/design-system/tokens/industrial-record';
+import {
+  RECORD_LABEL_CLASS,
+  RECORD_TRAILING_CELL_CLASS,
+  type RecordStateFace,
+} from '@/design-system/tokens/industrial-record';
+import { STATE_TONE_CLASSES } from '@/design-system/tokens/lifecycle';
 import { focusRing } from '@/design-system/tokens/focus-ring';
 import { cn } from '@/utils/_cn';
 
@@ -26,9 +31,9 @@ export function EvidenceFactRow({ label, children, wide = false }: { label: stri
 }
 
 /**
- * A collapsible block of the evidence column: one row — label left, its
- * summary, then + collapsed / − expanded in the trailing cell. The body owns
- * its own content; the header is never repeated inside.
+ * A collapsible block of the evidence column: label, summary, then + collapsed
+ * / − expanded on the trailing axis. The body owns its own content; the header
+ * is never repeated inside.
  */
 export function EvidenceDisclosure({
   label,
@@ -36,6 +41,9 @@ export function EvidenceDisclosure({
   testId,
   lazy = false,
   defaultOpen = false,
+  variant = 'ledger',
+  tone = 'neutral',
+  icon,
   children,
 }: {
   label: string;
@@ -45,27 +53,71 @@ export function EvidenceDisclosure({
   lazy?: boolean;
   /** Start expanded (the section is the work still to do); the operator's toggle wins after mount. */
   defaultOpen?: boolean;
+  /** `card` is the softer, semantic-colour face used inside triage records. */
+  variant?: 'ledger' | 'card';
+  /** Semantic colour for the card icon and border; ignored by the ledger face. */
+  tone?: RecordStateFace['tone'];
+  /** Optional section glyph. The card face gives it the tone's pill treatment. */
+  icon?: ReactNode;
   children: ReactNode;
 }) {
   const [opened, setOpened] = useState(defaultOpen);
+  const [open, setOpen] = useState(defaultOpen);
+  const card = variant === 'card';
+  const toneClass = STATE_TONE_CLASSES[tone];
   return (
     <details
       data-testid={testId}
-      open={defaultOpen || undefined}
-      className="group/section border-b border-mode-fact"
-      onToggle={lazy ? (event) => event.currentTarget.open && setOpened(true) : undefined}
+      open={open}
+      className={cn(
+        'group/section',
+        card
+          ? cn('overflow-hidden rounded-mode border bg-surface-card shadow-elev-soft', toneClass.border)
+          : 'border-b border-mode-fact',
+      )}
+      onToggle={(event) => {
+        const next = event.currentTarget.open;
+        setOpen(next);
+        if (lazy && next) setOpened(true);
+      }}
     >
-      <summary className={cn(SUMMARY_CLASS, 'px-4', HIT_CLASS)}>
+      <summary
+        className={cn(
+          SUMMARY_CLASS,
+          HIT_CLASS,
+          card
+            ? 'min-h-14 gap-3 px-3 py-2 transition-colors hover:bg-mode-hover'
+            : 'px-4',
+        )}
+      >
         {/* One left edge for every value in the panel (owner 2026-09-26):
             the label column is the fact rows' w-24, the summary starts after it. */}
-        <span className={cn(RECORD_LABEL_CLASS, 'w-24 shrink-0 text-mode-muted')}>{label}</span>
-        <span className="flex min-w-0 flex-1 items-center justify-start truncate">{summary}</span>
+        {card && icon ? (
+          <span aria-hidden className={cn('flex size-8 shrink-0 items-center justify-center rounded-mode-pill', toneClass.pill, '[&_svg]:size-4')}>
+            {icon}
+          </span>
+        ) : null}
+        {card ? (
+          <span className="flex min-w-0 flex-1 flex-col justify-center">
+            <span className={cn('truncate text-role-data font-semibold', toneClass.text)}>{label}</span>
+            {summary ? (
+              <span className="truncate text-role-caption text-mode-muted group-open/section:hidden">{summary}</span>
+            ) : null}
+          </span>
+        ) : (
+          <>
+            <span className={cn(RECORD_LABEL_CLASS, 'w-24 shrink-0 text-mode-muted')}>{label}</span>
+            <span className="flex min-w-0 flex-1 items-center justify-start truncate">{summary}</span>
+          </>
+        )}
         <span aria-hidden className={cn(RECORD_TRAILING_CELL_CLASS, 'text-mode-muted')}>
           <Plus className="h-3.5 w-3.5 group-open/section:hidden" />
           <Minus className="hidden h-3.5 w-3.5 group-open/section:block" />
         </span>
       </summary>
-      <div className="border-t border-mode-fact">{!lazy || opened ? children : null}</div>
+      <div className={cn('border-t', card ? toneClass.border : 'border-mode-fact')}>
+        {!lazy || opened ? children : null}
+      </div>
     </details>
   );
 }

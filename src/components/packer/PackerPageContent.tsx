@@ -65,7 +65,7 @@ export function PackerPageContent({ packerId }: PackerPageContentProps) {
         transition={transition}
         className="hidden h-full w-full md:flex"
       >
-        <PackerDashboard packerId={packerId} />
+        <PackerDashboard />
       </motion.div>
     </>
   );

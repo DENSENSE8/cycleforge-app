@@ -25,7 +25,7 @@ test('feed photo capture and gallery both return to the photo feed', () => {
   );
 });
 
-test('direct capture omits back so the photo route can use the scanned carton hub', () => {
+test('a bare capture URL leaves the photo route to apply its feed default', () => {
   const hrefs = receivingLinePhotoHrefs({
     receivingId: 42,
     lineId: 7,

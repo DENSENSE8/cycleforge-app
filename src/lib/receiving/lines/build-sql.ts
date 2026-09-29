@@ -819,10 +819,8 @@ export function buildReceivingLinesListSql(input: ReceivingLinesListSqlInput): B
       `(rl.workflow_status IS NULL OR rl.workflow_status IN ('EXPECTED','ARRIVED','MATCHED','UNBOXED','AWAITING_TEST','IN_TEST','PASSED','FAILED','RTV','SCRAP','DONE'))`,
     );
   } else if (view === 'activity') {
-    // "Activity" = Unboxed membership: a received line whose carton was
-    // actually opened on the Unbox surface. A line marked received with no
-    // unbox / open stamp (Zoho receive, "mark received") is not unboxed and
-    // stays out (owner 2026-09-28).
+    // "Activity" = Unboxed membership: the carton was opened on Unbox. A
+    // door-scan-only carton belongs to Deliveries › Docked instead.
     conditions.push(
       `(
            rl.workflow_status IN ('UNBOXED','AWAITING_TEST','IN_TEST','PASSED','DONE')
@@ -1163,8 +1161,12 @@ export function buildReceivingLinesListSql(input: ReceivingLinesListSqlInput): B
               ? `ORDER BY COALESCE(scan_first.scanned_at::text, rt.door_received_at::text, rl.created_at::text) ASC, rl.id ASC`
               : `ORDER BY COALESCE(scan_first.scanned_at::text, rt.door_received_at::text, rl.created_at::text) DESC, rl.id DESC`)
         : view === 'scanned'
-          // Newest door-scan first — the triage to-do reads like an inbox.
-          ? `ORDER BY rt.door_received_at::text DESC NULLS LAST, rl.id DESC`
+          // Deliveries › Docked asks for the full Arrival spine. The Unbox
+          // priority queue keeps its legacy door timestamp unless it explicitly
+          // selects this arrival-ledger sort.
+          ? (historySort === 'scanned_newest'
+              ? `ORDER BY COALESCE(scan_first.scanned_at::text, rt.door_received_at::text, rl.created_at::text) DESC, rl.id DESC`
+              : `ORDER BY rt.door_received_at::text DESC NULLS LAST, rl.id DESC`)
         : view === 'unbox_opened'
           // First Unbox-open wins (COALESCE-once ru.opened_at). Re-scans append
           // ops_events but must NOT reorder the rail — ops MAX is legacy fallback
@@ -1610,17 +1612,48 @@ export function buildReceivingLinesListSql(input: ReceivingLinesListSqlInput): B
 /** Unmatched/unfound cartons live in the `receiving` table with no `receiving_line` row yet, so they never come back from the main query. */
 export function shouldIncludeUnmatchedPlaceholders(query: ReceivingLinesQuery): boolean {
   return (
-    ((query.view === 'all' || query.view === 'activity') || (query.view === 'reconcile' && query.refIn.length > 0)) &&
+    ((query.view === 'all' || query.view === 'activity' || query.view === 'scanned') || (query.view === 'reconcile' && query.refIn.length > 0)) &&
     query.searchScope !== 'zoho_po' &&
     !receivingHistorySkipsUnmatchedPlaceholders(query.searchField)
   );
 }
 
-/** History (`view=activity`) membership for lineless unmatched placeholders: */
+/** Unboxed (`view=activity`) membership for lineless cartons. */
 const ACTIVITY_UNMATCHED_UNBOX_TOUCH_SQL = ` AND (
               ru.unboxed_at IS NOT NULL
               OR ru.opened_at IS NOT NULL
               OR unbox_open.unbox_opened_at IS NOT NULL
+            )`;
+
+/** Docked (`view=scanned`) lineless cartons: arrived physically, not opened on Unbox. */
+const SCANNED_UNMATCHED_DOCK_TOUCH_SQL = ` AND (
+              EXISTS (
+                SELECT 1 FROM receiving_triage rt_docked
+                WHERE rt_docked.receiving_id = r.id
+                  AND rt_docked.organization_id = r.organization_id
+                  AND rt_docked.door_received_at IS NOT NULL
+              )
+              OR EXISTS (SELECT 1 FROM receiving_scans rs_docked WHERE rs_docked.receiving_id = r.id)
+              OR EXISTS (
+                SELECT 1 FROM ops_events oe_docked
+                WHERE oe_docked.organization_id = r.organization_id
+                  AND oe_docked.entity_type = 'receiving'
+                  AND oe_docked.entity_id = r.id
+                  AND oe_docked.event_type = 'TRACKING_SCANNED'
+              )
+            )
+            AND NOT EXISTS (
+              SELECT 1 FROM receiving_unbox ru_docked
+              WHERE ru_docked.receiving_id = r.id
+                AND ru_docked.organization_id = r.organization_id
+                AND (ru_docked.opened_at IS NOT NULL OR ru_docked.unboxed_at IS NOT NULL)
+            )
+            AND NOT EXISTS (
+              SELECT 1 FROM ops_events oe_unbox
+              WHERE oe_unbox.organization_id = r.organization_id
+                AND oe_unbox.entity_type = 'receiving'
+                AND oe_unbox.entity_id = r.id
+                AND oe_unbox.event_type = 'UNBOX_SCAN_OPENED'
             )`;
 
 /** Placeholder rows + count for lineless unmatched/local-pickup/(search) zoho_po cartons. */
@@ -1635,7 +1668,7 @@ export function buildUnmatchedPlaceholdersSql(
   let unmatchedSearchSql = '';
   // A pasted list: the lineless cartons a pasted number names. Reconcile has
   // no lane (door-scanned but not yet matched is RECEIVED, not "no match");
-  // Unboxed keeps its own membership gate below.
+  // Each carton view keeps its own physical-stage membership gate below.
   const reconcile = query.view === 'reconcile';
   const pasted = reconcile || (query.view === 'activity' && query.refIn.length > 0);
   if (pasted) {
@@ -1663,7 +1696,8 @@ export function buildUnmatchedPlaceholdersSql(
           )`;
     }
   }
-  // Browse History stays Unfound/local-pickup + Unbox-touched. A paste owns $2, so text search stands down.
+  // Browse Unboxed stays Unfound/local-pickup + Unbox-touched. Docked uses the
+  // arrival-without-Unbox gate. A paste owns $2, so text search stands down.
   const searchActive = Boolean(search) && !pasted;
   const sourceInSql = reconcile
     ? ''
@@ -1674,7 +1708,7 @@ export function buildUnmatchedPlaceholdersSql(
   const activityUnboxTouchSql = activityGatesMembership
     ? ACTIVITY_UNMATCHED_UNBOX_TOUCH_SQL
     : '';
-  // Count needs the same unbox joins when History gates membership.
+  const scannedDockTouchSql = query.view === 'scanned' ? SCANNED_UNMATCHED_DOCK_TOUCH_SQL : '';
   const countUnboxJoinsSql = activityGatesMembership
     ? `
              LEFT JOIN receiving_unbox ru  ON ru.receiving_id = r.id AND ru.organization_id = r.organization_id
@@ -1759,7 +1793,7 @@ export function buildUnmatchedPlaceholdersSql(
                 WHERE rl.receiving_id = r.id
                   AND rl.organization_id = r.organization_id
              )
-             ${unmatchedSearchSql}${activityUnboxTouchSql}
+             ${unmatchedSearchSql}${activityUnboxTouchSql}${scannedDockTouchSql}
            ORDER BY COALESCE(rs_agg.last_scan::text, rt.door_received_at::text, r.created_at::text) DESC NULLS LAST,
                     r.id DESC
            LIMIT 150`,
@@ -1777,7 +1811,7 @@ export function buildUnmatchedPlaceholdersSql(
                  WHERE rl.receiving_id = r.id
                    AND rl.organization_id = r.organization_id
               )
-              ${unmatchedSearchSql}${activityUnboxTouchSql}`,
+              ${unmatchedSearchSql}${activityUnboxTouchSql}${scannedDockTouchSql}`,
       params: unmatchedSearchVals,
     },
   };

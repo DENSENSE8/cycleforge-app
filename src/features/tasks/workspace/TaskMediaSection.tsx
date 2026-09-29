@@ -3,7 +3,7 @@
 /** Task evidence — **Photos** and **Videos**: */
 
 import Image from 'next/image';
-import { Trash2 } from '@/components/Icons';
+import { Images, Trash2 } from '@/components/Icons';
 import { usePhotoGallery } from '@/components/shipped/photo-gallery/usePhotoGallery';
 import { PhotoViewerPortal } from '@/components/shipped/photo-gallery/PhotoViewerPortal';
 import { EvidenceSection, evidenceVerbClass } from '@/design-system/components/record-ledger/RecordEvidence';
@@ -72,8 +72,19 @@ export function TaskMediaSection({
 
   return (
     <EvidenceSection
-      label={`Media · ${photoCount} photo${photoCount === 1 ? '' : 's'} · ${videoCount} video${videoCount === 1 ? '' : 's'}`}
+      label="Media"
       testId="task-media"
+      collapsible
+      lazy
+      tone={empty ? 'neutral' : 'info'}
+      icon={<Images />}
+      summary={
+        loading
+          ? 'Loading attachments…'
+          : empty
+            ? 'No photos or videos'
+            : `${photoCount} photo${photoCount === 1 ? '' : 's'} · ${videoCount} video${videoCount === 1 ? '' : 's'}`
+      }
       action={
         <button
           type="button"
@@ -86,7 +97,7 @@ export function TaskMediaSection({
         </button>
       }
     >
-      <div className="mb-2">
+      <div className="mb-3">
         <MediaLinkComposer onAdd={onAddLink} />
       </div>
       {empty ? (

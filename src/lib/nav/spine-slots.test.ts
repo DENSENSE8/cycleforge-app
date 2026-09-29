@@ -13,6 +13,7 @@ import {
   resolveSpineMapEntries,
   resolveSpineSlotPages,
   spineParentDrillId,
+  spineStructuralBottomPages,
   spineStructuralTopPages,
   LEGACY_DESKS_SLOT_ID,
   SPINE_LANE_SLOT_IDS,
@@ -29,6 +30,8 @@ const catalog: SidebarNavItem[] = [
   { id: 'home', label: 'Home', href: '/', icon: Icon, kind: 'top' },
   { id: 'ops-photos', label: 'Media Library', href: '/ops/photos', icon: Icon, kind: 'top' },
   { id: 'search', label: 'Search', href: '/search', icon: Icon, kind: 'top', spineBand: false },
+  { id: 'print-station', label: 'Print station', href: '/print-station', icon: Icon, kind: 'top', spineBottom: true },
+  { id: 'reports', label: 'Reports', href: '/reports', icon: Icon, kind: 'top', spineBottom: true },
   { id: 'outbound', label: 'Shipping', href: '/shipping', icon: Icon, kind: 'domain', domainGroup: 'fulfillment' },
   { id: 'pickup', label: 'Local Pickup', href: '/pickup', icon: Icon, kind: 'station', stationGroup: 'floor' },
   { id: 'triage', label: 'Arrival', href: '/triage', icon: Icon, kind: 'station', stationGroup: 'floor' },
@@ -36,14 +39,14 @@ const catalog: SidebarNavItem[] = [
   { id: 'studio', label: 'Operations Studio', href: '/studio', icon: Icon, kind: 'main', mainGroup: 'studio' },
 ];
 
-test('null / empty / absent hydrate to the lane band, remaining L1, then Stations last', () => {
+test('null / empty / absent hydrate to Stations, the lane band, then remaining L1', () => {
   // Fixture desks: `outbound` (fulfillment) + `products` (catalog). Lanes emit
   // in DESK_SPINE_SECTIONS order, so fulfillment precedes catalog.
   assert.deepEqual(hydrateSpineSlots(null, catalog), [
+    SPINE_STATIONS_SLOT_ID,
     'fulfillment',
     'catalog',
     'studio',
-    SPINE_STATIONS_SLOT_ID,
   ]);
   assert.deepEqual(hydrateSpineSlots(undefined, catalog), defaultSpineOrder(catalog));
   assert.deepEqual(hydrateSpineSlots([], catalog), defaultSpineOrder(catalog));
@@ -52,7 +55,7 @@ test('null / empty / absent hydrate to the lane band, remaining L1, then Station
 test('there is no Workspaces parent slot — lanes are the parents', () => {
   const order = defaultSpineOrder(catalog);
   assert.equal(order.includes(LEGACY_DESKS_SLOT_ID), false);
-  assert.equal(order[0], 'fulfillment');
+  assert.equal(order[0], SPINE_STATIONS_SLOT_ID);
   // Only lanes the catalog can paint appear; the other five stay absent.
   for (const lane of SPINE_LANE_SLOT_IDS) {
     if (lane === 'fulfillment' || lane === 'catalog') continue;
@@ -60,10 +63,11 @@ test('there is no Workspaces parent slot — lanes are the parents', () => {
   }
 });
 
-test('the lane band leads, then remaining L1, then Stations at the very bottom', () => {
+test('Scan Stations leads Operations immediately above the lane band', () => {
   const order = defaultSpineOrder(catalog);
+  assert.equal(order[0], SPINE_STATIONS_SLOT_ID);
+  assert.equal(order[1], 'fulfillment');
   assert.ok(order.indexOf('catalog') < order.indexOf('studio'));
-  assert.equal(order.at(-1), SPINE_STATIONS_SLOT_ID);
 });
 
 test('a catalog with only benches yields only the stations slot', () => {
@@ -75,8 +79,8 @@ test('hydrate keeps staff lane order and appends new catalog ids', () => {
   assert.deepEqual(hydrateSpineSlots(['catalog', 'fulfillment'], catalog), [
     'catalog',
     'fulfillment',
-    'studio',
     SPINE_STATIONS_SLOT_ID,
+    'studio',
   ]);
 });
 
@@ -131,11 +135,13 @@ test('hydrate caps at SPINE_SLOTS_MAX', () => {
 });
 
 test('isSpineSlottable excludes tops, station benches, and pointer desks', () => {
-  assert.equal(isSpineSlottable(catalog[0]!), false);
-  assert.equal(isSpineSlottable(catalog[2]!), false);
-  assert.equal(isSpineSlottable(catalog[3]!), false);
-  assert.equal(isSpineSlottable(catalog[4]!), false);
-  assert.equal(isSpineSlottable(catalog[7]!), true);
+  assert.equal(isSpineSlottable(catalog.find((item) => item.id === 'home')!), false);
+  assert.equal(isSpineSlottable(catalog.find((item) => item.id === 'search')!), false);
+  assert.equal(isSpineSlottable(catalog.find((item) => item.id === 'outbound')!), false);
+  assert.equal(isSpineSlottable(catalog.find((item) => item.id === 'pickup')!), false);
+  assert.equal(isSpineSlottable(catalog.find((item) => item.id === 'studio')!), true);
+  assert.equal(isSpineSlottable(catalog.find((item) => item.id === 'print-station')!), false);
+  assert.equal(isSpineSlottable(catalog.find((item) => item.id === 'reports')!), false);
 });
 
 test('resolveSpineSlotPages skips the stations slot and every lane slot', () => {
@@ -191,11 +197,21 @@ test('spineStructuralTopPages keeps only painted top map rows', () => {
   );
 });
 
-test('migrateSpineSlots stamps version without hoisting studio', () => {
+test('spineStructuralBottomPages keeps Print station then Reports outside drag order', () => {
+  assert.deepEqual(
+    spineStructuralBottomPages([...catalog].reverse()).map((page) => page.id),
+    ['print-station', 'reports'],
+  );
+  const order = defaultSpineOrder(catalog);
+  assert.equal(order.includes('print-station'), false);
+  assert.equal(order.includes('reports'), false);
+});
+
+test('migrateSpineSlots moves Scan Stations above the lane run and stamps once', () => {
   const saved = ['fulfillment', 'catalog', 'studio', SPINE_STATIONS_SLOT_ID];
   const first = migrateSpineSlots(saved, catalog, undefined);
-  assert.deepEqual(first.slots, hydrateSpineSlots(saved, catalog));
-  assert.equal(first.slots[0], 'fulfillment');
+  assert.deepEqual(first.slots, [SPINE_STATIONS_SLOT_ID, 'fulfillment', 'catalog', 'studio']);
+  assert.equal(first.slots[0], SPINE_STATIONS_SLOT_ID);
   assert.equal(first.stamp?.spineSlotsVersion, SPINE_SLOTS_VERSION);
 
   const second = migrateSpineSlots(saved, catalog, SPINE_SLOTS_VERSION);
@@ -215,9 +231,9 @@ test('v3 dissolves a saved Workspaces slot into the lane band and stamps once', 
   const saved = [LEGACY_DESKS_SLOT_ID, SPINE_STATIONS_SLOT_ID, 'studio'];
   const out = migrateSpineSlots(saved, catalog, 2);
   assert.deepEqual(out.slots, [
+    SPINE_STATIONS_SLOT_ID,
     'fulfillment',
     'catalog',
-    SPINE_STATIONS_SLOT_ID,
     'studio',
   ]);
   assert.deepEqual(out.stamp?.spineSlots, out.slots);
@@ -225,35 +241,35 @@ test('v3 dissolves a saved Workspaces slot into the lane band and stamps once', 
   assert.equal(out.slots.includes(LEGACY_DESKS_SLOT_ID), false);
 });
 
-test('v3 lifts the lane band above Scan Stations for a v1 order', () => {
+test('a v1 order rolls forward to Scan Stations above the lane band', () => {
   const saved = [SPINE_STATIONS_SLOT_ID, LEGACY_DESKS_SLOT_ID, 'studio'];
   const out = migrateSpineSlots(saved, catalog, 1);
   assert.deepEqual(out.slots, [
+    SPINE_STATIONS_SLOT_ID,
     'fulfillment',
     'catalog',
-    SPINE_STATIONS_SLOT_ID,
     'studio',
   ]);
 });
 
-test('v4 puts the business run first while preserving every non-business row afterward', () => {
+test('v6 puts the Operations run first while preserving every non-business row afterward', () => {
   const saved = ['studio', SPINE_STATIONS_SLOT_ID, LEGACY_DESKS_SLOT_ID];
   const out = migrateSpineSlots(saved, catalog, 1);
   assert.deepEqual(out.slots, [
+    SPINE_STATIONS_SLOT_ID,
     'fulfillment',
     'catalog',
     'studio',
-    SPINE_STATIONS_SLOT_ID,
   ]);
 });
 
-test('v4 normalizes a legacy custom lane order to the product business order', () => {
+test('v6 normalizes a legacy custom order to Scan Stations then the lane run', () => {
   const saved = [SPINE_STATIONS_SLOT_ID, 'catalog', 'fulfillment'];
   const out = migrateSpineSlots(saved, catalog, 2);
-  assert.deepEqual(out.slots, ['fulfillment', 'catalog', SPINE_STATIONS_SLOT_ID, 'studio']);
+  assert.deepEqual(out.slots, [SPINE_STATIONS_SLOT_ID, 'fulfillment', 'catalog', 'studio']);
 });
 
-test('the default business run is Sales, Receiving, Fulfillment, Inventory, Products, Reports', () => {
+test('the default draggable business run ends at Products; fixed utilities are separate', () => {
   const items = getSidebarNavItems({
     permissions: new Set([
       'dashboard.view',
@@ -268,21 +284,21 @@ test('the default business run is Sales, Receiving, Fulfillment, Inventory, Prod
     ]),
   });
   assert.deepEqual(defaultSpineOrder(items).slice(0, 6), [
+    SPINE_STATIONS_SLOT_ID,
     'sales',
     'inbound',
     'fulfillment',
     'inventory',
     'catalog',
-    'reports',
   ]);
   const reports = items.find((item) => item.id === 'reports');
   assert.ok(reports);
-  assert.equal(isSpineSlottable(reports), true);
+  assert.equal(isSpineSlottable(reports), false);
 });
 
-test('the v3 lift is idempotent and stamps once', () => {
+test('the current order migration is idempotent and stamps once', () => {
   const first = migrateSpineSlots([SPINE_STATIONS_SLOT_ID, LEGACY_DESKS_SLOT_ID], catalog, 1);
-  assert.equal(first.slots[0], 'fulfillment');
+  assert.equal(first.slots[0], SPINE_STATIONS_SLOT_ID);
   const second = migrateSpineSlots(first.slots, catalog, SPINE_SLOTS_VERSION);
   assert.deepEqual(second.slots, first.slots);
   assert.equal(second.stamp, null);

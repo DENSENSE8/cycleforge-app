@@ -1,8 +1,7 @@
 'use client';
 
 /**
- * The Picker desk's right pane: the shipping workspace (Pending / Urgent /
- * History), with the active order or an Up Next preview crossfading over it.
+ * Picker station stage: idle until the scan/recent rail opens an order.
  */
 
 import {
@@ -12,9 +11,9 @@ import {
   useMotionRole,
   useOverlaySwapHardCut,
 } from '@/design-system/motion';
-import { ShippingWorkspaceView } from '@/components/tech/shipping/ShippingWorkspaceView';
 import { ActiveOrderWorkspace } from '@/components/tech/ActiveOrderWorkspace';
 import { SearchFindPreviewEmbed } from '@/components/search/SearchFindPreviewEmbed';
+import { ScanStationIdleCanvas } from '@/components/station/ScanStationIdleCanvas';
 import { zIndex } from '@/design-system/tokens/z-index';
 import { appWorkCanvasClass } from '@/design-system/tokens/app-surface';
 import { appSurfaceFillClass } from '@/design-system/components/AppSurfaceFill';
@@ -23,7 +22,6 @@ import type { SearchSelection } from '@/lib/search/search-selection';
 import type { PickActiveOrderPane } from '@/components/pick/usePickOrderPanes';
 
 interface PickOrderWorkspaceProps {
-  pickerId: string;
   activeOrderPane: PickActiveOrderPane | null;
   onCloseActiveOrder: () => void;
   /** Sync condition (and other local fields) after Displays edits. */
@@ -33,7 +31,6 @@ interface PickOrderWorkspaceProps {
 }
 
 export function PickOrderWorkspace({
-  pickerId,
   activeOrderPane,
   onCloseActiveOrder,
   onActiveOrderChange,
@@ -61,7 +58,7 @@ export function PickOrderWorkspace({
         inert={showOverlay ? true : undefined}
         style={{ visibility: showOverlay ? 'hidden' : 'visible' }}
       >
-        <ShippingWorkspaceView techId={pickerId} />
+        <ScanStationIdleCanvas />
       </div>
 
       <AnimatePresence

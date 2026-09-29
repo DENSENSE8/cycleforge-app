@@ -11,8 +11,11 @@
 import { getSidebarPageNav, spineSectionIdForPage, type SpineSectionId } from '@/lib/sidebar-navigation';
 
 export const NAV_GO_KEYS: Readonly<Partial<Record<SpineSectionId, Readonly<Record<string, string>>>>> = {
+  // Scan Stations mirrors the contextual parent switcher. Repair remains a
+  // routable legacy station, but is intentionally absent from both surfaces.
+  floor: { a: 'triage', u: 'receive', q: 'testing', p: 'ready-to-pack', k: 'packer', s: 'scan-out' },
   fulfillment: { s: 'outbound', f: 'fba', l: 'label-intake' },
-  inbound: { d: 'incoming', s: 'sourcing' },
+  inbound: { d: 'incoming', p: 'pickup', s: 'sourcing' },
   inventory: { i: 'inventory', q: 'qc-labels' },
 };
 

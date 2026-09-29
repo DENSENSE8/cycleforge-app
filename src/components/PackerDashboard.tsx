@@ -10,11 +10,7 @@ import {
 import { StationDetailsHandler } from './station/StationDetailsHandler';
 import { useRealtimeToasts } from '@/hooks/useRealtimeToasts';
 
-interface PackerDashboardProps {
-  packerId: string;
-}
-
-export default function PackerDashboard({ packerId }: PackerDashboardProps) {
+export default function PackerDashboard() {
   useRealtimeToasts('packer');
   const { activeOrderPane, setActiveOrderPane, activeFbaPane, setActiveFbaPane } =
     usePackerOrderPane();
@@ -24,7 +20,6 @@ export default function PackerDashboard({ packerId }: PackerDashboardProps) {
       <div className="relative flex h-full w-full">
         <div className="relative min-h-0 flex-1 overflow-hidden">
           <PackerRightPane
-            packerId={packerId}
             activeOrderPane={activeOrderPane}
             activeFbaPane={activeFbaPane}
             onCloseActiveOrder={() => {

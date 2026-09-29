@@ -18,11 +18,6 @@ import { routeParamsFor } from '@/lib/routing/registry';
 import { buildRouteUrl, parseRouteParams } from '@/lib/routing/route-params';
 import type { ReceivingMode } from '@/components/sidebar/receiving/receiving-sidebar-shared';
 import {
-  normalizeTriageWorkspaceTabParams,
-  resolveTriageView,
-  type TriageWorkspaceTab,
-} from '@/utils/triage-workspace-state';
-import {
   getUnboxWorkspaceTabFromSearch,
   normalizeUnboxWorkspaceTabParams,
   type UnboxWorkspaceTab,
@@ -36,10 +31,6 @@ interface ReceivingModeState {
   mode: ReceivingMode;
   /** Unbox sub-view from `?unboxview=` (defaults to `recent`). */
   unboxView: UnboxView;
-  /** Triage sub-view from `?triview=` (defaults to `triage`). */
-  triageView: TriageWorkspaceTab;
-  /** Triage carton-list filter text from `?triq=` (D1 — finds a carton already scanned in, not a Zoho search). */
-  triageQuery: string;
   /**
    * True for the two surfaces that show the scan bar + recent rail
    * (`receive` = Unbox workspace, `triage` = Receiving). Only the right pane
@@ -52,10 +43,6 @@ interface ReceivingModeState {
   updateStaff: (id: number) => void;
   /** Swap the Unbox `?unboxview=` sub-view. Clears the current line by default. */
   updateUnboxView: (next: UnboxView, opts?: { clearLine?: boolean }) => void;
-  /** Swap the Triage `?triview=` sub-view (clears the current line first). */
-  updateTriageView: (next: TriageWorkspaceTab, opts?: { clearLine?: boolean }) => void;
-  /** Set (or clear, on empty string) the Triage `?triq=` carton-list filter. */
-  updateTriageQuery: (next: string) => void;
 }
 
 
@@ -111,9 +98,6 @@ export function useReceivingMode(): ReceivingModeState {
   const isScanSurface = mode === 'receive' || mode === 'triage';
 
   const unboxView: UnboxView = getUnboxWorkspaceTabFromSearch(searchParams);
-
-  const triageView = resolveTriageView(searchParams.get('triview'));
-  const triageQuery = searchParams.get('triq') ?? '';
 
   // Returning to a scan surface from History / Incoming → focus the
   // tracking field. Entering Pickup → clear any open line + focus the
@@ -178,35 +162,12 @@ export function useReceivingMode(): ReceivingModeState {
     replaceOnSurface(nextParams);
   };
 
-  const updateTriageView = (next: TriageWorkspaceTab, opts?: { clearLine?: boolean }) => {
-    if (next === triageView) return;
-    if (opts?.clearLine !== false) {
-      window.dispatchEvent(new CustomEvent('receiving-clear-line'));
-    }
-    const nextParams = surfaceParams();
-    normalizeTriageWorkspaceTabParams(nextParams, next);
-    replaceOnSurface(nextParams);
-  };
-
-  const updateTriageQuery = (next: string) => {
-    const trimmed = next.trim();
-    if (trimmed === triageQuery) return;
-    const nextParams = surfaceParams();
-    if (!trimmed) nextParams.delete('triq');
-    else nextParams.set('triq', trimmed);
-    replaceOnSurface(nextParams);
-  };
-
   return {
     mode,
     unboxView,
-    triageView,
-    triageQuery,
     isScanSurface,
     updateMode,
     updateStaff,
     updateUnboxView,
-    updateTriageView,
-    updateTriageQuery,
   };
 }

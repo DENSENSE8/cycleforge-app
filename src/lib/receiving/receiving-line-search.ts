@@ -17,10 +17,26 @@ export function receivingFindNeedles(query: string): string[] {
   return [text];
 }
 
+const canonicalTrackingFragment = (value: string) => value.replace(/[^a-z0-9]/gi, '').toLowerCase();
+
+/** Package lookup accepts the full tracking code or any trailing fragment. */
+export function receivingTrackingMatchesQuery(
+  tracking: string | null | undefined,
+  query: string,
+): boolean {
+  const stored = canonicalTrackingFragment(tracking ?? '');
+  if (!stored) return false;
+  return receivingFindNeedles(query).some((needle) => {
+    const fragment = canonicalTrackingFragment(needle);
+    return fragment.length > 0 && (stored === fragment || stored.endsWith(fragment));
+  });
+}
+
 /** Local refinement of fetched receiving rows; not an authoritative system lookup. */
 export function receivingLineMatchesQuery(row: ReceivingLineRow, query: string): boolean {
   const needles = receivingFindNeedles(query);
   if (needles.length === 0) return true;
+  if (receivingTrackingMatchesQuery(row.tracking_number, query)) return true;
   const hay = [
     row.sku,
     row.item_name,

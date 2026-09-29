@@ -45,7 +45,7 @@ export const GS1_PATH_RE = /\/01\/(\d{8,14})(?:\/21\/([^/?#\s]+))?/i;
 export const GS1_LOCATION_RE = /\/414\/(\d+)\/254\/([^/?#\s]+)/i;
 
 // Raw GS1 AI string emitted by industrial DataMatrix scanners.
-const GS1_AI_LOCATION_FNC1_RE = /414(\d{13})(?:\x1D|)?254([^\x1D]+)/i;
+const GS1_AI_LOCATION_FNC1_RE = /414(\d{13})(?:\x1D|\x1E)?254([^\x1D\x1E]+)/i;
 const GS1_AI_LOCATION_PARENS_RE = /\(414\)(\d{13})\(254\)([^()]+)/i;
 
 // Unit/serial product label — `(01)gtin(21)serial[(10)batch]`.

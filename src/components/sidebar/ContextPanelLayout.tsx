@@ -45,7 +45,10 @@ import {
   subscribeStationFarRailRequest,
 } from '@/lib/right-rail/frame';
 import { useLocalStorage } from '@/hooks';
-import { isStationSurfaceRoute } from '@/lib/sidebar-navigation';
+import {
+  isContextualScanStationRoute,
+  isStationSurfaceRoute,
+} from '@/lib/sidebar-navigation';
 import { cn } from '@/utils/_cn';
 
 // Kept lazy, exactly as they were when this mounted from the app shell:
@@ -58,8 +61,12 @@ export function ContextPanelLayout({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   // Two families, one question:
   const railless = useIsRaillessSurface();
+  const hasSidebarContext = useHasSidebarContext();
+  const inlineScanStation = isContextualScanStationRoute(pathname);
   const hasPanel =
-    (useHasSidebarContext() || isStationSurfaceRoute(pathname)) && !railless;
+    !inlineScanStation
+    && (hasSidebarContext || isStationSurfaceRoute(pathname))
+    && !railless;
   const stationSurface = isStationSurfaceRoute(pathname);
   // Collapse preference before resize so drag-past-min can write the same key.
   const [collapsed, setCollapsed] = useLocalStorage(

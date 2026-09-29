@@ -28,7 +28,6 @@ export function TriageSidebarBody({
 }) {
   return (
     <TriageFeedBody
-      view="triage"
       selectedLineId={selectedLineId}
       selectedRow={selectedRow}
       leadingRow={leadingRow}

@@ -26,6 +26,7 @@ export const RECEIVING_HISTORY_LIMIT = 3000;
 /** The display modes the lines table itself knows how to render. */
 export type ReceivingTableMode =
   | 'receive'
+  | 'docked'
   | 'history'
   | 'incoming'
   | 'incoming_removed'
@@ -57,8 +58,8 @@ export interface ReceivingSortOption {
 }
 
 /**
- * History / Docked accepted `?sort=` wire ids. Includes `scanned_newest` for
- * Incoming Docked · Triage (door-scan order) — not shown in Unbox History's
+ * History / Docked accepted `?sort=` wire ids. `scanned_newest` is the
+ * implicit Incoming Docked axis (door-scan order) — not shown in Unbox History's
  * Sort-by menu (triage / arrival language).
  */
 export const HISTORY_SORT_WIRE_IDS = [
@@ -353,11 +354,50 @@ const unboxViewedMode: ReceivingModeDescriptor = {
   },
 };
 
+/** Deliveries › Docked — physical arrival scans waiting for Unbox. */
+const dockedMode: ReceivingModeDescriptor = {
+  id: 'docked',
+  apiView: 'scanned',
+  groupAxis: 'activity',
+  serverSorted: true,
+  isIncoming: false,
+  pageSize: null,
+  buildParams(ctx) {
+    const p = new URLSearchParams({
+      limit: String(RECEIVING_HISTORY_LIMIT),
+      offset: '0',
+    });
+    p.set('include', 'serials');
+    p.set('view', 'scanned');
+    // Docked is an arrival ledger, not Unbox's priority work queue.
+    p.set('sort', 'scanned_newest');
+    if (ctx.historySearch) p.set('search', ctx.historySearch);
+    p.set('search_field', ctx.historySearchField);
+    applyStaffParam(p, ctx);
+    return p;
+  },
+  queryKey(ctx) {
+    return [
+      QUERY_ROOT,
+      'scanned',
+      'docked',
+      ctx.historySearch,
+      ctx.historySearchField,
+      ctx.staffFilterId ?? 'all',
+    ] as const;
+  },
+  skipWeekFilter(ctx) {
+    return ctx.historyDateRange == null;
+  },
+  emptyMessage() {
+    return 'No cartons are docked. Arrival scans appear here before Unbox.';
+  },
+};
+
 const historyMode: ReceivingModeDescriptor = {
   id: 'history',
-  // 'activity' = Unbox-touched / unboxed work (not door-scan-only). History is
-  // the log of what was opened or received on Unbox; under 'all' the incoming
-  // POs leak in. See receiving-views.ts.
+  // 'activity' = cartons opened or completed on Unbox. Door-scan-only cartons
+  // belong to the separate Docked view.
   apiView: 'activity',
   groupAxis: 'activity',
   serverSorted: false,
@@ -575,6 +615,7 @@ const incomingRemovedMode: ReceivingModeDescriptor = {
 
 export const RECEIVING_MODES: Record<ReceivingTableMode, ReceivingModeDescriptor> = {
   receive: receiveMode,
+  docked: dockedMode,
   history: historyMode,
   incoming: incomingMode,
   incoming_removed: incomingRemovedMode,

@@ -10,9 +10,17 @@
 
 import type { RowGroup } from '@/lib/group-rows';
 import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
-import { dockedFlags, dockedNextStep, dockedReceivedQuantity, dockedReceivingState, dockedRecordFace, dockedTicketLabels, type DockedTicketLabel } from '@/lib/receiving/docked-record-state';
+import {
+  DOCKED_PACKAGE_FACE,
+  dockedFlags,
+  dockedNextStep,
+  dockedReceivedQuantity,
+  dockedRecordFace,
+  dockedTicketLabels,
+  type DockedTicketLabel,
+} from '@/lib/receiving/docked-record-state';
 import type { RecordCardLine, RecordCardModel } from '@/design-system/components/record-card/record-card-types';
-import { INCOMING_DOCKED_VIEW } from '@/lib/triage/views';
+import { INCOMING_UNBOXED_VIEW } from '@/lib/triage/views';
 import { recordStateGlyph } from '@/design-system/components/record-card/record-state-glyph';
 import type { RecordStateFace } from '@/design-system/tokens/industrial-record';
 import { displayReceivingProductTitle } from '@/components/station/receiving-grid/cells';
@@ -51,11 +59,15 @@ export interface CartonCardModel {
   lead: ReceivingLineRow;
   /** Every line, most urgent first (stable). */
   rows: ReceivingLineRow[];
+  /** Docked knows only package arrival; Unboxed may describe inspected contents. */
+  surface: 'docked' | 'unboxed';
   state: RecordStateFace;
   /** The carton's one unique id, bare — its PO / order #, else `#<carton>` (the page already says History). */
   identity: string;
   /** `source_platform` key (catalog slug) — the card's channel. */
   platform: string | null;
+  /** Full package tracking number, shown beside the record identity in the compact card header. */
+  tracking: string | null;
   /** Who sold / sent it: the PO vendor, else the storefront account. */
   vendor: string | null;
   /** The carton's latest activity on the chosen axis (bands the list). */
@@ -118,6 +130,10 @@ function unboxedByName(rows: readonly ReceivingLineRow[]): string | null {
   return rows.map((row) => (row.unboxed_by_name ?? '').trim()).find(Boolean) ?? null;
 }
 
+function firstTrackingNumber(rows: readonly ReceivingLineRow[]): string | null {
+  return rows.map((row) => (row.tracking_number ?? '').trim()).find(Boolean) ?? null;
+}
+
 /** A carton's section by its latest activity, against the viewer's today. */
 export function cartonSectionOf(group: RowGroup<ReceivingLineRow>, axis: ReceivingActivityAxis, now = new Date()): CartonSection {
   const activity = latestActivity(group.rows, axis);
@@ -151,23 +167,33 @@ export function cartonBands(
     if (list) list.push(group);
     else bySection.set(section, [group]);
   }
-  return (INCOMING_DOCKED_VIEW.sections?.order ?? []).flatMap((section) => {
+  return (INCOMING_UNBOXED_VIEW.sections?.order ?? []).flatMap((section) => {
     const list = bySection.get(section as CartonSection);
     return list ? [[section, unfoundFirst(list)] as [string, RowGroup<ReceivingLineRow>[]]] : [];
   });
 }
 
-export function cartonCardModel(group: RowGroup<ReceivingLineRow>, axis: ReceivingActivityAxis): CartonCardModel {
-  const rows = [...group.rows].sort((a, b) => urgency(dockedRecordFace(b)) - urgency(dockedRecordFace(a)));
+export function cartonCardModel(
+  group: RowGroup<ReceivingLineRow>,
+  axis: ReceivingActivityAxis,
+  surface: CartonCardModel['surface'] = 'unboxed',
+): CartonCardModel {
+  // A sealed Docked package has no inspected exception priority. Preserve the
+  // arrival feed's line order until Unbox establishes what is actually inside.
+  const rows = surface === 'docked'
+    ? [...group.rows]
+    : [...group.rows].sort((a, b) => urgency(dockedRecordFace(b)) - urgency(dockedRecordFace(a)));
   const lead = rows[0]!;
   return {
     key: group.key,
     ids: rows.map((row) => row.id),
     lead,
     rows,
-    state: dockedRecordFace(lead),
+    surface,
+    state: surface === 'docked' ? DOCKED_PACKAGE_FACE : dockedRecordFace(lead),
     identity: cartonCardIdentity(lead),
     platform: (lead.source_platform_pill || lead.source_platform || '').trim() || null,
+    tracking: firstTrackingNumber(rows),
     vendor: (lead.vendor_name || lead.platform_account_label || '').trim() || null,
     activity: latestActivity(rows, axis),
     unboxedAt: firstUnboxed(rows),
@@ -175,18 +201,24 @@ export function cartonCardModel(group: RowGroup<ReceivingLineRow>, axis: Receivi
   };
 }
 
-function cartonLine(row: ReceivingLineRow): RecordCardLine {
-  const state = dockedReceivingState(row);
+function cartonLine(row: ReceivingLineRow, surface: CartonCardModel['surface']): RecordCardLine {
+  const state = surface === 'docked' ? DOCKED_PACKAGE_FACE : dockedRecordFace(row);
   const bin = row.staged_location_code || row.staged_location_name || row.staging_location_label || null;
+  const dockedQty = row.quantity_expected ?? row.quantity_received ?? 0;
   return {
     id: row.id,
     title: displayReceivingProductTitle(row),
     photoUrl: row.image_url,
-    alert: state.id === 'EXCEPTION',
-    alertNote: state.id === 'EXCEPTION' ? `${state.label} · ${workflowStageLabel(row.workflow_status)}` : null,
+    alert: surface === 'unboxed' && state.id === 'EXCEPTION',
+    alertNote: surface === 'unboxed' && state.id === 'EXCEPTION' ? `${state.label} · ${workflowStageLabel(row.workflow_status)}` : null,
     // An unfound carton (negative id) has no line yet: its placeholder's 0 / BRAND_NEW are defaults, not facts.
     facts: {
-      qty: row.id > 0 ? { kind: 'received', received: dockedReceivedQuantity(row), expected: row.quantity_expected } : null,
+      qty:
+        row.id > 0
+          ? surface === 'docked'
+            ? { kind: 'qty', value: dockedQty }
+            : { kind: 'received', received: dockedReceivedQuantity(row), expected: row.quantity_expected }
+          : null,
       condition: row.id > 0 && row.condition_grade ? { kind: 'grade', label: conditionSentenceLabel(row.condition_grade), code: resolveConditionGrade(row.condition_grade) } : null,
       sku: row.sku ? { kind: 'code', text: row.sku, title: 'SKU' } : null,
       bin: { kind: 'place', path: bin, empty: 'No bin' },
@@ -214,10 +246,12 @@ function cartonTicketLabels(rows: readonly ReceivingLineRow[]): DockedTicketLabe
 
 export function cartonRecordCard(model: CartonCardModel): RecordCardModel {
   const { state, identity, activity } = model;
-  const lines = model.rows.map(cartonLine);
+  const lines = model.rows.map((row) => cartonLine(row, model.surface));
   const alertCount = lines.filter((line) => line.alert).length;
   // The carton's next step: its most urgent line's, else the first line with one left.
-  const next = model.rows.map(dockedNextStep).find((step) => step != null) ?? null;
+  const next = model.surface === 'docked'
+    ? 'Unbox'
+    : model.rows.map(dockedNextStep).find((step) => step != null) ?? null;
   const tickets = cartonTicketLabels(model.rows);
   // The corner reads the exact unpack moment, date AND time, and who did it
   // (owner 2026-09-28: "when it was unpacked" and by whom, without opening the

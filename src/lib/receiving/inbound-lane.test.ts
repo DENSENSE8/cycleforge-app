@@ -9,12 +9,14 @@ import {
   parseInboundLane,
 } from '@/lib/receiving/inbound-lane';
 
-test('parseInboundLane: omit and unknown → pipeline; docked → docked', () => {
+test('parseInboundLane: Deliveries resolves Inbound, Docked and Unboxed independently', () => {
   assert.equal(parseInboundLane(null), 'pipeline');
   assert.equal(parseInboundLane(''), 'pipeline');
   assert.equal(parseInboundLane('pipeline'), 'pipeline');
   assert.equal(parseInboundLane('DOCKED'), 'docked');
   assert.equal(parseInboundLane('docked'), 'docked');
+  assert.equal(parseInboundLane('UNBOXED'), 'unboxed');
+  assert.equal(parseInboundLane('unboxed'), 'unboxed');
 });
 
 test('parseInboundDeskSort accepts pipeline ∪ history ids', () => {
@@ -58,6 +60,10 @@ test('applyInboundLane writes or clears lane=', () => {
   assert.equal(docked.get('lane'), 'docked');
   assert.equal(docked.get('inbound'), null);
 
+  const unboxed = applyInboundLane(base, 'unboxed');
+  assert.equal(unboxed.get('lane'), 'unboxed');
+  assert.equal(unboxed.get('inbound'), null);
+
   const back = applyInboundLane(docked, 'pipeline');
   assert.equal(back.get('lane'), null);
 });
@@ -74,6 +80,6 @@ test('exceptions is a lane of its own: parsed, written, and it sheds the paste a
   assert.equal(applyInboundLane(pasted, 'docked').get('ref_in'), null);
   assert.equal(applyInboundLane(next, 'pipeline').get('lane'), null);
   // A list pasted on Unboxed is Unboxed's: back on On the way it is gone, reason filter too.
-  const unboxedPaste = new URLSearchParams('lane=docked&ref_in=PO-1,PO-2&recon=received&recon_reason=unboxed');
+  const unboxedPaste = new URLSearchParams('lane=unboxed&ref_in=PO-1,PO-2&recon=received&recon_reason=unboxed');
   for (const gone of ['ref_in', 'recon', 'recon_reason']) assert.equal(applyInboundLane(unboxedPaste, 'pipeline').get(gone), null, gone);
 });

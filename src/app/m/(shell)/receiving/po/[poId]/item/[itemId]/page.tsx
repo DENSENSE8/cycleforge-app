@@ -88,8 +88,9 @@ export default function MobilePurchaseOrderItemDetailPage(
   });
 
   const photos = photoData?.photos ?? [];
-  const captureHref =
-    `/m/receiving/po/${encodeURIComponent(poId)}/item/${itemId}/photos`;
+  const itemDetailHref =
+    `/m/receiving/po/${encodeURIComponent(poId)}/item/${itemId}`;
+  const captureHref = `${itemDetailHref}/photos?back=${encodeURIComponent(itemDetailHref)}`;
   const galleryHref = receivingPhotosGalleryUrl(captureHref);
 
   return (

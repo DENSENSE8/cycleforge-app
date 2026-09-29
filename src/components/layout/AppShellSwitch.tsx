@@ -1,21 +1,19 @@
 'use client';
 
-/** Picks the app shell for the request: */
+/** Picks the app shell for the request while preserving separate desk and kiosk client boundaries. */
 
 import dynamic from 'next/dynamic';
 import type { ReactNode } from 'react';
 import type { DehydratedState } from '@tanstack/react-query';
 import Providers from '@/components/Providers';
+import { WarehouseShell } from '@/components/layout/WarehouseShell';
 import type { AuthSessionUser } from '@/contexts/AuthContext';
 import { RouteModeRegion } from '@/design-system/providers/RouteModeRegion';
 
-const WarehouseShell = dynamic(() =>
-  import('@/components/layout/WarehouseShell').then((m) => m.WarehouseShell),
-);
 /**
  * The counter tablet's floor — its own chunk for the same reason as the
- * warehouse one: a kiosk path must not download the operator client it never
- * renders. See `KioskAppShell`.
+ * warehouse route frame: a kiosk path must not download the counter client it
+ * never renders. See `KioskAppShell`.
  */
 const KioskAppShell = dynamic(() =>
   import('@/components/layout/KioskAppShell').then((m) => m.KioskAppShell),

@@ -17,7 +17,7 @@ test('normalizeQuery folds case and collapses whitespace', () => {
 test('normalizeQuery strips scanner control characters', () => {
   // A wedge that emits STX … CR around the payload must group as one query,
   // not three distinct worklist rows.
-  assert.equal(normalizeQuery('R-1234\r\n'), 'r-1234');
+  assert.equal(normalizeQuery('\x02R-1234\r\n'), 'r-1234');
 });
 
 test('normalizeQuery strips zero-width characters pasted from a web page', () => {

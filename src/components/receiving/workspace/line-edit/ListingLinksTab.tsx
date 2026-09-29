@@ -282,6 +282,7 @@ export function ListingLinksTab({
             type="button"
             size="sm"
             variant="primarySoft"
+            radius="flush"
             icon={<ExternalLink className="h-3.5 w-3.5" />}
             onClick={() => {
               if (selected?.href) window.open(selected.href, '_blank', 'noopener,noreferrer');
@@ -298,6 +299,7 @@ export function ListingLinksTab({
             type="button"
             size="sm"
             variant="secondary"
+            radius="flush"
             icon={<ExternalLink className="h-3.5 w-3.5" />}
             onClick={openAll}
             disabled={links.length === 0}

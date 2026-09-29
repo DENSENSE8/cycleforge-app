@@ -1,6 +1,12 @@
 'use client';
 
-/** Backfill sync — the manual trigger for the Zoho purchase-receive push, and the one place the push backlog is visible. */
+/**
+ * Sync to Zoho — the manual trigger for the Zoho purchase-receive push (every
+ * line unboxed or received here that Zoho has not recorded yet), and the one
+ * place the push backlog is visible. Mounted on the Zoho connection (Settings →
+ * Integrations) and in the carton record's More details (Unbox data tables).
+ * The same drain also runs every 5 minutes.
+ */
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { toast } from '@/lib/toast';
@@ -8,6 +14,8 @@ import { Button } from '@/design-system/primitives/Button';
 import { ProgressBar } from '@/design-system/primitives/ProgressBar';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { Upload } from '@/components/Icons';
+import { focusRing } from '@/design-system/tokens/focus-ring';
+import { cn } from '@/utils/_cn';
 
 interface Backlog {
   pending: number;
@@ -25,6 +33,7 @@ interface RunReport {
   settledFromMirror?: number;
   pendingAfter?: number;
   notConnected?: boolean;
+  deferred?: boolean;
   error?: string;
 }
 
@@ -43,7 +52,11 @@ function describeAge(iso: string | null): string | null {
   return `${Math.floor(hours / 24)}d`;
 }
 
-export function ZohoReceiveBackfillControl() {
+/**
+ * `face="row"` is the composer mode row's inline text chip (h-5, micro type —
+ * the row's own height); the default is the card / rail button.
+ */
+export function ZohoReceiveSyncControl({ face = 'button' }: { face?: 'button' | 'row' } = {}) {
   const [backlog, setBacklog] = useState<Backlog | null>(null);
   const [running, setRunning] = useState(false);
   /** Backlog depth when this run started — the progress denominator. */
@@ -98,7 +111,7 @@ export function ZohoReceiveBackfillControl() {
       const after = await readBacklog();
 
       if (!res.ok || !data.success) {
-        toast.error(`Backfill failed: ${data.error || `HTTP ${res.status}`}`);
+        toast.error(`Sync to Zoho failed: ${data.error || `HTTP ${res.status}`}`);
         return;
       }
 
@@ -108,17 +121,22 @@ export function ZohoReceiveBackfillControl() {
       const lines = Number(data.lines ?? 0) + Number(data.settledFromMirror ?? 0);
       const failed = Number(data.failed ?? 0);
       const remaining = after?.pending ?? Number(data.pendingAfter ?? 0);
-      const moved = `Backfilled ${lines.toLocaleString()} line${lines === 1 ? '' : 's'}`;
+      const moved = `Synced ${lines.toLocaleString()} line${lines === 1 ? '' : 's'}`;
 
       if (data.notConnected) {
         // Not a PO problem and not a retry: nothing was attempted, so say the
         // one thing that fixes it.
         toast.error(
           `${lines > 0 ? `${moved}, then stopped: ` : ''}Zoho isn't connected. ` +
-            `Reconnect it above — ${remaining.toLocaleString()} still pending.`,
+            `Reconnect it in Settings → Integrations — ${remaining.toLocaleString()} still pending.`,
+        );
+      } else if (data.deferred) {
+        toast.error(
+          `${lines > 0 ? `${moved}, then paused: ` : ''}Zoho is busy right now — ` +
+            `${remaining.toLocaleString()} still pending; it retries automatically.`,
         );
       } else if (lines === 0 && failed === 0) {
-        toast.success('Zoho is already current — nothing to back fill.');
+        toast.success('Zoho is already current — nothing to sync.');
       } else if (failed > 0) {
         toast.error(
           `${moved}; ${failed} purchase order${failed === 1 ? '' : 's'} failed. ` +
@@ -130,7 +148,7 @@ export function ZohoReceiveBackfillControl() {
         );
       }
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Backfill failed');
+      toast.error(err instanceof Error ? err.message : 'Sync to Zoho failed');
     } finally {
       if (alive.current) setRunning(false);
     }
@@ -153,6 +171,29 @@ export function ZohoReceiveBackfillControl() {
         ]
           .filter(Boolean)
           .join(' ');
+  const label = running ? 'Syncing to Zoho…' : pending > 0 ? `Sync to Zoho · ${pending}` : 'Sync to Zoho';
+  if (face === 'row') {
+    return (
+      <HoverTooltip label={tooltip} asChild>
+        {/* ds-raw-button: a composer-row chip — a Button would overflow the 20px row */}
+        <button
+          type="button"
+          disabled={running}
+          onClick={() => void runBackfill()}
+          aria-label="Sync received lines to Zoho"
+          data-testid="zoho-receive-sync-row"
+          className={cn(
+            'ds-raw-button flex h-5 shrink-0 items-center gap-1 rounded-sm px-1 text-role-micro font-semibold leading-none text-text-muted hover:text-text-default disabled:opacity-60',
+            focusRing('control', 'accent'),
+          )}
+        >
+          <Upload className="block h-3.5 w-3.5 shrink-0" aria-hidden />
+          {label}
+          {backlog?.blocked && !running ? <span className="font-normal text-red-600">· {backlog.blocked} blocked</span> : null}
+        </button>
+      </HoverTooltip>
+    );
+  }
   return (
     <div className="flex min-w-0 items-center gap-2">
       <HoverTooltip label={tooltip} asChild>
@@ -162,10 +203,10 @@ export function ZohoReceiveBackfillControl() {
           icon={<Upload />}
           loading={running}
           onClick={() => void runBackfill()}
-          ariaLabel="Back fill locally-received lines into Zoho"
+          ariaLabel="Sync received lines to Zoho"
           data-testid="zoho-receive-backfill"
         >
-          {pending > 0 ? `Backfill · ${pending}` : 'Backfill'}
+          {label}
         </Button>
       </HoverTooltip>
 

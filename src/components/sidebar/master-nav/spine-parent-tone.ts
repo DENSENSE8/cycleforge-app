@@ -34,14 +34,14 @@ const tones: Readonly<Record<string, SpineParentTone>> = {
     section: `${sharedSection} hover:bg-rose-50/70 data-[owns-current=true]:bg-rose-50/80 data-[owns-current=true]:text-rose-800 data-[owns-current=true]:ring-rose-200/80`,
   },
   'ops-photos': {
-    icon: 'text-fuchsia-600', marker: 'bg-fuchsia-500',
-    row: `${sharedRow} hover:bg-fuchsia-50/70 data-[active=true]:bg-fuchsia-50/80 data-[active=true]:text-fuchsia-800 data-[active=true]:ring-fuchsia-200/80 data-[active=true]:hover:bg-fuchsia-50/90`,
-    section: `${sharedSection} hover:bg-fuchsia-50/70 data-[owns-current=true]:bg-fuchsia-50/80 data-[owns-current=true]:text-fuchsia-800 data-[owns-current=true]:ring-fuchsia-200/80`,
+    icon: 'text-blue-600', marker: 'bg-blue-500',
+    row: `${sharedRow} hover:bg-blue-50/70 data-[active=true]:bg-blue-50/80 data-[active=true]:text-blue-800 data-[active=true]:ring-blue-200/80 data-[active=true]:hover:bg-blue-50/90`,
+    section: `${sharedSection} hover:bg-blue-50/70 data-[owns-current=true]:bg-blue-50/80 data-[owns-current=true]:text-blue-800 data-[owns-current=true]:ring-blue-200/80`,
   },
   sales: {
-    icon: 'text-violet-600', marker: 'bg-violet-500',
-    row: `${sharedRow} hover:bg-violet-50/70 data-[active=true]:bg-violet-50/80 data-[active=true]:text-violet-800 data-[active=true]:ring-violet-200/80 data-[active=true]:hover:bg-violet-50/90`,
-    section: `${sharedSection} hover:bg-violet-50/70 data-[owns-current=true]:bg-violet-50/80 data-[owns-current=true]:text-violet-800 data-[owns-current=true]:ring-violet-200/80`,
+    icon: 'text-green-600', marker: 'bg-green-500',
+    row: `${sharedRow} hover:bg-green-50/70 data-[active=true]:bg-green-50/80 data-[active=true]:text-green-800 data-[active=true]:ring-green-200/80 data-[active=true]:hover:bg-green-50/90`,
+    section: `${sharedSection} hover:bg-green-50/70 data-[owns-current=true]:bg-green-50/80 data-[owns-current=true]:text-green-800 data-[owns-current=true]:ring-green-200/80`,
   },
   inbound: {
     icon: 'text-sky-600', marker: 'bg-sky-500',

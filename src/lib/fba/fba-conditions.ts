@@ -1,8 +1,7 @@
 /**
- * The FBA unit-label condition vocabulary — what `fba_fnskus.condition` stores
- * and the FNSKU label prints. The stored value keeps its grade prefix
- * (`B+ Used - Very Good`); older rows may hold the bare Amazon words
- * (`Used - Very Good`), which read as the same condition.
+ * The FBA unit-label condition vocabulary. `fba_fnskus.condition` keeps the
+ * legacy house-grade prefix (`B+ Used - Very Good`), while operator UI and the
+ * physical FNSKU label show Amazon's condition words (`Used - Very Good`).
  *
  * Each maps to a house condition grade, so it wears that grade's colour
  * everywhere (`CONDITION_GRADE_TONE`).
@@ -35,6 +34,13 @@ export function fbaCondition(raw: string | null | undefined): FbaCondition | nul
   if (!text) return null;
   const key = words(text);
   return FBA_CONDITIONS.find((entry) => entry.value.toLowerCase() === text.toLowerCase() || words(entry.label) === key) ?? null;
+}
+
+/** Amazon-facing condition words for previews and physical FNSKU labels. */
+export function fbaConditionLabel(raw: string | null | undefined): string {
+  const text = String(raw ?? '').trim();
+  if (!text) return '';
+  return fbaCondition(text)?.label ?? text.replace(GRADE_PREFIX, '');
 }
 
 /** True when `value` is one of the stored values (what a write may set). */

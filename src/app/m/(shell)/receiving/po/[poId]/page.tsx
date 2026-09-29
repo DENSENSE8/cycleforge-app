@@ -79,7 +79,8 @@ export default function MobilePoDetailPage(props: { params: Promise<{ poId: stri
   const header = data?.header;
   const items = useMemo(() => data?.items ?? [], [data]);
 
-  const captureHref = `/m/receiving/po/${encodeURIComponent(poId)}/photos`;
+  const poDetailHref = `/m/receiving/po/${encodeURIComponent(poId)}`;
+  const captureHref = `${poDetailHref}/photos?back=${encodeURIComponent(poDetailHref)}`;
 
   return (
     <div className="min-h-screen bg-surface-card pb-24">
@@ -239,7 +240,10 @@ function PoPhotosTab({ header, staffId }: { header: PoHeader | undefined; staffI
     );
   }
   const poSlug = encodeURIComponent(header.po_id);
-  const galleryHref = receivingPhotosGalleryUrl(`/m/receiving/po/${poSlug}/photos`);
+  const poDetailHref = `/m/receiving/po/${poSlug}`;
+  const galleryHref = receivingPhotosGalleryUrl(
+    `${poDetailHref}/photos?back=${encodeURIComponent(poDetailHref)}`,
+  );
   return (
     <div className="px-4 py-4">
       <MobileReceivingPhotoStrip

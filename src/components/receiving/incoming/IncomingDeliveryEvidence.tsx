@@ -8,6 +8,7 @@
 import type { ReactNode } from 'react';
 import { SkeletonList } from '@/design-system/components/Skeletons';
 import { DeskRecordLayout } from '@/design-system/components/DeskRecordPlane';
+import { EvidenceDisclosure } from '@/design-system/components/record-ledger/EvidenceDisclosure';
 import { EvidenceNotice } from '@/design-system/components/record-ledger/RecordEvidence';
 import { RecordGroup } from '@/design-system/components/record-ledger/RecordGroup';
 import type { RecordLedgerSummary } from '@/design-system/components/record-ledger/RecordLedgerSummary';
@@ -49,7 +50,7 @@ export function incomingDeliverySummary(
     counts.set(key, (counts.get(key) ?? 0) + 1);
   }
   return {
-    title: lane === 'exceptions' ? 'Exceptions' : 'On the way',
+    title: lane === 'exceptions' ? 'Exceptions' : 'Inbound',
     sub: lane === 'exceptions'
       ? 'Inbound lines that need a person, not time'
       : 'Carrier-side lifecycle before warehouse receipt',
@@ -220,6 +221,8 @@ function IncomingRecordMain({
 
   return (
     <div className="flex min-w-0 flex-col gap-4">
+      <ReceivingFulfilment steps={steps} testId="incoming-record-fulfilment" />
+
       <RecordGroup
         testId="incoming-record-items"
         title={
@@ -268,8 +271,6 @@ function IncomingRecordMain({
             ))}
       </RecordGroup>
 
-      <ReceivingFulfilment steps={steps} testId="incoming-record-fulfilment" />
-
       {!data.po?.zoho_purchaseorder_id && !data.inbound ? (
         <RecordGroup title="Pair to a purchase order" testId="incoming-record-pairing">
           <div className="px-4 pb-4">
@@ -284,37 +285,49 @@ function IncomingRecordMain({
         </RecordGroup>
       ) : null}
 
-      <RecordGroup title="Carrier trail" testId="incoming-record-carrier">
-        <div className="px-4 pb-4">
-          <ShipmentTab data={data} />
-        </div>
-      </RecordGroup>
-
-      <RecordGroup title="Activity" testId="incoming-record-activity">
-        <div className="px-4 pb-4">
-          <ActivityTab data={data} />
-          {data.zoho_activity.length ? (
-            <ol className="mt-3 flex flex-col border-t border-mode-fact">
-              {data.zoho_activity.map((event, index) => (
-                <li key={`${event.timestamp}:${index}`} className="border-b border-mode-fact py-2 text-role-data last:border-b-0">
-                  <p className={RECORD_LABEL_CLASS}>
-                    {fmtDateTime(event.timestamp)} · {event.label}
-                  </p>
-                  {event.description ? <p className="whitespace-pre-wrap text-mode-muted">{event.description}</p> : null}
-                </li>
-              ))}
-            </ol>
-          ) : null}
-        </div>
-      </RecordGroup>
-
-      {data.po ? (
-        <RecordGroup title="Email" testId="incoming-record-email">
+      <RecordGroup title="More details" testId="incoming-record-more-details">
+        <EvidenceDisclosure
+          label="Carrier"
+          summary="Shipment trail"
+          testId="incoming-record-carrier"
+          lazy
+        >
           <div className="px-4 pb-4">
-            <EmailTab data={data} />
+            <ShipmentTab data={data} />
           </div>
-        </RecordGroup>
-      ) : null}
+        </EvidenceDisclosure>
+
+        <EvidenceDisclosure
+          label="Activity"
+          summary={`${data.zoho_activity.length} vendor ${data.zoho_activity.length === 1 ? 'event' : 'events'}`}
+          testId="incoming-record-activity"
+          lazy
+        >
+          <div className="px-4 pb-4">
+            <ActivityTab data={data} />
+            {data.zoho_activity.length ? (
+              <ol className="mt-3 flex flex-col border-t border-mode-fact">
+                {data.zoho_activity.map((event, index) => (
+                  <li key={`${event.timestamp}:${index}`} className="border-b border-mode-fact py-2 text-role-data last:border-b-0">
+                    <p className={RECORD_LABEL_CLASS}>
+                      {fmtDateTime(event.timestamp)} · {event.label}
+                    </p>
+                    {event.description ? <p className="whitespace-pre-wrap text-mode-muted">{event.description}</p> : null}
+                  </li>
+                ))}
+              </ol>
+            ) : null}
+          </div>
+        </EvidenceDisclosure>
+
+        {data.po ? (
+          <EvidenceDisclosure label="Email" summary="Purchase-order thread" testId="incoming-record-email" lazy>
+            <div className="px-4 pb-4">
+              <EmailTab data={data} />
+            </div>
+          </EvidenceDisclosure>
+        ) : null}
+      </RecordGroup>
     </div>
   );
 }

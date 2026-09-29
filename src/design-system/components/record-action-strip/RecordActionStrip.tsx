@@ -26,7 +26,7 @@ export interface RecordActionVerb {
   icon?: ReactNode;
   /** Single key, shown via KeyboardKey on `?`. */
   hotkey?: string;
-  tone?: 'default' | 'danger' | 'yellow';
+  tone?: 'default' | 'danger' | 'yellow' | 'blue' | 'success';
   /** `isolated` = far right, second press (Delete). Default `primary`. */
   placement?: 'primary' | 'overflow' | 'isolated';
   disabled?: boolean;
@@ -145,6 +145,8 @@ export function RecordActionStrip({
     const armed = armedId === verb.id;
     const danger = verb.tone === 'danger';
     const yellow = verb.tone === 'yellow';
+    const blue = verb.tone === 'blue';
+    const success = verb.tone === 'success';
     return (
       <HoverTooltip
         key={verb.id}
@@ -162,6 +164,10 @@ export function RecordActionStrip({
               ? (armed || verb.placement !== 'isolated' ? 'danger' : 'dangerSoft')
               : yellow
                 ? 'yellow'
+                : blue
+                  ? 'primarySoft'
+                  : success
+                    ? 'success'
                 : verb.pressed
                   ? 'ink'
                   : 'secondary'

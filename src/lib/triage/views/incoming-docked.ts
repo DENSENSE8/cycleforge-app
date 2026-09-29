@@ -1,25 +1,21 @@
 /**
- * Inbound › Deliveries › Unboxed — `incoming.docked`. Goal: narrow unboxed
- * cartons to one in seconds. One card per carton; line 1 reads its id
- * → platform · vendor → claim ticket → note … activity date; a line reads
- * received/expected → condition → SKU → bin → price ($— struck when none).
- * The rail wears the carton's most urgent attention (Unfound red · Claim · Short,
- * else green Unboxed); bottom-right is the next step the carton strip can run
- * today (Resolve · Claim · Print label), else nothing.
+ * Deliveries › Docked — `incoming.docked`. A package-first, multi-height carton
+ * table, newest arrival scan first. Its stacked rows match Unboxed's readable
+ * grammar; membership and copy remain Docked-specific and end when Unbox opens.
  */
 
 import type { TriageViewDecl } from '@/design-system/components/triage-card-list/triage-view';
 import { DOCKED_FLAG_PARAM } from '@/lib/receiving/inbound-lane';
-import { DOCKED_NEXT_STEPS } from '@/lib/receiving/docked-record-state';
+import { DOCKED_PACKAGE_NEXT_STEPS } from '@/lib/receiving/docked-record-state';
 
 export const INCOMING_DOCKED_VIEW: TriageViewDecl = {
   id: 'incoming.docked',
   grain: 'carton',
   noun: { one: 'carton', many: 'cartons' },
-  listLabel: 'Unboxed cartons',
-  testIdPrefix: 'receipt-card',
-  bodyTestId: 'receipt-cards',
-  storageKeys: { pageMode: 'cf:receipt-cards:scroll', scrollTop: 'cf:receipt-cards:scroll-top' },
+  listLabel: 'Docked packages',
+  testIdPrefix: 'docked-package',
+  bodyTestId: 'docked-packages',
+  storageKeys: { pageMode: 'cf:docked-packages:scroll', scrollTop: 'cf:docked-packages:scroll-top' },
   recordParams: ['openLine'],
   // The attention cut: Claim · Short · Unfound pills (comma list) — the face owns it; no sidebar twin.
   chips: { owner: 'face', param: DOCKED_FLAG_PARAM },
@@ -38,5 +34,5 @@ export const INCOMING_DOCKED_VIEW: TriageViewDecl = {
     tones: { today: 'warning' },
     when: 'default-sort',
   },
-  next: [...DOCKED_NEXT_STEPS],
+  next: [...DOCKED_PACKAGE_NEXT_STEPS],
 };

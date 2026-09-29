@@ -25,7 +25,7 @@ export function PickPageContent({ pickerId }: PickPageContentProps) {
     <ShippingHistoryFeedProvider techId={pickerId}>
       <RouteShell
         actions={<PickSidebarPanel pickerId={pickerId} />}
-        history={<PickDashboard pickerId={pickerId} />}
+        history={<PickDashboard />}
       />
     </ShippingHistoryFeedProvider>
   );

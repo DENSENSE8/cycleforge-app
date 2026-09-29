@@ -4,6 +4,8 @@ import { SIDEBAR_GUTTER } from '@/components/layout/header-shell';
 import { appChromeClass } from '@/design-system/tokens/app-surface';
 import { ShippingScanBand } from '@/components/sidebar/tech/ShippingScanBand';
 import { useShippingPreviewOpen } from '@/components/sidebar/shipping/useShippingPreviewOpen';
+import { ShippingStaffScanHistoryRail } from '@/components/sidebar/shipping/ShippingStaffScanHistoryRail';
+import { SidebarRailScrollport } from '@/components/sidebar/rail-shell/SidebarRailScrollport';
 import { useIsMobile } from '@/hooks';
 
 interface Props {
@@ -15,8 +17,8 @@ interface Props {
 }
 
 /**
- * Ready to Pack / Shipping intake dock. Persisted shipment rows and history
- * belong in the central workspace; this column owns scan intake only.
+ * Picker intake dock: scan band followed by the signed-in staffer's recent
+ * station activity in the same contextual sidebar.
  */
 export function ShippingSidebarPanel({
   techId,
@@ -38,6 +40,12 @@ export function ShippingSidebarPanel({
   return (
     <div className={`relative flex h-full w-full flex-col overflow-hidden ${appChromeClass}`}>
       {!isMobile ? <ShippingScanBand {...scanBandProps} /> : null}
+
+      {!isMobile ? (
+        <SidebarRailScrollport>
+          <ShippingStaffScanHistoryRail techId={techId} />
+        </SidebarRailScrollport>
+      ) : null}
 
       {isMobile ? (
         <div className={`flex-shrink-0 border-t border-border-hairline bg-surface-card ${SIDEBAR_GUTTER} pb-[max(1.125rem,env(safe-area-inset-bottom))] pt-3`}>

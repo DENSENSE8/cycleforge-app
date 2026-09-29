@@ -15,10 +15,11 @@
  * refused by the domain function and reported, never forced.
  *
  *   node --env-file=.env --require ./scripts/register-server-only-shim.cjs --import tsx \
- *     scripts/scan-out-packed-orders.ts [--org=<uuid>] [--staff=<id>] [--apply]
+ *     scripts/scan-out-packed-orders.ts [--org=<uuid>] [--staff=<id>] [--packed-before=YYYY-MM-DD] [--apply]
  *
  * Dry run by default. `--staff` defaults to 1 (the owner), which is who every
- * earlier bulk scan-out in the dogfood org is attributed to.
+ * earlier bulk scan-out in the dogfood org is attributed to. `--packed-before`
+ * keeps only shipments packed before that day's midnight, Pacific time.
  */
 import pool from '@/lib/db';
 import { DOGFOOD_ORG_ID } from '@/lib/tenancy/constants';
@@ -33,6 +34,20 @@ function arg(name: string): string | undefined {
 const APPLY = process.argv.includes('--apply');
 const ORG = arg('org') ?? DOGFOOD_ORG_ID;
 const STAFF = Number(arg('staff') ?? 1);
+const PACKED_BEFORE = arg('packed-before');
+
+/** Midnight at the start of `day` (YYYY-MM-DD) in America/Los_Angeles, as an instant. */
+function pacificMidnight(day: string): Date {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(day)) throw new Error(`--packed-before must be YYYY-MM-DD (got ${day})`);
+  const utcMidnight = new Date(`${day}T00:00:00Z`);
+  // Pacific's offset on that day (PDT −7 / PST −8), read from the zone itself.
+  const zoneName = new Intl.DateTimeFormat('en-US', { timeZone: 'America/Los_Angeles', timeZoneName: 'shortOffset' })
+    .formatToParts(utcMidnight)
+    .find((part) => part.type === 'timeZoneName')?.value;
+  const hours = Number(/GMT([+-]\d+)/.exec(zoneName ?? '')?.[1]);
+  if (!Number.isFinite(hours)) throw new Error(`could not read the Pacific offset for ${day}`);
+  return new Date(utcMidnight.getTime() - hours * 3_600_000);
+}
 
 function tally<T>(items: T[], key: (item: T) => string): Record<string, number> {
   const out: Record<string, number> = {};
@@ -50,7 +65,9 @@ async function main(): Promise<void> {
   );
   if (!staff.rows[0]) throw new Error(`--staff=${STAFF} is not a staff member of ${ORG}`);
 
-  const shipments = await loadPackedOnToShip(ORG);
+  const cutoff = PACKED_BEFORE ? pacificMidnight(PACKED_BEFORE) : null;
+  const shipments = (await loadPackedOnToShip(ORG)).filter((s) => !cutoff || new Date(s.packed_at) < cutoff);
+  if (cutoff) console.log(`Packed before ${PACKED_BEFORE} (Pacific) = before ${cutoff.toISOString()}`);
   const orderCount = shipments.reduce((n, s) => n + s.order_row_ids.length, 0);
   console.log(
     `${APPLY ? 'APPLY' : 'DRY RUN'} — org ${ORG}, as staff ${STAFF} (${staff.rows[0].name})`,

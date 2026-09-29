@@ -10,6 +10,7 @@ import {
   effectiveReceivingPhotoStage,
   mobileArrivalGuidedPhotosHref,
   mobileCaptureHrefForRequest,
+  mobileUnboxPhotoReturnHref,
   normalizeReceivingPhotoRequest,
   parseArrivalGuidedStep,
   parseReceivingCartonPhotoStage,
@@ -197,7 +198,7 @@ test('mobileCaptureHrefForRequest routes carton stages to /m/r/{id}/photos', () 
       poRef: '4421',
       requestId: 'rq1',
     }),
-    '/m/r/9/photos?stage=unbox_carton&requestId=rq1',
+    '/m/r/9/photos?stage=unbox_carton&requestId=rq1&back=%2Fm%2Freceiving',
   );
 });
 
@@ -210,7 +211,7 @@ test('mobileCaptureHrefForRequest routes item stage to the PO item page', () => 
       poRef: 'PO 4421',
       requestId: 'rq2',
     }),
-    '/m/receiving/po/PO%204421/item/41/photos?stage=unbox_item&requestId=rq2',
+    '/m/receiving/po/PO%204421/item/41/photos?stage=unbox_item&requestId=rq2&back=%2Fm%2Freceiving',
   );
 });
 
@@ -223,8 +224,14 @@ test('mobileCaptureHrefForRequest — item without a PO degrades to the carton p
       poRef: null,
       requestId: null,
     }),
-    '/m/r/9/photos?stage=unbox_carton',
+    '/m/r/9/photos?stage=unbox_carton&back=%2Fm%2Freceiving',
   );
+});
+
+test('mobileUnboxPhotoReturnHref never implicitly opens carton rows', () => {
+  assert.equal(mobileUnboxPhotoReturnHref(null), '/m/receiving');
+  assert.equal(mobileUnboxPhotoReturnHref('  '), '/m/receiving');
+  assert.equal(mobileUnboxPhotoReturnHref('/m/r/9'), '/m/r/9');
 });
 
 test('mobileArrivalGuidedPhotosHref always stamps arrival_package + guided', () => {

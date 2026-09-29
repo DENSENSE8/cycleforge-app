@@ -34,9 +34,8 @@ interface ReceivingLinePhotoLinkInput {
 /**
  * Capture + gallery URLs for a receiving line (mobile list, sheet, rows).
  *
- * Keep the caller's `back` target on both URLs. Feed-originated capture must
- * return to the photo feed; only a direct carton/identifier scan should fall
- * through to the `/m/r/:id` carton hub.
+ * Keep the caller's `back` target on both URLs. Feed-originated capture returns
+ * to the photo feed; a scanned record can opt into its own explicit target.
  */
 export function receivingLinePhotoHrefs(input: ReceivingLinePhotoLinkInput) {
   const receivingId = input.receivingId;

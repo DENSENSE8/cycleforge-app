@@ -2,6 +2,7 @@
 
 import { useSearchParams } from 'next/navigation';
 import PackScanColumn from '@/components/station/PackScanColumn';
+import { PackRecentPacksRail } from '@/components/sidebar/packer/PackRecentPacksRail';
 import { useAuth } from '@/contexts/AuthContext';
 import { useActiveStaffDirectory } from './hooks';
 
@@ -28,7 +29,7 @@ export function PackerSidebarPanel() {
           userName={packerName}
           staffId={packerId}
           packMode={packMode}
-          railSlot={null}
+          railSlot={<PackRecentPacksRail packerId={staffIdNum} />}
         />
       </div>
     </div>

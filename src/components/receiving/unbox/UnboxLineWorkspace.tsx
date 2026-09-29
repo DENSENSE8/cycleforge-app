@@ -13,15 +13,8 @@ import {
   useOverlaySwapHardCut,
 } from '@/design-system/motion';
 import { LoaderFieldCover, UniversalLoader } from '@/design-system/components/UniversalLoader';
+import { ReceivingLineWorkspace } from '@/components/receiving/workspace/ReceivingLineWorkspace';
 
-// Phase 2 (lazy carton graph):
-const ReceivingLineWorkspace = dynamic(
-  () =>
-    import('@/components/receiving/workspace/ReceivingLineWorkspace').then(
-      (m) => m.ReceivingLineWorkspace,
-    ),
-  { loading: () => <UniversalLoader isLoading label="Loading carton" /> },
-);
 const UnboxWorkspaceView = dynamic(
   () =>
     import('@/components/receiving/unbox/UnboxWorkspaceView').then(

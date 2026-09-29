@@ -24,7 +24,13 @@ import { MasterNavView } from './MasterNavView';
 function toPageNav(item: SidebarNavItem): SidebarPageNav {
   const page = getSidebarPageNav(item.id);
   return page
-    ? { ...page, icon: item.icon, label: item.label, spineFlat: item.spineFlat ?? page.spineFlat }
+    ? {
+        ...page,
+        icon: item.icon,
+        label: item.label,
+        spineFlat: item.spineFlat ?? page.spineFlat,
+        spineBottom: item.spineBottom ?? page.spineBottom,
+      }
     : item;
 }
 

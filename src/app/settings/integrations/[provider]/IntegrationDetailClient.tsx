@@ -18,7 +18,7 @@ import { AmazonConnectModal } from '../AmazonConnectModal';
 import { EbayConnectPopover, EbayAccountNameChip } from '../EbayAccountPopover';
 import { IntegrationConnectSuccess } from '../IntegrationConnectSuccess';
 import { parseHealthResult } from '../integration-health';
-import { ZohoReceiveBackfillControl } from '../ZohoReceiveBackfillControl';
+import { ZohoReceiveSyncControl } from '@/components/zoho/ZohoReceiveSyncControl';
 import { ShipStationStoreLinks } from '@/components/settings/ShipStationStoreLinks';
 
 const STATUS_PILL: Record<string, { dot: string; text: string; bg: string; label: string }> = {
@@ -360,7 +360,7 @@ export function IntegrationDetailClient({ def, summary, nangoReady }: Integratio
             )
           )}
           {/* Same order as the card: the verb that changes state leads Check. */}
-          {def.key === 'zoho' && summary.connected && <ZohoReceiveBackfillControl />}
+          {def.key === 'zoho' && summary.connected && <ZohoReceiveSyncControl />}
           {summary.healthPath && (
             <Button variant="secondary" size="sm" icon={<RefreshCw />} loading={busy} onClick={runHealth}>Check</Button>
           )}

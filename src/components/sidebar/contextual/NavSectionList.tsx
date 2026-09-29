@@ -8,7 +8,7 @@ import { useMotionTransition } from '@/design-system/foundations/motion-presets-
 import { SidebarGroup, SidebarMenu, SidebarMenuItem } from '@/components/ui/sidebar';
 import { ChevronRight } from '@/components/Icons';
 import { navIconStrokeClass } from '@/components/icons/nav-weight';
-import { APP_SIDEBAR_NAV, getSidebarPageNav } from '@/lib/sidebar-navigation';
+import { APP_SIDEBAR_NAV, STATION_GROUPS, getSidebarPageNav } from '@/lib/sidebar-navigation';
 import { cn } from '@/utils/_cn';
 import { NAV_BLOCK_CLASS, NAV_BLOCK_PLATE_CLASS } from './nav-block';
 import { NAV_VIEW_ICONS } from './nav-view-icons';
@@ -17,6 +17,9 @@ import {
   SPINE_PARENT_ICON_MOTION_CLASS,
   SPINE_PARENT_MARKER_CLASS,
   SPINE_PARENT_ROW_MOTION_CLASS,
+  SPINE_NAV_GROUP_TITLE_CLASS,
+  spineNavigationBand,
+  spineNavigationBandTitle,
 } from '@/components/sidebar/sidebar-spine';
 import { spineParentTone } from '@/components/sidebar/master-nav/spine-parent-tone';
 
@@ -29,6 +32,8 @@ export type Glyph = { icon: React.ComponentType<{ className?: string }>; tone: s
  */
 export function navRowGlyph(item: NavItem, pageId: string | undefined): Glyph | null {
   if (pageId !== undefined) return NAV_VIEW_ICONS[`${pageId}.${item.id}`] ?? null;
+  const stationParent = STATION_GROUPS.find((group) => group.label === item.label);
+  if (stationParent) return { icon: stationParent.icon, tone: 'text-text-muted' };
   const icon = APP_SIDEBAR_NAV.find((row) => row.id === item.id)?.icon ?? getSidebarPageNav(item.id)?.icon;
   return icon ? { icon, tone: 'text-text-muted' } : null;
 }
@@ -41,11 +46,8 @@ export function navRowGlyph(item: NavItem, pageId: string | undefined): Glyph | 
  * the head's view switcher (`NavViewSwitcher`).
  *
  * Every row is `NAV_BLOCK_CLASS` (flat, lifts on hover, sinks on press).
- * Categories are separated by a HAIRLINE, never a text heading (operator
- * 2026-09-27): a line falls before and after each multi-row category, so
- * runs of single-row lanes read as one list. The category name stays as the
- * group's accessible name. ONE lit plate (`layoutId`) slides to the row you
- * pick.
+ * Compact headings identify each navigation family without drawing rules
+ * through the list. ONE lit plate (`layoutId`) slides to the row you pick.
  *
  * `onActiveSelect` lets the `‹` peek treat a click on the lit row as "go back
  * down" without a navigation (the URL already is that page).
@@ -65,10 +67,20 @@ export function NavSectionList({
     <LayoutGroup id="nav-map">
       {visible.map((section, index) => {
         const previous = visible[index - 1];
-        const hairline = previous !== undefined && (Boolean(section.label) || Boolean(previous.label));
+        const band = spineNavigationBand(section.id);
+        const startsBand = !previous || spineNavigationBand(previous.id) !== band;
+        const title = startsBand ? spineNavigationBandTitle(band) : null;
         return (
-          <SidebarGroup key={section.id} aria-label={section.label} className="gap-px px-2 py-0.5">
-            {hairline ? <div role="separator" className="mx-2 mb-1.5 mt-1 h-px bg-border-hairline" /> : null}
+          <SidebarGroup
+            key={section.id}
+            aria-label={section.label ?? title ?? undefined}
+            className="gap-px px-2 py-0.5"
+          >
+            {title ? (
+              <div data-sidebar-group-title className={cn(SPINE_NAV_GROUP_TITLE_CLASS, 'px-2')}>
+                {title}
+              </div>
+            ) : null}
             <SidebarMenu>
               {section.items.map((item) => (
                 <NavItemRow
@@ -76,7 +88,7 @@ export function NavSectionList({
                   item={item}
                   href={doorHref(item.id) ?? item.href}
                   glyph={navRowGlyph(item, undefined)}
-                  toneKey={section.id === 'top' || section.id === 'ordered-top' ? item.id : section.id}
+                  toneKey={section.id === 'top' || section.id === 'ordered-top' || section.id === 'bottom' ? item.id : section.id}
                   onActiveSelect={onActiveSelect}
                   activeRowRef={item.active ? activeRowRef : undefined}
                 />
@@ -113,6 +125,7 @@ function NavItemRow({
         ref={activeRowRef}
         href={href}
         prefetch={false}
+        data-sidebar-nav-item
         aria-current={item.active ? 'page' : undefined}
         data-active={item.active ? 'true' : undefined}
         className={cn(

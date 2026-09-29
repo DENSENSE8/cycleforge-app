@@ -16,7 +16,6 @@ import {
   spineSectionIdForPage,
 } from '@/lib/sidebar-navigation';
 import { LANE_DOORS } from '@/lib/nav/lanes';
-import { NAV_PAGE_DECLS } from './pages';
 import { NAV_PARITY, pageStops, parityGaps, uncoveredRows } from './parity';
 import { declaredRouteParams, type ResolveNavContextInput } from './build';
 import { resolveNavContext } from './resolve';
@@ -152,8 +151,29 @@ test('Fulfillment is a lane door: one map row, the lane name on its panel, its p
   ]);
   assert.ok(modes?.items.every((item) => !item.active), 'a mode row never lights a view');
 
-  // Scan Stations sit at the very bottom of the map.
-  assert.equal(map.sections.at(-1)?.id, 'floor');
+  // Scan Stations opens Operations immediately above Sales; fixed utilities close the map.
+  const stations = map.sections[1];
+  assert.equal(stations?.id, 'floor');
+  assert.deepEqual(stations?.items.map((item) => [item.id, item.label, item.kind]), [
+    ['receive', 'Scan Stations', 'drill'],
+  ]);
+  assert.ok(
+    map.sections.findIndex((section) => section.id === 'floor') <
+      map.sections.findIndex((section) => section.id === 'sales'),
+  );
+  assert.equal(map.sections.at(-1)?.id, 'bottom');
+});
+
+test('the parent map keeps Scan Stations to one door across every station route', () => {
+  const stationPaths = ['/triage', '/unbox', '/repair', '/test', '/pick', '/pack', '/shipping/scan-out'];
+  for (const href of stationPaths) {
+    const map = at(href, { view: 'top' });
+    const stationSection = map.sections.find((section) => section.id === 'floor');
+    assert.equal(stationSection?.items.length, 1, href);
+    assert.equal(stationSection?.items[0]?.label, 'Scan Stations', href);
+    assert.equal(stationSection?.items[0]?.active, true, href);
+    assert.equal(at(stationSection?.items[0]?.href ?? '/').page.id, map.page.id, href);
+  }
 });
 
 test('every mode of a door lane wears the lane on ‹ and the SAME mode card, itself current — never a ‹ <Page> row', () => {
@@ -429,13 +449,26 @@ test('each Shipping view carries the filters and controls its own list reads', (
 test('each Inbound view carries the filters and controls its own list reads, and its saved views keep them', () => {
   const pipeline = at('/incoming');
   const docked = at('/incoming?lane=docked');
+  const unboxed = at('/incoming?lane=unboxed');
+  assert.deepEqual(
+    getSidebarPageNav('incoming')?.children?.map((child) => child.label),
+    ['Inbound', 'Docked', 'Unboxed'],
+    'Deliveries owns exactly three parent-to-child views',
+  );
   const cases = [
     // On the way: the purchasing source the list endpoint takes, the ledger's column order.
     { href: '/incoming', ctx: pipeline, reads: ['inbound', 'colsort', 'coldir'], isColumn: isIncomingGridSortable },
-    // Unboxed: who handled it, the activity window, the intake kind, the column order.
+    // Docked: who arrival-scanned it, the arrival window, intake kind and card order.
     {
       href: '/incoming?lane=docked',
       ctx: docked,
+      reads: ['staff', 'dateFrom', 'dateTo', 'dkind', 'colsort', 'coldir'],
+      isColumn: isReceivingGridSortable,
+    },
+    // Unboxed: the same control grammar over a separate Unbox-opened population.
+    {
+      href: '/incoming?lane=unboxed',
+      ctx: unboxed,
       reads: ['staff', 'dateFrom', 'dateTo', 'dkind', 'colsort', 'coldir'],
       isColumn: isReceivingGridSortable,
     },
@@ -471,6 +504,7 @@ test('each Inbound view carries the filters and controls its own list reads, and
   // Neither lane advertises the other's filters.
   assert.ok(!navControlParams(pipeline.controls).includes('dflag'));
   assert.ok(!navControlParams(docked.controls).includes('inbound'));
+  assert.ok(!navControlParams(unboxed.controls).includes('inbound'));
 });
 
 test('every facet context names a real page or section view, and every recents surface exists', () => {
@@ -511,8 +545,51 @@ test('view=top is the ‹ peek: the lane map with the page lit, the page tools k
 
   const station = at('/unbox');
   assert.equal(station.scope, 'section');
-  assert.deepEqual(activeIds(station), ['queue']);
+  assert.equal(station.page.label, 'Scan Stations');
+  assert.equal(station.back?.label, 'Scan Stations');
+  assert.deepEqual(itemIds(station), [
+    'triage',
+    'receive',
+    'testing',
+    'ready-to-pack',
+    'packer',
+    'scan-out',
+  ]);
+  assert.deepEqual(activeIds(station), []);
   assert.equal(station.scanInput?.grammar, 'unbox');
+});
+
+test('every floor station shares the Scan Stations parent switcher without advertising Repair', () => {
+  const cases = [
+    ['/triage', 'triage', 'arrival'],
+    ['/unbox', 'receive', 'unbox'],
+    ['/repair', 'repair', undefined],
+    ['/test', 'testing', 'testing'],
+    ['/pick', 'ready-to-pack', 'station'],
+    ['/pack', 'packer', 'pack'],
+    ['/shipping/scan-out', 'scan-out', 'scan-out'],
+  ] as const;
+  const visibleStationIds = [
+    'triage',
+    'receive',
+    'testing',
+    'ready-to-pack',
+    'packer',
+    'scan-out',
+  ];
+  for (const [href, pageId, grammar] of cases) {
+    const ctx = at(href);
+    assert.equal(ctx.scope, 'section', href);
+    assert.equal(ctx.page.id, pageId, href);
+    assert.equal(ctx.page.label, 'Scan Stations', href);
+    assert.deepEqual(ctx.back, { label: 'Scan Stations', mode: 'local' }, href);
+    const stationSection = ctx.sections.find((section) => /\.scan-stations\.modes$/.test(section.id));
+    const expectedIds = pageId === 'repair'
+      ? ['triage', 'receive', 'repair', ...visibleStationIds.slice(2)]
+      : visibleStationIds;
+    assert.deepEqual(stationSection?.items.map((item) => item.id), expectedIds, href);
+    assert.equal(ctx.scanInput?.grammar, grammar, href);
+  }
 });
 
 test('headings never repeat the name of a row beneath them (nav-name law)', () => {
@@ -603,25 +680,25 @@ test('Chat is the first row of the page map for every permission set that can op
   assert.ok(!itemIds(at('/', { permissions: noChat })).includes('ai-chat'));
 });
 
-test('the parent map follows the product story from Chat through Reports', () => {
+test('the parent map places Scan Stations above Sales and closes with Print station and Reports', () => {
   const map = at('/', { permissions: ALL, view: 'top' });
   assert.deepEqual(
-    items(map).slice(0, 12).map((item) => item.label),
+    items(map).slice(0, 11).map((item) => item.label),
     [
       'Chat',
       'Daily',
       'Automations',
       'Exceptions',
-      'Print station',
       'Media Library',
+      'Scan Stations',
       'Sales',
       'Receiving',
       'Fulfillment',
       'Inventory',
       'Products',
-      'Reports',
     ],
   );
+  assert.deepEqual(items(map).slice(-2).map((item) => item.label), ['Print station', 'Reports']);
 });
 
 test('/ai-chat is a contextual page panel: its threads, New chat, Find over the threads', () => {

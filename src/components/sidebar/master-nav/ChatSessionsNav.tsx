@@ -130,6 +130,7 @@ function SessionRow({
         href={href}
         isActive={active}
         aria-current={active ? 'page' : undefined}
+        data-sidebar-nav-item
         title={title}
         onClick={(e) => routeClick(e, href, onOpenHref)}
         className="h-8 pr-8"

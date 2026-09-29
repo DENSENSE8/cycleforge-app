@@ -3,6 +3,7 @@
 /** Task evidence — **Schedule & owner**: */
 
 import { useEffect, useState } from 'react';
+import { CalendarClock } from '@/components/Icons';
 import { StaffAvatar } from '@/components/identity';
 import { Checkbox } from '@/design-system/primitives/Checkbox';
 import { TextField } from '@/design-system/primitives';
@@ -76,9 +77,35 @@ export function TaskScheduleSection({
     if (next !== row.projectName) onPatch({ projectName: next });
   };
   const due = row.deadlineAtMs;
+  const scheduleTone = row.status === 'DONE'
+    ? 'success'
+    : (due != null && due < nowMs) || row.urgency === 'urgent'
+      ? 'warning'
+      : 'info';
+  const dueSummary = due == null
+    ? 'No due date'
+    : new Intl.DateTimeFormat(undefined, {
+        month: 'short',
+        day: 'numeric',
+        hour: 'numeric',
+        minute: '2-digit',
+      }).format(new Date(due));
+  const ownerSummary = assignees.length === 0
+    ? 'Unassigned'
+    : assignees.length === 1
+      ? (assignees[0]?.name ?? 'Unassigned')
+      : `${assignees[0]?.name ?? 'Team'} +${assignees.length - 1}`;
 
   return (
-    <EvidenceSection label="Schedule & owner" testId="task-schedule">
+    <EvidenceSection
+      label="Schedule & owner"
+      testId="task-schedule"
+      collapsible
+      lazy
+      tone={scheduleTone}
+      icon={<CalendarClock />}
+      summary={`${due != null && due < nowMs && row.status !== 'DONE' ? 'Past due · ' : ''}${dueSummary} · ${ownerSummary}`}
+    >
       <div className="flex flex-col gap-3">
         <div className="flex flex-col gap-1">
           <span className="text-role-caption text-mode-muted">Due</span>
@@ -132,7 +159,7 @@ export function TaskScheduleSection({
                     <button
                       key={preset.label}
                       type="button"
-                      className={cn(evidenceVerbClass(row.remindAtMs === at), SMALL_VERB)}
+                      className={cn(evidenceVerbClass(row.remindAtMs === at, row.remindAtMs === at ? 'info' : undefined), SMALL_VERB)}
                       disabled={pending || at < nowMs}
                       onClick={() => onPatch({ remindAt: iso(at) })}
                     >
@@ -157,7 +184,7 @@ export function TaskScheduleSection({
           <div className="grid grid-cols-2 gap-1">
             <button
               type="button"
-              className={cn(evidenceVerbClass(row.urgency === 'urgent'), SMALL_VERB)}
+              className={cn(evidenceVerbClass(row.urgency === 'urgent', row.urgency === 'urgent' ? 'warning' : undefined), SMALL_VERB)}
               aria-pressed={row.urgency === 'urgent'}
               disabled={pending}
               onClick={() => onPatch({ priority: TASK_PRIORITY.urgent })}
@@ -166,7 +193,7 @@ export function TaskScheduleSection({
             </button>
             <button
               type="button"
-              className={cn(evidenceVerbClass(row.urgency === 'normal'), SMALL_VERB)}
+              className={cn(evidenceVerbClass(row.urgency === 'normal', row.urgency === 'normal' ? 'info' : undefined), SMALL_VERB)}
               aria-pressed={row.urgency === 'normal'}
               disabled={pending}
               onClick={() => onPatch({ priority: TASK_PRIORITY.normal })}

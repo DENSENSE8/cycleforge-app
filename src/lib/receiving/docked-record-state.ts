@@ -8,6 +8,22 @@ import type { ReceivingLineRow } from './receiving-line-row';
 import { deriveReceivingLineStatus } from './workflow-stages';
 
 /**
+ * An arrival scan proves only that the sealed package reached the input area.
+ * Contents, quantity discrepancies and quality remain unknown until Unbox.
+ */
+export const DOCKED_PACKAGE_FACE: RecordStateFace = {
+  id: 'DOCKED',
+  code: 'DCK',
+  label: 'Docked',
+  tone: 'info',
+  icon: 'package',
+};
+
+export function dockedPackageRecordFace(_row: ReceivingLineRow): RecordStateFace {
+  return DOCKED_PACKAGE_FACE;
+}
+
+/**
  * Unboxed "needs attention" pills (owner 2026-09-28), in pill order — the
  * `?dflag=` vocabulary, most urgent first (Unfound › Claim › Short). Each is a
  * carton fact read off its lines; a carton wears a pill when any of its lines
@@ -184,3 +200,5 @@ export function dockedNextStep(row: ReceivingLineRow): string | null {
 
 /** Every verb {@link dockedNextStep} can paint, in workflow order. */
 export const DOCKED_NEXT_STEPS = ['Resolve', 'Claim', 'Print label'] as const;
+/** The unopened Docked surface has exactly one honest next step. */
+export const DOCKED_PACKAGE_NEXT_STEPS = ['Unbox'] as const;

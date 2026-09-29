@@ -135,6 +135,18 @@ test('Unbox Queue requests view=scanned with priority sort', () => {
   assert.equal(RECEIVING_MODES.unbox_queue.skipWeekFilter(ctx()), true);
 });
 
+test('Deliveries Docked reads the Arrival scan feed without queue priority semantics', () => {
+  const mode = RECEIVING_MODES.docked;
+  const p = mode.buildParams(ctx({ historySearch: '8194843', historySearchField: 'tracking', staffFilterId: 7 }));
+  assert.equal(mode.apiView, 'scanned');
+  assert.equal(p.get('view'), 'scanned');
+  assert.equal(p.get('sort'), 'scanned_newest');
+  assert.equal(p.get('search'), '8194843');
+  assert.equal(p.get('search_field'), 'tracking');
+  assert.equal(p.get('staff'), '7');
+  assert.notDeepEqual(mode.queryKey(ctx({ historySearch: '8194843' })), mode.queryKey(ctx()));
+});
+
 test('Unbox Viewed requests view=viewed', () => {
   const p = RECEIVING_MODES.unbox_viewed.buildParams(ctx({ listSearch: '1Z' }));
   assert.equal(p.get('view'), 'viewed');
@@ -148,6 +160,10 @@ test('staff filter forwards on history + unbox modes', () => {
   );
   assert.equal(
     RECEIVING_MODES.unbox_queue.buildParams(ctx({ staffFilterId: 7 })).get('staff'),
+    '7',
+  );
+  assert.equal(
+    RECEIVING_MODES.docked.buildParams(ctx({ staffFilterId: 7 })).get('staff'),
     '7',
   );
   assert.equal(RECEIVING_MODES.history.buildParams(ctx()).get('staff'), null);

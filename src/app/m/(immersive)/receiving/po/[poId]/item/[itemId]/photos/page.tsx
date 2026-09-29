@@ -4,6 +4,7 @@ import { Suspense, use as useUnwrap } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
 import { MobileReceivingPhotoStudio } from '@/components/mobile/photos/MobileReceivingPhotoStudio';
+import { mobileUnboxPhotoReturnHref } from '@/lib/receiving/photo-scope';
 
 interface DetailResponse {
   header: { po_number: string; po_id: string };
@@ -26,6 +27,7 @@ function ItemPhotoPageInner(
   // Phone-bridge echo id — a desktop `unbox_item` request threads it so each
   // committed upload pings the requesting station (parity with /m/r/[id]).
   const requestId = (searchParams.get('requestId') || '').trim() || null;
+  const returnHref = mobileUnboxPhotoReturnHref(searchParams.get('back'));
 
   const { data, isLoading, error } = useQuery<DetailResponse>({
     queryKey: ['receiving-po-detail', poId],
@@ -40,7 +42,6 @@ function ItemPhotoPageInner(
   });
 
   const item = data?.items.find((i) => i.id === itemId);
-  const itemDetailHref = `/m/receiving/po/${encodeURIComponent(poId)}/item/${itemId}`;
   const headerLabel =
     `PO ${data?.header.po_number || data?.header.po_id} · ${item?.item_name || item?.sku || `Item ${itemId}`}`;
   const poRef = data?.header.po_number || data?.header.po_id || null;
@@ -77,8 +78,8 @@ function ItemPhotoPageInner(
       headerLabel={headerLabel}
       galleryTitle="Item photos"
       gallerySubtitle={headerLabel}
-      backHref={itemDetailHref}
-      returnHref={itemDetailHref}
+      backHref={returnHref}
+      returnHref={returnHref}
       requestId={requestId}
     />
   );

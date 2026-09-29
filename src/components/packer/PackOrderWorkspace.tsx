@@ -1,6 +1,6 @@
 'use client';
 
-/** Pack right-pane shell — browse workbench always mounted; focused order workspace crossfades over it (UnboxLineWorkspace pattern). */
+/** Packing station stage — idle until the scan/recent rail opens work. */
 
 import {
   AnimatePresence,
@@ -9,9 +9,9 @@ import {
   useMotionRole,
   useOverlaySwapHardCut,
 } from '@/design-system/motion';
-import { PackWorkspaceView } from '@/components/packer/PackWorkspaceView';
 import { PackOrderPanel } from '@/components/packer/PackOrderPanel';
 import { PackFbaScanCard } from '@/components/packer/PackFbaScanCard';
+import { ScanStationIdleCanvas } from '@/components/station/ScanStationIdleCanvas';
 import { zIndex } from '@/design-system/tokens/z-index';
 import { appWorkCanvasClass } from '@/design-system/tokens/app-surface';
 import { appSurfaceFillClass } from '@/design-system/components/AppSurfaceFill';
@@ -22,7 +22,6 @@ import type {
 } from '@/components/packer/usePackerOrderPane';
 
 interface PackOrderWorkspaceProps {
-  packerId: number;
   activeOrder: PackActiveOrderPane | null;
   /**
    * FBA scan result — the bench's other active entity. Mutually exclusive with
@@ -34,7 +33,6 @@ interface PackOrderWorkspaceProps {
 }
 
 export function PackOrderWorkspace({
-  packerId,
   activeOrder,
   activeFba = null,
   onCloseActiveOrder,
@@ -62,7 +60,7 @@ export function PackOrderWorkspace({
         inert={showOverlay ? true : undefined}
         style={{ visibility: showOverlay ? 'hidden' : 'visible' }}
       >
-        <PackWorkspaceView packerId={packerId} />
+        <ScanStationIdleCanvas />
       </div>
 
       <AnimatePresence

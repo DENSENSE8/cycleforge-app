@@ -4,7 +4,10 @@ import { Suspense, use as useUnwrap } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
 import { MobileReceivingPhotoStudio } from '@/components/mobile/photos/MobileReceivingPhotoStudio';
-import { parseReceivingCartonPhotoStage } from '@/lib/receiving/photo-scope';
+import {
+  mobileUnboxPhotoReturnHref,
+  parseReceivingCartonPhotoStage,
+} from '@/lib/receiving/photo-scope';
 
 interface DetailResponse {
   header: { po_number: string; po_id: string; receiving_id: number | null };
@@ -19,6 +22,7 @@ function PoPhotoPageInner(props: { params: Promise<{ poId: string }> }) {
   // unbox_carton — the safe default, since this generic PO capture page is
   // reached from the bench far more often than the dock.
   const stage = parseReceivingCartonPhotoStage(searchParams.get('stage'));
+  const returnHref = mobileUnboxPhotoReturnHref(searchParams.get('back'));
 
   const { data, isLoading, error } = useQuery<DetailResponse>({
     queryKey: ['receiving-po-detail', poId],
@@ -33,7 +37,6 @@ function PoPhotoPageInner(props: { params: Promise<{ poId: string }> }) {
   });
 
   const receivingId = data?.header.receiving_id ?? null;
-  const poDetailHref = `/m/receiving/po/${encodeURIComponent(poId)}`;
   const headerLabel = `PO ${data?.header.po_number || data?.header.po_id || poId}`;
   const poRef = data?.header.po_number || data?.header.po_id || null;
 
@@ -74,8 +77,8 @@ function PoPhotoPageInner(props: { params: Promise<{ poId: string }> }) {
       headerLabel={headerLabel}
       galleryTitle="PO photos"
       gallerySubtitle={headerLabel}
-      backHref={poDetailHref}
-      returnHref={poDetailHref}
+      backHref={returnHref}
+      returnHref={returnHref}
     />
   );
 }

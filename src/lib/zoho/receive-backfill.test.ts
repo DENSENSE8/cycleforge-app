@@ -14,6 +14,7 @@ import {
 } from './receive-backfill';
 import type { InventoryProvider } from '@/lib/integrations/inventory/types';
 import type { OrgId } from '@/lib/tenancy/constants';
+import { ZohoCircuitOpenError } from './httpClient';
 
 const ORG = '00000000-0000-0000-0000-000000000001' as OrgId;
 
@@ -23,6 +24,7 @@ interface ClaimRow {
   zoho_purchaseorder_id: string;
   zoho_line_item_id: string;
   zoho_receive_attempts: number;
+  quantity_received?: number | null;
 }
 
 interface QueryCall {
@@ -400,4 +402,73 @@ test('a dead credential stops after the first group, not after all of them', asy
   // Every group shares the credential — proving it 3 times costs 3 round-trips
   // against a limiter that only has 80 per minute.
   assert.equal(poFetches, 1);
+});
+
+test('an open circuit defers the run: no attempt burned, no later PO tried', async () => {
+  const tried: string[] = [];
+  const { deps, calls } = fakes({
+    claim: [
+      { id: 11, sku: 'A', zoho_purchaseorder_id: 'po-1', zoho_line_item_id: 'li-1', zoho_receive_attempts: 3 },
+      { id: 21, sku: 'B', zoho_purchaseorder_id: 'po-2', zoho_line_item_id: 'li-2', zoho_receive_attempts: 0 },
+    ],
+    pendingAfter: 2,
+    provider: {
+      getPurchaseOrder: (async (poId: string) => {
+        tried.push(poId);
+        throw new ZohoCircuitOpenError(60_000);
+      }) as unknown as InventoryProvider['getPurchaseOrder'],
+    },
+  });
+
+  const report = await runZohoReceiveBackfill(ORG, {}, deps);
+
+  assert.equal(report.deferred, true);
+  assert.equal(report.failed, 0);
+  assert.deepEqual(tried, ['po-1'], 'the run stops at the first transient answer');
+  assert.equal(stampSql(calls).length, 0, 'a Zoho hiccup must not walk lines to the ceiling');
+});
+
+test('an unboxed short shipment pushes only the units counted here', async () => {
+  const { deps, posted } = fakes({
+    claim: [
+      { id: 11, sku: 'A', zoho_purchaseorder_id: 'po-1', zoho_line_item_id: 'li-1', zoho_receive_attempts: 0, quantity_received: 2 },
+    ],
+    provider: {
+      getPurchaseOrder: (async () => ({
+        purchaseorder: { status: 'issued', line_items: [{ line_item_id: 'li-1', item_id: 'item-1', quantity: 5 }] },
+      })) as unknown as InventoryProvider['getPurchaseOrder'],
+    },
+  });
+
+  const report = await runZohoReceiveBackfill(ORG, {}, deps);
+
+  assert.equal(report.posted, 1);
+  assert.deepEqual(posted[0]!.lineItems, [{ line_item_id: 'li-1', quantity_received: 2, item_id: 'item-1' }]);
+});
+
+test('Zoho already holding the counted units settles without a receive or a whole-PO mark', async () => {
+  const { deps, posted, wholePoReceived } = fakes({
+    claim: [
+      { id: 11, sku: 'A', zoho_purchaseorder_id: 'po-1', zoho_line_item_id: 'li-1', zoho_receive_attempts: 0, quantity_received: 2 },
+    ],
+    provider: {
+      getPurchaseOrder: (async () => ({
+        purchaseorder: { status: 'partially_received', line_items: [{ line_item_id: 'li-1', item_id: 'item-1', quantity: 5 }] },
+      })) as unknown as InventoryProvider['getPurchaseOrder'],
+      sumWarehouseReceivedByPoLineItem: (async () => new Map([['li-1', 2]])) as unknown as InventoryProvider['sumWarehouseReceivedByPoLineItem'],
+    },
+  });
+
+  const report = await runZohoReceiveBackfill(ORG, {}, deps);
+
+  assert.equal(report.noop, 1);
+  assert.equal(posted.length, 0);
+  assert.equal(wholePoReceived.length, 0, 'an open PO with units still due is never marked whole');
+});
+
+test('the backlog counts an unboxed line with a counted quantity, not only DONE', async () => {
+  const { deps, calls } = fakes({});
+  await runZohoReceiveBackfill(ORG, {}, deps);
+  const claim = calls.find((c) => /WITH claimable/.test(c.sql))!;
+  assert.match(claim.sql, /COALESCE\(rl\.quantity_received, 0\) > 0\s+AND EXISTS \(SELECT 1 FROM receiving_unbox u/);
 });

@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import type { ReceivingLineRow } from './receiving-line-row';
-import { dockedCartonStatuses, dockedFlags, dockedIntakeKind, dockedNextStep, dockedReceivedQuantity, dockedReceivingState, dockedRecordFace, dockedTicketLabels } from './docked-record-state';
+import { dockedCartonStatuses, dockedFlags, dockedIntakeKind, dockedNextStep, dockedPackageRecordFace, dockedReceivedQuantity, dockedReceivingState, dockedRecordFace, dockedTicketLabels } from './docked-record-state';
 import { isClaimCode, isInvestigationCode } from './exception-codes';
 import { receivingLineMatchesQuery } from './receiving-line-search';
 
@@ -23,6 +23,12 @@ test('history is receiving only: scanned → received, with exceptions kept apar
   // Unboxed is received: a line still MATCHED in an opened carton is in the building.
   assert.equal(dockedReceivingState(row({ id: 1, workflow_status: 'MATCHED', unboxed_at: '2026-09-25' })).id, 'RECEIVED');
   assert.equal(dockedReceivingState(row({ id: 1, received_at: '2026-09-25' })).id, 'SCANNED');
+});
+
+test('Docked never infers a contents discrepancy before the package is opened', () => {
+  const unopened = row({ id: 1, scanned_at: '2026-09-29T17:00:00Z', quantity_received: 0, quantity_expected: 4 });
+  assert.equal(dockedPackageRecordFace(unopened).id, 'DOCKED');
+  assert.equal(dockedPackageRecordFace(unopened).label, 'Docked');
 });
 
 test('a card wears its most urgent attention, and only a clean line reads Unboxed', () => {

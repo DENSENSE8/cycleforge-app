@@ -8,6 +8,7 @@ import type { TriageViewDecl, TriageViewId } from '@/design-system/components/tr
 import { DAILY_AGENDA_VIEW } from './daily-agenda';
 import { EXCEPTIONS_VIEW } from './exceptions';
 import { INCOMING_DOCKED_VIEW } from './incoming-docked';
+import { INCOMING_UNBOXED_VIEW } from './incoming-unboxed';
 import { INCOMING_PIPELINE_VIEW } from './incoming-pipeline';
 import { IMPORT_ROWS_VIEW, IMPORT_RUNS_VIEW } from './imports';
 import { INVENTORY_REPLENISH_VIEW } from './inventory-replenish';
@@ -29,6 +30,7 @@ export {
   DAILY_AGENDA_VIEW,
   EXCEPTIONS_VIEW,
   INCOMING_DOCKED_VIEW,
+  INCOMING_UNBOXED_VIEW,
   INCOMING_PIPELINE_VIEW,
   IMPORT_ROWS_VIEW,
   IMPORT_RUNS_VIEW,
@@ -51,6 +53,7 @@ export const TRIAGE_VIEWS: Readonly<Record<TriageViewId, TriageViewDecl>> = Obje
     OUTBOUND_TRIAGE_VIEW,
     INCOMING_PIPELINE_VIEW,
     INCOMING_DOCKED_VIEW,
+    INCOMING_UNBOXED_VIEW,
     LABEL_INTAKE_UPLOADS_VIEW,
     LABEL_INTAKE_LABELS_VIEW,
     LABEL_INTAKE_PAPERWORK_VIEW,

@@ -16,9 +16,13 @@ test('resolveLiveReceivingMode is path-first for graduated routes', () => {
   assert.equal(resolveLiveReceivingMode('/pickup', sp), 'pickup');
 });
 
-test('resolveLiveReceivingMode: /incoming?lane=docked → history', () => {
+test('resolveLiveReceivingMode keeps Docked live and Unboxed read-only', () => {
   assert.equal(
     resolveLiveReceivingMode('/incoming', new URLSearchParams('lane=docked')),
+    'receive',
+  );
+  assert.equal(
+    resolveLiveReceivingMode('/incoming', new URLSearchParams('lane=unboxed')),
     'history',
   );
   assert.equal(

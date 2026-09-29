@@ -1,7 +1,7 @@
 'use client';
 
 /**
- * Inbound › Unboxed (Docked) — the unboxed-cartons HOST. One face: the shared
+ * Deliveries › Unboxed — the cartons already opened at Unbox. One face: the shared
  * triage face ({@link TriageCardList}, one card per carton), on a desk stage
  * and off it (the Unbox History tab). Find lives in the page header; the
  * off-desk toolbar keeps Sort only.
@@ -42,11 +42,11 @@ import { useUrlColumnSort } from '@/hooks/useUrlColumnSort';
 import { defaultDirForReceivingGridSort, isReceivingGridSortable, type ReceivingGridColumnKey } from '@/lib/receiving/receiving-grid-layout';
 import { compareReceivingGridRows } from '@/lib/receiving/receiving-grid-compare';
 import type { ReceivingActivityAxis } from '@/lib/receiving/receiving-stage-stamp';
-import { INCOMING_DOCKED_VIEW } from '@/lib/triage/views';
+import { INCOMING_UNBOXED_VIEW } from '@/lib/triage/views';
 import { CartonCard } from './cards/CartonCard';
 import { cartonBands, cartonCardKey, cartonCardModel, groupCartons, type CartonCardModel } from './cards/carton-card-model';
 
-const VIEW = INCOMING_DOCKED_VIEW;
+const VIEW = INCOMING_UNBOXED_VIEW;
 
 const receivingLineId = (row: ReceivingLineRow): number => row.id;
 const SORTS: readonly { key: ReceivingGridColumnKey; label: string }[] = [
@@ -73,7 +73,7 @@ const cartonExactFind = (query: string, card: CartonCardModel) =>
   String(card.lead.receiving_id ?? '') === query.replace(/^#/, '') ||
   card.rows.some((row) => (row.tracking_number ?? '').toLowerCase() === query);
 
-export function DockedReceiptsLedger({
+export function UnboxedReceiptsLedger({
   rows,
   loading,
   emptyMessage,
@@ -159,7 +159,7 @@ export function DockedReceiptsLedger({
   // `/incoming` (the sidebar owns the controls) Claim · Short · Unfound ARE
   // the hub's receiving kinds — single-select, counted by the hub's own
   // predicate, and a lit one swaps this list for the hub list locked to it.
-  // Unboxed, and the Unbox History tab, keep the local cut.
+  // The Unboxed status, and the Unbox History tab, keep the local cut.
   const hubDoor = sidebarOwnsControls;
   const hubCounts = useExceptionCounts({ domain: 'receiving' }).data;
   const router = useRouter();
@@ -226,7 +226,7 @@ export function DockedReceiptsLedger({
 
   if (lockedKind) {
     return (
-      <div data-testid="docked-receipts-ledger" data-face="exceptions" className="flex min-h-0 min-w-0 flex-1 flex-col">
+      <div data-testid="unboxed-receipts-ledger" data-face="exceptions" className="flex min-h-0 min-w-0 flex-1 flex-col">
         <div className="flex shrink-0 items-stretch">
           <IncomingStatusChips set={chipSet} />
         </div>
@@ -260,7 +260,7 @@ export function DockedReceiptsLedger({
   );
 
   return (
-    <div data-testid="docked-receipts-ledger" data-face="cards" className="flex min-h-0 min-w-0 flex-1 flex-col">
+    <div data-testid="unboxed-receipts-ledger" data-face="cards" className="flex min-h-0 min-w-0 flex-1 flex-col">
       {controls}
       <div className="flex min-h-0 min-w-0 flex-1">
         <HistoryCards
@@ -283,7 +283,7 @@ export function DockedReceiptsLedger({
           record={{
             title: recordTitle,
             noun: VIEW.noun.one,
-            testId: 'docked-receipts-ledger-record',
+            testId: 'unboxed-receipts-ledger-record',
             summary: <RecordLedgerSummaryPane summary={summary} />,
             view: recordView,
             strip: actionStrip,
@@ -366,7 +366,7 @@ function HistoryCards({
       cut={cut}
       record={record}
       summary={chips}
-      bulk={<ReceivingSelectionVerbs noun="receipts" />}
+      bulk={<ReceivingSelectionVerbs noun="receipts" advance="received" />}
       searchEmpty={searchEmpty}
       allClear={allClear}
     />

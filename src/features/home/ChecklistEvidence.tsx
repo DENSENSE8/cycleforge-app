@@ -3,6 +3,7 @@
 /** The open DAILY CHECKLIST item in Daily's compact record rail. */
 
 import { useEffect, useState } from 'react';
+import { CalendarClock, CheckCircle, ClipboardList, User } from '@/components/Icons';
 import { SupportTicketDetail } from '@/components/support/zendesk/chat/SupportTicketDetail';
 import { TabSwitch } from '@/design-system/components/TabSwitch';
 import {
@@ -26,6 +27,18 @@ const REMIND_OFFSETS: ReadonlyArray<{ label: string; minutes: number | null }> =
   { label: '30 min', minutes: 30 },
   { label: '1 hr', minutes: 60 },
 ];
+
+function checklistScheduleSummary(dueTime: string | null, remindOffsetMinutes: number | null): string {
+  if (!dueTime) return 'No due time or reminder';
+  const [rawHour = 0, minute = 0] = dueTime.split(':').map(Number);
+  const due = `${rawHour % 12 || 12}:${String(minute).padStart(2, '0')} ${rawHour < 12 ? 'AM' : 'PM'}`;
+  const reminder = remindOffsetMinutes == null
+    ? 'No reminder'
+    : remindOffsetMinutes === 0
+      ? 'At due'
+      : `${remindOffsetMinutes}m before`;
+  return `Due ${due} · ${reminder}`;
+}
 
 export interface ChecklistSchedulePatch {
   dueTime?: string | null;
@@ -94,73 +107,104 @@ export function ChecklistEvidence({
         </div>
       ) : (
         <>
-          {row.description ? (
-            <EvidenceSection label="Instructions">
-              <p className="whitespace-pre-wrap text-role-data text-mode-muted">{row.description}</p>
-            </EvidenceSection>
-          ) : null}
+          <div className="flex flex-col gap-3 p-3">
+            {row.description ? (
+              <EvidenceSection
+                label="Instructions"
+                card
+                tone="info"
+                icon={<ClipboardList />}
+              >
+                <p className="whitespace-pre-wrap text-role-data text-mode-muted">{row.description}</p>
+              </EvidenceSection>
+            ) : null}
 
-          <EvidenceSection label="Due & reminder" testId="checklist-schedule">
-            <div className="flex flex-col gap-2">
-              <label className="flex items-center gap-2">
-                <span className="w-20 text-role-caption text-mode-muted">Due at</span>
-                <input
-                  type="time"
-                  value={time}
-                  disabled={!canManage || pending}
-                  onChange={(event) => setTimeDraft(event.target.value)}
-                  onBlur={commitTime}
-                  onKeyDown={(event) => {
-                    if (event.key === 'Enter') commitTime();
-                  }}
-                  className={cn(EVIDENCE_CONTROL_CLASS, cornerClass('flush'), 'w-32 tabular-nums')}
-                  aria-label="Due time (warehouse time)"
-                  data-testid="checklist-due-time"
-                />
-                <span className="text-role-caption text-mode-muted">warehouse time, every day it is live</span>
-              </label>
-              <div className="flex flex-wrap items-center gap-1" role="group" aria-label="Remind before due">
-                <span className="w-20 text-role-caption text-mode-muted">Remind</span>
-                {REMIND_OFFSETS.map((offset) => (
-                  <button
-                    key={offset.label}
-                    type="button"
-                    aria-pressed={row.remindOffsetMinutes === offset.minutes}
-                    disabled={!canManage || pending || (row.dueTime == null && offset.minutes != null)}
-                    onClick={() => onSchedule({ remindOffsetMinutes: offset.minutes })}
-                    className={cn(evidenceVerbClass(row.remindOffsetMinutes === offset.minutes), cornerClass('flush'), 'min-h-0 py-1')}
-                  >
-                    {offset.label}
-                  </button>
-                ))}
+            <EvidenceSection
+              label="Due & reminder"
+              testId="checklist-schedule"
+              collapsible
+              lazy
+              tone="info"
+              icon={<CalendarClock />}
+              summary={checklistScheduleSummary(row.dueTime, row.remindOffsetMinutes)}
+            >
+              <div className="flex flex-col gap-2">
+                <label className="flex items-center gap-2">
+                  <span className="w-20 text-role-caption text-mode-muted">Due at</span>
+                  <input
+                    type="time"
+                    value={time}
+                    disabled={!canManage || pending}
+                    onChange={(event) => setTimeDraft(event.target.value)}
+                    onBlur={commitTime}
+                    onKeyDown={(event) => {
+                      if (event.key === 'Enter') commitTime();
+                    }}
+                    className={cn(EVIDENCE_CONTROL_CLASS, cornerClass('flush'), 'w-32 tabular-nums')}
+                    aria-label="Due time (warehouse time)"
+                    data-testid="checklist-due-time"
+                  />
+                  <span className="text-role-caption text-mode-muted">warehouse time, every day it is live</span>
+                </label>
+                <div className="flex flex-wrap items-center gap-1" role="group" aria-label="Remind before due">
+                  <span className="w-20 text-role-caption text-mode-muted">Remind</span>
+                  {REMIND_OFFSETS.map((offset) => (
+                    <button
+                      key={offset.label}
+                      type="button"
+                      aria-pressed={row.remindOffsetMinutes === offset.minutes}
+                      disabled={!canManage || pending || (row.dueTime == null && offset.minutes != null)}
+                      onClick={() => onSchedule({ remindOffsetMinutes: offset.minutes })}
+                      className={cn(
+                        evidenceVerbClass(
+                          row.remindOffsetMinutes === offset.minutes,
+                          row.remindOffsetMinutes === offset.minutes ? 'info' : undefined,
+                        ),
+                        cornerClass('flush'),
+                        'min-h-0 py-1',
+                      )}
+                    >
+                      {offset.label}
+                    </button>
+                  ))}
+                </div>
+                {!canManage ? (
+                  <p className="text-role-caption text-mode-muted">Only a manager can change the checklist’s schedule.</p>
+                ) : row.dueTime == null ? (
+                  <p className="text-role-caption text-mode-muted">Set a due time to turn on phone reminders.</p>
+                ) : null}
               </div>
-              {!canManage ? (
-                <p className="text-role-caption text-mode-muted">Only a manager can change the checklist’s schedule.</p>
-              ) : row.dueTime == null ? (
-                <p className="text-role-caption text-mode-muted">Set a due time to turn on phone reminders.</p>
-              ) : null}
-            </div>
-          </EvidenceSection>
+            </EvidenceSection>
 
-          <EvidenceSection label="Today">
-            <EvidenceFacts>
-              <EvidenceFact label="Owner">{row.ownerName ?? 'Whole shift'}</EvidenceFact>
-              <EvidenceFact label="Team" mono>
-                {row.teamDone ?? 0} / {row.teamTotal ?? 0}
-              </EvidenceFact>
-              <EvidenceFact label="You">
-                {row.done && row.markedAtMs != null
-                  ? `Checked ${new Date(row.markedAtMs).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}`
-                  : 'Not yet'}
-              </EvidenceFact>
-            </EvidenceFacts>
-          </EvidenceSection>
+            <EvidenceSection
+              label="Today"
+              collapsible
+              lazy
+              tone={row.done ? 'success' : 'info'}
+              icon={<User />}
+              summary={`${row.ownerName ?? 'Whole shift'} · Team ${row.teamDone ?? 0}/${row.teamTotal ?? 0}`}
+            >
+              <EvidenceFacts>
+                <EvidenceFact label="Owner">{row.ownerName ?? 'Whole shift'}</EvidenceFact>
+                <EvidenceFact label="Team" mono>
+                  {row.teamDone ?? 0} / {row.teamTotal ?? 0}
+                </EvidenceFact>
+                <EvidenceFact label="You">
+                  {row.done && row.markedAtMs != null
+                    ? `Checked ${new Date(row.markedAtMs).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}`
+                    : 'Not yet'}
+                </EvidenceFact>
+              </EvidenceFacts>
+            </EvidenceSection>
+          </div>
 
           <EvidenceDecisionBar
             verbs={[
               {
                 label: row.done ? 'Undo check' : 'Check off',
                 primary: !row.done,
+                tone: row.done ? 'info' : 'success',
+                icon: <CheckCircle />,
                 disabled: !canTick,
                 onPress: onToggle,
                 testId: 'checklist-toggle',

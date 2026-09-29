@@ -50,9 +50,10 @@ import {
  * is needed. Shipping opens the staffer's last view (`useLaneDoorHref`).
  *
  * The sequence is published (`go-keys-store`) so it is taught where the eye
- * already is: a desk header's key strip (`NavKeyStrip`) swaps to the next
+ * already is: a desk or Scan Stations parent switcher teaches the same
+ * destinations, and a desk header's key strip (`NavKeyStrip`) swaps to the next
  * keys while `G` is armed, top-middle between title and verbs. With no strip
- * on screen (fullscreen, Chat, a station) the same hint card sits top-centre
+ * on screen (fullscreen, Chat, or a station) the same hint card sits top-centre
  * under the app header instead. Nothing shades or outlines the list (owner
  * 2026-09-27).
  */

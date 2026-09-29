@@ -40,6 +40,12 @@ export interface SelectionAction<T> {
   disabledReason?: string;
   /** Run the verb over the rows. */
   run: (rows: T[], resolved?: { direction: VerbDirection }) => void | Promise<void>;
+  /**
+   * Morph the record strip into an inline, progressively disclosed control.
+   * Use this for verbs such as choosing a location; the selected rows stay the
+   * action's subject and `done` restores the verb strip after a successful edit.
+   */
+  display?: (rows: T[], done: () => void) => ReactNode;
 }
 
 interface ResolvedSelectionAction<T> {

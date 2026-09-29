@@ -87,6 +87,8 @@ packer's table, set an exact quantity, print there silently (the existing `fnsku
 9. The Print action is bottom-right under the station roster.
 10. While an FNSKU record is open, its Back + FNSKU title band replaces the page-level
     **All FNSKUs** header and occupies the topmost desk-header position.
+11. Printed condition text omits the internal house-grade prefix (`A`, `A+`, `B+`, and so on);
+    the preview and both print paths show only Amazon's condition words in a smaller 600-weight line.
 
 ## 3. Verification result
 

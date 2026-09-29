@@ -2,7 +2,7 @@
 /* Typefaces: next/font self-hosts IBM Plex Sans + Sans Condensed + Mono
    (`src/lib/fonts.ts`). */
 
-@import 'tailwindcss';
+@import 'tailwindcss' source(none);
 /* Bridge: keep JS theme + CF Type / spacing-intent plugins until fully
    migrated into @theme / @utility. See docs/todo/tailwind-v4-SPIKE.md. */
 @config '../../tailwind.config.mjs';
@@ -37,20 +37,12 @@
     @slot;
   }
 }
-/* Explicit sources — v4 auto-detect can miss SoT modules that only emit
-   class strings (outbound-state, etc.). Mirror the v3 content globs. */
-@source '../pages/**/*.{js,ts,jsx,tsx,mdx}';
-@source '../components/**/*.{js,ts,jsx,tsx,mdx}';
-@source '../design-system/**/*.{js,ts,jsx,tsx,mdx}';
-@source '../app/**/*.{js,ts,jsx,tsx,mdx}';
-@source '../features/**/*.{js,ts,jsx,tsx,mdx}';
-@source '../utils/**/*.{js,ts,jsx,tsx,mdx}';
-@source '../lib/**/*.{js,ts,jsx,tsx,mdx}';
-/* Docs / briefs / Claude rules often paste truncated arbitrary classes that
-   Lightning CSS then rejects. Keep auto-detect for hooks/contexts, but never
-   scan markdown plans or rule docs as utility sources. */
-@source not '../../docs';
-@source not '../../.claude';
+/* Source discovery is deliberately bounded to application source. Automatic
+   discovery can race Next's generated `.next` tree during a cold dev build,
+   feeding compiled/binary fragments back into Tailwind's candidate scanner.
+   One explicit src-wide glob also covers hooks, contexts and SoT modules that
+   only emit class strings, while keeping docs, caches and local artifacts out. */
+@source '../**/*.{js,ts,jsx,tsx,mdx}';
 /* Ship-before-adoption roles + spacing intents (were safelist in v3). */
 @source inline("text-role-display text-role-title text-role-body text-role-data text-role-field text-role-caption text-role-eyebrow text-role-micro font-spine inset-chip inset-field inset-cozy inset-card inset-empty stack-tight stack-row stack-section row-gap row-tight");
 

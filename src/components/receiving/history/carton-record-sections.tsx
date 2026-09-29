@@ -16,13 +16,10 @@ import { RecordPhoto, recordInitials } from '@/design-system/components/record-l
 import {
   RECORD_FACT_KEY_CLASS,
   RECORD_ID_CLASS,
-  RECORD_LABEL_CLASS,
   RECORD_PRICE_CLASS,
-  stateBadgeClass,
 } from '@/design-system/tokens/industrial-record';
 import { focusRing } from '@/design-system/tokens/focus-ring';
 import { conditionLabel } from '@/lib/conditions';
-import { dockedReceivingState } from '@/lib/receiving/docked-record-state';
 import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
 import {
   receivingRecordIdentity,
@@ -74,10 +71,12 @@ export function TicketLink({ ticket }: { ticket: string }) {
 export function CartonItem({
   line,
   current,
+  surface = 'unboxed',
 }: {
   line: ReceivingLineRow;
   /** The line the staffer opened from the list. */
   current: boolean;
+  surface?: 'docked' | 'unboxed';
 }) {
   // SKU IDENTITY LAW (src/lib/sku/sku-identity-law.ts): the Zoho item title governs.
   const title =
@@ -87,14 +86,13 @@ export function CartonItem({
       item_name: line.item_name,
       sku: line.sku,
     }) || 'Unidentified item';
-  const state = dockedReceivingState(line);
   const identity = receivingRecordIdentity(line);
   const serials = receivingRecordSerials(line);
   const serialWarning = receivingSerialCountWarning(line);
   const price = Number(line.unit_price);
   const expected = line.quantity_expected;
   const received = line.quantity_received ?? 0;
-  const short = expected != null && received < expected;
+  const short = surface === 'unboxed' && expected != null && received < expected;
   const sku = (line.sku || '').trim() || null;
   const ticket = (line.zendesk_ticket || '').trim() || null;
   const note = (line.notes || '').trim() || null;
@@ -118,9 +116,6 @@ export function CartonItem({
             <p className="line-clamp-2 min-w-0 flex-1 text-role-body font-bold" title={title}>
               {title}
             </p>
-            <span className={cn(RECORD_LABEL_CLASS, 'shrink-0', stateBadgeClass(state.tone))} data-testid="carton-item-state">
-              {state.code} · {state.label}
-            </span>
           </div>
           <p className="flex flex-wrap items-baseline gap-x-3 gap-y-0.5 text-role-data">
             <span>
@@ -130,7 +125,7 @@ export function CartonItem({
             <span data-testid="carton-item-qty">
               <span className={RECORD_FACT_KEY_CLASS}>Qty </span>
               <span className={cn(RECORD_ID_CLASS, short ? 'text-mode-warn' : 'text-mode-ink')}>
-                {received}/{expected ?? '?'}
+                {surface === 'docked' ? `${expected ?? received} expected` : `${received}/${expected ?? '?'}`}
               </span>
             </span>
             <span>

@@ -13,7 +13,8 @@ import { IncomingReturnsImportStagingRail } from '@/components/sidebar/receiving
 import { IncomingDeliveriesLedger } from '@/components/receiving/incoming/IncomingDeliveriesLedger';
 import { PastedNumbersLedger } from '@/components/receiving/incoming/PastedNumbersLedger';
 import { useIncomingStatusChips } from '@/components/receiving/incoming/IncomingStatusChips';
-import { DockedReceiptsLedger } from '@/components/receiving/history/DockedReceiptsLedger';
+import { DockedPackagesLedger } from '@/components/receiving/docked/DockedPackagesLedger';
+import { UnboxedReceiptsLedger } from '@/components/receiving/history/DockedReceiptsLedger';
 import { useTableImportParam } from '@/hooks/useTableImportParam';
 import { INBOUND_RETURNS_IMPORT_DESCRIPTOR } from '@/lib/inbound/inbound-returns-import-descriptor';
 import {
@@ -153,6 +154,7 @@ export default function ReceivingLinesTable({
   const {
     mode,
     isIncomingMode,
+    isDockedMode,
     isHistoryMode,
     historyAxis,
     incomingPage,
@@ -200,11 +202,12 @@ export default function ReceivingLinesTable({
 
   const isUnboxTableMode = mode.id === 'unbox_queue' || mode.id === 'unbox_viewed';
 
-  // Inbound desk (`/incoming`) hosts On the way + Docked. Docked resolves as
-  // history mode, but each lane renders its own RecordLedger (toolbar included,
-  // records on DeskRecordPlane) — never the History sheet chrome.
+  // Deliveries hosts three distinct feeds: pre-arrival Inbound, arrival-scanned
+  // Docked, and Unboxed history. They share the record plane, never membership.
   const isInboundDeskHost = pathname.startsWith(INCOMING_SURFACE_ROUTE);
-  const isInboundDocked = isInboundDeskHost && parseInboundLane(searchParams.get('lane')) === 'docked';
+  const inboundLane = isInboundDeskHost ? parseInboundLane(searchParams.get('lane')) : null;
+  const isInboundDocked = isDockedMode && inboundLane === 'docked';
+  const isInboundUnboxed = isHistoryMode && inboundLane === 'unboxed';
   const receivingSearchValue = urlFindValue;
   // Inbound reconciliation: a pasted list (`?ref_in=`) swaps On the way for
   // every line it names; the Check says which bucket each number is in and
@@ -256,12 +259,12 @@ export default function ReceivingLinesTable({
   }, [isIncomingMode, returnsImportDraft, returnsImportActive]);
 
   // `mode.id === 'history'` is shared by THREE hosts — `/receiving/history`, the Unbox workbench's History tab (`embedded`), and…
-  const isHistorySurface = isHistoryMode && !embedded && !isInboundDocked;
+  const isHistorySurface = isHistoryMode && !embedded && !isInboundUnboxed;
   // The Unbox workbench — all three of its tabs.
   const isUnboxWorkbench = embedded;
   // Every RecordLedger host — Unbox History + Inbound tabs and the `/incoming` On the way + Docked lanes — shows a picked row on the…
   const isUnboxHistory = isHistoryMode && embedded;
-  const isLedgerHost = isIncomingMode || isInboundDocked || isUnboxHistory;
+  const isLedgerHost = isIncomingMode || isInboundDocked || isInboundUnboxed || isUnboxHistory;
   const openLineRaw = isLedgerHost ? searchParams.get('openLine') : null;
   const openLineId =
     openLineRaw && Number.isFinite(Number(openLineRaw)) && Number(openLineRaw) !== 0
@@ -353,7 +356,7 @@ export default function ReceivingLinesTable({
   const exportRowsRef = useRef<typeof orderedVisibleRows>(orderedVisibleRows);
   exportRowsRef.current = orderedVisibleRows;
   useEffect(() => {
-    if (!isUnboxHistory && !isInboundDocked) return;
+    if (!isUnboxHistory && !isInboundDocked && !isInboundUnboxed) return;
     const onExport = () => {
       const rows = exportRowsRef.current;
       const csv = buildReceivingHistoryExportCsv(rows);
@@ -370,7 +373,7 @@ export default function ReceivingLinesTable({
     };
     window.addEventListener('receiving-export-history', onExport);
     return () => window.removeEventListener('receiving-export-history', onExport);
-  }, [isUnboxHistory, isInboundDocked]);
+  }, [isUnboxHistory, isInboundDocked, isInboundUnboxed]);
 
   const {
     selectedId,
@@ -383,7 +386,7 @@ export default function ReceivingLinesTable({
   } = useReceivingRowSelection({
     selectMode,
     // Row body opens, the gutter checkbox owns bulk membership.
-    rowClickOpens: isIncomingMode || isInboundDocked || isHistorySurface || isUnboxWorkbench,
+    rowClickOpens: isIncomingMode || isInboundDocked || isInboundUnboxed || isHistorySurface || isUnboxWorkbench,
     // History's default `receiving-select-line` branch does `router.replace('/unbox?openReceivingId=…')`, i.e.
     openRow: isHistorySurface ? openHistoryCarton : undefined,
     // A click on the Unbox FEED opens the carton but does NOT stamp the operator's recents.
@@ -397,7 +400,7 @@ export default function ReceivingLinesTable({
     handleSelectRow,
     selectedIdRef,
     selectModeRef,
-    rowClickOpens: isIncomingMode || isInboundDocked || isHistorySurface || isUnboxWorkbench,
+    rowClickOpens: isIncomingMode || isInboundDocked || isInboundUnboxed || isHistorySurface || isUnboxWorkbench,
     scrollRef,
     selectedId,
     // The spreadsheet bodies own the chevron channel; ledgers own J/K.
@@ -663,7 +666,7 @@ export default function ReceivingLinesTable({
       )
       : null;
 
-  // Record ledgers — Incoming (Unbox Inbound tab, `/incoming` On the way) and Docked history (Unbox History tab, `/incoming?lane=docked`).
+  // Record ledgers — Inbound deliveries, Docked packages, and Unboxed cartons.
   if (isLedgerHost) {
     // The ledgers paint on the industrial record face (`mode-*` tokens). The
     // Inbound desk page declares its triage region; the Unbox workbench does
@@ -728,8 +731,20 @@ export default function ReceivingLinesTable({
                   onPage={setIncomingPage}
                 />
               )
+            ) : isInboundDocked ? (
+              <DockedPackagesLedger
+                rows={orderedVisibleRows}
+                loading={isLoading && localRows.length === 0}
+                emptyMessage={emptyMessage}
+                query={receivingSearchValue}
+                selectedId={openLineId}
+                selectedIds={selectedIds}
+                onOpenRow={openLedgerRow}
+                onCloseRow={closeLedgerRow}
+                onToggleRow={handleToggleRow}
+              />
             ) : (
-              <DockedReceiptsLedger
+              <UnboxedReceiptsLedger
                 rows={orderedVisibleRows}
                 loading={isLoading && localRows.length === 0}
                 emptyMessage={emptyMessage}

@@ -60,9 +60,13 @@ export function resolveLiveReceivingMode(
   }
   if (path.startsWith(UNBOX_SURFACE_ROUTE)) return 'receive';
   if (path.startsWith(TRIAGE_SURFACE_ROUTE)) return 'triage';
-  // Inbound desk: Pipeline (incoming) | Docked (history / former Receiving Board).
+  // Deliveries: Inbound (incoming) | Docked (live receiving selection) |
+  // Unboxed (read-only history selection).
   if (path.startsWith(INCOMING_SURFACE_ROUTE)) {
-    return parseInboundLane(searchParams.get('lane')) === 'docked' ? 'history' : 'incoming';
+    const lane = parseInboundLane(searchParams.get('lane'));
+    if (lane === 'unboxed') return 'history';
+    if (lane === 'docked') return 'receive';
+    return 'incoming';
   }
   if (path.startsWith(PICKUP_SURFACE_ROUTE)) return 'pickup';
   if (path.startsWith(HISTORY_SURFACE_ROUTE)) return 'history';

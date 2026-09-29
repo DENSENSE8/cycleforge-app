@@ -23,7 +23,7 @@ import type { ReceivingActivityAxis } from '@/lib/receiving/receiving-stage-stam
 import { resolveLiveReceivingMode } from '@/lib/surface-isolation';
 import { parseStaffParam, WEEK_OFFSET_PARAM } from '@/lib/station/table-url-params';
 import { INCOMING_SURFACE_ROUTE, UNBOX_SURFACE_ROUTE } from '@/lib/receiving/surface-path';
-import { DOCKED_DATE_FROM_PARAM, DOCKED_DATE_TO_PARAM, parseInboundLane } from '@/lib/receiving/inbound-lane';
+import { DOCKED_DATE_FROM_PARAM, DOCKED_DATE_TO_PARAM, INBOUND_FIND_PARAM, parseInboundLane } from '@/lib/receiving/inbound-lane';
 import { parseDateKey } from '@/utils/date';
 import { getUnboxWorkspaceTabFromSearch } from '@/utils/unbox-workspace-state';
 import { parseTrackingInParam, TRACKING_IN_PARAM } from '@/lib/receiving/tracking-paste';
@@ -32,6 +32,7 @@ import { parseRefInParam, REF_IN_PARAM } from '@/lib/receiving/reconcile';
 interface ReceivingModeState {
   mode: ReceivingModeDescriptor;
   isIncomingMode: boolean;
+  isDockedMode: boolean;
   isHistoryMode: boolean;
   /** Lifecycle timestamp History day-bands + within-day order on (from `?sort=`). */
   historyAxis: ReceivingActivityAxis;
@@ -54,6 +55,11 @@ function resolveTableMode(
   if (pathname.startsWith(UNBOX_SURFACE_ROUTE)) {
     return resolveUnboxReceivingTableMode(getUnboxWorkspaceTabFromSearch(searchParams));
   }
+  if (pathname.startsWith(INCOMING_SURFACE_ROUTE)) {
+    const lane = parseInboundLane(searchParams.get('lane'));
+    if (lane === 'docked') return 'docked';
+    if (lane === 'unboxed') return 'history';
+  }
   const base = getReceivingModeDescriptor(resolveLiveReceivingMode(pathname, searchParams)).id;
   // Retired Incoming `?incview=` tokens (`email`, `removed`) are not table
   // modes — hygiene coerces them off the desk.
@@ -69,12 +75,22 @@ export function useReceivingModeContext(): ReceivingModeState {
   // `incoming_removed` stays in RECEIVING_MODES for legacy API tests but is no
   // longer reachable from the URL.
   const isIncomingMode = mode.id === 'incoming' || mode.id === 'incoming_removed';
+  const isDockedMode = mode.id === 'docked';
   const isHistoryMode = mode.id === 'history';
+  const isIncomingUnboxedLane =
+    isHistoryMode
+    && pathname.startsWith(INCOMING_SURFACE_ROUTE)
+    && parseInboundLane(searchParams.get('lane')) === 'unboxed';
 
-  const historySearch = searchParams.get(RECEIVING_HISTORY_URL_PARAMS.q)?.trim() ?? '';
-  const historySearchField = normalizeReceivingHistorySearchField(
-    searchParams.get(RECEIVING_HISTORY_URL_PARAMS.field),
-  );
+  // Deliveries › Docked binds the global header Find directly to the Arrival
+  // feed query, so tracking suffixes are not limited to the currently painted
+  // client window. Unbox History keeps its dedicated history-search parameter.
+  const historySearch = isDockedMode
+    ? (searchParams.get(INBOUND_FIND_PARAM)?.trim() ?? '')
+    : (searchParams.get(RECEIVING_HISTORY_URL_PARAMS.q)?.trim() ?? '');
+  const historySearchField = isDockedMode
+    ? 'tracking'
+    : normalizeReceivingHistorySearchField(searchParams.get(RECEIVING_HISTORY_URL_PARAMS.field));
   const historySearchScope = normalizeReceivingHistorySearchScope(
     searchParams.get(RECEIVING_HISTORY_URL_PARAMS.scope),
   );
@@ -109,10 +125,11 @@ export function useReceivingModeContext(): ReceivingModeState {
   // Inbound History's sidebar date row: an explicit activity window (either
   // end open). Only valid civil day keys count; the Unbox History tab's route
   // never keeps these params, so there it is always the week pill.
-  const historyDateFrom = isHistoryMode && parseDateKey(searchParams.get(DOCKED_DATE_FROM_PARAM))
+  const isCartonActivityMode = isHistoryMode || isDockedMode;
+  const historyDateFrom = isCartonActivityMode && parseDateKey(searchParams.get(DOCKED_DATE_FROM_PARAM))
     ? searchParams.get(DOCKED_DATE_FROM_PARAM)!.trim()
     : '';
-  const historyDateTo = isHistoryMode && parseDateKey(searchParams.get(DOCKED_DATE_TO_PARAM))
+  const historyDateTo = isCartonActivityMode && parseDateKey(searchParams.get(DOCKED_DATE_TO_PARAM))
     ? searchParams.get(DOCKED_DATE_TO_PARAM)!.trim()
     : '';
   const historySort = isHistoryMode ? (searchParams.get('sort') || '').trim() : '';
@@ -147,11 +164,9 @@ export function useReceivingModeContext(): ReceivingModeState {
   const trackingIn = parseTrackingInParam(searchParams.get(TRACKING_IN_PARAM)).keys;
   const trackingInKey = trackingIn.join(',');
   // Pasted list — the operator's strings. Incoming swaps its lane for
-  // `view=reconcile`; Unboxed (`/incoming?lane=docked`) narrows its own lane.
+  // `view=reconcile`; Unboxed (`/incoming?lane=unboxed`) narrows its own lane.
   // No other history host (Unbox tab, standalone History) reads it.
-  const isUnboxedLane =
-    isHistoryMode && pathname.startsWith(INCOMING_SURFACE_ROUTE) && parseInboundLane(searchParams.get('lane')) === 'docked';
-  const refIn = isIncomingMode || isUnboxedLane ? parseRefInParam(searchParams.get(REF_IN_PARAM)).refs : [];
+  const refIn = isIncomingMode || isIncomingUnboxedLane ? parseRefInParam(searchParams.get(REF_IN_PARAM)).refs : [];
   // `/incoming?lane=exceptions` — its own server view on the Incoming ledger.
   const incomingExceptions =
     isIncomingMode && pathname.startsWith(INCOMING_SURFACE_ROUTE) && parseInboundLane(searchParams.get('lane')) === 'exceptions';
@@ -238,6 +253,7 @@ export function useReceivingModeContext(): ReceivingModeState {
   return {
     mode,
     isIncomingMode,
+    isDockedMode,
     isHistoryMode,
     historyAxis,
     incomingPage,

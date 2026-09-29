@@ -54,12 +54,6 @@ export const SIDEBAR_SPINE_MENU_ACTION_LABEL_CLASS =
   'text-role-caption font-medium text-text-default';
 
 /** The spine ROW face — geometry only; ink and fill come from `SPINE_ACCENT` (`src/lib/nav/spine-section-accent.ts`). */
-/**
- * End pad inside a spine drill (Scan Stations benches, page children) so the
- * last row can scroll up past the sticky Back label and the account footer.
- */
-const SPINE_DRILL_SCROLL_END_CLASS = 'pb-32';
-
 export const SPINE_ROW_FACE_CLASS = 'h-10 shrink-0';
 export const SPINE_ROW_ICON_CLASS = 'h-4 w-4 shrink-0';
 /* `SPINE_CHILD_ROW_INDENT_CLASS` (`pl-8`) is DELETED, not deprecated (2026-09-14). */
@@ -97,6 +91,44 @@ export const SPINE_PARENT_ICON_MOTION_CLASS =
 /** The active parent's colored edge grows in instead of appearing as a hard rule. */
 export const SPINE_PARENT_MARKER_CLASS =
   'pointer-events-none absolute inset-y-2 left-0 w-0.5 origin-center rounded-full opacity-0 scale-y-50 transition-[opacity,transform] duration-200 ease-out';
+
+/** Quiet hierarchy label used instead of horizontal rules between nav bands. */
+export const SPINE_NAV_GROUP_TITLE_CLASS =
+  'h-auto shrink-0 px-4 pb-0.5 pt-2 text-role-micro font-medium tracking-normal text-text-faint';
+
+type SpineNavigationBand = 'utility' | 'business' | 'secondary' | 'bottom';
+
+const BUSINESS_NAV_IDS = new Set([
+  'sales',
+  'inbound',
+  'fulfillment',
+  'inventory',
+  'catalog',
+  'ordered-top',
+]);
+
+/** The visual family an L1 sidebar block belongs to. */
+export function spineNavigationBand(id: string): SpineNavigationBand {
+  if (id === 'top') return 'utility';
+  if (id === 'bottom' || id === 'print-station' || id === 'reports') return 'bottom';
+  if (id === 'floor') return 'business';
+  if (BUSINESS_NAV_IDS.has(id)) return 'business';
+  return 'secondary';
+}
+
+/** Compact visible heading for each family of navigation rows. */
+export function spineNavigationBandTitle(band: SpineNavigationBand): string {
+  switch (band) {
+    case 'utility':
+      return 'Workspace';
+    case 'business':
+      return 'Operations';
+    case 'secondary':
+      return 'Management';
+    case 'bottom':
+      return 'Utilities';
+  }
+}
 
 /**
  * Sticky section caption (Stations / Workspaces) — same plane as the spine

@@ -56,6 +56,7 @@ import { useLabelNoteGhostAutocomplete } from './hooks/useLabelNoteGhostAutocomp
 import { UnboxNotesLocationControl } from './UnboxNotesLocationControl';
 import { UnboxNotesStatusDialog } from './UnboxNotesStatusDialog';
 import type { LineStatusExactSource } from '@/lib/receiving/unbox-notes-status';
+import { ZohoReceiveSyncControl } from '@/components/zoho/ZohoReceiveSyncControl';
 
 /** Item-note composer — the operator's durable note on this line (`receiving_line.notes`). */
 
@@ -675,6 +676,9 @@ export function LineNotesCard({
         ticketLabel={zendeskTicket}
         hasTicket={hasTicket}
         onModeChange={onComposerModeChange}
+        // Sync to Zoho, inline at the foot of the composer (owner 2026-09-29):
+        // the receive push for every unboxed line Zoho has not recorded yet.
+        modeRowLeading={has('integrations.zoho') ? <ZohoReceiveSyncControl face="row" /> : undefined}
         progressPercent={progressPercent}
         progressTone={progressTone}
         onProgressClick={() => {

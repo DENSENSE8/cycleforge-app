@@ -1,14 +1,14 @@
-/** Inbound desk lane — Pipeline (on the way), Docked (landed activity), Exceptions (needs a person). */
+/** Deliveries views — Inbound (pre-arrival), Docked (arrival-scanned), Unboxed (opened). */
 
 import { RECEIVING_HISTORY_URL_PARAMS } from '@/lib/receiving-history-search';
 import { HISTORY_SORT_WIRE_IDS } from '@/lib/receiving/receiving-modes';
 
-export type InboundLane = 'pipeline' | 'docked' | 'exceptions';
+export type InboundLane = 'pipeline' | 'docked' | 'unboxed' | 'exceptions';
 
 const INBOUND_LANE_PARAM = 'lane';
 
 /** Wire values; Pipeline omits the param. */
-const INBOUND_LANE_WIRE = ['docked', 'exceptions'] as const;
+const INBOUND_LANE_WIRE = ['docked', 'unboxed', 'exceptions'] as const;
 
 /** `?lane=` values the route hygiene keeps (`INCOMING_ROUTE_PARAMS`). */
 export const INBOUND_LANE_PARAM_VALUES = ['pipeline', ...INBOUND_LANE_WIRE] as const;
@@ -77,8 +77,8 @@ export type DockedKind = (typeof DOCKED_KIND_VALUES)[number];
 export const DOCKED_DATE_FROM_PARAM = 'dateFrom';
 export const DOCKED_DATE_TO_PARAM = 'dateTo';
 
-/** Params that belong only to the Docked (history) lane. */
-const DOCKED_ONLY_PARAMS = [
+/** Params that belong only to the Docked / Unboxed carton views. */
+const CARTON_VIEW_ONLY_PARAMS = [
   RECEIVING_HISTORY_URL_PARAMS.field,
   RECEIVING_HISTORY_URL_PARAMS.scope,
   DOCKED_FLAG_PARAM,
@@ -124,19 +124,19 @@ export function clearCrossLaneParams(
   nextLane: InboundLane,
 ): URLSearchParams {
   const next = new URLSearchParams(params.toString());
-  if (nextLane === 'docked') {
+  if (nextLane === 'docked' || nextLane === 'unboxed') {
     for (const key of [...PIPELINE_ONLY_PARAMS, ...PASTE_PARAMS]) next.delete(key);
     const sort = next.get('sort');
-    if (sort && isPipelineSort(sort)) next.delete('sort');
+    if (sort && (isPipelineSort(sort) || nextLane === 'docked')) next.delete('sort');
     next.delete('page');
   } else if (nextLane === 'exceptions') {
     // Its own population: no facet, no paste, no Docked sort; Pipeline sorts apply.
-    for (const key of [...PIPELINE_ONLY_PARAMS, ...PASTE_PARAMS, ...DOCKED_ONLY_PARAMS]) next.delete(key);
+    for (const key of [...PIPELINE_ONLY_PARAMS, ...PASTE_PARAMS, ...CARTON_VIEW_ONLY_PARAMS]) next.delete(key);
     const sort = next.get('sort');
     if (sort && isDockedSort(sort)) next.delete('sort');
     next.delete('page');
   } else {
-    for (const key of [...DOCKED_ONLY_PARAMS, ...PASTE_PARAMS]) next.delete(key);
+    for (const key of [...CARTON_VIEW_ONLY_PARAMS, ...PASTE_PARAMS]) next.delete(key);
     const sort = next.get('sort');
     if (sort && isDockedSort(sort)) next.delete('sort');
     next.delete('page');
@@ -148,7 +148,7 @@ export function clearCrossLaneParams(
 
 /**
  * Apply a lane switch onto a copy of the current search params.
- * Pipeline clears `lane`; Docked / Exceptions set it.
+ * Pipeline clears `lane`; Docked / Unboxed / Exceptions set it.
  */
 export function applyInboundLane(
   searchParams: URLSearchParams,

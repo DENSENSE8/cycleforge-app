@@ -3,7 +3,7 @@
 /** The open TASK in Daily's compact record rail — the work needed to finish it without leaving the list. */
 
 import { useEffect, useRef, useState, type DragEvent } from 'react';
-import { useRouter } from 'next/navigation';
+import { CheckCircle, Play } from '@/components/Icons';
 import { SupportTicketDetail } from '@/components/support/zendesk/chat/SupportTicketDetail';
 import { TabSwitch } from '@/design-system/components/TabSwitch';
 import {
@@ -50,7 +50,6 @@ export function TaskEvidence({
   onPatch: (patch: TaskDeskPatch) => Promise<unknown>;
 }) {
   useRecordView('task', row.id);
-  const router = useRouter();
   const links = useTaskLinks(row.id);
   const media = useTaskMedia(row.id);
   const docs = useTaskDocuments(row.id);
@@ -109,13 +108,24 @@ export function TaskEvidence({
 
   const verbs: EvidenceVerb[] = [
     open
-      ? { label: 'Mark done', primary: true, disabled: pending, onPress: () => patch({ status: 'DONE' }), testId: 'task-done' }
-      : { label: 'Reopen', disabled: pending || row.status === 'CANCELED', onPress: () => patch({ status: 'OPEN' }) },
+      ? {
+          label: 'Mark done',
+          primary: true,
+          tone: 'success',
+          icon: <CheckCircle />,
+          disabled: pending,
+          onPress: () => patch({ status: 'DONE' }),
+          testId: 'task-done',
+        }
+      : {
+          label: 'Reopen',
+          tone: 'info',
+          disabled: pending || row.status === 'CANCELED',
+          onPress: () => patch({ status: 'OPEN' }),
+        },
     ...(open && row.startedAtMs == null
-      ? [{ label: 'Start', disabled: pending, onPress: () => patch({ status: 'IN_PROGRESS' }) }]
+      ? [{ label: 'Start', tone: 'info' as const, icon: <Play />, disabled: pending, onPress: () => patch({ status: 'IN_PROGRESS' }) }]
       : []),
-    { label: 'Add media', disabled: media.uploading !== null, onPress: () => fileRef.current?.click() },
-    ...(recordHref ? [{ label: `Open ${recordLabel}`, onPress: () => router.push(recordHref) }] : []),
   ];
 
   const onDrop = (event: DragEvent<HTMLDivElement>) => {
@@ -172,47 +182,49 @@ export function TaskEvidence({
         <TaskDocumentFace taskId={row.id} docId={Number(faceId)} />
       ) : (
         <>
-          <TaskBriefSection key={row.id} note={row.note} onSave={(note) => onPatch({ note })} />
-          <TaskMediaSection
-            photos={media.photos}
-            videos={media.videos}
-            loading={media.loading}
-            uploading={media.uploading}
-            onPick={() => fileRef.current?.click()}
-            onDeletePhoto={(photo) => {
-              if (window.confirm('Delete this photo? This cannot be undone.')) {
-                media.removePhoto.mutate({ id: photo.id, url: photo.url });
-              }
-            }}
-            onDeleteVideo={(video) => {
-              if (window.confirm('Delete this video? This cannot be undone.')) media.removeVideo.mutate(video.id);
-            }}
-            links={media.links}
-            onAddLink={(body) => media.addLink.mutateAsync(body)}
-            onUpdateLink={(id, patch) => media.updateLink.mutateAsync({ id, ...patch })}
-            onRemoveLink={(link) => {
-              if (window.confirm('Remove this link from the task?')) media.removeLink.mutate(link.id);
-            }}
-          />
-          <TaskDocumentsSection
-            documents={docs.documents}
-            loading={docs.loading}
-            onAdd={(body) => docs.add.mutateAsync(body)}
-            onRemove={(doc) => {
-              if (window.confirm(`Remove “${doc.title}” from this task?`)) docs.remove.mutate(doc.id);
-            }}
-            onOpen={(doc) => setFace(`doc:${doc.id}`)}
-          />
-          <TaskLinksSection
-            anchorLabel={recordLabel}
-            anchorHref={recordHref}
-            links={links.links}
-            loading={links.loading}
-            onAdd={(body) => links.add.mutateAsync(body)}
-            onRemove={(link) => links.remove.mutate(link.id)}
-            onOpenTicket={(n) => setFace(`ticket:${n}`)}
-          />
-          <TaskScheduleSection row={row} nowMs={nowMs} pending={pending} onPatch={patch} />
+          <div className="flex flex-col gap-3 p-3">
+            <TaskBriefSection key={row.id} note={row.note} onSave={(note) => onPatch({ note })} />
+            <TaskMediaSection
+              photos={media.photos}
+              videos={media.videos}
+              loading={media.loading}
+              uploading={media.uploading}
+              onPick={() => fileRef.current?.click()}
+              onDeletePhoto={(photo) => {
+                if (window.confirm('Delete this photo? This cannot be undone.')) {
+                  media.removePhoto.mutate({ id: photo.id, url: photo.url });
+                }
+              }}
+              onDeleteVideo={(video) => {
+                if (window.confirm('Delete this video? This cannot be undone.')) media.removeVideo.mutate(video.id);
+              }}
+              links={media.links}
+              onAddLink={(body) => media.addLink.mutateAsync(body)}
+              onUpdateLink={(id, patch) => media.updateLink.mutateAsync({ id, ...patch })}
+              onRemoveLink={(link) => {
+                if (window.confirm('Remove this link from the task?')) media.removeLink.mutate(link.id);
+              }}
+            />
+            <TaskDocumentsSection
+              documents={docs.documents}
+              loading={docs.loading}
+              onAdd={(body) => docs.add.mutateAsync(body)}
+              onRemove={(doc) => {
+                if (window.confirm(`Remove “${doc.title}” from this task?`)) docs.remove.mutate(doc.id);
+              }}
+              onOpen={(doc) => setFace(`doc:${doc.id}`)}
+            />
+            <TaskLinksSection
+              anchorLabel={recordLabel}
+              anchorHref={recordHref}
+              links={links.links}
+              loading={links.loading}
+              onAdd={(body) => links.add.mutateAsync(body)}
+              onRemove={(link) => links.remove.mutate(link.id)}
+              onOpenTicket={(n) => setFace(`ticket:${n}`)}
+            />
+            <TaskScheduleSection row={row} nowMs={nowMs} pending={pending} onPatch={patch} />
+          </div>
           <EvidenceDecisionBar verbs={verbs} />
         </>
       )}

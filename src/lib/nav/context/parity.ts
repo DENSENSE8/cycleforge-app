@@ -135,21 +135,13 @@ const ROWS: Readonly<Record<string, readonly Row[]>> = {
     ['action', 'reports.export-outbound', 'src/app/reports/page.tsx'],
   ],
   triage: [
-    ['view', 'triage', 'src/components/receiving/triage/TriageWorkspaceView.tsx'],
-    ['view', 'found', 'src/components/receiving/triage/TriageWorkspaceView.tsx'],
-    ['view', 'unfound', 'src/components/receiving/triage/TriageWorkspaceView.tsx'],
-    ['view', 'done', 'src/components/receiving/triage/TriageWorkspaceView.tsx'],
-    ['param', 'triview', 'src/utils/triage-workspace-state.ts'],
     ['scanInput', 'arrival', 'src/components/sidebar/receiving/ReceivingScanBands.tsx:41-94; src/components/sidebar/ReceivingSidebarPanel.tsx:502'],
     ['param', 'triq', 'src/components/sidebar/ReceivingSidebarPanel.tsx:174-193'],
     ['param', 'staff', 'src/components/sidebar/receiving/ReceivingFeedRail.tsx:78-80'],
   ],
   receive: [
-    ['view', 'queue', 'src/components/receiving/unbox/UnboxWorkspaceView.tsx'],
-    ['view', 'incoming', 'src/components/receiving/unbox/UnboxWorkspaceView.tsx'],
-    ['view', 'recent', 'src/components/receiving/unbox/UnboxWorkspaceView.tsx'],
-    ['view', 'history', 'src/components/receiving/unbox/UnboxWorkspaceView.tsx'],
-    ['view', 'all', 'src/components/receiving/unbox/UnboxWorkspaceView.tsx'],
+    // Queue / Incoming / Recent / History remain workspace states, not sidebar
+    // navigation. The contextual parent tier is the complete Scan Stations map.
     ['param', 'unboxview', 'src/utils/unbox-workspace-state.ts'],
     ['scanInput', 'unbox', 'src/components/sidebar/receiving/ReceivingScanBands.tsx:119-148; src/components/sidebar/ReceivingSidebarPanel.tsx:526'],
     ['param', 'staff', 'src/components/sidebar/receiving/ReceivingFeedRail.tsx:78-80'],
@@ -173,20 +165,10 @@ const ROWS: Readonly<Record<string, readonly Row[]>> = {
   // Rail-less; everything lives on the stage (RepairTable, intake overlay).
   repair: [],
   testing: [
-    ['view', 'returns', 'src/components/tech/testing/TestingWorkspaceView.tsx'],
-    ['view', 'history', 'src/components/tech/testing/TestingWorkspaceView.tsx'],
-    ['view', 'urgent', 'src/components/tech/testing/TestingWorkspaceView.tsx'],
-    ['view', 'pending', 'src/components/tech/testing/TestingWorkspaceView.tsx'],
-    ['view', 'all', 'src/components/tech/testing/TestingWorkspaceView.tsx'],
-    ['param', 'testTab', 'src/utils/testing-workspace-state.ts'],
-    ['param', 'search', 'src/components/tech/TestingHistoryList.tsx'],
     ['scanInput', 'testing', 'src/components/sidebar/receiving/TestingScanBar.tsx:27-149'],
   ],
   'ready-to-pack': [
-    ['view', 'pending', 'src/components/tech/ShippingWorkspaceView.tsx'],
-    ['view', 'urgent', 'src/components/tech/ShippingWorkspaceView.tsx'],
-    ['view', 'history', 'src/components/tech/ShippingWorkspaceView.tsx'],
-    ['view', 'all', 'src/components/tech/ShippingWorkspaceView.tsx'],
+    // Queue lenses stay in the workspace; the sidebar switches stations.
     ['param', 'ship', 'src/utils/shipping-workspace-state.ts'],
     ['param', 'q', 'src/components/outbound/ready/ReadyWorkspaceBody.tsx'],
     ['scanInput', 'station', 'src/components/sidebar/tech/ShippingScanBand.tsx:46-234'],
@@ -307,8 +289,7 @@ const ROWS: Readonly<Record<string, readonly Row[]>> = {
     ['scanInput', 'scan-out', 'src/components/outbound/scan-out/ScanOutComposerDock.tsx:44-226'],
   ],
   packer: [
-    ['view', 'queue', 'src/components/packer/PackWorkspaceView.tsx'],
-    ['view', 'history', 'src/components/packer/PackWorkspaceView.tsx'],
+    // Queue / History stay in the workspace; the sidebar switches stations.
     ['param', 'packview', 'src/utils/pack-workspace-state.ts'],
     ['scanInput', 'pack', 'src/components/station/PackScanColumn.tsx:391-420'],
   ],

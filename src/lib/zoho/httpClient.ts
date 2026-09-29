@@ -328,7 +328,10 @@ async function scheduleRequest<T>(
     circuitBreaker.recordSuccess();
     return result;
   } catch (error) {
-    circuitBreaker.recordFailure();
+    // Only an unhealthy Zoho opens the circuit. A business answer ("Purchase
+    // Order does not exist.", validation) is Zoho working fine; counting five of
+    // those tripped the breaker and failed every other PO in the same run.
+    if (!(error instanceof ZohoApiError) || error.isRetryable()) circuitBreaker.recordFailure();
     throw error;
   }
 }

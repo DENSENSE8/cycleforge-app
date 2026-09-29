@@ -5,6 +5,7 @@ import { getProfileForRole, printRawToProfile, resolvePaperSize } from '@/lib/pr
 import type { PaperSize } from '@/lib/print/browserPrint';
 import { printHtmlInIframe } from '@/lib/print/iframePrint';
 import { clampLabelCopies } from '@/lib/print/labelCopies';
+import { fbaConditionLabel } from '@/lib/fba/fba-conditions';
 import { createLabelCanvas, drawFittedText, LABEL_DPI, labelCanvasToRawCommands } from '@/lib/print/labelFaceBitmap';
 import { escapeLabelHtml } from '@/lib/print/labelHtml';
 import { isSilentPrintEnabled } from '@/lib/print/printMode';
@@ -85,7 +86,8 @@ function drawFnskuLabel(face: FnskuLabelFace, paper: PaperSize): HTMLCanvasEleme
   drawFittedText(context, face.fnsku, width / 2, y, inner, codeSize, 800);
   y += codeSize + dots(0.02);
 
-  // Title, then the condition on the very next line — one text flow.
+  // Title, then a quieter condition line. The condition is supporting product
+  // information, not a second headline.
   context.textAlign = 'left';
   const titleSize = dots(0.09);
   const lineStep = titleSize + dots(0.01);
@@ -95,8 +97,8 @@ function drawFnskuLabel(face: FnskuLabelFace, paper: PaperSize): HTMLCanvasEleme
     y += lineStep;
   }
 
-  const condition = face.condition.trim();
-  if (condition) drawFittedText(context, condition, padX, y, inner, titleSize, 800);
+  const condition = fbaConditionLabel(face.condition);
+  if (condition) drawFittedText(context, condition, padX, y, inner, dots(0.075), 600);
   return canvas;
 }
 
@@ -119,7 +121,7 @@ function buildFnskuLabelHtml(face: FnskuLabelFace, copies: number): string {
   const modules = Number(/viewBox="0 0 (\d+(?:\.\d+)?) /.exec(svg)?.[1]) || 0;
   const quietPct = modules > 0 ? (QUIET_MODULES / (modules + QUIET_MODULES * 2)) * 100 : 5;
   const title = fitTitle(face.title);
-  const condition = face.condition.trim();
+  const condition = fbaConditionLabel(face.condition);
   const sticker = `<div class="wrap">
   <div class="bars">${svg}</div>
   <div class="code">${escapeLabelHtml(face.fnsku)}</div>
@@ -138,7 +140,7 @@ function buildFnskuLabelHtml(face: FnskuLabelFace, copies: number): string {
   .code,.title,.cond{padding:0 0.05in;text-rendering:geometricPrecision}
   .code{font-size:8pt;font-weight:800;text-align:center;letter-spacing:0.04em;line-height:1.1}
   .title{font-size:6.5pt;font-weight:600;line-height:1.1;overflow:hidden;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2}
-  .cond{font-size:6.5pt;font-weight:800;line-height:1.1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .cond{font-size:6pt;font-weight:600;line-height:1.1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 </style></head><body>
 ${Array.from({ length: copies }, () => sticker).join('\n')}
 <script>

@@ -4,16 +4,9 @@
 
 import { Suspense, type ReactNode } from 'react';
 import type { DehydratedState } from '@tanstack/react-query';
-import dynamic from 'next/dynamic';
 import Providers from '@/components/Providers';
-
-/** The two route frames, each in its own chunk. */
-const DesktopRouteShell = dynamic(() =>
-  import('@/components/layout/DesktopRouteShell').then((m) => m.DesktopRouteShell),
-);
-const MobileRouteShell = dynamic(() =>
-  import('@/components/layout/MobileRouteShell').then((m) => m.MobileRouteShell),
-);
+import { DesktopRouteShell } from '@/components/layout/DesktopRouteShell';
+import { MobileRouteShell } from '@/components/layout/MobileRouteShell';
 import { HeaderProvider } from '@/contexts/HeaderContext';
 import { FbaWorkspaceProvider } from '@/contexts/FbaWorkspaceContext';
 import { StudioWorkspaceProvider } from '@/components/studio/StudioWorkspaceContext';

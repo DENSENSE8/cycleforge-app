@@ -21,6 +21,30 @@ test('a lane page keeps exactly its lane modes; page letters never leak off thei
   assert.deepEqual(navGoDestinations(undefined), []);
 });
 
+test('Inbound hover teaching includes Deliveries, Local Pickup and Sourcing', () => {
+  assert.deepEqual(navGoDestinations('incoming'), [
+    { letter: 'd', pageId: 'incoming' },
+    { letter: 'p', pageId: 'pickup' },
+    { letter: 's', pageId: 'sourcing' },
+  ]);
+});
+
+test('Scan Stations G keys mirror the visible parent switcher', () => {
+  const expected = [
+    { letter: 'a', pageId: 'triage' },
+    { letter: 'u', pageId: 'receive' },
+    { letter: 'q', pageId: 'testing' },
+    { letter: 'p', pageId: 'ready-to-pack' },
+    { letter: 'k', pageId: 'packer' },
+    { letter: 's', pageId: 'scan-out' },
+  ];
+
+  for (const pageId of ['triage', 'receive', 'testing', 'ready-to-pack', 'packer', 'scan-out']) {
+    assert.deepEqual(navGoDestinations(pageId), expected, pageId);
+  }
+  assert.ok(expected.every((destination) => destination.pageId !== 'repair'));
+});
+
 test('every page letter names a real child and never shadows a lane letter on that page', () => {
   for (const [pageId, letters] of Object.entries(NAV_PAGE_GO_KEYS)) {
     const page = getSidebarPageNav(pageId);

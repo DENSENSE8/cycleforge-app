@@ -4,6 +4,7 @@ import { Suspense, useEffect, useState } from 'react';
 import { useParams, useSearchParams } from 'next/navigation';
 import { MobileReceivingPhotoStudio } from '@/components/mobile/photos/MobileReceivingPhotoStudio';
 import {
+  mobileUnboxPhotoReturnHref,
   parseArrivalGuidedStep,
   parseReceivingCartonPhotoStage,
 } from '@/lib/receiving/photo-scope';
@@ -29,9 +30,9 @@ function PhotoPageInner() {
   const validReceivingId = Number.isFinite(receivingId) && receivingId > 0;
   const headerLabel = titleParam || resolved?.title || `R-${receivingId}`;
   const poRef = poRefParam || resolved?.poRef || null;
-  // The carton hub is the carton's home; deep links that came from elsewhere
-  // (arrival guided capture) pass their own `back`.
-  const backHref = backParam || `/m/r/${receivingId}`;
+  // A bare camera deep link belongs to the Unbox photo feed. Carton rows are a
+  // scan-only destination and must be requested explicitly with `back`.
+  const backHref = mobileUnboxPhotoReturnHref(backParam);
 
   useEffect(() => {
     if (titleParam || !validReceivingId) return;

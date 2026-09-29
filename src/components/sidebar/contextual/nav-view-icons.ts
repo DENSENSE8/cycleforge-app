@@ -51,9 +51,11 @@ export const NAV_VIEW_ICONS: Readonly<Record<string, NavViewIcon>> = {
   'outbound.pick': { icon: PackageSearch, tone: 'text-violet-600' },
   'outbound.triage': { icon: Truck, tone: 'text-blue-600' },
   'outbound.shipped': { icon: PackageCheck, tone: 'text-emerald-600' },
+  // Deliveries lifecycle: three distinct inks make the switcher scannable
+  // before its label — inbound transit, docked package, opened carton.
   'incoming.pipeline': { icon: Truck, tone: 'text-blue-600' },
-  // Unboxed = the opened carton (the Unbox station's glyph), in Inbound's blue.
-  'incoming.docked': { icon: PackageOpen, tone: 'text-blue-600' },
+  'incoming.docked': { icon: Package, tone: 'text-violet-600' },
+  'incoming.unboxed': { icon: PackageOpen, tone: 'text-emerald-600' },
   // FBA wears the purple family (its mode tone is `text-purple-600`).
   'fba.ready': { icon: ListChecks, tone: 'text-violet-600' },
   'fba.plan': { icon: ClipboardList, tone: 'text-purple-500' },

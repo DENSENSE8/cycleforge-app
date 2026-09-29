@@ -6,12 +6,14 @@ import {
   isSidebarRouteMobileRestricted,
   isSidebarNavActive,
   isSidebarTopPinActive,
+  isSpineBottomRow,
   isSpineMapTopRow,
   SIDEBAR_PAGE_NAV,
   getSidebarPageNav,
   getSidebarHref,
   getSidebarRouteKey,
   getSidebarNavPageId,
+  isContextualScanStationRoute,
   permissionForPath,
   hasSidebarContextPanel,
   applyChildTarget,
@@ -31,9 +33,9 @@ import {
 import { routeParamsFor } from '@/lib/routing/registry';
 import { NAV_PAGE_DECLS } from '@/lib/nav/context/pages';
 
-test('incoming has only On the way and Unboxed, including retired mailbox deep links', () => {
+test('incoming has Inbound, Docked and Unboxed, including retired mailbox deep links', () => {
   const page = getSidebarPageNav('incoming');
-  assert.deepEqual(page?.children?.map((child) => child.label), ['On the way', 'Unboxed']);
+  assert.deepEqual(page?.children?.map((child) => child.label), ['Inbound', 'Docked', 'Unboxed']);
   assert.equal(resolveSidebarChild('incoming', { pathname: '/incoming', params: new URLSearchParams('view=mailbox') }), 'pipeline');
   assert.equal(resolveSidebarChild('incoming', { pathname: '/incoming', params: new URLSearchParams('lane=docked') }), 'docked');
 });
@@ -195,25 +197,27 @@ test('Exceptions shows to whoever can see ANY exception source, with only the ki
   assert.deepEqual(filterPageChildren(page, new Set(['photos.view'])).children, []);
 });
 
-test('the fixed spine band is Chat, Daily, Automations, Exceptions, Print station, Media; Reports follows the lanes', () => {
+test('the fixed spine band leads with daily work; Print station and Reports are fixed at the bottom', () => {
   const items = getSidebarNavItems();
   const mapTopIds = items.filter(isSpineMapTopRow).map((item) => item.id);
   // The structural rows above the reorderable lane band:
-  assert.deepEqual(mapTopIds, ['ai-chat', 'home', 'studio', 'exceptions', 'print-station', 'ops-photos']);
+  assert.deepEqual(mapTopIds, ['ai-chat', 'home', 'studio', 'exceptions', 'ops-photos']);
 
   const search = items.find((item) => item.id === 'search');
   const plans = items.find((item) => item.id === 'plans-live');
   const chat = items.find((item) => item.id === 'ai-chat');
   const settings = items.find((item) => item.id === 'settings');
+  const printStation = items.find((item) => item.id === 'print-station');
   const reports = items.find((item) => item.id === 'reports');
-  assert.ok(search && plans && chat && settings && reports);
+  assert.ok(search && plans && chat && settings && printStation && reports);
   assert.equal(search.kind, 'top');
   assert.equal(isSpineMapTopRow(search), false);
   assert.equal(isSpineMapTopRow(plans), false);
   assert.equal(settings.kind, 'top');
   assert.equal(isSpineMapTopRow(settings), false);
-  assert.equal(reports.spineOrderable, true);
   assert.equal(isSpineMapTopRow(reports), false);
+  assert.equal(isSpineBottomRow(printStation), true);
+  assert.equal(isSpineBottomRow(reports), true);
 
   // Chat is the ONE assistant door: a painted L1 row gated on the chat API's own permission.
   assert.equal(chat.kind, 'top');
@@ -486,9 +490,30 @@ test('resolveSidebarChild returns null for pages without modes', () => {
   assert.equal(getSidebarPageNav('ai-chat')?.children, undefined);
   assert.equal(resolveSidebarChild('ai-chat', { pathname: '/ai-chat', params: new URLSearchParams() }), null);
   assert.equal(resolveSidebarChild('settings', { pathname: '/settings', params: new URLSearchParams() }), null);
+  for (const pageId of ['ready-to-pack', 'receive', 'packer']) {
+    assert.equal(getSidebarPageNav(pageId)?.children, undefined);
+    assert.equal(resolveSidebarChild(pageId, { pathname: '/scan-station', params: new URLSearchParams() }), null);
+  }
   // Search is modeless (APP_SIDEBAR_NAV only) — no SIDEBAR_PAGE_NAV entry.
   assert.equal(getSidebarPageNav('search'), undefined);
   assert.equal(resolveSidebarChild('search', { pathname: '/search', params: new URLSearchParams() }), null);
+});
+
+test('every floor station mounts its working panel inside the contextual sidebar', () => {
+  for (const pathname of [
+    '/triage',
+    '/unbox',
+    '/repair',
+    '/test',
+    '/pick',
+    '/pack',
+    '/packer',
+    '/shipping/scan-out',
+  ]) {
+    assert.equal(isContextualScanStationRoute(pathname), true, pathname);
+  }
+  assert.equal(isContextualScanStationRoute('/pickup'), false);
+  assert.equal(isContextualScanStationRoute('/shipping/fba'), false);
 });
 
 // Operations is modeful: bare /operations is Live; ?mode= drives the rest.
@@ -504,19 +529,6 @@ test('resolveSidebarChild reads the operations mode', () => {
   // redirected to Home by OperationsWorkspace.
   assert.equal(resolveSidebarChild('operations', at('mode=plans')), 'live');
   assert.equal(resolveSidebarChild('operations', at('mode=bogus')), 'live');
-});
-
-// Packing exposes Queue and History in the contextual navigation. Legacy
-// `?packMode=` values fall back to the default queue.
-test('resolveSidebarChild resolves the pack queue and history views', () => {
-  const at = (search = '') => ({ pathname: '/pack', params: new URLSearchParams(search) });
-  assert.deepEqual(getSidebarPageNav('packer')?.children?.map((child) => child.id), ['queue', 'history']);
-  assert.equal(resolveSidebarChild('packer', at()), 'queue');
-  assert.equal(resolveSidebarChild('packer', at('packMode=fragile')), 'queue');
-  assert.equal(
-    resolveSidebarChild('packer', { pathname: '/packer', params: new URLSearchParams() }),
-    'queue',
-  );
 });
 
 // The Pack surface + its legacy alias both resolve to the `packer` nav key so the
@@ -578,7 +590,7 @@ test('resolver matches existing panel derivations for known deep-links', () => {
   assert.equal(resolveSidebarChild('products', at('/products')), 'catalog');
   assert.equal(getSidebarPageNav('print-labels'), undefined);
   assert.equal(getSidebarPageNav('print-documents'), undefined);
-  assert.equal(resolveSidebarChild('receive', at('/unbox')), 'queue');
+  assert.equal(resolveSidebarChild('receive', at('/unbox')), null);
   // FBA sub-modes are `fbaMode` on the FBA desk (legacy `mode=plan` still works
   // for the `/fba` redirect window).
   assert.equal(resolveSidebarChild('fba', at('/shipping/fba')), 'combine');

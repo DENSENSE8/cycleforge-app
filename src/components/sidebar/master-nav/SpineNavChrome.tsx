@@ -15,12 +15,14 @@ import { cn } from '@/utils/_cn';
 
 export function SpineNavChrome() {
   return (
-    <div data-spine-head-chrome className={cn(TOP_CHROME_BAND_CLASS, 'items-center pl-1 pr-2')}>
-      <SidebarCollapseControl
-        navOpen
-        onToggleNav={() => window.dispatchEvent(new Event(MASTER_NAV_TOGGLE_EVENT))}
-      />
-      <NavFind />
+    <div data-spine-head-chrome className="flex shrink-0 flex-col gap-1 pb-1">
+      <div className={cn(TOP_CHROME_BAND_CLASS, 'items-center pl-1 pr-2')}>
+        <SidebarCollapseControl
+          navOpen
+          onToggleNav={() => window.dispatchEvent(new Event(MASTER_NAV_TOGGLE_EVENT))}
+        />
+        <NavFind />
+      </div>
     </div>
   );
 }

@@ -3,6 +3,7 @@
 /** Task evidence — **Instructions**: */
 
 import { useId, useState } from 'react';
+import { ClipboardList } from '@/components/Icons';
 import MarkdownRenderer from '@/components/ui/MarkdownRenderer';
 import { TabSwitch } from '@/design-system/components/TabSwitch';
 import {
@@ -55,6 +56,9 @@ export function TaskBriefSection({
     <EvidenceSection
       label="Instructions"
       testId="task-brief"
+      card
+      tone={note ? 'info' : 'neutral'}
+      icon={<ClipboardList />}
       action={
         editing ? null : (
           <button type="button" className={cn(evidenceVerbClass(false), SMALL_VERB)} onClick={startEditing} data-testid="task-brief-edit">

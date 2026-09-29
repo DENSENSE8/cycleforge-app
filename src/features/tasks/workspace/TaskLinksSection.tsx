@@ -3,7 +3,7 @@
 /** Task evidence — **Linked records**: */
 
 import { useState } from 'react';
-import { ExternalLink, X } from '@/components/Icons';
+import { ExternalLink, Link2, X } from '@/components/Icons';
 import { CopyIconButton } from '@/design-system/primitives';
 import {
   EVIDENCE_CONTROL_CLASS,
@@ -148,9 +148,24 @@ export function TaskLinksSection({
   };
 
   const grouped = TASK_LINK_KINDS.map((k) => [k, links.filter((link) => link.kind === k)] as const);
+  const linkedCount = links.length + (anchorLabel ? 1 : 0);
 
   return (
-    <EvidenceSection label={`Linked records · ${links.length + (anchorLabel ? 1 : 0)}`} testId="task-links">
+    <EvidenceSection
+      label="Linked records"
+      testId="task-links"
+      collapsible
+      lazy
+      tone={linkedCount > 0 ? 'info' : 'neutral'}
+      icon={<Link2 />}
+      summary={
+        loading && linkedCount === 0
+          ? 'Loading records…'
+          : linkedCount === 0
+            ? 'No orders, tracking, or tickets'
+            : `${linkedCount} linked record${linkedCount === 1 ? '' : 's'}`
+      }
+    >
       <form
         className="flex flex-col gap-2"
         onSubmit={(event) => {
@@ -166,7 +181,7 @@ export function TaskLinksSection({
               role="radio"
               aria-checked={kind === k}
               onClick={() => setPinnedKind(k)}
-              className={cn(evidenceVerbClass(kind === k), 'min-h-0 py-1')}
+              className={cn(evidenceVerbClass(kind === k, kind === k ? 'info' : undefined), 'min-h-0 py-1')}
             >
               {TASK_LINK_NOUN[k]}
             </button>

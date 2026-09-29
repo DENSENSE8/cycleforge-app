@@ -39,6 +39,51 @@ test('the id is bare: the PO / order number, else the carton number with no "#"'
   assert.equal(cartonCardIdentity(row({ id: 5, receiving_id: 7, source_order_id: '111-8911758-3549041' })), '111-8911758-3549041');
 });
 
+test('the compact carton model carries tracking separately from its order identity', () => {
+  const model = cartonCardModel(
+    carton([
+      row({
+        id: 51,
+        receiving_id: 8,
+        zoho_purchaseorder_number: '15-15190-56779',
+        tracking_number: '1Z3Y496R0398693994',
+      }),
+    ]),
+    'scanned',
+  );
+  assert.equal(model.identity, '15-15190-56779');
+  assert.equal(model.tracking, '1Z3Y496R0398693994');
+});
+
+test('Docked paints expected quantity without inferring Short', () => {
+  const model = cartonCardModel(
+    carton([
+      row({
+        id: 61,
+        receiving_id: 9,
+        scanned_at: day,
+        quantity_received: 0,
+        quantity_expected: 3,
+      }),
+    ]),
+    'scanned',
+    'docked',
+  );
+  const card = cartonRecordCard(model);
+  assert.equal(card.state.id, 'DOCKED');
+  assert.deepEqual(card.lines[0]?.facts.qty, { kind: 'qty', value: 3 });
+  assert.equal(card.next?.label, 'Unbox');
+});
+
+test('Docked preserves arrival order instead of prioritizing an uninspected shortage', () => {
+  const first = row({ id: 71, receiving_id: 10, scanned_at: day, quantity_received: 1, quantity_expected: 1 });
+  const looksShortButIsSealed = row({ id: 72, receiving_id: 10, scanned_at: day, quantity_received: 0, quantity_expected: 4 });
+  const model = cartonCardModel(carton([first, looksShortButIsSealed]), 'scanned', 'docked');
+  assert.equal(model.lead.id, first.id);
+  assert.deepEqual(model.rows.map((line) => line.id), [first.id, looksShortButIsSealed.id]);
+  assert.equal(model.state.id, 'DOCKED');
+});
+
 test('the corner reads when the carton was first unpacked and by whom, date and time (PT)', () => {
   const lines = [
     row({ id: 21, receiving_id: 4, workflow_status: 'DONE', unboxed_at: '2026-09-25T23:10:00Z', unboxed_by_name: 'Dana', received_done_at: '2026-09-27T18:00:00Z', quantity_received: 1, quantity_expected: 1 }),

@@ -14,18 +14,22 @@ import { isEditableKeyTarget } from '@/lib/keyboard/is-editable-key-target';
 import { toast } from '@/lib/toast';
 import { cn } from '@/utils/_cn';
 import { RECORD_HIT_CLASS } from './record-ledger-geometry';
+import { EvidenceDisclosure } from './EvidenceDisclosure';
 
-/** A verb button in the evidence column. Neutral; `primary` = ink fill. */
-export function evidenceVerbClass(primary = false): string {
+/** A verb button in the evidence column. `tone` uses semantic triage colour; otherwise `primary` = ink fill. */
+export function evidenceVerbClass(primary = false, tone?: RecordStateFace['tone']): string {
+  const toneClass = tone ? STATE_TONE_CLASSES[tone] : null;
   return cn(
     'ds-raw-button inline-flex items-center justify-center gap-2 rounded-mode border px-3',
     'disabled:cursor-not-allowed disabled:opacity-40',
     RECORD_HIT_CLASS,
     RECORD_LABEL_CLASS,
     focusRing('control'),
-    primary
-      ? 'border-mode-ink bg-mode-ink text-mode-bar'
-      : 'border-mode-control bg-mode-panel text-mode-ink enabled:hover:bg-mode-hover',
+    toneClass
+      ? cn(toneClass.pill, toneClass.border, 'enabled:hover:brightness-[0.98]')
+      : primary
+        ? 'border-mode-ink bg-mode-ink text-mode-bar'
+        : 'border-mode-control bg-mode-panel text-mode-ink enabled:hover:bg-mode-hover',
   );
 }
 
@@ -73,12 +77,69 @@ export function EvidenceSection({
   action,
   children,
   testId,
+  card = false,
+  collapsible = false,
+  summary,
+  icon,
+  tone = 'neutral',
+  defaultOpen = false,
+  lazy = false,
 }: {
   label: string;
   action?: ReactNode;
   children: ReactNode;
   testId?: string;
+  /** Always-visible semantic card for primary overview content. */
+  card?: boolean;
+  /** Triage records disclose supporting sections just in time as soft cards. */
+  collapsible?: boolean;
+  summary?: ReactNode;
+  icon?: ReactNode;
+  tone?: RecordStateFace['tone'];
+  defaultOpen?: boolean;
+  /** Mount the expanded body only after the first open. */
+  lazy?: boolean;
 }) {
+  const toneClass = STATE_TONE_CLASSES[tone];
+  if (card) {
+    return (
+      <section
+        aria-label={label}
+        data-testid={testId}
+        className={cn('overflow-hidden rounded-mode border bg-surface-card shadow-elev-soft', toneClass.border)}
+      >
+        <div className="flex min-h-14 items-center gap-3 px-3 py-2">
+          {icon ? (
+            <span aria-hidden className={cn('flex size-8 shrink-0 items-center justify-center rounded-mode-pill', toneClass.pill, '[&_svg]:size-4')}>
+              {icon}
+            </span>
+          ) : null}
+          <h3 className={cn('min-w-0 flex-1 truncate text-role-data font-semibold', toneClass.text)}>{label}</h3>
+          {action}
+        </div>
+        <div className={cn('border-t px-3 py-3', toneClass.border)}>{children}</div>
+      </section>
+    );
+  }
+  if (collapsible) {
+    return (
+      <EvidenceDisclosure
+        label={label}
+        summary={summary}
+        testId={testId}
+        variant="card"
+        tone={tone}
+        icon={icon}
+        defaultOpen={defaultOpen}
+        lazy={lazy}
+      >
+        <section aria-label={label} className="px-3 py-3">
+          {action ? <div className="mb-3 flex min-h-7 items-center justify-end">{action}</div> : null}
+          {children}
+        </section>
+      </EvidenceDisclosure>
+    );
+  }
   return (
     <section aria-label={label} data-testid={testId} className="border-b border-mode-rule px-4 py-3">
       <div className="mb-2 flex min-h-6 items-center gap-2">
@@ -129,6 +190,8 @@ export interface EvidenceVerb {
   disabled?: boolean;
   icon?: ReactNode;
   testId?: string;
+  /** Semantic action colour; the quiet tint matches triage state language. */
+  tone?: RecordStateFace['tone'];
 }
 
 /**
@@ -168,7 +231,7 @@ export function EvidenceDecisionBar({ verbs }: { verbs: readonly EvidenceVerb[] 
           onClick={verb.onPress}
           data-testid={verb.testId}
           aria-keyshortcuts={String(index + 1)}
-          className={evidenceVerbClass(verb.primary)}
+          className={evidenceVerbClass(verb.primary, verb.tone)}
         >
           {verb.icon ? (
             <span aria-hidden className="flex shrink-0 [&_svg]:h-3.5 [&_svg]:w-3.5">

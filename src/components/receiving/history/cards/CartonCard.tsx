@@ -10,9 +10,10 @@ import { memo, useMemo } from 'react';
 import { RecordCard } from '@/design-system/components/record-card/RecordCard';
 import { CollapseItem } from '@/design-system/components/Collapse';
 import type { TriageCardSlotProps } from '@/design-system/components/triage-card-list/TriageCardList';
+import type { TriageViewDecl } from '@/design-system/components/triage-card-list/triage-view';
 import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
 import { fmtDate } from '@/components/sidebar/receiving/incoming-details/incoming-details-shared';
-import { INCOMING_DOCKED_VIEW } from '@/lib/triage/views';
+import { INCOMING_UNBOXED_VIEW } from '@/lib/triage/views';
 import { cartonRecordCard, type CartonCardModel } from './carton-card-model';
 import { BrandIdentityDot } from '@/components/ui/grid-cells';
 import { usePlatformMeta } from '@/hooks/useCatalog';
@@ -35,7 +36,7 @@ function CartonCardPeek({ model }: { model: CartonCardModel }) {
   ];
   return (
     <CollapseItem>
-      <dl data-testid="receipt-card-peek" className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 pt-2 text-[13px]">
+      <dl data-testid="receipt-card-peek" className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 pt-2 text-role-data">
         {facts
           .filter((fact): fact is [string, string] => Boolean(fact[1]))
           .map(([label, value]) => (
@@ -49,7 +50,12 @@ function CartonCardPeek({ model }: { model: CartonCardModel }) {
   );
 }
 
-export const CartonCard = memo(function CartonCard({
+type ReceivingCartonCardProps = TriageCardSlotProps<ReceivingLineRow, CartonCardModel> & {
+  view?: TriageViewDecl;
+};
+
+/** Shared multi-height carton face. The view supplies only its semantic contract/test ids. */
+export const ReceivingCartonCard = memo(function ReceivingCartonCard({
   model,
   checked,
   open,
@@ -61,7 +67,8 @@ export const CartonCard = memo(function CartonCard({
   onToggleCheck,
   onToggleExpand,
   onTogglePeek,
-}: TriageCardSlotProps<ReceivingLineRow, CartonCardModel>) {
+  view = INCOMING_UNBOXED_VIEW,
+}: ReceivingCartonCardProps) {
   const platformMeta = usePlatformMeta();
   const record = useMemo(() => {
     const meta = model.platform ? platformMeta(model.platform) : null;
@@ -76,8 +83,8 @@ export const CartonCard = memo(function CartonCard({
   return (
     <RecordCard
       model={record}
-      factColumns={INCOMING_DOCKED_VIEW.facts}
-      testIdPrefix={INCOMING_DOCKED_VIEW.testIdPrefix}
+      factColumns={view.facts}
+      testIdPrefix={view.testIdPrefix}
       checked={checked}
       open={open}
       expanded={expanded}
@@ -87,7 +94,23 @@ export const CartonCard = memo(function CartonCard({
       onToggleCheck={(event) => onToggleCheck(model, event)}
       onToggleExpand={() => onToggleExpand(model.key)}
       onTogglePeek={() => onTogglePeek(model.key)}
-      identity={{ role: 'identity', content: <span className="truncate" title={model.identity}>{model.identity}</span> }}
+      identity={{
+        role: 'identity',
+        content: (
+          <span className="flex min-w-0 items-center gap-2">
+            <span className="shrink-0">{model.identity}</span>
+            {model.tracking && model.tracking !== model.identity ? (
+              <span
+                data-testid={`${view.testIdPrefix}-tracking`}
+                className="min-w-0 truncate font-mono text-xs font-medium text-text-muted"
+                title={`Tracking ${model.tracking}`}
+              >
+                <span className="font-sans text-text-faint">Tracking</span> {model.tracking}
+              </span>
+            ) : null}
+          </span>
+        ),
+      }}
       trailing={null}
       quickLook={<CartonCardPeek key="peek" model={model} />}
       onOpenLine={(lineId, event) => {
@@ -97,4 +120,11 @@ export const CartonCard = memo(function CartonCard({
       openLineId={open ? openId : null}
     />
   );
+});
+
+/** Deliveries › Unboxed adapter over the shared carton face. */
+export const CartonCard = memo(function CartonCard(
+  props: TriageCardSlotProps<ReceivingLineRow, CartonCardModel>,
+) {
+  return <ReceivingCartonCard {...props} view={INCOMING_UNBOXED_VIEW} />;
 });

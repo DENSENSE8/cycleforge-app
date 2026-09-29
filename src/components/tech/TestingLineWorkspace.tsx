@@ -11,7 +11,7 @@ import {
 import { TestingPanel } from '@/components/tech/TestingPanel';
 import { recordTestingLineOpen } from '@/lib/testing/record-testing-line-open';
 import { TestingScanPickPanel } from '@/components/tech/testing/TestingScanPickPanel';
-import { TestingWorkspaceView } from '@/components/tech/testing/TestingWorkspaceView';
+import { ScanStationIdleCanvas } from '@/components/station/ScanStationIdleCanvas';
 import {
   publishTestingScanPick,
   resolveTestingScanPick,
@@ -21,25 +21,15 @@ import {
 import { zIndex } from '@/design-system/tokens/z-index';
 
 /** Persisted last-open line — written on select for future session UX / e2e;
- *  not restored on cold load so Testing mode lands on the history browse. */
+ *  not restored on cold load so Quality Control lands on its idle stage. */
 const LAST_TESTING_LINE_KEY = 'cf:testing:last-line-id';
 
 interface Props {
   staffId: string;
-  /** When set, drives the rail-side highlighted line. */
-  selectedLineId: number | null;
-  onSelectedLineChange: (id: number | null) => void;
-  /** Multi-select checkboxes on the history browse (when no line is open). */
-  testingSelectMode?: boolean;
-  /** Non-select history row click — already navigates via `dispatchSelectLine`. */
-  onOpenTestingLine?: () => void;
 }
 
 export function TestingLineWorkspace({
   staffId,
-  onSelectedLineChange,
-  testingSelectMode = false,
-  onOpenTestingLine,
 }: Props) {
   const [row, setRow] = useState<ReceivingLineRow | null>(null);
   // An ambiguous scan (several serial / SKU / PO matches) parks its candidates
@@ -57,7 +47,6 @@ export function TestingLineWorkspace({
       const { row: next } = readSelectLineDetail(detail);
       if (next) {
         setRow(next);
-        onSelectedLineChange(next.id);
         lastSelectedRef.current = next.id;
         recordTestingLineOpen(next.id, next.receiving_id);
         try {
@@ -67,13 +56,12 @@ export function TestingLineWorkspace({
         }
       } else {
         setRow(null);
-        onSelectedLineChange(null);
         lastSelectedRef.current = null;
       }
     };
     window.addEventListener('receiving-select-line', handler);
     return () => window.removeEventListener('receiving-select-line', handler);
-  }, [onSelectedLineChange]);
+  }, []);
 
   useEffect(() => {
     const handler = (event: Event) => {
@@ -89,8 +77,8 @@ export function TestingLineWorkspace({
     return () => window.removeEventListener('receiving-line-updated', handler);
   }, []);
 
-  // No cold-load auto-restore — Testing mode lands on the history browse so
-  // operators can pick a line (or scan). Selection still writes LAST_TESTING_LINE_KEY.
+  // No cold-load auto-restore — Quality Control lands on the station canvas.
+  // Operators scan or choose a recent line from the contextual rail.
 
   // The pick covers the browse the same way an open line does, and an open line
   // outranks it — resolving a pick opens a line, so the two are never both live
@@ -105,11 +93,7 @@ export function TestingLineWorkspace({
         inert={row || showPick ? true : undefined}
         style={{ visibility: row || showPick ? 'hidden' : 'visible' }}
       >
-        <TestingWorkspaceView
-          techId={staffId}
-          selectMode={testingSelectMode}
-          onOpenLine={onOpenTestingLine}
-        />
+        <ScanStationIdleCanvas />
       </div>
 
       <AnimatePresence initial={false} mode="wait">

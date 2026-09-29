@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useRef, useState } from 'react';
+import dynamic from 'next/dynamic';
 import { useQueryClient } from '@tanstack/react-query';
 import type { NavAction, NavContext } from '@/lib/nav/context/schema';
 import { fetchNavContext } from '@/lib/nav/context/http-client';
@@ -37,6 +38,13 @@ import { NavModeSwitcher, isNavModeSection } from './NavModeSwitcher';
 import { NavViewSwitcher } from './NavViewSwitcher';
 import { NavGoKeys } from './NavGoKeys';
 import { useRememberLaneView } from './useLaneDoorHref';
+import { handleSidebarNavigationKeyDown } from '@/components/sidebar/sidebar-keyboard-navigation';
+import { LIST_KEY_OWNER_ATTR } from '@/lib/keyboard/list-key-scope';
+import { isContextualScanStationPageId } from '@/lib/sidebar-navigation';
+
+const SidebarContextPanel = dynamic(
+  () => import('@/components/sidebar/SidebarContextPanel').then((module) => module.SidebarContextPanel),
+);
 
 /**
  * THE desktop sidebar — one host for every page. A page whose
@@ -106,6 +114,9 @@ export function ContextualSidebar() {
   const currentItemId = nav?.sections.flatMap((section) => section.items).find((item) => item.active)?.id;
   const showTop = peekTop || !panel;
   const body: NavContext | undefined = peekTop || mapOnly ? top.data : nav;
+  const inlineScanStation = Boolean(
+    panel && !peekTop && nav && isContextualScanStationPageId(nav.page.id),
+  );
   useRememberLaneView(nav);
 
   useEffect(() => {
@@ -122,10 +133,17 @@ export function ContextualSidebar() {
   const transition = useMotionTransition(motionTransition.sidebarScopeSwap);
 
   return (
-    <SidebarProvider className="isolate flex h-full min-h-0 flex-col font-spine" data-contextual-sidebar>
+    <SidebarProvider
+      className="isolate flex h-full min-h-0 flex-col font-spine"
+      data-contextual-sidebar
+      role="navigation"
+      aria-label="Contextual navigation"
+      onKeyDown={handleSidebarNavigationKeyDown}
+      {...{ [LIST_KEY_OWNER_ATTR]: '' }}
+    >
       {/* Pinned: the one search field, then this page's `‹` and switchers.
           None scrolls away or hides while a record is open. */}
-      <div data-contextual-head className="flex shrink-0 flex-col gap-1 pb-1">
+      <div data-contextual-head data-spine-head-chrome className="flex shrink-0 flex-col gap-1 pb-1">
         <div className={cn(TOP_CHROME_BAND_CLASS, 'items-center pl-1 pr-2')}>
           <SidebarCollapseControl
             navOpen
@@ -143,6 +161,7 @@ export function ContextualSidebar() {
                   ref={backRowRef}
                   type="button"
                   data-nav-back
+                  data-sidebar-nav-item
                   onClick={() => setPeekTop(true)}
                   onPointerEnter={prefetchTop}
                   onFocus={prefetchTop}
@@ -160,7 +179,11 @@ export function ContextualSidebar() {
               </div>
             ) : null}
             {modeSection && !peekTop ? <NavModeSwitcher section={modeSection} currentPageId={nav.page.id} /> : null}
-            {!peekTop ? <NavViewSwitcher sections={viewSections} pageId={nav.page.id} viewKeys={nav.viewKeys === true} /> : null}
+            {/* Scan Stations stay one tier deep: their working rail owns the
+                page-level state instead of adding an Arrival/QC view switcher. */}
+            {!peekTop && !inlineScanStation ? (
+              <NavViewSwitcher sections={viewSections} pageId={nav.page.id} viewKeys={nav.viewKeys === true} />
+            ) : null}
           </div>
         ) : null}
       </div>
@@ -168,7 +191,11 @@ export function ContextualSidebar() {
 
       <SidebarContent
         data-spine-scrollport
-        className={cn('min-h-0 flex-1 overflow-y-auto overscroll-contain', SPINE_SCROLLPORT_SCROLLBAR_CLASS)}
+        className={cn(
+          'min-h-0 flex-1 overscroll-contain',
+          inlineScanStation ? 'overflow-hidden' : 'overflow-y-auto',
+          SPINE_SCROLLPORT_SCROLLBAR_CLASS,
+        )}
       >
         {!nav ? (
           page.isError ? (
@@ -177,7 +204,7 @@ export function ContextualSidebar() {
             <BodySkeleton />
           )
         ) : (
-          <div className="grid [&>*]:col-start-1 [&>*]:row-start-1">
+          <div className={cn('grid [&>*]:col-start-1 [&>*]:row-start-1', inlineScanStation && 'h-full min-h-0')}>
             <AnimatePresence initial={false}>
               <motion.div
                 key={`${showTop ? 'top' : 'section'}:${nav.page.id}`}
@@ -185,7 +212,10 @@ export function ContextualSidebar() {
                 animate={presence.animate}
                 exit={presence.exit}
                 transition={transition}
-                className="flex min-w-0 flex-col pb-2"
+                className={cn(
+                  'flex min-w-0 flex-col',
+                  inlineScanStation ? 'h-full min-h-0' : 'pb-2',
+                )}
               >
                 {showTop ? (
                   <TopBody
@@ -203,6 +233,8 @@ export function ContextualSidebar() {
                         : undefined
                     }
                   />
+                ) : inlineScanStation ? (
+                  <SidebarContextPanel />
                 ) : (
                   <SectionBody nav={nav} />
                 )}
@@ -265,11 +297,12 @@ function viewlessPanelVerbs(nav: NavContext): readonly NavAction[] {
 
 function SectionBody({ nav }: { nav: NavContext }) {
   // Modes and views paint as the pinned switchers in the head, not as rows here.
+  const hasModes = nav.sections.some(isNavModeSection);
   const hasViews = nav.sections.some((section) => !isNavModeSection(section) && section.items.length > 0);
   const hasFilters = Boolean(nav.filters || nav.controls || nav.savedViews);
   return (
     <>
-      {!hasViews && !hasFilters && !nav.recents ? (
+      {!hasModes && !hasViews && !hasFilters && !nav.recents ? (
         <p className="px-4 py-2 text-role-caption text-text-faint">No views on this page</p>
       ) : null}
       {hasFilters ? (

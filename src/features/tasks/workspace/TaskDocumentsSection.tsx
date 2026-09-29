@@ -85,8 +85,19 @@ export function TaskDocumentsSection({
 
   return (
     <EvidenceSection
-      label={`Documents · ${documents.length}`}
+      label="Documents"
       testId="task-documents"
+      collapsible
+      lazy
+      tone={documents.length > 0 ? 'info' : 'neutral'}
+      icon={<FileText />}
+      summary={
+        loading
+          ? 'Loading documents…'
+          : documents.length === 0
+            ? 'No supporting documents'
+            : `${documents.length} document${documents.length === 1 ? '' : 's'}`
+      }
       action={
         <div className="flex gap-1">
           <button
@@ -100,7 +111,7 @@ export function TaskDocumentsSection({
           <button
             type="button"
             aria-pressed={mode === 'plan'}
-            className={cn(evidenceVerbClass(mode === 'plan'), SMALL_VERB)}
+            className={cn(evidenceVerbClass(mode === 'plan', mode === 'plan' ? 'info' : undefined), SMALL_VERB)}
             onClick={() => setMode(mode === 'plan' ? null : 'plan')}
             data-testid="task-documents-plan"
           >
@@ -109,7 +120,7 @@ export function TaskDocumentsSection({
           <button
             type="button"
             aria-pressed={mode === 'write'}
-            className={cn(evidenceVerbClass(mode === 'write'), SMALL_VERB)}
+            className={cn(evidenceVerbClass(mode === 'write', mode === 'write' ? 'info' : undefined), SMALL_VERB)}
             onClick={() => setMode(mode === 'write' ? null : 'write')}
           >
             Write
@@ -212,7 +223,7 @@ export function TaskDocumentsSection({
       ) : null}
 
       {documents.length === 0 && !loading && mode === null ? (
-        <p className="text-role-data text-mode-muted">No documents. Upload a .md, link a plan file, or write one.</p>
+        <p className="text-role-data text-mode-muted">Add a markdown file, connect a plan, or write a short reference.</p>
       ) : null}
       <ul className="flex flex-col" aria-label="Documents">
         {documents.map((doc) => (

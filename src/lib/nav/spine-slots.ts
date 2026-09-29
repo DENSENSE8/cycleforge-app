@@ -3,6 +3,7 @@
 import {
   DESK_SPINE_SECTIONS,
   isSpineDeskItem,
+  isSpineBottomRow,
   isSpineMapTopRow,
   spineSectionIdForPage,
   type MainGroupId,
@@ -30,11 +31,12 @@ export const SPINE_LANE_SLOT_IDS: ReadonlyArray<SpineSectionId> = DESK_SPINE_SEC
 );
 
 /** Default-order generation. */
-export const SPINE_SLOTS_VERSION = 4;
+export const SPINE_SLOTS_VERSION = 6;
 
 /** True when this catalog row participates in staff reorder as its own L1. */
 export function isSpineSlottable(item: SidebarNavItem): boolean {
-  // Most tops stay structural or parked. An explicitly orderable top (Reports)
+  if (isSpineBottomRow(item)) return false;
+  // Most tops stay structural or parked. An explicitly orderable top
   // participates beside the lanes while retaining its palette grouping.
   if (item.kind === 'top') return item.spineOrderable === true;
   // Floor benches collapse into {@link SPINE_STATIONS_SLOT_ID}.
@@ -72,24 +74,22 @@ function lanesPresent(allowed: readonly SidebarNavItem[]): SpineSectionId[] {
 }
 
 /**
- * Default order: **the lane band, then remaining L1** (Reports), then
- * **Scan Stations at the very bottom** (operator 2026-09-27 — station work is
- * physical and belongs on the phone; the desk map leads with the desks). A
+ * Default reorderable order: **Scan Stations**, then **the lane band**, then
+ * remaining L1. Fixed bottom utilities are rendered separately. A
  * lane with no visible page is absent — never a header over nothing (C10:
  * absent, not a disabled pill).
  */
 export function defaultSpineOrder(allowed: readonly SidebarNavItem[]): string[] {
-  // Lanes lead (v2 ruling, kept): the domains are the work.
-  const out: string[] = [...lanesPresent(allowed)];
   const stations = allowed.some((item) => item.kind === 'station');
-  // Keep the last slot for Stations so the cap never drops it.
-  const cap = stations ? SPINE_SLOTS_MAX - 1 : SPINE_SLOTS_MAX;
+  const out: string[] = [
+    ...(stations ? [SPINE_STATIONS_SLOT_ID] : []),
+    ...lanesPresent(allowed),
+  ];
   for (const item of allowed) {
     if (!isSpineSlottable(item)) continue;
     out.push(item.id);
-    if (out.length >= cap) break;
+    if (out.length >= SPINE_SLOTS_MAX) break;
   }
-  if (stations) out.push(SPINE_STATIONS_SLOT_ID);
   return out.slice(0, SPINE_SLOTS_MAX);
 }
 
@@ -147,18 +147,19 @@ interface SpineSlotsMigration {
 }
 
 /**
- * v4 product order: the business path is one uninterrupted run, with Reports
- * closing it. Any non-core custom rows retain their relative order afterward.
+ * The product order is one uninterrupted run. Any non-core custom rows retain
+ * their relative order afterward. v5 removed fixed bottom utilities; v6 moves
+ * Scan Stations into the Operations run immediately above Sales.
  */
 function alignBusinessRun(slots: readonly string[], allowed: readonly SidebarNavItem[]): string[] {
   const defaults = defaultSpineOrder(allowed);
   const businessIds = new Set<string>([
+    SPINE_STATIONS_SLOT_ID,
     'sales',
     'inbound',
     'fulfillment',
     'inventory',
     'catalog',
-    'reports',
   ]);
   const run = defaults.filter((id) => businessIds.has(id));
   if (run.length === 0) return [...slots];
@@ -276,4 +277,17 @@ export function spineStructuralTopPages<T extends SidebarNavItem>(
   pages: readonly T[],
 ): T[] {
   return pages.filter(isSpineMapTopRow);
+}
+
+/** Fixed utility rows at the absolute bottom of either sidebar renderer. */
+export function spineStructuralBottomPages<T extends SidebarNavItem>(
+  pages: readonly T[],
+): T[] {
+  const position = new Map([
+    ['print-station', 0],
+    ['reports', 1],
+  ]);
+  return pages
+    .filter(isSpineBottomRow)
+    .sort((left, right) => (position.get(left.id) ?? Number.MAX_SAFE_INTEGER) - (position.get(right.id) ?? Number.MAX_SAFE_INTEGER));
 }

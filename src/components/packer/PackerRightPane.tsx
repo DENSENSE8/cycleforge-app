@@ -7,7 +7,6 @@ import type {
 } from '@/components/packer/usePackerOrderPane';
 
 interface PackerRightPaneProps {
-  packerId: string;
   activeOrderPane: PackActiveOrderPane | null;
   /** FBA scan result — the bench's other active entity (see PackFbaScanCard). */
   activeFbaPane?: PackActiveFbaPane | null;
@@ -19,15 +18,12 @@ interface PackerRightPaneProps {
  * focused-order overlay (UnboxLineWorkspace pattern).
  */
 export function PackerRightPane({
-  packerId,
   activeOrderPane,
   activeFbaPane = null,
   onCloseActiveOrder,
 }: PackerRightPaneProps) {
-  const parsed = parseInt(packerId, 10);
   return (
     <PackOrderWorkspace
-      packerId={Number.isFinite(parsed) ? parsed : 0}
       activeOrder={activeOrderPane}
       activeFba={activeFbaPane}
       onCloseActiveOrder={onCloseActiveOrder}

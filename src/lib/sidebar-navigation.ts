@@ -205,6 +205,17 @@ export const SPINE_SECTIONS = [
 
 export type SpineSectionId = (typeof SPINE_SECTIONS)[number]['id'];
 
+/** Distinct station ink shared by the parent switcher and its `G` key hint. */
+export const SCAN_STATION_TONES = {
+  triage: 'text-cyan-600',
+  receive: 'text-emerald-600',
+  repair: 'text-orange-600',
+  testing: 'text-violet-600',
+  'ready-to-pack': 'text-blue-600',
+  packer: 'text-amber-600',
+  'scan-out': 'text-rose-600',
+} as const;
+
 /** Resolve which spine section a page belongs to (null = top pin / parked / unknown). */
 export function spineSectionIdForPage(
   page:
@@ -257,9 +268,14 @@ type SidebarNavItemFields = {
   spineBand?: boolean;
   /**
    * Keep a command-palette `top` item in the draggable map order instead of
-   * the fixed pin band. Reports uses this to close the business-lane sequence.
+   * the fixed pin band.
    */
   spineOrderable?: boolean;
+  /**
+   * Keep this parent row in the fixed utility band at the absolute bottom of
+   * the sidebar, below Scan Stations and outside staff drag ordering.
+   */
+  spineBottom?: boolean;
   /**
    * Render this L1 as a single flat map row even though it declares `children`.
    * Children stay live for ⌘K, the header Mode switcher and deep links.
@@ -337,7 +353,7 @@ export const APP_SIDEBAR_NAV: SidebarNavItem[] = [
   { id: 'exceptions',        label: 'Exceptions',     href: EXCEPTIONS_PATH,       icon: AlertTriangle,   kind: 'top', keywords: ['exceptions', 'blockers', 'held orders', 'missing pairs', 'bin errors', 'tracking exceptions', 'claim', 'short', 'unfound'] },
   // Print station (owner 2026-09-29): a parent-level page for printing to ANY computer in the org — first FNSKU labels,
   // found from the contextual sidebar's Find and sent silently to the print station at a packer's table.
-  { id: 'print-station',     label: 'Print station',  href: PRINT_STATION_PATH,    icon: Printer,         kind: 'top', requires: 'print.label', keywords: ['print', 'printer', 'reprint', 'fnsku', 'fba label', 'amazon label', 'unit label', 'print station', 'send to station'] },
+  { id: 'print-station',     label: 'Print station',  href: PRINT_STATION_PATH,    icon: Printer,         kind: 'top', spineBottom: true, requires: 'print.label', keywords: ['print', 'printer', 'reprint', 'fnsku', 'fba label', 'amazon label', 'unit label', 'print station', 'send to station'] },
   { id: 'search',            label: 'Search',         href: '/search',             icon: Search,          kind: 'top', spineBand: false },
   { id: 'ops-photos',        label: 'Media Library',  href: '/ops/photos',         icon: Images,          kind: 'top', requires: 'photos.view', keywords: ['photos', 'photo library', 'images', 'assets', 'gallery'] },
   // Plans — live master-plan console (Home forge). Same landing as `/forge`.
@@ -352,26 +368,26 @@ export const APP_SIDEBAR_NAV: SidebarNavItem[] = [
   { id: 'imports',           label: 'Imports',     href: '/operations/imports', icon: Download,        kind: 'main', mainGroup: 'monitor', requires: 'orders.view' },
   // Reports — DATED, per-entity, exportable tables (Staff day · Bin utilization · Velocity · Dead stock).
   // **A PARENT-LEVEL row, not a Monitor member** (operator 2026-09-15:
-  { id: 'reports',            label: 'Reports',     href: '/reports',            icon: BarChart3,       kind: 'top', spineFlat: true, spineOrderable: true, requires: 'operations.view' },
+  { id: 'reports',            label: 'Reports',     href: '/reports',            icon: BarChart3,       kind: 'top', spineFlat: true, spineBottom: true, requires: 'operations.view' },
   // Scan Stations — scan-first benches (Arrival / Unbox / Repair
   // Service / Quality Control / Ready to Pack / Packing / Scan out).
-  { id: 'triage',            label: 'Arrival',     href: '/triage',             icon: RECEIVING_NAV_ICONS.triage,  kind: 'station', stationGroup: 'floor', stationSubgroup: 'receiving', requires: 'receiving.view' },
-  { id: 'receive',           label: 'Unbox',       href: '/unbox',              icon: RECEIVING_NAV_ICONS.receive, kind: 'station', stationGroup: 'floor', stationSubgroup: 'receiving', requires: 'receiving.view' },
+  { id: 'triage',            label: 'Arrival',     href: '/triage',             icon: RECEIVING_NAV_ICONS.triage,  tone: SCAN_STATION_TONES.triage, kind: 'station', stationGroup: 'floor', stationSubgroup: 'receiving', requires: 'receiving.view' },
+  { id: 'receive',           label: 'Unbox',       href: '/unbox',              icon: RECEIVING_NAV_ICONS.receive, tone: SCAN_STATION_TONES.receive, kind: 'station', stationGroup: 'floor', stationSubgroup: 'receiving', requires: 'receiving.view' },
   { id: 'pickup',            label: 'Local Pickup', href: '/pickup',            icon: RECEIVING_NAV_ICONS.pickup,  kind: 'domain', domainGroup: 'inbound', requires: 'receiving.view' },
-  { id: 'repair',            label: 'Repair Service', href: '/repair',          icon: RECEIVING_NAV_ICONS.repair,  kind: 'station', stationGroup: 'floor', stationSubgroup: 'walk-in', requires: 'receiving.view' },
+  { id: 'repair',            label: 'Repair Service', href: '/repair',          icon: RECEIVING_NAV_ICONS.repair,  tone: SCAN_STATION_TONES.repair, kind: 'station', stationGroup: 'floor', stationSubgroup: 'walk-in', requires: 'receiving.view' },
   // Quality Control (`/test`) and the Picker desk (`/pick`) are separate
   // first-class Scan Stations (owner 2026-09-27). Picking is not a testing bench,
   // so the Picker row carries no `testing` subgroup.
-  { id: 'testing',           label: 'Quality Control', href: '/test',             icon: TECH_NAV_ICONS.testing,  kind: 'station', stationGroup: 'floor', stationSubgroup: 'testing', requires: 'tech.view' },
-  { id: 'ready-to-pack',     label: 'Picker',          href: '/pick', icon: TECH_NAV_ICONS.shipping, kind: 'station', stationGroup: 'floor', requires: 'picking.view' },
+  { id: 'testing',           label: 'Quality Control', href: '/test',             icon: TECH_NAV_ICONS.testing,  tone: SCAN_STATION_TONES.testing, kind: 'station', stationGroup: 'floor', stationSubgroup: 'testing', requires: 'tech.view' },
+  { id: 'ready-to-pack',     label: 'Picker',          href: '/pick', icon: TECH_NAV_ICONS.shipping, tone: SCAN_STATION_TONES['ready-to-pack'], kind: 'station', stationGroup: 'floor', requires: 'picking.view' },
   // Points at the first-class Pack surface (`/pack`) so the primary nav lands on
   // the canonical URL without a redirect hop. Route key still resolves to
   // 'packer' (reuses the packer panel), so the item stays active on /pack + /packer.
-  { id: 'packer',            label: 'Packing',     href: '/pack',               icon: STATION_PAGE_ICONS.packer,    kind: 'station', stationGroup: 'floor', requires: 'packing.view' },
+  { id: 'packer',            label: 'Packing',     href: '/pack',               icon: STATION_PAGE_ICONS.packer, tone: SCAN_STATION_TONES.packer, kind: 'station', stationGroup: 'floor', requires: 'packing.view' },
   // Scan out stays on the floor as a modeless dock-confirm station. Labels /
   // Amazon Prep live under Shipping. Route key still resolves to 'outbound'
   // for panel chrome across every shipping mode.
-  { id: 'scan-out',          label: 'Scan out',    href: OUTBOUND_MODE_PATHS['scan-out'], icon: SHIPPING_NAV_ICONS['scan-out'], kind: 'station', stationGroup: 'floor', requires: 'shipping.view' },
+  { id: 'scan-out',          label: 'Scan out',    href: OUTBOUND_MODE_PATHS['scan-out'], icon: SHIPPING_NAV_ICONS['scan-out'], tone: SCAN_STATION_TONES['scan-out'], kind: 'station', stationGroup: 'floor', requires: 'shipping.view' },
   // ── Inbound ─────────────────────────────────────────────────────────────── The pointer-driven COUNTERPART of the receiving benches:
   // **Faced `Deliveries`, not `Inbound` (operator 2026-09-14).** This row sits
   { id: 'incoming',          label: 'Deliveries', href: '/incoming',           icon: RECEIVING_NAV_ICONS.incoming, kind: 'domain', domainGroup: 'inbound', requires: 'receiving.view', keywords: ['inbound', 'incoming', 'arrivals', 'on the way', 'cartons', 'deliveries'] },
@@ -726,7 +742,12 @@ export function isSidebarTopPinActive(
  * Settings) stay reachable via ⌘K / URL / the account ⋯ menu.
  */
 export function isSpineMapTopRow(item: SidebarNavItem): boolean {
-  return item.kind === 'top' && item.spineBand !== false && item.spineOrderable !== true;
+  return item.kind === 'top' && item.spineBand !== false && item.spineOrderable !== true && item.spineBottom !== true;
+}
+
+/** Fixed utility rows rendered after every lane and Scan Station. */
+export function isSpineBottomRow(item: SidebarNavItem): boolean {
+  return item.kind === 'top' && item.spineBottom === true;
 }
 
 /**
@@ -1026,7 +1047,7 @@ export const SIDEBAR_PAGE_NAV: SidebarPageNav[] = [
     // `kind: 'top'` must match the APP_SIDEBAR_NAV twin above — the two
     // registries are kept in lockstep, and a `main`/`top` split would put the
     // row in the lane band on one code path and above it on the other.
-    id: 'reports', label: 'Reports', href: '/reports', icon: BarChart3, kind: 'top', requires: 'operations.view',
+    id: 'reports', label: 'Reports', href: '/reports', icon: BarChart3, kind: 'top', spineBottom: true, requires: 'operations.view',
     children: [
       { id: 'staff-day',   label: 'Staff day',       icon: ClipboardList, to: () => ({ pathname: '/reports', params: { tab: null } }) },
       { id: 'packer-day',  label: 'Packer day',      icon: Package,       to: () => ({ pathname: '/reports', params: { tab: 'packer' } }) },
@@ -1111,7 +1132,7 @@ export const SIDEBAR_PAGE_NAV: SidebarPageNav[] = [
   // first (owner 2026-09-29): All (bare URL) · Reprinted. Find (`?q=`) narrows the FBA catalog; `?fnsku=` is the open label.
   // The group heading is never the page's name (nav-name law).
   {
-    id: 'print-station', label: 'Print station', href: PRINT_STATION_PATH, icon: Printer, tone: 'text-sky-600', kind: 'top', requires: 'print.label',
+    id: 'print-station', label: 'Print station', href: PRINT_STATION_PATH, icon: Printer, tone: 'text-sky-600', kind: 'top', spineBottom: true, requires: 'print.label',
     railless: true,
     children: [
       { id: 'fnsku', label: 'All FNSKUs', icon: ScanBarcode, group: 'FNSKU labels', to: () => ({ pathname: PRINT_STATION_PATH, params: { [PRINT_STATION_VIEW_PARAM]: null, [PRINT_STATION_FNSKU_PARAM]: null } }) },
@@ -1122,34 +1143,12 @@ export const SIDEBAR_PAGE_NAV: SidebarPageNav[] = [
   // ── Receiving family ─────── Arrival / Unbox / Repair are physical stations;
   // Local Pickup is a first-class mode of the Inbound desk lane.
   {
-    id: 'triage', label: 'Arrival', href: TRIAGE, icon: RECEIVING_NAV_ICONS.triage,
+    id: 'triage', label: 'Arrival', href: TRIAGE, icon: RECEIVING_NAV_ICONS.triage, tone: SCAN_STATION_TONES.triage,
     kind: 'station', stationGroup: 'floor', stationSubgroup: 'receiving', requires: 'receiving.view',
-    children: [
-      { id: 'triage', label: 'Triage', icon: Inbox, to: () => ({ pathname: TRIAGE, params: { triview: null } }) },
-      { id: 'found', label: 'Prioritize', icon: Zap, to: () => ({ pathname: TRIAGE, params: { triview: 'found' } }) },
-      { id: 'unfound', label: 'Unfound', icon: Search, to: () => ({ pathname: TRIAGE, params: { triview: 'unfound' } }) },
-      { id: 'done', label: 'Done', icon: Check, to: () => ({ pathname: TRIAGE, params: { triview: 'done' } }) },
-    ],
-    resolveChild: ({ params }) => {
-      const view = params.get('triview');
-      return view === 'found' || view === 'unfound' || view === 'done' ? view : 'triage';
-    },
   },
   {
-    id: 'receive', label: 'Unbox', href: UNBOX, icon: RECEIVING_NAV_ICONS.receive,
+    id: 'receive', label: 'Unbox', href: UNBOX, icon: RECEIVING_NAV_ICONS.receive, tone: SCAN_STATION_TONES.receive,
     kind: 'station', stationGroup: 'floor', stationSubgroup: 'receiving', requires: 'receiving.view',
-    children: [
-      { id: 'queue', label: 'Queue', icon: Inbox, to: () => ({ pathname: UNBOX, params: { unboxview: null } }) },
-      { id: 'incoming', label: 'Incoming', icon: Download, to: () => ({ pathname: UNBOX, params: { unboxview: 'incoming' } }) },
-      { id: 'recent', label: 'Recent', icon: Clock, to: () => ({ pathname: UNBOX, params: { unboxview: 'viewed' } }) },
-      { id: 'history', label: 'History', icon: History, to: () => ({ pathname: UNBOX, params: { unboxview: 'history' } }) },
-      { id: 'all', label: 'All cartons', icon: List, to: () => ({ pathname: UNBOX, params: { unboxview: 'all' } }) },
-    ],
-    resolveChild: ({ params }) => {
-      const view = params.get('unboxview');
-      if (view === 'incoming' || view === 'history' || view === 'all') return view;
-      return view === 'viewed' || view === 'recent' ? 'recent' : 'queue';
-    },
   },
   {
     id: 'pickup', label: 'Local Pickup', href: PICKUP, icon: RECEIVING_NAV_ICONS.pickup,
@@ -1157,58 +1156,39 @@ export const SIDEBAR_PAGE_NAV: SidebarPageNav[] = [
     railless: true,
   },
   {
-    id: 'repair', label: 'Repair Service', href: REPAIR, icon: RECEIVING_NAV_ICONS.repair,
+    id: 'repair', label: 'Repair Service', href: REPAIR, icon: RECEIVING_NAV_ICONS.repair, tone: SCAN_STATION_TONES.repair,
     kind: 'station', stationGroup: 'floor', stationSubgroup: 'walk-in', requires: 'receiving.view',
     // Rail-less (2026-09-16):
     railless: true,
   },
   {
-    id: 'testing', label: 'Quality Control', href: TECH, icon: TECH_NAV_ICONS.testing,
+    id: 'testing', label: 'Quality Control', href: TECH, icon: TECH_NAV_ICONS.testing, tone: SCAN_STATION_TONES.testing,
     kind: 'station', stationGroup: 'floor', stationSubgroup: 'testing', requires: 'tech.view',
-    children: [
-      { id: 'returns', label: 'Returns', icon: PackageOpen, to: () => ({ pathname: TECH, params: { testTab: null } }) },
-      { id: 'history', label: 'History', icon: History, to: () => ({ pathname: TECH, params: { testTab: 'history' } }) },
-      { id: 'urgent', label: 'Urgent', icon: Zap, to: () => ({ pathname: TECH, params: { testTab: 'urgent' } }) },
-      { id: 'pending', label: 'Pending', icon: Clock, to: () => ({ pathname: TECH, params: { testTab: 'pending' } }) },
-      { id: 'all', label: 'All units', icon: List, to: () => ({ pathname: TECH, params: { testTab: 'all' } }) },
-    ],
-    resolveChild: ({ params }) => {
-      const tab = params.get('testTab');
-      return tab === 'history' || tab === 'urgent' || tab === 'pending' || tab === 'all' ? tab : 'returns';
-    },
   },
   {
-    id: 'ready-to-pack', label: 'Picker', href: PICK, icon: TECH_NAV_ICONS.shipping,
+    id: 'ready-to-pack', label: 'Picker', href: PICK, icon: TECH_NAV_ICONS.shipping, tone: SCAN_STATION_TONES['ready-to-pack'],
     kind: 'station', stationGroup: 'floor', requires: 'picking.view',
-    children: [
-      { id: 'pending', label: 'Pending', icon: Clock, to: () => ({ pathname: PICK, params: { ship: 'pending' } }) },
-      { id: 'urgent', label: 'Urgent', icon: Zap, to: () => ({ pathname: PICK, params: { ship: 'urgent' } }) },
-      { id: 'history', label: 'History', icon: History, to: () => ({ pathname: PICK, params: { ship: 'history' } }) },
-      { id: 'all', label: 'All units', icon: List, to: () => ({ pathname: PICK, params: { ship: 'all' } }) },
-    ],
-    resolveChild: ({ params }) => {
-      const tab = params.get('ship');
-      return tab === 'urgent' || tab === 'history' || tab === 'all' ? tab : 'pending';
-    },
   },
   // ── Inbound (Manage Inbound) ────────────────────────────────────────────── Single desk at `/incoming`:
   // Faced **Deliveries** (operator 2026-09-14 — never the same name as its
   {
-    // `tone`: the blue its On the way view already wears (`NAV_VIEW_ICONS['incoming.pipeline']`).
+    // `tone`: the blue its Inbound view already wears (`NAV_VIEW_ICONS['incoming.pipeline']`).
     id: 'incoming', label: 'Deliveries', href: INCOMING, icon: RECEIVING_NAV_ICONS.incoming, tone: 'text-blue-600',
     kind: 'domain', domainGroup: 'inbound', requires: 'receiving.view',
     // Rail-less since before desk chrome existed, and now DECLARED rather than special-cased inside `isRaillessSurface` (2026-08-31).
     railless: true,
     children: [
-      { id: 'pipeline', label: 'On the way', icon: RECEIVING_NAV_ICONS.incoming, to: () => ({ pathname: INCOMING, params: { lane: null, view: null } }) },
-      { id: 'docked',   label: 'Unboxed', icon: PackageOpen,                  to: () => ({ pathname: INCOMING, params: { lane: 'docked', view: null } }) },
+      { id: 'pipeline', label: 'Inbound', icon: RECEIVING_NAV_ICONS.incoming, to: () => ({ pathname: INCOMING, params: { lane: null, view: null } }) },
+      { id: 'docked',   label: 'Docked',  icon: Package,                      to: () => ({ pathname: INCOMING, params: { lane: 'docked', view: null, sort: null } }) },
+      { id: 'unboxed',  label: 'Unboxed', icon: PackageOpen,                  to: () => ({ pathname: INCOMING, params: { lane: 'unboxed', view: null, sort: 'unboxed_newest' } }) },
     ],
     resolveChild: ({ pathname, params }) => {
       // Legacy `/dashboard?mode=inbound` resolves the PAGE to Inbound but is
       // not on either lane yet — the proxy redirects it. Lighting a tab there
       // would claim the operator is somewhere they are not.
       if (pathname !== INCOMING && !pathname.startsWith(`${INCOMING}/`)) return null;
-      return parseInboundLane(params.get('lane')) === 'docked' ? 'docked' : 'pipeline';
+      const lane = parseInboundLane(params.get('lane'));
+      return lane === 'docked' || lane === 'unboxed' ? lane : 'pipeline';
     },
   },
   // Legacy family entry — deep-link / mode-resolution COMPATIBILITY ONLY.
@@ -1373,19 +1353,14 @@ export const SIDEBAR_PAGE_NAV: SidebarPageNav[] = [
   // ── Scan out (Scan Stations) ────────────────────────────────────────────── Mobile-first composer station:
   // (operator 2026-08-31 · docs/todo/scan-out-mobile-composer-HANDOFF.md).
   {
-    id: 'scan-out', label: 'Scan out', href: OUTBOUND_MODE_PATHS['scan-out'], icon: SHIPPING_NAV_ICONS['scan-out'], kind: 'station', stationGroup: 'floor', requires: 'shipping.view',
+    id: 'scan-out', label: 'Scan out', href: OUTBOUND_MODE_PATHS['scan-out'], icon: SHIPPING_NAV_ICONS['scan-out'], tone: SCAN_STATION_TONES['scan-out'], kind: 'station', stationGroup: 'floor', requires: 'shipping.view',
     railless: true,
   },
   // ── Packing ───────────────────────────────────────────────────────────────
   // Standard-only / modeless. Legacy `?packMode=fragile|multi` deep-links may
   // still resolve in the pack surface; MasterNav no longer exposes those modes.
   {
-    id: 'packer', label: 'Packing', href: PACK, icon: STATION_PAGE_ICONS.packer, kind: 'station', stationGroup: 'floor', requires: 'packing.view',
-    children: [
-      { id: 'queue', label: 'Queue', icon: Inbox, to: () => ({ pathname: PACK, params: { packview: null } }) },
-      { id: 'history', label: 'History', icon: History, to: () => ({ pathname: PACK, params: { packview: 'history' } }) },
-    ],
-    resolveChild: ({ params }) => (params.get('packview') === 'history' ? 'history' : 'queue'),
+    id: 'packer', label: 'Packing', href: PACK, icon: STATION_PAGE_ICONS.packer, tone: SCAN_STATION_TONES.packer, kind: 'station', stationGroup: 'floor', requires: 'packing.view',
   },
   // Packing Review is Operations › Packing Review (desk KPI / queue) — not a Scan Station and not a Shipping L2.
   {
@@ -1592,6 +1567,31 @@ export function floorStationPages(
     if (page?.kind === 'station' && page.stationGroup === 'floor') out.push(page);
   }
   return out;
+}
+
+/**
+ * The compact station workflow shown at the top of contextual scan-station
+ * sidebars. These are parent destinations, not browse views inside one page.
+ */
+export const CONTEXTUAL_SCAN_STATION_PAGE_IDS = [
+  'triage',
+  'receive',
+  'repair',
+  'testing',
+  'ready-to-pack',
+  'packer',
+  'scan-out',
+] as const;
+
+const CONTEXTUAL_SCAN_STATION_PAGE_ID_SET = new Set<string>(CONTEXTUAL_SCAN_STATION_PAGE_IDS);
+
+export function isContextualScanStationPageId(pageId: string): boolean {
+  return CONTEXTUAL_SCAN_STATION_PAGE_ID_SET.has(pageId);
+}
+
+/** Scan stations whose working rail lives inside the contextual sidebar. */
+export function isContextualScanStationRoute(pathname: string | null): boolean {
+  return isContextualScanStationPageId(getSidebarNavPageId(pathname));
 }
 
 /** Ordered first-class station pages that belong to a subgroup. */

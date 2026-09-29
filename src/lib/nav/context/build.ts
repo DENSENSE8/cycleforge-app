@@ -24,6 +24,7 @@
 
 import {
   APP_SIDEBAR_NAV,
+  CONTEXTUAL_SCAN_STATION_PAGE_IDS,
   SPINE_SECTIONS,
   STATION_GROUPS,
   applyChildTarget,
@@ -252,11 +253,14 @@ function laneMap(input: PipelineInput, activePageId: string): NavSection[] {
   const topItems = rows.filter(isSpineMapTopRow).map(toItem).filter((item): item is NavItem => item !== null);
   if (topItems.length > 0) sections.push({ id: 'top', items: topItems });
   const orderableTopItems = rows
-    .filter((row) => row.kind === 'top' && row.spineOrderable === true)
+    .filter((row) => row.kind === 'top' && row.spineOrderable === true && row.spineBottom !== true)
     .map(toItem)
     .filter((item): item is NavItem => item !== null);
-  // Scan Stations sit at the very bottom. Reports closes the five business
-  // lanes before any secondary/parked lane, matching the visible sales flow.
+  const bottomItems = rows
+    .filter((row) => row.kind === 'top' && row.spineBottom === true)
+    .map(toItem)
+    .filter((item): item is NavItem => item !== null);
+  // Scan Stations opens the operating run, immediately above Sales.
   const isStationLane = (id: string) => STATION_GROUPS.some((group) => group.id === id);
   const businessLaneIds = new Set(['sales', 'inbound', 'fulfillment', 'inventory', 'catalog']);
   const appendLane = (lane: (typeof SPINE_SECTIONS)[number]) => {
@@ -265,6 +269,18 @@ function laneMap(input: PipelineInput, activePageId: string): NavSection[] {
       .map(toItem)
       .filter((item): item is NavItem => item !== null);
     if (items.length === 0) return;
+    // Scan Stations is one parent door in the page map. Its individual
+    // benches belong in the contextual switcher after entering the lane,
+    // never as seven rows that bloat the parent navigation.
+    if (isStationLane(lane.id)) {
+      const active = items.some((item) => item.active);
+      const door = items.find((item) => item.active) ?? items[0]!;
+      sections.push({
+        id: lane.id,
+        items: [{ ...door, label: lane.label, active, kind: 'drill' }],
+      });
+      return;
+    }
     // A lane door is ONE row: the lane's name, opening its landing page, lit
     // while you are on any page of the lane.
     const door = items.find((item) => item.id === LANE_DOORS[lane.id]);
@@ -275,12 +291,13 @@ function laneMap(input: PipelineInput, activePageId: string): NavSection[] {
     }
     sections.push(items.length > 1 ? { id: lane.id, label: lane.label, items } : { id: lane.id, items });
   };
+  SPINE_SECTIONS.filter((lane) => isStationLane(lane.id)).forEach(appendLane);
   SPINE_SECTIONS.filter((lane) => businessLaneIds.has(lane.id)).forEach(appendLane);
   if (orderableTopItems.length > 0) sections.push({ id: 'ordered-top', items: orderableTopItems });
   SPINE_SECTIONS.filter(
     (lane) => !businessLaneIds.has(lane.id) && !isStationLane(lane.id),
   ).forEach(appendLane);
-  SPINE_SECTIONS.filter((lane) => isStationLane(lane.id)).forEach(appendLane);
+  if (bottomItems.length > 0) sections.push({ id: 'bottom', items: bottomItems });
   return sections;
 }
 
@@ -324,6 +341,32 @@ function laneModeRows(lane: (typeof SPINE_SECTIONS)[number], input: PipelineInpu
   const ordered = [...pages.filter((row) => row.id === doorId), ...pages.filter((row) => row.id !== doorId)];
   // One page is no choice: a lane with a single reachable page has no switcher.
   return ordered.length > 1 ? ordered.map(toRow) : [];
+}
+
+const CONTEXTUAL_SCAN_STATION_IDS = new Set<string>(CONTEXTUAL_SCAN_STATION_PAGE_IDS);
+const SCAN_STATION_NAV_HIDDEN_IDS = new Set<string>(['repair']);
+
+/** Visible floor stations — the shared parent tier in contextual sidebars. */
+function scanStationModeRows(input: PipelineInput, currentPageId: string): SectionRow[] {
+  const group = { id: 'scan-stations.modes', label: 'Scan Stations' };
+  return CONTEXTUAL_SCAN_STATION_PAGE_IDS.flatMap((pageId) => {
+    // Repair remains a working direct route, but is not advertised from the
+    // top-level station navigation. When already there, keep it as the current
+    // card so the switcher never mislabels the page as another station.
+    if (SCAN_STATION_NAV_HIDDEN_IDS.has(pageId) && pageId !== currentPageId) return [];
+    const registered = getSidebarPageNav(pageId);
+    if (!registered) return [];
+    const page = pipelinePage(registered, input);
+    if (!page) return [];
+    return [{
+      id: page.id,
+      label: page.label,
+      href: page.href,
+      pathname: new URL(page.href, 'http://nav.local').pathname,
+      group,
+      active: false,
+    }];
+  });
 }
 
 /** Every key the routes' param specs declare (owned or carried) — what hygiene keeps. */
@@ -385,14 +428,21 @@ export function buildNavContext(input: ResolveNavContextInput): NavContext {
   // A view the caller has no door to lights nothing (and lends no surfaces).
   const resolvedActive = page ? activeRowId(page, pathname, params) : null;
   const activeId = rows.some((row) => row.id === resolvedActive) ? resolvedActive : null;
-  const sectionScope = page !== null && hasSectionPanel(page, rows) && input.view !== 'top';
+  const scanStationPanel = page !== null && CONTEXTUAL_SCAN_STATION_IDS.has(page.id);
+  const sectionScope = page !== null && (scanStationPanel || hasSectionPanel(page, rows)) && input.view !== 'top';
   // Every page of a door lane wears the lane's name (the map shows no page
   // rows for that lane) and its panel leads with the lane's modes.
   const modeLane = modeLaneOf(page);
-  const label = modeLane ? modeLane.label : pageLabel(pageId, page);
+  const label = scanStationPanel ? 'Scan Stations' : modeLane ? modeLane.label : pageLabel(pageId, page);
   // A page with its own modes paints them as the card, and the current mode's views under it.
   const modeDecl = page ? NAV_PAGE_DECLS[pageId]?.modes : undefined;
-  const panelRows = modeDecl ? pageModeRows(modeDecl, rows, activeId) : modeLane && page ? [...laneModeRows(modeLane, pipeline), ...rows] : rows;
+  const panelRows = scanStationPanel
+    ? [...scanStationModeRows(pipeline, page.id), ...rows]
+    : modeDecl
+      ? pageModeRows(modeDecl, rows, activeId)
+      : modeLane && page
+        ? [...laneModeRows(modeLane, pipeline), ...rows]
+        : rows;
 
   const viewPathnames = new Set<string>(rows.map((row) => row.pathname));
   if (registered) viewPathnames.add(new URL(registered.href, 'http://nav.local').pathname);

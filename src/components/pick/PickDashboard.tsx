@@ -12,11 +12,7 @@ import { usePickRepairPanel } from '@/components/pick/usePickRepairPanel';
 import { dispatchTechCloseActiveOrder } from '@/components/tech/tech-active-order-events';
 import { dispatchCloseShippedDetails, dispatchUpNextPreview } from '@/utils/events';
 
-interface PickDashboardProps {
-  pickerId: string;
-}
-
-export function PickDashboard({ pickerId }: PickDashboardProps) {
+export function PickDashboard() {
   const { activeOrderPane, setActiveOrderPane, previewSel, setPreviewSel } = usePickOrderPanes();
   const { repairPanel, setRepairPanel, loadingRepair } = usePickRepairPanel();
 
@@ -26,7 +22,6 @@ export function PickDashboard({ pickerId }: PickDashboardProps) {
         <div className="relative min-h-0 flex-1 overflow-hidden">
           <RightPaneOverlayHost className="relative flex h-full min-h-0 flex-col overflow-hidden">
             <PickOrderWorkspace
-              pickerId={pickerId}
               activeOrderPane={activeOrderPane}
               onCloseActiveOrder={() => {
                 dispatchTechCloseActiveOrder();

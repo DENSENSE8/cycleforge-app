@@ -66,14 +66,13 @@ const LIST_COMBOS: Combo[] = [
   { name: 'removed view=recent falls back to default scoping', qs: 'view=recent' },
   { name: 'view=received', qs: 'view=received' },
   { name: 'view=all + search + include=serials (fetch-limit bump)', qs: 'view=all&search=R-12&include=serials' },
-  { name: 'view=activity default sort', qs: 'view=activity' },
-  { name: 'view=activity sort=unbox_activity', qs: 'view=activity&sort=unbox_activity' },
   { name: 'view=all sort=unboxed_newest', qs: 'view=all&sort=unboxed_newest' },
   { name: 'view=all sort=received_newest', qs: 'view=all&sort=received_newest' },
   { name: 'view=all sort=scanned_oldest', qs: 'view=all&sort=scanned_oldest' },
   { name: 'view=unbox_opened', qs: 'view=unbox_opened' },
-  { name: 'view=scanned (zoho exclusion applied)', qs: 'view=scanned', opts: { applyScannedZohoExclusion: true } },
-  { name: 'view=scanned (physical-state-first, exclusion off)', qs: 'view=scanned', opts: { applyScannedZohoExclusion: false } },
+  // Plain view=scanned intentionally diverges from the legacy fixture: the
+  // Deliveries › Docked ledger orders from the complete Arrival scan spine
+  // (receiving_scans fallback), not only receiving_triage.door_received_at.
   { name: 'view=scanned sort=priority', qs: 'view=scanned&sort=priority', opts: { applyScannedZohoExclusion: true } },
   { name: 'view=testing (all staff)', qs: 'view=testing' },
   { name: 'view=testing scoped to tester', qs: 'view=testing&tester=12' },
@@ -104,7 +103,6 @@ const LIST_COMBOS: Combo[] = [
   { name: 'limit clamp + offset', qs: 'limit=900&offset=40' },
   { name: 'junk limit degrades to NaN exactly like the old code', qs: 'limit=abc' },
   { name: 'unknown view falls back to default scoping', qs: 'view=bogus&search=x' },
-  { name: 'kitchen sink: activity + search + staff + serials', qs: 'view=activity&search=R-99&staff=3&include=serials&sort=unbox_activity' },
 ];
 
 for (const combo of LIST_COMBOS) {
@@ -371,7 +369,6 @@ test('?receiving_id= lines + package SQL matches legacy', () => {
 // ── Placeholder feeds (unmatched / unbox-opened lineless cartons) ─────────────
 
 const UNMATCHED_COMBOS: Combo[] = [
-  { name: 'no search', qs: 'view=activity' },
   { name: 'search field=all', qs: 'view=all&search=1Z9' },
   { name: 'search field=po', qs: 'view=activity&search=PO-7&search_field=po' },
   { name: 'search field=tracking', qs: 'view=activity&search=9400&search_field=tracking' },
@@ -410,12 +407,12 @@ for (const combo of UNBOX_COMBOS) {
 
 // ── Placeholder inclusion gates (mirrors the old inline booleans) ─────────────
 
-test('unmatched placeholders included only for all/activity, non-zoho_po scope, non line-only fields', () => {
+test('unmatched placeholders include Docked arrival cartons and exclude line-only fields', () => {
   const q = (qs: string) => parseReceivingLinesQuery(new URLSearchParams(qs));
   assert.equal(shouldIncludeUnmatchedPlaceholders(q('view=all')), true);
   assert.equal(shouldIncludeUnmatchedPlaceholders(q('view=activity')), true);
   assert.equal(shouldIncludeUnmatchedPlaceholders(q('view=recent')), false);
-  assert.equal(shouldIncludeUnmatchedPlaceholders(q('view=scanned')), false);
+  assert.equal(shouldIncludeUnmatchedPlaceholders(q('view=scanned')), true);
   assert.equal(shouldIncludeUnmatchedPlaceholders(q('')), false);
   // `?search_scope=zoho_po` normalizes to 'all' (PO-only scope removed from the
   // History UI; legacy bookmarks read as All) — so the zoho_po gate can never
@@ -429,35 +426,62 @@ test('unmatched placeholders included only for all/activity, non-zoho_po scope, 
   assert.equal(shouldIncludeUnmatchedPlaceholders(q('view=all&search_field=tracking')), true);
 });
 
-test('unmatched placeholders: activity requires Unbox-touch; all stays ungated', () => {
-  const UNBOX_TOUCH = /ru\.unboxed_at IS NOT NULL\s+OR ru\.opened_at IS NOT NULL\s+OR unbox_open\.unbox_opened_at IS NOT NULL/;
+test('Docked lines require a physical arrival and explicitly exclude every Unbox signal', () => {
+  const built = buildReceivingLinesListSql({
+    query: parseReceivingLinesQuery(new URLSearchParams('view=scanned&sort=scanned_newest')),
+    orgId: ORG,
+    viewerStaffId: NaN,
+    universalIncoming: false,
+    applyScannedZohoExclusion: true,
+  });
+  assert.match(built.list.sql, /rt\.door_received_at IS NOT NULL/);
+  assert.match(built.list.sql, /FROM receiving_scans rs_scanned/);
+  assert.match(built.list.sql, /ru\.unboxed_at IS NULL/);
+  assert.match(built.list.sql, /oe_unbox\.event_type = 'UNBOX_CONFIRMED'/);
+  assert.match(built.list.sql, /COALESCE\(rl\.quantity_received, 0\) = 0/);
+  assert.match(
+    built.list.sql,
+    /AND NOT \(\s*EXISTS \(\s*SELECT 1 FROM receiving_unbox ru_uo[\s\S]+oe_uo\.event_type = 'UNBOX_SCAN_OPENED'/,
+  );
+  assert.match(
+    built.list.sql,
+    /ORDER BY COALESCE\(scan_first\.scanned_at::text, rt\.door_received_at::text, rl\.created_at::text\) DESC/,
+    'Docked must render newest arrival scans first',
+  );
+});
+
+test('unmatched placeholders: Docked requires a physical touch; all stays ungated', () => {
+  const DOCK_TOUCH = /SELECT 1 FROM receiving_triage rt_docked[\s\S]+SELECT 1 FROM receiving_scans rs_docked[\s\S]+oe_docked\.event_type = 'TRACKING_SCANNED'[\s\S]+FROM receiving_unbox ru_docked[\s\S]+oe_unbox\.event_type = 'UNBOX_SCAN_OPENED'/;
+  const UNBOX_TOUCH = /ru\.unboxed_at IS NOT NULL[\s\S]+ru\.opened_at IS NOT NULL[\s\S]+unbox_open\.unbox_opened_at IS NOT NULL/;
   const BROWSE_SOURCES = /r\.source IN \('unmatched', 'local_pickup'\)/;
   const SEARCH_SOURCES = /r\.source IN \('unmatched', 'local_pickup', 'zoho_po'\)/;
 
-  const activity = buildUnmatchedPlaceholdersSql(
+  const docked = buildUnmatchedPlaceholdersSql(
+    parseReceivingLinesQuery(new URLSearchParams('view=scanned')),
+    ORG,
+  );
+  assert.match(docked.list.sql, DOCK_TOUCH, 'Docked list must gate on Arrival and reject Unbox');
+  assert.match(docked.count.sql, DOCK_TOUCH, 'Docked count must use the same Arrival/Unbox gate');
+  assert.match(docked.list.sql, BROWSE_SOURCES, 'browse Docked must not flood with lineless zoho_po');
+  assert.doesNotMatch(docked.list.sql, SEARCH_SOURCES, 'browse Docked excludes zoho_po from placeholders');
+
+  const unboxed = buildUnmatchedPlaceholdersSql(
     parseReceivingLinesQuery(new URLSearchParams('view=activity')),
     ORG,
   );
-  assert.match(activity.list.sql, UNBOX_TOUCH, 'activity list must gate on Unbox-touch');
-  assert.match(activity.count.sql, UNBOX_TOUCH, 'activity count must gate on Unbox-touch');
-  assert.match(
-    activity.count.sql,
-    /LEFT JOIN receiving_unbox ru/,
-    'activity count needs receiving_unbox for the Unbox-touch gate',
-  );
-  assert.match(activity.list.sql, BROWSE_SOURCES, 'browse activity must not flood with lineless zoho_po');
-  assert.doesNotMatch(activity.list.sql, SEARCH_SOURCES, 'browse activity excludes zoho_po from placeholders');
+  assert.match(unboxed.list.sql, UNBOX_TOUCH, 'Unboxed must require an Unbox touch');
+  assert.doesNotMatch(unboxed.list.sql, DOCK_TOUCH, 'Unboxed must not inherit Docked membership');
 
   const all = buildUnmatchedPlaceholdersSql(
     parseReceivingLinesQuery(new URLSearchParams('view=all')),
     ORG,
   );
-  assert.doesNotMatch(all.list.sql, UNBOX_TOUCH, 'view=all list must stay inclusive of door-scan Unfound');
-  assert.doesNotMatch(all.count.sql, UNBOX_TOUCH, 'view=all count must stay inclusive of door-scan Unfound');
+  assert.doesNotMatch(all.list.sql, DOCK_TOUCH, 'view=all list must stay inclusive');
+  assert.doesNotMatch(all.count.sql, DOCK_TOUCH, 'view=all count must stay inclusive');
 });
 
-test('unmatched placeholders: armed History search includes lineless zoho_po and skips Unbox-touch', () => {
-  const UNBOX_TOUCH = /ru\.unboxed_at IS NOT NULL\s+OR ru\.opened_at IS NOT NULL\s+OR unbox_open\.unbox_opened_at IS NOT NULL/;
+test('unmatched placeholders: armed Unboxed search resolves lineless zoho_po without claiming it Docked', () => {
+  const DOCK_TOUCH = /SELECT 1 FROM receiving_triage rt_docked[\s\S]+SELECT 1 FROM receiving_scans rs_docked/;
   const SEARCH_SOURCES = /r\.source IN \('unmatched', 'local_pickup', 'zoho_po'\)/;
   const searched = buildUnmatchedPlaceholdersSql(
     parseReceivingLinesQuery(
@@ -467,13 +491,8 @@ test('unmatched placeholders: armed History search includes lineless zoho_po and
   );
   assert.match(searched.list.sql, SEARCH_SOURCES, 'armed search must resolve lineless zoho_po cartons');
   assert.match(searched.count.sql, SEARCH_SOURCES, 'armed search count must include zoho_po');
-  assert.doesNotMatch(searched.list.sql, UNBOX_TOUCH, 'armed search must not hide behind Unbox-touch');
-  assert.doesNotMatch(searched.count.sql, UNBOX_TOUCH, 'armed search count must not gate on Unbox-touch');
-  assert.doesNotMatch(
-    searched.count.sql,
-    /LEFT JOIN receiving_unbox ru/,
-    'armed search count does not need receiving_unbox joins',
-  );
+  assert.doesNotMatch(searched.list.sql, DOCK_TOUCH, 'armed search must resolve an exact carton before it is docked');
+  assert.doesNotMatch(searched.count.sql, DOCK_TOUCH, 'armed search count must not use the browse gate');
 });
 
 test('unbox-opened placeholders included only for view=unbox_opened with the same gates', () => {

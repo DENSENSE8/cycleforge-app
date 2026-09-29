@@ -1,6 +1,6 @@
 'use client';
 
-import { Suspense, useCallback, useMemo, type ReactNode } from 'react';
+import { Fragment, Suspense, useCallback, useMemo, type ReactNode } from 'react';
 import {
   DndContext,
   PointerSensor,
@@ -20,6 +20,7 @@ import { ChevronDown, Plus } from '@/components/Icons';
 import { navIconStrokeClass } from '@/components/icons/nav-weight';
 import {
   resolveSpineMapEntries,
+  spineStructuralBottomPages,
   spineStructuralTopPages,
   SPINE_STATIONS_SLOT_ID,
 } from '@/lib/nav/spine-slots';
@@ -53,7 +54,10 @@ import {
   SPINE_PARENT_ROW_MOTION_CLASS,
   SPINE_ROW_ICON_CLASS,
   SPINE_SCROLLPORT_SCROLLBAR_CLASS,
+  SPINE_NAV_GROUP_TITLE_CLASS,
   SPINE_SECTION_LABEL_STICKY_CLASS,
+  spineNavigationBand,
+  spineNavigationBandTitle,
 } from '@/components/sidebar/sidebar-spine';
 import { IconButton } from '@/design-system/primitives/IconButton';
 import { Collapse } from '@/design-system/components/Collapse';
@@ -64,6 +68,8 @@ import { StaffAccountFooter } from './StaffAccountFooter';
 import { useSpineSectionCollapse } from './useSpineSectionCollapse';
 import { useLaneDoorHref } from '@/components/sidebar/contextual/useLaneDoorHref';
 import { spineParentTone } from './spine-parent-tone';
+import { handleSidebarNavigationKeyDown } from '@/components/sidebar/sidebar-keyboard-navigation';
+import { LIST_KEY_OWNER_ATTR } from '@/lib/keyboard/list-key-scope';
 
 /** MasterNav page list, painted on the shadcn `Sidebar*` primitives (`@/components/ui/sidebar`) — the component tree the operator named… */
 interface SidebarNavListProps {
@@ -119,6 +125,7 @@ function SortableMenuRow({
       <SidebarMenuButton
         {...attributes}
         {...listeners}
+        data-sidebar-nav-item
         isActive={active}
         onClick={onActivate}
         onMouseEnter={onMouseEnter}
@@ -178,6 +185,7 @@ function SectionTriggerFace({
       <button
         type="button"
         data-spine-section-trigger
+        data-sidebar-nav-item
         data-owns-current={ownsCurrent ? 'true' : undefined}
         aria-expanded={open}
         aria-controls={bodyId}
@@ -287,6 +295,7 @@ export function SidebarNavList({
 }: SidebarNavListProps) {
   const highlightedChildId = activeChildId ?? activePage.children?.[0]?.id ?? null;
   const topPages = spineStructuralTopPages(otherPages);
+  const bottomPages = spineStructuralBottomPages(otherPages);
   const stationsSection = SPINE_SECTIONS.find((s) => s.id === 'floor');
   const { isSectionOpen, setSectionOpen } = useSpineSectionCollapse();
   const doorHref = useLaneDoorHref();
@@ -356,7 +365,7 @@ export function SidebarNavList({
   /**
    * One destination row.
    * legible as its children (operator 2026-09-14: *"when a parent level design
-   * GLYPH's column (operator 2026-09-14: *"a hairline on the left side and
+   * Parent destinations wear a glyph; child destinations align to the rail.
    */
   const renderMenuRow = (opts: {
     key: string;
@@ -382,6 +391,7 @@ export function SidebarNavList({
           <span className={spineRailLineClass(opts.active)} aria-hidden />
         )}
         <SidebarMenuButton
+          data-sidebar-nav-item
           isActive={opts.active}
           onClick={opts.onClick}
           onMouseEnter={opts.onMouseEnter}
@@ -580,13 +590,23 @@ export function SidebarNavList({
   };
 
   return (
-    <Sidebar data-spine-nav aria-label="Pages" className={className}>
+    <Sidebar
+      data-spine-nav
+      role="navigation"
+      aria-label="Pages"
+      className={className}
+      onKeyDown={handleSidebarNavigationKeyDown}
+      {...{ [LIST_KEY_OWNER_ATTR]: '' }}
+    >
       <SidebarContent
         data-spine-scrollport
         className={SPINE_SCROLLPORT_SCROLLBAR_CLASS}
       >
         {topPages.length > 0 ? (
           <SidebarGroup id="spine-section-top" role="group" aria-label="Pinned">
+            <div data-sidebar-group-title className={SPINE_NAV_GROUP_TITLE_CLASS}>
+              Workspace
+            </div>
             <SidebarMenu>
               {topPages.map((page) => {
                 const row = renderMenuRow({
@@ -630,32 +650,68 @@ export function SidebarNavList({
 
         <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
           <SortableContext items={spineOrder} strategy={verticalListSortingStrategy}>
-            {spineBlocks.map((block) => {
+            {spineBlocks.map((block, index) => {
+              const blockId =
+                block.kind === 'stations'
+                  ? SPINE_STATIONS_SLOT_ID
+                  : block.kind === 'lane'
+                    ? block.lane.id
+                    : block.kind === 'parent'
+                      ? block.page.id
+                      : block.pages[0]!.id;
+              const previousBlock = spineBlocks[index - 1];
+              const previousId = previousBlock
+                ? previousBlock.kind === 'stations'
+                  ? SPINE_STATIONS_SLOT_ID
+                  : previousBlock.kind === 'lane'
+                    ? previousBlock.lane.id
+                    : previousBlock.kind === 'parent'
+                      ? previousBlock.page.id
+                      : previousBlock.pages[0]!.id
+                : null;
+              const band = spineNavigationBand(blockId);
+              const startsBand = previousId === null || spineNavigationBand(previousId) !== band;
+              const wrapBlock = (node: ReactNode) => (
+                <Fragment key={blockId}>
+                  {startsBand ? (
+                    <div data-sidebar-group-title className={SPINE_NAV_GROUP_TITLE_CLASS}>
+                      {spineNavigationBandTitle(band)}
+                    </div>
+                  ) : null}
+                  {node}
+                </Fragment>
+              );
               if (block.kind === 'stations') {
                 if (!stationsSection) return null;
-                return (
-                  <div key={SPINE_STATIONS_SLOT_ID}>
-                    {renderSection({
-                      sectionKey: 'floor',
-                      sortableId: SPINE_STATIONS_SLOT_ID,
-                      domId: 'spine-section-floor',
-                      label: stationsSection.label,
-                      icon: stationsSection.icon,
-                      rows: floorPages.map((page) => renderLeaf(page)),
-                      rowCount: floorPages.length,
-                      ownsCurrent: floorPages.some((page) => page.id === activePage.id),
-                    })}
-                  </div>
+                const activeStation = floorPages.find((page) => page.id === activePage.id);
+                const stationDoor = activeStation ?? floorPages[0];
+                if (!stationDoor) return null;
+                return wrapBlock(
+                  <SidebarGroup>
+                    <SidebarMenu>
+                      <SortableMenuRow
+                        id={SPINE_STATIONS_SLOT_ID}
+                        label={stationsSection.label}
+                        icon={stationsSection.icon}
+                        active={Boolean(activeStation)}
+                        ariaLabel={`Go to ${stationsSection.label}`}
+                        onActivate={() => onNavigate(stationDoor.id)}
+                        onMouseEnter={
+                          onRowHover ? () => onRowHover(stationDoor) : undefined
+                        }
+                      />
+                    </SidebarMenu>
+                  </SidebarGroup>,
                 );
               }
               if (block.kind === 'lane') {
-                return renderLane(block.lane);
+                return wrapBlock(renderLane(block.lane));
               }
               if (block.kind === 'parent') {
                 const page = block.page;
                 const children = page.children ?? [];
-                return (
-                  <div key={page.id}>
+                return wrapBlock(
+                  <div>
                     {renderSection({
                       sectionKey: page.id,
                       sortableId: page.id,
@@ -674,11 +730,11 @@ export function SidebarNavList({
                       rowCount: children.length,
                       ownsCurrent: page.id === activePage.id,
                     })}
-                  </div>
+                  </div>,
                 );
               }
-              return (
-                <SidebarGroup key={`loose-${block.pages[0]!.id}`}>
+              return wrapBlock(
+                <SidebarGroup>
                   <SidebarMenu>
                     {block.pages.map((page) => (
                       <SortableMenuRow
@@ -693,11 +749,32 @@ export function SidebarNavList({
                       />
                     ))}
                   </SidebarMenu>
-                </SidebarGroup>
+                </SidebarGroup>,
               );
             })}
           </SortableContext>
         </DndContext>
+        {bottomPages.length > 0 ? (
+          <SidebarGroup id="spine-section-bottom" role="group" aria-label="Utilities">
+            <div data-sidebar-group-title className={SPINE_NAV_GROUP_TITLE_CLASS}>
+              Utilities
+            </div>
+            <SidebarMenu>
+              {bottomPages.map((page) =>
+                renderMenuRow({
+                  key: page.id,
+                  label: page.label,
+                  icon: page.icon,
+                  toneKey: page.id,
+                  active: page.id === activePage.id,
+                  ariaLabel: `Go to ${page.label}`,
+                  onClick: () => onNavigate(page.id),
+                  onMouseEnter: onRowHover ? () => onRowHover(page) : undefined,
+                }),
+              )}
+            </SidebarMenu>
+          </SidebarGroup>
+        ) : null}
       </SidebarContent>
       <SidebarFooter>
         <StaffAccountFooter />

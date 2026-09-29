@@ -9,6 +9,7 @@ import {
   getPurchaseReceiveIdFromCreateResponse,
 } from '@/lib/zoho';
 import { ZohoNotConnectedError } from '@/lib/zoho/core';
+import { ZohoApiError, ZohoCircuitOpenError } from '@/lib/zoho/httpClient';
 import { formatPSTTimestamp } from '@/utils/date';
 
 /** Attempts after which a line stops being claimed and waits for a human. */
@@ -22,6 +23,8 @@ interface PendingReceiveLine {
   zohoPurchaseOrderId: string;
   zohoLineItemId: string;
   sku: string | null;
+  /** Units received locally; null = unknown (push the PO line's remainder). */
+  quantityReceived: number | null;
   attempts: number;
 }
 
@@ -49,7 +52,7 @@ interface ReceiveBacklog {
  * burns no attempt, and aborts the rest of the run, because every remaining
  * group would hit the same dead credential.
  */
-type GroupOutcome = 'posted' | 'noop' | 'failed' | 'not_connected';
+type GroupOutcome = 'posted' | 'noop' | 'failed' | 'not_connected' | 'deferred';
 
 interface GroupResult {
   zohoPurchaseOrderId: string;
@@ -87,6 +90,12 @@ interface BackfillReport {
    * needs to re-authorize, not investigate a PO.
    */
   notConnected: boolean;
+  /**
+   * The run stopped on a transient provider state (circuit open, rate limit,
+   * 5xx). Like `notConnected`, nothing is stamped: a Zoho hiccup must never
+   * walk healthy lines to the give-up ceiling.
+   */
+  deferred: boolean;
   errors: Array<{ zohoPurchaseOrderId: string; error: string }>;
 }
 
@@ -102,10 +111,20 @@ const defaultDeps: BackfillDeps = {
   now: formatPSTTimestamp,
 };
 
-/** The pending-push predicate, shared by the count, the claim and the mirror settle so the number the operator watches and the rows the… */
+/**
+ * The pending-push predicate, shared by the count, the claim and the mirror
+ * settle. A line owes the provider a receive once it is DONE, or as soon as it
+ * is unboxed with a counted quantity — Zoho should read received the moment
+ * the box is open, not after testing.
+ */
 const PENDING_PREDICATE = `
         rl.organization_id = $1
-    AND rl.workflow_status = 'DONE'
+    AND (rl.workflow_status = 'DONE'
+         OR (COALESCE(rl.quantity_received, 0) > 0
+             AND EXISTS (SELECT 1 FROM receiving_unbox u
+                          WHERE u.receiving_id = rl.receiving_id
+                            AND u.organization_id = rl.organization_id
+                            AND u.unboxed_at IS NOT NULL)))
     AND rz.zoho_purchase_receive_id IS NULL
     AND rz.zoho_receive_settled_at  IS NULL
     AND rz.zoho_purchaseorder_id    IS NOT NULL
@@ -166,6 +185,7 @@ async function listPendingReceiveGroups(
   const { rows } = await deps.query<{
     id: number;
     sku: string | null;
+    quantity_received: number | null;
     zoho_purchaseorder_id: string;
     zoho_line_item_id: string;
     zoho_receive_attempts: number;
@@ -174,6 +194,7 @@ async function listPendingReceiveGroups(
     `WITH claimable AS (
        SELECT rl.id,
               rl.sku,
+              rl.quantity_received,
               rz.zoho_purchaseorder_id,
               rz.zoho_line_item_id,
               rz.zoho_receive_attempts,
@@ -198,7 +219,7 @@ async function listPendingReceiveGroups(
         ORDER BY attempts ASC, zoho_purchaseorder_id ASC
         LIMIT $4
      )
-     SELECT c.id, c.sku, c.zoho_purchaseorder_id, c.zoho_line_item_id, c.zoho_receive_attempts
+     SELECT c.id, c.sku, c.quantity_received, c.zoho_purchaseorder_id, c.zoho_line_item_id, c.zoho_receive_attempts
        FROM claimable c
        JOIN ranked r ON r.zoho_purchaseorder_id = c.zoho_purchaseorder_id
       ORDER BY c.zoho_purchaseorder_id ASC, c.id ASC`,
@@ -218,18 +239,23 @@ async function listPendingReceiveGroups(
       zohoPurchaseOrderId: poId,
       zohoLineItemId: String(row.zoho_line_item_id),
       sku: row.sku,
+      quantityReceived: row.quantity_received == null ? null : Number(row.quantity_received),
       attempts: Number(row.zoho_receive_attempts ?? 0),
     });
   }
   return [...byPo.values()];
 }
 
-/** Remaining quantity per PO line: */
+/**
+ * Per PO line: `remaining` is what Zoho still expects (ordered − received
+ * there); `toPush` is capped by what was counted here, so an unboxed short
+ * shipment never tells Zoho more units arrived than did.
+ */
 async function pendingLineItems(
   inventory: InventoryProvider,
   poDetail: { purchaseorder?: { line_items?: unknown[] } },
   group: PendingReceiveGroup,
-): Promise<{ line_item_id: string; quantity_received: number; item_id: string }[]> {
+): Promise<{ toPush: { line_item_id: string; quantity_received: number; item_id: string }[]; remaining: number }> {
   const receivedTotals = await inventory.sumWarehouseReceivedByPoLineItem(
     group.zohoPurchaseOrderId,
   );
@@ -239,6 +265,7 @@ async function pendingLineItems(
     : [];
 
   const out: { line_item_id: string; quantity_received: number; item_id: string }[] = [];
+  let remaining = 0;
   const unmatched = new Set(wanted.keys());
 
   for (const raw of items) {
@@ -250,7 +277,12 @@ async function pendingLineItems(
 
     const ordered = Number(li.quantity ?? 0);
     if (!Number.isFinite(ordered) || ordered <= 0) continue;
-    const pending = Math.max(0, Math.floor(ordered - (receivedTotals.get(id) ?? 0) + 1e-9));
+    const inZoho = receivedTotals.get(id) ?? 0;
+    const lineRemaining = Math.max(0, Math.floor(ordered - inZoho + 1e-9));
+    remaining += lineRemaining;
+    const local = wanted.get(id)?.quantityReceived;
+    const pending =
+      local == null ? lineRemaining : Math.max(0, Math.min(lineRemaining, Math.floor(Math.min(local, ordered) - inZoho + 1e-9)));
     if (pending <= 0) continue;
 
     let itemId = catalogItemIdFromZohoPoLineItem(raw) || '';
@@ -283,7 +315,7 @@ async function pendingLineItems(
         `${[...unmatched].join(', ')}. Re-sync the PO.`,
     );
   }
-  return out;
+  return { toPush: out, remaining };
 }
 
 /** Zoho phrasings that all mean "we are already at or ahead of you". */
@@ -300,6 +332,13 @@ function isNotConnected(err: unknown): boolean {
   if (err instanceof ZohoNotConnectedError) return true;
   const message = err instanceof Error ? err.message : String(err);
   return /no active zoho connection|not connected|oauth\/authorize/i.test(message);
+}
+
+/** A provider state that passes on its own — retry later, never a strike against the line. */
+function isTransient(err: unknown): boolean {
+  if (err instanceof ZohoCircuitOpenError) return true;
+  if (err instanceof ZohoApiError) return err.isRetryable();
+  return /circuit open|rate limit|too many requests/i.test(err instanceof Error ? err.message : String(err));
 }
 
 function isTerminalPoStatus(status: unknown): boolean {
@@ -403,12 +442,23 @@ async function pushGroup(
       };
     }
 
-    const lineItems = await pendingLineItems(inventory, poResp, group);
+    const { toPush: lineItems, remaining } = await pendingLineItems(inventory, poResp, group);
 
-    // Nothing pending per line but the PO is still open: the billed-PO shape
-    // Zoho cannot express as line quantities without `bills.READ`. Its own
-    // "Mark as Received" button is the documented escape, so take it.
     if (lineItems.length === 0) {
+      // Zoho already holds every unit counted here — nothing to post.
+      if (remaining > 0) {
+        await stampSettled(orgId, lineIds, null, deps.now(), deps);
+        return {
+          zohoPurchaseOrderId: group.zohoPurchaseOrderId,
+          outcome: 'noop',
+          lineIds,
+          purchaseReceiveId: null,
+          reason: 'provider_has_local_quantity',
+        };
+      }
+      // Nothing pending per line but the PO is still open: the billed-PO shape
+      // Zoho cannot express as line quantities without `bills.READ`. Its own
+      // "Mark as Received" button is the documented escape, so take it.
       const whole = await inventory.markPurchaseOrderReceivedWhole(group.zohoPurchaseOrderId);
       const wholeId = getPurchaseReceiveIdFromCreateResponse(whole);
       await stampSettled(orgId, lineIds, wholeId, deps.now(), deps);
@@ -441,6 +491,15 @@ async function pushGroup(
       return {
         zohoPurchaseOrderId: group.zohoPurchaseOrderId,
         outcome: 'not_connected',
+        lineIds,
+        purchaseReceiveId: null,
+        reason: err instanceof Error ? err.message : String(err),
+      };
+    }
+    if (isTransient(err)) {
+      return {
+        zohoPurchaseOrderId: group.zohoPurchaseOrderId,
+        outcome: 'deferred',
         lineIds,
         purchaseReceiveId: null,
         reason: err instanceof Error ? err.message : String(err),
@@ -483,6 +542,7 @@ export async function runZohoReceiveBackfill(
     settledFromMirror: 0,
     pendingAfter: 0,
     notConnected: false,
+    deferred: false,
     errors: [],
   };
 
@@ -511,10 +571,11 @@ export async function runZohoReceiveBackfill(
 
   for (const group of groups) {
     const result = await pushGroup(orgId, inventory, group, deps);
-    if (result.outcome === 'not_connected') {
-      // Every remaining group shares this credential. Stop; do not spend the
-      // rest of the batch proving the same thing 24 more times.
-      report.notConnected = true;
+    if (result.outcome === 'not_connected' || result.outcome === 'deferred') {
+      // Every remaining group shares this credential / circuit. Stop; do not
+      // spend the rest of the batch proving the same thing 24 more times.
+      if (result.outcome === 'not_connected') report.notConnected = true;
+      else report.deferred = true;
       report.groups = report.posted + report.noop + report.failed;
       break;
     }

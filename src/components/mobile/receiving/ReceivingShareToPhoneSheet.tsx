@@ -70,16 +70,18 @@ export function ReceivingShareToPhoneSheet() {
     setShared(null);
     // Carry the PO label through so the camera header shows it (not "RCV-[id]")
     // and the saved NAS file is named by PO#. Skipped when no real PO was sent.
-    const qs = poLabel
-      ? `?title=${encodeURIComponent(poLabel)}&poRef=${encodeURIComponent(poLabel)}`
-      : '';
-    router.push(`/m/r/${id}/photos${qs}`);
+    const params = new URLSearchParams({ back: '/m/receiving' });
+    if (poLabel) {
+      params.set('title', poLabel);
+      params.set('poRef', poLabel);
+    }
+    router.push(`/m/r/${id}/photos?${params.toString()}`);
   }, [router, shared]);
 
   return (
     <BottomSheet open={shared != null} onClose={close} title="Shared from computer">
       <div className="flex flex-col items-center gap-4 text-center">
-        <div className="flex h-14 w-14 items-center justify-center rounded-none bg-surface-sunken text-text-muted">
+        <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-surface-sunken text-text-muted">
           <Monitor className="h-7 w-7" />
         </div>
         <div>
@@ -92,7 +94,7 @@ export function ReceivingShareToPhoneSheet() {
           variant="primary"
           onClick={takePhotos}
           icon={<Camera className="h-5 w-5" />}
-          className="h-12 w-full rounded-none bg-gradient-to-br from-blue-500 to-blue-700 shadow-md shadow-blue-600/30"
+          className="h-12 w-full rounded-xl bg-gradient-to-br from-blue-500 to-blue-700 shadow-md shadow-blue-600/30"
         >
           Take photos
         </Button>
