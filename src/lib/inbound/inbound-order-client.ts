@@ -10,14 +10,25 @@ import type {
   IngestInboundOrderResult,
   InboundOrderPreview,
 } from '@/lib/inbound/ingest-inbound-order';
+import { compressPhotoForUpload } from '@/lib/image/compress-for-upload';
 
 export async function readFileAsDataUrl(file: File): Promise<string> {
-  const { promise, resolve, reject } = Promise.withResolvers<string>();
-  const reader = new FileReader();
-  reader.onload = () => resolve(String(reader.result ?? ''));
-  reader.onerror = () => reject(reader.error ?? new Error('read failed'));
-  reader.readAsDataURL(file);
-  return promise;
+  if (!file.type.startsWith('image/')) {
+    const { promise, resolve, reject } = Promise.withResolvers<string>();
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result ?? ''));
+    reader.onerror = () => reject(reader.error ?? new Error('read failed'));
+    reader.readAsDataURL(file);
+    return promise;
+  }
+  const compressed = await compressPhotoForUpload(file, {
+    // Paperwork needs more character detail than product photos, while still
+    // staying comfortably below Vercel's request-body ceiling for a phone shot.
+    longEdge: 1_600,
+    quality: 0.84,
+    source: 'inbound-paperwork',
+  });
+  return compressed.base64;
 }
 
 async function call<T>(url: string, init: RequestInit): Promise<T> {

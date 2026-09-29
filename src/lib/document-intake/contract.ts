@@ -14,7 +14,7 @@ export interface DocumentOcrArtifact {
   sha256: string;
   fileName: string;
   mimeType: string;
-  provider: 'local_vision';
+  provider: 'unlimited_ocr';
   pages: DocumentOcrPage[];
   /** Page-labelled plain text for downstream adapters. */
   text: string;

@@ -340,9 +340,9 @@ export async function extractPoIntake(
   if (type !== 'PICKUP') {
     for (const url of imageUrls) userContent.push({ type: 'image_url', image_url: { url } });
   }
-  // Pickup images never go to a managed provider or a text-only local chat
-  // model. The 5070 Ti vision service reads bytes first; its OCR transcript is
-  // the only document payload sent to the self-hosted structured extractor.
+  // Pickup images never go to a managed provider or a general chat model. The
+  // 5070 Ti's dedicated `unlimited-ocr` model reads bytes first; only its OCR
+  // transcript is sent to the self-hosted structured extractor.
 
   const requestBody = {
     model: DEFAULT_AI_MODEL,
@@ -359,9 +359,9 @@ export async function extractPoIntake(
   const { res, served } = await postToAiProvider(orgId, 'chat', {
     path: '/chat/completions',
     body: requestBody,
-    // Paperwork OCR is the unlimited/private lane: Vercel reaches the org's
-    // configured tunnel to the 5070 Ti. Never spill document images to a paid
-    // managed model when the local runtime is unavailable.
+    // Paperwork structuring is private too: Vercel reaches the configured
+    // self-hosted chat model after Unlimited OCR. Never spill the transcript
+    // to a paid managed model when the local runtime is unavailable.
     selfHostedOnly: type === 'PICKUP',
     headers: {
       'X-Source': type === 'PICKUP' ? 'cycle-forge-local-pickup-extract' : 'cycle-forge-inbound-po-extract',

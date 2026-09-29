@@ -52,9 +52,10 @@ source of truth for OCR, pickups, units, QC results, labels, or tickets.
    org-scoped loaders.
 8. **Mobile is a first-class operator path.** Capture, review, label issue,
    scan, QC result, and ticket open must each have a `/m/*` completion path.
-9. **“Unlimited OCR” means local, unmetered inference—not unbounded payloads.**
-   Keep page/byte limits, idempotency, timeouts, backpressure, and an explicit
-   unavailable state. Never silently spill document bytes to a paid provider.
+9. **Unlimited OCR is the dedicated local OCR model.** The exact Ollama model
+   id is `unlimited-ocr:latest` on the RTX 5070 Ti. Keep page/byte limits,
+   idempotency, timeouts, backpressure, and an explicit unavailable state.
+   Never silently spill document bytes to a paid provider.
 
 ## Existing roots to build on
 
@@ -69,14 +70,16 @@ source of truth for OCR, pickups, units, QC results, labels, or tickets.
 - `src/lib/assistant/agent-loop.ts`
 
 The shared OCR layer accepts document bytes and emits page-labelled evidence
-with a SHA-256 and `local_vision` provenance. Receiving and Chat are separate
+with a SHA-256 and `unlimited_ocr` provenance. Receiving and Chat are separate
 adapters. Chat treats OCR text as untrusted `<document-content>` and cannot
 create Receiving rows merely because a document was attached.
 
-Production Vercel must call the organization's server-reachable 5070 Ti vision
-endpoint through `VISION_ANALYZE_BASE_URL` + `VISION_TOKEN` (or the org
-setting). The browser never calls the GPU tunnel directly. Add a configuration
-health signal; do not weaken the local-only failure when the endpoint is absent.
+Production Vercel calls the server-reachable 5070 Ti Ollama endpoint through
+`UNLIMITED_OCR_BASE_URL`, requests `UNLIMITED_OCR_MODEL`, and authenticates with
+the optional bearer plus Cloudflare Access service-token variables. The browser
+never calls the GPU tunnel directly. The authenticated readiness signal is
+`GET /api/receiving/inbound/ocr-health`; do not weaken the local-only failure
+when the endpoint is absent.
 
 ### Inbound/pickup writer and two read surfaces
 

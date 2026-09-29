@@ -173,6 +173,26 @@ CLOUDFLARE_ACCESS_CLIENT_SECRET=  # Optional if Cloudflare Access protects Herme
 AI_CHAT_RATE_LIMIT=
 ```
 
+### Unlimited OCR (local paperwork model)
+
+`Unlimited OCR` is the dedicated multimodal Ollama model running on the RTX
+5070 Ti. It has its own endpoint configuration so document bytes never enter
+the general AI provider chain or the product-photo vision service.
+
+```text
+UNLIMITED_OCR_BASE_URL=                 # OpenAI-compatible API root, including /v1
+UNLIMITED_OCR_MODEL=unlimited-ocr:latest
+UNLIMITED_OCR_API_KEY=                  # Optional bearer enforced by the model proxy
+UNLIMITED_OCR_CF_ACCESS_CLIENT_ID=      # Cloudflare Access service-token id
+UNLIMITED_OCR_CF_ACCESS_CLIENT_SECRET=  # Cloudflare Access service-token secret
+```
+
+The app calls `POST {UNLIMITED_OCR_BASE_URL}/chat/completions` with the image
+and the exact model name. Keep these variables server-only. After configuring
+production, an authorized Receiving user can probe readiness at
+`GET /api/receiving/inbound/ocr-health` without exposing the endpoint or
+credentials.
+
 ## App Config
 ```
 NEXT_PUBLIC_APP_URL=    # Base URL for the app
