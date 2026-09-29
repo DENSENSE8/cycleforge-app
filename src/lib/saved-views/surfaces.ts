@@ -83,7 +83,6 @@ const SHEET_SAVED_VIEW_KEY = {
   warehouse_bins: 'warehouse_bins_saved_views',
   repair_queue: 'repair_queue_saved_views',
   warranty_claims: 'warranty_claims_saved_views',
-  tracking_exceptions: 'tracking_exceptions_saved_views',
   outbound_ready: 'outbound_ready_saved_views',
   outbound_labels: 'outbound_labels_saved_views',
   outbound_staged: 'outbound_staged_saved_views',
@@ -116,10 +115,6 @@ export const SHEET_SAVED_VIEW_CONFIG = {
   warranty: {
     storageKey: SHEET_SAVED_VIEW_KEY.warranty_claims,
     paramKeys: ['wstatus', 'wexp', 'colsort', 'coldir'],
-  },
-  'tracking-exceptions': {
-    storageKey: SHEET_SAVED_VIEW_KEY.tracking_exceptions,
-    paramKeys: ['status', 'carrier', 'colsort', 'coldir'],
   },
   ready: {
     storageKey: SHEET_SAVED_VIEW_KEY.outbound_ready,
@@ -160,7 +155,6 @@ const STORAGE_KEY_TO_SURFACE: Readonly<Record<string, GenericSavedViewSurface>> 
   [SHEET_SAVED_VIEW_KEY.warehouse_bins]: 'warehouse_bins',
   [SHEET_SAVED_VIEW_KEY.repair_queue]: 'repair_queue',
   [SHEET_SAVED_VIEW_KEY.warranty_claims]: 'warranty_claims',
-  [SHEET_SAVED_VIEW_KEY.tracking_exceptions]: 'tracking_exceptions',
   [SHEET_SAVED_VIEW_KEY.outbound_ready]: 'outbound_ready',
   [SHEET_SAVED_VIEW_KEY.outbound_labels]: 'outbound_labels',
   [SHEET_SAVED_VIEW_KEY.outbound_staged]: 'outbound_staged',

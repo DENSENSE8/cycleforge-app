@@ -3,9 +3,11 @@ import {
   AlertTriangle,
   Barcode,
   Clipboard,
+  Check,
   ClipboardList,
   Clock,
   Cpu,
+  Download,
   FileText,
   History,
   Layers,
@@ -18,6 +20,7 @@ import {
   Plus,
   Printer,
   Receipt,
+  RefreshCw,
   ScanBarcode,
   Search,
   Star,
@@ -25,6 +28,7 @@ import {
   Upload,
   Warehouse,
 } from '@/components/Icons';
+import { domainLane } from '@/lib/nav/lanes';
 
 type NavViewIcon = {
   icon: React.ComponentType<{ className?: string }>;
@@ -57,6 +61,7 @@ export const NAV_VIEW_ICONS: Readonly<Record<string, NavViewIcon>> = {
   'fba.shipped': { icon: PackageCheck, tone: 'text-purple-700' },
   'fba.catalog': { icon: Barcode, tone: 'text-violet-700' },
   // Labels & docs wears its lane row's teal.
+  'label-intake.uploads': { icon: Upload, tone: 'text-teal-600' },
   'label-intake.labels': { icon: Printer, tone: 'text-teal-600' },
   'label-intake.paperwork': { icon: FileText, tone: 'text-teal-600' },
   'label-intake.printed': { icon: History, tone: 'text-teal-700' },
@@ -68,6 +73,12 @@ export const NAV_VIEW_ICONS: Readonly<Record<string, NavViewIcon>> = {
   'sourcing.suppliers': { icon: Link2, tone: 'text-indigo-700' },
   'sourcing.models': { icon: Cpu, tone: 'text-indigo-600' },
   'sourcing.compatibility': { icon: Layers, tone: 'text-indigo-700' },
+  // Products: one glyph per catalog job.
+  'products.catalog': { icon: Layers, tone: 'text-blue-600' },
+  'products.manuals': { icon: FileText, tone: 'text-sky-600' },
+  'products.labels': { icon: Barcode, tone: 'text-teal-600' },
+  'products.pairing': { icon: Link2, tone: 'text-indigo-600' },
+  'products.qc': { icon: Check, tone: 'text-amber-600' },
   // Inventory wears its lane row's emerald; the same glyphs as its nav children.
   'inventory.stock': { icon: Package, tone: 'text-emerald-600' },
   'inventory.sku-exceptions': { icon: AlertTriangle, tone: 'text-amber-600' },
@@ -78,6 +89,24 @@ export const NAV_VIEW_ICONS: Readonly<Record<string, NavViewIcon>> = {
   'qc-labels.all': { icon: ScanBarcode, tone: 'text-amber-600' },
   'qc-labels.stock': { icon: Package, tone: 'text-amber-600' },
   'qc-labels.order': { icon: PackageCheck, tone: 'text-amber-700' },
+  // Print station wears its row's sky; Reprinted is the damage history.
+  'print-station.fnsku': { icon: ScanBarcode, tone: 'text-sky-600' },
+  'print-station.fnsku-reprinted': { icon: History, tone: 'text-sky-700' },
+  // Exceptions: every domain and kind is a worklist of problems (amber count
+  // while > 0); a domain wears its lane's glyph, a kind the glyph of the
+  // surface its source lives on.
+  'exceptions.fulfillment': { icon: domainLane('fulfillment').icon, tone: 'text-blue-600', alertCount: true },
+  'exceptions.inventory': { icon: domainLane('inventory').icon, tone: 'text-emerald-600', alertCount: true },
+  'exceptions.receiving': { icon: domainLane('inbound').icon, tone: 'text-blue-600', alertCount: true },
+  'exceptions.fbm': { icon: Truck, tone: 'text-blue-600', alertCount: true },
+  'exceptions.labels': { icon: Printer, tone: 'text-teal-600', alertCount: true },
+  'exceptions.paperwork': { icon: FileText, tone: 'text-teal-600', alertCount: true },
+  'exceptions.pairs': { icon: Link2, tone: 'text-emerald-600', alertCount: true },
+  'exceptions.bins': { icon: Warehouse, tone: 'text-emerald-700', alertCount: true },
+  'exceptions.tracking': { icon: Barcode, tone: 'text-emerald-600', alertCount: true },
+  'exceptions.claim': { icon: AlertCircle, tone: 'text-blue-600', alertCount: true },
+  'exceptions.short': { icon: PackageOpen, tone: 'text-blue-600', alertCount: true },
+  'exceptions.unfound': { icon: Search, tone: 'text-blue-600', alertCount: true },
 };
 
 /**
@@ -93,6 +122,11 @@ export const NAV_ACTION_ICONS: Readonly<Record<string, NavViewIcon>> = {
   'labels-docs.print-all': { icon: Printer, tone: 'text-text-muted' },
   'labels-docs.upload': { icon: Upload, tone: 'text-text-muted' },
   'labels-docs.upload-slips': { icon: Upload, tone: 'text-text-muted' },
+  'labels-docs.buy-label': { icon: Truck, tone: 'text-text-muted' },
   'sourcing.add-model': { icon: Plus, tone: 'text-text-muted' },
   'qc-labels.print': { icon: Printer, tone: 'text-text-muted' },
+  'reports.refresh': { icon: RefreshCw, tone: 'text-text-muted' },
+  'reports.export-packing': { icon: Download, tone: 'text-text-muted' },
+  'reports.export-inbound': { icon: Download, tone: 'text-text-muted' },
+  'reports.export-outbound': { icon: Download, tone: 'text-text-muted' },
 };

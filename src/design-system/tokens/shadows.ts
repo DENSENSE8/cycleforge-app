@@ -55,3 +55,12 @@ const ELEVATION_HOVER_CLASS = {
 
 /** The 3px a pressed control's face travels. */
 export const TACTILE_PRESS_TRAVEL_CLASS = 'active:translate-y-[3px]';
+
+/**
+ * Chunky CTA depth (Button `depth`): a hard 4px bottom ledge in the element's
+ * `shadow-<color>`; on press the face sinks the same 4px onto the ledge and
+ * the ledge disappears, so the bottom edge never moves. Travel equals the
+ * `shadow-elev-depth` offset (tailwind.config.mjs) — change both together.
+ */
+export const TACTILE_DEPTH_CLASS =
+  'shadow-elev-depth enabled:active:translate-y-1 enabled:active:shadow-none motion-reduce:transform-none';

@@ -43,6 +43,7 @@ import {
   type SearchRowDensity,
 } from './search-result-faces';
 import { orderIdFromHit } from '@/lib/search/search-result-identity';
+import { commandSearchSecondLine } from '@/lib/search/command-search-row';
 import { useOrderChannel, usePlatformMeta } from '@/hooks/useCatalog';
 import { sourcePlatformMetaFromLabel } from '@/lib/source-platform';
 import { PlatformMark } from '@/components/ui/PlatformMark';
@@ -150,18 +151,10 @@ function TitleOnlyDropdownRow({
   const identifier = marketplaceId || serial || tracking;
   const title = identifier || String(hit.title ?? '').trim() || 'Untitled';
   const primaryIsId = Boolean(identifier);
-  // An order row is its number alone (owner 2026-09-27: no product title under
-  // the order number — the record carries the item). Other identifier rows keep
-  // their subtitle as the second line.
-  const detail =
-    primaryIsId && hit.entityType !== 'order'
-      ? String(hit.subtitle ?? '')
-          .split(' · ')
-          .map((part) => part.trim())
-          // The row's number already leads; never read it twice.
-          .filter((part) => part && part !== title)
-          .join(' · ')
-      : '';
+  // The order number is the durable handle; the product title is the fastest
+  // recognition cue. Command Search keeps both, in that hierarchy. Other
+  // identifier rows keep their subtitle as the second line.
+  const detail = commandSearchSecondLine(hit, title, primaryIsId);
 
   const Glyph = ENTITY_ICONS[hit.entityType] || Search;
   const entityTone = ENTITY_TONE[hit.entityType] ?? 'gray';

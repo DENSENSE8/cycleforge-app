@@ -61,7 +61,7 @@ export function ConfirmDock({
       <Button
         type="button"
         variant={TONE_VARIANT[tone]}
-        radius="flush"
+        radius="mode"
         size="lg"
         onClick={handlePrimary}
         disabled={blocked}
@@ -75,7 +75,7 @@ export function ConfirmDock({
           type="button"
           variant="ghost"
           size="sm"
-          radius="flush"
+          radius="mode"
           onClick={handleSecondary}
           disabled={loading}
           className={`mt-2 h-8 w-full text-xs ${

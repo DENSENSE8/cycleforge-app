@@ -7,6 +7,9 @@ export const PHOTO_ENTITY_TYPES = [
   'RECEIVING_LINE',
   'PACKER_LOG',
   'SERIAL_UNIT',
+  // Marketplace listing art may be order-scoped when intake has not yet
+  // resolved the line to a catalog SKU. It remains a display fallback only.
+  'ORDER',
   'SKU',
   'SKU_STOCK',
   'BIN_ADJUSTMENT',

@@ -1,0 +1,263 @@
+{
+  "url": "http://localhost:3102/m/pick",
+  "ttfb": 1369,
+  "isDev": false,
+  "rows": [
+    {
+      "url": "/api/v1/print-stations",
+      "start": 1649,
+      "end": 2611,
+      "ms": 963,
+      "bytes": 390
+    },
+    {
+      "url": "/api/station-commands/aliases",
+      "start": 1650,
+      "end": 2339,
+      "ms": 689,
+      "bytes": 324
+    },
+    {
+      "url": "/api/staff-preferences",
+      "start": 1652,
+      "end": 2366,
+      "ms": 714,
+      "bytes": 429
+    },
+    {
+      "url": "/api/realtime/wms-ticket?deviceId=mobile-mumamx6y-ymjotnfx",
+      "start": 1666,
+      "end": 1741,
+      "ms": 75,
+      "bytes": 742
+    },
+    {
+      "url": "/api/staff?active=false",
+      "start": 1695,
+      "end": 2579,
+      "ms": 884,
+      "bytes": 5871
+    },
+    {
+      "url": "/api/orders?inWarehouse=true&listShape=queue&limit=200",
+      "start": 1696,
+      "end": 3698,
+      "ms": 2002,
+      "bytes": 537601
+    },
+    {
+      "url": "/api/inbox/tech-queue",
+      "start": 1706,
+      "end": 2315,
+      "ms": 609,
+      "bytes": 368
+    },
+    {
+      "url": "/api/inbox/support",
+      "start": 1707,
+      "end": 2615,
+      "ms": 908,
+      "bytes": 322
+    },
+    {
+      "url": "/api/staff-messages?unread=1",
+      "start": 1707,
+      "end": 2640,
+      "ms": 933,
+      "bytes": 312
+    },
+    {
+      "url": "/api/realtime/token?rnd=8113395607407732",
+      "start": 2382,
+      "end": 2783,
+      "ms": 401,
+      "bytes": 2045
+    },
+    {
+      "url": "/api/photos/9735/content?variant=thumb",
+      "start": 3866,
+      "end": 4398,
+      "ms": 532,
+      "bytes": 0
+    },
+    {
+      "url": "/api/photos/9707/content?variant=thumb",
+      "start": 3866,
+      "end": 4398,
+      "ms": 532,
+      "bytes": 0
+    },
+    {
+      "url": "/api/photos/9712/content?variant=thumb",
+      "start": 3866,
+      "end": 4550,
+      "ms": 684,
+      "bytes": 0
+    },
+    {
+      "url": "/api/photos/9738/content?variant=thumb",
+      "start": 3866,
+      "end": 4669,
+      "ms": 803,
+      "bytes": 0
+    }
+  ],
+  "focus": [
+    {
+      "count": 1,
+      "bytes": 390,
+      "rows": [
+        {
+          "url": "/api/v1/print-stations",
+          "ms": 1210,
+          "bytes": 390
+        }
+      ]
+    },
+    {
+      "count": 0,
+      "bytes": 0,
+      "rows": []
+    }
+  ],
+  "analysis": {
+    "duplicates": [],
+    "multiShape": [],
+    "chains": [
+      {
+        "from": "/api/staff-preferences",
+        "to": "/api/realtime/token?rnd=8113395607407732",
+        "gapMs": 16,
+        "tailEnd": 2783
+      }
+    ],
+    "peakConcurrency": 9,
+    "countProbes": [],
+    "heaviest": [
+      {
+        "url": "/api/orders?inWarehouse=true&listShape=queue&limit=200",
+        "start": 1696,
+        "end": 3698,
+        "ms": 2002,
+        "bytes": 537601
+      },
+      {
+        "url": "/api/staff?active=false",
+        "start": 1695,
+        "end": 2579,
+        "ms": 884,
+        "bytes": 5871
+      },
+      {
+        "url": "/api/realtime/token?rnd=8113395607407732",
+        "start": 2382,
+        "end": 2783,
+        "ms": 401,
+        "bytes": 2045
+      },
+      {
+        "url": "/api/realtime/wms-ticket?deviceId=mobile-mumamx6y-ymjotnfx",
+        "start": 1666,
+        "end": 1741,
+        "ms": 75,
+        "bytes": 742
+      },
+      {
+        "url": "/api/staff-preferences",
+        "start": 1652,
+        "end": 2366,
+        "ms": 714,
+        "bytes": 429
+      },
+      {
+        "url": "/api/v1/print-stations",
+        "start": 1649,
+        "end": 2611,
+        "ms": 963,
+        "bytes": 390
+      },
+      {
+        "url": "/api/inbox/tech-queue",
+        "start": 1706,
+        "end": 2315,
+        "ms": 609,
+        "bytes": 368
+      },
+      {
+        "url": "/api/station-commands/aliases",
+        "start": 1650,
+        "end": 2339,
+        "ms": 689,
+        "bytes": 324
+      }
+    ],
+    "slowest": [
+      {
+        "url": "/api/orders?inWarehouse=true&listShape=queue&limit=200",
+        "start": 1696,
+        "end": 3698,
+        "ms": 2002,
+        "bytes": 537601
+      },
+      {
+        "url": "/api/v1/print-stations",
+        "start": 1649,
+        "end": 2611,
+        "ms": 963,
+        "bytes": 390
+      },
+      {
+        "url": "/api/staff-messages?unread=1",
+        "start": 1707,
+        "end": 2640,
+        "ms": 933,
+        "bytes": 312
+      },
+      {
+        "url": "/api/inbox/support",
+        "start": 1707,
+        "end": 2615,
+        "ms": 908,
+        "bytes": 322
+      },
+      {
+        "url": "/api/staff?active=false",
+        "start": 1695,
+        "end": 2579,
+        "ms": 884,
+        "bytes": 5871
+      },
+      {
+        "url": "/api/photos/9738/content?variant=thumb",
+        "start": 3866,
+        "end": 4669,
+        "ms": 803,
+        "bytes": 0
+      },
+      {
+        "url": "/api/staff-preferences",
+        "start": 1652,
+        "end": 2366,
+        "ms": 714,
+        "bytes": 429
+      },
+      {
+        "url": "/api/station-commands/aliases",
+        "start": 1650,
+        "end": 2339,
+        "ms": 689,
+        "bytes": 324
+      }
+    ]
+  },
+  "route": "/m/pick",
+  "base": "http://localhost:3102",
+  "runs": 3,
+  "metrics": {
+    "duplicateRequests": 0,
+    "countProbes": 0,
+    "focusRefetch": 0,
+    "requests": 14
+  },
+  "capturedAt": "2026-09-29T06:27:58.794Z"
+}

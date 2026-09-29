@@ -6,6 +6,8 @@ import { upsertSupportTicket } from '@/lib/support/tickets';
 import { photoContentUrl } from '@/lib/photos/display-url';
 import { listPhotosForEntity } from '@/lib/photos/service';
 import type { PhotoEntityType } from '@/lib/photos/types';
+import { refreshReceivingUnitStageFacts } from '@/lib/receiving/receiving-unit-stage-facts';
+import type { OrgId } from '@/lib/tenancy/constants';
 
 interface TicketEntityRef {
   type: string;
@@ -56,13 +58,14 @@ export async function linkSupportTicketEntity(args: {
 }, deps: LinkSupportTicketEntityDeps = defaultLinkSupportTicketEntityDeps): Promise<void> {
   await deps.runInTenantTx(args.orgId, async (c) => {
     // Demote whatever else held this ticket's anchor, so ux_ticket_links_support_anchor can never see two anchors mid-statement.
-    await c.query(
+    const demoted = await c.query<{ entity_type: string; entity_id: string }>(
       `UPDATE ticket_links
           SET is_primary = false, link_role = 'reference', updated_at = NOW()
         WHERE organization_id = $1
           AND support_ticket_id = $2
           AND link_role = 'anchor'
-          AND NOT (entity_type = $3 AND entity_id = $4)`,
+          AND NOT (entity_type = $3 AND entity_id = $4)
+        RETURNING entity_type, entity_id`,
       [args.orgId, args.supportTicketId, args.entityType, args.entityId],
     );
     await c.query(
@@ -84,8 +87,35 @@ export async function linkSupportTicketEntity(args: {
         args.staffId ?? null,
       ],
     );
+    const touched = [
+      ...demoted.rows.map((row) => ({ type: row.entity_type, id: Number(row.entity_id) })),
+      { type: args.entityType, id: args.entityId },
+    ];
+    await refreshReceivingFactsForTicketEntities(args.orgId as OrgId, touched, c);
     return null;
   });
+}
+
+async function refreshReceivingFactsForTicketEntities(
+  orgId: OrgId,
+  entities: ReadonlyArray<{ type: string; id: number }>,
+  client?: TxClient,
+): Promise<void> {
+  const receivingIds: number[] = [];
+  const lineIds: number[] = [];
+  const serialUnitIds: number[] = [];
+  for (const entity of entities) {
+    if (!Number.isInteger(entity.id) || entity.id <= 0) continue;
+    if (entity.type === 'RECEIVING') receivingIds.push(entity.id);
+    else if (entity.type === 'RECEIVING_LINE') lineIds.push(entity.id);
+    else if (entity.type === 'SERIAL_UNIT') serialUnitIds.push(entity.id);
+  }
+  if (receivingIds.length + lineIds.length + serialUnitIds.length === 0) return;
+  await refreshReceivingUnitStageFacts(
+    orgId,
+    { receivingIds, lineIds, serialUnitIds },
+    client,
+  );
 }
 
 /**
@@ -166,16 +196,25 @@ export async function unlinkTicket(args: {
   entityType: string;
   entityId: number;
 }): Promise<boolean> {
-  const res = await tenantQuery(
-    args.orgId,
-    `DELETE FROM ticket_links
-      WHERE organization_id = $1
-        AND zendesk_ticket_id = $2
-        AND entity_type = $3
-        AND entity_id = $4`,
-    [args.orgId, args.zendeskTicketId, args.entityType, args.entityId],
-  );
-  return (res.rowCount ?? 0) > 0;
+  return withTenantTransaction(args.orgId, async (client) => {
+    const res = await client.query(
+      `DELETE FROM ticket_links
+        WHERE organization_id = $1
+          AND zendesk_ticket_id = $2
+          AND entity_type = $3
+          AND entity_id = $4`,
+      [args.orgId, args.zendeskTicketId, args.entityType, args.entityId],
+    );
+    const removed = (res.rowCount ?? 0) > 0;
+    if (removed) {
+      await refreshReceivingFactsForTicketEntities(
+        args.orgId as OrgId,
+        [{ type: args.entityType, id: args.entityId }],
+        client,
+      );
+    }
+    return removed;
+  });
 }
 
 /** Clear a Zendesk ticket's `external_id` — but ONLY when it still resolves to the given entity. */

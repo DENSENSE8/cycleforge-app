@@ -209,7 +209,6 @@ export function LineNotesCard({
       if (!res.ok || !data?.success) return '';
       return (data.note || '').trim();
     },
-    staleTime: 15_000,
   });
   const recentPhrase = (recentNoteQuery.data || '').trim();
   const [recentHover, setRecentHover] = useState(false);

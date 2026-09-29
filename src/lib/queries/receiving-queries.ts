@@ -868,6 +868,53 @@ export function receivingPhotosQueryKey(receivingId: number) {
   return ['receiving-photos', receivingId] as const;
 }
 
+/**
+ * Receiving photo reads are push-backed: `receiving-photo.changed` on the
+ * station channel invalidates `['receiving-photos']` (`useRealtimeInvalidation`
+ * + `useReceivingPhotosRealtimeRefresh`), phone uploads arrive on the phone
+ * bridge, and every local write runs `refreshReceivingPhotos`. The old 10–20s
+ * overrides bought nothing but a refetch of every open carton's photo lists on
+ * each window refocus (7 requests per alt-tab on `/unbox`, measured 2026-09-28).
+ */
+export const RECEIVING_PHOTOS_STALE_MS = 3 * 60_000;
+
+/** The filter a `/api/receiving-photos` list read sends. */
+export interface ReceivingPhotoListParams {
+  receivingId: number;
+  photoIntent: string;
+  receivingLineId?: number | null;
+  photoAspect?: string | null;
+}
+
+/**
+ * ONE key per `/api/receiving-photos?photoIntent=…` URL. The Unbox carton's
+ * photo surfaces each spelled their own key for the same URL (`…, 'compare'`,
+ * `…, 'carton', 'any'`, bare intent), so `?photoIntent=carton` fired twice per
+ * load. Stays under `receivingPhotosQueryKey(id)` so per-carton invalidation
+ * still reaches it.
+ */
+export function receivingPhotoListQueryKey(p: ReceivingPhotoListParams) {
+  return [
+    ...receivingPhotosQueryKey(p.receivingId),
+    p.photoIntent,
+    p.receivingLineId ?? 'carton',
+    p.photoAspect ?? 'any',
+  ] as const;
+}
+
+/** The raw list payload for {@link receivingPhotoListQueryKey}. */
+export async function fetchReceivingPhotoList<T>(p: ReceivingPhotoListParams): Promise<T> {
+  const params = new URLSearchParams({
+    receivingId: String(p.receivingId),
+    photoIntent: p.photoIntent,
+  });
+  if (p.receivingLineId != null) params.set('receivingLineId', String(p.receivingLineId));
+  if (p.photoAspect) params.set('photoAspect', p.photoAspect);
+  const res = await fetch(`/api/receiving-photos?${params.toString()}`, { cache: 'no-store' });
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  return res.json() as Promise<T>;
+}
+
 interface ReceivingPhotosCacheRow {
   id: number;
   photoUrl?: string;

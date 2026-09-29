@@ -3,6 +3,8 @@ import type { PoolClient } from 'pg';
 import { withTenantTransaction } from '@/lib/tenancy/db';
 import { emitEntitySignalSafe } from '@/lib/surfaces/record-entity-signal';
 import { upsertReceivingTriage } from '@/lib/receiving/streets/carton-street-write';
+import { refreshReceivingUnitStageFacts } from '@/lib/receiving/receiving-unit-stage-facts';
+import type { OrgId } from '@/lib/tenancy/constants';
 
 interface CompleteTriageInput {
   receivingId: number;
@@ -32,11 +34,22 @@ export interface CompleteTriageDeps {
   /** Optional "why" signal emitter (plan §2.3 emitter #2, triage outcome);
    *  fire-and-forget by contract, never throws. */
   emitSignal?: typeof emitEntitySignalSafe;
+  refreshFacts?: (
+    orgId: OrgId,
+    receivingId: number,
+    client: TxClient,
+  ) => Promise<void>;
 }
 
 const defaultDeps: CompleteTriageDeps = {
   runTx: (orgId, fn) => withTenantTransaction(orgId, (client) => fn(client as unknown as TxClient)),
   emitSignal: emitEntitySignalSafe,
+  refreshFacts: (orgId, receivingId, client) =>
+    refreshReceivingUnitStageFacts(
+      orgId,
+      { receivingIds: [receivingId] },
+      client,
+    ).then(() => undefined),
 };
 
 export async function completeTriage(
@@ -61,6 +74,7 @@ export async function completeTriage(
       );
       if (existing.rowCount) {
         const row = existing.rows[0];
+        await deps.refreshFacts?.(orgId as OrgId, Number(row.id), client);
         return {
           ok: true,
           status: 200,
@@ -146,6 +160,8 @@ export async function completeTriage(
         client,
       });
     }
+
+    await deps.refreshFacts?.(orgId as OrgId, receivingId, client);
 
     return {
       ok: true,

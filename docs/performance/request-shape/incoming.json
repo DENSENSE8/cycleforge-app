@@ -1,0 +1,353 @@
+{
+  "url": "http://localhost:3102/incoming",
+  "ttfb": 1433,
+  "isDev": false,
+  "rows": [
+    {
+      "url": "/api/station-commands/aliases",
+      "start": 1830,
+      "end": 2187,
+      "ms": 357,
+      "bytes": 324
+    },
+    {
+      "url": "/api/v1/print-stations",
+      "start": 1831,
+      "end": 2223,
+      "ms": 392,
+      "bytes": 390
+    },
+    {
+      "url": "/api/nav/context?path=%2Fincoming",
+      "start": 1832,
+      "end": 2019,
+      "ms": 187,
+      "bytes": 2899
+    },
+    {
+      "url": "/api/sync/global",
+      "start": 1833,
+      "end": 2015,
+      "ms": 182,
+      "bytes": 1782
+    },
+    {
+      "url": "/api/staff-preferences",
+      "start": 1835,
+      "end": 2016,
+      "ms": 180,
+      "bytes": 429
+    },
+    {
+      "url": "/api/catalog/platforms",
+      "start": 1864,
+      "end": 2224,
+      "ms": 360,
+      "bytes": 3682
+    },
+    {
+      "url": "/api/settings?page=desk",
+      "start": 1877,
+      "end": 2132,
+      "ms": 256,
+      "bytes": 1768
+    },
+    {
+      "url": "/api/receiving-lines?limit=50&offset=0&include=serials&view=incoming&sort=urgency",
+      "start": 1960,
+      "end": 3496,
+      "ms": 1536,
+      "bytes": 164837
+    },
+    {
+      "url": "/api/receiving-lines/incoming/summary",
+      "start": 1960,
+      "end": 3612,
+      "ms": 1652,
+      "bytes": 630
+    },
+    {
+      "url": "/api/tables/layouts?tableId=receiving",
+      "start": 1961,
+      "end": 2139,
+      "ms": 178,
+      "bytes": 369
+    },
+    {
+      "url": "/api/surfaces/incoming/resolve",
+      "start": 1962,
+      "end": 2527,
+      "ms": 565,
+      "bytes": 436
+    },
+    {
+      "url": "/api/staff?active=false",
+      "start": 2000,
+      "end": 2707,
+      "ms": 707,
+      "bytes": 5871
+    },
+    {
+      "url": "/api/inbox/tech-queue",
+      "start": 2001,
+      "end": 2484,
+      "ms": 483,
+      "bytes": 368
+    },
+    {
+      "url": "/api/inbox/support",
+      "start": 2001,
+      "end": 2495,
+      "ms": 494,
+      "bytes": 322
+    },
+    {
+      "url": "/api/staff-messages?unread=1",
+      "start": 2002,
+      "end": 2739,
+      "ms": 738,
+      "bytes": 312
+    },
+    {
+      "url": "/api/realtime/token?rnd=10121629155288392",
+      "start": 2515,
+      "end": 2784,
+      "ms": 269,
+      "bytes": 2045
+    },
+    {
+      "url": "/api/saved-views?surface=receiving_incoming",
+      "start": 2542,
+      "end": 2863,
+      "ms": 322,
+      "bytes": 327
+    },
+    {
+      "url": "/api/zoho/items/5623409000001867056/image",
+      "start": 3582,
+      "end": 3880,
+      "ms": 298,
+      "bytes": 7397
+    },
+    {
+      "url": "/api/zoho/items/5623409000001862936/image",
+      "start": 3582,
+      "end": 4115,
+      "ms": 533,
+      "bytes": 65801
+    },
+    {
+      "url": "/api/zoho/items/5623409000001868610/image",
+      "start": 3582,
+      "end": 4132,
+      "ms": 550,
+      "bytes": 56951
+    },
+    {
+      "url": "/api/zoho/items/5623409000001864969/image",
+      "start": 3582,
+      "end": 4231,
+      "ms": 649,
+      "bytes": 167946
+    },
+    {
+      "url": "/api/zoho/items/5623409000001865631/image",
+      "start": 3582,
+      "end": 4123,
+      "ms": 541,
+      "bytes": 72792
+    },
+    {
+      "url": "/api/zoho/items/5623409000001866263/image",
+      "start": 3582,
+      "end": 4223,
+      "ms": 641,
+      "bytes": 76530
+    },
+    {
+      "url": "/api/zoho/items/5623409000001863884/image",
+      "start": 3582,
+      "end": 4471,
+      "ms": 889,
+      "bytes": 83582
+    },
+    {
+      "url": "/api/zoho/items/5623409000001876359/image",
+      "start": 3582,
+      "end": 4933,
+      "ms": 1351,
+      "bytes": 639888
+    },
+    {
+      "url": "/api/zoho/items/5623409000001877054/image",
+      "start": 3594,
+      "end": 4547,
+      "ms": 954,
+      "bytes": 190619
+    }
+  ],
+  "focus": [
+    {
+      "count": 1,
+      "bytes": 390,
+      "rows": [
+        {
+          "url": "/api/v1/print-stations",
+          "ms": 1249,
+          "bytes": 390
+        }
+      ]
+    },
+    {
+      "count": 0,
+      "bytes": 0,
+      "rows": []
+    }
+  ],
+  "analysis": {
+    "duplicates": [],
+    "multiShape": [],
+    "chains": [
+      {
+        "from": "/api/surfaces/incoming/resolve",
+        "to": "/api/saved-views?surface=receiving_incoming",
+        "gapMs": 15,
+        "tailEnd": 2863
+      },
+      {
+        "from": "/api/inbox/support",
+        "to": "/api/realtime/token?rnd=10121629155288392",
+        "gapMs": 20,
+        "tailEnd": 2784
+      }
+    ],
+    "peakConcurrency": 15,
+    "countProbes": [],
+    "heaviest": [
+      {
+        "url": "/api/zoho/items/5623409000001876359/image",
+        "start": 3582,
+        "end": 4933,
+        "ms": 1351,
+        "bytes": 639888
+      },
+      {
+        "url": "/api/zoho/items/5623409000001877054/image",
+        "start": 3594,
+        "end": 4547,
+        "ms": 954,
+        "bytes": 190619
+      },
+      {
+        "url": "/api/zoho/items/5623409000001864969/image",
+        "start": 3582,
+        "end": 4231,
+        "ms": 649,
+        "bytes": 167946
+      },
+      {
+        "url": "/api/receiving-lines?limit=50&offset=0&include=serials&view=incoming&sort=urgency",
+        "start": 1960,
+        "end": 3496,
+        "ms": 1536,
+        "bytes": 164837
+      },
+      {
+        "url": "/api/zoho/items/5623409000001863884/image",
+        "start": 3582,
+        "end": 4471,
+        "ms": 889,
+        "bytes": 83582
+      },
+      {
+        "url": "/api/zoho/items/5623409000001866263/image",
+        "start": 3582,
+        "end": 4223,
+        "ms": 641,
+        "bytes": 76530
+      },
+      {
+        "url": "/api/zoho/items/5623409000001865631/image",
+        "start": 3582,
+        "end": 4123,
+        "ms": 541,
+        "bytes": 72792
+      },
+      {
+        "url": "/api/zoho/items/5623409000001862936/image",
+        "start": 3582,
+        "end": 4115,
+        "ms": 533,
+        "bytes": 65801
+      }
+    ],
+    "slowest": [
+      {
+        "url": "/api/receiving-lines/incoming/summary",
+        "start": 1960,
+        "end": 3612,
+        "ms": 1652,
+        "bytes": 630
+      },
+      {
+        "url": "/api/receiving-lines?limit=50&offset=0&include=serials&view=incoming&sort=urgency",
+        "start": 1960,
+        "end": 3496,
+        "ms": 1536,
+        "bytes": 164837
+      },
+      {
+        "url": "/api/zoho/items/5623409000001876359/image",
+        "start": 3582,
+        "end": 4933,
+        "ms": 1351,
+        "bytes": 639888
+      },
+      {
+        "url": "/api/zoho/items/5623409000001877054/image",
+        "start": 3594,
+        "end": 4547,
+        "ms": 954,
+        "bytes": 190619
+      },
+      {
+        "url": "/api/zoho/items/5623409000001863884/image",
+        "start": 3582,
+        "end": 4471,
+        "ms": 889,
+        "bytes": 83582
+      },
+      {
+        "url": "/api/staff-messages?unread=1",
+        "start": 2002,
+        "end": 2739,
+        "ms": 738,
+        "bytes": 312
+      },
+      {
+        "url": "/api/staff?active=false",
+        "start": 2000,
+        "end": 2707,
+        "ms": 707,
+        "bytes": 5871
+      },
+      {
+        "url": "/api/zoho/items/5623409000001864969/image",
+        "start": 3582,
+        "end": 4231,
+        "ms": 649,
+        "bytes": 167946
+      }
+    ]
+  },
+  "route": "/incoming",
+  "base": "http://localhost:3102",
+  "runs": 3,
+  "metrics": {
+    "duplicateRequests": 0,
+    "countProbes": 0,
+    "focusRefetch": 0,
+    "requests": 26
+  },
+  "capturedAt": "2026-09-29T06:19:44.619Z"
+}

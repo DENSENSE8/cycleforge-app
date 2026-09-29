@@ -10,11 +10,9 @@ import { UNITS_TABLE_BINDING } from '@/components/inventory/units-grid/units-tab
 import { CSV_IMPORT_STAGING_TABLE_BINDING } from '@/components/outbound/orders/import-staging/csv-import-staging-table-definition';
 import { READY_TABLE_BINDING } from '@/components/outbound/ready/grid/ready-table-definition';
 import { CATALOG_TABLE_BINDING } from '@/components/products/catalog/catalog-grid/catalog-table-definition';
-import { PICKUP_TABLE_BINDING } from '@/components/receiving/pickup/grid/pickup-table-definition';
 import { UNFOUND_TABLE_BINDING } from '@/components/receiving/unfound/grid/unfound-table-definition';
 import { REPAIR_TABLE_BINDING } from '@/components/repair/repair-grid/repair-table-definition';
 import { TECH_ALL_TABLE_BINDING } from '@/components/tech/all/tech-all-table-definition';
-import { TRACKING_EXCEPTIONS_TABLE_BINDING } from '@/components/tracking-exceptions/grid/tracking-exceptions-table-definition';
 import { BINS_TABLE_BINDING } from '@/components/warehouse/bins-grid/bins-table-definition';
 import { INVENTORY_EVENTS_TABLE_BINDING } from '@/components/inventory/events-grid/inventory-events-table-definition';
 import { WARRANTY_TABLE_BINDING } from '@/components/warranty/grid/warranty-table-definition';
@@ -72,16 +70,12 @@ export const REGISTERED_BINDINGS = [
   READY_TABLE_BINDING,
   // Products › Catalog browse. Display-safe: no triage, no dispatch.
   CATALOG_TABLE_BINDING,
-  // Receiving › Local pickup (read map).
-  PICKUP_TABLE_BINDING,
   // Receiving › Unfound triage — in-cell edit, no fold, no day band.
   UNFOUND_TABLE_BINDING,
   // Repair queue.
   REPAIR_TABLE_BINDING,
   // Tech / Unbox `All` triage — one strip over several stores.
   TECH_ALL_TABLE_BINDING,
-  // Ops › Tracking exceptions.
-  TRACKING_EXCEPTIONS_TABLE_BINDING,
   // Warehouse › Bins overview.
   BINS_TABLE_BINDING,
   // Inventory › Ledger activity — the event feed that used to be a card list.

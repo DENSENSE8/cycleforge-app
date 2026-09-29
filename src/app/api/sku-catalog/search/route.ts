@@ -347,7 +347,18 @@ async function searchFromCatalog(
     const likeIdx = params.length;
     params.push(q);
     exactIdx = params.length;
-    filterClauses.push(matchTitle ? `(sc.sku ILIKE $${likeIdx} OR sc.product_title ILIKE $${likeIdx})` : `sc.sku ILIKE $${likeIdx}`);
+    filterClauses.push(
+      matchTitle
+        ? `(sc.sku ILIKE $${likeIdx}
+            OR sc.product_title ILIKE $${likeIdx}
+            OR EXISTS (
+              SELECT 1 FROM sku_platform_ids spi_search
+               WHERE spi_search.organization_id = sc.organization_id
+                 AND (spi_search.sku_catalog_id = sc.id OR spi_search.platform_sku = sc.sku)
+                 AND spi_search.platform_item_id ILIKE $${likeIdx}
+            ))`
+        : `sc.sku ILIKE $${likeIdx}`,
+    );
   }
 
   if (category) {

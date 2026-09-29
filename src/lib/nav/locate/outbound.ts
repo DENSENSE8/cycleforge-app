@@ -56,8 +56,15 @@ const BUCKET_HREF: Readonly<Record<DeskViewId, string>> = {
   po: deskViewHref('po'),
   pick: deskViewHref('pick'),
   triage: deskViewHref('triage'),
-  shipped: `${deskViewHref('shipped')}?${new URLSearchParams({ [SHIPPED_ALL_DATES_PARAM]: '1' })}`,
+  shipped: withParam(deskViewHref('shipped'), SHIPPED_ALL_DATES_PARAM, '1'),
 };
+
+/** Add one param to an href that may already carry a query (the Shipped view defines `shippedFilter`). */
+function withParam(href: string, key: string, value: string): string {
+  const url = new URL(href, 'http://nav.local');
+  url.searchParams.set(key, value);
+  return `${url.pathname}?${url.searchParams}`;
+}
 
 /** Queue views whose rows are `/api/orders` rows, in bucket order. */
 const QUEUE_VIEWS: readonly DeskQueueView[] = ['po', 'pick', 'triage'];

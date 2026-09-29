@@ -7,6 +7,22 @@ before every edit). Dev origin `http://localhost:3050` only (AGENTS.md §1).
 Read first: `MODE-SPLIT-INVENTORY.md` (map + leaks), `HANDOFF-mode-split-next.md` (foundations),
 `BRIEF.md` §6, §12 (Mode D floor), §13.
 
+## 0. Owner ruling (2026-09-28) — SUPERSEDES §1 for desks
+
+> The industrial data table belongs to the **phone operational layer only** (`/m/*`), where it
+> runs extremely fast on the phone. Plans to port the industrial table onto desks are withdrawn:
+> desks render the **triage** data table (the To ship / Allocate `TriageCardList`), with its
+> triage numbering. Spreading the industrial table to more desks is the root problem.
+
+Consequences:
+- New desks (e.g. `/exceptions`, 2026-09-28) use `TriageCardList`, never `RecordLedger` /
+  `IndustrialRecord`.
+- The existing desk **Floor** views (the §1 "dual lane" rollout) are debt against this ruling —
+  removing them is a separate owner-approved pass, not a side effect.
+- **Done 2026-09-28** (`HANDOFF-remove-desk-floor.md`, BRIEF §14): the Floor view, its chord and the
+  `runtime` desk routes are gone; §1 below is withdrawn for desks. Industrial = `/m/*` operation flows
+  only, on phone and iPad.
+
 ## 1. Owner ruling (2026-09-27) — what this pass encodes
 
 > Data lanes display in BOTH systems — a triage mode and an industrial mode — because they need
@@ -94,7 +110,8 @@ follow their lane.
    yet, add it ONCE at the primitive (`record-ledger/*`, `desk-stage.ts`) and let every dual desk
    inherit it — do not tighten each desk by hand.
 5. **Phone.** `/m/home` (Daily) resolves triage. Phone data-lane routes stay industrial (owner
-   2026-09-27 decision 3). Forms (`/m/orders/new`) are `triage` policy. A coarse-pointer desk
+   2026-09-27 decision 3), except `/m/pick*`: `triage` policy, the whole flow (owner 2026-09-28,
+   BRIEF §14). Forms (`/m/orders/new`) are `triage` policy. A coarse-pointer desk
    (tablet) keeps the policy: triage-only lanes stay rounded; the region's coarse block keeps the
    region's radius (fix in `modes.ts` emission if it squares a triage region, not per component).
 6. **Nav tells the operator which lanes have Floor.** The Floor option in `DeskRecordViewSwitch`
@@ -146,8 +163,8 @@ follow their lane.
 >    (`getBoundingClientRect` of `[data-testid=desk-page-stage]` and the first row vs
 >    `innerWidth`) and count visible rows at 1440×900 in triage vs Floor for each desk — Floor
 >    must show strictly more rows.
-> 4. **Phone + touch** (§3.5): `/m/home` triage at 390×844; `/m/orders/new` still triage; `/m/pick`
->    and `/m/orders` unchanged industrial. Emulate a coarse pointer (CDP
+> 4. **Phone + touch** (§3.5): `/m/home` triage at 390×844; `/m/orders/new` and `/m/pick*` still
+>    triage (BRIEF §14); `/m/orders` unchanged industrial. Emulate a coarse pointer (CDP
 >    `Emulation.setEmitTouchEventsForMouse` + `setEmulatedMedia` `pointer: coarse`) on `/studio`
 >    and `/ops/photos` at 1024×768: `data-mode="triage"`, `--mode-radius-control` non-zero.
 > 5. **Law + docs** (§4): tests, `pinned.json`, BRIEF §13, inventory route table with a Policy

@@ -16,11 +16,10 @@ function render(props: Partial<React.ComponentProps<typeof ItemCardRow>> = {}) {
       title="Shimano GRX Crankset"
       orderContext="Shopify · ORD-8821"
       reference="SHI-810-CRK-172"
-      location="B-01-S4"
+      location={{ text: 'B-01-S4' }}
       qty="2"
       condition={{ label: 'USED — EXCELLENT', tone: 'text-text-warning' }}
       onOpen={() => {}}
-      primary={null}
       {...props}
     />,
   );
@@ -38,7 +37,6 @@ test('queues the image as a 48px bento-grid cell beside the three record rows', 
 test('active targets upgrade only the thumbnail grid cell to the 80px preview', () => {
   const html = render({ imageUrl: 'https://cdn.example.test/crankset.jpg', active: true });
   assert.match(html, /w-20/, 'active target owns the 80px inspection preview');
-  assert.doesNotMatch(html, /rounded-(?:lg|xl|2xl|3xl|full)/, 'the row remains a flat industrial sheet');
 });
 
 test('a missing photo retains a high-contrast part silhouette and identity mark', () => {
@@ -61,7 +59,7 @@ test('the tactical roster starts with location context, anchors the SKU and list
   });
   assert.match(html, /sku: SHI-810-CRK-172/);
   assert.ok(
-    html.indexOf('Bin: B-01-S4') < html.indexOf("ORD-8821")
+    html.indexOf('B-01-S4') < html.indexOf("ORD-8821")
       && html.indexOf("ORD-8821") < html.lastIndexOf("Shimano GRX Crankset")
       && html.lastIndexOf("Shimano GRX Crankset") < html.lastIndexOf("sku: SHI-810-CRK-172"),
     'location and order context lead the row; title leads Row 2 and the scan fallback remains in Row 3',
@@ -79,15 +77,15 @@ test('the tactical roster starts with location context, anchors the SKU and list
   assert.match(html, /Amazon listing/);
 });
 
-test('photo inspection is a no-navigation, centered scrim overlay', () => {
-  const source = require('node:fs').readFileSync(
-    new URL('./ItemCardRow.tsx', import.meta.url),
-    'utf8',
-  );
-  assert.match(source, /data-testid="item-card-photo-inspect"/);
-  assert.match(source, /fixed inset-0 z-modal flex items-center justify-center bg-scrim\/30/);
-  assert.match(source, /onPointerDown=\{onDismiss\}/);
-  assert.doesNotMatch(source, /document\.addEventListener\('pointerup'/, 'opening the lightbox never self-dismisses on release');
-  assert.doesNotMatch(source, /onPointerUp=\{\(\) => setPhotoInspecting/, 'the thumbnail release cannot close an open lightbox');
-  assert.doesNotMatch(source, /router\.push|href=\{.*image/i, 'inspection never becomes a detail-route door');
+test('an unknown bin paints an honest No bin warning instead of a blank or fake bin', () => {
+  const html = render({ location: { text: null } });
+  assert.match(html, /data-tone="missing"/);
+  assert.match(html, />No bin</);
+  assert.doesNotMatch(html, /Unassigned/);
+});
+
+test('the bin badge is a button only when the caller can set the bin', () => {
+  assert.doesNotMatch(render(), /<button[^>]*data-testid="location-badge"/);
+  const pressable = render({ location: { text: null, onPress: () => {} } });
+  assert.match(pressable, /<button[^>]*data-testid="location-badge"[^>]*aria-label="No bin — set bin"/);
 });

@@ -93,8 +93,8 @@ function round1(n: number): number {
   return Math.round(n * 10) / 10;
 }
 
-/** The engine parcel → the intake's ounces / inches vocabulary. */
-function intakeParcelFrom(parcel: Parcel): LabelIntakeParcel {
+/** The engine parcel → the intake's ounces / inches vocabulary (`product_parcel_dims` too). */
+export function intakeParcelFrom(parcel: Parcel): LabelIntakeParcel {
   const toIn = parcel.dimensions?.unit === 'centimeter' ? 1 / 2.54 : 1;
   return {
     weightOz: round1(parcel.weight.value * OUNCES[parcel.weight.unit]),
@@ -213,10 +213,10 @@ export async function lookupLabelIntake(orgId: OrgId, rawRef: string): Promise<L
   };
 }
 
-/** The customer ↔ warehouse shipment for a reference-only label. */
-async function referenceShipmentSpec(
+/** The customer ↔ warehouse shipment for a label bought without an order (a return ships customer → warehouse). */
+export async function referenceShipmentSpec(
   orgId: OrgId,
-  input: { purpose: IntakePurpose; customer: ShipAddress; parcel: Parcel },
+  input: { purpose: LabelPurpose; customer: ShipAddress; parcel: Parcel },
 ): Promise<ShipmentSpec> {
   const warehouse = await resolveShipFrom(orgId);
   const isReturn = input.purpose === 'return';
@@ -229,7 +229,7 @@ async function referenceShipmentSpec(
 
 export async function rateReferenceLabel(
   orgId: OrgId,
-  input: { purpose: IntakePurpose; customer: ShipAddress; parcel: Parcel },
+  input: { purpose: LabelPurpose; customer: ShipAddress; parcel: Parcel },
 ): Promise<RateQuoteResult> {
   const spec = await referenceShipmentSpec(orgId, input);
   const v2 = await getShipStationV2(orgId);

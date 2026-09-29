@@ -52,7 +52,10 @@ export default async function RootLayout({
     const documentTitle = initialUser ? initialUser.organizationName : PRODUCT_NAME;
 
     // Signed-out public entry surfaces (`/signin`, `/signup`, share links) get a MINIMAL provider tree — see `public-chrome-paths.ts`.
-    const publicChrome = !initialUser && isPublicChromePath(pathname);
+    // Local-only visual studies must not pay for the authenticated warehouse
+    // shell (and are 404s in production at their page boundary).
+    const localVisualStudy = process.env.NODE_ENV !== 'production' && pathname === '/motion-plus-button';
+    const publicChrome = localVisualStudy || (!initialUser && isPublicChromePath(pathname));
     // `/m/*` is the handheld tree.
     const mobileTree = pathname === '/m' || pathname.startsWith('/m/');
 

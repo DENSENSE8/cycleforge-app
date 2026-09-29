@@ -69,7 +69,7 @@ import { slotTableFindHighlightId } from '@/lib/tables/slot-table-find';
 import { flattenRenderOrder, type RowGroup } from '@/lib/group-rows';
 import { ordersCompoundView } from '@/lib/orders/orders-compound-view';
 import { ordersNextStep } from '@/lib/orders/orders-next-step';
-import { resolveOrdersHoldValue, resolveOrdersSlotValue } from '@/lib/tables/field-catalog/orders-resolve';
+import { resolveOrdersSlotValue } from '@/lib/tables/field-catalog/orders-resolve';
 import { useOrderChannel } from '@/hooks/useCatalog';
 import { orderAdminUrl } from '@/utils/order-platform';
 import { orderRowQtyTone } from '@/lib/condition-tone';
@@ -84,7 +84,6 @@ import {
 import { focusRing } from '@/design-system/tokens/focus-ring';
 import { cn } from '@/utils/_cn';
 import {
-  RECORD_FACT_KEY_CLASS,
   RECORD_ID_CLASS,
   RECORD_LABEL_CLASS,
   RECORD_NOTE_SPINE_CLASS,
@@ -387,8 +386,6 @@ export function OutboundOrdersLedger({
     ],
   );
 
-  const openOrderRef = openRecord ? String(openRecord.order_id ?? '').trim() || String(openRecord.id) : '';
-
   return (
     <div
       className="flex min-h-0 min-w-0 flex-1 bg-mode-canvas text-mode-ink"
@@ -398,8 +395,14 @@ export function OutboundOrdersLedger({
       open={openRecord != null}
       onClose={plane.closeRecord}
       title={openRecord ? <OrderRecordTitle record={openRecord} records={displayedRecords} /> : 'Order'}
-      actions={openRecord ? <OrderRecordHeaderActions record={openRecord} records={displayedRecords} /> : undefined}
-      indexLabel={cursor.available && cursor.position != null ? `${cursor.position} of ${cursor.total}` : undefined}
+      actions={openRecord ? <OrderRecordHeaderActions record={openRecord} records={displayedRecords} viewKey={viewKey} /> : undefined}
+      indexLabel={
+        viewSpec.recordPresentation === 'allocate'
+          ? undefined
+          : cursor.available && cursor.position != null
+            ? `${cursor.position} of ${cursor.total}`
+            : undefined
+      }
       recordNoun="order"
       recordKey={openId != null ? String(openId) : null}
       summary={<OrderQueueSummary records={displayedRecords} />}
@@ -425,7 +428,7 @@ export function OutboundOrdersLedger({
           selectedIds={plane.selectedIds}
           viewKey={viewKey}
         />
-      ) : openRecord ? (
+      ) : openRecord && viewSpec.recordPresentation !== 'allocate' ? (
         <OrderRecordActionStrip
           key={openRecord.id}
           record={openRecord}
@@ -683,7 +686,7 @@ const LedgerGroupRecord = memo(function LedgerGroupRecord({
             srLabel={`${spec.label}: ${inState} of ${group.rows.length} lines`}
           />
           <RecordNoteSlot note={String(lead.buyer_note ?? lead.notes ?? '').trim() || null} />
-          <RecordPlatformFace channel={channel} />
+          <RecordPlatformFace channel={channel} face="account" />
           <span
             className={cn(RECORD_ID_CLASS, LEDGER_NESTED_HIT_CLASS, LEDGER_ORDER_NUMBER_SLOT_CLASS)}
             onClick={stop}
@@ -778,53 +781,6 @@ function LedgerResolve({ onResolve }: { onResolve: () => void }) {
     >
       → Resolve
     </button>
-  );
-}
-
-/** Why the order is held (`orders.hold_reason`) — the lead cell of a held row. */
-function LedgerHoldReason({ record }: { record: ShippedOrder }) {
-  const value = resolveOrdersHoldValue(record, 'orders.hold_reason');
-  if (value?.kind !== 'hold-reason') return null;
-  return (
-    <span
-      data-testid="ledger-hold-reason"
-      title={`${value.category} · ${value.owner}`}
-      className={cn(RECORD_LABEL_CLASS, 'flex h-full min-w-0 items-center truncate px-2 text-mode-warn')}
-    >
-      {value.category}
-    </span>
-  );
-}
-
-/** What is missing and the one action that releases it (`orders.hold_fix`). */
-function LedgerHoldFix({ record, className }: { record: ShippedOrder; className?: string }) {
-  const value = resolveOrdersHoldValue(record, 'orders.hold_fix');
-  if (value?.kind !== 'hold-fix') return null;
-  const missing = value.missing.join(' · ');
-  return (
-    <span
-      data-testid="ledger-hold-fix"
-      title={[missing, value.action].filter(Boolean).join(' — ')}
-      className={cn('flex min-w-0 items-baseline gap-2 overflow-hidden', className)}
-    >
-      {missing ? <span className="min-w-0 truncate text-role-data text-mode-ink">{missing}</span> : null}
-      <span className={cn(RECORD_LABEL_CLASS, 'min-w-0 shrink-[2] truncate text-mode-muted')}>{value.action}</span>
-    </span>
-  );
-}
-
-/** How many held orders the one fix releases (`orders.hold_releases`). */
-function LedgerHoldReleases({ record }: { record: ShippedOrder }) {
-  const value = resolveOrdersHoldValue(record, 'orders.hold_releases');
-  if (value?.kind !== 'hold-releases') return null;
-  return (
-    <span
-      data-testid="ledger-hold-releases"
-      className={cn(RECORD_LABEL_CLASS, 'w-32 shrink-0 truncate', value.count > 1 ? 'text-mode-ink' : 'text-mode-muted')}
-    >
-      <span className={RECORD_FACT_KEY_CLASS}>Releases </span>
-      {value.face}
-    </span>
   );
 }
 
@@ -1073,7 +1029,6 @@ const LedgerRecord = memo(function LedgerRecord({
   const price = shows.has('orders.amount') ? <LedgerPrice record={record} /> : null;
   const leadCells: Partial<Record<OrdersFactId, ReactNode>> = {
     'orders.fulfill_by': shipBy,
-    'orders.hold_reason': <LedgerHoldReason record={record} />,
   };
   const leadCell = leadCells[viewSpec.lead] ?? null;
   const primaryCell =
@@ -1143,7 +1098,7 @@ const LedgerRecord = memo(function LedgerRecord({
             fill
             unoptimized
             sizes="108px"
-            className="object-cover"
+            className="object-contain"
           />
         ) : (
           <span
@@ -1189,8 +1144,6 @@ const LedgerRecord = memo(function LedgerRecord({
             </span>
           ) : null}
           <span className="pointer-events-auto w-28 shrink-0">{leadCell}</span>
-          {shows.has('orders.hold_fix') ? <LedgerHoldFix record={record} className="w-56 shrink-0" /> : null}
-          {shows.has('orders.hold_releases') ? <LedgerHoldReleases record={record} /> : null}
           {shows.has('orders.picked') ? <span className="pointer-events-auto w-32 shrink-0">{pick}</span> : null}
           {shows.has('orders.packed') ? <span className="pointer-events-auto w-32 shrink-0">{pack}</span> : null}
         </div>
@@ -1208,7 +1161,7 @@ const LedgerRecord = memo(function LedgerRecord({
               <span className="pointer-events-auto">{check}</span>
               {code}
               {noteSlot}
-              <RecordPlatformFace channel={channel} />
+              <RecordPlatformFace channel={channel} face="account" />
               <span className="pointer-events-auto">{orderChip}</span>
             </span>
             <span className="flex min-w-0 flex-1 items-center">{shows.has('orders.customer') ? customerFace : null}</span>
@@ -1241,12 +1194,9 @@ const LedgerRecord = memo(function LedgerRecord({
           <div className={cn('flex min-w-0 items-center gap-3', LEDGER_BAND_CLASS[zoom])}>
             <span className={cn(LEDGER_LEAD_CLASS, 'pl-2')}>
               {shows.has('orders.condition') ? <span className="pointer-events-auto w-20 shrink-0">{condition}</span> : null}
-              {/* A held row's execution lead is its fix. */}
-              {shows.has('orders.hold_fix') ? <LedgerHoldFix record={record} className="flex-1" /> : null}
             </span>
             {price}
             <span className="min-w-0 flex-1" aria-hidden />
-            {shows.has('orders.hold_releases') ? <LedgerHoldReleases record={record} /> : null}
             {shows.has('orders.picked') ? <span className="pointer-events-auto w-32 shrink-0">{pick}</span> : null}
             {shows.has('orders.packed') ? <span className="pointer-events-auto w-32 shrink-0">{pack}</span> : null}
             {primaryCell}

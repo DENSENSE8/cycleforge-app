@@ -539,7 +539,7 @@ Stop-words to strip **before** matching: `the, genuine, oem, original, new, used
 | Zoho title arm is by `rz.zoho_item_id`, `status='active'` | `sku-identity-law.ts:11-13` |
 | Write-side ownership predicate: a platform sync may only fill `product_title` behind `skuCatalogNoZohoTwinPredicateSql()` | `sku-identity-law.ts:16-21`, used in `sync-ecwid-titles/route.ts:85` |
 | Title ladder: zoho_item_title → catalog_product_title → item_name → sku → zoho_item_id | `sku-identity-law.ts:27-33, 70-76` |
-| About 23 consumers of `resolveSkuIdentityTitle` (receiving, picking, shipments, outbound, QC) | e.g. `src/lib/picking/directed-feed.ts:93`, `src/lib/shipments/shipment-record.ts:603`, `src/components/outbound/orders/OrderRecordView.tsx:310` |
+| About 23 consumers of `resolveSkuIdentityTitle` (receiving, picking, shipments, outbound, QC) | e.g. `src/lib/shipments/shipment-record.ts:603`, `src/components/outbound/orders/OrderRecordView.tsx:310` |
 
 Recommendations:
 

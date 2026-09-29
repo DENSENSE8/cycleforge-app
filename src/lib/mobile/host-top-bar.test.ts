@@ -4,14 +4,14 @@ import test from 'node:test';
 import { mobileRouteOwnsTopBar } from './host-top-bar';
 
 test('a detail route owns its bar, and with it the scan seat', () => {
-  for (const path of ['/m/u/1', '/m/rs/RS-204', '/m/t/88', '/m/pick/9001', '/m/receiving/po/55', '/m/exceptions/42']) {
+  for (const path of ['/m/u/1', '/m/rs/RS-204', '/m/t/88', '/m/pick/9001', '/m/receiving/po/55', '/m/exceptions/42', '/m/products/SKU-42']) {
     assert.equal(mobileRouteOwnsTopBar(path), true, path);
   }
 });
 
-test('/m/pick is the pick session itself — its progress band is the only chrome', () => {
-  // The bare route stopped being a queue (operator 2026-09-25): a host header
-  // above the directed screen would stack a second bar over its progress band.
+test('/m/pick owns its bar — the walk\'s scan card carries the scan seat', () => {
+  // One screen (owner 2026-09-28): the walk (`?order=`) paints its own capture
+  // window; a host header would mount a second scan seat above it.
   assert.equal(mobileRouteOwnsTopBar('/m/pick'), true);
 });
 

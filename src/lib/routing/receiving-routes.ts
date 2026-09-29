@@ -1,5 +1,6 @@
 /** Param ownership for the six receiving surfaces. */
 
+import { EXCEPTION_RECORD_ROUTE_PARAMS } from './desk-page-routes';
 import {
   HISTORY_SURFACE_ROUTE,
   INCOMING_SURFACE_ROUTE,
@@ -28,6 +29,8 @@ import { parseIncomingViewWire } from '@/lib/receiving/incoming-view';
 import { parseIncomingDeliveryStateWire } from '@/lib/receiving/incoming-delivery-state-face';
 import { parseUnboxKpiFilterWire } from '@/lib/receiving/unbox-metrics';
 import { parseTriageLaneWire } from '@/lib/receiving/triage-lane-policy';
+import { RECON_REASONS, parseRefInParam, serializeRefIn } from '@/lib/receiving/reconcile';
+import { parseTrackingInParam, serializeTrackingIn } from '@/lib/receiving/tracking-paste';
 import { parsePickupStatusTabWire } from '@/lib/local-pickup/order-status';
 import { isRepairColumnSort } from '@/lib/repair/repair-display-sort';
 import { parseRepairTab } from '@/lib/walk-in/history-modes';
@@ -36,6 +39,7 @@ import { parseUnboxViewWire } from '@/utils/unbox-workspace-state';
 import type { ReceivingMode } from '@/components/sidebar/receiving/receiving-sidebar-shared';
 import {
   defineRouteParams,
+  paramCanonical,
   paramDateKey,
   paramEnum,
   paramFlag,
@@ -44,6 +48,20 @@ import {
   paramText,
   type RouteParamsSpec,
 } from './route-params';
+
+/**
+ * A pasted list rides the URL whole (up to the paste cap — ~3KB), so it is
+ * NOT `paramText` (200 chars would strip any list past ~10 numbers). Its own
+ * parser is the schema: deduped, capped, re-serialized.
+ */
+const paramRefList = paramCanonical((raw) => {
+  const refs = parseRefInParam(raw).refs;
+  return refs.length > 0 ? serializeRefIn(refs) : null;
+});
+const paramTrackingList = paramCanonical((raw) => {
+  const keys = parseTrackingInParam(raw).keys;
+  return keys.length > 0 ? serializeTrackingIn(keys) : null;
+});
 
 /** Ambient set shared by the two scan surfaces (Unbox + Triage). */
 const SCAN_SURFACE_CARRIES = [
@@ -85,6 +103,8 @@ export const UNBOX_ROUTE_PARAMS = defineRouteParams({
      * — see `utils/unbox-workspace-state.ts`. Never a hand-copied enum.
      */
     unboxview: unboxViewParam(),
+    /** Header/sidebar Find shared by every Unbox view. */
+    find: paramText,
     /**
      * Desk mode — workbench tables after Back to list. Absent = station-first
      * (MRU carton or empty scan bench). See `unbox-selection-url.ts`.
@@ -192,19 +212,24 @@ export const INCOMING_ROUTE_PARAMS = defineRouteParams({
      * rows, so it deliberately relaxes the lane's own predicate; written only by
      * the bulk-tracking panel.
      */
-    tracking_in: paramText,
+    tracking_in: paramTrackingList,
     /**
      * Inbound reconciliation — the operator's pasted order / tracking numbers,
      * comma-joined (`REF_IN_PARAM`), written by the sidebar Find. Replaces the
      * On-the-way lane with every line those numbers name.
      */
-    ref_in: paramText,
+    ref_in: paramRefList,
     /**
      * Bucket filter over `ref_in` (`RECON_PARAM`) — the inbound locator's
      * bucket ids. The ledger narrows on received / not_received only;
      * `exceptions` narrows the pasted-list popout.
      */
     recon: paramEnum(['received', 'not_received', 'exceptions'] as const),
+    /**
+     * Reason filter inside `recon` (`RECON_REASON_PARAM`) — why each pasted
+     * number sits in its status. Only applies with a status set whose reason it is.
+     */
+    recon_reason: paramEnum(RECON_REASONS),
     /** Delivery-state tile filter. */
     state: paramRoundTrip(parseIncomingDeliveryStateWire),
     /** Source filter (`all` default | `zoho` | `ebay` | `amazon` | `manual`) — Pipeline. */
@@ -234,6 +259,7 @@ export const INCOMING_ROUTE_PARAMS = defineRouteParams({
     /** Unboxed "needs attention" pills (`DockedReceiptsLedger`) — a saved view keeps them. */
     [DOCKED_FLAG_PARAM]: paramText,
     /** Unboxed intake kind (sidebar Kind row) — a saved view keeps it. */
+    ...EXCEPTION_RECORD_ROUTE_PARAMS,
     [DOCKED_KIND_PARAM]: paramEnum(DOCKED_KIND_VALUES),
     /** Docked activity-date window (sidebar date row) — replaces the week slice while set. */
     [DOCKED_DATE_FROM_PARAM]: paramDateKey,
@@ -258,6 +284,18 @@ const PICKUP_ROUTE_PARAMS = defineRouteParams({
     status: paramRoundTrip(parsePickupStatusTabWire),
     /** Pickup's own list filter (distinct from History's namespaced `rh_q`). */
     q: paramText,
+    /** Modern card-ledger order; direction is encoded in the vocabulary. */
+    sort: paramEnum(['actionable', 'newest', 'oldest', 'order', 'customer', 'amount_high', 'amount_low'] as const),
+    /** Physical Receiving-stage refinements, all projection-backed. */
+    qc: paramEnum(['failed', 'pending', 'retest', 'passed'] as const),
+    triage: paramEnum(['pending', 'triaged'] as const),
+    label: paramEnum(['missing', 'printed'] as const),
+    ticket: paramEnum(['linked', 'none'] as const),
+    vendor: paramText,
+    pickupFrom: paramDateKey,
+    pickupTo: paramDateKey,
+    /** Shared TriageCardList client page. */
+    page: paramPositiveInt,
   },
   carries: BROWSE_SURFACE_CARRIES,
 });

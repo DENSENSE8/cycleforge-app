@@ -66,11 +66,19 @@ export async function latestCronRuns(
   jobKeys: readonly string[],
 ): Promise<Record<string, { status: 'running' | 'success' | 'failed'; at: string }>> {
   if (jobKeys.length === 0) return {};
+  // One idx_cron_runs_job_started probe per key. DISTINCT ON over `job = ANY`
+  // read and sorted every run of every key (37k for the ingest drain): ~210 ms
+  // vs ~0.15 ms, on every desk page via GET /api/sync/global.
   const { rows } = await pool.query<{ job: string; status: 'running' | 'success' | 'failed'; at: string }>(
-    `SELECT DISTINCT ON (job) job, status, COALESCE(finished_at, started_at) AS at
-       FROM cron_runs
-      WHERE job = ANY($1::text[])
-      ORDER BY job, started_at DESC`,
+    `SELECT k.job, c.status, COALESCE(c.finished_at, c.started_at) AS at
+       FROM unnest($1::text[]) AS k(job)
+       CROSS JOIN LATERAL (
+         SELECT cr.status, cr.finished_at, cr.started_at
+           FROM cron_runs cr
+          WHERE cr.job = k.job
+          ORDER BY cr.started_at DESC
+          LIMIT 1
+       ) c`,
     [jobKeys],
   );
   return Object.fromEntries(rows.map((r) => [r.job, { status: r.status, at: new Date(r.at).toISOString() }]));

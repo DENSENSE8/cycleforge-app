@@ -11,7 +11,12 @@ import {
 import { SearchableSelectField } from '@/design-system/components/SearchableSelectField';
 import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
 import { resolveSkuIdentityTitle } from '@/lib/sku/sku-identity-law';
-import { receivingPhotosQueryKey, refreshReceivingPhotos } from '@/lib/queries/receiving-queries';
+import {
+  fetchReceivingPhotoList,
+  RECEIVING_PHOTOS_STALE_MS,
+  receivingPhotoListQueryKey,
+  refreshReceivingPhotos,
+} from '@/lib/queries/receiving-queries';
 import {
   ASPECTS_BY_STAGE,
   photoAspectLabel,
@@ -149,21 +154,12 @@ export function PhotoLinkDisplay({
     staleTime: 10_000,
   });
 
+  const cartonPhotoParams = { receivingId, photoIntent: RECEIVING_PHOTO_LIST_INTENT_CARTON };
   const photosQuery = useQuery<{ photos: CartonPhotoRow[] }>({
-    queryKey: [...receivingPhotosQueryKey(receivingId), RECEIVING_PHOTO_LIST_INTENT_CARTON],
-    queryFn: async () => {
-      const params = new URLSearchParams({
-        receivingId: String(receivingId),
-        photoIntent: RECEIVING_PHOTO_LIST_INTENT_CARTON,
-      });
-      const res = await fetch(`/api/receiving-photos?${params.toString()}`, {
-        cache: 'no-store',
-      });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      return res.json();
-    },
+    queryKey: receivingPhotoListQueryKey(cartonPhotoParams),
+    queryFn: () => fetchReceivingPhotoList(cartonPhotoParams),
     enabled: Number.isFinite(receivingId) && receivingId > 0,
-    staleTime: 10_000,
+    staleTime: RECEIVING_PHOTOS_STALE_MS,
   });
 
   const linkToOptions = useMemo(

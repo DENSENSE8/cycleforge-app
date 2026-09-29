@@ -118,8 +118,8 @@ interface ReceivingSpreadsheetProps {
   linkedReceivingId?: number | null;
   /** Pointer enter/leave on a carton row (compare host only). */
   onCrosshairHover?: (receivingId: number | null) => void;
-  /** The find field, as data — the surface above owns the URL it writes. */
-  search: DataTableSearch;
+  /** Keep-sheet sub-ledger Find. Page-level lists use contextual navigation. */
+  search?: DataTableSearch;
   /**
    * Funnel beside search. Omit and DataTable mounts idle chrome so the icon
    * still paints. Unbox Queue/Viewed/History pass `useReceivingTableChrome`.
@@ -303,7 +303,7 @@ export function ReceivingSpreadsheet({
       onSortChange={applySort}
       loading={loading}
       emptyMessage={emptyMessage}
-      search={search}
+      sheetFind={search}
       filter={filter}
       selectionScope={selectMode ? selectionScope : undefined}
       showDayHeaders={showDayHeaders}

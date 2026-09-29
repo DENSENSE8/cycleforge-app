@@ -1,21 +1,18 @@
-/** Device → mode resolution for `ModeRegion` (owner 2026-09-26, BRIEF §12: industrial on phones, triage on desktop). */
+/**
+ * Route → region mode resolution for `ModeRegion` (owner 2026-09-28,
+ * `docs/design-system/HANDOFF-remove-desk-floor.md`): the ROUTE declares the
+ * mode on every device — no phone / touch-pointer collapse.
+ */
 import type { ModeName } from '@/design-system/modes/registry';
-import { isMobileFirstPath } from '@/lib/mobile/mobile-first-surface';
-
-export type ModeDevice = 'desktop' | 'phone';
-
-/** `/m/*` or a coarse (touch) pointer is the phone; everything else is the desk. */
-export function modeDeviceOf(pathname: string | null | undefined, coarsePointer: boolean): ModeDevice {
-  return coarsePointer || isMobileFirstPath(pathname) ? 'phone' : 'desktop';
-}
 
 /**
- * The mode a region paints. `triage` is the desktop system and collapses to
- * `industrial` on a phone — unless the region is a `form` (a job that fills
- * something in rather than executes on the floor), which keeps `triage`. An explicit `industrial` is never lifted: on a phone
- * it is the floor, on a desk it is Mode C — a hardware mirror of a live phone,
- * rendered 1:1. `counter` / `assistant` keep their own identity everywhere.
+ * The mode a region paints, given the mode the governing route declares
+ * (`modeRouteFor`, null off the registry). A region asking for `triage` on an
+ * `industrial` route — a sheet or dialog portalled out of an operation flow —
+ * paints the route's `industrial`, unless the region is a `form` (it fills
+ * something in), which keeps `triage`. Every other request is painted as asked:
+ * `industrial` stays explicit, `counter` / `assistant` keep their identity.
  */
-export function resolveRegionMode(requested: ModeName, device: ModeDevice, opts: { form?: boolean } = {}): ModeName {
-  return requested === 'triage' && device === 'phone' && !opts.form ? 'industrial' : requested;
+export function resolveRegionMode(requested: ModeName, routeMode: ModeName | null, opts: { form?: boolean } = {}): ModeName {
+  return requested === 'triage' && routeMode === 'industrial' && !opts.form ? 'industrial' : requested;
 }

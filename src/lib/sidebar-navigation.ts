@@ -36,6 +36,7 @@ import {
   ShoppingCart,
   Star,
   Tags,
+  TicketHelp,
   TrendingUp,
   User,
   Workflow,
@@ -45,6 +46,7 @@ import {
   StationWalkIn,
   Phone,
   Voicemail,
+  Upload,
 } from '@/components/Icons';
 import {
   DASHBOARD_REPAIRS_MODE,
@@ -64,11 +66,28 @@ import { parseProductsView } from '@/components/products/products-view';
 import { OUTBOUND_MODE_PATHS, outboundModeFromPath } from '@/components/outbound/outbound-sidebar-shared';
 import { SHIPPING_EXCEPTIONS_PATH, SHIPPING_LABEL_INTAKE_PATH, SHIPPING_ORDERS_PATH, SHIPPING_SHORTAGE_PATH } from '@/lib/shipping/orders-desk';
 import { QC_LABELS_PATH } from '@/lib/labels/qc-label-views';
+import { PRINT_STATION_PATH, PRINT_STATION_FNSKU_PARAM, PRINT_STATION_VIEW_PARAM } from '@/lib/print-station/fnsku';
 import { SHIPPING_SHIPPED_PATH } from '@/lib/shipping/shipped-desk';
 import { DESK_QUEUE_PARAM } from '@/lib/outbound/desk-views';
 import { routeParamsFor } from '@/lib/routing/registry';
 import { parseRouteParams } from '@/lib/routing/route-params';
 import { FBA_MODE_PARAM, resolveFbaModeFromSearchParams } from '@/lib/fba/fba-modes';
+import {
+  EXCEPTIONS_PATH,
+  EXCEPTION_DOMAINS,
+  EXCEPTION_DOMAIN_LABEL,
+  EXCEPTION_DOMAIN_PARAM,
+  EXCEPTION_KINDS,
+  EXCEPTION_KIND_PARAM,
+  EXCEPTION_KIND_SPEC,
+  EXCEPTION_RECORD_PARAM,
+  exceptionKindsOf,
+  parseExceptionDomain,
+  parseExceptionKind,
+  type ExceptionDomain,
+  type ExceptionKind,
+} from '@/lib/exceptions/types';
+import { EXCEPTION_KIND_PERMISSION } from '@/lib/exceptions/permissions';
 
 export type SidebarRouteKey =
   | 'home'
@@ -141,7 +160,7 @@ export const MAIN_GROUPS = [
   icon: SidebarIconComponent;
 }>;
 
-/** Optional peer tags on floor benches (Arrival · Unbox / Local Pickup · Repair Service / Quality Control). */
+/** Optional peer tags on floor benches (Arrival · Unbox / Repair Service / Quality Control). */
 export type StationSubgroupId = 'receiving' | 'walk-in' | 'testing';
 
 export const STATION_SUBGROUPS = [
@@ -175,11 +194,11 @@ export function stationSubgroupOfPage(
 /** Spine sections — Scan Stations, then the lane order the operator reads top-to-bottom: */
 export const SPINE_SECTIONS = [
   ...STATION_GROUPS, // Scan Stations
-  domainLane('inbound'),
-  domainLane('fulfillment'), // faced "Outbound"
-  domainLane('inventory'),
-  domainLane('catalog'), // faced "Products"
   domainLane('sales'),
+  domainLane('inbound'),
+  domainLane('fulfillment'),
+  domainLane('inventory'),
+  domainLane('catalog'),
   domainLane('support'),
   MAIN_GROUPS[0], // Operations (monitor)
 ] as const;
@@ -236,6 +255,11 @@ type SidebarNavItemFields = {
   description?: string;
   /** `kind: 'top'` only. */
   spineBand?: boolean;
+  /**
+   * Keep a command-palette `top` item in the draggable map order instead of
+   * the fixed pin band. Reports uses this to close the business-lane sequence.
+   */
+  spineOrderable?: boolean;
   /**
    * Render this L1 as a single flat map row even though it declares `children`.
    * Children stay live for ⌘K, the header Mode switcher and deep links.
@@ -298,14 +322,22 @@ export function isMobileAllowedPath(pathname: string | null | undefined): boolea
 
 /** Dogfood prod surface (stations + shipping + inventory + warehouse + thin support). */
 export const APP_SIDEBAR_NAV: SidebarNavItem[] = [
-  // Top map rows — Chat → Automations → Daily → Media Library. Chat leads the
+  // Top map rows — Chat → Daily → Automations → Exceptions → Media Library. Chat leads the
   // page map and the ⌘K pin (operator 2026-09-27); `/ai-chat` → SessionSurface,
   // the ONE assistant door. Automations sits right under Chat, a top row rather
   // than the last lane (operator 2026-09-27: a more prominent action; href
   // stays /studio).
   { id: 'ai-chat',           label: 'Chat',           href: '/ai-chat',            icon: MessageSquare,   kind: 'top', requires: 'assistant.chat' },
-  { id: 'studio',            label: 'Automations',    href: '/studio',             icon: Workflow,        kind: 'top', requires: 'studio.view' },
   { id: 'home',              label: 'Daily',           href: '/',                   icon: ListChecks,      kind: 'top' },
+  { id: 'studio',            label: 'Automations',    href: '/studio',             icon: Workflow,        kind: 'top', requires: 'studio.view' },
+  // Exceptions (owner 2026-09-28): every category's blockers in one hub. No
+  // single `requires` — the row shows while ANY kind child survives the child
+  // funnel (`getSidebarNavItems` → `hasChildDoor`), i.e. the caller can see
+  // any exception source.
+  { id: 'exceptions',        label: 'Exceptions',     href: EXCEPTIONS_PATH,       icon: AlertTriangle,   kind: 'top', keywords: ['exceptions', 'blockers', 'held orders', 'missing pairs', 'bin errors', 'tracking exceptions', 'claim', 'short', 'unfound'] },
+  // Print station (owner 2026-09-29): a parent-level page for printing to ANY computer in the org — first FNSKU labels,
+  // found from the contextual sidebar's Find and sent silently to the print station at a packer's table.
+  { id: 'print-station',     label: 'Print station',  href: PRINT_STATION_PATH,    icon: Printer,         kind: 'top', requires: 'print.label', keywords: ['print', 'printer', 'reprint', 'fnsku', 'fba label', 'amazon label', 'unit label', 'print station', 'send to station'] },
   { id: 'search',            label: 'Search',         href: '/search',             icon: Search,          kind: 'top', spineBand: false },
   { id: 'ops-photos',        label: 'Media Library',  href: '/ops/photos',         icon: Images,          kind: 'top', requires: 'photos.view', keywords: ['photos', 'photo library', 'images', 'assets', 'gallery'] },
   // Plans — live master-plan console (Home forge). Same landing as `/forge`.
@@ -320,18 +352,18 @@ export const APP_SIDEBAR_NAV: SidebarNavItem[] = [
   { id: 'imports',           label: 'Imports',     href: '/operations/imports', icon: Download,        kind: 'main', mainGroup: 'monitor', requires: 'orders.view' },
   // Reports — DATED, per-entity, exportable tables (Staff day · Bin utilization · Velocity · Dead stock).
   // **A PARENT-LEVEL row, not a Monitor member** (operator 2026-09-15:
-  { id: 'reports',            label: 'Reports',     href: '/reports',            icon: BarChart3,       kind: 'top', requires: 'operations.view' },
-  // Scan Stations — scan-first benches (Arrival / Unbox / Pickup / Repair
+  { id: 'reports',            label: 'Reports',     href: '/reports',            icon: BarChart3,       kind: 'top', spineFlat: true, spineOrderable: true, requires: 'operations.view' },
+  // Scan Stations — scan-first benches (Arrival / Unbox / Repair
   // Service / Quality Control / Ready to Pack / Packing / Scan out).
   { id: 'triage',            label: 'Arrival',     href: '/triage',             icon: RECEIVING_NAV_ICONS.triage,  kind: 'station', stationGroup: 'floor', stationSubgroup: 'receiving', requires: 'receiving.view' },
   { id: 'receive',           label: 'Unbox',       href: '/unbox',              icon: RECEIVING_NAV_ICONS.receive, kind: 'station', stationGroup: 'floor', stationSubgroup: 'receiving', requires: 'receiving.view' },
-  { id: 'pickup',            label: 'Local Pickup', href: '/pickup',            icon: RECEIVING_NAV_ICONS.pickup,  kind: 'station', stationGroup: 'floor', stationSubgroup: 'walk-in', requires: 'receiving.view' },
+  { id: 'pickup',            label: 'Local Pickup', href: '/pickup',            icon: RECEIVING_NAV_ICONS.pickup,  kind: 'domain', domainGroup: 'inbound', requires: 'receiving.view' },
   { id: 'repair',            label: 'Repair Service', href: '/repair',          icon: RECEIVING_NAV_ICONS.repair,  kind: 'station', stationGroup: 'floor', stationSubgroup: 'walk-in', requires: 'receiving.view' },
   // Quality Control (`/test`) and the Picker desk (`/pick`) are separate
   // first-class Scan Stations (owner 2026-09-27). Picking is not a testing bench,
   // so the Picker row carries no `testing` subgroup.
   { id: 'testing',           label: 'Quality Control', href: '/test',             icon: TECH_NAV_ICONS.testing,  kind: 'station', stationGroup: 'floor', stationSubgroup: 'testing', requires: 'tech.view' },
-  { id: 'ready-to-pack',     label: 'Picker',          href: '/pick?ship=urgent', icon: TECH_NAV_ICONS.shipping, kind: 'station', stationGroup: 'floor', requires: 'picking.view' },
+  { id: 'ready-to-pack',     label: 'Picker',          href: '/pick', icon: TECH_NAV_ICONS.shipping, kind: 'station', stationGroup: 'floor', requires: 'picking.view' },
   // Points at the first-class Pack surface (`/pack`) so the primary nav lands on
   // the canonical URL without a redirect hop. Route key still resolves to
   // 'packer' (reuses the packer panel), so the item stays active on /pack + /packer.
@@ -394,13 +426,25 @@ export function getSidebarNavItems(opts: GetSidebarNavItemsOpts = {}): SidebarNa
     );
   }
   if (permissions) {
-    items = items.filter((item) => !item.requires || permissions.has(item.requires));
+    items = items.filter((item) => (!item.requires || permissions.has(item.requires)) && hasChildDoor(item.id, permissions));
   }
   items = items.filter((item) => !item.sandboxOnly || organizationEnvironment === 'sandbox');
   // THE MOBILE-FIRST GATE (operator 2026-09-14):
   // THE MOBILE-FIRST GATE (operator 2026-09-14): a lane the phone cannot run
   items = items.filter((item) => isLaneVisible(spineSectionIdForPage(item) ?? ''));
   return items;
+}
+
+/**
+ * A page that DECLARES children is a door only while one of them survives the
+ * child funnel ({@link filterPageChildren}): its gate is "any child's". This is
+ * how Exceptions — one child per source kind, each gated by that source's
+ * permission — shows to anyone who can see ANY exception source, without a
+ * second permission list on the row.
+ */
+function hasChildDoor(pageId: string, permissions: ReadonlySet<string>): boolean {
+  const page = getSidebarPageNav(pageId);
+  return !page || isSidebarPageReachable(filterPageChildren(page, permissions));
 }
 
 /** Route keys that render the **two-card station column** (nav card on top, recents + scan bar card below) instead of the classic single… */
@@ -507,9 +551,8 @@ export function getSidebarRouteKey(pathname: string | null): SidebarRouteKey {
   if (pathname === '/unbox' || pathname.startsWith('/unbox/')) return 'receiving';
   if (pathname === '/triage' || pathname.startsWith('/triage/')) return 'receiving';
   if (pathname === '/incoming' || pathname.startsWith('/incoming/')) return 'receiving';
-  // Local Pickup + Repair are Walk-In Scan Station benches (front-desk), so
-  // `/pickup` stays on the receiving key — that's what mounts the receiving
-  // sidebar + its mode rail.
+  // Local Pickup is the Inbound lane's receiving ledger; the route still
+  // mounts the shared receiving right pane.
   if (pathname === '/pickup' || pathname.startsWith('/pickup/')) return 'receiving';
   // `/receiving/history` (+ every other receiving sub-route) resolves here too.
   if (pathname === '/receiving' || pathname.startsWith('/receiving/')) return 'receiving';
@@ -596,6 +639,8 @@ export function getSidebarNavPageId(
   if (outboundMode) return 'outbound';
   if (pathname === '/shipping/orders' || pathname.startsWith('/shipping/orders/')) return 'outbound';
   if (pathname === '/reports' || pathname.startsWith('/reports/')) return 'reports';
+  if (pathname === EXCEPTIONS_PATH || pathname.startsWith(`${EXCEPTIONS_PATH}/`)) return 'exceptions';
+  if (pathname === PRINT_STATION_PATH || pathname.startsWith(`${PRINT_STATION_PATH}/`)) return 'print-station';
   // Quality Control owns `/test` (legacy `/tech`); the Picker desk owns `/pick`.
   // A stale `?view=` on `/test` is ignored — the bench has one mode.
   if (
@@ -693,7 +738,7 @@ export function isSidebarTopPinActive(
  * Settings) stay reachable via ⌘K / URL / the account ⋯ menu.
  */
 export function isSpineMapTopRow(item: SidebarNavItem): boolean {
-  return item.kind === 'top' && item.spineBand !== false;
+  return item.kind === 'top' && item.spineBand !== false && item.spineOrderable !== true;
 }
 
 /**
@@ -713,7 +758,7 @@ export function isDeskSpineSection(id: SpineSectionId | null): boolean {
   return true;
 }
 
-/** The Workspaces lanes, in {@link SPINE_SECTIONS} order — Inbound → Outbound → Inventory → Products → Sales → Support → Operations. */
+/** The Workspaces lanes, in {@link SPINE_SECTIONS} order — Sales → Receiving → Fulfillment → Inventory → Products → Support → Operations. */
 export const DESK_SPINE_SECTIONS = SPINE_SECTIONS.filter(
   (section) => isDeskSpineSection(section.id) && isLaneVisible(section.id),
 );
@@ -821,14 +866,18 @@ export interface SidebarChildPage {
    * admin sections' People / Data sources / System). Omitted = no header.
    */
   group?: string;
+  /**
+   * Gate on ANY of these permissions (beside `requires`, which must also
+   * hold): a child that aggregates siblings gated differently — Exceptions'
+   * All shows to whoever can see any one source kind.
+   */
+  requiresAny?: readonly string[];
   /* There is deliberately NO `parked` field here. */
 }
 
 export type SidebarPageNav = SidebarNavItem & {
   /** This page's child pages. Omitted for single-surface pages. */
   children?: SidebarChildPage[];
-  /** Opted in to **desk page chrome** (`docs/todo/desk-page-chrome-fixed-width-PLAN.md`): */
-  deskChrome?: true;
   /**
    * Runs **rail-less** — Pattern E, no 360px left context column.
    * Operator ruling 2026-08-31: keep the rail, decouple the flags.
@@ -868,11 +917,41 @@ const REVIEW = '/review';
 // The import record (`src/lib/imports/params.ts` IMPORTS_PATH).
 const IMPORTS = '/operations/imports';
 
+/** Each exception kind's nav glyph — the icon of the surface its source lives on. */
+const EXCEPTION_KIND_ICONS: Readonly<Record<ExceptionKind, SidebarIconComponent>> = {
+  fbm: STATION_PAGE_ICONS.outbound,
+  labels: SHIPPING_NAV_ICONS.labels,
+  paperwork: FileText,
+  pairs: Link2,
+  bins: Warehouse,
+  tracking: Barcode,
+  claim: AlertCircle,
+  short: PackageOpen,
+  unfound: Search,
+};
+
+/** Each exception domain's nav glyph — its lane's (Receiving is Inbound's). */
+const EXCEPTION_DOMAIN_ICONS: Readonly<Record<ExceptionDomain, SidebarIconComponent>> = {
+  fulfillment: domainLane('fulfillment').icon,
+  inventory: domainLane('inventory').icon,
+  receiving: domainLane('inbound').icon,
+};
+
 export const SIDEBAR_PAGE_NAV: SidebarPageNav[] = [
   // ── Daily (was Home) ──────────────────────────────────────────────────────
   {
     id: 'home', label: 'Daily', href: '/', icon: ListChecks, kind: 'top',
-    deskChrome: true,
+    children: [
+      { id: 'all', label: 'All', icon: List, to: () => ({ pathname: '/', params: { tab: null } }) },
+      { id: 'checklist', label: 'Checklist', icon: Check, to: () => ({ pathname: '/', params: { tab: 'checklist', scope: null } }) },
+      { id: 'task', label: 'Tasks', icon: ClipboardList, to: () => ({ pathname: '/', params: { tab: 'task' } }) },
+      { id: 'ticket', label: 'Tickets', icon: Phone, to: () => ({ pathname: '/', params: { tab: 'ticket' } }) },
+      { id: 'task_ticket', label: 'Tasks + tickets', icon: Layers, to: () => ({ pathname: '/', params: { tab: 'task_ticket' } }) },
+    ],
+    resolveChild: ({ params }) => {
+      const tab = params.get('tab');
+      return tab === 'checklist' || tab === 'task' || tab === 'ticket' || tab === 'task_ticket' ? tab : 'all';
+    },
   },
   // ── Chat ─────────────────────────────────────────────────────────────────── No views: its panel is the staffer's
   // threads (`NAV_PAGE_DECLS['ai-chat'].recentsPanel`), led by New chat.
@@ -883,8 +962,6 @@ export const SIDEBAR_PAGE_NAV: SidebarPageNav[] = [
   {
     id: 'sales', label: 'Sales', href: `${DASHBOARD}?mode=${DASHBOARD_SALES_MODE}`, icon: SalesPrice,
     kind: 'domain', domainGroup: 'sales', requires: 'dashboard.view',
-    // Desk page chrome (2026-08-31):
-    deskChrome: true,
     children: [
       { id: 'counter', label: 'Counter', icon: SalesModeCounter, requires: 'walk_in.view', to: () => ({ pathname: '/counter', params: {} }) },
       { id: 'sales', label: 'Sales Board', icon: SalesPrice, requires: DASHBOARD_SALES_PERMISSION, to: () => ({ pathname: DASHBOARD, params: { mode: DASHBOARD_SALES_MODE } }) },
@@ -902,10 +979,7 @@ export const SIDEBAR_PAGE_NAV: SidebarPageNav[] = [
   // ── Operations ──────────────────────────────────────────────────────────── `?mode=history|signals`; bare /operations = the Live…
   {
     id: 'operations', label: 'Operations', href: OPERATIONS, icon: Monitor, kind: 'main', mainGroup: 'monitor', requires: 'operations.view',
-    // Desk page chrome (2026-08-31): the children below are drawn as IN-PAGE
-    // tabs by the Operations desk, so the spine row stays a flat leaf.
     // NOT `railless` — this desk navigates by its context rail.
-    deskChrome: true,
     children: [
       // Each target used to null twelve sibling keys by hand — the largest of the nine deleted denylists, re-stated once per mode.
       { id: 'live',      label: 'Live',      icon: Activity,  to: () => ({ pathname: OPERATIONS, params: { mode: null } }) },
@@ -950,7 +1024,6 @@ export const SIDEBAR_PAGE_NAV: SidebarPageNav[] = [
   // Runs (bare) · Orders (`?view=rows`, one row per order an import touched). `?run=` opens a run's record.
   {
     id: 'imports', label: 'Imports', href: IMPORTS, icon: Download, kind: 'main', mainGroup: 'monitor', requires: 'orders.view',
-    deskChrome: true,
     // Rail-less (owner 2026-09-28): the contextual sidebar is its one left
     // column — never the Operations live-feed panel beside it.
     railless: true,
@@ -960,19 +1033,18 @@ export const SIDEBAR_PAGE_NAV: SidebarPageNav[] = [
     ],
     resolveChild: ({ params }) => (params.get('view') === 'rows' ? 'rows' : 'runs'),
   },
-  // ── Reports ──────────────────────────────────────────────────────────────── `?tab=` — the seven tabs `src/app/reports/page.tsx` renders (`REPORT_TABS`); Staff day is the bare URL.
+  // ── Reports ──────────────────────────────────────────────────────────────── Parent in the page map; report types are its contextual children.
   {
     // `kind: 'top'` must match the APP_SIDEBAR_NAV twin above — the two
     // registries are kept in lockstep, and a `main`/`top` split would put the
     // row in the lane band on one code path and above it on the other.
     id: 'reports', label: 'Reports', href: '/reports', icon: BarChart3, kind: 'top', requires: 'operations.view',
-    deskChrome: true,
     children: [
       { id: 'staff-day',   label: 'Staff day',       icon: ClipboardList, to: () => ({ pathname: '/reports', params: { tab: null } }) },
       { id: 'packer-day',  label: 'Packer day',      icon: Package,       to: () => ({ pathname: '/reports', params: { tab: 'packer' } }) },
-      { id: 'utilization', label: 'Bin Utilization', icon: BarChart3,     to: () => ({ pathname: '/reports', params: { tab: 'utilization' } }) },
+      { id: 'utilization', label: 'Bin utilization', icon: BarChart3,     to: () => ({ pathname: '/reports', params: { tab: 'utilization' } }) },
       { id: 'velocity',    label: 'Velocity (30d)',  icon: TrendingUp,    to: () => ({ pathname: '/reports', params: { tab: 'velocity' } }) },
-      { id: 'dead-stock',  label: 'Dead Stock',      icon: FileText,      to: () => ({ pathname: '/reports', params: { tab: 'dead' } }) },
+      { id: 'dead-stock',  label: 'Dead stock',      icon: FileText,      to: () => ({ pathname: '/reports', params: { tab: 'dead' } }) },
       { id: 'tasks',       label: 'Tasks',           icon: ListChecks,    to: () => ({ pathname: '/reports', params: { tab: 'tasks' } }) },
       { id: 'activity',    label: 'Task time',       icon: Clock,         to: () => ({ pathname: '/reports', params: { tab: 'activity' } }) },
     ],
@@ -987,18 +1059,114 @@ export const SIDEBAR_PAGE_NAV: SidebarPageNav[] = [
       return 'staff-day';
     },
   },
-  // ── Receiving family (promoted L1 stations; modeless in MasterNav) ──────── Former Receiving modes are first-class spine rows.
+  // ── Media Library ───────────────────────────────────────────────────────── Source scopes are page views; image type remains an advanced filter.
+  {
+    id: 'ops-photos', label: 'Media Library', href: '/ops/photos', icon: Images, kind: 'top', requires: 'photos.view',
+    children: [
+      { id: 'all', label: 'All media', icon: Images, to: () => ({ pathname: '/ops/photos', params: { sourceScope: null, imageType: null } }) },
+      { id: 'unboxing', label: 'Unboxing', icon: PackageOpen, to: () => ({ pathname: '/ops/photos', params: { sourceScope: 'unboxing', imageType: null } }) },
+      { id: 'local_pickup', label: 'Local pickups', icon: SalesModeCounter, to: () => ({ pathname: '/ops/photos', params: { sourceScope: 'local_pickup', imageType: null } }) },
+      { id: 'packing', label: 'Packing', icon: Package, to: () => ({ pathname: '/ops/photos', params: { sourceScope: 'packing', imageType: null } }) },
+      { id: 'repair', label: 'Repair services', icon: Settings, to: () => ({ pathname: '/ops/photos', params: { sourceScope: 'repair', imageType: null } }) },
+      { id: 'claims', label: 'Claims', icon: TicketHelp, to: () => ({ pathname: '/ops/photos', params: { sourceScope: 'claims', imageType: null } }) },
+      { id: 'outbound', label: 'Outbound', icon: Share2, to: () => ({ pathname: '/ops/photos', params: { sourceScope: 'outbound', imageType: null } }) },
+    ],
+    resolveChild: ({ params }) => {
+      const scope = params.get('sourceScope');
+      return scope === 'unboxing' || scope === 'local_pickup' || scope === 'packing' || scope === 'repair' || scope === 'claims' || scope === 'outbound'
+        ? scope
+        : 'all';
+    },
+  },
+  // ── Exceptions ─────────────────────────────────────────────────────────── The global hub (owner 2026-09-28): its own
+  // MODES (`NAV_PAGE_DECLS.exceptions.modes`) — one child per DOMAIN (the mode
+  // card's dropdown), then one per source KIND (`src/lib/exceptions/types.ts`)
+  // whose `group` is its domain's id (the views under the card). The bare page
+  // is All (no child). Each kind carries its source's permission and each
+  // domain ANY of its kinds' (`requiresAny`); the page has no `requires` of
+  // its own and shows while a child survives (`hasChildDoor`). A kind's
+  // target keeps its domain, so the mode stays.
+  {
+    id: 'exceptions', label: 'Exceptions', href: EXCEPTIONS_PATH, icon: AlertTriangle, kind: 'top',
+    railless: true,
+    children: [
+      ...EXCEPTION_DOMAINS.map((domain) => ({
+        id: domain,
+        label: EXCEPTION_DOMAIN_LABEL[domain],
+        icon: EXCEPTION_DOMAIN_ICONS[domain],
+        requiresAny: [...new Set(exceptionKindsOf(domain).map((kind) => EXCEPTION_KIND_PERMISSION[kind]))],
+        to: () => ({
+          pathname: EXCEPTIONS_PATH,
+          params: { [EXCEPTION_DOMAIN_PARAM]: domain, [EXCEPTION_KIND_PARAM]: null, [EXCEPTION_RECORD_PARAM]: null },
+        }),
+      })),
+      ...EXCEPTION_KINDS.map((kind) => ({
+        id: kind,
+        label: EXCEPTION_KIND_SPEC[kind].label,
+        icon: EXCEPTION_KIND_ICONS[kind],
+        requires: EXCEPTION_KIND_PERMISSION[kind],
+        group: EXCEPTION_KIND_SPEC[kind].domain,
+        to: () => ({
+          pathname: EXCEPTIONS_PATH,
+          params: {
+            [EXCEPTION_DOMAIN_PARAM]: EXCEPTION_KIND_SPEC[kind].domain,
+            [EXCEPTION_KIND_PARAM]: kind,
+            [EXCEPTION_RECORD_PARAM]: null,
+          },
+        }),
+      })),
+    ],
+    resolveChild: ({ params }) =>
+      parseExceptionKind(params.get(EXCEPTION_KIND_PARAM)) ?? parseExceptionDomain(params.get(EXCEPTION_DOMAIN_PARAM)),
+  },
+  // ── Print station ─────────────────────────────────────────────────────────── Views grouped by print kind; FNSKU labels
+  // first (owner 2026-09-29): All (bare URL) · Reprinted. Find (`?q=`) narrows the FBA catalog; `?fnsku=` is the open label.
+  // The group heading is never the page's name (nav-name law).
+  {
+    id: 'print-station', label: 'Print station', href: PRINT_STATION_PATH, icon: Printer, tone: 'text-sky-600', kind: 'top', requires: 'print.label',
+    railless: true,
+    children: [
+      { id: 'fnsku', label: 'All FNSKUs', icon: ScanBarcode, group: 'FNSKU labels', to: () => ({ pathname: PRINT_STATION_PATH, params: { [PRINT_STATION_VIEW_PARAM]: null, [PRINT_STATION_FNSKU_PARAM]: null } }) },
+      { id: 'fnsku-reprinted', label: 'Reprinted', icon: History, group: 'FNSKU labels', to: () => ({ pathname: PRINT_STATION_PATH, params: { [PRINT_STATION_VIEW_PARAM]: 'reprinted', [PRINT_STATION_FNSKU_PARAM]: null } }) },
+    ],
+    resolveChild: ({ params }) => (params.get(PRINT_STATION_VIEW_PARAM) === 'reprinted' ? 'fnsku-reprinted' : 'fnsku'),
+  },
+  // ── Receiving family ─────── Arrival / Unbox / Repair are physical stations;
+  // Local Pickup is a first-class mode of the Inbound desk lane.
   {
     id: 'triage', label: 'Arrival', href: TRIAGE, icon: RECEIVING_NAV_ICONS.triage,
     kind: 'station', stationGroup: 'floor', stationSubgroup: 'receiving', requires: 'receiving.view',
+    children: [
+      { id: 'triage', label: 'Triage', icon: Inbox, to: () => ({ pathname: TRIAGE, params: { triview: null } }) },
+      { id: 'found', label: 'Prioritize', icon: Zap, to: () => ({ pathname: TRIAGE, params: { triview: 'found' } }) },
+      { id: 'unfound', label: 'Unfound', icon: Search, to: () => ({ pathname: TRIAGE, params: { triview: 'unfound' } }) },
+      { id: 'done', label: 'Done', icon: Check, to: () => ({ pathname: TRIAGE, params: { triview: 'done' } }) },
+    ],
+    resolveChild: ({ params }) => {
+      const view = params.get('triview');
+      return view === 'found' || view === 'unfound' || view === 'done' ? view : 'triage';
+    },
   },
   {
     id: 'receive', label: 'Unbox', href: UNBOX, icon: RECEIVING_NAV_ICONS.receive,
     kind: 'station', stationGroup: 'floor', stationSubgroup: 'receiving', requires: 'receiving.view',
+    children: [
+      { id: 'queue', label: 'Queue', icon: Inbox, to: () => ({ pathname: UNBOX, params: { unboxview: null } }) },
+      { id: 'incoming', label: 'Incoming', icon: Download, to: () => ({ pathname: UNBOX, params: { unboxview: 'incoming' } }) },
+      { id: 'recent', label: 'Recent', icon: Clock, to: () => ({ pathname: UNBOX, params: { unboxview: 'viewed' } }) },
+      { id: 'history', label: 'History', icon: History, to: () => ({ pathname: UNBOX, params: { unboxview: 'history' } }) },
+      { id: 'all', label: 'All cartons', icon: List, to: () => ({ pathname: UNBOX, params: { unboxview: 'all' } }) },
+    ],
+    resolveChild: ({ params }) => {
+      const view = params.get('unboxview');
+      if (view === 'incoming' || view === 'history' || view === 'all') return view;
+      return view === 'viewed' || view === 'recent' ? 'recent' : 'queue';
+    },
   },
   {
     id: 'pickup', label: 'Local Pickup', href: PICKUP, icon: RECEIVING_NAV_ICONS.pickup,
-    kind: 'station', stationGroup: 'floor', stationSubgroup: 'walk-in', requires: 'receiving.view',
+    kind: 'domain', domainGroup: 'inbound', requires: 'receiving.view',
+    railless: true,
   },
   {
     id: 'repair', label: 'Repair Service', href: REPAIR, icon: RECEIVING_NAV_ICONS.repair,
@@ -1009,10 +1177,31 @@ export const SIDEBAR_PAGE_NAV: SidebarPageNav[] = [
   {
     id: 'testing', label: 'Quality Control', href: TECH, icon: TECH_NAV_ICONS.testing,
     kind: 'station', stationGroup: 'floor', stationSubgroup: 'testing', requires: 'tech.view',
+    children: [
+      { id: 'returns', label: 'Returns', icon: PackageOpen, to: () => ({ pathname: TECH, params: { testTab: null } }) },
+      { id: 'history', label: 'History', icon: History, to: () => ({ pathname: TECH, params: { testTab: 'history' } }) },
+      { id: 'urgent', label: 'Urgent', icon: Zap, to: () => ({ pathname: TECH, params: { testTab: 'urgent' } }) },
+      { id: 'pending', label: 'Pending', icon: Clock, to: () => ({ pathname: TECH, params: { testTab: 'pending' } }) },
+      { id: 'all', label: 'All units', icon: List, to: () => ({ pathname: TECH, params: { testTab: 'all' } }) },
+    ],
+    resolveChild: ({ params }) => {
+      const tab = params.get('testTab');
+      return tab === 'history' || tab === 'urgent' || tab === 'pending' || tab === 'all' ? tab : 'returns';
+    },
   },
   {
-    id: 'ready-to-pack', label: 'Picker', href: `${PICK}?ship=urgent`, icon: TECH_NAV_ICONS.shipping,
+    id: 'ready-to-pack', label: 'Picker', href: PICK, icon: TECH_NAV_ICONS.shipping,
     kind: 'station', stationGroup: 'floor', requires: 'picking.view',
+    children: [
+      { id: 'pending', label: 'Pending', icon: Clock, to: () => ({ pathname: PICK, params: { ship: 'pending' } }) },
+      { id: 'urgent', label: 'Urgent', icon: Zap, to: () => ({ pathname: PICK, params: { ship: 'urgent' } }) },
+      { id: 'history', label: 'History', icon: History, to: () => ({ pathname: PICK, params: { ship: 'history' } }) },
+      { id: 'all', label: 'All units', icon: List, to: () => ({ pathname: PICK, params: { ship: 'all' } }) },
+    ],
+    resolveChild: ({ params }) => {
+      const tab = params.get('ship');
+      return tab === 'urgent' || tab === 'history' || tab === 'all' ? tab : 'pending';
+    },
   },
   // ── Inbound (Manage Inbound) ────────────────────────────────────────────── Single desk at `/incoming`:
   // Faced **Deliveries** (operator 2026-09-14 — never the same name as its
@@ -1021,9 +1210,7 @@ export const SIDEBAR_PAGE_NAV: SidebarPageNav[] = [
     id: 'incoming', label: 'Deliveries', href: INCOMING, icon: RECEIVING_NAV_ICONS.incoming, tone: 'text-blue-600',
     kind: 'domain', domainGroup: 'inbound', requires: 'receiving.view',
     // Rail-less since before desk chrome existed, and now DECLARED rather than special-cased inside `isRaillessSurface` (2026-08-31).
-    // `deskChrome` (operator 2026-09-14): the desk's two LANES are its tab row.
     railless: true,
-    deskChrome: true,
     children: [
       { id: 'pipeline', label: 'On the way', icon: RECEIVING_NAV_ICONS.incoming, to: () => ({ pathname: INCOMING, params: { lane: null, view: null } }) },
       { id: 'docked',   label: 'Unboxed', icon: PackageOpen,                  to: () => ({ pathname: INCOMING, params: { lane: 'docked', view: null } }) },
@@ -1066,8 +1253,6 @@ export const SIDEBAR_PAGE_NAV: SidebarPageNav[] = [
   {
     // `tone`: indigo — no colour of its own elsewhere, and not one another mode already wears.
     id: 'sourcing', label: 'Sourcing', href: SOURCING, icon: Search, tone: 'text-indigo-600', kind: 'domain', domainGroup: 'inbound', requires: 'sourcing.view',
-    // Desk page chrome (2026-08-31):
-    deskChrome: true,
     children: [
       // Each target used to null `q` and `status` by hand — and forgot `by` and `range`, so Scout's field toggle and the Analytics window leaked…
       { id: 'queue',     label: 'Queue',     icon: AlertCircle, to: () => ({ pathname: SOURCING, params: { mode: null } }) },
@@ -1106,28 +1291,27 @@ export const SIDEBAR_PAGE_NAV: SidebarPageNav[] = [
     resolveChild: ({ params }) => resolveFbaModeFromSearchParams(params),
   },
   // ── Labels & docs (Outbound lane, beside Shipping) ────────────────────── Label printing + document intake over the label ledger.
-  // Its three views live in the contextual sidebar (owner 2026-09-28), not a tab row, one per print job:
-  // Labels (bare) · Paperwork (`?view=paperwork`) · Printed (`?view=printed`) — bare keys 1 · 2 · 3.
+  // Its four views live in the contextual sidebar (owner 2026-09-28), not a tab row: Uploads (bare — one card per uploaded
+  // PDF, 2026-09-28) · Labels (`?view=labels`) · Paperwork (`?view=paperwork`) · Printed (`?view=printed`) — bare keys 1 · 2 · 3 · 4.
   {
     id: 'label-intake', label: 'Labels & docs', href: SHIPPING_LABEL_INTAKE_PATH, icon: SHIPPING_NAV_ICONS.labels, tone: 'text-teal-600', kind: 'domain', domainGroup: 'fulfillment', requires: 'packing.review',
     railless: true,
     children: [
-      { id: 'labels',    label: 'Labels',    icon: Printer,  to: () => ({ pathname: SHIPPING_LABEL_INTAKE_PATH, params: { view: null } }) },
+      { id: 'uploads',   label: 'Uploads',   icon: Upload,   to: () => ({ pathname: SHIPPING_LABEL_INTAKE_PATH, params: { view: null } }) },
+      { id: 'labels',    label: 'Labels',    icon: Printer,  to: () => ({ pathname: SHIPPING_LABEL_INTAKE_PATH, params: { view: 'labels' } }) },
       { id: 'paperwork', label: 'Paperwork', icon: FileText, to: () => ({ pathname: SHIPPING_LABEL_INTAKE_PATH, params: { view: 'paperwork' } }) },
       { id: 'printed',   label: 'Printed',   icon: History,  to: () => ({ pathname: SHIPPING_LABEL_INTAKE_PATH, params: { view: 'printed' } }) },
     ],
     resolveChild: ({ pathname, params }) => {
       if (pathname !== SHIPPING_LABEL_INTAKE_PATH && !pathname.startsWith(`${SHIPPING_LABEL_INTAKE_PATH}/`)) return null;
       const view = params.get('view');
-      return view === 'paperwork' || view === 'printed' ? view : 'labels';
+      return view === 'labels' || view === 'paperwork' || view === 'printed' ? view : 'uploads';
     },
   },
   // ── FBM (Fulfilled by merchant — Fulfillment lane) ────────────────────────── Exceptions · Picking · Allocate · Shipped.
   {
     id: 'outbound', label: 'FBM', href: SHIPPING_ORDERS_PATH, icon: STATION_PAGE_ICONS.outbound, tone: 'text-blue-600', kind: 'domain', domainGroup: 'fulfillment', requires: 'shipping.view',
-    // First adopter of desk page chrome (plan §2.2):
-    deskChrome: true,
-    // Rail-less, and now said out loud rather than derived from the line above (2026-08-31).
+    // Rail-less, said out loud (2026-08-31).
     railless: true,
     // Tab order (owner 2026-09-24): Exceptions · Picking · Allocate · Shipped —
     // the same order the contextual sidebar paints from `DESK_VIEWS`.
@@ -1209,17 +1393,19 @@ export const SIDEBAR_PAGE_NAV: SidebarPageNav[] = [
   // still resolve in the pack surface; MasterNav no longer exposes those modes.
   {
     id: 'packer', label: 'Packing', href: PACK, icon: STATION_PAGE_ICONS.packer, kind: 'station', stationGroup: 'floor', requires: 'packing.view',
+    children: [
+      { id: 'queue', label: 'Queue', icon: Inbox, to: () => ({ pathname: PACK, params: { packview: null } }) },
+      { id: 'history', label: 'History', icon: History, to: () => ({ pathname: PACK, params: { packview: 'history' } }) },
+    ],
+    resolveChild: ({ params }) => (params.get('packview') === 'history' ? 'history' : 'queue'),
   },
   // Packing Review is Operations › Packing Review (desk KPI / queue) — not a Scan Station and not a Shipping L2.
   {
     id: 'products', label: 'Products', href: PRODUCTS, icon: Tags, kind: 'domain', domainGroup: 'catalog', requires: 'sku_stock.view',
-    // Desk page chrome (2026-08-31): the children below are drawn as IN-PAGE
-    // tabs by the Products desk, so the spine row stays a flat leaf.
     // NOT `railless` — this desk navigates by its context rail.
-    deskChrome: true,
     children: [
-      // REMOVED 2026-09-15, operator ruling — *"removing the products reference, the products kit parts, the products listing match … these are…
-      { id: 'manuals', label: 'Manuals', icon: FileText, to: () => ({ pathname: PRODUCTS, params: { view: null } }) },
+      { id: 'catalog', label: 'All products', icon: Tags, to: () => ({ pathname: PRODUCTS, params: { view: null } }) },
+      { id: 'manuals', label: 'Manuals', icon: FileText, to: () => ({ pathname: PRODUCTS, params: { view: 'manuals' } }) },
       { id: 'labels',  label: 'SKU Barcodes',  icon: Barcode,  to: () => ({ pathname: PRODUCTS, params: { view: 'labels' } }) },
       { id: 'pairing', label: 'Pairing', icon: Link2,    to: () => ({ pathname: PRODUCTS, params: { view: 'pairing' } }) },
       { id: 'qc',      label: 'QC Checklist', icon: Check,     to: () => ({ pathname: PRODUCTS, params: { view: 'qc' } }) },
@@ -1237,18 +1423,16 @@ export const SIDEBAR_PAGE_NAV: SidebarPageNav[] = [
   {
     // `tone` (owner 2026-09-28): emerald — worn by no other mode. Label "Warehouse": the lane is Inventory (nav-name law).
     id: 'inventory', label: 'Warehouse', href: INVENTORY, icon: ShelvingUnit, tone: 'text-emerald-600', kind: 'domain', domainGroup: 'inventory', requires: 'sku_stock.view',
-    // Desk page chrome (2026-08-31):
     // `railless` (operator 2026-09-15): the left context rail is gone on every
-    deskChrome: true,
     railless: true,
     children: [
       // `open: null` on every switch so a selection (exception/unit id) from one mode never leaks into another's right pane.
       // `@/lib/nav/parked-tabs` (operator 2026-09-15 — the tabs that do not
       // Stock and SKU Exceptions lead the band (owner 2026-09-24: "stock and
       { id: 'stock', label: 'Stock', icon: Package, to: () => ({ pathname: `${INVENTORY}/stock`, params: {} }) },
-      // SKU Exceptions is Stock narrowed to the on-hold placeholders — the same list the
-      // `/inventory/sku-exceptions` redirect lands on, so the view lights where it lands.
-      { id: 'sku-exceptions', label: 'SKU Exceptions', icon: AlertTriangle, to: () => ({ pathname: `${INVENTORY}/stock`, params: { status: 'on-hold' } }) },
+      // SKU Exceptions / Tracking Exceptions are the Exceptions hub list locked to Missing
+      // pairs / Tracking (owner 2026-09-28, one list, two doors) — `/inventory/sku-exceptions`, `/inventory/triage`.
+      { id: 'sku-exceptions', label: 'SKU Exceptions', icon: AlertTriangle, to: () => ({ pathname: `${INVENTORY}/sku-exceptions`, params: {} }) },
       { id: 'ledger',    label: 'Ledger',    icon: Clipboard,  to: () => ({ pathname: INVENTORY, params: {} }) },
       { id: 'triage',    label: 'Tracking Exceptions', icon: Zap,        to: () => ({ pathname: `${INVENTORY}/triage`, params: {} }) },
       { id: 'pulse',     label: 'Pulse',     icon: TrendingUp, to: () => ({ pathname: `${INVENTORY}/pulse`, params: {} }) },
@@ -1273,7 +1457,7 @@ export const SIDEBAR_PAGE_NAV: SidebarPageNav[] = [
         return 'locations';
       }
       if (pathname.startsWith(`${INVENTORY}/sku-exceptions`)) return 'sku-exceptions';
-      if (pathname.startsWith(`${INVENTORY}/stock`)) return params.get('status') === 'on-hold' ? 'sku-exceptions' : 'stock';
+      if (pathname.startsWith(`${INVENTORY}/stock`)) return 'stock';
       if (pathname.startsWith(`${INVENTORY}/graph`)) return 'graph';
       if (pathname.startsWith(`${INVENTORY}/triage`)) return 'triage';
       if (pathname.startsWith(`${INVENTORY}/pulse`)) return 'pulse';
@@ -1305,7 +1489,6 @@ export const SIDEBAR_PAGE_NAV: SidebarPageNav[] = [
   // serial) the picker scans, which binds that serial to the order at pick.
   {
     id: 'qc-labels', label: 'QC labels', href: QC_LABELS_PATH, icon: ScanBarcode, tone: 'text-amber-600', kind: 'domain', domainGroup: 'inventory', requires: 'sku_stock.view',
-    deskChrome: true,
     railless: true,
     children: [
       { id: 'all',   label: 'All labels', icon: ScanBarcode,  to: () => ({ pathname: QC_LABELS_PATH, params: { view: null } }) },
@@ -1320,9 +1503,7 @@ export const SIDEBAR_PAGE_NAV: SidebarPageNav[] = [
   // Data Wipe (`/wipe`) is temporarily absent from master nav — revisit when the station UX is ready for general rollout.
   {
     id: 'support', label: 'Support', href: SUPPORT, icon: AlertCircle, kind: 'domain', domainGroup: 'support', requires: 'integrations.zendesk',
-    // Desk page chrome (2026-08-31):
     // **To ship was REMOVED here (operator ruling 2026-08-31).** It was the one
-    deskChrome: true,
     children: [
       {
         id: 'tickets',
@@ -1447,7 +1628,8 @@ export function filterPageChildren(
   const children = page.children.filter(
     (child) =>
       !isTabParked(page.id, child.id) &&
-      (!child.requires || (permissions?.has(child.requires) ?? false)),
+      (!child.requires || (permissions?.has(child.requires) ?? false)) &&
+      (!child.requiresAny || child.requiresAny.some((permission) => permissions?.has(permission) ?? false)),
   );
   return children.length === page.children.length ? page : { ...page, children };
 }
@@ -1487,11 +1669,6 @@ export function applyChildTarget(
     if (value !== null) next.set(key, value);
   }
   return { pathname: target.pathname, search: parseRouteParams(spec, next).toString() };
-}
-
-/** True when a page draws its own child pages as in-page tabs ({@link SidebarPageNav.deskChrome}) — the spine must not drill it and the… */
-export function hasDeskPageChrome(page: SidebarPageNav | null | undefined): boolean {
-  return Boolean(page?.deskChrome) && (page?.children?.length ?? 0) > 1;
 }
 
 /**

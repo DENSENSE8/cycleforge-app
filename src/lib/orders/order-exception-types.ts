@@ -16,8 +16,14 @@ export const ORDER_EXCEPTION_CATEGORIES = [
 
 export type OrderExceptionCategory = (typeof ORDER_EXCEPTION_CATEGORIES)[number];
 
-/** One missing pairing fact, one control that fixes it. Paperwork (docs /
- * labels / tracking) is not an exception blocker — that walk is To-ship. */
+/**
+ * One missing pairing fact, one control that fixes it. Paperwork (docs /
+ * labels) is NOT a blocker of this order row — but owner 2026-09-28 REVERSED
+ * "paperwork is not an exception": an open order failing G2 Documents / G3
+ * Shipping label IS an exception, the Exceptions hub's own `paperwork` kind
+ * (`src/lib/exceptions/sources/paperwork.ts`, To-ship ∩
+ * `PRINT_PACKET_INCOMPLETE_SQL`), resolved in place from the hub.
+ */
 export type OrderExceptionBlocker = 'unpaired' | 'no_item_number';
 
 export const ORDER_EXCEPTION_BLOCKER_LABEL: Record<OrderExceptionBlocker, string> = {

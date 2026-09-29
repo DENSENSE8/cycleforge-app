@@ -59,7 +59,7 @@ const iso = (value: Date | string | null): string | null => (value == null ? nul
 
 // ── Labels ─────────────────────────────────────────────────────────────────
 
-interface LabelQueueRow {
+export interface LabelQueueRow {
   id: string;
   state: LabelIngestionState;
   row_version: number;
@@ -81,7 +81,7 @@ interface LabelQueueRow {
   [key: string]: unknown;
 }
 
-function toLabelRow(row: LabelQueueRow): LabelPrintRow {
+export function toLabelRow(row: LabelQueueRow): LabelPrintRow {
   return {
     id: Number(row.id),
     state: row.state,
@@ -104,16 +104,18 @@ function toLabelRow(row: LabelQueueRow): LabelPrintRow {
   };
 }
 
-/** Unprinted: oldest arrival first (print in the order labels landed). Printed: newest print first. */
-async function listLabelRows(organizationId: OrgId, printed: boolean, limit: number): Promise<LabelPrintRow[]> {
-  const result = await tenantQuery<LabelQueueRow>(
-    organizationId,
-    `SELECT li.id, li.state, li.row_version, li.source, li.file_basename, li.carrier,
+/**
+ * The desk's label row: SELECT list + joins over `label_ingestions li`, `$1` =
+ * the org. Callers add WHERE / ORDER BY / LIMIT (and extra `li.` columns) and
+ * map with {@link toLabelRow}.
+ */
+export function labelRowSelectSql(extraColumns = ''): string {
+  return `SELECT li.id, li.state, li.row_version, li.source, li.file_basename, li.carrier,
             li.tracking_number_normalized, li.quarantine_reason_code, li.observed_at,
             li.matched_order_id, li.shipstation_shipment_id,
             COALESCE(NULLIF(o.order_id, ''), li.matched_marketplace_order_id) AS order_ref,
             p.print_count, p.last_printed_at, s.name AS last_printed_by, p.last_station_name,
-            o.account_source AS order_account_source, ol.order_lines
+            o.account_source AS order_account_source, ol.order_lines${extraColumns}
        FROM label_ingestions li
        LEFT JOIN orders o
          ON o.organization_id = li.organization_id AND o.id = li.matched_order_id
@@ -127,7 +129,14 @@ async function listLabelRows(organizationId: OrgId, printed: boolean, limit: num
        ) p
        LEFT JOIN staff s
          ON s.organization_id = li.organization_id AND s.id = p.last_staff_id
-       LEFT JOIN LATERAL (${orderLinesSql('o.order_id')}) ol ON true
+       LEFT JOIN LATERAL (${orderLinesSql('o.order_id')}) ol ON true`;
+}
+
+/** Unprinted: oldest arrival first (print in the order labels landed). Printed: newest print first. */
+async function listLabelRows(organizationId: OrgId, printed: boolean, limit: number): Promise<LabelPrintRow[]> {
+  const result = await tenantQuery<LabelQueueRow>(
+    organizationId,
+    `${labelRowSelectSql()}
       WHERE li.organization_id = $1
         AND li.staged_object_key IS NOT NULL
         AND (p.print_count > 0) = $2::boolean
@@ -322,6 +331,56 @@ function toPaperworkDocument(doc: RawPaperworkDoc): PaperworkDocumentRow {
   };
 }
 
+/** After {@link paperworkDocsSql}: each head's paperwork-print stats (`per_order`). */
+const PER_ORDER_CTES = `order_prints AS (
+    SELECT e.order_id, count(*)::int AS print_count, max(e.printed_at) AS last_printed_at,
+           (array_agg(e.printed_by_staff_id ORDER BY e.printed_at DESC, e.id DESC))[1] AS last_staff_id,
+           (array_agg(e.station_name ORDER BY e.printed_at DESC, e.id DESC))[1] AS last_station_name
+      FROM paperwork_print_events e
+     WHERE e.organization_id = $1 AND e.order_id IN (SELECT order_id FROM heads)
+     GROUP BY e.order_id
+  ),
+  per_order AS (
+    SELECT h.*, COALESCE(h.observed_at, op.last_printed_at) AS sort_observed_at,
+           EXISTS (SELECT 1 FROM docs d WHERE d.head_id = h.order_id AND d.printable AND d.print_count = 0) AS has_unprinted,
+           COALESCE(op.print_count, 0) AS print_count, op.last_printed_at, op.last_staff_id, op.last_station_name
+      FROM heads h
+      LEFT JOIN order_prints op ON op.order_id = h.order_id
+  )`;
+
+/** One paperwork card's columns off `per_order po`… */
+const PAPERWORK_CARD_COLUMNS = `po.order_id, po.sort_observed_at AS observed_at, po.order_ref, po.account_source,
+           po.print_count, po.last_printed_at, s.name AS last_printed_by, po.last_station_name,
+           ol.order_lines, dj.documents`;
+
+/** …and the joins they read. */
+const PAPERWORK_CARD_JOINS = `LEFT JOIN staff s ON s.organization_id = $1 AND s.id = po.last_staff_id
+      LEFT JOIN LATERAL (${orderLinesSql('po.order_number')}) ol ON true
+      LEFT JOIN LATERAL (
+        SELECT json_agg(json_build_object(
+                 'kind', d.kind, 'document_id', d.document_id, 'manual_id', d.manual_id, 'title', d.title,
+                 'source_url', d.source_url, 'sort_at', d.sort_at, 'print_count', d.print_count,
+                 'last_printed_at', d.last_printed_at
+               ) ORDER BY d.sort_group, d.source_rank, d.sort_at DESC NULLS LAST, COALESCE(d.document_id, d.manual_id) DESC) AS documents
+          FROM docs d
+         WHERE d.head_id = po.order_id
+      ) dj ON true`;
+
+function toPaperworkRow(row: PaperworkQueueRow & { order_id: number }): PaperworkPrintRow {
+  return {
+    orderId: Number(row.order_id),
+    orderRef: row.order_ref ?? String(row.order_id),
+    orderAccountSource: row.account_source,
+    orderLines: toOrderLines(row.order_lines),
+    documents: (row.documents ?? []).map(toPaperworkDocument),
+    printCount: row.print_count ?? 0,
+    lastPrintedAt: iso(row.last_printed_at),
+    lastPrintedBy: row.last_printed_by,
+    lastStationName: row.last_station_name,
+    observedAt: iso(row.observed_at) ?? new Date(0).toISOString(),
+  };
+}
+
 /**
  * Paperwork orders plus both paperwork counts. `printed` false: paired orders
  * with a printable document never printed for them, oldest label arrival first.
@@ -347,21 +406,7 @@ async function listPaperworkRows(
   const result = await tenantQuery<PaperworkQueueRow>(
     organizationId,
     `${paperworkDocsSql(cand)},
-  order_prints AS (
-    SELECT e.order_id, count(*)::int AS print_count, max(e.printed_at) AS last_printed_at,
-           (array_agg(e.printed_by_staff_id ORDER BY e.printed_at DESC, e.id DESC))[1] AS last_staff_id,
-           (array_agg(e.station_name ORDER BY e.printed_at DESC, e.id DESC))[1] AS last_station_name
-      FROM paperwork_print_events e
-     WHERE e.organization_id = $1
-     GROUP BY e.order_id
-  ),
-  per_order AS (
-    SELECT h.*, COALESCE(h.observed_at, op.last_printed_at) AS sort_observed_at,
-           EXISTS (SELECT 1 FROM docs d WHERE d.head_id = h.order_id AND d.printable AND d.print_count = 0) AS has_unprinted,
-           COALESCE(op.print_count, 0) AS print_count, op.last_printed_at, op.last_staff_id, op.last_station_name
-      FROM heads h
-      LEFT JOIN order_prints op ON op.order_id = h.order_id
-  )
+  ${PER_ORDER_CTES}
 SELECT cnt.paperwork_count, cnt.printed_count, r.*
   FROM (
     SELECT count(*) FILTER (WHERE paired AND has_unprinted)::int AS paperwork_count,
@@ -369,26 +414,14 @@ SELECT cnt.paperwork_count, cnt.printed_count, r.*
       FROM per_order
   ) cnt
   LEFT JOIN LATERAL (
-    SELECT po.order_id, po.sort_observed_at AS observed_at, po.order_ref, po.account_source,
-           po.print_count, po.last_printed_at, s.name AS last_printed_by, po.last_station_name,
-           ol.order_lines, dj.documents,
+    SELECT ${PAPERWORK_CARD_COLUMNS},
            row_number() OVER (
              ORDER BY CASE WHEN $2::boolean THEN po.last_printed_at END DESC,
                       CASE WHEN NOT $2::boolean THEN po.sort_observed_at END ASC,
                       po.order_id ASC
            ) AS ord
       FROM per_order po
-      LEFT JOIN staff s ON s.organization_id = $1 AND s.id = po.last_staff_id
-      LEFT JOIN LATERAL (${orderLinesSql('po.order_number')}) ol ON true
-      LEFT JOIN LATERAL (
-        SELECT json_agg(json_build_object(
-                 'kind', d.kind, 'document_id', d.document_id, 'manual_id', d.manual_id, 'title', d.title,
-                 'source_url', d.source_url, 'sort_at', d.sort_at, 'print_count', d.print_count,
-                 'last_printed_at', d.last_printed_at
-               ) ORDER BY d.sort_group, d.source_rank, d.sort_at DESC NULLS LAST, COALESCE(d.document_id, d.manual_id) DESC) AS documents
-          FROM docs d
-         WHERE d.head_id = po.order_id
-      ) dj ON true
+      ${PAPERWORK_CARD_JOINS}
      WHERE CASE WHEN $2::boolean THEN po.print_count > 0 ELSE po.paired AND po.has_unprinted END
      ORDER BY ord
      LIMIT $3
@@ -398,25 +431,30 @@ SELECT cnt.paperwork_count, cnt.printed_count, r.*
   );
   const head = result.rows[0];
   return {
-    rows: result.rows.flatMap((row) =>
-      row.order_id == null
-        ? []
-        : [{
-            orderId: Number(row.order_id),
-            orderRef: row.order_ref ?? String(row.order_id),
-            orderAccountSource: row.account_source,
-            orderLines: toOrderLines(row.order_lines),
-            documents: (row.documents ?? []).map(toPaperworkDocument),
-            printCount: row.print_count ?? 0,
-            lastPrintedAt: iso(row.last_printed_at),
-            lastPrintedBy: row.last_printed_by,
-            lastStationName: row.last_station_name,
-            observedAt: iso(row.observed_at) ?? new Date(0).toISOString(),
-          }],
-    ),
+    rows: result.rows.flatMap((row) => (row.order_id == null ? [] : [toPaperworkRow({ ...row, order_id: row.order_id })])),
     unprinted: head?.paperwork_count ?? 0,
     printed: head?.printed_count ?? 0,
   };
+}
+
+/**
+ * Every paperwork card of the orders `candSql` yields — the Paperwork view's
+ * own resolution (slips + manuals per order, printed or not), oldest arrival
+ * first. `candSql` yields `(order_id, observed_at, paired)`; `$1` is the org,
+ * `values` bind `$2…`.
+ */
+export async function listOrderPaperwork(organizationId: OrgId, candSql: string, values: unknown[] = []): Promise<PaperworkPrintRow[]> {
+  const result = await tenantQuery<PaperworkQueueRow & { order_id: number }>(
+    organizationId,
+    `${paperworkDocsSql(candSql)},
+  ${PER_ORDER_CTES}
+SELECT ${PAPERWORK_CARD_COLUMNS}
+  FROM per_order po
+  ${PAPERWORK_CARD_JOINS}
+ ORDER BY po.sort_observed_at ASC NULLS LAST, po.order_id ASC`,
+    [organizationId, ...values],
+  );
+  return result.rows.map(toPaperworkRow);
 }
 
 // ── The queue ──────────────────────────────────────────────────────────────

@@ -28,14 +28,16 @@ interface UseReportDeadStockSpreadsheetOptions {
   rows: readonly DeadStockReportRow[];
   loading?: boolean;
   emptyMessage?: string;
-  searchPlaceholder?: string;
+  searchValue: string;
+  onSearchChange: (next: string) => void;
 }
 
 export function useReportDeadStockSpreadsheet({
   rows,
   loading = false,
   emptyMessage = 'No data — try the daily refresh cron, or write some movement.',
-  searchPlaceholder = 'Filter this report…',
+  searchValue,
+  onSearchChange,
 }: UseReportDeadStockSpreadsheetOptions): CompoundSpreadsheetFeed<
   DeadStockReportRow,
   ReportDeadStockGridColumnKey,
@@ -43,7 +45,6 @@ export function useReportDeadStockSpreadsheet({
 > {
   const [sort, setSort] = useState<ReportDeadStockGridColumnKey | null>(null);
   const [dir, setDir] = useState<GridSortDir | null>(null);
-  const [query, setQuery] = useState('');
 
   const { effectiveLayout, subtitleFieldIds, fields } = useReportDeadStockTableLayout();
   const columns = useMemo(
@@ -60,8 +61,8 @@ export function useReportDeadStockSpreadsheet({
   );
 
   const search = useMemo(
-    () => ({ value: query, onChange: setQuery, placeholder: searchPlaceholder }),
-    [query, searchPlaceholder],
+    () => ({ value: searchValue, onChange: onSearchChange, placeholder: 'Filter this report…' }),
+    [searchValue, onSearchChange],
   );
 
   return useCompoundSpreadsheet<
@@ -83,6 +84,7 @@ export function useReportDeadStockSpreadsheet({
     dir,
     onSortChange,
     search,
+    findOwner: 'page',
     loading,
     emptyMessage,
     ariaLabel: 'Dead stock, dormant 90 days or more',

@@ -8,7 +8,6 @@ import dynamic from 'next/dynamic';
 import { ErrorBoundary } from '@/components/error/ErrorBoundary';
 import { useUIMode } from '@/design-system/providers/UIModeProvider';
 import { useBodyScrollLock } from '@/design-system/hooks';
-import { useDeskFloorActive } from '@/design-system/components/DeskStageContext';
 import { AlertTriangle, RotateCcw, X } from '@/components/Icons';
 import { Button, IconButton } from '@/design-system/primitives';
 import { isMobileAllowedPath } from '@/lib/sidebar-navigation';
@@ -43,6 +42,18 @@ const DashboardSidebar = dynamic(
     loading: () => <div className="h-full w-full" aria-hidden />,
   },
 );
+
+/**
+ * Focus routes: a signed-in page about ONE task, with its own header whose ✕
+ * (top-right-most on the screen) and Esc go back. No nav column, no global
+ * header (owner 2026-09-29, "Buy a label").
+ */
+const FOCUS_ROUTE_PATHS: ReadonlyArray<RegExp> = [/^\/shipping\/buy-label(?:$|\/)/];
+
+function isFocusRoutePath(pathname: string | null): boolean {
+  return !!pathname && FOCUS_ROUTE_PATHS.some((re) => re.test(pathname));
+}
+
 const SidebarNavColumn = dynamic(
   () => import('@/components/sidebar/SidebarNavColumn').then((m) => m.SidebarNavColumn),
   { ssr: false },
@@ -154,14 +165,10 @@ export function DesktopRouteShell({ children }: DesktopRouteShellProps) {
     window.addEventListener(MASTER_NAV_TOGGLE_EVENT, toggleNav);
     return () => window.removeEventListener(MASTER_NAV_TOGGLE_EVENT, toggleNav);
   }, [toggleNav]);
-  // Floor (a desk's industrial full canvas) parks the column for the session
-  // without touching the remembered choice (owner 2026-09-26).
-  const deskFloor = useDeskFloorActive();
-  const columnOpen = (contextualActive ? contextualOpen : navOpen) && !deskFloor;
+  const columnOpen = contextualActive ? contextualOpen : navOpen;
   // ⌘\ / Ctrl+\ opens and closes the column (owner 2026-09-27); the toggle's
-  // tooltip shows the chord. Off on Floor — the column is parked there, and a
-  // toggle would silently flip the remembered choice.
-  useSidebarToggleHotkey(toggleNav, !deskFloor);
+  // tooltip shows the chord.
+  useSidebarToggleHotkey(toggleNav);
   const navPeek = useHoverSurface({
     id: 'master-nav-spine-peek',
     disabled: true,
@@ -175,8 +182,9 @@ export function DesktopRouteShell({ children }: DesktopRouteShellProps) {
   // `/m/*` routes are inherently mobile — the edge proxy only ever serves them to phones.
   const onMobileRoute = !!pathname && pathname.startsWith('/m');
   /** Auth / enroll / offline — no permanent sidebar; page owns full-bleed chrome.
-   *  (Kiosk paths never reach this shell: `AppShellSwitch` gives them `KioskAppShell`.) */
-  const chromeless = isClientPublicPath(pathname);
+   *  (Kiosk paths never reach this shell: `AppShellSwitch` gives them `KioskAppShell`.)
+   *  FOCUS routes (signed-in, one task, their own ✕ back) are chromeless too. */
+  const chromeless = isClientPublicPath(pathname) || isFocusRoutePath(pathname);
   // Pages move their own controls in (e.g. the order list's Find) while the
   // column is closed.
   useEffect(() => {

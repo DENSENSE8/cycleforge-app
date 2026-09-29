@@ -236,24 +236,48 @@ test('v3 lifts the lane band above Scan Stations for a v1 order', () => {
   ]);
 });
 
-test('the v3 lift preserves a staffer own arrangement of everything else', () => {
-  // Automations dragged to the top stays at the top; only the band moves.
+test('v4 puts the business run first while preserving every non-business row afterward', () => {
   const saved = ['studio', SPINE_STATIONS_SLOT_ID, LEGACY_DESKS_SLOT_ID];
   const out = migrateSpineSlots(saved, catalog, 1);
   assert.deepEqual(out.slots, [
-    'studio',
     'fulfillment',
     'catalog',
+    'studio',
     SPINE_STATIONS_SLOT_ID,
   ]);
 });
 
-test('the v3 lift keeps a staffer own LANE order', () => {
-  // Catalog dragged above Outbound survives — the lift moves the band, it does
-  // not re-sort the lanes inside it.
+test('v4 normalizes a legacy custom lane order to the product business order', () => {
   const saved = [SPINE_STATIONS_SLOT_ID, 'catalog', 'fulfillment'];
   const out = migrateSpineSlots(saved, catalog, 2);
-  assert.deepEqual(out.slots, ['catalog', 'fulfillment', SPINE_STATIONS_SLOT_ID, 'studio']);
+  assert.deepEqual(out.slots, ['fulfillment', 'catalog', SPINE_STATIONS_SLOT_ID, 'studio']);
+});
+
+test('the default business run is Sales, Receiving, Fulfillment, Inventory, Products, Reports', () => {
+  const items = getSidebarNavItems({
+    permissions: new Set([
+      'dashboard.view',
+      'walk_in.view',
+      'receiving.view',
+      'sourcing.view',
+      'shipping.view',
+      'fba.view',
+      'packing.review',
+      'sku_stock.view',
+      'operations.view',
+    ]),
+  });
+  assert.deepEqual(defaultSpineOrder(items).slice(0, 6), [
+    'sales',
+    'inbound',
+    'fulfillment',
+    'inventory',
+    'catalog',
+    'reports',
+  ]);
+  const reports = items.find((item) => item.id === 'reports');
+  assert.ok(reports);
+  assert.equal(isSpineSlottable(reports), true);
 });
 
 test('the v3 lift is idempotent and stamps once', () => {

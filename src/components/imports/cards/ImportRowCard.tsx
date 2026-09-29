@@ -92,7 +92,7 @@ export const ImportRowCard = memo(function ImportRowCard({
       person: source,
       chips,
       notes: { fixed: null, own: null },
-      status: { kind: 'state', face: state.label, tone: state.tone, tip: `${state.label} · ${importStamp(row.createdAt)} PT` },
+      status: { kind: 'none' },
       next: null,
       lines: [
         {
@@ -129,11 +129,11 @@ export const ImportRowCard = memo(function ImportRowCard({
       onToggleCheck={(event) => onToggleCheck(model, event)}
       onToggleExpand={() => onToggleExpand(model.key)}
       onTogglePeek={() => onTogglePeek(model.key)}
-      identity={<ImportOrderNumber row={row} />}
+      identity={{ role: 'identity', content: <ImportOrderNumber row={row} /> }}
       trailing={
-        row.importExceptionId != null ? (
-          <span className={cn(CARD_FACT_BOX_CLASS, 'pointer-events-auto text-role-nav')}>{review}</span>
-        ) : null
+        row.importExceptionId != null
+          ? { role: 'trailing', content: <span className={cn(CARD_FACT_BOX_CLASS, 'pointer-events-auto text-role-nav')}>{review}</span> }
+          : null
       }
       quickLook={
         <ImportCardPeek

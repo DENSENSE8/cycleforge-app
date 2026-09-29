@@ -72,6 +72,13 @@ export interface PlatformDisplay {
   meta: SourcePlatformMeta;
 }
 
+/** Full storefront identity for detail surfaces: marketplace plus the linked account. */
+export function platformDisplayName(
+  channel: Pick<PlatformDisplay, 'label' | 'connectionName'>,
+): string {
+  return channel.connectionName ? `${channel.label} · ${channel.connectionName}` : channel.label;
+}
+
 /** `resolve(orderId, accountSource)` → {@link PlatformDisplay}. */
 export type OrderChannelResolver = (
   orderId: string | null | undefined,

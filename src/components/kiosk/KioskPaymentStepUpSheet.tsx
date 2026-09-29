@@ -35,7 +35,7 @@ interface KioskPaymentStepUpSheetProps {
   /** The sentence under the roster. */
   blurb?: string;
   /** Which roster the pad offers: */
-  scope?: 'payment' | 'adjust_price';
+  scope?: 'payment' | 'adjust_price' | 'receiving' | 'printing';
 }
 
 export function KioskPaymentStepUpSheet({

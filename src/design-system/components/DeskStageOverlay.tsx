@@ -198,11 +198,11 @@ interface DeskStageRecordHeaderProps {
   /** The record-view switch — after the verbs, before n of N / ‹ › / ✕. */
   viewSwitch?: ReactNode;
   /**
-   * A rail desk (`DeskRecordPlane listRail`, owner 2026-09-27): the rail always
-   * has an open record, so there is nothing to close to — no ✕, and the verbs
-   * sit AFTER n of N so the record's CTA is the right-most control. `onClose`
-   * stays wired for the keyboard (Esc) only. Default off: other desks keep
-   * verbs · n of N · ✕.
+   * A rail desk (`DeskRecordPlane listRail`, owner 2026-09-27): the verbs sit
+   * AFTER n of N — `n of N · verbs · ✕`. The ✕ is ALWAYS the top-right-most
+   * control wherever it shows (owner 2026-09-28); an always-open rail passes no
+   * `onClose` — nothing to close to, so its CTA ends the row. Default off:
+   * other desks keep verbs · n of N · ✕.
    */
   rail?: boolean;
 }
@@ -226,14 +226,24 @@ export function DeskStageRecordHeader({
   viewSwitch,
   rail = false,
 }: DeskStageRecordHeaderProps) {
-  const verbs = actions ? <div className="flex shrink-0 items-center gap-1.5">{actions}</div> : null;
+  const verbs = actions ? (
+    <div className="flex min-w-0 shrink-0 items-center justify-end gap-1.5">
+      {actions}
+    </div>
+  ) : null;
   return (
     // A container, so the band sheds its secondary pieces (n of N, then the
     // view switch) as the record column narrows instead of crushing the title.
-    <header className="@container/record-head flex shrink-0 items-center gap-2 border-b border-border-hairline px-4 py-3">
+    <header
+      className={cn(
+        '@container/record-head relative z-raised flex shrink-0 flex-nowrap items-center gap-1.5 border-b border-border-hairline px-3 py-3 scrollbar-hide @sm:px-4',
+        rail ? 'overflow-visible' : 'overflow-x-auto',
+      )}
+    >
       {onClose && dismiss === 'back' ? (
-        // Mobile-first back (owner 2026-09-27): arrow only, a 44px round CTA —
-        // round in triage, square on Floor (industrial radius 0).
+        // The arrow is the resting face. Its circular hit-area is disclosed
+        // only on hover/focus, so the record identity—not button chrome—owns
+        // the top-left of the detail view.
         <IconButton
           icon={<ArrowLeft className="size-5" />}
           ariaLabel="Back to the list"
@@ -242,11 +252,11 @@ export function DeskStageRecordHeader({
           radius="modePill"
           onClick={onClose}
           data-testid="desk-record-back"
-          className="-ml-1 bg-surface-sunken text-text-default hover:bg-surface-strong"
+          className="-ml-2 bg-transparent text-text-default hover:bg-surface-sunken focus-visible:bg-surface-sunken"
         />
       ) : null}
-      <div className="min-w-0 flex-1">
-        <h2 className="truncate text-role-title text-text-default">{title}</h2>
+      <div className="min-w-max shrink-0 overflow-x-auto scrollbar-hide @xs:min-w-0 @xs:flex-1">
+        <h2 className="min-w-max whitespace-nowrap text-role-data font-semibold text-text-default @lg/record-head:text-role-title">{title}</h2>
         {subtitle ? (
           <p className="mt-0.5 truncate text-role-caption text-text-soft">{subtitle}</p>
         ) : null}
@@ -258,7 +268,7 @@ export function DeskStageRecordHeader({
           {indexLabel}
         </span>
       ) : null}
-      {viewSwitch ? <span className="hidden shrink-0 @xs/record-head:flex">{viewSwitch}</span> : null}
+      {viewSwitch ? <span className="hidden shrink-0 @lg/record-head:flex">{viewSwitch}</span> : null}
       {(onPrev || onNext) && (
         <div className="flex shrink-0 items-center gap-0.5">
           {onPrev ? (
@@ -288,16 +298,18 @@ export function DeskStageRecordHeader({
         </div>
       )}
       {rail ? verbs : null}
-      {onClose && dismiss === 'close' && !rail ? (
-        <Button
+      {onClose && dismiss === 'close' ? (
+        <IconButton
           type="button"
-          variant="ghost"
           size="sm"
-          aria-label="Close"
+          radius="pill"
+          tone="neutral"
+          icon={<X className="size-4" />}
+          ariaLabel="Close"
+          title="Close (Esc)"
           onClick={onClose}
-        >
-          <X className="size-4" />
-        </Button>
+          data-testid="desk-record-close"
+        />
       ) : null}
     </header>
   );

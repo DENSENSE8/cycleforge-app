@@ -52,10 +52,9 @@ export interface SlicedActionMenuItem {
 export type SlicedActionEdge = 'bottom';
 
 /**
- * Embedded track chrome — ops square, composer-footer 2xl, desk-header capsule,
- * or industrial desk-bar segment.
+ * Embedded track chrome — ops square, composer-footer 2xl, or desk-header capsule.
  */
-export type SlicedActionEmbeddedChrome = 'flush' | 'pill' | 'header' | 'segment';
+export type SlicedActionEmbeddedChrome = 'flush' | 'pill' | 'header';
 
 export interface SlicedActionDockProps {
   /** CTA label. */
@@ -179,24 +178,6 @@ const COMPOSER_PILL_TRACK = 'rounded-2xl shadow-none ring-1 ring-black/5';
  * track (it sits in the title row, not over the work).
  */
 const HEADER_PILL_TRACK = `${cornerClass('pill')} shadow-none ring-1 ring-black/5`;
-/**
- * Industrial desk-bar cell: no fill, no ring, no corner, full bar height. The
- * 1px left edge is the only separator from its neighbour (the bar's segments
- * touch — owner 2026-09-24).
- */
-const SEGMENT_TRACK = `${cornerClass('flush')} shadow-none ring-0 self-stretch border-l border-mode-edge`;
-
-/** Segment ink: the bar's muted mono, ink on hover, mode-edge dividers. */
-const SEGMENT_INK = {
-  text: 'text-mode-muted',
-  divider: 'border-mode-edge',
-  ring: '',
-  focus: 'focus-visible:ring-mode-ink',
-} as const;
-
-/** Segment label: the bar's mono 10 heavy uppercase — the modes' own face. */
-const SEGMENT_LABEL_FACE = 'font-mono text-role-micro font-extrabold';
-
 function isEmbeddedSoftTrack(
   embedded: boolean | undefined,
   chrome: SlicedActionEmbeddedChrome | undefined,
@@ -214,7 +195,6 @@ export function slicedActionDockTrackClass(opts: {
   embeddedChrome?: SlicedActionEmbeddedChrome;
 }): string {
   if (opts.embedded && opts.embeddedChrome === 'header') return HEADER_PILL_TRACK;
-  if (opts.embedded && opts.embeddedChrome === 'segment') return SEGMENT_TRACK;
   const composerPill = Boolean(opts.embedded) && opts.embeddedChrome === 'pill';
   if (composerPill) return COMPOSER_PILL_TRACK;
   const usePillChrome = !opts.embedded || opts.embeddedChrome === 'pill' || opts.embeddedChrome === 'header';
@@ -236,10 +216,7 @@ export function slicedActionDockSegmentOrder(opts: {
   embedded?: boolean;
   embeddedChrome?: SlicedActionEmbeddedChrome;
 }): 'menu,primary' | 'primary,menu' {
-  return isEmbeddedSoftTrack(opts.embedded, opts.embeddedChrome) ||
-    (opts.embedded && opts.embeddedChrome === 'segment')
-    ? 'primary,menu'
-    : 'menu,primary';
+  return isEmbeddedSoftTrack(opts.embedded, opts.embeddedChrome) ? 'primary,menu' : 'menu,primary';
 }
 
 export function slicedActionDockWrapperClass(opts: {
@@ -292,22 +269,11 @@ export function SlicedActionDock({
   className,
 }: SlicedActionDockProps) {
   const isDisabled = disabled || loading;
-  // Industrial bar cell: no fill of its own — the bar is the ground.
-  const barSegment = embedded && embeddedChrome === 'segment';
-  const solidBg = barSegment
-    ? 'bg-transparent'
-    : isDisabled
-      ? 'bg-surface-strong'
-      : toneClasses
-        ? toneClasses.bg
-        : TONE_BG_SOLID[tone];
+  const solidBg = isDisabled ? 'bg-surface-strong' : toneClasses ? toneClasses.bg : TONE_BG_SOLID[tone];
   const hasMenu = Array.isArray(menu) && menu.length > 0;
   // A per-row `toneClasses` override is always a COLOR track (staff accent),
   // so it keeps the white ink; only the declared `surface` tone goes quiet.
-  const ink = barSegment ? SEGMENT_INK : slicedActionDockToneInk(toneClasses ? 'accent' : tone);
-  // Hover wash per cell on the bar (the track's brightness filter would dim
-  // the whole bar ground).
-  const segmentHover = barSegment && 'enabled:hover:bg-mode-hover enabled:hover:text-mode-ink';
+  const ink = slicedActionDockToneInk(toneClasses ? 'accent' : tone);
 
   const [menuOpen, setMenuOpen] = useState(false);
   const menuTriggerRef = useRef<HTMLButtonElement>(null);
@@ -328,7 +294,7 @@ export function SlicedActionDock({
   const compactPill = composerPill || headerPill;
   const usePillChrome = !embedded || compactPill;
   const trackChrome = slicedActionDockTrackClass({ embedded, embeddedChrome });
-  const segmentH = barSegment ? 'min-h-mode-hit' : compactPill ? 'h-8' : usePillChrome ? 'h-12' : 'h-11';
+  const segmentH = compactPill ? 'h-8' : usePillChrome ? 'h-12' : 'h-11';
   const radiusL = headerPill ? 'rounded-l-full' : usePillChrome ? 'rounded-l-2xl' : 'rounded-none';
   const radiusR = headerPill ? 'rounded-r-full' : usePillChrome ? 'rounded-r-2xl' : 'rounded-none';
   const dataEmbeddedChrome = embedded ? embeddedChrome : undefined;
@@ -356,10 +322,7 @@ export function SlicedActionDock({
     menuOnEnd ? `border-l ${ink.divider}` : `border-r ${ink.divider}`,
     segmentH,
     menuOnEnd ? radiusR : radiusL,
-    compactPill ? 'px-2' : usePillChrome ? 'px-3' : barSegment ? 'px-3' : 'px-2',
-    segmentHover,
-    // Open menu = pressed: the bar's ink fill, same as an active mode.
-    barSegment && menuOpen && 'bg-mode-ink text-mode-bar',
+    compactPill ? 'px-2' : usePillChrome ? 'px-3' : 'px-2',
   );
 
   const useDropdownChrome = menuChrome === 'dropdown' && menuOpensFromEnd;
@@ -383,10 +346,10 @@ export function SlicedActionDock({
         <DropdownMenuContent
           side={menuPlacement === 'bottom' ? 'bottom' : 'top'}
           align={menuOnEnd ? 'end' : 'start'}
-          sideOffset={barSegment ? 0 : 6}
+          sideOffset={6}
           aria-label={menuLabel ?? 'More actions'}
           // The panel matches the composer-pill track it hangs off:
-          className={cn('min-w-[14rem] p-1', barSegment ? cornerClass('flush') : COMPOSER_SHELL_CORNER)}
+          className={cn('min-w-[14rem] p-1', COMPOSER_SHELL_CORNER)}
         >
           {menu!.map((item) => (
             <Fragment key={item.label}>
@@ -402,7 +365,7 @@ export function SlicedActionDock({
                 // the same voice as the button, not station caps.
                 className={cn(
                   'gap-2.5 px-3 py-2 text-role-caption',
-                  barSegment ? cornerClass('flush') : COMPOSER_MENU_ITEM_CORNER,
+                  COMPOSER_MENU_ITEM_CORNER,
                   item.selected && 'bg-surface-canvas',
                 )}
               >
@@ -536,14 +499,7 @@ export function SlicedActionDock({
         ink.focus,
         segmentH,
         menuOnEnd ? radiusL : radiusR,
-        barSegment
-          ? cn('px-4', SEGMENT_LABEL_FACE)
-          : compactPill
-            ? 'px-3 text-role-caption'
-            : usePillChrome
-              ? 'px-5'
-              : 'px-3.5',
-        segmentHover,
+        compactPill ? 'px-3 text-role-caption' : usePillChrome ? 'px-5' : 'px-3.5',
         fullWidth
           ? 'flex-1'
           : compactPill
@@ -562,7 +518,7 @@ export function SlicedActionDock({
     <>
       {hasMenu ? (
         <motion.div
-          whileTap={isDisabled || barSegment ? undefined : { scale: 0.99 }}
+          whileTap={isDisabled ? undefined : { scale: 0.99 }}
           transition={spring}
           className={cn(
             'relative z-20 flex min-w-0 overflow-visible transition-[filter] duration-100',
@@ -570,7 +526,7 @@ export function SlicedActionDock({
             ink.ring,
             isDisabled
               ? 'cursor-not-allowed'
-              : !barSegment && 'hover:brightness-[0.96] active:brightness-[0.92]',
+              : 'hover:brightness-[0.96] active:brightness-[0.92]',
             solidBg,
             fullWidth ? 'w-full' : 'w-auto max-w-full',
             embedded && className,
@@ -602,7 +558,7 @@ export function SlicedActionDock({
           onClick={onClick}
           disabled={isDisabled}
           title={title}
-          whileTap={isDisabled || barSegment ? undefined : { scale: 0.99 }}
+          whileTap={isDisabled ? undefined : { scale: 0.99 }}
           transition={spring}
           data-testid="sliced-action-dock"
           data-edge={edge}
@@ -615,10 +571,10 @@ export function SlicedActionDock({
             ink.text,
             ink.focus,
             segmentH,
-            barSegment ? cn('gap-2 px-4', SEGMENT_LABEL_FACE) : usePillChrome ? 'px-6' : 'px-4',
+            usePillChrome ? 'px-6' : 'px-4',
             trackChrome,
             ink.ring,
-            isDisabled ? '' : barSegment ? segmentHover : 'hover:brightness-[0.96] active:brightness-[0.92]',
+            isDisabled ? '' : 'hover:brightness-[0.96] active:brightness-[0.92]',
             solidBg,
             fullWidth ? 'w-full min-w-0' : 'w-auto max-w-full',
             embedded && className,

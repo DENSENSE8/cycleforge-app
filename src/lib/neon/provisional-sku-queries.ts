@@ -1,4 +1,4 @@
-import { tenantQuery, withTenantTransaction } from '../tenancy/db';
+import { tenantQuery, tenantQueryOneTrip, withTenantTransaction } from '../tenancy/db';
 import type { OrgId } from '../tenancy/constants';
 import { photoContentUrl } from '../photos/display-url';
 import { skuCatalogTitleUnownedPredicateSql } from '../sku/sku-identity-law';
@@ -199,13 +199,23 @@ export async function createProvisionalSku(
 
 /** Every unreconciled placeholder in the org, newest first. */
 export async function listProvisionalSkus(orgId: OrgId): Promise<ProvisionalSku[]> {
-  const result = await tenantQuery<ProvisionalRow>(
+  const result = await tenantQueryOneTrip<ProvisionalRow>(
     orgId,
     `${PROVISIONAL_SELECT}
      ORDER BY ss.provisional_created_at DESC NULLS LAST, ss.sku`,
     [orgId],
   );
   return result.rows.map(toProvisional);
+}
+
+/** How many open placeholders {@link listProvisionalSkus} returns — its WHERE, without the display laterals. */
+export async function countProvisionalSkus(orgId: OrgId): Promise<number> {
+  const result = await tenantQueryOneTrip<{ n: number }>(
+    orgId,
+    `SELECT COUNT(*)::int AS n FROM sku_stock ss WHERE ss.organization_id = $1 AND ss.is_provisional = true`,
+    [orgId],
+  );
+  return Number(result.rows[0]?.n) || 0;
 }
 
 /** One placeholder with its photos, or `null` when no open placeholder has that SKU. */

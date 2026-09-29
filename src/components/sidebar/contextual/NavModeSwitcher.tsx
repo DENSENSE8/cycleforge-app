@@ -3,7 +3,7 @@
 import { useEffect, useId, useRef, useState, type KeyboardEvent as ReactKeyboardEvent } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import type { NavSection } from '@/lib/nav/context/schema';
+import type { NavItem, NavSection } from '@/lib/nav/context/schema';
 import { getSidebarPageNav } from '@/lib/sidebar-navigation';
 import { AnimatePresence, motion } from '@/design-system/motion';
 import { aiPresence, aiTransition } from '@/design-system/ai';
@@ -17,10 +17,30 @@ import { cn } from '@/utils/_cn';
 import { LIST_KEY_OWNER_ATTR } from '@/lib/keyboard/list-key-scope';
 import { GO_HINT_LEAD, goHintRows, KeyHintPopover, useKeyHintAnchor } from './NavGoKeys';
 import { useGoKeys } from './go-keys-store';
+import { NAV_VIEW_ICONS } from './nav-view-icons';
+import { CountChip, useViewCounts } from './NavViewSwitcher';
 
-/** A lane door's modes section (`<page>.<lane>.modes`, built by the resolver). */
+/**
+ * A modes section, built by the resolver: a door lane's pages
+ * (`<page>.<lane>.modes`) or a page's own modes (`<page>.modes`,
+ * `NavPageDecl.modes`).
+ */
 export function isNavModeSection(section: NavSection): boolean {
   return section.id.endsWith('.modes');
+}
+
+/** No items: a lane's modes are pages, which carry no view counts. */
+const NO_COUNTED_MODES: readonly NavItem[] = [];
+
+/**
+ * A mode's icon and colour. A lane's mode is a page (its registry icon and
+ * tone); a page's own mode is one of its views' glyphs (`NAV_VIEW_ICONS`).
+ */
+function modeGlyph(item: NavItem, ownerPageId: string | null) {
+  const view = ownerPageId ? NAV_VIEW_ICONS[`${ownerPageId}.${item.id}`] : undefined;
+  if (view) return { icon: view.icon, tone: view.tone, alertCount: view.alertCount };
+  const page = getSidebarPageNav(item.id);
+  return page ? { icon: page.icon, tone: page.tone, alertCount: undefined } : null;
 }
 
 /** One row of the parent card — the trigger and every mode share it, so icons and labels stack in one column. */
@@ -31,9 +51,11 @@ const MODE_ROW_CLASS = cn(
 );
 
 /**
- * The lane's MODE — the PARENT tier (Shipping · FBA · Label intake), its own
- * dropdown, never the view's (operator 2026-09-27). One raised card under
- * `‹ <Lane>`: the current mode in its colour, semibold, ⇅.
+ * The PARENT tier, its own dropdown, never the view's (operator 2026-09-27):
+ * a door lane's MODES (Shipping · FBA · Labels & docs), or a page's OWN modes
+ * (`NavPageDecl.modes` — Exceptions: Fulfillment · Inventory · Receiving,
+ * each with its count). One raised card under `‹ <Lane>`: the
+ * current mode in its colour, semibold, ⇅.
  *
  * - HOVER teaches the keys: instantly, a card beside the sidebar reads
  *   `[G] then` over `[S] Shipping · [F] FBA · [L] Label intake`, each in its
@@ -54,7 +76,10 @@ export function NavModeSwitcher({ section, currentPageId }: { section: NavSectio
   const cardRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
   const modeIds = new Set(section.items.map((item) => item.id));
-  const currentId = modeIds.has(currentPageId) ? currentPageId : section.items[0]?.id;
+  // A page's own modes stamp the current one; a lane's current mode is the page.
+  const currentId = section.items.find((item) => item.active)?.id ?? (modeIds.has(currentPageId) ? currentPageId : section.items[0]?.id);
+  const ownerPageId = section.id === `${currentPageId}.modes` ? currentPageId : null;
+  const counts = useViewCounts(currentPageId, ownerPageId ? section.items : NO_COUNTED_MODES);
   const hint = goHintRows(targets.filter((target) => modeIds.has(target.id))).map((row) => ({ ...row, current: row.id === currentId }));
   const hintAnchor = useKeyHintAnchor(!open && hint.length > 0);
   const presence = useMotionPresence(aiPresence.fade);
@@ -93,7 +118,7 @@ export function NavModeSwitcher({ section, currentPageId }: { section: NavSectio
   if (section.items.length === 0) return null;
   const current = section.items.find((item) => item.id === currentId);
   const others = section.items.filter((item) => item.id !== currentId);
-  const CurrentIcon = current ? getSidebarPageNav(current.id)?.icon : undefined;
+  const currentGlyph = current ? modeGlyph(current, ownerPageId) : null;
 
   const moveFocus = (step: number) => {
     const links = Array.from(cardRef.current?.querySelectorAll<HTMLAnchorElement>('a[data-nav-mode-item]') ?? []);
@@ -150,10 +175,11 @@ export function NavModeSwitcher({ section, currentPageId }: { section: NavSectio
         onPointerLeave={hintAnchor.onPointerLeave}
         className={cn(MODE_ROW_CLASS, 'h-9 font-semibold hover:bg-surface-sunken/60', SIDEBAR_CONTROL_CORNER, open && 'rounded-b-none')}
       >
-        {CurrentIcon ? (
-          <CurrentIcon aria-hidden className={navIconStrokeClass(cn('size-4 shrink-0', (currentId ? getSidebarPageNav(currentId)?.tone : undefined) ?? 'text-text-default'))} />
+        {currentGlyph ? (
+          <currentGlyph.icon aria-hidden className={navIconStrokeClass(cn('size-4 shrink-0', currentGlyph.tone ?? 'text-text-default'))} />
         ) : null}
         <span className="min-w-0 flex-1 truncate">{current?.label ?? section.label ?? 'Mode'}</span>
+        {current && current.id in counts ? <CountChip id={current.id} count={counts[current.id]} alert={currentGlyph?.alertCount} /> : null}
         <ChevronsUpDown aria-hidden className={cn('size-3.5 shrink-0', open ? 'text-text-default' : 'text-text-muted')} />
       </button>
       <AnimatePresence>
@@ -182,7 +208,7 @@ export function NavModeSwitcher({ section, currentPageId }: { section: NavSectio
             )}
           >
             {others.map((item) => {
-              const Icon = getSidebarPageNav(item.id)?.icon;
+              const glyph = modeGlyph(item, ownerPageId);
               return (
                 <Link
                   key={item.id}
@@ -192,8 +218,8 @@ export function NavModeSwitcher({ section, currentPageId }: { section: NavSectio
                   onClick={() => setOpen(false)}
                   className={cn(MODE_ROW_CLASS, item.description ? 'min-h-8 py-1' : 'h-8', 'font-medium hover:bg-surface-sunken', SIDEBAR_CONTROL_CORNER)}
                 >
-                  {Icon ? (
-                    <Icon aria-hidden className={navIconStrokeClass(cn('size-4 shrink-0', getSidebarPageNav(item.id)?.tone ?? 'text-text-muted'))} />
+                  {glyph ? (
+                    <glyph.icon aria-hidden className={navIconStrokeClass(cn('size-4 shrink-0', glyph.tone ?? 'text-text-muted'))} />
                   ) : null}
                   {item.description ? (
                     <span className="flex min-w-0 flex-1 flex-col">
@@ -203,6 +229,7 @@ export function NavModeSwitcher({ section, currentPageId }: { section: NavSectio
                   ) : (
                     <span className="min-w-0 flex-1 truncate">{item.label}</span>
                   )}
+                  {item.id in counts ? <CountChip id={item.id} count={counts[item.id]} alert={glyph?.alertCount} /> : null}
                 </Link>
               );
             })}

@@ -99,6 +99,7 @@ export type TicketLinkEntityType =
   | 'SHIPMENT'
   | 'RECEIVING'
   | 'RECEIVING_LINE'
+  | 'SERIAL_UNIT'
   | 'REPAIR'
   | 'ORDER';
 
@@ -110,11 +111,16 @@ export interface TicketLinkAnchor {
 /** Pick the single primary ticket_links entity for a Zendesk ticket. */
 export function pickTicketLinkAnchor(args: {
   repairId?: number | null;
+  serialUnitId?: number | null;
   lineId?: number | null;
   receivingId?: number | null;
   shipmentId?: number | null;
   orderId?: number | null;
 }): TicketLinkAnchor | null {
+  const serialUnitId = args.serialUnitId ?? null;
+  if (serialUnitId != null && Number.isFinite(serialUnitId) && serialUnitId > 0) {
+    return { entityType: 'SERIAL_UNIT', entityId: serialUnitId };
+  }
   const repairId = args.repairId ?? null;
   if (repairId != null && Number.isFinite(repairId) && repairId > 0) {
     return { entityType: 'REPAIR', entityId: repairId };

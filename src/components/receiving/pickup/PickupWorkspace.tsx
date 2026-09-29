@@ -1,91 +1,151 @@
 'use client';
 
-/** Local Pickup right pane — the LCPU product spreadsheet. */
+/**
+ * Local Pickup receiving history. This host intentionally wears the same
+ * TriageCardList face as Incoming and FBM Allocate; the retired slot-table
+ * pickup sheet is not part of this route.
+ */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
-import { useQueryClient } from '@tanstack/react-query';
-import { DashboardScrollShell } from '@/components/dashboard/DashboardScrollShell';
-import { Button } from '@/design-system/primitives';
+import { Camera } from '@/components/Icons';
+import { DeskActionSlotRegistrar, DeskHeaderAction } from '@/design-system/components/DeskActionSlot';
+import { RecordLedgerSummaryPane, type RecordLedgerSummary } from '@/design-system/components/record-ledger/RecordLedgerSummary';
+import { TriageAllClear } from '@/design-system/components/triage-card-list/TriageListBody';
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/design-system/components/Dialog';
-import { emitReceiving } from '@/components/receiving/receiving-events';
-import { focusRing } from '@/design-system/tokens/focus-ring';
-import { createLocalPickupOrder } from '@/lib/local-pickup/create-order';
+  TriageCardList,
+  type TriageFeed,
+  type TriageSelectionPort,
+} from '@/design-system/components/triage-card-list/TriageCardList';
+import { useTriageCut } from '@/design-system/components/triage-card-list/triage-list-state';
+import { triageFamily } from '@/design-system/components/triage-card-list/triage-view';
+import { groupRowsBy, type RowGroup } from '@/lib/group-rows';
 import {
-  pickupLineMatchesStatus,
   pickupLineNeedsProcess,
   pickupOrderIsDone,
 } from '@/lib/local-pickup/order-status';
-import { cn } from '@/utils/_cn';
+import {
+  parsePickupStageFilters,
+  pickupOrderMatchesStageFilters,
+} from '@/lib/local-pickup/stage-filters';
+import { usePublishRecordCursor } from '@/lib/record-cursor/useRecordCursor';
+import { PICKUP_HISTORY_VIEW } from '@/lib/triage/views';
+import { newInboundOrderHref } from '@/lib/inbound/new-inbound-order-path';
+import { formatDateKeyMedium } from '@/utils/date';
+import { PickupRecordView } from './PickupRecordView';
+import { PickupCard } from './cards/PickupCard';
+import {
+  pickupCardKey,
+  pickupCardModel,
+  pickupDateKey,
+  pickupOrderRecords,
+  type PickupCardModel,
+  type PickupOrderRecord,
+} from './cards/pickup-card-model';
 import {
   parsePickupStatusTab,
   usePickupLines,
   type PickupLine,
-  type PickupStatusTab,
 } from './pickup-lines';
-import { DataTable } from '@/components/tables/DataTable';
-import { useUrlColumnSort } from '@/hooks/useUrlColumnSort';
-import { groupRowsBy, type RowGroup } from '@/lib/group-rows';
-import { PICKUP_TABLE_BINDING } from './grid/pickup-table-definition';
-import { PickupGridGroupRow } from './grid/PickupGridGroupRow';
-import {
-  defaultDirForPickupColumn,
-  isPickupColumnSortable,
-  pickupSheetColumnsFor,
-  pickupSortFactFor,
-  type PickupGridColumn,
-  type PickupGridColumnKey,
-} from './grid/pickup-grid-layout';
-import { usePickupTableLayout } from './grid/usePickupTableLayout';
-import type { GridSortDir } from '@/design-system/components/grid/grid-sort-dir';
 
-/** Group flat pickup lines under their LCPU order (the one-to-many fold key). */
+const VIEW = PICKUP_HISTORY_VIEW;
+const NO_CARD_STATUS = [] as const;
+const ALL_BAND = 'All pickups';
+
+export type PickupSort = 'actionable' | 'newest' | 'oldest' | 'order' | 'customer' | 'amount_high' | 'amount_low';
+
+function parsePickupSort(raw: string | null): PickupSort {
+  return raw === 'newest' || raw === 'oldest' || raw === 'order' || raw === 'customer' || raw === 'amount_high' || raw === 'amount_low'
+    ? raw
+    : 'actionable';
+}
+
 function pickupFoldKey(line: PickupLine): string {
-  const po = (line.po_number || '').trim();
-  return po || `order:${line.order_id}`;
+  return `pickup:${line.order_id}`;
 }
 
-/** Row comparator keyed by SORT FACT — the structural facts (`title`/`order`) plus catalog field ids (`pickupSortFactFor` maps a mounted… */
-function comparePickupRows(
-  a: PickupLine,
-  b: PickupLine,
-  fact: string,
-  dir: GridSortDir,
-): number {
-  const sign = dir === 'asc' ? 1 : -1;
-  switch (fact) {
-    case 'title':
-      return sign * a.product_title.localeCompare(b.product_title);
-    case 'pickup.sku':
-      return sign * (a.sku || '').localeCompare(b.sku || '');
-    case 'order':
-      return sign * (a.po_number || '').localeCompare(b.po_number || '');
-    case 'pickup.date':
-      return sign * (a.pickup_date || '').localeCompare(b.pickup_date || '');
-    case 'pickup.qty':
-      return sign * (a.quantity - b.quantity);
-    case 'pickup.condition':
-      return sign * (a.condition_grade || '').localeCompare(b.condition_grade || '');
-    case 'pickup.price':
-      return sign * ((Number(a.total_price) || 0) - (Number(b.total_price) || 0));
-    case 'pickup.status':
-      return sign * (a.order_status || '').localeCompare(b.order_status || '');
-    case 'pickup.customer':
-      return sign * (a.customer_name || '').localeCompare(b.customer_name || '');
-    default:
-      return 0;
+function compareGroups(a: RowGroup<PickupOrderRecord>, b: RowGroup<PickupOrderRecord>, sort: PickupSort): number {
+  const left = pickupCardModel(a);
+  const right = pickupCardModel(b);
+  if (sort === 'actionable') {
+    const rank = { 'Resolve failure': 0, Triage: 1, 'Print labels': 2, Test: 3, Retest: 4, 'Put away': 5 } as const;
+    const byAction = rank[left.unitSummary.nextAction] - rank[right.unitSummary.nextAction];
+    if (byAction !== 0) return byAction;
+    if (left.pickupDate == null && right.pickupDate != null) return 1;
+    if (left.pickupDate != null && right.pickupDate == null) return -1;
+    return (left.pickupDate || '').localeCompare(right.pickupDate || '') || left.identity.localeCompare(right.identity, undefined, { numeric: true });
   }
+  if (sort === 'newest' || sort === 'oldest') {
+    if (left.pickupDate == null && right.pickupDate != null) return 1;
+    if (left.pickupDate != null && right.pickupDate == null) return -1;
+    return sort === 'oldest'
+      ? (left.pickupDate || '').localeCompare(right.pickupDate || '')
+      : (right.pickupDate || '').localeCompare(left.pickupDate || '');
+  }
+  if (sort === 'order') return left.identity.localeCompare(right.identity, undefined, { numeric: true });
+  if (sort === 'customer') return (left.customer || '').localeCompare(right.customer || '');
+  if (sort === 'amount_high') return right.totalValue - left.totalValue;
+  if (sort === 'amount_low') return left.totalValue - right.totalValue;
+  return 0;
 }
+
+export function pickupBands(rows: readonly PickupLine[], sort: PickupSort): [string, RowGroup<PickupOrderRecord>[]][] {
+  const groups = pickupOrderRecords(rows)
+    .map((record) => ({ key: `pickup:${record.orderId}`, rows: [record] }))
+    .sort((a, b) => compareGroups(a, b, sort));
+  const sectioned = sort === 'newest' || sort === 'oldest';
+  if (!sectioned) return groups.length ? [[ALL_BAND, groups]] : [];
+  const byDate = new Map<string, RowGroup<PickupOrderRecord>[]>();
+  for (const group of groups) {
+    const date = pickupDateKey(group.rows[0]!.lines[0]!);
+    const band = date
+      ? formatDateKeyMedium(date, { weekday: 'short', withYear: true })
+      : 'No pickup date';
+    const held = byDate.get(band);
+    if (held) held.push(group);
+    else byDate.set(band, [group]);
+  }
+  return [...byDate.entries()];
+}
+
+function usePickupSelection(rows: readonly PickupOrderRecord[], scopeKey: string) {
+  const [ids, setIds] = useState<ReadonlySet<number>>(() => new Set());
+  const visibleRef = useRef<readonly number[]>([]);
+  useEffect(() => setIds(new Set()), [scopeKey]);
+  const port = useMemo<TriageSelectionPort<PickupOrderRecord>>(
+    () => ({
+      ids,
+      toggle: (row) =>
+        setIds((current) => {
+          const next = new Set(current);
+          if (!next.delete(row.id)) next.add(row.id);
+          return next;
+        }),
+      toggleGroup: (groupIds, on) =>
+        setIds((current) => {
+          const next = new Set(current);
+          for (const id of groupIds) on ? next.add(id) : next.delete(id);
+          return next;
+        }),
+      setAll: (on) => setIds(on ? new Set(visibleRef.current) : new Set()),
+      publishVisible: (visible) => {
+        visibleRef.current = visible;
+      },
+    }),
+    [ids],
+  );
+  return { port, selected: rows.filter((row) => ids.has(row.id)) };
+}
+
+const rowId = (row: PickupOrderRecord) => row.id;
+const rowStatus = (_row: PickupOrderRecord): readonly never[] => NO_CARD_STATUS;
+const exactFind = (query: string, model: PickupCardModel) =>
+  model.identity.toLowerCase() === query ||
+  String(model.lead.orderId) === query.replace(/^#/, '') ||
+  model.rows.some((row) => (row.sku || '').toLowerCase() === query);
 
 interface PickupWorkspaceProps {
-  /** Highlight the rows of this order (sidebar selection, `?lcpu=`). */
+  /** Open this LCPU order from the URL / contextual recent-history rail. */
   selectedOrderId?: number | null;
 }
 
@@ -93,264 +153,148 @@ export function PickupWorkspace({ selectedOrderId = null }: PickupWorkspaceProps
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const queryClient = useQueryClient();
-
   const statusTab = parsePickupStatusTab(searchParams.get('status'));
+  const stageFilters = useMemo(() => parsePickupStageFilters(searchParams), [searchParams]);
   const query = searchParams.get('q') ?? '';
-
-  // The find text rides the FETCH KEY, not a client pass.
+  const sort = parsePickupSort(searchParams.get('sort'));
   const { data: lines, isLoading, isError, isFetching } = usePickupLines(query);
   const allRows = useMemo(() => lines ?? [], [lines]);
+  const allOrderRecords = useMemo(() => pickupOrderRecords(allRows), [allRows]);
+  const visibleOrderRecords = useMemo(
+    () => allOrderRecords.filter((record) => pickupOrderMatchesStageFilters(record.lines, stageFilters)),
+    [allOrderRecords, stageFilters],
+  );
+  const rows = useMemo(() => visibleOrderRecords.flatMap((record) => record.lines), [visibleOrderRecords]);
+  const allBands = useMemo(() => pickupBands(rows, sort), [rows, sort]);
+  const cut = useTriageCut({ statusKeys: NO_CARD_STATUS, recordParams: VIEW.recordParams });
+  const bands = useMemo(
+    () => cut.filterBands(allBands, pickupCardKey, rowStatus),
+    [allBands, cut],
+  );
+  const painted = useMemo(
+    () => bands.flatMap(([, groups]) => groups.flatMap((group) => group.rows)),
+    [bands],
+  );
+  const openRecord = useMemo(
+    () => (selectedOrderId == null ? null : allOrderRecords.find((row) => row.orderId === selectedOrderId) ?? null),
+    [allOrderRecords, selectedOrderId],
+  );
+  const openGroup = useMemo(() => {
+    if (!openRecord) return null;
+    return pickupCardModel({ key: `pickup:${openRecord.orderId}`, rows: [openRecord] });
+  }, [openRecord]);
 
-  const [createOpen, setCreateOpen] = useState(false);
-  const [customerName, setCustomerName] = useState('');
-  const [creating, setCreating] = useState(false);
-  const [createError, setCreateError] = useState<string | null>(null);
-
-  const setParam = useCallback(
-    (key: string, value: string | null) => {
+  const setOrder = useCallback(
+    (orderId: number | null) => {
       const next = new URLSearchParams(searchParams.toString());
-      if (!value) next.delete(key);
-      else next.set(key, value);
+      if (orderId == null) next.delete('lcpu');
+      else next.set('lcpu', String(orderId));
       const qs = next.toString();
       router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
     },
-    [router, pathname, searchParams],
+    [pathname, router, searchParams],
+  );
+  const open = useCallback((row: PickupOrderRecord) => setOrder(row.orderId), [setOrder]);
+  const close = useCallback(() => setOrder(null), [setOrder]);
+  const importPaperwork = useCallback(() => router.push(newInboundOrderHref('PICKUP')), [router]);
+  const importAction = useMemo(
+    () => (
+      <DeskHeaderAction
+        variant="primary"
+        size="md"
+        icon={<Camera aria-hidden />}
+        onClick={importPaperwork}
+        data-testid="pickup-import-paperwork"
+      >
+        Import paperwork
+      </DeskHeaderAction>
+    ),
+    [importPaperwork],
   );
 
-  const setParams = useCallback(
-    (mutate: (params: URLSearchParams) => void) => {
-      const next = new URLSearchParams(searchParams.toString());
-      mutate(next);
-      const qs = next.toString();
-      router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
-    },
-    [router, pathname, searchParams],
-  );
-
-  const onSelectOrder = useCallback(
-    (orderId: number) => {
-      setParam('lcpu', selectedOrderId === orderId ? null : String(orderId));
-    },
-    [setParam, selectedOrderId],
-  );
-
-  // Status-scoped rows (drives the visible grid) and the counts for each tab.
-  // Status is the only CLIENT narrowing left: it is a filter over the answer,
-  // not a second search.
-  const statusRows = useMemo(
-    () => allRows.filter((l) => pickupLineMatchesStatus(l, statusTab)),
-    [allRows, statusTab],
-  );
-
-  // Status lives in the ONE filter control (operator ruling 2026-08-30 — selection tabs are filters; the bottom strip carries counts only).
-  const statusFilter = useMemo(
-    () => ({
-      options: [
-        {
-          id: 'process',
-          label: 'Need to process',
-          count: allRows.filter((l) => pickupLineNeedsProcess(l)).length || undefined,
-          active: statusTab === 'process',
-        },
-        {
-          id: 'draft',
-          label: 'Draft',
-          count: allRows.filter((l) => !pickupOrderIsDone(l.order_status)).length || undefined,
-          active: statusTab === 'draft',
-        },
-        {
-          id: 'done',
-          label: 'Done',
-          count: allRows.filter((l) => pickupOrderIsDone(l.order_status)).length || undefined,
-          active: statusTab === 'done',
-        },
-      ],
-      onToggle: (id: string) =>
-        setParam('status', id === statusTab ? null : (id as PickupStatusTab)),
-      onClearAll: () => setParam('status', null),
-    }),
-    [allRows, statusTab, setParam],
-  );
-
-  const submitCreate = useCallback(async () => {
-    const name = customerName.trim();
-    if (!name) {
-      setCreateError('Customer name is required.');
-      return;
-    }
-    setCreating(true);
-    setCreateError(null);
-    try {
-      const order = await createLocalPickupOrder({ customerName: name });
-      await Promise.all([
-        queryClient.invalidateQueries({ queryKey: ['local-pickup-lines'] }),
-        queryClient.invalidateQueries({ queryKey: ['local-pickup-orders-rail'] }),
-      ]);
-      setCreateOpen(false);
-      setParams((params) => {
-        params.set('lcpu', String(order.id));
-        params.set('status', 'draft');
-      });
-      setTimeout(() => emitReceiving('receiving-focus-scan'), 60);
-    } catch (err) {
-      setCreateError(err instanceof Error ? err.message : 'Could not create pickup.');
-    } finally {
-      setCreating(false);
-    }
-  }, [customerName, queryClient, setParams]);
-
-  // Three settled answers, not one string (`display/workbench.md` → the four settled states).
-  const emptyMessage = isError
-    ? 'Could not load local pickup orders.'
-    : statusTab === 'process'
-      ? 'No local pickup orders need processing.'
-      : 'No local pickup orders yet.';
-  const searchEmptyMessage = 'No local pickup items match this search.';
-
-  // Grid adapter (was `PickupGridView`):
-  const { effectiveLayout, fields } = usePickupTableLayout();
-  const columns = useMemo(() => pickupSheetColumnsFor(effectiveLayout), [effectiveLayout]);
-  const sortFactByKey = useMemo(
-    () => new Map(columns.map((c) => [c.key as string, pickupSortFactFor(c)])),
-    [columns],
-  );
-  const scrollRef = useRef<HTMLDivElement>(null);
-  const {
-    sort: columnSort,
-    dir: sortDir,
-    setSort,
-  } = useUrlColumnSort<PickupGridColumnKey>({
-    isColumn: (raw) => isPickupColumnSortable(columns, raw),
-    defaultDir: (key) => defaultDirForPickupColumn(columns, key),
+  usePublishRecordCursor({
+    surfaceId: 'pickup-history',
+    scope: 'record',
+    enabled: true,
+    order: bands,
+    openId: openRecord?.id ?? null,
+    getId: rowId,
+    getGroupKey: (row) => row.orderId,
+    openGroupKey: openRecord?.orderId ?? null,
+    onOpen: open,
+    onClose: close,
   });
 
-  // One-shot "settle" re-render after the grid first has data — the virtualized LedgerGrid mounts its scroll element in the same commit the…
-  const [, settleTick] = useState(0);
-  const hasRows = statusRows.length > 0;
-  useEffect(() => {
-    if (isLoading || !hasRows) return;
-    const raf = requestAnimationFrame(() => settleTick((t) => t + 1));
-    return () => cancelAnimationFrame(raf);
-  }, [isLoading, hasRows]);
-
-  const orderGroupsByDate = useMemo<[string, RowGroup<PickupLine>[]][]>(() => {
-    const sortFact = columnSort ? (sortFactByKey.get(columnSort) ?? null) : null;
-    const ordered =
-      sortFact && sortDir
-        ? [...statusRows].sort((a, b) => comparePickupRows(a, b, sortFact, sortDir))
-        : statusRows;
-    return [['', groupRowsBy(ordered, pickupFoldKey)]];
-  }, [statusRows, columnSort, sortFactByKey, sortDir]);
+  const family = useMemo(
+    () => triageFamily(VIEW, {
+      rowId,
+      groupKey: pickupCardKey,
+      cardModel: pickupCardModel,
+      exactFind,
+      renderCard: (props) => <PickupCard {...props} />,
+    }),
+    [],
+  );
+  const scopeKey = `${query}|${searchParams.toString()}`;
+  const selection = usePickupSelection(painted, scopeKey);
+  const feed: TriageFeed<PickupOrderRecord> = {
+    bands,
+    allBands,
+    painted,
+    sectioned: sort === 'newest' || sort === 'oldest',
+    loading: isLoading,
+    fetching: isFetching,
+    search: { value: query, pending: isFetching },
+    selection: selection.port,
+    open: { id: openRecord?.id ?? null, open, close },
+  };
+  const cardCount = bands.reduce((sum, [, groups]) => sum + groups.length, 0);
+  const totalItems = rows.reduce((sum, row) => sum + Math.max(0, Number(row.quantity) || 0), 0);
+  const processCount = groupRowsBy(allRows.filter(pickupLineNeedsProcess), pickupFoldKey).length;
+  const doneCount = groupRowsBy(allRows.filter((row) => pickupOrderIsDone(row.order_status)), pickupFoldKey).length;
+  const summary: RecordLedgerSummary = {
+    title: 'Local pickup history',
+    facts: [
+      { label: 'Visible pickups', value: cardCount },
+      { label: 'Visible items', value: totalItems },
+      { label: 'Need to process', value: processCount, warn: processCount > 0 },
+      { label: 'Done', value: doneCount },
+    ],
+    note: 'Open a pickup to inspect every item and its receiving linkage. Sales keeps the separate money-facing receipt history.',
+  };
+  const narrowed = Boolean(query.trim()) || statusTab !== 'all' || Boolean(
+    stageFilters.qc || stageFilters.triage || stageFilters.label || stageFilters.ticket
+      || stageFilters.vendor || stageFilters.from || stageFilters.to,
+  );
+  const emptyTitle = isError
+    ? 'Could not load local pickup orders'
+    : statusTab === 'process'
+      ? 'No local pickups need processing'
+      : 'No local pickup orders yet';
 
   return (
     <>
-      <DashboardScrollShell>
-        <div className="relative flex min-h-0 min-w-0 flex-1 flex-col">
-          <DataTable<PickupLine, PickupGridColumnKey, PickupGridColumn>
-            binding={PICKUP_TABLE_BINDING}
-            columns={columns}
-            fields={fields}
-            orderGroupsByDate={orderGroupsByDate}
-            rows={statusRows}
-            getRowId={(r) => String(r.id)}
-            sort={columnSort}
-            dir={sortDir}
-            onSortChange={setSort}
-            loading={isLoading}
-            emptyMessage={emptyMessage}
-            searchEmptyMessage={searchEmptyMessage}
-            search={{
-              value: query,
-              onChange: (v) => setParam('q', v.trim() ? v : null),
-              placeholder: 'Filter pickup items…',
-              answeredBy: 'server',
-              pending: isFetching,
-            }}
-            filter={statusFilter}
-            totalCount={allRows.length}
-            scrollRef={scrollRef}
-            renderGroup={(group, baseStripeIndex, { columns: visible }) => (
-              <PickupGridGroupRow
-                group={group}
-                baseStripeIndex={baseStripeIndex}
-                selectedOrderId={selectedOrderId}
-                onSelectOrder={onSelectOrder}
-                columns={visible}
-              />
-            )}
-            renderRow={(row, stripeIndex, { columns: visible }) => (
-              <PickupGridGroupRow
-                group={{ key: `k:${row.id}`, rows: [row] }}
-                baseStripeIndex={stripeIndex}
-                selectedOrderId={selectedOrderId}
-                onSelectOrder={onSelectOrder}
-                columns={visible}
-              />
-            )}
-          />
-        </div>
-      </DashboardScrollShell>
-
-      <Dialog
-        open={createOpen}
-        onOpenChange={(open) => {
-          if (creating) return;
-          setCreateOpen(open);
+      <DeskActionSlotRegistrar role="primary">{importAction}</DeskActionSlotRegistrar>
+      <div data-testid="pickup-history-ledger" data-face="cards" className="flex min-h-0 min-w-0 flex-1">
+        <TriageCardList
+        family={family}
+        feed={feed}
+        cut={cut}
+        record={{
+          title: openGroup ? `Local pickup ${openGroup.identity}` : 'Local pickup',
+          subtitle: openGroup?.customer ?? undefined,
+          noun: VIEW.noun.one,
+          testId: 'pickup-history-record',
+          summary: <RecordLedgerSummaryPane summary={summary} />,
+          view: openGroup ? <PickupRecordView model={openGroup} openLineId={openGroup.rows[0]!.id} /> : null,
+          strip: null,
         }}
-      >
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle>New local pickup</DialogTitle>
-            <DialogDescription>
-              Creates a DRAFT order. Add items from kiosk intake or Zoho; this
-              station processes photos and serials.
-            </DialogDescription>
-          </DialogHeader>
-          <label className="flex flex-col gap-1.5">
-            <span className="text-role-caption font-semibold text-text-soft">
-              Customer name
-            </span>
-            <input
-              autoFocus
-              value={customerName}
-              onChange={(e) => setCustomerName(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') {
-                  e.preventDefault();
-                  void submitCreate();
-                }
-              }}
-              placeholder="Seller / customer"
-              className={cn(
-                'rounded-md border border-border-subtle bg-surface-card px-3 py-2 text-role-body text-text-primary',
-                focusRing('control'),
-              )}
-            />
-          </label>
-          {createError ? (
-            <p className="text-role-caption text-rose-600">{createError}</p>
-          ) : null}
-          <DialogFooter>
-            <Button
-              size="sm"
-              variant="ghost"
-              disabled={creating}
-              onClick={() => setCreateOpen(false)}
-            >
-              Cancel
-            </Button>
-            <Button
-              size="sm"
-              variant="primary"
-              disabled={creating}
-              onClick={() => void submitCreate()}
-            >
-              {creating ? 'Creating…' : 'Create'}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+        summary={<span className="text-xs text-text-muted">{cardCount} pickups · {totalItems} items</span>}
+        bulk={<span className="text-xs font-medium text-text-muted">{selection.selected.length} pickups selected</span>}
+        searchEmpty={narrowed ? <p className="text-sm text-text-muted">No local pickups match this view.</p> : null}
+        allClear={<TriageAllClear title={emptyTitle} detail="Imported and kiosk pickup records will appear here." />}
+        />
+      </div>
     </>
   );
 }

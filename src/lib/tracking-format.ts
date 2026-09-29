@@ -48,6 +48,17 @@ function stripUspsRoutingPrefix(input: string): string {
   return clean;
 }
 
+/**
+ * USPS IMpb barcode scans may prepend `420` + ZIP/ZIP+4. Return the carrier-
+ * searchable 9x number only when that routing envelope is valid and present.
+ * The raw scan remains the full-copy payload and audit identity.
+ */
+export function uspsSearchableTrackingNumber(input: string): string | null {
+  const clean = normalizeTrackingCanonical(input);
+  const searchable = stripUspsRoutingPrefix(clean);
+  return searchable && searchable !== clean ? searchable : null;
+}
+
 /** Collapse a tracking value that is the *same* number repeated back-to-back. */
 function collapseRepeatedTracking(input: string): string {
   const clean = normalizeTrackingCanonical(input);
@@ -94,6 +105,17 @@ export const normalizeTrackingNumber = (input: string): string =>
 /** Canonical match/display key for a tracking number — the single normalizer the receiving scan + paste boundaries should run every value… */
 export function extractCanonicalTracking(input: string): string {
   return stripFedexConcatPrefix(normalizeTrackingNumber(input));
+}
+
+/**
+ * Return a shorter carrier-searchable number only when the supplied value is
+ * a real barcode/routing envelope. The caller keeps the original for audit
+ * and “copy full”; this value powers the explicit “copy shortened” action.
+ */
+export function searchableTrackingNumber(input: string): string | null {
+  const clean = normalizeTrackingCanonical(input);
+  const canonical = extractCanonicalTracking(input);
+  return canonical && canonical !== clean ? canonical : null;
 }
 
 export function normalizeTrackingKey18(input: string): string {

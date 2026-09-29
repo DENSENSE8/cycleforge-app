@@ -35,15 +35,16 @@ test('keys are canonical and deduped by canon, not by literal', () => {
 
 test('the cap TRUNCATES for the filter where it ERRORS for the check', () => {
   // Same paste, two policies, on purpose: every key past the cap is an
-  // unanswered ERP lookup, but the list can honestly show the first 100.
-  const many = Array.from({ length: 137 }, (_, i) => `TRACK${String(i).padStart(6, '0')}`).join('\n');
+  // unanswered ERP lookup, but the list can honestly show the first N.
+  const requested = CHECK_ZOHO_RECEIVED_MAX_INPUTS + 37;
+  const many = Array.from({ length: requested }, (_, i) => `TRACK${String(i).padStart(6, '0')}`).join('\n');
 
   const check = parseTrackingPaste(many);
   assert.equal(check.ok, false, 'the ERP check refuses an oversize paste');
 
   const sel = parseTrackingKeys(many);
   assert.equal(sel.keys.length, CHECK_ZOHO_RECEIVED_MAX_INPUTS);
-  assert.equal(sel.requested, 137);
+  assert.equal(sel.requested, requested);
   assert.equal(sel.truncated, 37, 'truncation is REPORTED, never swallowed');
 });
 

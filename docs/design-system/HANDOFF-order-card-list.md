@@ -21,7 +21,8 @@ Floor (Ctrl/⌘+Shift+F) keeps the industrial ledger. BRIEF §13 records the own
 | `src/components/outbound/orders/cards/order-card-list-state.ts` | URL state (`?cardStatus=`, `?page=`) via History API, page mode pref (+ `resolved`), kept scroll, held new orders, `[` `]` Home End |
 | `src/components/outbound/orders/cards/OrderCardPeek.tsx`, `OrderCardActionMenu.tsx` | quick look; one-card verbs |
 | `src/lib/orders/order-card-model.ts` | pure card facts; `orderSla`, `ORDER_SLA_SECTIONS` |
-| `src/components/outbound/orders/OrderQueueSummary.tsx` | `queueRowStatusKeys`, `OrderQueueSummaryChips` (count ORDERS, filter, Reset + Esc) |
+| `src/components/outbound/orders/OrderQueueSummary.tsx` | `queueRowStatusKeys`, the split-pane summary and Floor footer line |
+| `src/lib/orders/to-ship-queue.ts` + `src/design-system/components/QueueStatusChips.tsx` | the status chips' counts (`queueStatusCounts`: each order once per distinct line status) and their paint (filter, Reset + Esc). The phone pick list `/m/pick` paints no chips (owner 2026-09-28, BRIEF §14) |
 | `src/components/dashboard/orders-queue/useOrdersQueueFeed.ts` | `arrangeGroups(groups, sort)` option (replaced `groupFilter`) → `orderGroupsByDate` arranged (cursor walks it), `allOrderGroupsByDate` raw |
 | `src/components/dashboard/orders-queue/useOrdersQueuePlane.ts` | select-mode `rows` = flattened `orderGroupsByDate` (screen order for Shift-range / select-all); open-record lookups keep the full list |
 | `src/lib/nav/sidebar-column-store.ts` + `src/components/layout/DesktopRouteShell.tsx` | **new** — the shell publishes `columnOpen`; `useSidebarColumnOpen()` reads it. **Shell file is shared** (see Commit) |

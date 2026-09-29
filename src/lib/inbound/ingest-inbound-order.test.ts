@@ -34,6 +34,7 @@ function fakes(opts: { priorHash?: string | null } = {}) {
       }
       if (/INSERT INTO suppliers/.test(text)) return { rows: [{ id: 3 }], rowCount: 1 };
       if (/INSERT INTO inbound_order/.test(text)) return { rows: [{ id: 5, created: true }], rowCount: 1 };
+      if (/INSERT INTO local_pickup_orders/.test(text)) return { rows: [{ id: 44 }], rowCount: 1 };
       if (/FROM receiving_line\s+WHERE organization_id = \$1 AND inbound_order_id/.test(text)) {
         return { rows: [{ id: 91, line_key: 'L1', receiving_id: 12 }], rowCount: 1 };
       }
@@ -109,4 +110,41 @@ test('line keys: typed ids win, blanks take their position, repeats are split', 
     assignInboundLineKeys([{ ...line, lineKey: 'X9' }, line, { ...line, lineKey: 'X9' }, line]),
     ['X9', 'L2', 'X9#2', 'L4'],
   );
+});
+
+test('a pickup lands one atomic Receiving and Sales projection with receipt facts', async () => {
+  const f = fakes();
+  const pickup = draft({
+    type: 'PICKUP',
+    platform: 'manual',
+    orderNumber: 'LCPU-KEN-091426',
+    orderDate: '2026-09-14',
+    vendor: 'Ken',
+    tracking: [{ number: '', carrier: '' }],
+    pickup: { paymentMethod: 'VENMO', paidCents: 80_000 },
+    lines: [{
+      ...emptyInboundOrderLine(),
+      title: 'Bose bass module 700',
+      quantity: 2,
+      unitCostCents: 13_000,
+      conditionGrade: 'USED_B',
+      partsStatus: 'MISSING_PARTS',
+      missingPartsNote: 'No power cord',
+    }],
+  });
+
+  const result = await ingestInboundOrderInTx(f.client, ORG, pickup, CTX, f.deps);
+
+  const header = f.sql.find((entry) => /INSERT INTO local_pickup_orders/.test(entry.text));
+  const item = f.sql.find((entry) => /INSERT INTO local_pickup_order_items/.test(entry.text));
+  assert.ok(header);
+  assert.equal(result.localPickupOrderId, 44);
+  assert.equal(header.params[7], 'VENMO');
+  assert.equal(header.params[8], 80_000);
+  assert.ok(item);
+  assert.equal(item.params[1], 'L1');
+  assert.equal(item.params[3], 101, 'pickup item stores its canonical receiving-line link');
+  assert.equal(item.params[7], 'USED_B');
+  assert.equal(item.params[8], 'MISSING_PARTS');
+  assert.equal(item.params[11], 26_000);
 });

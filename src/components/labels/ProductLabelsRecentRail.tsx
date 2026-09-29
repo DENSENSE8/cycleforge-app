@@ -3,13 +3,13 @@
 /** Products Labels sidebar rail — "Printed" (recent unit-label issues). */
 
 import { useCallback, useMemo, useState } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
 import { SidebarRecentRailBase } from '@/components/sidebar/rail-shell/SidebarRecentRailBase';
 import { RailPeekCard } from '@/components/sidebar/rail-shell/RailPeekCard';
 import { RailRowBody } from '@/components/sidebar/rail-shell/RailRowBody';
 import { railRelativeTime } from '@/components/sidebar/SidebarRailShell';
 import { SidebarRailScrollport } from '@/components/sidebar/rail-shell/SidebarRailScrollport';
-import { SearchField } from '@/design-system/primitives/SearchField';
 import {
   EMPTY_LABEL_PRINT_RAIL_FACETS,
   LabelPrintRailFilters,
@@ -74,7 +74,7 @@ const labelPrintFacts = (row: LabelPrintFeedItem): RailPeekFact[] => [
 
 export function ProductLabelsRecentRail() {
   const { historyId, setHistoryId } = useLabelsHistoryIdParam();
-  const [filterText, setFilterText] = useState('');
+  const filterText = useSearchParams().get('q') ?? '';
   const [facets, setFacets] = useState<LabelPrintRailFacets>(EMPTY_LABEL_PRINT_RAIL_FACETS);
 
   const queryKey = useMemo(
@@ -177,14 +177,9 @@ export function ProductLabelsRecentRail() {
           )}
         />
       </SidebarRailScrollport>
-      <SearchField
-        value={filterText}
-        onChange={setFilterText}
-        placeholder="Filter printed…"
-        rightElement={
-          <LabelPrintRailFilters facets={facets} onChange={setFacets} />
-        }
-        />
+      <div className="flex shrink-0 justify-end border-t border-border-soft bg-surface-card p-1">
+        <LabelPrintRailFilters facets={facets} onChange={setFacets} />
+      </div>
     </div>
   );
 }

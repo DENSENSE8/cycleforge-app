@@ -1,54 +1,36 @@
 'use client';
 
 /**
- * Label PDF intake for the desk: every picked or dropped file becomes one
- * tray row per LABEL. A carrier batch export (one PDF, many pages) is split
- * with `pdf-lib` into single-page PDFs named `<base>-p<n>.pdf`, each sent
- * through `uploadLabelPdf` on its own — so the server pairs, dedupes and
- * prints them one label at a time. A single-page PDF uploads byte-for-byte
- * unchanged. Uploads run one at a time, in pick order; a second pick while
- * the first is still sending queues behind it.
+ * Label PDF intake for the desk: every picked or dropped PDF is one BATCH
+ * (owner 2026-09-28) — the server splits it into one label per page, keeps the
+ * pages together under the file, and answers what landed. The same file
+ * uploaded again is the same batch (its print history carries over). Uploads
+ * run one at a time, in pick order; a second pick queues behind the first.
  */
 
-import { PDFDocument } from 'pdf-lib';
 import { useCallback, useRef, useState } from 'react';
-import { uploadLabelPdf } from '@/lib/label-ingestions/http-client';
+import { uploadLabelBatch } from '@/lib/label-batches/http-client';
 
 export type UploadStatus = 'uploading' | 'added' | 'replayed' | 'failed';
 
 export interface LabelUploadItem {
   key: string;
-  /** The file sent (`<base>-p<n>.pdf` for a split page). */
-  name: string;
   /** The file the operator picked. */
-  sourceName: string;
-  /** 1-based page of a split batch; null when the file went up whole. */
-  page: number | null;
+  name: string;
   status: UploadStatus;
-  /** Why a `failed` row failed. */
+  /** Why a `failed` row failed, or which pages did not land. */
   reason: string | null;
+  /** The batch the file became (or already was). */
+  batchId: number | null;
+  /** "38 labels added · 2 already on file" once it lands. */
+  summary: string | null;
 }
 
-/** One file per page of `file`; the file itself when it has one page or pdf-lib cannot read it (the server then judges it). */
-async function splitPages(file: File): Promise<Array<{ file: File; page: number | null }>> {
-  let source: PDFDocument;
-  try {
-    source = await PDFDocument.load(await file.arrayBuffer(), { ignoreEncryption: true });
-  } catch {
-    return [{ file, page: null }];
-  }
-  const count = source.getPageCount();
-  if (count <= 1) return [{ file, page: null }];
-  const base = file.name.replace(/\.pdf$/i, '');
-  const pages: Array<{ file: File; page: number }> = [];
-  for (let index = 0; index < count; index += 1) {
-    const single = await PDFDocument.create();
-    const [copied] = await single.copyPages(source, [index]);
-    single.addPage(copied!);
-    const bytes = (await single.save()) as Uint8Array<ArrayBuffer>;
-    pages.push({ file: new File([bytes], `${base}-p${index + 1}.pdf`, { type: 'application/pdf' }), page: index + 1 });
-  }
-  return pages;
+function pagesSummary(added: number, alreadyOnFile: number, pageCount: number, replayed: boolean): string {
+  if (replayed) return `Already uploaded · ${pageCount} label${pageCount === 1 ? '' : 's'}`;
+  const parts = [`${added} label${added === 1 ? '' : 's'} added`];
+  if (alreadyOnFile > 0) parts.push(`${alreadyOnFile} already on file`);
+  return parts.join(' · ');
 }
 
 export interface LabelUploads {
@@ -57,18 +39,26 @@ export interface LabelUploads {
   items: LabelUploadItem[];
   /** Dismiss the tray: finished rows go; rows still sending stay until they land. */
   clear(): void;
-  /** A pick is still splitting or sending. */
+  /** A pick is still sending. */
   pending: boolean;
 }
 
-/** `onSettled` runs after each pick's last upload lands — the desk refreshes its queue there. */
-export function useLabelUploads({ onSettled }: { onSettled?: () => void | Promise<void> } = {}): LabelUploads {
+/**
+ * `onSettled` runs after each pick's last upload lands — the desk refreshes its
+ * queue there; `onUploaded` hears each landed batch (the Uploads view opens it).
+ */
+export function useLabelUploads({
+  onSettled,
+  onUploaded,
+}: { onSettled?: () => void | Promise<void>; onUploaded?: (batchId: number) => void } = {}): LabelUploads {
   const [items, setItems] = useState<LabelUploadItem[]>([]);
   const [running, setRunning] = useState(0);
   const nextKey = useRef(0);
   const queue = useRef<Promise<void>>(Promise.resolve());
   const settled = useRef(onSettled);
   settled.current = onSettled;
+  const uploaded = useRef(onUploaded);
+  uploaded.current = onUploaded;
 
   const patch = useCallback((key: string, next: Partial<LabelUploadItem>) => {
     setItems((current) => current.map((item) => (item.key === key ? { ...item, ...next } : item)));
@@ -81,42 +71,25 @@ export function useLabelUploads({ onSettled }: { onSettled?: () => void | Promis
       queue.current = queue.current.then(async () => {
         try {
           for (const file of files) {
+            const key = `upload-${(nextKey.current += 1)}`;
+            const row: LabelUploadItem = { key, name: file.name, status: 'uploading', reason: null, batchId: null, summary: null };
             if (file.type && file.type !== 'application/pdf') {
-              const key = `upload-${(nextKey.current += 1)}`;
-              setItems((current) => [
-                ...current,
-                { key, name: file.name, sourceName: file.name, page: null, status: 'failed', reason: 'Not a PDF — label uploads are PDFs.' },
-              ]);
+              setItems((current) => [...current, { ...row, status: 'failed', reason: 'Not a PDF — label uploads are PDFs.' }]);
               continue;
             }
-            let parts: Array<{ file: File; page: number | null }>;
+            setItems((current) => [...current, row]);
             try {
-              parts = await splitPages(file);
+              const result = await uploadLabelBatch(file);
+              const { added, alreadyOnFile, failed } = result.pages;
+              patch(key, {
+                status: result.replayed ? 'replayed' : 'added',
+                batchId: result.batch.id,
+                summary: pagesSummary(added, alreadyOnFile, result.batch.pageCount, result.replayed),
+                reason: failed.length > 0 ? `${failed.length} page(s) failed — p${failed[0]!.pageNumber}: ${failed[0]!.reason}` : null,
+              });
+              uploaded.current?.(result.batch.id);
             } catch (error) {
-              const key = `upload-${(nextKey.current += 1)}`;
-              const reason = error instanceof Error ? error.message : 'Could not split the PDF.';
-              setItems((current) => [...current, { key, name: file.name, sourceName: file.name, page: null, status: 'failed', reason }]);
-              continue;
-            }
-            const rows = parts.map(({ file: part, page }) => ({
-              part,
-              item: {
-                key: `upload-${(nextKey.current += 1)}`,
-                name: part.name,
-                sourceName: file.name,
-                page,
-                status: 'uploading' as const,
-                reason: null,
-              },
-            }));
-            setItems((current) => [...current, ...rows.map((row) => row.item)]);
-            for (const { part, item } of rows) {
-              try {
-                const result = await uploadLabelPdf(part);
-                patch(item.key, { status: result.replayed ? 'replayed' : 'added' });
-              } catch (error) {
-                patch(item.key, { status: 'failed', reason: error instanceof Error ? error.message : 'Upload failed.' });
-              }
+              patch(key, { status: 'failed', reason: error instanceof Error ? error.message : 'Upload failed.' });
             }
           }
         } finally {

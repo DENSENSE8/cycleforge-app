@@ -3,6 +3,7 @@
 import { tenantQuery, withTenantTransaction } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';
 import type { ReceivingLineUnitView } from '@/lib/receiving/receiving-line-row';
+import { refreshReceivingUnitStageFacts } from '@/lib/receiving/receiving-unit-stage-facts';
 
 /** A `receiving_line_unit` row as the planner needs it. */
 export interface ExistingLineUnit {
@@ -134,6 +135,8 @@ export interface EnsureLineUnitsDeps {
   ) => Promise<Map<number, ExistingLineUnit[]>>;
   /** Apply one line's non-empty plan. Never called for a noop plan. */
   applyPlan: (orgId: OrgId, lineId: number, plan: LineUnitPlan) => Promise<void>;
+  /** Refresh the rebuildable fast-status projection after a material change. */
+  refreshFacts?: (orgId: OrgId, lineId: number) => Promise<void>;
 }
 
 /**
@@ -233,6 +236,8 @@ async function applyLineUnitPlan(
 const defaultDeps: EnsureLineUnitsDeps = {
   loadUnits: loadLineUnits,
   applyPlan: applyLineUnitPlan,
+  refreshFacts: (orgId, lineId) =>
+    refreshReceivingUnitStageFacts(orgId, { lineIds: [lineId] }).then(() => undefined),
 };
 
 /** Materialise `receiving_line_unit` rows for the given lines. */
@@ -261,7 +266,10 @@ export async function ensureLineUnits(
       existing: existingByLine.get(lineId) ?? [],
     });
     plans.set(lineId, plan);
-    if (!plan.noop) await deps.applyPlan(orgId, lineId, plan);
+    if (!plan.noop) {
+      await deps.applyPlan(orgId, lineId, plan);
+      await deps.refreshFacts?.(orgId, lineId);
+    }
   }
 
   return plans;

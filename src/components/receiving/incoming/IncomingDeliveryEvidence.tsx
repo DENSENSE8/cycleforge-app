@@ -33,7 +33,7 @@ import type { ReceivingStatusStep } from '@/lib/receiving/receiving-status-strip
 import { resolveSkuIdentityTitle } from '@/lib/sku/sku-identity-law';
 import { cn } from '@/utils/_cn';
 import { cartonIdOf, IncomingItem, IncomingRecordAside } from './incoming-record-sections';
-import { incomingDeliveryNextAction, purchaseExceptionReason } from './IncomingDeliveryRecord';
+import { incomingDeliveryNextAction, purchaseExceptionReason } from './incoming-delivery-state';
 
 /**
  * The lane read as a whole — the ledger's summary with nothing open. On the

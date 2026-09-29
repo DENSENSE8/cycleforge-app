@@ -1,4 +1,5 @@
 import { runDueShipments } from '@/lib/shipping/scheduler';
+import { emitOverdueOrderAlerts } from '@/lib/shipping/overdue-order-alerts';
 
 export interface ShippingSyncDuePayload {
   limit?: unknown;
@@ -13,6 +14,8 @@ interface ShippingSyncDueJobResult {
   terminal: number;
   errors: number;
   durationMs: number;
+  overdueCandidates: number;
+  alertSubscriptionsAdded: number;
 }
 
 export function normalizeShippingSyncDuePayload(
@@ -42,5 +45,13 @@ export async function runShippingSyncDueJob(
 ): Promise<ShippingSyncDueJobResult> {
   const { limit, concurrency, carriers } = normalizeShippingSyncDuePayload(payload);
   const result = await runDueShipments({ limit, concurrency, carriers });
-  return { ok: true, ...result };
+  // Carrier truth lands first; the alert payload then carries the freshest
+  // status available for each internally-unfulfilled overdue order.
+  const alerts = await emitOverdueOrderAlerts({ limit: 250 });
+  return {
+    ok: true,
+    ...result,
+    overdueCandidates: alerts.candidates,
+    alertSubscriptionsAdded: alerts.subscriptionsAdded,
+  };
 }

@@ -13,6 +13,12 @@ import { cn } from '@/utils/_cn';
 import { NAV_BLOCK_CLASS, NAV_BLOCK_PLATE_CLASS } from './nav-block';
 import { NAV_VIEW_ICONS } from './nav-view-icons';
 import { useLaneDoorHref } from './useLaneDoorHref';
+import {
+  SPINE_PARENT_ICON_MOTION_CLASS,
+  SPINE_PARENT_MARKER_CLASS,
+  SPINE_PARENT_ROW_MOTION_CLASS,
+} from '@/components/sidebar/sidebar-spine';
+import { spineParentTone } from '@/components/sidebar/master-nav/spine-parent-tone';
 
 export type Glyph = { icon: React.ComponentType<{ className?: string }>; tone: string; alertCount?: true };
 
@@ -70,6 +76,7 @@ export function NavSectionList({
                   item={item}
                   href={doorHref(item.id) ?? item.href}
                   glyph={navRowGlyph(item, undefined)}
+                  toneKey={section.id === 'top' || section.id === 'ordered-top' ? item.id : section.id}
                   onActiveSelect={onActiveSelect}
                   activeRowRef={item.active ? activeRowRef : undefined}
                 />
@@ -86,17 +93,20 @@ function NavItemRow({
   item,
   href,
   glyph,
+  toneKey,
   onActiveSelect,
   activeRowRef,
 }: {
   item: NavItem;
   href: string;
   glyph: Glyph | null;
+  toneKey: string;
   onActiveSelect?: () => void;
   activeRowRef?: React.Ref<HTMLAnchorElement>;
 }) {
   const plateTransition = useMotionTransition(motionTransition.sliderIndicator);
   const interceptActive = item.active && onActiveSelect;
+  const tone = spineParentTone(toneKey);
   return (
     <SidebarMenuItem>
       <Link
@@ -104,7 +114,14 @@ function NavItemRow({
         href={href}
         prefetch={false}
         aria-current={item.active ? 'page' : undefined}
-        className={cn(NAV_BLOCK_CLASS, 'h-8 text-role-body', item.active && 'font-medium')}
+        data-active={item.active ? 'true' : undefined}
+        className={cn(
+          NAV_BLOCK_CLASS,
+          'group h-8 text-role-body',
+          SPINE_PARENT_ROW_MOTION_CLASS,
+          tone.row,
+          item.active && 'font-medium',
+        )}
         onClick={
           interceptActive
             ? (event) => {
@@ -115,12 +132,24 @@ function NavItemRow({
             : undefined
         }
       >
+        <span
+          aria-hidden
+          className={cn(
+            SPINE_PARENT_MARKER_CLASS,
+            tone.marker,
+            item.active && 'scale-y-100 opacity-100',
+          )}
+        />
         {item.active ? (
           <motion.span aria-hidden layoutId="nav-row-plate" transition={plateTransition} className={NAV_BLOCK_PLATE_CLASS} />
         ) : null}
         {glyph ? (
           <span aria-hidden className="flex shrink-0">
-            <glyph.icon className={navIconStrokeClass(cn('size-4', glyph.tone))} />
+            <glyph.icon
+              className={navIconStrokeClass(
+                cn('size-4', glyph.tone, SPINE_PARENT_ICON_MOTION_CLASS, tone.icon),
+              )}
+            />
           </span>
         ) : null}
         <span className="min-w-0 flex-1 truncate" title={item.label}>
@@ -129,7 +158,12 @@ function NavItemRow({
         {item.badge === 'beta' ? (
           <span className="shrink-0 text-role-micro font-semibold text-text-faint">Beta</span>
         ) : null}
-        {item.kind === 'drill' ? <ChevronRight aria-hidden className="size-3.5 shrink-0 text-text-faint" /> : null}
+        {item.kind === 'drill' ? (
+          <ChevronRight
+            aria-hidden
+            className="size-3.5 shrink-0 text-text-faint transition-transform duration-200 group-hover:translate-x-0.5 motion-reduce:transform-none"
+          />
+        ) : null}
       </Link>
     </SidebarMenuItem>
   );

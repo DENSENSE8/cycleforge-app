@@ -9,33 +9,28 @@
  * through the `nav.contextual.<pageId>` setting.
  */
 
-import { SIDEBAR_PAGE_NAV } from '@/lib/sidebar-navigation';
 import type { NavRolloutState } from './schema';
 
 /**
- * Scan stations are NOT ported to the contextual sidebar (operator ruling
- * 2026-09-26). Station work is physical — you move to complete it — so its
- * long-term home is `/m/*`, with desktop showing a live feed of what staff do
- * on mobile. Until then every station keeps its current desktop surface (the
- * two-card column: scan bar + recents rail) unchanged. These pages resolve
- * `legacy` whatever the map or a `nav.contextual.<pageId>` override says.
+ * Owner ruling (2026-09-28): a scan station's browse views live in the
+ * contextual sidebar. Scan input and recents are part of that same contract,
+ * so no station needs a blanket legacy pin.
  */
-export const NAV_CONTEXT_PINNED_LEGACY: ReadonlySet<string> = new Set(
-  SIDEBAR_PAGE_NAV.filter((page) => page.kind === 'station').map((page) => page.id),
-);
+export const NAV_CONTEXT_PINNED_LEGACY: ReadonlySet<string> = new Set();
 
 export const NAV_CONTEXT_ROLLOUT: Readonly<Record<string, NavRolloutState>> = {
   'ai-chat': 'contextual',
-  home: 'legacy',
-  sales: 'legacy',
+  home: 'contextual',
+  sales: 'contextual',
   operations: 'legacy',
-  reports: 'legacy',
-  triage: 'legacy',
-  receive: 'legacy',
-  pickup: 'legacy',
+  reports: 'contextual',
+  'ops-photos': 'contextual',
+  triage: 'contextual',
+  receive: 'contextual',
+  pickup: 'contextual',
   repair: 'legacy',
-  testing: 'legacy',
-  'ready-to-pack': 'legacy',
+  testing: 'contextual',
+  'ready-to-pack': 'contextual',
   incoming: 'contextual',
   receiving: 'legacy',
   sourcing: 'contextual',
@@ -43,14 +38,18 @@ export const NAV_CONTEXT_ROLLOUT: Readonly<Record<string, NavRolloutState>> = {
   'label-intake': 'contextual',
   outbound: 'legacy',
   'scan-out': 'legacy',
-  packer: 'legacy',
-  products: 'legacy',
+  packer: 'contextual',
+  products: 'contextual',
   inventory: 'contextual',
   'qc-labels': 'contextual',
   support: 'legacy',
   studio: 'legacy',
   // Born contextual (2026-09-28): no old panel to retire; its filters were never anywhere else.
   imports: 'contextual',
+  // Born contextual (owner 2026-09-28): the Exceptions hub's kinds are its panel.
+  exceptions: 'contextual',
+  // Born contextual (owner 2026-09-29): Find + its one view are the whole panel.
+  'print-station': 'contextual',
 };
 
 /** Settings value set of `nav.contextual.<pageId>`; `inherit` defers to the next level. */

@@ -39,7 +39,6 @@ import {
   testingWorkspaceQueryKey,
 } from '@/lib/tech/testing-workspace-query';
 import { useQueueDisplaySort } from '@/hooks/useQueueDisplaySort';
-import { useWorkbenchSearchParam } from '@/hooks/useWorkbenchSearchParam';
 import { DateRangePickerPill } from '@/components/ui/DateRangeHeader';
 
 const TESTING_LANE_ICON: Record<TestingLaneIconKey, React.ComponentType<{ className?: string }>> = {
@@ -103,7 +102,7 @@ export function TestingHistoryList({
     ownTesterId,
     explicitlyAll,
   });
-  const { searchQuery: search, setSearch } = useWorkbenchSearchParam();
+  const search = searchParams.get('search') ?? '';
   const priorityOnly = mode === 'urgent';
   const weekOffset =
     mode === 'history'
@@ -235,16 +234,6 @@ export function TestingHistoryList({
   const daySections = useMemo(() => toDaySections(rows), [rows, toDaySections]);
   const boardEnabled = mode === 'history' && STATION_PIPELINE_BOARDS;
   const layout = boardEnabled ? parseLayout(searchParams.get(LAYOUT_PARAM)) : 'all';
-  const setLayout = useCallback(
-    (next: 'board' | 'all') => {
-      const params = new URLSearchParams(searchParams.toString());
-      if (next === 'all') params.delete(LAYOUT_PARAM);
-      else params.set(LAYOUT_PARAM, next);
-      const qs = params.toString();
-      router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
-    },
-    [pathname, router, searchParams],
-  );
   const activityAxis = mode === 'history' ? 'tested' as const : 'unboxed' as const;
 
   const gridBody = (
@@ -269,7 +258,6 @@ export function TestingHistoryList({
         tableId="testing"
         selectionScope={TESTING_SELECTION_SCOPE}
         testId="testing-grid-body"
-        search={{ value: search, onChange: setSearch, placeholder: 'Filter tests…' }}
       />
     </div>
   );

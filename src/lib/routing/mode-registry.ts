@@ -5,37 +5,36 @@
  * and the app frame applies the page's mode once (`RouteModeRegion`), so a
  * page cannot forget one.
  *
- * `runtime` — the route's own layout declares the mode because it switches
- * while the page is open. Only `/shipping` does (Floor ⇄ triage,
- * `src/app/shipping/layout.tsx`).
+ * The route declares the mode, on every device (owner 2026-09-28,
+ * `docs/design-system/HANDOFF-remove-desk-floor.md`): desks are `triage` on a
+ * desktop, a touch laptop and an iPad alike — no Floor, no device collapse.
+ * `industrial` is declared ONLY by `/m/*` OPERATION flows — moving a thing to
+ * its next operation with one pressable next step (scan, unbox, pack,
+ * scan-out, stock count / pair) — and paints the same on a phone and an iPad.
+ * `/m/*` READING flows (tasks, daily, imports, orders, exceptions, records,
+ * forms) are `triage`. A flow's subpages share its mode (prefix entries).
  *
  * Portals that escape the page's DOM (dialogs, sheets, the right rail, the
- * command palette) keep their own `ModeRegion` — they are not pages.
+ * command palette) keep their own `ModeRegion` — they are not pages; one that
+ * asks for `triage` on an `industrial` route paints the route's `industrial`
+ * unless it is a `form` (`resolveRegionMode`).
  */
 
 import type { ModeLookName, ModeName } from '@/design-system/modes/registry';
 
-export type RouteMode = ModeName | 'runtime';
-
 export interface ModeRouteEntry {
   /** Path prefix (`/inventory` owns `/inventory/stock`), or the whole path when `exact`. */
   route: string;
-  mode: RouteMode;
+  mode: ModeName;
   /** Match `route` itself only, never its children. */
   exact?: true;
   /**
-   * TRIAGE ONLY (owner 2026-09-27): the declared `triage` holds on a phone and
-   * a touch screen too instead of collapsing to `industrial` — a form (the new
-   * sales order) or a one-job desk that never offers Floor (Labels & docs).
-   * The lane-policy pass (`HANDOFF-lane-mode-policy.md`) turns this into the
-   * `triage` policy.
+   * TRIAGE ONLY: the job fills something in (a new order, a pick, labels) —
+   * a `triage` region on it never takes an enclosing operation's
+   * `industrial`.
    */
   form?: true;
-  /**
-   * A job LOOK over the declared mode (`MODE_LOOKS`): the region stamps it
-   * where the mode resolves. A `runtime` route's layout applies it, and a
-   * look route never takes the layout's Floor.
-   */
+  /** A job LOOK over the declared mode (`MODE_LOOKS`): the region stamps it where the mode resolves. */
   look?: ModeLookName;
 }
 
@@ -50,7 +49,7 @@ const DESK_TRIAGE_ROUTES = [
   '/repair', '/tech', '/test', '/wipe',
   // Records + catalog
   '/dashboard', '/products', '/search', '/serial', '/photos', '/ops', '/review', '/signals',
-  '/sourcing', '/studio', '/manuals', '/forge', '/operations', '/reports', '/calendar',
+  '/sourcing', '/studio', '/manuals', '/forge', '/operations', '/reports', '/calendar', '/exceptions',
   '/open-links', '/support', '/onboarding', '/settings', '/admin',
   // Identifier doors that resolve and redirect (GS1 links, short links, QR)
   '/01', '/414', '/l', '/o', '/p', '/q', '/qr', '/s',
@@ -68,23 +67,43 @@ const KIOSK_ROUTES: readonly ModeRouteEntry[] = [{ route: '/kiosk', mode: 'count
 const DECLARED_ROUTES: readonly ModeRouteEntry[] = [
   { route: '/', mode: 'triage', exact: true },
   ...DESK_TRIAGE_ROUTES.map((route): ModeRouteEntry => ({ route, mode: 'triage' })),
-  { route: '/shipping', mode: 'runtime' },
-  // Labels & docs — one job (show labels, print them): triage only, its own
-  // look, never Floor even inside the dual Outbound lane (owner 2026-09-27).
-  { route: '/shipping/label-intake', mode: 'runtime', look: 'labels-documents', form: true },
+  { route: '/shipping', mode: 'triage' },
+  // Labels & docs — one job (show labels, print them): its own look.
+  { route: '/shipping/label-intake', mode: 'triage', look: 'labels-documents', form: true },
+  // Print station — a plain triage desk for finding and printing FNSKU labels.
+  { route: '/print-station', mode: 'triage' },
   // The desk's new-sales-order form — triage on a touch screen too.
   { route: '/orders/new', mode: 'triage', form: true },
   // The desk's new-inbound-order form (PO · Return · Trade-in · Pickup).
   { route: '/incoming/new', mode: 'triage', form: true },
   { route: '/ai-chat', mode: 'assistant' },
-  // The phone tree asks for triage; `resolveRegionMode` paints it industrial on
-  // a phone (BRIEF §12). The scan floor and the orders queue are industrial by job.
+  // Local-only Motion+ visual study (the page itself is a production 404).
+  { route: '/motion-plus-button', mode: 'assistant' },
+  // The phone tree: READING by default — home / daily, tasks, imports, the
+  // orders queue (`/m/work` is its alias), order / shipment / repair records,
+  // exceptions, receiving feed, tickets, settings, sign-in.
   { route: '/m', mode: 'triage' },
-  { route: '/m/scan', mode: 'industrial' },
-  { route: '/m/orders', mode: 'industrial', exact: true },
   // Taking a sales order on the phone is a form, not floor execution.
   { route: '/m/orders/new', mode: 'triage', form: true },
-  { route: '/m/work', mode: 'industrial' },
+  // Pick is a triage task on every device, the whole flow — list, next pick,
+  // scan bin, confirm unit, tote, short pick, notes (owner 2026-09-28),
+  // including its identification face.
+  { route: '/m/pick', mode: 'triage', form: true },
+  { route: '/m/id/pick', mode: 'triage', form: true },
+  // OPERATION flows — the thing moves to its next operation under the thumb.
+  { route: '/m/scan', mode: 'industrial' }, // the one scan kernel
+  { route: '/m/pack', mode: 'industrial' }, // packing list → start pack
+  { route: '/m/p', mode: 'industrial' }, // packer evidence photos
+  { route: '/m/id', mode: 'industrial' }, // scan-out + tenant identification jobs
+  { route: '/m/r', mode: 'industrial' }, // carton hub: unbox → lines → QC, classify, photos
+  { route: '/m/h', mode: 'industrial' }, // handling unit (box / tote) contents
+  { route: '/m/u', mode: 'industrial' }, // unit hub: move / pair / stash / test, QC run
+  { route: '/m/unit-photos', mode: 'industrial' }, // unit photo capture
+  { route: '/m/qc', mode: 'industrial' }, // QC line pick off the kernel
+  { route: '/m/loc', mode: 'industrial' }, // location hub: stock count ±
+  { route: '/m/pair', mode: 'industrial' }, // pair a location: SKU → quantity
+  { route: '/m/fnsku', mode: 'industrial' }, // FBA label reprint: copies → print
+  { route: '/m/repair-scan', mode: 'industrial' }, // serial scan companion
   ...KIOSK_ROUTES,
 ];
 

@@ -9,7 +9,8 @@
  * - nav items carry NO numeric count; counts live only in facet groups, fetched
  *   separately from `GET /api/nav/facets`;
  * - a `section` context never contains top-level (page) items;
- * - `back` is `null` exactly at `top` scope, and it never navigates (`mode: 'local'`).
+ * - `back` is `null` exactly at `top` scope. It moves the sidebar up one level
+ *   without navigating (`mode: 'local'`).
  */
 
 import { z } from 'zod';
@@ -63,13 +64,15 @@ export const NavSearchSchema = z
      *   pills under the field (click = that view, text kept);
      * - paste-a-list: a multi-number paste becomes a list (`param`,
      *   comma-joined) answered per number, with a bucket filter
-     *   (`statusParam`) over it (NavBulkList).
+     *   (`statusParam`) over it (NavBulkList), and optionally a facet
+     *   filter inside the bucket (`facetParam`, an entry's `facet.id`).
      */
     locate: z
       .object({
         locator: z.enum(NAV_LOCATORS),
         param: z.string().min(1),
         statusParam: z.string().min(1),
+        facetParam: z.string().min(1).optional(),
       })
       .strict()
       .optional(),
@@ -116,6 +119,19 @@ export const NavControlsSchema = z
      */
     staff: z
       .array(z.object({ id: z.string().min(1), param: z.string().min(1), label: z.string().min(1) }).strict())
+      .optional(),
+    /** One civil day (`YYYY-MM-DD`) rendered with the compact date field. */
+    dates: z
+      .array(
+        z
+          .object({
+            id: z.string().min(1),
+            label: z.string().min(1),
+            param: z.string().min(1),
+            clearParams: z.array(z.string().min(1)),
+          })
+          .strict(),
+      )
       .optional(),
     /**
      * Civil-date ranges (`DateRangePickerField variant="compact"`): picking
@@ -190,6 +206,7 @@ export function navControlParams(controls: NavControls | undefined): string[] {
   if (!controls) return [];
   return [
     ...(controls.staff ?? []).map((row) => row.param),
+    ...(controls.dates ?? []).map((row) => row.param),
     ...(controls.dateRanges ?? []).flatMap((range) => [
       range.fromParam,
       range.toParam,
@@ -286,7 +303,7 @@ export const NavContextSchema = z
   .object({
     scope: z.enum(['top', 'section']),
     page: z.object({ id: z.string().min(1), label: z.string().min(1) }).strict(),
-    /** `‹ <page label>` row. Moves the sidebar up one level; never navigates. */
+    /** `‹ <page label>` row: up one level, without navigating (the ‹ peek). */
     back: z.object({ label: z.string().min(1), mode: z.literal('local') }).strict().nullable(),
     search: NavSearchSchema,
     sections: z.array(NavSectionSchema),
@@ -299,6 +316,8 @@ export const NavContextSchema = z
     savedViews: NavSavedViewsSchema.optional(),
     /** Page / active-view verbs the old desk chrome hosted. */
     actions: z.array(NavActionSchema).optional(),
+    /** Reports-style verbs that belong under the contextual filters, not in the desk header. */
+    actionsPlacement: z.literal('sidebar').optional(),
     scanInput: NavScanInputSchema.optional(),
     /** The page's views answer bare `1`–`9` (`NAV_PAGE_DECLS[page].viewKeys`); painted only when bound. */
     viewKeys: z.literal(true).optional(),
@@ -310,11 +329,14 @@ export type NavContext = z.infer<typeof NavContextSchema>;
 /** `GET /api/nav/context?path=<pathname+search>[&view=top]`. */
 export const NavContextQuerySchema = z
   .object({
-    /** An in-app URL: pathname plus optional search. Never another origin. */
+    /**
+     * An in-app URL: pathname plus optional search. Never another origin.
+     * Room for a pasted list (`NAV_LOCATE_MAX_REFS` numbers ride the search, ~3–6KB).
+     */
     path: z
       .string()
       .min(1)
-      .max(2048)
+      .max(8192)
       .refine((path) => path.startsWith('/') && !path.startsWith('//') && !path.includes('\\'), {
         message: 'path must be an in-app pathname',
       }),
@@ -383,8 +405,8 @@ export const NAV_LOCATE_SCOPES = [...NAV_LOCATORS, 'everywhere'] as const;
 export type NavLocateScope = (typeof NAV_LOCATE_SCOPES)[number];
 /** A bucket's ink — one meaning per tone, never a per-component hue. */
 export const NAV_LOCATE_TONES = ['neutral', 'info', 'success', 'warning', 'danger'] as const;
-/** Most refs one locate answers (the paste-a-list cap). */
-export const NAV_LOCATE_MAX_REFS = 100;
+/** Most refs one locate answers (the paste-a-list cap — the Check's, `CHECK_ZOHO_RECEIVED_MAX_INPUTS`). */
+export const NAV_LOCATE_MAX_REFS = 150;
 
 export const NavLocateBucketSchema = z
   .object({
@@ -412,6 +434,8 @@ export const NavLocateEntrySchema = z
     detail: z.string().nullable(),
     /** Its record, when it is one record. */
     recordHref: z.string().startsWith('/').nullable(),
+    /** Why it sits in its bucket, as a filterable id + words (`facetParam`). Absent = no facet. */
+    facet: z.object({ id: z.string().min(1), label: z.string().min(1) }).strict().nullable().optional(),
   })
   .strict();
 export type NavLocateEntry = z.infer<typeof NavLocateEntrySchema>;

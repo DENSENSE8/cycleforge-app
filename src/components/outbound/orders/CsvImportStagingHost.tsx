@@ -319,9 +319,9 @@ export function CsvImportStagingHost() {
           emptyMessage="This file has no rows left to import."
           searchEmptyMessage="No rows match this filter."
           selectionScope={CSV_IMPORT_STAGING_SELECTION_SCOPE}
-          search={{
+          sheetFind={{
             value: draft.query,
-            onChange: (next) => setTableImportQuery(SURFACE, next),
+            onChange: (next: string) => setTableImportQuery(SURFACE, next),
             placeholder: 'Find staged rows…',
           }}
           filter={{

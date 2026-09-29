@@ -33,8 +33,9 @@ export interface SupportContextThread {
 
 export interface SupportContextLinkable {
   canLinkTicket: boolean;
-  anchorType: 'receiving' | 'tracking' | 'shipment' | 'order';
+  anchorType: 'serialUnit' | 'receiving' | 'tracking' | 'shipment' | 'order';
   anchorId: number;
+  serialUnitId?: number | null;
   trackingNumber?: string | null;
   receivingId?: number | null;
   lineId?: number | null;

@@ -7,6 +7,10 @@ export type PackTierSource = 'profile' | 'clean' | 'rules' | 'default';
 
 export type PackingReportRow = {
   packedAt: string;
+  /** Elapsed capture session, or completion-to-completion cycle when a session start was not recorded. */
+  packDurationSeconds: number | null;
+  /** Gap from this completion to the same packer's next completed pack that day. */
+  nextPackSeconds: number | null;
   packerName: string | null;
   sku: string | null;
   productTitle: string | null;
@@ -24,6 +28,8 @@ export type PackingReportRow = {
    * paints without the coloured channel dot its peers have.
    */
   platform: string | null;
+  quantity: number;
+  imageUrl: string | null;
   itemNumber: string | null;
   skuCatalogId: number | null;
   tierSource: PackTierSource;
@@ -31,13 +37,45 @@ export type PackingReportRow = {
   salId: number;
 };
 
+/** Global-header Find over every operator-facing packing report identity/fact. */
+export function packingReportMatchesQuery(row: PackingReportRow, rawQuery: string): boolean {
+  const tokens = rawQuery
+    .trim()
+    .toLowerCase()
+    .split(/\s+/)
+    .filter(Boolean);
+  if (tokens.length === 0) return true;
+  const searchable = [
+    row.packerName,
+    row.packerStaffId,
+    row.sku,
+    row.itemNumber,
+    row.productTitle,
+    row.orderNumber,
+    row.trackingOrScanRef,
+    row.platform,
+    row.quantity,
+    row.packTier,
+    row.estimatedMinutes,
+  ]
+    .filter((value) => value != null)
+    .join(' ')
+    .toLowerCase();
+  return tokens.every((token) => searchable.includes(token));
+}
+
 export const PACKING_REPORT_COLUMNS: Array<{ key: keyof PackingReportRow; label: string }> = [
   { key: 'packedAt', label: 'Packed at' },
+  { key: 'packDurationSeconds', label: 'Pack duration seconds' },
+  { key: 'nextPackSeconds', label: 'Time to next pack seconds' },
   { key: 'packerName', label: 'Packer' },
   { key: 'itemNumber', label: 'Item number' },
   { key: 'orderNumber', label: 'Order #' },
   { key: 'sku', label: 'SKU' },
   { key: 'productTitle', label: 'Product' },
+  { key: 'quantity', label: 'Quantity' },
+  { key: 'platform', label: 'Platform' },
+  { key: 'imageUrl', label: 'Product image' },
   { key: 'packTier', label: 'Pack tier' },
   { key: 'estimatedMinutes', label: 'Estimated minutes' },
   { key: 'tierSource', label: 'Tier source' },
@@ -62,6 +100,8 @@ export function resolvePackTierSource(
 
 export function mapPackingReportDbRow(r: {
   packed_at: string;
+  pack_duration_seconds?: number | string | null;
+  next_pack_seconds?: number | string | null;
   packer_name: string | null;
   sku: string | null;
   product_title: string | null;
@@ -73,6 +113,8 @@ export function mapPackingReportDbRow(r: {
   order_number?: string | null;
   packer_staff_id?: number | string | null;
   platform?: string | null;
+  quantity?: number | string | null;
+  image_url?: string | null;
   item_number: string | null;
   sku_catalog_id: number | string | null;
   tier_source: string | null;
@@ -82,8 +124,15 @@ export function mapPackingReportDbRow(r: {
   const skuCatalogRaw = r.sku_catalog_id == null ? null : Number(r.sku_catalog_id);
   const packerLogRaw = r.packer_log_id == null ? null : Number(r.packer_log_id);
   const staffRaw = r.packer_staff_id == null ? null : Number(r.packer_staff_id);
+  const durationRaw = r.pack_duration_seconds == null ? null : Number(r.pack_duration_seconds);
+  const nextPackRaw = r.next_pack_seconds == null ? null : Number(r.next_pack_seconds);
+  const quantityRaw = Number(r.quantity ?? 1);
   return {
     packedAt: r.packed_at,
+    packDurationSeconds:
+      durationRaw != null && Number.isFinite(durationRaw) && durationRaw >= 0 ? Math.round(durationRaw) : null,
+    nextPackSeconds:
+      nextPackRaw != null && Number.isFinite(nextPackRaw) && nextPackRaw >= 0 ? Math.round(nextPackRaw) : null,
     packerName: r.packer_name,
     sku: r.sku,
     productTitle: r.product_title,
@@ -97,6 +146,8 @@ export function mapPackingReportDbRow(r: {
     orderNumber: r.order_number ?? null,
     packerStaffId: staffRaw != null && Number.isFinite(staffRaw) && staffRaw > 0 ? staffRaw : null,
     platform: String(r.platform ?? '').trim() || null,
+    quantity: Number.isFinite(quantityRaw) && quantityRaw > 0 ? quantityRaw : 1,
+    imageUrl: String(r.image_url ?? '').trim() || null,
     itemNumber: r.item_number,
     skuCatalogId: skuCatalogRaw != null && Number.isFinite(skuCatalogRaw) ? skuCatalogRaw : null,
     tierSource: resolvePackTierSource(r.tier_source, r.raw_pack_tier),

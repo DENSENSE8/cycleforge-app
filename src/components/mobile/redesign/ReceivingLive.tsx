@@ -30,6 +30,7 @@
 
 import Link from 'next/link';
 import { TOKENS } from '@/components/mobile/redesign/DesignSystem';
+import { Camera } from '@/components/Icons';
 import { MobileReceivingList } from '@/components/mobile/receiving/MobileReceivingList';
 
 /** Rows kept in the live window. Named so the strip copy cannot drift from it. */
@@ -42,13 +43,22 @@ export default function RedesignedMobileReceivingLive() {
         <p className="text-role-caption font-semibold uppercase tracking-[0.18em] text-text-muted">
           Latest {FEED_LIMIT}
         </p>
-        <Link
-          href="/m/receiving/history"
-          prefetch={false}
-          className="inline-flex min-h-11 items-center text-role-caption font-semibold uppercase tracking-wider text-text-muted active:text-text-default"
-        >
-          View all
-        </Link>
+        <div className="flex items-center gap-4">
+          <Link
+            href="/m/receiving/pickup/new?type=PICKUP"
+            prefetch={false}
+            className="inline-flex min-h-11 items-center gap-1.5 text-role-caption font-semibold uppercase tracking-wider text-text-default active:text-text-muted"
+          >
+            <Camera aria-hidden className="h-4 w-4" /> Pickup
+          </Link>
+          <Link
+            href="/m/receiving/history"
+            prefetch={false}
+            className="inline-flex min-h-11 items-center text-role-caption font-semibold uppercase tracking-wider text-text-muted active:text-text-default"
+          >
+            View all
+          </Link>
+        </div>
       </div>
       <div className="min-h-0 flex-1 overflow-hidden">
         <MobileReceivingList limit={FEED_LIMIT} />

@@ -22,7 +22,7 @@ export function OperationsDeskFrame({ children }: { children: ReactNode }) {
 function ContextualDesk({ children }: { children: ReactNode }) {
   const nav = useNavContext(useCurrentNavPath()).data;
   return (
-    <DeskPageLayout bare className="h-full" stage="card">
+    <DeskPageLayout bare className="h-full">
       <NavPageActions actions={nav?.actions} />
       {children}
     </DeskPageLayout>

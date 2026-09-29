@@ -10,7 +10,12 @@ import { mergePeekCards } from './photo-peek-pending';
 import { useReceivingPhotosRealtimeRefresh } from '@/hooks/useReceivingPhotosRealtimeRefresh';
 import { useReceivingPhotoTakenCount } from '@/hooks/useReceivingPhotoTakenCount';
 import { useAuth } from '@/contexts/AuthContext';
-import { receivingPhotosQueryKey, refreshReceivingPhotos } from '@/lib/queries/receiving-queries';
+import {
+  fetchReceivingPhotoList,
+  RECEIVING_PHOTOS_STALE_MS,
+  receivingPhotoListQueryKey,
+  refreshReceivingPhotos,
+} from '@/lib/queries/receiving-queries';
 import {
   receivingPhotoMeta,
   receivingPhotoStage,
@@ -66,24 +71,12 @@ export const ReceivingPhotoPeek = memo(function ReceivingPhotoPeek({
   const { user } = useAuth();
   const orgId = user?.organizationId;
   const queryClient = useQueryClient();
-  const queryKey = useMemo(
-    () => [...receivingPhotosQueryKey(receivingId), photoIntent] as const,
-    [receivingId, photoIntent],
-  );
-
+  const photoParams = { receivingId, photoIntent };
   const { data } = useQuery<PhotosPayload>({
-    queryKey,
-    queryFn: async () => {
-      const params = new URLSearchParams({
-        receivingId: String(receivingId),
-        photoIntent,
-      });
-      const res = await fetch(`/api/receiving-photos?${params.toString()}`, { cache: 'no-store' });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      return res.json();
-    },
+    queryKey: receivingPhotoListQueryKey(photoParams),
+    queryFn: () => fetchReceivingPhotoList(photoParams),
     enabled: Number.isFinite(receivingId) && receivingId > 0,
-    staleTime: 10_000,
+    staleTime: RECEIVING_PHOTOS_STALE_MS,
   });
 
   const refresh = useCallback(

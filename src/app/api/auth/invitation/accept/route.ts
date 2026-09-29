@@ -17,7 +17,7 @@ import { PasswordError } from '@/lib/identity/password';
 import { logAuthEvent } from '@/lib/identity/memberships';
 import { checkRateLimitAsync } from '@/lib/api-guard';
 import { recordStaffLoginRedirect } from '@/lib/auth/record-staff-login';
-import pool from '@/lib/db';
+import { tenantQuery } from '@/lib/tenancy/db';
 
 export const runtime = 'nodejs';
 
@@ -110,7 +110,12 @@ export async function POST(req: NextRequest) {
   });
   await logAuthEvent({ accountId: result.accountId, orgId: result.orgId, event: 'invite_accept', ip, userAgent: ua });
 
-  const redirectTo = await recordStaffLoginRedirect(pool, result.staffId, { mobile: false });
+  // The staff row was just created in the invitation's org; stamp it under that org's GUC.
+  const redirectTo = await recordStaffLoginRedirect(
+    { query: (text, params) => tenantQuery(result.orgId, text, params ?? []) },
+    result.staffId,
+    { mobile: false },
+  );
 
   const res = NextResponse.json({ ok: true, organizationId: result.orgId, redirectTo });
   res.cookies.set(SESSION_COOKIE_NAME, session.sid, {

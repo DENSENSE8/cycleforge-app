@@ -123,6 +123,41 @@ export default [
     },
   },
 
+  // ── Desk industrial-ledger guard (owner 2026-09-28, BRIEF §14) ─────────────
+  // The desktop is triage-only: a desk list is `TriageCardList` (card or
+  // `density="row"`), never the industrial `RecordLedger` / `IndustrialRecord`
+  // rows — those live only on `/m/*` operation flows (phone and iPad). The
+  // small shared helpers in `IndustrialRecord.tsx` (`RecordPhoto`,
+  // `recordInitials`, …) stay importable; only the ledger and the row component
+  // are banned. This block re-declares `no-restricted-imports`, so it repeats
+  // the framer-motion ban (a second block overrides, it does not merge).
+  {
+    files: ['src/app/**/*.{ts,tsx}', 'src/components/**/*.{ts,tsx}', 'src/features/**/*.{ts,tsx}'],
+    ignores: ['src/app/m/**', 'src/components/mobile/**'],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          paths: [
+            { name: 'framer-motion', message: 'framer-motion is retired — import from motion/react.' },
+          ],
+          patterns: [
+            { regex: '^framer-motion/', message: 'framer-motion is retired — import from motion/react.' },
+            {
+              regex: 'record-ledger/RecordLedger$',
+              message: 'RecordLedger is the phone industrial ledger. A desk list is TriageCardList (density "card" or "row") — BRIEF §14.',
+            },
+            {
+              regex: 'record-ledger/IndustrialRecord$',
+              importNames: ['IndustrialRecord'],
+              message: 'IndustrialRecord rows are phone-only. A desk row is TriageCardList density="row" — BRIEF §14.',
+            },
+          ],
+        },
+      ],
+    },
+  },
+
   {
     files: ['scripts/**/*', 'src/lib/pipeline/**/*'],
     rules: {
@@ -244,6 +279,16 @@ export default [
             "JSXAttribute[name.name=/^(initial|animate|exit)$/] ObjectExpression > Property[key.name='height'], Property[key.name=/^(initial|animate|exit)$/] > ObjectExpression > Property[key.name='height']",
           message:
             'Animate height only through <Collapse open> / <CollapseItem> (src/design-system/components/Collapse.tsx). A hand-rolled height animation leaves the parent gap and its own margin outside the animated box, so the layout snaps when it mounts and unmounts.',
+        },
+        // ── Sidebar-only page navigation (owner 2026-09-28) ────────────────
+        // AST ancestry, not source text: controls nested under the immediate
+        // page body of DeskPageLayout are page navigation and belong in
+        // SIDEBAR_PAGE_NAV + NAV_PAGE_DECLS.
+        {
+          selector:
+            "JSXElement:has(> JSXOpeningElement[name.name='DeskPageLayout']) > JSXElement JSXOpeningElement[name.name=/^(TabSwitch|TableTabs|SegmentedControl)$/]",
+          message:
+            'Page views live in ContextualSidebar. Declare the view in SIDEBAR_PAGE_NAV and NAV_PAGE_DECLS; do not render TabSwitch, TableTabs, or SegmentedControl inside a DeskPageLayout page body.',
         },
       ],
     },
@@ -414,6 +459,8 @@ export default [
       'src/components/mobile/shipping/shipment/ShipmentResolveSheet.tsx',
       'src/components/mobile/unit/UnitLineSheets.tsx',
       'src/components/mobile/unit/UnitSheetParts.tsx',
+      // `/m/pick` order screen: triage route, flush industrial action dock (owner 2026-09-29, BRIEF §14).
+      'src/components/mobile/picker/PickOrderScreen.tsx',
       // Header chrome sits outside the page's RouteModeRegion; re-resolves it.
       'src/components/layout/LiveSyncIndicator.tsx',
       'src/components/outbound/label-intake/LabelIntakeDesk.tsx',
@@ -453,7 +500,6 @@ export default [
       'src/components/board/SwimlaneBoard.tsx',
       'src/components/outbound/labels/AddTrackingPopover.tsx',
       'src/components/photos/PhotoLibraryFindRow.tsx',
-      'src/components/photos/PhotoLibraryScopeBand.tsx',
       'src/components/receiving/workspace/line-edit/LabelEditPopover.tsx',
       'src/components/session/composer/AccessModeSwitch.tsx',
       'src/components/session/composer/ContextUsageRing.tsx',

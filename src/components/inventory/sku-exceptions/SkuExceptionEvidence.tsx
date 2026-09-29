@@ -18,11 +18,10 @@ import {
   EvidenceTitle,
   type EvidenceVerb,
 } from '@/design-system/components/record-ledger/RecordEvidence';
-import type { RecordLedgerSummary } from '@/design-system/components/record-ledger/RecordLedgerSummary';
 import { lifecycleRecordState } from '@/design-system/tokens/lifecycle';
 import { invalidateSkuExceptions } from '@/hooks/useProvisionalSkus';
 import { skuExceptionShareUrl } from '@/lib/inventory/sku-exception-links';
-import type { ProvisionalSku, ProvisionalSkuDetail } from '@/lib/neon/provisional-sku-queries';
+import type { ProvisionalSkuDetail } from '@/lib/neon/provisional-sku-queries';
 import { shareRecordLink } from '@/lib/share-link';
 import { skuExceptionNextStep, skuExceptionTitle } from './sku-exception-record';
 import {
@@ -167,25 +166,4 @@ function SkuExceptionRecordEvidence({ item, onExit }: { item: ProvisionalSkuDeta
       <EvidenceDecisionBar verbs={verbs} />
     </div>
   );
-}
-
-/** Nothing open: the queue read as the floor reads it. */
-export function skuExceptionsSummary(rows: readonly ProvisionalSku[]): RecordLedgerSummary {
-  let noPhoto = 0;
-  let unlocated = 0;
-  let units = 0;
-  for (const row of rows) {
-    if (row.photoCount === 0) noPhoto += 1;
-    if (row.locations.length === 0) unlocated += 1;
-    units += row.stock;
-  }
-  return {
-    title: 'SKU exceptions',
-    facts: [
-      { label: 'On hold', value: rows.length },
-      { label: 'No photo', value: noPhoto, warn: noPhoto > 0, toolbar: true },
-      { label: 'Unassigned location', value: unlocated, warn: unlocated > 0, toolbar: true },
-      { label: 'Units on hold', value: units, toolbar: true },
-    ],
-  };
 }

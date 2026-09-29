@@ -80,11 +80,6 @@ function BinsTabSheet() {
       <BinsTable
         rows={visibleRows}
         loading={loading}
-        search={{
-          value: q,
-          onChange: (v) => onParamChange('q', v),
-          placeholder: 'Filter bins…',
-        }}
         selected={reconciledSelected}
         onSelectChange={setSelected}
         onRowClick={(row) => setFlyoutRow(row)}

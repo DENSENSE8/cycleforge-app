@@ -190,10 +190,12 @@ function toItemDto(row: InboxRow): InboxItemDto {
     occurredAt: toIso(row.occurred_at) ?? new Date(0).toISOString(),
     lastEventAt: toIso(row.last_event_at) ?? new Date(0).toISOString(),
     actorStaffId: row.actor_staff_id,
-    href: notificationHref(row.entity_type, entityId),
+    href: notificationHref(row.entity_type, entityId, row.event_key),
     subscriptionId: row.subscription_id == null ? null : Number(row.subscription_id),
     subscriptionState: (row.subscription_state as InboxItemDto['subscriptionState']) ?? null,
     trackingNumber: readTrackingNumber(row.payload),
+    orderNumber: readStringPayloadField(row.payload, 'orderNumber'),
+    carrierStatus: readStringPayloadField(row.payload, 'carrierStatus'),
     ticketNumber: readTicketNumber(row.payload),
   };
 }
@@ -201,6 +203,11 @@ function toItemDto(row: InboxRow): InboxItemDto {
 /** The tracking number an event carried, for the row's own copy. */
 function readTrackingNumber(payload: unknown): string | null {
   const raw = (payload as { trackingNumber?: unknown } | null)?.trackingNumber;
+  return typeof raw === 'string' && raw.trim() ? raw.trim() : null;
+}
+
+function readStringPayloadField(payload: unknown, key: string): string | null {
+  const raw = (payload as Record<string, unknown> | null)?.[key];
   return typeof raw === 'string' && raw.trim() ? raw.trim() : null;
 }
 

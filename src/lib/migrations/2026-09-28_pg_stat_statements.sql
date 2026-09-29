@@ -1,0 +1,27 @@
+-- 2026-09-28_pg_stat_statements.sql
+--
+-- WHAT
+--   CREATE EXTENSION IF NOT EXISTS pg_stat_statements;
+--
+-- WHY
+--   Per-statement latency (calls, mean/total exec time, shared-buffer hits) is
+--   the only ground truth for "which SQL is slow in production". The library is
+--   already in Neon's shared_preload_libraries, but the extension (its view and
+--   reset function) was never created, so every perf pass so far had to infer
+--   frequency from pg_stat_user_tables counters (docs/refactors/sidebar/
+--   phase0-findings.md, docs/ai/SCALE-ROI.md row 9).
+--
+-- SAFETY
+--   Catalog-only: creates the pg_stat_statements view + functions in public.
+--   No table, row or lock on application data. Not tenant-scoped by design —
+--   an extension, not a business table. Neon keeps the counters in memory, so
+--   they reset when the compute restarts or scales to zero.
+--
+-- VERIFY
+--   SELECT calls, round(mean_exec_time::numeric, 2) AS mean_ms, left(query, 120)
+--     FROM pg_stat_statements ORDER BY total_exec_time DESC LIMIT 20;
+--
+-- ROLLBACK
+--   DROP EXTENSION IF EXISTS pg_stat_statements;
+
+CREATE EXTENSION IF NOT EXISTS pg_stat_statements;

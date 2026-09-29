@@ -2,6 +2,7 @@
 
 import { Button } from '@/design-system/primitives';
 import { Loader2 } from '@/components/Icons';
+import { cornerClass } from '@/design-system/tokens/radius';
 
 export function LoadingShell({ label }: { label: string }) {
   return (
@@ -20,7 +21,7 @@ export function ErrorShell({ error, onBack }: { error: string; onBack: () => voi
       <div>
         <p className="text-base font-semibold text-text-danger">Could not load picker</p>
         <p className="mt-2 text-sm text-text-muted">{error}</p>
-        <Button variant="brand" size="lg" radius="flush" className="mt-5" onClick={onBack}>
+        <Button variant="brand" size="lg" radius="mode" className="mt-5" onClick={onBack}>
           Back to queue
         </Button>
       </div>
@@ -34,7 +35,7 @@ export function EmptyShell({ onBack }: { onBack: () => void }) {
       <div>
         <p className="text-base font-semibold text-text-muted">Nothing to pick</p>
         <p className="mt-2 text-sm text-text-soft">All allocations for this order are already picked or shipped.</p>
-        <Button variant="brand" size="lg" radius="flush" className="mt-5" onClick={onBack}>
+        <Button variant="brand" size="lg" radius="mode" className="mt-5" onClick={onBack}>
           Back to queue
         </Button>
       </div>
@@ -52,8 +53,8 @@ export function CompleteCard({
   tote?: string | null;
 }) {
   return (
-    <div className="grid place-items-center border border-border-success bg-surface-success px-6 py-12 text-center">
-      <div className="grid h-14 w-14 place-items-center bg-fill-success text-text-inverse">
+    <div className={`${cornerClass('surface')} grid place-items-center border border-border-success bg-surface-success px-6 py-12 text-center`}>
+      <div className={`${cornerClass('pill')} grid h-14 w-14 place-items-center bg-fill-success text-text-inverse`}>
         <svg viewBox="0 0 24 24" className="h-7 w-7" fill="none" stroke="currentColor" strokeWidth={3}>
           <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
         </svg>
@@ -72,7 +73,7 @@ export function CompleteCard({
       <Button
         type="button"
         variant="success"
-        radius="flush"
+        radius="mode"
         onClick={onStartPacking}
         className="mt-5 px-5 py-2.5 text-sm font-semibold"
       >
@@ -81,7 +82,7 @@ export function CompleteCard({
       <Button
         type="button"
         variant="secondary"
-        radius="flush"
+        radius="mode"
         onClick={onBack}
         className="mt-2 px-5 py-2.5 text-sm font-semibold"
       >

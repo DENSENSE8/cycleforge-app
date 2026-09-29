@@ -22,6 +22,8 @@ export function resolveCatalogSlotValue(
   fieldId: string,
 ): CompoundSlotValue | null {
   switch (fieldId) {
+    case 'catalog.title':
+      return { kind: 'value', text: str(row.display_title) ?? str(row.product_title) };
     case 'catalog.sku':
       return { kind: 'value', text: str(row.sku) };
     case 'catalog.inventory':
@@ -36,6 +38,19 @@ export function resolveCatalogSlotValue(
       };
     case 'catalog.channels':
       return { kind: 'value', text: countText(row.platform_count) };
+    case 'catalog.platforms':
+      return {
+        kind: 'value',
+        text: [...new Set((row.platform_ids ?? []).map((entry) => str(entry.platform)).filter(Boolean))].join(', ') || null,
+      };
+    case 'catalog.item_numbers':
+      return {
+        kind: 'value',
+        text: (row.platform_ids ?? [])
+          .flatMap((entry) => [str(entry.platform_sku), str(entry.platform_item_id)])
+          .filter(Boolean)
+          .join(', ') || null,
+      };
     case 'catalog.manuals':
       return { kind: 'value', text: countText(row.manual_count) };
     case 'catalog.qc':

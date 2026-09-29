@@ -62,7 +62,10 @@ export function taskDeskQueryOptions(lane: TaskDeskLane, scope: TaskDeskScope = 
       const data = (await readJson(res)) as unknown as TaskDeskListPayload;
       return data.tasks ?? [];
     },
-    staleTime: 0,
+    // No push channel carries task changes, so a refocus is the refresh — but
+    // at most once a minute. `0` refetched the desk on every alt-tab, seconds
+    // apart; every local write invalidates `['tasks', 'desk']` on settle.
+    staleTime: 60_000,
   });
 }
 

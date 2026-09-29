@@ -10,15 +10,15 @@ import {
 } from '@/design-system/components/grid';
 import type { CatalogListRow } from '@/components/products/catalog/types';
 import {
-  defaultDirForCatalogColumn,
-  isCatalogColumnSortable,
+  defaultDirForCatalogCompoundColumn,
+  isCatalogCompoundColumnSortable,
   type CatalogGridColumn,
-} from '@/lib/products/catalog-grid-layout';
+} from './catalog-compound-grid-layout';
 
 /** Product catalog — display + multi-select; never staff triage row wash. */
 export const CATALOG_GRID_CAPABILITIES: GridSurfaceCapabilities = {
   rowTriageFlags: false,
-  multiSelect: true,
+  multiSelect: false,
   inCellEdit: false,
   fieldsMenu: true,
   dayBands: false,
@@ -36,9 +36,9 @@ export function makeCatalogGridDescriptor(
     'products.catalog',
     columns,
     {
-      isSortable: (key) => isCatalogColumnSortable(columns, key),
-      sortDescFirst: (key) => defaultDirForCatalogColumn(columns, key) === 'desc',
-      // Locked = the mounted model's own frozen prefix (`select · title`).
+      isSortable: (key) => isCatalogCompoundColumnSortable(columns, key),
+      sortDescFirst: (key) => defaultDirForCatalogCompoundColumn(columns, key) === 'desc',
+      // Locked = the mounted compound model's own frozen prefix.
       isLocked: (key) => columns.some((c) => c.key === key && c.frozen === true),
     },
     CATALOG_GRID_CAPABILITIES,

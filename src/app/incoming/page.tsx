@@ -12,7 +12,7 @@ export default function IncomingPage() {
       {/* The one page frame (2026-08-31) — `@/design-system/components/DeskPageChrome` via {@link DeskPageLayout}.
           No tab row (operator 2026-09-27): On the way / History, Find and the
           pasted-list check live in the contextual sidebar, as on Shipping. */}
-      <DeskPageLayout bare stage="card" className="h-full">
+      <DeskPageLayout bare className="h-full">
         <IncomingBrowseShell>
           <SurfaceGate surfaceKey="incoming">
             <ReceivingSurfacePage />

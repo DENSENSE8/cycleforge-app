@@ -379,6 +379,8 @@ const historyMode: ReceivingModeDescriptor = {
     // unboxed is omitted from the browser URL but must reach the API).
     p.set('sort', normalizeHistorySort(ctx.historySort));
     applyStaffParam(p, ctx);
+    // A pasted list narrows Unboxed to the lines those numbers name.
+    if (ctx.refIn.length > 0) p.set(REF_IN_PARAM, serializeRefIn(ctx.refIn));
     return p;
   },
   skipWeekFilter(ctx) {
@@ -390,6 +392,8 @@ const historyMode: ReceivingModeDescriptor = {
       ctx.historyWeekExplicit !== true
       || ctx.historySearch.length > 0
       || ctx.historySearchScope !== 'all'
+      // A pasted number is found whenever it was unboxed.
+      || ctx.refIn.length > 0
     );
   },
   queryKey(ctx) {
@@ -402,9 +406,13 @@ const historyMode: ReceivingModeDescriptor = {
       ctx.historySearchScope,
       normalizeHistorySort(ctx.historySort),
       ctx.staffFilterId ?? 'all',
+      ctx.refIn.join(','),
     ] as const;
   },
   emptyMessage(ctx) {
+    if (ctx.refIn.length > 0) {
+      return 'None of the pasted numbers are unboxed — the pasted list (B) says where each one is.';
+    }
     return ctx.historySearch || ctx.historySearchScope !== 'all'
       ? 'No lines match — try different text or widen source (All).'
       : 'No lines yet — start scanning to populate.';

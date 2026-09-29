@@ -1,15 +1,11 @@
 'use client';
 
 import { Suspense, type ReactNode } from 'react';
-import { usePathname } from 'next/navigation';
 import { RouteShell } from '@/design-system/components/RouteShell';
-import { ModeRegion } from '@/design-system/providers/ModeRegion';
-import { useDeskFloorActive } from '@/design-system/components/DeskStageContext';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import { RightPaneOverlayHost } from '@/components/ui/RightPaneOverlay';
 import { SurfaceGate } from '@/components/surfaces/SurfaceGate';
 import { useSurfaceParamHygiene } from '@/hooks/useSurfaceParamHygiene';
-import { modeRouteFor } from '@/lib/routing/mode-registry';
 
 /**
  * `/shipping` — the frame every Shipping mode shares.
@@ -34,14 +30,8 @@ function ShippingFrame({ children }: { children: ReactNode }) {
   // entry, or the `?mode=` a legacy redirect carried in.
   useSurfaceParamHygiene();
 
-  // Floor (⌘/Ctrl+Shift+F on To ship) is the one industrial desktop view
-  // (BRIEF §12 Mode D): the PAGE region flips, so the ledger and whatever it
-  // portals (note editor, dialogs that re-declare triage) stay one level deep.
-  const floor = useDeskFloorActive();
-  // A page's declared look (Labels & docs) is triage only: it never takes the Floor.
-  const entry = modeRouteFor(usePathname());
-  const look = entry?.look;
-  const regionClass = 'flex h-full w-full overflow-hidden bg-surface-card';
+  // The mode region is the app frame's (`RouteModeRegion`, triage from the
+  // registry) — the desktop has no Floor (owner 2026-09-28).
   const shell = (
     <RouteShell
       actions={null}
@@ -55,14 +45,9 @@ function ShippingFrame({ children }: { children: ReactNode }) {
 
   return (
     <SurfaceGate surfaceKey="outbound">
-      {/* Triage on desktop (BRIEF §12): the To-ship desk, FBA and the scan-out station
-          all live under this frame. Rendered at every width (owner 2026-09-27,
-          mobile first): a `hidden md:flex` gate here blanked the page under 768px. */}
-      {look ? (
-        <ModeRegion look={look} form={entry?.form === true} className={regionClass}>{shell}</ModeRegion>
-      ) : (
-        <ModeRegion mode={floor ? 'industrial' : 'triage'} className={regionClass}>{shell}</ModeRegion>
-      )}
+      {/* Rendered at every width (owner 2026-09-27, mobile first): a `hidden md:flex`
+          gate here blanked the page under 768px. */}
+      <div className="flex h-full w-full overflow-hidden bg-surface-card">{shell}</div>
     </SurfaceGate>
   );
 }

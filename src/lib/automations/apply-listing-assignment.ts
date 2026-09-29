@@ -1,4 +1,4 @@
-/** applyListingAssignment — evaluate org automation_rules for an order and write work_assignments via the shared upsert helper. */
+/** applyListingAssignment — evaluate org automation_rules for an order and write work_assignments via the shared upsert helper; with no rule picker, the item's owner by pick history picks. */
 
 import type { PoolClient } from 'pg';
 import { tenantQuery, withTenantTransaction } from '@/lib/tenancy/db';
@@ -16,6 +16,7 @@ import {
   normalizeItemNumber,
   resolveActionAssignee,
   selectActionsForTrigger,
+  triggerRunsWorkType,
   type AssignWorkAction,
   type AutomationRuleRow,
   type AutomationTriggerKey,
@@ -24,6 +25,7 @@ import {
   unassignedReason,
 } from '@/lib/automations/listing-match';
 import { listStaffOutOnDate } from '@/lib/staff/staff-out-today';
+import { loadSkuPickerDefaults, resolveItemSkuKeys, type SkuPickerDefault } from '@/lib/picking/sku-pick-owners';
 
 /** Loads the staff among `staffIds` who are out today. Test seam. */
 type ListStaffOut = (
@@ -49,8 +51,9 @@ type ApplyListingAssignmentInput = {
   listStaffOut?: ListStaffOut;
 };
 
-/** An applied action plus who took it: the primary, or the backup standing in. */
+/** An applied action plus who took it: the primary, or the backup standing in. `source: 'history'` = the item owner by pick history, no rule. */
 type AppliedAssignWorkAction = AssignWorkAction & {
+  source?: 'history';
   assigned_staff_id: number;
   via: ResolvedAssignee['via'];
 };
@@ -88,21 +91,18 @@ function mapRule(row: RuleDbRow): AutomationRuleRow {
 
 async function loadEnabledListingRules(
   organizationId: OrgId,
-  client?: QueryClient,
+  client: QueryClient,
 ): Promise<AutomationRuleRow[]> {
-  const sql = `
-    SELECT id, name, priority, trigger_keys, when_json, then_json
-      FROM automation_rules
-     WHERE organization_id = $1
-       AND deleted_at IS NULL
-       AND enabled = true
-     ORDER BY priority ASC, id ASC`;
-  if (client) {
-    const r = await client.query(sql, [organizationId]);
-    return (r.rows as RuleDbRow[]).map(mapRule);
-  }
-  const r = await tenantQuery<RuleDbRow>(organizationId, sql, [organizationId]);
-  return r.rows.map(mapRule);
+  const r = await client.query(
+    `SELECT id, name, priority, trigger_keys, when_json, then_json
+       FROM automation_rules
+      WHERE organization_id = $1
+        AND deleted_at IS NULL
+        AND enabled = true
+      ORDER BY priority ASC, id ASC`,
+    [organizationId],
+  );
+  return (r.rows as RuleDbRow[]).map(mapRule);
 }
 
 async function writeRun(
@@ -140,17 +140,38 @@ async function writeRun(
   );
 }
 
+/**
+ * Per line, the picker its item's owner by pick history gives it today (the
+ * owner, or a backup when they are out) — the default when no rule names a
+ * picker. Null when the item has no owner.
+ */
+async function loadHistoryPickers(
+  client: QueryClient,
+  organizationId: OrgId,
+  factsList: readonly ListingAutomationFacts[],
+  listStaffOut: ListStaffOut,
+): Promise<(SkuPickerDefault | null)[]> {
+  const keys = await resolveItemSkuKeys(client, organizationId, factsList);
+  const defaults = await loadSkuPickerDefaults(
+    client,
+    organizationId,
+    keys.filter((key): key is string => key != null),
+    (ids) => listStaffOut(organizationId, ids, client),
+  );
+  return keys.map((key) => (key ? defaults.get(key) ?? null : null));
+}
+
 async function applyActions(
   organizationId: OrgId,
   orderId: number,
-  actions: AssignWorkAction[],
+  actions: ReadonlyArray<AssignWorkAction & { source?: 'history' }>,
   overwriteManual: boolean,
   client: QueryClient,
   listStaffOut: ListStaffOut,
 ): Promise<{ applied: AppliedAssignWorkAction[]; skipped: string[] }> {
   const applied: AppliedAssignWorkAction[] = [];
   const skipped: string[] = [];
-  const outToday = await listStaffOut(organizationId, collectActionStaffIds(actions), client);
+  const outToday = await listStaffOut(organizationId, collectActionStaffIds([...actions]), client);
 
   for (const action of actions) {
     const resolved = resolveActionAssignee(action, outToday);
@@ -206,75 +227,39 @@ async function runInClient(
   try {
     const rules = await loadEnabledListingRules(orgId, client);
     const matched = matchListingRule(rules, input.triggerKey, facts);
-    if (!matched) {
-      await writeRun(
-        orgId,
-        {
-          ruleId: null,
-          triggerKey: input.triggerKey,
-          entityType: 'order',
-          entityId: input.orderId,
-          status: 'skipped',
-          matchedWhen: facts,
-          actionsApplied: [],
-          error: 'no_matching_rule',
-          actorStaffId: input.actorStaffId,
-        },
-        client,
-      );
-      return { status: 'skipped', ruleId: null, actionsApplied: [], reason: 'no_matching_rule' };
-    }
-
-    const filtered = filterActionsForCsvOverride(matched.actions, facts);
-    if (filtered.length === 0) {
-      await writeRun(
-        orgId,
-        {
-          ruleId: matched.rule.id,
-          triggerKey: input.triggerKey,
-          entityType: 'order',
-          entityId: input.orderId,
-          status: 'skipped',
-          matchedWhen: matched.rule.whenJson,
-          actionsApplied: [],
-          error: 'csv_override',
-          actorStaffId: input.actorStaffId,
-        },
-        client,
-      );
-      return {
-        status: 'skipped',
-        ruleId: matched.rule.id,
-        actionsApplied: [],
-        reason: 'csv_override',
-      };
-    }
-
+    const filtered = matched ? filterActionsForCsvOverride(matched.actions, facts) : [];
     // Import / item_number_set run PICK + PACK; unit.test_passed re-runs PACK.
-    const actionsForTrigger = selectActionsForTrigger(filtered, input.triggerKey);
+    const ruleActions = selectActionsForTrigger(filtered, input.triggerKey);
+    const listStaffOut = input.listStaffOut ?? defaultListStaffOut;
+    // No rule names a picker: the item's owner by pick history picks.
+    const [historyPick] =
+      triggerRunsWorkType(input.triggerKey, 'PICK') &&
+      !facts.csv_assignee_picker &&
+      !ruleActions.some((a) => a.work_type === 'PICK')
+        ? await loadHistoryPickers(client, orgId, [facts], listStaffOut)
+        : [null];
+    const actionsForTrigger = historyPick ? [...ruleActions, historyPick.action] : ruleActions;
+    const ruleId = matched?.rule.id ?? null;
+    const matchedWhen = matched?.rule.whenJson ?? facts;
 
     if (actionsForTrigger.length === 0) {
+      const reason = !matched ? 'no_matching_rule' : filtered.length === 0 ? 'csv_override' : 'no_actions_for_trigger';
       await writeRun(
         orgId,
         {
-          ruleId: matched.rule.id,
+          ruleId,
           triggerKey: input.triggerKey,
           entityType: 'order',
           entityId: input.orderId,
           status: 'skipped',
-          matchedWhen: matched.rule.whenJson,
+          matchedWhen,
           actionsApplied: [],
-          error: 'no_actions_for_trigger',
+          error: reason,
           actorStaffId: input.actorStaffId,
         },
         client,
       );
-      return {
-        status: 'skipped',
-        ruleId: matched.rule.id,
-        actionsApplied: [],
-        reason: 'no_actions_for_trigger',
-      };
+      return { status: 'skipped', ruleId, actionsApplied: [], reason };
     }
 
     const { applied, skipped } = await applyActions(
@@ -283,19 +268,19 @@ async function runInClient(
       actionsForTrigger,
       input.overwriteManual === true,
       client,
-      input.listStaffOut ?? defaultListStaffOut,
+      listStaffOut,
     );
 
     if (applied.length === 0) {
       await writeRun(
         orgId,
         {
-          ruleId: matched.rule.id,
+          ruleId,
           triggerKey: input.triggerKey,
           entityType: 'order',
           entityId: input.orderId,
           status: 'skipped',
-          matchedWhen: matched.rule.whenJson,
+          matchedWhen,
           actionsApplied: [],
           error: skipped.join(',') || 'nothing_applied',
           actorStaffId: input.actorStaffId,
@@ -304,7 +289,7 @@ async function runInClient(
       );
       return {
         status: 'skipped',
-        ruleId: matched.rule.id,
+        ruleId,
         actionsApplied: [],
         reason: skipped.join(',') || 'nothing_applied',
       };
@@ -313,12 +298,12 @@ async function runInClient(
     await writeRun(
       orgId,
       {
-        ruleId: matched.rule.id,
+        ruleId,
         triggerKey: input.triggerKey,
         entityType: 'order',
         entityId: input.orderId,
         status: 'applied',
-        matchedWhen: matched.rule.whenJson,
+        matchedWhen,
         actionsApplied: applied,
         actorStaffId: input.actorStaffId,
       },
@@ -335,7 +320,7 @@ async function runInClient(
           actorStaffId: input.actorStaffId ?? null,
           payload: {
             triggerKey: input.triggerKey,
-            ruleId: matched.rule.id,
+            ruleId,
             actions: applied,
           },
         },
@@ -345,7 +330,7 @@ async function runInClient(
       // Best-effort spine; assignment already committed in this tx.
     }
 
-    return { status: 'applied', ruleId: matched.rule.id, actionsApplied: applied };
+    return { status: 'applied', ruleId, actionsApplied: applied };
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     try {
@@ -428,37 +413,52 @@ export async function loadOrderListingFacts(
   };
 }
 
-/** Who a listing rule would put on one order line's PICK / PACK today — read-only. */
+/** Who takes one order line's PICK / PACK today, and whether a rule or pick history says so. */
+export type PreviewAssignee = ResolvedAssignee & { source: 'rule' | 'history' };
+
+/** Who {@link applyListingAssignment} would put on one order line's PICK / PACK today — read-only. */
 export type ListingAssigneePreview = {
-  ruleId: number;
-  ruleName: string;
-  pick: ResolvedAssignee | null;
-  pack: ResolvedAssignee | null;
-} | null;
+  rule: { id: number; name: string } | null;
+  pick: PreviewAssignee | null;
+  pack: PreviewAssignee | null;
+};
 
 /**
  * The same first-match + out-today resolution {@link applyListingAssignment}
- * runs on import, for facts that are not an order yet (the new-order form
- * shows the rule's picker / packer before save). One rules read, one
- * out-today read for the whole batch.
+ * runs on import — including the pick-history picker when no rule names one —
+ * for facts that are not an order yet (the new-order form shows the picker /
+ * packer before save). One rules read, one out-today read per source for the
+ * whole batch.
  */
 export async function previewListingAssignees(
   organizationId: OrgId,
   factsList: readonly ListingAutomationFacts[],
 ): Promise<ListingAssigneePreview[]> {
   if (factsList.length === 0) return [];
-  const rules = await loadEnabledListingRules(organizationId);
-  const matches = factsList.map((facts) => matchListingRule(rules, 'order.imported', facts));
-  const outToday = await listStaffOutOnDate(
-    organizationId,
-    matches.flatMap((m) => (m ? collectActionStaffIds(m.actions) : [])),
-  );
-  return matches.map((m) => {
-    if (!m) return null;
-    const resolve = (workType: AssignWorkAction['work_type']) => {
-      const action = m.actions.find((a) => a.work_type === workType);
-      return action ? resolveActionAssignee(action, outToday) : null;
+  return withTenantTransaction(organizationId, async (client) => {
+    const rules = await loadEnabledListingRules(organizationId, client);
+    const matches = factsList.map((facts) => matchListingRule(rules, 'order.imported', facts));
+    const outToday = await listStaffOutOnDate(
+      organizationId,
+      matches.flatMap((m) => (m ? collectActionStaffIds(m.actions) : [])),
+      { client },
+    );
+    const ruleAssignee = (m: (typeof matches)[number], workType: AssignWorkAction['work_type']): PreviewAssignee | null => {
+      const action = m?.actions.find((a) => a.work_type === workType);
+      const resolved = action ? resolveActionAssignee(action, outToday) : null;
+      return resolved ? { ...resolved, source: 'rule' } : null;
     };
-    return { ruleId: m.rule.id, ruleName: m.rule.name, pick: resolve('PICK'), pack: resolve('PACK') };
+    const needHistory = factsList.filter((_, i) => !matches[i]?.actions.some((a) => a.work_type === 'PICK'));
+    const historyPicks = await loadHistoryPickers(client, organizationId, needHistory, defaultListStaffOut);
+    let h = 0;
+    return matches.map((m) => {
+      const ruleHasPick = m?.actions.some((a) => a.work_type === 'PICK') ?? false;
+      const history = ruleHasPick ? null : historyPicks[h++];
+      return {
+        rule: m ? { id: m.rule.id, name: m.rule.name } : null,
+        pick: ruleHasPick ? ruleAssignee(m, 'PICK') : history ? { ...history.assignee, source: 'history' } : null,
+        pack: ruleAssignee(m, 'PACK'),
+      };
+    });
   });
 }

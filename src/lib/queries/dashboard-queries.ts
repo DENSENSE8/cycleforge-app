@@ -6,6 +6,7 @@ import { queryOptions } from '@tanstack/react-query';
 import {
   fetchPendingOrdersData,
   fetchUnshippedOrdersData,
+  fetchUnshippedOrderRowById,
   fetchUnshippedQueueCounts,
   fetchDeskCounts,
   fetchDashboardPackedRecords,
@@ -153,6 +154,16 @@ export function unshippedOrdersQuery({
         shipByFrom,
         shipByTo,
       }),
+    staleTime: 60_000,
+    gcTime: 15 * 60 * 1000,
+  });
+}
+
+/** One in-warehouse queue row by DB id — the desk's URL deep link and the phone's tapped pick share it. */
+export function unshippedOrderRowQuery({ orderId, staffId }: { orderId: number | null; staffId?: number }) {
+  return queryOptions({
+    queryKey: ['dashboard-table', 'unshipped-deep-link', { openOrderId: orderId, staffId }],
+    queryFn: () => fetchUnshippedOrderRowById({ orderId: orderId ?? 0, staffId }),
     staleTime: 60_000,
     gcTime: 15 * 60 * 1000,
   });

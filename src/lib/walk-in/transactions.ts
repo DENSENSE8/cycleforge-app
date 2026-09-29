@@ -49,6 +49,8 @@ export interface PickupOrderRow {
   item_count: number;
   /** DOLLARS, as a numeric string. */
   total_value: string;
+  payment_method?: string | null;
+  paid_amount_cents?: number | null;
   completed_at: string | null;
   created_at: string;
 }
@@ -104,7 +106,7 @@ export function pickupToTransaction(row: PickupOrderRow): WalkInTransaction {
     at,
     dateKey: toPSTDateKey(at) ?? '',
     customer: firstNonEmpty(row.customer_name) ?? 'Seller',
-    detail: `${row.item_count} item${row.item_count === 1 ? '' : 's'}`,
+    detail: `${row.item_count} item${row.item_count === 1 ? '' : 's'}${row.payment_method ? ` · ${row.payment_method}` : ''}`,
     amountLabel: formatDollars(amount),
     amount,
     status: row.status,

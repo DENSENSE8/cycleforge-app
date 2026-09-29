@@ -8,6 +8,7 @@ import { Button } from '@/design-system/primitives';
 import { useReasonVocabulary } from '@/hooks/useReasonVocabulary';
 import { SHORT_PICK_REASONS, mergeShortPickReasons } from '@/lib/picking/short-pick-reasons';
 import { focusRing } from '@/design-system/tokens/focus-ring';
+import { cornerClass, TRIAGE_PANEL_INNER_CORNER } from '@/design-system/tokens/radius';
 import { cn } from '@/utils/_cn';
 import { motion } from '@/design-system/motion';
 
@@ -78,7 +79,7 @@ export function ShortPickSheet({
   return (
     <BottomSheet open={open} onClose={onClose} title="Short pick — confirm reason">
       {/* Quantity headline */}
-      <div className="mb-4 rounded-none border border-amber-200 bg-amber-50/70 px-4 py-3">
+      <div className={`mb-4 ${cornerClass('surface')} border border-amber-200 bg-amber-50/70 px-4 py-3`}>
         <p className="text-xs font-semibold text-amber-700">
           Picking {pickedQty} of {plannedQty}
         </p>
@@ -102,7 +103,7 @@ export function ShortPickSheet({
               onClick={() => setReason(opt.code as ShortPickReason)}
               aria-pressed={selected}
               whileTap={{ scale: 0.96 }}
-              className={`ds-raw-button flex w-full items-start gap-3 rounded-none border px-4 py-3 text-left transition-colors min-h-[56px] ${
+              className={`ds-raw-button flex w-full items-start gap-3 ${TRIAGE_PANEL_INNER_CORNER} border px-4 py-3 text-left transition-colors min-h-[56px] ${
                 selected
                   ? 'border-blue-500 bg-surface-sunken ring-2 ring-border-soft'
                   : 'border-border-soft bg-surface-card active:bg-surface-hover'
@@ -147,7 +148,7 @@ export function ShortPickSheet({
           onChange={(e) => setNote(e.target.value)}
           rows={2}
           placeholder={noteRequired ? 'Describe what happened…' : 'Add context if useful'}
-          className={cn("w-full resize-none rounded-none border border-border-default bg-surface-canvas px-4 py-3 text-role-field text-text-default transition-colors focus:bg-surface-card", focusRing('field', 'accent'))}
+          className={cn("w-full resize-none border border-border-default bg-surface-canvas px-4 py-3 text-role-field text-text-default transition-colors focus:bg-surface-card", TRIAGE_PANEL_INNER_CORNER, focusRing('field', 'accent'))}
         />
       </label>
 
@@ -155,18 +156,20 @@ export function ShortPickSheet({
       <div className="mt-4 flex flex-col gap-2 sm:flex-row-reverse sm:gap-3">
         <MotionButton
           variant="primary"
+          radius="mode"
           onClick={handleConfirm}
           disabled={!canSubmit}
           whileTap={canSubmit ? { scale: 0.96 } : undefined}
-          className="h-12 w-full rounded-none bg-gradient-to-br from-amber-500 to-amber-700 text-white shadow-md shadow-amber-500/30 sm:flex-1"
+          className="h-12 w-full bg-gradient-to-br from-amber-500 to-amber-700 text-white shadow-md shadow-amber-500/30 sm:flex-1"
         >
           Confirm short pick
         </MotionButton>
         <MotionButton
           variant="ghost"
+          radius="mode"
           onClick={onClose}
           whileTap={{ scale: 0.96 }}
-          className="h-12 w-full rounded-none text-text-muted hover:bg-surface-sunken sm:flex-1"
+          className="h-12 w-full text-text-muted hover:bg-surface-sunken sm:flex-1"
         >
           Cancel
         </MotionButton>

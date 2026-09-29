@@ -31,7 +31,7 @@ import { DeskRecordViewSwitch } from '@/design-system/components/DeskRecordViewS
 import { DataTableZoomToggle } from '@/components/tables/DataTableZoomToggle';
 import { DeskActionSlotRegistrar, DeskHeaderAction } from '@/design-system/components/DeskActionSlot';
 import { useDeskStageOptional } from '@/design-system/components/DeskStageContext';
-import { DESK_RECORD_ANCHOR_ATTR, useDeskRecordPlaneOptional } from '@/design-system/components/DeskRecordPlane';
+import { DESK_RECORD_ANCHOR_ATTR } from '@/design-system/components/DeskRecordPlane';
 import { NonlinearTableHost } from '@/components/tables/NonlinearTableHost';
 import { SlotLayoutReorderProvider } from '@/components/tables/SlotLayoutReorderContext';
 import type { SlotLayout } from '@/lib/tables/slot-layout-core';
@@ -167,7 +167,7 @@ export interface DataTableBrandIdentity {
   value?: string;
 }
 
-/** The search box, as data. */
+/** Legacy in-table search. Page-level lists migrate to NAV_PAGE_DECLS.search. */
 export interface DataTableSearch {
   value: string;
   onChange: (value: string) => void;
@@ -284,8 +284,12 @@ export interface DataTableProps<Row, K extends string, C extends LedgerGridColum
   /** Typed no-matches empty (`OrderSearchEmptyState`). */
   searchEmptyState?: ReactNode;
 
-  // ── The one search box (data, not a node) ──────────────────────────────────
-  search: DataTableSearch;
+  /**
+   * In-job sub-ledger Find. Page-level lists MUST use NAV_PAGE_DECLS.search;
+   * this is only for rows subordinate to the current job (for example CSV
+   * staging).
+   */
+  sheetFind?: DataTableSearch;
 
   // ── The one filter control (data, not a node) ──────────────────────────────
   /** Facets for the always-mounted funnel. Omit → {@link DATA_TABLE_FILTER_IDLE}. */
@@ -1154,17 +1158,12 @@ const DATA_TABLE_ROW_SELECTOR =
 const DATA_TABLE_TEXT_ENTRY_SELECTOR =
   'input,textarea,select,[contenteditable="true"],[role="textbox"],[role="spinbutton"],[role="listbox"],[role="menu"]';
 
-/** Keyboard travel between the find field and the rows it narrowed. */
+/** Keyboard travel between rows. Page Find lives in the shell, outside this component. */
 function useDataTableRowRoving({
   gridHostRef,
-  searchInputRef,
 }: {
   gridHostRef: RefObject<HTMLDivElement | null>;
-  searchInputRef: RefObject<HTMLInputElement | null>;
 }) {
-  // While a DeskRecordPlane needs Escape (a record open, or the split view whose
-  // next Esc exits fullscreen), the row's own Esc → find field stands down.
-  const planeOwnsEscape = useDeskRecordPlaneOptional()?.ownsEscape ?? false;
   const focusRow = useCallback((row: HTMLElement) => {
     // `tabIndex` is only absent on surfaces with no activation gesture; setting
     // -1 keeps the Tab order exactly as it was.
@@ -1173,19 +1172,10 @@ function useDataTableRowRoving({
     row.scrollIntoView({ block: 'nearest' });
   }, []);
 
-  const focusSearch = useCallback(() => {
-    searchInputRef.current?.focus();
-  }, [searchInputRef]);
-
-  /** ArrowDown out of the find field. */
-  const focusFirstRow = useCallback(() => {
-    const first = gridHostRef.current?.querySelector<HTMLElement>(DATA_TABLE_ROW_SELECTOR);
-    if (first) focusRow(first);
-  }, [gridHostRef, focusRow]);
 
   const onBodyKeyDown = useCallback(
     (event: ReactKeyboardEvent<HTMLDivElement>) => {
-      if (event.key !== 'ArrowDown' && event.key !== 'ArrowUp' && event.key !== 'Escape') return;
+      if (event.key !== 'ArrowDown' && event.key !== 'ArrowUp') return;
       if (event.defaultPrevented) return;
       const target = event.target as HTMLElement | null;
       if (!target) return;
@@ -1193,13 +1183,6 @@ function useDataTableRowRoving({
       if (target.closest(DATA_TABLE_TEXT_ENTRY_SELECTOR)) return;
       const row = target.closest<HTMLElement>(DATA_TABLE_ROW_SELECTOR);
       if (!row) return;
-
-      if (event.key === 'Escape') {
-        if (planeOwnsEscape) return;
-        event.preventDefault();
-        focusSearch();
-        return;
-      }
 
       const host = gridHostRef.current;
       if (!host) return;
@@ -1212,16 +1195,13 @@ function useDataTableRowRoving({
         focusRow(next);
         return;
       }
-      // Off the TOP of the list:
-      if (event.key === 'ArrowUp') {
-        event.preventDefault();
-        focusSearch();
-      }
+      // The header Find is outside this component; at the top, leave focus on
+      // the first row rather than inventing a second in-table focus target.
     },
-    [gridHostRef, focusRow, focusSearch, planeOwnsEscape],
+    [gridHostRef, focusRow],
   );
 
-  return { focusFirstRow, onBodyKeyDown };
+  return { onBodyKeyDown };
 }
 
 export type { DataTableTab };
@@ -1238,7 +1218,7 @@ export function DataTable<Row, K extends string, C extends LedgerGridColumnModel
   searchEmptyMessage,
   emptyState,
   searchEmptyState,
-  search,
+  sheetFind,
   filter,
   actions,
   sortMenu,
@@ -1284,9 +1264,10 @@ export function DataTable<Row, K extends string, C extends LedgerGridColumnModel
   useEffect(() => {
     setPageSize(readSlotTablePageSize());
   }, []);
+  const sheetFindValue = sheetFind?.value ?? '';
   useEffect(() => {
     setPageIndex(0);
-  }, [search.value, pageSize]);
+  }, [pageSize, sheetFindValue]);
   const paged = useMemo(
     () => pageGroupedRenderOrder(orderGroupsByDate, pageIndex, pageSize),
     [orderGroupsByDate, pageIndex, pageSize],
@@ -1325,7 +1306,7 @@ export function DataTable<Row, K extends string, C extends LedgerGridColumnModel
     [orderGroupsByDate, getRowId],
   );
   const findScrollToKey = scrollToKey ?? slotTableFindHighlightId({
-    query: search.value,
+    query: sheetFindValue,
     paintedRowIds,
   });
   useEffect(() => {
@@ -1339,10 +1320,8 @@ export function DataTable<Row, K extends string, C extends LedgerGridColumnModel
     if (next != null && next !== pageIndex) setPageIndex(next);
   }, [findScrollToKey, getRowId, orderGroupsByDate, pageIndex, pageSize]);
   const gridHostRef = useRef<HTMLDivElement>(null);
-  const searchInputRef = useRef<HTMLInputElement | null>(null);
-  const { focusFirstRow, onBodyKeyDown } = useDataTableRowRoving({
+  const { onBodyKeyDown } = useDataTableRowRoving({
     gridHostRef,
-    searchInputRef,
   });
 
   // Sortability is a property of the DESCRIPTOR, not of the page: TanStack's
@@ -1439,9 +1418,8 @@ export function DataTable<Row, K extends string, C extends LedgerGridColumnModel
   );
 
   const filterChrome = filter ?? DATA_TABLE_FILTER_IDLE;
-  const isNarrowed = Boolean(search.value) || Boolean(filterChrome.options.some((o) => o.active));
-  /** The server is still answering the CURRENT query text. */
-  const searchPending = search.answeredBy === 'server' && search.pending === true;
+  const isNarrowed = Boolean(sheetFindValue) || Boolean(filterChrome.options.some((o) => o.active));
+  const sheetFindPending = sheetFind?.answeredBy === 'server' && sheetFind.pending === true;
 
   const stage = useDeskStageOptional();
   const exportInHeader = Boolean(
@@ -1536,8 +1514,8 @@ export function DataTable<Row, K extends string, C extends LedgerGridColumnModel
           className={cn(DESK_TABLE_SURFACE_CLASS, className)}
           {...{ [SLOT_TABLE_OVERLAY_HOST_ATTR]: '' }}
         >
-      {/* ── The list anchor: search row + record action strip. In place, the
-          open record opens below it; both stay live over the record. ──────── */}
+      {/* ── The list anchor: table controls + record action strip. In place,
+          the open record opens below it; both stay live over the record. ──── */}
       <div {...{ [DESK_RECORD_ANCHOR_ATTR]: '' }} className="flex min-w-0 shrink-0 flex-col">
       {!hideToolbar ? <div
         data-testid="data-table-toolbar"
@@ -1549,25 +1527,19 @@ export function DataTable<Row, K extends string, C extends LedgerGridColumnModel
           PRIMARY_CHROME_ROW_FACE,
         )}
       >
-        <SearchField
-          value={search.value}
-          onChange={search.onChange}
-          placeholder={search.placeholder ?? 'Search'}
-          isSearching={searchPending}
-          onNavigateResults={focusFirstRow}
-          inputRef={(el) => {
-            searchInputRef.current = el;
-            if (!el) return;
-            el.setAttribute('aria-label', search.placeholder ?? 'Search');
-          }}
-          className={cn(
-            'min-w-0 max-w-[22rem] flex-1 overflow-hidden',
-            DATA_TABLE_TOOLBAR_CORNER,
-          )}
-          tone="neutral"
-          hideUnderline
-          fillHost
-        />
+        {sheetFind ? (
+          <SearchField
+            value={sheetFind.value}
+            onChange={sheetFind.onChange}
+            placeholder={sheetFind.placeholder ?? 'Find in this sheet…'}
+            isSearching={sheetFindPending}
+            inputRef={(el) => el?.setAttribute('aria-label', sheetFind.placeholder ?? 'Find in this sheet')}
+            className={cn('min-w-0 max-w-[22rem] flex-1 overflow-hidden', DATA_TABLE_TOOLBAR_CORNER)}
+            tone="neutral"
+            hideUnderline
+            fillHost
+          />
+        ) : null}
         <DataTableFilterMenu {...filterChrome} />
         {actions && actions.length > 0 ? <DataTableToolbarActions actions={actions} /> : null}
         {resolvedSortMenu ? <DataTableSortMenu {...resolvedSortMenu} /> : null}
@@ -1629,7 +1601,7 @@ export function DataTable<Row, K extends string, C extends LedgerGridColumnModel
           rows={rows}
           orderGroupsByDate={paged.order}
           getRowId={getRowId}
-          loading={loading || searchPending}
+          loading={loading || sheetFindPending}
           emptyMessage={emptyMessage}
           searchEmptyMessage={searchEmptyMessage}
           emptyState={emptyState}

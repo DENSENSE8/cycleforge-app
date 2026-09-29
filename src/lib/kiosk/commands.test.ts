@@ -8,7 +8,7 @@ import {
   isKioskCommandId,
   parseKioskCommandId,
 } from './commands';
-import { kioskCommandOptions, serviceIdToCommand } from './services';
+import { KIOSK_SERVICES, kioskCommandOptions, serviceIdToCommand } from './services';
 import { getKioskDefaultCommand, parseOrgSettings } from '@/lib/tenancy/settings';
 
 test('the fallback is REPAIR — the counter’s most common job', () => {
@@ -50,6 +50,14 @@ test('every command in the vocabulary is a LIVE, choosable command', () => {
   );
   assert.equal(serviceIdToCommand('sales'), 'retail');
   assert.equal(options[0]?.command, 'repair', 'repair leads the picker');
+});
+
+test('local pickup intake is a staff workflow, not a persisted cart command', () => {
+  const pickup = KIOSK_SERVICES.find((service) => service.id === 'local-pickup');
+  assert.equal(pickup?.kind, 'staff');
+  assert.equal(pickup?.status, 'live');
+  assert.equal(isKioskCommandId('local-pickup'), false);
+  assert.equal(kioskCommandOptions().some((option) => String(option.command) === 'local-pickup'), false);
 });
 
 test('an org with no preference opens on repair', () => {

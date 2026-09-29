@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import type { PackerRecord } from '@/hooks/usePackerLogs';
-import { dedupeShippedRecords } from './shipped-records';
+import { dedupeShippedRecords, deriveShippedRecord, isShippedDeskRow } from './shipped-records';
 
 function row(over: Partial<PackerRecord> & Pick<PackerRecord, 'id'>): PackerRecord {
   return {
@@ -48,4 +48,21 @@ test('rows with no package fall back to the order number, then the scanned refer
   ]);
 
   assert.deepEqual(out.map((r) => r.id).sort(), [2, 3, 4]);
+});
+
+test('carrier delivery promotes a packed row into Shipped and overrides scan-out', () => {
+  const delivered = row({
+    id: 12,
+    ship_confirmed_at: null,
+    shipped_out_by: null,
+    latest_status_category: 'DELIVERED',
+    is_terminal: true,
+  });
+
+  assert.equal(isShippedDeskRow(delivered), true);
+  assert.equal(deriveShippedRecord(delivered).outboundState, 'DELIVERED');
+});
+
+test('packed with no dock or carrier custody remains outside Shipped', () => {
+  assert.equal(isShippedDeskRow(row({ id: 13, ship_confirmed_at: null, shipped_out_by: null })), false);
 });

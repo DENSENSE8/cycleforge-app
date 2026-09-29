@@ -32,7 +32,7 @@ test('dashboard and outbound table search setters do not navigate', () => {
   assert.match(outbound, /const setQ = useCallback\(\s*\(value: string\) => setLocalQ\(value\),/);
 });
 
-test('orders slot-table search stays out of browser URL state', () => {
+test('orders review tables share the header q parameter', () => {
   const unshippedTable = source('components/unshipped/UnshippedTable.tsx');
   const shipped = source('components/shipped/dashboard-table/useShippedTableFilters.ts');
   const packing = source('features/review/ReviewPackingTable.tsx');
@@ -40,24 +40,23 @@ test('orders slot-table search stays out of browser URL state', () => {
 
   assert.doesNotMatch(unshippedTable, /searchParams\.get\('search'\)/);
   assert.doesNotMatch(shipped, /params\.set\('search'/);
-  assert.doesNotMatch(packing, /params\.set\('search'/);
-  assert.doesNotMatch(pairing, /params\.set\('search'/);
-  assert.match(packing, /useState\(''\)/);
-  assert.match(pairing, /useState\(''\)/);
+  assert.match(packing, /searchParams\.get\('q'\)/);
+  assert.match(pairing, /searchParams\.get\('q'\)/);
+  assert.match(packing, /params\.set\('q', next\)/);
+  assert.match(pairing, /params\.set\('q', next\)/);
 });
 
-test('receiving slot-table search stays out of browser URL state', () => {
+test('receiving slot-table search follows the shared inbound header parameter', () => {
   const receiving = source('components/station/ReceivingLinesTable.tsx');
   const spreadsheet = source('components/station/receiving-grid/useReceivingSpreadsheet.tsx');
 
-  assert.match(receiving, /const \[receivingSearchValue, setReceivingSearchValue\] = useState\(''\)/);
-  assert.doesNotMatch(receiving, /params\.set\(RECEIVING_SEARCH_PARAM_KEY/);
-  assert.doesNotMatch(receiving, /searchParams\.get\(RECEIVING_SEARCH_PARAM_KEY/);
+  assert.match(receiving, /searchParams\.get\(INBOUND_FIND_PARAM\)/);
+  assert.match(receiving, /const receivingSearchValue = urlFindValue/);
   assert.match(spreadsheet, /receivingLineMatchesQuery/);
   assert.doesNotMatch(spreadsheet, /from ['"]next\/navigation['"]/);
 });
 
-test('photo library find-bar stays out of browser URL state', () => {
+test('photo library uses the shared header query and keeps controls free of duplicate find UI', () => {
   const findRow = source('components/photos/PhotoLibraryFindRow.tsx');
   const page = source('components/photos/PhotoLibraryPage.tsx');
 
@@ -68,12 +67,13 @@ test('photo library find-bar stays out of browser URL state', () => {
   assert.doesNotMatch(findRow, /poFinder:/);
   assert.doesNotMatch(findRow, /\bq: /);
   assert.doesNotMatch(findRow, /from ['"]next\/navigation['"]/);
-  assert.match(findRow, /value=\{search\.value\}/);
-  assert.match(findRow, /onChange=\{search\.onChange\}/);
+  assert.doesNotMatch(findRow, /value=\{search\.value\}/);
+  assert.doesNotMatch(findRow, /onChange=\{search\.onChange\}/);
 
-  // The page holds the query in session state and narrows the painted rows.
-  assert.match(page, /const \[searchQuery, setSearchQuery\] = useState\(''\)/);
-  assert.match(page, /filterPhotosByQuery\(photos, searchQuery/);
+  // The page reads the shared query and narrows the painted rows.
+  assert.match(page, /const searchQuery = filters\.q \?\? ''/);
+  assert.match(page, /usePhotoLibrary\(filters\)/);
+  assert.match(page, /const visiblePhotos = photos/);
   assert.doesNotMatch(page, /patch\(\{\s*poFinder:/);
 });
 

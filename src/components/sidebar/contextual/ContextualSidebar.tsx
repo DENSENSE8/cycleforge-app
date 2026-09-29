@@ -30,6 +30,7 @@ import { NavFilters } from './NavFilters';
 import { NAV_BLOCK_CLASS } from './nav-block';
 import { NavRecentsList } from './NavRecentsList';
 import { NavPanelActions } from './NavPanelActions';
+import { NavSidebarActions } from './NavSidebarActions';
 import { NavFind } from './NavFind';
 import { NavSlotError } from './NavSlotError';
 import { NavModeSwitcher, isNavModeSection } from './NavModeSwitcher';
@@ -49,18 +50,18 @@ import { useRememberLaneView } from './useLaneDoorHref';
  *   focused, and says where the text lives in the section (locate pills);
  *   "Search everywhere" hands the text to the ⌘K palette; the palette's face
  *   everywhere else — then `‹ <Lane>` — carrying a view-less page's verbs at
- *   its right end (Chat's `+`) — then, on every page of a door lane, the
- *   MODE switcher (Shipping · FBA · Labels & docs), then the VIEW switcher
- *   (Exceptions · PO paired · …). Modes and views are changed rarely, so
- *   each is one block that opens to the right of the sidebar on hover
- *   (`NavSwitcherMenu`). Pinned so search never scrolls away or hides while
- *   a record is open;
+ *   its right end (Chat's `+`) — then the MODE card: a door lane's pages
+ *   (Shipping · FBA · Labels & docs) or a page's own modes (`NavPageDecl.modes`,
+ *   Exceptions: All · Fulfillment · Inventory · Receiving) — then the VIEW
+ *   switcher (Exceptions · PO paired · …). Modes and views are changed
+ *   rarely, so each is one block that opens on click (`NavSwitcherMenu`).
+ *   Pinned so search never scrolls away or hides while a record is open;
  * - scrolling body: what you change often, as buttons — the saved views,
  *   then the closed filter rows. The view's verbs live in the page header,
  *   over the list they act on (`NavPageActions`). After `‹` the body shows
- *   the lane map
- *   (`?view=top`) with this page lit. `‹` is LOCAL state and never touches
- *   the URL; any URL change (links, back/forward) rebuilds from the URL;
+ *   the lane map (`?view=top`) with this page lit. `‹` is LOCAL state and
+ *   never touches the URL; any URL change (links, back/forward) rebuilds
+ *   from the URL;
  * - fixed footer, PARENT level only (the page map, and a panel's `‹` peek):
  *   the staff account bar. A page's own panel does not repeat it.
  *
@@ -100,6 +101,7 @@ export function ContextualSidebar() {
     () => (panel ? nav.sections.filter((section) => !isNavModeSection(section)) : []),
     [panel, nav?.sections],
   );
+  const currentItemId = nav?.sections.flatMap((section) => section.items).find((item) => item.active)?.id;
   const showTop = peekTop || !panel;
   const body: NavContext | undefined = peekTop || mapOnly ? top.data : nav;
   useRememberLaneView(nav);
@@ -160,7 +162,7 @@ export function ContextualSidebar() {
           </div>
         ) : null}
       </div>
-      <NavGoKeys currentPageId={nav?.page.id} />
+      <NavGoKeys currentPageId={nav?.page.id} currentItemId={currentItemId} />
 
       <SidebarContent
         data-spine-scrollport
@@ -276,6 +278,7 @@ function SectionBody({ nav }: { nav: NavContext }) {
           savedViews={nav.savedViews}
         />
       ) : null}
+      {nav.actionsPlacement === 'sidebar' && nav.actions ? <NavSidebarActions actions={nav.actions} /> : null}
       {nav.recents ? (
         <NavRecentsList
           key={nav.recents.surface}

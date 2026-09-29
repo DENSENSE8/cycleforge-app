@@ -6,7 +6,6 @@ import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import {
   ITEM_RECORD_MOBILE_META,
-  ITEM_RECORD_MOBILE_ROW,
   ITEM_RECORD_MOBILE_STATE_RAIL,
   ITEM_RECORD_MOBILE_STAGE,
   ITEM_RECORD_MOBILE_STAGE_VERBS,
@@ -22,11 +21,6 @@ describe('item-record mobile tokens', () => {
     assert.ok(ITEM_RECORD_MOBILE_META.condition);
     assert.ok(ITEM_RECORD_MOBILE_META.notes);
     assert.equal('sep' in ITEM_RECORD_MOBILE_META, false);
-  });
-
-  it('keeps queue rows flush and hairline-separated on the phone sheet', () => {
-    assert.match(ITEM_RECORD_MOBILE_ROW.shell, /border-b/);
-    assert.doesNotMatch(ITEM_RECORD_MOBILE_ROW.shell, /rounded|shadow/);
   });
 
   it('maps workflow state rails to semantic color roles', () => {

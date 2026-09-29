@@ -83,8 +83,10 @@ file at the repo root. The `design-mcp` command is the **mise node shim** plus
 login shell, and a PATH-dependent wrapper is how the catalog goes empty.
 
 If a harness does not surface the tools, use the CLI — same handlers:
-`node tools/design-mcp/ds.mjs contract|tokens|critique …`. There is no stamp,
-no `sessionStart` law injection and no write gate.
+`node tools/design-mcp/ds.mjs contract|tokens|critique …`. The shared
+agent-contract door also consumes this repo's `contractPreflight` profile: its
+first matching UI write must be denied with live `ds_contract` matches and its
+immediate retry must pass on the file-scoped receipt.
 
 ```bash
 ./tools/design-mcp/run-mcp.sh </dev/null 2>&1 | head -2
@@ -176,12 +178,11 @@ Confirm these are still true. If any now succeeds, the report is out of date:
   ranks `dialog` first; `ds_contract("copy chip …")` ranks `CopyChip`. The server
   does not import 21st.dev — those arrive one file at a time after they exist in
   the repo.
-- **Nothing here blocks a UI write.** All `ds_critique` output is heuristic text
-  matching. `.claude/settings.json` **does** have PreToolUse hooks — they block
-  `.env` / credential paths, `db:push`, and `git push --force`. None of them
-  call this MCP or adjudicate design-system files. A verifier claiming "there
-  is no PreToolUse hook in this repo" is reading a stale prompt. A verifier
-  claiming those hooks *are* the design gate is also wrong.
+- **`ds_critique` itself does not block a UI write.** The shared PreToolUse
+  door does: for paths declared by `contractPreflight`, it queries the live
+  `ds_contract` handler, denies once with the matched patterns, then admits the
+  retry on a short-lived receipt. This is a workflow gate; it does not infer
+  behavior by grepping TypeScript source.
 - **MCP resources are mirrors, not a second SoT.** `resources/list` returns
   `design://tokens/<axis>` for each of the eight axes. Reading
   `design://tokens/radius` must match `ds_tokens({ axis: "radius" })` roles.

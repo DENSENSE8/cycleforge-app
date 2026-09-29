@@ -61,6 +61,7 @@ import { logger } from '@/lib/observability/logger';
 import { CARD_NUMBER_PLACEHOLDER, CARD_NUMBER_REFUSAL, redactCardNumbers, scanCardNumbers } from '@/lib/assistant/pan-guard';
 import { hasStepUp } from '@/lib/auth/stepup';
 import { rolesIncludeAdmin } from '@/lib/auth/permissions';
+import { withAttachmentOcr } from '@/lib/assistant/attachment-ocr';
 
 /** `done.mode` of a turn the PAN guard answered — the payment golden asserts it. */
 const CARD_REFUSED_MODE = 'card_refused';
@@ -539,7 +540,7 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
         const prepared = await preparing;
 
         // Local-ops fast path — deterministic shipping pace, no model cost.
-        if (prepared.kind === 'local_ops') {
+        if (prepared.kind === 'local_ops' && (context?.attachments ?? []).length === 0) {
           const text = formatLocalOpsReply(prepared.resolution);
           markFirstToken();
           write('delta', { text });
@@ -548,6 +549,12 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
           timing('local_ops');
           return;
         }
+        // An attachment always needs a model turn so its OCR evidence can be
+        // interpreted. If text alone matched the deterministic local-ops
+        // classifier, retain the original question and continue normally.
+        const modelPrepared = prepared.kind === 'enriched'
+          ? prepared
+          : { kind: 'enriched' as const, userMessage: userText };
 
         // Confirmation fast path — a bare yes / no answering a write this
         // thread proposed on an earlier turn. It runs that tool through the
@@ -586,13 +593,26 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
           return;
         }
 
-        const [providers, history] = await Promise.all([providersResolving, historyLoading]);
+        // OCR begins only after ownership and deterministic fast paths have
+        // settled. It runs beside provider/history loading. Raw attachment
+        // bytes go only to local document OCR; the chat provider receives the
+        // derived transcript as untrusted context.
+        const ocrStartedAt = Date.now();
+        const assistantContextLoading = withAttachmentOcr(orgId, context ?? null).then((enriched) => {
+          stage.document_ocr_ms = Date.now() - ocrStartedAt;
+          return enriched;
+        });
+        const [providers, history, assistantContext] = await Promise.all([
+          providersResolving,
+          historyLoading,
+          assistantContextLoading,
+        ]);
         const pendingLink = pendingWrite?.note ?? null;
 
         const voiceSystem =
-          prepared.voice === 'carton'
+          modelPrepared.voice === 'carton'
             ? CARTON_ASK_SYSTEM
-            : prepared.voice === 'org_chat'
+            : modelPrepared.voice === 'org_chat'
               ? ORG_CHAT_SYSTEM
               : undefined;
 
@@ -685,8 +705,8 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
           // The pending-link note rides WITH the user's reply: a small local
           // model reads its own last question in history and asks for ids it
           // does not need unless the answer and the instruction arrive together.
-          userMessage: pendingLink ? `${prepared.userMessage}\n\n[${pendingLink}]` : prepared.userMessage,
-          context: context ?? null,
+          userMessage: pendingLink ? `${modelPrepared.userMessage}\n\n[${pendingLink}]` : modelPrepared.userMessage,
+          context: assistantContext,
           voiceOverlay: voiceSystem ?? null,
           writeTools,
           toolDeps,

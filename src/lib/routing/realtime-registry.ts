@@ -58,6 +58,8 @@ const DECLARED_ROUTES: readonly RealtimeRouteEntry[] = [
   // Phone tree.
   { route: '/m/orders', domains: ['dashboard'] },
   { route: '/m/work', domains: ['dashboard'] },
+  // Pick queue: the To-ship desk's rows and counts (owner 2026-09-28).
+  { route: '/m/pick', domains: ['dashboard'] },
   { route: '/m/r', domains: ['receiving'] },
   { route: '/m/receiving', domains: ['receiving'] },
   { route: '/m/rs', domains: ['repair'] },

@@ -37,27 +37,40 @@ interface PrintStationRow {
   assigned_paper: boolean;
 }
 
-/** Upsert one station's heartbeat. Never touches the org's assignment. */
+/**
+ * Upsert one station's heartbeat. Never touches the org's assignment. The
+ * REGISTRY owns the name: a first beat (or a registry row still unnamed)
+ * adopts the computer's own name unless another station already wears it
+ * (names are unique per org — it stays unnamed instead); after that a beat
+ * never renames — only {@link renamePrintStation} does. Returns the
+ * registry's name so the computer adopts it.
+ */
 export async function recordPrintStationHeartbeat(
   organizationId: OrgId,
   staffId: number,
   heartbeat: PrintStationHeartbeat,
-): Promise<void> {
-  await tenantQuery(
+): Promise<{ name: string }> {
+  const { rows } = await tenantQuery<{ name: string }>(
     organizationId,
     `INSERT INTO print_stations AS s
        (organization_id, station_id, name, label_ready, paper_ready, label_printer, paper_printer,
         last_seen_at, last_seen_staff_id)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, now(),
+     VALUES ($1, $2,
+             CASE WHEN $3 <> $9 AND EXISTS (
+                    SELECT 1 FROM print_stations o
+                     WHERE o.organization_id = $1 AND o.station_id <> $2 AND lower(o.name) = lower($3)
+                  ) THEN $9 ELSE $3 END,
+             $4, $5, $6, $7, now(),
              (SELECT id FROM staff WHERE organization_id = $1 AND id = $8))
      ON CONFLICT (organization_id, station_id) DO UPDATE
-       SET name = EXCLUDED.name,
+       SET name = CASE WHEN s.name = $9 THEN EXCLUDED.name ELSE s.name END,
            label_ready = EXCLUDED.label_ready,
            paper_ready = EXCLUDED.paper_ready,
            label_printer = EXCLUDED.label_printer,
            paper_printer = EXCLUDED.paper_printer,
            last_seen_at = EXCLUDED.last_seen_at,
-           last_seen_staff_id = EXCLUDED.last_seen_staff_id`,
+           last_seen_staff_id = EXCLUDED.last_seen_staff_id
+     RETURNING name`,
     [
       organizationId,
       heartbeat.stationId,
@@ -67,8 +80,57 @@ export async function recordPrintStationHeartbeat(
       heartbeat.label.printer,
       heartbeat.paper.printer,
       staffId,
+      UNNAMED_PRINT_STATION,
     ],
   );
+  return { name: rows[0]?.name ?? heartbeat.stationName };
+}
+
+export type PrintStationRenameResult =
+  | { ok: true; name: string }
+  | { ok: false; status: 403 | 404 | 409; error: string };
+
+/**
+ * Rename one station for the whole org (empty = back to unnamed). Anyone may
+ * name the computer they are signed in on (its last heartbeat is theirs);
+ * naming ANOTHER computer takes `canManage` (Hardware settings). Two stations
+ * never share a name — the picker could not tell them apart.
+ */
+export async function renamePrintStation(
+  organizationId: OrgId,
+  staffId: number,
+  canManage: boolean,
+  stationId: string,
+  rawName: string,
+): Promise<PrintStationRenameResult> {
+  const name = rawName.trim() || UNNAMED_PRINT_STATION;
+  const conflict: PrintStationRenameResult = { ok: false, status: 409, error: `Another print station is already called “${name}”.` };
+  try {
+    return await withTenantTransaction(organizationId, async (client): Promise<PrintStationRenameResult> => {
+      const found = await client.query<{ last_seen_staff_id: number | null }>(
+        `SELECT last_seen_staff_id FROM print_stations WHERE organization_id = $1 AND station_id = $2 FOR UPDATE`,
+        [organizationId, stationId],
+      );
+      const row = found.rows[0];
+      if (!row) return { ok: false, status: 404, error: 'That print station has never checked in.' };
+      if (!canManage && row.last_seen_staff_id !== staffId) {
+        return { ok: false, status: 403, error: 'Only Hardware settings can rename another computer.' };
+      }
+      if (name !== UNNAMED_PRINT_STATION) {
+        const taken = await client.query(
+          `SELECT 1 FROM print_stations WHERE organization_id = $1 AND station_id <> $2 AND lower(name) = lower($3)`,
+          [organizationId, stationId, name],
+        );
+        if ((taken.rowCount ?? 0) > 0) return conflict;
+      }
+      await client.query(`UPDATE print_stations SET name = $3 WHERE organization_id = $1 AND station_id = $2`, [organizationId, stationId, name]);
+      return { ok: true, name };
+    });
+  } catch (error) {
+    // A concurrent rename took the name after the pre-check: the unique name index answers.
+    if (error && typeof error === 'object' && 'code' in error && error.code === '23505') return conflict;
+    throw error;
+  }
 }
 
 /**

@@ -10,10 +10,10 @@ export const GET = withAuth(async (_request, ctx) => {
   return v1Data(await listPrintStations(ctx.organizationId));
 }, { permission: 'print.label' });
 
-/** POST /api/v1/print-stations — this computer's heartbeat as a print station. */
+/** POST /api/v1/print-stations — this computer's heartbeat as a print station; answers with the registry's name for it. */
 export const POST = withAuth(async (request, ctx) => {
   const body = await readV1Json(request, printStationHeartbeatBodySchema, 'A station id, name and both stock faces are required.');
   if (!body.ok) return body.response;
-  await recordPrintStationHeartbeat(ctx.organizationId, ctx.staffId, body.data);
-  return v1Data({ stationId: body.data.stationId });
+  const { name } = await recordPrintStationHeartbeat(ctx.organizationId, ctx.staffId, body.data);
+  return v1Data({ stationId: body.data.stationId, name });
 }, { permission: 'print.label' });

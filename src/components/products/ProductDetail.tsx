@@ -8,6 +8,7 @@ import { InventoryMasterChip } from '@/components/products/InventoryMasterChip';
 import { ProductGtinField } from '@/components/products/ProductGtinField';
 import { BundleComponentsStrip } from '@/components/products/BundleComponentsStrip';
 import { ProductPackTimeCard } from '@/components/products/ProductPackTimeCard';
+import { ProductParcelCard } from '@/components/products/ProductParcelCard';
 import { PlatformMark } from '@/components/ui/PlatformMark';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { sourcePlatformMeta } from '@/lib/source-platform';
@@ -81,7 +82,7 @@ export function ProductDetail({ sku }: ProductDetailProps) {
         );
     }
 
-    const { product, platforms, stock, packProfile } = payload;
+    const { product, platforms, stock, packProfile, parcel, itemNumbers } = payload;
 
     return (
         <div className="mx-auto max-w-4xl px-4 py-6 sm:px-6">
@@ -145,6 +146,7 @@ export function ProductDetail({ sku }: ProductDetailProps) {
                         }
                     />
                     <DetailRow label="UPC" value={product.upc} mono />
+                    <DetailRow label="Item number" value={itemNumbers[0] ?? null} mono />
                     <DetailRow label="Inventory item ID" value={product.provider_item_id} mono />
                     <DetailRow label="Category" value={product.category} />
                 </DetailCard>
@@ -189,6 +191,17 @@ export function ProductDetail({ sku }: ProductDetailProps) {
                     onSaved={(next) =>
                         setPayload((prev) =>
                             prev && prev.success ? { ...prev, packProfile: next } : prev,
+                        )
+                    }
+                />
+
+                <ProductParcelCard
+                    sku={product.sku}
+                    parcel={parcel}
+                    itemNumbers={itemNumbers}
+                    onSaved={(next) =>
+                        setPayload((prev) =>
+                            prev && prev.success ? { ...prev, parcel: next } : prev,
                         )
                     }
                 />

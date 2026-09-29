@@ -22,7 +22,7 @@ export const SPINE_STATIONS_SLOT_ID = 'floor';
 export const LEGACY_DESKS_SLOT_ID = 'desks';
 
 /**
- * One synthetic slot per LANE — Inbound · Outbound · Inventory · Products · Sales · Support · Operations, in `DESK_SPINE_SECTIONS` order.
+ * One synthetic slot per LANE — Sales · Receiving · Fulfillment · Inventory · Products · Support · Operations, in `DESK_SPINE_SECTIONS` order.
  * v3 (operator 2026-09-14) deleted the single "Workspaces" parent. The lanes
  */
 export const SPINE_LANE_SLOT_IDS: ReadonlyArray<SpineSectionId> = DESK_SPINE_SECTIONS.map(
@@ -30,13 +30,13 @@ export const SPINE_LANE_SLOT_IDS: ReadonlyArray<SpineSectionId> = DESK_SPINE_SEC
 );
 
 /** Default-order generation. */
-export const SPINE_SLOTS_VERSION = 3;
+export const SPINE_SLOTS_VERSION = 4;
 
 /** True when this catalog row participates in staff reorder as its own L1. */
 export function isSpineSlottable(item: SidebarNavItem): boolean {
-  // Home / Media Library stay structural. Parked tops (Search, Plans, Chat,
-  // Settings) never paint as map rows.
-  if (item.kind === 'top') return false;
+  // Most tops stay structural or parked. An explicitly orderable top (Reports)
+  // participates beside the lanes while retaining its palette grouping.
+  if (item.kind === 'top') return item.spineOrderable === true;
   // Floor benches collapse into {@link SPINE_STATIONS_SLOT_ID}.
   if (item.kind === 'station') return false;
   // Desk pages collapse into their LANE slot (v3) — Inbound, Outbound, … —
@@ -72,7 +72,7 @@ function lanesPresent(allowed: readonly SidebarNavItem[]): SpineSectionId[] {
 }
 
 /**
- * Default order: **the lane band, then remaining L1** (Automations), then
+ * Default order: **the lane band, then remaining L1** (Reports), then
  * **Scan Stations at the very bottom** (operator 2026-09-27 — station work is
  * physical and belongs on the phone; the desk map leads with the desks). A
  * lane with no visible page is absent — never a header over nothing (C10:
@@ -146,6 +146,25 @@ interface SpineSlotsMigration {
   stamp: { spineSlots: string[]; spineSlotsVersion: number } | null;
 }
 
+/**
+ * v4 product order: the business path is one uninterrupted run, with Reports
+ * closing it. Any non-core custom rows retain their relative order afterward.
+ */
+function alignBusinessRun(slots: readonly string[], allowed: readonly SidebarNavItem[]): string[] {
+  const defaults = defaultSpineOrder(allowed);
+  const businessIds = new Set<string>([
+    'sales',
+    'inbound',
+    'fulfillment',
+    'inventory',
+    'catalog',
+    'reports',
+  ]);
+  const run = defaults.filter((id) => businessIds.has(id));
+  if (run.length === 0) return [...slots];
+  return [...run, ...slots.filter((id) => !businessIds.has(id))];
+}
+
 /** Move the LANE BAND to sit immediately above Scan Stations, preserving every other id and its relative order. */
 function liftLanesAboveStations(slots: readonly string[]): string[] {
   const laneIds = new Set<string>(SPINE_LANE_SLOT_IDS);
@@ -172,7 +191,8 @@ export function migrateSpineSlots(
   if (allowed.length === 0 || hydrated.length === 0) return { slots: hydrated, stamp: null };
   if ((savedVersion ?? 0) >= SPINE_SLOTS_VERSION) return { slots: hydrated, stamp: null };
 
-  const slots = liftLanesAboveStations(hydrated);
+  const v3Slots = (savedVersion ?? 0) < 3 ? liftLanesAboveStations(hydrated) : hydrated;
+  const slots = alignBusinessRun(v3Slots, allowed);
   return {
     slots,
     stamp: { spineSlots: slots, spineSlotsVersion: SPINE_SLOTS_VERSION },

@@ -73,8 +73,9 @@ export function PhotoViewerModal({ g }: { g: PhotoGalleryController }) {
   const dz = usePhotoDropzone(g.handleUploadFiles);
 
   const multiPhoto = photoItems.length > 1;
-  const currentPhotoError = photoItems[currentIndex]?.status === 'error';
-  const allPhotosError = photoItems.every((p) => p.status === 'error');
+  const currentPhotoError =
+    photoItems[currentIndex]?.full === 'error' || photoItems[currentIndex]?.status === 'error';
+  const allPhotosError = photoItems.every((p) => p.full === 'error' || p.status === 'error');
   const canDownloadCurrent = !g.downloading && !currentPhotoError;
   const canDownloadAll = !g.downloading && !allPhotosError && photoItems.length > 0;
 
@@ -558,13 +559,13 @@ export function PhotoViewerModal({ g }: { g: PhotoGalleryController }) {
         transition={motionTransition.dropdownOpen}
         className="pointer-events-none relative flex h-full w-full items-center justify-center p-4 sm:py-16 sm:pl-16 sm:pr-16"
       >
-        {photoItems[currentIndex]?.status === 'loaded' ? (
+        {photoItems[currentIndex]?.full === 'loaded' ? (
           <motion.img
             src={photoItems[currentIndex].url}
             alt={`Photo ${currentIndex + 1}`}
             layoutId={heroLayoutId}
             transition={heroLayoutId ? heroTransition : undefined}
-            className="pointer-events-auto max-h-[78vh] max-w-[90vw] rounded-2xl object-contain shadow-2xl select-none sm:max-h-[65vh] sm:max-w-[48vw]"
+            className="pointer-events-auto max-h-[78vh] max-w-[90vw] object-contain shadow-2xl select-none sm:max-h-[65vh] sm:max-w-[48vw]"
             style={{
               scale: zoomLevel,
               rotate: g.rotation,
@@ -580,7 +581,7 @@ export function PhotoViewerModal({ g }: { g: PhotoGalleryController }) {
             onMouseUp={g.onMouseUp}
             onMouseLeave={g.onMouseUp}
           />
-        ) : photoItems[currentIndex]?.status === 'error' ? (
+        ) : currentPhotoError ? (
           <div
             className="pointer-events-auto flex h-96 w-full max-w-2xl flex-col items-center justify-center rounded-2xl border-2 border-red-500/30 bg-red-900/20"
             onClick={stopBubble}
@@ -596,7 +597,7 @@ export function PhotoViewerModal({ g }: { g: PhotoGalleryController }) {
             alt={`Photo ${currentIndex + 1}`}
             layoutId={heroLayoutId}
             transition={heroLayoutId ? heroTransition : undefined}
-            className="pointer-events-auto max-h-[78vh] max-w-[90vw] rounded-2xl object-contain shadow-2xl select-none blur-[1px] sm:max-h-[65vh] sm:max-w-[48vw]"
+            className="pointer-events-auto max-h-[78vh] max-w-[90vw] object-contain shadow-2xl select-none blur-[1px] sm:max-h-[65vh] sm:max-w-[48vw]"
             style={{
               cursor: zoomLevel > 1 ? (g.isDragging ? 'grabbing' : 'grab') : 'default',
             }}
@@ -676,7 +677,7 @@ export function PhotoViewerModal({ g }: { g: PhotoGalleryController }) {
                     g.setCurrentIndex(index);
                     g.resetZoom();
                   }}
-                  className={`relative h-20 w-14 flex-shrink-0 overflow-hidden rounded-lg transition-all ${
+                  className={`relative h-20 w-14 flex-shrink-0 overflow-hidden transition-all ${
                     index === currentIndex ? 'scale-105 shadow-xl ring-3 ring-white' : 'opacity-60 hover:scale-105 hover:opacity-100'
                   }`}
                 >
@@ -685,7 +686,7 @@ export function PhotoViewerModal({ g }: { g: PhotoGalleryController }) {
                       <AlertCircle className="h-6 w-6 text-red-400" />
                     </div>
                   ) : (
-                    <img src={photo.thumbUrl ?? photo.url} alt={`Thumbnail ${index + 1}`} loading="lazy" decoding="async" className="h-full w-full bg-stage-raised object-cover" />
+                    <img src={photo.thumbUrl ?? photo.url} alt={`Thumbnail ${index + 1}`} loading="lazy" decoding="async" className="h-full w-full bg-stage-raised object-contain" />
                   )}
                 </button>
               ))}

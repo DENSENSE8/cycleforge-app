@@ -835,7 +835,7 @@ test('regression: shipping.view gates the browser-fallback paperwork print route
   const r = routeByPath('/api/orders/print-packet/route.ts');
   assert.ok(r);
   assert.equal(r.permission, 'shipping.view');
-  assert.deepEqual(r.methods, ['POST']);
+  assert.deepEqual(r.methods, ['GET', 'POST']);
 });
 
 test('regression: shipping.view gates the ShipStation key health probe', () => {

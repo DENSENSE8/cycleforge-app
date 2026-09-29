@@ -77,10 +77,11 @@ test('the switch: staff pick beats the org, staff inherit defers to it, bad valu
     (await getNavContextForStaff(request('/shipping/orders'), fakes({ orgSettings: { [key]: 'bogus' } }).deps)).rollout,
     'legacy',
   );
-  // Another page's switch does not leak onto this one.
+  // Another page's switch does not leak onto this one; Unbox keeps its own
+  // contextual rollout from the page map.
   assert.equal(
     (await getNavContextForStaff(request('/unbox'), fakes({ orgSettings: { [key]: 'contextual' } }).deps)).rollout,
-    'legacy',
+    'contextual',
   );
 });
 

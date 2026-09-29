@@ -5,6 +5,10 @@ import { useReducedMotion } from '@/design-system/motion';
 import { cn } from '@/utils/_cn';
 import { motionTransition } from '@/design-system/foundations/motion-presets';
 import { AnimateNumber } from '@/design-system/motion/plus';
+import {
+  resolveAnimatedStatValue,
+  type AnimatedStatProfile,
+} from './animated-stat-model';
 
 type AnimateNumberFormat = NonNullable<ComponentProps<typeof AnimateNumber>['format']>;
 
@@ -22,17 +26,12 @@ type AnimatedStatProps = {
   suffix?: string;
   /**
    * Spring profile:
-   * - `default` — KPI / goal surfaces (quantityBump)
-   * - `fast` — station scan feedback (snappier digit rolls)
+   * - `kpi` — KPI / goal surfaces (quantityBump)
+   * - `scanQuantity` — station scan feedback (snappier digit rolls)
    */
+  profile?: AnimatedStatProfile;
+  /** @deprecated Use the semantic `profile` prop. */
   speed?: 'default' | 'fast';
-};
-
-const FAST_TRANSITION = {
-  type: 'spring' as const,
-  stiffness: 520,
-  damping: 38,
-  mass: 0.35,
 };
 
 /**
@@ -46,21 +45,22 @@ export function AnimatedStat({
   format,
   prefix,
   suffix,
-  speed = 'default',
+  profile,
+  speed,
 }: AnimatedStatProps) {
   const reduce = useReducedMotion();
-  const safe = Number.isFinite(value) ? value : null;
+  const resolved = resolveAnimatedStatValue(value, locales, format);
+  const resolvedProfile = profile ?? (speed === 'fast' ? 'scanQuantity' : 'kpi');
 
-  if (safe === null) {
+  if (resolved.kind === 'missing') {
     return <span className={cn('tabular-nums', className)}>—</span>;
   }
 
   if (reduce) {
-    const formatted = new Intl.NumberFormat(locales, format).format(safe);
     return (
       <span className={cn('inline-flex tabular-nums', className)}>
         {prefix}
-        {formatted}
+        {resolved.formatted}
         {suffix}
       </span>
     );
@@ -73,9 +73,13 @@ export function AnimatedStat({
       format={format}
       prefix={prefix}
       suffix={suffix}
-      transition={speed === 'fast' ? FAST_TRANSITION : motionTransition.quantityBump}
+      transition={
+        resolvedProfile === 'scanQuantity'
+          ? motionTransition.quantityBumpFast
+          : motionTransition.quantityBump
+      }
     >
-      {safe}
+      {resolved.value}
     </AnimateNumber>
   );
 }

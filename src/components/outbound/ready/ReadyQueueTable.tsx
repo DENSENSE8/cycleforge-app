@@ -8,7 +8,6 @@ import { cn } from '@/utils/_cn';
 import {
   DataTable,
   type DataTableFilterOption,
-  type DataTableSearch,
 } from '@/components/tables/DataTable';
 import { useUrlColumnSort } from '@/hooks/useUrlColumnSort';
 import type { RowGroup } from '@/lib/group-rows';
@@ -39,8 +38,6 @@ interface ReadyQueueTableProps {
   onRetry: () => void;
   /** True while a search or a non-`all` tab is narrowing the hits. */
   isFiltered?: boolean;
-  /** The find field, as data — the workspace above owns the URL it writes. */
-  search: DataTableSearch;
   /** The ONE filter control, as data (the FBA desk threads its mode options). */
   filter?: {
     options: readonly DataTableFilterOption[];
@@ -90,7 +87,6 @@ export function ReadyQueueTable({
   isFetching,
   onRetry,
   isFiltered = false,
-  search,
   filter,
 }: ReadyQueueTableProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -167,9 +163,11 @@ export function ReadyQueueTable({
         dir={sortDir}
         onSortChange={setSort}
         loading={isLoading}
-        emptyMessage="No tested units yet — completed verdicts appear here newest first."
-        searchEmptyMessage="No tested units match this view. Clear the search or choose All tested."
-        search={search}
+        emptyMessage={
+          isFiltered
+            ? 'No tested units match this view. Clear the search or choose All tested.'
+            : 'No tested units yet — completed verdicts appear here newest first.'
+        }
         filter={filter}
         scrollRef={scrollRef}
         renderGroup={(group, _stripe, { columns: visible }) => (

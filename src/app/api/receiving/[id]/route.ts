@@ -212,6 +212,7 @@ export async function GET(
          rl.workflow_status::text                          AS workflow_status,
          rz.zoho_purchaseorder_id,
          rz.zoho_purchaseorder_number,
+         mirror.vendor_name,
          rz.zoho_line_item_id,
          rl.receiving_type,
          rl.intake_type,
@@ -234,6 +235,8 @@ export async function GET(
        LEFT JOIN receiving_line_zoho rz
          ON rz.receiving_line_id = rl.id
         AND rz.organization_id = rl.organization_id
+       LEFT JOIN zoho_po_mirror mirror
+         ON mirror.zoho_purchaseorder_id = rz.zoho_purchaseorder_id
        LEFT JOIN sku_catalog sc
          ON ${SKU_CATALOG_JOIN_ON_SQL}
        LEFT JOIN receiving_carton r_cart ON r_cart.id = rl.receiving_id

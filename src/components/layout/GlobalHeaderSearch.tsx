@@ -13,10 +13,15 @@
 import { NavFind } from '@/components/sidebar/contextual/NavFind';
 import { useCurrentNavPath, useNavContext } from '@/components/sidebar/contextual/useNavContext';
 
+
 export function GlobalHeaderSearch() {
   const nav = useNavContext(useCurrentNavPath()).data;
-  // Same rule as the sidebar: only a page's own contextual panel scopes the field.
-  const pageSearch = nav?.rollout === 'contextual' && nav.scope === 'section' ? nav.search : undefined;
+  // A page that DECLARES a list search (`NAV_PAGE_DECLS[page].search`) owns the
+  // field on any rollout — a legacy page never forks an inline box for it. A
+  // contextual lane's top-level map (not one section) keeps the everywhere face.
+  const declared = nav?.search && nav.search.source !== 'identify' ? nav.search : undefined;
+  const pageSearch =
+    declared && (nav?.rollout !== 'contextual' || nav.scope === 'section') ? declared : undefined;
   return (
     <div className="flex w-56 shrink-0 items-center" data-testid="global-find-field">
       <NavFind search={pageSearch} />

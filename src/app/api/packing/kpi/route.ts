@@ -8,6 +8,7 @@ import { getPackingKpisForDay } from '@/lib/packing/packer-kpi-queries';
 const QuerySchema = z
   .object({
     day: z.string().trim().min(1).optional(), // YYYY-MM-DD in PST
+    packerId: z.coerce.number().int().positive().optional(),
   })
   .strict();
 
@@ -23,7 +24,6 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
   if (parsed instanceof NextResponse) return parsed;
 
   const day = parsed.day ?? getCurrentPSTDateKey();
-  const summary = await getPackingKpisForDay(ctx.organizationId, day);
+  const summary = await getPackingKpisForDay(ctx.organizationId, day, parsed.packerId ?? null);
   return NextResponse.json({ ok: true, ...summary });
 }, { permission: 'operations.view' });
-

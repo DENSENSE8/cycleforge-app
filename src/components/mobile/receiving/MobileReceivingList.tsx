@@ -151,7 +151,6 @@ export function MobileReceivingList({ limit = 8 }: { limit?: number } = {}) {
       lineId: row.id,
       itemName: row.item_name,
       sku: row.sku,
-      zohoItemId: row.zoho_item_id,
       poRef: poValue || undefined,
       back: '/m/receiving',
     });

@@ -20,6 +20,7 @@ test('classifyPackTier: MEDIUM for wave / console / sounddock keywords', () => {
 
   assert.equal(classifyPackTier({ productTitle: 'Bose SoundDock Series II' }).packTier, 'MEDIUM');
   assert.equal(classifyPackTier({ productTitle: 'Bose EQ Unit' }).packTier, 'MEDIUM');
+  assert.equal(classifyPackTier({ productTitle: 'SoundLink Micro Bluetooth Speaker' }).packTier, 'MEDIUM');
 });
 
 test('classifyPackTier: SMALL for pack-and-label parts', () => {

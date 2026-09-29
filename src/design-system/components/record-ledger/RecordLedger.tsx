@@ -106,7 +106,7 @@ export function RecordLedger<T>({
 }: RecordLedgerProps<T>) {
   const keys = useMemo(() => records.map(recordKey), [records, recordKey]);
   const openIndex = openKey == null ? -1 : keys.indexOf(openKey);
-  // Floor places the record in place too — only Split has a record pane.
+  // Only Split has a record pane.
   const inPlace = useDeskRecordView() !== 'split';
   const onStage = useDeskStageOptional() != null;
 

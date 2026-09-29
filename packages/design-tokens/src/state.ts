@@ -52,11 +52,16 @@ export const STATE_NAMES = Object.keys(STATE_TONES) as StateName[];
 
 /**
  * Lifecycle code CSS. `.state-code-<tone>` is the tone's ink as bare text
- * (warning reads the mode's readable warn ink); `.state-badge-<tone>` is the
- * solid code badge — `code` fill, `codeInk` text — worn by the desk state code.
- * The badge corner is the region's CONTROL radius, not the pill: the code is a
- * boxed chip (modes.ts `radiusControl` — "filter chips that are not pills"),
- * rounded in triage and square on the industrial Floor / phones.
+ * (warning reads the mode's readable warn ink).
+ *
+ * `.state-badge-<tone>` has two faces, one class (owner 2026-09-28):
+ * - **triage** (every desk, `/m/*` reading flows): a SOFT PILL — the tone's
+ *   tint ground, a 1px tone outline (inset shadow, so no layout shift), tone
+ *   ink, pill corner. Readable, not shouting.
+ * - **industrial** (`/m/*` operation flows only): the SOLID code chip — `code`
+ *   fill, `codeInk` text, the region's control corner.
+ * The NEAREST `data-mode` decides, like the `industrial:` variant: a triage
+ * region nested inside an industrial one gets the soft pill back.
  */
 export function stateCodeCssText(): string {
   const ink: Record<StateName, string> = {
@@ -67,14 +72,33 @@ export function stateCodeCssText(): string {
     danger: 'var(--ds-color-text-danger)',
     success: 'var(--ds-color-text-success)',
   };
-  return STATE_NAMES.flatMap((tone) => [
-    `.state-code-${tone} {`,
-    `  color: ${ink[tone]};`,
-    `}`,
-    `.state-badge-${tone} {`,
-    `  color: ${STATE_TONES[tone].codeInk};`,
-    `  background-color: ${STATE_TONES[tone].code};`,
-    `  border-radius: var(--mode-radius-control);`,
-    `}`,
-  ]).join('\n');
+  const industrial = ":where([data-mode='industrial'])";
+  const triageInIndustrial = ":where([data-mode='industrial'] [data-mode]:not([data-mode='industrial']))";
+  return STATE_NAMES.flatMap((tone) => {
+    const soft = [
+      `  color: ${ink[tone]};`,
+      `  background-color: ${STATE_TONES[tone].tint};`,
+      `  box-shadow: inset 0 0 0 1px ${STATE_TONES[tone].edge};`,
+      `  border-radius: 9999px;`,
+      `  font-weight: 500;`,
+    ];
+    return [
+      `.state-code-${tone} {`,
+      `  color: ${ink[tone]};`,
+      `}`,
+      `.state-badge-${tone} {`,
+      ...soft,
+      `}`,
+      `${industrial} .state-badge-${tone} {`,
+      `  color: ${STATE_TONES[tone].codeInk};`,
+      `  background-color: ${STATE_TONES[tone].code};`,
+      `  box-shadow: none;`,
+      `  border-radius: var(--mode-radius-control);`,
+      `  font-weight: 700;`,
+      `}`,
+      `${triageInIndustrial} .state-badge-${tone} {`,
+      ...soft,
+      `}`,
+    ];
+  }).join('\n');
 }

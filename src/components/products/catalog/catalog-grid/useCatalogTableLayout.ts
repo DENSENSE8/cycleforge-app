@@ -17,8 +17,8 @@ export function useCatalogTableLayout(): SlotTableLayout {
     tableId: CATALOG_TABLE_LAYOUT_ID,
     catalog: CATALOG_FIELD_CATALOG,
     productLayout: CATALOG_PRODUCT_LAYOUT,
-    paintMorph: 'sheet',
+    paintMorph: 'compound',
     identityFallbackLabel: 'SKU',
-    bandLabels: { status: 'Status columns', subtitle: 'Detail columns' },
+    bandLabels: { status: 'Product columns', subtitle: 'Under the product' },
   });
 }

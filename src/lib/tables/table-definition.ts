@@ -44,7 +44,6 @@ const TABLE_ENTITY_FAMILIES = [
   'pickup',
   'warranty',
   'ready',
-  'tracking-exceptions',
   'unfound',
   'bins',
   /**

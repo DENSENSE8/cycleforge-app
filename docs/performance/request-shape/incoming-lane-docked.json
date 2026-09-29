@@ -1,0 +1,336 @@
+{
+  "url": "http://localhost:3102/incoming?lane=docked",
+  "ttfb": 1322,
+  "isDev": false,
+  "rows": [
+    {
+      "url": "/api/station-commands/aliases",
+      "start": 1675,
+      "end": 2329,
+      "ms": 654,
+      "bytes": 324
+    },
+    {
+      "url": "/api/v1/print-stations",
+      "start": 1676,
+      "end": 2335,
+      "ms": 659,
+      "bytes": 390
+    },
+    {
+      "url": "/api/nav/context?path=%2Fincoming%3Flane%3Ddocked",
+      "start": 1678,
+      "end": 1866,
+      "ms": 188,
+      "bytes": 2987
+    },
+    {
+      "url": "/api/sync/global",
+      "start": 1679,
+      "end": 1867,
+      "ms": 188,
+      "bytes": 1782
+    },
+    {
+      "url": "/api/staff-preferences",
+      "start": 1682,
+      "end": 2152,
+      "ms": 470,
+      "bytes": 429
+    },
+    {
+      "url": "/api/catalog/platforms",
+      "start": 1721,
+      "end": 2329,
+      "ms": 608,
+      "bytes": 3682
+    },
+    {
+      "url": "/api/settings?page=desk",
+      "start": 1737,
+      "end": 1968,
+      "ms": 232,
+      "bytes": 1768
+    },
+    {
+      "url": "/api/exceptions?domain=receiving&count_only=1",
+      "start": 1831,
+      "end": 2481,
+      "ms": 650,
+      "bytes": 378
+    },
+    {
+      "url": "/api/receiving-lines?limit=150&offset=0&view=activity&search_field=all&search_scope=all&sort=unboxed_newest&phase=spine",
+      "start": 1832,
+      "end": 3921,
+      "ms": 2089,
+      "bytes": 653098
+    },
+    {
+      "url": "/api/tables/layouts?tableId=receiving",
+      "start": 1833,
+      "end": 2156,
+      "ms": 323,
+      "bytes": 369
+    },
+    {
+      "url": "/api/surfaces/incoming/resolve",
+      "start": 1834,
+      "end": 2681,
+      "ms": 847,
+      "bytes": 436
+    },
+    {
+      "url": "/api/staff?active=false",
+      "start": 1897,
+      "end": 2917,
+      "ms": 1020,
+      "bytes": 5871
+    },
+    {
+      "url": "/api/inbox/tech-queue",
+      "start": 1898,
+      "end": 2601,
+      "ms": 703,
+      "bytes": 368
+    },
+    {
+      "url": "/api/inbox/support",
+      "start": 1898,
+      "end": 2609,
+      "ms": 711,
+      "bytes": 322
+    },
+    {
+      "url": "/api/staff-messages?unread=1",
+      "start": 1899,
+      "end": 2865,
+      "ms": 966,
+      "bytes": 312
+    },
+    {
+      "url": "/api/saved-views?surface=receiving_history",
+      "start": 2628,
+      "end": 2897,
+      "ms": 269,
+      "bytes": 327
+    },
+    {
+      "url": "/api/realtime/token?rnd=22213339240748664",
+      "start": 2640,
+      "end": 2905,
+      "ms": 265,
+      "bytes": 2045
+    },
+    {
+      "url": "/api/receiving-lines?limit=3000&offset=0&include=serials&view=activity&search_field=all&search_scope=all&sort=unboxed_newest",
+      "start": 3930,
+      "end": 7481,
+      "ms": 3551,
+      "bytes": 8509492
+    }
+  ],
+  "focus": [
+    {
+      "count": 1,
+      "bytes": 390,
+      "rows": [
+        {
+          "url": "/api/v1/print-stations",
+          "ms": 920,
+          "bytes": 390
+        }
+      ]
+    },
+    {
+      "count": 0,
+      "bytes": 0,
+      "rows": []
+    }
+  ],
+  "analysis": {
+    "duplicates": [],
+    "multiShape": [
+      {
+        "endpoint": "/api/receiving-lines",
+        "shapes": [
+          "/api/receiving-lines?limit=150&offset=0&view=activity&search_field=all&search_scope=all&sort=unboxed_newest&phase=spine",
+          "/api/receiving-lines?limit=3000&offset=0&include=serials&view=activity&search_field=all&search_scope=all&sort=unboxed_newest"
+        ],
+        "totalBytes": 9162590
+      }
+    ],
+    "chains": [
+      {
+        "from": "/api/receiving-lines?limit=150&offset=0&view=activity&search_field=all&search_scope=all&sort=unboxed_newest&phase=spine",
+        "to": "/api/receiving-lines?limit=3000&offset=0&include=serials&view=activity&search_field=all&search_scope=all&sort=unboxed_newest",
+        "gapMs": 9,
+        "tailEnd": 7481
+      },
+      {
+        "from": "/api/sync/global",
+        "to": "/api/staff?active=false",
+        "gapMs": 30,
+        "tailEnd": 2917
+      },
+      {
+        "from": "/api/inbox/support",
+        "to": "/api/realtime/token?rnd=22213339240748664",
+        "gapMs": 31,
+        "tailEnd": 2905
+      },
+      {
+        "from": "/api/inbox/support",
+        "to": "/api/saved-views?surface=receiving_history",
+        "gapMs": 19,
+        "tailEnd": 2897
+      },
+      {
+        "from": "/api/sync/global",
+        "to": "/api/staff-messages?unread=1",
+        "gapMs": 32,
+        "tailEnd": 2865
+      },
+      {
+        "from": "/api/sync/global",
+        "to": "/api/inbox/support",
+        "gapMs": 31,
+        "tailEnd": 2609
+      },
+      {
+        "from": "/api/sync/global",
+        "to": "/api/inbox/tech-queue",
+        "gapMs": 31,
+        "tailEnd": 2601
+      }
+    ],
+    "peakConcurrency": 13,
+    "countProbes": [],
+    "heaviest": [
+      {
+        "url": "/api/receiving-lines?limit=3000&offset=0&include=serials&view=activity&search_field=all&search_scope=all&sort=unboxed_newest",
+        "start": 3930,
+        "end": 7481,
+        "ms": 3551,
+        "bytes": 8509492
+      },
+      {
+        "url": "/api/receiving-lines?limit=150&offset=0&view=activity&search_field=all&search_scope=all&sort=unboxed_newest&phase=spine",
+        "start": 1832,
+        "end": 3921,
+        "ms": 2089,
+        "bytes": 653098
+      },
+      {
+        "url": "/api/staff?active=false",
+        "start": 1897,
+        "end": 2917,
+        "ms": 1020,
+        "bytes": 5871
+      },
+      {
+        "url": "/api/catalog/platforms",
+        "start": 1721,
+        "end": 2329,
+        "ms": 608,
+        "bytes": 3682
+      },
+      {
+        "url": "/api/nav/context?path=%2Fincoming%3Flane%3Ddocked",
+        "start": 1678,
+        "end": 1866,
+        "ms": 188,
+        "bytes": 2987
+      },
+      {
+        "url": "/api/realtime/token?rnd=22213339240748664",
+        "start": 2640,
+        "end": 2905,
+        "ms": 265,
+        "bytes": 2045
+      },
+      {
+        "url": "/api/sync/global",
+        "start": 1679,
+        "end": 1867,
+        "ms": 188,
+        "bytes": 1782
+      },
+      {
+        "url": "/api/settings?page=desk",
+        "start": 1737,
+        "end": 1968,
+        "ms": 232,
+        "bytes": 1768
+      }
+    ],
+    "slowest": [
+      {
+        "url": "/api/receiving-lines?limit=3000&offset=0&include=serials&view=activity&search_field=all&search_scope=all&sort=unboxed_newest",
+        "start": 3930,
+        "end": 7481,
+        "ms": 3551,
+        "bytes": 8509492
+      },
+      {
+        "url": "/api/receiving-lines?limit=150&offset=0&view=activity&search_field=all&search_scope=all&sort=unboxed_newest&phase=spine",
+        "start": 1832,
+        "end": 3921,
+        "ms": 2089,
+        "bytes": 653098
+      },
+      {
+        "url": "/api/staff?active=false",
+        "start": 1897,
+        "end": 2917,
+        "ms": 1020,
+        "bytes": 5871
+      },
+      {
+        "url": "/api/staff-messages?unread=1",
+        "start": 1899,
+        "end": 2865,
+        "ms": 966,
+        "bytes": 312
+      },
+      {
+        "url": "/api/surfaces/incoming/resolve",
+        "start": 1834,
+        "end": 2681,
+        "ms": 847,
+        "bytes": 436
+      },
+      {
+        "url": "/api/inbox/support",
+        "start": 1898,
+        "end": 2609,
+        "ms": 711,
+        "bytes": 322
+      },
+      {
+        "url": "/api/inbox/tech-queue",
+        "start": 1898,
+        "end": 2601,
+        "ms": 703,
+        "bytes": 368
+      },
+      {
+        "url": "/api/v1/print-stations",
+        "start": 1676,
+        "end": 2335,
+        "ms": 659,
+        "bytes": 390
+      }
+    ]
+  },
+  "route": "/incoming?lane=docked",
+  "base": "http://localhost:3102",
+  "runs": 3,
+  "metrics": {
+    "duplicateRequests": 0,
+    "countProbes": 0,
+    "focusRefetch": 0,
+    "requests": 18
+  },
+  "capturedAt": "2026-09-29T06:21:05.573Z"
+}

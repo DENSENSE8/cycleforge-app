@@ -3,21 +3,13 @@ import type { Pool } from 'pg';
 type Queryable = Pick<Pool, 'query'>;
 
 /**
- * Resolve the picker desk's "active order card" row for a shipment / tracking.
- * Shared source of truth for the desk tracking scan (`/api/picking/desk/scan`) and the
- * serial `add-to-last` action (`/api/picking/desk/serial`) so both rebuild the same active-card shape from one query. The
+ * The picker desk's "active order card" row: one SELECT (order + primary
+ * tracking + ship-by + live PICK / PACK assignees) behind both anchors — a
+ * shipment / tracking ({@link findOrderByShipment}) or the order row itself
+ * ({@link findOrderById}, walk-in / Pickup orders carry no tracking). The
  * assignee is the ORDER/PICK picker — the desk picks; QC is a unit fact.
  */
-export async function findOrderByShipment(
-  db: Queryable,
-  shipmentId: number | null,
-  key18: string | null,
-  last8: string | null,
-  orgId: string,
-) {
-  if (!shipmentId && !key18 && !last8) return null;
-  const r = await db.query(
-    `SELECT
+const ORDER_CARD_SELECT = `SELECT
        o.id, o.shipment_id, o.order_id, o.product_title, o.item_number, o.sku,
        o.condition, o.notes, o.account_source, o.status, o.status_history,
        o.is_out_of_stock, o.order_date, o.created_at, o.quantity,
@@ -44,7 +36,19 @@ export async function findOrderByShipment(
        SELECT assigned_packer_id FROM work_assignments
        WHERE entity_type = 'ORDER' AND entity_id = o.id AND work_type = 'PACK' AND status NOT IN ('CANCELED','DONE')
        ORDER BY id DESC LIMIT 1
-     ) wa_p ON TRUE
+     ) wa_p ON TRUE`;
+
+/** Card row for a shipment / tracking scan (desk tracking scan, serial `add-to-last`). */
+export async function findOrderByShipment(
+  db: Queryable,
+  shipmentId: number | null,
+  key18: string | null,
+  last8: string | null,
+  orgId: string,
+) {
+  if (!shipmentId && !key18 && !last8) return null;
+  const r = await db.query(
+    `${ORDER_CARD_SELECT}
      WHERE o.organization_id = $4
        AND (
          ($1::bigint IS NOT NULL AND o.shipment_id = $1)
@@ -65,6 +69,17 @@ export async function findOrderByShipment(
        o.id DESC
      LIMIT 1`,
     [shipmentId, key18, last8, orgId],
+  );
+  return r.rows[0] ?? null;
+}
+
+/** Card row for an order anchored by its row id — the pick anchors on the order, tracking or not. */
+export async function findOrderById(db: Queryable, orderId: number, orgId: string) {
+  const r = await db.query(
+    `${ORDER_CARD_SELECT}
+     WHERE o.organization_id = $2 AND o.id = $1
+     LIMIT 1`,
+    [orderId, orgId],
   );
   return r.rows[0] ?? null;
 }

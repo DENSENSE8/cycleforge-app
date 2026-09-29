@@ -90,7 +90,7 @@ export function ReviewCatalogLinkTable(_props: Record<string, unknown>) {
   const searchParams = useSearchParams();
 
   const section = parseSection(searchParams.get('section'));
-  const query = searchParams.get('search') ?? '';
+  const query = searchParams.get('q') ?? '';
   const choreId = parsePositiveId(searchParams.get('choreId'));
   const exceptionId = parsePositiveId(searchParams.get('exceptionId'));
 
@@ -124,9 +124,9 @@ export function ReviewCatalogLinkTable(_props: Record<string, unknown>) {
   const setQuery = useCallback(
     (next: string) => {
       writeParams((p) => {
-        const q = next.trim();
-        if (q) p.set('search', q);
-        else p.delete('search');
+        const query = next.trim();
+        if (query) p.set('q', query);
+        else p.delete('q');
       });
     },
     [writeParams],
@@ -267,14 +267,6 @@ export function ReviewCatalogLinkTable(_props: Record<string, unknown>) {
               ImportExceptionGridColumn
             >
               binding={IMPORT_EXCEPTION_TABLE_BINDING}
-              search={{
-                value: query,
-                onChange: setQuery,
-                placeholder: missingSection ? 'Filter sheet rows…' : 'Filter listings…',
-                // `?search=` is the fetch key (useCatalogLinkQueues.ts:48) and `/api/review/import-exceptions` matches it over `tracking` and…
-                answeredBy: 'server',
-                pending: exceptions.isFetching,
-              }}
               tabs={REVIEW_SECTION_TABS}
               activeTab={missingSection ? 'missing-item-number' : undefined}
               onTabChange={(id) =>
@@ -366,14 +358,6 @@ export function ReviewCatalogLinkTable(_props: Record<string, unknown>) {
               CatalogLinkGridColumn
             >
               binding={CATALOG_LINK_TABLE_BINDING}
-              search={{
-                value: query,
-                onChange: setQuery,
-                placeholder: missingSection ? 'Filter sheet rows…' : 'Filter listings…',
-                // Same shape on this queue:
-                answeredBy: 'server',
-                pending: chores.isFetching,
-              }}
               tabs={REVIEW_SECTION_TABS}
               activeTab={missingSection ? 'missing-item-number' : undefined}
               onTabChange={(id) =>

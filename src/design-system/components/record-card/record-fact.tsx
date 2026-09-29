@@ -8,7 +8,7 @@ import type { ReactNode } from 'react';
 import { MapPin } from '@/components/Icons';
 import { conditionGradeTextClass, orderRowQtyTone } from '@/lib/condition-tone';
 import { cn } from '@/utils/_cn';
-import type { CardDisclosureTier } from './record-card-types';
+import type { CardDisclosureTier, RecordCardLine } from './record-card-types';
 
 /** One fact's face. The card paints every kind the same way on every family. */
 export type RecordFactFace =
@@ -29,7 +29,9 @@ export type RecordFactFace =
   /** A date stamp ("Exp Sep 30"), tabular; the full date on hover. */
   | { kind: 'date'; text: string; title: string }
   /** A fact the record should have and does not ("No tracking") — warning ink. */
-  | { kind: 'missing'; text: string };
+  | { kind: 'missing'; text: string }
+  /** Plain evidence prose ("Expected 4 · counted 2 at A-3-2") — body ink; the record's status is never re-said in a fact's colour. */
+  | { kind: 'text'; text: string };
 
 /** A family's fact columns, in the one order every line (and every unfolded column) uses. */
 export interface RecordFactColumn {
@@ -109,5 +111,41 @@ export function RecordFactPaint({ face }: { face: RecordFactFace }): ReactNode {
       );
     case 'missing':
       return <span className="font-medium text-text-warning">{face.text}</span>;
+    case 'text':
+      return <span className="min-w-0 truncate text-text-muted" title={face.text}>{face.text}</span>;
   }
+}
+
+/** The faint dot between two facts of a sentence. */
+export function RecordFactSep() {
+  return <span aria-hidden className="text-text-faint">·</span>;
+}
+
+/**
+ * A line's facts as one sentence, in column order — every fact at every width
+ * (the sentence wraps). Every card face paints its facts through this: the
+ * desk card after the title, the phone card leading it.
+ */
+export function RecordLineFacts({
+  line,
+  columns,
+  className,
+}: {
+  line: RecordCardLine;
+  columns: readonly RecordFactColumn[];
+  className?: string;
+}) {
+  const faces = columns.flatMap((column) => {
+    const face = line.facts[column.id];
+    return face ? [{ id: column.id, face }] : [];
+  });
+  return (
+    // Wraps on a narrow card (phone, the split's list) — each fact stays whole.
+    <span className={cn('flex min-w-0 flex-wrap items-center gap-x-1.5 gap-y-0.5 text-[13px] text-text-muted [&>*]:whitespace-nowrap', className)}>
+      {faces.flatMap(({ id, face }, i) => {
+        const painted = <RecordFactPaint key={id} face={face} />;
+        return i > 0 ? [<RecordFactSep key={`${id}:sep`} />, painted] : [painted];
+      })}
+    </span>
+  );
 }

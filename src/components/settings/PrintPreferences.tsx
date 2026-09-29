@@ -25,7 +25,8 @@ import {
 } from '@/lib/print/browserPrint';
 import { buildTestLabelCommands } from '@/lib/print/labelCommands';
 import { isSilentPrintEnabled, setSilentPrintEnabled } from '@/lib/print/printMode';
-import { PRINT_STATION_NAME_MAX, readPrintStation, setPrintStationName } from '@/lib/print/print-station';
+import { PRINT_STATION_NAME_MAX, readPrintStation } from '@/lib/print/print-station';
+import { renameThisPrintStation } from '@/lib/print/print-station-registry-client';
 import { UNNAMED_PRINT_STATION } from '@/lib/print/staff-print-bridge';
 import { friendlyPrintError } from '@/lib/print/printErrors';
 import { Button, IconButton, Switch } from '@/design-system/primitives';
@@ -99,12 +100,19 @@ function PrintStationNameField() {
     const stored = readPrintStation().name;
     setName(stored === UNNAMED_PRINT_STATION ? '' : stored);
   }, []);
+  const [error, setError] = useState<string | null>(null);
   const save = () => {
     const next = name.trim();
     const stored = readPrintStation().name;
     if (next === (stored === UNNAMED_PRINT_STATION ? '' : stored)) return;
-    setPrintStationName(next);
-    setName(next);
+    // The org registry owns the name — a local-only rename would be undone by the next heartbeat.
+    renameThisPrintStation(next).then(
+      (saved) => {
+        setName(saved === UNNAMED_PRINT_STATION ? '' : saved);
+        setError(null);
+      },
+      (failure: unknown) => setError(failure instanceof Error ? failure.message : 'The name was not saved.'),
+    );
   };
   return (
     <div className="mb-4 rounded-none border border-border-soft bg-surface-canvas px-4 py-3">
@@ -112,7 +120,7 @@ function PrintStationNameField() {
         Print station name
       </label>
       <p className="mt-0.5 text-xs text-text-soft">
-        Phones signed in as you pick this computer by this name to print on its printers.
+        Every desk and phone in the org picks this computer by this name.
       </p>
       <input
         id="print-station-name"
@@ -126,6 +134,7 @@ function PrintStationNameField() {
           if (e.key === 'Enter') e.currentTarget.blur();
         }}
       />
+      {error ? <p role="alert" className="mt-1 text-xs text-text-danger">{error}</p> : null}
     </div>
   );
 }

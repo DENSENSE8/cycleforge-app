@@ -27,6 +27,9 @@ export const REF_IN_PARAM = 'ref_in';
 /** The status filter over the pasted list. */
 export const RECON_PARAM = 'recon';
 
+/** The reason filter inside one status (`?recon=` must be set for it to apply). */
+export const RECON_REASON_PARAM = 'recon_reason';
+
 /** One reconcile fetch holds every matched line (the list route's ceiling). */
 export const RECONCILE_ROW_LIMIT = 500;
 
@@ -51,6 +54,64 @@ export function parseReconParam(raw: string | null | undefined): ReconStatus | n
   return (RECON_STATUSES as readonly string[]).includes(value) ? (value as ReconStatus) : null;
 }
 
+/**
+ * WHY a pasted number sits in its status — the triage axis inside a status.
+ * Derived in the same branch that sets the status, never a second engine.
+ */
+export const RECON_REASONS = [
+  'unboxed',
+  'scanned',
+  'received_here',
+  'delivered_not_scanned',
+  'in_transit',
+  'open_po',
+  'warehouse_owed',
+  'erp_ahead',
+  'no_match',
+  'ambiguous',
+  'lookup_failed',
+] as const;
+export type ReconReason = (typeof RECON_REASONS)[number];
+
+/** Each reason's words — the entry's `detail` and the reason chip's label. */
+export const RECON_REASON_LABELS: Readonly<Record<ReconReason, string>> = {
+  unboxed: 'Unboxed',
+  scanned: 'Scanned at dock',
+  received_here: 'Received here',
+  delivered_not_scanned: 'Delivered · not scanned',
+  in_transit: 'In transit',
+  open_po: 'Open PO',
+  warehouse_owed: 'Warehouse record · not received',
+  erp_ahead: 'Zoho received · never scanned',
+  no_match: 'No match anywhere',
+  ambiguous: 'Several POs match',
+  lookup_failed: 'Lookup failed',
+};
+
+/** The one status each reason belongs to. */
+export const RECON_REASON_STATUS: Readonly<Record<ReconReason, ReconStatus>> = {
+  unboxed: 'received',
+  scanned: 'received',
+  received_here: 'received',
+  delivered_not_scanned: 'not_received',
+  in_transit: 'not_received',
+  open_po: 'not_received',
+  warehouse_owed: 'not_received',
+  erp_ahead: 'not_received',
+  no_match: 'not_received',
+  ambiguous: 'not_received',
+  lookup_failed: 'not_received',
+};
+
+/** `?recon_reason=` → a reason of `status`; a reason of another status (or none) filters nothing. */
+export function parseReconReasonParam(raw: string | null | undefined, status: ReconStatus | null): ReconReason | null {
+  if (!status) return null;
+  const value = String(raw ?? '').trim().toLowerCase();
+  if (!(RECON_REASONS as readonly string[]).includes(value)) return null;
+  const reason = value as ReconReason;
+  return RECON_REASON_STATUS[reason] === status ? reason : null;
+}
+
 export interface RefSelection {
   /** The operator's strings, deduped by canonical key, capped — the popout's rows. */
   refs: string[];
@@ -64,8 +125,8 @@ const EMPTY: RefSelection = { refs: [], keys: [], truncated: 0 };
 
 /**
  * A paste (newline / comma / semicolon / tab separated) → the capped
- * selection. Same splitter and the same cap as the Check, because the Check
- * is what answers it.
+ * selection. Same splitter and the same cap as the Check
+ * ({@link CHECK_ZOHO_RECEIVED_MAX_INPUTS}), because the Check is what answers it.
  */
 export function parseRefList(input: string): RefSelection {
   const selection = parseTrackingKeys(input.replace(/\t/g, '\n'), CHECK_ZOHO_RECEIVED_MAX_INPUTS);
@@ -90,8 +151,15 @@ export interface ReconEntry {
   ref: string;
   key: string;
   status: ReconStatus;
+  /** Why it sits in {@link status}; `null` while {@link pending}. */
+  reasonCode: ReconReason | null;
   /** Why, in the words a receiver acts on ("Delivered · not scanned"). */
   detail: string;
+  /**
+   * Not answered yet — the Check has not been asked, or live Zoho has not
+   * reached it (`zoho_cap`). A pending number sits in no status and no count.
+   */
+  pending: boolean;
   poNumber: string | null;
   vendor: string | null;
   /**
@@ -102,13 +170,39 @@ export interface ReconEntry {
   exception: { reason: string; inView: boolean } | null;
 }
 
-type Verdict = Pick<ReconEntry, 'status' | 'detail' | 'exception'>;
+type Verdict = Pick<ReconEntry, 'status' | 'reasonCode' | 'detail' | 'pending' | 'exception'>;
 
-const owed = (detail: string, exception: ReconEntry['exception'] = null): Verdict => ({
+const verdict = (
+  reasonCode: ReconReason,
+  exception: ReconEntry['exception'] = null,
+  detail: string = RECON_REASON_LABELS[reasonCode],
+): Verdict => ({ status: RECON_REASON_STATUS[reasonCode], reasonCode, detail, pending: false, exception });
+
+/** A reason that needs a person: its label is also the badge. */
+const badged = (reasonCode: ReconReason, inView: boolean): Verdict =>
+  verdict(reasonCode, { reason: RECON_REASON_LABELS[reasonCode], inView });
+
+/** Asked, not answered: owed until the Check says otherwise, but in no bucket. */
+const pendingVerdict = (detail: string): Verdict => ({
   status: 'not_received',
+  reasonCode: null,
   detail,
-  exception,
+  pending: true,
+  exception: null,
 });
+
+/** Said for a number the Check has not answered yet. */
+export const RECON_CHECKING_DETAIL = 'Checking…';
+
+/**
+ * The Check had no ERP answer for this number: nothing matched, or live
+ * Zoho was never asked (`zoho_cap`, past its per-call cap). Either way our
+ * own tables decide — the local facts here, the receiving lines in
+ * {@link reconcileCheck}.
+ */
+function tablesDecide(row: CheckZohoReceivedRow): boolean {
+  return row.reason === 'no_match' || row.reason === 'zoho_cap';
+}
 
 /**
  * One Check row → its status and reason. Received = the warehouse scanned or
@@ -118,17 +212,16 @@ const owed = (detail: string, exception: ReconEntry['exception'] = null): Verdic
  */
 export function reconOfCheckRow(row: CheckZohoReceivedRow): Verdict {
   const local = row.local;
-  if (local?.unboxed) return { status: 'received', detail: 'Unboxed', exception: null };
-  if (local?.scanned) return { status: 'received', detail: 'Scanned at dock', exception: null };
-  const badge = (reason: string, inView: boolean) => owed(reason, { reason, inView });
-  if (row.verdict === 'erp_ahead') return badge('Zoho received · never scanned', true);
-  if (row.reason === 'ambiguous') return badge('Several POs match', false);
-  if (row.reason === 'error') return badge('Lookup failed', false);
-  if (row.reason === 'zoho_cap') return badge('Not checked · Zoho limit', false);
-  if (row.reason === 'no_match' && !local?.known) return badge('No match anywhere', false);
-  if (local?.delivered) return owed('Delivered · not scanned');
-  if (local?.known) return owed('In transit');
-  return owed(row.status ? `PO ${row.status}` : 'Open PO');
+  if (local?.unboxed) return verdict('unboxed');
+  if (local?.scanned) return verdict('scanned');
+  if (row.verdict === 'erp_ahead') return badged('erp_ahead', true);
+  if (row.reason === 'ambiguous') return badged('ambiguous', false);
+  if (row.reason === 'error') return badged('lookup_failed', false);
+  if (tablesDecide(row) && !local?.known) return badged('no_match', false);
+  if (local?.delivered) return verdict('delivered_not_scanned');
+  if (local?.known) return verdict('in_transit');
+  // The PO's own Zoho status says more than "open" when it is known.
+  return verdict('open_po', null, row.status ? `PO ${row.status}` : RECON_REASON_LABELS.open_po);
 }
 
 /** Line delivery states the Exceptions view carries (`incomingExceptionCodeSql`). */
@@ -149,28 +242,28 @@ function lineException(lines: readonly ReceivingLineRow[]): ReconEntry['exceptio
 }
 
 /**
- * A number only the warehouse knows (a manual or marketplace receipt): the
- * Check's sources — the Zoho mirror, live Zoho, local shipments — never saw
- * it, but `view=reconcile` returned its lines. Same physical-first rule as
+ * A number the Check had no ERP answer for, that our receiving lines carry
+ * (a manual or marketplace receipt, or one live Zoho was never asked about):
+ * the lines are the answer. Same physical-first rule as
  * {@link reconOfCheckRow}: an unbox or a dock scan (or units received here)
  * is received; anything else is still owed.
  */
 export function reconOfWarehouseRows(rows: readonly ReceivingLineRow[]): Verdict {
-  if (rows.some((row) => Boolean(row.unboxed_at))) return { status: 'received', detail: 'Unboxed', exception: null };
+  if (rows.some((row) => Boolean(row.unboxed_at))) return verdict('unboxed');
   if (rows.some((row) => Boolean(row.received_at || row.scanned_at) || row.delivery_state === 'DELIVERED_NOT_UNBOXED')) {
-    return { status: 'received', detail: 'Scanned at dock', exception: null };
+    return verdict('scanned');
   }
   if (rows.some((row) => Number(row.quantity_received) > 0 || row.delivery_state === 'RECEIVED')) {
-    return { status: 'received', detail: 'Received here', exception: null };
+    return verdict('received_here');
   }
-  if (rows.some((row) => row.delivery_state === 'DELIVERED_UNOPENED')) return owed('Delivered · not scanned');
-  return owed('Warehouse record · not received');
+  if (rows.some((row) => row.delivery_state === 'DELIVERED_UNOPENED')) return verdict('delivered_not_scanned');
+  return verdict('warehouse_owed');
 }
 
 /**
  * Check rows → one entry per pasted number, in the operator's paste order.
- * `lineRows` (the `view=reconcile` answer) settles numbers the Check found
- * nowhere but the warehouse has lines for.
+ * `lineRows` (the `view=reconcile` answer) settles every number the ERP had
+ * no answer for but the warehouse has lines for — our tables are the truth.
  */
 export function reconcileCheck(
   selection: RefSelection,
@@ -196,10 +289,10 @@ export function reconcileCheck(
   return selection.refs.map((ref, index) => {
     const key = selection.keys[index];
     const row = byKey.get(key);
-    // The Check answers every key it was sent; a hole means it was not sent yet.
-    if (!row) return { ref, key, ...owed('Checking…'), poNumber: null, vendor: null };
+    // The Check answers every key it was sent; a hole means it has not answered yet.
+    if (!row) return { ref, key, ...pendingVerdict(RECON_CHECKING_DETAIL), poNumber: null, vendor: null };
     const lines = linesFor(key);
-    if (row.reason === 'no_match' && !row.local?.known && lines.length > 0) {
+    if (tablesDecide(row) && !row.local?.known && lines.length > 0) {
       const lead = lines[0];
       const verdict = reconOfWarehouseRows(lines);
       return {
@@ -223,11 +316,38 @@ export function reconcileCheck(
   });
 }
 
-/** Pasted numbers per bucket. */
+/** Answered numbers per status — a pending number counts nowhere yet. */
 export function reconCounts(entries: readonly ReconEntry[]): Record<ReconStatus, number> {
   const counts: Record<ReconStatus, number> = { received: 0, not_received: 0 };
-  for (const entry of entries) counts[entry.status] += 1;
+  for (const entry of entries) if (!entry.pending) counts[entry.status] += 1;
   return counts;
+}
+
+/** Answered numbers of `status` per reason, in {@link RECON_REASONS} order; reasons with none are left out. */
+export function reconReasonCounts(
+  entries: readonly ReconEntry[],
+  status: ReconStatus,
+): Array<{ reason: ReconReason; count: number }> {
+  const counts = new Map<ReconReason, number>();
+  for (const entry of entries) {
+    if (entry.pending || entry.status !== status || !entry.reasonCode) continue;
+    counts.set(entry.reasonCode, (counts.get(entry.reasonCode) ?? 0) + 1);
+  }
+  return RECON_REASONS.flatMap((reason) => {
+    const count = counts.get(reason) ?? 0;
+    return count > 0 ? [{ reason, count }] : [];
+  });
+}
+
+/** The pasted numbers a status (and optional reason) keeps, in paste order. */
+export function filterEntriesByRecon(
+  entries: readonly ReconEntry[],
+  status: ReconStatus,
+  reason: ReconReason | null = null,
+): ReconEntry[] {
+  return entries.filter(
+    (entry) => !entry.pending && entry.status === status && (reason === null || entry.reasonCode === reason),
+  );
 }
 
 /** Every identifier on a line a vendor list may name, canonicalized. */
@@ -247,15 +367,16 @@ export function rowRefKeys(row: ReceivingLineRow): string[] {
 }
 
 /**
- * The ledger under a status filter: a line stays when any pasted number it
- * carries sits in that bucket — the table shows exactly the deliveries the
- * sidebar counts.
+ * The ledger under a status (and reason) filter: a line stays when any pasted
+ * number it carries sits in that bucket — the table shows exactly the
+ * deliveries the chips count.
  */
 export function filterRowsByRecon<T extends ReceivingLineRow>(
   rows: readonly T[],
   entries: readonly ReconEntry[],
   status: ReconStatus,
+  reason: ReconReason | null = null,
 ): T[] {
-  const keys = new Set(entries.filter((entry) => entry.status === status).map((entry) => entry.key));
+  const keys = new Set(filterEntriesByRecon(entries, status, reason).map((entry) => entry.key));
   return rows.filter((row) => rowRefKeys(row).some((key) => keys.has(key)));
 }

@@ -17,18 +17,58 @@ import { Search } from '@/components/Icons';
 import { COMMAND_BAR_OPEN_CHANGE_EVENT, openCommandBar } from '@/lib/app-events';
 import { chordKeys, useApplePlatform } from '@/lib/keyboard/chord-keys';
 import { isEditableKeyTarget } from '@/lib/keyboard/is-editable-key-target';
+import { registerShortcutOverviewGroup } from '@/lib/keyboard/shortcut-overview';
 import { setDeskSearch, subscribeDeskSearchFocus, useDeskSearch } from '@/lib/outbound/desk-search-store';
 import { focusRing } from '@/design-system/tokens/focus-ring';
 import { NAV_CHOICE_SELECTED_CLASS } from './nav-block';
 import { SIDEBAR_CONTROL_CORNER } from '@/design-system/tokens/radius';
 import { cn } from '@/utils/_cn';
 import { useReplaceSearchParams } from './useReplaceSearchParams';
-import { NavBulkToggle, useLocalBulkList, useNavBulkList, type BulkList } from './NavBulkList';
+import { NavBulkPasteKey, NavBulkToggle, useLocalBulkList, useNavBulkList, type BulkList } from './NavBulkList';
 import { NAV_LOCATE_MIN_QUERY, useNavLocate } from './useNavLocate';
 import { NAV_LOCATE_TONE_VAR } from './nav-locate-tone';
 
 /** The one hotkey that lands in the field. Bare `F`, never while typing. */
 const FIND_KEY = 'f';
+
+/**
+ * ⌘/Ctrl+Shift+F — clear the page's Find from anywhere, in one press, and
+ * land in the empty field (owner 2026-09-28: no F → select-all → Backspace
+ * dance). A modifier chord, so no wedge scanner can fire it; it fires from a
+ * text field too. Only the field on screen answers (two NavFinds can mount).
+ */
+function isClearFindChord(event: KeyboardEvent): boolean {
+  if (!(event.metaKey || event.ctrlKey) || !event.shiftKey || event.altKey || event.repeat) return false;
+  return event.code === 'KeyF' || event.key.toLowerCase() === 'f';
+}
+
+function useClearFindChord(inputRef: RefObject<HTMLInputElement>, clear: () => void): void {
+  const clearRef = useRef(clear);
+  clearRef.current = clear;
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.defaultPrevented || !isClearFindChord(event)) return;
+      const input = inputRef.current;
+      if (!input || input.offsetWidth === 0 || input.getClientRects().length === 0) return;
+      event.preventDefault();
+      clearRef.current();
+      input.focus();
+    };
+    window.addEventListener('keydown', onKeyDown);
+    const unregister = registerShortcutOverviewGroup({
+      id: 'find-clear',
+      title: 'Find',
+      rows: [
+        { keys: ['F'], label: 'Find on this page' },
+        { keys: ['mod', 'Shift', 'F'], label: 'Clear the find' },
+      ],
+    });
+    return () => {
+      window.removeEventListener('keydown', onKeyDown);
+      unregister();
+    };
+  }, [inputRef]);
+}
 
 /** What the everywhere face rolls while you look at it: rest "Search", then what it finds. */
 const EVERYWHERE_HINTS = ['Search', 'Order #, serial, tracking', 'Jump to any page', 'Paste a list to locate'] as const;
@@ -149,6 +189,7 @@ function usePageFind(search: NavSearch): [PageFind, number] {
 
 function PlainFind({ search, label, inputRef }: PageFieldProps) {
   const [find, debounceMs] = usePageFind(search);
+  useClearFindChord(inputRef, () => find.set(''));
   return (
     <div data-nav-search-well data-nav-find>
       <FindField
@@ -177,6 +218,11 @@ function LocatedFind({ search, locate, label, inputRef }: PageFieldProps & { loc
   const rowRef = useRef<HTMLDivElement>(null);
   const [open, setOpen] = useState(false);
   const hasList = list.selection.refs.length > 0;
+  useClearFindChord(inputRef, () => {
+    find.set('');
+    list.clear();
+    setOpen(false);
+  });
   const fieldLabel = hasList ? 'Find in the pasted list' : label;
   return (
     <div ref={rowRef} data-nav-find-row className="flex min-w-0 items-center gap-1">
@@ -218,7 +264,7 @@ function LocatedFind({ search, locate, label, inputRef }: PageFieldProps & { loc
           }}
         />
       </div>
-      <BulkKey list={list} anchorRef={rowRef} open={open} setOpen={setOpen} find={find} />
+      <BulkKey list={list} anchorRef={rowRef} open={open} setOpen={setOpen} find={find} pasteBox />
     </div>
   );
 }
@@ -229,14 +275,20 @@ function BulkKey({
   open,
   setOpen,
   find,
+  pasteBox = false,
 }: {
   list: BulkList;
   anchorRef: RefObject<HTMLDivElement>;
   open: boolean;
   setOpen: (open: boolean) => void;
   find?: PageFind;
+  /** With no list, the key opens an empty paste box (the page list's Find only). */
+  pasteBox?: boolean;
 }) {
   const hasList = list.selection.refs.length > 0;
+  if (!hasList && pasteBox && find) {
+    return <NavBulkPasteKey list={list} anchorRef={anchorRef} find={find} onListed={() => setOpen(true)} />;
+  }
   return <NavBulkToggle list={list} anchorRef={anchorRef} open={open && hasList} onOpenChange={setOpen} find={find} />;
 }
 

@@ -71,11 +71,12 @@ export function recordStateCodeClass(state: Pick<RecordStateFace, 'tone'>): stri
 }
 
 /**
- * A tone's SOLID BADGE (owner 2026-09-25):
- * A tone's SOLID BADGE (owner 2026-09-25): the tone's `code` fill in its
+ * A tone's state BADGE (`.state-badge-<tone>`, `stateCodeCssText`): a soft
+ * tinted pill in triage, the solid code chip in industrial (owner 2026-09-28).
+ * Padding follows the face: pill air in triage, the tight chip in industrial.
  */
 export function stateBadgeClass(tone: StateName): string {
-  return `state-badge state-badge-${tone} px-1 py-px leading-none`;
+  return `state-badge state-badge-${tone} px-2 py-0.5 leading-none industrial:px-1 industrial:py-px`;
 }
 
 /**
@@ -108,7 +109,7 @@ export const RECORD_NOTE_SPINE_CLASS = 'shadow-[inset_-2px_0_0_var(--mode-warn-t
  * desk (owner 2026-09-26 — no heavy black lines on desktop; the outline's
  * colour is the mode's `mark`, transparent in triage).
  */
-export const RECORD_OPEN_CLASS = 'bg-mode-hover outline outline-2 -outline-offset-2 outline-mode-mark';
+export const RECORD_OPEN_CLASS = 'bg-mode-hover ring-2 ring-inset ring-mode-mark';
 
 /**
  * LAW — the record's TRAILING CELL (operator 2026-09-25:

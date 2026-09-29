@@ -10,14 +10,14 @@ const FACT_ROW = 'flex items-baseline justify-between gap-3';
 const FACT_LABEL = 'text-role-micro text-text-faint';
 const FACT_VALUE = 'min-w-0 truncate text-role-caption text-text-default';
 
-/** The house face per link kind — ticket chip, WO mono, last-8 tracking. */
+/** The house face per link kind — ticket chip, WO number, last-8 tracking. */
 function LinkFace({ link }: { link: DailyCheckItemLink }) {
   if (link.entityType === 'TRACKING') return <TrackingChip value={link.label ?? ''} dense />;
   if (link.entityType === 'ZENDESK_TICKET') {
     return <TicketChip value={String(link.entityId)} display={`#${link.entityId}`} dense />;
   }
   return (
-    <span className="font-mono text-role-caption tabular-nums text-text-default">
+    <span className="text-role-caption font-semibold tabular-nums text-text-default">
       WO-{link.entityId}
     </span>
   );

@@ -7,7 +7,6 @@ import { useQueryClient } from '@tanstack/react-query';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import { DeskPageLayout } from '@/components/desk/DeskPageLayout';
-import { DeskActionSlotRegistrar, DeskHeaderAction } from '@/design-system/components/DeskActionSlot';
 import { DataTable } from '@/components/tables/DataTable';
 import { useReportBinUtilizationSpreadsheet } from '@/components/reports/report-bin-utilization-grid/useReportBinUtilizationSpreadsheet';
 import { useReportVelocitySpreadsheet } from '@/components/reports/report-velocity-grid/useReportVelocitySpreadsheet';
@@ -26,16 +25,21 @@ import {
   type StaffDayReportRow,
 } from '@/lib/reports/staff-day-rows';
 import type { DailyCheckReport } from '@/lib/daily-checks/types';
-import { addDaysToDateKey, formatDateKeyMedium, getCurrentPSTDateKey } from '@/utils/date';
+import { getCurrentPSTDateKey } from '@/utils/date';
 import { useReportStaffDaySpreadsheet } from '@/components/reports/report-staff-day-grid/useReportStaffDaySpreadsheet';
-import { useReportPackerDaySpreadsheet } from '@/components/reports/report-packer-day-grid/useReportPackerDaySpreadsheet';
 import type { PackingReportRow } from '@/lib/packing/packing-report-shared';
+import type { PackingKpiSummary } from '@/lib/packing/packer-kpi-queries';
+import { PackerKpiOverview } from '@/components/reports/PackerKpiOverview';
+import { PackerDayAnalyticsTable } from '@/components/reports/PackerDayAnalyticsTable';
 import { useReportTasksSpreadsheet } from '@/components/reports/report-tasks-grid/useReportTasksSpreadsheet';
 import { parseTaskDeskReportRows } from '@/lib/reports/report-tasks-feed';
 import type { TaskDeskRow } from '@/lib/tasks/task-desk-row';
 
 import { TaskActivityReport } from '@/components/reports/TaskActivityReport';
-import { REPORT_TABS as TABS, parseReportTab, type ReportTab as Tab } from '@/lib/reports/report-tabs';
+import { parseReportTab, type ReportTab as Tab } from '@/lib/reports/report-tabs';
+import { useNavIntent } from '@/lib/nav/use-nav-intent';
+
+type ReportExportKind = 'packing' | 'inbound' | 'outbound';
 
 /** Unchanged route + limit per tab — the day-scoped and task tabs read below. */
 const REPORT_URLS: Readonly<Record<Exclude<Tab, 'staff' | 'packer' | 'tasks' | 'activity'>, string>> = {
@@ -76,7 +80,12 @@ type ReportFeed =
 /** Shared empty page — a fresh `[]` per render would rebuild every row memo. */
 const NO_ROWS: readonly never[] = [];
 
-async function fetchReportFeed(tab: Exclude<Tab, 'activity'>, dateKey: string, find: string): Promise<ReportFeed> {
+async function fetchReportFeed(
+  tab: Exclude<Tab, 'activity'>,
+  dateKey: string,
+  find: string,
+  staffId: number | null,
+): Promise<ReportFeed> {
   // The staff tab is a different SOURCE, not a fourth REST shape: the
   // daily-check report the phone already reads, flattened by the projection
   // both surfaces share — one truth, two presentations.
@@ -87,14 +96,15 @@ async function fetchReportFeed(tab: Exclude<Tab, 'activity'>, dateKey: string, f
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     return {
       tab,
-      rows: staffDayRowsFromReport((await res.json()) as DailyCheckReport),
+      rows: staffDayRowsFromReport((await res.json()) as DailyCheckReport)
+        .filter((row) => staffId == null || row.staffId === staffId),
       dateKey,
     };
   }
   /* Packer day reads the SAME endpoint as the phone's Packing tab (`/m/reports`) and its CSV export — `format=json` on the export route — so… */
   if (tab === 'packer') {
     const res = await fetch(
-      `/api/packing/reports/export?format=json&day=${encodeURIComponent(dateKey)}`,
+      `/api/packing/reports/export?format=json&day=${encodeURIComponent(dateKey)}${staffId == null ? '' : `&packerId=${staffId}`}`,
       { cache: 'no-store' },
     );
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -146,29 +156,33 @@ function BinUtilizationReportTable({
     onSearchChange: onFindChange,
     searchPending: finding,
   });
-  return <DataTable {...sheet} totalCount={rows.length} />;
+  return <DataTable {...sheet} hideToolbar totalCount={rows.length} />;
 }
 
 function VelocityReportTable({
   rows,
   loading,
+  find,
+  onFindChange,
 }: {
   rows: readonly VelocityReportRow[];
   loading: boolean;
-}) {
-  const sheet = useReportVelocitySpreadsheet({ rows, loading });
-  return <DataTable {...sheet} totalCount={rows.length} />;
+} & ServerFind) {
+  const sheet = useReportVelocitySpreadsheet({ rows, loading, searchValue: find, onSearchChange: onFindChange });
+  return <DataTable {...sheet} hideToolbar totalCount={rows.length} />;
 }
 
 function DeadStockReportTable({
   rows,
   loading,
+  find,
+  onFindChange,
 }: {
   rows: readonly DeadStockReportRow[];
   loading: boolean;
-}) {
-  const sheet = useReportDeadStockSpreadsheet({ rows, loading });
-  return <DataTable {...sheet} totalCount={rows.length} />;
+} & ServerFind) {
+  const sheet = useReportDeadStockSpreadsheet({ rows, loading, searchValue: find, onSearchChange: onFindChange });
+  return <DataTable {...sheet} hideToolbar totalCount={rows.length} />;
 }
 
 /** Completed tasks — one row per finished follow-up, EVERY staffer's. */
@@ -195,7 +209,7 @@ function TasksReportTable({
   return (
     <section className="flex min-h-0 min-w-0 flex-1 flex-col">
       <div className="flex min-h-0 flex-1 flex-col">
-        <DataTable {...sheet} totalCount={rows.length} />
+        <DataTable {...sheet} hideToolbar totalCount={rows.length} />
       </div>
       {rows.length > 0 ? (
         <p className="px-3 pt-2 text-role-micro text-text-soft">
@@ -209,58 +223,20 @@ function TasksReportTable({
   );
 }
 
-/** The day walk, shared by every DAY-SCOPED tab. */
-function ReportDayStepper({
-  dateKey,
-  onDateChange,
-}: {
-  dateKey: string;
-  onDateChange: (next: string) => void;
-}) {
-  const today = getCurrentPSTDateKey();
-  return (
-    <div className="flex items-center justify-center gap-2 pb-2">
-      <DeskHeaderAction
-        variant="secondary"
-        size="sm"
-        type="button"
-        onClick={() => onDateChange(addDaysToDateKey(dateKey, -1))}
-      >
-        ‹ Earlier
-      </DeskHeaderAction>
-      <span className="min-w-40 text-center text-sm font-semibold text-text-default">
-        {dateKey === today ? 'Today' : formatDateKeyMedium(dateKey, { weekday: 'short' })}
-      </span>
-      <DeskHeaderAction
-        variant="secondary"
-        size="sm"
-        type="button"
-        disabled={dateKey >= today}
-        onClick={() => onDateChange(addDaysToDateKey(dateKey, 1))}
-      >
-        Later ›
-      </DeskHeaderAction>
-    </div>
-  );
-}
-
 function StaffDayReportTable({
   rows,
   loading,
-  dateKey,
-  onDateChange,
+  find,
+  onFindChange,
 }: {
   rows: readonly StaffDayReportRow[];
   loading: boolean;
-  dateKey: string;
-  onDateChange: (next: string) => void;
-}) {
-  const sheet = useReportStaffDaySpreadsheet({ rows, loading });
+} & ServerFind) {
+  const sheet = useReportStaffDaySpreadsheet({ rows, loading, searchValue: find, onSearchChange: onFindChange });
   return (
     <section className="flex min-h-0 min-w-0 flex-1 flex-col">
-      <ReportDayStepper dateKey={dateKey} onDateChange={onDateChange} />
       <div className="flex min-h-0 flex-1 flex-col">
-        <DataTable {...sheet} totalCount={rows.length} />
+        <DataTable {...sheet} hideToolbar totalCount={rows.length} />
       </div>
     </section>
   );
@@ -270,23 +246,19 @@ function StaffDayReportTable({
 function PackerDayReportTable({
   rows,
   loading,
-  dateKey,
-  onDateChange,
+  find,
+  summary,
 }: {
   rows: readonly PackingReportRow[];
   loading: boolean;
-  dateKey: string;
-  onDateChange: (next: string) => void;
-}) {
-  const sheet = useReportPackerDaySpreadsheet({ rows, loading });
+  summary: PackingKpiSummary | null;
+} & ServerFind) {
   const totalMinutes = rows.reduce((sum, r) => sum + r.estimatedMinutes, 0);
   const unpaired = rows.filter((r) => !r.sku).length;
   return (
     <section className="flex min-h-0 min-w-0 flex-1 flex-col">
-      <ReportDayStepper dateKey={dateKey} onDateChange={onDateChange} />
-      <div className="flex min-h-0 flex-1 flex-col">
-        <DataTable {...sheet} totalCount={rows.length} />
-      </div>
+      {summary ? <PackerKpiOverview summary={summary} rows={rows} className="mb-3 shrink-0" /> : null}
+      <PackerDayAnalyticsTable rows={rows} loading={loading} query={find} />
       {rows.length > 0 ? (
         <p className="px-3 pt-2 text-role-micro text-text-soft">
           {rows.length} {rows.length === 1 ? 'pack' : 'packs'} · {totalMinutes.toLocaleString()}{' '}
@@ -294,7 +266,7 @@ function PackerDayReportTable({
           {unpaired > 0
             ? ` · ${unpaired} not paired to a catalog SKU, carrying the fallback standard`
             : ''}
-          . Time to pack is each SKU&apos;s standard × packs, not a measured pace.
+          . Standard effort is the saved SKU target; actual session and next-pack pace are shown per row.
         </p>
       ) : null}
     </section>
@@ -307,21 +279,20 @@ function ReportBody({
   feed,
   loading,
   dateKey,
-  onDateChange,
   find,
   onFindChange,
   finding,
+  packingKpi,
 }: {
   tab: Tab;
   feed: ReportFeed | null;
   loading: boolean;
   dateKey: string;
-  onDateChange: (next: string) => void;
+  packingKpi: PackingKpiSummary | null;
 } & ServerFind) {
   if (tab === 'activity') {
     return (
       <section className="flex min-h-0 min-w-0 flex-1 flex-col">
-        <ReportDayStepper dateKey={dateKey} onDateChange={onDateChange} />
         <TaskActivityReport dateKey={dateKey} />
       </section>
     );
@@ -331,8 +302,9 @@ function ReportBody({
       <StaffDayReportTable
         rows={feed?.tab === 'staff' ? feed.rows : NO_ROWS}
         loading={loading}
-        dateKey={dateKey}
-        onDateChange={onDateChange}
+        find={find}
+        onFindChange={onFindChange}
+        finding={finding}
       />
     );
   }
@@ -341,8 +313,10 @@ function ReportBody({
       <PackerDayReportTable
         rows={feed?.tab === 'packer' ? feed.rows : NO_ROWS}
         loading={loading}
-        dateKey={dateKey}
-        onDateChange={onDateChange}
+        find={find}
+        onFindChange={onFindChange}
+        finding={finding}
+        summary={packingKpi}
       />
     );
   }
@@ -362,6 +336,9 @@ function ReportBody({
       <VelocityReportTable
         rows={feed?.tab === 'velocity' ? feed.rows : NO_ROWS}
         loading={loading}
+        find={find}
+        onFindChange={onFindChange}
+        finding={finding}
       />
     );
   }
@@ -380,6 +357,9 @@ function ReportBody({
     <DeadStockReportTable
       rows={feed?.tab === 'dead' ? feed.rows : NO_ROWS}
       loading={loading}
+      find={find}
+      onFindChange={onFindChange}
+      finding={finding}
     />
   );
 }
@@ -393,22 +373,31 @@ function ReportsPageInner() {
   const tab: Tab = parseReportTab(searchParams.get('tab')) ?? 'staff';
   const dateParam = searchParams.get('date');
   const dateKey = dateParam && /^\d{4}-\d{2}-\d{2}$/.test(dateParam) ? dateParam : getCurrentPSTDateKey();
+  const staffRaw = Number(searchParams.get('staffId'));
+  const staffId = Number.isInteger(staffRaw) && staffRaw > 0 ? staffRaw : null;
 
-  /* The find text is SESSION-LOCAL and rides the FETCH KEY — it is deliberately NOT a third URL param. */
-  const [find, setFind] = useState('');
-
-  const setParams = useCallback(
-    (next: { tab?: Tab; date?: string }) => {
+  const replaceParams = useCallback(
+    (updates: Readonly<Record<string, string | null>>) => {
       const params = new URLSearchParams(searchParams.toString());
-      if (next.tab) params.set('tab', next.tab);
-      if (next.date) params.set('date', next.date);
-      if (next.tab && next.tab !== tab) setFind('');
-      router.replace(`/reports?${params.toString()}`, { scroll: false });
+      for (const [key, value] of Object.entries(updates)) {
+        if (value == null || value === '') params.delete(key);
+        else params.set(key, value);
+      }
+      const qs = params.toString();
+      router.replace(qs ? `/reports?${qs}` : '/reports', { scroll: false });
     },
-    [router, searchParams, tab],
+    [router, searchParams],
+  );
+
+  /* The header's page Find is URL-addressable and feeds every report face. */
+  const find = searchParams.get('q') ?? '';
+  const setFind = useCallback(
+    (next: string) => replaceParams({ q: next.trim() || null }),
+    [replaceParams],
   );
 
   const [feed, setFeed] = useState<ReportFeed | null>(null);
+  const [packingKpi, setPackingKpi] = useState<PackingKpiSummary | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -418,45 +407,61 @@ function ReportsPageInner() {
     if (tab === 'activity') {
       setLoading(false);
       setError(null);
+      setPackingKpi(null);
       return;
     }
     setLoading(true);
     setError(null);
     try {
-      setFeed(await fetchReportFeed(tab, dateKey, find));
+      if (tab === 'packer') {
+        const [nextFeed, kpiRes] = await Promise.all([
+          fetchReportFeed(tab, dateKey, find, staffId),
+          fetch(`/api/packing/kpi?day=${encodeURIComponent(dateKey)}${staffId == null ? '' : `&packerId=${staffId}`}`, { cache: 'no-store' }),
+        ]);
+        const kpiBody = (await kpiRes.json()) as PackingKpiSummary & { error?: string };
+        if (!kpiRes.ok) throw new Error(kpiBody.error || `HTTP ${kpiRes.status}`);
+        setFeed(nextFeed);
+        setPackingKpi(kpiBody);
+      } else {
+        setFeed(await fetchReportFeed(tab, dateKey, find, staffId));
+        setPackingKpi(null);
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load');
     } finally {
       setLoading(false);
     }
-  }, [tab, dateKey, find]);
+  }, [tab, dateKey, find, staffId]);
   useEffect(() => {
     load();
   }, [load]);
 
+  const refresh = useCallback(() => {
+    if (tab === 'activity') void queryClient.invalidateQueries({ queryKey: ['task-activity-report', dateKey] });
+    else void load();
+  }, [dateKey, load, queryClient, tab]);
+
+  const exportRecords = useCallback((kind: ReportExportKind) => {
+    if (kind === 'packing') {
+      const query = new URLSearchParams({ day: dateKey, format: 'csv' });
+      if (staffId != null) query.set('packerId', String(staffId));
+      window.location.assign(`/api/packing/reports/export?${query.toString()}`);
+      return;
+    }
+    const query = new URLSearchParams({ record: kind, day: dateKey });
+    if (kind === 'inbound' && staffId != null) query.set('staffId', String(staffId));
+    window.location.assign(`/api/reports/records/export?${query.toString()}`);
+  }, [dateKey, staffId]);
+
+  useNavIntent('reports:refresh', refresh);
+  useNavIntent('reports:export-packing', () => exportRecords('packing'));
+  useNavIntent('reports:export-inbound', () => exportRecords('inbound'));
+  useNavIntent('reports:export-outbound', () => exportRecords('outbound'));
+
   /* The desk frame, not a second one (2026-08-31). */
   return (
-    <DeskPageLayout
-      title="Reports"
-      tabs={TABS}
-      activeTab={tab}
-      onTabChange={(id) => setParams({ tab: id as Tab })}
-      className="h-full"
-    >
-      <DeskActionSlotRegistrar>
-        <DeskHeaderAction
-          variant="secondary"
-          size="md"
-          type="button"
-          onClick={() => {
-            if (tab === 'activity') void queryClient.invalidateQueries({ queryKey: ['task-activity-report', dateKey] });
-            else void load();
-          }}
-        >
-          Refresh
-        </DeskHeaderAction>
-      </DeskActionSlotRegistrar>
-      <main className="flex min-h-0 min-w-0 flex-1 flex-col px-3 py-3">
+    <DeskPageLayout bare className="h-full">
+      <main className="mx-auto flex min-h-0 min-w-0 w-full max-w-[1800px] flex-1 flex-col px-3 py-3">
         {error && tab !== 'activity' && (
           <p className="px-3 py-6 text-center text-sm font-semibold text-rose-600">{error}</p>
         )}
@@ -466,10 +471,10 @@ function ReportsPageInner() {
             feed={feed}
             loading={loading}
             dateKey={dateKey}
-            onDateChange={(d) => setParams({ date: d })}
             find={find}
             onFindChange={setFind}
             finding={loading}
+            packingKpi={packingKpi}
           />
         )}
       </main>

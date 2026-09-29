@@ -26,31 +26,27 @@ export const DESK_RECORD_MEASURE_CLASS = 'w-[46rem]';
  * record pane the right third, its columns stacked into one. Full width with
  * side gutters; the list scrolls to the bottom edge (no card).
  */
-export const DESK_SPLIT_LIST_CLASS = 'flex min-h-0 min-w-0 basis-2/3 flex-col px-6';
+export const DESK_SPLIT_LIST_CLASS = 'flex min-h-0 min-w-0 basis-[60%] flex-col px-6';
 
 /** The record pane beside {@link DESK_SPLIT_LIST_CLASS} — the right third. */
-export const DESK_SPLIT_RECORD_CLASS = 'flex min-w-0 basis-1/3 flex-col';
-
-/**
- * Floor (industrial) places the record in a RIGHT RAIL (owner 2026-09-27:
- * "keep the right rail displaying details of the selection, edge to edge"):
- * the list runs from the viewport's left edge to the rail, no gutter, no
- * measure; the rail is a fixed width to the viewport's right edge and is
- * always mounted, so the list never changes width as records open and close.
- */
-export const DESK_FLOOR_LIST_CLASS = 'flex min-h-0 min-w-0 flex-1 flex-col';
-
-/** The Floor record rail beside {@link DESK_FLOOR_LIST_CLASS}. */
-export const DESK_FLOOR_RAIL_CLASS = 'flex w-[30rem] shrink-0 flex-col';
+export const DESK_SPLIT_RECORD_CLASS = 'flex min-w-0 basis-[40%] flex-col';
 
 /**
  * A TRIAGE rail — the fixed-width queue or evidence column a triage desk keeps
  * beside its work (the Labels walk's queue, the label intake desk's labels):
  * 22rem, never a share of the viewport, so the work column beside it is the
- * only thing that grows. It borrows nothing from the Floor ledger's industrial
- * rows; callers add the one `border-mode-divide` seam on the side it touches.
+ * only thing that grows; callers add the one `border-mode-divide` seam on the
+ * side it touches.
  */
 export const DESK_TRIAGE_RAIL_CLASS = 'flex w-[22rem] shrink-0 flex-col bg-mode-bar';
+
+/**
+ * A rail desk's list with NOTHING open (`DeskRecordPlane listRail="open"`,
+ * owner 2026-09-28): the cards stand alone at the stage's full width — the
+ * same measure as the bar and its hairline above them, never a narrower
+ * column. Opening a card moves them into {@link DESK_TRIAGE_RAIL_CLASS}.
+ */
+export const DESK_TRIAGE_LONE_LIST_CLASS = 'flex min-h-0 min-w-0 flex-1 flex-col';
 
 /**
  * The record beside a {@link DESK_TRIAGE_RAIL_CLASS} list — a rail desk
@@ -71,9 +67,9 @@ export const DESK_SPLIT_RECORD_CARD_CLASS = 'flex min-h-0 flex-1 flex-col overfl
  * A record COLUMN — the 2/3 work column and the 1/3 facts column of
  * {@link DESK_RECORD_COLUMNS_CLASS} — the only lifted surfaces on a desk
  * record (owner 2026-09-26, Shopify / Ecwid order page): the mode's card
- * corner and the raised shadow on the white page. Industrial (the Floor rail)
- * drops the box: no frame, no lift, no inset — each column runs the rail's full
- * width, closed by one `divide` hairline (owner 2026-09-27).
+ * corner and the raised shadow on the white page. Industrial (the phone's
+ * operation flows) drops the box: no frame, no lift, no inset — each column
+ * runs full width, closed by one `divide` hairline (owner 2026-09-27).
  */
 export const DESK_RECORD_COLUMN_CARD_CLASS = `flex min-w-0 flex-col overflow-hidden rounded-mode border border-mode-frame bg-mode-bar ${elevationClass('raised')} industrial:border-x-0 industrial:border-t-0 industrial:border-b-mode-divide industrial:shadow-none`;
 
@@ -140,20 +136,6 @@ export const DESK_STAGE_GUTTER_CLASS = 'px-4';
 
 /** The **page header row** — title left, primary CTA right. */
 export const DESK_PAGE_HEADER_ROW_CLASS = 'py-3';
-
-/** The **tab row**, on its own line under the header. */
-export const DESK_TAB_ROW_CLASS = 'h-9 border-b border-border-hairline';
-
-/**
- * Shared tab-list geometry for every desk page. The list remains a normal
- * left-to-right row; fixed-width triggers own their label alignment.
- */
-const DESK_TAB_LIST_CLASS =
-  'flex min-w-0 flex-1 items-stretch gap-1';
-
-/** Shared fixed-width desk-tab face with a centered label. */
-const DESK_TAB_TRIGGER_CLASS =
-  'ds-raw-button inline-flex shrink-0 items-center justify-center gap-1 px-3 text-center text-role-caption';
 
 /**
  * Space between the tab row and the table card.

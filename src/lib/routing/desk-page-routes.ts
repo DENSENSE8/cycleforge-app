@@ -15,6 +15,16 @@ import {
 import { z } from 'zod';
 import { IMPORTS_PATH, IMPORT_SORTS, IMPORT_VIEWS } from '@/lib/imports/params';
 import { IMPORT_RUN_STATUSES, IMPORT_RUN_TRIGGERS } from '@/lib/imports/types';
+import {
+  EXCEPTIONS_PATH,
+  EXCEPTION_DOMAINS,
+  EXCEPTION_DOMAIN_PARAM,
+  EXCEPTION_KINDS,
+  EXCEPTION_KIND_PARAM,
+  EXCEPTION_RECORD_PARAM,
+  parseExceptionRowKey,
+} from '@/lib/exceptions/types';
+import { PRINT_STATION_FNSKU_PARAM, PRINT_STATION_FNSKU_VIEWS, PRINT_STATION_PATH, PRINT_STATION_VIEW_PARAM } from '@/lib/print-station/fnsku';
 
 /** `/reports` — Staff day · Packer day · Bin Utilization · Velocity · Dead Stock · Tasks · Task activity. */
 const REPORTS_ROUTE_PARAMS = defineRouteParams({
@@ -22,8 +32,12 @@ const REPORTS_ROUTE_PARAMS = defineRouteParams({
   owns: {
     /** Which report; `staff` is the default. */
     tab: paramRoundTrip(parseReportTab),
+    /** Header Find within the active report. */
+    q: paramText,
     /** The day the day-scoped tabs (Staff day, Packer day) report on. */
     date: paramDateKey,
+    /** Optional staff member for staff/packer report rows and KPI totals. */
+    staffId: paramPositiveInt,
   },
 });
 
@@ -119,10 +133,53 @@ const IMPORTS_ROUTE_PARAMS = defineRouteParams({
   carries: ['staff'],
 });
 
+/**
+ * The open exception — its row key `<kind>:<sourceId>` — on the hub and on
+ * every lane door that renders the hub list locked (`ExceptionsDesk`).
+ */
+export const EXCEPTION_RECORD_ROUTE_PARAMS = {
+  [EXCEPTION_RECORD_PARAM]: paramRoundTrip((raw) => (parseExceptionRowKey(raw) ? raw : null)),
+} as const;
+
+/**
+ * `/exceptions` — the global Exceptions hub (owner 2026-09-28,
+ * `src/lib/exceptions/types.ts`): every kind, or one domain / one kind, and
+ * the open exception's record.
+ */
+const EXCEPTIONS_ROUTE_PARAMS = defineRouteParams({
+  route: EXCEPTIONS_PATH,
+  owns: {
+    [EXCEPTION_DOMAIN_PARAM]: paramEnum(EXCEPTION_DOMAINS),
+    [EXCEPTION_KIND_PARAM]: paramEnum(EXCEPTION_KINDS),
+    /** Find: entity id / label, title, tag. */
+    q: paramText,
+    ...EXCEPTION_RECORD_ROUTE_PARAMS,
+    /** The card list's 1-based page (`useTriageCut`). */
+    page: paramPositiveInt,
+  },
+});
+
+/** `/print-station` — Print station › FNSKU labels: the view, Find over the FBA catalog and the open FNSKU. */
+const PRINT_STATION_ROUTE_PARAMS = defineRouteParams({
+  route: PRINT_STATION_PATH,
+  owns: {
+    /** All FNSKUs (bare) · Reprinted. */
+    [PRINT_STATION_VIEW_PARAM]: paramEnum(PRINT_STATION_FNSKU_VIEWS),
+    /** Find: FNSKU, ASIN, SKU or title — server-side. */
+    q: paramText,
+    /** The open FNSKU (catalog key, upper-case). */
+    [PRINT_STATION_FNSKU_PARAM]: paramRoundTrip((raw) => (/^[A-Z0-9]{1,40}$/.test(raw) ? raw : null)),
+    /** The row list's 1-based page (`useTriageCut`). */
+    page: paramPositiveInt,
+  },
+});
+
 export const DESK_PAGE_ROUTE_PARAMS: readonly RouteParamsSpec[] = [
   REPORTS_ROUTE_PARAMS,
   COUNTER_ROUTE_PARAMS,
   STUDIO_ROUTE_PARAMS,
   STUDIO_CATALOG_ROUTE_PARAMS,
   IMPORTS_ROUTE_PARAMS,
+  EXCEPTIONS_ROUTE_PARAMS,
+  PRINT_STATION_ROUTE_PARAMS,
 ];

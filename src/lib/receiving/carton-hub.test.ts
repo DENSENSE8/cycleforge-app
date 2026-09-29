@@ -51,8 +51,8 @@ function carton(lines: CartonHubLine[], overrides: Partial<CartonHubData['receiv
   };
 }
 
-test('a line title obeys the SKU identity law: the Zoho item name beats the listing text', () => {
-  assert.equal(cartonLineTitle(line({ zoho_item_title: 'Bose Wave Radio', catalog_product_title: 'Marketplace title' })), 'Bose Wave Radio');
+test('a line title obeys the SKU identity law: the catalog title is authoritative', () => {
+  assert.equal(cartonLineTitle(line({ zoho_item_title: 'Bose Wave Radio', catalog_product_title: 'Marketplace title' })), 'Marketplace title');
   assert.equal(cartonLineTitle(line({ item_name: null, sku: null })), 'Line L-1');
 });
 

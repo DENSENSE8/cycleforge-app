@@ -4,12 +4,10 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { AssistantAttachment } from '@/lib/assistant/context-store';
 
 /**
- * Files dropped on (or picked into) the AI composer. Each uploads at once
- * through the manuals library's own upload (`POST /api/product-manuals/upload`
- * — the store every manual already lives in and prints from), so the message
- * carries a stored row id, never bytes. A chip removed before sending takes
- * its row back out (`DELETE /api/product-manuals?id=`); sent attachments stay
- * in the library, unlinked until the assistant (or a person) pairs them.
+ * Files dropped on (or picked into) the AI composer. Each becomes a durable
+ * unlinked attachment; the chat route reads it through the shared local OCR
+ * service and sends only the derived transcript to the chat model. The
+ * message carries a stored row id, never caller-supplied bytes or OCR text.
  */
 
 export type ComposerAttachmentStatus = 'uploading' | 'uploaded' | 'error';
@@ -50,6 +48,7 @@ export function useComposerAttachments() {
       const form = new FormData();
       form.append('file', file);
       form.append('displayName', file.name.replace(/\.[a-z0-9]+$/i, ''));
+      form.append('type', 'assistant_attachment');
       xhr.upload.onprogress = (e) => {
         if (e.lengthComputable) patch(key, { progress: e.loaded / e.total });
       };

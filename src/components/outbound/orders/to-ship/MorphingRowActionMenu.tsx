@@ -22,11 +22,13 @@ import {
   Repeat,
   RotateCcw,
   Tag,
+  Ticket,
   Trash2,
   Truck,
   Zap,
 } from '@/components/Icons';
 import { useOrderAssignment } from '@/hooks/useOrderAssignment';
+import { exceptionsQueryKey } from '@/hooks/exceptions';
 import { bustFulfillmentCaches, bustScanOutCaches } from '@/lib/outbound/outbound-cache-keys';
 import { useQueryClient } from '@tanstack/react-query';
 import { toast } from '@/lib/toast';
@@ -82,9 +84,10 @@ import {
 import { shortageIdentityFromRow, type OrderShortageIdentity } from '@/lib/orders/order-shortage-identity';
 import { PRINT_SLIP_HOTKEY, usePrintPackingSlip } from '@/components/outbound/orders/record-keys/print-slip';
 import type { KitComposition } from '@/lib/orders/order-kit-composition';
-import { viewOffersVerb, type OrderViewKey } from '@/lib/views/view-specs';
+import { VIEW_SPECS, viewOffersVerb, type OrderViewKey } from '@/lib/views/view-specs';
 import { OosProductCombobox } from '@/components/outbound/orders/oos/OosProductCombobox';
 import { buildRecordTaskVerbs } from '@/components/tasks/RecordTaskActions';
+import { supportCreateTicketHref } from '@/lib/support/support-sidebar-shared';
 
 function orderIdOf(row: unknown): number | null {
   if (!row || typeof row !== 'object' || !('id' in row)) return null;
@@ -423,7 +426,7 @@ function useOrderActionVerbs({
     onFinished();
     void deleteOrdersWithUndo(ids, () => {
       bustFulfillmentCaches(queryClient);
-      void queryClient.invalidateQueries({ queryKey: ['order-exceptions'] });
+      void queryClient.invalidateQueries({ queryKey: exceptionsQueryKey });
     });
   };
 
@@ -481,6 +484,7 @@ function useOrderActionVerbs({
       label: selectionIsUrgent ? 'Clear urgent' : 'Mark urgent',
       icon: <Zap />,
       hotkey: 'u',
+      tone: 'yellow',
       pressed: selectionIsUrgent,
       run: markUrgent,
     });
@@ -608,6 +612,14 @@ function useOrderActionVerbs({
       run: () => router.push(`${labelDeskHref}replacement`),
     },
   );
+  verbs.push({
+    id: 'customer-ticket',
+    label: 'Create customer ticket',
+    icon: <Ticket />,
+    placement: 'overflow',
+    scope: 'single',
+    run: () => router.push(supportCreateTicketHref(orderId)),
+  });
   verbs.push(
     ...buildRecordTaskVerbs({ entityType: 'order', entityId: orderId, label: `Order ${orderRef}` }).map((verb) => ({
       ...verb,
@@ -964,7 +976,7 @@ function ExceptionPasteDisplay({
             : `Matched ${result.sku} and backfilled the order.`,
         );
       }
-      await queryClient.invalidateQueries({ queryKey: ['order-exceptions'] });
+      await queryClient.invalidateQueries({ queryKey: exceptionsQueryKey });
       done();
     });
   };
@@ -1013,23 +1025,72 @@ export function OrderRecordActionStrip({
     onOpenLabels,
     onFinished: () => undefined,
   });
+  const allocateDetail = VIEW_SPECS[viewKey].recordPresentation === 'allocate';
   // Ledger desks: the quick triage verbs as buttons, the record's other
   // actions behind ⋮ (the same list the record repeats below its details).
   // The Shipped package record keeps its full strip.
-  const verbs =
-    viewKey === 'shipping.shipped'
-      ? allVerbs
-      : [
-          ...allVerbs.filter((verb) => ORDER_BULK_VERB_IDS.has(verb.id)),
-          ...recordMoreVerbs(record, allVerbs).map((verb) => ({ ...verb, placement: 'overflow' as const })),
-        ];
+  const verbs = (() => {
+    if (viewKey === 'shipping.shipped') return allVerbs;
+    if (!allocateDetail) {
+      return [
+        ...allVerbs.filter((verb) => ORDER_BULK_VERB_IDS.has(verb.id)),
+        ...recordMoreVerbs(record, allVerbs).map((verb) => ({ ...verb, placement: 'overflow' as const })),
+      ];
+    }
+
+    // Escalation owns the visible waist. Supporting reference material stays
+    // behind ⋮, so the first scan reads urgency → customer issue → owner.
+    const byId = new Map(allVerbs.map((verb) => [verb.id, verb]));
+    const primary = ['urgent', 'customer-ticket', 'task-staff'].flatMap((id) => {
+      const verb = byId.get(id);
+      if (!verb) return [];
+      return [{
+        ...verb,
+        label: id === 'task-staff' ? 'Assign task' : verb.label,
+        placement: 'primary' as const,
+      }];
+    });
+    const skip = new Set([
+      'urgent',
+      'customer-ticket',
+      'task-staff',
+      'select',
+      'label',
+      'notes',
+      'paperwork',
+      'copy',
+      'print',
+      'create-rule',
+      'sku-stock',
+      'rules',
+      ...RECORD_INLINE_VERB_IDS,
+    ]);
+    const seen = new Set(primary.map((verb) => verb.id));
+    const overflow: RecordActionVerb[] = [];
+    for (const verb of [...allVerbs, ...recordMoreVerbs(record, allVerbs)]) {
+      if (skip.has(verb.id) || seen.has(verb.id) || (!verb.run && !verb.display)) continue;
+      seen.add(verb.id);
+      overflow.push({ ...verb, placement: 'overflow' });
+    }
+    // Documents is always last in the overflow: available, but never ahead of
+    // the actions that change the order's operational outcome.
+    overflow.push({ ...paperworkVerb(record, 'Documents'), hotkey: 'l', placement: 'overflow' });
+    return [...primary, ...overflow];
+  })();
   const orderRef = String(record.order_id ?? '').trim() || String(record.id);
-  return <RecordActionStrip verbs={verbs} label={`Order ${orderRef} actions`} testId="order-record-actions" />;
+  return (
+    <RecordActionStrip
+      verbs={verbs}
+      label={`Order ${orderRef} actions`}
+      testId="order-record-actions"
+      face={allocateDetail ? 'header' : 'strip'}
+    />
+  );
 }
 
 /** Paperwork — label · slip · manuals for the lead order, in one dialog. */
-function paperworkVerb(record: ShippedOrder): RecordActionVerb {
-  return { id: 'paperwork', label: 'Paperwork', icon: <FileText />, scope: 'single', run: () => dispatchOpenOrderPaperwork(Number(record.id)) };
+function paperworkVerb(record: ShippedOrder, label = 'Paperwork'): RecordActionVerb {
+  return { id: 'paperwork', label, icon: <FileText />, scope: 'single', run: () => dispatchOpenOrderPaperwork(Number(record.id)) };
 }
 
 /** The record's links out — the lead SKU's stock, the listing rules. */

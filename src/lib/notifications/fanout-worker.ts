@@ -83,10 +83,11 @@ export interface FanoutResult {
 }
 
 export async function drainNotificationOutbox(
-  args: { batchSize?: number } = {},
+  args: { batchSize?: number; concurrency?: number } = {},
   deps: FanoutDeps = defaultFanoutDeps,
 ): Promise<FanoutResult> {
   const batchSize = Math.min(Math.max(args.batchSize ?? 50, 1), 200);
+  const concurrency = Math.min(Math.max(args.concurrency ?? 4, 1), 10);
   const result: FanoutResult = {
     claimed: 0,
     skippedNotNotifiable: 0,
@@ -114,24 +115,30 @@ export async function drainNotificationOutbox(
 
   result.claimed = claimed.rows.length;
 
-  for (const row of claimed.rows) {
-    try {
-      const outcome = await processOutboxRow(row, deps);
-      result.delivered += outcome.delivered;
-      result.collapsed += outcome.collapsed;
-      if (outcome.skipped) result.skippedNotNotifiable += 1;
-      await deps.ownerQuery(
-        `UPDATE notification_outbox SET processed_at = now(), last_error = NULL WHERE id = $1`,
-        [row.id],
-      );
-    } catch (err) {
-      result.failed += 1;
-      // Leave processed_at NULL so the row retries; attempts records the try.
-      await deps.ownerQuery(`UPDATE notification_outbox SET last_error = $2 WHERE id = $1`, [
-        row.id,
-        err instanceof Error ? err.message : String(err),
-      ]);
-    }
+  // A batch can contain many broadcast-style operational alerts. Bound the
+  // row concurrency so one slow realtime provider does not serialize the
+  // whole outbox, while keeping DB/provider pressure predictable.
+  for (let i = 0; i < claimed.rows.length; i += concurrency) {
+    const chunk = claimed.rows.slice(i, i + concurrency);
+    await Promise.all(chunk.map(async (row) => {
+      try {
+        const outcome = await processOutboxRow(row, deps);
+        result.delivered += outcome.delivered;
+        result.collapsed += outcome.collapsed;
+        if (outcome.skipped) result.skippedNotNotifiable += 1;
+        await deps.ownerQuery(
+          `UPDATE notification_outbox SET processed_at = now(), last_error = NULL WHERE id = $1`,
+          [row.id],
+        );
+      } catch (err) {
+        result.failed += 1;
+        // Leave processed_at NULL so the row retries; attempts records the try.
+        await deps.ownerQuery(`UPDATE notification_outbox SET last_error = $2 WHERE id = $1`, [
+          row.id,
+          err instanceof Error ? err.message : String(err),
+        ]);
+      }
+    }));
   }
 
   return result;
@@ -195,6 +202,7 @@ async function processOutboxRow(row: OutboxRow, deps: FanoutDeps): Promise<RowOu
 
   let delivered = 0;
   let collapsed = 0;
+  const realtimePushes: Promise<void>[] = [];
 
   for (const target of targets) {
     // Write-time permission prefilter. NOT the authoritative gate — see
@@ -259,8 +267,10 @@ async function processOutboxRow(row: OutboxRow, deps: FanoutDeps): Promise<RowOu
     // Only a genuinely NEW row is announced:
     const itemId = Number(inserted.rows[0]?.id);
     if (Number.isFinite(itemId) && itemId > 0) {
-      try {
-        await deps.publishInboxItem({
+      // The durable insert is authoritative. Publish recipient mirrors in
+      // parallel after the write loop; awaiting Ably once per staff serially
+      // made a 20-person operational alert take minutes to fan out.
+      realtimePushes.push(deps.publishInboxItem({
           orgId,
           staffId: target.staffId,
           itemId,
@@ -268,12 +278,13 @@ async function processOutboxRow(row: OutboxRow, deps: FanoutDeps): Promise<RowOu
           entityId,
           eventKey: row.event_key,
           actorStaffId: row.actor_staff_id,
-        });
-      } catch (err) {
+        }).catch((err) => {
         console.warn('[fanout] inbox push skipped:', err);
-      }
+        }));
     }
   }
+
+  await Promise.all(realtimePushes);
 
   // Retired only after every insert has landed. Retiring earlier would mean a
   // row that throws mid-loop comes back on retry to an empty recipient set —

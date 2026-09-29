@@ -2,7 +2,6 @@
 import type { PoolClient } from 'pg';
 import { tenantQuery, withTenantTransaction } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';
-import { skuCatalogTitleUnownedPredicateSql } from '@/lib/sku/sku-identity-law';
 
 /** Which gallery — a catalog SKU's reusable set, or a single unit's set. */
 export type ListingTarget = { kind: 'sku'; id: number } | { kind: 'unit'; id: number };
@@ -32,13 +31,21 @@ export class ListingTargetError extends Error {}
 
 /** `productImageUrl`'s last tier as SQL, for readers that resolve the product photo in the query: */
 export function listingCoverThumbUrlSql(catalogAlias: string): string {
-  return `(SELECT '/api/photos/' || lp.photo_id || '/content?variant=thumb'
+  return `(SELECT COALESCE(
+                    (SELECT NULLIF(BTRIM(ps.legacy_url), '')
+                       FROM photo_storage ps
+                      WHERE ps.organization_id = lp.organization_id
+                        AND ps.photo_id = lp.photo_id
+                        AND ps.provider = 'legacy_url'
+                        AND ps.is_primary = TRUE
+                      LIMIT 1),
+                    '/api/photos/' || lp.photo_id || '/content?variant=thumb'
+                  )
              FROM listing_photos lp
             WHERE lp.organization_id = ${catalogAlias}.organization_id
               AND lp.sku_catalog_id = ${catalogAlias}.id
               AND lp.is_cover
               AND NULLIF(BTRIM(${catalogAlias}.image_url), '') IS NULL
-              AND ${skuCatalogTitleUnownedPredicateSql(catalogAlias)}
             LIMIT 1)`;
 }
 

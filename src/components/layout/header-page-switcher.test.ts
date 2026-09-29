@@ -12,7 +12,6 @@ import { HEADER_PAGE_MENU_SCROLL_CLASS } from './header-shell';
 const FLOOR_IDS = [
   'triage',
   'receive',
-  'pickup',
   'repair',
   'testing',
   'ready-to-pack',
@@ -34,7 +33,6 @@ test('Unbox switcher lists every Scan Stations bench, not Arrival/Unbox only', (
     [
       'Arrival',
       'Unbox',
-      'Local Pickup',
       'Repair Service',
       'Quality Control',
       'Picker',

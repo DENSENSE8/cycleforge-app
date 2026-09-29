@@ -42,6 +42,8 @@ export function getMobileAppTitle(
   if (pathname === '/m/orders' || pathname.startsWith('/m/orders/')) return 'Order management';
   if (pathname === '/m/exceptions' || pathname.startsWith('/m/exceptions/')) return 'Exceptions';
   if (pathname === '/m/imports' || pathname.startsWith('/m/imports/')) return 'Imports';
+  if (pathname === '/m/products' || pathname.startsWith('/m/products/')) return 'Products';
+  if (pathname === '/m/reports' || pathname.startsWith('/m/reports/')) return 'Reports';
   if (pathname === '/m/pick' || pathname.startsWith('/m/pick/')) return 'Picks';
   if (pathname === '/m/pack' || pathname.startsWith('/m/pack/')) return 'Packing';
   if (pathname === '/m/scan' || pathname.startsWith('/m/scan/')) return 'Scan';

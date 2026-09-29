@@ -4,7 +4,6 @@
  */
 import type { OrgId } from '@/lib/tenancy/constants';
 import { tenantQuery, withTenantTransaction } from '@/lib/tenancy/db';
-import { skuCatalogTitleUnownedPredicateSql } from '@/lib/sku/sku-identity-law';
 import { loadActiveAmazonAccounts, loadAmazonCreds } from '@/lib/amazon/accounts';
 import { getCatalogItemImages, pickAmazonCatalogMainImage } from '@/lib/amazon/client';
 import { getBrowseAppToken, getEbayItemImageUrl } from '@/lib/ebay/browse-client';
@@ -29,8 +28,13 @@ const LISTING_PHOTO_TYPE = 'listing';
 
 /** Amazon standard ASIN (non-book): `B` + 9 alphanumerics. */
 const ASIN_RE = /^B[0-9A-Z]{9}$/;
-/** eBay legacy item id: 12 digits. */
-const EBAY_ITEM_ID_RE = /^\d{12}$/;
+/**
+ * eBay legacy ItemID. eBay defines this as a decimal string that callers must
+ * be prepared to store at up to 19 digits; older listings can be shorter than
+ * today's common 12-digit face. Nine digits avoids mistaking local short refs
+ * for listings while retaining legacy inventory.
+ */
+const EBAY_ITEM_ID_RE = /^\d{9,19}$/;
 /** Order-number shapes, for ShipStation rows whose account_source names no channel. */
 const AMAZON_ORDER_RE = /^\d{3}-\d{7}-\d{7}$/;
 const EBAY_ORDER_RE = /^\d{2}-\d{5}-\d{5}$/;
@@ -60,6 +64,10 @@ export interface OrderImageRow {
   zohoImageUrl: string | null;
   /** Photos already in the SKU's listing gallery. */
   galleryCount: number;
+  /** Marketplace fallback already linked directly to this order. */
+  orderPhotoCount?: number;
+  /** Exact line image already persisted by the ShipStation order sync. */
+  sourceImageUrl?: string | null;
   /** The catalog row's Amazon/eBay listing ids (`sku_platform_ids`). */
   catalogRefs: MarketplaceRef[];
 }
@@ -68,6 +76,7 @@ type OrderImageState =
   | 'zoho'
   | 'catalog'
   | 'listing_gallery'
+  | 'order_photo'
   | 'zoho_owned_no_photo'
   | 'no_product'
   | 'missing';
@@ -83,7 +92,7 @@ function orderImageState(row: OrderImageRow): OrderImageState {
       (String(row.zohoImageUrl ?? '').trim() || null);
     return zohoPhoto ? 'zoho' : 'zoho_owned_no_photo';
   }
-  if (row.skuCatalogId == null) return 'no_product';
+  if (row.skuCatalogId == null) return (row.orderPhotoCount ?? 0) > 0 ? 'order_photo' : 'no_product';
   if (String(row.catalogImageUrl ?? '').trim()) return 'catalog';
   // A gallery with any photo is curated (or already backfilled) — never add to it.
   if (row.galleryCount > 0) return 'listing_gallery';
@@ -141,6 +150,14 @@ interface MissingProduct {
   sku: string | null;
   orderIds: number[];
   refs: MarketplaceRef[];
+  sourceImageUrl: string | null;
+}
+
+/** One marketplace listing shared by one or more still-unpaired order lines. */
+interface MissingOrderImage {
+  orderIds: number[];
+  refs: MarketplaceRef[];
+  sourceImageUrl: string | null;
 }
 
 interface BackfillPlan {
@@ -149,40 +166,81 @@ interface BackfillPlan {
   /** Orders with no catalog row that DO carry a marketplace id (fetchable once paired). */
   noProductWithMarketplaceId: number;
   products: MissingProduct[];
+  orderImages: MissingOrderImage[];
 }
 
-function planMarketplaceMediaBackfill(rows: readonly OrderImageRow[]): BackfillPlan {
+function planMarketplaceMediaBackfill(
+  rows: readonly OrderImageRow[],
+  options: { includeZohoLinked: boolean },
+): BackfillPlan {
   const orders: Record<OrderImageState, number> = {
     zoho: 0,
     catalog: 0,
     listing_gallery: 0,
+    order_photo: 0,
     zoho_owned_no_photo: 0,
     no_product: 0,
     missing: 0,
   };
   let noProductWithMarketplaceId = 0;
   const products = new Map<number, MissingProduct>();
+  const orderImages = new Map<string, MissingOrderImage>();
 
   for (const row of rows) {
     const state = orderImageState(row);
     orders[state] += 1;
-    if (state === 'no_product' && marketplaceRefsFor(row).length > 0) noProductWithMarketplaceId += 1;
-    if (state !== 'missing' || row.skuCatalogId == null) continue;
+    const rowRefs = marketplaceRefsFor(row);
+    const sourceImageUrl = String(row.sourceImageUrl ?? '').trim() || null;
+    if (state === 'no_product' && (rowRefs.length > 0 || sourceImageUrl)) {
+      if (rowRefs.length > 0) noProductWithMarketplaceId += 1;
+      // Group repeated orders for the same listing so the provider is queried
+      // once and the same photo row can be linked to every order atomically.
+      const first = rowRefs[0];
+      const key = first ? `${first.provider}:${first.id}` : `source:${sourceImageUrl}`;
+      const image = orderImages.get(key) ?? { orderIds: [], refs: [], sourceImageUrl };
+      image.orderIds.push(row.orderId);
+      image.sourceImageUrl ||= sourceImageUrl;
+      for (const ref of rowRefs) {
+        if (!image.refs.some((candidate) => candidate.provider === ref.provider && candidate.id === ref.id)) {
+          image.refs.push(ref);
+        }
+      }
+      orderImages.set(key, image);
+    }
+    // The order record paints the exact marketplace listing image. A targeted
+    // marketplace repair may therefore seed a gallery fallback even when a
+    // Zoho image exists; it never overwrites the catalog/Zoho source itself.
+    const eligibleState =
+      state === 'missing' ||
+      state === 'zoho_owned_no_photo' ||
+      (options.includeZohoLinked && state === 'zoho');
+    // A gallery means this exact catalog product has already been curated or
+    // backfilled. Zoho remains the display winner, but do not re-fetch the
+    // marketplace image merely because that higher-precedence source exists.
+    if (!eligibleState || row.galleryCount > 0 || row.skuCatalogId == null) continue;
 
     const product = products.get(row.skuCatalogId) ?? {
       skuCatalogId: row.skuCatalogId,
       sku: row.sku,
       orderIds: [],
       refs: [],
+      sourceImageUrl: null,
     };
     product.orderIds.push(row.orderId);
+    product.sourceImageUrl ||= sourceImageUrl;
     for (const ref of marketplaceRefsFor(row)) {
       if (!product.refs.some((r) => r.provider === ref.provider && r.id === ref.id)) product.refs.push(ref);
     }
     products.set(row.skuCatalogId, product);
   }
 
-  return { ordersScanned: rows.length, orders, noProductWithMarketplaceId, products: [...products.values()] };
+  return {
+    ordersScanned: rows.length,
+    orders,
+    noProductWithMarketplaceId,
+    products: [...products.values()],
+    orderImages: [...orderImages.values()],
+  };
 }
 
 // ─── Run ─────────────────────────────────────────────────────────────────────
@@ -192,6 +250,10 @@ export type ProviderGate =
   | { ok: false; reason: string; repair: string };
 
 export type StoreOutcome = { status: 'stored'; photoId: number } | { status: 'skipped'; reason: string };
+export interface OrderStoreOutcome {
+  stored: number;
+  skipped: number;
+}
 
 export interface MarketplaceMediaDeps {
   loadOrderRows(orgId: OrgId, since: Date): Promise<OrderImageRow[]>;
@@ -203,6 +265,12 @@ export interface MarketplaceMediaDeps {
    * re-checking eligibility at write time. A throw means nothing was written.
    */
   storeListingImage(orgId: OrgId, skuCatalogId: number, imageUrl: string): Promise<StoreOutcome>;
+  /** Link one fetched listing image to still-unpaired order lines. */
+  storeOrderListingImage(
+    orgId: OrgId,
+    orderIds: readonly number[],
+    imageUrl: string,
+  ): Promise<OrderStoreOutcome>;
 }
 
 interface ProviderReport {
@@ -221,6 +289,7 @@ interface BackfillReport {
   orders: Record<OrderImageState, number>;
   noProductWithMarketplaceId: number;
   productsMissingImages: number;
+  orderImagesMissing: number;
   noMarketplaceId: number;
   fetchableProducts: number;
   blockedProducts: number;
@@ -233,13 +302,23 @@ interface BackfillReport {
   skipped: Array<{ skuCatalogId: number; reason: string }>;
   /** Apply: stores that threw (their transaction rolled back; the run went on). */
   storeErrors: Array<{ skuCatalogId: number; error: string }>;
-  samples: Array<{ skuCatalogId: number; sku: string | null; ref: MarketplaceRef; imageUrl: string }>;
+  samples: Array<{ skuCatalogId: number; sku: string | null; ref: MarketplaceRef | null; imageUrl: string }>;
+  orderImagesFound: number;
+  orderImagesStored: number;
+  orderImagesSkipped: number;
+  orderFetchErrors: Array<{ orderIds: number[]; ref: MarketplaceRef; error: string }>;
+  orderStoreErrors: Array<{ orderIds: number[]; error: string }>;
+  orderSamples: Array<{ orderIds: number[]; ref: MarketplaceRef | null; imageUrl: string }>;
 }
 
 interface BackfillOptions {
   /** Write covers. Default false: plan, gate and fetch (read-only) only. */
   apply?: boolean;
   since: Date;
+  /** Limit provider calls for a targeted repair. Default: every marketplace. */
+  providers?: readonly MarketplaceProvider[];
+  /** Seed marketplace gallery covers even when a Zoho image exists. */
+  includeZohoLinked?: boolean;
 }
 
 export async function runMarketplaceMediaBackfill(
@@ -248,11 +327,21 @@ export async function runMarketplaceMediaBackfill(
   deps: MarketplaceMediaDeps = defaultDeps,
 ): Promise<BackfillReport> {
   const apply = options.apply === true;
-  const plan = planMarketplaceMediaBackfill(await deps.loadOrderRows(orgId, options.since));
+  const selectedProviders = new Set(options.providers ?? MARKETPLACE_PROVIDERS);
+  const plan = planMarketplaceMediaBackfill(await deps.loadOrderRows(orgId, options.since), {
+    includeZohoLinked: options.includeZohoLinked === true,
+  });
 
   const providers = {} as Record<MarketplaceProvider, ProviderReport>;
   for (const provider of MARKETPLACE_PROVIDERS) {
-    providers[provider] = { gate: await deps.checkProvider(orgId, provider), products: 0, fetchable: 0, blocked: 0 };
+    providers[provider] = {
+      gate: selectedProviders.has(provider)
+        ? await deps.checkProvider(orgId, provider)
+        : { ok: false, reason: 'Provider not selected for this run', repair: '' },
+      products: 0,
+      fetchable: 0,
+      blocked: 0,
+    };
   }
 
   const report: BackfillReport = {
@@ -263,6 +352,7 @@ export async function runMarketplaceMediaBackfill(
     orders: plan.orders,
     noProductWithMarketplaceId: plan.noProductWithMarketplaceId,
     productsMissingImages: plan.products.length,
+    orderImagesMissing: plan.orderImages.length,
     noMarketplaceId: 0,
     fetchableProducts: 0,
     blockedProducts: 0,
@@ -274,10 +364,28 @@ export async function runMarketplaceMediaBackfill(
     skipped: [],
     storeErrors: [],
     samples: [],
+    orderImagesFound: 0,
+    orderImagesStored: 0,
+    orderImagesSkipped: 0,
+    orderFetchErrors: [],
+    orderStoreErrors: [],
+    orderSamples: [],
+  };
+
+  // One marketplace listing can appear on many unpaired orders. Cache both
+  // successful and empty provider answers for this run.
+  const fetchCache = new Map<string, Promise<string | null>>();
+  const fetchRef = (ref: MarketplaceRef) => {
+    const key = `${ref.provider}:${ref.id}`;
+    const cached = fetchCache.get(key);
+    if (cached) return cached;
+    const pending = deps.fetchImageUrl(orgId, ref);
+    fetchCache.set(key, pending);
+    return pending;
   };
 
   for (const product of plan.products) {
-    if (product.refs.length === 0) {
+    if (product.refs.length === 0 && !product.sourceImageUrl) {
       report.noMarketplaceId += 1;
       continue;
     }
@@ -287,17 +395,19 @@ export async function runMarketplaceMediaBackfill(
       if (entry.gate.ok) entry.fetchable += 1;
       else entry.blocked += 1;
     }
-    const usable = product.refs.filter((ref) => providers[ref.provider].gate.ok);
-    if (usable.length === 0) {
+    const usable = product.refs.filter((ref) => selectedProviders.has(ref.provider) && providers[ref.provider].gate.ok);
+    if (usable.length === 0 && !product.sourceImageUrl) {
       report.blockedProducts += 1;
       continue;
     }
     report.fetchableProducts += 1;
 
-    let found: { ref: MarketplaceRef; imageUrl: string } | null = null;
-    for (const ref of usable) {
+    let found: { ref: MarketplaceRef | null; imageUrl: string } | null = product.sourceImageUrl
+      ? { ref: null, imageUrl: product.sourceImageUrl }
+      : null;
+    for (const ref of found ? [] : usable) {
       try {
-        const imageUrl = await deps.fetchImageUrl(orgId, ref);
+        const imageUrl = await fetchRef(ref);
         if (imageUrl) {
           found = { ref, imageUrl };
           break;
@@ -333,6 +443,54 @@ export async function runMarketplaceMediaBackfill(
     }
   }
 
+  for (const image of plan.orderImages) {
+    for (const provider of new Set(image.refs.map((ref) => ref.provider))) {
+      const entry = providers[provider];
+      entry.products += 1;
+      if (entry.gate.ok) entry.fetchable += 1;
+      else entry.blocked += 1;
+    }
+    const usable = image.refs.filter((ref) => selectedProviders.has(ref.provider) && providers[ref.provider].gate.ok);
+    if (usable.length === 0 && !image.sourceImageUrl) continue;
+
+    let found: { ref: MarketplaceRef | null; imageUrl: string } | null = image.sourceImageUrl
+      ? { ref: null, imageUrl: image.sourceImageUrl }
+      : null;
+    for (const ref of found ? [] : usable) {
+      try {
+        const imageUrl = await fetchRef(ref);
+        if (imageUrl) {
+          found = { ref, imageUrl };
+          break;
+        }
+      } catch (err) {
+        report.orderFetchErrors.push({
+          orderIds: image.orderIds,
+          ref,
+          error: err instanceof Error ? err.message : String(err),
+        });
+      }
+    }
+    if (!found) continue;
+    report.orderImagesFound += image.orderIds.length;
+    report.orderSamples.push({ orderIds: image.orderIds, ...found });
+
+    if (!apply) {
+      report.orderImagesStored += image.orderIds.length;
+      continue;
+    }
+    try {
+      const outcome = await deps.storeOrderListingImage(orgId, image.orderIds, found.imageUrl);
+      report.orderImagesStored += outcome.stored;
+      report.orderImagesSkipped += outcome.skipped;
+    } catch (err) {
+      report.orderStoreErrors.push({
+        orderIds: image.orderIds,
+        error: err instanceof Error ? err.message : String(err),
+      });
+    }
+  }
+
   return report;
 }
 
@@ -350,6 +508,8 @@ interface RawOrderImageRow {
   zoho_image_document_id: string | null;
   zoho_image_url: string | null;
   gallery_count: number;
+  order_photo_count: number;
+  source_image_url: string | null;
   catalog_refs: Array<{ provider: string; id: string }> | null;
 }
 
@@ -361,7 +521,7 @@ interface RawOrderImageRow {
 const ORDER_IMAGE_ROWS_SQL = `
   SELECT o.id AS order_id,
          o.order_id AS order_ref,
-         o.account_source,
+         COALESCE(NULLIF(BTRIM(ss_ref.marketplace), ''), o.account_source) AS account_source,
          NULLIF(BTRIM(o.sku), '') AS sku,
          NULLIF(BTRIM(o.item_number), '') AS item_number,
          sc.id AS sku_catalog_id,
@@ -370,8 +530,32 @@ const ORDER_IMAGE_ROWS_SQL = `
          zi.image_document_id AS zoho_image_document_id,
          zi.image_url AS zoho_image_url,
          COALESCE(gallery.n, 0) AS gallery_count,
+         COALESCE(order_photo.n, 0) AS order_photo_count,
+         source_image.image_url AS source_image_url,
          refs.list AS catalog_refs
     FROM orders o
+    LEFT JOIN LATERAL (
+      SELECT ssr.marketplace, ssr.line_items
+        FROM shipstation_order_refs ssr
+       WHERE ssr.organization_id = o.organization_id
+         AND ssr.order_row_id = o.id
+       ORDER BY ssr.last_seen_at DESC NULLS LAST, ssr.id DESC
+       LIMIT 1
+    ) ss_ref ON TRUE
+    LEFT JOIN LATERAL (
+      SELECT NULLIF(BTRIM(line.item->>'imageUrl'), '') AS image_url
+        FROM jsonb_array_elements(COALESCE(ss_ref.line_items, '[]'::jsonb))
+             WITH ORDINALITY AS line(item, ordinal)
+       WHERE COALESCE(line.item->>'adjustment', 'false') <> 'true'
+         AND NULLIF(BTRIM(line.item->>'imageUrl'), '') IS NOT NULL
+       ORDER BY CASE
+                  WHEN NULLIF(BTRIM(o.sku), '') IS NOT NULL
+                   AND UPPER(BTRIM(line.item->>'sku')) = UPPER(BTRIM(o.sku)) THEN 0
+                  ELSE 1
+                END,
+                line.ordinal
+       LIMIT 1
+    ) source_image ON TRUE
     LEFT JOIN LATERAL (
       SELECT c.id, c.sku, c.image_url
         FROM sku_catalog c
@@ -404,6 +588,17 @@ const ORDER_IMAGE_ROWS_SQL = `
          AND lp.sku_catalog_id = sc.id
     ) gallery ON TRUE
     LEFT JOIN LATERAL (
+      SELECT COUNT(*)::int AS n
+        FROM photo_entity_links pel
+        JOIN photos p
+          ON p.id = pel.photo_id
+         AND p.organization_id = pel.organization_id
+       WHERE pel.organization_id = o.organization_id
+         AND pel.entity_type = 'ORDER'
+         AND pel.entity_id = o.id
+         AND p.photo_type = '${LISTING_PHOTO_TYPE}'
+    ) order_photo ON TRUE
+    LEFT JOIN LATERAL (
       SELECT jsonb_agg(jsonb_build_object('provider', spi.platform, 'id', BTRIM(spi.platform_item_id))
                        ORDER BY spi.is_active DESC, spi.id) AS list
         FROM sku_platform_ids spi
@@ -430,6 +625,8 @@ async function loadOrderRows(orgId: OrgId, since: Date): Promise<OrderImageRow[]
     zohoImageDocumentId: r.zoho_image_document_id,
     zohoImageUrl: r.zoho_image_url,
     galleryCount: Number(r.gallery_count) || 0,
+    orderPhotoCount: Number(r.order_photo_count) || 0,
+    sourceImageUrl: r.source_image_url,
     catalogRefs: (r.catalog_refs ?? []).flatMap((ref) => {
       const valid = toRef(ref.provider, ref.id);
       return valid ? [valid] : [];
@@ -484,7 +681,6 @@ async function storeListingImage(orgId: OrgId, skuCatalogId: number, imageUrl: s
           WHERE sc.id = $2
             AND sc.organization_id = $1
             AND NULLIF(BTRIM(sc.image_url), '') IS NULL
-            AND ${skuCatalogTitleUnownedPredicateSql('sc')}
             AND NOT EXISTS (SELECT 1 FROM listing_photos lp
                              WHERE lp.organization_id = sc.organization_id
                                AND lp.sku_catalog_id = sc.id)
@@ -492,7 +688,7 @@ async function storeListingImage(orgId: OrgId, skuCatalogId: number, imageUrl: s
         [orgId, skuCatalogId],
       );
       if (!eligible.rows[0]?.ok) {
-        return { status: 'skipped', reason: 'product gained a photo (catalog, Zoho or gallery) since planning' };
+        return { status: 'skipped', reason: 'product gained a photo (catalog or gallery) since planning' };
       }
       // photo + link + storage + gallery row commit together or not at all.
       const photo = await attachPhotoWithLegacyUrlInTx(client, {
@@ -514,4 +710,52 @@ async function storeListingImage(orgId: OrgId, skuCatalogId: number, imageUrl: s
   }
 }
 
-const defaultDeps: MarketplaceMediaDeps = { loadOrderRows, checkProvider, fetchImageUrl, storeListingImage };
+async function storeOrderListingImage(
+  orgId: OrgId,
+  orderIds: readonly number[],
+  imageUrl: string,
+): Promise<OrderStoreOutcome> {
+  return withTenantTransaction(orgId, async (client) => {
+    const eligible = await client.query<{ id: string }>(
+      `SELECT o.id
+         FROM orders o
+        WHERE o.organization_id = $1
+          AND o.id = ANY($2::bigint[])
+          AND NOT EXISTS (
+            SELECT 1
+              FROM photo_entity_links pel
+              JOIN photos p
+                ON p.id = pel.photo_id
+               AND p.organization_id = pel.organization_id
+             WHERE pel.organization_id = o.organization_id
+               AND pel.entity_type = 'ORDER'
+               AND pel.entity_id = o.id
+               AND p.photo_type = $3
+          )
+        FOR UPDATE OF o`,
+      [orgId, orderIds, LISTING_PHOTO_TYPE],
+    );
+    for (const candidate of eligible.rows) {
+      const orderId = Number(candidate.id);
+      await attachPhotoWithLegacyUrlInTx(client, {
+        organizationId: orgId,
+        staffId: null,
+        entityType: 'ORDER',
+        entityId: orderId,
+        legacyUrl: imageUrl,
+        photoType: LISTING_PHOTO_TYPE,
+        poRef: `ORDER_${orderId}`,
+        idempotent: true,
+      });
+    }
+    return { stored: eligible.rows.length, skipped: orderIds.length - eligible.rows.length };
+  });
+}
+
+const defaultDeps: MarketplaceMediaDeps = {
+  loadOrderRows,
+  checkProvider,
+  fetchImageUrl,
+  storeListingImage,
+  storeOrderListingImage,
+};

@@ -1,6 +1,10 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { mapPackingReportDbRow, resolvePackTierSource } from './packing-report-shared';
+import {
+  mapPackingReportDbRow,
+  packingReportMatchesQuery,
+  resolvePackTierSource,
+} from './packing-report-shared';
 
 test('resolvePackTierSource prefers explicit enrichment sources', () => {
   assert.equal(resolvePackTierSource('profile', 'LARGE'), 'profile');
@@ -20,6 +24,8 @@ test('resolvePackTierSource falls back to rules when tier present without source
 test('mapPackingReportDbRow includes item number, catalog id, and packer log', () => {
   const row = mapPackingReportDbRow({
     packed_at: '2026-08-03T12:00:00.000Z',
+    pack_duration_seconds: 92,
+    next_pack_seconds: 215,
     packer_name: 'Koh',
     sku: 'SKU-1',
     product_title: 'Wave Radio',
@@ -28,6 +34,8 @@ test('mapPackingReportDbRow includes item number, catalog id, and packer log', (
     estimated_minutes: 14,
     tracking_type: null,
     tracking_or_scan_ref: '1Z',
+    quantity: '2',
+    image_url: 'https://example.test/product.jpg',
     item_number: 'ITEM-99',
     sku_catalog_id: 42,
     tier_source: 'profile',
@@ -40,11 +48,21 @@ test('mapPackingReportDbRow includes item number, catalog id, and packer log', (
   assert.equal(row.packerLogId, 7);
   assert.equal(row.salId, 100);
   assert.equal(row.packTier, 'MEDIUM');
+  assert.equal(row.packDurationSeconds, 92);
+  assert.equal(row.nextPackSeconds, 215);
+  assert.equal(row.quantity, 2);
+  assert.equal(row.imageUrl, 'https://example.test/product.jpg');
+  assert.equal(packingReportMatchesQuery(row, 'koh amazon'), false);
+  assert.equal(packingReportMatchesQuery(row, 'Koh ITEM-99'), true);
+  assert.equal(packingReportMatchesQuery({ ...row, platform: 'Amazon', orderNumber: '114-123' }, 'amazon 114-123'), true);
+  assert.equal(packingReportMatchesQuery(row, '1Z Wave'), true);
 });
 
 test('mapPackingReportDbRow marks COALESCE small as default when raw tier null', () => {
   const row = mapPackingReportDbRow({
     packed_at: '2026-08-03T12:00:00.000Z',
+    pack_duration_seconds: null,
+    next_pack_seconds: null,
     packer_name: null,
     sku: null,
     product_title: null,
@@ -53,6 +71,8 @@ test('mapPackingReportDbRow marks COALESCE small as default when raw tier null',
     estimated_minutes: 5,
     tracking_type: null,
     tracking_or_scan_ref: null,
+    quantity: null,
+    image_url: null,
     item_number: null,
     sku_catalog_id: null,
     tier_source: null,
@@ -62,4 +82,5 @@ test('mapPackingReportDbRow marks COALESCE small as default when raw tier null',
   assert.equal(row.tierSource, 'default');
   assert.equal(row.skuCatalogId, null);
   assert.equal(row.packerLogId, null);
+  assert.equal(row.quantity, 1);
 });

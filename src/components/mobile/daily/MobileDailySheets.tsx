@@ -81,7 +81,7 @@ export function MobileDailyDetailSheet({
           {canManage ? 'Edit task' : 'Task'}
         </span>
         {item ? (
-          <span className="shrink-0 font-mono text-role-micro tabular-nums text-text-faint">
+          <span className="shrink-0 text-role-micro tabular-nums text-text-faint">
             {item.id}
           </span>
         ) : null}

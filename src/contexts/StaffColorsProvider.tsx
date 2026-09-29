@@ -13,6 +13,7 @@ import {
   _subscribeStaffColorCache,
   _getStaffColorVersion,
 } from '@/utils/staff-colors';
+import { fetchStaffRoster } from '@/lib/staffCache';
 
 interface StaffColorRecord {
   id: number;
@@ -31,11 +32,10 @@ export function StaffColorsProvider({ children }: { children: React.ReactNode })
   const { data } = useQuery<StaffColorRecord[]>({
     queryKey: qk.staff.all,
     enabled: idleReady,
+    // Shared flight with `getActiveStaff` — one roster request serves both.
     queryFn: async () => {
-      const r = await fetch('/api/staff?active=false', { cache: 'no-store' });
-      if (!r.ok) return [];
-      const json = await r.json();
-      return Array.isArray(json) ? json : [];
+      const rows = await fetchStaffRoster().catch(() => []);
+      return rows as StaffColorRecord[];
     },
     staleTime: 5 * 60 * 1000,
     refetchOnWindowFocus: false,

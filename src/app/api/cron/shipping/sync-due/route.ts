@@ -52,6 +52,8 @@ export async function GET(req: NextRequest) {
       synced: result.synced,
       terminal: result.terminal,
       errors: result.errors,
+      overdueCandidates: result.overdueCandidates,
+      alertSubscriptionsAdded: result.alertSubscriptionsAdded,
       durationMs: result.durationMs,
     }, '[cron.shipping.sync-due]');
 

@@ -5,7 +5,8 @@
  * staffer's station) ∪ the staffer's own roster (Ably) — and which one prints
  * each stock: this device's per-stock pick › the org's assignment › this
  * computer. When the target is this computer the desk prints locally; any
- * other station gets a `documents` job over its org station channel.
+ * other station gets a job over its org station channel (`documents` from the
+ * desks, `fnsku` from the Print station).
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -26,6 +27,8 @@ import {
   fetchPrintStations,
   PRINT_STATIONS_QUERY_KEY,
   putPrintStationAssignment,
+  putPrintStationName,
+  renameThisPrintStation,
 } from '@/lib/print/print-station-registry-client';
 import type { PrintStationAssignment, PrintStationRegistry } from '@/lib/print/print-station-registry-contracts';
 import { SILENT_PRINT_CHANGED_EVENT } from '@/lib/print/printMode';
@@ -37,6 +40,7 @@ import {
   isStaffPrintStationLive,
   roleReady,
   type StaffPrintJob,
+  type StaffPrintJobBody,
   type StationDocumentRef,
 } from '@/lib/print/staff-print-bridge';
 import { getPrintStationChannelName, safeChannelName } from '@/lib/realtime/channels';
@@ -53,6 +57,8 @@ export interface PrintStationEntry {
   sources: Array<'org' | 'staff'>;
   live: boolean;
   lastSeenAt: number | null;
+  /** The staffer signed in on that computer at its last org heartbeat — who is at that table. */
+  lastSeenStaffId: number | null;
   label: StockFace;
   paper: StockFace;
 }
@@ -93,6 +99,10 @@ export interface PrintStations {
   orgAssignment: PrintStationAssignment;
   pick: (stock: PrintStock, stationId: string | null) => void;
   setOrgAssignment: (stock: PrintStock, stationId: string | null) => Promise<void>;
+  /** May this staffer rename OTHER computers (Hardware settings)? Anyone may name this one. */
+  canRenameOthers: boolean;
+  /** Rename a station for the whole org (empty = unnamed); rejects with the server's reason. */
+  rename: (stationId: string, name: string) => Promise<void>;
   /** Why a stock cannot go to its target right now; null when it can. */
   blockedReason: (stock: PrintStock) => string | null;
   /** One bridge job to a named station; resolves true when that station acked it. */
@@ -103,6 +113,8 @@ export interface PrintStations {
     items: StationDocumentRef[],
     onProgress?: (done: number, total: number) => void,
   ) => Promise<boolean>;
+  /** Reprint `copies` (1–99) FBA labels of one FNSKU at a named station; resolves true when it acked. */
+  sendFnsku: (stationId: string, fnsku: string, copies: number) => Promise<boolean>;
 }
 
 /** @param active poll the org registry and the staff roster while true. */
@@ -164,6 +176,7 @@ export function usePrintStations({ active = true }: { active?: boolean } = {}): 
         sources: ['org'],
         live: s.online,
         lastSeenAt: Date.parse(s.lastSeenAt),
+        lastSeenStaffId: s.lastSeenStaffId,
         label: s.label,
         paper: s.paper,
       });
@@ -177,6 +190,7 @@ export function usePrintStations({ active = true }: { active?: boolean } = {}): 
         sources: ['staff'],
         live: isStaffPrintStationLive(s, bridge.now),
         lastSeenAt: s.lastSeenAt,
+        lastSeenStaffId: null,
         label: { ready: roleReady(status, 'label'), printer: status.label.name },
         paper: { ready: roleReady(status, 'paper'), printer: status.paper.name },
       };
@@ -192,6 +206,7 @@ export function usePrintStations({ active = true }: { active?: boolean } = {}): 
         sources: ['org', 'staff'],
         live: org.live || heard.live,
         lastSeenAt: Math.max(org.lastSeenAt ?? 0, s.lastSeenAt),
+        lastSeenStaffId: org.lastSeenStaffId,
       });
     }
     const heardSelf = byId.get(self.id);
@@ -208,11 +223,12 @@ export function usePrintStations({ active = true }: { active?: boolean } = {}): 
       sources: heardSelf?.sources ?? [],
       live: true,
       lastSeenAt: heardSelf?.lastSeenAt ?? null,
+      lastSeenStaffId: staffId || null,
       label: faces.label,
       paper: faces.paper,
     };
     return [me, ...others];
-  }, [registry, bridge.stations, bridge.now, self, local]);
+  }, [registry, bridge.stations, bridge.now, self, local, staffId]);
 
   const orgAssignment = registry?.assignment ?? NO_ASSIGNMENT;
 
@@ -243,6 +259,15 @@ export function usePrintStations({ active = true }: { active?: boolean } = {}): 
     [queryClient],
   );
 
+  const rename = useCallback(
+    async (stationId: string, name: string) => {
+      if (stationId === self.id) await renameThisPrintStation(name);
+      else await putPrintStationName(stationId, name);
+      await queryClient.invalidateQueries({ queryKey: PRINT_STATIONS_QUERY_KEY });
+    },
+    [self.id, queryClient],
+  );
+
   const blockedReason = useCallback(
     (stock: PrintStock): string | null => {
       const station = target[stock];
@@ -265,27 +290,15 @@ export function usePrintStations({ active = true }: { active?: boolean } = {}): 
     };
   }, []);
 
-  const sendDocuments = useCallback(
-    async (
-      stationId: string,
-      stock: PrintStock,
-      batchId: string,
-      items: StationDocumentRef[],
-      onProgress?: (done: number, total: number) => void,
-    ): Promise<boolean> => {
+  /** One job to one station over its org channel; true when the station acked it. */
+  const sendStationJob = useCallback(
+    async (stationId: string, body: StaffPrintJobBody, onProgress?: (done: number, total: number) => void): Promise<boolean> => {
       const channelName = orgEnabled ? safeChannelName(() => getPrintStationChannelName(orgId, stationId)) : '';
       const client = channelName ? await getClient() : null;
       const channel = client?.channels.get(channelName);
       if (!channel) return false;
       const requestId = safeRandomUUID();
-      const job: StaffPrintJob = {
-        type: 'staff.print_job',
-        request_id: requestId,
-        targetStationId: stationId,
-        grain: 'documents',
-        role: stock,
-        documents: { stock, batchId, items },
-      };
+      const job = { ...body, type: 'staff.print_job', request_id: requestId, targetStationId: stationId } as StaffPrintJob;
 
       let stopProgress = () => {};
       if (onProgress) {
@@ -330,6 +343,24 @@ export function usePrintStations({ active = true }: { active?: boolean } = {}): 
     [getClient, orgEnabled, orgId],
   );
 
+  const sendDocuments = useCallback(
+    (
+      stationId: string,
+      stock: PrintStock,
+      batchId: string,
+      items: StationDocumentRef[],
+      onProgress?: (done: number, total: number) => void,
+    ): Promise<boolean> =>
+      sendStationJob(stationId, { grain: 'documents', role: stock, documents: { stock, batchId, items } }, onProgress),
+    [sendStationJob],
+  );
+
+  const sendFnsku = useCallback(
+    (stationId: string, fnsku: string, copies: number): Promise<boolean> =>
+      sendStationJob(stationId, { grain: 'fnsku', role: 'label', fnsku: { fnsku, copies } }),
+    [sendStationJob],
+  );
+
   return {
     stations,
     thisStationId: self.id,
@@ -337,7 +368,10 @@ export function usePrintStations({ active = true }: { active?: boolean } = {}): 
     orgAssignment,
     pick,
     setOrgAssignment,
+    canRenameOthers: has('settings.hardware'),
+    rename,
     blockedReason,
     sendDocuments,
+    sendFnsku,
   };
 }

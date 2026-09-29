@@ -82,12 +82,6 @@ export function LabelsProductsWorkspace() {
     [replaceParams, searchParams],
   );
 
-  const handleCatalogSearch = useCallback(
-    (value: string) => {
-      replaceParams({ q: value.trim() || null });
-    },
-    [replaceParams],
-  );
 
   const handleProductPick = useCallback((sku: string) => {
     window.dispatchEvent(new CustomEvent('sku:fill', { detail: { sku } }));
@@ -99,15 +93,15 @@ export function LabelsProductsWorkspace() {
 
   return (
     <div className="relative flex h-full min-h-0 w-full flex-col overflow-hidden bg-surface-canvas">
-      {/* The find field sits with what it narrows: the catalog on Print, the
-          unit lookup on History. Neither tab has one on Detail. */}
-      {tab === 'print' || tab === 'history' ? (
+      {/* Unit history lookup is a job verb, not list Find. Catalog Find lives
+          in the header and writes `?q=` through NAV_PAGE_DECLS. */}
+      {tab === 'history' ? (
         <div className="flex min-w-0 shrink-0 items-center gap-2 border-b border-border-soft bg-surface-card px-2 py-1">
           <SearchField
-            value={tab === 'history' ? historyDraft : catalogQuery}
-            onChange={tab === 'history' ? setHistoryDraft : handleCatalogSearch}
-            onSearch={tab === 'history' ? handleHistorySubmit : undefined}
-            placeholder={tab === 'history' ? 'Look up a unit…' : 'Filter catalog…'}
+            value={historyDraft}
+            onChange={setHistoryDraft}
+            onSearch={handleHistorySubmit}
+            placeholder="Look up a unit…"
             className="min-w-0 max-w-[22rem] flex-1"
             tone="neutral"
             hideUnderline

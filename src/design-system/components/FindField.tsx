@@ -253,7 +253,13 @@ export function FindField({
   // this page, ⌘K / Ctrl K searches everywhere. The keys ride in the phrase,
   // so no separate keycap sits in front of it.
   const rolled: readonly FindHint[] = escalate
-    ? [hints[0] ?? 'Find', { keys: ['F'], text: hints[1] ?? 'Find' }, { keys: chordKeys('mod+k', apple), text: 'Everywhere' }, ...hints.slice(2)]
+    ? [
+        hints[0] ?? 'Find',
+        { keys: ['F'], text: hints[1] ?? 'Find' },
+        { keys: chordKeys('mod+k', apple), text: 'Everywhere' },
+        { keys: chordKeys('mod+shift+f', apple), text: 'Clear' },
+        ...hints.slice(2),
+      ]
     : hints;
   const query = look.focused ? draft.trim() : '';
   const panel = query && (below || escalate);

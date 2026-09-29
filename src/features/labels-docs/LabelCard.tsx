@@ -3,13 +3,14 @@
 /**
  * One card in the Labels & docs rail — what the order IS, nothing else:
  *
- *   ☐  ● 5010                                          2 labels
+ *   ☐  ● 5010  eBay                                    2 labels
  *      ×2  Shimano XT rear derailleur
  *      ×1  Brake pads
  *
  * The order number top-left in the house identity face (`OrderNumberIdentity`:
  * the platform's brand dot to its left, copy / open menu on hover — the same
- * face To ship wears), the order's products with quantities beneath; "N
+ * face To ship wears) with the platform NAME beside it (the dot alone is not
+ * enough — owner 2026-09-29), the order's products with quantities beneath; "N
  * labels" only when one order ships more than one. No status column, no next
  * step, no carrier line, no details disclosure (owner 2026-09-27) — carrier,
  * tracking and the print log live on the open record. An unpaired label reads
@@ -24,6 +25,7 @@ import type { TriageCardSlotProps } from '@/design-system/components/triage-card
 import { Checkbox } from '@/design-system/primitives';
 import { focusRing } from '@/design-system/tokens/focus-ring';
 import { useOrderChannel } from '@/hooks/useCatalog';
+import { resolveMarketplaceChipIdentity } from '@/lib/marketplace-order-id';
 import { cn } from '@/utils/_cn';
 import type { DeskCardModel, DeskRow } from './desk-rows';
 
@@ -41,6 +43,9 @@ export const LabelCard = memo(function LabelCard({
   testIdPrefix,
 }: TriageCardSlotProps<DeskRow, DeskCardModel> & { testIdPrefix: string }) {
   const channel = useOrderChannel()(model.orderRef ?? '', model.accountSource);
+  const platformLabel = channel.label || model.accountSource;
+  // Same resolver the dot uses, so the name and the dot never disagree.
+  const platformName = model.orderRef ? (resolveMarketplaceChipIdentity(model.orderRef, platformLabel).platformLabel ?? platformLabel) : null;
   const name = model.orderRef ?? 'No order';
   const lead = model.labels[0] ?? null;
   const tracking = lead?.trackingNumber ?? null;
@@ -83,9 +88,16 @@ export const LabelCard = memo(function LabelCard({
       <div className="pointer-events-none relative z-10 flex min-w-0 flex-1 flex-col gap-1">
         <div className="flex h-6 min-w-0 items-center gap-2">
           {model.orderRef ? (
-            <span className="pointer-events-auto min-w-0 text-sm font-semibold tabular-nums" onClick={stop} onPointerDown={stop}>
-              <OrderNumberIdentity orderId={model.orderRef} platformLabel={channel.label || model.accountSource} />
-            </span>
+            <>
+              <span className="pointer-events-auto min-w-0 text-sm font-semibold tabular-nums" onClick={stop} onPointerDown={stop}>
+                <OrderNumberIdentity orderId={model.orderRef} platformLabel={platformLabel} />
+              </span>
+              {platformName ? (
+                <span className="shrink-0 truncate text-xs font-medium text-text-muted" data-testid={`${testIdPrefix}-platform`}>
+                  {platformName}
+                </span>
+              ) : null}
+            </>
           ) : (
             <span className="min-w-0 truncate text-sm font-semibold text-text-muted">No order</span>
           )}

@@ -1,9 +1,10 @@
 'use client';
 
 /**
- * The label-upload tray — transient: one row per label sent (a split batch
- * shows `<base>-p<n>.pdf` per page), each Added · Already on file · Failed
- * with its reason, and an N-of-M meter while the pick is still sending.
+ * The label-upload tray — transient: one row per PDF sent (a batch — the
+ * server split it into labels), each Added · Already on file · Failed with
+ * what landed ("38 labels added · 2 already on file") or why it failed, and an
+ * N-of-M meter while the pick is still sending.
  * Dismiss drops the finished rows. Renders nothing when there is nothing to
  * report.
  */
@@ -60,11 +61,7 @@ export function LabelUploadTray({ uploads }: { uploads: LabelUploads }) {
                 <p className="truncate text-role-data text-text-default" title={item.name}>
                   {item.name}
                 </p>
-                {item.page !== null ? (
-                  <p className="truncate text-role-caption text-text-muted">
-                    Page {item.page} of {item.sourceName}
-                  </p>
-                ) : null}
+                {item.summary ? <p className="truncate text-role-caption text-text-muted">{item.summary}</p> : null}
                 {item.reason ? <p className="text-role-caption text-rose-700">{item.reason}</p> : null}
               </div>
               <Badge variant={face.variant}>

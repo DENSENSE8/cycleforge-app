@@ -95,11 +95,19 @@ function resolveLibModule(specifier) {
   return null;
 }
 
+// GUC wrappers that set `app.current_org` for a SINGLE org (src/lib/tenancy/db.ts).
+// `tenantQueryOneTrip` prepends `set_config('app.current_org', …, true)` to the
+// statement in the same round trip; `withTenantDrizzle` delegates to
+// `withTenantConnection` (src/lib/drizzle/tenant-db.ts). NOTE: the cron fan-out
+// helpers (`forEachActiveOrg`/`forEachOrg`) are deliberately NOT here — they
+// sweep ALL orgs, so they are cross-org-by-design, not single-org GUC-wrapped.
+const TENANT_WRAPPER_RE = /\b(tenantQuery|tenantQueryOneTrip|withTenantConnection|withTenantTransaction|withTenantDrizzle)\b/;
+
 const scopedModuleMemo = new Map();
 function moduleReachesTenantWrapper(file) {
   if (scopedModuleMemo.has(file)) return scopedModuleMemo.get(file);
   const src = readFileSync(file, 'utf8');
-  const scoped = /\b(tenantQuery|withTenantConnection|withTenantTransaction|withTenantDrizzle)\b/.test(src);
+  const scoped = TENANT_WRAPPER_RE.test(src);
   scopedModuleMemo.set(file, scoped);
   return scoped;
 }
@@ -133,13 +141,7 @@ for (const file of files) {
   const withAuth = /withAuth\s*\(/.test(src);
   const permMatch = src.match(/permission:\s*['"]([^'"]+)['"]/);
   const orgIdRef = /organizationId/.test(src);
-  // GUC wrappers that set `app.current_org` for a SINGLE org. `withTenantDrizzle`
-  // delegates to `withTenantConnection` (src/lib/drizzle/tenant-db.ts), binding a
-  // Drizzle instance to the same GUC-bearing client — so a route using it is just
-  // as tenant-scoped as one calling `tenantQuery`. NOTE: the cron fan-out helpers
-  // (`forEachActiveOrg`/`forEachOrg`) are deliberately NOT here — they sweep ALL
-  // orgs, so they are cross-org-by-design, not single-org GUC-wrapped.
-  const directlyTenantWrapped = /\b(tenantQuery|withTenantConnection|withTenantTransaction|withTenantDrizzle)\b/.test(src);
+  const directlyTenantWrapped = TENANT_WRAPPER_RE.test(src);
   const inlineRawQuery = /\b(?:pool|db)\.query\s*\(/.test(src);
   const delegatedTenantWrapped = !inlineRawQuery && hasScopedHelperCall(src);
   const tenantWrapped = directlyTenantWrapped || delegatedTenantWrapped;

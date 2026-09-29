@@ -17,8 +17,8 @@ import { GO_IDLE, GO_TIMEOUT_MS, goReduce, type GoState } from '@/lib/keyboard/g
 import { isEditableKeyTarget } from '@/lib/keyboard/is-editable-key-target';
 import { hasOpenOverlay } from '@/lib/overlay-stack/store';
 import { registerShortcutOverviewGroup } from '@/lib/keyboard/shortcut-overview';
-import { NAV_GO_KEYS } from '@/lib/nav/go-keys';
-import { getSidebarPageNav, spineSectionIdForPage } from '@/lib/sidebar-navigation';
+import { navGoDestinations } from '@/lib/nav/go-keys';
+import { applyChildTarget, filterPageChildren, getSidebarPageNav } from '@/lib/sidebar-navigation';
 import { KeyboardKey } from '@/design-system/primitives';
 import { AnimatePresence, motion } from '@/design-system/motion';
 import { aiTransition } from '@/design-system/ai';
@@ -28,6 +28,7 @@ import { DROPDOWN_SHELL_CORNER } from '@/design-system/tokens/radius';
 import { navIconStrokeClass } from '@/components/icons/nav-weight';
 import { cn } from '@/utils/_cn';
 import { useLaneDoorHref } from './useLaneDoorHref';
+import { NAV_VIEW_ICONS } from './nav-view-icons';
 import {
   publishGoArmed,
   publishGoTargets,
@@ -40,11 +41,13 @@ import {
  * `G` then a letter opens one of the CURRENT lane's modes: on Shipping's lane
  * `G S` Shipping, `G F` FBA, `G L` Label intake; on Inbound's `G D`
  * Deliveries, `G S` Sourcing (`NAV_GO_KEYS`, per lane — a letter never
- * reaches another lane's page). Targets come straight from the static
- * registry — label, icon and href from `getSidebarPageNav`, gated by the same
- * `requires` permission the resolver applies (build.ts `pipelinePage`) — so
- * no page state is needed. Shipping opens the staffer's last view
- * (`useLaneDoorHref`).
+ * reaches another lane's page). A page may add letters for its own CHILDREN
+ * (`NAV_PAGE_GO_KEYS`: Exceptions' `G F` Fulfillment · `G I` Inventory ·
+ * `G R` Receiving). Targets come straight from the static registry — label,
+ * icon and href from `getSidebarPageNav` (a child: its `to()` from the page
+ * root, and its view glyph), gated by the same permission the resolver
+ * applies (build.ts `pipelinePage` / `filterPageChildren`) — so no page state
+ * is needed. Shipping opens the staffer's last view (`useLaneDoorHref`).
  *
  * The sequence is published (`go-keys-store`) so it is taught where the eye
  * already is: a desk header's key strip (`NavKeyStrip`) swaps to the next
@@ -53,20 +56,42 @@ import {
  * under the app header instead. Nothing shades or outlines the list (owner
  * 2026-09-27).
  */
-export function NavGoKeys({ currentPageId }: { currentPageId: string | undefined }) {
+export function NavGoKeys({
+  currentPageId,
+  currentItemId,
+}: {
+  currentPageId: string | undefined;
+  /** The panel's lit item (a child id) — the child target that is already here. */
+  currentItemId: string | undefined;
+}) {
   const router = useRouter();
   const { user } = useAuth();
   const doorHref = useLaneDoorHref();
   const permissions = user?.permissions;
   const targets = useMemo<GoTarget[]>(() => {
-    const laneId = spineSectionIdForPage(currentPageId ? getSidebarPageNav(currentPageId) : null);
-    const letters = laneId ? NAV_GO_KEYS[laneId] : undefined;
-    return Object.entries(letters ?? {}).flatMap(([letter, pageId]) => {
+    const granted = new Set(permissions ?? []);
+    return navGoDestinations(currentPageId).flatMap(({ letter, pageId, childId }): GoTarget[] => {
       const page = getSidebarPageNav(pageId);
-      if (!page || (page.requires && !permissions?.includes(page.requires))) return [];
-      return [{ letter, id: pageId, label: page.label, href: doorHref(pageId) ?? page.href, current: pageId === currentPageId }];
+      if (!page || (page.requires && !granted.has(page.requires))) return [];
+      if (childId === undefined) {
+        const href = doorHref(pageId) ?? page.href;
+        return [{ letter, id: pageId, label: page.label, href, current: pageId === currentPageId, icon: page.icon, tone: page.tone }];
+      }
+      const child = filterPageChildren(page, granted).children?.find((entry) => entry.id === childId);
+      if (!child) return [];
+      const target = applyChildTarget({ pathname: page.href, params: new URLSearchParams() }, child.to());
+      const glyph = NAV_VIEW_ICONS[`${pageId}.${childId}`];
+      return [{
+        letter,
+        id: childId,
+        label: child.label,
+        href: target.search ? `${target.pathname}?${target.search}` : target.pathname,
+        current: childId === currentItemId,
+        icon: glyph?.icon ?? child.icon,
+        tone: glyph?.tone,
+      }];
     });
-  }, [permissions, doorHref, currentPageId]);
+  }, [permissions, doorHref, currentPageId, currentItemId]);
   const targetsRef = useRef(targets);
   targetsRef.current = targets;
   const state = useRef<GoState>(GO_IDLE);
@@ -193,8 +218,8 @@ export function goHintRows(targets: readonly GoTarget[]): KeyHintRow[] {
     keys: [target.letter.toUpperCase()],
     pressedId: `go:${target.letter}`,
     label: target.label,
-    icon: getSidebarPageNav(target.id)?.icon,
-    iconTone: getSidebarPageNav(target.id)?.tone,
+    icon: target.icon,
+    iconTone: target.tone,
     current: target.current,
   }));
 }

@@ -18,6 +18,7 @@ import type { RecordFactColumn } from '../record-card/record-fact';
 import type { TriageCardModelBase, TriageCardSlotProps, TriageFamily } from './TriageCardList';
 import type { RowGroup } from '@/lib/group-rows';
 import type { TriageSectionTone } from './TriageListBody';
+import type { RecordStateFace } from '@/design-system/tokens/industrial-record';
 
 /** `page.view`, exactly the nav's ids (`incoming.docked`). */
 export type TriageViewId = `${string}.${string}`;
@@ -67,6 +68,7 @@ export interface TriageViewParts<Row, Model extends TriageCardModelBase<Row>> {
   rowId: (row: Row) => number;
   groupKey: (group: RowGroup<Row>) => string;
   cardModel: (group: RowGroup<Row>, band: string) => Model;
+  state?: (group: RowGroup<Row>, band: string) => RecordStateFace;
   exactFind?: (query: string, model: Model) => boolean;
   renderCard: (props: TriageCardSlotProps<Row, Model>) => ReactNode;
 }

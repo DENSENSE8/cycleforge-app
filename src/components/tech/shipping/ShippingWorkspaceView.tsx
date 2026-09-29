@@ -15,7 +15,6 @@ import { NewOrderEntryOverlay } from '@/components/orders/NewOrderEntryOverlay';
 import { DeskPageLayout } from '@/components/desk/DeskPageLayout';
 import { DeskActionSlotRegistrar, DeskHeaderAction } from '@/design-system/components/DeskActionSlot';
 import { Plus } from '@/components/Icons';
-import type { ShippingWorkspaceTab } from '@/utils/shipping-workspace-state';
 
 function TableFallback() {
   return <div className="min-h-[240px] flex-1 bg-surface-canvas" aria-hidden />;
@@ -33,19 +32,8 @@ interface ShippingWorkspaceViewProps {
   techId: string;
 }
 
-/** The bench strip. */
-const SHIPPING_VIEW_TABS = [
-  { id: 'urgent', label: 'Urgent' },
-  { id: 'history', label: 'History' },
-] as const;
-
-/** Ids the strip can light. Anything else is the unlit default body. */
-const SHIPPING_LIT_TABS: ReadonlySet<string> = new Set(
-  SHIPPING_VIEW_TABS.map((t) => t.id),
-);
-
 export function ShippingWorkspaceView({ techId }: ShippingWorkspaceViewProps) {
-  const { shipTab, setShipTab } = useShippingWorkspaceTab();
+  const { shipTab } = useShippingWorkspaceTab();
   const { newOpen, openNew, closeNew } = useNewOrderParam();
   const parsedTechId = parseInt(techId, 10);
   const queueTab = shipTab === 'pending' || shipTab === 'urgent';
@@ -59,12 +47,7 @@ export function ShippingWorkspaceView({ techId }: ShippingWorkspaceViewProps) {
   const paneMotionProps = { ...presence, transition };
 
   return (
-    <DeskPageLayout
-      className="h-full"
-      tabs={SHIPPING_VIEW_TABS}
-      activeTab={SHIPPING_LIT_TABS.has(shipTab) ? shipTab : ''}
-      onTabChange={(id) => setShipTab(id === shipTab ? 'pending' : (id as ShippingWorkspaceTab))}
-    >
+    <DeskPageLayout className="h-full">
       {/* The bench's one page-level action, at page-header altitude. */}
       <DeskActionSlotRegistrar>
         <DeskHeaderAction

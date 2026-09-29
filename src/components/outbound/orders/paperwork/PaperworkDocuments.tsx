@@ -22,6 +22,7 @@ import { FetchedPdfFrame } from '@/design-system/components/FetchedPdfFrame';
 import { requestConfirm } from '@/design-system/components/confirm';
 import { resolveDocumentPreviewMime } from '@/design-system/components/document-preview-mime';
 import { Button, IconButton } from '@/design-system/primitives';
+import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { focusRing } from '@/design-system/tokens/focus-ring';
 import {
   TRIAGE_PANEL_INNER_CORNER,
@@ -374,7 +375,7 @@ export function PaperworkDocuments({
     >
       {/* The toolbar (owner 2026-09-27): kind tabs on the left; download /
           export and the ✕ top right — ✕ always the far-right corner. In a
-          narrow pane the actions take the first row and the tabs wrap under. */}
+          narrow pane the kind tabs remain first and the actions wrap after. */}
       <div className="@container/tools flex flex-wrap items-center gap-2">
         {itemView ? (
           <p className={CAPTION}>
@@ -410,7 +411,7 @@ export function PaperworkDocuments({
             ))}
           </div>
         )}
-        <div className="order-first ml-auto flex w-full shrink-0 items-center justify-end gap-1.5 @2xl/tools:order-none @2xl/tools:w-auto">
+        <div className="ml-auto flex shrink-0 items-center justify-end gap-1.5">
           {itemView ? null : (
             <Button
               variant="secondary"
@@ -486,18 +487,22 @@ export function PaperworkDocuments({
             {UPLOAD_FACE[uploadKind]}
           </Button>
           {uploadKind !== 'manual' ? (
-            <Button
-              variant="ghost"
-              size="md"
-              className={triagePanelControl()}
-              icon={<RefreshCw />}
-              loading={actions.fetchFromPlatform.isPending}
-              data-testid="paperwork-fetch"
-              title="Ask the sales platform for this document"
-              onClick={() => actions.fetchFromPlatform.mutate([uploadKind])}
-            >
-              Fetch from platform
-            </Button>
+            <HoverTooltip label="Fetch from platform" asChild placement="above">
+              <IconButton
+                size="lg"
+                radius="control"
+                ariaLabel="Fetch from platform"
+                icon={
+                  <RefreshCw
+                    className={cn('h-4 w-4', actions.fetchFromPlatform.isPending && 'animate-spin')}
+                    aria-hidden
+                  />
+                }
+                disabled={actions.fetchFromPlatform.isPending}
+                data-testid="paperwork-fetch"
+                onClick={() => actions.fetchFromPlatform.mutate([uploadKind])}
+              />
+            </HoverTooltip>
           ) : null}
           {tab === 'packing_slip' && slipIngest && slipIngest.status !== 'available' ? (
             <p

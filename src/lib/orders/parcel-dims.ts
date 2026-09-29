@@ -33,12 +33,12 @@ export function normalizeItemKey(raw: string | null | undefined): string | null 
 }
 
 /** SQL twin of {@link normalizeSkuKey}. */
-function skuKeySql(column: string): string {
+export function skuKeySql(column: string): string {
   return `NULLIF(UPPER(TRIM(${column})), '')`;
 }
 
 /** SQL twin of {@link normalizeItemKey} (upper → strip non-alphanumerics → strip leading zeros). */
-function itemKeySql(column: string): string {
+export function itemKeySql(column: string): string {
   return `NULLIF(LTRIM(REGEXP_REPLACE(UPPER(COALESCE(${column}, '')), '[^A-Z0-9]', '', 'g'), '0'), '')`;
 }
 
@@ -133,12 +133,12 @@ export function parcelDimsKeysFor(order: {
   return keys;
 }
 
-/** Remember an order's parcel on its SKU and item number, inside the caller's tenant transaction. */
+/** Remember a parcel on its SKU and item number, inside the caller's tenant transaction (`orderId` null: bought without an order). */
 export async function rememberParcelDims(
   client: Pick<PoolClient, 'query'>,
   input: {
     orgId: OrgId;
-    orderId: number;
+    orderId: number | null;
     sku: string | null;
     itemNumber: string | null;
     skuCatalogId: number | null;
@@ -178,4 +178,74 @@ export async function rememberParcelDims(
     );
   }
   return keys.length;
+}
+
+/**
+ * Explicit product-profile writer. Unlike {@link rememberParcelDims}, which
+ * only fills non-null facts learned while buying a label, this replaces the
+ * product's parcel exactly so the Products editor can also correct or clear a
+ * bad measurement. The SKU row and every linked marketplace item-number row
+ * stay in sync; shipping still resolves SKU first.
+ */
+export async function setProductParcelDims(
+  client: Pick<PoolClient, 'query'>,
+  input: {
+    orgId: OrgId;
+    skuCatalogId: number;
+    sku: string;
+    itemNumbers: readonly string[];
+    parcel: ParcelValues;
+    staffId: number | null;
+  },
+): Promise<number> {
+  const keys = new Map<string, { kind: 'sku' | 'item_number'; value: string }>();
+  for (const key of parcelDimsKeysFor({ sku: input.sku, itemNumber: null })) {
+    keys.set(`${key.kind}:${key.value}`, key);
+  }
+  for (const itemNumber of input.itemNumbers) {
+    for (const key of parcelDimsKeysFor({ sku: null, itemNumber })) {
+      keys.set(`${key.kind}:${key.value}`, key);
+    }
+  }
+
+  if (!anyValue(input.parcel)) {
+    for (const key of keys.values()) {
+      await client.query(
+        `DELETE FROM product_parcel_dims
+          WHERE organization_id = $1 AND key_kind = $2 AND key_value = $3`,
+        [input.orgId, key.kind, key.value],
+      );
+    }
+    return keys.size;
+  }
+
+  for (const key of keys.values()) {
+    await client.query(
+      `INSERT INTO product_parcel_dims
+         (organization_id, key_kind, key_value, sku_catalog_id,
+          weight_oz, length_in, width_in, height_in, source_order_id, updated_by)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NULL, $9)
+       ON CONFLICT (organization_id, key_kind, key_value) DO UPDATE
+          SET weight_oz       = EXCLUDED.weight_oz,
+              length_in       = EXCLUDED.length_in,
+              width_in        = EXCLUDED.width_in,
+              height_in       = EXCLUDED.height_in,
+              sku_catalog_id  = EXCLUDED.sku_catalog_id,
+              source_order_id = NULL,
+              updated_by      = EXCLUDED.updated_by,
+              updated_at      = now()`,
+      [
+        input.orgId,
+        key.kind,
+        key.value,
+        input.skuCatalogId,
+        input.parcel.weightOz,
+        input.parcel.lengthIn,
+        input.parcel.widthIn,
+        input.parcel.heightIn,
+        input.staffId,
+      ],
+    );
+  }
+  return keys.size;
 }

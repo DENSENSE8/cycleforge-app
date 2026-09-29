@@ -19,4 +19,10 @@ export interface CatalogListRow {
   is_inventory_linked: boolean;
   has_pending_action: boolean;
   display_title: string;
+  platform_ids: Array<{
+    platform: string;
+    platform_sku: string | null;
+    platform_item_id: string | null;
+    account_name: string | null;
+  }>;
 }

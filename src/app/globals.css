@@ -820,6 +820,29 @@ body {
   }
 }
 
+/* ── Modal scrim + dialog enter / exit (shadcn-shaped, owner 2026-09-28) ─────
+   Keyed on Radix's `data-state`: Radix keeps the node mounted until the exit
+   animation ends, so `closed` plays out instead of vanishing. The scrim only
+   fades; the dialog fades and settles 4% up from a 96% scale. `transform`
+   composes with Tailwind v4's `translate` (the centring), never replaces it. */
+@keyframes cf-scrim-in { from { opacity: 0; } to { opacity: 1; } }
+@keyframes cf-scrim-out { from { opacity: 1; } to { opacity: 0; } }
+@keyframes cf-dialog-in {
+  from { opacity: 0; transform: translateY(4%) scale(0.96); }
+  to   { opacity: 1; transform: none; }
+}
+@keyframes cf-dialog-out {
+  from { opacity: 1; transform: none; }
+  to   { opacity: 0; transform: translateY(2%) scale(0.98); }
+}
+.cf-scrim[data-state='open'] { animation: cf-scrim-in 180ms ease-out; }
+.cf-scrim[data-state='closed'] { animation: cf-scrim-out 140ms ease-in forwards; }
+.cf-dialog[data-state='open'] { animation: cf-dialog-in 220ms cubic-bezier(0.16, 1, 0.3, 1); }
+.cf-dialog[data-state='closed'] { animation: cf-dialog-out 140ms ease-in forwards; }
+@media (prefers-reduced-motion: reduce) {
+  .cf-scrim[data-state], .cf-dialog[data-state] { animation: none; }
+}
+
 /* ── Light syntax-highlight theme for AI chat code blocks (rehype-highlight). */
 /* Scoped to .hljs so it only affects highlighted fenced code. GitHub-light palette. */
 .hljs { color: #24292e; background: transparent; }

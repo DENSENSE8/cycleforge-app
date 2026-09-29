@@ -3,7 +3,6 @@ import type { PriceSource } from '@/lib/orders/price-resolve';
 import type { OutboundHandlingFact } from '@/lib/shipping/outbound-handling-facts';
 import type { OutboundStorageLocation } from '@/lib/shipping/outbound-storage-path';
 import type { CustomerBillTo, CustomerRecord } from '@/lib/customers/customer-display';
-import type { OrderExceptionBlocker } from '@/lib/orders/order-exception-types';
 
 export interface ShippedOrder {
   id: number;
@@ -200,16 +199,4 @@ export interface ShippedOrder {
   fnsku_log_id?: number | null;
   /** SAL row id — single source of truth anchor for this scan session. */
   sal_id?: number | null;
-  /**
-   * A HELD order's release facts — set only by `exceptionRowToQueueRow` (the
-   * Exceptions desk); read through `resolveOrdersHoldValue`, never ad hoc.
-   */
-  hold?: {
-    category: string;
-    owner: string;
-    action: string;
-    blockers: readonly OrderExceptionBlocker[];
-    /** Other unpaired orders on this item number — one pairing releases them too. */
-    siblingUnpairedCount: number;
-  } | null;
 }

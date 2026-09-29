@@ -50,6 +50,40 @@ export function getPlatformKeyByItemNumber(itemNumber: string | null | undefined
   return map[label] || 'ecwid';
 }
 
+/** The storefronts a listing URL can land on, by the key {@link getPlatformKeyByItemNumber} returns (FBA lists on Amazon). */
+const LISTING_STOREFRONT: Readonly<Record<string, string>> = {
+  amazon: 'amazon',
+  amazon_fba: 'amazon',
+  ebay: 'ebay',
+  walmart: 'walmart',
+  ecwid: 'ecwid',
+};
+
+/**
+ * Does the item-number listing ({@link getExternalUrlByItemNumber}) open on the ORDER's own
+ * platform? `orderPlatformLabel` is `getOrderPlatformLabel(...)` ("eBay", "Amazon", "FBA",
+ * "Walmart", "Ecwid", a store name…). An eBay order whose item number resolves to the Ecwid
+ * storefront would open the wrong listing → false (owner 2026-09-29: grey it out). A platform
+ * with no storefront rule (Shopify, manual, blank) → true: nothing to contradict.
+ */
+export function listingMatchesOrderPlatform(
+  itemNumber: string | null | undefined,
+  orderPlatformLabel: string | null | undefined,
+): boolean {
+  const label = String(orderPlatformLabel || '').trim().toLowerCase();
+  const order = label.startsWith('ebay')
+    ? 'ebay'
+    : label === 'fba' || label.startsWith('amazon')
+      ? 'amazon'
+      : label.startsWith('walmart')
+        ? 'walmart'
+        : label.startsWith('ecwid')
+          ? 'ecwid'
+          : null;
+  if (!order || !String(itemNumber || '').trim()) return true;
+  return LISTING_STOREFRONT[getPlatformKeyByItemNumber(itemNumber)] === order;
+}
+
 /**
  * Platform-aware external URL.
  * Uses the known platform to construct the correct marketplace/admin URL.

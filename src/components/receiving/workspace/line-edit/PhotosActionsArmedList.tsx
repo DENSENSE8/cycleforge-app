@@ -34,7 +34,12 @@ import { NAV_KEY_HINT_CLASS, useNavRegion } from '@/lib/keyboard/nav-keys';
 import { cn } from '@/utils/_cn';
 import { receivingPhotoToGalleryInput } from '@/components/shipped/photo-gallery/photo-gallery-utils';
 import { buildUnboxingCartonLibraryHref } from '@/components/shipped/photo-gallery/photo-context-provenance';
-import { receivingPhotosQueryKey, refreshReceivingPhotos } from '@/lib/queries/receiving-queries';
+import {
+  fetchReceivingPhotoList,
+  RECEIVING_PHOTOS_STALE_MS,
+  receivingPhotoListQueryKey,
+  refreshReceivingPhotos,
+} from '@/lib/queries/receiving-queries';
 import { RECEIVING_PHOTO_LIST_INTENT_CARTON } from '@/lib/receiving/photo-intent';
 import { resolveReceivingPhotoTarget } from '@/lib/receiving/photo-scope';
 import {
@@ -125,32 +130,12 @@ export function PhotosActionsArmedList({
   const router = useRouter();
   const queryClient = useQueryClient();
 
-  const queryKey = useMemo(
-    () =>
-      [
-        ...receivingPhotosQueryKey(receivingId),
-        RECEIVING_PHOTO_LIST_INTENT_CARTON,
-        'carton',
-        'any',
-      ] as const,
-    [receivingId],
-  );
-
+  const photoParams = { receivingId, photoIntent: RECEIVING_PHOTO_LIST_INTENT_CARTON };
   const { data } = useQuery<PhotosPayload>({
-    queryKey,
-    queryFn: async () => {
-      const params = new URLSearchParams({
-        receivingId: String(receivingId),
-        photoIntent: RECEIVING_PHOTO_LIST_INTENT_CARTON,
-      });
-      const res = await fetch(`/api/receiving-photos?${params.toString()}`, {
-        cache: 'no-store',
-      });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      return res.json();
-    },
+    queryKey: receivingPhotoListQueryKey(photoParams),
+    queryFn: () => fetchReceivingPhotoList(photoParams),
     enabled: Number.isFinite(receivingId) && receivingId > 0,
-    staleTime: 10_000,
+    staleTime: RECEIVING_PHOTOS_STALE_MS,
   });
 
   const refresh = useCallback(

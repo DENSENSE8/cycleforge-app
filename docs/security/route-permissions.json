@@ -1,10 +1,10 @@
 {
   "version": 1,
-  "generatedAt": "2026-09-28T19:35:13Z",
-  "totalRoutes": 1136,
+  "generatedAt": "2026-09-29T15:52:07Z",
+  "totalRoutes": 1148,
   "summary": {
-    "permissionGated": 925,
-    "authenticatedNoPermission": 126,
+    "permissionGated": 932,
+    "authenticatedNoPermission": 131,
     "anonymousIntentional": 36,
     "serviceToService": 49,
     "ungatedRead": 0,
@@ -2443,6 +2443,24 @@
       "exemptReason": null
     },
     {
+      "path": "/api/exceptions/[key]/route.ts",
+      "methods": [
+        "GET"
+      ],
+      "gate": "withAuth (no permission)",
+      "permission": null,
+      "exemptReason": null
+    },
+    {
+      "path": "/api/exceptions/route.ts",
+      "methods": [
+        "GET"
+      ],
+      "gate": "withAuth (no permission)",
+      "permission": null,
+      "exemptReason": null
+    },
+    {
       "path": "/api/failure-modes/[id]/route.ts",
       "methods": [
         "DELETE",
@@ -3393,6 +3411,34 @@
     {
       "path": "/api/kiosk/intake/route.ts",
       "methods": [
+        "POST"
+      ],
+      "gate": "withKioskAuth",
+      "permission": null,
+      "exemptReason": null
+    },
+    {
+      "path": "/api/kiosk/local-pickup/extract/route.ts",
+      "methods": [
+        "POST"
+      ],
+      "gate": "withKioskAuth",
+      "permission": null,
+      "exemptReason": null
+    },
+    {
+      "path": "/api/kiosk/local-pickup/labels/route.ts",
+      "methods": [
+        "POST"
+      ],
+      "gate": "withKioskAuth",
+      "permission": null,
+      "exemptReason": null
+    },
+    {
+      "path": "/api/kiosk/local-pickup/route.ts",
+      "methods": [
+        "GET",
         "POST"
       ],
       "gate": "withKioskAuth",
@@ -4453,6 +4499,15 @@
       "exemptReason": null
     },
     {
+      "path": "/api/orders/[id]/carrier-events/route.ts",
+      "methods": [
+        "GET"
+      ],
+      "gate": "requireRoutePerm",
+      "permission": "orders.view",
+      "exemptReason": null
+    },
+    {
       "path": "/api/orders/[id]/documents/fetch/route.ts",
       "methods": [
         "POST"
@@ -5264,6 +5319,15 @@
       "exemptReason": null
     },
     {
+      "path": "/api/packing/resolve-scan/route.ts",
+      "methods": [
+        "GET"
+      ],
+      "gate": "withAuth",
+      "permission": "packing.view",
+      "exemptReason": null
+    },
+    {
       "path": "/api/packing/resolve-tote/route.ts",
       "methods": [
         "GET"
@@ -5784,6 +5848,15 @@
       "exemptReason": null
     },
     {
+      "path": "/api/print-station/fnskus/route.ts",
+      "methods": [
+        "GET"
+      ],
+      "gate": "withAuth",
+      "permission": "print.label",
+      "exemptReason": null
+    },
+    {
       "path": "/api/print/dispatch/route.ts",
       "methods": [
         "POST"
@@ -5915,7 +5988,8 @@
     {
       "path": "/api/products/[sku]/route.ts",
       "methods": [
-        "GET"
+        "GET",
+        "PATCH"
       ],
       "gate": "requireRoutePerm",
       "permission": "sku_stock.view",
@@ -6393,6 +6467,15 @@
       "exemptReason": null
     },
     {
+      "path": "/api/receiving/[id]/claims/resolve/route.ts",
+      "methods": [
+        "POST"
+      ],
+      "gate": "withAuth",
+      "permission": "receiving.mark_received",
+      "exemptReason": null
+    },
+    {
       "path": "/api/receiving/[id]/contents-confirm/route.ts",
       "methods": [
         "POST"
@@ -6712,6 +6795,15 @@
       ],
       "gate": "requireRoutePerm",
       "permission": "receiving.view",
+      "exemptReason": null
+    },
+    {
+      "path": "/api/receiving/lines/[id]/unit-labels/route.ts",
+      "methods": [
+        "POST"
+      ],
+      "gate": "withAuth",
+      "permission": "print.label",
       "exemptReason": null
     },
     {
@@ -7531,6 +7623,15 @@
       ],
       "gate": "withAuth",
       "permission": "reports.view",
+      "exemptReason": null
+    },
+    {
+      "path": "/api/reports/records/export/route.ts",
+      "methods": [
+        "GET"
+      ],
+      "gate": "withAuth",
+      "permission": "operations.view",
       "exemptReason": null
     },
     {
@@ -9628,6 +9729,52 @@
       "exemptReason": null
     },
     {
+      "path": "/api/v1/label-batches/[id]/route.ts",
+      "methods": [
+        "GET"
+      ],
+      "gate": "withAuth",
+      "permission": "packing.review",
+      "exemptReason": null
+    },
+    {
+      "path": "/api/v1/label-batches/route.ts",
+      "methods": [
+        "GET",
+        "POST"
+      ],
+      "gate": "withAuth",
+      "permission": "packing.review",
+      "exemptReason": null
+    },
+    {
+      "path": "/api/v1/label-buys/products/route.ts",
+      "methods": [
+        "GET"
+      ],
+      "gate": "withAuth",
+      "permission": "shipping.buy_label",
+      "exemptReason": null
+    },
+    {
+      "path": "/api/v1/label-buys/rates/route.ts",
+      "methods": [
+        "POST"
+      ],
+      "gate": "withAuth",
+      "permission": "shipping.buy_label",
+      "exemptReason": null
+    },
+    {
+      "path": "/api/v1/label-buys/route.ts",
+      "methods": [
+        "POST"
+      ],
+      "gate": "withAuth",
+      "permission": "shipping.buy_label",
+      "exemptReason": null
+    },
+    {
       "path": "/api/v1/label-ingestions/[id]/apply/route.ts",
       "methods": [
         "POST"
@@ -9711,51 +9858,6 @@
       "exemptReason": null
     },
     {
-      "path": "/api/v1/picking/board/route.ts",
-      "methods": [
-        "GET"
-      ],
-      "gate": "withAuth",
-      "permission": "orders.view",
-      "exemptReason": null
-    },
-    {
-      "path": "/api/v1/picking/next/route.ts",
-      "methods": [
-        "POST"
-      ],
-      "gate": "withAuth",
-      "permission": "orders.view",
-      "exemptReason": null
-    },
-    {
-      "path": "/api/v1/picking/release/route.ts",
-      "methods": [
-        "POST"
-      ],
-      "gate": "withAuth",
-      "permission": "orders.view",
-      "exemptReason": null
-    },
-    {
-      "path": "/api/v1/picking/sessions/[id]/notes/route.ts",
-      "methods": [
-        "POST"
-      ],
-      "gate": "withAuth",
-      "permission": "orders.view",
-      "exemptReason": null
-    },
-    {
-      "path": "/api/v1/picking/sessions/[id]/tote/route.ts",
-      "methods": [
-        "POST"
-      ],
-      "gate": "withAuth",
-      "permission": "orders.view",
-      "exemptReason": null
-    },
-    {
       "path": "/api/v1/picking/sessions/route.ts",
       "methods": [
         "POST"
@@ -9768,6 +9870,15 @@
       "path": "/api/v1/print-stations/assignment/route.ts",
       "methods": [
         "GET",
+        "PUT"
+      ],
+      "gate": "withAuth",
+      "permission": "print.label",
+      "exemptReason": null
+    },
+    {
+      "path": "/api/v1/print-stations/name/route.ts",
+      "methods": [
         "PUT"
       ],
       "gate": "withAuth",

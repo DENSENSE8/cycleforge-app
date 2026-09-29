@@ -293,7 +293,9 @@ export function LedgerCondition({
             data-testid="ledger-condition-chip"
             className={cn(
               RECORD_CONDITION_CHIP_CLASS,
-              empty ? 'bg-mode-well text-mode-muted' : conditionGradeTone(value).solid,
+              // Condition is identity metadata, not workflow state. Keep the
+              // grade hue as a quiet text signal instead of a solid alarm.
+              empty ? 'text-mode-muted' : conditionGradeTone(value).text,
             )}
           >
             <Tag className="h-3 w-3 shrink-0" />

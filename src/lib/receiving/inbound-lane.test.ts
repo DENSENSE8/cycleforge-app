@@ -73,4 +73,7 @@ test('exceptions is a lane of its own: parsed, written, and it sheds the paste a
   // Docked never carries a paste either; Pipeline round-trips back to no lane.
   assert.equal(applyInboundLane(pasted, 'docked').get('ref_in'), null);
   assert.equal(applyInboundLane(next, 'pipeline').get('lane'), null);
+  // A list pasted on Unboxed is Unboxed's: back on On the way it is gone, reason filter too.
+  const unboxedPaste = new URLSearchParams('lane=docked&ref_in=PO-1,PO-2&recon=received&recon_reason=unboxed');
+  for (const gone of ['ref_in', 'recon', 'recon_reason']) assert.equal(applyInboundLane(unboxedPaste, 'pipeline').get(gone), null, gone);
 });

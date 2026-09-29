@@ -19,5 +19,7 @@ test('the row is a button that names Throw and advertises ⌘⇧U', () => {
 });
 
 test('the row is flush-square ops chrome, not a rounded card', () => {
-  assert.doesNotMatch(html, /rounded-(?!none)/);
+  const buttonClasses = html.match(/<button[^>]*class="([^"]+)"/)?.[1] ?? '';
+  assert.match(buttonClasses, /rounded-none/);
+  assert.doesNotMatch(buttonClasses, /rounded-(?!none)/);
 });

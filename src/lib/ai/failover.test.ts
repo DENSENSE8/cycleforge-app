@@ -8,6 +8,7 @@ import type { IntegrationProvider } from '@/lib/integrations/credentials';
 import type { OrgId } from '@/lib/tenancy/constants';
 
 const ORG = 'org-failover' as OrgId;
+const noMeter = () => {};
 
 function depsFor(vault: Partial<Record<IntegrationProvider, unknown>>): OrgAiDeps {
   return {
@@ -65,6 +66,26 @@ test('local 500 → falls forward to cloud AND the answer is still served', asyn
   assert.equal(out.served.source, 'openai');
   assert.deepEqual(hits, ['local', 'api.openai.com']);
   assert.deepEqual(out.demoted.map((d) => d.source), ['ollama']);
+});
+
+test('a self-hosted-only document call never sends its image payload to cloud', async () => {
+  __resetProviderHealth();
+  const { fetchImpl, hits } = responder({
+    'local': () => new Response('boom', { status: 500 }),
+  });
+
+  await assert.rejects(
+    () => postToAiProvider(
+      ORG,
+      'chat',
+      { path: '/chat/completions', body: { image: 'private' }, selfHostedOnly: true },
+      LOCAL_THEN_CLOUD,
+      fetchImpl,
+      noMeter,
+    ),
+    AiFailoverError,
+  );
+  assert.deepEqual(hits, ['local']);
 });
 
 test('a Cloudflare Access 403 demotes and falls forward', async () => {

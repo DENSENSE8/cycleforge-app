@@ -4,7 +4,7 @@ import { tenantQuery } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';
 import { emitEntitySignalSafe } from '@/lib/surfaces/record-entity-signal';
 import { claimTypeExceptionCode, type ClaimType } from '@/lib/receiving-claim-type';
-import { INVESTIGATION_EXCEPTION_CODES } from './exception-codes';
+import { CLAIM_EXCEPTION_CODES, INVESTIGATION_EXCEPTION_CODES } from './exception-codes';
 
 interface ReceivingExceptionRow {
   id: number;
@@ -240,6 +240,34 @@ export async function resolveCartonInvestigations(
                    WHERE rl.organization_id = $1 AND rl.receiving_id = $2))
       RETURNING rx.id`,
     [orgId, receivingId, resolvedBy, [...INVESTIGATION_EXCEPTION_CODES]],
+  );
+  return r.rows.length;
+}
+
+/**
+ * The claim a ticket recorded on this carton is settled: every OPEN
+ * claim-family reason with that ticket, on the carton's own row or any of its
+ * lines, is RESOLVED (the ticket stays linked — it is the claim's paper trail).
+ */
+export async function resolveCartonClaim(
+  orgId: OrgId,
+  input: { receivingId: number; ticketNumber: string; resolvedBy: number | null },
+  deps: ReceivingExceptionsDeps = defaultDeps,
+): Promise<number> {
+  const r = await deps.query<{ id: number }>(
+    orgId,
+    `UPDATE receiving_exceptions rx
+        SET status = 'RESOLVED', resolved_by = $3, resolved_at = NOW(), updated_at = NOW()
+      WHERE rx.organization_id = $1
+        AND rx.status = 'OPEN'
+        AND rx.zendesk_ticket = $4
+        AND rx.exception_code = ANY($5::text[])
+        AND (rx.receiving_id = $2
+             OR rx.receiving_line_id IN (
+                  SELECT rl.id FROM receiving_line rl
+                   WHERE rl.organization_id = $1 AND rl.receiving_id = $2))
+      RETURNING rx.id`,
+    [orgId, input.receivingId, input.resolvedBy, ticketLabel(input.ticketNumber), [...CLAIM_EXCEPTION_CODES]],
   );
   return r.rows.length;
 }

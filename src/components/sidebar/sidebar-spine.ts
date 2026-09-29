@@ -86,6 +86,18 @@ export const SPINE_ROW_SHELL_CLASS = cn(
   SPINE_ROW_CORNER,
 );
 
+/** Parent rows feel physical without moving the surrounding list geometry. */
+export const SPINE_PARENT_ROW_MOTION_CLASS =
+  'will-change-transform transition-[background-color,box-shadow,transform] duration-200 ease-out hover:translate-x-0.5 active:translate-x-0 active:scale-[0.985] motion-reduce:transform-none motion-reduce:transition-colors';
+
+/** Parent glyphs carry the color and a small hover flourish; child rows remain quiet. */
+export const SPINE_PARENT_ICON_MOTION_CLASS =
+  'transition-[color,filter,transform] duration-200 ease-out group-hover:-rotate-3 group-hover:scale-110 group-active:scale-95 motion-reduce:transform-none';
+
+/** The active parent's colored edge grows in instead of appearing as a hard rule. */
+export const SPINE_PARENT_MARKER_CLASS =
+  'pointer-events-none absolute inset-y-2 left-0 w-0.5 origin-center rounded-full opacity-0 scale-y-50 transition-[opacity,transform] duration-200 ease-out';
+
 /**
  * Sticky section caption (Stations / Workspaces) — same plane as the spine
  * chrome so rows scrolling under it do not show through. Flush, not a card.

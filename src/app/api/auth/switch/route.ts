@@ -74,20 +74,21 @@ export async function POST(req: NextRequest) {
     const prevSid = readSessionSid(req.cookies);
     const prev = prevSid ? await loadSession(prevSid) : null;
 
-    // Tenant scope:
-    const targetOrgId = prev?.organizationId ?? (await resolveOrgIdFromRequest(req));
+    // Tenant scope: always resolved (session org, else the request's tenant slug),
+    // so the PIN read and the login stamp below run under this org's GUC.
+    const orgId = prev?.organizationId ?? (await resolveOrgIdFromRequest(req));
     // Per-target-staff throttle, independent of IP.
     const staffRl = await checkRateLimitAsync({
       headers: req.headers,
       routeKey: 'auth-switch-staff',
-      scope: `${targetOrgId}:${staffId}`,
+      scope: `${orgId}:${staffId}`,
       ipAgnostic: true,
       limit: 10,
       windowMs: WINDOW_MS,
     });
     if (!staffRl.ok) return rateLimited(staffRl.retryAfterSec);
     // A staff switch IS a sign-in — it stamps last_login_at.
-    const row = await verifyStaffPin(staffId, pin, targetOrgId, { recordLogin: true });
+    const row = await verifyStaffPin(staffId, pin, orgId, { recordLogin: true });
     if (row.status !== 'active') {
       await audit({
         staffId, event: 'signin.switch', result: 'denied', ip, userAgent: ua,

@@ -30,10 +30,14 @@ function notConfigured(context: string): NextResponse {
   );
 }
 
-const AnchorType = z.enum(['receiving', 'tracking', 'shipment', 'order']);
+const AnchorType = z.enum(['serialUnit', 'receiving', 'tracking', 'shipment', 'order']);
 
 function parseAnchorFromSearch(sp: URLSearchParams): TicketLinkAnchorInput {
   const anchorType = AnchorType.parse(sp.get('anchorType') ?? undefined);
+  if (anchorType === 'serialUnit') {
+    const serialUnitId = z.coerce.number().int().positive().parse(sp.get('serialUnitId'));
+    return { type: 'serialUnit', serialUnitId };
+  }
   if (anchorType === 'receiving') {
     const receivingId = z.coerce.number().int().positive().parse(sp.get('receivingId'));
     const lineRaw = sp.get('lineId');
@@ -66,6 +70,10 @@ const ReferenceBody = z.object({
 const LinkBody = z.object({
   ticketId: z.number().int().positive(),
   anchor: z.discriminatedUnion('type', [
+    z.object({
+      type: z.literal('serialUnit'),
+      serialUnitId: z.number().int().positive(),
+    }),
     z.object({
       type: z.literal('receiving'),
       receivingId: z.number().int().positive(),

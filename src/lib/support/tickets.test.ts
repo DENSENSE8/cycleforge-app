@@ -67,7 +67,11 @@ test('normalizeReceivingTicketEntityRefs drops placeholder line id without inven
   );
 });
 
-test('pickTicketLinkAnchor prefers line > carton > shipment > order', () => {
+test('pickTicketLinkAnchor prefers unit > line > carton > shipment > order', () => {
+  assert.deepEqual(
+    pickTicketLinkAnchor({ serialUnitId: 17, lineId: 41, receivingId: 88 }),
+    { entityType: 'SERIAL_UNIT', entityId: 17 },
+  );
   assert.deepEqual(
     pickTicketLinkAnchor({ lineId: 41, receivingId: 88, shipmentId: 555, orderId: 9 }),
     { entityType: 'RECEIVING_LINE', entityId: 41 },

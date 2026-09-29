@@ -18,6 +18,14 @@ const LabelsProductsWorkspace = dynamic(
   },
 );
 
+const ProductCatalogWorkspace = dynamic(
+  () => import('./catalog/ProductCatalogWorkspace').then((m) => m.ProductCatalogWorkspace),
+  {
+    ssr: false,
+    loading: () => <div className="p-6 text-sm text-text-faint">Loading products…</div>,
+  },
+);
+
 // Lazy-load the pairing shell — pulls in the Product Hub graph + suggestion
 // fetcher, none of which the default Manuals view needs.
 const ProductsPairingShell = dynamic(
@@ -37,13 +45,13 @@ const QcChecklistWorkspace = dynamic(
   },
 );
 
-// Reference (`view=catalog`) and Kit Parts (`view=kit`) were removed 2026-09-15 (operator:
-
 export function ProductsWorkspace() {
   const searchParams = useSearchParams();
   const view = parseProductsView(searchParams.get('view'));
 
   switch (view) {
+    case 'catalog':
+      return <ProductCatalogWorkspace />;
     case 'labels':
       return <LabelsProductsWorkspace />;
     case 'pairing':

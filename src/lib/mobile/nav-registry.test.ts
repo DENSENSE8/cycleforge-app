@@ -36,11 +36,34 @@ test('the Outbound lane activates on every route it claims', () => {
     '/m/pack',
     '/m/orders/12',
     '/m/shipping/shipments/3',
-    '/m/exceptions/7',
   ]) {
     assert.equal(isGroupActive(p, outbound.matchPrefixes), true, p);
   }
   assert.equal(isGroupActive('/m/scan', outbound.matchPrefixes), false);
+  // Exceptions is its own L0 row now; its routes never light the Outbound lane.
+  assert.equal(isGroupActive('/m/exceptions/fbm%3A7', outbound.matchPrefixes), false);
+});
+
+test('Exceptions is an L0 drawer row over every kind — not a row inside any lane', () => {
+  const exceptions = MOBILE_NAV_DESTINATIONS.find((item) => item.id === 'exceptions');
+  assert.equal(exceptions?.kind, 'leaf');
+  assert.equal(exceptions?.href, '/m/exceptions');
+  assert.equal(isLeafActive('/m/exceptions/pairs%3A12', '/m/exceptions'), true);
+  for (const item of MOBILE_NAV_DESTINATIONS) {
+    if (item.kind !== 'group') continue;
+    assert.equal(item.children.some((child) => child.href === '/m/exceptions'), false, `${item.id} must not repeat the Exceptions door`);
+  }
+});
+
+test('Products and Reports are permission-gated L0 mobile destinations', () => {
+  const products = MOBILE_NAV_DESTINATIONS.find((item) => item.id === 'products');
+  const reports = MOBILE_NAV_DESTINATIONS.find((item) => item.id === 'reports');
+  assert.equal(products?.kind, 'leaf');
+  assert.equal(products?.href, '/m/products');
+  assert.equal(products?.requires, 'sku_stock.view');
+  assert.equal(reports?.kind, 'leaf');
+  assert.equal(reports?.href, '/m/reports');
+  assert.equal(reports?.requires, 'operations.view');
 });
 
 // ─── Registry integrity ──────────────────────────────────────────────────────

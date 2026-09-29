@@ -228,6 +228,60 @@ stations shown and pickable; checking 3 cards and Print both produced exactly on
 2 matched (filename, PDF text) + 1 "No order named — pick one", Confirm all held; a 2-page label PDF
 → two uploads `-p1` / `-p2`. Printed rendered from a synthesized log (dev has 0 prints).
 
+Decisions: bar and chip counts are CARDS (orders), not rows — Printed marries a label and its
+paperwork on one card. Printed's header keeps "Print all labels" (it prints the Labels queue, not
+the history) until the owner rules. Known gap: slip matching only sees orders already on the desk
+(labels + paperwork queues) — a slip for an unlabeled order dead-ends; fix by matching against the
+org's orders (PairOrderCard's search endpoint). §3.4 offered, unbuilt: printed check on card (~30m),
+P / Shift+P (~30m), remember paperwork checks (~20m), "No slip" chip (~1–2h), upload buttons in the
+all-clear (~15m), offline station → print here (~45m).
+
+Station names (2026-09-28, owner: "a named computer with no way to change the name"): the org
+registry OWNS the name. `PUT /api/v1/print-stations/name` (`renamePrintStation`): your own computer
+with `print.label` (its last heartbeat is yours), any computer with `settings.hardware`; unique per
+org, case-insensitive; empty = unnamed. A heartbeat only adopts the computer's local name while the
+registry row is unnamed, and answers with the registry name, which the host writes back locally
+(so phones on the per-staff bridge see it too). Renames: the desk's Print stations card (This
+computer row + remote targets for Hardware settings) and Settings › Print preferences, both via
+`renameThisPrintStation`. Proved: dev-DB smoke (adopt / no-rename-by-beat / org wins / 403 / 409 /
+404) and :3050 (pencil → "Packing bench" → PUT carries this computer's id, both stock rows relabel).
+
+Uploads (2026-09-28): the bare route is now **Uploads** (keys 1 Uploads · 2 Labels `?view=labels` ·
+3 Paperwork · 4 Printed). One card per uploaded PDF (`label_batches`, migration
+`2026-09-28t_label_batches`; pages are ordinary `label_ingestions` with `batch_id` + `page_number`,
+no original PDF stored; same SHA-256 = same batch, history carries over — default taken, owner did
+not rule). Server splits (`POST /api/v1/label-batches`, pdf-lib); client `useLabelUploads` posts
+whole files. Sidebar: Find (file name / tracking / order) + Uploaded date range (`?from`/`?to`);
+chips `?printing=to-print|printed`; open batch `?batch=`. Layout: `DeskRecordPlane listRail="open"`
+— a lone centred list (40rem) until a card is clicked, then rail + record; Esc / ✕ (left of
+`n of N`) folds back. Scoped to Uploads only — Labels/Paperwork/Printed keep the always-open rail
+(ruling 6); extending the lone list to them is the owner's call. Record: every page inline (lazy
+raster), badge Not printed / Printed ×N · when · who · station, History per page, Print N not yet
+printed / Print all / per-page Print|Reprint; aside = paired orders' packing slips, stations, file
+facts. `print_stations` names are DB-unique (`ux_print_stations_org_name`, 23505 → 409).
+Owner polish (same day): the label preview is square (no radius — a rounded frame clips the
+label's printed border); the batch verbs sit in ONE header row at the right edge (✕ · `n of N` ·
+Print all N · **Print N** ink); the record header never repeats what the open card says — the title
+is screen-reader only on every view (Uploads shows no subtitle; order views keep the carrier ·
+tracking subtitle); the upload-facts group is gone. Proved with a real two-file pick on :3050:
+`…-a.pdf` (3 pages) + `…-b.pdf` (2 pages) → 2 batches, 5 single-page labels `-p1…-p3` / `-p1…-p2`
+(probe data deleted afterwards).
+✕ placement (owner 2026-09-28, supersedes ruling 6's "Print right-most"): wherever a record header
+shows ✕ it is the top-right-most control — `n of N · Print all N · Print N · ✕`. The per-order views
+(always-open rail) still show no ✕. Record titles are screen-reader only on every view (the open
+card names the record) — decided, not to be flipped back without the owner.
+Same day, next pass: the Uploads lone list takes the stage's full width (the bar's hairline), not a
+40rem column. Reprints ask first: any press that would print an already-printed label opens the
+shared `AlertDialog` ("Print again?" naming the label, its count and last print) — a page's own
+Reprint button never asks; `AlertDialog` now fades its scrim and settles in/out (`cf-scrim` /
+`cf-dialog` in globals.css, off under reduced motion). **Buy label** is the Labels view's header face
+(`labels-docs:buy-label`): the record side becomes an inline rate-shop — find the order, then
+`OrderShippingPanel` (parcel → rates → buy, the To-ship path). A purchase now also writes the label
+into `label_ingestions` paired to its order (`src/lib/shipping/label-purchase-ingestion.ts`, keyed by
+the ShipStation shipment so replays never duplicate; failure is a warning, never a failed purchase),
+the response carries `labelIngestionId`, and the desk opens that card. A void deletes the paired
+ingestion + blob (even if printed). Not proved end to end: dev has no ShipStation keys.
+
 Still open: a real two-browser station round trip (ack + print) is unobserved; first real 4×6
 thermal print (raw path rotates 180°); Tauri `cf_print_html`; unpaired PDF labels without a
 ShipStation id cannot be paired; `pinned.json` entries for `listRail` / `viewControls` / the label

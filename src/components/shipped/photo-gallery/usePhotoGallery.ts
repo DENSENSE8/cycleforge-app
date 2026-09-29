@@ -151,11 +151,10 @@ export function usePhotoGallery(props: PhotoGalleryProps) {
     onSendToTicket,
   } = props;
 
-  const { photoItems, setPhotoItems, resetFingerprint, loadedCount, errorCount } = usePhotoItems(photos);
-  const zoom = useImageZoom();
-
   const [closeState, dispatchClose] = useReducer(closeMachineReducer, INITIAL_CLOSE_STATE);
   const { viewerOpen, panelOpen, deferViewerClose } = closeState;
+  const { photoItems, setPhotoItems, resetFingerprint, loadedCount, errorCount } = usePhotoItems(photos, viewerOpen);
+  const zoom = useImageZoom();
   const [currentIndex, setCurrentIndex] = useState(0);
   const [mounted, setMounted] = useState(false);
   const [downloading, setDownloading] = useState(false);

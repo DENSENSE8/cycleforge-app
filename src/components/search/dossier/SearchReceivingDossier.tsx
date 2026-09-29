@@ -4,6 +4,9 @@ import { useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Search } from '@/components/Icons';
 import { EmptyState } from '@/design-system/primitives';
+import { RecordFlowFacts, RecordFlowSection, recordFlowLabels } from '@/design-system/components/RecordFlowFacts';
+import { EvidenceFactRow } from '@/design-system/components/record-ledger/EvidenceDisclosure';
+import { RECORD_ID_CLASS } from '@/design-system/tokens/industrial-record';
 import { useSearchPrimaryPaintOptional } from '@/components/search/search-primary-paint-context';
 import { SearchEntityRecord } from '@/components/search/dossier/SearchEntityRecord';
 import {
@@ -96,14 +99,14 @@ export function SearchReceivingDossier({
   const linkedOrderNumber = presentFact(linkedOrder?.order_id);
   const carrier = presentFact(receiving.carrier);
   const platform = presentFact(receiving.source_platform) || presentFact(receiving.source);
+  const vendor = lines.map((line) => presentFact(line.vendor_name)).find(Boolean) || null;
+  const flowLabels = recordFlowLabels('inbound');
   const staging = presentFact(receiving.staging_location_label);
   const receivedBy = presentFact(receiving.received_by_name);
 
   const facts: SearchDossierFact[] = [
-    ...(po ? [{ id: 'po', label: 'PO', value: po, copy: true }] : []),
     ...(tracking ? [{ id: 'tracking', label: 'Tracking #', value: tracking, copy: true }] : []),
     ...(carrier ? [{ id: 'carrier', label: 'Carrier', value: carrier }] : []),
-    ...(platform ? [{ id: 'platform', label: 'Source', value: platform }] : []),
     ...(staging ? [{ id: 'staging', label: 'Staged at', value: staging }] : []),
     ...(receivedBy ? [{ id: 'received-by', label: 'Received by', value: receivedBy }] : []),
     ...(totals ? [{ id: 'qty', label: 'Received', value: `${totals.received} of ${totals.expected}` }] : []),
@@ -159,6 +162,35 @@ export function SearchReceivingDossier({
       })}
       emptyEvents="No history on this carton yet."
       facts={facts}
+      relationship={(
+        <RecordFlowFacts
+          direction="inbound"
+          testId="search-receiving-relationship"
+          party={(
+            <RecordFlowSection title={flowLabels.party}>
+              <div className="flex flex-col px-4 pb-1 [&>*:last-child]:border-b-0">
+                <EvidenceFactRow label="Name">
+                  <span className={vendor ? undefined : 'text-mode-muted'}>{vendor || 'Unknown'}</span>
+                </EvidenceFactRow>
+              </div>
+            </RecordFlowSection>
+          )}
+          movement={(
+            <RecordFlowSection title={flowLabels.movement}>
+              <div className="flex flex-col px-4 pb-1 [&>*:last-child]:border-b-0">
+                <EvidenceFactRow label="Source">
+                  <span className={platform ? RECORD_ID_CLASS : 'text-mode-muted'}>{platform || 'Unknown'}</span>
+                </EvidenceFactRow>
+                {po ? (
+                  <EvidenceFactRow label="PO">
+                    <span className={RECORD_ID_CLASS}>{po}</span>
+                  </EvidenceFactRow>
+                ) : null}
+              </div>
+            </RecordFlowSection>
+          )}
+        />
+      )}
       related={related}
       handoffs={[{ href: '/unbox', label: 'Open Unbox', primary: findings.length > 0 }]}
       photos={photos.map((photo) => ({

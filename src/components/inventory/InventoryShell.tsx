@@ -9,7 +9,6 @@ import { ByFilterResultList } from './ByFilterResultList';
 import { useInventoryUrlState } from './useInventoryUrlState';
 import { InventoryDetailsOverlay } from './panels/InventoryDetailsOverlay';
 import { ReplenishWorkspace } from '@/components/replenish/ReplenishWorkspace';
-import { TriageWorkspace } from './TriageWorkspace';
 import { PulseWorkspace } from './PulseWorkspace';
 import { Button } from '@/design-system/primitives';
 
@@ -29,14 +28,7 @@ export function InventoryShell() {
         );
     }
 
-    // Triage/Pulse are full-pane workspaces driven by the sidebar's `?open=` selection (an exception id / serial-unit id).
-    if (mode === 'triage') {
-        return (
-            <div className="flex h-full min-h-0 flex-col bg-surface-card">
-                <TriageWorkspace selectedId={sidebar.open} />
-            </div>
-        );
-    }
+    // Pulse is a full-pane workspace driven by the sidebar's `?open=` selection (a serial-unit id).
     if (mode === 'pulse') {
         return (
             <div className="flex h-full min-h-0 flex-col bg-surface-card">

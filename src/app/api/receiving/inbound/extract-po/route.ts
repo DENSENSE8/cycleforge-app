@@ -9,9 +9,10 @@ import { z } from 'zod';
 import { withAuth } from '@/lib/auth/withAuth';
 import { parseBody } from '@/lib/schemas/parse';
 import { extractPoIntake } from '@/lib/inbound/extract-po-llm';
-import { inboundOrderMissing, inboundOrderMissingSentence } from '@/lib/inbound/inbound-order-draft';
+import { inboundOrderMissing, inboundOrderMissingSentence, INBOUND_ORDER_TYPES } from '@/lib/inbound/inbound-order-draft';
 
 const Body = z.object({
+  type: z.enum(INBOUND_ORDER_TYPES).optional(),
   text: z.string().trim().max(20_000).optional().nullable(),
   /** data:image/...;base64,... — keep under ~4MB of base64. */
   image_data_url: z.string().trim().max(6_000_000).optional().nullable(),
@@ -42,6 +43,7 @@ export const POST = withAuth(async (request: NextRequest, ctx) => {
 
   try {
     const result = await extractPoIntake(ctx.organizationId, {
+      type: parsed.type,
       text,
       imageDataUrl,
       imageDataUrls,
@@ -58,7 +60,11 @@ export const POST = withAuth(async (request: NextRequest, ctx) => {
     });
   } catch (err) {
     const message = err instanceof Error ? err.message : 'extract failed';
-    const status = /No AI chat provider|Provide purchase-order/i.test(message) ? 400 : 502;
+    const status = /No self-hosted AI provider/i.test(message)
+      ? 503
+      : /No AI chat provider|Provide (purchase-order|pickup paperwork)/i.test(message)
+        ? 400
+        : 502;
     return NextResponse.json({ success: false, error: message }, { status });
   }
 }, { permission: 'receiving.view' });

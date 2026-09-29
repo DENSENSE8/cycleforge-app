@@ -18,7 +18,7 @@ export type PortalTooltipPlacement = 'auto' | 'above' | 'below' | 'right' | 'lef
  * `end` / `start` / `auto` — horizontal side flyouts for dense tables (LTR).
  * `bottom` — under the chip (carton identity bar). LedgerGrid must not use this.
  */
-export type PortalSideMenuPlacement = 'auto' | 'end' | 'start' | 'bottom';
+export type PortalSideMenuPlacement = 'auto' | 'end' | 'start' | 'top' | 'bottom';
 
 export type PortalSideMenuAlign = 'start' | 'center' | 'end';
 
@@ -149,11 +149,11 @@ export function clampPortalSideMenuPosition(args: {
    * Default true — LedgerGrid side menus still flip near the edge.
    */
   avoidCollisions?: boolean;
-}): { top: number; left: number; side: 'end' | 'start' | 'bottom' } | null {
+}): { top: number; left: number; side: 'end' | 'start' | 'top' | 'bottom' } | null {
   const margin = args.margin ?? PORTAL_TOOLTIP_MARGIN;
   const placement = args.placement ?? 'auto';
   const gap =
-    args.gap ?? (placement === 'bottom' ? PORTAL_BELOW_MENU_GAP : PORTAL_SIDE_MENU_GAP);
+    args.gap ?? (placement === 'bottom' || placement === 'top' ? PORTAL_BELOW_MENU_GAP : PORTAL_SIDE_MENU_GAP);
   const viewport = args.viewport ?? readPortalViewport();
   const align = args.align ?? 'start';
   const avoidCollisions = args.avoidCollisions ?? true;
@@ -165,8 +165,8 @@ export function clampPortalSideMenuPosition(args: {
   const vw = viewport.width;
   const vh = viewport.height;
 
-  if (placement === 'bottom') {
-    const rawTop = anchor.bottom + gap;
+  if (placement === 'bottom' || placement === 'top') {
+    const rawTop = placement === 'top' ? anchor.top - bubble.height - gap : anchor.bottom + gap;
     const rawLeft =
       align === 'end'
         ? anchor.right - bubble.width
@@ -179,7 +179,7 @@ export function clampPortalSideMenuPosition(args: {
     const left = avoidCollisions
       ? Math.min(Math.max(rawLeft, margin), Math.max(margin, vw - bubble.width - margin))
       : rawLeft;
-    return { top, left, side: 'bottom' };
+    return { top, left, side: placement };
   }
 
   const roomEnd = vw - anchor.right - margin;

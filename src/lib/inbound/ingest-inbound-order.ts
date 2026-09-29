@@ -74,6 +74,8 @@ export interface IngestInboundOrderResult {
   identity: InboundOrderIdentity;
   lines: IngestedInboundLine[];
   receivingId: number | null;
+  /** Receiving/Sales pickup projection created by the same transaction. */
+  localPickupOrderId: number | null;
 }
 
 /** One query surface for the tx client and the tenant pool (preview / ledger-failure paths). */
@@ -193,6 +195,96 @@ const defaultDeps: IngestInboundOrderDeps = {
 const SHIPMENT_SOURCE: Record<string, string> = { ebay: 'ebay_purchase', amazon: 'amazon_purchase', manual: 'manual_inbound' };
 
 /**
+ * Pickup is authored once as an inbound order, then projected into the legacy
+ * local-pickup read model consumed by Receiving and Sales. This runs on the
+ * same transaction as the inbound spine, so neither display can see a partial
+ * document import.
+ */
+async function projectLocalPickup(
+  query: Query,
+  orgId: OrgId,
+  draft: InboundOrderDraft,
+  inboundOrderId: number,
+  receivingId: number | null,
+  lines: ReturnType<typeof filledInboundLines>,
+  keys: string[],
+  resolved: Array<CatalogHit | null>,
+  landed: readonly IngestedInboundLine[],
+  staffId: number | null,
+): Promise<number | null> {
+  if (draft.type !== 'PICKUP') return null;
+
+  const header = await query<{ id: number }>(
+    `INSERT INTO local_pickup_orders (
+       inbound_order_id, pickup_date, customer_name, notes, created_by, status,
+       organization_id, receiving_id, payment_method, paid_amount_cents
+     ) VALUES ($1, $2::date, NULLIF($3, ''), NULLIF($4, ''), $5, 'DRAFT', $6, $7, NULLIF($8, ''), $9)
+     ON CONFLICT (organization_id, inbound_order_id) WHERE inbound_order_id IS NOT NULL DO UPDATE SET
+       pickup_date = EXCLUDED.pickup_date,
+       customer_name = EXCLUDED.customer_name,
+       notes = EXCLUDED.notes,
+       receiving_id = COALESCE(EXCLUDED.receiving_id, local_pickup_orders.receiving_id),
+       payment_method = EXCLUDED.payment_method,
+       paid_amount_cents = EXCLUDED.paid_amount_cents,
+       updated_at = NOW()
+     RETURNING id`,
+    [
+      inboundOrderId,
+      draft.orderDate,
+      draft.vendor.trim(),
+      draft.notes.trim(),
+      staffId,
+      orgId,
+      receivingId,
+      draft.pickup?.paymentMethod.trim().toUpperCase() ?? '',
+      draft.pickup?.paidCents ?? null,
+    ],
+  );
+  const pickupOrderId = Number(header.rows[0].id);
+
+  for (const [index, line] of lines.entries()) {
+    const hit = resolved[index];
+    const quantity = line.quantity ?? 1;
+    const totalCents = line.unitCostCents == null ? 0 : line.unitCostCents * quantity;
+    await query(
+      `INSERT INTO local_pickup_order_items (
+         order_id, inbound_line_key, receiving_id, receiving_line_id, sku, product_title, quantity,
+         condition_grade, parts_status, missing_parts_note, condition_note,
+         total_price, organization_id
+       ) VALUES ($1, $2, $3, $4, $5, NULLIF($6, ''), $7, $8, $9, NULLIF($10, ''), NULLIF($11, ''), $12::numeric / 100, $13)
+       ON CONFLICT (organization_id, order_id, inbound_line_key) WHERE inbound_line_key IS NOT NULL DO UPDATE SET
+         receiving_id = COALESCE(EXCLUDED.receiving_id, local_pickup_order_items.receiving_id),
+         receiving_line_id = COALESCE(EXCLUDED.receiving_line_id, local_pickup_order_items.receiving_line_id),
+         sku = EXCLUDED.sku,
+         product_title = EXCLUDED.product_title,
+         quantity = EXCLUDED.quantity,
+         condition_grade = EXCLUDED.condition_grade,
+         parts_status = EXCLUDED.parts_status,
+         missing_parts_note = EXCLUDED.missing_parts_note,
+         condition_note = EXCLUDED.condition_note,
+         total_price = EXCLUDED.total_price,
+         updated_at = NOW()`,
+      [
+        pickupOrderId,
+        keys[index],
+        receivingId,
+        landed[index]?.receivingLineId ?? null,
+        hit?.sku ?? line.sku.trim(),
+        line.title.trim() || hit?.title || '',
+        quantity,
+        line.conditionGrade ?? null,
+        line.partsStatus ?? null,
+        line.missingPartsNote?.trim() ?? '',
+        line.conditionNote?.trim() ?? '',
+        totalCents,
+        orgId,
+      ],
+    );
+  }
+  return pickupOrderId;
+}
+
+/**
  * Land one order on the caller's transaction client. Refusals throw
  * `InboundOrderRefused`; the caller's transaction rolls back on any throw.
  */
@@ -232,6 +324,14 @@ export async function ingestInboundOrderInTx(
         WHERE organization_id = $1 AND inbound_order_id = $2 ORDER BY id`,
       [orgId, prior.rows[0].id],
     );
+    const pickup = draft.type === 'PICKUP'
+      ? await query<{ id: number }>(
+          `SELECT id FROM local_pickup_orders
+            WHERE organization_id = $1 AND inbound_order_id = $2
+            ORDER BY id LIMIT 1`,
+          [orgId, prior.rows[0].id],
+        )
+      : { rows: [] };
     const result: IngestInboundOrderResult = {
       inboundOrderId: Number(prior.rows[0].id),
       created: false,
@@ -239,6 +339,7 @@ export async function ingestInboundOrderInTx(
       identity,
       lines: lines.rows.map((l) => ({ lineKey: l.line_key, receivingLineId: Number(l.id), created: false })),
       receivingId: lines.rows.find((l) => l.receiving_id != null)?.receiving_id ?? null,
+      localPickupOrderId: pickup.rows[0] ? Number(pickup.rows[0].id) : null,
     };
     await recordLedger(query, orgId, {
       ctx, sourceEventId, payload: draft, payloadHash: contentHash, status: 'unchanged',
@@ -399,6 +500,19 @@ export async function ingestInboundOrderInTx(
     );
   }
 
+  const localPickupOrderId = await projectLocalPickup(
+    query,
+    orgId,
+    draft,
+    inboundOrderId,
+    receivingId,
+    lines,
+    keys,
+    resolved,
+    landed,
+    ctx.staffId,
+  );
+
   const result: IngestInboundOrderResult = {
     inboundOrderId,
     created: Boolean(header.rows[0].created),
@@ -406,6 +520,7 @@ export async function ingestInboundOrderInTx(
     identity,
     lines: landed,
     receivingId,
+    localPickupOrderId,
   };
   await recordLedger(query, orgId, {
     ctx, sourceEventId, payload: draft, payloadHash: contentHash, status: 'landed',

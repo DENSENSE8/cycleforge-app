@@ -12,17 +12,20 @@ import {
 } from '@/lib/packing/pack-profile-client';
 import { formatPackMinutes, tierForMinutes } from '@/lib/packing/pack-standard-stops';
 import type { ProductPackProfile } from '@/components/products/types';
+import { cn } from '@/utils/_cn';
 
 export function ProductPackTimeCard({
   catalogId,
   packProfile,
   onSaved,
+  className,
 }: {
   /** `sku_catalog.id` — the PATCH target. */
   catalogId: number;
   packProfile: ProductPackProfile;
   /** Receives the stored standard after a successful write. */
   onSaved: (next: ProductPackProfile) => void;
+  className?: string;
 }) {
   const { has } = useAuth();
   const canManage = has('sku_stock.manage');
@@ -56,7 +59,7 @@ export function ProductPackTimeCard({
   };
 
   return (
-    <section className="rounded-lg border border-border-soft bg-surface-card p-4">
+    <section className={cn('rounded-mode border border-border-soft bg-surface-card p-4', className)}>
       <div className="mb-3 flex items-baseline justify-between gap-3">
         <h2 className="text-role-caption font-semibold text-text-default">Time to pack</h2>
         <span className="text-role-micro text-text-soft">

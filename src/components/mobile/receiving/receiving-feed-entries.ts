@@ -40,14 +40,14 @@ export type ReceivingFeedEntry =
       unit: ReceivingLineRow;
     };
 
-// SKU IDENTITY LAW (src/lib/sku/sku-identity-law.ts): Zoho item title governs.
+// SKU IDENTITY LAW: CycleForge's catalog title is authoritative; inbound line
+// text and the SKU are display fallbacks, never identity keys.
 export function unitTitle(row: ReceivingLineRow): string {
   return (
     resolveSkuIdentityTitle({
-      zoho_item_title: row.zoho_item_title,
       catalog_product_title: row.catalog_product_title,
       item_name: row.item_name,
-      zoho_item_id: row.zoho_item_id == null ? null : String(row.zoho_item_id),
+      sku: row.sku,
     }) || 'Unnamed inbound line'
   );
 }

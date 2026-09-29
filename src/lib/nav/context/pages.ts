@@ -12,7 +12,7 @@ import { outboundSavedViewsConfig } from '@/components/unshipped/outbound-sideba
 import { walkInStationHref } from '@/lib/walk-in/jobs';
 import type { NavRecentSurfaceId } from '@/lib/nav/recents/surfaces';
 import type { NavAction, NavControls, NavSearch } from './schema';
-import { RECON_PARAM, REF_IN_PARAM } from '@/lib/receiving/reconcile';
+import { RECON_PARAM, RECON_REASON_PARAM, REF_IN_PARAM } from '@/lib/receiving/reconcile';
 import {
   SAVED_VIEW_PARAM_KEYS,
   SAVED_VIEW_STORAGE_KEY,
@@ -115,6 +115,8 @@ export interface NavSurfaceDecl {
   scanInput?: { grammar: NavScanGrammar; endpoint: string };
   savedViews?: { storageKey: string; paramKeys: readonly string[] };
   actions?: readonly NavActionDecl[];
+  /** Keep page-wide utility verbs in the contextual body instead of the desk header. */
+  actionsPlacement?: 'sidebar';
   /** Non-facet view filters (staff picker, date range) the view's list reads. */
   controls?: NavControls;
 }
@@ -136,6 +138,20 @@ export interface NavPageDecl extends NavSurfaceDecl {
    * digit is bound there (a record's `EvidenceDecisionBar` owns 1–4).
    */
   viewKeys?: true;
+  /**
+   * The page's OWN modes (owner 2026-09-28, Exceptions): painted as the same
+   * `.modes` section a door lane's modes are, so `NavModeSwitcher` renders
+   * the card and its dropdown unchanged. Each UNGROUPED child is a mode; each
+   * GROUPED child is a view of the mode whose id is its `group`, painted under
+   * the card (the view switcher, digits when `viewKeys`) only while that mode
+   * is current. There is no "all" mode (owner 2026-09-29: never a blanket
+   * list): a mode opens its first view, and the page itself lands every URL
+   * on one view. A mode's secondary line lists its views.
+   */
+  modes?: {
+    /** The card's aria name for the tier, e.g. "Domain". */
+    label: string;
+  };
 }
 
 /**
@@ -339,16 +355,21 @@ const TO_SHIP_ACTIONS: readonly NavActionDecl[] = [
  * prints by stock, then the two bulk uploads. A print view's face is its own
  * stock and carries ⌘P (the desk binds ⌘P to "print all of this view's
  * stock"); Printed has no stock of its own, so no verb there wears ⌘P.
+ * Uploads' face is the upload itself (⌘O rides it everywhere), then the labels.
  */
-function labelsDocsActions(view: 'labels' | 'paperwork' | 'printed'): readonly NavActionDecl[] {
+function labelsDocsActions(view: 'uploads' | 'labels' | 'paperwork' | 'printed'): readonly NavActionDecl[] {
   const printKey = (stock: 'labels' | 'paperwork') => (view === stock ? { hotkey: 'mod+p' } : {});
   const printLabels: NavAction = { id: 'labels-docs.print-labels', label: 'Print all labels', intent: 'labels-docs:print-labels', ...printKey('labels') };
   const printPaperwork: NavAction = { id: 'labels-docs.print-paperwork', label: 'Print all paperwork', intent: 'labels-docs:print-paperwork', ...printKey('paperwork') };
   const printAll: NavAction = { id: 'labels-docs.print-all', label: 'Print all (labels + paperwork)', intent: 'labels-docs:print-all' };
   const upload: NavAction = { id: 'labels-docs.upload', label: 'Upload label PDFs', intent: 'labels-docs:upload', hotkey: 'mod+o' };
   const uploadSlips: NavAction = { id: 'labels-docs.upload-slips', label: 'Upload packing slips', intent: 'labels-docs:upload-slips' };
-  const order = view === 'paperwork'
-    ? [printPaperwork, printLabels, printAll, uploadSlips, upload]
+  // In-app ShipStation buying (owner 2026-09-28): the Labels view's face opens the focused Buy a label page — no order required.
+  const buyLabel: NavAction = { id: 'labels-docs.buy-label', label: 'Buy label', href: '/shipping/buy-label' };
+  const order =
+    view === 'uploads' ? [upload, printLabels, printPaperwork, printAll, uploadSlips]
+    : view === 'paperwork' ? [printPaperwork, printLabels, printAll, uploadSlips, upload]
+    : view === 'labels' ? [buyLabel, printLabels, printPaperwork, printAll, upload, uploadSlips]
     : [printLabels, printPaperwork, printAll, upload, uploadSlips];
   return order.map((action) => ({ action }));
 }
@@ -392,13 +413,19 @@ export const NAV_PAGE_DECLS: Readonly<Record<string, NavPageDecl>> = {
           placeholder: 'Search deliveries',
           source: 'url-param',
           param: INBOUND_FIND_PARAM,
-          locate: { locator: 'inbound', param: REF_IN_PARAM, statusParam: RECON_PARAM },
+          locate: { locator: 'inbound', param: REF_IN_PARAM, statusParam: RECON_PARAM, facetParam: RECON_REASON_PARAM },
         },
         savedViews: PIPELINE_VIEWS,
         controls: PIPELINE_CONTROLS,
       },
       docked: {
-        search: { placeholder: 'Search unboxed', source: 'url-param', param: INBOUND_FIND_PARAM },
+        search: {
+          placeholder: 'Search unboxed',
+          source: 'url-param',
+          param: INBOUND_FIND_PARAM,
+          // A pasted list narrows Unboxed to those numbers; the popout says where each one is.
+          locate: { locator: 'inbound', param: REF_IN_PARAM, statusParam: RECON_PARAM, facetParam: RECON_REASON_PARAM },
+        },
         savedViews: DOCKED_VIEWS,
         controls: DOCKED_CONTROLS,
       },
@@ -462,8 +489,11 @@ export const NAV_PAGE_DECLS: Readonly<Record<string, NavPageDecl>> = {
     },
   },
   products: {
-    search: { placeholder: 'Search manuals', source: 'url-param', param: 'q' },
+    viewKeys: true,
+    search: { placeholder: 'Search SKU, item number, product or platform…', source: 'url-param', param: 'q' },
     items: {
+      catalog: { search: { placeholder: 'Search SKU, item number, product or platform…', source: 'url-param', param: 'q' } },
+      manuals: { search: { placeholder: 'Search manuals', source: 'url-param', param: 'q' } },
       labels: {
         search: { placeholder: 'Search the catalog', source: 'url-param', param: 'q' },
         recents: 'labels.prints',
@@ -495,11 +525,9 @@ export const NAV_PAGE_DECLS: Readonly<Record<string, NavPageDecl>> = {
           choices: [{ id: 'status', label: 'State', param: 'status', options: [...STOCK_STATE_OPTIONS], clearParams: ['open', 'sku'] }],
         },
       },
+      // The Exceptions hub list locked to Missing pairs (owner 2026-09-28): Find narrows it through `?q=`.
       'sku-exceptions': {
-        search: { placeholder: 'Title, SKU, location, room or qty…', source: 'url-param', param: 'q' },
-        controls: {
-          choices: [{ id: 'status', label: 'State', param: 'status', options: [...STOCK_STATE_OPTIONS], clearParams: ['open', 'sku'] }],
-        },
+        search: { placeholder: 'SKU, title or order…', source: 'url-param', param: 'q' },
       },
       replenish: {
         search: { placeholder: 'Filter SKU…', source: 'url-param', param: 'rsku' },
@@ -511,6 +539,7 @@ export const NAV_PAGE_DECLS: Readonly<Record<string, NavPageDecl>> = {
         },
       },
       locations: {
+        search: { placeholder: 'Filter bins…', source: 'url-param', param: 'q' },
         controls: {
           choices: [{ id: 'tab', label: 'Tool', param: 'tab', options: [...LOCATIONS_TAB_OPTIONS], clearParams: ['code', 'edit', 'new'] }],
         },
@@ -527,17 +556,87 @@ export const NAV_PAGE_DECLS: Readonly<Record<string, NavPageDecl>> = {
       { action: { id: 'qc-labels.print', label: 'Print QC label', intent: 'qc-labels:print' }, requires: 'print.label' },
     ],
   },
+  // Print station (owner 2026-09-29): Find is the master route to an FNSKU — it
+  // narrows the FBA catalog on the server (`?q=`); an exact FNSKU opens it.
+  'print-station': {
+    viewKeys: true,
+    search: { placeholder: 'FNSKU, ASIN, SKU or title…', source: 'url-param', param: 'q' },
+  },
   support: {
-    items: { tickets: { recents: 'support.tickets' } },
+    items: {
+      tickets: {
+        search: { placeholder: 'Search tickets…', source: 'url-param', param: 'tq' },
+        recents: 'support.tickets',
+      },
+      calls: {
+        search: { placeholder: 'Search caller or number…', source: 'url-param', param: 'q' },
+      },
+      warranty: {
+        search: { placeholder: 'Search warranty claims…', source: 'url-param', param: 'search' },
+      },
+    },
+  },
+  'ops-photos': {
+    viewKeys: true,
+    search: {
+      placeholder: 'Find order, tracking, serial, SKU, ticket or text…',
+      source: 'url-param',
+      param: 'q',
+    },
+  },
+  operations: {
+    items: {
+      'packing-review': {
+        search: { placeholder: 'Filter order, SKU or tracking…', source: 'url-param', param: 'q' },
+      },
+    },
   },
   reports: {
-    actions: [{ action: { id: 'reports.refresh', label: 'Refresh', intent: 'reports:refresh' } }],
+    search: { placeholder: 'Find in this report…', source: 'url-param', param: 'q' },
+    controls: {
+      dates: [{ id: 'report-day', label: 'Report day', param: 'date', clearParams: [] }],
+      staff: [{ id: 'staff', label: 'Staff', param: 'staffId' }],
+    },
+    actionsPlacement: 'sidebar',
+    actions: [
+      { action: { id: 'reports.refresh', label: 'Refresh', intent: 'reports:refresh' } },
+      { action: { id: 'reports.export-packing', label: 'Export packing CSV', intent: 'reports:export-packing' } },
+      { action: { id: 'reports.export-inbound', label: 'Export inbound CSV', intent: 'reports:export-inbound' } },
+      { action: { id: 'reports.export-outbound', label: 'Export outbound CSV', intent: 'reports:export-outbound' } },
+    ],
   },
   home: {
+    // Daily's Find is the header's page search (bare F): narrows the agenda on `?q=`.
+    search: { placeholder: 'Find a task, order #, tracking #, ticket or person…', source: 'url-param', param: 'q' },
+    controls: {
+      choices: [
+        {
+          id: 'status',
+          label: 'Status',
+          param: 'filter',
+          options: [
+            { value: 'open', label: 'Open' },
+            { value: 'done', label: 'Done' },
+          ],
+          clearParams: [],
+        },
+        {
+          id: 'scope',
+          label: 'Scope',
+          param: 'scope',
+          options: [
+            { value: 'handed', label: 'Handed off' },
+            { value: 'everyone', label: 'Everyone' },
+          ],
+          clearParams: [],
+        },
+      ],
+    },
     actions: [{ action: { id: 'daily.add-task', label: 'Add task', intent: 'daily:compose' } }],
   },
-  // `WalkInHistorySidebar` station links (Sales Board + Local Pickup views).
+  // Sales station actions plus the URL-owned Find for each searchable view.
   sales: {
+    viewKeys: true,
     actions: [
       { action: { id: 'walk-in.new-sale', label: 'New sale', href: walkInStationHref('sales') } },
       { action: { id: 'walk-in.local-pickup', label: 'Local pickup', href: walkInStationHref('pickup') } },
@@ -545,14 +644,22 @@ export const NAV_PAGE_DECLS: Readonly<Record<string, NavPageDecl>> = {
         action: { id: 'walk-in.repair-intake', label: 'Repair intake', href: walkInStationHref('repair', { new: 'true' }) },
       },
     ],
-    items: { counter: { actions: [] }, repairs: { actions: [] } },
+    items: {
+      counter: { actions: [] },
+      sales: { search: { placeholder: 'Search sales…', source: 'url-param', param: 'sq' } },
+      repairs: { actions: [], search: { placeholder: 'Filter repairs…', source: 'url-param', param: 'search' } },
+    },
   },
   // ── Scan Stations ───────────────────────────────────────────────────────
   triage: {
+    viewKeys: true,
+    search: { placeholder: 'Filter scanned cartons…', source: 'url-param', param: 'triq' },
     recents: 'receiving.scanned',
     scanInput: { grammar: 'arrival', endpoint: '/api/receiving/lookup-po' },
   },
   receive: {
+    viewKeys: true,
+    search: { placeholder: 'Filter cartons or incoming…', source: 'url-param', param: INBOUND_FIND_PARAM },
     recents: 'receiving.unbox_opened',
     scanInput: { grammar: 'unbox', endpoint: '/api/receiving/lookup-po' },
     actions: [
@@ -563,18 +670,51 @@ export const NAV_PAGE_DECLS: Readonly<Record<string, NavPageDecl>> = {
   },
   pickup: {
     recents: 'pickup.orders',
+    recentsPanel: true,
+    search: { placeholder: 'Order, seller, SKU or item…', source: 'url-param', param: 'q' },
+    controls: {
+      sort: {
+        param: 'sort',
+        defaultValue: 'actionable',
+        options: [
+          { value: 'actionable', label: 'Next action, oldest first' },
+          { value: 'newest', label: 'Pickup date, newest' },
+          { value: 'oldest', label: 'Pickup date, oldest' },
+          { value: 'order', label: 'Order number, A to Z' },
+          { value: 'customer', label: 'Seller, A to Z' },
+          { value: 'amount_high', label: 'Amount, high to low' },
+          { value: 'amount_low', label: 'Amount, low to high' },
+        ],
+      },
+      dateRanges: [{
+        id: 'pickup-date',
+        label: 'Pickup date',
+        fromParam: 'pickupFrom',
+        toParam: 'pickupTo',
+        clearParams: ['lcpu'],
+        placeholder: 'Any pickup date',
+      }],
+    },
     // Resolved client-side over the cached rail; the hit writes `?lcpu=`.
     scanInput: { grammar: 'pickup', endpoint: '/api/local-pickup-orders/lines' },
   },
+  repair: {
+    search: { placeholder: 'Filter repairs…', source: 'url-param', param: 'search' },
+  },
   testing: {
+    viewKeys: true,
+    search: { placeholder: 'Filter tests…', source: 'url-param', param: 'search' },
     recents: 'testing.opened',
     scanInput: { grammar: 'testing', endpoint: '/api/receiving-lines' },
   },
   'ready-to-pack': {
+    viewKeys: true,
+    search: { placeholder: 'Filter tested units…', source: 'url-param', param: 'q' },
     recents: 'tech.scans',
     scanInput: { grammar: 'station', endpoint: '/api/picking/desk/scan' },
   },
   packer: {
+    viewKeys: true,
     recents: 'packer.packs',
     scanInput: { grammar: 'pack', endpoint: '/api/packing-logs' },
   },
@@ -586,16 +726,26 @@ export const NAV_PAGE_DECLS: Readonly<Record<string, NavPageDecl>> = {
     viewKeys: true,
     scanInput: { grammar: 'fnsku', endpoint: '/api/fba/fnskus/validate' },
   },
-  // Labels & docs: Labels · Paperwork · Printed are sidebar views, one per
-  // print job (bare keys 1 · 2 · 3); Find narrows the queue through the desk
-  // store. The header split CTA's face is the view's own stock — ⌘P prints
-  // all of it, ⌘O uploads label PDFs (`LabelsDocsDesk` registers the intents).
+  // Labels & docs: Uploads (bare — one card per uploaded PDF) · Labels ·
+  // Paperwork · Printed are sidebar views (bare keys 1 · 2 · 3 · 4); Find
+  // narrows the list through the desk store. The header split CTA's face is
+  // the view's own job — Uploads uploads label PDFs, a print view prints all of
+  // its stock (⌘P); ⌘O uploads label PDFs everywhere (`LabelsDocsDesk`
+  // registers the intents). Uploads filters by upload date (`?from=`/`?to=`).
   'label-intake': {
     viewKeys: true,
     search: { placeholder: 'Search labels', source: 'desk-store' },
-    actions: labelsDocsActions('labels'),
+    actions: labelsDocsActions('uploads'),
     items: {
-      labels: {},
+      uploads: {
+        search: { placeholder: 'Search uploads', source: 'desk-store' },
+        controls: {
+          dateRanges: [
+            { id: 'uploaded', label: 'Uploaded', fromParam: 'from', toParam: 'to', clearParams: [], placeholder: 'Any date' },
+          ],
+        },
+      },
+      labels: { actions: labelsDocsActions('labels') },
       paperwork: { actions: labelsDocsActions('paperwork') },
       printed: { actions: labelsDocsActions('printed') },
     },
@@ -608,5 +758,18 @@ export const NAV_PAGE_DECLS: Readonly<Record<string, NavPageDecl>> = {
       runs: { controls: IMPORT_RUNS_CONTROLS },
       rows: { controls: IMPORT_ROWS_CONTROLS },
     },
+  },
+  // The Exceptions hub (owner 2026-09-28): Fulfillment · Inventory ·
+  // Receiving are its MODES — the mode card the Fulfillment lane wears
+  // (`FBM ▾`). Never an "all" list (owner 2026-09-29): `/exceptions` always
+  // lands on one kind, and a mode opens its first kind. `G` then F / I / R
+  // (`NAV_PAGE_GO_KEYS`), each with its count (facet contexts
+  // `exceptions.<domain>`). In a domain its kinds are the views under the
+  // card (`1`–`3`, counts `exceptions.<kind>`). No bare digit is bound on the
+  // desk or its record pane. Find narrows the list server-side through `?q=`.
+  exceptions: {
+    modes: { label: 'Domain' },
+    viewKeys: true,
+    search: { placeholder: 'Order, SKU, PO, tracking or bin…', source: 'url-param', param: 'q' },
   },
 };

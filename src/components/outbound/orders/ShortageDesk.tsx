@@ -22,7 +22,7 @@ function ShortageDeskContent({
   useDashboardRealtime();
   // Keeps `?openOrderId=` and the open record in step (deep links, reload,
   // back/forward) — the same owner To ship mounts; the record itself is the
-  // ledger's record plane.
+  // card list's record plane.
   useDashboardSelectedOrder(true);
 
   return (
@@ -31,7 +31,6 @@ function ShortageDeskContent({
         <UnshippedTable
           strictSearchScope
           railSelection={selectionEnabled}
-          ledger
           onPrimaryPainted={onPrimaryPainted}
           searchResultLabel="orders to pick"
           clearSearchLabel="Show all orders to pick"

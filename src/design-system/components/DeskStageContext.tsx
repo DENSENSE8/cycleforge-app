@@ -4,36 +4,18 @@
  * Desk stage state, published DOWN to the desk body.
  * field (operator ruling 2026-08-30).
  *
- * ONE state, three views (owner 2026-09-26): `in-place` and `split` are where
- * the record goes (remembered per staffer per desk); `floor` is the industrial
- * full canvas a list face may offer (⌘/Ctrl+Shift+F), a session posture that
- * is never remembered. `fullscreen` is derived — any view but `in-place`.
+ * ONE state, two views (owner 2026-09-28: the desktop is triage-only, no
+ * Floor): `in-place` and `split` are where the record goes, remembered per
+ * staffer per desk. `fullscreen` is derived — `split`.
  */
 
-import {
-  createContext,
-  useContext,
-  useEffect,
-  useMemo,
-  useSyncExternalStore,
-  type ReactNode,
-} from 'react';
+import { createContext, useContext, useMemo, type ReactNode } from 'react';
 
-export type DeskStageView = 'in-place' | 'split' | 'floor';
-
-/** The two views a staffer remembers; floor is never one of them. */
-export type DeskRememberedView = Exclude<DeskStageView, 'floor'>;
+export type DeskStageView = 'in-place' | 'split';
 
 interface DeskStageValue {
   view: DeskStageView;
-  /** `in-place` / `split` choose (and leave floor); `floor` enters floor. */
   setView: (view: DeskStageView) => void;
-  /** Enter floor, or leave it for the view it was entered from. */
-  toggleFloor: () => void;
-  /** A list on this stage paints a floor face — the Floor control and ⌘/Ctrl+Shift+F exist only then. */
-  floorAvailable: boolean;
-  /** Called by {@link useDeskFloorFace}; returns the unregister. */
-  registerFloorFace: () => () => void;
   /** Derived: `view !== 'in-place'` (the page header and tab row are not rendered). */
   fullscreen: boolean;
 }
@@ -43,22 +25,9 @@ const DeskStageContext = createContext<DeskStageValue | null>(null);
 export function DeskStageProvider({
   view,
   setView,
-  toggleFloor,
-  floorAvailable,
-  registerFloorFace,
   children,
 }: Omit<DeskStageValue, 'fullscreen'> & { children: ReactNode }) {
-  const value = useMemo(
-    () => ({
-      view,
-      setView,
-      toggleFloor,
-      floorAvailable,
-      registerFloorFace,
-      fullscreen: view !== 'in-place',
-    }),
-    [view, setView, toggleFloor, floorAvailable, registerFloorFace],
-  );
+  const value = useMemo(() => ({ view, setView, fullscreen: view !== 'in-place' }), [view, setView]);
   return <DeskStageContext.Provider value={value}>{children}</DeskStageContext.Provider>;
 }
 
@@ -68,35 +37,8 @@ export function useDeskStageOptional(): DeskStageValue | null {
 }
 
 /**
- * A list that can paint the floor face says so while mounted — the stage only
- * offers floor (button, shortcut) when some list can honour it.
- */
-export function useDeskFloorFace(enabled: boolean): void {
-  const register = useDeskStageOptional()?.registerFloorFace;
-  useEffect(() => {
-    if (!enabled || !register) return undefined;
-    return register();
-  }, [enabled, register]);
-}
-
-/** The ⌘/Ctrl+Shift+F chord — never bare `F` (scanner, find) nor ⌘F (browser find). */
-export function isDeskFloorChord(
-  event: Pick<KeyboardEvent, 'key' | 'code' | 'metaKey' | 'ctrlKey' | 'shiftKey' | 'altKey'>,
-): boolean {
-  if (!(event.metaKey || event.ctrlKey) || !event.shiftKey || event.altKey) return false;
-  return event.code === 'KeyF' || event.key.toLowerCase() === 'f';
-}
-
-/**
- * Cheat-sheet row and tooltip chord — one spelling, platform-neutral: `mod`
- * paints ⌘ on Apple and Ctrl elsewhere (`KeyboardKey` → `platformKeyFace`).
- */
-export const DESK_FLOOR_SHORTCUT = { keys: ['mod', 'Shift', 'F'], label: 'Floor view on / off' } as const;
-export const DESK_FLOOR_SHORTCUT_HINT = 'mod + Shift + F';
-
-/**
- * ⌘/Ctrl+Shift+S — In place ⇄ Split. The Floor chord's sibling: same
- * modifiers, so neither a scanner nor typing can fire it.
+ * ⌘/Ctrl+Shift+S — In place ⇄ Split. Never a bare key (a wedge scanner can
+ * type it) nor ⌘/Ctrl+S (the browser's save).
  */
 export function isDeskSplitChord(
   event: Pick<KeyboardEvent, 'key' | 'code' | 'metaKey' | 'ctrlKey' | 'shiftKey' | 'altKey'>,
@@ -105,31 +47,9 @@ export function isDeskSplitChord(
   return event.code === 'KeyS' || event.key.toLowerCase() === 's';
 }
 
+/**
+ * Cheat-sheet row and tooltip chord — one spelling, platform-neutral: `mod`
+ * paints ⌘ on Apple and Ctrl elsewhere (`KeyboardKey` → `platformKeyFace`).
+ */
 export const DESK_SPLIT_SHORTCUT = { keys: ['mod', 'Shift', 'S'], label: 'Split view on / off' } as const;
 export const DESK_SPLIT_SHORTCUT_HINT = 'mod + Shift + S';
-
-// ── Floor, published ACROSS the tree ───────────────────────────────────────
-// The app shell's sidebar column and the route's mode region sit above the
-// desk stage, so they cannot read its context. The chrome publishes here.
-
-let floorActive = false;
-const floorListeners = new Set<() => void>();
-
-export function publishDeskFloorActive(next: boolean): void {
-  if (floorActive === next) return;
-  floorActive = next;
-  for (const listener of floorListeners) listener();
-}
-
-function subscribeDeskFloor(listener: () => void): () => void {
-  floorListeners.add(listener);
-  return () => floorListeners.delete(listener);
-}
-
-const readDeskFloor = () => floorActive;
-const readServerDeskFloor = () => false;
-
-/** Is a desk on screen in floor view? For chrome that lives above the stage. */
-export function useDeskFloorActive(): boolean {
-  return useSyncExternalStore(subscribeDeskFloor, readDeskFloor, readServerDeskFloor);
-}

@@ -1,5 +1,5 @@
 import { normalizePhotoDisplayUrl } from '@/lib/nas-photo-url';
-import { resolvePhotoDisplayUrl } from '@/lib/photos/display-url';
+import { photoContentUrl, resolvePhotoDisplayUrl } from '@/lib/photos/display-url';
 import type { PhotoLibrarySourceScope } from '@/lib/photos/library-filter-state';
 import type { PhotoEvidenceStage } from '@/lib/photos/stages';
 import { receivingStageFromPhotoType } from '@/lib/receiving/photo-intent';
@@ -113,7 +113,10 @@ export interface PhotoItem {
   /** Lightweight thumbnail — used for grid tiles, the strip, and as an instant
    *  placeholder under the full-res main image so the viewer never shows black. */
   thumbUrl?: string;
+  /** The tile (thumb) preload — what the launcher strip paints on. */
   status: 'loading' | 'loaded' | 'error';
+  /** The full-res preload, run only while the viewer is open. */
+  full?: 'loaded' | 'error';
   index: number;
   /** Source context for the info panel (when the caller supplied it). */
   meta?: PhotoMeta;
@@ -137,7 +140,13 @@ export function parsePhotos(photos: PhotoGalleryInput[]): ParsedPhoto[] {
       return {
         id: idNum,
         url: resolvePhotoDisplayUrl({ id: idNum, url: photo.url }, normalizePhotoDisplayUrl),
-        thumbUrl: photo.thumbUrl?.trim() ? normalizePhotoDisplayUrl(photo.thumbUrl) : undefined,
+        // An id'd photo always has a `?variant=thumb` (stored or synthesized) —
+        // the strip must not pull the full-res bytes just to paint a tile.
+        thumbUrl: photo.thumbUrl?.trim()
+          ? normalizePhotoDisplayUrl(photo.thumbUrl)
+          : idNum != null && idNum > 0
+            ? photoContentUrl(idNum, 'thumb')
+            : undefined,
         meta: photo.meta,
       };
     })

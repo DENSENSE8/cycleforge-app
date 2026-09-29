@@ -5,7 +5,7 @@
  * History tabs. Selection writes `?packerLogId=` / `?orderId=` for the overlay.
  */
 
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { DataTable } from '@/components/tables/DataTable';
@@ -46,7 +46,7 @@ export function ReviewPackingTable({ onOpenRow, onCloseRow }: ReviewPackingTable
   const router = useRouter();
   const searchParams = useSearchParams();
   const tab = parseReviewPackingTab(searchParams.get('rtab'));
-  const [searchQuery, setSearchQuery] = useState('');
+  const searchQuery = searchParams.get('q') ?? '';
   const staffId = parseStaffParam(searchParams.get('staff')) ?? undefined;
 
   const week = useMemo(() => getWeekRangeForOffset(0), []);
@@ -140,8 +140,17 @@ export function ReviewPackingTable({ onOpenRow, onCloseRow }: ReviewPackingTable
     [pathname, router, searchParams],
   );
 
-  const setSearch = useCallback((next: string) => setSearchQuery(next), []);
-  const clearSearch = useCallback(() => setSearchQuery(''), []);
+  const setSearch = useCallback(
+    (next: string) => {
+      const params = new URLSearchParams(searchParams.toString());
+      if (next.trim()) params.set('q', next);
+      else params.delete('q');
+      const qs = params.toString();
+      router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
+    },
+    [pathname, router, searchParams],
+  );
+  const clearSearch = useCallback(() => setSearch(''), [setSearch]);
 
   const emptyCopy =
     tab === 'packed'
@@ -182,13 +191,6 @@ export function ReviewPackingTable({ onOpenRow, onCloseRow }: ReviewPackingTable
               tabs={PACKING_TABS.filter((t) => t.id !== 'packed')}
               activeTab={tab === 'packed' ? undefined : tab}
               onTabChange={(id) => setTab(id === tab ? 'packed' : id)}
-              search={{
-                value: searchQuery,
-                onChange: setSearch,
-                placeholder: 'Filter order #, SKU, tracking…',
-                answeredBy: searchAnsweredBy,
-                pending: tab === 'shipped' && shippedQuery.isFetching,
-              }}
             />
           </OrderStatusTrailStage>
         </div>

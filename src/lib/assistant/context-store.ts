@@ -1,5 +1,7 @@
 /** Assistant context registry — the module-scope store behind useAssistantContext (plan §-2 "Context injection is a registry hook, not… */
 
+import type { DocumentOcrEvidence } from '@/lib/document-intake/contract';
+
 /**
  * An entity the operator picked with `@` in the composer. Per-turn, never page
  * state: the composer sends it on one message and the server names the exact
@@ -22,6 +24,8 @@ export interface AssistantAttachment {
   kind: 'product_manual';
   name: string;
   mime: string;
+  /** Server-derived only. The client schema never accepts an OCR transcript. */
+  ocr?: DocumentOcrEvidence;
 }
 
 export interface AssistantPageContext {

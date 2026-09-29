@@ -50,6 +50,8 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
          o.customer_name,
          o.status,
          o.notes,
+         o.payment_method,
+         o.paid_amount_cents,
          o.created_by,
          s.name AS created_by_name,
          o.completed_at,
@@ -58,7 +60,7 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
          o.created_at,
          o.updated_at,
          COALESCE(agg.item_count, 0)::int AS item_count,
-         COALESCE(agg.total_value, 0)::numeric(12,2)::text AS total_value
+         COALESCE(o.paid_amount_cents::numeric / 100, agg.total_value, 0)::numeric(12,2)::text AS total_value
        FROM local_pickup_orders o
        LEFT JOIN staff s ON s.id = o.created_by
        LEFT JOIN LATERAL (

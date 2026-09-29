@@ -15,6 +15,6 @@ export const AGENDA_LIFECYCLE: Readonly<Record<AgendaStage, RecordStateFace>> = 
   active: { id: 'active', code: 'WIP', label: 'In progress', tone: 'info', icon: 'circle-dot' },
   urgent: { id: 'urgent', code: 'URG', label: 'Urgent', tone: 'warning', icon: 'alarm-clock' },
   late: { id: 'late', code: 'LATE', label: 'Past due', tone: 'warning', icon: 'alarm-clock' },
-  done: { id: 'done', code: 'DONE', label: 'Done', tone: 'success', icon: 'circle-dot' },
+  done: { id: 'done', code: 'DONE', label: 'Done', tone: 'success', icon: 'check' },
   withdrawn: { id: 'withdrawn', code: 'CXL', label: 'Withdrawn', tone: 'fulfillment', icon: 'circle-pause' },
 };

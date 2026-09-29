@@ -6,7 +6,7 @@ import type { OrgId } from '@/lib/tenancy/constants';
 import { estimatedDeliveryInstant } from '@/lib/shipping/providers/estimated-delivery';
 import { getShipmentByTracking, updateShipmentSummary, upsertTrackingEvents } from '@/lib/shipping/repository';
 import { publishShipmentStatusChange } from '@/lib/shipping/publish-on-status-change';
-import { normalizeTrackingNumber } from '@/lib/shipping/normalize';
+import { extractCanonicalTracking } from '@/lib/tracking-format';
 import type {
   CarrierCode,
   CarrierTrackingEvent,
@@ -189,7 +189,10 @@ export async function applyShipStationTrackEvent(
 ): Promise<{ matched: boolean; shipmentId?: number }> {
   const rawTracking = (data.tracking_number ?? '').trim();
   if (!rawTracking) return { matched: false };
-  const normalized = normalizeTrackingNumber(rawTracking);
+  // ShipStation can echo the full FedEx GS1 scanner envelope while the STN is
+  // keyed by the human 12/15-digit carrier number. Canonicalize before lookup
+  // or delivered pushes silently miss the already-linked order.
+  const normalized = extractCanonicalTracking(rawTracking);
 
   const stn = await getShipmentByTracking(normalized, orgId);
   if (!stn) return { matched: false };

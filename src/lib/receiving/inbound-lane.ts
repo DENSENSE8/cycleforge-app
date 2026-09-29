@@ -51,8 +51,11 @@ export const INBOUND_SOURCE_OPTIONS = [
  */
 export const INBOUND_FIND_PARAM = 'find';
 
-/** A pasted list reconciles On the way; Exceptions and Docked never carry it. */
-const PASTE_PARAMS = ['ref_in', 'recon'] as const;
+/**
+ * A pasted list belongs to the lane it was pasted on: On the way reconciles
+ * it, Unboxed narrows to it. A lane switch drops it; Exceptions never carries one.
+ */
+const PASTE_PARAMS = ['ref_in', 'recon', 'recon_reason'] as const;
 
 /**
  * Unboxed status pills (`dockedCartonStatuses(rows)`: UNFOUND · CLAIM · SHORT
@@ -133,7 +136,7 @@ export function clearCrossLaneParams(
     if (sort && isDockedSort(sort)) next.delete('sort');
     next.delete('page');
   } else {
-    for (const key of DOCKED_ONLY_PARAMS) next.delete(key);
+    for (const key of [...DOCKED_ONLY_PARAMS, ...PASTE_PARAMS]) next.delete(key);
     const sort = next.get('sort');
     if (sort && isDockedSort(sort)) next.delete('sort');
     next.delete('page');

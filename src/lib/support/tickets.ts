@@ -246,23 +246,32 @@ async function supportTicketFromZendeskId(
 /** Direct ticket_links on RECEIVING / RECEIVING_LINE (incl. pre-migration rows). */
 async function ticketFromDirectEntityLinks(args: {
   orgId: string;
+  serialUnitId?: number | null;
   lineId?: number | null;
   receivingId?: number | null;
 }): Promise<SupportTicketRow | null> {
-  const { orgId, lineId, receivingId } = args;
-  if (lineId == null && receivingId == null) return null;
+  const { orgId, serialUnitId, lineId, receivingId } = args;
+  if (serialUnitId == null && lineId == null && receivingId == null) return null;
 
   const clauses: string[] = [];
   const params: unknown[] = [orgId];
+  if (serialUnitId != null) {
+    params.push(serialUnitId);
+    clauses.push(`(tl.entity_type = 'SERIAL_UNIT' AND tl.entity_id = $${params.length})`);
+  }
   if (lineId != null) {
     params.push(lineId);
     clauses.push(`(tl.entity_type = 'RECEIVING_LINE' AND tl.entity_id = $${params.length})`);
-    clauses.push(`(tl.entity_type = 'SERIAL_UNIT' AND tl.entity_id IN (SELECT sup.serial_unit_id FROM serial_unit_provenance sup WHERE sup.origin_type = 'RECEIVING_LINE' AND sup.origin_id = $${params.length} AND sup.organization_id = $1))`);
+    if (serialUnitId == null) {
+      clauses.push(`(tl.entity_type = 'SERIAL_UNIT' AND tl.entity_id IN (SELECT sup.serial_unit_id FROM serial_unit_provenance sup WHERE sup.origin_type = 'RECEIVING_LINE' AND sup.origin_id = $${params.length} AND sup.organization_id = $1))`);
+    }
   }
   if (receivingId != null) {
     params.push(receivingId);
     clauses.push(`(tl.entity_type = 'RECEIVING' AND tl.entity_id = $${params.length})`);
-    clauses.push(`(tl.entity_type = 'SERIAL_UNIT' AND tl.entity_id IN (SELECT sup.serial_unit_id FROM serial_unit_provenance sup WHERE sup.origin_type = 'RECEIVING_LINE' AND sup.origin_id IN (SELECT id FROM receiving_line WHERE receiving_id = $${params.length} AND organization_id = $1) AND sup.organization_id = $1))`);
+    if (serialUnitId == null && lineId == null) {
+      clauses.push(`(tl.entity_type = 'SERIAL_UNIT' AND tl.entity_id IN (SELECT sup.serial_unit_id FROM serial_unit_provenance sup WHERE sup.origin_type = 'RECEIVING_LINE' AND sup.origin_id IN (SELECT id FROM receiving_line WHERE receiving_id = $${params.length} AND organization_id = $1) AND sup.organization_id = $1))`);
+    }
   }
 
   const res = await tenantQuery<SupportTicketDbRow & {
@@ -418,7 +427,7 @@ async function ticketFromReceivingColumn(args: {
   return supportTicketFromZendeskId(orgId, zd);
 }
 
-/** Primary ticket linked to a receiving carton/line. */
+/** Primary ticket linked to a receiving carton, line, or physical unit. */
 export async function getPrimarySupportTicketForReceiving(args: {
   orgId: string;
   lineId?: number | null;
@@ -446,12 +455,13 @@ export async function getPrimarySupportTicketForReceiving(args: {
     ...args,
     lineId: resolvedLineId,
   });
-  if (lineId == null && receivingIdArg == null) return null;
+  if (serialUnitId == null && lineId == null && receivingIdArg == null) return null;
 
   const receivingId = await resolveReceivingId({ orgId, lineId, receivingId: receivingIdArg });
 
   const direct = await ticketFromDirectEntityLinks({
     orgId,
+    serialUnitId,
     lineId,
     receivingId: receivingId ?? receivingIdArg ?? null,
   });

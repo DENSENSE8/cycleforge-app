@@ -31,7 +31,7 @@ export function PhotoLauncher({ g }: { g: PhotoGalleryController }) {
             <button
               type="button"
               onClick={() => g.openViewer(index)}
-              className="relative h-14 w-14 shrink-0 overflow-hidden rounded-mode-control border border-mode-edge bg-mode-well transition-colors hover:ring-2 hover:ring-mode-control"
+              className="relative h-14 w-14 shrink-0 overflow-hidden border border-mode-edge bg-mode-well transition-colors hover:ring-2 hover:ring-mode-control"
               aria-label={`View photo ${index + 1} fullscreen`}
             >
               {photo.status === 'loaded' ? (
@@ -41,7 +41,7 @@ export function PhotoLauncher({ g }: { g: PhotoGalleryController }) {
                   loading={index === 0 ? 'eager' : 'lazy'}
                   fetchPriority={index === 0 ? 'high' : undefined}
                   decoding="async"
-                  className="h-full w-full object-cover"
+                  className="h-full w-full object-contain"
                 />
               ) : photo.status === 'error' ? (
                 <div className="flex h-full w-full items-center justify-center bg-red-50">

@@ -32,10 +32,6 @@ import {
 } from '@/lib/orders/orders-compound-view';
 import { formatOutboundStoragePath } from '@/lib/shipping/outbound-storage-path';
 import { resolveSkuIdentityTitle } from '@/lib/sku/sku-identity-law';
-import {
-  ORDER_EXCEPTION_BLOCKER_LABEL,
-  exceptionPairingResolveCount,
-} from '@/lib/orders/order-exception-types';
 
 interface OrdersSlotContext {
   /**
@@ -465,37 +461,4 @@ export function ordersIndexValues(
     if (value) values[col.key] = value;
   }
   return values;
-}
-
-// ── HELD facts — the Exceptions desk's row ───────────────────────────────────
-
-/** One resolved held-order fact — the cell paints by `kind`, never by field id. */
-export type OrdersHoldValue =
-  | { kind: 'hold-reason'; category: string; owner: string }
-  | { kind: 'hold-fix'; missing: readonly string[]; action: string }
-  | { kind: 'hold-releases'; count: number; face: string };
-
-/**
- * Resolve one HELD fact (`ORDERS_HOLD_FIELD_CATALOG`) off the row's `hold`
- * projection. A row that is not held, or an unknown id → null.
- */
-export function resolveOrdersHoldValue(row: ShippedOrder, fieldId: string): OrdersHoldValue | null {
-  const hold = row.hold;
-  if (!hold) return null;
-  switch (fieldId) {
-    case 'orders.hold_reason':
-      return { kind: 'hold-reason', category: hold.category, owner: hold.owner };
-    case 'orders.hold_fix':
-      return {
-        kind: 'hold-fix',
-        missing: hold.blockers.map((b) => ORDER_EXCEPTION_BLOCKER_LABEL[b]),
-        action: hold.action,
-      };
-    case 'orders.hold_releases': {
-      const count = exceptionPairingResolveCount(hold);
-      return { kind: 'hold-releases', count, face: count === 1 ? 'this order' : `${count} orders` };
-    }
-    default:
-      return null;
-  }
 }

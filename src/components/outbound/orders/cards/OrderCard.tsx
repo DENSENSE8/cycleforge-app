@@ -19,7 +19,7 @@ import { BrandIdentityDot } from '@/components/ui/grid-cells';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { OrderIdChip } from '@/components/ui/CopyChip';
 import { RecordCard, type RecordOpenEvent } from '@/design-system/components/record-card/RecordCard';
-import type { RecordCardChip, RecordCardLine, RecordCardModel } from '@/design-system/components/record-card/record-card-types';
+import type { RecordCardChip, RecordCardModel } from '@/design-system/components/record-card/record-card-types';
 import { OUTBOUND_TRIAGE_VIEW } from '@/lib/triage/views';
 import { LIFECYCLE_GLYPH } from '@/design-system/components/record-ledger/LifecycleCode';
 import { LIFECYCLE, lifecycleRecordState, type LifecycleState } from '@/design-system/tokens/lifecycle';
@@ -27,8 +27,9 @@ import { focusRing } from '@/design-system/tokens/focus-ring';
 import { CARD_DISCLOSE, CARD_FACT_BOX_CLASS } from '@/design-system/tokens/desk-stage';
 import { useOrderChannel } from '@/hooks/useCatalog';
 import { platformMetaBrandDot } from '@/lib/source-platform';
+import { platformDisplayName } from '@/lib/platform-display';
 import type { ShippedOrder } from '@/lib/neon/orders-queries';
-import type { OrderCardLine, OrderCardModel } from '@/lib/orders/order-card-model';
+import { orderRecordLine, type OrderCardModel } from '@/lib/orders/order-card-model';
 import type { TriageCardSlotProps } from '@/design-system/components/triage-card-list/TriageCardList';
 import { ListingLinkEditor, OrderAdminLinkAction } from '../order-link-editors';
 import { cn } from '@/utils/_cn';
@@ -44,21 +45,6 @@ const STATUS_MEANING: Readonly<Record<LifecycleState, string>> = {
   shipped: 'Shipped — scanned out',
   onHold: 'On hold — cannot be picked yet',
 };
-
-function orderRecordLine(line: OrderCardLine): RecordCardLine {
-  return {
-    id: line.id,
-    title: line.title,
-    photoUrl: line.thumbUrl,
-    alert: line.outOfStock,
-    alertNote: line.shortNote,
-    facts: {
-      qty: { kind: 'qty', value: line.qty },
-      condition: line.condition ? { kind: 'grade', label: line.condition, code: line.conditionCode } : null,
-      price: line.price ? { kind: 'money', text: line.price, estimate: line.priceEstimate, estimateTitle: 'Estimate from the listing price' } : null,
-    },
-  };
-}
 
 const moreOutOfStock = (count: number) => `${count} more out of stock`;
 
@@ -84,6 +70,7 @@ export const OrderCard = memo(function OrderCard({
   onSaveNote,
 }: OrderCardProps) {
   const channel = useOrderChannel()(model.orderId, model.accountSource);
+  const channelName = platformDisplayName(channel);
   const lead = model.lines[0];
 
   const record = useMemo<RecordCardModel>(() => {
@@ -109,10 +96,10 @@ export const OrderCard = memo(function OrderCard({
         open: `Open order ${model.orderId}`,
         check: `Select order ${model.orderId}`,
       },
-      channel: channel.label
+      channel: channelName
         ? {
-            label: channel.label,
-            tooltip: channel.connectionName ?? channel.label,
+            label: channelName,
+            tooltip: channelName,
             dot: <BrandIdentityDot {...platformMetaBrandDot(channel.meta)} />,
             badge: model.fba ? 'FBA' : model.pickup ? 'Pickup' : null,
           }
@@ -129,7 +116,7 @@ export const OrderCard = memo(function OrderCard({
       lines: model.lines.map(orderRecordLine),
       hiddenAlertLabel: moreOutOfStock,
     };
-  }, [model, channel]);
+  }, [model, channel, channelName]);
 
   if (!lead) return null;
 
@@ -138,7 +125,14 @@ export const OrderCard = memo(function OrderCard({
 
   // Hovering the order number flies out "Edit admin link" (opens the link popover); click copies; the ↗ only opens.
   const identity = (
-    <OrderAdminLinkAction orderId={model.orderId} href={model.orderHref} storedUrl={model.adminUrl} ids={model.ids} platformLabel={channel.label}>
+    <OrderAdminLinkAction
+      orderId={model.orderId}
+      href={model.orderHref}
+      storedUrl={model.adminUrl}
+      ids={model.ids}
+      platformLabel={channelName}
+      showInlineOpen={false}
+    >
       <OrderIdChip value={model.orderId} display={model.orderId} plain dense truncateDisplay={false} fitDisplayWidth disableTooltip />
     </OrderAdminLinkAction>
   );
@@ -154,7 +148,11 @@ export const OrderCard = memo(function OrderCard({
         onPointerDown={stop}
         data-testid="order-card-open-listing"
         aria-label={model.listingItem ? `Open listing ${model.listingItem} in a new tab` : 'Open listing in a new tab'}
-        className={cn(CARD_FACT_BOX_CLASS, 'pointer-events-auto gap-1 rounded-md px-1 text-[13px] text-text-muted hover:bg-surface-sunken hover:text-text-default', focusRing('control'))}
+        className={cn(
+          CARD_FACT_BOX_CLASS,
+          'pointer-events-auto gap-1 rounded-md px-1 text-[13px] text-text-muted opacity-0 transition-opacity hover:bg-surface-sunken hover:text-text-default focus-visible:opacity-100 group-focus-within/card:opacity-100 group-hover/card:opacity-100',
+          focusRing('control'),
+        )}
       >
         <span className={CARD_DISCLOSE.label.show}>Listing</span>
         <ExternalLink aria-hidden className="size-3.5" />
@@ -189,8 +187,8 @@ export const OrderCard = memo(function OrderCard({
       onToggleCheck={toggleCheck}
       onToggleExpand={() => onToggleExpand(model.key)}
       onTogglePeek={() => onTogglePeek(model.key)}
-      identity={identity}
-      trailing={trailing}
+      identity={{ role: 'identity', content: identity }}
+      trailing={{ role: 'trailing', content: trailing }}
       quickLook={
         <OrderCardPeek
           key="peek"

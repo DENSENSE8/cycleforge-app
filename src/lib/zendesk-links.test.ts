@@ -64,4 +64,6 @@ test('linkSupportTicketEntity accepts an INTERNAL ticket (null zendesk id) — t
     deps,
   );
   assert.deepEqual(calls[1].params, [ORG, 55, null, 'RECEIVING', 12, null]);
+  assert.match(calls[2].sql, /INSERT INTO receiving_unit_stage_facts/);
+  assert.deepEqual(calls[2].params, [ORG, [], [], [12]]);
 });

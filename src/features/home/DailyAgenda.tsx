@@ -1,33 +1,47 @@
 'use client';
 
 /**
- * Daily (`/`) — the whole agenda as ONE industrial record ledger.
- * ## Three stores, one display, tabs (operator 2026-09-25)
+ * Daily (`/`) — the whole agenda as ONE triage list (owner 2026-09-28: the
+ * Daily page is a readable, triageable task list, never an industrial
+ * ledger): `TriageCardList density="row"`, one `AgendaListRow` per record.
+ * ## Three stores, one display (operator 2026-09-25)
+ * The daily checklist, handed-over tasks and helpdesk tickets read in the same
+ * row. The sidebar owns the lens (`?tab=`), status (`?filter=`), and scope
+ * (`?scope=`); the header Find owns `?q=`. The open record (`?task=` /
+ * `?check=`) reads in the record plane and J / K walk the list.
  */
 
-import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore, type ReactNode } from 'react';
+import { useCallback, useEffect, useMemo, useState, useSyncExternalStore, type ReactNode } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { getCurrentPSTDateKey, parseDateKey } from '@/utils/date';
 import {
   DeskActionSlotRegistrar,
   DeskHeaderAction,
 } from '@/design-system/components/DeskActionSlot';
-import { TabSwitch } from '@/design-system/components/TabSwitch';
 import { DeskPageLayout } from '@/components/desk/DeskPageLayout';
-import { SearchField } from '@/design-system/primitives/SearchField';
-import { RecordLedger } from '@/design-system/components/record-ledger/RecordLedger';
-import type { RecordLedgerSummary } from '@/design-system/components/record-ledger/RecordLedgerSummary';
+import { Button } from '@/design-system/primitives';
+import {
+  RecordLedgerSummaryPane,
+  RecordLedgerTally,
+  type RecordLedgerSummary,
+} from '@/design-system/components/record-ledger/RecordLedgerSummary';
 import { EvidenceNotice } from '@/design-system/components/record-ledger/RecordEvidence';
 import { DeskRecordLayout } from '@/design-system/components/DeskRecordPlane';
-import { RECORD_LABEL_CLASS } from '@/design-system/tokens/industrial-record';
+import { TriageCardList, type TriageCardSlotProps, type TriageFeed } from '@/design-system/components/triage-card-list/TriageCardList';
+import { TriageAllClear } from '@/design-system/components/triage-card-list/TriageListBody';
+import { useLocalTriageSelection } from '@/design-system/components/triage-card-list/local-selection';
+import { useTriageCut } from '@/design-system/components/triage-card-list/triage-list-state';
+import { triageFamily } from '@/design-system/components/triage-card-list/triage-view';
 import { useAuth } from '@/contexts/AuthContext';
+import type { RowGroup } from '@/lib/group-rows';
 import {
+  DAILY_AGENDA_BAND_ORDER,
   dailyAgendaFromChecklist,
   dailyAgendaFromTask,
   sortDailyAgendaRows,
   type DailyAgendaRow,
 } from '@/lib/daily/daily-agenda-row';
-import { AGENDA_LENSES, AGENDA_LENS_LABEL, agendaLensMatches, parseAgendaLens } from '@/lib/daily/agenda-lens';
+import { AGENDA_LENS_LABEL, agendaLensMatches, parseAgendaLens } from '@/lib/daily/agenda-lens';
 import { agendaRecordState } from '@/lib/daily/agenda-record-state';
 import { useDailyChecks, useItemActions, useToggleCheck } from '@/lib/daily-checks/use-daily-checks';
 import {
@@ -39,27 +53,25 @@ import {
   type DailyComposerDraft,
 } from '@/lib/daily-checks/composer';
 import { attachDailyCheckLinks } from '@/lib/daily-checks/use-daily-check-links';
+import { usePublishRecordCursor } from '@/lib/record-cursor/useRecordCursor';
+import { readLiveSearchParams } from '@/lib/routing/optimistic-url-param';
 import { toast } from '@/lib/toast';
+import { DAILY_AGENDA_VIEW } from '@/lib/triage/views';
 import { useTaskDesk, type TaskDeskScope } from '@/features/tasks/useTaskDesk';
 import type { TaskDeskRow } from '@/lib/tasks/task-desk-row';
 import { TaskEvidence } from '@/features/tasks/workspace/TaskEvidence';
-import { cn } from '@/utils/_cn';
 import { buildDailyTaskRows } from './grid/daily-task-row';
 import { DailyAgendaComposer } from './DailyAgendaComposer';
 import { AgendaRecentRail } from './AgendaRecentRail';
-import { AgendaRecord } from './AgendaRecord';
+import { AgendaListRow, AgendaRecordStatus, type AgendaRowModel } from './AgendaRow';
 import { DailyEntrance, type EntrancePhase } from './DailyEntrance';
 import { ChecklistEvidence, type ChecklistSchedulePatch } from './ChecklistEvidence';
-import { parseDailyStatusFilter, type DailyStatusFilter } from './daily-check-filter';
+import { parseDailyStatusFilter } from './daily-check-filter';
 import { useSurfacePaintMark } from '@/lib/observability/paint-timing';
 import { paintMarkId } from '@/lib/observability/tier1-paint-order';
-import { useDailySmoothScroll } from './useDailySmoothScroll';
 
-const DAILY_STATUS_TABS = [
-  { id: 'all', label: 'All' },
-  { id: 'open', label: 'Open' },
-  { id: 'done', label: 'Done' },
-] as const satisfies readonly { id: DailyStatusFilter; label: string }[];
+const VIEW = DAILY_AGENDA_VIEW;
+
 
 const SCOPE_TABS = [
   { id: 'mine', label: 'Mine' },
@@ -71,7 +83,35 @@ function parseScope(raw: string | null): TaskDeskScope {
   return raw === 'handed' || raw === 'everyone' ? raw : 'mine';
 }
 
-const recordKey = (row: DailyAgendaRow) => row.key;
+/** No face chips: All / Open / Done is the host's own `?filter=` switch. */
+const NO_CHIPS: readonly never[] = [];
+
+/**
+ * The triage face speaks numeric record ids (selection, the record cursor,
+ * `data-desk-record-key`); an agenda row is keyed `<type>:<id>` across two
+ * stores. Tasks and tickets share the task table's ids (`?task=`), the
+ * checklist has its own: even ids are work, odd ids checklist items —
+ * deterministic on the server and in the browser, positive, reversible.
+ */
+function agendaRecordId(store: 'checklist' | 'work', id: number): number {
+  return store === 'checklist' ? id * 2 + 1 : id * 2;
+}
+const agendaRowId = (row: DailyAgendaRow): number => agendaRecordId(row.type === 'checklist' ? 'checklist' : 'work', row.id);
+const agendaGroupKey = (group: RowGroup<DailyAgendaRow>): string => group.key;
+const noChips = (): readonly never[] => NO_CHIPS;
+
+/** The rows banded by store, in the agenda's band order (checklist first, tickets last). */
+function agendaBands(rows: readonly DailyAgendaRow[]): [string, RowGroup<DailyAgendaRow>[]][] {
+  return DAILY_AGENDA_BAND_ORDER.flatMap((type): [string, RowGroup<DailyAgendaRow>[]][] => {
+    const groups = rows.filter((row) => row.type === type).map((row) => ({ key: row.key, rows: [row] }));
+    return groups.length ? [[type, groups]] : [];
+  });
+}
+
+/** Can the viewer tick this row: a checklist only on today, a task unless withdrawn. */
+function tickable(row: DailyAgendaRow, isToday: boolean): boolean {
+  return row.type === 'checklist' ? isToday : row.status !== 'CANCELED';
+}
 
 const NO_TASK_ROWS: readonly TaskDeskRow[] = [];
 /** Stable no-op subscription: the hydration snapshot below never changes after mount. */
@@ -79,8 +119,8 @@ const subscribeNothing = () => () => {};
 
 /** Stamped once the agenda's first real rows (or its empty/error state) render — the welcome assembly reveals the agenda on it. */
 export const DAILY_PRIMARY_PAINT_MARK = paintMarkId('daily', 'primary');
-/** The ledger's DOM hook (`data-testid`). */
-export const DAILY_LEDGER_TEST_ID = 'daily-ledger';
+/** The list's DOM hook (`data-testid`). */
+export const DAILY_LEDGER_TEST_ID = VIEW.bodyTestId;
 
 export function DailyAgenda() {
   const router = useRouter();
@@ -110,7 +150,7 @@ export function DailyAgenda() {
 
   const writeParams = useCallback(
     (mutate: (next: URLSearchParams) => void) => {
-      const next = new URLSearchParams(searchParams.toString());
+      const next = readLiveSearchParams(searchParams.toString());
       mutate(next);
       const qs = next.toString();
       router.replace(qs ? `/?${qs}` : '/', { scroll: false });
@@ -136,9 +176,6 @@ export function DailyAgenda() {
   const taskRows = hydrated ? tasks.rows : NO_TASK_ROWS;
   const loading = !hydrated || checks.isLoading || tasks.loading;
   useSurfacePaintMark(DAILY_PRIMARY_PAINT_MARK, !loading);
-  /** The ledger's own list scroller — the ONLY element Lenis drives (never the window). */
-  const ledgerScrollRef = useRef<HTMLDivElement>(null);
-  useDailySmoothScroll(ledgerScrollRef, entrance === 'rows' || entrance === 'revealed');
 
   const doneSet = useMemo(() => new Set(checksData?.mine?.doneItemIds ?? []), [checksData]);
 
@@ -174,57 +211,53 @@ export function DailyAgenda() {
     );
   }, [rows, query]);
 
-  const lensCounts = useMemo(
-    () => Object.fromEntries(AGENDA_LENSES.map((l) => [l, searched.filter((row) => agendaLensMatches(row, l)).length])),
-    [searched],
-  );
   const lensed = useMemo(() => searched.filter((row) => agendaLensMatches(row, lens)), [searched, lens]);
-  const statusCounts = useMemo(() => {
-    const done = lensed.filter((row) => row.done).length;
-    return { all: lensed.length, open: lensed.length - done, done };
-  }, [lensed]);
   const visible = useMemo(
     () => (status === 'all' ? lensed : lensed.filter((row) => (status === 'done' ? row.done : !row.done))),
     [lensed, status],
   );
-  // Let query hydration and virtualization mount rows while the page is hidden,
-  // then freeze that row set during the full-viewport spring. Late data joins
-  // once the container is flush, outside the expensive transform.
+  // Let query hydration mount rows while the page is hidden, then freeze that
+  // row set during the full-viewport spring. Late data joins once the
+  // container is flush, outside the expensive transform.
   const [prewarmedVisible, setPrewarmedVisible] = useState(visible);
   useEffect(() => {
     if (entrance !== 'rising') setPrewarmedVisible(visible);
   }, [entrance, visible]);
   const renderedVisible = entrance === 'rising' ? prewarmedVisible : visible;
-  const indexByKey = useMemo(
-    () => new Map(renderedVisible.map((row, index) => [row.key, index])),
-    [renderedVisible],
-  );
+
+  // ── the list's bands, through the face's cut (held-new) ──────────────────
+  const cut = useTriageCut({ statusKeys: NO_CHIPS, recordParams: VIEW.recordParams, statusParam: VIEW.chips.param });
+  const { filterBands } = cut;
+  const allBands = useMemo(() => agendaBands(renderedVisible), [renderedVisible]);
+  const bands = useMemo(() => filterBands(allBands, agendaGroupKey, noChips), [filterBands, allBands]);
+  const painted = useMemo(() => bands.flatMap(([, groups]) => groups.flatMap((group) => group.rows)), [bands]);
 
   const setParam = useCallback(
     (key: string, value: string | null) => writeParams((p) => (value ? p.set(key, value) : p.delete(key))),
     [writeParams],
   );
 
-  /** `task:12` / `ticket:12` open through `?task=`, `checklist:7` through `?check=`. */
-  const openRecord = useCallback(
-    (key: string) => {
-      const [type, id] = key.split(':');
-      writeParams((p) => {
-        p.delete('task');
-        p.delete('check');
-        p.set(type === 'checklist' ? 'check' : 'task', id);
-      });
+  /**
+   * `task:12` / `ticket:12` open through `?task=`, `checklist:7` through
+   * `?check=`. The open record moves within the loaded list: History API, no
+   * server round-trip (J / K stay instant).
+   */
+  const writeOpen = useCallback(
+    (key: string | null) => {
+      const params = readLiveSearchParams(searchParams.toString());
+      params.delete('task');
+      params.delete('check');
+      if (key) {
+        const [type, id] = key.split(':');
+        params.set(type === 'checklist' ? 'check' : 'task', id ?? '');
+      }
+      const qs = params.toString();
+      window.history.replaceState(null, '', qs ? `/?${qs}` : '/');
     },
-    [writeParams],
+    [searchParams],
   );
-  const closeRecord = useCallback(
-    () =>
-      writeParams((p) => {
-        p.delete('task');
-        p.delete('check');
-      }),
-    [writeParams],
-  );
+  const openAgendaRow = useCallback((row: DailyAgendaRow) => writeOpen(row.key), [writeOpen]);
+  const closeRecord = useCallback(() => writeOpen(null), [writeOpen]);
   const setComposing = useCallback((open: boolean) => setParam('compose', open ? '1' : null), [setParam]);
 
   // ── the tick, branching on the row's store ───────────────────────────────
@@ -283,35 +316,68 @@ export function DailyAgenda() {
     if (composing && !isToday) setComposing(false);
   }, [composing, isToday, setComposing]);
 
-  const renderRecord = useCallback(
-    (row: DailyAgendaRow, open: boolean) => (
-      <AgendaRecord
-        row={row}
-        open={open}
-        nowMs={tasks.nowMs}
-        isToday={isToday}
-        tickable={row.type === 'checklist' ? isToday : row.status !== 'CANCELED'}
-        onOpen={openRecord}
-        onToggle={toggleRow}
-        entranceIndex={indexByKey.get(row.key) ?? 0}
-      />
-    ),
-    [indexByKey, isToday, openRecord, tasks.nowMs, toggleRow],
+  // ── the open record ──────────────────────────────────────────────────────
+  // The list keys work rows `task:` / `ticket:`; the URL only knows the id.
+  const openRow = openKey?.startsWith('work:')
+    ? rows.find((row) => row.type !== 'checklist' && `work:${row.id}` === openKey) ?? null
+    : rows.find((row) => row.key === openKey) ?? null;
+  // A link naming a record this view does not hold still opens the plane (its notice says why).
+  const openId = openRow
+    ? agendaRowId(openRow)
+    : openKey
+      ? agendaRecordId(openKey.startsWith('checklist:') ? 'checklist' : 'work', Number(openKey.split(':')[1]))
+      : null;
+  const openTask = openRow && openRow.type !== 'checklist' ? taskRows.find((t) => t.id === openRow.id) ?? null : null;
+  const openCheckTicket =
+    openRow?.type === 'checklist'
+      ? (checksData?.items.find((item) => item.id === openRow.id)?.ticketId ?? null)
+      : null;
+
+  usePublishRecordCursor({
+    surfaceId: 'daily-rows',
+    scope: 'record',
+    enabled: !composing,
+    order: bands,
+    openId,
+    getId: agendaRowId,
+    onOpen: openAgendaRow,
+    onClose: closeRecord,
+  });
+
+  // ── the face ─────────────────────────────────────────────────────────────
+  const selection = useLocalTriageSelection(agendaRowId);
+  const nowMs = tasks.nowMs;
+  const family = useMemo(
+    () =>
+      triageFamily(VIEW, {
+        rowId: agendaRowId,
+        groupKey: agendaGroupKey,
+        cardModel: (group: RowGroup<DailyAgendaRow>): AgendaRowModel => {
+          const lead = group.rows[0]!;
+          return { key: group.key, ids: [agendaRowId(lead)], lead };
+        },
+        // A Find naming exactly one record's handle (order #, carton, ticket #) opens it.
+        exactFind: (q: string, model: AgendaRowModel) => model.lead.recordLabel?.toLowerCase() === q,
+        renderCard: (props: TriageCardSlotProps<DailyAgendaRow, AgendaRowModel>) => (
+          <AgendaListRow {...props} nowMs={nowMs} isToday={isToday} />
+        ),
+      }),
+    [nowMs, isToday],
   );
 
-  /** The page frame, with the LENS tabs in the desk chrome — top left, on the same row as Add — exactly where Shipping's desk tabs sit. */
-  const lensTabs = AGENDA_LENSES.filter((l) => scope === 'mine' || l !== 'checklist').map((l) => ({
-    id: l,
-    label: AGENDA_LENS_LABEL[l],
-    count: lensCounts[l],
-  }));
+  const selectedRows = useMemo(() => rows.filter((row) => selection.ids.has(agendaRowId(row))), [rows, selection.ids]);
+  const setDone = useCallback(
+    (done: boolean) => {
+      for (const row of selectedRows) if (row.done !== done && tickable(row, isToday)) toggleRow(row);
+      selection.setAll(false);
+    },
+    [selectedRows, isToday, toggleRow, selection],
+  );
+
+  const summary = useMemo(() => agendaSummary(searched, nowMs, isToday), [searched, nowMs, isToday]);
+
   const frame = (body: ReactNode) => (
-    <DeskPageLayout
-      className="h-full"
-      tabs={lensTabs}
-      activeTab={lens}
-      onTabChange={(id) => setParam('tab', id === 'all' ? null : id)}
-    >
+    <DeskPageLayout className="h-full">
       <DeskActionSlotRegistrar>{addAction}</DeskActionSlotRegistrar>
       {body}
     </DeskPageLayout>
@@ -325,9 +391,9 @@ export function DailyAgenda() {
             <AgendaRecentRail
               rows={rows}
               selectedTaskId={rawTask ? Number(rawTask) : null}
-              onSelect={(row) => openRecord(row.key)}
+              onSelect={openAgendaRow}
               loading={loading}
-              nowMs={tasks.nowMs}
+              nowMs={nowMs}
             />
           }
           onExit={() => setComposing(false)}
@@ -356,19 +422,21 @@ export function DailyAgenda() {
     );
   }
 
-  // The ledger keys work rows `task:` / `ticket:`; the URL only knows the id.
-  const openRow = openKey?.startsWith('work:')
-    ? rows.find((row) => row.type !== 'checklist' && `work:${row.id}` === openKey) ?? null
-    : rows.find((row) => row.key === openKey) ?? null;
-  const ledgerOpenKey = openRow?.key ?? openKey;
-  const openTask = openRow && openRow.type !== 'checklist' ? taskRows.find((t) => t.id === openRow.id) ?? null : null;
-  const openCheckTicket =
-    openRow?.type === 'checklist'
-      ? (checksData?.items.find((item) => item.id === openRow.id)?.ticketId ?? null)
-      : null;
-
   // `loading` is computed above the composer branch (it gates the paint mark).
   const error = !hydrated ? null : checks.isError ? 'Could not load the checklist.' : tasks.error;
+
+  const feed: TriageFeed<DailyAgendaRow> = {
+    bands,
+    allBands,
+    painted,
+    // The store bands head the All lens; a store's own lens tab names it already.
+    sectioned: lens === 'all',
+    loading,
+    fetching: loading,
+    search: { value: query, pending: false },
+    selection,
+    open: { id: openId, open: openAgendaRow, close: closeRecord },
+  };
 
   return (
     <DailyEntrance ready={!loading} onPhase={setEntrance}>
@@ -378,118 +446,116 @@ export function DailyAgenda() {
           data-welcome-focus-mark={DAILY_PRIMARY_PAINT_MARK}
           className="flex min-h-0 min-w-0 flex-1"
         >
-      <RecordLedger
-        testId={DAILY_LEDGER_TEST_ID}
-        label="Daily agenda"
-        records={renderedVisible}
-        recordKey={recordKey}
-        renderRecord={renderRecord}
-        openKey={ledgerOpenKey}
-        onOpenKey={openRecord}
-        onClose={closeRecord}
-        loading={loading}
-        scrollRef={ledgerScrollRef}
-        toolbar={
-          <>
-            <SearchField
-              value={query}
-              onChange={(next) => setParam('q', next.trim() || null)}
-              placeholder="Find a task, order #, tracking #, ticket or person…"
-              className="min-w-0 max-w-[26rem] flex-1 overflow-hidden rounded-mode-control pl-2"
-              tone="neutral"
-              hideUnderline
-              fillHost
-            />
-            <div className="ml-auto flex items-center gap-2 px-2">
-              <TabSwitch
-                size="sm"
-                fit="hug"
-                countStyle="plain"
-                tabs={DAILY_STATUS_TABS.map((tab) => ({ id: tab.id, label: tab.label, count: statusCounts[tab.id] }))}
-                activeTab={status}
-                onTabChange={(id) => setParam('filter', id === 'all' ? null : id)}
+          <TriageCardList
+            density="row"
+            family={family}
+            feed={feed}
+            cut={cut}
+            summary={null}
+            bulk={
+              <span className="flex items-center gap-2" data-testid="daily-bulk">
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  disabled={!selectedRows.some((row) => !row.done && tickable(row, isToday))}
+                  onClick={() => setDone(true)}
+                  data-testid="daily-bulk-done"
+                >
+                  Mark done
+                </Button>
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  disabled={!selectedRows.some((row) => row.done && tickable(row, isToday))}
+                  onClick={() => setDone(false)}
+                  data-testid="daily-bulk-reopen"
+                >
+                  Reopen
+                </Button>
+              </span>
+            }
+            banner={
+              // Find (`?q=`) is the global header's page search (bare F) — one field per page, never inline here.
+              <div className="flex min-w-0 items-center gap-3 px-4 pb-2" data-testid="daily-toolbar">
+                {error ? (
+                  <p role="alert" className="truncate text-sm text-text-warning" data-testid="daily-error">
+                    {error}
+                  </p>
+                ) : null}
+                <span className="ml-auto flex">
+                  <RecordLedgerTally summary={summary} />
+                </span>
+              </div>
+            }
+            searchEmpty={
+              query.trim() || status !== 'all' ? (
+                <p className="text-sm text-text-muted">
+                  {query.trim()
+                    ? 'Nothing on the agenda matches that search.'
+                    : status === 'done'
+                      ? 'Nothing finished yet.'
+                      : 'Everything is done.'}
+                </p>
+              ) : null
+            }
+            allClear={
+              <TriageAllClear
+                title="Nothing on the agenda"
+                detail={`${AGENDA_LENS_LABEL[lens]} · ${SCOPE_TABS.find((tab) => tab.id === scope)?.label ?? ''}`}
               />
-              <TabSwitch
-                size="sm"
-                fit="hug"
-                tabs={SCOPE_TABS.map((tab) => ({ id: tab.id, label: tab.label }))}
-                activeTab={scope}
-                onTabChange={(id) => setParam('scope', id === 'mine' ? null : id)}
-              />
-            </div>
-          </>
-        }
-        banner={
-          error ? (
-            <div role="alert" className={cn(RECORD_LABEL_CLASS, 'border-b border-mode-rule bg-mode-well px-3 py-2 text-mode-warn')}>
-              {error}
-            </div>
-          ) : null
-        }
-        empty={
-          <>
-            <b className="text-role-body font-bold text-mode-ink">
-              {query.trim()
-                ? 'Nothing on the agenda matches that search.'
-                : status === 'done'
-                  ? 'Nothing finished yet.'
-                  : status === 'open'
-                    ? 'Everything is done.'
-                    : 'Nothing on the agenda.'}
-            </b>
-            <span className={cn(RECORD_LABEL_CLASS, 'text-mode-muted')}>
-              {AGENDA_LENS_LABEL[lens]} · {SCOPE_TABS.find((tab) => tab.id === scope)?.label}
-            </span>
-          </>
-        }
-        recordTitle={openRow ? openRow.title : loading ? 'Loading…' : 'Not in this view'}
-        recordNoun={openRow?.type === 'checklist' ? 'checklist item' : 'task'}
-        summary={agendaSummary(searched, tasks.nowMs, isToday)}
-        record={
-          openKey == null ? null : (
-            <DeskRecordLayout
-              main={
-                openRow?.type === 'checklist' ? (
-                  <ChecklistEvidence
-                    row={openRow}
-                    dateKey={dateKey}
-                    ticketId={openCheckTicket}
-                    nowMs={tasks.nowMs}
-                    isToday={isToday}
-                    canTick={isToday}
-                    canManage={canManage}
-                    pending={updateItem.isPending}
-                    onToggle={() => toggleRow(openRow)}
-                    onSchedule={(patch: ChecklistSchedulePatch) =>
-                      updateItem.mutate(
-                        { itemId: openRow.id, ...patch },
-                        { onError: (err) => toast.error(err.message) },
+            }
+            record={{
+              title: openRow ? openRow.title : loading ? 'Loading…' : 'Not in this view',
+              actions: openRow ? <AgendaRecordStatus row={openRow} nowMs={nowMs} isToday={isToday} /> : undefined,
+              noun: openRow?.type === 'checklist' ? 'checklist item' : 'task',
+              testId: 'daily-record',
+              summary: <RecordLedgerSummaryPane summary={summary} />,
+              strip: null,
+              view:
+                openKey == null ? null : (
+                  <DeskRecordLayout
+                    main={
+                      openRow?.type === 'checklist' ? (
+                        <ChecklistEvidence
+                          row={openRow}
+                          dateKey={dateKey}
+                          ticketId={openCheckTicket}
+                          nowMs={nowMs}
+                          isToday={isToday}
+                          canTick={isToday}
+                          canManage={canManage}
+                          pending={updateItem.isPending}
+                          onToggle={() => toggleRow(openRow)}
+                          onSchedule={(patch: ChecklistSchedulePatch) =>
+                            updateItem.mutate(
+                              { itemId: openRow.id, ...patch },
+                              { onError: (err) => toast.error(err.message) },
+                            )
+                          }
+                        />
+                      ) : openTask ? (
+                        <TaskEvidence
+                          key={openTask.id}
+                          row={openTask}
+                          nowMs={nowMs}
+                          pending={tasks.update.isPending}
+                          onPatch={(patch) =>
+                            tasks.update.mutateAsync({ id: openTask.id, patch }).catch((err: unknown) => {
+                              toast.error(err instanceof Error ? err.message : 'Could not save the task.');
+                              throw err;
+                            })
+                          }
+                        />
+                      ) : (
+                        <EvidenceNotice tone="warn">
+                          {loading ? 'Loading…' : 'That record is not in this view — try another scope or tab.'}
+                        </EvidenceNotice>
                       )
                     }
                   />
-                ) : openTask ? (
-                  <TaskEvidence
-                    key={openTask.id}
-                    row={openTask}
-                    nowMs={tasks.nowMs}
-                    pending={tasks.update.isPending}
-                    onPatch={(patch) =>
-                      tasks.update.mutateAsync({ id: openTask.id, patch }).catch((err: unknown) => {
-                        toast.error(err instanceof Error ? err.message : 'Could not save the task.');
-                        throw err;
-                      })
-                    }
-                  />
-                ) : (
-                  <EvidenceNotice tone="warn">
-                    {loading ? 'Loading…' : 'That record is not in this view — try another scope or tab.'}
-                  </EvidenceNotice>
-                )
-              }
-            />
-          )
-        }
-      />
+                ),
+            }}
+          />
         </div>,
       )}
     </DailyEntrance>

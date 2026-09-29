@@ -183,6 +183,581 @@
         }
       }
     },
+    "/api/v1/label-batches": {
+      "get": {
+        "parameters": [
+          {
+            "name": "q",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "maxLength": 200
+            },
+            "description": "File name, a page's tracking number or order ref"
+          },
+          {
+            "name": "from",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "date"
+            },
+            "description": "Upload date on or after (warehouse civil date)"
+          },
+          {
+            "name": "to",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "date"
+            },
+            "description": "Upload date on or before (warehouse civil date)"
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 500
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Uploaded label PDFs, newest upload first ({ rows, total })"
+          },
+          "400": {
+            "description": "Invalid query",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "file",
+                  "clientEventId"
+                ],
+                "properties": {
+                  "file": {
+                    "type": "string",
+                    "format": "binary",
+                    "description": "application/pdf"
+                  },
+                  "clientEventId": {
+                    "type": "string",
+                    "format": "uuid"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "These bytes are already a batch — returned as is, nothing ingested ({ batch, replayed: true, pages })"
+          },
+          "201": {
+            "description": "Batch created; every page ingested as a label ({ batch, replayed: false, pages })"
+          },
+          "400": {
+            "description": "Rejected (not a PDF, too large, too many pages)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/label-batches/{id}": {
+      "get": {
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "One batch: its pages (label rows + pageNumber, page order) and the paired orders' paperwork"
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/label-buys/rates": {
+      "post": {
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "purpose",
+                  "shipTo",
+                  "parcel"
+                ],
+                "properties": {
+                  "purpose": {
+                    "type": "string",
+                    "enum": [
+                      "outbound",
+                      "return",
+                      "replacement"
+                    ]
+                  },
+                  "shipTo": {
+                    "type": "object",
+                    "required": [
+                      "name",
+                      "addressLine1",
+                      "cityLocality",
+                      "stateProvince",
+                      "postalCode",
+                      "countryCode"
+                    ],
+                    "properties": {
+                      "name": {
+                        "type": "string"
+                      },
+                      "phone": {
+                        "type": [
+                          "string",
+                          "null"
+                        ]
+                      },
+                      "company": {
+                        "type": [
+                          "string",
+                          "null"
+                        ]
+                      },
+                      "addressLine1": {
+                        "type": "string"
+                      },
+                      "addressLine2": {
+                        "type": [
+                          "string",
+                          "null"
+                        ]
+                      },
+                      "cityLocality": {
+                        "type": "string"
+                      },
+                      "stateProvince": {
+                        "type": "string"
+                      },
+                      "postalCode": {
+                        "type": "string"
+                      },
+                      "countryCode": {
+                        "type": "string",
+                        "minLength": 2,
+                        "maxLength": 2
+                      },
+                      "residential": {
+                        "type": [
+                          "boolean",
+                          "null"
+                        ]
+                      }
+                    }
+                  },
+                  "parcel": {
+                    "type": "object",
+                    "required": [
+                      "weight"
+                    ],
+                    "properties": {
+                      "weight": {
+                        "type": "object",
+                        "required": [
+                          "value",
+                          "unit"
+                        ],
+                        "properties": {
+                          "value": {
+                            "type": "number",
+                            "exclusiveMinimum": 0
+                          },
+                          "unit": {
+                            "type": "string",
+                            "enum": [
+                              "ounce",
+                              "pound",
+                              "gram",
+                              "kilogram"
+                            ]
+                          }
+                        }
+                      },
+                      "dimensions": {
+                        "type": [
+                          "object",
+                          "null"
+                        ],
+                        "required": [
+                          "length",
+                          "width",
+                          "height",
+                          "unit"
+                        ],
+                        "properties": {
+                          "length": {
+                            "type": "number",
+                            "exclusiveMinimum": 0
+                          },
+                          "width": {
+                            "type": "number",
+                            "exclusiveMinimum": 0
+                          },
+                          "height": {
+                            "type": "number",
+                            "exclusiveMinimum": 0
+                          },
+                          "unit": {
+                            "type": "string",
+                            "enum": [
+                              "inch",
+                              "centimeter"
+                            ]
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Rates for the shipment ({ rates, invalidRates })"
+          },
+          "400": {
+            "description": "SHIPSTATION_NOT_CONNECTED / SHIP_FROM_NOT_CONFIGURED (400), SHIPSTATION_ERROR (502) — or an invalid body",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "SHIPSTATION_ERROR",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/label-buys": {
+      "post": {
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "purpose",
+                  "shipTo",
+                  "parcel",
+                  "clientEventId",
+                  "rateId",
+                  "carrierId",
+                  "serviceCode"
+                ],
+                "properties": {
+                  "purpose": {
+                    "type": "string",
+                    "enum": [
+                      "outbound",
+                      "return",
+                      "replacement"
+                    ]
+                  },
+                  "shipTo": {
+                    "type": "object",
+                    "required": [
+                      "name",
+                      "addressLine1",
+                      "cityLocality",
+                      "stateProvince",
+                      "postalCode",
+                      "countryCode"
+                    ],
+                    "properties": {
+                      "name": {
+                        "type": "string"
+                      },
+                      "phone": {
+                        "type": [
+                          "string",
+                          "null"
+                        ]
+                      },
+                      "company": {
+                        "type": [
+                          "string",
+                          "null"
+                        ]
+                      },
+                      "addressLine1": {
+                        "type": "string"
+                      },
+                      "addressLine2": {
+                        "type": [
+                          "string",
+                          "null"
+                        ]
+                      },
+                      "cityLocality": {
+                        "type": "string"
+                      },
+                      "stateProvince": {
+                        "type": "string"
+                      },
+                      "postalCode": {
+                        "type": "string"
+                      },
+                      "countryCode": {
+                        "type": "string",
+                        "minLength": 2,
+                        "maxLength": 2
+                      },
+                      "residential": {
+                        "type": [
+                          "boolean",
+                          "null"
+                        ]
+                      }
+                    }
+                  },
+                  "parcel": {
+                    "type": "object",
+                    "required": [
+                      "weight"
+                    ],
+                    "properties": {
+                      "weight": {
+                        "type": "object",
+                        "required": [
+                          "value",
+                          "unit"
+                        ],
+                        "properties": {
+                          "value": {
+                            "type": "number",
+                            "exclusiveMinimum": 0
+                          },
+                          "unit": {
+                            "type": "string",
+                            "enum": [
+                              "ounce",
+                              "pound",
+                              "gram",
+                              "kilogram"
+                            ]
+                          }
+                        }
+                      },
+                      "dimensions": {
+                        "type": [
+                          "object",
+                          "null"
+                        ],
+                        "required": [
+                          "length",
+                          "width",
+                          "height",
+                          "unit"
+                        ],
+                        "properties": {
+                          "length": {
+                            "type": "number",
+                            "exclusiveMinimum": 0
+                          },
+                          "width": {
+                            "type": "number",
+                            "exclusiveMinimum": 0
+                          },
+                          "height": {
+                            "type": "number",
+                            "exclusiveMinimum": 0
+                          },
+                          "unit": {
+                            "type": "string",
+                            "enum": [
+                              "inch",
+                              "centimeter"
+                            ]
+                          }
+                        }
+                      }
+                    }
+                  },
+                  "clientEventId": {
+                    "type": "string",
+                    "minLength": 8,
+                    "maxLength": 128,
+                    "description": "A uuid minted once per intended purchase"
+                  },
+                  "rateId": {
+                    "type": "string"
+                  },
+                  "carrierId": {
+                    "type": "string"
+                  },
+                  "serviceCode": {
+                    "type": "string"
+                  },
+                  "reference": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "maxLength": 64
+                  },
+                  "product": {
+                    "type": [
+                      "object",
+                      "null"
+                    ],
+                    "properties": {
+                      "skuCatalogId": {
+                        "type": [
+                          "integer",
+                          "null"
+                        ]
+                      },
+                      "sku": {
+                        "type": [
+                          "string",
+                          "null"
+                        ]
+                      }
+                    }
+                  },
+                  "rememberParcel": {
+                    "type": "boolean"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Bought (or the recorded purchase for this clientEventId) — LabelBuyResult"
+          },
+          "400": {
+            "description": "SHIPSTATION_NOT_CONNECTED / SHIP_FROM_NOT_CONFIGURED (400), SHIPSTATION_ERROR (502) — or an invalid body",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "LABEL_PURCHASE_IN_FLIGHT / LABEL_PURCHASE_VOIDED / LABEL_TEST_MODE_BLOCKED / BUYER_NOTE_UNACKNOWLEDGED",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "SHIPSTATION_ERROR — nothing was charged",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/label-buys/products": {
+      "get": {
+        "parameters": [
+          {
+            "name": "q",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 2,
+              "maxLength": 100
+            },
+            "description": "SKU, title or item number"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Catalog products with their remembered parcel ({ products }, ≤ 20)"
+          },
+          "400": {
+            "description": "Invalid query",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/label-prints": {
       "get": {
         "parameters": [
@@ -724,140 +1299,6 @@
         }
       }
     },
-    "/api/v1/picking/next": {
-      "post": {
-        "description": "The caller's next directed pick. Closes the caller's finished sessions (staging their totes), then opens or reuses a session on the first eligible order. Calling it claims that order for the caller.",
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/PickNextBody"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "Next line, or an empty run",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/DirectedPickNextPayload"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Invalid request",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "Authenticated device or session required"
-          },
-          "403": {
-            "description": "Missing orders.view"
-          }
-        }
-      }
-    },
-    "/api/v1/picking/board": {
-      "get": {
-        "description": "Orders with open picks: `unassigned` (no owner) or `all`.",
-        "parameters": [
-          {
-            "name": "scope",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "type": "string",
-              "enum": [
-                "unassigned",
-                "all"
-              ],
-              "default": "unassigned"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Pick board",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/PickBoardPayload"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Invalid request",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "Authenticated device or session required"
-          },
-          "403": {
-            "description": "Missing orders.view"
-          }
-        }
-      }
-    },
-    "/api/v1/picking/release": {
-      "post": {
-        "description": "End the caller's open session(s) on an order without staging its tote (skip / pass). Picked units stay picked.",
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/PickOrderBody"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "Sessions released",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/PickReleasePayload"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Invalid request",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "Authenticated device or session required"
-          },
-          "403": {
-            "description": "Missing orders.view"
-          }
-        }
-      }
-    },
     "/api/v1/picking/sessions": {
       "post": {
         "description": "Open (or reuse) the caller’s picking session on a chosen order.",
@@ -910,144 +1351,6 @@
           },
           "409": {
             "description": "Order not pickable",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/v1/picking/sessions/{id}/tote": {
-      "post": {
-        "description": "Pair a tote to the order of the caller's open session before the first unit leaves its bin.",
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "minimum": 1
-            }
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/PickToteBody"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "Tote paired (or already paired)",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/PickTotePayload"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Invalid request",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "Authenticated device or session required"
-          },
-          "403": {
-            "description": "Missing orders.view"
-          },
-          "404": {
-            "description": "Tote not found",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "409": {
-            "description": "Session not active (ended, or not the caller's), or the tote carries another order",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/v1/picking/sessions/{id}/notes": {
-      "post": {
-        "description": "Record a picker note on units of the session.",
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "minimum": 1
-            }
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/PickNoteBody"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "Note recorded",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/PickNotePayload"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Invalid request",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "Authenticated device or session required"
-          },
-          "403": {
-            "description": "Missing orders.view"
-          },
-          "404": {
-            "description": "An allocation is not on this session (or the session is not the caller's)",
             "content": {
               "application/json": {
                 "schema": {
@@ -1112,7 +1415,14 @@
                   "INGESTION_NOT_ACTIONABLE",
                   "ROW_VERSION_CONFLICT",
                   "INGESTION_APPLY_CONFLICT",
-                  "INGESTION_PROCESSING_FAILED"
+                  "INGESTION_PROCESSING_FAILED",
+                  "SHIPSTATION_NOT_CONNECTED",
+                  "SHIP_FROM_NOT_CONFIGURED",
+                  "LABEL_TEST_MODE_BLOCKED",
+                  "SHIPSTATION_ERROR",
+                  "LABEL_PURCHASE_IN_FLIGHT",
+                  "LABEL_PURCHASE_VOIDED",
+                  "BUYER_NOTE_UNACKNOWLEDGED"
                 ]
               },
               "message": {
@@ -2033,29 +2343,6 @@
           }
         }
       },
-      "PickNextBody": {
-        "type": "object",
-        "properties": {
-          "runStartedAt": {
-            "description": "When this picker began the run; progress counts picks since then.",
-            "type": "string",
-            "format": "date-time",
-            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
-          },
-          "skipOrderIds": {
-            "default": [],
-            "description": "Orders skipped this run — never fed back.",
-            "maxItems": 500,
-            "type": "array",
-            "items": {
-              "type": "integer",
-              "exclusiveMinimum": 0,
-              "maximum": 9007199254740991
-            }
-          }
-        },
-        "additionalProperties": false
-      },
       "PickOrderBody": {
         "type": "object",
         "properties": {
@@ -2067,675 +2354,6 @@
         },
         "required": [
           "orderId"
-        ],
-        "additionalProperties": false
-      },
-      "PickToteBody": {
-        "type": "object",
-        "properties": {
-          "orderId": {
-            "type": "integer",
-            "exclusiveMinimum": 0,
-            "maximum": 9007199254740991
-          },
-          "toteScan": {
-            "type": "string",
-            "minLength": 1,
-            "maxLength": 512,
-            "description": "Raw scan: H-{id}, numeric id, or an external tote barcode."
-          }
-        },
-        "required": [
-          "orderId",
-          "toteScan"
-        ],
-        "additionalProperties": false
-      },
-      "PickNoteBody": {
-        "type": "object",
-        "properties": {
-          "allocationIds": {
-            "minItems": 1,
-            "maxItems": 200,
-            "type": "array",
-            "items": {
-              "type": "integer",
-              "exclusiveMinimum": 0,
-              "maximum": 9007199254740991
-            },
-            "description": "Units on the line the note is about."
-          },
-          "text": {
-            "type": "string",
-            "minLength": 1,
-            "maxLength": 1000
-          }
-        },
-        "required": [
-          "allocationIds",
-          "text"
-        ],
-        "additionalProperties": false
-      },
-      "DirectedPickNext": {
-        "type": "object",
-        "properties": {
-          "sessionId": {
-            "anyOf": [
-              {
-                "type": "integer",
-                "minimum": -9007199254740991,
-                "maximum": 9007199254740991
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "description": "Open picking session on `order`; null when the run is empty."
-          },
-          "order": {
-            "anyOf": [
-              {
-                "type": "object",
-                "properties": {
-                  "orderId": {
-                    "type": "integer",
-                    "minimum": -9007199254740991,
-                    "maximum": 9007199254740991
-                  },
-                  "orderLabel": {
-                    "type": "string"
-                  },
-                  "accountSource": {
-                    "anyOf": [
-                      {
-                        "type": "string"
-                      },
-                      {
-                        "type": "null"
-                      }
-                    ]
-                  },
-                  "itemNumber": {
-                    "anyOf": [
-                      {
-                        "type": "string"
-                      },
-                      {
-                        "type": "null"
-                      }
-                    ]
-                  },
-                  "deadlineAt": {
-                    "anyOf": [
-                      {
-                        "type": "string"
-                      },
-                      {
-                        "type": "null"
-                      }
-                    ]
-                  },
-                  "rush": {
-                    "type": "boolean"
-                  },
-                  "unitsRemaining": {
-                    "type": "integer",
-                    "minimum": -9007199254740991,
-                    "maximum": 9007199254740991
-                  },
-                  "toteCode": {
-                    "anyOf": [
-                      {
-                        "type": "string"
-                      },
-                      {
-                        "type": "null"
-                      }
-                    ],
-                    "description": "OPEN tote already paired to the order — arm it without a scan."
-                  },
-                  "owner": {
-                    "anyOf": [
-                      {
-                        "type": "object",
-                        "properties": {
-                          "staffId": {
-                            "type": "integer",
-                            "minimum": -9007199254740991,
-                            "maximum": 9007199254740991
-                          },
-                          "name": {
-                            "anyOf": [
-                              {
-                                "type": "string"
-                              },
-                              {
-                                "type": "null"
-                              }
-                            ]
-                          },
-                          "via": {
-                            "type": "string",
-                            "enum": [
-                              "assigned",
-                              "sku",
-                              "backup"
-                            ]
-                          }
-                        },
-                        "required": [
-                          "staffId",
-                          "name",
-                          "via"
-                        ],
-                        "additionalProperties": false
-                      },
-                      {
-                        "type": "null"
-                      }
-                    ]
-                  },
-                  "backups": {
-                    "type": "array",
-                    "items": {
-                      "type": "object",
-                      "properties": {
-                        "staffId": {
-                          "type": "integer",
-                          "minimum": -9007199254740991,
-                          "maximum": 9007199254740991
-                        },
-                        "name": {
-                          "anyOf": [
-                            {
-                              "type": "string"
-                            },
-                            {
-                              "type": "null"
-                            }
-                          ]
-                        }
-                      },
-                      "required": [
-                        "staffId",
-                        "name"
-                      ],
-                      "additionalProperties": false
-                    }
-                  }
-                },
-                "required": [
-                  "orderId",
-                  "orderLabel",
-                  "accountSource",
-                  "itemNumber",
-                  "deadlineAt",
-                  "rush",
-                  "unitsRemaining",
-                  "toteCode",
-                  "owner",
-                  "backups"
-                ],
-                "additionalProperties": false
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "line": {
-            "anyOf": [
-              {
-                "type": "object",
-                "properties": {
-                  "key": {
-                    "type": "string"
-                  },
-                  "orderId": {
-                    "type": "integer",
-                    "minimum": -9007199254740991,
-                    "maximum": 9007199254740991
-                  },
-                  "sku": {
-                    "type": "string"
-                  },
-                  "title": {
-                    "type": "string"
-                  },
-                  "imageUrl": {
-                    "anyOf": [
-                      {
-                        "type": "string"
-                      },
-                      {
-                        "type": "null"
-                      }
-                    ]
-                  },
-                  "location": {
-                    "anyOf": [
-                      {
-                        "type": "object",
-                        "properties": {
-                          "name": {
-                            "anyOf": [
-                              {
-                                "type": "string"
-                              },
-                              {
-                                "type": "null"
-                              }
-                            ]
-                          },
-                          "barcode": {
-                            "anyOf": [
-                              {
-                                "type": "string"
-                              },
-                              {
-                                "type": "null"
-                              }
-                            ]
-                          },
-                          "room": {
-                            "anyOf": [
-                              {
-                                "type": "string"
-                              },
-                              {
-                                "type": "null"
-                              }
-                            ]
-                          }
-                        },
-                        "required": [
-                          "name",
-                          "barcode",
-                          "room"
-                        ],
-                        "additionalProperties": false
-                      },
-                      {
-                        "type": "null"
-                      }
-                    ]
-                  },
-                  "units": {
-                    "type": "array",
-                    "items": {
-                      "type": "object",
-                      "properties": {
-                        "allocationId": {
-                          "type": "integer",
-                          "minimum": -9007199254740991,
-                          "maximum": 9007199254740991
-                        },
-                        "serialUnitId": {
-                          "type": "integer",
-                          "minimum": -9007199254740991,
-                          "maximum": 9007199254740991
-                        },
-                        "serialNumber": {
-                          "anyOf": [
-                            {
-                              "type": "string"
-                            },
-                            {
-                              "type": "null"
-                            }
-                          ]
-                        },
-                        "unitUid": {
-                          "anyOf": [
-                            {
-                              "type": "string"
-                            },
-                            {
-                              "type": "null"
-                            }
-                          ]
-                        }
-                      },
-                      "required": [
-                        "allocationId",
-                        "serialUnitId",
-                        "serialNumber",
-                        "unitUid"
-                      ],
-                      "additionalProperties": false
-                    }
-                  },
-                  "platforms": {
-                    "type": "array",
-                    "items": {
-                      "type": "object",
-                      "properties": {
-                        "platformSku": {
-                          "anyOf": [
-                            {
-                              "type": "string"
-                            },
-                            {
-                              "type": "null"
-                            }
-                          ]
-                        },
-                        "platformItemId": {
-                          "anyOf": [
-                            {
-                              "type": "string"
-                            },
-                            {
-                              "type": "null"
-                            }
-                          ]
-                        }
-                      },
-                      "required": [
-                        "platformSku",
-                        "platformItemId"
-                      ],
-                      "additionalProperties": false
-                    }
-                  }
-                },
-                "required": [
-                  "key",
-                  "orderId",
-                  "sku",
-                  "title",
-                  "imageUrl",
-                  "location",
-                  "units",
-                  "platforms"
-                ],
-                "additionalProperties": false
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "progress": {
-            "type": "object",
-            "properties": {
-              "done": {
-                "type": "integer",
-                "minimum": -9007199254740991,
-                "maximum": 9007199254740991
-              },
-              "total": {
-                "type": "integer",
-                "minimum": -9007199254740991,
-                "maximum": 9007199254740991
-              }
-            },
-            "required": [
-              "done",
-              "total"
-            ],
-            "additionalProperties": false
-          },
-          "stagedTotes": {
-            "type": "array",
-            "items": {
-              "type": "string"
-            },
-            "description": "Totes staged for pack by sessions this call closed."
-          },
-          "unassignedCount": {
-            "type": "integer",
-            "minimum": -9007199254740991,
-            "maximum": 9007199254740991
-          }
-        },
-        "required": [
-          "sessionId",
-          "order",
-          "line",
-          "progress",
-          "stagedTotes",
-          "unassignedCount"
-        ],
-        "additionalProperties": false
-      },
-      "PickBoard": {
-        "type": "object",
-        "properties": {
-          "scope": {
-            "type": "string",
-            "enum": [
-              "unassigned",
-              "all"
-            ]
-          },
-          "rows": {
-            "type": "array",
-            "items": {
-              "type": "object",
-              "properties": {
-                "orderId": {
-                  "type": "integer",
-                  "minimum": -9007199254740991,
-                  "maximum": 9007199254740991
-                },
-                "orderLabel": {
-                  "type": "string"
-                },
-                "accountSource": {
-                  "anyOf": [
-                    {
-                      "type": "string"
-                    },
-                    {
-                      "type": "null"
-                    }
-                  ]
-                },
-                "deadlineAt": {
-                  "anyOf": [
-                    {
-                      "type": "string"
-                    },
-                    {
-                      "type": "null"
-                    }
-                  ]
-                },
-                "rush": {
-                  "type": "boolean"
-                },
-                "openUnits": {
-                  "type": "integer",
-                  "minimum": -9007199254740991,
-                  "maximum": 9007199254740991
-                },
-                "title": {
-                  "type": "string"
-                },
-                "imageUrl": {
-                  "anyOf": [
-                    {
-                      "type": "string"
-                    },
-                    {
-                      "type": "null"
-                    }
-                  ]
-                },
-                "location": {
-                  "anyOf": [
-                    {
-                      "type": "object",
-                      "properties": {
-                        "name": {
-                          "anyOf": [
-                            {
-                              "type": "string"
-                            },
-                            {
-                              "type": "null"
-                            }
-                          ]
-                        },
-                        "barcode": {
-                          "anyOf": [
-                            {
-                              "type": "string"
-                            },
-                            {
-                              "type": "null"
-                            }
-                          ]
-                        },
-                        "room": {
-                          "anyOf": [
-                            {
-                              "type": "string"
-                            },
-                            {
-                              "type": "null"
-                            }
-                          ]
-                        }
-                      },
-                      "required": [
-                        "name",
-                        "barcode",
-                        "room"
-                      ],
-                      "additionalProperties": false
-                    },
-                    {
-                      "type": "null"
-                    }
-                  ]
-                },
-                "owner": {
-                  "anyOf": [
-                    {
-                      "type": "object",
-                      "properties": {
-                        "staffId": {
-                          "type": "integer",
-                          "minimum": -9007199254740991,
-                          "maximum": 9007199254740991
-                        },
-                        "name": {
-                          "anyOf": [
-                            {
-                              "type": "string"
-                            },
-                            {
-                              "type": "null"
-                            }
-                          ]
-                        },
-                        "via": {
-                          "type": "string",
-                          "enum": [
-                            "assigned",
-                            "sku",
-                            "backup"
-                          ]
-                        }
-                      },
-                      "required": [
-                        "staffId",
-                        "name",
-                        "via"
-                      ],
-                      "additionalProperties": false
-                    },
-                    {
-                      "type": "null"
-                    }
-                  ]
-                },
-                "backups": {
-                  "type": "array",
-                  "items": {
-                    "type": "object",
-                    "properties": {
-                      "staffId": {
-                        "type": "integer",
-                        "minimum": -9007199254740991,
-                        "maximum": 9007199254740991
-                      },
-                      "name": {
-                        "anyOf": [
-                          {
-                            "type": "string"
-                          },
-                          {
-                            "type": "null"
-                          }
-                        ]
-                      }
-                    },
-                    "required": [
-                      "staffId",
-                      "name"
-                    ],
-                    "additionalProperties": false
-                  }
-                },
-                "heldBy": {
-                  "anyOf": [
-                    {
-                      "type": "object",
-                      "properties": {
-                        "staffId": {
-                          "type": "integer",
-                          "minimum": -9007199254740991,
-                          "maximum": 9007199254740991
-                        },
-                        "name": {
-                          "anyOf": [
-                            {
-                              "type": "string"
-                            },
-                            {
-                              "type": "null"
-                            }
-                          ]
-                        }
-                      },
-                      "required": [
-                        "staffId",
-                        "name"
-                      ],
-                      "additionalProperties": false
-                    },
-                    {
-                      "type": "null"
-                    }
-                  ],
-                  "description": "Another picker's live session on the order."
-                }
-              },
-              "required": [
-                "orderId",
-                "orderLabel",
-                "accountSource",
-                "deadlineAt",
-                "rush",
-                "openUnits",
-                "title",
-                "imageUrl",
-                "location",
-                "owner",
-                "backups",
-                "heldBy"
-              ],
-              "additionalProperties": false
-            }
-          }
-        },
-        "required": [
-          "scope",
-          "rows"
         ],
         "additionalProperties": false
       },
@@ -2758,81 +2376,6 @@
         ],
         "additionalProperties": false
       },
-      "PickRelease": {
-        "type": "object",
-        "properties": {
-          "released": {
-            "type": "integer",
-            "minimum": -9007199254740991,
-            "maximum": 9007199254740991,
-            "description": "Sessions ended."
-          }
-        },
-        "required": [
-          "released"
-        ],
-        "additionalProperties": false
-      },
-      "PickTote": {
-        "type": "object",
-        "properties": {
-          "toteId": {
-            "type": "integer",
-            "minimum": -9007199254740991,
-            "maximum": 9007199254740991
-          },
-          "toteCode": {
-            "type": "string"
-          },
-          "alreadyPaired": {
-            "type": "boolean"
-          }
-        },
-        "required": [
-          "toteId",
-          "toteCode",
-          "alreadyPaired"
-        ],
-        "additionalProperties": false
-      },
-      "PickNote": {
-        "type": "object",
-        "properties": {
-          "recorded": {
-            "type": "integer",
-            "minimum": -9007199254740991,
-            "maximum": 9007199254740991
-          }
-        },
-        "required": [
-          "recorded"
-        ],
-        "additionalProperties": false
-      },
-      "DirectedPickNextPayload": {
-        "type": "object",
-        "additionalProperties": false,
-        "required": [
-          "data"
-        ],
-        "properties": {
-          "data": {
-            "$ref": "#/components/schemas/DirectedPickNext"
-          }
-        }
-      },
-      "PickBoardPayload": {
-        "type": "object",
-        "additionalProperties": false,
-        "required": [
-          "data"
-        ],
-        "properties": {
-          "data": {
-            "$ref": "#/components/schemas/PickBoard"
-          }
-        }
-      },
       "PickSessionPayload": {
         "type": "object",
         "additionalProperties": false,
@@ -2842,42 +2385,6 @@
         "properties": {
           "data": {
             "$ref": "#/components/schemas/PickSession"
-          }
-        }
-      },
-      "PickReleasePayload": {
-        "type": "object",
-        "additionalProperties": false,
-        "required": [
-          "data"
-        ],
-        "properties": {
-          "data": {
-            "$ref": "#/components/schemas/PickRelease"
-          }
-        }
-      },
-      "PickTotePayload": {
-        "type": "object",
-        "additionalProperties": false,
-        "required": [
-          "data"
-        ],
-        "properties": {
-          "data": {
-            "$ref": "#/components/schemas/PickTote"
-          }
-        }
-      },
-      "PickNotePayload": {
-        "type": "object",
-        "additionalProperties": false,
-        "required": [
-          "data"
-        ],
-        "properties": {
-          "data": {
-            "$ref": "#/components/schemas/PickNote"
           }
         }
       }

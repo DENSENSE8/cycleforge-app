@@ -1,7 +1,6 @@
 'use client';
 
 import {
-  createContext,
   useCallback,
   useEffect,
   useLayoutEffect,
@@ -21,8 +20,6 @@ export type EntrancePhase = 'hidden' | 'rising' | 'rows' | 'revealed';
 const HIDDEN_TRANSFORM = `translate3d(0, 100vh, 0) scale(${DROP.LIFT_SCALE})`;
 const ELEVATED_TRANSFORM = `translate3d(0, 0, 0) scale(${DROP.LIFT_SCALE})`;
 const FLUSH_TRANSFORM = 'translate3d(0, 0, 0) scale(1)';
-
-export const DailyEntranceContext = createContext<{ phase: EntrancePhase }>({ phase: 'revealed' });
 
 export interface DailyEntranceProps {
   children: ReactNode;
@@ -138,35 +135,33 @@ export function DailyEntrance({ children, ready, onPhase }: DailyEntranceProps) 
   }, [commitPhase, phase, ready]);
 
   return (
-    <DailyEntranceContext.Provider value={{ phase }}>
-      <div
-        className="relative flex h-full min-h-0 min-w-0 flex-col"
-        data-daily-entrance-phase={phase}
+    <div
+      className="relative flex h-full min-h-0 w-full min-w-0 flex-col"
+      data-daily-entrance-phase={phase}
+    >
+      <motion.div
+        aria-hidden
+        initial={false}
+        animate={plateControls}
+        variants={plateVariants}
+        className={`pointer-events-none absolute inset-0 rounded-xl ${elevationClass('overlay')}`}
+        style={{
+          opacity: 0,
+          willChange: phase === 'hidden' || phase === 'rising' ? 'transform, opacity' : 'auto',
+        }}
+      />
+      <motion.div
+        initial={false}
+        animate={controls}
+        variants={contentVariants}
+        inert={phase === 'hidden' || phase === 'rising'}
+        className={`relative flex h-full min-h-0 min-w-0 flex-col overflow-hidden ${
+          phase === 'hidden' || phase === 'rising' ? 'rounded-xl' : ''
+        }`}
+        style={{ willChange: phase === 'hidden' || phase === 'rising' ? 'transform, opacity' : 'auto' }}
       >
-        <motion.div
-          aria-hidden
-          initial={false}
-          animate={plateControls}
-          variants={plateVariants}
-          className={`pointer-events-none absolute inset-0 rounded-xl ${elevationClass('overlay')}`}
-          style={{
-            opacity: 0,
-            willChange: phase === 'hidden' || phase === 'rising' ? 'transform, opacity' : 'auto',
-          }}
-        />
-        <motion.div
-          initial={false}
-          animate={controls}
-          variants={contentVariants}
-          inert={phase === 'hidden' || phase === 'rising'}
-          className={`relative flex h-full min-h-0 min-w-0 flex-col overflow-hidden ${
-            phase === 'hidden' || phase === 'rising' ? 'rounded-xl' : ''
-          }`}
-          style={{ willChange: phase === 'hidden' || phase === 'rising' ? 'transform, opacity' : 'auto' }}
-        >
-          {children}
-        </motion.div>
-      </div>
-    </DailyEntranceContext.Provider>
+        {children}
+      </motion.div>
+    </div>
   );
 }

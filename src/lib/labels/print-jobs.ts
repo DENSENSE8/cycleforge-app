@@ -1,5 +1,6 @@
 import { tenantQuery } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';
+import { refreshReceivingUnitStageFacts } from '@/lib/receiving/receiving-unit-stage-facts';
 
 /** label_print_jobs writers/readers — the immutable per-print ledger (serial↔label pairing plan §5.1). */
 
@@ -85,7 +86,16 @@ export async function recordLabelPrintJob(
       input.clientEventId ?? null,
     ],
   );
-  if (inserted.rows[0]) return inserted.rows[0];
+  if (inserted.rows[0]) {
+    if (input.serialUnitId) {
+      try {
+        await refreshReceivingUnitStageFacts(orgId, { serialUnitIds: [input.serialUnitId] });
+      } catch (error) {
+        console.warn('[label-print-jobs] receiving stage facts refresh failed (non-fatal)', error);
+      }
+    }
+    return inserted.rows[0];
+  }
 
   // ON CONFLICT DO NOTHING returned nothing → a prior row with this key exists.
   // Fetch it so the caller still gets the canonical row for the idempotent retry.
@@ -96,7 +106,15 @@ export async function recordLabelPrintJob(
         WHERE organization_id = $1 AND client_event_id = $2 LIMIT 1`,
       [orgId, input.clientEventId],
     );
-    return existing.rows[0] ?? null;
+    const row = existing.rows[0] ?? null;
+    if (row && input.serialUnitId) {
+      try {
+        await refreshReceivingUnitStageFacts(orgId, { serialUnitIds: [input.serialUnitId] });
+      } catch (error) {
+        console.warn('[label-print-jobs] receiving stage facts refresh failed (non-fatal)', error);
+      }
+    }
+    return row;
   }
   return null;
 }

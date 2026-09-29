@@ -16,8 +16,8 @@ import { MobileActionSlotRegistrar, MobileTopBarAction } from '@/components/mobi
 import { MobileToShipQueue } from '@/components/mobile/redesign/MobileToShipQueue';
 
 /**
- * The route's mode comes from src/lib/routing/mode-registry.ts (industrial for
- * `/m/orders` and `/m/work`).
+ * The route's mode comes from src/lib/routing/mode-registry.ts (triage: the
+ * orders queue is a reading flow on `/m/orders` and `/m/work`).
  */
 export default function RedesignedMobileAssignedOrders() {
   const router = useRouter();

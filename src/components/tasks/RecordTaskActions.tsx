@@ -13,6 +13,7 @@ import { focusRing } from '@/design-system/tokens/focus-ring';
 import { cn } from '@/utils/_cn';
 import { useThrowTask } from '@/hooks/useThrowTask';
 import type { ThrowTarget } from '@/lib/tasks/throw-targets';
+import { ClipboardList } from '@/components/Icons';
 
 type RecordTaskKind = 'mine' | 'staff';
 
@@ -26,6 +27,7 @@ export function buildRecordTaskVerbs(target: RecordTaskTarget): RecordActionVerb
   return (Object.keys(TASK_TITLE) as RecordTaskKind[]).map((kind) => ({
     id: `task-${kind}`,
     label: TASK_TITLE[kind],
+    icon: <ClipboardList />,
     placement: 'overflow',
     display: (done) => <RecordTaskForm key={`${kind}:${target.entityId}`} kind={kind} target={target} onDone={done} />,
   }));

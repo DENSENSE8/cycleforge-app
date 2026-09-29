@@ -18,14 +18,14 @@ describe('receiving history export CSV', () => {
     assert.equal(csv, RECEIVING_HISTORY_EXPORT_COLUMNS.join(','));
   });
 
-  it('title precedence is Zoho item → catalog → line name', () => {
+  it('title precedence is catalog → provider item → line name', () => {
     assert.equal(
       buildReceivingHistoryExportRow({
         zoho_item_title: 'Zoho title',
         catalog_product_title: 'Catalog title',
         item_name: 'Line name',
       })[2],
-      'Zoho title',
+      'Catalog title',
     );
     assert.equal(
       buildReceivingHistoryExportRow({ item_name: 'Line name' })[2],

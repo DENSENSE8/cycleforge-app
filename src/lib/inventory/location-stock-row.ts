@@ -40,7 +40,6 @@ export interface LocationStockTableRow {
   /** ISO instant of the last cycle count. `null` for a unit placement. */
   last_counted: string | null;
 }
-
 /**
  * Stable row key — the `?open=` value. All THREE parts are load-bearing: a
  * location holds many SKUs, a SKU sits in many locations, and the same pair can
@@ -61,15 +60,20 @@ export interface LocationStockRoomFacet {
   count: number;
 }
 
+/** The row's ROOM facet id — the room chip it answers to (`?room=`). */
+export function locationStockRoomId(row: Pick<LocationStockTableRow, 'room'>): string {
+  return (row.room ?? '').trim() || UNROOMED_FACET_ID;
+}
+
 /**
  * The ROOMS present in a feed, in first-seen (walking) order, with how many
- * rows each holds — derived from the rows, so the funnel offers exactly the
- * rooms the operator can reach and its counts add up to the list.
+ * rows each holds — derived from the rows, so the chips offer exactly the
+ * rooms the operator can reach and their counts add up to the list.
  */
 export function locationStockRoomFacets(rows: readonly LocationStockTableRow[]): LocationStockRoomFacet[] {
   const counts = new Map<string, number>();
   for (const row of rows) {
-    const id = (row.room ?? '').trim() || UNROOMED_FACET_ID;
+    const id = locationStockRoomId(row);
     counts.set(id, (counts.get(id) ?? 0) + 1);
   }
   return [...counts].map(([id, count]) => ({
@@ -77,19 +81,6 @@ export function locationStockRoomFacets(rows: readonly LocationStockTableRow[]):
     label: id === UNROOMED_FACET_ID ? UNROOMED_FACET_LABEL : id,
     count,
   }));
-}
-
-/**
- * Keep only the rows in the selected rooms. An EMPTY selection is "no room
- * filter" — the funnel's cleared state shows the whole warehouse.
- */
-export function filterLocationStockByRooms(
-  rows: readonly LocationStockTableRow[],
-  rooms: readonly string[],
-): LocationStockTableRow[] {
-  if (rooms.length === 0) return [...rows];
-  const wanted = new Set(rooms);
-  return rows.filter((row) => wanted.has((row.room ?? '').trim() || UNROOMED_FACET_ID));
 }
 
 /** Keep the one stock list, optionally narrowed to its operational state. */
@@ -107,12 +98,4 @@ export function parseStockStates(raw: string | null | undefined): LocationStockS
   return [...new Set((raw ?? '').split(',').map((value) => value.trim()).filter(
     (value): value is LocationStockStateFilter => value === 'on-hold' || value === 'catalog',
   ))];
-}
-
-/** `?room=` wire (comma list) → room ids. */
-export function parseStockRooms(raw: string | null | undefined): string[] {
-  return (raw ?? '')
-    .split(',')
-    .map((room) => room.trim())
-    .filter(Boolean);
 }

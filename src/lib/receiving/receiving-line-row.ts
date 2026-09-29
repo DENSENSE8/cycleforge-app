@@ -18,6 +18,31 @@ export interface ReceivingLineUnitView {
   condition_grade: string | null;
 }
 
+/**
+ * One physical unit's fast Receiving status. This is the browser-safe wire
+ * shape of `receiving_unit_stage_facts`; event tables remain the source of
+ * truth and list surfaces read this projection in one batch.
+ */
+export interface ReceivingUnitStageFactView {
+  receiving_line_unit_id: number;
+  receiving_line_id: number;
+  receiving_id: number | null;
+  ordinal: number;
+  serial_unit_id: number | null;
+  unit_uid: string | null;
+  serial: string | null;
+  condition_grade: string | null;
+  triage_state: 'NOT_STARTED' | 'TRIAGED';
+  label_state: 'MISSING' | 'PRINTED';
+  qc_state: 'PENDING' | 'TEST_AGAIN' | 'PASSED' | 'FAILED';
+  latest_verdict: string | null;
+  tested_at: string | null;
+  tested_by: number | null;
+  tested_by_name: string | null;
+  primary_support_ticket_id: number | null;
+  updated_at: string;
+}
+
 /** One open investigation / claim exception a filed ticket recorded (`ticket_reasons`). */
 export interface TicketReason {
   /** A `RECEIVING_EXCEPTION_CODES` value (investigation or claim family). */
@@ -224,6 +249,8 @@ export interface ReceivingLineRow {
   }> | null;
   /** Materialised per-unit rows for this line (`receiving_line_unit`), ordinal order. */
   units?: ReceivingLineUnitView[] | null;
+  /** Fast unit workflow projection, attached only on list surfaces that need it. */
+  unit_stage_facts?: ReceivingUnitStageFactView[] | null;
   /** Count of photos attached to this line's carton (from photos table, entity_type='RECEIVING'). */
   photo_count?: number;
   /** Any support ticket on the line, its carton or its shipment, stored as "#<id>". */

@@ -67,9 +67,9 @@ test('title brand/franchise auto-applies at 0.95 from the leading tokens after s
   assert.deepEqual([oem.apply?.brandId, oem.apply?.confidence], [BOSE, 0.95]);
 });
 
-test('the identity title is tokenised: the Zoho item name beats a contaminated catalog title', () => {
+test('the identity title is tokenised: the catalog title remains authoritative', () => {
   const p = planOf(sku({ sku: '00033', zohoItemTitle: 'Panasonic RR-US570 recorder', catalogProductTitle: 'Bose Wave remote' }));
-  assert.equal(p.apply?.brandId, PANASONIC);
+  assert.equal(p.apply?.brandId, WAVE);
 });
 
 test('a product_line alias applies the LINE at 0.90; the longest alias wins ("bose wave" over "bose")', () => {

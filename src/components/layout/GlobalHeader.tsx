@@ -1,18 +1,12 @@
 'use client';
 
 import { usePathname } from 'next/navigation';
-import { useHeader } from '@/contexts/HeaderContext';
 import { useAuth, isClientPublicPath } from '@/contexts/AuthContext';
-import { GlobalScanDock } from './GlobalScanDock';
 import { GlobalHeaderSearch } from './GlobalHeaderSearch';
-import { HeaderDailyTasks } from './HeaderDailyTasks';
-import { HeaderPageSwitcher } from './HeaderPageSwitcher';
-import { HeaderPinsSwitcher } from './HeaderPinsSwitcher';
 import { SidebarCollapseControl } from './SidebarCollapseControl';
 import { ActivityInboxButton } from '@/components/quick-access/ActivityInboxButton';
 import { GlobalHeaderAdd } from './GlobalHeaderAdd';
 import { GlobalHeaderSync } from './GlobalHeaderSync';
-import { LiveSyncIndicator } from './LiveSyncIndicator';
 import {
   HEADER_ICON_CLUSTER,
   HEADER_INSET_X,
@@ -23,8 +17,10 @@ import { appChromeMutedClass } from '@/design-system/tokens/app-surface';
 import { cn } from '@/utils/_cn';
 
 /**
- * Global desktop header — one persistent bar mounted once in {@link ResponsiveLayout}, above the page's `<main>`.
- * (operator 2026-09-16) — and {@link HeaderPinsSwitcher}, whose Pin glyph
+ * Global desktop header — one persistent, deliberately quiet utility bar.
+ * Navigation and search lead the F-pattern on the left; infrequent global
+ * actions stay grouped at the far right. Page identity and secondary
+ * navigation belong to the page/sidebar instead of competing in this band.
  */
 export function GlobalHeader({
   navOpen,
@@ -37,7 +33,6 @@ export function GlobalHeader({
   peeking?: boolean;
   peekTriggerProps?: { onMouseEnter?: () => void; onMouseLeave?: () => void };
 }) {
-  const { panelContent } = useHeader();
   const { user } = useAuth();
   const pathname = usePathname();
 
@@ -70,15 +65,10 @@ export function GlobalHeader({
             <GlobalHeaderSearch />
           </>
         )}
-        <HeaderDailyTasks />
-        <HeaderPinsSwitcher />
       </div>
 
-      <GlobalScanDock />
-      <HeaderPageSwitcher />
-      <div className="flex min-w-0 flex-1 items-center">{panelContent}</div>
+      <div className="min-w-0 flex-1" aria-hidden />
       <div className={HEADER_ICON_CLUSTER} data-header-zone="actions">
-        <LiveSyncIndicator />
         <GlobalHeaderAdd />
         <ActivityInboxButton />
         <GlobalHeaderSync />

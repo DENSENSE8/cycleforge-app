@@ -3,6 +3,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { ASSISTANT_TOOLS, listAssistantTools, runAssistantTool } from './index';
+import { splitToolArtifact } from '@/lib/assistant/tool-artifact';
 import type { AssistantToolCtx, AssistantToolDeps } from './types';
 
 const ORG = '11111111-2222-3333-4444-555555555555';
@@ -303,6 +304,46 @@ test('get_unit_journey: serial is normalized before lookup; not-found short-circ
   assert.deepEqual(out, { ok: true, data: { found: false } });
   assert.equal(cap.length, 1); // events/engine/signals queries never ran
   assert.equal(cap[0].params[2], 'AB12CD');
+});
+
+test('get_unit_journey renders the Receiving projection and truthful pickup/ticket links', async () => {
+  const { deps } = fakes((text) => {
+    if (text.includes('FROM serial_units')) {
+      return [{ id: 5, serial_number: 'SN-5', sku: 'BOSE-5', current_status: 'IN_TEST' }];
+    }
+    if (text.includes('FROM receiving_unit_stage_facts')) {
+      return [{
+        receiving_line_id: 21,
+        receiving_id: 8,
+        unit_uid: 'U-0005',
+        triage_state: 'TRIAGED',
+        label_state: 'PRINTED',
+        qc_state: 'FAILED',
+        tested_at: '2026-09-29T12:00:00.000Z',
+        primary_support_ticket_id: 42,
+        pickup_order_id: 9,
+        pickup_identity: 'LCPU-TAN-092926',
+        ticket_provider: 'zendesk',
+        external_ticket_id: '9395',
+        ticket_subject: 'No audio',
+        ticket_status: 'open',
+      }];
+    }
+    return [];
+  });
+  const out = await runAssistantTool('get_unit_journey', { serialUnitId: 5 }, FULL_CTX, deps);
+  assert.equal(out.ok, true);
+  if (!out.ok) return;
+  const carried = splitToolArtifact(out.data);
+  assert.ok(carried);
+  assert.equal(carried.artifact.kind, 'record');
+  assert.equal(carried.artifact.path, '/pickup?lcpu=9');
+  if (carried.artifact.kind !== 'record') return;
+  assert.deepEqual(
+    carried.artifact.fields.find((field) => field.label === 'Ticket'),
+    { label: 'Ticket', value: '#42 · open · No audio', href: '/support?ticket=9395' },
+  );
+  assert.match(carried.modelData.summary, /QC failed · label printed · ticket #42/);
 });
 
 test('get_feed_state: exclusions anti-join only when staffId + station given', async () => {

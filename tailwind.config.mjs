@@ -374,6 +374,11 @@ const config = {
                 'elev-overlay': 'var(--ds-elev-overlay)',
                 'elev-overlay-left': 'var(--ds-elev-overlay-left)',
                 'elev-overlay-right': 'var(--ds-elev-overlay-right)',
+                // Chunky-CTA bottom edge (TACTILE_DEPTH_CLASS, shadows.ts): a
+                // hard 4px ledge. A literal, not a :root var, so Tailwind swaps
+                // its colour for the element's own `shadow-<color>` (the Button
+                // variant's fill one ramp deeper, BUTTON_DEPTH_EDGE).
+                'elev-depth': '0 4px 0 0 rgba(2, 6, 23, 0.24)',
                 // AI system depth (src/design-system/ai/tokens.ts AI_ELEVATION).
                 'ai-card': 'var(--ai-shadow-card)',
                 'ai-card-hover': 'var(--ai-shadow-card-hover)',

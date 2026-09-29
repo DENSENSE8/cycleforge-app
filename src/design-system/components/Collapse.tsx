@@ -90,12 +90,14 @@ type CollapseTag = 'div' | 'li';
 
 /** A hairline between consecutive rows, drawn by a pseudo-element so it adds no height of its own. */
 const ROW_RULE =
-  'relative [&+&]:before:absolute [&+&]:before:inset-x-4 [&+&]:before:top-0 [&+&]:before:h-px [&+&]:before:bg-border-hairline';
+  'relative [&+&]:before:pointer-events-none [&+&]:before:absolute [&+&]:before:inset-x-4 [&+&]:before:top-px [&+&]:before:h-px [&+&]:before:bg-border-hairline';
 
 interface CollapseItemProps {
   children: ReactNode;
   /** Styles the content inside the animated frame (padding, background, layout). */
   className?: string;
+  /** Stacking/positioning that belongs on the animated frame itself. */
+  frameClassName?: string;
   /** The item is one full row of its parent's column grid and keeps those columns (`grid-cols-subgrid`). */
   subgrid?: boolean;
   /** `li` when the item is a list row. */
@@ -121,6 +123,7 @@ interface CollapseItemProps {
 export function CollapseItem({
   children,
   className,
+  frameClassName,
   subgrid = false,
   as = 'div',
   enter = true,
@@ -166,7 +169,7 @@ export function CollapseItem({
         marginTop: spacing ? -moved.gapTop : undefined,
         marginBottom: spacing ? -moved.gapBottom : undefined,
       }}
-      className={cn(subgrid && SUBGRID, rowRule && ROW_RULE) || undefined}
+      className={cn(subgrid && SUBGRID, rowRule && ROW_RULE, frameClassName) || undefined}
     >
       {/* The moved spacing, then the caller's content box — two boxes, so a caller's own padding never fights it. */}
       <div

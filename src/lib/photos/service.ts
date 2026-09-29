@@ -121,6 +121,31 @@ export async function attachPhotoWithLegacyUrlInTx(
     return { ...photoDisplayUrls(existingId), id: existingId, created: false };
   }
 
+  // `photo_storage` intentionally de-duplicates one legacy URL per tenant. The
+  // same marketplace image can legitimately illustrate multiple catalog SKUs,
+  // so an idempotent attach reuses that photo and adds the missing entity link.
+  if (input.idempotent) {
+    const shared = await client.query<{ photo_id: string }>(
+      `SELECT photo_id
+         FROM photo_storage
+        WHERE organization_id = $1
+          AND legacy_url = $2
+        LIMIT 1`,
+      [input.organizationId, input.legacyUrl],
+    );
+    const sharedId = shared.rows[0] ? Number(shared.rows[0].photo_id) : null;
+    if (sharedId) {
+      await createPhotoEntityLink(client, {
+        photoId: sharedId,
+        organizationId: input.organizationId,
+        entityType: input.entityType,
+        entityId: input.entityId,
+        linkRole,
+      });
+      return { ...photoDisplayUrls(sharedId), id: sharedId, created: false };
+    }
+  }
+
   const poRef =
     input.poRef ?? (await resolvePoRef(input.entityType, input.entityId));
   const photoId = await insertPhotoCatalog(client, {

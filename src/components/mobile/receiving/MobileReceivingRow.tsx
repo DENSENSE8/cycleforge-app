@@ -27,6 +27,7 @@ import { RowStageTimeMeta } from '@/components/ui/RowStageTimeMeta';
 import { formatDateTimePST } from '@/utils/date';
 import Link from 'next/link';
 import { Camera, Image as ImageIcon } from '@/components/Icons';
+import { unitTitle } from '@/components/mobile/receiving/receiving-feed-entries';
 
 interface MobileReceivingRowProps {
   row: ReceivingLineRow;
@@ -71,7 +72,7 @@ export function MobileReceivingRow({
   activityAxis = 'unboxed',
 }: MobileReceivingRowProps) {
   const { label: inventoryProviderLabel } = useCapabilityProviderLabel('inventory');
-  const productTitle = row.item_name || row.zoho_item_id || 'Unnamed inbound line';
+  const productTitle = unitTitle(row);
   const quantityText = `${row.quantity_received}/${row.quantity_expected ?? '?'}`;
   const qtyExpected = row.quantity_expected ?? 0;
   const workflowLabel = workflowStatusTableLabel(row.workflow_status || 'EXPECTED');

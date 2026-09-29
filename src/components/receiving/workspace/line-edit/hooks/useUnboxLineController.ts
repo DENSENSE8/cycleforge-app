@@ -5,7 +5,7 @@ import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from '@/lib/toast';
 import { returnOrderImportedCopy, returnOrderLineFill } from '@/lib/receiving/return-order-imported';
-import { receivingPhotosQueryKey } from '@/lib/queries/receiving-queries';
+import { RECEIVING_PHOTOS_STALE_MS, receivingPhotosQueryKey } from '@/lib/queries/receiving-queries';
 import {
   deriveReceivingPhotoStageCounts,
   evaluateReceivingPhotoPolicy,
@@ -631,7 +631,7 @@ export function useUnboxLineController(
       return res.json();
     },
     enabled: photoPolicyQueryEnabled,
-    staleTime: 10_000,
+    staleTime: RECEIVING_PHOTOS_STALE_MS,
   });
   // Stage-bucketed counts from the shared derivation (the client twin of the
   // server gate's SQL assembly) — null while the policy is optional or the

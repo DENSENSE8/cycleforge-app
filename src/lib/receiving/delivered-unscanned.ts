@@ -49,7 +49,6 @@ export const INBOUND_SHIPMENT_PREDICATE = `(
   OR stn.source_system IN (${INBOUND_SOURCE_SYSTEMS_SQL})
 )`;
 
-/** SQL predicate (references alias `stn`) — TRUE when an operator has scanned this shipment at the dock, in ANY receiving mode. */
 /** The bare scan→shipment match condition — references `rs` (a `receiving_scans` row), `r2` (its `receiving` row), and the outer `stn`. */
 export const SHIPMENT_SCAN_MATCH_CONDITION = `(
   (
@@ -63,12 +62,39 @@ export const SHIPMENT_SCAN_MATCH_CONDITION = `(
   OR rs.shipment_id = stn.id
 )`;
 
-export const SHIPMENT_SCANNED_PREDICATE = `EXISTS (
-  SELECT 1
-    FROM receiving_scans rs
-    LEFT JOIN receiving_carton r2 ON r2.id = rs.receiving_id
-   WHERE ${SHIPMENT_SCAN_MATCH_CONDITION}
+/**
+ * TRUE when an operator has scanned the outer `stn` at the dock — the same
+ * three matches as {@link SHIPMENT_SCAN_MATCH_CONDITION}, split so each runs
+ * once per statement instead of once per (row x scan): the two shipment-id
+ * arms are index probes, and the fuzzy last-8 arm is a hashed lookup into the
+ * 8-char windows of every normalized scan (`tracking_grams8`, migration
+ * 2026-09-28_tracking_grams8.sql). `right(n, 8)` is a substring of a scan
+ * exactly when it equals one of that scan's 8-char windows. Never NULL.
+ * `orgParam` scopes the scans explicitly (owner-pool callers).
+ */
+function shipmentScannedPredicateSql(orgParam?: string): string {
+  const rsOrg = orgParam ? `rs.organization_id = ${orgParam} AND ` : '';
+  return `(
+  EXISTS (SELECT 1 FROM receiving_scans rs WHERE ${rsOrg}rs.shipment_id = stn.id)
+  OR EXISTS (
+    SELECT 1
+      FROM receiving_carton r2
+      JOIN receiving_scans rs ON rs.receiving_id = r2.id
+     WHERE ${rsOrg}r2.shipment_id = stn.id
+  )
+  OR COALESCE(
+    length(stn.tracking_number_normalized) >= 8
+    AND right(stn.tracking_number_normalized, 8) IN (
+      SELECT tracking_grams8(regexp_replace(upper(rs.tracking_number), '[^A-Z0-9]', '', 'g'))
+        FROM receiving_scans rs${orgParam ? `\n       WHERE rs.organization_id = ${orgParam}` : ''}
+    ),
+    false
+  )
 )`;
+}
+
+/** SQL predicate (references alias `stn`) — TRUE when an operator has scanned this shipment at the dock, in ANY receiving mode. */
+export const SHIPMENT_SCANNED_PREDICATE = shipmentScannedPredicateSql();
 
 /** The canonical delivered-unscanned base query body. */
 export function deliveredUnscannedBaseSql(windowParam: string, orgParam?: string): string {
@@ -79,15 +105,7 @@ export function deliveredUnscannedBaseSql(windowParam: string, orgParam?: string
   OR stn.source_system IN (${INBOUND_SOURCE_SYSTEMS_SQL})
 )`
     : INBOUND_SHIPMENT_PREDICATE;
-  const scannedPredicate = orgParam
-    ? `EXISTS (
-      SELECT 1
-        FROM receiving_scans rs
-        LEFT JOIN receiving_carton r2 ON r2.id = rs.receiving_id
-       WHERE rs.organization_id = ${orgParam}
-         AND ${SHIPMENT_SCAN_MATCH_CONDITION}
-    )`
-    : SHIPMENT_SCANNED_PREDICATE;
+  const scannedPredicate = orgParam ? shipmentScannedPredicateSql(orgParam) : SHIPMENT_SCANNED_PREDICATE;
   const zohoPoResolved = orgParam
     ? `(
   EXISTS (

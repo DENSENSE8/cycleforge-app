@@ -12,6 +12,7 @@ import {
 import { publishShipmentStatusChange } from './publish-on-status-change';
 import { isCarrierSyncEnabled } from './enabled-carriers';
 import { resolveShipmentOrgId } from './resolve-shipment-org';
+import { shouldPublishCarrierSync } from './sync-publish';
 import * as ups from './providers/ups';
 import * as usps from './providers/usps';
 import * as fedex from './providers/fedex';
@@ -125,8 +126,16 @@ export async function syncShipment(
     );
 
     await updateShipmentSummary(shipment.id, result, effectiveOrgId);
-    // Only notify clients when the poll actually surfaced new carrier events — otherwise every 2-hour sweep would publish a no-op realtime…
-    if (inserted > 0) {
+    // A summary can advance even when its carrier event was already present
+    // (reconcile/backfill race). Publish that transition too so queue caches do
+    // not keep a delivered order until their TTL expires.
+    if (shouldPublishCarrierSync({
+      previousStatus: shipment.latest_status_category,
+      nextStatus: result.latestStatusCategory,
+      wasDelivered: Boolean(shipment.is_delivered),
+      deliveredAt: result.deliveredAt,
+      eventsInserted: inserted,
+    })) {
       await publishShipmentStatusChange(
         shipment.id,
         'shipping-sync',

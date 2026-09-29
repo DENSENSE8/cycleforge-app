@@ -86,6 +86,7 @@ export function useWalkInSalesSpreadsheet({
     dir,
     onSortChange,
     search,
+    findOwner: 'page',
     loading,
     emptyMessage,
     ariaLabel: 'Walk-in sales',

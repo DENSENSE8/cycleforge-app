@@ -1,15 +1,15 @@
 'use client';
 
 /**
- * Outbound › To ship — the ORDERS HOST of the triage face (owner 2026-09-27,
- * BRIEF §13): one card per order inside the desk stage's width. Floor keeps
- * the industrial ledger (`OutboundOrdersLedger`).
+ * Outbound › To ship / Picking — the ORDERS HOST of the triage face (owner
+ * 2026-09-27, BRIEF §13): one card per order inside the desk stage's width, in
+ * In place and Split alike (no Floor — owner 2026-09-28).
  *
  * The face ({@link TriageCardList}) owns every interaction — the bar, pages,
  * Scroll mode, held-new, X / Space / Enter, J / K, sections, the record plane.
  * This host owns the orders' data and meaning:
  * - the feed (`useOrdersQueueFeed` over `/api/orders`), its selection plane
- *   and open record — the same ones the floor ledger uses;
+ *   and open record;
  * - ship-by sections (Late · Due today · Tomorrow · Later · No ship-by) under
  *   the default sort — re-cut BEFORE the record cursor so J / K follow them;
  * - the order card (`OrderCard`), the notes writer, a Find that types an
@@ -42,7 +42,9 @@ import { OrderRecordTitle, OrderRecordView } from '../OrderRecordView';
 import { OrderRecordHeaderActions } from '../record-keys/OrderRecordHeaderActions';
 import { OrderListLeadSlot } from '../intake/order-list-lead';
 import { OrderRecordActionStrip, OrdersMorphingHost } from '../to-ship/MorphingRowActionMenu';
-import { OrderQueueSummary, OrderQueueSummaryChips, QUEUE_STATUS_CHIPS, queueRowStatusKeys } from '../OrderQueueSummary';
+import { OrderQueueSummary, queueRowStatusKeys } from '../OrderQueueSummary';
+import { QUEUE_STATUS_CHIPS, queueOrdersOf, queueStatusCounts } from '@/lib/orders/to-ship-queue';
+import { QueueStatusChips } from '@/design-system/components/QueueStatusChips';
 import { OrderCard } from './OrderCard';
 import { TriageCardList, type TriageFeed, type TriageSelectionPort } from '@/design-system/components/triage-card-list/TriageCardList';
 import { triageFamily } from '@/design-system/components/triage-card-list/triage-view';
@@ -122,6 +124,7 @@ export function OrderCardList({
   onOpenLabels,
 }: OrderCardListProps) {
   const searchValue = chrome.search.value;
+  const viewSpec = VIEW_SPECS[viewKey];
 
   // ── The face's cut (chips + held new) + ship-by sections → the feed ───────
   // The feed arranges BEFORE the record cursor, so J / K walk the screen's
@@ -155,10 +158,7 @@ export function OrderCardList({
   const { plane, orderGroupsByDate, allOrderGroupsByDate, displayedRecords, painted, todayKey, getStaffName } = feed;
 
   // The chips count ORDERS (cards) over the whole queue, never the filtered cut.
-  const queueOrders = useMemo(
-    () => allOrderGroupsByDate.flatMap(([, groups]) => groups.map((group) => group.rows)),
-    [allOrderGroupsByDate],
-  );
+  const queueCounts = useMemo(() => queueStatusCounts(queueOrdersOf(allOrderGroupsByDate)), [allOrderGroupsByDate]);
 
   // Documents (the bar's verb): the order's label · slip · manuals open in the
   // split pane — the list stays on the left to keep triaging (owner 2026-09-27).
@@ -296,8 +296,9 @@ export function OrderCardList({
       feed={triageFeed}
       cut={cut}
       summary={
-        <OrderQueueSummaryChips
-          orders={queueOrders}
+        <QueueStatusChips
+          statuses={QUEUE_STATUS_CHIPS}
+          counts={queueCounts}
           active={cut.url.statusFilter}
           onToggle={cut.url.toggleStatus}
           onReset={cut.url.resetStatus}
@@ -326,11 +327,12 @@ export function OrderCardList({
           />
         ) : null
       }
-      allClear={<TriageAllClear title={VIEW_SPECS[viewKey].empty.title} detail={VIEW_SPECS[viewKey].empty.detail} />}
+      allClear={<TriageAllClear title={viewSpec.empty.title} detail={viewSpec.empty.detail} />}
       record={{
         title: openRecord ? <OrderRecordTitle record={openRecord} records={displayedRecords} /> : 'Order',
-        actions: openRecord ? <OrderRecordHeaderActions record={openRecord} records={displayedRecords} /> : undefined,
+        actions: openRecord ? <OrderRecordHeaderActions record={openRecord} records={displayedRecords} viewKey={viewKey} /> : undefined,
         noun: VIEW.noun.one,
+        showIndex: viewSpec.recordPresentation !== 'allocate',
         testId: 'order-record',
         summary: <OrderQueueSummary records={displayedRecords} />,
         view: openRecord ? (
@@ -344,7 +346,7 @@ export function OrderCardList({
             documentsRequest={documentsRequest}
           />
         ) : null,
-        strip: openRecord ? (
+        strip: openRecord && viewSpec.recordPresentation !== 'allocate' ? (
           <OrderRecordActionStrip
             key={openRecord.id}
             record={openRecord}

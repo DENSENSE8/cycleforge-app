@@ -83,6 +83,8 @@ export interface UseCompoundSpreadsheetOptions<
   dir: GridSortDir | null;
   onSortChange: (key: K, dir: 'asc' | 'desc') => void;
   search: DataTableSearch;
+  /** Page-owned finds filter rows here but paint only in contextual navigation. */
+  findOwner?: 'page' | 'sheet';
   loading: boolean;
   emptyMessage: string;
   ariaLabel?: string;
@@ -172,6 +174,7 @@ export function useCompoundSpreadsheet<
   dir,
   onSortChange,
   search,
+  findOwner = 'sheet',
   loading,
   emptyMessage,
   ariaLabel,
@@ -308,7 +311,7 @@ export function useCompoundSpreadsheet<
     sectionHeaders,
     loading,
     emptyMessage,
-    search,
+    sheetFind: findOwner === 'sheet' ? search : undefined,
     sort,
     dir,
     onSortChange,

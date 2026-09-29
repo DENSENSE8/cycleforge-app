@@ -195,6 +195,9 @@ export async function getEbayItemImageUrl(legacyItemId: string, orgId: OrgId): P
   if (res.ok) return pickEbayItemImage((await res.json()) as BrowseItemImages);
 
   const text = await res.text().catch(() => '');
+  // Ended/purged legacy listings are an ordinary "no image at source" result
+  // during a historical backfill, not an integration failure.
+  if (res.status === 404 && text.includes('11003')) return null;
   const isItemGroup = res.status === 400 && text.includes(String(BROWSE_ITEM_GROUP_ERROR_ID));
   if (!isItemGroup) throw new Error(`eBay Browse get_item_by_legacy_id failed: HTTP ${res.status} ${text.slice(0, 300)}`);
 

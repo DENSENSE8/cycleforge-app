@@ -5,10 +5,9 @@
  *
  * THE GATE: a page resolves `contextual` only when the switch asks for it
  * (the staff / org override, else `NAV_CONTEXT_ROLLOUT`) AND its contract
- * covers every PARITY.md row (`parityGaps` is empty) AND the page is not a scan
- * station (`NAV_CONTEXT_PINNED_LEGACY`). Otherwise `legacy` — an override can
- * never hand a page to a sidebar that would drop its scan input, views or
- * filters, and stations keep their desktop surface as-is.
+ * covers every PARITY.md row (`parityGaps` is empty). Otherwise `legacy` — an
+ * override can never hand a page to a sidebar that would drop its scan input,
+ * views, or filters.
  */
 
 import { buildNavContext, type ResolveNavContextInput } from './build';

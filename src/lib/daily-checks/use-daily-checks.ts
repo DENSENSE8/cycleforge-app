@@ -27,7 +27,9 @@ export function dailyChecksQueryOptions(dateKey: string, scope: 'mine' | 'all' =
   return queryOptions({
     queryKey: dailyChecksKey(dateKey, scope),
     queryFn: () => fetchReport(dateKey, scope),
-    staleTime: 15_000,
+    // Ticks are optimistic + invalidated on settle; a refocus re-reads at most
+    // once a minute instead of every 15s alt-tab.
+    staleTime: 60_000,
   });
 }
 

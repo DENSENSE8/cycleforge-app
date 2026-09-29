@@ -41,7 +41,7 @@ import { useInboundOrderSections } from './InboundOrderFields';
 import { InboundOrderOutcome } from './InboundOrderOutcome';
 
 /** The stage's fixed measure — the desk stage ceiling (DESK_STAGE_MAX_PX, 1152px). */
-const STAGE_WIDTH_CLASS = 'w-[72rem]';
+const STAGE_WIDTH_CLASS = 'w-full max-w-[72rem]';
 const INCOMING_PATH = '/incoming';
 
 interface LandedOrder {
@@ -82,7 +82,10 @@ function InboundOrderForm({ onNext }: { onNext: () => void }) {
 
   useEffect(() => titleRef.current?.focus(), []);
 
-  const leave = useCallback(() => router.push(INCOMING_PATH), [router]);
+  const leave = useCallback(
+    () => router.push(draft.type === 'PICKUP' ? (pathname.startsWith('/m/') ? '/m/receiving' : '/pickup') : INCOMING_PATH),
+    [draft.type, pathname, router],
+  );
 
   // A door that lands here with another `?type=` (header + New return) switches
   // the open form in place, or starts the next one from the done screen.
@@ -208,7 +211,7 @@ function InboundOrderForm({ onNext }: { onNext: () => void }) {
               Next {INBOUND_ORDER_TYPE_LABELS[landed.type].toLowerCase()}
             </Button>
             <Button variant="secondary" onClick={leave} data-testid="new-inbound-order-back">
-              Back to Incoming
+              Back to {landed.type === 'PICKUP' ? 'Local Pickup' : 'Incoming'}
             </Button>
           </div>
         </div>
@@ -221,13 +224,13 @@ function InboundOrderForm({ onNext }: { onNext: () => void }) {
       <form
         data-testid="new-inbound-order-form"
         aria-labelledby="new-inbound-order-title"
-        className={cn('mx-auto grid max-w-full grid-cols-3 items-start gap-x-4 py-5', STAGE_WIDTH_CLASS)}
+        className={cn('mx-auto grid grid-cols-1 items-start gap-x-4 py-5 lg:grid-cols-3', STAGE_WIDTH_CLASS)}
         onSubmit={(event) => {
           event.preventDefault();
           if (missing.length === 0 && !submitting) void submit();
         }}
       >
-        <header className="col-span-3 flex items-center gap-3 px-6">
+        <header className="col-span-1 flex items-center gap-3 px-4 lg:col-span-3 lg:px-6">
           <h1
             id="new-inbound-order-title"
             ref={titleRef}
@@ -238,10 +241,10 @@ function InboundOrderForm({ onNext }: { onNext: () => void }) {
           </h1>
           <IconButton icon={<X className="h-4 w-4" />} ariaLabel="Close — back to Incoming" onClick={leave} />
         </header>
-        <div className="col-span-2 min-w-0">
+        <div className="col-span-1 min-w-0 lg:col-span-2">
           <TriageSections sections={sections} />
         </div>
-        <aside className={cn('sticky top-5 mt-5', DESK_RECORD_COLUMN_CARD_CLASS)} aria-label="Identity and outcome">
+        <aside className={cn('mx-4 mt-5 lg:sticky lg:top-5 lg:mx-0', DESK_RECORD_COLUMN_CARD_CLASS)} aria-label="Identity and outcome">
           <InboundOrderOutcome
             draft={draft}
             missing={missing}

@@ -1,6 +1,8 @@
 'use client';
 
-/** The order record header's trailing actions — the Note chip (when the order carries one), the ONE status, then Print packing slip. */
+/** The order record header's trailing actions. Allocate uses the compact
+ * progressive-disclosure action waist; archival records retain their status
+ * and print affordance. */
 
 import type { ShippedOrder } from '@/lib/neon/orders-queries';
 import { IconButton } from '@/design-system/primitives/IconButton';
@@ -9,9 +11,22 @@ import { Printer } from '@/components/Icons';
 import { OrderRecordStatus } from '../OrderRecordView';
 import { PRINT_SLIP_HOTKEY, usePrintPackingSlip } from './print-slip';
 import { OrderNoteChip } from '../notes/OrderNoteChip';
+import { VIEW_SPECS, type OrderViewKey } from '@/lib/views/view-specs';
+import { OrderRecordActionStrip } from '../to-ship/MorphingRowActionMenu';
 
-export function OrderRecordHeaderActions({ record, records }: { record: ShippedOrder; records: readonly ShippedOrder[] }) {
+export function OrderRecordHeaderActions({
+  record,
+  records,
+  viewKey,
+}: {
+  record: ShippedOrder;
+  records: readonly ShippedOrder[];
+  viewKey: OrderViewKey;
+}) {
   const slip = usePrintPackingSlip(Number(record.id));
+  if (VIEW_SPECS[viewKey].recordPresentation === 'allocate') {
+    return <OrderRecordActionStrip record={record} viewKey={viewKey} />;
+  }
   return (
     <span className="flex min-w-0 items-center gap-1.5" data-testid="order-record-header-actions">
       <OrderNoteChip record={record} />

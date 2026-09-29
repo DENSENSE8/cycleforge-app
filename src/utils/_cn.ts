@@ -38,6 +38,7 @@ const twMerge = extendTailwindMerge<'cf-inset' | 'cf-stack' | 'cf-row'>({
             'elev-overlay',
             'elev-overlay-left',
             'elev-overlay-right',
+            'elev-depth',
             // AI system depth (src/design-system/ai/tokens.ts AI_ELEVATION).
             'ai-card',
             'ai-card-hover',

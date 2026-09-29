@@ -29,6 +29,13 @@ function asNullableNumber(value: unknown): number | null {
   return Number.isFinite(n) ? n : null;
 }
 
+function asNullableBoolean(value: unknown): boolean | null {
+  if (typeof value === 'boolean') return value;
+  if (value === 1 || value === '1' || value === 'true') return true;
+  if (value === 0 || value === '0' || value === 'false') return false;
+  return null;
+}
+
 function stringList(value: unknown): string[] {
   if (!Array.isArray(value)) return [];
   return value.map((v) => String(v ?? '').trim()).filter(Boolean);
@@ -83,15 +90,28 @@ export function toShippedOrderFromApi(raw: Record<string, unknown> | null | unde
     sale_amount: (raw.sale_amount as string | number | null | undefined) ?? null,
     currency: asNullableString(raw.currency),
     status_history: raw.status_history ?? null,
+    order_date: asNullableString(raw.order_date),
     created_at: asNullableString(raw.created_at) ?? asNullableString(raw.order_date),
     ship_by_date: asNullableString(raw.ship_by_date) ?? asNullableString(raw.deadline_at),
     deadline_at: asNullableString(raw.deadline_at),
     customer_id: asNullableNumber(raw.customer_id),
     buyer_note: asNullableString(raw.buyer_note),
     shipment_status: asNullableString(raw.shipment_status),
+    latest_status_code: asNullableString(raw.latest_status_code),
     latest_status_label: asNullableString(raw.latest_status_label),
-    is_shipped: Boolean(raw.is_shipped),
-    is_delivered: Boolean(raw.is_delivered),
+    latest_status_description: asNullableString(raw.latest_status_description),
+    latest_status_category: asNullableString(raw.latest_status_category),
+    carrier: asNullableString(raw.carrier),
+    latest_event_at: asNullableString(raw.latest_event_at),
+    has_exception: asNullableBoolean(raw.has_exception),
+    delivered_at: asNullableString(raw.delivered_at),
+    exception_at: asNullableString(raw.exception_at),
+    is_terminal: asNullableBoolean(raw.is_terminal),
+    ship_confirmed_at: asNullableString(raw.ship_confirmed_at),
+    shipped_out_by: asNullableNumber(raw.shipped_out_by),
+    shipped_out_by_name: asNullableString(raw.shipped_out_by_name),
+    is_shipped: asNullableBoolean(raw.is_shipped) ?? false,
+    is_delivered: asNullableBoolean(raw.is_delivered) ?? false,
     row_source: 'order',
   };
 }

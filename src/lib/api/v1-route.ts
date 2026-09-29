@@ -9,6 +9,7 @@ import { NextResponse, type NextRequest } from 'next/server';
 import type { z } from 'zod';
 import type { V1SessionErrorCode } from '@/lib/auth/v1-session-contract';
 import type { LabelIngestionErrorCode } from '@/lib/label-ingestions/contracts';
+import type { LabelBuyErrorCode } from '@/lib/label-buys/contracts';
 
 /** Codes every v1 route may answer with; family contracts add their own. */
 export const V1_BASE_ERROR_CODES = [
@@ -24,7 +25,11 @@ export const V1_BASE_ERROR_CODES = [
   'INTERNAL',
 ] as const;
 
-export type V1ErrorCode = (typeof V1_BASE_ERROR_CODES)[number] | V1SessionErrorCode | LabelIngestionErrorCode;
+export type V1ErrorCode =
+  | (typeof V1_BASE_ERROR_CODES)[number]
+  | V1SessionErrorCode
+  | LabelIngestionErrorCode
+  | LabelBuyErrorCode;
 
 const NO_STORE = { 'cache-control': 'no-store' };
 
@@ -61,7 +66,7 @@ export function readV1Query<S extends z.ZodType>(request: NextRequest, schema: S
 }
 
 /**
- * A positive integer path segment, counted from the end (`…/sessions/{id}/tote` → 2).
+ * A positive integer path segment, counted from the end (`…/label-ingestions/{id}/apply` → 2).
  * `withAuth` drops Next's route params, so handlers read the path.
  */
 export function v1PathId(request: NextRequest, fromEnd: number): number | null {

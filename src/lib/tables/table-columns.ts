@@ -66,8 +66,6 @@ export type TableId =
   | 'catalog-link'
   /** Review › Missing item number (`IMPORT_EXCEPTION_COMPOUND_COLUMNS`) — its own bucket, not `catalog-link`'s. */
   | 'import-exception'
-  /** Ops › Tracking Exceptions spreadsheet (`TRACKING_EXCEPTIONS_GRID_COLUMNS`). */
-  | 'tracking-exceptions'
   /** Support › Tickets spreadsheet (`SUPPORT_TICKETS_GRID_COLUMNS`). */
   | 'support-tickets'
   /** Inventory › Units browse spreadsheet (`UNITS_GRID_COLUMNS`). */
@@ -267,11 +265,6 @@ export const TABLE_COLUMNS: Record<TableId, TableColumnSpec[]> = {
    * layouts independent.
    */
   'import-exception': [],
-  // Keys are the `hideKey`s in
-  // `src/components/tracking-exceptions/grid/tracking-exceptions-grid-layout.ts`.
-  // The `actions` track has no hideKey — structural, never offered.
-  /** Tracking exceptions — **deliberately empty** since the wave 1.4 slot port. */
-  'tracking-exceptions': [],
   // Keys are the `hideKey`s in
   // `src/components/support/zendesk/grid/support-tickets-grid-layout.ts`.
   // `select` / `subject` are absent — structurally un-hideable identity.

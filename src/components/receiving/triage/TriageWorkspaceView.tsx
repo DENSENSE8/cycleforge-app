@@ -1,9 +1,6 @@
 'use client';
 
-/**
- * Triage (Arrival) browse workbench.
- * **The tabs moved to the top (operator ruling 2026-08-31)** along with every
- */
+/** Triage (Arrival) browse workbench; the view is `?triview=`. */
 
 import { useSearchParams } from 'next/navigation';
 import { RailEditModeProvider } from '@/components/sidebar/rail-edit-mode';
@@ -15,10 +12,6 @@ import {
 import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
 import { TriageFeedBody } from '@/components/receiving/triage/TriageFeedBody';
 import { useTriageWorkspaceTab } from '@/hooks/useTriageWorkspaceTab';
-import {
-  TRIAGE_WORKSPACE_TAB_LABEL,
-  type TriageWorkspaceTab,
-} from '@/utils/triage-workspace-state';
 import { DeskPageLayout } from '@/components/desk/DeskPageLayout';
 
 export function TriageWorkspaceView({
@@ -29,16 +22,9 @@ export function TriageWorkspaceView({
   /** Pre-resolve scan stub from the sidebar scan path. */
   leadingRow?: ReceivingLineRow | null;
 }) {
-  const { triageView, setTriageView } = useTriageWorkspaceTab();
+  const { triageView } = useTriageWorkspaceTab();
   const searchParams = useSearchParams();
   const filterText = searchParams.get('triq') ?? '';
-
-  // `triage` is the default view, so it IS the unfiltered body and lights no
-  // tab — the same rule every other strip follows.
-  const tabs = (['found', 'unfound', 'done'] as const).map((id) => ({
-    id,
-    label: TRIAGE_WORKSPACE_TAB_LABEL[id],
-  }));
 
   const selectedLineId = selectedLine?.id ?? null;
   const selectedRow =
@@ -73,14 +59,7 @@ export function TriageWorkspaceView({
       setMany={setManyRailSelected}
       toggleActive={toggleRailEditMode}
     >
-      <DeskPageLayout
-        className="h-full"
-        tabs={tabs}
-        activeTab={triageView === 'triage' ? '' : triageView}
-        onTabChange={(id) =>
-          setTriageView(id === triageView ? 'triage' : (id as TriageWorkspaceTab))
-        }
-      >
+      <DeskPageLayout className="h-full">
       <div className="relative flex h-full min-h-0 w-full flex-col">
         <TriageFeedBody
           key={triageView}

@@ -223,6 +223,22 @@ test('clampPortalSideMenuPosition bottom + start sits under the trigger left edg
   assert.ok(pos!.top >= anchor.bottom);
 });
 
+test('clampPortalSideMenuPosition top + center sits above a non-table trigger', () => {
+  const anchor = rect({ top: 300, left: 500, width: 80, height: 28 });
+  const bubble = { width: 180, height: 96 };
+  const pos = clampPortalSideMenuPosition({
+    anchor,
+    bubble,
+    viewport: VIEW,
+    placement: 'top',
+    align: 'center',
+  });
+  assert.ok(pos);
+  assert.equal(pos!.side, 'top');
+  assert.equal(pos!.left, anchor.left + anchor.width / 2 - bubble.width / 2);
+  assert.equal(pos!.top, anchor.top - bubble.height - PORTAL_BELOW_MENU_GAP);
+});
+
 test('clampPortalSideMenuPosition bottom + end aligns to the trigger right edge', () => {
   const anchor = rect({ top: 80, left: 1000, width: 36, height: 28 });
   const bubble = { width: 160, height: 80 };

@@ -2,9 +2,9 @@
 
 /**
  * Imports › **Orders** (`?view=rows`) — the imported-order HOST of the triage
- * face (the To-ship card list): one card per order a run touched, PT-day
- * sections under the default newest sort. `?run=` narrows to one run;
- * `?row=<id>` opens the order's import record in the desk record plane.
+ * face (the To-ship card list): one card per order a run touched, grouped by
+ * outcome. `?run=` narrows to one run; `?row=<id>` opens the order's import
+ * record in the desk record plane.
  *
  * The outcome chips (Inserted · Backfilled · Tracking · To review · Skipped ·
  * Failed) write the sidebar's own `?outcome=` facet — a chip is its outcomes
@@ -18,7 +18,6 @@ import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { useAuth } from '@/contexts/AuthContext';
 import { useOrderChannel } from '@/hooks/useCatalog';
 import { IncomingStatusChips, type IncomingStatusChipSet } from '@/components/receiving/incoming/IncomingStatusChips';
-import { useDeskFloorFace, useDeskStageOptional } from '@/design-system/components/DeskStageContext';
 import { EvidenceNotice } from '@/design-system/components/record-ledger/RecordEvidence';
 import { RecordActionStrip, type RecordActionVerb } from '@/design-system/components/record-action-strip/RecordActionStrip';
 import { scopeRecordVerbs } from '@/design-system/components/record-action-strip/record-verb-scope';
@@ -40,7 +39,6 @@ import {
   ImportListSummary,
   REVIEW_PERMISSION,
   importDayBands,
-  importDaySection,
   useImportParamWriter,
   useImportSelection,
 } from './import-record-parts';
@@ -77,7 +75,6 @@ export function ImportRowsList() {
   const writeParams = useImportParamWriter();
   const channelOf = useOrderChannel();
   const canReview = useAuth().has(REVIEW_PERMISSION);
-  useDeskFloorFace(useDeskStageOptional() != null);
 
   const cut = useTriageCut({ statusKeys: NO_FACE_CHIPS, recordParams: VIEW.recordParams, statusParam: VIEW.chips.param });
   // One page of cards is one API page: the per-page menu's size is the request's.
@@ -198,10 +195,10 @@ export function ImportRowsList() {
         rowId,
         groupKey: (group) => group.key,
         cardModel: (group) => ({ key: group.key, ids: group.rows.map(rowId), lead: group.rows[0]! }),
+        state: (group) => IMPORT_ROW_OUTCOME_LIFECYCLE[group.rows[0]!.outcome],
         exactFind: rowExactFind,
         renderCard: (props) => <ImportRowCard {...props} canReview={canReview} />,
       }),
-      section: importDaySection,
     }),
     [canReview],
   );
@@ -250,10 +247,11 @@ export function ImportRowsList() {
   return (
     <div data-testid="imports-rows" className="flex min-h-0 min-w-0 flex-1">
       <TriageCardList
+        sections="by-state"
         family={family}
         feed={feed}
         cut={cut}
-        summary={<IncomingStatusChips set={chipSet} face="cards" />}
+        summary={<IncomingStatusChips set={chipSet} />}
         bulk={<RecordActionStrip face="header" verbs={bulkVerbs} label="Checked orders actions" testId="import-rows-bulk" />}
         banner={
           <>

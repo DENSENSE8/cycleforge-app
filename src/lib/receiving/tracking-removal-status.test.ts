@@ -3,6 +3,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
 import { resolveTrackingRemovalStatus } from './tracking-removal-status';
+import { CHECK_ZOHO_RECEIVED_MAX_INPUTS } from './tracking-paste';
 import type { OrgId } from '@/lib/tenancy/constants';
 
 const ORG = '00000000-0000-0000-0000-000000000001' as OrgId;
@@ -93,10 +94,11 @@ test('the report reads back the ORIGINAL paste string, not the canonical key', a
 });
 
 test('over-cap truncation is REPORTED in the stats, not swallowed', async () => {
-  const many = Array.from({ length: 137 }, (_, i) => `TRACK${String(i).padStart(6, '0')}`).join('\n');
+  const requested = CHECK_ZOHO_RECEIVED_MAX_INPUTS + 37;
+  const many = Array.from({ length: requested }, (_, i) => `TRACK${String(i).padStart(6, '0')}`).join('\n');
   const res = await resolveTrackingRemovalStatus(ORG, many, deps([]));
-  assert.equal(res.stats.requested, 137);
-  assert.equal(res.stats.applied, 100);
+  assert.equal(res.stats.requested, requested);
+  assert.equal(res.stats.applied, CHECK_ZOHO_RECEIVED_MAX_INPUTS);
   assert.equal(res.stats.truncated, 37);
 });
 

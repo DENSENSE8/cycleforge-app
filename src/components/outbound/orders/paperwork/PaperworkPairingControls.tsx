@@ -9,7 +9,6 @@ import { SearchableSelectField } from '@/design-system/components/SearchableSele
 import { Button, Checkbox } from '@/design-system/primitives';
 import { focusRing } from '@/design-system/tokens/focus-ring';
 import {
-  TRIAGE_PANEL_INNER_CORNER,
   TRIAGE_PANEL_SEGMENT_ENDS,
   triagePanelControl,
 } from '@/design-system/tokens/triage-panel';
@@ -37,7 +36,7 @@ export type PaperworkPatch = {
 
 export const FIELD_CLASS = cn(
   'min-w-0 flex-1 border border-border-default bg-surface-card px-3 text-role-data text-text-default',
-  triagePanelControl(),
+  triagePanelControl('rounded-lg'),
   focusRing('control'),
 );
 
@@ -73,7 +72,7 @@ export function GroupHeader({
         <Button
           variant="ghost"
           size="sm"
-          className={TRIAGE_PANEL_INNER_CORNER}
+          className="rounded-lg"
           data-testid="paperwork-group-open-item-view"
           onClick={onOpenItemView}
         >
@@ -174,10 +173,10 @@ export function RepairForm({
         <p className="text-role-caption text-text-warning">Nothing kept — use Unpair to take it off everywhere.</p>
       ) : null}
       <div className="flex items-center gap-2">
-        <Button type="submit" size="md" className={triagePanelControl()} disabled={nothing} data-testid="paperwork-repair-save">
+        <Button type="submit" size="md" className={triagePanelControl('rounded-lg')} disabled={nothing} data-testid="paperwork-repair-save">
           Save
         </Button>
-        <Button type="button" variant="ghost" size="md" className={triagePanelControl()} onClick={onCancel}>
+        <Button type="button" variant="ghost" size="md" className={triagePanelControl('rounded-lg')} onClick={onCancel}>
           Cancel
         </Button>
       </div>
@@ -204,7 +203,10 @@ function Segmented<T extends string>({
       role="radiogroup"
       aria-label={label}
       data-testid={testId}
-      className={cn('inline-flex max-w-full flex-wrap self-start border border-border-soft', TRIAGE_PANEL_SEGMENT_ENDS)}
+      className={cn(
+        'inline-flex max-w-full flex-wrap self-start overflow-hidden rounded-lg border border-border-soft',
+        TRIAGE_PANEL_SEGMENT_ENDS,
+      )}
     >
       {options.map((option) => (
         <button
@@ -283,7 +285,7 @@ export function PairingControls({
           <Button
             variant="ghost"
             size="md"
-            className={triagePanelControl()}
+            className={triagePanelControl('rounded-lg')}
             data-testid="paperwork-open-item-view"
             onClick={onOpenItemView}
           >
@@ -340,7 +342,7 @@ function LibraryPairPicker({
     }));
 
   return (
-    <div className={cn('border border-border-default bg-surface-card', triagePanelControl())}>
+    <div className={cn('border border-border-default bg-surface-card', triagePanelControl('rounded-lg'))}>
       <SearchableSelectField
         value={null}
         onChange={(next) => {

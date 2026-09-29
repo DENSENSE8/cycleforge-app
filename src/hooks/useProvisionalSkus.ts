@@ -9,19 +9,7 @@ import { useAblyChannel } from '@/hooks/useAblyChannel';
 import { qk } from '@/queries/keys';
 import { getStationChannelName, safeChannelName } from '@/lib/realtime/channels';
 import { isStockDeltaActivity } from '@/lib/inventory/stock-live-refresh';
-import type { ProvisionalSku, ProvisionalSkuDetail } from '@/lib/neon/provisional-sku-queries';
-
-export function useProvisionalSkus() {
-  return useQuery<ProvisionalSku[]>({
-    queryKey: qk.skuExceptions.list,
-    queryFn: async () => {
-      const res = await fetch('/api/sku-catalog/provisional', { credentials: 'include', cache: 'no-store' });
-      if (!res.ok) throw new Error('Could not load SKU exceptions');
-      const json = (await res.json()) as { items?: ProvisionalSku[] };
-      return json.items ?? [];
-    },
-  });
-}
+import type { ProvisionalSkuDetail } from '@/lib/neon/provisional-sku-queries';
 
 interface ProvisionalSkuRecord {
   item: ProvisionalSkuDetail | null;

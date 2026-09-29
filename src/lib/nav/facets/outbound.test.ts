@@ -15,6 +15,7 @@ import {
 const ORG = '00000000-0000-0000-0000-000000000001';
 const DESK = { orgId: ORG, permissions: new Set(['orders.view']) };
 const noPickup: NavFacetsDeps['listLocalPickupLines'] = async () => [];
+const noExceptions: NavFacetsDeps['exceptionCounts'] = async () => ({});
 
 /** One order as the list sees it after its own predicates. */
 interface FixtureOrder {
@@ -128,6 +129,7 @@ const BOUND_FILTERS: Array<{ sql: (ref: string) => string; keep: (o: FixtureOrde
 function comboRunner(orders: FixtureOrder[], captured: Array<{ sql: string; params: readonly unknown[] }> = []): NavFacetsDeps {
   return {
     listLocalPickupLines: noPickup,
+    exceptionCounts: noExceptions,
     run: async (_orgId, sql, params) => {
       captured.push({ sql, params });
       let scoped = orders;
@@ -246,29 +248,6 @@ test('queue facets read the list predicates: the view scope fragment, and ?staff
   assert.deepEqual(captured[1].params, [ORG]);
 });
 
-test('exceptions: category counts are the list totals per category; the search binds like the list (lower-cased)', async () => {
-  const categoryCounts: Record<string, number> = { 'SKU Mapping': 4, 'Out of Stock': 9, 'Buyer Request': 2, 'Shipping Issue': 1, Other: 3 };
-  const captured: Array<{ sql: string; params: readonly unknown[] }> = [];
-  const deps: NavFacetsDeps = {
-    listLocalPickupLines: noPickup,
-    run: async (_orgId, sql, params) => {
-      captured.push({ sql, params });
-      return Object.entries(categoryCounts).map(([category, n]) => ({ category, n }));
-    },
-  };
-  const all = await facetsBody('outbound.exceptions', new URLSearchParams({ search: '  Bose 700 ' }), deps);
-  assert.equal(all.total, 19);
-  const options = all.groups[0].options;
-  assert.equal(options.reduce((sum, o) => sum + o.count, 0), all.total);
-  assert.equal(options.find((o) => o.value === 'Address Issue')?.count, 0);
-  assert.deepEqual(captured[0].params, [ORG, '%bose 700%']);
-
-  const picked = await facetsBody('outbound.exceptions', new URLSearchParams({ category: 'Out of Stock' }), deps);
-  assert.equal(picked.total, 9);
-  const unknown = await facetsBody('outbound.exceptions', new URLSearchParams({ category: 'out of stock' }), deps);
-  assert.equal(unknown.total, 19, 'the workbench ignores a category that is not an exact vocabulary value');
-});
-
 test('a context is refused (403) without its list endpoint’s permission, before any read', async () => {
   const captured: Array<{ sql: string; params: readonly unknown[] }> = [];
   const deps = comboRunner([], captured);
@@ -278,16 +257,18 @@ test('a context is refused (403) without its list endpoint’s permission, befor
 });
 
 test('pickup: status counts are the workbench grid counts over the same line read', async () => {
-  const line = (order_status: string, receiving_id: number | null) => ({ order_status, receiving_id }) as LocalPickupLineRow;
+  const line = (order_id: number, order_status: string, receiving_id: number | null) => ({ order_id, order_status, receiving_id }) as LocalPickupLineRow;
   const lines = [
-    line('DRAFT', null), line('DRAFT', null), // need to process (and draft)
-    line('DRAFT', 812), // draft, already processing
-    line('COMPLETED', 813), line('COMPLETED', null), line('COMPLETED', 9),
+    line(1, 'DRAFT', null), line(1, 'DRAFT', null), // one two-line pickup card
+    line(2, 'DRAFT', null), // second need-to-process pickup
+    line(3, 'DRAFT', 812), // draft, already processing
+    line(4, 'COMPLETED', 813), line(5, 'COMPLETED', null), line(6, 'COMPLETED', 9),
   ];
   const reads: unknown[] = [];
   const deps: NavFacetsDeps = {
     run: async () => { throw new Error('pickup facets read the line feed, not SQL'); },
     listLocalPickupLines: async (_org, query) => { reads.push(query); return lines; },
+    exceptionCounts: noExceptions,
   };
   const caller = { orgId: ORG, permissions: new Set(['walk_in.view']) };
   const all = await getNavFacets(caller, 'pickup', new URLSearchParams({ q: ' flip ' }), deps);

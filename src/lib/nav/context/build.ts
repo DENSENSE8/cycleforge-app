@@ -40,7 +40,7 @@ import {
 } from '@/lib/sidebar-navigation';
 import { applyOrgNavToPage, mergeOrgNav, type NavDefinition } from '@/lib/nav/org-nav';
 import { LANE_DOORS } from '@/lib/nav/lanes';
-import { NAV_FACET_GROUPS, NAV_FACET_PERMISSION, isNavFacetContext } from '@/lib/nav/facets/contexts';
+import { NAV_FACET_GROUPS, isNavFacetContext, mayReadNavFacet } from '@/lib/nav/facets/contexts';
 import { getNavRecentSurface } from '@/lib/nav/recents/surfaces';
 import { OUTBOUND_LOCATE, OUTBOUND_LOCATE_PERMISSION } from '@/lib/nav/locate/outbound-params';
 import {
@@ -52,12 +52,13 @@ import {
   type DeskView,
 } from '@/lib/outbound/desk-views';
 import { routeParamsFor } from '@/lib/routing/registry';
-import { NAV_PAGE_DECLS, type NavSurfaceDecl } from './pages';
+import { NAV_PAGE_DECLS, type NavPageDecl, type NavSurfaceDecl } from './pages';
 import { NAV_CONTEXT_ROLLOUT } from './rollout';
 import {
   NavContextSchema,
   type NavContext,
   type NavItem,
+  type NavItemKind,
   type NavRolloutState,
   type NavSearch,
   type NavSection,
@@ -102,6 +103,10 @@ interface SectionRow {
   group?: { id: string; label: string };
   /** Secondary line, carried to the {@link NavItem}. */
   description?: string;
+  /** Item kind; omitted = `link`. */
+  kind?: NavItemKind;
+  /** Lit state, when it is not "the row IS the active view" (a mode). */
+  active?: boolean;
 }
 
 /**
@@ -172,6 +177,36 @@ function activeRowId(page: SidebarPageNav, pathname: string, params: URLSearchPa
 }
 
 /**
+ * A page's OWN modes (`NavPageDecl.modes`), as the same `.modes` section a
+ * door lane's modes are (`NavModeSwitcher` paints both): every ungrouped
+ * child is a mode, then the current mode's grouped children as its views,
+ * ungrouped, so the view switcher paints them under the card. No "all" mode
+ * (owner 2026-09-29): a mode's href is its first view (only the ones this
+ * caller can open), and a URL inside no mode reads as the first one. A mode's
+ * secondary line names its views.
+ */
+function pageModeRows(decl: NonNullable<NavPageDecl['modes']>, rows: readonly SectionRow[], activeId: string | null): SectionRow[] {
+  const group = { id: 'modes', label: decl.label };
+  const active = rows.find((row) => row.id === activeId);
+  const modeId = active ? (active.group?.id ?? active.id) : null;
+  const viewsOf = (id: string) => rows.filter((row) => row.group?.id === id);
+  const children = rows.filter((row) => !row.group);
+  const mode = children.find((row) => row.id === modeId) ?? children[0];
+  const modes = children.map((row): SectionRow => {
+    const views = viewsOf(row.id);
+    const first = views[0];
+    return {
+      ...row,
+      group,
+      active: row === mode,
+      ...(first ? { href: first.href, pathname: first.pathname, description: views.map((view) => view.label).join(' · ') } : {}),
+    };
+  });
+  const views = mode ? viewsOf(mode.id).map((row) => ({ ...row, group: undefined })) : [];
+  return [...modes, ...views];
+}
+
+/**
  * Consecutive rows sharing a group become one labelled section; ungrouped runs
  * share an unlabelled one. A heading over a single row would only repeat it,
  * so a group of one is painted unlabelled.
@@ -179,7 +214,7 @@ function activeRowId(page: SidebarPageNav, pathname: string, params: URLSearchPa
 function toSections(pageId: string, rows: readonly SectionRow[], activeId: string | null): NavSection[] {
   const runs: Array<{ group?: SectionRow['group']; section: NavSection }> = [];
   for (const row of rows) {
-    const item: NavItem = { id: row.id, label: row.label, href: row.href, active: row.id === activeId, kind: 'link', ...(row.description ? { description: row.description } : {}) };
+    const item: NavItem = { id: row.id, label: row.label, href: row.href, active: row.active ?? row.id === activeId, kind: row.kind ?? 'link', ...(row.description ? { description: row.description } : {}) };
     const last = runs.at(-1);
     if (last && last.group?.id === row.group?.id) {
       last.section.items.push(item);
@@ -187,9 +222,7 @@ function toSections(pageId: string, rows: readonly SectionRow[], activeId: strin
     }
     runs.push({ group: row.group, section: { id: `${pageId}.${row.group?.id ?? row.id}`, items: [item] } });
   }
-  return runs.map(({ group, section }) =>
-    group && section.items.length > 1 ? { ...section, label: group.label } : section,
-  );
+  return runs.map(({ group, section }) => (group && section.items.length > 1 ? { ...section, label: group.label } : section));
 }
 
 /**
@@ -213,28 +246,36 @@ function laneMap(input: PipelineInput, activePageId: string): NavSection[] {
   const sections: NavSection[] = [];
   const topItems = rows.filter(isSpineMapTopRow).map(toItem).filter((item): item is NavItem => item !== null);
   if (topItems.length > 0) sections.push({ id: 'top', items: topItems });
-  // Scan Stations sit at the very bottom (operator 2026-09-27); the desks lead.
+  const orderableTopItems = rows
+    .filter((row) => row.kind === 'top' && row.spineOrderable === true)
+    .map(toItem)
+    .filter((item): item is NavItem => item !== null);
+  // Scan Stations sit at the very bottom. Reports closes the five business
+  // lanes before any secondary/parked lane, matching the visible sales flow.
   const isStationLane = (id: string) => STATION_GROUPS.some((group) => group.id === id);
-  const laneOrder = [
-    ...SPINE_SECTIONS.filter((lane) => !isStationLane(lane.id)),
-    ...SPINE_SECTIONS.filter((lane) => isStationLane(lane.id)),
-  ];
-  for (const lane of laneOrder) {
+  const businessLaneIds = new Set(['sales', 'inbound', 'fulfillment', 'inventory', 'catalog']);
+  const appendLane = (lane: (typeof SPINE_SECTIONS)[number]) => {
     const items = rows
       .filter((row) => spineSectionIdForPage(row) === lane.id)
       .map(toItem)
       .filter((item): item is NavItem => item !== null);
-    if (items.length === 0) continue;
+    if (items.length === 0) return;
     // A lane door is ONE row: the lane's name, opening its landing page, lit
     // while you are on any page of the lane.
     const door = items.find((item) => item.id === LANE_DOORS[lane.id]);
     if (door) {
       const active = items.some((item) => item.active);
       sections.push({ id: lane.id, items: [{ ...door, label: lane.label, active }] });
-      continue;
+      return;
     }
     sections.push(items.length > 1 ? { id: lane.id, label: lane.label, items } : { id: lane.id, items });
-  }
+  };
+  SPINE_SECTIONS.filter((lane) => businessLaneIds.has(lane.id)).forEach(appendLane);
+  if (orderableTopItems.length > 0) sections.push({ id: 'ordered-top', items: orderableTopItems });
+  SPINE_SECTIONS.filter(
+    (lane) => !businessLaneIds.has(lane.id) && !isStationLane(lane.id),
+  ).forEach(appendLane);
+  SPINE_SECTIONS.filter((lane) => isStationLane(lane.id)).forEach(appendLane);
   return sections;
 }
 
@@ -267,6 +308,8 @@ function laneModeRows(lane: (typeof SPINE_SECTIONS)[number], input: PipelineInpu
     href: row.href,
     pathname: new URL(row.href, 'http://nav.local').pathname,
     group,
+    // The lane's current mode is the PAGE (`NavModeSwitcher`'s `currentPageId`), never a view id.
+    active: false,
     ...(row.description ? { description: row.description } : {}),
   });
   const doorId = LANE_DOORS[lane.id];
@@ -342,7 +385,9 @@ export function buildNavContext(input: ResolveNavContextInput): NavContext {
   // rows for that lane) and its panel leads with the lane's modes.
   const modeLane = modeLaneOf(page);
   const label = modeLane ? modeLane.label : pageLabel(pageId, page);
-  const panelRows = modeLane && page ? [...laneModeRows(modeLane, pipeline), ...rows] : rows;
+  // A page with its own modes paints them as the card, and the current mode's views under it.
+  const modeDecl = page ? NAV_PAGE_DECLS[pageId]?.modes : undefined;
+  const panelRows = modeDecl ? pageModeRows(modeDecl, rows, activeId) : modeLane && page ? [...laneModeRows(modeLane, pipeline), ...rows] : rows;
 
   const viewPathnames = new Set<string>(rows.map((row) => row.pathname));
   if (registered) viewPathnames.add(new URL(registered.href, 'http://nav.local').pathname);
@@ -366,7 +411,7 @@ export function buildNavContext(input: ResolveNavContextInput): NavContext {
   };
   // Facet groups and recents are offered only when the caller can read the
   // endpoint behind them (the facets / recents registries own the gates).
-  if (isNavFacetContext(facetContext) && permissions.has(NAV_FACET_PERMISSION[facetContext])) {
+  if (isNavFacetContext(facetContext) && mayReadNavFacet(permissions, facetContext)) {
     context.filters = { facetContext, groups: NAV_FACET_GROUPS[facetContext].map((group) => ({ ...group })) };
   }
   if (decl.controls) {
@@ -390,6 +435,7 @@ export function buildNavContext(input: ResolveNavContextInput): NavContext {
     context.savedViews = { storageKey: decl.savedViews.storageKey, paramKeys: [...decl.savedViews.paramKeys] };
   }
   if (actions.length > 0) context.actions = actions;
+  if (actions.length > 0 && decl.actionsPlacement) context.actionsPlacement = decl.actionsPlacement;
   if (decl.scanInput) context.scanInput = { ...decl.scanInput };
   if (sectionScope && NAV_PAGE_DECLS[pageId]?.viewKeys) context.viewKeys = true;
   return NavContextSchema.parse(context);

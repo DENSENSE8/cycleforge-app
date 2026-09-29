@@ -1,0 +1,284 @@
+{
+  "url": "http://localhost:3102/products",
+  "ttfb": 993,
+  "isDev": false,
+  "rows": [
+    {
+      "url": "/api/station-commands/aliases",
+      "start": 1387,
+      "end": 1963,
+      "ms": 576,
+      "bytes": 324
+    },
+    {
+      "url": "/api/v1/print-stations",
+      "start": 1388,
+      "end": 1978,
+      "ms": 591,
+      "bytes": 390
+    },
+    {
+      "url": "/api/nav/context?path=%2Fproducts",
+      "start": 1389,
+      "end": 1811,
+      "ms": 421,
+      "bytes": 1083
+    },
+    {
+      "url": "/api/sync/global",
+      "start": 1390,
+      "end": 1562,
+      "ms": 172,
+      "bytes": 1782
+    },
+    {
+      "url": "/api/product-manuals/search?limit=1000",
+      "start": 1391,
+      "end": 2315,
+      "ms": 924,
+      "bytes": 398853
+    },
+    {
+      "url": "/api/staff-preferences",
+      "start": 1393,
+      "end": 1811,
+      "ms": 418,
+      "bytes": 429
+    },
+    {
+      "url": "/api/settings?page=desk",
+      "start": 1426,
+      "end": 1891,
+      "ms": 465,
+      "bytes": 1768
+    },
+    {
+      "url": "/api/staff?active=false",
+      "start": 1429,
+      "end": 2323,
+      "ms": 894,
+      "bytes": 5871
+    },
+    {
+      "url": "/api/inbox/tech-queue",
+      "start": 1430,
+      "end": 2053,
+      "ms": 623,
+      "bytes": 368
+    },
+    {
+      "url": "/api/inbox/support",
+      "start": 1430,
+      "end": 2130,
+      "ms": 700,
+      "bytes": 322
+    },
+    {
+      "url": "/api/staff-messages?unread=1",
+      "start": 1430,
+      "end": 2218,
+      "ms": 788,
+      "bytes": 312
+    },
+    {
+      "url": "/api/realtime/token?rnd=09424278351045168",
+      "start": 2007,
+      "end": 2287,
+      "ms": 280,
+      "bytes": 2045
+    },
+    {
+      "url": "/api/catalog/platforms",
+      "start": 2060,
+      "end": 2375,
+      "ms": 315,
+      "bytes": 3682
+    },
+    {
+      "url": "/api/nav/context?path=%2Fproducts&view=top",
+      "start": 2134,
+      "end": 2304,
+      "ms": 169,
+      "bytes": 2493
+    }
+  ],
+  "focus": [
+    {
+      "count": 1,
+      "bytes": 390,
+      "rows": [
+        {
+          "url": "/api/v1/print-stations",
+          "ms": 1241,
+          "bytes": 390
+        }
+      ]
+    },
+    {
+      "count": 0,
+      "bytes": 0,
+      "rows": []
+    }
+  ],
+  "analysis": {
+    "duplicates": [],
+    "multiShape": [
+      {
+        "endpoint": "/api/nav/context",
+        "shapes": [
+          "/api/nav/context?path=%2Fproducts",
+          "/api/nav/context?path=%2Fproducts&view=top"
+        ],
+        "totalBytes": 3576
+      }
+    ],
+    "chains": [
+      {
+        "from": "/api/inbox/tech-queue",
+        "to": "/api/catalog/platforms",
+        "gapMs": 7,
+        "tailEnd": 2375
+      },
+      {
+        "from": "/api/inbox/support",
+        "to": "/api/nav/context?path=%2Fproducts&view=top",
+        "gapMs": 4,
+        "tailEnd": 2304
+      },
+      {
+        "from": "/api/v1/print-stations",
+        "to": "/api/realtime/token?rnd=09424278351045168",
+        "gapMs": 29,
+        "tailEnd": 2287
+      }
+    ],
+    "peakConcurrency": 11,
+    "countProbes": [],
+    "heaviest": [
+      {
+        "url": "/api/product-manuals/search?limit=1000",
+        "start": 1391,
+        "end": 2315,
+        "ms": 924,
+        "bytes": 398853
+      },
+      {
+        "url": "/api/staff?active=false",
+        "start": 1429,
+        "end": 2323,
+        "ms": 894,
+        "bytes": 5871
+      },
+      {
+        "url": "/api/catalog/platforms",
+        "start": 2060,
+        "end": 2375,
+        "ms": 315,
+        "bytes": 3682
+      },
+      {
+        "url": "/api/nav/context?path=%2Fproducts&view=top",
+        "start": 2134,
+        "end": 2304,
+        "ms": 169,
+        "bytes": 2493
+      },
+      {
+        "url": "/api/realtime/token?rnd=09424278351045168",
+        "start": 2007,
+        "end": 2287,
+        "ms": 280,
+        "bytes": 2045
+      },
+      {
+        "url": "/api/sync/global",
+        "start": 1390,
+        "end": 1562,
+        "ms": 172,
+        "bytes": 1782
+      },
+      {
+        "url": "/api/settings?page=desk",
+        "start": 1426,
+        "end": 1891,
+        "ms": 465,
+        "bytes": 1768
+      },
+      {
+        "url": "/api/nav/context?path=%2Fproducts",
+        "start": 1389,
+        "end": 1811,
+        "ms": 421,
+        "bytes": 1083
+      }
+    ],
+    "slowest": [
+      {
+        "url": "/api/product-manuals/search?limit=1000",
+        "start": 1391,
+        "end": 2315,
+        "ms": 924,
+        "bytes": 398853
+      },
+      {
+        "url": "/api/staff?active=false",
+        "start": 1429,
+        "end": 2323,
+        "ms": 894,
+        "bytes": 5871
+      },
+      {
+        "url": "/api/staff-messages?unread=1",
+        "start": 1430,
+        "end": 2218,
+        "ms": 788,
+        "bytes": 312
+      },
+      {
+        "url": "/api/inbox/support",
+        "start": 1430,
+        "end": 2130,
+        "ms": 700,
+        "bytes": 322
+      },
+      {
+        "url": "/api/inbox/tech-queue",
+        "start": 1430,
+        "end": 2053,
+        "ms": 623,
+        "bytes": 368
+      },
+      {
+        "url": "/api/v1/print-stations",
+        "start": 1388,
+        "end": 1978,
+        "ms": 591,
+        "bytes": 390
+      },
+      {
+        "url": "/api/station-commands/aliases",
+        "start": 1387,
+        "end": 1963,
+        "ms": 576,
+        "bytes": 324
+      },
+      {
+        "url": "/api/settings?page=desk",
+        "start": 1426,
+        "end": 1891,
+        "ms": 465,
+        "bytes": 1768
+      }
+    ]
+  },
+  "route": "/products",
+  "base": "http://localhost:3102",
+  "runs": 3,
+  "metrics": {
+    "duplicateRequests": 0,
+    "countProbes": 0,
+    "focusRefetch": 0,
+    "requests": 14
+  },
+  "capturedAt": "2026-09-29T06:25:15.799Z"
+}

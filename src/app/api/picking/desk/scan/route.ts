@@ -12,7 +12,7 @@ import { publishActivityLogged, publishOrderPicked, publishTechLogChanged } from
 import { resolveShipmentId } from '@/lib/shipping/resolve';
 import { createStationActivityLog } from '@/lib/station-activity';
 import { looksLikeFnsku } from '@/lib/scan-resolver';
-import { buildOrderPayload, findOrderByShipment } from '@/lib/tech/order-card';
+import { buildOrderPayload, findOrderById, findOrderByShipment } from '@/lib/tech/order-card';
 import {
   getScannedSkuCodes,
   getSerialsBySalId,
@@ -37,10 +37,12 @@ import { refreshOrderStageFacts } from '@/lib/orders/order-stage-facts';
 const ROUTE = 'picking.desk.scan';
 
 /**
- * POST /api/picking/desk/scan — the Picker desk's tracking scan: loads the
+ * POST /api/picking/desk/scan — the Picker desk's pick anchor: loads the
  * order card, writes the PICK / PICK_SCANNED anchor (FBA source keeps
  * FBA / TRACKING_SCANNED), optionally places the order at an armed pack bench.
- * FNSKU scans go to `POST /api/fba/fnsku-scan`.
+ * Anchored by a tracking scan (`{ type: 'TRACKING', value }`) or by the order
+ * row itself (`{ type: 'ORDER', orderId }`) — walk-in / Pickup orders carry no
+ * tracking; both run the same writer. FNSKU scans go to `POST /api/fba/fnsku-scan`.
  */
 export const POST = withAuth(async (req: NextRequest, ctx) => {
   const rate = await checkRateLimitForOrg({ headers: req.headers, routeKey: 'picking-desk-scan', limit: 120, windowMs: 60_000, organizationId: ctx.organizationId, staffId: ctx.staffId });
@@ -69,9 +71,16 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
   const packLocationBarcode = String(
     body.packLocationBarcode || body.pack_location_barcode || '',
   ).trim() || null;
-  if (!value) return NextResponse.json({ success: false, found: false, error: 'Scan value is required' }, { status: 400 });
-
   const explicitType = String(body.type || '').toUpperCase();
+  // ORDER anchor: the pick anchors on the order row itself — walk-in / Pickup
+  // orders carry no tracking. Same writer as the tracking scan below.
+  const isOrderAnchor = explicitType === 'ORDER';
+  const anchorOrderId = isOrderAnchor ? Number(body.orderId) : null;
+  if (isOrderAnchor && !(Number.isSafeInteger(anchorOrderId) && anchorOrderId! > 0)) {
+    return NextResponse.json({ success: false, found: false, error: 'orderId is required' }, { status: 400 });
+  }
+  if (!isOrderAnchor && !value) return NextResponse.json({ success: false, found: false, error: 'Scan value is required' }, { status: 400 });
+
   if (explicitType === 'FNSKU' || (!explicitType && looksLikeFnsku(value))) {
     return NextResponse.json(
       { success: false, found: false, error: 'FNSKU scans go to POST /api/fba/fnsku-scan' },
@@ -93,11 +102,26 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
     // Wrap the write path in a tenant transaction so the `app.current_org`
     // GUC is set for every read/write.
     return await withTenantTransaction(ctx.organizationId, async (client) => {
-      const resolved = await resolveShipmentId(value, ctx.organizationId);
-      const key18 = normalizeTrackingKey18(value);
+      // ORDER anchor resolves the row directly (org-scoped); a tracking scan
+      // resolves it through the shipment. Everything after is one writer.
+      const orderAnchor = anchorOrderId != null
+        ? await findOrderById(client, anchorOrderId, ctx.organizationId)
+        : null;
+      if (anchorOrderId != null && !orderAnchor) {
+        return NextResponse.json({ success: false, found: false, error: 'Order not found' }, { status: 404 });
+      }
+      const scanValue = orderAnchor ? String(orderAnchor.shipping_tracking_number || '').trim() : value;
+      const resolved = orderAnchor
+        ? {
+            shipmentId: orderAnchor.shipment_id != null ? Number(orderAnchor.shipment_id) : null,
+            scanRef: scanValue || String(orderAnchor.order_id),
+          }
+        : await resolveShipmentId(value, ctx.organizationId);
+      const key18 = scanValue ? normalizeTrackingKey18(scanValue) : null;
       const last8Raw = normalizeTrackingLast8(value);
       const last8 = /^\d{8}$/.test(last8Raw) && !looksLikeFnsku(value) ? last8Raw : null;
-      const order = await findOrderByShipment(client, resolved.shipmentId, key18, last8, ctx.organizationId);
+      const order = orderAnchor
+        ?? await findOrderByShipment(client, resolved.shipmentId, key18, last8, ctx.organizationId);
 
       if (!order) {
         // No order found — create exception + SAL
@@ -184,9 +208,10 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
         metadata: {
           source: stationSource,
           order_found: true,
+          anchor: orderAnchor ? 'ORDER' : 'TRACKING',
           order_id: order.order_id,
           order_row_id: Number(order.id),
-          tracking: trackingValue,
+          tracking: trackingValue || null,
           pack_location_id: packLocationId,
           pack_location_barcode: packLocationBarcode,
         },
@@ -252,7 +277,7 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
         sessionKind: 'ORDER',
         shipmentId: matchedShipmentId,
         trackingKey18: key18,
-        trackingRaw: value,
+        trackingRaw: scanValue || null,
         scanRef: resolved.scanRef ?? trackingValue,
       });
 

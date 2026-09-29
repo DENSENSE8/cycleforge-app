@@ -17,7 +17,7 @@ import { recordStateGlyph } from '@/design-system/components/record-card/record-
 import type { RecordStateFace } from '@/design-system/tokens/industrial-record';
 import { displayReceivingProductTitle } from '@/components/station/receiving-grid/cells';
 import { fmtDate } from '@/components/sidebar/receiving/incoming-details/incoming-details-shared';
-import { incomingDeliveryNextAction, purchaseDeliveryState, purchaseIdentity } from '../IncomingDeliveryRecord';
+import { incomingDeliveryNextAction, purchaseDeliveryState, purchaseIdentity } from '../incoming-delivery-state';
 
 export interface ReceiptCardModel {
   /** Card key: the purchase key can head two groups, the lead line's id keeps it unique. */
@@ -116,7 +116,7 @@ export function receiptRecordCard(model: ReceiptCardModel): RecordCardModel {
     chips: [],
     // Why this delivery needs a person, and what to do — read-only on line 1.
     notes: { fixed: reason ? { label: reason.label, text: `${reason.why} → ${reason.next}` } : null, own: null },
-    status: { kind: 'state', face: state.label, tone: state.tone, tip: null },
+    status: { kind: 'none' },
     next: {
       label: nextVerb,
       tone: state.tone,

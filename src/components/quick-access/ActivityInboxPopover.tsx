@@ -264,7 +264,14 @@ function DurableInboxRow({
               titleAttr: item.eventLabel,
               meta: (
                 <span className="pointer-events-auto relative z-10 min-w-0 truncate text-text-soft">
-                  {item.trackingNumber ? (
+                  {item.orderNumber ? (
+                    <span className="inline-flex min-w-0 items-center gap-1">
+                      <OrderIdChip value={item.orderNumber} display={item.orderNumber} dense />
+                      {item.carrierStatus ? (
+                        <span className="truncate">· {item.carrierStatus}</span>
+                      ) : null}
+                    </span>
+                  ) : item.trackingNumber ? (
                     // The tracking number IS the content of a watched arrival —
                     // same chip + last-8 grammar as the rows above.
                     <TrackingChip

@@ -24,7 +24,9 @@ export { parseTicketIdQuery, resolveTicketIdForLink };
 function anchorToParams(linkable: SupportContextLinkable): URLSearchParams {
   const sp = new URLSearchParams();
   sp.set('anchorType', linkable.anchorType);
-  if (linkable.anchorType === 'receiving') {
+  if (linkable.anchorType === 'serialUnit') {
+    sp.set('serialUnitId', String(linkable.serialUnitId ?? linkable.anchorId));
+  } else if (linkable.anchorType === 'receiving') {
     sp.set('receivingId', String(linkable.receivingId ?? linkable.anchorId));
     if (linkable.lineId != null) sp.set('lineId', String(linkable.lineId));
   } else if (linkable.anchorType === 'tracking') {
@@ -73,6 +75,12 @@ function linkRequest(
 }
 
 function anchorToBody(linkable: SupportContextLinkable) {
+  if (linkable.anchorType === 'serialUnit') {
+    return {
+      type: 'serialUnit' as const,
+      serialUnitId: linkable.serialUnitId ?? linkable.anchorId,
+    };
+  }
   if (linkable.anchorType === 'receiving') {
     return {
       type: 'receiving' as const,

@@ -4,11 +4,12 @@
  * `/search?sel=` record for every non-order entity (carton, unit, SKU, repair,
  * FBA) and the phone order — the order record's grammar (Shopify order-details
  * split): 2/3 = the thing (its lines, each with a photo large enough to judge)
- * then its timeline; 1/3 = identity facts, then related records, each a
- * `/search` link. One column below the record's `@4xl` container width.
+ * then its timeline; 1/3 = the directional relationship card when applicable,
+ * then identity facts and related records, each a `/search` link. One column
+ * below the record's `@4xl` container width.
  */
 
-import { useState } from 'react';
+import { useMemo, useState, type ReactNode } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
@@ -35,6 +36,9 @@ import type {
   SearchDossierTarget,
 } from '@/lib/search/search-dossier-model';
 import { cn } from '@/utils/_cn';
+import { usePhotoGallery } from '@/components/shipped/photo-gallery/usePhotoGallery';
+import { PhotoViewerPortal } from '@/components/shipped/photo-gallery/PhotoViewerPortal';
+import type { PhotoGalleryInput } from '@/components/shipped/photo-gallery/photo-gallery-utils';
 
 /** Newest events painted before "Show N earlier events" — the order record's limit. */
 const TIMELINE_INITIAL_LIMIT = 5;
@@ -71,19 +75,47 @@ function RelatedLink({ link, href }: { link: SearchDossierLink; href: string }) 
   );
 }
 
+function RecordLinePhoto({ line }: { line: SearchDossierLine }) {
+  const photos = useMemo<PhotoGalleryInput[]>(
+    () => line.imageUrl ? [{ url: line.imageUrl, thumbUrl: line.imageUrl }] : [],
+    [line.imageUrl],
+  );
+  const gallery = usePhotoGallery({ photos });
+
+  if (!line.imageUrl) {
+    return (
+      <span className="relative h-28 w-28 shrink-0 overflow-hidden border border-mode-frame bg-mode-well">
+        <span className="flex h-full w-full items-center justify-center font-mono text-role-title font-black text-mode-muted" aria-hidden>
+          {initials(line.title)}
+        </span>
+      </span>
+    );
+  }
+
+  return (
+    <>
+      <button
+        type="button"
+        aria-label={`View photo for ${line.title}`}
+        data-testid="search-record-line-photo"
+        onClick={() => gallery.openViewer(0)}
+        className={cn(
+          'ds-raw-button relative h-28 w-28 shrink-0 cursor-zoom-in overflow-hidden border border-mode-frame bg-mode-well',
+          focusRing('cell'),
+        )}
+      >
+        <Image src={line.imageUrl} alt="" fill unoptimized sizes="112px" className="object-contain" />
+      </button>
+      <PhotoViewerPortal g={gallery} />
+    </>
+  );
+}
+
 function RecordLine({ line, hrefOf }: { line: SearchDossierLine; hrefOf: (target: SearchDossierTarget) => string }) {
   return (
     <article data-testid="search-record-line" aria-label={line.title} className="border-b border-mode-fact bg-mode-bar">
       <div className="flex gap-3 p-3">
-        <span className="relative h-28 w-28 shrink-0 overflow-hidden rounded-mode-control border border-mode-frame bg-mode-well">
-          {line.imageUrl ? (
-            <Image src={line.imageUrl} alt="" fill unoptimized sizes="112px" className="object-cover" />
-          ) : (
-            <span className="flex h-full w-full items-center justify-center font-mono text-role-title font-black text-mode-muted" aria-hidden>
-              {initials(line.title)}
-            </span>
-          )}
-        </span>
+        <RecordLinePhoto line={line} />
         <div className="flex min-w-0 flex-1 flex-col gap-1">
           <p className="line-clamp-3 min-w-0 text-role-body font-bold">{line.title}</p>
           {line.facts.length > 0 ? (
@@ -127,6 +159,7 @@ export function SearchEntityRecord({
   related = [],
   handoffs,
   photos = [],
+  relationship,
   onBack,
 }: {
   /** What the record is — "Unit", "Carton", "SKU" … (the header reads "Unit 2807"). */
@@ -148,6 +181,8 @@ export function SearchEntityRecord({
   handoffs: readonly SearchDossierHandoff[];
   /** Every photo the record holds, newest first — the order record's photo peek. */
   photos?: readonly PeekCard[];
+  /** Directional party/movement facts, normally a RecordFlowFacts card. */
+  relationship?: ReactNode;
   onBack?: () => void;
 }) {
   const hrefOf = useTargetHref();
@@ -199,30 +234,33 @@ export function SearchEntityRecord({
   );
 
   const aside = (
-    <div className={DESK_RECORD_COLUMN_CARD_CLASS}>
-      <div className="flex flex-col px-4" data-testid="search-record-facts">
-        {facts.map((fact) => (
-          <EvidenceFactRow key={fact.id} label={fact.label}>
-            {fact.copy ? (
-              <RecordFullId value={fact.value} label={fact.label} className="h-8 leading-8" />
-            ) : (
-              <span className="flex h-8 min-w-0 items-center truncate text-role-body">{fact.value}</span>
-            )}
-          </EvidenceFactRow>
-        ))}
-      </div>
-      {related.length > 0 ? (
-        <div className="flex flex-col px-4 pt-3" data-testid="search-record-related">
-          <p className={cn(RECORD_LABEL_CLASS, 'pb-1 text-mode-muted')}>Related</p>
-          {related.map((link) => (
-            <EvidenceFactRow key={link.id} label={link.label}>
-              <span className="flex h-8 min-w-0 items-center">
-                <RelatedLink link={link} href={hrefOf(link.target)} />
-              </span>
+    <div className="flex min-w-0 flex-col gap-4">
+      {relationship}
+      <div className={DESK_RECORD_COLUMN_CARD_CLASS}>
+        <div className="flex flex-col px-4" data-testid="search-record-facts">
+          {facts.map((fact) => (
+            <EvidenceFactRow key={fact.id} label={fact.label}>
+              {fact.copy ? (
+                <RecordFullId value={fact.value} label={fact.label} className="h-8 leading-8" />
+              ) : (
+                <span className="flex h-8 min-w-0 items-center truncate text-role-body">{fact.value}</span>
+              )}
             </EvidenceFactRow>
           ))}
         </div>
-      ) : null}
+        {related.length > 0 ? (
+          <div className="flex flex-col px-4 pt-3" data-testid="search-record-related">
+            <p className={cn(RECORD_LABEL_CLASS, 'pb-1 text-mode-muted')}>Related</p>
+            {related.map((link) => (
+              <EvidenceFactRow key={link.id} label={link.label}>
+                <span className="flex h-8 min-w-0 items-center">
+                  <RelatedLink link={link} href={hrefOf(link.target)} />
+                </span>
+              </EvidenceFactRow>
+            ))}
+          </div>
+        ) : null}
+      </div>
     </div>
   );
 

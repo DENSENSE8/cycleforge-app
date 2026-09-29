@@ -76,7 +76,7 @@ export const LEDGER_SPINE_HATCH_CLASS =
  * The record's LEAD column on bands 1 and 3 — one box, so the fact that
  * follows it starts on the same x on both bands (owner 2026-09-25: the SKU
  */
-export const LEDGER_LEAD_CLASS = 'flex w-106 shrink-0 items-center gap-3';
+export const LEDGER_LEAD_CLASS = 'flex w-[456px] shrink-0 items-center gap-3';
 
 /**
  * The order # slot inside {@link LEDGER_LEAD_CLASS} on band 1 — one fixed

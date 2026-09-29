@@ -32,18 +32,19 @@ their legacy bodies (`{"error":"UNAUTHENTICATED"}`).
 | `/m/home` | `GET /api/tasks`, `GET /api/daily-checks` | — |
 | `/m/scan` | `GET /api/receiving-lines`, `GET /api/settings` | `/api/receiving/preview-scan`, `/api/receiving/lookup-po`, `/api/receiving/{id}`, `/api/receiving-logs`, `/api/receiving-lines`, `/api/admin/fba-fnskus` |
 | `/m/work`, `/m/orders` | `GET /api/orders`, `GET /api/catalog/platforms`, `GET /api/catalog/platform-accounts` | `/api/orders/exceptions`, `/api/orders/{id}/flag`, `/api/orders/{id}/documents` (+ `/upload`) |
-| `/m/pick` | **`POST /api/picking/next`** (opens/reuses a pick session on visit), `GET /api/reason-codes`, `/api/settings`, `/api/orders/{id}/documents`, `/api/orders/{id}/manuals`, `/api/zoho/items/{id}/image` | `/api/picking/release`, `/api/picking/tote`, `/api/picking/session/{id}/note`, `/api/serial-units/{id}/move`, `/api/update-sku-location`, `/api/product-manuals/search` |
-| `/m/pick/unassigned` | `GET /api/picking/board`, `/api/zoho/items/{id}/image` | — |
-| `/m/pack` | `GET /api/packerlogs`, `GET /api/packing/policy` | `/api/packing/resolve-tote`, `/api/product-manuals/search` |
+| `/m/pick` | `GET /api/orders?inWarehouse=true&listShape=queue` (the To-ship desk's read), `GET /api/locations` (Set bin sheet, on open) | `/api/update-sku-location` (Set bin); Start picking / a tapped card → `?order=` below |
+| `/m/pick?order=<id>` | `GET /api/orders?orderId=…&inWarehouse=true`, `GET /api/orders/{id}/pick-tasks` | `/api/picking/desk/scan` (`type: 'ORDER'` anchors the pick on the order), `/api/picking/desk/serial`, `/api/picking/desk/sku`, `/api/picking/desk/unpick` |
+| `/m/pack` | `GET /api/packerlogs`, `GET /api/packing/policy` | `/api/packing/resolve-scan` (tote → pack job; serial → order sheet, which reads `GET /api/orders?inWarehouse=true&listShape=queue` then `GET /api/orders?orderId=…`; paired bin → bin sheet), `/api/product-manuals/search`; the sheets' actions open `/m/pack/start/{id}`, `/m/pick?order=`, `/m/pair/{code}/{sku}` |
 | `/m/exceptions` | `GET /api/orders/exceptions` | — |
 | `/m/repair-scan` | — | `/api/counter/companion` |
 | `/m/settings` | shell only | — |
 
 ## Promotion order (one endpoint family per step)
 
-1. **Pick loop — DONE 2026-09-26.** `/api/v1/picking/{next,board,release,sessions,
-   sessions/{id}/tote,sessions/{id}/notes}` (contract `src/lib/picking/picking-v1-contract.ts`,
-   client `src/lib/api/v1-client.ts`); the six `/api/picking/*` routes are deleted, and
+1. **Pick loop — DONE 2026-09-26.** `/api/v1/picking/sessions` (contract
+   `src/lib/picking/picking-v1-contract.ts`, client `src/lib/api/v1-client.ts`; `next`, `board`,
+   `release`, `sessions/{id}/tote` and `sessions/{id}/notes` were deleted with the directed pick
+   stack 2026-09-28 — `/m/pick` walks my list on the desk scan flow); the six `/api/picking/*` routes are deleted, and
    so are the three caller-less `/api/picking/session/{id}/{confirm-pick,short-pick,complete}`.
    Still off v1 on the pick screens: confirm / short-pick / complete run over the realtime
    WMS channel (`/api/realtime/wms-ticket` + `execute({ name: 'pick.confirm' | 'pick.short' })`,

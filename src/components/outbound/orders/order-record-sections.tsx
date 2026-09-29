@@ -4,8 +4,7 @@
 
 import { useState, type FormEvent } from 'react';
 import type { ShippedOrder } from '@/lib/neon/orders-queries';
-import { Check, Copy, MapPin, Pencil, Plus, Truck } from '@/components/Icons';
-import { HoverTooltip } from '@/components/ui/HoverTooltip';
+import { Check, Copy, MapPin, Pencil } from '@/components/Icons';
 import {
   customerAddressLines,
   customerBillToLines,
@@ -22,17 +21,18 @@ import { RECORD_LABEL_CLASS, RECORD_TRAILING_ACTION_CLASS } from '@/design-syste
 import { cn } from '@/utils/_cn';
 import { useOrderDocuments, useOrderLabelSummary } from '@/lib/orders/order-paperwork-client';
 import { OrderLabelEntries } from './OrderLabelEntries';
-import { LedgerCopyAction, LedgerOpenAction } from './outbound-orders-ledger-editors';
-import { RecordFullId } from '@/design-system/components/record-ledger/RecordFullId';
+import { CopyableCellValue } from '@/components/ui/CopyChip';
+import { TrackingNumberMenuChip } from '@/components/ui/TrackingNumberMenuChip';
 import { formatPhoneNumber } from '@/utils/phone';
 import { CustomerOrderStats } from './facts/CustomerOrderStats';
 import { AddressCheckBadge, useAddressSuggestion, type AddressCheckResult } from './facts/AddressCheck';
 import type { ShipAddress } from '@/lib/shipping/shipstation/types';
 import { formatMonthDayTimePST } from '@/utils/date';
-import { RecordGroup } from '@/design-system/components/record-ledger/RecordGroup';
-import { Button, TextField } from '@/design-system/primitives';
+import { RECORD_GROUP_TITLE_CLASS, RecordGroup } from '@/design-system/components/record-ledger/RecordGroup';
+import { Button, IconButton, TextField } from '@/design-system/primitives';
 import { patchOrderBuyer } from '@/lib/orders/order-buyer-client';
 import { toast } from '@/lib/toast';
+import { classifyEmail } from '@/lib/customers/classified-email';
 
 /** How each label status reads in the record (mono-caps code, its tone, why). */
 const LABEL_STATUS_FACE: Readonly<Record<OrderLabelStatus, { label: string; tone: string; tip: string }>> = {
@@ -131,10 +131,13 @@ export function OrderCustomerGroup({
   orderId,
   customer,
   source,
+  embedded = false,
 }: {
   orderId: number;
   customer: CustomerRecord;
   source?: string;
+  /** Render as a subsection inside the combined Customer & shipping card. */
+  embedded?: boolean;
 }) {
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -170,18 +173,27 @@ export function OrderCustomerGroup({
     setEditing(false);
   };
 
-  return (
-    <RecordGroup
-      title="Customer"
-      testId="order-record-customer"
-      action={
-        !editing ? (
-          <Button type="button" variant="ghost" size="sm" onClick={startEdit} data-testid="order-record-customer-edit">
-            Edit
-          </Button>
-        ) : undefined
-      }
-    >
+  const editAction = !editing ? (
+    <IconButton
+      type="button"
+      size="sm"
+      radius="control"
+      icon={<Pencil className="size-3.5" aria-hidden />}
+      ariaLabel="Edit customer"
+      title="Edit customer"
+      onClick={startEdit}
+      data-testid="order-record-customer-edit"
+    />
+  ) : null;
+  const customerStats = source ? null : <CustomerOrderStats customerId={customer.id} currentOrderId={orderId} />;
+  const headerActions = !editing ? (
+    <span className="flex min-w-0 items-center gap-2">
+      {customerStats}
+      {editAction}
+    </span>
+  ) : customerStats;
+  const body = (
+    <>
       {editing ? (
         <form className="flex flex-col gap-2 px-4 pb-3 pt-1" onSubmit={save} data-testid="order-record-customer-form">
           <TextField label="Name" value={draft.name} onChange={(name) => setDraft((d) => ({ ...d, name }))} autoFocus />
@@ -197,8 +209,26 @@ export function OrderCustomerGroup({
           </div>
         </form>
       ) : (
-        <OrderCustomerRows customer={customer} source={source} orderId={orderId} />
+        <OrderCustomerRows customer={customer} source={source} />
       )}
+    </>
+  );
+
+  if (embedded) {
+    return (
+      <section aria-label="Customer" data-testid="order-record-customer">
+        <header className="flex min-h-mode-hit items-center gap-2 px-4 pt-1">
+          <h3 className={cn(RECORD_GROUP_TITLE_CLASS, 'flex-1')}>Customer</h3>
+          {headerActions}
+        </header>
+        {body}
+      </section>
+    );
+  }
+
+  return (
+    <RecordGroup title="Customer" testId="order-record-customer" action={headerActions || undefined}>
+      {body}
     </RecordGroup>
   );
 }
@@ -325,9 +355,10 @@ export function OrderShipToEditor({ orderId, customer }: { orderId: number; cust
  * then the billing address (the one fact that needs its caption: it is not
  * where the parcel goes — that is the Shipping group's `OrderShipToRow`).
  */
-export function OrderCustomerRows({ customer, source, orderId }: { customer: CustomerRecord; source?: string; orderId: number }) {
+export function OrderCustomerRows({ customer, source }: { customer: CustomerRecord; source?: string }) {
   const name = customerFullName(customer);
   const email = String(customer.email ?? '').trim();
+  const classifiedEmail = classifyEmail(email);
   const phone = customerPhone(customer);
   const billTo = customerBillToLines(customer);
   return (
@@ -335,35 +366,19 @@ export function OrderCustomerRows({ customer, source, orderId }: { customer: Cus
       <p className="truncate text-role-data font-semibold text-mode-ink" title={name || undefined}>
         {name || '—'}
       </p>
-      {/* Order count · total spent — only for a customer-book buyer (a ShipStation ship-to has no history). */}
-      <CustomerOrderStats customerId={source ? null : customer.id} currentOrderId={orderId} />
       {email ? (
-        <span className="flex min-h-7 min-w-0 items-center">
-          <a
-            href={`mailto:${email}`}
-            title={email}
-            className={cn(
-              'block min-w-0 flex-1 truncate text-role-data text-mode-ink no-underline decoration-mode-edge underline-offset-2 hover:underline',
-              focusRing('control'),
-            )}
-          >
-            {email}
-          </a>
-          <LedgerCopyAction value={email} label="email" />
+        <span className="flex min-h-7 w-fit max-w-full items-center self-start" data-email-classification={classifiedEmail?.kind ?? 'direct'}>
+          <CopyableCellValue
+            value={email}
+            display={classifiedEmail?.label ?? email}
+            historyKind="email"
+            className={cn('text-mode-ink', classifiedEmail && 'font-sans font-medium text-mode-muted')}
+          />
         </span>
       ) : null}
       {phone ? (
-        <span className="flex min-h-7 min-w-0 items-center">
-          <a
-            href={`tel:${phone.replace(/[^\d+]/g, '')}`}
-            className={cn(
-              'block min-w-0 flex-1 truncate text-role-data tabular-nums text-mode-ink no-underline decoration-mode-edge underline-offset-2 hover:underline',
-              focusRing('control'),
-            )}
-          >
-            {formatPhoneNumber(phone)}
-          </a>
-          <LedgerCopyAction value={phone} label="phone" />
+        <span className="flex min-h-7 w-fit max-w-full items-center self-start">
+          <CopyableCellValue value={phone} display={formatPhoneNumber(phone)} historyKind="phone" className="tabular-nums text-mode-ink" />
         </span>
       ) : null}
       {billTo.length > 0 ? (
@@ -425,66 +440,48 @@ export function OrderShipToRow({ customer }: { customer: CustomerRecord }) {
 }
 
 /**
- * How the parcel travels — one line led by a truck: carrier · tracking number
- * (opens the carrier page), no "Tracking #" caption, and — where the desk may
- * change it — ONE always-visible verb: **Replace** (a voided label's number
- * gives way to the new one) or **Add tracking** when there is none. With
- * `withStatus` (the shipped archive) the carrier's latest scan off
- * `shipping_tracking_numbers` reads under it.
+ * How the parcel travels. The section's top-right Edit owns mutation, so this
+ * row is deliberately just `Tracking · number · open`. With `withStatus`
+ * (the shipped archive) the carrier's latest scan reads below it.
  */
 export function OrderTrackingLine({
   record,
   tracking,
-  carrier,
-  href,
   withStatus,
-  onReplace,
 }: {
   record: ShippedOrder;
   tracking: string | null;
-  carrier: string | null;
-  href: string | null;
   withStatus: boolean;
-  /** Present ⇒ the desk may set the number: Replace / Add tracking opens the field in place. */
-  onReplace?: () => void;
 }) {
-  const carrierName = carrier || String(record.carrier ?? '').trim() || null;
   const status = String(record.latest_status_label ?? '').trim() || null;
   const detail = String(record.latest_status_description ?? '').trim() || null;
   const eventAt = record.latest_event_at ? formatMonthDayTimePST(record.latest_event_at) : null;
-  const statusLine = [detail, eventAt].filter(Boolean).join(' · ');
+  const statusFace = status ?? detail;
+  const statusLine = [status ? detail : null, eventAt].filter(Boolean).join(' · ');
   return (
     <div className="flex min-w-0 flex-col gap-0.5 border-t border-mode-fact pt-2">
       <span className="flex min-h-8 min-w-0 items-center gap-2" data-testid="evidence-tracking-chip">
-        <Truck aria-hidden className="size-4 shrink-0 text-mode-muted" />
-        {carrierName ? <span className="shrink-0 text-role-data font-semibold text-mode-ink">{carrierName}</span> : null}
+        <span className={cn(RECORD_LABEL_CLASS, 'w-20 shrink-0 text-mode-muted')}>Tracking</span>
         <span className="flex min-w-0 flex-1 items-center">
           {tracking ? (
-            <RecordFullId value={tracking} label="tracking number" />
+            <TrackingNumberMenuChip
+              value={tracking}
+              carrierHint={record.carrier}
+              plain
+              dense
+              face="searchable"
+              menuPlacement="top"
+              openInMenu
+            />
           ) : (
-            <span className="text-role-data text-mode-warn">No tracking yet</span>
+            <span className="text-role-caption text-mode-warn">Not added</span>
           )}
         </span>
-        {/* Icon first, pencil BEFORE ↗ (owner 2026-09-27): edit the number, then open it. */}
-        {onReplace ? (
-          <HoverTooltip label={tracking ? 'Replace tracking number' : 'Add tracking number'} asChild placement="above">
-            <button
-              type="button"
-              onClick={onReplace}
-              aria-label={tracking ? 'Replace tracking number' : 'Add tracking number'}
-              data-testid="order-record-tracking-replace"
-              className={cn(ADDRESS_ACTION_CLASS, focusRing('control'))}
-            >
-              {tracking ? <Pencil className="size-3.5" /> : <Plus className="size-3.5" />}
-            </button>
-          </HoverTooltip>
-        ) : null}
-        {tracking ? <LedgerOpenAction href={href} label="tracking number" /> : null}
       </span>
-      {withStatus ? (
-        <span className="flex min-w-0 flex-col pl-6" data-testid="order-record-tracking-status">
-          <span className={cn('text-role-data font-medium', record.has_exception ? 'text-mode-warn' : status ? 'text-mode-ink' : 'text-mode-muted')}>
-            {status ?? 'No carrier scan yet'}
+      {withStatus && statusFace ? (
+        <span className="flex min-w-0 flex-col pl-20" data-testid="order-record-tracking-status">
+          <span className={cn('text-role-data font-medium', record.has_exception ? 'text-mode-warn' : 'text-mode-ink')}>
+            {statusFace}
           </span>
           {statusLine ? <span className="truncate text-role-caption text-mode-muted">{statusLine}</span> : null}
         </span>

@@ -16,27 +16,18 @@
  * lives on the record header AND on the list's bar, so the view is visible
  * and switchable before any record is open.
  *
- * - **Floor** — the industrial full canvas: edge-to-edge rows, records in a
- *   right rail. Offered only while a list registers a floor face
- *   (`useDeskFloorFace`); never remembered.
- *
- * ONE control for all three (owner 2026-09-27) — it is the only view switch on
- * any list bar or record header, and it stays checked on Floor while in floor
- * so the way out is the same control as the way in. Renders nothing off a desk
- * stage (station embed, modal host): a dead switch is worse than none.
+ * ONE control (owner 2026-09-27) — it is the only view switch on any list bar
+ * or record header. The desktop has exactly these two views (owner
+ * 2026-09-28: no Floor). Renders nothing off a desk stage (station embed,
+ * modal host): a dead switch is worse than none.
  */
 
-import { useId, useRef, type KeyboardEvent } from 'react';
+import { useEffect, useId, useRef, type KeyboardEvent } from 'react';
 import { HotkeyTooltip } from '@/components/ui/HotkeyTooltip';
 import { LayoutGroup, motion, motionRole, useReducedMotion } from '@/design-system/motion';
 import { focusRing } from '@/design-system/tokens/focus-ring';
 import { cn } from '@/utils/_cn';
-import {
-  DESK_FLOOR_SHORTCUT_HINT,
-  DESK_SPLIT_SHORTCUT_HINT,
-  useDeskStageOptional,
-  type DeskStageView,
-} from './DeskStageContext';
+import { DESK_SPLIT_SHORTCUT_HINT, useDeskStageOptional, type DeskStageView } from './DeskStageContext';
 
 /** In place: the record fills the stage where the list was. */
 function InPlaceGlyph({ className }: { className?: string }) {
@@ -59,17 +50,6 @@ function SplitGlyph({ className }: { className?: string }) {
   );
 }
 
-/** Floor: rows edge to edge across the whole frame, a narrow record rail at the right. */
-function FloorGlyph({ className }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 20 16" fill="none" aria-hidden className={className}>
-      <rect x="1" y="1" width="18" height="14" rx="2.5" stroke="currentColor" strokeWidth="1.5" />
-      <path d="M3.5 4.5h9M3.5 8h9M3.5 11.5h9" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
-      <rect x="14" y="3.5" width="2.5" height="9" rx="0.75" fill="currentColor" opacity="0.35" />
-    </svg>
-  );
-}
-
 /**
  * Each option teaches what it does plus its chord, through the ONE hotkey hint
  * every control wears ({@link HotkeyTooltip} → keycaps). In place and Split
@@ -78,7 +58,6 @@ function FloorGlyph({ className }: { className?: string }) {
 const VIEWS: readonly { view: DeskStageView; label: string; action: string; chord: string; Glyph: typeof InPlaceGlyph }[] = [
   { view: 'in-place', label: 'In place', action: 'Open records over the list, full width', chord: DESK_SPLIT_SHORTCUT_HINT, Glyph: InPlaceGlyph },
   { view: 'split', label: 'Split', action: 'Keep the list, open records beside it', chord: DESK_SPLIT_SHORTCUT_HINT, Glyph: SplitGlyph },
-  { view: 'floor', label: 'Floor', action: 'Rows across the whole screen, records in a rail', chord: DESK_FLOOR_SHORTCUT_HINT, Glyph: FloorGlyph },
 ];
 
 export function DeskRecordViewSwitch({
@@ -93,10 +72,23 @@ export function DeskRecordViewSwitch({
   const groupId = useId();
   const reduce = useReducedMotion();
   const buttons = useRef<(HTMLButtonElement | null)[]>([]);
+  // A split pane below this measure cannot preserve both a useful list and a
+  // readable record. Collapse to the full-width record as the viewport crosses
+  // the phone/tablet boundary; the remembered desktop control remains explicit.
+  useEffect(() => {
+    if (!stage) return;
+    const media = window.matchMedia('(max-width: 899px)');
+    const fit = () => {
+      if (media.matches && stage.view === 'split') stage.setView('in-place');
+    };
+    fit();
+    media.addEventListener('change', fit);
+    return () => media.removeEventListener('change', fit);
+  }, [stage]);
   if (!stage) return null;
 
   const transition = reduce ? { duration: 0 } : motionRole.record.pane.transition;
-  const options = VIEWS.filter((v) => v.view !== 'floor' || stage.floorAvailable || stage.view === 'floor');
+  const options = VIEWS;
   const activeIndex = Math.max(0, options.findIndex((v) => v.view === stage.view));
 
   // Radiogroup keys: arrows move AND select (WAI-ARIA radio pattern), Home/End jump.
@@ -120,7 +112,7 @@ export function DeskRecordViewSwitch({
         aria-label="Record view"
         data-testid="desk-record-view-switch"
         onKeyDown={onKeyDown}
-        className={cn('inline-flex shrink-0 items-center gap-0.5 rounded-mode-control bg-surface-sunken p-0.5', className)}
+        className={cn('hidden shrink-0 items-center gap-0.5 rounded-mode-control bg-surface-sunken p-0.5 min-[900px]:inline-flex', className)}
       >
         {options.map(({ view, label, action, chord, Glyph }, index) => {
           const active = stage.view === view;

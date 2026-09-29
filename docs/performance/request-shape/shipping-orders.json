@@ -1,400 +1,378 @@
 {
-  "url": "http://localhost:3100/shipping/orders",
-  "ttfb": 1385,
+  "url": "http://localhost:3102/shipping/orders",
+  "ttfb": 1503,
   "isDev": false,
   "rows": [
     {
       "url": "/api/station-commands/aliases",
-      "start": 1625,
-      "end": 2005,
-      "ms": 380,
+      "start": 1860,
+      "end": 3345,
+      "ms": 1485,
       "bytes": 324
     },
     {
-      "url": "/api/staff-preferences",
-      "start": 1629,
-      "end": 2548,
-      "ms": 920,
-      "bytes": 2976
+      "url": "/api/v1/print-stations",
+      "start": 1861,
+      "end": 3356,
+      "ms": 1496,
+      "bytes": 390
     },
     {
       "url": "/api/nav/context?path=%2Fshipping%2Forders",
-      "start": 1636,
-      "end": 2126,
-      "ms": 490,
-      "bytes": 3439
+      "start": 1862,
+      "end": 2450,
+      "ms": 588,
+      "bytes": 4696
     },
     {
-      "url": "/api/catalog/platforms",
-      "start": 1664,
-      "end": 2840,
-      "ms": 1176,
-      "bytes": 3682
+      "url": "/api/sync/global",
+      "start": 1863,
+      "end": 2166,
+      "ms": 304,
+      "bytes": 1782
+    },
+    {
+      "url": "/api/staff-preferences",
+      "start": 1865,
+      "end": 2858,
+      "ms": 993,
+      "bytes": 429
     },
     {
       "url": "/api/surfaces/outbound/resolve",
-      "start": 1670,
-      "end": 2657,
-      "ms": 987,
+      "start": 1885,
+      "end": 3553,
+      "ms": 1667,
       "bytes": 431
     },
     {
       "url": "/api/staff?active=false",
-      "start": 1751,
-      "end": 3080,
-      "ms": 1329,
+      "start": 1950,
+      "end": 3649,
+      "ms": 1699,
       "bytes": 5871
     },
     {
       "url": "/api/inbox/tech-queue",
-      "start": 1752,
-      "end": 3792,
-      "ms": 2040,
+      "start": 1951,
+      "end": 3554,
+      "ms": 1603,
       "bytes": 368
     },
     {
       "url": "/api/inbox/support",
-      "start": 1752,
-      "end": 2965,
-      "ms": 1212,
+      "start": 1951,
+      "end": 3596,
+      "ms": 1645,
       "bytes": 322
     },
     {
       "url": "/api/staff-messages?unread=1",
-      "start": 1753,
-      "end": 2988,
-      "ms": 1235,
+      "start": 1952,
+      "end": 3638,
+      "ms": 1686,
       "bytes": 312
     },
     {
-      "url": "/api/nav/facets?context=outbound.exceptions",
-      "start": 3088,
-      "end": 3544,
-      "ms": 456,
-      "bytes": 893
-    },
-    {
-      "url": "/api/nav/facets?pair=po&context=outbound.po",
-      "start": 3089,
-      "end": 3508,
-      "ms": 420,
-      "bytes": 822
-    },
-    {
-      "url": "/api/nav/facets?queue=pick&context=outbound.pick",
-      "start": 3089,
-      "end": 3684,
-      "ms": 595,
-      "bytes": 1145
-    },
-    {
-      "url": "/api/nav/facets?context=outbound.triage",
-      "start": 3090,
-      "end": 3624,
-      "ms": 534,
-      "bytes": 1147
-    },
-    {
-      "url": "/api/nav/facets?context=outbound.shipped",
-      "start": 3090,
-      "end": 3601,
-      "ms": 511,
-      "bytes": 1382
-    },
-    {
-      "url": "/api/saved-views?surface=dashboard_unshipped",
-      "start": 3091,
-      "end": 3920,
-      "ms": 829,
-      "bytes": 327
+      "url": "/api/catalog/platforms",
+      "start": 4169,
+      "end": 4429,
+      "ms": 260,
+      "bytes": 3682
     },
     {
       "url": "/api/catalog/platform-accounts",
-      "start": 3093,
-      "end": 3905,
-      "ms": 811,
+      "start": 4170,
+      "end": 4428,
+      "ms": 259,
       "bytes": 3548
     },
     {
-      "url": "/api/staff?active=true",
-      "start": 3097,
-      "end": 4380,
-      "ms": 1284,
-      "bytes": 4624
-    },
-    {
       "url": "/api/sku-catalog/composition/batch",
-      "start": 3097,
-      "end": 4069,
-      "ms": 971,
-      "bytes": 885
+      "start": 4176,
+      "end": 4438,
+      "ms": 262,
+      "bytes": 8828
     },
     {
       "url": "/api/orders/caged?countOnly=1",
-      "start": 3123,
-      "end": 4232,
-      "ms": 1109,
+      "start": 4178,
+      "end": 4710,
+      "ms": 533,
       "bytes": 328
     },
     {
       "url": "/api/onboarding/stats",
-      "start": 3124,
-      "end": 4340,
-      "ms": 1216,
+      "start": 4178,
+      "end": 4732,
+      "ms": 554,
       "bytes": 471
     },
     {
-      "url": "/api/integrations/order-sources",
-      "start": 3125,
-      "end": 4117,
-      "ms": 992,
-      "bytes": 329
-    },
-    {
       "url": "/api/settings?page=desk",
-      "start": 3126,
-      "end": 4117,
-      "ms": 991,
-      "bytes": 1560
+      "start": 4180,
+      "end": 4530,
+      "ms": 350,
+      "bytes": 1768
     },
     {
-      "url": "/api/realtime/token?rnd=09906822789325809",
-      "start": 4093,
-      "end": 4513,
-      "ms": 419,
-      "bytes": 2019
+      "url": "/api/photos/9722/content?variant=thumb",
+      "start": 4530,
+      "end": 5163,
+      "ms": 633,
+      "bytes": 0
+    },
+    {
+      "url": "/api/photos/9707/content?variant=thumb",
+      "start": 4530,
+      "end": 5386,
+      "ms": 856,
+      "bytes": 0
+    },
+    {
+      "url": "/api/photos/9690/content?variant=thumb",
+      "start": 4530,
+      "end": 5179,
+      "ms": 649,
+      "bytes": 0
+    },
+    {
+      "url": "/api/photos/9702/content?variant=thumb",
+      "start": 4530,
+      "end": 5381,
+      "ms": 851,
+      "bytes": 0
+    },
+    {
+      "url": "/api/photos/9729/content?variant=thumb",
+      "start": 4530,
+      "end": 5280,
+      "ms": 749,
+      "bytes": 0
+    },
+    {
+      "url": "/api/photos/9735/content?variant=thumb",
+      "start": 4530,
+      "end": 5468,
+      "ms": 938,
+      "bytes": 0
+    },
+    {
+      "url": "/api/realtime/token?rnd=23309913815858863",
+      "start": 5183,
+      "end": 5532,
+      "ms": 349,
+      "bytes": 2045
+    },
+    {
+      "url": "/api/nav/context?path=%2Fshipping%2Forders&view=top",
+      "start": 5261,
+      "end": 5364,
+      "ms": 103,
+      "bytes": 5440
     }
   ],
   "focus": [
     {
+      "count": 1,
+      "bytes": 426,
+      "rows": [
+        {
+          "url": "/api/v1/print-stations",
+          "ms": 1509,
+          "bytes": 426
+        }
+      ]
+    },
+    {
       "count": 0,
       "bytes": 0,
       "rows": []
-    },
-    {
-      "count": 1,
-      "bytes": 1147,
-      "rows": [
-        {
-          "url": "/api/nav/facets?context=outbound.triage",
-          "ms": 1052,
-          "bytes": 1147
-        }
-      ]
     }
   ],
   "analysis": {
     "duplicates": [],
     "multiShape": [
       {
-        "endpoint": "/api/staff",
+        "endpoint": "/api/nav/context",
         "shapes": [
-          "/api/staff?active=false",
-          "/api/staff?active=true"
+          "/api/nav/context?path=%2Fshipping%2Forders",
+          "/api/nav/context?path=%2Fshipping%2Forders&view=top"
         ],
-        "totalBytes": 10495
-      },
-      {
-        "endpoint": "/api/nav/facets",
-        "shapes": [
-          "/api/nav/facets?context=outbound.exceptions",
-          "/api/nav/facets?pair=po&context=outbound.po",
-          "/api/nav/facets?queue=pick&context=outbound.pick",
-          "/api/nav/facets?context=outbound.triage",
-          "/api/nav/facets?context=outbound.shipped"
-        ],
-        "totalBytes": 5389
+        "totalBytes": 10136
       }
     ],
     "chains": [
       {
-        "from": "/api/sku-catalog/composition/batch",
-        "to": "/api/realtime/token?rnd=09906822789325809",
-        "gapMs": 24,
-        "tailEnd": 4513
+        "from": "/api/photos/9690/content?variant=thumb",
+        "to": "/api/realtime/token?rnd=23309913815858863",
+        "gapMs": 4,
+        "tailEnd": 5532
       },
       {
-        "from": "/api/staff?active=false",
-        "to": "/api/staff?active=true",
-        "gapMs": 17,
-        "tailEnd": 4380
+        "from": "/api/settings?page=desk",
+        "to": "/api/photos/9735/content?variant=thumb",
+        "gapMs": 0,
+        "tailEnd": 5468
       },
       {
-        "from": "/api/staff?active=false",
-        "to": "/api/onboarding/stats",
-        "gapMs": 44,
-        "tailEnd": 4340
+        "from": "/api/settings?page=desk",
+        "to": "/api/photos/9707/content?variant=thumb",
+        "gapMs": 0,
+        "tailEnd": 5386
       },
       {
-        "from": "/api/staff?active=false",
-        "to": "/api/orders/caged?countOnly=1",
-        "gapMs": 43,
-        "tailEnd": 4232
+        "from": "/api/settings?page=desk",
+        "to": "/api/photos/9702/content?variant=thumb",
+        "gapMs": 0,
+        "tailEnd": 5381
       },
       {
-        "from": "/api/staff?active=false",
-        "to": "/api/integrations/order-sources",
-        "gapMs": 45,
-        "tailEnd": 4117
+        "from": "/api/settings?page=desk",
+        "to": "/api/photos/9729/content?variant=thumb",
+        "gapMs": 0,
+        "tailEnd": 5280
       },
       {
-        "from": "/api/staff?active=false",
-        "to": "/api/settings?page=desk",
-        "gapMs": 46,
-        "tailEnd": 4117
+        "from": "/api/settings?page=desk",
+        "to": "/api/photos/9690/content?variant=thumb",
+        "gapMs": 0,
+        "tailEnd": 5179
       },
       {
-        "from": "/api/staff?active=false",
-        "to": "/api/sku-catalog/composition/batch",
-        "gapMs": 17,
-        "tailEnd": 4069
-      },
-      {
-        "from": "/api/staff?active=false",
-        "to": "/api/saved-views?surface=dashboard_unshipped",
-        "gapMs": 11,
-        "tailEnd": 3920
-      },
-      {
-        "from": "/api/staff?active=false",
-        "to": "/api/catalog/platform-accounts",
-        "gapMs": 13,
-        "tailEnd": 3905
-      },
-      {
-        "from": "/api/staff?active=false",
-        "to": "/api/nav/facets?queue=pick&context=outbound.pick",
-        "gapMs": 9,
-        "tailEnd": 3684
+        "from": "/api/settings?page=desk",
+        "to": "/api/photos/9722/content?variant=thumb",
+        "gapMs": 0,
+        "tailEnd": 5163
       }
     ],
-    "peakConcurrency": 14,
+    "peakConcurrency": 10,
     "countProbes": [],
     "heaviest": [
       {
+        "url": "/api/sku-catalog/composition/batch",
+        "start": 4176,
+        "end": 4438,
+        "ms": 262,
+        "bytes": 8828
+      },
+      {
         "url": "/api/staff?active=false",
-        "start": 1751,
-        "end": 3080,
-        "ms": 1329,
+        "start": 1950,
+        "end": 3649,
+        "ms": 1699,
         "bytes": 5871
       },
       {
-        "url": "/api/staff?active=true",
-        "start": 3097,
-        "end": 4380,
-        "ms": 1284,
-        "bytes": 4624
+        "url": "/api/nav/context?path=%2Fshipping%2Forders&view=top",
+        "start": 5261,
+        "end": 5364,
+        "ms": 103,
+        "bytes": 5440
+      },
+      {
+        "url": "/api/nav/context?path=%2Fshipping%2Forders",
+        "start": 1862,
+        "end": 2450,
+        "ms": 588,
+        "bytes": 4696
       },
       {
         "url": "/api/catalog/platforms",
-        "start": 1664,
-        "end": 2840,
-        "ms": 1176,
+        "start": 4169,
+        "end": 4429,
+        "ms": 260,
         "bytes": 3682
       },
       {
         "url": "/api/catalog/platform-accounts",
-        "start": 3093,
-        "end": 3905,
-        "ms": 811,
+        "start": 4170,
+        "end": 4428,
+        "ms": 259,
         "bytes": 3548
       },
       {
-        "url": "/api/nav/context?path=%2Fshipping%2Forders",
-        "start": 1636,
-        "end": 2126,
-        "ms": 490,
-        "bytes": 3439
+        "url": "/api/realtime/token?rnd=23309913815858863",
+        "start": 5183,
+        "end": 5532,
+        "ms": 349,
+        "bytes": 2045
       },
       {
-        "url": "/api/staff-preferences",
-        "start": 1629,
-        "end": 2548,
-        "ms": 920,
-        "bytes": 2976
-      },
-      {
-        "url": "/api/realtime/token?rnd=09906822789325809",
-        "start": 4093,
-        "end": 4513,
-        "ms": 419,
-        "bytes": 2019
-      },
-      {
-        "url": "/api/settings?page=desk",
-        "start": 3126,
-        "end": 4117,
-        "ms": 991,
-        "bytes": 1560
+        "url": "/api/sync/global",
+        "start": 1863,
+        "end": 2166,
+        "ms": 304,
+        "bytes": 1782
       }
     ],
     "slowest": [
       {
-        "url": "/api/inbox/tech-queue",
-        "start": 1752,
-        "end": 3792,
-        "ms": 2040,
-        "bytes": 368
-      },
-      {
         "url": "/api/staff?active=false",
-        "start": 1751,
-        "end": 3080,
-        "ms": 1329,
+        "start": 1950,
+        "end": 3649,
+        "ms": 1699,
         "bytes": 5871
       },
       {
-        "url": "/api/staff?active=true",
-        "start": 3097,
-        "end": 4380,
-        "ms": 1284,
-        "bytes": 4624
-      },
-      {
         "url": "/api/staff-messages?unread=1",
-        "start": 1753,
-        "end": 2988,
-        "ms": 1235,
+        "start": 1952,
+        "end": 3638,
+        "ms": 1686,
         "bytes": 312
       },
       {
-        "url": "/api/onboarding/stats",
-        "start": 3124,
-        "end": 4340,
-        "ms": 1216,
-        "bytes": 471
+        "url": "/api/surfaces/outbound/resolve",
+        "start": 1885,
+        "end": 3553,
+        "ms": 1667,
+        "bytes": 431
       },
       {
         "url": "/api/inbox/support",
-        "start": 1752,
-        "end": 2965,
-        "ms": 1212,
+        "start": 1951,
+        "end": 3596,
+        "ms": 1645,
         "bytes": 322
       },
       {
-        "url": "/api/catalog/platforms",
-        "start": 1664,
-        "end": 2840,
-        "ms": 1176,
-        "bytes": 3682
+        "url": "/api/inbox/tech-queue",
+        "start": 1951,
+        "end": 3554,
+        "ms": 1603,
+        "bytes": 368
       },
       {
-        "url": "/api/orders/caged?countOnly=1",
-        "start": 3123,
-        "end": 4232,
-        "ms": 1109,
-        "bytes": 328
+        "url": "/api/v1/print-stations",
+        "start": 1861,
+        "end": 3356,
+        "ms": 1496,
+        "bytes": 390
+      },
+      {
+        "url": "/api/station-commands/aliases",
+        "start": 1860,
+        "end": 3345,
+        "ms": 1485,
+        "bytes": 324
+      },
+      {
+        "url": "/api/staff-preferences",
+        "start": 1865,
+        "end": 2858,
+        "ms": 993,
+        "bytes": 429
       }
     ]
   },
   "route": "/shipping/orders",
-  "base": "http://localhost:3100",
+  "base": "http://localhost:3102",
   "runs": 3,
   "metrics": {
     "duplicateRequests": 0,
     "countProbes": 0,
-    "focusRefetch": 1,
-    "requests": 23
+    "focusRefetch": 0,
+    "requests": 24
   },
-  "capturedAt": "2026-09-27T20:00:55.052Z"
+  "capturedAt": "2026-09-29T06:14:20.709Z"
 }

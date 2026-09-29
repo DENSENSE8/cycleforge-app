@@ -8,6 +8,7 @@ const UPLOAD_PERM_BY_ENTITY: Record<PhotoEntityType, PermissionString> = {
   RECEIVING_LINE: 'receiving.upload_photo',
   PACKER_LOG: 'packing.complete_order',
   SERIAL_UNIT: 'tech.scan_serial',
+  ORDER: 'orders.create',
   SKU: 'receiving.upload_photo',
   SKU_STOCK: 'sku_stock.adjust',
   BIN_ADJUSTMENT: 'bin.adjust',

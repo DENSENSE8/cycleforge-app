@@ -1,6 +1,6 @@
 'use client';
 
-/** The phone item card — ONE component for every queue that lists sellable units (to-ship on `/m/work`, the shipping and exception queues). */
+/** The phone item card — ONE rounded card for every queue that lists sellable units (`/m/orders` to-ship; `/m/pick` wears `RecordCardMobile`). */
 
 import { type ReactNode, useCallback, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
@@ -8,8 +8,8 @@ import { CalendarClock } from '@/components/Icons';
 import { Button, Panel } from '@/design-system/primitives';
 import { Alert, AlertTitle } from '@/components/ui/alert';
 import { MicroListingTrigger, type GovernedListing } from '@/components/mobile/redesign/MicroListingTrigger';
-import { BUTTON_VARIANTS } from '@/design-system/primitives/button-variants';
-import { ItemRecordMobileMeta, ItemRecordThumb } from '@/design-system/components/item-record';
+import { LocationBadge } from '@/design-system/components/LocationBadge';
+import { ItemRecordThumb } from '@/design-system/components/item-record';
 import {
   ITEM_RECORD_MOBILE_ROW,
   ITEM_RECORD_MOBILE_META,
@@ -33,7 +33,6 @@ import { classifyDeadlineBand, type DeadlineBand } from '@/lib/work-orders/deadl
 import { resolveOutboundSlaCountdown } from '@/lib/shipping/outbound-sla';
 import { formatDateKeyShort, toPSTDateKey } from '@/utils/date';
 
-const SWIPE_REVEAL_PX = 88;
 const SWIPE_TRIAGE_REVEAL_PX = 144;
 const SWIPE_COMMIT_PX = 64;
 const SWIPE_FLICK_VX = 500;
@@ -63,11 +62,11 @@ const SHIP_BY_TONE: Partial<Record<DeadlineBand, string>> = {
   today: 'text-text-warning',
 };
 
-export interface ItemCardPrimaryAction {
-  label: string;
-  icon?: ReactNode;
-  disabled?: boolean;
-  onCommit: () => void;
+/** The card's shelf: a resolved bin code, or null for an honest `No bin`. */
+export interface ItemCardLocation {
+  text: string | null;
+  /** Makes the badge the door to set the SKU's bin. */
+  onPress?: () => void;
 }
 
 /** Closed typed waist for row triage — callers cannot inject arbitrary chrome. */
@@ -78,7 +77,7 @@ export interface ItemCardTriageAction {
 }
 
 /** Ship-by corner. */
-export function ItemCardShipBy({ deadlineAt, now }: { deadlineAt: string | null; now?: number }) {
+function ItemCardShipBy({ deadlineAt, now }: { deadlineAt: string | null; now?: number }) {
   const key = deadlineAt ? toPSTDateKey(deadlineAt) : null;
   const sla = resolveOutboundSlaCountdown(deadlineAt, now);
   const band = sla.tone === 'danger' ? 'overdue' : sla.tone === 'warning' ? 'today' : classifyDeadlineBand(deadlineAt);
@@ -151,7 +150,6 @@ export function ItemCardRow({
   reference,
   outboundOrderId,
   location,
-  itemNumber,
   listing = null,
   qty,
   price,
@@ -161,37 +159,33 @@ export function ItemCardRow({
   managementAction,
   managementOwner,
   handlingFacts = [],
-
   deadlineAt,
   now,
   onOpen,
-  primary,
   triageActions = [],
   stateRail = 'ready',
   active = false,
-  swipe = false,
+  footer,
   ariaLabel,
 }: {
   title: string;
   imageUrl?: string | null;
-  /** Exact source platform + order identity; establishes row 1 on order rosters. */
-  orderContext?: string | null;
-  /** Queue-specific machine identity (order / tracking). Never drives a link. */
+  /** Exact source platform + order identity; row 1 beside the bin. */
+  orderContext: string;
+  /** Queue-specific machine identity (SKU / order). Never drives a link. */
   reference?: string | null;
   /** Stable order-row identity for non-visual browser observability only. */
   outboundOrderId?: string | number | null;
-  /** The shelf the unit sits on. */
-  location?: string | null;
-  /** Listing identity rendered only through the governed SKU-adjacent trigger. */
-  itemNumber?: string | null;
+  /** The shelf, painted top-left as a {@link LocationBadge}; omitted paints nothing. */
+  location?: ItemCardLocation | null;
   /** Context-preserving marketplace inspection; never a row destination. */
   listing?: GovernedListing | null;
-  /** Expected count; omitted or empty does not paint. */
+  /** Expected count; omitted paints an em dash. */
   qty?: string | number | null;
   /** Pre-formatted currency string from the caller's own formatter. */
   price?: string | null;
   condition?: { label: string; tone: string } | null;
-  /** Completion or verification state shown under the pinned tactical quantity. */
+  /** Completion or verification state shown under the pinned quantity. */
   quantityStatus?: string | null;
   /** Resolver-owned current lifecycle state for the Order Management facts row. */
   managementStatus?: string | null;
@@ -201,49 +195,29 @@ export function ItemCardRow({
   managementOwner?: string | null;
   /** Catalog-owned safety facts; this shared face never parses free-text notes. */
   handlingFacts?: readonly OutboundHandlingFace[];
-
   deadlineAt?: string | null;
   /** Shared roster clock; Orders updates it once per minute, not per row. */
   now?: number;
+  /** Row tap is the physical-work selection door. */
   onOpen: () => void;
-  primary: ItemCardPrimaryAction | null;
   /** Left-swipe reveals only the governed triage command family. */
   triageActions?: readonly ItemCardTriageAction[];
   /** Semantic workflow state, rendered as the shared 4px left rail. */
   stateRail?: OutboundWorkflowStateRail;
-  /** The selected tactical target gets the 80px preview; queued rows stay 48px. */
+  /** The selected target gets the 80px preview; queued cards stay 48px. */
   active?: boolean;
-  /** Enables swipe-to-commit of `primary` (to-ship). Pick rows tap through. */
-  swipe?: boolean;
+  /** Row-scoped verbs inside the card, under the record; never swiped. */
+  footer?: ReactNode;
   ariaLabel?: string;
 }) {
   const reduceMotion = useReducedMotion();
   const [photoInspecting, setPhotoInspecting] = useState(false);
-  const tacticalRoster = Boolean(orderContext);
-  const skuIdentity = reference ?? itemNumber;
-  // Row tap remains the physical-work selection door.
-  const storageContext = location ? `Bin: ${location}` : 'Bin: Unassigned';
   const x = useMotionValue(0);
   const dragging = useRef(false);
 
-
-  const commit = useCallback(() => {
-    if (!primary || primary.disabled) return;
-    primary.onCommit();
-  }, [primary]);
-
   const onDragEnd = useCallback(
     (_: MouseEvent | TouchEvent | PointerEvent, info: PanInfo) => {
-      const commitNow =
-        !!primary &&
-        !primary.disabled &&
-        (info.offset.x >= SWIPE_COMMIT_PX || info.velocity.x >= SWIPE_FLICK_VX);
-      if (commitNow) {
-        void animate(x, SWIPE_REVEAL_PX, motionTransition.cardExpansion);
-        commit();
-        return;
-      }
-      if (triageActions.length > 0 && (info.offset.x <= -SWIPE_COMMIT_PX || info.velocity.x <= -SWIPE_FLICK_VX)) {
+      if (info.offset.x <= -SWIPE_COMMIT_PX || info.velocity.x <= -SWIPE_FLICK_VX) {
         void animate(x, -SWIPE_TRIAGE_REVEAL_PX, motionTransition.cardExpansion);
         return;
       }
@@ -252,13 +226,11 @@ export function ItemCardRow({
         dragging.current = false;
       }, 80);
     },
-    [primary, commit, triageActions.length, x],
+    [x],
   );
 
   const isNestedControl = (target: EventTarget | null) =>
     Boolean((target as HTMLElement | null)?.closest('button, a, input'));
-
-  const dragEnabled = !reduceMotion && ((swipe && !!primary && !primary.disabled) || triageActions.length > 0);
 
   return (
     <>
@@ -271,19 +243,6 @@ export function ItemCardRow({
       data-outbound-order-id={outboundOrderId ?? undefined}
       className={cn(ITEM_RECORD_MOBILE_ROW.shell, ITEM_RECORD_MOBILE_STATE_RAIL[stateRail])}
     >
-      {primary ? (
-        <div
-          aria-hidden
-          className={cn(
-            BUTTON_VARIANTS.primary,
-            'pointer-events-none absolute inset-y-0 left-0 flex items-center justify-center text-base font-semibold',
-            ITEM_RECORD_MOBILE_ROW.primaryReveal,
-            primary.disabled && 'opacity-50',
-          )}
-        >
-          {primary.label}
-        </div>
-      ) : null}
       {triageActions.length > 0 ? (
         <div
           aria-hidden
@@ -318,9 +277,9 @@ export function ItemCardRow({
         aria-label={ariaLabel ?? title}
         className="relative z-base bg-surface-card"
         style={{ x }}
-        drag={dragEnabled ? 'x' : false}
-        dragConstraints={{ left: triageActions.length > 0 ? -SWIPE_TRIAGE_REVEAL_PX : 0, right: primary ? SWIPE_REVEAL_PX : 0 }}
-        dragElastic={{ left: triageActions.length > 0 ? 0.12 : 0, right: 0.12 }}
+        drag={!reduceMotion && triageActions.length > 0 ? 'x' : false}
+        dragConstraints={{ left: -SWIPE_TRIAGE_REVEAL_PX, right: 0 }}
+        dragElastic={{ left: 0.12, right: 0 }}
         dragDirectionLock
         dragMomentum={false}
         onDrag={(_, info) => {
@@ -381,109 +340,61 @@ export function ItemCardRow({
             </button>
           </div>
           <div className={ITEM_RECORD_MOBILE_TITLE.band}>
-            {tacticalRoster ? (
-              <>
-                <div className={ITEM_RECORD_MOBILE_TITLE.context}>
-                  <span
-                    data-testid="item-card-location-context"
-                    className={ITEM_RECORD_MOBILE_TITLE.locationContext}
-                  >
-                    {storageContext}
+            <div className={ITEM_RECORD_MOBILE_TITLE.context}>
+              {location ? <LocationBadge text={location.text} onPress={location.onPress} /> : null}
+              <span className="min-w-0 flex-1 truncate">{orderContext}</span>
+              <ItemCardShipBy deadlineAt={deadlineAt ?? null} now={now} />
+            </div>
+            <div className="grid min-w-0 grid-cols-[minmax(0,1fr)_auto] items-stretch">
+              <div className="min-w-0">
+                <span className={cn(ITEM_RECORD_MOBILE_TITLE.face, 'block')}>{title}</span>
+                <div className={ITEM_RECORD_MOBILE_TITLE.foot}>
+                  {condition ? (
+                    <span data-testid="item-card-condition" className={cn(ITEM_RECORD_MOBILE_TITLE.conditionPill, condition.tone)}>
+                      [{condition.label}]
+                    </span>
+                  ) : null}
+                  {price ? (
+                    <span data-testid="item-card-price" className={ITEM_RECORD_MOBILE_META.price}>
+                      {price}
+                    </span>
+                  ) : null}
+                  {listing ? <MicroListingTrigger listing={listing} /> : null}
+                  {reference ? (
+                    <span data-testid="item-card-sku" className={ITEM_RECORD_MOBILE_TITLE.skuTertiary}>
+                      sku: {reference}
+                    </span>
+                  ) : null}
+                  {managementStatus ? (
+                    <span data-testid="item-card-management-status" className="shrink-0 font-mono text-role-eyebrow font-semibold text-text-default">
+                      {managementStatus}
+                    </span>
+                  ) : null}
+                  {managementAction ? (
+                    <span data-testid="item-card-management-action" className="min-w-0 flex-1 truncate font-mono text-role-eyebrow font-semibold text-text-muted">
+                      Next: {managementAction}
+                    </span>
+                  ) : null}
+                  {managementOwner ? (
+                    <span data-testid="item-card-management-owner" className="min-w-0 shrink truncate font-mono text-role-eyebrow font-semibold text-text-muted">
+                      Owner: {managementOwner}
+                    </span>
+                  ) : null}
+                </div>
+              </div>
+              <div className={ITEM_RECORD_MOBILE_TITLE.quantityAnchor} data-testid="item-card-quantity-anchor">
+                <span className={ITEM_RECORD_MOBILE_TITLE.quantityLabel}>Qty</span>
+                <span className={ITEM_RECORD_MOBILE_TITLE.quantityValue}>{qty ?? '—'}</span>
+                {quantityStatus ? (
+                  <span className="flex items-center justify-end gap-0.5">
+                    <span className={ITEM_RECORD_MOBILE_TITLE.quantityStatus}>{quantityStatus}</span>
                   </span>
-                  <span className="min-w-0 flex-1 truncate">{orderContext}</span>
-                  <ItemCardShipBy deadlineAt={deadlineAt ?? null} now={now} />
-                </div>
-                <div className="grid min-w-0 grid-cols-[minmax(0,1fr)_auto] items-stretch">
-                  <div className="min-w-0">
-                    <span className={cn(ITEM_RECORD_MOBILE_TITLE.face, 'block')}>{title}</span>
-                    <div className={ITEM_RECORD_MOBILE_TITLE.foot}>
-                      {condition ? (
-                        <span data-testid="item-card-condition" className={cn(ITEM_RECORD_MOBILE_TITLE.conditionPill, condition.tone)}>
-                          [{condition.label}]
-                        </span>
-                      ) : null}
-                      {price ? (
-                        <span data-testid="item-card-price" className={ITEM_RECORD_MOBILE_META.price}>
-                          {price}
-                        </span>
-                      ) : null}
-                      {listing ? <MicroListingTrigger listing={listing} /> : null}
-                      {skuIdentity ? (
-                        <span data-testid="item-card-sku" className={ITEM_RECORD_MOBILE_TITLE.skuTertiary}>
-                          sku: {skuIdentity}
-                        </span>
-                      ) : null}
-                      {managementStatus ? (
-                        <span data-testid="item-card-management-status" className="shrink-0 font-mono text-role-eyebrow font-semibold text-text-default">
-                          {managementStatus}
-                        </span>
-                      ) : null}
-                      {managementAction ? (
-                        <span data-testid="item-card-management-action" className="min-w-0 flex-1 truncate font-mono text-role-eyebrow font-semibold text-text-muted">
-                          Next: {managementAction}
-                        </span>
-                      ) : null}
-                      {managementOwner ? (
-                        <span data-testid="item-card-management-owner" className="min-w-0 shrink truncate font-mono text-role-eyebrow font-semibold text-text-muted">
-                          Owner: {managementOwner}
-                        </span>
-                      ) : null}
-                    </div>
-                  </div>
-                  <div className={ITEM_RECORD_MOBILE_TITLE.quantityAnchor} data-testid="item-card-quantity-anchor">
-                    <span className={ITEM_RECORD_MOBILE_TITLE.quantityLabel}>Qty</span>
-                    <span className={ITEM_RECORD_MOBILE_TITLE.quantityValue}>{qty ?? '—'}</span>
-                    {quantityStatus ? (
-                      <span className="flex items-center justify-end gap-0.5">
-                        <span className={ITEM_RECORD_MOBILE_TITLE.quantityStatus}>{quantityStatus}</span>
-                      </span>
-                    ) : null}
-                  </div>
-                </div>
-              </>
-            ) : (
-              <>
-                <div className="flex min-w-0 items-baseline gap-2">
-                  <span className={cn(ITEM_RECORD_MOBILE_TITLE.face, 'min-w-0 flex-1')}>{title}</span>
-                  <ItemCardShipBy deadlineAt={deadlineAt ?? null} now={now} />
-                </div>
-              </>
-            )}
-            {!tacticalRoster ? (
-              <div className={ITEM_RECORD_MOBILE_TITLE.foot}>
-                <ItemRecordMobileMeta
-                  className="min-w-0 flex-1"
-                  itemNumber={reference ?? itemNumber}
-                  qty={qty ?? '—'}
-                  price={price}
-                  condition={condition ? <span className={condition.tone}>{condition.label}</span> : null}
-                  notes={location ? <span data-testid="item-card-location" className="text-text-default">{location}</span> : null}
-                />
-                {primary ? (
-                <div
-                  className={ITEM_RECORD_MOBILE_ROW.actionCluster}
-                  onPointerDown={(event) => event.stopPropagation()}
-                  onClick={(event) => { event.stopPropagation(); if (imageUrl) setPhotoInspecting(true); }}
-                >
-                  <Button
-                    variant="primary"
-                    size="sm"
-                    radius="flush"
-                    icon={primary.icon}
-                    ariaLabel={primary.label}
-                    disabled={primary.disabled}
-                    className="min-w-16 px-3"
-                    onClick={commit}
-                  >
-                    {primary.label}
-                  </Button>
-                </div>
                 ) : null}
               </div>
-            ) : null}
+            </div>
           </div>
         </div>
-        {tacticalRoster && handlingFacts.length > 0 ? (
+        {handlingFacts.length > 0 ? (
           <div data-testid="item-card-handling-facts" className="border-t border-border-hairline">
             {handlingFacts.map((fact) => (
               <Alert key={fact.id} variant={fact.tone} className="border-x-0 border-b-0 px-2 py-1.5">
@@ -493,6 +404,7 @@ export function ItemCardRow({
           </div>
         ) : null}
       </motion.div>
+      {footer ? <div className="relative z-base border-t border-border-hairline bg-surface-card">{footer}</div> : null}
       </Panel>
       <ItemCardPhotoInspect
         imageUrl={imageUrl}

@@ -1,4 +1,4 @@
-/** SSR first-paint stand-in for the To-ship Unshipped queue. */
+/** SSR first-paint stand-in for the To-ship / Picking order card lists (triage card anatomy). */
 
 import type { ShippedOrder } from '@/lib/neon/orders-queries';
 import { LIFECYCLE_CLASSES } from '@/design-system/tokens/lifecycle';
@@ -10,7 +10,6 @@ import {
   LEDGER_PHOTO_CLASS,
   LEDGER_ROW_CLASS,
   LEDGER_SPINE_CLASS,
-  LEDGER_TOOLBAR_CLASS,
   type LedgerRowZoom,
 } from '@/components/outbound/orders/outbound-orders-ledger-geometry';
 import { cn } from '@/utils/_cn';
@@ -26,34 +25,19 @@ const SHEET_HOST = 'relative flex min-h-0 min-w-0 flex-1 flex-col';
 
 const FIRST_PAINT_ROW_CAP = 24;
 
+/**
+ * The seeded queue as order cards, in the card list's own anatomy (check + icon
+ * column, line 1 id · price, photo + title · tracking) so the live
+ * `OrderCardList` swaps in without a shift. No seed → the list's skeleton shape.
+ */
 export function OrdersQueueFirstPaint({
   rows,
   className,
-  variant = 'table',
 }: {
   rows: readonly ShippedOrder[];
   className?: string;
-  variant?: 'table' | 'ledger';
 }) {
   const visible = rows.slice(0, FIRST_PAINT_ROW_CAP);
-
-  if (variant === 'ledger') {
-    return (
-      <div
-        className={cn(SHEET_HOST, 'overflow-hidden bg-mode-canvas text-mode-ink', className)}
-        aria-busy={visible.length === 0}
-        aria-label="Orders queue"
-        data-paint-surface="orders:primary"
-      >
-        {/* Same box as the live toolbar: a 32px hit row + its 1px ink rule. */}
-        <div className={LEDGER_TOOLBAR_CLASS} aria-hidden>
-          <span className="min-h-mode-hit" />
-        </div>
-        <OrdersLedgerStandIn rows={visible} zoom="M" />
-      </div>
-    );
-  }
-
   return (
     <div
       className={cn(SHEET_HOST, 'overflow-hidden bg-surface-card', className)}
@@ -61,36 +45,55 @@ export function OrdersQueueFirstPaint({
       aria-label="Orders queue"
       data-paint-surface="orders:primary"
     >
-      <ul className="divide-y divide-border-soft">
+      <ul className="flex flex-col">
         {visible.length === 0
-          ? Array.from({ length: 12 }).map((_, i) => (
-              <li key={i} className="flex h-11 items-center gap-3 px-3">
-                <span className="h-3 w-24 animate-pulse rounded bg-surface-sunken" />
-                <span className="h-3 min-w-0 flex-1 animate-pulse rounded bg-surface-sunken" />
-                <span className="h-3 w-20 animate-pulse rounded bg-surface-sunken" />
+          ? Array.from({ length: 8 }, (_, i) => (
+              <li key={i} aria-hidden className="flex gap-3 rounded-2xl px-4 py-3">
+                <span className="w-7 shrink-0 space-y-3 pt-0.5">
+                  <span className="block size-[18px] animate-pulse rounded-[5px] bg-surface-sunken" />
+                  <span className="block size-4 animate-pulse rounded-md bg-surface-sunken" />
+                </span>
+                <span className="flex min-w-0 flex-1 flex-col gap-2.5">
+                  <span className="flex justify-between">
+                    <span className="h-3.5 w-56 animate-pulse rounded-md bg-surface-sunken" />
+                    <span className="h-3.5 w-20 animate-pulse rounded-md bg-surface-sunken" />
+                  </span>
+                  <span className="flex gap-3">
+                    <span className="size-12 shrink-0 animate-pulse rounded-xl bg-surface-sunken" />
+                    <span className="flex flex-1 flex-col gap-2 pt-1">
+                      <span className="h-4 w-3/4 animate-pulse rounded-md bg-surface-sunken" />
+                      <span className="h-3 w-1/2 animate-pulse rounded-md bg-surface-sunken" />
+                    </span>
+                  </span>
+                </span>
               </li>
             ))
           : visible.map((row) => {
               const orderId = String(row.order_id || row.id || '').trim();
               const title = String(row.product_title || row.sku || 'Order').trim();
               const tracking = String(row.shipping_tracking_number || '').trim();
-              const face = orderId.length > 8 ? orderId.slice(-8) : orderId;
+              const price = linePrice(row).text;
               return (
-                <li
-                  key={`${row.id}-${orderId}`}
-                  className="flex h-11 items-center gap-3 px-3 text-role-caption"
-                >
-                  <span className="w-24 shrink-0 font-mono text-text-muted tabular-nums">
-                    {face || '—'}
+                <li key={`${row.id}-${orderId}`} className="flex gap-3 rounded-2xl px-4 py-3">
+                  <span className="w-7 shrink-0 space-y-3 pt-0.5" aria-hidden>
+                    <span className="block size-[18px] rounded-[5px] border border-border-soft" />
+                    <span className="block size-4 rounded-md bg-surface-sunken" />
                   </span>
-                  <span className="min-w-0 flex-1 truncate font-medium text-text-default">
-                    {title}
-                  </span>
-                  {tracking ? (
-                    <span className="max-w-[9rem] shrink-0 truncate font-mono text-text-faint">
-                      {tracking}
+                  <span className="flex min-w-0 flex-1 flex-col gap-2.5">
+                    <span className="flex min-w-0 items-baseline justify-between gap-3 text-role-caption">
+                      <span className="min-w-0 truncate font-mono tabular-nums text-text-muted">{orderId || '—'}</span>
+                      {price ? <span className="shrink-0 tabular-nums text-text-default">{price}</span> : null}
                     </span>
-                  ) : null}
+                    <span className="flex min-w-0 gap-3">
+                      <span className="size-12 shrink-0 rounded-xl bg-surface-sunken" aria-hidden />
+                      <span className="flex min-w-0 flex-1 flex-col gap-1 pt-1">
+                        <span className="truncate font-medium text-text-default">{title}</span>
+                        {tracking ? (
+                          <span className="truncate font-mono text-role-caption text-text-faint">{tracking}</span>
+                        ) : null}
+                      </span>
+                    </span>
+                  </span>
                 </li>
               );
             })}
@@ -100,9 +103,9 @@ export function OrdersQueueFirstPaint({
 }
 
 /**
- * Static ledger records at a zoom step — the SSR stand-in's body and the live
- * ledger's loading face. Empty `rows` paints blank records (no pulse: the
- * industrial floor has no motion).
+ * Static ledger records at a zoom step — the orphaned `OutboundOrdersLedger`'s
+ * loading face (no desk mounts it; delete with it). Empty `rows` paints blank
+ * records (no pulse: the industrial floor has no motion).
  */
 export function OrdersLedgerStandIn({
   rows,

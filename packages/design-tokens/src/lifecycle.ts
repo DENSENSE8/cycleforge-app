@@ -1,7 +1,7 @@
 import type { OperationalStateSpec } from './state';
 
 /** Lifecycle states — the one meaning, code, word and colour of each outbound lifecycle state, on every platform. */
-export type LifecycleIcon = 'circle-dot' | 'package-search' | 'alarm-clock' | 'package' | 'package-x' | 'truck' | 'circle-pause';
+export type LifecycleIcon = 'circle-dot' | 'check' | 'package-search' | 'alarm-clock' | 'package' | 'package-x' | 'truck' | 'circle-pause';
 
 export interface LifecycleSpec extends OperationalStateSpec {
   icon: LifecycleIcon;

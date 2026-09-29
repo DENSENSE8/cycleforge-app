@@ -92,7 +92,7 @@ export function MobileCameraPanel({
       <Button
         variant="success"
         size="lg"
-        radius="flush"
+        radius="control"
         onClick={arm}
         aria-expanded={false}
         aria-controls={panelId}
@@ -161,7 +161,7 @@ export function MobileCameraPanel({
       <Button
         variant={fitContent ? 'ghost' : 'glass'}
         size="sm"
-        radius="flush"
+        radius="control"
         onClick={done}
         aria-expanded
         aria-controls={panelId}

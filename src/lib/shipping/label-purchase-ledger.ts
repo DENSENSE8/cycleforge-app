@@ -215,20 +215,21 @@ async function findLabelPurchase(
   return res.rows[0] ? toRecord(res.rows[0]) : null;
 }
 
-/** Attach what the route learned after the charge (document, STN row). */
+/** Attach what the route learned after the charge (document, STN row, Labels-view ingestion). */
 export async function attachLabelPurchaseFacts(
   orgId: OrgId,
   purchaseId: number,
-  facts: { labelDocumentId?: number | null; shipmentId?: number | null },
+  facts: { labelDocumentId?: number | null; shipmentId?: number | null; labelIngestionId?: number | null },
 ): Promise<void> {
   await tenantQuery(
     orgId,
     `UPDATE shipping_label_purchases
         SET label_document_id = COALESCE($3, label_document_id),
             shipment_id = COALESCE($4, shipment_id),
+            label_ingestion_id = COALESCE($5, label_ingestion_id),
             updated_at = now()
       WHERE id = $1 AND organization_id = $2`,
-    [purchaseId, orgId, facts.labelDocumentId ?? null, facts.shipmentId ?? null],
+    [purchaseId, orgId, facts.labelDocumentId ?? null, facts.shipmentId ?? null, facts.labelIngestionId ?? null],
   );
 }
 

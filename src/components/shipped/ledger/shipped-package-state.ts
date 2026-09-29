@@ -4,6 +4,7 @@ import { LIFECYCLE } from '@/design-system/tokens/lifecycle';
 import type { RecordStateFace } from '@/design-system/tokens/industrial-record';
 import { deriveOutboundState, OUTBOUND_STATE_META, type OutboundState } from '@/lib/outbound-state';
 import { outboundSignals, type OutboundSignalFacts } from '@/lib/orders/outbound-signals';
+import type { DerivedPackerRecord } from '@/lib/shipped-records';
 
 const STAGE_FACE: Readonly<Record<OutboundState, Pick<RecordStateFace, 'code' | 'tone' | 'icon'>>> = {
   PACKED_STAGED: { code: 'STG', tone: LIFECYCLE.packed.tone, icon: LIFECYCLE.packed.icon },
@@ -40,4 +41,13 @@ export function shipmentOutboundStage(facts: OutboundSignalFacts): OutboundState
 /** `orders_exceptions.status` still awaiting a decision (`open` | `resolved`). */
 export function isOpenExceptionStatus(status: string | null | undefined): boolean {
   return String(status ?? '').trim().toLowerCase() === 'open';
+}
+
+/** The list's key for a feed row: its package, else (no package on file) the scan. */
+export function shippedPackageKey(row: DerivedPackerRecord): string {
+  return row.package_shipment_id != null ? String(row.package_shipment_id) : `scan-${row.id}`;
+}
+
+export function shippedPackageTracking(row: DerivedPackerRecord): string {
+  return (row.package_tracking || row.shipping_tracking_number || '').trim();
 }

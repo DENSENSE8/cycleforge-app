@@ -1,7 +1,9 @@
 /** `GET /api/nav/facets` domain — option counts for one facet context, from the list's own predicates. */
 
 import type { NavFacetsResponse } from '@/lib/nav/context/schema';
-import { NAV_FACET_PERMISSION, type NavFacetContext } from '@/lib/nav/facets/contexts';
+import { NAV_FACET_PERMISSION, mayReadNavFacet, type NavFacetContext } from '@/lib/nav/facets/contexts';
+import { exceptionFacets, isExceptionFacetContext, type ExceptionCountReader } from '@/lib/nav/facets/exceptions';
+import { countExceptions } from '@/lib/exceptions/hub';
 import { importFacets } from '@/lib/nav/facets/imports';
 import { outboundFacets, type FacetSqlRunner } from '@/lib/nav/facets/outbound';
 import { pickupFacets } from '@/lib/nav/facets/pickup';
@@ -14,11 +16,14 @@ export interface NavFacetsDeps {
   /** One tenant-scoped statement → rows. */
   run(orgId: OrgId, sql: string, params: readonly unknown[]): Promise<Array<Record<string, unknown>>>;
   listLocalPickupLines: typeof listLocalPickupLines;
+  /** The Exceptions hub's per-kind totals (`countExceptions`). */
+  exceptionCounts: ExceptionCountReader;
 }
 
 export const defaultNavFacetsDeps: NavFacetsDeps = {
   run: async (orgId, sql, params) => (await tenantQuery(orgId, sql, params)).rows,
   listLocalPickupLines,
+  exceptionCounts: (caller, kinds, q) => countExceptions(caller, kinds, q),
 };
 
 export async function getNavFacets(
@@ -27,8 +32,14 @@ export async function getNavFacets(
   params: Pick<URLSearchParams, 'get'>,
   deps: NavFacetsDeps = defaultNavFacetsDeps,
 ): Promise<{ ok: true; body: NavFacetsResponse } | { ok: false; status: 403; error: 'FORBIDDEN'; permission: string }> {
-  const permission = NAV_FACET_PERMISSION[context];
-  if (!caller.permissions.has(permission)) return { ok: false, status: 403, error: 'FORBIDDEN', permission };
+  if (!mayReadNavFacet(caller.permissions, context)) {
+    const required = NAV_FACET_PERMISSION[context];
+    return { ok: false, status: 403, error: 'FORBIDDEN', permission: typeof required === 'string' ? required : required.join('|') };
+  }
+  if (isExceptionFacetContext(context)) {
+    const has = (permission: string) => caller.permissions.has(permission);
+    return { ok: true, body: await exceptionFacets(context, { orgId: caller.orgId, has }, params, deps.exceptionCounts) };
+  }
   if (context === 'pickup') {
     return { ok: true, body: await pickupFacets(caller.orgId, params, deps.listLocalPickupLines) };
   }

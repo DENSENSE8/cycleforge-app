@@ -28,14 +28,16 @@ interface UseReportPackerDaySpreadsheetOptions {
   rows: readonly PackingReportRow[];
   loading?: boolean;
   emptyMessage?: string;
-  searchPlaceholder?: string;
+  searchValue: string;
+  onSearchChange: (next: string) => void;
 }
 
 export function useReportPackerDaySpreadsheet({
   rows,
   loading = false,
   emptyMessage = 'No packs recorded on this day.',
-  searchPlaceholder = 'Filter this day…',
+  searchValue,
+  onSearchChange,
 }: UseReportPackerDaySpreadsheetOptions): CompoundSpreadsheetFeed<
   PackingReportRow,
   ReportPackerDayGridColumnKey,
@@ -43,7 +45,6 @@ export function useReportPackerDaySpreadsheet({
 > {
   const [sort, setSort] = useState<ReportPackerDayGridColumnKey | null>(null);
   const [dir, setDir] = useState<GridSortDir | null>(null);
-  const [query, setQuery] = useState('');
 
   const { effectiveLayout, subtitleFieldIds, fields } = useReportPackerDayTableLayout();
   const columns = useMemo(
@@ -60,8 +61,8 @@ export function useReportPackerDaySpreadsheet({
   );
 
   const search = useMemo(
-    () => ({ value: query, onChange: setQuery, placeholder: searchPlaceholder }),
-    [query, searchPlaceholder],
+    () => ({ value: searchValue, onChange: onSearchChange, placeholder: 'Filter this day…' }),
+    [searchValue, onSearchChange],
   );
 
   return useCompoundSpreadsheet<
@@ -85,6 +86,7 @@ export function useReportPackerDaySpreadsheet({
     dir,
     onSortChange,
     search,
+    findOwner: 'page',
     loading,
     emptyMessage,
     ariaLabel: 'Packer day, one row per pack',

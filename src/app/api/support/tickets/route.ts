@@ -11,6 +11,7 @@ import pool from '@/lib/db';
 export const dynamic = 'force-dynamic';
 
 const Anchor = z.discriminatedUnion('type', [
+  z.object({ type: z.literal('serialUnit'), serialUnitId: z.coerce.number().int().positive() }),
   z.object({ type: z.literal('order'), orderId: z.coerce.number().int().positive() }),
   z.object({ type: z.literal('shipment'), shipmentId: z.coerce.number().int().positive() }),
   z.object({ type: z.literal('tracking'), trackingNumber: z.string().trim().min(1) }),

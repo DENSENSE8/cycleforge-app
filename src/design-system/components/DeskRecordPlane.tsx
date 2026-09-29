@@ -20,30 +20,26 @@ import {
   DESK_RECORD_ASIDE_COLUMN_CLASS,
   DESK_RECORD_COLUMNS_CLASS,
   DESK_RECORD_MAIN_COLUMN_CLASS,
-  DESK_FLOOR_LIST_CLASS,
-  DESK_FLOOR_RAIL_CLASS,
   DESK_RECORD_MEASURE_CLASS,
   DESK_SPLIT_LIST_CARD_CLASS,
   DESK_SPLIT_LIST_CLASS,
   DESK_SPLIT_RECORD_CARD_CLASS,
   DESK_SPLIT_RECORD_CLASS,
+  DESK_TRIAGE_LONE_LIST_CLASS,
   DESK_TRIAGE_RAIL_CLASS,
 } from '../tokens/desk-stage';
 import { DeskRecordViewSwitch } from './DeskRecordViewSwitch';
 import { useDeskStageOptional, type DeskStageView } from './DeskStageContext';
 import { DeskStageOverlay, DeskStageRecordHeader, isRecordEscTextEntry } from './DeskStageOverlay';
 
-/**
- * Which view the enclosing desk stage selects. `in-place` outside a desk.
- * `floor` places the record in a right rail beside an edge-to-edge list.
- */
+/** Which view the enclosing desk stage selects. `in-place` outside a desk. */
 export function useDeskRecordView(): DeskStageView {
   return useDeskStageOptional()?.view ?? 'in-place';
 }
 
-/** Split and Floor keep the list beside the record; only In place covers it. */
+/** Split keeps the list beside the record; In place covers it. */
 export function deskRecordBesideList(view: DeskStageView): boolean {
-  return view !== 'in-place';
+  return view === 'split';
 }
 
 /** Published around the list AND the record. */
@@ -103,11 +99,16 @@ interface DeskRecordPlaneProps {
   recordKey?: string | null;
   /**
    * A RAIL desk (Labels & docs, owner 2026-09-27): the list is a fixed-width
-   * triage rail at the left in EVERY view and the record always sits beside
-   * it, taking the rest — In place only fixes the stage's width, Split gives
-   * it the canvas. Nothing is ever covered.
+   * triage rail at the left and the record sits beside it, taking the rest —
+   * In place only fixes the stage's width, Split gives it the canvas. Nothing
+   * is ever covered.
+   *
+   * `true`: the record is always open beside the rail (nothing to close to).
+   * `'open'` (owner 2026-09-28): with nothing open the list stands ALONE at
+   * the stage's full width (the bar's hairline measure) — no empty right side;
+   * opening a card splits it into rail + record, and Esc / ✕ fold it back.
    */
-  listRail?: boolean;
+  listRail?: boolean | 'open';
   /** On the record container in both views; `data-desk-record-view` says which. */
   testId?: string;
   className?: string;
@@ -131,9 +132,12 @@ export function DeskRecordPlane({
   className,
 }: DeskRecordPlaneProps) {
   const view = useDeskRecordView();
-  const split = view === 'split' && !listRail;
-  const floor = view === 'floor' && !listRail;
-  const beside = listRail || deskRecordBesideList(view);
+  const railed = listRail !== false;
+  // The rail (and the record beside it) is painted now; an `'open'` rail with nothing open is a lone full-width list.
+  const rail = listRail === true || (listRail === 'open' && open);
+  const lone = listRail === 'open' && !open;
+  const split = view === 'split' && !railed;
+  const beside = rail || (!railed && deskRecordBesideList(view));
   const listRef = useRef<HTMLDivElement>(null);
 
   // Motion: the split pane springs in beside the list; the record body swaps
@@ -150,8 +154,8 @@ export function DeskRecordPlane({
     onCloseRef.current = onClose;
   }, [onClose]);
 
-  // Split and floor: the first Esc closes the record. On `document`, so it
-  // runs before the stage's own Esc (leave floor / split) on `window`.
+  // Split: the first Esc closes the record. On `document`, so it runs before
+  // the stage's own Esc (leave split) on `window`.
   const ownsFirstEscape = beside;
   useEffect(() => {
     if (!ownsFirstEscape || !open) return;
@@ -260,16 +264,15 @@ export function DeskRecordPlane({
         <div
           ref={listRef}
           // Split (owner 2026-09-26): the list takes two thirds, the record
-          // the right third. Floor: the list fills to the rail, edge to edge.
-          // A rail desk: the list is the fixed triage rail in every view.
+          // the right third. A rail desk: the list is the fixed triage rail in every view.
           className={
-            listRail
+            lone
+              ? DESK_TRIAGE_LONE_LIST_CLASS
+              : rail
               ? DESK_TRIAGE_RAIL_CLASS
               : split
                 ? DESK_SPLIT_LIST_CLASS
-                : floor
-                  ? DESK_FLOOR_LIST_CLASS
-                  : 'flex min-h-0 min-w-0 flex-1 flex-col'
+                : 'flex min-h-0 min-w-0 flex-1 flex-col'
           }
         >
           {/* Split: the list is one lifted card at a fixed, centred measure
@@ -286,7 +289,7 @@ export function DeskRecordPlane({
             data-testid={testId}
             data-desk-record-view={view}
             data-desk-record-open={open ? '' : undefined}
-            className={listRail ? DESK_RAIL_RECORD_CLASS : floor ? DESK_FLOOR_RAIL_CLASS : DESK_SPLIT_RECORD_CLASS}
+            className={rail ? DESK_RAIL_RECORD_CLASS : DESK_SPLIT_RECORD_CLASS}
           >
             <motion.div
               className={DESK_SPLIT_RECORD_CARD_CLASS}
@@ -300,12 +303,13 @@ export function DeskRecordPlane({
                     title={title}
                     subtitle={subtitle}
                     indexLabel={indexLabel}
-                    onClose={onClose}
+                    // An always-open rail has nothing to close to; an `'open'` rail folds back to the lone list.
+                    onClose={listRail === true ? undefined : onClose}
                     actions={actions}
                     // The split pane is narrow: the drawings alone (words in the tooltip), so the order's title keeps its room.
                     // A rail desk has one view — no switch.
-                    viewSwitch={listRail ? undefined : <DeskRecordViewSwitch labels="wide" />}
-                    rail={listRail}
+                    viewSwitch={railed ? undefined : <DeskRecordViewSwitch labels="wide" />}
+                    rail={rail}
                   />
                   <motion.div
                     key={swapKey}
@@ -405,12 +409,11 @@ function DeskRecordPeekEdge({ peek, rail, className }: { peek: ReactNode; rail: 
  * stacked in the split pane — decided by the plane's container, not the viewport.
  */
 export function DeskRecordLayout({ main, aside, peek, className }: DeskRecordLayoutProps) {
-  // Split pane / Floor rail: ONE column — the item card, then the details card
-  // (owner 2026-09-26). The rail is the measure on Floor: no fixed record width.
+  // Split pane: ONE column — the item card, then the details card (owner 2026-09-26).
   const view = useDeskRecordView();
   if (deskRecordBesideList(view)) {
     return (
-      <div className={cn('flex max-w-full flex-col gap-4 industrial:gap-0', view === 'floor' ? 'w-full' : DESK_RECORD_MEASURE_CLASS, className)}>
+      <div className={cn('flex max-w-full flex-col gap-4 industrial:gap-0', DESK_RECORD_MEASURE_CLASS, className)}>
         {/* `-mb-4` cancels the column gap the zero-height strip would add. */}
         {peek != null ? <DeskRecordPeekEdge peek={peek} rail={false} className="-mb-4 industrial:mb-0" /> : null}
         {main}

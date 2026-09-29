@@ -2,7 +2,7 @@
 
 import { useMemo } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { receivingPhotosQueryKey } from '@/lib/queries/receiving-queries';
+import { RECEIVING_PHOTOS_STALE_MS, receivingPhotosQueryKey } from '@/lib/queries/receiving-queries';
 import { useReceivingPhotosRealtimeRefresh } from '@/hooks/useReceivingPhotosRealtimeRefresh';
 import { useAuth } from '@/contexts/AuthContext';
 
@@ -83,7 +83,7 @@ export function useReceivingPhotos(
     enabled,
     // A read surface has no capture running behind it; the bench does.
     refetchInterval: readOnly ? false : 30_000,
-    staleTime: 20_000,
+    staleTime: RECEIVING_PHOTOS_STALE_MS,
   });
 
   useReceivingPhotosRealtimeRefresh(

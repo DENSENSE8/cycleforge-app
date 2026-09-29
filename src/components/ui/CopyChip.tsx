@@ -453,6 +453,7 @@ export const PoChip = ({
 /** Carrier shipping tracking number. */
 export const TrackingChip = ({
   value,
+  display,
   disableCopy,
   width = 'w-fit max-w-full',
   /** When false, no leading glyph — desk grids paint the carrier ring instead. Phone lists pass true for the MapPin. */
@@ -472,7 +473,7 @@ export const TrackingChip = ({
    * CSS `truncate`: a narrow flex slot then ellipsizes the *already* last-8
    * face from the wrong end (`052400…` instead of the full eight digits).
    */
-  displayWidth = 'last8',
+  displayWidth,
   /**
    * Keep the full last-8 visible. Unbox {@link IdentityLinkChip} tracking
    * locks this off; TrackingChip must match so dense rails / grids cannot
@@ -488,7 +489,7 @@ export const TrackingChip = ({
   outerPad,
 }: {
   value: string;
-  /** @deprecated Tracking labels are always derived from `value` as last eight. */
+  /** Optional context face; clipboard always receives the full `value`. */
   display?: string;
   disableCopy?: boolean;
   /** Tailwind width utilities on the wrapper (sidebar grids need `min-w-0 flex-1`). */
@@ -504,10 +505,12 @@ export const TrackingChip = ({
   disableTooltip?: boolean;
   outerPad?: 'chip' | 'flush';
 }) => {
+  const resolvedDisplay = display ?? getLast8(value);
+  const resolvedDisplayWidth = displayWidth ?? (display == null ? 'last8' : 'content');
   return (
     <CopyChip
       value={value}
-      display={resolveChipDisplay(getLast8(value))}
+      display={resolveChipDisplay(resolvedDisplay)}
       tone="tracking"
       icon={showIcon ? <MapPin className="h-3.5 w-3.5 shrink-0" /> : null}
       width={width}
@@ -517,7 +520,7 @@ export const TrackingChip = ({
       disableTooltip={disableTooltip}
       outerPad={outerPad ?? (showIcon ? 'chip' : 'flush')}
       fitDisplayWidth={fitDisplayWidth}
-      displayWidth={displayWidth}
+      displayWidth={resolvedDisplayWidth}
       truncateDisplay={truncateDisplay}
       dense={dense}
       carrierHint={carrierHint}
@@ -700,6 +703,8 @@ export function TrackingOrSkuScanChip({
   plain: _plain,
   dense = false,
   carrierHint = null,
+  trackingDisplay,
+  disableTooltip = false,
 }: {
   value: string;
   plain?: boolean;
@@ -707,6 +712,10 @@ export function TrackingOrSkuScanChip({
   dense?: boolean;
   /** Stored/label carrier — brand paint + Open URL ladder. */
   carrierHint?: string | null;
+  /** Record faces may show the carrier-searchable USPS number; copy stays raw. */
+  trackingDisplay?: string;
+  /** A surrounding action menu owns hover feedback. */
+  disableTooltip?: boolean;
 }) {
   const raw = normalizeCopyText(value);
   const display = getLast8(raw);
@@ -730,10 +739,12 @@ export function TrackingOrSkuScanChip({
   return (
     <TrackingChip
       value={raw}
-      display={display}
+      display={trackingDisplay ?? display}
       showIcon={false}
       dense={dense}
       carrierHint={carrierHint}
+      displayWidth={trackingDisplay == null ? 'last8' : 'content'}
+      disableTooltip={disableTooltip}
     />
   );
 }

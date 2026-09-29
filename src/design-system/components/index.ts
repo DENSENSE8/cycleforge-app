@@ -53,3 +53,4 @@ export * from './milestone-pipeline';
 export * from './DeskPageChrome';
 export * from './DeskStageContext';
 export * from './DeskActionSlot';
+export * from './RecordFlowFacts';

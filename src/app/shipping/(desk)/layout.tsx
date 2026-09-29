@@ -16,7 +16,7 @@ import { useCurrentNavPath, useNavContext } from '@/components/sidebar/contextua
 export default function ShippingDeskLayout({ children }: { children: ReactNode }) {
   const nav = useNavContext(useCurrentNavPath()).data;
   return (
-    <DeskPageLayout bare stage="card">
+    <DeskPageLayout bare>
       <NavPageActions actions={nav?.actions} />
       {children}
     </DeskPageLayout>

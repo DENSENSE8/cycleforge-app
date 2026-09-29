@@ -14,6 +14,7 @@ import {
   DropdownMenuTrigger,
 } from '@/design-system/primitives/DropdownMenu';
 import { MoreVertical } from '@/components/Icons';
+import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { useSelectionInlineHotkeysRevealed } from '@/hooks/useSelectionStatusBarHotkeys';
 import { useRecordActionStripKeys } from './useRecordActionStripKeys';
 import { cn } from '@/utils/_cn';
@@ -25,7 +26,7 @@ export interface RecordActionVerb {
   icon?: ReactNode;
   /** Single key, shown via KeyboardKey on `?`. */
   hotkey?: string;
-  tone?: 'default' | 'danger';
+  tone?: 'default' | 'danger' | 'yellow';
   /** `isolated` = far right, second press (Delete). Default `primary`. */
   placement?: 'primary' | 'overflow' | 'isolated';
   disabled?: boolean;
@@ -143,32 +144,50 @@ export function RecordActionStrip({
   const verbButton = (verb: RecordActionVerb) => {
     const armed = armedId === verb.id;
     const danger = verb.tone === 'danger';
+    const yellow = verb.tone === 'yellow';
     return (
-      <Button
+      <HoverTooltip
         key={verb.id}
-        type="button"
-        size="sm"
-        radius="pill"
-        variant={danger ? (armed || verb.placement !== 'isolated' ? 'danger' : 'dangerSoft') : verb.pressed ? 'ink' : 'secondary'}
-        icon={verb.icon}
-        disabled={verb.disabled}
-        title={verb.disabled ? verb.disabledReason : undefined}
-        aria-pressed={verb.pressed}
-        aria-haspopup={verb.display ? 'true' : undefined}
-        data-testid={`${testId}-${verb.id}`}
-        data-armed={armed ? '' : undefined}
-        // The header face sits in a 28px chrome row: 24px pills, not 32px, one
-        // line each — a narrow bar scrolls the row sideways instead of wrapping labels.
-        className={face === 'header' ? 'h-6 shrink-0 whitespace-nowrap' : undefined}
-        onClick={() => press(verb)}
+        label={verb.disabled ? (verb.disabledReason ?? verb.label) : verb.label}
+        shortcut={verb.hotkey?.toUpperCase()}
+        asChild
+        placement="above"
       >
-        {armed ? `${verb.label} — press again` : verb.label}
-        {showHotkeys && verb.hotkey ? (
-          <KeyboardKey aria-hidden size="sm" className="ml-1">
-            {verb.hotkey.toUpperCase()}
-          </KeyboardKey>
-        ) : null}
-      </Button>
+        <Button
+          type="button"
+          size="sm"
+          radius="pill"
+          variant={
+            danger
+              ? (armed || verb.placement !== 'isolated' ? 'danger' : 'dangerSoft')
+              : yellow
+                ? 'yellow'
+                : verb.pressed
+                  ? 'ink'
+                  : 'secondary'
+          }
+          icon={verb.icon}
+          ariaLabel={verb.label}
+          disabled={verb.disabled}
+          aria-pressed={verb.pressed}
+          aria-haspopup={verb.display ? 'true' : undefined}
+          data-testid={`${testId}-${verb.id}`}
+          data-armed={armed ? '' : undefined}
+          // The header face sits in a 28px chrome row: 24px pills, not 32px, one
+          // line each — a narrow bar scrolls the row sideways instead of wrapping labels.
+          className={face === 'header' ? 'h-6 shrink-0 whitespace-nowrap px-2 @xl/record-head:px-3' : undefined}
+          onClick={() => press(verb)}
+        >
+          <span className={face === 'header' ? 'hidden @xl/record-head:inline' : undefined}>
+            {armed ? `${verb.label} — press again` : verb.label}
+          </span>
+          {showHotkeys && verb.hotkey ? (
+            <KeyboardKey aria-hidden size="sm" className="ml-1">
+              {verb.hotkey.toUpperCase()}
+            </KeyboardKey>
+          ) : null}
+        </Button>
+      </HoverTooltip>
     );
   };
 
@@ -192,17 +211,19 @@ export function RecordActionStrip({
       <div className="flex shrink-0 items-center gap-1">
         {overflow.length > 0 ? (
           <DropdownMenu modal={false} open={moreOpen} onOpenChange={setMoreOpen}>
-            <DropdownMenuTrigger asChild>
-              <IconButton
-                type="button"
-                size={face === 'header' ? 'xs' : 'sm'}
-                radius="pill"
-                tone="neutral"
-                icon={<MoreVertical className="h-3.5 w-3.5" />}
-                ariaLabel="More actions"
-                data-testid={`${testId}-more`}
-              />
-            </DropdownMenuTrigger>
+            <HoverTooltip label="More actions" asChild placement="above">
+              <DropdownMenuTrigger asChild>
+                <IconButton
+                  type="button"
+                  size={face === 'header' ? 'xs' : 'sm'}
+                  radius="pill"
+                  tone="neutral"
+                  icon={<MoreVertical className="h-3.5 w-3.5" />}
+                  ariaLabel="More actions"
+                  data-testid={`${testId}-more`}
+                />
+              </DropdownMenuTrigger>
+            </HoverTooltip>
             <DropdownMenuContent align="end" side="bottom">
               {overflow.map((verb) => (
                 <DropdownMenuItem

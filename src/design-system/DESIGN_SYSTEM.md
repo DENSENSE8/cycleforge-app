@@ -41,8 +41,8 @@ A mode is what the operator is DOING in a region; it is orthogonal to theme.
 
 | Mode | Where | Feel |
 |---|---|---|
-| `industrial` | `/shipping` (desk + scan-out), `/pack`, `/m/pick`, `/m/work` | Canvas `#fafafa`, white rows, flush corners, 13px, 32px hit; motion only on the scan-status spot |
-| `triage` | `/triage`, right-rail detail occupants | Slate, 4px corners, 14px, 12px page pad |
+| `industrial` | `/m/*` operation flows only (phone and iPad: scan, pack, scan-out, count — the route declares it); never a desk (owner 2026-09-28) | Canvas `#fafafa`, white rows, flush corners, 13px, 32px hit; motion only on the scan-status spot |
+| `triage` | every desktop route (In place / Split, no Floor), `/m/*` reading flows, right-rail detail occupants | Slate, 4px corners, 14px, 12px page pad |
 | `counter` | Kiosk shell (`/kiosk`, `/kiosk/v2`, `/m/consult`) | 12px corners + pill chips, 16px, 40px hit / 56px CTA, tenant `--mode-brand` |
 | `assistant` | Right-rail assistant dock, `/ai-chat` | 12px corners, 15px, 200ms enter + 1200ms pulse |
 
@@ -56,8 +56,8 @@ Coarse pointers raise hit floors to 48px, and page padding and body text where t
 - **Page mode is declared, not mounted:** `src/lib/routing/mode-registry.ts` maps
   every route prefix to its mode (longest first; `mode-registry.test.ts` fails on an
   undeclared page) and `RouteModeRegion`, mounted once in `AppShellSwitch`, applies
-  it. Pages do not mount a page-level `ModeRegion`. `runtime` routes (`/shipping`:
-  Floor ⇄ triage) declare the mode in their layout. Outside every region `:root`
+  it. Pages do not mount a page-level `ModeRegion`. There is no device collapse: a
+  coarse pointer (iPad) keeps the route's mode. Outside every region `:root`
   carries the triage values.
 - **Mechanism:** `<ModeRegion mode="…">` for a nested region or a portal that
   escapes the page's DOM (`providers/ModeRegion.tsx`; `useMode()` reads it). The

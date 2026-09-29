@@ -2,10 +2,9 @@
 
 /**
  * Imports › **Runs** — the import-run HOST of the triage face (the To-ship
- * card list): one card per run, PT-day sections under the default newest
- * sort, status chips (Running · Success · Partial · Failed) cutting the loaded
- * runs through the sidebar's own `?status=`. `?run=<id>` opens the run record
- * (its steps + that run's orders) in the desk record plane.
+ * card list): one card per run, grouped by status. Status chips (Running ·
+ * Success · Partial · Failed) cut the loaded runs through the sidebar's own
+ * `?status=`. `?run=<id>` opens the run record in the desk record plane.
  *
  * The list API reads the sidebar's other filters verbatim; `status` is the
  * chips' cut, so the server answers every status and the chips count them all.
@@ -17,7 +16,6 @@ import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { useAuth } from '@/contexts/AuthContext';
 import { useOrderChannel } from '@/hooks/useCatalog';
 import { IncomingStatusChips, type IncomingStatusChipSet } from '@/components/receiving/incoming/IncomingStatusChips';
-import { useDeskFloorFace, useDeskStageOptional } from '@/design-system/components/DeskStageContext';
 import { EvidenceNotice } from '@/design-system/components/record-ledger/RecordEvidence';
 import { RecordActionStrip, type RecordActionVerb } from '@/design-system/components/record-action-strip/RecordActionStrip';
 import { scopeRecordVerbs } from '@/design-system/components/record-action-strip/record-verb-scope';
@@ -39,7 +37,6 @@ import {
   ImportListSummary,
   REVIEW_PERMISSION,
   importDayBands,
-  importDaySection,
   useImportParamWriter,
   useImportSelection,
 } from './import-record-parts';
@@ -64,8 +61,6 @@ export function ImportRunsList() {
   const writeParams = useImportParamWriter();
   const channelOf = useOrderChannel();
   const canReview = useAuth().has(REVIEW_PERMISSION);
-  // In place / Split / Floor all read the same cards; Floor gives them the canvas and the record a rail.
-  useDeskFloorFace(useDeskStageOptional() != null);
 
   const cut = useTriageCut({ statusKeys: NO_FACE_CHIPS, recordParams: VIEW.recordParams, statusParam: VIEW.chips.param });
   // One page of cards is one API page: the per-page menu's size is the request's.
@@ -175,12 +170,12 @@ export function ImportRunsList() {
         rowId: runId,
         groupKey: (group) => group.key,
         cardModel: (group) => ({ key: group.key, ids: group.rows.map(runId), lead: group.rows[0]! }),
+        state: (group) => IMPORT_RUN_LIFECYCLE[group.rows[0]!.status],
         exactFind: runExactFind,
-        renderCard: (props) => <ImportRunCard {...props} dayShown={sectioned} />,
+        renderCard: (props) => <ImportRunCard {...props} dayShown={false} />,
       }),
-      section: importDaySection,
     }),
-    [sectioned],
+    [],
   );
 
   const q = searchParams.get('q') ?? '';
@@ -214,10 +209,11 @@ export function ImportRunsList() {
   return (
     <div data-testid="imports-runs" className="flex min-h-0 min-w-0 flex-1">
       <TriageCardList
+        sections="by-state"
         family={family}
         feed={feed}
         cut={cut}
-        summary={<IncomingStatusChips set={chipSet} face="cards" />}
+        summary={<IncomingStatusChips set={chipSet} />}
         bulk={<RecordActionStrip face="header" verbs={bulkVerbs} label="Checked runs actions" testId="import-runs-bulk" />}
         banner={runs.isError ? <EvidenceNotice tone="warn">{runs.error.message}</EvidenceNotice> : null}
         searchEmpty={narrowed ? <TriageAllClear title="No runs match" detail="Clear the Find or widen the dates in the sidebar." /> : null}

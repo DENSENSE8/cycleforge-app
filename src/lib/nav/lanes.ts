@@ -24,11 +24,11 @@ export type DomainGroupId =
 // Fulfillment sends it out — whatever the source document. `keywords`: the
 // lane's former names, so ⌘K still finds it by them.
 export const DOMAIN_GROUPS = [
+  { id: 'sales', label: 'Sales', icon: SalesPrice },
   { id: 'inbound', label: 'Receiving', icon: Inbox, keywords: ['inbound'] },
   { id: 'fulfillment', label: 'Fulfillment', icon: STATION_PAGE_ICONS.outbound, keywords: ['outbound'] },
   { id: 'inventory', label: 'Inventory', icon: ShelvingUnit },
   { id: 'catalog', label: 'Products', icon: Tags },
-  { id: 'sales', label: 'Sales', icon: SalesPrice },
   { id: 'support', label: 'Support', icon: AlertCircle },
 ] as const satisfies ReadonlyArray<{
   id: DomainGroupId;

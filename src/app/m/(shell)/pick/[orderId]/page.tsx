@@ -73,7 +73,7 @@ function PickerInner() {
       <div className="flex-1 overflow-y-auto px-4 pt-4 pb-2">
         {/* ─── Tote strip ──────────────────────────────────────────────── The session's container. */}
         <div
-          className={`mb-3 rounded-none border px-3 py-2 text-xs font-semibold ${
+          className={`mb-3 ${cornerClass('surface')} border px-3 py-2 text-xs font-semibold ${
             toteRef
               ? 'border-border-success bg-surface-success text-text-success'
               : 'border-border-warning bg-surface-warning text-text-warning'

@@ -4,7 +4,6 @@ import { useCallback, useMemo } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Phone } from '@/components/Icons';
 import { EmptyState } from '@/design-system/primitives';
-import { SearchField } from '@/design-system/primitives/SearchField';
 import { TimelineSection } from '@/components/ui/TimelineSection';
 import { TableTabs } from '@/components/tables/TableStatusBar';
 import { callEventsToTimeline } from '@/lib/timeline';
@@ -25,12 +24,12 @@ export function CallLogView() {
   const direction = parseCallDirection(searchParams.get('direction'));
   const query = searchParams.get('q') ?? '';
 
-  const setParam = useCallback(
-    (key: 'direction' | 'q', value: string, dropWhenDefault: string | null = null) => {
+  const setDirection = useCallback(
+    (value: string, dropWhenDefault: string | null = null) => {
       const params = new URLSearchParams(searchParams.toString());
       params.set('mode', 'calls');
-      if (!value || value === dropWhenDefault) params.delete(key);
-      else params.set(key, value);
+      if (!value || value === dropWhenDefault) params.delete('direction');
+      else params.set('direction', value);
       router.replace(`/support?${params.toString()}`);
     },
     [router, searchParams],
@@ -74,16 +73,8 @@ export function CallLogView() {
         <TableTabs
           tabs={tabs}
           activeTab={direction}
-          onTabChange={(id) => setParam('direction', id, 'all')}
+          onTabChange={(id) => setDirection(id, 'all')}
           className="shrink-0 border-0 bg-transparent"
-        />
-        <SearchField
-          value={query}
-          onChange={(v) => setParam('q', v)}
-          placeholder="Search caller or number…"
-          className="min-w-[12rem] flex-1"
-          tone="neutral"
-          hideUnderline
         />
       </div>
       <div className="mx-auto min-h-0 w-full max-w-3xl flex-1 overflow-y-auto px-6 py-6">

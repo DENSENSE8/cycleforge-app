@@ -1,27 +1,26 @@
 'use client';
 
 /**
- * Inbound › Unboxed (Docked) — the unboxed-cartons HOST. Two faces over one
- * state (the To-ship pattern): on a desk stage, In place / Split paint the
- * shared triage face ({@link TriageCardList}, one card per carton) and Floor
- * (⌘/Ctrl+Shift+F) the industrial `RecordLedger`. Off a stage (the Unbox
- * History tab) the ledger is the only face.
+ * Inbound › Unboxed (Docked) — the unboxed-cartons HOST. One face: the shared
+ * triage face ({@link TriageCardList}, one card per carton), on a desk stage
+ * and off it (the Unbox History tab). Find lives in the page header; the
+ * off-desk toolbar keeps Sort only.
  *
- * The host owns the data and URL: the loaded rows (up to the history window),
- * Find, the sidebar's Sort and Kind (`?dkind=`), and the attention cut —
- * `?dflag=` (Claim · Short · Unfound, comma-separated), written by the pills
- * on both faces, never a second param. Counts are over the loaded rows, the
- * same rows the list shows (owner 2026-09-28: browser counts).
+ * The host owns the loaded rows (up to the history window), the sidebar's Sort
+ * and Kind (`?dkind=`), and the attention cut — `?dflag=` (Claim · Short ·
+ * Unfound, comma-separated), written by the cards. Counts are over the loaded
+ * rows, the same rows the list shows (owner 2026-09-28: browser counts).
  */
 
-import { useCallback, useMemo, type ReactNode, type RefObject } from 'react';
-import { useSearchParams } from 'next/navigation';
-import { Button, DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, SearchField } from '@/design-system/primitives';
-import { RecordLedger } from '@/design-system/components/record-ledger/RecordLedger';
+import { useCallback, useMemo, type ReactNode } from 'react';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
+import { ExceptionsDesk } from '@/components/exceptions/ExceptionsDesk';
+import { useExceptionCounts } from '@/hooks/exceptions';
+import { EXCEPTION_RECORD_PARAM } from '@/lib/exceptions/types';
+import { Button, DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from '@/design-system/primitives';
 import { RecordLedgerSummaryPane, type RecordLedgerSummary } from '@/design-system/components/record-ledger/RecordLedgerSummary';
 import { RecordActionStrip } from '@/design-system/components/record-action-strip/RecordActionStrip';
 import { EvidenceNotice } from '@/design-system/components/record-ledger/RecordEvidence';
-import { useDeskFloorFace, useDeskStageOptional } from '@/design-system/components/DeskStageContext';
 import { TriageCardList, type TriageFeed, type TriageRecordSlot } from '@/design-system/components/triage-card-list/TriageCardList';
 import { triageFamily } from '@/design-system/components/triage-card-list/triage-view';
 import { TriageAllClear } from '@/design-system/components/triage-card-list/TriageListBody';
@@ -34,11 +33,10 @@ import { IncomingStatusChips, type IncomingStatusChipSet } from '@/components/re
 import { ReceivingSelectionVerbs } from '@/components/receiving/ReceivingSelectionVerbs';
 import { useReceivingSelectionPort } from '@/components/receiving/use-receiving-selection-port';
 import { receivingLineMatchesQuery } from '@/lib/receiving/receiving-line-search';
-import { usePublishRecordCursor, useRecordCursor } from '@/lib/record-cursor/useRecordCursor';
+import { usePublishRecordCursor } from '@/lib/record-cursor/useRecordCursor';
 import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
 import type { GroupedRenderOrder } from '@/lib/group-rows';
-import { DockedReceivingRecord } from './DockedReceivingRecord';
-import { DOCKED_KIND_OPTIONS, DOCKED_STATUS_OPTIONS, dockedCartonStatuses, dockedIntakeKind, type DockedStatus } from '@/lib/receiving/docked-record-state';
+import { DOCKED_KIND_OPTIONS, DOCKED_STATUS_OPTIONS, dockedCartonStatuses, dockedIntakeKind, dockedRecordFace, type DockedStatus } from '@/lib/receiving/docked-record-state';
 import { DOCKED_KIND_PARAM } from '@/lib/receiving/inbound-lane';
 import { useUrlColumnSort } from '@/hooks/useUrlColumnSort';
 import { defaultDirForReceivingGridSort, isReceivingGridSortable, type ReceivingGridColumnKey } from '@/lib/receiving/receiving-grid-layout';
@@ -64,6 +62,10 @@ const FLAG_KEYS: readonly string[] = DOCKED_STATUS_OPTIONS.map((option) => optio
 const FLAG_LABEL = new Map<string, string>(DOCKED_STATUS_OPTIONS.map((option) => [option.value, option.label] as const));
 /** Unfound is stock nobody can sell or pay for yet (red); Claim and Short need a person (amber); Unboxed is the clean case (green). */
 const FLAG_TONE: Readonly<Record<string, StateName>> = { UNFOUND: 'danger', CLAIM: 'warning', SHORT: 'warning', UNBOXED: 'success' };
+/** The pills that ARE Exceptions hub kinds (`src/lib/exceptions/types.ts`). */
+const HUB_KIND_OF_FLAG: Readonly<Record<string, 'claim' | 'short' | 'unfound'>> = { UNFOUND: 'unfound', CLAIM: 'claim', SHORT: 'short' };
+/** Stable lock objects, one per hub kind. */
+const HUB_LOCKS = { claim: { kind: 'claim' }, short: { kind: 'short' }, unfound: { kind: 'unfound' } } as const;
 const KIND_VALUES = new Set<string>(DOCKED_KIND_OPTIONS.map((option) => option.value));
 /** A Find naming exactly one carton — its PO / order #, carton #, or tracking — opens it. */
 const cartonExactFind = (query: string, card: CartonCardModel) =>
@@ -76,7 +78,6 @@ export function DockedReceiptsLedger({
   loading,
   emptyMessage,
   query,
-  onQueryChange,
   activityAxis,
   toolbarExtra,
   sidebarOwnsControls,
@@ -85,14 +86,11 @@ export function DockedReceiptsLedger({
   onOpenRow,
   onCloseRow,
   onToggleRow,
-  scrollRef,
 }: {
   rows: readonly ReceivingLineRow[];
   loading: boolean;
   emptyMessage: string;
   query: string;
-  /** Omitted on `/incoming` — the sidebar Find owns search there; `query` still narrows. */
-  onQueryChange?: (value: string) => void;
   activityAxis: ReceivingActivityAxis;
   toolbarExtra?: ReactNode;
   /**
@@ -105,9 +103,8 @@ export function DockedReceiptsLedger({
   onOpenRow: (row: ReceivingLineRow) => void;
   onCloseRow: () => void;
   onToggleRow: (row: ReceivingLineRow) => void;
-  scrollRef: RefObject<HTMLDivElement>;
 }) {
-  // The attention cut lives in `?dflag=` — the pills write it on both faces, a
+  // The attention cut lives in `?dflag=` — the pills write it, a
   // saved view and a reload keep it.
   const cut = useTriageCut({ statusKeys: FLAG_KEYS, recordParams: VIEW.recordParams, statusParam: VIEW.chips.param });
   const { statusFilter, toggleStatus } = cut.url;
@@ -122,8 +119,7 @@ export function DockedReceiptsLedger({
     const result = rows.filter((row) => receivingLineMatchesQuery(row, query) && (!kind || dockedIntakeKind(row) === kind));
     return sort && dir ? result.sort((a, b) => compareReceivingGridRows(a, b, sort, dir, activityAxis)) : result;
   }, [query, kind, rows, sort, dir, activityAxis]);
-  // Pills are carton facts: every line answers with its carton's statuses, so
-  // the cards and the Floor ledger cut the same cartons.
+  // Pills are carton facts: every line answers with its carton's statuses.
   const statusOfRow = useMemo(() => {
     const byRow = new Map<number, DockedStatus[]>();
     for (const group of groupCartons(foundRows)) {
@@ -132,15 +128,6 @@ export function DockedReceiptsLedger({
     }
     return (row: ReceivingLineRow): DockedStatus[] => byRow.get(row.id) ?? [];
   }, [foundRows]);
-  const visibleRows = useMemo(
-    () => (statusFilter.size === 0 ? foundRows : foundRows.filter((row) => statusOfRow(row).some((flag) => statusFilter.has(flag)))),
-    [foundRows, statusFilter, statusOfRow],
-  );
-
-  // Two faces over one state: cards on a desk stage, the ledger on Floor / off-stage.
-  const stage = useDeskStageOptional();
-  useDeskFloorFace(stage != null);
-  const cardsFace = stage != null && stage.view !== 'floor';
 
   // Cards: cartons in activity-day sections under the default (activity) sort.
   const sectioned = !sort || sort === 'date';
@@ -148,15 +135,8 @@ export function DockedReceiptsLedger({
   const { filterBands } = cut;
   const cardBands = useMemo(() => filterBands(allCartonBands, cartonCardKey, statusOfRow), [filterBands, allCartonBands, statusOfRow]);
 
-  const ledgerOrder = useMemo<GroupedRenderOrder<ReceivingLineRow>>(
-    () => [['docked', [{ key: 'docked', rows: visibleRows }]]],
-    [visibleRows],
-  );
   const cardRows = useMemo(() => cardBands.flatMap(([, groups]) => groups.flatMap((group) => group.rows)), [cardBands]);
-  const openRow = useMemo(
-    () => (cardsFace ? cardRows : visibleRows).find((row) => row.id === selectedId) ?? null,
-    [cardsFace, cardRows, visibleRows, selectedId],
-  );
+  const openRow = useMemo(() => cardRows.find((row) => row.id === selectedId) ?? null, [cardRows, selectedId]);
 
   const open = useCallback((row: ReceivingLineRow) => onOpenRow(row), [onOpenRow]);
   const close = useCallback(() => onCloseRow(), [onCloseRow]);
@@ -165,16 +145,37 @@ export function DockedReceiptsLedger({
     surfaceId: 'incoming-docked-ledger',
     scope: 'record',
     enabled: true,
-    order: cardsFace ? cardBands : ledgerOrder,
+    order: cardBands,
     openId: openRow?.id ?? null,
     getId: receivingLineId,
     onOpen: open,
     onClose: close,
   });
-  const navigation = useRecordCursor('record');
   // The open carton's read — shared by the record view and the strip's verbs.
   const carton = useCartonRecord(openRow);
   const verbs = useCartonVerbs(carton, close);
+
+  // The Exceptions hub door (owner 2026-09-28, one list, two doors): on
+  // `/incoming` (the sidebar owns the controls) Claim · Short · Unfound ARE
+  // the hub's receiving kinds — single-select, counted by the hub's own
+  // predicate, and a lit one swaps this list for the hub list locked to it.
+  // Unboxed, and the Unbox History tab, keep the local cut.
+  const hubDoor = sidebarOwnsControls;
+  const hubCounts = useExceptionCounts({ domain: 'receiving' }).data;
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const lockedKind = hubDoor && statusFilter.size === 1 ? (HUB_KIND_OF_FLAG[[...statusFilter][0] ?? ''] ?? null) : null;
+  const toggleHubFlag = useCallback(
+    (id: string) => {
+      const params = new URLSearchParams(searchParams.toString());
+      if (statusFilter.size === 1 && statusFilter.has(id)) params.delete(VIEW.chips.param);
+      else params.set(VIEW.chips.param, id);
+      params.delete(EXCEPTION_RECORD_PARAM);
+      router.replace(`${pathname}?${params}`, { scroll: false });
+    },
+    [pathname, router, searchParams, statusFilter],
+  );
 
   // Status pills: cartons per pill over Find + Kind + Sort (never the cut itself).
   const chipSet = useMemo<IncomingStatusChipSet>(() => {
@@ -184,20 +185,25 @@ export function DockedReceiptsLedger({
         for (const flag of dockedCartonStatuses(group.rows)) counts.set(flag, (counts.get(flag) ?? 0) + 1);
       }
     }
+    const hubCount = (id: string): number | null => {
+      const kind = HUB_KIND_OF_FLAG[id];
+      return kind ? (hubCounts?.[kind] ?? null) : null;
+    };
     return {
       label: 'Status',
       disabledReason: null,
-      onToggle: (id) => toggleStatus(id),
+      onToggle: (id) => (hubDoor && HUB_KIND_OF_FLAG[id] ? toggleHubFlag(id) : toggleStatus(id)),
       // Fixed pills in a fixed order so the hand learns ⌥1–⌥4; zero reads as "nothing to do".
       chips: FLAG_KEYS.map((id) => ({
         id,
         label: FLAG_LABEL.get(id) ?? id,
-        count: loading ? null : (counts.get(id) ?? 0),
+        count: hubDoor && HUB_KIND_OF_FLAG[id] ? hubCount(id) : loading ? null : (counts.get(id) ?? 0),
         tone: FLAG_TONE[id] ?? 'info',
         active: statusFilter.has(id),
       })),
     };
-  }, [allCartonBands, loading, statusFilter, toggleStatus]);
+  }, [allCartonBands, hubCounts, hubDoor, loading, statusFilter, toggleHubFlag, toggleStatus]);
+
 
   const recordTitle = openRow ? cartonRecordTitle(openRow) : 'Receipt';
   const actionStrip =
@@ -212,28 +218,51 @@ export function DockedReceiptsLedger({
     ) : null;
   const summary: RecordLedgerSummary = {
     title: 'Unboxed cartons',
-    facts: [{ label: 'Visible records', value: visibleRows.length }],
+    facts: [{ label: 'Visible cartons', value: cardBands.reduce((sum, [, groups]) => sum + groups.length, 0) }],
     note: 'Select a record to inspect its status, items, shipment, photos, and timeline.',
   };
   const narrowed = Boolean(query.trim()) || statusFilter.size > 0;
 
-  const renderRecord = useCallback(
-    (row: ReceivingLineRow, isOpen: boolean) => (
-      <DockedReceivingRecord
-        row={row}
-        open={isOpen}
-        selected={selectedIds.has(row.id)}
-        activityAxis={activityAxis}
-        onOpen={open}
-        onToggle={onToggleRow}
-      />
-    ),
-    [onToggleRow, open, selectedIds, activityAxis],
+
+  if (lockedKind) {
+    return (
+      <div data-testid="docked-receipts-ledger" data-face="exceptions" className="flex min-h-0 min-w-0 flex-1 flex-col">
+        <div className="flex shrink-0 items-stretch">
+          <IncomingStatusChips set={chipSet} />
+        </div>
+        <ExceptionsDesk basePath={pathname} lock={HUB_LOCKS[lockedKind]} query={query} />
+      </div>
+    );
+  }
+
+  // Off the desk (the Unbox History tab) this row owns Sort only. Find is the
+  // page header's URL-bound field.
+  const controls = sidebarOwnsControls ? null : (
+    <div className="flex shrink-0 items-center gap-2 border-b border-border-soft px-3 py-1">
+      <span className="flex-1" />
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button variant="ghost" size="sm">
+            {sort ? `${SORTS.find((option) => option.key === sort)?.label || sort} · ${dir}` : 'Sort'}
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent>
+          {SORTS.map((option) => (
+            <DropdownMenuItem key={option.key} onSelect={() => toggleColumnSort(option.key)}>
+              {option.label}
+            </DropdownMenuItem>
+          ))}
+          <DropdownMenuItem onSelect={clear}>Default order</DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+      {toolbarExtra}
+    </div>
   );
 
-  if (cardsFace) {
-    return (
-      <div data-testid="docked-receipts-ledger" data-face="cards" className="flex min-h-0 min-w-0 flex-1">
+  return (
+    <div data-testid="docked-receipts-ledger" data-face="cards" className="flex min-h-0 min-w-0 flex-1 flex-col">
+      {controls}
+      <div className="flex min-h-0 min-w-0 flex-1">
         <HistoryCards
           cut={cut}
           bands={cardBands}
@@ -248,10 +277,8 @@ export function DockedReceiptsLedger({
           onClose={close}
           selectedIds={selectedIds}
           onToggleRow={onToggleRow}
-          chips={<IncomingStatusChips set={chipSet} face="cards" />}
-          searchEmpty={
-            narrowed ? <p className="text-sm text-text-muted">No matching unboxed cartons.</p> : null
-          }
+          chips={<IncomingStatusChips set={chipSet} />}
+          searchEmpty={narrowed ? <p className="text-sm text-text-muted">No matching unboxed cartons.</p> : null}
           allClear={<TriageAllClear title={emptyMessage} detail="Nothing unboxed yet." />}
           record={{
             title: recordTitle,
@@ -263,75 +290,7 @@ export function DockedReceiptsLedger({
           }}
         />
       </div>
-    );
-  }
-
-  return (
-    <RecordLedger
-      testId="docked-receipts-ledger"
-      label="Unboxed cartons"
-      records={visibleRows}
-      recordKey={(row) => String(row.id)}
-      renderRecord={renderRecord}
-      openKey={openRow ? String(openRow.id) : null}
-      onOpenKey={(id) => {
-        const row = visibleRows.find((candidate) => String(candidate.id) === id);
-        if (row) open(row);
-      }}
-      onClose={close}
-      scrollRef={scrollRef}
-      loading={loading}
-      navigation={navigation.available ? navigation : undefined}
-      toolbar={
-        <>
-          {onQueryChange ? (
-            <SearchField
-              value={query}
-              onChange={onQueryChange}
-              placeholder="Filter unboxed…"
-              className="min-w-0 flex-1 overflow-hidden rounded-mode-control pl-2"
-              tone="neutral"
-              hideUnderline
-              fillHost
-            />
-          ) : null}
-          {/* The same state chips as the cards — one cut, one param. */}
-          <span className="flex min-w-0 flex-1 items-stretch">
-            <IncomingStatusChips set={chipSet} face="floor" />
-          </span>
-          {sidebarOwnsControls ? null : (
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="sm">
-                  {sort ? `${SORTS.find((option) => option.key === sort)?.label || sort} · ${dir}` : 'Sort'}
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent>
-                {SORTS.map((option) => (
-                  <DropdownMenuItem key={option.key} onSelect={() => toggleColumnSort(option.key)}>
-                    {option.label}
-                  </DropdownMenuItem>
-                ))}
-                <DropdownMenuItem onSelect={clear}>Default order</DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          )}
-          {toolbarExtra}
-        </>
-      }
-      actionStrip={actionStrip}
-      empty={
-        <b className="text-role-body font-bold text-mode-ink">
-          {narrowed ? 'No matching records in the loaded history.' : emptyMessage}
-        </b>
-      }
-      recordTitle={recordTitle}
-      recordSubtitle={openRow ? `Carton ${openRow.receiving_id ?? openRow.id}` : undefined}
-      recordNoun="receipt"
-      summary={summary}
-      record={recordView}
-      footer={<span>{visibleRows.length.toLocaleString()} unboxed lines</span>}
-    />
+    </div>
   );
 }
 
@@ -380,6 +339,7 @@ function HistoryCards({
         rowId: receivingLineId,
         groupKey: cartonCardKey,
         cardModel: (group) => cartonCardModel(group, activityAxis),
+        state: (group) => dockedRecordFace(group.rows[0]!),
         exactFind: cartonExactFind,
         renderCard: (props) => <CartonCard {...props} />,
       }),
@@ -400,6 +360,7 @@ function HistoryCards({
   };
   return (
     <TriageCardList
+      sections="by-state"
       family={family}
       feed={feed}
       cut={cut}

@@ -2,7 +2,8 @@
 
 /** Sales mode table — Square walk-in charges as a PRODUCT_TABLES slot peer. */
 
-import { useMemo, useState } from 'react';
+import { useCallback, useMemo } from 'react';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
 import { DataTable } from '@/components/tables/DataTable';
 import { Button } from '@/design-system/primitives';
@@ -12,9 +13,21 @@ import { getCurrentPSTDateKey, toPSTDateKey } from '@/utils/date';
 import type { SalesTab } from '@/lib/walk-in/history-modes';
 
 export function SalesHistoryTable({ tab }: { tab: SalesTab }) {
-  /* The find text is SESSION-LOCAL and rides the FETCH KEY. */
-  const [query, setQuery] = useState('');
+  const pathname = usePathname() || '/dashboard';
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const query = searchParams.get('sq') ?? '';
   const q = query.trim();
+  const setQuery = useCallback(
+    (next: string) => {
+      const params = new URLSearchParams(searchParams.toString());
+      if (next.trim()) params.set('sq', next);
+      else params.delete('sq');
+      const qs = params.toString();
+      router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
+    },
+    [pathname, router, searchParams],
+  );
 
   const { data, isLoading, isFetching, isError, refetch } = useQuery<SaleRow[]>({
     queryKey: ['walk-in-sales', q],

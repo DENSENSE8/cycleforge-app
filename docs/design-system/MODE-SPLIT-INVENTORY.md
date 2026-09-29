@@ -120,6 +120,8 @@ Every caller passing a title/subtitle (all would get Back-top-left / no-✕):
 
 ## Floor right rail
 
+**Withdrawn 2026-09-28** (BRIEF §14): the desktop has no Floor view; this section is history.
+
 **Owner 2026-09-27 (reverses the 2026-09-26 "no right rail" ruling):** Floor keeps a right rail
 that shows the selected record's details, edge to edge. `DeskRecordPlane` places the record per
 view: In place covers the list; Split = list 2/3 + pane 1/3; **Floor = list `flex-1` from the
@@ -295,7 +297,7 @@ next step).
 | Leak sweep | **done 2026-09-27**: `industrial:` variant, `RECORD_*` tokens, search fields, mono-caps labels, label intake (table above) | token-level + listed files |
 | Floor right rail | **done 2026-09-27** (owner reversal, above) | every `DeskRecordPlane` desk on Floor |
 | D. ESLint gates + burn-down | in progress (another session) — allowlists in `eslint.config.mjs` | lint |
-| E. Scan-feedback consolidation | **landed 2026-09-28**: `RepairScanCompanion` and `useDataWipeController` fire through `useScanFeedback` (`success` / `warn` / `reject`; `vibrateRead` + `playVerdictCue` deleted). Settings moved to the station-wide registry page `scan` (`scan.soundsEnabled` org · `scan.sound` / `scan.haptics` staff, legacy `receiving.*` values read until first write; haptics default on), shown on Settings › Your setup › Hardware. Still ungated (call `play.ts` directly): `useDirectedPick`, `LocationStockList` | lint + two stations |
+| E. Scan-feedback consolidation | **landed 2026-09-28**: `RepairScanCompanion` and `useDataWipeController` fire through `useScanFeedback` (`success` / `warn` / `reject`; `vibrateRead` + `playVerdictCue` deleted). Settings moved to the station-wide registry page `scan` (`scan.soundsEnabled` org · `scan.sound` / `scan.haptics` staff, legacy `receiving.*` values read until first write; haptics default on), shown on Settings › Your setup › Hardware. Still ungated (call `play.ts` directly): `usePickOrder` (`/m/pick`), `LocationStockList` | lint + two stations |
 | F. design-mcp law | open | — |
 
 ## Owner decisions needed
@@ -341,3 +343,7 @@ next step).
     (OOS · RDY · PKD), operator-set platform short labels, stored data (titles, names, cities), printed
     labels (`src/lib/print/**`, `bin-label-printer`). Not yet enforced by a gate — see
     `HANDOFF-inbound-record.md` §6.
+14. ~~Triage status treatment~~ — decided 2026-09-28: one sentence-case soft
+    pill with a distinct per-state icon; the industrial mode keeps the solid
+    state code. Cards carry state through their rail and icon only, one-row
+    density carries the pill, and a record header carries one `LifecycleCode`.

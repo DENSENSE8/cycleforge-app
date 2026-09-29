@@ -6,17 +6,18 @@
  * statuses (`received`, `not_received`) so `?recon=` keeps filtering the
  * ledger, plus `exceptions` — a ref whose lines sit in the Exceptions view
  * (`ReconEntry.exception.inView`); it keeps its status bucket too. A badge
- * with nothing in that view (several POs, lookup failed, Zoho cap) stays in
- * `detail`: the Exceptions list would not show it.
+ * with nothing in that view (several POs, lookup failed) stays in `detail`:
+ * the Exceptions list would not show it. Each answered ref carries its
+ * reason as the entry's `facet` (`?recon_reason=`).
  */
 
 import type { NavLocateBucket, NavLocateEntry } from '@/lib/nav/context/schema';
 import type { CheckZohoReceivedRow } from '@/lib/receiving/check-zoho-received';
 import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
 import {
+  RECON_REASON_LABELS,
   RECON_STATUS_LABELS,
   reconcileCheck,
-  rowRefKeys,
   type RefSelection,
 } from '@/lib/receiving/reconcile';
 import { INCOMING_SURFACE_ROUTE } from '@/lib/receiving/surface-path';
@@ -51,14 +52,12 @@ export async function locateInbound(
       ? await Promise.all([deps.check(selection.refs), deps.lines(selection.refs)])
       : [[], []];
   const recon = reconcileCheck({ ...selection, truncated: 0 }, checkRows, lineRows);
-  // Found nowhere = the branch `reconcileCheck` answers "No match anywhere" /
-  // "Checking…": no Check row, or a no-match the warehouse knows nothing of.
-  const checked = new Map(checkRows.map((row) => [canonicalizeTrackingKey(row.tracking), row]));
-  const lineKeys = new Set(lineRows.flatMap(rowRefKeys));
+  // Found nowhere = the branch `reconcileCheck` answers "No match anywhere":
+  // no Check row, or no ERP answer and nothing in our tables.
+  const checked = new Set(checkRows.map((row) => canonicalizeTrackingKey(row.tracking)));
   const counts: Record<InboundBucketId, number> = { received: 0, not_received: 0, exceptions: 0 };
   const entries = recon.map((entry): NavLocateEntry => {
-    const row = checked.get(entry.key);
-    const nowhere = !row || (row.reason === 'no_match' && !row.local?.known && !lineKeys.has(entry.key));
+    const nowhere = !checked.has(entry.key) || entry.reasonCode === 'no_match';
     const buckets: InboundBucketId[] = nowhere
       ? []
       : entry.exception?.inView
@@ -75,6 +74,7 @@ export async function locateInbound(
       title: title || null,
       detail: nowhere ? null : reason && reason !== entry.detail ? `${entry.detail} · ${reason}` : entry.detail,
       recordHref: null,
+      facet: entry.reasonCode ? { id: entry.reasonCode, label: RECON_REASON_LABELS[entry.reasonCode] } : null,
     };
   });
   return {

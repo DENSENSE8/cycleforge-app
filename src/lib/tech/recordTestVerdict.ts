@@ -14,6 +14,7 @@ import { isUnifiedEngineApplyTransition, isUnifiedEngineVerdictConfig, isTesting
 import { parseOrgSettings } from '@/lib/tenancy/settings';
 import type { SerialState } from '@/lib/inventory/state-machine';
 import { refreshOrderStageFacts } from '@/lib/orders/order-stage-facts';
+import { refreshReceivingUnitStageFacts } from '@/lib/receiving/receiving-unit-stage-facts';
 
 /** Thrown when the unified-engine chokepoint refuses a verdict's status transition (the guarded allow-list rejected it — e.g. */
 export class GuardRejectedError extends Error {
@@ -490,6 +491,13 @@ export async function recordTestVerdict(
     await refreshOrderStageFacts(unit.organization_id as OrgId, { serialUnitIds: [unit.id] });
   } catch (err) {
     console.warn('[recordTestVerdict] order stage facts refresh failed (non-fatal):', err);
+  }
+  try {
+    await refreshReceivingUnitStageFacts(unit.organization_id as OrgId, {
+      serialUnitIds: [unit.id],
+    });
+  } catch (err) {
+    console.warn('[recordTestVerdict] receiving unit stage facts refresh failed (non-fatal):', err);
   }
 
   return {

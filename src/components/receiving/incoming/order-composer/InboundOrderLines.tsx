@@ -31,6 +31,7 @@ import {
 } from '@/lib/inbound/inbound-order-draft';
 import type { InboundOrderPreview } from '@/lib/inbound/ingest-inbound-order';
 import { cn } from '@/utils/_cn';
+import { centsToInputText } from '@/utils/money';
 import { formatInboundMoney, inboundLineTotalCents, inboundOrderCostTotal, openableListingUrl } from './composer-choices';
 
 interface LinesProps {
@@ -40,17 +41,13 @@ interface LinesProps {
   onChange: (lines: InboundOrderLine[]) => void;
 }
 
-function centsToText(cents: number | null): string {
-  return cents == null ? '' : (cents / 100).toFixed(2);
-}
-
 export function InboundOrderLines({ draft, missing, preview, onChange }: LinesProps) {
   const keys = assignInboundLineKeys(draft.lines);
   const flagged = (field: InboundOrderNeed['field'], index: number) =>
     missing.some((m) => m.field === field && m.lines?.includes(index));
   const isReturn = draft.type === 'RETURN';
   const returnItemMissing = isReturn && missing.some((m) => m.field === 'return_item');
-  const cost = draft.type === 'PO' ? inboundOrderCostTotal(draft) : null;
+  const cost = draft.type === 'PO' || draft.type === 'PICKUP' ? inboundOrderCostTotal(draft) : null;
 
   return (
     <div className="flex flex-col gap-4">
@@ -140,7 +137,7 @@ function LineRow({
     }
     return rows;
   }, [search.data, line.skuCatalogId, line.title, line.sku]);
-  const [costText, setCostText] = useState(() => centsToText(line.unitCostCents));
+  const [costText, setCostText] = useState(() => centsToInputText(line.unitCostCents));
   const isReturn = type === 'RETURN';
   const listingHref = openableListingUrl(line.listingUrl);
   const listingLabel = isReturn ? 'Listing link (the listing the buyer bought) *' : 'Listing link';
@@ -155,7 +152,7 @@ function LineRow({
           </span>
         ) : null}
         <span className="flex-1" />
-        {type === 'PO' ? (
+        {type === 'PO' || type === 'PICKUP' ? (
           <span className="flex items-baseline gap-1.5 text-role-caption">
             <span className="text-text-muted">Line total</span>
             <span className={cn(RECORD_ID_CLASS, 'text-text-default')}>{formatInboundMoney(inboundLineTotalCents(line), currency)}</span>
@@ -185,7 +182,7 @@ function LineRow({
           className={cn(identityMissing && 'ring-1 ring-amber-400', TRIAGE_PANEL_INNER_CORNER)}
         />
       </FormField>
-      <div className="grid grid-cols-[10rem_1fr_6rem_7rem] gap-2">
+      <div className="grid grid-cols-2 gap-2 lg:grid-cols-[10rem_1fr_6rem_7rem]">
         <TextField label="SKU" value={line.sku} mono onChange={(sku) => onChange({ sku, skuCatalogId: sku === line.sku ? line.skuCatalogId : null })} aria-invalid={identityMissing || undefined} />
         <TextField label="Title" value={line.title} onChange={(title) => onChange({ title })} aria-invalid={identityMissing || undefined} />
         <TextField
@@ -230,10 +227,53 @@ function LineRow({
           ) : null
         }
       />
-      <div className="grid grid-cols-2 gap-2">
+      <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
         <TextField label="Item # / ASIN" value={line.itemNumber} mono onChange={(itemNumber) => onChange({ itemNumber })} />
         <TextField label="Source line id" value={line.lineKey} mono onChange={(lk) => onChange({ lineKey: lk })} />
       </div>
+      {type === 'PICKUP' ? (
+        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+          <FormField label="Condition grade">
+            <SearchableSelectField
+              value={line.conditionGrade ?? null}
+              onChange={(value) => onChange({ conditionGrade: value == null ? null : value as NonNullable<InboundOrderLine['conditionGrade']> })}
+              options={[
+                { value: 'BRAND_NEW', label: 'Brand new' },
+                { value: 'USED_A', label: 'Used · Grade A' },
+                { value: 'USED_B', label: 'Used · Grade B' },
+                { value: 'USED_C', label: 'Used · Grade C' },
+                { value: 'PARTS', label: 'Parts' },
+              ]}
+              placeholder="Not recorded"
+              ariaLabel={`Condition grade for line ${index + 1}`}
+              className={TRIAGE_PANEL_INNER_CORNER}
+            />
+          </FormField>
+          <FormField label="Parts status">
+            <SearchableSelectField
+              value={line.partsStatus ?? null}
+              onChange={(value) => onChange({ partsStatus: value == null ? null : value as NonNullable<InboundOrderLine['partsStatus']> })}
+              options={[
+                { value: 'COMPLETE', label: 'Complete' },
+                { value: 'MISSING_PARTS', label: 'Missing parts' },
+              ]}
+              placeholder="Not recorded"
+              ariaLabel={`Parts status for line ${index + 1}`}
+              className={TRIAGE_PANEL_INNER_CORNER}
+            />
+          </FormField>
+          <TextField
+            label="Missing parts"
+            value={line.missingPartsNote ?? ''}
+            onChange={(missingPartsNote) => onChange({ missingPartsNote })}
+          />
+          <TextField
+            label="Condition note"
+            value={line.conditionNote ?? ''}
+            onChange={(conditionNote) => onChange({ conditionNote })}
+          />
+        </div>
+      ) : null}
     </li>
   );
 }

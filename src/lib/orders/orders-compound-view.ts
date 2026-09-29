@@ -24,6 +24,7 @@ import {
 } from '@/components/dashboard/orders-queue/helpers';
 import { shortageIdentityFromRow } from '@/lib/orders/order-shortage-identity';
 import { shortagePipelineFrom } from '@/lib/orders/shortage-pipeline';
+import { marketplaceThumbUrl } from '@/lib/photos/marketplace-thumb-url';
 
 /** Fulfillment lane → the three-tone vocabulary. */
 export function ordersStateTone(stateLabel: string | null | undefined): CompoundStateTone {
@@ -311,7 +312,7 @@ export function ordersItemStatus(
       label: pipelineLabel || 'Out of stock',
       tip: pipelineLabel || (sku ? `Out of stock · ${sku}` : 'Out of stock'),
       card: {
-        thumbUrl: String(record.catalog_image_url || '').trim() || null,
+        thumbUrl: marketplaceThumbUrl(record.catalog_image_url),
         sku,
         title,
         qtyShort,
@@ -365,7 +366,7 @@ export function ordersGroupItemStatus(
     label: pipeline && pipeline.stage !== 'open' ? pipeline.label : 'Out of stock',
     tip: `${short.length} of ${rows.length} short${pipeline && pipeline.stage !== 'open' ? ` · ${pipeline.label}` : ''}`,
     card: {
-      thumbUrl: String(lead.catalog_image_url || '').trim() || null,
+      thumbUrl: marketplaceThumbUrl(lead.catalog_image_url),
       sku: skus[0] || null,
       title:
         short.length === 1
@@ -417,7 +418,7 @@ export function ordersCompoundView(
   const edgeMark = ordersEdgeMark(record);
   return {
     id: String(record.id),
-    thumbUrl: String(record.catalog_image_url || '').trim() || null,
+    thumbUrl: marketplaceThumbUrl(record.catalog_image_url),
     title: record.product_title || '',
     // Listing join — the item number is the handle, the URL is derived. Absent
     // item number ⇒ no href, and the title stays plain text.

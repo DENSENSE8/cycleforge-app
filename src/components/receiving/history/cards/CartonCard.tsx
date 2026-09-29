@@ -87,7 +87,7 @@ export const CartonCard = memo(function CartonCard({
       onToggleCheck={(event) => onToggleCheck(model, event)}
       onToggleExpand={() => onToggleExpand(model.key)}
       onTogglePeek={() => onTogglePeek(model.key)}
-      identity={<span className="truncate" title={model.identity}>{model.identity}</span>}
+      identity={{ role: 'identity', content: <span className="truncate" title={model.identity}>{model.identity}</span> }}
       trailing={null}
       quickLook={<CartonCardPeek key="peek" model={model} />}
       onOpenLine={(lineId, event) => {

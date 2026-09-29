@@ -7,13 +7,6 @@ export type TriageWorkspaceTab = 'triage' | 'found' | 'unfound' | 'done';
 
 const TRIAGE_VIEW_PARAM = 'triview';
 
-export const TRIAGE_WORKSPACE_TAB_LABEL: Record<TriageWorkspaceTab, string> = {
-  triage: 'Triage',
-  found: 'Prioritize',
-  unfound: 'Unfound',
-  done: 'Done',
-};
-
 const VALID: ReadonlySet<string> = new Set(['triage', 'found', 'unfound', 'done']);
 
 export function resolveTriageView(raw: string | null | undefined): TriageWorkspaceTab {

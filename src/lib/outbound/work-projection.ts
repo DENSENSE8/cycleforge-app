@@ -4,6 +4,7 @@ import type { OrgId } from '@/lib/tenancy/constants';
 import { sqlOrderHasPackScan, sqlOrderHasShipConfirm } from '@/lib/orders/order-grain-sql';
 import { SHIPPED_BY_CARRIER_SQL } from '@/lib/sql-fragments';
 import { listingCoverThumbUrlSql } from '@/lib/photos/listing-photos';
+import { marketplaceThumbUrl } from '@/lib/photos/marketplace-thumb-url';
 import { liveLabelLateralSql, mapLiveLabelRow } from './live-label';
 import {
   OUTBOUND_MATERIAL_JOINS_SQL,
@@ -141,14 +142,14 @@ const WORK_SQL = `
     o.fulfillment_route,
     zi.name AS zoho_item_title,
     sc.product_title AS catalog_product_title,
-    CASE
-      WHEN zi.zoho_item_id IS NOT NULL THEN
-        CASE WHEN NULLIF(zi.image_document_id, '') IS NOT NULL
-               THEN '/api/zoho/items/' || zi.zoho_item_id || '/image'
-             ELSE NULLIF(zi.image_url, '')
-        END
-      ELSE COALESCE(NULLIF(sc.image_url, ''), ${listingCoverThumbUrlSql('sc')})
-    END AS thumbnail_url,
+    COALESCE(
+      CASE WHEN zi.zoho_item_id IS NOT NULL AND NULLIF(zi.image_document_id, '') IS NOT NULL
+             THEN '/api/zoho/items/' || zi.zoho_item_id || '/image'
+           ELSE NULLIF(zi.image_url, '')
+      END,
+      NULLIF(sc.image_url, ''),
+      ${listingCoverThumbUrlSql('sc')}
+    ) AS thumbnail_url,
     stock.ready AS stock_ready,
     stock.received AS stock_received,
     live_label.*
@@ -316,7 +317,7 @@ function mapRow(row: WorkRow): OutboundWorkItem {
       condition: row.condition?.trim() || null,
       quantity: row.quantity?.trim() || '1',
       price: row.sale_amount?.trim() || null,
-      thumbnail: { alt: title, url: row.thumbnail_url?.trim() || null, version: null },
+      thumbnail: { alt: title, url: marketplaceThumbUrl(row.thumbnail_url), version: null },
     },
     priority: { urgent: row.is_urgent === true, outOfStock: row.is_out_of_stock === true, shipBy: asDate(row.ship_by, 'ship-by timestamp') },
     warehouseStage: row.warehouse_stage,

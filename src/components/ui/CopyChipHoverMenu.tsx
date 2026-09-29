@@ -112,7 +112,7 @@ export function CopyChipHoverMenu({
   placement?: PortalSideMenuPlacement;
   /**
    * Side menus: vertical align vs the chip (`start` keeps OPEN/EDIT on the row).
-   * `placement="bottom"`: horizontal align (`start` = trigger left, `end` = trigger right).
+   * Vertical menus (`top` / `bottom`): horizontal align (`start` = trigger left, `end` = trigger right).
    */
   align?: PortalSideMenuAlign;
   /**
@@ -260,7 +260,9 @@ function ChipMenuPortal({
       anchor,
       bubble: b,
       gap:
-        placementRef.current === 'bottom' ? PORTAL_BELOW_MENU_GAP : PORTAL_SIDE_MENU_GAP,
+        placementRef.current === 'bottom' || placementRef.current === 'top'
+          ? PORTAL_BELOW_MENU_GAP
+          : PORTAL_SIDE_MENU_GAP,
       placement: placementRef.current,
       align: alignRef.current,
       avoidCollisions: avoidCollisionsRef.current,

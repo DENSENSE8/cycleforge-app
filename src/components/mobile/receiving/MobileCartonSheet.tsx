@@ -26,6 +26,7 @@ import { receivingUnboxedSyncTooltip } from '@/lib/receiving/unboxed-sync-toolti
 import { cn } from '@/utils/_cn';
 import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
 import { receivingLinePhotoHrefs } from '@/lib/photos/mobile-gallery-url';
+import { unitTitle } from '@/components/mobile/receiving/receiving-feed-entries';
 
 interface MobileCartonSheetProps {
   row: ReceivingLineRow | null;
@@ -49,7 +50,7 @@ export function MobileCartonSheet({ row, staffId, open, onClose }: MobileCartonS
   if (!row) return null;
 
   const receivingId = row.receiving_id;
-  const productTitle = row.item_name || row.zoho_item_id || 'Unnamed inbound line';
+  const productTitle = unitTitle(row);
   // PO identity + channel come from the receiving SoT, not a local `||` ladder:
   // it also INFERS the platform from an eBay 2-5-5 / Amazon 3-7-7 order-id
   // shape when `source_platform` is null, which a hand-rolled poValue cannot.
@@ -80,7 +81,6 @@ export function MobileCartonSheet({ row, staffId, open, onClose }: MobileCartonS
     lineId: row.id,
     itemName: row.item_name,
     sku: row.sku,
-    zohoItemId: row.zoho_item_id,
     poRef: poValue || undefined,
     back: '/m/receiving',
   });

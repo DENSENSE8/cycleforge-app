@@ -50,6 +50,7 @@ import { catalogRefFromPick } from '@/lib/kiosk/consult-proposal';
 import { kioskFetchHealed } from '@/lib/kiosk/kiosk-self-heal';
 import { useKioskCartSync } from '@/components/kiosk/useKioskCartSync';
 import { KioskRecentCarts } from '@/components/kiosk/KioskRecentCarts';
+import { KioskLocalPickupIntake } from './v2/KioskLocalPickupIntake';
 
 /** Catalog API prefix per command — repair = `-RS`; retail = non-`-RS`. */
 function catalogBasePath(command: KioskCommandId): string {
@@ -102,9 +103,13 @@ export function KioskShell() {
   const [historyOpen, setHistoryOpen] = useState(false);
   /** Square's Keypad face is up in place of the catalog (menu → Keypad). */
   const [customAmountOpen, setCustomAmountOpen] = useState(false);
+  /** Device-authenticated inbound pickup intake; it owns a draft, not the sale/repair cart. */
+  const [localPickupOpen, setLocalPickupOpen] = useState(false);
   /** What the top-left menu SHOWS as selected. */
   const activeServiceId: KioskServiceId = historyOpen
     ? 'history'
+    : localPickupOpen
+      ? 'local-pickup'
     : customAmountOpen
       ? 'custom-amount'
       : commandServiceId;
@@ -118,6 +123,7 @@ export function KioskShell() {
     setCatalogPhase('browse');
     setCatalogSearch('');
     setCustomAmountOpen(false);
+    setLocalPickupOpen(false);
   }, []);
 
   const onSelectedItemsChange = useCallback((items: SelectedItem[]) => {
@@ -159,11 +165,20 @@ export function KioskShell() {
       // A tool over the running command: the keypad line lands on the ONE
       // cart as that command's kind of line (a sale, or a typed-in device).
       setHistoryOpen(false);
+      setLocalPickupOpen(false);
       setCustomAmountOpen(true);
+      return;
+    }
+    if (mode === 'local-pickup') {
+      setHistoryOpen(false);
+      setCustomAmountOpen(false);
+      setLocalPickupOpen(true);
+      setUtilitySlot(null);
       return;
     }
     if (!isKioskCommandServiceId(mode)) {
       setCustomAmountOpen(false);
+      setLocalPickupOpen(false);
       setHistoryOpen(true);
       return;
     }
@@ -171,6 +186,7 @@ export function KioskShell() {
     // already running, which is why these close before the no-op return below.
     setHistoryOpen(false);
     setCustomAmountOpen(false);
+    setLocalPickupOpen(false);
     const command = serviceIdToCommand(mode);
     if (command === session.activeCommand) return;
     // Command switch never clears the cart — only resets browse chrome.
@@ -468,6 +484,12 @@ export function KioskShell() {
                 showStance={false}
               />
             )}
+          />
+        ) : localPickupOpen ? (
+          <KioskLocalPickupIntake
+            sidebarHeader={commandMenu}
+            trailEnd={utilityCluster}
+            onClose={() => setLocalPickupOpen(false)}
           />
         ) : customAmountOpen ? (
           // Square's Keypad: the shell's ONE header band (the menu reads

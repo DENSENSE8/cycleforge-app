@@ -3,10 +3,16 @@
 import { searchHitHref } from '@/lib/search/search-hit';
 import type { InboxEntityType } from './event-vocabulary';
 
-export function notificationHref(entityType: string, entityId: number): string {
+export function notificationHref(
+  entityType: string,
+  entityId: number,
+  eventKey?: string,
+): string {
   switch (entityType as InboxEntityType) {
     case 'order':
-      return searchHitHref('ORDER', entityId);
+      return eventKey === 'order.ship_by.overdue_unfulfilled'
+        ? `${searchHitHref('ORDER', entityId)}&fulfillment=external`
+        : searchHitHref('ORDER', entityId);
     case 'serial_unit':
       return searchHitHref('SERIAL_UNIT', entityId);
     case 'receiving':

@@ -1321,6 +1321,12 @@ interface SkuCatalogListRow {
   has_pending_action: boolean;
   /** Display title: inventory SoT title when linked, else catalog product_title. */
   display_title: string;
+  platform_ids: Array<{
+    platform: string;
+    platform_sku: string | null;
+    platform_item_id: string | null;
+    account_name: string | null;
+  }>;
 }
 
 function linkFilterWhere(linkFilter: SkuCatalogLinkFilter): string {
@@ -1375,6 +1381,7 @@ function channelPlatformWhere(params: {
     return `EXISTS (
       SELECT 1 FROM sku_platform_ids e
       WHERE e.sku_catalog_id = sc.id
+        AND e.organization_id = sc.organization_id
         AND e.platform = '${raw}'
         AND e.is_active = true
     )`;
@@ -1383,6 +1390,7 @@ function channelPlatformWhere(params: {
     return `EXISTS (
       SELECT 1 FROM sku_platform_ids e
       WHERE e.sku_catalog_id = sc.id
+        AND e.organization_id = sc.organization_id
         AND e.platform = 'ecwid'
         AND e.is_active = true
         AND e.display_name IS NOT NULL
@@ -1464,6 +1472,15 @@ export async function getSkuCatalogList(params: {
        ) AS has_pending_action,
        COALESCE(NULLIF(BTRIM(sc.product_title), ''), it.name) AS display_title,
        COUNT(DISTINCT sp.id)::int AS platform_count,
+       COALESCE(
+         jsonb_agg(DISTINCT jsonb_build_object(
+           'platform', sp.platform,
+           'platform_sku', sp.platform_sku,
+           'platform_item_id', sp.platform_item_id,
+           'account_name', sp.account_name
+         )) FILTER (WHERE sp.id IS NOT NULL),
+         '[]'::jsonb
+       ) AS platform_ids,
        COUNT(DISTINCT pm.id)::int AS manual_count,
        COUNT(DISTINCT qc.id)::int AS qc_step_count,
        COALESCE(oc.order_count, 0)::int AS order_count,
@@ -1475,9 +1492,9 @@ export async function getSkuCatalogList(params: {
      LEFT JOIN items it
        ON it.zoho_item_id = sc.provider_item_id
       AND it.organization_id = sc.organization_id
-     LEFT JOIN sku_platform_ids sp ON sp.sku_catalog_id = sc.id AND sp.is_active = true
-     LEFT JOIN product_manuals pm ON pm.sku_catalog_id = sc.id AND pm.is_active = true
-     LEFT JOIN qc_check_templates qc ON qc.sku_catalog_id = sc.id
+     LEFT JOIN sku_platform_ids sp ON sp.sku_catalog_id = sc.id AND sp.organization_id = sc.organization_id AND sp.is_active = true
+     LEFT JOIN product_manuals pm ON pm.sku_catalog_id = sc.id AND pm.organization_id = sc.organization_id AND pm.is_active = true
+     LEFT JOIN qc_check_templates qc ON qc.sku_catalog_id = sc.id AND qc.organization_id = sc.organization_id
      LEFT JOIN (
        SELECT sku_catalog_id, COUNT(*)::int AS order_count
        FROM orders
@@ -1495,12 +1512,18 @@ export async function getSkuCatalogList(params: {
      LEFT JOIN LATERAL (
        SELECT e.display_name, e.image_url, e.platform_sku
        FROM sku_platform_ids e
-       WHERE e.sku_catalog_id = sc.id AND e.platform = 'ecwid' AND e.is_active = true AND e.display_name IS NOT NULL
+       WHERE e.sku_catalog_id = sc.id AND e.organization_id = sc.organization_id AND e.platform = 'ecwid' AND e.is_active = true AND e.display_name IS NOT NULL
        LIMIT 1
      ) ecwid ON TRUE
      WHERE (${whereLink})
        AND (${whereChannel})${orgId ? ' AND sc.organization_id = $4' : ''}
-       AND ($1 = '' OR sc.sku ILIKE '%' || $1 || '%' OR sc.product_title ILIKE '%' || $1 || '%' OR sc.category ILIKE '%' || $1 || '%' OR it.name ILIKE '%' || $1 || '%' OR sc.provider_item_id ILIKE '%' || $1 || '%')
+       AND ($1 = '' OR sc.sku ILIKE '%' || $1 || '%' OR sc.product_title ILIKE '%' || $1 || '%' OR sc.category ILIKE '%' || $1 || '%' OR it.name ILIKE '%' || $1 || '%' OR sc.provider_item_id ILIKE '%' || $1 || '%' OR EXISTS (
+         SELECT 1 FROM sku_platform_ids spi
+          WHERE spi.sku_catalog_id = sc.id
+            AND spi.organization_id = sc.organization_id
+            AND spi.is_active = true
+            AND (spi.platform ILIKE '%' || $1 || '%' OR spi.platform_sku ILIKE '%' || $1 || '%' OR spi.platform_item_id ILIKE '%' || $1 || '%' OR spi.account_name ILIKE '%' || $1 || '%')
+       ))
      GROUP BY sc.id, oc.order_count, ls.last_shipped, ecwid.display_name, ecwid.image_url, ecwid.platform_sku, it.name
      ORDER BY ${orderBy}
      LIMIT $2 OFFSET $3`;
@@ -1515,7 +1538,13 @@ export async function getSkuCatalogList(params: {
       AND it.organization_id = sc.organization_id
      WHERE (${whereLink})
        AND (${whereChannel})${orgId ? ' AND sc.organization_id = $2' : ''}
-       AND ($1 = '' OR sc.sku ILIKE '%' || $1 || '%' OR sc.product_title ILIKE '%' || $1 || '%' OR sc.category ILIKE '%' || $1 || '%' OR it.name ILIKE '%' || $1 || '%' OR sc.provider_item_id ILIKE '%' || $1 || '%')`;
+       AND ($1 = '' OR sc.sku ILIKE '%' || $1 || '%' OR sc.product_title ILIKE '%' || $1 || '%' OR sc.category ILIKE '%' || $1 || '%' OR it.name ILIKE '%' || $1 || '%' OR sc.provider_item_id ILIKE '%' || $1 || '%' OR EXISTS (
+         SELECT 1 FROM sku_platform_ids spi
+          WHERE spi.sku_catalog_id = sc.id
+            AND spi.organization_id = sc.organization_id
+            AND spi.is_active = true
+            AND (spi.platform ILIKE '%' || $1 || '%' OR spi.platform_sku ILIKE '%' || $1 || '%' OR spi.platform_item_id ILIKE '%' || $1 || '%' OR spi.account_name ILIKE '%' || $1 || '%')
+       ))`;
   const countResult = orgId
     ? await tenantQuery<{ total: number }>(orgId, countSql, [search, orgId])
     : await pool.query<{ total: number }>(countSql, [search]);

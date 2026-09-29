@@ -6,8 +6,8 @@
  *
  *   • Attach file — uploads through the composer's attachment chips (the
  *     same path as a drop on the composer); the message carries the stored id.
- *   • Add photo — stage a reference into the draft (the agent reasons about
- *     the reference; photo library search finds existing ones).
+ *   • Add photo — uploads through the same document-intake attachment path;
+ *     the server derives local OCR before the chat model sees the turn.
  *   • # Order number — ping an order: seeds "Look up order #<num>".
  *   • Log details — seeds a "Log: …" entry the agent records.
  *
@@ -56,11 +56,11 @@ export function SessionPlusMenu({
     (e: React.ChangeEvent<HTMLInputElement>) => {
       const files = Array.from(e.target.files ?? []);
       if (files.length === 0) return;
-      const names = files.map((f) => f.name).join(', ');
-      seed(`Look at this photo (${names}) — I'll say what I need done with it next.`);
+      onAttachFiles(files);
+      seed('Read the attached photo as a document.');
       e.target.value = '';
     },
-    [seed],
+    [onAttachFiles, seed],
   );
 
   return (
@@ -120,6 +120,7 @@ export function SessionPlusMenu({
         ref={photoRef}
         type="file"
         accept="image/*"
+        capture="environment"
         multiple
         className="hidden"
         onChange={onPickPhoto}

@@ -27,7 +27,7 @@ const VIEW_COUNT_STALE_MS = 20_000;
  * The key matches `NavFilters`' facets query, so the lit view's unfiltered
  * fetch is shared.
  */
-function useViewCounts(pageId: string, items: readonly NavItem[]) {
+export function useViewCounts(pageId: string, items: readonly NavItem[]) {
   const specs = items.flatMap((item) => {
     const context = `${pageId}.${item.id}`;
     if (!isNavFacetContext(context)) return [];
@@ -52,7 +52,7 @@ function useViewCounts(pageId: string, items: readonly NavItem[]) {
 }
 
 /** Bare `1`–`9` open the panel's views in painted order (never while typing). */
-function useViewHotkeys(items: readonly NavItem[], enabled: boolean) {
+export function useViewHotkeys(items: readonly NavItem[], enabled: boolean) {
   const router = useRouter();
   useEffect(() => {
     if (!enabled || items.length < 2) return undefined;
@@ -166,7 +166,7 @@ export function NavViewSwitcher({
  * A view's unfiltered total, right-aligned; amber only for a view flagged
  * `alertCount` (Exceptions) while > 0. The slot's width is held while loading.
  */
-function CountChip({ id, count, alert }: { id: string; count: number | undefined; alert?: boolean }) {
+export function CountChip({ id, count, alert }: { id: string; count: number | undefined; alert?: boolean }) {
   return (
     <span className="flex min-w-7 shrink-0 justify-end">
       {count !== undefined ? (
@@ -180,7 +180,7 @@ function CountChip({ id, count, alert }: { id: string; count: number | undefined
               : 'bg-surface-sunken text-text-muted',
           )}
         >
-          <AnimatedStat value={count} speed="fast" />
+          <AnimatedStat value={count} profile="scanQuantity" />
         </span>
       ) : null}
     </span>
@@ -203,7 +203,7 @@ function AlertBeacon({ id, glyph, count }: { id: string; glyph: Glyph | null; co
       )}
     >
       {Icon ? <Icon className={navIconStrokeClass('size-3')} /> : null}
-      <AnimatedStat value={count} speed="fast" />
+      <AnimatedStat value={count} profile="scanQuantity" />
     </span>
   );
 }

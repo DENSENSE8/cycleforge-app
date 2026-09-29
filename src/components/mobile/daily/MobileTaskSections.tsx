@@ -229,7 +229,7 @@ function RecordDoor({
     <>
       <span className="min-w-0 flex-1">
         <span className="block text-role-micro text-text-faint">{noun}</span>
-        <span className="block truncate font-mono text-role-data text-text-default">{label}</span>
+        <span className="block truncate text-role-data font-semibold tabular-nums text-text-default">{label}</span>
         {context ? <span className="block truncate text-role-micro text-text-muted">{context}</span> : null}
       </span>
       {href ? (

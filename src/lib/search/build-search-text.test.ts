@@ -349,7 +349,7 @@ test('SKU: the Zoho twin identifiers reach search text ahead of the prose cap', 
   assert.ok(doc.searchText.length <= 2000);
 });
 
-test('SKU: the Zoho item name governs the title over the marketplace catalog title', () => {
+test('SKU: the catalog title governs over the external provider title', () => {
   const doc = buildSearchText('SKU', {
     id: 14,
     sku: 'BOSE-SLM2-BK',
@@ -357,9 +357,9 @@ test('SKU: the Zoho item name governs the title over the marketplace catalog tit
     zoho_item_title: 'Bose SoundLink Mini II - Black',
     zoho_item_id: '4728690000000211111',
   });
-  assert.equal(doc.title, 'Bose SoundLink Mini II - Black');
-  // The marketplace title is still searchable text, just not the identity.
-  assert.ok(doc.searchText.includes('FREE SHIPPING'));
+  assert.equal(doc.title, 'NEW Bose SoundLink Mini II Portable Speaker FREE SHIPPING');
+  // The provider title is still searchable text, just not the identity.
+  assert.ok(doc.searchText.includes('Bose SoundLink Mini II - Black'));
 
   const noTwin = buildSearchText('SKU', { id: 15, sku: 'X-1', product_title: '  ', zoho_item_title: null });
   assert.equal(noTwin.title, 'X-1', 'a blank catalog title falls through to the sku');

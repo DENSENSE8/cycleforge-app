@@ -36,6 +36,8 @@ interface AiFailoverRequest {
   /** Attribution for the usage row. */
   staffId?: number | null;
   sessionId?: string | null;
+  /** Keep private/on-prem workloads off paid managed providers. */
+  selfHostedOnly?: boolean;
 }
 
 interface AiFailoverResult {
@@ -154,9 +156,17 @@ export async function postToAiProvider(
   /** Injected in tests so metering is observed without a database. */
   record: RecordAiUsage = recordAiUsage,
 ): Promise<AiFailoverResult> {
-  const chain = await resolveOrgAiChain(orgId, capability, deps);
+  const resolvedChain = await resolveOrgAiChain(orgId, capability, deps);
+  const chain = request.selfHostedOnly
+    ? resolvedChain.filter((config) => isSelfHostedAiRuntime(config))
+    : resolvedChain;
   if (chain.length === 0) {
-    throw new AiFailoverError('No AI provider is connected for this organization', []);
+    throw new AiFailoverError(
+      request.selfHostedOnly
+        ? 'No self-hosted AI provider is connected for this organization'
+        : 'No AI provider is connected for this organization',
+      [],
+    );
   }
 
   const attempts: { source: string; reason: string }[] = [];

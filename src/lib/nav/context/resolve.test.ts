@@ -71,8 +71,10 @@ test('every SIDEBAR_PAGE_NAV page resolves to itself and survives the wire', () 
   assert.ok(LIVE_PAGES.length >= 20);
 });
 
-/** A door lane's pages, painted as the mode switcher on every page of that lane. */
-const isLanePageSection = (section: NavContext['sections'][number]): boolean => section.id.endsWith('.modes');
+/** A door lane's pages (`<page>.<lane>.modes`), painted as the mode switcher on every page of that lane. */
+const isLanePageSection = (section: NavContext['sections'][number]): boolean => /^[^.]+\.[^.]+\.modes$/.test(section.id);
+/** A page's own modes (`<page>.modes`, `NAV_PAGE_DECLS[page].modes`) — the same card, destinations on the page itself. */
+const isPageModeSection = (ctx: NavContext) => (section: NavContext['sections'][number]): boolean => section.id === `${ctx.page.id}.modes`;
 
 test('every section item href round-trips: resolving it lights exactly that item', () => {
   for (const page of LIVE_PAGES) {
@@ -87,14 +89,22 @@ test('every section item href round-trips: resolving it lights exactly that item
         }
         assert.equal(ctx.page.id, page.id, `${item.href} leaves ${page.id}`);
         assert.equal(ctx.scope, 'section', item.href);
-        assert.deepEqual(activeIds(ctx), [item.id], item.href);
+        // A page's own mode is current on its card beside the view it opens: set the modes aside, then exactly one view is lit.
+        const modeIds = new Set(ctx.sections.filter(isPageModeSection(ctx)).flatMap((modes) => modes.items.map((mode) => mode.id)));
+        const lit = activeIds(ctx).filter((id) => !modeIds.has(id));
+        if (modeIds.has(item.id)) {
+          assert.ok(activeIds(ctx).includes(item.id), `${item.href}: its mode is current`);
+          assert.equal(lit.length, 1, `${item.href}: a mode opens exactly one view`);
+        } else {
+          assert.deepEqual(lit, [item.id], item.href);
+        }
       }
     }
   }
 });
 
 test('every lane-map row lands on its own page, and the peek lights it', () => {
-  const map = at('/unbox');
+  const map = at('/unbox', { view: 'top' });
   assert.equal(map.scope, 'top');
   for (const item of items(map)) {
     assert.equal(at(item.href).page.id, item.id, item.href);
@@ -115,7 +125,7 @@ test('a section lists its own views — and, on a door lane landing, the lane mo
 });
 
 test('Fulfillment is a lane door: one map row, the lane name on its panel, its pages as modes', () => {
-  const map = at('/unbox');
+  const map = at('/unbox', { view: 'top' });
   const outbound = map.sections.find((section) => section.id === 'fulfillment');
   assert.deepEqual(outbound?.items.map((item) => [item.id, item.label]), [['outbound', 'Fulfillment']]);
   assert.equal(outbound?.label, undefined);
@@ -224,7 +234,7 @@ test('permission filtering removes the rows a role cannot reach', () => {
   assert.ok(!itemIds(noDoor).includes('outbound'));
 
   const noReceiving = new Set([...ALL].filter((p) => p !== 'receiving.view'));
-  const map = itemIds(at('/', { permissions: noReceiving }));
+  const map = itemIds(at('/', { permissions: noReceiving, view: 'top' }));
   for (const id of ['triage', 'receive', 'pickup', 'repair', 'incoming']) assert.ok(!map.includes(id), id);
   assert.ok(map.includes('outbound'));
 
@@ -259,12 +269,12 @@ test('the org nav override shapes the section and the map — one pipeline with 
   assert.deepEqual(itemIds(shipping), ['outbound', 'label-intake', 'triage', 'exceptions', 'po', 'pick']);
   assert.equal(shipping.sections.find((s) => s.items.some((i) => i.id === 'pick'))?.label, 'Pick queue');
 
-  const map = at('/', { orgNav });
+  const map = at('/', { orgNav, view: 'top' });
   assert.ok(!itemIds(map).includes('fba'));
   assert.equal(items(map).find((i) => i.id === 'products')?.label, 'Catalog desk');
 });
 
-test('Picking replaces Pending everywhere the sidebar paints a word', () => {
+test('Picking replaces Pending in fulfillment; Picker keeps its Pending queue view', () => {
   for (const { href, ctx } of everyContext()) {
     const words = [
       ctx.page.label,
@@ -274,6 +284,7 @@ test('Picking replaces Pending everywhere the sidebar paints a word', () => {
       ...(ctx.actions ?? []).map((action) => action.label),
       ...(ctx.filters?.groups ?? []).map((group) => group.label),
     ];
+    if (ctx.page.id === 'ready-to-pack' || ctx.page.id === 'testing') continue;
     for (const word of words) if (word) assert.doesNotMatch(word, /\bpending\b/i, `${href}: "${word}"`);
   }
   const shipping = at('/shipping/orders');
@@ -300,7 +311,7 @@ test('every advertised param survives the hygiene of the view that reads it', ()
         assert.ok(own.includes(stop.context.search.param), `${stop.href}: search ${stop.context.search.param}`);
       }
       const locate = stop.context.search.locate;
-      for (const key of locate ? [locate.param, locate.statusParam] : []) {
+      for (const key of locate ? [locate.param, locate.statusParam, ...(locate.facetParam ? [locate.facetParam] : [])] : []) {
         assert.ok(own.includes(key), `${stop.href}: locate ${key} is stripped`);
       }
       for (const key of navControlParams(stop.context.controls)) {
@@ -312,7 +323,7 @@ test('every advertised param survives the hygiene of the view that reads it', ()
 
 test('the Shipping filters removed on 2026-09-26 are advertised and survive with real values', () => {
   const samples: ReadonlyArray<readonly [string, string, string]> = [
-    ['/shipping/exceptions', 'category', 'SKU Mapping'],
+    ['/shipping/exceptions', 'record', 'fbm:42'],
     ['/shipping/shortage', 'pair', 'po'],
     ['/shipping/orders', 'queue', 'pick'],
     ['/shipping/orders', 'stage', 'packed'],
@@ -371,6 +382,22 @@ test('a pasted list and its bucket filter survive every Shipping view, past the 
   const denied = at('/shipping/shipped', { permissions: noOrders });
   assert.equal(denied.search.scope, 'outbound.shipped');
   assert.equal(denied.search.locate, undefined, 'no locate without the desk lists');
+});
+
+test('a 150-number pasted list and its status + reason filters survive the Inbound desk', () => {
+  // 150 tracking-length numbers ≈ 3KB — the paste cap, far past a text param.
+  const refs = Array.from({ length: 150 }, (_, i) => `1Z999AA1${String(10_000_000 + i)}`).join(',');
+  const locate = at('/incoming').search.locate;
+  assert.ok(locate?.facetParam, '/incoming locates a pasted list with a reason filter');
+  const spec = routeParamsFor('/incoming');
+  assert.ok(spec);
+  const kept = parseRouteParams(
+    spec,
+    new URLSearchParams({ [locate.param]: refs, [locate.statusParam]: 'not_received', [locate.facetParam]: 'in_transit' }),
+  );
+  assert.equal(kept.get(locate.param), refs, 'the pasted list is stripped');
+  assert.equal(kept.get(locate.statusParam), 'not_received');
+  assert.equal(kept.get(locate.facetParam), 'in_transit');
 });
 
 test('each Shipping view carries the filters and controls its own list reads', () => {
@@ -446,15 +473,19 @@ test('each Inbound view carries the filters and controls its own list reads, and
 });
 
 test('every facet context names a real page or section view, and every recents surface exists', () => {
-  // `<pageId>` for a page without views (a station), `<pageId>.<itemId>` otherwise.
+  // `<pageId>` for a page's root (a station), `<pageId>.<itemId>` for a view —
+  // on the page's panel, or under one of its own modes. A page's own MODE's
+  // context is the count its card paints (`NavModeSwitcher`), never a list's
+  // filters: the mode opens its first view.
   for (const context of NAV_FACET_CONTEXTS) {
     const [pageId, itemId] = context.split('.');
     const page = getSidebarPageNav(pageId ?? '');
     assert.ok(page, context);
-    const home = at(page.href);
-    const item = itemId === undefined ? null : items(home).find((row) => row.id === itemId);
+    const stops = [at(page.href), ...pageStops(page.id).map((stop) => stop.context)];
+    const item = itemId === undefined ? null : stops.flatMap(items).find((row) => row.id === itemId);
     assert.ok(itemId === undefined || item, `${context}: no ${itemId} row on ${pageId}`);
-    assert.equal(at(item?.href ?? page.href).filters?.facetContext, context, context);
+    const isMode = stops.some((stop) => stop.sections.some((section) => isPageModeSection(stop)(section) && section.items.some((row) => row.id === itemId)));
+    if (!isMode) assert.equal(at(item?.href ?? page.href).filters?.facetContext, context, context);
   }
   const surfaces = new Set<string>(NAV_RECENT_SURFACE_IDS);
   for (const { href, ctx } of everyContext()) {
@@ -478,8 +509,8 @@ test('view=top is the ‹ peek: the lane map with the page lit, the page tools k
   assert.equal(peek.filters?.facetContext, 'outbound.pick');
 
   const station = at('/unbox');
-  assert.equal(station.scope, 'top');
-  assert.deepEqual(activeIds(station), ['receive']);
+  assert.equal(station.scope, 'section');
+  assert.deepEqual(activeIds(station), ['queue']);
   assert.equal(station.scanInput?.grammar, 'unbox');
 });
 
@@ -518,7 +549,7 @@ test('the parity gate: a page is contextual only when its contract covers every 
   }
 });
 
-test('the runtime gate: a contextual override resolves contextual only on a gap-free, non-station page', () => {
+test('the runtime gate: a contextual override resolves contextual only with complete parity', () => {
   for (const page of LIVE_PAGES) {
     const href = page.href;
     const asked = at(href, { rolloutOverrides: { [page.id]: 'contextual' } });
@@ -528,22 +559,25 @@ test('the runtime gate: a contextual override resolves contextual only on a gap-
   }
 });
 
-test('scan stations stay legacy on desktop even when an override asks for contextual', () => {
+test('ported scan stations use contextual navigation without dropping scan contracts', () => {
+  const ported = new Set(['triage', 'receive', 'testing', 'ready-to-pack', 'packer']);
   const stations = SIDEBAR_PAGE_NAV.filter((page) => page.kind === 'station');
   assert.ok(stations.some((page) => page.id === 'packer'), 'Packing is a station');
   for (const page of stations) {
-    assert.equal(NAV_CONTEXT_ROLLOUT[page.id], 'legacy', page.id);
-    const ctx = at(page.href, { rolloutOverrides: { [page.id]: 'contextual' } });
-    assert.equal(ctx.rollout, 'legacy', `${page.id} must stay legacy`);
+    if (!ported.has(page.id)) continue;
+    assert.equal(NAV_CONTEXT_ROLLOUT[page.id], 'contextual', page.id);
+    const ctx = at(page.href);
+    assert.equal(ctx.rollout, 'contextual', `${page.id} is ported`);
+    assert.ok(ctx.scanInput, `${page.id} keeps its scan contract`);
   }
   assert.equal(at('/shipping/orders', { rolloutOverrides: { outbound: 'contextual' } }).rollout, 'contextual');
 });
 
 test('the gate has teeth: a param counts only on the view whose route keeps it', () => {
   const shipping = pageStops('outbound');
-  const row = { kind: 'param', id: 'category', source: 'test' } as const;
+  const row = { kind: 'param', id: 'record', source: 'test' } as const;
   assert.deepEqual(uncoveredRows([{ ...row, view: 'exceptions' }], shipping), []);
-  // `/shipping/orders` does not own `category` — pinned there, it is a gap.
+  // `/shipping/orders` does not own `record` — pinned there, it is a gap.
   assert.equal(uncoveredRows([{ ...row, view: 'triage' }], shipping).length, 1);
   // Unbox carries the Unbox grammar; an Arrival scan row is not covered by it.
   assert.equal(uncoveredRows([{ kind: 'scanInput', id: 'arrival', source: 'test' }], pageStops('receive')).length, 1);
@@ -566,6 +600,27 @@ test('Chat is the first row of the page map for every permission set that can op
   }
   const noChat = new Set([...ALL].filter((p) => p !== 'assistant.chat'));
   assert.ok(!itemIds(at('/', { permissions: noChat })).includes('ai-chat'));
+});
+
+test('the parent map follows the product story from Chat through Reports', () => {
+  const map = at('/', { permissions: ALL, view: 'top' });
+  assert.deepEqual(
+    items(map).slice(0, 12).map((item) => item.label),
+    [
+      'Chat',
+      'Daily',
+      'Automations',
+      'Exceptions',
+      'Print station',
+      'Media Library',
+      'Sales',
+      'Receiving',
+      'Fulfillment',
+      'Inventory',
+      'Products',
+      'Reports',
+    ],
+  );
 });
 
 test('/ai-chat is a contextual page panel: its threads, New chat, Find over the threads', () => {
@@ -609,4 +664,81 @@ test('the gate has teeth for recents verbs: a surface without them leaves the ro
   assert.equal(uncoveredRows([{ kind: 'rowAction', id: 'rename', source: 'test' }], labels).length, 1);
   assert.equal(uncoveredRows([{ kind: 'paging', id: 'labels.prints', source: 'test' }], labels).length, 1);
   assert.deepEqual(uncoveredRows([{ kind: 'paging', id: 'assistant.sessions', source: 'test' }], pageStops('ai-chat')), []);
+});
+
+test('/exceptions wears a mode card like Fulfillment: Fulfillment · Inventory · Receiving, never an "all" mode', () => {
+  const views = (ctx: NavContext) =>
+    ctx.sections.filter((section) => !isPageModeSection(ctx)(section)).flatMap((section) => section.items).map((item) => [item.id, item.active]);
+  const modes = (ctx: NavContext) => ctx.sections.find(isPageModeSection(ctx));
+  const modeRows = (ctx: NavContext) => modes(ctx)?.items.map((item) => [item.id, item.label, item.active]);
+
+  // A kind: the back row, the card with its domain current, and the domain's kinds under it — that kind lit.
+  const bins = at('/exceptions?domain=inventory&kind=bins');
+  assert.equal(bins.scope, 'section');
+  assert.deepEqual(bins.back, { label: 'Exceptions', mode: 'local' });
+  assert.equal(bins.sections[0], modes(bins), 'the mode card leads the panel');
+  assert.equal(modes(bins)?.id, 'exceptions.modes');
+  assert.equal(modes(bins)?.label, 'Domain');
+  assert.ok(!bins.sections.some(isLanePageSection), 'never a lane mode card');
+  assert.deepEqual(modeRows(bins), [
+    ['fulfillment', 'Fulfillment', false],
+    ['inventory', 'Inventory', true],
+    ['receiving', 'Receiving', false],
+  ]);
+  assert.deepEqual(views(bins), [
+    ['pairs', false],
+    ['bins', true],
+    ['tracking', false],
+  ]);
+  assert.deepEqual(items(bins).slice(-3).map((item) => item.href), [
+    '/exceptions?domain=inventory&kind=pairs',
+    '/exceptions?domain=inventory&kind=bins',
+    '/exceptions?domain=inventory&kind=tracking',
+  ]);
+  assert.equal(bins.viewKeys, true);
+  assert.equal(bins.filters?.facetContext, 'exceptions.bins');
+  // The same kind without `?domain=` stays in its domain.
+  assert.deepEqual(activeIds(at('/exceptions?kind=bins')), ['inventory', 'bins']);
+
+  // A mode opens its FIRST kind — never a blanket domain list; its secondary line names its kinds.
+  assert.deepEqual(modes(bins)?.items.map((item) => [item.href, item.description]), [
+    ['/exceptions?domain=fulfillment&kind=fbm', 'FBM · Labels & docs · Paperwork'],
+    ['/exceptions?domain=inventory&kind=pairs', 'Missing pairs · Bin errors · Tracking'],
+    ['/exceptions?domain=receiving&kind=claim', 'Claim · Short · Unfound'],
+  ]);
+  // A URL inside no domain (the page redirects it to a kind) reads as the first domain, no view lit.
+  assert.deepEqual(modeRows(at('/exceptions'))?.map(([id, , active]) => [id, active]), [
+    ['fulfillment', true],
+    ['inventory', false],
+    ['receiving', false],
+  ]);
+
+  // Permissions: a receiving-only caller sees only the domains and kinds it can open; a mode opens its first OPEN kind.
+  const receivingOnly = new Set(['receiving.view']);
+  const tracking = at('/exceptions?domain=inventory&kind=tracking', { permissions: receivingOnly });
+  assert.deepEqual(itemIds(tracking), ['inventory', 'receiving', 'tracking']);
+  assert.deepEqual(modes(tracking)?.items.map((item) => [item.id, item.href, item.description]), [
+    ['inventory', '/exceptions?domain=inventory&kind=tracking', 'Tracking'],
+    ['receiving', '/exceptions?domain=receiving&kind=claim', 'Claim · Short · Unfound'],
+  ]);
+  assert.deepEqual(parityGaps('exceptions'), []);
+});
+
+test('Reports is a top-level parent whose report types and controls live in the contextual sidebar', () => {
+  const report = at('/reports?tab=packer&date=2026-09-29&staffId=4&q=adapter');
+  assert.equal(report.rollout, 'contextual');
+  assert.equal(report.scope, 'section');
+  assert.equal(report.search.source, 'url-param');
+  assert.equal(report.search.param, 'q');
+  assert.deepEqual(itemIds(report), ['staff-day', 'packer-day', 'utilization', 'velocity', 'dead-stock', 'tasks', 'activity']);
+  assert.deepEqual(activeIds(report), ['packer-day']);
+  assert.deepEqual(navControlParams(report.controls), ['staffId', 'date']);
+  assert.equal(report.actionsPlacement, 'sidebar');
+  assert.deepEqual(report.actions?.map((action) => action.id), [
+    'reports.refresh',
+    'reports.export-packing',
+    'reports.export-inbound',
+    'reports.export-outbound',
+  ]);
+  assert.deepEqual(parityGaps('reports'), []);
 });

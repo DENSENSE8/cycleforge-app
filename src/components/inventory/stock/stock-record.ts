@@ -1,6 +1,7 @@
 /**
- * Stock pair → industrial record facts. Pure, shared by the ledger row and the
- * evidence column so both read one state and one location face.
+ * Stock pair → record facts. Pure, shared by the list row (`StockLedger`,
+ * one-row triage) and the evidence column so both read one state and one
+ * location face.
  */
 
 import type { StockStage } from '@/design-system/tokens/stock-lifecycle';

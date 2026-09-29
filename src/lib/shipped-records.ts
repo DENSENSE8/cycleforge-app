@@ -45,11 +45,21 @@ export function isExceptionPackerRecord(record: { row_source?: string | null; ex
 export function isShippedDeskRow(row: {
   ship_confirmed_at?: string | null;
   shipped_out_by?: number | null;
+  latest_status_category?: string | null;
+  is_terminal?: boolean | null;
 }): boolean {
   const at = String(row.ship_confirmed_at ?? '').trim();
-  if (!at || at === '1') return false;
   const staff = Number(row.shipped_out_by);
-  return Number.isFinite(staff) && staff > 0;
+  const dockConfirmed = Boolean(at && at !== '1' && Number.isFinite(staff) && staff > 0);
+  if (dockConfirmed) return true;
+
+  // A carrier delivery/custody scan is stronger evidence that a package left
+  // than a missing legacy dock event. This also makes the canonical ORPHAN
+  // state reachable: it belongs in Shipped for reconciliation, never back in
+  // the warehouse work queue. DELIVERED remains the final status face.
+  const category = String(row.latest_status_category ?? '').trim().toUpperCase();
+  return ['ACCEPTED', 'IN_TRANSIT', 'OUT_FOR_DELIVERY', 'DELIVERED', 'RETURNED'].includes(category)
+    || (row.is_terminal === true && category !== 'EXCEPTION');
 }
 /** Collapse duplicate scans of the SAME package, while keeping a multi-package order as one row PER package (they ship at different times). */
 export function dedupeShippedRecords(records: PackerRecord[]): PackerRecord[] {

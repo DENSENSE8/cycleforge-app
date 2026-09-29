@@ -9,7 +9,12 @@ import { PhotoThumb } from '@/components/photos/PhotoThumb';
 import { Button } from '@/design-system/primitives';
 import { cornerClass } from '@/design-system/tokens/radius';
 import { useListingGallery } from '@/hooks/useListingGallery';
-import { receivingPhotosQueryKey } from '@/lib/queries/receiving-queries';
+import {
+  fetchReceivingPhotoList,
+  RECEIVING_PHOTOS_STALE_MS,
+  receivingPhotoListQueryKey,
+  type ReceivingPhotoListParams,
+} from '@/lib/queries/receiving-queries';
 import {
   photoIntentFromStage,
   RECEIVING_PHOTO_LIST_INTENT_CARTON,
@@ -52,37 +57,29 @@ function ThumbGrid({
 }
 
 function useCartonPhotos(receivingId: number) {
+  const params: ReceivingPhotoListParams = {
+    receivingId,
+    photoIntent: RECEIVING_PHOTO_LIST_INTENT_CARTON,
+  };
   return useQuery<{ photos: PhotoRow[] }>({
-    queryKey: [...receivingPhotosQueryKey(receivingId), RECEIVING_PHOTO_LIST_INTENT_CARTON, 'compare'],
-    queryFn: async () => {
-      const params = new URLSearchParams({
-        receivingId: String(receivingId),
-        photoIntent: RECEIVING_PHOTO_LIST_INTENT_CARTON,
-      });
-      const res = await fetch(`/api/receiving-photos?${params.toString()}`, { cache: 'no-store' });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      return res.json();
-    },
+    queryKey: receivingPhotoListQueryKey(params),
+    queryFn: () => fetchReceivingPhotoList(params),
     enabled: receivingId > 0,
-    staleTime: 10_000,
+    staleTime: RECEIVING_PHOTOS_STALE_MS,
   });
 }
 
 function useItemPhotos(receivingId: number, lineId: number) {
+  const params: ReceivingPhotoListParams = {
+    receivingId,
+    photoIntent: ITEM_LIST_INTENT,
+    receivingLineId: lineId,
+  };
   return useQuery<{ photos: PhotoRow[] }>({
-    queryKey: [...receivingPhotosQueryKey(receivingId), ITEM_LIST_INTENT, lineId, 'compare'],
-    queryFn: async () => {
-      const params = new URLSearchParams({
-        receivingId: String(receivingId),
-        photoIntent: ITEM_LIST_INTENT,
-        receivingLineId: String(lineId),
-      });
-      const res = await fetch(`/api/receiving-photos?${params.toString()}`, { cache: 'no-store' });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      return res.json();
-    },
+    queryKey: receivingPhotoListQueryKey(params),
+    queryFn: () => fetchReceivingPhotoList(params),
     enabled: receivingId > 0 && lineId > 0,
-    staleTime: 10_000,
+    staleTime: RECEIVING_PHOTOS_STALE_MS,
   });
 }
 

@@ -22,6 +22,7 @@ import { focusRing } from '@/design-system/tokens/focus-ring';
 import { SIDEBAR_CHIP_CORNER, SIDEBAR_CONTROL_CORNER } from '@/design-system/tokens/radius';
 import { parseStaffParam } from '@/lib/station/table-url-params';
 import { parseISODate, toISODate } from '@/lib/shipping/shipped-filter/shipped-filter-params';
+import { getCurrentPSTDateKey } from '@/utils/date';
 import { peekActiveStaff } from '@/lib/staffCache';
 import { cn } from '@/utils/_cn';
 import { useReplaceSearchParams } from './useReplaceSearchParams';
@@ -130,7 +131,7 @@ export function NavFilters({
               className="flex shrink-0 items-center gap-1.5"
             >
               <span className={cn('bg-text-default px-1.5 text-role-micro font-semibold text-surface-card', SIDEBAR_CHIP_CORNER)}>
-                <AnimatedStat value={activeCount} speed="fast" />
+                <AnimatedStat value={activeCount} profile="scanQuantity" />
               </span>
               <button
                 type="button"
@@ -155,6 +156,7 @@ export function NavFilters({
           <SortRow spec={controls.sort} open={open.has('sort')} onToggle={toggleOpen} />
         ) : null}
         {controls?.staff?.map((row) => <StaffRow key={row.id} id={row.id} param={row.param} label={row.label} />)}
+        {controls?.dates?.map((row) => <SingleDateRow key={row.id} spec={row} />)}
         {controls?.dateRanges?.map((range) => <DateRow key={range.id} spec={range} />)}
         {controls?.choices?.map((choice) => (
           <ChoiceRow key={choice.id} spec={choice} open={open.has(choice.id)} onToggle={toggleOpen} />
@@ -206,7 +208,7 @@ export function NavFilters({
                             <CheckFace checked={selected} />
                             <span className="min-w-0 flex-1 truncate">{option.label}</span>
                             <span className={cn(VALUE_CHIP_CLASS, 'tabular-nums', option.count === 0 && 'text-text-faint')}>
-                              <AnimatedStat value={option.count} speed="fast" />
+                              <AnimatedStat value={option.count} profile="scanQuantity" />
                             </span>
                           </button>
                         );
@@ -481,6 +483,33 @@ function StaffRow({ id, param, label }: { id: string; param: string; label: stri
 }
 
 const TIME_KEY = /^([01]\d|2[0-3]):[0-5]\d$/;
+
+function SingleDateRow({ spec }: { spec: NonNullable<NavControls['dates']>[number] }) {
+  const searchParams = useSearchParams();
+  const replace = useReplaceSearchParams();
+  const today = getCurrentPSTDateKey();
+  const value = parseISODate(searchParams?.get(spec.param) ?? today);
+  return (
+    <div className={cn(ROW_CLASS, 'cursor-default pr-0.5')} data-nav-filter={`date:${spec.id}`}>
+      <Calendar aria-hidden className={ROW_ICON_CLASS} />
+      <span className="min-w-0 flex-1 truncate">{spec.label}</span>
+      <DateRangePickerField
+        variant="compact"
+        value={value}
+        ariaLabel={spec.label}
+        className="h-7 w-auto max-w-[9.5rem] border-transparent bg-transparent px-1.5 text-role-micro font-medium shadow-none hover:border-border-soft hover:bg-surface-card"
+        onChange={(next) => {
+          const key = toISODate(next);
+          replace((params) => {
+            for (const clear of spec.clearParams) params.delete(clear);
+            if (!key || key === today) params.delete(spec.param);
+            else params.set(spec.param, key);
+          });
+        }}
+      />
+    </div>
+  );
+}
 
 /**
  * One civil-date range (Shipped, Ship by, Ordered). A range that declares

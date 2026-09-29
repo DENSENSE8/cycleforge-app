@@ -8,10 +8,12 @@
  * - No pasted list: delivery-state buckets with the lane's counts, writing
  *   `?state=` (the one facet `useReceivingModeContext` already reads).
  * - A pasted list (`?ref_in=`): the Check's buckets, counting pasted numbers,
- *   writing `?recon=` — the sidebar popout reads the same param.
+ *   writing `?recon=` — the sidebar popout reads the same param. A pressed
+ *   status opens a second row: its reasons with counts, writing
+ *   `?recon_reason=` (a status change drops it).
  *
- * ⌥1–⌥N press the chips in order. One chip at a time; pressing the lit chip
- * clears it.
+ * ⌥1–⌥N press the status chips in order. One chip at a time; pressing the lit
+ * chip clears it.
  */
 
 import { useCallback, useMemo, useRef } from 'react';
@@ -24,15 +26,18 @@ import { INCOMING_DELIVERY_STATE_FACE } from '@/lib/receiving/incoming-delivery-
 import type { InboundCheck } from '@/lib/receiving/inbound-check-query';
 import {
   RECON_PARAM,
+  RECON_REASON_LABELS,
+  RECON_REASON_PARAM,
   RECON_STATUS_LABELS,
   reconCounts,
+  reconReasonCounts,
+  type ReconReason,
   type ReconStatus,
 } from '@/lib/receiving/reconcile';
 import { receivingSurfaceBasePath } from '@/lib/receiving/surface-path';
 import { useSegmentChords } from '@/lib/keyboard/useSegmentChords';
 import { segmentChordHint } from '@/lib/keyboard/segment-chords';
 import { STATE_TONE_CLASSES, type StateName } from '@/design-system/tokens/lifecycle';
-import { RECORD_LABEL_CLASS } from '@/design-system/tokens/industrial-record';
 import { focusRing } from '@/design-system/tokens/focus-ring';
 import { cn } from '@/utils/_cn';
 
@@ -68,6 +73,12 @@ export interface IncomingStatusChipSet {
   /** Set when the chips cannot filter honestly (e.g. a partial row set). */
   disabledReason: string | null;
   onToggle: (id: string) => void;
+  /** ⌥1–⌥N press these chips (default); the reason row has no chords. */
+  chords?: boolean;
+  /** `incoming-status` (default) → `incoming-status-<id>`, `incoming-status-chips`. */
+  testIdPrefix?: string;
+  /** The pressed status's reasons — only while a pasted list's status is pressed. */
+  reasons?: IncomingStatusChipSet | null;
 }
 
 interface SummaryResponse extends Partial<IncomingSummary> {
@@ -85,6 +96,7 @@ export function useIncomingStatusChips({
   reconciling,
   check,
   recon,
+  reason = null,
   disabledReason = null,
 }: {
   /** False where no Incoming ledger is mounted. */
@@ -93,6 +105,8 @@ export function useIncomingStatusChips({
   reconciling: boolean;
   check: InboundCheck;
   recon: ReconStatus | null;
+  /** `?recon_reason=` inside {@link recon}. */
+  reason?: ReconReason | null;
   disabledReason?: string | null;
 }): IncomingStatusChipSet | null {
   const router = useRouter();
@@ -134,12 +148,39 @@ export function useIncomingStatusChips({
       const param = reconciling ? RECON_PARAM : STATE_PARAM;
       if (params.get(param) === id) params.delete(param);
       else params.set(param, id);
+      // A reason belongs to its status: pressing off or switching drops it.
+      params.delete(RECON_REASON_PARAM);
       params.delete('page');
       const base = receivingSurfaceBasePath(pathname);
       const qs = params.toString();
       router.replace(qs ? `${base}?${qs}` : base, { scroll: false });
     },
     [pathname, reconciling, router],
+  );
+
+  const reasonChips = useMemo<IncomingStatusChip[] | null>(() => {
+    if (!reconciling || !recon) return null;
+    const tone = LIST_CHIPS.find((chip) => chip.id === recon)?.tone ?? null;
+    return reconReasonCounts(check.entries, recon).map(({ reason: id, count }) => ({
+      id,
+      label: RECON_REASON_LABELS[id],
+      count,
+      tone,
+      active: reason === id,
+    }));
+  }, [check.entries, reason, recon, reconciling]);
+
+  const onToggleReason = useCallback(
+    (id: string) => {
+      const params = new URLSearchParams(window.location.search);
+      if (params.get(RECON_REASON_PARAM) === id) params.delete(RECON_REASON_PARAM);
+      else params.set(RECON_REASON_PARAM, id);
+      params.delete('page');
+      const base = receivingSurfaceBasePath(pathname);
+      const qs = params.toString();
+      router.replace(qs ? `${base}?${qs}` : base, { scroll: false });
+    },
+    [pathname, router],
   );
 
   const chipIds = useMemo(() => chips.map((chip) => chip.id), [chips]);
@@ -151,6 +192,16 @@ export function useIncomingStatusChips({
     chips,
     disabledReason,
     onToggle,
+    reasons: reasonChips
+      ? {
+          label: `${RECON_STATUS_LABELS[recon!]} reasons`,
+          chips: reasonChips,
+          disabledReason,
+          onToggle: onToggleReason,
+          chords: false,
+          testIdPrefix: 'incoming-reason',
+        }
+      : null,
   };
 }
 
@@ -158,13 +209,11 @@ const CHIP_SPRING = { type: 'spring', stiffness: 520, damping: 34 } as const;
 const CHIP_RAIL_CLASS =
   'flex w-full min-w-0 snap-x snap-proximity items-center overflow-x-auto overscroll-x-contain [scrollbar-width:none] [&::-webkit-scrollbar]:hidden';
 
-/**
- * `face="cards"`: rounded chips over the triage cards. `face="floor"`: flat
- * segments in the industrial ledger's toolbar.
- */
-export function IncomingStatusChips({ set, face }: { set: IncomingStatusChipSet; face: 'cards' | 'floor' }) {
+/** Rounded chips over the triage cards. */
+export function IncomingStatusChips({ set }: { set: IncomingStatusChipSet }) {
   const disabled = set.disabledReason != null;
-  const floor = face === 'floor';
+  const chords = set.chords !== false;
+  const testIdPrefix = set.testIdPrefix ?? 'incoming-status';
   const railRef = useRef<HTMLSpanElement>(null);
   useHorizontalWheelScroll(railRef);
   return (
@@ -173,24 +222,21 @@ export function IncomingStatusChips({ set, face }: { set: IncomingStatusChipSet;
       role="group"
       aria-label={set.label}
       title={set.disabledReason ?? undefined}
-      data-testid="incoming-status-chips"
-      className={cn(
-        CHIP_RAIL_CLASS,
-        floor ? 'items-stretch self-stretch' : 'gap-1.5 py-0.5 pr-6 [mask-image:linear-gradient(to_right,black_calc(100%-24px),transparent)]',
-      )}
+      data-testid={`${testIdPrefix}-chips`}
+      className={cn(CHIP_RAIL_CLASS, 'gap-1.5 py-0.5 pr-6 [mask-image:linear-gradient(to_right,black_calc(100%-24px),transparent)]')}
     >
       {set.chips.map((chip, index) => {
         const tone = chip.tone ? STATE_TONE_CLASSES[chip.tone] : null;
         const count = chip.count;
         const live = count == null || count > 0 || chip.active;
-        const shortcut = segmentChordHint(index + 1);
+        const shortcut = chords ? segmentChordHint(index + 1) : null;
         const common = {
           type: 'button' as const,
           'aria-pressed': chip.active,
-          'aria-keyshortcuts': `Alt+${index + 1}`,
-          'data-testid': `incoming-status-${chip.id}`,
+          'aria-keyshortcuts': chords ? `Alt+${index + 1}` : undefined,
+          'data-testid': `${testIdPrefix}-${chip.id}`,
           disabled,
-          title: disabled ? (set.disabledReason ?? undefined) : `${chip.label} (${shortcut})`,
+          title: disabled ? (set.disabledReason ?? undefined) : shortcut ? `${chip.label} (${shortcut})` : chip.label,
           onClick: () => set.onToggle(chip.id),
         };
         const dot = (
@@ -200,24 +246,6 @@ export function IncomingStatusChips({ set, face }: { set: IncomingStatusChipSet;
           />
         );
         const tally = <span className="font-semibold tabular-nums">{count == null ? '…' : count.toLocaleString()}</span>;
-        if (floor) {
-          return (
-            <button
-              key={chip.id}
-              {...common}
-              className={cn(
-                RECORD_LABEL_CLASS,
-                'flex shrink-0 snap-start items-center gap-1.5 border-r border-mode-seam px-3 transition-colors disabled:opacity-50',
-                chip.active ? 'bg-mode-ink text-mode-bar' : live ? 'text-mode-ink hover:bg-mode-hover' : 'text-mode-muted',
-                focusRing('control'),
-              )}
-            >
-              {dot}
-              {chip.label}
-              {tally}
-            </button>
-          );
-        }
         return (
           <motion.button
             key={chip.id}

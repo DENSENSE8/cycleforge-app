@@ -2,7 +2,10 @@
 
 Run ledger for `HANDOFF-record-card-foundation.md`. One row per table mount; updated at the end of every
 wave. Verdicts: **port** (→ `TriageCardList`), **keep-sheet** (columns are the job; `DataTable` stays),
-**floor** (industrial ledger, Ctrl/⌘+Shift+F).
+~~**floor** (industrial ledger, Ctrl/⌘+Shift+F)~~ — withdrawn 2026-09-28 (BRIEF §14): no desk keeps
+an industrial ledger; a former **floor** row is a **port** (card list) or **one-row** (`TriageCardList
+density="row"`). Stock (#36) and Replenish (#37) move from keep-sheet to **one-row** — they were
+industrial `RecordLedger` rows, never a `DataTable`.
 
 ## Owner decisions
 
@@ -81,7 +84,7 @@ verification per wave = create one on the route, reload, confirm it applies.
 | 40 | `/tracking-exceptions` | `tracking-exceptions/TrackingExceptionsTable.tsx` | `tracking-exceptions` | sheet | Resolve failed tracking numbers | — | **port** |
 | 41 | `/dashboard?mode=sales|pickup` | `walk-in/SalesHistoryTable.tsx` | `walk-in-sales` | compound | Completed walk-in sales → open repair/pickup | — | **port** |
 | 42 | `/search?q=` | `search/SearchResultsSurface.tsx` | `search-hits` | compound | Cross-entity hits → open | — | **port** |
-| 43 | `/` (home) | `features/home/DailyAgenda.tsx` (RecordLedger) | `daily` (binding unused) | — | Shift checklist | `/m/home` | **port** |
+| 43 | `/` (home) | `features/home/DailyAgenda.tsx` (`TriageCardList density="row"`, `AgendaRow.tsx`; view `DAILY_AGENDA_VIEW`) | `daily` (binding unused) | — | Shift checklist + handed-over tasks + tickets | `/m/home` | **ported** 2026-09-28 |
 | 44 | `/reports?tab=utilization|velocity|dead|tasks|staff|packer` | `app/reports/page.tsx` (6 mounts) | `report-*` | compound | Reports | — | **keep-sheet** |
 | 45 | `/settings/audit` | `app/settings/audit/AuditLogTable.tsx` | `audit-log` | compound | Audit log | — | **keep-sheet** |
 | 46 | `/settings/staff` | `app/settings/staff/StaffTable.tsx` | `staff-directory` | compound | Team directory / auth policy | — | **keep-sheet** |
@@ -94,7 +97,7 @@ verification per wave = create one on the route, reload, confirm it applies.
 
 | Layout id | Binding | Note |
 |---|---|---|
-| `daily` | `DAILY_TABLE_BINDING` | Home paints `DailyAgenda` (RecordLedger); port #43 may revive it as the card layout |
+| `daily` | `DAILY_TABLE_BINDING` | Home paints `DailyAgenda` on the one-row triage list (#43), not this binding |
 | `tasks` | `TASKS_TABLE_BINDING` | No page mounts it |
 | `my-day` | `MY_DAY_TABLE_BINDING` | `useMyDayFeed` feeds `InboxQueueLinks` only |
 | `catalog` | `CATALOG_TABLE_BINDING` | `useCatalogTableLayout.ts` itself unimported |

@@ -1,4 +1,5 @@
 import { locationCode, parseLocationCodeFlat } from '@/lib/barcode-routing';
+import { EXCEPTION_RECORD_PARAM, exceptionRowKey } from '@/lib/exceptions/types';
 
 /**
  * Addresses of a SKU exception (on-hold placeholder product).
@@ -9,7 +10,8 @@ import { locationCode, parseLocationCodeFlat } from '@/lib/barcode-routing';
 export const SKU_EXCEPTIONS_PATH = '/inventory/sku-exceptions';
 
 export function skuExceptionHref(sku: string): string {
-  return `${SKU_EXCEPTIONS_PATH}?sku=${encodeURIComponent(sku)}`;
+  const params = new URLSearchParams({ [EXCEPTION_RECORD_PARAM]: exceptionRowKey('pairs', sku) });
+  return `${SKU_EXCEPTIONS_PATH}?${params}`;
 }
 
 export function skuExceptionShareUrl(sku: string): string {

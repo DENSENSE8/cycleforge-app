@@ -1,15 +1,21 @@
 import { LIFECYCLE_CLASSES } from './lifecycle';
+import { elevationClass } from './shadows';
 
 /**
  * Phone item-record faces — photo + context row, title row, and an operational facts row. Desk compound order under the title: qty · amount · condition.
  */
 
-/** Industrial phone queue row. */
+/**
+ * Phone queue card (owner 2026-09-28: "Round ItemCardRow everywhere"). The
+ * corner is the region's mode card corner — rounded in triage, square on the
+ * industrial floor — so the one card follows whatever region mounts it.
+ */
 export const ITEM_RECORD_MOBILE_ROW = {
-  shell:
-    'relative overflow-hidden border-b border-border-hairline bg-surface-card',
-  actionCluster: 'ml-auto flex shrink-0 items-center gap-px',
-  primaryReveal: 'w-[88px]',
+  /** The card list host: mode page inset + the mode's tight stack between cards. */
+  list: 'stack-tight px-mode-page',
+  // Hairline is a ring, not a border: the left state rail owns `border-l-4` +
+  // an all-sides border COLOUR, which a card border colour would overwrite.
+  shell: `relative overflow-hidden rounded-mode bg-surface-card ring-1 ring-border-hairline ${elevationClass('raised', 'soft')}`,
   triageReveal: 'w-36',
 } as const;
 
@@ -59,7 +65,7 @@ export const ITEM_RECORD_MOBILE_TITLE = {
   quantityLabel: 'text-role-eyebrow font-semibold text-text-muted',
   quantityValue: 'text-base font-bold leading-5 tabular-nums text-text-default',
   quantityStatus: 'text-role-eyebrow font-semibold text-text-success',
-  conditionPill: 'shrink-0 border border-border-default bg-surface-sunken px-1.5 py-0.5 font-mono text-role-eyebrow font-semibold text-text-default',
+  conditionPill: 'shrink-0 rounded-mode-pill border border-border-default bg-surface-sunken px-1.5 py-0.5 font-mono text-role-eyebrow font-semibold text-text-default',
 } as const;
 
 export const ITEM_RECORD_MOBILE_META = {

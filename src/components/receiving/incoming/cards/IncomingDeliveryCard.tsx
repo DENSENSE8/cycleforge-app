@@ -18,7 +18,7 @@ import { INCOMING_PIPELINE_VIEW } from '@/lib/triage/views';
 import { receiptRecordCard, type ReceiptCardModel } from './receipt-card-model';
 
 /** Quick look (Space): what the card leaves out — the full tracking, carrier, source and dates. */
-function ReceiptCardPeek({ model }: { model: ReceiptCardModel }) {
+export function ReceiptCardPeek({ model }: { model: ReceiptCardModel }) {
   const lead = model.lead;
   const facts: [string, string | null][] = [
     ['Tracking', lead.tracking_number],
@@ -73,7 +73,7 @@ export const IncomingDeliveryCard = memo(function IncomingDeliveryCard({
       onToggleCheck={(event) => onToggleCheck(model, event)}
       onToggleExpand={() => onToggleExpand(model.key)}
       onTogglePeek={() => onTogglePeek(model.key)}
-      identity={<span className="truncate" title={model.identity}>PO {model.identity}</span>}
+      identity={{ role: 'identity', content: <span className="truncate" title={model.identity}>PO {model.identity}</span> }}
       trailing={null}
       quickLook={<ReceiptCardPeek key="peek" model={model} />}
       // Each line of a purchase is a record of its own: it opens alone.

@@ -42,6 +42,7 @@ const PUBLIC_PATHS: ReadonlyArray<RegExp> = [
   /^\/api\/kiosk\/intake(?:$|\/)/,       // device-authed intake write (gated by withKioskAuth inside the handler)
   /^\/api\/kiosk\/repair(?:$|\/)/,       // device-authed headless repair intake (withKioskAuth; NOT the staff enroll/revoke/devices siblings)
   /^\/api\/kiosk\/sales(?:$|\/)/,        // device-authed retail catalog (withKioskAuth)
+  /^\/api\/kiosk\/local-pickup(?:$|\/)/, // device-authed inbound pickup intake (withKioskAuth)
   /^\/api\/kiosk\/settings(?:$|\/)/,     // device-authed brand/settings (withKioskAuth)
   /^\/api\/kiosk\/staff-for-stepup(?:$|\/)/, // device-authed PIN step-up roster (withKioskAuth)
   /^\/api\/kiosk\/pickup(?:$|\/)/,       // device-authed order pickup lookup/collect (withKioskAuth)
@@ -616,6 +617,12 @@ export function proxy(req: NextRequest): NextResponse {
   }
 
   if (isPublic(pathname)) {
+    return applyRewriteOrNext();
+  }
+
+  // Development-only visual study. Its page returns 404 in production; this
+  // exception only makes the local preview reachable without an auth session.
+  if (process.env.NODE_ENV !== 'production' && pathname === '/motion-plus-button') {
     return applyRewriteOrNext();
   }
 

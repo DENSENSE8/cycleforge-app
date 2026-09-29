@@ -12,7 +12,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Search } from '@/components/Icons';
 import { EmptyState } from '@/design-system/primitives';
 import { DeskStageRecordHeader } from '@/design-system/components/DeskStageOverlay';
-import { OrderRecordStatus, OrderRecordTitle, OrderRecordView } from '@/components/outbound/orders/OrderRecordView';
+import { OrderRecordTitle, OrderRecordView } from '@/components/outbound/orders/OrderRecordView';
 import { OrderRecordActionStrip } from '@/components/outbound/orders/to-ship/MorphingRowActionMenu';
 import { useOrdersQueueCommits } from '@/components/dashboard/orders-queue/useOrdersQueueFeed';
 import { useSearchPrimaryPaintOptional } from '@/components/search/search-primary-paint-context';
@@ -114,12 +114,9 @@ export function SearchOrderRecord({
       <div className={cn(DESK_STAGE_FIXED_CLASS, 'shrink-0')}>
         <DeskStageRecordHeader
           title={<OrderRecordTitle record={record} records={records} />}
-          actions={<OrderRecordStatus record={record} records={records} />}
+          actions={<OrderRecordActionStrip key={record.id} record={record} viewKey="search.orders" />}
           onClose={onBack}
         />
-        <div className="border-b border-border-hairline">
-          <OrderRecordActionStrip key={record.id} record={record} viewKey="search.orders" />
-        </div>
       </div>
       <div className="flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-contain">
         {/* The record's layout queries this container (2/3 + 1/3 at @4xl), as in `DeskRecordPlane`'s body. */}

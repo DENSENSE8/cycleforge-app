@@ -1,7 +1,13 @@
-import { MobileOrderExceptions } from '@/components/mobile/outbound/MobileOrderExceptions';
+import { Suspense } from 'react';
+import { MobileExceptionsHub } from '@/components/mobile/exceptions/MobileExceptionsHub';
 
-export default function MobileOrderExceptionsPage() {
+export const dynamic = 'force-dynamic';
+
+/** `/m/exceptions` — the Exceptions hub on the phone, every kind (`?domain=` / `?kind=`). Desk twin: `/exceptions`. */
+export default function MobileExceptionsPage() {
   return (
-    <MobileOrderExceptions />
+    <Suspense fallback={null}>
+      <MobileExceptionsHub />
+    </Suspense>
   );
 }

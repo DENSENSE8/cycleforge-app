@@ -157,7 +157,6 @@ export default function MobileReceivingPipelinePage() {
       lineId: row.id,
       itemName: row.item_name,
       sku: row.sku,
-      zohoItemId: row.zoho_item_id,
       poRef: poValue || undefined,
       back: '/m/receiving/history',
     });

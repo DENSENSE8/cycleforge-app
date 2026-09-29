@@ -1,3 +1,5 @@
+import { buyerNoteUnacknowledgedSql } from './buyer-note-interlock';
+
 /**
  * Exception membership — unpaired catalog pairing, not paperwork.
  * Operator 2026-09-01: the exceptions desk pairs an item number to the Zoho
@@ -31,14 +33,15 @@ export function liveWorkingSetSql(alias?: string): string {
 /**
  * Order-exceptions desk queue membership (`actionable` scope) — the ONE
  * predicate the desk list, its sidebar count and identify's stage read.
- * Expects the order alias and its `shipping_tracking_numbers` join alias.
+ * Expects the order alias and its `shipping_tracking_numbers` join alias. A
+ * buyer note holds the order only until someone acknowledges it
+ * (`buyerNoteUnacknowledgedSql`, the pack / label interlock's own test).
  */
 export function sqlOrderInExceptionQueue(orderAlias = 'o', stnAlias = 'stn'): string {
-  const buyerNote = col(orderAlias, 'buyer_note');
   return `(
       ${exceptionHeldSql(orderAlias)}
       OR ${col(orderAlias, 'is_out_of_stock')}
-      OR NULLIF(TRIM(COALESCE(${buyerNote}, '')), '') IS NOT NULL
+      OR ${buyerNoteUnacknowledgedSql(orderAlias)}
       OR COALESCE(${col(stnAlias, 'has_exception')}, false)
     )`;
 }

@@ -35,10 +35,15 @@ export function sqlOrderHasPoPairedShortage(orderAlias = 'o'): string {
     )`;
 }
 
-/** True when every live allocation on the order is picked — the complement of the pick list's "picked < allocated, or nothing picked". */
+/**
+ * True when every live allocation on the order is picked — the complement of the pick list's "picked < allocated, or nothing picked".
+ * Two plain EXISTS, not one `HAVING COUNT(*) > 0 AND COUNT(*) FILTER (…) = 0` aggregate: an aggregate
+ * subquery can only run as a per-order SubPlan (a seq scan of order_unit_allocations for each of ~5k
+ * orders), while plain EXISTS lets Postgres hash each side once — ~100 → ~56 ms on the pick facet count.
+ */
 function sqlOrderFullyPicked(orderAlias: string): string {
   const o = alias(orderAlias);
-  return `EXISTS (
+  const liveAllocation = (extraExcludedStates: string) => `EXISTS (
       SELECT 1
         FROM order_unit_allocations pick_alloc_q
         JOIN serial_units pick_unit_q
@@ -46,12 +51,10 @@ function sqlOrderFullyPicked(orderAlias: string): string {
          AND pick_unit_q.organization_id = pick_alloc_q.organization_id
        WHERE pick_alloc_q.order_id = ${o}.id
          AND pick_alloc_q.organization_id = ${o}.organization_id
-         AND pick_alloc_q.state NOT IN ('RELEASED', 'RETURNED')
-      HAVING COUNT(*) > 0
-         AND COUNT(*) FILTER (
-               WHERE pick_alloc_q.state NOT IN ('PICKED', 'PACKED', 'SHIPPED')
-             ) = 0
+         AND pick_alloc_q.state NOT IN ('RELEASED', 'RETURNED'${extraExcludedStates})
     )`;
+  return `(${liveAllocation('')}
+    AND NOT ${liveAllocation(", 'PICKED', 'PACKED', 'SHIPPED'")})`;
 }
 
 /**

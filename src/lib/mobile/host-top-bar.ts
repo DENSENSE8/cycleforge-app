@@ -12,6 +12,8 @@ const OWN_TOP_BAR_PREFIXES = [
   '/m/loc/',
   // The scanned FBA label record owns MobileDetailTopBar (X back to /m/scan).
   '/m/fnsku/',
+  // Picks is one screen: the chips head the list, and the walk's scan card
+  // (`?order=`) holds its own capture window — the scan seat, exactly once.
   '/m/pick',
   '/m/id/',
   // The order hub and its doors own MobileDetailTopBar (X back to the job);
@@ -32,6 +34,8 @@ const OWN_TOP_BAR_PREFIXES = [
   '/m/repair-scan',
   // An import run's record owns MobileDetailTopBar (X back to /m/imports); the list keeps the host bar.
   '/m/imports/',
+  // A product profile is one record with an X back to the catalog lookup.
+  '/m/products/',
 ] as const;
 
 /**

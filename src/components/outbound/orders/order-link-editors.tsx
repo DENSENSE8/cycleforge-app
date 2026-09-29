@@ -177,6 +177,8 @@ export function OrderAdminLinkAction({
   storedUrl,
   ids,
   platformLabel,
+  revealOpenOnHover = false,
+  showInlineOpen = true,
 }: {
   /** The order-number face (chip / full id). */
   children: ReactNode;
@@ -189,14 +191,23 @@ export function OrderAdminLinkAction({
   /** Every line of the order — the link is written on each. */
   ids: readonly number[];
   platformLabel?: string | null;
+  /** Detail headers reveal the external/admin-link affordance only on hover or keyboard focus. */
+  revealOpenOnHover?: boolean;
+  /** Dense list rows keep Open in the hover menu instead of painting a fixed icon. */
+  showInlineOpen?: boolean;
 }) {
   const [editing, setEditing] = useState(false);
   const editLabel = storedUrl || href ? 'Edit order ID link' : 'Add order ID link';
+  const revealClass = revealOpenOnHover
+    ? 'pointer-events-none absolute left-full top-1/2 ml-0 -translate-y-1/2 opacity-0 transition-opacity group-hover/order-title:pointer-events-auto group-hover/order-title:opacity-100 group-focus-within/order-title:pointer-events-auto group-focus-within/order-title:opacity-100'
+    : undefined;
   const face = (
     <span className={cn('flex min-w-0 items-center', fill && 'flex-1')} data-testid="order-admin-link-face">
       <CopyChipHoverMenu
         menuLabel="Order number actions"
         denseLabel
+        placement={revealOpenOnHover ? 'top' : 'auto'}
+        align={revealOpenOnHover ? 'center' : 'start'}
         className={cn('min-w-0 shrink', fill && 'flex-1')}
         items={[
           {
@@ -209,6 +220,26 @@ export function OrderAdminLinkAction({
               );
             },
           },
+          ...(href
+            ? [
+                {
+                  id: 'open-order-link',
+                  label: `Open on ${platformLabel || 'platform'}`,
+                  icon: <ExternalLink />,
+                  onSelect: () => window.open(href, '_blank', 'noopener,noreferrer'),
+                },
+                {
+                  id: 'copy-order-link',
+                  label: 'Copy order link',
+                  icon: <Link2 />,
+                  onSelect: () => {
+                    void copyToClipboard(href, { historyKind: 'id', historyDisplay: orderId }).then((ok) =>
+                      ok ? toast.success('Order link copied') : toast.error('Could not copy the order link'),
+                    );
+                  },
+                },
+              ]
+            : []),
           { id: 'edit-admin-link', label: editLabel, icon: <Pencil />, onSelect: () => setEditing(true) },
         ]}
       >
@@ -230,7 +261,7 @@ export function OrderAdminLinkAction({
         onRemove={storedUrl ? () => patchAdminUrl(ids, null) : undefined}
         testId="order-admin-link"
       />
-      {href ? (
+      {href && showInlineOpen ? (
         <HoverTooltip label={storedUrl ? 'Open admin page (saved link)' : `Open on ${platformLabel || 'the platform'}`} asChild>
           <a
             href={href}
@@ -240,12 +271,12 @@ export function OrderAdminLinkAction({
             onPointerDown={stop}
             data-testid="order-card-open-order"
             aria-label={`Open order ${orderId} on ${platformLabel || 'the platform'}`}
-            className={ICON_CLASS}
+            className={cn(ICON_CLASS, revealClass)}
           >
             <ExternalLink aria-hidden className="size-3.5" />
           </a>
         </HoverTooltip>
-      ) : (
+      ) : !href ? (
         <HoverTooltip label="Add admin page link" asChild>
           <button
             type="button"
@@ -256,12 +287,12 @@ export function OrderAdminLinkAction({
             onPointerDown={stop}
             aria-label={`Add a link to order ${orderId}`}
             data-testid="order-admin-link-add"
-            className={ICON_CLASS}
+            className={cn(ICON_CLASS, revealClass)}
           >
             <Link2 className="size-3.5" />
           </button>
         </HoverTooltip>
-      )}
+      ) : null}
     </>
   );
 }

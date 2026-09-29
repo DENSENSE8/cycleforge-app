@@ -29,8 +29,8 @@
       "schedule": "5 * * * *"
     },
     {
-      "path": "/api/cron/shipping/sync-due?limit=150&concurrency=8",
-      "schedule": "7,22,37,52 * * * *"
+      "path": "/api/cron/shipping/sync-due?limit=200&concurrency=8&carriers=UPS,FEDEX",
+      "schedule": "*/5 * * * *"
     },
     {
       "path": "/api/cron/shipping/sync-due?limit=200&concurrency=8&carriers=UPS,FEDEX",

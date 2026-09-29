@@ -175,7 +175,7 @@ export async function recordShipStationLabelIngestion(input: ShipStationLabelIng
 }
 
 /** The ledger rows already recorded for these ShipStation shipments. */
-async function listShipStationIngestions(organizationId: OrgId, shipmentIds: readonly number[], overrides: Partial<LabelIngestionDependencies> = {}): Promise<PublicLabelIngestion[]> {
+export async function listShipStationIngestions(organizationId: OrgId, shipmentIds: readonly number[], overrides: Partial<LabelIngestionDependencies> = {}): Promise<PublicLabelIngestion[]> {
   if (shipmentIds.length === 0) return [];
   const deps = { ...dependencies, ...overrides };
   const result = await deps.query<LedgerRow>(organizationId, `SELECT ${ledgerColumns} FROM label_ingestions WHERE organization_id=$1 AND shipstation_shipment_id = ANY($2::bigint[]) ORDER BY id ASC`, [organizationId, [...shipmentIds]]);

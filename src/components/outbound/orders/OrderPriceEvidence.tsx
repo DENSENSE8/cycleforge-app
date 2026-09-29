@@ -29,14 +29,85 @@ const NET_BASIS_LABEL = {
   sale_amount: 'sale amount',
 } as const;
 
-export function OrderPriceEvidence({ orderId }: { orderId: number }) {
+export function OrderPriceEvidence({
+  orderId,
+  variant = 'disclosure',
+  immediateTotal = null,
+}: {
+  orderId: number;
+  /** Allocate keeps the exact order math inside the Items group. */
+  variant?: 'disclosure' | 'item-footer';
+  /** Already-loaded row total, painted on first render while exact math hydrates. */
+  immediateTotal?: number | null;
+}) {
   const query = useOrderPriceBreakdown(orderId);
   const [linesOpen, setLinesOpen] = useState(false);
   const b = query.data ?? null;
+  const unreadable = query.isError && immediateTotal == null;
   const net = b?.net ?? null;
+  // Some marketplace imports persist `amountPaid: 0` when payment happens on
+  // the marketplace. A positive order total is the useful price in that case;
+  // do not mislabel the imported zero as the value of the order.
+  const reportedPaid =
+    b?.amountPaid != null &&
+    (b.amountPaid > 0 || ((b.orderTotal ?? 0) === 0 && (immediateTotal ?? 0) === 0))
+      ? b.amountPaid
+      : null;
   // The row reads the price the buyer paid (owner 2026-09-26: no "Net" on the
   // row); the net math stays inside the disclosure.
-  const price = b ? (b.amountPaid ?? b.orderTotal ?? b.saleAmount ?? null) : null;
+  const positiveOrderTotal = b?.orderTotal != null && b.orderTotal > 0 ? b.orderTotal : null;
+  const price = reportedPaid ?? positiveOrderTotal ?? immediateTotal ?? b?.saleAmount ?? b?.itemSubtotal ?? null;
+
+  if (variant === 'item-footer') {
+    const rows = b
+      ? [
+          { label: 'Items', value: immediateTotal ?? b.itemSubtotal ?? b.saleAmount },
+          ...(b.adjustments != null ? [{ label: 'Adjustments', value: b.adjustments }] : []),
+          ...(b.shippingCharged != null ? [{ label: 'Shipping', value: b.shippingCharged }] : []),
+          ...(b.tax != null ? [{ label: 'Tax', value: b.tax }] : []),
+          ...(b.labelCostTotal > 0 ? [{ label: 'Labels', value: -b.labelCostTotal }] : []),
+          {
+            label: reportedPaid != null ? 'Paid' : 'Total',
+            value: price,
+          },
+        ]
+      : immediateTotal != null
+        ? [{ label: 'Total', value: immediateTotal }]
+        : [];
+    return (
+      <div className="flex min-w-0 justify-end border-t border-mode-edge px-4 py-3" data-testid="order-record-price">
+        <div className="w-full max-w-72">
+          {unreadable ? (
+            <p className={cn(RECORD_ID_CLASS, 'text-right text-mode-warn')}>Unreadable</p>
+          ) : rows.length === 0 ? (
+            <p className={cn(RECORD_ID_CLASS, 'text-right text-mode-muted')}>—</p>
+          ) : (
+            <dl className="grid grid-cols-[1fr_auto] gap-x-5 gap-y-1">
+              {rows.map((row, index) => (
+                <div key={`${row.label}-${index}`} className="contents">
+                  <dt className={cn(RECORD_LABEL_CLASS, 'text-right text-mode-muted')}>{row.label}</dt>
+                  <dd
+                    className={cn(
+                      RECORD_ID_CLASS,
+                      'min-w-20 text-right',
+                      row.value != null && row.value < 0
+                        ? STATE_TONE_CLASSES.danger.text
+                        : row.value == null
+                          ? 'text-mode-muted'
+                          : RECORD_PRICE_CLASS,
+                      index === rows.length - 1 && 'font-black',
+                    )}
+                  >
+                    {row.value == null ? '—' : row.value < 0 ? debit(Math.abs(row.value)) : formatCurrency(row.value)}
+                  </dd>
+                </div>
+              ))}
+            </dl>
+          )}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <EvidenceDisclosure
@@ -48,12 +119,12 @@ export function OrderPriceEvidence({ orderId }: { orderId: number }) {
             data-testid="evidence-price-value"
             className={cn(
               RECORD_ID_CLASS,
-              query.isError ? 'text-mode-warn' : price == null ? 'text-mode-muted' : STATE_TONE_CLASSES.success.text,
+              unreadable ? 'text-mode-warn' : price == null ? 'text-mode-muted' : STATE_TONE_CLASSES.success.text,
             )}
           >
-            {query.isError ? 'Unreadable' : b == null ? '—' : dash(price)}
+            {unreadable ? 'Unreadable' : dash(price)}
           </span>
-          {b?.amountPaid != null ? <span className="text-role-caption text-mode-muted">paid</span> : null}
+          {reportedPaid != null ? <span className="text-role-caption text-mode-muted">paid</span> : null}
         </span>
       }
     >

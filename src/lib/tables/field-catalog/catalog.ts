@@ -5,6 +5,14 @@ import type { SlotLayout } from '@/lib/tables/slot-layout-core';
 
 export const CATALOG_FIELD_CATALOG: FieldCatalog = [
   {
+    id: 'catalog.title',
+    family: 'catalog',
+    label: 'Product',
+    displayType: 'text',
+    slotKinds: ['subtitle'],
+    paths: { value: 'display_title' },
+  },
+  {
     id: 'catalog.sku',
     family: 'catalog',
     label: 'SKU',
@@ -33,6 +41,22 @@ export const CATALOG_FIELD_CATALOG: FieldCatalog = [
     displayType: 'number',
     slotKinds: ['status', 'subtitle'],
     paths: { value: 'platform_count' },
+  },
+  {
+    id: 'catalog.platforms',
+    family: 'catalog',
+    label: 'Platforms',
+    displayType: 'text',
+    slotKinds: ['status', 'subtitle'],
+    paths: { value: 'platform_ids' },
+  },
+  {
+    id: 'catalog.item_numbers',
+    family: 'catalog',
+    label: 'Item numbers',
+    displayType: 'id',
+    slotKinds: ['status', 'subtitle'],
+    paths: { value: 'platform_ids' },
   },
   {
     id: 'catalog.manuals',

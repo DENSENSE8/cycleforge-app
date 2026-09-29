@@ -6,6 +6,7 @@ import {
   buildPlatformShortLabelLookup,
   normalizeShortLabelInput,
   orderPlatformChoices,
+  platformDisplayName,
 } from './platform-display';
 
 let nextId = 1;
@@ -62,6 +63,15 @@ test('a connection short label wins over its platform short label', () => {
   assert.equal(d.shortLabel, 'MKG');
   assert.equal(d.connectionName, 'Mekong Store');
   assert.equal(d.meta.value, 'ebay');
+  assert.equal(platformDisplayName(d), 'eBay · Mekong Store');
+});
+
+test('an eBay order keeps its linked ShipStation storefront in the full detail label', () => {
+  const dragon = account(ebay, 'DRAGON', 'DRAGON');
+  const d = buildOrderChannelResolver([ebay], [dragon])('21-15107-47310', 'DRAGON');
+  assert.equal(d.label, 'eBay');
+  assert.equal(d.connectionName, 'DRAGON');
+  assert.equal(platformDisplayName(d), 'eBay · DRAGON');
 });
 
 test('account_source holding a connection NAME resolves through platform_accounts.label', () => {

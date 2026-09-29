@@ -214,6 +214,7 @@ function fakes(existing: Map<number, ExistingLineUnit[]> = new Map()) {
   const calls = {
     loads: [] as Array<{ orgId: string; lineIds: number[] }>,
     applies: [] as Array<{ lineId: number; plan: LineUnitPlan }>,
+    refreshes: [] as number[],
   };
   const deps: EnsureLineUnitsDeps = {
     loadUnits: async (orgId, lineIds) => {
@@ -222,6 +223,9 @@ function fakes(existing: Map<number, ExistingLineUnit[]> = new Map()) {
     },
     applyPlan: async (_orgId, lineId, plan) => {
       calls.applies.push({ lineId, plan });
+    },
+    refreshFacts: async (_orgId, lineId) => {
+      calls.refreshes.push(lineId);
     },
   };
   return { deps, calls };
@@ -239,6 +243,7 @@ test('ensureLineUnits loads every line in one call and applies each non-noop pla
   assert.equal(calls.loads.length, 1, 'one batched load for the whole carton');
   assert.deepEqual(calls.loads[0].lineIds, [7, 9]);
   assert.deepEqual(calls.applies.map((a) => a.lineId), [7, 9]);
+  assert.deepEqual(calls.refreshes, [7, 9]);
   assert.deepEqual(plans.get(7)?.insertOrdinals, [1, 2]);
   assert.deepEqual(plans.get(9)?.insertOrdinals, [1]);
 });

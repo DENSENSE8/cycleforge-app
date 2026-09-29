@@ -71,7 +71,7 @@ test('other scan stations keep their rail', () => {
 });
 
 test('the Inbound desk is rail-less by its own clause', () => {
-  // Inbound opted into `deskChrome` on 2026-09-14 (its two lanes are its tab row), and is STILL rail-less by its own clause — the two flags…
+  // Inbound is rail-less by its own `railless` clause, not derived from anything else.
   assert.equal(isRaillessSurface('/incoming', params()), true);
   assert.equal(isRaillessSurface('/incoming/anything', params()), true);
 });

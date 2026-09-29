@@ -21,6 +21,18 @@ export const printStationHeartbeatBodySchema = z.object({
 
 export type PrintStationHeartbeat = z.infer<typeof printStationHeartbeatBodySchema>;
 
+/**
+ * PUT /api/v1/print-stations/name — rename one station for the whole org. The
+ * registry owns the name; an empty name resets it to unnamed. Same ceiling as
+ * the name a computer keeps locally (`PRINT_STATION_NAME_MAX`).
+ */
+export const printStationRenameBodySchema = z.object({
+  stationId: z.string().trim().min(1).max(100),
+  name: z.string().trim().max(40),
+}).strict();
+
+export type PrintStationRenameBody = z.infer<typeof printStationRenameBodySchema>;
+
 /** PUT /api/v1/print-stations/assignment — set (or with null, clear) the org's station for one stock. */
 export const printStationAssignmentBodySchema = z.object({
   stock: z.enum(['label', 'paper']),

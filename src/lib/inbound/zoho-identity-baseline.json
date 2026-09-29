@@ -64,8 +64,6 @@
     "src/lib/photos/marketplace-media-backfill.ts",
     "src/lib/photos/mobile-gallery-url.ts",
     "src/lib/photos/product-image-url.ts",
-    "src/lib/picking/directed-feed.ts",
-    "src/lib/picking/pick-board.ts",
     "src/lib/receiving/facts/narrow.ts",
     "src/lib/receiving/label-identify.ts",
     "src/lib/receiving/line-catalog.ts",

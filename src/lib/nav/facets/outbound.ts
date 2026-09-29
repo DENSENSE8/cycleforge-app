@@ -3,9 +3,9 @@
  * one the list and desk-counts already read — `sqlDeskQueueScope` (To ship,
  * Pick list, PO paired), `sqlOrderDeskStage`, `sqlOrderAssignedToStaff`,
  * `sqlDeskRefinementClauses` (packedBy / pickerId / pickedBy / order date /
- * ship-by window), `sqlOrderTestDeadlineAt` (the list's ship-by), `exceptionScopeWhere` +
- * `ORDER_EXCEPTION_CATEGORY_SQL` + `exceptionSearchSql` (Exceptions) — so a
+ * ship-by window), `sqlOrderTestDeadlineAt` (the list's ship-by) — so a
  * facet count is, by construction, the total the list shows for that pick.
+ * (FBM › Exceptions is the Exceptions hub's: `src/lib/nav/facets/exceptions.ts`.)
  *
  * One statement per request: it returns one row per combination of facet
  * values with its count, and `computeFacets` does the rest in memory.
@@ -38,12 +38,6 @@ import {
   type DeskQueueView,
   type DeskStage,
 } from '@/lib/orders/desk-view-sql';
-import {
-  ORDER_EXCEPTION_CATEGORY_SQL,
-  exceptionScopeWhere,
-  exceptionSearchSql,
-} from '@/lib/orders/order-exceptions';
-import { ORDER_EXCEPTION_CATEGORIES } from '@/lib/orders/order-exception-types';
 
 type ParamReader = Pick<URLSearchParams, 'get'>;
 
@@ -180,50 +174,6 @@ function toQueueCombo(row: Record<string, unknown>): QueueFacetCombo {
   };
 }
 
-// ── Exceptions ───────────────────────────────────────────────────────────────
-
-export interface ExceptionFacetCombo {
-  category: string;
-  n: number;
-}
-
-/** `?category=` exactly as the workbench parses it; `?search=` → the list's `q`. */
-export function readExceptionFacetFilters(params: ParamReader): { active: ActiveFacetFilters; search: string } {
-  const raw = params.get('category');
-  return {
-    active: { category: raw && (ORDER_EXCEPTION_CATEGORIES as readonly string[]).includes(raw) ? raw : null },
-    search: String(params.get('search') ?? '').trim(),
-  };
-}
-
-export function buildExceptionFacetSql(orgId: string, search: string) {
-  const params: unknown[] = [orgId];
-  let searchClause = '';
-  if (search) {
-    params.push(`%${search.toLowerCase()}%`);
-    searchClause = `AND ${exceptionSearchSql(`$${params.length}`)}`;
-  }
-  const sql = `
-    SELECT (${ORDER_EXCEPTION_CATEGORY_SQL}) AS category, COUNT(*)::int AS n
-      FROM orders o
-      LEFT JOIN shipping_tracking_numbers stn ON stn.id = o.shipment_id
-     ${exceptionScopeWhere('actionable')}
-     ${searchClause}
-     GROUP BY 1`;
-  return { sql, params };
-}
-
-function exceptionDimensions(): FacetDimension<ExceptionFacetCombo>[] {
-  const decl = groupDecl('outbound.exceptions', 'category');
-  return [
-    {
-      groupId: 'category', label: decl.label, param: decl.param,
-      options: ORDER_EXCEPTION_CATEGORIES.map((value) => ({ value, label: value })),
-      matches: (row, value) => row.category === value,
-    },
-  ];
-}
-
 // ── entry ────────────────────────────────────────────────────────────────────
 
 const QUEUE_VIEW: Partial<Record<NavFacetContext, DeskQueueView>> = {
@@ -243,14 +193,6 @@ export async function outboundFacets(
   params: ParamReader,
   run: FacetSqlRunner,
 ): Promise<NavFacetsResponse> {
-  if (context === 'outbound.exceptions') {
-    const { active, search } = readExceptionFacetFilters(params);
-    const { sql, params: bind } = buildExceptionFacetSql(orgId, search);
-    const rows = (await run(sql, bind)).map((r) => ({ category: String(r.category), n: Number(r.n) || 0 }));
-    const { total, groups } = computeFacets(rows, exceptionDimensions(), active);
-    return { context, total, groups: declaredGroups(context, groups) };
-  }
-
   const view = QUEUE_VIEW[context];
   if (!view) throw new Error(`no outbound facet source for ${context}`);
   const { sql, params: bind } = buildQueueFacetSql(view, orgId, readStaffFilter(params), readDeskRefinements(params));

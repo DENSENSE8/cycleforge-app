@@ -48,6 +48,11 @@ export const inboundOrderLineSchema = z.object({
   listingUrl: text(2000),
   /** Marketplace item number the listing carries (eBay item, ASIN, …). */
   itemNumber: text(64),
+  /** Pickup-paperwork facts. Optional on every other inbound type. */
+  conditionGrade: z.enum(['BRAND_NEW', 'USED_A', 'USED_B', 'USED_C', 'PARTS']).nullable().optional(),
+  partsStatus: z.enum(['COMPLETE', 'MISSING_PARTS']).nullable().optional(),
+  missingPartsNote: text(500).optional(),
+  conditionNote: text(1000).optional(),
 });
 export type InboundOrderLine = z.infer<typeof inboundOrderLineSchema>;
 
@@ -78,11 +83,20 @@ export const inboundOrderDraftSchema = z.object({
   notes: text(2000),
   returnReason: text(500),
   rmaId: text(200),
+  /** Money-receipt facts carried by local-pickup paperwork. */
+  pickup: z.object({
+    paymentMethod: text(40),
+    paidCents: z.number().int().min(0).max(1_000_000_000).nullable(),
+  }).optional(),
 });
 export type InboundOrderDraft = z.infer<typeof inboundOrderDraftSchema>;
 
 export function emptyInboundOrderLine(): InboundOrderLine {
-  return { lineKey: '', skuCatalogId: null, sku: '', title: '', quantity: null, unitCostCents: null, listingUrl: '', itemNumber: '' };
+  return {
+    lineKey: '', skuCatalogId: null, sku: '', title: '', quantity: null,
+    unitCostCents: null, listingUrl: '', itemNumber: '', conditionGrade: null,
+    partsStatus: null, missingPartsNote: '', conditionNote: '',
+  };
 }
 
 export function emptyInboundOrderDraft(type: InboundOrderType = 'PO'): InboundOrderDraft {
@@ -101,6 +115,7 @@ export function emptyInboundOrderDraft(type: InboundOrderType = 'PO'): InboundOr
     notes: '',
     returnReason: '',
     rmaId: '',
+    pickup: { paymentMethod: '', paidCents: null },
   };
 }
 
@@ -212,6 +227,7 @@ export type InboundOrderField =
   | 'lines'
   | 'line_identity'
   | 'quantity'
+  | 'pickup_date'
   | 'tracking'
   | 'return_item'
   | 'return_reason'
@@ -238,6 +254,7 @@ export function inboundOrderMissing(draft: InboundOrderDraft, opts: { returnClai
     needs.push({ field: 'zoho_source', label: 'Zoho orders arrive by sync, not by hand — pick the seller platform' });
   }
   if (!normalizeInboundOrderNumber(draft.orderNumber)) needs.push({ field: 'order_number', label: 'Order / PO number' });
+  if (draft.type === 'PICKUP' && !draft.orderDate) needs.push({ field: 'pickup_date', label: 'Pickup date' });
 
   const indexed = draft.lines.map((line, index) => ({ line, index }));
   const filled = indexed.filter(({ line }) => lineHasIdentity(line) || line.quantity != null || line.unitCostCents != null);

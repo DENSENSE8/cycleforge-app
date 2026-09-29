@@ -74,8 +74,6 @@ export const LAYER_LAW_ALLOWLIST: Readonly<Record<LayerLaw, Readonly<Record<stri
     'src/components/receiving/pickup/pickup-lines.ts': 'pickup money via $…toFixed(2)',
     'src/components/receiving/workspace/note-composer-helpers.ts': 'PO unit cost via $…toFixed(2)',
     'src/components/receiving/workspace/carton-add/WebTab.tsx': 'web search hit price (not an order fact) via toFixed(2)',
-    'src/components/receiving/incoming/order-composer/InboundOrderLines.tsx':
-      'cents → input value serialization (census: unconfirmed as a display reader)',
   },
 };
 

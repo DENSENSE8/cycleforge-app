@@ -14,6 +14,7 @@ import { claimPasswordResetToken } from '@/lib/auth/password-reset';
 import { setAccountPassword } from '@/lib/identity/accounts';
 import { listMembershipsForAccount, logAuthEvent } from '@/lib/identity/memberships';
 import { recordStaffLoginRedirect } from '@/lib/auth/record-staff-login';
+import { tenantQuery } from '@/lib/tenancy/db';
 
 export const runtime = 'nodejs';
 
@@ -93,8 +94,13 @@ export async function POST(req: NextRequest) {
     userAgent: ua,
   });
 
+  // `accounts` is the cross-org identity row; the staff row is stamped under its own org's GUC.
   void pool.query(`UPDATE accounts SET last_login_at = now() WHERE id = $1`, [claim.accountId]).catch(() => {});
-  const redirectTo = await recordStaffLoginRedirect(pool, target.staff_id, { mobile: false });
+  const redirectTo = await recordStaffLoginRedirect(
+    { query: (text, params) => tenantQuery(target.organization_id, text, params ?? []) },
+    target.staff_id,
+    { mobile: false },
+  );
 
   await audit({
     staffId: target.staff_id, sid: session.sid,

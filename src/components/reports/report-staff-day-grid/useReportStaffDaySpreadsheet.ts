@@ -28,14 +28,16 @@ interface UseReportStaffDaySpreadsheetOptions {
   rows: readonly StaffDayReportRow[];
   loading?: boolean;
   emptyMessage?: string;
-  searchPlaceholder?: string;
+  searchValue: string;
+  onSearchChange: (next: string) => void;
 }
 
 export function useReportStaffDaySpreadsheet({
   rows,
   loading = false,
   emptyMessage = 'No checks on this day — nobody was on the roster, or the list was empty.',
-  searchPlaceholder = 'Filter this day…',
+  searchValue,
+  onSearchChange,
 }: UseReportStaffDaySpreadsheetOptions): CompoundSpreadsheetFeed<
   StaffDayReportRow,
   ReportStaffDayGridColumnKey,
@@ -43,7 +45,6 @@ export function useReportStaffDaySpreadsheet({
 > {
   const [sort, setSort] = useState<ReportStaffDayGridColumnKey | null>(null);
   const [dir, setDir] = useState<GridSortDir | null>(null);
-  const [query, setQuery] = useState('');
 
   const { effectiveLayout, subtitleFieldIds, fields } = useReportStaffDayTableLayout();
   const columns = useMemo(
@@ -60,8 +61,8 @@ export function useReportStaffDaySpreadsheet({
   );
 
   const search = useMemo(
-    () => ({ value: query, onChange: setQuery, placeholder: searchPlaceholder }),
-    [query, searchPlaceholder],
+    () => ({ value: searchValue, onChange: onSearchChange, placeholder: 'Filter this day…' }),
+    [searchValue, onSearchChange],
   );
 
   return useCompoundSpreadsheet<
@@ -83,6 +84,7 @@ export function useReportStaffDaySpreadsheet({
     dir,
     onSortChange,
     search,
+    findOwner: 'page',
     loading,
     emptyMessage,
     ariaLabel: 'Staff day, one row per staffer and task',

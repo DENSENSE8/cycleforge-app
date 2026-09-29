@@ -36,10 +36,24 @@ function pipelineUrl(): string {
 /** Upstash brownouts must not hang request paths; callers already fail open on throw. */
 export const REDIS_FETCH_TIMEOUT_MS = Number(process.env.REDIS_FETCH_TIMEOUT_MS) || 1_500;
 
+async function fetchWithRedisTimeout(url: string, init: RequestInit): Promise<Response> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => {
+    const error = new Error('Redis request timed out');
+    error.name = 'TimeoutError';
+    controller.abort(error);
+  }, REDIS_FETCH_TIMEOUT_MS);
+  try {
+    return await fetch(url, { ...init, signal: controller.signal });
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 /** Execute N Redis commands in one pipeline HTTP round-trip. */
 export async function redisPipeline<T = unknown>(commands: RedisCommand[]): Promise<(T | null)[]> {
   if (!isRedisConfigured() || commands.length === 0) return [];
-  const res = await fetch(pipelineUrl(), {
+  const res = await fetchWithRedisTimeout(pipelineUrl(), {
     method: 'POST',
     headers: {
       Authorization: `Bearer ${REST_TOKEN}`,
@@ -47,7 +61,6 @@ export async function redisPipeline<T = unknown>(commands: RedisCommand[]): Prom
     },
     body: JSON.stringify(commands),
     cache: 'no-store',
-    signal: AbortSignal.timeout(REDIS_FETCH_TIMEOUT_MS),
   });
   if (!res.ok) throw new Error(`upstash pipeline failed: ${res.status}`);
   const data = (await res.json()) as Array<{ result?: unknown; error?: string }>;

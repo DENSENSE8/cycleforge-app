@@ -57,6 +57,31 @@ export async function getSupplierList(params: {
   return { items: result.rows, total: countResult.rows[0]?.total || 0 };
 }
 
+/**
+ * Lightweight picker feed. Unlike the management list this deliberately does
+ * not run a second COUNT query or hydrate contact/stat fields the kiosk never
+ * displays.
+ */
+export async function getSupplierNameOptions(
+  params: { q?: string; limit?: number },
+  orgId: OrgId,
+): Promise<Array<{ id: number; name: string }>> {
+  const search = (params.q || '').trim();
+  const limit = Math.max(1, Math.min(params.limit || 100, 200));
+  const result = await tenantQuery<{ id: number; name: string }>(
+    orgId,
+    `SELECT id, name
+       FROM suppliers
+      WHERE organization_id = $1
+        AND is_active = true
+        AND ($2 = '' OR name ILIKE '%' || $2 || '%')
+      ORDER BY name
+      LIMIT $3`,
+    [orgId, search, limit],
+  );
+  return result.rows;
+}
+
 interface SupplierWithStatsRow extends SupplierRow {
   candidate_count: number;
   acquisition_count: number;

@@ -42,6 +42,7 @@ export interface RecordCardDeadline {
  * DATE the record last moved (history's activity stamp; danger while `alert`).
  */
 export type RecordCardStatus =
+  | { kind: 'none' }
   | ({ kind: 'deadline' } & RecordCardDeadline)
   | { kind: 'state'; face: string; tone: StateName; tip: string | null }
   | { kind: 'date'; face: string; tip: string | null; alert: boolean };
@@ -83,6 +84,15 @@ export interface RecordCardNextStep {
   /** The step cannot run yet (orders: a line is out of stock) — danger ink. */
   blocked: boolean;
 }
+/**
+ * Family-owned line-one facts. The discriminant keeps these slots factual:
+ * status has its own `RecordCardModel.status` channel and cannot be passed as
+ * an unlabeled second node.
+ */
+export type RecordCardSlotFact =
+  | { role: 'identity'; content: ReactNode }
+  | { role: 'trailing'; content: ReactNode };
+
 
 export interface RecordCardModel {
   /** Stable card key (list keys, expand / quick-look state). */
@@ -122,4 +132,22 @@ export interface RecordCardModel {
   lines: readonly RecordCardLine[];
   /** Folded-row hint for hidden alert lines ("2 more out of stock"). */
   hiddenAlertLabel: (count: number) => string;
+}
+
+/**
+ * The phone face's contract (`RecordCardMobile`, owner 2026-09-28 / 2026-09-29):
+ * the desk card's facts minus what a phone never paints — no check, no hover
+ * peek, no chips, no notes, no next step, no state rail, no record ref. The
+ * family adapter fills it the same way.
+ */
+export interface RecordCardMobileModel {
+  key: string;
+  leadId: number;
+  /** The channel the record came through — painted after the lead line's facts. */
+  channel: { label: string; dot: ReactNode; badge: string | null } | null;
+  /** Top-right: the due date (orders: the SLA). */
+  deadline: RecordCardDeadline;
+  /** Every line; [0] is the lead (the adapter puts alert lines first). */
+  lines: readonly RecordCardLine[];
+  aria: { card: string; open: string };
 }

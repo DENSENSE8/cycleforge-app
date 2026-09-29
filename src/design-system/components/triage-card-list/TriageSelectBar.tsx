@@ -3,8 +3,8 @@
 /**
  * The bar above a TriageCardList (owner 2026-09-27): select-all · record count
  * (or "N selected") · status chips (or, with anything checked, the
- * selection's verbs) · pager · per-page · view switch (In place · Split ·
- * Floor) (always last). No Find: the page has ONE field — the sidebar's, or
+ * selection's verbs) · pager · per-page · view switch (In place · Split)
+ * (always last). No Find: the page has ONE field — the sidebar's, or
  * the global header's while the sidebar is closed (owner 2026-09-28). Law 5:
  * the verbs live ONLY here, the same list in the same order at 1 or N checked.
  * Mobile first: under @3xl the chips / verbs take their own full-width row and
@@ -281,7 +281,7 @@ export function TriageSelectBar({
                   testId={`${testIdPrefix}-page-mode`}
                 />
               ) : null}
-              {/* How a record opens — In place, Split or Floor — seen and switched before one is open. */}
+              {/* How a record opens — In place or Split — seen and switched before one is open. */}
               {viewControls ? <DeskRecordViewSwitch labels="wide" /> : null}
               {/* ⤢ always the bar's last, top-right-most control (owner 2026-09-27). */}
               {viewControls ? <DeskFullscreenToggle /> : null}

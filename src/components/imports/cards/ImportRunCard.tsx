@@ -103,7 +103,7 @@ export const ImportRunCard = memo(function ImportRunCard({
       person: null,
       chips: [],
       notes: { fixed: null, own: null },
-      status: { kind: 'state', face: state.label, tone: state.tone, tip: STATUS_MEANING[run.status] },
+      status: { kind: 'none' },
       next:
         run.totals.needsReview > 0
           ? {
@@ -167,8 +167,8 @@ export const ImportRunCard = memo(function ImportRunCard({
       onToggleCheck={(event) => onToggleCheck(model, event)}
       onToggleExpand={() => onToggleExpand(model.key)}
       onTogglePeek={() => onTogglePeek(model.key)}
-      identity={identity}
-      trailing={trailing}
+      identity={{ role: 'identity', content: identity }}
+      trailing={{ role: 'trailing', content: trailing }}
       quickLook={
         <ImportCardPeek
           key="peek"

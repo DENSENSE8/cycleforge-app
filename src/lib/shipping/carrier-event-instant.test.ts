@@ -73,6 +73,27 @@ test('FedEx: offset-bearing stamps as given; date-only pickups in the warehouse 
   assert.equal(isoStampInstant('not a date'), null);
 });
 
+test('FedEx: a GS1 scanner envelope resolves to the existing carrier identity', () => {
+  const payload = {
+    output: {
+      completeTrackResults: [{
+        trackingNumber: '9621091390008524261900383825682187',
+        trackResults: [{
+          trackingNumberInfo: { trackingNumber: '9621091390008524261900383825682187' },
+          latestStatusDetail: { code: 'DL', description: 'Delivered' },
+          scanEvents: [],
+          dateAndTimes: [{ type: 'ACTUAL_DELIVERY', dateTime: '2026-09-26T12:00:00-07:00' }],
+        }],
+      }],
+    },
+  };
+
+  const result = parseFedExTrackingPayload(payload);
+  assert.ok(result);
+  assert.equal(result.trackingNumberNormalized, '383825682187');
+  assert.equal(result.latestStatusCategory, 'DELIVERED');
+});
+
 test('USPS v3: GMTTimestamp wins; eventTimestamp + GMTOffset is the fallback; eventType is the text', () => {
   // Live lane row 43998 (tracking v3 `trackingEvents[]` shape).
   const stored = {

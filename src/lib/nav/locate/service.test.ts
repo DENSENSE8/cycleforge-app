@@ -118,7 +118,7 @@ test('outbound text: one bucket per desk view in DESK_VIEW_ORDER, each counted b
   assert.deepEqual(body.buckets.map((b) => b.id), [...DESK_VIEW_ORDER]);
   assert.deepEqual(body.buckets.map((b) => b.href), [
     ...DESK_VIEW_ORDER.filter((id) => id !== 'shipped').map((id) => deskViewHref(id)),
-    `${deskViewHref('shipped')}?allDates=1`,
+    `${deskViewHref('shipped')}&allDates=1`,
   ]);
   // Every href survives its route's hygiene, and Shipped opens on the window its count reads (none).
   for (const bucket of body.buckets) {

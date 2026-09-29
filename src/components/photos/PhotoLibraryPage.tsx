@@ -16,9 +16,7 @@ import { buildPhotoDateTree } from '@/lib/photos/date-tree';
 import {
   PHOTO_LIBRARY_HEADER_DISPLAY_MODES,
   sourceScopeFromFilters,
-  type PhotoSearchField,
 } from '@/lib/photos/library-filter-state';
-import { filterPhotosByQuery } from '@/lib/photos/photo-find';
 import { parsePhotoLibraryTicketSearch } from '@/lib/photos/ticket-search';
 import { cornerClass } from '@/design-system/tokens/radius';
 import { focusRing } from '@/design-system/tokens/focus-ring';
@@ -46,7 +44,6 @@ import {
 } from './PhotoLibraryDeskActions';
 import { PhotoLibraryGrid } from './PhotoLibraryGrid';
 import { PhotoBatchInspectorPanel } from './photo-inspector/PhotoBatchInspectorPanel';
-import { usePhotoLibraryScope } from './PhotoLibraryScopeBand';
 import { DeskPageLayout } from '@/components/desk/DeskPageLayout';
 import { PhotoLibraryTicketNasBackup } from './PhotoLibraryTicketNasBackup';
 import { PhotoLabelEditor } from './PhotoLabelEditor';
@@ -76,7 +73,6 @@ import { isLibraryDocument, libraryDocumentId } from './photo-library-types';
 
 /** Right pane: workbench chrome + the flat photo stream. Filters live in the header. */
 export function PhotoLibraryPage() {
-  const libraryScope = usePhotoLibraryScope();
   const { filters, display, setView, patch, applyView } = usePhotoLibraryUrlState();
   const { view } = display;
 
@@ -97,14 +93,8 @@ export function PhotoLibraryPage() {
   }, [filters.poRef, filters.poFinder, filters.receivingId, photos]);
 
   const scope = sourceScopeFromFilters(filters);
-
-  /** The find-bar, session-local — it NEVER writes the URL. */
-  const [searchQuery, setSearchQuery] = useState('');
-  const [searchField, setSearchField] = useState<PhotoSearchField>('all');
-  const visiblePhotos = useMemo(
-    () => filterPhotosByQuery(photos, searchQuery, { scope, field: searchField }),
-    [photos, searchQuery, searchField, scope],
-  );
+  const searchQuery = filters.q ?? '';
+  const visiblePhotos = photos;
 
   const resolvedTicketId = useMemo<string | undefined>(() => {
     if (filters.ticketId?.trim()) return filters.ticketId.trim().replace(/^#/, '');
@@ -664,14 +654,7 @@ export function PhotoLibraryPage() {
 
   return (
     /* The one page frame (2026-08-31) — `@/design-system/components/DeskPageChrome` via `DeskPageLayout`. */
-    <DeskPageLayout
-      className="h-full"
-      title="Media"
-      tabs={libraryScope.tabs}
-      activeTab={libraryScope.activeTab}
-      onTabChange={libraryScope.selectSection}
-      tabsLead={libraryScope.lead}
-    >
+    <DeskPageLayout className="h-full" title="Media">
     <PhotoLibraryDeskActions
       shownIds={shownIds}
       shownCount={shownIds.length}
@@ -683,15 +666,11 @@ export function PhotoLibraryPage() {
     <RightPaneOverlayHost className="flex h-full min-h-0 min-w-0 flex-1 flex-col">
     <DashboardScrollShell
       chrome={
-        // One find row on the card (DataTable shape). Breadcrumb lives on
-        // TableStatusBar's idle-left `lead`. Bands stay mounted under selection
-        // (2026-08-09) — bulk verbs are the right-edge rail.
+        // Card controls stay mounted under selection; the page-level Find lives
+        // in the header and writes `?q=` through NAV_PAGE_DECLS.
         <PhotoLibraryFindRow
           filters={filters}
           view={view}
-          search={{ value: searchQuery, onChange: setSearchQuery }}
-          searchField={searchField}
-          onSearchFieldChange={setSearchField}
           onPatch={patch}
           onApplyView={(payload) => applyView(payload.filters, payload.view)}
           onViewChange={handleViewChange}

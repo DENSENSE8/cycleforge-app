@@ -6,6 +6,7 @@ import { projectReceivingTriageMemberships } from '@/lib/receiving/feed-membersh
 import { projectOrdersUnshippedMemberships } from '@/lib/orders/feed-membership-projection';
 import { refreshAllOrderStageFacts } from '@/lib/orders/order-stage-facts';
 import { forEachActiveOrg } from '@/lib/cron/for-each-org';
+import { deriveSkuPickOwners } from '@/lib/picking/sku-pick-owners';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 60;
@@ -29,9 +30,16 @@ export async function GET(request: NextRequest) {
           changed: facts.reduce((n, r) => n + (r.result ?? 0), 0),
           failedOrgs: facts.filter((r) => !r.ok).map((r) => r.orgId),
         };
+        // New pick patterns become item owners (next picker default). Existing
+        // owners — operator overrides included — are never replaced.
+        const owners = await forEachActiveOrg((orgId, client) => deriveSkuPickOwners(orgId, { dryRun: false, client }));
+        const skuPickOwners = {
+          inserted: owners.reduce((n, r) => n + (r.result?.inserted ?? 0), 0),
+          failedOrgs: owners.filter((r) => !r.ok).map((r) => r.orgId),
+        };
         const receiving = await projectReceivingTriageMemberships(windowDays);
         const orders = await projectOrdersUnshippedMemberships(windowDays);
-        return { orderStageFacts, receiving, orders };
+        return { orderStageFacts, skuPickOwners, receiving, orders };
       }),
     );
     if (!locked.ran) return NextResponse.json({ success: true, skipped: 'locked' });

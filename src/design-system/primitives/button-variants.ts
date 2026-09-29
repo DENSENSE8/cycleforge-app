@@ -31,3 +31,16 @@ export const BUTTON_VARIANTS = {
 } as const;
 
 export type ButtonVariant = keyof typeof BUTTON_VARIANTS;
+
+/**
+ * Chunky CTA ledge (Button `depth`) — each solid fill's own ink one ramp
+ * deeper, set as the `shadow-<color>` that `shadow-elev-depth` paints. A
+ * variant without an entry keeps the neutral ledge baked into the token.
+ */
+export const BUTTON_DEPTH_EDGE: Partial<Record<ButtonVariant, string>> = {
+  primary: 'shadow-blue-800',
+  success: 'shadow-emerald-800',
+  danger: 'shadow-rose-800',
+  warning: 'shadow-amber-800',
+  yellow: 'shadow-yellow-600',
+};

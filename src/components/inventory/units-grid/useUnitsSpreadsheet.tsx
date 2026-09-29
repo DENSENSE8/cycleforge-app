@@ -119,7 +119,7 @@ export function useUnitsSpreadsheet({
     loading,
     emptyMessage,
     searchEmptyMessage,
-    search,
+    sheetFind: search,
     scrollRef,
     totalCount,
     onLoadMore,

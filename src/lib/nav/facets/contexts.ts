@@ -3,8 +3,9 @@
  * (`<pageId>.<sectionItemId>`, or the bare `<pageId>` for a page without
  * section views), and the filter groups each one declares.
  *
- * Pure data, import-free: the nav-context resolver copies `NAV_FACET_GROUPS`
- * verbatim into `NavContext.filters.groups`, and the facets route returns
+ * Pure data (its imports are the Exceptions kind vocabulary): the
+ * nav-context resolver copies `NAV_FACET_GROUPS` verbatim into
+ * `NavContext.filters.groups`, and the facets route returns
  * option counts for exactly these group ids/params — one declaration, two
  * readers. Every `param` is a URL param the view's list already reads, so a
  * facet link survives the route's param spec and drives the same predicate.
@@ -12,6 +13,9 @@
  * Shipping (page `outbound`) section items are the DESK_VIEWS ids; a station
  * page with no section views uses the bare page id (`pickup`).
  */
+
+import { EXCEPTION_KIND_PERMISSION } from '@/lib/exceptions/permissions';
+import { exceptionKindsOf } from '@/lib/exceptions/types';
 
 export const NAV_FACET_CONTEXTS = [
   'outbound.exceptions',
@@ -22,6 +26,21 @@ export const NAV_FACET_CONTEXTS = [
   'pickup',
   'imports.runs',
   'imports.rows',
+  // The Exceptions hub (`/exceptions`): one context per kind plus the whole
+  // hub; totals are the hub list's (`src/lib/nav/facets/exceptions.ts`).
+  'exceptions',
+  'exceptions.fulfillment',
+  'exceptions.inventory',
+  'exceptions.receiving',
+  'exceptions.fbm',
+  'exceptions.labels',
+  'exceptions.paperwork',
+  'exceptions.pairs',
+  'exceptions.bins',
+  'exceptions.tracking',
+  'exceptions.claim',
+  'exceptions.short',
+  'exceptions.unfound',
 ] as const;
 export type NavFacetContext = (typeof NAV_FACET_CONTEXTS)[number];
 
@@ -41,7 +60,8 @@ const OUT_OF_STOCK: NavFacetGroupDecl = { id: 'ustatus', label: 'Stock', param: 
 const IMPORT_SOURCE: NavFacetGroupDecl = { id: 'source', label: 'Source', param: 'source', multi: true };
 
 export const NAV_FACET_GROUPS: Readonly<Record<NavFacetContext, readonly NavFacetGroupDecl[]>> = {
-  'outbound.exceptions': [{ id: 'category', label: 'Category', param: 'category', multi: false }],
+  // FBM › Exceptions is the hub list locked to Fulfillment — counts only.
+  'outbound.exceptions': [],
   'outbound.triage': [STAGE, AGING, LATE, URGENT, OUT_OF_STOCK],
   'outbound.pick': [STAGE, AGING, LATE, URGENT, OUT_OF_STOCK],
   'outbound.po': [AGING, LATE, URGENT],
@@ -53,7 +73,14 @@ export const NAV_FACET_GROUPS: Readonly<Record<NavFacetContext, readonly NavFace
     { id: 'status', label: 'Tracking status', param: 'statusCategory', multi: false },
     { id: 'exceptions', label: 'Needs attention', param: 'exceptions', multi: false },
   ],
-  pickup: [{ id: 'status', label: 'Status', param: 'status', multi: false }],
+  pickup: [
+    { id: 'status', label: 'Order status', param: 'status', multi: false },
+    { id: 'qc', label: 'Quality control', param: 'qc', multi: false },
+    { id: 'triage', label: 'Triage', param: 'triage', multi: false },
+    { id: 'label', label: 'QC label', param: 'label', multi: false },
+    { id: 'ticket', label: 'Ticket', param: 'ticket', multi: false },
+    { id: 'vendor', label: 'Seller', param: 'vendor', multi: false },
+  ],
   // The import record's lists (`/api/imports/runs|rows`, `src/lib/imports/params.ts`):
   // source · platform · account · outcome are multi-value, comma-joined (a
   // run's source is any step it ran); a run's status is one value.
@@ -64,15 +91,30 @@ export const NAV_FACET_GROUPS: Readonly<Record<NavFacetContext, readonly NavFace
     { id: 'account', label: 'Account', param: 'account', multi: true },
     { id: 'outcome', label: 'Outcome', param: 'outcome', multi: true },
   ],
+  // Counts only — the hub's kind / domain rows ARE its filters.
+  exceptions: [],
+  'exceptions.fulfillment': [],
+  'exceptions.inventory': [],
+  'exceptions.receiving': [],
+  'exceptions.fbm': [],
+  'exceptions.labels': [],
+  'exceptions.paperwork': [],
+  'exceptions.pairs': [],
+  'exceptions.bins': [],
+  'exceptions.tracking': [],
+  'exceptions.claim': [],
+  'exceptions.short': [],
+  'exceptions.unfound': [],
 };
 
 /**
  * Permission gating each context — the one its view's own list endpoint
- * requires. `/api/nav/facets` refuses (403) without it, and the resolver omits
- * `filters` for a caller who lacks it.
+ * requires (a list = ANY of them: bare `exceptions` answers for whichever
+ * kinds the caller may see). `/api/nav/facets` refuses (403) without it, and
+ * the resolver omits `filters` for a caller who lacks it.
  */
-export const NAV_FACET_PERMISSION: Readonly<Record<NavFacetContext, string>> = {
-  'outbound.exceptions': 'orders.view',
+export const NAV_FACET_PERMISSION: Readonly<Record<NavFacetContext, string | readonly string[]>> = {
+  'outbound.exceptions': [...new Set(exceptionKindsOf('fulfillment').map((kind) => EXCEPTION_KIND_PERMISSION[kind]))],
   'outbound.triage': 'orders.view',
   'outbound.pick': 'orders.view',
   'outbound.po': 'orders.view',
@@ -80,7 +122,26 @@ export const NAV_FACET_PERMISSION: Readonly<Record<NavFacetContext, string>> = {
   pickup: 'walk_in.view',
   'imports.runs': 'orders.view',
   'imports.rows': 'orders.view',
+  exceptions: [...new Set(Object.values(EXCEPTION_KIND_PERMISSION))],
+  'exceptions.fulfillment': [...new Set(exceptionKindsOf('fulfillment').map((kind) => EXCEPTION_KIND_PERMISSION[kind]))],
+  'exceptions.inventory': [...new Set(exceptionKindsOf('inventory').map((kind) => EXCEPTION_KIND_PERMISSION[kind]))],
+  'exceptions.receiving': [...new Set(exceptionKindsOf('receiving').map((kind) => EXCEPTION_KIND_PERMISSION[kind]))],
+  'exceptions.fbm': EXCEPTION_KIND_PERMISSION.fbm,
+  'exceptions.labels': EXCEPTION_KIND_PERMISSION.labels,
+  'exceptions.paperwork': EXCEPTION_KIND_PERMISSION.paperwork,
+  'exceptions.pairs': EXCEPTION_KIND_PERMISSION.pairs,
+  'exceptions.bins': EXCEPTION_KIND_PERMISSION.bins,
+  'exceptions.tracking': EXCEPTION_KIND_PERMISSION.tracking,
+  'exceptions.claim': EXCEPTION_KIND_PERMISSION.claim,
+  'exceptions.short': EXCEPTION_KIND_PERMISSION.short,
+  'exceptions.unfound': EXCEPTION_KIND_PERMISSION.unfound,
 };
+
+/** May a caller holding `permissions` read `context`'s counts? */
+export function mayReadNavFacet(permissions: ReadonlySet<string>, context: NavFacetContext): boolean {
+  const required = NAV_FACET_PERMISSION[context];
+  return typeof required === 'string' ? permissions.has(required) : required.some((p) => permissions.has(p));
+}
 
 export function isNavFacetContext(value: string): value is NavFacetContext {
   return (NAV_FACET_CONTEXTS as readonly string[]).includes(value);

@@ -121,8 +121,29 @@ function CardSkeletons() {
   );
 }
 
+/** Loading placeholders in the TriageRow's anatomy: check · state · identity · title · facts, one line each. */
+function RowSkeletons() {
+  return (
+    <ul aria-hidden className="flex flex-col border-t border-mode-rule">
+      {Array.from({ length: 12 }, (_, i) => (
+        <li key={i} className="flex min-h-11 items-center gap-3 border-b border-mode-rule py-1.5 pl-4 pr-4">
+          <span className="flex w-7 shrink-0 justify-center">
+            <span className="block size-[18px] animate-pulse rounded-[5px] bg-mode-well" />
+          </span>
+          <span className="h-4 w-20 shrink-0 animate-pulse rounded-md bg-mode-well" />
+          <span className="h-3.5 w-24 shrink-0 animate-pulse rounded-md bg-mode-well" />
+          <span className="h-3.5 flex-1 animate-pulse rounded-md bg-mode-well" style={{ animationDelay: `${i * 40}ms` }} />
+          <span className="h-3.5 w-28 shrink-0 animate-pulse rounded-md bg-mode-well" />
+        </li>
+      ))}
+    </ul>
+  );
+}
+
 export interface TriageListBodyProps {
   testIdPrefix: string;
+  /** `row`: the one-row density — rows draw their own full-bleed hairline; the list opens with one. */
+  density: 'card' | 'row';
   noun: { one: string; many: string };
   /** The list's scroller — shared with the held-new hold and the page / find scroll. */
   scrollRef: RefObject<HTMLDivElement>;
@@ -161,6 +182,7 @@ export interface TriageListBodyProps {
 
 export function TriageListBody({
   testIdPrefix,
+  density,
   noun,
   scrollRef,
   cardCount,
@@ -247,7 +269,7 @@ export function TriageListBody({
           {leadSlot}
           {cardCount === 0 ? (
             busy ? (
-              <CardSkeletons />
+              density === 'row' ? <RowSkeletons /> : <CardSkeletons />
             ) : statusFiltered.active ? (
               <motion.div
                 initial={{ opacity: 0, y: 8 }}
@@ -272,8 +294,18 @@ export function TriageListBody({
           ) : (
             // Cards divide themselves with a hairline above (`[&+&]:before`), so
             // the list closes with its own hairline under the last card — the
-            // table's bottom edge, the same inset as the dividers.
-            <ul role="list" aria-label={listLabel} aria-busy={busy} className="flex flex-col after:mx-4 after:block after:h-px after:bg-border-hairline after:content-['']">
+            // table's bottom edge, the same inset as the dividers. Rows close
+            // themselves (`border-b`), so their list only opens with one.
+            <ul
+              role="list"
+              aria-label={listLabel}
+              aria-busy={busy}
+              className={
+                density === 'row'
+                  ? 'flex flex-col border-t border-mode-rule'
+                  : "flex min-w-0 max-w-full flex-col overflow-x-clip px-1 after:block after:h-px after:w-full after:bg-border-hairline after:content-['']"
+              }
+            >
               <AnimatePresence initial={false}>{items}</AnimatePresence>
             </ul>
           )}

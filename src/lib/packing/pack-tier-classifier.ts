@@ -32,7 +32,7 @@ const LARGE_RE =
  * ~12–15 min. Not full Lifestyle / CineMate stacks.
  */
 const MEDIUM_RE =
-  /\b(wave(\s*(?:radio|music\s*system|sound\s*system))?|sounddock|soundtouch|media\s*center|entertainment\s*center|console|receiver|equalizer|\beq\b|amplifier|\bamp\b|small\s*speaker|bookshelf\s*speaker|component\s*system|mini\s*system)\b/i;
+  /\b(wave(\s*(?:radio|music\s*system|sound\s*system))?|sounddock|soundtouch|media\s*center|entertainment\s*center|console|receiver|equalizer|\beq\b|amplifier|\bamp\b|small\s*speaker|bookshelf\s*speaker|bluetooth\s*speaker|smart\s*speaker|component\s*system|mini\s*system)\b/i;
 
 /**
  * Pack-and-label items — little/no cleaning or prep.

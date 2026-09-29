@@ -61,7 +61,6 @@ export function UnboxNotesLocationControl({
       };
     },
     enabled,
-    staleTime: 15_000,
   });
 
   const face = stagedLocationButtonLabel({

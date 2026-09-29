@@ -2,14 +2,18 @@
 
 import { z } from 'zod';
 
-const errorEnvelope = z.object({ error: z.object({ code: z.string(), message: z.string() }) });
+const errorEnvelope = z.object({ error: z.object({ code: z.string(), message: z.string() }).passthrough() });
 
-/** A v1 call that did not return `data` — carries the server's code when it sent one. */
+/**
+ * A v1 call that did not return `data` — carries the server's code when it sent one,
+ * and `details`: any extra fields the server put beside `code`/`message` (`v1Error` `extra`).
+ */
 export class V1RequestError extends Error {
   constructor(
     message: string,
     readonly status: number,
     readonly code: string | null,
+    readonly details: Readonly<Record<string, unknown>> = {},
   ) {
     super(message);
     this.name = 'V1RequestError';
@@ -37,11 +41,9 @@ export async function v1Request<T>(
   const raw: unknown = await res.json().catch(() => null);
   if (!res.ok) {
     const err = errorEnvelope.safeParse(raw);
-    throw new V1RequestError(
-      err.success ? err.data.error.message : `${init.fallbackMessage} (${res.status})`,
-      res.status,
-      err.success ? err.data.error.code : null,
-    );
+    if (!err.success) throw new V1RequestError(`${init.fallbackMessage} (${res.status})`, res.status, null);
+    const { code, message, ...details } = err.data.error;
+    throw new V1RequestError(message, res.status, code, details);
   }
   const ok = z.object({ data }).safeParse(raw);
   if (!ok.success) throw new V1RequestError(`${init.fallbackMessage} (unexpected response)`, res.status, null);

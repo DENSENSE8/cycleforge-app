@@ -7,7 +7,7 @@
  * for, RMA, the original sale — then the one returned item and its listing.
  */
 
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { Plus, Trash2 } from '@/components/Icons';
 import { Button, IconButton, TextField } from '@/design-system/primitives';
 import { DateRangePickerField } from '@/design-system/components/DateRangePickerField';
@@ -27,6 +27,7 @@ import {
 import type { InboundOrderPreview } from '@/lib/inbound/ingest-inbound-order';
 import { cn } from '@/utils/_cn';
 import { dateKeyToLocalDate, localDateToDateKey } from '@/utils/date';
+import { centsToInputText, inputTextToCents } from '@/utils/money';
 import { orderNumberLabel, RETURN_REASON_CHOICES, usePlatformChoices, usePriorityChoices } from './composer-choices';
 import { InboundOrderLines } from './InboundOrderLines';
 import { OrderDocumentFill } from './OrderDocumentFill';
@@ -69,9 +70,14 @@ export function useInboundOrderSections({ draft, missing, preview, onChange, onR
   const platformOptions = useMemo(() => platforms.filter((p) => p.value !== 'zoho'), [platforms]);
   const isReturn = draft.type === 'RETURN';
   const isPo = draft.type === 'PO';
+  const isPickup = draft.type === 'PICKUP';
+  const draftPaidCents = draft.pickup?.paidCents ?? null;
+  const [paidText, setPaidText] = useState(() => centsToInputText(draftPaidCents));
+  // The draft owns the amount; the text only keeps what the operator typed while it still reads as that amount.
+  const shownPaidText = inputTextToCents(paidText) === draftPaidCents ? paidText : centsToInputText(draftPaidCents);
 
   const typeSwitch = (
-    <div role="radiogroup" aria-label="Order type" className="grid grid-cols-4 gap-1">
+    <div role="radiogroup" aria-label="Order type" className="grid grid-cols-2 gap-1 sm:grid-cols-4">
       {INBOUND_ORDER_TYPES.map((type) => {
         const selected = draft.type === type;
         return (
@@ -140,7 +146,7 @@ export function useInboundOrderSections({ draft, missing, preview, onChange, onR
     ) : (
       <div className="flex flex-col gap-4">
         {typeSwitch}
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           {platformField}
           {orderNumberField}
           <TextField label="Vendor / seller" value={draft.vendor} onChange={(vendor) => onChange({ vendor })} />
@@ -153,8 +159,8 @@ export function useInboundOrderSections({ draft, missing, preview, onChange, onR
             onChange={(currency) => onChange({ currency: currency.toUpperCase() })}
             mono
           />
-          <DateField label="Order date" value={draft.orderDate} onChange={(orderDate) => onChange({ orderDate })} />
-          {expectedField}
+          <DateField label={isPickup ? 'Pickup date' : 'Order date'} value={draft.orderDate} onChange={(orderDate) => onChange({ orderDate })} />
+          {isPickup ? null : expectedField}
         </div>
       </div>
     ),
@@ -169,7 +175,7 @@ export function useInboundOrderSections({ draft, missing, preview, onChange, onR
         label: 'Return',
         children: (
           <div className="flex flex-col gap-3">
-            <div className="grid grid-cols-[16rem_1fr] gap-3">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-[16rem_1fr]">
               <FormField label="Return reason" required>
                 <SearchableSelectField
                   value={reason.reason}
@@ -197,7 +203,7 @@ export function useInboundOrderSections({ draft, missing, preview, onChange, onR
                 'Pick the reason — the unboxer sees it when the box is opened.'
               )}
             </p>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               {platformField}
               {orderNumberField}
               <TextField label="RMA #" value={draft.rmaId} mono onChange={(rmaId) => onChange({ rmaId })} />
@@ -216,7 +222,7 @@ export function useInboundOrderSections({ draft, missing, preview, onChange, onR
     children: (
       <div className="flex flex-col gap-3">
         {draft.tracking.map((t, index) => (
-          <div key={index} className="grid grid-cols-[1fr_12rem_2.25rem] items-center gap-2">
+          <div key={index} className="grid grid-cols-[1fr_2.25rem] items-center gap-2 sm:grid-cols-[1fr_12rem_2.25rem]">
             <TextField
               label={index === 0 ? (isReturn ? 'Return tracking number *' : 'Tracking number') : `Tracking number ${index + 1}`}
               value={t.number}
@@ -260,6 +266,37 @@ export function useInboundOrderSections({ draft, missing, preview, onChange, onR
     children: <InboundOrderLines draft={draft} missing={missing} preview={preview} onChange={(lines) => onChange({ lines })} />,
   };
 
+  const pickupReceipt: TriageSectionSpec | null = isPickup
+    ? {
+        id: 'inbound-pickup-receipt',
+        label: 'Pickup receipt',
+        children: (
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <TextField
+              label="Payment method"
+              placeholder="Cash, Zelle, Venmo…"
+              value={draft.pickup?.paymentMethod ?? ''}
+              onChange={(paymentMethod) => onChange({ pickup: { paymentMethod, paidCents: draft.pickup?.paidCents ?? null } })}
+            />
+            <TextField
+              label="Amount paid"
+              inputMode="decimal"
+              value={shownPaidText}
+              onChange={(raw) => {
+                setPaidText(raw);
+                onChange({
+                  pickup: {
+                    paymentMethod: draft.pickup?.paymentMethod ?? '',
+                    paidCents: inputTextToCents(raw),
+                  },
+                });
+              }}
+            />
+          </div>
+        ),
+      }
+    : null;
+
   const notes: TriageSectionSpec = {
     id: 'inbound-notes',
     label: 'Notes',
@@ -272,6 +309,8 @@ export function useInboundOrderSections({ draft, missing, preview, onChange, onR
     children: <OrderDocumentFill currentType={draft.type} onFilled={onReplace} />,
   };
 
-  // A return leads with its own facts, then the one item, then the parcel it comes back in.
-  return returnFacts ? [order, returnFacts, items, shipment, notes, fill] : [order, shipment, items, notes, fill];
+  // A return leads with its own facts. Pickup paperwork has receipt facts and no parcel/tracking section.
+  if (returnFacts) return [order, returnFacts, items, shipment, notes, fill];
+  if (pickupReceipt) return [fill, order, pickupReceipt, items, notes];
+  return [order, shipment, items, notes, fill];
 }

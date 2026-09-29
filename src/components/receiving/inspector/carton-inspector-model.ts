@@ -77,6 +77,8 @@ export interface CartonInspectorLine {
   listing_reference: string | null;
   notes: string | null;
   zoho_purchaseorder_number: string | null;
+  /** Vendor resolved from the mirrored purchase-order header. */
+  vendor_name?: string | null;
   /** Per-line tracking (a multi-tracking carton splits across lines). */
   tracking_number: string | null;
   serials?: CartonInspectorSerial[];

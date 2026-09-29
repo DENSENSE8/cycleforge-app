@@ -112,14 +112,3 @@ test('desk header split CTA uses the pill corner token, not the composer 2xl', (
   assert.doesNotMatch(header, /rounded-2xl/);
   assert.match(header, /shadow-none/);
 });
-
-test('industrial bar segment is square, flat, and keeps the chevron on the far right', () => {
-  const segment = slicedActionDockTrackClass({ embedded: true, embeddedChrome: 'segment' });
-  assert.match(segment, /rounded-none/);
-  assert.match(segment, /shadow-none/);
-  assert.doesNotMatch(segment, /ring-1/);
-  assert.equal(
-    slicedActionDockSegmentOrder({ embedded: true, embeddedChrome: 'segment' }),
-    'primary,menu',
-  );
-});

@@ -16,11 +16,6 @@ import {
   useTableImportDraft,
 } from '@/lib/tables/import/staging-store';
 import { useTableImportParam } from '@/hooks/useTableImportParam';
-import {
-  ORDERS_DESK_CONTEXT_KEY,
-  ORDERS_DESK_SUPPORT_CONTEXT,
-  parseOrdersDeskContext,
-} from '@/lib/shipping/orders-desk';
 
 interface DashboardOrdersViewProps {
   orderView: DashboardOrderView;
@@ -45,9 +40,6 @@ export function DashboardOrdersView({
   const showCsvStaging = importCsvActive && Boolean(csvDraft);
   const { setViewShellOpen } = useOrdersViewChrome();
   const { rows } = useRailActionSnapshot();
-  const isSupportContext =
-    parseOrdersDeskContext(searchParams.get(ORDERS_DESK_CONTEXT_KEY)) ===
-    ORDERS_DESK_SUPPORT_CONTEXT;
 
   useEffect(() => {
     if (!importCsvActive || csvDraft) return;
@@ -82,10 +74,6 @@ export function DashboardOrdersView({
       strictSearchScope
       railSelection
       onPrimaryPainted={onPrimaryPainted}
-      // To ship paints the order card list in In place and Split; the
-      // industrial ledger is its FLOOR face (⌘/Ctrl+Shift+F, owner 2026-09-26).
-      // Support › Inquiries aliases this desk: cards only.
-      floor={!isSupportContext}
     />
   );
 

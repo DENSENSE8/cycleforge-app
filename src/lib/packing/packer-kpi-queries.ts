@@ -159,8 +159,21 @@ async function getOrgPackCapacity(orgId: OrgId): Promise<PackingCapacity> {
   };
 }
 
-export async function getPackingKpisForDay(orgId: OrgId, dayPst: string): Promise<PackingKpiSummary> {
-  const capacity = await getOrgPackCapacity(orgId);
+export async function getPackingKpisForDay(
+  orgId: OrgId,
+  dayPst: string,
+  packerId?: number | null,
+): Promise<PackingKpiSummary> {
+  const orgCapacity = await getOrgPackCapacity(orgId);
+  const capacity = packerId
+    ? { ...orgCapacity, packer_headcount: 1, daily_capacity_minutes: orgCapacity.workday_minutes }
+    : orgCapacity;
+  const params: unknown[] = [orgId, dayPst];
+  let packerPredicate = '';
+  if (packerId) {
+    params.push(packerId);
+    packerPredicate = `AND sal.staff_id = $${params.length}`;
+  }
 
   const rows = await tenantQuery<PackerKpiRow>(
     orgId,
@@ -184,6 +197,7 @@ export async function getPackingKpisForDay(orgId: OrgId, dayPst: string): Promis
           AND sal.organization_id = $1
           AND (timezone('America/Los_Angeles', sal.created_at))::date = $2::date
           AND sal.staff_id IS NOT NULL
+          ${packerPredicate}
       )
       SELECT
         pr.staff_id,
@@ -197,7 +211,7 @@ export async function getPackingKpisForDay(orgId: OrgId, dayPst: string): Promis
       GROUP BY pr.staff_id, s.name
       ORDER BY weighted_minutes DESC, pr.staff_id ASC
     `,
-    [orgId, dayPst],
+    params,
   );
 
   const totals = rows.rows.reduce(
@@ -395,4 +409,3 @@ export async function getPackingKpisForLastFilledDays(
   const capacity = daily[daily.length - 1]?.capacity ?? (await getOrgPackCapacity(orgId));
   return buildPeriodSummaryFromDaily(daily, capacity);
 }
-

@@ -79,6 +79,13 @@ interface NotifiableEvent {
  * the pipeline changes.
  */
 export const NOTIFIABLE_EVENTS = {
+  'order.ship_by.overdue_unfulfilled': {
+    key: 'order.ship_by.overdue_unfulfilled',
+    entityType: 'order',
+    label: 'Past ship-by · check order',
+    family: 'ship-by',
+    severity: 2,
+  },
   'receiving.carton.delivered': {
     key: 'receiving.carton.delivered',
     entityType: 'receiving',
@@ -211,4 +218,3 @@ function readNumericPayloadField(payload: unknown, key: string): number | null {
   const n = typeof raw === 'string' ? Number(raw) : raw;
   return typeof n === 'number' && Number.isFinite(n) ? n : null;
 }
-

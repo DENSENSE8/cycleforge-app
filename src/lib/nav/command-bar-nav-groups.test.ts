@@ -53,7 +53,7 @@ test('every spine section with pages emits a band whose label + icon come from t
   }
 });
 
-test('pin contains Chat Automations Home Search Media Plans Settings Reports; Monitor is parked, Admin is dissolved', () => {
+test('pin contains Chat Automations Home Exceptions Print station Search Media Plans Settings Reports; Monitor is parked, Admin is dissolved', () => {
   const groups = buildCommandBarNavGroups();
   const pin = groups.find((g) => g.id === 'pin');
   const footer = groups.find((g) => g.id === 'footer');
@@ -63,7 +63,7 @@ test('pin contains Chat Automations Home Search Media Plans Settings Reports; Mo
   // `reports` arrived 2026-09-15 with its promotion out of the Monitor lane to a parent-level spine row; the palette pin follows the…
   assert.deepEqual(
     pin!.rows.filter((r) => r.type === 'page').map((r) => r.id),
-    ['ai-chat', 'studio', 'home', 'search', 'ops-photos', 'plans-live', 'settings', 'reports'],
+    ['ai-chat', 'home', 'studio', 'exceptions', 'print-station', 'search', 'ops-photos', 'plans-live', 'settings', 'reports'],
   );
   // Monitor (Operations) stays PARKED 2026-09-16 — the door is withdrawn on every surface, so the palette emits no band.
   assert.equal(
@@ -100,7 +100,6 @@ test('Scan Stations lists benches as a flat map — no Receiving / Walk-In chrom
   assert.deepEqual(ids, [
     'triage',
     'receive',
-    'pickup',
     'repair',
     'testing',
     'ready-to-pack',
@@ -110,8 +109,6 @@ test('Scan Stations lists benches as a flat map — no Receiving / Walk-In chrom
 
   const arrival = floor!.rows.find((r) => r.type === 'page' && r.id === 'triage');
   assert.ok(arrival);
-  const pickup = floor!.rows.find((r) => r.type === 'page' && r.id === 'pickup');
-  assert.ok(pickup);
   const qc = floor!.rows.find((r) => r.type === 'page' && r.id === 'testing');
   assert.ok(qc);
   assert.equal(qc && qc.type === 'page' ? qc.label : null, 'Quality Control');

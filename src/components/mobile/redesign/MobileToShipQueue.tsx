@@ -42,12 +42,13 @@ import { useStaffNameMap } from '@/hooks/useStaffNameMap';
 import type { WorkOrderRow } from '@/components/work-orders/types';
 import type { OrderShortageIdentity } from '@/lib/orders/order-shortage-identity';
 import { useAuth } from '@/contexts/AuthContext';
-import { MobileOrderExceptions } from '@/components/mobile/outbound/MobileOrderExceptions';
+import { MobileExceptionsHub } from '@/components/mobile/exceptions/MobileExceptionsHub';
 import type { OutboundPriorityAction, OutboundTriageActionId } from '@/lib/shipping/outbound-workflow-actions';
 import { MobileOrderRecord } from '@/components/mobile/orders/MobileOrderRecord';
 import { MobileOrderEvidenceSheet } from '@/components/mobile/orders/MobileOrderEvidenceSheet';
 import { MobileLinePhotoViewer } from '@/components/mobile/orders/MobileLinePhotoViewer';
 import { getCurrentPSTDateKey } from '@/utils/date';
+import { ITEM_RECORD_MOBILE_ROW } from '@/design-system/tokens/item-record-mobile';
 
 /**
  * `?display=ledger` — the desk's industrial record ported to the phone
@@ -491,7 +492,7 @@ export function MobileToShipQueue({
 
       {orderView === 'exceptions' ? (
         <div className="min-h-0 flex-1 overflow-hidden">
-          <MobileOrderExceptions />
+          <MobileExceptionsHub lockDomain="fulfillment" />
         </div>
       ) : (
       <div data-testid="to-ship-roster" className="min-h-0 flex-1 overflow-y-auto bg-surface-card">
@@ -513,7 +514,7 @@ export function MobileToShipQueue({
                       {group.label}
                     </h2>
                   ) : null}
-                  <ul className={cn('flex flex-col', display === 'ledger' && 'border-t border-mode-ink')}>
+                  <ul className={display === 'ledger' ? 'flex flex-col border-t border-mode-ink' : ITEM_RECORD_MOBILE_ROW.list}>
                     {group.rows.map((row) => {
                       const blocked = oosIds.has(row.entityId) || isToShipOutOfStock(row);
                       return (

@@ -57,3 +57,40 @@ test('toShippedOrderFromApi: GET /api/orders/:id raw row shape', () => {
   assert.deepEqual(order!.tracking_numbers, ['1Z999']);
   assert.equal(order!.serial_number, 'ABC');
 });
+
+test('toShippedOrderFromApi: preserves carrier delivery evidence for Search fulfillment', () => {
+  const order = toShippedOrderFromApi({
+    id: 15443,
+    order_id: '01-15216-30130',
+    product_title: 'Delivered order',
+    shipping_tracking_number: '9621091390008524261900383825682187',
+    carrier: 'FEDEX',
+    latest_status_code: 'DL',
+    latest_status_label: 'Delivered',
+    latest_status_description: 'Delivered to recipient',
+    latest_status_category: 'DELIVERED',
+    latest_event_at: '2026-09-26T12:00:00-07:00',
+    delivered_at: '2026-09-26T12:00:00-07:00',
+    is_terminal: true,
+    is_delivered: true,
+    is_shipped: true,
+  });
+
+  assert.ok(order);
+  assert.equal(order!.carrier, 'FEDEX');
+  assert.equal(order!.latest_status_category, 'DELIVERED');
+  assert.equal(order!.latest_event_at, '2026-09-26T12:00:00-07:00');
+  assert.equal(order!.is_terminal, true);
+  assert.equal(order!.is_delivered, true);
+});
+
+test('toShippedOrderFromApi: does not coerce string false carrier flags to true', () => {
+  const order = toShippedOrderFromApi({
+    id: 2,
+    order_id: 'TEST-2',
+    is_shipped: 'false',
+    is_delivered: '0',
+  });
+  assert.equal(order!.is_shipped, false);
+  assert.equal(order!.is_delivered, false);
+});

@@ -7,12 +7,12 @@
 
 | metric | count |
 |---|---|
-| base tables | 388 |
-| with `organization_id` | 344 |
-| `organization_id NOT NULL` | 329 |
-| RLS enabled | 339 |
-| **RLS FORCEd** | **335** |
-| has tenant_isolation policy | 339 |
+| base tables | 392 |
+| with `organization_id` | 348 |
+| `organization_id NOT NULL` | 333 |
+| RLS enabled | 343 |
+| **RLS FORCEd** | **339** |
+| has tenant_isolation policy | 343 |
 | still on USAV-fallback default (footgun) | 0 |
 | tenant-owned, **missing org_id col** | 3 |
 | platform-identity (exempt by design) | 10 |
@@ -28,7 +28,7 @@ Legend: org=has organization_id · NN=NOT NULL · dflt=default kind · FK=FK→o
 |---|---|:-:|:-:|---|:-:|:-:|:-:|:-:|:-:|--:|
 | `photo_share_pack_items` | child-scoped(photo_share_packs,photos) | — | — | none | — | — | — | — | — | 2344 |
 | `sku_pairing_audit` | child-scoped(sku_catalog,sku_platform_ids,staff) | — | — | none | — | — | — | — | — | 66 |
-| `pending_skus` | child-scoped(sku_catalog,staff) | — | — | none | — | — | — | — | — | 75 |
+| `pending_skus` | child-scoped(sku_catalog,staff) | — | — | none | — | — | — | — | — | 98 |
 | `staff_stepups` | child-scoped(staff_sessions) | — | — | none | — | — | — | — | — | ? |
 | `shift_templates` | child-scoped(staff,locations) | — | — | none | — | — | — | — | — | 70 |
 | `shifts` | child-scoped(staff,locations) | — | — | none | — | — | — | — | — | 373 |
@@ -67,7 +67,7 @@ Legend: org=has organization_id · NN=NOT NULL · dflt=default kind · FK=FK→o
 | `return_dispositions` | reference-decide | ✅ | — | loud-fail | ✅ | ✅ | — | ✅ | — | ? |
 | `admin_features` | system-global | — | — | none | — | — | — | — | — | ? |
 | `config` | system-global | — | — | none | — | — | — | — | — | ? |
-| `cron_runs` | system-global | — | — | none | — | — | — | — | — | 72535 |
+| `cron_runs` | system-global | — | — | none | — | — | — | — | — | 74180 |
 | `organization_integrations` | system-global | ✅ | ✅ | loud-fail | ✅ | ✅ | ✅ | ✅ | ✅ | 10 |
 | `organizations` | system-global | — | — | none | — | — | — | — | — | 8 |
 | `roles` | system-global | ✅ | ✅ | none | ✅ | ✅ | ✅ | ✅ | — | 73 |
@@ -83,11 +83,11 @@ Legend: org=has organization_id · NN=NOT NULL · dflt=default kind · FK=FK→o
 | `ai_usage_events` | tenant-owned | ✅ | ✅ | loud-fail | — | ✅ | ✅ | ✅ | ✅ | 2443 |
 | `amazon_accounts` | tenant-owned | ✅ | ✅ | loud-fail | — | ✅ | ✅ | ✅ | ✅ | ? |
 | `amazon_api_calls` | tenant-owned | ✅ | ✅ | loud-fail | — | ✅ | ✅ | ✅ | ✅ | ? |
-| `api_idempotency_responses` | tenant-owned | ✅ | ✅ | loud-fail | ✅ | ✅ | ✅ | ✅ | ✅ | 720 |
+| `api_idempotency_responses` | tenant-owned | ✅ | ✅ | loud-fail | ✅ | ✅ | ✅ | ✅ | ✅ | 758 |
 | `approval_reviews` | tenant-owned | ✅ | ✅ | loud-fail | — | ✅ | ✅ | ✅ | ✅ | ? |
 | `audit_logs` | tenant-owned | ✅ | ✅ | loud-fail | — | ✅ | ✅ | ✅ | ✅ | 26841 |
 | `automation_rules` | tenant-owned | ✅ | ✅ | loud-fail | — | ✅ | ✅ | ✅ | ✅ | ? |
-| `automation_runs` | tenant-owned | ✅ | ✅ | loud-fail | — | ✅ | ✅ | ✅ | ✅ | 729 |
+| `automation_runs` | tenant-owned | ✅ | ✅ | loud-fail | — | ✅ | ✅ | ✅ | ✅ | 853 |
 | `billing_subscriptions` | tenant-owned | ✅ | ✅ | loud-fail | ✅ | ✅ | ✅ | ✅ | ✅ | ? |
 | `bin_contents` | tenant-owned | ✅ | ✅ | loud-fail | ✅ | ✅ | ✅ | ✅ | ✅ | 172 |
 | `build_requests` | tenant-owned | ✅ | ✅ | loud-fail | — | ✅ | ✅ | ✅ | ✅ | ? |
@@ -105,7 +105,7 @@ Legend: org=has organization_id · NN=NOT NULL · dflt=default kind · FK=FK→o
 | `credit_notes` | tenant-owned | ✅ | ✅ | loud-fail | ✅ | ✅ | ✅ | ✅ | ✅ | ? |
 | `custom_field_defs` | tenant-owned | ✅ | ✅ | loud-fail | — | ✅ | ✅ | ✅ | ✅ | ? |
 | `custom_field_values` | tenant-owned | ✅ | ✅ | loud-fail | — | ✅ | ✅ | ✅ | ✅ | 2 |
-| `customers` | tenant-owned | ✅ | ✅ | loud-fail | ✅ | ✅ | ✅ | ✅ | ✅ | 1368 |
+| `customers` | tenant-owned | ✅ | ✅ | loud-fail | ✅ | ✅ | ✅ | ✅ | ✅ | 1396 |
 | `cycle_count_campaigns` | tenant-owned | ✅ | ✅ | loud-fail | ✅ | ✅ | ✅ | ✅ | ✅ | ? |
 | `cycle_count_lines` | tenant-owned | ✅ | ✅ | loud-fail | ✅ | ✅ | ✅ | ✅ | ✅ | ? |
 | `cycle_forge_run_steps` | tenant-owned | ✅ | ✅ | loud-fail | — | ✅ | ✅ | ✅ | ✅ | ? |
@@ -140,7 +140,7 @@ Legend: org=has organization_id · NN=NOT NULL · dflt=default kind · FK=FK→o
 | `fba_shipment_tracking` | tenant-owned | ✅ | ✅ | loud-fail | ✅ | ✅ | ✅ | ✅ | ✅ | 7 |
 | `fba_shipments` | tenant-owned | ✅ | ✅ | loud-fail | ✅ | ✅ | ✅ | ✅ | ✅ | 72 |
 | `fba_tracking_item_allocations` | tenant-owned | ✅ | ✅ | loud-fail | ✅ | ✅ | ✅ | ✅ | ✅ | 12 |
-| `feed_memberships` | tenant-owned | ✅ | ✅ | loud-fail | — | ✅ | ✅ | ✅ | ✅ | 2671 |
+| `feed_memberships` | tenant-owned | ✅ | ✅ | loud-fail | — | ✅ | ✅ | ✅ | ✅ | 2752 |
 | `google_photos_albums` | tenant-owned | ✅ | ✅ | loud-fail | ✅ | ✅ | ✅ | ✅ | ✅ | 6 |
 | `google_photos_settings` | tenant-owned | ✅ | ✅ | loud-fail | ✅ | ✅ | ✅ | ✅ | ✅ | 1 |
 | `handling_units` | tenant-owned | ✅ | ✅ | loud-fail | ✅ | ✅ | ✅ | ✅ | ✅ | 352 |
@@ -151,7 +151,7 @@ Legend: org=has organization_id · NN=NOT NULL · dflt=default kind · FK=FK→o
 | `hermes_thresholds` | tenant-owned | ✅ | — | loud-fail | ✅ | ✅ | ✅ | ✅ | ✅ | 7 |
 | `identification_methods` | tenant-owned | ✅ | ✅ | loud-fail | — | ✅ | ✅ | ✅ | ✅ | ? |
 | `inbound_import_batch` | tenant-owned | ✅ | ✅ | loud-fail | — | ✅ | ✅ | ✅ | ✅ | ? |
-| `inbound_ingest_event` | tenant-owned | ✅ | ✅ | loud-fail | — | ✅ | ✅ | ✅ | ✅ | ? |
+| `inbound_ingest_event` | tenant-owned | ✅ | ✅ | loud-fail | — | ✅ | ✅ | ✅ | ✅ | 36 |
 | `inbound_order` | tenant-owned | ✅ | ✅ | loud-fail | — | ✅ | ✅ | ✅ | ✅ | 2284 |
 | `inbound_purchase_merge_log` | tenant-owned | ✅ | ✅ | loud-fail | — | ✅ | ✅ | ✅ | ✅ | 55 |
 | `inbound_purchase_order_equivalence` | tenant-owned | ✅ | ✅ | loud-fail | — | ✅ | ✅ | ✅ | ✅ | 108 |
@@ -172,6 +172,7 @@ Legend: org=has organization_id · NN=NOT NULL · dflt=default kind · FK=FK→o
 | `kiosk_companion_links` | tenant-owned | ✅ | ✅ | loud-fail | — | ✅ | ✅ | ✅ | ✅ | 4 |
 | `kiosk_devices` | tenant-owned | ✅ | ✅ | loud-fail | — | ✅ | ✅ | ✅ | ✅ | 704 |
 | `kiosk_slot_events` | tenant-owned | ✅ | ✅ | none | ✅ | — | — | — | — | ? |
+| `label_batches` | tenant-owned | ✅ | ✅ | loud-fail | — | ✅ | ✅ | ✅ | ✅ | ? |
 | `label_ingestion_orders` | tenant-owned | ✅ | ✅ | loud-fail | — | ✅ | ✅ | ✅ | ✅ | 55 |
 | `label_ingestions` | tenant-owned | ✅ | ✅ | loud-fail | — | ✅ | ✅ | ✅ | ✅ | 99 |
 | `label_manifest_items` | tenant-owned | ✅ | ✅ | loud-fail | — | ✅ | ✅ | ✅ | ✅ | ? |
@@ -201,9 +202,12 @@ Legend: org=has organization_id · NN=NOT NULL · dflt=default kind · FK=FK→o
 | `ops_plan_task_links` | tenant-owned | ✅ | ✅ | loud-fail | — | ✅ | ✅ | ✅ | ✅ | ? |
 | `ops_plan_tasks` | tenant-owned | ✅ | ✅ | loud-fail | — | ✅ | ✅ | ✅ | ✅ | 136 |
 | `ops_plans` | tenant-owned | ✅ | ✅ | loud-fail | — | ✅ | ✅ | ✅ | ✅ | ? |
-| `order_catalog_link_chores` | tenant-owned | ✅ | ✅ | loud-fail | — | ✅ | ✅ | ✅ | ✅ | 999 |
+| `order_catalog_link_chores` | tenant-owned | ✅ | ✅ | loud-fail | — | ✅ | ✅ | ✅ | ✅ | 1040 |
 | `order_flags` | tenant-owned | ✅ | ✅ | loud-fail | — | ✅ | ✅ | ✅ | ✅ | 0 |
 | `order_import_exceptions` | tenant-owned | ✅ | ✅ | loud-fail | — | ✅ | ✅ | ✅ | ✅ | 392 |
+| `order_import_run_rows` | tenant-owned | ✅ | ✅ | loud-fail | — | ✅ | ✅ | ✅ | ✅ | 86 |
+| `order_import_run_steps` | tenant-owned | ✅ | ✅ | loud-fail | — | ✅ | ✅ | ✅ | ✅ | ? |
+| `order_import_runs` | tenant-owned | ✅ | ✅ | loud-fail | — | ✅ | ✅ | ✅ | ✅ | ? |
 | `order_ingest_queue` | tenant-owned | ✅ | — | loud-fail | — | ✅ | ✅ | ✅ | ✅ | ? |
 | `order_line_shortages` | tenant-owned | ✅ | ✅ | loud-fail | — | ✅ | ✅ | ✅ | ✅ | 38 |
 | `order_notes` | tenant-owned | ✅ | ✅ | loud-fail | — | ✅ | ✅ | ✅ | ✅ | ? |
@@ -213,14 +217,14 @@ Legend: org=has organization_id · NN=NOT NULL · dflt=default kind · FK=FK→o
 | `order_stage_facts` | tenant-owned | ✅ | ✅ | loud-fail | — | ✅ | ✅ | ✅ | ✅ | 5212 |
 | `order_unit_allocations` | tenant-owned | ✅ | ✅ | loud-fail | ✅ | ✅ | ✅ | ✅ | ✅ | 53 |
 | `order_unit_amendments` | tenant-owned | ✅ | ✅ | loud-fail | — | ✅ | ✅ | ✅ | ✅ | ? |
-| `orders` | tenant-owned | ✅ | ✅ | loud-fail | ✅ | ✅ | ✅ | ✅ | ✅ | 5216 |
-| `orders_exceptions` | tenant-owned | ✅ | ✅ | loud-fail | ✅ | ✅ | ✅ | ✅ | ✅ | 4147 |
+| `orders` | tenant-owned | ✅ | ✅ | loud-fail | ✅ | ✅ | ✅ | ✅ | ✅ | 5243 |
+| `orders_exceptions` | tenant-owned | ✅ | ✅ | loud-fail | ✅ | ✅ | ✅ | ✅ | ✅ | 4181 |
 | `org_capabilities` | tenant-owned | ✅ | ✅ | loud-fail | ✅ | ✅ | ✅ | ✅ | ✅ | 88 |
 | `org_capability_events` | tenant-owned | ✅ | ✅ | loud-fail | ✅ | ✅ | ✅ | ✅ | ✅ | 88 |
 | `org_pack_capacity` | tenant-owned | ✅ | ✅ | loud-fail | — | ✅ | ✅ | ✅ | ✅ | ? |
 | `org_tables` | tenant-owned | ✅ | ✅ | loud-fail | — | ✅ | ✅ | ✅ | ✅ | ? |
 | `organization_feature_flags` | tenant-owned | ✅ | ✅ | loud-fail | ✅ | ✅ | ✅ | ✅ | ✅ | 16 |
-| `outbound_document_ingest_jobs` | tenant-owned | ✅ | ✅ | loud-fail | — | ✅ | ✅ | ✅ | ✅ | 562 |
+| `outbound_document_ingest_jobs` | tenant-owned | ✅ | ✅ | loud-fail | — | ✅ | ✅ | ✅ | ✅ | 564 |
 | `pack_profile_links` | tenant-owned | ✅ | ✅ | loud-fail | — | ✅ | ✅ | ✅ | ✅ | 1351 |
 | `pack_profiles` | tenant-owned | ✅ | ✅ | loud-fail | — | ✅ | ✅ | ✅ | ✅ | 1351 |
 | `pack_verification_events` | tenant-owned | ✅ | ✅ | loud-fail | — | ✅ | ✅ | ✅ | ✅ | ? |
@@ -250,13 +254,13 @@ Legend: org=has organization_id · NN=NOT NULL · dflt=default kind · FK=FK→o
 | `pipeline_tasks` | tenant-owned | ✅ | ✅ | loud-fail | ✅ | ✅ | ✅ | ✅ | ✅ | ? |
 | `platform_accounts` | tenant-owned | ✅ | ✅ | loud-fail | ✅ | ✅ | ✅ | ✅ | ✅ | 35 |
 | `platform_catalog_categories` | tenant-owned | ✅ | ✅ | loud-fail | — | ✅ | ✅ | ✅ | ✅ | 98 |
-| `platform_listings` | tenant-owned | ✅ | ✅ | loud-fail | — | ✅ | ✅ | ✅ | ✅ | 1557 |
+| `platform_listings` | tenant-owned | ✅ | ✅ | loud-fail | — | ✅ | ✅ | ✅ | ✅ | 1559 |
 | `platform_type_rules` | tenant-owned | ✅ | ✅ | loud-fail | — | ✅ | ✅ | ✅ | ✅ | ? |
 | `platforms` | tenant-owned | ✅ | ✅ | loud-fail | ✅ | ✅ | ✅ | ✅ | ✅ | 25 |
 | `pomodoro_activity_events` | tenant-owned | ✅ | ✅ | loud-fail | — | ✅ | ✅ | ✅ | ✅ | 36 |
 | `pomodoro_timers` | tenant-owned | ✅ | ✅ | loud-fail | — | ✅ | ✅ | ✅ | ✅ | ? |
 | `pomodoro_work_sessions` | tenant-owned | ✅ | ✅ | loud-fail | — | ✅ | ✅ | ✅ | ✅ | ? |
-| `print_stations` | tenant-owned | ✅ | ✅ | loud-fail | — | ✅ | ✅ | ✅ | ✅ | 30 |
+| `print_stations` | tenant-owned | ✅ | ✅ | loud-fail | — | ✅ | ✅ | ✅ | ✅ | 133 |
 | `printer_profiles` | tenant-owned | ✅ | ✅ | loud-fail | ✅ | ✅ | ✅ | ✅ | ✅ | ? |
 | `priority_tiers` | tenant-owned | ✅ | ✅ | loud-fail | — | ✅ | ✅ | ✅ | ✅ | ? |
 | `product_brand_aliases` | tenant-owned | ✅ | ✅ | loud-fail | — | ✅ | ✅ | ✅ | ✅ | 66 |
@@ -274,11 +278,11 @@ Legend: org=has organization_id · NN=NOT NULL · dflt=default kind · FK=FK→o
 | `qc_procedure_versions` | tenant-owned | ✅ | ✅ | loud-fail | — | ✅ | ✅ | ✅ | ✅ | ? |
 | `qc_sessions` | tenant-owned | ✅ | ✅ | loud-fail | — | ✅ | ✅ | ✅ | ✅ | ? |
 | `qc_triage_decisions` | tenant-owned | ✅ | ✅ | loud-fail | ✅ | ✅ | ✅ | ✅ | ✅ | ? |
-| `qr_login_sessions` | tenant-owned | ✅ | — | none | — | — | — | — | — | 2044 |
+| `qr_login_sessions` | tenant-owned | ✅ | — | none | — | — | — | — | — | 2299 |
 | `rag_document_chunks` | tenant-owned | ✅ | ✅ | loud-fail | — | ✅ | ✅ | ✅ | ✅ | ? |
 | `rag_documents` | tenant-owned | ✅ | ✅ | loud-fail | — | ✅ | ✅ | ✅ | ✅ | ? |
 | `reason_codes` | tenant-owned | ✅ | ✅ | loud-fail | ✅ | ✅ | ✅ | ✅ | ✅ | 703 |
-| `receiving_carton` | tenant-owned | ✅ | ✅ | loud-fail | ✅ | ✅ | ✅ | ✅ | ✅ | 4197 |
+| `receiving_carton` | tenant-owned | ✅ | ✅ | loud-fail | ✅ | ✅ | ✅ | ✅ | ✅ | 4215 |
 | `receiving_claim_seller_messages` | tenant-owned | ✅ | ✅ | loud-fail | — | ✅ | ✅ | ✅ | ✅ | ? |
 | `receiving_exceptions` | tenant-owned | ✅ | ✅ | loud-fail | — | ✅ | ✅ | ✅ | ✅ | 527 |
 | `receiving_line` | tenant-owned | ✅ | ✅ | loud-fail | ✅ | ✅ | ✅ | ✅ | ✅ | 3381 |
@@ -289,7 +293,7 @@ Legend: org=has organization_id · NN=NOT NULL · dflt=default kind · FK=FK→o
 | `receiving_line_testing_opens` | tenant-owned | ✅ | ✅ | loud-fail | — | ✅ | ✅ | ✅ | ✅ | 20 |
 | `receiving_line_unit` | tenant-owned | ✅ | ✅ | loud-fail | — | ✅ | ✅ | ✅ | ✅ | 3299 |
 | `receiving_line_views` | tenant-owned | ✅ | ✅ | loud-fail | ✅ | ✅ | ✅ | ✅ | ✅ | 2665 |
-| `receiving_line_zoho` | tenant-owned | ✅ | ✅ | loud-fail | — | ✅ | ✅ | ✅ | ✅ | 2381 |
+| `receiving_line_zoho` | tenant-owned | ✅ | ✅ | loud-fail | — | ✅ | ✅ | ✅ | ✅ | 2494 |
 | `receiving_listing_links` | tenant-owned | ✅ | ✅ | loud-fail | — | ✅ | ✅ | ✅ | ✅ | ? |
 | `receiving_order_link` | tenant-owned | ✅ | ✅ | loud-fail | — | ✅ | ✅ | ✅ | ✅ | ? |
 | `receiving_scans` | tenant-owned | ✅ | ✅ | loud-fail | ✅ | ✅ | ✅ | ✅ | ✅ | 3862 |
@@ -300,7 +304,7 @@ Legend: org=has organization_id · NN=NOT NULL · dflt=default kind · FK=FK→o
 | `repair_issue_templates` | tenant-owned | ✅ | ✅ | loud-fail | — | ✅ | ✅ | ✅ | ✅ | ? |
 | `repair_service` | tenant-owned | ✅ | ✅ | loud-fail | ✅ | ✅ | ✅ | ✅ | ✅ | 85 |
 | `replenishment_order_lines` | tenant-owned | ✅ | ✅ | loud-fail | ✅ | ✅ | ✅ | ✅ | ✅ | 650 |
-| `replenishment_requests` | tenant-owned | ✅ | ✅ | loud-fail | ✅ | ✅ | ✅ | ✅ | ✅ | 66 |
+| `replenishment_requests` | tenant-owned | ✅ | ✅ | loud-fail | ✅ | ✅ | ✅ | ✅ | ✅ | 75 |
 | `replenishment_status_log` | tenant-owned | ✅ | ✅ | loud-fail | ✅ | ✅ | ✅ | ✅ | ✅ | 10 |
 | `replenishment_tasks` | tenant-owned | ✅ | ✅ | loud-fail | ✅ | ✅ | ✅ | ✅ | ✅ | ? |
 | `rma_authorizations` | tenant-owned | ✅ | ✅ | loud-fail | ✅ | ✅ | ✅ | ✅ | ✅ | ? |
@@ -314,20 +318,20 @@ Legend: org=has organization_id · NN=NOT NULL · dflt=default kind · FK=FK→o
 | `serial_unit_listings` | tenant-owned | ✅ | ✅ | loud-fail | — | ✅ | ✅ | ✅ | ✅ | ? |
 | `serial_unit_provenance` | tenant-owned | ✅ | ✅ | loud-fail | — | ✅ | ✅ | ✅ | ✅ | 1859 |
 | `serial_units` | tenant-owned | ✅ | ✅ | loud-fail | ✅ | ✅ | ✅ | ✅ | ✅ | 2079 |
-| `shipment_links` | tenant-owned | ✅ | ✅ | loud-fail | — | ✅ | ✅ | ✅ | ✅ | 6470 |
+| `shipment_links` | tenant-owned | ✅ | ✅ | loud-fail | — | ✅ | ✅ | ✅ | ✅ | 6616 |
 | `shipment_tracking_events` | tenant-owned | ✅ | — | loud-fail | ✅ | ✅ | ✅ | ✅ | — | 27558 |
 | `shipping_label_purchases` | tenant-owned | ✅ | ✅ | loud-fail | — | ✅ | ✅ | ✅ | ✅ | 56 |
-| `shipping_tracking_numbers` | tenant-owned | ✅ | — | loud-fail | ✅ | ✅ | ✅ | ✅ | — | 12028 |
-| `shipstation_order_refs` | tenant-owned | ✅ | ✅ | loud-fail | — | ✅ | ✅ | ✅ | ✅ | 538 |
-| `shipstation_shipment_refs` | tenant-owned | ✅ | ✅ | loud-fail | — | ✅ | ✅ | ✅ | ✅ | 66 |
+| `shipping_tracking_numbers` | tenant-owned | ✅ | — | loud-fail | ✅ | ✅ | ✅ | ✅ | — | 13010 |
+| `shipstation_order_refs` | tenant-owned | ✅ | ✅ | loud-fail | — | ✅ | ✅ | ✅ | ✅ | 611 |
+| `shipstation_shipment_refs` | tenant-owned | ✅ | ✅ | loud-fail | — | ✅ | ✅ | ✅ | ✅ | 76 |
 | `shipstation_sync_runs` | tenant-owned | ✅ | ✅ | loud-fail | — | ✅ | ✅ | ✅ | ✅ | ? |
 | `shortage_inbound_links` | tenant-owned | ✅ | ✅ | loud-fail | — | ✅ | ✅ | ✅ | ✅ | ? |
 | `sku` | tenant-owned | ✅ | ✅ | loud-fail | ✅ | ✅ | ✅ | ✅ | ✅ | ? |
 | `sku_catalog` | tenant-owned | ✅ | ✅ | loud-fail | ✅ | ✅ | ✅ | ✅ | ✅ | 1684 |
 | `sku_kit_parts` | tenant-owned | ✅ | ✅ | loud-fail | ✅ | ✅ | ✅ | ✅ | ✅ | 3 |
 | `sku_management` | tenant-owned | ✅ | ✅ | loud-fail | ✅ | ✅ | ✅ | ✅ | ✅ | 101 |
-| `sku_pairing_suggestions` | tenant-owned | ✅ | ✅ | loud-fail | ✅ | ✅ | ✅ | ✅ | ✅ | 3234 |
-| `sku_platform_ids` | tenant-owned | ✅ | ✅ | loud-fail | ✅ | ✅ | ✅ | ✅ | ✅ | 6513 |
+| `sku_pairing_suggestions` | tenant-owned | ✅ | ✅ | loud-fail | ✅ | ✅ | ✅ | ✅ | ✅ | 3266 |
+| `sku_platform_ids` | tenant-owned | ✅ | ✅ | loud-fail | ✅ | ✅ | ✅ | ✅ | ✅ | 6553 |
 | `sku_relationships` | tenant-owned | ✅ | ✅ | loud-fail | — | ✅ | ✅ | ✅ | ✅ | ? |
 | `sku_staff_pairings` | tenant-owned | ✅ | ✅ | loud-fail | — | ✅ | ✅ | ✅ | ✅ | ? |
 | `sku_stock` | tenant-owned | ✅ | ✅ | loud-fail | ✅ | ✅ | ✅ | ✅ | ✅ | 3013 |
@@ -345,7 +349,7 @@ Legend: org=has organization_id · NN=NOT NULL · dflt=default kind · FK=FK→o
 | `staff_messages` | tenant-owned | ✅ | ✅ | loud-fail | — | ✅ | ✅ | ✅ | ✅ | ? |
 | `staff_preferences` | tenant-owned | ✅ | ✅ | loud-fail | — | ✅ | ✅ | ✅ | ✅ | 18 |
 | `staff_rail_exclusions` | tenant-owned | ✅ | ✅ | loud-fail | — | ✅ | ✅ | ✅ | ✅ | ? |
-| `staff_sessions` | tenant-owned | ✅ | ✅ | loud-fail | ✅ | ✅ | ✅ | ✅ | ✅ | 3833 |
+| `staff_sessions` | tenant-owned | ✅ | ✅ | loud-fail | ✅ | ✅ | ✅ | ✅ | ✅ | 3917 |
 | `staff_stations` | tenant-owned | ✅ | ✅ | loud-fail | ✅ | ✅ | ✅ | ✅ | ✅ | 2 |
 | `staff_subscriptions` | tenant-owned | ✅ | ✅ | loud-fail | — | ✅ | ✅ | ✅ | ✅ | 9 |
 | `staff_todo_completions` | tenant-owned | ✅ | ✅ | loud-fail | ✅ | ✅ | ✅ | ✅ | ✅ | ? |
@@ -356,7 +360,7 @@ Legend: org=has organization_id · NN=NOT NULL · dflt=default kind · FK=FK→o
 | `step_up_phone_requests` | tenant-owned | ✅ | ✅ | none | — | — | — | — | — | ? |
 | `stock_alerts` | tenant-owned | ✅ | ✅ | loud-fail | ✅ | ✅ | ✅ | ✅ | ✅ | 605 |
 | `supplier_external_ids` | tenant-owned | ✅ | ✅ | loud-fail | — | ✅ | ✅ | ✅ | ✅ | ? |
-| `suppliers` | tenant-owned | ✅ | ✅ | loud-fail | ✅ | ✅ | ✅ | ✅ | ✅ | 0 |
+| `suppliers` | tenant-owned | ✅ | ✅ | loud-fail | ✅ | ✅ | ✅ | ✅ | ✅ | 17 |
 | `support_interaction_links` | tenant-owned | ✅ | ✅ | loud-fail | — | ✅ | ✅ | ✅ | ✅ | ? |
 | `support_interactions` | tenant-owned | ✅ | ✅ | loud-fail | — | ✅ | ✅ | ✅ | ✅ | ? |
 | `support_ticket_assignments` | tenant-owned | ✅ | ✅ | loud-fail | — | ✅ | ✅ | ✅ | ✅ | ? |
@@ -397,7 +401,7 @@ Legend: org=has organization_id · NN=NOT NULL · dflt=default kind · FK=FK→o
 | `work_assignment_documents` | tenant-owned | ✅ | ✅ | loud-fail | — | ✅ | ✅ | ✅ | ✅ | ? |
 | `work_assignment_links` | tenant-owned | ✅ | ✅ | loud-fail | — | ✅ | ✅ | ✅ | ✅ | ? |
 | `work_assignment_media_links` | tenant-owned | ✅ | ✅ | loud-fail | — | ✅ | ✅ | ✅ | ✅ | ? |
-| `work_assignments` | tenant-owned | ✅ | ✅ | loud-fail | ✅ | ✅ | ✅ | ✅ | ✅ | 9940 |
+| `work_assignments` | tenant-owned | ✅ | ✅ | loud-fail | ✅ | ✅ | ✅ | ✅ | ✅ | 10110 |
 | `work_session_intervals` | tenant-owned | ✅ | ✅ | loud-fail | — | ✅ | ✅ | ✅ | ✅ | 39 |
 | `work_session_purposes` | tenant-owned | ✅ | ✅ | loud-fail | — | ✅ | ✅ | ✅ | ✅ | 152 |
 | `work_sessions` | tenant-owned | ✅ | ✅ | loud-fail | — | ✅ | ✅ | ✅ | ✅ | 7 |
@@ -409,7 +413,7 @@ Legend: org=has organization_id · NN=NOT NULL · dflt=default kind · FK=FK→o
 | `zoho_fulfillment_sync` | tenant-owned | ✅ | — | loud-fail | — | ✅ | ✅ | ✅ | ✅ | 910 |
 | `zoho_item_images` | tenant-owned | ✅ | ✅ | loud-fail | ✅ | ✅ | ✅ | ✅ | ✅ | 311 |
 | `zoho_locations` | tenant-owned | ✅ | ✅ | loud-fail | ✅ | ✅ | ✅ | ✅ | ✅ | ? |
-| `zoho_po_mirror` | tenant-owned | ✅ | ✅ | loud-fail | ✅ | ✅ | ✅ | ✅ | ✅ | 4630 |
+| `zoho_po_mirror` | tenant-owned | ✅ | ✅ | loud-fail | ✅ | ✅ | ✅ | ✅ | ✅ | 4664 |
 | `zoho_webhook_events` | tenant-owned | ✅ | ✅ | loud-fail | — | ✅ | ✅ | ✅ | ✅ | ? |
 | `carrier_event_time_backup_2026_09_25` | tenant-owned-NEEDS-COL | — | — | none | — | — | — | — | — | 17340 |
 | `password_reset_tokens` | tenant-owned-NEEDS-COL | — | — | none | — | — | — | — | — | 0 |

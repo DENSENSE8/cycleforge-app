@@ -1,6 +1,6 @@
 /**
  * Shared waist for linking an existing Zendesk ticket to an internal entity
- * (SHIPMENT / RECEIVING / RECEIVING_LINE / REPAIR / ORDER). Used by
+ * (SHIPMENT / RECEIVING / RECEIVING_LINE / SERIAL_UNIT / REPAIR / ORDER). Used by
  * /api/support/tickets/link and the receiving claim-link route.
  */
 import { ApiError } from '@/lib/api';
@@ -45,6 +45,7 @@ import {
 } from '@/lib/support/ticket-shipment-pair';
 
 export type TicketLinkAnchorInput =
+  | { type: 'serialUnit'; serialUnitId: number }
   | { type: 'receiving'; receivingId: number; lineId?: number | null }
   | { type: 'tracking'; trackingNumber: string }
   | { type: 'shipment'; shipmentId: number }
@@ -100,6 +101,24 @@ async function resolveTicketLinkAnchor(
   orgId: OrgId,
   input: TicketLinkAnchorInput,
 ): Promise<ResolvedTicketLinkAnchor> {
+  if (input.type === 'serialUnit') {
+    const unit = await tenantQuery<{ unit_uid: string | null; serial_number: string | null }>(
+      orgId,
+      `SELECT unit_uid, serial_number
+         FROM serial_units
+        WHERE organization_id = $1 AND id = $2
+        LIMIT 1`,
+      [orgId, input.serialUnitId],
+    );
+    if (!unit.rows[0]) throw ApiError.notFound('Serial unit', input.serialUnitId);
+    const label = unit.rows[0].unit_uid?.trim() || unit.rows[0].serial_number?.trim();
+    return {
+      entityType: 'SERIAL_UNIT',
+      entityId: input.serialUnitId,
+      label: label || `unit #${input.serialUnitId}`,
+    };
+  }
+
   if (input.type === 'receiving') {
     const picked = pickTicketLinkAnchor({
       lineId: input.lineId ?? null,

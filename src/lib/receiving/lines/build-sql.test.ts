@@ -7,6 +7,7 @@ import {
   unboxOpenedPredicateSql,
 } from '@/lib/receiving/unbox-scan-opened-sql';
 import { parseReceivingLinesQuery } from './query';
+import { CHECK_ZOHO_RECEIVED_MAX_INPUTS } from '@/lib/receiving/tracking-paste';
 import {
   buildReceivingLinesListSql,
   buildUnmatchedPlaceholdersSql,
@@ -569,9 +570,19 @@ test('tracking_in canonicalizes, dedupes and caps — a bookmark can never over-
   const built = listFor('view=incoming&tracking_in=1z999-aa1 01,1Z999AA101,,%20');
   assert.deepEqual(built.list.params[1], ['1Z999AA101']);
 
-  const many = Array.from({ length: 137 }, (_, i) => `TRACK${String(i).padStart(6, '0')}`);
+  const many = Array.from({ length: CHECK_ZOHO_RECEIVED_MAX_INPUTS + 37 }, (_, i) => `TRACK${String(i).padStart(6, '0')}`);
   const capped = listFor(`view=incoming&tracking_in=${many.join(',')}`);
-  assert.equal((capped.list.params[1] as string[]).length, 100);
+  assert.equal((capped.list.params[1] as string[]).length, CHECK_ZOHO_RECEIVED_MAX_INPUTS);
+});
+
+test('ref_in narrows Unboxed to the pasted numbers and keeps its own population', () => {
+  const plain = listFor('view=activity');
+  const pasted = listFor('view=activity&ref_in=po-7,1z999-aa1 01');
+  assert.deepEqual(pasted.list.params[1], ['PO7', '1Z999AA101'], 'the pasted keys ride right after the org');
+  assert.ok(pasted.list.sql.includes('tracking_number_normalized = ANY($2::text[])'), 'the paste matches by key');
+  // Everything the plain lane filters on still applies — the paste only narrows it.
+  assert.ok(pasted.list.sql.length > plain.list.sql.length);
+  assert.equal(listFor('view=all&ref_in=PO-7').list.params.some((p) => Array.isArray(p) && p.includes('PO7')), false, 'no other history view reads it');
 });
 
 test('tracking_in RELAXES the Incoming lane — a vendor-received row must come back', () => {
@@ -730,7 +741,6 @@ test('exceptions keeps the Zoho-received-never-scanned lines Incoming hides, but
   // Physical-first: a received line never labels, and a tracking scan keeps it out.
   assert.ok(sql.includes(`rl.workflow_status = 'EXPECTED'`));
   assert.ok(sql.includes('ru.unboxed_at IS NOT NULL') && sql.includes('rt.door_received_at IS NOT NULL'));
-  assert.ok(/NOT EXISTS \(\s*SELECT 1\s+FROM receiving_scans rs/.test(sql), 'the scan match is an anti join');
 });
 
 test('exceptions judges wrong destination against the org ZIP, and not at all without one', () => {

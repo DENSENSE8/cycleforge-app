@@ -1,28 +1,30 @@
 'use client';
 
 /**
- * Labels & docs — `/shipping/label-intake`. The sidebar views ARE the print
- * jobs, one station each (owner 2026-09-27), under bare keys 1 · 2 · 3:
+ * Labels & docs — `/shipping/label-intake`. The sidebar views, under bare
+ * keys 1 · 2 · 3 · 4:
  *
+ *   Uploads    (bare) one card per uploaded PDF — `LabelBatchesDesk`
  *   Labels     every stored shipping label not yet printed   → label station · 4×6
  *   Paperwork  packing slips + manuals not yet printed        → paperwork station · letter
  *   Printed    the print history of both, newest first
  *
- * A view prints ONLY its own stock; the explicit "Print order (labels +
- * paperwork)" verb and the both-stocks bulk verbs still split by station.
- * Triage only: one job, so no Floor and no industrial face.
+ * A print-job view prints ONLY its own stock; the explicit "Print order
+ * (labels + paperwork)" verb and the both-stocks bulk verbs still split by
+ * station. Triage only: one job, so no Floor and no industrial face.
  *
  * The HOST of the desk family on the shared triage face ({@link TriageCardList}):
  * the Shipping desk frame and contextual sidebar own the title, the views
  * (`?view=`), Find (the desk store) and the header verbs (run through nav
- * intents). One fixed-width view: the cards are a narrow rail at the left, the
- * open order's documents fill the rest; the first card opens on arrival and
- * the rail always has one open (no ✕ — the record header ends in Print).
+ * intents). One fixed-width view (owner 2026-09-27): the cards are a narrow
+ * rail at the left, the open order's documents fill the rest; the first card
+ * opens on arrival and the rail always has one open (no ✕ — the record header
+ * ends in Print). Uploads alone starts as a lone list (owner 2026-09-28).
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState, type DragEvent } from 'react';
 import { usePathname, useSearchParams } from 'next/navigation';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery } from '@tanstack/react-query';
 import { Layers, Printer, RotateCcw } from '@/components/Icons';
 import { IncomingStatusChips, type IncomingStatusChipSet } from '@/components/receiving/incoming/IncomingStatusChips';
 import { DeskRecordLayout } from '@/design-system/components/DeskRecordPlane';
@@ -40,20 +42,15 @@ import type { GroupedRenderOrder } from '@/lib/group-rows';
 import { isEditableKeyTarget } from '@/lib/keyboard/is-editable-key-target';
 import { registerShortcutOverviewGroup } from '@/lib/keyboard/shortcut-overview';
 import { chordKeys, useApplePlatform } from '@/lib/keyboard/chord-keys';
-import { applyLabelIngestionHttp, LABEL_INGESTIONS_QUERY_KEY, retryLabelIngestionHttp } from '@/lib/label-ingestions/http-client';
+import { applyLabelIngestionHttp, retryLabelIngestionHttp } from '@/lib/label-ingestions/http-client';
 import type { LabelPrintQueue, LabelPrintRow, LabelPrintView, PaperworkPrintRow } from '@/lib/label-prints/contracts';
-import { currentPrintRoute } from '@/lib/label-prints/current-print-route';
-import { fetchLabelPrintQueue, LABEL_PRINTS_QUERY_ROOT, labelPrintQueueKey } from '@/lib/label-prints/http-client';
-import { printDocuments, type DeskDocument, type PrintOutcome } from '@/lib/label-prints/print-labels';
+import { fetchLabelPrintQueue, labelPrintQueueKey } from '@/lib/label-prints/http-client';
+import type { DeskDocument } from '@/lib/label-prints/print-labels';
 import type { PrintStock } from '@/lib/label-prints/print-route';
 import { useNavIntent } from '@/lib/nav/use-nav-intent';
 import { useDeskSearch } from '@/lib/outbound/desk-search-store';
 import { hasOpenOverlay } from '@/lib/overlay-stack/store';
-import { readPrintStation } from '@/lib/print/print-station';
-import { stationDocumentRef } from '@/lib/print/print-station-documents';
-import { MAX_STATION_DOCUMENTS } from '@/lib/print/staff-print-bridge';
 import { usePublishRecordCursor } from '@/lib/record-cursor/useRecordCursor';
-import { safeRandomUUID } from '@/lib/safe-uuid';
 import {
   LABEL_INTAKE_LABELS_VIEW,
   LABEL_INTAKE_PAPERWORK_VIEW,
@@ -63,7 +60,9 @@ import {
   type LabelPairingKey,
 } from '@/lib/triage/views/label-intake';
 import { cn } from '@/utils/_cn';
-import { planPress, marryByCardOrder, PRINT_STOCKS } from './desk-press';
+import { marryByCardOrder, PRINT_STOCKS } from './desk-press';
+import { LabelBatchesDesk } from './LabelBatchesDesk';
+import { reprintWarning, stockCount, useDeskPress, type PrintedLabelFace } from './use-desk-press';
 import {
   deskBands,
   deskCardKey,
@@ -85,7 +84,6 @@ import { PairOrderCard } from './PairOrderCard';
 import { PaperworkIntakeCard } from './PaperworkIntakeCard';
 import { PrinterConnectCard } from './PrinterConnectCard';
 import { PrintStationsCard, stationFace } from './PrintStationsCard';
-import { CHANNEL_FACE } from './print-faces';
 import { LabelUploadTray } from './upload/LabelUploadTray';
 import { SlipUploadTray } from './upload/SlipUploadTray';
 import { useLabelUploads } from './upload/use-label-uploads';
@@ -97,15 +95,14 @@ import { usePrintRoutes } from './use-print-routes';
 const PRINT_VIEW_CHORD = 'mod+p';
 const UPLOAD_CHORD = 'mod+o';
 const PAIRING_LABEL: Record<LabelPairingKey, string> = { unpaired: 'No order', paired: 'Paired' };
-const STOCK_WORD: Record<PrintStock, [string, string]> = { label: ['label', 'labels'], paper: ['paperwork doc', 'paperwork docs'] };
 const DECLS = { labels: LABEL_INTAKE_LABELS_VIEW, paperwork: LABEL_INTAKE_PAPERWORK_VIEW, printed: LABEL_INTAKE_PRINTED_VIEW } as const;
 
 const deskRowId = (row: DeskRow) => row.id;
 const rowPairing = (row: DeskRow): readonly LabelPairingKey[] => [deskPairingKey(row)];
-const count = (n: number, stock: PrintStock) => `${n} ${STOCK_WORD[stock][n === 1 ? 0 : 1]}`;
 
-function readView(raw: string | null): LabelPrintView {
-  return raw === 'paperwork' || raw === 'printed' ? raw : 'labels';
+/** Uploads is the bare route; the print-job views ride `?view=`. */
+function readDeskView(raw: string | null): 'uploads' | LabelPrintView {
+  return raw === 'labels' || raw === 'paperwork' || raw === 'printed' ? raw : 'uploads';
 }
 
 /** Paperwork a press takes for these rows: on Printed everything printable (a reprint), else what was never printed. */
@@ -122,21 +119,23 @@ function ownsEnter(target: EventTarget | null): boolean {
   return isEditableKeyTarget(target) || target.closest('button, a[href], [role="checkbox"], [role="switch"], [role="tab"], [role="option"]') != null;
 }
 
-interface PressResult {
-  lines: string[];
+/**
+ * The desk: Uploads (the bare route — one card per uploaded PDF) or one of the
+ * print-job views. `?view=` picks; the sidebar owns the switch.
+ */
+export function LabelsDocsDesk() {
+  const view = readDeskView(useSearchParams().get('view'));
+  return view === 'uploads' ? <LabelBatchesDesk /> : <PrintQueueDesk view={view} />;
 }
 
-export function LabelsDocsDesk() {
-  const queryClient = useQueryClient();
+function PrintQueueDesk({ view }: { view: LabelPrintView }) {
   const pathname = usePathname() || '/';
-  const searchParams = useSearchParams();
   const apple = useApplePlatform();
   const labelPicker = useRef<HTMLInputElement>(null);
   const slipPicker = useRef<HTMLInputElement>(null);
   const { routes, refresh: refreshRoutes } = usePrintRoutes();
   const stations = usePrintStations();
 
-  const view = readView(searchParams.get('view'));
   const decl = DECLS[view];
   // One view (owner 2026-09-27): the fixed-width rail + record — no In place /
   // Split choice. The frame's ⌘/Ctrl+Shift+S chord cannot move it off.
@@ -149,8 +148,6 @@ export function LabelsDocsDesk() {
   const [query, setQuery] = useDeskSearch(pathname);
   const cut = useTriageCut({ statusKeys: LABEL_PAIRING_KEYS, recordParams: decl.recordParams, statusParam: LABEL_PAIRING_PARAM });
   const { statusFilter, toggleStatus, resetStatus } = cut.url;
-  const [notice, setNotice] = useState('');
-  const [progress, setProgress] = useState<{ done: number; total: number } | null>(null);
   const [dragging, setDragging] = useState(false);
 
   // Labels + Paperwork are always read: the both-stocks verbs marry them, and
@@ -181,6 +178,7 @@ export function LabelsDocsDesk() {
   const unpaired = useMemo(() => foundGroups.filter((group) => group.rows[0]?.orderId == null).length, [foundGroups]);
 
   // ── The open card: the first on arrival; the next one when it leaves the list ──
+  // The first card opens on arrival; the next one when it leaves the list (owner 2026-09-27).
   const [openId, setOpenId] = useState<number | null>(null);
   useEffect(() => {
     if (openId != null && painted.some((row) => row.id === openId)) return;
@@ -272,55 +270,26 @@ export function LabelsDocsDesk() {
   }, [docs.documents, openKey, defaultTaken]);
   const checkedDocs = useMemo(() => docs.documents.filter((doc) => included.has(doc.key)), [docs.documents, included]);
 
-  const refresh = useCallback(async () => {
-    await Promise.all([
-      queryClient.invalidateQueries({ queryKey: LABEL_PRINTS_QUERY_ROOT }),
-      // The ingestion ledger AND every label's print log (`['v1', 'label-ingestions', id, 'prints']`).
-      queryClient.invalidateQueries({ queryKey: LABEL_INGESTIONS_QUERY_KEY }),
-    ]);
-  }, [queryClient]);
-
-  // ── One press: split by stock, each stock to ITS station ────────────────
-  const print = useMutation({
-    mutationFn: async ({ documents, reprint }: { documents: DeskDocument[]; reprint: boolean }): Promise<PressResult> => {
-      const plan = planPress(documents, stations.target, stations.blockedReason, MAX_STATION_DOCUMENTS);
-      const total = plan.local.length + plan.remote.reduce((sum, job) => sum + job.documents.length, 0);
-      let before = 0;
-      const tick = (done: number) => setProgress({ done: before + done, total });
-      setProgress({ done: 0, total });
-      const lines: string[] = [];
-      try {
-        if (plan.local.length > 0) {
-          const here = readPrintStation();
-          const outcome = await printDocuments(plan.local, currentPrintRoute, {
-            onProgress: (done) => tick(done),
-            station: here.id ? { id: here.id, name: here.name } : null,
-          });
-          lines.push(...localLines(outcome, reprint));
-          before += plan.local.length;
-        }
-        for (const job of plan.remote) {
-          const acked = await stations.sendDocuments(job.station.stationId, job.stock, safeRandomUUID(), job.documents.flatMap((doc) => stationDocumentRef(doc) ?? []), (done) => tick(done));
-          lines.push(
-            acked
-              ? `${count(job.documents.length, job.stock)} → ${job.station.stationName}`
-              : `${job.station.stationName} did not answer — ${count(job.documents.length, job.stock)} not sent`,
-          );
-          before += job.documents.length;
-        }
-        for (const block of plan.blocked) lines.push(`${count(block.count, block.stock)} not sent — ${block.reason}`);
-      } finally {
-        refreshRoutes();
-      }
-      return { lines };
-    },
-    onSuccess: ({ lines }) => setNotice(lines.join(' · ') || 'Nothing printed.'),
-    onError: (error) => setNotice(error instanceof Error ? error.message : 'Printing failed.'),
-    onSettled: async () => {
-      setProgress(null);
-      await refresh();
-    },
-  });
+  const { print, progress, notice, setNotice, refresh } = useDeskPress(stations, refreshRoutes);
+  // Every label this desk has read, by ingestion id — the reprint warning names what a press would print again.
+  const labelsById = useMemo(() => {
+    const byId = new Map<number, LabelPrintRow>();
+    for (const row of rows) if (row.label) byId.set(row.label.id, row.label);
+    if (labelsQueue.data?.view === 'labels') for (const row of labelsQueue.data.rows) byId.set(row.id, row);
+    return byId;
+  }, [rows, labelsQueue.data]);
+  const warnFor = useCallback(
+    (documents: readonly DeskDocument[]) =>
+      reprintWarning(
+        documents.flatMap((doc): PrintedLabelFace[] => {
+          const row = doc.ingestionId != null ? labelsById.get(doc.ingestionId) : undefined;
+          if (!row) return [];
+          const name = row.orderId != null && row.orderRef ? `Order ${row.orderRef}’s label` : `Label ${row.trackingNumber ?? row.fileBasename}`;
+          return [{ name, printCount: row.printCount, lastPrintedAt: row.lastPrintedAt, lastPrintedBy: row.lastPrintedBy, lastStationName: row.lastStationName }];
+        }),
+      ),
+    [labelsById],
+  );
 
   // ── Bulk print by stock (§3.2): the whole queue, or the painted cut of the view on screen ──
   const reprinting = view === 'printed';
@@ -348,9 +317,9 @@ export function LabelsDocsDesk() {
         setNotice(stocks.length === 2 ? 'Nothing left to print.' : `No ${stocks[0] === 'label' ? 'labels' : 'paperwork'} left to print.`);
         return;
       }
-      print.mutate({ documents, reprint: false });
+      print.mutate({ documents, reprint: false, confirm: warnFor(documents) });
     },
-    [print, labelQueueDocs, paperQueueDocs],
+    [print, labelQueueDocs, paperQueueDocs, warnFor],
   );
   const printViewStock = useCallback(() => {
     if (view === 'printed') {
@@ -379,14 +348,14 @@ export function LabelsDocsDesk() {
 
   const printChecked = useCallback(() => {
     if (print.isPending || !openCard || checkedDocs.length === 0) return;
-    print.mutate({ documents: checkedDocs, reprint: reprinting || openCard.labels.some((row) => row.printCount > 0) });
-  }, [print, openCard, checkedDocs, reprinting]);
+    print.mutate({ documents: checkedDocs, reprint: reprinting || openCard.labels.some((row) => row.printCount > 0), confirm: warnFor(checkedDocs) });
+  }, [print, openCard, checkedDocs, reprinting, warnFor]);
 
   const printOrder = useCallback(() => {
     if (print.isPending || !openCard) return;
     const documents = marryByCardOrder(labelDocuments(openCard.labels), docs.orderPaperwork);
-    if (documents.length > 0) print.mutate({ documents, reprint: openCard.labels.some((row) => row.printCount > 0) });
-  }, [print, openCard, docs.orderPaperwork]);
+    if (documents.length > 0) print.mutate({ documents, reprint: openCard.labels.some((row) => row.printCount > 0), confirm: warnFor(documents) });
+  }, [print, openCard, docs.orderPaperwork, warnFor]);
 
   // ── Uploads (§3.3): label PDFs (split per page) and packing slips (matched to orders) ──
   const labelUploads = useLabelUploads({ onSettled: refresh });
@@ -548,19 +517,25 @@ export function LabelsDocsDesk() {
     return [
       {
         id: 'print-checked-labels',
-        label: `${verb} ${count(labels, 'label')}`,
+        label: `${verb} ${stockCount(labels, 'label')}`,
         icon: <Printer />,
         disabled: labels === 0 || print.isPending,
         disabledReason: busy ?? 'No labels on the checked orders',
-        run: () => print.mutate({ documents: checkedDocsOf(['label']), reprint: reprinting }),
+        run: () => {
+          const documents = checkedDocsOf(['label']);
+          print.mutate({ documents, reprint: reprinting, confirm: warnFor(documents) });
+        },
       },
       {
         id: 'print-checked-paperwork',
-        label: `${verb} ${count(paper, 'paper')}`,
+        label: `${verb} ${stockCount(paper, 'paper')}`,
         icon: <Printer />,
         disabled: paper === 0 || print.isPending,
         disabledReason: busy ?? 'No paperwork left to print on the checked orders',
-        run: () => print.mutate({ documents: checkedDocsOf(['paper']), reprint: reprinting }),
+        run: () => {
+          const documents = checkedDocsOf(['paper']);
+          print.mutate({ documents, reprint: reprinting, confirm: warnFor(documents) });
+        },
       },
       {
         id: 'print-checked-both',
@@ -568,10 +543,13 @@ export function LabelsDocsDesk() {
         icon: <Layers />,
         disabled: labels + paper === 0 || print.isPending,
         disabledReason: busy ?? 'Nothing to print on the checked orders',
-        run: () => print.mutate({ documents: checkedDocsOf(PRINT_STOCKS), reprint: reprinting }),
+        run: () => {
+          const documents = checkedDocsOf(PRINT_STOCKS);
+          print.mutate({ documents, reprint: reprinting, confirm: warnFor(documents) });
+        },
       },
     ];
-  }, [checkedDocsOf, print, reprinting]);
+  }, [checkedDocsOf, print, reprinting, warnFor]);
 
   const reprint = reprinting || (openCard?.labels.some((row) => row.printCount > 0) ?? false);
   const checkedStocks = PRINT_STOCKS.filter((stock) => checkedDocs.some((doc) => doc.stock === stock));
@@ -722,7 +700,8 @@ export function LabelsDocsDesk() {
         feed={feed}
         cut={cut}
         record={{
-          title: openCard ? (openCard.orderRef ?? 'No order') : 'Order',
+          // The open card in the rail already names the order — the header only adds what the card does not say.
+          title: <span className="sr-only">{openCard ? (openCard.orderRef ?? 'No order') : 'Order'}</span>,
           subtitle: openCard
             ? openCard.labels.length > 1
               ? `${openCard.labels.length} labels`
@@ -738,7 +717,7 @@ export function LabelsDocsDesk() {
           strip: null,
           rail: true,
         }}
-        summary={<IncomingStatusChips set={chipSet} face="cards" />}
+        summary={<IncomingStatusChips set={chipSet} />}
         bulk={<RecordActionStrip verbs={bulkVerbs} label="Checked order actions" testId="labels-docs-bulk" />}
         banner={
           status || labelUploads.items.length > 0 || slipUploads.rows.length > 0 ? (
@@ -769,23 +748,4 @@ export function LabelsDocsDesk() {
       />
     </div>
   );
-}
-
-/** What the local run did, per stock, naming this computer's route. */
-function localLines(outcome: PrintOutcome, reprint: boolean): string[] {
-  const lines: string[] = [];
-  for (const stock of PRINT_STOCKS) {
-    const route = outcome.routes[stock];
-    const n = outcome.printed.filter((doc) => doc.stock === stock).length;
-    if (!route || n === 0) continue;
-    lines.push(
-      route.channel === 'BROWSER_DIALOG'
-        ? `${count(n, stock)} → print dialog`
-        : `${reprint ? 'Reprinted' : 'Printed'} ${count(n, stock)} · ${CHANNEL_FACE[route.channel]}${route.printerName ? ` · ${route.printerName}` : ''}`,
-    );
-  }
-  const first = outcome.failed[0];
-  if (first) lines.push(`${outcome.failed.length} failed — ${first.doc.title}: ${first.reason}`);
-  if (outcome.logError) lines.push(`not logged: ${outcome.logError}`);
-  return lines;
 }

@@ -41,6 +41,7 @@ export function useTriageUrlState<K extends string>({
   statusKeys,
   recordParams,
   statusParam = DEFAULT_STATUS_PARAM,
+  statusSelect = 'many',
 }: {
   /** The family's status chips, in URL order; anything else in the param is ignored. */
   statusKeys: readonly K[];
@@ -52,6 +53,12 @@ export function useTriageUrlState<K extends string>({
    * lives in ONE param (comma-separated), never two.
    */
   statusParam?: string;
+  /**
+   * `many` (default): chips OR together (a comma list). `one`: a chip names
+   * the list's whole scope (the server narrows by it, Exceptions' `?kind=`),
+   * so pressing one replaces the lit one.
+   */
+  statusSelect?: 'many' | 'one';
 }): TriageUrlState<K> {
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -90,12 +97,12 @@ export function useTriageUrlState<K extends string>({
 
   const toggleStatus = useCallback(
     (key: K) => {
-      const next = new Set(statusFilter);
-      if (next.has(key)) next.delete(key);
+      const next = new Set<K>(statusSelect === 'one' ? [] : statusFilter);
+      if (statusFilter.has(key)) next.delete(key);
       else next.add(key);
       write({ status: next });
     },
-    [statusFilter, write],
+    [statusFilter, statusSelect, write],
   );
   const resetStatus = useCallback(() => write({ status: new Set() }), [write]);
   const setPageIndex = useCallback((index: number) => write({ pageIndex: Math.max(0, index) }), [write]);
@@ -149,6 +156,7 @@ export function useTriageCut<K extends string>(opts: {
   statusKeys: readonly K[];
   recordParams: readonly string[];
   statusParam?: string;
+  statusSelect?: 'many' | 'one';
 }): TriageCut<K> {
   const url: TriageUrlState<K> = useTriageUrlState(opts);
   const { statusFilter } = url;

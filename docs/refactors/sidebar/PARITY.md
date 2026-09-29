@@ -287,19 +287,23 @@ Governed by `SIDEBAR_PAGE_NAV:1030-1043`, `src/app/shipping/(desk)/fba/page.tsx:
 
 ### label-intake — Labels & docs (contextual since 2026-09-27)
 
-Governed by `SIDEBAR_PAGE_NAV` (`label-intake`, children `labels` / `paperwork` / `printed`, bare keys 1 · 2 · 3), `NAV_PAGE_DECLS['label-intake']`, `src/app/shipping/(desk)/label-intake/page.tsx` and `src/features/labels-docs/LabelsDocsDesk.tsx`. The old `LabelIntakeLedger` is deleted; the machine-checked rows live in `parity.ts` (`'label-intake'`).
+Governed by `SIDEBAR_PAGE_NAV` (`label-intake`, children `uploads` / `labels` / `paperwork` / `printed`, bare keys 1 · 2 · 3 · 4), `NAV_PAGE_DECLS['label-intake']`, the route spec `/shipping/label-intake` (`src/lib/routing/outbound-routes.ts`), `src/app/shipping/(desk)/label-intake/page.tsx` and `src/features/labels-docs/LabelsDocsDesk.tsx`. The old `LabelIntakeLedger` is deleted; the machine-checked rows live in `parity.ts` (`'label-intake'`).
 
 | Element Type | Name / Key | URL Param / Store / Target | Allowed / Expected Values | Source |
 |---|---|---|---|---|
-| **View** | Labels *(Default)* | sidebar child `labels`, bare route | 4×6 labels with no print row | `src/lib/sidebar-navigation.ts` (`label-intake` children) |
+| **View** | Uploads *(Default)* | sidebar child `uploads`, bare route (`?view=uploads` too) | one card per uploaded label PDF (a batch; the same PDF twice is one batch), newest upload first; `?batch=` opens one | `src/lib/sidebar-navigation.ts` (`label-intake` children) |
+| **View** | Labels | sidebar child `labels`, `?view=labels` | 4×6 labels with no print row | same |
 | **View** | Paperwork | sidebar child `paperwork`, `?view=paperwork` | paired orders with a packing slip or manual not yet printed | same |
 | **View** | Printed | sidebar child `printed`, `?view=printed` | printed labels and paperwork, newest print first | same |
+| **Filter** | Uploaded (Uploads) | `?from=` · `?to=` (sidebar date control) | `YYYY-MM-DD` upload date, warehouse civil day, inclusive; unset = any date | `NAV_PAGE_DECLS['label-intake'].items.uploads` |
 | **Search** | Find labels | desk store (`useDeskSearch`) — sidebar Find, or the global header's Find while the sidebar is closed | tracking / order / file / carrier | `src/lib/label-prints/queue-filter.ts` `findLabelRows` |
 | **Filter** | Pairing chips | `?pairing=` (triage cut) | `unpaired` · `paired` (All = none) | `src/lib/triage/views/label-intake.ts` |
+| **Filter** | Print-state chips (Uploads) | `?printing=` (triage cut) | `to-print` · `printed` (All = none) | `src/lib/triage/views/label-intake.ts` `LABEL_BATCH_PRINTING_PARAM` |
 | **Action** | Print all labels (⌘P on Labels) | nav intent `labels-docs:print-labels` | prints every label in the cut to the label station | `LabelsDocsDesk.tsx` |
 | **Action** | Print all paperwork (⌘P on Paperwork) | nav intent `labels-docs:print-paperwork` | prints every slip + manual in the cut to the paperwork station | `LabelsDocsDesk.tsx` |
 | **Action** | Print all (labels + paperwork) | nav intent `labels-docs:print-all` | both stocks, each to its own station | `LabelsDocsDesk.tsx` |
-| **Action** | Upload label PDFs (⌘O) + drag-drop | nav intent `labels-docs:upload` | POST multipart `/api/v1/label-ingestions` | `LabelsDocsDesk.tsx` |
+| **Action** | Upload label PDFs (⌘O; the face on Uploads) + drag-drop | nav intent `labels-docs:upload` | POST multipart `/api/v1/label-batches` — one batch per PDF, one label per page | `LabelsDocsDesk.tsx` |
+| **Action** | Buy label (the face on Labels) | link `/shipping/buy-label` | the focused Buy a label page: ship-to + parcel (optionally from a linked product) → rates → buy one label outright, no order required; it lands as a Labels card | `src/app/shipping/buy-label/page.tsx` |
 | **Action** | Upload packing slips | nav intent `labels-docs:upload-slips` | matched to orders, then the per-order slip upload | `LabelsDocsDesk.tsx` |
 | **Record** | Print (Enter) · Pair to order / Order paperwork · Printers · Label record (Apply / Reprocess) | the open label in the rail plane | — | `src/features/labels-docs/*` |
 | **Count** | View counts | `GET /api/v1/label-prints` `counts` | per view | `src/lib/label-prints/contracts.ts` |

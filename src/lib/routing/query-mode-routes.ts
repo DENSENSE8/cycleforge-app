@@ -45,6 +45,7 @@ import {
   type RouteParamsSpec,
 } from './route-params';
 import { TO_SHIP_QUEUE_FACET_PARAMS } from './to-ship-queue-params';
+import { EXCEPTION_RECORD_ROUTE_PARAMS } from './desk-page-routes';
 
 /** Operator-level bits every workbench accepts on arrival. */
 const WORKBENCH_CARRIES = ['staff', 'staffId', 'colsort', 'coldir', 'pane', 'layout', 'weekOffset'] as const;
@@ -108,6 +109,8 @@ const DASHBOARD_ROUTE_PARAMS = defineRouteParams({
     q: paramText,
     map: paramText,
     openOrderId: paramPositiveInt,
+    /** Sales Board history Find; namespaced away from the Search hand-off `q`. */
+    sq: paramText,
     /** HAND-OFF keys — read on this route only to be forwarded, never rendered. */
     warranty: paramPresence,
     fba: paramPresence,
@@ -151,9 +154,34 @@ const HOME_ROUTE_PARAMS = defineRouteParams({
      * so the param survives navigation in the meantime.
      */
     item: paramPositiveInt,
-    /** Daily's own filter vocabulary (status / text), unmounted with scope 1. */
+    /** Daily's sidebar-owned lens, status, scope, and header Find. */
+    tab: paramText,
     q: paramText,
     filter: paramText,
+    scope: paramText,
+    /** The agenda row list's 1-based page (`useTriageCut`). */
+    page: paramPositiveInt,
+  },
+  carries: WORKBENCH_CARRIES,
+});
+
+/** `/ops/photos` — Media Library source views and advanced filters. */
+const MEDIA_LIBRARY_ROUTE_PARAMS = defineRouteParams({
+  route: '/ops/photos',
+  owns: {
+    sourceScope: paramText,
+    imageType: paramText,
+    q: paramText,
+    dateFrom: paramText,
+    dateTo: paramText,
+    sort: paramText,
+    stage: paramText,
+    staffId: paramText,
+    label: paramText,
+    damageDetected: paramText,
+    hasAnalysis: paramText,
+    documentType: paramText,
+    outboundMedia: paramText,
   },
   carries: WORKBENCH_CARRIES,
 });
@@ -212,7 +240,7 @@ const OPERATIONS_ROUTE_PARAMS = defineRouteParams({
   carries: WORKBENCH_CARRIES,
 });
 
-/** `/products` — Manuals · SKU Barcodes · Pairing · QC Checklist. */
+/** `/products` — All products · Manuals · SKU Barcodes · Pairing · QC Checklist. */
 export const PRODUCTS_ROUTE_PARAMS = defineRouteParams({
   route: '/products',
   owns: {
@@ -278,6 +306,7 @@ export const TEST_ROUTE_PARAMS = defineRouteParams({
   route: '/test',
   owns: {
     /** Workspace search box (Testing history + the KPI strip both read it). */
+    q: paramText,
     search: paramText,
     /** Workbench tab — composes the tab SoT, never a re-typed list. */
     testTab: paramRoundTrip(parseTestingWorkspaceTab),
@@ -296,6 +325,7 @@ export const PICK_ROUTE_PARAMS = defineRouteParams({
   owns: {
     /** Scan-history search (a tech-scan recent lands on `?ship=history&search=`). */
     search: paramText,
+    q: paramText,
     /** Workspace tab — composes the tab SoT, never a re-typed list. */
     ship: paramRoundTrip(parseShippingWorkspaceTab),
     /** Armed packing DESK/STAGING filter (Picker placement). */
@@ -366,6 +396,8 @@ export const INVENTORY_ROUTE_PARAMS = defineRouteParams({
     rsku: paramText,
     /** Replenish request status (one of the active statuses). */
     rstatus: paramEnum(['detected', 'pending_review', 'planned_for_po', 'po_created', 'waiting_for_receipt'] as const),
+    /** Replenish: the row list's 1-based page (`useTriageCut`). */
+    page: paramPositiveInt,
   },
   carries: WORKBENCH_CARRIES,
 });
@@ -390,13 +422,13 @@ const INVENTORY_LOCATIONS_ROUTE_PARAMS = defineRouteParams({
   carries: WORKBENCH_CARRIES,
 });
 
-/** `/inventory/stock` — the warehouse-wide (location, SKU) stock ledger. */
+/** `/inventory/stock` — the warehouse-wide (location, SKU) stock list (one-row triage). */
 export const INVENTORY_STOCK_ROUTE_PARAMS = defineRouteParams({
   route: '/inventory/stock',
   owns: {
     /** The one search box, over every fact a record paints (server-side). */
     q: paramText,
-    /** Room funnel — a comma-separated multi-select over `locations.room`. */
+    /** Room chips — a comma-separated multi-select over `locations.room` (the list's own cut, `useTriageCut`). */
     room: paramText,
     /** Operational state funnel: open placeholders or catalog-paired stock. */
     status: paramText,
@@ -404,18 +436,43 @@ export const INVENTORY_STOCK_ROUTE_PARAMS = defineRouteParams({
     open: paramText,
     /** An on-hold SKU named by a compatibility/share link. */
     sku: paramText,
+    /** The row list's 1-based page (`useTriageCut`). */
+    page: paramPositiveInt,
   },
   carries: WORKBENCH_CARRIES,
 });
 
-/** `/inventory/sku-exceptions` — the floor-minted placeholder SKU (`TMP-…`) record ledger. */
+/**
+ * `/inventory/sku-exceptions` — Inventory › SKU Exceptions: the Exceptions hub
+ * list locked to Missing pairs (owner 2026-09-28). `sku` is the legacy share
+ * link the page redirects to its exception's `record` before anything paints.
+ */
 export const INVENTORY_SKU_EXCEPTIONS_ROUTE_PARAMS = defineRouteParams({
   route: '/inventory/sku-exceptions',
   owns: {
-    /** The one search box, over every fact a record paints. */
+    /** Find, over the hub rows' entity / title / tag. */
     q: paramText,
-    /** The open placeholder SKU (`TMP-…`) — opens it in the evidence column. */
+    ...EXCEPTION_RECORD_ROUTE_PARAMS,
+    /** The card list's 1-based page (`useTriageCut`). */
+    page: paramPositiveInt,
     sku: paramText,
+  },
+  carries: WORKBENCH_CARRIES,
+});
+
+/**
+ * `/inventory/triage` — Inventory › Tracking Exceptions: the Exceptions hub
+ * list locked to Tracking (owner 2026-09-28). `open` is the legacy deep link
+ * (a `tracking_exceptions` id) the page redirects to its `record`.
+ */
+const INVENTORY_TRACKING_EXCEPTIONS_ROUTE_PARAMS = defineRouteParams({
+  route: '/inventory/triage',
+  owns: {
+    q: paramText,
+    ...EXCEPTION_RECORD_ROUTE_PARAMS,
+    /** The card list's 1-based page (`useTriageCut`). */
+    page: paramPositiveInt,
+    open: paramText,
   },
   carries: WORKBENCH_CARRIES,
 });
@@ -430,6 +487,8 @@ const INVENTORY_QC_LABELS_ROUTE_PARAMS = defineRouteParams({
     q: paramText,
     /** The open labelled unit (`serial_units.id`). */
     open: paramText,
+    /** The row list's 1-based page (`useTriageCut`). */
+    page: paramPositiveInt,
   },
   carries: WORKBENCH_CARRIES,
 });
@@ -537,8 +596,8 @@ const REVIEW_ROUTE_PARAMS = defineRouteParams({
     section: paramEnum(['missing-item-number'] as const),
     /** Focused `order_import_exceptions` row on the Missing item number tab. */
     exceptionId: paramPositiveInt,
-    /** The table search box, shared by all three modes' tables. */
-    search: paramText,
+    /** Header Find, shared by all three modes' lists. */
+    q: paramText,
   },
   carries: WORKBENCH_CARRIES,
 });
@@ -626,6 +685,7 @@ export const QUERY_MODE_ROUTE_PARAMS: readonly RouteParamsSpec[] = [
   INVENTORY_LOCATIONS_ROUTE_PARAMS,
   INVENTORY_STOCK_ROUTE_PARAMS,
   INVENTORY_SKU_EXCEPTIONS_ROUTE_PARAMS,
+  INVENTORY_TRACKING_EXCEPTIONS_ROUTE_PARAMS,
   INVENTORY_QC_LABELS_ROUTE_PARAMS,
   // Ex-/admin/inventory desks, re-homed under the Inventory desk.
   INVENTORY_HEALTH_ROUTE_PARAMS,
@@ -640,6 +700,7 @@ export const QUERY_MODE_ROUTE_PARAMS: readonly RouteParamsSpec[] = [
   WAREHOUSE_ROUTE_PARAMS,
   SEARCH_ROUTE_PARAMS,
   FORGE_ROUTE_PARAMS,
+  MEDIA_LIBRARY_ROUTE_PARAMS,
   // `/` is the shortest prefix in the registry, so it must never shadow another
   // route — the registry sorts longest-first, which keeps it last in practice.
   HOME_ROUTE_PARAMS,

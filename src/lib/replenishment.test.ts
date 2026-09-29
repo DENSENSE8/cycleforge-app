@@ -274,7 +274,7 @@ function fakePoDeps(over: Partial<CreateDraftPurchaseOrdersDeps> & {
     },
     ingestOrder: (async (client: unknown, orgId: OrgId, draft: Record<string, unknown>, ctx: { origin: string }) => {
       seen.orders.push({ orgId, draft, origin: ctx.origin, sameClient: client === seen.txClient.client });
-      return { inboundOrderId: 900, created: true, unchanged: false, lines: [], receivingId: null, identity: {} };
+      return { inboundOrderId: 900, created: true, unchanged: false, lines: [], receivingId: null, localPickupOrderId: null, identity: {} };
     }) as unknown as CreateDraftPurchaseOrdersDeps['ingestOrder'],
     ...over,
   };

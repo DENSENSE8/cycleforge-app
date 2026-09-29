@@ -88,8 +88,7 @@ export const MobileToShipRow = memo(function MobileToShipRow({
         ? 'Shipping'
         : 'Inventory';
   return (
-    <>
-      <ItemCardRow
+    <ItemCardRow
       title={row.title}
       imageUrl={row.imageUrl}
       orderContext={orderContext}
@@ -105,26 +104,21 @@ export const MobileToShipRow = memo(function MobileToShipRow({
       handlingFacts={handlingFacts}
 
       condition={toShipConditionParts(row)}
-      location={storagePath}
+      location={{ text: storagePath }}
       deadlineAt={row.deadlineAt}
       now={now}
       onOpen={() => onOpen(row)}
       active={active}
       stateRail={workflow.stateRail}
       ariaLabel={row.title}
-      primary={null}
       triageActions={[
         { id: 'out_of_stock', label: 'Out of stock', onCommit: () => onTriage(row, 'out_of_stock') },
         { id: 'hold', label: workflow.blocked ? 'Clear hold' : 'Place hold', onCommit: () => onHold(row) },
         { id: 'damaged', label: 'Damaged', onCommit: () => onTriage(row, 'damaged') },
         { id: 'discrepancy', label: 'Discrepancy', onCommit: () => onTriage(row, 'discrepancy') },
       ]}
-      />
-      {active ? (
-        <div
-          data-testid="to-ship-row-active-actions"
-          className="flex min-h-11 border-b border-border-hairline bg-surface-card"
-        >
+      footer={active ? (
+        <div data-testid="to-ship-row-active-actions" className="flex min-h-11">
           <Button
             variant="secondary"
             size="sm"
@@ -154,6 +148,6 @@ export const MobileToShipRow = memo(function MobileToShipRow({
           </Button>
         </div>
       ) : null}
-    </>
+    />
   );
 });

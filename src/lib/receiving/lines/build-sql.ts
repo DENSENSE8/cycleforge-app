@@ -644,6 +644,13 @@ export function buildReceivingLinesListSql(input: ReceivingLinesListSqlInput): B
     values.push(trackingIn);
   }
 
+  // Unboxed (`view=activity`) under a pasted list: the lane's own population,
+  // cut to the lines a pasted number names. (`view=reconcile` matches below, laneless.)
+  if (view === 'activity' && refIn.length > 0) {
+    conditions.push(lineRefMatchSql(`$${idx++}`));
+    values.push(refIn);
+  }
+
   // Pre-limit: restrict the candidate set to cartons named by the caller, which ranked them with a cheap read on the ordering column alone.
   if (receivingIdIn.length > 0) {
     conditions.push(`rl.receiving_id = ANY($${idx++}::int[])`);
@@ -1626,10 +1633,12 @@ export function buildUnmatchedPlaceholdersSql(
   // which is org-owned); the optional search pattern (or the pasted keys) is $2.
   const unmatchedSearchVals: unknown[] = [orgId];
   let unmatchedSearchSql = '';
-  // Reconcile: a lineless carton a pasted number names — door-scanned but not
-  // yet matched is RECEIVED, so it must not read as "no match".
+  // A pasted list: the lineless cartons a pasted number names. Reconcile has
+  // no lane (door-scanned but not yet matched is RECEIVED, not "no match");
+  // Unboxed keeps its own membership gate below.
   const reconcile = query.view === 'reconcile';
-  if (reconcile) {
+  const pasted = reconcile || (query.view === 'activity' && query.refIn.length > 0);
+  if (pasted) {
     unmatchedSearchVals.push(query.refIn);
     unmatchedSearchSql = ` AND (stn.tracking_number_normalized = ANY($2::text[])
             OR ${canonicalSql('r.zoho_purchaseorder_number')} = ANY($2::text[])
@@ -1654,8 +1663,8 @@ export function buildUnmatchedPlaceholdersSql(
           )`;
     }
   }
-  // Browse History stays Unfound/local-pickup + Unbox-touched.
-  const searchActive = Boolean(search);
+  // Browse History stays Unfound/local-pickup + Unbox-touched. A paste owns $2, so text search stands down.
+  const searchActive = Boolean(search) && !pasted;
   const sourceInSql = reconcile
     ? ''
     : searchActive

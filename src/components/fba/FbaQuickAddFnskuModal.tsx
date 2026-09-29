@@ -9,6 +9,7 @@ import type { StationTheme } from '@/utils/staff-colors';
 import { fbaSidebarThemeChrome } from '@/utils/staff-colors';
 import { normalizeTrackingCanonical } from '@/lib/tracking-format';
 import { FBA_OPEN_QUICK_ADD_FNSKU, FBA_FNSKU_SAVED } from '@/lib/fba/events';
+import { FBA_CONDITIONS } from '@/lib/fba/fba-conditions';
 
 /** @deprecated Use FBA_OPEN_QUICK_ADD_FNSKU from events.ts */
 const FBA_OPEN_QUICK_ADD_FNSKU_EVENT = FBA_OPEN_QUICK_ADD_FNSKU;
@@ -124,11 +125,11 @@ export function FbaQuickAddFnskuModal({ stationTheme = 'blue' }: { stationTheme?
               className={chrome.input}
             >
               <option value="">Select condition</option>
-              <option value="A+ New">New</option>
-              <option value="A Used - Like New">Used - Like New</option>
-              <option value="B+ Used - Very Good">Used - Very Good</option>
-              <option value="B Used - Good">Used - Good</option>
-              <option value="C Used - Acceptable">Used - Acceptable</option>
+              {FBA_CONDITIONS.map((entry) => (
+                <option key={entry.value} value={entry.value}>
+                  {entry.label}
+                </option>
+              ))}
             </select>
           </FormField>
 

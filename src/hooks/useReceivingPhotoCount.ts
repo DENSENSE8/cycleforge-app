@@ -2,7 +2,7 @@
 
 import { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { receivingPhotosQueryKey } from '@/lib/queries/receiving-queries';
+import { RECEIVING_PHOTOS_STALE_MS, receivingPhotosQueryKey } from '@/lib/queries/receiving-queries';
 import { receivingStageFromPhotoType } from '@/lib/receiving/photo-intent';
 import { parsePhotoAspect, type PhotoAspect } from '@/lib/photos/photo-aspects';
 
@@ -97,7 +97,7 @@ function useReceivingPhotosQuery(receivingId: number | null | undefined) {
       return res.json();
     },
     enabled: valid,
-    staleTime: 10_000,
+    staleTime: RECEIVING_PHOTOS_STALE_MS,
   });
 
   return { valid, data };

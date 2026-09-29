@@ -10,25 +10,28 @@ import type { ClaimModalMode } from '../claim/claim-types';
 
 export function TicketDisplayHost({
   row,
+  receivingId,
   ticketId,
-  claimMode,
-  onCloseClaim,
+  claimMode = 'create',
+  onCloseClaim = () => {},
   onCloseTicket,
-  onClaimTicketCreated,
-  onClaimTicketUnlinked,
+  onClaimTicketCreated = () => {},
+  onClaimTicketUnlinked = () => {},
   returnClaimPrefill,
   /**
    * QC / All-good reply presets on the composer. Unbox and Testing Ticket
    * Displays pass `false`; Arrival / Support keep the default on.
    */
 }: {
-  row: ReceivingLineRow;
+  /** Required only for the claim/create face; linked-ticket readers may use the host without adapting a foreign record shape. */
+  row?: ReceivingLineRow;
+  receivingId?: number | null;
   ticketId: number | null | undefined;
-  claimMode: ClaimModalMode;
-  onCloseClaim: () => void;
+  claimMode?: ClaimModalMode;
+  onCloseClaim?: () => void;
   onCloseTicket: () => void;
-  onClaimTicketCreated: (ticketNumber: string) => void;
-  onClaimTicketUnlinked: () => void;
+  onClaimTicketCreated?: (ticketNumber: string) => void;
+  onClaimTicketUnlinked?: () => void;
   returnClaimPrefill?: string | null;
 }) {
   const hasTicket = ticketId != null;
@@ -54,7 +57,7 @@ export function TicketDisplayHost({
             <SupportTicketDetail
               ticketId={ticketId}
               onBack={onCloseTicket}
-              receivingId={row.receiving_id ?? undefined}
+              receivingId={receivingId ?? row?.receiving_id ?? undefined}
               embedded
               hideRequesterBand={false}
               // Ticket chat is messages-only (no floor timeline merge).
@@ -62,7 +65,7 @@ export function TicketDisplayHost({
               composerPlacement="host"
             />
           </div>
-        ) : (
+        ) : row ? (
           <ReceivingClaimPanel
             className="h-full min-h-0"
             chrome="display"
@@ -74,7 +77,7 @@ export function TicketDisplayHost({
             onTicketCreated={onClaimTicketCreated}
             onTicketUnlinked={onClaimTicketUnlinked}
           />
-        )}
+        ) : null}
       </div>
     </div>
   );

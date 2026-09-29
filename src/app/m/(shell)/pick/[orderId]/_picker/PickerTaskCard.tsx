@@ -8,6 +8,8 @@ import {
   motionTransitionMobile,
 } from '@/design-system/foundations/motion-presets';
 import { Button } from '@/design-system/primitives';
+import { Badge } from '@/components/ui/badge';
+import { cornerClass, TRIAGE_PANEL_INNER_CORNER } from '@/design-system/tokens/radius';
 import type { useBarcodeScanner } from '@/hooks/useBarcodeScanner';
 import type { PickTask } from './picker-shared';
 
@@ -35,7 +37,7 @@ export function PickerTaskCard({
         animate={motionPresenceMobile.mobileCard.animate}
         exit={motionPresenceMobile.mobileCard.exit}
         transition={motionTransitionMobile.mobileCardMount}
-        className="rounded-none border border-border-soft bg-surface-card p-5"
+        className={`${cornerClass('surface')} border border-border-soft bg-surface-card p-5`}
       >
         {/* Bin chip — the thing the worker looks for. */}
         <p className="text-xs font-semibold text-text-soft">Pick from bin</p>
@@ -49,9 +51,9 @@ export function PickerTaskCard({
             {currentTask.productTitle || currentTask.sku}
           </p>
           <div className="mt-3 flex flex-wrap items-center gap-2">
-            <span className="inline-flex items-center rounded-none border border-border-soft bg-surface-canvas px-3 py-1 text-sm font-semibold tabular-nums text-text-default">
+            <Badge variant="secondary" className="px-3 py-1 text-sm tabular-nums text-text-default">
               Qty {currentTask.plannedQty}
-            </span>
+            </Badge>
           </div>
         </div>
 
@@ -66,7 +68,7 @@ export function PickerTaskCard({
         </Button>
         <Collapse open={detailsExpanded} className="pt-2">
           <dl className="grid grid-cols-2 gap-2 text-xs">
-            <div className="rounded-none bg-surface-canvas px-3 py-2">
+            <div className={`${TRIAGE_PANEL_INNER_CORNER} bg-surface-canvas px-3 py-2`}>
               <dt className="font-semibold text-text-soft">Allocation</dt>
               <dd className="mt-0.5 font-mono font-semibold text-text-default">#{currentTask.allocationId}</dd>
             </div>
@@ -88,7 +90,7 @@ export function PickerTaskCard({
           {scanError && (
             <div
               role="alert"
-              className="mt-2 rounded-none border border-border-danger bg-surface-danger px-3 py-2 text-xs font-semibold text-text-danger"
+              className={`mt-2 ${TRIAGE_PANEL_INNER_CORNER} border border-border-danger bg-surface-danger px-3 py-2 text-xs font-semibold text-text-danger`}
             >
               {scanError}
             </div>

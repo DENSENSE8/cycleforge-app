@@ -151,6 +151,7 @@ const SHARED_OWNED_KEYS: Readonly<Record<string, string>> = {
   openRepair: 'A focused repair order id. Same id space on `/repair`, which renders it, and on `/walk-in`, which only reads it to forward the legacy deep-link to `/pickup?job=repair` — the hand-off is the reason the key is deliberately identical on both sides.',
   tab: 'Sub-tab within the surface, shared by `/repair`, `/walk-in` (redirect shell), `/dashboard` (sales), `/reports`, and Inventory Locations / `/warehouse` orphans BY DESIGN. Vocabularies stay per-route.',
   room: 'Selected warehouse room. The same facet, over the same `locations.room` values, on `/inventory/locations`, `/inventory/stock` and legacy `/warehouse` orphan routes.',
+  record: 'The open exception (`<kind>:<sourceId>`, `src/lib/exceptions/types.ts`). ONE list, many doors (owner 2026-09-28): the hub `/exceptions` and every lane door that renders the same list locked — FBM › Exceptions, Inventory › SKU / Tracking Exceptions, Deliveries\' Claim · Short · Unfound — so the same key opens the same record on each.',
   code: 'Focused bay / bin code. Same id space on Locations and `/warehouse` orphans.',
   showEmpty: 'Map empty-bin toggle. Same question on Locations and `/warehouse` orphans.',
   edit: 'Edit-form toggle for a location record. Same question on Locations and `/warehouse` orphans.',

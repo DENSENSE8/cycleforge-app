@@ -5,6 +5,7 @@ import {
   normalizeSkuKey,
   parcelDimsKeysFor,
   resolveParcelWithSource,
+  setProductParcelDims,
   type ParcelValues,
 } from './parcel-dims';
 
@@ -55,4 +56,55 @@ test('parcelDimsKeysFor: one row per present key', () => {
     { kind: 'item_number', value: 'B0CXYZ' },
   ]);
   assert.deepEqual(parcelDimsKeysFor({ sku: null, itemNumber: '' }), []);
+});
+
+test('setProductParcelDims keeps the SKU and normalized item-number rows synchronized', async () => {
+  const calls: Array<{ sql: string; params: unknown[] }> = [];
+  const count = await setProductParcelDims(
+    {
+      query: async (sql: string, params?: unknown[]) => {
+        calls.push({ sql, params: params ?? [] });
+        return { rows: [], rowCount: 1 } as never;
+      },
+    },
+    {
+      orgId: '11111111-1111-4111-8111-111111111111',
+      skuCatalogId: 42,
+      sku: ' sku-42 ',
+      itemNumbers: ['000123-abc', '123ABC', 'B0-Z'],
+      parcel: { weightOz: 16, lengthIn: 10, widthIn: 8, heightIn: 4 },
+      staffId: 7,
+    },
+  );
+
+  assert.equal(count, 3);
+  assert.deepEqual(calls.map((call) => call.params.slice(1, 3)), [
+    ['sku', 'SKU-42'],
+    ['item_number', '123ABC'],
+    ['item_number', 'B0Z'],
+  ]);
+  assert.ok(calls.every((call) => call.sql.includes('ON CONFLICT')));
+});
+
+test('setProductParcelDims clears every linked key when the product parcel is emptied', async () => {
+  const calls: Array<{ sql: string; params: unknown[] }> = [];
+  const count = await setProductParcelDims(
+    {
+      query: async (sql: string, params?: unknown[]) => {
+        calls.push({ sql, params: params ?? [] });
+        return { rows: [], rowCount: 1 } as never;
+      },
+    },
+    {
+      orgId: '11111111-1111-4111-8111-111111111111',
+      skuCatalogId: 42,
+      sku: 'SKU-42',
+      itemNumbers: ['000123'],
+      parcel: EMPTY,
+      staffId: 7,
+    },
+  );
+
+  assert.equal(count, 2);
+  assert.ok(calls.every((call) => call.sql.includes('DELETE FROM product_parcel_dims')));
 });

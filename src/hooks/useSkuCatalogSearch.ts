@@ -15,6 +15,12 @@ export interface SkuCatalogItem {
   upc: string | null;
   image_url: string | null;
   is_active: boolean;
+  platform_ids?: Array<{
+    platform: string;
+    platform_sku: string | null;
+    platform_item_id: string | null;
+    account_name: string | null;
+  }>;
 }
 
 export interface UseSkuCatalogSearchOptions {

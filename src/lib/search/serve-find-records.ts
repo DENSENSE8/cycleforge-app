@@ -70,8 +70,9 @@ export async function serveFindRecords(
     );
 
   // Cache namespace is partitioned by org — a shared one would serve one
-  // tenant's records to another. v6: payload gained `facets.brand`.
-  const namespace = `api:global-search:v6:${orgId}`;
+  // tenant's records to another. v7: order status now prefers delivered
+  // carrier truth over a stale internal packed flag.
+  const namespace = `api:global-search:v7:${orgId}`;
   const cacheKey = createCacheLookupKey({ org: String(orgId), q: query, limit, axis: axis ?? '' });
 
   const cached = await getCachedJson<FindRecordsPayload>(namespace, cacheKey);

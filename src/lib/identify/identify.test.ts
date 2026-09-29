@@ -115,7 +115,7 @@ test('the same identifier on two entities is a list, not a single', async () => 
   const res = await identify(ORG, { q: '1ZJ22B104222265576' }, deps);
   assert.equal(res.mode, 'list');
   assert.deepEqual(res.lines[0].candidates.map((c) => c.entityId), [1, 2]);
-  assert.equal(res.lines[0].candidates[0].href, '/shipping/shipped?shipment=40');
+  assert.equal(res.lines[0].candidates[0].href, '/shipping/shipped?shippedFilter=orders&shipment=40');
 });
 
 test('an identifier-shaped miss falls back to free text in a second statement', async () => {

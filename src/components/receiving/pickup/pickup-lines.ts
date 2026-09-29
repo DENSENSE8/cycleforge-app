@@ -4,6 +4,7 @@
 
 import { useQuery } from '@tanstack/react-query';
 import { parsePickupStatusTab, type PickupStatusTab } from '@/lib/local-pickup/order-status';
+import type { ReceivingUnitStageFactView } from '@/lib/receiving/receiving-line-row';
 
 export type { PickupStatusTab };
 export { parsePickupStatusTab };
@@ -12,11 +13,11 @@ export interface PickupLine {
   id: number;
   order_id: number;
   sku: string | null;
-  product_title: string;
+  product_title: string | null;
   image_url: string | null;
   quantity: number;
-  condition_grade: string;
-  parts_status: string;
+  condition_grade: string | null;
+  parts_status: string | null;
   missing_parts_note: string | null;
   condition_note: string | null;
   total_price: string;
@@ -26,7 +27,14 @@ export interface PickupLine {
   order_status: string;
   /** Linked receiving carton id once finalize/process started; null = need to process. */
   receiving_id: number | null;
+  /** Canonical receiving-line link for labels, QC, tickets and unit navigation. */
+  receiving_line_id?: number | null;
+  /** One batched projection read; never populated by per-card requests. */
+  unit_stage_facts?: ReceivingUnitStageFactView[];
   pickup_date: string | null;
+  order_created_at: string;
+  payment_method: string | null;
+  paid_amount_cents: number | null;
   zoho_po_id: string | null;
   zoho_status: string | null;
   zoho_total: string | null;

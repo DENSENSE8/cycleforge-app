@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { withAuth } from '@/lib/auth/withAuth';
-import { previewListingAssignees } from '@/lib/automations/apply-listing-assignment';
+import { previewListingAssignees, type PreviewAssignee } from '@/lib/automations/apply-listing-assignment';
 import type { OrgId } from '@/lib/tenancy/constants';
 import { getStaffNameMap } from '@/lib/work-assignments/order-assignment-snapshot';
 
@@ -23,9 +23,10 @@ const Body = z.object({
 /**
  * POST /api/orders/intake/assignees { channel?, lines: [{ skuCatalogId, sku, itemNumber }] }
  * → { ok, results: [{ rule: { id, name } | null, picker, packer }] } — per line,
- * the listing → staff rule the automation would run on import and who it puts
- * on PICK / PACK today (backup when the primary is out). Read-only; the
- * new-order form shows it as the default and lets the operator override.
+ * who the import automation would put on PICK / PACK today (backup when the
+ * primary is out): the listing → staff rule, else — for PICK — the item's
+ * owner by pick history. Each person says which (`source: 'rule' | 'history'`).
+ * Read-only; the new-order form shows it as the default and lets the operator override.
  */
 export const POST = withAuth(async (req: NextRequest, ctx) => {
   const parsed = Body.safeParse(await req.json().catch(() => null));
@@ -39,15 +40,11 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
       account_source: parsed.data.channel ?? null,
     })),
   );
-  const names = await getStaffNameMap(previews.flatMap((p) => [p?.pick?.staffId, p?.pack?.staffId]));
-  const person = (a: { staffId: number; via: 'primary' | 'backup' } | null | undefined) =>
-    a ? { id: a.staffId, name: names.get(a.staffId) ?? `Staff ${a.staffId}`, via: a.via } : null;
+  const names = await getStaffNameMap(previews.flatMap((p) => [p.pick?.staffId, p.pack?.staffId]));
+  const person = (a: PreviewAssignee | null) =>
+    a ? { id: a.staffId, name: names.get(a.staffId) ?? `Staff ${a.staffId}`, via: a.via, source: a.source } : null;
   return NextResponse.json({
     ok: true,
-    results: previews.map((p) => ({
-      rule: p ? { id: p.ruleId, name: p.ruleName } : null,
-      picker: person(p?.pick),
-      packer: person(p?.pack),
-    })),
+    results: previews.map((p) => ({ rule: p.rule, picker: person(p.pick), packer: person(p.pack) })),
   });
 }, { permission: 'orders.create' });

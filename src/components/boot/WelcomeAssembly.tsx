@@ -70,6 +70,7 @@ import {
   useEffect,
   useLayoutEffect,
   useMemo,
+  useReducer,
   useRef,
   useState,
   type CSSProperties,
@@ -100,6 +101,17 @@ import {
   colorTween,
 } from '@/components/boot/welcome/motion-grammar';
 import { SplitText, countGlyphs } from '@/components/boot/welcome/split-text';
+import {
+  INITIAL_WELCOME_SEQUENCE,
+  WELCOME_PHASE_LABELS,
+  WELCOME_PHASES,
+  currentWelcomePhase,
+  planWelcomeAdvance,
+  welcomeSequenceDone,
+  welcomeSequenceReducer,
+  type WelcomePhaseId as PhaseId,
+  type WelcomeStep as Step,
+} from '@/components/boot/welcome/welcome-sequence';
 import { resolveWelcomeTheme, welcomePaletteStyle, type WelcomeTheme } from '@/components/boot/welcome/welcome-theme';
 import {
   WELCOME_AVATAR_SLOT_CLASS,
@@ -183,14 +195,7 @@ const SIDEBAR_CONTENT_SELECTOR = '[data-slot="sidebar-wrapper"]';
 /** NavFind's well (the one search field, either scope): the sidebar's top row, or GlobalHeaderSearch's while the column is closed. */
 const SEARCH_WELL_SELECTOR = '[data-nav-search-well]';
 
-/** Region phases, in order. The focus region lives inside `main` and opens within its phase. */
-type PhaseId = 'header' | 'sidebar' | 'main';
 type RegionId = PhaseId | 'focus';
-
-const PHASES: readonly PhaseId[] = ['header', 'sidebar', 'main'];
-
-/** Arrival-chip names. */
-const PHASE_LOG: Readonly<Record<PhaseId, string>> = { header: 'Header', sidebar: 'Sidebar', main: 'Workspace' };
 
 /** The Daily agenda's paint mark — the only focus whose counts this overlay knows how to read. */
 const DAILY_FOCUS_MARK = paintMarkId('daily', 'primary');
@@ -252,8 +257,6 @@ interface ChecklistProgress {
   total: number;
 }
 
-/** `wait` = scheduled, waiting on time + readiness; `lock` = ready under the spotlight; `focus` = the agenda unveiled, holding; `settled` = veil lifting / lifted. */
-type Step = 'wait' | 'lock' | 'focus' | 'settled' | 'skipped';
 /** greeting (glyphs in + hold) → name-exit (name glyphs out, card narrows) → travel (card → search) → assembly. */
 type Stage = 'greeting' | 'name-exit' | 'travel' | 'assembly';
 
@@ -294,7 +297,7 @@ function scanFocus(): FocusScan | null {
   const el = document.querySelector('main')?.querySelector(`[${FOCUS_ATTR}]`);
   if (!el) return null;
   return {
-    label: el.getAttribute(FOCUS_ATTR) || PHASE_LOG.main,
+    label: el.getAttribute(FOCUS_ATTR) || WELCOME_PHASE_LABELS.main,
     mark: el.getAttribute(FOCUS_MARK_ATTR) || null,
     box: measure(el),
     hasContent: el.firstElementChild !== null || (el.textContent ?? '').trim() !== '',
@@ -600,9 +603,11 @@ export function WelcomeAssembly({ onExited, onMounted }: WelcomeAssemblyProps) {
   const [arrivedAt, setArrivedAt] = useState<Partial<Record<RegionId, number>>>({});
   /** The discovered focus region (null = none on the page: `<main>` itself is the focus). */
   const [focus, setFocus] = useState<WelcomeFocus | null>(null);
-  const [steps, setSteps] = useState<Partial<Record<PhaseId, Step>>>({});
-  /** Index into PHASES of the running phase; -1 = not started, PHASES.length = all done. */
-  const [cursor, setCursor] = useState(-1);
+  const [sequence, dispatchSequence] = useReducer(
+    welcomeSequenceReducer,
+    INITIAL_WELCOME_SEQUENCE,
+  );
+  const { steps } = sequence;
   /** The agenda is unveiled: its chip shows. */
   const [lit, setLit] = useState(false);
   /** Real counts (null = no data, no number). */
@@ -652,36 +657,35 @@ export function WelcomeAssembly({ onExited, onMounted }: WelcomeAssemblyProps) {
   }, []);
 
   const setStep = useCallback((id: PhaseId, step: Step) => {
-    setSteps((prev) => (prev[id] === step ? prev : { ...prev, [id]: step }));
+    dispatchSequence({ type: 'step', phase: id, step });
   }, []);
 
   /** Schedule the first phase at or after `from` that is on screen; absent ones are logged and skipped without a gap. */
   const advance = useCallback(
     (from: number) => {
-      for (let index = from; index < PHASES.length; index++) {
-        const id = PHASES[index];
-        if (phaseAbsent(id)) {
-          pushLine(`${PHASE_LOG[id]} · ${id === 'sidebar' ? 'closed' : 'absent'} · skipped`);
-          setStep(id, 'skipped');
-          continue;
-        }
-        dueAtRef.current = performance.now() + PHASE_LEAD_MS[id];
-        setStep(id, 'wait');
-        setCursor(index);
-        return;
+      const absent = new Set<PhaseId>();
+      for (let index = from; index < WELCOME_PHASES.length; index++) {
+        const id = WELCOME_PHASES[index];
+        if (phaseAbsent(id)) absent.add(id);
       }
-      setCursor(PHASES.length);
+      const plan = planWelcomeAdvance(from, absent);
+      for (const id of plan.skipped) {
+        pushLine(`${WELCOME_PHASE_LABELS[id]} · ${id === 'sidebar' ? 'closed' : 'absent'} · skipped`);
+      }
+      const next = WELCOME_PHASES[plan.nextIndex];
+      if (next) dueAtRef.current = performance.now() + PHASE_LEAD_MS[next];
+      dispatchSequence({ type: 'advance', plan });
     },
-    [pushLine, setStep],
+    [pushLine],
   );
 
   const settle = useCallback(
     (id: PhaseId) => {
       if (settledRef.current.has(id)) return;
       settledRef.current.add(id);
-      pushLine(`${PHASE_LOG[id]} · ready`);
+      pushLine(`${WELCOME_PHASE_LABELS[id]} · ready`);
       setStep(id, 'settled');
-      advance(PHASES.indexOf(id) + 1);
+      advance(WELCOME_PHASES.indexOf(id) + 1);
     },
     [advance, pushLine, setStep],
   );
@@ -708,11 +712,11 @@ export function WelcomeAssembly({ onExited, onMounted }: WelcomeAssemblyProps) {
       frame = 0;
       const nextBoxes: Partial<Record<RegionId, Box>> = {};
       const nextAbsent: Partial<Record<PhaseId, true>> = {};
-      for (const id of PHASES) {
+      for (const id of WELCOME_PHASES) {
         const region = scanRegion(id);
         if (region.box) nextBoxes[id] = region.box;
         if (region.absent) nextAbsent[id] = true;
-        if (region.present) arrive(id, `${PHASE_LOG[id]} · present`);
+        if (region.present) arrive(id, `${WELCOME_PHASE_LABELS[id]} · present`);
       }
       const found = scanFocus();
       const focusKey = found ? JSON.stringify([found.label, found.mark]) : '';
@@ -950,7 +954,7 @@ export function WelcomeAssembly({ onExited, onMounted }: WelcomeAssemblyProps) {
     const fade = animate(column, { opacity: 0 }, exit);
     flight.then(() => {
       if (cancelled) return;
-      pushLine(landing.region ? `Search · landed · ${PHASE_LOG[landing.region]}` : 'Search · none · header');
+      pushLine(landing.region ? `Search · landed · ${WELCOME_PHASE_LABELS[landing.region]}` : 'Search · none · header');
       setStage('assembly');
     });
     return () => {
@@ -989,7 +993,7 @@ export function WelcomeAssembly({ onExited, onMounted }: WelcomeAssemblyProps) {
     if (revealing) advance(0);
   }, [revealing, advance]);
 
-  const current = cursor >= 0 && cursor < PHASES.length ? PHASES[cursor] : null;
+  const current = currentWelcomePhase(sequence);
   const currentStep = current ? steps[current] : undefined;
   // Main waits on the discovered focus region's readiness too; with none on the page, `<main>` itself is the focus.
   const currentReady =
@@ -1033,7 +1037,7 @@ export function WelcomeAssembly({ onExited, onMounted }: WelcomeAssemblyProps) {
   }, [open, steps.main, settle]);
 
   // ── End: shapes drift out, the spotlight dissolves, then the overlay leaves ──
-  const done = cursor >= PHASES.length;
+  const done = welcomeSequenceDone(sequence);
   useEffect(() => {
     if (!open || !done) return;
     const timer = window.setTimeout(resolve, END_EXIT_AT_MS);
@@ -1066,7 +1070,7 @@ export function WelcomeAssembly({ onExited, onMounted }: WelcomeAssemblyProps) {
   const mainBox = boxes.main;
   const focusBox = boxes.focus;
   const tiles = revealing
-    ? PHASES.flatMap((id) => {
+    ? WELCOME_PHASES.flatMap((id) => {
         const box = boxes[id];
         return box && !absent[id] ? [box] : [];
       })
@@ -1078,8 +1082,8 @@ export function WelcomeAssembly({ onExited, onMounted }: WelcomeAssemblyProps) {
     spotPhase =
       current ??
       (done
-        ? ([...PHASES].reverse().find((id) => steps[id] === 'settled' && boxes[id]) ?? null)
-        : (PHASES.find((id) => boxes[id] && !absent[id]) ?? null));
+        ? ([...WELCOME_PHASES].reverse().find((id) => steps[id] === 'settled' && boxes[id]) ?? null)
+        : (WELCOME_PHASES.find((id) => boxes[id] && !absent[id]) ?? null));
   }
   const spotTarget = spotPhase
     ? regionSpot(spotPhase, boxes)
@@ -1113,7 +1117,7 @@ export function WelcomeAssembly({ onExited, onMounted }: WelcomeAssemblyProps) {
           </div>
 
           {revealing &&
-            PHASES.map((id) => {
+            WELCOME_PHASES.map((id) => {
               const box = boxes[id];
               if (!box || absent[id]) return null;
               if (id === 'main') {

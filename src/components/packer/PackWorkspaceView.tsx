@@ -17,20 +17,13 @@ import { Plus } from '@/components/Icons';
 import { dispatchPackActiveOrder } from '@/components/packer/usePackerOrderPane';
 import { shippedOrderToPackPane } from '@/components/packer/shipped-order-to-pack-pane';
 import type { ShippedOrder } from '@/types/orders';
-import type { PackWorkspaceTab } from '@/utils/pack-workspace-state';
 
 function TableFallback() {
   return <div className="min-h-[240px] flex-1 bg-surface-canvas" aria-hidden />;
 }
 
-/**
- * The bench strip. `queue` is the default body, so it lights no tab — the same
- * rule every other strip follows.
- */
-const PACK_VIEW_TABS = [{ id: 'history', label: 'History' }] as const;
-
 export function PackWorkspaceView({ packerId }: { packerId: number }) {
-  const { packView, setPackView } = usePackWorkspaceTab();
+  const { packView } = usePackWorkspaceTab();
   const { newOpen, openNew, closeNew } = useNewOrderParam();
   const queueActive = packView === 'queue';
   const { selectionEnabled, selectionOverlays } = useOrderRailSelection(
@@ -46,12 +39,7 @@ export function PackWorkspaceView({ packerId }: { packerId: number }) {
   };
 
   return (
-    <DeskPageLayout
-      className="h-full"
-      tabs={PACK_VIEW_TABS}
-      activeTab={packView === 'queue' ? '' : packView}
-      onTabChange={(id) => setPackView(id === packView ? 'queue' : (id as PackWorkspaceTab))}
-    >
+    <DeskPageLayout className="h-full">
       {/* The bench's one page-level action, at page-header altitude. */}
       <DeskActionSlotRegistrar>
         <DeskHeaderAction

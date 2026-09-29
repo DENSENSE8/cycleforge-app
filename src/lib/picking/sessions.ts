@@ -297,7 +297,7 @@ export async function loadPickTasks(orderId: number, orgId?: OrgId): Promise<Pic
  * Open (or reuse) the (order, picker) session on a caller's transaction —
  * the directed feed claims an order and opens its session under one lock.
  */
-export async function openPickingSessionOn(
+async function openPickingSessionOn(
   client: Queryable,
   input: StartSessionInput,
   orgId: OrgId,
@@ -335,32 +335,6 @@ export async function openPickingSessionOn(
   );
   await refreshOrderStageFacts(orgId, { orderIds: [input.orderId] }, client);
   return { ok: true, sessionId: Number(insertQ.rows[0].id), reopen: false };
-}
-
-/**
- * End THIS picker's open session(s) on an order without staging its totes —
- * Skip and Pass hand the order back (or on) mid-pick, so it must stop being
- * held by them. Picked units stay picked; the order's tote stays paired.
- */
-export async function releaseOrderSessions(
-  input: { orderId: number; pickerStaffId: number },
-  orgId: OrgId,
-): Promise<number> {
-  return withTenantTransaction(orgId, async (client) => {
-    const q = await client.query(
-      `UPDATE picking_sessions ps
-          SET ended_at = NOW()
-         FROM orders o
-        WHERE ps.order_id = o.id
-          AND o.organization_id = $1
-          AND ps.order_id = $2
-          AND ps.picker_staff_id = $3
-          AND ps.ended_at IS NULL`,
-      [orgId, input.orderId, input.pickerStaffId],
-    );
-    await refreshOrderStageFacts(orgId, { orderIds: [input.orderId] }, client);
-    return q.rowCount ?? 0;
-  });
 }
 
 export async function startSession(input: StartSessionInput, orgId?: OrgId): Promise<StartSessionResult> {
@@ -462,54 +436,6 @@ async function readToteForOrder(
   const refusal = toteBindRefusal(tote, orderId);
   if (refusal) return { ok: false, ...refusal };
   return { ok: true, tote };
-}
-
-/**
- * Reserve the scanned tote for the picker's open order before the first unit
- * leaves its bin. Confirming a unit still rechecks the same locked tote and
- * attaches the unit in its own transaction; a rejected scan cannot arm the UI.
- */
-export async function pairPickingTote(
-  orgId: OrgId,
-  input: { sessionId: number; orderId: number; toteScan: string; staffId: number },
-): Promise<
-  | { ok: true; toteId: number; toteCode: string; alreadyPaired: boolean }
-  | { ok: false; status: 404 | 409; error: string }
-> {
-  return withTenantTransaction(orgId, async (client) => {
-    const session = await client.query(
-      `SELECT ps.id
-         FROM picking_sessions ps
-         JOIN orders o ON o.id = ps.order_id AND o.organization_id = $4
-        WHERE ps.id = $1 AND ps.order_id = $2 AND ps.picker_staff_id = $3
-          AND ps.ended_at IS NULL
-          AND EXISTS (
-            SELECT 1 FROM order_unit_allocations oua
-             WHERE oua.order_id = o.id AND oua.organization_id = $4
-               AND oua.state IN ('ALLOCATED', 'PICKING')
-          )
-        FOR UPDATE OF ps`,
-      [input.sessionId, input.orderId, input.staffId, orgId],
-    );
-    if (!session.rows.length) {
-      return { ok: false as const, status: 409 as const, error: 'This pick session is no longer active' };
-    }
-    const read = await readToteForOrder(client, orgId, input.toteScan, input.orderId);
-    if (!read.ok) return read;
-    const alreadyPaired = read.tote.pairedOrderId === input.orderId;
-    const result = await client.query(
-      `UPDATE handling_units
-          SET paired_order_id = $1,
-              paired_at = COALESCE(paired_at, NOW()),
-              paired_by_staff_id = COALESCE(paired_by_staff_id, $2)
-        WHERE id = $3 AND organization_id = $4
-          AND (paired_order_id IS NULL OR paired_order_id = $1)
-          AND status IN ('OPEN', 'STAGED')`,
-      [input.orderId, input.staffId, read.tote.id, orgId],
-    );
-    if (result.rowCount !== 1) throw new Error('Tote pairing changed under lock');
-    return { ok: true as const, toteId: read.tote.id, toteCode: read.tote.code, alreadyPaired };
-  });
 }
 
 /** Stamp the tote↔order pairing and move the unit into the tote. */
@@ -927,48 +853,6 @@ export async function recordShortPick(input: RecordShortPickInput, orgId: OrgId)
   } finally {
     client.release();
   }
-}
-
-/** A picker's free-text note on a line (the directed screen's Notes verb). */
-export async function recordPickNote(
-  input: { sessionId: number; allocationIds: number[]; text: string; actorStaffId: number },
-  orgId: OrgId,
-): Promise<{ ok: true; recorded: number } | { ok: false; status: 400 | 404; error: string }> {
-  const text = input.text.trim();
-  if (!text) return { ok: false, status: 400, error: 'note is empty' };
-  const ids = [...new Set(input.allocationIds)].filter((id) => Number.isInteger(id) && id > 0);
-  if (ids.length === 0) return { ok: false, status: 400, error: 'no allocations' };
-
-  return withTenantTransaction(orgId, async (client) => {
-    const units = await client.query<{ allocation_id: number; serial_unit_id: number; sku: string | null }>(
-      `SELECT oua.id AS allocation_id, oua.serial_unit_id, su.sku
-         FROM picking_sessions ps
-         JOIN orders o ON o.id = ps.order_id AND o.organization_id = $1
-         JOIN order_unit_allocations oua ON oua.order_id = ps.order_id AND oua.organization_id = $1
-         JOIN serial_units su ON su.id = oua.serial_unit_id AND su.organization_id = $1
-        WHERE ps.id = $2 AND oua.id = ANY($3::int[])`,
-      [orgId, input.sessionId, ids],
-    );
-    if (units.rows.length !== ids.length) {
-      return { ok: false as const, status: 404 as const, error: 'allocation not on this session' };
-    }
-    for (const unit of units.rows) {
-      await recordInventoryEvent(
-        {
-          event_type: 'NOTE',
-          actor_staff_id: input.actorStaffId,
-          station: 'MOBILE',
-          serial_unit_id: unit.serial_unit_id,
-          sku: unit.sku,
-          notes: text,
-          payload: { source: 'picking.note', sessionId: input.sessionId, allocationId: unit.allocation_id },
-        },
-        client,
-        orgId,
-      );
-    }
-    return { ok: true as const, recorded: units.rows.length };
-  });
 }
 
 export async function completeSession(

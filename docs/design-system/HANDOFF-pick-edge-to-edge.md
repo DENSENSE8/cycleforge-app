@@ -1,5 +1,11 @@
 # HANDOFF — pick screens edge-to-edge (industrial notepad)
 
+> **Superseded 2026-09-28** (BRIEF §14): `/m/pick` is a pick list only — progress bar, my list
+> (`RecordCardMobile`), floating Start picking; no chips. The board (Take / Pass to…) and the
+> directed screen (`DirectedPickScreen`,
+> `DirectedPickOrderCard`) this handoff measured are deleted. Kept for the DetailDock inline
+> placement history only.
+
 Owner, 2026-09-26, looking at `/m/pick` and `/m/pick/unassigned`:
 
 > "the industrial notepad needs to be improved for the design system as well. For example,

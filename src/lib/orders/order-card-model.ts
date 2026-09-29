@@ -15,11 +15,13 @@ import { conditionSentenceLabel } from '@/lib/conditions';
 import { ordersLineTitle, resolveOrdersIndexValue } from '@/lib/tables/field-catalog/orders-resolve';
 import type { CompoundDelay } from '@/components/tables/compound/compound-row-model';
 import { formatCurrency } from '@/utils/_number';
-import { getExternalUrlByItemNumber } from '@/utils/external-item-url';
-import { orderAdminUrl } from '@/utils/order-platform';
+import { getExternalUrlByItemNumber, listingMatchesOrderPlatform } from '@/utils/external-item-url';
+import { getOrderPlatformLabel, orderAdminUrl } from '@/utils/order-platform';
 import { orderStage, type OrderStage } from '@/lib/orders/order-stages';
 import { customerFullName } from '@/lib/customers/customer-display';
 import { PICKUP_FULFILLMENT_CHANNEL } from '@/lib/orders/release-gates';
+import { marketplaceThumbUrl } from '@/lib/photos/marketplace-thumb-url';
+import type { RecordCardLine } from '@/design-system/components/record-card/record-card-types';
 
 export interface OrderCardLine {
   record: ShippedOrder;
@@ -82,6 +84,8 @@ export interface OrderCardModel {
   listingHref: string | null;
   /** The item number (or SKU) {@link listingHref} was built from. */
   listingItem: string | null;
+  /** False when {@link listingHref} lands on another platform's storefront than the order's (an eBay order → Ecwid search). */
+  listingMatchesOrder: boolean;
   /** Pack — once per order (one box), read from the lead row. */
   pack: OrderStage;
   /**
@@ -149,7 +153,7 @@ export function orderCardLine(line: ShippedOrder, todayKey: string, staffName?: 
     record: line,
     id: Number(line.id),
     title: ordersLineTitle(line),
-    thumbUrl: String(line.catalog_image_url || '').trim() || null,
+    thumbUrl: marketplaceThumbUrl(line.catalog_image_url),
     qty: Number.isFinite(qty) && qty > 0 ? qty : 1,
     condition: condition.label,
     conditionCode: condition.code,
@@ -161,6 +165,22 @@ export function orderCardLine(line: ShippedOrder, todayKey: string, staffName?: 
     stages: {
       pick: orderStage(line, 'pick', { todayKey, staffName, outOfStock }),
       qc: orderStage(line, 'qc', { todayKey, staffName }),
+    },
+  };
+}
+
+/** An order line as a record-card line — the facts every order card face paints (qty · condition · price). */
+export function orderRecordLine(line: OrderCardLine): RecordCardLine {
+  return {
+    id: line.id,
+    title: line.title,
+    photoUrl: line.thumbUrl,
+    alert: line.outOfStock,
+    alertNote: line.shortNote,
+    facts: {
+      qty: { kind: 'qty', value: line.qty },
+      condition: line.condition ? { kind: 'grade', label: line.condition, code: line.conditionCode } : null,
+      price: line.price ? { kind: 'money', text: line.price, estimate: line.priceEstimate, estimateTitle: 'Estimate from the listing price' } : null,
     },
   };
 }
@@ -277,6 +297,7 @@ export function orderCardModel(
     buyerName,
     listingHref: getExternalUrlByItemNumber(listingItem),
     listingItem,
+    listingMatchesOrder: listingMatchesOrderPlatform(listingItem, getOrderPlatformLabel(orderId, lead.account_source)),
     pack,
     stages: [pick, lineStage('qc'), pack],
     next: orderNextStep(state, { pick, pack }, pickup),

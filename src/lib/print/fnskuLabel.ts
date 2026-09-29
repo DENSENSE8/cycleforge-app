@@ -9,7 +9,7 @@ import { createLabelCanvas, drawFittedText, LABEL_DPI, labelCanvasToRawCommands 
 import { escapeLabelHtml } from '@/lib/print/labelHtml';
 import { isSilentPrintEnabled } from '@/lib/print/printMode';
 
-interface FnskuLabelFace {
+export interface FnskuLabelFace {
   fnsku: string;
   /** Catalog product title; blank prints no title line. */
   title: string;
@@ -100,6 +100,15 @@ function drawFnskuLabel(face: FnskuLabelFace, paper: PaperSize): HTMLCanvasEleme
   return canvas;
 }
 
+/**
+ * The face exactly as the thermal head draws it (same canvas), as a PNG data
+ * URL — the Print station previews the sticker before it is sent. 2×1 unless
+ * a paper is given.
+ */
+export function fnskuLabelPreviewUrl(face: FnskuLabelFace, paper: PaperSize = resolvePaperSize('2x1')): string {
+  return drawFnskuLabel(face, paper).toDataURL('image/png');
+}
+
 // ── Fallback (HTML) ──────────────────────────────────────────────────────────
 
 /** The same face as HTML, `copies` stickers as `copies` pages of ONE document (one print dialog / one kiosk print). */
@@ -121,15 +130,15 @@ function buildFnskuLabelHtml(face: FnskuLabelFace, copies: number): string {
 <style>
   @page{size:2in 1in;margin:0}
   *{box-sizing:border-box}
-  html,body{width:2in;margin:0;padding:0;font-family:Arial,sans-serif;color:#000;background:#fff}
+  html,body{width:2in;margin:0;padding:0;font-family:Arial,Helvetica,sans-serif;color:#000;background:#fff;-webkit-font-smoothing:antialiased;text-rendering:geometricPrecision}
   .wrap{width:2in;height:1in;padding:0.04in 0;display:flex;flex-direction:column;overflow:hidden;break-after:page;page-break-after:always}
   .wrap:last-child{break-after:auto;page-break-after:auto}
   .bars{height:${BARS_HEIGHT_IN}in;flex:none;padding:0 ${quietPct.toFixed(4)}%}
   .bars svg{height:100%;width:100%;display:block}
-  .code,.title,.cond{padding:0 0.05in}
-  .code{font-size:10.5px;font-weight:800;text-align:center;letter-spacing:0.5px;line-height:1.1}
-  .title{font-size:8.5px;font-weight:600;line-height:1.1;overflow:hidden;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2}
-  .cond{font-size:8.5px;font-weight:800;line-height:1.1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .code,.title,.cond{padding:0 0.05in;text-rendering:geometricPrecision}
+  .code{font-size:8pt;font-weight:800;text-align:center;letter-spacing:0.04em;line-height:1.1}
+  .title{font-size:6.5pt;font-weight:600;line-height:1.1;overflow:hidden;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2}
+  .cond{font-size:6.5pt;font-weight:800;line-height:1.1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 </style></head><body>
 ${Array.from({ length: copies }, () => sticker).join('\n')}
 <script>

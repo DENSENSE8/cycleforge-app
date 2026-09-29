@@ -1,11 +1,13 @@
 import pool from '../db';
 import type { CarrierCode, CarrierTrackingEvent, CarrierTrackingResult, ShipmentRow, TrackingEventRow } from './types';
-import { computeNextCheckAt, normalizeTrackingNumber } from './normalize';
+import { computeNextCheckAt } from './normalize';
 import { ENABLED_SYNC_CARRIERS } from './enabled-carriers';
 import type { PoolClient } from 'pg';
 import { withTenantConnection, withTenantTransaction } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';
 import { resolveShipmentOrgId } from './resolve-shipment-org';
+import { extractCanonicalTracking } from '@/lib/tracking-format';
+import { shippingCredentialRecoveryPredicate } from './credential-recovery';
 
 // ─── Tenancy note ─────────────────────────────────────────────────────────────
 
@@ -18,6 +20,9 @@ export async function upsertShipment(params: {
   sourceSystem?: string | null;
   carrierAccountRef?: string | null;
 }, orgId?: OrgId): Promise<ShipmentRow> {
+  const canonicalTracking = extractCanonicalTracking(
+    params.trackingNumberNormalized || params.trackingNumberRaw,
+  );
   // shipping_tracking_numbers.organization_id exists (2026-06-14, NULLABLE) but is a GLOBAL natural key on tracking_number_normalized — one…
   if (orgId) {
     const sql = `INSERT INTO shipping_tracking_numbers
@@ -31,7 +36,7 @@ export async function upsertShipment(params: {
          RETURNING *`;
     const scopedArgs = [
       params.trackingNumberRaw,
-      params.trackingNumberNormalized,
+      canonicalTracking,
       params.carrier,
       params.sourceSystem ?? null,
       params.carrierAccountRef ?? null,
@@ -52,7 +57,7 @@ export async function upsertShipment(params: {
        RETURNING *`;
   const args = [
     params.trackingNumberRaw,
-    params.trackingNumberNormalized,
+    canonicalTracking,
     params.carrier,
     params.sourceSystem ?? null,
     params.carrierAccountRef ?? null,
@@ -98,7 +103,7 @@ export async function healShipmentOrganizationIdByTracking(
       WHERE tracking_number_normalized = $1
         AND organization_id IS NULL
       RETURNING id`,
-    [trackingNormalized, orgId],
+    [extractCanonicalTracking(trackingNormalized), orgId],
   );
   const id = result.rows[0]?.id;
   return id != null ? Number(id) : null;
@@ -135,14 +140,14 @@ export async function getShipmentByTracking(
          AND (organization_id = $2::uuid OR organization_id IS NULL)
        ORDER BY (organization_id = $2::uuid) DESC NULLS LAST
        LIMIT 1`;
-    const args = [normalizeTrackingNumber(trackingNumberNormalized), orgId];
+    const args = [extractCanonicalTracking(trackingNumberNormalized), orgId];
     return withTenantConnection(orgId, async (client) => {
       const result = await client.query<ShipmentRow>(sql, args);
       return result.rows[0] ?? null;
     });
   }
   const sql = 'SELECT * FROM shipping_tracking_numbers WHERE tracking_number_normalized = $1';
-  const args = [normalizeTrackingNumber(trackingNumberNormalized)];
+  const args = [extractCanonicalTracking(trackingNumberNormalized)];
   const client = await pool.connect();
   try {
     const result = await client.query<ShipmentRow>(sql, args);
@@ -164,14 +169,27 @@ export async function getDueShipments(
     // enabled-carriers.ts). Also excludes UNKNOWN, which has no API to call.
     params.push([...ENABLED_SYNC_CARRIERS]);
     const enabledCarrierParam = `$${params.length}::text[]`;
+    const credentialRecovery = shippingCredentialRecoveryPredicate({
+      ups: Boolean(process.env.UPS_CLIENT_ID?.trim() && process.env.UPS_CLIENT_SECRET?.trim()),
+      fedex: Boolean(process.env.FEDEX_CLIENT_ID?.trim() && process.env.FEDEX_CLIENT_SECRET?.trim()),
+    });
+    const dueNow = credentialRecovery
+      ? `((next_check_at IS NULL OR next_check_at <= now()) OR ${credentialRecovery})`
+      : `(next_check_at IS NULL OR next_check_at <= now())`;
     const where: string[] = [
       `is_terminal = false`,
-      `(next_check_at IS NULL OR next_check_at <= now())`,
+      dueNow,
       // `upper(carrier)`, not `carrier`: see isCarrierSyncEnabled. A lowercase
       // row must not fall out of the sweep silently.
       `upper(carrier) = ANY(${enabledCarrierParam})`,
-      // Stop retrying after 5 consecutive failures (dead tracking numbers)
-      `consecutive_error_count < 5`,
+      // Retry repeatedly failing rows once per day. A hard cap permanently
+      // stranded shipments after credentials were repaired; next_check_at
+      // already supplies exponential backoff and a 24h auth-error cadence.
+      credentialRecovery
+        ? `(consecutive_error_count < 5
+          OR last_checked_at <= now() - INTERVAL '24 hours'
+          OR ${credentialRecovery})`
+        : `(consecutive_error_count < 5 OR last_checked_at <= now() - INTERVAL '24 hours')`,
     ];
 
     if (carriers && carriers.length > 0) {
@@ -186,6 +204,24 @@ export async function getDueShipments(
       `SELECT * FROM shipping_tracking_numbers
        WHERE ${where.join('\n         AND ')}
        ORDER BY
+         -- Carrier facts directly change outbound queue membership. Repair the
+         -- exact no-SHIP_CONFIRM To-ship rows before shipped-history or inbound
+         -- parcels when a batch is capped.
+         CASE WHEN EXISTS (
+           SELECT 1 FROM orders due_order
+            WHERE due_order.shipment_id = shipping_tracking_numbers.id
+              AND COALESCE(due_order.fulfillment_channel, '') <> 'AFN'
+              AND NOT EXISTS (
+                SELECT 1 FROM station_activity_logs due_ship_confirm
+                 WHERE due_ship_confirm.shipment_id = due_order.shipment_id
+                   AND due_ship_confirm.organization_id = due_order.organization_id
+                   AND due_ship_confirm.activity_type = 'SHIP_CONFIRM'
+              )
+         ) THEN 0 ELSE 1 END,
+         CASE WHEN EXISTS (
+           SELECT 1 FROM orders due_order
+            WHERE due_order.shipment_id = shipping_tracking_numbers.id
+         ) THEN 0 ELSE 1 END,
          CASE WHEN is_in_transit OR is_out_for_delivery THEN 0
               WHEN is_carrier_accepted THEN 1
               ELSE 2 END,

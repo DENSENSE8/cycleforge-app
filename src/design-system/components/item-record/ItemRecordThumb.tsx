@@ -27,8 +27,8 @@ export function ItemRecordThumb({
         'relative flex w-20 shrink-0 items-center justify-center self-stretch overflow-hidden p-0',
         ITEM_RECORD_FACE.minH,
         cornerClass('flush'),
-        // Empty cube is a deeper slot on the working plate. A photo covers
-        // this fill edge-to-edge (`object-cover`). `plainEmpty` keeps the
+        // Empty cube is a deeper slot on the working plate. A photo preserves
+        // its full frame (`object-contain`). `plainEmpty` keeps the
         // card's own ground and the glyph alone.
         imageUrl
           ? null
@@ -44,7 +44,7 @@ export function ItemRecordThumb({
         <img
           src={imageUrl}
           alt=""
-          className="absolute inset-0 size-full object-cover"
+          className="absolute inset-0 size-full object-contain"
           loading="lazy"
           decoding="async"
         />

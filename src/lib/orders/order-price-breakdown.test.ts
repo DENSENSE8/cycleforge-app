@@ -166,5 +166,5 @@ test('read: persisted ShipStation amounts (numeric as text) and labels reach the
   assert.deepEqual(b?.labelCostByPurpose, { return: 6.4 });
   assert.equal(b?.net, 17.1);
   assert.equal(await getOrderPriceBreakdown(ORG, 8, deps), null);
-  assert.deepEqual(calls, [['order', 7], ['labels', 7], ['order', 8]]);
+  assert.deepEqual(calls, [['order', 7], ['labels', 7], ['order', 8], ['labels', 8]]);
 });

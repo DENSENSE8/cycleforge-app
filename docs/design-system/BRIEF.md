@@ -36,7 +36,8 @@ Material); expressiveness follows the **moment** (Carbon). Cycle Forge's mode-pe
 
 ## 2. Jobs — **Approved** (Q1, with changes)
 
-- Fast: to-ship queue, pack, scan-out, pick, unbox, label intake, inventory.
+- Fast: to-ship queue, pack, scan-out, ~~pick~~ (superseded 2026-09-28, §14: pick is triage), unbox,
+  label intake, inventory.
 - Understand-then-decide: **arrival triage** — "is it a return? Is it a repair service? Is it a
   ticket?" (**Changed** — this is "task triage"); exception triage; test / QC / repair; support.
 - Counter / kiosk: staff **and** customers, "a very fast thing to understand and explain".
@@ -48,7 +49,7 @@ Material); expressiveness follows the **moment** (Carbon). Cycle Forge's mode-pe
 
 | Mode | Purpose | Jobs |
 |---|---|---|
-| `industrial` | the person on the floor doing it now — most rows, fastest hands | queue, pick, pack, scan-out, unbox, label intake, inventory |
+| `industrial` | the person on the floor doing it now — most rows, fastest hands | queue, ~~pick~~ (§14: triage), pack, scan-out, unbox, label intake, inventory |
 | `triage` | understand one thing, then decide; managers/overseers change rules that update industrial | arrival + exception triage, QC, repair, support, rule edits |
 | `counter` | staff + customer read one screen; Square/Shopify-POS simple | kiosk, counter, walk-in, pickup |
 | `assistant` | talking to the AI; job progress; live notifications | AI rail, `/ai-chat` |
@@ -295,14 +296,14 @@ a live phone renders industrial 1:1 (explicit `ModeRegion mode="industrial"`), n
 Desktop triage gets motion.dev: row selection + a fixed-width floating selection bar that
 reward the action (owner: "high throughput animations and rewarding feedback and building trust").
 
-**Mode D — floor (owner 2026-09-26):** the one user-invoked industrial view on desktop. A desk
+~~**Mode D — floor (owner 2026-09-26):** the one user-invoked industrial view on desktop. A desk
 whose list offers a floor face (To ship: `OutboundOrdersLedger`) enters it with **⌘/Ctrl+Shift+F**
 or the **Floor** button on the table's toolbar row; the stage view becomes `floor` (one enum with
 In place / Split, `DeskStageContext`), the page header, tab row and sidebar leave, and the route's
 page region paints `industrial` (square, caps, 0 ms). Records open In place. Floor is a session
 posture, never remembered; Esc (after closing the record / clearing checks) or **Exit floor**
 returns to the view it was entered from. Every other desktop view stays triage — the To-ship
-index face included.
+index face included.~~ **Withdrawn (owner 2026-09-28, §14):** no Floor on the desktop.
 
 **Repo diet (owner 2026-09-26):** dead source files, one-off scripts that already ran,
 `docs/todo/` and every screenshot under `docs/` are deleted; proof shots stay local
@@ -330,7 +331,7 @@ down from the card's right; two or more → the bar above the list becomes the b
 (owner, 2026-09-27):** selection verbs live only in the selection bar above the list — same verbs,
 same order, same place for 1 or N checked, disabled with a reason, never hidden; single-card verbs
 live only in fixed card spots (⋮ at line 1 far right, identity ↗, stage-chip popovers). No column
-header. Floor keeps the industrial ledger.
+header. ~~Floor keeps the industrial ledger.~~ (Floor withdrawn 2026-09-28, §14.)
 
 **Changed (owner, 2026-09-27) — card line 1:** order number · ↗ (always-visible link to the
 platform's admin order page). Hovering the NUMBER flies out its menu — "Copy order ID" and "Edit
@@ -378,6 +379,81 @@ Tracking, QC, Pick, Pack — with names).
 **One stage source (2026-09-27):** the card, the quick look and the record's QC by / Picked by /
 Packed by rows all read `orderStage` (`src/lib/orders/order-stages.ts`). Done → the actor
 (staff directory first, then the wire name) and the PST stamp; not done → the work assignee.
+
+## 14. Owner rulings 2026-09-28
+**Status grammar (owner 2026-09-28).** Triage uses one sentence-case soft
+status pill with tone tint, outline, text, and a distinct state icon; industrial
+keeps the solid code chip. Cards show state once through their rail and icon,
+one-row density shows the pill, and record headers show one `LifecycleCode`.
+No title-line duplicate or body state strip.
+
+
+**Changed — pick is a triage job, the whole flow, on every device.** "Pick should be a natural
+triaging experience … a thinking task, an investigating and finding task, not go as fast as you
+can." Every `/m/pick*` surface (the To-pick list, Next pick, scan bin, confirm unit, tote, short
+pick, notes) resolves `triage` on a phone and paints the triage look: mode radius, pills, chips.
+Pack and scan-out stay `industrial`. Supersedes `pick` in the §2 Fast list and the §3
+`industrial` row, `HANDOFF-lane-mode-policy.md` §3.5 / Prompt step 4 ("`/m/pick` … unchanged
+industrial"), and the 2026-09-25 "no queue to read" on `/m/pick`.
+
+**Changed — no Floor; industrial is the mobile ACTION surface only (owner 2026-09-28).** "Remove
+the Floor / industrial display across the entire desktop … The industrial edge-to-edge look is only
+viable for a mobile button — on iPad and on phone — for immediately taking action on a task in the
+warehouse." Supersedes Mode D (§12), "Floor keeps the industrial ledger" (§13),
+`HANDOFF-lane-mode-policy.md` §1 and the Floor half of `MODE-SPLIT-INVENTORY.md` decision 6.
+- **Desktop:** every desk is triage and offers exactly **In place / Split** (⌘/Ctrl+Shift+S). No
+  Floor view, no ⌘/Ctrl+Shift+F, no `runtime` routes, no `flush` industrial desk frame. A desk list
+  is the triage card list (`TriageCardList`) or its one-row density; `RecordLedger` /
+  `IndustrialRecord` never mount on a desk.
+- **Phone and iPad:** the ROUTE declares the mode — no device collapse (a coarse pointer no longer
+  turns a desk industrial). Only `/m/*` operation flows (a scan or tap that moves a thing to its
+  next operation, big pressable next step) declare `industrial`; `/m/*` reading flows (tasks, home,
+  imports, order lists, exceptions, forms) are triage.
+
+**One To-pick count (2026-09-28):** the phone's pick counts equal the desk's FBM → Allocate
+chips exactly: same `/api/orders` feed, same per-order grouping, same `recordState` tally. A
+count built from `order_unit_allocations` is a different fact and never wears the To-pick label.
+(`/m/pick` no longer paints the counts — see below; the rule stands for any phone count.)
+
+**`/m/pick` is a PICK LIST only (2026-09-28, supersedes the earlier "ONE screen" chips).** No
+status chips at all (no Urgent / To pick / Picked / Packed / Out of stock), no Reset filters, no
+filters of any kind, no `?status=` — just the pick list, so the picker triages it at a glance.
+Order management on the phone is `/m/orders`, untouched. The screen, top to bottom:
+- **Progress bar at the very top** (list AND the per-order walk screen, `ProgressBar`,
+  `role="progressbar"`): orders I picked today (a line's `picked_by` = me, `picked_at` on today's
+  PST day) ÷ (those + my walk still to pick), worded **"3 of 41 picked"** (`pickWalkProgress`).
+- **My pick list**: the To-pick orders whose live PICK assignee is me, first; then unowned orders
+  anyone may take; another picker's orders are never listed or walked.
+- **The card — `RecordCardMobile`**, the desk FBM → Allocate triage card's phone face, fed by the
+  same `orderCardModel` (`orderRecordLine`). **Owner 2026-09-29: bin, platform and order number
+  above the image** (supersedes the 2026-09-28 F-pattern that stacked the bin beside the image).
+  TOP ROW, full card width: the BIN first (`LocationBadge`; 'No bin' sets the SKU's home bin), then
+  the platform (channel dot + name) and the order number, the SLA pill at the far right. BODY ROW:
+  the product IMAGE at the far left, square (no corner), then EXACTLY two rows: the TITLE (one
+  line, truncated) over the SUBTITLE `×qty · condition · price` (no order ref — it lives in the top
+  row). The image is exactly as tall as those two rows (`RECORD_MOBILE_PHOTO_SIZE_CLASS`, from the
+  `text-role-body` + `text-role-caption` line-heights) and fills its square (`object-cover`) — a
+  taller tile centring short text, or a letterboxed well, reads as padding. Card padding matches
+  the desk article (`py-3 px-4`). The desk's left state rail stays; '+N items' unfolds a multi-line
+  order with each line's photo. No Take / Pass / verbs, no checkbox, no hover peek.
+- **Order screen bin verb (owner 2026-09-29):** the dock's second verb is the SKU's bin — **Pair
+  bin** when it has none, **Update location** when it has one — opening the same set-bin sheet
+  (`POST /api/update-sku-location`). The phone has no Unpick (the desk keeps it).
+- **The product image on the order screen too (owner 2026-09-29):** tapping a card or walking to
+  an order (`/m/pick?order=<id>`) shows every line's photo — the same resolver as the list card,
+  square, no corner, a large leading tile (`RecordSquarePhoto size="xl"`) so the item can be found
+  on the shelf; no photo → the package placeholder.
+- **Start picking · N floats**: `DetailDock placement="float"` — one fixed, centred width
+  (`FLOATING_CTA_WIDTH`, the same on every phone, never edge to edge), a spacing step plus the
+  safe-area inset off the bottom edge, NO hairline and NO bar ground behind or below it; the list
+  scrolls under it and the dock's own flow height is the list's bottom clearance.
+
+Start picking walks the list on the scan card (`/m/pick?order=<id>`): the first serial / SKU scan
+picks the order, anchored on the ORDER, not its label (`scanDeskOrder` — a counter pickup has no
+label and picks the same way); once the order is in hand the walk advances; Skip moves on without
+a write. No Take, no Pass to picker, no All / Unassigned / Mine, no Orders / Next pick / Shipping
+label tabs. The directed Next-pick stack (allocation-fed,
+`/api/v1/picking/{next,release,sessions/{id}/tote,notes}`) is deleted.
 
 ## Resolved 2026-09-24 (all six approved as written)
 

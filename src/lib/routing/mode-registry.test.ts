@@ -8,6 +8,8 @@ import assert from 'node:assert/strict';
 import { readdirSync } from 'node:fs';
 import path from 'node:path';
 
+import type { ModeName } from '@/design-system/modes/registry';
+import { resolveRegionMode } from '@/design-system/providers/resolve-region-mode';
 import { modeRouteFor } from './mode-registry';
 
 const APP_DIR = path.join(process.cwd(), 'src/app');
@@ -40,15 +42,15 @@ test('the longest declaration wins over its parent prefix', () => {
 });
 
 test('an exact entry governs its own path only', () => {
-  assert.equal(modeRouteFor('/m/orders')?.mode, 'industrial');
-  assert.equal(modeRouteFor('/m/orders/123/info')?.mode, 'triage');
   assert.equal(modeRouteFor('/')?.mode, 'triage');
   assert.equal(modeRouteFor('/not-a-route'), null, 'the home entry is not a catch-all');
 });
 
 test('a prefix matches whole segments only', () => {
-  assert.equal(modeRouteFor('/shipping/orders')?.mode, 'runtime');
+  assert.equal(modeRouteFor('/shipping/orders')?.mode, 'triage');
   assert.equal(modeRouteFor('/shippingx'), null);
+  assert.equal(modeRouteFor('/m/pack/start/7')?.mode, 'industrial');
+  assert.equal(modeRouteFor('/m/packer'), modeRouteFor('/m'), '/m/pack does not own /m/packer');
   assert.equal(modeRouteFor('/ai-chat')?.mode, 'assistant');
   assert.equal(modeRouteFor('/kiosk/v2')?.mode, 'counter');
 });
@@ -56,4 +58,30 @@ test('a prefix matches whole segments only', () => {
 test('no pathname resolves to nothing', () => {
   assert.equal(modeRouteFor(null), null);
   assert.equal(modeRouteFor(''), null);
+});
+
+test('industrial is declared only by /m/* operation flows — no desk page is ever industrial', () => {
+  const industrialDesks = appPageRoutes().filter(
+    (route) => modeRouteFor(route)?.mode === 'industrial' && route !== '/m' && !route.startsWith('/m/'),
+  );
+  assert.deepEqual(industrialDesks, []);
+});
+
+test('phone operation flows declare industrial; reading flows and the whole pick flow declare triage (owner 2026-09-28)', () => {
+  const operations = ['/m/scan', '/m/pack', '/m/pack/start/7', '/m/id/scan-out/7', '/m/r/5', '/m/r/5/classify', '/m/loc/A-01', '/m/pair/A-01/SKU1', '/m/u/9/qc'];
+  for (const pathname of operations) assert.equal(modeRouteFor(pathname)?.mode, 'industrial', pathname);
+  const reading = ['/m', '/m/home', '/m/work', '/m/orders', '/m/orders/7/info', '/m/imports', '/m/exceptions', '/m/rs/3', '/m/pick', '/m/pick/42', '/m/id/pick/42'];
+  for (const pathname of reading) assert.equal(modeRouteFor(pathname)?.mode, 'triage', pathname);
+});
+
+/** What a portalled region asking for `requested` paints on `pathname`. */
+function paints(pathname: string, requested: ModeName, form?: boolean): ModeName {
+  return resolveRegionMode(requested, modeRouteFor(pathname)?.mode ?? null, { form });
+}
+
+test('a portalled triage sheet takes its operation flow’s industrial, holds triage as a form, and stays triage on desks', () => {
+  assert.equal(paints('/m/scan', 'triage'), 'industrial');
+  assert.equal(paints('/m/scan', 'triage', true), 'triage');
+  assert.equal(paints('/m/home', 'triage'), 'triage');
+  assert.equal(paints('/shipping/orders', 'triage'), 'triage');
 });

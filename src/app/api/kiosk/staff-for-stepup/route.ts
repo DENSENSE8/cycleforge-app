@@ -1,5 +1,5 @@
 /**
- * GET /api/kiosk/staff-for-stepup?scope=payment|adjust_price|signin
+ * GET /api/kiosk/staff-for-stepup?scope=payment|adjust_price|receiving|printing|signin
  * because the History face signs in pinlessly (operator 2026-09-22:
  */
 
@@ -14,6 +14,8 @@ import type { OrgId } from '@/lib/tenancy/constants';
 const SCOPE_PERMISSION: Record<string, PermissionString> = {
   payment: 'walk_in.take_payment',
   adjust_price: 'walk_in.adjust_price',
+  receiving: 'receiving.scan_po',
+  printing: 'print.label',
 };
 
 export const runtime = 'nodejs';

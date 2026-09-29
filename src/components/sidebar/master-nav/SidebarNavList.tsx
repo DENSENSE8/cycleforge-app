@@ -48,17 +48,22 @@ import {
   SPINE_CHILD_RAIL_INSET_CLASS,
   SPINE_CHILD_RAIL_TRUNK_CLASS,
   SPINE_LABEL_CLASS,
+  SPINE_PARENT_ICON_MOTION_CLASS,
+  SPINE_PARENT_MARKER_CLASS,
+  SPINE_PARENT_ROW_MOTION_CLASS,
   SPINE_ROW_ICON_CLASS,
   SPINE_SCROLLPORT_SCROLLBAR_CLASS,
   SPINE_SECTION_LABEL_STICKY_CLASS,
 } from '@/components/sidebar/sidebar-spine';
 import { IconButton } from '@/design-system/primitives/IconButton';
+import { Collapse } from '@/design-system/components/Collapse';
 import { AI_CHAT_NEW_EVENT } from '@/lib/app-events';
 import { cn } from '@/utils/_cn';
 import { ChatSessionsNav } from './ChatSessionsNav';
 import { StaffAccountFooter } from './StaffAccountFooter';
 import { useSpineSectionCollapse } from './useSpineSectionCollapse';
 import { useLaneDoorHref } from '@/components/sidebar/contextual/useLaneDoorHref';
+import { spineParentTone } from './spine-parent-tone';
 
 /** MasterNav page list, painted on the shadcn `Sidebar*` primitives (`@/components/ui/sidebar`) — the component tree the operator named… */
 interface SidebarNavListProps {
@@ -92,6 +97,7 @@ function SortableMenuRow({
   onActivate: () => void;
   onMouseEnter?: () => void;
 }) {
+  const tone = spineParentTone(id);
   const {
     attributes,
     listeners,
@@ -120,10 +126,22 @@ function SortableMenuRow({
         aria-current={active ? 'page' : undefined}
         className={cn(
           'touch-none',
+          SPINE_PARENT_ROW_MOTION_CLASS,
+          tone.row,
           isDragging && 'cursor-grabbing ring-1 ring-inset ring-border-soft',
         )}
       >
-        <RowIcon className={navIconStrokeClass(SPINE_ROW_ICON_CLASS)} />
+        <span
+          aria-hidden
+          className={cn(
+            SPINE_PARENT_MARKER_CLASS,
+            tone.marker,
+            active && 'scale-y-100 opacity-100',
+          )}
+        />
+        <RowIcon
+          className={navIconStrokeClass(cn(SPINE_ROW_ICON_CLASS, SPINE_PARENT_ICON_MOTION_CLASS, tone.icon))}
+        />
         <span className={cn('min-w-0 flex-1 truncate', SPINE_LABEL_CLASS)} title={label}>
           {label}
         </span>
@@ -134,6 +152,7 @@ function SortableMenuRow({
 
 /** The group's face: */
 function SectionTriggerFace({
+  toneKey,
   label,
   icon: SectionIcon,
   open,
@@ -143,6 +162,7 @@ function SectionTriggerFace({
   dragProps,
   isDragging = false,
 }: {
+  toneKey: string;
   label: string;
   icon: SidebarIconComponent;
   open: boolean;
@@ -152,6 +172,7 @@ function SectionTriggerFace({
   dragProps?: Record<string, unknown>;
   isDragging?: boolean;
 }) {
+  const tone = spineParentTone(toneKey);
   return (
     <SidebarGroupLabel asChild>
       <button
@@ -163,16 +184,25 @@ function SectionTriggerFace({
         {...dragProps}
         onClick={onToggle}
         className={cn(
-          // No ink override:
-          // exactly like Daily / Media Library above it (operator 2026-09-14:
           'relative cursor-pointer touch-none',
           SPINE_SECTION_LABEL_STICKY_CLASS,
-          ownsCurrent &&
-            "font-semibold before:absolute before:inset-y-0 before:left-0 before:w-0.5 before:bg-text-default before:content-['']",
+          SPINE_PARENT_ROW_MOTION_CLASS,
+          tone.section,
+          ownsCurrent && 'font-semibold',
           isDragging && 'cursor-grabbing ring-1 ring-inset ring-border-soft',
         )}
       >
-        <SectionIcon className={navIconStrokeClass(SPINE_ROW_ICON_CLASS)} />
+        <span
+          aria-hidden
+          className={cn(
+            SPINE_PARENT_MARKER_CLASS,
+            tone.marker,
+            ownsCurrent && 'scale-y-100 opacity-100',
+          )}
+        />
+        <SectionIcon
+          className={navIconStrokeClass(cn(SPINE_ROW_ICON_CLASS, SPINE_PARENT_ICON_MOTION_CLASS, tone.icon))}
+        />
         <span className={cn('min-w-0 flex-1 truncate', SPINE_LABEL_CLASS)} title={label}>
           {label}
         </span>
@@ -230,6 +260,7 @@ function SortableSectionTrigger({
       className={cn('relative', isDragging && 'z-10 opacity-80')}
     >
       <SectionTriggerFace
+        toneKey={id}
         label={label}
         icon={icon}
         open={open}
@@ -335,10 +366,13 @@ export function SidebarNavList({
     ariaLabel: string;
     onClick: () => void;
     onMouseEnter?: () => void;
+    /** Parent rows alone carry color and animated depth. */
+    toneKey?: string;
     /** Hover-revealed action at the row's end (always shown on the active row). */
     trailing?: ReactNode;
   }) => {
     const RowIcon = opts.icon;
+    const tone = opts.toneKey ? spineParentTone(opts.toneKey) : null;
     return (
       <SidebarMenuItem
         key={opts.key}
@@ -353,9 +387,28 @@ export function SidebarNavList({
           onMouseEnter={opts.onMouseEnter}
           aria-label={opts.ariaLabel}
           aria-current={opts.active ? 'page' : undefined}
-          className={cn(RowIcon ? undefined : 'min-w-0 w-auto flex-1', opts.trailing && 'pr-9')}
+          className={cn(
+            RowIcon ? [SPINE_PARENT_ROW_MOTION_CLASS, tone?.row] : 'min-w-0 w-auto flex-1',
+            opts.trailing && 'pr-9',
+          )}
         >
-          {RowIcon ? <RowIcon className={navIconStrokeClass(SPINE_ROW_ICON_CLASS)} /> : null}
+          {RowIcon && tone ? (
+            <span
+              aria-hidden
+              className={cn(
+                SPINE_PARENT_MARKER_CLASS,
+                tone.marker,
+                opts.active && 'scale-y-100 opacity-100',
+              )}
+            />
+          ) : null}
+          {RowIcon ? (
+            <RowIcon
+              className={navIconStrokeClass(
+                cn(SPINE_ROW_ICON_CLASS, SPINE_PARENT_ICON_MOTION_CLASS, tone?.icon),
+              )}
+            />
+          ) : null}
           <span className={cn('min-w-0 flex-1 truncate', SPINE_LABEL_CLASS)} title={opts.label}>
             {opts.label}
           </span>
@@ -411,7 +464,7 @@ export function SidebarNavList({
           bodyId={bodyId}
           onToggle={() => setSectionOpen(opts.sectionKey, !open)}
         />
-        {open ? (
+        <Collapse open={open}>
           <SidebarGroupContent
             id={bodyId}
             role="group"
@@ -422,7 +475,7 @@ export function SidebarNavList({
             <span className={SPINE_CHILD_RAIL_TRUNK_CLASS} aria-hidden />
             <SidebarMenu>{opts.rows}</SidebarMenu>
           </SidebarGroupContent>
-        ) : null}
+        </Collapse>
       </SidebarGroup>
     );
   };
@@ -540,6 +593,7 @@ export function SidebarNavList({
                   key: page.id,
                   label: page.label,
                   icon: page.icon,
+                  toneKey: page.id,
                   active: page.id === activePage.id,
                   ariaLabel: `Go to ${page.label}`,
                   onClick: () => onNavigate(page.id),

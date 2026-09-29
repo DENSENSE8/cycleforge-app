@@ -32,6 +32,7 @@ interface InlineEditableValueProps {
   showEditIcon?: boolean;
   /** Where the pencil sits; `start` keeps it left of the value (e.g. UPS row). */
   editIconPosition?: 'start' | 'end';
+  ariaLabel?: string;
 }
 
 export function InlineEditableValue({
@@ -50,6 +51,7 @@ export function InlineEditableValue({
   accessory,
   showEditIcon = true,
   editIconPosition = 'end',
+  ariaLabel = 'Edit value',
 }: InlineEditableValueProps) {
   const [isEditing, setIsEditing] = useState(autoFocus);
   const inputRef = useRef<HTMLInputElement | null>(null);
@@ -75,8 +77,8 @@ export function InlineEditableValue({
       type="button"
       onClick={() => setIsEditing((prev) => !prev)}
       className="shrink-0 text-text-soft transition-colors duration-100 ease-out hover:text-text-default active:scale-95"
-      aria-label="Edit value"
-      title="Edit"
+      aria-label={ariaLabel}
+      title={ariaLabel}
     >
       <Pencil className="h-[14px] w-[14px]" />
     </button>
@@ -92,6 +94,7 @@ export function InlineEditableValue({
             type="text"
             value={value}
             onChange={(event) => onChange(event.target.value)}
+            aria-label={ariaLabel}
             onBlur={() => {
               setIsEditing(false);
               onBlur?.();
@@ -114,7 +117,7 @@ export function InlineEditableValue({
             placeholder={placeholder}
           />
         ) : (
-          <button type="button" onClick={() => setIsEditing(true)} className="block w-full py-0 text-left">
+          <button type="button" onClick={() => setIsEditing(true)} className="block w-full py-0 text-left" aria-label={ariaLabel}>
             <span
               className={`block truncate text-sm font-semibold text-text-default ${monospace ? 'font-mono' : ''} ${valueClassName}`.trim()}
             >

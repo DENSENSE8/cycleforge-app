@@ -17,7 +17,7 @@ import {
   logAuthEvent,
 } from '@/lib/identity/memberships';
 import { recordStaffLogin } from '@/lib/auth/record-staff-login';
-import pool from '@/lib/db';
+import { tenantQuery } from '@/lib/tenancy/db';
 
 export const runtime = 'nodejs';
 
@@ -92,8 +92,12 @@ export async function POST(req: NextRequest) {
       },
     });
     await logAuthEvent({ accountId, orgId: organizationId, event: 'switch_org', ip, userAgent: ua });
-    // Entering another workspace is a sign-in for that org's staff profile.
-    const login = await recordStaffLogin(pool, target.staffId);
+    // Entering another workspace is a sign-in for that org's staff profile —
+    // stamped under the TARGET org's GUC (membership verified above).
+    const login = await recordStaffLogin(
+      { query: (text, params) => tenantQuery(organizationId, text, params ?? []) },
+      target.staffId,
+    );
 
     const res = NextResponse.json({
       ok: true,

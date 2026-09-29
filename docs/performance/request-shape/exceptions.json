@@ -1,0 +1,325 @@
+{
+  "url": "http://localhost:3102/exceptions",
+  "ttfb": 1159,
+  "isDev": false,
+  "rows": [
+    {
+      "url": "/api/station-commands/aliases",
+      "start": 1565,
+      "end": 2122,
+      "ms": 557,
+      "bytes": 324
+    },
+    {
+      "url": "/api/v1/print-stations",
+      "start": 1566,
+      "end": 2134,
+      "ms": 568,
+      "bytes": 390
+    },
+    {
+      "url": "/api/nav/context?path=%2Fexceptions",
+      "start": 1567,
+      "end": 1982,
+      "ms": 415,
+      "bytes": 1065
+    },
+    {
+      "url": "/api/sync/global",
+      "start": 1568,
+      "end": 1730,
+      "ms": 162,
+      "bytes": 1782
+    },
+    {
+      "url": "/api/staff-preferences",
+      "start": 1570,
+      "end": 1978,
+      "ms": 408,
+      "bytes": 429
+    },
+    {
+      "url": "/api/catalog/platforms",
+      "start": 1616,
+      "end": 2190,
+      "ms": 574,
+      "bytes": 3682
+    },
+    {
+      "url": "/api/settings?page=desk",
+      "start": 1644,
+      "end": 2058,
+      "ms": 414,
+      "bytes": 1768
+    },
+    {
+      "url": "/api/exceptions",
+      "start": 1673,
+      "end": 2642,
+      "ms": 969,
+      "bytes": 39023
+    },
+    {
+      "url": "/api/staff?active=false",
+      "start": 1680,
+      "end": 2758,
+      "ms": 1078,
+      "bytes": 5871
+    },
+    {
+      "url": "/api/inbox/tech-queue",
+      "start": 1681,
+      "end": 2474,
+      "ms": 794,
+      "bytes": 368
+    },
+    {
+      "url": "/api/inbox/support",
+      "start": 1681,
+      "end": 2686,
+      "ms": 1005,
+      "bytes": 322
+    },
+    {
+      "url": "/api/staff-messages?unread=1",
+      "start": 1681,
+      "end": 2710,
+      "ms": 1028,
+      "bytes": 312
+    },
+    {
+      "url": "/api/realtime/token?rnd=9515553207288827",
+      "start": 2208,
+      "end": 2810,
+      "ms": 603,
+      "bytes": 2045
+    },
+    {
+      "url": "/api/nav/facets?domain=fulfillment&context=exceptions.fulfillment",
+      "start": 2486,
+      "end": 2806,
+      "ms": 320,
+      "bytes": 360
+    },
+    {
+      "url": "/api/nav/facets?domain=inventory&context=exceptions.inventory",
+      "start": 2486,
+      "end": 2890,
+      "ms": 404,
+      "bytes": 359
+    },
+    {
+      "url": "/api/nav/facets?domain=receiving&context=exceptions.receiving",
+      "start": 2487,
+      "end": 3186,
+      "ms": 700,
+      "bytes": 359
+    },
+    {
+      "url": "/api/nav/facets?context=exceptions",
+      "start": 2487,
+      "end": 3187,
+      "ms": 700,
+      "bytes": 349
+    }
+  ],
+  "focus": [
+    {
+      "count": 1,
+      "bytes": 390,
+      "rows": [
+        {
+          "url": "/api/v1/print-stations",
+          "ms": 1171,
+          "bytes": 390
+        }
+      ]
+    },
+    {
+      "count": 1,
+      "bytes": 349,
+      "rows": [
+        {
+          "url": "/api/nav/facets?context=exceptions",
+          "ms": 770,
+          "bytes": 349
+        }
+      ]
+    }
+  ],
+  "analysis": {
+    "duplicates": [],
+    "multiShape": [
+      {
+        "endpoint": "/api/nav/facets",
+        "shapes": [
+          "/api/nav/facets?domain=fulfillment&context=exceptions.fulfillment",
+          "/api/nav/facets?domain=inventory&context=exceptions.inventory",
+          "/api/nav/facets?domain=receiving&context=exceptions.receiving",
+          "/api/nav/facets?context=exceptions"
+        ],
+        "totalBytes": 1427
+      }
+    ],
+    "chains": [
+      {
+        "from": "/api/inbox/tech-queue",
+        "to": "/api/nav/facets?context=exceptions",
+        "gapMs": 13,
+        "tailEnd": 3187
+      },
+      {
+        "from": "/api/inbox/tech-queue",
+        "to": "/api/nav/facets?domain=receiving&context=exceptions.receiving",
+        "gapMs": 13,
+        "tailEnd": 3186
+      },
+      {
+        "from": "/api/inbox/tech-queue",
+        "to": "/api/nav/facets?domain=inventory&context=exceptions.inventory",
+        "gapMs": 12,
+        "tailEnd": 2890
+      },
+      {
+        "from": "/api/catalog/platforms",
+        "to": "/api/realtime/token?rnd=9515553207288827",
+        "gapMs": 18,
+        "tailEnd": 2810
+      },
+      {
+        "from": "/api/inbox/tech-queue",
+        "to": "/api/nav/facets?domain=fulfillment&context=exceptions.fulfillment",
+        "gapMs": 12,
+        "tailEnd": 2806
+      }
+    ],
+    "peakConcurrency": 12,
+    "countProbes": [],
+    "heaviest": [
+      {
+        "url": "/api/exceptions",
+        "start": 1673,
+        "end": 2642,
+        "ms": 969,
+        "bytes": 39023
+      },
+      {
+        "url": "/api/staff?active=false",
+        "start": 1680,
+        "end": 2758,
+        "ms": 1078,
+        "bytes": 5871
+      },
+      {
+        "url": "/api/catalog/platforms",
+        "start": 1616,
+        "end": 2190,
+        "ms": 574,
+        "bytes": 3682
+      },
+      {
+        "url": "/api/realtime/token?rnd=9515553207288827",
+        "start": 2208,
+        "end": 2810,
+        "ms": 603,
+        "bytes": 2045
+      },
+      {
+        "url": "/api/sync/global",
+        "start": 1568,
+        "end": 1730,
+        "ms": 162,
+        "bytes": 1782
+      },
+      {
+        "url": "/api/settings?page=desk",
+        "start": 1644,
+        "end": 2058,
+        "ms": 414,
+        "bytes": 1768
+      },
+      {
+        "url": "/api/nav/context?path=%2Fexceptions",
+        "start": 1567,
+        "end": 1982,
+        "ms": 415,
+        "bytes": 1065
+      },
+      {
+        "url": "/api/staff-preferences",
+        "start": 1570,
+        "end": 1978,
+        "ms": 408,
+        "bytes": 429
+      }
+    ],
+    "slowest": [
+      {
+        "url": "/api/staff?active=false",
+        "start": 1680,
+        "end": 2758,
+        "ms": 1078,
+        "bytes": 5871
+      },
+      {
+        "url": "/api/staff-messages?unread=1",
+        "start": 1681,
+        "end": 2710,
+        "ms": 1028,
+        "bytes": 312
+      },
+      {
+        "url": "/api/inbox/support",
+        "start": 1681,
+        "end": 2686,
+        "ms": 1005,
+        "bytes": 322
+      },
+      {
+        "url": "/api/exceptions",
+        "start": 1673,
+        "end": 2642,
+        "ms": 969,
+        "bytes": 39023
+      },
+      {
+        "url": "/api/inbox/tech-queue",
+        "start": 1681,
+        "end": 2474,
+        "ms": 794,
+        "bytes": 368
+      },
+      {
+        "url": "/api/nav/facets?domain=receiving&context=exceptions.receiving",
+        "start": 2487,
+        "end": 3186,
+        "ms": 700,
+        "bytes": 359
+      },
+      {
+        "url": "/api/nav/facets?context=exceptions",
+        "start": 2487,
+        "end": 3187,
+        "ms": 700,
+        "bytes": 349
+      },
+      {
+        "url": "/api/realtime/token?rnd=9515553207288827",
+        "start": 2208,
+        "end": 2810,
+        "ms": 603,
+        "bytes": 2045
+      }
+    ]
+  },
+  "route": "/exceptions",
+  "base": "http://localhost:3102",
+  "runs": 3,
+  "metrics": {
+    "duplicateRequests": 0,
+    "countProbes": 0,
+    "focusRefetch": 1,
+    "requests": 17
+  },
+  "capturedAt": "2026-09-29T06:18:23.451Z"
+}

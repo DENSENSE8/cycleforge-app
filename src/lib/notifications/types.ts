@@ -41,6 +41,9 @@ export interface InboxItemDto {
    * open the carton to learn which package it is. Render hint, never a filter.
    */
   trackingNumber: string | null;
+  /** Order-facing identity/status carried by outbound SLA alerts. */
+  orderNumber: string | null;
+  carrierStatus: string | null;
   /** The PROVIDER ticket number on a `support_ticket` row — the `#48120` an operator quotes. */
   ticketNumber: number | null;
 }

@@ -19,6 +19,7 @@ import {
   resolveCustomerEmail,
   type PurchasedLabel,
 } from '@/lib/shipping/order-label-purchase';
+import { labelPurchaseBody } from '@/lib/shipping/label-purchase-response';
 import { buyerNoteHoldBody, readBuyerNoteHold } from '@/lib/orders/buyer-note-interlock';
 import { createOrderNote } from '@/lib/orders/order-notes';
 import { isLabelPurpose, type LabelPurpose } from '@/lib/shipping/label-purpose';
@@ -86,6 +87,7 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
         tracking: prior.tracking,
         carrier: prior.carrier,
         labelDocumentId: prior.id,
+        labelIngestionId: null,
       });
     }
 
@@ -152,20 +154,7 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
       // (every step below dedupes), but never charge again.
       const label = purchasedLabelFromRecord(outcome.record);
       const finished = await finishLabelPurchase({ orgId, order, orderId, orderRef, clientEventId, labelFormat, staffId: ctx.staffId ?? null, v2, label, knownShipmentId: outcome.record.shipmentId, knownDocumentId: outcome.record.labelDocumentId, purpose: outcome.record.purpose });
-      return NextResponse.json({
-        ok: true,
-        idempotent: true,
-        tracking: label.trackingNumber,
-        carrier: label.carrierCode,
-        service: label.serviceCode,
-        cost: label.cost,
-        currency: label.currency,
-        labelId: label.labelId,
-        labelUrl: label.labelUrl,
-        shipmentId: finished.shipmentId,
-        labelDocumentId: finished.labelDocumentId,
-        warning: finished.warning,
-      });
+      return NextResponse.json(labelPurchaseBody({ label, finished, purpose: outcome.record.purpose, idempotent: true }));
     }
 
     const label: PurchasedLabel = {
@@ -179,8 +168,8 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
       labelUrl: outcome.labelUrl,
     };
 
-    // 2–3. Tracking, ship-to snapshot, label document, packing slip.
-    const { shipmentId: primaryShipmentId, labelDocumentId, isFirstLabel, warning } = await finishLabelPurchase({
+    // 2–3. Tracking, ship-to snapshot, label document, packing slip, Labels view.
+    const finished = await finishLabelPurchase({
       orgId,
       order,
       orderId,
@@ -194,7 +183,7 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
       knownDocumentId: null,
       purpose,
     });
-    const labelUrl = label.labelUrl;
+    const { shipmentId: primaryShipmentId, labelDocumentId, labelIngestionId, isFirstLabel } = finished;
 
     // 4. Audit trail (recordAudit never throws).
     await recordAudit(pool, ctx, req, {
@@ -213,7 +202,7 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
         purpose,
         creationType: 'bought_in_app',
       },
-      extra: { shipmentId: primaryShipmentId, labelDocumentId, clientEventId, purchaseId: label.purchaseId },
+      extra: { shipmentId: primaryShipmentId, labelDocumentId, labelIngestionId, clientEventId, purchaseId: label.purchaseId },
     });
     if (isFirstLabel) {
       await recordAudit(pool, ctx, req, {
@@ -272,21 +261,7 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
       }
     });
 
-    return NextResponse.json({
-      ok: true,
-      tracking: label.trackingNumber,
-      carrier: label.carrierCode,
-      service: label.serviceCode,
-      cost: label.cost,
-      currency: label.currency,
-      labelId: label.labelId,
-      labelUrl,
-      shipmentId: primaryShipmentId,
-      labelDocumentId,
-      warning,
-      purpose,
-      purchaseId: label.purchaseId,
-    });
+    return NextResponse.json(labelPurchaseBody({ label, finished, purpose, idempotent: false }));
   } catch (error) {
     if (error instanceof ShipStationNotConnectedError) {
       return NextResponse.json(

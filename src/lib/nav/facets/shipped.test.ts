@@ -17,6 +17,7 @@ import { WAREHOUSE_TIME_ZONE } from '@/utils/date';
 const ORG = '00000000-0000-0000-0000-000000000001';
 const DESK = { orgId: ORG, permissions: new Set(['packing.view']) };
 const noPickup: NavFacetsDeps['listLocalPickupLines'] = async () => [];
+const noExceptions: NavFacetsDeps['exceptionCounts'] = async () => ({});
 
 const TYPES: ShippedTypeFilter[] = ['all', 'orders', 'sku', 'fba'];
 const CARRIERS = ['UPS', 'USPS', 'FEDEX', ''];
@@ -115,6 +116,7 @@ function boundBy(sql: string, params: readonly unknown[], pattern: RegExp): unkn
 function comboRunner(packages: FixturePackage[], captured: Array<{ sql: string; params: readonly unknown[] }> = []): NavFacetsDeps {
   return {
     listLocalPickupLines: noPickup,
+    exceptionCounts: noExceptions,
     run: async (_orgId, sql, params) => {
       captured.push({ sql, params });
       // The predicates the statement binds, evaluated as Postgres would.
@@ -236,6 +238,7 @@ test('outbound.shipped: a DB without packer_log_enrichment falls back to the leg
     const captured: string[] = [];
     const deps: NavFacetsDeps = {
       listLocalPickupLines: noPickup,
+      exceptionCounts: noExceptions,
       run: async (_orgId, sql) => {
         captured.push(sql);
         if (sql.includes('packer_log_enrichment')) throw Object.assign(new Error('relation missing'), { code: '42P01' });

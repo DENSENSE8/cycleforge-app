@@ -316,9 +316,13 @@ export async function getOrderPriceBreakdown(
   orderId: number,
   deps: OrderPriceBreakdownDeps = defaultOrderPriceBreakdownDeps,
 ): Promise<(PriceBreakdown & { orderId: number; shipstationOrderNumber: string | null }) | null> {
-  const order = await deps.readOrder(orgId, orderId);
+  // Both reads are persisted, tenant-scoped, and independent. Keeping them in
+  // one network flight removes a full Neon round trip from the detail panel.
+  const [order, labels] = await Promise.all([
+    deps.readOrder(orgId, orderId),
+    deps.readLabels(orgId, orderId),
+  ]);
   if (!order) return null;
-  const labels = await deps.readLabels(orgId, orderId);
   const hasShipStation =
     order.ss_order_number != null ||
     order.order_total != null ||

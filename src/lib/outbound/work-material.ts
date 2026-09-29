@@ -3,8 +3,8 @@ import { createHash } from 'node:crypto';
 import { z } from 'zod';
 import { OUTBOUND_LABEL_STATES, OUTBOUND_WAREHOUSE_STAGES } from './work-contract';
 
-/** Lateral joins producing every material field. */
-export const OUTBOUND_MATERIAL_JOINS_SQL = `
+/** The order's latest label ingestion (`latest_label`: id, state, row_version) — the one row outbound membership and the Exceptions hub's Labels kind read. Expects `o` = orders. */
+export const LATEST_LABEL_LATERAL_SQL = `
   LEFT JOIN LATERAL (
     SELECT li.id, li.state, li.row_version
       FROM label_ingestion_orders lio
@@ -12,7 +12,10 @@ export const OUTBOUND_MATERIAL_JOINS_SQL = `
      WHERE lio.organization_id = o.organization_id AND lio.order_id = o.id
      ORDER BY li.updated_at DESC, li.id DESC
      LIMIT 1
-  ) latest_label ON TRUE
+  ) latest_label ON TRUE`;
+
+/** Lateral joins producing every material field. */
+export const OUTBOUND_MATERIAL_JOINS_SQL = `${LATEST_LABEL_LATERAL_SQL}
   LEFT JOIN LATERAL (
     SELECT COALESCE(MAX(CASE su.current_status
       WHEN 'SHIPPED' THEN 4 WHEN 'LABELED' THEN 3 WHEN 'PACKED' THEN 2 WHEN 'PICKED' THEN 1 ELSE 0 END), 0) AS reached,

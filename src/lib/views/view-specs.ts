@@ -26,14 +26,14 @@ export type DisclosureTier = 'rest' | 'label' | 'detail' | 'open';
 /** How a list view orders its rows — each id names one existing ordering. */
 export type ViewSort =
   /** Ship-by soonest (the queue's `deadline` sort; the staffer may re-sort). */
-  | 'ship-by'
-  /** Missing item number first, then the most orders one pairing releases (`sortExceptionQueueRows`). */
-  | 'hold-release';
+  'ship-by';
 
 /** What a view that only opens records (no list of its own) declares. */
 export interface RecordViewSpec<SectionId extends string, VerbId extends string> {
   /** The one question this view answers — also the empty / all-clear copy source. */
   job: string;
+  /** The detail hierarchy selected by this view; components never branch on the view key. */
+  recordPresentation: 'allocate' | 'standard';
   /** Record sections, in paint order. */
   record: readonly SectionId[];
   /** ONE primary verb, then secondary verbs; hotkeys come from the verb builder. */
@@ -55,7 +55,7 @@ export interface ViewSpec<FactId extends string, SectionId extends string, VerbI
 }
 
 /** Order views that paint a list of order lines (the outbound ledger / cards). */
-export const ORDER_LIST_VIEW_KEYS = ['shipping.to-ship', 'shipping.pending', 'shipping.exceptions'] as const;
+export const ORDER_LIST_VIEW_KEYS = ['shipping.to-ship', 'shipping.pending'] as const;
 export type OrderListViewKey = (typeof ORDER_LIST_VIEW_KEYS)[number];
 
 /** Order views that only open one order's record. */
@@ -72,7 +72,6 @@ export type OrderViewKey = OrderListViewKey | OrderRecordViewKey;
 interface OrderRecordForbiddenSections {
   'shipping.to-ship': 'label-entries' | 'resolve';
   'shipping.pending': 'label-entries' | 'resolve';
-  'shipping.exceptions': 'label-entries';
   'shipping.shipped': 'resolve' | 'assign';
   'search.orders': 'resolve';
 }
@@ -122,6 +121,7 @@ const WORK_QUEUE_VERBS = {
 export const VIEW_SPECS: OrderViewSpecs = {
   'shipping.to-ship': {
     job: 'What do I pick / pack next, and by when?',
+    recordPresentation: 'allocate',
     lead: 'orders.fulfill_by',
     rowFacts: WORK_QUEUE_ROW,
     density: { default: 'M', allowed: DENSITIES },
@@ -132,6 +132,7 @@ export const VIEW_SPECS: OrderViewSpecs = {
   },
   'shipping.pending': {
     job: 'Which blocked orders can move again, and by when?',
+    recordPresentation: 'allocate',
     lead: 'orders.fulfill_by',
     rowFacts: WORK_QUEUE_ROW,
     density: { default: 'M', allowed: DENSITIES },
@@ -140,34 +141,10 @@ export const VIEW_SPECS: OrderViewSpecs = {
     verbs: WORK_QUEUE_VERBS,
     empty: { title: 'No pending orders', detail: 'Nothing is blocked' },
   },
-  'shipping.exceptions': {
-    job: 'Why is this order held, and what releases it?',
-    lead: 'orders.hold_reason',
-    rowFacts: [
-      { fact: 'orders.hold_reason', tier: 'rest' },
-      { fact: 'orders.hold_fix', tier: 'rest' },
-      { fact: 'orders.hold_releases', tier: 'rest' },
-      { fact: 'orders.qty', tier: 'rest' },
-      { fact: 'orders.customer', tier: 'label' },
-      { fact: 'orders.item_number', tier: 'label' },
-    ],
-    // A held order is read, not worked with the hands — no sparse floor size.
-    density: { default: 'M', allowed: ['S', 'M'] },
-    sort: 'hold-release',
-    // The pairing form (`resolve`) leads the main column. Its notes field
-    // carries the routing text (`exceptionRowToQueueRow`), so the note editor
-    // and the price stay off.
-    record: ['state', 'buyer-note', 'resolve', 'item', 'stages', 'assign', 'timeline', 'customer', 'facts'],
-    verbs: {
-      primary: 'resolve',
-      secondary: ['paste', 'out-of-stock', 'urgent', 'notes', 'create-rule'],
-      bulk: ['urgent', 'out-of-stock'],
-    },
-    empty: { title: 'No held orders', detail: 'Every caged order is paired' },
-  },
   // The shipped archive: what left, who handled each step, where it is now.
   'shipping.shipped': {
     job: 'What left, who handled it, and where is it now?',
+    recordPresentation: 'standard',
     record: [
       'state',
       'buyer-note',
@@ -192,6 +169,9 @@ export const VIEW_SPECS: OrderViewSpecs = {
   // The on-the-phone lookup: returns and replacements are why the caller rang.
   'search.orders': {
     job: 'What happened to this order, and what does the caller need?',
+    // Search opens the same progressive, fulfillment-first record as Allocate;
+    // only its action set differs for service work.
+    recordPresentation: 'allocate',
     record: [
       'state',
       'buyer-note',

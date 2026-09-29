@@ -44,24 +44,25 @@ start URLs `/m/pick`, `/m/work`).
   - Verified: release → To ship live in ~5 s.
   - **Unknown:** what Fill leaves in Team (rule default vs empty). Check it.
 
-**Phone pick list: directed, not a plain list.**
-- `/m/pick` (`src/app/m/(shell)/pick/page.tsx`) → `DirectedPickScreen` →
-  `src/components/mobile/picker/directed/useDirectedPick.ts`.
-- The hook calls `POST /api/v1/picking/next` (`{ runStartedAt, skipOrderIds }`) for the next order
-  and line.
-- Lines confirm **per inventory allocation** (`confirmUnit(allocationId)`).
-- Other calls: tote pairing `POST /api/v1/picking/sessions/[id]/tote`, notes, `release`, bin pairing
-  (`/api/serial-units/:id/move`, `/api/update-sku-location`), skip, "pass to" staff.
-- Other routes:
-  - `/m/pick/unassigned`, `/m/pick/[orderId]` (`_picker/useMobilePicker.ts`, `PickerTaskCard`,
-    `ShortPickSheet`), `/m/id/pick/[orderId]`;
-  - board: `GET /api/v1/picking/board`;
-  - `/m/work` = "assigned orders" (`RedesignedMobileAssignedOrders`).
-- **The #1 question to answer first:** does `/api/v1/picking/next` offer an order to *its assigned
-  picker* only, or to anyone? And does a freshly created order have the `order_unit_allocations`
-  the pick lines need? No allocation probably means no pick line, so the order would never appear on
-  `/m/pick`. Read `src/app/api/v1/picking/next/route.ts` and the allocation writer before building
-  anything.
+**Phone pick list: one screen, my list (rebuilt 2026-09-28).**
+- `/m/pick` (`src/app/m/(shell)/pick/page.tsx`) → `PickScreen`
+  (`src/components/mobile/picker/PickScreen.tsx`): the desk's status chips (`QueueStatusChips` +
+  `src/lib/orders/to-ship-queue.ts`, counts equal `/shipping/orders`), my list, one sticky
+  **Start picking · N** CTA. No Take / Pass / scope tabs / mode tabs.
+- My list (`src/lib/picking/pick-walk.ts`): orders whose live PICK assignee (`picker_id` on the
+  `/api/orders` rows = the latest ORDER/PICK `work_assignments` row) is me, first; then unowned;
+  another picker's orders never. Owners come from pick history (`sku_staff_pairings` →
+  `src/lib/picking/sku-pick-owners.ts` → PICK assignments).
+- Start picking / a tapped card → `?order=<id>` → `PickOrderScreen` / `usePickOrder`: the desk scan
+  flow (`src/lib/picking/desk-scan-client.ts`, `/api/picking/desk/*`). The first serial / SKU scan
+  anchors the pick on the ORDER (`scanDeskOrder`, `type: 'ORDER'`), so a Pickup order (no tracking)
+  picks the same way as a labelled one; once the order is in hand the walk advances; Skip moves on
+  without a write. No allocation needed.
+- The directed allocation-fed stack (`POST /api/v1/picking/next`, `release`, `sessions/[id]/tote`,
+  `sessions/[id]/notes`, `DirectedPickScreen`, `directed-feed.ts`) is deleted.
+- Other routes: `/m/pick/[orderId]` (`_picker/useMobilePicker.ts`, `PickerTaskCard`,
+  `ShortPickSheet`), `/m/id/pick/[orderId]`; `/m/work` = "assigned orders"
+  (`RedesignedMobileAssignedOrders`).
 
 **Pack.**
 - Phone: `/m/pack`, `/m/pack/start/[orderId]`.

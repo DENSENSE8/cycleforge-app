@@ -10,7 +10,7 @@ import { PomodoroTimer } from '@/components/ui/PomodoroTimer';
 import { Bell, Camera, Check, Play, X } from '@/components/Icons';
 import { Button } from '@/design-system/primitives';
 import { IconButton } from '@/design-system/primitives/IconButton';
-import { STATE_TONE_CLASSES } from '@/design-system/tokens/lifecycle';
+import { LifecycleCode } from '@/design-system/components/record-ledger/LifecycleCode';
 import {
   MobileSwipePhotoViewer,
   type SwipePhotoSlide,
@@ -90,7 +90,7 @@ function SheetHeader({ title, sub, onClose }: { title: string; sub: string | nul
   return (
     <div className="flex shrink-0 items-start gap-2 px-1 pt-2">
       <div className="min-w-0 flex-1 pt-1">
-        <p className="font-mono text-role-micro tabular-nums text-text-faint">{title}</p>
+        <p className="text-role-micro tabular-nums text-text-faint">{title}</p>
         {sub ? <p className="truncate text-role-data font-semibold text-text-default">{sub}</p> : null}
       </div>
       <IconButton
@@ -201,24 +201,16 @@ function MobileTaskBody({
       <SheetHeader title={`Task ${row.id}`} sub={row.projectName ?? taskRecordLabel(row)} onClose={onClose} />
       <PomodoroTimer kind="task" id={row.id} canRun={open} className="px-1" />
       <div className="flex shrink-0 flex-wrap items-center gap-x-3 gap-y-1 border-b border-border-hairline px-1 pb-2 pt-1">
-        <span className="flex items-center gap-1.5">
-          <span aria-hidden className={cn('h-2 w-2 shrink-0', STATE_TONE_CLASSES[state.face.tone].dot)} />
-          <span
-            className={cn(
-              'font-mono text-role-micro font-semibold',
-              state.late ? 'text-text-danger' : 'text-text-default',
-            )}
-          >
-            {state.word.toUpperCase() === state.code ? state.code : `${state.code} · ${state.word}`}
-          </span>
-        </span>
+        <LifecycleCode state={state.face} srLabel={null}>
+          {state.word}
+        </LifecycleCode>
         {due ? (
           <span className={cn('text-role-micro', due.overdue && open ? 'text-text-danger' : 'text-text-muted')}>
             {due.text}
           </span>
         ) : null}
         {reminder ? (
-          <span className="flex items-center gap-1 font-mono text-role-micro text-text-muted">
+          <span className="flex items-center gap-1 text-role-micro tabular-nums text-text-muted">
             <Bell aria-hidden className="h-3.5 w-3.5" />
             {reminder}
           </span>

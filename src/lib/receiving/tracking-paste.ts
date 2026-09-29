@@ -4,10 +4,12 @@ import { canonicalizeTrackingKey } from '@/lib/zoho/call-reduction';
 
 /**
  * Cap on unique trackings per paste — shared by the ERP check and the list
- * filter, because they are the same paste. 100 keys is ~2KB of `?tracking_in=`,
- * which every browser and proxy carries comfortably.
+ * filters (`?tracking_in=`, `?ref_in=`), because they are the same paste.
+ * 150 keys is ~3KB of query string, which every browser and proxy carries
+ * comfortably. Live Zoho stays capped per Check (`zoho_cap`); a pasted list
+ * decides those numbers from our own tables (`reconcileCheck`).
  */
-export const CHECK_ZOHO_RECEIVED_MAX_INPUTS = 100;
+export const CHECK_ZOHO_RECEIVED_MAX_INPUTS = 150;
 
 /** The list-filter URL param. One name, imported — never re-typed at a call site. */
 export const TRACKING_IN_PARAM = 'tracking_in';

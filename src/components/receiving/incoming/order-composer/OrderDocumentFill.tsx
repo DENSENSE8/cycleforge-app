@@ -59,8 +59,8 @@ export function OrderDocumentFill({
   const fill = useCallback(async () => {
     setExtracting(true);
     try {
-      const draft = await postInboundOrderExtract({ text, imageDataUrls: images.map((image) => image.dataUrl) });
-      onFilled({ ...draft, type: currentType });
+      const draft = await postInboundOrderExtract({ type: currentType, text, imageDataUrls: images.map((image) => image.dataUrl) });
+      onFilled(draft);
       setText('');
       setImages([]);
       toast.message('Filled from the document — review, then add it');
@@ -77,6 +77,7 @@ export function OrderDocumentFill({
         ref={fileRef}
         type="file"
         accept="image/*"
+        capture="environment"
         multiple
         hidden
         onChange={(event) => {
@@ -86,7 +87,7 @@ export function OrderDocumentFill({
       />
       <textarea
         aria-label="Order document text"
-        placeholder="Paste the order confirmation text or a screenshot here"
+        placeholder={currentType === 'PICKUP' ? 'Take a photo or paste the local pickup paperwork here' : 'Paste the order confirmation text or a screenshot here'}
         value={text}
         rows={3}
         onChange={(event) => setText(event.target.value)}
@@ -115,7 +116,7 @@ export function OrderDocumentFill({
       ) : null}
       <div className="flex items-center justify-end gap-2">
         <Button variant="ghost" size="sm" icon={<ImagePlus />} onClick={() => fileRef.current?.click()}>
-          Attach screenshot
+          {currentType === 'PICKUP' ? 'Take or attach photo' : 'Attach screenshot'}
         </Button>
         <Button
           variant="secondary"

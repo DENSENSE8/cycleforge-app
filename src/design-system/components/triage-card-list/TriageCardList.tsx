@@ -18,6 +18,10 @@
  *
  * The face never branches on the family (Law 1): what differs arrives as data,
  * ids or the host's slot nodes.
+ *
+ * Two densities, one face: `card` (default — the Allocate desk's multi-line
+ * cards) and `row` (one full-bleed line per record, the family's
+ * `renderCard` returning a `TriageRow`; API in `./TriageRow.tsx`).
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
@@ -36,6 +40,7 @@ import { isEditableKeyTarget } from '@/lib/keyboard/is-editable-key-target';
 import { cn } from '@/utils/_cn';
 import { TriageSelectBar, type TriagePager } from './TriageSelectBar';
 import { TriageListBody, TriageSectionHeader, type TriageSectionTone } from './TriageListBody';
+import type { RecordStateFace } from '@/design-system/tokens/industrial-record';
 import {
   useHeldNewRecords,
   useTriageCardKeys,
@@ -93,6 +98,8 @@ export interface TriageFamily<Row, Model extends TriageCardModelBase<Row>> {
   /** The group's card key — must equal the model's `key`. */
   groupKey: (group: RowGroup<Row>) => string;
   cardModel: (group: RowGroup<Row>, band: string) => Model;
+  /** State source for `sections="by-state"`; one card group resolves to one state. */
+  state?: (group: RowGroup<Row>, band: string) => RecordStateFace;
   /** Section header for a band, read while the feed is `sectioned`. */
   section?: (band: string) => { label: string; tone: TriageSectionTone };
   /** A Find that names exactly one card opens it (`query` is trimmed, lower-cased). */
@@ -131,6 +138,12 @@ export interface TriageFeed<Row> {
   sectioned: boolean;
   /** Server scope total when known (records, not cards). */
   total?: number;
+  /**
+   * The status chips narrow on the SERVER (Exceptions' `?kind=`): `total` is
+   * already the chip's own total, so a lit chip keeps counting it instead of
+   * the loaded cut.
+   */
+  statusOnServer?: boolean;
   loading: boolean;
   /** Any fetch in flight — the next page waits for it. */
   fetching: boolean;
@@ -171,12 +184,16 @@ export interface TriageRecordSlot {
   view: ReactNode;
   /** The open record's verbs under the list's anchor, while nothing is checked. */
   strip: ReactNode;
+  /** Omit queue position when the record header is intentionally identity-only. */
+  showIndex?: boolean;
   /**
    * A rail desk (Labels & docs): the cards are a fixed-width rail at the left
    * and the record always sits beside them (`DeskRecordPlane` `listRail`);
-   * the bar spans both, one row, and stays while a record is open.
+   * the bar spans both, one row, and stays while a record is open. `'open'`:
+   * with nothing open the list stands alone at the bar's full width and the
+   * rail + record appear on open (`DeskRecordPlane listRail="open"`).
    */
-  rail?: boolean;
+  rail?: boolean | 'open';
 }
 
 export interface TriageCardListProps<Row, Model extends TriageCardModelBase<Row>, K extends string> {
@@ -196,6 +213,14 @@ export interface TriageCardListProps<Row, Model extends TriageCardModelBase<Row>
   /** The family's empty state while search / filters narrow the list; null when not narrowed. */
   searchEmpty: ReactNode | null;
   allClear: ReactNode;
+  /**
+   * `card` (default): multi-line cards divided by an inset hairline. `row`:
+   * the one-row edge-to-edge list — the family's `renderCard` returns a
+   * `TriageRow`, which draws its own full-bleed hairline.
+   */
+  density?: 'card' | 'row';
+  /** Replace host bands with stable first-seen state bands and derive their headers. */
+  sections?: 'by-state';
 }
 
 export function TriageCardList<Row, Model extends TriageCardModelBase<Row>, K extends string>({
@@ -209,6 +234,8 @@ export function TriageCardList<Row, Model extends TriageCardModelBase<Row>, K ex
   leadSlot,
   searchEmpty,
   allClear,
+  sections,
+  density = 'card',
 }: TriageCardListProps<Row, Model, K>) {
   const { rowId, groupKey } = family;
   const { url } = cut;
@@ -268,7 +295,24 @@ export function TriageCardList<Row, Model extends TriageCardModelBase<Row>, K ex
   // Every loaded card on one screen: Scroll mode, or a feed the server already paged.
   const onePage = scrollMode || serverPages != null;
   const pageSize = onePage ? ALL_LOADED : (pageMode as Exclude<typeof pageMode, 'scroll'>);
-  const { bands, fetching, loading } = feed;
+  const { bands: sourceBands, fetching, loading } = feed;
+  const stateBands = useMemo(() => {
+    if (sections !== 'by-state') return { bands: sourceBands, faces: new Map<string, RecordStateFace>() };
+    if (!family.state) throw new Error(`TriageCardList ${family.testIdPrefix} needs family.state for sections="by-state"`);
+    const groupsByState = new Map<string, RowGroup<Row>[]>();
+    const faces = new Map<string, RecordStateFace>();
+    for (const [band, groups] of sourceBands) {
+      for (const group of groups) {
+        const face = family.state(group, band);
+        faces.set(face.id, face);
+        const bucket = groupsByState.get(face.id);
+        if (bucket) bucket.push(group);
+        else groupsByState.set(face.id, [group]);
+      }
+    }
+    return { bands: [...groupsByState], faces };
+  }, [sections, sourceBands, family]);
+  const bands = stateBands.bands;
   const paged = useMemo(
     () => pageGroupedRenderOrder(bands, onePage ? 0 : url.pageIndex, pageSize),
     [bands, onePage, url.pageIndex, pageSize],
@@ -398,9 +442,10 @@ export function TriageCardList<Row, Model extends TriageCardModelBase<Row>, K ex
     [onLoadMore, fetching, trustNextBatch],
   );
   // Unfiltered, the count is the SERVER's scope total; a status filter or a
-  // search narrows to what is loaded, so it counts the cut. A server-paged
-  // feed's total is always the server's (its search runs there too).
-  const narrowed = statusFilter.size > 0 || Boolean(searchValue.trim());
+  // search narrows to what is loaded, so it counts the cut — unless the server
+  // narrowed by the chips itself. A server-paged feed's total is always the
+  // server's (its search runs there too).
+  const narrowed = (statusFilter.size > 0 && !feed.statusOnServer) || Boolean(searchValue.trim());
   const total = serverPages
     ? (feed.total ?? paged.total)
     : narrowed
@@ -453,7 +498,16 @@ export function TriageCardList<Row, Model extends TriageCardModelBase<Row>, K ex
 
   // ── Items: section headers + cards ────────────────────────────────────────
   // A section counts its whole cut, not just the cards on this page.
-  const section = feed.sectioned ? family.section : undefined;
+  const section =
+    sections === 'by-state'
+      ? (band: string): { label: string; tone: TriageSectionTone } => {
+          const face = stateBands.faces.get(band);
+          if (!face) throw new Error(`Missing state face for ${band}`);
+          return { label: face.label, tone: face.tone === 'danger' ? 'danger' : face.tone === 'warning' ? 'warning' : 'muted' };
+        }
+      : feed.sectioned
+        ? family.section
+        : undefined;
   const sectionCounts = useMemo(() => {
     const counts = new Map<string, number>();
     if (section) for (const [band, groups] of bands) counts.set(band, groups.length);
@@ -501,7 +555,8 @@ export function TriageCardList<Row, Model extends TriageCardModelBase<Row>, K ex
       items.push(
         <SwipeListItem
           key={model.key}
-          rowRule
+          rowRule={density === 'card'}
+          raised={(openId != null && model.ids.includes(openId)) || checkedCount > 0}
           enter={arriving ? 'swipe' : 'none'}
           exit={leaving ? 'swipe' : 'collapse'}
           stagger={arriving ? arriveIndex++ : leaving ? dismissIndex++ : 0}
@@ -515,7 +570,7 @@ export function TriageCardList<Row, Model extends TriageCardModelBase<Row>, K ex
   const recordOpen = openId != null;
   // A rail desk (`record.rail`): the bar spans the stage above the rail and
   // the record, and stays while a record is open — the list is never covered.
-  const railBar = record.rail === true && onDeskStage;
+  const railBar = (record.rail === true || record.rail === 'open') && onDeskStage;
   const bar = (
     <TriageSelectBar
       noun={family.noun}
@@ -550,6 +605,7 @@ export function TriageCardList<Row, Model extends TriageCardModelBase<Row>, K ex
 
       <TriageListBody
         testIdPrefix={family.testIdPrefix}
+        density={density}
         noun={family.noun}
         scrollRef={scrollRef}
         cardCount={cards.length}
@@ -582,12 +638,16 @@ export function TriageCardList<Row, Model extends TriageCardModelBase<Row>, K ex
       title={record.title}
       subtitle={record.subtitle}
       actions={record.actions}
-      indexLabel={cursor.available && cursor.position != null ? `${cursor.position} of ${cursor.total}` : undefined}
+      indexLabel={
+        record.showIndex !== false && cursor.available && cursor.position != null
+          ? `${cursor.position} of ${cursor.total}`
+          : undefined
+      }
       recordNoun={record.noun}
       recordKey={openId != null ? String(openId) : null}
       summary={record.summary}
       testId={record.testId}
-      listRail={railBar}
+      listRail={railBar ? (record.rail === 'open' ? 'open' : true) : false}
       list={list}
     >
       {record.view}

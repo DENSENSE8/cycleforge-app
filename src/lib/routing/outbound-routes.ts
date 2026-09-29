@@ -5,7 +5,8 @@ import {
   type OutboundMode,
 } from '@/components/outbound/outbound-sidebar-shared';
 import { parseFbaModeWire } from '@/lib/fba/fba-modes';
-import { ORDER_EXCEPTION_CATEGORIES } from '@/lib/orders/order-exception-types';
+import { EXCEPTION_KIND_PARAM, EXCEPTION_KINDS } from '@/lib/exceptions/types';
+import { EXCEPTION_RECORD_ROUTE_PARAMS } from './desk-page-routes';
 import { DESK_PAIR_PARAM } from '@/lib/outbound/desk-views';
 import {
   OUTBOUND_LOCATE_REFS_PARAM,
@@ -15,9 +16,16 @@ import {
 import { parseRefInParam, serializeRefIn } from '@/lib/receiving/reconcile';
 import {
   SHIPPING_EXCEPTIONS_PATH,
+  SHIPPING_LABEL_INTAKE_PATH,
   SHIPPING_ORDERS_PATH,
   SHIPPING_SHORTAGE_PATH,
 } from '@/lib/shipping/orders-desk';
+import {
+  LABEL_BATCH_PARAM,
+  LABEL_BATCH_PRINTING_PARAM,
+  LABEL_INTAKE_VIEWS,
+  LABEL_PAIRING_PARAM,
+} from '@/lib/triage/views/label-intake';
 import { SHIPPING_SHIPPED_PATH } from '@/lib/shipping/shipped-desk';
 import { parseShippedSearchFieldWire } from '@/lib/shipped-search';
 import { parseReadyWorkspaceTabWire } from '@/utils/ready-workspace-state';
@@ -212,25 +220,27 @@ const SHIPPED_ROUTE_PARAMS = defineRouteParams({
     /** Grid display sort — column/server ids, same alphabet as the desk. */
     sort: paramText,
     dir: paramEnum(['asc', 'desc'] as const),
+    /** The row list's 1-based page (`useTriageCut`). */
+    page: paramPositiveInt,
     ...DESK_LOCATE_PARAMS,
   },
   carries: SHIPPING_CARRIES,
 });
 
 /**
- * `/shipping/exceptions` — the held-order queue, on the outbound grid.
- * (operator ruling 2026-08-31 — `all` redefines the queue into a
- * Search is desk-local (`useDeskSearch`), never a URL param.
+ * `/shipping/exceptions` — FBM › Exceptions: the Exceptions hub list locked
+ * to Fulfillment (`FulfillmentExceptionsDoor`). Search is desk-local
+ * (`useDeskSearch`), never a URL param. `order` is the legacy deep link the
+ * page redirects to its exception's `record` before anything paints.
  */
 const EXCEPTIONS_ROUTE_PARAMS = defineRouteParams({
   route: SHIPPING_EXCEPTIONS_PATH,
   owns: {
-    /** The open record. Present ⇒ the editor page; absent ⇒ the table. */
+    ...EXCEPTION_RECORD_ROUTE_PARAMS,
+    /** The kind chip (the door keeps Fulfillment's) and the card list's 1-based page (`useTriageCut`). */
+    [EXCEPTION_KIND_PARAM]: paramEnum(EXCEPTION_KINDS),
+    page: paramPositiveInt,
     order: paramPositiveInt,
-    /** Category facet — the exact `ORDER_EXCEPTION_CATEGORIES` label (`SKU Mapping`, …). */
-    category: paramRoundTrip((raw) =>
-      (ORDER_EXCEPTION_CATEGORIES as readonly string[]).includes(raw) ? raw : null,
-    ),
     ...DESK_LOCATE_PARAMS,
   },
   carries: SHIPPING_CARRIES,
@@ -272,6 +282,28 @@ const SCAN_OUT_ROUTE_PARAMS = defineRouteParams({
   carries: SHIPPING_CARRIES,
 });
 
+/**
+ * `/shipping/label-intake` — Labels & docs: Uploads (bare) · Labels · Paperwork ·
+ * Printed. Search is desk-store, never a URL param.
+ */
+const LABEL_INTAKE_ROUTE_PARAMS = defineRouteParams({
+  route: SHIPPING_LABEL_INTAKE_PATH,
+  owns: {
+    view: paramEnum(LABEL_INTAKE_VIEWS),
+    /** Uploads: the Uploaded window (warehouse civil days, inclusive). */
+    from: paramDateKey,
+    to: paramDateKey,
+    /** Uploads: the open batch. */
+    [LABEL_BATCH_PARAM]: paramPositiveInt,
+    /** Uploads: the print-state chips (`to-print,printed`); the cut ignores unknown keys. */
+    [LABEL_BATCH_PRINTING_PARAM]: paramText,
+    /** The pairing chips (`unpaired,paired`); the cut ignores unknown keys. */
+    [LABEL_PAIRING_PARAM]: paramText,
+    /** The triage list's page (`useTriageCut`). */
+    page: paramPositiveInt,
+  },
+});
+
 /** Sidebar mode id → the spec for the route that mode lands on. */
 export const OUTBOUND_MODE_ROUTE_PARAMS = {
   fba: FBA_ROUTE_PARAMS,
@@ -286,4 +318,5 @@ export const OUTBOUND_ROUTE_PARAMS: readonly RouteParamsSpec[] = [
   FBA_ROUTE_PARAMS,
   SHIPPED_ROUTE_PARAMS,
   SCAN_OUT_ROUTE_PARAMS,
+  LABEL_INTAKE_ROUTE_PARAMS,
 ];

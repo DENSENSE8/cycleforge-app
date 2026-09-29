@@ -128,14 +128,52 @@ const STAGE_STAFF_JOINS = `${ORDER_STAGE_FACTS_JOIN}
     LEFT JOIN staff staff_packed_by ON staff_packed_by.id = osf.packed_by
     LEFT JOIN staff staff_pack_assignee ON staff_pack_assignee.id = osf.packer_id`;
 const SS_REF_LATERAL = `LEFT JOIN LATERAL (
-      SELECT ssr.ship_to
+      SELECT ssr.ship_to, ssr.account_source, ssr.marketplace, ssr.line_items
         FROM shipstation_order_refs ssr
-       WHERE o.customer_id IS NULL
-         AND ssr.organization_id = o.organization_id
+       WHERE ssr.organization_id = o.organization_id
          AND ssr.order_row_id = o.id
        ORDER BY ssr.last_seen_at DESC NULLS LAST, ssr.id DESC
        LIMIT 1
     ) ss_ref ON TRUE`;
+/** Exact marketplace image ShipStation already persisted on this order line. */
+const SS_IMAGE_LATERAL = `LEFT JOIN LATERAL (
+      SELECT NULLIF(BTRIM(line.item->>'imageUrl'), '') AS image_url
+        FROM jsonb_array_elements(COALESCE(ss_ref.line_items, '[]'::jsonb))
+             WITH ORDINALITY AS line(item, ordinal)
+       WHERE COALESCE(line.item->>'adjustment', 'false') <> 'true'
+         AND NULLIF(BTRIM(line.item->>'imageUrl'), '') IS NOT NULL
+       ORDER BY CASE
+                  WHEN NULLIF(BTRIM(o.sku), '') IS NOT NULL
+                   AND UPPER(BTRIM(line.item->>'sku')) = UPPER(BTRIM(o.sku)) THEN 0
+                  ELSE 1
+                END,
+                line.ordinal
+       LIMIT 1
+    ) shipstation_image ON TRUE`;
+/** The row's ship-by deadline — the list's sort key and the shipBy filters' operand. */
+const WA_DEADLINE_LATERAL = `LEFT JOIN LATERAL (
+      SELECT wa.deadline_at
+        FROM work_assignments wa
+       WHERE wa.organization_id = o.organization_id
+         AND wa.entity_type = 'ORDER'
+         AND wa.entity_id = o.id
+         AND wa.work_type = 'TEST'
+       ORDER BY ${WA_TEST_DEADLINE_RANK_ORDER_SQL('wa')}
+       LIMIT 1
+    ) wa_deadline ON TRUE`;
+/**
+ * Every relation a list WHERE / ORDER BY can name (o, sc, wa_deadline, osf and
+ * its staff, stn, cust, ss_ref), and nothing only the projection reads. Each
+ * join is 1:1 per order, so ranking over it picks the same rows as the full read.
+ */
+const PAGE_RANK_FROM_SQL = `FROM orders o
+    LEFT JOIN sku_catalog sc ON sc.id = o.sku_catalog_id
+    ${WA_DEADLINE_LATERAL}
+    ${STAGE_STAFF_JOINS}
+    LEFT JOIN shipping_tracking_numbers stn ON stn.id = o.shipment_id
+    LEFT JOIN customers cust
+      ON cust.id = o.customer_id AND cust.organization_id = o.organization_id
+    ${SS_REF_LATERAL}`;
 
 /** One list read as SQL + binds. Membership predicates are the shared builders the desk counts use. */
 export function buildOrdersListSql(
@@ -265,9 +303,8 @@ export function buildOrdersListSql(
        * row and the evidence column read name / ship-to without a fetch per
        * row. NULL when the order has no customer_id. */
       ${customerDisplayJsonSql('cust')} AS customer,
-      /* No customer-book buyer: the ship-to the paired ShipStation order
-       * carries (ShipStation shipTo keys), for the evidence column's Customer
-       * block. NULL when the order has a customer_id or no ShipStation ref. */
+      /* The ship-to the paired ShipStation order carries (ShipStation shipTo
+       * keys). The buyer resolver uses it only when no customer-book row wins. */
       ss_ref.ship_to AS shipstation_ship_to,
       stn.latest_status_code,
       stn.latest_status_label,
@@ -353,7 +390,13 @@ export function buildOrdersListSql(
       COALESCE(NULLIF(BTRIM(loc_pack.display_name), ''), loc_pack.name) AS pack_location_name,
       loc_pack.location_kind AS pack_location_kind,
       o.sku_catalog_id,
-      COALESCE(NULLIF(BTRIM(sc.image_url), ''), ecwid_image.image_url, listing_cover.image_url) AS catalog_image_url,
+      COALESCE(
+        NULLIF(BTRIM(sc.image_url), ''),
+        ecwid_image.image_url,
+        listing_cover.image_url,
+        order_listing_image.image_url,
+        shipstation_image.image_url
+      ) AS catalog_image_url,
       sc.category AS catalog_category,
       /* to_jsonb lets the deploy read safely while the additive column is
        * still rolling out: absent historical columns project NULL, then the
@@ -369,7 +412,10 @@ export function buildOrdersListSql(
        * arm's provenance is meaningless without the channel it is compared
        * against.
        */
-      o.account_source,
+      /* The ShipStation ref is store-attributed through integration_store_links
+       * at ingest time. It is more specific than legacy orders.account_source
+       * values such as bare "eBay" (for example eBay · DRAGON). */
+      COALESCE(NULLIF(BTRIM(ss_ref.account_source), ''), o.account_source) AS account_source,
       o.admin_url,
       listing_price.listing_price_cents AS listing_price_cents,
       listing_price.platform           AS listing_platform,
@@ -405,21 +451,39 @@ export function buildOrdersListSql(
               OR (o.sku_catalog_id IS NULL AND sc_cover.sku = o.sku))
        LIMIT 1
     ) listing_cover ON TRUE
+    /* Final fallback for marketplace orders that have not been paired to a
+     * catalog SKU yet. The backfill links the source image to the order, so
+     * Allocate and Search can paint it immediately without inventing an SKU
+     * relationship. Once the order is paired, every catalog tier above wins. */
     LEFT JOIN LATERAL (
-      SELECT wa.deadline_at
-        FROM work_assignments wa
-       WHERE wa.organization_id = o.organization_id
-         AND wa.entity_type = 'ORDER'
-         AND wa.entity_id = o.id
-         AND wa.work_type = 'TEST'
-       ORDER BY ${WA_TEST_DEADLINE_RANK_ORDER_SQL('wa')}
+      SELECT COALESCE(
+               (SELECT NULLIF(BTRIM(ps.legacy_url), '')
+                  FROM photo_storage ps
+                 WHERE ps.organization_id = pel.organization_id
+                   AND ps.photo_id = pel.photo_id
+                   AND ps.provider = 'legacy_url'
+                   AND ps.is_primary = TRUE
+                 LIMIT 1),
+               '/api/photos/' || pel.photo_id::text || '/content?variant=thumb'
+             ) AS image_url
+        FROM photo_entity_links pel
+        JOIN photos p
+          ON p.id = pel.photo_id
+         AND p.organization_id = pel.organization_id
+       WHERE pel.organization_id = o.organization_id
+         AND pel.entity_type = 'ORDER'
+         AND pel.entity_id = o.id
+         AND p.photo_type = 'listing'
+       ORDER BY p.created_at DESC, p.id DESC
        LIMIT 1
-    ) wa_deadline ON TRUE
+    ) order_listing_image ON TRUE
+    ${WA_DEADLINE_LATERAL}
     ${STAGE_STAFF_JOINS}
     LEFT JOIN shipping_tracking_numbers stn ON stn.id = o.shipment_id
     LEFT JOIN customers cust
       ON cust.id = o.customer_id AND cust.organization_id = o.organization_id
     ${SS_REF_LATERAL}
+    ${SS_IMAGE_LATERAL}
     LEFT JOIN order_pack_placements opp
       ON opp.order_id = o.id AND opp.organization_id = o.organization_id
     LEFT JOIN locations loc_pack ON loc_pack.id = opp.location_id
@@ -594,6 +658,8 @@ export function buildOrdersListSql(
   const params: unknown[] = singleOrderMode ? [orgId, orderIdFilter] : [orgId];
   let paramCount = params.length + 1;
 
+  // Everything appended from here to the ORDER BY is the list's filter, reused by the page-rank gate below.
+  const filterStart = sql.length;
   sql += ` AND o.organization_id = $1`;
 
   if (shippedOnly) {
@@ -808,7 +874,7 @@ export function buildOrdersListSql(
       OR COALESCE(stn.tracking_number_raw, '') ILIKE $${likeParam}
       OR COALESCE(o.status, '') ILIKE $${likeParam}
       OR COALESCE(o.notes, '') ILIKE $${likeParam}
-      OR COALESCE(o.account_source, '') ILIKE $${likeParam}
+      OR COALESCE(NULLIF(BTRIM(ss_ref.account_source), ''), o.account_source, '') ILIKE $${likeParam}
       OR COALESCE(o.quantity, '') ILIKE $${likeParam}
       OR COALESCE(o.customer_id::text, '') ILIKE $${likeParam}
       OR o.id::text ILIKE $${likeParam}
@@ -910,15 +976,24 @@ export function buildOrdersListSql(
 
   // Pick list is newest-synced first: `orders.created_at` defaults to the
   // insert time, so `id DESC` is that order and keeps the id-only cursor.
-  sql += fulfillmentScope || pickQueue
+  const orderBySql = fulfillmentScope || pickQueue
     ? ` ORDER BY o.id DESC`
     : ` ORDER BY wa_deadline.deadline_at ASC NULLS LAST, o.id ASC`;
 
   // Fetch one extra row to detect truncation + mint the next keyset cursor.
   // Only when an explicit limit is set — unlimited callers are unchanged.
   if (pageLimit != null) {
-    sql += ` LIMIT $${paramCount++}`;
+    const limitParam = `$${paramCount++}`;
     params.push(pageLimit + 1);
+    // Rank before decorating: the same WHERE + ORDER BY over only the joins
+    // they read picks the page ids (a one-shot InitPlan), so the ~20 display
+    // laterals run for the page instead of every candidate order. The To-ship
+    // queue at limit 200 decorated 1,935 orders: ~340 → ~60 ms.
+    const filterSql = sql.slice(filterStart);
+    sql += ` AND o.id = ANY (ARRAY(SELECT o.id ${PAGE_RANK_FROM_SQL} WHERE 1=1${filterSql}${orderBySql} LIMIT ${limitParam}))`;
+    sql += `${orderBySql} LIMIT ${limitParam}`;
+  } else {
+    sql += orderBySql;
   }
 
   // Only the joins the predicate reads, evaluated once per org order; the

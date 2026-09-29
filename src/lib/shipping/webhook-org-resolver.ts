@@ -1,7 +1,7 @@
 /** Webhook org resolution — session-less carrier/marketplace callbacks. */
 import pool from '@/lib/db';
 import type { OrgId } from '@/lib/tenancy/constants';
-import { normalizeTrackingNumber } from '@/lib/tracking-format';
+import { extractCanonicalTracking } from '@/lib/tracking-format';
 
 interface OrgLookupRow {
   organization_id: string | null;
@@ -36,7 +36,7 @@ export async function resolveWebhookOrgByTracking(
   trackingNumber: string,
   deps: WebhookOrgResolverDeps = defaultDeps,
 ): Promise<OrgId | null> {
-  const normalized = normalizeTrackingNumber(trackingNumber);
+  const normalized = extractCanonicalTracking(trackingNumber);
   if (!normalized) return null;
 
   // 1. The registration table the tracking-poll cron reads/writes. The natural

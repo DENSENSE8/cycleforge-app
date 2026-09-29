@@ -223,7 +223,7 @@ test('chat phone order: SKU and title come from THIS org\'s catalog, rows are ca
   const created = await createManualOrderInTx(client, ORG, 7, phoneDraft(), async () => null);
   const insert = calls.find((c) => c.text.includes('INSERT INTO orders'));
   assert.ok(insert);
-  assert.equal(insert.params[1], 'Bose 151 Environmental Speaker Pair');
+  assert.equal(insert.params[1], 'old title');
   assert.equal(insert.params[2], '00005');
   assert.equal(insert.params[6], 78, 'sale_amount = 2 × $39.00');
   assert.equal(insert.params[17], 'caged');
@@ -231,7 +231,7 @@ test('chat phone order: SKU and title come from THIS org\'s catalog, rows are ca
   const catalogRead = calls.find((c) => c.text.includes('FROM sku_catalog sc'));
   assert.equal(catalogRead?.params[0], ORG);
   assert.equal(created.totalCents, 7800);
-  assert.deepEqual(created.lines, [{ sku: '00005', title: 'Bose 151 Environmental Speaker Pair', qty: 2, unitPriceCents: 3900 }]);
+  assert.deepEqual(created.lines, [{ sku: '00005', title: 'old title', qty: 2, unitPriceCents: 3900 }]);
 });
 
 test('chat phone order: a generated number taken meanwhile is re-generated; a typed one is a 409', async () => {

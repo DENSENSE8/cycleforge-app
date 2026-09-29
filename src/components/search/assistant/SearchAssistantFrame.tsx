@@ -22,7 +22,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type MouseEvent, type ReactNode } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useRouter } from 'next/navigation';
-import { AnimatePresence, LayoutGroup, motion, useReducedMotion } from '@/design-system/motion';
+import { AnimatePresence, LayoutGroup, motion, motionTargetFor, useReducedMotion } from '@/design-system/motion';
 import { Typewriter } from '@/design-system/motion/plus';
 import {
   AI_CHIP_CLASS,
@@ -37,7 +37,6 @@ import {
   AiArtifactCard,
   AiComposer,
   AiTurn,
-  aiTransition,
 } from '@/design-system/ai';
 import { ArrowUp, Maximize2, Plus, Sparkles, Stop, X } from '@/components/Icons';
 import MarkdownRenderer from '@/components/ai/MarkdownRenderer';
@@ -58,11 +57,13 @@ import {
   type SearchAssistantRecord,
 } from './search-assistant-context';
 import { KeyboardKey } from '@/design-system/primitives';
-
-/** Shared-layout id: the pill, the floating composer and the pane's composer are ONE node. */
-const COMPOSER_LAYOUT_ID = 'search-ai-composer';
-/** The conversation pane's width once open (px — Motion springs a number, not `min()`). */
-const PANE_WIDTH_PX = 440;
+import {
+  SEARCH_ASSISTANT_COMPOSER_LAYOUT_ID,
+  SEARCH_ASSISTANT_CONTRACT,
+  SEARCH_ASSISTANT_PANE_WIDTH_PX,
+  resolveSearchAssistantFrameState,
+  searchAssistantPaneMotion,
+} from './search-assistant-motion';
 
 const KIND_LABEL: Record<SearchSelection['entityType'], string> = {
   order: 'Order',
@@ -77,8 +78,6 @@ const KIND_LABEL: Record<SearchSelection['entityType'], string> = {
 };
 
 const NO_CARDS: readonly SessionArtifactEntry[] = [];
-
-type FrameState = 'closed' | 'composing' | 'conversing';
 
 export function SearchAssistantFrame({
   sel,
@@ -103,7 +102,12 @@ export function SearchAssistantFrame({
   const [open, setOpen] = useState(false);
   const [draft, setDraft] = useState('');
   const textareaRef = useRef<HTMLTextAreaElement>(null);
-  const state: FrameState = !open ? 'closed' : chat.messages.length > 0 ? 'conversing' : 'composing';
+  const state = resolveSearchAssistantFrameState(open, chat.messages.length);
+  const visual = motionTargetFor(SEARCH_ASSISTANT_CONTRACT, state);
+  const paneMotion = searchAssistantPaneMotion(reduced);
+  const composerTransition = reduced
+    ? SEARCH_ASSISTANT_CONTRACT.reducedTransition
+    : SEARCH_ASSISTANT_CONTRACT.transition;
 
   // The open order's face, from the record's own resolve (same key → cache hit, no request).
   const orderPk = sel?.entityType === 'order' ? sel.id : 0;
@@ -212,19 +216,19 @@ export function SearchAssistantFrame({
     <LayoutGroup id="search-ai">
       <div className="relative flex min-h-0 w-full flex-1 overflow-hidden" data-search-ai={state}>
         <AnimatePresence initial={false}>
-          {state === 'conversing' ? (
+          {visual.paneMounted ? (
             <motion.aside
               key="search-ai-pane"
               data-ai-surface
               aria-label="Assistant"
               data-testid="search-ai-pane"
               className={cn(AI_SURFACE_CLASS, 'relative flex h-full shrink-0 flex-col overflow-hidden border-r border-ai-line')}
-              initial={reduced ? { opacity: 0, width: PANE_WIDTH_PX } : { opacity: 0, width: 0, x: -24 }}
-              animate={{ opacity: 1, width: PANE_WIDTH_PX, x: 0 }}
-              exit={reduced ? { opacity: 0 } : { opacity: 0, width: 0, x: -24 }}
-              transition={reduced ? { duration: 0 } : aiTransition.panel}
+              initial={paneMotion.initial}
+              animate={paneMotion.animate}
+              exit={paneMotion.exit}
+              transition={paneMotion.transition}
             >
-              <div className="flex h-full flex-col" style={{ width: PANE_WIDTH_PX }}>
+              <div className="flex h-full flex-col" style={{ width: SEARCH_ASSISTANT_PANE_WIDTH_PX }}>
                 <header className="flex shrink-0 items-center gap-2 border-b border-ai-line px-4 py-2.5">
                   <Sparkles className="h-4 w-4 text-ai-muted" aria-hidden />
                   <p className="min-w-0 flex-1 truncate text-ai-prose-sm text-ai-ink">{record ? record.label : 'Search assistant'}</p>
@@ -246,7 +250,7 @@ export function SearchAssistantFrame({
                   onOpenCard={openInChat}
                   onClick={onTranscriptClick}
                 />
-                <motion.div layoutId={COMPOSER_LAYOUT_ID} transition={aiTransition.composerGlide} className="shrink-0 px-3 pb-3 pt-1">
+                <motion.div layoutId={SEARCH_ASSISTANT_COMPOSER_LAYOUT_ID} transition={composerTransition} className="shrink-0 px-3 pb-3 pt-1">
                   {composer}
                 </motion.div>
               </div>
@@ -257,27 +261,27 @@ export function SearchAssistantFrame({
         {/* The search itself — the record / results, live on the right while chatting. */}
         <div className="relative flex min-h-0 min-w-0 flex-1 flex-col">
           {children}
-          {state !== 'conversing' ? (
+          {visual.floatingComposerMounted ? (
             // Above the detail workspace's panel layer, below its popovers.
             <div className="pointer-events-none absolute inset-x-0 bottom-5 flex justify-center px-4" style={{ zIndex: zIndex.panel + 2 }}>
-              {state === 'composing' ? (
+              {!visual.invitationMounted ? (
                 <motion.div
-                  layoutId={COMPOSER_LAYOUT_ID}
+                  layoutId={SEARCH_ASSISTANT_COMPOSER_LAYOUT_ID}
                   data-ai-surface
                   data-testid="search-ai-composer"
                   className={cn(AI_SURFACE_CLASS, 'pointer-events-auto w-full max-w-2xl bg-transparent')}
-                  transition={reduced ? { duration: 0 } : aiTransition.composerGlide}
+                  transition={composerTransition}
                 >
                   {composer}
                 </motion.div>
               ) : (
                 <motion.button
                   type="button"
-                  layoutId={COMPOSER_LAYOUT_ID}
+                  layoutId={SEARCH_ASSISTANT_COMPOSER_LAYOUT_ID}
                   data-ai-surface
                   data-testid="search-ai-pill"
                   onClick={openAssistant}
-                  transition={reduced ? { duration: 0 } : aiTransition.composerGlide}
+                  transition={composerTransition}
                   whileHover={reduced ? undefined : { y: -2 }}
                   whileTap={reduced ? undefined : { scale: 0.97 }}
                   className={cn(

@@ -21,23 +21,25 @@
 
 import { useEffect, useRef, useState, type MouseEvent, type PointerEvent, type ReactNode } from 'react';
 import { AnimatePresence, motion, type Variants } from 'motion/react';
-import { ArrowRight, ChevronDown, MessageSquare, Package, Pencil, Plus } from '@/components/Icons';
+import { ArrowRight, ChevronDown, MessageSquare, Package } from '@/components/Icons';
 import { Popover, PopoverAnchor, PopoverContent } from '@/design-system/primitives/radix-popover';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { CollapseItem } from '@/design-system/components/Collapse';
 import { STATE_TONE_CLASSES } from '@/design-system/tokens/lifecycle';
 import { focusRing } from '@/design-system/tokens/focus-ring';
 import { CARD_DISCLOSE, CARD_FACT_BOX_CLASS } from '@/design-system/tokens/desk-stage';
+import { RECORD_DEADLINE_DOT_CLASS, RECORD_DEADLINE_TONE_CLASS, RECORD_RAIL_HATCH_STYLE } from '@/design-system/tokens/record-card';
 import { cn } from '@/utils/_cn';
-import { RecordFactPaint, type RecordFactColumn } from './record-fact';
-import type { CardDisclosureTier, RecordCardChip, RecordCardLine, RecordCardModel, RecordDeadlineTone } from './record-card-types';
+import { RecordFactPaint, RecordFactSep, RecordLineFacts, type RecordFactColumn } from './record-fact';
+import type { CardDisclosureTier, RecordCardChip, RecordCardLine, RecordCardModel, RecordCardSlotFact } from './record-card-types';
+import { recordCardOutlineClass } from './record-card-outline';
 
 const SPRING = { type: 'spring', stiffness: 460, damping: 34, mass: 0.8 } as const;
 const SOFT_SPRING = { type: 'spring', stiffness: 260, damping: 30 } as const;
 
-/** The cards' arrival: each card waits its turn (capped), then springs up. */
-const CARD_STAGGER_S = 0.028;
-const CARD_STAGGER_CAP = 14;
+/** The cards' arrival: each card waits its turn (capped), then springs up. The one-row density shares the cadence. */
+export const CARD_STAGGER_S = 0.028;
+export const CARD_STAGGER_CAP = 14;
 /**
  * When the last staggered card has landed — the list's chrome (section
  * headers) rises only after this, so text never travels with the cards.
@@ -48,22 +50,6 @@ export const CARD_LIST_SETTLE_S = CARD_STAGGER_S * CARD_STAGGER_CAP + 0.3;
 const RAIL_VARIANTS: Variants = { rest: { scaleX: 1 }, hover: { scaleX: 1.75 } };
 const PHOTO_VARIANTS: Variants = { rest: { scale: 1 }, hover: { scale: 1.07 } };
 const GLYPH_VARIANTS: Variants = { rest: { rotate: 0, scale: 1 }, hover: { rotate: [0, -10, 8, 0], scale: 1.08 } };
-
-const DEADLINE_TONE_CLASS: Readonly<Record<RecordDeadlineTone, string>> = {
-  late: 'text-text-danger font-semibold',
-  today: 'text-text-warning font-semibold',
-  soon: 'text-text-default font-medium',
-  later: 'text-text-muted',
-  none: 'text-text-faint',
-};
-
-const DEADLINE_DOT_CLASS: Readonly<Record<RecordDeadlineTone, string>> = {
-  late: 'bg-fill-danger',
-  today: 'bg-fill-warning',
-  soon: 'bg-fill-info',
-  later: 'bg-border-strong',
-  none: 'bg-border-default',
-};
 
 /** Chips on line 1 — the fact box, pill-shaped. */
 const CARD_CHIP = cn(CARD_FACT_BOX_CLASS, 'gap-1 rounded-full px-2 text-xs font-semibold');
@@ -96,11 +82,6 @@ const TIER_SHOW_CLASS: Readonly<Record<CardDisclosureTier, string | null>> = {
   label: CARD_DISCLOSE.label.show,
   detail: 'hidden @2xl/card:inline',
 };
-
-/** Hatched rail — a state that must read on white without washing the card. */
-const HATCH_STYLE = {
-  backgroundImage: 'repeating-linear-gradient(135deg, transparent 0 3px, rgb(255 255 255 / 0.55) 3px 5px)',
-} as const;
 
 /** Stops a nested control's press from reaching the card's open target. */
 const stop = (event: MouseEvent | PointerEvent) => event.stopPropagation();
@@ -142,7 +123,8 @@ function useHoverPeek(enterMs: number, leaveMs = 120) {
 
 // ── Checkbox ────────────────────────────────────────────────────────────────
 
-function CardCheck({
+/** The card's checkbox — also the one-row density's (`TriageRow`), so a check reads the same in both. */
+export function CardCheck({
   checked,
   label,
   testId,
@@ -207,7 +189,7 @@ function CardCheck({
 
 function CardPhoto({ line, size }: { line: RecordCardLine; size: 'lg' | 'sm' }) {
   const peek = useHoverPeek(320);
-  const box = size === 'lg' ? 'size-12 rounded-xl' : 'size-8 rounded-lg';
+  const box = size === 'lg' ? 'size-12' : 'size-8';
   return (
     <Popover open={peek.open && Boolean(line.photoUrl)} onOpenChange={peek.setOpen}>
       <PopoverAnchor asChild>
@@ -224,7 +206,7 @@ function CardPhoto({ line, size }: { line: RecordCardLine; size: 'lg' | 'sm' }) 
               alt=""
               loading="lazy"
               decoding="async"
-              className="size-full object-cover"
+              className="size-full object-contain"
             />
           ) : (
             <span className="flex size-full items-center justify-center text-text-faint" aria-hidden>
@@ -240,7 +222,7 @@ function CardPhoto({ line, size }: { line: RecordCardLine; size: 'lg' | 'sm' }) 
         onOpenAutoFocus={(event) => event.preventDefault()}
         onPointerEnter={peek.enter}
         onPointerLeave={peek.leave}
-        className="w-auto overflow-hidden rounded-2xl border-0 p-0 shadow-elev-overlay"
+        className="w-auto overflow-hidden border-0 p-0 shadow-elev-overlay"
       >
         {/* The photo alone (owner 2026-09-27): no caption, and the box takes the image's own aspect — no letterbox bars. */}
         <motion.img
@@ -254,29 +236,6 @@ function CardPhoto({ line, size }: { line: RecordCardLine; size: 'lg' | 'sm' }) 
         />
       </PopoverContent>
     </Popover>
-  );
-}
-
-// ── Line facts ──────────────────────────────────────────────────────────────
-
-function Sep() {
-  return <span aria-hidden className="text-text-faint">·</span>;
-}
-
-/** A line's facts as one sentence, in column order — every fact at every width (the sentence wraps). */
-function LineFacts({ line, columns, className }: { line: RecordCardLine; columns: readonly RecordFactColumn[]; className?: string }) {
-  const faces = columns.flatMap((column) => {
-    const face = line.facts[column.id];
-    return face ? [{ id: column.id, face }] : [];
-  });
-  return (
-    // Wraps on a narrow card (phone, the split's list) — each fact stays whole.
-    <span className={cn('flex min-w-0 flex-wrap items-center gap-x-1.5 gap-y-0.5 text-[13px] text-text-muted [&>*]:whitespace-nowrap', className)}>
-      {faces.flatMap(({ id, face }, i) => {
-        const painted = <RecordFactPaint key={id} face={face} />;
-        return i > 0 ? [<Sep key={`${id}:sep`} />, painted] : [painted];
-      })}
-    </span>
   );
 }
 
@@ -407,12 +366,12 @@ function StatusGlyph({ model, columns, testId }: { model: RecordCardModel; colum
                 transition={{ ...SPRING, delay: 0.03 * i }}
                 className={cn('flex gap-2.5 rounded-xl px-2 py-2', line.alert && 'bg-surface-danger')}
               >
-                <span className="size-9 shrink-0 overflow-hidden rounded-lg bg-surface-sunken ring-1 ring-inset ring-black/5">
-                  {line.photoUrl ? <img src={line.photoUrl} alt="" className="size-full object-cover" /> : null}
+                <span className="size-9 shrink-0 overflow-hidden bg-surface-sunken ring-1 ring-inset ring-black/5">
+                  {line.photoUrl ? <img src={line.photoUrl} alt="" className="size-full object-contain" /> : null}
                 </span>
                 <span className="min-w-0 flex-1">
                   <span className="line-clamp-2 text-[13px] font-medium leading-snug text-text-default">{line.title}</span>
-                  <LineFacts line={line} columns={columns} className="mt-0.5 text-xs" />
+                  <RecordLineFacts line={line} columns={columns} className="mt-0.5 text-xs" />
                   {line.alertNote ? <span className="mt-0.5 block text-xs font-medium text-text-danger">{line.alertNote}</span> : null}
                 </span>
               </motion.li>
@@ -428,7 +387,7 @@ function StatusGlyph({ model, columns, testId }: { model: RecordCardModel; colum
               ) : null}
               {model.notes.own ? (
                 <p className="flex gap-2">
-                  <Pencil className="mt-px size-3.5 shrink-0" aria-hidden />
+                  <MessageSquare className="mt-px size-3.5 shrink-0" aria-hidden />
                   <span className="line-clamp-3">{model.notes.own}</span>
                 </p>
               ) : null}
@@ -448,7 +407,7 @@ function StatusGlyph({ model, columns, testId }: { model: RecordCardModel; colum
  * drop-down). Takes only the room line 1 has left (flex basis 0), so it never
  * pushes the identity; full text on hover.
  * - `fixed` (orders: the buyer's words): speech icon + text, read-only.
- * - `own` (the team's note): pencil + text; a click edits it in place.
+ * - `own` (the team's note): chat icon + text; a click edits it in place.
  *   Empty → "Add note", shown on hover / focus so 40 empty cards stay quiet.
  * Enter or leaving the field saves; Escape cancels. Saves append (the notes
  * trail keeps history), so a blank save is a cancel.
@@ -483,7 +442,7 @@ function CardNotes({
   };
 
   return (
-    <span className="pointer-events-auto flex h-6 min-w-4 flex-1 items-center gap-2 text-[13px] text-text-muted" onClick={stop} onPointerDown={stop}>
+    <span className="pointer-events-auto flex h-6 min-w-4 flex-1 items-center gap-2 text-xs font-medium text-text-muted" onClick={stop} onPointerDown={stop}>
       {notes.fixed ? (
         <HoverTooltip label={`${notes.fixed.label}: ${notes.fixed.text}`} asChild>
           <span data-testid={testId('note-fixed')} className="inline-flex min-w-4 max-w-full shrink items-center gap-1">
@@ -513,7 +472,7 @@ function CardNotes({
           aria-label="Note"
           data-testid={testId('note-input')}
           className={cn(
-            'h-6 min-w-40 flex-1 rounded-md bg-surface-card px-1.5 text-[13px] text-text-default ring-1 ring-border-default placeholder:text-text-faint',
+            'h-6 min-w-40 flex-1 rounded-md bg-surface-card px-1.5 text-xs font-medium text-text-default ring-1 ring-border-default placeholder:text-text-faint',
             focusRing('field'),
           )}
         />
@@ -530,7 +489,7 @@ function CardNotes({
               focusRing('control'),
             )}
           >
-            <Pencil className="size-3.5 shrink-0 text-text-faint" aria-hidden />
+            <MessageSquare className="size-3.5 shrink-0 text-text-faint" aria-hidden />
             <span className="min-w-0 truncate">{own}</span>
           </button>
         </HoverTooltip>
@@ -545,7 +504,7 @@ function CardNotes({
             focusRing('control'),
           )}
         >
-          <Plus className="size-3.5" aria-hidden />
+          <MessageSquare className="size-3.5" aria-hidden />
           Add note
         </button>
       ) : null}
@@ -619,10 +578,16 @@ export interface RecordCardProps {
   onToggleCheck: (event: { shiftKey: boolean }) => void;
   onToggleExpand: () => void;
   onTogglePeek: () => void;
-  /** Family slot, top-left: the identity (number + its link / copy menu). */
-  identity: ReactNode;
-  /** Family slot, before the status: a trailing link (the listing) or its editor. */
-  trailing: ReactNode;
+  /** Family fact, top-left: the identity (number + its link / copy menu). */
+  identity: Extract<RecordCardSlotFact, { role: 'identity' }>;
+  /** Family fact before the one status; null when the family has none. */
+  trailing: Extract<RecordCardSlotFact, { role: 'trailing' }> | null;
+  /**
+   * Family slot, the card's BOTTOM-RIGHT corner (after the next step): the
+   * record's one resolve verb (Exceptions, owner 2026-09-29) — where the eye
+   * lands after reading the card, never beside its identity.
+   */
+  action?: ReactNode;
   /** Family slot under the lines while `peekOpen` — a `CollapseItem`. */
   quickLook: ReactNode;
   /** Saves the team's note from line 1 (`notes.own`); absent = notes are read-only. */
@@ -652,6 +617,7 @@ export function RecordCard({
   onTogglePeek,
   identity,
   trailing,
+  action,
   quickLook,
   onSaveNote,
   onOpenLine,
@@ -673,11 +639,11 @@ export function RecordCard({
 
   const status = model.status;
   const statusNode: ReactNode =
-    status.kind === 'deadline' ? (
+    status.kind === 'none' ? null : status.kind === 'deadline' ? (
       <HoverTooltip label={status.tip} disabled={!status.tip} asChild>
         <span
           onClick={openRecord}
-          className={cn(CARD_FACT_BOX_CLASS, 'pointer-events-auto cursor-pointer gap-1.5 text-[13px] tabular-nums', DEADLINE_TONE_CLASS[status.tone])}
+          className={cn(CARD_FACT_BOX_CLASS, 'pointer-events-auto cursor-pointer gap-1.5 text-[13px] tabular-nums', RECORD_DEADLINE_TONE_CLASS[status.tone])}
         >
           <span className="relative flex size-2">
             {status.tone === 'late' ? (
@@ -688,7 +654,7 @@ export function RecordCard({
                 transition={{ duration: 1.6, repeat: Infinity, ease: 'easeOut' }}
               />
             ) : null}
-            <span className={cn('relative size-2 rounded-full', DEADLINE_DOT_CLASS[status.tone])} />
+            <span className={cn('relative size-2 rounded-full', RECORD_DEADLINE_DOT_CLASS[status.tone])} />
           </span>
           {status.face}
         </span>
@@ -707,18 +673,7 @@ export function RecordCard({
           {status.face}
         </span>
       </HoverTooltip>
-    ) : (
-      <HoverTooltip label={status.tip} disabled={!status.tip} asChild>
-        <span
-          data-testid={id('state')}
-          onClick={openRecord}
-          className={cn(CARD_FACT_BOX_CLASS, 'pointer-events-auto cursor-pointer gap-1.5 whitespace-nowrap text-[13px] font-medium', STATE_TONE_CLASSES[status.tone].text)}
-        >
-          <span aria-hidden className={cn('size-2 shrink-0 rounded-full', STATE_TONE_CLASSES[status.tone].dot)} />
-          {status.face}
-        </span>
-      </HoverTooltip>
-    );
+    ) : null;
 
   // 2+ lines: the lead line is the face; "+N items" unfolds the rest (alert lines already first).
   const moreLines = model.lines.slice(1);
@@ -792,20 +747,21 @@ export function RecordCard({
       whileHover="hover"
       variants={{ rest: {}, hover: {} }}
       className={cn(
-        // Always a white card (owner 2026-09-27): state reads as an OUTLINE only —
-        // checked = the info ring, open = the strong hairline, hover = a soft hairline.
+        // Always a white card (owner 2026-09-27): state reads as an OUTLINE only.
+        // The outline itself is a topmost child below. It is a real, absolutely
+        // positioned border — never a ring/box-shadow — so the raised motion
+        // frame and the list's x-clip cannot crop or leak its bottom/right edge.
         // `content-visibility` skips off-screen cards — but not inside a height
         // that is animating (`CollapseItem`): its clip hides the card, and a
         // skipped card measures as the 92px placeholder, so the height would
         // grow to the guess and snap to the real size at the end.
-        'group/card @container/card relative isolate flex rounded-2xl bg-surface-card py-3 pl-4 pr-4 transition-shadow duration-150 [contain-intrinsic-size:auto_92px] [content-visibility:auto] [[data-collapse-clip]_&]:[content-visibility:visible]',
-        selected
-          ? 'ring-2 ring-inset ring-fill-info'
-          : open
-            ? 'ring-1 ring-inset ring-border-strong'
-            : 'hover:ring-1 hover:ring-inset hover:ring-border-soft',
+        'group/card @container/card relative isolate flex w-full max-w-full box-border overflow-clip rounded-2xl bg-surface-card py-3 pl-4 pr-4 transition-shadow duration-150 [contain-intrinsic-size:auto_92px] [content-visibility:auto] [[data-collapse-clip]_&]:[content-visibility:visible]',
       )}
     >
+      <span
+        aria-hidden
+        className={recordCardOutlineClass({ selected, open })}
+      />
       {/* The open target — the whole card. */}
       <button
         ref={openRef}
@@ -830,7 +786,7 @@ export function RecordCard({
         variants={RAIL_VARIANTS}
         initial="rest"
         transition={SOFT_SPRING}
-        style={model.state.hatched ? HATCH_STYLE : undefined}
+        style={model.state.hatched ? RECORD_RAIL_HATCH_STYLE : undefined}
         className={cn('pointer-events-none absolute bottom-3 left-1.5 top-3 w-[3px] origin-left rounded-full', tone.dot)}
       />
 
@@ -847,7 +803,7 @@ export function RecordCard({
             instead of the order number running into the channel. */}
         <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
           <span className={cn(CARD_FACT_BOX_CLASS, 'pointer-events-auto min-w-0 shrink gap-0.5 text-sm font-semibold tabular-nums text-text-default')} onClick={stop} onPointerDown={stop}>
-            {identity}
+            {identity.content}
           </span>
           {/* Channel: brand dot, medium-weight ink. Person: regular weight, muted, after a faint
               separator — two faces so the two names never read as one. */}
@@ -883,7 +839,7 @@ export function RecordCard({
           ))}
           <CardNotes notes={model.notes} onSave={onSaveNote} testId={id} />
           <span className="ml-auto" />
-          {trailing}
+          {trailing?.content}
           {statusNode}
         </div>
 
@@ -900,10 +856,11 @@ export function RecordCard({
                 bottom-right. The facts keep ≥ 8rem; with less room the next step wraps under
                 them (still right-aligned) instead of crushing them one per line. */}
             <div className="flex min-w-0 flex-wrap items-end gap-x-3 gap-y-1">
-              <LineFacts line={lead} columns={factColumns} className="min-w-32 flex-1" />
+              <RecordLineFacts line={lead} columns={factColumns} className="min-w-32 flex-1" />
               <span className="ml-auto flex shrink-0 items-center gap-3">
                 {detailsToggle}
                 {moreCount ? null : nextNode}
+                {moreCount ? null : action}
               </span>
             </div>
           </div>
@@ -958,11 +915,16 @@ export function RecordCard({
               </button>
               {!expanded && moreAlerts ? (
                 <>
-                  <Sep />
+                  <RecordFactSep />
                   <span className="font-medium text-text-danger">{model.hiddenAlertLabel(moreAlerts)}</span>
                 </>
               ) : null}
-              {nextNode ? <span className="ml-auto flex">{nextNode}</span> : null}
+              {nextNode || action ? (
+                <span className="ml-auto flex items-center gap-3">
+                  {nextNode}
+                  {action}
+                </span>
+              ) : null}
             </div>
           </div>
         ) : null}

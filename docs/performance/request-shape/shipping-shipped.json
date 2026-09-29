@@ -1,0 +1,300 @@
+{
+  "url": "http://localhost:3102/shipping/shipped",
+  "ttfb": 1247,
+  "isDev": false,
+  "rows": [
+    {
+      "url": "/api/station-commands/aliases",
+      "start": 1644,
+      "end": 2296,
+      "ms": 652,
+      "bytes": 324
+    },
+    {
+      "url": "/api/v1/print-stations",
+      "start": 1645,
+      "end": 2284,
+      "ms": 639,
+      "bytes": 390
+    },
+    {
+      "url": "/api/nav/context?path=%2Fshipping%2Fshipped",
+      "start": 1646,
+      "end": 2110,
+      "ms": 464,
+      "bytes": 3294
+    },
+    {
+      "url": "/api/sync/global",
+      "start": 1648,
+      "end": 1826,
+      "ms": 179,
+      "bytes": 1782
+    },
+    {
+      "url": "/api/staff-preferences",
+      "start": 1650,
+      "end": 2109,
+      "ms": 459,
+      "bytes": 429
+    },
+    {
+      "url": "/api/catalog/platforms",
+      "start": 1678,
+      "end": 2295,
+      "ms": 617,
+      "bytes": 3682
+    },
+    {
+      "url": "/api/surfaces/outbound/resolve",
+      "start": 1683,
+      "end": 2695,
+      "ms": 1012,
+      "bytes": 431
+    },
+    {
+      "url": "/api/packerlogs?limit=1000&weekStart=2026-09-28&weekEnd=2026-10-04&shippedFilter=all",
+      "start": 1707,
+      "end": 2503,
+      "ms": 796,
+      "bytes": 14825
+    },
+    {
+      "url": "/api/settings?page=desk",
+      "start": 1709,
+      "end": 2205,
+      "ms": 496,
+      "bytes": 1768
+    },
+    {
+      "url": "/api/staff?active=false",
+      "start": 1717,
+      "end": 2706,
+      "ms": 989,
+      "bytes": 5871
+    },
+    {
+      "url": "/api/inbox/tech-queue",
+      "start": 1718,
+      "end": 2524,
+      "ms": 806,
+      "bytes": 368
+    },
+    {
+      "url": "/api/inbox/support",
+      "start": 1718,
+      "end": 2557,
+      "ms": 839,
+      "bytes": 322
+    },
+    {
+      "url": "/api/staff-messages?unread=1",
+      "start": 1719,
+      "end": 2556,
+      "ms": 838,
+      "bytes": 312
+    },
+    {
+      "url": "/api/packerlogs?limit=1000&weekStart=2026-09-21&weekEnd=2026-09-27&shippedFilter=all",
+      "start": 1726,
+      "end": 2733,
+      "ms": 1008,
+      "bytes": 132983
+    },
+    {
+      "url": "/api/realtime/token?rnd=7824712636922977",
+      "start": 2547,
+      "end": 2785,
+      "ms": 238,
+      "bytes": 2045
+    },
+    {
+      "url": "/api/nav/context?path=%2Fshipping%2Fshipped&view=top",
+      "start": 2574,
+      "end": 2674,
+      "ms": 101,
+      "bytes": 4038
+    }
+  ],
+  "focus": [
+    {
+      "count": 1,
+      "bytes": 390,
+      "rows": [
+        {
+          "url": "/api/v1/print-stations",
+          "ms": 1312,
+          "bytes": 390
+        }
+      ]
+    },
+    {
+      "count": 0,
+      "bytes": 0,
+      "rows": []
+    }
+  ],
+  "analysis": {
+    "duplicates": [],
+    "multiShape": [
+      {
+        "endpoint": "/api/packerlogs",
+        "shapes": [
+          "/api/packerlogs?limit=1000&weekStart=2026-09-28&weekEnd=2026-10-04&shippedFilter=all",
+          "/api/packerlogs?limit=1000&weekStart=2026-09-21&weekEnd=2026-09-27&shippedFilter=all"
+        ],
+        "totalBytes": 147808
+      },
+      {
+        "endpoint": "/api/nav/context",
+        "shapes": [
+          "/api/nav/context?path=%2Fshipping%2Fshipped",
+          "/api/nav/context?path=%2Fshipping%2Fshipped&view=top"
+        ],
+        "totalBytes": 7332
+      }
+    ],
+    "chains": [
+      {
+        "from": "/api/inbox/tech-queue",
+        "to": "/api/realtime/token?rnd=7824712636922977",
+        "gapMs": 23,
+        "tailEnd": 2785
+      },
+      {
+        "from": "/api/inbox/support",
+        "to": "/api/nav/context?path=%2Fshipping%2Fshipped&view=top",
+        "gapMs": 17,
+        "tailEnd": 2674
+      }
+    ],
+    "peakConcurrency": 14,
+    "countProbes": [],
+    "heaviest": [
+      {
+        "url": "/api/packerlogs?limit=1000&weekStart=2026-09-21&weekEnd=2026-09-27&shippedFilter=all",
+        "start": 1726,
+        "end": 2733,
+        "ms": 1008,
+        "bytes": 132983
+      },
+      {
+        "url": "/api/packerlogs?limit=1000&weekStart=2026-09-28&weekEnd=2026-10-04&shippedFilter=all",
+        "start": 1707,
+        "end": 2503,
+        "ms": 796,
+        "bytes": 14825
+      },
+      {
+        "url": "/api/staff?active=false",
+        "start": 1717,
+        "end": 2706,
+        "ms": 989,
+        "bytes": 5871
+      },
+      {
+        "url": "/api/nav/context?path=%2Fshipping%2Fshipped&view=top",
+        "start": 2574,
+        "end": 2674,
+        "ms": 101,
+        "bytes": 4038
+      },
+      {
+        "url": "/api/catalog/platforms",
+        "start": 1678,
+        "end": 2295,
+        "ms": 617,
+        "bytes": 3682
+      },
+      {
+        "url": "/api/nav/context?path=%2Fshipping%2Fshipped",
+        "start": 1646,
+        "end": 2110,
+        "ms": 464,
+        "bytes": 3294
+      },
+      {
+        "url": "/api/realtime/token?rnd=7824712636922977",
+        "start": 2547,
+        "end": 2785,
+        "ms": 238,
+        "bytes": 2045
+      },
+      {
+        "url": "/api/sync/global",
+        "start": 1648,
+        "end": 1826,
+        "ms": 179,
+        "bytes": 1782
+      }
+    ],
+    "slowest": [
+      {
+        "url": "/api/surfaces/outbound/resolve",
+        "start": 1683,
+        "end": 2695,
+        "ms": 1012,
+        "bytes": 431
+      },
+      {
+        "url": "/api/packerlogs?limit=1000&weekStart=2026-09-21&weekEnd=2026-09-27&shippedFilter=all",
+        "start": 1726,
+        "end": 2733,
+        "ms": 1008,
+        "bytes": 132983
+      },
+      {
+        "url": "/api/staff?active=false",
+        "start": 1717,
+        "end": 2706,
+        "ms": 989,
+        "bytes": 5871
+      },
+      {
+        "url": "/api/inbox/support",
+        "start": 1718,
+        "end": 2557,
+        "ms": 839,
+        "bytes": 322
+      },
+      {
+        "url": "/api/staff-messages?unread=1",
+        "start": 1719,
+        "end": 2556,
+        "ms": 838,
+        "bytes": 312
+      },
+      {
+        "url": "/api/inbox/tech-queue",
+        "start": 1718,
+        "end": 2524,
+        "ms": 806,
+        "bytes": 368
+      },
+      {
+        "url": "/api/packerlogs?limit=1000&weekStart=2026-09-28&weekEnd=2026-10-04&shippedFilter=all",
+        "start": 1707,
+        "end": 2503,
+        "ms": 796,
+        "bytes": 14825
+      },
+      {
+        "url": "/api/station-commands/aliases",
+        "start": 1644,
+        "end": 2296,
+        "ms": 652,
+        "bytes": 324
+      }
+    ]
+  },
+  "route": "/shipping/shipped",
+  "base": "http://localhost:3102",
+  "runs": 3,
+  "metrics": {
+    "duplicateRequests": 0,
+    "countProbes": 0,
+    "focusRefetch": 0,
+    "requests": 16
+  },
+  "capturedAt": "2026-09-29T06:15:41.894Z"
+}

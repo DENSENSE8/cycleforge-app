@@ -24,6 +24,7 @@ import type { PoolClient } from 'pg';
 import pool from '@/lib/db';
 import type { AuthContext } from '@/lib/auth/withAuth';
 import { recordAudit, AUDIT_ACTION, AUDIT_ENTITY } from '@/lib/audit-logs';
+import { autoAllocateAfterIngest } from '@/lib/allocation/auto-allocate';
 import { wouldExceedPlanCeiling, planLimitResponseBody } from '@/lib/billing/plan-ceilings';
 import { getOrgTypes } from '@/lib/catalog/org-catalog';
 import { recomputeEnrichmentForOrders } from '@/lib/neon/packer-log-enrichment';
@@ -87,9 +88,17 @@ export interface CreateOrderDeps {
   afterCommit: (event: OrderCreatedEvent) => Promise<void>;
 }
 
-/** Views, audit and the shipped-table enrichment for rows that just committed. */
+/** Allocation, views, audit and the shipped-table enrichment for rows that just committed. */
 export async function announceOrderCreated(event: OrderCreatedEvent): Promise<void> {
   const { actor } = event;
+  // Reserve stocked units before the views refresh, so the new order lands on
+  // the phone's directed pick feed (it reads `order_unit_allocations`) in the
+  // same beat it lands on To ship — the writer every ingest path already uses.
+  await autoAllocateAfterIngest(event.orderPks, {
+    orgId: actor.organizationId,
+    staffId: typeof actor.staffId === 'number' && actor.staffId > 0 ? actor.staffId : null,
+    source: actor.source,
+  });
   await invalidateOrderViews({
     organizationId: actor.organizationId,
     orderIds: event.orderPks,

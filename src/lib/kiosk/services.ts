@@ -1,12 +1,18 @@
 /** Front-desk service SoT — the `/kiosk/v2` command menu. */
 
-import { History, ReceivingModeRepair, Receipt, SalesPrice } from '@/components/Icons';
+import {
+  History,
+  ReceivingModePickup,
+  ReceivingModeRepair,
+  Receipt,
+  SalesPrice,
+} from '@/components/Icons';
 import type { KioskCommandId } from './commands';
 
 /** The commerce commands — every one of them a `KioskCommandId`. */
 export type KioskCommandServiceId = 'sales' | 'repair';
 /** Staff tools that ride ON TOP of a command; they own no session state. */
-export type KioskStaffServiceId = 'history' | 'custom-amount';
+export type KioskStaffServiceId = 'history' | 'custom-amount' | 'local-pickup';
 export type KioskServiceId = KioskCommandServiceId | KioskStaffServiceId;
 
 type KioskServiceIcon = (props: { className?: string }) => JSX.Element;
@@ -62,6 +68,15 @@ export const KIOSK_SERVICES: ReadonlyArray<KioskServiceTile> = [
     status: 'live',
     icon: Receipt,
     iconTone: 'text-text-success',
+  },
+  {
+    id: 'local-pickup',
+    kind: 'staff',
+    commandLabel: 'Local pickup intake',
+    blurb: 'Add a vendor pickup to Receiving and Sales',
+    status: 'live',
+    icon: ReceivingModePickup,
+    iconTone: 'text-text-info',
   },
   {
     id: 'history',

@@ -458,6 +458,14 @@ export const motionTransition = {
   /** Bumping animated numeric quantities (FBA qty, counts, badges) — `springSnappy` */
   quantityBump: springSnappy,
 
+  /** Scan-cadence numeric quantity — faster/lighter than KPI motion, still near-critical. */
+  quantityBumpFast: {
+    type: 'spring' as const,
+    stiffness: 520,
+    damping: 38,
+    mass: 0.35,
+  } satisfies Transition,
+
   /**
    * Swimlane board column reflow — lanes slide into new grid slots when toggling
    * 1-up / 2-up / 3-up. No bounce (ops dashboard); pair with `layout` on bubbles.

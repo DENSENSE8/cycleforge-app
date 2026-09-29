@@ -348,8 +348,8 @@ test('/products validates each view vocabulary through its own parser', () => {
   // would reject cannot sit in the URL pretending to be real.
   assert.equal(parse('view=qc').get('view'), 'qc');
   assert.equal(parse('view=nope').get('view'), null);
-  // Reference + Kit Parts were REMOVED 2026-09-15, and removal means the wire value dies at the boundary too — a stale bookmark folds back…
-  assert.equal(parse('view=catalog').get('view'), null);
+  // The all-products catalog is again a first-class view; Kit Parts remains retired.
+  assert.equal(parse('view=catalog').get('view'), 'catalog');
   assert.equal(parse('view=kit').get('view'), null);
   assert.equal(parse('labelsView=recent').get('labelsView'), 'recent');
   assert.equal(parse('labelsView=nope').get('labelsView'), null);
@@ -425,7 +425,8 @@ test('routeParamsFor resolves the longest route first', () => {
   // `useInventoryUrlState`, so one spec is correct rather than four.
   assert.equal(routeParamsFor('/inventory')?.route, '/inventory');
   assert.equal(routeParamsFor('/inventory/graph')?.route, '/inventory');
-  assert.equal(routeParamsFor('/inventory/triage')?.route, '/inventory');
+  // …except the Exceptions hub doors, which own the hub's `record` (Tracking Exceptions).
+  assert.equal(routeParamsFor('/inventory/triage')?.route, '/inventory/triage');
 });
 
 test('/sourcing owns the two keys both of its clear lists forgot', () => {
@@ -471,6 +472,19 @@ test('/test (Quality Control) and /pick (Picker desk) each own their tab param, 
   // `/tech` is a legacy alias the proxy redirects; it deliberately has no spec
   // of its own, so it must not resolve to `/test`'s.
   assert.equal(routeParamsFor('/tech'), null);
+});
+
+test('/pickup preserves only its projection-backed display controls', () => {
+  const pickup = routeParamsFor('/pickup')!;
+  assert.equal(pickup.route, '/pickup');
+  const parse = (qs: string) => parseRouteParams(pickup, new URLSearchParams(qs)).toString();
+
+  assert.equal(
+    parse('sort=actionable&qc=failed&triage=pending&label=missing&ticket=linked&vendor=TAN&pickupFrom=2026-01-01&pickupTo=2026-01-31'),
+    'sort=actionable&qc=failed&triage=pending&label=missing&ticket=linked&vendor=TAN&pickupFrom=2026-01-01&pickupTo=2026-01-31',
+  );
+  assert.equal(parse('sort=unknown&qc=unknown&pickupFrom=yesterday&pickupTo=20260230'), '');
+  assert.equal(parse('view=testing&ship=history&openLine=12'), '');
 });
 
 test('the mobile RouteShell pane param is ambient on every shell that mounts it', () => {
@@ -583,18 +597,18 @@ test('/shipping/shortage owns the Picking desk params and nothing of To-ship\'s'
   assert.equal(parse('paperwork=42&queue=pick'), '');
 });
 
-test('/shipping/exceptions keeps a canonical category and drops anything else', () => {
+test('/shipping/exceptions keeps a hub record key and drops anything else', () => {
   const spec = routeParamsFor('/shipping/exceptions')!;
-  const parse = (qs: string) => parseRouteParams(spec, new URLSearchParams(qs)).get('category');
+  const parse = (qs: string) => parseRouteParams(spec, new URLSearchParams(qs));
 
-  assert.equal(parse('category=SKU+Mapping'), 'SKU Mapping');
-  assert.equal(parse('category=Out%20of%20Stock'), 'Out of Stock');
-  // The workbench matches the label exactly, so a re-cased value is not a category.
-  assert.equal(parse('category=sku+mapping'), null);
-  assert.equal(parse('category=bogus'), null);
+  assert.equal(parse('record=fbm%3A42').get('record'), 'fbm:42');
+  // Not a `<kind>:<sourceId>` key — the hub would open nothing.
+  assert.equal(parse('record=bogus').get('record'), null);
+  // The workbench's category facet left with it.
+  assert.equal(parse('category=SKU+Mapping').get('category'), null);
 });
 
-test('/reports keeps a known tab and a civil date', () => {
+test('/reports keeps a known tab, civil date, staff filter and Find', () => {
   const spec = routeParamsFor('/reports')!;
   assert.equal(spec.route, '/reports');
   const parse = (qs: string) => parseRouteParams(spec, new URLSearchParams(qs)).toString();
@@ -605,6 +619,10 @@ test('/reports keeps a known tab and a civil date', () => {
   assert.equal(parse('tab=bogus'), '');
   assert.equal(parse('date=2026-09-25'), 'date=2026-09-25');
   assert.equal(parse('date=yesterday'), '');
+  assert.equal(parse('staffId=42'), 'staffId=42');
+  assert.equal(parse('staffId=all'), '');
+  assert.equal(parse('q=wall+mount'), 'q=wall+mount');
+  assert.equal(parse('zoom=90'), '');
 });
 
 test('/counter, /studio and /studio/catalog keep the params their pages read', () => {

@@ -1578,6 +1578,49 @@ export const receivingLineUnit = pgTable('receiving_line_unit', {
 export type ReceivingLineUnit = typeof receivingLineUnit.$inferSelect;
 export type NewReceivingLineUnit = typeof receivingLineUnit.$inferInsert;
 
+/** Rebuildable per-unit Receiving fast-status projection (2026-09-29b). */
+export const receivingUnitStageFacts = pgTable('receiving_unit_stage_facts', {
+  organizationId: orgIdCol(),
+  receivingLineUnitId: bigint('receiving_line_unit_id', { mode: 'number' })
+    .notNull()
+    .references(() => receivingLineUnit.id, { onDelete: 'cascade' }),
+  receivingLineId: integer('receiving_line_id')
+    .notNull()
+    .references(() => receivingLines.id, { onDelete: 'cascade' }),
+  receivingId: integer('receiving_id').references(() => receiving.id, { onDelete: 'cascade' }),
+  serialUnitId: integer('serial_unit_id').references(() => serialUnits.id, { onDelete: 'set null' }),
+  unitUid: text('unit_uid'),
+  triageState: text('triage_state').notNull().default('NOT_STARTED'),
+  labelState: text('label_state').notNull().default('MISSING'),
+  qcState: text('qc_state').notNull().default('PENDING'),
+  latestVerdict: text('latest_verdict'),
+  testedAt: timestamp('tested_at', { withTimezone: true }),
+  testedBy: integer('tested_by').references(() => staff.id, { onDelete: 'set null' }),
+  primarySupportTicketId: bigint('primary_support_ticket_id', { mode: 'number' })
+    .references(() => supportTickets.id, { onDelete: 'set null' }),
+  projectionVersion: integer('projection_version').notNull().default(1),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+}, (table) => ({
+  pk: primaryKey({ columns: [table.organizationId, table.receivingLineUnitId] }),
+  qcIdx: index('idx_receiving_unit_stage_facts_qc').on(
+    table.organizationId,
+    table.qcState,
+    table.updatedAt.desc(),
+  ),
+  lineIdx: index('idx_receiving_unit_stage_facts_line').on(
+    table.organizationId,
+    table.receivingLineId,
+  ),
+  labelIdx: index('idx_receiving_unit_stage_facts_label').on(
+    table.organizationId,
+    table.labelState,
+    table.updatedAt.desc(),
+  ),
+  unitUidIdx: index('idx_receiving_unit_stage_facts_unit_uid')
+    .on(table.organizationId, table.unitUid)
+    .where(sql`unit_uid IS NOT NULL`),
+}));
+
 /** RETURN/TRADE_IN intake facts (return_platform, return_reason, source_order_id, rma_ref). 1:1. */
 export const receivingLineReturn = pgTable('receiving_line_return', {
   receivingLineId: integer('receiving_line_id').primaryKey().references(() => receivingLines.id, { onDelete: 'cascade' }),

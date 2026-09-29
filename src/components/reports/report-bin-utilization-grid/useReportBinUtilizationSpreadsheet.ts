@@ -96,6 +96,7 @@ export function useReportBinUtilizationSpreadsheet({
     dir,
     onSortChange,
     search,
+    findOwner: 'page',
     loading,
     emptyMessage,
     ariaLabel: 'Bin utilization',

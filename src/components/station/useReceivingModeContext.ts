@@ -146,9 +146,12 @@ export function useReceivingModeContext(): ReceivingModeState {
   // key and the grid's column tiers all read the same list.
   const trackingIn = parseTrackingInParam(searchParams.get(TRACKING_IN_PARAM)).keys;
   const trackingInKey = trackingIn.join(',');
-  // Inbound reconciliation paste — the operator's strings. Only the Incoming
-  // lane reads it (it swaps the lane for `view=reconcile`).
-  const refIn = isIncomingMode ? parseRefInParam(searchParams.get(REF_IN_PARAM)).refs : [];
+  // Pasted list — the operator's strings. Incoming swaps its lane for
+  // `view=reconcile`; Unboxed (`/incoming?lane=docked`) narrows its own lane.
+  // No other history host (Unbox tab, standalone History) reads it.
+  const isUnboxedLane =
+    isHistoryMode && pathname.startsWith(INCOMING_SURFACE_ROUTE) && parseInboundLane(searchParams.get('lane')) === 'docked';
+  const refIn = isIncomingMode || isUnboxedLane ? parseRefInParam(searchParams.get(REF_IN_PARAM)).refs : [];
   // `/incoming?lane=exceptions` — its own server view on the Incoming ledger.
   const incomingExceptions =
     isIncomingMode && pathname.startsWith(INCOMING_SURFACE_ROUTE) && parseInboundLane(searchParams.get('lane')) === 'exceptions';

@@ -5,6 +5,7 @@ import { X } from '@/components/Icons';
 import { Button } from '@/design-system/primitives';
 import { usePressHaptic } from '@/lib/scan-feedback/useScanFeedback';
 import { useMode } from '@/design-system/providers/ModeRegion';
+import { FLOATING_CTA_WIDTH, FLOATING_DOCK_BOTTOM_PAD } from '@/design-system/tokens/dock-clearance';
 
 export interface DetailDockVerb<Id extends string = string> {
   id: Id;
@@ -15,6 +16,8 @@ export interface DetailDockVerb<Id extends string = string> {
   disabled?: boolean;
   /** Spinner in the cell while the verb's request runs; the cell is disabled. */
   loading?: boolean;
+  /** The verb button's `data-testid`. */
+  testId?: string;
 }
 
 /** State 2 — a batch is selected: the dismiss cell replaces nothing but leads the bar. */
@@ -37,6 +40,13 @@ const DETAIL_DOCK_LOCK_MS = 500;
  * `placement="inline"` — the same band in-flow under a record (a board row, an
  * order card): full width, not sticky, no safe-area pad, up to four verbs (four
  * lay out as a flush 2×2). Inline labels wrap rather than truncate (owner 2026-09-26).
+ * `placement="float"` — a list screen's job CTA (owner 2026-09-28, `/m/pick` Start picking):
+ * no bar at all — no rule, no ground; big pill buttons float over the list at ONE fixed,
+ * centred width (`FLOATING_CTA_WIDTH` — the same on every phone, never edge to edge), lifted
+ * off the bottom edge by a spacing step plus the safe-area inset. Mount it as the LAST child of the
+ * scrolling list (a flex column): it sinks to the bottom of a short list, sticks there over a
+ * long one while the list scrolls under it, and its own height in the flow is the list's
+ * bottom clearance, so the last card is never hidden. Up to two verbs.
  */
 export function DetailDock<Id extends string>({
   label,
@@ -58,8 +68,8 @@ export function DetailDock<Id extends string>({
    * directed picker, worked one-handed with gloves at the shelf).
    */
   size?: 'default' | 'glove';
-  /** `inline` — in-flow under a record instead of the sticky bottom bar. Selection is dock-only. */
-  placement?: 'dock' | 'inline';
+  /** `inline` — in-flow under a record instead of the sticky bottom bar. `float` — the job CTA over a list. Selection is dock-only. */
+  placement?: 'dock' | 'inline' | 'float';
   /**
    * The screen's scan control as the dock's MIDDLE cell, between two verbs
    * (owner 2026-09-26: scan is centred in the bottom bar, set apart by its
@@ -147,6 +157,7 @@ export function DetailDock<Id extends string>({
             disabled={verb.disabled}
             loading={verb.loading}
             onClick={() => fire(() => onVerb(verb.id))}
+            data-testid={verb.testId}
           >
             {verb.label}
           </Button>
@@ -154,6 +165,33 @@ export function DetailDock<Id extends string>({
       ))}
     </>
   );
+
+  // Float: the job CTA over a list — no bar, no rule, no ground; only the buttons take presses.
+  if (placement === 'float') {
+    return (
+      <nav aria-label={label} data-dock="float" className={`pointer-events-none sticky bottom-0 z-sticky mt-auto ${FLOATING_DOCK_BOTTOM_PAD}`}>
+        <div className={`grid gap-2 px-mode-page pb-4 pt-3 ${FLOATING_CTA_WIDTH} ${verbs.length >= 2 ? 'grid-cols-2' : 'grid-cols-1'}`}>
+          {verbs.slice(0, 2).map((verb) => (
+            <Button
+              key={verb.id}
+              variant={verb.primary ? 'primary' : 'secondary'}
+              size="xl"
+              radius="pill"
+              depth
+              className="pointer-events-auto w-full"
+              icon={verb.icon}
+              disabled={verb.disabled}
+              loading={verb.loading}
+              onClick={() => fire(() => onVerb(verb.id))}
+              data-testid={verb.testId}
+            >
+              {verb.label}
+            </Button>
+          ))}
+        </div>
+      </nav>
+    );
+  }
 
   // Triage region (a FORM on the phone — `/m/orders/new`): mobile-first buttons
   // with the region's control corner on the bar, not the terminal block. The
@@ -170,6 +208,7 @@ export function DetailDock<Id extends string>({
           disabled={verb.disabled}
           loading={verb.loading}
           onClick={() => fire(() => onVerb(verb.id))}
+          data-testid={verb.testId}
         >
           {verb.label}
         </Button>

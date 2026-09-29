@@ -27,11 +27,17 @@ interface ReceivingLinePhotoLinkInput {
   sku?: string | null;
   zohoItemId?: string | null;
   poRef?: string | null;
-  /** Mobile return path appended as `back` on gallery links. */
+  /** Mobile return path appended as `back` on capture and gallery links. */
   back?: string;
 }
 
-/** Capture + gallery URLs for a receiving line (mobile list, sheet, rows). */
+/**
+ * Capture + gallery URLs for a receiving line (mobile list, sheet, rows).
+ *
+ * Keep the caller's `back` target on both URLs. Feed-originated capture must
+ * return to the photo feed; only a direct carton/identifier scan should fall
+ * through to the `/m/r/:id` carton hub.
+ */
 export function receivingLinePhotoHrefs(input: ReceivingLinePhotoLinkInput) {
   const receivingId = input.receivingId;
   if (!receivingId) {
@@ -43,10 +49,9 @@ export function receivingLinePhotoHrefs(input: ReceivingLinePhotoLinkInput) {
   const shared = {
     title: cameraTitle,
     poRef: input.poRef?.trim() || undefined,
+    back: input.back,
   };
   const captureHref = receivingPhotosUrl(photosBase, shared);
-  const galleryHref = receivingPhotosGalleryUrl(
-    receivingPhotosUrl(photosBase, { ...shared, back: input.back }),
-  );
+  const galleryHref = receivingPhotosGalleryUrl(receivingPhotosUrl(photosBase, shared));
   return { captureHref, galleryHref };
 }

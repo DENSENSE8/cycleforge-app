@@ -2,7 +2,7 @@
 
 /** Sidebar surface for `/products`. */
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { SIDEBAR_GUTTER } from '@/components/layout/header-shell';
 import { SidebarShell } from '@/components/layout/SidebarShell';
@@ -20,7 +20,6 @@ import {
 } from '@/components/products/products-view';
 import { LibraryBrowser } from '@/components/manuals/LibraryBrowser';
 import { ProductLabelsRecentRail } from '@/components/labels/ProductLabelsRecentRail';
-import { SearchBar } from '@/components/ui/SearchBar';
 import { UniversalLoader } from '@/design-system/components/UniversalLoader';
 
 const PAIRING_SORT_ITEMS: HorizontalSliderItem[] = [
@@ -43,13 +42,8 @@ export function ProductsSidebarPanel() {
   // Parse a pasted / bookmarked link at the boundary, so a URL that predates the
   // /products spec cannot deliver another surface's params into this one.
   const view = parseProductsView(searchParams.get('view'));
-  const currentQuery = searchParams.get('q') || '';
+  const searchInput = searchParams.get('q') || '';
   const pairingSort = parsePairingSort(searchParams.get('sort'));
-
-  const [searchInput, setSearchInput] = useState(currentQuery);
-  useEffect(() => {
-    setSearchInput(currentQuery);
-  }, [currentQuery]);
 
   const updateParams = useCallback(
     (updates: Record<string, string | null>) => {
@@ -64,13 +58,6 @@ export function ProductsSidebarPanel() {
     [router, searchParams],
   );
 
-  const handleSearchChange = useCallback(
-    (value: string) => {
-      setSearchInput(value);
-      updateParams({ q: value.trim() || null });
-    },
-    [updateParams],
-  );
 
   const handlePairingSortChange = useCallback(
     (id: string) => updateParams({ sort: id === 'volume' ? null : id }),
@@ -82,32 +69,10 @@ export function ProductsSidebarPanel() {
   const isPairing = view === 'pairing';
   const isQc = view === 'qc';
 
-  const searchPlaceholder = isPairing
-    ? 'Filter SKU, title, or any platform ID…'
-    : isManuals
-      ? 'Fuzzy filter folders & manuals…'
-      : 'Filter products…';
 
   return (
     <SidebarShell
       className={appChromeClass}
-      headerAbove={
-        <>
-          {/* Labels owns browse search in the workbench chrome. */}
-          {!isLabels ? (
-            <div className={`${SIDEBAR_GUTTER} pt-3 pb-2`}>
-              <SearchBar
-                size="compact"
-                variant="blue"
-                value={searchInput}
-                onChange={handleSearchChange}
-                onClear={() => handleSearchChange('')}
-                placeholder={searchPlaceholder}
-              />
-            </div>
-          ) : null}
-        </>
-      }
       headerRows={[
         isPairing ? (
           <HorizontalButtonSlider

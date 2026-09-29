@@ -93,6 +93,7 @@ export function useReportTasksSpreadsheet({
     dir,
     onSortChange,
     search,
+    findOwner: 'page',
     loading,
     emptyMessage,
     ariaLabel: 'Completed tasks',

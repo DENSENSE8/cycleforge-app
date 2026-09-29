@@ -11,6 +11,7 @@
  */
 
 import type { ActiveStationOrder } from '@/hooks/station/types';
+import type { ShippedOrder } from '@/types/orders';
 import { classifyInput, findSerialInCatalog, looksLikeFnsku } from '@/lib/scan-resolver';
 import { unwrapScannedSerial } from '@/lib/barcode-routing';
 import { detectStationScanType, type StationScanType } from '@/lib/station-scan-routing';
@@ -152,28 +153,72 @@ export function deskOrderFromTrackingScan(data: DeskTrackingScanPayload): Active
 }
 
 /**
+ * A To-ship queue row as the order card BEFORE any scan — the phone opens a
+ * tapped order on it (`/m/pick?order=<id>`). Read-only: no desk anchor
+ * (`salId` / `scanSessionId`) until the pick scan writes one.
+ */
+export function deskOrderFromQueueRow(row: ShippedOrder): ActiveStationOrder {
+  // The queue projection carries the primary tracking as `tracking_number`.
+  const wire = row as ShippedOrder & { tracking_number?: string | null };
+  const sku = String(row.sku ?? '').trim() || '—';
+  return {
+    id: Number(row.id),
+    orderId: String(row.order_id ?? '').trim() || '—',
+    salId: null,
+    productTitle: String(row.product_title ?? '').trim() || 'Unknown Product',
+    itemNumber: row.item_number ?? null,
+    sku,
+    condition: String(row.condition ?? '').trim() || '—',
+    notes: String(row.notes ?? ''),
+    tracking: String(row.shipping_tracking_number || wire.tracking_number || row.tracking_numbers?.[0] || '').trim(),
+    serialNumbers: [],
+    scannedSkuCodes: [],
+    skuSerialGroups: initSkuSerialGroups(sku, []),
+    testDateTime: null,
+    testedBy: null,
+    quantity: parseInt(String(row.quantity || 1), 10) || 1,
+    shipByDate: row.ship_by_date ?? null,
+    createdAt: row.created_at ?? null,
+    orderFound: true,
+    scanSessionId: null,
+    inlineMicrocopy: null,
+  };
+}
+
+/**
  * Scan a shipping label: loads the order card and writes the PICK /
  * PICK_SCANNED anchor. USPS IMpb `420`+ZIP prefixes and doubled reads are
  * stripped here; the server resolves the rest (`resolveShipmentId`).
  */
-export async function scanDeskTracking(
+export function scanDeskTracking(
   input: string,
   opts: { idempotencyKey: string; packLocationId?: number | null },
 ): Promise<DeskTrackingResult> {
-  try {
-    const { ok, data } = await postDesk('/api/picking/desk/scan', {
+  return anchorDeskPick(
+    {
       type: 'TRACKING',
       value: normalizeTrackingNumber(input),
       idempotencyKey: opts.idempotencyKey,
       ...(opts.packLocationId != null ? { packLocationId: opts.packLocationId } : {}),
-    });
+    },
+    'Tracking number not found — logged to exceptions queue.',
+  );
+}
+
+/**
+ * Anchor the pick on the order row itself — same writer and answer as
+ * {@link scanDeskTracking}, for orders with no label to scan (walk-in /
+ * Pickup) and for a walk that already knows which order it opened.
+ */
+export function scanDeskOrder(orderId: number, opts: { idempotencyKey: string }): Promise<DeskTrackingResult> {
+  return anchorDeskPick({ type: 'ORDER', orderId, idempotencyKey: opts.idempotencyKey }, 'Order not found.');
+}
+
+async function anchorDeskPick(body: Record<string, unknown>, notFound: string): Promise<DeskTrackingResult> {
+  try {
+    const { ok, data } = await postDesk('/api/picking/desk/scan', body);
     if (!ok || !data?.found) {
-      return {
-        ok: false,
-        error: data?.error
-          ? `Scan error: ${data.error}`
-          : 'Tracking number not found — logged to exceptions queue.',
-      };
+      return { ok: false, error: data?.error ? `Scan error: ${data.error}` : notFound };
     }
     const payload = data as DeskTrackingScanPayload;
     const order = deskOrderFromTrackingScan(payload);
@@ -188,7 +233,7 @@ export async function scanDeskTracking(
     }
     return { ok: true, order, message, data: payload };
   } catch (err) {
-    console.error('Tracking scan failed:', err);
+    console.error('Desk pick anchor failed:', err);
     return { ok: false, error: 'Failed to load order. Please try again.' };
   }
 }
@@ -443,6 +488,59 @@ export async function undoLastDeskStep(opts: {
     };
   } catch (err) {
     console.error('Desk undo error:', err);
+    return { ok: false, error: 'Network error occurred' };
+  }
+}
+
+export type DeskRemoveSerialsResult =
+  | Failure
+  | {
+      ok: true;
+      order: ActiveStationOrder;
+      removed: string[];
+      /** Picked units the dropped serials put back to ALLOCATED. */
+      unpickedUnits: number;
+      message: string;
+    };
+
+/**
+ * Drop chosen serials off the card (`desk/serial update` with the set that
+ * stays): each dropped serial's picked unit goes back to ALLOCATED, same as
+ * Undo. Needs the card's desk anchor (`salId`).
+ */
+export async function removeDeskSerials(opts: {
+  order: ActiveStationOrder;
+  serials: readonly string[];
+  idempotencyKey: string;
+}): Promise<DeskRemoveSerialsResult> {
+  const { order } = opts;
+  if (!order.salId) return { ok: false, error: 'Scan a serial or SKU first — this pick has no desk session yet' };
+  const drop = new Set(opts.serials.map((s) => s.trim().toUpperCase()).filter(Boolean));
+  const removed = order.serialNumbers.filter((s) => drop.has(s.toUpperCase()));
+  if (removed.length === 0) return { ok: false, error: 'That serial is not on this pick' };
+  try {
+    const { data } = await postDesk('/api/picking/desk/serial', {
+      action: 'update',
+      salId: order.salId,
+      serials: order.serialNumbers.filter((s) => !drop.has(s.toUpperCase())),
+      idempotencyKey: opts.idempotencyKey,
+    });
+    if (!data?.success) return { ok: false, error: data?.error || 'Could not remove the serial' };
+    const serialNumbers: string[] = Array.isArray(data.serialNumbers) ? data.serialNumbers : [];
+    const unpickedUnits = Array.isArray(data.unpickedUnits) ? data.unpickedUnits.length : 0;
+    return {
+      ok: true,
+      order: {
+        ...order,
+        serialNumbers,
+        skuSerialGroups: rebuildSkuSerialGroups(order.skuSerialGroups, serialNumbers, order.sku),
+      },
+      removed,
+      unpickedUnits,
+      message: `Removed ${removed.join(', ')}${unpickedUnits > 0 ? ` · ${unpickedUnits} unit${unpickedUnits === 1 ? '' : 's'} back to allocated` : ''}`,
+    };
+  } catch (err) {
+    console.error('Desk remove serial error:', err);
     return { ok: false, error: 'Network error occurred' };
   }
 }

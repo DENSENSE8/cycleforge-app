@@ -4,7 +4,7 @@
  * here so the wire shape lives in one place.
  */
 
-import type { InboundOrderDraft } from '@/lib/inbound/inbound-order-draft';
+import type { InboundOrderDraft, InboundOrderType } from '@/lib/inbound/inbound-order-draft';
 import type {
   DeleteInboundOrderResult,
   IngestInboundOrderResult,
@@ -28,10 +28,11 @@ async function call<T>(url: string, init: RequestInit): Promise<T> {
 }
 
 /** Screenshot / pasted text → a draft to review (nothing lands). */
-export async function postInboundOrderExtract(opts: { text?: string; imageDataUrls?: string[] }): Promise<InboundOrderDraft> {
+export async function postInboundOrderExtract(opts: { type: InboundOrderType; text?: string; imageDataUrls?: string[] }): Promise<InboundOrderDraft> {
   const data = await call<{ draft: InboundOrderDraft }>('/api/receiving/inbound/extract-po', {
     method: 'POST',
     body: JSON.stringify({
+      type: opts.type,
       text: opts.text?.trim() || null,
       image_data_urls: opts.imageDataUrls?.length ? opts.imageDataUrls : null,
     }),

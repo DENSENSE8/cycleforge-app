@@ -1,0 +1,89 @@
+{
+  "$comment": "Request-shape ceilings. Written by `npm run perf:requests -- --update`. Ceilings ratchet DOWN only — finishing an optimization tightens them so the win cannot be quietly spent again. duplicateRequests / countProbes / focusRefetch are deterministic and gate exactly. `requests` is noisy (43 vs 51 measured across back-to-back runs of one build), so it is a median of --runs seeded with headroom and is a smoke alarm, not a precision instrument. Raising a ceiling is a hand edit with a reason in the commit message.",
+  "routes": {
+    "/shipping/orders": {
+      "duplicateRequests": 0,
+      "countProbes": 0,
+      "focusRefetch": 0,
+      "requests": 29
+    },
+    "/shipping/shipped": {
+      "duplicateRequests": 0,
+      "countProbes": 0,
+      "focusRefetch": 0,
+      "requests": 20
+    },
+    "/shipping/exceptions": {
+      "duplicateRequests": 0,
+      "countProbes": 0,
+      "focusRefetch": 0,
+      "requests": 18
+    },
+    "/exceptions": {
+      "duplicateRequests": 0,
+      "countProbes": 0,
+      "focusRefetch": 1,
+      "requests": 21
+    },
+    "/incoming": {
+      "duplicateRequests": 0,
+      "countProbes": 0,
+      "focusRefetch": 0,
+      "requests": 32
+    },
+    "/incoming?lane=docked": {
+      "duplicateRequests": 0,
+      "countProbes": 0,
+      "focusRefetch": 0,
+      "requests": 22
+    },
+    "/unbox": {
+      "duplicateRequests": 0,
+      "countProbes": 0,
+      "focusRefetch": 0,
+      "requests": 65
+    },
+    "/inventory/stock": {
+      "duplicateRequests": 0,
+      "countProbes": 0,
+      "focusRefetch": 0,
+      "requests": 21
+    },
+    "/products": {
+      "duplicateRequests": 0,
+      "countProbes": 0,
+      "focusRefetch": 0,
+      "requests": 17
+    },
+    "/": {
+      "duplicateRequests": 0,
+      "countProbes": 0,
+      "focusRefetch": 0,
+      "requests": 17
+    },
+    "/m/pick": {
+      "duplicateRequests": 0,
+      "countProbes": 0,
+      "focusRefetch": 0,
+      "requests": 17
+    },
+    "/m/work": {
+      "duplicateRequests": 0,
+      "countProbes": 0,
+      "focusRefetch": 0,
+      "requests": 24
+    },
+    "/m/receiving": {
+      "duplicateRequests": 0,
+      "countProbes": 0,
+      "focusRefetch": 0,
+      "requests": 16
+    },
+    "/m/exceptions": {
+      "duplicateRequests": 0,
+      "countProbes": 0,
+      "focusRefetch": 0,
+      "requests": 12
+    }
+  }
+}

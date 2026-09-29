@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { tenantQuery } from '@/lib/tenancy/db';
 import { requireRoutePerm } from '@/lib/auth/dynamic-route-guard';
+import { isFbaConditionValue } from '@/lib/fba/fba-conditions';
 
 type Params = Promise<{ fnsku: string }>;
 
@@ -43,7 +44,8 @@ export async function GET(
 
 // ── PATCH /api/admin/fba-fnskus/[fnsku] ──────────────────────────────────────
 // Update mutable metadata on an FNSKU.
-// Body (all optional): { product_title, asin, sku, is_active }
+// Body (all optional): { product_title, asin, sku, condition, is_active }. `condition` is an
+// FBA_CONDITIONS value or null (cleared) — it prints on the FNSKU label.
 export async function PATCH(
   request: NextRequest,
   { params }: { params: Params }
@@ -72,6 +74,12 @@ export async function PATCH(
     if ('asin' in body) setField('asin', String(body.asin || '').trim().toUpperCase() || null);
     if ('sku' in body) setField('sku', body.sku || null);
     if ('is_active' in body) setField('is_active', Boolean(body.is_active));
+    if ('condition' in body) {
+      if (body.condition !== null && !isFbaConditionValue(body.condition)) {
+        return NextResponse.json({ success: false, error: 'Unknown condition' }, { status: 400 });
+      }
+      setField('condition', body.condition);
+    }
 
     if (fields.length === 0) {
       return NextResponse.json({ success: false, error: 'No fields to update' }, { status: 400 });

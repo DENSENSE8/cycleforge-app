@@ -4,6 +4,7 @@
  * Kinetic Ledger AlertDialog — Radix AlertDialog (shadcn-shaped) restyled to
  * house tokens. Desktop/workbench confirm SoT. Floor/station confirms stay on
  * `ConfirmSheet`. Imperative confirm: `@/design-system/components/confirm`.
+ * The scrim fades and the dialog settles in / out (`cf-scrim` / `cf-dialog`, globals.css).
  */
 
 import * as React from 'react';
@@ -20,7 +21,7 @@ const AlertDialogOverlay = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <AlertDialogPrimitive.Overlay
     ref={ref}
-    className={cn('fixed inset-0 z-modal bg-scrim/60', className)}
+    className={cn('cf-scrim fixed inset-0 z-modal bg-scrim/60', className)}
     {...props}
   />
 ));
@@ -35,7 +36,7 @@ const AlertDialogContent = React.forwardRef<
     <AlertDialogPrimitive.Content
       ref={ref}
       className={cn(
-        'fixed left-1/2 top-1/2 z-modal grid w-full max-w-lg -translate-x-1/2 -translate-y-1/2 gap-4 rounded-none border border-border-soft bg-surface-card p-5',
+        'cf-dialog fixed left-1/2 top-1/2 z-modal grid w-full max-w-lg -translate-x-1/2 -translate-y-1/2 gap-4 rounded-none border border-border-soft bg-surface-card p-5',
         elevationClass('overlay'),
         className,
       )}

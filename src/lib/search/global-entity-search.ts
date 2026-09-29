@@ -75,6 +75,12 @@ const ORDER_SEARCH_SELECT = `SELECT o.id,
             o.sku,
             o.account_source,
             o.status,
+            BOOL_OR(
+              COALESCE(stn.is_delivered, false)
+              OR COALESCE(stn_link.is_delivered, false)
+              OR UPPER(COALESCE(stn.latest_status_category, '')) = 'DELIVERED'
+              OR UPPER(COALESCE(stn_link.latest_status_category, '')) = 'DELIVERED'
+            ) AS carrier_delivered,
             o.condition,
             o.order_date,
             o.created_at,
@@ -136,7 +142,7 @@ function mapOrderSearchRows(rows: any[]): GlobalSearchResult[] {
       href: searchHitHref('ORDER', Number(row.id)),
       matchField: 'order',
       facets: {
-        status: row.status != null ? String(row.status) : null,
+        status: orderSearchDisplayStatus(row),
         condition_grade: row.condition != null ? String(row.condition) : null,
         source_platform: row.account_source != null ? String(row.account_source) : null,
         tracking_number: row.tracking_number != null ? String(row.tracking_number) : null,
@@ -151,6 +157,15 @@ function mapOrderSearchRows(rows: any[]): GlobalSearchResult[] {
       },
     };
   });
+}
+
+/** Carrier truth outranks the stale internal workflow status in search faces. */
+export function orderSearchDisplayStatus(row: {
+  status?: unknown;
+  carrier_delivered?: unknown;
+}): string | null {
+  if (row.carrier_delivered === true) return 'delivered';
+  return row.status != null ? String(row.status) : null;
 }
 
 /** A phone typed or pasted any way → its last 10 digits; '' when the query is not phone-shaped. */

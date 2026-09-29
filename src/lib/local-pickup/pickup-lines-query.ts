@@ -2,6 +2,8 @@
 
 import { tenantQuery } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';
+import { listReceivingUnitStageFacts } from '@/lib/receiving/receiving-unit-stage-facts';
+import type { ReceivingUnitStageFactView } from '@/lib/receiving/receiving-line-row';
 
 export interface LocalPickupLineRow {
   id: number;
@@ -20,8 +22,12 @@ export interface LocalPickupLineRow {
   customer_name: string | null;
   order_status: string;
   receiving_id: number | null;
+  receiving_line_id?: number | null;
+  unit_stage_facts?: ReceivingUnitStageFactView[];
   pickup_date: string | null;
   order_created_at: string;
+  payment_method: string | null;
+  paid_amount_cents: number | null;
   zoho_po_id: string | null;
   zoho_status: string | null;
   zoho_total: string | null;
@@ -81,8 +87,11 @@ export async function listLocalPickupLines(
        o.customer_name,
        o.status                    AS order_status,
        o.receiving_id,
+       i.receiving_line_id,
        o.pickup_date::text         AS pickup_date,
        o.created_at::text          AS order_created_at,
+       o.payment_method,
+       o.paid_amount_cents,
        o.zoho_po_id,
        m.status                    AS zoho_status,
        m.total::text               AS zoho_total,
@@ -99,5 +108,11 @@ export async function listLocalPickupLines(
      LIMIT $${limitIdx}`,
     params,
   );
+  const lineIds = rows.rows.flatMap((row) => row.receiving_line_id != null ? [Number(row.receiving_line_id)] : []);
+  const factsByLine = await listReceivingUnitStageFacts(orgId, lineIds);
+  for (const row of rows.rows) {
+    row.receiving_line_id = row.receiving_line_id == null ? null : Number(row.receiving_line_id);
+    row.unit_stage_facts = row.receiving_line_id == null ? [] : (factsByLine.get(row.receiving_line_id) ?? []);
+  }
   return rows.rows;
 }

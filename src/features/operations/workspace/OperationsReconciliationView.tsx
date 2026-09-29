@@ -101,7 +101,7 @@ export function OperationsReconciliationView() {
         title="Open tracking exceptions"
         actions={
           <Link
-            href="/tracking-exceptions"
+            href="/inventory/triage"
             className="text-role-eyebrow font-semibold text-blue-700 hover:text-blue-800"
           >
             Open queue

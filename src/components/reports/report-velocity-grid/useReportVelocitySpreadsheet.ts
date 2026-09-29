@@ -28,14 +28,16 @@ interface UseReportVelocitySpreadsheetOptions {
   rows: readonly VelocityReportRow[];
   loading?: boolean;
   emptyMessage?: string;
-  searchPlaceholder?: string;
+  searchValue: string;
+  onSearchChange: (next: string) => void;
 }
 
 export function useReportVelocitySpreadsheet({
   rows,
   loading = false,
   emptyMessage = 'No data — try the daily refresh cron, or write some movement.',
-  searchPlaceholder = 'Filter this report…',
+  searchValue,
+  onSearchChange,
 }: UseReportVelocitySpreadsheetOptions): CompoundSpreadsheetFeed<
   VelocityReportRow,
   ReportVelocityGridColumnKey,
@@ -43,7 +45,6 @@ export function useReportVelocitySpreadsheet({
 > {
   const [sort, setSort] = useState<ReportVelocityGridColumnKey | null>(null);
   const [dir, setDir] = useState<GridSortDir | null>(null);
-  const [query, setQuery] = useState('');
 
   const { effectiveLayout, subtitleFieldIds, fields } = useReportVelocityTableLayout();
   const columns = useMemo(
@@ -60,8 +61,8 @@ export function useReportVelocitySpreadsheet({
   );
 
   const search = useMemo(
-    () => ({ value: query, onChange: setQuery, placeholder: searchPlaceholder }),
-    [query, searchPlaceholder],
+    () => ({ value: searchValue, onChange: onSearchChange, placeholder: 'Filter this report…' }),
+    [searchValue, onSearchChange],
   );
 
   return useCompoundSpreadsheet<
@@ -83,6 +84,7 @@ export function useReportVelocitySpreadsheet({
     dir,
     onSortChange,
     search,
+    findOwner: 'page',
     loading,
     emptyMessage,
     ariaLabel: 'SKU velocity, last 30 days',

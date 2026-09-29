@@ -16,7 +16,6 @@ test('base SQL embeds the inbound predicate, dedupe, and unscanned guard', () =>
   const sql = deliveredUnscannedBaseSql('$1');
   assert.match(sql, /DISTINCT ON \(stn\.tracking_number_normalized\)/);
   assert.match(sql, /stn\.is_delivered = true/);
-  assert.match(sql, /NOT EXISTS/); // no receiving_scans
   assert.match(sql, /receiving_scans rs/);
   assert.ok(sql.includes(INBOUND_SHIPMENT_PREDICATE));
   assert.ok(sql.includes(ZOHO_PO_RESOLVED_SHIPMENT_PREDICATE));

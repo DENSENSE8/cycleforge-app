@@ -89,6 +89,13 @@ interface ProductSelectorProps {
   apiBasePath?: string;
   /** Hides the "Other -- Manual Entry" free-text escape hatch. */
   hideManualEntry?: boolean;
+  /**
+   * Kiosk/manual intake host for a product that is not in the catalog. When
+   * present, the kiosk trail exposes the escape hatch at the top-right and
+   * hands the typed title to the owning workflow instead of pretending it is
+   * a catalog selection.
+   */
+  onManualItemAdd?: (title: string) => void;
   /** Let the results flow in the page instead of scrolling inside a capped region. */
   flowInPage?: boolean;
   /**
@@ -268,6 +275,7 @@ export function ProductSelector({
   onSelect, selectedProduct, onPriceChange, fillHeight,
   selectedItems: controlledItems, onSelectedItemsChange,
   apiBasePath = '/api/repair', hideManualEntry = false, flowInPage = false,
+  onManualItemAdd,
   appearance = 'default',
   layout = 'stacked',
   catalogPhase = 'browse',
@@ -741,6 +749,12 @@ export function ProductSelector({
   const handleOtherSubmit = () => {
     const value = otherModelText.trim();
     if (!value) return;
+    if (onManualItemAdd) {
+      onManualItemAdd(value);
+      setShowOther(false);
+      setOtherModelText('');
+      return;
+    }
     onSelect({ type: 'Other', model: value, sourceSku: null });
     setSelectedItems([]);
     setOtherModelText('');
@@ -760,7 +774,6 @@ export function ProductSelector({
       : selectedItems.some((i) => i.id === id)
         ? 1
         : 0;
-  const isSelected = (id: string) => pickedCount(id) > 0;
 
   const tapProduct = (product: EcwidProduct) => {
     if (!countPicks) {
@@ -772,6 +785,7 @@ export function ProductSelector({
   };
   const isAtRoot = !currentCategoryId;
   const loading = loadingCategories;
+  const manualSelectedItems = selectedItems.filter((item) => item.id.startsWith('manual:'));
 
   const goBackOneLevel = () => {
     if (kioskSplit) {
@@ -1675,6 +1689,20 @@ export function ProductSelector({
                 />
               </nav>
               )}
+              {!hideManualEntry ? (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  icon={<Plus className="h-4 w-4" />}
+                  onClick={() => setShowOther((open) => !open)}
+                  className={cn(KIOSK_POS_TRAIL_CONTROL, 'shrink-0')}
+                  aria-expanded={showOther}
+                  data-testid="kiosk-manual-product-toggle"
+                >
+                  Can&apos;t find it? Add manually
+                </Button>
+              ) : null}
               {trailEnd}
             </div>
     );
@@ -1703,6 +1731,52 @@ export function ProductSelector({
           {error && (
             <div className="bg-red-50 px-4 py-3.5 text-xs font-semibold text-red-700">{error}</div>
           )}
+          {showOther && !hideManualEntry ? (
+            <div
+              className="mb-3 flex items-end gap-2 border border-border-hairline bg-surface-card p-3"
+              data-testid="kiosk-manual-product-entry"
+            >
+              <TextField
+                label="Product name"
+                value={otherModelText}
+                onChange={setOtherModelText}
+                className="min-w-0 flex-1"
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter') handleOtherSubmit();
+                }}
+              />
+              <Button
+                type="button"
+                variant="primary"
+                size="lg"
+                onClick={handleOtherSubmit}
+                disabled={!otherModelText.trim()}
+                data-testid="kiosk-manual-product-add"
+              >
+                Add product
+              </Button>
+            </div>
+          ) : null}
+          {manualSelectedItems.length > 0 ? (
+            <div
+              className="mb-3 flex flex-wrap items-center gap-2 border border-border-hairline bg-surface-card px-3 py-2"
+              data-testid="kiosk-manual-products-selected"
+            >
+              <span className={KIOSK_META}>Added manually</span>
+              {manualSelectedItems.map((item) => (
+                <Button
+                  key={item.id}
+                  type="button"
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => removeItem(item.id)}
+                  aria-label={`Remove ${item.name}`}
+                >
+                  {item.name} ×
+                </Button>
+              ))}
+            </div>
+          ) : null}
           {renderProductsGrid()}
         </div>
         {showKioskCta ? (

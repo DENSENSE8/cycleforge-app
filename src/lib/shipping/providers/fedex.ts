@@ -1,5 +1,6 @@
 import { estimatedDeliveryInstant } from './estimated-delivery';
-import { normalizeFedExStatus, normalizeTrackingNumber } from '../normalize';
+import { normalizeFedExStatus } from '../normalize';
+import { extractCanonicalTracking } from '@/lib/tracking-format';
 import type { CarrierTrackingEvent, CarrierTrackingResult } from '../types';
 import { isoStampInstant } from '../carrier-event-instant';
 import { safeRandomUUID } from '@/lib/safe-uuid';
@@ -193,14 +194,18 @@ export function parseFedExTrackingPayload(payload: any): CarrierTrackingResult |
     trackResult?.trackingNumberInfo?.trackingNumber ??
     payload?.output?.completeTrackResults?.[0]?.trackingNumber ??
     '';
-  const normalized = normalizeTrackingNumber(String(rawTracking));
+  // FedEx pushes the scanner face for some Ground Economy labels: a 34-digit
+  // GS1 envelope beginning with 96. The STN natural key stores the trailing
+  // 12/15-digit carrier number, so webhook and polling identities must cross
+  // the same canonical boundary before org/order resolution.
+  const normalized = extractCanonicalTracking(String(rawTracking));
   if (!normalized) return null;
 
   return buildFedExResultFromTrackResult(normalized, trackResult, payload);
 }
 
 export async function trackByNumber(trackingNumber: string): Promise<CarrierTrackingResult> {
-  const normalized = normalizeTrackingNumber(trackingNumber);
+  const normalized = extractCanonicalTracking(trackingNumber);
   let token = await getAccessToken();
   let res = await callFedExTrack(normalized, token);
 

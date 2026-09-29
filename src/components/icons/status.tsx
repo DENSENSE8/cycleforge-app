@@ -5,6 +5,7 @@
 import {
   AlarmClock as LucideAlarmClock,
   CircleDot as LucideCircleDot,
+  CircleCheck as LucideCircleCheck,
   CirclePause as LucideCirclePause,
   PackageX as LucidePackageX,
 } from 'lucide-react';
@@ -92,6 +93,11 @@ export const Sparkles = ({ className = "w-6 h-6" }: { className?: string }) => (
 export const CircleDot = ({ className = "w-6 h-6" }: { className?: string }) => (
     <LucideCircleDot className={className} />
 );
+/** Completed — distinct from an open circle even without colour. */
+export const CheckCircle = ({ className = "w-6 h-6" }: { className?: string }) => (
+    <LucideCircleCheck className={className} />
+);
+
 
 /** Urgent — `URG`. */
 export const AlarmClock = ({ className = "w-6 h-6" }: { className?: string }) => (

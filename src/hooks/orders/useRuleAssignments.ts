@@ -3,14 +3,17 @@
 /**
  * Team logic for a new sales order — shared by the desk and phone faces.
  * Every line starts from its listing → staff rule (`/api/orders/intake/assignees`,
- * the same matcher the import automation runs), shown as "rule". A manual
- * choice is an exception for THIS order: a later rule refresh never overwrites it.
+ * the same matcher the import automation runs), shown as "rule"; with no rule
+ * picker, the item's owner by pick history, shown as "pick history". A manual
+ * choice is an exception for THIS order: a later refresh never overwrites it.
  */
 
 import { useEffect, useRef, useState } from 'react';
 import type { IntakeLine } from '@/lib/orders/intake/intake-model';
 
-export type AssigneePick = { id: number; name: string; source: 'rule' | 'manual'; via?: 'primary' | 'backup' };
+type SuggestedAssignee = { id: number; name: string; via: 'primary' | 'backup'; source: 'rule' | 'history' };
+
+export type AssigneePick = { id: number; name: string; source: 'rule' | 'history' | 'manual'; via?: 'primary' | 'backup' };
 
 export type LineAssignment = {
   picker: AssigneePick | null;
@@ -23,12 +26,15 @@ export const LANE_LABEL: Record<Lane, string> = { picker: 'Pick', packer: 'Pack'
 
 /** The provenance tag on an assignee chip — the same words on the desk and the phone. */
 export function assigneeSourceLabel(pick: AssigneePick): string {
-  return pick.source === 'manual' ? 'changed' : pick.via === 'backup' ? 'rule · backup' : 'rule';
+  if (pick.source === 'manual') return 'changed';
+  const origin = pick.source === 'history' ? 'pick history' : 'rule';
+  return pick.via === 'backup' ? `${origin} · backup` : origin;
 }
 
 /** Which listing→staff rule set a line's defaults. */
 export function lineRuleLabel(assignment: LineAssignment | undefined): string {
-  return assignment?.rule ? `Rule: ${assignment.rule.name}` : 'No rule for this product';
+  if (assignment?.rule) return `Rule: ${assignment.rule.name}`;
+  return assignment?.picker?.source === 'history' ? 'No rule · picker from pick history' : 'No rule for this product';
 }
 
 export interface RuleAssignments {
@@ -59,19 +65,19 @@ export function useRuleAssignments(lines: readonly IntakeLine[], channel: string
         }),
       })
         .then((res) => res.json())
-        .then((data: { results?: Array<{ rule: LineAssignment['rule']; picker: { id: number; name: string; via: 'primary' | 'backup' } | null; packer: { id: number; name: string; via: 'primary' | 'backup' } | null }> }) => {
+        .then((data: { results?: Array<{ rule: LineAssignment['rule']; picker: SuggestedAssignee | null; packer: SuggestedAssignee | null }> }) => {
           const results = data.results ?? [];
           setByKey((prev) => {
             const next: Record<string, LineAssignment> = {};
             current.forEach((line, i) => {
               const r = results[i];
               const was = prev[line.key];
-              const fromRule = (p: { id: number; name: string; via: 'primary' | 'backup' } | null | undefined): AssigneePick | null =>
-                p ? { id: p.id, name: p.name, via: p.via, source: 'rule' } : null;
+              const fromSuggestion = (p: SuggestedAssignee | null | undefined): AssigneePick | null =>
+                p ? { id: p.id, name: p.name, via: p.via, source: p.source } : null;
               next[line.key] = {
                 rule: r?.rule ?? null,
-                picker: was?.picker?.source === 'manual' ? was.picker : fromRule(r?.picker) ?? was?.picker ?? null,
-                packer: was?.packer?.source === 'manual' ? was.packer : fromRule(r?.packer) ?? was?.packer ?? null,
+                picker: was?.picker?.source === 'manual' ? was.picker : fromSuggestion(r?.picker) ?? was?.picker ?? null,
+                packer: was?.packer?.source === 'manual' ? was.packer : fromSuggestion(r?.packer) ?? was?.packer ?? null,
               };
             });
             return next;

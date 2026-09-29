@@ -278,7 +278,6 @@ export function TechAllTriageTable({
           </p>
         </div>
       }
-      search={{ value: searchQuery, onChange: setSearch, placeholder: 'Filter units…' }}
       searchEmptyMessage="No matches for this search"
       scrollRef={scrollRef}
       renderGroup={(group, _stripe, { columns: visible }) => (

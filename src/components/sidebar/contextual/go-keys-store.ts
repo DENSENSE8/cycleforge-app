@@ -1,9 +1,21 @@
 'use client';
 
-import { useSyncExternalStore } from 'react';
+import { useSyncExternalStore, type ComponentType } from 'react';
 
-/** One `G` then letter destination (`NAV_GO_KEYS`, the current lane's), resolved for this staffer. */
-export type GoTarget = { letter: string; id: string; label: string; href: string; current: boolean };
+/**
+ * One `G` then letter destination (`navGoDestinations`: the current lane's
+ * modes, or the page's own children), resolved for this staffer. `id` is the
+ * page id — a child target's child id.
+ */
+export type GoTarget = {
+  letter: string;
+  id: string;
+  label: string;
+  href: string;
+  current: boolean;
+  icon?: ComponentType<{ className?: string }>;
+  tone?: string;
+};
 
 /**
  * What the keyboard is doing right now, for every surface that teaches it.

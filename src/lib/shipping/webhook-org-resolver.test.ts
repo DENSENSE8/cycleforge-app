@@ -54,6 +54,12 @@ test('tracking: normalizes the number before looking it up', async () => {
   deepStrictEqual(queries[0].params, ['1Z999AA10123456784']);
 });
 
+test('tracking: unwraps a FedEx GS1 scanner envelope before org lookup', async () => {
+  const { deps, queries } = fakes({ stn: [{ organization_id: ORG_A }] });
+  await resolveWebhookOrgByTracking('9621091390008524261900383825682187', deps);
+  deepStrictEqual(queries[0].params, ['383825682187']);
+});
+
 test('tracking: ambiguous (2 owning orgs) → null + warn, no fallback guess', async () => {
   const { deps, warns } = fakes({
     stn: [{ organization_id: ORG_A }, { organization_id: ORG_B }],

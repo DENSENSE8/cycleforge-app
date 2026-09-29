@@ -8,7 +8,12 @@ import { useAblyClient } from '@/contexts/AblyContext';
 import { useReceivingPhotosRealtimeRefresh } from '@/hooks/useReceivingPhotosRealtimeRefresh';
 import { useAuth } from '@/contexts/AuthContext';
 import { PhotoGallery } from '@/components/shipped/PhotoGallery';
-import { receivingPhotosQueryKey, refreshReceivingPhotos } from '@/lib/queries/receiving-queries';
+import {
+  fetchReceivingPhotoList,
+  RECEIVING_PHOTOS_STALE_MS,
+  receivingPhotoListQueryKey,
+  refreshReceivingPhotos,
+} from '@/lib/queries/receiving-queries';
 import { Camera, Plus } from '@/components/Icons';
 import { AnchoredLayer, Button, type AnchoredPlacement } from '@/design-system/primitives';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
@@ -157,35 +162,12 @@ export const ReceivingPhotoButton = memo(function ReceivingPhotoButton({
     }
   }, [receivingId, lineId, stage, photoAspect]);
 
-  // Scope the cache key:
-  const queryKey = useMemo(
-    () =>
-      [
-        ...receivingPhotosQueryKey(receivingId),
-        listIntent,
-        lineId ?? 'carton',
-        photoAspect ?? 'any',
-      ] as const,
-    [receivingId, listIntent, lineId, photoAspect],
-  );
-
+  const photoParams = { receivingId, photoIntent: listIntent, receivingLineId: lineId, photoAspect };
   const { data } = useQuery<PhotosPayload>({
-    queryKey,
-    queryFn: async () => {
-      const params = new URLSearchParams({
-        receivingId: String(receivingId),
-        photoIntent: listIntent,
-      });
-      if (lineId != null) params.set('receivingLineId', String(lineId));
-      if (photoAspect) params.set('photoAspect', photoAspect);
-      const res = await fetch(`/api/receiving-photos?${params.toString()}`, {
-        cache: 'no-store',
-      });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      return res.json();
-    },
+    queryKey: receivingPhotoListQueryKey(photoParams),
+    queryFn: () => fetchReceivingPhotoList(photoParams),
     enabled: Number.isFinite(receivingId) && receivingId > 0 && uploadTarget !== null,
-    staleTime: 10_000,
+    staleTime: RECEIVING_PHOTOS_STALE_MS,
   });
 
   const refresh = useCallback(

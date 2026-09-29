@@ -15,7 +15,7 @@ import {
   resolveTechSerialSalContext,
 } from '@/lib/tech/insertTechSerialForSalContext';
 import { normalizeTrackingKey18, normalizeTrackingLast8 } from '@/lib/tracking-format';
-import { buildOrderPayload, findOrderByShipment } from '@/lib/tech/order-card';
+import { buildOrderPayload, findOrderById, findOrderByShipment } from '@/lib/tech/order-card';
 import { sqlDeskSessionAnchor } from '@/lib/station-activity';
 import { pickDeskSerialUnit, type DeskSerialPickResult } from '@/lib/picking/desk-serial-pick';
 import { revertDeskSerialPick, UnpickError, type RevertedUnitPick } from '@/lib/picking/unpick';
@@ -54,6 +54,8 @@ interface DeskAnchor {
   id: number;
   shipment_id: number | null;
   scan_ref: string | null;
+  /** The anchored order row (SAL `metadata.order_row_id`, stored column) — set for every matched pick. */
+  order_row_id: number | null;
 }
 
 class HandlerError extends Error {
@@ -150,7 +152,7 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
     // add / add-to-last / undo: the signed-in staffer's latest desk anchor.
     const r = await tenantQuery(
       orgId,
-      `SELECT id, shipment_id, scan_ref FROM station_activity_logs
+      `SELECT id, shipment_id, scan_ref, order_row_id FROM station_activity_logs
        WHERE ${sqlDeskSessionAnchor()}
          AND staff_id = $1
          AND organization_id = $2
@@ -434,13 +436,16 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
   let order = null;
   try {
     const orderRow = await withTenantConnection(orgId, (client) =>
-      findOrderByShipment(
-        client,
-        anchor?.shipment_id ?? null,
-        tracking ? normalizeTrackingKey18(tracking) : null,
-        tracking ? normalizeTrackingLast8(tracking) : null,
-        orgId,
-      ),
+      // An order-anchored pick (walk-in / Pickup, no tracking) resolves by row id.
+      anchor?.order_row_id != null
+        ? findOrderById(client, Number(anchor.order_row_id), orgId)
+        : findOrderByShipment(
+            client,
+            anchor?.shipment_id ?? null,
+            tracking ? normalizeTrackingKey18(tracking) : null,
+            tracking ? normalizeTrackingLast8(tracking) : null,
+            orgId,
+          ),
     );
     order = buildOrderPayload(orderRow, {
       tracking: orderRow?.shipping_tracking_number || tracking,

@@ -1,5 +1,6 @@
 'use client';
 
+import { createPortal } from 'react-dom';
 import { useCallback, useEffect, useLayoutEffect, useRef } from 'react';
 import { useSyncExternalStore } from 'react';
 import {
@@ -109,7 +110,7 @@ export function CursorLabelLayer() {
 
   if (!enabled) return null;
 
-  return (
+  return createPortal(
     <motion.div
       aria-hidden
       data-testid="cursor-label-layer"
@@ -126,6 +127,7 @@ export function CursorLabelLayer() {
           <TooltipChipBody label={tooltip} chord={chord} />
         </motion.span>
       ) : null}
-    </motion.div>
+    </motion.div>,
+    document.body,
   );
 }

@@ -14,24 +14,29 @@ import { useRailActionSnapshot } from '@/components/right-rail/RailSelectionActi
 import { RECEIVING_SELECTION_SCOPE } from '@/components/station/receiving-lines-table-helpers';
 import { resolveSelectionAction } from '@/lib/selection/selection-actions';
 
-export function ReceivingSelectionVerbs({ noun }: { noun: string }) {
+export function ReceivingSelectionVerbs({ noun, lead = NO_VERBS }: { noun: string; lead?: readonly RecordActionVerb[] }) {
   const { scope, rows, actions } = useRailActionSnapshot();
   const verbs = useMemo<RecordActionVerb[]>(() => {
-    if (scope !== RECEIVING_SELECTION_SCOPE || rows.length === 0) return [];
-    return actions.map((action) => {
-      const resolved = resolveSelectionAction(action, rows);
-      return {
-        id: action.key,
-        label: resolved.label,
-        icon: action.icon,
-        tone: action.tone === 'red' ? 'danger' : 'default',
-        placement: action.key === 'delete' ? 'isolated' : 'primary',
-        disabled: resolved.disabled,
-        disabledReason: resolved.reason,
-        run: () => action.run(rows, resolved.direction ? { direction: resolved.direction } : undefined),
-      };
-    });
-  }, [scope, rows, actions]);
+    if (scope !== RECEIVING_SELECTION_SCOPE || rows.length === 0) return [...lead];
+    return [
+      ...lead,
+      ...actions.map((action): RecordActionVerb => {
+        const resolved = resolveSelectionAction(action, rows);
+        return {
+          id: action.key,
+          label: resolved.label,
+          icon: action.icon,
+          tone: action.tone === 'red' ? 'danger' : 'default',
+          placement: action.key === 'delete' ? 'isolated' : 'primary',
+          disabled: resolved.disabled,
+          disabledReason: resolved.reason,
+          run: () => action.run(rows, resolved.direction ? { direction: resolved.direction } : undefined),
+        };
+      }),
+    ];
+  }, [scope, rows, actions, lead]);
   if (verbs.length === 0) return null;
   return <RecordActionStrip verbs={verbs} label={`Checked ${noun} actions`} testId="incoming-bulk" />;
 }
+
+const NO_VERBS: readonly RecordActionVerb[] = [];

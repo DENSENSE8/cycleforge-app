@@ -197,21 +197,25 @@ export function filterActionsForCsvOverride(
   });
 }
 
+/** Does this trigger run assign actions of this work type? */
+export function triggerRunsWorkType(
+  triggerKey: AutomationTriggerKey,
+  workType: AssignWorkAction['work_type'],
+): boolean {
+  // P2: trigger exists for P3 subscribers. PICK|PACK never run on this key —
+  // listing upserts stay on LISTING_AUTOMATION_TRIGGER_KEYS so dock scans
+  // cannot assign pickers.
+  if (triggerKey === 'identification.completed') return false;
+  if (triggerKey === 'unit.test_passed') return workType === 'PACK';
+  return true;
+}
+
 /** Which assign actions a trigger runs. */
 export function selectActionsForTrigger(
   actions: readonly AssignWorkAction[],
   triggerKey: AutomationTriggerKey,
 ): AssignWorkAction[] {
-  if (triggerKey === 'identification.completed') {
-    // P2: trigger exists for P3 subscribers. PICK|PACK never run on this key —
-    // listing upserts stay on LISTING_AUTOMATION_TRIGGER_KEYS so dock scans
-    // cannot assign pickers.
-    return [];
-  }
-  if (triggerKey === 'unit.test_passed') {
-    return actions.filter((a) => a.work_type === 'PACK');
-  }
-  return [...actions];
+  return actions.filter((a) => triggerRunsWorkType(triggerKey, a.work_type));
 }
 
 /**

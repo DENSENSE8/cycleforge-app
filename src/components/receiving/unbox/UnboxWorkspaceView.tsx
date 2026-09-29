@@ -1,9 +1,6 @@
 'use client';
 
-/**
- * Unbox browse workbench — the desk frame over `ReceivingLinesTable` or the all-lines triage table.
- * ## The tabs moved to the top (operator ruling 2026-08-31)
- */
+/** Unbox browse workbench — the desk frame over `ReceivingLinesTable` or the all-lines triage table; the view is `?unboxview=`. */
 
 import { Suspense } from 'react';
 import dynamic from 'next/dynamic';
@@ -21,11 +18,6 @@ import { useSurfacePaintMark } from '@/lib/observability/paint-timing';
 import { useUnboxWorkspaceTab } from '@/hooks/useUnboxWorkspaceTab';
 import { useReceivingLineRailSelection } from '@/hooks/useReceivingLineRailSelection';
 import { toast } from '@/lib/toast';
-import {
-  UNBOX_WORKSPACE_TABS,
-  UNBOX_WORKSPACE_TAB_LABEL,
-  type UnboxWorkspaceTab,
-} from '@/utils/unbox-workspace-state';
 
 const ReceivingLinesTable = dynamic(
   () => import('@/components/station/ReceivingLinesTable'),
@@ -36,7 +28,7 @@ export function UnboxWorkspaceView(props: {
   /** Non-null while UnboxLineWorkspace overlays browse — suppress the selection rail. */
   selectedLine: ReceivingLineRow | null;
 }) {
-  const { unboxView, setUnboxView } = useUnboxWorkspaceTab();
+  const { unboxView } = useUnboxWorkspaceTab();
   const isIncoming = unboxView === 'incoming';
   const lineWorkspaceOpen = props.selectedLine != null;
 
@@ -51,23 +43,8 @@ export function UnboxWorkspaceView(props: {
       publish: !lineWorkspaceOpen,
     });
 
-  const tabs = UNBOX_WORKSPACE_TABS.filter((id) => id !== 'queue').map((id) => ({
-    id,
-    label: UNBOX_WORKSPACE_TAB_LABEL[id],
-  }));
-
   return (
-    <DeskPageLayout
-      className="h-full"
-      tabs={tabs}
-      // `queue` is the default body, so it lights NO tab — `all` is the absence
-      // of a narrowing, not a control that means stop. Clicking the lit tab
-      // clears back to it, exactly as the foot strip behaved.
-      activeTab={unboxView === 'queue' ? '' : unboxView}
-      onTabChange={(id) =>
-        setUnboxView(id === unboxView ? 'queue' : (id as UnboxWorkspaceTab))
-      }
-    >
+    <DeskPageLayout className="h-full">
       <UnboxDeskActions />
     <div className="relative flex h-full min-h-0 w-full flex-col">
       <DashboardScrollShell

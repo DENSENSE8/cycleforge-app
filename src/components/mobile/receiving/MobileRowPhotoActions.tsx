@@ -16,7 +16,7 @@ interface MobileRowPhotoActionsProps {
 }
 
 const BTN = cn(
-  'inline-flex h-8 min-w-8 shrink-0 items-center justify-center gap-0.5 rounded-lg px-2 transition-colors active:scale-[0.97]',
+  'inline-flex h-8 min-w-8 shrink-0 items-center justify-center gap-0.5 rounded-xl px-2 transition-colors active:scale-[0.97]',
   focusRing('control'),
 );
 

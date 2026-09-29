@@ -71,7 +71,7 @@ export function SkuExceptionPhotosSection({
     }
   };
 
-  const [hero, ...rest] = item.photos;
+  const hasPhotos = item.photos.length > 0;
 
   return (
     <EvidenceSection
@@ -104,43 +104,32 @@ export function SkuExceptionPhotosSection({
         }}
         data-testid="sku-exception-photo-input"
       />
-      {hero ? (
-        <div className="flex flex-col gap-2">
-          <EvidencePhoto
-            photo={hero}
-            label={`Open photo 1 of ${item.photos.length}`}
-            deleting={deletingId === hero.id}
-            onOpen={() => gallery.openViewer(0)}
-            onDelete={() => void remove(hero.id, hero.url)}
-            hero
-          />
-          {rest.length > 0 ? (
-            <ul className="grid grid-cols-4 gap-2">
-              {rest.map((photo, index) => (
-                <li key={photo.id}>
-                  <EvidencePhoto
-                    photo={photo}
-                    label={`Open photo ${index + 2} of ${item.photos.length}`}
-                    deleting={deletingId === photo.id}
-                    onOpen={() => gallery.openViewer(index + 1)}
-                    onDelete={() => void remove(photo.id, photo.url)}
-                  />
-                </li>
-              ))}
-            </ul>
-          ) : null}
-        </div>
+      {hasPhotos ? (
+        <ul className="grid grid-cols-4 gap-2">
+          {item.photos.map((photo, index) => (
+            <li key={photo.id}>
+              <EvidencePhoto
+                photo={photo}
+                label={`Open photo ${index + 1} of ${item.photos.length}`}
+                deleting={deletingId === photo.id}
+                onOpen={() => gallery.openViewer(index)}
+                onDelete={() => void remove(photo.id, photo.url)}
+              />
+            </li>
+          ))}
+        </ul>
       ) : (
         <button
           type="button"
+          data-testid="sku-exception-photo-empty"
           onClick={() => fileRef.current?.click()}
           className={cn(
-            'flex aspect-[4/3] w-full flex-col items-center justify-center gap-1 rounded-mode border border-dashed border-mode-control bg-mode-well',
+            'flex h-14 w-full items-center justify-center gap-2 rounded-mode border border-dashed border-mode-control bg-mode-well px-3',
             focusRing('control'),
           )}
         >
           <span className={cn(RECORD_LABEL_CLASS, 'text-mode-warn')}>No photo</span>
-          <span className="text-role-data text-mode-muted">A photo is what lets a colleague pair it.</span>
+          <span className="text-role-data text-mode-muted">Add one to help a colleague pair it.</span>
         </button>
       )}
       <PhotoViewerPortal g={gallery} />
@@ -154,26 +143,17 @@ function EvidencePhoto({
   deleting,
   onOpen,
   onDelete,
-  hero = false,
 }: {
   photo: ProvisionalSkuDetail['photos'][number];
   label: string;
   deleting: boolean;
   onOpen: () => void;
   onDelete: () => void;
-  hero?: boolean;
 }) {
   return (
-    <div className={cn('group/photo relative overflow-hidden rounded-mode border border-mode-rule bg-mode-well', hero ? 'aspect-[4/3]' : 'aspect-square')}>
+    <div className="group/photo relative aspect-square overflow-hidden rounded-mode border border-mode-rule bg-mode-well">
       <button type="button" aria-label={label} onClick={onOpen} className={cn('absolute inset-0 cursor-zoom-in', focusRing('control'))}>
-        <Image
-          src={hero ? photo.url : photo.thumbUrl}
-          alt=""
-          fill
-          unoptimized
-          sizes={hero ? '24vw' : '6vw'}
-          className="object-cover"
-        />
+        <Image src={photo.thumbUrl} alt="" fill unoptimized sizes="96px" className="object-cover" />
       </button>
       <button
         type="button"

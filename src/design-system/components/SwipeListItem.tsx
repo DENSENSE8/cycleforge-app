@@ -44,6 +44,7 @@ export function SwipeListItem({
   stagger = 0,
   as = 'li',
   rowRule = false,
+  raised = false,
 }: {
   children: ReactNode;
   /** `swipe`: open the gap, then slide in from the left. `none`: paint in place. */
@@ -54,6 +55,8 @@ export function SwipeListItem({
   stagger?: number;
   as?: 'li' | 'div';
   rowRule?: boolean;
+  /** Keep an open/selected row above the following row's paint layer. */
+  raised?: boolean;
 }) {
   const offset = LIST_SWIPE.stagger * stagger;
   const swipeIn = enter === 'swipe';
@@ -65,8 +68,10 @@ export function SwipeListItem({
       delay={swipeIn ? offset : undefined}
       exitDelay={swipeOut ? offset + LIST_SWIPE.duration * LIST_SWIPE.exitGapLead : undefined}
       rowRule={rowRule}
+      frameClassName={rowRule ? (raised ? 'z-20' : 'z-0 hover:z-10 focus-within:z-10') : undefined}
     >
       <motion.div
+        className="min-w-0 max-w-full"
         initial={swipeIn ? OFF_LEFT : false}
         animate={{
           ...IN_PLACE,

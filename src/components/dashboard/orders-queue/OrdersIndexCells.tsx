@@ -56,6 +56,7 @@ import type {
 } from '@/lib/orders/order-fulfillment-badge';
 import type { OrdersIndexTag, OrdersIndexValue } from '@/lib/tables/field-catalog/orders-resolve';
 import { platformMetaBrandDot } from '@/lib/source-platform';
+import { platformDisplayName } from '@/lib/platform-display';
 import { marketplaceOrderUrl } from '@/utils/order-platform';
 import { cn } from '@/utils/_cn';
 
@@ -143,10 +144,10 @@ function IndexChannel({
   fba: boolean;
 }) {
   const channel = useOrderChannel()(orderId, accountSource);
-  const face = channel.shortLabel || channel.label;
+  const face = platformDisplayName(channel);
   if (!face) return <GridCellDash />;
   return (
-    <HoverTooltip label={channel.connectionName ?? channel.label} asChild>
+    <HoverTooltip label={face} asChild>
       <span className="inline-flex min-w-0 items-center gap-1.5">
         <BrandIdentityDot {...platformMetaBrandDot(channel.meta)} />
         <span className="min-w-0 truncate text-sm text-text-default">{face}</span>

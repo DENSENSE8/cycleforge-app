@@ -18,6 +18,8 @@ import { reportPackerDayCompoundView } from './report-packer-day-row-view';
 function row(overrides: Partial<PackingReportRow> = {}): PackingReportRow {
   return {
     packedAt: '2026-09-15T23:13:00.000Z',
+    packDurationSeconds: 92,
+    nextPackSeconds: 215,
     packerName: 'Thuy',
     packerStaffId: 5,
     sku: '00958-S',
@@ -28,6 +30,8 @@ function row(overrides: Partial<PackingReportRow> = {}): PackingReportRow {
     trackingOrScanRef: '383615556581',
     orderNumber: '114-2858899-6488236',
     platform: 'Amazon',
+    quantity: 2,
+    imageUrl: 'https://example.test/product.jpg',
     itemNumber: 'B07ZY7DWT6',
     skuCatalogId: 368,
     tierSource: 'rules',

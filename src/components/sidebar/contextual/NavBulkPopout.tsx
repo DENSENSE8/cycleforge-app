@@ -152,9 +152,15 @@ export function NavBulkPopout({
     });
 
   const visible = useMemo(() => {
-    const kept = list.status ? list.entries.filter((entry) => entry.buckets.includes(list.status as string)) : list.entries;
+    // A facet names the reason inside the status; it keeps its own numbers
+    // (a found-nowhere number wears its reason with no bucket).
+    const kept = list.facet
+      ? list.entries.filter((entry) => entry.facet?.id === list.facet)
+      : list.status
+        ? list.entries.filter((entry) => entry.buckets.includes(list.status as string))
+        : list.entries;
     return sortEntries(kept, sort, bucketRank);
-  }, [list.entries, list.status, sort, bucketRank]);
+  }, [list.entries, list.status, list.facet, sort, bucketRank]);
   const safeCursor = Math.min(cursor, Math.max(0, visible.length - 1));
 
   // The panel portals in after `open` flips (the anchored layer measures
@@ -203,8 +209,15 @@ export function NavBulkPopout({
   };
   const cycleOrderSort = () =>
     setSort((current) => (current === 'order-asc' ? 'order-desc' : current === 'order-desc' ? 'pasted' : 'order-asc'));
-  const filterLabel = list.status ? bucketById.get(list.status)?.label : undefined;
+  const facetLabel = list.facet ? list.entries.find((entry) => entry.facet?.id === list.facet)?.facet?.label : undefined;
+  const filterLabel = facetLabel ?? (list.status ? bucketById.get(list.status)?.label : undefined);
+  const copyShown = () => void copy(visible.map((e) => e.ref).join('\n'), `${visible.length} numbers`);
+  const recheck = (entry: BulkEntry) => {
+    list.recheck(entry.ref);
+    toast.message(`Checking ${entry.ref} again`);
+  };
   const nowhere = list.entries.filter((entry) => !entry.pending && entry.buckets.length === 0).length;
+  const checking = list.entries.filter((entry) => entry.pending).length;
 
   const onKeyDown = (event: ReactKeyboardEvent<HTMLDivElement>) => {
     if (editing || event.metaKey || event.ctrlKey || event.altKey) return;
@@ -216,7 +229,9 @@ export function NavBulkPopout({
     else if (key === 'End') setCursor(Math.max(0, visible.length - 1));
     else if (key === 'Enter' && entry) pinpoint(entry);
     else if ((key === 'e' || key === 'E') && entry) setEditing(entry.ref);
+    else if (key === 'C' && event.shiftKey) copyShown();
     else if ((key === 'c' || key === 'C') && entry) void copy(entry.ref, entry.ref);
+    else if ((key === 'r' || key === 'R') && entry) recheck(entry);
     else if ((key === 'Backspace' || key === 'Delete' || key === 'x') && entry) removeEntry(entry);
     else if (key === 'o' || key === 'O') cycleOrderSort();
     else if (key === 's' || key === 'S') setSort((current) => (current === 'status' ? 'pasted' : 'status'));
@@ -247,6 +262,7 @@ export function NavBulkPopout({
           {list.selection.truncated > 0 ? (
             <span className="font-normal text-text-faint"> · first {list.selection.refs.length}</span>
           ) : null}
+          {checking > 0 ? <span className="font-normal text-text-faint"> · {checking} checking</span> : null}
         </span>
         <SortChip active={sort === 'pasted'} onClick={() => setSort('pasted')} label="Pasted" />
         <SortChip
@@ -260,8 +276,8 @@ export function NavBulkPopout({
         <button
           type="button"
           aria-label="Copy the numbers shown"
-          title="Copy the numbers shown"
-          onClick={() => void copy(visible.map((e) => e.ref).join('\n'), `${visible.length} numbers`)}
+          title="Copy the numbers shown (⇧C)"
+          onClick={copyShown}
           className={ICON_KEY_CLASS}
         >
           <Copy aria-hidden className="size-3.5" />
@@ -369,6 +385,8 @@ export function NavBulkPopout({
         <Legend keys={['↵']} label="pinpoint" />
         <Legend keys={['E']} label="edit" />
         <Legend keys={['C']} label="copy" />
+        <Legend keys={['⇧C']} label="copy shown" />
+        <Legend keys={['R']} label="recheck" />
         <Legend keys={['⌫']} label="remove" />
         <Legend keys={['Esc']} label="close" />
       </div>

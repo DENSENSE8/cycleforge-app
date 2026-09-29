@@ -24,12 +24,13 @@ import {
   parseStaffPrintOptionsPatch,
   thisDeviceCanFulfillPrintJob,
   isPrintStation,
+  UNNAMED_PRINT_STATION,
   type StaffPrintJob,
   type StaffPrintStatus,
 } from '@/lib/print/staff-print-bridge';
 import { getProfileForRole, listProfiles, setRoute } from '@/lib/print/browserPrint';
 import { isSilentPrintEnabled, setSilentPrintEnabled, SILENT_PRINT_CHANGED_EVENT } from '@/lib/print/printMode';
-import { PRINT_STATION_CHANGED_EVENT, readPrintStation, runPrintJobOnce } from '@/lib/print/print-station';
+import { PRINT_STATION_CHANGED_EVENT, readPrintStation, runPrintJobOnce, setPrintStationName } from '@/lib/print/print-station';
 import {
   printBinLabelRun,
   printHandlingUnitLabelRun,
@@ -136,12 +137,15 @@ function useStaffPrintBridgeHost() {
     const status = snapshotStatus();
     if (!status.stationId || !isPrintStation(status)) return;
     try {
-      await sendPrintStationHeartbeat({
+      const { name } = await sendPrintStationHeartbeat({
         stationId: status.stationId,
         stationName: status.stationName,
         label: { ready: status.label.ready, printer: status.label.name?.trim().slice(0, 120) || null },
         paper: { ready: status.paper.ready, printer: status.paper.name?.trim().slice(0, 120) || null },
       });
+      // The registry owns the name (an org rename lands here); adopting it fires
+      // PRINT_STATION_CHANGED, so the bridge status carries it too. Same name → no event, no loop.
+      if (name !== status.stationName) setPrintStationName(name === UNNAMED_PRINT_STATION ? '' : name);
     } catch {
       /* best-effort — the registry shows it offline until the next beat lands */
     }

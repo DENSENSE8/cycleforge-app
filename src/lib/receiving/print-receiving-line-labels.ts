@@ -1,101 +1,121 @@
-/** Print one product label per receiving line — serial-level when serials are loaded on the row, else a single SKU label. */
+/** Print one product label per physical receiving unit through the canonical unit-identity writer. */
 
-import { printProductLabel, printProductLabels } from '@/lib/print/printProductLabel';
+import { printProductLabel } from '@/lib/print/printProductLabel';
 import { toast } from '@/lib/toast';
 import { safeRandomUUID } from '@/lib/safe-uuid';
 import type { ReceivingLineRow } from './receiving-line-row';
 
-type ResolvedUnit = { unitUid: string; serialUnitId: number | null };
-
-function lineSerials(row: ReceivingLineRow): string[] {
-  return (row.serials ?? []).map((s) => (s.serial_number || '').trim()).filter(Boolean);
-}
-
-async function resolveUnits(serials: readonly string[]): Promise<Map<string, ResolvedUnit>> {
-  const unitBySerial = new Map<string, ResolvedUnit>();
-  if (serials.length === 0) return unitBySerial;
-  try {
-    const res = await fetch('/api/serial-units/resolve-batch', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ serials }),
-    });
-    if (res.ok) {
-      const json = (await res.json()) as {
-        units?: Array<{ serial: string; unit_uid: string | null; serial_unit_id: number | null }>;
-      };
-      for (const u of json.units ?? []) {
-        if (u.unit_uid) {
-          unitBySerial.set(u.serial.trim().toUpperCase(), {
-            unitUid: u.unit_uid,
-            serialUnitId: u.serial_unit_id ?? null,
-          });
-        }
-      }
-    }
-  } catch {
-    // Degrade: fall back to the bare-serial encoding on resolve failure.
-  }
-  return unitBySerial;
+interface IssuedUnitLabel {
+  serialUnitId: number;
+  unitUid: string;
+  sku: string;
+  title: string;
+  serialNumber: string | null;
+  condition: string | null;
+  qrPayload: string;
+  isReprint: boolean;
+  clientEventId: string;
 }
 
 /** Print every label the lines own; toasts the count (or that no line has a SKU). */
 export async function printReceivingLineLabels(rows: readonly ReceivingLineRow[]): Promise<void> {
-  const allSerials = Array.from(new Set(rows.flatMap(lineSerials)));
-  const unitBySerial = await resolveUnits(allSerials);
+  await printReceivingLineLabelsByIds(rows.map((row) => row.id));
+}
 
-  let printed = 0;
+export interface ReceivingLineLabelPrintResult {
+  printed: number;
+  failedLines: number;
+  failedLineIds: number[];
+}
+
+/** The same canonical print path for read models that carry only line ids. */
+export async function printReceivingLineLabelsByIds(
+  lineIds: readonly number[],
+): Promise<ReceivingLineLabelPrintResult> {
+  const printableIds = [...new Set(lineIds.filter((id) => Number.isInteger(id) && id > 0))];
+  if (printableIds.length === 0) {
+    toast.error(lineIds.length === 1 ? 'Save this line before printing labels' : 'No saved lines to print');
+    return { printed: 0, failedLines: 0, failedLineIds: [] };
+  }
+
+  const batchId = safeRandomUUID().replaceAll('-', '_');
+  const issued: IssuedUnitLabel[] = [];
+  const failures: string[] = [];
+  const failedLineIds: number[] = [];
+  for (const lineId of printableIds) {
+    try {
+      const response = await fetch(`/api/receiving/lines/${lineId}/unit-labels`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ issuanceVersion: batchId }),
+      });
+      const json = (await response.json().catch(() => null)) as
+        | { success?: boolean; labels?: IssuedUnitLabel[]; error?: string }
+        | null;
+      if (!response.ok || !json?.success) {
+        failures.push(json?.error || `Could not issue labels for line ${lineId}`);
+        failedLineIds.push(lineId);
+        continue;
+      }
+      issued.push(...(json.labels ?? []));
+    } catch {
+      failures.push(`Could not issue labels for line ${lineId}`);
+      failedLineIds.push(lineId);
+    }
+  }
+
+  if (issued.length === 0) {
+    toast.error(failures[0] || 'No physical units are ready to label');
+    return { printed: 0, failedLines: failures.length, failedLineIds };
+  }
+
+  issued.forEach((label, index) => {
+    window.setTimeout(() => {
+      printProductLabel({
+        sku: label.sku,
+        title: label.title,
+        serialNumber: label.serialNumber ?? undefined,
+        qrPayload: label.qrPayload,
+        condition: label.condition,
+      });
+    }, index * 200);
+  });
+
   const jobs: Array<{
-    jobType: 'REPRINT';
-    serialUnitId: number | null;
+    jobType: 'UNIT' | 'REPRINT';
+    serialUnitId: number;
     unitUid: string;
     qrPayload: string;
     symbology: 'datamatrix';
     templateId: 'product';
-    isReprint: true;
+    isReprint: boolean;
     clientEventId: string;
-  }> = [];
-  const batchId = safeRandomUUID();
-  for (const r of rows) {
-    const sku = (r.sku || '').trim();
-    if (!sku) continue;
-    const serials = lineSerials(r);
-    if (serials.length > 0) {
-      const qrPayloads = serials.map((s) => unitBySerial.get(s.toUpperCase())?.unitUid ?? undefined);
-      printProductLabels({ sku, serialNumbers: serials, qrPayloads });
-      printed += serials.length;
-      for (const s of serials) {
-        const unit = unitBySerial.get(s.toUpperCase());
-        if (unit) {
-          jobs.push({
-            jobType: 'REPRINT',
-            serialUnitId: unit.serialUnitId,
-            unitUid: unit.unitUid,
-            qrPayload: unit.unitUid,
-            symbology: 'datamatrix',
-            templateId: 'product',
-            isReprint: true,
-            clientEventId: `bulk-reprint-${batchId}:${s.toUpperCase()}`,
-          });
-        }
-      }
-    } else {
-      printProductLabel({ sku });
-      printed += 1;
-    }
+  }> = issued.map((label) => ({
+    jobType: label.isReprint ? 'REPRINT' : 'UNIT',
+    serialUnitId: label.serialUnitId,
+    unitUid: label.unitUid,
+    qrPayload: label.qrPayload,
+    symbology: 'datamatrix',
+    templateId: 'product',
+    isReprint: label.isReprint,
+    clientEventId: label.clientEventId,
+  }));
+  toast.success(`Printing ${issued.length} item label${issued.length === 1 ? '' : 's'}`);
+  if (failures.length > 0) {
+    toast.error(`${failures.length} line${failures.length === 1 ? '' : 's'} could not print`);
   }
-  if (printed > 0) toast.success(`Printing ${printed} label${printed === 1 ? '' : 's'}`);
-  else toast.error(rows.length === 1 ? 'This line has no SKU to print' : 'No SKU on the selected line(s)');
 
-  // Record the reprints into the ledger (best-effort; the label already
-  // printed). Idempotent per (org, clientEventId) so a retry is a no-op.
-  if (jobs.length > 0) {
-    void fetch('/api/label-print-jobs', {
+  // The browser owns the physical print gesture. Record only after dispatch;
+  // retrying this request is safe because every unit carries its own key.
+  try {
+    const ledger = await fetch('/api/label-print-jobs', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ jobs }),
-    }).catch(() => {
-      /* ledger logging is best-effort; never block the print */
     });
+    if (!ledger.ok) toast.error('Labels printed, but their print record failed');
+  } catch {
+    toast.error('Labels printed, but their print record failed');
   }
+  return { printed: issued.length, failedLines: failures.length, failedLineIds };
 }

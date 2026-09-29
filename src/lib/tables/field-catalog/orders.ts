@@ -268,46 +268,12 @@ export const ORDERS_INDEX_LAYOUT: SlotLayout = {
  */
 export const ORDERS_INDEX_TABLE_LAYOUT_ID = 'orders-index';
 
-/**
- * HELD-order facts — why an order is caged and what releases it (the
- * Exceptions desk's row). Resolved by `resolveOrdersHoldValue` over the row's
- * `hold` projection (`exceptionRowToQueueRow`); not offered in any Fields
- * picker — only a view spec binds them.
- */
-export const ORDERS_HOLD_FIELD_CATALOG = [
-  {
-    id: 'orders.hold_reason',
-    family: 'orders',
-    label: 'Held for',
-    displayType: 'tag',
-    slotKinds: ['status'],
-    paths: { category: 'hold.category', owner: 'hold.owner' },
-  },
-  {
-    id: 'orders.hold_fix',
-    family: 'orders',
-    label: 'Missing',
-    displayType: 'text',
-    slotKinds: ['status'],
-    paths: { blockers: 'hold.blockers', action: 'hold.action' },
-  },
-  {
-    id: 'orders.hold_releases',
-    family: 'orders',
-    label: 'Releases',
-    displayType: 'number',
-    slotKinds: ['status'],
-    paths: { siblings: 'hold.siblingUnpairedCount' },
-  },
-] as const satisfies FieldCatalog;
-
-/** Every orders fact id a view spec may name — line, index and held facts. */
+/** Every orders fact id a view spec may name — line and index facts. */
 export type OrdersFactId =
   | (typeof ORDERS_FIELD_CATALOG)[number]['id']
-  | (typeof ORDERS_INDEX_ONLY_FIELDS)[number]['id']
-  | (typeof ORDERS_HOLD_FIELD_CATALOG)[number]['id'];
+  | (typeof ORDERS_INDEX_ONLY_FIELDS)[number]['id'];
 
 /** Runtime twin of {@link OrdersFactId} — the registry a spec's facts must resolve in. */
 export const ORDERS_FACT_IDS: ReadonlySet<string> = new Set(
-  [...ORDERS_FIELD_CATALOG, ...ORDERS_INDEX_ONLY_FIELDS, ...ORDERS_HOLD_FIELD_CATALOG].map((f) => f.id),
+  [...ORDERS_FIELD_CATALOG, ...ORDERS_INDEX_ONLY_FIELDS].map((f) => f.id),
 );

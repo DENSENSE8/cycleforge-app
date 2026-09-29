@@ -164,6 +164,7 @@ export async function getNavLocate(
       title: parts.find((part) => part?.title)?.title ?? null,
       detail: parts.find((part) => part?.detail)?.detail ?? null,
       recordHref: parts.find((part) => part?.recordHref)?.recordHref ?? null,
+      facet: parts.find((part) => part?.facet)?.facet ?? null,
     };
   });
   return { ok: true, body: { locator: 'everywhere', buckets, entries, truncated } };

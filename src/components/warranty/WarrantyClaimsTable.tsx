@@ -151,14 +151,6 @@ export function WarrantyClaimsTable() {
           emptyMessage="No warranty claims logged yet."
           searchEmptyMessage="No warranty claims match these filters."
           scrollRef={scrollRef}
-          // `search` rides the React Query key (dashboard-queries.ts:235) and goes out as `?search=`; `listClaims` matches the claim's SKU and its…
-          search={{
-            value: search,
-            onChange: setSearch,
-            placeholder: 'Search claims…',
-            answeredBy: 'server',
-            pending: isFetching,
-          }}
           renderGroup={(group, _stripe, { columns: visible }) => (
             <>{group.rows.map((claim) => renderLeaf(claim, visible))}</>
           )}

@@ -99,10 +99,7 @@ test('parsePhotoMoveSearch: empty', () => {
   });
 });
 
-test('resolvePhotoMoveTargetTitle: zoho → catalog → item_name → sku (SKU identity law)', () => {
-  // The Zoho item name governs over a marketplace catalog title. Pinned to the
-  // live defect: carton 52827 / PO 10-15153-01528 painted the Ecwid wall mount
-  // here while the PO desk painted the Zoho soundbar.
+test('resolvePhotoMoveTargetTitle: catalog → provider item → item_name → sku (SKU identity law)', () => {
   assert.equal(
     resolvePhotoMoveTargetTitle({
       catalog_product_title: '1x Original Bose UB-20 Wall Mount Part As Pictured UB-20B (BLACK)',
@@ -110,7 +107,7 @@ test('resolvePhotoMoveTargetTitle: zoho → catalog → item_name → sku (SKU i
       item_name: 'Bose Solo Soundbar 2 Home Theater, Certified Refurbished',
       sku: '00143',
     }),
-    'Bose Solo Soundbar Series II',
+    '1x Original Bose UB-20 Wall Mount Part As Pictured UB-20B (BLACK)',
   );
   assert.equal(
     resolvePhotoMoveTargetTitle({

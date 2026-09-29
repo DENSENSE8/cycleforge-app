@@ -29,7 +29,7 @@ describe('resolveNavCommandTarget', () => {
     const t = resolveNavCommandTarget(READY, origin('/test', 'view=testing'));
     assert.equal(t?.pathname, '/pick');
     const params = new URLSearchParams(t!.search);
-    assert.equal(params.get('ship'), 'urgent');
+    assert.equal(params.get('ship'), null);
     assert.equal(params.get('view'), null);
   });
 

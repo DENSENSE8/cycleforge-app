@@ -29,7 +29,7 @@ export function parsePaperworkOrderId(raw: string | null | undefined): number | 
  */
 
 /** The order has a shipping-label document: linked as ORDER, or a legacy `SHIPPING_LABEL` document row. */
-const PRINT_PACKET_LABEL_EXISTS_SQL = `(
+export const PRINT_PACKET_LABEL_EXISTS_SQL = `(
   EXISTS (
     SELECT 1
       FROM document_entity_links l
@@ -51,7 +51,7 @@ const PRINT_PACKET_LABEL_EXISTS_SQL = `(
 )`;
 
 /** G2 paperwork: a non-label document linked to the order or to its catalog SKU. */
-const PRINT_PACKET_G2_DOCUMENT_EXISTS_SQL = `EXISTS (
+export const PRINT_PACKET_G2_DOCUMENT_EXISTS_SQL = `EXISTS (
   SELECT 1
     FROM document_entity_links l
     JOIN documents d

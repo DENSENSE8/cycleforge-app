@@ -5,7 +5,6 @@
 import { queryOptions } from '@tanstack/react-query';
 import type { CagedOrderRecord } from '@/lib/orders/caged-orders';
 import type { ShippedOrder } from '@/types/orders';
-import type { OrderExceptionRow } from '@/lib/orders/order-exception-types';
 
 export const CAGED_ORDERS_QUERY_ROOT = 'caged-orders';
 
@@ -94,51 +93,5 @@ export function cagedRecordToQueueRow(record: CagedOrderRecord): ShippedOrder {
     has_pick_scan: false,
     is_out_of_stock: false,
     is_urgent: false,
-  } as unknown as ShippedOrder;
-}
-
-/** Order-exception row → the queue grid's row shape. */
-export function exceptionRowToQueueRow(row: OrderExceptionRow): ShippedOrder {
-  const responsibility = [
-    `${row.routing.category} · ${row.routing.owner}`,
-    row.responsiblePerson ? `Responsible: ${row.responsiblePerson}` : null,
-    `Action: ${row.routing.actionRequired}`,
-    row.internalNote ? `Internal: ${row.internalNote}` : null,
-  ]
-    .filter(Boolean)
-    .join(' · ');
-  return {
-    id: row.id,
-    order_id: row.orderNumber ?? '',
-    product_title: row.productTitle ?? '',
-    quantity: row.quantity ?? null,
-    item_number: row.itemNumber ?? null,
-    condition: row.condition ?? '',
-    sku: row.sku ?? '',
-    serial_number: '',
-    shipping_tracking_number: row.trackingNumber,
-    tracking_number: row.trackingNumber,
-    shipment_id: null,
-    deadline_at: null,
-    ship_by_date: null,
-    tested_by: null,
-    test_date_time: null,
-    packer_id: null,
-    packed_by: null,
-    packed_at: null,
-    account_source: row.accountSource ?? null,
-    notes: responsibility,
-    buyer_note: row.buyerNote,
-    created_at: null,
-    has_pick_scan: false,
-    is_out_of_stock: row.routing.category === 'Out of Stock',
-    is_urgent: false,
-    hold: {
-      category: row.routing.category,
-      owner: row.routing.owner,
-      action: row.routing.actionRequired,
-      blockers: row.blockers,
-      siblingUnpairedCount: row.siblingUnpairedCount,
-    },
   } as unknown as ShippedOrder;
 }

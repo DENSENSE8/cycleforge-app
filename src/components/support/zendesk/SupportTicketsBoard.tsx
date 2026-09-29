@@ -15,7 +15,6 @@ import { Link2, RefreshCw } from '@/components/Icons';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button, EmptyState } from '@/design-system/primitives';
 import { SkeletonList } from '@/design-system/components/Skeletons';
-import { SearchField } from '@/design-system/primitives/SearchField';
 import {
   DEFAULT_TICKET_STATUS,
   parseTicketStatus,
@@ -97,21 +96,6 @@ function useSupportTicketsUrl() {
     [replaceParams, status, paintTicket],
   );
 
-  const setSearch = useCallback(
-    (nextValue: string) => {
-      const trimmed = nextValue.trim();
-      if (trimmed === searchQuery) return;
-      paintTicket(null);
-      startTransition(() => {
-        replaceParams((params) => {
-          if (trimmed) params.set('tq', trimmed);
-          else params.delete('tq');
-          params.delete('ticket');
-        });
-      });
-    },
-    [replaceParams, searchQuery, paintTicket],
-  );
 
   const openTicket = useCallback(
     (t: { id: number; subject: string | null; status: string; priority: string | null }) => {
@@ -120,7 +104,7 @@ function useSupportTicketsUrl() {
     [setTicket],
   );
 
-  return { status, setStatus, searchQuery, setSearch, openTicket, setTicket };
+  return { status, setStatus, searchQuery, openTicket, setTicket };
 }
 
 export function SupportTicketsBoard() {
@@ -131,8 +115,7 @@ export function SupportTicketsBoard() {
   const { has, isLoaded } = useAuth();
   const canCreateTicket = !isLoaded || has('integrations.zendesk');
   const claim = useSupportTicketClaimHost();
-  const { status, setStatus, searchQuery, setSearch, openTicket, setTicket } =
-    useSupportTicketsUrl();
+  const { status, setStatus, searchQuery, openTicket, setTicket } = useSupportTicketsUrl();
   const { push } = useRecentTickets();
 
   const [sort, setSort] = useState<SortKey>('recent');
@@ -223,14 +206,6 @@ export function SupportTicketsBoard() {
           activeTab={status}
           onTabChange={(id) => setStatus(parseTicketStatus(id))}
           className="shrink-0 border-0 bg-transparent"
-        />
-        <SearchField
-          value={searchQuery}
-          onChange={setSearch}
-          placeholder="Search tickets…"
-          className="min-w-[12rem] flex-1"
-          tone="neutral"
-          hideUnderline
         />
         <ZendeskSelect
           value={sort}

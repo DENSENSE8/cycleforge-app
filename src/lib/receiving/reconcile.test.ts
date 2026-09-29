@@ -4,10 +4,14 @@ import type { CheckZohoReceivedRow } from '@/lib/receiving/check-zoho-received';
 import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
 import {
   filterRowsByRecon,
+  parseReconReasonParam,
   parseRefList,
   reconCounts,
   reconOfCheckRow,
+  reconReasonCounts,
   reconcileCheck,
+  RECON_REASON_STATUS,
+  type ReconReason,
   type ReconStatus,
 } from './reconcile';
 
@@ -52,7 +56,13 @@ test('a number nothing identifies is owed with an unlinked badge; one the carrie
   const nothing = reconOfCheckRow(checkRow({ reason: 'no_match', verdict: 'unknown', local: local({ known: false }) }));
   assert.deepEqual([nothing.status, nothing.exception], ['not_received', { reason: 'No match anywhere', inView: false }]);
   const delivered = reconOfCheckRow(checkRow({ reason: 'no_match', verdict: 'unknown', local: local({ delivered: true }) }));
-  assert.deepEqual(delivered, { status: 'not_received', detail: 'Delivered · not scanned', exception: null });
+  assert.deepEqual(delivered, {
+    status: 'not_received',
+    reasonCode: 'delivered_not_scanned',
+    detail: 'Delivered · not scanned',
+    pending: false,
+    exception: null,
+  });
   assert.deepEqual(reconOfCheckRow(checkRow({ reason: 'error', verdict: 'unknown' })).exception, { reason: 'Lookup failed', inView: false });
 });
 
@@ -146,4 +156,67 @@ test('an owed number whose lines sit in an exception state links to the Exceptio
     // Received outranks a stale carrier state: a scanned box is nobody's exception.
     null,
   ]);
+});
+
+test('every Check answer carries the reason its status came from', () => {
+  const cases: [string, Partial<CheckZohoReceivedRow>, ReconReason][] = [
+    ['unboxed', { local: local({ unboxed: true }) }, 'unboxed'],
+    ['dock scan', { local: local({ scanned: true }) }, 'scanned'],
+    ['carrier delivered', { local: local({ delivered: true }) }, 'delivered_not_scanned'],
+    ['carrier knows it', {}, 'in_transit'],
+    ['only Zoho knows it', { local: local({ known: false }) }, 'open_po'],
+    ['Zoho received, never scanned', { verdict: 'erp_ahead', status: 'received' }, 'erp_ahead'],
+    ['nothing knows it', { reason: 'no_match', verdict: 'unknown', local: local({ known: false }) }, 'no_match'],
+    ['several POs', { reason: 'ambiguous', verdict: 'unknown' }, 'ambiguous'],
+    ['lookup threw', { reason: 'error', verdict: 'unknown' }, 'lookup_failed'],
+  ];
+  for (const [name, patch, reason] of cases) {
+    const recon = reconOfCheckRow(checkRow(patch));
+    assert.deepEqual([recon.reasonCode, recon.status, recon.pending], [reason, RECON_REASON_STATUS[reason], false], name);
+  }
+});
+
+test('a number live Zoho was never asked about is decided by our own tables', () => {
+  const selection = parseRefList('CAP-LINE\nCAP-SHIP\nCAP-NONE\nUNASKED');
+  const cap = (tracking: string, known: boolean) =>
+    checkRow({ tracking, reason: 'zoho_cap', verdict: 'unknown', po_number: null, status: null, local: local({ known }) });
+  const unboxed = { id: 9, tracking_number: 'CAP-LINE', zoho_purchaseorder_number: null, unboxed_at: '2026-09-20T10:00:00Z' } as ReceivingLineRow;
+  const entries = reconcileCheck(selection, [cap('CAP-LINE', false), cap('CAP-SHIP', true), cap('CAP-NONE', false)], [unboxed]);
+  assert.deepEqual(entries.map((e) => [e.pending, e.status, e.reasonCode]), [
+    [false, 'received', 'unboxed'],
+    [false, 'not_received', 'in_transit'],
+    [false, 'not_received', 'no_match'],
+    // Only a number the Check has not answered at all is pending.
+    [true, 'not_received', null],
+  ]);
+  assert.deepEqual(reconCounts(entries), { received: 1, not_received: 2 });
+  const unanswered = { id: 10, tracking_number: 'UNASKED', zoho_purchaseorder_number: null } as ReceivingLineRow;
+  assert.deepEqual(filterRowsByRecon([unanswered], entries, 'not_received'), []);
+});
+
+test('a reason narrows its status; the counts per reason sum to the status', () => {
+  const selection = parseRefList('A-1\nB-2\nC-3\nD-4');
+  const entries = reconcileCheck(selection, [
+    checkRow({ tracking: 'A-1', po_number: 'A-1', local: local({ delivered: true }) }),
+    checkRow({ tracking: 'B-2', po_number: 'B-2', local: local({ delivered: true }) }),
+    checkRow({ tracking: 'C-3', po_number: 'C-3' }),
+    checkRow({ tracking: 'D-4', po_number: 'D-4', local: local({ scanned: true }) }),
+  ]);
+  assert.deepEqual(reconReasonCounts(entries, 'not_received'), [
+    { reason: 'delivered_not_scanned', count: 2 },
+    { reason: 'in_transit', count: 1 },
+  ]);
+  assert.deepEqual(reconReasonCounts(entries, 'received'), [{ reason: 'scanned', count: 1 }]);
+  const rows = ['A-1', 'B-2', 'C-3', 'D-4'].map(
+    (po, i) => ({ id: i + 1, zoho_purchaseorder_number: po, tracking_number: null }) as ReceivingLineRow,
+  );
+  assert.deepEqual(filterRowsByRecon(rows, entries, 'not_received', 'delivered_not_scanned').map((r) => r.id), [1, 2]);
+  assert.deepEqual(filterRowsByRecon(rows, entries, 'not_received').map((r) => r.id), [1, 2, 3]);
+});
+
+test('a reason param only applies inside its own status', () => {
+  assert.equal(parseReconReasonParam('in_transit', 'not_received'), 'in_transit');
+  assert.equal(parseReconReasonParam('in_transit', 'received'), null);
+  assert.equal(parseReconReasonParam('in_transit', null), null);
+  assert.equal(parseReconReasonParam('bogus', 'not_received'), null);
 });

@@ -7,9 +7,12 @@
  * the pair's ONE status sits in the record header (`StockRecordStatus`).
  */
 
+import { useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { format } from 'date-fns';
 import { Package } from '@/components/Icons';
+import { PhotoViewerPortal } from '@/components/shipped/photo-gallery/PhotoViewerPortal';
+import { usePhotoGallery } from '@/components/shipped/photo-gallery/usePhotoGallery';
 import { CopyChip } from '@/components/ui/CopyChip';
 import { DeskRecordLayout } from '@/design-system/components/DeskRecordPlane';
 import { Button } from '@/design-system/primitives';
@@ -21,6 +24,7 @@ import { RecordGroup } from '@/design-system/components/record-ledger/RecordGrou
 import type { RecordLedgerSummary } from '@/design-system/components/record-ledger/RecordLedgerSummary';
 import { RECORD_FACT_KEY_CLASS, RECORD_ID_CLASS, RECORD_LABEL_CLASS } from '@/design-system/tokens/industrial-record';
 import { STOCK_LIFECYCLE } from '@/design-system/tokens/stock-lifecycle';
+import { focusRing } from '@/design-system/tokens/focus-ring';
 import { useAuth } from '@/contexts/AuthContext';
 import { commitStockRequest, stockAdjustRequest } from '@/lib/inventory/stock-bin-verb-writes';
 import { skuExceptionHref } from '@/lib/inventory/sku-exception-links';
@@ -53,9 +57,7 @@ export function StockRecordStatus({ record }: { record: LocationStockTableRow })
   const next = stockRecordNext(record);
   return (
     <span className="flex min-w-0 items-center gap-2" data-testid="stock-record-status">
-      <LifecycleCode state={state} srLabel={null}>
-        {state.code} · {state.label}
-      </LifecycleCode>
+      <LifecycleCode state={state} />
       {next ? (
         <span className={cn(RECORD_LABEL_CLASS, 'hidden truncate text-mode-muted @md/record-head:inline')} data-testid="stock-record-next">
           {next}
@@ -64,6 +66,37 @@ export function StockRecordStatus({ record }: { record: LocationStockTableRow })
     </span>
   );
 }
+function StockRecordPhoto({ src, title }: { src: string | null; title: string }) {
+  const photos = useMemo(() => (src ? [{ url: src, thumbUrl: src }] : []), [src]);
+  const gallery = usePhotoGallery({ photos });
+
+  if (!src) {
+    return (
+      <span className="relative h-14 w-14 shrink-0 overflow-hidden rounded-mode-control border border-mode-frame bg-mode-well">
+        <RecordPhoto src={null} fallback={title} />
+      </span>
+    );
+  }
+
+  return (
+    <>
+      <button
+        type="button"
+        aria-label={`View photo for ${title}`}
+        onClick={() => gallery.openViewer(0)}
+        className={cn(
+          'ds-raw-button relative h-14 w-14 shrink-0 cursor-zoom-in overflow-hidden rounded-mode-control border border-mode-frame bg-mode-well',
+          focusRing('control'),
+        )}
+        data-testid="stock-record-photo"
+      >
+        <RecordPhoto src={src} fallback={title} />
+      </button>
+      <PhotoViewerPortal g={gallery} />
+    </>
+  );
+}
+
 
 export function StockEvidence({
   record,
@@ -96,7 +129,7 @@ function StockRecordEvidence({ record, onCounted }: { record: LocationStockTable
   const placeholder = stockRecordState(record) === 'onHold';
 
   const main = (
-    <div className="flex min-w-0 flex-col gap-4 industrial:gap-0">
+    <div className="flex min-w-0 flex-col gap-4">
       {/* A TMP- SKU the loader did not flag: it still cannot be sold by name — say so once, with its way out. */}
       {placeholder ? (
         <EvidenceNotice tone="warn">
@@ -127,10 +160,8 @@ function StockRecordEvidence({ record, onCounted }: { record: LocationStockTable
           </Button>
         }
       >
-        <article aria-label={title} className="flex gap-3 px-4 pb-3">
-          <span className="relative h-28 w-28 shrink-0 overflow-hidden rounded-mode-control border border-mode-frame bg-mode-well">
-            <RecordPhoto src={record.image_url} fallback={title} />
-          </span>
+        <article aria-label={title} className="flex items-start gap-3 px-4 pb-3">
+          <StockRecordPhoto src={record.image_url} title={title} />
           <div className="flex min-w-0 flex-1 flex-col gap-1">
             <p className="line-clamp-2 min-w-0 text-role-body font-bold" title={title}>
               {title}
@@ -182,7 +213,7 @@ function StockRecordEvidence({ record, onCounted }: { record: LocationStockTable
   );
 
   const aside = (
-    <div className="flex min-w-0 flex-col gap-4 industrial:gap-0">
+    <div className="flex min-w-0 flex-col gap-4">
       <RecordGroup title="Location" testId="stock-record-location">
         <div className={FACTS_BODY_CLASS}>
           <EvidenceFactRow label="Bin">
@@ -199,7 +230,7 @@ function StockRecordEvidence({ record, onCounted }: { record: LocationStockTable
   );
 
   return (
-    <div className="flex-1 bg-mode-canvas p-4 text-mode-ink industrial:p-0" data-testid="stock-evidence">
+    <div className="flex-1 bg-mode-canvas p-4 text-mode-ink" data-testid="stock-evidence">
       <DeskRecordLayout main={main} aside={aside} />
     </div>
   );

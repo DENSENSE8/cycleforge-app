@@ -6,7 +6,7 @@ import type { PriorPhoto } from '@/components/mobile/station/MobilePackerSpamCam
 import type { PhotoScope } from '@/components/mobile/receiving/PhotoUploadQueue';
 import { normalizePhotoDisplayUrl } from '@/lib/nas-photo-url';
 import { deleteNasPhoto, isNasPhotoUrl } from '@/lib/nas-photos';
-import { invalidateReceivingFeeds } from '@/lib/queries/receiving-queries';
+import { invalidateReceivingFeeds, RECEIVING_PHOTOS_STALE_MS } from '@/lib/queries/receiving-queries';
 
 interface ReceivingPhotoRow {
   id: number;
@@ -94,8 +94,7 @@ export function useScopedReceivingPhotos(
     queryKey,
     queryFn: () => fetchReceivingPhotos(scope),
     enabled,
-    staleTime: 10_000,
-    refetchOnWindowFocus: true,
+    staleTime: RECEIVING_PHOTOS_STALE_MS,
   });
 
   const photos = useMemo(

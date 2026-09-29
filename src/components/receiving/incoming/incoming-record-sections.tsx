@@ -7,9 +7,11 @@ import { ExternalLink } from '@/components/Icons';
 import { EvidenceFactRow } from '@/design-system/components/record-ledger/EvidenceDisclosure';
 import { RecordPhoto, recordInitials } from '@/design-system/components/record-ledger/IndustrialRecord';
 import { RecordGroup } from '@/design-system/components/record-ledger/RecordGroup';
+import { RecordFlowFacts, RecordFlowSection, recordFlowLabels } from '@/design-system/components/RecordFlowFacts';
 import { RECORD_FACT_KEY_CLASS, RECORD_ID_CLASS, RECORD_PRICE_CLASS } from '@/design-system/tokens/industrial-record';
 import { focusRing } from '@/design-system/tokens/focus-ring';
 import { TrackingIdentity } from '@/components/ui/OrderIdentityChips';
+import { SerialChip } from '@/components/ui/CopyChip';
 import { CartonStampFact, TicketLink } from '@/components/receiving/history/carton-record-sections';
 import { EbayTab } from '@/components/sidebar/receiving/incoming-details/EbayTab';
 import { NotesTab } from '@/components/sidebar/receiving/incoming-details/NotesTab';
@@ -155,8 +157,8 @@ export function IncomingItem({
             <EvidenceFactRow label="Serials" wide={serials.length > 1}>
               <ul className="flex flex-wrap gap-x-3 gap-y-0.5 py-1">
                 {serials.map((serial) => (
-                  <li key={serial} className={cn(RECORD_ID_CLASS, 'select-all break-all')}>
-                    {serial}
+                  <li key={serial} className="min-w-0">
+                    <SerialChip value={serial} dense width="w-auto max-w-full" />
                   </li>
                 ))}
               </ul>
@@ -198,6 +200,7 @@ export function IncomingItem({
 
 /** The right column — facts and the note. Verbs live on the ledger's action strip. */
 export function IncomingRecordAside({ row, data }: { row: ReceivingLineRow; data: DetailsResponse }) {
+  const flowLabels = recordFlowLabels('inbound');
   const po = data.po?.zoho_purchaseorder_number || row.zoho_purchaseorder_number || null;
   const orderRef = data.inbound?.order_number || row.source_order_id || null;
   const listing = data.inbound?.listing_url || row.listing_url || row.receiving_listing_url || null;
@@ -208,68 +211,80 @@ export function IncomingRecordAside({ row, data }: { row: ReceivingLineRow; data
 
   return (
     <>
-      <RecordGroup title="Purchase" testId="incoming-record-purchase">
-      <div className="flex flex-col px-4 pb-1 [&>*:last-child]:border-b-0">
-        <EvidenceFactRow label="Source">
-          <span className={RECORD_ID_CLASS}>{inboundSourceLabel(data.inbound?.source_type || row.inbound_source_type || row.source_platform || 'zoho')}</span>
-        </EvidenceFactRow>
-        {po ? (
-          <EvidenceFactRow label="PO">
-            <span className={cn(RECORD_ID_CLASS, 'select-all')}>{po}</span>
-          </EvidenceFactRow>
-        ) : null}
-        {orderRef ? (
-          <EvidenceFactRow label="Order #">
-            <span className={cn(RECORD_ID_CLASS, 'select-all')}>{orderRef}</span>
-          </EvidenceFactRow>
-        ) : null}
-        <EvidenceFactRow label="Vendor">
-          {data.po?.vendor_name || data.inbound?.seller_name || row.vendor_name || <Muted>Unknown</Muted>}
-        </EvidenceFactRow>
-        {data.inbound?.account_label || row.platform_account_label ? (
-          <EvidenceFactRow label="Account">{data.inbound?.account_label || row.platform_account_label}</EvidenceFactRow>
-        ) : null}
-        {data.po?.status || data.inbound?.status ? (
-          <EvidenceFactRow label="Status">{sentenceCaseLabel(data.po?.status || data.inbound?.status || '')}</EvidenceFactRow>
-        ) : null}
-        {data.po?.reference_number ? (
-          <EvidenceFactRow label="Reference">
-            <span className={RECORD_ID_CLASS}>{data.po.reference_number}</span>
-          </EvidenceFactRow>
-        ) : null}
-        {data.po?.expected_delivery_date || row.expected_delivery_date ? (
-          <EvidenceFactRow label="Expected">
-            <span className={RECORD_ID_CLASS}>{fmtDate(data.po?.expected_delivery_date || row.expected_delivery_date)}</span>
-          </EvidenceFactRow>
-        ) : null}
-        {data.po?.total ? (
-          <EvidenceFactRow label="Total">
-            <span className={RECORD_PRICE_CLASS}>{fmtMoney(data.po.total, data.po.currency)}</span>
-          </EvidenceFactRow>
-        ) : null}
-        {listing ? (
-          <EvidenceFactRow label="Listing">
-            <a
-              href={listing}
-              target="_blank"
-              rel="noopener noreferrer"
-              className={cn('inline-flex items-center gap-1 underline decoration-mode-edge underline-offset-2', focusRing('control'))}
-            >
-              Open listing <ExternalLink aria-hidden className="h-3 w-3" />
-            </a>
-          </EvidenceFactRow>
-        ) : null}
-        {data.inbound?.links.length
-          ? data.inbound.links.map((link) => (
-              <EvidenceFactRow key={`${link.source_type}:${link.source_order_id}`} label={link.is_primary ? 'Primary' : 'Linked'}>
-                <span className={RECORD_ID_CLASS}>
-                  {inboundSourceLabel(link.source_type)} · {link.source_order_id}
-                </span>
+      <RecordFlowFacts
+        direction="inbound"
+        testId="incoming-record-purchase"
+        party={(
+          <RecordFlowSection title={flowLabels.party} testId="incoming-record-vendor">
+            <div className="flex flex-col px-4 pb-1 [&>*:last-child]:border-b-0">
+              <EvidenceFactRow label="Name">
+                {data.po?.vendor_name || data.inbound?.seller_name || row.vendor_name || <Muted>Unknown</Muted>}
               </EvidenceFactRow>
-            ))
-          : null}
-      </div>
-      </RecordGroup>
+              {data.inbound?.account_label || row.platform_account_label ? (
+                <EvidenceFactRow label="Account">{data.inbound?.account_label || row.platform_account_label}</EvidenceFactRow>
+              ) : null}
+            </div>
+          </RecordFlowSection>
+        )}
+        movement={(
+          <RecordFlowSection title={flowLabels.movement} testId="incoming-record-purchased-from">
+            <div className="flex flex-col px-4 pb-1 [&>*:last-child]:border-b-0">
+              <EvidenceFactRow label="Source">
+                <span className={RECORD_ID_CLASS}>{inboundSourceLabel(data.inbound?.source_type || row.inbound_source_type || row.source_platform || 'zoho')}</span>
+              </EvidenceFactRow>
+              {po ? (
+                <EvidenceFactRow label="PO">
+                  <span className={cn(RECORD_ID_CLASS, 'select-all')}>{po}</span>
+                </EvidenceFactRow>
+              ) : null}
+              {orderRef ? (
+                <EvidenceFactRow label="Order #">
+                  <span className={cn(RECORD_ID_CLASS, 'select-all')}>{orderRef}</span>
+                </EvidenceFactRow>
+              ) : null}
+              {data.po?.status || data.inbound?.status ? (
+                <EvidenceFactRow label="Status">{sentenceCaseLabel(data.po?.status || data.inbound?.status || '')}</EvidenceFactRow>
+              ) : null}
+              {data.po?.reference_number ? (
+                <EvidenceFactRow label="Reference">
+                  <span className={RECORD_ID_CLASS}>{data.po.reference_number}</span>
+                </EvidenceFactRow>
+              ) : null}
+              {data.po?.expected_delivery_date || row.expected_delivery_date ? (
+                <EvidenceFactRow label="Expected">
+                  <span className={RECORD_ID_CLASS}>{fmtDate(data.po?.expected_delivery_date || row.expected_delivery_date)}</span>
+                </EvidenceFactRow>
+              ) : null}
+              {data.po?.total ? (
+                <EvidenceFactRow label="Total">
+                  <span className={RECORD_PRICE_CLASS}>{fmtMoney(data.po.total, data.po.currency)}</span>
+                </EvidenceFactRow>
+              ) : null}
+              {listing ? (
+                <EvidenceFactRow label="Listing">
+                  <a
+                    href={listing}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className={cn('inline-flex items-center gap-1 underline decoration-mode-edge underline-offset-2', focusRing('control'))}
+                  >
+                    Open listing <ExternalLink aria-hidden className="h-3 w-3" />
+                  </a>
+                </EvidenceFactRow>
+              ) : null}
+              {data.inbound?.links.length
+                ? data.inbound.links.map((link) => (
+                    <EvidenceFactRow key={`${link.source_type}:${link.source_order_id}`} label={link.is_primary ? 'Primary' : 'Linked'}>
+                      <span className={RECORD_ID_CLASS}>
+                        {inboundSourceLabel(link.source_type)} · {link.source_order_id}
+                      </span>
+                    </EvidenceFactRow>
+                  ))
+                : null}
+            </div>
+          </RecordFlowSection>
+        )}
+      />
 
       {data.inbound ? (
         <RecordGroup title="Marketplace">

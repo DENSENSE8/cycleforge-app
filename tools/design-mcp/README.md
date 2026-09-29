@@ -18,11 +18,14 @@ runs the same handlers:
 
 `node tools/design-mcp/ds.mjs contract|tokens|critique …`
 
-design-mcp is an opt-in lookup, not a write gate. The session-stamp receipt and
-every hook that enforced it were removed 2026-09-22 along with the `.cursor`
-tree.
+`ds_contract` remains available as an explicit lookup. In addition, the shared
+agent-contract door reads this repo's `contractPreflight` profile: the first
+write in a session to a declared navigation/page surface queries the live MCP,
+returns the matched patterns, and pauses the write. The retry carries a
+six-hour, file-scoped receipt. This makes the existing pattern available before
+implementation without turning design prose into a source-text heuristic.
 
-## Just-in-time nudge (not a gate)
+## Just-in-time nudge for visitors without pre-write hooks
 
 `new-component-nudge.mjs` runs as a Claude `PostToolUse` hook
 (`.claude/settings.json`, matcher `Write`). When a write CREATES a `.tsx` under

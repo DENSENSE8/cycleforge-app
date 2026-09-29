@@ -3,19 +3,29 @@
 import { ExternalLink } from '@/components/Icons';
 import { BrandIdentityDot } from '@/components/ui/grid-cells';
 import { platformMetaBrandDot } from '@/lib/source-platform';
-import type { PlatformDisplay } from '@/lib/platform-display';
+import { platformDisplayName, type PlatformDisplay } from '@/lib/platform-display';
 import { RECORD_ID_CLASS, RECORD_LABEL_CLASS } from '../../tokens/industrial-record';
 import { focusRing } from '../../tokens/focus-ring';
 import { RECORD_HIT_CLASS } from './record-ledger-geometry';
 import { cn } from '@/utils/_cn';
 
-/** The To-ship channel face, shared with receiving: catalog dot + compact account label. */
-export function RecordPlatformFace({ channel }: { channel: PlatformDisplay }) {
+/** The channel face: compact for receiving, or full platform + account on an order table. */
+export function RecordPlatformFace({
+  channel,
+  face = 'compact',
+}: {
+  channel: PlatformDisplay;
+  face?: 'compact' | 'account';
+}) {
+  const label = face === 'account' ? platformDisplayName(channel) : channel.shortLabel;
   return (
-    <span className="inline-flex w-24 shrink-0 items-center gap-1.5" data-testid="record-platform">
+    <span
+      className={cn('inline-flex shrink-0 items-center gap-1.5', face === 'account' ? 'w-32' : 'w-24')}
+      data-testid="record-platform"
+    >
       <BrandIdentityDot {...platformMetaBrandDot(channel.meta)} />
-      <span className={cn(RECORD_LABEL_CLASS, 'truncate text-mode-muted')} title={channel.connectionName ?? channel.label}>
-        {channel.shortLabel || '—'}
+      <span className={cn(RECORD_LABEL_CLASS, 'truncate text-mode-muted')} title={platformDisplayName(channel)}>
+        {label || '—'}
       </span>
     </span>
   );

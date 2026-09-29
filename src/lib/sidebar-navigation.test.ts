@@ -18,7 +18,6 @@ import {
   resolveSidebarChild,
   stationSubgroupMembers,
   floorStationPages,
-  hasDeskPageChrome,
   getMasterNavItem,
   masterNavLabelForPath,
   masterNavItemForHref,
@@ -30,6 +29,7 @@ import {
   spineSectionIdForPage,
 } from '@/lib/sidebar-navigation';
 import { routeParamsFor } from '@/lib/routing/registry';
+import { NAV_PAGE_DECLS } from '@/lib/nav/context/pages';
 
 test('incoming has only On the way and Unboxed, including retired mailbox deep links', () => {
   const page = getSidebarPageNav('incoming');
@@ -56,17 +56,20 @@ test('getSidebarNavItems applies the MOBILE-FIRST GATE, and nothing else, by def
   }
 });
 
-test('Chat leads the tops, Automations right under it; Reports joined them; Plans after Media', () => {
+test('Chat leads the tops, followed by Daily, Automations, Exceptions and Print station; Reports remains palette-top', () => {
   const items = getSidebarNavItems();
   const topIds = items.filter((item) => item.kind === 'top').map((item) => item.id);
   // `reports` joined on 2026-09-15 (operator:
   // (`/?mode=tasks`), not a sibling destination (operator 2026-09-22 —
-  // Chat moved to the top of the page map on 2026-09-27, and Automations
-  // (`studio`) moved from the last lane to right under it the same day.
+  // Chat moved to the top of the page map on 2026-09-27. Daily now follows it
+  // before Automations so the map opens with conversation → today → workflows.
   assert.deepEqual(topIds, [
     'ai-chat',
-    'studio',
     'home',
+    'studio',
+    'exceptions',
+    // Print station (owner 2026-09-29): the parent-level page for printing to any computer in the org.
+    'print-station',
     'search',
     'ops-photos',
     'plans-live',
@@ -145,6 +148,14 @@ test('Chat leads the tops, Automations right under it; Reports joined them; Plan
     'inventory',
     'sourcing must not nest under Inventory (2026-08-03)',
   );
+  const pickup = items.find((item) => item.id === 'pickup');
+  assert.ok(pickup, 'Local Pickup should ship on prod nav');
+  assert.equal(pickup.kind, 'domain');
+  assert.equal(
+    pickup.kind === 'domain' ? pickup.domainGroup : null,
+    'inbound',
+    'Local Pickup is an Inbound lane mode, not a Scan Station',
+  );
 });
 
 test('plans-live pin requires operations.plans.view', () => {
@@ -165,22 +176,44 @@ test('plans-live pin requires operations.plans.view', () => {
   );
 });
 
-test('Chat leads the spine map, Automations under it; Search, Plans, and Settings stay off it', () => {
+test('Exceptions shows to whoever can see ANY exception source, with only the kinds they can see', () => {
+  const ids = (permissions: string[]) =>
+    getSidebarNavItems({ permissions: new Set(permissions) }).map((item) => item.id);
+  // No source permission at all: no door (every child — every domain included — is filtered).
+  assert.equal(ids(['photos.view']).includes('exceptions'), false);
+  // One source is enough: receiving alone opens the hub.
+  assert.equal(ids(['receiving.view']).includes('exceptions'), true);
+
+  const page = getSidebarPageNav('exceptions');
+  assert.ok(page, 'exceptions must be a registered page');
+  const receivingOnly = filterPageChildren(page, new Set(['receiving.view']));
+  assert.deepEqual(
+    receivingOnly.children?.map((child) => child.id),
+    ['inventory', 'receiving', 'tracking', 'claim', 'short', 'unfound'],
+    'a domain survives on ANY of its kinds (requiresAny: Tracking keeps Inventory); each kind on its own',
+  );
+  assert.deepEqual(filterPageChildren(page, new Set(['photos.view'])).children, []);
+});
+
+test('the fixed spine band is Chat, Daily, Automations, Exceptions, Print station, Media; Reports follows the lanes', () => {
   const items = getSidebarNavItems();
   const mapTopIds = items.filter(isSpineMapTopRow).map((item) => item.id);
   // The structural rows above the reorderable lane band:
-  assert.deepEqual(mapTopIds, ['ai-chat', 'studio', 'home', 'ops-photos', 'reports']);
+  assert.deepEqual(mapTopIds, ['ai-chat', 'home', 'studio', 'exceptions', 'print-station', 'ops-photos']);
 
   const search = items.find((item) => item.id === 'search');
   const plans = items.find((item) => item.id === 'plans-live');
   const chat = items.find((item) => item.id === 'ai-chat');
   const settings = items.find((item) => item.id === 'settings');
-  assert.ok(search && plans && chat && settings);
+  const reports = items.find((item) => item.id === 'reports');
+  assert.ok(search && plans && chat && settings && reports);
   assert.equal(search.kind, 'top');
   assert.equal(isSpineMapTopRow(search), false);
   assert.equal(isSpineMapTopRow(plans), false);
   assert.equal(settings.kind, 'top');
   assert.equal(isSpineMapTopRow(settings), false);
+  assert.equal(reports.spineOrderable, true);
+  assert.equal(isSpineMapTopRow(reports), false);
 
   // Chat is the ONE assistant door: a painted L1 row gated on the chat API's own permission.
   assert.equal(chat.kind, 'top');
@@ -387,7 +420,8 @@ test('every dashboard-board mode clears Search-scoped openOrderId/map/q', () => 
   assert.equal(checked, 3, `expected 3 dashboard-board modes, found ${checked}`);
 });
 
-// A page's bare href must resolve to one of its declared modes (its default).
+// A page's bare href must resolve to one of its declared modes (its default) —
+// unless the page declares its own modes (`NAV_PAGE_DECLS[page].modes`: Exceptions), whose page lands every URL on a view.
 test("a page's bare href resolves to a declared mode (its default)", () => {
   for (const page of SIDEBAR_PAGE_NAV) {
     const resolved = resolveSidebarChild(page.id, {
@@ -396,6 +430,10 @@ test("a page's bare href resolves to a declared mode (its default)", () => {
     });
     if (!page.children || page.children.length === 0) {
       assert.equal(resolved, null, `${page.id} is modeless but resolved "${resolved}"`);
+      continue;
+    }
+    if (NAV_PAGE_DECLS[page.id]?.modes) {
+      assert.equal(resolved, null, `${page.id}: its bare href names no child; the page redirects it`);
       continue;
     }
     const ids = page.children.map((m) => m.id);
@@ -468,16 +506,16 @@ test('resolveSidebarChild reads the operations mode', () => {
   assert.equal(resolveSidebarChild('operations', at('mode=bogus')), 'live');
 });
 
-// Packing is modeless Standard-only in MasterNav. Legacy `?packMode=` may still
-// hit the pack surface; resolveSidebarChild returns null without modes.
-test('resolveSidebarChild returns null for modeless packer', () => {
+// Packing exposes Queue and History in the contextual navigation. Legacy
+// `?packMode=` values fall back to the default queue.
+test('resolveSidebarChild resolves the pack queue and history views', () => {
   const at = (search = '') => ({ pathname: '/pack', params: new URLSearchParams(search) });
-  assert.equal(getSidebarPageNav('packer')?.children, undefined);
-  assert.equal(resolveSidebarChild('packer', at()), null);
-  assert.equal(resolveSidebarChild('packer', at('packMode=fragile')), null);
+  assert.deepEqual(getSidebarPageNav('packer')?.children?.map((child) => child.id), ['queue', 'history']);
+  assert.equal(resolveSidebarChild('packer', at()), 'queue');
+  assert.equal(resolveSidebarChild('packer', at('packMode=fragile')), 'queue');
   assert.equal(
     resolveSidebarChild('packer', { pathname: '/packer', params: new URLSearchParams() }),
-    null,
+    'queue',
   );
 });
 
@@ -537,10 +575,10 @@ test('resolver matches existing panel derivations for known deep-links', () => {
   );
   assert.equal(getSidebarNavPageId('/products'), 'products');
   assert.equal(resolveSidebarChild('products', at('/products', 'view=labels')), 'labels');
-  assert.equal(resolveSidebarChild('products', at('/products')), 'manuals');
+  assert.equal(resolveSidebarChild('products', at('/products')), 'catalog');
   assert.equal(getSidebarPageNav('print-labels'), undefined);
   assert.equal(getSidebarPageNav('print-documents'), undefined);
-  assert.equal(resolveSidebarChild('receive', at('/unbox')), null);
+  assert.equal(resolveSidebarChild('receive', at('/unbox')), 'queue');
   // FBA sub-modes are `fbaMode` on the FBA desk (legacy `mode=plan` still works
   // for the `/fba` redirect window).
   assert.equal(resolveSidebarChild('fba', at('/shipping/fba')), 'combine');
@@ -600,10 +638,10 @@ test('resolver matches existing panel derivations for known deep-links', () => {
   assert.equal(resolveSidebarChild('products', at('/review', 'mode=pairing')), 'pairing');
   // *Listing match* lost its Products tab 2026-09-15 (operator:
   assert.equal(resolveSidebarChild('products', at('/review', 'mode=catalog-link')), null);
-  // The band, in order — Reference · Listing match · Kit Parts are gone.
+  // The band, in order — Catalog leads the focused product tools.
   assert.deepEqual(
     getSidebarPageNav('products')?.children?.map((c) => c.id),
-    ['manuals', 'labels', 'pairing', 'qc'],
+    ['catalog', 'manuals', 'labels', 'pairing', 'qc'],
   );
   // The route key is untouched, so the Review surface still mounts its own panel.
   assert.equal(getSidebarRouteKey('/review'), 'review');
@@ -616,32 +654,13 @@ test('resolver matches existing panel derivations for known deep-links', () => {
     getSidebarPageNav('operations')?.children?.some((c) => c.id === 'packing-review'),
   );
 
-  // Every non-scan desk that wears the page chrome (2026-08-31 port).
-  for (const pageId of [
-    'outbound',
-    'products',
-    'inventory',
-    'sourcing',
-    'operations',
-    'sales',
-    'support',
-    // Inbound's tab row IS its two lanes (operator 2026-09-14): bare
-    // `/incoming` (Pipeline) and `?lane=docked` (History). Before it opted in,
-    // Docked was reachable only by hand-typing the param.
-    'incoming',
-  ]) {
-    assert.equal(
-      hasDeskPageChrome(getSidebarPageNav(pageId)),
-      true,
-      `${pageId} wears DeskPageChrome`,
-    );
-  }
-  // Scan stations wear the FRAME (operator 2026-08-31) but must not opt in HERE:
-  for (const pageId of ['scan-out', 'packer', 'tech', 'receive', 'triage']) {
-    assert.equal(
-      hasDeskPageChrome(getSidebarPageNav(pageId)),
-      false,
-      `${pageId} draws its modes as explicit tabs, not nav children`,
+  // Every desk's views are its nav children — the contextual sidebar paints
+  // them (owner 2026-09-28: no desk draws an inline tab row). Inbound's are
+  // its two lanes: bare `/incoming` and `?lane=docked`.
+  for (const pageId of ['outbound', 'products', 'inventory', 'sourcing', 'operations', 'sales', 'support', 'incoming']) {
+    assert.ok(
+      (getSidebarPageNav(pageId)?.children?.length ?? 0) > 1,
+      `${pageId} declares its views as nav children`,
     );
   }
   assert.equal(resolveSidebarChild('outbound', at('/dashboard')), 'orders');
@@ -808,7 +827,7 @@ test('stationSubgroupMembers still groups receiving / walk-in / testing peers', 
   );
   assert.deepEqual(
     stationSubgroupMembers('walk-in').map((p) => p.id),
-    ['pickup', 'repair'],
+    ['repair'],
   );
   assert.equal(getSidebarPageNav('repair')?.label, 'Repair Service');
 });
@@ -819,7 +838,6 @@ test('floorStationPages is the flat Scan Stations map for the header switcher', 
     [
       ['triage', 'Arrival'],
       ['receive', 'Unbox'],
-      ['pickup', 'Local Pickup'],
       ['repair', 'Repair Service'],
       ['testing', 'Quality Control'],
       ['ready-to-pack', 'Picker'],
@@ -839,11 +857,11 @@ test('Quality Control is the only Testing bench — picking is its own station',
   assert.equal(getSidebarPageNav('tech'), undefined);
 });
 
-test('Picker navigation lands on /pick in its visible Urgent tab', () => {
-  assert.equal(getSidebarPageNav('ready-to-pack')?.href, '/pick?ship=urgent');
+test('Picker navigation lands on the canonical /pick desk', () => {
+  assert.equal(getSidebarPageNav('ready-to-pack')?.href, '/pick');
   assert.equal(
     APP_SIDEBAR_NAV.find((item) => item.id === 'ready-to-pack')?.href,
-    '/pick?ship=urgent',
+    '/pick',
   );
   assert.equal(permissionForPath('/pick'), 'picking.view');
   assert.equal(permissionForPath('/test'), 'tech.view');

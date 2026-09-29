@@ -6,6 +6,7 @@ import type { NavFacetsResponse } from '@/lib/nav/context/schema';
 const ORG = '00000000-0000-0000-0000-000000000001';
 const STAFF = { orgId: ORG, permissions: new Set(['orders.view']) };
 const noPickup: NavFacetsDeps['listLocalPickupLines'] = async () => [];
+const noExceptions: NavFacetsDeps['exceptionCounts'] = async () => ({});
 
 /** The population the facet SQL would return (already narrowed by window / trigger / run / q). */
 const ROW_COMBOS = [
@@ -32,6 +33,7 @@ function harness(rows: Array<Record<string, unknown>>) {
       return rows;
     },
     listLocalPickupLines: noPickup,
+    exceptionCounts: noExceptions,
   };
   return { calls, deps };
 }

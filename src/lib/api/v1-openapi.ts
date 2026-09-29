@@ -2,6 +2,8 @@
 
 import { V1_BASE_ERROR_CODES } from '@/lib/api/v1-route';
 import { buildV1SessionComponents, buildV1SessionOpenApi, V1_SESSION_ERROR_CODES } from '@/lib/auth/v1-session-contract';
+import { buildLabelBatchOpenApi } from '@/lib/label-batches/contracts';
+import { buildLabelBuyOpenApi, LABEL_BUY_ERROR_CODES } from '@/lib/label-buys/contracts';
 import {
   buildLabelIngestionComponents,
   buildLabelIngestionOpenApi,
@@ -13,7 +15,9 @@ import { buildPickingV1Components, buildPickingV1OpenApi } from '@/lib/picking/p
 import { buildReminderFeedComponents, buildReminderFeedOpenApi } from '@/lib/reminders/reminder-openapi';
 
 /** Every code any v1 route (or the auth in front of it) can answer with. */
-const V1_ERROR_CODES = [...new Set([...V1_BASE_ERROR_CODES, ...V1_SESSION_ERROR_CODES, ...LABEL_INGESTION_ERROR_CODES])];
+const V1_ERROR_CODES = [
+  ...new Set([...V1_BASE_ERROR_CODES, ...V1_SESSION_ERROR_CODES, ...LABEL_INGESTION_ERROR_CODES, ...LABEL_BUY_ERROR_CODES]),
+];
 
 export function buildV1OpenApi(): Record<string, unknown> {
   return {
@@ -21,6 +25,8 @@ export function buildV1OpenApi(): Record<string, unknown> {
     info: { title: 'CycleForge V1', version: '1.0.0' },
     paths: {
       ...buildLabelIngestionOpenApi(),
+      ...buildLabelBatchOpenApi(),
+      ...buildLabelBuyOpenApi(),
       ...buildLabelPrintOpenApi(),
       ...buildOutboundWorkOpenApi(),
       ...buildReminderFeedOpenApi(),

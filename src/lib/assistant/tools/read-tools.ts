@@ -1,6 +1,8 @@
 /** Assistant read tools (plan §3.1 + Sparkles exact-data wiring) — the AI's eyes over the org's operation: */
 
 import { z } from 'zod';
+import { brandReportEnvelope } from '@/lib/assistant/tool-artifact';
+import type { ArtifactRecord } from '@/lib/assistant/ui-artifacts';
 import { searchHitHref } from '@/lib/search/search-hit';
 import {
   formatSupportTicketLabel,
@@ -96,7 +98,7 @@ export const getUnitJourney: AssistantToolDef<
 > = {
   name: 'get_unit_journey',
   description:
-    'One serialized unit\'s full story: identity + current status, its workflow-engine position, its lifecycle event trail (newest first), and its "why" signals. Look up by serial number or serial_unit id.',
+    'One serialized unit\'s full story and exact Receiving state: identity, triage, QC, label, local-pickup source, linked support ticket, workflow position, lifecycle events, and why signals. Look up by serial number or serial_unit id. Returns the same projected facts shown in Receiving.',
   permission: 'dashboard.view',
   inputSchema: z
     .object({
@@ -121,7 +123,7 @@ export const getUnitJourney: AssistantToolDef<
     if (unit.rows.length === 0) return { found: false as const };
     const unitId = Number((unit.rows[0] as { id: number }).id);
 
-    const [events, engine, signals] = await Promise.all([
+    const [events, engine, signals, receiving] = await Promise.all([
       deps.query(
         ctx.organizationId,
         `SELECT event_type, prev_status, next_status, station, notes,
@@ -151,15 +153,131 @@ export const getUnitJourney: AssistantToolDef<
           LIMIT 20`,
         [ctx.organizationId, unitId],
       ),
+      deps.query(
+        ctx.organizationId,
+        `SELECT f.receiving_line_id, f.receiving_id, f.unit_uid,
+                f.triage_state, f.label_state, f.qc_state, f.latest_verdict,
+                f.tested_at::text AS tested_at, f.primary_support_ticket_id,
+                lpoi.order_id AS pickup_order_id,
+                lpo.po_number AS pickup_identity,
+                st.provider AS ticket_provider,
+                st.external_ticket_id,
+                st.subject_cache AS ticket_subject,
+                st.status_cache AS ticket_status
+           FROM receiving_unit_stage_facts f
+           LEFT JOIN local_pickup_order_items lpoi
+             ON lpoi.organization_id = f.organization_id
+            AND lpoi.receiving_line_id = f.receiving_line_id
+           LEFT JOIN local_pickup_orders lpo
+             ON lpo.organization_id = lpoi.organization_id
+            AND lpo.id = lpoi.order_id
+           LEFT JOIN support_tickets st
+             ON st.organization_id = f.organization_id
+            AND st.id = f.primary_support_ticket_id
+          WHERE f.organization_id = $1 AND f.serial_unit_id = $2
+          ORDER BY lpoi.id ASC NULLS LAST
+          LIMIT 1`,
+        [ctx.organizationId, unitId],
+      ),
     ]);
-
-    return {
-      found: true as const,
-      unit: unit.rows[0],
-      engine: engine.rows[0] ?? null,
-      events: events.rows,
-      signals: signals.rows,
+    const unitRow = unit.rows[0];
+    const receivingRow = receiving.rows[0] ?? null;
+    const pickupOrderId = Number(receivingRow?.pickup_order_id);
+    const unitHref = searchHitHref('SERIAL_UNIT', unitId);
+    const pickupHref = Number.isInteger(pickupOrderId) && pickupOrderId > 0
+      ? `/pickup?lcpu=${pickupOrderId}`
+      : unitHref;
+    const providerTicketId =
+      receivingRow?.ticket_provider === 'zendesk' && receivingRow.external_ticket_id != null
+        ? Number(receivingRow.external_ticket_id)
+        : null;
+    const ticketHref = providerTicketId != null && Number.isFinite(providerTicketId) && providerTicketId > 0
+      ? `/support?ticket=${providerTicketId}`
+      : undefined;
+    const serial = String(unitRow.serial_number ?? '').trim();
+    const unitUid = String(receivingRow?.unit_uid ?? '').trim();
+    const sku = String(unitRow.sku ?? '').trim();
+    const fields: ArtifactRecord['fields'] = [
+      receivingRow?.pickup_identity
+        ? { label: 'Local pickup', value: String(receivingRow.pickup_identity), href: pickupHref }
+        : null,
+      { label: 'Unit', value: unitUid || `#${unitId}`, href: unitHref },
+      serial ? { label: 'Serial', value: serial, href: unitHref } : null,
+      receivingRow?.triage_state ? { label: 'Triage', value: String(receivingRow.triage_state).replaceAll('_', ' ') } : null,
+      receivingRow?.label_state ? { label: 'QC label', value: String(receivingRow.label_state).replaceAll('_', ' ') } : null,
+      receivingRow?.qc_state ? { label: 'Quality control', value: String(receivingRow.qc_state).replaceAll('_', ' ') } : null,
+      receivingRow?.tested_at ? { label: 'Tested', value: String(receivingRow.tested_at) } : null,
+      receivingRow?.primary_support_ticket_id
+        ? {
+            label: 'Ticket',
+            value: [
+              `#${receivingRow.primary_support_ticket_id}`,
+              receivingRow.ticket_status,
+              receivingRow.ticket_subject,
+            ].filter(Boolean).join(' · '),
+            ...(ticketHref ? { href: ticketHref } : {}),
+          }
+        : null,
+      { label: 'Inventory status', value: String(unitRow.current_status ?? 'Unknown') },
+    ].filter((field): field is ArtifactRecord['fields'][number] => field != null);
+    const engineRow = engine.rows[0];
+    if (engineRow) {
+      fields.push({
+        label: 'Workflow',
+        value: [engineRow.current_node_id, engineRow.status].filter(Boolean).map(String).join(' · ') || 'Active',
+      });
+    }
+    events.rows.slice(0, 3).forEach((event, index) => {
+      fields.push({
+        label: `Recent event ${index + 1}`,
+        value: [event.event_type, event.next_status, event.station, event.at]
+          .filter(Boolean)
+          .map(String)
+          .join(' · ')
+          .slice(0, 300),
+      });
+    });
+    signals.rows.slice(0, 2).forEach((signal, index) => {
+      fields.push({
+        label: `Reason ${index + 1}`,
+        value: [signal.signal_kind, signal.reason_code, signal.notes]
+          .filter(Boolean)
+          .map(String)
+          .join(' · ')
+          .slice(0, 300),
+      });
+    });
+    const chips = [receivingRow?.qc_state, receivingRow?.label_state, receivingRow?.triage_state]
+      .filter((value): value is string => typeof value === 'string' && value.length > 0)
+      .map((value) => value.replaceAll('_', ' '));
+    const artifact: ArtifactRecord = {
+      kind: 'record',
+      title: unitUid || serial || sku || `Unit #${unitId}`,
+      path: pickupHref,
+      fields,
+      identity: {
+        title: sku || unitUid || serial || `Unit #${unitId}`,
+        subtitle: receivingRow?.pickup_identity
+          ? `Local pickup · ${receivingRow.pickup_identity}`
+          : 'Inventory unit',
+        ids: [
+          ...(sku ? [{ label: 'SKU' as const, value: sku }] : []),
+          ...(serial ? [{ label: 'Serial' as const, value: serial }] : []),
+        ],
+        ...(chips.length ? { chips: chips.slice(0, 6) } : {}),
+        href: pickupHref,
+      },
     };
+
+    return brandReportEnvelope({
+      artifact,
+      summary: [
+        unitUid || serial || `Unit #${unitId}`,
+        receivingRow?.qc_state ? `QC ${String(receivingRow.qc_state).replaceAll('_', ' ').toLowerCase()}` : null,
+        receivingRow?.label_state ? `label ${String(receivingRow.label_state).toLowerCase()}` : null,
+        receivingRow?.primary_support_ticket_id ? `ticket #${receivingRow.primary_support_ticket_id}` : null,
+      ].filter(Boolean).join(' · '),
+    }, getUnitJourney.name);
   },
 };
 

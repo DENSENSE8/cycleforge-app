@@ -16,7 +16,8 @@ export function useRailExclusions(feedKey: string | null): ReadonlySet<number> {
   const { data } = useQuery<ReadonlySet<number>>({
     queryKey: ['rail-exclusions', feedKey],
     enabled: !!feedKey,
-    staleTime: 15_000,
+    // The staffer's own dismissals — every writer (`useRailRowDismiss`,
+    // `useRailEditMode`) invalidates this key, so the app default holds.
     queryFn: async () => {
       const res = await fetch(`/api/receiving/rail-exclusions?feedKey=${encodeURIComponent(feedKey!)}`, {
         cache: 'no-store',

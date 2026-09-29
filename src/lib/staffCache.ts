@@ -15,6 +15,7 @@ export interface StaffMember {
 // Module-level singleton: one fetch per page load, shared across all consumers.
 let _promise: Promise<StaffMember[]> | null = null;
 let _data: StaffMember[] | null = null;
+let _rosterInflight: Promise<unknown[]> | null = null;
 let _presentPromise: Promise<StaffMember[]> | null = null;
 let _presentData: StaffMember[] | null = null;
 let _presentDateKey: string | null = null;
@@ -49,22 +50,44 @@ export function peekActiveStaff(): StaffMember[] | null {
   return _data;
 }
 
-export function getActiveStaff(): Promise<StaffMember[]> {
-  if (_data) return Promise.resolve(_data);
-  if (!_promise) {
-    _promise = fetch('/api/staff?active=true')
-      // THROW on a bad response so the catch below owns every failure.
+/**
+ * `GET /api/staff?active=false` — the whole roster, inactive staff included,
+ * as the route returns it. ONE request serves `StaffColorsProvider`'s colour
+ * cache (`qk.staff.all`) AND the active roster below: concurrent callers share
+ * the flight, and a landed roster warms `getActiveStaff` (same SELECT, same
+ * order — `?active=true` only adds `s.active = true`). Before this the desks
+ * paid `?active=false` then `?active=true` back to back on every load.
+ */
+export function fetchStaffRoster(): Promise<unknown[]> {
+  if (!_rosterInflight) {
+    _rosterInflight = fetch('/api/staff?active=false', { cache: 'no-store' })
       .then((res) => {
         if (!res.ok) throw new Error(`staff roster ${res.status}`);
         return res.json();
       })
-      .then((raw: any[]) => {
-        const result = normalizeStaff(raw);
-        _data = result;
-        return result;
+      .then((raw: unknown) => {
+        const rows: unknown[] = Array.isArray(raw) ? raw : [];
+        // `?active=true` is `s.active = true`; a row missing the flag counts as active.
+        _data = normalizeStaff(
+          rows.filter((m) => !(m && typeof m === 'object' && 'active' in m && m.active === false)),
+        );
+        return rows;
       })
+      .finally(() => {
+        _rosterInflight = null;
+      });
+  }
+  return _rosterInflight;
+}
+
+export function getActiveStaff(): Promise<StaffMember[]> {
+  if (_data) return Promise.resolve(_data);
+  if (!_promise) {
+    _promise = fetchStaffRoster()
+      // A failed read is not an empty roster: `_data` stays unset.
+      .then(() => _data ?? [])
       .catch(() => {
-        // Reset so the next mount can retry — and leave `_data` unset.
+        // Reset so the next mount can retry.
         _promise = null;
         return [];
       });

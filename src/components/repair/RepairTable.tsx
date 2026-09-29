@@ -220,14 +220,6 @@ export function RepairTable({ filter }: RepairTableProps) {
               }}
               loading={loading}
               emptyMessage={search ? `No repairs match "${search}"` : 'No repairs found'}
-              // `search` rides the query key (useRepairs.ts:21) and goes out as `?q=` (:27); the route answers it over the CONTACT joins — customer…
-              search={{
-                value: search,
-                onChange: setSearch,
-                placeholder: 'Filter repairs…',
-                answeredBy: 'server',
-                pending: fetching,
-              }}
               selectionScope={REPAIR_SELECTION_SCOPE}
               actionStrip={
                 selectedRepair ? (

@@ -2,6 +2,13 @@
 
 export * from './react';
 
+export {
+  defineStateMotionContract,
+  motionContentSwap,
+  motionTargetFor,
+} from './contracts';
+export type { StateMotionContract } from './contracts';
+
 export { motionRole } from './roles';
 
 export { useMotionRole, useMotionPressRole } from './use-motion-role';
@@ -29,3 +36,4 @@ export {
 } from './cursor-scrub';
 export type { CursorKind } from './cursor-scrub';
 export { usePointerFine } from './use-pointer-fine';
+export { MagneticActionField } from './MagneticActionField';

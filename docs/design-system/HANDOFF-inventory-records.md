@@ -1,9 +1,13 @@
 # HANDOFF — the inventory records: Stock + QC labels on the order record (written 2026-09-28)
 
 Run with the `remake-in-style` skill (`.claude/skills/remake-in-style/SKILL.md`). Scope confirmed by
-the owner: **the records**, plus **the fixed-width stage** To ship and Inbound history use. The list
-rows themselves (`IndustrialRecord` in `StockLedger` / `QcLabelsLedger`) are untouched (Stock stays
-keep-sheet, `RECORD-CARD-MIGRATION.md` #36).
+the owner: **the records**, plus **the fixed-width stage** To ship and Inbound history use.
+
+**Superseded for the lists (2026-09-28, `HANDOFF-remove-desk-floor.md` §3):** the Stock and QC labels
+list rows are no longer `IndustrialRecord` rows in a `RecordLedger` — both lists are
+`TriageCardList density="row"` (the one-row edge-to-edge list, `TriageRow`). Stock's room chips
+narrow on the client (`?room=`); the tally rides one line under the bar. The QC label record parts
+moved to `inventory/qc-labels/QcLabelRecord.tsx`.
 
 ## 1. What landed
 

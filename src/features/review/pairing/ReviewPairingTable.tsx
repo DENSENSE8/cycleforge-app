@@ -5,9 +5,9 @@
  * allocate-serial detail overlay. Uses existing allocate API + DataTable.
  */
 
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { useSearchParams } from 'next/navigation';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { DataTable } from '@/components/tables/DataTable';
 import { useOrdersSpreadsheet } from '@/components/dashboard/orders-queue/useOrdersSpreadsheet';
 import { OrderStatusTrailStage } from '@/components/orders/OrderStatusTrailOverlay';
@@ -24,8 +24,10 @@ interface ReviewPairingTableProps {
 }
 
 export function ReviewPairingTable({ onOpenOrder, onCloseOrder }: ReviewPairingTableProps) {
+  const pathname = usePathname();
+  const router = useRouter();
   const searchParams = useSearchParams();
-  const [searchQuery, setSearchQuery] = useState('');
+  const searchQuery = searchParams.get('q') ?? '';
   const staffId = parseStaffParam(searchParams.get('staff')) ?? undefined;
 
   const stagedQuery = useQuery({
@@ -48,8 +50,17 @@ export function ReviewPairingTable({ onOpenOrder, onCloseOrder }: ReviewPairingT
 
   const loading = stagedQuery.isLoading || awaitingQuery.isLoading;
 
-  const setSearch = useCallback((next: string) => setSearchQuery(next), []);
-  const clearSearch = useCallback(() => setSearchQuery(''), []);
+  const setSearch = useCallback(
+    (next: string) => {
+      const params = new URLSearchParams(searchParams.toString());
+      if (next.trim()) params.set('q', next);
+      else params.delete('q');
+      const qs = params.toString();
+      router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
+    },
+    [pathname, router, searchParams],
+  );
+  const clearSearch = useCallback(() => setSearch(''), [setSearch]);
 
   // Review opens records in its own workspace — the desk record plane bag is not a table prop.
   const { recordPlane, ...sheet } = useOrdersSpreadsheet({
@@ -76,7 +87,6 @@ export function ReviewPairingTable({ onOpenOrder, onCloseOrder }: ReviewPairingT
           <OrderStatusTrailStage>
             <DataTable
               {...sheet}
-              search={{ value: searchQuery, onChange: setSearch, placeholder: 'Filter order #, SKU, title…' }}
             />
           </OrderStatusTrailStage>
         </div>

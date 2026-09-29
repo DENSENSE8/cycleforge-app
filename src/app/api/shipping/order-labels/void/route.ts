@@ -56,7 +56,11 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
       entityId: orderId,
       reasonCode: reason,
       before: { labelId },
-      extra: { shipmentId: Number.isFinite(shipmentId) ? shipmentId : null, documentId: Number.isFinite(documentId) ? documentId : null },
+      extra: {
+        shipmentId: Number.isFinite(shipmentId) ? shipmentId : null,
+        documentId: Number.isFinite(documentId) ? documentId : null,
+        removedLabelIngestionIds: result.removedLabelIngestionIds,
+      },
     });
 
     after(async () => {

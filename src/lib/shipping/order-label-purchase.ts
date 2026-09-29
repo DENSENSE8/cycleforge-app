@@ -2,8 +2,9 @@
  * One order's label purchase, after the charge — shared by the desk's buy route
  * (`/api/shipping/order-labels/purchase`) and the chat's `buy_label`: register
  * the tracking on the order, snapshot the as-shipped ship-to, store the label
- * PDF + packing slip in documents, and attach both to the purchase ledger row.
- * Plus the reverse: {@link voidOrderLabel}.
+ * PDF + packing slip in documents, put the label in the Labels & docs print
+ * ledger (label-purchase-ingestion.ts), and attach all of it to the purchase
+ * ledger row. Plus the reverse: {@link voidOrderLabel}.
  */
 
 import 'server-only';
@@ -25,6 +26,7 @@ import {
   markLabelPurchaseVoided,
   type LabelPurchaseRecord,
 } from '@/lib/shipping/label-purchase-ledger';
+import { recordPurchaseLabelIngestion, removeVoidedLabelIngestion } from '@/lib/shipping/label-purchase-ingestion';
 import {
   isShipStationOrder,
   resolveOrderShipTo,
@@ -126,7 +128,14 @@ export async function finishLabelPurchase(input: {
   knownShipmentId: number | null;
   knownDocumentId: number | null;
   purpose: LabelPurpose;
-}): Promise<{ shipmentId: number | null; labelDocumentId: number | null; isFirstLabel: boolean; warning: string | null }> {
+}): Promise<{
+  shipmentId: number | null;
+  labelDocumentId: number | null;
+  /** The label's row in the Labels & docs print ledger (`label_ingestions.id`). */
+  labelIngestionId: number | null;
+  isFirstLabel: boolean;
+  warning: string | null;
+}> {
   const { orgId, order, orderId, orderRef, clientEventId, labelFormat, staffId, v2, label, purpose } = input;
 
   // 2. Register the tracking: the order's primary (outbound) or one more
@@ -198,10 +207,13 @@ export async function finishLabelPurchase(input: {
   let labelDocumentId: number | null = input.knownDocumentId;
   let isFirstLabel = false;
   let warning: string | null = null;
+  // The downloaded label bytes, reused for the Labels-view ingestion (3c).
+  let labelBytes: Buffer | null = null;
   if (labelDocumentId == null && purpose !== 'return') {
     try {
       if (!label.labelUrl) throw new Error('ShipStation returned no label download URL.');
       const { buffer, contentType } = await v2.downloadLabel(label.labelUrl);
+      labelBytes = buffer;
       const stored = await storeOutboundDocumentFromBytes(orgId, {
         orderId,
         orderRef,
@@ -253,34 +265,70 @@ export async function finishLabelPurchase(input: {
     }
   }
 
+  // 3c. The Labels & docs print ledger: one ingestion per bought label, paired
+  // to this order (best-effort; never fails, repeats or re-buys the purchase).
+  let labelIngestionId: number | null = null;
   try {
-    await attachLabelPurchaseFacts(orgId, label.purchaseId, { labelDocumentId, shipmentId: primaryShipmentId });
+    const recorded = await recordPurchaseLabelIngestion({
+      orgId,
+      orderId,
+      order,
+      label,
+      labelFormat,
+      purpose,
+      staffId,
+      trackingShipmentId: primaryShipmentId,
+      labelDocumentId,
+      loadBytes: async () => {
+        if (labelBytes) return labelBytes;
+        if (!label.labelUrl) throw new Error('ShipStation returned no label download URL.');
+        return (await v2.downloadLabel(label.labelUrl)).buffer;
+      },
+    });
+    labelIngestionId = recorded.labelIngestionId;
+    if (recorded.warning) warning = warning ? `${warning} ${recorded.warning}` : recorded.warning;
+  } catch (e) {
+    const note = `Label purchased, but adding it to the Labels view failed: ${e instanceof Error ? e.message : String(e)}. Buying again under this purchase retries without a second charge.`;
+    warning = warning ? `${warning} ${note}` : note;
+    console.warn('[buy-label] label ingestion failed', e);
+  }
+
+  try {
+    await attachLabelPurchaseFacts(orgId, label.purchaseId, { labelDocumentId, shipmentId: primaryShipmentId, labelIngestionId });
   } catch (e) {
     console.warn('[buy-label] purchase ledger update failed', e);
   }
 
-  return { shipmentId: primaryShipmentId, labelDocumentId, isFirstLabel, warning };
+  return { shipmentId: primaryShipmentId, labelDocumentId, labelIngestionId, isFirstLabel, warning };
 }
 
 /**
  * Void one bought label: at the carrier first (the source of truth on whether a
- * refund is possible), then stop the ledger replaying it and reverse the local
- * tracking link + label document (best-effort). The desk's void route and the
- * chat's `void_label` share it.
+ * refund is possible), then stop the ledger replaying it, take it out of the
+ * Labels view, and reverse the local tracking link + label document
+ * (best-effort). The desk's void route and the chat's `void_label` share it.
  */
 export async function voidOrderLabel(
   orgId: OrgId,
   v2: ShipStationV2Client,
   input: { orderId: number; labelId: string; shipmentId: number | null; documentId: number | null },
-): Promise<{ approved: boolean; message: string | null }> {
+): Promise<{ approved: boolean; message: string | null; removedLabelIngestionIds: number[] }> {
   const result = await v2.voidLabel(input.labelId);
-  if (!result.approved) return { approved: false, message: result.message ?? null };
+  if (!result.approved) return { approved: false, message: result.message ?? null, removedLabelIngestionIds: [] };
 
   // The purchase ledger stops replaying this label; the next buy mints a fresh key.
   try {
     await markLabelPurchaseVoided(orgId, input.labelId);
   } catch (e) {
     console.warn('[void-label] purchase ledger stamp failed', e);
+  }
+  // Out of the Labels view — before the document delete, which its ingestion's
+  // document reference would otherwise block.
+  let removedLabelIngestionIds: number[] = [];
+  try {
+    removedLabelIngestionIds = await removeVoidedLabelIngestion(orgId, input.labelId);
+  } catch (e) {
+    console.warn('[void-label] remove label ingestion failed', e);
   }
   if (input.shipmentId != null && input.shipmentId > 0) {
     try {
@@ -296,5 +344,5 @@ export async function voidOrderLabel(
       if (!(e instanceof OutboundDocumentNotFoundError)) console.warn('[void-label] delete label document failed', e);
     }
   }
-  return { approved: true, message: result.message ?? null };
+  return { approved: true, message: result.message ?? null, removedLabelIngestionIds };
 }

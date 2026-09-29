@@ -6,7 +6,7 @@ import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { getOrdersChannelName, safeChannelName } from '@/lib/realtime/channels';
 import type { DashboardSearchSectionProps } from '@/components/dashboard/DashboardSearchSectionProps';
 import { downloadDataTableCsv } from '@/components/tables/DataTable';
-import { SLOT_TABLE_PAGE_SIZES } from '@/lib/tables/slot-table-page';
+import { TO_SHIP_QUEUE_WINDOW } from '@/lib/orders/to-ship-queue';
 import { OrderStatusTrailStage } from '@/components/orders/OrderStatusTrailOverlay';
 import { useToShipChrome } from '@/components/unshipped/useToShipChrome';
 import {
@@ -17,9 +17,8 @@ import { OrdersFirstRunEmptyState } from '@/components/dashboard/OrdersFirstRunE
 import { orgHasActivity, useOnboardingStats } from '@/hooks/useOnboardingStats';
 import { PackAwaitingFeedback } from '@/components/packer/PackAwaitingFeedback';
 import { dispatchCloseShippedDetails, dispatchOpenShippedDetails } from '@/utils/events';
-import { deskCountsQuery, unshippedOrdersQuery, unshippedQueueCountsQuery } from '@/lib/queries/dashboard-queries';
+import { deskCountsQuery, unshippedOrderRowQuery, unshippedOrdersQuery, unshippedQueueCountsQuery } from '@/lib/queries/dashboard-queries';
 import { readDeskRefinements, readDeskViewFilters } from '@/lib/orders/desk-view-filters';
-import { fetchUnshippedOrderRowById } from '@/lib/dashboard-table-data';
 import {
   cagedOrdersQuery,
   cagedRecordToQueueRow,
@@ -48,8 +47,6 @@ import { PaperworkWalkHost } from '@/components/outbound/orders/paperwork/Paperw
 import { useNavIntent } from '@/lib/nav/use-nav-intent';
 import { PAPERWORK_PARAM, parsePaperworkOrderId } from '@/lib/orders/print-packet';
 import { PACK_PLACED_PARAM, PACK_STATION_PARAM } from '@/lib/packing/pack-station-arm';
-import { OutboundOrdersLedger } from '@/components/outbound/orders/OutboundOrdersLedger';
-import { useDeskFloorFace, useDeskStageOptional } from '@/design-system/components/DeskStageContext';
 import { OrderCardList } from '@/components/outbound/orders/cards/OrderCardList';
 import { useToShipScanOpen } from '@/components/unshipped/useToShipScanOpen';
 
@@ -80,13 +77,6 @@ interface UnshippedTableProps extends DashboardSearchSectionProps {
   awaitingMessage?: string;
   /** SSR stand-in handoff — primary queue has paintable rows (seed or fetch). */
   onPrimaryPainted?: () => void;
-  /** Always paint the industrial record ledger (`OutboundOrdersLedger`) instead of the slot `DataTable` index face. */
-  ledger?: boolean;
-  /**
-   * This list offers the desk's FLOOR face (owner 2026-09-26): the index face
-   * in In place and Split, the industrial ledger while the stage is `floor`.
-   */
-  floor?: boolean;
 }
 
 /** Stable empty page. `query.data || []` minted a fresh array on every render
@@ -155,8 +145,6 @@ export function UnshippedTable({
   lockedFulfillmentState,
   awaitingMessage,
   onPrimaryPainted,
-  ledger = false,
-  floor = false,
 }: UnshippedTableProps = {}) {
   const pathname = usePathname();
   const router = useRouter();
@@ -164,8 +152,6 @@ export function UnshippedTable({
   const queryClient = useQueryClient();
   const { user } = useAuth();
   const orgId = user?.organizationId;
-  useDeskFloorFace(floor);
-  const floorView = useDeskStageOptional()?.view === 'floor';
   // Fulfillment queue stages: pending (not picked) and picked (packing now).
   const stageParam = String(searchParams.get('stage') || 'all').toLowerCase();
 
@@ -243,7 +229,7 @@ export function UnshippedTable({
   const isSupportContext =
     parseOrdersDeskContext(searchParams.get(ORDERS_DESK_CONTEXT_KEY)) ===
     ORDERS_DESK_SUPPORT_CONTEXT;
-  const fetchWindow: number = SLOT_TABLE_PAGE_SIZES[SLOT_TABLE_PAGE_SIZES.length - 1];
+  const fetchWindow = TO_SHIP_QUEUE_WINDOW;
   const [rowLimit, setRowLimit] = useState(fetchWindow);
   useEffect(() => {
     setRowLimit(fetchWindow);
@@ -324,11 +310,8 @@ export function UnshippedTable({
   // single queue member and merge it into the same row collection so the
   // engine's existing `scrollToKey` contract can select its page.
   const deepLinkQuery = useQuery({
-    queryKey: ['dashboard-table', 'unshipped-deep-link', { openOrderId, staffId }],
-    queryFn: () => fetchUnshippedOrderRowById({ orderId: openOrderId as number, staffId }),
+    ...unshippedOrderRowQuery({ orderId: openOrderId, staffId }),
     enabled: !cagedOnly && openOrderId != null,
-    staleTime: 60_000,
-    gcTime: 15 * 60 * 1000,
   });
 
 
@@ -820,24 +803,6 @@ export function UnshippedTable({
     <>
       {/* Q5 stage. Walk + STATUS trail are SIBLINGS of the sheet inside {@link OrderStatusTrailStage}'s `relative` box, never a body swap. */}
       <OrderStatusTrailStage>
-        {ledger || (floor && floorView) ? (
-          <OutboundOrdersLedger
-            viewKey={lockedFulfillmentState === 'BLOCKED' ? 'shipping.pending' : 'shipping.to-ship'}
-            chrome={chrome}
-            searchPending={!cagedOnly && query.isFetching}
-            records={records}
-            loading={cagedOnly ? cagedQuery.isLoading : query.isLoading}
-            onOpenRecord={handleOpenRecord}
-            onCloseRecord={dispatchCloseShippedDetails}
-            railSelection={railSelection}
-            onLoadMore={onLoadMore}
-            banner={queueError ? <QueueStaleBand onRetry={retryQueue} /> : null}
-            searchEmptyTitle={searchEmptyTitle}
-            searchResultLabel={searchResultLabel}
-            clearSearchLabel={clearSearchLabel}
-            onOpenLabels={onToShipDesk ? openLabelsWalkForRecord : undefined}
-          />
-        ) : (
         <OrderCardList
           viewKey={lockedFulfillmentState === 'BLOCKED' ? 'shipping.pending' : 'shipping.to-ship'}
           chrome={chrome}
@@ -856,7 +821,6 @@ export function UnshippedTable({
           clearSearchLabel={clearSearchLabel}
           onOpenLabels={onToShipDesk ? openLabelsWalkForRecord : undefined}
         />
-        )}
         {paperworkId != null && onToShipDesk ? (
           <PaperworkWalkHost
             rows={walkRows.length > 0 ? walkRows : records}

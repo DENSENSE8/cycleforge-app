@@ -1,10 +1,9 @@
 'use client';
 
 /**
- * Ready stage body for the FBA inbound workbench — the allocation history grid.
- *
- * It resolves the feed and hands the table its find field as DATA; the table
- * draws it. Nothing here is chrome.
+ * Ready stage body for the FBA inbound workbench — the allocation history
+ * grid. Find is page chrome in the contextual sidebar/header; this host only
+ * reads `q` to fetch and narrow the table.
  */
 
 import { useMemo } from 'react';
@@ -16,7 +15,7 @@ import { useReadyWorkspaceTab } from '@/hooks/useReadyWorkspaceTab';
 import { readyTabDisposition } from '@/utils/ready-workspace-state';
 
 export function ReadyWorkspaceBody() {
-  const { q, setQ } = useOutboundUrlState();
+  const { q } = useOutboundUrlState();
   const { readyTab } = useReadyWorkspaceTab();
   const query = useQuery({
     queryKey: readyHistoryQueryKey(q),
@@ -42,14 +41,6 @@ export function ReadyWorkspaceBody() {
       // Both refinements narrow the list, so both must flip the empty answer
       // from "nothing tested yet" to "nothing matches this view".
       isFiltered={Boolean(q.trim()) || readyTab !== 'all'}
-      // `q` rides the fetch key (line 32); `/api/shipping/ready-queue` answers it over title/sku/fnsku/asin/serial/unit_uid (ready-queue.ts:94)…
-      search={{
-        value: q,
-        onChange: setQ,
-        placeholder: 'Filter tested units…',
-        answeredBy: 'server',
-        pending: query.isFetching,
-      }}
     />
   );
 }

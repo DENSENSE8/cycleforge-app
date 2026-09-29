@@ -15,10 +15,17 @@ export function navContextQueryKey(staffKey: string, path: string, view: 'top' |
   return ['nav-context', staffKey, view ?? 'page', path] as const;
 }
 
-/** The current in-app URL (pathname + search) — the `path` the context is keyed on. */
+/**
+ * The current in-app URL (pathname + search) — the `path` the context is keyed
+ * on. Params are sorted: a desk that rewrites its URL in a different param
+ * order (`/unbox?openReceivingId=…&lineId=…` → `?lineId=…&openReceivingId=…`)
+ * is the same page and must not cost a second `/api/nav/context` round trip.
+ */
 export function useCurrentNavPath(): string {
   const pathname = usePathname() || '/';
-  const search = useSearchParams()?.toString() ?? '';
+  const params = new URLSearchParams(useSearchParams()?.toString() ?? '');
+  params.sort();
+  const search = params.toString();
   return search ? `${pathname}?${search}` : pathname;
 }
 

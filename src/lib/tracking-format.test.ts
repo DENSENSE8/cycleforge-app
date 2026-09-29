@@ -11,6 +11,8 @@ import {
   getTrackingUrl,
   getTrackingUrlByCarrier,
   resolveTrackingOpenUrl,
+  searchableTrackingNumber,
+  uspsSearchableTrackingNumber,
 } from './tracking-format';
 
 // ─── The reconciliation invariant ─────────────────────────────────────────────
@@ -24,6 +26,14 @@ test('FedEx GS1/"96" barcode collapses to the embedded 12-digit human number', (
   assert.equal(extractCanonicalTracking(pasted), pasted);
   // The reconciliation invariant: both sides converge.
   assert.equal(extractCanonicalTracking(scanned), extractCanonicalTracking(pasted));
+});
+
+test('incident 30130 exposes both full FedEx scan and shortened searchable number', () => {
+  const full = '9621091390008524261900383825682187';
+  const shortened = '383825682187';
+  assert.equal(searchableTrackingNumber(full), shortened);
+  assert.equal(searchableTrackingNumber(shortened), null);
+  assert.match(resolveTrackingOpenUrl(shortened, 'FEDEX') ?? '', /383825682187/);
 });
 
 test('incident STN 382780447243: GS1 gun read exact-equals sheet short after unwrap', () => {
@@ -77,6 +87,13 @@ test('USPS IMpb routing prefix still stripped (existing behavior preserved)', ()
   const viaNormalize = normalizeTrackingNumber(impb);
   assert.equal(extractCanonicalTracking(impb), viaNormalize);
   assert.ok(!viaNormalize.startsWith('420'));
+  assert.equal(uspsSearchableTrackingNumber(impb), viaNormalize);
+});
+
+test('USPS searchable copy exists only for a valid 420 + ZIP routing envelope', () => {
+  assert.equal(searchableTrackingNumber('420902109405511899223197428265'), '9405511899223197428265');
+  assert.equal(uspsSearchableTrackingNumber('9405511899223197428265'), null);
+  assert.equal(uspsSearchableTrackingNumber('42090210NOT-A-USPS-BARCODE'), null);
 });
 
 test('a short non-FedEx digit string is untouched (no false FedEx tail)', () => {

@@ -4,7 +4,6 @@ import { useEffect, useRef, useSyncExternalStore, type ReactNode } from 'react';
 import { useHorizontalWheelScroll } from '@/hooks/useHorizontalWheelScroll';
 import Link from 'next/link';
 import type { NavItem } from '@/lib/nav/context/schema';
-import { getSidebarPageNav } from '@/lib/sidebar-navigation';
 import { AnimatePresence, motion } from '@/design-system/motion';
 import { aiTransition } from '@/design-system/ai';
 import { useMotionPresence, useMotionTransition } from '@/design-system/foundations/motion-presets-hooks';
@@ -58,9 +57,11 @@ export function useNavDeskHeader(): { title?: string; titleSlot?: ReactNode; hea
   const panel = hydrated && nav?.rollout === 'contextual' && nav.scope === 'section';
   const views = panel ? nav.sections.filter((section) => !isNavModeSection(section)).flatMap((section) => section.items) : [];
   const view = views.find((item) => item.active);
+  // A page's own mode with no view lit names the page (Exceptions › Inventory).
+  const mode = panel ? nav.sections.find(isNavModeSection)?.items.find((item) => item.active) : undefined;
   const keyed = panel && nav.viewKeys === true && views.length > 1;
   return {
-    title: view?.label ?? (panel ? nav.page.label : undefined),
+    title: view?.label ?? mode?.label ?? (panel ? nav.page.label : undefined),
     titleSlot: keyed && view ? <NavViewTitle label={view.label} /> : undefined,
     headerCenter: <NavKeyStrip views={keyed ? views : []} pageId={panel ? nav.page.id : ''} />,
   };
@@ -165,8 +166,7 @@ export function NavKeyStrip({ views, pageId }: { views: readonly NavItem[]; page
             {/* No `[G] then` lead: the staffer just pressed it. Each mode's icon
                 wears its mode tone, the way the view pills wear theirs. */}
             {targets.map((target) => {
-              const page = getSidebarPageNav(target.id);
-              const Icon = page?.icon;
+              const Icon = target.icon;
               return (
                 <Link
                   key={target.id}
@@ -180,7 +180,7 @@ export function NavKeyStrip({ views, pageId }: { views: readonly NavItem[]; page
                     <KeyboardKey size="xs" className={cn(pressed === `go:${target.letter}` && KEY_PRESSED_CLASS)}>
                       {target.letter.toUpperCase()}
                     </KeyboardKey>
-                    {Icon ? <Icon aria-hidden className={navIconStrokeClass(cn('size-4 shrink-0', page?.tone ?? 'text-text-default'))} /> : null}
+                    {Icon ? <Icon aria-hidden className={navIconStrokeClass(cn('size-4 shrink-0', target.tone ?? 'text-text-default'))} /> : null}
                   </span>
                   <span className="truncate">{target.label}</span>
                 </Link>

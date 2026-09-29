@@ -1,5 +1,5 @@
 import type { ComponentType, ReactNode } from 'react';
-import { AlarmClock, CircleDot, CirclePause, Package, PackageSearch, PackageX, Truck } from '@/components/Icons';
+import { AlarmClock, CheckCircle, CircleDot, CirclePause, Package, PackageSearch, PackageX, Truck } from '@/components/Icons';
 import { LIFECYCLE, type LifecycleState } from '../../tokens/lifecycle';
 import { RECORD_LABEL_CLASS, stateBadgeClass, type RecordStateFace } from '../../tokens/industrial-record';
 import { cn } from '@/utils/_cn';
@@ -7,6 +7,7 @@ import type { LifecycleIcon } from '@cycleforge/design-tokens';
 
 export const LIFECYCLE_GLYPH: Readonly<Record<LifecycleIcon, ComponentType<{ className?: string }>>> = {
   'circle-dot': CircleDot,
+  check: CheckCircle,
   'package-search': PackageSearch,
   'alarm-clock': AlarmClock,
   package: Package,
@@ -34,12 +35,13 @@ export function LifecycleCode({
   const Glyph = LIFECYCLE_GLYPH[spec.icon as LifecycleIcon] ?? CircleDot;
   const spoken = srLabel === undefined ? spec.label : srLabel;
   return (
-    <span className={cn(RECORD_LABEL_CLASS, 'inline-flex items-center gap-0.5', stateBadgeClass(spec.tone), className)}>
+    <span className={cn(RECORD_LABEL_CLASS, 'inline-flex items-center gap-1 industrial:gap-0.5', stateBadgeClass(spec.tone), className)}>
       <span aria-hidden className="inline-flex shrink-0">
         <Glyph className="h-3 w-3" />
       </span>
       <span aria-hidden={spoken != null || undefined} className="truncate">
-        {children ?? spec.code}
+        {/* Triage reads the WORD in every mode; industrial restyles it, never swaps it out by paint (layer law 4). */}
+        {children ?? <span className="industrial:uppercase">{spec.label}</span>}
       </span>
       {spoken != null ? <span className="sr-only">{spoken}</span> : null}
     </span>

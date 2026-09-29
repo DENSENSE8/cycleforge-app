@@ -26,6 +26,7 @@ import {
   matchesStationHistoryRailFacets,
   type StationHistoryRailFacets,
 } from '@/components/sidebar/rail-shell/StationHistoryRailFilters';
+import { emitPackerFocusScan } from '@/lib/print/pack-print-bundle-client';
 
 interface Props {
   /** Signed-in packer's staff id. */
@@ -117,6 +118,10 @@ export function PackRecentPacksRail({
       // back to the table (act-and-clear, matching the rail toggle elsewhere).
       const isOpen = selectedId != null && packerRecordRailId(row) === selectedId;
       dispatchPackActiveOrder(isOpen ? null : packerRecordToPackPane(row));
+      // The rail row receives pointer focus before its click opens the packing
+      // checklist. Hand it back after that pane paints so the next wedge scan
+      // still lands in the station intake without an extra operator click.
+      emitPackerFocusScan();
     },
     [selectedId],
   );

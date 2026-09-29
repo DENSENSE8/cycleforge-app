@@ -1,7 +1,9 @@
 'use client';
 
 /**
- * SKU exception evidence — Pair to Zoho SKU, the resolution.
+ * Missing pairs, placeholder side — pair a floor-minted `TMP-` SKU into the
+ * real Zoho item: its stock, photos and description move onto the real SKU
+ * and the exception closes (`merge-placeholder`).
  */
 
 import { useMemo, useState } from 'react';
@@ -16,6 +18,7 @@ import { useDebounce } from '@/hooks';
 import { useSkuCatalogSearch, type SkuCatalogItem } from '@/hooks/useSkuCatalogSearch';
 import { isProvisionalSku } from '@/lib/inventory/provisional-sku';
 import type { ProvisionalSkuDetail } from '@/lib/neon/provisional-sku-queries';
+import { useResolvePairsException } from '@/hooks/exceptions';
 import { toast } from '@/lib/toast';
 import { cn } from '@/utils/_cn';
 
@@ -27,11 +30,13 @@ export function SkuExceptionPairSection({
 }: {
   fieldId: string;
   item: ProvisionalSkuDetail;
-  onPaired: () => Promise<void>;
+  /** After the merge lands (the hook has already re-read the exceptions). */
+  onPaired: () => void | Promise<void>;
 }) {
   const [query, setQuery] = useState('');
   const [chosen, setChosen] = useState<SkuCatalogItem | null>(null);
-  const [busy, setBusy] = useState(false);
+  const merge = useResolvePairsException();
+  const busy = merge.isPending;
 
   // Seeded with the typed name: the likeliest real SKU is whatever the catalog
   // already calls the thing the operator described.
@@ -43,24 +48,18 @@ export function SkuExceptionPairSection({
     [item.sku, search.data],
   );
 
-  const confirm = async () => {
+  const confirm = () => {
     if (!chosen || busy) return;
-    setBusy(true);
-    try {
-      const res = await fetch('/api/sku-catalog/provisional/merge', {
-        method: 'POST',
-        credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ provisionalSku: item.sku, targetSku: chosen.sku }),
-      });
-      const data = (await res.json().catch(() => null)) as { success?: boolean; error?: string } | null;
-      if (!res.ok || !data?.success) throw new Error(data?.error || `Pairing failed (${res.status})`);
-      toast.success(`Paired ${item.sku} into ${chosen.sku}`);
-      await onPaired();
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Could not pair.');
-      setBusy(false);
-    }
+    merge.mutate(
+      { action: 'merge-placeholder', provisionalSku: item.sku, targetSku: chosen.sku },
+      {
+        onSuccess: () => {
+          toast.success(`Paired ${item.sku} into ${chosen.sku}`);
+          void onPaired();
+        },
+        onError: (error) => toast.error(error.message || 'Could not pair.'),
+      },
+    );
   };
 
   const units = `${item.stock} unit${item.stock === 1 ? '' : 's'}`;
@@ -110,7 +109,7 @@ export function SkuExceptionPairSection({
               type="button"
               className={cn(evidenceVerbClass(true), 'flex-1')}
               disabled={busy}
-              onClick={() => void confirm()}
+              onClick={confirm}
               data-testid="sku-exception-pair-confirm"
             >
               {busy ? 'Pairing…' : 'Pair'}
