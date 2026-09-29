@@ -10,6 +10,7 @@ import {
 } from '@/lib/inbound/inbound-order-draft';
 
 export const runtime = 'nodejs';
+export const maxDuration = 300;
 
 const Body = z
   .object({

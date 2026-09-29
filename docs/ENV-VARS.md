@@ -175,7 +175,7 @@ AI_CHAT_RATE_LIMIT=
 
 ### Unlimited OCR (local paperwork model)
 
-`Unlimited OCR` is the dedicated multimodal Ollama model running on the RTX
+`Unlimited OCR` is the dedicated multimodal model running on the RTX
 5070 Ti. It has its own endpoint configuration so document bytes never enter
 the general AI provider chain or the product-photo vision service.
 
@@ -188,10 +188,22 @@ UNLIMITED_OCR_CF_ACCESS_CLIENT_SECRET=  # Cloudflare Access service-token secret
 ```
 
 The app calls `POST {UNLIMITED_OCR_BASE_URL}/chat/completions` with the image
-and the exact model name. Keep these variables server-only. After configuring
+and Unlimited OCR's required `<image>document parsing.` prompt, including its
+per-request no-repeat n-gram settings. The endpoint must run the official
+Unlimited OCR vLLM/SGLang recipe; the older Ollama GGUF conversion is not
+compatible with that repetition guard. It also sends the exact model name.
+Keep these variables server-only. After configuring
 production, an authorized Receiving user can probe readiness at
 `GET /api/receiving/inbound/ocr-health` without exposing the endpoint or
 credentials.
+
+The 5070 Ti service definition is versioned at
+`ops/systemd/cycleforge-unlimited-ocr.service`. It binds to loopback port 8001,
+requires a bearer API key, and registers the official no-repeat processor.
+Pickup OCR transcripts are then structured by the separately allowlisted
+`ops/local-ai-proxy.mjs` endpoint using `qwen3:4b-nothink`; configure that
+endpoint through the standard `AI_CHAT_*` variables above. The proxy exposes
+only model discovery and non-streaming chat completion—not Ollama management.
 
 ## App Config
 ```

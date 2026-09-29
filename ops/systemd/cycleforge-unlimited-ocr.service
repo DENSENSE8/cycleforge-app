@@ -1,0 +1,25 @@
+[Unit]
+Description=CycleForge Unlimited OCR — official vLLM runtime
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+EnvironmentFile=%h/.config/cycleforge/unlimited-ocr.env
+Environment=HF_HUB_OFFLINE=1
+Environment=VLLM_USE_FLASHINFER_SAMPLER=0
+ExecStart=%h/train-venvs/vllm/bin/vllm serve %h/Models/Unlimited-OCR \
+  --host 127.0.0.1 --port 8001 \
+  --served-model-name unlimited-ocr:latest \
+  --trust-remote-code \
+  --logits-processors vllm.model_executor.models.unlimited_ocr:NGramPerReqLogitsProcessor \
+  --no-enable-prefix-caching \
+  --mm-processor-cache-gb 0 \
+  --gpu-memory-utilization 0.75 \
+  --max-model-len 32768
+Restart=on-failure
+RestartSec=10
+TimeoutStopSec=30
+
+[Install]
+WantedBy=default.target

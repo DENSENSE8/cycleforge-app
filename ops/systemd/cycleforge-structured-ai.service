@@ -1,0 +1,17 @@
+[Unit]
+Description=CycleForge private structured-extraction proxy
+After=network-online.target ollama.service
+Wants=network-online.target
+Requires=ollama.service
+
+[Service]
+Type=simple
+EnvironmentFile=%h/.config/cycleforge/structured-ai.env
+ExecStart=/usr/bin/node %h/Projects/cycleforge-lanes/prod/ops/local-ai-proxy.mjs
+Restart=always
+RestartSec=5
+NoNewPrivileges=true
+PrivateTmp=true
+
+[Install]
+WantedBy=default.target

@@ -363,6 +363,9 @@ export async function extractPoIntake(
     // self-hosted chat model after Unlimited OCR. Never spill the transcript
     // to a paid managed model when the local runtime is unavailable.
     selfHostedOnly: type === 'PICKUP',
+    // Cold local extraction may include model loading and must outlive the
+    // platform provider's intentionally short default failover budget.
+    ...(type === 'PICKUP' ? { timeoutMs: 180_000 } : {}),
     headers: {
       'X-Source': type === 'PICKUP' ? 'cycle-forge-local-pickup-extract' : 'cycle-forge-inbound-po-extract',
     },

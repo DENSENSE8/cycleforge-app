@@ -61,6 +61,9 @@ test('Unlimited OCR sends the image only to the named private model', async () =
   assert.equal((calls[0].init.headers as Record<string, string>)['CF-Access-Client-Id'], 'cf-id');
   const body = JSON.parse(String(calls[0].init.body));
   assert.equal(body.model, 'unlimited-ocr:latest');
+  assert.equal(body.messages[0].content[0].text, '<image>document parsing.');
+  assert.deepEqual(body.vllm_xargs, { ngram_size: 35, window_size: 128 });
+  assert.equal(body.skip_special_tokens, false);
   assert.match(body.messages[0].content[1].image_url.url, /^data:image\/jpeg;base64,/);
 });
 
@@ -83,3 +86,23 @@ test('Unlimited OCR fails loudly on empty output', async () => {
   );
 });
 
+test('Unlimited OCR rejects truncated or pathologically repetitive output', async () => {
+  const repeated = Array.from({ length: 5 }, () => (
+    'Name Address Telephone Street City Country Postal Mail Order Price Quantity Payment Notes'
+  )).join(' ');
+  const deps: UnlimitedOcrDeps = {
+    fetchImpl: (async () => new Response(JSON.stringify({
+      choices: [{ finish_reason: 'stop', message: { content: repeated } }],
+    }), { status: 200, headers: { 'content-type': 'application/json' } })) as typeof fetch,
+  };
+
+  await assert.rejects(
+    readImageWithUnlimitedOcr(
+      Buffer.from('image'),
+      'image/png',
+      { baseUrl: 'https://ocr.example/v1', model: 'unlimited-ocr:latest', apiKey: '' },
+      deps,
+    ),
+    /incomplete or repetitive/i,
+  );
+});
